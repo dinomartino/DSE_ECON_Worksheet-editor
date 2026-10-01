@@ -3082,6 +3082,10 @@ first run only records the version, but saved work with no record counts as an u
 from a build before the key. "What's new" on the start screen and in the ⋯ menu lists
 every release. `Unreleased` shows only in dev builds (`NODE_ENV` is inlined at build
 time). The release body comes from the same parser (`scripts/release-notes.mjs`).
+Each bullet and Earlier paragraph carries its 繁體中文 as a `<!-- zh: … -->` comment under
+it: the dialog shows it when the interface is 中文 (English where an entry has none),
+with group names and dates in Chinese; `sectionMarkdown` drops the comments, so the
+release body and English What's new read exactly as the English alone would.
 
 **The start screen renders only after hydration** (`EditorHost`): it reads the platform
 and `localStorage` while rendering, which the web-built prerender cannot match.

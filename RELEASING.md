@@ -86,7 +86,7 @@ Windows x64) into one **draft** release. Check the assets below, then publish â€
 what ships it to installed apps:
 
 ```bash
-node scripts/release-notes.mjs vX.Y.Z > /tmp/notes.md   # that version's CHANGELOG section
+node scripts/release-notes.mjs vX.Y.Z > /tmp/notes.md   # that version's CHANGELOG section, English only
 gh release edit vX.Y.Z --draft=false --latest --notes-file /tmp/notes.md
 ```
 

@@ -273,13 +273,14 @@ Never translate: anything that prints or reaches the IR, `.docx`, clipboard or P
 (render, export, model, registry defaults, numbering, marks labels); document defaults
 ("Answer ALL questions."); diagram symbols and labels; user content; test ids, storage
 keys, `data-*` values; console and dev-only messages; error text from AI providers; the
-CHANGELOG / What's new. `data-print-hide` marks chrome, so its absence is a hint the text
-prints. When unsure, leave it English and say so.
+CHANGELOG (its 繁體中文 sits in the file: § Adding a changelog line). `data-print-hide`
+marks chrome, so its absence is a hint the text prints. When unsure, leave it English
+and say so.
 
 Guard: `src/i18n/catalogues.test.ts` imports every catalogue and checks each entry
-(non-empty `zh`, kept terms, no Simplified or Taiwan forms, half-width punctuation,
-functions callable). Existing English tests must pass unchanged; to test Chinese, wrap
-the render in `src/i18n/language.ts:UiLanguageOverride`. Screenshot both languages.
+(`src/i18n/wording.ts:wordingProblems`: non-empty `zh`, kept terms, no Simplified or
+Taiwan forms, half-width punctuation, no em dash; functions callable). Existing English
+tests must pass unchanged; to test Chinese, wrap the render in `src/i18n/language.ts:UiLanguageOverride`. Screenshot both languages.
 
 Ratchet: `src/i18n/literals.test.ts` counts English JSX text and text props (`aria-label`,
 `title`, `placeholder`, `label`, `hint` …) per file and fails when a file has more than
@@ -398,11 +399,19 @@ None of them needs a tag or touches `main`.
    `### Fixed` (only those three), in the same commit as the change. Written for teachers:
    a **bold lead phrase** naming what they can now do, then a sentence. Inline `**`,
    backticks and `[text](https://…)` render in the app; nothing else does.
-2. `npm run changelog` — refreshes `src/whatsNew/changelog.generated.ts` (also run by
+2. Straight under it, indented, its 繁體中文 for What's new in 中文 (wrap it like the
+   English; the release body and English What's new leave it out). Same wording rules as
+   the interface (`docs/design/ui-language.md`); headings are never duplicated.
+   ```
+   - **Graphs 圖表庫: draw a graph once and keep it.** Open Graphs from the start screen.
+     <!-- zh: **圖表庫：圖表畫一次便可保留。** 在開始畫面開啟圖表庫。 -->
+   ```
+3. `npm run changelog` — refreshes `src/whatsNew/changelog.generated.ts` (also run by
    `npm run dev` and `npm run build`). Commit both.
 
 Guard: `src/whatsNew/changelog.generated.test.ts` (the copy is current),
-`src/whatsNew/changelog.test.ts` (the real file parses with no problems).
+`src/whatsNew/changelog.test.ts` (the real file parses with no problems),
+`src/whatsNew/changelogZh.test.ts` (every entry has its 繁體中文, in Hong Kong wording).
 
 ## Closing the changelog at release
 

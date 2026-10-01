@@ -33,3 +33,21 @@ export function relativeTime(iso: string, now = Date.now(), lang: UiLanguage = u
   }
   return zh ? new Date(iso).toLocaleDateString('zh-HK') : new Date(iso).toLocaleDateString();
 }
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/**
+ * A calendar date ("2026-09-24") in words: "24 September 2026", or 2026年9月24日. Read
+ * from the digits, so the viewer's time zone never moves the day; anything else is
+ * returned as given.
+ */
+export function calendarDate(date: string | undefined, lang: UiLanguage = uiLanguage()): string | undefined {
+  const match = date ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(date) : null;
+  const month = match ? MONTHS[Number(match[2]) - 1] : undefined;
+  if (!match || !month) return date;
+  const day = Number(match[3]);
+  return lang === 'zh-HK' ? `${match[1]}年${Number(match[2])}月${day}日` : `${day} ${month} ${match[1]}`;
+}

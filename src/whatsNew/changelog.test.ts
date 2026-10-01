@@ -64,11 +64,11 @@ describe('parseChangelog — the real CHANGELOG.md', () => {
     expect(release?.date).toBe('2026-09-24');
     expect(release?.groups.map((g) => g.title)).toEqual(['Added', 'Changed']);
     const added = release!.groups[0].items;
-    expect(added[0]).toBe(
+    expect(added[0].en).toBe(
       '**Export dialog**: question paper, a separate **answer key** `.docx`, or both, in any ' +
         'language, with **include/omit the cover page and the answer space** toggles.',
     );
-    expect(added.every((item) => !item.includes('\n'))).toBe(true);
+    expect(added.every((item) => !item.en.includes('\n'))).toBe(true);
   });
 
   it('0.2.0 and the Earlier prose are there', () => {
@@ -93,15 +93,15 @@ describe('parseChangelog — the format', () => {
     expect(release.groups).toEqual([
       {
         title: 'Added',
-        items: ['**Bold lead**: a line that wraps onto a second line.', 'Plain `code` item.'],
+        items: [{ en: '**Bold lead**: a line that wraps onto a second line.' }, { en: 'Plain `code` item.' }],
       },
-      { title: 'Fixed', items: ['Star bullet.'] },
+      { title: 'Fixed', items: [{ en: 'Star bullet.' }] },
     ]);
     expect(findRelease(log, '1.1.0')?.date).toBe('2026-09-01');
   });
 
   it('joins prose paragraphs line by line', () => {
-    expect(log.earlier[0].paragraphs).toEqual(['First paragraph continues here.', 'Second paragraph.']);
+    expect(log.earlier[0].paragraphs).toEqual([{ en: 'First paragraph continues here.' }, { en: 'Second paragraph.' }]);
   });
 
   it('reports what it cannot place, and never throws', () => {
@@ -116,17 +116,81 @@ describe('parseChangelog — the format', () => {
       'line 6: "## 2.0.0" has no date',
       'line 9: a second "## Unreleased"',
     ]);
-    expect(findRelease(odd, '2.0.0')?.groups[0].items).toEqual(['x']);
+    expect(findRelease(odd, '2.0.0')?.groups[0].items).toEqual([{ en: 'x' }]);
     for (const input of ['', '\n\n', '###', '## ', '- a', '`**[', '## 1.0.0 — nope', '\r\n## Unreleased\r\n### Added\r\n- crlf\r\n']) {
       expect(() => parseChangelog(input)).not.toThrow();
     }
-    expect(parseChangelog('\r\n## Unreleased\r\n### Added\r\n- crlf\r\n').unreleased.groups[0].items).toEqual(['crlf']);
+    expect(parseChangelog('\r\n## Unreleased\r\n### Added\r\n- crlf\r\n').unreleased.groups[0].items).toEqual([{ en: 'crlf' }]);
     // Not a string at all (a corrupt bundle): still no throw.
     expect(() => parseChangelog(undefined as unknown as string)).not.toThrow();
   });
 });
 
+const BILINGUAL = `## 1.0.0 — 2026-10-01
+
+### Added
+- **Graphs 圖表庫: keep a graph.** Open Graphs
+  from the start screen.
+  <!-- zh: **圖表庫：圖表畫一次便可保留。** 在開始畫面
+  開啟圖表庫，下載 PNG
+  或複製到 Word。 -->
+- No translation yet.
+
+  <!-- zh: 空行之後。 -->
+- One-line comment.
+  <!-- zh: 一行。 -->
+
+## Earlier (web app)
+
+First paragraph.
+
+<!-- zh: 第一段。 -->
+
+Second paragraph.
+`;
+
+describe('parseChangelog — 繁體中文 comments', () => {
+  const log = parseChangelog(BILINGUAL);
+
+  it('attaches each comment to the entry above it, re-flowed', () => {
+    expect(log.problems).toEqual([]);
+    expect(findRelease(log, '1.0.0')?.groups[0].items).toEqual([
+      {
+        en: '**Graphs 圖表庫: keep a graph.** Open Graphs from the start screen.',
+        zh: '**圖表庫：圖表畫一次便可保留。** 在開始畫面開啟圖表庫，下載 PNG 或複製到 Word。',
+      },
+      { en: 'No translation yet.', zh: '空行之後。' },
+      { en: 'One-line comment.', zh: '一行。' },
+    ]);
+    expect(log.earlier[0].paragraphs).toEqual([{ en: 'First paragraph.', zh: '第一段。' }, { en: 'Second paragraph.' }]);
+  });
+
+  it('reports a misplaced, doubled, empty or unclosed comment', () => {
+    const odd = parseChangelog(
+      '## Unreleased\n### Added\n<!-- zh: 無主。 -->\n- a\n  <!-- zh: 甲。 -->\n  <!-- zh: 乙。 -->\n- b\n  <!-- zh: -->\n- c\n  <!-- zh: 未完\n## 1.0.0 — 2026-10-01\n### Fixed\n- d\n',
+    );
+    expect(odd.problems).toEqual([
+      'line 3: a zh comment with no bullet or paragraph above it',
+      'line 6: a second zh comment for one entry',
+      'line 8: an empty zh comment',
+      'line 10: a zh comment with no closing -->',
+    ]);
+    expect(odd.unreleased.groups[0].items).toEqual([{ en: 'a', zh: '甲。' }, { en: 'b' }, { en: 'c', zh: '未完' }]);
+    expect(findRelease(odd, '1.0.0')?.groups[0].items).toEqual([{ en: 'd' }]);
+  });
+});
+
 describe('sectionMarkdown', () => {
+  it('leaves the zh comments out: the English exactly as it was before them', () => {
+    expect(sectionMarkdown(BILINGUAL, '1.0.0')).toBe(
+      '### Added\n- **Graphs 圖表庫: keep a graph.** Open Graphs\n  from the start screen.\n' +
+        '- No translation yet.\n\n- One-line comment.',
+    );
+    const english = SAMPLE.replace('Star bullet.', 'Star bullet.\n  <!-- zh: 星號。 -->');
+    expect(sectionMarkdown(english, '1.2.0')).toBe(sectionMarkdown(SAMPLE, '1.2.0'));
+    expect(sectionMarkdown(english, '1.2.0')).not.toContain('zh:');
+  });
+
   it('returns a section verbatim, without its heading', () => {
     expect(sectionMarkdown(SAMPLE, 'v1.1.0')).toBe('### Changed\n- One change.');
     expect(sectionMarkdown(SAMPLE, '1.2.0')).toContain('- **Bold lead**: a line that\n  wraps');

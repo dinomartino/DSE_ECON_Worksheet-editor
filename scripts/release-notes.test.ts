@@ -47,6 +47,17 @@ describe('scripts/release-notes.mjs', () => {
     );
   });
 
+  it('leaves out the 繁體中文 comments', () => {
+    const bilingual = CLOSED.replace('  surplus and more.\n', '  surplus and more.\n  <!-- zh: **陰影區域**：消費者\n  盈餘等。 -->\n').replace(
+      '- A fix.\n',
+      '- A fix.\n  <!-- zh: 一項修正。 -->\n',
+    );
+    const { status, stdout } = run(bilingual, 'v0.4.0');
+    expect(status).toBe(0);
+    expect(stdout).toBe(run(CLOSED, 'v0.4.0').stdout);
+    expect(stdout).not.toContain('zh:');
+  });
+
   it('fails clearly when the version has no section', () => {
     const { status, stdout, stderr } = run(CLOSED, 'v0.5.0');
     expect(status).toBe(1);

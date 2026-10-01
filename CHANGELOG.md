@@ -4,13 +4,19 @@ What each release of Econ Studio contains, newest first. Written for teachers: n
 the thing they can now do, not the file that changed.
 
 Rules: every feature or fix that lands on `develop` adds a line under **Unreleased** in
-the same commit. At release, that section is renamed to the version and date, and its
-text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped as
-**Added**, **Changed**, **Fixed**. Nothing below a version heading is edited afterwards.
+the same commit, with its 繁體中文 as an indented `<!-- zh: … -->` line under it (What's
+new shows it in 中文; the release body leaves it out). At release, that section is
+renamed to the version and date, and its text becomes the GitHub release body (see
+`RELEASING.md`). Sections are grouped as **Added**, **Changed**, **Fixed**. Nothing below
+a version heading is edited afterwards.
 
 ## Unreleased
 
 ### Added
+- **What's new in 繁體中文.** With the interface in 繁體中文, What's new shows every
+  release's notes in Hong Kong Chinese, with its headings and dates in Chinese too.
+  <!-- zh: **最新功能有繁體中文版。** 介面設定為繁體中文時，「最新功能」會以香港中文
+  顯示每個版本的更新說明，標題和日期亦會以中文顯示。 -->
 - **Settings → Language 語言: use Econ Studio in 繁體中文.** Choose English or 繁體中文
   for buttons, menus and dialogs, in the words Hong Kong teachers use (PDF, MCQ and
   Paper 1 stay in English). Worksheets print exactly as you wrote them in either

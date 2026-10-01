@@ -6,7 +6,10 @@ import { Button, Pill } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { currentVersion } from '@/desktop/updater';
-import { useMessages } from '@/i18n/language';
+import { calendarDate } from '@/i18n/format';
+import type { Messages, TextKey } from '@/i18n/catalogue';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
 import { openExternal } from '@/platform';
 import {
   findRelease,
@@ -15,14 +18,17 @@ import {
   type Changelog,
   type ChangelogProse,
   type ChangelogSection,
+  type ChangelogText,
+  type GroupTitle,
 } from '@/whatsNew/changelog';
 import { inlineTokens, isOpenableLink, type InlineToken } from '@/whatsNew/inline';
-import { CHANGELOG, formatReleaseDate, SHOW_UNRELEASED } from '@/whatsNew/notes';
+import { CHANGELOG, SHOW_UNRELEASED } from '@/whatsNew/notes';
 import { decideWhatsNew, readLastSeen, writeLastSeen } from '@/whatsNew/seen';
 import { WHATS_NEW_MESSAGES } from './messages';
 
 /**
- * "What's new", read from the CHANGELOG.md bundled into this build.
+ * "What's new", read from the CHANGELOG.md bundled into this build. In 中文 each entry
+ * shows its `<!-- zh: … -->` text, or the English where it has none.
  *
  * With `version`, the notes for that one release — shown once after an update — with a
  * way on to the rest. Without it, every release: the running one open, older ones
@@ -43,11 +49,12 @@ export function WhatsNewDialog({
   showUnreleased?: boolean;
 }) {
   const m = useMessages(WHATS_NEW_MESSAGES);
+  const lang = useUiLanguage();
   const [all, setAll] = useState(false);
   const featured = version && !all ? findRelease(changelog, version) : undefined;
 
   if (featured) {
-    const date = formatReleaseDate(featured.date);
+    const date = calendarDate(featured.date, lang);
     return (
       <Dialog
         title={m.titleIn(featured.version)}
@@ -108,8 +115,8 @@ export function WhatsNewDialog({
           <Fold key={prose.heading} summary={<ProseTitle prose={prose} />}>
             <div className="space-y-2 text-[13px] leading-relaxed text-ink-muted">
               {prose.paragraphs.map((p) => (
-                <p key={p}>
-                  <Inline tokens={inlineTokens(p)} />
+                <p key={p.en}>
+                  <Inline tokens={inlineTokens(textIn(p, lang))} />
                 </p>
               ))}
             </div>
@@ -185,8 +192,9 @@ function Fold({
 
 function SectionTitle({ section, current }: { section: ChangelogSection; current: string }) {
   const m = useMessages(WHATS_NEW_MESSAGES);
+  const lang = useUiLanguage();
   const unreleased = section.version === UNRELEASED;
-  const date = formatReleaseDate(section.date);
+  const date = calendarDate(section.date, lang);
   return (
     <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
       <span className="text-[14px] font-semibold text-ink tabular-nums">
@@ -196,34 +204,53 @@ function SectionTitle({ section, current }: { section: ChangelogSection; current
       {section.version === current && <Pill tone="accent">{m.yourVersion}</Pill>}
       {unreleased && <Pill tone="warn">{m.devOnly}</Pill>}
       <span className="ml-auto text-[11px] text-ink-subtle group-open:hidden">
-        {countLine(section)}
+        {countLine(section, m)}
       </span>
     </span>
   );
 }
 
 function ProseTitle({ prose }: { prose: ChangelogProse }) {
-  return <span className="text-[14px] font-semibold text-ink">{prose.heading}</span>;
+  const m = useMessages(WHATS_NEW_MESSAGES);
+  const lang = useUiLanguage();
+  return (
+    <span className="text-[14px] font-semibold text-ink">
+      {lang === 'zh-HK' ? m.earlier : prose.heading}
+    </span>
+  );
 }
 
+/** An entry in the interface language: 中文 falls back to the English where it has none. */
+function textIn(text: ChangelogText, lang: UiLanguage): string {
+  return (lang === 'zh-HK' && text.zh) || text.en;
+}
+
+const GROUP_KEY: Record<GroupTitle, TextKey<typeof WHATS_NEW_MESSAGES>> = {
+  Added: 'added',
+  Changed: 'changed',
+  Fixed: 'fixed',
+};
+
 /** "8 added · 2 changed" — what a folded release holds. */
-function countLine(section: ChangelogSection): string {
-  return section.groups.map((g) => `${g.items.length} ${g.title.toLowerCase()}`).join(' · ');
+function countLine(section: ChangelogSection, m: Messages<typeof WHATS_NEW_MESSAGES>): string {
+  return section.groups.map((g) => m.count(g.items.length, m[GROUP_KEY[g.title]])).join(' · ');
 }
 
 /** One release: its groups, each a heading and a bullet list. */
 export function SectionNotes({ section }: { section: ChangelogSection }) {
+  const m = useMessages(WHATS_NEW_MESSAGES);
+  const lang = useUiLanguage();
   return (
     <div className="space-y-4">
       {section.groups.map((group) => (
         <section key={group.title}>
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-            {group.title}
+            {m[GROUP_KEY[group.title]]}
           </h3>
           <ul className="mt-1.5 list-disc space-y-1.5 pl-4 text-[13px] leading-relaxed text-ink-muted marker:text-line-strong">
             {group.items.map((item) => (
-              <li key={item}>
-                <Inline tokens={inlineTokens(item)} />
+              <li key={item.en}>
+                <Inline tokens={inlineTokens(textIn(item, lang))} />
               </li>
             ))}
           </ul>
