@@ -24,6 +24,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **2026-10-01 on `develop`, not released: Edit panel marks the page selection.** The panel
+  control matching what was clicked gets `data-edit-current` (accent tint + bar, one 900ms ring;
+  `src/components/editor/panelTarget.ts`, styled in `globals.css`); cell/caption/source fall back to
+  their block. Chromium + WebKit screenshots. Open: label-list cells publish no key, so they never
+  light up (Preview selection code); `PartTopics` scroll guard browser-checked only.
 - **2026-09-30 on `develop`, not released:** (1) **Renamed to Econ Studio 經濟備課室**
   **Desktop too since 2026-10-01**: `productName` "Econ Studio", identifier and exe
   (`mainBinaryName` econ-worksheet) frozen (`src/test/desktopIdentity.test.ts`); Windows
