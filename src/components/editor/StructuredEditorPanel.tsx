@@ -26,6 +26,11 @@ import { BlockEditor } from './BlockEditor';
 import { excerptOfBlocks, MiniNumber, scrollPageTo } from './panelRows';
 import { MarkSchemeEditor } from './MarkSchemeEditor';
 import type { MarkScheme } from '@/model/markSchemeTypes';
+import type { Messages } from '@/i18n/catalogue';
+import { useMessages } from '@/i18n/language';
+import { STRUCTURED_PANEL_MESSAGES } from './StructuredEditorPanel.messages';
+
+type PanelMessages = Messages<typeof STRUCTURED_PANEL_MESSAGES>;
 
 /** Set or drop a leaf's scheme; removing it leaves no `scheme: undefined` key behind. */
 function withScheme<T extends { scheme?: MarkScheme }>(leaf: T, scheme: MarkScheme | undefined): T {
@@ -71,22 +76,24 @@ function targetOwner(
 
 /** The row menu's graph-space toggle: adds a fresh box, or removes the one there. */
 function graphMenuItem(
+  m: PanelMessages,
   current: AnswerGraph | undefined,
   set: (graph: AnswerGraph | undefined) => void,
 ): MenuItem {
   return current
-    ? { label: 'Remove graph space', onSelect: () => set(undefined) }
-    : { label: 'Add graph space', onSelect: () => set(createAnswerGraph()) };
+    ? { label: m.removeGraph, onSelect: () => set(undefined) }
+    : { label: m.addGraph, onSelect: () => set(createAnswerGraph()) };
 }
 
 /** The row menu's model-diagram toggle (§ `QuestionPart.answerDiagram`). */
 function diagramMenuItem(
+  m: PanelMessages,
   current: DiagramBlock | undefined,
   set: (diagram: DiagramBlock | undefined) => void,
 ): MenuItem {
   return current
-    ? { label: 'Remove model diagram', onSelect: () => set(undefined) }
-    : { label: 'Add model diagram', onSelect: () => set(createAnswerDiagram()) };
+    ? { label: m.removeDiagram, onSelect: () => set(undefined) }
+    : { label: m.addDiagram, onSelect: () => set(createAnswerDiagram()) };
 }
 
 /**
@@ -95,6 +102,7 @@ function diagramMenuItem(
  * page — the row is the paper-setter's ledger line for that part.
  */
 function SchemeRow({
+  m,
   open,
   onToggle,
   label,
@@ -106,6 +114,7 @@ function SchemeRow({
   menu,
   menuLabel,
 }: {
+  m: PanelMessages;
   open: boolean;
   onToggle: () => void;
   label: string;
@@ -124,7 +133,7 @@ function SchemeRow({
       <button
         type="button"
         aria-expanded={open}
-        title="Show on the page"
+        title={m.showOnPage}
         onClick={() => {
           onToggle();
           if (pageTargetKey) scrollPageTo(pageTargetKey);
@@ -141,7 +150,7 @@ function SchemeRow({
           {label}
         </span>
         <span className="min-w-0 flex-1 truncate text-[11px] text-ink-subtle">
-          {excerpt || <span className="italic">type on the page</span>}
+          {excerpt || <span className="italic">{m.typeOnPage}</span>}
         </span>
       </button>
       {marks}
@@ -163,6 +172,7 @@ function SchemeRow({
  * (c) here with the matching control scrolled into view.
  */
 export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<StructuredQuestion>) {
+  const m = useMessages(STRUCTURED_PANEL_MESSAGES);
   const setParts = (parts: QuestionPart[]) => onChange({ parts });
 
   const selectedTargetKey = useWorksheetStore((s) => s.selectedTargetKey);
@@ -233,8 +243,8 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
   return (
     <div className="space-y-5">
       <BlockEditor
-        label="Stem"
-        labelHint="typed on the page"
+        label={m.stem}
+        labelHint={m.typedOnPage}
         blocks={question.blocks}
         onChange={(blocks) => onChange({ blocks })}
       />
@@ -252,25 +262,25 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
       {question.parts.length === 0 && (
         <section className="flex flex-wrap gap-3">
           <NumberField
-            label="Marks"
+            label={m.marks}
             value={question.marks ?? 0}
             onChange={(marks) => onChange({ marks })}
           />
           <NumberField
-            label="Answer lines"
+            label={m.answerLines}
             value={question.answerSpace}
             clearable
-            placeholder="none"
+            placeholder={m.none}
             onChange={(answerSpace) => onChange({ answerSpace })}
           />
           {!question.answerGraph && (
             <Button size="sm" onClick={() => onChange({ answerGraph: createAnswerGraph() })}>
-              + Graph space
+              {m.addGraphSpace}
             </Button>
           )}
           {!question.answerDiagram && (
             <Button size="sm" onClick={() => onChange({ answerDiagram: createAnswerDiagram() })}>
-              + Model diagram
+              {m.addModelDiagram}
             </Button>
           )}
         </section>
@@ -292,12 +302,12 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
 
       <section className="space-y-1">
         <GroupHeader
-          title="Parts & marks"
-          hint="(a), (b), (c)… · text on the page"
+          title={m.partsMarks}
+          hint={m.partsHint}
           // Off by default: parts carry their own marks, so the trailing sum is opt-in.
           action={
             <CheckField
-              label="Show total"
+              label={m.showTotal}
               checked={Boolean(question.showTotalMarks)}
               onChange={(showTotalMarks) => onChange({ showTotalMarks })}
             />
@@ -309,8 +319,8 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
             column. */}
         {question.parts.length > 0 && (
           <div className="flex items-center justify-end gap-1.5 px-1 pr-8 text-[9px] font-medium uppercase tracking-wide text-ink-subtle">
-            <span className="w-12 text-right">Marks</span>
-            <span className="w-12 text-right">Lines</span>
+            <span className="w-12 text-right">{m.colMarks}</span>
+            <span className="w-12 text-right">{m.colLines}</span>
           </div>
         )}
 
@@ -334,17 +344,17 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
 
             const partMenu: MenuItem[] = [
               {
-                label: 'Move up',
+                label: m.moveUp,
                 onSelect: () => movePart(partIndex, -1),
                 disabled: partIndex === 0,
               },
               {
-                label: 'Move down',
+                label: m.moveDown,
                 onSelect: () => movePart(partIndex, 1),
                 disabled: partIndex === question.parts.length - 1,
               },
               {
-                label: '+ Sub-part',
+                label: m.addSubPart,
                 onSelect: () => {
                   const created = createSubPart();
                   // Created open — it exists to be typed into. The part's own marks are
@@ -360,7 +370,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
               ...(interlude.length === 0
                 ? [
                     {
-                      label: 'Text before this part',
+                      label: m.textBefore,
                       onSelect: () => {
                         setExpandedParts((prev) => new Set(prev).add(part.id));
                         patchPart(partIndex, {
@@ -370,16 +380,16 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                     },
                   ]
                 : []),
-              graphMenuItem(part.answerGraph, (answerGraph) => {
+              graphMenuItem(m, part.answerGraph, (answerGraph) => {
                 setExpandedParts((prev) => new Set(prev).add(part.id));
                 patchPart(partIndex, { answerGraph });
               }),
-              diagramMenuItem(part.answerDiagram, (answerDiagram) => {
+              diagramMenuItem(m, part.answerDiagram, (answerDiagram) => {
                 setExpandedParts((prev) => new Set(prev).add(part.id));
                 patchPart(partIndex, { answerDiagram });
               }),
               {
-                label: 'Delete part',
+                label: m.deletePart,
                 danger: true,
                 separated: true,
                 onSelect: () => setParts(question.parts.filter((_, i) => i !== partIndex)),
@@ -389,6 +399,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
             return (
               <section key={part.id} className="rounded-lg border border-line bg-surface">
                 <SchemeRow
+                  m={m}
                   open={partOpen}
                   onToggle={() => togglePart(part.id)}
                   label={partLabel(partIndex)}
@@ -408,7 +419,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                       // Individually marked sub-parts: the part's total is derived, and
                       // a derived number is never an input (§ marks are derived).
                       <span className="w-12 shrink-0 text-right">
-                        <Pill>{partMarks(part)}m</Pill>
+                        <Pill>{m.marksShort(partMarks(part))}</Pill>
                       </span>
                     ) : (
                       <MiniNumber
@@ -418,9 +429,9 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                         label={
                           sharesMarks
                             ? subParts.length > 1
-                              ? `Marks for ${subPartLabel(0)}–${subPartLabel(subParts.length - 1)} together`
-                              : `Marks for ${subPartLabel(0)}`
-                            : `Part ${partLabel(partIndex)} marks`
+                              ? m.marksTogether(subPartLabel(0), subPartLabel(subParts.length - 1))
+                              : m.marksFor(subPartLabel(0))
+                            : m.partMarks(partLabel(partIndex))
                         }
                         value={part.marks}
                         placeholder="–"
@@ -430,14 +441,14 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                   }
                   lines={
                     <MiniNumber
-                      label={`Part ${partLabel(partIndex)} answer space (dotted lines)`}
+                      label={m.partSpace(partLabel(partIndex))}
                       value={part.answerSpace}
                       placeholder="–"
                       onChange={(answerSpace) => patchPart(partIndex, { answerSpace })}
                     />
                   }
                   menu={partMenu}
-                  menuLabel={`Actions for part ${partLabel(partIndex)}`}
+                  menuLabel={m.partActions(partLabel(partIndex))}
                 />
 
                 {partOpen && (
@@ -451,7 +462,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                      */}
                     {interlude.length > 0 && (
                       <div className="space-y-1 rounded-md border border-dashed border-line p-2">
-                        <GroupHeader title="Text before this part" hint="unnumbered · typed on the page" />
+                        <GroupHeader title={m.textBefore} hint={m.unnumberedHint} />
                         <BlockEditor
                           blocks={interlude}
                           onChange={(blocksBefore) =>
@@ -477,16 +488,16 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                           const subOpen = expandedSubs.has(subPart.id);
                           const subMenu: MenuItem[] = [
                             {
-                              label: 'Move up',
+                              label: m.moveUp,
                               onSelect: () => moveSubPart(subIndex, -1),
                               disabled: subIndex === 0,
                             },
                             {
-                              label: 'Move down',
+                              label: m.moveDown,
                               onSelect: () => moveSubPart(subIndex, 1),
                               disabled: subIndex === subParts.length - 1,
                             },
-                            graphMenuItem(subPart.answerGraph, (answerGraph) => {
+                            graphMenuItem(m, subPart.answerGraph, (answerGraph) => {
                               setExpandedSubs((prev) => new Set(prev).add(subPart.id));
                               patchPart(partIndex, {
                                 subParts: subParts.map((s, i) =>
@@ -494,7 +505,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                 ),
                               });
                             }),
-                            diagramMenuItem(subPart.answerDiagram, (answerDiagram) => {
+                            diagramMenuItem(m, subPart.answerDiagram, (answerDiagram) => {
                               setExpandedSubs((prev) => new Set(prev).add(subPart.id));
                               patchPart(partIndex, {
                                 subParts: subParts.map((s, i) =>
@@ -503,7 +514,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                               });
                             }),
                             {
-                              label: 'Delete sub-part',
+                              label: m.deleteSubPart,
                               danger: true,
                               separated: true,
                               onSelect: () =>
@@ -515,6 +526,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                           return (
                             <div key={subPart.id}>
                               <SchemeRow
+                                m={m}
                                 open={subOpen}
                                 onToggle={() => toggleSub(subPart.id)}
                                 label={subPartLabel(subIndex)}
@@ -538,9 +550,9 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                     // Empty is a real state here, and the placeholder
                                     // has to say which one: the group's shared label,
                                     // not "unmarked".
-                                    label={`Sub-part ${subPartLabel(subIndex)} marks`}
+                                    label={m.subMarks(subPartLabel(subIndex))}
                                     value={subPart.marks}
-                                    placeholder="shared"
+                                    placeholder={m.shared}
                                     onChange={(marks) =>
                                       patchPart(partIndex, {
                                         subParts: subParts.map((s, i) =>
@@ -552,7 +564,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                 }
                                 lines={
                                   <MiniNumber
-                                    label={`Sub-part ${subPartLabel(subIndex)} answer space (dotted lines)`}
+                                    label={m.subSpace(subPartLabel(subIndex))}
                                     value={subPart.answerSpace}
                                     placeholder="–"
                                     onChange={(answerSpace) =>
@@ -565,7 +577,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                   />
                                 }
                                 menu={subMenu}
-                                menuLabel={`Actions for sub-part ${subPartLabel(subIndex)}`}
+                                menuLabel={m.subActions(subPartLabel(subIndex))}
                               />
                               {subOpen && (
                                 <div className="animate-fade-in space-y-2 py-1 pl-6">
@@ -600,7 +612,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                   )}
                                   <BiTextField
                                     translate={{ kind: 'answer' }}
-                                    label="Answer (teacher version)"
+                                    label={m.answerTeacher}
                                     value={subPart.answer ?? emptyBiText()}
                                     rows={1}
                                     onChange={(answer) =>
@@ -664,7 +676,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
 
                     <BiTextField
                       translate={{ kind: 'answer' }}
-                      label="Answer / marking scheme (teacher version)"
+                      label={m.answerMarking}
                       value={part.answer ?? emptyBiText()}
                       onChange={(answer) => patchPart(partIndex, { answer })}
                     />
@@ -698,10 +710,10 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
             setParts([...question.parts, created]);
           }}
         >
-          + Part
+          {m.addPart}
         </Button>
         <span className="text-xs font-semibold text-ink-muted">
-          Total: {questionMarks(question)} marks
+          {m.total(questionMarks(question))}
         </span>
       </div>
     </div>

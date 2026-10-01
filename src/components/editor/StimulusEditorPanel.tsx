@@ -2,9 +2,11 @@
 
 import { DEFAULT_STIMULUS_SPAN, DEFAULT_STIMULUS_WORDING } from '@/model/flow';
 import type { LayoutElement } from '@/model/types';
+import { useMessages } from '@/i18n/language';
 import { GroupHeader, NumberField } from '@/components/ui';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
+import { STIMULUS_PANEL_MESSAGES } from './StimulusEditorPanel.messages';
 
 type StimulusElement = Extract<LayoutElement, { kind: 'stimulus' }>;
 
@@ -23,27 +25,28 @@ export function StimulusEditorPanel({
   element: StimulusElement;
   onChange: (patch: Partial<StimulusElement>) => void;
 }) {
+  const m = useMessages(STIMULUS_PANEL_MESSAGES);
   return (
     <div className="space-y-5">
       <section className="space-y-2">
         <GroupHeader
-          title="Lead-in"
-          hint="the question numbers between the two halves are derived"
+          title={m.leadIn}
+          hint={m.leadInHint}
         />
         <BiTextField
           translate={{ kind: 'wording', aroundValue: 'before' }}
-          label="Before the numbers"
+          label={m.before}
           value={element.prefix ?? DEFAULT_STIMULUS_WORDING.prefix}
           onChange={(prefix) => onChange({ prefix })}
         />
         <BiTextField
           translate={{ kind: 'wording', aroundValue: 'after' }}
-          label="After the numbers"
+          label={m.after}
           value={element.suffix ?? DEFAULT_STIMULUS_WORDING.suffix}
           onChange={(suffix) => onChange({ suffix })}
         />
         <NumberField
-          label="Questions covered"
+          label={m.covered}
           min={1}
           value={element.span ?? DEFAULT_STIMULUS_SPAN}
           onChange={(span) => onChange({ span })}
@@ -51,8 +54,8 @@ export function StimulusEditorPanel({
       </section>
 
       <BlockEditor
-        label="Stimulus content"
-        labelHint="what the questions share · typed on the page"
+        label={m.content}
+        labelHint={m.contentHint}
         blocks={element.blocks}
         onChange={(blocks) => onChange({ blocks })}
       />

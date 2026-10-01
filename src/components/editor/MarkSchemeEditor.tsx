@@ -33,6 +33,8 @@ import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { BiTextField } from './BiTextField';
 import { MiniNumber } from './panelRows';
+import { useMessages } from '@/i18n/language';
+import { MARK_SCHEME_MESSAGES } from './MarkSchemeEditor.messages';
 
 /**
  * The HKEAA marking scheme of one leaf (§ A marking scheme is notation, not prose):
@@ -109,16 +111,17 @@ function PointRow({
   onMove: (delta: number) => void;
   onRemove: () => void;
 }) {
+  const m = useMessages(MARK_SCHEME_MESSAGES);
   const alternatives = point.alternatives ?? [];
   const setAlternatives = (next: BiText[]) => {
     const rest = omit(point, 'alternatives');
     onChange(next.length > 0 ? { ...rest, alternatives: next } : rest);
   };
   const menu: MenuItem[] = [
-    { label: 'Add “/” alternative', onSelect: () => setAlternatives([...alternatives, emptyBiText()]) },
-    { label: 'Move up', onSelect: () => onMove(-1), disabled: index === 0 },
-    { label: 'Move down', onSelect: () => onMove(1), disabled: index === count - 1 },
-    { label: 'Delete point', danger: true, separated: true, onSelect: onRemove },
+    { label: m.addAlternative, onSelect: () => setAlternatives([...alternatives, emptyBiText()]) },
+    { label: m.moveUp, onSelect: () => onMove(-1), disabled: index === 0 },
+    { label: m.moveDown, onSelect: () => onMove(1), disabled: index === count - 1 },
+    { label: m.deletePoint, danger: true, separated: true, onSelect: onRemove },
   ];
   const stacked = useStackedRows();
   return (
@@ -128,13 +131,13 @@ function PointRow({
           // Under n@ the group sets every point's value; a per-point box would contradict it.
           <span
             className="flex h-7 w-12 shrink-0 items-center justify-end pr-1.5 text-xs tabular-nums text-ink-subtle"
-            title={`Each point earns ${group.each} (${group.each}@)`}
+            title={m.eachPointTitle(group.each)}
           >
             {group.each}@
           </span>
         ) : (
           <MiniNumber
-            label={`Point ${index + 1} marks`}
+            label={m.pointMarks(index + 1)}
             value={point.marks}
             placeholder="–"
             onChange={(marks) => {
@@ -146,7 +149,7 @@ function PointRow({
         <div className={stacked ? 'order-last min-w-0 basis-full' : 'min-w-0 flex-1'}>
           <BiTextField
             translate={{ kind: 'schemePoint' }}
-            ariaLabel={`Marking point ${index + 1}`}
+            ariaLabel={m.markingPoint(index + 1)}
             value={point.text}
             rows={1}
             placeholderEn="Marking point…"
@@ -155,7 +158,7 @@ function PointRow({
           />
         </div>
         {stacked && <span className="flex-1" />}
-        <Menu items={menu} label={`Actions for point ${index + 1}`} />
+        <Menu items={menu} label={m.pointActions(index + 1)} />
       </div>
       {alternatives.map((alternative, altIndex) => (
         <div key={altIndex} className="flex items-start gap-1.5 pl-[3.375rem]">
@@ -165,7 +168,7 @@ function PointRow({
           <div className="min-w-0 flex-1">
             <BiTextField
               translate={{ kind: 'schemePoint' }}
-              ariaLabel={`Alternative ${altIndex + 1} to point ${index + 1}`}
+              ariaLabel={m.alternativeTo(altIndex + 1, index + 1)}
               value={alternative}
               rows={1}
               placeholderEn="Also accept…"
@@ -174,7 +177,7 @@ function PointRow({
             />
           </div>
           <IconButton
-            label="Remove alternative"
+            label={m.removeAlternative}
             variant="danger"
             onClick={() => setAlternatives(removeAt(alternatives, altIndex))}
           >
@@ -197,22 +200,23 @@ function GroupBox({
   onChange: (group: MarkGroup) => void;
   onRemove?: () => void;
 }) {
+  const m = useMessages(MARK_SCHEME_MESSAGES);
   const points = groupPoints(group);
   const setPoints = (next: MarkPoint[]) => onChange({ ...group, points: next });
   return (
     <div className="space-y-1.5 rounded-md border border-line bg-surface-sunken/40 p-1.5">
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <Rule label="Any">
+        <Rule label={m.any}>
           <MiniNumber
-            label={`Group ${index + 1}: credit any N points`}
+            label={m.creditAny(index + 1)}
             value={group.take}
-            placeholder="all"
+            placeholder={m.all}
             onChange={(take) => onChange(withRule(group, 'take', take))}
           />
         </Rule>
         <Rule label="n@">
           <MiniNumber
-            label={`Group ${index + 1}: marks per point (n@)`}
+            label={m.marksPerPoint(index + 1)}
             value={group.each}
             placeholder="–"
             onChange={(each) => onChange(withRule(group, 'each', each))}
@@ -220,16 +224,16 @@ function GroupBox({
         </Rule>
         <Rule label="max">
           <MiniNumber
-            label={`Group ${index + 1}: max marks`}
+            label={m.groupMax(index + 1)}
             value={group.max}
             placeholder="–"
             onChange={(max) => onChange(withRule(group, 'max', max))}
           />
         </Rule>
         <span className="ml-auto flex items-center gap-1">
-          <Pill>{groupMax(group)}m</Pill>
+          <Pill>{m.marksShort(groupMax(group))}</Pill>
           {onRemove && (
-            <IconButton label={`Delete group ${index + 1}`} variant="danger" onClick={onRemove}>
+            <IconButton label={m.deleteGroup(index + 1)} variant="danger" onClick={onRemove}>
               <span aria-hidden>✕</span>
             </IconButton>
           )}
@@ -237,7 +241,7 @@ function GroupBox({
       </div>
       {group.take !== undefined && (
         <CheckField
-          label={`Mark the FIRST ${group.take} only`}
+          label={m.firstOnly(group.take)}
           checked={Boolean(group.firstOnly)}
           onChange={(firstOnly) => {
             const rest = omit(group, 'firstOnly');
@@ -258,7 +262,7 @@ function GroupBox({
         />
       ))}
       <Button size="sm" variant="subtle" onClick={() => setPoints([...points, createMarkPoint()])}>
-        + Point
+        {m.addPoint}
       </Button>
     </div>
   );
@@ -271,6 +275,7 @@ function RouteBlock({
   route: MarkRoute;
   onChange: (route: MarkRoute) => void;
 }) {
+  const m = useMessages(MARK_SCHEME_MESSAGES);
   const groups = routeGroups(route);
   const setGroups = (next: MarkGroup[]) => onChange({ ...route, groups: next });
   return (
@@ -285,7 +290,7 @@ function RouteBlock({
         />
       ))}
       <Button size="sm" variant="subtle" onClick={() => setGroups([...groups, createMarkGroup()])}>
-        + Group
+        {m.addGroup}
       </Button>
     </div>
   );
@@ -298,11 +303,12 @@ function LevelsBlock({
   levels: MarkLevel[];
   onChange: (levels: MarkLevel[] | undefined) => void;
 }) {
+  const m = useMessages(MARK_SCHEME_MESSAGES);
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium text-ink-muted">Levels of performance</span>
-        <IconButton label="Remove levels" variant="danger" onClick={() => onChange(undefined)}>
+        <span className="text-[11px] font-medium text-ink-muted">{m.levelsOfPerformance}</span>
+        <IconButton label={m.removeLevels} variant="danger" onClick={() => onChange(undefined)}>
           <span aria-hidden>✕</span>
         </IconButton>
       </div>
@@ -313,7 +319,7 @@ function LevelsBlock({
           <div className="flex items-center gap-1.5">
             <span className="w-6 shrink-0 text-[11px] font-semibold text-ink-muted">L{index + 1}</span>
             <MiniNumber
-              label={`Level ${index + 1} lowest mark`}
+              label={m.levelLowest(index + 1)}
               value={level.min}
               onChange={(min) => onChange(replaceAt(levels, index, { ...level, min: min ?? 0 }))}
             />
@@ -321,13 +327,13 @@ function LevelsBlock({
               –
             </span>
             <MiniNumber
-              label={`Level ${index + 1} highest mark`}
+              label={m.levelHighest(index + 1)}
               value={level.max}
               onChange={(max) => onChange(replaceAt(levels, index, { ...level, max: max ?? 0 }))}
             />
             <span className="flex-1" />
             <IconButton
-              label={`Delete level ${index + 1}`}
+              label={m.deleteLevel(index + 1)}
               variant="danger"
               onClick={() => {
                 const next = removeAt(levels, index);
@@ -339,7 +345,7 @@ function LevelsBlock({
           </div>
           <BiTextField
             translate={{ kind: 'schemeLevel' }}
-            ariaLabel={`Level ${index + 1} descriptor`}
+            ariaLabel={m.levelDescriptor(index + 1)}
             value={level.descriptor}
             rows={1}
             placeholderEn="Candidates at this level…"
@@ -353,7 +359,7 @@ function LevelsBlock({
         variant="subtle"
         onClick={() => onChange([...levels, createMarkLevel(levels[levels.length - 1])])}
       >
-        + Level
+        {m.addLevel}
       </Button>
     </div>
   );
@@ -366,6 +372,7 @@ function EcBlock({
   scheme: MarkScheme;
   onChange: (scheme: MarkScheme) => void;
 }) {
+  const m = useMessages(MARK_SCHEME_MESSAGES);
   const stacked = useStackedRows();
   const ec = scheme.ec!;
   const rows = ec.descriptors ?? [];
@@ -373,16 +380,16 @@ function EcBlock({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
-        <span className="flex-1 text-[11px] font-medium text-ink-muted">Effective communication</span>
+        <span className="flex-1 text-[11px] font-medium text-ink-muted">{m.effectiveCommunication}</span>
         <Rule label="max">
           <MiniNumber
-            label="EC max marks"
+            label={m.ecMax}
             value={ec.max}
             onChange={(max) => onChange({ ...scheme, ec: { ...ec, max: max ?? 0 } })}
           />
         </Rule>
         <IconButton
-          label="Remove EC"
+          label={m.removeEc}
           variant="danger"
           onClick={() => onChange(omit(scheme, 'ec'))}
         >
@@ -392,14 +399,14 @@ function EcBlock({
       {rows.map((row, index) => (
         <div key={row.id} className={`flex items-start gap-1.5 ${stacked ? 'flex-wrap' : ''}`}>
           <MiniNumber
-            label={`EC row ${index + 1} marks`}
+            label={m.ecRowMarks(index + 1)}
             value={row.marks}
             onChange={(marks) => setRows(replaceAt(rows, index, { ...row, marks: marks ?? 0 }))}
           />
           <div className={stacked ? 'order-last min-w-0 basis-full' : 'min-w-0 flex-1'}>
             <BiTextField
               translate={{ kind: 'schemeEc' }}
-              ariaLabel={`EC descriptor for ${row.marks} marks`}
+              ariaLabel={m.ecDescriptor(row.marks)}
               value={row.text}
               rows={1}
               onChange={(text) => setRows(replaceAt(rows, index, { ...row, text }))}
@@ -407,7 +414,7 @@ function EcBlock({
           </div>
           {stacked && <span className="flex-1" />}
           <IconButton
-            label={`Delete EC row ${index + 1}`}
+            label={m.deleteEcRow(index + 1)}
             variant="danger"
             onClick={() => setRows(removeAt(rows, index))}
           >
@@ -420,7 +427,7 @@ function EcBlock({
         variant="subtle"
         onClick={() => setRows([...rows, { id: newId(), marks: 0, text: emptyBiText() }])}
       >
-        + EC row
+        {m.addEcRow}
       </Button>
     </div>
   );
@@ -437,10 +444,11 @@ export function MarkSchemeEditor({
   /** `undefined` removes the scheme. */
   onChange: (scheme: MarkScheme | undefined) => void;
 }) {
+  const m = useMessages(MARK_SCHEME_MESSAGES);
   if (!scheme) {
     return (
       <Button size="sm" variant="subtle" onClick={() => onChange(createMarkScheme())}>
-        + Marking points
+        {m.addMarkingPoints}
       </Button>
     );
   }
@@ -452,47 +460,47 @@ export function MarkSchemeEditor({
   const total = schemeMax(scheme);
 
   const menu: MenuItem[] = [
-    { label: 'Add OR route', onSelect: () => setRoutes([...routes, createMarkRoute()]) },
+    { label: m.addOrRoute, onSelect: () => setRoutes([...routes, createMarkRoute()]) },
     ...(levels.length === 0
-      ? [{ label: 'Add level descriptors', onSelect: () => onChange({ ...scheme, levels: [createMarkLevel()] }) }]
+      ? [{ label: m.addLevels, onSelect: () => onChange({ ...scheme, levels: [createMarkLevel()] }) }]
       : []),
     ...(!scheme.ec
-      ? [{ label: 'Add effective communication', onSelect: () => onChange({ ...scheme, ec: createMarkEc() }) }]
+      ? [{ label: m.addEc, onSelect: () => onChange({ ...scheme, ec: createMarkEc() }) }]
       : []),
-    { label: 'Remove marking scheme', danger: true, separated: true, onSelect: () => onChange(undefined) },
+    { label: m.removeScheme, danger: true, separated: true, onSelect: () => onChange(undefined) },
   ];
 
   return (
     <div className="space-y-2 rounded-md border border-line p-2">
       <div className="flex items-center gap-1.5">
         <span className="flex-1 text-[11px] font-medium text-ink-muted">
-          Marking scheme <span className="font-normal text-ink-subtle">· teacher version</span>
+          {m.markingScheme} <span className="font-normal text-ink-subtle">{m.teacherVersion}</span>
         </span>
         <span
           title={
             mismatch
-              ? `The scheme awards ${mismatch.scheme}, the paper prints ${mismatch.printed}`
-              : 'What the scheme awards in total'
+              ? m.mismatch(mismatch.scheme, mismatch.printed)
+              : m.awardsTotal
           }
         >
           <Pill tone={mismatch ? 'warn' : 'neutral'}>
-            {printedMarks !== undefined ? `${total} / ${printedMarks}m` : `${total}m`}
+            {printedMarks !== undefined ? `${total} / ${m.marksShort(printedMarks)}` : m.marksShort(total)}
           </Pill>
         </span>
-        <Menu items={menu} label="Marking scheme actions" />
+        <Menu items={menu} label={m.schemeActions} />
       </div>
       {routesDisagree(scheme) && (
-        <p className="text-[11px] text-warn-ink">The OR routes award different totals.</p>
+        <p className="text-[11px] text-warn-ink">{m.routesDisagree}</p>
       )}
       {routes.map((route, routeIndex) => (
         <div key={route.id} className="space-y-1.5">
           {routeIndex > 0 && (
             <div className="flex items-center gap-2">
               <span className="h-px flex-1 bg-line" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">or</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{m.or}</span>
               <span className="h-px flex-1 bg-line" />
               <IconButton
-                label={`Delete route ${routeIndex + 1}`}
+                label={m.deleteRoute(routeIndex + 1)}
                 variant="danger"
                 onClick={() => setRoutes(removeAt(routes, routeIndex))}
               >

@@ -16,6 +16,9 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import type { MenuItem } from '@/components/ui/Menu';
+import type { Messages } from '@/i18n/catalogue';
+import { useMessages } from '@/i18n/language';
+import { BANK_ACTIONS_MESSAGES } from './BankActions.messages';
 
 /**
  * The question-bank entries of a question row's menu: Copy to bank, Update bank copy,
@@ -29,18 +32,14 @@ import type { MenuItem } from '@/components/ui/Menu';
 type Holds = ReturnType<typeof bankHolds>;
 type Panel = { kind: 'pick' } | { kind: 'treatNew' } | { kind: 'done'; text: string } | { kind: 'error'; text: string };
 
-/** What "Treat as a new question" does, said before it runs: no silent unlinking. */
-export const TREAT_NEW_TEXT =
-  'This copy will no longer be linked to the bank’s version or to its other copies. The bank will list it as a question of its own, and Update bank copy will not change it. Nothing on the page changes, and ⌘Z undoes it.';
-
 const NEW_BANK = '';
-const NAME_REQUIRED = 'Give it a name first.';
 
 export function useBankActions(question: Question): {
   items: MenuItem[];
   onOpen: () => void;
   dialog: ReactNode;
 } {
+  const m = useMessages(BANK_ACTIONS_MESSAGES);
   const docId = useWorksheetStore((s) => s.worksheet.id);
   const commit = useWorksheetStore((s) => s.commit);
   const [banks, setBanks] = useState<BankChoice[]>([]);
@@ -67,11 +66,11 @@ export function useBankActions(question: Question): {
     })();
   }, [docId, question]);
 
-  const nameOf = (id: string) => banks.find((bank) => bank.id === id)?.name ?? 'the bank';
+  const nameOf = (id: string) => banks.find((bank) => bank.id === id)?.name ?? m.theBank;
   const updates = banks.filter((bank) => holds.get(bank.id) === 'differs');
 
   const fail = (error: unknown) =>
-    setPanel({ kind: 'error', text: error instanceof Error ? error.message : 'Could not save the bank.' });
+    setPanel({ kind: 'error', text: error instanceof Error ? error.message : m.saveFailed });
 
   const update = (bank: Pick<BankChoice, 'id' | 'name'>) => {
     setBusy(true);
@@ -79,7 +78,7 @@ export function useBankActions(question: Question): {
       .then((ok) =>
         setPanel({
           kind: 'done',
-          text: ok ? `Updated the copy in ${bank.name}.` : `${bank.name} has no copy of this question.`,
+          text: ok ? m.updated(bank.name) : m.noCopy(bank.name),
         }),
       )
       .catch(fail)
@@ -88,7 +87,7 @@ export function useBankActions(question: Question): {
 
   const items: MenuItem[] = [
     {
-      label: 'Copy to bank…',
+      label: m.copyToBankMenu,
       onSelect: () => {
         // The first bank without this question; when every bank has it, the first (which says so).
         const open = banks.find((bank) => (holds.get(bank.id) ?? 'none') === 'none');
@@ -100,13 +99,13 @@ export function useBankActions(question: Question): {
       separated: true,
     },
     ...updates.map((bank) => ({
-      label: updates.length === 1 ? 'Update bank copy' : `Update copy in ${bank.name}`,
+      label: updates.length === 1 ? m.updateBankCopy : m.updateCopyIn(bank.name),
       onSelect: () => update(bank),
     })),
     ...(question.lineage
       ? [
           {
-            label: 'Treat as a new question…',
+            label: m.treatNewMenu,
             onSelect: () => setPanel({ kind: 'treatNew' }),
           },
         ]
@@ -137,8 +136,8 @@ export function useBankActions(question: Question): {
           kind: 'done',
           text:
             copied > 0
-              ? `Copied to ${worksheetTitle(bank)}.`
-              : `${worksheetTitle(bank)} already has this question. Nothing was copied.`,
+              ? m.copied(worksheetTitle(bank))
+              : m.alreadyHas(worksheetTitle(bank)),
         }),
       )
       .catch(fail)
@@ -147,9 +146,9 @@ export function useBankActions(question: Question): {
 
   const note =
     chosen === 'same'
-      ? `${nameOf(target)} already has this question.`
+      ? m.noteSame(nameOf(target))
       : chosen === 'differs'
-        ? `${nameOf(target)} has another version of this question. Update it to match this one.`
+        ? m.noteDiffers(nameOf(target))
         : undefined;
 
   const dialog = panel && (
@@ -164,12 +163,12 @@ export function useBankActions(question: Question): {
       <Dialog
         title={
           panel.kind === 'pick'
-            ? 'Copy to bank'
+            ? m.dialogCopy
             : panel.kind === 'treatNew'
-              ? 'Treat as a new question?'
+              ? m.dialogTreatNew
               : panel.kind === 'done'
-                ? 'Question bank'
-                : 'Could not save'
+                ? m.dialogDone
+                : m.dialogError
         }
         width={400}
         onClose={close}
@@ -177,30 +176,30 @@ export function useBankActions(question: Question): {
           panel.kind === 'pick' ? (
             <>
               <Button variant="subtle" onClick={close}>
-                Cancel
+                {m.cancel}
               </Button>
               {chosen === 'differs' ? (
                 <Button variant="primary" onClick={() => update({ id: target, name: nameOf(target) })} disabled={busy}>
-                  Update bank copy
+                  {m.updateBankCopy}
                 </Button>
               ) : (
                 <Button variant="primary" onClick={copy} disabled={busy || chosen === 'same'}>
-                  Copy
+                  {m.copy}
                 </Button>
               )}
             </>
           ) : panel.kind === 'treatNew' ? (
             <>
               <Button variant="subtle" onClick={close}>
-                Cancel
+                {m.cancel}
               </Button>
               <Button variant="primary" onClick={treatAsNew}>
-                Treat as new
+                {m.treatAsNew}
               </Button>
             </>
           ) : (
             <Button variant="primary" onClick={close}>
-              Done
+              {m.done}
             </Button>
           )
         }
@@ -209,26 +208,26 @@ export function useBankActions(question: Question): {
           {panel.kind === 'pick' ? (
             <fieldset className="flex flex-col gap-1">
               <legend className="mb-2 text-xs text-ink-muted">
-                A copy is added to the bank. This worksheet is not changed.
+                {m.pickLegend}
               </legend>
               {banks.map((bank) => (
                 <BankOption
                   key={bank.id}
                   id={bank.id}
                   label={bank.name}
-                  detail={[bank.detail, holdsText(holds.get(bank.id))].filter(Boolean).join(' · ')}
+                  detail={[bank.detail, holdsText(m, holds.get(bank.id))].filter(Boolean).join(' · ')}
                   target={target}
                   onPick={setTarget}
                 />
               ))}
-              <BankOption id={NEW_BANK} label="New bank" target={target} onPick={setTarget} />
+              <BankOption id={NEW_BANK} label={m.newBank} target={target} onPick={setTarget} />
               {target === NEW_BANK && (
                 <div className="ml-8 mt-1 space-y-1">
                   <input
                     type="text"
                     autoFocus
                     value={name}
-                    aria-label="New bank name"
+                    aria-label={m.newBankName}
                     aria-invalid={nameMissing}
                     onFocus={(event) => event.currentTarget.select()}
                     onChange={(event) => {
@@ -247,10 +246,10 @@ export function useBankActions(question: Question): {
                   />
                   {nameMissing ? (
                     <p role="alert" className="text-xs text-danger-ink">
-                      {NAME_REQUIRED}
+                      {m.nameRequired}
                     </p>
                   ) : (
-                    <p className="text-[11px] text-ink-subtle">What it is called in your list. It does not print.</p>
+                    <p className="text-[11px] text-ink-subtle">{m.newBankHint}</p>
                   )}
                 </div>
               )}
@@ -261,7 +260,7 @@ export function useBankActions(question: Question): {
               )}
             </fieldset>
           ) : panel.kind === 'treatNew' ? (
-            <p className="leading-relaxed">{TREAT_NEW_TEXT}</p>
+            <p className="leading-relaxed">{m.treatNewText}</p>
           ) : (
             <p role="status">{panel.text}</p>
           )}
@@ -274,9 +273,9 @@ export function useBankActions(question: Question): {
 }
 
 /** A bank's line in the picker, beside its name. */
-function holdsText(holds: Holds | undefined): string | undefined {
-  if (holds === 'same') return 'has this question';
-  if (holds === 'differs') return 'has another version';
+function holdsText(m: Messages<typeof BANK_ACTIONS_MESSAGES>, holds: Holds | undefined): string | undefined {
+  if (holds === 'same') return m.hasThis;
+  if (holds === 'differs') return m.hasAnother;
   return undefined;
 }
 

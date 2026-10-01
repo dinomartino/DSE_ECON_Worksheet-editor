@@ -18,9 +18,11 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { documentShape } from '@/model/documentShape';
 import { Button, GroupHeader, IconButton, NumberField, Segmented, SelectField } from '@/components/ui';
 import { ChevronRightIcon } from '@/components/ui/icons';
+import { useMessages } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { biExcerpt, ExcerptRow } from './panelRows';
+import { MCQ_PANEL_MESSAGES } from './McqEditorPanel.messages';
 
 /**
  * MCQ properties (§5.3, slimmed): the panel carries only what does not print or has
@@ -29,6 +31,7 @@ import { biExcerpt, ExcerptRow } from './panelRows';
  * the page*; here they appear as excerpt rows that reorder and delete.
  */
 export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuestion>) {
+  const m = useMessages(MCQ_PANEL_MESSAGES);
   const statements = question.statements ?? [];
   const language = useWorksheetStore((s) => s.mode.language);
   const suggested = suggestOptionLayout(question, language);
@@ -122,8 +125,8 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
   return (
     <div className="space-y-5">
       <BlockEditor
-        label="Stem"
-        labelHint="typed on the page"
+        label={m.stem}
+        labelHint={m.typedOnPage}
         blocks={question.blocks}
         onChange={(blocks) => onChange({ blocks })}
       />
@@ -135,10 +138,10 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div
             role="radiogroup"
-            aria-label="Correct answer"
+            aria-label={m.correctAnswer}
             className="flex items-center gap-1"
           >
-            <span className="text-[11px] font-medium text-ink-muted">Answer</span>
+            <span className="text-[11px] font-medium text-ink-muted">{m.answer}</span>
             {question.options.map((option, index) => {
               const isAnswer = question.answerIndex === index;
               return (
@@ -147,9 +150,9 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                   type="button"
                   role="radio"
                   aria-checked={isAnswer}
-                  aria-label={`Option ${optionLabel(index)} is the correct answer`}
+                  aria-label={m.optionIsCorrect(optionLabel(index))}
                   title={
-                    isAnswer ? 'This is the correct answer' : 'Mark as the correct answer'
+                    isAnswer ? m.isCorrect : m.markCorrect
                   }
                   onClick={() => onChange({ answerIndex: index })}
                   className={`h-7 w-7 cursor-pointer rounded-md text-[12px] font-semibold transition-[background-color,color,transform,scale] duration-150 ease-out-soft active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
@@ -164,7 +167,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             })}
           </div>
           <NumberField
-            label="Marks"
+            label={m.marks}
             value={question.marks ?? 1}
             onChange={(marks) => onChange({ marks })}
           />
@@ -175,13 +178,13 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             never gives. Ignored on question 1, which has no boundary above it. */}
         {shape === 'paper1' && (
           <SelectField<number>
-            label="Space above"
+            label={m.spaceAbove}
             value={question.gapBefore ?? 0}
             options={[
-              { value: 0, label: `Paper default (${paperGap ?? 3} lines)` },
+              { value: 0, label: m.paperDefault(paperGap ?? 3) },
               ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lines) => ({
                 value: lines,
-                label: lines === 1 ? '1 line' : `${lines} lines`,
+                label: m.lines(lines),
               })),
             ]}
             onChange={(lines) => onChange({ gapBefore: lines === 0 ? undefined : lines })}
@@ -190,10 +193,10 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
       </section>
 
       <section className="space-y-1">
-        <GroupHeader title="Options" hint="typed on the page" />
+        <GroupHeader title={m.options} hint={m.typedOnPage} />
         <div className="flex flex-wrap items-center gap-2 pb-1">
           <Segmented<McqOptionLayout>
-            label="Option layout"
+            label={m.optionLayout}
             value={resolveOptionLayout(question)}
             // Inline is withheld (not greyed out) once an option carries a figure: one
             // line of tab stops cannot hold a picture per cell, so offering it would
@@ -202,17 +205,17 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             options={
               question.options.some((option) => (option.blocks?.length ?? 0) > 0)
                 ? [
-                    { value: 'stacked', label: 'Stacked', title: 'One option per line' },
+                    { value: 'stacked', label: m.stacked, title: m.stackedTitle },
                     {
                       value: 'columns2',
-                      label: '2 columns',
-                      title: 'Two options per line. Figure options print as a grid',
+                      label: m.columns2,
+                      title: m.columns2FigTitle,
                     },
                   ]
                 : [
-                    { value: 'stacked', label: 'Stacked', title: 'One option per line' },
-                    { value: 'inline', label: 'Inline', title: 'All four options on one line' },
-                    { value: 'columns2', label: '2 columns', title: 'Two options per line' },
+                    { value: 'stacked', label: m.stacked, title: m.stackedTitle },
+                    { value: 'inline', label: m.inline, title: m.inlineTitle },
+                    { value: 'columns2', label: m.columns2, title: m.columns2Title },
                   ]
             }
             onChange={(optionLayout) => onChange({ optionLayout })}
@@ -223,17 +226,17 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             <Button
               size="sm"
               variant="subtle"
-              title={`These options fit better ${suggested === 'stacked' ? 'stacked' : `as ${suggested}`}`}
+              title={m.fitTitle(suggested)}
               onClick={() => onChange({ optionLayout: suggested })}
             >
-              Fit to content
+              {m.fit}
             </Button>
           )}
         </div>
 
         {fixedOrder && (
           <p className="pb-1 text-[11px] text-ink-muted">
-            A combination question keeps its option order in every version.
+            {m.fixedOrder}
           </p>
         )}
         {question.options.map((option, index) => {
@@ -260,11 +263,11 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                       className="shrink-0 text-[10px] font-medium text-accent"
                       title={
                         autoFixed
-                          ? 'Its wording depends on its place, so it keeps its letter in every version'
-                          : 'Keeps its letter in every version'
+                          ? m.pinnedPlace
+                          : m.pinnedLetter
                       }
                     >
-                      Pinned
+                      {m.pinned}
                     </span>
                   ) : undefined
                 }
@@ -277,12 +280,12 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                       aria-pressed={option.pinned === true}
                       title={
                         option.pinned
-                          ? 'Let this option move between versions'
-                          : 'Keep this option at its letter in every version'
+                          ? m.unpinTitle
+                          : m.pinTitle
                       }
                       onClick={() => togglePin(index)}
                     >
-                      {option.pinned ? 'Unpin' : 'Pin'}
+                      {option.pinned ? m.unpin : m.pin}
                     </Button>
                   )}
                   {/* An option can be a *figure* — "which of the following diagrams best
@@ -303,7 +306,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                         ])
                       }
                     >
-                      + Figure
+                      {m.addFigure}
                     </Button>
                   )}
                   </>
@@ -325,15 +328,15 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
 
       <section className="space-y-1 border-t border-line pt-3">
         <GroupHeader
-          title="Statements"
-          hint="combination MCQ · typed on the page"
+          title={m.statements}
+          hint={m.statementsHint}
           action={
             <Button
               size="sm"
               variant="subtle"
               onClick={() => setStatements([...statements, emptyBiText()])}
             >
-              + Statement
+              {m.addStatement}
             </Button>
           }
         />
@@ -350,21 +353,21 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             actions={
               <>
                 <IconButton
-                  label="Move statement up"
+                  label={m.moveStatementUp}
                   disabled={index === 0}
                   onClick={() => moveStatement(index, -1)}
                 >
                   <span aria-hidden>↑</span>
                 </IconButton>
                 <IconButton
-                  label="Move statement down"
+                  label={m.moveStatementDown}
                   disabled={index === statements.length - 1}
                   onClick={() => moveStatement(index, 1)}
                 >
                   <span aria-hidden>↓</span>
                 </IconButton>
                 <IconButton
-                  label="Delete statement"
+                  label={m.deleteStatement}
                   variant="danger"
                   onClick={() => setStatements(statements.filter((_, i) => i !== index))}
                 >
@@ -385,7 +388,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
         onToggle={(event) => setMarksOpen((event.target as HTMLDetailsElement).open)}
       >
         <summary className="cursor-pointer select-none text-[11px] font-medium text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">
-          Answer &amp; marking
+          {m.answerMarking}
         </summary>
         <div className="animate-fade-in space-y-3 pt-2">
           <div
@@ -397,7 +400,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           >
             <BiTextField
               translate={{ kind: 'explanation' }}
-              label="Explanation (teacher version)"
+              label={m.explanation}
               value={question.explanation ?? emptyBiText()}
               onChange={(explanation) => onChange({ explanation })}
             />
@@ -406,7 +409,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           {/* Why each option is right or wrong. Stored on the option, so it follows
               the option into every shuffled version. */}
           <div className="space-y-0.5">
-            <span className="text-[11px] font-medium text-ink-muted">Rationale</span>
+            <span className="text-[11px] font-medium text-ink-muted">{m.rationale}</span>
             {question.options.map((option, index) => {
               const open = openRationale.has(option.id);
               const isAnswer = question.answerIndex === index;
@@ -441,7 +444,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                       {/* Open, the field below shows the text; the row names its job. */}
                       {(!open && excerpt) || (
                         <span className="italic">
-                          {isAnswer ? 'Why it is correct' : 'Why it is wrong'}
+                          {isAnswer ? m.whyCorrect : m.whyWrong}
                         </span>
                       )}
                     </span>
@@ -450,7 +453,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                     <div className="animate-fade-in pb-1.5 pl-7 pt-0.5">
                       <BiTextField
                         translate={{ kind: 'rationale' }}
-                        ariaLabel={`Rationale for option ${optionLabel(index)}`}
+                        ariaLabel={m.rationaleFor(optionLabel(index))}
                         value={option.rationale ?? emptyBiText()}
                         onChange={(text) => setRationale(option.id, text)}
                         placeholderEn={isAnswer ? 'Why it is correct…' : 'Why it is wrong…'}
@@ -472,7 +475,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           >
             <BiTextField
               translate={{ kind: 'provenance' }}
-              label="Source"
+              label={m.source}
               rows={1}
               value={question.provenance ?? emptyBiText()}
               // A cleared note drops its key (§ A field cleared to nothing stores nothing).

@@ -1,0 +1,73 @@
+import { defineMessages } from '@/i18n/catalogue';
+
+export const MCQ_PANEL_MESSAGES = defineMessages({
+  stem: { en: 'Stem', zh: '題幹' },
+  typedOnPage: { en: 'typed on the page', zh: '直接在頁面上輸入' },
+  correctAnswer: { en: 'Correct answer', zh: '正確答案' },
+  answer: { en: 'Answer', zh: '答案' },
+  optionIsCorrect: {
+    en: (label: string) => `Option ${label} is the correct answer`,
+    zh: (label: string) => `選項 ${label} 是正確答案`,
+  },
+  isCorrect: { en: 'This is the correct answer', zh: '這是正確答案' },
+  markCorrect: { en: 'Mark as the correct answer', zh: '標示為正確答案' },
+  marks: { en: 'Marks', zh: '分' },
+  spaceAbove: { en: 'Space above', zh: '上方空位' },
+  paperDefault: {
+    en: (lines: number) => `Paper default (${lines} lines)`,
+    zh: (lines: number) => `試卷預設（${lines} 行）`,
+  },
+  lines: {
+    en: (n: number) => (n === 1 ? '1 line' : `${n} lines`),
+    zh: (n: number) => `${n} 行`,
+  },
+  options: { en: 'Options', zh: '選項' },
+  optionLayout: { en: 'Option layout', zh: '選項排列' },
+  stacked: { en: 'Stacked', zh: '直列' },
+  stackedTitle: { en: 'One option per line', zh: '每行一個選項' },
+  columns2: { en: '2 columns', zh: '兩欄' },
+  columns2FigTitle: {
+    en: 'Two options per line. Figure options print as a grid',
+    zh: '每行兩個選項。圖形選項會以方格排列列印',
+  },
+  inline: { en: 'Inline', zh: '橫列' },
+  inlineTitle: { en: 'All four options on one line', zh: '四個選項排在同一行' },
+  columns2Title: { en: 'Two options per line', zh: '每行兩個選項' },
+  fitTitle: {
+    en: (suggested: string) => `These options fit better ${suggested === 'stacked' ? 'stacked' : `as ${suggested}`}`,
+    zh: (suggested: string) =>
+      `這些選項較適合${suggested === 'stacked' ? '直列' : suggested === 'inline' ? '橫列' : '兩欄'}排列`,
+  },
+  fit: { en: 'Fit to content', zh: '配合內容' },
+  fixedOrder: {
+    en: 'A combination question keeps its option order in every version.',
+    zh: '組合題在每個版本都保持選項次序。',
+  },
+  pinned: { en: 'Pinned', zh: '已固定' },
+  pinnedPlace: {
+    en: 'Its wording depends on its place, so it keeps its letter in every version',
+    zh: '它的措辭取決於位置，所以在每個版本都保持原有字母',
+  },
+  pinnedLetter: { en: 'Keeps its letter in every version', zh: '在每個版本都保持原有字母' },
+  unpinTitle: { en: 'Let this option move between versions', zh: '讓這個選項在各版本之間移位' },
+  pinTitle: { en: 'Keep this option at its letter in every version', zh: '讓這個選項在每個版本都保持原有字母' },
+  unpin: { en: 'Unpin', zh: '取消固定' },
+  pin: { en: 'Pin', zh: '固定' },
+  addFigure: { en: '+ Figure', zh: '+ 圖形' },
+  statements: { en: 'Statements', zh: '敘述' },
+  statementsHint: { en: 'combination MCQ · typed on the page', zh: '組合 MCQ · 直接在頁面上輸入' },
+  addStatement: { en: '+ Statement', zh: '+ 敘述' },
+  moveStatementUp: { en: 'Move statement up', zh: '上移敘述' },
+  moveStatementDown: { en: 'Move statement down', zh: '下移敘述' },
+  deleteStatement: { en: 'Delete statement', zh: '刪除敘述' },
+  answerMarking: { en: 'Answer & marking', zh: '答案及評分' },
+  explanation: { en: 'Explanation (teacher version)', zh: '解釋（教師版）' },
+  rationale: { en: 'Rationale', zh: '理據' },
+  whyCorrect: { en: 'Why it is correct', zh: '正確的原因' },
+  whyWrong: { en: 'Why it is wrong', zh: '錯誤的原因' },
+  rationaleFor: {
+    en: (label: string) => `Rationale for option ${label}`,
+    zh: (label: string) => `選項 ${label} 的理據`,
+  },
+  source: { en: 'Source', zh: '來源' },
+});
