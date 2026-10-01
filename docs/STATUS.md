@@ -32,10 +32,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   (`econ-graph:<id>` / `worksheets/graphs/`; backup entries are `.graph` so old builds don't read
   them as worksheets), `src/components/graphs/` (library, embedded canvas editor, Copy image,
   Download PNG, Use in a worksheet…); My graphs tab in the diagram picker; Save to Graphs.
-  Chromium + WebKit verified. **Open:** paste into Word not tried (clipboard has PNG + sized
-  `<img>` HTML); Tauri shell not clicked through; Chinese y-axis title overlaps the arrowhead with
-  Labels: Both (shared renderer, likely in worksheets too); film/demo scripts still click
-  "Classroom worksheet" on the start screen.
+  Chromium + WebKit verified. Fixed the same day: every diagram kind (pie, flow, forum) edits in
+  Graphs via the worksheet's own surfaces (`DiagramDataFields.tsx`); a multi-line y-axis title
+  clears the arrowhead (`axisTitleStack`); film/demo scripts start through New worksheet.
+  **Open:** paste into Word not tried (clipboard has PNG + sized `<img>` HTML); Tauri shell not
+  clicked through; film start-screen still needs `--only=stills`, captures need `--reseed`.
 - **2026-10-01 on `develop`, not released: Edit panel marks the page selection.** The panel
   control matching what was clicked gets `data-edit-current` (accent tint + bar, one 900ms ring;
   `src/components/editor/panelTarget.ts`, styled in `globals.css`); cell/caption/source fall back to
