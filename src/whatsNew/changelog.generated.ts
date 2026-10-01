@@ -13,6 +13,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 ## Unreleased
 
 ### Added
+- **Graphs 圖表庫: draw a graph once and keep it.** Open Graphs from the start screen,
+  start from a template or blank axes, and draw on the full page. Graphs save as you work,
+  sit in your backups, and copy straight into Word at their printed size, or download as
+  a PNG.
 - **A proper welcome on first launch.** With nothing saved yet, the start screen shows
   the four kinds of paper as pictures of the page each one prints. Click one to name it
   and start, or open a file or restore a backup you already have.
