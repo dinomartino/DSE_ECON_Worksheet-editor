@@ -204,60 +204,112 @@ a version heading is edited afterwards.
 - **One New worksheet button on the start screen.** It opens a gallery of the four kinds
   of paper, drawn as the page each one prints, with the kind you made last already
   chosen. The Question bank now sits under Library, with room to spare on a small screen.
+  <!-- zh: **開始畫面只有一個「新增工作紙」按鈕。** 按下後會開啟圖庫，顯示四種試卷，每
+  種都畫成印出來的頁面樣子，並已預先選好你上次建立的類型。題庫現在放在資源庫之
+  下，小屏幕上也有足夠空間。 -->
 - **The Edit panel shows which row matches what you clicked.** Click a stem, a statement,
   an option, a table cell, a picture or a part of a long question on the page, and its row
   in the Edit panel lights up in blue with a brief glow, so you can see where to change
   its settings.
+  <!-- zh: **編輯面板會標示你點選的是哪一行。** 在頁面上點選題幹、陳述、選項、表格儲存
+  格、圖片或長題目的某一分題，編輯面板中對應的一行會以藍色亮起並短暫發光，讓你
+  知道在哪裏更改設定。 -->
 - **The how-to-edit tip sits below the page instead of on top of it**, so the bottom of
   a page is never hidden, and scrolling to the end of a document no longer runs on past
   the last page. On a smaller screen the tip stays on two lines.
+  <!-- zh: **編輯方法的提示移到頁面下方**，不再蓋住頁面，頁面底部不會被遮住，捲動到文件
+  末端時也不會再多捲過最後一頁。在較小的屏幕上，提示會分兩行顯示。 -->
 - **The Add Question menu says where each type goes**: "in Section A" or "in Section B",
   instead of a heading cut off mid-word.
+  <!-- zh: **「插入題目」選單會說明每種題型放在哪裏**：「在 Section A」或「在 Section B
+  」，不再出現被截斷的標題。 -->
 - **A tidier question panel.** The Add row (Text, Table, Image, Diagram, Source) fits on
   one line, and empty paragraphs simply say "Empty".
+  <!-- zh: **更整潔的題目面板。** 新增一行（文字、表格、圖片、圖表、來源）可排在同一行
+  ，空白段落只顯示「空白」。 -->
 - **HKEAA wording on new exam papers.** New Paper 1 and Paper 2 mock papers end with
   試卷完 and say 選答一題, and AI translation writes END OF PAPER as 試卷完. Papers you
   already saved keep their own wording.
+  <!-- zh: **新的試卷採用 HKEAA 用語。** 新建的 Paper 1 和 Paper 2 Mock 試卷以「試卷完
+  」作結，並標示「選答一題」；AI 翻譯會把 END OF PAPER 譯作「試卷完」。已儲存
+  的舊試卷保持原有用語。 -->
 - **A new question looks calmer on the page.** Only the question text keeps the blue
   "Double-click to add" prompt; empty options, parts and captions show a short grey
   "Add English" or "Add 中文" instead. Prompts still never print or export.
+  <!-- zh: **新題目在頁面上更清爽。** 只有題目文字保留藍色的「按兩下以加入」提示；空的
+  選項、分題和圖說則改為較短的灰色「加入英文」或「加入中文」。這些提示一律不會
+  列印或匯出。 -->
 - **A tidier top bar with more room for the worksheet's name.** The summary chip shows
   marks and pages (point at it for the full count of each question type), and saving is
   a small dot: point at it to see when your changes were saved. It only says something
   in words if your changes could not be saved.
+  <!-- zh: **更整潔的頂部列，工作紙名稱有更多空間。** 摘要標籤顯示分數和頁數（指向它可
+  查看各題型的題數），儲存狀態改為一個小圓點：指向它可查看上次儲存修改的時間。
+  只有在修改無法儲存時，才會用文字提示。 -->
 - **Dialogs say when there is more below.** Export, Settings, Setup and New worksheet
   show "More below" when a setting is out of view; click it to scroll. In Export, the two
   version choices are now "Student or teacher copy" and "Shuffled versions". In AI
   settings, the model list shows each model's name in full with its details underneath.
+  <!-- zh: **對話框會提示下方還有內容。** 匯出、設定、頁面設定和新增工作紙的對話框，在
+  有設定不在視野內時會顯示「下方還有內容」，按一下即可捲動。在匯出中，兩個版本
+  選項現在叫「學生版或教師版」和「選項亂序版本」。在 AI 設定中，模型清單會完整
+  顯示每個模型的名稱，細節放在下方。 -->
 - **A tidier start screen on smaller laptops.** Worksheet previews are one steady size
   however many you have, the search, filter, order and view controls fit on one line at
   1024 pixels wide, and What's new, Send feedback and Back up now stay easy to read at
   the bottom of the left panel.
+  <!-- zh: **較小的手提電腦上，開始畫面更整齊。** 無論有多少份工作紙，預覽大小都一致；
+  搜尋、篩選、排序和檢視控制項在 1024 px 闊度下可排在同一行；左側面板底部的「
+  最新功能」、「意見回饋」和「立即備份」也保持清晰易讀。 -->
 - **A new worksheet asks for its name first**, so it no longer appears as Untitled in
   your list. The name is for filing and the file name, and does not print on the paper.
   A duplicated worksheet is now listed as "(copy)" of that name.
+  <!-- zh: **新增工作紙時先輸入名稱**，所以不會再在清單中顯示為「未命名」。名稱用於歸檔
+  和檔案名稱，不會印在試卷上。建立副本的工作紙會顯示為該名稱的「（副本）」。 -->
 - **A worksheet made from the question bank is named after its topic** (or "Questions
   from bank" when the questions cover several topics) instead of Untitled. Like any new
   worksheet, it prints no title until you type one.
+  <!-- zh: **由題庫建立的工作紙以課題命名**（題目涵蓋多個課題時，則命名為「Questions fr
+  om bank」），不再是「未命名」。與其他新工作紙一樣，在你輸入標題前不會印出標
+  題。 -->
 - **The app is now called Econ Studio (經濟備課室).** Your worksheets, settings and saved
   keys carry over unchanged. On Windows, updating replaces Econ Worksheet with Econ Studio
   in the Start menu; pin it to the taskbar again if you had pinned it. On a Mac, the app
   renames itself from Econ Worksheet to Econ Studio the first time it opens after the
   update, so Finder, Launchpad and Spotlight show the new name. If you already have both,
   they are the same app with the same worksheets: move Econ Worksheet to the Bin.
+  <!-- zh: **本應用程式現在叫 Econ Studio（經濟備課室）。** 你的工作紙、設定和已儲存的 
+  API key 原封不動地保留。在 Windows 上，更新後「開始」功能表中的 Econ Workshe
+  et 會換成 Econ Studio；如果你曾把它釘選在工作列，請重新釘選。在 Mac 上，更新
+  後第一次開啟時，應用程式會自行由 Econ Worksheet 改名為 Econ Studio，Finder、
+  Launchpad 和 Spotlight 都會顯示新名稱。如果兩個都有，它們其實是同一個應用程
+  式，工作紙也相同：把 Econ Worksheet 移到垃圾桶即可。 -->
 - **The ⋯ menu no longer has "Worksheets…".** Click the app mark at the top left to go back to your worksheets.
+  <!-- zh: **「⋯」選單不再有「工作紙…」。** 按左上角的應用程式標誌即可返回你的工作紙
+  。 -->
 - **Settings is easier to find.** Its gear now sits in the top-right corner of the start
   screen and the question bank. In a worksheet, Settings is still in the ⋯ menu.
+  <!-- zh: **設定更容易找到。** 設定的齒輪圖示現在位於開始畫面和題庫的右上角。在工作紙
+  中，設定仍在「⋯」選單內。 -->
 - Start screen rows and saved worksheets now highlight on hover without the blue side bar.
+  <!-- zh: 開始畫面的列和已儲存的工作紙，指向時會變色，不再出現藍色側邊條。 -->
 - **See and test your saved AI keys.** Settings › AI & translation now starts with "Your
   keys": each saved key with its provider, only its last 4 characters shown, which one is
   in use, and a Test button that checks it any time. Providers with a key say "Key saved",
   and the key panel is shorter.
+  <!-- zh: **查看並測試已儲存的 AI key。** 設定 › AI 與翻譯現在以「你的 API key」開始
+  ：列出每個已儲存的 key 及其供應商，只顯示最後 4 個字元，並標明正在使用的一個
+  ，另有「測試」按鈕，隨時可檢查。已有 key 的供應商顯示「已儲存 API key」，key
+   面板也縮短了。 -->
 - **Plainer wording in messages and hints.** Hints, notices and error messages now use
   short sentences instead of long dashes.
+  <!-- zh: **訊息和提示的用字更簡潔。** 提示、通知和錯誤訊息現在用短句，不再用長破折號
+  。 -->
 - **Question bank: one action per question.** Reading a question, you now see only "Open
   in worksheet". To add questions to your last worksheet, tick them and use the bar at the
   bottom.
+  <!-- zh: **題庫：每條題目只有一個操作。** 閱讀題目時，現在只會看到「在工作紙中開啟」
+  。要把題目加入你最近的工作紙，請剔選題目，再使用底部的操作列。 -->
 - **Question bank: one set of topics per question.** Changing a question's topics in the
   bank, or in the Edit panel of a worksheet, now changes every copy of it in your other
   worksheets ("Also updated in 2 other worksheets"), and the bank shows the same topics
@@ -270,47 +322,91 @@ a version heading is edited afterwards.
   Tagging as you go does the same: the keys tag the whole question until you pick a part
   (click it, or press [ and ]), and the paper marks the part you picked. Set topic for
   ticked questions gives every part the topic.
+  <!-- zh: **題庫：每條題目只有一組課題。** 在題庫或工作紙的編輯面板更改題目的課題，現
+  在會同步更改它在你其他工作紙中的所有副本（「同時已更新 2 份其他工作紙」），
+  題庫在各處顯示的課題也一致。移除課題同樣會在各處移除，而且不會回來，即使日後
+  從垃圾桶還原工作紙也一樣：一律以最新的更改為準。從題庫加入的題目會連同其課題
+  一併加入。「為已剔選題目設定課題」現在可以新增、移除或取代課題。在題庫中，長
+  題目可整題或逐個分題標記課題：「編輯課題」會列出它的各個分題，你可以先為整題
+  剔選課題，再單獨更改某一分題（或子分題）。邊看邊標記也一樣：在你選取分題之前
+  （按一下它，或按 [ 和 ]），快捷鍵會為整題標記，頁面上會標示你所選的分題。「
+  為已剔選題目設定課題」會為每個分題加上該課題。 -->
 - **Question bank: easier to read.** "Used in" puts each paper's full title on its own
   line, and the Class filter shows a short name ("Not used with DSE 2027") with the
   classes it covers listed underneath.
+  <!-- zh: **題庫：更易閱讀。** 「使用於」把每份試卷的完整標題各佔一行；班別篩選顯示簡
+  短名稱（「Not used with DSE 2027」），所涵蓋的班別列在其下。 -->
 - **MCQ and LQ, the same words everywhere.** Setup's Target now counts MCQ and LQ, as the
   question bank does; the Edit panel says "1 mark", not "1 marks"; and the 題庫 tab's topic
   lists group each topic's sub-topics under it.
+  <!-- zh: **MCQ 和 LQ，用語處處一致。** 頁面設定的「目標」現在像題庫一樣統計 MCQ 和 LQ
+  ；編輯面板顯示「1 mark」而非「1 marks」；題庫分頁的課題清單會把每個課題的子
+  課題歸入其下。 -->
 - **The start screen shows when there's more to scroll.** Its left column fades at the
   bottom while more is below, and shows a thin line at the top once you have scrolled down.
+  <!-- zh: **開始畫面會提示還有內容可捲動。** 還有內容在下方時，左欄底部會淡出；捲動後
+  頂部會出現一條細線。 -->
 - **Header & footer settings are organised by page.** In Setup, pick Page 1 or Pages 2
   onward, then choose whether page 1's header and footer are the same as later pages, its
   own, or nothing. Page 1's title settings sit with them.
+  <!-- zh: **頁首和頁尾設定按頁面整理。** 在頁面設定中，先選「第 1 頁」或「第 2 頁起」
+  ，再選擇第 1 頁的頁首和頁尾與其後頁面相同、自成一套，或不設。第 1 頁的標題設
+  定也放在這裏。 -->
 
 ### Fixed
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.
+  <!-- zh: **圖表的 y 軸標示，在英文和中文並列時，不再壓在箭頭上。** 兩種語言並列時，「
+  價格」曾印在 y 軸箭頭上；現在兩行都在箭頭上方，在屏幕、圖表庫編輯器、PDF 和 
+  Word 中都一樣。 -->
 - **Back up now shows when you have graphs but no worksheets yet**, and the graph
   editor's tools fit on one row on a 13-inch screen.
+  <!-- zh: **只有圖表、沒有工作紙時，也會顯示「立即備份」**，圖表編輯器的工具在 13 吋屏
+  幕上也可排成一行。 -->
 - **Bilingual papers no longer print the footer twice.** A paper code or page number that
   reads the same in English and 中文 now prints once, on screen, in the PDF and in Word.
   Cover instruction numbers such as (1) print once too.
+  <!-- zh: **雙語試卷不再重複列印頁尾。** 中英文相同的試卷編號或頁碼，現在在屏幕、PDF 
+  和 Word 中都只印一次。封面說明的編號如 (1) 也只印一次。 -->
 - **A new question goes to the section made for its type.** With nothing selected, a
   Multiple Choice question lands in Section A and a Structured question in Section B,
   including questions added from 題庫. It used to land after the last heading whatever its
   type. Select a question or heading first to put it right after that instead.
+  <!-- zh: **新題目會放進適合其題型的部分。** 沒有選取任何項目時，MC 題會放進 Section A
+  ，結構題放進 Section B，從題庫加入的題目也一樣。以往不論題型，都會放在最後一
+  個標題之後。若想放在某處之後，請先選取該題目或標題。 -->
 - **A mislabelled button no longer deletes page 1's own header.** "Same as page 1" kept
   the later pages' header and removed page 1's. The new page choices replace it.
+  <!-- zh: **標示錯誤的按鈕不再刪掉第 1 頁自己的頁首。** 「與第 1 頁相同」曾保留其後頁
+  面的頁首，卻移除第 1 頁的頁首。新的頁面選項已取代它。 -->
 - **PDF export on Mac (and in Safari) no longer shrinks the pages or runs them into each
   other.** Each sheet prints full size on its own page.
+  <!-- zh: **在 Mac（及 Safari）匯出 PDF 時，頁面不再縮小或互相重疊。** 每一頁都以原尺
+  寸印在自己的一頁上。 -->
 - **A row added on page 1 stays on page 1.** When page 1 was set to no header or footer,
   adding a row there put it on every later page instead. Page 1 now gets its own rows.
+  <!-- zh: **加在第 1 頁的列會留在第 1 頁。** 當第 1 頁設為沒有頁首或頁尾時，在該處加入
+  的列曾出現在其後每一頁。現在第 1 頁有自己的列。 -->
 - **Typing on the page is lighter.** The page no longer redraws twice for every key you
   press, which on a busy computer could stop the editor with an error mid-sentence.
+  <!-- zh: **在頁面上打字更流暢。** 每按一個鍵，頁面不再重繪兩次；在繁忙的電腦上，這曾
+  可能令編輯器在輸入途中出錯而停頓。 -->
 - **Editing a duplicated question no longer changes the original.** Worksheets where a
   duplicate and its original were stuck together are separated when you open them.
+  <!-- zh: **編輯重複的題目不再改動原題。** 以往複製出來的題目與原題連在一起，現在開啟
+  這些工作紙時會把它們分開。 -->
 - **Right-clicking anywhere inside a question now opens its menu**, including ✦ AI: the
   space beside a diagram, the question number, option letters and marks no longer bring
   up the browser's own menu.
+  <!-- zh: **在題目內任何位置按右鍵，現在都會開啟其選單**，包括 ✦ AI：圖表旁的空位、題
+  號、選項字母和分數，不再彈出瀏覽器自己的選單。 -->
 - **Undo waits while you drag from the 題庫 tab.** Pressing ⌘Z (or Ctrl+Z) mid-drag used
   to change the worksheet under the question in your hand. Now it does nothing until you
   let go; after the drop, one Undo takes the new question out.
+  <!-- zh: **從題庫分頁拖曳時，復原會暫停。** 拖曳途中按 ⌘Z（或 Ctrl+Z），以往會在你手
+  上的題目下方改動工作紙。現在放手之前不會有任何動作；放下後，按一次復原便會把
+  新題目移走。 -->
 
 ## 0.5.0 — 2026-09-28
 
