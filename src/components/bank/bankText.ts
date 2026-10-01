@@ -1,5 +1,9 @@
 import type { BankRow } from '@/library/types';
 import type { LanguageMode } from '@/model/types';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
+import { BANK_ROW_MESSAGES } from './messages';
 
 /**
  * The question bank's small words: counts that agree with their noun, and what tells an
@@ -64,14 +68,16 @@ export function versionDiff(
   version: Pick<BankRow, 'excerpt'>,
   beside: Pick<BankRow, 'excerpt'>,
   language: LanguageMode,
+  lang: UiLanguage = uiLanguage(),
 ): string {
+  const m = resolveMessages(BANK_ROW_MESSAGES, lang);
   const side = (row: Pick<BankRow, 'excerpt'>) =>
     language === 'zh' ? row.excerpt.zh || row.excerpt.en : row.excerpt.en || row.excerpt.zh;
   const mine = side(version);
   const theirs = side(beside);
   const snippet = diffSnippet(mine, theirs);
-  if (!snippet) return 'Edited further down';
+  if (!snippet) return m.edited;
   const { tokens, theirs: other, start, end } = sharedEnds(mine, theirs);
-  if (start + end < Math.min(tokens.length, other.length) / 2) return 'Reworded';
-  return `Says “${snippet}”`;
+  if (start + end < Math.min(tokens.length, other.length) / 2) return m.reworded;
+  return m.says(snippet);
 }

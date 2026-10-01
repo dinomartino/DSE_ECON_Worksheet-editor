@@ -6,7 +6,11 @@
  * go through `planDrop`, so a drop means the same thing on either platform.
  */
 
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
 import type { FileDragEvent } from '@/platform';
+import type { UiLanguage } from '@/settings/language';
+import { START_SCREEN_MESSAGES } from './screen.messages';
 
 export type DropKind = 'worksheet' | 'backup';
 
@@ -55,8 +59,8 @@ export function planDrop<T>(
 }
 
 /** The overlay's line while hovering, and briefly after a drop nothing could use. */
-export const DROP_HINT = 'Drop a .json to open it, or a backup .zip to restore it';
-export const DROP_REJECTED = 'Only .json worksheets or a backup .zip can be dropped';
+export const DROP_HINT = START_SCREEN_MESSAGES.dropHint.en;
+export const DROP_REJECTED = START_SCREEN_MESSAGES.dropRejected.en;
 
 /** How long the rejection stays up after the drop. */
 export const DROP_REJECTED_MS = 2200;
@@ -77,21 +81,16 @@ export interface ImportCounts {
 }
 
 /** "Imported 3 worksheets · skipped 1 already here" — the status line after a multi-drop. */
-export function importSummary(counts: ImportCounts): string {
+export function importSummary(counts: ImportCounts, lang: UiLanguage = uiLanguage()): string {
+  const m = resolveMessages(START_SCREEN_MESSAGES, lang);
   const saved = counts.imported + counts.copied;
   const parts: string[] = [];
-  if (saved > 0) {
-    const copies =
-      counts.copied > 0
-        ? ` (${counts.copied} as ${counts.copied === 1 ? 'a copy' : 'copies'})`
-        : '';
-    parts.push(`Imported ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'}${copies}`);
-  }
-  if (counts.skipped > 0) parts.push(`skipped ${counts.skipped} already here`);
-  if (counts.unreadable > 0) parts.push(`${counts.unreadable} unreadable`);
-  if (counts.failed > 0) parts.push(`${counts.failed} could not be saved`);
-  if (counts.ignored > 0) parts.push(`${counts.ignored} not a .json or .zip`);
-  if (parts.length === 0) return 'Nothing to import.';
+  if (saved > 0) parts.push(m.importImported(saved, counts.copied));
+  if (counts.skipped > 0) parts.push(m.importSkipped(counts.skipped));
+  if (counts.unreadable > 0) parts.push(m.importUnreadable(counts.unreadable));
+  if (counts.failed > 0) parts.push(m.importFailed(counts.failed));
+  if (counts.ignored > 0) parts.push(m.importIgnored(counts.ignored));
+  if (parts.length === 0) return m.importNothing;
   const sentence = parts.join(' · ');
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }

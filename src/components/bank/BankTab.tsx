@@ -18,7 +18,6 @@ import {
   paperClasses,
   paperRoots,
   rowKey,
-  topicName,
   versionRows,
   visibleGroups,
   type FilterKey,
@@ -30,14 +29,17 @@ import {
 import type { BankRow as BankRowData } from '@/library/types';
 import { useBank } from '@/library/useBank';
 import { escapeClears } from './escapeClears';
-import { TOPICS } from '@/model/topics';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
+import { TOPICS, topicHeading } from '@/model/topics';
 import { listQuestionTypes } from '@/registry';
 import { useAppDialogs } from '@/store/appDialogs';
 import { unanchoredQuestionSectionLabel, useWorksheetStore } from '@/store/worksheetStore';
 import { BankRow, typeLabel } from './BankRow';
 import { insertFromBank, type InsertReport } from './bankSession';
 import { useBankDrag, useBankRowDrag } from './bankDrag';
-import { emptySentence, typePlural } from './tabText';
+import { BANK_TAB_MESSAGES } from './messages';
+import { emptySentence, markBandLabel, typePlural } from './tabText';
 import { versionDiff } from './bankText';
 
 /**
@@ -51,19 +53,24 @@ const PAGE = 60;
 const FILL_COUNTS = [1, 2, 3, 4, 5, 6, 8, 10] as const;
 
 /** Each topic an optgroup: the whole topic first, then its sub-topics. */
-const TOPIC_GROUPS = TOPICS.map((topic) => ({
-  label: `${topic.code} · ${topic.en}`,
-  options: [
-    { value: topic.code, label: `All of ${topic.code} · ${topic.en}` },
-    ...topic.children.map((child) => ({ value: child.code, label: child.en })),
-  ],
-}));
+function topicGroups(names: 'en' | 'zh', allOf: (code: string, name: string) => string) {
+  return TOPICS.map((topic) => ({
+    label: `${topic.code} · ${topic[names]}`,
+    options: [
+      { value: topic.code, label: allOf(topic.code, topic[names]) },
+      ...topic.children.map((child) => ({ value: child.code, label: child[names] })),
+    ],
+  }));
+}
 
 function TopicOptions() {
+  const m = useMessages(BANK_TAB_MESSAGES);
+  const zh = useUiLanguage() === 'zh-HK';
+  const groups = useMemo(() => topicGroups(zh ? 'zh' : 'en', m.allOfTopic), [zh, m]);
   return (
     <>
-      <option value="">Any topic</option>
-      {TOPIC_GROUPS.map((group) => (
+      <option value="">{m.anyTopic}</option>
+      {groups.map((group) => (
         <optgroup key={group.label} label={group.label}>
           {group.options.map((option) => (
             <option key={option.value} value={option.value}>
@@ -111,6 +118,9 @@ function MiniSelect({
 }
 
 export function BankTab() {
+  const m = useMessages(BANK_TAB_MESSAGES);
+  const ui = useUiLanguage();
+  const topicNames = ui === 'zh-HK' ? 'zh' : 'en';
   const { status, rows, refresh } = useBank();
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const anchorId = useWorksheetStore((s) => s.insertAnchorId);
@@ -173,9 +183,7 @@ export function BankTab() {
     (report: InsertReport) => {
       if (!report.missing.length) return;
       const n = report.missing.length;
-      useAppDialogs
-        .getState()
-        .notify(`${n} question${n === 1 ? '' : 's'} changed since the bank was read, so ${n === 1 ? 'it was' : 'they were'} skipped.`);
+      useAppDialogs.getState().notify(resolveMessages(BANK_TAB_MESSAGES, uiLanguage()).skipped(n));
       refresh();
     },
     [refresh],
@@ -195,15 +203,15 @@ export function BankTab() {
   const drag = useBankRowDrag({ enabled: !readOnly && !printPreview && !busy, onReport: reportMissing });
   const draggingKey = useBankDrag((s) => s.active?.key);
   const dragFor = (row: BankRowData) =>
-    drag.sourceProps(row, rowKey(row), (language === 'zh' ? row.excerpt.zh || row.excerpt.en : row.excerpt.en || row.excerpt.zh) || 'Question');
+    drag.sourceProps(row, rowKey(row), (language === 'zh' ? row.excerpt.zh || row.excerpt.en : row.excerpt.en || row.excerpt.zh) || m.fallbackLabel);
   // No visible button: a focused row takes Enter or Space, and copies after the anchor.
   const where = splitDestinations
-    ? 'in the section for its type'
+    ? m.whereSplit
     : anchor
-      ? `after ${anchor}`
+      ? m.whereAfter(anchor)
       : section
-        ? `in ${section}`
-        : 'at the end';
+        ? m.whereIn(section)
+        : m.whereEnd;
   // One Tab stop for the list: the row last focused (else the first); ↑ ↓ move between rows.
   const [stopKey, setStopKey] = useState<string>();
   // The rows Enter inserts, in list order (rows already in the paper are not among them).
@@ -218,7 +226,7 @@ export function BankTab() {
     if (readOnly) return {};
     return {
       onActivate: () => void run([row]),
-      activateHint: `Drag onto the page, or press Enter to insert ${where}. Up and down arrows move between questions.`,
+      activateHint: m.rowHint(where),
       tabIndex: rowKey(row) === tabStop ? (0 as const) : (-1 as const),
     };
   };
@@ -248,19 +256,22 @@ export function BankTab() {
   const filterLabel = (key: FilterKey): string => {
     switch (key) {
       case 'text':
-        return `“${filters.text.trim()}”`;
+        return m.filterText(filters.text.trim());
       case 'topic':
-        return topicName(filters.topic);
+        return topicHeading(filters.topic, topicNames);
       case 'typeId':
         return typeLabel(filters.typeId);
       case 'marks':
-        return MARK_BANDS.find((band) => band.value === filters.marks)?.label ?? 'marks';
+        return MARK_BANDS.some((band) => band.value === filters.marks) ? markBandLabel(filters.marks, ui) : m.filterMarks;
       case 'notUsedWithClass':
-        return `not used with ${classLabel}`;
+        return m.filterNotUsed(classLabel ?? '');
       case 'from':
         return filters.from === 'banks'
-          ? 'banks only'
-          : `from ${documents.find((doc) => typeof filters.from === 'object' && doc.docId === filters.from.docId)?.title ?? 'one worksheet'}`;
+          ? m.filterBanksOnly
+          : m.filterFrom(
+              documents.find((doc) => typeof filters.from === 'object' && doc.docId === filters.from.docId)?.title ??
+                m.filterOneWorksheet,
+            );
     }
   };
 
@@ -268,38 +279,32 @@ export function BankTab() {
   if (rows.length === 0 && status.state === 'scanning') {
     body = (
       <StateNote>
-        Reading your worksheets
-        {status.total > 0 && (
-          <span className="tabular-nums">
-            {' '}
-            · {status.done} of {status.total}
-          </span>
-        )}
+        {m.scanning}
+        {status.total > 0 && <span className="tabular-nums">{m.scanProgress(status.done, status.total)}</span>}
       </StateNote>
     );
   } else if (rows.length === 0 && status.state === 'error') {
     body = (
       <StateNote>
-        Your worksheets could not be read.{' '}
-        <LinkButton onClick={refresh}>Try again</LinkButton>
+        {m.scanError} <LinkButton onClick={refresh}>{m.tryAgain}</LinkButton>
       </StateNote>
     );
   } else if (base.length === 0) {
     body = (
       <StateNote>
-        Your bank fills itself from the questions in your saved worksheets.
-        <span className="mt-1 block text-ink-subtle">Save another worksheet with questions and they appear here.</span>
+        {m.bankEmpty}
+        <span className="mt-1 block text-ink-subtle">{m.bankEmptyHint}</span>
       </StateNote>
     );
   } else if (visible.length === 0) {
     const blocking = blockingFilter(rows, filters, ctx);
     body = (
       <StateNote>
-        {emptySentence(filters, classLabel)}{' '}
+        {emptySentence(filters, classLabel, ui)}{' '}
         {blocking ? (
-          <LinkButton onClick={() => update(clearFilter(filters, blocking))}>Clear {filterLabel(blocking)}</LinkButton>
+          <LinkButton onClick={() => update(clearFilter(filters, blocking))}>{m.clearFilterBtn(filterLabel(blocking))}</LinkButton>
         ) : (
-          <LinkButton onClick={() => update(NO_FILTERS)}>Clear filters</LinkButton>
+          <LinkButton onClick={() => update(NO_FILTERS)}>{m.clearFilters}</LinkButton>
         )}
       </StateNote>
     );
@@ -333,7 +338,7 @@ export function BankTab() {
                       row={version}
                       language={language}
                       docLabel={docLabels.get(version.docId)}
-                      differs={versionDiff(version, row, language)}
+                      differs={versionDiff(version, row, language, ui)}
                       partsFor={partsFor(version)}
                       drag={dragFor(version)}
                       dragging={draggingKey === rowKey(version)}
@@ -347,7 +352,7 @@ export function BankTab() {
         })}
         {visible.length > limit && (
           <div className="px-3.5 py-3 text-center">
-            <LinkButton onClick={() => setLimit((n) => n + PAGE)}>Show {Math.min(PAGE, visible.length - limit)} more</LinkButton>
+            <LinkButton onClick={() => setLimit((n) => n + PAGE)}>{m.showMore(Math.min(PAGE, visible.length - limit))}</LinkButton>
           </div>
         )}
       </>
@@ -356,18 +361,19 @@ export function BankTab() {
 
   // Fill prefers questions not used with the class; say so when it had to take some.
   const usedCount = picks.filter((group) => usedWith(group, paperRefs)).length;
-  const fillTopicLabel = effectiveFillTopic ? topicName(effectiveFillTopic) : 'any topic';
+  const fillTopicLabel = effectiveFillTopic ? topicHeading(effectiveFillTopic, topicNames) : m.anyTopicLower;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <p className="shrink-0 truncate border-b border-line px-3.5 py-2 text-xs text-ink-muted">
         {readOnly ? (
-          'This paper is read-only.'
+          m.readOnly
         ) : printPreview ? (
-          'Leave print preview to drag questions in.'
+          m.leavePreview
         ) : (
           <>
-            Drag a question onto the page <span className="text-ink-subtle">拖到頁面上插入</span>
+            {m.dragHint}
+            {ui === 'en' && <span className="text-ink-subtle"> 拖到頁面上插入</span>}
           </>
         )}
       </p>
@@ -375,11 +381,11 @@ export function BankTab() {
       {!emptyBank && (
         <div className="flex shrink-0 flex-col gap-2 border-b border-line px-3.5 py-2.5">
           <label className="relative block">
-            <span className="sr-only">Search the bank</span>
+            <span className="sr-only">{m.searchBank}</span>
             <input
               type="search"
               value={filters.text}
-              placeholder="Search 搜尋 · both languages"
+              placeholder={m.searchPlaceholder}
               onChange={(event) => update({ text: event.target.value })}
               onKeyDown={(event) => void escapeClears(event, filters.text, () => update({ text: '' }))}
               className="h-8 w-full rounded-lg border border-line bg-surface pl-8 pr-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
@@ -400,21 +406,21 @@ export function BankTab() {
             </svg>
           </label>
           <div className="flex gap-1.5">
-            <MiniSelect label="Topic" value={filters.topic} onChange={(topic) => update({ topic })} className="flex-[1.6]">
+            <MiniSelect label={m.topic} value={filters.topic} onChange={(topic) => update({ topic })} className="flex-[1.6]">
               <TopicOptions />
             </MiniSelect>
-            <MiniSelect label="Type" value={filters.typeId} onChange={(typeId) => update({ typeId })} className="flex-1">
-              <option value="">Any type</option>
+            <MiniSelect label={m.type} value={filters.typeId} onChange={(typeId) => update({ typeId })} className="flex-1">
+              <option value="">{m.anyType}</option>
               {types.map((type) => (
                 <option key={type.id} value={type.id}>
                   {typeLabel(type.id)}
                 </option>
               ))}
             </MiniSelect>
-            <MiniSelect label="Marks" value={filters.marks} onChange={(marks) => update({ marks: marks as MarkBand })} className="flex-1">
+            <MiniSelect label={m.marks} value={filters.marks} onChange={(marks) => update({ marks: marks as MarkBand })} className="flex-1">
               {MARK_BANDS.map((band) => (
                 <option key={band.value} value={band.value}>
-                  {band.label}
+                  {markBandLabel(band.value, ui)}
                 </option>
               ))}
             </MiniSelect>
@@ -422,21 +428,21 @@ export function BankTab() {
           <div className="flex gap-1.5">
             {classLabel && (
               <MiniSelect
-                label="Class"
+                label={m.classLabel}
                 value={filters.notUsedWithClass ? 'not' : 'any'}
                 onChange={(value) => update({ notUsedWithClass: value === 'not' })}
                 className="flex-1"
               >
-                <option value="any">Any class</option>
-                <option value="not">Not used with {classLabel}</option>
+                <option value="any">{m.anyClass}</option>
+                <option value="not">{m.notUsedWith(classLabel)}</option>
               </MiniSelect>
           )}
-          <MiniSelect label="From" value={fromValue(filters.from)} onChange={(value) => update({ from: parseFrom(value) })} className="flex-1">
-            <option value="all">From: all worksheets</option>
-            {hasBanks && <option value="banks">From: banks</option>}
+          <MiniSelect label={m.from} value={fromValue(filters.from)} onChange={(value) => update({ from: parseFrom(value) })} className="flex-1">
+            <option value="all">{m.fromAll}</option>
+            {hasBanks && <option value="banks">{m.fromBanks}</option>}
             {documents.map((doc) => (
               <option key={doc.docId} value={`doc:${doc.docId}`}>
-                From: {doc.title}
+                {m.fromDoc(doc.title)}
               </option>
             ))}
           </MiniSelect>
@@ -468,24 +474,24 @@ export function BankTab() {
       {base.length > 0 && (
         <div className="flex shrink-0 flex-col gap-2 border-t border-line-strong bg-surface-sunken px-3.5 py-2.5 text-xs text-ink-muted">
           <div className="flex items-center gap-1.5">
-            <span className="shrink-0 font-semibold text-ink">Fill</span>
-            <MiniSelect label="How many" value={String(fillCount)} onChange={(value) => setFillCount(Number(value))} className="shrink-0">
+            <span className="shrink-0 font-semibold text-ink">{m.fill}</span>
+            <MiniSelect label={m.howMany} value={String(fillCount)} onChange={(value) => setFillCount(Number(value))} className="shrink-0">
               {FILL_COUNTS.map((n) => (
                 <option key={n} value={n}>
                   {n}
                 </option>
               ))}
             </MiniSelect>
-            <MiniSelect label="Fill type" value={effectiveFillType} onChange={setFillType} className="w-[6.5rem] shrink-0">
-              <option value="">questions</option>
+            <MiniSelect label={m.fillType} value={effectiveFillType} onChange={setFillType} className="w-[6.5rem] shrink-0">
+              <option value="">{m.fillQuestions}</option>
               {types.map((type) => (
                 <option key={type.id} value={type.id}>
-                  {typePlural(type.id)}
+                  {typePlural(type.id, ui)}
                 </option>
               ))}
             </MiniSelect>
-            <span className="shrink-0">from</span>
-            <MiniSelect label="Fill topic" value={effectiveFillTopic} onChange={setFillTopic} className="flex-1">
+            <span className="shrink-0">{m.fillFrom}</span>
+            <MiniSelect label={m.fillTopic} value={effectiveFillTopic} onChange={setFillTopic} className="flex-1">
               <TopicOptions />
             </MiniSelect>
           </div>
@@ -493,22 +499,22 @@ export function BankTab() {
             <button
               type="button"
               disabled={busy || picks.length === 0}
-              title={`Adds ${where}`}
+              title={m.addsWhere(where)}
               onClick={() => void run(picks.map((group) => group.rows[0]))}
               className="h-7 shrink-0 cursor-pointer rounded-md bg-cta px-3 text-xs font-semibold text-on-cta transition-[background-color,opacity,scale] duration-150 ease-out-soft hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 active:scale-[0.97] disabled:cursor-default disabled:opacity-45"
             >
-              Add {picks.length} {picks.length === 1 ? 'question' : 'questions'}
+              {m.addN(picks.length)}
             </button>
             <span className={`min-w-0 truncate ${usedCount > 0 ? 'text-warn-ink' : 'text-ink-subtle'}`}>
               {picks.length === 0
-                ? `Nothing left in ${fillTopicLabel}.`
+                ? m.nothingLeft(fillTopicLabel)
                 : usedCount > 0
-                  ? `${usedCount} already used with ${classLabel}`
+                  ? m.alreadyUsed(usedCount, classLabel ?? '')
                   : picks.length < fillCount
-                    ? `Only ${picks.length} left in ${fillTopicLabel}.`
+                    ? m.onlyLeft(picks.length, fillTopicLabel)
                     : classLabel
-                      ? `None used with ${classLabel} · adds ${where}`
-                      : `Adds ${where} · one ⌘Z undoes it`}
+                      ? m.noneUsed(classLabel, where)
+                      : m.undoesOne(where)}
             </span>
           </div>
         </div>

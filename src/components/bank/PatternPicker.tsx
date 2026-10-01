@@ -5,7 +5,9 @@ import { IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import { registerPatterns } from '@/library/usePatterns';
 import { samePatternName } from '@/model/patterns';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { topicDisplay } from '@/model/topics';
+import { PATTERN_PICKER_MESSAGES } from './messages';
 import { patternOptions, stepActive, type PatternOption } from './patternOptions';
 
 /**
@@ -63,6 +65,8 @@ export function PatternPicker({
   /** `created`: the name is new to the list (already registered here). */
   onChange: (name: string | null | undefined, created: boolean) => void;
 }) {
+  const m = useMessages(PATTERN_PICKER_MESSAGES);
+  const topicName = topicDisplay(topic, useUiLanguage() === 'zh-HK' ? 'zh' : 'en');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   // The highlight the teacher moved to; undefined follows the list's default.
@@ -100,33 +104,33 @@ export function PatternPicker({
         <span className={label}>題型</span>
         {value === null ? (
           <>
-            <span className="min-w-0 truncate px-1 text-ink">No 題型</span>
-            <span className="shrink-0 text-ink-subtle">· cleared on save</span>
-            <IconButton label={`Keep the ${kind} 題型 under ${topicDisplay(topic)}`} onClick={() => onChange(undefined, false)}>
+            <span className="min-w-0 truncate px-1 text-ink">{m.noPattern}</span>
+            <span className="shrink-0 text-ink-subtle">{m.clearedOnSave}</span>
+            <IconButton label={m.keep(kind, topicName)} onClick={() => onChange(undefined, false)}>
               <CloseIcon size={11} />
             </IconButton>
           </>
         ) : !canSet ? (
           <button type="button" onClick={() => onChange(null, false)} className={linkButton}>
-            Clear 題型
+            {m.clear}
           </button>
         ) : value ? (
           <>
             <button
               type="button"
               onClick={() => setOpen(true)}
-              title={`${value} · change the ${kind} 題型`}
+              title={m.change(value, kind)}
               className="min-w-0 cursor-pointer truncate rounded px-1 text-left text-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               {value}
             </button>
-            <IconButton label={`Remove 題型 ${value}`} onClick={() => onChange(undefined, false)}>
+            <IconButton label={m.remove(value)} onClick={() => onChange(undefined, false)}>
               <CloseIcon size={11} />
             </IconButton>
           </>
         ) : (
           <button type="button" onClick={() => setOpen(true)} className={linkButton}>
-            + Add 題型
+            {m.add}
           </button>
         )}
       </div>
@@ -148,8 +152,8 @@ export function PatternPicker({
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={active >= 0 ? optionId(active) : undefined}
-        aria-label={`${kind} 題型 for ${topicDisplay(topic)}`}
-        placeholder={`Pick an ${kind} 題型 or type a new one`}
+        aria-label={m.inputLabel(kind, topicName)}
+        placeholder={m.placeholder(kind)}
         onChange={(event) => {
           setQuery(event.target.value);
           setMoved(undefined);
@@ -171,7 +175,7 @@ export function PatternPicker({
         }}
         className="h-7 w-full rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
-      <ul id={listId} role="listbox" aria-label={`${kind} 題型 under ${topicDisplay(topic)}`} className="scroll-slim max-h-40 overflow-y-auto">
+      <ul id={listId} role="listbox" aria-label={m.listLabel(kind, topicName)} className="scroll-slim max-h-40 overflow-y-auto">
         {options.map((option, index) => (
           <li
             key={option.kind === 'name' ? `n:${option.name}` : option.kind}
@@ -184,19 +188,19 @@ export function PatternPicker({
             onClick={() => choose(option)}
             className={row(index, option)}
           >
-            {option.kind === 'clear' && <span className="text-ink-muted">No 題型</span>}
+            {option.kind === 'clear' && <span className="text-ink-muted">{m.noPattern}</span>}
             {option.kind === 'name' && (
               <span className={value && samePatternName(option.name, value) ? 'font-medium text-ink' : 'text-ink'}>
                 {option.name}
-                {option.match === 'close' && <span className="ml-1.5 text-ink-subtle">similar</span>}
+                {option.match === 'close' && <span className="ml-1.5 text-ink-subtle">{m.similar}</span>}
               </span>
             )}
             {option.kind === 'new' && (
               <>
-                <span className="text-accent-ink">New 題型 “{option.name}”</span>
+                <span className="text-accent-ink">{m.newPattern(option.name)}</span>
                 {option.close.length > 0 && (
                   <span className="block text-[10.5px] text-warn-ink">
-                    Close to “{option.close[0]}”. Pick it above if it is the same 題型.
+                    {m.close(option.close[0])}
                   </span>
                 )}
               </>
@@ -204,15 +208,15 @@ export function PatternPicker({
           </li>
         ))}
       </ul>
-      {options.length === 0 && <p className="px-1.5 py-1 text-[11px] text-ink-subtle">No {kind} 題型 here yet. Type a name to create one.</p>}
+      {options.length === 0 && <p className="px-1.5 py-1 text-[11px] text-ink-subtle">{m.none(kind)}</p>}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10.5px] text-ink-subtle">↑↓ to move · Enter to pick</span>
+        <span className="text-[10.5px] text-ink-subtle">{m.keys}</span>
         <button
           type="button"
           onClick={close}
           className="cursor-pointer rounded px-1.5 py-0.5 text-[11px] text-ink-muted hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          Cancel
+          {m.cancel}
         </button>
       </div>
     </div>

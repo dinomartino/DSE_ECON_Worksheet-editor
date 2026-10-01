@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import pkg from '../../../package.json';
 import { Button, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
+import { useMessages } from '@/i18n/language';
 import { isDesktop, openExternal } from '@/platform';
 import type { LanguageMode } from '@/model/types';
 import {
@@ -16,12 +17,7 @@ import {
   type FeedbackDetails,
   type FeedbackKind,
 } from '@/feedback/feedback';
-
-const PLACEHOLDER: Record<FeedbackKind, string> = {
-  bug: 'What did you do, what happened, what did you expect?',
-  idea: 'What would help, and where would you use it?',
-  other: 'A review, a question, anything else.',
-};
+import { FEEDBACK_MESSAGES } from './messages';
 
 const INPUT =
   'rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25';
@@ -42,6 +38,8 @@ export function FeedbackDialog({
   language?: LanguageMode;
   document: string;
 }) {
+  const m = useMessages(FEEDBACK_MESSAGES);
+  const placeholder: Record<FeedbackKind, string> = { bug: m.placeholderBug, idea: m.placeholderIdea, other: m.placeholderOther };
   const [kind, setKind] = useState<FeedbackKind>('bug');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
@@ -72,7 +70,7 @@ export function FeedbackDialog({
       await navigator.clipboard.writeText(text);
       return true;
     } catch {
-      setError('Copy failed. The browser blocked clipboard access.');
+      setError(m.copyFailed);
       return false;
     }
   };
@@ -87,7 +85,7 @@ export function FeedbackDialog({
       await openExternal(link.url);
       setSent({ via, truncated: link.truncated });
     } catch {
-      setError(via === 'github' ? 'Could not open GitHub.' : 'Could not open your mail app.');
+      setError(via === 'github' ? m.noGithub : m.noMail);
     }
   };
 
@@ -100,18 +98,18 @@ export function FeedbackDialog({
 
   return (
     <Dialog
-      title="Send feedback"
-      description="A bug, an idea or a review. Your worksheet itself is never attached."
+      title={m.title}
+      description={m.description}
       width={540}
       onClose={onClose}
       footer={
         <>
           <Button variant="subtle" onClick={() => void copyAll()} disabled={empty}>
-            {copied ? 'Copied' : 'Copy to clipboard'}
+            {copied ? m.copied : m.copyAll}
           </Button>
           {FEEDBACK_EMAIL && (
             <Button onClick={() => void open('mail')} disabled={empty}>
-              Send by email
+              {m.sendEmail}
             </Button>
           )}
           <Button
@@ -119,38 +117,38 @@ export function FeedbackDialog({
             onClick={() => void open('github')}
             disabled={empty}
           >
-            Open on GitHub
+            {m.openGithub}
           </Button>
           {sent && (
             <Button variant="primary" onClick={onClose}>
-              Done
+              {m.done}
             </Button>
           )}
         </>
       }
     >
       <div className="space-y-5 px-5 py-5">
-        <Field label="Kind">
+        <Field label={m.kind}>
           <Segmented
-            label="Kind of feedback"
+            label={m.kindOfFeedback}
             value={kind}
             onChange={setKind}
             options={[
-              { value: 'bug', label: 'Bug' },
-              { value: 'idea', label: 'Idea' },
-              { value: 'other', label: 'Other' },
+              { value: 'bug', label: m.bug },
+              { value: 'idea', label: m.idea },
+              { value: 'other', label: m.other },
             ]}
           />
         </Field>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-ink">Message</span>
+          <span className="text-[13px] font-medium text-ink">{m.message}</span>
           <textarea
             ref={messageRef}
             required
             rows={6}
             value={message}
-            placeholder={PLACEHOLDER[kind]}
+            placeholder={placeholder[kind]}
             onChange={(event) => setMessage(event.target.value)}
             className={`${INPUT} scroll-slim resize-y py-2 leading-relaxed`}
           />
@@ -158,7 +156,7 @@ export function FeedbackDialog({
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[13px] font-medium text-ink">
-            Email <span className="font-normal text-ink-muted">(optional, so we can reply)</span>
+            {m.email} <span className="font-normal text-ink-muted">{m.emailOptional}</span>
           </span>
           <input
             type="email"
@@ -171,10 +169,10 @@ export function FeedbackDialog({
 
         <details className="group rounded-lg bg-surface-sunken px-3 py-2 text-[12px] text-ink-muted">
           <summary className="cursor-pointer select-none font-medium text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">
-            Details we attach
+            {m.details}
             <span className="font-normal text-ink-subtle">
               {' '}
-              (version {details.appVersion}, {details.platform}, {details.system})
+              {m.detailsSummary(details.appVersion, details.platform, details.system)}
             </span>
           </summary>
           <ul className="mt-1.5 animate-slide-down-in space-y-0.5 pl-1">
@@ -185,17 +183,13 @@ export function FeedbackDialog({
         </details>
 
         <p className="text-[11px] leading-relaxed text-ink-subtle">
-          GitHub opens a public issue and needs a free account
-          {FEEDBACK_EMAIL ? '; email goes privately to the developer.' : '.'}
+          {m.githubNote(!!FEEDBACK_EMAIL)}
         </p>
 
         {sent && (
           <p role="status" className="animate-slide-up-in rounded-lg bg-accent-soft px-3 py-2 text-[13px] text-accent-ink">
-            {sent.via === 'github'
-              ? 'Press Submit on the GitHub page to send it.'
-              : 'Press Send in your mail app to send it.'}
-            {sent.truncated &&
-              ' The message was too long for the link. The full report is on your clipboard, paste the rest in.'}
+            {sent.via === 'github' ? m.sentGithub : m.sentMail}
+            {sent.truncated && m.truncated}
           </p>
         )}
 

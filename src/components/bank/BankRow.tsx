@@ -8,7 +8,11 @@ import { plain } from '@/model/text';
 import type { LanguageMode } from '@/model/types';
 import { getQuestionType } from '@/registry';
 import { GripIcon } from '@/components/ui/icons';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
 import type { RowDragProps } from './bankDrag';
+import { BANK_ROW_MESSAGES } from './messages';
 
 /**
  * One question-bank row, shared by the editor's 題庫 tab and the Question bank page.
@@ -73,12 +77,14 @@ export function BankRow({
   activateHint,
   tabIndex = 0,
 }: BankRowProps) {
+  const ui = uiLanguage();
+  const m = resolveMessages(BANK_ROW_MESSAGES, ui);
   const excerpt = language === 'zh' ? row.excerpt.zh : row.excerpt.en;
-  const missing = missingLanguageLabel(row, language);
+  const missing = missingLanguageLabel(row, language, ui);
   const tags = row.tags.map((tag) => tagText(tag, language === 'zh' ? 'zh' : 'en')).join(' · ');
   const excerptText = (
     <span className="line-clamp-2 text-xs leading-snug text-ink" title={excerpt}>
-      {excerpt || <span className="text-ink-subtle">Untitled question</span>}
+      {excerpt || <span className="text-ink-subtle">{m.untitled}</span>}
     </span>
   );
   return (
@@ -89,7 +95,7 @@ export function BankRow({
         ? {
             role: 'group',
             tabIndex,
-            'aria-label': excerpt || 'Untitled question',
+            'aria-label': excerpt || m.untitled,
             ...(activateHint ? { 'aria-description': activateHint } : {}),
             onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
               // Only the row itself: Enter on its versions button is that button's.
@@ -106,7 +112,7 @@ export function BankRow({
       {drag && (
         <span
           aria-hidden
-          title="Drag onto the page"
+          title={m.dragOnto}
           className="pointer-events-none absolute left-1 top-[11px] text-ink-subtle transition-colors duration-150 ease-out-soft group-hover:text-accent-ink"
         >
           <GripIcon size={14} />
@@ -134,11 +140,11 @@ export function BankRow({
         )}
         <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] tabular-nums text-ink-subtle">
           <span>{typeLabel(row.typeId)}</span>
-          <span>{marksLabel(row.marks)}</span>
+          <span>{marksLabel(row.marks, ui)}</span>
           {partsFor && partsFor.labels.length > 0 && (
             <span
               className="min-w-0 max-w-full truncate text-ink-muted"
-              title={`${partsFor.labels.join(' and ')} ${partsFor.labels.length === 1 ? 'tests' : 'test'} ${topicHeading(partsFor.topic, 'both')}`}
+              title={m.partsTest(partsFor.labels.join(m.partsJoin), partsFor.labels.length, topicHeading(partsFor.topic, 'both'))}
             >
               {partsFor.labels.join(' ')} {topicDisplay(partsFor.topic, language === 'zh' ? 'zh' : 'en')}
             </span>
@@ -148,14 +154,14 @@ export function BankRow({
               {tags}
             </span>
           )}
-          {row.hasDiagram && <span>◩ diagram</span>}
+          {row.hasDiagram && <span>{m.diagram}</span>}
           {differs && (
             <span className="min-w-0 max-w-full truncate text-ink-muted" title={differs}>
               {differs}
             </span>
           )}
           {missing && <span>{missing}</span>}
-          {usedWithClass && <span className="text-warn-ink">{usedLabel(usedWithClass)}</span>}
+          {usedWithClass && <span className="text-warn-ink">{usedLabel(usedWithClass, ui)}</span>}
           {versions > 1 &&
             (onVersions ? (
               <button
@@ -163,17 +169,17 @@ export function BankRow({
                 onClick={onVersions}
                 className="cursor-pointer text-ink-muted underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                {versions} versions
+                {m.versions(versions)}
               </button>
             ) : (
-              <span>{versions} versions</span>
+              <span>{m.versions(versions)}</span>
             ))}
         </div>
         {!hideSource && <SourceText title={docLabel ?? row.docTitle} number={row.number} className="mt-0.5 text-[11px] text-ink-subtle" />}
       </div>
       {inPaper && (
         <span className="shrink-0 pt-px text-xs text-ink-muted">
-          In this paper{inPaper.number !== undefined ? ` · Q${inPaper.number}` : ''}
+          {m.inPaper}{inPaper.number !== undefined ? ` · Q${inPaper.number}` : ''}
         </span>
       )}
     </div>
@@ -189,8 +195,8 @@ export function typeLabel(typeId: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-export function marksLabel(marks: number): string {
-  return `${marks} ${marks === 1 ? 'mark' : 'marks'}`;
+export function marksLabel(marks: number, lang: UiLanguage = uiLanguage()): string {
+  return resolveMessages(BANK_ROW_MESSAGES, lang).marks(marks);
 }
 
 /** "Mock 2025 · Q14"; a bank document's rows name the bank. */
@@ -230,31 +236,37 @@ export function tagTitle(tags: readonly string[]): string {
 }
 
 /** "中文 only" / "English only" when the paper prints a language the question lacks. */
-export function missingLanguageLabel(row: Pick<BankRowData, 'languages'>, language: LanguageMode): string | undefined {
+export function missingLanguageLabel(
+  row: Pick<BankRowData, 'languages'>,
+  language: LanguageMode,
+  lang: UiLanguage = uiLanguage(),
+): string | undefined {
+  const m = resolveMessages(BANK_ROW_MESSAGES, lang);
   const hasEn = row.languages.includes('en');
   const hasZh = row.languages.includes('zh');
   if (!hasEn && !hasZh) return undefined;
-  if (!hasEn && language !== 'zh') return '中文 only';
-  if (!hasZh && language !== 'en') return 'English only';
+  if (!hasEn && language !== 'zh') return m.chineseOnly;
+  if (!hasZh && language !== 'en') return m.englishOnly;
   return undefined;
 }
 
 const MONTH = new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const MONTH_ZH = new Intl.DateTimeFormat('zh-HK', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
-/** "Mar 2026" for a use date; empty when it will not parse. */
-function monthOf(use: Pick<BankUse, 'usedOn'>): string {
+/** "Mar 2026" ("2026年3月") for a use date; empty when it will not parse. */
+function monthOf(use: Pick<BankUse, 'usedOn'>, lang: UiLanguage): string {
   const when = Date.parse(use.usedOn);
-  return Number.isNaN(when) ? '' : MONTH.format(when);
+  if (Number.isNaN(when)) return '';
+  return (lang === 'zh-HK' ? MONTH_ZH : MONTH).format(when);
 }
 
 /** "Used with 5A, 5B · Mar 2026". */
-export function usedLabel(use: BankUse): string {
-  const month = monthOf(use);
-  return `Used with ${use.classes?.join(', ') || 'this class'}${month ? ` · ${month}` : ''}`;
+export function usedLabel(use: BankUse, lang: UiLanguage = uiLanguage()): string {
+  return resolveMessages(BANK_ROW_MESSAGES, lang).usedWith(use.classes?.join(', ') ?? '', monthOf(use, lang));
 }
 
 /** Who sat a paper and when: "5A, 5B · Mar 2026"; a paper naming no class says so. */
-export function sittingLabel(use: BankUse): string {
-  const month = monthOf(use);
-  return `${use.classes?.join(', ') || 'No class'}${month ? ` · ${month}` : ''}`;
+export function sittingLabel(use: BankUse, lang: UiLanguage = uiLanguage()): string {
+  const month = monthOf(use, lang);
+  return `${use.classes?.join(', ') || resolveMessages(BANK_ROW_MESSAGES, lang).noClass}${month ? ` · ${month}` : ''}`;
 }

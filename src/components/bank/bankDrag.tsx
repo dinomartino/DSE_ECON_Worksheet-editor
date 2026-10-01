@@ -12,6 +12,7 @@ import { DRAG_THRESHOLD_PX } from '@/components/start/dashboardDrag';
 import { DragChip } from '@/components/ui/DragGhost';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import { isUndoRedoKey } from '@/components/ui/undoChord';
+import { useMessages } from '@/i18n/language';
 import type { BankRow } from '@/library/types';
 import { flowOf } from '@/model/flow';
 import { copyQuestion } from '@/model/lineage';
@@ -19,6 +20,7 @@ import type { Question, Worksheet } from '@/model/types';
 import { lastQuestionGap, useWorksheetStore } from '@/store/worksheetStore';
 import type { WorksheetStore } from '@/storage';
 import { commitBankCopies, loadBankCopies, type InsertReport, type LoadedCopies } from './bankSession';
+import { BANK_REVIEW_MESSAGES } from './messages';
 import { pickSlot, type SlotBox, type SlotGeometry } from './dropSlot';
 
 /**
@@ -475,6 +477,7 @@ export function useBankRowDrag({
  * undo/redo swallowed, so not even a focused field's own undo runs).
  */
 export function BankDragLayer() {
+  const m = useMessages(BANK_REVIEW_MESSAGES);
   const active = useBankDrag((s) => s.active);
   const aimed = useBankDrag((s) => s.slot !== null);
   const dragging = active !== null;
@@ -507,7 +510,7 @@ export function BankDragLayer() {
       className="pointer-events-none fixed left-0 top-0 z-[100]"
       style={{ transform: `translate(${active.x + CHIP_OFFSET.x}px, ${active.y + CHIP_OFFSET.y}px)` }}
     >
-      <DragChip label={active.label} detail={aimed ? 'Release to insert here · Esc cancels' : 'Drop between questions · Esc cancels'} />
+      <DragChip label={active.label} detail={aimed ? m.release : m.drop} />
     </div>,
     document.body,
   );

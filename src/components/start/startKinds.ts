@@ -1,4 +1,8 @@
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
 import type { DocumentType } from '@/model/newWorksheet';
+import type { UiLanguage } from '@/settings/language';
+import { START_KIND_MESSAGES as K } from './screen.messages';
 
 /**
  * The four kinds of document, in the order a teacher meets them: the one definition the
@@ -18,33 +22,48 @@ export interface StartKind {
 export const START_KINDS: readonly StartKind[] = [
   {
     type: 'classroom',
-    title: 'Classroom worksheet',
-    hint: 'MCQ + structured questions. No cover.',
-    caption: 'Everyday practice: MCQ and structured questions.',
+    title: K.classroomTitle.en,
+    hint: K.classroomHint.en,
+    caption: K.classroomCaption.en,
     titleZh: '課堂工作紙',
   },
   {
     type: 'lqWorksheet',
-    title: 'LQ worksheet',
-    hint: 'Long questions with dotted answer space. No exam furniture.',
-    caption: 'Long questions with dotted lines to write on.',
+    title: K.lqWorksheetTitle.en,
+    hint: K.lqWorksheetHint.en,
+    caption: K.lqWorksheetCaption.en,
     titleZh: '長題目工作紙',
   },
   {
     type: 'paper1',
-    title: 'Paper 1 mock · MCQ',
-    hint: 'Exam cover; answers on a separate answer sheet.',
-    caption: 'An MCQ paper with an exam cover.',
+    title: K.paper1Title.en,
+    hint: K.paper1Hint.en,
+    caption: K.paper1Caption.en,
     titleZh: '卷一模擬試卷',
   },
   {
     type: 'lqMock',
-    title: 'Paper 2 mock · booklet',
-    hint: 'Question-Answer Book: cover, Sections A–C, page frame.',
-    caption: 'A Question-Answer Book, Sections A to C.',
+    title: K.lqMockTitle.en,
+    hint: K.lqMockHint.en,
+    caption: K.lqMockCaption.en,
     titleZh: '卷二模擬試卷',
   },
 ];
+
+/**
+ * A kind's words in the interface language. English mode keeps the bilingual card (the
+ * title over `titleZh`); 中文 mode shows its own Chinese title alone (`bilingual: false`).
+ */
+export function kindText(type: DocumentType, lang: UiLanguage = uiLanguage()) {
+  const m = resolveMessages(K, lang);
+  const words = {
+    classroom: { title: m.classroomTitle, hint: m.classroomHint, caption: m.classroomCaption },
+    lqWorksheet: { title: m.lqWorksheetTitle, hint: m.lqWorksheetHint, caption: m.lqWorksheetCaption },
+    paper1: { title: m.paper1Title, hint: m.paper1Hint, caption: m.paper1Caption },
+    lqMock: { title: m.lqMockTitle, hint: m.lqMockHint, caption: m.lqMockCaption },
+  }[type];
+  return { ...words, bilingual: lang !== 'zh-HK' };
+}
 
 /**
  * The type the New worksheet button preselects: the last one created, per viewer. The key

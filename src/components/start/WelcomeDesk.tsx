@@ -3,8 +3,10 @@
 import { Button } from '@/components/ui';
 import { ArchiveIcon, FolderOpenIcon } from '@/components/ui/icons';
 import type { DocumentType } from '@/model/newWorksheet';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { PaperSketch } from './PaperSketch';
-import { START_KINDS } from './startKinds';
+import { WELCOME_MESSAGES } from './screen.messages';
+import { kindText, START_KINDS } from './startKinds';
 
 /**
  * The desk before anything is saved: a welcome, and the four kinds of paper drawn as
@@ -25,6 +27,8 @@ export function WelcomeDesk({
   onRestore: () => void;
   restoring?: boolean;
 }) {
+  const m = useMessages(WELCOME_MESSAGES);
+  const lang = useUiLanguage();
   return (
     <section
       aria-labelledby="welcome-heading"
@@ -34,18 +38,19 @@ export function WelcomeDesk({
         id="welcome-heading"
         className="font-display text-balance text-[26px] font-normal leading-[1.15] tracking-[-0.01em] text-ink xl:text-[30px]"
       >
-        Welcome to Econ Studio
+        {m.welcome}
         <span lang="zh-HK" className="ml-3 align-[3px] text-[15px] tracking-normal text-ink-subtle xl:text-[16px]">
-          歡迎使用經濟備課室
+          {m.welcomeZh}
         </span>
       </h2>
       <p className="mt-2 max-w-2xl text-pretty text-[13px] leading-relaxed text-ink-muted">
-        Choose the paper you want to print. You name it next, and every other setting starts
-        from a default.
+        {m.lead}
       </p>
 
       <ul className="mt-6 grid grid-cols-4 gap-3 xl:gap-5">
-        {START_KINDS.map((kind, index) => (
+        {START_KINDS.map((kind, index) => {
+          const words = kindText(kind.type, lang);
+          return (
           <li
             key={kind.type}
             className="min-w-0 animate-slide-up-in"
@@ -69,31 +74,34 @@ export function WelcomeDesk({
                 </span>
               </span>
               <span className="mt-2.5 block text-[13px] font-medium leading-snug text-ink transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
-                {kind.title}
+                {words.title}
               </span>
-              <span lang="zh-HK" className="mt-0.5 block text-[11.5px] leading-snug text-ink-subtle">
-                {kind.titleZh}
-              </span>
+              {words.bilingual && (
+                <span lang="zh-HK" className="mt-0.5 block text-[11.5px] leading-snug text-ink-subtle">
+                  {kind.titleZh}
+                </span>
+              )}
               {/* The card says what the paper is for: nothing else on this screen does yet. */}
-              <span className="mt-1 block text-pretty text-[11px] leading-snug text-ink-muted">{kind.caption}</span>
+              <span className="mt-1 block text-pretty text-[11px] leading-snug text-ink-muted">{words.caption}</span>
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {/* Existing work: a file from another machine, or a whole backup. */}
       <div className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-4">
-        <span className="mr-1 text-[12px] text-ink-muted">Already have worksheets?</span>
+        <span className="mr-1 text-[12px] text-ink-muted">{m.haveWorksheets}</span>
         <Button variant="subtle" size="sm" onClick={onOpenFile}>
           <FolderOpenIcon size={14} />
-          Open a file…
+          {m.openFile}
         </Button>
         <Button variant="subtle" size="sm" onClick={onRestore} disabled={restoring}>
           <ArchiveIcon size={14} />
-          {restoring ? 'Restoring…' : 'Restore a backup…'}
+          {restoring ? m.restoring : m.restoreBackup}
         </Button>
         <span className="basis-full text-[11px] text-ink-subtle xl:ml-auto xl:basis-auto">
-          Or drop a .json or .zip anywhere here.
+          {m.orDrop}
         </span>
       </div>
     </section>
