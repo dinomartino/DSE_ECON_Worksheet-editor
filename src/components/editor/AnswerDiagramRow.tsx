@@ -7,11 +7,13 @@ import { plain } from '@/model/text';
 import type { DiagramBlock } from '@/model/types';
 import { diagramSize, diagramSvg } from '@/render/diagram';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { useMessages } from '@/i18n/language';
 import { Button, GroupHeader, NumberField } from '@/components/ui';
 import { DiagramCanvas } from './DiagramCanvas';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
 import { FlowCanvas } from './FlowCanvas';
 import { ForumCanvas } from './ForumCanvas';
+import { ANSWER_DIAGRAM_MESSAGES } from './AnswerDiagramRow.messages';
 
 /**
  * A leaf's model answer diagram (§ `QuestionPart.answerDiagram`), compact: thumbnail,
@@ -27,6 +29,7 @@ export function AnswerDiagramRow({
   onChange: (block: DiagramBlock) => void;
   onRemove: () => void;
 }) {
+  const m = useMessages(ANSWER_DIAGRAM_MESSAGES);
   const language = useWorksheetStore((s) => s.mode.language);
   const fonts = useWorksheetStore((s) => s.worksheet.fonts);
   const [drawing, setDrawing] = useState(false);
@@ -43,7 +46,7 @@ export function AnswerDiagramRow({
     plain(
       DIAGRAM_TEMPLATES.find((template) => template.id === (diagram.templateId ?? 'blank'))?.name
         .en ?? [],
-    ) || 'Blank axes';
+    ) || m.blank;
 
   return (
     <div
@@ -51,18 +54,18 @@ export function AnswerDiagramRow({
       className="space-y-1.5 rounded-md border border-dashed border-line p-2"
     >
       <GroupHeader
-        title="Model diagram"
-        hint="teacher only"
+        title={m.title}
+        hint={m.hint}
         action={
           <Button size="sm" variant="danger" onClick={onRemove}>
-            Remove
+            {m.remove}
           </Button>
         }
       />
       <div className="flex items-center gap-2">
         <button
           type="button"
-          title={drawable ? 'Draw on this diagram' : 'A pie chart is edited as data'}
+          title={drawable ? m.drawThis : m.pieData}
           disabled={!drawable}
           onClick={() => setDrawing(true)}
           className="w-20 shrink-0 overflow-hidden rounded border border-line bg-surface transition-[border-color,transform,scale] duration-150 ease-out-soft enabled:cursor-pointer enabled:hover:border-accent enabled:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&_svg]:h-auto [&_svg]:w-full"
@@ -73,7 +76,7 @@ export function AnswerDiagramRow({
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {drawable && (
             <Button size="sm" onClick={() => setDrawing(true)}>
-              ✎ Draw…
+              {m.draw}
             </Button>
           )}
           <DiagramTemplatePopover
@@ -87,7 +90,7 @@ export function AnswerDiagramRow({
             onPickGraph={(graph) => onChange(rebaseOnGraph(block, graph, language))}
           />
           <NumberField
-            label="Width"
+            label={m.width}
             min={160}
             suffix="px"
             value={block.widthPx}

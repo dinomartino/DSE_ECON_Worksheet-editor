@@ -3,8 +3,10 @@
 import { ANSWER_GRAPH_PRESETS } from '@/model/answerGraph';
 import { emptyBiText, isBiTextEmpty } from '@/model/text';
 import type { AnswerGraph, BiText } from '@/model/types';
+import { useMessages } from '@/i18n/language';
 import { Button, CheckField, GroupHeader, Segmented } from '@/components/ui';
 import { BiTextField } from './BiTextField';
+import { ANSWER_GRAPH_MESSAGES } from './AnswerGraphFields.messages';
 
 /**
  * The inspector for one graph answer space (§ `AnswerGraph`). Its words are drawn inside
@@ -19,13 +21,14 @@ export function AnswerGraphFields({
   onChange: (graph: AnswerGraph) => void;
   onRemove: () => void;
 }) {
+  const m = useMessages(ANSWER_GRAPH_MESSAGES);
   const patch = (next: Partial<AnswerGraph>) => onChange({ ...graph, ...next });
   // A field cleared to nothing stores nothing, not the editor's empty husk.
   const title = (text: BiText) => (isBiTextEmpty(text) ? undefined : text);
   const heights = ANSWER_GRAPH_PRESETS.map((lines) => ({
     value: String(lines),
     label: String(lines),
-    title: `${lines} lines (${Math.round(lines * 12 * 0.03528 * 10) / 10} cm)`,
+    title: m.linesTitle(lines, Math.round(lines * 12 * 0.03528 * 10) / 10),
   }));
 
   return (
@@ -34,33 +37,33 @@ export function AnswerGraphFields({
       className="space-y-2 rounded-md border border-dashed border-line p-2"
     >
       <GroupHeader
-        title="Graph space"
-        hint="blank axes to draw on"
+        title={m.title}
+        hint={m.hint}
         action={
           <Button size="sm" variant="danger" onClick={onRemove}>
-            Remove
+            {m.remove}
           </Button>
         }
       />
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
         <span className="flex items-center text-xs text-ink-muted">
-          Height
+          {m.height}
           <Segmented
-            label="Height in lines"
+            label={m.heightIn}
             value={String(graph.lines)}
             options={heights}
             onChange={(lines) => patch({ lines: Number(lines) })}
           />
-          lines
+          {m.lines}
         </span>
         <span className="flex items-center text-xs text-ink-muted">
-          Width
+          {m.width}
           <Segmented
-            label="Width"
+            label={m.width}
             value={graph.width === 'half' ? 'half' : 'full'}
             options={[
-              { value: 'half', label: 'Half' },
-              { value: 'full', label: 'Full' },
+              { value: 'half', label: m.half },
+              { value: 'full', label: m.full },
             ]}
             onChange={(width) => patch({ width: width === 'half' ? 'half' : undefined })}
           />
@@ -68,26 +71,26 @@ export function AnswerGraphFields({
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <CheckField
-          label="Grid"
+          label={m.grid}
           checked={Boolean(graph.grid)}
           onChange={(grid) => patch({ grid: grid || undefined })}
         />
         <CheckField
-          label='Origin "0"'
+          label={m.origin}
           checked={Boolean(graph.showOrigin)}
           onChange={(showOrigin) => patch({ showOrigin: showOrigin || undefined })}
         />
       </div>
       <BiTextField
         translate={{ kind: 'axisTitle', fallsBack: true }}
-        label="Vertical axis"
+        label={m.vertical}
         rows={1}
         value={graph.yTitle ?? emptyBiText()}
         onChange={(text) => patch({ yTitle: title(text) })}
       />
       <BiTextField
         translate={{ kind: 'axisTitle', fallsBack: true }}
-        label="Horizontal axis"
+        label={m.horizontal}
         rows={1}
         value={graph.xTitle ?? emptyBiText()}
         onChange={(text) => patch({ xTitle: title(text) })}

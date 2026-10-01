@@ -46,6 +46,8 @@ import { CaptionField } from './CaptionField';
 import { biExcerpt, ExcerptRow } from './panelRows';
 import { DiagramEditor } from './DiagramEditor';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
+import { useMessages } from '@/i18n/language';
+import { BLOCK_EDITOR_MESSAGES } from './BlockEditor.messages';
 
 /**
  * Content-block editing (§5.3): insert paragraph / table / image in any order,
@@ -87,6 +89,7 @@ export function BlockEditor({
   figureWidth,
   nested,
 }: Props) {
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
   const fileInput = useRef<HTMLInputElement>(null);
   /*
    * The content width a new table's default indent is a fraction of.
@@ -126,21 +129,29 @@ export function BlockEditor({
   // hover-reveal; the framed blocks below wrap them in their own reveal span.
   const controlButtons = (index: number) => (
     <>
-      <IconButton label="Move block up" onClick={() => move(index, -1)} disabled={index === 0}>
+      <IconButton label={m.moveUp} onClick={() => move(index, -1)} disabled={index === 0}>
         <span aria-hidden>↑</span>
       </IconButton>
       <IconButton
-        label="Move block down"
+        label={m.moveDown}
         onClick={() => move(index, 1)}
         disabled={index === blocks.length - 1}
       >
         <span aria-hidden>↓</span>
       </IconButton>
-      <IconButton label="Delete block" variant="danger" onClick={() => remove(index)}>
+      <IconButton label={m.delete} variant="danger" onClick={() => remove(index)}>
         <span aria-hidden>✕</span>
       </IconButton>
     </>
   );
+
+  const kindLabel = {
+    table: m.kindTable,
+    image: m.kindImage,
+    diagram: m.kindDiagram,
+    source: m.kindSource,
+    figureRow: m.kindFigureRow,
+  };
 
   const controls = (index: number) => (
     <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-150 ease-out-soft focus-within:opacity-100 group-hover/block:opacity-100">
@@ -173,7 +184,7 @@ export function BlockEditor({
             className="group/block rounded-lg border border-line bg-surface "
           >
             <header className="flex items-center gap-2 px-2 py-1">
-              <Eyebrow>{block.kind === 'figureRow' ? 'figure + table' : block.kind}</Eyebrow>
+              <Eyebrow>{kindLabel[block.kind]}</Eyebrow>
               <span className="flex-1" />
               {(block.kind === 'image' || block.kind === 'diagram') && (
                 // Wraps the figure with a companion table beside it — the reference
@@ -184,7 +195,7 @@ export function BlockEditor({
                   variant="subtle"
                   onClick={() => replace(index, createFigureRowBlock(block))}
                 >
-                  + Table beside
+                  {m.addTableBeside}
                 </Button>
               )}
               {controls(index)}
@@ -217,20 +228,20 @@ export function BlockEditor({
           so the row fits a sub-part's body with room to spare; it wraps, never clips. */}
       <div
         role="group"
-        aria-label="Add a block"
+        aria-label={m.addBlock}
         className="flex flex-wrap items-center [&>button]:px-1.5 [&>div>button]:px-1.5"
       >
         <span aria-hidden className="pr-1 text-[11px] text-ink-subtle">
-          Add
+          {m.add}
         </span>
         <Button
           size="sm"
           variant="subtle"
-          aria-label="Add text"
-          title="Add a paragraph"
+          aria-label={m.addText}
+          title={m.addParagraph}
           onClick={() => onChange([...blocks, createParagraphBlock(emptyBiText())])}
         >
-          Text
+          {m.text}
         </Button>
         <TableInsertButton
           onPick={(rows, columns) =>
@@ -255,18 +266,18 @@ export function BlockEditor({
         <Button
           size="sm"
           variant="subtle"
-          aria-label="Add image"
+          aria-label={m.addImage}
           onClick={() => fileInput.current?.click()}
         >
-          Image
+          {m.image}
         </Button>
         {/* Templates are offered at insert time rather than after: a teacher who wants
             an AD–AS diagram should not have to insert blank axes and then convert. The
             picker is visual — the same card grid the diagram panel's Template button
             opens, so the choice looks identical at both moments. */}
         <DiagramTemplatePopover
-          trigger={<>Diagram ▾</>}
-          label="Add diagram"
+          trigger={<>{m.diagramMenu}</>}
+          label={m.addDiagram}
           onPick={(templateId) => onChange([...blocks, createDiagramBlock(templateId, figureWidth)])}
           // A copy at the graph's own print width, unless the slot sets one (an MCQ option).
           onPickGraph={(graph) =>
@@ -280,7 +291,7 @@ export function BlockEditor({
           <Button
             size="sm"
             variant="subtle"
-            aria-label="Add source"
+            aria-label={m.addSource}
             onClick={() =>
               onChange([
                 ...blocks,
@@ -292,7 +303,7 @@ export function BlockEditor({
               ])
             }
           >
-            Source
+            {m.source}
           </Button>
         )}
         <input
@@ -328,6 +339,7 @@ function TableInsertButton({
   onPick: (rows: number, columns: number) => void;
   onPickTemplate: (templateId: string) => void;
 }) {
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -345,12 +357,12 @@ function TableInsertButton({
       <Button
         size="sm"
         variant="subtle"
-        aria-label="Add table"
+        aria-label={m.addTable}
         aria-expanded={open}
         aria-haspopup="grid"
         onClick={() => setOpen((current) => !current)}
       >
-        Table
+        {m.table}
       </Button>
       {open && (
         /*
@@ -431,6 +443,7 @@ function TableBlockEditor({
   block: TableBlock;
   onChange: (block: TableBlock) => void;
 }) {
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
   const activeCell = useWorksheetStore((s) => s.activeCell);
   const setActiveCell = useWorksheetStore((s) => s.setActiveCell);
   const cellSelection = useWorksheetStore((s) => s.cellSelection);
@@ -479,17 +492,16 @@ function TableBlockEditor({
     <div className="space-y-2.5">
       <div className="flex items-center gap-2">
         <span className="text-xs tabular-nums text-ink-muted">
-          {rowCount} {rowCount === 1 ? 'row' : 'rows'} × {columnCount}{' '}
-          {columnCount === 1 ? 'column' : 'columns'}
+          {m.rowsByColumns(rowCount, columnCount)}
         </span>
         {multi ? (
           <span className="ml-auto text-[11px] tabular-nums text-ink-subtle">
-            {range.length} cells selected
+            {m.cellsSelected(range.length)}
           </span>
         ) : (
           at && (
             <span className="ml-auto text-[11px] tabular-nums text-ink-subtle">
-              cell R{at.rowIndex + 1}C{at.cellIndex + 1}
+              {m.scopeCell(at.rowIndex + 1, at.cellIndex + 1)}
             </span>
           )
         )}
@@ -511,10 +523,10 @@ function TableBlockEditor({
       {isDegenerate(block) && (
         <div className="flex items-center gap-2 rounded-md border border-line bg-surface-sunken px-2 py-1.5">
           <span className="min-w-0 flex-1 text-[11px] leading-snug text-ink-muted">
-            This table has no columns, so it prints nothing.
+            {m.noColumns}
           </span>
           <Button size="sm" variant="subtle" onClick={() => apply(restoreColumn(block))}>
-            Add a column
+            {m.addColumn}
           </Button>
         </div>
       )}
@@ -542,9 +554,7 @@ function TableBlockEditor({
            nothing has been aimed at, and saying where to aim is more use than greying
            them out. */
         <p className="border-t border-line pt-2 text-[11px] leading-snug text-ink-subtle">
-          Click a cell in the table on the page to type in it. Align, merge and rules
-          appear in the toolbar above the page; rows and columns are added with the
-          + chips on the table itself.
+          {m.clickCell}
         </p>
       )}
 
@@ -638,6 +648,7 @@ function TablePaddingSection({
   at: { rowIndex: number; cellIndex: number } | undefined;
   onChange: (block: TableBlock) => void;
 }) {
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
   const [scope, setScope] = useState<PaddingScope>('table');
 
   // Per-cell, per-row and per-column all need a subject. Falling back to the table keeps
@@ -651,39 +662,39 @@ function TablePaddingSection({
   const overridden = own !== undefined && Object.keys(own).length > 0;
 
   const EDGES = [
-    ['top', 'Top'],
-    ['bottom', 'Bottom'],
-    ['left', 'Left'],
-    ['right', 'Right'],
+    ['top', m.edgeTop],
+    ['bottom', m.edgeBottom],
+    ['left', m.edgeLeft],
+    ['right', m.edgeRight],
   ] as const;
 
   const scopeLabel =
     effectiveScope === 'table'
-      ? 'the whole table'
+      ? m.scopeTable
       : effectiveScope === 'row'
-        ? `row ${position.rowIndex + 1}`
+        ? m.scopeRow(position.rowIndex + 1)
         : effectiveScope === 'column'
-          ? `column ${position.cellIndex + 1}`
-          : `cell R${position.rowIndex + 1}C${position.cellIndex + 1}`;
+          ? m.scopeColumn(position.cellIndex + 1)
+          : m.scopeCell(position.rowIndex + 1, position.cellIndex + 1);
 
   return (
     <div className="space-y-1.5 border-t border-line pt-2">
       <div className="flex items-center gap-2">
-        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Padding</span>
+        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">{m.padding}</span>
         {at ? (
           <Segmented
-            label="Padding applies to"
+            label={m.paddingApplies}
             value={effectiveScope}
             onChange={setScope}
             options={[
-              { value: 'cell', label: 'Cell' },
-              { value: 'row', label: 'Row' },
-              { value: 'column', label: 'Col' },
-              { value: 'table', label: 'All' },
+              { value: 'cell', label: m.cell },
+              { value: 'row', label: m.row },
+              { value: 'column', label: m.col },
+              { value: 'table', label: m.all },
             ]}
           />
         ) : (
-          <span className="text-[11px] text-ink-subtle">whole table</span>
+          <span className="text-[11px] text-ink-subtle">{m.wholeTable}</span>
         )}
       </div>
 
@@ -704,7 +715,7 @@ function TablePaddingSection({
 
       <div className="flex items-center gap-2 pl-14">
         <span className="text-[11px] leading-snug text-ink-subtle">
-          {overridden ? `Set on ${scopeLabel}.` : `Inherited. Typing sets ${scopeLabel}.`}
+          {overridden ? m.paddingSet(scopeLabel) : m.paddingInherited(scopeLabel)}
         </span>
         {overridden && (
           <Button
@@ -721,7 +732,7 @@ function TablePaddingSection({
               )
             }
           >
-            Reset
+            {m.reset}
           </Button>
         )}
       </div>
@@ -747,6 +758,7 @@ function CellImageField({
   image: CellImage | undefined;
   onChange: (image: CellImage | undefined) => void;
 }) {
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const read = async (file: File) => {
@@ -770,7 +782,7 @@ function CellImageField({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1">
-        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Picture</span>
+        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">{m.picture}</span>
         {image ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -780,7 +792,7 @@ function CellImageField({
               className="max-h-10 rounded border border-line object-contain"
             />
             <NumberField
-              label="Width"
+              label={m.width}
               min={40}
               suffix="px"
               value={image.widthPx}
@@ -791,7 +803,7 @@ function CellImageField({
               }}
             />
             <IconButton
-              label="Remove picture from cell"
+              label={m.removePictureFromCell}
               variant="danger"
               onClick={() => onChange(undefined)}
             >
@@ -800,14 +812,14 @@ function CellImageField({
           </>
         ) : (
           <Button size="sm" variant="subtle" onClick={() => fileInput.current?.click()}>
-            + Picture
+            {m.addPicture}
           </Button>
         )}
       </div>
       {image && (
         <BiTextField
           translate={{ kind: 'altText' }}
-          label="Picture alt text"
+          label={m.pictureAlt}
           value={image.altText}
           rows={1}
           onChange={(altText) => onChange({ ...image, altText })}
@@ -835,6 +847,7 @@ function ImageBlockEditor({
   block: ImageBlock;
   onChange: (block: ImageBlock) => void;
 }) {
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
   const ratio =
     block.naturalWidthPx && block.naturalHeightPx
       ? block.naturalHeightPx / block.naturalWidthPx
@@ -851,7 +864,7 @@ function ImageBlockEditor({
         />
         <div className="space-y-1">
           <NumberField
-            label="Width"
+            label={m.width}
             min={40}
             value={block.widthPx}
             suffix="px"
@@ -861,7 +874,7 @@ function ImageBlockEditor({
               onChange({ ...block, widthPx: next, heightPx: Math.round(next * ratio) });
             }}
           />
-          <div className="text-[10px] text-ink-subtle">Height: {block.heightPx}px</div>
+          <div className="text-[10px] text-ink-subtle">{m.height(block.heightPx)}</div>
         </div>
       </div>
       <FigureAlignField
@@ -870,7 +883,7 @@ function ImageBlockEditor({
       />
       <BiTextField
         translate={{ kind: 'altText' }}
-        label="Alt text"
+        label={m.altText}
         value={block.altText}
         onChange={(altText) => onChange({ ...block, altText })}
         rows={1}
@@ -914,20 +927,21 @@ function SourceBlockEditor({
   // An emptied label or footnote emits no node at all on the page (§ renderSource:
   // nothing renders an unmeasurable box) — so absent text needs a seed button here,
   // or a cleared line would be unrecoverable. Present text is typed on the page.
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
   const hasLabel = block.label !== undefined && !isBiTextEmpty(block.label);
   const hasFootnote = block.footnote !== undefined && !isBiTextEmpty(block.footnote);
 
   return (
     <div className="space-y-3">
       <div>
-        <GroupHeader title="Label" hint="Printed above the panel, typed on the page." />
+        <GroupHeader title={m.label} hint={m.labelHint} />
         {hasLabel ? (
           <ExcerptRow
             text={biExcerpt(block.label)}
             targetKey={editTargetKey({ kind: 'sourceLabel', blockId: block.id })}
             actions={
               <IconButton
-                label="Remove label"
+                label={m.removeLabel}
                 variant="danger"
                 onClick={() => onChange({ ...block, label: undefined })}
               >
@@ -941,15 +955,15 @@ function SourceBlockEditor({
             variant="subtle"
             onClick={() => onChange({ ...block, label: bi('Source A: ', '資料A：') })}
           >
-            + Label
+            {m.addLabel}
           </Button>
         )}
       </div>
 
       <div className="flex items-center gap-2 border-t border-line pt-2">
-        <Eyebrow>frame</Eyebrow>
+        <Eyebrow>{m.frame}</Eyebrow>
         <Segmented<'auto' | 'framed' | 'bare'>
-          label="Frame"
+          label={m.frameLabel}
           // Unstored means "follow the body", which is the resting state — a source
           // whose body is one table needs no frame of its own, because the table
           // already draws one (§`defaultFramed`).
@@ -961,33 +975,33 @@ function SourceBlockEditor({
             })
           }
           options={[
-            { value: 'auto', label: 'Auto' },
-            { value: 'framed', label: 'Framed' },
-            { value: 'bare', label: 'None' },
+            { value: 'auto', label: m.frameAuto },
+            { value: 'framed', label: m.frameFramed },
+            { value: 'bare', label: m.frameNone },
           ]}
         />
       </div>
       <p className="text-xs text-muted">
         {block.framed === undefined
           ? !defaultFramed(block.blocks)
-            ? 'No frame: the table draws its own box.'
-            : 'Framed, so the body reads as one source.'
+            ? m.noFrameOwnBox
+            : m.framedOneSource
           : block.framed
-            ? 'Always framed.'
-            : 'Never framed.'}
+            ? m.alwaysFramed
+            : m.neverFramed}
       </p>
 
       <BlockEditor
         blocks={block.blocks}
         onChange={(blocks) => onChange({ ...block, blocks })}
-        label="Body"
+        label={m.body}
         nested
       />
 
       <div className="border-t border-line pt-2">
         <GroupHeader
-          title="Footnote"
-          hint="Printed below the panel, in italic, typed on the page."
+          title={m.footnote}
+          hint={m.footnoteHint}
         />
         {hasFootnote ? (
           <ExcerptRow
@@ -995,7 +1009,7 @@ function SourceBlockEditor({
             targetKey={editTargetKey({ kind: 'sourceFootnote', blockId: block.id })}
             actions={
               <IconButton
-                label="Remove footnote"
+                label={m.removeFootnote}
                 variant="danger"
                 onClick={() => onChange({ ...block, footnote: undefined })}
               >
@@ -1009,7 +1023,7 @@ function SourceBlockEditor({
             variant="subtle"
             onClick={() => onChange({ ...block, footnote: bi('Note: ', '註：') })}
           >
-            + Footnote
+            {m.addFootnote}
           </Button>
         )}
       </div>
@@ -1026,6 +1040,7 @@ function FigureRowEditor({
   onChange: (block: ContentBlock) => void;
   onUnwrap: (survivor: ContentBlock) => void;
 }) {
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
   return (
     <div className="space-y-3">
       {/* Keyed by the children's own ids: the page selects the figure or a cell, not the row. */}
@@ -1051,21 +1066,21 @@ function FigureRowEditor({
       </div>
 
       <div className="flex items-center gap-2 border-t border-line pt-2">
-        <Eyebrow>table beside</Eyebrow>
+        <Eyebrow>{m.tableBeside}</Eyebrow>
         <Segmented<'left' | 'right'>
-          label="Table side"
+          label={m.tableSide}
           value={block.tableSide ?? 'right'}
           onChange={(tableSide) =>
             onChange({ ...block, tableSide: tableSide === 'right' ? undefined : tableSide })
           }
           options={[
-            { value: 'left', label: 'Left' },
-            { value: 'right', label: 'Right' },
+            { value: 'left', label: m.left },
+            { value: 'right', label: m.right },
           ]}
         />
         <span className="flex-1" />
         <Button size="sm" variant="subtle" onClick={() => onUnwrap(block.figure)}>
-          Remove table
+          {m.removeTable}
         </Button>
       </div>
       <div
