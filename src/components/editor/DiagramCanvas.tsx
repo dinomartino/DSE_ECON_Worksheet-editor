@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { nanoid } from 'nanoid';
 import { axisTickLabel, type Diagram, type DiagramPlace, type DiagramPoint, type DiagramSpanStyle } from '@/model/diagram';
 import { resolveDiagram } from '@/model/diagramAnchors';
@@ -36,7 +36,7 @@ import {
 } from '@/model/diagramDraw';
 import { nextEquilibriumName, pointTitle, withPointLabel } from '@/model/diagramShift';
 import { emptyBiText, isBiTextEmpty, parseRuns, plain, serializeRuns } from '@/model/text';
-import type { BiText, DiagramBlock, LanguageMode } from '@/model/types';
+import type { BiText, DiagramBlock, FontPair, LanguageMode } from '@/model/types';
 import { areaPolygon, isAnchoredArea } from '@/model/diagramAreas';
 import {
   areaLabelAnchor,
@@ -61,6 +61,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, Eyebrow, IconButton, SelectField } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import { BiTextField } from './BiTextField';
+import { FieldScopeContext } from './fieldScope';
 import { AreaInspector, ShadeMenu, ShiftCurveControls, areaName } from './DiagramAreaControls';
 import {
   CurveRelationControls,
@@ -222,7 +223,14 @@ const TOOLS: Array<{ id: Tool; glyph: string; name: string; hint: string }> = [
 interface Props {
   block: DiagramBlock;
   onChange: (block: DiagramBlock) => void;
-  onClose: () => void;
+  onClose?: () => void;
+  /** Win over the worksheet store: a saved graph draws in its own language and fonts. */
+  language?: LanguageMode;
+  fonts?: FontPair;
+  /** Fill the parent as a page's surface rather than overlay the screen; no Done. */
+  embedded?: boolean;
+  /** Shown above the selection inspector (embedded: the graph's own settings). */
+  panel?: ReactNode;
 }
 
 /**
@@ -245,14 +253,16 @@ type Gesture =
   | { kind: 'create'; handles: DiagramHandle[]; from: DiagramPoint; base: Diagram; moved: boolean }
   | { kind: 'marquee'; from: DiagramPoint; base: Diagram; moved: boolean; additive: boolean };
 
-export function DiagramCanvas({ block, onChange, onClose }: Props) {
+export function DiagramCanvas({ block, onChange, onClose, language: languageProp, fonts: fontsProp, embedded = false, panel }: Props) {
   // The canvas owns the keyboard while it is open. Without this, the preview's own
   // Delete handler fires on the same keypress and removes the whole diagram block that
   // is selected underneath — deleting one curve took the entire picture with it.
   useModalLayer();
 
-  const language = useWorksheetStore((s) => s.mode.language);
-  const fonts = useWorksheetStore((s) => s.worksheet.fonts);
+  const storeLanguage = useWorksheetStore((s) => s.mode.language);
+  const storeFonts = useWorksheetStore((s) => s.worksheet.fonts);
+  const language = languageProp ?? storeLanguage;
+  const fonts = fontsProp ?? storeFonts;
 
   const [tool, setTool] = useState<Tool>('select');
   /** Multi-selection. Empty means nothing is selected. */
@@ -1031,7 +1041,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           setCropping(false);
           setCropRect(null);
         } else if (selected.length > 0) setSelected([]);
-        else onClose();
+        else if (!embedded) onClose?.();
         return;
       }
       if (typing) return;
@@ -1102,7 +1112,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete, cropping, shadeOpen, spanDraft, projection, language, spanClear]);
+  }, [selected, diagram, labelAnchors, setDiagram, onClose, embedded, doCopy, doPaste, doDelete, cropping, shadeOpen, spanDraft, projection, language, spanClear]);
 
   const activeTool = TOOLS.find((t) => t.id === tool);
 
@@ -1135,10 +1145,16 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     return null;
   }, [editing, labelAnchors, projection, diagram, language, block.widthPx, spanClear]);
 
-  return (
-    <div className="zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm">
+  const surface = (
+    <div
+      className={
+        embedded
+          ? 'zone-dark flex h-full min-h-0 flex-col bg-desk'
+          : 'zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm'
+      }
+    >
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
-        <span className="text-sm font-semibold tracking-wide text-ink">Draw diagram</span>
+        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">Draw diagram</span>}
 
         <div className="flex gap-1.5">
           {TOOLS.map((item) => (
@@ -1298,7 +1314,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
                 ? `${selected.length} selected`
                 : activeTool?.hint}
         </span>
-        <Button onClick={onClose}>Done</Button>
+        {!embedded && <Button onClick={onClose}>Done</Button>}
       </header>
 
       <div className="flex min-h-0 flex-1">
@@ -1406,6 +1422,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         </div>
 
         <aside className="zone-light w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-4">
+          {panel && <div className="mb-4 border-b border-line pb-4">{panel}</div>}
           <SelectionInspector
             diagram={diagram}
             selected={selected}
@@ -1421,6 +1438,12 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         </aside>
       </div>
     </div>
+  );
+  // A graph's own language reaches every field under the canvas; the editor's reads the store.
+  return languageProp ? (
+    <FieldScopeContext.Provider value={{ language: languageProp, readOnly: false }}>{surface}</FieldScopeContext.Provider>
+  ) : (
+    surface
   );
 }
 

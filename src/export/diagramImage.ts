@@ -3,6 +3,7 @@ import { answerGraphBox, answerGraphSvg } from '@/render/answerGraph';
 import type { AnswerGraphNode, DiagramNode, RenderNode } from '@/render/ir';
 import { contentWidth, pageSetupOf } from '@/model/page';
 import type { FontPair, LanguageMode, OutputMode, Worksheet } from '@/model/types';
+import type { Diagram } from '@/model/diagram';
 import { renderWorksheet } from '@/render/worksheet';
 
 /**
@@ -27,7 +28,7 @@ import { renderWorksheet } from '@/render/worksheet';
  * enough that the curve strokes and subscripts stay sharp on a printed worksheet
  * without making the .docx large (a typical diagram is a few tens of KB).
  */
-const EXPORT_SCALE = 3;
+export const EXPORT_SCALE = 3;
 
 /** Diagram images keyed by the block id that produced them. */
 export type DiagramImageMap = Map<string, string>;
@@ -108,7 +109,7 @@ export function collectAnswerGraphNodes(worksheet: Worksheet, mode: OutputMode):
  * if the SVG pulled in anything external. That is why `diagramSvg` embeds no external
  * references.
  */
-async function rasterize(svg: string, width: number, height: number): Promise<string> {
+export async function rasterize(svg: string, width: number, height: number): Promise<string> {
   const encoded = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -133,6 +134,22 @@ async function rasterize(svg: string, width: number, height: number): Promise<st
   return canvas.toDataURL('image/png');
 }
 
+/** One diagram's PNG data URL at `EXPORT_SCALE`, on white: what a `.docx` places for it. */
+export function rasterizeDiagram(
+  block: { diagram: Diagram; widthPx: number; heightPx: number },
+  fonts: FontPair,
+  language: LanguageMode,
+): Promise<string> {
+  const svg = diagramSvg(block.diagram, {
+    widthPx: block.widthPx,
+    heightPx: block.heightPx,
+    language,
+    fonts,
+    scale: EXPORT_SCALE,
+  });
+  return rasterize(svg, block.widthPx * EXPORT_SCALE, block.heightPx * EXPORT_SCALE);
+}
+
 /**
  * Rasterize these diagram nodes, keyed by block id, in the order given.
  *
@@ -147,18 +164,7 @@ async function rasterizeDiagrams(
   language: LanguageMode,
   images: DiagramImageMap,
 ): Promise<void> {
-  const rasterized = await Promise.all(
-    nodes.map((node) => {
-      const svg = diagramSvg(node.diagram, {
-        widthPx: node.widthPx,
-        heightPx: node.heightPx,
-        language,
-        fonts,
-        scale: EXPORT_SCALE,
-      });
-      return rasterize(svg, node.widthPx * EXPORT_SCALE, node.heightPx * EXPORT_SCALE);
-    }),
-  );
+  const rasterized = await Promise.all(nodes.map((node) => rasterizeDiagram(node, fonts, language)));
   nodes.forEach((node, index) => images.set(node.blockId, rasterized[index]));
 }
 

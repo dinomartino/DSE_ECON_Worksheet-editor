@@ -34,6 +34,7 @@ export const ZIP_FILTERS: SaveFilter[] = [{ name: 'Worksheet backup', extensions
 export const CSV_FILTERS: SaveFilter[] = [{ name: 'CSV', extensions: ['csv'] }];
 export const XLSX_FILTERS: SaveFilter[] = [{ name: 'Excel workbook', extensions: ['xlsx'] }];
 export const PDF_FILTERS: SaveFilter[] = [{ name: 'PDF document', extensions: ['pdf'] }];
+export const PNG_FILTERS: SaveFilter[] = [{ name: 'PNG image', extensions: ['png'] }];
 
 /**
  * Are we inside the Tauri webview?
@@ -514,6 +515,7 @@ function mimeFor(fileName: string): string {
   if (fileName.endsWith('.json')) return 'application/json';
   if (fileName.endsWith('.zip')) return 'application/zip';
   if (fileName.endsWith('.csv')) return 'text/csv;charset=utf-8';
+  if (fileName.endsWith('.png')) return 'image/png';
   if (fileName.endsWith('.xlsx')) {
     return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   }
