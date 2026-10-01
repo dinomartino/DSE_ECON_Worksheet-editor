@@ -1,74 +1,76 @@
+import { COPY_EN, copyMessages } from './text';
+
 /**
- * The AI translation, Check terms and error copy: teacher-facing strings in one place, as
- * constants and small format functions. The AI door's verbs and bar read them.
+ * The AI translation, Check terms and error copy: teacher-facing strings as constants and
+ * small format functions. The text lives in `./messages.ts`. A constant is the English
+ * text; the functions, and components through `useMessages(COPY_MESSAGES)`, follow the
+ * interface language.
  */
 
 // ---- entry points ----
 
-export const MENU_SETTINGS = 'Settings…';
+export const MENU_SETTINGS = COPY_EN.menuSettings;
 
 // ---- flash ----
 
-export const UNDO_ACTION = 'Undo';
-export const replacedTermsFlash = (n: number): string => `Replaced ${n} ${plural(n, 'term')}`;
+export const UNDO_ACTION = COPY_EN.undoAction;
+export const replacedTermsFlash = (n: number): string => copyMessages().replacedTerms(n);
 
 // ---- paper check ----
 
 // The findings' own wording lives in `checkPaper` (src/model/paperHealth.ts).
-export const PAPER_CHECK_OPEN_AI = 'Open ✦ AI';
+export const PAPER_CHECK_OPEN_AI = COPY_EN.paperCheckOpenAi;
 
 // ---- run bar ----
 
-export const CLOSE = 'Close';
-export const STOP = 'Stop';
-export const TERMS_UNAVAILABLE = 'Terminology check unavailable';
-export const waitingLine = (provider: string, ms: number): string =>
-  `Waiting for ${provider}'s rate limit (${Math.max(1, Math.round(ms / 1000))} s)`;
+export const CLOSE = COPY_EN.close;
+export const STOP = COPY_EN.stop;
+export const TERMS_UNAVAILABLE = COPY_EN.termsUnavailable;
+export const waitingLine = (provider: string, ms: number): string => copyMessages().waitingLine(provider, ms);
 
 // ---- item notes ----
 
-export const termFixed = (from: string, to: string): string => `Term fixed: ${from} → ${to} (EDB)`;
-export const SIMPLIFIED_FIXED = 'Simplified characters changed to Traditional';
-export const conflictChip = (form: string, meansEn: string): string => `Meaning reversed? ${form} is “${meansEn}”`;
-export const termChip = (state: string, en: string, expected: string): string =>
-  state === 'not-preferred' ? `EDB lists ${expected} first for “${en}”` : `${en} (EDB: ${expected})`;
-export const failedRow = (reason: string): string => `Couldn't translate this text safely (${reason}).`;
-export const SAFETY_ROW = 'The provider declined to translate this text.';
+export const termFixed = (from: string, to: string): string => copyMessages().termFixed(from, to);
+export const SIMPLIFIED_FIXED = COPY_EN.simplifiedFixed;
+export const conflictChip = (form: string, meansEn: string): string => copyMessages().conflictChip(form, meansEn);
+export const termChip = (state: string, en: string, expected: string): string => {
+  const m = copyMessages();
+  return state === 'not-preferred' ? m.termChipNotPreferred(en, expected) : m.termChip(en, expected);
+};
+export const failedRow = (reason: string): string => copyMessages().failedRow(reason);
+export const SAFETY_ROW = COPY_EN.safetyRow;
 
 // ---- Error ----
 
-export const TECHNICAL_DETAIL = 'Technical detail';
-export const REGION_GEMINI_NOTE = 'Keep the VPN on while you use Gemini.';
-export const useProvider = (name: string): string => `Use ${name}`;
-export const HK_PROVIDERS_NOTE = 'DeepSeek and Qwen work in Hong Kong without a VPN.';
-export const TRY_AGAIN = 'Try again';
-export const OPEN_SETTINGS = 'Open Settings';
-export const CHOOSE_MODEL = 'Choose a model…';
-export const SWITCH_PROVIDER = 'Switch provider…';
-export const GET_NEW_KEY = 'Get a new key';
-export const openProvider = (provider: string): string => `Open ${provider}`;
-export const switchModel = (model: string): string => `Switch to ${model}`;
-export const noKeyError = (provider: string, desktop: boolean): string =>
-  `No key for ${provider} is saved on this ${desktop ? 'computer' : 'browser'}.`;
-export const noModelError = (provider: string): string => `Choose a model for ${provider} in Settings.`;
-export const noBaseUrlError = (provider: string): string => `Add the server address for ${provider} in Settings.`;
+export const TECHNICAL_DETAIL = COPY_EN.technicalDetail;
+export const REGION_GEMINI_NOTE = COPY_EN.regionGeminiNote;
+export const useProvider = (name: string): string => copyMessages().useProvider(name);
+export const HK_PROVIDERS_NOTE = COPY_EN.hkProvidersNote;
+export const TRY_AGAIN = COPY_EN.tryAgain;
+export const OPEN_SETTINGS = COPY_EN.openSettings;
+export const CHOOSE_MODEL = COPY_EN.chooseModel;
+export const SWITCH_PROVIDER = COPY_EN.switchProvider;
+export const GET_NEW_KEY = COPY_EN.getNewKey;
+export const openProvider = (provider: string): string => copyMessages().openProvider(provider);
+export const switchModel = (model: string): string => copyMessages().switchModel(model);
+export const noKeyError = (provider: string, desktop: boolean): string => copyMessages().noKeyError(provider, desktop);
+export const noModelError = (provider: string): string => copyMessages().noModelError(provider);
+export const noBaseUrlError = (provider: string): string => copyMessages().noBaseUrlError(provider);
 
 // ---- Check terms ----
 
 /** A textbook variant is offered, not counted as wrong. */
-export const checkSummary = (fix: number, variants: number, lower: number, manual: number): string =>
-  [
-    fix > 0 || variants + lower + manual === 0 ? `${fix} to fix` : '',
-    variants > 0 ? `${variants} textbook ${plural(variants, 'variant')}` : '',
-    lower > 0 ? `${lower} acceptable but not the first choice` : '',
-    manual > 0 ? `${manual} to check by hand` : '',
+export const checkSummary = (fix: number, variants: number, lower: number, manual: number): string => {
+  const m = copyMessages();
+  return [
+    fix > 0 || variants + lower + manual === 0 ? m.summaryFix(fix) : '',
+    variants > 0 ? m.summaryVariant(variants) : '',
+    lower > 0 ? m.summaryLower(lower) : '',
+    manual > 0 ? m.summaryManual(manual) : '',
   ]
     .filter(Boolean)
     .join(' · ');
-export const NOTHING_REPLACED = 'Nothing replaced. These texts changed since the check.';
+};
+export const NOTHING_REPLACED = COPY_EN.nothingReplaced;
 export const lowerRankLine = (en: string, found: string, expected: string): string =>
-  `${en}: ${found} (EDB lists ${expected} first)`;
-
-function plural(n: number, word: string): string {
-  return n === 1 ? word : `${word}s`;
-}
+  copyMessages().lowerRankLine(en, found, expected);

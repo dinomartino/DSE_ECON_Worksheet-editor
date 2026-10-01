@@ -4,18 +4,20 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useAiRun, type ReviewOutcome } from '@/assist/runStore';
 import type { ReviewItem, ReviewTone } from '@/assist/types';
 import { scrollPageTo } from '@/components/editor/panelRows';
+import { useMessages } from '@/i18n/language';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { BarButton, ErrorBody, RunningBody, Sparkle } from './barParts';
 import { ItemCard } from './ItemCard';
+import { AI_UI_MESSAGES } from './messages';
 import { markTones, pageTextFor, useMarkClicks, usePageMarks } from './pageMarks';
 
 const NOTHING_DISMISS_MS = 4000;
 const NO_ITEMS: readonly ReviewItem[] = [];
 
-const CHIP: Record<Exclude<ReviewTone, 'inserted'>, { className: string; label: (n: number) => string }> = {
-  look: { className: 'bg-warn-soft text-warn-ink', label: (n) => `${n} to look at` },
-  failed: { className: 'bg-danger-soft text-danger-ink', label: (n) => `${n} failed` },
-  finding: { className: 'bg-warn-soft text-warn-ink', label: (n) => `${n} ${n === 1 ? 'finding' : 'findings'}` },
+const CHIP: Record<Exclude<ReviewTone, 'inserted'>, { className: string; label: 'chipLook' | 'chipFailed' | 'chipFinding' }> = {
+  look: { className: 'bg-warn-soft text-warn-ink', label: 'chipLook' },
+  failed: { className: 'bg-danger-soft text-danger-ink', label: 'chipFailed' },
+  finding: { className: 'bg-warn-soft text-warn-ink', label: 'chipFinding' },
 };
 
 /** Shows the item: scrolls to its page text, or selects its question when it has none. */
@@ -32,6 +34,7 @@ function reveal(item: ReviewItem | undefined) {
  * no modal layer — the page stays editable — but Escape inside it ends the review.
  */
 export function AiBar() {
+  const m = useMessages(AI_UI_MESSAGES);
   const phase = useAiRun((s) => s.phase);
   // Re-render on every edit: Undo all hides once its commit is no longer the latest.
   const worksheet = useWorksheetStore((s) => s.worksheet);
@@ -111,7 +114,7 @@ export function AiBar() {
       <div data-print-hide className="pointer-events-none fixed bottom-16 left-[76px] right-[400px] z-[45] flex justify-center px-4">
         <div
           role={phase.kind === 'error' ? 'alert' : 'status'}
-          aria-label="AI"
+          aria-label={m.ai}
           onKeyDown={(event) => {
             if (event.key !== 'Escape' || phase.kind === 'running') return;
             event.stopPropagation();
@@ -152,6 +155,7 @@ function ReviewBody({
   onChip(tone: ReviewTone): void;
   onWalk(step: 1 | -1): void;
 }) {
+  const m = useMessages(AI_UI_MESSAGES);
   const run = useAiRun.getState();
   const tones = (['look', 'failed', 'finding'] as const).flatMap((tone) => {
     const n = items.filter((item) => item.tone === tone).length;
@@ -159,7 +163,7 @@ function ReviewBody({
   });
   let actions: ReactNode = null;
   if (outcome.kind === 'inserted') {
-    actions = undoLive && <BarButton onClick={run.undoAll}>Undo all</BarButton>;
+    actions = undoLive && <BarButton onClick={run.undoAll}>{m.undoAll}</BarButton>;
   } else if (outcome.kind === 'findings' && outcome.applyAll) {
     const applyAll = outcome.applyAll;
     actions = (
@@ -187,20 +191,20 @@ function ReviewBody({
           onClick={() => onChip(tone)}
           className={`shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-[11px] font-medium ${CHIP[tone as keyof typeof CHIP].className}`}
         >
-          {CHIP[tone as keyof typeof CHIP].label(n)}
+          {m[CHIP[tone as keyof typeof CHIP].label](n)}
         </button>
       ))}
       {items.length > 0 && (
         <span className="flex shrink-0 items-center">
-          <BarButton aria-label="Previous" onClick={() => onWalk(-1)}>‹</BarButton>
+          <BarButton aria-label={m.previous} onClick={() => onWalk(-1)}>‹</BarButton>
           {position && <span className="text-[11px] tabular-nums text-on-cta/70">{position}</span>}
-          <BarButton aria-label="Next" onClick={() => onWalk(1)}>›</BarButton>
+          <BarButton aria-label={m.next} onClick={() => onWalk(1)}>›</BarButton>
         </span>
       )}
       {actions}
       {outcome.kind !== 'nothing' && (
         <BarButton primary={!(outcome.kind === 'findings' && outcome.applyAll)} onClick={run.dismiss}>
-          Done
+          {m.done}
         </BarButton>
       )}
     </>

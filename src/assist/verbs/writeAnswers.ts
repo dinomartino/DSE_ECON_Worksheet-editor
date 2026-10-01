@@ -6,6 +6,7 @@ import type { AnswerApplyReport, AnswerPlan, AnswersOutcome, AnswerTarget, RunDe
 import { editTargetKey } from '@/model/edits';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { createRunDeps } from '@/translate/deps';
+import { assistMessages } from '../text';
 import { registerVerb } from '../registry';
 import type { AiVerb, ReviewItem, VerbContext, VerbOutcome } from '../types';
 
@@ -22,8 +23,6 @@ export async function answerDeps(): Promise<AnswerDepsResult> {
   if (resolved.ok) return { ok: true, deps: resolved.deps };
   return { ok: false, error: aiErrorInfo(resolved.reason === 'noModel' ? 'model' : 'notConfigured', resolved.provider) };
 }
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** The page text the fill lives on in the teacher version; none for a scheme alone. */
 function targetKeyOf(target: AnswerTarget, outcome: AnswersOutcome): string | undefined {
@@ -52,7 +51,7 @@ export function reviewItems(plan: AnswerPlan, outcome: AnswersOutcome, report: A
       const targetKey = targetKeyOf(target, outcome);
       items.push({ ...base, tone: result.status === 'look' ? 'look' : 'inserted', ...(targetKey ? { targetKey } : {}), notes: result.notes });
     } else if (stale.has(key)) {
-      items.push({ ...base, tone: 'failed', notes: ['Changed while writing. Not inserted'] });
+      items.push({ ...base, tone: 'failed', notes: [assistMessages().changedWhileWriting] });
     } else if (result.status === 'failed') {
       items.push({ ...base, tone: 'failed', notes: result.notes });
     }
@@ -67,17 +66,17 @@ export function makeWriteAnswersVerb(deps: () => Promise<AnswerDepsResult> = ans
     group: 'write',
     order: 0,
     needsKey: true,
-    label: () => 'Write answers & mark scheme',
+    label: () => assistMessages().writeAnswersLabel,
     available(ctx) {
       const count = plan(ctx).targets.size;
-      return count > 0 ? { count, unit: 'parts' } : null;
+      return count > 0 ? { count, unit: assistMessages().unitParts } : null;
     },
     sendsLine(ctx, providerLabel) {
-      return `Sends ${plural(plan(ctx).targets.size, 'part')} to ${providerLabel} with your key`;
+      return assistMessages().sendsParts(plan(ctx).targets.size, providerLabel);
     },
     async run(ctx, io): Promise<VerbOutcome> {
       const answers = plan(ctx);
-      if (answers.targets.size === 0) return { kind: 'nothing', summary: 'Nothing to fill here' };
+      if (answers.targets.size === 0) return { kind: 'nothing', summary: assistMessages().nothingToFill };
       const resolved = await deps();
       if (!resolved.ok) return { kind: 'error', error: resolved.error };
       const outcome = await runAnswers(answers, resolved.deps, io.signal, ({ done, total }) => io.progress(done, total));
@@ -86,17 +85,18 @@ export function makeWriteAnswersVerb(deps: () => Promise<AnswerDepsResult> = ans
       const store = useWorksheetStore.getState();
       const report = store.applyAnswerFills(writesFor(answers, outcome), { worksheetId: answers.worksheetId });
       const items = reviewItems(answers, outcome, report);
-      const tail = outcome.stopped ? ': stopped' : outcome.fatal ? `: ${outcome.fatal.message}` : '';
+      const m = assistMessages();
+      const tail = outcome.stopped ? m.tailStopped : outcome.fatal ? m.tailMessage(outcome.fatal.message) : '';
       if (report.applied.length === 0) {
         return items.length > 0
-          ? { kind: 'findings', summary: `Nothing inserted${tail}`, items }
-          : { kind: 'nothing', summary: `Nothing inserted${tail}` };
+          ? { kind: 'findings', summary: m.nothingInserted(tail), items }
+          : { kind: 'nothing', summary: m.nothingInserted(tail) };
       }
       const committed = useWorksheetStore.getState().worksheet;
       const live = () => useWorksheetStore.getState().worksheet === committed;
       return {
         kind: 'inserted',
-        summary: `Filled ${plural(report.applied.length, 'part')}${tail}`,
+        summary: m.filledParts(report.applied.length, tail),
         items,
         undo: { live, run: () => live() && useWorksheetStore.getState().undo() },
         showTeacher: true,

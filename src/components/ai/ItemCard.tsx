@@ -4,14 +4,16 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import type { ReviewItem } from '@/assist/types';
 import { Button, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
+import { useMessages } from '@/i18n/language';
+import { AI_UI_MESSAGES } from './messages';
 import { pageTextFor } from './pageMarks';
 
-const TONE_LABEL: Record<ReviewItem['tone'], string> = {
-  inserted: 'Inserted',
-  look: 'Needs a look',
-  failed: "Couldn't translate",
-  finding: 'Finding',
-};
+const TONE_LABEL = {
+  inserted: 'toneInserted',
+  look: 'toneLook',
+  failed: 'toneFailed',
+  finding: 'toneFinding',
+} as const;
 const TONE_CLASS: Record<ReviewItem['tone'], string> = {
   inserted: 'text-accent-ink',
   look: 'text-warn-ink',
@@ -74,6 +76,7 @@ export function ItemCard({
   onNext(): void;
   onClose(): void;
 }) {
+  const m = useMessages(AI_UI_MESSAGES);
   const ref = useRef<HTMLDivElement>(null);
   useAnchor(item.targetKey, ref);
   const [done, setDone] = useState<ReadonlySet<string>>(new Set());
@@ -83,15 +86,15 @@ export function ItemCard({
       ref={ref}
       data-print-hide
       role="dialog"
-      aria-label={item.where || TONE_LABEL[item.tone]}
+      aria-label={item.where || m[TONE_LABEL[item.tone]]}
       className="fixed z-[45] w-72 animate-pop-in rounded-xl border border-line bg-surface-raised p-3 text-[13px] text-ink shadow-xl"
     >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <div className={`text-[11px] font-semibold uppercase tracking-wide ${TONE_CLASS[item.tone]}`}>{TONE_LABEL[item.tone]}</div>
+          <div className={`text-[11px] font-semibold uppercase tracking-wide ${TONE_CLASS[item.tone]}`}>{m[TONE_LABEL[item.tone]]}</div>
           {item.where && <div className="truncate font-medium">{item.where}</div>}
         </div>
-        <IconButton label="Close" onClick={onClose}>
+        <IconButton label={m.close} onClick={onClose}>
           <CloseIcon size={14} />
         </IconButton>
       </div>
@@ -115,15 +118,15 @@ export function ItemCard({
               setDone((prev) => new Set(prev).add(item.id));
             }}
           >
-            {acted ? 'Done' : item.action.label}
+            {acted ? m.done : item.action.label}
           </Button>
         )}
         <span className="flex-1" />
         {position && (
           <>
-            <IconButton label="Previous" onClick={onPrev}>‹</IconButton>
+            <IconButton label={m.previous} onClick={onPrev}>‹</IconButton>
             <span className="text-xs tabular-nums text-ink-subtle">{position}</span>
-            <IconButton label="Next" onClick={onNext}>›</IconButton>
+            <IconButton label={m.next} onClick={onNext}>›</IconButton>
           </>
         )}
       </div>

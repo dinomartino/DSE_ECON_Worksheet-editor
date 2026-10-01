@@ -1,5 +1,6 @@
 import type { AiErrorInfo } from '@/ai/types';
 import * as copy from '@/components/translate/copy';
+import { copyMessages } from '@/components/translate/text';
 import type { Glossary } from '@/glossary/types';
 import { contentKey } from '@/library/contentKey';
 import { questionSlots, writeIntoCopies, type CopyRecord, type CopyRef, type CopySkip } from '@/library/sameCopies';
@@ -11,6 +12,7 @@ import { planFromSlots } from '@/translate/plan';
 import { runTranslation, writesFor } from '@/translate/run';
 import { termFixWrites, termRowsFromSlots } from '@/translate/termCheck';
 import type { JobResult, RunDepsResult, RunOutcome, TermRow } from '@/translate/types';
+import { ASSIST_EN, assistMessages } from './text';
 import { depsError, fillCount, fillOptions, needsLook, rowNotes, sideName, usable } from './fillRules';
 import { termNotes, termTally, tallySummary } from './termRules';
 
@@ -72,13 +74,13 @@ export interface BankReviewItem {
   fix?: { label: string; path: TextPath; index: number };
 }
 
-export const CHANGED_SINCE_READ = 'Changed since the bank read it. Left as it is.';
-export const NOT_WRITTEN = 'No copy of it could be written.';
+export const CHANGED_SINCE_READ = ASSIST_EN.changedSinceRead;
+export const NOT_WRITTEN = ASSIST_EN.notWritten;
 
 const now = (deps: BankRunDeps) => deps.now?.() ?? new Date().toISOString();
 /** A write, queued behind the screen's other writes: a topic edit and a fill never load and save one document at once. */
 export const exclusively = <T,>(deps: Pick<BankRunDeps, 'exclusive'>, work: () => Promise<T>): Promise<T> => (deps.exclusive ? deps.exclusive(work) : work());
-const questions = (n: number) => `${n} ${n === 1 ? 'question' : 'questions'}`;
+const questions = (n: number) => assistMessages().bankQuestions(n);
 const sameRef = (a: CopyRef, b: CopyRef) => a.docId === b.docId && a.questionId === b.questionId;
 
 /** The copy a unit names, read now: undefined when it is gone or no longer says what was listed. */
@@ -130,18 +132,19 @@ export function bankFillSummary(o: {
   total: number;
   notSent?: { count: number; reason: string };
 }): string {
+  const m = assistMessages();
   const lead = o.stopped
-    ? `Stopped. ${o.done} of ${o.total} done`
+    ? m.bankStopped(o.done, o.total)
     : o.filled > 0
-      ? `Filled ${sideName(o.side)} in ${questions(o.filled)}`
-      : `Nothing filled`;
+      ? m.bankFilled(sideName(o.side), questions(o.filled))
+      : m.bankNothingFilled;
   const parts = [
     lead,
-    o.look > 0 ? `${o.look} ${o.look === 1 ? 'needs' : 'need'} a look` : '',
-    o.failed > 0 ? `${o.failed} couldn't be translated` : '',
-    o.notSent && o.notSent.count > 0 ? `${questions(o.notSent.count)} not sent (${o.notSent.reason})` : '',
+    o.look > 0 ? m.summaryLook(o.look) : '',
+    o.failed > 0 ? m.summaryFailed(o.failed) : '',
+    o.notSent && o.notSent.count > 0 ? m.bankNotSent(questions(o.notSent.count), o.notSent.reason) : '',
   ].filter(Boolean);
-  return o.stopped && parts.length === 1 ? `${lead}.` : parts.join(', ');
+  return o.stopped && parts.length === 1 ? `${lead}${m.endStop}` : parts.join(m.listJoin);
 }
 
 /** A question's card: what came back worth a look, or why it failed, text by text. */
@@ -170,7 +173,7 @@ function fillItem(unit: BankUnit, plan: ReturnType<typeof planFromSlots>, outcom
   const marks: BankMark[] = written
     ? writes.map((write) => ({ text: plain(write.next), tone: lookPaths.has(write.path) ? ('look' as const) : ('inserted' as const) })).filter((mark) => mark.text.trim())
     : [];
-  if (!written) notes.push(NOT_WRITTEN);
+  if (!written) notes.push(assistMessages().notWritten);
   const tone: BankItemTone = !written || failed ? 'failed' : look ? 'look' : 'inserted';
   return { id: `${unit.docId}\u0000${unit.questionId}`, tone, unit, notes, marks };
 }
@@ -178,7 +181,7 @@ function fillItem(unit: BankUnit, plan: ReturnType<typeof planFromSlots>, outcom
 /** Fill one side of every unit that lacks it, one question at a time. Never rejects. */
 export async function runBankFill(req: FillRequest, deps: BankRunDeps, signal: AbortSignal, onProgress: BankProgress): Promise<FillOutcome> {
   const total = req.units.length;
-  const label = `Translating into ${sideName(req.side)}`;
+  const label = assistMessages().translatingInto(sideName(req.side));
   onProgress(0, total, label);
   const resolved = await deps.createRunDeps({ glossary: true });
   if (!resolved.ok) return { kind: 'error', error: depsError(resolved, deps.desktop()) };
@@ -201,7 +204,7 @@ export async function runBankFill(req: FillRequest, deps: BankRunDeps, signal: A
     }
     const read = await readUnit(deps, unit);
     if (!read) {
-      items.push({ id: `${unit.docId}\u0000${unit.questionId}`, tone: 'failed', unit, notes: [CHANGED_SINCE_READ], marks: [] });
+      items.push({ id: `${unit.docId}\u0000${unit.questionId}`, tone: 'failed', unit, notes: [assistMessages().changedSinceRead], marks: [] });
       done += 1;
       onProgress(done, total, label);
       continue;
@@ -273,7 +276,7 @@ export interface UnitFindings {
 
 export type TermsOutcome = { kind: 'error'; error: AiErrorInfo } | { kind: 'checked'; findings: UnitFindings[]; glossary: Glossary; stopped: boolean };
 
-const TERMS_ERROR: AiErrorInfo = { kind: 'badOutput', provider: 'gemini', message: copy.TERMS_UNAVAILABLE, fatal: false, actions: ['retry'] };
+const termsError = (): AiErrorInfo => ({ kind: 'badOutput', provider: 'gemini', message: copyMessages().termsUnavailable, fatal: false, actions: ['retry'] });
 
 /** Keyless: every unit's 中文 against the EDB glossary. Nothing is written. */
 export async function runBankTerms(
@@ -283,12 +286,12 @@ export async function runBankTerms(
   onProgress: BankProgress,
 ): Promise<TermsOutcome> {
   const total = req.units.length;
-  onProgress(0, total, 'Checking terms');
+  onProgress(0, total, assistMessages().checkingTerms);
   let glossary: Glossary;
   try {
     glossary = await deps.loadGlossary();
   } catch {
-    return { kind: 'error', error: TERMS_ERROR };
+    return { kind: 'error', error: termsError() };
   }
   const findings: UnitFindings[] = [];
   let done = 0;
@@ -300,7 +303,7 @@ export async function runBankTerms(
       if (rows.length > 0) findings.push({ unit, slots: read.slots, rows, copies: req.copiesOf(unit) });
     }
     done += 1;
-    onProgress(done, total, 'Checking terms');
+    onProgress(done, total, assistMessages().checkingTerms);
   }
   return { kind: 'checked', findings, glossary, stopped: false };
 }
@@ -319,7 +322,7 @@ export function termItems(findings: readonly UnitFindings[]): BankReviewItem[] {
           notes: where ? [where, ...notes] : notes,
           source: plain(row.en),
           marks: check.found?.text ? [{ text: check.found.text, tone: 'finding' }] : [],
-          ...(check.fix ? { fix: { label: `Replace with ${check.fix.to}`, path: row.path, index } } : {}),
+          ...(check.fix ? { fix: { label: assistMessages().replaceWith(check.fix.to), path: row.path, index } } : {}),
         };
       }),
     ),
@@ -329,7 +332,7 @@ export function termItems(findings: readonly UnitFindings[]): BankReviewItem[] {
 /** "3 to fix · 1 textbook variant in 2 questions". */
 export function termsSummary(findings: readonly UnitFindings[]): string {
   const { tally } = termTally(findings.flatMap((f) => f.rows));
-  return `${tallySummary(tally)} in ${questions(findings.length)}`;
+  return assistMessages().bankTermsIn(tallySummary(tally), questions(findings.length));
 }
 
 /** Replace N: the safe fixes of every question. */

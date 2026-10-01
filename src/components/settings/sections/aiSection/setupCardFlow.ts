@@ -1,4 +1,3 @@
-import { GEMINI_REGION_MESSAGE } from '@/ai/errors';
 import { presetFor } from '@/ai/providers';
 import type { ProviderId } from '@/ai/types';
 import type { AiSettings } from '@/settings/aiSettings';
@@ -6,7 +5,8 @@ import type { SettingsEnv } from '@/settings/types';
 import { initialAiSetup, TOP_PROVIDERS, type AiSetupState } from './aiSetup';
 import type { AiSetupRunner } from './aiSetupRunner';
 import type { SecretStore } from '@/platform/secrets';
-import { HK_PROVIDERS_NOTE } from '@/components/translate/copy';
+import { geminiRegionMessage } from '@/components/ai/errorCopy';
+import { COPY_MESSAGES } from '@/components/translate/messages';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
 import { AI_SECTION_MESSAGES } from './messages';
@@ -60,13 +60,13 @@ export function initialSetupCard(
 /** The region refusal, as one line naming the refusing provider. */
 export function regionLine(provider: ProviderId, lang = uiLanguage()): string {
   return provider === 'gemini'
-    ? GEMINI_REGION_MESSAGE
+    ? geminiRegionMessage(lang)
     : resolveMessages(AI_SECTION_MESSAGES, lang).refusedTry(presetFor(provider).label);
 }
 
 /** Settings' banner after a refusal: the same line, then the Hong Kong alternatives. */
 export function regionBanner(provider: ProviderId, lang = uiLanguage()): string {
   return provider === 'gemini'
-    ? `${GEMINI_REGION_MESSAGE} ${HK_PROVIDERS_NOTE}`
+    ? `${geminiRegionMessage(lang)} ${resolveMessages(COPY_MESSAGES, lang).hkProvidersNote}`
     : resolveMessages(AI_SECTION_MESSAGES, lang).refusedHk(presetFor(provider).label);
 }

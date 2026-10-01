@@ -22,19 +22,28 @@ import {
   pickSaveFile,
   writeHandle,
 } from './webPicker';
+import { platformMessages } from './text';
 
 /** File-type presets for the save dialog and the browser's Save As picker. */
 export type SaveFilter = { name: string; extensions: string[] };
 
-export const DOCX_FILTERS: SaveFilter[] = [
-  { name: 'Word document', extensions: ['docx'] },
+/** The name reads the interface language when the dialog opens, not when the module loads. */
+const filter = (name: () => string, ...extensions: string[]): SaveFilter[] => [
+  {
+    get name() {
+      return name();
+    },
+    extensions,
+  },
 ];
-export const JSON_FILTERS: SaveFilter[] = [{ name: 'Worksheet', extensions: ['json'] }];
-export const ZIP_FILTERS: SaveFilter[] = [{ name: 'Worksheet backup', extensions: ['zip'] }];
+
+export const DOCX_FILTERS = filter(() => platformMessages().wordDocument, 'docx');
+export const JSON_FILTERS = filter(() => platformMessages().worksheet, 'json');
+export const ZIP_FILTERS = filter(() => platformMessages().worksheetBackup, 'zip');
 export const CSV_FILTERS: SaveFilter[] = [{ name: 'CSV', extensions: ['csv'] }];
-export const XLSX_FILTERS: SaveFilter[] = [{ name: 'Excel workbook', extensions: ['xlsx'] }];
-export const PDF_FILTERS: SaveFilter[] = [{ name: 'PDF document', extensions: ['pdf'] }];
-export const PNG_FILTERS: SaveFilter[] = [{ name: 'PNG image', extensions: ['png'] }];
+export const XLSX_FILTERS = filter(() => platformMessages().excelWorkbook, 'xlsx');
+export const PDF_FILTERS = filter(() => platformMessages().pdfDocument, 'pdf');
+export const PNG_FILTERS = filter(() => platformMessages().pngImage, 'png');
 
 /**
  * Are we inside the Tauri webview?
@@ -278,7 +287,7 @@ export async function chooseFolderTarget(): Promise<FolderTarget | 'cancelled' |
     directory: true,
     multiple: false,
     canCreateDirectories: true,
-    title: 'Choose a folder for the exported files',
+    title: platformMessages().chooseExportFolder,
     ...(start ? { defaultPath: start } : {}),
   });
   if (typeof folder !== 'string') return 'cancelled';
@@ -589,10 +598,11 @@ export async function openExternal(url: string): Promise<void> {
 
 /** The platform's name for "reveal": Finder on macOS, Explorer on Windows. */
 export function revealLabel(): string {
-  if (typeof navigator === 'undefined') return 'Show in folder';
+  const m = platformMessages();
+  if (typeof navigator === 'undefined') return m.showInFolder;
   const platform = `${navigator.platform ?? ''} ${navigator.userAgent ?? ''}`;
-  if (/Mac/.test(platform)) return 'Show in Finder';
+  if (/Mac/.test(platform)) return m.showInFinder;
   // Not /win/i: that matches "Darwin".
-  if (/Windows|Win32|Win64/.test(platform)) return 'Show in Explorer';
-  return 'Show in folder';
+  if (/Windows|Win32|Win64/.test(platform)) return m.showInExplorer;
+  return m.showInFolder;
 }

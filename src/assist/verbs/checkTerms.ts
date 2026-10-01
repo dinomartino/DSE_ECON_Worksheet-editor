@@ -8,8 +8,10 @@ import { useAppDialogs } from '@/store/appDialogs';
 import { slotInScope } from '@/translate/plan';
 import { termFixWrites, termRowsFromSlots } from '@/translate/termCheck';
 import type { TermRow } from '@/translate/types';
+import { copyMessages } from '@/components/translate/text';
+import { assistMessages } from '../text';
 import { registerVerb } from '../registry';
-import { NOTHING_REPLACED_ONE, TERMS_MATCH, termNotes, termTally, tallySummary } from '../termRules';
+import { termNotes, termTally, tallySummary } from '../termRules';
 import type { AiVerb, ReviewItem, VerbContext, VerbOutcome } from '../types';
 import { applyWrites, commitUndo, slotsOf, whereOf } from './translateShared';
 
@@ -32,7 +34,7 @@ function replace(rows: readonly TermRow[], accepted: Map<TextPath, Set<number>>,
 }
 
 export function termFindings(ctx: VerbContext, rows: readonly TermRow[]): VerbOutcome {
-  if (rows.length === 0) return { kind: 'nothing', summary: TERMS_MATCH };
+  if (rows.length === 0) return { kind: 'nothing', summary: assistMessages().termsMatch };
   const items: ReviewItem[] = [];
   const { tally, safe, safeCount: n } = termTally(rows);
   for (const row of rows) {
@@ -50,10 +52,10 @@ export function termFindings(ctx: VerbContext, rows: readonly TermRow[]): VerbOu
         ...(fix
           ? {
               action: {
-                label: `Replace with ${fix.to}`,
+                label: assistMessages().replaceWith(fix.to),
                 run: () => {
                   if (replace([row], new Map([[row.path, new Set([index])]]), ctx.worksheet.id) === 0) {
-                    useAppDialogs.getState().notify(NOTHING_REPLACED_ONE);
+                    useAppDialogs.getState().notify(assistMessages().nothingReplacedOne);
                   }
                 },
               },
@@ -70,12 +72,12 @@ export function termFindings(ctx: VerbContext, rows: readonly TermRow[]): VerbOu
     ...(n > 0
       ? {
           applyAll: {
-            label: `Replace ${n}`,
+            label: assistMessages().replaceN(n),
             run: () => {
               const terms = replace(rows, safe, ctx.worksheet.id);
-              if (terms === 0) return useAppDialogs.getState().notify(copy.NOTHING_REPLACED);
+              if (terms === 0) return useAppDialogs.getState().notify(copyMessages().nothingReplaced);
               const undo = commitUndo();
-              useAppDialogs.getState().notify(copy.replacedTermsFlash(terms), { label: copy.UNDO_ACTION, ...undo });
+              useAppDialogs.getState().notify(copy.replacedTermsFlash(terms), { label: copyMessages().undoAction, ...undo });
             },
           },
         }
@@ -96,17 +98,17 @@ export function checkTermsVerb(load: () => Promise<Glossary> = loadGlossary): Ai
     group: 'check',
     order: 0,
     needsKey: false,
-    label: () => 'Check terms against EDB glossary',
+    label: () => assistMessages().checkTermsLabel,
     available: (ctx) => (hasBoth(ctx) ? {} : null),
     run: async (ctx, io) => {
-      io.progress(0, 0, 'Checking terms');
+      io.progress(0, 0, assistMessages().checkingTerms);
       let glossary: Glossary;
       try {
         glossary = await load();
       } catch {
         return {
           kind: 'error',
-          error: { kind: 'badOutput', provider: 'gemini', message: copy.TERMS_UNAVAILABLE, fatal: false, actions: ['retry'] },
+          error: { kind: 'badOutput', provider: 'gemini', message: copyMessages().termsUnavailable, fatal: false, actions: ['retry'] },
         };
       }
       return termFindings(ctx, termRowsFromSlots(slotsOf(ctx.worksheet), glossary, ctx.scope));

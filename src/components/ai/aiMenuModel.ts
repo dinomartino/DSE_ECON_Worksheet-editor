@@ -1,5 +1,8 @@
 import { isPaused } from '@/assist/paused';
 import { verbs } from '@/assist/registry';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
+import { AI_UI_MESSAGES } from './messages';
 import type { AiVerb, VerbAvailability, VerbContext, VerbGroup } from '@/assist/types';
 
 /** The AI menu's rows, pure: what the popover renders and the keyboard walks. */
@@ -10,6 +13,16 @@ export const GROUP_HEADING: Readonly<Record<VerbGroup, string>> = {
   write: 'Write',
   create: 'Create',
 };
+
+const HEADING_KEY = {
+  translate: 'groupTranslate',
+  check: 'groupCheck',
+  write: 'groupWrite',
+  create: 'groupCreate',
+} as const;
+
+/** The group's heading in the interface language. */
+export const groupHeading = (group: VerbGroup): string => resolveMessages(AI_UI_MESSAGES, uiLanguage())[HEADING_KEY[group]];
 
 export interface MenuRow {
   verb: AiVerb;
@@ -39,7 +52,7 @@ export function menuGroups(ctx: VerbContext, query = ''): MenuGroup[] {
     const row: MenuRow = { verb, label, availability, runnable: availability.disabledReason === undefined };
     const last = groups[groups.length - 1];
     if (last?.group === verb.group) last.rows.push(row);
-    else groups.push({ group: verb.group, heading: GROUP_HEADING[verb.group], rows: [row] });
+    else groups.push({ group: verb.group, heading: groupHeading(verb.group), rows: [row] });
   }
   return groups;
 }
