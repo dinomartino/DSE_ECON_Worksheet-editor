@@ -24,6 +24,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **Marking scheme as its own document (2026-10-02, research only, no code)**:
+  `docs/research/2026-10-marking-scheme-output.md`, artifact NhT8nPki21CpUhGbBckNRV. Finding: the
+  Answer key already is one but is `.docx`-only and hidden in Export. Proposal: a third view
+  (Marking scheme 評卷參考 / Suggested answers 參考答案 presets + switches), 4 phases, phase 1 no
+  schema change. Awaiting the user's 5 decisions; ask the teacher what "easy-looking" means.
 - **2026-10-02 on `develop`, not released: answer layer on diagrams** (teacher feedback: "draw
   the ans on the teacher ver only", a PPF on a blank E2 diagram). Any axes-diagram element can
   carry `answer: true` (`src/model/diagramAnswers.ts`); Student version drops it and its
