@@ -40,6 +40,8 @@ export const PREVIEW_MESSAGES = defineMessages({
   // What the toolbar says it is formatting.
   targetTitle: { en: 'Title', zh: '標題' },
   targetInstructions: { en: 'Instructions', zh: '說明' },
+  targetKeyTitle: { en: 'Marking scheme title', zh: '評卷參考標題' },
+  targetKeySubtitle: { en: 'Subtitle', zh: '副標題' },
   targetParagraph: { en: 'Paragraph', zh: '段落' },
   targetCaption: { en: 'Caption', zh: '說明文字' },
   targetTableCell: { en: 'Table cell', zh: '表格儲存格' },

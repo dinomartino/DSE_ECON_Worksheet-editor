@@ -58,6 +58,12 @@ export type NodeStyle =
 export type EditTarget =
   | { kind: 'worksheetTitle' }
   | { kind: 'worksheetInstructions' }
+  /**
+   * The answer key's own title and subtitle lines (`Worksheet.answerKeyLayout`), typed
+   * on the page in the Marking scheme view. The paper never prints them.
+   */
+  | { kind: 'answerKeyTitle' }
+  | { kind: 'answerKeySubtitle' }
   /** A paragraph block anywhere — question stem, part, or sub-part. */
   | { kind: 'blockText'; blockId: string }
   /** A table or image block's caption. */

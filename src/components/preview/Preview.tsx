@@ -641,6 +641,8 @@ function MarksTrail({
 const TARGET_NAME: Record<EditTarget["kind"], TextKey<typeof PREVIEW_MESSAGES>> = {
   worksheetTitle: "targetTitle",
   worksheetInstructions: "targetInstructions",
+  answerKeyTitle: "targetKeyTitle",
+  answerKeySubtitle: "targetKeySubtitle",
   blockText: "targetParagraph",
   blockCaption: "targetCaption",
   tableCell: "targetTableCell",

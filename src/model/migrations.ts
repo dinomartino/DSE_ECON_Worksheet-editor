@@ -1,4 +1,5 @@
 import { foldLegacyClassTag } from './classes';
+import { normalizeAnswerKeyLayout } from './answerKeyLayout';
 import type { Worksheet } from './types';
 
 /**
@@ -67,6 +68,7 @@ export const KNOWN_KEYS = new Set([
   'classes',
   'satOn',
   'bankHidden',
+  'answerKeyLayout',
   'createdAt',
   'updatedAt',
   '__unknown',
@@ -134,8 +136,13 @@ export function isNewerThanBuild(worksheet: Pick<Worksheet, 'schemaVersion'>): b
 
 /** Fill in defaults for optional structures so downstream code can assume shape. */
 function normalize(worksheet: Worksheet): Worksheet {
+  // A malformed answer-key layout loses only what is malformed, never the document.
+  const answerKeyLayout = normalizeAnswerKeyLayout(worksheet.answerKeyLayout);
+  const { answerKeyLayout: _stored, ...rest } = worksheet;
+  void _stored;
   return {
-    ...worksheet,
+    ...rest,
+    ...(answerKeyLayout ? { answerKeyLayout } : {}),
     fonts: worksheet.fonts ?? { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
     pageSetup: worksheet.pageSetup ?? {
       paper: 'A4',
