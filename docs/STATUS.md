@@ -24,6 +24,14 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **2026-10-02 on `develop`, not released: Translation terms 翻譯用語** (Settings). Teachers pick among
+  the EDB's same-meaning renderings (347 entries incl. the GDP family; numbered different-meaning
+  senses never cross), add their own wording to any of the 1350 terms, and add custom terms (EN forms,
+  abbreviation, ZH; longest match wins over EDB). One lookup `chosenOf()` (`src/glossary/choices.ts`):
+  JSON < overrides < choices < related follow-through (derived compounds opt-in, "Not in the EDB list").
+  Stored `econgen.settings.terms` v2 in localStorage (never in a worksheet), CSV export/import with
+  merge/replace preview, and `terms/translation-terms.csv` in backups. No-preference output pinned by
+  a digest. **Open:** desktop shell (CSV save/pick, backup) and a live AI translate call not tried.
 - **2026-10-02 on `develop`, not released: Marking scheme view** (research Phase 1). Toolbar Student |
   Teacher | Marking scheme 評卷參考; store `documentView` (never saved, not `OutputMode`); the key's
   IR (`answerKeyView()`, same nodes as the `.docx`) paginated by the paper's paginator; one source of
