@@ -189,7 +189,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   Diagram ▾ Source" on one line, empty rows say "Empty"; a new question goes to the section
   made for its type (`src/model/sectionFit.ts`, content outranks the heading so older
   all-in-B papers are left alone; flyout says "in Section A/B", `sectionShortLabel`); edit tip
-  is a `HintRow` below the scroller (reads "Double-click text to edit"), preview stack
+  is an `EditHint` pill floating over the preview (since 2026-10-02; was a row), preview stack
   reclaims cover + gaps when scaled (`src/components/preview/sheetStack.ts`); empty start
   screen is a welcome with four paper cards (`src/components/start/WelcomeDesk.tsx`), the
   aside hides Start new + Open a file while empty (user's call); HKEAA 試卷完 / 選答一題 in new
