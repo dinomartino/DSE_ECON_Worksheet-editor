@@ -936,11 +936,18 @@ export interface PaperVersions {
 }
 
 /** A whole-key style: its section layouts and switches (`model/answerKeyLayout.ts`). */
-export type AnswerKeyPreset = 'classic' | 'hkeaa';
-/** The MC answers: a grid of number/letter pairs, the HKEAA two-pair table, or a list. */
-export type McKeyLayout = 'grid' | 'hkeaaTable' | 'list';
-/** The long questions: marks at the line end, or a right-hand Marks column (HKEAA). */
-export type LqKeyLayout = 'compact' | 'marksColumn';
+export type AnswerKeyPreset = 'classic' | 'hkeaa' | 'suggested' | 'detailed';
+/**
+ * The MC answers: a grid of number/letter pairs, the HKEAA two-pair table, a list, or a
+ * table with each question's explanation and why the other options are wrong.
+ */
+export type McKeyLayout = 'grid' | 'hkeaaTable' | 'list' | 'rationaleTable';
+/**
+ * The long questions: marks at the line end, a right-hand Marks column (HKEAA), a
+ * Question | Answer | Marks | Guidance table, or answers with no marking notation (the
+ * Suggested answers preset fixes it; the panel never offers it).
+ */
+export type LqKeyLayout = 'compact' | 'marksColumn' | 'table' | 'answers';
 
 /**
  * The answer key's layout, stored as **deltas**: `preset` (absent = Classic) and only
@@ -963,10 +970,16 @@ export interface AnswerKeyLayout {
   showDisclaimer?: boolean;
   /** Question and part wording before each answer, rather than numbers only. */
   showStems?: boolean;
+  /** Suggested answers: MC question wording, the MC answers then printed as a list. */
+  showMcStems?: boolean;
   /** MC: the explanation, each option's rationale, the source note. */
   showExplanations?: boolean;
   showRationales?: boolean;
   showSources?: boolean;
+  /** Suggested answers: "(3 marks)" on each part, as the paper prints it. */
+  showPartMarks?: boolean;
+  /** Suggested answers: the marking points as plain bullets, with no marks or notation. */
+  schemeAsPoints?: boolean;
   /** "(Total: n marks)" after each long question. */
   questionTotals?: boolean;
   /** Each section heading carries its marks. */

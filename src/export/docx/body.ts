@@ -285,7 +285,7 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
   });
 }
 
-function cellParagraph(cellText: string, align: string, format?: TextFormat): string {
+function cellParagraph(cellText: string, align: string, format?: TextFormat, keepNext?: boolean): string {
   // No `w:spacing` override: the cell paragraph takes the Body style's fixed 12pt line
   // and zero padding like every other paragraph, so a table's rows sit on the same
   // rhythm as the text around it. The breathing room a cell needs is horizontal and
@@ -299,6 +299,9 @@ function cellParagraph(cellText: string, align: string, format?: TextFormat): st
   return (
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
+    // A row that keeps with the next (`TableNode.rowKeepNext`): Word keeps the row on the
+    // next row's page when every paragraph in it keeps with the next.
+    (keepNext ? '<w:keepNext/>' : '') +
     `<w:jc w:val="${align}"/>` +
     formatParagraphProps(format ? { ...format, align: undefined } : undefined) +
     '</w:pPr>' +
@@ -415,8 +418,9 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
 
   const rows = node.rows
     .map((row, rowIndex) => {
-      // No `w:tblHeader`, and no shading or bold: an HKDSE table is uniform, plain-ruled
-      // cells throughout (§tables). Emphasis is per-cell formatting like any other text.
+      // No shading or bold: an HKDSE table is uniform, plain-ruled cells throughout
+      // (§tables). Emphasis is per-cell formatting like any other text; only the answer
+      // key's own tables name heading rows (`headerRows`).
       const minHeight = node.rowHeights[rowIndex];
       /*
        * `w:trHeight` measures the row **without** its cell margins: Word lays the row
@@ -450,7 +454,10 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
         (trHeight !== undefined
           ? `<w:trHeight w:val="${trHeight}" w:hRule="atLeast"/>`
           : '') +
+        // A heading row repeats on every page the table runs onto (`TableNode.headerRows`).
+        (rowIndex < (node.headerRows ?? 0) ? '<w:tblHeader/>' : '') +
         '</w:trPr>';
+      const keepRow = node.rowKeepNext?.[rowIndex] ?? false;
 
       const cells = row
         .map((cell, cellIndex) => {
@@ -489,7 +496,7 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
             props.push('<w:tcBorders>' + edges + diagonal + '</w:tcBorders>');
           }
           props.push(cellMargins(cell.padding));
-          props.push('<w:vAlign w:val="center"/>');
+          props.push(`<w:vAlign w:val="${cell.vAlign ?? 'center'}"/>`);
 
           const runs = coveredVertically
             ? ''
@@ -519,7 +526,7 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
 
           return (
             `<w:tc><w:tcPr>${props.join('')}</w:tcPr>` +
-            cellParagraph(runs, cell.align, cell.format) +
+            cellParagraph(runs, cell.align, cell.format, keepRow) +
             picture +
             '</w:tc>'
           );

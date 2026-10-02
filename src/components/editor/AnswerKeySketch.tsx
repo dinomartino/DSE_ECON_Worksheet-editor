@@ -90,6 +90,55 @@ function Answers({ y, column }: { y: number; column?: boolean }) {
   );
 }
 
+/** A part's label, its italic wording, an answer line and bullet points: Suggested answers. */
+function Handout({ y }: { y: number }) {
+  return (
+    <>
+      <Bar x={12} y={y} w={26} fill={HEAD} />
+      <Bar x={18} y={y + 6.5} w={8} fill={HEAD} />
+      <Bar x={26} y={y + 13} w={64} />
+      <Bar x={26} y={y + 19.5} w={52} fill={ACCENT} />
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <circle cx={28} cy={y + 27.2 + i * 6.5} r={1.1} fill={ACCENT} />
+          <Bar x={32} y={y + 26 + i * 6.5} w={[58, 46, 52][i]} fill={ACCENT} />
+        </g>
+      ))}
+    </>
+  );
+}
+
+/** Question | Answer | Marks | Guidance, ruled, a part to a block: the Detailed table. */
+function SchemeTable({ y, rows }: { y: number; rows: number }) {
+  const columns = [12, 24, 76, 86, 108];
+  const height = 6 + rows * 6.5;
+  return (
+    <>
+      <rect x={12} y={y} width={96} height={height} fill="none" stroke={RULE} strokeWidth={0.7} />
+      <line x1={12} x2={108} y1={y + 6} y2={y + 6} stroke={RULE} strokeWidth={0.7} />
+      {columns.slice(1, -1).map((x) => (
+        <line key={x} x1={x} x2={x} y1={y} y2={y + height} stroke={RULE} strokeWidth={0.6} />
+      ))}
+      {columns.slice(0, -1).map((x, i) => (
+        <Bar key={x} x={x + 2} y={y + 1.9} w={[7, 20, 6, 14][i]} h={2} fill={HEAD} />
+      ))}
+      {Array.from({ length: rows }, (_, i) => {
+        const top = y + 6 + i * 6.5;
+        const opens = i % 3 === 0;
+        return (
+          <g key={i}>
+            {opens && i > 0 && <line x1={12} x2={108} y1={top} y2={top} stroke={RULE} strokeWidth={0.6} />}
+            {opens && <Bar x={14} y={top + 2} w={7} h={2} fill={HEAD} />}
+            <Bar x={26} y={top + 2} w={[44, 36, 40][i % 3]} h={2} />
+            <rect x={79.5} y={top + 2} width={3} height={2} rx={1} fill={ACCENT} />
+            {opens && <Bar x={88} y={top + 2} w={16} h={2} />}
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
 const SKETCHES: Record<AnswerKeyPreset, ReactNode> = {
   classic: (
     <>
@@ -111,6 +160,25 @@ const SKETCHES: Record<AnswerKeyPreset, ReactNode> = {
       <Bar x={96} y={72} w={12} h={2} fill={HEAD} />
       <Answers y={80} column />
       <Answers y={136} column />
+    </>
+  ),
+  suggested: (
+    <>
+      <Bar x={26} y={12} w={68} h={5} fill={HEAD} />
+      <Grid y={28} />
+      <Bar x={12} y={52} w={30} h={2.4} fill={HEAD} />
+      <Bar x={18} y={58.5} w={60} />
+      <Handout y={74} />
+      <Handout y={124} />
+    </>
+  ),
+  detailed: (
+    <>
+      <Bar x={26} y={10} w={68} h={5} fill={HEAD} />
+      <Bar x={12} y={20} w={96} h={1.8} />
+      <Bar x={12} y={24} w={60} h={1.8} />
+      <SchemeTable y={32} rows={6} />
+      <SchemeTable y={84} rows={12} />
     </>
   ),
 };

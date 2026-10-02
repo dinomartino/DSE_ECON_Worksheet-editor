@@ -3,6 +3,7 @@
 import {
   ANSWER_KEY_PRESET_IDS,
   hasAnswerKeyChanges,
+  isAnswerKeySettingFixed,
   resetAnswerKeyLayout,
   resolveAnswerKeyLayout,
   withAnswerKeyPreset,
@@ -33,19 +34,25 @@ type M = typeof ANSWER_KEY_LAYOUT_MESSAGES;
 const PRESET_WORDS: Record<AnswerKeyPreset, { name: TextKey<M>; about: TextKey<M> }> = {
   classic: { name: 'classic', about: 'classicHint' },
   hkeaa: { name: 'hkeaa', about: 'hkeaaHint' },
+  suggested: { name: 'suggested', about: 'suggestedHint' },
+  detailed: { name: 'detailed', about: 'detailedHint' },
 };
 
 const MC_OPTIONS: Array<{ value: McKeyLayout; name: TextKey<M>; tip: TextKey<M> }> = [
   { value: 'grid', name: 'mcGrid', tip: 'mcGridTitle' },
   { value: 'hkeaaTable', name: 'mcTable', tip: 'mcTableTitle' },
   { value: 'list', name: 'mcList', tip: 'mcListTitle' },
+  { value: 'rationaleTable', name: 'mcReasons', tip: 'mcReasonsTitle' },
 ];
 
+/** `answers` is not offered: it is Suggested answers' own, and that preset fixes it. */
 const LQ_OPTIONS: Array<{ value: LqKeyLayout; name: TextKey<M>; tip: TextKey<M> }> = [
   { value: 'compact', name: 'lqCompact', tip: 'lqCompactTitle' },
   { value: 'marksColumn', name: 'lqColumn', tip: 'lqColumnTitle' },
+  { value: 'table', name: 'lqTable', tip: 'lqTableTitle' },
 ];
 
+/** The switches, in order; a preset that fixes one hides it (`ANSWER_KEY_FIXED`). */
 const SHOW: Array<{ key: AnswerKeySetting; name: TextKey<M> }> = [
   { key: 'showDisclaimer', name: 'disclaimer' },
   { key: 'showLegend', name: 'legend' },
@@ -53,6 +60,8 @@ const SHOW: Array<{ key: AnswerKeySetting; name: TextKey<M> }> = [
   { key: 'showExplanations', name: 'explanations' },
   { key: 'showRationales', name: 'rationales' },
   { key: 'showSources', name: 'sources' },
+  { key: 'showPartMarks', name: 'partMarks' },
+  { key: 'schemeAsPoints', name: 'schemeAsPoints' },
 ];
 
 const TOTALS: Array<{ key: AnswerKeySetting; name: TextKey<M> }> = [
@@ -72,6 +81,9 @@ export function AnswerKeyLayoutPanel() {
 
   const set = <K extends AnswerKeySetting>(key: K, value: (typeof layout)[K]) =>
     update((current) => withAnswerKeySetting(current, key, value));
+  const open = (key: AnswerKeySetting) => !isAnswerKeySettingFixed(layout.preset, key);
+  // The MC wording prints only in the list, so with it on the list is the layout.
+  const mcAsList = open('showMcStems') && layout.showMcStems;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -128,31 +140,43 @@ export function AnswerKeyLayoutPanel() {
           <GroupHeader title={m.mcAnswers} />
           <Segmented
             label={m.mcAnswers}
-            value={layout.mcLayout}
+            value={mcAsList ? 'list' : layout.mcLayout}
             onChange={(value) => set('mcLayout', value)}
             options={MC_OPTIONS.map((option) => ({
               value: option.value,
               label: m[option.name],
               title: m[option.tip],
-              disabled: readOnly,
+              disabled: readOnly || mcAsList,
             }))}
           />
+          {open('showMcStems') && (
+            <div className="mt-1.5 flex flex-col gap-1">
+              <CheckField
+                label={m.mcStems}
+                checked={layout.showMcStems}
+                onChange={(on) => set('showMcStems', on)}
+              />
+              {mcAsList && <p className="text-[11px] leading-snug text-ink-subtle">{m.mcStemsHint}</p>}
+            </div>
+          )}
         </section>
 
-        <section className="flex flex-col gap-1">
-          <GroupHeader title={m.longQuestions} />
-          <Segmented
-            label={m.longQuestions}
-            value={layout.lqLayout}
-            onChange={(value) => set('lqLayout', value)}
-            options={LQ_OPTIONS.map((option) => ({
-              value: option.value,
-              label: m[option.name],
-              title: m[option.tip],
-              disabled: readOnly,
-            }))}
-          />
-        </section>
+        {open('lqLayout') && (
+          <section className="flex flex-col gap-1">
+            <GroupHeader title={m.longQuestions} />
+            <Segmented
+              label={m.longQuestions}
+              value={layout.lqLayout}
+              onChange={(value) => set('lqLayout', value)}
+              options={LQ_OPTIONS.map((option) => ({
+                value: option.value,
+                label: m[option.name],
+                title: m[option.tip],
+                disabled: readOnly,
+              }))}
+            />
+          </section>
+        )}
 
         <section className="flex flex-col gap-2">
           <GroupHeader title={m.show} />
@@ -163,7 +187,7 @@ export function AnswerKeyLayoutPanel() {
               update((current) => withAnswerKeyText(current, 'subtitle', on ? { en: [], zh: [] } : undefined))
             }
           />
-          {SHOW.map(({ key, name }) => (
+          {SHOW.filter(({ key }) => open(key)).map(({ key, name }) => (
             <CheckField
               key={key}
               label={m[name]}
@@ -172,7 +196,7 @@ export function AnswerKeyLayoutPanel() {
             />
           ))}
           <p className="text-[11px] leading-snug text-ink-subtle">
-            {m.textHint} {layout.showStems && m.stemsHint}
+            {m.textHint} {layout.showStems && !open('showMcStems') && m.stemsHint}
           </p>
         </section>
 

@@ -49,6 +49,12 @@ export interface PackItem {
    * page, so an item that fits packs byte-identically either way.
    */
   breakPoints?: BreakPoint[];
+  /**
+   * The measured key of what this item gains when it opens a sheet: a table continued from
+   * the sheet before draws its heading rows again there (`TableNode.headerRows`), as Word
+   * repeats `w:tblHeader` rows. Charged only on the sheet the item leads.
+   */
+  leadKey?: string;
 }
 
 /**
@@ -199,6 +205,11 @@ export function packPages<T extends PackItem>(
     // A forced break is a positioning instruction, not content: it starts the new page
     // but must not occupy space on it.
     if (item.forceBreak) continue;
+
+    // Leading a sheet, a continued table draws its heading again (§ `leadKey`).
+    if (item.leadKey && pages[pages.length - 1].length === 0) {
+      used += heights.get(item.leadKey) ?? 0;
+    }
 
     /*
      * Taller than the room it has on the sheet it is now on — and, since anything that did

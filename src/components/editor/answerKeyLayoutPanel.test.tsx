@@ -48,10 +48,27 @@ describe('the Layout tab', () => {
     expect('answerKeyLayout' in useWorksheetStore.getState().worksheet).toBe(false);
   });
 
+  it('four styles; Suggested answers hides what it fixes and shows its own switches', () => {
+    useWorksheetStore.getState().replaceWorksheet({ ...createWorksheet(), answerKeyLayout: { preset: 'suggested' } });
+    const markup = renderToStaticMarkup(<AnswerKeyLayoutPanel />);
+    for (const word of ['Classic', 'HKEAA style', 'Suggested answers', 'Detailed table']) expect(markup).toContain(word);
+    for (const word of ['MC question wording', 'Marks for each part', 'Marking points as answer points', 'Question stems']) {
+      expect(markup).toContain(word);
+    }
+    for (const word of ['Notation legend', 'Note for markers', 'Source notes', 'Long questions', 'Marks column']) {
+      expect(markup).not.toContain(word);
+    }
+    // Detailed table: the LQ layouts are back, the Suggested-only switches are not.
+    useWorksheetStore.getState().replaceWorksheet({ ...createWorksheet(), answerKeyLayout: { preset: 'detailed' } });
+    const table = renderToStaticMarkup(<AnswerKeyLayoutPanel />);
+    for (const word of ['Long questions', 'Reasons', 'Notation legend', 'Note for markers']) expect(table).toContain(word);
+    for (const word of ['MC question wording', 'Marking points as answer points']) expect(table).not.toContain(word);
+  });
+
   it('a style from a newer build is named, and no card claims it', () => {
     useWorksheetStore.getState().replaceWorksheet({
       ...createWorksheet(),
-      answerKeyLayout: { preset: 'suggested' as 'classic' },
+      answerKeyLayout: { preset: 'omrSheet' as 'classic' },
     });
     const markup = renderToStaticMarkup(<AnswerKeyLayoutPanel />);
     expect(markup).toContain('newer version of Econ Studio');

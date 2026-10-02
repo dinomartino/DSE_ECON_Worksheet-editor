@@ -18,6 +18,8 @@ import type {
  * - **Read tolerantly.** A preset or layout this build does not know (a newer build's)
  *   reads as Classic's value and is left in the stored field; a value of the wrong JS type
  *   is dropped on load. Nothing here can make a document fail to open.
+ * - **A preset may fix a setting** (`ANSWER_KEY_FIXED`): a stored change to it is ignored,
+ *   so no stored value can put marking notation on a Suggested answers handout.
  *
  * Presentation of the key only: no paper output reads this field.
  */
@@ -29,9 +31,12 @@ export interface AnswerKeySettings {
   showLegend: boolean;
   showDisclaimer: boolean;
   showStems: boolean;
+  showMcStems: boolean;
   showExplanations: boolean;
   showRationales: boolean;
   showSources: boolean;
+  showPartMarks: boolean;
+  schemeAsPoints: boolean;
   questionTotals: boolean;
   sectionTotals: boolean;
   paperTotal: boolean;
@@ -53,9 +58,12 @@ const CLASSIC: AnswerKeySettings = {
   showLegend: false,
   showDisclaimer: false,
   showStems: false,
+  showMcStems: false,
   showExplanations: true,
   showRationales: true,
   showSources: true,
+  showPartMarks: true,
+  schemeAsPoints: false,
   questionTotals: false,
   sectionTotals: false,
   paperTotal: false,
@@ -63,8 +71,9 @@ const CLASSIC: AnswerKeySettings = {
 
 /**
  * Every preset's settings. **The extension point for a new whole-key style**: add its id
- * to `AnswerKeyPreset`, its settings here, its renderer in `render/answerKeyStyles.ts`,
- * and its card in the Layout panel. Order is the gallery's.
+ * to `AnswerKeyPreset`, its settings here and in `ANSWER_KEY_FIXED`, its style in
+ * `render/answerKey.ts:ANSWER_KEY_STYLES`, and its card in the Layout panel. Order is the
+ * gallery's.
  */
 export const ANSWER_KEY_PRESETS: Record<AnswerKeyPreset, AnswerKeySettings> = {
   classic: CLASSIC,
@@ -80,11 +89,57 @@ export const ANSWER_KEY_PRESETS: Record<AnswerKeyPreset, AnswerKeySettings> = {
     showSources: false,
     questionTotals: true,
   },
+  /**
+   * Suggested answers 參考答案, handed back to students: answers, model diagrams and the
+   * marking points as plain bullets, with no marking notation. Question wording on (a
+   * student needs the question to read the answer); part marks on (the paper printed
+   * them, and they say how much was wanted); explanations on, option rationales off.
+   */
+  suggested: {
+    ...CLASSIC,
+    lqLayout: 'answers',
+    showSources: false,
+    showStems: true,
+    showRationales: false,
+    schemeAsPoints: true,
+  },
+  /**
+   * Detailed table (CIE-style): long questions as Question | Answer | Marks | Guidance,
+   * MC with each option's reasoning, the markers' note on, a total per question.
+   */
+  detailed: {
+    ...CLASSIC,
+    mcLayout: 'rationaleTable',
+    lqLayout: 'table',
+    showDisclaimer: true,
+    showSources: false,
+    questionTotals: true,
+  },
 };
 
+/**
+ * The settings a preset decides alone: its value always wins over a stored change, the
+ * Layout panel hides the control, and a change to it stores nothing. Suggested answers
+ * fixes everything that would put marking notation or marker-only notes on a student's
+ * handout (the LQ layout, legend, disclaimer, source notes); the switches only Suggested
+ * answers reads are fixed everywhere else.
+ */
+const ONLY_SUGGESTED: readonly AnswerKeySetting[] = ['showMcStems', 'showPartMarks', 'schemeAsPoints'];
+export const ANSWER_KEY_FIXED: Record<AnswerKeyPreset, readonly AnswerKeySetting[]> = {
+  classic: ONLY_SUGGESTED,
+  hkeaa: ONLY_SUGGESTED,
+  suggested: ['lqLayout', 'showLegend', 'showDisclaimer', 'showSources'],
+  detailed: ONLY_SUGGESTED,
+};
+
+/** Whether `preset` decides `key` alone (§ `ANSWER_KEY_FIXED`). */
+export function isAnswerKeySettingFixed(preset: AnswerKeyPreset, key: AnswerKeySetting): boolean {
+  return ANSWER_KEY_FIXED[preset].includes(key);
+}
+
 export const ANSWER_KEY_PRESET_IDS = Object.keys(ANSWER_KEY_PRESETS) as AnswerKeyPreset[];
-export const MC_KEY_LAYOUTS: readonly McKeyLayout[] = ['grid', 'hkeaaTable', 'list'];
-export const LQ_KEY_LAYOUTS: readonly LqKeyLayout[] = ['compact', 'marksColumn'];
+export const MC_KEY_LAYOUTS: readonly McKeyLayout[] = ['grid', 'hkeaaTable', 'list', 'rationaleTable'];
+export const LQ_KEY_LAYOUTS: readonly LqKeyLayout[] = ['compact', 'marksColumn', 'table', 'answers'];
 
 const SETTING_KEYS = Object.keys(CLASSIC) as AnswerKeySetting[];
 const BOOLEAN_KEYS = SETTING_KEYS.filter((key) => typeof CLASSIC[key] === 'boolean');
@@ -135,14 +190,17 @@ export function resolveAnswerKeyLayout(stored: AnswerKeyLayout | undefined): Res
   const preset = answerKeyPreset(stored);
   const settings: AnswerKeySettings = { ...ANSWER_KEY_PRESETS[preset] };
   const raw = (isRecord(stored) ? stored : {}) as Record<string, unknown>;
-  if ((MC_KEY_LAYOUTS as readonly unknown[]).includes(raw.mcLayout)) {
+  const open = (key: AnswerKeySetting) => !isAnswerKeySettingFixed(preset, key);
+  if (open('mcLayout') && (MC_KEY_LAYOUTS as readonly unknown[]).includes(raw.mcLayout)) {
     settings.mcLayout = raw.mcLayout as McKeyLayout;
   }
-  if ((LQ_KEY_LAYOUTS as readonly unknown[]).includes(raw.lqLayout)) {
+  if (open('lqLayout') && (LQ_KEY_LAYOUTS as readonly unknown[]).includes(raw.lqLayout)) {
     settings.lqLayout = raw.lqLayout as LqKeyLayout;
   }
   for (const key of BOOLEAN_KEYS) {
-    if (typeof raw[key] === 'boolean') (settings as unknown as Record<string, unknown>)[key] = raw[key];
+    if (open(key) && typeof raw[key] === 'boolean') {
+      (settings as unknown as Record<string, unknown>)[key] = raw[key];
+    }
   }
   return {
     preset,
@@ -173,15 +231,19 @@ export function withAnswerKeyPreset(
   return compact({ ...rest, preset });
 }
 
-/** Change one setting. Equal to the preset's value → the delta is dropped. */
+/**
+ * Change one setting. Equal to the preset's value, or a setting the preset fixes
+ * (§ `ANSWER_KEY_FIXED`) → the delta is dropped.
+ */
 export function withAnswerKeySetting<K extends AnswerKeySetting>(
   stored: AnswerKeyLayout | undefined,
   key: K,
   value: AnswerKeySettings[K],
 ): AnswerKeyLayout | undefined {
-  const preset = ANSWER_KEY_PRESETS[answerKeyPreset(stored)];
+  const id = answerKeyPreset(stored);
+  const preset = ANSWER_KEY_PRESETS[id];
   const next = { ...(stored ?? {}) } as Record<string, unknown>;
-  if (preset[key] === value) delete next[key];
+  if (preset[key] === value || isAnswerKeySettingFixed(id, key)) delete next[key];
   else next[key] = value;
   return compact(next);
 }
@@ -195,8 +257,9 @@ export function resetAnswerKeyLayout(stored: AnswerKeyLayout | undefined): Answe
 
 /** Whether the teacher changed anything from the preset ("Reset to preset" enabled). */
 export function hasAnswerKeyChanges(stored: AnswerKeyLayout | undefined): boolean {
-  const preset = ANSWER_KEY_PRESETS[answerKeyPreset(stored)];
-  return deltaKeys(stored).some((key) => stored?.[key] !== preset[key]);
+  const id = answerKeyPreset(stored);
+  const preset = ANSWER_KEY_PRESETS[id];
+  return deltaKeys(stored).some((key) => !isAnswerKeySettingFixed(id, key) && stored?.[key] !== preset[key]);
 }
 
 /** Set or clear the title or subtitle override (an empty title stores nothing). */

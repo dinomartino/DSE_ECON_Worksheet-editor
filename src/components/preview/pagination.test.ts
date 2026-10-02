@@ -100,6 +100,26 @@ describe('packing the flow onto sheets', () => {
  * simply not on the paper, and the preview reported one sheet fewer than the `.docx`,
  * which had broken the question correctly all along.
  */
+describe('a table continued onto a new sheet draws its heading again', () => {
+  // Rows of 30 on a sheet of 100; the heading is 20, charged only where a row opens a sheet.
+  // The first carries its own heading; each later row may open a sheet mid-table.
+  const rows = ['r1', 'r2', 'r3', 'r4', 'r5'].map((key) => item(key, key === 'r1' ? {} : { leadKey: 'head' }));
+  const sized = new Map<string, number>([...rows.map((row) => [row.key, 30] as const), ['head', 20]]);
+  const pages = packPages(rows, sized, PAGE).pages.map((page) => page.map((block) => block.key));
+
+  it('charges the heading on the sheet a row opens, and nowhere else', () => {
+    // r1–r3 fill 90; r4 opens sheet 2 at 20 + 30 + 30 = 80, so r5 still fits.
+    expect(pages).toEqual([['r1', 'r2', 'r3'], ['r4', 'r5']]);
+    // Without the heading the same rows pack the same here; with a taller one, r5 moves on.
+    const taller = new Map(sized).set('head', 45);
+    expect(packPages(rows, taller, PAGE).pages.map((page) => page.map((block) => block.key))).toEqual([
+      ['r1', 'r2', 'r3'],
+      ['r4'],
+      ['r5'],
+    ]);
+  });
+});
+
 describe('breaking an item that no sheet can hold', () => {
   /** An item declaring legal boundaries every quarter-page, at the given node indices. */
   const tall = (key: string, at: number[]) =>

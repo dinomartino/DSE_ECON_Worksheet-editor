@@ -1,13 +1,15 @@
 import type { ResolvedAnswerKeyLayout } from '@/model/answerKeyLayout';
 import { DEFAULT_LIST_INDENTS, toUpperLetter } from '@/model/numbering';
 import { DEFAULT_CELL_PADDING } from '@/model/table';
-import { bi, isBiTextEmpty, provenanceLabel } from '@/model/text';
+import { bi, isBiTextEmpty, plain, provenanceLabel } from '@/model/text';
 import type { BiText, ContentBlock, LanguageMode, LqKeyLayout, McKeyLayout } from '@/model/types';
 import { hasAnswerLayer } from '@/model/diagramAnswers';
 import {
   diagramNodeFor,
   pushGap,
   trailLabel,
+  type ColumnsNode,
+  type EditSegment,
   type EditTarget,
   type RenderNode,
   type TableCellEdges,
@@ -15,9 +17,10 @@ import {
   type TableNodeCell,
   type TextNode,
 } from './ir';
-import { MARK_SCHEME_WORDING, renderMarkScheme } from './markScheme';
+import { MARK_SCHEME_WORDING, renderMarkScheme, schemePointGroups } from './markScheme';
 import { ANSWER_KEY_WORDING, KEY_LAYOUT_WORDING } from './answerKeyWording';
-import type { KeyChoice, KeyGroup, KeyLine, KeyScheme } from './answerKey';
+import type { AnswerKeyRow, KeyChoice, KeyGroup, KeyLine, KeyScheme } from './answerKey';
+import { schemeLevels } from '@/model/markScheme';
 
 /**
  * The answer key's section layouts: how the MC answers and the long questions are laid
@@ -345,6 +348,166 @@ function renderChoiceList(nodes: RenderNode[], choices: KeyChoice[], context: Ke
   }
 }
 
+// --- The key's ruled tables ------------------------------------------------------------
+
+/** A piece of a table cell: an authored field (typed where it prints) or derived wording. */
+interface CellPiece {
+  /** Derived wording before the field on its line ("C. ", "Source: "). */
+  lead?: BiText;
+  value: BiText;
+  edit?: EditTarget;
+  /** A field that is itself several (a point and its `/` alternatives). */
+  segments?: { en: EditSegment[]; zh: EditSegment[] };
+}
+
+/**
+ * Pieces as one cell, a line each: the joined text every backend prints and, when any
+ * piece is typed on the page, the segments the preview edits it through (each field
+ * alone; joined, a side's segments are exactly its text).
+ */
+function cellText(pieces: CellPiece[]): Pick<TableNodeCell, 'text' | 'edit' | 'segments'> {
+  if (pieces.length === 0) return { text: { en: [], zh: [] } };
+  const [only] = pieces;
+  if (pieces.length === 1 && !only.lead && !only.segments) {
+    return { text: only.value, ...(only.edit ? { edit: only.edit } : {}) };
+  }
+  const side = (key: 'en' | 'zh') => {
+    const runs: BiText['en'] = [];
+    const segments: EditSegment[] = [];
+    pieces.forEach((piece, index) => {
+      const derived = (text: BiText['en']) => {
+        if (text.length === 0) return;
+        runs.push(...text);
+        segments.push({ runs: text });
+      };
+      if (index > 0) derived([{ text: '\n' }]);
+      if (piece.lead) derived(piece.lead[key]);
+      if (piece.segments) {
+        runs.push(...piece.value[key]);
+        segments.push(...piece.segments[key]);
+      } else if (piece.edit) {
+        runs.push(...piece.value[key]);
+        segments.push({ edit: piece.edit, value: piece.value });
+      } else {
+        derived(piece.value[key]);
+      }
+    });
+    return { runs, segments };
+  };
+  const en = side('en');
+  const zh = side('zh');
+  const typed = pieces.some((piece) => piece.edit || piece.segments);
+  return {
+    text: { en: en.runs, zh: zh.runs },
+    ...(typed ? { segments: { en: en.segments, zh: zh.segments } } : {}),
+  };
+}
+
+interface CellOptions {
+  align?: TableNodeCell['align'];
+  bold?: boolean;
+  italic?: boolean;
+  /** Spans this many columns; the row then carries `colSpan - 1` covered cells after it. */
+  span?: number;
+}
+
+/** A body cell of the key's ruled tables: text at the top, as a long answer reads. */
+function keyCell(content: Pick<TableNodeCell, 'text' | 'edit' | 'segments'>, options: CellOptions = {}): TableNodeCell {
+  const format = {
+    ...(options.bold ? { bold: true } : {}),
+    ...(options.italic ? { italic: true } : {}),
+  };
+  return {
+    ...content,
+    colSpan: options.span ?? 1,
+    rowSpan: 1,
+    align: options.align ?? 'left',
+    covered: false,
+    padding: DEFAULT_CELL_PADDING,
+    vAlign: 'top',
+    ...(Object.keys(format).length > 0 ? { format } : {}),
+  };
+}
+
+/** The cells a spanning cell covers: printed by none of the backends. */
+const coveredCells = (count: number): TableNodeCell[] =>
+  Array.from({ length: count }, () => ({ ...keyCell({ text: { en: [], zh: [] } }), covered: true }));
+
+/** A heading row: bold, centred, a cell per column. */
+const headingRow = (heads: BiText[]): TableNodeCell[] =>
+  heads.map((head) => keyCell({ text: head }, { align: 'center', bold: true }));
+
+/**
+ * One of the key's ruled tables: a heading row that repeats on each page it runs onto,
+ * and rows that keep with the next where `keep` says (`TableNode.rowKeepNext`), so it
+ * breaks between rows in all three backends rather than moving whole.
+ */
+function keyTable(
+  rows: TableNodeCell[][],
+  keep: boolean[],
+  columnWidths: number[],
+  blockId: string,
+  heading = 1,
+): TableNode {
+  return {
+    kind: 'table',
+    rows,
+    columnCount: columnWidths.length,
+    columnWidths,
+    width: 1,
+    indent: 0,
+    align: 'left',
+    // Rows ruled cell by cell (`ruledRows`) draw only their own edges.
+    borders: rows.some((row) => row.some((cell) => cell.edges)) ? 'headerRule' : 'all',
+    rowHeights: rows.map(() => undefined),
+    blockId,
+    captionPlacement: 'below',
+    ...(heading > 0 ? { headerRows: heading } : {}),
+    rowKeepNext: keep,
+    ...(keep[keep.length - 1] ? { keepNext: true } : {}),
+  };
+}
+
+// --- MC with reasons -----------------------------------------------------------------
+
+/** Question | Key | Explanation | Why the other options are wrong. */
+const RATIONALE_COLUMNS = [0.13, 0.08, 0.35, 0.44];
+
+/**
+ * The MC key with each question's reasoning (Edexcel-style): the explanation (with the
+ * key's own reason and, switched on, the source note) beside why each other option is
+ * wrong. Every reason is typed where it prints. Only drawn when some question has option
+ * reasons to show; otherwise the layout is the HKEAA table.
+ */
+export function rationaleTable(choices: KeyChoice[], language: LanguageMode): TableNode {
+  const rows: TableNodeCell[][] = [
+    headingRow([KEY_LAYOUT_WORDING.tableQuestion, KEY_LAYOUT_WORDING.key, KEY_LAYOUT_WORDING.explanation, KEY_LAYOUT_WORDING.otherOptions]),
+  ];
+  for (const choice of choices) {
+    const reasons = choice.rationale ?? [];
+    const own = reasons.filter((reason) => reason.letter === choice.letter);
+    const others = reasons.filter((reason) => reason.letter !== choice.letter);
+    const explanation: CellPiece[] = [
+      ...(choice.note && !isBiTextEmpty(choice.note) ? [{ value: choice.note, edit: choice.noteEdit }] : []),
+      ...own.map((reason) => ({ lead: neutral(`${reason.letter}. `, language), value: reason.text, edit: reason.edit })),
+      ...(choice.provenance && !isBiTextEmpty(choice.provenance)
+        ? [{ lead: bi(`${provenanceLabel('en')} `, `${provenanceLabel('zh')}`), value: choice.provenance, edit: choice.provenanceEdit }]
+        : []),
+    ];
+    rows.push([
+      keyCell({ text: neutral(`${choice.number}.`, language) }, { align: 'center' }),
+      keyCell({ text: neutral(choice.letter ?? UNANSWERED_MARK, language) }, { align: 'center', bold: true }),
+      keyCell(cellText(explanation)),
+      keyCell(
+        cellText(others.map((reason) => ({ lead: neutral(`${reason.letter}. `, language), value: reason.text, edit: reason.edit }))),
+      ),
+    ]);
+  }
+  return keyTable(rows, rows.map((_, index) => index === 0), RATIONALE_COLUMNS, 'answer-key-mc-reasons');
+}
+
+const hasReasons = (choices: KeyChoice[]) => choices.some((choice) => (choice.rationale?.length ?? 0) > 0);
+
 /** How one MC layout prints a section's choices; `table` is its per-version key. */
 export interface McKeyRenderer {
   render: (nodes: RenderNode[], choices: KeyChoice[], context: KeySectionContext) => void;
@@ -369,6 +532,17 @@ export const MC_KEY_RENDERERS: Record<McKeyLayout, McKeyRenderer> = {
     table: hkeaaTable,
   },
   list: { render: renderChoiceList },
+  /** The reasons table, or the HKEAA table and its notes when no question has reasons. */
+  rationaleTable: {
+    render: (nodes, choices, context) => {
+      if (!hasReasons(choices)) {
+        MC_KEY_RENDERERS.hkeaaTable.render(nodes, choices, context);
+        return;
+      }
+      nodes.push(rationaleTable(choices, context.language));
+    },
+    table: hkeaaTable,
+  },
 };
 
 // --- Long questions ------------------------------------------------------------------
@@ -490,6 +664,379 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
   own(start, scheme.questionId);
 }
 
+/** A row's model answer diagram, its answer layer drawn (the whole key shows answers). */
+function answerDiagramNode(row: AnswerKeyRow): RenderNode | undefined {
+  if (!row.diagram) return undefined;
+  const node = diagramNodeFor(row.diagram, {});
+  return hasAnswerLayer(row.diagram.diagram) ? { ...node, answers: true } : node;
+}
+
+/** The bullet's hang: the point's text column sits this far right of the bullet. */
+const BULLET_HANG = 240;
+
+/**
+ * Suggested answers (`lqLayout: 'answers'`), the student handout: each part's label,
+ * its wording (stems on), its answer text, its model diagram with the answer layer drawn
+ * in the same red as everywhere else (the layer *is* the answer here, and one colour is
+ * what students saw marked), and, switched on, the first route's marking points as plain
+ * bullets — `text / alternative`, no marks, no `n@`, no "any N", no `max`, no OR, no
+ * levels or EC. Other routes are left out: without "OR" they would read as more points
+ * to learn rather than another way to answer. Marks print only as the paper's own
+ * "(3 marks)" on a label, and only with `showPartMarks`.
+ */
+function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySectionContext): void {
+  const { language, layout, own } = context;
+  const { question, partText, subPartText } = DEFAULT_LIST_INDENTS;
+  const start = nodes.length;
+  const stems = layout.showStems ? stemNodes(scheme.stem, question[0].left) : [];
+  const total = layout.questionTotals && scheme.total > 0;
+  const marksOf = (marks: number | undefined): Partial<TextNode> =>
+    layout.showPartMarks && marks !== undefined ? { marks } : {};
+
+  const rows = scheme.rows.map((row) => {
+    const indent = row.depth === 1 ? partText : subPartText;
+    const [route] = layout.schemeAsPoints ? schemePointGroups(row.scheme, row.schemeAt) : [];
+    const points = (route ?? []).flatMap((group) => group.points);
+    const bullets: ColumnsNode[] = points.map((point) => ({
+      kind: 'columns',
+      style: 'Body',
+      indent: indent + BULLET_HANG,
+      hanging: BULLET_HANG,
+      keepLines: true,
+      cells: [
+        { text: neutral('•', language), at: 0 },
+        {
+          text: point.text,
+          at: 0.04,
+          ...(point.segments ? { segments: point.segments } : point.edit ? { edit: point.edit } : {}),
+        },
+      ],
+    }));
+    return { row, indent, bullets };
+  });
+
+  nodes.push({
+    kind: 'text',
+    style: 'Question Stem',
+    text: bi(ANSWER_KEY_WORDING.question(scheme.number).en, ANSWER_KEY_WORDING.question(scheme.number).zh),
+    ...marksOf(scheme.marks),
+    keepNext: rows.length > 0 || stems.length > 0 || total,
+    format: { bold: true },
+  });
+  nodes.push(...stems);
+  rows.forEach(({ row, indent, bullets }, index) => {
+    const prompts = layout.showStems && row.label !== undefined ? stemNodes(row.prompt, indent) : [];
+    const answered = row.answer !== undefined && !isBiTextEmpty(row.answer);
+    const hasAnswer = answered || row.diagram !== undefined || bullets.length > 0;
+    const last = index === rows.length - 1;
+    if (row.label !== undefined) {
+      nodes.push({
+        kind: 'text',
+        style: row.depth === 1 ? 'Sub-question' : 'Sub-sub-question',
+        text: neutral(row.label, language),
+        ...marksOf(row.marks),
+        indent: row.depth === 1 ? question[0].left : partText,
+        keepNext: hasAnswer || !last || prompts.length > 0 || total,
+      });
+    }
+    if (prompts.length > 0) {
+      prompts[prompts.length - 1].keepNext = hasAnswer || !last || total;
+      nodes.push(...prompts);
+    }
+    if (answered) {
+      nodes.push({
+        kind: 'text',
+        style: 'Body',
+        text: row.answer!,
+        indent,
+        keepLines: true,
+        ...(row.answerEdit ? { edit: row.answerEdit } : {}),
+      });
+    }
+    const diagram = answerDiagramNode(row);
+    if (diagram) nodes.push(diagram);
+    nodes.push(...bullets);
+  });
+  if (total) {
+    const previous = nodes[nodes.length - 1];
+    if (previous && previous.kind !== 'pageBreak') (previous as { keepNext?: boolean }).keepNext = true;
+    nodes.push({
+      kind: 'text',
+      style: 'Body',
+      text: KEY_LAYOUT_WORDING.questionTotal(scheme.total),
+      format: { bold: true, align: 'right' },
+    });
+  }
+  own(start, scheme.questionId);
+}
+
+/** Question | Answer | Marks | Guidance. */
+const SCHEME_TABLE_COLUMNS = [0.12, 0.5, 0.1, 0.28];
+/** Level | Descriptor | Marks. */
+const LEVELS_TABLE_COLUMNS = [0.12, 0.76, 0.12];
+
+/** One drafted body row of the Detailed table: its cells, its keep, whether it opens a part. */
+interface DraftRow {
+  cells: TableNodeCell[];
+  keepNext: boolean;
+  opensPart: boolean;
+}
+
+/**
+ * Rule a run of drafted rows the way a CIE scheme is ruled: every column, a heading row
+ * boxed, a rule above each part, and none between the lines of one part, so a part reads
+ * as one cell. A run's first and last rows close it (a diagram may interrupt the table).
+ */
+function ruledRows(heading: TableNodeCell[] | undefined, rows: DraftRow[]): { cells: TableNodeCell[][]; keep: boolean[] } {
+  const all = [...(heading ? [{ cells: heading, keepNext: true, opensPart: true }] : []), ...rows];
+  return {
+    cells: all.map((row, index) => {
+      const top = index === 0 || row.opensPart;
+      const bottom = index === all.length - 1 || all[index + 1].opensPart;
+      return row.cells.map((cell) => ({ ...cell, edges: { top, bottom, left: true, right: true } }));
+    }),
+    keep: all.map((row, index) => row.keepNext && index < all.length - 1),
+  };
+}
+
+/**
+ * The Detailed table (`lqLayout: 'table'`, CIE-style): each question a ruled table,
+ * Question | Answer | Marks | Guidance under a heading row that repeats on every page it
+ * runs onto. A part's first row carries its label ("3(b)(i)") and, stems on, its wording;
+ * then its answer text; then a row per marking point with its mark, the group's rules
+ * spelled out in Guidance on its first point (any N, first N only, n marks each, max, OR).
+ * A line's own total shows only where no point claims the marks, as the Marks column
+ * does. A model diagram ends the table and prints full width under it, the table going
+ * on below. Levels and EC follow the question in a Level | Descriptor | Marks table.
+ * Rows break between points, never inside one, in all three backends.
+ */
+function renderSchemeTable(nodes: RenderNode[], scheme: KeyScheme, context: KeySectionContext): void {
+  const { language, layout, own } = context;
+  const start = nodes.length;
+  const empty: BiText = { en: [], zh: [] };
+  const heading = headingRow([
+    KEY_LAYOUT_WORDING.tableQuestion,
+    KEY_LAYOUT_WORDING.tableAnswer,
+    KEY_LAYOUT_WORDING.tableMarks,
+    KEY_LAYOUT_WORDING.tableGuidance,
+  ]);
+  let headed = false;
+  let rows: DraftRow[] = [];
+  let piece = 0;
+  /** Close the table so far; `keepNext`: it keeps with what follows (a diagram). */
+  const flush = (keepNext = false) => {
+    if (rows.length === 0) return;
+    const ruled = ruledRows(headed ? undefined : heading, rows);
+    if (keepNext) ruled.keep[ruled.keep.length - 1] = true;
+    nodes.push(
+      keyTable(ruled.cells, ruled.keep, SCHEME_TABLE_COLUMNS, `answer-key-scheme-${scheme.questionId}-${piece}`, headed ? 0 : 1),
+    );
+    headed = true;
+    piece += 1;
+    rows = [];
+  };
+  const marksCell = (marks: number | undefined) =>
+    keyCell({ text: neutral(marks !== undefined ? String(marks) : '', language) }, { align: 'center' });
+  const row = (question: string, answer: Pick<TableNodeCell, 'text' | 'edit' | 'segments'>, marks: number | undefined, guidance: BiText, options: { italic?: boolean; opensPart?: boolean; keepNext?: boolean } = {}) => {
+    rows.push({
+      cells: [
+        keyCell({ text: neutral(question, language) }),
+        keyCell(answer, { italic: options.italic }),
+        marksCell(marks),
+        keyCell({ text: guidance }),
+      ],
+      keepNext: options.keepNext ?? false,
+      opensPart: options.opensPart ?? false,
+    });
+  };
+
+  if (layout.showStems) {
+    (scheme.stem ?? []).forEach((line, index) => {
+      rows.push({
+        cells: [
+          keyCell({ text: line.text, ...(line.edit ? { edit: line.edit } : {}) }, { italic: true, span: 4 }),
+          ...coveredCells(3),
+        ],
+        keepNext: true,
+        opensPart: index === 0,
+      });
+    });
+  }
+
+  const levelTables: Array<{ label: string; row: AnswerKeyRow }> = [];
+  let part = '';
+  scheme.rows.forEach((entry, index) => {
+    if (entry.depth === 1 && entry.label !== undefined) part = entry.label;
+    const label =
+      entry.label === undefined
+        ? index === 0
+          ? String(scheme.number)
+          : ''
+        : `${scheme.number}${entry.depth === 2 ? part : ''}${entry.label}`;
+    let pending = label;
+    let opens = entry.label !== undefined || index === 0;
+    /** The part's label and opening rule ride on whichever row comes first. */
+    const take = () => {
+      const out = { question: pending, opensPart: opens };
+      pending = '';
+      opens = false;
+      return out;
+    };
+    const groups = schemePointGroups(entry.scheme, entry.schemeAt);
+    const pointMarks = (each: number | undefined, marks: number | undefined) => each ?? marks;
+    const claimed = groups.some((route) =>
+      route.some((group) => group.points.some(({ point }) => pointMarks(group.each, point.marks) !== undefined)),
+    );
+    let ownMarks = claimed ? undefined : entry.marks;
+    const marks = () => {
+      const out = ownMarks;
+      ownMarks = undefined;
+      return out;
+    };
+    const hasPoints = groups.length > 0;
+    const answered = entry.answer !== undefined && !isBiTextEmpty(entry.answer);
+
+    const prompts = layout.showStems && entry.label !== undefined ? (entry.prompt ?? []) : [];
+    prompts.forEach((line) => {
+      const head = take();
+      row(head.question, { text: line.text, ...(line.edit ? { edit: line.edit } : {}) }, undefined, empty, {
+        italic: true,
+        opensPart: head.opensPart,
+        keepNext: true,
+      });
+    });
+    if (answered) {
+      const head = take();
+      row(head.question, { text: entry.answer!, ...(entry.answerEdit ? { edit: entry.answerEdit } : {}) }, marks(), empty, {
+        opensPart: head.opensPart,
+        keepNext: hasPoints,
+      });
+    }
+    // A label no row has carried yet gets its own, when no point will carry it first —
+    // unless it only heads its sub-parts ("3(b)" before "3(b)(i)"), which carry it.
+    const diagram = answerDiagramNode(entry);
+    const headsSubParts = entry.marks === undefined && scheme.rows[index + 1]?.depth === 2;
+    if (pending !== '' && (!hasPoints || diagram) && (diagram || !headsSubParts)) {
+      const head = take();
+      row(head.question, { text: empty }, marks(), empty, { opensPart: head.opensPart, keepNext: hasPoints });
+    }
+    if (diagram) {
+      flush(true);
+      nodes.push(diagram);
+    }
+    groups.forEach((route, routeIndex) => {
+      route.forEach((group, groupIndex) => {
+        const rules: BiText[] = [
+          ...(routeIndex > 0 && groupIndex === 0 ? [KEY_LAYOUT_WORDING.orRoute] : []),
+          ...(group.take !== undefined ? [MARK_SCHEME_WORDING.any(group.take)] : []),
+          ...(group.take !== undefined && group.group.firstOnly ? [MARK_SCHEME_WORDING.firstOnly(group.take)] : []),
+          ...(group.each !== undefined ? [KEY_LAYOUT_WORDING.eachMark(group.each)] : []),
+          ...(typeof group.group.max === 'number' && group.group.max >= 0 ? [MARK_SCHEME_WORDING.max(group.group.max)] : []),
+        ];
+        // A rule a row, beside the points from the first: one tall cell would hold a
+        // whole page's rows together. A part has no rules inside, so they read as one.
+        const count = Math.max(group.points.length, rules.length);
+        for (let line = 0; line < count; line += 1) {
+          const point = group.points[line];
+          const head = take();
+          const own = point ? pointMarks(group.each, point.point.marks) : undefined;
+          rows.push({
+            cells: [
+              keyCell({ text: neutral(head.question, language) }),
+              keyCell(
+                point
+                  ? { text: point.text, ...(point.segments ? { segments: point.segments } : point.edit ? { edit: point.edit } : {}) }
+                  : { text: empty },
+              ),
+              marksCell(point ? (own ?? marks()) : undefined),
+              keyCell({ text: rules[line] ?? empty }),
+            ],
+            // A rule that outruns its points stays beside them.
+            keepNext: line + 1 < count && line + 1 >= group.points.length,
+            opensPart: head.opensPart || (routeIndex > 0 && groupIndex === 0 && line === 0),
+          });
+        }
+      });
+    });
+    if (entry.scheme && (schemeLevels(entry.scheme).length > 0 || entry.scheme.ec)) {
+      levelTables.push({ label: label || String(scheme.number), row: entry });
+    }
+  });
+
+  if (layout.questionTotals && scheme.total > 0) {
+    if (rows.length > 0) rows[rows.length - 1].keepNext = true;
+    rows.push({
+      cells: [
+        keyCell({ text: neutral('', language) }),
+        keyCell({ text: KEY_LAYOUT_WORDING.total }, { align: 'right', bold: true }),
+        keyCell({ text: neutral(String(scheme.total), language) }, { align: 'center', bold: true }),
+        keyCell({ text: empty }),
+      ],
+      keepNext: false,
+      opensPart: true,
+    });
+  }
+  flush();
+
+  for (const { label, row: entry } of levelTables) {
+    renderLevelsTable(nodes, label, entry, language);
+  }
+  own(start, scheme.questionId);
+}
+
+/**
+ * A leaf's levels and EC after its question (Detailed table): a bold line naming the part,
+ * then Level | Descriptor | Marks, the EC rows under their own spanning head. Each
+ * descriptor is typed where it prints.
+ */
+function renderLevelsTable(nodes: RenderNode[], label: string, row: AnswerKeyRow, language: LanguageMode): void {
+  const scheme = row.scheme!;
+  const at = row.schemeAt;
+  const levels = schemeLevels(scheme);
+  const heading = levels.length > 0 ? MARK_SCHEME_WORDING.levels : MARK_SCHEME_WORDING.ec;
+  pushGap(nodes);
+  nodes.push({
+    kind: 'text',
+    style: 'Body',
+    text: bi(`${label} ${plain(heading.en)}`, `${label} ${plain(heading.zh)}`),
+    keepNext: true,
+    format: { bold: true },
+  });
+  const rows: TableNodeCell[][] = [
+    headingRow([KEY_LAYOUT_WORDING.level, KEY_LAYOUT_WORDING.descriptor, KEY_LAYOUT_WORDING.tableMarks]),
+  ];
+  const keep: boolean[] = [true];
+  levels.forEach((level, index) => {
+    rows.push([
+      keyCell({ text: neutral(String(index + 1), language) }, { align: 'center' }),
+      keyCell({ text: level.descriptor, ...(at ? { edit: { kind: 'schemeLevel', ...at, levelId: level.id } } : {}) }),
+      keyCell(
+        { text: neutral(level.min === level.max ? `${level.min}` : `${level.min}–${level.max}`, language) },
+        { align: 'center' },
+      ),
+    ]);
+    keep.push(false);
+  });
+  if (scheme.ec) {
+    rows.push([
+      keyCell({ text: MARK_SCHEME_WORDING.ec }, { bold: true, span: 2 }),
+      ...coveredCells(1),
+      keyCell({ text: MARK_SCHEME_WORDING.max(scheme.ec.max) }, { align: 'center', bold: true }),
+    ]);
+    keep.push(true);
+    for (const descriptor of scheme.ec.descriptors ?? []) {
+      rows.push([
+        keyCell({ text: neutral('', language) }),
+        keyCell({ text: descriptor.text, ...(at ? { edit: { kind: 'schemeEc', ...at, descriptorId: descriptor.id } } : {}) }),
+        keyCell({ text: neutral(String(descriptor.marks), language) }, { align: 'center' }),
+      ]);
+      keep.push(false);
+    }
+  }
+  keep[keep.length - 1] = false;
+  nodes.push(keyTable(rows, keep, LEVELS_TABLE_COLUMNS, `answer-key-levels-${at?.subPartId ?? at?.partId ?? label}`));
+}
+
 /** How one long-question layout prints a question's entry. */
 export type LqKeyRenderer = (nodes: RenderNode[], scheme: KeyScheme, context: KeySectionContext) => void;
 
@@ -497,6 +1044,8 @@ export const LQ_KEY_RENDERERS: Record<LqKeyLayout, LqKeyRenderer> = {
   compact: (nodes, scheme, context) => renderScheme(nodes, scheme, context),
   marksColumn: (nodes, scheme, context) =>
     renderScheme(nodes, scheme, context, marksColumnWidth(context.language)),
+  table: renderSchemeTable,
+  answers: renderAnswers,
 };
 
 /** Whether a key draws a Marks column anywhere: it then carries the "Marks" running head. */

@@ -57,7 +57,7 @@ describe('Classic is the key as it was', () => {
       for (const layout of [
         { preset: 'classic' },
         { showStems: false, mcLayout: 'grid' },
-        { preset: 'suggested', mcLayout: 'bubbles' },
+        { preset: 'omrSheet', mcLayout: 'bubbles' },
       ]) {
         expect(renderAnswerKey(withLayout(worksheet, layout as AnswerKeyLayout), language)).toEqual(classic);
       }

@@ -28,6 +28,17 @@ a version heading is edited afterwards.
   符號說明及閱卷聲明。你可再切換 MC 和長題目的版面，顯示題幹、MC 解說，以及每題、每部分或全卷
   的總分，並可直接在頁面上輸入自己的標題和副標題。版面會隨工作紙儲存，Word、PDF 和「複製到
   Word」都會跟從。已製作的工作紙，評卷參考保持原樣。 -->
+- **Hand out suggested answers, or mark from a detailed table.** The Layout tab has two more
+  styles. Suggested answers is a handout for students after the test: the answers, model
+  diagrams and your marking points as plain bullets, with no marking notation, levels or
+  notes for markers, and its Word file is named "Suggested answers". Detailed table lays out
+  each long question as a Question, Answer, Marks and Guidance table that repeats its
+  heading on every page, with levels in a table of their own, and MC answers with why the
+  other options are wrong.
+  <!-- zh: **派發參考答案，或以詳細表格評卷。** 「版面」分頁新增兩種樣式。「參考答案」供測驗後派發
+  給學生：只列出答案、示範圖表及以要點列出的評分要點，不含評分符號、等級描述或閱卷備註，Word
+  檔案名稱為「參考答案」。「詳細表格」以「題號、答案、分數、評分指引」表格列出每道長題目，每頁
+  重複表頭，等級描述另列一表，MC 答案附其他選項錯誤的原因。 -->
 - **Choose your own wording for terms the EDB glossary lists more than one way.** In
   Settings, Translation terms lists every such term, for example 本地生產總值 or
   國內生產總值 for GDP, and 總支出 or 總開支. Pick the one you write: AI translation and

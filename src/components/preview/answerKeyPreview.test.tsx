@@ -6,7 +6,7 @@ import type { Worksheet } from '@/model/types';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { answerKeyView } from '@/render/answerKey';
 import type { RenderNode } from '@/render/ir';
-import { AnswerKeyPreview, keepTogetherRuns } from './AnswerKeyPreview';
+import { AnswerKeyPreview, keepTogetherRuns, keyUnits, runNodes } from './AnswerKeyPreview';
 
 const text = (keepNext?: boolean): RenderNode => ({
   kind: 'text',
@@ -27,6 +27,55 @@ describe('the Marking scheme view', () => {
       { from: 0, to: 0 },
       { from: 1, to: 1 },
     ]);
+  });
+
+  it('packs a table that may break between rows row by row, its heading on a sheet it opens', () => {
+    const cell = (text: string) => ({
+      text: { en: [{ text }], zh: [] },
+      colSpan: 1,
+      rowSpan: 1,
+      align: 'left' as const,
+      covered: false,
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    });
+    const table: RenderNode = {
+      kind: 'table',
+      rows: ['Head', 'a1', 'a2', 'b1'].map((text) => [cell(text)]),
+      columnCount: 1,
+      columnWidths: [1],
+      width: 1,
+      indent: 0,
+      align: 'left',
+      borders: 'all',
+      rowHeights: [undefined, undefined, undefined, undefined],
+      blockId: 't',
+      captionPlacement: 'below',
+      headerRows: 1,
+      rowKeepNext: [false, true, false, false],
+    };
+    const units = keyUnits([text(true), table, text()]);
+    // The heading keeps with a1, a1 with a2; the text before keeps with the heading.
+    expect(units.map((unit) => [unit.index, unit.row, unit.keepNext])).toEqual([
+      [0, undefined, true],
+      [1, 0, true],
+      [1, 1, true],
+      [1, 2, false],
+      [1, 3, false],
+      [2, undefined, false],
+    ]);
+    const nodes = [text(true), table, text()];
+    // The first run: text and the table's first rows, its heading in place; no lead.
+    const first = runNodes(nodes, units.slice(0, 4));
+    expect((first.nodes[1] as typeof table & { kind: 'table' }).rows.map((r) => r[0].text.en[0].text)).toEqual(['Head', 'a1', 'a2']);
+    expect(first.continues).toEqual([false, true]);
+    expect(first.lead).toBeUndefined();
+    // A run opening mid-table joins the piece above; opening a sheet it shows the heading.
+    const later = runNodes(nodes, units.slice(4, 5));
+    expect(later.joins).toBe(true);
+    expect((later.nodes[0] as typeof table & { kind: 'table' }).rows.map((r) => r[0].text.en[0].text)).toEqual(['b1']);
+    expect((later.lead![0] as typeof table & { kind: 'table' }).rows.map((r) => r[0].text.en[0].text)).toEqual(['Head', 'b1']);
+    expect((later.head as typeof table & { kind: 'table' }).rows).toHaveLength(1);
+    expect(later.continues).toEqual([false]);
   });
 
   it('draws every node of the key, on sheets inside #print-root, with a page-number footer', () => {

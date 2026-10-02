@@ -1489,10 +1489,16 @@ function TableNodeView({
   node,
   language,
   ctx,
+  continues,
+  joinsAbove,
 }: {
   node: TableNode;
   language: LanguageMode;
   ctx?: EditContext;
+  /** More of this table's rows follow in another piece (see `NodeView.tableContinues`). */
+  continues?: boolean;
+  /** Its first row goes on from a piece above (see `NodeView.tableJoinsAbove`). */
+  joinsAbove?: boolean;
 }) {
   /*
    * Widths being dragged towards, or undefined when no gesture is running.
@@ -1862,7 +1868,7 @@ function TableNodeView({
                         node.borders === "box" || cell.edges
                           ? ""
                           : "border border-slate-500"
-                      } align-middle ${isActive ? "ring-2 ring-inset ring-[#0d77c9]" : ""} ${
+                      } ${cell.vAlign === "top" ? "align-top" : "align-middle"} ${isActive ? "ring-2 ring-inset ring-[#0d77c9]" : ""} ${
                         rangeEdge ? "bg-[#0d77c9]/[0.12]" : ""
                       }`}
                       style={{
@@ -1885,6 +1891,8 @@ function TableNodeView({
                               borderRight: cell.edges.right ? "1px solid #64748b" : "none",
                             }
                           : {}),
+                        // The piece above already rules this edge (`joinsAbove`).
+                        ...(joinsAbove && rowIndex === 0 ? { borderTop: "none" } : {}),
                         /*
                          * The "does not apply" slash (§`TableCell.diagonal`). A painted
                          * gradient rather than a child element, so it reserves no space
@@ -1933,18 +1941,22 @@ function TableNodeView({
                         if (address) ctx?.onActivateCell?.(address);
                       }}
                     >
-                      {richNodes(
-                        cell.text,
-                        language,
-                        cell.edit,
-                        ctx,
-                        address
-                          ? (backwards) => moveCell(address.cellId, backwards)
-                          : undefined,
-                        // A cell's box is as narrow as its column, so the prompt has to
-                        // fit one (§`compactPlaceholder`).
-                        true,
-                      )}
+                      {cell.segments && ctx
+                        ? // Several fields in one cell (the answer key's tables), each
+                          // typed alone, as a paragraph's segments are.
+                          segmentNodes(cell.segments, language, ctx, true)
+                        : richNodes(
+                            cell.text,
+                            language,
+                            cell.edit,
+                            ctx,
+                            address
+                              ? (backwards) => moveCell(address.cellId, backwards)
+                              : undefined,
+                            // A cell's box is as narrow as its column, so the prompt has to
+                            // fit one (§`compactPlaceholder`).
+                            true,
+                          )}
                       {/* A picture inside the cell, under its words — the boxed
                           stimulus that frames an extract and a photograph together. */}
                       {cell.image && (
@@ -2034,14 +2046,16 @@ function TableNodeView({
           </div>
         )}
       </div>
-      <BlockCaption node={node} side="below" style="Table Caption" language={language} ctx={ctx} />
+      {!continues && (
+        <BlockCaption node={node} side="below" style="Table Caption" language={language} ctx={ctx} />
+      )}
       {/*
         The structural blank line Word requires after every table: `tableNodeXml` emits
         an empty Body paragraph — one fixed 12pt line — after the table (and the below
         caption), so the preview draws the identical 12pt. A real block, not a margin,
         because the paginator measures boxes and a margin sits outside them.
       */}
-      <div style={{ height: `${BLANK_LINE_PT}pt` }} aria-hidden />
+      {!continues && <div style={{ height: `${BLANK_LINE_PT}pt` }} aria-hidden />}
     </div>
   );
 }
@@ -2308,16 +2322,33 @@ export function NodeView({
   node,
   language,
   ctx,
+  tableContinues,
+  tableJoinsAbove,
 }: {
   node: RenderNode;
   language: LanguageMode;
   ctx?: EditContext;
+  /**
+   * A table drawn in pieces (`TableNode.rowKeepNext`) whose rows go on below: no
+   * caption or closing blank line yet, which belong to its last piece only.
+   */
+  tableContinues?: boolean;
+  /** A table piece going on from the piece above: its top rule is that piece's bottom one. */
+  tableJoinsAbove?: boolean;
 }) {
   if (node.kind === "text")
     return <TextNodeView node={node} language={language} ctx={ctx} />;
 
   if (node.kind === "table") {
-    return <TableNodeView node={node} language={language} ctx={ctx} />;
+    return (
+      <TableNodeView
+        node={node}
+        language={language}
+        ctx={ctx}
+        continues={tableContinues}
+        joinsAbove={tableJoinsAbove}
+      />
+    );
   }
 
   if (node.kind === "columns") {
@@ -2386,16 +2417,18 @@ export function NodeView({
             {cell.marker && (
               <span className="font-medium">{cell.marker}&nbsp;</span>
             )}
-            {richNodes(
-              cell.text,
-              language,
-              cell.edit,
-              ctx,
-              undefined,
-              undefined,
-              undefined,
-              QUIET_PROMPT_STYLES.has(node.style),
-            )}
+            {cell.segments && ctx
+              ? segmentNodes(cell.segments, language, ctx, QUIET_PROMPT_STYLES.has(node.style))
+              : richNodes(
+                  cell.text,
+                  language,
+                  cell.edit,
+                  ctx,
+                  undefined,
+                  undefined,
+                  undefined,
+                  QUIET_PROMPT_STYLES.has(node.style),
+                )}
           </span>
         ))}
       </div>
@@ -3380,6 +3413,11 @@ function DraggableItem({
  */
 export interface FlowBlock extends PackItem {
   node: React.ReactNode;
+  /**
+   * Drawn instead of `node` when the block opens a sheet: a table continued from the sheet
+   * before, its heading rows on top again (§ `PackItem.leadKey`, which charges for them).
+   */
+  lead?: React.ReactNode;
   /**
    * The same content re-rendered for one slice of its nodes, for a block the paginator
    * had to break across sheets. Absent on blocks that cannot be split (the masthead, the

@@ -47,6 +47,13 @@ Words this repository uses in its own way. One line each, with where the thing l
   as a Question No. | Key table in two column pairs ruled in fives, a right-hand Marks column
   headed "Marks / 分數" on every page, the notation legend and a note for markers.
   `src/render/answerKeySections.ts:hkeaaTable` · `src/render/answerKeySections.ts:LQ_KEY_RENDERERS`
+- **Suggested answers (參考答案)** — the student-handout preset: answers, model diagrams and the
+  first route's marking points as plain bullets; never notation, levels, EC, legend,
+  disclaimer, source notes or the version map. Its file is named "Suggested answers".
+  `src/model/answerKeyLayout.ts:ANSWER_KEY_FIXED` · `src/render/answerKeySections.ts:LQ_KEY_RENDERERS`
+- **Detailed table (詳細表格)** — the CIE-style preset: long questions as Question | Answer |
+  Marks | Guidance (a point a row, the group's rules in Guidance), levels and EC in their own
+  table, MC with a "why the other options are wrong" column. `src/render/answerKeySections.ts:rationaleTable`
 - **Combined answer key** — one answer-key `.docx` covering several saved documents (Paper 1
   + Paper 2), chosen in Export; export-time only. `src/render/answerKey.ts:renderCombinedAnswerKey`
 - **Paper 1** — the HKDSE multiple-choice paper shape: wider boundaries, derived question

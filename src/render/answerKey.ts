@@ -251,6 +251,14 @@ export interface AnswerKeyStyle {
   render: (data: AnswerKeyData, context: KeyStyleContext) => AnswerKeyView;
 }
 
+/** How a style varies the standard arrangement; nothing set = the arrangement as is. */
+export interface StandardKeyOptions {
+  /** With versions on, end with the version map. Default on. */
+  versionMap?: boolean;
+  /** The settings the MC sections read instead of the style's own. */
+  mcLayout?: ResolvedAnswerKeyLayout;
+}
+
 /**
  * The standard arrangement every built-in style uses: title, front matter, then each
  * section's MC answers (`MC_KEY_RENDERERS[mcLayout]`) and long questions
@@ -258,7 +266,11 @@ export interface AnswerKeyStyle {
  * and the version map. Classic's settings reproduce the key exactly as it printed before
  * layouts existed (`answerKeyLayout.test.ts` pins it byte for byte).
  */
-export function renderStandardKey(data: AnswerKeyData, { language, layout, title }: KeyStyleContext): AnswerKeyView {
+export function renderStandardKey(
+  data: AnswerKeyData,
+  { language, layout, title }: KeyStyleContext,
+  options: StandardKeyOptions = {},
+): AnswerKeyView {
   const nodes: RenderNode[] = [{ kind: 'text', style: 'Worksheet Title', text: title, keepNext: true }];
   const fields: AnswerKeyView['fields'] = [{ index: 0, edit: { kind: 'answerKeyTitle' } }];
   if (layout.subtitle) fields.push({ index: 1, edit: { kind: 'answerKeySubtitle' } });
@@ -267,6 +279,8 @@ export function renderStandardKey(data: AnswerKeyData, { language, layout, title
     for (let index = from; index < nodes.length; index += 1) owners[index] = questionId;
   };
   const context: KeySectionContext = { language, layout, own };
+  // The MC sections may read their own settings (Suggested answers' MC wording switch).
+  const mc: KeySectionContext = options.mcLayout ? { ...context, layout: options.mcLayout } : context;
   renderFrontMatter(nodes, context);
 
   const groups = data.groups.map((group) => ({
@@ -282,7 +296,7 @@ export function renderStandardKey(data: AnswerKeyData, { language, layout, title
   });
 
   if (data.letters.length > 0) {
-    renderVersionedKey(nodes, groups, data.letters, context, heading);
+    renderVersionedKey(nodes, groups, data.letters, context, heading, mc, options.versionMap ?? true);
   } else {
     for (const group of groups) {
       if (group.choices.length === 0 && group.schemes.length === 0) continue;
@@ -291,7 +305,7 @@ export function renderStandardKey(data: AnswerKeyData, { language, layout, title
         nodes.push(heading(group));
         pushGap(nodes);
       }
-      if (group.choices.length > 0) MC_KEY_RENDERERS[layout.mcLayout].render(nodes, group.choices, context);
+      if (group.choices.length > 0) MC_KEY_RENDERERS[mc.layout.mcLayout].render(nodes, group.choices, mc);
       for (const scheme of group.schemes) {
         if (nodes[nodes.length - 1]?.kind !== 'table') pushGap(nodes);
         LQ_KEY_RENDERERS[layout.lqLayout](nodes, scheme, context);
@@ -318,9 +332,11 @@ function renderVersionedKey(
   letters: string[],
   context: KeySectionContext,
   heading: (group: KeyGroup) => RenderNode,
+  mc: KeySectionContext,
+  versionMap: boolean,
 ): void {
   const { language, layout, own } = context;
-  const table = MC_KEY_RENDERERS[layout.mcLayout].table ?? answerGrid;
+  const table = MC_KEY_RENDERERS[mc.layout.mcLayout].table ?? answerGrid;
   const withChoices = groups.filter((group) => group.choices.length > 0);
   letters.forEach((letter, version) => {
     if (withChoices.length === 0) return;
@@ -359,17 +375,38 @@ function renderVersionedKey(
   if (layout.paperTotal) {
     renderPaperTotal(nodes, groups.reduce((sum, group) => sum + group.total, 0));
   }
-  if (withChoices.length > 0) renderVersionMap(nodes, withChoices, letters, language);
+  if (versionMap && withChoices.length > 0) renderVersionMap(nodes, withChoices, letters, language);
 }
 
 /**
- * Every whole-key style by preset id. Classic and HKEAA differ only in settings; a new
- * style (Suggested answers, Detailed table) adds its entry here and may bring its own
- * `render`.
+ * Suggested answers 參考答案: the standard arrangement with nothing a marker alone reads.
+ * Its settings fix the rest (`ANSWER_KEY_FIXED`: answers-only long questions, no legend,
+ * disclaimer or source notes); here the MC answers print as the list when the MC wording
+ * switch is on (the one layout that shows it), and the version map (a marker's pooling
+ * tool) is left out: each student finds their own version's answers by its heading.
+ */
+function renderSuggestedKey(data: AnswerKeyData, context: KeyStyleContext): AnswerKeyView {
+  const { layout } = context;
+  return renderStandardKey(data, context, {
+    versionMap: false,
+    mcLayout: {
+      ...layout,
+      showStems: layout.showMcStems,
+      ...(layout.showMcStems ? { mcLayout: 'list' as const } : {}),
+    },
+  });
+}
+
+/**
+ * Every whole-key style by preset id. Classic, HKEAA and Detailed differ only in settings
+ * (their section layouts); Suggested answers brings its own `render` around the same
+ * arrangement.
  */
 export const ANSWER_KEY_STYLES: Record<AnswerKeyPreset, AnswerKeyStyle> = {
   classic: { titleWording: ANSWER_KEY_WORDING.title, render: renderStandardKey },
   hkeaa: { titleWording: KEY_LAYOUT_WORDING.hkeaaTitle, render: renderStandardKey },
+  suggested: { titleWording: KEY_LAYOUT_WORDING.suggestedTitle, render: renderSuggestedKey },
+  detailed: { titleWording: KEY_LAYOUT_WORDING.detailedTitle, render: renderStandardKey },
 };
 
 // --- Titles --------------------------------------------------------------------------

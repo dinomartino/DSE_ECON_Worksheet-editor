@@ -52,7 +52,7 @@ describe('answer key layout: stored as deltas', () => {
   });
 
   it('unknown presets and layouts print as Classic, and are kept for the build that wrote them', () => {
-    const newer = { preset: 'suggested', mcLayout: 'bubbles', lqLayout: 'table', showStems: true };
+    const newer = { preset: 'omrSheet', mcLayout: 'bubbles', lqLayout: 'boxes', showStems: true };
     const resolved = resolveAnswerKeyLayout(newer as unknown as AnswerKeyLayout);
     expect(resolved).toMatchObject({ preset: 'classic', mcLayout: 'grid', lqLayout: 'compact', showStems: true });
     expect(normalizeAnswerKeyLayout(newer)).toEqual(newer);
@@ -112,5 +112,71 @@ describe('answer key title and subtitle edits', () => {
       preset: 'hkeaa',
       subtitle: bi('a', 'b'),
     });
+  });
+});
+
+describe('Suggested answers and Detailed table', () => {
+  it('each preset resolves to its own settings', () => {
+    expect(resolveAnswerKeyLayout({ preset: 'suggested' })).toMatchObject({
+      preset: 'suggested',
+      lqLayout: 'answers',
+      showLegend: false,
+      showDisclaimer: false,
+      showSources: false,
+      showStems: true,
+      showMcStems: false,
+      showExplanations: true,
+      showRationales: false,
+      showPartMarks: true,
+      schemeAsPoints: true,
+    });
+    expect(resolveAnswerKeyLayout({ preset: 'detailed' })).toMatchObject({
+      preset: 'detailed',
+      mcLayout: 'rationaleTable',
+      lqLayout: 'table',
+      showDisclaimer: true,
+      showRationales: true,
+      questionTotals: true,
+    });
+    // Classic is unchanged by the new switches.
+    expect(resolveAnswerKeyLayout(undefined)).toEqual({ preset: 'classic', ...ANSWER_KEY_PRESETS.classic });
+  });
+
+  it('a setting the preset fixes ignores what is stored, stores nothing and is no change', () => {
+    const stale = {
+      preset: 'suggested',
+      lqLayout: 'marksColumn',
+      showLegend: true,
+      showDisclaimer: true,
+      showSources: true,
+    } as AnswerKeyLayout;
+    expect(resolveAnswerKeyLayout(stale)).toMatchObject({
+      lqLayout: 'answers',
+      showLegend: false,
+      showDisclaimer: false,
+      showSources: false,
+    });
+    expect(hasAnswerKeyChanges(stale)).toBe(false);
+    expect(withAnswerKeySetting({ preset: 'suggested' }, 'showLegend', true)).toEqual({ preset: 'suggested' });
+    expect(withAnswerKeySetting(stale, 'showSources', true)).not.toHaveProperty('showSources');
+    // The same key is the teacher's to set in a preset that leaves it open.
+    expect(withAnswerKeySetting({ preset: 'detailed' }, 'showLegend', true)).toEqual({
+      preset: 'detailed',
+      showLegend: true,
+    });
+    // Switches only Suggested answers reads are fixed elsewhere.
+    expect(resolveAnswerKeyLayout({ schemeAsPoints: true } as AnswerKeyLayout).schemeAsPoints).toBe(false);
+    // Choosing another preset leaves nothing stale behind.
+    expect(withAnswerKeyPreset({ ...stale, schemeAsPoints: false }, 'hkeaa')).toEqual({ preset: 'hkeaa' });
+  });
+
+  it('round-trips through save and load, the new switches included', () => {
+    const worksheet = {
+      ...createWorksheet(),
+      answerKeyLayout: { preset: 'suggested', showMcStems: true, schemeAsPoints: false, showPartMarks: false },
+    } as Worksheet;
+    expect(roundTrip(worksheet).answerKeyLayout).toEqual(worksheet.answerKeyLayout);
+    const table = { ...createWorksheet(), answerKeyLayout: { preset: 'detailed', mcLayout: 'grid' } } as Worksheet;
+    expect(roundTrip(table).answerKeyLayout).toEqual(table.answerKeyLayout);
   });
 });
