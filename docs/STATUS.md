@@ -24,6 +24,16 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **2026-10-02 on `develop`, not released: marking scheme layouts** (research Phases 2–3). Saved
+  `Worksheet.answerKeyLayout?` (deltas vs a preset, in `KNOWN_KEYS`; absent = Classic, byte-identical).
+  Presets: Classic, HKEAA 評卷參考 (MC table 1–25|26–45, Marks column as a right indent + "Marks"
+  running head, legend, disclaimer, totals), Suggested answers 參考答案 (student handout; fixed settings
+  in `ANSWER_KEY_FIXED`; strict sentinel leak tests over all switch combos), Detailed table (CIE-style,
+  rows split with repeated heading). Layout / 版面 sidebar tab in the Marking scheme view; title and
+  subtitle edited on the page. Registry: `ANSWER_KEY_STYLES`, `answerKeySections.ts`. **Open:** marks
+  sit on a point's last line (HKEAA: first); no "Indicate in Figure n"; bilingual `.docx` page breaks
+  unverified (no PMingLiU here); Tauri, real Word, real print dialog not tried; older builds print a
+  Suggested file as Classic; the suggested-answers leak test once timed out under load (de-flake running).
 - **2026-10-02 on `develop`, not released: Translation terms 翻譯用語** (Settings). Teachers pick among
   the EDB's same-meaning renderings (347 entries incl. the GDP family; numbered different-meaning
   senses never cross), add their own wording to any of the 1350 terms, and add custom terms (EN forms,
