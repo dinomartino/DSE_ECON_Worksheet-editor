@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
+import { hasAnswerLayer } from '@/model/diagramAnswers';
 import { graphFromBlock, rebaseOnGraph } from '@/model/graph';
 import { graphStore } from '@/storage';
 import { emptyBiText, isBiTextEmpty, plain } from '@/model/text';
@@ -73,6 +74,8 @@ export function DiagramEditor({ block, onChange }: Props) {
         heightPx: block.heightPx,
         language,
         fonts,
+        // The thumbnail opens the canvas, so it shows what the canvas shows.
+        answers: 'show',
       }),
     [diagram, block.widthPx, block.heightPx, language, fonts],
   );
@@ -189,6 +192,11 @@ export function DiagramEditor({ block, onChange }: Props) {
             {elementCount === 0
               ? m.drawEmpty
               : m.elementCount(elementCount)}
+          </span>
+          {/* The answer layer is found from here: teachers looked for "mark the answer
+              on the diagram" in the panel, not in the canvas. */}
+          <span className="basis-full text-[11px] leading-snug text-ink-subtle">
+            {hasAnswerLayer(diagram) ? m.answerLayerOn : m.answerLayerHint}
           </span>
         </div>
       )}

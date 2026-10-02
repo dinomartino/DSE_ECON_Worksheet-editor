@@ -15,6 +15,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Draw the answer on the question's own diagram.** In the drawing canvas, turn on Draw
+  answer and draw the model answer (a PPF, a new curve, a labelled point) on the same axes
+  the students get. It prints in red in the Teacher version and the answer key, and the
+  Student version shows the blank diagram. Any element can be switched with Answer
+  (teacher only).
+  <!-- zh: **直接在題目的圖表上繪製答案。** 在繪圖畫布開啟「繪製答案」，便可在學生所用的
+  同一組座標軸上畫出參考答案（例如生產可能曲線、新曲線或標示點）。答案會以紅色印在教師版
+  和答案頁，學生版則只顯示空白圖表。任何元素都可用「答案（只限教師版）」切換。 -->
 - **What's new in 繁體中文.** With the interface in 繁體中文, What's new shows every
   release's notes in Hong Kong Chinese, with its headings and dates in Chinese too.
   <!-- zh: **最新功能有繁體中文版。** 介面設定為繁體中文時，「最新功能」會以香港中文

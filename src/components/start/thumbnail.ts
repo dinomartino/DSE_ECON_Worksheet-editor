@@ -126,6 +126,7 @@ export function diagramImages(worksheet: Worksheet, mode: OutputMode): DiagramIm
           heightPx: node.heightPx,
           language: mode.language,
           fonts: worksheet.fonts,
+          ...(node.answers ? { answers: 'show' as const } : {}),
         }),
       );
     } catch {

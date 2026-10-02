@@ -39,7 +39,7 @@ export function AnswerDiagramRow({
 
   // Memoised: the string goes to `dangerouslySetInnerHTML` (see `DiagramEditor`).
   const thumbnail = useMemo(
-    () => diagramSvg(diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language, fonts }),
+    () => diagramSvg(diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language, fonts, answers: 'show' }),
     [diagram, block.widthPx, block.heightPx, language, fonts],
   );
   const templateName =
@@ -100,6 +100,7 @@ export function AnswerDiagramRow({
           />
         </div>
       </div>
+      <p className="text-[11px] leading-snug text-ink-subtle">{m.onQuestionDiagram}</p>
       {drawing &&
         drawable &&
         (diagram.flow ? (

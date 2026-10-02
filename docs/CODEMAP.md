@@ -63,6 +63,7 @@ the whole schema, one file.
 - `src/model/table.ts:insertRow` · `:resolveCellPadding` · `:resolveColumnWidths`
 - `src/model/factories.ts:createWorksheet` · `src/model/newWorksheet.ts:createWorksheetFrom`
 - `src/model/factories.ts:createAnswerDiagram` · `src/model/edits.ts:isAnswerDiagram` — a leaf's model answer diagram (`answerDiagram`), found and patched by block id like a stem figure
+- `src/model/diagramAnswers.ts:answerLayer` · `:markNewAsAnswers` · `:answeredDiagrams` — the answer layer (`answer: true` on a diagram element): what the student version drops (dependents included); `src/render/ir.ts:withAnswerLayers` sets `DiagramNode.answers` in the teacher version, `diagramSvg`'s `answers` draws it in `src/render/diagram.ts:ANSWER_INK`
 - `src/model/factories.ts:FONT_PRESETS` — the font pairs offered; `src/model/fonts.ts:cssFontFamilies` spells a pair as CSS (preview, print, clipboard, diagram SVG), adding browser stand-ins for faces a Mac lacks (DFKai-SB → Kai); the `.docx` writes the stored name only
 
 Invariants:

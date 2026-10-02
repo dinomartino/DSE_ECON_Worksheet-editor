@@ -57,6 +57,14 @@ export const DIAGRAM_PANEL_MESSAGES = defineMessages({
     en: (n: number) => `${n} ${n === 1 ? 'element' : 'elements'} · edit them on the canvas`,
     zh: (n: number) => `${n} 個元素 · 在畫布上編輯`,
   },
+  answerLayerHint: {
+    en: 'To mark the answer on this diagram, open Draw and turn on Draw answer. Only the Teacher version shows it.',
+    zh: '如要在此圖表上標示答案，請開啟繪圖，再開啟「繪製答案」。只有教師版會顯示。',
+  },
+  answerLayerOn: {
+    en: 'Has an answer drawn in red. The Teacher version and the answer key show it; the Student version does not.',
+    zh: '已用紅色繪製答案。教師版和答案頁會顯示，學生版不會顯示。',
+  },
   saveToGraphs: { en: 'Save to Graphs', zh: '儲存到圖表庫' },
   saveToGraphsHint: {
     en: 'Keep a copy in Graphs 圖表庫 to reuse or copy into Word',
@@ -435,6 +443,20 @@ export const DIAGRAM_CANVAS_MESSAGES = defineMessages({
   cropTitle: {
     en: 'Crop: drag the frame to choose the white space around the plot. The frame becomes the printed size; the plot keeps its own.',
     zh: '裁剪：拖曳邊框以決定繪圖區周圍的空白。邊框即列印尺寸，繪圖區大小不變。',
+  },
+  drawAnswer: { en: 'Draw answer', zh: '繪製答案' },
+  drawAnswerTitle: {
+    en: 'Draw answer: what you draw now is the model answer. It prints in red in the Teacher version and the answer key, and never in the Student version.',
+    zh: '繪製答案：此時繪製的內容會成為參考答案，以紅色印在教師版和答案頁，學生版不會顯示。',
+  },
+  answerLegend: {
+    en: 'Red = answer, only in the Teacher version and the answer key',
+    zh: '紅色 = 答案，只見於教師版和答案頁',
+  },
+  answerToggle: { en: 'Answer (teacher only)', zh: '答案（只限教師版）' },
+  answerToggleHint: {
+    en: 'Shown in red in the Teacher version and the answer key. Left out of the Student version, with anything attached to it.',
+    zh: '在教師版和答案頁以紅色顯示。學生版不會顯示，連同依附於它的元素。',
   },
   autoFrame: { en: 'Auto frame', zh: '自動邊框' },
   autoFrameHint: { en: 'measure again', zh: '重新量度' },

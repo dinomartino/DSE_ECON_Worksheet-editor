@@ -6,6 +6,7 @@ import type { MarkScheme } from '@/model/markSchemeTypes';
 import type { BiText, DiagramBlock, LanguageMode, Worksheet } from '@/model/types';
 import { versionLetters, versionSeed } from '@/model/versions';
 import { requireQuestionType } from '@/registry';
+import { hasAnswerLayer } from '@/model/diagramAnswers';
 import { diagramNodeFor, pushGap, type RenderNode, type TableNode, type TableNodeCell } from './ir';
 import { renderMarkScheme } from './markScheme';
 
@@ -512,8 +513,11 @@ function renderScheme(
         indent: answerIndent,
       });
     }
-    // Not teacher-only: the whole key is the teacher's.
-    if (row.diagram) nodes.push(diagramNodeFor(row.diagram, {}));
+    // Not teacher-only: the whole key is the teacher's, answer layer included.
+    if (row.diagram) {
+      const node = diagramNodeFor(row.diagram, {});
+      nodes.push(hasAnswerLayer(row.diagram.diagram) ? { ...node, answers: true } : node);
+    }
     nodes.push(...schemeNodes);
   });
 }

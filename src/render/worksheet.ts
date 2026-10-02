@@ -27,6 +27,7 @@ import {
   blankLine,
   endsInBlankLine,
   includeNode,
+  withAnswerLayers,
   isWritingRoom,
   pushGap,
   renderContentBlocks,
@@ -448,7 +449,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
           keepWhole: shape === 'paper1',
         };
       }
-      const nodes = renderLayoutElement(
+      const laid = renderLayoutElement(
         item.element,
         item.element.kind === 'partHeader' || item.element.kind === 'section'
           ? (sectionTotals.get(currentSectionId) ?? 0)
@@ -463,6 +464,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         numbering.questions.length,
         stimulus,
       );
+      const nodes = withAnswerLayers(laid, mode);
       previousNodes = nodes;
       previous = { layout: item.element };
       return {
@@ -525,7 +527,8 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         })
         // Student output must contain no teacher content anywhere (§11.8).
         .filter((node) => includeNode(node, mode));
-      const nodes = keepWhole ? keepQuestionWhole(rendered) : rendered;
+      const shown = withAnswerLayers(rendered, mode);
+      const nodes = keepWhole ? keepQuestionWhole(shown) : shown;
       // The boundary rides on the first paragraph, not on spacers above it, so it dies
       // at a page top in both backends (§ `withLeadingGap`).
       separated = withLeadingGap(nodes, gap);

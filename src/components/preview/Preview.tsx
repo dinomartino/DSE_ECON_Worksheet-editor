@@ -1116,8 +1116,10 @@ function DiagramNodeView({
       heightPx: node.heightPx,
       language,
       fonts,
+      // The walker marks a teacher-version diagram that has an answer layer.
+      ...(node.answers ? { answers: "show" as const } : {}),
     }),
-    [node.diagram, node.widthPx, node.heightPx, language, fonts],
+    [node.diagram, node.widthPx, node.heightPx, language, fonts, node.answers],
   );
 
   const picture = (

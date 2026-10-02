@@ -24,6 +24,7 @@ import { cssFontFamilies } from '@/model/fonts';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
 import { resolveDiagram, splineSegments } from '@/model/diagramAnchors';
+import { answerLayer, type AnswerLayerKind } from '@/model/diagramAnswers';
 import { spanGeometry, type SpanClearance } from '@/model/diagramSpans';
 import { spanLayout, SPAN_LABEL_GAP, SPAN_TICK } from './diagramSpan';
 import {
@@ -199,6 +200,24 @@ export interface DiagramSvgOptions {
    * crisp on a 600dpi printer while occupying the same space on the page.
    */
   scale?: number;
+  /**
+   * The answer layer (`model/diagramAnswers.ts`): `show` draws it in `ANSWER_INK`
+   * (teacher version, answer key, the canvas); absent or `hide` leaves it and its
+   * dependents out. The frame is measured with it either way, so both versions match.
+   */
+  answers?: 'show' | 'hide';
+}
+
+/**
+ * The answer layer's ink: the `Answer` style's red, so a drawn answer matches typed
+ * ones. Prints dark grey in black and white.
+ */
+export const ANSWER_INK = '#C00000';
+
+/** One element's markup on the answer layer: diagram ink turned red, text filled red. */
+function answerInk(markup: string): string {
+  if (!markup) return '';
+  return `<g data-answer="" fill="${ANSWER_INK}">${markup.replace(/"#000"/g, `"${ANSWER_INK}"`)}</g>`;
 }
 
 function escapeXml(value: string): string {
@@ -2891,25 +2910,36 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
     }),
   ].join('');
 
+  // The answer layer is laid out against the whole diagram (area labels dodge answer
+  // curves in both versions) and only its drawing differs: red, or nothing at all.
+  const layer = answerLayer(stored);
+  const showAnswers = options.answers === 'show';
+  const on = (kind: AnswerLayerKind, id: string, draw: (answer: boolean) => string): string => {
+    if (!layer || !layer[kind].has(id)) return draw(false);
+    return showAnswers ? answerInk(draw(true)) : '';
+  };
+  // An answer area takes the red tint, whatever colour it was given.
+  const answerPaint = (area: DiagramArea, answer: boolean): DiagramArea => (answer ? { ...area, color: 'red' } : area);
+
   const areas = diagram.areas ?? [];
   const body = [
     // White ground: a transparent PNG would print as whatever is behind it in Word.
     `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>`,
     // Shading under everything, so axes and curves stay crisp over it. No areas, no
     // bytes: an older diagram renders exactly as it always did.
-    ...areas.map((area) => areaFillSvg(diagram, area, proj, scale)),
+    ...areas.map((area) => on('areas', area.id, (a) => areaFillSvg(diagram, answerPaint(area, a), proj, scale))),
     axes,
     origin,
     axisTicks,
     title,
     xTitle,
     yTitle,
-    ...diagram.curves.map((curve) => curveSvg(curve, proj, language, scale)),
-    ...diagram.arrows.map((arrow) => arrowSvg(arrow, proj, language, scale)),
-    ...(diagram.spans ?? []).map((span) => spanSvg(diagram, span, proj, language, scale)),
-    ...diagram.points.map((point) => pointSvg(point, proj, language, scale)),
-    ...diagram.labels.map((label) => labelSvg(label, proj, language, scale)),
-    ...areas.map((area) => areaLabelSvg(diagram, area, proj, language, scale)),
+    ...diagram.curves.map((curve) => on('curves', curve.id, () => curveSvg(curve, proj, language, scale))),
+    ...diagram.arrows.map((arrow) => on('arrows', arrow.id, () => arrowSvg(arrow, proj, language, scale))),
+    ...(diagram.spans ?? []).map((span) => on('spans', span.id, () => spanSvg(diagram, span, proj, language, scale))),
+    ...diagram.points.map((point) => on('points', point.id, () => pointSvg(point, proj, language, scale))),
+    ...diagram.labels.map((label) => on('labels', label.id, () => labelSvg(label, proj, language, scale))),
+    ...areas.map((area) => on('areas', area.id, () => areaLabelSvg(diagram, area, proj, language, scale))),
   ].join('');
 
   return (

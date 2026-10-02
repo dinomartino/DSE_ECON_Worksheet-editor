@@ -13,6 +13,7 @@ export const GraphThumb = memo(function GraphThumb({ graph, className = 'aspect-
         heightPx: graph.block.heightPx,
         language: graph.language,
         fonts: graph.fonts,
+        answers: 'show',
       }),
     [graph.block, graph.language, graph.fonts],
   );

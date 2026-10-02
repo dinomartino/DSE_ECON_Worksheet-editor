@@ -963,6 +963,11 @@ Renderer rules:
   visibility of *its own* ancestors — the first match sits outside `#print-root`, hidden
   in print. Arrowheads are triangles (`arrowheadPath`); the pie's patterns survive only
   via the `body svg pattern *` print rule in `globals.css`.
+- **The answer layer is drawn, never measured separately** (`model/diagramAnswers.ts`).
+  `answers: 'show'` paints it in `ANSWER_INK`; absent, it and its dependents are skipped.
+  Layout always uses the whole diagram, so student and teacher frames are identical. The
+  flag rides `DiagramNode.answers` (teacher walker, answer key); each export builds its own
+  PNG map from its own mode, so a student file cannot reuse a red picture.
 
 ### A diagram's words live inside its own image
 

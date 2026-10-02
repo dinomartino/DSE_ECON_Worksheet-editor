@@ -1,4 +1,5 @@
 import type { Diagram } from '@/model/diagram';
+import { hasAnswerLayer } from '@/model/diagramAnswers';
 import type { ListIndentScheme } from '@/model/numbering';
 import type {
   BandFieldSide,
@@ -258,6 +259,12 @@ export interface DiagramNode {
   align: TableAlign;
   /** Which block this came from, so the preview can select and edit it. */
   blockId: string;
+  /**
+   * Draw the diagram's answer layer (`model/diagramAnswers.ts`) — set by the walker in
+   * the teacher version and by the answer key, only on a diagram that has one. Absent,
+   * every backend leaves the layer out (`diagramSvg`'s `answers`).
+   */
+  answers?: true;
 }
 
 /**
@@ -549,6 +556,35 @@ export function includeNode(node: RenderNode, mode: OutputMode): boolean {
   if (mode.omitAnswerSpace && isWritingRoom(node)) return false;
   if (mode.version === 'teacher') return true;
   return !('teacherOnly' in node && node.teacherOnly);
+}
+
+/**
+ * The teacher version's nodes: every diagram carrying an answer layer, nested ones
+ * included, marked to draw it. The same array back when nothing changes, so an
+ * untouched document's IR keeps its identity and its bytes.
+ */
+export function withAnswerLayers(nodes: RenderNode[], mode: OutputMode): RenderNode[] {
+  if (mode.version !== 'teacher') return nodes;
+  let changed = false;
+  const mark = <T extends RenderNode>(node: T): T => {
+    let next: RenderNode = node;
+    if (node.kind === 'diagram') {
+      if (!node.answers && hasAnswerLayer(node.diagram)) next = { ...node, answers: true };
+    } else if (node.kind === 'figureRow') {
+      const figure = mark(node.figure);
+      if (figure !== node.figure) next = { ...node, figure };
+    } else if (node.kind === 'optionRow') {
+      const cells = node.cells.map((cell) => withAnswerLayers(cell, mode));
+      if (cells.some((cell, i) => cell !== node.cells[i])) next = { ...node, cells };
+    } else if (node.kind === 'source') {
+      const inner = withAnswerLayers(node.nodes, mode);
+      if (inner !== node.nodes) next = { ...node, nodes: inner };
+    }
+    if (next !== node) changed = true;
+    return next as T;
+  };
+  const marked = nodes.map(mark);
+  return changed ? marked : nodes;
 }
 
 /**
