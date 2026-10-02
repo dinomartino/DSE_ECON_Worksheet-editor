@@ -51,7 +51,7 @@ export function ImportPanel({
       <p className="text-[12px] font-medium text-ink">{m.importTitle(name)}</p>
       <p className="mt-0.5 text-[12px] text-ink-muted">{m.importCounts(add, same, conflict, invalid)}</p>
       {shown.length > 0 && (
-        <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto pr-1">
+        <ul className="mt-2 max-h-72 space-y-1 overflow-y-auto pr-1">
           {shown.map((item) => (
             <li key={item.line} className="flex flex-wrap items-baseline gap-x-2 text-[12px]">
               <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${TONE[item.kind as keyof typeof TONE]}`}>
@@ -70,7 +70,7 @@ export function ImportPanel({
           ))}
         </ul>
       )}
-      <div className="mt-3 flex flex-wrap items-start gap-3">
+      <div className="mt-3 flex max-w-[640px] flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1 basis-40">
           <Button size="sm" variant="primary" disabled={!usable} onClick={() => onApply('merge')}>
             {m.merge}

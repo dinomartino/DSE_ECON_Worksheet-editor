@@ -31,6 +31,7 @@ export function Dialog({
   footer,
   width = 720,
   height,
+  size,
   scrollBody = true,
 }: {
   title: string;
@@ -48,6 +49,11 @@ export function Dialog({
    * height so it still fits a short window.
    */
   height?: number;
+  /**
+   * 'large' fills most of the window, capped so it stays reasonable on a big monitor;
+   * `width` and `height` are then ignored. Height stays fixed, so tabs do not jump.
+   */
+  size?: 'large';
   /**
    * Whether the dialog body scrolls as one block.
    *
@@ -97,11 +103,15 @@ export function Dialog({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        style={{
-          width,
-          maxWidth: '100%',
-          ...(height ? { height: `min(${height}px, 86vh)` } : { maxHeight: '86vh' }),
-        }}
+        style={
+          size === 'large'
+            ? LARGE
+            : {
+                width,
+                maxWidth: '100%',
+                ...(height ? { height: `min(${height}px, 86vh)` } : { maxHeight: '86vh' }),
+              }
+        }
         className="zone-light relative flex animate-dialog-in flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl outline-none"
       >
         <header className="flex items-start gap-3 border-b border-line px-5 py-4">
@@ -141,6 +151,15 @@ export function Dialog({
     </div>
   );
 }
+
+/** `size="large"`: the window less a gutter each side, to a cap (the wrapper pads 16px). */
+const LARGE_GUTTER = 28;
+const LARGE = {
+  width: `min(1200px, calc(100vw - ${2 * LARGE_GUTTER}px))`,
+  height: `min(880px, calc(100dvh - ${2 * LARGE_GUTTER}px))`,
+  maxWidth: '100%',
+  maxHeight: '100%',
+} as const;
 
 /** The dialog's scroll pane reports here how to show more of it, or null at the end. */
 const MoreBelowContext = createContext<((scrollOn: (() => void) | null) => void) | null>(null);

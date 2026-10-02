@@ -8,5 +8,6 @@ registerSettingsSection({
   hint: m.termsHint,
   description: m.termsDescription,
   order: 15,
+  wide: true,
   load: () => import('./termsSection/TermsSection'),
 });

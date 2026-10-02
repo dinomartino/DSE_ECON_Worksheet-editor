@@ -34,6 +34,8 @@ export interface SettingsSectionDef {
   /** One line under the section heading. */
   description: UiText;
   order: number;
+  /** Fills the panel's width (a long list). Otherwise the pane keeps a form's width. */
+  wide?: boolean;
   /** e.g. a desktop-only section. */
   available?: (env: SettingsEnv) => boolean;
   /** The pane, loaded only when the dialog shows this section (React.lazy). */
