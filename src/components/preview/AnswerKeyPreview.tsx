@@ -14,7 +14,7 @@ import {
 } from "@/model/page";
 import type { BiText, HeaderFooter, LanguageMode, Worksheet } from "@/model/types";
 import { answerKeyRunningHead, answerKeyTitleOverride, answerKeyView } from "@/render/answerKey";
-import type { EditTarget, RenderNode } from "@/render/ir";
+import type { EditTarget, RenderNode, TableNode } from "@/render/ir";
 import { IconButton } from "@/components/ui";
 import { MinusIcon, PlusIcon } from "@/components/ui/icons";
 import { useMessages } from "@/i18n/language";
@@ -61,13 +61,12 @@ const KEY_FOOTER: HeaderFooter = {
   showOnFirstPage: true,
 };
 
-/** Runs of nodes Word keeps together: each ends at a node that does not keep with the next. */
-export function keepTogetherRuns(nodes: RenderNode[]): Array<{ from: number; to: number }> {
+/** Runs of items kept together: each ends at one that does not keep with the next. */
+function runsOf(keeps: boolean[]): Array<{ from: number; to: number }> {
   const runs: Array<{ from: number; to: number }> = [];
   let from = 0;
-  nodes.forEach((node, index) => {
-    const keeps = "keepNext" in node && node.keepNext;
-    if (!keeps || index === nodes.length - 1) {
+  keeps.forEach((keep, index) => {
+    if (!keep || index === keeps.length - 1) {
       runs.push({ from, to: index });
       from = index + 1;
     }
@@ -75,15 +74,122 @@ export function keepTogetherRuns(nodes: RenderNode[]): Array<{ from: number; to:
   return runs;
 }
 
+/** Runs of nodes Word keeps together: each ends at a node that does not keep with the next. */
+export function keepTogetherRuns(nodes: RenderNode[]): Array<{ from: number; to: number }> {
+  return runsOf(nodes.map((node) => Boolean("keepNext" in node && node.keepNext)));
+}
+
+/**
+ * What the key is packed by: a node, or one row of a table that may break between rows
+ * (`TableNode.rowKeepNext`), which Word lays out row by row. A row keeps with the next
+ * where the IR says so; heading rows always keep with the first row under them.
+ */
+export interface KeyUnit {
+  index: number;
+  row?: number;
+  keepNext: boolean;
+}
+
+export function keyUnits(nodes: RenderNode[]): KeyUnit[] {
+  return nodes.flatMap((node, index): KeyUnit[] => {
+    if (node.kind !== "table" || !node.rowKeepNext) {
+      return [{ index, keepNext: Boolean("keepNext" in node && node.keepNext) }];
+    }
+    const last = node.rows.length - 1;
+    return node.rows.map((_, row) => ({
+      index,
+      row,
+      keepNext:
+        row < (node.headerRows ?? 0) ||
+        Boolean(node.rowKeepNext?.[row]) ||
+        (row === last && Boolean(node.keepNext)),
+    }));
+  });
+}
+
+/**
+ * One run's nodes as the sheet draws them: whole nodes, and each table cut to the rows
+ * the run holds. A run opening in the middle of a table `joins` the piece above (its top
+ * rule is that piece's bottom one); `lead` is how it draws when it opens a sheet instead:
+ * its top ruled and the table's heading rows back on top (Word's `w:tblHeader`). `head` is
+ * those heading rows alone, measured for the paginator (`PackItem.leadKey`).
+ */
+export function runNodes(
+  nodes: RenderNode[],
+  units: KeyUnit[],
+): { nodes: RenderNode[]; continues: boolean[]; joins?: true; lead?: RenderNode[]; head?: RenderNode } {
+  const out: RenderNode[] = [];
+  const continues: boolean[] = [];
+  /** A table cut to rows `rows` (indices into its own), not repeating its heading itself. */
+  const cut = (table: TableNode, rows: number[]): TableNode => ({
+    ...table,
+    rows: rows.map((row) => table.rows[row]),
+    rowHeights: rows.map((row) => table.rowHeights[row]),
+    rowKeepNext: rows.map((row) => Boolean(table.rowKeepNext?.[row])),
+    headerRows: undefined,
+  });
+  const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
+  for (let at = 0; at < units.length; ) {
+    const unit = units[at];
+    const node = nodes[unit.index];
+    at += 1;
+    if (unit.row === undefined || node.kind !== "table") {
+      out.push(node);
+      continues.push(false);
+      continue;
+    }
+    let to = unit.row;
+    while (at < units.length && units[at].index === unit.index) to = units[at++].row!;
+    out.push(cut(node, range(unit.row, to)));
+    continues.push(to < node.rows.length - 1);
+  }
+
+  // A run opening in the middle of a table joins the piece above it (no rule of its own on
+  // top, or the two rules would stack); opening a sheet, it puts its heading back on top.
+  const [first] = units;
+  const table = first ? nodes[first.index] : undefined;
+  if (table?.kind !== "table" || first.row === undefined || first.row === 0) {
+    return { nodes: out, continues };
+  }
+  const heading = table.headerRows ?? 0;
+  if (heading === 0) return { nodes: out, continues, joins: true, lead: out };
+  const shown = out[0] as TableNode;
+  const headRows = range(0, heading - 1);
+  return {
+    nodes: out,
+    continues,
+    joins: true,
+    head: cut(table, headRows),
+    lead: [
+      {
+        ...shown,
+        rows: [...headRows.map((row) => table.rows[row]), ...shown.rows],
+        rowHeights: [...headRows.map((row) => table.rowHeights[row]), ...shown.rowHeights],
+        rowKeepNext: [...headRows.map(() => true), ...(shown.rowKeepNext ?? [])],
+      },
+      ...out.slice(1),
+    ],
+  };
+}
+
 /** The selected question's runs: the page's selection tint, literal hex as on all paper. */
 const SELECTED_RUN = "bg-[#0d77c9]/[0.06]";
 
-/** Only text can carry an edit target here; tables and figures render without page chrome. */
-const editable = (node: RenderNode) => node.kind === "text" || node.kind === "columns";
+/**
+ * Text can carry an edit target here, and so can the cells of the key's own tables;
+ * other tables and figures render without page chrome.
+ */
+const editable = (node: RenderNode) =>
+  node.kind === "text" ||
+  node.kind === "columns" ||
+  (node.kind === "table" && node.rows.some((row) => row.some((cell) => cell.edit || cell.segments)));
 
 const KeyRun = memo(
   function KeyRun({
     nodes,
+    continues,
+    joins,
     owner,
     language,
     ctx,
@@ -91,6 +197,10 @@ const KeyRun = memo(
     onSelect,
   }: {
     nodes: RenderNode[];
+    /** Per node: a table piece whose rows go on in a later run. */
+    continues?: boolean[];
+    /** The first node is a table piece joining the piece above it. */
+    joins?: boolean;
     owner?: string;
     language: LanguageMode;
     ctx?: EditContext;
@@ -100,7 +210,14 @@ const KeyRun = memo(
     onSelect: (questionId: string) => void;
   }) {
     const body = nodes.map((node, index) => (
-      <NodeView key={index} node={node} language={language} ctx={editable(node) ? ctx : undefined} />
+      <NodeView
+        key={index}
+        node={node}
+        language={language}
+        ctx={editable(node) ? ctx : undefined}
+        tableContinues={continues?.[index]}
+        tableJoinsAbove={index === 0 && joins}
+      />
     ));
     if (!owner) return <div>{body}</div>;
     return (
@@ -120,6 +237,8 @@ const KeyRun = memo(
   },
   (prev, next) =>
     prev.nodes === next.nodes &&
+    prev.continues === next.continues &&
+    prev.joins === next.joins &&
     prev.owner === next.owner &&
     prev.language === next.language &&
     prev.selected === next.selected &&
@@ -155,15 +274,23 @@ export function AnswerKeyPreview({
       const field = view.fields.find((entry) => entry.index === index);
       return field && node.kind === "text" ? { ...node, edit: field.edit } : node;
     });
+    // Packed by unit, so a table that may break between rows does (`keyUnits`).
+    const units = keyUnits(shown);
     return {
       nodes: shown,
       empty: view.owners.every((owner) => owner === undefined),
       runningHead: answerKeyRunningHead(view.nodes, language),
-      runs: keepTogetherRuns(shown).map(({ from, to }) => ({
-        key: `key-${from}`,
-        nodes: shown.slice(from, to + 1),
-        owner: view.owners.slice(from, to + 1).find((owner) => owner !== undefined),
-      })),
+      runs: runsOf(units.map((unit) => unit.keepNext)).map(({ from, to }) => {
+        const held = units.slice(from, to + 1);
+        const first = held[0];
+        return {
+          key: `key-${first.index}${first.row !== undefined ? `r${first.row}` : ""}`,
+          // One measured heading per table, however many runs repeat it.
+          headKey: `head-${first.index}`,
+          ...runNodes(shown, held),
+          owner: held.map((unit) => view.owners[unit.index]).find((owner) => owner !== undefined),
+        };
+      }),
     };
   }, [worksheet, language]);
 
@@ -219,20 +346,36 @@ export function AnswerKeyPreview({
   const fontFamily = `${cssFontFamilies(worksheet.fonts)}, serif`;
   const fontSize = worksheet.baseFontSize !== undefined ? { fontSize: `${worksheet.baseFontSize}pt` } : {};
 
+  const keyRun = (run: (typeof runs)[number], nodes: RenderNode[], joins?: boolean) => (
+    <KeyRun
+      nodes={nodes}
+      continues={run.continues}
+      joins={joins}
+      owner={run.owner}
+      language={language}
+      ctx={ctx}
+      ctxStamp={ctxStamp}
+      selected={run.owner !== undefined && run.owner === selectedQuestionId}
+      onSelect={select}
+    />
+  );
   const blocks: FlowBlock[] = runs.map((run) => ({
     key: run.key,
-    node: (
-      <KeyRun
-        nodes={run.nodes}
-        owner={run.owner}
-        language={language}
-        ctx={ctx}
-        ctxStamp={ctxStamp}
-        selected={run.owner !== undefined && run.owner === selectedQuestionId}
-        onSelect={select}
-      />
-    ),
+    node: keyRun(run, run.nodes, run.joins),
+    // Opening a sheet mid-table, the run closes its top and draws the heading again.
+    ...(run.lead ? { lead: keyRun(run, run.lead) } : {}),
+    ...(run.head ? { leadKey: run.headKey } : {}),
   }));
+  /** Each repeated heading alone, measured so the packer can charge it (`leadKey`). */
+  const heads = [
+    ...new Map(
+      runs.flatMap((run) =>
+        run.head
+          ? [[run.headKey, { key: run.headKey, node: <NodeView node={run.head} language={language} tableContinues /> }] as const]
+          : [],
+      ),
+    ).values(),
+  ];
 
   const { pages, fragments, probeRef } = usePagination(blocks, contentHeightPx, [
     nodes,
@@ -350,7 +493,11 @@ export function AnswerKeyPreview({
                       key={piece ? `${block.key}#${piece.from}` : block.key}
                       className={blockIndex === 0 ? "leads-sheet" : undefined}
                     >
-                      {piece && block.slice ? block.slice(piece) : block.node}
+                      {piece && block.slice
+                        ? block.slice(piece)
+                        : blockIndex === 0 && block.lead
+                          ? block.lead
+                          : block.node}
                     </div>
                   );
                 })}
@@ -411,7 +558,7 @@ export function AnswerKeyPreview({
       <div
         aria-hidden
         data-print-hide
-        className="paper pointer-events-none invisible absolute -z-10"
+        className="paper pointer-events-none invisible absolute -z-10 print:max-h-0 print:overflow-hidden"
         style={{
           position: "absolute",
           top: 0,
@@ -422,7 +569,7 @@ export function AnswerKeyPreview({
         }}
       >
         <div ref={probeRef}>
-          {blocks.map((block) => (
+          {[...blocks, ...heads].map((block) => (
             <div key={block.key} data-block-key={block.key}>
               {block.node}
             </div>
