@@ -33,7 +33,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   subtitle edited on the page. Registry: `ANSWER_KEY_STYLES`, `answerKeySections.ts`. **Open:** marks
   sit on a point's last line (HKEAA: first); no "Indicate in Figure n"; bilingual `.docx` page breaks
   unverified (no PMingLiU here); Tauri, real Word, real print dialog not tried; older builds print a
-  Suggested file as Classic; the suggested-answers leak test once timed out under load (de-flake running).
+  Suggested file as Classic; the suggested-answers leak test timed out once under load (fixed: faster checks + 60 s sweep timeout).
 - **2026-10-02 on `develop`, not released: Translation terms 翻譯用語** (Settings). Teachers pick among
   the EDB's same-meaning renderings (347 entries incl. the GDP family; numbered different-meaning
   senses never cross), add their own wording to any of the 1350 terms, and add custom terms (EN forms,
