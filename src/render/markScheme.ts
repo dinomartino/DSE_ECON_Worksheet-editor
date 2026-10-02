@@ -8,7 +8,7 @@ import {
 import type { MarkGroup, MarkPoint, MarkScheme } from '@/model/markSchemeTypes';
 import { bi, isBiTextEmpty } from '@/model/text';
 import type { BiText, RichText } from '@/model/types';
-import type { TextNode } from './ir';
+import type { EditSegment, EditTarget, SchemeAddress, TextNode } from './ir';
 
 /**
  * A marking scheme as IR, in HKEAA layout: one paragraph per point with its mark in the
@@ -17,7 +17,9 @@ import type { TextNode } from './ir';
  * group, "OR" between routes, then level descriptors and the EC table.
  *
  * Emitted once and read by all three backends; the paper's teacher version and the
- * answer key both call it. Derived text only — nothing here carries an edit target.
+ * answer key both call it. Given the leaf's address (`at`), the authored text carries
+ * edit targets — points, alternatives, level and EC descriptors — so it is typed where it
+ * prints in both; the notation around it is derived and has none. Inert in export.
  */
 
 const NUMBER_WORDS_EN = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN'];
@@ -50,17 +52,51 @@ export interface MarkSchemeRenderOptions {
   indent?: number;
   /** True on the paper, where the scheme is teacher-version only. */
   teacherOnly?: boolean;
+  /** The leaf owning the scheme; set, its authored text is editable on the page. */
+  at?: SchemeAddress;
+}
+
+const ALTERNATIVE_SEPARATOR = ' / ';
+
+const hasWords = (runs: RichText) => runs.some((run) => run.text.trim().length > 0);
+
+/** A point's wordings in print order, each with the target that writes it back. */
+function wordings(point: MarkPoint, at: SchemeAddress | undefined) {
+  return [point.text, ...(point.alternatives ?? [])].map((text, index) => ({
+    text,
+    edit: (at
+      ? index === 0
+        ? { kind: 'schemePoint', ...at, pointId: point.id }
+        : { kind: 'schemeAlternative', ...at, pointId: point.id, index: index - 1 }
+      : undefined) as EditTarget | undefined,
+  }));
 }
 
 /** `text / alternative / alternative`, side by side, skipping a side's empty wordings. */
 function withAlternatives(point: MarkPoint): BiText {
-  const join = (side: 'en' | 'zh'): RichText => {
-    const wordings = [point.text, ...(point.alternatives ?? [])]
-      .map((text) => text?.[side] ?? [])
-      .filter((runs) => runs.some((run) => run.text.trim().length > 0));
-    return wordings.flatMap((runs, index) => (index === 0 ? runs : [{ text: ' / ' }, ...runs]));
-  };
+  const join = (side: 'en' | 'zh'): RichText =>
+    wordings(point, undefined)
+      .map(({ text }) => text?.[side] ?? [])
+      .filter(hasWords)
+      .flatMap((runs, index) => (index === 0 ? runs : [{ text: ALTERNATIVE_SEPARATOR }, ...runs]));
   return { en: join('en'), zh: join('zh') };
+}
+
+/**
+ * The same join as `withAlternatives`, as editable pieces: each printed wording is its
+ * own field. A side with nothing printed offers the point's own wording, empty.
+ */
+function alternativeSegments(point: MarkPoint, at: SchemeAddress): TextNode['segments'] {
+  const side = (key: 'en' | 'zh'): EditSegment[] => {
+    const all = wordings(point, at);
+    const shown = all.filter(({ text }) => hasWords(text?.[key] ?? []));
+    if (shown.length === 0) return [{ edit: all[0].edit!, value: point.text }];
+    return shown.flatMap(({ text, edit }, index): EditSegment[] => [
+      ...(index === 0 ? [] : [{ runs: [{ text: ALTERNATIVE_SEPARATOR }] }]),
+      { edit: edit!, value: text },
+    ]);
+  };
+  return { en: side('en'), zh: side('zh') };
 }
 
 function hasWording(point: MarkPoint): boolean {
@@ -75,6 +111,7 @@ export function renderMarkScheme(
   options: MarkSchemeRenderOptions = {},
 ): TextNode[] {
   if (!scheme || isSchemeEmpty(scheme)) return [];
+  const { at } = options;
   const nodes: TextNode[] = [];
   const line = (text: BiText, extra: Partial<TextNode> = {}) => {
     nodes.push({
@@ -111,7 +148,14 @@ export function renderMarkScheme(
         // Under `n@` the lead line states the value once; a point's own mark would
         // contradict it, so only an unallocated group prints marks per point.
         const marks = each === undefined && typeof point.marks === 'number' ? point.marks : undefined;
-        line(withAlternatives(point), marks !== undefined ? { trail: MARK_SCHEME_WORDING.mark(marks) } : {});
+        line(withAlternatives(point), {
+          ...(marks !== undefined ? { trail: MARK_SCHEME_WORDING.mark(marks) } : {}),
+          ...(at
+            ? (point.alternatives ?? []).length > 0
+              ? { segments: alternativeSegments(point, at) }
+              : { edit: { kind: 'schemePoint', ...at, pointId: point.id } }
+            : {}),
+        });
       });
       if (typeof group.max === 'number' && group.max >= 0) {
         line(empty, { trail: MARK_SCHEME_WORDING.max(group.max) });
@@ -125,12 +169,25 @@ export function renderMarkScheme(
     levels.forEach((level, index) => {
       const label = MARK_SCHEME_WORDING.level(index + 1);
       const descriptor = level.descriptor ?? empty;
+      const lead = (side: 'en' | 'zh') => [{ text: label[side][0].text, bold: true }];
+      const edit: EditTarget | undefined = at && { kind: 'schemeLevel', ...at, levelId: level.id };
       line(
         {
-          en: [{ text: label.en[0].text, bold: true }, ...(descriptor.en ?? [])],
-          zh: [{ text: label.zh[0].text, bold: true }, ...(descriptor.zh ?? [])],
+          en: [...lead('en'), ...(descriptor.en ?? [])],
+          zh: [...lead('zh'), ...(descriptor.zh ?? [])],
         },
-        { trail: MARK_SCHEME_WORDING.range(level.min, level.max) },
+        {
+          trail: MARK_SCHEME_WORDING.range(level.min, level.max),
+          // The "Level 1: " lead is derived; only the descriptor after it is typed.
+          ...(edit
+            ? {
+                segments: {
+                  en: [{ runs: lead('en') }, { edit, value: descriptor }],
+                  zh: [{ runs: lead('zh') }, { edit, value: descriptor }],
+                },
+              }
+            : {}),
+        },
       );
     });
   }
@@ -142,7 +199,10 @@ export function renderMarkScheme(
       trail: MARK_SCHEME_WORDING.max(scheme.ec.max),
     });
     for (const row of scheme.ec.descriptors ?? []) {
-      line(row.text ?? empty, { trail: MARK_SCHEME_WORDING.mark(row.marks) });
+      line(row.text ?? empty, {
+        trail: MARK_SCHEME_WORDING.mark(row.marks),
+        ...(at ? { edit: { kind: 'schemeEc', ...at, descriptorId: row.id } } : {}),
+      });
     }
   }
 

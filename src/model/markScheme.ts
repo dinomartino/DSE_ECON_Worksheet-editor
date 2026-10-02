@@ -1,5 +1,6 @@
 import { newId } from './factories';
 import { bi, emptyBiText, isBiTextEmpty } from './text';
+import type { BiText } from './types';
 import type {
   MarkEc,
   MarkGroup,
@@ -163,4 +164,69 @@ export function schemeMismatch(
   if (!scheme || isSchemeEmpty(scheme) || printedMarks === undefined) return undefined;
   const total = schemeMax(scheme);
   return total === printedMarks ? undefined : { scheme: total, printed: printedMarks };
+}
+
+/**
+ * One piece of authored scheme text, by id: a point's wording, its `alternative`-th `/`
+ * wording, a level's descriptor, or an EC row's descriptor. What the page's scheme edit
+ * targets name (`render/ir.ts:EditTarget`).
+ */
+export type SchemeTextSlot =
+  | { point: string; alternative?: number }
+  | { level: string }
+  | { ec: string };
+
+/** The text in `slot`, or undefined when it no longer resolves. */
+export function schemeTextAt(scheme: MarkScheme | undefined, slot: SchemeTextSlot): BiText | undefined {
+  if (!scheme) return undefined;
+  if ('level' in slot) return schemeLevels(scheme).find((level) => level.id === slot.level)?.descriptor;
+  if ('ec' in slot) return scheme.ec?.descriptors?.find((row) => row.id === slot.ec)?.text;
+  for (const route of schemeRoutes(scheme)) {
+    for (const group of routeGroups(route)) {
+      const point = groupPoints(group).find((entry) => entry.id === slot.point);
+      if (point) return slot.alternative === undefined ? point.text : point.alternatives?.[slot.alternative];
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The scheme with `slot`'s text replaced; the same object when the slot no longer
+ * resolves. A cleared field stays, empty: removing a point or an alternative is a
+ * structural edit, made in the panel.
+ */
+export function withSchemeText(scheme: MarkScheme, slot: SchemeTextSlot, text: BiText): MarkScheme {
+  if ('level' in slot) {
+    const levels = schemeLevels(scheme);
+    if (!levels.some((level) => level.id === slot.level)) return scheme;
+    return {
+      ...scheme,
+      levels: levels.map((level) => (level.id === slot.level ? { ...level, descriptor: text } : level)),
+    };
+  }
+  if ('ec' in slot) {
+    const rows = scheme.ec?.descriptors ?? [];
+    if (!scheme.ec || !rows.some((row) => row.id === slot.ec)) return scheme;
+    return {
+      ...scheme,
+      ec: { ...scheme.ec, descriptors: rows.map((row) => (row.id === slot.ec ? { ...row, text } : row)) },
+    };
+  }
+  let found = false;
+  const write = (point: MarkPoint): MarkPoint => {
+    if (point.id !== slot.point) return point;
+    if (slot.alternative === undefined) {
+      found = true;
+      return { ...point, text };
+    }
+    const alternatives = point.alternatives ?? [];
+    if (slot.alternative < 0 || slot.alternative >= alternatives.length) return point;
+    found = true;
+    return { ...point, alternatives: alternatives.map((alt, index) => (index === slot.alternative ? text : alt)) };
+  };
+  const routes = schemeRoutes(scheme).map((route) => ({
+    ...route,
+    groups: routeGroups(route).map((group) => ({ ...group, points: groupPoints(group).map(write) })),
+  }));
+  return found ? { ...scheme, routes } : scheme;
 }

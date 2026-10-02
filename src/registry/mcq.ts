@@ -478,13 +478,22 @@ function healthFacts(question: McqQuestion): QuestionHealthFacts {
 function answerKey(question: McqQuestion): AnswerKeyEntry {
   const { answerIndex, options } = question;
   const keyed = Number.isInteger(answerIndex) && answerIndex >= 0 && answerIndex < options.length;
-  const rationale = optionRationales(question).map(({ letter, text }) => ({ letter, text }));
+  const questionId = question.id;
+  const rationale = optionRationales(question).map(({ letter, text, optionId }) => ({
+    letter,
+    text,
+    edit: { kind: 'mcqRationale', questionId, optionId } as const,
+  }));
   return {
     kind: 'choice',
     ...(keyed ? { letter: optionLabel(answerIndex).replace('.', '') } : {}),
-    ...(isBiTextEmpty(question.explanation) ? {} : { note: question.explanation }),
+    ...(isBiTextEmpty(question.explanation)
+      ? {}
+      : { note: question.explanation, noteEdit: { kind: 'mcqExplanation', questionId } as const }),
     ...(rationale.length > 0 ? { rationale } : {}),
-    ...(isBiTextEmpty(question.provenance) ? {} : { provenance: question.provenance }),
+    ...(isBiTextEmpty(question.provenance)
+      ? {}
+      : { provenance: question.provenance, provenanceEdit: { kind: 'mcqProvenance', questionId } as const }),
   };
 }
 

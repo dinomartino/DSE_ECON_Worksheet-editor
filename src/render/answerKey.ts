@@ -7,7 +7,15 @@ import type { BiText, DiagramBlock, LanguageMode, Worksheet } from '@/model/type
 import { versionLetters, versionSeed } from '@/model/versions';
 import { requireQuestionType } from '@/registry';
 import { hasAnswerLayer } from '@/model/diagramAnswers';
-import { diagramNodeFor, pushGap, type RenderNode, type TableNode, type TableNodeCell } from './ir';
+import {
+  diagramNodeFor,
+  pushGap,
+  type EditTarget,
+  type RenderNode,
+  type SchemeAddress,
+  type TableNode,
+  type TableNodeCell,
+} from './ir';
 import { renderMarkScheme } from './markScheme';
 
 /**
@@ -28,6 +36,9 @@ export type AnswerKeyEntry =
       note?: BiText;
       rationale?: ChoiceRationale[];
       provenance?: BiText;
+      /** Where `note` and `provenance` are typed when the key is on the page. Inert in export. */
+      noteEdit?: EditTarget;
+      provenanceEdit?: EditTarget;
     }
   /** Marked rows under the question's number. `marks` is the whole question's, if a leaf. */
   | { kind: 'scheme'; marks?: number; rows: AnswerKeyRow[] };
@@ -36,6 +47,8 @@ export type AnswerKeyEntry =
 export interface ChoiceRationale {
   letter: string;
   text: BiText;
+  /** Where it is typed when the key is on the page. Inert in export. */
+  edit?: EditTarget;
 }
 
 export interface AnswerKeyRow {
@@ -50,6 +63,12 @@ export interface AnswerKeyRow {
   diagram?: DiagramBlock;
   /** HKEAA marking points, levels and EC, printed under the answer (`render/markScheme.ts`). */
   scheme?: MarkScheme;
+  /**
+   * Where `answer` and `scheme` are typed when the key is on the page (the Marking scheme
+   * view): the answer's own target, and the leaf owning the scheme. Inert in export.
+   */
+  answerEdit?: EditTarget;
+  schemeAt?: SchemeAddress;
 }
 
 export interface AnswerKeyContext {
@@ -88,18 +107,35 @@ interface ChoiceVersion {
 }
 
 interface Choice {
+  questionId: string;
   number: number;
   letter?: string;
   note?: BiText;
+  noteEdit?: EditTarget;
   rationale?: ChoiceRationale[];
   provenance?: BiText;
+  provenanceEdit?: EditTarget;
   versions: ChoiceVersion[];
 }
 
 interface Group {
   heading?: BiText;
   choices: Choice[];
-  schemes: Array<{ number: number; marks?: number; rows: AnswerKeyRow[] }>;
+  schemes: Array<{ questionId: string; number: number; marks?: number; rows: AnswerKeyRow[] }>;
+}
+
+/** Marks the nodes pushed since `from` as one question's entry (`AnswerKeyView.owners`). */
+type Own = (from: number, questionId: string) => void;
+
+/**
+ * The key as the Marking scheme view shows it: the very nodes the `.docx` key is built
+ * from, plus `owners[i]`, the question node `i` belongs to (undefined for the title,
+ * headings, gaps, grids and the version map). The view selects that question on a click;
+ * the export never reads it.
+ */
+export interface AnswerKeyView {
+  nodes: RenderNode[];
+  owners: (string | undefined)[];
 }
 
 /**
@@ -120,6 +156,15 @@ export function renderAnswerKey(
   language: LanguageMode,
   options: { title?: BiText } = {},
 ): RenderNode[] {
+  return answerKeyView(worksheet, language, options).nodes;
+}
+
+/** `renderAnswerKey`, with each node's question (§ `AnswerKeyView`). */
+export function answerKeyView(
+  worksheet: Worksheet,
+  language: LanguageMode,
+  options: { title?: BiText } = {},
+): AnswerKeyView {
   const numbering = computeNumbering(worksheet);
   const groups: Group[] = [{ choices: [], schemes: [] }];
   const letters = versionLetters(worksheet);
@@ -150,15 +195,18 @@ export function renderAnswerKey(
         };
       });
       group.choices.push({
+        questionId: item.question.id,
         number,
         letter: entry.letter,
         note: entry.note,
+        noteEdit: entry.noteEdit,
         rationale: entry.rationale,
         provenance: entry.provenance,
+        provenanceEdit: entry.provenanceEdit,
         versions,
       });
     } else {
-      group.schemes.push({ number, marks: entry.marks, rows: entry.rows });
+      group.schemes.push({ questionId: item.question.id, number, marks: entry.marks, rows: entry.rows });
     }
   }
 
@@ -170,10 +218,18 @@ export function renderAnswerKey(
       keepNext: true,
     },
   ];
+  const owners: (string | undefined)[] = [];
+  const own: Own = (from, questionId) => {
+    for (let index = from; index < nodes.length; index += 1) owners[index] = questionId;
+  };
+  const view = (): AnswerKeyView => ({
+    nodes,
+    owners: Array.from({ length: nodes.length }, (_, index) => owners[index]),
+  });
 
   if (letters.length > 0) {
-    renderVersionedKey(nodes, groups, letters, language);
-    return nodes;
+    renderVersionedKey(nodes, groups, letters, language, own);
+    return view();
   }
 
   for (const group of groups) {
@@ -186,15 +242,15 @@ export function renderAnswerKey(
     if (group.choices.length > 0) {
       // Word follows every table with an empty paragraph, which is the gap below it.
       nodes.push(answerGrid(group.choices, language));
-      renderNotes(nodes, group.choices, language);
+      renderNotes(nodes, group.choices, language, false, own);
     }
     for (const scheme of group.schemes) {
       if (nodes[nodes.length - 1]?.kind !== 'table') pushGap(nodes);
-      renderScheme(nodes, scheme, language);
+      renderScheme(nodes, scheme, language, own);
     }
   }
 
-  return nodes;
+  return view();
 }
 
 /**
@@ -206,6 +262,7 @@ function renderVersionedKey(
   groups: Group[],
   letters: string[],
   language: LanguageMode,
+  own: Own,
 ): void {
   const withChoices = groups.filter((group) => group.choices.length > 0);
   letters.forEach((letter, version) => {
@@ -235,10 +292,10 @@ function renderVersionedKey(
       nodes.push({ kind: 'text', style: 'Section Heading', text: group.heading, keepNext: true });
       pushGap(nodes);
     }
-    renderNotes(nodes, group.choices, language, true);
+    renderNotes(nodes, group.choices, language, true, own);
     for (const scheme of group.schemes) {
       pushGap(nodes);
-      renderScheme(nodes, scheme, language);
+      renderScheme(nodes, scheme, language, own);
     }
   }
 
@@ -431,7 +488,8 @@ function renderNotes(
   nodes: RenderNode[],
   choices: Choice[],
   language: LanguageMode,
-  versioned = false,
+  versioned: boolean,
+  own: Own,
 ): void {
   const noted = choices.filter(hasNotes);
   if (noted.length === 0) return;
@@ -445,11 +503,12 @@ function renderNotes(
     format: { bold: true },
   });
   for (const choice of noted) {
-    const lines: Array<{ text: BiText; marker?: string }> = [];
-    if (choice.note && !isBiTextEmpty(choice.note)) lines.push({ text: choice.note });
-    for (const { letter, text } of choice.rationale ?? []) lines.push({ text, marker: `${letter}.` });
+    const start = nodes.length;
+    const lines: Array<{ text: BiText; marker?: string; edit?: EditTarget }> = [];
+    if (choice.note && !isBiTextEmpty(choice.note)) lines.push({ text: choice.note, edit: choice.noteEdit });
+    for (const { letter, text, edit } of choice.rationale ?? []) lines.push({ text, marker: `${letter}.`, edit });
     if (choice.provenance && !isBiTextEmpty(choice.provenance)) {
-      lines.push({ text: choice.provenance, marker: provenanceLabel(language) });
+      lines.push({ text: choice.provenance, marker: provenanceLabel(language), edit: choice.provenanceEdit });
     }
     lines.forEach((line, index) => {
       nodes.push({
@@ -461,10 +520,16 @@ function renderNotes(
         ...(index < lines.length - 1 ? { keepNext: true } : {}),
         cells: [
           { text: neutral(index === 0 ? `${choice.number}.` : '', language), at: 0 },
-          { text: line.text, at: 0.5, ...(line.marker ? { marker: line.marker } : {}) },
+          {
+            text: line.text,
+            at: 0.5,
+            ...(line.marker ? { marker: line.marker } : {}),
+            ...(line.edit ? { edit: line.edit } : {}),
+          },
         ],
       });
     });
+    own(start, choice.questionId);
   }
 }
 
@@ -476,8 +541,10 @@ function renderScheme(
   nodes: RenderNode[],
   scheme: Group['schemes'][number],
   language: LanguageMode,
+  own: Own,
 ): void {
   const { question, partText, subPartText } = DEFAULT_LIST_INDENTS;
+  const start = nodes.length;
   nodes.push({
     kind: 'text',
     style: 'Question Stem',
@@ -489,7 +556,10 @@ function renderScheme(
   scheme.rows.forEach((row, index) => {
     const labelIndent = row.depth === 1 ? question[0].left : partText;
     const answerIndent = row.depth === 1 ? partText : subPartText;
-    const schemeNodes = renderMarkScheme(row.scheme, { indent: answerIndent });
+    const schemeNodes = renderMarkScheme(row.scheme, {
+      indent: answerIndent,
+      ...(row.schemeAt ? { at: row.schemeAt } : {}),
+    });
     const hasAnswer =
       (row.answer !== undefined && !isBiTextEmpty(row.answer)) ||
       row.diagram !== undefined ||
@@ -511,6 +581,7 @@ function renderScheme(
         style: 'Marking Scheme',
         text: row.answer,
         indent: answerIndent,
+        ...(row.answerEdit ? { edit: row.answerEdit } : {}),
       });
     }
     // Not teacher-only: the whole key is the teacher's, answer layer included.
@@ -520,4 +591,5 @@ function renderScheme(
     }
     nodes.push(...schemeNodes);
   });
+  own(start, scheme.questionId);
 }

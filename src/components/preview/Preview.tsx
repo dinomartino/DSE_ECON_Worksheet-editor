@@ -217,7 +217,7 @@ export type { PageComposition };
  */
 
 /** CSS reference pixels per millimetre (96 dpi / 25.4). */
-const MM_TO_PX = 96 / 25.4;
+export const MM_TO_PX = 96 / 25.4;
 
 /** CSS reference pixels per point (96 dpi / 72). */
 const PT_TO_PX = 96 / 72;
@@ -394,6 +394,36 @@ function richNodes(
       {showEn && editable("en", enPrompt)}
       {showEn && showZh && <br />}
       {showZh && editable("zh", zhPrompt)}
+    </>
+  );
+}
+
+/**
+ * A paragraph made of several fields joined by derived wording (`TextNode.segments`): a
+ * scheme point with its `/` alternatives, "Level 1: " and its descriptor. Each field is
+ * its own editable span; the wording between them is plain text, never editable.
+ */
+function segmentNodes(
+  segments: NonNullable<TextNode["segments"]>,
+  language: LanguageMode,
+  ctx: EditContext,
+  quietPrompt: boolean,
+) {
+  const side = (key: "en" | "zh") =>
+    segments[key].map((segment, index) => (
+      <Fragment key={`${key}-${index}`}>
+        {"runs" in segment
+          ? runSpans(segment.runs, `${key}-${index}`)
+          : richNodes(segment.value, key, segment.edit, ctx, undefined, undefined, false, quietPrompt)}
+      </Fragment>
+    ));
+  if (language === "en") return side("en");
+  if (language === "zh") return side("zh");
+  return (
+    <>
+      {side("en")}
+      <br />
+      {side("zh")}
     </>
   );
 }
@@ -621,6 +651,10 @@ const TARGET_NAME: Record<EditTarget["kind"], TextKey<typeof PREVIEW_MESSAGES>> 
   mcqProvenance: "targetSourceNote",
   partAnswer: "targetAnswer",
   subPartAnswer: "targetAnswer",
+  schemePoint: "targetSchemePoint",
+  schemeAlternative: "targetSchemeAlternative",
+  schemeLevel: "targetSchemeLevel",
+  schemeEc: "targetSchemeEc",
   layoutText: "targetTextElement",
   sourceLabel: "targetSourceLabel",
   sourceFootnote: "targetSourceFootnote",
@@ -662,7 +696,7 @@ function runFormatToTextFormat(run: RunFormat): TextFormat {
  * definition in `model/numbering.ts` rather than restated — the paginator measures these
  * boxes, so a preview on different geometry breaks pages where Word will not.
  */
-const listIndentTwips = (
+export const listIndentTwips = (
   scheme: ListIndentScheme,
 ): Record<string, { left: number; hanging: number }> => ({
   'question:0': scheme.question[0],
@@ -998,24 +1032,26 @@ function TextNodeView({
           {node.listRef.marker}
         </span>
       )}
-      {richNodes(
-        node.text,
-        language,
-        node.edit,
-        ctx,
-        undefined,
-        undefined,
-        /*
-         * A source panel's own lines claim their whole line as the click target.
-         *
-         * They sit alone above and below a frame, so the selection rectangle — a
-         * sibling at the paragraph's `inset-0` — spanned the full column while the
-         * field hugged the words: a 589px box over a 53px target. Every other
-         * paragraph is exempt, because its box really is the text column.
-         */
-        node.edit?.kind === "sourceLabel" || node.edit?.kind === "sourceFootnote",
-        QUIET_PROMPT_STYLES.has(node.style),
-      )}
+      {node.segments && ctx
+        ? segmentNodes(node.segments, language, ctx, QUIET_PROMPT_STYLES.has(node.style))
+        : richNodes(
+            node.text,
+            language,
+            node.edit,
+            ctx,
+            undefined,
+            undefined,
+            /*
+             * A source panel's own lines claim their whole line as the click target.
+             *
+             * They sit alone above and below a frame, so the selection rectangle — a
+             * sibling at the paragraph's `inset-0` — spanned the full column while the
+             * field hugged the words: a 589px box over a 53px target. Every other
+             * paragraph is exempt, because its box really is the text column.
+             */
+            node.edit?.kind === "sourceLabel" || node.edit?.kind === "sourceFootnote",
+            QUIET_PROMPT_STYLES.has(node.style),
+          )}
       {trailingBreakFiller && <br aria-hidden />}
       {trailText && (
         <MarksTrail
@@ -2254,7 +2290,7 @@ function CoverSheet({
   );
 }
 
-function NodeView({
+export function NodeView({
   node,
   language,
   ctx,
@@ -2606,7 +2642,7 @@ function RegionWake({
  * become the real number, because the PDF *is* the final paginated artifact and a
  * chip on paper would be a defect. The two are swapped by the print stylesheet.
  */
-function HeaderFooterBand({
+export function HeaderFooterBand({
   value,
   language,
   edge,
@@ -3328,7 +3364,7 @@ function DraggableItem({
  * `pagination.ts` as pure functions over `PackItem`; this adds only the React node,
  * which is the part that cannot be tested without a DOM.
  */
-interface FlowBlock extends PackItem {
+export interface FlowBlock extends PackItem {
   node: React.ReactNode;
   /**
    * The same content re-rendered for one slice of its nodes, for a block the paginator
@@ -3358,7 +3394,7 @@ interface FlowBlock extends PackItem {
  *
  * The last node is never a candidate: a break after it would leave an empty continuation.
  */
-function breakAfterNodes(nodes: RenderNode[]): number[] {
+export function breakAfterNodes(nodes: RenderNode[]): number[] {
   const indices: number[] = [];
   for (let index = 0; index < nodes.length - 1; index += 1) {
     const node = nodes[index];
@@ -3384,7 +3420,7 @@ function breakAfterNodes(nodes: RenderNode[]): number[] {
 const NO_HEIGHTS: Map<string, number> = new Map();
 const NO_NODE_HEIGHTS: Map<string, number[]> = new Map();
 
-function usePagination(
+export function usePagination(
   blocks: FlowBlock[],
   contentHeightPx: number,
   deps: unknown[],
@@ -3560,7 +3596,7 @@ function usePagination(
  * sides of a comparison that almost always fails on `kind` alone spent the cost of the
  * whole string on its first character.
  */
-function sameTarget(a: EditTarget, b: EditTarget): boolean {
+export function sameTarget(a: EditTarget, b: EditTarget): boolean {
   if (a === b) return true;
   if (a.kind !== b.kind) return false;
   // The union of both key sets, so a key present-but-undefined on one side compares
@@ -3573,7 +3609,7 @@ function sameTarget(a: EditTarget, b: EditTarget): boolean {
   return true;
 }
 
-function isBlankAreaClick(target: EventTarget | null): boolean {
+export function isBlankAreaClick(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return !target.closest(BLANK_CLICK_EXEMPT);
 }

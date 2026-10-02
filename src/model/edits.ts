@@ -27,7 +27,68 @@ import type { EditTarget } from '@/render/ir';
  */
 import { diagramSize } from '@/render/diagram';
 import { applyBandFieldSide, bandFieldSideText } from './bandSegments';
+import { schemeTextAt, withSchemeText, type SchemeTextSlot } from './markScheme';
+import type { MarkScheme } from './markSchemeTypes';
 import { applyRunFormat, insertBlank, isBiTextEmpty } from './text';
+
+type SchemeTarget = Extract<
+  EditTarget,
+  { kind: 'schemePoint' | 'schemeAlternative' | 'schemeLevel' | 'schemeEc' }
+>;
+
+/** The piece of scheme text a scheme target names, within its leaf's scheme. */
+function schemeSlot(target: SchemeTarget): SchemeTextSlot {
+  switch (target.kind) {
+    case 'schemePoint':
+      return { point: target.pointId };
+    case 'schemeAlternative':
+      return { point: target.pointId, alternative: target.index };
+    case 'schemeLevel':
+      return { level: target.levelId };
+    case 'schemeEc':
+      return { ec: target.descriptorId };
+  }
+}
+
+/** A leaf that may carry a scheme: a part, or a sub-part. Read structurally (§ registry). */
+type SchemeLeaf = { id: string; scheme?: MarkScheme; subParts?: SchemeLeaf[] };
+
+/** The scheme of the leaf a scheme target addresses. */
+function targetScheme(worksheet: Worksheet, target: SchemeTarget): MarkScheme | undefined {
+  const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+  const part = (question as { parts?: SchemeLeaf[] } | undefined)?.parts?.find(
+    (entry) => entry.id === target.partId,
+  );
+  const leaf =
+    target.subPartId === undefined
+      ? part
+      : part?.subParts?.find((sub) => sub.id === target.subPartId);
+  return leaf?.scheme;
+}
+
+/** Write one piece of a leaf's scheme text; unchanged when the address no longer resolves. */
+function applySchemeText(worksheet: Worksheet, target: SchemeTarget, text: BiText): Worksheet {
+  const scheme = targetScheme(worksheet, target);
+  if (!scheme) return worksheet;
+  const next = withSchemeText(scheme, schemeSlot(target), text);
+  if (next === scheme) return worksheet;
+  const write = (leaf: SchemeLeaf): SchemeLeaf => ({ ...leaf, scheme: next });
+  return mapQuestionById(worksheet, target.questionId, (question) => {
+    const parts = (question as { parts?: SchemeLeaf[] }).parts;
+    if (!parts) return question;
+    return {
+      ...question,
+      parts: parts.map((part) => {
+        if (part.id !== target.partId) return part;
+        if (target.subPartId === undefined) return write(part);
+        return {
+          ...part,
+          subParts: part.subParts?.map((sub) => (sub.id === target.subPartId ? write(sub) : sub)),
+        };
+      }),
+    } as Question;
+  });
+}
 
 /**
  * Turn an `EditTarget` back into a document mutation (unit-testable without React).
@@ -268,6 +329,14 @@ export function editTargetKey(target: EditTarget): string {
       return `partAnswer:${target.partId}`;
     case 'subPartAnswer':
       return `subPartAnswer:${target.subPartId}`;
+    case 'schemePoint':
+      return `schemePoint:${target.pointId}`;
+    case 'schemeAlternative':
+      return `schemeAlternative:${target.pointId}:${target.index}`;
+    case 'schemeLevel':
+      return `schemeLevel:${target.levelId}`;
+    case 'schemeEc':
+      return `schemeEc:${target.descriptorId}`;
     case 'layoutText':
       return `layoutText:${target.elementId}`;
     case 'labelListCell':
@@ -816,6 +885,12 @@ export function applyEditTarget(
         } as Question;
       });
 
+    case 'schemePoint':
+    case 'schemeAlternative':
+    case 'schemeLevel':
+    case 'schemeEc':
+      return applySchemeText(worksheet, target, text);
+
     default:
       return worksheet;
   }
@@ -1086,6 +1161,11 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
         ?.parts;
       return parts?.find((part) => part.id === target.partId)?.answer;
     }
+    case 'schemePoint':
+    case 'schemeAlternative':
+    case 'schemeLevel':
+    case 'schemeEc':
+      return schemeTextAt(targetScheme(worksheet, target), schemeSlot(target));
     case 'subPartAnswer': {
       const question = worksheet.questions.find((entry) => entry.id === target.questionId);
       const parts = (
