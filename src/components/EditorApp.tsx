@@ -499,11 +499,11 @@ export function EditorApp({
             floating over the first lines of the document. The space is constant rather
             than appearing with the selection, because growing the padding on click
             would scroll the page under the pointer mid-edit. */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative flex min-w-0 flex-1 flex-col">
           <main
             ref={scrollerRef}
             className="zone-dark scroll-slim min-h-0 flex-1 overflow-auto bg-desk px-6 pt-14"
-            style={{ paddingBottom: (bankReviewing ? 144 : 64) + hint.room }}
+            style={{ paddingBottom: bankReviewing ? 144 : 64 }}
           >
             <PreviewWithBankDrop
               worksheet={worksheet}
@@ -551,7 +551,7 @@ export function EditorApp({
               onDragItemChange={setDraggingItemIds}
             />
           </main>
-          {hint.shown && <HintRow rowRef={hint.rowRef} onDismiss={hint.dismiss} />}
+          {hint.shown && <EditHint onDismiss={hint.dismiss} />}
         </div>
         {/* The sidebar is an inspector for editing; read-only has nothing to inspect with. */}
         {!readOnly && <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} />}
@@ -615,47 +615,37 @@ function PreviewWithBankDrop(props: React.ComponentProps<typeof Preview>) {
  * The how-to-edit hint. It retires itself after a few seconds (or on dismiss): a
  * permanent instruction is a sign the interface failed to be obvious.
  *
- * It sits in a row under the page's scroller, never over it, so it cannot hide the foot
- * of a sheet. When the row goes, the scroller's bottom padding grows by the row's height
- * (`room`): the scroll range stays the same, so a page scrolled to its end does not drop.
+ * It floats over the foot of the preview and takes no layout, so showing or dismissing
+ * it never moves the page. Only the pill takes clicks; the page around it stays live.
  */
 function useEditHint(hidden: boolean) {
   const [dismissed, setDismissed] = useState(false);
-  const [rowHeight, setRowHeight] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setDismissed(true), 9000);
     return () => clearTimeout(timer);
   }, []);
 
-  const rowRef = useCallback((row: HTMLDivElement | null) => {
-    if (!row) return;
-    const observer = new ResizeObserver(() => setRowHeight(row.offsetHeight));
-    observer.observe(row);
-    return () => observer.disconnect();
-  }, []);
-
-  const shown = !dismissed && !hidden;
-  return { shown, rowRef, room: shown ? 0 : rowHeight, dismiss: () => setDismissed(true) };
+  return { shown: !dismissed && !hidden, dismiss: () => setDismissed(true) };
 }
 
 /**
- * Width kept clear at the row's right for the zoom control (`Preview`), which floats
- * there; the row's `py-[13px]` puts the pill on the same centre line.
+ * Width kept clear at the overlay's right for the zoom control (`Preview`), which floats
+ * there; `bottom-[13px]` puts the pill on its centre line. The pill centres while it
+ * fits, else sits left of the zoom.
  */
 const ZOOM_LANE = 'minmax(136px,1fr)';
 
-function HintRow({ rowRef, onDismiss }: { rowRef: React.Ref<HTMLDivElement>; onDismiss: () => void }) {
+function EditHint({ onDismiss }: { onDismiss: () => void }) {
   const m = useMessages(EDITOR_APP_MESSAGES);
   const bilingual = useUiLanguage() === 'en';
   return (
     <div
-      ref={rowRef}
       data-print-hide
-      className="zone-dark grid shrink-0 items-center border-t border-line bg-desk px-4 py-[13px]"
+      className="pointer-events-none absolute inset-x-0 bottom-[13px] z-30 grid items-center px-4"
       style={{ gridTemplateColumns: `minmax(0,1fr) auto ${ZOOM_LANE}` }}
     >
-      <div className="col-start-2 flex min-w-0 animate-slide-up-in items-center gap-2 rounded-lg border border-line bg-surface-raised py-1.5 pl-3.5 pr-1.5 text-[12px] text-ink-muted shadow-md">
+      <div className="pointer-events-auto col-start-2 flex min-w-0 animate-slide-up-in items-center gap-2 rounded-lg border border-line bg-surface-raised py-1.5 pl-3.5 pr-1.5 text-[12px] text-ink-muted shadow-md">
         {/* One phrase per language, each unbreakable: at most two lines even beside an
             open page rail at 1024 wide (a 228px pill), one line where there is room. */}
         <span className="flex flex-wrap gap-x-2">
