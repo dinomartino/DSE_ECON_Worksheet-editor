@@ -13,6 +13,19 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Lay out the marking scheme your way, or like an HKEAA one.** In the Marking scheme view,
+  the Layout tab offers two styles: Classic (as before) and HKEAA style, with the MC key as a
+  Question No. and Key table, a Marks column headed on every page, the notation legend and a
+  note for markers. You can then switch the MC and long-question layouts, show question
+  stems, MC explanations and totals for each question, section or the whole paper, and type
+  your own title and subtitle on the page. The layout is saved with the paper, and Word, PDF
+  and Copy for Word all follow it. Papers you have already made keep their key exactly as
+  it was.
+  <!-- zh: **按你的需要或仿照 HKEAA 編排評卷參考。** 在評卷參考檢視中，「版面」分頁提供兩種樣式：
+  經典（與以往相同）和 HKEAA 評卷參考：MC 答案以「題號、答案」表格列出，每頁有分數欄，並附評分
+  符號說明及閱卷聲明。你可再切換 MC 和長題目的版面，顯示題幹、MC 解說，以及每題、每部分或全卷
+  的總分，並可直接在頁面上輸入自己的標題和副標題。版面會隨工作紙儲存，Word、PDF 和「複製到
+  Word」都會跟從。已製作的工作紙，評卷參考保持原樣。 -->
 - **Choose your own wording for terms the EDB glossary lists more than one way.** In
   Settings, Translation terms lists every such term, for example 本地生產總值 or
   國內生產總值 for GDP, and 總支出 or 總開支. Pick the one you write: AI translation and

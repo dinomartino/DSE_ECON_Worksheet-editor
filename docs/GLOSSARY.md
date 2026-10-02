@@ -39,6 +39,14 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Marking scheme view (評卷參考)** — the toolbar's third view: the answer key on its own
   sheets, editable and printable; editor state, never stored. Chrome calls the key 評卷參考;
   the printed title keeps 答案及評分參考. `src/components/preview/AnswerKeyPreview.tsx:AnswerKeyPreview`
+- **Answer key layout (版面)** — how the key is laid out, saved with the paper as a preset plus
+  the teacher's changes to it (deltas); absent = Classic, the key as it always printed. Set
+  in the Marking scheme view's Layout tab. `src/model/answerKeyLayout.ts:resolveAnswerKeyLayout`
+  · `src/render/answerKey.ts:ANSWER_KEY_STYLES`
+- **HKEAA style (HKEAA 評卷參考)** — the preset modelled on HKEAA marking schemes: the MC key
+  as a Question No. | Key table in two column pairs ruled in fives, a right-hand Marks column
+  headed "Marks / 分數" on every page, the notation legend and a note for markers.
+  `src/render/answerKeySections.ts:hkeaaTable` · `src/render/answerKeySections.ts:LQ_KEY_RENDERERS`
 - **Combined answer key** — one answer-key `.docx` covering several saved documents (Paper 1
   + Paper 2), chosen in Export; export-time only. `src/render/answerKey.ts:renderCombinedAnswerKey`
 - **Paper 1** — the HKDSE multiple-choice paper shape: wider boundaries, derived question

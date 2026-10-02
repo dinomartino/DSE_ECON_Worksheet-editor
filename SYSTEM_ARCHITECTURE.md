@@ -1789,6 +1789,40 @@ type needs only a definition.
   paginator under the key's page rules, inside `#print-root`, so PDF and Copy for Word
   follow the view. No paper chrome (rails, drag, bands, add buttons). Export opens on
   Answer key from it.
+- **The key's layout is stored with the paper, as deltas** (`Worksheet.answerKeyLayout`,
+  `model/answerKeyLayout.ts`). One optional field: `preset` (absent = Classic) plus only
+  the settings changed from that preset (`mcLayout`, `lqLayout`, the `show*` switches,
+  the three totals) and the key's own `title` / `subtitle`. Choosing a preset drops the
+  deltas and keeps the text; a value equal to the preset's is not stored, so an untouched
+  paper has no field and its key is byte-identical. Read tolerantly: an unknown preset or
+  layout (a newer build's) prints as Classic and is kept; a wrong JS type is dropped on
+  load. **Presentation of the key only**: no paper output reads it (`answerKeyLayout.test.ts`
+  in `render/` pins both papers and the clipboard unchanged).
+- **One key data, styles lay it out** (`render/answerKey.ts`). `collectAnswerKey` gathers
+  groups, choices, schemes, versions and totals once; `ANSWER_KEY_STYLES[preset]` is a pure
+  function from that data to `AnswerKeyView`, with its derived title wording (Classic
+  "Answer key / 答案及評分參考", HKEAA "Marking scheme / 評卷參考"). Both built-in styles use
+  `renderStandardKey`, which dispatches per section to `MC_KEY_RENDERERS[mcLayout]` (grid,
+  HKEAA two-pair table ruled in fives, list) and `LQ_KEY_RENDERERS[lqLayout]` (compact,
+  Marks column) in `render/answerKeySections.ts`. A new style or layout is an entry in
+  these registries plus its id and settings in `model/answerKeyLayout.ts`; nothing names a
+  question type. Stems come from the `answerKey` hook (`stem`, row `prompt`), typed in
+  place through `blockText`. With versions on, MC prints per version as the layout's
+  `table` (the list prints as the grid).
+- **The Marks column is a right indent, not a table** (`TextNode.marksColumn`): the text
+  stops short of it (`w:ind w:right`; preview `padding-right`) while the marks keep the
+  right tab at the content edge, which Word and LibreOffice honour past the right indent.
+  So the label stays on the last line, as everywhere (§ "(4 marks)" sits on the last line),
+  not the first as HKEAA prints it. A line whose own marks no scheme point claims shows
+  them as "(n)". A key with the column carries a running head "Marks / 分數"
+  (`answerKeyRunningHead`, from the nodes): a one-row header part in the `.docx`, the same
+  line in each preview sheet's margin. A combined key has one header: it shows if any part
+  has the column.
+- **The title and subtitle are the view's fields, not the IR's**: `AnswerKeyView.fields`
+  names their node indexes and the preview adds `answerKeyTitle` / `answerKeySubtitle`
+  targets to its own copy, so `renderAnswerKey`'s nodes stay exactly the export's. A typed
+  title stores only the sides that differ from the derived one. The sidebar's Layout tab
+  (Marking scheme view only, in place of the bank) holds the style cards and switches.
 - **Answers and notes are typed on the key too**: its rows carry the paper's targets
   (`partAnswer`, `subPartAnswer`, `mcqExplanation`, `mcqRationale`, `mcqProvenance`), so
   there is one copy of every answer. Inert in export like every target.
@@ -1800,10 +1834,11 @@ type needs only a definition.
 - **A key can span documents, chosen at export** (`renderCombinedAnswerKey`). A mock is
   two documents (Paper 1, Paper 2) but one marking scheme: Export's "Also include" adds
   other saved documents' keys after this one's, in the order ticked. Each part is that
-  document's own `renderAnswerKey` — its numbering, sections, versions and version map —
-  under `answerKeyPartTitle` (title or name, plus the paper its cover names), the second
-  onward from a page break; the page setup is the current document's. Nothing is stored
-  (no field, no migration). Others load read-only through the store (`parseWorksheet` →
+  document's own `renderAnswerKey` — its numbering, sections, versions, version map and
+  its own `answerKeyLayout` — under `answerKeyPartTitle` (title or name, plus the paper its
+  cover names; that document's typed key title wins), the second onward from a page
+  break; the page setup is the current document's. Nothing about the combination is
+  stored. Others load read-only through the store (`parseWorksheet` →
   `migrate`); one that will not open or render is skipped and named, never fatal, never
   resaved. One document is the single key unchanged, byte for byte.
 - **A marking scheme is notation, not prose** (`model/markSchemeTypes.ts`). A part or
