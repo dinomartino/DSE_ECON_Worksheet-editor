@@ -13,6 +13,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **See, edit and print the marking scheme on screen.** Marking scheme now sits beside
+  Student and Teacher. It shows the answer key on its own pages: the MC grids (one per
+  version), every answer, model diagram and marking point. Click any answer or marking
+  point and type, here or in the Teacher version; both show the same text. Export opens on
+  the answer key from this view, and PDF now prints it.
+  <!-- zh: **在畫面上查看、編輯和列印評卷參考。** 「學生版」和「教師版」旁新增「評卷參考」，
+  把答案頁獨立成頁顯示：MC 答案表（每個版本一個）、所有答案、參考答案圖表和評分要點。按任何
+  答案或評分要點即可輸入，在這裡或教師版修改都一樣，兩邊顯示同一段文字。在此畫面按「匯出」
+  會預設評卷參考，亦可列印為 PDF。 -->
 - **Preview a diagram while you draw it.** The drawing canvas has its own Edit | Preview
   switch, like the worksheet's. Preview shows the whole diagram exactly as it prints, with
   no handles, rings or hints over it, and Edit brings your tool and selection back. If the

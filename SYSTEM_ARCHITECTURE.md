@@ -1712,8 +1712,9 @@ what the exporter reads. Entering clears the question selection; the edit hint (
 One Export button; the dialog picks `.docx`, PDF or `.json`. PDF puts the page in the
 chosen mode, waits for `#print-root` to settle, then prints (`editor/printPdf.ts`).
 Language, version and paper version stay as the editor's view; the "Include" flags are
-lifted after the print. PDF is the question paper, one version per print — the rest are
-disabled in the dialog with the reason, not hidden.
+lifted after the print. PDF prints the question paper (one version per print) or the
+answer key: the page first switches to that view (`documentView`, § the answer key) and
+stays there. Both / Other apps are disabled in the dialog with the reason, not hidden.
 
 The two platforms end differently. **Web:** `window.print()`, the teacher picks Save as
 PDF (a browser cannot write a file silently); flags lift on `afterprint`. **Desktop:** the
@@ -1724,10 +1725,11 @@ reveal. If the command fails, the print sheet opens instead and the error line s
 Both use print media CSS, so there is still one description of the printed page.
 WebKit's print keeps screen-width breakpoints, so hidden chrome can be wider than the
 paper and WebKit shrinks the whole document to fit. Print CSS clips `overflow-x` on every
-ancestor of `#print-root`; that works only while those ancestors stay unpositioned, so the
-page stays `#print-root`'s containing block.
-The answer key (`.docx` only) may take other saved documents' keys into the same file
-("Also include", § the answer key); the question paper stays this document's alone.
+ancestor of `#print-root` and forces them `position: static`, so the page stays
+`#print-root`'s containing block (a positioned wrapper on screen cut the sheets to the
+editor column).
+The `.docx` answer key may take other saved documents' keys into the same file ("Also
+include", § the answer key); its PDF and the question paper are this document's alone.
 
 ### Both band paths must agree
 
@@ -1777,6 +1779,19 @@ type needs only a definition.
   marks placed as the paper places them); the walker numbers them with `computeNumbering`
   and groups by section. `exportAnswerKeyDocx` keeps the page setup and fonts, drops the
   cover, bands, header and furniture, and adds a centred page number.
+- **The Marking scheme view shows that key on the page** (`preview/AnswerKeyPreview.tsx`),
+  the toolbar's third view beside Student and Teacher. It is editor state
+  (`documentView: 'paper' | 'answerKey'` beside `printPreview`), never stored and **not in
+  `OutputMode`**: the view picks *which* IR the page draws, not how, so every `version`
+  rule (leak guards, the render cache) is untouched. It draws `answerKeyView()` — the very
+  nodes `renderAnswerKey` gives the `.docx` (a test pins it), plus each node's question for
+  click-to-select — cut into keep-together runs (`keepNext`) and packed by the paper's
+  paginator under the key's page rules, inside `#print-root`, so PDF and Copy for Word
+  follow the view. No paper chrome (rails, drag, bands, add buttons). Export opens on
+  Answer key from it.
+- **Answers and notes are typed on the key too**: its rows carry the paper's targets
+  (`partAnswer`, `subPartAnswer`, `mcqExplanation`, `mcqRationale`, `mcqProvenance`), so
+  there is one copy of every answer. Inert in export like every target.
 - **A leaf's model answer diagram is a teacher-only figure** (`answerDiagram`, a whole
   `DiagramBlock`): after the answer text, before the scheme; found by block id like a stem
   diagram. So the answer key carries pictures: its IR runs the same PNG pre-pass
@@ -1797,7 +1812,12 @@ type needs only a definition.
   plus `levels` and `ec`. Optional and additive — no migration; `answer` still prints.
   Totals are derived (`model/markScheme.ts`) and checked against the printed marks in
   the panel, never stored. `render/markScheme.ts` emits it once, teacher-only on the
-  paper and plain in the answer key. Scheme text is typed in the panel (no edit target).
+  paper and plain in the answer key. Its authored text is typed on the page in both, given
+  the leaf's address (`at`): `schemePoint`, `schemeAlternative` (by index), `schemeLevel`,
+  `schemeEc`. A line joining fields with derived wording (`text / alt`, "Level 1: " +
+  descriptor) carries `TextNode.segments` instead of `edit`: per side, its pieces, each
+  field editable alone; joined they are `text`. Structure (points, routes, levels, marks)
+  stays in the panel's `MarkSchemeEditor`.
 - **Paper versions are derived from a seed** (`model/versions.ts`). `Worksheet.versions`
   stores only `{count, seed}`; `OutputMode.variant` names the letter. The walker asks each
   type's `variant?` hook for the reordered question (inside the render cache, keyed on

@@ -15,7 +15,7 @@ describe('print CSS', () => {
     );
     expect(printBlock).toBeDefined();
     expect(printBlock).toMatch(
-      /body \*:has\(#print-root\)\s*\{\s*overflow-x: clip !important;\s*\}/,
+      /body \*:has\(#print-root\)\s*\{\s*overflow-x: clip !important;\s*position: static !important;\s*\}/,
     );
   });
 });

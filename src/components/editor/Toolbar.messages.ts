@@ -16,6 +16,11 @@ export const TOOLBAR_MESSAGES = defineMessages({
   teacher: { en: 'Teacher', zh: '教師版' },
   studentTitle: { en: 'Student version: answers hidden', zh: '學生版：隱藏答案' },
   teacherTitle: { en: 'Teacher version / 教師版: answers shown', zh: '教師版：顯示答案' },
+  markingScheme: { en: 'Marking scheme', zh: '評卷參考' },
+  markingSchemeTitle: {
+    en: 'Marking scheme / 評卷參考: the answer key on its own pages, to edit and print',
+    zh: '評卷參考：獨立成頁的答案及評分要點，可編輯及列印',
+  },
   pageMode: { en: 'Page mode', zh: '頁面模式' },
   edit: { en: 'Edit', zh: '編輯' },
   preview: { en: 'Preview', zh: '預覽' },

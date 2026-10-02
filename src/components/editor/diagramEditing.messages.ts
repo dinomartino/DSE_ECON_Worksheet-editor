@@ -63,7 +63,7 @@ export const DIAGRAM_PANEL_MESSAGES = defineMessages({
   },
   answerLayerOn: {
     en: 'Has an answer drawn in red. The Teacher version and the answer key show it; the Student version does not.',
-    zh: '已用紅色繪製答案。教師版和答案頁會顯示，學生版不會顯示。',
+    zh: '已用紅色繪製答案。教師版和評卷參考會顯示，學生版不會顯示。',
   },
   saveToGraphs: { en: 'Save to Graphs', zh: '儲存到圖表庫' },
   saveToGraphsHint: {
@@ -447,16 +447,16 @@ export const DIAGRAM_CANVAS_MESSAGES = defineMessages({
   drawAnswer: { en: 'Draw answer', zh: '繪製答案' },
   drawAnswerTitle: {
     en: 'Draw answer: what you draw now is the model answer. It prints in red in the Teacher version and the answer key, and never in the Student version.',
-    zh: '繪製答案：此時繪製的內容會成為參考答案，以紅色印在教師版和答案頁，學生版不會顯示。',
+    zh: '繪製答案：此時繪製的內容會成為參考答案，以紅色印在教師版和評卷參考，學生版不會顯示。',
   },
   answerLegend: {
     en: 'Red = answer, only in the Teacher version and the answer key',
-    zh: '紅色 = 答案，只見於教師版和答案頁',
+    zh: '紅色 = 答案，只見於教師版和評卷參考',
   },
   answerToggle: { en: 'Answer (teacher only)', zh: '答案（只限教師版）' },
   answerToggleHint: {
     en: 'Shown in red in the Teacher version and the answer key. Left out of the Student version, with anything attached to it.',
-    zh: '在教師版和答案頁以紅色顯示。學生版不會顯示，連同依附於它的元素。',
+    zh: '在教師版和評卷參考以紅色顯示。學生版不會顯示，連同依附於它的元素。',
   },
   // Edit / Preview (the words themselves are the page toolbar's)
   canvasMode: { en: 'Canvas mode', zh: '畫布模式' },

@@ -1,10 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
-import { renderDiagramImages } from '@/export/diagramImage';
+import {
+  answerKeyClipboardHtml,
+  answerKeyPlainText,
+  copyForWord,
+  worksheetClipboardHtml,
+  worksheetPlainText,
+} from '@/export/clipboard';
+import { renderDiagramImages, renderNodeDiagramImages } from '@/export/diagramImage';
+import { renderAnswerKey } from '@/render/answerKey';
 import type { LanguageMode, OutputMode, VersionMode } from '@/model/types';
-import { useWorksheetStore } from '@/store/worksheetStore';
+import { useWorksheetStore, type DocumentView } from '@/store/worksheetStore';
 import { downloadWorksheetFile } from '@/storage';
 import { isDesktop, revealFile, revealLabel } from '@/platform';
 import { Button, IconButton, Segmented } from '@/components/ui';
@@ -105,6 +112,8 @@ export function Toolbar({
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
   const setMode = useWorksheetStore((s) => s.setMode);
+  const documentView = useWorksheetStore((s) => s.documentView);
+  const setDocumentView = useWorksheetStore((s) => s.setDocumentView);
   const undo = useWorksheetStore((s) => s.undo);
   const redo = useWorksheetStore((s) => s.redo);
   const past = useWorksheetStore((s) => s.past);
@@ -207,7 +216,21 @@ export function Toolbar({
     setBusy('copy');
     setError(undefined);
     try {
-      // Diagrams are rasterized first so each one pastes into Word as a single image.
+      // What is on the page is what is copied: the paper, or in the Marking scheme view
+      // its key. Diagrams are rasterized first so each pastes into Word as one image.
+      if (documentView === 'answerKey') {
+        const images = await renderNodeDiagramImages(
+          renderAnswerKey(worksheet, mode.language),
+          worksheet.fonts,
+          mode.language,
+        );
+        await copyForWord(
+          answerKeyClipboardHtml(worksheet, mode.language, images),
+          answerKeyPlainText(worksheet, mode.language),
+        );
+        flash(m.copied);
+        return;
+      }
       const diagramImages = await renderDiagramImages(worksheet, mode);
       await copyForWord(
         worksheetClipboardHtml(worksheet, mode, diagramImages),
@@ -234,8 +257,11 @@ export function Toolbar({
    * to it and reported like a `.docx`, with the reveal. Should that fail, the print
    * sheet opens instead and the status line says why.
    */
-  const handlePrint = (printMode: OutputMode, file?: string) => {
+  const handlePrint = (printMode: OutputMode, file?: string, view: DocumentView = 'paper') => {
     setError(undefined);
+    // PDF prints what the page shows, so the page first shows what was asked for: the
+    // paper, or its key. It stays, like the language and version a print switches to.
+    setDocumentView(view);
     const deps = browserPrintDeps(setMode, () => select(undefined));
     printWorksheetPdf(worksheet, printMode, deps, file)
       .then((outcome) => {
@@ -314,13 +340,23 @@ export function Toolbar({
 
         <span className="h-5 w-px shrink-0 bg-line" />
 
+        {/* Three views of one document. The Marking scheme is the answer key on its own
+            sheets; choosing it keeps `mode.version`, so Student/Teacher comes back as it was. */}
         <Segmented
           label={m.version}
-          value={mode.version}
-          onChange={(version) => setMode({ version: version as VersionMode })}
+          value={documentView === 'answerKey' ? 'answerKey' : mode.version}
+          onChange={(next) => {
+            if (next === 'answerKey') {
+              setDocumentView('answerKey');
+              return;
+            }
+            setDocumentView('paper');
+            setMode({ version: next as VersionMode });
+          }}
           options={[
             { value: 'student', label: m.student, title: m.studentTitle },
             { value: 'teacher', label: m.teacher, title: m.teacherTitle },
+            { value: 'answerKey', label: m.markingScheme, title: m.markingSchemeTitle },
           ]}
         />
 
@@ -464,6 +500,8 @@ export function Toolbar({
         <ExportDialog
           worksheet={worksheet}
           mode={mode}
+          // Export follows the view: from the Marking scheme it opens on the answer key.
+          initialWhat={documentView === 'answerKey' ? 'answerKey' : 'paper'}
           onClose={closeExport}
           onExported={handleExported}
           onPrint={handlePrint}

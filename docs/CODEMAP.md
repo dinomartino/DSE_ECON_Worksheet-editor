@@ -98,9 +98,10 @@ Invariants:
 
 - `src/render/worksheet.ts:renderWorksheet` — the one walker; `:collectListStreams`
 - `src/render/answerKey.ts:renderAnswerKey` — the separate answer key; entries come from the `answerKey` hook
+- `src/render/answerKey.ts:answerKeyView` — the same nodes plus each node's question, for the Marking scheme view
 - `src/render/answerKey.ts:AnswerKeyRow` — `diagram` carries a leaf's model answer diagram; `src/render/ir.ts:diagramNodeFor` builds its node
 - `src/render/answerKey.ts:renderCombinedAnswerKey` · `:answerKeyPartTitle` — several saved documents' keys in one file, each under its paper's heading, from a new page
-- `src/render/markScheme.ts:renderMarkScheme` — a part's HKEAA scheme as `Marking Scheme` paragraphs; marks ride `TextNode.trail` (`src/render/ir.ts:trailLabel`)
+- `src/render/markScheme.ts:renderMarkScheme` — a part's HKEAA scheme as `Marking Scheme` paragraphs; marks ride `TextNode.trail` (`src/render/ir.ts:trailLabel`); given `at`, its text carries scheme edit targets (`src/model/markScheme.ts:withSchemeText` writes them)
 - `src/render/diagram.ts:diagramSvg` · `:diagramPlot` · `:diagramSize` · `:flowChartLayout` · `:forumChartLayout`
 - `src/render/answerGraph.ts:answerGraphNode` · `:answerGraphBox` · `:answerGraphSvg` — blank answer axes (`src/model/answerGraph.ts:createAnswerGraph`); PNG via the diagram pre-pass, whole 12pt lines
 
@@ -320,6 +321,7 @@ Invariants:
 ## components/preview — the paper *is* the editor
 
 - `src/components/preview/Preview.tsx:Preview` — IR → DOM, paginated into sheets
+- `src/components/preview/AnswerKeyPreview.tsx:AnswerKeyPreview` — the Marking scheme view: the key's IR on the same paginator, no paper chrome; shown when the store's `documentView` is `answerKey`
 - `src/components/preview/pagination.ts:packPages` · `:composePages` · `:resolveFillCounts`
 - `src/components/preview/InlineEditable.tsx` · `src/components/preview/RichTextEditable.tsx` — click-to-edit
 - `src/components/preview/BandEditor.tsx:BandEditor` · `:bandFieldStyle`
