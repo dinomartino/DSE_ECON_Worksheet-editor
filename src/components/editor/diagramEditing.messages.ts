@@ -458,6 +458,23 @@ export const DIAGRAM_CANVAS_MESSAGES = defineMessages({
     en: 'Shown in red in the Teacher version and the answer key. Left out of the Student version, with anything attached to it.',
     zh: '在教師版和答案頁以紅色顯示。學生版不會顯示，連同依附於它的元素。',
   },
+  // Edit / Preview (the words themselves are the page toolbar's)
+  canvasMode: { en: 'Canvas mode', zh: '畫布模式' },
+  editModeTitle: { en: 'Draw and change the diagram', zh: '繪製及修改圖表' },
+  previewModeTitle: {
+    en: 'See the diagram exactly as it will print (Esc to leave)',
+    zh: '預覽與列印完全相同的圖表（按 Esc 離開）',
+  },
+  previewStudent: { en: 'Student version', zh: '學生版' },
+  previewTeacher: { en: 'Teacher version', zh: '教師版' },
+  previewStudentTitle: {
+    en: 'Student version: the answer is left out. Changes this preview only.',
+    zh: '學生版：不顯示答案。只會改變此預覽。',
+  },
+  previewTeacherTitle: {
+    en: 'Teacher version: the answer is drawn in red. Changes this preview only.',
+    zh: '教師版：答案以紅色顯示。只會改變此預覽。',
+  },
   autoFrame: { en: 'Auto frame', zh: '自動邊框' },
   autoFrameHint: { en: 'measure again', zh: '重新量度' },
   done: { en: 'Done', zh: '完成' },

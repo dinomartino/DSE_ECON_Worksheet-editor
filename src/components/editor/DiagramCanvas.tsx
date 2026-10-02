@@ -37,7 +37,7 @@ import {
 } from '@/model/diagramDraw';
 import { nextEquilibriumName, pointTitle, withPointLabel } from '@/model/diagramShift';
 import { emptyBiText, isBiTextEmpty, parseRuns, plain, serializeRuns } from '@/model/text';
-import type { BiText, DiagramBlock, FontPair, LanguageMode } from '@/model/types';
+import type { BiText, DiagramBlock, FontPair, LanguageMode, VersionMode } from '@/model/types';
 import { areaPolygon, isAnchoredArea } from '@/model/diagramAreas';
 import {
   areaLabelAnchor,
@@ -59,13 +59,15 @@ import {
   type Projection,
 } from '@/render/diagram';
 import { spanLayout } from '@/render/diagramSpan';
+import { diagramBlockSvg } from '@/render/diagramPage';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Button, CheckField, Eyebrow, IconButton, SelectField } from '@/components/ui';
+import { Button, CheckField, Eyebrow, IconButton, Segmented, SelectField } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import { resolveMessages, sideOf, type TextKey } from '@/i18n/catalogue';
 import { uiLanguage, useMessages } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
 import { DIAGRAM_CANVAS_MESSAGES, DIAGRAM_RELATION_MESSAGES, pointTitleText } from './diagramEditing.messages';
+import { TOOLBAR_MESSAGES } from './Toolbar.messages';
 import { FieldScopeContext } from './fieldScope';
 import { AreaInspector, ShadeMenu, ShiftCurveControls, areaName } from './DiagramAreaControls';
 import {
@@ -239,6 +241,8 @@ interface Props {
   panel?: ReactNode;
   /** A dialog over the embedded canvas owns the keyboard; the shortcuts stand down. */
   keysSuspended?: boolean;
+  /** Wins over the page's Student / Teacher in Preview: a graph's image keeps its answer. */
+  version?: VersionMode;
 }
 
 /**
@@ -261,17 +265,38 @@ type Gesture =
   | { kind: 'create'; handles: DiagramHandle[]; from: DiagramPoint; base: Diagram; moved: boolean }
   | { kind: 'marquee'; from: DiagramPoint; base: Diagram; moved: boolean; additive: boolean };
 
-export function DiagramCanvas({ block, onChange, onClose, language: languageProp, fonts: fontsProp, embedded = false, panel, keysSuspended = false }: Props) {
+export function DiagramCanvas({
+  block,
+  onChange,
+  onClose,
+  language: languageProp,
+  fonts: fontsProp,
+  embedded = false,
+  panel,
+  keysSuspended = false,
+  version: versionProp,
+}: Props) {
   // The canvas owns the keyboard while it is open. Without this, the preview's own
   // Delete handler fires on the same keypress and removes the whole diagram block that
   // is selected underneath — deleting one curve took the entire picture with it.
   useModalLayer();
 
   const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
+  const t = useMessages(TOOLBAR_MESSAGES);
   const storeLanguage = useWorksheetStore((s) => s.mode.language);
   const storeFonts = useWorksheetStore((s) => s.worksheet.fonts);
+  const storeVersion = useWorksheetStore((s) => s.mode.version);
   const language = languageProp ?? storeLanguage;
   const fonts = fontsProp ?? storeFonts;
+
+  /**
+   * Preview: the diagram exactly as it prints, nothing drawn over it, nothing editable.
+   * Tool, selection and zoom are left as they were, so Edit comes back where it was.
+   */
+  const [previewing, setPreviewing] = useState(false);
+  /** Preview's own Student / Teacher; null follows the page. Never written to the page. */
+  const [previewVersion, setPreviewVersion] = useState<VersionMode | null>(null);
+  const shownVersion = previewVersion ?? versionProp ?? storeVersion;
 
   const [tool, setTool] = useState<Tool>('select');
   /** Draw answer: everything created while on joins the answer layer (teacher only). */
@@ -508,6 +533,30 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
     setMarquee(null);
   }, []);
 
+  /** What prints, in the version Preview shows: the page's own path (`render/diagramPage.ts`). */
+  const previewSvg = useMemo(
+    () => (previewing ? diagramBlockSvg(block, shownVersion, language, fonts) : ''),
+    [previewing, block, shownVersion, language, fonts],
+  );
+
+  const showPreview = useCallback((on: boolean) => {
+    setPreviewing(on);
+    if (!on) return;
+    // Whatever is mid-flight belongs to the drawing surface Preview takes away. Tool and
+    // selection stay, so Edit returns to them.
+    gestureRef.current = null;
+    setCropping(false);
+    setCropRect(null);
+    setEditing(null);
+    setMarquee(null);
+    setDragging([]);
+    setHovering(null);
+    setSnapCue(null);
+    setAxisGuide(null);
+    setSpanDraft(null);
+    setShadeOpen(false);
+  }, []);
+
   /**
    * The drawn text boxes, measured from the real SVG rather than estimated.
    *
@@ -550,7 +599,8 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
       }
     }
     setTextBoxes(next);
-  }, [svg, projection]);
+    // `previewing`: Preview unmounts the surface, so an undo there re-measures on return.
+  }, [svg, projection, previewing]);
 
   /**
    * Every piece of anchored text, at the unit-space position it is actually drawn.
@@ -1041,6 +1091,9 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
           target.tagName === 'SELECT' ||
           target.isContentEditable);
 
+      // Preview edits nothing; its own listener below handles Escape.
+      if (previewing) return;
+
       if (event.key === 'Escape') {
         if (typing) return;
         event.preventDefault();
@@ -1130,7 +1183,32 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, diagram, labelAnchors, setDiagram, onClose, embedded, doCopy, doPaste, doDelete, cropping, shadeOpen, spanDraft, projection, language, spanClear, keysSuspended]);
+  }, [selected, diagram, labelAnchors, setDiagram, onClose, embedded, doCopy, doPaste, doDelete, cropping, shadeOpen, spanDraft, projection, language, spanClear, keysSuspended, previewing]);
+
+  // Preview's keys, in a listener of their own: registered once per Preview, so no
+  // re-render can swap it out mid-keypress. Escape goes back to Edit, as the page's
+  // Preview does. ⌘A (it would select the toolbar's words) and Backspace (WebKit can
+  // take it as Back) are spent here, as Edit spends them.
+  useEffect(() => {
+    if (!previewing) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (keysSuspended) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setPreviewing(false);
+      } else if (
+        event.key === 'Backspace' ||
+        event.key === 'Delete' ||
+        ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a')
+      ) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewing, keysSuspended]);
 
   const activeTool = TOOLS.find((t) => t.id === tool);
 
@@ -1181,6 +1259,21 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
     >
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
         {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">{m.heading}</span>}
+
+        {/* Edit or look, named both ways like the page's own switch (`Toolbar.tsx`). */}
+        <Segmented
+          label={m.canvasMode}
+          value={previewing ? 'preview' : 'edit'}
+          onChange={(next) => showPreview(next === 'preview')}
+          options={[
+            { value: 'edit', label: t.edit, title: m.editModeTitle },
+            { value: 'preview', label: t.preview, title: m.previewModeTitle },
+          ]}
+        />
+
+        {/* Preview hides the editing controls but keeps their room, so nothing jumps. */}
+        <div className={previewing ? 'contents invisible' : 'contents'} inert={previewing}>
+        <span className="h-8 w-px bg-line-strong" />
 
         <div className="flex gap-1.5">
           {TOOLS.map((item) => (
@@ -1286,6 +1379,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
           />
           {m.snap}
         </label>
+        </div>
 
         <label className="flex items-center gap-2 text-xs font-medium text-ink">
           {m.zoom}
@@ -1302,6 +1396,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
           </select>
         </label>
 
+        <div className={previewing ? 'contents invisible' : 'contents'} inert={previewing}>
         <span className="h-8 w-px bg-line-strong" />
 
         {/* The frame is cropped here, on the picture, for the reason everything else is
@@ -1326,16 +1421,18 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
         {cropping && diagram.crop && (
           <ToolbarButton label={m.autoFrame} hint={m.autoFrameHint} onClick={resetCrop} />
         )}
+        </div>
 
         <span className="flex-1" />
         {/* The hint is the toolbar's own teaching line; slate-300 because 400 sat below
             comfortable contrast on the dark bar. */}
         <span
           title={embedded ? toolbarHint : undefined}
+          aria-hidden={previewing || undefined}
           className={`max-w-96 text-xs leading-snug text-ink-muted ${
             // Embedded, the hint takes what the row has left rather than a row of its own.
             embedded ? 'line-clamp-2 min-w-0 basis-0 grow-[100]' : ''
-          }`}
+          } ${previewing ? 'invisible' : ''}`}
         >
           {toolbarHint}
         </span>
@@ -1346,14 +1443,37 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
         {/* Stage. The SVG is rendered at its stored pixel size and scaled to fit, so
             what is drawn on is exactly the geometry that will be exported. */}
         <div className="relative flex min-w-0 flex-1 items-center justify-center overflow-auto p-8">
-          {(drawAnswers || hasAnswerLayer(diagram)) && (
-            <p className="pointer-events-none absolute left-3 top-2 flex items-center gap-1.5 text-[11px] text-ink-muted">
-              {/* The swatch is the paper's own answer ink, not a UI token. */}
-              <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: ANSWER_INK }} />
-              {m.answerLegend}
-            </p>
+          {previewing ? (
+            <PreviewVersion
+              version={shownVersion}
+              answered={hasAnswerLayer(block.diagram)}
+              // A graph has no versions of its own: name one only when it has an answer.
+              quiet={versionProp !== undefined}
+              onChange={setPreviewVersion}
+            />
+          ) : (
+            (drawAnswers || hasAnswerLayer(diagram)) && (
+              <p className="pointer-events-none absolute left-3 top-2 flex items-center gap-1.5 text-[11px] text-ink-muted">
+                {/* The swatch is the paper's own answer ink, not a UI token. */}
+                <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: ANSWER_INK }} />
+                {m.answerLegend}
+              </p>
+            )
           )}
-          {cropping && cropStage ? (
+          {previewing ? (
+            /* Preview: the page's own picture at this zoom, and nothing else. No
+               handlers, so no gesture can reach the geometry. */
+            <div
+              data-canvas-preview={shownVersion}
+              className="relative select-none bg-white shadow-2xl"
+              style={{ width: block.widthPx * zoom, height: block.heightPx * zoom }}
+            >
+              <div
+                className="pointer-events-none absolute inset-0 [&>svg]:h-full [&>svg]:w-full"
+                dangerouslySetInnerHTML={{ __html: previewSvg }}
+              />
+            </div>
+          ) : cropping && cropStage ? (
             /* The crop workspace: the same renderer drawing the same geometry with
                extra white on every side, and the frame overlaid on it. Nothing here is
                a second projection — the workspace *is* a diagram with a bigger crop. */
@@ -1454,20 +1574,29 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
         </div>
 
         <aside className="zone-light w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-4">
-          {panel && <div className="mb-4 border-b border-line pb-4">{panel}</div>}
-          <AnswerToggle diagram={diagram} selected={selected} onChange={setDiagram} />
-          <SelectionInspector
-            diagram={diagram}
-            selected={selected}
-            newId={newId}
-            onChange={setDiagram}
-            onDelete={doDelete}
-            onSelect={(handles) => setSelected(handles)}
-            onEdit={(handle) => {
-              setSelected([handle]);
-              setEditing(handle);
-            }}
-          />
+          {/* Preview edits nothing: the graph's own settings stay in view, dimmed and inert. */}
+          {panel && (
+            <div className={`mb-4 border-b border-line pb-4 ${previewing ? 'opacity-50' : ''}`} inert={previewing}>
+              {panel}
+            </div>
+          )}
+          {!previewing && (
+            <>
+              <AnswerToggle diagram={diagram} selected={selected} onChange={setDiagram} />
+              <SelectionInspector
+                diagram={diagram}
+                selected={selected}
+                newId={newId}
+                onChange={setDiagram}
+                onDelete={doDelete}
+                onSelect={(handles) => setSelected(handles)}
+                onEdit={(handle) => {
+                  setSelected([handle]);
+                  setEditing(handle);
+                }}
+              />
+            </>
+          )}
         </aside>
       </div>
     </div>
@@ -1477,6 +1606,44 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
     <FieldScopeContext.Provider value={{ language: languageProp, readOnly: false }}>{surface}</FieldScopeContext.Provider>
   ) : (
     surface
+  );
+}
+
+/**
+ * Which version Preview shows, top left of the stage. With an answer layer the two
+ * versions differ, so it is a switch, and it changes this preview only, never the page.
+ */
+function PreviewVersion({
+  version,
+  answered,
+  quiet,
+  onChange,
+}: {
+  version: VersionMode;
+  answered: boolean;
+  /** Say nothing unless there is an answer layer to choose about. */
+  quiet: boolean;
+  onChange: (version: VersionMode) => void;
+}) {
+  const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
+  const t = useMessages(TOOLBAR_MESSAGES);
+  if (!answered && quiet) return null;
+  return (
+    <div className="absolute left-3 top-1 flex items-center gap-1 text-[11px] text-ink-muted">
+      {answered ? (
+        <Segmented
+          label={t.version}
+          value={version}
+          onChange={onChange}
+          options={[
+            { value: 'student', label: t.student, title: m.previewStudentTitle },
+            { value: 'teacher', label: t.teacher, title: m.previewTeacherTitle },
+          ]}
+        />
+      ) : (
+        <span className="py-1">{version === 'teacher' ? m.previewTeacher : m.previewStudent}</span>
+      )}
+    </div>
   );
 }
 

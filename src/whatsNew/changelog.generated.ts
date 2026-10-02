@@ -15,6 +15,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Preview a diagram while you draw it.** The drawing canvas has its own Edit | Preview
+  switch, like the worksheet's. Preview shows the whole diagram exactly as it prints, with
+  no handles, rings or hints over it, and Edit brings your tool and selection back. If the
+  diagram has an answer drawn on it, switch between Student and Teacher to see each
+  version; the page keeps its own setting.
+  <!-- zh: **繪圖時可預覽圖表。** 繪圖畫布現有自己的「編輯 | 預覽」切換，與工作紙的一樣。
+  預覽會顯示與列印完全相同的整幅圖表，不會有控點、圓圈或提示；按「編輯」即可回到原來的
+  工具和所選項目。如圖表上已繪製答案，可在學生版和教師版之間切換，查看兩個版本；頁面本身
+  的設定不會改變。 -->
 - **Draw the answer on the question's own diagram.** In the drawing canvas, turn on Draw
   answer and draw the model answer (a PPF, a new curve, a labelled point) on the same axes
   the students get. It prints in red in the Teacher version and the answer key, and the
