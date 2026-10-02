@@ -157,9 +157,11 @@ function numberNotes(texts: BiDraft[], ctx: CheckContext): string[] {
 
 /** "EDB: 物價水平 (not 價格水平)" for warn-level term findings. */
 function termNote(check: TermCheck): string {
+  // The teacher's own choice or term is never labelled EDB.
+  const source = check.chosen || check.custom ? 'Yours' : 'EDB';
   return check.found && check.found.text !== check.expected
-    ? `EDB: ${check.expected} (not ${check.found.text})`
-    : `EDB: ${check.expected}`;
+    ? `${source}: ${check.expected} (not ${check.found.text})`
+    : `${source}: ${check.expected}`;
 }
 
 /**

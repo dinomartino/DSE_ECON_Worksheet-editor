@@ -147,7 +147,9 @@ function filledNote(result: JobResult): string {
 const termLine = (t: TermCheck): string =>
   t.conflict
     ? copyMessages().conflictLine(t.conflict.form, t.conflict.meansEn, t.en, t.expected)
-    : copyMessages().termChip(t.en, t.expected);
+    : t.chosen || t.custom
+      ? copyMessages().ownChip(t.en, t.expected)
+      : copyMessages().termChip(t.en, t.expected);
 
 /** The first thing the review would chip, most severe first. */
 function caveatOf(result: JobResult): string | undefined {

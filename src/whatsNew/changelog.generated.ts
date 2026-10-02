@@ -15,6 +15,24 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Choose your own wording for terms the EDB glossary lists more than one way.** In
+  Settings, Translation terms lists every such term, for example 本地生產總值 or
+  國內生產總值 for GDP, and 總支出 or 總開支. Pick the one you write: AI translation and
+  Check terms follow it, and the other listed wordings still count as correct. A choice
+  can also apply to related terms, such as real GDP.
+  <!-- zh: **為 EDB 詞彙表列出多於一種譯法的用語選擇你慣用的寫法。** 在「設定」的「翻譯用語」
+  中列出所有這類用語，例如 GDP 的本地生產總值或國內生產總值，以及總支出或總開支。選擇你慣用的
+  一種，AI 翻譯和檢查用詞就會跟從，其他列出的譯法仍然算作正確。你亦可把選擇同時用於相關用語，
+  例如實質本地生產總值。 -->
+- **Add your own translations and terms.** On any term in Settings, Translation terms,
+  "Add my own…" adds a wording the EDB glossary does not list, and "Add a term" adds a term
+  it does not have (with its abbreviation, such as ESG). Translation and Check terms use
+  them like EDB terms. Export CSV keeps a copy or shares a department list, Import CSV shows
+  what will change before you merge or replace, and backups include them.
+  <!-- zh: **加入你自己的譯法和用語。** 在「設定」的「翻譯用語」中，任何用語都可按「加入我的譯法…」
+  加入 EDB 詞彙表沒有列出的譯法；「加入用語」則可加入詞彙表沒有的用語（連縮寫，例如 ESG）。
+  翻譯和檢查用詞會像使用 EDB 用語一樣使用它們。「匯出 CSV」可保留副本或分享科組的用語表；
+  「匯入 CSV」會先顯示將有的改動，讓你選擇合併或取代。備份亦會包括這些用語。 -->
 - **See, edit and print the marking scheme on screen.** Marking scheme now sits beside
   Student and Teacher. It shows the answer key on its own pages: the MC grids (one per
   version), every answer, model diagram and marking point. Click any answer or marking

@@ -35,18 +35,22 @@ export interface ZhMatcher {
 export function buildZhMatcher(entries: readonly GlossaryEntry[]): ZhMatcher {
   const root: ZhNode = { next: new Map(), entryIds: [] };
   for (const entry of entries) {
-    for (const sense of entry.senses) {
-      for (const variant of sense.ranks.flat()) {
-        for (const form of variantForms(variant)) {
-          let node = root;
-          // Code units, as the lookup below reads them.
-          for (let k = 0; k < form.length; k++) {
-            let child = node.next.get(form[k]);
-            if (!child) node.next.set(form[k], (child = { next: new Map(), entryIds: [] }));
-            node = child;
-          }
-          if (!node.entryIds.includes(entry.id)) node.entryIds.push(entry.id);
+    // The teacher's own renderings and a choice's derived ones (實質國內生產總值) match too.
+    const variants = [
+      ...entry.senses.flatMap((sense) => sense.ranks.flat()),
+      ...(entry.own ?? []),
+      ...(entry.choice?.derived ?? []),
+    ];
+    for (const variant of variants) {
+      for (const form of variantForms(variant)) {
+        let node = root;
+        // Code units, as the lookup below reads them.
+        for (let k = 0; k < form.length; k++) {
+          let child = node.next.get(form[k]);
+          if (!child) node.next.set(form[k], (child = { next: new Map(), entryIds: [] }));
+          node = child;
         }
+        if (!node.entryIds.includes(entry.id)) node.entryIds.push(entry.id);
       }
     }
   }

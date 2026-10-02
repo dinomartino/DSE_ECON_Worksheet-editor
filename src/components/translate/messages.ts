@@ -40,6 +40,11 @@ export const COPY_MESSAGES = defineMessages({
     en: (en: string, expected: string) => `${en} (EDB: ${expected})`,
     zh: (en: string, expected: string) => `${en}（EDB：${expected}）`,
   },
+  /** A term or wording that is the teacher's own (Settings → Translation terms), never labelled EDB. */
+  ownChip: {
+    en: (en: string, expected: string) => `${en} (yours: ${expected})`,
+    zh: (en: string, expected: string) => `${en}（你的：${expected}）`,
+  },
   failedRow: {
     en: (reason: string) => `Couldn't translate this text safely (${reason}).`,
     zh: (reason: string) => `未能安全地翻譯這段文字（${reason}）。`,
@@ -87,6 +92,11 @@ export const COPY_MESSAGES = defineMessages({
   lowerRankLine: {
     en: (en: string, found: string, expected: string) => `${en}: ${found} (EDB lists ${expected} first)`,
     zh: (en: string, found: string, expected: string) => `${en}：${found}（EDB 以 ${expected} 為首選）`,
+  },
+  /** The same, when the preferred wording is the teacher's own choice in Settings. */
+  chosenLine: {
+    en: (en: string, found: string, expected: string) => `${en}: ${found} (your choice: ${expected})`,
+    zh: (en: string, found: string, expected: string) => `${en}：${found}（你的選擇：${expected}）`,
   },
 
   setupTranslation: { en: 'Set up translation…', zh: '設定翻譯…' },

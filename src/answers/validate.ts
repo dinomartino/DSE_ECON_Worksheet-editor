@@ -64,7 +64,9 @@ function finish(en: string, zh: string, glossary: Glossary | null, notes: string
   if (glossary && zhRuns.length > 0 && enRuns.length > 0) {
     zhRuns = glossary.autoFix(plain(enRuns), zhRuns).runs;
     for (const term of glossary.checkEnToZh(plain(enRuns), plain(zhRuns))) {
-      if (term.severity === 'warn') notes.push(`EDB: ${term.expected} for “${term.source.text}”`);
+      // The teacher's own choice or term is never labelled EDB.
+      const source = term.chosen || term.custom ? 'Yours' : 'EDB';
+      if (term.severity === 'warn') notes.push(`${source}: ${term.expected} for “${term.source.text}”`);
     }
   }
   return { en: normalizeRuns(enRuns), zh: normalizeRuns(zhRuns) };

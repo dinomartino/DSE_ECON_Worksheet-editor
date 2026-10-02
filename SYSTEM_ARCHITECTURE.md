@@ -2313,7 +2313,8 @@ Rules every verb keeps:
 
 - **Nothing new is persisted in documents.** No schema bump, no `KNOWN_KEYS` change.
   Settings live under `econgen.settings.<section>`, keys in the secrets store — never in a
-  worksheet, a backup or settings.
+  worksheet, a backup or settings. (One exception, teacher-authored data: the translation
+  terms ride in a backup as `terms/translation-terms.csv`.)
 - **One walker, every consumer.** Collection, the untranslated count, scoping, Check terms
   and apply all read and write BiTexts through one identity-preserving walk
   (`src/model/textSlots.ts`); a visit that changes nothing returns the same `Worksheet`.
@@ -2474,6 +2475,26 @@ data is evidence: corrections and policy live in `src/glossary/overrides.ts`, ne
 - **Preferred = rank 1**, with one exception: `PREFERRED_OVERRIDES` (the import family →
   進口). It drives `preferred`, pins, the check's `ok` and every suggested fix; 入口 passes as
   not preferred. The GDP family pins sense (1), Hong Kong usage.
+- **Term preferences** (Settings → Translation terms, `src/glossary/choices.ts`). Layers,
+  lowest first: the JSON (never edited), `PREFERRED_OVERRIDES`, the teacher's choices, then
+  the related terms that follow a choice. One `chosenOf(entry)` feeds `preferred`, pins, the
+  check and both fixes, so a choice reaches everywhere an override did; other listed
+  renderings pass as not preferred (`chosen` on the check names it the teacher's). Choosable:
+  equal-meaning renderings inside one sense, and across the GDP family's two senses; never
+  between different meanings (capital, credit). Related: an entry whose English contains the
+  parent's and whose preferred rendering contains its default; a swap the data does not list
+  is *derived* (accepted, pinned, matched) only for a core parent's single default, never
+  into the GDP family, a deny form or another entry's rendering. `loadGlossary(prefs)` builds
+  one glossary per preference set from a once-made parse; stale rows are dropped
+  (`sanitizePreferences`). With none, output is pinned to the pre-feature digest
+  (`src/glossary/choices.test.ts`).
+- **The teacher's own wordings and terms** (v2 of the setting). An own rendering of an EDB
+  entry (`entry.own`) is an option in its preferred sense: matched both ways, accepted (not
+  preferred unless chosen), and choosable like a listed one. A teacher's term is an entry
+  appended after the 1350 (`entry.custom`, `raw: ''`), so EDB ids never move; the English
+  and Chinese matchers are rebuilt with it, so leftmost-longest lets "digital GDP" win over
+  GDP inside it. One naming an EDB entry (`edbKeyFor`) or an earlier term is dropped.
+  Findings on either say "yours", never EDB (`TermCheck.chosen` / `custom`).
 - **Match** (`src/glossary/matchEn.ts`, `src/glossary/matchZh.ts`, folds in
   `src/glossary/fold.ts`). English: a token trie with spelling, plural, hyphen and
   possessive folds. Chinese: a character trie on folded text whose index map returns the
@@ -2599,6 +2620,15 @@ with a dummy key or follows a documented shape.
 - **Close guard.** A section with uncommitted input (a pasted key) sets a `CloseGuard`;
   Done, Escape, ✕ and the scrim then ask "Discard / Save & test" in the footer.
   Every route is the pure `closeStep` in the dialog file.
+- **Translation terms**: `src/components/settings/sections/terms.ts`; stored as
+  `econgen.settings.terms` v2 (`src/settings/termPreferences.ts`; v1 had choices only),
+  localStorage on web and in the desktop webview alike, never in a document. Rows are
+  records validated one by one (`src/settings/termData.ts`), so a bad row is dropped alone
+  and kept on write. `useGlossary` re-reads it, so a pick applies live; other callers get it
+  on their next `loadGlossary()`. Reset clears choices only: wordings and terms the teacher
+  added go only by their own Delete. Export / Import CSV (`src/settings/termsCsv.ts`;
+  preview and merge in `src/components/settings/sections/termsSection/termsImport.ts`) and
+  the backup carry them; a restore only merges.
 - **The AI section**: `src/components/settings/sections/ai.ts` registers it (imported by
   `src/components/settings/sections/index.ts`); the pane is
   `src/components/settings/sections/aiSection/AiSection.tsx` over the pure

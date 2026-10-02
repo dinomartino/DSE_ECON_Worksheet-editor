@@ -33,8 +33,10 @@ export const waitingLine = (provider: string, ms: number): string => copyMessage
 export const termFixed = (from: string, to: string): string => copyMessages().termFixed(from, to);
 export const SIMPLIFIED_FIXED = COPY_EN.simplifiedFixed;
 export const conflictChip = (form: string, meansEn: string): string => copyMessages().conflictChip(form, meansEn);
-export const termChip = (state: string, en: string, expected: string): string => {
+/** `mine`: the expected wording is the teacher's own choice or term, so it is not labelled EDB. */
+export const termChip = (state: string, en: string, expected: string, mine = false): string => {
   const m = copyMessages();
+  if (mine) return m.ownChip(en, expected);
   return state === 'not-preferred' ? m.termChipNotPreferred(en, expected) : m.termChip(en, expected);
 };
 export const failedRow = (reason: string): string => copyMessages().failedRow(reason);

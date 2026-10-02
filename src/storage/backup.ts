@@ -74,6 +74,8 @@ export interface BackupContents {
   patterns: PatternRegistry;
   /** Saved graphs (`graphs/*.graph`), each through the migration chain. */
   graphs: SavedGraph[];
+  /** Translation terms CSV (`terms/translation-terms.csv`), merged into Settings on restore. */
+  terms?: string;
 }
 
 export class BackupError extends Error {}
@@ -85,6 +87,8 @@ function safeName(text: string): string {
 }
 
 export const GRAPHS_FOLDER = 'graphs/';
+/** Settings → Translation terms as CSV: a `.csv`, so a shipped build's restore ignores it. */
+export const TERMS_ENTRY = 'terms/translation-terms.csv';
 export const GRAPH_ENTRY_SUFFIX = '.graph';
 
 /** `graphs/<name> (<id>).graph`. */
@@ -105,6 +109,8 @@ export async function buildBackup(
   folders?: FolderState,
   patterns?: PatternRegistry,
   graphs: SavedGraph[] = [],
+  /** The teacher's translation terms (`src/settings/termsCsv.ts`), when they have any. */
+  terms?: string,
 ): Promise<Uint8Array> {
   const zip = new JSZip();
   const manifest: BackupManifest = {
@@ -123,6 +129,7 @@ export async function buildBackup(
     zip.file(backupEntryName(worksheet), stringifyWorksheet(worksheet));
   }
   for (const graph of graphs) zip.file(graphEntryName(graph), stringifyGraph(graph));
+  if (terms) zip.file(TERMS_ENTRY, terms);
   return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
 }
 
@@ -181,7 +188,8 @@ export async function readBackup(data: Uint8Array | ArrayBuffer | Blob): Promise
       failures.push({ name: entry.name, reason: cause instanceof SyntaxError ? 'not valid JSON' : 'not a graph' });
     }
   }
-  return { worksheets, failures, folders, patterns, graphs };
+  const terms = await zip.file(TERMS_ENTRY)?.async('string').catch(() => undefined);
+  return { worksheets, failures, folders, patterns, graphs, ...(terms ? { terms } : {}) };
 }
 
 /**

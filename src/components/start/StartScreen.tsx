@@ -392,8 +392,9 @@ export function StartScreen({
         return;
       }
       const filed = await worksheetStore.readFolders();
+      const { backupTermsCsv } = await import('@/components/settings/sections/termsSection/termsBackup');
       const { path } = await target.write(
-        await buildBackup(worksheets, undefined, filed, await readPatternRegistry(patternStorage), graphs),
+        await buildBackup(worksheets, undefined, filed, await readPatternRegistry(patternStorage), graphs, backupTermsCsv()),
       );
       setNotice({
         message: t.backedUp(worksheets.length, graphs.length, unreadable),
@@ -416,13 +417,14 @@ export function StartScreen({
     try {
       const { readBackup, restoreBackup, restorePatterns } = await import('@/storage/backup');
       const { restoreGraphs } = await import('@/storage/graphs');
-      const { worksheets, failures, folders: filed, patterns, graphs } = await readBackup(data);
+      const { worksheets, failures, folders: filed, patterns, graphs, terms } = await readBackup(data);
       const report = await restoreBackup(worksheetStore, worksheets, undefined, filed);
       await restorePatterns(patternStorage, patterns);
       reloadPatterns();
       const graphReport = graphs.length > 0 ? await restoreGraphs(graphStore, graphs) : undefined;
+      const termsAdded = terms ? await restoreTerms(terms) : 0;
       setNotice({
-        message: restoreNotice(report, failures.length, graphReport),
+        message: restoreNotice(report, failures.length, graphReport, undefined, termsAdded),
         details: [...failures, ...report.failed].map((f) => `${f.name}: ${f.reason}`),
       });
     } catch (cause) {
@@ -536,9 +538,10 @@ export function StartScreen({
 
       for (const file of backups) {
         try {
-          const { worksheets: inside, failures, folders: filed, patterns, graphs } = await readBackup(await file.read());
+          const { worksheets: inside, failures, folders: filed, patterns, graphs, terms } = await readBackup(await file.read());
           tally(await restoreBackup(worksheetStore, inside, undefined, filed));
           await restorePatterns(patternStorage, patterns);
+          if (terms) await restoreTerms(terms);
           if (graphs.length > 0) await (await import('@/storage/graphs')).restoreGraphs(graphStore, graphs);
           reloadPatterns();
           for (const failure of failures) unreadable(`${file.name}: ${failure.name}`, failure.reason);
@@ -1407,4 +1410,10 @@ function isZip(file: File): boolean {
     file.type === 'application/zip' ||
     file.type === 'application/x-zip-compressed'
   );
+}
+
+/** A backup's translation terms merged into Settings (new rows only); the count added. */
+async function restoreTerms(csv: string): Promise<number> {
+  const { restoreTermsCsv } = await import('@/components/settings/sections/termsSection/termsBackup');
+  return restoreTermsCsv(csv);
 }

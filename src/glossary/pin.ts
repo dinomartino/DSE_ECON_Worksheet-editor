@@ -1,11 +1,12 @@
 /**
  * Prompt pins: one line per glossary term in a chunk's sources, first occurrence first.
- * EN→ZH shows only the preferred rendering (rank 1, or the import family's 進口): showing
+ * EN→ZH shows only the preferred rendering (rank 1, the import family's 進口, or the
+ * teacher's choice from Settings → Translation terms): showing
  * lower ranks invites them. The check still accepts every listed variant.
  */
 import type { Direction } from '@/translate/types';
 import type { GlossaryEntry, GlossarySense, PinnedTerm } from './types';
-import { PREFERRED_OVERRIDES } from './overrides';
+import { pinsOf, preferredIn } from './choices';
 import { foldZh, unfoldSpan } from './fold';
 import { variantForms } from './matchZh';
 import { pinnableZh, type GlossaryIndex } from './check';
@@ -22,14 +23,15 @@ const NOTE_ZH_TO_EN: Readonly<Partial<Record<NonNullable<GlossarySense['note']>,
   fixedRate: 'fixed rate',
 };
 
-function senseRendering(entry: GlossaryEntry, sense: GlossarySense): string {
-  const text = PREFERRED_OVERRIDES[entry.en] ?? sense.ranks[0].join(' / ');
+function senseRendering(entry: GlossaryEntry, s: number): string {
+  const sense = entry.senses[s];
+  const text = preferredIn(entry, s).join(' / ');
   return sense.note ? `${text} [${NOTE_EN[sense.note]}]` : text;
 }
 
 function lineToZh(index: GlossaryIndex, entry: GlossaryEntry, form: string, denyHints: boolean): string {
-  const shown = entry.pinSenses ?? entry.senses.map((_, i) => i);
-  const renderings = shown.map((i) => senseRendering(entry, entry.senses[i]));
+  const shown = pinsOf(entry) ?? entry.senses.map((_, i) => i);
+  const renderings = shown.map((i) => senseRendering(entry, i));
   let line =
     renderings.length === 1
       ? `${form} → ${renderings[0]}`

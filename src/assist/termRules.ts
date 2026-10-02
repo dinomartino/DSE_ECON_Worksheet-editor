@@ -28,12 +28,17 @@ export function fixedPreview(row: TermRow, check: TermCheck): string {
 
 export function termNotes(row: TermRow, check: TermCheck): string[] {
   const m = assistMessages();
-  const edb = copyMessages().termChip(check.en, check.expected);
+  // The teacher's own choice or term is never labelled EDB.
+  const mine = !!(check.chosen || check.custom);
+  const edb = mine ? copyMessages().ownChip(check.en, check.expected) : copyMessages().termChip(check.en, check.expected);
   if (!check.fix) {
-    const found = check.found ? m.foundLine(check.en, check.found.text, check.expected) : edb;
+    const found = check.found ? (mine ? m.foundOwnLine : m.foundLine)(check.en, check.found.text, check.expected) : edb;
     return check.conflict ? [found, copy.conflictChip(check.conflict.form, check.conflict.meansEn)] : [found];
   }
-  if (check.fix.kind === 'lowerRank') return [copy.lowerRankLine(check.en, check.found?.text ?? '', check.expected)];
+  if (check.fix.kind === 'lowerRank') {
+    const line = mine ? copyMessages().chosenLine : copy.lowerRankLine;
+    return [line(check.en, check.found?.text ?? '', check.expected)];
+  }
   const preview = `→ ${fixedPreview(row, check)}`;
   return isVariant(check) ? [edb, preview, m.textbookForm(check.fix.to)] : [edb, preview];
 }

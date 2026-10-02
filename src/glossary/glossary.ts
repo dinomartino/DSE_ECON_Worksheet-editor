@@ -1,17 +1,41 @@
 /**
  * Builds the `Glossary` from the raw JSON: parse, index, and bind the check, pins and
  * auto-fix to that index. Reached only through `load.ts`'s dynamic import, with the data.
+ * The parse and the English index are made once per data; term preferences only re-make
+ * the entries they change and the Chinese index.
  */
-import type { Glossary, GlossaryMatchEn } from './types';
+import type { ChoosableTerm, Glossary, GlossaryEntry, GlossaryMatchEn, TermPreferences } from './types';
 import { DENY, type DenyRow } from './deny';
 import { parseGlossary, type RawGlossary } from './parse';
-import { buildEnMatcher } from './matchEn';
-import { buildZhMatcher } from './matchZh';
+import { buildEnMatcher, type EnMatcher } from './matchEn';
+import { buildZhMatcher, type ZhMatcher } from './matchZh';
 import { autoFix, checkEnToZh, checkZhToEn, indexVariants, type GlossaryIndex } from './check';
 import { pin } from './pin';
 import { foldZh, unfoldSpan } from './fold';
+import {
+  choosableTerms,
+  NO_PREFERENCES,
+  relatedFor,
+  resolveChoices,
+  sanitize,
+  termRow,
+  customRow,
+  customEntry,
+  withChoice,
+  type ChoiceContext,
+} from './choices';
 
-export function createGlossary(raw: RawGlossary, denyRows: readonly DenyRow[] = DENY): Glossary {
+interface Prepared {
+  raw: RawGlossary;
+  entries: readonly GlossaryEntry[];
+  deny: ReadonlyMap<number, DenyRow[]>;
+  en: EnMatcher;
+  zh: ZhMatcher;
+  choosable: readonly ChoosableTerm[];
+  ctx: ChoiceContext;
+}
+
+function prepare(raw: RawGlossary, denyRows: readonly DenyRow[]): Prepared {
   const entries = parseGlossary(raw);
   const byKey = new Map(entries.map((e) => [e.en, e]));
   const deny = new Map<number, DenyRow[]>();
@@ -22,13 +46,72 @@ export function createGlossary(raw: RawGlossary, denyRows: readonly DenyRow[] = 
   }
   const en = buildEnMatcher(entries);
   const zh = buildZhMatcher(entries);
+  const choosable = choosableTerms(entries);
+  // Parent → the entries whose own English contains it (GDP → real GDP, per capita GDP).
+  const containing = new Map<number, number[]>();
+  for (const entry of entries) {
+    const inside = new Set(entry.enForms.flatMap((form) => en.matchEnAll(form).map((h) => h.entryId)));
+    for (const id of inside) if (id !== entry.id) containing.set(id, [...(containing.get(id) ?? []), entry.id]);
+  }
+  const renderings = new Map<string, number[]>();
+  for (const entry of entries) {
+    for (const v of new Set(entry.senses.flatMap((s) => s.ranks.flat()))) renderings.set(v, [...(renderings.get(v) ?? []), entry.id]);
+  }
+  const ctx: ChoiceContext = {
+    entries,
+    byKey,
+    choosable: new Map(choosable.map((t) => [t.entryId, t])),
+    containing,
+    denyForms: [...new Set(denyRows.flatMap((r) => r.forms))],
+    renderingOf: (text) => renderings.get(text) ?? [],
+    edbKeyFor(english) {
+      const text = english.trim();
+      const whole = en.matchEnAll(text).find((h) => h.start === 0 && h.end === text.length);
+      return whole ? entries[whole.entryId].en : undefined;
+    },
+    ownOf: () => [],
+  };
+  return { raw, entries, deny, en, zh, choosable, ctx };
+}
+
+const prepared = new WeakMap<RawGlossary, Prepared>();
+
+export function createGlossary(
+  raw: RawGlossary,
+  denyRows: readonly DenyRow[] = DENY,
+  preferences: TermPreferences = NO_PREFERENCES,
+): Glossary {
+  let base = denyRows === DENY ? prepared.get(raw) : undefined;
+  if (!base) {
+    base = prepare(raw, denyRows);
+    if (denyRows === DENY) prepared.set(raw, base);
+  }
+  const { prefs, ctx, own, custom } = sanitize(base.ctx, preferences);
+  const choices = resolveChoices(ctx, prefs);
+  const changed = choices.size > 0 || own.size > 0;
+  const edb = changed
+    ? base.entries.map((e) => {
+        const mine = own.get(e.id);
+        const withOwn = mine ? { ...e, own: [...mine] } : e;
+        const choice = choices.get(e.id);
+        return choice ? withChoice(withOwn, choice) : withOwn;
+      })
+    : base.entries;
+  // The teacher's terms follow the EDB entries, so EDB ids never move.
+  const mine = custom.map(({ id, term }, i) => customEntry(base.entries.length + i, id, term));
+  const entries = mine.length ? [...edb, ...mine] : edb;
+  const derived = [...choices.values()].some((c) => c.derived.length);
+  // Leftmost-longest over both: a teacher's "digital GDP" wins over the EDB's GDP inside it.
+  const en = mine.length ? buildEnMatcher(entries) : base.en;
+  const zh = derived || own.size || mine.length ? buildZhMatcher(entries) : base.zh;
   const index: GlossaryIndex = {
     entries,
     en,
     zh,
     variants: new Map(entries.map((e) => [e.id, indexVariants(e)])),
-    deny,
+    deny: base.deny,
   };
+  let rows: ChoosableTerm[] | undefined;
   const strip = ({ entryId, start, end, viaAbbreviation }: GlossaryMatchEn) => ({ entryId, start, end, viaAbbreviation });
   return {
     meta: {
@@ -48,5 +131,21 @@ export function createGlossary(raw: RawGlossary, denyRows: readonly DenyRow[] = 
     checkZhToEn: (sourceZh, outputEn) => checkZhToEn(index, sourceZh, outputEn),
     pin: (texts, direction, opts) => pin(index, texts, direction, opts),
     autoFix: (sourceEn, zhRuns) => autoFix(index, sourceEn, zhRuns),
+    preferences: prefs,
+    choosable: base.choosable,
+    get terms() {
+      rows ??= [
+        ...edb.map((e) => termRow(e, own.get(e.id))),
+        ...mine.map((e, i) => customRow(e, custom[i].term)),
+      ];
+      return rows;
+    },
+    edbKeyFor: (english) => base.ctx.edbKeyFor(english),
+    related(key, display) {
+      const entry = ctx.byKey.get(key);
+      if (!entry) return [];
+      const chosen = new Set(Object.keys(prefs.choices).filter((k) => k !== key).map((k) => ctx.byKey.get(k)!.id));
+      return relatedFor(ctx, entry, display, chosen);
+    },
   };
 }
