@@ -46,7 +46,8 @@ describe('the glossary loads lazily', () => {
   it('load.ts reaches the data and the engine only by dynamic import', () => {
     // The term preferences it reads are settings, which never import the glossary.
     expect(staticImports(join(HERE, 'load.ts'))).toEqual(['@/settings/termPreferences']);
-    expect(staticImports(join(SRC, 'settings/termPreferences.ts')).sort()).toEqual(['./store']);
+    expect(staticImports(join(SRC, 'settings/termPreferences.ts')).sort()).toEqual(['./store', './termData']);
+    expect(staticImports(join(SRC, 'settings/termData.ts'))).toEqual([]);
   });
 
   it('index.ts and useGlossary.ts re-export nothing that imports the data', () => {

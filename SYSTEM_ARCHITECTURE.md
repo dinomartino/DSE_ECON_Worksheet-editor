@@ -2313,7 +2313,8 @@ Rules every verb keeps:
 
 - **Nothing new is persisted in documents.** No schema bump, no `KNOWN_KEYS` change.
   Settings live under `econgen.settings.<section>`, keys in the secrets store — never in a
-  worksheet, a backup or settings.
+  worksheet, a backup or settings. (One exception, teacher-authored data: the translation
+  terms ride in a backup as `terms/translation-terms.csv`.)
 - **One walker, every consumer.** Collection, the untranslated count, scoping, Check terms
   and apply all read and write BiTexts through one identity-preserving walk
   (`src/model/textSlots.ts`); a visit that changes nothing returns the same `Worksheet`.
@@ -2487,6 +2488,13 @@ data is evidence: corrections and policy live in `src/glossary/overrides.ts`, ne
   one glossary per preference set from a once-made parse; stale rows are dropped
   (`sanitizePreferences`). With none, output is pinned to the pre-feature digest
   (`src/glossary/choices.test.ts`).
+- **The teacher's own wordings and terms** (v2 of the setting). An own rendering of an EDB
+  entry (`entry.own`) is an option in its preferred sense: matched both ways, accepted (not
+  preferred unless chosen), and choosable like a listed one. A teacher's term is an entry
+  appended after the 1350 (`entry.custom`, `raw: ''`), so EDB ids never move; the English
+  and Chinese matchers are rebuilt with it, so leftmost-longest lets "digital GDP" win over
+  GDP inside it. One naming an EDB entry (`edbKeyFor`) or an earlier term is dropped.
+  Findings on either say "yours", never EDB (`TermCheck.chosen` / `custom`).
 - **Match** (`src/glossary/matchEn.ts`, `src/glossary/matchZh.ts`, folds in
   `src/glossary/fold.ts`). English: a token trie with spelling, plural, hyphen and
   possessive folds. Chinese: a character trie on folded text whose index map returns the
@@ -2613,9 +2621,14 @@ with a dummy key or follows a documented shape.
   Done, Escape, ✕ and the scrim then ask "Discard / Save & test" in the footer.
   Every route is the pure `closeStep` in the dialog file.
 - **Translation terms**: `src/components/settings/sections/terms.ts`; stored as
-  `econgen.settings.terms` (`src/settings/termPreferences.ts`), localStorage on web and in
-  the desktop webview alike, never in a document or backup. `useGlossary` re-reads it, so a
-  pick applies live; other callers get it on their next `loadGlossary()`.
+  `econgen.settings.terms` v2 (`src/settings/termPreferences.ts`; v1 had choices only),
+  localStorage on web and in the desktop webview alike, never in a document. Rows are
+  records validated one by one (`src/settings/termData.ts`), so a bad row is dropped alone
+  and kept on write. `useGlossary` re-reads it, so a pick applies live; other callers get it
+  on their next `loadGlossary()`. Reset clears choices only: wordings and terms the teacher
+  added go only by their own Delete. Export / Import CSV (`src/settings/termsCsv.ts`;
+  preview and merge in `src/components/settings/sections/termsSection/termsImport.ts`) and
+  the backup carry them; a restore only merges.
 - **The AI section**: `src/components/settings/sections/ai.ts` registers it (imported by
   `src/components/settings/sections/index.ts`); the pane is
   `src/components/settings/sections/aiSection/AiSection.tsx` over the pure

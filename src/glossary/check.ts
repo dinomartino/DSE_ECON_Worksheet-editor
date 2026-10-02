@@ -44,7 +44,13 @@ export function indexVariants(entry: GlossaryEntry): Variant[] {
       }
     });
   });
-  // Renderings the data does not list, accepted because of a choice (實質國內生產總值).
+  // Renderings the data does not list: the teacher's own (in the preferred sense), and those
+  // accepted because of a choice (實質國內生產總值).
+  const ownSense = entry.pinSenses?.[0] ?? 0;
+  for (const display of entry.own ?? []) {
+    const preferred = isPinned(entry, ownSense) && choice?.sense === ownSense && choice.displays.includes(display);
+    out.push({ display, forms: variantForms(display), sense: ownSense, rank: 1, preferred });
+  }
   if (choice) {
     for (const display of choice.derived) {
       const preferred = isPinned(entry, choice.sense) && choice.displays.includes(display);
@@ -251,6 +257,7 @@ function checkTerm(
     source: { text: sourceEn.slice(hit.start, hit.end), start: hit.start, end: hit.end },
     expected: expectedFor(entry),
     ...(entry.choice && entry.choice.source !== 'default' ? { chosen: true as const } : {}),
+    ...(entry.custom ? { custom: true as const } : {}),
   };
   const result = (state: TermState, extra: Partial<TermCheck> = {}): TermCheck => ({
     ...base,

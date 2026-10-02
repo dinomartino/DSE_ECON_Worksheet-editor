@@ -111,6 +111,11 @@ export const ASSIST_MESSAGES = defineMessages({
     en: (en: string, found: string, expected: string) => `${en} → ${found} (EDB: ${expected})`,
     zh: (en: string, found: string, expected: string) => `${en} → ${found}（EDB：${expected}）`,
   },
+  /** The same for the teacher's own choice or term (Settings → Translation terms). */
+  foundOwnLine: {
+    en: (en: string, found: string, expected: string) => `${en} → ${found} (yours: ${expected})`,
+    zh: (en: string, found: string, expected: string) => `${en} → ${found}（你的：${expected}）`,
+  },
   textbookForm: {
     en: (to: string) => `A textbook form; EDB lists ${to} first.`,
     zh: (to: string) => `這是教科書的寫法；EDB 以 ${to} 為首選。`,

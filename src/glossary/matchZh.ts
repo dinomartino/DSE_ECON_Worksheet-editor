@@ -35,8 +35,12 @@ export interface ZhMatcher {
 export function buildZhMatcher(entries: readonly GlossaryEntry[]): ZhMatcher {
   const root: ZhNode = { next: new Map(), entryIds: [] };
   for (const entry of entries) {
-    // A choice's derived renderings (實質國內生產總值) match as the entry's own.
-    const variants = [...entry.senses.flatMap((sense) => sense.ranks.flat()), ...(entry.choice?.derived ?? [])];
+    // The teacher's own renderings and a choice's derived ones (實質國內生產總值) match too.
+    const variants = [
+      ...entry.senses.flatMap((sense) => sense.ranks.flat()),
+      ...(entry.own ?? []),
+      ...(entry.choice?.derived ?? []),
+    ];
     for (const variant of variants) {
       for (const form of variantForms(variant)) {
         let node = root;

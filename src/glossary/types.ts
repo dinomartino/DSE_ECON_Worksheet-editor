@@ -4,6 +4,9 @@
  */
 import type { RichText } from '@/model/types';
 import type { Direction } from '@/translate/types';
+import type { CustomTerm } from '@/settings/termData';
+
+export type { CustomTerm };
 
 export interface GlossarySense {
   /** '；' order = preference (ranks[0] first); inner arrays are ' / '-equal variants. NFC, no spaces. */
@@ -33,6 +36,10 @@ export interface GlossaryEntry {
   /** Settings → Translation terms: the teacher's choice in force for this entry, set only
    *  on a glossary built with preferences. Absent = the defaults. */
   choice?: TermChoice;
+  /** Renderings the teacher added to this EDB entry (Settings), in its preferred sense. */
+  own?: string[];
+  /** A term the teacher added; not in the EDB data, never labelled as EDB's. */
+  custom?: { id: string };
 }
 
 /**
@@ -61,10 +68,21 @@ export interface TermChoice {
 export interface TermPreferences {
   choices: Readonly<Record<string, string>>;
   related: Readonly<Record<string, true>>;
+  /** EDB key → renderings the teacher added (a choice may name one). */
+  own?: Readonly<Record<string, readonly string[]>>;
+  /** Terms the teacher added, by storage id. */
+  terms?: Readonly<Record<string, CustomTerm>>;
 }
 
 /** One rendering a teacher may pick. */
-export interface TermOption { display: string; sense: number; rank: number }
+export interface TermOption {
+  display: string;
+  sense: number;
+  /** 1-based EDB rank; 0 for a rendering the teacher added. */
+  rank: number;
+  /** The teacher's own rendering. */
+  own?: true;
+}
 /** The renderings of one sense (or, for the GDP family, of both senses) to choose among. */
 export interface TermOptionGroup {
   /** The sense, or undefined when the group spans senses (the GDP family). */
@@ -80,6 +98,8 @@ export interface ChoosableTerm {
   groups: TermOptionGroup[];
   /** The GDP family and the import family: shown first, as common choices. */
   common: boolean;
+  /** A term the teacher added (its storage id); its first rendering is preferred. */
+  custom?: { id: string; abbreviation?: string; forms?: string[] };
 }
 /** A term that would follow a choice ("Also use in related terms"). */
 export interface RelatedTerm {
@@ -122,6 +142,8 @@ export interface TermCheck {
   senseAmbiguous?: boolean;
   /** `expected` is the teacher's choice (Settings → Translation terms), not the EDB's first. */
   chosen?: true;
+  /** The term is the teacher's own, not in the EDB glossary. */
+  custom?: true;
 }
 export interface PinnedTerm { entryId: number; line: string; tier: 'core' | 'generic' }
 export interface GlossaryMatchEn { entryId: number; start: number; end: number; viaAbbreviation: boolean }
@@ -143,6 +165,10 @@ export interface Glossary {
   preferences: TermPreferences;
   /** Every entry with a choice, in source order, as the data defines it (never the preferences). */
   choosable: readonly ChoosableTerm[];
+  /** Every entry (EDB, then the teacher's terms) with its options, the teacher's own included. */
+  terms: readonly ChoosableTerm[];
+  /** The EDB entry a teacher's English already names (its key), so a new term is not a duplicate. */
+  edbKeyFor(english: string): string | undefined;
   /** The terms that would follow choosing `display` for the entry `key`. */
   related(key: string, display: string): RelatedTerm[];
 }

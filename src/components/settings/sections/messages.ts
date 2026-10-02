@@ -11,8 +11,8 @@ export const SECTION_MESSAGES = defineMessages({
   termsLabel: { en: 'Translation terms', zh: '翻譯用語' },
   termsHint: { en: 'Your wording for EDB terms', zh: '你慣用的 EDB 譯法' },
   termsDescription: {
-    en: 'Some terms are listed more than one way in the EDB glossary. Pick the one you write.',
-    zh: '教育局詞彙表為部分用語列出多於一種譯法。選擇你慣用的一種。',
+    en: 'Some terms are listed more than one way in the EDB glossary. Pick the one you write, or add your own.',
+    zh: '教育局詞彙表為部分用語列出多於一種譯法。選擇你慣用的一種，或加入你自己的譯法。',
   },
   appearanceLabel:{ en: 'Appearance', zh: '外觀' },
   appearanceHint: { en: 'Light, dark or system', zh: '淺色、深色或跟隨系統' },

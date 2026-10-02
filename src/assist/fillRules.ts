@@ -61,7 +61,7 @@ export function rowNotes(result: JobResult): RowNote[] {
   const notes: RowNote[] = result.issues.map((issue) => ({ tone: issue.severity, text: issue.message }));
   for (const term of result.terms) {
     if (term.severity !== 'warn' && term.severity !== 'note') continue;
-    const text = term.conflict ? copy.conflictChip(term.conflict.form, term.conflict.meansEn) : copy.termChip(term.state, term.en, term.expected);
+    const text = term.conflict ? copy.conflictChip(term.conflict.form, term.conflict.meansEn) : copy.termChip(term.state, term.en, term.expected, !!(term.chosen || term.custom));
     notes.push({ tone: term.severity, text });
   }
   for (const fix of result.fixes) {

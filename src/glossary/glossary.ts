@@ -17,7 +17,10 @@ import {
   NO_PREFERENCES,
   relatedFor,
   resolveChoices,
-  sanitizePreferences,
+  sanitize,
+  termRow,
+  customRow,
+  customEntry,
   withChoice,
   type ChoiceContext,
 } from './choices';
@@ -61,6 +64,12 @@ function prepare(raw: RawGlossary, denyRows: readonly DenyRow[]): Prepared {
     containing,
     denyForms: [...new Set(denyRows.flatMap((r) => r.forms))],
     renderingOf: (text) => renderings.get(text) ?? [],
+    edbKeyFor(english) {
+      const text = english.trim();
+      const whole = en.matchEnAll(text).find((h) => h.start === 0 && h.end === text.length);
+      return whole ? entries[whole.entryId].en : undefined;
+    },
+    ownOf: () => [],
   };
   return { raw, entries, deny, en, zh, choosable, ctx };
 }
@@ -77,12 +86,24 @@ export function createGlossary(
     base = prepare(raw, denyRows);
     if (denyRows === DENY) prepared.set(raw, base);
   }
-  const prefs = sanitizePreferences(base.ctx, preferences);
-  const choices = resolveChoices(base.ctx, prefs);
-  const entries = choices.size ? base.entries.map((e) => (choices.has(e.id) ? withChoice(e, choices.get(e.id)!) : e)) : base.entries;
+  const { prefs, ctx, own, custom } = sanitize(base.ctx, preferences);
+  const choices = resolveChoices(ctx, prefs);
+  const changed = choices.size > 0 || own.size > 0;
+  const edb = changed
+    ? base.entries.map((e) => {
+        const mine = own.get(e.id);
+        const withOwn = mine ? { ...e, own: [...mine] } : e;
+        const choice = choices.get(e.id);
+        return choice ? withChoice(withOwn, choice) : withOwn;
+      })
+    : base.entries;
+  // The teacher's terms follow the EDB entries, so EDB ids never move.
+  const mine = custom.map(({ id, term }, i) => customEntry(base.entries.length + i, id, term));
+  const entries = mine.length ? [...edb, ...mine] : edb;
   const derived = [...choices.values()].some((c) => c.derived.length);
-  const en = base.en;
-  const zh = derived ? buildZhMatcher(entries) : base.zh;
+  // Leftmost-longest over both: a teacher's "digital GDP" wins over the EDB's GDP inside it.
+  const en = mine.length ? buildEnMatcher(entries) : base.en;
+  const zh = derived || own.size || mine.length ? buildZhMatcher(entries) : base.zh;
   const index: GlossaryIndex = {
     entries,
     en,
@@ -90,7 +111,7 @@ export function createGlossary(
     variants: new Map(entries.map((e) => [e.id, indexVariants(e)])),
     deny: base.deny,
   };
-  const ctx = base.ctx;
+  let rows: ChoosableTerm[] | undefined;
   const strip = ({ entryId, start, end, viaAbbreviation }: GlossaryMatchEn) => ({ entryId, start, end, viaAbbreviation });
   return {
     meta: {
@@ -112,6 +133,14 @@ export function createGlossary(
     autoFix: (sourceEn, zhRuns) => autoFix(index, sourceEn, zhRuns),
     preferences: prefs,
     choosable: base.choosable,
+    get terms() {
+      rows ??= [
+        ...edb.map((e) => termRow(e, own.get(e.id))),
+        ...mine.map((e, i) => customRow(e, custom[i].term)),
+      ];
+      return rows;
+    },
+    edbKeyFor: (english) => base.ctx.edbKeyFor(english),
     related(key, display) {
       const entry = ctx.byKey.get(key);
       if (!entry) return [];

@@ -336,5 +336,9 @@ export const RESTORE_MESSAGES = defineMessages({
     en: (n: number) => `${n} ${n === 1 ? 'graph' : 'graphs'} could not be saved`,
     zh: (n: number) => `${n} 幅圖表無法儲存`,
   },
+  termsRestored: {
+    en: (n: number) => `${n} translation ${n === 1 ? 'term' : 'terms'} added`,
+    zh: (n: number) => `加入 ${n} 個翻譯用語`,
+  },
   empty: { en: 'That backup has no worksheets in it.', zh: '這個備份內沒有工作紙。' },
 });

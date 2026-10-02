@@ -106,6 +106,8 @@ export function fakeGlossary(): Glossary {
     preferences: { choices: {}, related: {} },
     choosable: [],
     related: () => [],
+    terms: [],
+    edbKeyFor: () => undefined,
   };
 }
 

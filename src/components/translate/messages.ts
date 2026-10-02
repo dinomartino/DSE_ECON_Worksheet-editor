@@ -40,6 +40,11 @@ export const COPY_MESSAGES = defineMessages({
     en: (en: string, expected: string) => `${en} (EDB: ${expected})`,
     zh: (en: string, expected: string) => `${en}（EDB：${expected}）`,
   },
+  /** A term or wording that is the teacher's own (Settings → Translation terms), never labelled EDB. */
+  ownChip: {
+    en: (en: string, expected: string) => `${en} (yours: ${expected})`,
+    zh: (en: string, expected: string) => `${en}（你的：${expected}）`,
+  },
   failedRow: {
     en: (reason: string) => `Couldn't translate this text safely (${reason}).`,
     zh: (reason: string) => `未能安全地翻譯這段文字（${reason}）。`,

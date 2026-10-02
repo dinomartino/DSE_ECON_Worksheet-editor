@@ -1,13 +1,16 @@
 import type { TermPreferences } from '@/glossary/types';
 import type { FieldValidator, SettingsSchema } from './types';
 import { appSettings } from './store';
+import { cleanCustomTerm, cleanRenderings, type CustomTerm } from './termData';
 
 /**
  * Settings → Translation terms 翻譯用語: the rendering a teacher writes for a term the EDB
- * glossary lists more than one way (entry key, verbatim → rendering), and the keys whose
- * choice also applies to related terms. Stored like every section, never in a document or
- * a backup. This validates the shape only; the glossary validates against its data on
- * every build and ignores a stale row (`src/glossary/choices.ts:sanitizePreferences`).
+ * glossary lists more than one way (entry key, verbatim → rendering), the keys whose choice
+ * also applies to related terms, the teacher's own renderings of EDB terms (v2) and the terms
+ * they added (v2). Stored like every section, never in a document; Export / Import CSV and
+ * the app backup carry a copy. Each row is validated alone, so one bad row never costs the
+ * rest, and a row this build can't read is kept on write. The glossary validates against
+ * its data on every build (`src/glossary/choices.ts:sanitize`).
  */
 
 const MAX_ROWS = 2000;
@@ -36,14 +39,27 @@ const rendering: FieldValidator<string> = (raw) =>
   typeof raw === 'string' && raw.length > 0 && raw.length <= MAX_VALUE ? raw : undefined;
 const on: FieldValidator<true> = (raw) => (raw === true ? true : undefined);
 
-const EMPTY: TermPreferences = Object.freeze({ choices: Object.freeze({}), related: Object.freeze({}) });
+const renderingList: FieldValidator<readonly string[]> = (raw) => {
+  const list = cleanRenderings(raw);
+  return list.length ? list : undefined;
+};
+const customTerm: FieldValidator<CustomTerm> = (raw) => cleanCustomTerm(raw);
+
+const EMPTY: TermPreferences = Object.freeze({
+  choices: Object.freeze({}),
+  related: Object.freeze({}),
+  own: Object.freeze({}),
+  terms: Object.freeze({}),
+});
 
 export const TERM_SETTINGS: SettingsSchema<TermPreferences> = {
   section: 'terms',
-  version: 1,
+  version: 2,
   storageKey: 'econgen.settings.terms',
   defaults: () => EMPTY,
-  fields: { choices: mapOf(rendering), related: mapOf(on) },
+  fields: { choices: mapOf(rendering), related: mapOf(on), own: mapOf(renderingList), terms: mapOf(customTerm) },
+  // v2 adds the teacher's own renderings and terms; v1 choices carry over unchanged.
+  migrate: (raw, from) => (from < 2 ? { ...raw, own: raw.own ?? {}, terms: raw.terms ?? {} } : raw),
 };
 
 /** The stored preferences now (the defaults when storage is blocked or empty). */
@@ -57,7 +73,6 @@ export function preferencesKey(prefs: TermPreferences): string {
     Object.keys(r)
       .sort()
       .map((k) => [k, r[k]]);
-  const choices = sorted(prefs.choices);
-  const related = sorted(prefs.related);
-  return choices.length || related.length ? JSON.stringify([choices, related]) : '';
+  const parts = [prefs.choices, prefs.related, prefs.own ?? {}, prefs.terms ?? {}].map(sorted);
+  return parts.some((p) => p.length) ? JSON.stringify(parts) : '';
 }

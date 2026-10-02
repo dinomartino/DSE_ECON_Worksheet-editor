@@ -20,6 +20,8 @@ export function emptyGlossary(): Glossary {
     preferences: { choices: {}, related: {} },
     choosable: [],
     related: () => [],
+    terms: [],
+    edbKeyFor: () => undefined,
   };
 }
 

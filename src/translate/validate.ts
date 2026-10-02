@@ -146,7 +146,7 @@ function symbolKept(token: string, source: string, output: string, glossary: Glo
   const rendered = (entryId: number) => {
     const entry = glossary.entries.find((e) => e.id === entryId);
     // A choice's derived renderings (實質國內生產總值) count as the entry's own.
-    const variants = [...(entry?.senses.flatMap((sense) => sense.ranks.flat()) ?? []), ...(entry?.choice?.derived ?? [])];
+    const variants = [...(entry?.senses.flatMap((sense) => sense.ranks.flat()) ?? []), ...(entry?.own ?? []), ...(entry?.choice?.derived ?? [])];
     return variants.some((variant) => folded.includes(squash(variant)));
   };
   return [...source.matchAll(bounded('g'))].some((m) => {

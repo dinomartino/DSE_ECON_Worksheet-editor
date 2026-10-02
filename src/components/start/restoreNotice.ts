@@ -11,6 +11,8 @@ export function restoreNotice(
   unreadable: number,
   graphs?: GraphRestoreReport,
   lang: UiLanguage = uiLanguage(),
+  /** Translation terms rows merged into Settings. */
+  terms = 0,
 ): string {
   const m = resolveMessages(RESTORE_MESSAGES, lang);
   const parts: string[] = [];
@@ -25,6 +27,7 @@ export function restoreNotice(
     if (graphs.skipped > 0) parts.push(m.graphsHere(graphs.skipped));
     if (graphs.failed > 0) parts.push(m.graphsFailed(graphs.failed));
   }
+  if (terms > 0) parts.push(m.termsRestored(terms));
   if (parts.length === 0) return m.empty;
   const sentence = parts.join(' · ');
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
