@@ -195,7 +195,7 @@ function nodeHtml(
                 ? 'background-image:linear-gradient(to bottom right,transparent calc(50% - 0.5px),' +
                   '#000 calc(50% - 0.5px),#000 calc(50% + 0.5px),transparent calc(50% + 0.5px));'
                 : '') +
-              `text-align:${cell.align};${formatCss(cell.format)}`;
+              `text-align:${cell.align};${cell.vAlign ? `vertical-align:${cell.vAlign};` : ''}${formatCss(cell.format)}`;
             const span =
               (cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '') +
               (cell.rowSpan > 1 ? ` rowspan="${cell.rowSpan}"` : '');
@@ -216,8 +216,7 @@ function nodeHtml(
         const height =
           minHeight !== undefined ? ` style="height:${twipsToPt(minHeight)}pt"` : '';
         return `<tr${height}>${cells}</tr>`;
-      })
-      .join('');
+      });
     const caption = node.caption
       ? `<p style="${fontCss}${NODE_CSS['Table Caption']}">${richHtml(node.caption, language)}</p>`
       : '';
@@ -248,9 +247,13 @@ function nodeHtml(
     // The frame of a boxed stimulus. On the table rather than on the edge cells, so it
     // stays one unbroken rectangle however the rows are merged or spanned.
     const frame = node.borders === 'box' ? 'border:1px solid #000;' : '';
+    // Heading rows go in a `thead`, which Word's paste turns into rows that repeat on
+    // each page (`TableNode.headerRows`); a table without them is unchanged.
+    const heading = node.headerRows ?? 0;
+    const head = heading > 0 ? `<thead>${rows.slice(0, heading).join('')}</thead>` : '';
     const table =
       `<table style="border-collapse:collapse;${frame}${box}table-layout:fixed;${fontCss}">` +
-      `${colgroup}<tbody>${rows}</tbody></table>`;
+      `${colgroup}${head}<tbody>${rows.slice(heading).join('')}</tbody></table>`;
     return node.captionPlacement === 'above' ? caption + table : table + caption;
   }
 

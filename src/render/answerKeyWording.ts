@@ -53,4 +53,24 @@ export const KEY_LAYOUT_WORDING = {
   key: bi('Key', '答案'),
   /** The list layout's answer line under a stem. */
   answer: (letter: string) => bi(`Answer: ${letter}`, `答案：${letter}`),
+  /** Suggested answers' derived title; a student handout, never "marking". */
+  suggestedTitle: { en: 'Suggested answers', zh: '參考答案' },
+  /** The Detailed table's derived title. */
+  detailedTitle: { en: 'Mark scheme', zh: '評分準則' },
+  /** The MC table with reasons: its column heads after Question No. and Key. */
+  explanation: bi('Explanation', '解說'),
+  otherOptions: bi('Why the other options are wrong', '其他選項錯誤的原因'),
+  /** The Detailed table's column heads. */
+  tableQuestion: bi('Question', '題號'),
+  tableAnswer: bi('Answer', '答案'),
+  tableMarks: bi('Marks', '分數'),
+  tableGuidance: bi('Guidance', '評分指引'),
+  /** Guidance: a route after the first, and a group's `n@` in words. */
+  orRoute: bi('OR: an alternative answer. Mark one route only.', '或：另一答案，只按其中一種答案評分。'),
+  eachMark: (n: number) => bi(`${n} ${n === 1 ? 'mark' : 'marks'} each`, `每項${n}分`),
+  /** The table's closing row. */
+  total: bi('Total', '總分'),
+  /** The levels table's column heads. */
+  level: bi('Level', '等級'),
+  descriptor: bi('Descriptor', '描述'),
 } as const;

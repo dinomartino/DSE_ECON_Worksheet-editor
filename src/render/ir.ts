@@ -226,7 +226,15 @@ export interface TableNodeCell {
   format?: TextFormat;
   /** A picture printed under the cell's text; see `TableCell.image`. */
   image?: CellImage;
+  /** `top` sets the text at the cell's top (`w:vAlign top`); absent = centred, as ever. */
+  vAlign?: 'top';
   edit?: EditTarget;
+  /**
+   * A cell joining several authored fields with derived wording, as `TextNode.segments`
+   * (a scheme point and its `/` alternatives; an MC's option reasons). Set instead of
+   * `edit`. Preview only; inert in export.
+   */
+  segments?: { en: EditSegment[]; zh: EditSegment[] };
 }
 
 export interface TableNode {
@@ -262,6 +270,18 @@ export interface TableNode {
   captionEdit?: EditTarget;
   /** Which side the caption prints on. Always resolved. */
   captionPlacement: CaptionPlacement;
+  /**
+   * The first this-many rows are a heading that repeats at the top of every page the
+   * table runs onto (`w:tblHeader`; the preview draws them on the sheet a continuation
+   * opens). Absent = no heading row.
+   */
+  headerRows?: number;
+  /**
+   * Per row: keep it on the same page as the next (`w:keepNext` on the row's paragraphs).
+   * Present = **the table may break between rows**, and the preview packs it row by row
+   * where these allow, as Word does; absent = the preview keeps the table whole.
+   */
+  rowKeepNext?: boolean[];
 }
 
 export interface ImageNode {
@@ -401,6 +421,8 @@ export interface ColumnsNode {
     /** Literal marker printed before the text, e.g. "A." — derived, never stored. */
     marker?: string;
     edit?: EditTarget;
+    /** Several authored fields in one cell, as `TextNode.segments`. Preview only. */
+    segments?: { en: EditSegment[]; zh: EditSegment[] };
     format?: TextFormat;
     /**
      * The cell's interior when it mixes authored text with computed values (a band

@@ -106,6 +106,54 @@ function hasWording(point: MarkPoint): boolean {
 const positive = (value: number | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
+/** One printed point: its wording, `text / alternative`, and how it is typed on the page. */
+export interface PointLine {
+  point: MarkPoint;
+  text: BiText;
+  edit?: EditTarget;
+  segments?: TextNode['segments'];
+}
+
+/** A group's points that print, with the group's rules read as numbers (`take`, `each`). */
+export interface PointGroup {
+  group: MarkGroup;
+  take?: number;
+  each?: number;
+  points: PointLine[];
+}
+
+/**
+ * The scheme's printed points, route by route and group by group, for layouts that lay
+ * them out themselves (the Detailed table, Suggested answers' bullets). The same points
+ * `renderMarkScheme` prints, typed through the same targets; empty routes, groups and
+ * points are left out, as it leaves them out.
+ */
+export function schemePointGroups(scheme: MarkScheme | undefined, at?: SchemeAddress): PointGroup[][] {
+  if (!scheme || isSchemeEmpty(scheme)) return [];
+  return schemeRoutes(scheme)
+    .map((route) =>
+      routeGroups(route)
+        .map((group): PointGroup => ({
+          group,
+          ...(positive(group.take) ? { take: group.take } : {}),
+          ...(positive(group.each) ? { each: group.each } : {}),
+          points: groupPoints(group)
+            .filter(hasWording)
+            .map((point) => ({
+              point,
+              text: withAlternatives(point),
+              ...(at
+                ? (point.alternatives ?? []).length > 0
+                  ? { segments: alternativeSegments(point, at) }
+                  : { edit: { kind: 'schemePoint', ...at, pointId: point.id } as EditTarget }
+                : {}),
+            })),
+        }))
+        .filter((group) => group.points.length > 0),
+    )
+    .filter((groups) => groups.length > 0);
+}
+
 export function renderMarkScheme(
   scheme: MarkScheme | undefined,
   options: MarkSchemeRenderOptions = {},
