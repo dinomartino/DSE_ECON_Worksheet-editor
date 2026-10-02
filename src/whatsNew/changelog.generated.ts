@@ -226,11 +226,13 @@ a version heading is edited afterwards.
   <!-- zh: **編輯面板會標示你點選的是哪一行。** 在頁面上點選題幹、陳述、選項、表格儲存
   格、圖片或長題目的某一分題，編輯面板中對應的一行會以藍色亮起並短暫發光，讓你
   知道在哪裏更改設定。 -->
-- **The how-to-edit tip sits below the page instead of on top of it**, so the bottom of
-  a page is never hidden, and scrolling to the end of a document no longer runs on past
-  the last page. On a smaller screen the tip stays on two lines.
-  <!-- zh: **編輯方法的提示移到頁面下方**，不再蓋住頁面，頁面底部不會被遮住，捲動到文件
-  末端時也不會再多捲過最後一頁。在較小的屏幕上，提示會分兩行顯示。 -->
+- **The "Double-click text to edit" tip is a small pop-up over the page.** It no longer
+  takes a whole row under the page or covers the zoom control, and the page does not
+  move when it goes. On a smaller screen it stays on two lines. Scrolling to the end of a
+  document also no longer runs on past the last page.
+  <!-- zh: **「按兩下文字即可編輯」的提示變成浮在頁面上的小提示框。** 它不再在頁面下方
+  佔用一整行，也不會蓋住縮放控制，提示消失時頁面亦不會移動。在較小的屏幕上，提示會分
+  兩行顯示。捲動到文件末端時也不會再多捲過最後一頁。 -->
 - **The Add Question menu says where each type goes**: "in Section A" or "in Section B",
   instead of a heading cut off mid-word.
   <!-- zh: **「插入題目」選單會說明每種題型放在哪裏**：「在 Section A」或「在 Section B

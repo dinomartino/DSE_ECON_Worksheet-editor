@@ -1705,7 +1705,7 @@ exactly once. CSS alone cannot deliver two things:
 - **`#print-root` keeps its own pointer events** while descendants lose theirs.
 
 `printPreview` lives beside `mode`, deliberately **not inside** it — `OutputMode` is
-what the exporter reads. Entering clears the question selection; the edit hint (`EditorApp.tsx:HintRow`) hides.
+what the exporter reads. Entering clears the question selection; the edit hint (`EditorApp.tsx:EditHint`) hides.
 
 ### PDF is a print of the sheets, chosen in Export
 
