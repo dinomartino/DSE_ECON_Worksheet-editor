@@ -83,15 +83,34 @@ function forbiddenStrings(withReasons: boolean): string[] {
 /** Marker notation as patterns: `n@`, `max`, the OR word and its 或, the Marks head. */
 const FORBIDDEN_PATTERNS = [/\d\s*@/, /\bmax\b/i, /最高\d+分/, /\bOR\b/, /或/, /\bMarks\b/];
 
-function expectClean(text: string, withReasons: boolean, where: string): void {
-  for (const word of forbiddenStrings(withReasons)) {
-    if (text.includes(word)) throw new Error(`${where}: found "${word}"`);
+const FORBIDDEN = { true: forbiddenStrings(true), false: forbiddenStrings(false) };
+const SENTINELS: string[] = Object.values(LEAK_SENTINELS).flat();
+/** Texts already proven clean, per reasons switch: many combinations write identical parts. */
+const PROVEN = { true: new Set<string>(), false: new Set<string>() };
+
+/** `where` is a thunk: building ~40k labels that only a failure reads is a hot path. */
+function expectClean(text: string, withReasons: boolean, where: () => string): void {
+  const proven = PROVEN[`${withReasons}`];
+  if (proven.has(text)) return;
+  for (const word of FORBIDDEN[`${withReasons}`]) {
+    if (text.includes(word)) throw new Error(`${where()}: found "${word}"`);
   }
   for (const pattern of FORBIDDEN_PATTERNS) {
     const hit = pattern.exec(text);
-    if (hit) throw new Error(`${where}: found ${pattern} at "…${text.slice(Math.max(0, hit.index - 40), hit.index + 20)}…"`);
+    if (hit) throw new Error(`${where()}: found ${pattern} at "…${text.slice(Math.max(0, hit.index - 40), hit.index + 20)}…"`);
+  }
+  proven.add(text);
+}
+
+/** No sentinel anywhere in the raw string, attributes and fields included. */
+function expectNoSentinel(raw: string, where: () => string): void {
+  for (const word of SENTINELS) {
+    if (raw.includes(word)) throw new Error(`${where()}: found "${word}" in the raw part`);
   }
 }
+
+/** The exhaustive sweeps below take ~1–2 s alone, several times that on a loaded `npm test`. */
+const SWEEP_TIMEOUT = 60_000;
 
 /** Every string the IR carries (text, trails, cells, segments): its "text" values. */
 const irText = (nodes: RenderNode[]) =>
@@ -131,15 +150,15 @@ describe('Suggested answers never carries marker-only text', () => {
       for (const layout of layouts) {
         const document = withLayout(worksheet, layout);
         for (const language of LANGUAGES) {
-          const where = `${JSON.stringify(layout)} ${language}${worksheet.versions ? ' versions' : ''}`;
+          const where = () => `${JSON.stringify(layout)} ${language}${worksheet.versions ? ' versions' : ''}`;
           const reasons = layout.showRationales === true;
-          expectClean(irText(renderAnswerKey(document, language)), reasons, `IR ${where}`);
-          expectClean(decode(answerKeyClipboardHtml(document, language)), reasons, `clipboard HTML ${where}`);
-          expectClean(answerKeyPlainText(document, language), reasons, `clipboard text ${where}`);
+          expectClean(irText(renderAnswerKey(document, language)), reasons, () => `IR ${where()}`);
+          expectClean(decode(answerKeyClipboardHtml(document, language)), reasons, () => `clipboard HTML ${where()}`);
+          expectClean(answerKeyPlainText(document, language), reasons, () => `clipboard text ${where()}`);
         }
       }
     }
-  });
+  }, SWEEP_TIMEOUT);
 
   it('in every part of the .docx: body, header, footer, styles, core.xml', () => {
     // The `.docx` is written from the IR proved exhaustively above; here every third
@@ -149,7 +168,7 @@ describe('Suggested answers never carries marker-only text', () => {
       for (const layout of combinations().filter((_, index) => index % 3 === 0)) {
         for (const language of LANGUAGES) {
           const parts = buildAnswerKeyDocxParts(withLayout(worksheet, layout), language);
-          const where = `${JSON.stringify(layout)} ${language}`;
+          const where = () => `.docx ${JSON.stringify(layout)} ${language}`;
           const reasons = layout.showRationales === true;
           const xml = [
             parts.documentXml,
@@ -161,17 +180,17 @@ describe('Suggested answers never carries marker-only text', () => {
             parts.coreXml,
           ];
           for (const part of xml) {
-            expectClean(xmlText(part), reasons, `.docx ${where}`);
+            expectClean(xmlText(part), reasons, where);
             // Nothing hides in an attribute or a field either.
-            for (const word of Object.values(LEAK_SENTINELS).flat()) expect(part, where).not.toContain(word);
+            expectNoSentinel(part, where);
           }
           // No running "Marks" head at all, and no paragraph in the marking-scheme style.
-          expect(parts.headerFooter.header, where).toBeUndefined();
-          expect(parts.documentXml, where).not.toContain('w:val="MarkingScheme"');
+          if (parts.headerFooter.header !== undefined) throw new Error(`${where()}: has a header`);
+          if (parts.documentXml.includes('w:val="MarkingScheme"')) throw new Error(`${where()}: MarkingScheme style`);
         }
       }
     }
-  });
+  }, SWEEP_TIMEOUT);
 
   it('in the preview DOM (sheets and measuring probe), editable and read-only', () => {
     for (const layout of combinations().filter((_, index) => index % 7 === 0)) {
@@ -180,12 +199,13 @@ describe('Suggested answers never carries marker-only text', () => {
           const markup = renderToStaticMarkup(
             <AnswerKeyPreview worksheet={withLayout(plainPaper, layout)} language={language} onEdit={onEdit} />,
           );
-          expectClean(decode(markup), layout.showRationales === true, `preview ${JSON.stringify(layout)} ${language}`);
-          expect(markup).not.toContain('data-band-box="header"');
+          const where = () => `preview ${JSON.stringify(layout)} ${language}`;
+          expectClean(decode(markup), layout.showRationales === true, where);
+          if (markup.includes('data-band-box="header"')) throw new Error(`${where()}: has a header band`);
         }
       }
     }
-  });
+  }, SWEEP_TIMEOUT);
 
   it('prints what a student may see', () => {
     const document = withLayout(plainPaper, { preset: 'suggested', showRationales: true, showMcStems: true });
@@ -277,7 +297,7 @@ describe('Suggested answers: the switches', () => {
     const hkeaa = withLayout(buildMarkSchemeWorksheet(), { preset: 'hkeaa' });
     const nodes = renderCombinedAnswerKey([suggested, hkeaa], 'en');
     const split = nodes.findIndex((node) => node.kind === 'pageBreak');
-    expectClean(irText(nodes.slice(0, split)), false, 'combined, suggested part');
+    expectClean(irText(nodes.slice(0, split)), false, () => 'combined, suggested part');
     expect(irText(nodes.slice(split))).toMatch(/\d@|max: \d/);
     expect(irText(nodes)).toContain('Mock — Suggested answers');
   });
