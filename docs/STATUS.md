@@ -32,6 +32,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   Stored `econgen.settings.terms` v2 in localStorage (never in a worksheet), CSV export/import with
   merge/replace preview, and `terms/translation-terms.csv` in backups. No-preference output pinned by
   a digest. **Open:** desktop shell (CSV save/pick, backup) and a live AI translate call not tried.
+  Same day: Settings is `Dialog size="large"` (min(1200, 100vw−56) × min(880, 100dvh−56)); only
+  Translation terms is `wide`, other sections keep a 720px column. `scripts/shot.mjs --seed` is broken
+  (it expects the editor, the app now opens on the start screen).
 - **2026-10-02 on `develop`, not released: Marking scheme view** (research Phase 1). Toolbar Student |
   Teacher | Marking scheme 評卷參考; store `documentView` (never saved, not `OutputMode`); the key's
   IR (`answerKeyView()`, same nodes as the `.docx`) paginated by the paper's paginator; one source of
