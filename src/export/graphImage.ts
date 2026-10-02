@@ -4,11 +4,11 @@ import { rasterizeDiagram } from './diagramImage';
 
 /**
  * A saved graph out of the app: the same 3× PNG on white a `.docx` places, through
- * `diagramImage.ts`'s rasterizer.
+ * `diagramImage.ts`'s rasterizer. Drawn as its canvas shows it, answer layer in red.
  */
 
 export function graphPngDataUrl(graph: SavedGraph): Promise<string> {
-  return rasterizeDiagram(graph.block, graph.fonts, graph.language);
+  return rasterizeDiagram({ ...graph.block, answers: true }, graph.fonts, graph.language);
 }
 
 export function dataUrlToBlob(dataUrl: string): Blob {

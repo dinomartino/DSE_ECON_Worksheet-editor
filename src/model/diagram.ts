@@ -60,6 +60,8 @@ export interface DiagramCurve {
    * `points` then holds the last resolved geometry, so older builds still draw it.
    */
   derive?: DiagramCurveDerive;
+  /** Teacher only: part of the model answer drawn on this diagram (`model/diagramAnswers.ts`). Absent = question. */
+  answer?: true;
 }
 
 /** A position given as an anchor, or as a fixed unit-space point. */
@@ -123,6 +125,8 @@ export interface DiagramPointMark {
    */
   xTickOffset?: number;
   yTickOffset?: number;
+  /** Teacher only: part of the model answer drawn on this diagram (`model/diagramAnswers.ts`). Absent = question. */
+  answer?: true;
 }
 
 /**
@@ -136,6 +140,8 @@ export interface DiagramLabel {
   text: BiText;
   align?: 'left' | 'center' | 'right';
   italic?: boolean;
+  /** Teacher only: part of the model answer drawn on this diagram (`model/diagramAnswers.ts`). Absent = question. */
+  answer?: true;
 }
 
 /**
@@ -156,6 +162,8 @@ export interface DiagramArrow {
    * relative so that re-aiming the arrow carries its label along.
    */
   labelOffset?: DiagramPoint;
+  /** Teacher only: part of the model answer drawn on this diagram (`model/diagramAnswers.ts`). Absent = question. */
+  answer?: true;
 }
 
 export type DiagramSpanStyle = 'bracket' | 'doubleArrow' | 'arrow' | 'dimension';
@@ -181,6 +189,8 @@ export interface DiagramSpan {
   label?: BiText;
   /** Nudge for the label, in unit space, from its default spot beside the midpoint. */
   labelOffset?: DiagramPoint;
+  /** Teacher only: part of the model answer drawn on this diagram (`model/diagramAnswers.ts`). Absent = question. */
+  answer?: true;
 }
 
 /*
@@ -275,6 +285,8 @@ export interface DiagramArea {
   labelOffset?: DiagramPoint;
   /** Absent = `auto`. */
   labelPlacement?: DiagramAreaLabelPlacement;
+  /** Teacher only: part of the model answer drawn on this diagram (`model/diagramAnswers.ts`). Absent = question. */
+  answer?: true;
 }
 
 /** One axis: its title, whether it carries an arrowhead, and its tick marks. */

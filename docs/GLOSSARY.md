@@ -54,6 +54,9 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Model answer diagram** — a teacher-only `DiagramBlock` on a leaf's `answerDiagram`: the
   answer to "draw a diagram", printed after the answer text and in the answer key.
   `src/components/editor/AnswerDiagramRow.tsx:AnswerDiagramRow`
+- **Answer layer** — elements of an axes diagram flagged `answer: true` (Draw answer on the
+  canvas): red in the teacher version and answer key, absent with their dependents from the
+  student version. `src/model/diagramAnswers.ts:answerLayer`
 - **Answer space** — the QAB's dotted lines (dotted underline over a tab, 22.1pt pitch).
   `src/render/ir.ts:AnswerSpaceNode`
 - **Fill answer space** — an `answerSpace` whose `lines` is the paginator's *output*, not

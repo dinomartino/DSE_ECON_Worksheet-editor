@@ -1,5 +1,6 @@
 import { fillWritten, type AnswerVisitor } from '@/model/answerLeaves';
 import { flattenBlocks } from '@/model/edits';
+import { answeredDiagrams } from '@/model/diagramAnswers';
 import { createStructuredQuestion } from '@/model/factories';
 import { partRootOf } from '@/model/lineage';
 import { partMarks, questionMarks } from '@/model/marks';
@@ -450,9 +451,19 @@ function healthFacts(question: StructuredQuestion): QuestionHealthFacts {
     const subParts = part.subParts ?? [];
     if (!areBlocksEmpty(part.blocksBefore) || !areBlocksEmpty(part.blocks)) bodyEmpty = false;
     if (subParts.some((sub) => !areBlocksEmpty(sub.blocks))) bodyEmpty = false;
-    // A marking scheme or a model diagram answers its leaf as fully as answer text does.
-    const answered = (leaf: { answer?: BiText; scheme?: MarkScheme; answerDiagram?: DiagramBlock }) =>
-      !isBiTextEmpty(leaf.answer) || !isSchemeEmpty(leaf.scheme) || Boolean(leaf.answerDiagram);
+    // A marking scheme, a model diagram or an answer drawn on the leaf's own diagram
+    // answers it as fully as answer text does.
+    const answered = (leaf: {
+      answer?: BiText;
+      scheme?: MarkScheme;
+      answerDiagram?: DiagramBlock;
+      blocks: ContentBlock[];
+      blocksBefore?: ContentBlock[];
+    }) =>
+      !isBiTextEmpty(leaf.answer) ||
+      !isSchemeEmpty(leaf.scheme) ||
+      Boolean(leaf.answerDiagram) ||
+      answeredDiagrams([...(leaf.blocksBefore ?? []), ...leaf.blocks]).length > 0;
     if (answered(part)) continue;
     unansweredParts += subParts.length === 0 ? 1 : subParts.filter((sub) => !answered(sub)).length;
   }
@@ -466,6 +477,12 @@ function healthFacts(question: StructuredQuestion): QuestionHealthFacts {
  */
 function answerKey(question: StructuredQuestion): AnswerKeyEntry {
   const rows: AnswerKeyRow[] = [];
+  // An answer drawn on a question's own diagram (its answer layer) prints in the key
+  // as that diagram, unlabelled, under the row it answers.
+  const drawn = (depth: 1 | 2, blocks: ContentBlock[]) => {
+    for (const diagram of answeredDiagrams(blocks)) rows.push({ depth, diagram });
+  };
+  if (question.parts.length > 0) drawn(1, question.blocks);
   question.parts.forEach((part, partIndex) => {
     const subParts = part.subParts ?? [];
     const hasSubParts = subParts.length > 0;
@@ -479,6 +496,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
       ...(!hasSubParts && part.answerDiagram ? { diagram: part.answerDiagram } : {}),
       ...(!hasSubParts && part.scheme ? { scheme: part.scheme } : {}),
     });
+    drawn(1, [...(part.blocksBefore ?? []), ...part.blocks]);
     subParts.forEach((subPart, subIndex) => {
       rows.push({
         depth: 2,
@@ -488,6 +506,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
         ...(subPart.answerDiagram ? { diagram: subPart.answerDiagram } : {}),
         ...(subPart.scheme ? { scheme: subPart.scheme } : {}),
       });
+      drawn(2, subPart.blocks);
     });
     // A part with sub-parts may still carry an aggregate answer (and scheme), printed
     // after the group.
@@ -509,6 +528,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
   if (question.parts.length === 0 && question.answerDiagram) {
     rows.push({ depth: 1, diagram: question.answerDiagram });
   }
+  if (question.parts.length === 0) drawn(1, question.blocks);
   return { kind: 'scheme', marks, rows };
 }
 

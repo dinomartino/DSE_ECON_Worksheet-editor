@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { nanoid } from 'nanoid';
 import { axisTickLabel, type Diagram, type DiagramPlace, type DiagramPoint, type DiagramSpanStyle } from '@/model/diagram';
 import { resolveDiagram } from '@/model/diagramAnchors';
+import { answerState, hasAnswerLayer, markNewAsAnswers, setAnswer } from '@/model/diagramAnswers';
 import { newSpan, spanGeometry, type SpanClearance } from '@/model/diagramSpans';
 import {
   attachPointOnDrop,
@@ -50,6 +51,7 @@ import {
   diagramSvg,
   diagramTitleAnchor,
   axisSpanClearance,
+  ANSWER_INK,
   plotAspectOf,
   pointLabelAnchor,
   pointTickAnchor,
@@ -272,6 +274,8 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
   const fonts = fontsProp ?? storeFonts;
 
   const [tool, setTool] = useState<Tool>('select');
+  /** Draw answer: everything created while on joins the answer layer (teacher only). */
+  const [drawAnswers, setDrawAnswers] = useState(false);
   /** Multi-selection. Empty means nothing is selected. */
   const [selected, setSelected] = useState<DiagramHandle[]>([]);
   const [snapping, setSnapping] = useState(true);
@@ -376,7 +380,9 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
   /** Axis spans rest past the tick labels, measured by the renderer: hit them where drawn. */
   const spanClear = useMemo(() => axisSpanClearance(diagram, projection, 1, language), [diagram, projection, language]);
   const setDiagram = useCallback(
-    (next: Diagram) => {
+    (edited: Diagram) => {
+      // Draw answer flags whatever this edit created, however it was made.
+      const next = drawAnswers ? markNewAsAnswers(block.diagram, edited) : edited;
       const diagram = resolveDiagram(next, aspect);
       // An edit that changes the room the picture needs (an axis span moved out, or its
       // label) re-measures; any other edit keeps the stored size, so nothing reflows.
@@ -385,11 +391,14 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
       const remeasure = !diagram.crop && (before.widthPx !== after.widthPx || before.heightPx !== after.heightPx);
       onChange({ ...block, diagram, ...(remeasure ? after : {}) });
     },
-    [block, onChange, aspect, language],
+    [block, onChange, aspect, language, drawAnswers],
   );
+  /** A drawn element as the current mode creates it: on the answer layer when Draw answer is on. */
+  const stamp = <T extends object>(element: T): T => (drawAnswers ? { ...element, answer: true } : element);
 
   const svg = useMemo(
-    () => diagramSvg(diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language, fonts }),
+    // The canvas always draws the answer layer (in red): the teacher must see what they draw.
+    () => diagramSvg(diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language, fonts, answers: 'show' }),
     [diagram, block.widthPx, block.heightPx, language, fonts],
   );
 
@@ -435,7 +444,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
     return {
       width,
       height,
-      svg: diagramSvg(inflated, { widthPx: width, heightPx: height, language, fonts }),
+      svg: diagramSvg(inflated, { widthPx: width, heightPx: height, language, fonts, answers: 'show' }),
       /** The plot's edges in workspace coordinates — the frame may never cross them. */
       plot: {
         left: pads.left + CROP_MARGIN,
@@ -799,7 +808,8 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
     const id = newId();
     const start = maybeSnap(at);
     if (tool === 'curve') {
-      const base = { ...diagram, curves: [...diagram.curves, drawn.curve(id, start, start)] };
+      // Stamped here, not only in `setDiagram`: the gesture replays from `base`.
+      const base = { ...diagram, curves: [...diagram.curves, stamp(drawn.curve(id, start, start))] };
       gestureRef.current = {
         kind: 'create',
         handles: [{ kind: 'vertex', curveId: id, index: 1 }],
@@ -810,7 +820,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
       setDiagram(base);
       setSelected([{ kind: 'curve', curveId: id }]);
     } else {
-      const base = { ...diagram, arrows: [...diagram.arrows, drawn.arrow(id, start, start)] };
+      const base = { ...diagram, arrows: [...diagram.arrows, stamp(drawn.arrow(id, start, start))] };
       gestureRef.current = {
         kind: 'create',
         handles: [{ kind: 'arrowTo', arrowId: id }],
@@ -1212,6 +1222,25 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
           />
         </div>
 
+        {/* Draw answer: a mode like the tools, in the answer's own red so it reads as
+            "this goes on the teacher's copy" before anything is drawn. */}
+        <button
+          type="button"
+          aria-pressed={drawAnswers}
+          title={m.drawAnswerTitle}
+          onClick={() => setDrawAnswers((on) => !on)}
+          className={
+            'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
+            'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
+            (drawAnswers
+              ? 'border-danger bg-danger-soft text-danger-ink'
+              : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
+          }
+        >
+          <span aria-hidden className="text-lg leading-none">✓</span>
+          <span className={`text-xs font-medium ${embedded ? 'sr-only 2xl:not-sr-only' : ''}`}>{m.drawAnswer}</span>
+        </button>
+
         {tool === 'span' && (
           <SpanSelects style={spanStyle} along={spanAlong} onStyle={setSpanStyle} onAlong={setSpanAlong} />
         )}
@@ -1316,7 +1345,14 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
       <div className="flex min-h-0 flex-1">
         {/* Stage. The SVG is rendered at its stored pixel size and scaled to fit, so
             what is drawn on is exactly the geometry that will be exported. */}
-        <div className="flex min-w-0 flex-1 items-center justify-center overflow-auto p-8">
+        <div className="relative flex min-w-0 flex-1 items-center justify-center overflow-auto p-8">
+          {(drawAnswers || hasAnswerLayer(diagram)) && (
+            <p className="pointer-events-none absolute left-3 top-2 flex items-center gap-1.5 text-[11px] text-ink-muted">
+              {/* The swatch is the paper's own answer ink, not a UI token. */}
+              <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: ANSWER_INK }} />
+              {m.answerLegend}
+            </p>
+          )}
           {cropping && cropStage ? (
             /* The crop workspace: the same renderer drawing the same geometry with
                extra white on every side, and the frame overlaid on it. Nothing here is
@@ -1419,6 +1455,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
 
         <aside className="zone-light w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-4">
           {panel && <div className="mb-4 border-b border-line pb-4">{panel}</div>}
+          <AnswerToggle diagram={diagram} selected={selected} onChange={setDiagram} />
           <SelectionInspector
             diagram={diagram}
             selected={selected}
@@ -1440,6 +1477,43 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
     <FieldScopeContext.Provider value={{ language: languageProp, readOnly: false }}>{surface}</FieldScopeContext.Provider>
   ) : (
     surface
+  );
+}
+
+/**
+ * "Answer (teacher only)" for the selection: on for all of it, off for all of it. Mixed
+ * shows unticked and switches every selected element on. Nothing answerable, nothing shown.
+ */
+function AnswerToggle({
+  diagram,
+  selected,
+  onChange,
+}: {
+  diagram: Diagram;
+  selected: DiagramHandle[];
+  onChange: (diagram: Diagram) => void;
+}) {
+  const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
+  const { ids, on } = answerState(diagram, selected.map(handleId));
+  if (ids.length === 0) return null;
+  const all = on === ids.length;
+  return (
+    <label
+      title={m.answerToggleHint}
+      className="mb-3 flex items-center gap-2 rounded-md border border-line bg-surface-sunken px-2 py-1.5 text-xs font-medium text-ink"
+    >
+      <input
+        type="checkbox"
+        className="h-4 w-4"
+        checked={all}
+        ref={(input) => {
+          if (input) input.indeterminate = on > 0 && !all;
+        }}
+        onChange={() => onChange(setAnswer(diagram, ids, !all))}
+      />
+      <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: ANSWER_INK }} />
+      {m.answerToggle}
+    </label>
   );
 }
 

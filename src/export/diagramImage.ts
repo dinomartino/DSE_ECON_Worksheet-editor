@@ -134,9 +134,13 @@ export async function rasterize(svg: string, width: number, height: number): Pro
   return canvas.toDataURL('image/png');
 }
 
-/** One diagram's PNG data URL at `EXPORT_SCALE`, on white: what a `.docx` places for it. */
+/**
+ * One diagram's PNG data URL at `EXPORT_SCALE`, on white: what a `.docx` places for it.
+ * `answers` follows the node (`DiagramNode.answers`): a student export's map never holds
+ * a red answer, because each export builds its own map from its own mode's IR.
+ */
 export function rasterizeDiagram(
-  block: { diagram: Diagram; widthPx: number; heightPx: number },
+  block: { diagram: Diagram; widthPx: number; heightPx: number; answers?: true },
   fonts: FontPair,
   language: LanguageMode,
 ): Promise<string> {
@@ -146,6 +150,7 @@ export function rasterizeDiagram(
     language,
     fonts,
     scale: EXPORT_SCALE,
+    ...(block.answers ? { answers: 'show' as const } : {}),
   });
   return rasterize(svg, block.widthPx * EXPORT_SCALE, block.heightPx * EXPORT_SCALE);
 }
