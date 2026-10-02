@@ -78,6 +78,10 @@ export const EXPORT_MESSAGES = defineMessages({
     en: 'The MCQs, for a bubble-sheet scanner or a quiz game.',
     zh: 'MCQ 題目，適用於答題卡掃描器或問答遊戲。',
   },
+  hintKeySuggested: {
+    en: 'This key is laid out as Suggested answers, a handout for students: answers, model diagrams and plain answer points, with no marking notation or notes for markers. The file is named “Suggested answers”.',
+    zh: '這份評卷參考的版面為「參考答案」，供派發給學生：只有答案、示範圖表及答案要點，不含評分符號或閱卷備註。檔案名稱為「參考答案」。',
+  },
   hintKey: {
     en: 'The answer key is a separate document: answer grid and marking scheme, laid out as set in the Marking scheme view (Layout).',
     zh: '評卷參考是獨立的文件，包含答案表和評分要點，版面按評卷參考檢視中「版面」的設定。',

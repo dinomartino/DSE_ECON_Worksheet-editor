@@ -21,6 +21,7 @@ import { Button, CheckField, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { DownloadIcon, PdfIcon } from '@/components/ui/icons';
 import { versionLetters } from '@/model/versions';
+import { answerKeyPreset } from '@/model/answerKeyLayout';
 import type { DocumentView } from '@/store/worksheetStore';
 import { KeyDocumentsField } from './KeyDocumentsField';
 import {
@@ -522,7 +523,9 @@ export function ExportDialog({
                         : m.hintBothClicks(fileCount)
                       : what === 'apps'
                         ? m.hintApps
-                        : m.hintKey
+                        : answerKeyPreset(worksheet.answerKeyLayout) === 'suggested'
+                          ? m.hintKeySuggested
+                          : m.hintKey
                 }
               >
                 <Segmented
