@@ -88,6 +88,11 @@ export const COPY_MESSAGES = defineMessages({
     en: (en: string, found: string, expected: string) => `${en}: ${found} (EDB lists ${expected} first)`,
     zh: (en: string, found: string, expected: string) => `${en}：${found}（EDB 以 ${expected} 為首選）`,
   },
+  /** The same, when the preferred wording is the teacher's own choice in Settings. */
+  chosenLine: {
+    en: (en: string, found: string, expected: string) => `${en}: ${found} (your choice: ${expected})`,
+    zh: (en: string, found: string, expected: string) => `${en}：${found}（你的選擇：${expected}）`,
+  },
 
   setupTranslation: { en: 'Set up translation…', zh: '設定翻譯…' },
   setupInSettingsTitle: {

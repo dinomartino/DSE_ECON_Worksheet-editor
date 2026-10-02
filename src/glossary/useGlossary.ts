@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
+import { useSettings } from '@/settings/store';
+import { TERM_SETTINGS } from '@/settings/termPreferences';
 import { loadGlossary } from './load';
 import type { Glossary } from './types';
 
-/** The glossary once loaded, else null. Starts the load on mount; a result that arrives
- *  after unmount, or a failed load, is ignored (callers then show no term findings). */
+/** The glossary once loaded, else null; rebuilt when the term preferences change (the
+ *  previous one stays until the new one is ready). Starts the load on mount; a result that
+ *  arrives after unmount or a newer change, or a failed load, is ignored (callers then show
+ *  no term findings). */
 export function useGlossary(): Glossary | null {
+  const [preferences] = useSettings(TERM_SETTINGS);
   const [glossary, setGlossary] = useState<Glossary | null>(null);
   useEffect(() => {
     let live = true;
-    loadGlossary().then(
+    loadGlossary(preferences).then(
       (loaded) => {
         if (live) setGlossary(loaded);
       },
@@ -17,6 +22,6 @@ export function useGlossary(): Glossary | null {
     return () => {
       live = false;
     };
-  }, []);
+  }, [preferences]);
   return glossary;
 }

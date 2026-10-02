@@ -7,7 +7,7 @@ import type { RichText } from '@/model/types';
 import { plain, replaceRichTextRange } from '@/model/text';
 import type { GlossaryEntry, TermCheck, TermSeverity, TermState } from './types';
 import type { DenyRow } from './deny';
-import { PREFERRED_OVERRIDES } from './overrides';
+import { chosenOf, isPinned, pinsOf, preferredIn } from './choices';
 import { foldEnToken, foldZh, singular, unfoldSpan, type FoldedZh } from './fold';
 import type { EnHit, EnMatcher } from './matchEn';
 import { variantForms, type FoldedHit, type ZhMatcher } from './matchZh';
@@ -19,7 +19,7 @@ export interface Variant {
   sense: number;
   /** 1-based. */
   rank: number;
-  /** Rank 1 of a pinned sense, or the entry's PREFERRED_OVERRIDES rendering. */
+  /** Rank 1 of a pinned sense, or the choice in force (PREFERRED_OVERRIDES, the teacher's). */
   preferred: boolean;
 }
 
@@ -33,26 +33,37 @@ export interface GlossaryIndex {
 }
 
 export function indexVariants(entry: GlossaryEntry): Variant[] {
-  const override = PREFERRED_OVERRIDES[entry.en];
+  const choice = chosenOf(entry);
   const out: Variant[] = [];
   entry.senses.forEach((sense, s) => {
+    const inChoice = choice?.sense === s;
     sense.ranks.forEach((rank, r) => {
       for (const display of rank) {
-        const pinned = entry.pinSenses ? entry.pinSenses.includes(s) : true;
-        const preferred = override ? display === override : r === 0 && pinned;
+        const preferred = isPinned(entry, s) && (inChoice ? choice.displays.includes(display) : r === 0);
         out.push({ display, forms: variantForms(display), sense: s, rank: r + 1, preferred });
       }
     });
   });
+  // Renderings the data does not list, accepted because of a choice (實質國內生產總值).
+  if (choice) {
+    for (const display of choice.derived) {
+      const preferred = isPinned(entry, choice.sense) && choice.displays.includes(display);
+      out.push({ display, forms: variantForms(display), sense: choice.sense, rank: 1, preferred });
+    }
+  }
   return out;
 }
 
 /** The preferred display, '/'-equals joined: what a teacher is told to write. */
 export function expectedFor(entry: GlossaryEntry): string {
-  const override = PREFERRED_OVERRIDES[entry.en];
-  if (override) return override;
-  return entry.senses[entry.pinSenses?.[0] ?? 0].ranks[0].join(' / ');
+  const choice = chosenOf(entry);
+  const first = pinsOf(entry)?.[0] ?? 0;
+  if (choice && choice.sense === first) return choice.displays.join(' / ');
+  return entry.senses[first].ranks[0].join(' / ');
 }
+
+/** A deny row's fix: the row's own, unless the teacher's choice (or one it follows) is in force. */
+const denyFix = (entry: GlossaryEntry, row: DenyRow) => (entry.choice ? entry.preferred : (row.fix ?? entry.preferred));
 
 interface Occurrence {
   from: number;
@@ -239,6 +250,7 @@ function checkTerm(
     en: entry.en,
     source: { text: sourceEn.slice(hit.start, hit.end), start: hit.start, end: hit.end },
     expected: expectedFor(entry),
+    ...(entry.choice && entry.choice.source !== 'default' ? { chosen: true as const } : {}),
   };
   const result = (state: TermState, extra: Partial<TermCheck> = {}): TermCheck => ({
     ...base,
@@ -287,15 +299,14 @@ function checkTerm(
   }
   if (standing.length) {
     return longestFirst(standing).map((o) => {
-      const pinned = !entry.pinSenses || entry.pinSenses.includes(o.v.sense);
-      const to = PREFERRED_OVERRIDES[entry.en] ?? (pinned ? entry.senses[o.v.sense].ranks[0][0] : entry.preferred);
+      const to = isPinned(entry, o.v.sense) ? preferredIn(entry, o.v.sense)[0] : entry.preferred;
       return result('not-preferred', { found: original(o, o.v.rank), ...fixAt(o, to, 'lowerRank') });
     });
   }
   const wrong = denied.filter((d) => !d.row.reversal);
   if (wrong.length) {
     return wrong.map((d) =>
-      result('missing', { found: original(d, 0), ...fixAt(d, d.row.fix ?? entry.preferred, 'deny', d.row.kind) }),
+      result('missing', { found: original(d, 0), ...fixAt(d, denyFix(entry, d.row), 'deny', d.row.kind) }),
     );
   }
   if (denied.length) {
@@ -459,7 +470,7 @@ export function autoFix(
     if (locked.some((l) => overlaps(l, { from: start, to: end }))) continue;
     const entry = byKey.get(d.row.en);
     if (!entry) continue;
-    fixes.push({ from: text.slice(start, end), to: d.row.fix ?? entry.preferred, entryId: entry.id, start, end });
+    fixes.push({ from: text.slice(start, end), to: denyFix(entry, d.row), entryId: entry.id, start, end });
   }
   if (!fixes.length) return { runs: zh, fixes: [] };
   let runs = zh;

@@ -371,6 +371,7 @@ through `AppSettingsHost` alone.
 - `src/glossary/data/edb-economics-2020.json` — the EDB data, verbatim (`src/glossary/NOTICE.md`); `src/glossary/glossary.ts:createGlossary` builds the `Glossary` from it
 - `src/glossary/overrides.ts:PREFERRED_OVERRIDES` (import → 進口) · `src/glossary/overrides.ts:GENERIC_TIER` · `src/glossary/overrides.ts:ZH_OVERRIDES` · `src/glossary/overrides.ts:EN_OVERRIDES` — corrections and policy over the data
 - `src/glossary/deny.ts:DENY` — known wrong forms and their fixes
+- `src/glossary/choices.ts:chosenOf` · `src/glossary/choices.ts:relatedFor` · `src/glossary/choices.ts:sanitizePreferences` — term preferences: the JSON is never edited; overrides < the teacher's choices < related terms that follow one
 - `src/glossary/parse.ts:parseGlossary` · `src/glossary/fold.ts:foldZh` · `src/glossary/matchEn.ts:buildEnMatcher` · `src/glossary/matchZh.ts:buildZhMatcher`
 - `src/glossary/check.ts:checkEnToZh` · `src/glossary/check.ts:checkZhToEn` · `src/glossary/check.ts:autoFix` · `src/glossary/pin.ts:pin`
 - `src/glossary/seededTerms.test.ts` — every seeded template, preset and sample passes the check
@@ -385,6 +386,7 @@ through `AppSettingsHost` alone.
 - `src/settings/store.ts:createSettingsStore` · `src/settings/store.ts:appSettings` · `src/settings/store.ts:useSettings` — per-field validation, unknown keys kept, never lowers `v`
 - `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:readAiStatus` · `src/settings/aiSettings.ts:useAiStatus` · `src/settings/aiSettings.ts:resolveAiConfig` — status never reads the keychain
 - `src/settings/appearance.ts:APPEARANCE_SETTINGS` · `src/settings/appearance.ts:THEME_BOOT_SCRIPT` — the colour scheme; dark tokens in `globals.css` key on `<html data-theme>`, never the OS query; `src/components/settings/sections/appearanceSection/AppearanceEffect.tsx:AppearanceEffect` follows the OS while System
+- `src/settings/termPreferences.ts:TERM_SETTINGS` — Settings → Translation terms (`econgen.settings.terms`); the pane is `src/components/settings/sections/termsSection/TermsSection.tsx` over the pure `src/components/settings/sections/termsSection/termRows.ts`
 - `src/settings/language.ts:LANGUAGE_SETTINGS` · `src/settings/language.ts:LANGUAGE_BOOT_SCRIPT` — the interface language (`en` / `zh-HK`); `src/components/settings/sections/languageSection/LanguageEffect.tsx:LanguageEffect` keeps `<html lang>` in step
 - `src/i18n/catalogue.ts:defineMessages` · `src/i18n/catalogue.ts:resolveMessages` · `src/i18n/catalogue.ts:localize` · `src/i18n/catalogue.ts:TextKey` — co-located interface catalogues (§ Interface language; recipe: Translate an area's interface text)
 - `src/i18n/language.ts:useMessages` · `src/i18n/language.ts:uiLanguage` · `src/i18n/language.ts:UiLanguageOverride` — read a catalogue in the current language; the override pins a test render

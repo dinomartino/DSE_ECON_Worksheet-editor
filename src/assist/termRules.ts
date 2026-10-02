@@ -33,7 +33,10 @@ export function termNotes(row: TermRow, check: TermCheck): string[] {
     const found = check.found ? m.foundLine(check.en, check.found.text, check.expected) : edb;
     return check.conflict ? [found, copy.conflictChip(check.conflict.form, check.conflict.meansEn)] : [found];
   }
-  if (check.fix.kind === 'lowerRank') return [copy.lowerRankLine(check.en, check.found?.text ?? '', check.expected)];
+  if (check.fix.kind === 'lowerRank') {
+    const line = check.chosen ? copyMessages().chosenLine : copy.lowerRankLine;
+    return [line(check.en, check.found?.text ?? '', check.expected)];
+  }
   const preview = `→ ${fixedPreview(row, check)}`;
   return isVariant(check) ? [edb, preview, m.textbookForm(check.fix.to)] : [edb, preview];
 }

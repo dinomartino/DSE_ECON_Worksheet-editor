@@ -13,6 +13,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Choose your own wording for terms the EDB glossary lists more than one way.** In
+  Settings, Translation terms lists every such term, for example 本地生產總值 or
+  國內生產總值 for GDP, and 總支出 or 總開支. Pick the one you write: AI translation and
+  Check terms follow it, and the other listed wordings still count as correct. A choice
+  can also apply to related terms, such as real GDP.
+  <!-- zh: **為 EDB 詞彙表列出多於一種譯法的用語選擇你慣用的寫法。** 在「設定」的「翻譯用語」
+  中列出所有這類用語，例如 GDP 的本地生產總值或國內生產總值，以及總支出或總開支。選擇你慣用的
+  一種，AI 翻譯和檢查用詞就會跟從，其他列出的譯法仍然算作正確。你亦可把選擇同時用於相關用語，
+  例如實質本地生產總值。 -->
 - **See, edit and print the marking scheme on screen.** Marking scheme now sits beside
   Student and Teacher. It shows the answer key on its own pages: the MC grids (one per
   version), every answer, model diagram and marking point. Click any answer or marking

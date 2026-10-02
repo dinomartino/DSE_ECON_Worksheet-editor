@@ -103,6 +103,9 @@ export function fakeGlossary(): Glossary {
       }),
     pin: (texts, direction, opts) => pin(entries, preferredOf, matchEn, matchZh, texts, direction, opts),
     autoFix: (source, zh) => autoFix(entries, matchEnAll, source, zh),
+    preferences: { choices: {}, related: {} },
+    choosable: [],
+    related: () => [],
   };
 }
 

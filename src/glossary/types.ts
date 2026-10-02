@@ -28,8 +28,68 @@ export interface GlossaryEntry {
   /** Value verbatim (tooltip / provenance). */
   raw: string;
   /** Rank-1 display of the first pinned sense, after DISPLAY_OVERRIDES (住戶) — or the
-   *  entry's PREFERRED_OVERRIDES rendering when it has one. */
+   *  entry's PREFERRED_OVERRIDES rendering, or the teacher's choice (`choice`). */
   preferred: string;
+  /** Settings → Translation terms: the teacher's choice in force for this entry, set only
+   *  on a glossary built with preferences. Absent = the defaults. */
+  choice?: TermChoice;
+}
+
+/**
+ * The renderings in force for one sense of an entry. PREFERRED_OVERRIDES are choices the
+ * code makes; a teacher's preference replaces them (overrides < user preferences).
+ */
+export interface TermChoice {
+  /** The preferred renderings, '/'-equals; `[0]` becomes `preferred`. */
+  displays: string[];
+  /** The sense they belong to. A GDP-family choice may move the pin to sense (2). */
+  sense: number;
+  /** Renderings the EDB data does not list, accepted only because of the choice
+   *  (實質國內生產總值 once GDP is 國內生產總值). */
+  derived: string[];
+  /** 'default': PREFERRED_OVERRIDES. 'teacher': picked in Settings. 'related': follows
+   *  the teacher's choice for `follows` (the parent's key). */
+  source: 'default' | 'teacher' | 'related';
+  follows?: string;
+}
+
+/**
+ * The teacher's term preferences as stored (Settings → Translation terms): entry key
+ * (verbatim) → the chosen rendering, and the keys whose choice also applies to related
+ * terms. Never in a document. A glossary validates it against the data on every build.
+ */
+export interface TermPreferences {
+  choices: Readonly<Record<string, string>>;
+  related: Readonly<Record<string, true>>;
+}
+
+/** One rendering a teacher may pick. */
+export interface TermOption { display: string; sense: number; rank: number }
+/** The renderings of one sense (or, for the GDP family, of both senses) to choose among. */
+export interface TermOptionGroup {
+  /** The sense, or undefined when the group spans senses (the GDP family). */
+  sense?: number;
+  options: TermOption[];
+  /** What is preferred with no choice: rank 1, or the PREFERRED_OVERRIDES rendering. */
+  defaults: string[];
+}
+/** An entry whose renderings include equal-meaning alternatives. */
+export interface ChoosableTerm {
+  entryId: number;
+  en: string;
+  groups: TermOptionGroup[];
+  /** The GDP family and the import family: shown first, as common choices. */
+  common: boolean;
+}
+/** A term that would follow a choice ("Also use in related terms"). */
+export interface RelatedTerm {
+  entryId: number;
+  en: string;
+  /** Preferred renderings before and after. */
+  from: string[];
+  to: string[];
+  /** Of `to` and its equals, those the EDB data does not list. */
+  derived: string[];
 }
 
 /**
@@ -60,6 +120,8 @@ export interface TermCheck {
   conflict?: { form: string; meansEn: string };
   /** Multi-sense core entry: a wrong sense can't be told. */
   senseAmbiguous?: boolean;
+  /** `expected` is the teacher's choice (Settings → Translation terms), not the EDB's first. */
+  chosen?: true;
 }
 export interface PinnedTerm { entryId: number; line: string; tier: 'core' | 'generic' }
 export interface GlossaryMatchEn { entryId: number; start: number; end: number; viaAbbreviation: boolean }
@@ -77,4 +139,10 @@ export interface Glossary {
   pin(texts: readonly string[], direction: Direction, opts?: { denyHints?: boolean; limit?: number }): PinnedTerm[];
   /** Non-reversal deny forms of entries present in `sourceEn`, replaced in `zh` (never inside vertAlign runs). */
   autoFix(sourceEn: string, zh: RichText): { runs: RichText; fixes: Array<{ from: string; to: string; entryId: number }> };
+  /** The term preferences this glossary was built with, after validation (stale rows dropped). */
+  preferences: TermPreferences;
+  /** Every entry with a choice, in source order, as the data defines it (never the preferences). */
+  choosable: readonly ChoosableTerm[];
+  /** The terms that would follow choosing `display` for the entry `key`. */
+  related(key: string, display: string): RelatedTerm[];
 }

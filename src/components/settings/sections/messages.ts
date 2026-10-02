@@ -8,7 +8,13 @@ export const SECTION_MESSAGES = defineMessages({
     en: 'Translate with your own key, and check terms against the EDB glossary.',
     zh: '用你自己的 API key 翻譯，並按教育局詞彙表檢查用詞。',
   },
-  appearanceLabel: { en: 'Appearance', zh: '外觀' },
+  termsLabel: { en: 'Translation terms', zh: '翻譯用語' },
+  termsHint: { en: 'Your wording for EDB terms', zh: '你慣用的 EDB 譯法' },
+  termsDescription: {
+    en: 'Some terms are listed more than one way in the EDB glossary. Pick the one you write.',
+    zh: '教育局詞彙表為部分用語列出多於一種譯法。選擇你慣用的一種。',
+  },
+  appearanceLabel:{ en: 'Appearance', zh: '外觀' },
   appearanceHint: { en: 'Light, dark or system', zh: '淺色、深色或跟隨系統' },
   appearanceDescription: {
     en: 'The colour scheme around the page. Worksheets always print black on white.',
