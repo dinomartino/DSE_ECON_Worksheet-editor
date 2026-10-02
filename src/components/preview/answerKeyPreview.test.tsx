@@ -57,6 +57,24 @@ describe('the Marking scheme view', () => {
     expect(markup).not.toContain('role="textbox"');
   });
 
+  it('HKEAA style: a "Marks" head on the sheet, a Marks column, the title typed in place', () => {
+    const worksheet: Worksheet = {
+      ...buildMarkSchemeWorksheet(),
+      answerKeyLayout: { preset: 'hkeaa', subtitle: { en: [{ text: 'Form 5' }], zh: [] } },
+    };
+    const markup = renderToStaticMarkup(<AnswerKeyPreview worksheet={worksheet} language="en" onEdit={() => {}} />);
+    expect(markup).toContain('data-band-box="header"');
+    expect(markup).toMatch(/data-band-box="header"[^>]*>Marks</);
+    expect(markup).toContain('padding-right:54pt');
+    expect(markup).toContain('Taxation — structured question — Marking scheme');
+    expect(markup).toContain('Form 5');
+    // Classic has no head.
+    const classic = renderToStaticMarkup(
+      <AnswerKeyPreview worksheet={buildMarkSchemeWorksheet()} language="en" onEdit={() => {}} />,
+    );
+    expect(classic).not.toContain('data-band-box="header"');
+  });
+
   it('opens the frozen v1 corpus', () => {
     const worksheet = migrate(structuredClone(v1Corpus)) as Worksheet;
     const markup = renderToStaticMarkup(

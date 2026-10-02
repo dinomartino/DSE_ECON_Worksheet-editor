@@ -13,7 +13,7 @@ import {
   twipsToMm,
 } from "@/model/page";
 import type { BiText, HeaderFooter, LanguageMode, Worksheet } from "@/model/types";
-import { answerKeyView } from "@/render/answerKey";
+import { answerKeyRunningHead, answerKeyTitleOverride, answerKeyView } from "@/render/answerKey";
 import type { EditTarget, RenderNode } from "@/render/ir";
 import { IconButton } from "@/components/ui";
 import { MinusIcon, PlusIcon } from "@/components/ui/icons";
@@ -147,14 +147,21 @@ export function AnswerKeyPreview({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // The key and its keep-together runs, rebuilt only when the document or language does.
-  const { nodes, runs, empty } = useMemo(() => {
+  // The key's own lines (title, subtitle) take their edit targets here, on the page's
+  // copy only: the export's nodes stay exactly as `renderAnswerKey` gives them.
+  const { nodes, runs, empty, runningHead } = useMemo(() => {
     const view = answerKeyView(worksheet, language);
+    const shown = view.nodes.map((node, index) => {
+      const field = view.fields.find((entry) => entry.index === index);
+      return field && node.kind === "text" ? { ...node, edit: field.edit } : node;
+    });
     return {
-      nodes: view.nodes,
+      nodes: shown,
       empty: view.owners.every((owner) => owner === undefined),
-      runs: keepTogetherRuns(view.nodes).map(({ from, to }) => ({
+      runningHead: answerKeyRunningHead(view.nodes, language),
+      runs: keepTogetherRuns(shown).map(({ from, to }) => ({
         key: `key-${from}`,
-        nodes: view.nodes.slice(from, to + 1),
+        nodes: shown.slice(from, to + 1),
         owner: view.owners.slice(from, to + 1).find((owner) => owner !== undefined),
       })),
     };
@@ -169,13 +176,16 @@ export function AnswerKeyPreview({
     if (owner) onSelectQuestion?.(owner);
   };
 
+  // A typed title keeps following the document's title on the sides left as derived.
+  const write = (target: EditTarget, next: BiText) =>
+    onEdit?.(target, target.kind === "answerKeyTitle" ? answerKeyTitleOverride(worksheet, next) : next);
   const ctx: EditContext | undefined = onEdit
     ? {
         onEdit: (target, next) => {
-          onEdit(target, next);
+          write(target, next);
           setSelectedElement(undefined);
         },
-        onEditKeepingSelection: onEdit,
+        onEditKeepingSelection: write,
         onSelectElement: (target, side) => {
           setSelectedElement({ target, side });
           selectOwner(target);
@@ -195,10 +205,15 @@ export function AnswerKeyPreview({
   const dimensions = pageDimensions(setup);
   const pageWidthMm = twipsToMm(dimensions.width);
   const pageHeightMm = twipsToMm(dimensions.height);
-  const footerOffset = headerFooterOffsets(setup.margins, 0, BAND_ROW_TWIPS).footer;
-  const overflow = bandsOverflow(setup.margins, 0, BAND_ROW_TWIPS);
+  // A Marks column's running head is a one-row header, as `buildAnswerKeyParts` writes it.
+  const headHeight = runningHead ? BAND_ROW_TWIPS : 0;
+  const offsets = headerFooterOffsets(setup.margins, headHeight, BAND_ROW_TWIPS);
+  const footerOffset = offsets.footer;
+  const overflow = bandsOverflow(setup.margins, headHeight, BAND_ROW_TWIPS);
   const contentHeightPx = Math.floor(
-    (pageHeightMm - twipsToMm(setup.margins.top) - twipsToMm(setup.margins.bottom + overflow.footer)) *
+    (pageHeightMm -
+      twipsToMm(setup.margins.top + overflow.header) -
+      twipsToMm(setup.margins.bottom + overflow.footer)) *
       MM_TO_PX,
   );
   const fontFamily = `${cssFontFamilies(worksheet.fonts)}, serif`;
@@ -259,7 +274,7 @@ export function AnswerKeyPreview({
   const pageStyle: React.CSSProperties = {
     width: `${pageWidthMm}mm`,
     height: `${pageHeightMm}mm`,
-    paddingTop: `${twipsToMm(setup.margins.top)}mm`,
+    paddingTop: `${twipsToMm(setup.margins.top + overflow.header)}mm`,
     paddingRight: `${twipsToMm(setup.margins.right)}mm`,
     paddingBottom: `${twipsToMm(setup.margins.bottom + overflow.footer)}mm`,
     paddingLeft: `${twipsToMm(setup.margins.left)}mm`,
@@ -348,6 +363,21 @@ export function AnswerKeyPreview({
                   </p>
                 )}
               </div>
+              {runningHead && (
+                <div
+                  data-band-box="header"
+                  className="text-right font-bold"
+                  style={{
+                    position: "absolute",
+                    left: `${twipsToMm(setup.margins.left)}mm`,
+                    right: `${twipsToMm(setup.margins.right)}mm`,
+                    top: `${twipsToMm(offsets.header)}mm`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {runningHead}
+                </div>
+              )}
               <div
                 data-band-box="footer"
                 style={{

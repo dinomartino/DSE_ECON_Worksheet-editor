@@ -121,12 +121,14 @@ function textNodeHtml(node: TextNode, language: LanguageMode, fontCss: string): 
   // Overrides come last so they win over the named style's defaults.
   const css = `${fontCss}${NODE_CSS[node.style] ?? ''}${
     node.indent ? `margin-left:${node.indent / 20}pt;` : ''
-  }${formatCss(node.format)}`;
+  }${node.marksColumn ? `padding-right:${node.marksColumn / 20}pt;` : ''}${formatCss(node.format)}`;
   // Numbering becomes literal text, which is the accepted tradeoff for clipboard.
   const marker = node.listRef ? `${escapeHtml(node.listRef.marker)}&nbsp;` : '';
   const body = richHtml(node.text, language);
   const label = textNodeLabel(node, language);
-  const marks = label ? `<span style="float:right">${escapeHtml(label)}</span>` : '';
+  // In a Marks column the label floats into the paragraph's right padding.
+  const column = node.marksColumn ? `;margin-right:-${node.marksColumn / 20}pt` : '';
+  const marks = label ? `<span style="float:right${column}">${escapeHtml(label)}</span>` : '';
   return `<p style="${css}">${marks}${marker}${body}</p>`;
 }
 

@@ -22,7 +22,12 @@ import { plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { DiagramNode, RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
-import { answerKeyPartTitle, answerKeyTitle, renderCombinedAnswerKey } from '@/render/answerKey';
+import {
+  answerKeyPartTitle,
+  answerKeyRunningHead,
+  answerKeyTitle,
+  renderCombinedAnswerKey,
+} from '@/render/answerKey';
 import {
   collectAnswerGraphNodes,
   collectDiagramNodes,
@@ -674,6 +679,14 @@ function buildAnswerKeyParts(
     contentWidth: textWidth,
     ruleEdge: 'top',
   };
+  // A key with a Marks column heads it on every page (§ `answerKeyRunningHead`).
+  const head = answerKeyRunningHead(nodes, language);
+  const marksHead: HeaderFooterLayout | undefined = head
+    ? {
+        rows: [{ left: '', center: '', right: richTextRuns([{ text: head, bold: true }], fonts, {}) }],
+        contentWidth: textWidth,
+      }
+    : undefined;
 
   const title = others.length > 0 ? answerKeyPartTitle(worksheet) : answerKeyTitle(worksheet);
   const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -684,14 +697,17 @@ function buildAnswerKeyParts(
       pageHeight,
       margins: setup.margins,
       landscape: setup.orientation === 'landscape',
-      hasHeader: false,
+      hasHeader: marksHead !== undefined,
       hasFooter: true,
       differentFirstPage: false,
-      edgeOffsets: headerFooterOffsets(setup.margins, 0, BAND_ROW_TWIPS),
+      edgeOffsets: headerFooterOffsets(setup.margins, marksHead ? BAND_ROW_TWIPS : 0, BAND_ROW_TWIPS),
     }),
     stylesXml: buildStylesXml(fonts, { baseFontSize: worksheet.baseFontSize }),
     numberingXml: buildNumberingXml([], fonts, listIndentScheme(documentShape(worksheet))),
-    headerFooter: { footer: buildFooterXml(pageNumber) },
+    headerFooter: {
+      ...(marksHead ? { header: buildHeaderXml(marksHead) } : {}),
+      footer: buildFooterXml(pageNumber),
+    },
     fontTableXml: buildFontTableXml(fonts),
     coreXml: buildCorePropsXml(plain(language === 'zh' ? title.zh : title.en), timestamp),
     assets,

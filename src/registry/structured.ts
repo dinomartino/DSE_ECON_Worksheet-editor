@@ -24,6 +24,7 @@ import { renderMarkScheme } from '@/render/markScheme';
 import { answerGraphNode } from '@/render/answerGraph';
 import { StructuredEditorPanel } from '@/components/editor/StructuredEditorPanel';
 import type { AnswerKeyEntry, AnswerKeyRow } from '@/render/answerKey';
+import { paragraphLines } from '@/render/answerKeySections';
 import type { QualityAnchor, QualityView, QuestionHealthFacts, QuestionTypeDefinition, TagSlotInfo } from './types';
 
 /**
@@ -502,6 +503,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
       ...(!hasSubParts && part.answerDiagram ? { diagram: part.answerDiagram } : {}),
       ...(!hasSubParts && part.scheme ? { scheme: part.scheme } : {}),
       ...(!hasSubParts ? partEdits : {}),
+      prompt: paragraphLines(part.blocks),
     });
     drawn(1, [...(part.blocksBefore ?? []), ...part.blocks]);
     subParts.forEach((subPart, subIndex) => {
@@ -515,6 +517,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
         ...(subPart.scheme ? { scheme: subPart.scheme } : {}),
         answerEdit: { kind: 'subPartAnswer', ...subAt },
         schemeAt: subAt,
+        prompt: paragraphLines(subPart.blocks),
       });
       drawn(2, subPart.blocks);
     });
@@ -540,7 +543,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
     rows.push({ depth: 1, diagram: question.answerDiagram });
   }
   if (question.parts.length === 0) drawn(1, question.blocks);
-  return { kind: 'scheme', marks, rows };
+  return { kind: 'scheme', marks, rows, stem: paragraphLines(question.blocks) };
 }
 
 /**

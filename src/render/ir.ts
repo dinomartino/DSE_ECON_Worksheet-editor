@@ -154,6 +154,12 @@ export interface TextNode {
    * prints `trailLabel()`.
    */
   trail?: BiText;
+  /**
+   * A right-hand Marks column this many twips wide (the HKEAA scheme layout): the text
+   * stops short of it (`w:ind w:right`), and the marks or `trail` label sits in it, on
+   * the same right tab at the content edge. Absent = the text runs the full width.
+   */
+  marksColumn?: number;
   /** Keep with the following paragraph so a question is not split (§7.6). */
   keepNext?: boolean;
   /** Keep this paragraph's own lines on one page (`w:keepLines`) — the docx half of
