@@ -519,10 +519,16 @@ function marksLabel(marks: number, language: LanguageMode): string {
 function MarksTrail({
   label,
   blankLines,
+  column = false,
 }: {
   /** "(4 marks)", or a scheme's `trail` (§ `TextNode.trail`) — the same placement. */
   label: string;
   blankLines: number;
+  /**
+   * The paragraph keeps a Marks column clear (`TextNode.marksColumn`, its right padding):
+   * the label sits in that column, so the text's last line reserves nothing for it.
+   */
+  column?: boolean;
 }) {
   const labelRef = useRef<HTMLSpanElement>(null);
   /*
@@ -603,7 +609,9 @@ function MarksTrail({
           boundary, so the gap would vanish and the marks could butt against the last
           word. It rides inside the hidden twin, so it reserves room without printing.
         */}
-        {`\u2003${label}`}
+        {/* In a Marks column the label has its own room: a zero-width space only holds
+            the line open, as the twin does, and reserves no width on it. */}
+        {column ? "\u200b" : `\u2003${label}`}
       </span>
       <span
         ref={labelRef}
@@ -641,6 +649,8 @@ function MarksTrail({
 const TARGET_NAME: Record<EditTarget["kind"], TextKey<typeof PREVIEW_MESSAGES>> = {
   worksheetTitle: "targetTitle",
   worksheetInstructions: "targetInstructions",
+  answerKeyTitle: "targetKeyTitle",
+  answerKeySubtitle: "targetKeySubtitle",
   blockText: "targetParagraph",
   blockCaption: "targetCaption",
   tableCell: "targetTableCell",
@@ -1002,6 +1012,9 @@ function TextNodeView({
       }
       style={{
         ...(node.indent ? { marginLeft: `${node.indent / 20}pt` } : undefined),
+        // The Marks column (`w:ind w:right`): the text stops short of it; the label,
+        // pinned `right: 0` on the padding box, lands inside it.
+        ...(node.marksColumn ? { paddingRight: `${node.marksColumn / 20}pt` } : undefined),
         /*
          * Word's `w:ind`, expressed directly: the whole paragraph sits at `left`, and
          * the marker hangs back into the margin (drawn absolutely, below). *No*
@@ -1060,6 +1073,7 @@ function TextNodeView({
           // line. Counted from the text actually being shown, so a language mode that
           // renders only one side counts that side's breaks.
           blankLines={trailingBlankLines(marksAnchorRuns(node.text, language))}
+          column={node.marksColumn !== undefined}
         />
       )}
     </p>

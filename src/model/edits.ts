@@ -1,3 +1,4 @@
+import { withAnswerKeyLayout, withAnswerKeyText } from './answerKeyLayout';
 import { findCoverLine, setCoverLineFormat, setCoverLineText } from './cover';
 import type {
   Band,
@@ -695,6 +696,16 @@ export function applyEditTarget(
     case 'worksheetInstructions':
       return { ...worksheet, instructions: text };
 
+    // The answer key's own lines (§ `Worksheet.answerKeyLayout`). An emptied title is
+    // no override (the derived one prints again); the subtitle stays, emptied, until
+    // it is switched off or deleted.
+    case 'answerKeyTitle':
+    case 'answerKeySubtitle': {
+      const field = target.kind === 'answerKeyTitle' ? 'title' : 'subtitle';
+      const value = field === 'title' && isBiTextEmpty(text) ? undefined : text;
+      return withAnswerKeyLayout(worksheet, withAnswerKeyText(worksheet.answerKeyLayout, field, value));
+    }
+
     case 'blockText':
       return mapAllBlocks(worksheet, target.blockId, (block) =>
         block.kind === 'paragraph' ? { ...block, text } : block,
@@ -1111,6 +1122,10 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
       return worksheet.title;
     case 'worksheetInstructions':
       return worksheet.instructions;
+    case 'answerKeyTitle':
+      return worksheet.answerKeyLayout?.title;
+    case 'answerKeySubtitle':
+      return worksheet.answerKeyLayout?.subtitle;
     case 'blockText': {
       for (const blocks of documentBlockLists(worksheet)) {
         const match = blocks.find((block) => block.id === target.blockId);
@@ -1515,6 +1530,10 @@ export function describeDelete(target: EditTarget): DeletePlan | undefined {
       return { kind: 'clear', label: 'title' };
     case 'worksheetInstructions':
       return { kind: 'clear', label: 'instructions' };
+    case 'answerKeyTitle':
+      return { kind: 'clear', label: 'title' };
+    case 'answerKeySubtitle':
+      return { kind: 'clear', label: 'subtitle' };
     // A source's own lines are optional fields on the panel, like the title above:
     // clearing the text is the delete, and the write path drops the field with it.
     // Deleting the *panel* is the block delete, reached from its body or the sidebar.
@@ -1648,7 +1667,15 @@ export function applyDeleteTarget(worksheet: Worksheet, target: EditTarget): Wor
     // block. `renderWorksheet` drops both nodes once they are empty.
     case 'worksheetTitle':
     case 'worksheetInstructions':
+    case 'answerKeyTitle':
       return applyEditTarget(worksheet, target, EMPTY);
+
+    // The subtitle line goes with its text: deleting it is switching it off.
+    case 'answerKeySubtitle':
+      return withAnswerKeyLayout(
+        worksheet,
+        withAnswerKeyText(worksheet.answerKeyLayout, 'subtitle', undefined),
+      );
 
     case 'mcqStatement':
       return mapQuestionById(worksheet, target.questionId, (question) => {

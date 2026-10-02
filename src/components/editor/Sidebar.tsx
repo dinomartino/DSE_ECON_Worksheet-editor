@@ -6,6 +6,8 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { BankTab } from '@/components/bank/BankTab';
 import { useBankSession } from '@/components/bank/bankSession';
 import { Inspector } from './Inspector';
+import { AnswerKeyLayoutPanel } from './AnswerKeyLayoutPanel';
+import { ANSWER_KEY_LAYOUT_MESSAGES } from './AnswerKeyLayoutPanel.messages';
 import type { PageComposition } from '@/components/preview/pagination';
 import { Outline } from './Outline';
 import { useMessages } from '@/i18n/language';
@@ -19,10 +21,15 @@ import { LAYOUT_KIND_MESSAGES } from './layoutKind.messages';
  * question *is* the request to edit it; closing the editor returns to Content.
  * **題庫 Bank** is sticky: while it is open a selection only moves the insert anchor;
  * leaving is a click on Content or Edit.
+ *
+ * In the Marking scheme view the third tab is **Layout 版面** instead of the bank (nothing
+ * is inserted into a key): the key's style and switches. A tab of its own, not Edit's
+ * empty state, because a click on the key selects a question and Edit must then show
+ * that question's answers and scheme; layout stays one click away. Entering the view
+ * opens it; leaving returns to Content.
  */
 
-type Tab = 'content' | 'edit' | 'bank';
-const TAB_ORDER: readonly Tab[] = ['content', 'edit', 'bank'];
+type Tab = 'content' | 'edit' | 'bank' | 'layout';
 
 export function Sidebar({
   pages,
@@ -43,7 +50,18 @@ export function Sidebar({
   const m = useMessages(SIDEBAR_MESSAGES);
   const kinds = useMessages(LAYOUT_KIND_MESSAGES);
 
-  const [tab, setTab] = useState<Tab>('content');
+  const keyView = useWorksheetStore((s) => s.documentView === 'answerKey');
+  const lm = useMessages(ANSWER_KEY_LAYOUT_MESSAGES);
+  const [tab, setTab] = useState<Tab>(keyView ? 'layout' : 'content');
+  const tabOrder: readonly Tab[] = ['content', 'edit', keyView ? 'layout' : 'bank'];
+
+  // The view's own tab follows the view: opened on entering it, closed on leaving.
+  const lastKeyView = useRef(keyView);
+  useEffect(() => {
+    if (keyView === lastKeyView.current) return;
+    lastKeyView.current = keyView;
+    setTab((current) => (keyView ? 'layout' : current === 'layout' ? 'content' : current));
+  }, [keyView]);
 
   // Every layout kind has a panel now (§ the sidebar is an inspector), so any
   // selected element pulls the tab over — the panel's contract is learnable only if
@@ -59,15 +77,18 @@ export function Sidebar({
   useEffect(() => {
     if (selectionKey === lastSelection.current) return;
     lastSelection.current = selectionKey;
-    // The bank tab stays put: a click on the page is where the next insert lands.
-    setTab((current) => (current === 'bank' ? current : selectionKey ? 'edit' : 'content'));
+    // The bank tab stays put: a click on the page is where the next insert lands. In the
+    // Marking scheme view a cleared selection returns to Layout, the view's resting place.
+    setTab((current) =>
+      current === 'bank' ? current : selectionKey ? 'edit' : lastKeyView.current ? 'layout' : 'content',
+    );
   }, [selectionKey]);
 
   // "From 題庫…" (the add rail, the empty page): an event, subscribed rather than rendered.
   useEffect(
     () =>
       useBankSession.subscribe((state, previous) => {
-        if (state.openRequest !== previous.openRequest) setTab('bank');
+        if (state.openRequest !== previous.openRequest && !lastKeyView.current) setTab('bank');
       }),
     [],
   );
@@ -85,7 +106,7 @@ export function Sidebar({
   const tabs: Array<{ id: Tab; label: string; count?: number }> = [
     { id: 'content', label: m.content, count: totalQuestions },
     { id: 'edit', label: editLabel },
-    { id: 'bank', label: m.bank },
+    keyView ? { id: 'layout', label: lm.tab } : { id: 'bank', label: m.bank },
   ];
 
   return (
@@ -120,7 +141,7 @@ export function Sidebar({
             the old per-tab bar; each 100% of translation moves it exactly one tab over. */}
         <span
           aria-hidden
-          style={{ transform: `translateX(${TAB_ORDER.indexOf(tab) * 100}%)` }}
+          style={{ transform: `translateX(${Math.max(0, tabOrder.indexOf(tab)) * 100}%)` }}
           className="pointer-events-none absolute bottom-0 left-2 w-[calc((100%-1rem)/3)] px-4 transition-transform duration-200 ease-out-soft"
         >
           <span className="block h-0.5 rounded-full bg-accent" />
@@ -135,6 +156,8 @@ export function Sidebar({
       <div key={tab} className="flex min-h-0 flex-1 animate-fade-in flex-col">
         {tab === 'content' ? (
           <Outline numbering={numbering} pages={pages} onOpenSettings={onOpenSettings} />
+        ) : tab === 'layout' ? (
+          <AnswerKeyLayoutPanel />
         ) : tab === 'bank' ? (
           <BankTab />
         ) : (

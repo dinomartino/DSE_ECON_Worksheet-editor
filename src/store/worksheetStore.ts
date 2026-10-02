@@ -49,6 +49,7 @@ import {
 } from '@/model/flow';
 import { applyBandFieldSide } from '@/model/bandSegments';
 import { isNewerThanBuild } from '@/model/migrations';
+import { withAnswerKeyLayout } from '@/model/answerKeyLayout';
 import type { ApplyReport, TranslationWrite } from '@/model/textSlots';
 import { applyTranslationBatch } from '@/model/translationApply';
 import { documentShape } from '@/model/documentShape';
@@ -71,6 +72,7 @@ import {
   type FirstPageMode,
 } from '@/model/page';
 import type {
+  AnswerKeyLayout,
   Band,
   BandField,
   BandFieldSide,
@@ -194,6 +196,13 @@ interface WorksheetState {
   /** Load a document. Resets history: a load is not an undoable edit. */
   replaceWorksheet: (worksheet: Worksheet) => void;
   updateWorksheet: (patch: Partial<Worksheet>) => void;
+  /**
+   * Change the answer key's layout (`model/answerKeyLayout.ts`) through one undoable
+   * commit. `recipe` maps the stored deltas to the next; undefined removes the field.
+   */
+  updateAnswerKeyLayout: (
+    recipe: (layout: AnswerKeyLayout | undefined) => AnswerKeyLayout | undefined,
+  ) => void;
   markSaved: () => void;
   /** Persist to storage now, rather than waiting for the autosave debounce. */
   save: () => Promise<void>;
@@ -813,6 +822,14 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     })),
 
   updateWorksheet: (patch) => get().commit((draft) => ({ ...draft, ...patch })),
+  updateAnswerKeyLayout: (recipe) =>
+    get().commit((draft) => {
+      const next = recipe(draft.answerKeyLayout);
+      // Unchanged → the same object, so commit records no history step.
+      return JSON.stringify(next) === JSON.stringify(draft.answerKeyLayout)
+        ? draft
+        : withAnswerKeyLayout(draft, next);
+    }),
 
   markSaved: () => set({ dirty: false, lastSavedAt: new Date().toISOString() }),
 

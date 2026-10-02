@@ -98,7 +98,10 @@ Invariants:
 
 - `src/render/worksheet.ts:renderWorksheet` — the one walker; `:collectListStreams`
 - `src/render/answerKey.ts:renderAnswerKey` — the separate answer key; entries come from the `answerKey` hook
-- `src/render/answerKey.ts:answerKeyView` — the same nodes plus each node's question, for the Marking scheme view
+- `src/render/answerKey.ts:answerKeyView` — the same nodes plus each node's question and the key's own fields (title, subtitle), for the Marking scheme view
+- `src/render/answerKey.ts:collectAnswerKey` → `:ANSWER_KEY_STYLES` → `:renderStandardKey` — the key's data gathered once, laid out by its preset's style; `src/render/answerKeySections.ts:MC_KEY_RENDERERS` · `:LQ_KEY_RENDERERS` are the per-section layouts (grid / HKEAA table / list; compact / Marks column)
+- `src/model/answerKeyLayout.ts:resolveAnswerKeyLayout` — `Worksheet.answerKeyLayout` (preset + deltas) to every setting; `:ANSWER_KEY_PRESETS` · `:withAnswerKeyPreset` · `:withAnswerKeySetting` · `:normalizeAnswerKeyLayout` (on load)
+- `src/render/answerKeySections.ts:answerKeyRunningHead` — "Marks / 分數" atop every page of a key with a Marks column (`TextNode.marksColumn`); the `.docx` header and the preview read the same
 - `src/render/answerKey.ts:AnswerKeyRow` — `diagram` carries a leaf's model answer diagram; `src/render/ir.ts:diagramNodeFor` builds its node
 - `src/render/answerKey.ts:renderCombinedAnswerKey` · `:answerKeyPartTitle` — several saved documents' keys in one file, each under its paper's heading, from a new page
 - `src/render/markScheme.ts:renderMarkScheme` — a part's HKEAA scheme as `Marking Scheme` paragraphs; marks ride `TextNode.trail` (`src/render/ir.ts:trailLabel`); given `at`, its text carries scheme edit targets (`src/model/markScheme.ts:withSchemeText` writes them)
@@ -305,6 +308,7 @@ Invariants:
 - `src/components/editor/KeyDocumentsField.tsx:KeyDocumentsField` — "Also include": other saved documents' keys in the same answer key; `src/components/editor/exportSession.ts:loadKeyDocuments` reads them read-only, skipping (and naming) any that will not open — export-time, never stored
 - `src/components/editor/printPdf.ts:printWorksheetPdf` — PDF: set the print mode, wait for the sheets, then `printPage()` (web; flags lifted on `afterprint`) or, given a desktop file, `savePdf()` (flags lifted when it resolves; the print sheet if it fails)
 - `src/components/editor/exportSession.ts:paperMode` — "Include" toggles → `OutputMode.omitCover` / `omitAnswerSpace` (export-time, never stored; the preview ignores them)
+- `src/components/editor/AnswerKeyLayoutPanel.tsx:AnswerKeyLayoutPanel` — the Marking scheme view's Layout tab (style cards from `src/components/editor/AnswerKeySketch.tsx:AnswerKeySketch`, switches); writes through `src/store/worksheetStore.ts:updateAnswerKeyLayout`
 - `src/components/editor/Sidebar.tsx:Sidebar` · `src/components/editor/Inspector.tsx:Inspector` · `src/components/editor/TopicRow.tsx:TopicRow` (tags row under every EditorPanel; on a question with parts `src/components/editor/PartTopics.tsx:PartTopics` wraps it per part) · `src/components/editor/TopicRow.tsx:TopicPicker`
 - `src/components/editor/MarkSchemeEditor.tsx:MarkSchemeEditor` — points, `n@`/any/max, OR, levels, EC for one leaf
 - `src/components/editor/AnswerDiagramRow.tsx:AnswerDiagramRow` — a leaf's model diagram: thumbnail, Draw…, template, width

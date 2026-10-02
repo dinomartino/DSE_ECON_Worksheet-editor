@@ -24,6 +24,7 @@ import type {
   VariantContext,
 } from './types';
 import type { AnswerKeyEntry } from '@/render/answerKey';
+import { paragraphLines } from '@/render/answerKeySections';
 
 /**
  * MCQ rendering (§8): stem blocks -> statements (if any) -> options A-D,
@@ -494,6 +495,7 @@ function answerKey(question: McqQuestion): AnswerKeyEntry {
     ...(isBiTextEmpty(question.provenance)
       ? {}
       : { provenance: question.provenance, provenanceEdit: { kind: 'mcqProvenance', questionId } as const }),
+    stem: paragraphLines(question.blocks),
   };
 }
 

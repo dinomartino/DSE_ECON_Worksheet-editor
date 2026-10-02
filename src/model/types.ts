@@ -897,6 +897,12 @@ export interface Worksheet {
   satOn?: string;
   /** Keep this document's questions out of the question bank. Absent = indexed. */
   bankHidden?: boolean;
+  /**
+   * How the answer key (the Marking scheme view, `render/answerKey.ts`) is laid out:
+   * a preset plus the teacher's changes to it (`model/answerKeyLayout.ts`). Presentation
+   * of the key only; the paper never reads it. Absent = the Classic key, unchanged.
+   */
+  answerKeyLayout?: AnswerKeyLayout;
   createdAt: string;
   updatedAt: string;
   /**
@@ -927,6 +933,46 @@ export interface OutputMode {
 export interface PaperVersions {
   count: number;
   seed: number;
+}
+
+/** A whole-key style: its section layouts and switches (`model/answerKeyLayout.ts`). */
+export type AnswerKeyPreset = 'classic' | 'hkeaa';
+/** The MC answers: a grid of number/letter pairs, the HKEAA two-pair table, or a list. */
+export type McKeyLayout = 'grid' | 'hkeaaTable' | 'list';
+/** The long questions: marks at the line end, or a right-hand Marks column (HKEAA). */
+export type LqKeyLayout = 'compact' | 'marksColumn';
+
+/**
+ * The answer key's layout, stored as **deltas**: `preset` (absent = Classic) and only
+ * the settings the teacher changed from that preset. A value equal to the preset's is
+ * not stored, so an untouched document has no field at all and exports byte-identically.
+ * Read through `resolveAnswerKeyLayout`, which ignores anything it does not recognise
+ * (a preset or layout from a newer build prints as Classic here, and is kept).
+ */
+export interface AnswerKeyLayout {
+  preset?: AnswerKeyPreset;
+  mcLayout?: McKeyLayout;
+  lqLayout?: LqKeyLayout;
+  /** Replaces the derived "… Answer key" title; an empty side falls back to it. */
+  title?: BiText;
+  /** A line under the title (school, exam, date). Present = printed, even empty. */
+  subtitle?: BiText;
+  /** The notation legend (`/`, `n@`, `max`, OR). */
+  showLegend?: boolean;
+  /** "For markers' reference, not model answers…" above the key. */
+  showDisclaimer?: boolean;
+  /** Question and part wording before each answer, rather than numbers only. */
+  showStems?: boolean;
+  /** MC: the explanation, each option's rationale, the source note. */
+  showExplanations?: boolean;
+  showRationales?: boolean;
+  showSources?: boolean;
+  /** "(Total: n marks)" after each long question. */
+  questionTotals?: boolean;
+  /** Each section heading carries its marks. */
+  sectionTotals?: boolean;
+  /** "Total: n marks" at the end of the key. */
+  paperTotal?: boolean;
 }
 
 /** Every field optional; a missing or non-positive one is no target for that measure. */

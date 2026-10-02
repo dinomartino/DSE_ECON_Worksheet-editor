@@ -112,6 +112,8 @@ function paragraph(options: {
   keepNext?: boolean;
   keepLines?: boolean;
   indent?: number;
+  /** A right indent (`TextNode.marksColumn`); the right tab stays at the content edge. */
+  indentRight?: number;
   tabRight?: boolean;
   tabRightAt?: number;
   format?: TextFormat;
@@ -127,8 +129,13 @@ function paragraph(options: {
       `<w:numPr><w:ilvl w:val="${options.level ?? 0}"/>` +
         `<w:numId w:val="${options.numId}"/></w:numPr>`,
     );
-  } else if (options.indent) {
-    props.push(`<w:ind w:left="${options.indent}"/>`);
+  } else if (options.indent || options.indentRight) {
+    // One `w:ind`: Word merges the element whole, so `left` and `right` share it.
+    props.push(
+      `<w:ind${options.indent ? ` w:left="${options.indent}"` : ''}${
+        options.indentRight ? ` w:right="${options.indentRight}"` : ''
+      }/>`,
+    );
   }
 
   // A right-aligned tab stop at the content edge puts "(4 marks)" in the
@@ -266,6 +273,12 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
     keepNext: node.keepNext,
     keepLines: node.keepLines,
     indent: node.indent,
+    /*
+     * The Marks column: the text stops short of it while the marks' right tab stays at
+     * the content edge, beyond the right indent. Word (and LibreOffice's TabOverMargin)
+     * honour a tab stop past the right indent, so the label lands in the column.
+     */
+    indentRight: node.marksColumn,
     tabRight: node.marks !== undefined || trail !== '',
     tabRightAt: context.contentWidth,
     format: node.format,
