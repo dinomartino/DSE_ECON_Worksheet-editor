@@ -79,8 +79,8 @@ export const EXPORT_MESSAGES = defineMessages({
     zh: 'MCQ 題目，適用於答題卡掃描器或問答遊戲。',
   },
   hintKey: {
-    en: 'The answer key is a separate document: answer grid and marking scheme.',
-    zh: '評卷參考是獨立的文件，包含答案表和評分要點。',
+    en: 'The answer key is a separate document: answer grid and marking scheme, laid out as set in the Marking scheme view (Layout).',
+    zh: '評卷參考是獨立的文件，包含答案表和評分要點，版面按評卷參考檢視中「版面」的設定。',
   },
   app: { en: 'App', zh: '應用程式' },
   noMcq: { en: 'No multiple-choice questions to export.', zh: '沒有可匯出的多項選擇題。' },
