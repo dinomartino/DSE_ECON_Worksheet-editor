@@ -13,6 +13,7 @@ import type {
   ImageBlock,
   LanguageMode,
   OutputMode,
+  RichText,
   TableAlign,
   TableBlock,
   TableBorders,
@@ -71,6 +72,16 @@ export type EditTarget =
   | { kind: 'mcqProvenance'; questionId: string }
   | { kind: 'partAnswer'; questionId: string; partId: string }
   | { kind: 'subPartAnswer'; questionId: string; partId: string; subPartId: string }
+  /**
+   * Marking-scheme text (§ `model/markSchemeTypes.ts`), addressed through the leaf that
+   * owns the scheme: a part, or one of its sub-parts when `subPartId` is set. A point's
+   * wording, one of its `/` alternatives (by position, as `mcqStatement`), a level's
+   * descriptor and an EC row's descriptor. Everything else a scheme prints is derived.
+   */
+  | (SchemeAddress & { kind: 'schemePoint'; pointId: string })
+  | (SchemeAddress & { kind: 'schemeAlternative'; pointId: string; index: number })
+  | (SchemeAddress & { kind: 'schemeLevel'; levelId: string })
+  | (SchemeAddress & { kind: 'schemeEc'; descriptorId: string })
   /** A text-bearing layout element — heading, note, part header, section heading. */
   | { kind: 'layoutText'; elementId: string }
   /**
@@ -99,6 +110,19 @@ export type EditTarget =
       kind: 'coverField';
       field: 'instructionsHeading' | 'panelNote' | 'panelFieldLabel' | 'footNote';
     };
+
+/** The leaf a marking scheme belongs to: a part, or a sub-part of it. */
+export interface SchemeAddress {
+  questionId: string;
+  partId: string;
+  subPartId?: string;
+}
+
+/**
+ * One piece of a `TextNode.segments` side: derived wording (`runs`), or an authored
+ * field shown as its own `value[side]` and written back through `edit`.
+ */
+export type EditSegment = { runs: RichText } | { edit: EditTarget; value: BiText };
 
 export interface ListRef {
   /** Identifies the numbering stream; each distinct id becomes one `w:num`. */
@@ -135,6 +159,13 @@ export interface TextNode {
   indent?: number;
   /** Where this text lives in the model, so the preview can edit it in place. */
   edit?: EditTarget;
+  /**
+   * A paragraph joining several authored fields with derived wording (a scheme point
+   * and its `/` alternatives; "Level 1: " and its descriptor): per side, its pieces in
+   * print order, each field editable on its own. Joined, a side's pieces are exactly
+   * `text`'s side. Set instead of `edit`. Preview only; inert in export.
+   */
+  segments?: { en: EditSegment[]; zh: EditSegment[] };
   /**
    * This paragraph's `format.spaceBefore` is a *boundary* gap — air between two
    * top-level items — rather than spacing anyone authored (§ `withLeadingGap`). The

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Preview, type PageComposition } from '@/components/preview/Preview';
+import { AnswerKeyPreview } from '@/components/preview/AnswerKeyPreview';
 import { dropRunAnchor } from '@/components/preview/pagination';
 import { AddRail } from '@/components/editor/AddRail';
 import { PageRail } from '@/components/editor/PageRail';
@@ -55,6 +56,8 @@ export function EditorApp({
   const readOnly = useWorksheetStore((s) => s.readOnly);
   const mode = useWorksheetStore((s) => s.mode);
   const printPreview = useWorksheetStore((s) => s.printPreview);
+  // The Marking scheme view: the page shows the answer key (`AnswerKeyPreview`).
+  const keyView = useWorksheetStore((s) => s.documentView === 'answerKey');
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
   // The 題庫 review bar floats over the page's foot; room below the last sheet lets its
   // last lines scroll clear of it.
@@ -444,12 +447,14 @@ export function EditorApp({
           insert affordance, and because it must never be what gets pushed off-screen
           when the window narrows. */}
       <div className="flex min-h-0 flex-1">
-        {/* Read-only has nothing to add; the page stays in print preview. */}
-        {!readOnly && <AddRail />}
+        {/* Read-only has nothing to add; the page stays in print preview. The Marking
+            scheme view shows the key, where nothing is added or moved: both rails are
+            the paper's. */}
+        {!readOnly && !keyView && <AddRail />}
         {/* The page rail sits beside the add rail rather than under it: both are
             full-height columns, and stacking them would give each half a screen —
             enough for neither a long insert menu nor a long document. */}
-        {showsPageRail(pages.length, coverSheet) && (
+        {!keyView && showsPageRail(pages.length, coverSheet) && (
           <div
             // The width snaps; only the contents fade. Animating `width` resized the
             // page's scroller every frame, and the preview's ResizeObservers on it
@@ -505,51 +510,61 @@ export function EditorApp({
             className="zone-dark scroll-slim min-h-0 flex-1 overflow-auto bg-desk px-6 pt-14"
             style={{ paddingBottom: bankReviewing ? 144 : 64 }}
           >
-            <PreviewWithBankDrop
-              worksheet={worksheet}
-              mode={mode}
-              selectedQuestionId={selectedQuestionId}
-              onSelectQuestion={select}
-              onEdit={handleEdit}
-              onDelete={deleteTarget}
-              onClearCells={clearCells}
-              onDeleteQuestion={removeQuestion}
-              onDeleteLayout={handleDeleteLayout}
-              onLayoutSelectionChange={selectElement}
-              onBulkDelete={removeMany}
-              onBulkDuplicate={duplicateMany}
-              onFormat={formatTarget}
-              onFormatRuns={handleFormatRuns}
-              onInsertBlank={insertBlank}
-              formatOf={formatOf}
-              textOf={textOf}
-              onResizeBlock={resizeBlock}
-              onResizeRows={resizeLayoutElement}
-              onResizeTableColumn={resizeTableColumn}
-              onResizeTableEdge={resizeTableEdge}
-              onResizeTableRow={setTableRowHeight}
-              onInsertTableRow={insertTableRow}
-              onRemoveTableRow={removeTableRow}
-              onInsertTableColumn={insertTableColumn}
-              onRemoveTableColumn={removeTableColumn}
-              onAddCoverInstruction={addCoverInstruction}
-              onRemoveCoverLine={removeCoverLine}
-              onSplitRows={splitLayoutRows}
-              onTrimQuestionAnswerSpace={trimQuestionAnswerSpace}
-              onResolveFills={resolveAnswerSpaceFills}
-              onOpenBlock={setDrawingBlockId}
-              onReorder={handleReorder}
-              onReorderMany={handleReorderMany}
-              bandEditing={bandEditing}
-              headerEditing={headerEditing}
-              footerEditing={footerEditing}
-              onAddQuestion={handleAddFirstQuestion}
-              onOpenBank={openBank}
-              // `setPages` is referentially stable, which the preview's publish effect
-              // depends on — a fresh closure each render would re-notify forever.
-              onPagesChange={setPages}
-              onDragItemChange={setDraggingItemIds}
-            />
+            {keyView ? (
+              <AnswerKeyPreview
+                worksheet={worksheet}
+                language={mode.language}
+                selectedQuestionId={selectedQuestionId}
+                onSelectQuestion={select}
+                onEdit={readOnly || printPreview ? undefined : handleEdit}
+              />
+            ) : (
+              <PreviewWithBankDrop
+                worksheet={worksheet}
+                mode={mode}
+                selectedQuestionId={selectedQuestionId}
+                onSelectQuestion={select}
+                onEdit={handleEdit}
+                onDelete={deleteTarget}
+                onClearCells={clearCells}
+                onDeleteQuestion={removeQuestion}
+                onDeleteLayout={handleDeleteLayout}
+                onLayoutSelectionChange={selectElement}
+                onBulkDelete={removeMany}
+                onBulkDuplicate={duplicateMany}
+                onFormat={formatTarget}
+                onFormatRuns={handleFormatRuns}
+                onInsertBlank={insertBlank}
+                formatOf={formatOf}
+                textOf={textOf}
+                onResizeBlock={resizeBlock}
+                onResizeRows={resizeLayoutElement}
+                onResizeTableColumn={resizeTableColumn}
+                onResizeTableEdge={resizeTableEdge}
+                onResizeTableRow={setTableRowHeight}
+                onInsertTableRow={insertTableRow}
+                onRemoveTableRow={removeTableRow}
+                onInsertTableColumn={insertTableColumn}
+                onRemoveTableColumn={removeTableColumn}
+                onAddCoverInstruction={addCoverInstruction}
+                onRemoveCoverLine={removeCoverLine}
+                onSplitRows={splitLayoutRows}
+                onTrimQuestionAnswerSpace={trimQuestionAnswerSpace}
+                onResolveFills={resolveAnswerSpaceFills}
+                onOpenBlock={setDrawingBlockId}
+                onReorder={handleReorder}
+                onReorderMany={handleReorderMany}
+                bandEditing={bandEditing}
+                headerEditing={headerEditing}
+                footerEditing={footerEditing}
+                onAddQuestion={handleAddFirstQuestion}
+                onOpenBank={openBank}
+                // `setPages` is referentially stable, which the preview's publish effect
+                // depends on — a fresh closure each render would re-notify forever.
+                onPagesChange={setPages}
+                onDragItemChange={setDraggingItemIds}
+              />
+            )}
           </main>
           {hint.shown && <EditHint onDismiss={hint.dismiss} />}
         </div>

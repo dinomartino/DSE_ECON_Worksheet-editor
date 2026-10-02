@@ -52,20 +52,42 @@ describe('ExportDialog', () => {
     expect(markup.indexOf('Format')).toBeLessThan(markup.indexOf('Question paper'));
   });
 
-  it('PDF: only the question paper, the rest disabled in place with the reason', () => {
+  it('PDF: the question paper or the answer key, the rest disabled in place with the reason', () => {
     const markup = render(undefined, 'pdf');
     expect(radio(markup, 'PDF')).toContain('aria-checked="true"');
     expect(radio(markup, 'Question paper')).not.toContain('disabled');
-    for (const label of ['Answer key', 'Both', 'Other apps']) {
+    expect(radio(markup, 'Answer key')).not.toContain('disabled');
+    for (const label of ['Both', 'Other apps']) {
       expect(radio(markup, label)).toContain('disabled=""');
       expect(radio(markup, label)).toContain('Not as PDF');
     }
-    expect(markup).toContain('PDF prints the question paper only');
+    expect(markup).toContain('PDF prints the page as it shows');
     // Language and version still apply: the page switches, then prints.
     expect(markup).toContain('The page switches to this language and version');
     expect(radio(markup, 'Teacher')).not.toContain('disabled');
     expect(markup).toContain('Print to PDF');
     expect(markup).not.toContain('Export .docx');
+  });
+
+  it('opened from the Marking scheme view: What is the answer key, and PDF prints it', () => {
+    const open = (initialFormat?: ExportFormat) =>
+      renderToStaticMarkup(
+        <ExportDialog
+          worksheet={createWorksheet()}
+          mode={{ language: 'zh', version: 'teacher' }}
+          onClose={() => {}}
+          onExported={() => {}}
+          onPrint={() => {}}
+          initialFormat={initialFormat}
+          initialWhat="answerKey"
+        />,
+      );
+    expect(radio(open(), 'Answer key')).toContain('aria-checked="true"');
+    const pdf = open('pdf');
+    expect(radio(pdf, 'Answer key')).toContain('aria-checked="true"');
+    expect(pdf).toContain('The page switches to the Marking scheme view, then prints its sheets.');
+    // The key has no student copy: the copy choice greys in place.
+    expect(pdf).toContain('Applies to the question paper only.');
   });
 
   it('PDF says per platform what happens: the web prints, the desktop app saves a file', () => {

@@ -21,6 +21,7 @@ import { Button, CheckField, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { DownloadIcon, PdfIcon } from '@/components/ui/icons';
 import { versionLetters } from '@/model/versions';
+import type { DocumentView } from '@/store/worksheetStore';
 import { KeyDocumentsField } from './KeyDocumentsField';
 import {
   deliverFiles,
@@ -62,8 +63,9 @@ export interface ExportDialogProps {
    * PDF: print the sheets in this mode. Called after the dialog has closed, so it is
    * gone from the page before the print starts; the caller reports its own failure.
    * Desktop passes the `file` its save sheet chose, to write without a print sheet.
+   * `view` is what the page must show to print it: the paper, or the answer key.
    */
-  onPrint?: (mode: OutputMode, file?: string) => void;
+  onPrint?: (mode: OutputMode, file?: string, view?: DocumentView) => void;
   /** The format the dialog opens on; `.docx` when absent. */
   initialFormat?: ExportFormat;
   /** What the dialog opens on; the question paper when absent. */
@@ -180,9 +182,9 @@ function formatOptions(
 }
 
 /** `<name> (Student) (EN).pdf`: the `.docx` name, so the two files sort together. */
-async function pdfFileName(worksheet: Worksheet, mode: OutputMode): Promise<string> {
-  const { docxFileName } = await import('@/export/docx');
-  return docxFileName(worksheet, mode).replace(/\.docx$/, '.pdf');
+async function pdfFileName(worksheet: Worksheet, mode: OutputMode, view: DocumentView = 'paper'): Promise<string> {
+  const name = view === 'answerKey' ? answerKeyFileName(worksheet, mode.language) : docxFileName(worksheet, mode);
+  return name.replace(/\.docx$/, '.pdf');
 }
 
 const appOptions = (
@@ -247,9 +249,9 @@ export function ExportDialog({
   const formats = formatOptions(desktop, m);
   const apps = appOptions(m);
   const [chosenWhat, setWhat] = useState<ExportWhat>(initialWhat);
-  // PDF prints what is on the page, and only the question paper is; the choice is kept
-  // for when the format goes back to .docx.
-  const what: ExportWhat = format === 'pdf' ? 'paper' : chosenWhat;
+  // PDF prints the sheets on the page: the question paper, or the answer key (the
+  // Marking scheme view). The other choices are kept for when the format goes back.
+  const what: ExportWhat = format === 'pdf' && chosenWhat !== 'answerKey' ? 'paper' : chosenWhat;
   const pdf = format === 'pdf';
   const json = format === 'json';
   // The paper's own options, greyed when no question paper is written (inside a greyed
@@ -359,17 +361,23 @@ export function ExportDialog({
   // Closed first, so the dialog is gone from the page before anything is printed.
   // Desktop asks where first; a cancelled sheet keeps the dialog, as `.json` does.
   const handlePrint = async () => {
-    const printMode: OutputMode = {
-      ...paperMode({ what: 'paper', language, version, includeCover, includeAnswerSpace }),
-      ...(printVariant && printVariant !== letters[0] ? { variant: printVariant } : {}),
-    };
+    // The key has no student copy, cover or answer space: it prints in this language,
+    // and the paper's own view (version, paper version) is left as it was.
+    const view: DocumentView = what === 'answerKey' ? 'answerKey' : 'paper';
+    const printMode: OutputMode =
+      view === 'answerKey'
+        ? { language, version: mode.version, ...(mode.variant ? { variant: mode.variant } : {}) }
+        : {
+            ...paperMode({ what: 'paper', language, version, includeCover, includeAnswerSpace }),
+            ...(printVariant && printVariant !== letters[0] ? { variant: printVariant } : {}),
+          };
     setBusy(true);
     setError(undefined);
     let destination: { file?: string } | undefined;
     try {
       destination = await pdfDestination({
         desktop,
-        choose: async () => chooseSavePath(await pdfFileName(worksheet, printMode), PDF_FILTERS),
+        choose: async () => chooseSavePath(await pdfFileName(worksheet, printMode, view), PDF_FILTERS),
       });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : m.failed);
@@ -379,7 +387,7 @@ export function ExportDialog({
     }
     if (!destination) return;
     callbacks.current.onClose();
-    onPrint?.(printMode, destination.file);
+    onPrint?.(printMode, destination.file, view);
   };
 
   // The document file: nothing to choose, one save. A cancelled sheet keeps the dialog.
@@ -505,7 +513,9 @@ export function ExportDialog({
                 label={m.what}
                 hint={
                   pdf
-                    ? m.hintPdf
+                    ? what === 'answerKey'
+                      ? m.hintPdfKey
+                      : m.hintPdf
                     : what === 'both'
                       ? canChooseFolder()
                         ? m.hintBothFolder(fileCount)
@@ -521,9 +531,9 @@ export function ExportDialog({
                   onChange={setWhat}
                   options={[
                     { value: 'paper', label: m.paper },
+                    { value: 'answerKey', label: m.key },
                     ...(
                       [
-                        { value: 'answerKey', label: m.key },
                         { value: 'both', label: m.both },
                         { value: 'apps', label: m.apps, title: m.appsTitle },
                       ] as const
@@ -569,7 +579,13 @@ export function ExportDialog({
 
               <Field
                 label={m.language}
-                hint={pdf ? m.languageHint(desktop) : undefined}
+                hint={
+                  pdf
+                    ? what === 'answerKey'
+                      ? m.languageHintKey(desktop)
+                      : m.languageHint(desktop)
+                    : undefined
+                }
               >
                 <Segmented
                   label={m.language}

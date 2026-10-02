@@ -93,7 +93,7 @@ export const STANDARD_TRANSLATIONS: Readonly<Record<string, string>> = {
   Stem: '題幹',
   Marks: '分',
   Answer: '答案',
-  'Answer key': '答案頁',
+  'Answer key': '評卷參考',
   'Answer lines': '答題線',
   'Mark scheme': '評卷參考',
   'Student (view)': '學生版',

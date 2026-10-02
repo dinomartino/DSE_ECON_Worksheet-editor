@@ -5,7 +5,7 @@ export const KEY_DOCUMENTS_MESSAGES = defineMessages({
   label: { en: 'Also include', zh: '一併包含' },
   hint: {
     en: 'Their answer keys follow this one’s in the same file, each from a new page.',
-    zh: '它們的答案頁會接在本文件的答案頁之後，放在同一個檔案，各自由新一頁開始。',
+    zh: '它們的評卷參考會接在本文件的評卷參考之後，放在同一個檔案，各自由新一頁開始。',
   },
   searchLabel: { en: 'Search saved documents', zh: '搜尋已儲存的工作紙' },
   searchPlaceholder: { en: 'Search by name', zh: '按名稱搜尋' },

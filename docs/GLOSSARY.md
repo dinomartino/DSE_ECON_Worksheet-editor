@@ -36,6 +36,9 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **QAB** — Question-Answer Book: the long-question booklet, a 10pt document with dotted
   answer space and page furniture. `src/model/pageFurniture.ts:isQabDocument`
 - **LQ** — long question; LQ mode is the QAB's feature set. `src/export/docx/styles.ts:LQ_LINE_PITCH_TWIPS`
+- **Marking scheme view (評卷參考)** — the toolbar's third view: the answer key on its own
+  sheets, editable and printable; editor state, never stored. Chrome calls the key 評卷參考;
+  the printed title keeps 答案及評分參考. `src/components/preview/AnswerKeyPreview.tsx:AnswerKeyPreview`
 - **Combined answer key** — one answer-key `.docx` covering several saved documents (Paper 1
   + Paper 2), chosen in Export; export-time only. `src/render/answerKey.ts:renderCombinedAnswerKey`
 - **Paper 1** — the HKDSE multiple-choice paper shape: wider boundaries, derived question

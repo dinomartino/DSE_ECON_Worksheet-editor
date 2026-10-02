@@ -12,6 +12,7 @@ import type {
 } from '@/model/types';
 import { trailLabel, type EditTarget, type RenderNode, type TextNode } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
+import { renderAnswerKey } from '@/render/answerKey';
 import type { DiagramImageMap } from './diagramImage';
 
 /**
@@ -540,52 +541,80 @@ function wrapHtml(body: string, css: string): string {
 }
 
 /** Plain-text fallback flavour. */
+/** One node as plain-text lines, pushed onto `lines`. */
+function pushPlain(lines: string[], node: RenderNode, language: LanguageMode): void {
+  if (node.kind === 'text') {
+    const marker = node.listRef ? `${node.listRef.marker} ` : '';
+    const en = plain(node.text.en);
+    const zh = plain(node.text.zh);
+    const body = language === 'en' ? en : language === 'zh' ? zh : [en, zh].filter(Boolean).join(' / ');
+    const label = textNodeLabel(node, language);
+    const marks = label ? ` ${label}` : '';
+    if (marker || body || marks) lines.push(`${marker}${body}${marks}`.trim());
+  } else if (node.kind === 'table') {
+    for (const row of node.rows) {
+      lines.push(
+        row
+          .filter((cell) => !cell.covered)
+          .map((cell) => plain(language === 'zh' ? cell.text.zh : cell.text.en))
+          .join('\t'),
+      );
+    }
+  } else if (node.kind === 'columns') {
+    // Tab-separated, matching how the docx lays the row out.
+    lines.push(
+      node.cells
+        .map((cell) => {
+          const text = plain(language === 'zh' ? cell.text.zh : cell.text.en);
+          return cell.marker ? `${cell.marker} ${text}` : text;
+        })
+        .join('\t'),
+    );
+  } else if (node.kind === 'image' || node.kind === 'diagram') {
+    const fallback = node.kind === 'diagram' ? 'Diagram' : 'Image';
+    lines.push(`[${plain(node.altText.en) || plain(node.altText.zh) || fallback}]`);
+  } else if (node.kind === 'answerGraph') {
+    lines.push('[Blank axes]');
+  } else if (node.kind === 'divider') {
+    lines.push('---');
+  } else if (node.kind === 'answerLines' || node.kind === 'answerSpace') {
+    for (let i = 0; i < Math.max(1, node.lines); i += 1) lines.push('');
+  } else if (node.kind === 'spacer' || node.kind === 'pageBreak') {
+    lines.push('');
+  }
+}
+
+/**
+ * The answer key (`render/answerKey.ts`) as clipboard HTML: the Marking scheme view's
+ * Copy for Word. The nodes the `.docx` key is built from; no page furniture, as ever.
+ */
+export function answerKeyClipboardHtml(
+  worksheet: Worksheet,
+  language: LanguageMode,
+  diagramImages: DiagramImageMap = new Map(),
+): string {
+  const css = fontCss(worksheet.fonts);
+  const width = contentWidth(pageSetupOf(worksheet));
+  const body = renderAnswerKey(worksheet, language)
+    .map((node) => nodeHtml(node, language, css, diagramImages, width))
+    .join('');
+  return wrapHtml(body, css);
+}
+
+/** One node's clipboard HTML. Exposed for the tests that prove edit targets are inert. */
+export { nodeHtml as clipboardNodeHtml };
+
+/** The answer key's plain-text flavour. */
+export function answerKeyPlainText(worksheet: Worksheet, language: LanguageMode): string {
+  const lines: string[] = [];
+  for (const node of renderAnswerKey(worksheet, language)) pushPlain(lines, node, language);
+  return lines.join('\n');
+}
+
 export function worksheetPlainText(worksheet: Worksheet, mode: OutputMode): string {
   const rendered = renderWorksheet(worksheet, mode);
   const lines: string[] = [];
-
-  const push = (node: RenderNode) => {
-    if (node.kind === 'text') {
-      const marker = node.listRef ? `${node.listRef.marker} ` : '';
-      const en = plain(node.text.en);
-      const zh = plain(node.text.zh);
-      const body =
-        mode.language === 'en' ? en : mode.language === 'zh' ? zh : [en, zh].filter(Boolean).join(' / ');
-      const label = textNodeLabel(node, mode.language);
-      const marks = label ? ` ${label}` : '';
-      if (marker || body || marks) lines.push(`${marker}${body}${marks}`.trim());
-    } else if (node.kind === 'table') {
-      for (const row of node.rows) {
-        lines.push(
-          row
-            .filter((cell) => !cell.covered)
-            .map((cell) => plain(mode.language === 'zh' ? cell.text.zh : cell.text.en))
-            .join('\t'),
-        );
-      }
-    } else if (node.kind === 'columns') {
-      // Tab-separated, matching how the docx lays the row out.
-      lines.push(
-        node.cells
-          .map((cell) => {
-            const text = plain(mode.language === 'zh' ? cell.text.zh : cell.text.en);
-            return cell.marker ? `${cell.marker} ${text}` : text;
-          })
-          .join('\t'),
-      );
-    } else if (node.kind === 'image' || node.kind === 'diagram') {
-      const fallback = node.kind === 'diagram' ? 'Diagram' : 'Image';
-      lines.push(`[${plain(node.altText.en) || plain(node.altText.zh) || fallback}]`);
-    } else if (node.kind === 'answerGraph') {
-      lines.push('[Blank axes]');
-    } else if (node.kind === 'divider') {
-      lines.push('---');
-    } else if (node.kind === 'answerLines' || node.kind === 'answerSpace') {
-      for (let i = 0; i < Math.max(1, node.lines); i += 1) lines.push('');
-    } else if (node.kind === 'spacer' || node.kind === 'pageBreak') {
-      lines.push('');
-    }
-  };
+  const push = (node: RenderNode) => pushPlain(lines, node, mode.language);
 
   if (rendered.bands.length > 0) rendered.bands.forEach(push);
   else if (rendered.title) push(rendered.title);

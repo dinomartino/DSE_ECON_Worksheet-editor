@@ -13,7 +13,7 @@ export const EXPORT_MESSAGES = defineMessages({
   failed: { en: 'Export failed.', zh: '匯出失敗。' },
 
   // Footer actions
-  downloadKey: { en: 'Download answer key', zh: '下載答案頁' },
+  downloadKey: { en: 'Download answer key', zh: '下載評卷參考' },
   downloadVersion: { en: (letter: string) => `Download version ${letter}`, zh: (letter: string) => `下載版本 ${letter}` },
   downloadPaper: { en: 'Download question paper', zh: '下載試卷' },
   savePdf: { en: 'Save PDF…', zh: '儲存 PDF…' },
@@ -27,7 +27,7 @@ export const EXPORT_MESSAGES = defineMessages({
   // After the save
   keyExportedBut: {
     en: (note: string) => `The answer key was exported, but ${note}.`,
-    zh: (note: string) => `答案頁已匯出，但${note}。`,
+    zh: (note: string) => `評卷參考已匯出，但${note}。`,
   },
   waitingNote: {
     en: (paper: boolean) =>
@@ -35,7 +35,7 @@ export const EXPORT_MESSAGES = defineMessages({
     zh: (paper: boolean) =>
       `${paper ? '試卷已下載。' : '第一個檔案已下載。'}瀏覽器每次點按只允許下載一個檔案，所以下一個檔案會等你再按一次。`,
   },
-  inKey: { en: (notes: string) => `In the answer key, ${notes}.`, zh: (notes: string) => `在答案頁中，${notes}。` },
+  inKey: { en: (notes: string) => `In the answer key, ${notes}.`, zh: (notes: string) => `在評卷參考中，${notes}。` },
   noteSeparator: { en: '; ', zh: '；' },
   listSeparator: { en: ', ', zh: '、' },
   quoted: { en: (title: string) => `“${title}”`, zh: (title: string) => `「${title}」` },
@@ -53,14 +53,18 @@ export const EXPORT_MESSAGES = defineMessages({
   what: { en: 'What', zh: '內容' },
   whatAria: { en: 'What to export', zh: '匯出內容' },
   paper: { en: 'Question paper', zh: '試卷' },
-  key: { en: 'Answer key', zh: '答案頁' },
+  key: { en: 'Answer key', zh: '評卷參考' },
   both: { en: 'Both', zh: '兩者' },
   apps: { en: 'Other apps', zh: '其他應用程式' },
   appsTitle: { en: 'Answer-key CSV, Kahoot or Blooket', zh: '答案 CSV、Kahoot 或 Blooket' },
   notPdf: { en: 'Not as PDF: export it as .docx', zh: 'PDF 不適用，請以 .docx 匯出' },
   hintPdf: {
-    en: 'PDF prints the question paper only; the others export under .docx.',
-    zh: 'PDF 只會列印試卷；其他內容請以 .docx 匯出。',
+    en: 'PDF prints the page as it shows: the question paper or the answer key. Both and Other apps export under .docx.',
+    zh: 'PDF 會按頁面所見列印試卷或評卷參考。「兩者」和「其他應用程式」請以 .docx 匯出。',
+  },
+  hintPdfKey: {
+    en: 'The page switches to the Marking scheme view, then prints its sheets.',
+    zh: '頁面會切換到評卷參考，然後列印這些頁面。',
   },
   hintBothFolder: {
     en: (n: number) => `${n} files, saved together in a folder you choose.`,
@@ -76,7 +80,7 @@ export const EXPORT_MESSAGES = defineMessages({
   },
   hintKey: {
     en: 'The answer key is a separate document: answer grid and marking scheme.',
-    zh: '答案頁是獨立的文件，包含答案表和評卷參考。',
+    zh: '評卷參考是獨立的文件，包含答案表和評分要點。',
   },
   app: { en: 'App', zh: '應用程式' },
   noMcq: { en: 'No multiple-choice questions to export.', zh: '沒有可匯出的多項選擇題。' },
@@ -85,6 +89,10 @@ export const EXPORT_MESSAGES = defineMessages({
   languageHint: {
     en: (desktop: boolean) => `The page switches to this language and version, then ${desktop ? 'saves' : 'prints'}.`,
     zh: (desktop: boolean) => `頁面會切換到這個語言和版本，然後${desktop ? '儲存' : '列印'}。`,
+  },
+  languageHintKey: {
+    en: (desktop: boolean) => `The page switches to this language, then ${desktop ? 'saves' : 'prints'}.`,
+    zh: (desktop: boolean) => `頁面會切換到這個語言，然後${desktop ? '儲存' : '列印'}。`,
   },
   langEn: { en: 'English only', zh: '只顯示英文' },
   langZh: { en: '中文 only', zh: '只顯示中文' },
@@ -103,7 +111,7 @@ export const EXPORT_MESSAGES = defineMessages({
   },
   shuffledFiles: {
     en: 'Options shuffle per version. One file each; the answer key covers them all.',
-    zh: '每個版本的選項次序不同，各自一個檔案；答案頁涵蓋所有版本。',
+    zh: '每個版本的選項次序不同，各自一個檔案；評卷參考涵蓋所有版本。',
   },
   all: { en: 'All', zh: '全部' },
   allPdf: { en: 'PDF prints one version at a time', zh: 'PDF 一次只列印一個版本' },
@@ -162,7 +170,7 @@ export const EXPORT_MESSAGES = defineMessages({
 
   // Status lines for the toolbar
   exportedFiles: { en: (n: number) => `Exported ${n} files`, zh: (n: number) => `已匯出 ${n} 個檔案` },
-  exportedKey: { en: 'Exported answer key', zh: '已匯出答案頁' },
+  exportedKey: { en: 'Exported answer key', zh: '已匯出評卷參考' },
   exportedExt: { en: (ext: string) => `Exported .${ext}`, zh: (ext: string) => `已匯出 .${ext}` },
   exportedDocx: { en: 'Exported .docx', zh: '已匯出 .docx' },
   exportedJson: { en: 'Exported .json', zh: '已匯出 .json' },

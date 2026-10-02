@@ -109,6 +109,13 @@ interface WorksheetState {
    * (that is what the exporter reads); editor state, not persisted.
    */
   printPreview: boolean;
+  /**
+   * Which document the page shows: the paper, or its answer key (the Marking scheme
+   * view, `render/answerKey.ts`). Editor state like `printPreview`, never stored and not
+   * part of `OutputMode`: the view picks *which* IR the page renders, not how, so every
+   * `version` rule (the student leak guards, the IR cache) is untouched by it.
+   */
+  documentView: DocumentView;
   /** Unsaved changes since the last `markSaved`. */
   dirty: boolean;
   /**
@@ -191,6 +198,8 @@ interface WorksheetState {
   /** Persist to storage now, rather than waiting for the autosave debounce. */
   save: () => Promise<void>;
   setMode: (patch: Partial<OutputMode>) => void;
+  /** Show the paper or the Marking scheme view. A view change: no history, not dirty. */
+  setDocumentView: (view: DocumentView) => void;
   setPrintPreview: (on: boolean) => void;
   select: (questionId?: string) => void;
   /** Mirror the page's layout-element selection; see `selectedElementId`. */
@@ -421,6 +430,9 @@ export type QuestionBatchReport =
   | { ok: false; refused: 'readOnly' | 'otherDocument' | 'nothing' };
 
 export type { BandScope, FirstPageMode };
+
+/** What the page shows (§ `documentView`): the question paper, or its answer key. */
+export type DocumentView = 'paper' | 'answerKey';
 
 /** Apply a patch to the question with this id. */
 function mapQuestion(
@@ -710,6 +722,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   worksheet: createWorksheet(),
   mode: { language: 'en', version: 'student' },
   printPreview: false,
+  documentView: 'paper',
   dirty: false,
   readOnly: false,
   insertMenuRequest: 0,
@@ -812,6 +825,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
 
   // A view change, not an edit: bypasses `commit`, so no history entry and no dirty.
   setMode: (patch) => set((state) => ({ mode: { ...state.mode, ...patch } })),
+
+  setDocumentView: (documentView) => set({ documentView }),
 
   // Entering print preview clears the question selection (a ring is editor chrome in
   // a view whose point is what prints). Bypasses `commit` like setMode.

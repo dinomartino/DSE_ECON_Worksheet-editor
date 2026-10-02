@@ -57,8 +57,8 @@ Example: "Paper 1 mock · MCQ" → "Paper 1 Mock · MCQ"; "Download PNG" → "�
 | Paper size | 紙張大小 | Page | 頁 |
 | Question | 題目 | Part (of a question) | 分題 |
 | Stem | 題幹 | Marks | 分 |
-| Answer / Answer key | 答案 / 答案頁 | Answer lines | 答題線 |
-| Mark scheme | 評卷參考 | Student / Teacher (view) | 學生版 / 教師版 |
+| Answer / Answer key | 答案 / 評卷參考 | Answer lines | 答題線 |
+| Mark scheme / Marking scheme (view) | 評卷參考 | Student / Teacher (view) | 學生版 / 教師版 |
 | Diagram / Graph | 圖表 | Curve | 曲線 |
 | Point | 點 | Label (on a diagram) | 標示 |
 | Tag | 標籤 | Topic | 課題 |

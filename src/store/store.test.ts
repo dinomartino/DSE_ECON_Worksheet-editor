@@ -29,6 +29,10 @@ import type { DiagramBlock, McqQuestion, Question, StructuredQuestion, TableBloc
 import { buildAcceptanceWorksheet, withFlow } from '@/test/fixtures';
 import { richMcq, richStructured } from '@/test/idFixture';
 import { buildTranslateFixture } from '@/test/translateFixture';
+import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
+import { serializeWorksheet } from '@/model/migrations';
+import { textOfTarget } from '@/model/edits';
+import { answerKeyView } from '@/render/answerKey';
 import {
   lastQuestionGap,
   unanchoredQuestionSection,
@@ -253,6 +257,35 @@ describe('question operations (§5.3)', () => {
     const before = store().worksheet.questions.length;
     store().addQuestion('does-not-exist');
     expect(store().worksheet.questions.length).toBe(before);
+  });
+});
+
+describe('the Marking scheme view', () => {
+  it('is editor state: it never writes into the document, its history or the saved file', () => {
+    useWorksheetStore.setState({ documentView: 'paper' });
+    const before = store().worksheet;
+    store().setDocumentView('answerKey');
+    expect(store().documentView).toBe('answerKey');
+    expect(store().worksheet).toBe(before);
+    expect(store().dirty).toBe(false);
+    expect(store().past).toEqual([]);
+    expect(store().mode).toEqual({ language: 'bilingual', version: 'student' });
+    expect(serializeWorksheet(store().worksheet)).not.toContain('answerKey');
+    store().setDocumentView('paper');
+    expect(store().worksheet).toBe(before);
+  });
+
+  it('edits typed on the key go through the one undoable edit path', () => {
+    useWorksheetStore.setState({ worksheet: buildMarkSchemeWorksheet(), documentView: 'answerKey' });
+    const target = answerKeyView(store().worksheet, 'en')
+      .nodes.flatMap((node) => (node.kind === 'text' && node.edit ? [node.edit] : []))
+      .find((edit) => edit.kind === 'schemePoint')!;
+    const before = textOfTarget(store().worksheet, target)!;
+    store().applyEdit(target, { ...before, en: [{ text: 'Typed on the key' }] });
+    expect(plain(textOfTarget(store().worksheet, target)!.en)).toBe('Typed on the key');
+    expect(store().dirty).toBe(true);
+    store().undo();
+    expect(textOfTarget(store().worksheet, target)).toEqual(before);
   });
 });
 

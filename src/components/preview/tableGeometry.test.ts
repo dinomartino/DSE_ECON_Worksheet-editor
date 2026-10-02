@@ -36,7 +36,7 @@ const PREVIEW = readFileSync('src/components/preview/Preview.tsx', 'utf8');
 const tableView = (() => {
   const start = PREVIEW.indexOf('function TableNodeView');
   expect(start, 'TableNodeView has been renamed').toBeGreaterThan(0);
-  return PREVIEW.slice(start, PREVIEW.indexOf('\nfunction NodeView', start));
+  return PREVIEW.slice(start, PREVIEW.indexOf('\nexport function NodeView', start));
 })();
 
 describe('the previewed table matches the geometry Word is given', () => {

@@ -241,11 +241,15 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       });
     }
     // The model diagram, then the HKEAA scheme, follow the plain answer; teacher only.
+    const partScheme = () =>
+      renderMarkScheme(part.scheme, {
+        indent: context.indents.partText,
+        teacherOnly: true,
+        at: { questionId: question.id, partId: part.id },
+      });
     if (!hasSubParts) {
       pushAnswerDiagram(nodes, part.answerDiagram);
-      nodes.push(
-        ...renderMarkScheme(part.scheme, { indent: context.indents.partText, teacherOnly: true }),
-      );
+      nodes.push(...partScheme());
     }
 
     subParts.forEach((subPart, subIndex) => {
@@ -317,6 +321,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         ...renderMarkScheme(subPart.scheme, {
           indent: context.indents.subPartText,
           teacherOnly: true,
+          at: { questionId: question.id, partId: part.id, subPartId: subPart.id },
         }),
       );
 
@@ -343,9 +348,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     }
     if (hasSubParts) {
       pushAnswerDiagram(nodes, part.answerDiagram);
-      nodes.push(
-        ...renderMarkScheme(part.scheme, { indent: context.indents.partText, teacherOnly: true }),
-      );
+      nodes.push(...partScheme());
     }
 
     // The part's own writing room, after the whole group. Each sub-part's space is its
@@ -488,6 +491,9 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
     const hasSubParts = subParts.length > 0;
     const sharedMarksIndex =
       hasSubParts && subParts.every((sub) => sub.marks === undefined) ? subParts.length - 1 : -1;
+    // Where the row's answer and scheme are typed when the key is on the page.
+    const partAt = { questionId: question.id, partId: part.id };
+    const partEdits = { answerEdit: { kind: 'partAnswer', ...partAt } as const, schemeAt: partAt };
     rows.push({
       depth: 1,
       label: partLabel(partIndex),
@@ -495,9 +501,11 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
       answer: hasSubParts ? undefined : part.answer,
       ...(!hasSubParts && part.answerDiagram ? { diagram: part.answerDiagram } : {}),
       ...(!hasSubParts && part.scheme ? { scheme: part.scheme } : {}),
+      ...(!hasSubParts ? partEdits : {}),
     });
     drawn(1, [...(part.blocksBefore ?? []), ...part.blocks]);
     subParts.forEach((subPart, subIndex) => {
+      const subAt = { ...partAt, subPartId: subPart.id };
       rows.push({
         depth: 2,
         label: subPartLabel(subIndex),
@@ -505,6 +513,8 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
         answer: subPart.answer,
         ...(subPart.answerDiagram ? { diagram: subPart.answerDiagram } : {}),
         ...(subPart.scheme ? { scheme: subPart.scheme } : {}),
+        answerEdit: { kind: 'subPartAnswer', ...subAt },
+        schemeAt: subAt,
       });
       drawn(2, subPart.blocks);
     });
@@ -519,6 +529,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
         ...(!isBiTextEmpty(part.answer) ? { answer: part.answer } : {}),
         ...(part.answerDiagram ? { diagram: part.answerDiagram } : {}),
         ...(part.scheme ? { scheme: part.scheme } : {}),
+        ...partEdits,
       });
     }
   });

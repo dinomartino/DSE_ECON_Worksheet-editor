@@ -661,9 +661,12 @@ body {
 
   /* WebKit's print keeps screen-width breakpoints, so hidden chrome overflows the paper
      and WebKit shrinks the whole page to fit. `#print-root`'s containing block is the
-     page (its ancestors stay unpositioned), so it escapes this clip. */
+     page, so it escapes this clip: its ancestors are forced unpositioned here, because
+     one positioned on screen (the edit hint's wrapper) made the clipped editor column
+     the containing block and cut the printed sheets to its width. */
   body *:has(#print-root) {
     overflow-x: clip !important;
+    position: static !important;
   }
 
   /* …except a space-reserving twin, which the rule above would print (the marks
