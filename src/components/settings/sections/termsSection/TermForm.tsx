@@ -107,7 +107,7 @@ export function TermForm({
         event.stopPropagation();
         onCancel();
       }}
-      className="mt-2 space-y-2.5 rounded-xl border border-line bg-surface-raised p-3"
+      className="mt-2 max-w-[720px] space-y-2.5 rounded-xl border border-line bg-surface-raised p-3"
     >
       <p className="text-[12px] font-medium text-ink">{id ? m.editTermTitle : m.addTermTitle}</p>
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-[2fr_1fr]">

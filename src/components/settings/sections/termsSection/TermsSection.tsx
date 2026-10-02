@@ -496,7 +496,7 @@ export default function TermsSection() {
 
   return (
     <div>
-      <p className="-mt-2 mb-3 text-[12px] text-ink-muted">{m.explain}</p>
+      <p className="-mt-2 mb-3 max-w-[640px] text-[12px] text-ink-muted">{m.explain}</p>
       <div className="sticky -top-px z-10 -mx-1 space-y-1.5 bg-surface px-1 pb-2 pt-1">
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -506,18 +506,21 @@ export default function TermsSection() {
             aria-label={m.search}
             onChange={(event) => search(event.target.value)}
             onKeyDown={(event) => void escapeClears(event, query, () => search(''))}
-            className={`${INPUT} flex-1 basis-44`}
+            className={`${INPUT} max-w-[440px] flex-1 basis-44`}
           />
-          <Segmented<TermFilter>
-            label={m.filterLabel}
-            value={filter}
-            onChange={show}
-            options={[
-              { value: 'choices', label: m.filterChoices(counts.choices) },
-              { value: 'all', label: m.filterAll(counts.all) },
-              { value: 'mine', label: m.filterMine(counts.mine) },
-            ]}
-          />
+          {/* Right-aligned over Export / Import, so the widened search does not stretch. */}
+          <span className="ml-auto">
+            <Segmented<TermFilter>
+              label={m.filterLabel}
+              value={filter}
+              onChange={show}
+              options={[
+                { value: 'choices', label: m.filterChoices(counts.choices) },
+                { value: 'all', label: m.filterAll(counts.all) },
+                { value: 'mine', label: m.filterMine(counts.mine) },
+              ]}
+            />
+          </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button

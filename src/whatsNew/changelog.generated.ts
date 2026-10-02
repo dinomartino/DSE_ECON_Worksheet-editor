@@ -249,6 +249,11 @@ a version heading is edited afterwards.
   Firefox 和 Safari 仍會儲存到「下載」資料夾。 -->
 
 ### Changed
+- **A larger Settings window.** Settings now fills most of your screen, so Translation
+  terms shows far more terms at once and the import preview has room to breathe. On a
+  big monitor it stops growing at a comfortable size.
+  <!-- zh: **「設定」視窗更大。** 「設定」現在佔用大部分屏幕，「翻譯用語」可一次顯示更多
+  用語，匯入預覽亦更寬裕。在大屏幕上，視窗到了合適大小便不再放大。 -->
 - **One New worksheet button on the start screen.** It opens a gallery of the four kinds
   of paper, drawn as the page each one prints, with the kind you made last already
   chosen. The Question bank now sits under Library, with room to spare on a small screen.

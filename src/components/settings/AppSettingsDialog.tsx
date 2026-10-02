@@ -150,8 +150,7 @@ export function AppSettingsDialog({
       title={m.title}
       description={settingsDescription(env, lang)}
       onClose={() => step('dismiss')}
-      width={760}
-      height={640}
+      size="large"
       scrollBody={false}
       footer={
         <AppSettingsFooter
@@ -176,19 +175,24 @@ export function AppSettingsDialog({
         }))}
       >
         {!persistent && (
-          <p className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn-ink">
+          <p className="mb-4 max-w-[720px] rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn-ink">
             {m.storageBlocked}
           </p>
         )}
         {def && (
-          <section aria-labelledby={`settings-${def.id}`}>
+          // The large dialog is for long lists: a form pane keeps a form's width, so its
+          // fields and option cards do not stretch across the panel.
+          <section
+            aria-labelledby={`settings-${def.id}`}
+            className={def.wide ? undefined : 'max-w-[720px]'}
+          >
             <h3
               id={`settings-${def.id}`}
               className="text-[15px] font-semibold text-ink"
             >
               {localize(def.label, lang)}
             </h3>
-            <p className="mb-4 mt-0.5 text-xs text-ink-muted">
+            <p className="mb-4 mt-0.5 max-w-[640px] text-xs text-ink-muted">
               {localize(def.description, lang)}
             </p>
             <SectionPane
