@@ -81,7 +81,7 @@ import {
 } from "@/model/table";
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
-import { diagramSvg } from "@/render/diagram";
+import { diagramNodeSvg } from "@/render/diagramPage";
 import { AnswerGraphView } from "./AnswerGraphView";
 import {
   BLANK_LINE_PT,
@@ -1111,14 +1111,13 @@ function DiagramNodeView({
   // happened on every ancestor render — every hover, every marquee frame — which is the
   // one case where re-running a pure function is not the expensive half.
   const svg = useMemo(
-    () => diagramSvg(node.diagram, {
-      widthPx: node.widthPx,
-      heightPx: node.heightPx,
-      language,
-      fonts,
-      // The walker marks a teacher-version diagram that has an answer layer.
-      ...(node.answers ? { answers: "show" as const } : {}),
-    }),
+    // Shared with the draw canvas's Preview (`render/diagramPage.ts`).
+    () =>
+      diagramNodeSvg(
+        { diagram: node.diagram, widthPx: node.widthPx, heightPx: node.heightPx, answers: node.answers },
+        language,
+        fonts,
+      ),
     [node.diagram, node.widthPx, node.heightPx, language, fonts, node.answers],
   );
 

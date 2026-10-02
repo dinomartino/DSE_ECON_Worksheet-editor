@@ -375,7 +375,8 @@ function GraphSurface({
       />
     );
   }
-  return <DiagramCanvas {...canvas} panel={settings} />;
+  // A graph's image always draws its answer, so the canvas's Preview starts on Teacher.
+  return <DiagramCanvas {...canvas} version="teacher" panel={settings} />;
 }
 
 /** The figure, drawn as it prints, beside a panel: a pie's fields, or a newer graph's note. */
