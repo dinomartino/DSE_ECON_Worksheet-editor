@@ -37,6 +37,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   Chromium + WebKit + both `.docx` checked (student PNG 0 red pixels). **Open:** an older build
   opening such a file prints answers in the student version (no schema bump); Tauri shell and
   中文 UI not clicked through; canvas toolbar wraps to two rows at 1512px (not checked if new).
+  **Same day: canvas Edit | Preview** (`src/render/diagramPage.ts`: the canvas preview draws the page's
+  own node, byte-identical by test); Student/Teacher switch on the stage when there is an answer layer;
+  Esc returns to Edit. Axes canvas only (worksheet + Graphs); flow/forum canvases have none.
 - **2026-10-02 on `develop`, not released: Settings → Language (English / 繁體中文 HK)**
   (design `docs/design/ui-language.md`, term tables). Chrome only, never the paper; English
   mode is the old text exactly. `src/i18n/` (`defineMessages`/`useMessages`, co-located
