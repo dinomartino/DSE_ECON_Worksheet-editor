@@ -1801,14 +1801,34 @@ type needs only a definition.
 - **One key data, styles lay it out** (`render/answerKey.ts`). `collectAnswerKey` gathers
   groups, choices, schemes, versions and totals once; `ANSWER_KEY_STYLES[preset]` is a pure
   function from that data to `AnswerKeyView`, with its derived title wording (Classic
-  "Answer key / 答案及評分參考", HKEAA "Marking scheme / 評卷參考"). Both built-in styles use
+  "Answer key / 答案及評分參考", HKEAA "Marking scheme / 評卷參考", Suggested answers
+  "Suggested answers / 參考答案", Detailed table "Mark scheme / 評分準則"). Every style uses
   `renderStandardKey`, which dispatches per section to `MC_KEY_RENDERERS[mcLayout]` (grid,
-  HKEAA two-pair table ruled in fives, list) and `LQ_KEY_RENDERERS[lqLayout]` (compact,
-  Marks column) in `render/answerKeySections.ts`. A new style or layout is an entry in
+  HKEAA two-pair table ruled in fives, list, reasons table) and `LQ_KEY_RENDERERS[lqLayout]`
+  (compact, Marks column, Detailed table, answers-only) in `render/answerKeySections.ts`. A new style or layout is an entry in
   these registries plus its id and settings in `model/answerKeyLayout.ts`; nothing names a
   question type. Stems come from the `answerKey` hook (`stem`, row `prompt`), typed in
   place through `blockText`. With versions on, MC prints per version as the layout's
   `table` (the list prints as the grid).
+- **Suggested answers is a student handout, so its preset fixes what would leak**
+  (`ANSWER_KEY_FIXED`: LQ layout `answers`, no legend, disclaimer or source notes; a stored
+  change to a fixed setting is ignored on read and never written). It prints answers, model
+  diagrams with the answer layer in the same red (the layer *is* the answer), and, switched
+  on, the first OR route's points as plain bullets (`/` alternatives joined, no marks or
+  rules); never levels, EC, the version map or a Marks head. Its own switches: MC wording
+  (prints the MC answers as the list), part marks, points as answers. Its file is named
+  "Suggested answers" / "參考答案" when every document in it uses the preset.
+  `suggestedAnswers.test.tsx` proves it over every allowed switch combination in the IR,
+  clipboard, every `.docx` part and the preview DOM. An older build reads the preset as
+  Classic: a teacher opening such a file there sees the marker's key, which is teacher-side.
+- **The Detailed table breaks between rows, in all three backends**: one ruled table per
+  question (a point a row, Guidance spelling out any N / first N / n marks each / max / OR,
+  per-cell edges so a part reads as one cell), levels and EC in a Level | Descriptor | Marks
+  table after it, a model diagram ending the table and printing full width before it goes
+  on. `TableNode.headerRows` → `w:tblHeader` / `thead`; `rowKeepNext` → `w:keepNext` on the
+  row's paragraphs (every row `cantSplit`). The preview packs such a table row by row
+  (`keyUnits`), a piece joining the one above without a second rule, and a piece opening a
+  sheet redraws the heading rows, charged by the packer through `PackItem.leadKey`.
 - **The Marks column is a right indent, not a table** (`TextNode.marksColumn`): the text
   stops short of it (`w:ind w:right`; preview `padding-right`) while the marks keep the
   right tab at the content edge, which Word and LibreOffice honour past the right indent.
