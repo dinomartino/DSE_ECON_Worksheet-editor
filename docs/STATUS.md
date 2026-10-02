@@ -24,6 +24,14 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **2026-10-02 on `develop`, not released: answer layer on diagrams** (teacher feedback: "draw
+  the ans on the teacher ver only", a PPF on a blank E2 diagram). Any axes-diagram element can
+  carry `answer: true` (`src/model/diagramAnswers.ts`); Student version drops it and its
+  dependents, Teacher version + answer key draw it red `#C00000`; frame measured with answers so
+  both versions are the same size. Canvas "Draw answer" toggle + per-selection checkbox.
+  Chromium + WebKit + both `.docx` checked (student PNG 0 red pixels). **Open:** an older build
+  opening such a file prints answers in the student version (no schema bump); Tauri shell and
+  中文 UI not clicked through; canvas toolbar wraps to two rows at 1512px (not checked if new).
 - **2026-10-02 on `develop`, not released: Settings → Language (English / 繁體中文 HK)**
   (design `docs/design/ui-language.md`, term tables). Chrome only, never the paper; English
   mode is the old text exactly. `src/i18n/` (`defineMessages`/`useMessages`, co-located
