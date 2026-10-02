@@ -24,6 +24,15 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **2026-10-02 on `develop`, not released: Marking scheme view** (research Phase 1). Toolbar Student |
+  Teacher | Marking scheme 評卷參考; store `documentView` (never saved, not `OutputMode`); the key's
+  IR (`answerKeyView()`, same nodes as the `.docx`) paginated by the paper's paginator; one source of
+  answers. New scheme edit targets (`schemePoint`/`schemeAlternative`/`schemeLevel`/`schemeEc`, from
+  `render/markScheme.ts`, so they work in the Teacher version too). PDF of the key via the print path.
+  Fixed: the floating edit hint's positioned wrapper cut print PDFs to the editor column (never
+  released). **Open:** Tauri shell + real print dialog + Word not tried; LibreOffice fits 2 more lines
+  on key page 1 (answer diagram ~1 line taller in preview); MC grid cells don't select their question;
+  HKEAA restyle (Phase 2) and the essay answer/scheme hole still to do.
 - **Marking scheme as its own document (2026-10-02, research only, no code)**:
   `docs/research/2026-10-marking-scheme-output.md`, artifact NhT8nPki21CpUhGbBckNRV. Finding: the
   Answer key already is one but is `.docx`-only and hidden in Export. Proposal: a third view
