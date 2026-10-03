@@ -2,27 +2,29 @@
 // frames at the given clip seconds (default: start, middle, end), each ≤ 480 px wide.
 //
 //   node scripts/film2/capture/strip.mjs <clip> [t1,t2,…] [--cols=N]   (FILM_STORE = the store)
-//   → <store>/strips/<clip>.jpg
+//   → <store>/strips/<clip>.jpg   (STRIP_CLIPS=<dir> reads clips from elsewhere)
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ASSETS } from '../../film/paths.mjs';
+
+const CLIPS = process.env.STRIP_CLIPS ?? path.join(ASSETS, 'clips');
 
 const [name, times, ...rest] = process.argv.slice(2);
 if (!name) {
   console.error('usage: strip.mjs <clip> [t1,t2,…] [--cols=N]');
   process.exit(2);
 }
-const meta = JSON.parse(fs.readFileSync(path.join(ASSETS, 'clips', `${name}.json`), 'utf8'));
+const meta = JSON.parse(fs.readFileSync(path.join(CLIPS, `${name}.json`), 'utf8'));
 const ts = times && !times.startsWith('--')
   ? times.split(',').map(Number)
   : [0, meta.duration / 2, meta.duration - 1 / meta.fps];
 const cols = Number(rest.concat(times ?? '').find((a) => a.startsWith('--cols='))?.slice(7) ?? ts.length);
 const files = ts.map((t) => {
   const f = Math.min(meta.frames - 1, Math.max(0, Math.round(t * meta.fps)));
-  return path.join(ASSETS, 'clips', name, `${String(f).padStart(5, '0')}.jpg`);
+  return path.join(CLIPS, name, `${String(f).padStart(5, '0')}.jpg`);
 });
-const out = path.join(ASSETS, 'strips', `${name}${times && !times.startsWith('--') ? `-${ts.length}` : ''}.jpg`);
+const out = path.join(path.dirname(CLIPS), 'strips', `${name}${times && !times.startsWith('--') ? `-${ts.length}` : ''}.jpg`);
 fs.mkdirSync(path.dirname(out), { recursive: true });
 const rows = Math.ceil(files.length / cols);
 const inputs = files.flatMap((f) => ['-i', f]);

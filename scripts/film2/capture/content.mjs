@@ -7,8 +7,8 @@
  * terms to find: 消費者剩餘 (Q1 D) and 供給 (Q4), mainland wording for 消費者盈餘 and 供應.
  */
 export const PAPER = {
-  name: 'S5 Market Intervention Test',
-  title: ['S5 Market Intervention Test', '中五 市場干預測驗'],
+  name: 'S5 Government Intervention Test',
+  title: ['S5 Government Intervention Test', '中五 政府干預測驗'],
   classes: ['5A', '5B'],
   satOn: '2026-09-25',
   mcqs: [
@@ -167,6 +167,23 @@ export const PAPER = {
 export const ANSWER_DOC = {
   name: 'S5 Tax Diagram Practice',
   title: ['S5 Tax Diagram Practice', '中五 稅項圖解練習'],
+};
+
+/** The answer-draw and shade-area clips' document: demand and supply given, nothing else. */
+export const SHIFT_DOC = {
+  name: 'S4 Heater Market Practice',
+  title: ['S4 Heater Market Practice', '中四 電暖爐市場練習'],
+  tags: ['C.equilibrium'],
+  template: 'supply-demand',
+  stem: [
+    'Hong Kong has an unusually cold winter. The diagram shows the market for electric heaters before the cold spell.',
+    '香港今年冬天特別寒冷。下圖顯示寒流來臨前電暖爐的市場。',
+  ],
+  part: [
+    'Show on the diagram the effect of the cold weather on the market for electric heaters.',
+    '在圖中顯示寒冷天氣對電暖爐市場的影響。',
+  ],
+  marks: 3,
 };
 
 /**
@@ -330,6 +347,7 @@ export const LIBRARY = [
 export const AGE_HOURS = {
   [PAPER.name]: 0.3,
   [ANSWER_DOC.name]: 0.6,
+  [SHIFT_DOC.name]: 0.9,
   'S6 Macro Policies Test': 30,
   'S4 Demand and Supply Test': 54,
   'S5 National Income Worksheet': 75,

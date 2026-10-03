@@ -18,7 +18,7 @@ import { createWorksheetFrom } from '@/model/newWorksheet';
 import { bi } from '@/model/text';
 import type { McqQuestion, Question, StructuredQuestion, Worksheet } from '@/model/types';
 import { stringifyWorksheet, summarize } from '@/storage/document';
-import { AGE_HOURS, ANSWER_DOC, LIBRARY, PAPER } from './content.mjs';
+import { AGE_HOURS, ANSWER_DOC, LIBRARY, PAPER, SHIFT_DOC } from './content.mjs';
 
 type Pair = [string, string];
 const OUT = process.env.FILM2_SEED ?? '/tmp/film2-seed-docs.json';
@@ -137,6 +137,16 @@ function diagramPractice(): Worksheet {
   return doc;
 }
 
+/** Demand and supply given (not answer): the canvas clips draw the answer and shade on it. */
+function shiftPractice(): Worksheet {
+  const q = structured(SHIFT_DOC.tags, SHIFT_DOC.stem as Pair, [{ text: SHIFT_DOC.part as Pair, marks: SHIFT_DOC.marks }]);
+  q.parts[0].blocks.push({ ...createDiagramBlock(SHIFT_DOC.template), id: id('d') });
+  q.parts[0].answerSpace = 3;
+  const doc = build(SHIFT_DOC.name, SHIFT_DOC.title as Pair, [q], { sections: false });
+  doc.bankHidden = true;
+  return doc;
+}
+
 function paper(): Worksheet {
   const mcqs = PAPER.mcqs.map((m) => mcq(m.tags, m.stem as Pair, m.options as Pair[], m.answer, m.rationale as Pair[]));
   const s = PAPER.structured;
@@ -175,7 +185,7 @@ function library(): Worksheet[] {
 }
 
 it('emits the film v2 seed documents', () => {
-  const docs = [paper(), diagramPractice(), ...library()].map((doc) => ({
+  const docs = [paper(), diagramPractice(), shiftPractice(), ...library()].map((doc) => ({
     name: doc.name,
     key: `econ-worksheet:${doc.id}`,
     json: stringifyWorksheet(doc),

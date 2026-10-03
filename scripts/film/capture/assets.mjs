@@ -201,6 +201,11 @@ async function diagram(env) {
 
 /** Export… → .docx → Question paper in `language` → the browser download, saved as `file`. */
 async function download(page, file, language) {
+  // Chrome has a save picker, so Export asks where to save; without one it downloads.
+  await page.evaluate(() => {
+    window.showSaveFilePicker = undefined;
+    window.showDirectoryPicker = undefined;
+  });
   await page.getByRole('button', { name: /Export…/ }).first().click();
   await settle(page, 700);
   const dialog = page.getByRole('dialog');
