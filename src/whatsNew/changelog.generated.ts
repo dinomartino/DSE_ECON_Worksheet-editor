@@ -497,6 +497,10 @@ a version heading is edited afterwards.
   part of it is formatted differently. It used to stay unmarked.
   <!-- zh: **題庫的 ✦ AI 會標示夾有粗體或斜體字的文字。** 檢視填補或用詞檢查結果時，即使句子或
   用語中有部分格式不同，頁面現在亦會把它標示出來。以往這些文字不會被標示。 -->
+- **⌘J (Ctrl+J on Windows) opens ✦ AI in the question bank too.** On a topic's page, the
+  shortcut opens the ✦ AI menu, as it does in a worksheet.
+  <!-- zh: **在題庫中亦可按 ⌘J（Windows 為 Ctrl+J）開啟 ✦ AI。** 在課題頁面按此快捷鍵，會開啟
+  ✦ AI 選單，與在工作紙中一樣。 -->
 
 ## 0.5.0 — 2026-09-28
 

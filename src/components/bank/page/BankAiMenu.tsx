@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { ProviderFooter } from '@/components/ai/ProviderFooter';
 import { SetupCard } from '@/components/ai/SetupCard';
+import { shouldOpenAi } from '@/components/ai/shortcut';
+import { isEditableFocused, isMacPlatform } from '@/components/settings/shortcut';
 import { Button } from '@/components/ui';
 import { SparkleIcon } from '@/components/ui/icons';
-import { useModalLayer } from '@/components/ui/modalLayer';
+import { isModalLayerOpen, useModalLayer } from '@/components/ui/modalLayer';
 import type { BankRow } from '@/library/types';
 import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
@@ -40,6 +42,22 @@ export function BankAiMenu({
 }) {
   const m = useMessages(BANK_AI_MESSAGES);
   const [open, setOpen] = useState(false);
+  // ⌘J / Ctrl+J opens the door, as in the editor (`AiHost`), which is not mounted here.
+  const disabledRef = useRef(disabled);
+  useEffect(() => {
+    disabledRef.current = disabled;
+  });
+  useEffect(() => {
+    const mac = isMacPlatform();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || disabledRef.current) return;
+      if (!shouldOpenAi(event, { mac, modalOpen: isModalLayerOpen(), editableFocused: isEditableFocused(), readOnly: false })) return;
+      event.preventDefault();
+      setOpen(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   return (
     <div className="relative shrink-0">
       <button
