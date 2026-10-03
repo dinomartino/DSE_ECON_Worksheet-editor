@@ -108,6 +108,8 @@ export function deriveName(diagram: Diagram, derive: DiagramCurveDerive): string
       return text().parallel(curveName(diagram, derive.to), placeName(diagram, derive.through));
     case 'shift':
       return text().shifted(curveName(diagram, derive.of));
+    case 'importQuota':
+      return text().importQuota(curveName(diagram, derive.of), at(derive.price, diagram.y));
     case 'tangent':
       return text().tangent(curveName(diagram, derive.to), placeName(diagram, derive.at));
     case 'level':

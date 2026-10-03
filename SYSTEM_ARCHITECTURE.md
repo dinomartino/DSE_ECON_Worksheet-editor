@@ -3071,8 +3071,9 @@ intact but unreachable.
   oldest version that reads the content correctly, re-derived on every save; in memory a
   document is at `CURRENT_SCHEMA_VERSION`. A field an older build would silently mis-print
   raises the mark only in documents that use it, so they open read-only there and nothing
-  else does. v2 = v1 + the diagram answer layer (`answer: true`, any diagram anywhere) or
-  `answerKeyLayout`; the 1→2 step is identity. Graphs follow the same rule. v0.4–0.5 open a
+  else does. v2 = v1 + the diagram answer layer (`answer: true`, any diagram anywhere),
+  `answerKeyLayout`, or an `importQuota` derived curve (v0.5 throws editing around an
+  unknown derive kind); the 1→2 step is identity. Graphs follow the same rule. v0.4–0.5 open a
   v2 file read-only (export stays possible there); v0.2–0.3 have no guard and open it
   editable, keeping the fields and the mark.
 - **A shape change** appends one `MIGRATIONS` step, bumps `CURRENT_SCHEMA_VERSION`, and adds

@@ -192,7 +192,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Domestic S and D, Pw below autarky | `tariff` | C |
 | Tariff: "Pw + t", Q₁, QM bracket, revenue; PS gain, DWL | `tariff`, `tariff-welfare`: level + shift, `bracket` span, tariff presets | C |
 | Quota: kinked S with quota, EA, D shift first, quota rent | `import-quota`, `import-quota-demand` (quotaRent) | C |
-| Pw + t moves with Pw; binding quota price independent of Pw | Pw + t a shift of Pw; S with quota is drawn geometry | P — the quota step does not follow Pw |
+| Pw + t moves with Pw; binding quota price independent of Pw | Pw + t a shift of Pw; S with quota derived from S at Pw (`importQuota`) | C |
 
 ### C. Monopoly
 | Item | Met by | St. |
@@ -351,7 +351,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 
 ## Totals
 
-167 rows: **146 covered · 10 partial · 0 not covered · 11 n/a**.
+167 rows: **147 covered · 9 partial · 0 not covered · 11 n/a**.
 
 ## Not covered
 
@@ -360,7 +360,6 @@ Nothing is wholly uncovered. The partial rows, and why:
 - Net-of-tax revenue needs the Revenue point re-picked to P₁ − t.
 - MC and MB at Q₁ for a tax (the subsidy has its template).
 - A change in r as a movement along Md.
-- The import quota's "S with quota" is drawn geometry: its step does not follow Pw.
 - U-shaped MC, and the TR hyperbola, are drawn by hand (crossings read the polyline).
 - Consumption "same X as before" is not tied to the no-trade point.
 - Growth shifting the CPF with the PPF.

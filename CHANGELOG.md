@@ -559,6 +559,12 @@ a version heading is edited afterwards.
   the deadweight loss shade as they do on a falling D.
   <!-- zh: **需求曲線為水平時，也可為稅項加陰影。** 名為 D 的水平線（完全有彈性的需求）現在在
   「陰影」選單中會被視為需求曲線，稅收、賣方稅負和效率損失都可以與向下傾斜的 D 一樣加上陰影。 -->
+- **In the import quota diagrams, the quota step follows Pw.** Move Pw, or S, and "S with
+  quota" keeps its step at the new world price, the quota wide, with the domestic price
+  following it. Papers with these diagrams open read-only in versions 0.4 and 0.5.
+  <!-- zh: **在進口配額圖表中，配額的一段會跟隨 Pw。** 移動 Pw 或 S 時，「有配額的供應」的水平段
+  會保持在新的世界價格，長度等於配額，本地價格亦會跟著改變。含這些圖表的工作紙在 0.4 和 0.5 版
+  中會以唯讀方式開啟。 -->
 
 ## 0.5.0 — 2026-09-28
 

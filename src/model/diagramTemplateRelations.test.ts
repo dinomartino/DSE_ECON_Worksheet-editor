@@ -58,6 +58,7 @@ describe('template relations', () => {
     };
     expect_('demand-shift', ['shift']);
     expect_('per-unit-tax', ['shift']);
+    expect_('import-quota', ['importQuota']);
     expect_('tariff', ['level', 'shift']);
     expect_('fixed-supply', ['vertical', 'shift']);
     expect_('money-supply-shift', ['vertical', 'shift']);
@@ -172,6 +173,26 @@ describe('dragging a template keeps the scheme', () => {
     const shifted = resolveDiagram(applyDrag(moved, { kind: 'curve', curveId: ppf.id }, { x: 0, y: 0 }, { x: 0.05, y: 0.05 }));
     const later = pointNamed(shifted, label);
     expect(later.at.y).toBeCloseTo(curveYAt(curveNamed(shifted, 'PPF'), later.at.x)!, 9);
+  });
+
+  it.each(['import-quota', 'import-quota-demand'])('%s: the quota step follows Pw, and the quota price with it', (id) => {
+    const d = buildFromTemplate(id);
+    const pw = d.curves.find((c) => c.derive?.kind === 'level' && typeof c.derive.y === 'number' && /^Pw/.test(name(c)))!;
+    const quota = d.curves.find((c) => c.derive?.kind === 'importQuota')!;
+    const s = curveNamed(d, 'S');
+    const by = quota.derive!.kind === 'importQuota' ? quota.derive!.by : 0;
+    const moved = drag(d, pw.id, 0, -0.08);
+    const step = moved.curves.find((c) => c.id === quota.id)!.points;
+    const y = moved.curves.find((c) => c.id === pw.id)!.points[0].y;
+    const flat = step.filter((p) => Math.abs(p.y - y) < 1e-9);
+    expect(flat).toHaveLength(2);
+    // From S at the new Pw, `by` along it.
+    expect(flat[0].y).toBeCloseTo(curveYAt(s, flat[0].x)!, 9);
+    expect(flat[1].x - flat[0].x).toBeCloseTo(by, 9);
+    // The equilibrium with the quota stays on the new kinked S.
+    const e = moved.points.find((p) => p.anchor && 'cross' in p.anchor && p.anchor.cross.includes(quota.id))!;
+    const onStep = moved.curves.find((c) => c.id === quota.id)!;
+    expect(e.at.y).toBeCloseTo(curveYAt(onStep, e.at.x)!, 9);
   });
 
   it('a point on a crossing still detaches when dragged away', () => {

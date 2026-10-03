@@ -205,6 +205,10 @@ export const DIAGRAM_RELATION_MESSAGES = defineMessages({
     zh: (to: string, through: string) => `平行於 ${to}，通過 ${through}`,
   },
   shifted: { en: (curve: string) => `${curve}, shifted`, zh: (curve: string) => `${curve}（已平移）` },
+  importQuota: {
+    en: (curve: string, at: string) => `${curve} plus the quota at ${at}`,
+    zh: (curve: string, at: string) => `${curve} 加上於 ${at} 的配額`,
+  },
   tangent: {
     en: (to: string, at: string) => `Tangent to ${to} at ${at}`,
     zh: (to: string, at: string) => `${to} 的切線，於 ${at}`,

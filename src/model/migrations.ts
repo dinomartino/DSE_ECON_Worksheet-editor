@@ -22,9 +22,10 @@ import type { Worksheet } from './types';
 export const CURRENT_SCHEMA_VERSION = 2;
 
 /**
- * v2 = v1 plus the diagram answer layer (`answer: true`) and `answerKeyLayout`. v0.5.0
- * reads v1 and ignores both, printing teacher answers on the student copy and every key
- * as Classic, so a document using either is written at 2 and opens read-only there.
+ * v2 = v1 plus the diagram answer layer (`answer: true`), `answerKeyLayout` and the
+ * `importQuota` derived curve. v0.5.0 reads v1 and ignores the first two, printing teacher
+ * answers on the student copy and every key as Classic, and fails editing around a derive
+ * kind it does not know, so a document using any is written at 2 and opens read-only there.
  */
 const ANSWER_LAYER_VERSION = 2;
 
@@ -189,7 +190,7 @@ export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown
 export function writtenSchemaVersion(version: number, doc: unknown): number {
   if (version > CURRENT_SCHEMA_VERSION) return version;
   if (isRecord(doc) && doc.answerKeyLayout !== undefined) return ANSWER_LAYER_VERSION;
-  return hasAnswerElement(doc) ? ANSWER_LAYER_VERSION : 1;
+  return hasV2Diagram(doc) ? ANSWER_LAYER_VERSION : 1;
 }
 
 function isRecord(value: unknown): value is RawDoc {
@@ -199,9 +200,15 @@ function isRecord(value: unknown): value is RawDoc {
 /** Answer-layer lists; pie, flow and forum diagrams never draw them (`hasAnswerLayer`). */
 const ANSWER_LISTS = ['curves', 'points', 'labels', 'arrows', 'areas', 'spans'];
 
-/** Any diagram anywhere in `value` with an element flagged `answer` (as `hasAnswerLayer`). */
-function hasAnswerElement(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some(hasAnswerElement);
+/** Derive kinds v0.5.0 does not know. */
+const V2_DERIVES = new Set(['importQuota']);
+
+/**
+ * Any diagram anywhere in `value` with an element flagged `answer` (as `hasAnswerLayer`),
+ * or a curve derived by a v2 kind.
+ */
+function hasV2Diagram(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasV2Diagram);
   if (!isRecord(value)) return false;
   const diagram = value.kind === 'diagram' ? value.diagram : undefined;
   if (isRecord(diagram) && !diagram.pie && !diagram.flow && !diagram.forum) {
@@ -211,5 +218,11 @@ function hasAnswerElement(value: unknown): boolean {
     });
     if (flagged) return true;
   }
-  return Object.values(value).some(hasAnswerElement);
+  if (isRecord(diagram) && Array.isArray(diagram.curves)) {
+    const derived = diagram.curves.some(
+      (curve) => isRecord(curve) && isRecord(curve.derive) && V2_DERIVES.has(String(curve.derive.kind)),
+    );
+    if (derived) return true;
+  }
+  return Object.values(value).some(hasV2Diagram);
 }
