@@ -24,7 +24,7 @@ how to *change* the film safely; read the bible section you touch.
 | `score/` | Music + SFX + master, from the timeline and `build/events.json` |
 | `render.mjs`, `film.mjs` | Frames → video; the whole pipeline (capture → score → render → master) |
 | `tools/doctor.mjs` | `film:doctor`: timeline, assets, clip windows, score freshness, text fit, capture age, GPU |
-| `paths.mjs` | Outputs go to `$FILM_OUT` or `<main checkout>/demo-media/film/`; the **asset store is always the main checkout's** |
+| `paths.mjs` | Outputs go to `$FILM_OUT` or `<main checkout>/demo-media/film/`; the asset store is the main checkout's `demo-media/film/assets/` unless `$FILM_STORE` names another (film v2: `demo-media/film-v2/assets`) |
 
 ## Golden commands (repo root)
 
@@ -35,6 +35,7 @@ npm run film:stills -- --scene=word           # 960×540 PNG per second of one s
 node scripts/film/render.mjs --final --at=19.4,70.9 --workers=4   # exact 1080p frames → build/stills/final-film/
 node scripts/film/render.mjs --final --from=34 --to=36 --workers=4  # ≤2 bars of real video
 npm run film:capture -- --only=type-mcq       # re-capture one clip/asset job (--list shows them)
+# film v2: FILM_STORE=…/film-v2/assets FILM_OUT=…/film-v2 npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=<clip>
 npm run film:score                            # music + sfx + master (~40 s); needed after cue/timeline changes
 npm run film                                  # everything, final; long (capture ~9 min if missing, render ~4 min + encode)
 npm run film:9x16                             # the 9:16 cut: render + mux the existing score (outputs *-9x16)
