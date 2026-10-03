@@ -16,7 +16,7 @@ import { card } from '../lib/card.js';
 import { focus } from '../lib/focus.js';
 import { block } from '../lib/type.js';
 import { keys, env } from '../lib/tween.js';
-import { clamp, lerp, prog, outSoft, inOutSoft, spring, sineInOut } from '../lib/ease.js';
+import { clamp, lerp, prog, outSoft, inOutSoft, spring, sineInOut, linear, cubicBezier } from '../lib/ease.js';
 import { PULSE } from '../../timeline.mjs';
 import { CARD, FLASH, CENTRED, APP, ZMIN, MID, LINE } from './draw/geom.js';
 import { ink, mixHex } from './draw/ink.js';
@@ -40,17 +40,16 @@ const SHOTS = [
 // The camera: [zoom, focus x, focus y] (focus = the CSS point at the card's centre).
 const CAM_MAIN = [
   [P(2), [ZMIN, 552, 450]],
-  [P(6), [1.35, MID[0], 470], inOutSoft],
-  [P(12), [1.42, MID[0], 472], sineInOut],
-  [P(15), [1.8, MID[0], MID[1]], inOutSoft],
-  [P(18), [1.84, MID[0], MID[1]], sineInOut],
-  [P(20), [1.18, 640, 385.5], inOutSoft],
-  [P(29), [1.22, 640, 380], sineInOut],
+  [P(12), [1.5, MID[0], 474], cubicBezier(0.5, 0, 0.5, 0.75)],
+  [P(15), [1.84, MID[0], MID[1]], cubicBezier(0.3, 0.25, 0.35, 1)],
+  [P(18.5), [1.94, MID[0], MID[1]], linear],
+  [P(20.75), [1.18, 640, 385.5], inOutSoft],
+  [P(29), [1.24, 640, 380], sineInOut],
 ];
 const CAM_FLASH = [[P(29), [1.48, 1260, 582]], [P(32), [1.53, 1260, 590], sineInOut]];
 const CAM_ANSWER = [
   [P(32), [ZMIN, 800, 450]],
-  [P(37.5), [1.04, 800, 448], sineInOut],
+  [P(37.5), [1.09, 800, 446], cubicBezier(0.3, 0.1, 0.7, 0.9)],
   [P(40), [1.3, 600, 480], inOutSoft],
 ];
 const CAM_LAYER = [
@@ -61,17 +60,17 @@ const CAM_LAYER = [
 ];
 
 // Spotlights on the footage (CSS rects [x, y, w, h]): each lights one action, then the next.
-const R = { menu: [604, 6, 446, 304], cs: [300, 300, 260, 220], ps: [300, 474, 260, 222], answer: [703, 6, 133, 56], shift: [1129, 474, 101, 41], teacher: [462, 8, 146, 38] };
+const R = { menu: [604, 6, 446, 304], answer: [703, 6, 133, 56], shift: [1129, 474, 101, 41], teacher: [462, 8, 146, 38] };
 const SPOTS = [
-  { on: P(21.1), off: P(24.4), keys: [[P(22.8), R.menu], [P(23.3), R.cs, inOutSoft]] },
-  { on: P(25.1), off: P(28.6), keys: [[P(27.3), R.menu], [P(27.8), R.ps, inOutSoft]] },
-  { on: P(32.3), off: P(33.8), keys: [[0, R.answer]] },
-  { on: P(36.9), off: P(38.3), keys: [[0, R.shift]] },
-  { on: P(40.9), off: P(42.4), keys: [[0, R.teacher]] },
+  { on: O_SHADE + 0.85, off: O_SHADE + 1.85, keys: [[0, R.menu]] }, // Shade ▾ 0.8 → Consumer surplus 1.6
+  { on: O_SHADE + 2.85, off: O_SHADE + 3.85, keys: [[0, R.menu]] }, // Shade ▾ 2.8 → Producer surplus 3.6
+  { on: O_ANSWER + 0.7, off: O_ANSWER + 1.75, keys: [[0, R.answer]] }, // Draw answer 0.8
+  { on: O_ANSWER + 2.3, off: O_ANSWER + 3.25, keys: [[0, R.shift]] }, // Shift a copy 3.0: D1 lands in the light
+  { on: O_LAYER + 0.75, off: O_LAYER + 1.7, keys: [[0, R.teacher]] }, // Teacher 1.5
 ];
 function spotAt(t) {
   for (const sp of SPOTS) {
-    const a = env(t, sp.on, sp.off, 0.3, 0.4);
+    const a = env(t, sp.on, sp.off, 0.45, 0.45);
     if (a > 0) return { rect: keys(t, sp.keys), amount: a };
   }
   return { rect: R.menu, amount: 0 };
@@ -86,7 +85,7 @@ function camera(t) {
 }
 
 /** The card's opacity: the window falls away for the re-ink and comes back under it. */
-const cardAlpha = (t) => (t < P(16) ? 1 - outSoft(prog(t, P(12), P(13.5))) : inOutSoft(prog(t, P(18.5), P(19.75))));
+const cardAlpha = (t) => (t < P(16) ? 1 - outSoft(prog(t, P(12), P(13.5))) : inOutSoft(prog(t, P(19), P(20.25))));
 
 const scene = {
   events: [
@@ -94,7 +93,7 @@ const scene = {
     { t: P(13), kind: 'pencil', label: 'the axes are re-inked' },
     { t: P(14), kind: 'pencil', label: 'demand and supply are re-inked' },
     { t: P(15.5), kind: 'pop', label: 'the equilibrium dot' },
-    { t: P(18), kind: 'whoosh', size: 's', label: 'the diagram goes back into the window' },
+    { t: P(18.5), kind: 'whoosh', size: 's', label: 'the diagram goes back into the window' },
     { t: P(29), kind: 'shutter', label: 'the Templates grid flashes by' },
   ],
   async setup(ctx) {
@@ -144,19 +143,19 @@ const scene = {
     // The re-ink, through the same camera as the footage.
     const cx = rect.x + 1 + bw / 2, cy = rect.y + 1 + bh / 2;
     const map = ([x, y]) => [cx + (x - fx) * Z, cy + (y - fy) * Z];
-    const live = t >= P(12) && t < P(20.5);
-    const back = inOutSoft(prog(t, P(18), P(19.6)));
+    const live = t >= P(12) && t < P(21);
+    const back = inOutSoft(prog(t, P(18.5), P(20.1)));
     const pencil = outSoft(prog(t, P(12.5), P(14)));
     ctx.ink.el.style.display = live ? 'block' : 'none';
     if (live) {
       ctx.ink.set(map, Z, {
         lift: {
           o: 1 - outSoft(prog(t, P(14.5), P(16.2))),
-          w: lerp(LINE * Z, 2.6, pencil),
+          w: lerp(LINE * Z, 3, pencil),
           color: mixHex(BLACK, C.inkSubtle, pencil),
         },
         ink: {
-          o: 1 - prog(t, P(19.75), P(20.25)),
+          o: 1 - prog(t, P(20.25), P(20.75)),
           w: LINE * Z * lerp(1.3, 1, back),
           color: mixHex(C.ink, BLACK, back),
           y: outSoft(prog(t, P(13), P(14))),
@@ -167,12 +166,12 @@ const scene = {
         },
         guides: {
           p: outSoft(prog(t, P(16), P(17))),
-          o: 1 - outSoft(prog(t, P(18.5), P(19.5))),
+          o: 1 - outSoft(prog(t, P(19), P(20))),
           w: 2 * Z,
           color: C.inkMuted,
         },
         dot: {
-          s: spring(prog(t, P(15.5), P(16.2))) * (1 - inOutSoft(prog(t, P(18), P(19)))),
+          s: spring(prog(t, P(15.5), P(16.2))) * (1 - inOutSoft(prog(t, P(18.5), P(19.5)))),
           ripple: prog(t, P(15.6), P(15.6) + 1.1),
           o: 1,
         },
