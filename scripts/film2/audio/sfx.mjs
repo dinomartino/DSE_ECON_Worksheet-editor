@@ -17,6 +17,10 @@ import { cli } from './cli.mjs';
 const SR = 48000;
 const MIN_UI_GAP = 0.06; // s between ui voices
 const BURST_GAP = 0.4; // s: key events closer than this are one typing run
+const MIN_RUN = 3; // keys: a shorter run (a shortcut, a lone label letter) makes no sound
+const DOUBLE_GAP = 0.15; // s: a click this soon after a click is the second half of a double-click
+const MASK_GAP = 0.08; // s: a ui sound this close to a non-ui one is dropped
+const SILENT_KEYS = /^(select|deselect)$/; // footage key events that are not keystrokes
 const db = (x) => 10 ** (x / 20);
 const hash = (i) => ((Math.imul(i + 1, 2654435761) >>> 0) / 2 ** 32);
 
@@ -32,6 +36,38 @@ const load = (name) => {
   return wavCache.get(name);
 };
 
+/**
+ * Footage events → what a viewer should hear (in place, on events sorted by t): synthetic keys
+ * (select, deselect) are silent; the second click of a double-click is dropped; a click between
+ * two keys of a typing run joins the run (the typing bed carries it, no click on top).
+ */
+function tidyUi(raw, dropped) {
+  const isKey = (r) => SFX_MAP[r.kind].burst;
+  for (let i = raw.length - 1; i >= 0; i--) {
+    const r = raw[i];
+    if (isKey(r) && SILENT_KEYS.test(String(r.e.label ?? ''))) {
+      dropped.push({ kind: r.kind, t: r.e.t, why: `synthetic key "${r.e.label}"` });
+      raw.splice(i, 1);
+    }
+  }
+  const keys = raw.filter(isKey).map((r) => r.e.t);
+  let lastClick = -Infinity;
+  for (let i = 0; i < raw.length; i++) {
+    const r = raw[i];
+    if (r.kind !== 'click' && r.kind !== 'dblclick') continue;
+    const t = r.e.t;
+    if (keys.some((k) => k < t && t - k < BURST_GAP) && keys.some((k) => k > t && k - t < BURST_GAP)) {
+      raw[i] = { ...r, kind: 'key', joined: true };
+      dropped.push({ kind: r.kind, t, why: 'inside a typing run: joins the typing bed' });
+    } else if (t - lastClick < DOUBLE_GAP) {
+      dropped.push({ kind: r.kind, t, why: 'second click of a double-click' });
+      raw.splice(i--, 1);
+      continue;
+    }
+    lastClick = t;
+  }
+}
+
 /** Events → voices: { kind, file, t, pos (s, film time of the file's sample 0), from, len (s), gain_db, pan, fade }. */
 export function plan(events, { duration = DURATION } = {}) {
   const dropped = [];
@@ -41,8 +77,9 @@ export function plan(events, { duration = DURATION } = {}) {
     if (kind && Number.isFinite(e.t)) raw.push({ e, kind });
   }
   raw.sort((a, b) => a.e.t - b.e.t);
+  tidyUi(raw, dropped);
 
-  // Typing runs → one burst event each (start t, end t).
+  // Typing runs → one burst event each (start t, end t); a lone key or two make no sound.
   const events2 = [], lastOf = {};
   for (const r of raw) {
     const last = lastOf[r.kind];
@@ -54,10 +91,23 @@ export function plan(events, { duration = DURATION } = {}) {
     events2.push((lastOf[r.kind] = { kind: r.kind, e: r.e, t: r.e.t, end: r.e.t + (r.e.dur ?? 0), n: 1 }));
   }
 
-  // Thin ui runs.
+  for (let i = events2.length - 1; i >= 0; i--) {
+    const v = events2[i];
+    if (SFX_MAP[v.kind].burst && v.n < MIN_RUN) {
+      dropped.push({ kind: v.kind, t: v.t, why: `a run of ${v.n} key(s): the click carries it` });
+      events2.splice(i, 1);
+    }
+  }
+
+  // Thin ui runs; a ui sound right beside a bigger one is masked by it.
+  const big = events2.filter((v) => !SFX_MAP[v.kind].ui).map((v) => v.t);
   let lastUi = -Infinity;
   const kept = [];
   for (const v of events2) {
+    if (SFX_MAP[v.kind].ui && big.some((t) => Math.abs(t - v.t) < MASK_GAP)) {
+      dropped.push({ kind: v.kind, t: v.t, why: `masked by a sound within ${MASK_GAP * 1000} ms` });
+      continue;
+    }
     if (SFX_MAP[v.kind].ui) {
       if (v.t - lastUi < MIN_UI_GAP) {
         dropped.push({ kind: v.kind, t: v.t, why: `ui spacing < ${MIN_UI_GAP * 1000} ms` });

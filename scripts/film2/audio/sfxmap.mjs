@@ -32,8 +32,9 @@ export const SFX_MAP = {
   paper: { files: ['paper__paper-quick-movement__mixkit-2380', 'paper__paper-slide__mixkit-1530'], gain_db: -21, fade: [0, 0.1] },
   page: { files: ['paper__page-turn-single__mixkit-1104'], gain_db: -21, fade: [0, 0.1] },
   chime: { files: ['chime__crystal-chime__mixkit-3108', 'chime__uplifting-bells-notification__mixkit-938', 'chime__success-software-tone__mixkit-2865', 'chime__positive-notification__mixkit-951'], gain_db: -14, fade: [0, 0.8], maxDur: 2.6 },
-  // The title hit: 2900's transient is at 1.752 s, 788's at 1.054 s; the lead-in plays before t.
-  impact: { files: ['impact__movie-logo-intro-impact__mixkit-2900', 'impact__big-cinematic-impact__mixkit-788', 'impact__deep-heartbeat-impact__mixkit-498'], gain_db: -8, fade: [0.05, 1.8], maxDur: 5.5, duck: true, trim_db: { 'impact__big-cinematic-impact__mixkit-788': 0.5, 'impact__movie-logo-intro-impact__mixkit-2900': -2.5 } },
+  // The lift's hit (bank, 72.92 s): 498 is a clean low hit (peak 30 ms after its onset, gone in
+  // ~1 s). 2900 and 788 are swells with no transient at their catalog onsets: they never land.
+  impact: { files: ['impact__deep-heartbeat-impact__mixkit-498'], gain_db: -7, fade: [0.005, 0.6], maxDur: 2.2, duck: true },
   riser: { files: ['riser__cinematic-synth-riser__mixkit-645'], gain_db: -15, fade: [0.5, 0.03], end: true, defDur: 4 },
   shimmer: { files: ['sparkle__magic-sparkle-touch__mixkit-3083', 'sparkle__magic-wand-sparkle__mixkit-3062'], gain_db: -20, fade: [0, 0.5] },
   toggle: { files: ['switch__quick-switch-click__mixkit-2582', 'switch__light-switch-sound__mixkit-2579'], gain_db: -19, fade: [0, 0.02], ui: true },
