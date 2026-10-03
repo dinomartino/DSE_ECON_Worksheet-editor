@@ -67,7 +67,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Buyers' and sellers' burdens; steepness matches | buyersBurden, sellersBurden presets; steepness by drag | C |
 | Subsidy CB and PB | consumerBenefit, producerBenefit presets | C |
 | Extreme cases (flat D, vertical S); tax revenue | tax presets read a flat line named D as demand; vertical S by + Vertical line | C |
-| TE / market value net of tax | Revenue › Total revenue, point re-picked to P₁ − t | P — needs the point re-picked |
+| TE / market value net of tax | `tax-net-revenue`: (P₁ − t) × Q₁ under the tax revenue | C |
 
 ### 7. Quota
 | Item | Met by | St. |
@@ -112,7 +112,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 |---|---|---|
 | S₀ = MC and the shifted S, with arrows | `subsidy-efficiency`: shift + arrow | C |
 | Q₀ and Q₁ | anchors | C |
-| MC on S₀ and MB on D at Q₁ | `subsidy-efficiency` anchors; the tax case by hand | P — no tax variant |
+| MC on S₀ and MB on D at Q₁ | `subsidy-efficiency`, `tax-efficiency` anchors | C |
 | DWL triangle | subsidyDwl preset | C |
 | CB / PB optional | `per-unit-subsidy` | C |
 

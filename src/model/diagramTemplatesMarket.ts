@@ -534,6 +534,66 @@ function subsidyEfficiency(): Diagram {
   );
 }
 
+/** A tax underproduces: at Q₁, MB (on D) is above MC (on S₀); the DWL between. */
+function taxEfficiency(): Diagram {
+  const d = MB_D();
+  const s0 = curve([[0.06, 0.08], [0.6, 0.62]], lab('S', ['0'], ' = MC'));
+  const s1 = shiftOf(s0, 0, 0.24, sub('S', '1'));
+  const e0 = eq(d, s0, '0');
+  const e1 = eq(d, s1, '1', { p: '' }, { label: sym('MB'), labelSide: 'right' });
+  const mc = pin({ on: s0.id, x: at(e1) }, [s0, e1], sym('MC'), { labelSide: 'right' });
+  const x = { x: 0.2, y: 0 };
+  return finish(
+    axes(AXIS.quantity, AXIS.price, {
+      curves: [d, s0, s1],
+      points: [e0, e1, mc],
+      spans: [span({ on: s0.id, x }, { on: s1.id, x }, 'arrow', { label: sym('t') })],
+      labels: [label(0.1, 0.97, lab('at Q', ['1'], ': MB > MC'), { align: 'left' })],
+    }),
+    // Below D, right of the triangle: clear of the S₀ = MC name above it.
+    (r) =>
+      shade(r, 'deadweightLoss', { demand: d.id, supply: s0.id, shifted: s1.id }, {
+        labelPlacement: 'leader',
+        labelOffset: { x: 0.2, y: -0.3 },
+      }),
+  );
+}
+
+/**
+ * Market value under a tax: buyers pay P₁ × Q₁; sellers keep (P₁ − t) × Q₁, read at the
+ * sellers' price on S₀ under E₁, and the rest is tax revenue. Both follow a drag.
+ */
+function taxNetRevenue(): Diagram {
+  const d = plainD();
+  const s0 = curve([[0.06, 0.08], [0.6, 0.62]], sub('S', '0'));
+  const s1 = shiftOf(s0, 0, 0.26, sub('S', '1'));
+  const e0 = eq(d, s0, '0', { p: '', q: 'Q' });
+  const e1 = eq(d, s1, '1');
+  const kept = pin({ on: s0.id, x: at(e1) }, [s0, e1], undefined, {
+    dot: false,
+    dropTo: ['y'],
+    yTickLabel: subPlus('P', '1', ' − t'),
+  });
+  const x = { x: 0.5, y: 0 };
+  return finish(
+    axes(AXIS.quantity, AXIS.price, {
+      curves: [d, s0, s1],
+      points: [e0, e1, kept],
+      spans: [span({ on: s0.id, x }, { on: s1.id, x }, 'arrow', { label: sym('t') })],
+      areas: [
+        {
+          ...revenueArea('totalRevenue', { before: at(kept) }, newId())!,
+          label: bi('revenue\nnet of tax', '稅後收入'),
+          // S₀ and S₁ cross the rectangle: the name sits below D, right of Q₀.
+          labelPlacement: 'leader',
+          labelOffset: { x: 0.47, y: -0.08 },
+        },
+      ],
+    }),
+    (r) => shade(r, 'taxRevenue', { demand: d.id, supply: s0.id, shifted: s1.id }, { labelPlacement: 'leader' }),
+  );
+}
+
 export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'supply-shift',
@@ -716,5 +776,19 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     name: bi('Subsidy: overproduction', '津貼：生產過剩'),
     hint: bi('At Q₁, MC on S₀ is above MB on D; the DWL between them.', '在 Q₁，S₀ 上的 MC 高於 D 上的 MB；其間為效率損失。'),
     build: subsidyEfficiency,
+  },
+  {
+    id: 'tax-efficiency',
+    group: 'taxSubsidy',
+    name: bi('Tax: underproduction', '稅項：生產不足'),
+    hint: bi('At Q₁, MB on D is above MC on S₀; the DWL between them.', '在 Q₁，D 上的 MB 高於 S₀ 上的 MC；其間為效率損失。'),
+    build: taxEfficiency,
+  },
+  {
+    id: 'tax-net-revenue',
+    group: 'taxSubsidy',
+    name: bi('Tax: revenue net of tax', '稅項：扣除稅款後的收入'),
+    hint: bi('Sellers keep (P₁ − t) × Q₁; the tax revenue above it.', '賣方收入為 (P₁ − t) × Q₁；其上為稅收。'),
+    build: taxNetRevenue,
   },
 ];

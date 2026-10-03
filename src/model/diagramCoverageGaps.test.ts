@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Diagram, DiagramCurve } from './diagram';
 import { buildFromTemplate } from './diagramTemplates';
-import { curvePath, curveYAt, resolveAnchor, splineSegments } from './diagramAnchors';
+import { curvePath, curveYAt, resolveAnchor, resolveDiagram, splineSegments } from './diagramAnchors';
+import { applyDrag } from './diagramDraw';
 import { areaPolygon, polygonCentroid } from './diagramAreas';
 import { plain } from './text';
 
@@ -94,5 +95,50 @@ describe('unit-elastic-revenue', () => {
 
   it('keeps both points on the drawn D', () => {
     for (const p of d.points) expect(resolveAnchor(d, p.anchor!)!.y).toBeCloseTo(curveYAt(curveNamed(d, 'D'), p.at.x)!, 9);
+  });
+});
+
+const drag = (d: Diagram, curveId: string, dx: number, dy: number) =>
+  resolveDiagram(applyDrag(d, { kind: 'curve', curveId }, { x: 0, y: 0 }, { x: dx, y: dy }));
+const pointNamed = (d: Diagram, text: string) => d.points.find((p) => plain(p.label?.en) === text)!;
+
+describe('tax-efficiency', () => {
+  const d = buildFromTemplate('tax-efficiency');
+  const mb = pointNamed(d, 'MB');
+  const mc = pointNamed(d, 'MC');
+
+  it('marks MB on D above MC on S₀ at Q₁, and shades the DWL', () => {
+    expect(mc.at.x).toBeCloseTo(mb.at.x, 9);
+    expect(mb.at.y).toBeGreaterThan(mc.at.y + 0.1);
+    expect(mc.at.y).toBeCloseTo(curveYAt(curveNamed(d, 'S0 = MC'), mc.at.x)!, 9);
+    expect(areaPolygon(d, d.areas![0])).not.toBeNull();
+  });
+
+  it('keeps MC under MB when the tax grows', () => {
+    const after = drag(d, curveNamed(d, 'S1').id, 0, 0.06);
+    expect(pointNamed(after, 'MC').at.x).toBeCloseTo(pointNamed(after, 'MB').at.x, 9);
+    expect(pointNamed(after, 'MB').at.x).toBeLessThan(mb.at.x);
+  });
+});
+
+describe('tax-net-revenue', () => {
+  const d = buildFromTemplate('tax-net-revenue');
+  const box = (x: Diagram) => {
+    const poly = areaPolygon(x, x.areas!.find((a) => plain(a.label?.en).startsWith('revenue'))!)!;
+    return { w: Math.max(...poly.map((p) => p.x)), h: Math.max(...poly.map((p) => p.y)) };
+  };
+  const sellers = (x: Diagram) => tick(x, 'y', 'P1 − t').at;
+
+  it('shades (P₁ − t) × Q₁ from the origin, with the tax revenue above it', () => {
+    expect(box(d).w).toBeCloseTo(tick(d, 'x', 'Q1').at.x, 9);
+    expect(box(d).h).toBeCloseTo(sellers(d).y, 9);
+    expect(tick(d, 'y', 'P1').at.y - sellers(d).y).toBeCloseTo(0.26, 6);
+    expect(d.areas).toHaveLength(2);
+  });
+
+  it('follows a drag of D', () => {
+    const after = drag(d, curveNamed(d, 'D').id, 0.05, 0);
+    expect(box(after).w).toBeGreaterThan(box(d).w);
+    expect(box(after).h).toBeCloseTo(sellers(after).y, 9);
   });
 });
