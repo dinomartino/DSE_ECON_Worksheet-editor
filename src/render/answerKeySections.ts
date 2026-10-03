@@ -153,6 +153,10 @@ const centred = (text: BiText, bold = false, edges?: TableCellEdges): TableNodeC
   ...(edges ? { edges } : {}),
 });
 
+/** A cell printing `choice`'s number or key: clicked on the page, it selects that question. */
+const ownedBy = (cell: TableNodeCell, choice: KeyChoice | undefined): TableNodeCell =>
+  choice ? { ...cell, questionId: choice.questionId } : cell;
+
 /** Number → letter pairs, `ANSWER_GRID_PAIRS_PER_ROW` to a row; a short last row pads empty. */
 export function answerGrid(choices: KeyChoice[], language: LanguageMode): TableNode {
   const cell = (text: string, bold = false) => centred(neutral(text, language), bold);
@@ -163,8 +167,8 @@ export function answerGrid(choices: KeyChoice[], language: LanguageMode): TableN
     for (let offset = 0; offset < ANSWER_GRID_PAIRS_PER_ROW; offset++) {
       const choice = choices[start + offset];
       row.push(
-        cell(choice ? String(choice.number) : ''),
-        cell(choice ? (choice.letter ?? UNANSWERED_MARK) : '', true),
+        ownedBy(cell(choice ? String(choice.number) : ''), choice),
+        ownedBy(cell(choice ? (choice.letter ?? UNANSWERED_MARK) : '', true), choice),
       );
     }
     rows.push(row);
@@ -212,8 +216,8 @@ export function hkeaaTable(choices: KeyChoice[], language: LanguageMode): TableN
     for (let pair = 0; pair < pairs; pair++) {
       const choice = choices[pair * down + index];
       row.push(
-        centred(neutral(choice ? `${choice.number}.` : '', language), false, ruled),
-        centred(neutral(choice ? (choice.letter ?? UNANSWERED_MARK) : '', language), false, ruled),
+        ownedBy(centred(neutral(choice ? `${choice.number}.` : '', language), false, ruled), choice),
+        ownedBy(centred(neutral(choice ? (choice.letter ?? UNANSWERED_MARK) : '', language), false, ruled), choice),
       );
     }
     rows.push(row);
@@ -498,8 +502,8 @@ export function rationaleTable(choices: KeyChoice[], language: LanguageMode): Ta
         : []),
     ];
     rows.push([
-      keyCell({ text: neutral(`${choice.number}.`, language) }, { align: 'center' }),
-      keyCell({ text: neutral(choice.letter ?? UNANSWERED_MARK, language) }, { align: 'center', bold: true }),
+      ownedBy(keyCell({ text: neutral(`${choice.number}.`, language) }, { align: 'center' }), choice),
+      ownedBy(keyCell({ text: neutral(choice.letter ?? UNANSWERED_MARK, language) }, { align: 'center', bold: true }), choice),
       keyCell(cellText(explanation)),
       keyCell(
         cellText(others.map((reason) => ({ lead: neutral(`${reason.letter}. `, language), value: reason.text, edit: reason.edit }))),

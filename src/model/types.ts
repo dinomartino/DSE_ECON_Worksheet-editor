@@ -520,6 +520,10 @@ export interface StructuredQuestion extends QuestionBase {
   answerGraph?: AnswerGraph;
   /** The model answer diagram (§ `QuestionPart.answerDiagram`); only when there are no parts. */
   answerDiagram?: DiagramBlock;
+  /** The essay's model answer, teacher-only, as `QuestionPart.answer`; only when there are no parts. */
+  answer?: BiText;
+  /** The essay's HKEAA marking scheme, as `QuestionPart.scheme`; only when there are no parts. */
+  scheme?: MarkScheme;
   /**
    * Print the trailing "(Total: N marks)" line. Off by default (per-part marking is
    * the norm); stored as opt-in so the absent field means the default. The total

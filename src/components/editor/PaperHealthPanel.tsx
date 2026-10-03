@@ -190,6 +190,7 @@ export function wording(
     case 'untranslated': return m.fUntranslated(n);
     case 'terminology': return m.fTerminology(n);
     case 'unanswered': return m.fUnanswered(n);
+    case 'schemeMarks': return m.fSchemeMarks(n);
     case 'unmarked': return m.fUnmarked(n);
     case 'timeMismatch': return m.fTime(a.minutes as number, a.stated as number, a.longer as boolean);
     default: return finding.message;

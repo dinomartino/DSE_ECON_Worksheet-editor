@@ -166,6 +166,15 @@ export function schemeMismatch(
   return total === printedMarks ? undefined : { scheme: total, printed: printedMarks };
 }
 
+/** As `schemeMismatch`, for a leaf read structurally (`QualityAnchor`): a shared label's marks win. */
+export function anchorSchemeMismatch(anchor: {
+  scheme?: MarkScheme;
+  marks?: number;
+  schemeMarks?: number;
+}): { scheme: number; printed: number } | undefined {
+  return schemeMismatch(anchor.scheme, anchor.schemeMarks ?? anchor.marks);
+}
+
 /**
  * One piece of authored scheme text, by id: a point's wording, its `alternative`-th `/`
  * wording, a level's descriptor, or an EC row's descriptor. What the page's scheme edit

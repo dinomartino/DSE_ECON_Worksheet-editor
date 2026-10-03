@@ -82,6 +82,42 @@ it('emits a structured paper with an HKEAA marking scheme, and its answer key', 
   console.log(`${bytes.length} bytes -> ${path}`);
 });
 
+it('emits an essay with its own answer and marking scheme, and its answer key', async () => {
+  mkdirSync(OUT, { recursive: true });
+  const worksheet = createWorksheet();
+  worksheet.title = bi('Minimum wage', '最低工資');
+  worksheet.layout = [];
+  const question: StructuredQuestion = {
+    id: 'q-essay',
+    type: 'structured',
+    blocks: [createParagraphBlock(bi('Discuss whether Hong Kong should raise its minimum wage.', '討論香港應否提高最低工資。'))],
+    parts: [],
+    marks: 8,
+    answer: bi('Answers are for reference only.', '答案僅供參考。'),
+    scheme: {
+      routes: [{ id: 'r', groups: [{ id: 'g', take: 2, each: 2, points: [
+        { id: 'p1', text: bi('Higher income for low-paid workers', '低收入工人收入增加') },
+        { id: 'p2', text: bi('Unemployment may rise', '失業可能上升') },
+      ] }] }],
+      levels: [{ id: 'l1', min: 1, max: 4, descriptor: bi('Relevant points, little analysis.', '論點相關，分析不足。') }],
+      ec: { max: 2, descriptors: [{ id: 'e1', marks: 2, text: bi('Clear and logical.', '清晰而有條理。') }] },
+    },
+    answerSpace: 12,
+  };
+  worksheet.questions = [question];
+  worksheet.flow = [{ type: 'question', id: question.id }];
+  for (const version of ['teacher', 'student'] as const) {
+    const bytes = await exportDocxBuffer(worksheet, { language: 'bilingual', version });
+    const path = `${OUT}/essay-${version}.docx`;
+    writeFileSync(path, bytes);
+    console.log(`${bytes.length} bytes -> ${path}`);
+  }
+  const bytes = await exportAnswerKeyDocxBuffer(worksheet, 'bilingual');
+  const path = `${OUT}/essay-answer-key.docx`;
+  writeFileSync(path, bytes);
+  console.log(`${bytes.length} bytes -> ${path}`);
+});
+
 it('emits a long question with a model answer diagram, and its answer key', async () => {
   mkdirSync(OUT, { recursive: true });
   const worksheet = createWorksheet();
