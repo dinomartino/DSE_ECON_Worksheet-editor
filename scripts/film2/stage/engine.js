@@ -17,6 +17,14 @@ const H = num('h', TL.H);
 const FPS = num('fps', TL.FPS);
 const DW = TL.W, DH = TL.H;
 
+// ?lab=<id>&labdur=<s>: render one scene file (e.g. scenes/_lab.js, not in the timeline) alone
+// from 0 s, for trying lib pieces (camera sizes, re-ink lifts) without touching the film.
+const LAB = q.get('lab');
+const LAB_INFO = LAB && { id: LAB, from: 0, to: num('labdur', 8), bars: [0, 0], in: { type: 'cut' } };
+const SC = LAB
+  ? { list: [LAB_INFO], at: (t) => (t >= 0 && t < LAB_INFO.to ? [LAB] : []), window: () => ({ start: 0, end: LAB_INFO.to, from: 0, to: LAB_INFO.to }) }
+  : { list: TL.SCENES, at: TL.sceneAt, window: TL.sceneWindow };
+
 const root = document.getElementById('film');
 const fx = document.getElementById('fx');
 document.getElementById('stage').style.cssText = `width:${W}px;height:${H}px`;
@@ -52,11 +60,11 @@ const sceneDef = (id) => {
   if (!defs.has(id)) defs.set(id, import(`./scenes/${id}.js`).then((m) => m.default));
   return defs.get(id);
 };
-const infoOf = (id) => TL.SCENES.find((s) => s.id === id);
+const infoOf = (id) => SC.list.find((s) => s.id === id);
 
 function assetFor(id, scene, kind) {
   const a = asset(id);
-  if (!a.scenes?.includes(scene)) throw new Error(`asset "${id}" is not registered for scene ${scene} (assets.mjs)`);
+  if (!LAB && !a.scenes?.includes(scene)) throw new Error(`asset "${id}" is not registered for scene ${scene} (assets.mjs)`);
   if ((kind === 'clip') !== (a.kind === 'clip')) throw new Error(`asset "${id}" is a ${a.kind}, not a ${kind}`);
   return a;
 }
@@ -73,7 +81,7 @@ async function createSlot(id, { dry = false } = {}) {
   const ctx = {
     id, el, dry, lib, tl: TL,
     W: DW, H: DH, fps: FPS,
-    from: info.from, to: info.to, dur: info.to - info.from, window: TL.sceneWindow(id),
+    from: info.from, to: info.to, dur: info.to - info.from, window: SC.window(id),
     PULSE: TL.PULSE, BEAT: TL.BEAT, BAR: TL.BAR,
     /** Scene-local seconds of pulse / beat / bar n counted from the scene's start. */
     pulse: (n) => n * TL.PULSE,
@@ -100,7 +108,15 @@ async function createSlot(id, { dry = false } = {}) {
       placements.push({ name: assetId, at: 0, from: 0, rate: 1, ...p });
     },
     placements,
+    /** lib/camera.js declares its shot list here (the doctor's shot-size budget). */
+    registerShots(name, list, problems = []) {
+      shots.push(...list.map((s) => ({ ...s, rig: name })));
+      shotProblems.push(...problems.map((p) => `${name}: ${p}`));
+    },
   };
+  const shots = [], shotProblems = [];
+  ctx.shotList = shots;
+  ctx.shotProblems = shotProblems;
   await def.setup?.(ctx);
   return { id, info, def, ctx, res, el, wrap };
 }
@@ -184,7 +200,7 @@ function pose(active, t) {
 const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
 async function doSeek(t) {
-  const ids = TL.sceneAt(t);
+  const ids = SC.at(t);
   for (const [id, pending] of slots) {
     if (ids.includes(id)) continue;
     slots.delete(id);
@@ -211,7 +227,7 @@ function seek(t) {
 
 // ---- events and doctor probes -------------------------------------------------------
 async function forEachDry(fn) {
-  for (const info of TL.SCENES) {
+  for (const info of SC.list) {
     const slot = await createSlot(info.id, { dry: true });
     try {
       await fn(info, slot);
@@ -225,7 +241,7 @@ async function forEachDry(fn) {
 async function events() {
   const out = TL.CUES.map((c) => ({ ...c, source: 'cue' }));
   await forEachDry(async (info, slot) => {
-    const win = TL.sceneWindow(info.id);
+    const win = SC.window(info.id);
     for (const e of slot.def.events ?? []) out.push({ ...e, t: info.from + e.t, source: 'scene', scene: info.id });
     for (const p of slot.ctx.placements) {
       let meta;
@@ -245,13 +261,27 @@ async function events() {
 async function placements() {
   const out = [];
   await forEachDry((info, slot) => {
-    const win = TL.sceneWindow(info.id);
+    const win = SC.window(info.id);
     for (const p of slot.ctx.placements) {
       const dur = Math.min(p.dur ?? Infinity, win.end - (info.from + p.at));
       out.push({ scene: info.id, clip: p.name, at: p.at, from: p.from, rate: p.rate, dur });
     }
   });
   return out;
+}
+
+/** Every declared camera shot (lib/camera.js), film seconds, clipped to its scene's window. */
+async function shots() {
+  const out = [], problems = [];
+  await forEachDry((info, slot) => {
+    const win = SC.window(info.id);
+    problems.push(...slot.ctx.shotProblems.map((p) => `${info.id}: ${p}`));
+    for (const s of slot.ctx.shotList) {
+      const from = Math.max(win.start, info.from + s.at), to = Math.min(win.end, info.from + s.end);
+      if (to > from) out.push({ scene: info.id, rig: s.rig, from, to, size: s.size, to_size: s.to, moveAt: info.from + s.moveAt });
+    }
+  });
+  return { shots: out, problems };
 }
 
 /** The text blocks on screen now, design px: fit data, reveal, line widths and bounds. */
@@ -291,9 +321,10 @@ window.film = {
   seek,
   events,
   placements,
+  shots,
   text,
   errors: () => errors.slice(),
-  scenesAt: (t) => TL.sceneAt(t),
+  scenesAt: (t) => SC.at(t),
   // No WebGL: the DOM stage needs no GPU (v1's chrome.mjs asks for this).
   gpu: () => ({ renderer: 'DOM/SVG (no WebGL)', vendor: 'n/a' }),
 };
