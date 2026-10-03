@@ -463,11 +463,11 @@ function ppfShift(): Diagram {
  */
 function ppfGrowthTrade(): Diagram {
   // Names placed in the gaps between the lines (from each line's far end, so they travel).
-  const ppf0 = placeLabel(curve([[0, 0.24], [0.48, 0]], sub('PPF', '0')), 0.1, 0.12);
+  const ppf0 = placeLabel(curve([[0, 0.24], [0.48, 0]], sub('PPF', '0')), 0.1, 0.09);
   const ppf1 = placeLabel(
     derived({ kind: 'parallel', to: ppf0.id, through: { x: 0.68, y: 0 } }, [ppf0], sub('PPF', '1')),
-    0.08,
-    0.36,
+    0.05,
+    0.38,
   );
   const guide = curve([[0.6, 0.7], [0.75, 0.505]], sym('TOT'), { stroke: 'dashed', weight: 0.8 });
   const b0 = pin({ on: ppf0.id, y: 0 }, [ppf0], sub('B', '0'), { labelSide: 'upRight' });
@@ -476,9 +476,9 @@ function ppfGrowthTrade(): Diagram {
     placeLabel(derived({ kind: 'parallel', to: guide.id, through: at(b) }, [guide, b], sub('CPF', n)), x, y);
   return finish(
     axes(GOOD.x, GOOD.y, {
-      curves: [ppf0, ppf1, cpf(b0, '0', 0.02, 0.7), cpf(b1, '1', 0.31, 0.6), guide],
+      curves: [ppf0, ppf1, cpf(b0, '0', 0.13, 0.53), cpf(b1, '1', 0.31, 0.6), guide],
       points: [b0, b1],
-      arrows: [arrow([0.15, 0.18], [0.18, 0.24]), arrow([0.17, 0.45], [0.3, 0.45])],
+      arrows: [arrow([0.15, 0.18], [0.18, 0.24]), arrow([0.29, 0.3], [0.42, 0.3])],
     }),
   );
 }
