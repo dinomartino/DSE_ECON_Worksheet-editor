@@ -28,7 +28,7 @@ const scene = {
     { t: 0, kind: 'impact', label: 'the lift: the 題庫 opens' },
     { t: P(1.5), kind: 'whoosh', size: 'm', label: 'pull back, the topic cards fly in' },
     { t: P(3.5), kind: 'shimmer', label: 'the coverage bars draw on' },
-    { t: P(10.6), kind: 'whoosh', size: 's', label: 'push into the topic' },
+    { t: P(24), kind: 'pencil', label: 'the glossary underlines draw on' },
   ],
   async setup(ctx) {
     // Everything hangs off one root: the engine hides a scene with visibility, which a child
@@ -113,8 +113,8 @@ const scene = {
     });
 
     ctx.head[0].show(t, { at: P(4), out: P(12), outDur: 0.3 });
-    ctx.head[1].show(t, { at: P(12.5), out: P(22), outDur: 0.3 });
-    ctx.head[2].show(t, { at: P(22.5) });
+    ctx.head[1].show(t, { at: P(12), out: P(22), outDur: 0.3 });
+    ctx.head[2].show(t, { at: P(22) });
   },
 };
 

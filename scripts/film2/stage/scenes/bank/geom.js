@@ -48,7 +48,7 @@ export const UNDERLINES = [
 const A0 = [960, 540]; // frame centre: the iris opens here
 const AW = [WIN.x + WIN.w / 2, WIN.y + WIN.h / 2]; // the window's centre
 const pose = (a, c, s) => ({ a, c, s });
-const cC = [850, 316]; // C's "23 questions" and its bar: the bar draws through the iris
+const cC = [830, 286]; // C's title, "23 questions" and its bar, which draws through the iris
 export const GRID_POSE = pose(AW, [720, 333], 1.13);
 export const CAMERA = [
   // bank: C fills the iris, the grid assembles around it, the window, push to C, the topic
@@ -56,7 +56,6 @@ export const CAMERA = [
   [P(0.6), pose(A0, cC, 2.55)],
   [P(1.5), pose(A0, cC, 2.5)],
   [P(4.5), GRID_POSE, inOutSoft],
-  [P(6), GRID_POSE],
   [P(8), pose(AW, [800, 300], 1.45), inOutSoft],
   [P(8.4), pose(AW, [790, 290], 1.5)],
   [P(10.6), pose(AW, [412, 186], 2.1), inOutSoft],
@@ -66,8 +65,8 @@ export const CAMERA = [
   [P(13.4), pose(AW, [1040, 290], 2.2)],
   [P(16.6), pose(AW, [690, 432], 1.75), inOutSoft],
   [P(19.4), pose(AW, [680, 452], 1.83)],
-  [P(21), pose(AW, [592, 688], 1.92), inOutSoft],
-  [P(22) - 1e-3, pose(AW, [590, 690], 1.95)],
+  [P(21), pose(AW, [592, 712], 1.92), inOutSoft],
+  [P(22) - 1e-3, pose(AW, [590, 714], 1.95)],
   // check terms: the menu item, the page as the underlines draw, the finding
   [P(22), pose(AW, [1092, 150], 2.6)],
   [P(23.2), pose(AW, [1088, 152], 2.6)],
