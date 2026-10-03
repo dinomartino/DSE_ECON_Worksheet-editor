@@ -46,7 +46,7 @@ export const DURATION = bar(END_BAR);
 const ACTS = [
   { id: 'open', bars: [0, 1.5], in: { type: 'cut' } },
   { id: 'mark', bars: [1.5, 3], in: { type: 'cut' } },
-  { id: 'write', bars: [3, 8], in: { type: 'iris', pulses: 4, at: [960, 470] } },
+  { id: 'write', bars: [3, 8], in: { type: 'iris', pulses: 4, at: [960, 338] } }, // at: the mark's dot (scenes/mark.js MARK_DOT)
   { id: 'draw', bars: [8, 14], in: { type: 'push', dir: 'left', pulses: 4 } },
   { id: 'papers', bars: [14, 20], in: { type: 'push', dir: 'left', pulses: 4 } },
   { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] } },

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>Econ Studio film v2: stage</title>
+<style>
+  /* Self-hosted, OFL (fonts/OFL-*.txt): the render never depends on what is installed,
+     except Chinese, which uses the Mac's PingFang HK. */
+  @font-face {
+    font-family: 'Newsreader';
+    src: url('fonts/newsreader-latin-opsz-normal.woff2') format('woff2');
+    font-weight: 200 800;
+    font-style: normal;
+    font-display: block;
+  }
+  @font-face {
+    font-family: 'Inter';
+    src: url('fonts/inter-latin-wght-normal.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: block;
+  }
+  html, body { margin: 0; padding: 0; background: #F1ECE3; overflow: hidden; }
+  body { -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; font-optical-sizing: auto; }
+  #stage { position: relative; overflow: hidden; background: #F1ECE3; }
+  #film, #fx { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; }
+  #fx { pointer-events: none; z-index: 100; }
+  .scene { position: absolute; inset: 0; overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="film"></div>
+  <svg id="fx" viewBox="0 0 1920 1080"></svg>
+</div>
+<script type="module" src="engine.js"></script>
+</body>
+</html>
