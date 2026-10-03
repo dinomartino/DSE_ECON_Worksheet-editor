@@ -319,16 +319,19 @@ describe('pagination', () => {
     expect((nodes[at - 1] as { keepNext?: boolean }).keepNext).toBe(true);
   });
 
-  it('moves a question whose box does not fit to the next sheet whole', () => {
+  it('moves a box that does not fit to the next sheet with its part, as Word does', () => {
     const nodes = questionNodes(
       worksheetWith([{ id: 'a', blocks: [paragraph('pa', 'Draw.')], answerGraph: { lines: 24 } }]),
     );
-    const { item, height } = itemFor(nodes);
+    const { item, height, graphAt } = itemFor(nodes);
     const page = 700;
     const filler: PackItem = { key: 'filler' };
     const packed = packPages([filler, item], new Map([['filler', 500], ['q', height]]), page);
-    expect(packed.pages.map((p) => p.map((i) => i.key))).toEqual([['filler'], ['q']]);
-    expect(packed.fragments.size).toBe(0);
+    // The stem stays under the filler; the part's line and its box go over together.
+    expect(packed.pages.map((p) => p.map((i) => i.key))).toEqual([['filler', 'q'], ['q']]);
+    const tail = packed.fragments.get(placementKey(1, 0))!;
+    expect(tail.from).toBeLessThan(graphAt);
+    expect((nodes[tail.from] as { keepNext?: boolean }).keepNext).toBe(true);
   });
 
   it('never cuts the box when a too-tall question splits', () => {

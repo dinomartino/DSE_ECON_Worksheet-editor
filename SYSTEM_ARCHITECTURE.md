@@ -1557,36 +1557,36 @@ Measuring lives in the component; the deciding half is pure in
 
 `movePage` is one `moveRunInFlow` — a page is just a run of ids.
 
-### An item taller than a page breaks at a node boundary
+### An item breaks where Word breaks it
 
-An item that merely overflows moves to the next sheet **whole** — Word does the same, and
-breaking a question that would have fitted costs a page turn for nothing. One taller than a
-whole page is **split**, because the alternative was worse: it used to get its own sheet and
-overflow off the paper, printing over the footer and then simply not being there. The
-reference booklet's Q11 (two framed sources, four parts, a table) lost its final table and
-essay instruction that way, and the preview reported one sheet fewer than the `.docx`.
+Word knows keep chains, not questions: it breaks after any paragraph without `keepNext`,
+and moves a chain whole only when the chain does not fit the room left. The preview
+packs the same way, so a question whose stem fits under the previous one starts on that
+sheet in both backends (it used to move whole to the next sheet while Word started it on
+page 1).
 
 - **The break candidates come from `keepNext`**, not from the measured boxes:
   `breakAfterNodes` (`Preview.tsx`) offers any node whose `keepNext` is falsy. That is the
-  chain Word reads, so both backends break in the same place — on Q11, before part (d).
+  chain Word reads, so both backends break in the same place.
   A source panel's nodes keep to each other, so a break is never offered inside a frame.
-- **Moved first, split second.** An item is only ever broken while it has a sheet to
-  itself; filling the outgoing sheet's slack with the head is what Word does *not* do, and
-  a preview that did it ended the document a sheet short.
-- **The last boundary that fits wins** — filling the sheet is what keeps the preview's page
-  count equal to the export's.
+- **Overflowing, an item fills the sheet up to the last boundary that fits**, its head
+  paying its boundary gap. With no boundary that fits it moves **whole**, and a chain
+  taller than a page is then cut at the last node that fits (`looseBreakPoints`), as Word
+  cuts it. A Paper 1 question is one chain (`keepQuestionWhole`), so it moves whole and
+  is cut only when taller than a sheet; before, it hung off the paper.
+- **What keeps with the next item moves with it** (`keepsWithNext`, `pullGluedTail`): a
+  heading, or a question's last part, which `keepNext` holds against the next stem. Not
+  when that would empty the sheet or the chain would not fit the next one.
 - **Heights are per node**: the probe records each block's cumulative node bottoms
-  (`nodeHeights`) beside the block height; `breakPoints` joins the two. Measured in the
-  probe only — a block already split has just a piece of itself on each sheet.
+  (`nodeHeights`), measured below the boundary gap; `breakPoints` joins the two.
+  Measured in the probe only — a block already split has just a piece on each sheet.
 - **A fragment is a rendering, never a model thing.** `ItemBody` takes a `range` and slices
   its own node array; `composePages` gives a split item to the page it *starts* on and to
   that one only, so the rail, drag/drop and `moveRunInFlow` keep seeing one item.
 - **An oversized atom is cut anyway** (a source frame taller than a page): a frame in two
-  halves is visible and fixable, content off the paper is not. An item with no declared
-  boundary keeps the old behaviour exactly.
+  halves is visible and fixable, content off the paper is not.
 - **A fill answer space is never split** — its height is the paginator's own output.
-- Documents with nothing too tall pack byte-identically to before (`pagination.test.ts`
-  pins both directions).
+- `pagination.test.ts` pins each rule.
 
 ### A drop target receives the run, not the grabbed id
 

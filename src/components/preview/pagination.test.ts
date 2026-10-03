@@ -159,19 +159,37 @@ describe('breaking an item that no sheet can hold', () => {
     });
   });
 
-  it('moves the item to a fresh sheet first, and only then breaks it', () => {
+  it('starts an item where it is when its first chain fits, as Word does', () => {
     /*
-     * Word moves the paragraph and *then* breaks it, so the head must not fill the
-     * outgoing sheet's slack. A preview that split on the way out ended the reference
-     * booklet a sheet shorter than the export — the very disagreement this exists to
-     * remove — and left the question's stem trailing under the previous item.
+     * Word knows keep chains, not questions: it fills the sheet up to the last paragraph
+     * not kept with the next. A preview that moved the whole question put it a sheet
+     * later than the .docx (§ An item that does not fit breaks as Word breaks it).
      */
     const q = tall('q2', [0, 1, 2, 3, 4]);
     const items = [item('q1'), q];
-    const { pages } = packPages(items, heightsWith(items, 'q2', 125), PAGE);
+    const { pages, fragments } = packPages(items, heightsWith(items, 'q2', 125), PAGE);
 
-    // q1 keeps page one to itself; the tall item starts clean on page two.
-    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2'], ['q2']]);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1', 'q2'], ['q2']]);
+    // q1 holds 50; boundaries at 25 and 50 fit the 50 left, so the head ends at node 1.
+    expect(fragments.get(placementKey(0, 1))).toEqual({ from: 0, to: 1, continued: false });
+    expect(fragments.get(placementKey(1, 0))).toMatchObject({ from: 2, continued: true });
+  });
+
+  it('moves an item whole when not even its first chain fits', () => {
+    const q = item('q2', { breakPoints: [{ index: 2, height: 60 }] });
+    const items = [item('q1'), q];
+    const { pages, fragments } = packPages(items, heightsWith(items, 'q2', 90), PAGE);
+
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2']]);
+    expect(fragments.size).toBe(0);
+  });
+
+  it('charges the head its boundary gap, which it pays off the top of a sheet', () => {
+    // 50 left; the 25px boundary plus a 30px gap is 55, so the item moves whole.
+    const q = tall('q2', [0, 1]);
+    const items = [item('q1'), q];
+    const { pages } = packPages(items, heightsWith(items, 'q2', 75), PAGE, new Map([['q2', 30]]));
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2']]);
   });
 
   it('breaks again as often as it takes', () => {
@@ -185,16 +203,19 @@ describe('breaking an item that no sheet can hold', () => {
     expect(pages.every((page) => page.length === 1)).toBe(true);
   });
 
-  it('leaves an item that merely overflows whole', () => {
-    // The rule it must not swallow: a question that fits a sheet of its own is moved,
-    // never cut. A page turn mid-question is a real cost, and paying it to save slack
-    // the next sheet has anyway is not a trade worth making.
-    const q = tall('q2', [0, 1, 2]);
+  it('cuts one keep chain taller than a sheet at the last node that fits', () => {
+    /*
+     * A Paper 1 question is a single chain, so it has no legal boundary at all. Word moves
+     * it to a fresh page and breaks it where the page ends; the preview used to let it hang
+     * off the paper, options and all.
+     */
+    const loose = [0, 1, 2, 3].map((index) => ({ index, height: (index + 1) * 40 }));
+    const q = item('q2', { looseBreakPoints: loose });
     const items = [item('q1'), q];
-    const { pages, fragments } = packPages(items, heightsWith(items, 'q2', PAGE - 1), PAGE);
+    const { pages, fragments } = packPages(items, heightsWith(items, 'q2', 150), PAGE);
 
-    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2']]);
-    expect(fragments.size).toBe(0);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2'], ['q2']]);
+    expect(fragments.get(placementKey(1, 0))).toEqual({ from: 0, to: 1, continued: false });
   });
 
   it('breaks an oversized atom rather than let it fall off the paper', () => {
@@ -234,6 +255,47 @@ describe('breaking an item that no sheet can hold', () => {
     expect(composed[0].flowIds).toEqual(['q1']);
     expect(composed[1].flowIds).toEqual([]);
     expect(composed[1].structuralOnly).toBe(true);
+  });
+});
+
+describe('what keeps with the next item moves with it', () => {
+  const at = (key: string, height: number, extra: Partial<PackItem> = {}) => ({
+    item: item(key, extra),
+    height,
+  });
+  const run = (entries: { item: PackItem; height: number }[]) =>
+    packPages(
+      entries.map((e) => e.item),
+      new Map(entries.map((e) => [e.item.key, e.height])),
+      PAGE,
+    );
+
+  it('takes a heading to the sheet its question moves to', () => {
+    const { pages } = run([at('q1', 60), at('h', 10, { keepsWithNext: true }), at('q2', 50)]);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['h', 'q2']]);
+  });
+
+  it('moves only the tail after the last boundary of a question held against the next', () => {
+    const q1 = at('q1', 70, { keepsWithNext: true, breakPoints: [{ index: 1, height: 50 }] });
+    const { pages, fragments } = run([q1, at('q2', 40)]);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q1', 'q2']]);
+    expect(fragments.get(placementKey(0, 0))).toEqual({ from: 0, to: 1, continued: false });
+    expect(fragments.get(placementKey(1, 0))).toMatchObject({ from: 2, continued: true });
+  });
+
+  it('leaves the sheet alone when moving the chain would empty it', () => {
+    const { pages } = run([at('h', 70, { keepsWithNext: true }), at('q2', 40)]);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['h'], ['q2']]);
+  });
+
+  it('leaves the sheet alone when the chain would not fit the next one either', () => {
+    const { pages } = run([at('q1', 30), at('h', 30, { keepsWithNext: true }), at('q2', 80)]);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1', 'h'], ['q2']]);
+  });
+
+  it('changes nothing for items that keep with nothing', () => {
+    const { pages } = run([at('q1', 60), at('h', 10), at('q2', 50)]);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1', 'h'], ['q2']]);
   });
 });
 

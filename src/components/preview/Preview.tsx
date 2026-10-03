@@ -3632,17 +3632,22 @@ export function breakAfterNodes(nodes: RenderNode[]): number[] {
   return indices;
 }
 
+/** Whether an item's last node keeps with whatever follows it, as Word reads `keepNext`. */
+export function keepsWithNext(nodes: RenderNode[]): boolean {
+  const last = nodes[nodes.length - 1];
+  return Boolean(last && 'keepNext' in last && last.keepNext);
+}
+
 /**
  * Splits the flow across real sheets. Pagination is *measured*, not computed (only
  * the browser knows font metrics, bilingual stacking and wrapping): the flow renders
  * once in a hidden probe at true content width, heights are recorded, blocks pack
  * into page-height buckets.
  *
- * A block that fits is kept whole. One **taller than a whole page** is broken at a node
- * boundary its IR declares legal, because the alternative — the rule this replaced — was
- * to give it its own sheet and let the remainder hang off the paper, where it printed over
- * the footer and was then simply missing (§ `packPages`). The probe therefore measures
- * each block's *nodes* as well as the block, so the packer has boundaries to choose from.
+ * A block that fits is kept whole. One that does not is broken where Word breaks it: at
+ * the last boundary its IR's `keepNext` chain allows that fits (§ `packPages`). The probe
+ * therefore measures each block's *nodes* as well as the block, so the packer has
+ * boundaries to choose from.
  */
 /** Never mutated: each measurement is a new map. */
 const NO_HEIGHTS: Map<string, number> = new Map();
@@ -3810,11 +3815,15 @@ export function usePagination(
     () =>
       blocks.map((block) => {
         const tops = nodeHeights.get(block.key);
-        if (!tops || !block.breakAfter || block.breakAfter.length === 0) return block;
+        if (!tops || !block.breakAfter || tops.length < 2) return block;
         const breakPoints = block.breakAfter
           .filter((index) => index < tops.length - 1)
           .map((index) => ({ index, height: tops[index] }));
-        return breakPoints.length > 0 ? { ...block, breakPoints } : block;
+        // Every node boundary, for a keep chain longer than a sheet (§ `looseBreakPoints`).
+        const looseBreakPoints = tops.slice(0, -1).map((height, index) => ({ index, height }));
+        return breakPoints.length > 0
+          ? { ...block, breakPoints, looseBreakPoints }
+          : { ...block, looseBreakPoints };
       }),
     [blocks, nodeHeights],
   );
@@ -3931,7 +3940,7 @@ interface ItemBodyProps {
   onSelect: (event: React.MouseEvent) => void;
   /**
    * The slice of the item's nodes this copy renders, when it was split across sheets
-   * (§ *An item taller than a page breaks at a node boundary*). Absent renders all of
+   * (§ *An item breaks where Word breaks it*). Absent renders all of
    * them, which is every item in a document with nothing too tall in it.
    */
   range?: { from: number; to: number };
@@ -6413,6 +6422,10 @@ export function Preview({
             : breakAfterNodes(
                 item.type === 'question' ? item.question.nodes : item.layout.nodes,
               ),
+        keepsWithNext:
+          !isManualBreak && !fillsPage && keepsWithNext(
+            item.type === 'question' ? item.question.nodes : item.layout.nodes,
+          ),
         node: wrap(bodyFor()),
         slice: (range) => wrap(bodyFor(range)),
       });

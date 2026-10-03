@@ -468,6 +468,14 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **A question now starts on the page it starts on in Word.** When a question did not fit the
+  rest of a page, the page on screen and the PDF moved all of it to the next page, while Word
+  started it where it was and carried on overleaf. They now break it at the same place as
+  Word, and a heading or a last part that Word keeps with the next question moves with it.
+  A Paper 1 question too long for one page no longer runs off the bottom of the page.
+  <!-- zh: **題目現在與 Word 在同一頁開始。** 以往題目放不進該頁餘下的位置時，畫面和 PDF 會把整題移到下一頁，
+  而 Word 則在原頁開始、再續到下一頁。現在兩者在同一位置分頁；Word 會與下一題連在一起的標題或最後一個分題，
+  亦會一同移頁。Paper 1 中長過一頁的題目，不再超出頁底。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when
