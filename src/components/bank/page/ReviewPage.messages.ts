@@ -20,6 +20,7 @@ export const REVIEW_PAGE_MESSAGES = defineMessages({
   versions: { en: (n: number) => ` · ${n} versions`, zh: (n: number) => ` · ${n} 個版本` },
   showList: { en: 'Show list', zh: '顯示清單' },
   inList: { en: 'in your list', zh: '在我的清單中' },
+  inTarget: { en: 'Already in this paper', zh: '已在此工作紙' },
 
   question: { en: 'Question', zh: '題目' },
   positionBefore: { en: 'Question ', zh: '第 ' },

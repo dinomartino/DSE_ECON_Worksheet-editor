@@ -39,6 +39,8 @@ export interface ReviewState {
   docLabels?: ReadonlyMap<string, string>;
   /** A ✦ review: each reviewed question's tone, by `rootId` (rail marks). */
   aiTones?: ReadonlyMap<string, BankItemTone>;
+  /** The questions the "Adding to" paper already holds, by `rootId` (`rootsInPaper`). */
+  inTarget?: ReadonlyMap<string, { number?: number }>;
 }
 
 /** The ✦ review of the question on the stage: its note above the paper, its marks on it. */
@@ -83,8 +85,11 @@ export function ReviewPage({
   onEditTopics,
   onOpen,
   stageAi,
+  targetPicker,
 }: {
   state: ReviewState;
+  /** "Adding to ‹paper ▾›", under the rail's count. */
+  targetPicker?: ReactNode;
   /** The ✦ review of the question on the stage. */
   stageAi?: StageAi;
   /** The focused question across the whole bank: versions and uses are never filtered. */
@@ -110,7 +115,7 @@ export function ReviewPage({
       {railHidden ? (
         <NumberStrip state={state} onFocus={onFocus} onShow={() => onRailHidden(false)} />
       ) : (
-        <Rail state={state} onFocus={onFocus} onPick={onPick} onHide={() => onRailHidden(true)} />
+        <Rail state={state} targetPicker={targetPicker} onFocus={onFocus} onPick={onPick} onHide={() => onRailHidden(true)} />
       )}
       {order.length === 0 || !focused ? (
         <div className="flex min-h-0 items-start justify-center overflow-y-auto bg-surface px-8 py-16">
@@ -141,11 +146,13 @@ export function ReviewPage({
 
 function Rail({
   state,
+  targetPicker,
   onFocus,
   onPick,
   onHide,
 }: {
   state: ReviewState;
+  targetPicker?: ReactNode;
   onFocus: (row: BankRow, entry?: string) => void;
   onPick: (row: BankRow) => void;
   onHide: () => void;
@@ -188,6 +195,7 @@ function Rail({
           {m.hideList}
         </button>
       </div>
+      {targetPicker && <div className="shrink-0 border-b border-line px-3.5 py-2">{targetPicker}</div>}
       <div ref={listRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto pb-3" role="list">
         {sections.map((section) => (
           <section key={section.key} aria-label={section.label}>
@@ -216,6 +224,7 @@ function Rail({
                   const lead = group.rows[0];
                   const on = focusedEntry === entry.key;
                   const used = usedWith ? usedWithTargets(group, [usedWith.target]) : undefined;
+                  const held = state.inTarget?.get(group.rootId);
                   const where = [testsThisText(partsTesting(lead, entry.query).map((slot) => slot.label)), alsoInText(entry.alsoIn)].filter(Boolean).join(' · ');
                   return (
                     <div
@@ -267,6 +276,12 @@ function Rail({
                           </p>
                         )}
                         {used &&<p className="truncate text-[11px] tabular-nums text-warn-ink">{usedLabel(used)}</p>}
+                        {held && (
+                          <p data-rail-in-target className="truncate text-[11px] tabular-nums text-accent-ink">
+                            {m.inTarget}
+                            {held.number !== undefined && ` · Q${held.number}`}
+                          </p>
+                        )}
                       </div>
                     </div>
                   );

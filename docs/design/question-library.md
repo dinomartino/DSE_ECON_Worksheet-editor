@@ -42,6 +42,11 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
 - **"Add to" is the paper open last, but looking never moves it** (the user, 2026-10-03):
   a paper opened from the bank to look (Open in worksheet) keeps the target as it was,
   through Home and back; any other open sets it (`src/components/bank/page/bankReturn.ts:useKeptTarget`).
+- **C8: "Adding to" is a picker** (2026-10-03): the rail header names the target and switches
+  it to any saved worksheet but a bank, or a new classroom worksheet / Paper 1 / Paper 2;
+  the tray's one filled button follows it. With no paper opened, it starts on a new
+  classroom worksheet (what "New worksheet from these" made). Rows the target holds (by
+  `rootId`) read "Already in this paper · Q4". No schema change: the choice is session state.
 - **The C3 "Insert from another document" dialog is dropped.** The 題庫 tab's From filter
   does the job.
 

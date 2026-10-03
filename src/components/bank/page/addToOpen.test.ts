@@ -7,6 +7,7 @@ import { bi } from '@/model/text';
 import { createParagraphBlock } from '@/model/factories';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { useBankSession } from '../bankSession';
+import { paperForPicks } from './fromSelection';
 import { addedSummary, addPicksToOpenDocument, nothingAddedText, splitAlreadyInPaper, uniquePicks } from './addToOpen';
 
 const store = () => useWorksheetStore.getState();
@@ -106,6 +107,41 @@ describe('addPicksToOpenDocument', () => {
       { question: partsQuestion('Two'), fromDocId: 'doc-b' },
     ]);
     expect(flowOf(store().worksheet).map((item) => item.id)).toEqual([a.id, one, b.id, two]);
+  });
+
+  it('a new Paper 1 from picks: the MCQs land ahead of its closing line, named after their topic', () => {
+    const picks = [
+      { question: choiceQuestion('One', '', ['C.ped']), fromDocId: 'doc-a' },
+      { question: choiceQuestion('Two', '', ['C.pes']), fromDocId: 'doc-b' },
+    ];
+    const paper = paperForPicks(picks, 'paper1');
+    expect(paper.questions).toEqual([]);
+    expect(paper.name).toBe('Market and Price');
+    const empty = flowOf(paper).map((item) => item.id);
+    store().replaceWorksheet(paper);
+    const { inserted } = addPicksToOpenDocument(picks);
+    expect(inserted).toHaveLength(2);
+    const flow = flowOf(store().worksheet).map((item) => item.id);
+    // The paper's own furniture keeps its order, and the closing line stays last.
+    expect(flow.filter((id) => !inserted.includes(id))).toEqual(empty);
+    expect(flow.at(-1)).toBe(empty.at(-1));
+    expect(flow.indexOf(inserted[1])).toBe(flow.indexOf(inserted[0]) + 1);
+  });
+
+  it('a new Paper 2 from picks: each pick goes to the section made for its type', () => {
+    const picks = [
+      { question: partsQuestion('Structured'), fromDocId: 'doc-a' },
+      { question: choiceQuestion('Choice'), fromDocId: 'doc-b' },
+    ];
+    const paper = paperForPicks(picks, 'lqMock');
+    expect(paper.name).toBe('Questions from bank');
+    store().replaceWorksheet(paper);
+    const { inserted } = addPicksToOpenDocument(picks);
+    expect(inserted).toHaveLength(2);
+    expect(store().worksheet.questions.map((q) => q.id).sort()).toEqual([...inserted].sort());
+    // One commit: one undo leaves the empty booklet.
+    store().undo();
+    expect(store().worksheet.questions).toEqual([]);
   });
 
   it('leaves a read-only document alone', () => {

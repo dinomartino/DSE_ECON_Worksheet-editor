@@ -46,17 +46,22 @@ import { afterOpen, revealQuestion, tagIndexOf, useBankReturn, useKeptTarget } f
 import { useBankCart } from './bankCart';
 import {
   activeFilters,
-  addTarget,
   bankCountLabel,
   classChoices,
   clearFilter,
   coverage as coverageOf,
   DEFAULT_FILTERS,
   filterRows,
+  initialTargetChoice,
+  paperTargets,
+  resolveTarget,
+  rootsInPaper,
   rowKey,
+  targetChoiceOf,
   traySummary,
   typeName,
   type BankFilters,
+  type NewTargetType,
 } from './bankPage';
 import {
   entryIndex,
@@ -74,9 +79,10 @@ import {
   type BankLevel,
 } from './bankScreen';
 import { FilterPopover } from './FilterPopover';
-import { readPicks, worksheetFromPicks, type PickedQuestion } from './fromSelection';
+import { paperForPicks, readPicks, worksheetFromPicks, type PickedQuestion } from './fromSelection';
 import { ReviewPage, type StageAi } from './ReviewPage';
 import { SelectionTray } from './SelectionTray';
+import { TargetPicker } from './TargetPicker';
 import { TagAsYouGo } from './TagAsYouGo';
 import { CoverageBar } from './CoverageBar';
 import { TopicCards } from './TopicCards';
@@ -338,11 +344,19 @@ export function QuestionBankScreen({
   const pickedPatternMix = patternMix(pickedByRoot);
   // The editor's store still holds the document open last in this session, unless it was
   // opened from here only to look. Pinned for the visit: a topic saved here moves that
-  // paper to the top of the list, and "Add to" must not follow it there.
-  const [targetId, setTargetId] = useState<string>();
-  const fresh = addTarget(summaries, rows, useWorksheetStore.getState().worksheet.id, useKeptTarget.getState().kept);
-  if (targetId === undefined && fresh) setTargetId(fresh.id);
-  const target = summaries.find((summary) => summary.id === targetId) ?? fresh;
+  // paper to the top of the list, and "Add to" must not follow it there. The picker
+  // ("Adding to") changes it; the choice lasts until another document is opened.
+  const [targetChoice, setTargetChoice] = useState<string>();
+  const firstChoice = initialTargetChoice(summaries, rows, useWorksheetStore.getState().worksheet.id, useKeptTarget.getState().kept);
+  if (targetChoice === undefined && firstChoice) setTargetChoice(firstChoice);
+  const target = resolveTarget(targetChoice ?? firstChoice, summaries, rows);
+  const targetPaper = target.kind === 'paper' ? target.summary : undefined;
+  const inTarget = useMemo(() => rootsInPaper(rows, targetPaper?.id), [rows, targetPaper?.id]);
+  const targetPapers = useMemo(() => paperTargets(summaries, rows), [summaries, rows]);
+  const chooseTarget = (choice: string) => {
+    setTargetChoice(choice);
+    useKeptTarget.getState().keep({ targetId: choice, lookedAt: useWorksheetStore.getState().worksheet.id });
+  };
 
   /* ---------------------------------------------------------------------------------- */
   /* Actions                                                                            */
@@ -404,7 +418,8 @@ export function QuestionBankScreen({
     return writes.run(run);
   };
 
-  const newWorksheet = async () => {
+  /** "New worksheet / Paper 1 / Paper 2 from these": a new document of the picker's type. */
+  const newDocument = async (documentType: NewTargetType) => {
     await bankAi.getState().settle();
     setBusy(true);
     try {
@@ -413,15 +428,23 @@ export function QuestionBankScreen({
         onError(m.noLongerSaved);
         return;
       }
-      onOpenWorksheet(worksheetFromPicks(picked));
-      useBankCart.getState().reset();
+      if (documentType === 'classroom') {
+        onOpenWorksheet(worksheetFromPicks(picked));
+        useBankCart.getState().reset();
+        return;
+      }
+      // An exam paper opens empty, then takes the picks the way Add to does: each into the
+      // section for its type, ahead of the closing line, one ⌘Z, the 題庫 review on them.
+      onOpenWorksheet(paperForPicks(picked, documentType));
+      const { inserted } = addPicksToOpenDocument(picked);
+      if (inserted.length > 0) useBankCart.getState().reset();
+      if (inserted[0]) revealQuestion(inserted[0]);
     } finally {
       setBusy(false);
     }
   };
 
-  const addTo = async (list: readonly BankRow[]) => {
-    if (!target) return;
+  const addTo = async (list: readonly BankRow[], target: WorksheetSummary) => {
     await bankAi.getState().settle();
     setBusy(true);
     try {
@@ -455,7 +478,7 @@ export function QuestionBankScreen({
    */
   const openRow = (row: BankRow) =>
     afterAi(() => {
-      const keep = { targetId: target?.id, lookedAt: row.docId };
+      const keep = { targetId: targetChoiceOf(target), lookedAt: row.docId };
       onOpenDocument(row.docId, () => {
         useKeptTarget.getState().keep(keep);
         afterOpen(row.questionId, { level, filters, focusKey: level.kind === 'review' ? rowKey(row) : undefined, tagRoot: level.kind === 'untagged' ? tagRoot : undefined });
@@ -907,7 +930,9 @@ export function QuestionBankScreen({
             usedWith: filters.notUsedWith,
             docLabels,
             aiTones,
+            inTarget,
           }}
+          targetPicker={<TargetPicker target={target} papers={targetPapers} labels={docLabels} onChoose={chooseTarget} />}
           stageAi={stageAi}
           fullGroup={focused ? fullGroups.get(focused.rootId) : undefined}
           empty={emptyReview}
@@ -972,7 +997,7 @@ export function QuestionBankScreen({
       {(pickedRows.length > 0 || cart.cleared) && level.kind !== 'untagged' && level.kind !== 'patterns' && (
         <SelectionTray
           rows={pickedRows}
-          targetTitle={target?.title}
+          target={target}
           busy={busy}
           canUndo={cart.cleared !== null}
           onRemove={cart.remove}
@@ -982,8 +1007,7 @@ export function QuestionBankScreen({
           onUndo={cart.undoClear}
           onDismiss={cart.dismissUndo}
           onSetTopic={() => setPicker({ mode: 'bulk', topicMode: 'add' })}
-          onAddTo={() => void addTo(pickedRows)}
-          onNewWorksheet={() => void newWorksheet()}
+          onAdd={() => void (target.kind === 'paper' ? addTo(pickedRows, target.summary) : newDocument(target.documentType))}
         />
       )}
 
