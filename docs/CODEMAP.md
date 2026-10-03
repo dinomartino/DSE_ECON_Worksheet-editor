@@ -451,7 +451,7 @@ Invariants:
 ## scripts — the harnesses
 
 - `.claude/skills/jev/SKILL.md` — session tooling, not app code: `bin/find.mjs` (ranked doc and file pointers), `bin/verify-plan.mjs` (which checks a diff needs), the edit guard's `rules.json`; hooks registered in `.claude/settings.json`
-- `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`)
+- `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`, `--port=` / `--url=`)
 - `scripts/demo.mjs` — website video + screenshots into `demo-media/` (`npm run demo`); steps in `scripts/demo/record.mjs:STORYBOARD`
 - `scripts/demo/diagrams.mjs:diagramStoryboard` — the diagram film (`npm run demo:diagrams`): one recording, numbered stills and the exported `.docx` into `demo-media/diagrams/`; seed from `scripts/demo/diagrams-seed.test.ts`
 - `scripts/emit-samples.test.ts` — real `.docx` files (`npm run samples`)
