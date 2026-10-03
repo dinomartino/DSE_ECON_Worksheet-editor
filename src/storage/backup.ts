@@ -1,9 +1,9 @@
 import JSZip from 'jszip';
 import pkg from '../../package.json';
 import { newId } from '@/model/factories';
-import { CURRENT_SCHEMA_VERSION } from '@/model/migrations';
+import { serializeWorksheet } from '@/model/migrations';
 import type { Worksheet } from '@/model/types';
-import { parseGraph, stringifyGraph, type SavedGraph } from '@/model/graph';
+import { parseGraph, serializeGraph, stringifyGraph, type SavedGraph } from '@/model/graph';
 import { parseWorksheet, stringifyWorksheet, summarize, worksheetTitle } from './document';
 import type { WorksheetStore } from './types';
 import {
@@ -119,7 +119,12 @@ export async function buildBackup(
     appVersion: pkg.version,
     createdAt,
     count: worksheets.length,
-    schemaVersion: CURRENT_SCHEMA_VERSION,
+    // The highest version written inside (informational: no build reads it).
+    schemaVersion: Math.max(
+      1,
+      ...worksheets.map((worksheet) => serializeWorksheet(worksheet).schemaVersion as number),
+      ...graphs.map((graph) => serializeGraph(graph).schemaVersion as number),
+    ),
   };
   const filed = folders && foldersForBackup(folders, worksheets.map((worksheet) => worksheet.id));
   if (filed && !isEmptyFolders(filed)) manifest.folders = serializeFolders(filed);

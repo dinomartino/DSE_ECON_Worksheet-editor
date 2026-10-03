@@ -176,6 +176,10 @@ export function runNodes(
 /** The selected question's runs: the page's selection tint, literal hex as on all paper. */
 const SELECTED_RUN = "bg-[#0d77c9]/[0.06]";
 
+/** The same tint on the selected question's MC cells, which share one table with the rest. */
+export const selectedCellRule = (questionId: string) =>
+  `#print-root[data-answer-key] td[data-question-id=${JSON.stringify(questionId)}]{background-color:rgb(13 119 201 / 0.1)}`;
+
 /**
  * Text can carry an edit target here, and so can the cells of the key's own tables;
  * other tables and figures render without page chrome.
@@ -219,7 +223,20 @@ const KeyRun = memo(
         tableJoinsAbove={index === 0 && joins}
       />
     ));
-    if (!owner) return <div>{body}</div>;
+    if (!owner) {
+      // A table of many questions (the MC grid): each cell names its own.
+      return (
+        <div
+          onClick={(event) => {
+            const cell = (event.target as Element).closest?.("td[data-question-id]");
+            const id = cell?.getAttribute("data-question-id");
+            if (id) onSelect(id);
+          }}
+        >
+          {body}
+        </div>
+      );
+    }
     return (
       <div
         data-question-id={owner}
@@ -460,6 +477,7 @@ export function AnswerKeyPreview({
         </div>
       </div>
 
+      {selectedQuestionId && <style>{selectedCellRule(selectedQuestionId)}</style>}
       <div
         id="print-root"
         data-answer-key

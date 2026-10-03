@@ -76,11 +76,14 @@ export type EditTarget =
   /** Teacher-only MCQ notes: one option's rationale, and the question's source note. */
   | { kind: 'mcqRationale'; questionId: string; optionId: string }
   | { kind: 'mcqProvenance'; questionId: string }
+  /** A whole-question answer (an essay with no parts, § `StructuredQuestion.answer`). */
+  | { kind: 'questionAnswer'; questionId: string }
   | { kind: 'partAnswer'; questionId: string; partId: string }
   | { kind: 'subPartAnswer'; questionId: string; partId: string; subPartId: string }
   /**
    * Marking-scheme text (§ `model/markSchemeTypes.ts`), addressed through the leaf that
-   * owns the scheme: a part, or one of its sub-parts when `subPartId` is set. A point's
+   * owns the scheme: a part, one of its sub-parts when `subPartId` is set, or the question
+   * itself when `partId` is absent (an essay). A point's
    * wording, one of its `/` alternatives (by position, as `mcqStatement`), a level's
    * descriptor and an EC row's descriptor. Everything else a scheme prints is derived.
    */
@@ -117,10 +120,10 @@ export type EditTarget =
       field: 'instructionsHeading' | 'panelNote' | 'panelFieldLabel' | 'footNote';
     };
 
-/** The leaf a marking scheme belongs to: a part, or a sub-part of it. */
+/** The leaf a marking scheme belongs to: a part, a sub-part of it, or (no `partId`) the question. */
 export interface SchemeAddress {
   questionId: string;
-  partId: string;
+  partId?: string;
   subPartId?: string;
 }
 
@@ -236,6 +239,8 @@ export interface TableNodeCell {
    * `edit`. Preview only; inert in export.
    */
   segments?: { en: EditSegment[]; zh: EditSegment[] };
+  /** The question a key cell answers (an MC table's number and letter); a click selects it. Preview only; inert in export. */
+  questionId?: string;
 }
 
 export interface TableNode {

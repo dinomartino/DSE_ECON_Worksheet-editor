@@ -168,6 +168,11 @@ export const PAPER_CHECK_MESSAGES = defineMessages({
     en: (n: number) => `${n} ${n === 1 ? 'question has' : 'questions have'} parts with no teacher answer.`,
     zh: (n: number) => `${n} 條題目有分題沒有教師答案。`,
   },
+  fSchemeMarks: {
+    en: (n: number) =>
+      `${n} ${n === 1 ? 'question has' : 'questions have'} a marking scheme that totals differently from the marks printed.`,
+    zh: (n: number) => `${n} 條題目的評分方案總分與試卷印出的分數不同。`,
+  },
   fUnmarked: {
     en: (n: number) => `${n} ${n === 1 ? 'question carries' : 'questions carry'} no marks.`,
     zh: (n: number) => `${n} 條題目沒有分數。`,
