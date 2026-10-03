@@ -1861,8 +1861,11 @@ type needs only a definition.
   other saved documents' keys after this one's, in the order ticked. Each part is that
   document's own `renderAnswerKey` — its numbering, sections, versions, version map and
   its own `answerKeyLayout` — under `answerKeyPartTitle` (title or name, plus the paper its
-  cover names; that document's typed key title wins), the second onward from a page
-  break; the page setup is the current document's. Nothing about the combination is
+  cover names; that document's typed key title wins). In the `.docx` each part is its own
+  section (`answerKeyParts`): its document's page size, margins, fonts and body size, the
+  second onward from a section break. Styles are per file, so a part at another body size
+  points at twins of the body-sized styles (`styleVariantId`, "Question Stem (10pt)"); the
+  header and footer align by paragraph, not tab, so one pair fits every width. Nothing about the combination is
   stored. Others load read-only through the store (`parseWorksheet` →
   `migrate`); one that will not open or render is skipped and named, never fatal, never
   resaved. One document is the single key unchanged, byte for byte.

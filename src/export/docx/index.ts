@@ -24,6 +24,7 @@ import type { DiagramNode, RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
 import {
   answerKeyPartTitle,
+  answerKeyParts,
   answerKeyRunningHead,
   answerKeyTitle,
   renderCombinedAnswerKey,
@@ -42,6 +43,7 @@ import {
   buildCorePropsXml,
   buildCoverFooterXml,
   buildDocumentXml,
+  buildSectionProperties,
   pageGeometryXml,
   REL_FOOTER_COVER,
   buildEmptyHeaderXml,
@@ -56,9 +58,10 @@ import {
   type HeaderFooterParts,
   type ImageAsset,
   type PackageParts,
+  type SectionOptions,
 } from './package';
 import { formatRunOptions, lineBreak, rFonts, richTextRuns, run, runProperties } from './runs';
-import { buildStylesXml, STYLE_IDS } from './styles';
+import { buildStylesXml, DEFAULT_BASE_FONT_SIZE_PT, STYLE_IDS, withBodyStyleVariant } from './styles';
 
 /**
  * .docx export orchestration (§7). Consumes the neutral render IR, so it does not
@@ -654,6 +657,7 @@ function buildAnswerKeyParts(
   others: Worksheet[] = [],
   diagramImages: DiagramImageMap = new Map(),
 ): PackageParts {
+  if (others.length > 0) return buildCombinedAnswerKeyParts([worksheet, ...others], language, diagramImages);
   const fonts = worksheet.fonts;
   const setup = pageSetupOf(worksheet);
   const { width: pageWidth, height: pageHeight } = pageDimensions(setup);
@@ -715,6 +719,96 @@ function buildAnswerKeyParts(
 }
 
 /**
+ * A combined key's package: one section per document, each in that document's own page
+ * setup, fonts and body size (a 10pt Paper 2 inside an 11pt Paper 1 stays 10pt, through
+ * body styles' twins at its size, `withBodyStyleVariant`). A section break, not a page
+ * break, starts each part. The header and footer align by paragraph rather than by tab,
+ * so one pair serves sections of any width; the Marks head shows if any part has the column.
+ */
+function buildCombinedAnswerKeyParts(
+  worksheets: Worksheet[],
+  language: LanguageMode,
+  diagramImages: DiagramImageMap,
+): PackageParts {
+  const [first] = worksheets;
+  const fonts = first.fonts;
+  const baseSize = first.baseFontSize ?? DEFAULT_BASE_FONT_SIZE_PT;
+  const parts = answerKeyParts(worksheets, language);
+  const { assets, bySrc } = collectNodeImages(parts.flat(), diagramImages);
+  const head = answerKeyRunningHead(parts.flat(), language);
+
+  let drawingId = 1;
+  const variants = new Set<number>();
+  const body = parts
+    .map((nodes, index) => {
+      const worksheet = worksheets[index];
+      const setup = pageSetupOf(worksheet);
+      const context: BodyContext = {
+        fonts: worksheet.fonts,
+        language,
+        contentWidth: contentWidth(setup),
+        numIds: new Map(),
+        imageRelId: (src) => bySrc.get(src),
+        diagramSrc: (blockId) => diagramImages.get(blockId),
+        nextDrawingId: () => (drawingId += 1),
+      };
+      let xml = nodes.map((node) => renderNodeXml(node, context)).join('');
+      const size = worksheet.baseFontSize ?? DEFAULT_BASE_FONT_SIZE_PT;
+      if (size !== baseSize) {
+        variants.add(size);
+        xml = withBodyStyleVariant(xml, size);
+      }
+      // Every section but the last ends in a collapsed paragraph carrying its sectPr.
+      if (index === parts.length - 1) return xml;
+      return (
+        xml +
+        `<w:p><w:pPr><w:pStyle w:val="${STYLE_IDS.Body}"/><w:spacing w:line="20" w:lineRule="exact"/>` +
+        `${buildSectionProperties(answerKeySection(worksheet, head !== undefined))}</w:pPr></w:p>`
+      );
+    })
+    .join('');
+
+  const pageNumber = fieldRuns('PAGE', runProperties(fonts, {}), '1');
+  const title = answerKeyPartTitle(first);
+  const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return {
+    documentXml: buildDocumentXml(body, answerKeySection(worksheets[worksheets.length - 1], head !== undefined)),
+    stylesXml: buildStylesXml(fonts, { baseFontSize: first.baseFontSize, variantBaseSizes: [...variants] }),
+    numberingXml: buildNumberingXml([], fonts, listIndentScheme(documentShape(first))),
+    headerFooter: {
+      ...(head
+        ? {
+            header: buildEmptyHeaderXml(
+              'hdr',
+              `<w:p><w:pPr><w:jc w:val="right"/></w:pPr>${richTextRuns([{ text: head, bold: true }], fonts, {})}</w:p>`,
+            ),
+          }
+        : {}),
+      footer: buildEmptyHeaderXml('ftr', `<w:p><w:pPr><w:jc w:val="center"/></w:pPr>${pageNumber}</w:p>`),
+    },
+    fontTableXml: buildFontTableXml(fonts),
+    coreXml: buildCorePropsXml(plain(language === 'zh' ? title.zh : title.en), timestamp),
+    assets,
+  };
+}
+
+/** One answer-key section's geometry and parts, in its document's page setup. */
+function answerKeySection(worksheet: Worksheet, hasHeader: boolean): SectionOptions {
+  const setup = pageSetupOf(worksheet);
+  const { width, height } = pageDimensions(setup);
+  return {
+    pageWidth: width,
+    pageHeight: height,
+    margins: setup.margins,
+    landscape: setup.orientation === 'landscape',
+    hasHeader,
+    hasFooter: true,
+    differentFirstPage: false,
+    edgeOffsets: headerFooterOffsets(setup.margins, hasHeader ? BAND_ROW_TWIPS : 0, BAND_ROW_TWIPS),
+  };
+}
+
+/**
  * The answer key as a .docx. `language` alone: a key has no student version. `others`
  * append their keys after this one's, in one file.
  */
@@ -725,9 +819,14 @@ export async function exportAnswerKeyDocx(
 ): Promise<Blob> {
   // Model answer diagrams rasterise first, as the paper's diagrams do; a missing one
   // stops the export rather than dropping the figure.
-  const nodes = renderCombinedAnswerKey([worksheet, ...others], language);
-  const diagramImages = await renderNodeDiagramImages(nodes, worksheet.fonts, language);
-  assertDiagramsRasterized(collectDiagramNodesIn(nodes), diagramImages);
+  // Each part's figures in its own document's fonts.
+  const all = [worksheet, ...others];
+  const parts = answerKeyParts(all, language);
+  const diagramImages: DiagramImageMap = new Map();
+  for (const [index, nodes] of parts.entries()) {
+    for (const [key, src] of await renderNodeDiagramImages(nodes, all[index].fonts, language)) diagramImages.set(key, src);
+  }
+  assertDiagramsRasterized(collectDiagramNodesIn(parts.flat()), diagramImages);
   return zipPackage(buildAnswerKeyParts(worksheet, language, others, diagramImages));
 }
 

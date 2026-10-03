@@ -147,7 +147,9 @@ describe('combined answer key .docx', () => {
     const one = paper1();
     const two = { ...paper2(), versions: { count: 2, seed: 3 } };
     const { documentXml } = buildAnswerKeyDocxParts(one, 'bilingual', [two]);
-    expect(documentXml.match(/w:type="page"/g)).toHaveLength(1);
+    // A section per paper: the second starts on a new page by its section break.
+    expect(documentXml.match(/w:type="page"/g)).toBeNull();
+    expect(documentXml.match(/<w:sectPr>/g)).toHaveLength(2);
     expect(documentXml.indexOf('Paper 1 — Answer key')).toBeLessThan(documentXml.indexOf('Paper 2 — Answer key'));
     expect(documentXml).not.toMatch(/data-edit|blockText|partAnswer/);
 
@@ -157,6 +159,43 @@ describe('combined answer key .docx', () => {
       if (!path.endsWith('.xml') && !path.endsWith('.rels')) continue;
       expect(XMLValidator.validate(await zip.file(path)!.async('string')), path).toBe(true);
     }
+  });
+
+  it('sets each paper in its own page setup and body size', async () => {
+    // A classroom worksheet at 11pt on Letter, then a 10pt Paper 2 on A4 with wide margins.
+    const one: Worksheet = {
+      ...withFlow(createWorksheet(), [structured('first')]),
+      title: bi('Unit 3', '單元三'),
+      pageSetup: { paper: 'Letter', orientation: 'portrait', margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
+    } as Worksheet;
+    const two = paper2();
+    expect(one.baseFontSize).toBeUndefined();
+    expect(two.baseFontSize).toBe(10);
+    const parts = buildAnswerKeyDocxParts(one, 'en', [two]);
+    const [firstPart, secondPart] = parts.documentXml.split('</w:sectPr>');
+    const geometry = (xml: string) => /<w:pgSz w:w="(\d+)" w:h="(\d+)"/.exec(xml)!.slice(1).map(Number);
+    expect(geometry(firstPart)).toEqual([12240, 15840]);
+    expect(geometry(secondPart)).toEqual([11906, 16838]);
+    // The first part keeps the document's own styles; the second points at its 10pt twins.
+    expect(firstPart).toContain('<w:pStyle w:val="QuestionStem"/>');
+    expect(firstPart).not.toContain('Sz20');
+    expect(secondPart).toContain('<w:pStyle w:val="QuestionStemSz20"/>');
+    expect(secondPart).not.toContain('<w:pStyle w:val="QuestionStem"/>');
+    // Titles are not body-sized: they keep their one style.
+    expect(secondPart).toContain('<w:pStyle w:val="WorksheetTitle"/>');
+    expect(parts.stylesXml).toContain('w:styleId="QuestionStemSz20"');
+    expect(parts.stylesXml).toMatch(/w:styleId="QuestionStemSz20">.*?<w:sz w:val="20"\/>/);
+    // One header and footer serve both widths: aligned by paragraph, not by tab stop.
+    expect(parts.headerFooter.footer).toContain('<w:jc w:val="center"/>');
+    expect(parts.headerFooter.footer).not.toContain('<w:tab ');
+    // Each section references the footer, so no section falls back to Word's default.
+    expect(parts.documentXml.match(/<w:footerReference/g)).toHaveLength(2);
+  });
+
+  it('a combined key at one size writes no style twins', () => {
+    const parts = buildAnswerKeyDocxParts(paper1(), 'en', [paper2()]);
+    expect(parts.stylesXml).not.toMatch(/Sz\d+/);
+    expect(parts.stylesXml).toBe(buildAnswerKeyDocxParts(paper1(), 'en').stylesXml);
   });
 
   it('keeps an old-schema document’s content once migrated', () => {

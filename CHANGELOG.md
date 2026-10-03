@@ -441,6 +441,12 @@ a version heading is edited afterwards.
   Figure 1:" as in an HKEAA scheme.
   <!-- zh: **HKEAA 評卷參考為示範答案圖表編號。** 每幅圖表標上「圖1」、「圖2」等，列在評分要點之後，
   要點以「在圖1中顯示：」開首，與 HKEAA 評卷參考相同。 -->
+- **A combined answer key prints each paper at its own size.** When Export joins several
+  papers' keys in one Word file, each part now keeps its own paper's page size, margins,
+  fonts and text size, so a 10pt Paper 2 key stays 10pt after an 11pt worksheet's.
+  <!-- zh: **合併的評卷參考，每份試卷按其本身的大小列印。** 匯出時把多份試卷的評卷參考合併成一個
+  Word 檔案，每部分現在會保留該試卷的紙張大小、邊界、字型和字體大小，10pt 的 Paper 2 評卷參考
+  排在 11pt 的工作紙之後，仍保持 10pt。 -->
 - **Pages with diagrams or pictures now break where Word breaks them.** On screen each
   figure took up nearly a line more than in the Word file, most visibly in the Marking
   scheme view, so a page could end two lines early.

@@ -522,8 +522,19 @@ export function renderCombinedAnswerKey(worksheets: Worksheet[], language: Langu
   if (worksheets.length <= 1) {
     return worksheets.length === 0 ? [] : renderAnswerKey(worksheets[0], language);
   }
-  return worksheets.flatMap((worksheet, index): RenderNode[] => [
+  return answerKeyParts(worksheets, language).flatMap((nodes, index): RenderNode[] => [
     ...(index > 0 ? [{ kind: 'pageBreak' } as const] : []),
-    ...renderAnswerKey(worksheet, language, { title: answerKeyPartTitle(worksheet) }),
+    ...nodes,
   ]);
+}
+
+/**
+ * A combined key's parts, one per document under its `answerKeyPartTitle`: what
+ * `renderCombinedAnswerKey` joins, and what the `.docx` sets as one section each, in
+ * that document's own page setup and body size.
+ */
+export function answerKeyParts(worksheets: Worksheet[], language: LanguageMode): RenderNode[][] {
+  return worksheets.map((worksheet) =>
+    renderAnswerKey(worksheet, language, { title: answerKeyPartTitle(worksheet) }),
+  );
 }
