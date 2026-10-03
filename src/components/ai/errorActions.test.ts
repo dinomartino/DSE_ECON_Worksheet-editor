@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AiErrorInfo } from '@/ai/types';
 import type { ReviewItem } from '@/assist/types';
-import { errorActions, errorNote } from './errorActions';
+import { openExternal } from '@/platform';
+import { errorActions, errorNote, runErrorAction } from './errorActions';
+
+vi.mock('@/platform', async (actual) => ({ ...(await actual<object>()), openExternal: vi.fn(async () => {}) }));
 import { markTones } from './pageMarks';
 
 const error = (over: Partial<AiErrorInfo>): AiErrorInfo => ({
@@ -32,6 +35,27 @@ describe('errorActions', () => {
   });
 });
 
+describe('billing', () => {
+  const billing = (provider: AiErrorInfo['provider']) => error({ kind: 'billing', provider, actions: ['openBilling', 'switchProvider'] });
+  const open = (provider: AiErrorInfo['provider']) => {
+    vi.mocked(openExternal).mockClear();
+    const e = billing(provider);
+    const action = errorActions(e).find((a) => a.kind === 'billingPage')!;
+    runErrorAction(action, e, { retry: () => {}, dismiss: () => {} });
+    return vi.mocked(openExternal).mock.calls.map(([url]) => url);
+  };
+
+  it("opens the provider's billing page, not the key page", () => {
+    expect(labels(billing('deepseek'))).toEqual(['Open DeepSeek', 'Switch provider…']);
+    expect(open('deepseek')).toEqual(['https://platform.deepseek.com/top_up']);
+    expect(open('openrouter')).toEqual(['https://openrouter.ai/settings/credits']);
+  });
+
+  it('falls back to the key page where there is no billing page (Qwen)', () => {
+    expect(open('qwen')).toEqual(['https://modelstudio.console.alibabacloud.com/']);
+  });
+});
+
 describe('markTones', () => {
   it('one mark per page text, the strongest tone winning; failed items mark nothing', () => {
     const item = (id: string, tone: ReviewItem['tone'], targetKey?: string): ReviewItem => ({ id, tone, where: '', notes: [], ...(targetKey ? { targetKey } : {}) });
@@ -44,5 +68,10 @@ describe('markTones', () => {
       item('f', 'look'),
     ]);
     expect([...marks]).toEqual([['k1', 'look'], ['k2', 'inserted'], ['k4', 'finding']]);
+  });
+
+  it('a resolved finding marks as changed text', () => {
+    const fixed: ReviewItem = { id: 'a', tone: 'finding', where: '', notes: [], targetKey: 'k1', resolved: true };
+    expect([...markTones([fixed])]).toEqual([['k1', 'inserted']]);
   });
 });

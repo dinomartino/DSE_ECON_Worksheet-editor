@@ -2734,7 +2734,10 @@ Pure modules with injected dependencies; types in `src/translate/types.ts`.
 - **Plan** (`src/translate/plan.ts`): slots from the walker are filtered by scope, role,
   `unprinted` and diagram labels; the missing side sets the direction (never the editor
   mode). Symbol-only text is never sent — copied only when the edition prints that side
-  alone, never for diagram text, never over an existing target on re-translate. Jobs
+  alone, never for diagram text, never over an existing target on re-translate. One
+  exception: a diagram area or free label that is exactly `DWL` or `TR`
+  (`WORDED_SYMBOLS`, `wordedLabel`) is planned as a `worded` copy whose 中文 `writesFor`
+  takes from the glossary (效率損失, 總收入, or the teacher's choice); it counts as a gap. Jobs
   dedupe by direction, kind class and source; chunks are single-direction, ≤ 4 000
   characters and 60 jobs, and carry same-group bilingual context.
 - **Wire** (`src/translate/wire.ts`): rich text travels as a closed tag set (`<b> <i> <u>

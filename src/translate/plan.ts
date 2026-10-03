@@ -1,7 +1,7 @@
 import { isSymbolOnly } from '@/model/symbols';
 import { isRichTextEmpty, normalizeRuns, plain } from '@/model/text';
-import { missingSide, type Side, type SlotKind, type TextSlot, type TranslationWrite } from '@/model/textSlots';
-import { collectTexts } from '@/model/textWalk';
+import { missingSide, type Side, type SlotKind, type TextPath, type TextSlot, type TranslationWrite } from '@/model/textSlots';
+import { collectTexts, wordedLabel } from '@/model/textWalk';
 import type { OutputMode, Worksheet } from '@/model/types';
 import type {
   Chunk,
@@ -90,6 +90,7 @@ export function planFromSlots(
   const jobs = new Map<string, TranslationJob>();
   const byKey = new Map<string, TranslationJob>();
   const copies: TranslationWrite[] = [];
+  const wordedPaths = new Map<TextPath, string>();
   const inJobs = new Set<TextSlot>();
   const groupOrder: string[] = [];
   const groupWhere = new Map<string, string>();
@@ -114,6 +115,14 @@ export function planFromSlots(
     if (isSymbolOnly(source)) {
       // Re-translating never copies a symbol over text the teacher already has ('2024年').
       if (replacing) continue;
+      // DWL, TR on an area: the glossary's term, filled in by `writesFor`.
+      const worded = direction === 'toZh' ? wordedLabel(slot, source) : undefined;
+      if (worded) {
+        copies.push({ ...planned, next: source.map((run) => ({ ...run })) });
+        wordedPaths.set(slot.path, worded);
+        counts.copied += 1;
+        continue;
+      }
       // Diagram text falls back and de-duplicates in the renderer: never copied, nor counted.
       if (slot.fallsBack) continue;
       counts.symbols[direction] += 1;
@@ -161,7 +170,7 @@ export function planFromSlots(
   counts.contextLines = [...context.values()].reduce((n, pairs) => n + pairs.length, 0);
   counts.chars = [...jobs.values()].reduce((n, job) => n + plain(job.source).length, 0);
   counts.requests = chunks.length;
-  return { worksheetId, scope, options, jobs, copies, chunks, counts };
+  return { worksheetId, scope, options, jobs, copies, ...(wordedPaths.size ? { worded: wordedPaths } : {}), chunks, counts };
 }
 
 /** Already-bilingual lines of the same group, wire-encoded, in reading order, capped. */

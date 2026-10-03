@@ -8,13 +8,14 @@ import { loadGlossary } from '@/glossary/load';
 import type { ChoosableTerm, Glossary, RelatedTerm, TermChoice } from '@/glossary/types';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
-import { CSV_FILTERS, isDesktop, pickTextFile, saveFile } from '@/platform';
+import { isDesktop } from '@/platform';
 import { useSettings } from '@/settings/store';
-import { parseTermsCsv, termsToCsv } from '@/settings/termsCsv';
+import { parseTermsCsv } from '@/settings/termsCsv';
 import { TERM_SETTINGS } from '@/settings/termPreferences';
 import { ImportPanel } from './ImportPanel';
 import { TERMS_MESSAGES } from './messages';
 import { TermForm } from './TermForm';
+import { exportTermsCsv, pickTermsCsv, readTermsFile } from './termsFiles';
 import { applyImport, previewImport, type ImportPreview } from './termsImport';
 import {
   addOwn,
@@ -418,7 +419,7 @@ export default function TermsSection() {
   const exportCsv = async () => {
     setNotice(undefined);
     try {
-      const saved = await saveFile(termsToCsv(prefs), 'translation-terms.csv', CSV_FILTERS);
+      const saved = await exportTermsCsv(prefs);
       if (saved) setNotice({ text: m.exported });
     } catch {
       setNotice({ text: m.exportFailed, error: true });
@@ -441,7 +442,7 @@ export default function TermsSection() {
       return;
     }
     try {
-      const picked = await pickTextFile(CSV_FILTERS);
+      const picked = await pickTermsCsv();
       if (picked) readCsv(picked.name, picked.text);
     } catch {
       setNotice({ text: m.importFailed, error: true });
@@ -553,8 +554,8 @@ export default function TermsSection() {
               const file = event.target.files?.[0];
               event.target.value = '';
               if (!file) return;
-              file.text().then(
-                (text) => readCsv(file.name, text),
+              readTermsFile(file).then(
+                (picked) => readCsv(picked.name, picked.text),
                 () => setNotice({ text: m.importFailed, error: true }),
               );
             }}

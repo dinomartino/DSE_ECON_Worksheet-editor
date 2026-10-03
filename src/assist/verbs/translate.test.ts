@@ -1,13 +1,15 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiError, type AiClient } from '@/ai/types';
 import { createParagraphBlock, createStructuredQuestion, createWorksheet } from '@/model/factories';
-import { collectTexts, mapWorksheetTexts } from '@/model/textWalk';
+import { loadGlossary } from '@/glossary/load';
+import { collectTexts, countUntranslated, mapWorksheetTexts } from '@/model/textWalk';
 import type { TextPath } from '@/model/textSlots';
 import type { OutputMode, RichText, Worksheet } from '@/model/types';
 import { writeSecret } from '@/platform/secrets';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
+import { fullDiagram } from '@/test/translateFixture';
 import { createRunDeps } from '@/translate/deps';
 import { oneSided, referenceClient, reply, payloadOf, scriptedClient } from '@/translate/testKit';
 import type { VerbContext, VerbIO } from '../types';
@@ -55,6 +57,7 @@ function depsWith(client: AiClient, over: Partial<TranslateVerbDeps> = {}): Tran
       const resolved = await createRunDeps(opts);
       return resolved.ok ? { ...resolved, deps: { ...resolved.deps, client } } : resolved;
     },
+    loadGlossary: () => loadGlossary(),
     includeTeacherText: () => true,
     desktop: () => false,
     ...over,
@@ -216,6 +219,25 @@ describe('Fill missing 中文 over the real engine and store', () => {
     expect(outcome).toMatchObject({ kind: 'inserted', summary: 'Filled 1 中文 text' });
     expect(client.requests).toHaveLength(0);
     expect(deps.resolved).toBe(0);
+  });
+
+  it("an area's DWL is filled with the glossary's 中文, counted by the badge; the curve's D still falls back", async () => {
+    const en = (text: string) => ({ en: [{ text }], zh: [] });
+    const base = fullDiagram();
+    const diagram = { ...base, curves: base.curves.map((c) => ({ ...c, label: en('D') })), areas: base.areas!.map((a) => ({ ...a, label: en('DWL') })) };
+    const block = { kind: 'diagram' as const, id: 'fig', diagram, widthPx: 400, heightPx: 335, altText: { en: [], zh: [] } };
+    load({ ...createWorksheet(), questions: [{ ...createStructuredQuestion(), blocks: [block] }] });
+    const zhOnly: OutputMode = { language: 'zh', version: 'student' };
+    expect(countUntranslated(store().worksheet, zhOnly)).toBe(1);
+    const client = scriptedClient(['{}']);
+    const verb = translateVerb('zh', false, depsWith(client));
+    expect(verb.available(ctx(zhOnly))?.count).toBe(1);
+    const outcome = await verb.run(ctx(zhOnly), io());
+    expect(outcome).toMatchObject({ kind: 'inserted', summary: 'Filled 1 中文 text', items: [{ tone: 'inserted' }] });
+    expect(client.requests).toHaveLength(0);
+    const labels = collectTexts(store().worksheet).filter((slot) => slot.fallsBack && /\/(area|curve):/.test(slot.path));
+    expect(labels.map((slot) => [slot.path.split('/').at(-1), slot.text.zh])).toEqual([['curve:c1', []], ['area:ar1', [{ text: '效率損失' }]]]);
+    expect(countUntranslated(store().worksheet, zhOnly)).toBe(0);
   });
 });
 

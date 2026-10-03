@@ -442,6 +442,12 @@ a version heading is edited afterwards.
   <!-- zh: **頁首和頁尾設定按頁面整理。** 在頁面設定中，先選「第 1 頁」或「第 2 頁起」
   ，再選擇第 1 頁的頁首和頁尾與其後頁面相同、自成一套，或不設。第 1 頁的標題設
   定也放在這裏。 -->
+- **Check terms says how many terms already match.** The bar now reads, for example,
+  "1 to fix · 12 match", and "12 terms match the EDB glossary" when nothing needs fixing.
+  If the text uses no glossary term at all, it says so.
+  <!-- zh: **「檢查用詞」會顯示有多少用詞已經一致。** 工具列現在會顯示例如「1 個需修正 · 12 個
+  相符」；沒有需要修正的用詞時，會顯示「12 個用詞與 EDB 詞彙表一致」。如文字沒有用上詞彙表
+  的任何用詞，也會說明。 -->
 
 ### Fixed
 - **In the HKEAA marking scheme, a point's marks now sit on its first line.** A point that
@@ -532,6 +538,33 @@ a version heading is edited afterwards.
   <!-- zh: **從題庫分頁拖曳時，復原會暫停。** 拖曳途中按 ⌘Z（或 Ctrl+Z），以往會在你手
   上的題目下方改動工作紙。現在放手之前不會有任何動作；放下後，按一次復原便會把
   新題目移走。 -->
+- **Check terms' bar keeps up with your fixes.** After you replace a term from its card,
+  the bar's count and its Replace button update straight away, instead of still offering
+  the term you just fixed until you pressed Done.
+  <!-- zh: **「檢查用詞」的工具列會即時更新。** 在卡片上取代一個用詞後，工具列的數目和「取代」
+  按鈕會立即更新，不會再在你按「完成」之前，仍然顯示剛修正的用詞。 -->
+- **When your AI balance runs out, the button opens the page where you add credit.** For
+  Gemini, DeepSeek, OpenRouter, OpenAI and Claude it used to open the API key page. Qwen
+  still opens the Model Studio console.
+  <!-- zh: **AI 帳戶餘額不足時，按鈕會開啟增值的頁面。** Gemini、DeepSeek、OpenRouter、OpenAI 和
+  Claude 以往會開啟 API key 頁面。Qwen 仍會開啟 Model Studio 控制台。 -->
+- **DWL and TR on a diagram get their 中文.** A shaded area or a text label that reads just
+  DWL or TR used to print in English on the 中文 paper, and Fill missing 中文 skipped it. It
+  now fills in 效率損失 or 總收入 from the EDB glossary (or the wording you chose in
+  Translation terms), and the ✦ AI count includes it. A new "DWL of a tax" area starts
+  with 效率損失, like the other DWL areas. Curve and point letters such as D, S and E stay as
+  they are.
+  <!-- zh: **圖表上的 DWL 和 TR 會有中文。** 以往只寫著 DWL 或 TR 的陰影區域或文字標示，在中文試
+  卷上會印出英文，「補上缺少的中文」也會略過。現在會按 EDB 詞彙表（或你在「翻譯用語」中選用的
+  寫法）填上效率損失或總收入，✦ AI 的數目亦會計算在內。新加入的「稅項的效率損失」區域會以效率損
+  失開始，與其他效率損失區域一致。D、S、E 等曲線和點的字母則保持不變。 -->
+- **Translation terms you edited in Excel import with their Chinese.** Excel on a Hong Kong
+  Windows computer saves a plain CSV in Big5, which used to import as garbled characters.
+  Import CSV now reads it, and a backup you unzipped and zipped again still restores your
+  terms.
+  <!-- zh: **在 Excel 編輯過的翻譯用語，匯入時中文不會變亂碼。** 香港 Windows 電腦上的 Excel 以
+  Big5 儲存一般 CSV，以往匯入後會變成亂碼。現在「匯入 CSV」可以讀取；解壓後再壓縮的備份，亦能還
+  原你的用語。 -->
 
 ## 0.5.0 — 2026-09-28
 

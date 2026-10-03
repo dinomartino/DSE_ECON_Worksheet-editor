@@ -371,12 +371,14 @@ export async function runTranslation(
   };
 }
 
-/** Accepted job keys → writes fanned out to every slot, plus accepted copies. */
+/** Accepted job keys → writes fanned out to every slot, plus accepted copies; a worded
+ *  copy takes the glossary's term (the teacher's choice in force), or is dropped. */
 export function writesFor(
   plan: TranslationPlan,
   outcome: RunOutcome,
   accepted: ReadonlySet<string>,
   acceptCopies: boolean,
+  glossary: Glossary | null = null,
 ): TranslationWrite[] {
   const writes: TranslationWrite[] = [];
   for (const [key, job] of plan.jobs) {
@@ -384,7 +386,14 @@ export function writesFor(
     if (!accepted.has(key) || !result?.runs || result.status === 'failed') continue;
     for (const slot of job.slots) writes.push({ ...slot, next: result.runs });
   }
-  return acceptCopies ? [...writes, ...plan.copies] : writes;
+  if (!acceptCopies) return writes;
+  const copies = plan.copies.flatMap((copy) => {
+    const key = plan.worded?.get(copy.path);
+    if (key === undefined) return [copy];
+    const zh = glossary?.entries.find((entry) => entry.en === key)?.preferred;
+    return zh ? [{ ...copy, next: [{ ...copy.next[0], text: zh }] }] : [];
+  });
+  return [...writes, ...copies];
 }
 
 /** BiTextField: one BiText, same pipeline, no walker. `meta` is the field's `translate` prop. */

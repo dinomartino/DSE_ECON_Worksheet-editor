@@ -1,4 +1,5 @@
 import * as copy from '@/components/translate/copy';
+import { loadGlossary } from '@/glossary/load';
 import type { Glossary } from '@/glossary/types';
 import { editTargetKey } from '@/model/edits';
 import { plain } from '@/model/text';
@@ -44,12 +45,14 @@ import {
 
 export interface TranslateVerbDeps {
   createRunDeps: typeof createRunDeps;
+  loadGlossary(): Promise<Glossary>;
   includeTeacherText(): boolean;
   desktop(): boolean;
 }
 
 const realDeps: TranslateVerbDeps = {
   createRunDeps,
+  loadGlossary: () => loadGlossary(),
   includeTeacherText: () => appSettings.read(AI_SETTINGS).includeTeacherText,
   desktop: isDesktop,
 };
@@ -108,7 +111,9 @@ async function runFill(
   if (outcome.fatal && done.size === 0) return { kind: 'error', error: outcome.fatal };
   if (outcome.stopped && done.size === 0) return { kind: 'nothing', summary: STOPPED_NOTHING };
 
-  const writes = writesFor(plan, outcome, done, true);
+  // An area's DWL / TR takes the glossary's term; without one it keeps falling back.
+  if (!glossary && plan.worded) glossary = await deps.loadGlossary().catch(() => null);
+  const writes = writesFor(plan, outcome, done, true, glossary);
   const before = useWorksheetStore.getState().worksheet;
   const report: ApplyReport = writes.length ? applyWrites(writes, ctx.worksheet.id) : { applied: 0, skipped: [], resized: 0 };
   if (report.refused) return { kind: 'nothing', summary: DOCUMENT_CHANGED };
@@ -171,6 +176,7 @@ function reviewItems(
     }
   }
   for (const write of plan.copies) {
+    if (!written.has(write.path)) continue;
     items.push(skipped.has(write.path)
       ? { ...base(write), tone: 'failed', notes: [CHANGED_WHILE_TRANSLATING] }
       : { ...base(write), tone: 'inserted', notes: [] });

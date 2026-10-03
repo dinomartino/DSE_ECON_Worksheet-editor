@@ -33,6 +33,8 @@ export interface ProviderPreset {
   keyRequired: boolean;
   /** https only; opened with platform openExternal. */
   keyUrl?: string;
+  /** https only; where a billing error sends the teacher to add credit. Absent = `keyUrl`. */
+  billingUrl?: string;
   /** A few words beside the key-page link (Gemini: turn on a VPN first). */
   keyHint?: string;
   /** Key-shape check. */

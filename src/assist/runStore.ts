@@ -13,7 +13,8 @@ export type ReviewOutcome = Extract<VerbOutcome, { kind: 'inserted' | 'findings'
 export type AiRunPhase =
   | { kind: 'idle' }
   | { kind: 'running'; verbId: string; label: string; done: number; total: number }
-  | { kind: 'review'; verbId: string; outcome: ReviewOutcome; index: number }
+  /** `runId` names the run: a card's action replaces `outcome`, never the run. */
+  | { kind: 'review'; verbId: string; runId: number; outcome: ReviewOutcome; index: number }
   | { kind: 'error'; verbId: string; error: AiErrorInfo };
 
 export interface AiRunState {
@@ -28,6 +29,8 @@ export interface AiRunState {
   prev(): void;
   /** Review: jump to item `index` (a click on its highlight, a tone chip). */
   goTo(index: number): void;
+  /** Runs item `index`'s card action, marks it resolved and re-reads the bar (`refresh`). */
+  act(index: number): void;
   /** Leaves review or error; the inserted text stays. */
   dismiss(): void;
   /** Reverts the run's one commit (when still live) and goes idle. */
@@ -39,6 +42,7 @@ export interface AiRunState {
 export { genericError } from './fillRules';
 
 let controller: AbortController | null = null;
+let runs = 0;
 /** The last run's verb, scope and input, for Retry. */
 let last: { verbId: string; input?: string; scope: VerbContext['scope']; scopeLabel: string } | null = null;
 
@@ -106,7 +110,8 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
       return;
     }
     if (outcome.kind === 'inserted') applyView(outcome);
-    set({ phase: { kind: 'review', verbId, outcome, index: 0 } });
+    runs += 1;
+    set({ phase: { kind: 'review', verbId, runId: runs, outcome, index: 0 } });
   },
 
   stop: () => controller?.abort(),
@@ -126,6 +131,24 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
   goTo: (index) => {
     const phase = get().phase;
     if (phase.kind === 'review' && index >= 0 && index < itemCount(phase)) set({ phase: { ...phase, index } });
+  },
+
+  act: (index) => {
+    const phase = get().phase;
+    if (phase.kind !== 'review' || phase.outcome.kind === 'nothing') return;
+    const item = phase.outcome.items[index];
+    if (!item?.action || item.resolved) return;
+    if (item.action.run() === false) return;
+    const now = get().phase;
+    if (now.kind !== 'review' || now.runId !== phase.runId || now.outcome.kind === 'nothing') return;
+    const items = now.outcome.items.map((it, i) => (i === index ? { ...it, resolved: true as const } : it));
+    let outcome: ReviewOutcome = { ...now.outcome, items };
+    if (outcome.kind === 'findings' && outcome.refresh) {
+      const { refresh } = outcome;
+      const fresh = refresh();
+      outcome = { kind: 'findings', summary: fresh.summary, items, refresh, ...(fresh.applyAll ? { applyAll: fresh.applyAll } : {}) };
+    }
+    set({ phase: { ...now, outcome } });
   },
 
   dismiss: () => {
