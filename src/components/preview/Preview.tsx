@@ -343,17 +343,23 @@ function richNodes(
   fillWidth?: boolean,
   /** Empty sides take the quiet prompt (§ `QUIET_PROMPT_STYLES`). */
   quietPrompt?: boolean,
+  /** Single-side call whose side prints nothing: its prompt floats (§ `floating`). */
+  floatSide?: boolean,
 ) {
   if (!text) return null;
 
-  const editable = (sideKey: "en" | "zh", placeholder: string) => {
+  const editable = (sideKey: "en" | "zh", placeholder: string, floating = false) => {
     const rendered = runSpans(text[sideKey], sideKey);
     if (!edit || !ctx) return rendered;
     return (
       <InlineEditable
+        // Keyed by side: a side moving between flow and float keeps its open editor.
+        key={sideKey}
         value={text}
         side={sideKey}
         placeholder={placeholder}
+        floating={floating}
+        promptTitle={floating ? (sideKey === "zh" ? pm.addChineseLong : pm.addEnglishLong) : undefined}
         selected={ctx.isSelected(edit, sideKey)}
         onSelect={() => ctx.onSelectElement(edit, sideKey)}
         onDeselect={ctx.onClearSelection}
@@ -379,30 +385,51 @@ function richNodes(
    * for content the way an abbreviated instruction ("Add English…") could in a figure
    * column. A quiet field's short prompt is safe: it is grey and sits beside its marker.
    */
-  const prompt = (long: string, short: string) =>
-    compactPlaceholder ? "·" : quietPrompt ? short : long;
   const pm = resolveMessages(PREVIEW_MESSAGES, uiLanguage());
-  const enPrompt = prompt(pm.addEnglishLong, pm.addEnglishShort);
-  const zhPrompt = prompt(pm.addChineseLong, pm.addChineseShort);
+  /** A floating prompt sits beside text, so it takes the short form (long one as its title). */
+  const prompt = (sideKey: "en" | "zh", floating = false) => {
+    const [long, short] =
+      sideKey === "en"
+        ? [pm.addEnglishLong, pm.addEnglishShort]
+        : [pm.addChineseLong, pm.addChineseShort];
+    return compactPlaceholder ? "·" : quietPrompt || floating ? short : long;
+  };
 
-  if (language === "en") return editable("en", enPrompt);
-  if (language === "zh") return editable("zh", zhPrompt);
+  if (language === "en" || language === "zh") {
+    return editable(language, prompt(language, floatSide), floatSide);
+  }
 
-  // In bilingual mode an empty side still needs a click target, otherwise the only
-  // way to add the missing translation would be the sidebar.
-  const hasEn = text.en.length > 0;
-  const hasZh = text.zh.length > 0;
-  const showEn = hasEn || Boolean(edit);
-  const showZh = hasZh || Boolean(edit);
+  // Trimmed, as `biTextRuns` decides what the .docx prints.
+  const hasEn = plain(text.en).trim().length > 0;
+  const hasZh = plain(text.zh).trim().length > 0;
 
   // A soft break rather than block elements, so the English half stays on the same
   // line as its list marker — this mirrors the docx, where the two languages share
   // one numbered paragraph separated by `w:br` (§5.4).
+  if (hasEn && hasZh) {
+    return (
+      <>
+        {editable("en", prompt("en"))}
+        <br key="br" />
+        {editable("zh", prompt("zh"))}
+      </>
+    );
+  }
+  if (!edit || !ctx) return editable(hasZh ? "zh" : "en", "");
+
+  /*
+   * One side prints nothing, so its prompt floats after the line instead of opening one:
+   * the page then measures what Word prints. Both empty: English holds the line Word's
+   * empty paragraph does.
+   */
+  const shown = hasZh ? "zh" : "en";
+  const floated = shown === "zh" ? "en" : "zh";
+  // An empty field that fills its width leaves no line end to float from: English only.
+  const widthFilled = !hasEn && !hasZh && (compactPlaceholder || fillWidth);
   return (
     <>
-      {showEn && editable("en", enPrompt)}
-      {showEn && showZh && <br />}
-      {showZh && editable("zh", zhPrompt)}
+      {editable(shown, prompt(shown))}
+      {!widthFilled && editable(floated, prompt(floated, true), true)}
     </>
   );
 }
@@ -418,23 +445,53 @@ function segmentNodes(
   ctx: EditContext,
   quietPrompt: boolean,
 ) {
-  const side = (key: "en" | "zh") =>
-    segments[key].map((segment, index) => (
-      <Fragment key={`${key}-${index}`}>
-        {"runs" in segment
-          ? runSpans(segment.runs, `${key}-${index}`)
-          : richNodes(segment.value, key, segment.edit, ctx, undefined, undefined, false, quietPrompt)}
+  /*
+   * A side that prints nothing (no pieces, or every piece empty) opens no line: only its
+   * first field renders, its prompt floating (§ `richNodes`), as the .docx prints the
+   * other side alone. Keyed throughout so a field keeps its open editor as it lands.
+   */
+  const blank = (key: "en" | "zh") =>
+    segments[key].every(
+      (segment) => plain("runs" in segment ? segment.runs : segment.value[key]).trim().length === 0,
+    );
+  const side = (key: "en" | "zh", float = false) => {
+    const first = segments[key].findIndex((segment) => !("runs" in segment));
+    return (
+      <Fragment key={key}>
+        {segments[key].map((segment, index) =>
+          float && index !== first ? null : (
+            <Fragment key={`${key}-${index}`}>
+              {"runs" in segment
+                ? runSpans(segment.runs, `${key}-${index}`)
+                : richNodes(segment.value, key, segment.edit, ctx, undefined, undefined, false, quietPrompt, float)}
+            </Fragment>
+          ),
+        )}
       </Fragment>
-    ));
+    );
+  };
   if (language === "en") return side("en");
   if (language === "zh") return side("zh");
-  // A side with no pieces prints nothing (a cover line printed once).
-  if (segments.zh.length === 0) return side("en");
-  return (
+  const enBlank = blank("en");
+  const zhBlank = blank("zh");
+  if (!enBlank && !zhBlank) {
+    return (
+      <>
+        {side("en")}
+        <br key="br" />
+        {side("zh")}
+      </>
+    );
+  }
+  return enBlank && !zhBlank ? (
+    <>
+      {side("zh")}
+      {side("en", true)}
+    </>
+  ) : (
     <>
       {side("en")}
-      <br />
-      {side("zh")}
+      {side("zh", true)}
     </>
   );
 }
@@ -571,8 +628,9 @@ function MarksTrail({
      * would un-push after every push and loop.
      */
     const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT, {
+      // A floating prompt prints nothing, so it is not the line's last character.
       acceptNode: (node) =>
-        node.parentElement?.closest('[data-marks-trail]')
+        node.parentElement?.closest('[data-marks-trail], [data-floating-prompt]')
           ? NodeFilter.FILTER_REJECT
           : NodeFilter.FILTER_ACCEPT,
     });
@@ -979,12 +1037,12 @@ function TextNodeView({
    * measures one line short of the .docx. One extra <br> materializes exactly the
    * collapsed line. A marks-bearing paragraph already holds it open (the hidden twin
    * rides at the very end of the inline flow), so the filler would add a line there.
-   * The tail side mirrors what `richNodes` renders last: in bilingual mode an empty
-   * Chinese side with an edit target shows a placeholder, which ends the flow itself.
+   * The tail side mirrors what `richNodes` renders last in the flow: an empty Chinese
+   * side's prompt floats, so English ends the line.
    */
   const tailRuns =
     language === "bilingual"
-      ? node.text.zh.length || node.edit
+      ? plain(node.text.zh).trim().length > 0
         ? node.text.zh
         : node.text.en
       : node.text[language];

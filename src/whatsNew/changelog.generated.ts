@@ -470,6 +470,14 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **A bilingual paper with one language missing is as long on screen as in Word.** When a
+  title, question or option has English but no 中文 (or the other way round), the "Add 中文"
+  prompt now sits at the end of the line instead of on a line of its own. The page and the
+  PDF no longer gain a blank line there, so they break where Word does. Click the prompt to
+  add the missing language, as before.
+  <!-- zh: **缺少一種語言的雙語試卷，在畫面上與 Word 一樣長。** 若標題、題目或選項只有英文而沒有
+  中文（或相反），「加入中文」提示現在會放在該行末端，而不再自佔一行。頁面和 PDF 不再因此多出
+  空行，分頁位置與 Word 一致。按提示即可如常加入缺少的語言。 -->
 - **A question bank saved in version 0.5.0 lists as a bank again.** If a bank was last
   saved with 0.5.0, the start screen showed it as a worksheet. It now shows as a bank
   straight away, without opening or saving it.
