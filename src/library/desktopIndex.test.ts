@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const files = new Map<string, string>();
 const dirs = new Set<string>();
 const written: string[] = [];
+const readPaths: string[] = [];
 
 vi.mock('@/platform', async (original) => ({
   ...(await original<typeof import('@/platform')>()),
@@ -20,6 +21,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
     files.has(path) || dirs.has(path) || [...files.keys()].some((key) => key.startsWith(`${path}/`)),
   mkdir: async (path: string) => void dirs.add(path),
   readTextFile: async (path: string) => {
+    readPaths.push(path);
     const value = files.get(path);
     if (value === undefined) throw new Error(`ENOENT ${path}`);
     return value;
@@ -43,7 +45,8 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   },
 }));
 
-const { FileWorksheetStore, LIBRARY_DOCS_DIR, LIBRARY_INDEX, libraryDocFiles, libraryIndexFile } = await import('@/storage/fileStore');
+const { FileWorksheetStore, LIBRARY_DOCS_DIR, LIBRARY_INDEX, LIBRARY_PACK, libraryDocFiles, libraryIndexFile, libraryJournalFile, libraryPackFile } =
+  await import('@/storage/fileStore');
 const { withChangeFeed } = await import('@/storage/changes');
 const { createDocFilesBackend, STORED_INDEX_FORMAT } = await import('./bankBackend');
 const { createBankIndex } = await import('./bankIndex');
@@ -57,7 +60,7 @@ function desktop() {
   const files = new FileWorksheetStore();
   const store = withChangeFeed(files, feed.emit);
   const index = createBankIndex(files, noPause, {
-    backend: createDocFilesBackend(libraryDocFiles, libraryIndexFile),
+    backend: createDocFilesBackend(libraryDocFiles, libraryIndexFile, { pack: libraryPackFile, journal: libraryJournalFile }),
     changes: feed.subscribe,
   });
   return { store, index };
@@ -73,6 +76,7 @@ beforeEach(() => {
   files.clear();
   dirs.clear();
   written.length = 0;
+  readPaths.length = 0;
 });
 
 describe('bank index on desktop', () => {
@@ -89,6 +93,32 @@ describe('bank index on desktop', () => {
     next.index.subscribe(() => undefined);
     await next.index.settled();
     expect(next.index.getSnapshot().rows.map((r) => r.excerpt.en)).toEqual(['On disk']);
+  });
+
+  it('a new session reads the pack and the files changed since, not one file per document', async () => {
+    const { store, index } = desktop();
+    const docs = Array.from({ length: 12 }, (_, i) => docWith([choiceQuestion(`Paper ${i}`)]));
+    for (const doc of docs) await store.save(doc);
+    await index.refresh();
+    await index.settled();
+
+    // Second session: no pack yet worth trusting, so it reads every file and writes one.
+    const second = desktop();
+    second.index.subscribe(() => undefined);
+    await second.index.settled();
+    await second.index.refresh();
+    await second.index.settled();
+    expect(files.has(LIBRARY_PACK)).toBe(true);
+    await second.store.save({ ...docs[3], name: 'Edited' });
+    await second.index.settled();
+
+    readPaths.length = 0;
+    const third = desktop();
+    third.index.subscribe(() => undefined);
+    await third.index.settled();
+    const libraryReads = readPaths.filter((path) => path.startsWith('worksheets/library/'));
+    expect(libraryReads.sort()).toEqual([LIBRARY_PACK, 'worksheets/library/journal.json', docFile(docs[3].id)].sort());
+    expect(third.index.getSnapshot().rows).toHaveLength(12);
   });
 
   it('is never listed or cleared as a document by the file store', async () => {

@@ -52,6 +52,8 @@ export { NewerGraphError, type GraphListing } from './graphs';
 export {
   FileWorksheetStore,
   libraryDocFiles,
+  libraryJournalFile,
+  libraryPackFile,
   libraryIndexFile,
   savedWorksheetPath,
   savedWorksheetsFolder,
@@ -396,3 +398,25 @@ export const patternStorage: PatternFile = isDesktop()
 
 /** Saved graphs (§ graphs.ts): files on desktop, `econ-graph:<id>` keys on the web. */
 export const graphStore = new GraphStore(isDesktop() ? graphDirFiles : localGraphFiles(browserStorage));
+
+/**
+ * A document another tab saved (the browser's `storage` event, which never fires in the
+ * tab that wrote), parsed; a damaged or newer-build one is not reported. The open editor
+ * takes the newer tags from it (S4). Web only: the desktop shell has one window.
+ */
+export function onDocumentSavedElsewhere(listener: (worksheet: Worksheet) => void): () => void {
+  if (typeof window === 'undefined' || isDesktop()) return () => {};
+  const onStorage = (event: StorageEvent) => {
+    if (!event.key?.startsWith(PREFIX) || event.newValue === null) return;
+    let worksheet: Worksheet;
+    try {
+      worksheet = parseWorksheet(event.newValue);
+    } catch {
+      return;
+    }
+    if (isNewerThanBuild(worksheet)) return;
+    listener(worksheet);
+  };
+  window.addEventListener('storage', onStorage);
+  return () => window.removeEventListener('storage', onStorage);
+}

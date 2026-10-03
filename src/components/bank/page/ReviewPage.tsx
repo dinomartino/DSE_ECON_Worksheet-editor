@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Button, Segmented } from '@/components/ui';
 import { marksLabel, SourceText, sourceLabel, tagTitle, typeLabel, sittingLabel, usedLabel } from '@/components/bank/BankRow';
 import { versionDiff } from '@/components/bank/bankText';
@@ -13,7 +13,8 @@ import { isPatternTag } from '@/model/patterns';
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode, VersionMode } from '@/model/types';
 import { distinctVersions, patternLines, rowKey, type ClassChoice } from './bankPage';
-import { alsoInText, partsTesting, testsThisText, testsWhatText, topicsByPart, type RailEntry, type RailSection } from './bankScreen';
+import { alsoInText, partsTesting, testsThisText, testsWhatText, topicsByPart, type RailEntry, type RailPart, type RailSection } from './bankScreen';
+import { RAIL_WINDOW_FROM, railRows, rowAt, rowOffsets, scrollToShow, visibleRange } from './railWindow';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
 import { useOwningDocument } from './useOwningDocument';
 import { BANK_PAGE_MESSAGES } from './bankPage.messages';
@@ -157,22 +158,28 @@ function Rail({
   onPick: (row: BankRow) => void;
   onHide: () => void;
 }) {
-  const { sections, order, focused, picked, usedWith, index } = state;
+  const { sections, order, focused, picked, index } = state;
   const m = useMessages(REVIEW_PAGE_MESSAGES);
   const w = useMessages(BANK_PAGE_MESSAGES);
   const listRef = useRef<HTMLDivElement>(null);
   const focusedEntry = focused ? order[index]?.key : undefined;
+  const windowed = order.length >= RAIL_WINDOW_FROM;
 
   // Keep the focused row in view as ↑ ↓ move it; when a row has the keyboard, it moves too.
+  // (A windowed rail scrolls by arithmetic instead: the row may not be drawn yet.)
   useEffect(() => {
-    if (!focusedEntry) return;
+    if (!focusedEntry || windowed) return;
     const node = listRef.current?.querySelector<HTMLElement>(`[data-rail-entry="${CSS.escape(focusedEntry)}"]`);
     node?.scrollIntoView({ block: 'nearest' });
     const active = document.activeElement;
     if (node && active !== node && active instanceof HTMLElement && active.hasAttribute('data-rail-root') && listRef.current?.contains(active)) {
       node.focus({ preventScroll: true });
     }
-  }, [focusedEntry]);
+  }, [focusedEntry, windowed]);
+
+  const item = (entry: RailEntry) => (
+    <RailItem key={entry.key} entry={entry} state={state} on={focusedEntry === entry.key} onFocus={onFocus} onPick={onPick} />
+  );
 
   // Counts are of questions: one listed under two headings is one.
   const roots = new Set(order.map((entry) => entry.group.rootId));
@@ -197,103 +204,282 @@ function Rail({
       </div>
       {targetPicker && <div className="shrink-0 border-b border-line px-3.5 py-2">{targetPicker}</div>}
       <div ref={listRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto pb-3" role="list">
-        {sections.map((section) => (
-          <section key={section.key} aria-label={section.label}>
-            <h3 className="sticky top-0 z-[1] flex justify-between gap-2 bg-surface-sunken px-3.5 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-subtle">
-              <span className="truncate" title={section.label}>
-                {section.label}
-              </span>
-              <span className="tabular-nums">{section.entries.length}</span>
-            </h3>
-            {(section.parts ?? [{ key: '', label: '', entries: section.entries }]).map((part) => (
-              <div key={part.key} data-rail-part={part.key || undefined}>
-                {part.key && (
-                  <h4
-                    className={`flex justify-between gap-2 px-3.5 pb-0.5 pt-1.5 text-[11.5px] ${part.pattern ? 'font-medium text-ink-muted' : 'text-ink-subtle'}`}
-                    title={part.pattern ? `${part.label} · ${part.kind} 題型` : undefined}
-                  >
-                    <span className="min-w-0 truncate">
-                      {part.label}
-                      {part.kind && <span className="ml-1.5 text-[10.5px] font-normal text-ink-subtle">{part.kind}</span>}
-                    </span>
-                    <span className="shrink-0 tabular-nums text-ink-subtle">{part.entries.length}</span>
-                  </h4>
-                )}
-                {part.entries.map((entry) => {
-                  const { group } = entry;
-                  const lead = group.rows[0];
-                  const on = focusedEntry === entry.key;
-                  const used = usedWith ? usedWithTargets(group, [usedWith.target]) : undefined;
-                  const held = state.inTarget?.get(group.rootId);
-                  const where = [testsThisText(partsTesting(lead, entry.query).map((slot) => slot.label)), alsoInText(entry.alsoIn)].filter(Boolean).join(' · ');
-                  return (
-                    <div
-                      key={entry.key}
-                      role="listitem"
-                      data-rail-root={group.rootId}
-                      data-rail-entry={entry.key}
-                      // One Tab stop for the list (the question on the stage); ↑ ↓ then move it,
-                      // Space picks it, O opens it (the screen's key listener).
-                      tabIndex={on ? 0 : -1}
-                      aria-current={on || undefined}
-                      onClick={() => onFocus(lead, entry.key)}
-                      onFocus={(event) => {
-                        if (event.target === event.currentTarget && !on) onFocus(lead, entry.key);
-                      }}
-                      // scroll-mt: scrolled into view below the sticky section heading, never under it.
-                      className={`relative grid scroll-mt-8 cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-2 px-3.5 py-[7px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
-                        on ? 'bg-accent-soft' : 'hover:bg-surface-hover'
-                      }`}
-                    >
-                      <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 bg-accent ${on ? 'opacity-100' : 'opacity-0'}`} />
-                      <input
-                        type="checkbox"
-                        tabIndex={-1}
-                        aria-label={m.selectLabel(lead.excerpt.en || lead.excerpt.zh || m.questionWord)}
-                        checked={picked.has(group.rootId)}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={() => onPick(lead)}
-                        className="mt-[3px] h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
-                      />
-                      <div className="min-w-0">
-                        <p className="line-clamp-2 text-[13px] leading-[1.4] text-ink" title={lead.excerpt.en || lead.excerpt.zh}>
-                          {lead.excerpt.en || lead.excerpt.zh || <span className="text-ink-subtle">{m.untitled}</span>}
-                        </p>
-                        {/* Look-alikes (a copy, a retyped question) read apart by where they live. */}
-                        <p className="flex min-w-0 text-[11px] tabular-nums text-ink-subtle">
-                          <span className="shrink-0 whitespace-pre">
-                            {typeLabel(lead.typeId)} · {marksLabel(lead.marks)}
-                            {lead.hasDiagram && m.diagram}
-                            {group.versions > 1 && m.versions(group.versions)}
-                            {' · '}
-                          </span>
-                          <SourceText title={docLabel(state, lead)} number={lead.number} />
-                          <AiGlyph tone={state.aiTones?.get(group.rootId)} />
-                        </p>
-                        {where && (
-                          <p className="line-clamp-2 text-[11px] leading-snug text-ink-muted" title={where} data-rail-where>
-                            {where}
-                          </p>
-                        )}
-                        {used &&<p className="truncate text-[11px] tabular-nums text-warn-ink">{usedLabel(used)}</p>}
-                        {held && (
-                          <p data-rail-in-target className="truncate text-[11px] tabular-nums text-accent-ink">
-                            {m.inTarget}
-                            {held.number !== undefined && ` · Q${held.number}`}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </section>
-        ))}
+        {windowed ? (
+          <RailWindow listRef={listRef} state={state} focusedEntry={focusedEntry} item={item} />
+        ) : (
+          sections.map((section) => (
+            <section key={section.key} aria-label={section.label}>
+              <SectionHeading section={section} />
+              {(section.parts ?? [{ key: '', label: '', entries: section.entries }]).map((part) => (
+                <div key={part.key} data-rail-part={part.key || undefined}>
+                  {part.key && <PartHeading part={part} />}
+                  {part.entries.map(item)}
+                </div>
+              ))}
+            </section>
+          ))
+        )}
       </div>
     </aside>
   );
 }
+
+/** A sub-topic's heading in the rail: sticky while its questions scroll under it. */
+function SectionHeading({ section, sticky = true }: { section: RailSection; sticky?: boolean }) {
+  return (
+    <h3
+      className={`${sticky ? 'sticky top-0 z-[1]' : ''} flex justify-between gap-2 bg-surface-sunken px-3.5 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-subtle`}
+    >
+      <span className="truncate" title={section.label}>
+        {section.label}
+      </span>
+      <span className="tabular-nums">{section.entries.length}</span>
+    </h3>
+  );
+}
+
+/** A 題型's heading inside a section (or "No 題型"). */
+function PartHeading({ part }: { part: RailPart }) {
+  return (
+    <h4
+      className={`flex justify-between gap-2 px-3.5 pb-0.5 pt-1.5 text-[11.5px] ${part.pattern ? 'font-medium text-ink-muted' : 'text-ink-subtle'}`}
+      title={part.pattern ? `${part.label} · ${part.kind} 題型` : undefined}
+    >
+      <span className="min-w-0 truncate">
+        {part.label}
+        {part.kind && <span className="ml-1.5 text-[10.5px] font-normal text-ink-subtle">{part.kind}</span>}
+      </span>
+      <span className="shrink-0 tabular-nums text-ink-subtle">{part.entries.length}</span>
+    </h4>
+  );
+}
+
+/** "Part (b) tests this · also under …": the entry's third line, empty when it has none. */
+const whereText = (entry: RailEntry) =>
+  [testsThisText(partsTesting(entry.group.rows[0], entry.query).map((slot) => slot.label)), alsoInText(entry.alsoIn)].filter(Boolean).join(' · ');
+
+/** One question in the rail. */
+function RailItem({
+  entry,
+  state,
+  on,
+  onFocus,
+  onPick,
+}: {
+  entry: RailEntry;
+  state: ReviewState;
+  on: boolean;
+  onFocus: (row: BankRow, entry?: string) => void;
+  onPick: (row: BankRow) => void;
+}) {
+  const m = useMessages(REVIEW_PAGE_MESSAGES);
+  const { group } = entry;
+  const lead = group.rows[0];
+  const used = state.usedWith ? usedWithTargets(group, [state.usedWith.target]) : undefined;
+  const where = whereText(entry);
+  const held = state.inTarget?.get(group.rootId);
+  return (
+    <div
+      role="listitem"
+      data-rail-root={group.rootId}
+      data-rail-entry={entry.key}
+      // One Tab stop for the list (the question on the stage); ↑ ↓ then move it,
+      // Space picks it, O opens it (the screen's key listener).
+      tabIndex={on ? 0 : -1}
+      aria-current={on || undefined}
+      onClick={() => onFocus(lead, entry.key)}
+      onFocus={(event) => {
+        if (event.target === event.currentTarget && !on) onFocus(lead, entry.key);
+      }}
+      // scroll-mt: scrolled into view below the sticky section heading, never under it.
+      className={`relative grid scroll-mt-8 cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-2 px-3.5 py-[7px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+        on ? 'bg-accent-soft' : 'hover:bg-surface-hover'
+      }`}
+    >
+      <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 bg-accent ${on ? 'opacity-100' : 'opacity-0'}`} />
+      <input
+        type="checkbox"
+        tabIndex={-1}
+        aria-label={m.selectLabel(lead.excerpt.en || lead.excerpt.zh || m.questionWord)}
+        checked={state.picked.has(group.rootId)}
+        onClick={(event) => event.stopPropagation()}
+        onChange={() => onPick(lead)}
+        className="mt-[3px] h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
+      />
+      <div className="min-w-0">
+        <p className="line-clamp-2 text-[13px] leading-[1.4] text-ink" title={lead.excerpt.en || lead.excerpt.zh}>
+          {lead.excerpt.en || lead.excerpt.zh || <span className="text-ink-subtle">{m.untitled}</span>}
+        </p>
+        {/* Look-alikes (a copy, a retyped question) read apart by where they live. */}
+        <p className="flex min-w-0 text-[11px] tabular-nums text-ink-subtle">
+          <span className="shrink-0 whitespace-pre">
+            {typeLabel(lead.typeId)} · {marksLabel(lead.marks)}
+            {lead.hasDiagram && m.diagram}
+            {group.versions > 1 && m.versions(group.versions)}
+            {' · '}
+          </span>
+          <SourceText title={docLabel(state, lead)} number={lead.number} />
+          <AiGlyph tone={state.aiTones?.get(group.rootId)} />
+        </p>
+        {where && (
+          <p className="line-clamp-2 text-[11px] leading-snug text-ink-muted" title={where} data-rail-where>
+            {where}
+          </p>
+        )}
+        {used && <p className="truncate text-[11px] tabular-nums text-warn-ink">{usedLabel(used)}</p>}
+        {held && (
+          <p data-rail-in-target className="truncate text-[11px] tabular-nums text-accent-ink">
+            {m.inTarget}
+            {held.number !== undefined && ` · Q${held.number}`}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The rail of a large bank, drawn as a window (`railWindow.ts`): the rows near the scroll
+ * position between two spacers, each row measured once drawn. The heading of the section
+ * at the top stays pinned, as the full rail's sticky headings do.
+ */
+function RailWindow({
+  listRef,
+  state,
+  focusedEntry,
+  item,
+}: {
+  listRef: RefObject<HTMLDivElement | null>;
+  state: ReviewState;
+  focusedEntry: string | undefined;
+  item: (entry: RailEntry) => ReactNode;
+}) {
+  const { sections } = state;
+  const rows = useMemo(() => railRows(sections, (entry) => whereText(entry) !== ''), [sections]);
+  const rowIndex = useMemo(() => new Map(rows.map((row, i) => [row.key, i])), [rows]);
+  const [measured, setMeasured] = useState<ReadonlyMap<string, number>>(() => new Map());
+  const [view, setView] = useState({ top: 0, height: 800 });
+  const offsets = useMemo(() => rowOffsets(rows, measured), [rows, measured]);
+  const [start, end] = visibleRange(offsets, view.top, view.height);
+  const pendingFocus = useRef<string | undefined>(undefined);
+  const pendingReveal = useRef<{ key: string; until: number } | undefined>(undefined);
+
+  // Follow the scroll and the list's height, once a frame at most.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    let frame = 0;
+    const read = () => {
+      frame = 0;
+      setView((current) =>
+        current.top === list.scrollTop && current.height === list.clientHeight ? current : { top: list.scrollTop, height: list.clientHeight },
+      );
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(read);
+    };
+    read();
+    list.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      list.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }, [listRef]);
+
+  // Measure each row as it is drawn (and again when it changes height): a height that
+  // differs from the estimate moves the rows below. Without ResizeObserver, estimates.
+  const observer = useMemo(() => {
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    return new ResizeObserver((records) => {
+      setMeasured((current) => {
+        let next: Map<string, number> | undefined;
+        for (const record of records) {
+          const node = record.target as HTMLElement;
+          const key = node.dataset.railRow;
+          const height = node.offsetHeight;
+          if (key && height > 0 && Math.abs((current.get(key) ?? -1) - height) > 0.5) (next ??= new Map(current)).set(key, height);
+        }
+        return next ?? current;
+      });
+    });
+  }, []);
+  useEffect(() => () => observer?.disconnect(), [observer]);
+  const observe = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (node) observer?.observe(node);
+    },
+    [observer],
+  );
+
+  // A row given the keyboard before it was drawn takes it now. A row just focused is kept
+  // in view by the drawn layout for a moment, while measuring corrects the estimates.
+  useLayoutEffect(() => {
+    const find = (key: string) => listRef.current?.querySelector<HTMLElement>(`[data-rail-entry="${CSS.escape(key)}"]`);
+    const waiting = pendingFocus.current;
+    const node = waiting ? find(waiting) : undefined;
+    if (node) {
+      node.focus({ preventScroll: true });
+      pendingFocus.current = undefined;
+    }
+    const reveal = pendingReveal.current;
+    if (!reveal) return;
+    if (performance.now() > reveal.until) pendingReveal.current = undefined;
+    else find(reveal.key)?.scrollIntoView({ block: 'nearest' });
+  }, [listRef, start, end, measured]);
+
+
+  // Keep the focused row in view as ↑ ↓ move it (below the pinned heading); a row that had
+  // the keyboard hands it on, now or once the new row is drawn.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!focusedEntry || !list) return;
+    const at = rowIndex.get(`e:${focusedEntry}`);
+    if (at === undefined) return;
+    const target = scrollToShow(offsets, at, list.scrollTop, list.clientHeight, STICKY_HEADING_PX);
+    if (target !== undefined) list.scrollTop = target;
+    pendingReveal.current = { key: focusedEntry, until: performance.now() + REVEAL_MS };
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active.hasAttribute('data-rail-root') && list.contains(active) && active.dataset.railEntry !== focusedEntry) {
+      const node = list.querySelector<HTMLElement>(`[data-rail-entry="${CSS.escape(focusedEntry)}"]`);
+      if (node) node.focus({ preventScroll: true });
+      else pendingFocus.current = focusedEntry;
+    }
+    // Only a new focus scrolls: re-measuring must not pull the list back to it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedEntry, rowIndex]);
+
+  const top = rows[rowAt(offsets, view.top)];
+  const pinned = top ? sections[top.sectionIndex] : undefined;
+  return (
+    <>
+      {pinned && (
+        <div className="sticky top-0 z-[2] h-0 overflow-visible" aria-hidden>
+          <SectionHeading section={pinned} sticky={false} />
+        </div>
+      )}
+      <div style={{ height: offsets[start] }} role="presentation" />
+      {rows.slice(start, end).map((row) => (
+        <div key={row.key} ref={observe} role="presentation" data-rail-row={row.key} data-rail-part={row.kind === 'part' ? row.part.key : undefined}>
+          {row.kind === 'section' ? (
+            <SectionHeading section={row.section} sticky={false} />
+          ) : row.kind === 'part' ? (
+            <PartHeading part={row.part} />
+          ) : (
+            item(row.entry)
+          )}
+        </div>
+      ))}
+      <div style={{ height: offsets[rows.length] - offsets[end] }} role="presentation" />
+    </>
+  );
+}
+
+/** The pinned section heading's height: a row scrolled into view sits below it. */
+const STICKY_HEADING_PX = 32;
+/** How long a newly focused row is kept in view while the rows around it are measured. */
+const REVEAL_MS = 500;
 
 /** The rail folded: question numbers only, the focused one marked, picks dotted. */
 function NumberStrip({

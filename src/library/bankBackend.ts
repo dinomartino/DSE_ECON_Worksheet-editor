@@ -162,10 +162,52 @@ export function readDocFile(docId: string, text: string): StoredDoc | undefined 
   }
 }
 
-const PARALLEL = 16;
+/** How many file calls are in flight at once. */
+const PARALLEL = 32;
+/** Each item through `each`, `PARALLEL` at a time (a pool, so one slow file holds up only its slot). */
 async function inChunks<T>(items: readonly T[], each: (item: T) => Promise<void>): Promise<void> {
-  for (let at = 0; at < items.length; at += PARALLEL) {
-    await Promise.all(items.slice(at, at + PARALLEL).map((item) => each(item).catch(() => undefined)));
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const item = items[next++];
+      await each(item).catch(() => undefined);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(PARALLEL, items.length) }, worker));
+}
+
+/** One whole text file the backend rewrites (`worksheets/library/pack.json`, `journal.json`). */
+export interface CacheFilePort {
+  read(): Promise<string | undefined>;
+  write(text: string): Promise<void>;
+  remove(): Promise<void>;
+}
+
+/**
+ * The pack: every document's rows in one file, so a launch reads one file rather than one
+ * per document. A cache of `docs/`, never the truth: the journal names each document whose
+ * file changed since the pack was written (it is written before the file), so a load reads
+ * the pack plus those files. A missing or unreadable pack or journal falls back to reading
+ * every file; anything stale that slips through is re-indexed by the reconcile, whose
+ * stamps come from the documents.
+ */
+export interface PackPorts {
+  pack: CacheFilePort;
+  journal: CacheFilePort;
+}
+
+/** A journal this many documents long is folded into a new pack (in the background). */
+const JOURNAL_LIMIT = 200;
+
+/** The journal's ids, or `undefined` when it is unreadable (read everything). */
+function readJournal(text: string | undefined): Set<string> | undefined {
+  if (text === undefined) return new Set();
+  try {
+    const parsed = JSON.parse(text) as { format?: unknown; ids?: unknown };
+    if (parsed?.format !== STORED_INDEX_FORMAT || !isStringArray(parsed.ids)) return undefined;
+    return new Set(parsed.ids);
+  } catch {
+    return undefined;
   }
 }
 
@@ -173,16 +215,60 @@ async function inChunks<T>(items: readonly T[], each: (item: T) => Promise<void>
  * A file per document, so an autosave rewrites only its own document's rows. A file that
  * fails to read or validate costs only its document (and is removed). `legacy`, the old
  * single file, is read once: entries newer than their document's file are written out as
- * files, then it is removed.
+ * files, then it is removed. With `cache`, a launch reads the pack and the journal's files
+ * (§ PackPorts) instead of every file.
  */
-export function createDocFilesBackend(files: DocFilesPort, legacy?: TextFilePort): BankIndexBackend {
+export function createDocFilesBackend(files: DocFilesPort, legacy?: TextFilePort, cache?: PackPorts): BankIndexBackend {
   const writeDoc = (id: string, doc: StoredDoc) =>
     files.write(id, JSON.stringify({ format: STORED_INDEX_FORMAT, updatedAt: doc.updatedAt, rows: doc.rows }));
 
-  async function migrate(loaded: IndexedDocs): Promise<void> {
-    if (!legacy) return;
+  /** What the files hold, once loaded: the pack is written from it. */
+  let mirror: IndexedDocs | undefined;
+  /** The journal as written (`undefined`: unknown, so the next commit rewrites it). */
+  let journal: Set<string> | undefined;
+  /** Pack and journal writes, one at a time, in order with commits. */
+  let packChain: Promise<void> = Promise.resolve();
+  const serial = (op: () => Promise<void>) => (packChain = packChain.then(op).catch(() => undefined));
+
+  const writeJournal = (ids: ReadonlySet<string>) =>
+    cache!.journal.write(JSON.stringify({ format: STORED_INDEX_FORMAT, ids: [...ids] }));
+
+  /** Write the pack from the mirror, then empty the journal (a crash between costs a re-read). */
+  function repack(): Promise<void> {
+    return serial(async () => {
+      if (!cache || !mirror) return;
+      const docs = Object.fromEntries(mirror);
+      await cache.pack.write(JSON.stringify({ format: STORED_INDEX_FORMAT, docs }));
+      await cache.journal.remove();
+      journal = new Set();
+    });
+  }
+
+  /** The pack and the journal's files, or `undefined` when either cannot be trusted. */
+  async function loadPacked(): Promise<{ loaded: IndexedDocs; reread: number } | undefined> {
+    if (!cache) return undefined;
+    const [packText, journalText] = await Promise.all([
+      cache.pack.read().catch(() => undefined),
+      cache.journal.read().catch(() => undefined),
+    ]);
+    const loaded = packText === undefined ? undefined : readJsonIndex(packText);
+    const changed = readJournal(journalText);
+    if (!loaded || !changed) return undefined;
+    await inChunks([...changed], async (id) => {
+      const text = await files.read(id).catch(() => undefined);
+      const doc = text === undefined ? undefined : readDocFile(id, text);
+      if (doc) loaded.set(id, doc);
+      else loaded.delete(id);
+    });
+    journal = changed;
+    return { loaded, reread: changed.size };
+  }
+
+  /** True when there was a legacy file to fold in. */
+  async function migrate(loaded: IndexedDocs): Promise<boolean> {
+    if (!legacy) return false;
     const text = await legacy.read().catch(() => undefined);
-    if (text === undefined) return;
+    if (text === undefined) return false;
     const old = readJsonIndex(text) ?? new Map<string, StoredDoc>();
     const newer = [...old].filter(([id, doc]) => {
       const mine = loaded.get(id);
@@ -192,28 +278,72 @@ export function createDocFilesBackend(files: DocFilesPort, legacy?: TextFilePort
     let failed = false;
     await inChunks(newer, ([id, doc]) => writeDoc(id, doc).catch(() => void (failed = true)));
     if (!failed) await legacy.remove().catch(() => undefined);
+    return true;
+  }
+
+  /** Every document's file, read one by one: without a pack, or when it cannot be trusted. */
+  async function loadEveryFile(): Promise<IndexedDocs> {
+    const loaded: IndexedDocs = new Map();
+    const ids = await files.ids().catch(() => [] as string[]);
+    await inChunks(ids, async (id) => {
+      const text = await files.read(id).catch(() => undefined);
+      const doc = text === undefined ? undefined : readDocFile(id, text);
+      if (doc) loaded.set(id, doc);
+      else await files.remove(id);
+    });
+    return loaded;
   }
 
   return {
     async load() {
-      const loaded: IndexedDocs = new Map();
-      const ids = await files.ids().catch(() => [] as string[]);
-      await inChunks(ids, async (id) => {
-        const text = await files.read(id).catch(() => undefined);
-        const doc = text === undefined ? undefined : readDocFile(id, text);
-        if (doc) loaded.set(id, doc);
-        else await files.remove(id);
-      });
-      await migrate(loaded);
+      await packChain;
+      const packed = await loadPacked();
+      const loaded = packed?.loaded ?? (await loadEveryFile());
+      const hadLegacy = await migrate(loaded);
+      mirror = new Map(loaded);
+      // A pack that is missing, stale or behind the legacy file is written once, in the
+      // background: the next launch reads one file.
+      if (cache && (!packed || packed.reread > 0 || hadLegacy)) void repack();
       return loaded.size > 0 ? loaded : undefined;
     },
-    async commit(put, drop) {
-      await inChunks(drop, (id) => files.remove(id));
-      await inChunks(put, ([id, doc]) => writeDoc(id, doc));
+    commit(put, drop) {
+      if (!cache) {
+        return (async () => {
+          await inChunks(drop, (id) => files.remove(id));
+          await inChunks(put, ([id, doc]) => writeDoc(id, doc));
+        })();
+      }
+      return serial(async () => {
+        // The journal first: a file it does not name is never newer than the pack.
+        const ids = [...drop, ...put.map(([id]) => id)];
+        if (!journal || ids.some((id) => !journal!.has(id))) {
+          const next = new Set([...(journal ?? []), ...ids]);
+          try {
+            await writeJournal(next);
+            journal = next;
+          } catch {
+            journal = undefined;
+          }
+        }
+        await inChunks(drop, (id) => files.remove(id));
+        await inChunks(put, ([id, doc]) => writeDoc(id, doc));
+        if (mirror) {
+          for (const id of drop) mirror.delete(id);
+          for (const [id, doc] of put) mirror.set(id, doc);
+        }
+        if (!journal || journal.size > JOURNAL_LIMIT) void repack();
+      });
     },
     async clear() {
+      await packChain;
       await files.clear();
       if (legacy) await legacy.remove().catch(() => undefined);
+      if (cache) {
+        await cache.pack.remove().catch(() => undefined);
+        await cache.journal.remove().catch(() => undefined);
+      }
+      mirror = new Map();
+      journal = new Set();
     },
   };
 }

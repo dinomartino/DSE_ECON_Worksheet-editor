@@ -85,10 +85,14 @@ const libraryDocPath = (id: string) => `${LIBRARY_DOCS_DIR}/${encodeURIComponent
  * `clear()` reads them as documents. Inert on the web. Errors propagate; the index treats
  * them as "rebuild".
  */
+let libraryFsModule: Promise<Fs> | undefined;
+/** The fs plugin, imported once for the library files (dynamic: never in the web bundle). */
+const libraryFs = (): Promise<Fs> => (libraryFsModule ??= import('@tauri-apps/plugin-fs'));
+
 export const libraryDocFiles = {
   async ids(): Promise<string[]> {
     if (!isDesktop()) return [];
-    const fs = await import('@tauri-apps/plugin-fs');
+    const fs = await libraryFs();
     const opts = { baseDir: fs.BaseDirectory.AppData };
     if (!(await fs.exists(LIBRARY_DOCS_DIR, opts))) return [];
     return (await fs.readDir(LIBRARY_DOCS_DIR, opts))
@@ -104,29 +108,28 @@ export const libraryDocFiles = {
   },
   async read(id: string): Promise<string | undefined> {
     if (!isDesktop()) return undefined;
-    const fs = await import('@tauri-apps/plugin-fs');
+    const fs = await libraryFs();
     const opts = { baseDir: fs.BaseDirectory.AppData };
-    const path = libraryDocPath(id);
-    if (!(await fs.exists(path, opts))) return undefined;
-    return fs.readTextFile(path, opts);
+    // One call, not `exists` then a read: loading the index reads every file.
+    return fs.readTextFile(libraryDocPath(id), opts).catch(() => undefined);
   },
   async write(id: string, text: string): Promise<void> {
     if (!isDesktop()) return;
-    const fs = await import('@tauri-apps/plugin-fs');
+    const fs = await libraryFs();
     const opts = { baseDir: fs.BaseDirectory.AppData };
     if (!(await fs.exists(LIBRARY_DOCS_DIR, opts))) await fs.mkdir(LIBRARY_DOCS_DIR, { ...opts, recursive: true });
     await fs.writeTextFile(libraryDocPath(id), text, opts);
   },
   async remove(id: string): Promise<void> {
     if (!isDesktop()) return;
-    const fs = await import('@tauri-apps/plugin-fs');
+    const fs = await libraryFs();
     const opts = { baseDir: fs.BaseDirectory.AppData };
     const path = libraryDocPath(id);
     if (await fs.exists(path, opts)) await fs.remove(path, opts);
   },
   async clear(): Promise<void> {
     if (!isDesktop()) return;
-    const fs = await import('@tauri-apps/plugin-fs');
+    const fs = await libraryFs();
     const opts = { baseDir: fs.BaseDirectory.AppData };
     if (!(await fs.exists(LIBRARY_DOCS_DIR, opts))) return;
     for (const entry of await fs.readDir(LIBRARY_DOCS_DIR, opts)) {
@@ -141,18 +144,57 @@ export const libraryDocFiles = {
 export const libraryIndexFile = {
   async read(): Promise<string | undefined> {
     if (!isDesktop()) return undefined;
-    const fs = await import('@tauri-apps/plugin-fs');
+    const fs = await libraryFs();
     const opts = { baseDir: fs.BaseDirectory.AppData };
     if (!(await fs.exists(LIBRARY_INDEX, opts))) return undefined;
     return fs.readTextFile(LIBRARY_INDEX, opts);
   },
   async remove(): Promise<void> {
     if (!isDesktop()) return;
-    const fs = await import('@tauri-apps/plugin-fs');
+    const fs = await libraryFs();
     const opts = { baseDir: fs.BaseDirectory.AppData };
     if (await fs.exists(LIBRARY_INDEX, opts)) await fs.remove(LIBRARY_INDEX, opts);
   },
 };
+
+/** `worksheets/library/pack.json`: every document's rows in one file, a cache of `docs/` (§ bankBackend.ts). */
+export const LIBRARY_PACK = `${LIBRARY_DIR}/pack.json`;
+/** `worksheets/library/journal.json`: the documents whose `docs/` file changed since the pack was written. */
+export const LIBRARY_JOURNAL = `${LIBRARY_DIR}/journal.json`;
+
+/** One whole text file under `worksheets/library/`, written through a temp file and a rename. Inert on the web. */
+function libraryTextFile(path: string) {
+  return {
+    async read(): Promise<string | undefined> {
+      if (!isDesktop()) return undefined;
+      const fs = await libraryFs();
+      // No `exists` first: one call, and a missing file is `undefined` like any unreadable one.
+      return fs.readTextFile(path, { baseDir: fs.BaseDirectory.AppData }).catch(() => undefined);
+    },
+    async write(text: string): Promise<void> {
+      if (!isDesktop()) return;
+      const fs = await libraryFs();
+      const opts = { baseDir: fs.BaseDirectory.AppData };
+      if (!(await fs.exists(LIBRARY_DIR, opts))) await fs.mkdir(LIBRARY_DIR, { ...opts, recursive: true });
+      const temp = `${path}.tmp`;
+      await fs.writeTextFile(temp, text, opts);
+      try {
+        await fs.rename(temp, path, { oldPathBaseDir: opts.baseDir, newPathBaseDir: opts.baseDir });
+      } catch {
+        await fs.writeTextFile(path, text, opts);
+        await fs.remove(temp, opts).catch(() => undefined);
+      }
+    },
+    async remove(): Promise<void> {
+      if (!isDesktop()) return;
+      const fs = await libraryFs();
+      await fs.remove(path, { baseDir: fs.BaseDirectory.AppData }).catch(() => undefined);
+    },
+  };
+}
+
+export const libraryPackFile = libraryTextFile(LIBRARY_PACK);
+export const libraryJournalFile = libraryTextFile(LIBRARY_JOURNAL);
 
 /**
  * Text access to `worksheets/patterns.json` (§ patterns.ts). Inert on the web. Written

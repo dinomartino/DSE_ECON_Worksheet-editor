@@ -549,6 +549,30 @@ a version heading is edited afterwards.
   leaves such rows out, as the page and the PDF do.
   <!-- zh: **空白的頁首及頁尾行不再在 Word 印出空行。** 加入後留空的行在頁面上不會顯示，但 Word 檔案會把它印成空行，
   教師版因此可能在「Teacher Version」上方多出兩行或以上的空行。現在 Word 與頁面及 PDF 一樣略去這些行。 -->
+- **Undo after changing a question's topics undoes it in every worksheet.** A topic change
+  in the Topics row also updates the same question in your other worksheets. ⌘Z used to
+  take it back in the open paper only, so the bank kept showing the change. Now ⌘Z takes
+  it back everywhere, and ⇧⌘Z puts it back everywhere. A copy whose topics you changed
+  again in the meantime keeps your newer topics, and the Topics row names it.
+  <!-- zh: **更改題目課題後按復原，所有工作紙都會一併復原。** 在「課題」列更改課題，會同時更新
+  其他工作紙中的同一題目。以往按 ⌘Z 只會復原目前開啟的工作紙，題庫仍顯示更改後的課題。現在
+  ⌘Z 會在所有工作紙復原，⇧⌘Z 會在所有工作紙重做。期間再次更改過課題的副本會保留較新的課題，
+  「課題」列會列出該工作紙。 -->
+- **Topics set in one browser tab are no longer lost to a paper open in another.** If you
+  tag questions in the 題庫 while the same paper is open in a second tab, that tab now
+  picks up the new topics and keeps them when it saves, and a tag change no longer saves
+  over an edit the other tab made a moment before.
+  <!-- zh: **在一個瀏覽器分頁設定的課題，不會再被另一分頁開啟的同一工作紙覆蓋。** 在題庫為題目
+  加上課題時，如同一份工作紙在另一分頁開啟，該分頁現在會接收新課題並在儲存時保留；更改課題
+  亦不會再覆蓋另一分頁剛作出的修改。 -->
+- **The question bank stays quick with thousands of questions.** The list beside a question
+  scrolls and moves with the arrow keys smoothly however long it is. The desktop app opens
+  the 題庫 from one saved file instead of reading a file for every worksheet, and changing
+  topics across many worksheets, or typing in a long paper, no longer makes the bank
+  refresh again and again.
+  <!-- zh: **題庫有數千條題目時仍然流暢。** 題目旁的清單無論多長，捲動及用方向鍵移動都很順暢。
+  桌面版開啟題庫時只需讀取一個已儲存的檔案，不必逐份工作紙讀取；在多份工作紙更改課題，
+  或在長篇試卷中輸入內容，題庫亦不會再反覆重新整理。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when

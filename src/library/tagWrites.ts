@@ -16,8 +16,8 @@ import {
 } from '@/model/tagSlots';
 import { topicOf } from '@/model/topics';
 import type { Question, Worksheet } from '@/model/types';
-import { liveIds, writableDocument } from './sameCopies';
-import { stateOfRow } from './sharedTags';
+import { liveIds, writableDocument, type CopySkip } from './sameCopies';
+import { stateOfRow, tagTime } from './sharedTags';
 import type { BankRow, BankSlot } from './types';
 import type { WorksheetStore } from '@/storage/types';
 
@@ -272,9 +272,16 @@ export interface TagWrite {
   questionId: string;
   /** The question's shared state as its bank row shows it (`stateOfRow`): the edit applies to this. */
   shared?: TagState;
+  /**
+   * The stamp of `shared` (the published row's `tagsAt`). A copy stamped later was tagged
+   * after the row was read (another tab, say): its own tags are the newer truth, so the
+   * edit applies to them instead.
+   */
+  sharedAt?: string;
 }
 
 type WriteRow = Pick<BankRow, 'rootId' | 'docId' | 'questionId'> & {
+  tagsAt?: string;
   tags?: readonly string[];
   slots?: readonly BankSlot[];
   ownTags?: readonly string[];
@@ -297,6 +304,7 @@ export function copyWrites(rows: readonly WriteRow[], rootIds: Iterable<string>)
       docId: row.docId,
       questionId: row.questionId,
       ...(row.tags ? { shared: stateOfRow({ tags: row.tags, slots: row.slots, ownTags: row.ownTags }) } : {}),
+      ...(row.tags && row.tagsAt !== undefined ? { sharedAt: row.tagsAt } : {}),
     });
   }
   return out;
@@ -321,6 +329,14 @@ export interface WriteReport {
   failed: { docId: string; reason: string }[];
 }
 
+/** One question a tag write changed: the question as it was and as it was saved. */
+export interface TagChange {
+  docId: string;
+  questionId: string;
+  before: Question;
+  after: Question;
+}
+
 /**
  * Apply `edit` to each listed question (to its `shared` state when the write carries one):
  * one load and one save per owning document, so a bulk "Set topic" over 40 questions in 3
@@ -335,14 +351,16 @@ export async function writeTags(
   /** Checked just before each document is read: true leaves it alone, unreported. */
   skip: (docId: string) => boolean = () => false,
   now = new Date().toISOString(),
+  /** Each question changed, once its document is saved (what an undo needs: `swapTags`). */
+  onChange?: (change: TagChange) => void,
 ): Promise<WriteReport> {
   const byDoc = new Map<string, string[]>();
-  const shared = new Map<string, Map<string, TagState>>();
+  const shared = new Map<string, Map<string, TagWrite>>();
   for (const write of writes) {
     byDoc.set(write.docId, [...(byDoc.get(write.docId) ?? []), write.questionId]);
     if (!write.shared) continue;
-    const bases = shared.get(write.docId) ?? new Map<string, TagState>();
-    bases.set(write.questionId, write.shared);
+    const bases = shared.get(write.docId) ?? new Map<string, TagWrite>();
+    bases.set(write.questionId, write);
     shared.set(write.docId, bases);
   }
   const report: WriteReport = { saved: [], failed: [] };
@@ -362,13 +380,174 @@ export async function writeTags(
         report.failed.push({ docId, reason: worksheet.reason });
         continue;
       }
-      const next = withQuestionTags(worksheet, questionIds, edit, now, shared.get(docId));
-      if (next === worksheet) continue;
-      await store.save(next);
+      const written = await saveRevised(store, worksheet, live, (doc) =>
+        withQuestionTags(doc, questionIds, edit, now, currentBases(doc, shared.get(docId))),
+      );
+      if (written === undefined) continue;
+      if ('reason' in written) {
+        report.failed.push(written);
+        continue;
+      }
       report.saved.push(docId);
+      if (!onChange) continue;
+      written.after.questions.forEach((after, index) => {
+        const before = written.before.questions[index];
+        if (after !== before) onChange({ docId, questionId: after.id, before, after });
+      });
     } catch (cause) {
       report.failed.push({ docId, reason: cause instanceof Error ? cause.message : 'it could not be saved' });
     }
   }
   return report;
 }
+
+/**
+ * Each write's shared state, except where the copy in `worksheet` was stamped after it
+ * (`TagWrite.sharedAt`): that copy's own tags are newer than what the bank showed.
+ */
+function currentBases(worksheet: Worksheet, writes: ReadonlyMap<string, TagWrite> | undefined): ReadonlyMap<string, TagState> | undefined {
+  if (!writes) return undefined;
+  const bases = new Map<string, TagState>();
+  for (const [questionId, write] of writes) {
+    if (!write.shared) continue;
+    const own = tagTime(worksheet.questions.find((question) => question.id === questionId)?.tagsAt);
+    const basis = tagTime(write.sharedAt);
+    if (own !== undefined && (basis === undefined || own > basis)) continue;
+    bases.set(questionId, write.shared);
+  }
+  return bases;
+}
+
+/** The same saved revision: nothing has written the document between the two reads. */
+const sameRevision = (a: Worksheet, b: Worksheet) => a === b || (a.updatedAt === b.updatedAt && JSON.stringify(a) === JSON.stringify(b));
+
+/** How many times a write is recomputed over a document another window keeps saving. */
+const REVISION_TRIES = 3;
+
+/** Why a write gave up: the document was saved elsewhere on every try. */
+export const REVISION_BUSY = 'it kept changing in another window';
+
+/**
+ * Read, change, save, with a revision check (S4): just before saving, the document is
+ * read again, and if another tab or window saved it since, the change is recomputed on
+ * that newer revision, so a tag write never puts back what the other save replaced.
+ * `undefined` when the change changes nothing; a skip when the document stopped being
+ * writable (or kept changing) meanwhile.
+ */
+async function saveRevised(
+  store: Pick<WorksheetStore, 'load' | 'save'>,
+  loaded: Worksheet,
+  live: ReadonlySet<string>,
+  change: (worksheet: Worksheet) => Worksheet,
+): Promise<{ before: Worksheet; after: Worksheet } | CopySkip | undefined> {
+  let base = loaded;
+  for (let attempt = 0; attempt < REVISION_TRIES; attempt += 1) {
+    const next = change(base);
+    if (next === base) return undefined;
+    const fresh = await writableDocument(store, base.id, live);
+    if (!('id' in fresh)) return fresh;
+    if (sameRevision(fresh, base)) {
+      await store.save(next);
+      return { before: base, after: next };
+    }
+    base = fresh;
+  }
+  return { docId: loaded.id, reason: REVISION_BUSY };
+}
+
+/** A question's tag lists and their stamp: what a tag write changes and nothing else. */
+const sameTagsAndStamp = (a: Question, b: Question) => a.tagsAt === b.tagsAt && sameTagState(tagStateOf(a), tagStateOf(b));
+
+/** `question` holding `source`'s tags and stamp; everything else stays as `question` has it. */
+function withTagsOf<Q extends Question>(question: Q, source: Question): Q {
+  const { tagsAt: _old, ...rest } = withTagState(question, tagStateOf(source));
+  void _old;
+  return (source.tagsAt === undefined ? rest : { ...rest, tagsAt: source.tagsAt }) as Q;
+}
+
+/**
+ * Tag writes stepped back (`direction: 'undo'`, each copy to `before`) or forward again
+ * (`'redo'`, to `after`). A copy moves only while its tags and stamp are still exactly
+ * what the step left it (a revision check): one tagged since, by the bank screen or another
+ * tab, keeps its newer tags and is reported. Only tags and `tagsAt` move; content edited
+ * meanwhile stays. One load and one save per document; Trash, hidden and newer-build
+ * documents are left alone (`writableDocument`).
+ */
+export async function swapTags(
+  store: Pick<WorksheetStore, 'list' | 'load' | 'save'>,
+  changes: readonly TagChange[],
+  direction: 'undo' | 'redo',
+  skip: (docId: string) => boolean = () => false,
+  now = new Date().toISOString(),
+): Promise<WriteReport> {
+  const report: WriteReport = { saved: [], failed: [] };
+  const byDoc = new Map<string, TagChange[]>();
+  for (const change of changes) byDoc.set(change.docId, [...(byDoc.get(change.docId) ?? []), change]);
+  if (byDoc.size === 0) return report;
+  let live: ReadonlySet<string>;
+  try {
+    live = await liveIds(store);
+  } catch (cause) {
+    const reason = cause instanceof Error ? cause.message : 'it could not be saved';
+    return { saved: [], failed: [...byDoc.keys()].filter((docId) => !skip(docId)).map((docId) => ({ docId, reason })) };
+  }
+  for (const [docId, list] of byDoc) {
+    if (skip(docId)) continue;
+    try {
+      const worksheet = await writableDocument(store, docId, live);
+      if (!('id' in worksheet)) {
+        report.failed.push({ docId, reason: worksheet.reason });
+        continue;
+      }
+      let stale = false;
+      const written = await saveRevised(store, worksheet, live, (doc) => {
+        let changed = false;
+        stale = false;
+        const questions = doc.questions.map((question) => {
+          const change = list.find((entry) => entry.questionId === question.id);
+          if (!change) return question;
+          const [from, to] = direction === 'undo' ? [change.after, change.before] : [change.before, change.after];
+          if (!sameTagsAndStamp(question, from)) {
+            stale = true;
+            return question;
+          }
+          changed = true;
+          return withTagsOf(question, to);
+        });
+        return changed ? { ...doc, questions, updatedAt: now } : doc;
+      });
+      if (written && 'reason' in written) report.failed.push(written);
+      else if (written) report.saved.push(docId);
+      else if (stale) report.failed.push({ docId, reason: SWAP_STALE });
+    } catch (cause) {
+      report.failed.push({ docId, reason: cause instanceof Error ? cause.message : 'it could not be saved' });
+    }
+  }
+  return report;
+}
+
+/**
+ * `worksheet` with every question whose copy in `saved` (the same document as another tab
+ * or window saved it) carries a later `tagsAt` taking those tags and that stamp. Only
+ * tags move: the open editor keeps its own content and its unsaved edits, and its next
+ * autosave carries the newer tags instead of saving the older ones over them (S4). The
+ * same object when nothing is newer.
+ */
+export function adoptNewerTags(worksheet: Worksheet, saved: Worksheet): Worksheet {
+  if (saved.id !== worksheet.id) return worksheet;
+  const byId = new Map(saved.questions.map((question) => [question.id, question]));
+  let changed = false;
+  const questions = worksheet.questions.map((question) => {
+    const there = byId.get(question.id);
+    const theirs = tagTime(there?.tagsAt);
+    if (!there || theirs === undefined) return question;
+    const ours = tagTime(question.tagsAt);
+    if (ours !== undefined && ours >= theirs) return question;
+    changed = true;
+    return withTagsOf(question, there);
+  });
+  return changed ? { ...worksheet, questions } : worksheet;
+}
+
+/** Why `swapTags` left a copy: its topics changed after the step being undone or redone. */
+export const SWAP_STALE = 'its topics changed since';
