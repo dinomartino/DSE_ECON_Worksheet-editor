@@ -2994,6 +2994,12 @@ export function HeaderFooterBand({
  * Used by the read-only preview and the print path, where `BandEditor`'s zone outlines
  * and add buttons must not appear at all — not hidden, absent (§ read-only preview).
  */
+const TRAIL_JUSTIFY: Record<ZoneName, string> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
 function ReadOnlyBandRow({
   band,
   language,
@@ -3009,9 +3015,9 @@ function ReadOnlyBandRow({
   trail?: BandTrail;
 }) {
   const zones = zonesOf(band);
-  const cell = (name: ZoneName, align: string) => (
-    <div className={`flex-1 ${align}`}>
-      {zones[name].map((field) => (
+  const cell = (name: ZoneName, align: string) => {
+    const trailHere = trail?.zone === name;
+    const fields = zones[name].map((field) => (
         // `bandFieldStyle` is shared with `BandEditor` rather than reimplemented, and it
         // was previously missing here entirely: a field's `fontSize`, weight, colour and
         // font were dropped, so a 14pt bold title previewed *and printed* at the
@@ -3020,7 +3026,11 @@ function ReadOnlyBandRow({
         // `whitespace-pre-wrap` for the reason `BandEditor` sets it: a field's wording
         // carries its own spacing ("Full marks: " · 45 · " marks"), and HTML would
         // collapse it away — here on the path that actually prints and becomes the PDF.
-        <span key={field.id} className="mx-0.5 whitespace-pre-wrap" style={bandFieldStyle(field)}>
+        <span
+          key={field.id}
+          className={`mx-0.5 ${trailHere ? "whitespace-pre" : "whitespace-pre-wrap"}`}
+          style={bandFieldStyle(field)}
+        >
           {/* The sheet is passed to `bandFieldPrintText`, which substitutes the page
               number only when one is given — the .docx backend passes none, so Word
               still gets the placeholder it needs to emit a live PAGE field rather than a
@@ -3034,10 +3044,19 @@ function ReadOnlyBandRow({
               the export both honour. */}
           {richNodes(bandFieldPrintText(field, { totalMarks, page }, language), language)}
         </span>
-      ))}
-      {trail?.zone === name && <BandTrailText text={trail.text} />}
-    </div>
-  );
+      ));
+    if (!trailHere) return <div className={`flex-1 ${align}`}>{fields}</div>;
+    // Like a Word tab stop: the zone keeps its width and nothing in it wraps; the line
+    // overflows away from its alignment edge instead of growing the header.
+    return (
+      <div className={`flex min-w-0 flex-1 ${align} ${TRAIL_JUSTIFY[name]}`}>
+        <span className="shrink-0 whitespace-pre">
+          {fields}
+          <BandTrailText text={trail.text} />
+        </span>
+      </div>
+    );
+  };
   return (
     <div className="flex items-baseline gap-2">
       {cell("left", "text-left")}
