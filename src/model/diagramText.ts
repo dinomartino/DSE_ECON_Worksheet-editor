@@ -16,6 +16,10 @@ function mapAxis(axis: DiagramAxis, name: 'x' | 'y', fn: TextFn): DiagramAxis {
   });
 }
 
+/** A shaded area's label or a free text label: where a worded symbol (DWL) is a name,
+ *  not a curve's letters. Matches the segments `mapDiagramTexts` gives them. */
+export const isAreaOrFreeLabelPath = (path: string): boolean => /\/(?:area|label):[^/]+$/.test(path);
+
 /**
  * Structural, identity-preserving map over every BiText in a Diagram, in drawing order.
  * Optional fields stay optional. `diagramText.test.ts` holds it to `handleText` parity.

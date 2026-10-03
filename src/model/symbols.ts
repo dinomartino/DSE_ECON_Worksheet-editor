@@ -65,3 +65,19 @@ export function isSymbolOnly(runs: RichText): boolean {
     });
   return !phrase;
 }
+
+/**
+ * Symbols Chinese writes as the EDB term when they name a shaded area or stand alone as a
+ * diagram's own text (DWL → 效率損失, TR → 總收入, as the area presets print). Values are EDB
+ * glossary keys; the 中文 comes from the glossary, so a teacher's term choice wins.
+ */
+export const WORDED_SYMBOLS: ReadonlyMap<string, string> = new Map([
+  ['DWL', 'deadweight loss'],
+  ['TR', 'total revenue'],
+]);
+
+/** The EDB key of text that is exactly a worded symbol ("DWL"), else undefined. */
+export function wordedSymbol(runs: RichText): string | undefined {
+  if (runs.some((run) => run.vertAlign)) return undefined;
+  return WORDED_SYMBOLS.get(runs.map((run) => run.text).join('').trim());
+}

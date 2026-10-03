@@ -500,6 +500,16 @@ a version heading is edited afterwards.
   still opens the Model Studio console.
   <!-- zh: **AI 帳戶餘額不足時，按鈕會開啟增值的頁面。** Gemini、DeepSeek、OpenRouter、OpenAI 和
   Claude 以往會開啟 API key 頁面。Qwen 仍會開啟 Model Studio 控制台。 -->
+- **DWL and TR on a diagram get their 中文.** A shaded area or a text label that reads just
+  DWL or TR used to print in English on the 中文 paper, and Fill missing 中文 skipped it. It
+  now fills in 效率損失 or 總收入 from the EDB glossary (or the wording you chose in
+  Translation terms), and the ✦ AI count includes it. A new "DWL of a tax" area starts
+  with 效率損失, like the other DWL areas. Curve and point letters such as D, S and E stay as
+  they are.
+  <!-- zh: **圖表上的 DWL 和 TR 會有中文。** 以往只寫著 DWL 或 TR 的陰影區域或文字標示，在中文試
+  卷上會印出英文，「補上缺少的中文」也會略過。現在會按 EDB 詞彙表（或你在「翻譯用語」中選用的
+  寫法）填上效率損失或總收入，✦ AI 的數目亦會計算在內。新加入的「稅項的效率損失」區域會以效率損
+  失開始，與其他效率損失區域一致。D、S、E 等曲線和點的字母則保持不變。 -->
 
 ## 0.5.0 — 2026-09-28
 
