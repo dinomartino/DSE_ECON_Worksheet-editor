@@ -127,7 +127,7 @@ export const CLIPS = [
   {
     name: 'answer-draw',
     dur: 8,
-    about: 'Canvas on given D and S: Draw answer (0.8), select D in the list (1.8), Shift a copy (3.0) draws D1, the shift and new equilibrium in red; Done (5.6); Esc (~6.3) leaves the Teacher page.',
+    about: 'Canvas on given D and S: Draw answer (0.8), select D in the list (1.8), Shift a copy (3.0) draws D1, the shift and new equilibrium in red; Done (5.6); a click on the desk (6.4) leaves the Teacher page with the answer in red.',
     pointer: { x: 760, y: 120 },
     async prepare({ page }) {
       await openPaper(page, SHIFT_DOC.name);
@@ -144,9 +144,8 @@ export const CLIPS = [
       await r.press('Escape', { label: 'deselect' });
       await r.moveTo(() => onCanvas(page, 0.9, 0.12), { dur: 0.8 });
       await r.clickAt(5.6, canvasTool(page, 'Done'), { dur: 0.6, label: 'Done' });
-      await r.moveTo({ x: 1010, y: 760 }, { dur: 0.7 });
-      await r.press('Escape', { label: 'deselect' }); // the page alone, the answer in red
-      await r.hold(0.2);
+      // A click on the desk beside the page lets the question go: the page alone, answer in red.
+      await r.clickAt(6.4, { x: 1027, y: 640 }, { dur: 0.6, label: 'deselect' });
       await r.until(8.0);
     },
   },

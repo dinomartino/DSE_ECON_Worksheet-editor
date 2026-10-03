@@ -25,7 +25,7 @@ const NOTES = {
   'bank-screen': { from: 'v2', in: 0.5, out: 7.6, strip: [0.6, 2.4, 6.0], note: '題庫 opens on the coverage chart and topic cards A–EL2 (counts, coverage bars, "Only N. Worth adding more"); Market and Price opens its question list and preview.' },
   'bank-drag': { from: 'v2', in: 0.6, out: 5.2, strip: [0.8, 2.6, 4.2], note: 'The 題庫 tab filtered to one question (search "MTR"); dragged onto the page it appears in place as Q2 (faded) and the rest renumber before release; after release the toast "1 question added from 題庫 · Undo · Done" stays.' },
   'check-terms': { from: 'v2', in: 0.5, out: 6.6, strip: [1.9, 3.4, 4.9], note: '中文 page: wavy underlines under 消費者剩餘 and 供給 (mainland wording) and two acceptable-but-not-first terms; the finding card; Replace with 消費者盈餘. English UI, AI key not needed.' },
-  'zh-interface': { from: 'v2', in: 0.5, out: 6.6, strip: [2.4, 3.3, 6.0], note: 'Settings → Language 語言 → 繁體中文: the dialog and the start screen flip to 中文 (開始新的工作紙…). The AI & translation section shows for ~1 s first (its HK VPN note is visible).' },
+  'zh-interface': { from: 'v2', in: 0.5, out: 6.6, strip: [2.4, 3.3, 6.0], note: 'Settings → Language 語言 → 繁體中文: the dialog and the start screen flip to 中文 (開始新的工作紙…). Settings opens on Language (opened once off camera, so its code is loaded); the Language click is a no-op beat.' },
   // ---- v1 clips re-captured into the v2 store (scripts/film/capture/clips.mjs) ----
   'type-mcq': { from: 'v1', in: 0, out: 8, strip: [0.5, 3.5, 7.5], note: 'Type the MCQ stem and options EN + 中文 on the page; formatting toolbar shows while editing.' },
   'language-toggle': { from: 'v1', in: 0.6, out: 5.6, strip: [0.6, 2.0, 3.5], note: 'EN → 中文 → EN+中 on the demo quiz; the page re-flows each time.' },
