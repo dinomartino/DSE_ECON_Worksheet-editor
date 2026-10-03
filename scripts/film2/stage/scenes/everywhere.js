@@ -78,11 +78,12 @@ const scene = {
     ctx.chipRow.style.top = `${f(top + ctx.word.height + gap, 2)}px`;
 
     // C. Web, Mac, Windows: three flat windows, each with the app in it.
-    ctx.c = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: '960px 640px' } }, ctx.el);
+    ctx.c = h('div', { style: { position: 'absolute', inset: 0 } }, ctx.el);
+    ctx.cWin = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: '960px 640px' } }, ctx.c);
     const name = COPY.end.name.en;
-    ctx.mac = macWindow(ctx.c, { x: 96, y: 300, w: 720, name });
-    ctx.win = winWindow(ctx.c, { x: 1104, y: 300, w: 720, name });
-    ctx.web = browser(ctx.c, { x: 480, y: 340, w: 960 });
+    ctx.mac = macWindow(ctx.cWin, { x: 96, y: 300, w: 720, name });
+    ctx.win = winWindow(ctx.cWin, { x: 1104, y: 300, w: 720, name });
+    ctx.web = browser(ctx.cWin, { x: 480, y: 340, w: 960 });
     ctx.apps = [];
     for (const [i, wdw] of [ctx.mac, ctx.win, ctx.web].entries()) {
       const bw = wdw.w - 2;
@@ -126,9 +127,10 @@ const scene = {
     const peek = outSoft(prog(t, P(12), P(12) + 0.2));
     place(ctx.mac.el, { x: 300 * (1 - fan), opacity: peek });
     place(ctx.win.el, { x: -300 * (1 - fan), opacity: peek });
-    ctx.platforms.show(t, { at: P(11), dur: 0.7 });
+    // The headline bows out as the end act's push begins; the windows ride the push.
+    ctx.platforms.show(t, { at: P(11), dur: 0.7, out: P(14) + 0.35, outDur: 0.45 });
     const drift = keys(t, [[P(13), 1], [ctx.window.end - ctx.from, 1.035, inOutSoft]]);
-    place(ctx.c, { scale: drift });
+    place(ctx.cWin, { scale: drift });
   },
 };
 
