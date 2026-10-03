@@ -100,20 +100,11 @@ export function partRootOf(part: { id: string; rootId?: unknown }): string {
 }
 
 /**
- * A copy taken from another document: fresh ids, plus the lineage that ties it back to
- * its first ancestor. `rootId` survives a copy of a copy. Only the per-copy fields
- * (`fromDocId`, `copiedAt`) are renewed; any other lineage field (a later build's
- * publisher, licence or source) travels with the copy unchanged.
- *
- * Every part and sub-part is stamped with its source's `partRootOf`, read structurally
- * (the `part` owners of `questionIdOwners`, walked in step on the source and the copy),
- * so copies agree on "part (b)" however either is later reordered (`model/tagSlots.ts`).
+ * `freshIds`, with every part and sub-part stamped with its source's `partRootOf` (read
+ * structurally, the `part` owners of `questionIdOwners` walked in step), so the copy's
+ * parts keep their identity across copies (`model/tagSlots.ts`).
  */
-export function copyQuestion<Q extends Question>(question: Q, fromDocId?: string): Q {
-  const lineage = question.lineage;
-  const kept = lineage && typeof lineage === 'object' && !Array.isArray(lineage) ? { ...lineage } : {};
-  delete (kept as Partial<QuestionLineage>).fromDocId;
-  delete (kept as Partial<QuestionLineage>).copiedAt;
+export function freshIdsKeepingParts<Q extends Question>(question: Q): Q {
   const copy = freshIds(question);
   const sources = [...questionIdOwners(question)];
   const copies = [...questionIdOwners(copy)];
@@ -121,6 +112,24 @@ export function copyQuestion<Q extends Question>(question: Q, fromDocId?: string
     if (source.space !== 'part') return;
     (copies[index].owner as { rootId?: string }).rootId = partRootOf(source.owner);
   });
+  return copy;
+}
+
+/**
+ * A copy taken from another document: fresh ids, plus the lineage that ties it back to
+ * its first ancestor. `rootId` survives a copy of a copy. Only the per-copy fields
+ * (`fromDocId`, `copiedAt`) are renewed; any other lineage field (a later build's
+ * publisher, licence or source) travels with the copy unchanged.
+ *
+ * Parts keep their identity (`freshIdsKeepingParts`), so copies agree on "part (b)"
+ * however either is later reordered.
+ */
+export function copyQuestion<Q extends Question>(question: Q, fromDocId?: string): Q {
+  const lineage = question.lineage;
+  const kept = lineage && typeof lineage === 'object' && !Array.isArray(lineage) ? { ...lineage } : {};
+  delete (kept as Partial<QuestionLineage>).fromDocId;
+  delete (kept as Partial<QuestionLineage>).copiedAt;
+  const copy = freshIdsKeepingParts(question);
   return {
     ...copy,
     lineage: {

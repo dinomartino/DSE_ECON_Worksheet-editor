@@ -499,6 +499,13 @@ a version heading is edited afterwards.
   shortcut opens the ✦ AI menu, as it does in a worksheet.
   <!-- zh: **在題庫中亦可按 ⌘J（Windows 為 Ctrl+J）開啟 ✦ AI。** 在課題頁面按此快捷鍵，會開啟
   ✦ AI 選單，與在工作紙中一樣。 -->
+- **"Update bank copy" keeps newer topics.** If the bank's copy had its topics changed
+  after your worksheet's (for example in another tab), updating it now brings in your new
+  wording but keeps those newer topics. The parts of a long question also stay matched to
+  the bank's, so part-by-part topics still line up.
+  <!-- zh: **「更新題庫副本」會保留較新的課題。** 若題庫副本的課題在你的工作紙之後才改動（例如在
+  另一個分頁），更新時現在會帶入你的新內容，但保留那些較新的課題。長題目的各部分亦會與題庫
+  的保持對應，逐部分設定的課題仍然一致。 -->
 
 ## 0.5.0 — 2026-09-28
 

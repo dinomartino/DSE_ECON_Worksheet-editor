@@ -424,8 +424,9 @@ withSlotTags?: (question: Q, owns: ReadonlyMap<string, string[] | undefined>) =>
   (new question root, so part keys are scoped away). "Treat as a new question" drops
   `lineage`; also drop part `rootId`s there for tidiness (harmless either way: keys are
   matched within one root only).
-- `updateBankCopy` (bankDocs.ts:179-199): `freshIds(question)` keeps the paper copy's part
-  `rootId`s, which name the bank's parts, so keys stay stable. No change; add a test.
+- `updateBankCopy` (`bankDocs.ts`): `freshIdsKeepingParts(question)` stamps each part with
+  its source's `partRootOf`, which names the bank's part, so keys stay stable from a copy or
+  from the original paper. Its tag state follows the newer `tagsAt` (bank copy or paper).
 
 ---
 

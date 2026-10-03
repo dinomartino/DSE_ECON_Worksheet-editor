@@ -32,7 +32,8 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   taken from the bank (Insert, Fill, Add to, New worksheet from these) starts with the
   shared set and its stamp, not the picked copy's tags
   (`src/library/sharedTags.ts:withRowTags`). **Update bank copy** (explicit, never automatic) writes an edited
-  question back to the bank document it came from; **Treat as a new question** drops
+  question back to the bank document it came from, keeping the bank copy's tags when they
+  were stamped later; **Treat as a new question** drops
   `lineage`.
 - **Fill is deterministic:** best match first, then least recently used, never already
   in the paper; ↻ swaps one pick.
