@@ -21,12 +21,13 @@ import { readFileSync } from 'node:fs';
 import v1Corpus from '@/test/corpus/v1-published.json';
 import v2Corpus from '@/test/corpus/v2-published.json';
 import graphV2 from '@/test/corpus/graph-v2.json';
+import optionalCorpus from '@/test/corpus/v2-optional-sections.json';
 import { migrate, serializeWorksheet, CURRENT_SCHEMA_VERSION, isNewerThanBuild } from '@/model/migrations';
 import { parseWorksheet, stringifyWorksheet } from '@/storage/document';
 import { isGraphNewerThanBuild, migrateGraph, parseGraph, stringifyGraph } from '@/model/graph';
 import { answerLayer } from '@/model/diagramAnswers';
 import { computeNumbering } from '@/model/numbering';
-import { worksheetMarks } from '@/model/marks';
+import { sectionMarksById, worksheetMarks } from '@/model/marks';
 import { renderWorksheet } from '@/render/worksheet';
 import { resolveFlow } from '@/model/flow';
 import { createMcqQuestion, createStructuredQuestion, createSubPart } from '@/model/factories';
@@ -357,5 +358,58 @@ describe('the v2 corpus: the answer layer and an answer key layout', () => {
     expect(countAnswers(graph)).toBe(countAnswers(graphV2));
     expect(countAnswers(graphV2)).toBe(6);
     expect(stringifyGraph(parseGraph(raw))).toBe(raw.trimEnd());
+  });
+});
+
+describe('the v2 optional-sections corpus: answer any ONE, section targets, essay answers', () => {
+  // `v2-optional-sections.json`: frozen, written once by
+  // `scripts/emit-v2-optional-sections-corpus.test.ts`.
+  const TEACHER: OutputMode = { language: 'en', version: 'teacher' };
+  const STUDENT: OutputMode = { language: 'en', version: 'student' };
+  const printed = (worksheet: ReturnType<typeof migrate>, mode: OutputMode) => JSON.stringify(renderWorksheet(worksheet, mode));
+
+  it('opens editable here, with nothing unrecognised', () => {
+    const worksheet = migrate(structuredClone(optionalCorpus));
+    expect(optionalCorpus.schemaVersion).toBe(2);
+    expect(isNewerThanBuild(worksheet)).toBe(false);
+    expect(worksheet.__unknown).toBeUndefined();
+  });
+
+  it('keeps the section settings, both essays’ answers and schemes, topics and all text', () => {
+    const worksheet = migrate(structuredClone(optionalCorpus));
+    const sections = worksheet.layout.filter((element) => element.kind === 'section');
+    expect(sections.map((s) => [s.answerCount, s.targetMarks])).toEqual([
+      [undefined, undefined],
+      [undefined, 8],
+      [1, 12],
+    ]);
+    const essays = worksheet.questions.filter((q) => (q as StructuredQuestion).parts.length === 0) as StructuredQuestion[];
+    expect(essays).toHaveLength(2);
+    for (const essay of essays) {
+      expect(essay.answer).toBeDefined();
+      expect(essay.scheme?.levels).toHaveLength(2);
+    }
+    const tagged = worksheet.questions.find((q) => q.tags) as StructuredQuestion;
+    expect(tagged.tags).toEqual(['E', 'mock 2026']);
+    expect(tagged.parts[0].tags).toEqual(['E.monopoly']);
+    expect(tagged.lineage?.fromDocId).toBe('doc-taxi');
+    expect(countText(worksheet)).toBe(countText(optionalCorpus));
+  });
+
+  it('totals the best ONE essay, and prints each essay’s answer for the teacher only', () => {
+    const worksheet = migrate(structuredClone(optionalCorpus));
+    expect([...sectionMarksById(worksheet).values()]).toEqual([6, 8, 12]);
+    expect(worksheetMarks(worksheet)).toBe(26);
+    expect(printed(worksheet, TEACHER)).toContain('Raises wages of those employed');
+    expect(printed(worksheet, TEACHER)).toContain('Balanced discussion');
+    expect(printed(worksheet, STUDENT)).not.toContain('Raises wages of those employed');
+    expect(printed(worksheet, STUDENT)).not.toContain('Balanced discussion');
+  });
+
+  it('round-trips byte for byte, still written at 2', () => {
+    const raw = readFileSync('src/test/corpus/v2-optional-sections.json', 'utf8');
+    const saved = stringifyWorksheet(parseWorksheet(raw));
+    expect(saved).toBe(raw.trimEnd());
+    expect(JSON.parse(saved).schemaVersion).toBe(2);
   });
 });

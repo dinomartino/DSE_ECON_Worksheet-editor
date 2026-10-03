@@ -539,15 +539,19 @@ a version heading is edited afterwards.
   scheme view, so a page could end two lines early.
   <!-- zh: **含圖表或圖片的頁面，現在與 Word 在同一位置分頁。** 以往每幅圖在屏幕上比 Word 檔多佔
   差不多一行，在評卷參考檢視中尤其明顯，令頁面可能提早兩行分頁。 -->
-- **Papers with diagram answers warn you in an older version of the app.** A paper with
-  answers drawn on a diagram, or with a marking scheme layout other than Classic, now opens
-  read-only in versions 0.4 and 0.5, with a note to update first. Those versions cannot hide
-  those answers from the student copy or follow the layout, and can no longer save over the
-  paper. Every other paper still opens and edits there as before.
-  <!-- zh: **含圖表答案的工作紙，在舊版程式中會提示你。** 在圖表上繪有答案，或評卷參考版面並非
-  「經典」的工作紙，在 0.4 和 0.5 版中會以唯讀方式開啟，並提示先更新。這些版本無法在學生版中
-  隱藏這些答案，也無法跟從評卷參考版面，而且不能再覆寫這份工作紙。其他工作紙在這些版本中照常
-  開啟和編輯。 -->
+- **Papers using newer features warn you in an older version of the app.** A paper with
+  answers drawn on a diagram, a marking scheme layout other than Classic, a section where
+  students answer any ONE question or with its own target marks, or an essay question with
+  its own answer or marking scheme now opens read-only in versions 0.4 and 0.5, with a note
+  to update first. Those versions cannot hide those answers from the student copy, follow
+  the layout, total such a section correctly or print an essay's answer, and can no longer
+  save over the paper. Every other paper, including one with topics or classes, still opens
+  and edits there as before.
+  <!-- zh: **使用新功能的工作紙，在舊版程式中會提示你。** 在圖表上繪有答案、評卷參考版面並非
+  「經典」、設有「任選一題」或自訂目標分數的部分，或論述題設有自己的答案或評分方案的工作紙，
+  在 0.4 和 0.5 版中會以唯讀方式開啟，並提示先更新。這些版本無法在學生版中隱藏這些答案、跟從
+  評卷參考版面、正確計算這類部分的總分，或印出論述題的答案，而且不能再覆寫這份工作紙。其他
+  工作紙（包括設有課題或班別的）在這些版本中照常開啟和編輯。 -->
 - **Click an MC answer in the Marking scheme view to select its question**, as you can with
   a long question's answer. The question's number and key are tinted and its settings open
   in the sidebar.

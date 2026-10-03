@@ -3084,14 +3084,18 @@ intact but unreachable.
   oldest version that reads the content correctly, re-derived on every save; in memory a
   document is at `CURRENT_SCHEMA_VERSION`. A field an older build would silently mis-print
   raises the mark only in documents that use it, so they open read-only there and nothing
-  else does. v2 = v1 + the diagram answer layer (`answer: true`, any diagram anywhere) or
-  `answerKeyLayout`; the 1→2 step is identity. Graphs follow the same rule. v0.4–0.5 open a
-  v2 file read-only (export stays possible there); v0.2–0.3 have no guard and open it
-  editable, keeping the fields and the mark.
+  else does. v2 = v1 + any of: the diagram answer layer (`answer: true`, any diagram
+  anywhere); `answerKeyLayout`; a section's `answerCount` or `targetMarks`; a part-less
+  question's own non-blank `answer` or `scheme` (the essay). The 1→2 step is identity.
+  Graphs follow the same rule. Bank and organising metadata (topics, 題型, `tagsAt`,
+  lineage, part roots, `kind`, `classes`, `satOn`, `bankHidden`) stays at 1: v0.5.0 keeps
+  it and prints the same. v0.4–0.5 open a v2 file read-only (export stays possible there);
+  v0.2–0.3 have no guard and open it editable, keeping the fields and the mark.
 - **A shape change** appends one `MIGRATIONS` step, bumps `CURRENT_SCHEMA_VERSION`, and adds
   a new frozen `src/test/corpus/v<N>-published.json` written by that version's last build;
   old corpus files never change. v2's (`v2-published.json`, `graph-v2.json`) were written
-  once by `scripts/emit-v2-corpus.test.ts`.
+  once by `scripts/emit-v2-corpus.test.ts`; its later triggers by
+  `scripts/emit-v2-optional-sections-corpus.test.ts` (`v2-optional-sections.json`).
 - **Collapse at a major version** only if the single `v1→vN` step reproduces the old chain's
   output over every frozen corpus (pinned in a test first). Opening v1 is never dropped.
 - **Past ~30 KB minified**, legacy steps move to a lazy chunk loaded only for an older
