@@ -273,6 +273,11 @@ a version heading is edited afterwards.
   Firefox 和 Safari 仍會儲存到「下載」資料夾。 -->
 
 ### Changed
+- **The paper check now warns when a marking scheme does not add up.** Before you export,
+  it lists the questions whose marking scheme awards a different total from the marks
+  printed on the paper. Before, you only saw this in the question's marking scheme panel.
+  <!-- zh: **試卷檢查現會提示評分方案總分不符。** 匯出前，試卷檢查會列出評分方案總分與試卷印出
+  分數不同的題目。以往只在該題的評分方案面板才看得到。 -->
 - **A larger Settings window.** Settings now fills most of your screen, so Translation
   terms shows far more terms at once and the import preview has room to breathe. On a
   big monitor it stops growing at a comfortable size.

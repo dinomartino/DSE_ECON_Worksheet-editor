@@ -1770,8 +1770,10 @@ type needs only a definition.
   modules for `'mcq'`/`'structured'` literals.
 - **The paper check asks, never inspects.** `model/paperHealth.ts:checkPaper` (the Export
   dialog's pre-print summary: letter balance and runs, missing keys, marks, time estimate,
-  untranslated strings) is derived, never stored; per-type facts come from `healthFacts?`.
-  A type without it contributes marks and translations only. Counts and the time estimate
+  untranslated strings, scheme totals) is derived, never stored; per-type facts come from
+  `healthFacts?`, scheme totals from `qualityView?` anchors (`anchorSchemeMismatch`, the
+  same check the quality review runs). A type without either contributes marks and
+  translations only. Counts and the time estimate
   come from `model/paperSummary.ts` (registry `summary?`: label, `minutesPerItem`), which
   also measures them against the optional stored `Worksheet.target` — the only stored input.
 - **The answer key is its own document, built as IR** (`render/answerKey.ts`). Each type
