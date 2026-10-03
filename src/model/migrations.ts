@@ -25,8 +25,9 @@ export const CURRENT_SCHEMA_VERSION = 2;
  * v2 = v1 plus what v0.5.0 reads as v1 but mis-prints or cannot edit: the diagram answer
  * layer (`answer: true`; teacher answers on the student copy), `answerKeyLayout` (every key
  * as Classic), a section's `answerCount` (it totals every question), an essay's own
- * `answer` or `scheme` (its teacher copy and key leave them out), and the `importQuota`
- * derived curve (editing around an unknown derive kind fails). A document using any of them
+ * `answer` or `scheme` (its teacher copy and key leave them out), the `importQuota`
+ * derived curve (editing around an unknown derive kind fails), and an anchor's `last`
+ * (read as the first crossing, a quota's Q_A collapses). A document using any of them
  * is written at 2 and opens read-only there. A section's `targetMarks` alone stays at 1.
  */
 const ANSWER_LAYER_VERSION = 2;
@@ -249,6 +250,14 @@ const ANSWER_LISTS = ['curves', 'points', 'labels', 'arrows', 'areas', 'spans'];
 /** Derive kinds v0.5.0 does not know. */
 const V2_DERIVES = new Set(['importQuota']);
 
+/** An `{ on, y, last }` anchor anywhere in `value`: v0.5.0 reads it as the first crossing. */
+function hasLastAnchor(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasLastAnchor);
+  if (!isRecord(value)) return false;
+  if (typeof value.on === 'string' && value.last === true) return true;
+  return Object.values(value).some(hasLastAnchor);
+}
+
 /**
  * Any diagram anywhere in `value` with an element flagged `answer` (as `hasAnswerLayer`),
  * or a curve derived by a v2 kind.
@@ -270,5 +279,6 @@ function hasV2Diagram(value: unknown): boolean {
     );
     if (derived) return true;
   }
+  if (isRecord(diagram) && hasLastAnchor(diagram)) return true;
   return Object.values(value).some(hasV2Diagram);
 }

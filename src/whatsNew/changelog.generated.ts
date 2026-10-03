@@ -506,6 +506,29 @@ a version heading is edited afterwards.
   <!-- zh: **消費者及生產者盈餘的陰影伸展至價格軸。** 在「消費者及生產者盈餘」圖表和總社會盈餘損失
   圖表中，曲線在價格軸前停下，軸旁留有一條沒有陰影的窄帶。現在曲線由價格軸開始，
   陰影亦伸展至軸上。已加入的圖表保持原狀。 -->
+- **Q_A on the import quota diagram stays on the quota.** It is now a ←→ arrow under the
+  flat step at the world price, so it moves and stretches with S, Pw and the size of the
+  quota instead of staying where it was first drawn.
+  <!-- zh: **進口配額圖中的 Q_A 會跟隨配額。** Q_A 現在是世界價格水平段下方的 ←→ 箭頭，會隨 S、Pw
+  及配額大小移動和伸縮，不再停留在原來的位置。 -->
+- **The arrow from "Shift a copy" follows the curves.** Move the original curve and the
+  arrow moves with it and its copy; move the copy further and the arrow stretches. You can
+  still drag the whole arrow somewhere clearer, and dragging one of its ends places it by
+  hand.
+  <!-- zh: **「平移副本」的箭頭會跟隨曲線。** 移動原曲線時，箭頭會隨它和副本一起移動；把副本移得更遠，
+  箭頭亦會伸長。你仍可把整支箭頭拖到較清楚的位置；拖曳箭頭的一端則改為自行擺放。 -->
+- **The CPF label no longer lands on the y-axis.** Dragging production point B up a curved
+  PPF used to push the CPF's name onto the axis. It now sits just inside the graph, above
+  the line.
+  <!-- zh: **CPF 標示不再壓在 y 軸上。** 以往把生產點 B 沿弧形 PPF 向上拖，CPF 的名稱會被推到軸上。
+  現在它會放在圖內、線的上方。 -->
+- **The diagram drawing toolbar fits on one row on a laptop screen.** On narrower windows,
+  Copy, Paste, Duplicate and Delete sit in one ⋯ menu, the tools show their icons with the
+  names in the tooltip, and the Span tool's style and position choices appear over the
+  drawing. Every control is still there.
+  <!-- zh: **圖表繪製工具列在手提電腦的畫面上可放在同一行。** 視窗較窄時，複製、貼上、建立副本和刪除
+  會收進一個 ⋯ 選單，工具只顯示圖示（名稱見提示），跨距工具的樣式和位置選項則顯示在圖上方。所有
+  控制項仍然可用。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when

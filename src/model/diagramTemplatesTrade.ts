@@ -28,7 +28,6 @@ import {
   sub,
   subPlus,
   sym,
-  xOn,
   type DiagramTemplate,
   type Pair,
 } from './diagramTemplateKit';
@@ -138,15 +137,20 @@ function importQuota(): Diagram {
   const quota = 0.22;
   const s = curve(sPts, sym('S'));
   const pw = priceLine(pwY, sub('P', 'w'));
-  const kink = xOn(sPts, pwY);
   const withQuota = quotaSupply(s, pw, quota);
   const d = curve([[0.06, 0.9], [0.9, 0.12]], sym('D'));
   const ea = eq(d, withQuota, 'A', { p: 'P', q: '' }, { yTickLabel: sub('P', 'A') });
+  // Q_A measures the flat step itself, end to end, so it follows S, Pw and the quota.
+  // Under the step: above it, the arrowheads would sit on S and the shifted S.
+  const step = span(cross(s, pw), { on: withQuota.id, y: cross(s, pw), last: true }, 'doubleArrow', {
+    offset: -0.04,
+    label: sub('Q', 'A'),
+  });
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [s, pw, withQuota, d],
       points: [ea],
-      labels: [label(kink + quota / 2, pwY + 0.05, sub('Q', 'A'))],
+      spans: [step],
     }),
   );
 }

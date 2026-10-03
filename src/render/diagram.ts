@@ -760,14 +760,19 @@ export function curveLabelAnchor(
   const atEnd = (curve.labelAt ?? 'end') === 'end';
   const anchor = atEnd ? pts[pts.length - 1] : pts[0];
   const neighbour = atEnd ? pts[pts.length - 2] : pts[1];
-  const dx = anchor.x - neighbour.x;
+  let dx = anchor.x - neighbour.x;
   const dy = anchor.y - neighbour.y;
   const length = Math.hypot(dx, dy) || 1;
   const gap = 10 * scale;
+  // A sloped line ending on the y-axis (a CPF tangent once B nears the axis) would push
+  // its name left, onto the axis and its ticks. Mirror the push into the plot instead,
+  // away from the line. A flat line keeps its name outside, where a tick's would be.
+  const onYAxis = Math.abs(anchor.x - proj.plot.left) < 0.5 * scale && dx < 0 && Math.abs(dy) > 1e-6 * length;
+  if (onYAxis) dx = -dx;
 
   const offset = curve.labelOffset;
   return {
-    x: anchor.x + (dx / length) * gap + (offset ? offset.x * plotSpanX(proj) : 0),
+    x: anchor.x + (dx / length) * gap + (onYAxis ? 3 * scale : 0) + (offset ? offset.x * plotSpanX(proj) : 0),
     y: anchor.y + (dy / length) * gap - (offset ? offset.y * plotSpanY(proj) : 0),
     anchor: dx >= 0 ? 'start' : 'end',
   };

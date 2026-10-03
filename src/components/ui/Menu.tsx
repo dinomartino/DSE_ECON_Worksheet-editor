@@ -50,6 +50,7 @@ export function Menu({
   align = 'right',
   trigger,
   onOpen,
+  overOverlay = false,
 }: {
   items: MenuItem[];
   label?: string;
@@ -57,6 +58,8 @@ export function Menu({
   trigger?: ReactNode;
   /** Fires each time the menu opens, for items that have to be looked up first. */
   onOpen?: () => void;
+  /** Inside a full-screen overlay (the diagram canvas, z-50): the popup must sit above it. */
+  overOverlay?: boolean;
 }) {
   const m = useMessages(UI_MESSAGES);
   const [open, setOpen] = useState(false);
@@ -152,7 +155,7 @@ export function Menu({
             ref={menuRef}
             id={id}
             role="menu"
-            className="fixed z-30 min-w-[13rem] animate-pop-in overflow-hidden rounded-xl border border-line bg-surface-raised p-1 shadow-xl"
+            className={`fixed ${overOverlay ? 'z-[60]' : 'z-30'} min-w-[13rem] animate-pop-in overflow-hidden rounded-xl border border-line bg-surface-raised p-1 shadow-xl`}
             style={{ top: 0, left: 0, visibility: 'hidden' }}
           >
             {items.map((item, index) => (

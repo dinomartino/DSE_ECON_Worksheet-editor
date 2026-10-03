@@ -145,11 +145,14 @@ describe('the version a document is written at', () => {
 
   // v0.5.0 draws the stored points but throws on deleting or group-moving around a
   // derive kind it does not know.
-  it('is above 1 with an import-quota supply, and back to 1 once it is detached', () => {
+  it('is above 1 with an import-quota supply, and back to 1 once it and its Q_A span are detached', () => {
     const diagram = buildFromTemplate('import-quota');
     expect(writtenSchemaVersion(1, { kind: 'diagram', diagram })).toBe(2);
     const detached = { ...diagram, curves: diagram.curves.map(({ derive: _d, ...c }) => (_d?.kind === 'importQuota' ? c : { ...c, ...(_d ? { derive: _d } : {}) })) };
-    expect(writtenSchemaVersion(1, { kind: 'diagram', diagram: detached })).toBe(1);
+    // Q_A's far end is a `last` anchor, which v0.5.0 reads as the step's near end.
+    expect(writtenSchemaVersion(1, { kind: 'diagram', diagram: detached })).toBe(2);
+    const frozen = { ...detached, spans: [] };
+    expect(writtenSchemaVersion(1, { kind: 'diagram', diagram: frozen })).toBe(1);
   });
 
   it('is above 1 with an answer key layout, and back to 1 when the key returns to Classic', () => {
