@@ -5,7 +5,7 @@ import { lockup, block, h, show, C } from '../lib/index.js';
 
 const SIZE = 220;
 
-export default {
+const scene = {
   setup(ctx) {
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
     ctx.less = block(ctx.el, { ...ctx.copy.less, x: 960, y: 330, w: 1400, maxLines: 1, size: 96 });
@@ -30,3 +30,5 @@ export default {
     ctx.free.show(t, { at: ctx.cardAt + ctx.pulse(6), dur: 0.8 });
   },
 };
+
+export default scene;

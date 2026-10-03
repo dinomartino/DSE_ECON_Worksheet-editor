@@ -13,7 +13,7 @@ export const TOP = 158;
 export const MARK_DOT = [960, TOP + SIZE / 2];
 const DROP = 540 - MARK_DOT[1]; // the mark starts centred
 
-export default {
+const scene = {
   setup(ctx) {
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
     ctx.group = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: `${MARK_DOT[0]}px ${MARK_DOT[1]}px` } }, ctx.el);
@@ -33,3 +33,5 @@ export default {
     ctx.tag.show(t, { at: ctx.pulse(6), dur: 0.8, stagger: 0.12 });
   },
 };
+
+export default scene;

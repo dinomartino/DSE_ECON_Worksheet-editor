@@ -79,7 +79,7 @@ function copy() {
   let n = 0;
   const scenes = new Set(TL.SCENES.map((s) => s.id));
   for (const [scene, entries] of Object.entries(TL.COPY)) {
-    if (!scenes.has(scene)) (n++, say('error', `COPY.${scene}: no such scene`));
+    if (!scenes.has(scene)) { n++; say('error', `COPY.${scene}: no such scene`); }
     for (const [key, pair] of Object.entries(entries)) {
       for (const lang of ['en', 'zh']) {
         if (typeof pair[lang] !== 'string' || !pair[lang].trim()) {
@@ -88,8 +88,8 @@ function copy() {
           continue;
         }
         for (const line of pair[lang].split('\n')) {
-          if (/[,.，。;；]\s*$/u.test(line)) (n++, say('error', `COPY.${scene}.${key}.${lang}: "${line}" ends in punctuation`));
-          if (line !== line.trim()) (n++, say('error', `COPY.${scene}.${key}.${lang}: "${line}" has outer spaces`));
+          if (/[,.，。;；]\s*$/u.test(line)) { n++; say('error', `COPY.${scene}.${key}.${lang}: "${line}" ends in punctuation`); }
+          if (line !== line.trim()) { n++; say('error', `COPY.${scene}.${key}.${lang}: "${line}" has outer spaces`); }
         }
       }
     }
@@ -117,7 +117,7 @@ function assets() {
     const dir = resolve(store, a.path);
     const frames = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.jpg')).length : 0;
     const want = meta.frames ?? Math.round(meta.duration * meta.fps);
-    if (frames < want) (missing++, say('error', `${id}: ${frames} of ${want} frames in ${dir}`));
+    if (frames < want) { missing++; say('error', `${id}: ${frames} of ${want} frames in ${dir}`); }
     clipMeta[id] = { duration: meta.duration ?? meta.frames / meta.fps, fps: meta.fps ?? 60 };
   }
   if (!missing) say('ok', `${Object.keys(REGISTRY).length} registry assets present`);
@@ -204,7 +204,7 @@ async function textFit(page) {
     if (Math.max(...s.widths) > b.maxWidth + 1) out.push(`${Math.round(Math.max(...s.widths))} px wide in a ${Math.round(b.maxWidth)} px box`);
     if (l < SAFE.x0 - 1 || r > SAFE.x1 + 1) out.push(`x ${Math.round(l)}..${Math.round(r)} outside title-safe`);
     if (t < SAFE.y0 - 1 || bottom > SAFE.y1 + 1) out.push(`y ${Math.round(t)}..${Math.round(bottom)} outside title-safe`);
-    if (out.length) (bad++, say('error', `${b.scene}: ${q(b)} at ${s.t} s: ${out.join('; ')}`));
+    if (out.length) { bad++; say('error', `${b.scene}: ${q(b)} at ${s.t} s: ${out.join('; ')}`); }
   }
   const hidden = [...blocks.values()].filter((b) => !b.shown.length).map((b) => `${b.scene}: ${q(b)}`);
   const shrunk = [...blocks.values()].filter((b) => b.fits && b.scale < 1 - 1e-6);
