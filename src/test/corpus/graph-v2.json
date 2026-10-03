@@ -1,0 +1,374 @@
+{
+  "id": "graph-corpus-v2",
+  "name": "Rice market, income rise",
+  "block": {
+    "kind": "diagram",
+    "id": "g002",
+    "diagram": {
+      "title": {
+        "en": [
+          {
+            "text": "Figure 1"
+          }
+        ],
+        "zh": [
+          {
+            "text": "圖 1"
+          }
+        ]
+      },
+      "x": {
+        "title": {
+          "en": [
+            {
+              "text": "Quantity"
+            }
+          ],
+          "zh": [
+            {
+              "text": "數量"
+            }
+          ]
+        }
+      },
+      "y": {
+        "title": {
+          "en": [
+            {
+              "text": "Price"
+            }
+          ],
+          "zh": [
+            {
+              "text": "價格"
+            }
+          ]
+        }
+      },
+      "curves": [
+        {
+          "id": "g003",
+          "points": [
+            {
+              "x": 0.1,
+              "y": 0.9
+            },
+            {
+              "x": 0.9,
+              "y": 0.1
+            }
+          ],
+          "shape": "straight",
+          "label": {
+            "en": [
+              {
+                "text": "D₀"
+              }
+            ],
+            "zh": [
+              {
+                "text": "D₀"
+              }
+            ]
+          },
+          "labelAt": "end"
+        },
+        {
+          "id": "g004",
+          "points": [
+            {
+              "x": 0.1,
+              "y": 0.1
+            },
+            {
+              "x": 0.9,
+              "y": 0.9
+            }
+          ],
+          "shape": "straight",
+          "label": {
+            "en": [
+              {
+                "text": "S"
+              }
+            ],
+            "zh": [
+              {
+                "text": "S"
+              }
+            ]
+          },
+          "labelAt": "end"
+        },
+        {
+          "id": "g005",
+          "points": [
+            {
+              "x": 0.25,
+              "y": 0.95
+            },
+            {
+              "x": 0.95,
+              "y": 0.25
+            }
+          ],
+          "shape": "straight",
+          "label": {
+            "en": [
+              {
+                "text": "D₁"
+              }
+            ],
+            "zh": [
+              {
+                "text": "D₁"
+              }
+            ]
+          },
+          "labelAt": "end",
+          "answer": true
+        },
+        {
+          "id": "g006",
+          "points": [
+            {
+              "x": 0.25,
+              "y": 0.95
+            },
+            {
+              "x": 0.6,
+              "y": 0.25
+            }
+          ],
+          "shape": "straight",
+          "derive": {
+            "kind": "marginalRevenue",
+            "of": "g005"
+          }
+        }
+      ],
+      "points": [
+        {
+          "id": "g007",
+          "at": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "anchor": {
+            "cross": [
+              "g003",
+              "g004"
+            ]
+          },
+          "label": {
+            "en": [
+              {
+                "text": "E₀"
+              }
+            ],
+            "zh": [
+              {
+                "text": "E₀"
+              }
+            ]
+          },
+          "dot": true
+        },
+        {
+          "id": "g008",
+          "at": {
+            "x": 0.6,
+            "y": 0.6
+          },
+          "anchor": {
+            "cross": [
+              "g005",
+              "g004"
+            ]
+          },
+          "label": {
+            "en": [
+              {
+                "text": "E₁"
+              }
+            ],
+            "zh": [
+              {
+                "text": "E₁"
+              }
+            ]
+          },
+          "dot": true,
+          "dropTo": [
+            "x",
+            "y"
+          ]
+        },
+        {
+          "id": "g009",
+          "at": {
+            "x": 0.7,
+            "y": 0.5
+          },
+          "answer": true,
+          "label": {
+            "en": [
+              {
+                "text": "A"
+              }
+            ],
+            "zh": [
+              {
+                "text": "A"
+              }
+            ]
+          }
+        }
+      ],
+      "labels": [
+        {
+          "id": "g010",
+          "at": {
+            "x": 0.75,
+            "y": 0.85
+          },
+          "text": {
+            "en": [
+              {
+                "text": "Income rises"
+              }
+            ],
+            "zh": [
+              {
+                "text": "收入上升"
+              }
+            ]
+          },
+          "answer": true
+        }
+      ],
+      "arrows": [
+        {
+          "id": "g011",
+          "from": {
+            "x": 0.55,
+            "y": 0.3
+          },
+          "to": {
+            "x": 0.68,
+            "y": 0.43
+          },
+          "answer": true
+        }
+      ],
+      "areas": [
+        {
+          "id": "g012",
+          "band": {
+            "edges": [
+              {
+                "curve": "g003"
+              },
+              {
+                "level": {
+                  "point": "g007"
+                }
+              }
+            ],
+            "from": 0,
+            "to": {
+              "point": "g007"
+            }
+          }
+        },
+        {
+          "id": "g013",
+          "band": {
+            "edges": [
+              {
+                "curve": "g005"
+              },
+              {
+                "level": {
+                  "point": "g008"
+                }
+              }
+            ],
+            "from": 0,
+            "to": {
+              "point": "g008"
+            }
+          }
+        },
+        {
+          "id": "g014",
+          "band": {
+            "edges": [
+              {
+                "curve": "g003"
+              },
+              {
+                "level": {
+                  "point": "g007"
+                }
+              }
+            ],
+            "from": 0,
+            "to": {
+              "point": "g007"
+            }
+          },
+          "answer": true
+        }
+      ],
+      "spans": [
+        {
+          "id": "g015",
+          "from": {
+            "point": "g007"
+          },
+          "to": {
+            "point": "g008"
+          },
+          "style": "arrow",
+          "along": "x"
+        },
+        {
+          "id": "g016",
+          "from": {
+            "x": 0.2,
+            "y": 0.2
+          },
+          "to": {
+            "x": 0.3,
+            "y": 0.2
+          },
+          "style": "bracket",
+          "answer": true
+        }
+      ]
+    },
+    "widthPx": 400,
+    "heightPx": 384,
+    "altText": {
+      "en": [
+        {
+          "text": "Rice market"
+        }
+      ],
+      "zh": [
+        {
+          "text": "Rice market"
+        }
+      ]
+    }
+  },
+  "language": "bilingual",
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "schemaVersion": 2,
+  "createdAt": "2026-10-03T00:00:00.000Z",
+  "updatedAt": "2026-10-03T00:00:00.000Z"
+}

@@ -17,8 +17,14 @@
  * corpus for the new version beside it.
  */
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import v1Corpus from '@/test/corpus/v1-published.json';
-import { migrate, serializeWorksheet, CURRENT_SCHEMA_VERSION } from '@/model/migrations';
+import v2Corpus from '@/test/corpus/v2-published.json';
+import graphV2 from '@/test/corpus/graph-v2.json';
+import { migrate, serializeWorksheet, CURRENT_SCHEMA_VERSION, isNewerThanBuild } from '@/model/migrations';
+import { parseWorksheet, stringifyWorksheet } from '@/storage/document';
+import { isGraphNewerThanBuild, migrateGraph, parseGraph, stringifyGraph } from '@/model/graph';
+import { answerLayer } from '@/model/diagramAnswers';
 import { computeNumbering } from '@/model/numbering';
 import { worksheetMarks } from '@/model/marks';
 import { renderWorksheet } from '@/render/worksheet';
@@ -279,5 +285,77 @@ describe('a document saved by the published build still opens', () => {
     expect(reloaded.__unknown).toBeUndefined();
     expect({ kind: reloaded.kind, classes: reloaded.classes, satOn: reloaded.satOn, bankHidden: reloaded.bankHidden }).toEqual(fields);
     expect({ ...reloaded, kind: undefined, classes: undefined, satOn: undefined, bankHidden: undefined }).toEqual(loaded);
+  });
+});
+
+/** Every `answer: true` in a stored value, so "keeps the answer layer" cannot mean "keeps some". */
+function countAnswers(value: unknown): number {
+  if (Array.isArray(value)) return value.reduce<number>((sum, entry) => sum + countAnswers(entry), 0);
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return (record.answer === true ? 1 : 0) + Object.values(record).reduce<number>((sum, entry) => sum + countAnswers(entry), 0);
+  }
+  return 0;
+}
+
+describe('the v2 corpus: the answer layer and an answer key layout', () => {
+  // `v2-published.json` / `graph-v2.json`: frozen, written once by
+  // `scripts/emit-v2-corpus.test.ts`. v2 is written only when one of the two is used.
+  it('the v1 corpus is still written at 1, byte for byte, so v0.5.0 keeps it editable', () => {
+    const raw = readFileSync('src/test/corpus/v1-published.json', 'utf8');
+    expect(serializeWorksheet(migrate(structuredClone(v1Corpus))).schemaVersion).toBe(1);
+    expect(stringifyWorksheet(parseWorksheet(raw))).toBe(raw.trimEnd());
+  });
+
+  it('opens editable here, with nothing unrecognised', () => {
+    const worksheet = migrate(structuredClone(v2Corpus));
+    expect(v2Corpus.schemaVersion).toBe(2);
+    expect(worksheet.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(isNewerThanBuild(worksheet)).toBe(false);
+    expect(worksheet.__unknown).toBeUndefined();
+  });
+
+  it('keeps every answer flag, the key layout and all authored text', () => {
+    const worksheet = migrate(structuredClone(v2Corpus));
+    expect(countAnswers(v2Corpus)).toBe(14);
+    expect(countAnswers(worksheet)).toBe(countAnswers(v2Corpus));
+    expect(worksheet.answerKeyLayout).toEqual(v2Corpus.answerKeyLayout);
+    expect(countText(worksheet)).toBe(countText(v2Corpus));
+    expect(worksheet.questions.length).toBe(v2Corpus.questions.length);
+    expect(worksheet.flow.length).toBe(v2Corpus.flow.length);
+  });
+
+  it('still leaves the answer layer out of the student version', () => {
+    const worksheet = migrate(structuredClone(v2Corpus));
+    const diagrams: Parameters<typeof answerLayer>[0][] = [];
+    const walk = (value: unknown): void => {
+      if (Array.isArray(value)) return value.forEach(walk);
+      if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        if (record.kind === 'diagram') diagrams.push(record.diagram as Parameters<typeof answerLayer>[0]);
+        Object.values(record).forEach(walk);
+      }
+    };
+    walk(worksheet.questions);
+    expect(diagrams.length).toBeGreaterThanOrEqual(3);
+    expect(diagrams.filter((diagram) => answerLayer(diagram) !== null).length).toBe(3);
+    expect(renderWorksheet(worksheet, MODE).items.length).toBeGreaterThan(0);
+  });
+
+  it('round-trips byte for byte, still written at 2', () => {
+    const raw = readFileSync('src/test/corpus/v2-published.json', 'utf8');
+    const saved = stringifyWorksheet(parseWorksheet(raw));
+    expect(saved).toBe(raw.trimEnd());
+    expect(JSON.parse(saved).schemaVersion).toBe(2);
+  });
+
+  it('the v2 graph opens editable, keeps its answers, and round-trips at 2', () => {
+    const raw = readFileSync('src/test/corpus/graph-v2.json', 'utf8');
+    const graph = migrateGraph(structuredClone(graphV2));
+    expect(isGraphNewerThanBuild(graph)).toBe(false);
+    expect(graph.__unknown).toBeUndefined();
+    expect(countAnswers(graph)).toBe(countAnswers(graphV2));
+    expect(countAnswers(graphV2)).toBe(6);
+    expect(stringifyGraph(parseGraph(raw))).toBe(raw.trimEnd());
   });
 });
