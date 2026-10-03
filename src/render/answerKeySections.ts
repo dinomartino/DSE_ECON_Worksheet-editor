@@ -64,6 +64,8 @@ export interface KeySectionContext {
   language: LanguageMode;
   layout: ResolvedAnswerKeyLayout;
   own: Own;
+  /** The next figure number in this key (HKEAA's "Figure n"); derived per render, never stored. */
+  nextFigure?: () => number;
 }
 
 /**
@@ -570,7 +572,8 @@ function stemNodes(lines: KeyLine[] | undefined, indent: number): TextNode[] {
  * `column` (the HKEAA layout): every paragraph stops short of a right-hand Marks column
  * (`TextNode.marksColumn`) and the column carries the marks where they are earned — a
  * point's "(1)", a group's `n@` and `max` — or, on a line with no marked scheme under
- * it, the line's own total as "(n)".
+ * it, the line's own total as "(n)". There a model answer diagram follows the scheme,
+ * captioned "Figure n", its points under "Indicate in Figure n:" (HKEAA's order).
  */
 function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectionContext, column?: number): void {
   const { language, layout, own } = context;
@@ -642,11 +645,31 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
         }),
       );
     }
-    // Not teacher-only: the whole key is the teacher's, answer layer included.
-    if (row.diagram) {
-      const node = diagramNodeFor(row.diagram, {});
-      nodes.push(hasAnswerLayer(row.diagram.diagram) ? { ...node, answers: true } : node);
+    const diagram = answerDiagramNode(row);
+    // HKEAA (the Marks column): the points under "Indicate in Figure n:", then the figure
+    // captioned "Figure n". Elsewhere the diagram precedes the scheme, uncaptioned.
+    if (diagram && column) {
+      const figure = context.nextFigure?.() ?? 1;
+      if (schemeNodes.length > 0) {
+        nodes.push(
+          inColumn({
+            kind: 'text',
+            style: 'Marking Scheme',
+            text: KEY_LAYOUT_WORDING.indicateIn(figure),
+            indent: answerIndent,
+            keepNext: true,
+          }),
+          ...schemeNodes.map(inColumn),
+        );
+      }
+      nodes.push(
+        { kind: 'text', style: 'Body', text: KEY_LAYOUT_WORDING.figure(figure), keepNext: true, format: { align: 'center' } },
+        diagram,
+      );
+      return;
     }
+    // Not teacher-only: the whole key is the teacher's, answer layer included.
+    if (diagram) nodes.push(diagram);
     nodes.push(...schemeNodes.map(inColumn));
   });
   if (total) {

@@ -438,6 +438,11 @@ a version heading is edited afterwards.
   screen, in the PDF and in Word.
   <!-- zh: **HKEAA 評卷參考中，評分要點的分數現在列在首行。** 要點跨越兩行時，「(1)」會列在要點
   開首的一行，與 HKEAA 的格式相同，在屏幕、PDF 和 Word 中都一樣。 -->
+- **The HKEAA marking scheme numbers its model answer diagrams.** Each one is captioned
+  "Figure 1", "Figure 2" and so on, after its marking points, which are headed "Indicate in
+  Figure 1:" as in an HKEAA scheme.
+  <!-- zh: **HKEAA 評卷參考為示範答案圖表編號。** 每幅圖表標上「圖1」、「圖2」等，列在評分要點之後，
+  要點以「在圖1中顯示：」開首，與 HKEAA 評卷參考相同。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.

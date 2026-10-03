@@ -278,7 +278,8 @@ export function renderStandardKey(
   const own: Own = (from, questionId) => {
     for (let index = from; index < nodes.length; index += 1) owners[index] = questionId;
   };
-  const context: KeySectionContext = { language, layout, own };
+  let figures = 0;
+  const context: KeySectionContext = { language, layout, own, nextFigure: () => (figures += 1) };
   // The MC sections may read their own settings (Suggested answers' MC wording switch).
   const mc: KeySectionContext = options.mcLayout ? { ...context, layout: options.mcLayout } : context;
   renderFrontMatter(nodes, context);

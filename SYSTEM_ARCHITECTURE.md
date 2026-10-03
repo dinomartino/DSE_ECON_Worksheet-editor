@@ -1849,7 +1849,9 @@ type needs only a definition.
   there is one copy of every answer. Inert in export like every target.
 - **A leaf's model answer diagram is a teacher-only figure** (`answerDiagram`, a whole
   `DiagramBlock`): after the answer text, before the scheme; found by block id like a stem
-  diagram. So the answer key carries pictures: its IR runs the same PNG pre-pass
+  diagram. In the Marks column layout (HKEAA) it follows the scheme instead, captioned
+  "Figure n" / "圖n", the points under "Indicate in Figure n:"; n counts the key's answer
+  figures in print order, derived per render (`KeySectionContext.nextFigure`). So the answer key carries pictures: its IR runs the same PNG pre-pass
   (`renderNodeDiagramImages`) and refuses to export if one fails; without one the key is
   byte-identical.
 - **A key can span documents, chosen at export** (`renderCombinedAnswerKey`). A mock is
