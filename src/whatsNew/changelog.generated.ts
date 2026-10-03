@@ -433,6 +433,15 @@ a version heading is edited afterwards.
   定也放在這裏。 -->
 
 ### Fixed
+- **Papers with diagram answers warn you in an older version of the app.** A paper with
+  answers drawn on a diagram, or with a marking scheme layout other than Classic, now opens
+  read-only in versions 0.4 and 0.5, with a note to update first. Those versions cannot hide
+  those answers from the student copy or follow the layout, and can no longer save over the
+  paper. Every other paper still opens and edits there as before.
+  <!-- zh: **含圖表答案的工作紙，在舊版程式中會提示你。** 在圖表上繪有答案，或評卷參考版面並非
+  「經典」的工作紙，在 0.4 和 0.5 版中會以唯讀方式開啟，並提示先更新。這些版本無法在學生版中
+  隱藏這些答案，也無法跟從評卷參考版面，而且不能再覆寫這份工作紙。其他工作紙在這些版本中照常
+  開啟和編輯。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.
