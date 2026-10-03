@@ -323,9 +323,13 @@ function labourImport(): Diagram {
   );
 }
 
+/**
+ * A band shaded from the y-axis needs its curves to start on it: a curve that stops
+ * short bounds the area where it stops, leaving an unshaded strip beside the axis.
+ */
 function surplus(): Diagram {
-  const d = plainD();
-  const s = plainS();
+  const d = curve([[0, 0.94], [0.8, 0.14]], sym('D'));
+  const s = curve([[0, 0.1], [0.7, 0.9]], sym('S'));
   const e = eq(d, s, 'e');
   return finish(axes(AXIS.quantity, AXIS.price, { curves: [d, s], points: [e] }), (r) => [
     ...shade(r, 'consumerSurplus', { demand: d.id, supply: s.id }),
@@ -336,7 +340,8 @@ function surplus(): Diagram {
 /** MC rises (S = MC shifts up): the TSS loss is the band between MC₀ and MC₁ up to D. */
 function mcRiseTss(): Diagram {
   const d = plainD();
-  const s0 = curve([[0.06, 0.08], [0.6, 0.64]], lab('S', ['0'], ' = MC', ['0']));
+  // From the y-axis, as `surplus`: the TSS loss runs from quantity 0.
+  const s0 = curve([[0, 0.06], [0.58, 0.66]], lab('S', ['0'], ' = MC', ['0']));
   const s1 = shiftOf(s0, 0, 0.22, lab('S', ['1'], ' = MC', ['1']));
   const e0 = eq(d, s0, '0');
   const e1 = eq(d, s1, '1');
@@ -344,7 +349,7 @@ function mcRiseTss(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s0, s1],
       points: [e0, e1],
-      arrows: [arrow([0.56, 0.62], [0.56, 0.8])],
+      arrows: [arrow([0.56, 0.66], [0.56, 0.84])],
       spans: axisArrows(e0, e1),
     }),
     // Right of D: left to the placer, the long 總社會盈餘損失 lands on D in EN+中.
