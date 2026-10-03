@@ -526,7 +526,8 @@ function MarksTrail({
   blankLines: number;
   /**
    * The paragraph keeps a Marks column clear (`TextNode.marksColumn`, its right padding):
-   * the label sits in that column, so the text's last line reserves nothing for it.
+   * the label sits in that column on the paragraph's *first* line (HKEAA), so no line
+   * reserves anything for it.
    */
   column?: boolean;
 }) {
@@ -541,7 +542,7 @@ function MarksTrail({
   const [needsOwnLine, setNeedsOwnLine] = useState(false);
 
   useLayoutEffect(() => {
-    if (blankLines === 0) {
+    if (blankLines === 0 || column) {
       setNeedsOwnLine(false);
       return;
     }
@@ -630,7 +631,7 @@ function MarksTrail({
            * correct on the styles that scale their exact line box (\u00a7 `exact` does not
            * grow) instead of assuming the 12pt body grid.
            */
-          bottom: blankLines ? `${blankLines}lh` : 0,
+          ...(column ? { top: 0 } : { bottom: blankLines ? `${blankLines}lh` : 0 }),
         }}
       >
         {label}
@@ -1137,6 +1138,13 @@ function BlockCaption({
  * mechanism. `mx-auto` in particular reads as "centre" whatever `align` says, which is
  * why neither figure carries it any more.
  */
+/**
+ * A picture's line box: the `.docx` puts it alone in an auto-spaced paragraph that is
+ * exactly its height (LibreOffice measures it so). A margin or the strut's descent here
+ * made every figure taller on the page than in the file, so the sheets broke earlier.
+ */
+const PICTURE_BOX: React.CSSProperties = { lineHeight: 0 };
+
 function figureAlignClass(align: TableAlign): string {
   return align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
 }
@@ -1188,8 +1196,11 @@ function DiagramNodeView({
   // No caption either side: a diagram's words are `diagram.title`, drawn inside the SVG
   // above and rasterized into the same PNG on export. The page must show exactly what
   // Word will print, so there is nothing to add around the picture here.
+  //
+  // Exactly the picture's height, as the `.docx`'s picture paragraph is: no margin, and
+  // `lineHeight: 0` so the line's strut adds no descent under it (§ `PICTURE_BOX`).
   return (
-    <div className={`my-2 ${figureAlignClass(node.align)}`}>
+    <div className={figureAlignClass(node.align)} style={PICTURE_BOX}>
       <SizedBlock
         blockId={node.blockId}
         widthPx={node.widthPx}
@@ -2600,23 +2611,25 @@ export function NodeView({
 
   if (node.kind === "image") {
     return (
-      <div className={`my-2 ${figureAlignClass(node.align)}`}>
+      <div className={figureAlignClass(node.align)}>
         <BlockCaption node={node} side="above" style="Image Caption" language={language} ctx={ctx} />
-        <SizedBlock
-          blockId={node.blockId}
-          widthPx={node.widthPx}
-          heightPx={node.heightPx}
-          ctx={ctx}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={node.src}
-            alt={plain(node.altText.en) || plain(node.altText.zh) || ""}
-            width={node.widthPx}
-            height={node.heightPx}
-            className="inline-block"
-          />
-        </SizedBlock>
+        <div style={PICTURE_BOX}>
+          <SizedBlock
+            blockId={node.blockId}
+            widthPx={node.widthPx}
+            heightPx={node.heightPx}
+            ctx={ctx}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={node.src}
+              alt={plain(node.altText.en) || plain(node.altText.zh) || ""}
+              width={node.widthPx}
+              height={node.heightPx}
+              className="inline-block"
+            />
+          </SizedBlock>
+        </div>
         <BlockCaption node={node} side="below" style="Image Caption" language={language} ctx={ctx} />
       </div>
     );

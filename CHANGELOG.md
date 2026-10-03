@@ -444,6 +444,27 @@ a version heading is edited afterwards.
   定也放在這裏。 -->
 
 ### Fixed
+- **In the HKEAA marking scheme, a point's marks now sit on its first line.** A point that
+  runs onto a second line shows its "(1)" beside where it starts, as HKEAA prints it, on
+  screen, in the PDF and in Word.
+  <!-- zh: **HKEAA 評卷參考中，評分要點的分數現在列在首行。** 要點跨越兩行時，「(1)」會列在要點
+  開首的一行，與 HKEAA 的格式相同，在屏幕、PDF 和 Word 中都一樣。 -->
+- **The HKEAA marking scheme numbers its model answer diagrams.** Each one is captioned
+  "Figure 1", "Figure 2" and so on, after its marking points, which are headed "Indicate in
+  Figure 1:" as in an HKEAA scheme.
+  <!-- zh: **HKEAA 評卷參考為示範答案圖表編號。** 每幅圖表標上「圖1」、「圖2」等，列在評分要點之後，
+  要點以「在圖1中顯示：」開首，與 HKEAA 評卷參考相同。 -->
+- **A combined answer key prints each paper at its own size.** When Export joins several
+  papers' keys in one Word file, each part now keeps its own paper's page size, margins,
+  fonts and text size, so a 10pt Paper 2 key stays 10pt after an 11pt worksheet's.
+  <!-- zh: **合併的評卷參考，每份試卷按其本身的大小列印。** 匯出時把多份試卷的評卷參考合併成一個
+  Word 檔案，每部分現在會保留該試卷的紙張大小、邊界、字型和字體大小，10pt 的 Paper 2 評卷參考
+  排在 11pt 的工作紙之後，仍保持 10pt。 -->
+- **Pages with diagrams or pictures now break where Word breaks them.** On screen each
+  figure took up nearly a line more than in the Word file, most visibly in the Marking
+  scheme view, so a page could end two lines early.
+  <!-- zh: **含圖表或圖片的頁面，現在與 Word 在同一位置分頁。** 以往每幅圖在屏幕上比 Word 檔多佔
+  差不多一行，在評卷參考檢視中尤其明顯，令頁面可能提早兩行分頁。 -->
 - **Papers with diagram answers warn you in an older version of the app.** A paper with
   answers drawn on a diagram, or with a marking scheme layout other than Classic, now opens
   read-only in versions 0.4 and 0.5, with a note to update first. Those versions cannot hide

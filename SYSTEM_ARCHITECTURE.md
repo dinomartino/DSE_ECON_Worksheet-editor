@@ -585,7 +585,9 @@ reference paper's model. All vertical rhythm comes from the line box. Consequenc
 - **A picture's paragraph is the one exception** (`w:lineRule="auto"` in `pictureXml`) —
   `exact` clips a 225pt figure to a 12pt slice painted behind the text above, while the
   image still selects at full size in Word. Separation around the figure stays a blank
-  line.
+  line. LibreOffice sets that paragraph at exactly the picture's height, so the preview's
+  picture box is exactly that too: no margin, `lineHeight: 0` (`PICTURE_BOX`), or the
+  paginator breaks sheets earlier than the file (`pictureGeometry.test.ts`).
 - **A picture is placed by `w:jc` on that paragraph**; `align` on
   `ImageBlock`/`DiagramBlock` resolves in the IR, defaulting to **`center`** (every
   reference figure is centred). The preview expresses it as `text-align` — no `mx-auto`.
@@ -1833,10 +1835,11 @@ type needs only a definition.
   (`keyUnits`), a piece joining the one above without a second rule, and a piece opening a
   sheet redraws the heading rows, charged by the packer through `PackItem.leadKey`.
 - **The Marks column is a right indent, not a table** (`TextNode.marksColumn`): the text
-  stops short of it (`w:ind w:right`; preview `padding-right`) while the marks keep the
-  right tab at the content edge, which Word and LibreOffice honour past the right indent.
-  So the label stays on the last line, as everywhere (§ "(4 marks)" sits on the last line),
-  not the first as HKEAA prints it. A line whose own marks no scheme point claims shows
+  stops short of it (`w:ind w:right`; preview `padding-right`). **Its label sits on the
+  paragraph's first line**, as HKEAA prints "(1)" beside the start of its point: the `.docx`
+  anchors a borderless text box at the paragraph's top spanning the column (no tab reaches
+  the first line of wrapped text), the preview pins it `top: 0`, the clipboard floats it
+  from the paragraph's start. Elsewhere marks stay on the last line. A line whose own marks no scheme point claims shows
   them as "(n)". A key with the column carries a running head "Marks / 分數"
   (`answerKeyRunningHead`, from the nodes): a one-row header part in the `.docx`, the same
   line in each preview sheet's margin. A combined key has one header: it shows if any part
@@ -1851,7 +1854,9 @@ type needs only a definition.
   there is one copy of every answer. Inert in export like every target.
 - **A leaf's model answer diagram is a teacher-only figure** (`answerDiagram`, a whole
   `DiagramBlock`): after the answer text, before the scheme; found by block id like a stem
-  diagram. So the answer key carries pictures: its IR runs the same PNG pre-pass
+  diagram. In the Marks column layout (HKEAA) it follows the scheme instead, captioned
+  "Figure n" / "圖n", the points under "Indicate in Figure n:"; n counts the key's answer
+  figures in print order, derived per render (`KeySectionContext.nextFigure`). So the answer key carries pictures: its IR runs the same PNG pre-pass
   (`renderNodeDiagramImages`) and refuses to export if one fails; without one the key is
   byte-identical.
 - **A key can span documents, chosen at export** (`renderCombinedAnswerKey`). A mock is
@@ -1859,8 +1864,11 @@ type needs only a definition.
   other saved documents' keys after this one's, in the order ticked. Each part is that
   document's own `renderAnswerKey` — its numbering, sections, versions, version map and
   its own `answerKeyLayout` — under `answerKeyPartTitle` (title or name, plus the paper its
-  cover names; that document's typed key title wins), the second onward from a page
-  break; the page setup is the current document's. Nothing about the combination is
+  cover names; that document's typed key title wins). In the `.docx` each part is its own
+  section (`answerKeyParts`): its document's page size, margins, fonts and body size, the
+  second onward from a section break. Styles are per file, so a part at another body size
+  points at twins of the body-sized styles (`styleVariantId`, "Question Stem (10pt)"); the
+  header and footer align by paragraph, not tab, so one pair fits every width. Nothing about the combination is
   stored. Others load read-only through the store (`parseWorksheet` →
   `migrate`); one that will not open or render is skipped and named, never fatal, never
   resaved. One document is the single key unchanged, byte for byte.

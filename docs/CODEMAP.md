@@ -105,7 +105,7 @@ Invariants:
 - `src/model/answerKeyLayout.ts:resolveAnswerKeyLayout` — `Worksheet.answerKeyLayout` (preset + deltas) to every setting; `:ANSWER_KEY_PRESETS` · `:withAnswerKeyPreset` · `:withAnswerKeySetting` · `:normalizeAnswerKeyLayout` (on load)
 - `src/render/answerKeySections.ts:answerKeyRunningHead` — "Marks / 分數" atop every page of a key with a Marks column (`TextNode.marksColumn`); the `.docx` header and the preview read the same
 - `src/render/answerKey.ts:AnswerKeyRow` — `diagram` carries a leaf's model answer diagram; `src/render/ir.ts:diagramNodeFor` builds its node
-- `src/render/answerKey.ts:renderCombinedAnswerKey` · `:answerKeyPartTitle` — several saved documents' keys in one file, each under its paper's heading, from a new page
+- `src/render/answerKey.ts:renderCombinedAnswerKey` · `:answerKeyPartTitle` · `:answerKeyParts` — several saved documents' keys in one file, each under its paper's heading; in the `.docx` a section each, in its document's page setup and body size
 - `src/render/markScheme.ts:renderMarkScheme` — a part's HKEAA scheme as `Marking Scheme` paragraphs; marks ride `TextNode.trail` (`src/render/ir.ts:trailLabel`); given `at`, its text carries scheme edit targets (`src/model/markScheme.ts:withSchemeText` writes them)
 - `src/render/diagram.ts:diagramSvg` · `:diagramPlot` · `:diagramSize` · `:flowChartLayout` · `:forumChartLayout`
 - `src/render/answerGraph.ts:answerGraphNode` · `:answerGraphBox` · `:answerGraphSvg` — blank answer axes (`src/model/answerGraph.ts:createAnswerGraph`); PNG via the diagram pre-pass, whole 12pt lines

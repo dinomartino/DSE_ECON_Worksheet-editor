@@ -264,6 +264,15 @@ function runProperties(spec: StyleSpec, fonts: FontPair): string {
   return `<w:rPr>${parts.join('')}</w:rPr>`;
 }
 
+/** The body-sized styles again at `pt`, named so a teacher sees which part uses them. */
+function variantStylesXml(pt: number, fonts: FontPair): string {
+  const size = Math.round(pt * 2);
+  return styleSpecs(size)
+    .filter((spec) => spec.size === size)
+    .map((spec) => styleXml({ ...spec, id: styleVariantId(spec.id, pt), name: `${spec.name} (${pt}pt)` }, fonts))
+    .join('');
+}
+
 function styleXml(spec: StyleSpec, fonts: FontPair): string {
   return (
     `<w:style w:type="paragraph" w:styleId="${spec.id}">` +
@@ -276,9 +285,33 @@ function styleXml(spec: StyleSpec, fonts: FontPair): string {
   );
 }
 
+/**
+ * A body-sized style's twin at another body size, for one part of a combined answer key
+ * whose document is set at that size (the QAB's 10pt inside an 11pt Paper 1 key).
+ */
+export function styleVariantId(id: string, baseFontSize: number): string {
+  return `${id}Sz${Math.round(baseFontSize * 2)}`;
+}
+
+/** The styles whose size is the document's body size, and so have a twin per part size. */
+export function bodySizedStyleIds(): string[] {
+  const probe = 1;
+  return styleSpecs(probe).filter((spec) => spec.size === probe).map((spec) => spec.id);
+}
+
+const PSTYLE = /<w:pStyle w:val="([^"]+)"\/>/g;
+
+/** Point a part's paragraphs at its own body size's twins (`styleVariantId`). */
+export function withBodyStyleVariant(xml: string, baseFontSize: number): string {
+  const ids = new Set(bodySizedStyleIds());
+  return xml.replace(PSTYLE, (whole, id: string) =>
+    ids.has(id) ? `<w:pStyle w:val="${styleVariantId(id, baseFontSize)}"/>` : whole,
+  );
+}
+
 export function buildStylesXml(
   fonts: FontPair,
-  options: { answerSpace?: boolean; baseFontSize?: number } = {},
+  options: { answerSpace?: boolean; baseFontSize?: number; variantBaseSizes?: number[] } = {},
 ): string {
   /*
    * The document's own body size, in half-points. Absent stays 11pt, so every
@@ -343,6 +376,7 @@ export function buildStylesXml(
     // Conditional, so a document without an answer space keeps its styles.xml
     // byte-identical to every build before the style existed.
     (options.answerSpace ? styleXml(lqAnswerLineSpec(baseSize), fonts) : '') +
+    (options.variantBaseSizes ?? []).map((pt) => variantStylesXml(pt, fonts)).join('') +
     '</w:styles>'
   );
 }
