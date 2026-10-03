@@ -7,15 +7,16 @@
 //                "should not take all evening" on P(6)
 //   P(8)         bar 1: the line straightens (blue), the box goes home, the text flows back
 //   P(9)..P(11)  the page leaves; the line travels and turns into the mark's vertical axis
-//   P(11.5)..12  the axis draws back into its base, where the mark (next act) grows it again
+//   P(11)..P(12) the axis draws back into its base, where the mark (next act) grows it again
 import { h, s, svg, place, show, C } from '../lib/dom.js';
 import { block } from '../lib/type.js';
 import { keys, tween, tw, f } from '../lib/tween.js';
-import { lerp, prog, outSoft, inOutSoft, spring, outBack, inCubic } from '../lib/ease.js';
+import { lerp, prog, outSoft, inOutSoft, spring, outBack } from '../lib/ease.js';
 import { P, PAGE, pg, SUPPLY, CROOKED_END, GRAB_END, SNAP_END, KINKS, TOOL, LINE_TOOL, TEXT_TOOL, BOX, REFLOW, AXIS, mix } from './open/geom.js';
 import { buildPage } from './open/page.js';
 
 const LINE_W = 4.2 * PAGE.k;
+const inQuad = (p) => p * p;
 const BOX_CLICK = [BOX.home[0] + 26, BOX.home[1] + 30];
 const CLICKS = [P(-2), P(-1), P(2), P(4), P(5)];
 
@@ -30,7 +31,7 @@ const CURSOR = [
   [P(3.4), pg(GRAB_END)],
   [P(4), pg(TOOL(TEXT_TOOL)), outSoft],
   [P(5), pg(BOX_CLICK), inOutSoft],
-  [P(6), pg(BOX_CLICK)],
+  [P(6), pg([BOX_CLICK[0] + 34, BOX_CLICK[1] + 30]), inOutSoft],
   [P(7.6), pg([196, 640]), inOutSoft],
   [P(8.6), pg([226, 690]), outSoft],
 ];
@@ -61,6 +62,7 @@ const scene = {
     { t: P(3), kind: 'snap', label: 'the handle snaps onto the demand line' },
     { t: P(4), kind: 'click', label: 'the text box tool' },
     { t: P(5), kind: 'click', label: 'places the "S" box' },
+    { t: P(5.5), kind: 'click', label: 'types "S"' },
     { t: P(6), kind: 'snap', label: 'the box jumps, the text reflows' },
     { t: P(8), kind: 'pop', label: 'the line straightens' },
     { t: P(9), kind: 'whoosh', label: 'the line travels into the mark' },
@@ -73,7 +75,7 @@ const scene = {
     ctx.handles = [0, 1].map(() => s('rect', { width: 13, height: 13, x: -6.5, y: -6.5, rx: 2, fill: C.paper, stroke: C.inkSubtle, 'stroke-width': 1.6 }, ov));
     ctx.cursor = s('g', {}, ov);
     s('path', { d: 'M0 0V25.5L6.2 19.6L10.4 29.2L14.6 27.4L10.5 18H19Z', fill: C.ink, stroke: C.paper, 'stroke-width': 1.6, 'stroke-linejoin': 'round' }, ctx.cursor);
-    const col = { x: 120, w: 900, align: 'left', size: 96, zhSize: 44, rise: 14 };
+    const col = { x: 120, w: 1000, align: 'left', size: 96, zhSize: 44, rise: 14 };
     ctx.q1 = block(ctx.el, { ...ctx.copy.q1, ...col, y: 0, maxLines: 1 });
     // Narrow on purpose: the greedy wrap breaks "should not take / all evening".
     ctx.q2 = block(ctx.el, { ...ctx.copy.q2, ...col, w: 660, y: 0, maxLines: 2 });
@@ -100,6 +102,7 @@ const scene = {
     page.box.setAttribute('transform', `translate(${f(at[0] + (BOX.w * (1 - bs)) / 2, 2)} ${f(at[1] + (BOX.h * (1 - bs)) / 2, 2)}) scale(${f(bs, 4)})`);
     show(page.box, pop);
     show(page.boxFrame, 1 - outSoft(prog(t, P(8.5), P(9.5))));
+    show(page.boxText, outSoft(prog(t, P(5.5), P(5.5) + 0.12))); // typed
     const flowY = keys(t, [[P(6) + 0.06, 0], [P(6) + 0.6, REFLOW, outSoft], [P(8), REFLOW], [P(9), 0, inOutSoft]]);
     page.flow.setAttribute('transform', `translate(0 ${f(flowY, 2)})`);
 
@@ -109,7 +112,7 @@ const scene = {
     const go = inOutSoft(prog(t, P(9), P(11)));
     a = [lerp(a[0], AXIS.base[0], go), lerp(a[1], AXIS.base[1], go)];
     b = [lerp(b[0], AXIS.top[0], go), lerp(b[1], AXIS.top[1], go)];
-    const back = inCubic(prog(t, P(11.5), P(12)));
+    const back = inQuad(prog(t, P(11), P(12)));
     b = [lerp(b[0], a[0], back), lerp(b[1], a[1], back)];
     ctx.line.setAttribute('d', crooked(a, b, bend));
     const blue = outSoft(prog(t, P(8), P(8) + 0.3)) - inOutSoft(prog(t, P(9.5), P(11)));

@@ -10,7 +10,7 @@ export const P = (n) => pulse(n);
 // The page: a flat sheet on the right, running off the frame.
 // k: page px → frame px (the sheet is drawn at 700 px and shown larger, bleeding off the right
 // and bottom edges).
-export const PAGE = { x: 1090, y: 112, w: 700, h: 992, k: 1.3 };
+export const PAGE = { x: 1170, y: 112, w: 700, h: 992, k: 1.3 };
 export const pg = ([x, y]) => [PAGE.x + x * PAGE.k, PAGE.y + y * PAGE.k];
 
 // The diagram on the page (page px): axes, the demand line already there, the supply line
