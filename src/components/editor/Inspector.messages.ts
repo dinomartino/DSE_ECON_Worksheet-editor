@@ -34,6 +34,17 @@ export const INSPECTOR_MESSAGES = defineMessages({
   emptyType: { en: 'Empty. Type on the page', zh: '空白，請在頁面上輸入' },
   restartNumbering: { en: 'Restart numbering at 1', zh: '由 1 重新編號' },
   showSectionMarks: { en: "Show the section's marks total", zh: '顯示此部分的總分' },
+  answerCount: { en: 'Candidates answer', zh: '考生須作答' },
+  answerAll: { en: 'Every question', zh: '全部題目' },
+  answerAny: {
+    en: (n: number, of: number) => `Any ${n} of ${of}`,
+    zh: (n: number, of: number) => `${of} 題中任選 ${n} 題`,
+  },
+  answerCountHint: {
+    en: 'Totals count the best questions a candidate can choose. Write the instruction on the page.',
+    zh: '總分只計算考生可選的最高分題目。作答指示請在頁面上輸入。',
+  },
+  sectionTarget: { en: 'Target marks', zh: '目標分數' },
   fillsPage: { en: 'fills page', zh: '填滿頁面' },
   fillsPageNote: {
     en: (lines: number) =>

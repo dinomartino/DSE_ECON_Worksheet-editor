@@ -1,5 +1,5 @@
 import { resolveFlow } from '@/model/flow';
-import { questionMarks } from '@/model/marks';
+import { hasOptionalSection, questionMarks, sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering } from '@/model/numbering';
 import { bi, documentName, isBiTextEmpty, plain } from '@/model/text';
 import type { MarkScheme } from '@/model/markSchemeTypes';
@@ -164,10 +164,13 @@ export function collectAnswerKey(worksheet: Worksheet): AnswerKeyData {
   const seed = versionSeed(worksheet);
   let total = 0;
 
+  const groupSections: (string | undefined)[] = [undefined];
+
   for (const item of resolveFlow(worksheet)) {
     if (item.type === 'layout') {
       if (item.element.kind === 'section') {
         groups.push({ heading: item.element.text, total: 0, choices: [], schemes: [] });
+        groupSections.push(item.element.id);
       }
       continue;
     }
@@ -213,6 +216,14 @@ export function collectAnswerKey(worksheet: Worksheet): AnswerKeyData {
         total: marks,
       });
     }
+  }
+  // "Answer any n" sections count their best n questions, as the paper's totals do.
+  if (hasOptionalSection(worksheet)) {
+    const counted = sectionMarksById(worksheet);
+    groups.forEach((group, index) => {
+      group.total = counted.get(groupSections[index]) ?? 0;
+    });
+    total = worksheetMarks(worksheet);
   }
   return { groups, letters, total };
 }

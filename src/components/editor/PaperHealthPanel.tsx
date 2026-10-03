@@ -115,7 +115,15 @@ export function PaperHealthPanel({
 
       {sections.length > 0 && (
         <p>{sections
-            .map((section) => `${section.sectionId === undefined ? m.beforeFirstSection : section.label} ${section.marks}`)
+            .map((section) =>
+              [
+                section.sectionId === undefined ? m.beforeFirstSection : section.label,
+                section.targetMarks !== undefined ? `${section.marks}/${section.targetMarks}` : `${section.marks}`,
+                section.answerCount !== undefined ? m.sectionAnyOf(section.answerCount, section.questions) : '',
+              ]
+                .filter(Boolean)
+                .join(' '),
+            )
             .join(' · ')}</p>
       )}
 

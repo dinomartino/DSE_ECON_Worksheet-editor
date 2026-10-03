@@ -35,7 +35,7 @@ the whole schema, one file.
 - `src/model/migrations.ts:KNOWN_KEYS` · `:CURRENT_SCHEMA_VERSION` · `:migrate` · `:serializeWorksheet` · `:isNewerThanBuild`
 - `src/model/flow.ts:resolveFlow` · `:applyOrder` · `:moveRunInFlow` — display order
 - `src/model/numbering.ts:computeNumbering` · `:listIndentScheme` — derived numbers
-- `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` — derived totals
+- `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` · `:sectionRuns` — derived totals; an "answer any n" section (`answerCount`) counts its best n
 - `src/model/edits.ts:applyEditTarget` · `:applyDeleteTarget` · `:insertBlockAfter` — every mutation recipe
 - `src/model/lineage.ts:freshIds` · `:copyQuestion` · `:rootIdOf` · `:questionIdOwners` — every id a question holds, renewed for a copy (a diagram's own geometry is kept); `src/model/dedupeIds.ts:dedupeIds` — ids held twice repaired on open, in `src/storage/document.ts:parseWorksheet`
 - `src/model/topics.ts:TOPICS` · `:topicOf` · `:parentCode` · `:matchesTopic` · `:topicLabel` — the EDB topic taxonomy as data; `Question.tags` stores codes, names are looked up. On screen a topic is its name, never its slug: `:topicDisplay` ("Law of demand 需求定律"; an unknown code as stored) · `:topicHeading` ("C · Law of demand", and tooltips), with `src/model/patterns.ts:tagText` for a tag of any kind. The tag grammar: `:TOPIC_CODE_PATTERN` · `:SYSTEM_TAG_SIGIL` · `:rollupTopic` · `:stringTags`, with `src/model/patterns.ts:isReservedTag` · `:freeTagIssue`

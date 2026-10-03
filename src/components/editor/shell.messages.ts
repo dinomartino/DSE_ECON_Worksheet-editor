@@ -129,6 +129,10 @@ export const PAPER_CHECK_MESSAGES = defineMessages({
   underTarget: { en: (list: string) => `Under target: ${list}`, zh: (list: string) => `低於目標：${list}` },
   setTarget: { en: 'Set a target in Setup', zh: '在頁面設定中設定目標' },
   beforeFirstSection: { en: 'Before the first section', zh: '第一個部分之前' },
+  sectionAnyOf: {
+    en: (n: number, of: number) => `(any ${n} of ${of})`,
+    zh: (n: number, of: number) => `（${of} 選 ${n}）`,
+  },
   // Findings: the English is `model/paperHealth.ts`'s sentence, the Chinese its reading.
   fEmpty: {
     en: (n: number) => `${n} ${n === 1 ? 'question is' : 'questions are'} empty and will print as a bare number.`,

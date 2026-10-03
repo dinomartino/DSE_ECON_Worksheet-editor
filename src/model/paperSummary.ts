@@ -1,8 +1,8 @@
 import { listQuestionTypes, requireQuestionType } from '@/registry';
 import { documentShape, type DocumentShape } from './documentShape';
-import { questionMarks } from './marks';
+import { countedTotal, hasOptionalSection, questionMarks, sectionRuns, worksheetMarks } from './marks';
 import { plain } from './text';
-import type { LanguageMode, PaperTarget, Question, Worksheet } from './types';
+import type { BiText, LanguageMode, PaperTarget, Question, Worksheet } from './types';
 
 /**
  * The paper summary (IDEAS A5): counts per question type, total marks and estimated
@@ -33,6 +33,15 @@ export interface PaperSummary {
   counts: TypeCount[];
   marks: Measure;
   minutes: Measure;
+  /** Sections with their own marks target (`section.targetMarks`), in flow order. */
+  sections: SectionMeasure[];
+}
+
+export interface SectionMeasure {
+  sectionId: string;
+  /** "Section B", from the heading before its colon. */
+  label: { en: string; zh: string };
+  marks: Measure;
 }
 
 /**
@@ -69,7 +78,27 @@ export function estimateMinutes(questions: Question[], shape: DocumentShape): nu
   );
 }
 
-const positive = (value: unknown): number | undefined =>
+/** The paper's working time: an "answer any n" section takes its n longest questions. */
+export function paperMinutes(worksheet: Worksheet, shape: DocumentShape): number {
+  if (!hasOptionalSection(worksheet)) return estimateMinutes(worksheet.questions, shape);
+  const raw = sectionRuns(worksheet).reduce(
+    (sum, run) =>
+      sum + countedTotal(run.questions.map((q) => (isEmpty(q) ? 0 : questionMinutes(q, shape))), run.answerCount),
+    0,
+  );
+  return roundMinutes(raw);
+}
+
+/** "Section B: Long questions" → "Section B", per language, each falling back to the other. */
+export function sectionLabel(text: BiText): { en: string; zh: string } {
+  const short = (side: string) => side.trim().split(/[:：]/)[0].trim();
+  const en = short(plain(text.en));
+  const zh = short(plain(text.zh));
+  return { en: en || zh || 'Section', zh: zh || en || '部分' };
+}
+
+/** A usable target value: positive and finite, rounded; anything else is no target. */
+export const positive = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : undefined;
 
 /**
@@ -128,14 +157,20 @@ export function summarizePaper(worksheet: Worksheet): PaperSummary {
     });
   }
 
+  const sections: SectionMeasure[] = [];
+  for (const run of sectionRuns(worksheet)) {
+    const wanted = positive(run.element?.targetMarks);
+    if (!run.element || wanted === undefined) continue;
+    const marks = countedTotal(run.questions.map(questionMarks), run.answerCount);
+    sections.push({ sectionId: run.element.id, label: sectionLabel(run.element.text), marks: measure(marks, wanted) });
+  }
+
   return {
     shape,
     counts,
-    marks: measure(
-      worksheet.questions.reduce((sum, q) => sum + questionMarks(q), 0),
-      target?.marks,
-    ),
-    minutes: measure(estimateMinutes(worksheet.questions, shape), target?.minutes),
+    marks: measure(worksheetMarks(worksheet), target?.marks),
+    minutes: measure(paperMinutes(worksheet, shape), target?.minutes),
+    sections,
   };
 }
 
@@ -204,6 +239,12 @@ export function targetMisses(
   const misses = { over: [] as string[], under: [] as string[] };
   for (const part of summaryParts(summary, language, undefined, keepAcronyms)) {
     if (part.status === 'over' || part.status === 'under') misses[part.status].push(part.text);
+  }
+  // Section targets, named by their heading; `?? []` tolerates a hand-built summary.
+  for (const { label, marks } of summary.sections ?? []) {
+    if (marks.status !== 'over' && marks.status !== 'under') continue;
+    const ratio = `${marks.actual}/${marks.target}`;
+    misses[marks.status].push(language === 'zh' ? `${label.zh} ${ratio} 分` : `${label.en} ${ratio} marks`);
   }
   return misses;
 }

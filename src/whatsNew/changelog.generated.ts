@@ -271,6 +271,14 @@ a version heading is edited afterwards.
   現在會詢問儲存位置，與桌面版相同。一次匯出多個檔案（學生版和教師版、A、B、C 卷，
   或連同答案頁）時，只需選一次資料夾，不用逐個檔案詢問，也不會覆蓋已有的檔案。
   Firefox 和 Safari 仍會儲存到「下載」資料夾。 -->
+- **Sections where students answer any ONE question.** Select a section and set Candidates
+  answer to "Any 1 of 2" (or any number). The section's marks, the paper's full marks, the
+  time estimate, the paper check and the answer key total then count only the questions a
+  student can choose, not all of them. A section can also have its own target marks, which
+  the paper check compares against.
+  <!-- zh: **可設定「任選一題」的部分。** 選取一個部分，把「考生須作答」設為「2 題中任選 1 題」
+  （或任何題數）。該部分的分數、全卷總分、估計時間、試卷檢查和答案頁的總分，便只計算學生
+  可選作答的題目，而不是全部題目。每個部分亦可設定自己的目標分數，試卷檢查會加以比較。 -->
 
 ### Changed
 - **A larger Settings window.** Settings now fills most of your screen, so Translation

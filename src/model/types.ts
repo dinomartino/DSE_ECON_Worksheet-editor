@@ -600,6 +600,13 @@ export type LayoutElement =
       restartNumbering?: boolean;
       /** Append the derived "(44 marks)" suffix, as `partHeader` does. Opt-in. */
       showMarks?: boolean;
+      /**
+       * "Answer any ONE question": candidates answer this many of the section's questions,
+       * so its totals count the best this many (`model/marks.ts:answerCountOf`). Absent = all.
+       */
+      answerCount?: number;
+      /** The marks this section should carry, for the paper check. Absent = no target. */
+      targetMarks?: number;
       format?: TextFormat;
     }
   /**
