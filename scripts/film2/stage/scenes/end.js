@@ -7,7 +7,7 @@
 //            push 1 → 1.05 runs from the wipe to the fold
 //   P11.5    the four lines squash into rules     P12.25..P15 they travel into the mark's strokes
 //   P14.5    the tile grows under them            P16      knock + dot on bar 28 (the chime)
-//   P16.5    the wordmark                         P18.5    "Free · No account needed" (full ink)
+//   P16.25   the wordmark                         P18.5    "Free · No account needed" (full ink)
 //   104.40   the music's last stab: the dot pulses and one ripple runs out over 3 pulses
 //   P16..AUDIBLE_END (107.65) the lockup drifts 1 → 1.045 (sineInOut); then it holds, still
 // The lockup is the act-1 hero lockup (END_CARD: tile 360, wordmark 110, zh 46), at the mark
@@ -23,7 +23,7 @@ const X0 = END_CARD.cx - SIZE / 2;
 const STMT_PUSH = 1.05; // the statement's slow push, centred on the frame
 const DRIFT = 1.045; // the end card's drift, centred on the frame, to AUDIBLE_END
 const STAB = 104.4; // film s: the music's last stab (RMS onset, mixkit-31 104.38–104.40)
-const LEAD = 0.08; // s the dot runs early so it is visible on the chime's attack (sync #7)
+const LEAD = 0.05; // s the dot runs early so it is visible on the chime's attack (sync #7)
 const { prog, lerp, outSoft, inOutSoft, sineInOut, outCubic, outBack } = ease;
 
 // The mark's strokes in tile units [from, to, width] (lib/mark.js, src/launch/).
@@ -133,7 +133,7 @@ const scene = {
     parts.g.removeAttribute('transform');
     parts.g.setAttribute('opacity', '1');
     parts.g.style.visibility = 'visible';
-    const grow = outSoft(prog(t, P(14.5), P(16)));
+    const grow = inOutSoft(prog(t, P(14.5), P(16)));
     const sz = 512 * grow;
     parts.tile.setAttribute('x', f(256 - sz / 2, 3));
     parts.tile.setAttribute('y', f(256 - sz / 2, 3));
@@ -151,13 +151,13 @@ const scene = {
       const sc = lerp(0.3, 1.5, outCubic(pr));
       const about = (k) => `translate(256 256) scale(${f(k, 5)}) translate(-256 -256)`;
       parts.ripple.setAttribute('transform', about(sc));
-      parts.ripple.setAttribute('stroke-width', f(6 / sc, 3));
-      parts.ripple.setAttribute('opacity', pr < 1 ? f(0.5 * (1 - pr), 4) : '0');
+      parts.ripple.setAttribute('stroke-width', f(8 / sc, 3));
+      parts.ripple.setAttribute('opacity', pr < 1 ? f(0.62 * (1 - pr), 4) : '0');
       const beat = Math.sin(Math.PI * prog(stab, 0, 0.42));
       parts.dot.setAttribute('transform', about(1 + 0.14 * outBack(beat)));
     }
 
-    ctx.lock.wordAt(outSoft(prog(t, P(16.5), P(16.5) + 0.9)));
+    ctx.lock.wordAt(outSoft(prog(t, P(16.25), P(16.25) + 0.9)));
     ctx.free.show(t, { at: P(18.5), dur: 0.8 });
     // The drift: from the dot to the music's last sound, then still.
     const end = ctx.tl.AUDIBLE_END - ctx.from;

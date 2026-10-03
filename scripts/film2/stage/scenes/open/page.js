@@ -29,9 +29,9 @@ export function buildPage(parent) {
   const [ox, oy] = AX.o;
   s('path', { d: `M${ox} ${AX.top}V${oy}H${AX.right}`, fill: 'none', stroke: HEAD, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
   label(svg, ox - 28, AX.top + 14, 'P');
-  label(svg, AX.right - 6, oy + 30, 'Q');
+  label(svg, AX.right + 8, oy + 8, 'Q'); // beside the axis end: the close-up keeps it in frame
   s('line', { x1: DEMAND[0][0], y1: DEMAND[0][1], x2: DEMAND[1][0], y2: DEMAND[1][1], stroke: HEAD, 'stroke-width': 4, 'stroke-linecap': 'round' }, svg);
-  label(svg, DEMAND[1][0] + 8, DEMAND[1][1] + 30, 'D');
+  label(svg, DEMAND[1][0] + 8, DEMAND[1][1] - 8, 'D');
 
   // Beside the diagram: part (b)'s lines, so the sheet reads as a worksheet once it is whole.
   bar(svg, 490, 300, 22, 12, HEAD);

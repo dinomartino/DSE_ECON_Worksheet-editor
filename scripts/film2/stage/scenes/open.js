@@ -4,7 +4,7 @@
 //                 out crooked under a 2× cursor from the first frame
 //   P(-2)..P(.5)  the sheet slides right (pull-out to 2.16) and the cream takes the left half;
 //                 "A supply curve in Word" (STATEMENT, C2) rises on P0
-//   P(.5)..P(1.5) the end handle is dragged right and snaps onto the demand line instead
+//   P(.5)..P(1.5) the end handle is dragged right; on P1.5 it snaps onto the demand line instead
 //   P(2.5)..P(4)  the text tool; a box "S" is placed and typed;
 //                 "should not take all evening" on P3
 //   P(4.5)        the box jumps into the text below, which reflows; P(5.5)..P(6.5) dragged back,
@@ -68,7 +68,7 @@ const CURSOR = [
 /** The end of the line being drawn (page px), and how crooked it is (0..1). */
 function lineEnd(t) {
   let e = keys(t, [[0, SUPPLY[0]], [P(-3), [190, 470], inOutSoft], [P(-2.2), [300, 360], inOutSoft], [P(-1.5), CROOKED_END, outSoft], [P(0.5), CROOKED_END], [P(1.5), GRAB_END, inOutSoft]]);
-  if (t >= P(1.5)) e = keys(t, [[P(1.7), GRAB_END], [P(1.7) + 0.18, SNAP_END, outBack], [P(8), SNAP_END], [P(9), SUPPLY[1], spring]]);
+  if (t >= P(1.5)) e = keys(t, [[P(1.5), GRAB_END], [P(1.5) + 0.18, SNAP_END, outBack], [P(8), SNAP_END], [P(9), SUPPLY[1], spring]]);
   const bend = 1 - spring(prog(t, P(8), P(9)));
   return { e, bend };
 }
@@ -87,7 +87,7 @@ const scene = {
   events: [
     { t: 0.05, kind: 'pencil', label: 'the drag: a crooked line' },
     { t: P(0.5), kind: 'drag', label: 'grabs the end handle' },
-    { t: P(1.7), kind: 'snap', label: 'the handle snaps onto the demand line' },
+    { t: P(1.5), kind: 'snap', label: 'the handle snaps onto the demand line' },
     { t: P(2.5), kind: 'click', label: 'the text box tool' },
     { t: P(3.5), kind: 'click', label: 'places the "S" box' },
     { t: P(4), kind: 'click', label: 'types "S"' },

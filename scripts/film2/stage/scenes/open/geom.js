@@ -12,7 +12,7 @@ export const PAGE = { w: 700, h: 992 };
 
 // The diagram on the page (page px), set near the sheet's left margin so the camera can hold
 // the whole struggle in the sheet's left half while the statement sits on the cream beside it.
-export const AX = { o: [70, 540], top: 250, right: 420 };
+export const AX = { o: [70, 540], top: 250, right: 410 };
 export const DEMAND = [[110, 288], [394, 516]];
 export const SUPPLY = [[110, 516], [394, 288]];
 export const CROOKED_END = [376, 312]; // where the first drag lets go
@@ -38,7 +38,7 @@ export const REFLOW = 58;
 // statement takes the cream; C: the pull-back, the whole sheet in C2's object slot.
 export const ANCHOR = [244, 414];
 export const CAM = {
-  A: { k: 3.9, at: [960, 492] },
+  A: { k: 3.9, at: [960, 470] },
   B: { k: 2.16, at: [940 + 244 * 2.16, (414 - 152) * 2.16] },
   B2: { k: 2.25 },
   C: { k: 0.9, at: [1101 + 244 * 0.9, 93.5 + 414 * 0.9] },
