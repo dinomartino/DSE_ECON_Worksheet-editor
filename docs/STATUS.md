@@ -18,6 +18,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   Frozen `v2-published.json`, `graph-v2.json`, `v2-optional-sections.json`. Index rows carry
   `indexRev`; rows v0.5.0 wrote get their `kind` repaired from the document.
   The bilingual empty-side prompt floats (no page space; `InlineEditable` `floating`).
+  Then (user's calls): Fill never translates alt text; "Teacher Version" in the header on every
+  preview/PDF page as in Word (`src/model/headerMarks.ts`); no "Version B" above Q1 when page 1's
+  header shows it.
 - `scripts/soffice.mjs` gives LibreOffice the CJK fonts (zh/bilingual Word legs used to drop
   Chinese); `cover-verify` / `lq-verify` take `--language`; `shot.mjs --seed [--port=]` works.
 
@@ -38,10 +41,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - Paid service (`docs/research/2026-09-paid-product/`): what first; the in-app "use a VPN" Gemini
   wording breaks Google's terms. Gemini privacy line may be dropped.
-- "Include teacher text" also lets Fill missing translate image alt text (`roleAllowed`); the badge
-  never counts it. Intended?
-- Word's teacher header says "Teacher Version" every page, preview/PDF only under the title.
-  Versions: page 1 shows the version twice; a shared rationale repeats per version in the key.
+- Versions: a shared rationale note repeats in each version's block of the key.
 - Bank authoring proposal (`docs/design/bank-authoring.md`, 3 questions).
 
 ## Open threads and known gaps
@@ -59,13 +59,15 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Bank: ⌘Z after a synced tag/part edit undoes the open copy only; second-tab tag sync (S4),
   publish coalescing (S8), virtualised rail, C8 target picker, ✦ Suggest topics; desktop index
   load reads one file per document (unmeasured at scale).
-- A question taller than the rest of sheet 1 starts on sheet 2 (Word: page 1).
+- A question taller than the rest of sheet 1 starts on sheet 2 (Word: page 1). On a covered
+  paper with page 1 header Nothing/Its own, preview and Word disagree on the first body sheet's
+  header; a teacher `.docx` prints 2+ blank header rows the preview drops.
 - Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
   updater key lives only at `~/.tauri/econ-worksheet.key`. `scripts/*.test.ts` are hand-run.
 
-## Last verified (2026-10-03, `develop` a452911)
+## Last verified (2026-10-03, `develop` 1aff751)
 
-- `npm test` 3850 passed; typecheck clean; lint 41 (baseline); `npm run build` green (postbuild
+- `npm test` 3859 passed; typecheck clean; lint 40 (baseline was 41); `npm run build` green (postbuild
   bundle check); `npm run samples` exports.
 - `lq-verify` and `cover-verify` pass in en, bilingual and zh with Chinese rendering in Word;
   bilingual Paper 2 cover one page in all three backends (looked at the contact sheet).
@@ -75,5 +77,3 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **2026-10-03** — Gap sweep: 8 Opus worktree branches (paused once, resumed) + 5 follow-ups
   (cover fit + CJK harness, schema audit vs real v0.5.0 code, section target stays 1, index
   `kind` repair, prompt space). All merged; nothing pushed.
-- **2026-10-02** — Marking scheme view + layouts, Translation terms, 中文 interface, Graphs,
-  diagram answer layer, home polish.
