@@ -92,23 +92,16 @@ export function shiftCurve(
   if (!points) return null;
 
   const taken = new Set(diagram.curves.flatMap((c) => namesOf(c.label)));
-  // The copy keeps the original's style; its label starts at the default spot.
+  // The copy keeps the original's style; its label starts at the default spot. It is
+  // derived, as the templates' D₁ is: it follows the original, and a drag resizes `by`.
   const copy: DiagramCurve = {
     ...original,
     id: mint(),
     points,
     label: shiftedLabel(original.label, taken),
+    derive: { kind: 'shift', of: original.id, by: { x: delta.x, y: delta.y } },
   };
   delete copy.labelOffset;
-  // A derived copy would resolve back onto the original: a numeric level moves its
-  // number, anything else becomes plain geometry.
-  if (original.derive?.kind === 'level' && typeof original.derive.y === 'number') {
-    copy.derive = { ...original.derive, y: points[0].y };
-  } else if (original.derive?.kind === 'vertical' && typeof original.derive.x === 'number') {
-    copy.derive = { ...original.derive, x: points[0].x };
-  } else {
-    delete copy.derive;
-  }
   let next: Diagram = { ...diagram, curves: [...diagram.curves, copy] };
 
   // The shift arrow, the templates' convention: between the two curves, a quarter of

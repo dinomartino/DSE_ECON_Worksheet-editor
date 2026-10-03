@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Diagram } from './diagram';
 import { curveCrossing } from './diagramAreas';
+import { resolveDiagram } from './diagramAnchors';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from './diagramTemplates';
 import { equilibriumLabelSide, nextEquilibriumName, shiftCurve, shiftedLabel, translateCurvePoints, withPointLabel } from './diagramShift';
 import { plain } from './text';
@@ -41,6 +42,30 @@ describe('shifting a curve', () => {
     const arrow = result.diagram.arrows.at(-1)!;
     expect(arrow.to.x).toBeGreaterThan(arrow.from.x);
     expect(arrow.to.y).toBeCloseTo(arrow.from.y, 9);
+  });
+
+  it('makes a derived copy, as templates do: it follows the original and its equilibrium follows both', () => {
+    const diagram = buildFromTemplate('supply-demand');
+    const [demand, supply] = diagram.curves;
+    const result = shiftCurve(diagram, demand.id, { x: 0.15, y: 0 }, counter())!;
+    const copy = result.diagram.curves.find((c) => c.id === result.curveId)!;
+    expect(copy.derive).toEqual({ kind: 'shift', of: demand.id, by: { x: 0.15, y: 0 } });
+
+    // Move D up: D₁ moves with it, and the new equilibrium stays on D₁ × S.
+    const moved = resolveDiagram({
+      ...result.diagram,
+      curves: result.diagram.curves.map((c) =>
+        c.id === demand.id ? { ...c, points: c.points.map((p) => ({ x: p.x, y: p.y + 0.05 })) } : c,
+      ),
+    });
+    const after = moved.curves.find((c) => c.id === copy.id)!;
+    const source = moved.curves.find((c) => c.id === demand.id)!;
+    expect(after.points[0].x).toBeCloseTo(source.points[0].x + 0.15, 9);
+    expect(after.points[0].y).toBeCloseTo(source.points[0].y, 9);
+    const mark = moved.points.find((p) => p.id === result.pointId)!;
+    const crossing = curveCrossing(after, moved.curves.find((c) => c.id === supply.id)!)!;
+    expect(mark.at.x).toBeCloseTo(crossing.x, 9);
+    expect(mark.at.y).toBeCloseTo(crossing.y, 9);
   });
 
   it('shifts supply left and finds the new equilibrium on demand', () => {

@@ -394,8 +394,8 @@ export const DIAGRAM_AREA_MESSAGES = defineMessages({
     zh: '這樣平移會令曲線超出圖表。請試較小的幅度。',
   },
   shiftNote: {
-    en: 'Moves a copy by that share of the axis, with a shift arrow and the new equilibrium dashed to both axes.',
-    zh: '把曲線副本按坐標軸的該比例平移，並加上平移箭頭，以及連到兩條軸的新均衡虛線。',
+    en: 'Moves a copy by that share of the axis, with a shift arrow and the new equilibrium dashed to both axes. The copy follows the original when you move it.',
+    zh: '把曲線副本按坐標軸的該比例平移，並加上平移箭頭，以及連到兩條軸的新均衡虛線。移動原曲線時，副本會跟著移動。',
   },
 });
 

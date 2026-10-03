@@ -536,6 +536,11 @@ a version heading is edited afterwards.
   <!-- zh: **繪製圖表時，工具在 13 吋或 14 吋手提電腦上可排成一行。** 縮放、裁剪和完成不再跌到
   第二行，圖表因此有更多空間。目前所用工具的提示現在顯示在圖表上方；把游標移到複製、貼上、建立
   副本和刪除上，便會顯示 ⌘C 等快捷鍵。 -->
+- **"Shift a copy" now makes a curve that follows the original**, as the ready-made
+  diagrams do. Move D and D₁ moves with it, and the new equilibrium stays where D₁ meets S.
+  Drag D₁ itself to change how far it shifted, or choose "Detach: keep it where it is" to fix it in place.
+  <!-- zh: **「平移副本」現在會建立跟隨原曲線的曲線**，與現成圖表一樣。移動 D 時 D₁ 會一起移動，
+  新均衡點保持在 D₁ 與 S 的交點。拖曳 D₁ 本身可改變平移幅度，或選擇「分離：保持在原位」把它固定。 -->
 
 ## 0.5.0 — 2026-09-28
 
