@@ -68,7 +68,7 @@ const GROUPS = {
 
 if (flag('list')) {
   log('clips:');
-  for (const c of CLIPS) log(`  ${c.name.padEnd(16)} P${c.priority}  ${c.dur}s  ${c.about}`);
+  for (const c of CLIPS) log(`  ${c.name.padEnd(16)} ${c.priority === undefined ? "--" : `P${c.priority}`}  ${c.dur}s  ${c.about}`);
   log('assets:');
   for (const j of ASSET_JOBS) log(`  ${j.name.padEnd(16)} ${j.about}`);
   log(`groups: ${Object.keys(GROUPS).join(', ')}`);
