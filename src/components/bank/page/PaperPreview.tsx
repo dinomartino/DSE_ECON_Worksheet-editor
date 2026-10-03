@@ -125,10 +125,76 @@ export const SHEET_MAX_WIDTH = 760;
 /** Most spans a review marks on one paper: a guard, not a limit anyone meets. */
 const MARK_BUDGET = 80;
 
+/** One piece of a match: `texts[index]` from `start` to `end`. */
+export interface MatchSpan {
+  index: number;
+  start: number;
+  end: number;
+}
+
 /**
- * Wraps each occurrence of the marked texts in a `data-ai-mark` span, longest first, so a
+ * Every occurrence of `needle` in `texts` read as one string (one line's text nodes, in
+ * order), each as the pieces of the texts it covers: a sentence with a bold word inside is
+ * still one match. Non-overlapping, left to right.
+ */
+export function findAcross(texts: readonly string[], needle: string): MatchSpan[][] {
+  if (needle.length === 0) return [];
+  const joined = texts.join('');
+  const starts: number[] = [];
+  let offset = 0;
+  for (const text of texts) {
+    starts.push(offset);
+    offset += text.length;
+  }
+  const out: MatchSpan[][] = [];
+  for (let at = joined.indexOf(needle); at >= 0; at = joined.indexOf(needle, at + needle.length)) {
+    const end = at + needle.length;
+    const spans: MatchSpan[] = [];
+    texts.forEach((text, index) => {
+      const from = Math.max(at, starts[index]);
+      const to = Math.min(end, starts[index] + text.length);
+      if (from < to) spans.push({ index, start: from - starts[index], end: to - starts[index] });
+    });
+    out.push(spans);
+  }
+  return out;
+}
+
+const BLOCK = 'p,div,li,td,th,h1,h2,h3,h4,h5,h6,table';
+
+/** The sheet's unmarked text nodes as lines: consecutive nodes in one block, broken at `<br>` and at a mark. */
+function textLines(sheet: HTMLElement): Text[][] {
+  const walker = sheet.ownerDocument.createTreeWalker(sheet, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  const lines: Text[][] = [];
+  let line: Text[] = [];
+  let block: Element | null = null;
+  const end = () => {
+    if (line.length > 0) lines.push(line);
+    line = [];
+  };
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.nodeType !== Node.TEXT_NODE) {
+      if ((node as Element).tagName === 'BR') end();
+      continue;
+    }
+    const parent = node.parentElement;
+    if (!parent || parent.closest('[data-ai-mark]')) {
+      end();
+      continue;
+    }
+    const own = parent.closest(BLOCK);
+    if (own !== block) end();
+    block = own;
+    line.push(node as Text);
+  }
+  end();
+  return lines;
+}
+
+/**
+ * Wraps each occurrence of the marked texts in `data-ai-mark` spans, longest first, so a
  * sentence claims its words before a term inside it. A text the paper splits across runs
- * (a bold word inside it) is not found and stays unmarked: marks are a guide, not a record.
+ * (a bold word inside it) is found across them: one span per run it covers.
  */
 export function markTexts(sheet: HTMLElement, marks: readonly BankMark[]): void {
   const pieces = marks
@@ -138,23 +204,22 @@ export function markTexts(sheet: HTMLElement, marks: readonly BankMark[]): void 
   let budget = MARK_BUDGET;
   const doc = sheet.ownerDocument;
   for (const piece of pieces) {
-    const walker = doc.createTreeWalker(sheet, NodeFilter.SHOW_TEXT);
-    const hits: Text[] = [];
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      const text = node as Text;
-      if (!text.parentElement?.closest('[data-ai-mark]') && text.data.includes(piece.text)) hits.push(text);
-    }
-    for (let rest of hits) {
-      let at = rest.data.indexOf(piece.text);
-      while (at >= 0 && budget > 0) {
-        budget -= 1;
-        const match = rest.splitText(at);
-        rest = match.splitText(piece.text.length);
-        const span = doc.createElement('span');
-        span.setAttribute('data-ai-mark', piece.tone);
-        match.replaceWith(span);
-        span.appendChild(match);
-        at = rest.data.indexOf(piece.text);
+    for (const line of textLines(sheet)) {
+      if (budget <= 0) return;
+      const matches = findAcross(
+        line.map((text) => text.data),
+        piece.text,
+      ).slice(0, budget);
+      budget -= matches.length;
+      // Last first: each split leaves the earlier offsets where they were.
+      for (const span of matches.flat().reverse()) {
+        const node = line[span.index];
+        node.splitText(span.end);
+        const match = node.splitText(span.start);
+        const wrap = doc.createElement('span');
+        wrap.setAttribute('data-ai-mark', piece.tone);
+        match.replaceWith(wrap);
+        wrap.appendChild(match);
       }
     }
   }

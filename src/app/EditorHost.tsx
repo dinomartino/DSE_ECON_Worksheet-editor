@@ -5,7 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UpdateBanner } from '@/components/editor/UpdateBanner';
 import { AppSettingsHost } from '@/components/settings/AppSettingsHost';
 import { setBeforeRestart } from '@/desktop/updateStore';
-import { useBankReturn } from '@/components/bank/page/bankReturn';
+import { useBankReturn, useKeptTarget } from '@/components/bank/page/bankReturn';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { NewerDocumentError, worksheetStore } from '@/storage';
@@ -124,8 +124,10 @@ export function EditorHost() {
   };
 
   const open = (worksheet: Worksheet, language?: LanguageMode) => {
-    // Any open forgets the way back; the bank's "open in worksheet" sets it again after.
+    // Any open forgets the way back and the kept Add-to target; the bank's "open in
+    // worksheet" sets both again after.
     useBankReturn.getState().clear();
+    useKeptTarget.getState().forget();
     /*
      * Flush the outgoing document, for the reason above — but by **value**, not through
      * `store.save()`.

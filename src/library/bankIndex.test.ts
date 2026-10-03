@@ -7,7 +7,7 @@ import { LocalStorageWorksheetStore } from '@/storage';
 import { withChangeFeed } from '@/storage/changes';
 import { summarize } from '@/storage/document';
 import type { WorksheetStore } from '@/storage/types';
-import { createJsonFileBackend, createMemoryBackend, STORED_INDEX_FORMAT, type BankIndexBackend } from './bankBackend';
+import { createDocFilesBackend, createMemoryBackend, STORED_INDEX_FORMAT, type BankIndexBackend } from './bankBackend';
 import { createBankIndex, type BankIndex, type BankSource } from './bankIndex';
 import { installLocalStorage, localFeed } from './bankTestKit';
 import { rowsOf } from './indexer';
@@ -336,24 +336,23 @@ describe('createBankIndex — persistence', () => {
   });
 
   it('rebuilds from the documents when the stored index is corrupt', async () => {
-    const file = { text: '{"format":1,"docs":{"x":{"updatedAt":"t","rows":[{"nope":1}]}}}' as string | undefined, removed: 0 };
-    const backend = createJsonFileBackend({
-      read: async () => file.text,
-      write: async (text) => void (file.text = text),
-      remove: async () => {
-        file.removed += 1;
-        file.text = undefined;
-      },
+    const files = new Map([['x', '{"format":1,"updatedAt":"t","rows":[{"nope":1}]}']]);
+    const backend = createDocFilesBackend({
+      ids: async () => [...files.keys()],
+      read: async (id) => files.get(id),
+      write: async (id, text) => void files.set(id, text),
+      remove: async (id) => void files.delete(id),
+      clear: async () => files.clear(),
     });
     const { index, other } = setup(backend);
-    await other.save(paper(['Rebuilt']));
+    const doc = paper(['Rebuilt']);
+    await other.save(doc);
     await index.refresh();
     await index.settled();
-    expect(file.removed).toBe(1);
+    expect(files.has('x')).toBe(false);
     expect(excerpts(index)).toEqual(['Rebuilt']);
-    const written = JSON.parse(file.text!);
-    expect(written.format).toBe(STORED_INDEX_FORMAT);
-    expect(Object.values(written.docs)).toHaveLength(1);
+    expect([...files.keys()]).toEqual([doc.id]);
+    expect(JSON.parse(files.get(doc.id)!).format).toBe(STORED_INDEX_FORMAT);
   });
 
   it('keeps working when the backend throws on every call', async () => {

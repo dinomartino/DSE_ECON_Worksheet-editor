@@ -99,7 +99,13 @@ function doc(id, title, questions, createdAt) {
 
 const COPY_STEM = 'Which of the following describes a perfectly inelastic supply curve?';
 const COPY_OPTIONS = [['A vertical line', ''], ['A horizontal line', ''], ['An upward-sloping line', ''], ['A downward-sloping line', '']];
-const copyQ = (id, stem = COPY_STEM) => mcq(id, stem, '', COPY_OPTIONS, { tags: ['C.pes'], ...(id === 'bq-orig' ? {} : { lineage: { rootId: 'bq-orig', fromDocId: 'bank-ai-a' } }) });
+/** The stem with a bold run inside, so a fill's mark on the paper must cross runs. */
+const COPY_RUNS = [{ text: 'Which of the following describes a ' }, { text: 'perfectly inelastic', bold: true }, { text: ' supply curve?' }];
+const copyQ = (id, stem) => {
+  const q = mcq(id, stem ?? COPY_STEM, '', COPY_OPTIONS, { tags: ['C.pes'], ...(id === 'bq-orig' ? {} : { lineage: { rootId: 'bq-orig', fromDocId: 'bank-ai-a' } }) });
+  if (stem === undefined) q.blocks[0].text.en = structuredClone(COPY_RUNS);
+  return q;
+};
 const TERMS_OPTIONS = [['rise', '上升'], ['fall', '下跌'], ['stay the same', '不變'], ['double', '倍增']];
 const termsQ = (id) => mcq(id, 'Supply falls, so the price will', '供給減少，因此價格會', TERMS_OPTIONS, { tags: ['EL2.trade-theory'], ...(id === 'bq-terms' ? {} : { lineage: { rootId: 'bq-terms', fromDocId: 'bank-ai-t1' } }) });
 const BATCH = Array.from({ length: 25 }, (_, i) =>
@@ -222,6 +228,15 @@ async function fillChecks(engine, browser) {
     expect(after === 1 && text.includes('perfectly inelastic'), `${before} → ${after}: ${text}`);
     return `${before} → ${after} questions`;
   });
+  await check(engine, 'door: ⌘J / Ctrl+J opens the menu, Esc closes it', async () => {
+    await railRow(page, 'perfectly inelastic').first().click();
+    await page.waitForTimeout(500);
+    await page.keyboard.press('ControlOrMeta+j');
+    await menu(page).waitFor({ timeout: 3000 });
+    await page.keyboard.press('Escape');
+    await menu(page).waitFor({ state: 'detached', timeout: 3000 });
+    expect((await page.locator('[data-rail-root]').count()) > 0, 'Esc left the review page');
+  });
   await check(engine, 'fill: the door lists Fill missing 中文 for the question on screen; nothing sent yet', async () => {
     await railRow(page, 'perfectly inelastic').first().click();
     await page.waitForTimeout(500);
@@ -256,6 +271,13 @@ async function fillChecks(engine, browser) {
     expect((await page.locator('[data-bank-ai]').count()) >= 1, 'no ✦ in the rail');
     const marks = await paperMarks(page);
     expect(marks > 0, 'no marks on the paper');
+    // The stem's 中文 holds a bold run: its mark crosses it.
+    const stemMarked = await page.evaluate(() =>
+      [...document.querySelectorAll('[aria-label^="The question as it prints"]')].some((host) =>
+        [...(host.shadowRoot?.querySelectorAll('[data-ai-mark]') ?? [])].some((mark) => mark.textContent.includes('譯：Which')),
+      ),
+    );
+    expect(stemMarked, 'the stem (split across runs) is not marked');
     expect((await page.locator('[data-bank-ai-note]').count()) === 1, 'no note above the paper');
     return `${marks} marks on the paper`;
   });
@@ -406,6 +428,25 @@ async function layoutChecks(engine, browser) {
     });
     await context.close();
   }
+  const { context, page } = await newContext(browser, { level: { kind: 'review', topic: 'EL2.growth' } });
+  await openBank(page);
+  await check(engine, 'layout: ↑ up the rail stops each row below the sticky heading', async () => {
+    await page.locator('[data-rail-root]').last().click();
+    let worst = Infinity;
+    for (let i = 0; i < 20; i += 1) {
+      await page.keyboard.press('ArrowUp');
+      await page.waitForTimeout(60);
+      const gap = await page.evaluate(() => {
+        const row = document.querySelector('[data-rail-entry][aria-current="true"]');
+        const heading = row?.closest('section')?.querySelector('h3');
+        return row && heading ? row.getBoundingClientRect().top - heading.getBoundingClientRect().bottom : NaN;
+      });
+      worst = Math.min(worst, gap);
+    }
+    expect(worst >= -0.5, `a row went ${-worst}px under the heading`);
+    return `closest ${worst.toFixed(1)}px below`;
+  });
+  await context.close();
 }
 
 const GROUPS = { fill: fillChecks, batch: batchChecks, terms: termsChecks, setup: setupChecks, error: errorChecks, layout: layoutChecks };

@@ -78,7 +78,7 @@ export function createPatternStore(
           set(next);
           return next;
         } catch {
-          // Storage refused the write: keep the change for this visit.
+          // Storage refused the write (blocked, or a newer registry: `isReadOnlyRegistry`): keep the change for this visit.
           const next = recipe(state);
           set(next);
           return next;
@@ -113,6 +113,12 @@ const getServerSnapshot = () => EMPTY_PATTERNS;
 export function usePatternRegistry(): PatternRegistry {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
+
+/**
+ * Stored in a newer `format`: read, never written (§ src/storage/patterns.ts). Changes made
+ * here last only for the visit, so the screens that make them say so.
+ */
+export const isReadOnlyRegistry = (registry: PatternRegistry): boolean => registry.__newer !== undefined;
 
 /** The names offered for one sub-topic and question type: the registry and the bank's rows. */
 export function usePatternNames(rows: readonly BankRow[], topic: string, typeId: string): string[] {

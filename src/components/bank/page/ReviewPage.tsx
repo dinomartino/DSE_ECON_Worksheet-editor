@@ -231,7 +231,8 @@ function Rail({
                       onFocus={(event) => {
                         if (event.target === event.currentTarget && !on) onFocus(lead, entry.key);
                       }}
-                      className={`relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-2 px-3.5 py-[7px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+                      // scroll-mt: scrolled into view below the sticky section heading, never under it.
+                      className={`relative grid scroll-mt-8 cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-2 px-3.5 py-[7px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                         on ? 'bg-accent-soft' : 'hover:bg-surface-hover'
                       }`}
                     >

@@ -51,6 +51,7 @@ export { onStoreChange, type StoreChangeListener } from './changes';
 export { NewerGraphError, type GraphListing } from './graphs';
 export {
   FileWorksheetStore,
+  libraryDocFiles,
   libraryIndexFile,
   savedWorksheetPath,
   savedWorksheetsFolder,

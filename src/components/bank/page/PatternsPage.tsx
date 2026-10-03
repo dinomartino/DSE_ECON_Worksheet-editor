@@ -25,6 +25,7 @@ export function PatternsPage({
   items,
   scope,
   busy,
+  readOnly = false,
   onScope,
   onCreate,
   onRename,
@@ -37,6 +38,8 @@ export function PatternsPage({
   /** A coarse or fine topic code; undefined = all. */
   scope: string | undefined;
   busy: boolean;
+  /** The registry is from a newer build (`isReadOnlyRegistry`): changes are not saved. */
+  readOnly?: boolean;
   onScope: (topic: string | undefined) => void;
   onCreate: (pattern: PatternId) => void;
   onRename: (item: PatternItem, to: string) => void;
@@ -61,6 +64,11 @@ export function PatternsPage({
   return (
     <div className="scroll-slim min-h-0 flex-1 overflow-y-auto px-7 py-[22px]">
       <div className="mx-auto grid w-full max-w-[1100px] gap-5">
+        {readOnly && (
+          <p role="status" data-patterns-read-only className="max-w-[720px] rounded-lg bg-warn-soft px-3 py-2 text-[12.5px] leading-relaxed text-warn-ink">
+            {m.readOnly}
+          </p>
+        )}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <p className="max-w-[560px] text-[13px] leading-relaxed text-ink-muted">
             {m.intro}

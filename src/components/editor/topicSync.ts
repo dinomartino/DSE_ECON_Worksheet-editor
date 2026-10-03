@@ -35,7 +35,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
  */
 
 export interface TopicSyncDeps {
-  store: Pick<WorksheetStore, 'load' | 'save'>;
+  store: Pick<WorksheetStore, 'list' | 'load' | 'save'>;
   /** The bank index's rows (`bankRowsNow`). */
   rows: () => Promise<readonly BankRow[]>;
   /** A quiet status line: the Topic row shows it under the topics (the toolbar flash would sit under a docked format bar). */

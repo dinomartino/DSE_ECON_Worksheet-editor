@@ -23,6 +23,7 @@ export const TOPIC_PICKER_MESSAGES = defineMessages({
   everyPart: { en: 'Every part', zh: '所有分題' },
   sameAs: { en: (label: string) => `Same as ${label}`, zh: (label: string) => `與 ${label} 相同` },
   noTopicYet: { en: 'No topic yet', zh: '尚未有課題' },
+  itsOwnPrefix: { en: 'Its own · ', zh: '另設課題 · ' },
   partTitle: { en: (title: string, detail: string) => `${title}: ${detail}`, zh: (title: string, detail: string) => `${title}：${detail}` },
 
   noteWhole: {

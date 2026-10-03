@@ -5,6 +5,7 @@ import { bi } from '@/model/text';
 import { createParagraphBlock } from '@/model/factories';
 import { questionTagSlots } from '@/model/tagSlots';
 import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
+import { contentKey as contentKeyOf } from './contentKey';
 import { bankChoices, bankCopyDiffers, bankHolds, copyToBank, createBank, nextBankName, updateBankCopy } from './bankDocs';
 import { choiceQuestion, docWith, partedQuestion } from './testKit';
 
@@ -150,6 +151,47 @@ describe('bankCopyDiffers / updateBankCopy', () => {
     expect(saved.id).toBe(bankQ.id);
     expect(questionTagSlots(saved).map((slot) => slot.key)).toEqual(questionTagSlots(bankQ).map((slot) => slot.key));
     expect((saved as StructuredQuestion).parts[0].id).not.toBe(paperQ.parts[0].id);
+  });
+
+  it('from the original paper, the bank’s parts keep their keys too', async () => {
+    const paperQ = partedQuestion([{ tags: ['C.ped'] }, {}]);
+    const bankQ = copyQuestion(paperQ, 'paper');
+    const bank = { ...docWith([bankQ]), kind: 'bank' as const };
+    const { store, map } = memoryStore(bank);
+    const improved = { ...paperQ, blocks: [createParagraphBlock(bi('A better stem.', ''))] };
+    expect(await updateBankCopy(improved, bank.id, { store, openDocId: 'paper' })).toBe(true);
+    const saved = map.get(bank.id)!.questions[0];
+    expect(questionTagSlots(saved).map((slot) => slot.key)).toEqual(questionTagSlots(bankQ).map((slot) => slot.key));
+  });
+
+  it('keeps a newer bank tag change (another tab) instead of moving it back', async () => {
+    const paperQ = { ...partedQuestion([{ tags: ['C.ped'] }, {}]), tagsAt: '2026-01-01T00:00:00.000Z' };
+    const bankQ = copyQuestion(paperQ, 'paper') as StructuredQuestion;
+    bankQ.parts[1] = { ...bankQ.parts[1], tags: ['C.pes'] };
+    const newer = { ...bankQ, tags: ['mock'], tagsAt: '2026-02-01T00:00:00.000Z' };
+    const bank = { ...docWith([newer]), kind: 'bank' as const };
+    const { store, map } = memoryStore(bank);
+    const improved = { ...paperQ, blocks: [createParagraphBlock(bi('A better stem.', ''))] };
+    expect(await updateBankCopy(improved, bank.id, { store, openDocId: 'paper' })).toBe(true);
+    const saved = map.get(bank.id)!.questions[0] as StructuredQuestion;
+    expect(saved.tagsAt).toBe('2026-02-01T00:00:00.000Z');
+    expect(saved.tags).toEqual(['mock']);
+    expect(saved.parts.map((part) => part.tags)).toEqual([['C.ped'], ['C.pes']]);
+    expect(contentKeyOf(saved)).toBe(contentKeyOf(improved));
+  });
+
+  it('takes the paper’s tags when the paper was tagged later, or the bank copy never was', async () => {
+    const paperQ = { ...choiceQuestion('Stem', '', ['C.ped']), tagsAt: '2026-03-01T00:00:00.000Z' };
+    const older = { ...copyQuestion(paperQ, 'paper'), tags: ['C.pes'], tagsAt: '2026-02-01T00:00:00.000Z' };
+    const unstamped = { ...copyQuestion(paperQ, 'paper'), tags: ['C.pes'] };
+    delete (unstamped as Partial<Question>).tagsAt;
+    for (const bankQ of [older, unstamped]) {
+      const bank = { ...docWith([bankQ]), kind: 'bank' as const };
+      const { store, map } = memoryStore(bank);
+      expect(await updateBankCopy(edit(paperQ, 'Better'), bank.id, { store, openDocId: 'paper' })).toBe(true);
+      const saved = map.get(bank.id)!.questions[0];
+      expect([saved.tags, saved.tagsAt]).toEqual([['C.ped'], '2026-03-01T00:00:00.000Z']);
+    }
   });
 
   it('never writes the open document and refuses non-banks', async () => {

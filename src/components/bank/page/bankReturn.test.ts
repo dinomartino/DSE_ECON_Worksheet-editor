@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_FILTERS } from './bankPage';
-import { tagIndexOf, useBankReturn } from './bankReturn';
+import { tagIndexOf, useBankReturn, useKeptTarget } from './bankReturn';
 
 describe('bankReturn', () => {
   beforeEach(() => useBankReturn.getState().clear());
@@ -11,6 +11,14 @@ describe('bankReturn', () => {
     expect(useBankReturn.getState().saved).toEqual(place);
     useBankReturn.getState().clear();
     expect(useBankReturn.getState().saved).toBeNull();
+  });
+
+  it('keeps the Add-to target until forgotten, apart from the way back', () => {
+    useKeptTarget.getState().keep({ targetId: 't', lookedAt: 'l' });
+    useBankReturn.getState().clear();
+    expect(useKeptTarget.getState().kept).toEqual({ targetId: 't', lookedAt: 'l' });
+    useKeptTarget.getState().forget();
+    expect(useKeptTarget.getState().kept).toBeNull();
   });
 
   it('finds the tagged question again, or starts over when it is gone', () => {

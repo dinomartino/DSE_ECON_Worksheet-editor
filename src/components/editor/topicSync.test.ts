@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { summarize } from '@/storage/document';
 import { rowsOf } from '@/library/indexer';
 import { searchRows } from '@/library/search';
 import { withSharedTags } from '@/library/sharedTags';
@@ -17,7 +18,7 @@ function harness(docs: Worksheet[]) {
   const notices: string[] = [];
   const deps: TopicSyncDeps = {
     store: {
-      load: async (id) => saved.get(id),
+      list: async () => [...saved.values()].map(summarize), load: async (id) => saved.get(id),
       save: async (worksheet) => {
         writes.push(worksheet.id);
         saved.set(worksheet.id, worksheet);

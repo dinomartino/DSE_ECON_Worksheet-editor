@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { summarize } from '@/storage/document';
 import { rowsOf } from '@/library/indexer';
 import { patternWrites, renamePatternEdit } from '@/library/patterns';
 import { stateOfRow, withSharedTags } from '@/library/sharedTags';
@@ -24,6 +25,9 @@ import {
   whereTested,
   type PartTarget,
 } from './partTopics';
+import { resolveMessages } from '@/i18n/catalogue';
+import { partDetail } from './TopicPickerDialog';
+import { TOPIC_PICKER_MESSAGES } from './TopicPickerDialog.messages';
 
 const NOW = '2026-09-30T00:00:00.000Z';
 
@@ -94,6 +98,14 @@ describe('tagging a question part by part (Edit topics, tag as you go)', () => {
       ['(ii)', true, false, ['C', 'D']],
       ['(b)', false, false, ['C']],
     ]);
+    // The column says "its own" on a sub-part with its own list, as the editor does.
+    const m = resolveMessages(TOPIC_PICKER_MESSAGES, 'en');
+    const zh = resolveMessages(TOPIC_PICKER_MESSAGES, 'zh-HK');
+    const detail = partLines(draft).map((line) => partDetail(line, m, ', ', 'en'));
+    expect(detail[1]).toBe('Same as (a)');
+    expect(detail[2].startsWith('Its own · ')).toBe(true);
+    expect(detail[0].startsWith('Its own')).toBe(false);
+    expect(partDetail(partLines(draft)[2], zh, '、', 'zh-HK').startsWith('另設課題 · ')).toBe(true);
     const back = applyDraft(draft, sameAsPart(draft, key['(a)(ii)']));
     expect(partLines(back)[2].inherits).toBe(true);
     expect(targetName(draft, key['(a)(ii)'])).toBe('sub-part (a)(ii)');
@@ -163,7 +175,7 @@ describe('tagging a question part by part (Edit topics, tag as you go)', () => {
 describe('the bank’s whole-question writes reach every part', () => {
   function memoryStore(docs: Worksheet[]) {
     const saved = new Map(docs.map((doc) => [doc.id, doc]));
-    return { saved, load: async (id: string) => saved.get(id), save: async (doc: Worksheet) => void saved.set(doc.id, doc) };
+    return { saved, list: async () => [...saved.values()].map(summarize), load: async (id: string) => saved.get(id), save: async (doc: Worksheet) => void saved.set(doc.id, doc) };
   }
 
   it('bulk Set topic (Add) on two questions with parts tags every part of every copy', async () => {

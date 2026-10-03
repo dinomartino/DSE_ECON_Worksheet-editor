@@ -1,10 +1,12 @@
 import { createWorksheet } from '@/model/factories';
-import { copyQuestion, freshIds, rootIdOf } from '@/model/lineage';
+import { copyQuestion, freshIdsKeepingParts, rootIdOf } from '@/model/lineage';
+import { stateFor, tagStateOf, withTagState } from '@/model/tagSlots';
 import { bi } from '@/model/text';
 import type { Question, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { contentKey } from './contentKey';
+import { tagTime } from './sharedTags';
 
 /**
  * Writing to bank documents (§ docs/design/question-library.md, "Copies are independent").
@@ -172,9 +174,11 @@ export function bankChoices(banks: readonly Pick<WorksheetSummary, 'id' | 'title
  *
  * The bank question keeps its own `id` and `lineage`, and its place in the bank's flow:
  * other papers' copies group with it by `rootId`, and a new id or lineage would orphan
- * that. Everything else is `freshIds`-renewed, so the bank shares no id with the paper.
- * With several versions in the bank the first is the one updated. One save; nothing else
- * in the bank document changes. Resolves to false when there is nothing to update.
+ * that. Everything else is renewed (`freshIdsKeepingParts`: parts keep their roots), so
+ * the bank shares no id with the paper. Tags follow the newest `tagsAt`, as shared tags
+ * do: a bank copy tagged after the paper (another tab) keeps its tags and stamp. With
+ * several versions in the bank the first is the one updated. One save; nothing else in
+ * the bank document changes. Resolves to false when there is nothing to update.
  */
 export async function updateBankCopy(
   question: Question,
@@ -187,13 +191,26 @@ export async function updateBankCopy(
   if (!bank || bank.kind !== 'bank') return false;
   const target = versionsOf(bank, rootIdOf(question))[0];
   if (!target) return false;
-  const replacement = { ...freshIds(question), id: target.id } as Question;
+  let replacement = { ...freshIdsKeepingParts(question), id: target.id } as Question;
   if (target.lineage) replacement.lineage = target.lineage;
   else delete replacement.lineage;
+  replacement = withNewerTags(replacement, target);
   await store.save({
     ...bank,
     questions: bank.questions.map((q) => (q === target ? replacement : q)),
     updatedAt: new Date().toISOString(),
   });
   return true;
+}
+
+/**
+ * `next` with `current`'s tag state and stamp when `current` was tagged later (stamped,
+ * and `next` unstamped or stamped earlier); else `next` as it is. Parts pair by key.
+ */
+function withNewerTags(next: Question, current: Question): Question {
+  const theirs = tagTime(current.tagsAt);
+  const ours = tagTime(next.tagsAt);
+  if (theirs === undefined || (ours !== undefined && ours >= theirs)) return next;
+  const tagged = withTagState(next, stateFor(tagStateOf(next), tagStateOf(current)));
+  return { ...tagged, tagsAt: current.tagsAt } as Question;
 }

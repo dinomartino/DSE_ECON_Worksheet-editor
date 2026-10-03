@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addPatternEntries, removePatternEntry, type PatternFile } from '@/storage/patterns';
-import { createPatternStore } from './usePatterns';
+import { createPatternStore, isReadOnlyRegistry } from './usePatterns';
 
 const entry = (name: string) => ({ topic: 'C.ped', typeId: 't', name });
 
@@ -48,5 +48,19 @@ describe('the 題型 registry store', () => {
     expect(store.getSnapshot().patterns.map((p) => p.name)).toEqual(['A']);
     await store.update((state) => removePatternEntry(state, entry('A')));
     expect(store.getSnapshot().patterns).toEqual([]);
+  });
+
+  it('reads a newer-format registry as read-only, keeps it so after a change, never writes it', async () => {
+    const stored = JSON.stringify({ format: 99, patterns: [entry('A')], later: true });
+    const disk = memoryFile(stored);
+    const store = createPatternStore(disk.file);
+    await store.reload();
+    expect(isReadOnlyRegistry(store.getSnapshot())).toBe(true);
+    await store.update((state) => addPatternEntries(state, [entry('B')]));
+    // Kept for the visit (the screens say it is not saved), the stored file untouched.
+    expect(store.getSnapshot().patterns.map((p) => p.name)).toContain('B');
+    expect(isReadOnlyRegistry(store.getSnapshot())).toBe(true);
+    expect(disk.text()).toBe(stored);
+    expect(isReadOnlyRegistry({ patterns: [] })).toBe(false);
   });
 });

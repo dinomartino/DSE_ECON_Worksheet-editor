@@ -6,6 +6,10 @@ export const PATTERNS_PAGE_MESSAGES = defineMessages({
     en: '題型 (Patterns) are the kinds of question you set within a sub-topic. MCQ and LQ keep separate lists. Renaming, merging or deleting one changes every question that uses it, in every worksheet. Never printed.',
     zh: '題型（Patterns）是你在子課題下設定的題目種類。MCQ 和 LQ 各有獨立的清單。重新命名、合併或刪除題型，會更改所有使用它的題目，涵蓋每份工作紙。題型不會被列印。',
   },
+  readOnly: {
+    en: 'This 題型 list was saved by a newer version of Econ Studio, so changes to the list cannot be saved here. They last until you close the app. Update Econ Studio to change it.',
+    zh: '這份題型清單由較新版本的 Econ Studio 儲存，因此在這裏對清單所作的修改無法儲存，只會保留至你關閉程式為止。請更新 Econ Studio 再修改。',
+  },
   show: { en: 'Show', zh: '顯示' },
   allTopics: { en: 'All topics', zh: '全部課題' },
   allSubTopics: { en: (code: string) => `${code} · all sub-topics`, zh: (code: string) => `${code} · 所有子課題` },

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { summarize } from '@/storage/document';
 import { rowsOf } from '@/library/indexer';
 import { withSharedTags } from '@/library/sharedTags';
 import { choiceQuestion, docWith, partedQuestion, partsQuestion, row } from '@/library/testKit';
@@ -35,7 +36,7 @@ function memoryStore(docs: Worksheet[]) {
   const saved = new Map(docs.map((doc) => [doc.id, doc]));
   return {
     saved,
-    load: async (id: string) => saved.get(id),
+    list: async () => [...saved.values()].map(summarize), load: async (id: string) => saved.get(id),
     save: async (worksheet: Worksheet) => void saved.set(worksheet.id, worksheet),
   };
 }
@@ -217,7 +218,7 @@ describe('題型 on a question tagged per part', () => {
     const writes = patternWrites(rows, pattern);
     expect(writes).toHaveLength(1);
     const saved = new Map([[doc.id, doc]]);
-    await writeTags({ load: async (id) => saved.get(id), save: async (w: Worksheet) => void saved.set(w.id, w) }, writes, removePatternEdit('C.ped', 'Old'));
+    await writeTags({ list: async () => [...saved.values()].map(summarize), load: async (id) => saved.get(id), save: async (w: Worksheet) => void saved.set(w.id, w) }, writes, removePatternEdit('C.ped', 'Old'));
     expect((saved.get(doc.id)!.questions[0] as StructuredQuestion).parts[0].tags).toEqual(['C.ped']);
   });
 });

@@ -332,11 +332,14 @@ export function PartTopicPickerDialog({
   );
 }
 
-/** A part's line in the column: its topics' names, "Same as (a)", or "No topic yet". */
-function partDetail(line: PartLine, m: Messages<typeof TOPIC_PICKER_MESSAGES>, sep: string, lang: UiLanguage): string {
+/**
+ * A part's line in the column: its topics' names (led by "Its own" on a sub-part with its
+ * own list, first so the column's truncation never hides it), "Same as (a)", or "No topic yet".
+ */
+export function partDetail(line: PartLine, m: Messages<typeof TOPIC_PICKER_MESSAGES>, sep: string, lang: UiLanguage): string {
   if (line.inherits) return m.sameAs(line.parentLabel ?? '');
   if (line.codes.length === 0) return m.noTopicYet;
-  return line.codes.map((code) => topicName(code, 'en', lang)).join(sep);
+  return `${line.sub ? m.itsOwnPrefix : ''}${line.codes.map((code) => topicName(code, 'en', lang)).join(sep)}`;
 }
 
 /** What ticking does here, in one line; a sub-part also says whose topics it has. */

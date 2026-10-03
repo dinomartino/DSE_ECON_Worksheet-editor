@@ -71,7 +71,8 @@ after)` carries only a list's change (the one-list Topic row on a question with 
 `TagState` (from `stateOfRow`).
 
 **Reads** (`src/library/sharedTags.ts`): `sharedState(copies)` (newest copy's whole state;
-ties and no stamps: union list by list, normalized), `stateOfRow(row)`, `rowTagFields(state)`,
+ties and no stamps: union list by list, normalized; no copy with a part list: the union stays
+on the question), `stateOfRow(row)`, `rowTagFields(state)`,
 state-aware `withSharedTags` and `withRowTags`. `BankRow.tags` is derived; `BankRow.slots`
 (`BankSlot`: `SlotState` + effective `tags`) and `ownTags` are new.
 `src/library/slotMatch.ts:slotsMatching(row, { topic } | { pattern })` gives the leaf
@@ -180,8 +181,8 @@ questionId, mode, images?, printedNumber?) → { html; target? }[]` (joined, exa
   (`inheritAtSlot`). A save replays `thenState(...picks)` on each copy's shared state, so a
   reordered copy gets "(b)" by key. Nothing changed hands back no edit and writes nothing.
 - **Edit topics** (`TopicPickerDialog.tsx:PartTopicPickerDialog`, rows with `slots`): a part
-  column (Whole question, (a), (i), (ii), (b), each with its topics, "Same as (a)" or "No
-  topic yet"), one topic list for the chosen target. On the whole question a topic on some
+  column (Whole question, (a), (i), (ii), (b), each with its topics, "Same as (a)", "Its own ·
+  …" on a sub-part with its own list, or "No topic yet"), one topic list for the chosen target. On the whole question a topic on some
   parts only is half-ticked with where ("(a)(ii)"); ticking it puts it on every part. A
   sub-part: "Tick or untick one to give it its own", then "Same as (a)" to go back. The
   footer names the parts with no topic yet. Rows without slots keep the one-list dialog and
@@ -223,12 +224,8 @@ questionId, mode, images?, printedNumber?) → { html; target? }[]` (joined, exa
   - ⌘Z after a topic edit on a question with copies restores the open copy only; the row
     keeps showing the other copies' newer change (as documented for whole-question
     topics, `question-library.md`). Low to medium: looks like Undo did nothing.
-  - An older question with its topics on the whole question and two or more unstamped
-    copies shows each part's topics as its own (the no-stamp union is normalized), so the
-    "Set on the whole question" note is missing there. Display only; low.
-  - The Edit topics part column says "(ii) Price elasticity of demand" where the editor
-    says "· its own"; the review page's Topics fact truncates long names per part (the
-    tooltip has them). Cosmetic.
+  - The review page's Topics fact truncates long names per part (the tooltip has them).
+    Cosmetic.
 
 ---
 
@@ -424,8 +421,9 @@ withSlotTags?: (question: Q, owns: ReadonlyMap<string, string[] | undefined>) =>
   (new question root, so part keys are scoped away). "Treat as a new question" drops
   `lineage`; also drop part `rootId`s there for tidiness (harmless either way: keys are
   matched within one root only).
-- `updateBankCopy` (bankDocs.ts:179-199): `freshIds(question)` keeps the paper copy's part
-  `rootId`s, which name the bank's parts, so keys stay stable. No change; add a test.
+- `updateBankCopy` (`bankDocs.ts`): `freshIdsKeepingParts(question)` stamps each part with
+  its source's `partRootOf`, which names the bank's part, so keys stay stable from a copy or
+  from the original paper. Its tag state follows the newer `tagsAt` (bank copy or paper).
 
 ---
 

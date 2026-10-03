@@ -139,15 +139,20 @@ function unionState(base: TagState, other: TagState): TagState {
  * The shared state of one question's copies (`sharedTags`, over whole states): the state
  * of the copy with the newest `tagsAt`. Copies tied on the newest time, or no stamped copy
  * at all, give their union, list by list over matched slots (`matchSlots`), each normalized
- * first (`normalizeTagState`) so older whole-question topics count on every part. For
- * copies without slots this is exactly `sharedTags`.
+ * first (`normalizeTagState`) so older whole-question topics count on every part; when no
+ * copy has a part list, the union stays on the question. For copies without slots this is
+ * exactly `sharedTags`.
  */
 export function sharedState(copies: readonly StateCopy[]): SharedState {
   const { winners, at } = newestOf(copies);
   let state: TagState;
   if (winners.length === 0) state = { tags: [], slots: [] };
   else if (winners.length === 1) state = winners[0].state;
-  else {
+  else if (!winners.some((copy) => copy.state.slots.some((slot) => slot.own))) {
+    // No copy tagged a part: the union stays on the question, so its parts still inherit
+    // (the editor's "Set on the whole question"), as each copy shows on its own.
+    state = { tags: unique(winners.flatMap((copy) => copy.state.tags)), slots: winners[0].state.slots };
+  } else {
     state = collapseTagState(
       winners.slice(1).reduce((acc, copy) => unionState(acc, normalizeTagState(copy.state)), normalizeTagState(winners[0].state)),
     );

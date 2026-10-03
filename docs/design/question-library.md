@@ -32,12 +32,16 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   taken from the bank (Insert, Fill, Add to, New worksheet from these) starts with the
   shared set and its stamp, not the picked copy's tags
   (`src/library/sharedTags.ts:withRowTags`). **Update bank copy** (explicit, never automatic) writes an edited
-  question back to the bank document it came from; **Treat as a new question** drops
+  question back to the bank document it came from, keeping the bank copy's tags when they
+  were stamped later; **Treat as a new question** drops
   `lineage`.
 - **Fill is deterministic:** best match first, then least recently used, never already
   in the paper; ↻ swaps one pick.
 - **Bank screen look:** light surfaces for lists; the desk tone only behind the paper. EDB
   sub-topics stay and head the review page's list.
+- **"Add to" is the paper open last, but looking never moves it** (the user, 2026-10-03):
+  a paper opened from the bank to look (Open in worksheet) keeps the target as it was,
+  through Home and back; any other open sets it (`src/components/bank/page/bankReturn.ts:useKeptTarget`).
 - **The C3 "Insert from another document" dialog is dropped.** The 題庫 tab's From filter
   does the job.
 
@@ -353,7 +357,8 @@ Outline rows; test that tags never reach IR, `.docx` or clipboard.
 
 **WP-B · Persistent index** (M–L): the change-feed decorator at the store singleton
 (`src/storage/index.ts`), IndexedDB `econ-worksheet-library` (web) and
-`worksheets/library/index.json` (desktop), freshness stamps, idle chunked indexing,
+`worksheets/library/docs/<id>.json` (desktop, one file per document since 2026-10-03;
+the earlier single `index.json` is migrated once), freshness stamps, idle chunked indexing,
 focus re-check; swaps into `useBank` without changing its API.
 
 **WP-C · Editor 題庫 tab + Fill** (M): third sidebar tab; sticky (selection moves the

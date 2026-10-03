@@ -1,12 +1,13 @@
 /**
- * The desktop path of the bank index: `worksheets/library/index.json` through
- * `libraryIndexFile`, beside a `FileWorksheetStore`, over an in-memory fake of
+ * The desktop path of the bank index: a file per document in `worksheets/library/docs/`
+ * through `libraryDocFiles` (and the old single file migrated), beside a `FileWorksheetStore`, over an in-memory fake of
  * `@tauri-apps/plugin-fs` (the same shape `src/storage/fileStore.test.ts` fakes).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const files = new Map<string, string>();
 const dirs = new Set<string>();
+const written: string[] = [];
 
 vi.mock('@/platform', async (original) => ({
   ...(await original<typeof import('@/platform')>()),
@@ -23,7 +24,10 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
     if (value === undefined) throw new Error(`ENOENT ${path}`);
     return value;
   },
-  writeTextFile: async (path: string, contents: string) => void files.set(path, contents),
+  writeTextFile: async (path: string, contents: string) => {
+    written.push(path);
+    files.set(path, contents);
+  },
   remove: async (path: string) => {
     if (!files.delete(path)) throw new Error(`ENOENT ${path}`);
   },
@@ -39,9 +43,9 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   },
 }));
 
-const { FileWorksheetStore, LIBRARY_INDEX, libraryIndexFile } = await import('@/storage/fileStore');
+const { FileWorksheetStore, LIBRARY_DOCS_DIR, LIBRARY_INDEX, libraryDocFiles, libraryIndexFile } = await import('@/storage/fileStore');
 const { withChangeFeed } = await import('@/storage/changes');
-const { createJsonFileBackend } = await import('./bankBackend');
+const { createDocFilesBackend, STORED_INDEX_FORMAT } = await import('./bankBackend');
 const { createBankIndex } = await import('./bankIndex');
 const { localFeed } = await import('./bankTestKit');
 const { choiceQuestion, docWith } = await import('./testKit');
@@ -53,28 +57,33 @@ function desktop() {
   const files = new FileWorksheetStore();
   const store = withChangeFeed(files, feed.emit);
   const index = createBankIndex(files, noPause, {
-    backend: createJsonFileBackend(libraryIndexFile),
+    backend: createDocFilesBackend(libraryDocFiles, libraryIndexFile),
     changes: feed.subscribe,
   });
   return { store, index };
 }
 
-const stored = () => JSON.parse(files.get(LIBRARY_INDEX)!) as { docs: Record<string, { rows: unknown[] }> };
+const docFile = (id: string) => `${LIBRARY_DOCS_DIR}/${id}.json`;
+const stored = (id: string) => {
+  const text = files.get(docFile(id));
+  return text === undefined ? undefined : (JSON.parse(text) as { rows: unknown[] });
+};
 
 beforeEach(() => {
   files.clear();
   dirs.clear();
+  written.length = 0;
 });
 
 describe('bank index on desktop', () => {
-  it('writes worksheets/library/index.json, and a new session reads it back', async () => {
+  it('writes worksheets/library/docs/<id>.json, and a new session reads it back', async () => {
     const { store, index } = desktop();
     const doc = docWith([choiceQuestion('On disk')]);
     await store.save(doc);
     await index.refresh();
     await index.settled();
-    expect(LIBRARY_INDEX).toBe('worksheets/library/index.json');
-    expect(stored().docs[doc.id].rows).toHaveLength(1);
+    expect(LIBRARY_DOCS_DIR).toBe('worksheets/library/docs');
+    expect(stored(doc.id)?.rows).toHaveLength(1);
 
     const next = desktop();
     next.index.subscribe(() => undefined);
@@ -99,23 +108,58 @@ describe('bank index on desktop', () => {
     await store.trash(doc.id);
     await index.settled();
     expect(index.getSnapshot().rows).toEqual([]);
-    expect(stored().docs[doc.id]).toBeUndefined();
+    expect(stored(doc.id)).toBeUndefined();
     await store.restore(doc.id);
     await index.settled();
     expect(index.getSnapshot().rows).toHaveLength(1);
   });
 
-  it('rebuilds when the file is corrupt, and removes the file on clear', async () => {
-    files.set(LIBRARY_INDEX, 'not json');
+  it("an autosave rewrites only its own document's file", async () => {
     const { store, index } = desktop();
-    await store.save(docWith([choiceQuestion('Rebuilt')]));
+    const a = docWith([choiceQuestion('A')]);
+    const b = docWith([choiceQuestion('B')]);
+    await store.save(a);
+    await store.save(b);
+    await index.refresh();
+    await index.settled();
+    written.length = 0;
+    await store.save({ ...b, name: 'Renamed' });
+    await index.settled();
+    expect(written.filter((path) => path.startsWith('worksheets/library/'))).toEqual([docFile(b.id)]);
+  });
+
+  it('migrates the single-file index an earlier build wrote, then removes it', async () => {
+    const { store, index: first } = desktop();
+    const doc = docWith([choiceQuestion('Migrated')]);
+    await store.save(doc);
+    await first.refresh();
+    await first.settled();
+    // What the single-file build left: the same rows, in one file, and no per-document files.
+    const rows = stored(doc.id)!.rows;
+    files.delete(docFile(doc.id));
+    files.set(LIBRARY_INDEX, JSON.stringify({ format: STORED_INDEX_FORMAT, docs: { [doc.id]: { updatedAt: doc.updatedAt, rows } } }));
+
+    const next = desktop();
+    next.index.subscribe(() => undefined);
+    await next.index.settled();
+    expect(next.index.getSnapshot().rows.map((r) => r.excerpt.en)).toEqual(['Migrated']);
+    expect(stored(doc.id)?.rows).toHaveLength(1);
+    expect(files.has(LIBRARY_INDEX)).toBe(false);
+  });
+
+  it('rebuilds a corrupt file, and removes every file on clear', async () => {
+    const { store, index } = desktop();
+    const doc = docWith([choiceQuestion('Rebuilt')]);
+    await store.save(doc);
+    files.set(docFile(doc.id), 'not json');
+    files.set(LIBRARY_INDEX, 'not json');
     await index.refresh();
     await index.settled();
     expect(index.getSnapshot().rows.map((r) => r.excerpt.en)).toEqual(['Rebuilt']);
-    expect(Object.keys(stored().docs)).toHaveLength(1);
+    expect(stored(doc.id)?.rows).toHaveLength(1);
 
     await store.clear();
     await index.settled();
-    expect(files.has(LIBRARY_INDEX)).toBe(false);
+    expect([...files.keys()].filter((key) => key.startsWith('worksheets/library/'))).toEqual([]);
   });
 });

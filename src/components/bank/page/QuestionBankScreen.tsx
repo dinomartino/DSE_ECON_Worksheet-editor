@@ -17,7 +17,7 @@ import {
   type PatternId,
   type PatternItem,
 } from '@/library/patterns';
-import { registerPatterns, renameRegisteredPattern, unregisterPattern, usePatternRegistry } from '@/library/usePatterns';
+import { isReadOnlyRegistry, registerPatterns, renameRegisteredPattern, unregisterPattern, usePatternRegistry } from '@/library/usePatterns';
 import { holdsPatterns } from '@/model/patterns';
 import type { BankGroup, BankRow } from '@/library/types';
 import { useBank } from '@/library/useBank';
@@ -42,7 +42,7 @@ import type { BankVerbId } from './bankAiScopes';
 import { BankAiBar, BankAiNote } from './BankAiBar';
 import { BankAiMenu } from './BankAiMenu';
 import { addPicksToOpenDocument, nothingAddedText, splitAlreadyInPaper } from './addToOpen';
-import { afterOpen, revealQuestion, tagIndexOf, useBankReturn } from './bankReturn';
+import { afterOpen, revealQuestion, tagIndexOf, useBankReturn, useKeptTarget } from './bankReturn';
 import { useBankCart } from './bankCart';
 import {
   activeFilters,
@@ -336,11 +336,11 @@ export function QuestionBankScreen({
   const pickedTypes = [...new Set(pickedByRoot.map((row) => row.typeId))];
   const pickedMix = new Map(traySummary(pickedByRoot).mix.map(({ code, count }) => [code, count] as const));
   const pickedPatternMix = patternMix(pickedByRoot);
-  // The editor's store still holds the document open last in this session. Pinned for the
-  // visit: a topic saved here moves that paper to the top of the list, and "Add to" must
-  // not follow it there.
+  // The editor's store still holds the document open last in this session, unless it was
+  // opened from here only to look. Pinned for the visit: a topic saved here moves that
+  // paper to the top of the list, and "Add to" must not follow it there.
   const [targetId, setTargetId] = useState<string>();
-  const fresh = addTarget(summaries, rows, useWorksheetStore.getState().worksheet.id);
+  const fresh = addTarget(summaries, rows, useWorksheetStore.getState().worksheet.id, useKeptTarget.getState().kept);
   if (targetId === undefined && fresh) setTargetId(fresh.id);
   const target = summaries.find((summary) => summary.id === targetId) ?? fresh;
 
@@ -449,13 +449,18 @@ export function QuestionBankScreen({
     }
   };
 
-  /** Open the question where it sits in its worksheet; the editor's back button returns here. */
+  /**
+   * Open the question where it sits in its worksheet; the editor's back button returns here.
+   * Only to look: "Add to" keeps its target.
+   */
   const openRow = (row: BankRow) =>
-    afterAi(() =>
-      onOpenDocument(row.docId, () =>
-        afterOpen(row.questionId, { level, filters, focusKey: level.kind === 'review' ? rowKey(row) : undefined, tagRoot: level.kind === 'untagged' ? tagRoot : undefined }),
-      ),
-    );
+    afterAi(() => {
+      const keep = { targetId: target?.id, lookedAt: row.docId };
+      onOpenDocument(row.docId, () => {
+        useKeptTarget.getState().keep(keep);
+        afterOpen(row.questionId, { level, filters, focusKey: level.kind === 'review' ? rowKey(row) : undefined, tagRoot: level.kind === 'untagged' ? tagRoot : undefined });
+      });
+    });
 
   // Back from a worksheet in tag as you go: land on the question left, once the list is read.
   const tagRestore = useRef(back?.level.kind === 'untagged' ? back.tagRoot : undefined);
@@ -952,6 +957,7 @@ export function QuestionBankScreen({
           items={patternItems}
           scope={level.topic}
           busy={busy}
+          readOnly={isReadOnlyRegistry(registry)}
           onScope={(scope) => setLevel({ kind: 'patterns', topic: scope })}
           onCreate={createPattern}
           onRename={renamePattern}

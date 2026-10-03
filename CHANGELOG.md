@@ -450,6 +450,16 @@ a version heading is edited afterwards.
   <!-- zh: **頁首和頁尾設定按頁面整理。** 在頁面設定中，先選「第 1 頁」或「第 2 頁起」
   ，再選擇第 1 頁的頁首和頁尾與其後頁面相同、自成一套，或不設。第 1 頁的標題設
   定也放在這裏。 -->
+- **Looking at a question keeps your "Add to" paper.** In the question bank, opening a
+  question in its worksheet just to look at it no longer changes the paper that "Add to"
+  puts your picks in. Come back, and "Add to" still names the paper you chose.
+  <!-- zh: **查看題目不會改變「加到」的工作紙。** 在題庫中開啟題目所在的工作紙查看，不會再改變
+  「加到」放入所選題目的工作紙。返回題庫後，「加到」仍是你原先選定的工作紙。 -->
+- **A large question bank stays quick to save on the desktop app.** Each worksheet's share
+  of the question bank is kept in a small file of its own, so saving one paper writes only
+  that file.
+  <!-- zh: **桌面版中，大型題庫亦能快速儲存。** 每份工作紙在題庫中的資料各自存放在一個小檔案，
+  儲存一份工作紙只會寫入該檔案。 -->
 - **Check terms says how many terms already match.** The bar now reads, for example,
   "1 to fix · 12 match", and "12 terms match the EDB glossary" when nothing needs fixing.
   If the text uses no glossary term at all, it says so.
@@ -596,6 +606,53 @@ a version heading is edited afterwards.
   <!-- zh: **從題庫分頁拖曳時，復原會暫停。** 拖曳途中按 ⌘Z（或 Ctrl+Z），以往會在你手
   上的題目下方改動工作紙。現在放手之前不會有任何動作；放下後，按一次復原便會把
   新題目移走。 -->
+- **Changing topics in the question bank never brings a paper back from Trash.** A topic
+  change that reached a copy in a paper you had just moved to Trash, or hidden from the
+  bank, could save into it. Those papers are now left as they are, and the bank says why.
+  <!-- zh: **在題庫更改課題，不會再把工作紙從垃圾桶救回。** 若課題更改涉及一份剛移到垃圾桶
+  或已在題庫隱藏的工作紙中的副本，以往可能會儲存到該工作紙。現在這些工作紙會保持原樣，
+  題庫亦會說明原因。 -->
+- **✦ AI in the question bank marks text with bold or italic words inside it.** When you
+  review a fill or a term check, the paper now highlights a sentence or term even where
+  part of it is formatted differently. It used to stay unmarked.
+  <!-- zh: **題庫的 ✦ AI 會標示夾有粗體或斜體字的文字。** 檢視填補或用詞檢查結果時，即使句子或
+  用語中有部分格式不同，頁面現在亦會把它標示出來。以往這些文字不會被標示。 -->
+- **⌘J (Ctrl+J on Windows) opens ✦ AI in the question bank too.** On a topic's page, the
+  shortcut opens the ✦ AI menu, as it does in a worksheet.
+  <!-- zh: **在題庫中亦可按 ⌘J（Windows 為 Ctrl+J）開啟 ✦ AI。** 在課題頁面按此快捷鍵，會開啟
+  ✦ AI 選單，與在工作紙中一樣。 -->
+- **"Update bank copy" keeps newer topics.** If the bank's copy had its topics changed
+  after your worksheet's (for example in another tab), updating it now brings in your new
+  wording but keeps those newer topics. The parts of a long question also stay matched to
+  the bank's, so part-by-part topics still line up.
+  <!-- zh: **「更新題庫副本」會保留較新的課題。** 若題庫副本的課題在你的工作紙之後才改動（例如在
+  另一個分頁），更新時現在會帶入你的新內容，但保留那些較新的課題。長題目的各部分亦會與題庫
+  的保持對應，逐部分設定的課題仍然一致。 -->
+- **The 題型 page says when its list can't be saved.** If your 題型 list was saved by a
+  newer version of Econ Studio, the 題型 page and the 題型 picker now say that changes to
+  the list are not saved here, instead of seeming to save them.
+  <!-- zh: **題型清單無法儲存時，題型頁面會說明。** 若你的題型清單由較新版本的 Econ Studio
+  儲存，題型頁面和題型選擇器現在會說明在這裏對清單所作的修改不會儲存，而不會看似已經儲存。 -->
+- **Tick boxes no longer glare in dark mode.** The tick boxes in the question bank (and
+  elsewhere in the app) now draw dark to match the dark panels, with ticked ones in the
+  accent colour.
+  <!-- zh: **深色模式下的剔選方格不再刺眼。** 題庫（以及程式其他地方）的剔選方格現在以深色顯示，
+  與深色面板一致，已剔選的方格則以強調色顯示。 -->
+- **Older long questions keep "Set on the whole question".** A long question whose topics
+  were set on the whole question, with copies in two or more worksheets, showed each part's
+  topics as set on that part. Its Topic row now says they are set on the whole question.
+  <!-- zh: **較舊的長題目會保留「已設定於整條題目」。** 課題設定於整條題目、並在兩份或以上工作紙有
+  副本的長題目，以往會把每個分題的課題顯示為該分題自己的設定。現在課題列會說明課題設定於整條題目。 -->
+- **Edit topics says which sub-parts have their own topics.** In the question bank's Edit
+  topics, a sub-part with its own list now reads "Its own" in the part column, as the
+  worksheet's Topic row does.
+  <!-- zh: **編輯課題時會標明哪些小分題另設課題。** 在題庫編輯題目的課題時，另設課題的小分題現在會在
+  分題欄顯示「另設課題」，與工作紙的課題列一致。 -->
+- **The question list no longer hides the question you step to.** Moving up the list in
+  the question bank with ↑ could leave the chosen question half under a topic's heading at
+  the top. It now stops just below the heading.
+  <!-- zh: **題目清單不會再遮住你移到的題目。** 以往在題庫按 ↑ 向上移動時，選中的題目可能有一半被
+  頂部的課題標題遮住。現在會停在標題之下。 -->
 - **Check terms' bar keeps up with your fixes.** After you replace a term from its card,
   the bar's count and its Replace button update straight away, instead of still offering
   the term you just fixed until you pressed Done.

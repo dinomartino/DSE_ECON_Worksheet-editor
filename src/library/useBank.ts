@@ -2,8 +2,8 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 import { isDesktop } from '@/platform';
-import { libraryIndexFile, onStoreChange, worksheetStore } from '@/storage';
-import { createJsonFileBackend, createMemoryBackend, type BankIndexBackend } from './bankBackend';
+import { libraryDocFiles, libraryIndexFile, onStoreChange, worksheetStore } from '@/storage';
+import { createDocFilesBackend, createMemoryBackend, type BankIndexBackend } from './bankBackend';
 import { browserWake, createBankIndex, idle, INITIAL_SNAPSHOT, type BankIndex, type BankSnapshot } from './bankIndex';
 import { createIdbBackend } from './idbBackend';
 import type { BankRow } from './types';
@@ -21,9 +21,9 @@ export interface UseBank extends BankSnapshot {
   refresh(): void;
 }
 
-/** Desktop: `worksheets/library/index.json`. Web: IndexedDB, else memory only. */
+/** Desktop: a file per document in `worksheets/library/docs/`. Web: IndexedDB, else memory only. */
 function defaultBackend(): BankIndexBackend {
-  if (isDesktop()) return createJsonFileBackend(libraryIndexFile);
+  if (isDesktop()) return createDocFilesBackend(libraryDocFiles, libraryIndexFile);
   return createIdbBackend() ?? createMemoryBackend();
 }
 
