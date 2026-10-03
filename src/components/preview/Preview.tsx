@@ -2,6 +2,7 @@
 
 import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  BAND_ROW_TWIPS,
   bandsHeight,
   bandsOverflow,
   bandsShouldRender,
@@ -17,7 +18,9 @@ import {
   pageSetupOf,
   twipsToMm,
   twipsToPt,
+  versionRowStandsAlone,
 } from "@/model/page";
+import { versionHeaderText } from "@/model/versions";
 import { TableColumnResizer } from "./TableColumnResizer";
 import { TableGridControls } from "./TableGridControls";
 import { sheetStackMargin } from "./sheetStack";
@@ -2698,10 +2701,13 @@ export function HeaderFooterBand({
   totalMarks,
   editing,
   editable,
+  versionRow,
 }: {
   value: HeaderFooter;
   language: LanguageMode;
   edge: "header" | "footer";
+  /** A versioned paper's "Version B" (`versionHeaderText`), placed as the `.docx` places it. */
+  versionRow?: string;
   /** 1-based index of the sheet this band belongs to. */
   pageNumber: number;
   pageCount: number;
@@ -2739,6 +2745,23 @@ export function HeaderFooterBand({
       ? firstPageHeaderFooter(value)
       : { bands: value.bands ?? [], rule: value.rule, differs: false };
 
+  // Derived and read-only: the last row, under the running rows wherever they print, or
+  // the whole header (every page, no rule) when the document's own prints nothing.
+  const versionAlone = versionRow !== undefined && versionRowStandsAlone(value);
+  const versionLine =
+    versionRow !== undefined && (versionAlone || pageNumber !== 1 || !resolved.differs) ? (
+      <div className="flex items-baseline justify-end">
+        <span className="mx-0.5 whitespace-pre-wrap font-bold">{versionRow}</span>
+      </div>
+    ) : null;
+  if (versionAlone && !(value.enabled && (editing || editable))) {
+    return (
+      <div data-band-rows className="mb-2 flex items-baseline gap-2 text-xs text-[#111111]">
+        <div className="flex-1">{versionLine}</div>
+      </div>
+    );
+  }
+
   if (!value.enabled) return null;
 
   // Which row list a structural edit here belongs to (`pageBandScope`): page 1 edits the
@@ -2758,9 +2781,11 @@ export function HeaderFooterBand({
    * be drawn, or there is nothing left on the page to double-click back into.
    */
   const bands = resolved.bands;
-  if (!bandsShouldRender(bands, Boolean(editing) || Boolean(editable))) return null;
+  const drawsBands = bandsShouldRender(bands, Boolean(editing) || Boolean(editable));
+  if (!drawsBands && !versionLine) return null;
+  const rule = versionAlone ? false : resolved.rule;
 
-  const body = editing ? (
+  const body = !drawsBands ? null : editing ? (
     <BandEditor
       bands={bands}
       language={language}
@@ -2821,15 +2846,18 @@ export function HeaderFooterBand({
        */
       className={`flex items-baseline gap-2 text-xs text-[#111111] ${
         edge === "header"
-          ? resolved.rule
+          ? rule
             ? "mb-2 border-b border-[#999999] pb-1"
             : "mb-2"
-          : resolved.rule
+          : rule
             ? "mt-2 border-t border-[#999999] pt-1"
             : "mt-2"
       }`}
     >
-      <div className="flex-1">{body}</div>
+      <div className="flex-1">
+        {body}
+        {versionLine}
+      </div>
     </div>
   );
 }
@@ -4448,7 +4476,14 @@ export function Preview({
   const runningBands = (value: HeaderFooter) =>
     value.enabled ? bandsHeight(value.bands ?? [], value.rule) : 0;
 
-  const headerEstimate = runningBands(header);
+  // A versioned paper's "Version B" row joins the running header (`versionHeaderText`).
+  const versionRow = versionHeaderText(worksheet, mode);
+  const headerEstimate =
+    versionRow === undefined
+      ? runningBands(header)
+      : versionRowStandsAlone(header)
+        ? BAND_ROW_TWIPS
+        : runningBands(header) + BAND_ROW_TWIPS;
   const footerEstimate = runningBands(footer);
   const edgeOffsets = headerFooterOffsets(setup.margins, headerEstimate, footerEstimate);
 
@@ -6757,6 +6792,7 @@ export function Preview({
                     focusRegion === "header" ? withSelection(headerEditing) : undefined
                   }
                   editable={Boolean(headerEditing)}
+                  versionRow={versionRow}
                 />
                 {focusRegion !== "header" && (
                   <RegionWake

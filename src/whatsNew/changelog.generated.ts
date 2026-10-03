@@ -441,6 +441,13 @@ a version heading is edited afterwards.
   定也放在這裏。 -->
 
 ### Fixed
+- **Every page of a paper version says which version it is.** With versions on, "Version B"
+  now prints in the header of every page, not only above question 1, so a loose sheet
+  still shows its version. It sits under your own header, or on its own if the paper has
+  none. Papers without versions are unchanged.
+  <!-- zh: **試卷每個版本的每一頁都標明版本。** 開啟版本後，「版本 B」會印在每頁的頁首，而不只
+  在第 1 題上方，即使散頁也能看出屬哪個版本。它位於你自訂的頁首之下；若試卷沒有頁首，則
+  單獨列出。沒有版本的試卷不受影響。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.

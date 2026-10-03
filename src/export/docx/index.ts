@@ -11,12 +11,14 @@ import {
   isHeaderFooterActive,
   pageDimensions,
   pageSetupOf,
+  versionRowStandsAlone,
 } from '@/model/page';
 import { zonesOf } from '@/model/bands';
 import { documentShape } from '@/model/documentShape';
 import { listIndentScheme } from '@/model/numbering';
 import { bandFieldPrintSides, bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
+import { versionHeaderText } from '@/model/versions';
 import { furnitureHeaderXml } from './furniture';
 import { plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
@@ -437,6 +439,21 @@ function buildParts(
   const printsOnFirstPage = (value: HeaderFooter) =>
     value.enabled && Boolean(value.firstPage) && !bandsAreEmpty(value.firstPage?.bands ?? []);
 
+  // A versioned paper names its version in the running header, as its own last row
+  // (`versionHeaderText`). With no header of its own, that row is the whole header,
+  // on every page including page 1, and draws no rule.
+  const versionText = versionHeaderText(worksheet, mode);
+  const versionOnly = Boolean(versionText) && versionRowStandsAlone(header);
+  if (versionText) {
+    const row = { left: '', center: '', right: run(versionText, fonts, { bold: true }) };
+    if (versionOnly && !teacherMark) {
+      headerLayout.rows = [row];
+      headerLayout.rule = undefined;
+    } else {
+      headerLayout.rows.push(row);
+    }
+  }
+
   // The page furniture rides in the running header (§ `furnitureHeaderXml`), so its
   // presence alone forces a header part even when no band would print.
   const furnitureXml = furnitureHeaderXml(
@@ -452,6 +469,7 @@ function buildParts(
     isHeaderFooterActive(header) ||
     printsOnFirstPage(header) ||
     Boolean(teacherMark) ||
+    Boolean(versionText) ||
     Boolean(furnitureXml);
   const hasFooter = isHeaderFooterActive(footer) || printsOnFirstPage(footer);
 
@@ -467,7 +485,9 @@ function buildParts(
    * with the preview via `firstPageHeaderFooter` so the page on screen and the page in
    * Word cannot disagree about which state a document is in.
    */
-  const headerFirst = firstPageHeaderFooter(header);
+  const headerFirst = versionOnly
+    ? { bands: [], rule: undefined, differs: false }
+    : firstPageHeaderFooter(header);
   const footerFirst = firstPageHeaderFooter(footer);
   const differentFirstPage =
     (hasHeader && headerFirst.differs) || (hasFooter && footerFirst.differs);
@@ -538,7 +558,11 @@ function buildParts(
    */
   const edgeOffsets = headerFooterOffsets(
     setup.margins,
-    hasHeader ? bandsHeight(header.bands ?? [], header.rule) : 0,
+    !hasHeader
+      ? 0
+      : versionOnly && !teacherMark
+        ? BAND_ROW_TWIPS
+        : bandsHeight(header.bands ?? [], header.rule) + (versionText ? BAND_ROW_TWIPS : 0),
     hasFooter ? bandsHeight(footer.bands ?? [], footer.rule) : 0,
   );
 

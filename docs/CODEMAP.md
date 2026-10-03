@@ -44,7 +44,7 @@ the whole schema, one file.
 - `src/model/text.ts:BiText` helpers — `:rt` · `:plain` · `:normalizeRuns` · `:applyRunFormat`
 - `src/model/page.ts:pageSetupOf` · `:headerFooterOffsets` · `src/model/pageFurniture.ts:furnitureBoxes`
 - `src/model/cover.ts:createCoverPage` · `src/model/documentShape.ts:documentShape` · `:paperKind` (the shape refined by content: dotted answer space → LQ worksheet)
-- `src/model/versions.ts:activeVersion` · `:shuffledOrder` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored
+- `src/model/versions.ts:activeVersion` · `:shuffledOrder` · `:versionHeaderText` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored; the letter rides the running header as a last row (`src/model/page.ts:versionRowStandsAlone`)
 - `src/model/markScheme.ts:schemeMax` · `:groupMax` · `:schemeMismatch` — HKEAA marking-scheme totals, derived; types in `src/model/markSchemeTypes.ts:MarkScheme`
 - `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
 - `src/model/paperSummary.ts:summarizePaper` · `:estimateMinutes` · `:MINUTES_PER_MARK` · `:targetOf` — per-type counts, marks, minutes against the optional `Worksheet.target`; the one time model (`checkPaper` reads it); `src/components/editor/PaperSummaryBar.tsx:PaperSummaryBar` is the toolbar line, the Target row is in `DocumentSettings`
