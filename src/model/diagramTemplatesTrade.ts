@@ -20,7 +20,6 @@ import {
   newId,
   pin,
   placeLabel,
-  point,
   priceLine,
   reading,
   shade,

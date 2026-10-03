@@ -428,7 +428,11 @@ describe('the catalogue', () => {
     // A canvas shift is derived from S, as a template's S₁ is: the relation names supply.
     expect(presetIsAmbiguous(shifted(0.1), shadePreset('consumerSurplus'))).toBe(false);
     const plain = shifted(0.1);
-    plain.curves = plain.curves.map(({ derive: _derive, ...c }) => c);
+    plain.curves = plain.curves.map((c) => {
+      const copy = { ...c };
+      delete copy.derive;
+      return copy;
+    });
     expect(presetIsAmbiguous(plain, shadePreset('consumerSurplus'))).toBe(true);
     expect(presetIsAmbiguous(plain, shadePreset('buyersBurden'))).toBe(true);
   });
