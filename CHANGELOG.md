@@ -490,6 +490,11 @@ a version heading is edited afterwards.
   <!-- zh: **在題庫更改課題，不會再把工作紙從垃圾桶救回。** 若課題更改涉及一份剛移到垃圾桶
   或已在題庫隱藏的工作紙中的副本，以往可能會儲存到該工作紙。現在這些工作紙會保持原樣，
   題庫亦會說明原因。 -->
+- **✦ AI in the question bank marks text with bold or italic words inside it.** When you
+  review a fill or a term check, the paper now highlights a sentence or term even where
+  part of it is formatted differently. It used to stay unmarked.
+  <!-- zh: **題庫的 ✦ AI 會標示夾有粗體或斜體字的文字。** 檢視填補或用詞檢查結果時，即使句子或
+  用語中有部分格式不同，頁面現在亦會把它標示出來。以往這些文字不會被標示。 -->
 
 ## 0.5.0 — 2026-09-28
 
