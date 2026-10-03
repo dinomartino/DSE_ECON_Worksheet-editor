@@ -6,15 +6,16 @@
 // silence. Beats (P(n) = scene pulse n; the act is entered by a push up centred on P0):
 //   P0     "Less formatting" rides in with the push (already set)
 //   P4     "More teaching"
-//   P12    the four lines squash into rules          P13..P16 they travel into the mark
-//   P15.5  the tile grows under them                 P17      knock + dot (chime)
-//   P17.5  the wordmark                              P19.5    "Free · No account needed"
+//   P11    the four lines squash into rules          P12..P15 they travel into the mark
+//   P14.5  the tile grows under them                 P16      knock + dot on bar 28 (chime)
+//   P16.5  the wordmark                              P18.5    "Free · No account needed"
 //   tail   (10.67 s, the music's tail section) the drift stops: a still hold to the end (108.48)
 import { lockup, block, h, place, show, f, C, ease } from '../lib/index.js';
 import { AXIS_COLOR } from './mark.js';
 
 const SIZE = 220, TOP = 290; // the mark at end-card scale; its tile's top edge
 const K = SIZE / 512;
+const STMT_PUSH = 1.04; // the statement's slow push-in, centred on the frame
 const X0 = 960 - SIZE / 2;
 const { prog, lerp, outSoft, inOutSoft } = ease;
 
@@ -40,15 +41,16 @@ function mix(a, b, p) {
 
 const scene = {
   events: [
-    { t: 5.334, kind: 'whoosh', size: 's', label: 'the words fold into lines' },
-    { t: 7.557, kind: 'chime', label: 'the dot lands: the lockup' },
+    { t: 4.89, kind: 'whoosh', size: 's', label: 'the words fold into lines' },
+    { t: 7.1126, kind: 'chime', label: 'the dot lands on bar 28: the lockup' },
   ],
   setup(ctx) {
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
     ctx.group = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: '960px 500px' } }, ctx.el);
     const stmt = { x: 960, w: 1400, maxLines: 1, size: 96, zhSize: 44, rise: 14 };
-    ctx.less = block(ctx.el, { ...ctx.copy.less, ...stmt, y: 0 });
-    ctx.more = block(ctx.el, { ...ctx.copy.more, ...stmt, y: 0 });
+    ctx.stmt = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: '960px 540px' } }, ctx.el);
+    ctx.less = block(ctx.stmt, { ...ctx.copy.less, ...stmt, y: 0 });
+    ctx.more = block(ctx.stmt, { ...ctx.copy.more, ...stmt, y: 0 });
     const gap = 44;
     const top = 540 - (ctx.less.height + gap + ctx.more.height) / 2;
     ctx.less.el.style.top = `${f(top, 2)}px`;
@@ -70,21 +72,28 @@ const scene = {
       const y = b.top + ln.offsetTop + ln.offsetHeight * (lang === 'zh' ? 0.52 : 0.56);
       const x = b.left + span.offsetLeft;
       ln.style.transformOrigin = `50% ${f(y - b.top - ln.offsetTop, 2)}px`;
-      return { ln, stroke, from: [[x, y], [x + span.offsetWidth, y]], width: lang === 'zh' ? 3 : 4, color: lang === 'zh' ? C.inkMuted : C.ink };
+      // Where the rule lies once the statement's slow push-in has settled (STMT_PUSH).
+      const at = ([px, py]) => [960 + STMT_PUSH * (px - 960), 540 + STMT_PUSH * (py - 540)];
+      return {
+        ln, stroke, from: [at([x, y]), at([x + span.offsetWidth, y])],
+        width: (lang === 'zh' ? 3 : 4) * STMT_PUSH, color: lang === 'zh' ? C.inkMuted : C.ink,
+      };
     });
     const { parts } = ctx.lock.mark;
     for (const k of Object.keys(STROKES)) parts[k].setAttribute('stroke-dasharray', 'none');
   },
   update(ctx, t) {
     const P = (n) => ctx.pulse(n);
+    // The statement: a slow push-in while it is read, settled by the fold (P11).
+    place(ctx.stmt, { scale: lerp(1, STMT_PUSH, inOutSoft(prog(t, 0, P(11)))) });
     ctx.less.show(t, { at: -3 });
     ctx.more.show(t, { at: P(4) });
 
     // The fold: each line squashes into its rule (P12..P13), the rule then travels into its
     // stroke (P13..P16) and takes the tile's colours as the tile grows under it.
-    const squash = inOutSoft(prog(t, P(12), P(13)));
-    const travel = inOutSoft(prog(t, P(13), P(16)));
-    const ink = outSoft(prog(t, P(15.5), P(16.5)));
+    const squash = inOutSoft(prog(t, P(11), P(12)));
+    const travel = inOutSoft(prog(t, P(12), P(15)));
+    const ink = outSoft(prog(t, P(14.5), P(15.5)));
     const { parts } = ctx.lock.mark;
     for (const r of ctx.routes) {
       if (squash > 0) {
@@ -106,13 +115,13 @@ const scene = {
 
     // The mark: the tile grows from its centre under the strokes; knock, dot and ripple run
     // on the splash's own clock at half speed, the dot landing on P17.
-    const ms = 740 + (t - P(17)) * 500;
+    const ms = 740 + (t - P(16)) * 500;
     ctx.lock.mark.at(ms);
     for (const k of Object.keys(STROKES)) parts[k].removeAttribute('stroke-dashoffset');
     parts.g.removeAttribute('transform');
     parts.g.setAttribute('opacity', '1');
     parts.g.style.visibility = 'visible';
-    const grow = outSoft(prog(t, P(15.5), P(17)));
+    const grow = outSoft(prog(t, P(14.5), P(16)));
     const sz = 512 * grow;
     parts.tile.setAttribute('x', f(256 - sz / 2, 3));
     parts.tile.setAttribute('y', f(256 - sz / 2, 3));
@@ -123,11 +132,11 @@ const scene = {
     // drawable() re-hides strokes at progress 0: they are ours, keep them as posed above.
     for (const r of ctx.routes) parts[r.stroke].style.visibility = squash > 0.02 ? 'visible' : 'hidden';
 
-    ctx.lock.wordAt(outSoft(prog(t, P(17.5), P(17.5) + 0.9)));
-    ctx.free.show(t, { at: P(19.5), dur: 0.8 });
+    ctx.lock.wordAt(outSoft(prog(t, P(16.5), P(16.5) + 0.9)));
+    ctx.free.show(t, { at: P(18.5), dur: 0.8 });
     // A slow drift towards the camera from the dot to the music's tail, then still.
     const tail = ctx.tl.SECTIONS.find((x) => x.label === 'tail').t - ctx.from;
-    place(ctx.group, { scale: lerp(1, 1.018, inOutSoft(prog(t, P(17), tail))) });
+    place(ctx.group, { scale: lerp(1, 1.018, inOutSoft(prog(t, P(16), tail))) });
   },
 };
 
