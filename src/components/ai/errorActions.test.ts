@@ -45,4 +45,9 @@ describe('markTones', () => {
     ]);
     expect([...marks]).toEqual([['k1', 'look'], ['k2', 'inserted'], ['k4', 'finding']]);
   });
+
+  it('a resolved finding marks as changed text', () => {
+    const fixed: ReviewItem = { id: 'a', tone: 'finding', where: '', notes: [], targetKey: 'k1', resolved: true };
+    expect([...markTones([fixed])]).toEqual([['k1', 'inserted']]);
+  });
 });

@@ -431,6 +431,12 @@ a version heading is edited afterwards.
   <!-- zh: **頁首和頁尾設定按頁面整理。** 在頁面設定中，先選「第 1 頁」或「第 2 頁起」
   ，再選擇第 1 頁的頁首和頁尾與其後頁面相同、自成一套，或不設。第 1 頁的標題設
   定也放在這裏。 -->
+- **Check terms says how many terms already match.** The bar now reads, for example,
+  "1 to fix · 12 match", and "12 terms match the EDB glossary" when nothing needs fixing.
+  If the text uses no glossary term at all, it says so.
+  <!-- zh: **「檢查用詞」會顯示有多少用詞已經一致。** 工具列現在會顯示例如「1 個需修正 · 12 個
+  相符」；沒有需要修正的用詞時，會顯示「12 個用詞與 EDB 詞彙表一致」。如文字沒有用上詞彙表
+  的任何用詞，也會說明。 -->
 
 ### Fixed
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
@@ -486,6 +492,11 @@ a version heading is edited afterwards.
   <!-- zh: **從題庫分頁拖曳時，復原會暫停。** 拖曳途中按 ⌘Z（或 Ctrl+Z），以往會在你手
   上的題目下方改動工作紙。現在放手之前不會有任何動作；放下後，按一次復原便會把
   新題目移走。 -->
+- **Check terms' bar keeps up with your fixes.** After you replace a term from its card,
+  the bar's count and its Replace button update straight away, instead of still offering
+  the term you just fixed until you pressed Done.
+  <!-- zh: **「檢查用詞」的工具列會即時更新。** 在卡片上取代一個用詞後，工具列的數目和「取代」
+  按鈕會立即更新，不會再在你按「完成」之前，仍然顯示剛修正的用詞。 -->
 
 ## 0.5.0 — 2026-09-28
 

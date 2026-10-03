@@ -14,13 +14,15 @@ export type MarkTone = Exclude<ReviewTone, 'failed'>;
 
 const RANK: Record<MarkTone, number> = { inserted: 0, look: 1, finding: 2 };
 
-/** Target key → the strongest tone among its items. A failed item has no text to mark. */
+/** Target key → the strongest tone among its items. A failed item has no text to mark;
+ *  a resolved one marks as changed text. */
 export function markTones(items: readonly ReviewItem[]): Map<string, MarkTone> {
   const out = new Map<string, MarkTone>();
   for (const item of items) {
     if (item.tone === 'failed' || item.targetKey === undefined) continue;
+    const tone: MarkTone = item.resolved ? 'inserted' : item.tone;
     const had = out.get(item.targetKey);
-    if (had === undefined || RANK[item.tone] > RANK[had]) out.set(item.targetKey, item.tone);
+    if (had === undefined || RANK[tone] > RANK[had]) out.set(item.targetKey, tone);
   }
   return out;
 }

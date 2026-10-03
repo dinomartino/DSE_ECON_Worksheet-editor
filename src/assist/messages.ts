@@ -103,6 +103,12 @@ export const ASSIST_MESSAGES = defineMessages({
   checkTermsLabel: { en: 'Check terms against EDB glossary', zh: '按 EDB 詞彙表檢查用詞' },
   checkingTerms: { en: 'Checking terms', zh: '正在檢查用詞' },
   termsMatch: { en: 'Terms match the EDB glossary', zh: '用詞與 EDB 詞彙表一致' },
+  termsMatchN: {
+    en: (n: number) => `${n} ${n === 1 ? 'term matches' : 'terms match'} the EDB glossary`,
+    zh: (n: number) => `${n} 個用詞與 EDB 詞彙表一致`,
+  },
+  noTermsFound: { en: 'No EDB glossary terms found', zh: '沒有找到 EDB 詞彙表的用詞' },
+  matchedN: { en: (n: number) => `${n} match`, zh: (n: number) => `${n} 個相符` },
   nothingReplacedOne: {
     en: 'Nothing replaced. This text changed since the check.',
     zh: '沒有取代任何用詞。這段文字在檢查後已有更改。',
