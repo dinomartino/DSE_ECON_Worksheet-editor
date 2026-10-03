@@ -341,6 +341,12 @@
   --danger: #f87171;
 }
 
+/* Native ticks and radios draw in the scheme's colours (left light, they glare on the dark
+   panels); the accent fills a ticked one. Never on the paper, which stays light. */
+:root[data-theme="dark"] input:is([type="checkbox"], [type="radio"]):not(.paper *) {
+  color-scheme: dark;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

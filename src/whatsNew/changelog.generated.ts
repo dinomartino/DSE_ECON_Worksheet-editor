@@ -513,6 +513,11 @@ a version heading is edited afterwards.
   the list are not saved here, instead of seeming to save them.
   <!-- zh: **題型清單無法儲存時，題型頁面會說明。** 若你的題型清單由較新版本的 Econ Studio
   儲存，題型頁面和題型選擇器現在會說明在這裏對清單所作的修改不會儲存，而不會看似已經儲存。 -->
+- **Tick boxes no longer glare in dark mode.** The tick boxes in the question bank (and
+  elsewhere in the app) now draw dark to match the dark panels, with ticked ones in the
+  accent colour.
+  <!-- zh: **深色模式下的剔選方格不再刺眼。** 題庫（以及程式其他地方）的剔選方格現在以深色顯示，
+  與深色面板一致，已剔選的方格則以強調色顯示。 -->
 
 ## 0.5.0 — 2026-09-28
 
