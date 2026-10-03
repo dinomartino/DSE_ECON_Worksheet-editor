@@ -36,7 +36,7 @@ const SEG = {
 };
 
 // Parts & marks in answer-lines (CSS px): the 4, the 3, "Total: 7 marks".
-const RING = [[1287, 308, 47, 32], [1287, 344, 47, 32], [1343, 415, 84, 19]];
+const RING = [[1286, 310, 46, 27], [1286, 346, 46, 27], [1343, 415, 84, 19]];
 const PANEL = [1052, 262, 380, 186];
 
 const KEY_SHEETS = ['sheets-key-classic', 'sheets-key-hkeaa', 'sheets-key-suggested', 'sheets-key-detailed'];
@@ -147,7 +147,7 @@ const scene = {
       const s = sh.view.s;
       ctx.spot.set({ x: lx, y: ly, w: w * s, h: ht * s, r: 12, amount: tw(t, P(3.5), P(1.5)) - tw(t, P(7.5), P(1.5)) });
       const box = keys(t, [[P(5), RING[0]], [P(6), RING[0]], [P(6) + 0.32, RING[1], spring], [P(7), RING[1]], [P(7) + 0.36, RING[2], spring]]);
-      const pad = 6;
+      const pad = 4;
       const [rx, ry] = sh.local(box[0] - pad, box[1] - pad);
       const pop = spring(prog(t, P(5), P(5) + 0.35));
       const rw = (box[2] + 2 * pad) * s, rh = (box[3] + 2 * pad) * s;
