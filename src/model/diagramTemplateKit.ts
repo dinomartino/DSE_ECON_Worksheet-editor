@@ -347,7 +347,7 @@ export function placeLabel(c: DiagramCurve, x: number, y: number): DiagramCurve 
 }
 
 /**
- * A price change along one straight D, from p1 to p2: E₁, E₂ with drops, P and Q
+ * A price change along one D (straight unless `demand` says), from p1 to p2: E₁, E₂ with drops, P and Q
  * arrows, and the revenue gain (+) and loss (−) between them.
  */
 export function alongDemand(
@@ -355,8 +355,9 @@ export function alongDemand(
   p1: number,
   p2: number,
   axisTitles: { x: BiText; y: BiText } = { x: AXIS.quantity, y: AXIS.price },
+  demand: Partial<DiagramCurve> = {},
 ): Diagram {
-  const d = curve(line, sym('D'));
+  const d = curve(line, sym('D'), demand);
   // Each price is fixed; dragging D slides both points along it at those prices.
   const e1 = markAt({ on: d.id, y: p1 }, [d], '1');
   const e2 = markAt({ on: d.id, y: p2 }, [d], '2');

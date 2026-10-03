@@ -242,6 +242,24 @@ function monopolyRisingMc(): Diagram {
   );
 }
 
+/**
+ * U-shaped MC: a curved MC whose readings follow the drawn spline (`curvePath`). MR cuts
+ * it on its rising arm, so Qm, Pm and Qc, Pc are anchored crossings as with a straight MC.
+ */
+function monopolyUShapedMc(): Diagram {
+  const { d, mr } = demandAndMr(0.9, 0.9, 0.1);
+  const mc = curve([[0.06, 0.52], [0.18, 0.3], [0.3, 0.26], [0.48, 0.38], [0.74, 0.8]], sym('MC'), { shape: 'curved' });
+  const pm = monopolyPoint(d, mr, mc, 'm');
+  const pc = eq(d, mc, 'c');
+  return finish(
+    axes(AXIS.quantity, AXIS.price, {
+      curves: [d, mr, mc],
+      points: [pm, pin(cross(mr, mc), [mr, mc]), pc],
+    }),
+    (r) => shade(r, 'monopolyDwl', { demand: d.id, mr: mr.id, mc: mc.id }, { labelPlacement: 'leader' }),
+  );
+}
+
 /** MC rises MC₁ → MC₂ (DSE2018): Q₂ < QM, P₂ > PM, and the DWL at MC₂. */
 function monopolyMcRises(): Diagram {
   const { d, mr } = demandAndMr(0.9, 0.9, 0.1);
@@ -513,6 +531,13 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     name: bi('Monopoly with rising MC', '邊際成本上升的壟斷'),
     hint: bi('Upward MC: Qm, Pm at MR = MC; Qc, Pc where D meets MC.', '向上傾斜的 MC：MR = MC 的 Qm、Pm；D 與 MC 相交的 Qc、Pc。'),
     build: monopolyRisingMc,
+  },
+  {
+    id: 'monopoly-u-mc',
+    group: 'electives',
+    name: bi('Monopoly with U-shaped MC', 'U 形邊際成本的壟斷'),
+    hint: bi('MR cuts the rising arm of MC: Qm, Pm; Qc, Pc where D meets MC.', 'MR 與 MC 上升部分相交：Qm、Pm；D 與 MC 相交的 Qc、Pc。'),
+    build: monopolyUShapedMc,
   },
   {
     id: 'monopoly-mc-zero',

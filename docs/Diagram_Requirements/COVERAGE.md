@@ -198,7 +198,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Item | Met by | St. |
 |---|---|---|
 | MR from D's intercept, twice as steep | MR derived in every monopoly template | C |
-| MC horizontal, zero, upward or U-shaped | `monopoly`, `monopoly-mc-zero`, `monopoly-rising-mc`; U-shape drawn curved | P — U-shaped MC by hand |
+| MC horizontal, zero, upward or U-shaped | `monopoly`, `monopoly-mc-zero`, `monopoly-rising-mc`, `monopoly-u-mc` (curved MC, read as drawn) | C |
 | Qm at MR = MC, Pm up to D | anchor on D above MR ∩ MC | C |
 | Efficient Qc, Pc where D = MC | anchor; `monopoly`, `monopoly-rising-mc` | C |
 | DWL triangle labelled | monopolyDwl preset | C |
@@ -275,7 +275,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Shift vs movement along | shift and revenue templates | C |
 | Four-point double-shift grid | `double-shift-grid` | C |
 | Related-market option diagrams | one diagram per option | C |
-| TR: rectangular hyperbola, upper half of a line elastic | curved D by hand; revenue presets read its polyline | P — no hyperbola template |
+| TR: rectangular hyperbola, upper half of a line elastic | `unit-elastic-revenue` (+ = −); `elastic-revenue` | C |
 
 ## F · S5–S6 rounds
 

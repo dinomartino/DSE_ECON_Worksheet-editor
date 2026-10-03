@@ -10,7 +10,7 @@ import type {
   DiagramPoint,
 } from './diagram';
 import type { BiText } from './types';
-import { anchorReferences, curveCrossing, curveYAt, resolveAnchor } from './diagramAnchors';
+import { anchorReferences, curveCrossing, curvePath, curveYAt, resolveAnchor } from './diagramAnchors';
 
 // Anchor resolution lives in `diagramAnchors`; re-exported for existing importers.
 export { curveCrossing, curveYAt, resolveAnchor };
@@ -21,7 +21,7 @@ export { curveCrossing, curveYAt, resolveAnchor };
  * Pure and renderer-free: `render/diagram.ts` projects the polygon, the canvas
  * hit-tests it. A reference that no longer resolves (its curve deleted) yields no
  * polygon — `detachAreas` freezes such areas into vertices before that can happen.
- * Curves are read as their polyline; a `curved` curve's spline is approximated.
+ * Curves are read as drawn (`curvePath`): a `curved` curve as its sampled spline.
  */
 
 const EPS = 1e-9;
@@ -30,9 +30,10 @@ const EPS = 1e-9;
 function curveSpan(curve: DiagramCurve): [number, number] | null {
   let lo = Infinity;
   let hi = -Infinity;
-  for (let i = 0; i < curve.points.length - 1; i += 1) {
-    const a = curve.points[i];
-    const b = curve.points[i + 1];
+  const path = curvePath(curve);
+  for (let i = 0; i < path.length - 1; i += 1) {
+    const a = path[i];
+    const b = path[i + 1];
     if (Math.abs(b.x - a.x) < EPS) continue;
     lo = Math.min(lo, a.x, b.x);
     hi = Math.max(hi, a.x, b.x);
@@ -133,7 +134,7 @@ export function areaPolygon(diagram: Diagram, area: DiagramArea): DiagramPoint[]
     if (!curve || !span) return null;
     lo = Math.max(lo, span[0]);
     hi = Math.min(hi, span[1]);
-    breaks.push(...curve.points.map((p) => p.x));
+    breaks.push(...curvePath(curve).map((p) => p.x));
   }
   if (hi - lo < 1e-6) return null;
 
@@ -476,12 +477,12 @@ function cappedBandPolygon(diagram: Diagram, band: AreaBand, cap: DiagramAreaEdg
     if (!curve || !span) return null;
     lo = Math.max(lo, span[0]);
     hi = Math.min(hi, span[1]);
-    breaks.push(...curve.points.map((p) => p.x));
+    breaks.push(...curvePath(curve).map((p) => p.x));
   }
   if ('curve' in cap) {
     const curve = curveById(diagram, cap.curve);
     if (!curve) return null;
-    breaks.push(...curve.points.map((p) => p.x));
+    breaks.push(...curvePath(curve).map((p) => p.x));
   } else if (edgeYAt(diagram, cap, lo) === null) return null;
   if (hi - lo < 1e-6) return null;
 

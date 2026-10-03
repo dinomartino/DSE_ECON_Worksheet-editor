@@ -1,0 +1,98 @@
+import { describe, expect, it } from 'vitest';
+import type { Diagram, DiagramCurve } from './diagram';
+import { buildFromTemplate } from './diagramTemplates';
+import { curvePath, curveYAt, resolveAnchor, splineSegments } from './diagramAnchors';
+import { areaPolygon, polygonCentroid } from './diagramAreas';
+import { plain } from './text';
+
+/** The templates that close the partial rows of `docs/Diagram_Requirements/COVERAGE.md`. */
+
+const curveNamed = (d: Diagram, text: string) => d.curves.find((c) => plain(c.label?.en) === text)!;
+const tick = (d: Diagram, axis: 'x' | 'y', text: string) =>
+  d.points.find((p) => plain((axis === 'x' ? p.xTickLabel : p.yTickLabel)?.en) === text)!;
+const areaNamed = (d: Diagram, text: string) => d.areas!.find((a) => plain(a.label?.en) === text)!;
+const shoelace = (pts: Array<{ x: number; y: number }>) =>
+  Math.abs(pts.reduce((sum, p, i) => sum + p.x * pts[(i + 1) % pts.length].y - pts[(i + 1) % pts.length].x * p.y, 0)) / 2;
+
+describe('curved curves are read as drawn', () => {
+  const u: DiagramCurve = {
+    id: 'u',
+    shape: 'curved',
+    points: [{ x: 0.1, y: 0.6 }, { x: 0.3, y: 0.2 }, { x: 0.6, y: 0.7 }],
+  };
+
+  it('samples the spline the renderer draws, through every control point', () => {
+    const path = curvePath(u);
+    expect(path.length).toBeGreaterThan(u.points.length * 10);
+    for (const p of u.points) expect(path.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < 1e-12)).toBe(true);
+    // The spline's midpoint (built in aspect space) lies on the path.
+    const [first] = splineSegments(u.points.map((p) => ({ x: p.x, y: p.y * 0.75 })));
+    const mid = {
+      x: (first.p1.x + 3 * first.c1.x + 3 * first.c2.x + first.p2.x) / 8,
+      y: (first.p1.y + 3 * first.c1.y + 3 * first.c2.y + first.p2.y) / 8 / 0.75,
+    };
+    expect(curveYAt(u, mid.x)).toBeCloseTo(mid.y, 3);
+  });
+
+  it('leaves straight curves and two-point curves as their points', () => {
+    const straight = { ...u, shape: 'straight' as const };
+    expect(curvePath(straight)).toBe(straight.points);
+    expect(curvePath({ ...u, points: u.points.slice(0, 2) })).toHaveLength(2);
+  });
+
+  it('reads a height off the spline, not the control polygon', () => {
+    // The polygon's corner is at (0.3, 0.2); the spline bottoms out beside it, not on a chord.
+    const polygonY = 0.2 + ((0.45 - 0.3) * 0.5) / 0.3;
+    expect(Math.abs(curveYAt(u, 0.45)! - polygonY)).toBeGreaterThan(0.005);
+  });
+});
+
+describe('monopoly-u-mc', () => {
+  const d = buildFromTemplate('monopoly-u-mc');
+  const mc = curveNamed(d, 'MC');
+
+  it('draws MC curved, U-shaped, and marks Qm on its rising arm', () => {
+    expect(mc.shape).toBe('curved');
+    const qm = tick(d, 'x', 'Qm').at.x;
+    expect(curveYAt(mc, qm + 0.02)!).toBeGreaterThan(curveYAt(mc, qm)!);
+    expect(curveYAt(mc, 0.06)!).toBeGreaterThan(curveYAt(mc, 0.3)!);
+  });
+
+  it('puts MR = MC and D = MC on the drawn MC', () => {
+    const mrMc = d.points.find((p) => !p.xTickLabel && p.anchor && 'cross' in p.anchor)!;
+    expect(mrMc.at.y).toBeCloseTo(curveYAt(mc, mrMc.at.x)!, 9);
+    const c = tick(d, 'x', 'Qc').at;
+    expect(c.y).toBeCloseTo(curveYAt(mc, c.x)!, 9);
+    expect(tick(d, 'x', 'Qm').at.x).toBeCloseTo(mrMc.at.x, 9);
+  });
+
+  it('shades the DWL between D and MC from Qm to Qc', () => {
+    const poly = areaPolygon(d, d.areas![0])!;
+    const xs = poly.map((p) => p.x);
+    expect(Math.min(...xs)).toBeCloseTo(tick(d, 'x', 'Qm').at.x, 6);
+    expect(Math.max(...xs)).toBeCloseTo(tick(d, 'x', 'Qc').at.x, 6);
+  });
+});
+
+describe('unit-elastic-revenue', () => {
+  const d = buildFromTemplate('unit-elastic-revenue');
+
+  it('draws D as a curved rectangular hyperbola: P × Q is the same at both points', () => {
+    expect(curveNamed(d, 'D').shape).toBe('curved');
+    const [e1, e2] = d.points.map((p) => p.at);
+    expect(e1.x * e1.y).toBeCloseTo(0.1, 2);
+    expect(e2.x * e2.y).toBeCloseTo(0.1, 2);
+  });
+
+  it('makes the gain (+) and the loss (−) equal', () => {
+    const gain = shoelace(areaPolygon(d, areaNamed(d, '+'))!);
+    const loss = shoelace(areaPolygon(d, areaNamed(d, '−'))!);
+    expect(gain).toBeGreaterThan(0.02);
+    expect(gain / loss).toBeCloseTo(1, 1);
+    expect(polygonCentroid(areaPolygon(d, areaNamed(d, '+'))!).x).toBeGreaterThan(polygonCentroid(areaPolygon(d, areaNamed(d, '−'))!).x);
+  });
+
+  it('keeps both points on the drawn D', () => {
+    for (const p of d.points) expect(resolveAnchor(d, p.anchor!)!.y).toBeCloseTo(curveYAt(curveNamed(d, 'D'), p.at.x)!, 9);
+  });
+});

@@ -106,6 +106,15 @@ function doubleShiftGrid(): Diagram {
   );
 }
 
+/**
+ * Unitary elastic D: P × Q = 0.1 at every point, drawn curved. Its readings follow the
+ * drawn spline (`curvePath`), so the + and − rectangles come out equal.
+ */
+function unitElasticRevenue(): Diagram {
+  const hyperbola: Pair[] = [0.125, 0.16, 0.21, 0.28, 0.38, 0.52, 0.7, 0.9].map((x) => [x, 0.1 / x]);
+  return alongDemand(hyperbola, 0.5, 0.25, undefined, { shape: 'curved' });
+}
+
 function fixedSupply(): Diagram {
   const s = upright(0.46, sym('S'), 0.9);
   const d0 = curve([[0.06, 0.66], [0.68, 0.1]], sub('D', '0'));
@@ -560,6 +569,13 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     name: bi('Inelastic demand: revenue', '低彈性需求：總收入'),
     hint: bi('A price rise along a steep D: gain (+) > loss (−).', '沿陡峭需求曲線加價：收入增加 (+) > 減少 (−)。'),
     build: () => alongDemand([[0.3, 0.92], [0.62, 0.1]], 0.3, 0.56),
+  },
+  {
+    id: 'unit-elastic-revenue',
+    group: 'supplyDemand',
+    name: bi('Unitary elastic demand: revenue', '單一彈性需求：總收入'),
+    hint: bi('A rectangular hyperbola D: a price fall, gain (+) = loss (−).', '直角雙曲線需求：減價時收入增加 (+) = 減少 (−)。'),
+    build: unitElasticRevenue,
   },
   {
     id: 'fixed-supply',
