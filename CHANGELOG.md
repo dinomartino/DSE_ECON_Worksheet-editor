@@ -565,6 +565,9 @@ a version heading is edited afterwards.
   <!-- zh: **在進口配額圖表中，配額的一段會跟隨 Pw。** 移動 Pw 或 S 時，「有配額的供應」的水平段
   會保持在新的世界價格，長度等於配額，本地價格亦會跟著改變。含這些圖表的工作紙在 0.4 和 0.5 版
   中會以唯讀方式開啟。 -->
+- **Pie chart hatching and dots print in solid black in the PDF.** They used to come out
+  a faint grey, which a photocopy could lose.
+  <!-- zh: **圓形圖的斜線和圓點在 PDF 中以實黑色印出。** 以往會印成淺灰色，影印時可能看不清。 -->
 
 ## 0.5.0 — 2026-09-28
 

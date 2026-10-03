@@ -868,10 +868,13 @@ describe('the pie chart variant', () => {
   it('draws one patterned wedge and one derived percent per slice', () => {
     const diagram = pie();
     const svg = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'en' });
-    // Four slices: the first is plain white, the rest take the cycling patterns.
-    expect((svg.match(/<path d="M [^"]+ Z"/g) ?? []).length).toBe(4);
-    expect(svg).toContain('url(#pieHatch)');
-    expect(svg).toContain('url(#pieDots)');
+    // Four slices, each outlined once: the first is plain white, the rest cycle patterns.
+    expect((svg.match(/<path d="M [^"]+ Z" fill="[^"]+" stroke="#000" stroke-width="1.2"/g) ?? []).length).toBe(4);
+    // Patterns are plain clipped ink, never an SVG <pattern> (Chrome's PDF greys those).
+    expect(svg).not.toContain('<pattern');
+    expect(svg).not.toContain('url(#');
+    expect(svg).toMatch(/fill="none" stroke="#000" stroke-width="1" stroke-linecap="butt"/);
+    expect(svg).toMatch(/ a 0\.9 0\.9 0 1 0 1\.8 0 /);
     // The percents are derived from the 40/30/20/10 shares, never stored.
     for (const pct of ['40%', '30%', '20%', '10%']) expect(svg).toContain(pct);
     expect(svg).toContain('Firm A');
@@ -916,7 +919,7 @@ describe('the pie chart variant', () => {
     };
     const svg = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'en' });
     expect(svg).not.toContain('Ghost');
-    expect((svg.match(/<path d="M [^"]+ Z"/g) ?? []).length).toBe(2);
+    expect((svg.match(/stroke-width="1.2"/g) ?? []).length).toBe(2);
 
     diagram.pie = { slices: [] };
     const empty = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'en' });
