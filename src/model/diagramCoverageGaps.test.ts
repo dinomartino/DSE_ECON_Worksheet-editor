@@ -144,6 +144,31 @@ describe('tax-net-revenue', () => {
   });
 });
 
+describe.each(['ppf-linear-trade', 'ppf-concave-trade'])('%s: consumption and the gain from trade', (id) => {
+  const d = buildFromTemplate(id);
+  const gain = d.spans!.find((s) => s.style === 'doubleArrow')!;
+
+  it('puts C on the CPF straight above A (the same X as before trade)', () => {
+    const [a, c] = [pointNamed(d, 'A').at, pointNamed(d, 'C').at];
+    expect(c.x).toBeCloseTo(a.x, 9);
+    expect(c.y).toBeGreaterThan(a.y + 0.05);
+  });
+
+  it('keeps C above A when A slides along the PPF', () => {
+    const a = pointNamed(d, 'A');
+    const moved = resolveDiagram(applyDrag(d, { kind: 'point', pointId: a.id }, a.at, { x: a.at.x - 0.08, y: a.at.y }));
+    expect(pointNamed(moved, 'C').at.x).toBeCloseTo(pointNamed(moved, 'A').at.x, 9);
+    expect(pointNamed(moved, 'C').at.x).toBeLessThan(pointNamed(d, 'C').at.x);
+  });
+
+  it('spans the gain from C down to the PPF directly below it', () => {
+    const [top, bottom] = spanGeometry(d, gain)!.base;
+    expect(top).toEqual(pointNamed(d, 'C').at);
+    expect(bottom.x).toBeCloseTo(top.x, 9);
+    expect(bottom.y).toBeCloseTo(curveYAt(curveNamed(d, 'PPF'), top.x)!, 9);
+  });
+});
+
 describe('money-rate-change', () => {
   const d = buildFromTemplate('money-rate-change');
   const md = curveNamed(d, 'Md');

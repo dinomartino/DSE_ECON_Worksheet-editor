@@ -355,20 +355,32 @@ function monopolyCostFall(): Diagram {
   );
 }
 
+/** The gain from trade: C down to the PPF directly below it, beside C's drop line; named past the CPF. */
+const gainFromTrade = (c: ReturnType<typeof pin>, ppf: DiagramCurve) =>
+  span(at(c), { on: ppf.id, x: at(c) }, 'doubleArrow', {
+    offset: 0.03,
+    label: bi('gain from\ntrade', '貿易得益'),
+    labelOffset: { x: 0.08, y: 0.04 },
+  });
+
 function ppfLinearTrade(): Diagram {
-  const ppf = placeLabel(curve([[0, 0.5], [0.6, 0]], sym('PPF')), 0.1, 0.34);
+  // Under the PPF: C's drop line runs above it at C's height.
+  const ppf = placeLabel(curve([[0, 0.5], [0.6, 0]], sym('PPF')), 0.12, 0.27);
   const cpf = placeLabel(curve([[0, 0.9], [0.6, 0]], sym('CPF')), 0.1, 0.83);
   // Production at PPF's X intercept; consumption on the CPF (slope = TOT), outside the PPF.
   const b = pin({ on: ppf.id, y: 0 }, [ppf], sym('B'), { labelSide: 'upRight' });
-  const c = pin({ on: cpf.id, x: { x: 0.25, y: 0 } }, [cpf], sym('C'), { labelSide: 'upRight', dropTo: ['x', 'y'] });
+  const a = pin({ on: ppf.id, x: { x: 0.36, y: 0 } }, [ppf], sym('A'), { labelSide: 'downLeft' });
+  // The same X as before trade: C on the CPF straight above A, following it.
+  const c = pin({ on: cpf.id, x: at(a) }, [cpf, a], sym('C'), { labelSide: 'upRight', dropTo: ['x', 'y'] });
   return finish(
     axes(GOOD.x, GOOD.y, {
       curves: [ppf, cpf],
-      points: [pin({ on: ppf.id, x: { x: 0.36, y: 0 } }, [ppf], sym('A'), { labelSide: 'upRight' }), b, c],
+      points: [a, b, c],
       // Export and import volumes as brackets outside the axes, clear of the frontiers.
       spans: [
         span(at(c), at(b), 'bracket', { along: 'x', label: bi('exports', '出口') }),
         span(at(b), at(c), 'bracket', { along: 'y', label: bi('imports', '進口') }),
+        gainFromTrade(c, ppf),
       ],
     }),
   );
@@ -401,14 +413,17 @@ function ppfConcaveTrade(): Diagram {
     stroke: 'dashed',
     weight: 0.8,
   });
-  const pc = pin({ on: cpf.id, x: { x: home.x + 0.07, y: 0 } }, [cpf], sym('C'), { labelSide: 'upRight' });
+  const pa = pin({ on: ppf.id, x: { x: home.x, y: 0 } }, [ppf], sym('A'), { labelSide: 'downLeft' });
+  // The same X as before trade: C on the CPF straight above A, following it.
+  const pc = pin({ on: cpf.id, x: at(pa) }, [cpf, pa], sym('C'), { labelSide: 'upRight' });
   return finish(
     axes(GOOD.x, GOOD.y, {
       curves: [ppf, cpf, tot],
-      points: [pin({ on: ppf.id, x: { x: home.x, y: 0 } }, [ppf], sym('A'), { labelSide: 'downLeft' }), pb, pc],
+      points: [pa, pb, pc],
       spans: [
         span(at(pc), at(pb), 'bracket', { along: 'x', label: bi('exports', '出口') }),
         span(at(pb), at(pc), 'bracket', { along: 'y', label: bi('imports', '進口') }),
+        gainFromTrade(pc, ppf),
       ],
     }),
   );

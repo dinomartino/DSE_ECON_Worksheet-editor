@@ -211,7 +211,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Linear PPFs from data; specialise at an intercept | `ppf-linear-trade`, `ppf-two-countries` (axis max 100) | C |
 | Concave: production where TOT is tangent | `ppf-concave-trade`: CPF tangent at B | C |
 | CPF slope TOT, parallel to the world price line, for both | TOT guide parallel to CPF; `ppf-two-countries` parallel CPFs | C |
-| Consumption on the CPF outside the PPF; "same X" constraint | C anchored on the CPF at a fixed X | P — X not tied to A |
+| Consumption on the CPF outside the PPF; "same X" constraint | C anchored on the CPF above A (A's X), in both PPF-trade templates | C |
 | Export and import volumes as axis brackets | `bracket` spans in both PPF-trade templates | C |
 | Growth shifts the PPF (and CPF) | `ppf-shift`; CPF by hand | P — CPF not in the template |
 | One mark per element | — | n/a |
@@ -342,7 +342,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Item | Met by | St. |
 |---|---|---|
 | Specialisation point, trade line at world price, consumption | `ppf-linear-trade`, `ppf-concave-trade` | C |
-| Gain as C's distance from the PPF; export / import brackets | brackets in both; the gain as a span by hand | P — gain span manual |
+| Gain as C's distance from the PPF; export / import brackets | brackets in both; the gain a `doubleArrow` span from C to the PPF below it | C |
 
 ### Money market (MCQ)
 | Item | Met by | St. |
