@@ -1193,6 +1193,11 @@ geometry underneath stays byte-identical to what exports.
   relation's object detaches it (a numeric level moves its number; a `shift` copy
   changes its `by`); releasing a point or span end on a crossing attaches it; deleting
   what one names freezes it (`detachRelations`).
+- **The shift arrow follows too**: "Shift a copy" stores `DiagramArrow.follows` (the copy's
+  id); `resolveDiagram` redraws it between the source and copy (`shiftArrowEnds`), plus a
+  `followOffset` a whole-arrow drag writes. Dragging an end, or losing the copy, detaches it.
+- **`{ on, y, last }`** reads the last place a curve reaches a height: the far end of an
+  import quota's flat step, which the template's Q_A span measures. Written at schema 2.
 - **A shifted copy is `shift`, not `parallel`**: D₁ or S₁ = S + t is the source's own
   points moved by `by`, so it keeps its length and follows the source (a tax stays t
   when S is dragged). `parallel` is a line through a place, across the plot unless `ys`
@@ -1217,7 +1222,9 @@ carries its name. A drag accumulates the pointer delta onto the offset; tick lab
 slide along their own axis only; axis titles nudge inside their reserved room. A point
 label: eight compass slots (`labelSide`) or a free-drag `labelOffset` that supersedes
 them; picking a side clears the offset. Deleting anchored text deletes the text, never
-its anchor.
+its anchor. A sloped curve whose named end lies on the y-axis (a CPF
+tangent once B nears the axis) mirrors its name's push into the plot (`curveLabelAnchor`);
+a flat line keeps its name outside, where a tick's goes.
 
 ### A shaded area is references, not coordinates (`model/diagramAreas.ts`)
 

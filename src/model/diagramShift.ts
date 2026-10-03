@@ -1,6 +1,6 @@
 import { DIAGRAM_PLOT_ASPECT, type Diagram, type DiagramCurve, type DiagramPoint, type DiagramPointMark } from './diagram';
 import { curveCrossing, curveSlopeSign } from './diagramAreas';
-import { translateCurvePoints } from './diagramAnchors';
+import { shiftArrowEnds, translateCurvePoints } from './diagramAnchors';
 
 export { translateCurvePoints };
 import type { BiText, InlineRun } from './types';
@@ -105,16 +105,12 @@ export function shiftCurve(
   let next: Diagram = { ...diagram, curves: [...diagram.curves, copy] };
 
   // The shift arrow, the templates' convention: between the two curves, a quarter of
-  // the way down from the original's upper end, where it clears the equilibria.
-  const upper = [...original.points].sort((a, b) => b.y - a.y);
-  const top = upper[0];
-  const far = upper[upper.length - 1];
-  const from = { x: top.x + (far.x - top.x) * 0.25, y: top.y + (far.y - top.y) * 0.25 };
-  const inset = 0.15;
-  const tail = { x: from.x + delta.x * inset, y: from.y + delta.y * inset };
-  const head = { x: from.x + delta.x * (1 - inset), y: from.y + delta.y * (1 - inset) };
-  if ([tail, head].every((p) => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1)) {
-    next = { ...next, arrows: [...next.arrows, { id: mint(), from: tail, to: head }] };
+  // the way down from the original's upper end, where it clears the equilibria. It
+  // follows the copy (`follows`), so moving either curve carries it.
+  const ends = shiftArrowEnds(original.points, delta);
+  if (ends && ends.every((p) => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1)) {
+    const [tail, head] = ends;
+    next = { ...next, arrows: [...next.arrows, { id: mint(), from: tail, to: head, follows: copy.id }] };
   }
 
   const counterpart = counterpartOf(diagram, original);

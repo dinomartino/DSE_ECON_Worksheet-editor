@@ -1274,8 +1274,9 @@ export function DiagramCanvas({
           : 'zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm'
       }
     >
-      {/* One row from 1470 (a 13-inch Mac): the heading is for readers only, clipboard
-          shortcuts live in the tooltip, and the overlay's hint sits over the stage. */}
+      {/* One row from 1024 (`canvasToolbar.test.ts`): the heading is for readers only,
+          clipboard shortcuts live in the tooltip, and the hint and span options sit over
+          the stage. */}
       <header className="flex flex-wrap items-center gap-2 border-b border-line bg-surface px-4 py-3 text-ink">
         {!embedded && <span className="sr-only">{m.heading}</span>}
 

@@ -37,9 +37,14 @@ export function curveYAt(curve: DiagramCurve, x: number): number | null {
   return null;
 }
 
-/** Where the curve reaches height `y` — the first non-flat segment spanning it — or null. */
-export function curveXAt(curve: DiagramCurve, y: number): number | null {
-  for (let i = 0; i < curve.points.length - 1; i += 1) {
+/**
+ * Where the curve reaches height `y` — the first non-flat segment spanning it (the last,
+ * with `last`) — or null.
+ */
+export function curveXAt(curve: DiagramCurve, y: number, last = false): number | null {
+  const n = curve.points.length - 1;
+  for (let k = 0; k < n; k += 1) {
+    const i = last ? n - 1 - k : k;
     const a = curve.points[i];
     const b = curve.points[i + 1];
     if (Math.abs(b.y - a.y) < EPS) continue;
@@ -225,6 +230,24 @@ export function importQuotaPoints(points: DiagramPoint[], price: number, by: num
   return [...byY.filter((p) => p.y < price - EPS), kink, ...(upper ?? [{ x: clampUnit(kx + by), y: price }])];
 }
 
+/**
+ * Where "Shift a copy" draws its arrow: from `source` toward its copy moved by `by`, a
+ * quarter of the way down from the source's upper end, inset 15% of the shift at each
+ * end so neither head touches a line. Null when the source has no points.
+ */
+export function shiftArrowEnds(source: DiagramPoint[], by: DiagramPoint): [DiagramPoint, DiagramPoint] | null {
+  if (source.length === 0) return null;
+  const upper = [...source].sort((a, b) => b.y - a.y);
+  const top = upper[0];
+  const far = upper[upper.length - 1];
+  const from = { x: top.x + (far.x - top.x) * 0.25, y: top.y + (far.y - top.y) * 0.25 };
+  const inset = 0.15;
+  return [
+    { x: from.x + by.x * inset, y: from.y + by.y * inset },
+    { x: from.x + by.x * (1 - inset), y: from.y + by.y * (1 - inset) },
+  ];
+}
+
 /** The part of a straight segment between heights `lo` and `hi`, or null (a flat one is kept whole). */
 function withinHeights(line: DiagramPoint[], [lo, hi]: [number, number]): DiagramPoint[] | null {
   const [a, b] = line;
@@ -382,7 +405,7 @@ function createResolver(diagram: Diagram, aspect: number): Resolver {
         return base && y !== null ? { x: base.x, y } : null;
       }
       const level = coordinate(ref.y, 'y');
-      const x = level === null ? null : curveXAt(on, level);
+      const x = level === null ? null : curveXAt(on, level, ref.last === true);
       return level !== null && x !== null ? { x, y: level } : null;
     }
     const x = coordinate(ref.x, 'x');
@@ -484,7 +507,8 @@ const samePoints = (a: DiagramPoint[], b: DiagramPoint[]) =>
  * height ÷ width (only a tangent to a spline depends on it).
  */
 export function resolveDiagram(diagram: Diagram, aspect: number = DIAGRAM_PLOT_ASPECT): Diagram {
-  if (!diagram.points.some((p) => p.anchor) && !diagram.curves.some((c) => c.derive)) return diagram;
+  const following = (diagram.arrows ?? []).some((a) => a.follows);
+  if (!diagram.points.some((p) => p.anchor) && !diagram.curves.some((c) => c.derive) && !following) return diagram;
   const resolver = createResolver(diagram, aspect);
   let changed = false;
   const curves = diagram.curves.map((curve) => {
@@ -501,7 +525,23 @@ export function resolveDiagram(diagram: Diagram, aspect: number = DIAGRAM_PLOT_A
     changed = true;
     return { ...mark, at: { x: at.x, y: at.y } };
   });
-  return changed ? { ...diagram, curves, points } : diagram;
+  // A shift arrow follows its copy and the copy's source; a copy no longer a shift keeps it still.
+  const arrows = following
+    ? diagram.arrows.map((arrow) => {
+        if (!arrow.follows) return arrow;
+        const copy = resolver.curve(arrow.follows);
+        const derive = copy?.derive;
+        const source = derive?.kind === 'shift' ? resolver.curve(derive.of) : null;
+        const ends = derive?.kind === 'shift' && source ? shiftArrowEnds(source.points, derive.by) : null;
+        if (!ends) return arrow;
+        const nudge = arrow.followOffset ?? { x: 0, y: 0 };
+        const [from, to] = ends.map((p) => ({ x: p.x + nudge.x, y: p.y + nudge.y }));
+        if (from.x === arrow.from.x && from.y === arrow.from.y && to.x === arrow.to.x && to.y === arrow.to.y) return arrow;
+        changed = true;
+        return { ...arrow, from, to };
+      })
+    : diagram.arrows;
+  return changed ? { ...diagram, curves, points, arrows } : diagram;
 }
 
 /** Every curve and point id an anchor names. */
@@ -548,7 +588,10 @@ export function renameAnchor(ref: DiagramAnchorRef, renamed: Map<string, string>
     (typeof value === 'number' ? value : renameAnchor(value, renamed)) as T;
   if ('point' in ref) return { point: id(ref.point) };
   if ('cross' in ref) return { cross: [id(ref.cross[0]), id(ref.cross[1])] };
-  if ('on' in ref) return 'x' in ref ? { on: id(ref.on), x: renameAnchor(ref.x, renamed) } : { on: id(ref.on), y: nested(ref.y) };
+  if ('on' in ref) {
+    if ('x' in ref) return { on: id(ref.on), x: renameAnchor(ref.x, renamed) };
+    return ref.last ? { on: id(ref.on), y: nested(ref.y), last: true } : { on: id(ref.on), y: nested(ref.y) };
+  }
   return { x: nested(ref.x), y: nested(ref.y) };
 }
 
@@ -606,6 +649,20 @@ export function detachRelations(before: Diagram, after: Diagram): Diagram {
     const pts = resolved.curves.find((c) => c.id === curve.id)?.points ?? curve.points;
     return { ...rest, points: pts.map((p) => ({ x: p.x, y: p.y })) };
   });
+  // A shift arrow whose copy is gone, or no longer a shift, stays where it is.
+  const copies = new Set(curves.filter((c) => c.derive?.kind === 'shift').map((c) => c.id));
+  const loose = (follows?: string) => follows !== undefined && !copies.has(follows);
+  let arrows = after.arrows;
+  if (after.arrows?.some((arrow) => loose(arrow.follows))) {
+    changed = true;
+    arrows = after.arrows.map((arrow) => {
+      if (!loose(arrow.follows)) return arrow;
+      const rest = { ...arrow };
+      delete rest.follows;
+      delete rest.followOffset;
+      return rest;
+    });
+  }
   let spans = after.spans;
   if (after.spans?.some((span) => broken(spanReferences(span)))) {
     changed = true;
@@ -619,7 +676,7 @@ export function detachRelations(before: Diagram, after: Diagram): Diagram {
     });
   }
   if (!changed) return after;
-  const next: Diagram = { ...after, points, curves };
+  const next: Diagram = { ...after, points, curves, arrows };
   if (spans) next.spans = spans;
   return next;
 }

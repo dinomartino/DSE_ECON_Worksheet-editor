@@ -164,6 +164,14 @@ export interface DiagramArrow {
    * relative so that re-aiming the arrow carries its label along.
    */
   labelOffset?: DiagramPoint;
+  /**
+   * Set by "Shift a copy": the id of the `shift` copy this arrow points at. The arrow is
+   * then drawn between that copy's source and the copy (`shiftArrowEnds`), so it follows
+   * either one; `followOffset` is a hand nudge on top. `from`/`to` keep the last resolved
+   * ends for builds that ignore this. Dragging an end detaches it.
+   */
+  follows?: string;
+  followOffset?: DiagramPoint;
   /** Teacher only: part of the model answer drawn on this diagram (`model/diagramAnswers.ts`). Absent = question. */
   answer?: true;
 }
@@ -212,8 +220,11 @@ export type DiagramAnchorRef =
   | { cross: [string, string] }
   /** On curve `on`, directly above or below `x`'s position — the producer price under a tax. */
   | { on: string; x: DiagramAnchorRef }
-  /** On curve `on`, level with `y` — Qd and Qs at a ceiling, Q₁ at Pw + t. */
-  | { on: string; y: DiagramAnchorRef | number }
+  /**
+   * On curve `on`, level with `y` — Qd and Qs at a ceiling, Q₁ at Pw + t. `last` takes the
+   * last place it reaches that height, not the first: the far end of a quota's flat step.
+   */
+  | { on: string; y: DiagramAnchorRef | number; last?: true }
   /** One anchor's x with another's y (new Q, old P); a number is a fixed unit value. */
   | { x: DiagramAnchorRef | number; y: DiagramAnchorRef | number };
 

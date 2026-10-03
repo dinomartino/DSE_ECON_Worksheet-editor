@@ -469,22 +469,27 @@ export function applyDrag(
         ...diagram,
         labels: mapById(diagram.labels, handle.labelId, (label) => ({ ...label, at: target })),
       };
+    // Re-aiming a shift arrow by an end detaches it from its copy; moving it whole keeps
+    // it following, the move stored as a nudge (`followOffset`).
     case 'arrowFrom':
       return {
         ...diagram,
-        arrows: mapById(diagram.arrows, handle.arrowId, (arrow) => ({ ...arrow, from: target })),
+        arrows: mapById(diagram.arrows, handle.arrowId, (arrow) => ({ ...unfollow(arrow), from: target })),
       };
     case 'arrowTo':
       return {
         ...diagram,
-        arrows: mapById(diagram.arrows, handle.arrowId, (arrow) => ({ ...arrow, to: target })),
+        arrows: mapById(diagram.arrows, handle.arrowId, (arrow) => ({ ...unfollow(arrow), to: target })),
       };
     case 'arrow':
       return {
         ...diagram,
         arrows: mapById(diagram.arrows, handle.arrowId, (arrow) => {
           const [start, end] = shift([arrow.from, arrow.to], dx, dy);
-          return { ...arrow, from: start, to: end };
+          if (!arrow.follows) return { ...arrow, from: start, to: end };
+          // The nudge is what the clamped move actually did, so the two agree at an edge.
+          const moved = { x: start.x - arrow.from.x, y: start.y - arrow.from.y };
+          return { ...arrow, from: start, to: end, followOffset: nudge(arrow.followOffset, moved.x, moved.y) };
         }),
       };
 
@@ -617,6 +622,15 @@ function withoutDerive(curve: DiagramCurve): DiagramCurve {
   if (!curve.derive) return curve;
   const rest = { ...curve };
   delete rest.derive;
+  return rest;
+}
+
+/** An arrow no longer following a shift copy (its ends were placed by hand). */
+function unfollow(arrow: DiagramArrow): DiagramArrow {
+  if (!arrow.follows) return arrow;
+  const rest = { ...arrow };
+  delete rest.follows;
+  delete rest.followOffset;
   return rest;
 }
 
@@ -1284,7 +1298,11 @@ export function pasteInto(
   const arrows = clip.arrows.map((arrow) => {
     const id = mint();
     handles.push({ kind: 'arrow', arrowId: id });
-    return { ...arrow, id, from: shiftPoint(arrow.from), to: shiftPoint(arrow.to) };
+    const pasted = { ...arrow, id, from: shiftPoint(arrow.from), to: shiftPoint(arrow.to) };
+    // It keeps following only a copy pasted with it; otherwise it is a plain arrow.
+    const copy = arrow.follows ? renamed.get(arrow.follows) : undefined;
+    if (copy && curves.some((c) => c.id === copy && c.derive?.kind === 'shift')) return { ...pasted, follows: copy };
+    return unfollow(pasted);
   });
 
   const areas = (clip.areas ?? []).map((area) => {
@@ -1367,10 +1385,24 @@ export function dragHandles(
   const bodies = new Set(
     handles.flatMap((h) => (h.kind === 'curve' ? [h.curveId] : h.kind === 'point' ? [h.pointId] : [])),
   );
-  if (bodies.size < 2) return moved;
+  // A shift arrow moved with its copy or the copy's source is carried by them: no nudge.
+  const carried = (follows: string) => {
+    const derive = diagram.curves.find((c) => c.id === follows)?.derive;
+    return bodies.has(follows) || (derive?.kind === 'shift' && bodies.has(derive.of));
+  };
+  const arrows = moved.arrows.map((arrow) => {
+    const original = diagram.arrows.find((a) => a.id === arrow.id);
+    if (!arrow.follows || !original || !carried(arrow.follows) || arrow.followOffset === original.followOffset) return arrow;
+    const rest = { ...arrow };
+    if (original.followOffset) rest.followOffset = original.followOffset;
+    else delete rest.followOffset;
+    return rest;
+  });
+  if (bodies.size < 2) return arrows === moved.arrows ? moved : { ...moved, arrows };
   const kept = (ids: string[]) => ids.length > 0 && ids.every((id) => bodies.has(id));
   return {
     ...moved,
+    arrows,
     points: moved.points.map((mark) => {
       const original = diagram.points.find((p) => p.id === mark.id);
       return bodies.has(mark.id) && !mark.anchor && original?.anchor && kept(anchorReferences(original.anchor))
