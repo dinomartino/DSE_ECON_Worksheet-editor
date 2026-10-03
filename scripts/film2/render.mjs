@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Renders the v2 stage to video (FILM.md §7). N Chrome workers each render a contiguous frame
 // range: film.seek(t) → CDP screenshot (PNG) → their own lossless ffmpeg segment; segments are
-// concatenated and encoded once, muxed with the music master (MUSIC.audio) and, when it exists,
-// $FILM_OUT/audio/sfx.wav. The stage is DOM/SVG: no GPU needed, no score gate.
+// concatenated and encoded once, muxed with $FILM_OUT/audio/mix.wav (music + sfx, audio/mix.mjs) when it exists, else the
+// music master (MUSIC.audio). The stage is DOM/SVG: no GPU needed, no score gate.
 //
 //   node scripts/film2/render.mjs --preview              960×540 30 fps
 //   node scripts/film2/render.mjs --final                1920×1080 60 fps (the default)
@@ -101,21 +101,16 @@ async function capture(cdp) {
   return Buffer.from(data, 'base64');
 }
 
-/** The audio inputs + filter for [from, from + dur): the music master and sfx.wav if present. */
+/** The audio input for [from, from + dur): audio/mix.wav (music + sfx, mastered, film time) when
+ *  built (`npm run film2:audio`), else the music master alone, else silence. */
 function audioArgs(from, dur) {
-  const at = (from + TL.MUSIC.offset).toFixed(6);
-  const sfx = resolve(AUDIO, 'sfx.wav');
+  const mix = resolve(AUDIO, 'mix.wav');
+  if (existsSync(mix)) return { inputs: ['-ss', from.toFixed(6), '-t', dur.toFixed(6), '-i', mix], map: ['-map', '1:a:0'], used: mix };
   if (!existsSync(MUSIC_FILE)) {
     return { inputs: ['-f', 'lavfi', '-t', dur.toFixed(6), '-i', 'anullsrc=r=48000:cl=stereo'], map: ['-map', '1:a:0'], used: 'silent' };
   }
-  const inputs = ['-ss', at, '-t', dur.toFixed(6), '-i', MUSIC_FILE];
-  if (!existsSync(sfx)) return { inputs, map: ['-map', '1:a:0'], used: MUSIC_FILE };
-  inputs.push('-ss', from.toFixed(6), '-t', dur.toFixed(6), '-i', sfx);
-  return {
-    inputs,
-    map: ['-filter_complex', '[1:a][2:a]amix=inputs=2:normalize=0:duration=first[a]', '-map', '[a]'],
-    used: `${MUSIC_FILE} + ${sfx}`,
-  };
+  const at = (from + TL.MUSIC.offset).toFixed(6);
+  return { inputs: ['-ss', at, '-t', dur.toFixed(6), '-i', MUSIC_FILE], map: ['-map', '1:a:0'], used: MUSIC_FILE };
 }
 
 export async function render(args) {

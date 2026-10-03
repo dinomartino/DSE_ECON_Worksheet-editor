@@ -1,0 +1,218 @@
+[
+ {
+  "t": 0.5,
+  "kind": "whoosh",
+  "source": "test",
+  "size": "l"
+ },
+ {
+  "t": 1,
+  "kind": "click",
+  "source": "test",
+  "x": 1440
+ },
+ {
+  "t": 1.04,
+  "kind": "click",
+  "source": "test",
+  "x": 1460
+ },
+ {
+  "t": 1.08,
+  "kind": "click",
+  "source": "test",
+  "x": 1480
+ },
+ {
+  "t": 1.12,
+  "kind": "click",
+  "source": "test",
+  "x": 1500
+ },
+ {
+  "t": 1.16,
+  "kind": "click",
+  "source": "test",
+  "x": 1520
+ },
+ {
+  "t": 1.2,
+  "kind": "click",
+  "source": "test",
+  "x": 1540
+ },
+ {
+  "t": 1.24,
+  "kind": "click",
+  "source": "test",
+  "x": 1560
+ },
+ {
+  "t": 1.28,
+  "kind": "click",
+  "source": "test",
+  "x": 1580
+ },
+ {
+  "t": 1.32,
+  "kind": "click",
+  "source": "test",
+  "x": 1600
+ },
+ {
+  "t": 1.3599999999999999,
+  "kind": "click",
+  "source": "test",
+  "x": 1620
+ },
+ {
+  "t": 1.4,
+  "kind": "click",
+  "source": "test",
+  "x": 1640
+ },
+ {
+  "t": 1.44,
+  "kind": "click",
+  "source": "test",
+  "x": 1660
+ },
+ {
+  "t": 1.6,
+  "kind": "click",
+  "source": "test",
+  "x": 600
+ },
+ {
+  "t": 1.9,
+  "kind": "dblclick",
+  "source": "test",
+  "x": 2200
+ },
+ {
+  "t": 2.2,
+  "kind": "key",
+  "source": "test"
+ },
+ {
+  "t": 2.31,
+  "kind": "key",
+  "source": "test"
+ },
+ {
+  "t": 2.5,
+  "kind": "key",
+  "source": "test"
+ },
+ {
+  "t": 2.62,
+  "kind": "key",
+  "source": "test"
+ },
+ {
+  "t": 2.8,
+  "kind": "key",
+  "source": "test"
+ },
+ {
+  "t": 2.93,
+  "kind": "key",
+  "source": "test"
+ },
+ {
+  "t": 3,
+  "kind": "pencil",
+  "source": "test"
+ },
+ {
+  "t": 3.1,
+  "kind": "key",
+  "source": "test"
+ },
+ {
+  "t": 3.2,
+  "kind": "key",
+  "source": "test"
+ },
+ {
+  "t": 3.4,
+  "kind": "key",
+  "source": "test"
+ },
+ {
+  "t": 3.7,
+  "kind": "pop",
+  "source": "test"
+ },
+ {
+  "t": 4.2,
+  "kind": "paper",
+  "source": "test"
+ },
+ {
+  "t": 4.6,
+  "kind": "drag-start",
+  "source": "test",
+  "x": 900
+ },
+ {
+  "t": 4.9,
+  "kind": "drag-end",
+  "source": "test",
+  "x": 1500
+ },
+ {
+  "t": 5,
+  "kind": "riser",
+  "source": "test",
+  "dur": 2
+ },
+ {
+  "t": 5,
+  "kind": "hit",
+  "source": "test",
+  "strength": 1
+ },
+ {
+  "t": 5.5,
+  "kind": "toggle",
+  "source": "test"
+ },
+ {
+  "t": 5.8,
+  "kind": "snap",
+  "source": "test"
+ },
+ {
+  "t": 6.1,
+  "kind": "page",
+  "source": "test"
+ },
+ {
+  "t": 6.4,
+  "kind": "shimmer",
+  "source": "test"
+ },
+ {
+  "t": 7,
+  "kind": "sfx",
+  "source": "test",
+  "sfx": "chime"
+ },
+ {
+  "t": 7.6,
+  "kind": "shutter",
+  "source": "test"
+ },
+ {
+  "t": 8,
+  "kind": "accent",
+  "source": "test"
+ },
+ {
+  "t": 8.4,
+  "kind": "whoosh",
+  "source": "test",
+  "size": "s"
+ }
+]
