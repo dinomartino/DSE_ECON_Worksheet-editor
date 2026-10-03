@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { summarize } from '@/storage/document';
 import { rowsOf } from '@/library/indexer';
 import { patternWrites, renamePatternEdit } from '@/library/patterns';
 import { stateOfRow, withSharedTags } from '@/library/sharedTags';
@@ -163,7 +164,7 @@ describe('tagging a question part by part (Edit topics, tag as you go)', () => {
 describe('the bank’s whole-question writes reach every part', () => {
   function memoryStore(docs: Worksheet[]) {
     const saved = new Map(docs.map((doc) => [doc.id, doc]));
-    return { saved, load: async (id: string) => saved.get(id), save: async (doc: Worksheet) => void saved.set(doc.id, doc) };
+    return { saved, list: async () => [...saved.values()].map(summarize), load: async (id: string) => saved.get(id), save: async (doc: Worksheet) => void saved.set(doc.id, doc) };
   }
 
   it('bulk Set topic (Add) on two questions with parts tags every part of every copy', async () => {

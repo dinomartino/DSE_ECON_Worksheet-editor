@@ -129,8 +129,12 @@ function byDocument(refs: readonly CopyRef[]): Doc[] {
   return [...docs.values()];
 }
 
-/** The document, if the bank may write it; else why not. */
-async function writable(store: Store, docId: string, live: ReadonlySet<string>): Promise<Worksheet | CopySkip> {
+/**
+ * The document, if the bank may write it; else why not. `live` is the store's listed ids
+ * (`liveIds`): a document not listed is in Trash or gone, whatever a stale row says. Topic
+ * writes (`tagWrites.ts:writeTags`) use the same check.
+ */
+export async function writableDocument(store: Pick<Store, 'load'>, docId: string, live: ReadonlySet<string>): Promise<Worksheet | CopySkip> {
   if (!live.has(docId)) {
     const there = await store.load(docId).catch(() => undefined);
     return { docId, reason: there ? SKIP_REASON.trash : SKIP_REASON.gone };
@@ -142,7 +146,7 @@ async function writable(store: Store, docId: string, live: ReadonlySet<string>):
   return worksheet;
 }
 
-const liveIds = async (store: Store) => new Set((await store.list()).map((summary) => summary.id));
+export const liveIds = async (store: Pick<Store, 'list'>) => new Set((await store.list()).map((summary) => summary.id));
 
 /** `worksheet` with `question` in place of the question of that id. */
 const withQuestion = (worksheet: Worksheet, question: Question): Worksheet => ({
@@ -167,7 +171,7 @@ export async function writeIntoCopies(
   const live = await liveIds(store);
   for (const { docId, refs } of byDocument(input.copies)) {
     try {
-      const loaded = await writable(store, docId, live);
+      const loaded = await writableDocument(store, docId, live);
       if (!('id' in loaded)) {
         result.skipped.push(...refs.map((ref) => ({ ...loaded, questionId: ref.questionId })));
         continue;
@@ -265,7 +269,7 @@ export async function restoreCopies(store: Store, records: readonly CopyRecord[]
   for (const record of records) docs.set(record.docId, [...(docs.get(record.docId) ?? []), record]);
   for (const [docId, list] of docs) {
     try {
-      const loaded = await writable(store, docId, live);
+      const loaded = await writableDocument(store, docId, live);
       if (!('id' in loaded)) {
         result.skipped.push(...list.map((r) => ({ ...loaded, questionId: r.questionId })));
         continue;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { summarize } from '@/storage/document';
 import { rowsOf } from '@/library/indexer';
 import { choiceQuestion, docWith, partedQuestion, partsQuestion, row } from '@/library/testKit';
 import { copyQuestion } from '@/model/lineage';
@@ -68,7 +69,7 @@ describe('writeTags', () => {
     return {
       saved,
       writes,
-      load: async (id: string) => saved.get(id),
+      list: async () => [...saved.values()].map(summarize), load: async (id: string) => saved.get(id),
       save: async (worksheet: Worksheet) => {
         writes.push(worksheet.id);
         saved.set(worksheet.id, worksheet);
@@ -111,6 +112,29 @@ describe('writeTags', () => {
     );
     expect(store.writes).toEqual([]);
     expect(report.failed.map((f) => f.docId)).toEqual([newer.id, 'gone']);
+  });
+
+  it('never writes a trashed or hidden document from a stale row', async () => {
+    const q1 = choiceQuestion('trashed');
+    const q2 = choiceQuestion('hidden');
+    const trashed = docWith([q1]);
+    const hidden = docWith([q2], { bankHidden: true });
+    const store = memoryStore([trashed, hidden]);
+    // Trash keeps the document but takes it off the list.
+    const listed = { ...store, list: async () => [summarize(hidden)] };
+    const report = await writeTags(
+      listed,
+      [
+        { docId: trashed.id, questionId: q1.id },
+        { docId: hidden.id, questionId: q2.id },
+      ],
+      addTopics(['A']),
+    );
+    expect(store.writes).toEqual([]);
+    expect(report.failed).toEqual([
+      { docId: trashed.id, reason: 'it is in Trash' },
+      { docId: hidden.id, reason: 'it is hidden from the question bank' },
+    ]);
   });
 });
 
@@ -179,7 +203,7 @@ describe('an edit applied to the shared set (newest change wins)', () => {
     const docA = docWith([original]);
     const docB = docWith([copy]);
     const saved = new Map([docA, docB].map((doc) => [doc.id, doc]));
-    const store = { load: async (id: string) => saved.get(id), save: async (w: Worksheet) => void saved.set(w.id, w) };
+    const store = { list: async () => [...saved.values()].map(summarize), load: async (id: string) => saved.get(id), save: async (w: Worksheet) => void saved.set(w.id, w) };
     const rows = [docA, docB].flatMap((doc) => rowsOf(doc));
     await writeTags(store, copyWrites(rows, [original.id]), addTopics(['D']), undefined, NOW);
     expect(saved.get(docA.id)!.questions[0].tagsAt).toBe(NOW);
@@ -190,7 +214,7 @@ describe('an edit applied to the shared set (newest change wins)', () => {
 describe('an edit from the bank reaches every copy', () => {
   function memoryStore(docs: Worksheet[]) {
     const saved = new Map(docs.map((doc) => [doc.id, doc]));
-    return { saved, load: async (id: string) => saved.get(id), save: async (w: Worksheet) => void saved.set(w.id, w) };
+    return { saved, list: async () => [...saved.values()].map(summarize), load: async (id: string) => saved.get(id), save: async (w: Worksheet) => void saved.set(w.id, w) };
   }
 
   it('gives every writable copy the same topics and reports a copy from a newer build', async () => {
@@ -248,7 +272,7 @@ describe('writes to a question tagged per part', () => {
     return {
       saved,
       writes,
-      load: async (id: string) => saved.get(id),
+      list: async () => [...saved.values()].map(summarize), load: async (id: string) => saved.get(id),
       save: async (w: Worksheet) => {
         writes.push(w.id);
         saved.set(w.id, w);

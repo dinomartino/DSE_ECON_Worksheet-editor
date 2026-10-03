@@ -484,6 +484,12 @@ a version heading is edited afterwards.
   <!-- zh: **從題庫分頁拖曳時，復原會暫停。** 拖曳途中按 ⌘Z（或 Ctrl+Z），以往會在你手
   上的題目下方改動工作紙。現在放手之前不會有任何動作；放下後，按一次復原便會把
   新題目移走。 -->
+- **Changing topics in the question bank never brings a paper back from Trash.** A topic
+  change that reached a copy in a paper you had just moved to Trash, or hidden from the
+  bank, could save into it. Those papers are now left as they are, and the bank says why.
+  <!-- zh: **在題庫更改課題，不會再把工作紙從垃圾桶救回。** 若課題更改涉及一份剛移到垃圾桶
+  或已在題庫隱藏的工作紙中的副本，以往可能會儲存到該工作紙。現在這些工作紙會保持原樣，
+  題庫亦會說明原因。 -->
 
 ## 0.5.0 — 2026-09-28
 

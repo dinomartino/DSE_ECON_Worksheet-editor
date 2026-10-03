@@ -1,5 +1,4 @@
 import { rootIdOf } from '@/model/lineage';
-import { isNewerThanBuild } from '@/model/migrations';
 import { parsePatternTag } from '@/model/patterns';
 import {
   collapseTagState,
@@ -17,6 +16,7 @@ import {
 } from '@/model/tagSlots';
 import { topicOf } from '@/model/topics';
 import type { Question, Worksheet } from '@/model/types';
+import { liveIds, writableDocument } from './sameCopies';
 import { stateOfRow } from './sharedTags';
 import type { BankRow, BankSlot } from './types';
 import type { WorksheetStore } from '@/storage/types';
@@ -324,11 +324,12 @@ export interface WriteReport {
 /**
  * Apply `edit` to each listed question (to its `shared` state when the write carries one):
  * one load and one save per owning document, so a bulk "Set topic" over 40 questions in 3
- * papers is 3 writes, every copy under the one stamp `now`. A document from a newer build
- * is never rewritten (the store would refuse; this says why first).
+ * papers is 3 writes, every copy under the one stamp `now`. A document in Trash, hidden
+ * from the bank, or from a newer build is never written, even from a stale row; each is
+ * reported (`writableDocument`, the check ✦ Fill uses).
  */
 export async function writeTags(
-  store: Pick<WorksheetStore, 'load' | 'save'>,
+  store: Pick<WorksheetStore, 'list' | 'load' | 'save'>,
   writes: readonly TagWrite[],
   edit: TagEdit | StateEdit,
   /** Checked just before each document is read: true leaves it alone, unreported. */
@@ -345,16 +346,20 @@ export async function writeTags(
     shared.set(write.docId, bases);
   }
   const report: WriteReport = { saved: [], failed: [] };
+  if (byDoc.size === 0) return report;
+  let live: ReadonlySet<string>;
+  try {
+    live = await liveIds(store);
+  } catch (cause) {
+    const reason = cause instanceof Error ? cause.message : 'it could not be saved';
+    return { saved: [], failed: [...byDoc.keys()].filter((docId) => !skip(docId)).map((docId) => ({ docId, reason })) };
+  }
   for (const [docId, questionIds] of byDoc) {
     if (skip(docId)) continue;
     try {
-      const worksheet = await store.load(docId);
-      if (!worksheet) {
-        report.failed.push({ docId, reason: 'it is no longer saved here' });
-        continue;
-      }
-      if (isNewerThanBuild(worksheet)) {
-        report.failed.push({ docId, reason: 'it was saved by a newer version of the app' });
+      const worksheet = await writableDocument(store, docId, live);
+      if (!('id' in worksheet)) {
+        report.failed.push({ docId, reason: worksheet.reason });
         continue;
       }
       const next = withQuestionTags(worksheet, questionIds, edit, now, shared.get(docId));
