@@ -9,7 +9,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DURATION, MUSIC } from '../timeline.mjs';
+import { DURATION, MUSIC, AUDIBLE_END } from '../timeline.mjs';
+// The tail fade starts only once the music has resolved (AUDIBLE_END, 107.65 s): never under it.
+const TAIL = Math.max(0.05, DURATION - AUDIBLE_END);
 import { AUDIO, MUSIC_FILE } from '../paths.mjs';
 import { readWav, writeWav } from './wav.mjs';
 import { cli } from './cli.mjs';
@@ -18,7 +20,9 @@ const SR = 48000;
 const LIM_DELAY = 5 * 48; // samples: alimiter attack 5 ms at 48 kHz
 const DUCK = {
   impact: { depth: 3.5, pre: 0.05, hold: 0.3, release: 1.2 }, // dB, s
-  cluster: { depth: 1.5, pre: 0.08, hold: 0.0, release: 0.5, count: 5, window: 1.0 }, // ≥ count voices within window
+  cluster: { depth: 2, pre: 0.08, hold: 0.0, release: 0.5, count: 5, window: 1.0 }, // dense UI: ≥ count voices within window
+  light: { depth: 1.5, pre: 0.02, hold: 0.15, release: 0.4 }, // under whooshes, pops, the chime
+  paper: { depth: 1, pre: 0.02, hold: 0.25, release: 0.3 }, // under paper deals
 };
 
 /** Music gain envelope in dB (≤ 0), one value per ms: the minimum of every duck. */
@@ -35,8 +39,11 @@ export function duckEnvelope(placed, duration) {
   };
   const ducks = [];
   for (const v of placed) if (v.duck) {
-    duck(v.event_t, v.event_t + DUCK.impact.hold, DUCK.impact);
-    ducks.push({ kind: 'impact', t: v.event_t, ...DUCK.impact });
+    const kind = v.duck === true ? 'impact' : v.duck;
+    const d = DUCK[kind];
+    if (!d) continue;
+    duck(v.event_t, v.event_t + d.hold, d);
+    ducks.push({ kind, t: v.event_t, ...d });
   }
   const ts = placed.map((v) => v.event_t).sort((a, b) => a - b);
   const C = DUCK.cluster;
@@ -72,7 +79,7 @@ function encode(src, dst, gainDb, limitDb) {
   if (r.status !== 0) throw new Error(`ffmpeg: ${r.stderr}`);
 }
 
-export function mix({ sfxFile, out, duration = DURATION, fade = 1, target = -16, tpMax = -1 }) {
+export function mix({ sfxFile, out, duration = DURATION, fade = TAIL, target = -16, tpMax = -1 }) {
   mkdirSync(dirname(out), { recursive: true });
   if (!existsSync(MUSIC_FILE)) throw new Error(`music master missing: ${MUSIC_FILE}`);
   const music = readWav(MUSIC_FILE);
@@ -127,13 +134,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     sfx: '<wav> sfx track (default $FILM_OUT/audio/sfx.wav; music only if missing)',
     out: '<wav> output (default $FILM_OUT/audio/mix.wav)',
     duration: '<s> length (default the film DURATION)',
-    fade: '<s> tail fade-out (default 1)',
+    fade: `<s> tail fade-out (default ${TAIL.toFixed(2)}: from AUDIBLE_END to the end)`,
     target: '<LUFS> integrated loudness (default -16)',
     tp: '<dBTP> true-peak ceiling (default -1)',
   });
   const r = mix({
     sfxFile: resolve(a.sfx ?? resolve(AUDIO, 'sfx.wav')), out: resolve(a.out ?? resolve(AUDIO, 'mix.wav')),
-    duration: Number(a.duration ?? DURATION), fade: Number(a.fade ?? 1), target: Number(a.target ?? -16), tpMax: Number(a.tp ?? -1),
+    duration: Number(a.duration ?? DURATION), fade: Number(a.fade ?? TAIL), target: Number(a.target ?? -16), tpMax: Number(a.tp ?? -1),
   });
   console.log(`mix: ${r.final.lufs} LUFS, ${r.final.tp} dBTP, LRA ${r.final.lra} (premix ${r.premix.lufs} LUFS, ${r.iterations.length} passes, ${r.ducks.length} ducks) → ${r.out}`);
   if (!r.passed) {

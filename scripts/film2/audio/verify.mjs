@@ -61,7 +61,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   console.log(`mix: ${m.lufs} LUFS integrated, ${m.tp} dBTP, LRA ${m.lra}`);
   let bad = Math.abs(m.lufs + 16) > 0.1 || m.tp > -1;
   const cat = Object.fromEntries(JSON.parse(readFileSync(resolve(SFX, 'catalog.json'), 'utf8')).map((c) => [c.name, c]));
-  for (const v of report.placed.filter((p) => p.duck)) {
+  for (const v of report.placed.filter((p) => p.duck === true)) {
     // the file's own loudest sample near its onset marks where its hit sits; it must land at event_t + that distance
     const src = readWav(resolve(SFX, `${v.file}.wav`)), on = cat[v.file].onset_s;
     const dist = peakTime(src, on + 0.03, 0.06) - on;

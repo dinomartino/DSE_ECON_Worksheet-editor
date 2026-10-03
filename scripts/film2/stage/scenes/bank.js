@@ -26,7 +26,7 @@ const inset = (r) => `inset(0 ${(100 * (1 - clamp(r))).toFixed(3)}% 0 0)`;
 const scene = {
   events: [
     { t: 0, kind: 'impact', label: 'the lift: the 題庫 opens' },
-    { t: P(1.5), kind: 'whoosh', size: 'm', label: 'pull back, the topic cards fly in' },
+    // (the whoosh into the lift is timeline.mjs CUES bank.whoosh: it ends 0.35 s after the hit)
     { t: P(3.5), kind: 'shimmer', label: 'the coverage bars draw on' },
     { t: P(24), kind: 'pencil', label: 'the glossary underlines draw on' },
   ],

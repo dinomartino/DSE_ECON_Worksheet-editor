@@ -110,18 +110,27 @@ export function sceneAt(t) {
 }
 
 // Accents and sounds, by stable id <scene>.<name>. kind: 'accent' (a visual hit on the
-// music) | 'sfx' (sound: `sfx` names an entry of audio/sfx/catalog.json). Sorted by t.
+// music) | 'sfx' (sound: `sfx` names a SFX_MAP kind in audio/sfxmap.mjs; an accent may carry one
+// too). Optional: `end: true` (the sound ENDS on t), `dur`, `file`, `gain_db`; `grid: false`
+// marks a cue deliberately off the pulse grid (the doctor skips it). Sorted by t.
 export const CUES = [
   { id: 'mark.tile', t: bar(1.5), kind: 'accent', note: 'the mark starts drawing on the half-bar' },
   { id: 'mark.dot', t: pulse(12 + 5), kind: 'sfx', sfx: 'pop', note: 'the equilibrium dot pops in (splash 740 ms × 3)' },
   { id: 'write.build', t: bar(3), kind: 'accent', note: 'the build: the dot drops onto the desk' },
-  { id: 'draw.body', t: bar(8), kind: 'accent', note: 'body: the hero act' },
-  { id: 'papers.turn', t: bar(14), kind: 'accent' },
-  { id: 'papers.scheme', t: bar(16), kind: 'accent', note: 'cut to the Marking scheme view, its headline' },
+  // Section changes carry a sound (sync review #4): the axis chapters land on whoosh-s.
+  { id: 'draw.body', t: bar(8), kind: 'accent', sfx: 'whoosh-s', note: 'body: the hero act; the chapter axis lands' },
+  { id: 'papers.turn', t: bar(14), kind: 'accent', sfx: 'whoosh-s', note: 'the papers chapter axis lands' },
+  { id: 'papers.scheme', t: bar(16), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the Marking scheme view, its headline' },
   { id: 'papers.mock', t: bar(18), kind: 'accent', note: 'mock papers: the headline, the Paper 1 cover dealt' },
-  { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens' },
-  { id: 'everywhere.cuts', t: bar(24), kind: 'accent' },
+  // The lift (sync review #3): a riser ends 50 ms before the hit so it never smears the impact
+  // (2.7 s, from ~70.2 s); a whoosh into the iris ends 0.35 s after it, when the ring is open.
+  { id: 'bank.riser', t: r6(bar(20) - 0.05), kind: 'sfx', sfx: 'riser', dur: 2.7, grid: false, note: 'the build into the lift' },
+  { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens (bank.js plays the impact)' },
+  { id: 'bank.whoosh', t: r6(bar(20) + 0.35), kind: 'sfx', sfx: 'whoosh', end: true, file: 'whoosh__air-woosh__mixkit-1489', grid: false, note: 'ends as the iris opens' },
+  { id: 'everywhere.cuts', t: bar(24), kind: 'accent', sfx: 'whoosh-s' },
+  { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', grid: false, note: 'the pull-back: its onset half a second before the bar' },
   { id: 'end.pullback', t: bar(26), kind: 'accent', note: 'the pull-back: everything collapses into lines' },
+  { id: 'end.stab', t: r6(bar(29) - 0.5), kind: 'sfx', sfx: 'shimmer', gain_db: -2, grid: false, note: "the music's last stab (104.4 s)" },
 ].sort((a, b) => a.t - b.t);
 
 export const cueAt = (id) => {

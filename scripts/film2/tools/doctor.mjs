@@ -74,7 +74,7 @@ async function timeline() {
     if (!scenes.has(String(c.id).split('.')[0])) bad(`cue ${c.id}: not <scene>.<name>`);
     if (!(c.t >= 0 && c.t <= TL.DURATION)) bad(`cue ${c.id} at ${c.t} s is outside 0..${TL.DURATION}`);
     if (i && c.t < TL.CUES[i - 1].t - 1e-6) bad(`cue ${c.id} comes before ${TL.CUES[i - 1].id}`);
-    if (off(c.t) > FRAME + 1e-6) say('warn', `cue ${c.id} at ${c.t.toFixed(3)} s is off the pulse grid`);
+    if (c.grid !== false && off(c.t) > FRAME + 1e-6) say('warn', `cue ${c.id} at ${c.t.toFixed(3)} s is off the pulse grid`);
   });
   // The iris into write opens out of the mark's dot.
   const { MARK_DOT } = await import('../stage/scenes/mark.js');
