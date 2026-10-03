@@ -2,7 +2,10 @@
 // in English and Traditional Chinese (HK usage). Built into stored documents by
 // seed-docs.test.ts; clips find the documents by these names.
 
-/** The paper the marking-scheme, answer-layer and check-terms clips open. */
+/**
+ * The paper the marking-scheme and check-terms clips open. Two deliberate slips for Check
+ * terms to find: 消費者剩餘 (Q1 D) and 供給 (Q4), mainland wording for 消費者盈餘 and 供應.
+ */
 export const PAPER = {
   name: 'S5 Market Intervention Test',
   title: ['S5 Market Intervention Test', '中五 市場干預測驗'],
@@ -19,14 +22,14 @@ export const PAPER = {
         ['A surplus of face masks', '口罩出現過剩'],
         ['A shortage of face masks', '口罩出現短缺'],
         ['An increase in the quantity supplied', '供應量增加'],
-        ['No change in the quantity transacted', '交易量不變'],
+        ['Consumer surplus of all buyers rises', '所有買家的消費者剩餘增加'],
       ],
       answer: 1,
       rationale: [
         ['A surplus needs a price set above equilibrium.', '過剩只會在價格高於均衡時出現。'],
         ['At the lower price, quantity demanded exceeds quantity supplied.', '在較低價格下，需求量大於供應量。'],
         ['A lower price reduces the quantity supplied.', '價格下降令供應量減少。'],
-        ['Quantity transacted falls to the quantity supplied.', '交易量下降至供應量。'],
+        ['Buyers who cannot buy lose their surplus.', '買不到口罩的買家失去其盈餘。'],
       ],
     },
     {
@@ -72,8 +75,8 @@ export const PAPER = {
     {
       tags: ['C.intervention', 'J.trade'],
       stem: [
-        'An import quota on frozen beef is tightened. Which of the following will happen in the local market?',
-        '政府收緊冷藏牛肉的進口配額。本地市場會出現以下哪項？',
+        'An import quota on frozen beef is tightened, reducing the supply of beef. Which of the following will happen in the local market?',
+        '政府收緊冷藏牛肉的進口配額，令牛肉的供給減少。本地市場會出現以下哪項？',
       ],
       options: [
         ['The price falls and imports rise.', '價格下跌，進口量增加。'],
@@ -158,6 +161,12 @@ export const PAPER = {
       [5, 6, 'Balanced discussion with a reasoned conclusion.', '討論全面，結論有理據。'],
     ],
   },
+};
+
+/** The answer-layer clip's document: PAPER's tax question alone. */
+export const ANSWER_DOC = {
+  name: 'S5 Tax Diagram Practice',
+  title: ['S5 Tax Diagram Practice', '中五 稅項圖解練習'],
 };
 
 /**
@@ -295,15 +304,37 @@ export const LIBRARY = [
         [['Explain the effect on Hong Kong’s imports from Japan.', '解釋這對香港從日本進口的影響。', 2], ['Explain the effect on Hong Kong’s aggregate demand.', '解釋這對香港總需求的影響。', 3]]],
     ],
   },
+  {
+    name: 'S6 Trade, Growth and Equity Quiz',
+    title: ['S6 Trade, Growth and Equity Quiz', '中六 貿易、增長與公平測驗'],
+    classes: ['6B'],
+    satOn: '2026-09-24',
+    q: [
+      [['J.trade'], 'Country A can produce a tonne of rice at a lower opportunity cost than Country B. Country A has', 'A 國生產一公噸白米的機會成本較 B 國低。A 國在生產白米方面具有',
+        [['an absolute advantage in rice.', '絕對優勢。'], ['a comparative advantage in rice.', '比較優勢。'], ['a trade deficit.', '貿易逆差。'], ['a quota on rice.', '配額。']], 1],
+      [['EL2.growth'], 'Which of the following is most likely to raise an economy’s long-run growth?', '以下哪項最可能提高一個經濟體的長期增長？',
+        [['A one-off cash handout', '一次性派發現金'], ['More investment in education', '增加教育投資'], ['A higher import tariff', '提高進口關稅'], ['A fall in the savings rate', '儲蓄率下降']], 1],
+      [['EL2.trade-theory'], 'Terms of trade improve when', '貿易條件改善是指',
+        [['export prices rise relative to import prices.', '出口價格相對進口價格上升。'], ['import volumes rise.', '進口量上升。'], ['the currency depreciates.', '貨幣貶值。'], ['tariffs are removed.', '取消關稅。']], 0],
+      [['E.equity'], 'A progressive income tax means that', '累進入息稅是指',
+        [['everyone pays the same amount.', '每人繳交相同稅款。'], ['the tax rate rises as income rises.', '稅率隨收入上升而上升。'], ['the poor pay a higher rate.', '窮人的稅率較高。'], ['only firms pay tax.', '只有廠商需要繳稅。']], 1],
+      [['G.equilibrium', 'G.as'], 'A rise in oil prices reduces short-run aggregate supply.', '油價上升令短期總供應減少。',
+        [['With the help of an AD-AS diagram, explain the effect on the general price level and real output.', '試以總需求—總供應圖，解釋這對一般物價水平和實質產出的影響。', 4]]],
+      [['EL1.competition-policy', 'E.policy'], 'Two cement suppliers in Hong Kong agree to charge the same price.', '香港兩間水泥供應商協議收取相同價格。',
+        [['Name this anti-competitive behaviour.', '指出這種反競爭行為。', 1], ['Explain how it may harm consumers.', '解釋這可能如何損害消費者。', 3]]],
+    ],
+  },
 ];
 
 /** Every seeded document, newest first, for pinning ages relative to the film's "now". */
 export const AGE_HOURS = {
   [PAPER.name]: 0.3,
+  [ANSWER_DOC.name]: 0.6,
   'S6 Macro Policies Test': 30,
   'S4 Demand and Supply Test': 54,
   'S5 National Income Worksheet': 75,
   'S5 Market Structure Quiz': 120,
+  'S6 Trade, Growth and Equity Quiz': 140,
   'S4 Firms and Production Worksheet': 170,
   'S5 Elasticity Worksheet': 210,
   'S4 Basic Economic Concepts Quiz': 260,

@@ -18,7 +18,7 @@ import { createWorksheetFrom } from '@/model/newWorksheet';
 import { bi } from '@/model/text';
 import type { McqQuestion, Question, StructuredQuestion, Worksheet } from '@/model/types';
 import { stringifyWorksheet, summarize } from '@/storage/document';
-import { AGE_HOURS, LIBRARY, PAPER } from './content.mjs';
+import { AGE_HOURS, ANSWER_DOC, LIBRARY, PAPER } from './content.mjs';
 
 type Pair = [string, string];
 const OUT = process.env.FILM2_SEED ?? '/tmp/film2-seed-docs.json';
@@ -94,8 +94,15 @@ function answerLayerDiagram(template: string) {
 }
 
 /** A classroom worksheet with Section A and B; MCQs go under A, the rest under B. */
-function build(name: string, title: Pair, questions: Question[], meta: { classes: string[]; satOn: string }): Worksheet {
-  const doc = createWorksheetFrom({ documentType: 'classroom', name, title: title[0], titleZh: title[1], paper: 'A4', sections: true });
+function build(
+  name: string,
+  title: Pair,
+  questions: Question[],
+  meta: { classes?: string[]; satOn?: string; sections?: boolean },
+): Worksheet {
+  const doc = createWorksheetFrom({
+    documentType: 'classroom', name, title: title[0], titleZh: title[1], paper: 'A4', sections: meta.sections ?? true,
+  });
   const sections = doc.flow.filter((e) => e.type === 'layout').map((e) => e.id);
   const mcqs = questions.filter((q) => q.type === 'mcq');
   const rest = questions.filter((q) => q.type !== 'mcq');
@@ -106,11 +113,27 @@ function build(name: string, title: Pair, questions: Question[], meta: { classes
   doc.flow.splice(at(sections[0]) + 1, 0, ...mcqs.map(entry));
   const b = sections[1] ? at(sections[1]) : doc.flow.length - 1;
   doc.flow.splice(b + 1, 0, ...rest.map(entry));
-  doc.classes = meta.classes;
-  doc.satOn = meta.satOn;
+  if (meta.classes) doc.classes = meta.classes;
+  if (meta.satOn) doc.satOn = meta.satOn;
   const age = (AGE_HOURS as Record<string, number>)[name] ?? 3;
   doc.createdAt = new Date(EPOCH - age * HOUR - 2 * HOUR).toISOString();
   doc.updatedAt = new Date(EPOCH - age * HOUR).toISOString();
+  return doc;
+}
+
+/** The tax question: blank axes for the student, the answer drawn on them for the teacher. */
+function diagramQuestion(): StructuredQuestion {
+  const g = PAPER.diagram;
+  const dq = structured(g.tags, g.stem as Pair, [{ text: g.part as Pair, marks: g.marks, scheme: points(g.points as Array<[string, string, number]>) }]);
+  dq.parts[0].blocks.push(answerLayerDiagram(g.template));
+  dq.parts[0].answerSpace = 4;
+  return dq;
+}
+
+/** The answer-layer clip's document: the tax question alone, out of the bank (it is in the paper). */
+function diagramPractice(): Worksheet {
+  const doc = build(ANSWER_DOC.name, ANSWER_DOC.title as Pair, [diagramQuestion()], { sections: false });
+  doc.bankHidden = true;
   return doc;
 }
 
@@ -120,16 +143,14 @@ function paper(): Worksheet {
   const sq = structured(s.tags, s.stem as Pair, s.parts.map((p) => ({
     text: p.text as Pair, marks: p.marks, scheme: points(p.points as Array<[string, string, number]>),
   })));
-  const g = PAPER.diagram;
-  const dq = structured(g.tags, g.stem as Pair, [{ text: g.part as Pair, marks: g.marks, scheme: points(g.points as Array<[string, string, number]>) }]);
-  dq.parts[0].blocks.push(answerLayerDiagram(g.template));
-  dq.parts[0].answerSpace = 4;
+  const dq = diagramQuestion();
   const e = PAPER.essay;
   const essay: StructuredQuestion = {
     id: id('q'),
     type: 'structured',
     tags: e.tags,
     blocks: [para(e.stem as Pair)],
+    marks: e.marks,
     parts: [],
     answerSpace: 14,
     showTotalMarks: true,
@@ -154,7 +175,7 @@ function library(): Worksheet[] {
 }
 
 it('emits the film v2 seed documents', () => {
-  const docs = [paper(), ...library()].map((doc) => ({
+  const docs = [paper(), diagramPractice(), ...library()].map((doc) => ({
     name: doc.name,
     key: `econ-worksheet:${doc.id}`,
     json: stringifyWorksheet(doc),

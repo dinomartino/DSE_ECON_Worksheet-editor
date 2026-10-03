@@ -37,12 +37,37 @@ export function withDocs(state, docs, { only = false } = {}) {
   return next;
 }
 
+// v1's documents carry no topics; the bank would open on "N questions have no topic".
+const TOPIC_BY_TEXT = [
+  [/positive statement/i, 'A.positive-normative'],
+  [/free good/i, 'B.goods'],
+  [/demand curve/i, 'C.market-demand'],
+  [/tax/i, 'C.intervention'],
+];
+const textOf = (q) => (q.blocks ?? []).map((b) => (b.text?.en ?? []).map((r) => r.text).join('')).join(' ');
+
+/** Tag every untagged question in `state`'s stored documents by its stem. */
+export function tagUntagged(state) {
+  for (const kv of state.origins[0].localStorage) {
+    if (!kv.name.startsWith('econ-worksheet:')) continue;
+    const doc = JSON.parse(kv.value);
+    let changed = false;
+    for (const q of doc.questions ?? []) {
+      if (q.tags?.length) continue;
+      q.tags = [TOPIC_BY_TEXT.find(([re]) => re.test(textOf(q)))?.[1] ?? 'C.equilibrium'];
+      changed = true;
+    }
+    if (changed) kv.value = JSON.stringify(doc, null, 2);
+  }
+  return state;
+}
+
 /** The capture CLI's hook (`--clips=scripts/film2/capture/clips.mjs`): v1's state + v2 docs. */
 export async function seedState({ root, force = false, log, base }) {
   if (!force && fs.existsSync(SEED2_STATE)) return JSON.parse(fs.readFileSync(SEED2_STATE, 'utf8'));
   log('seed2: emitting the v2 documents…');
   const docs = emitDocs(root);
-  const state = withDocs(base, docs);
+  const state = tagUntagged(withDocs(base, docs));
   fs.writeFileSync(SEED2_STATE, JSON.stringify(state));
   fs.writeFileSync(path.join(CAPTURE_BUILD, 'seed2-docs.json'), JSON.stringify(docs));
   log(`seed2: ${docs.length} documents added`);
