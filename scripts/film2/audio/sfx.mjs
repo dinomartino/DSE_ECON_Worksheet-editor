@@ -43,15 +43,15 @@ export function plan(events, { duration = DURATION } = {}) {
   raw.sort((a, b) => a.e.t - b.e.t);
 
   // Typing runs → one burst event each (start t, end t).
-  const events2 = [];
+  const events2 = [], lastOf = {};
   for (const r of raw) {
-    const last = events2[events2.length - 1];
-    if (SFX_MAP[r.kind].burst && last?.kind === r.kind && r.e.t - last.end < BURST_GAP) {
+    const last = lastOf[r.kind];
+    if (SFX_MAP[r.kind].burst && last && r.e.t - last.end < BURST_GAP) {
       last.end = Math.max(last.end, r.e.t + (r.e.dur ?? 0));
       last.n++;
       continue;
     }
-    events2.push({ kind: r.kind, e: r.e, t: r.e.t, end: r.e.t + (r.e.dur ?? 0), n: 1 });
+    events2.push((lastOf[r.kind] = { kind: r.kind, e: r.e, t: r.e.t, end: r.e.t + (r.e.dur ?? 0), n: 1 }));
   }
 
   // Thin ui runs.

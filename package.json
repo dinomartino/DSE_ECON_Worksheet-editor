@@ -38,6 +38,7 @@
     "film:9x16": "node scripts/film/film.mjs --format=portrait",
     "film:9x16:stills": "node scripts/film/render.mjs --format=portrait --preview --stills=1",
     "film2": "node scripts/film2/render.mjs --final",
+    "film2:audio": "node scripts/film2/audio/sfx.mjs --fetch && node scripts/film2/audio/mix.mjs && node scripts/film2/audio/verify.mjs",
     "film2:doctor": "node scripts/film2/tools/doctor.mjs",
     "film2:stills": "node scripts/film2/render.mjs --preview --stills=1",
     "film2:render": "node scripts/film2/render.mjs",
