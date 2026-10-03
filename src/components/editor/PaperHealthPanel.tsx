@@ -40,11 +40,12 @@ export function formatRefs(refs: QuestionRef[] | undefined, max = 8): string {
   return rest > 0 ? `${text.join(', ')} ${resolveMessages(PAPER_CHECK_MESSAGES, uiLanguage()).more(rest)}` : text.join(', ');
 }
 
-/** "32 questions · 58 marks · ~70 min estimate · 60 min allowed". */
-export function summaryLine(report: PaperHealthReport, lang: UiLanguage = uiLanguage()): string {
+/** "32 questions · 58 marks · ~70 min estimate · 60 min allowed · 5 pages". */
+export function summaryLine(report: PaperHealthReport, lang: UiLanguage = uiLanguage(), pages?: number): string {
   const m = resolveMessages(PAPER_CHECK_MESSAGES, lang);
   const parts = [m.questions(report.questionCount), m.marks(report.totalMarks), m.estimate(report.minutes)];
   if (report.statedMinutes !== undefined) parts.push(m.allowed(report.statedMinutes));
+  if (pages !== undefined && pages > 0) parts.push(m.pages(pages));
   return parts.join(' · ');
 }
 
@@ -56,12 +57,15 @@ export function PaperHealthPanel({
   worksheet,
   language,
   version,
+  pages,
   onOpenAi,
 }: {
   worksheet: Worksheet;
   /** The edition being exported; untranslated strings are judged only for zh / bilingual. */
   language?: LanguageMode;
   version?: VersionMode;
+  /** Sheets that edition prints, cover included; absent until measured. */
+  pages?: number;
   /** The `untranslated` and `terminology` findings' "Open ✦ AI" link; absent (read-only) → no link. */
   onOpenAi?: (finding: 'untranslated' | 'terminology') => void;
 }) {
@@ -92,7 +96,7 @@ export function PaperHealthPanel({
       <p data-print-hide className="flex items-center gap-1.5 text-[11px] text-ink-muted">
         <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-ok" />
         <span>
-          {summaryLine(report, lang)} · <span className="text-ink-subtle">{m.nothingToCheck}</span>
+          {summaryLine(report, lang, pages)} · <span className="text-ink-subtle">{m.nothingToCheck}</span>
         </span>
       </p>
     );
@@ -111,7 +115,7 @@ export function PaperHealthPanel({
       aria-label={m.paperCheck}
       className="space-y-2 rounded-lg border border-line bg-surface-sunken p-2.5 text-[11px] leading-relaxed text-ink-muted"
     >
-      <p className="font-medium text-ink">{summaryLine(report, lang)}</p>
+      <p className="font-medium text-ink">{summaryLine(report, lang, pages)}</p>
 
       {sections.length > 0 && (
         <p>{sections

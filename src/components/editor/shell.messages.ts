@@ -118,6 +118,7 @@ export const PAPER_CHECK_MESSAGES = defineMessages({
   marks: { en: (n: number) => `${n} ${n === 1 ? 'mark' : 'marks'}`, zh: (n: number) => `${n} 分` },
   estimate: { en: (n: number) => `~${n} min estimate`, zh: (n: number) => `預計約 ${n} 分鐘` },
   allowed: { en: (n: number) => `${n} min allowed`, zh: (n: number) => `限時 ${n} 分鐘` },
+  pages: { en: (n: number) => `${n} ${n === 1 ? 'page' : 'pages'}`, zh: (n: number) => `${n} 頁` },
   noQuestions: { en: 'No questions yet.', zh: '尚未有題目。' },
   nothingToCheck: { en: 'nothing to check', zh: '沒有需要檢查的項目' },
   paperCheck: { en: 'Paper check', zh: '試卷檢查' },

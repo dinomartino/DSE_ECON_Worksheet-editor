@@ -4187,6 +4187,11 @@ interface Props {
    * page is a preview, so nothing measured off it is written back (split, trim, fill).
    */
   provisionalId?: string;
+  /**
+   * A hidden second copy that only paginates (`PageCountProbe`): no `#print-root` id, so
+   * page-scoped queries and the print still see the one real stack; no zoom control.
+   */
+  measureOnly?: boolean;
 }
 
 /**
@@ -4385,6 +4390,7 @@ export function Preview({
   onPagesChange,
   onDragItemChange,
   provisionalId,
+  measureOnly,
 }: Props) {
   /*
    * The one document walk, memoised on its only two inputs.
@@ -6645,7 +6651,7 @@ export function Preview({
       {/* Zoom sits with the canvas, floating at its bottom-right the way every
           document tool places it, rather than in the toolbar among the export
           actions — it changes how the page is *viewed*, never what it contains. */}
-      <div className="pointer-events-none fixed bottom-4 right-[416px] z-30">
+      {!measureOnly && <div className="pointer-events-none fixed bottom-4 right-[416px] z-30">
         <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-line bg-surface-raised p-1 shadow-md">
           <IconButton
             label={m.zoomOut}
@@ -6670,7 +6676,7 @@ export function Preview({
             <PlusIcon size={14} />
           </IconButton>
         </div>
-      </div>
+      </div>}
 
       {/*
         The sheets.
@@ -6681,7 +6687,7 @@ export function Preview({
         scaling with them.
       */}
       <div
-        id="print-root"
+        id={measureOnly ? undefined : "print-root"}
         ref={sheetsRef}
         className="flex flex-col items-center gap-6"
         style={{

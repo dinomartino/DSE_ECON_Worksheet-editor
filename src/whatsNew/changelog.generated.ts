@@ -466,6 +466,14 @@ a version heading is edited afterwards.
   B's order and letters, so A on the panel is A on the page.
   <!-- zh: **MCQ 面板的選項次序與頁面相同。** 檢視版本 B 時，側面板的選項、正確答案和解說
   列，現在都按版本 B 的次序和字母排列，面板上的 A 就是頁面上的 A。 -->
+- **Export counts the pages of the paper you are about to export.** The paper check at the
+  top of Export now adds the page count, and it follows the language, copy and version you
+  choose there. Editing in EN+中 and exporting English, it says how long the English paper
+  is, not the bilingual one on screen. The check of one-language text follows that choice
+  too.
+  <!-- zh: **匯出時會計算你即將匯出的試卷頁數。** 匯出視窗頂部的試卷檢查現在會列出頁數，並按你在
+  該處選擇的語言、學生或教師版及版本計算。以 EN+中 編輯而匯出英文版時，顯示的是英文試卷的
+  頁數，而不是畫面上雙語版的頁數。檢查只有一種語言的文字，亦按該選擇進行。 -->
 - **A versioned answer key letters each explanation as that version prints it.** When
   options are shuffled, the key now gives every version its own explanations, with each
   option's rationale under the letter it has in that version, instead of one list in

@@ -23,7 +23,7 @@ import { DocumentName } from './DocumentName';
 import { ExportDialog } from './ExportDialog';
 import { browserPrintDeps, printWorksheetPdf } from './printPdf';
 import { useUpdateStore } from '@/desktop/updateStore';
-import { PaperHealthPanel } from './PaperHealthPanel';
+import { ExportPaperCheck } from './ExportPaperCheck';
 import { PaperSummaryBar } from './PaperSummaryBar';
 import { SaveStatus } from './SaveStatus';
 import { hasCoverSheet } from './sheets';
@@ -505,14 +505,15 @@ export function Toolbar({
           onClose={closeExport}
           onExported={handleExported}
           onPrint={handlePrint}
-          checks={
-            <PaperHealthPanel
+          checks={(choice) => (
+            <ExportPaperCheck
               worksheet={worksheet}
-              language={mode.language}
-              version={mode.version}
+              shown={mode}
+              bodySheets={bodySheets}
+              choice={choice}
               onOpenAi={readOnly ? undefined : aiFromExport}
             />
-          }
+          )}
         />
       )}
 
