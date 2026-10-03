@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { summarize } from '@/storage/document';
-import { createDocFilesBackend, readDocFile, STORED_INDEX_FORMAT, isBankRow, type DocFilesPort, type TextFilePort } from './bankBackend';
+import {
+  createDocFilesBackend,
+  readDocFile,
+  STORED_INDEX_FORMAT,
+  isBankRow,
+  type CacheFilePort,
+  type DocFilesPort,
+  type PackPorts,
+  type StoredDoc,
+  type TextFilePort,
+} from './bankBackend';
 import { docsFromRecords } from './idbBackend';
 import { rowsOf } from './indexer';
 import { choiceQuestion, docWith, partedQuestion, row } from './testKit';
@@ -227,6 +237,106 @@ describe('rows of a question tagged per part', () => {
     );
     expect([...out!.docs.keys()].sort()).toEqual([good.id, parted.id].sort());
     expect(out!.bad).toEqual(['badSlots']);
+  });
+});
+
+describe('createDocFilesBackend with a pack (one file per launch)', () => {
+  function packed(initial: Record<string, string> = {}) {
+    const base = memoryFiles(initial);
+    const reads: string[] = [];
+    const port: DocFilesPort = {
+      ...base.port,
+      read: async (id) => {
+        reads.push(id);
+        return base.files.get(id);
+      },
+    };
+    const text: { pack?: string; journal?: string } = {};
+    const order: string[] = [];
+    const file = (name: 'pack' | 'journal'): CacheFilePort => ({
+      read: async () => text[name],
+      write: async (value) => {
+        order.push(name);
+        text[name] = value;
+      },
+      remove: async () => {
+        order.push(`-${name}`);
+        delete text[name];
+      },
+    });
+    const cache: PackPorts = { pack: file('pack'), journal: file('journal') };
+    const make = () => createDocFilesBackend(port, undefined, cache);
+    return { ...base, port, reads, text, order, make };
+  }
+  const entry = (updatedAt: string): StoredDoc => ({ updatedAt, rows: [] });
+  /** Waits for the backend's queued pack and journal writes (a commit of nothing queues behind them). */
+  const drain = (backend: ReturnType<ReturnType<typeof packed>['make']>) => backend.commit([], []);
+
+  it('without a pack, reads every file once and writes a pack; the next launch reads only the pack', async () => {
+    const disk = packed();
+    await createDocFilesBackend(disk.port).commit([[doc.id, stored], ['b', entry('t')]], []);
+    const first = disk.make();
+    expect([...(await first.load())!.keys()].sort()).toEqual([doc.id, 'b'].sort());
+    await drain(first);
+    expect(disk.reads.sort()).toEqual([doc.id, 'b'].sort());
+    expect(JSON.parse(disk.text.pack!).format).toBe(STORED_INDEX_FORMAT);
+
+    disk.reads.length = 0;
+    const second = await disk.make().load();
+    expect(disk.reads).toEqual([]);
+    expect(second?.get(doc.id)?.rows.map((r) => r.excerpt.en)).toEqual(['One', 'Two', 'Three']);
+    expect(second?.get('b')).toEqual(entry('t'));
+  });
+
+  it('a commit names its document in the journal before writing the file; the next launch reads just that file', async () => {
+    const disk = packed();
+    const first = disk.make();
+    await first.load();
+    await first.commit([['a', entry('1')], ['b', entry('1')]], []);
+    await drain(first);
+    // Fresh launch: pack written from the load, journal names a and b.
+    const second = disk.make();
+    await second.load();
+    await drain(second);
+    disk.order.length = 0;
+    await second.commit([['a', entry('2')]], ['b']);
+    expect(disk.order[0]).toBe('journal');
+    expect(JSON.parse(disk.text.journal!).ids.sort()).toEqual(['a', 'b']);
+
+    disk.reads.length = 0;
+    const third = disk.make();
+    const loaded = await third.load();
+    expect(disk.reads.sort()).toEqual(['a', 'b']);
+    expect(loaded?.get('a')).toEqual(entry('2'));
+    expect(loaded?.has('b')).toBe(false);
+    // Folded into a new pack, journal emptied.
+    await drain(third);
+    expect(disk.text.journal).toBeUndefined();
+    expect(Object.keys(JSON.parse(disk.text.pack!).docs)).toEqual(['a']);
+  });
+
+  it('an unreadable pack or journal means reading every file, never losing a document', async () => {
+    for (const damage of ['pack', 'journal'] as const) {
+      const disk = packed();
+      const first = disk.make();
+      await first.load();
+      await first.commit([['a', entry('1')]], []);
+      await drain(first);
+      disk.text[damage] = '{ damaged';
+      disk.reads.length = 0;
+      expect((await disk.make().load())?.get('a')).toEqual(entry('1'));
+      expect(disk.reads).toEqual(['a']);
+    }
+  });
+
+  it('clear removes the pack and the journal', async () => {
+    const disk = packed();
+    const backend = disk.make();
+    await backend.load();
+    await backend.commit([['a', entry('1')]], []);
+    await backend.clear();
+    expect(disk.text).toEqual({});
+    expect(await disk.make().load()).toBeUndefined();
   });
 });
 

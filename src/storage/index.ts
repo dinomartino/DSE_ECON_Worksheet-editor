@@ -52,6 +52,8 @@ export { NewerGraphError, type GraphListing } from './graphs';
 export {
   FileWorksheetStore,
   libraryDocFiles,
+  libraryJournalFile,
+  libraryPackFile,
   libraryIndexFile,
   savedWorksheetPath,
   savedWorksheetsFolder,

@@ -359,7 +359,8 @@ Outline rows; test that tags never reach IR, `.docx` or clipboard.
 **WP-B · Persistent index** (M–L): the change-feed decorator at the store singleton
 (`src/storage/index.ts`), IndexedDB `econ-worksheet-library` (web) and
 `worksheets/library/docs/<id>.json` (desktop, one file per document since 2026-10-03;
-the earlier single `index.json` is migrated once), freshness stamps, idle chunked indexing,
+the earlier single `index.json` is migrated once; a launch reads `pack.json` plus the files
+`journal.json` names), freshness stamps, idle chunked indexing,
 focus re-check; swaps into `useBank` without changing its API.
 
 **WP-C · Editor 題庫 tab + Fill** (M): third sidebar tab; sticky (selection moves the

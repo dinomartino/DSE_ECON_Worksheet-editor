@@ -3000,7 +3000,9 @@ in-flight values stay local; the store is called on pointer-up.
   point every save passes. Rows persist in IndexedDB `econ-worksheet-library` (web) or
   `worksheets/library/docs/<id>.json` (desktop, one file per document so an autosave
   rewrites only its own; a subdirectory no rebuild or `clear()` reads; the single
-  `library/index.json` unreleased builds wrote is migrated once, then removed), with a
+  `library/index.json` unreleased builds wrote is migrated once, then removed; a launch
+  reads `library/pack.json`, a cache of every file, plus the files `library/journal.json`
+  names as changed since, not one file per document), with a
   stamp per document (`updatedAt`). On first use stored rows paint, then a
   reconcile re-indexes only documents whose stamp differs and drops those `list()` no
   longer names; events keep it current (saved/restored → re-index, trashed/removed →
