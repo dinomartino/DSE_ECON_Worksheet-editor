@@ -305,7 +305,8 @@ function noteLines(choice: KeyChoice, language: LanguageMode): NoteLine[] {
  * The choices' notes, if any, as a hung list under the grid: the explanation beside the
  * number, then one "A. …" line per option rationale and a "Source:" line, all at the
  * explanation's text column. The number rides on the first line, whichever it is.
- * `versioned`: the rationale letters are Version A's, so the heading says so.
+ * `versioned`: the rationale letters are Version A's, so the heading says so, unless
+ * `versionHeading` names the version the letters belong to.
  */
 export function renderNotes(
   nodes: RenderNode[],
@@ -313,11 +314,13 @@ export function renderNotes(
   language: LanguageMode,
   versioned: boolean,
   own: Own,
+  versionHeading?: { en: string; zh: string },
 ): void {
   const noted = choices.filter(hasNotes);
   if (noted.length === 0) return;
   const lettered = versioned && noted.some((choice) => (choice.rationale?.length ?? 0) > 0);
-  const heading = lettered ? ANSWER_KEY_WORDING.explanationsVersionA : ANSWER_KEY_WORDING.explanations;
+  const heading =
+    versionHeading ?? (lettered ? ANSWER_KEY_WORDING.explanationsVersionA : ANSWER_KEY_WORDING.explanations);
   nodes.push({
     kind: 'text',
     style: 'Body',

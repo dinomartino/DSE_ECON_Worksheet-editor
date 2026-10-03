@@ -51,6 +51,12 @@ import { resolveMessages, type Messages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages } from '@/i18n/language';
 import { EXPORT_MESSAGES } from './ExportDialog.messages';
 
+/** What the dialog's paper check is checking (`ExportDialogProps.checks`). */
+export interface ExportCheckChoice {
+  mode: OutputMode;
+  paper: boolean;
+}
+
 export interface ExportDialogProps {
   worksheet: Worksheet;
   /** The editor's language and version, which the dialog starts from. */
@@ -58,8 +64,12 @@ export interface ExportDialogProps {
   onClose: () => void;
   /** After the last file is written: the status line and, on desktop, its path. */
   onExported: (message: string, path?: string) => void;
-  /** A pre-export check of the paper, shown at the top of the body. */
-  checks?: ReactNode;
+  /**
+   * A pre-export check of the paper, shown at the top of the body. As a function it is
+   * told the edition chosen: `mode` as the paper would print, `paper` false when no
+   * question paper is written (key, other apps, .json).
+   */
+  checks?: ReactNode | ((choice: ExportCheckChoice) => ReactNode);
   /**
    * PDF: print the sheets in this mode. Called after the dialog has closed, so it is
    * gone from the page before the print starts; the caller reports its own failure.
@@ -277,6 +287,20 @@ export function ExportDialog({
   // A print is one version: "All" falls back to the one the editor shows.
   const printVariant = pdfVariant(letters, variantChoice, mode.variant);
   const fileCount = exportFileCount({ what, variants });
+  // The edition the check describes; an Include box with nothing to leave out changes nothing.
+  const checkChoice: ExportCheckChoice = {
+    mode: {
+      ...paperMode({
+        what: 'paper',
+        language,
+        version,
+        includeCover: includeCover || !omittable.cover,
+        includeAnswerSpace: includeAnswerSpace || !omittable.answerSpace,
+      }),
+      ...(printVariant && printVariant !== letters[0] ? { variant: printVariant } : {}),
+    },
+    paper: !json && what !== 'answerKey' && what !== 'apps',
+  };
   // "Also include": other saved documents' keys in the same file. The index, read on open.
   const [storedDocuments, setStoredDocuments] = useState<WorksheetSummary[]>();
   useEffect(() => {
@@ -481,7 +505,7 @@ export function ExportDialog({
       }
     >
       <div className="space-y-5 px-5 py-5">
-        {!leftOut && checks}
+        {!leftOut && (typeof checks === 'function' ? checks(checkChoice) : checks)}
 
         {leftOut ? (
           <p role="status" className="animate-fade-in rounded-lg bg-warn-soft px-2.5 py-2 text-[13px] leading-relaxed text-warn-ink">

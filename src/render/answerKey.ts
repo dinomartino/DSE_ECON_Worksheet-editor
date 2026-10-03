@@ -1,5 +1,5 @@
 import { resolveFlow } from '@/model/flow';
-import { questionMarks } from '@/model/marks';
+import { hasOptionalSection, questionMarks, sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering } from '@/model/numbering';
 import { bi, documentName, isBiTextEmpty, plain } from '@/model/text';
 import type { MarkScheme } from '@/model/markSchemeTypes';
@@ -109,6 +109,8 @@ export interface ChoiceVersion {
   letter?: string;
   /** Per printed option, its Version A letter; absent = the authored order. */
   sourceLetters?: string[];
+  /** The rationale lettered as this version prints its options; absent = the authored order. */
+  rationale?: ChoiceRationale[];
 }
 
 export interface KeyChoice {
@@ -164,10 +166,13 @@ export function collectAnswerKey(worksheet: Worksheet): AnswerKeyData {
   const seed = versionSeed(worksheet);
   let total = 0;
 
+  const groupSections: (string | undefined)[] = [undefined];
+
   for (const item of resolveFlow(worksheet)) {
     if (item.type === 'layout') {
       if (item.element.kind === 'section') {
         groups.push({ heading: item.element.text, total: 0, choices: [], schemes: [] });
+        groupSections.push(item.element.id);
       }
       continue;
     }
@@ -189,6 +194,7 @@ export function collectAnswerKey(worksheet: Worksheet): AnswerKeyData {
         return {
           letter: keyed.kind === 'choice' ? keyed.letter : undefined,
           sourceLetters: shown.sourceLetters,
+          ...(keyed.kind === 'choice' && keyed.rationale ? { rationale: keyed.rationale } : {}),
         };
       });
       group.choices.push({
@@ -213,6 +219,14 @@ export function collectAnswerKey(worksheet: Worksheet): AnswerKeyData {
         total: marks,
       });
     }
+  }
+  // "Answer any n" sections count their best n questions, as the paper's totals do.
+  if (hasOptionalSection(worksheet)) {
+    const counted = sectionMarksById(worksheet);
+    groups.forEach((group, index) => {
+      group.total = counted.get(groupSections[index]) ?? 0;
+    });
+    total = worksheetMarks(worksheet);
   }
   return { groups, letters, total };
 }
@@ -324,7 +338,7 @@ export function renderStandardKey(
 
 /**
  * With versions on: one MC key per version (the layout's table; the list prints as the
- * grid), then the notes and schemes once (they do not change between versions), the
+ * grid), then the notes and schemes once (rationale per version once options move), the
  * paper total, then the version map.
  */
 function renderVersionedKey(
@@ -366,7 +380,22 @@ function renderVersionedKey(
       nodes.push(heading(group));
       pushGap(nodes);
     }
-    renderNotes(nodes, group.choices, language, true, own);
+    // Rationales are lettered by position, so once a version reorders a question's
+    // options, each version gets its own explanations under its own letters.
+    const reletters = group.choices.some(
+      (choice) => (choice.rationale?.length ?? 0) > 0 && choice.versions.some((shown) => shown.sourceLetters),
+    );
+    if (reletters) {
+      letters.forEach((letter, version) => {
+        if (version > 0) pushGap(nodes);
+        const lettered = group.choices.map((choice) =>
+          choice.rationale ? { ...choice, rationale: choice.versions[version]?.rationale ?? choice.rationale } : choice,
+        );
+        renderNotes(nodes, lettered, language, true, own, ANSWER_KEY_WORDING.explanationsVersion(letter));
+      });
+    } else {
+      renderNotes(nodes, group.choices, language, true, own);
+    }
     for (const scheme of group.schemes) {
       pushGap(nodes);
       LQ_KEY_RENDERERS[layout.lqLayout](nodes, scheme, context);

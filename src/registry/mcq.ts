@@ -558,6 +558,12 @@ export function optionStaysPut(option: McqOption): boolean {
   return option.pinned === true || isPositional(option.text);
 }
 
+/** `order[printed] = authored` option index, as paper version `version` prints the question. */
+export function printedOptionOrder(question: McqQuestion, seed: number, version: number): number[] {
+  const shown = variant(question, { seed, version }).question;
+  return shown.options.map((option) => question.options.indexOf(option));
+}
+
 /**
  * Options reordered for one paper version; `answerIndex` follows its option. Pinned and
  * positional options keep their letter; combination questions never move.

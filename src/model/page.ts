@@ -238,6 +238,17 @@ export function isHeaderFooterActive(value: HeaderFooter): boolean {
 }
 
 /**
+ * Whether a versioned paper's "Version B" row (`versionHeaderText`) is the whole header:
+ * the document's own header prints nothing, on page 1 or after. Then the row prints on
+ * every page with no rule; otherwise it follows the running rows wherever they print.
+ * Shared so the preview and the `.docx` place it alike.
+ */
+export function versionRowStandsAlone(header: HeaderFooter): boolean {
+  const ownFirstPage = header.enabled && Boolean(header.firstPage) && !bandsAreEmpty(header.firstPage?.bands ?? []);
+  return !isHeaderFooterActive(header) && !ownFirstPage;
+}
+
+/**
  * Should the preview draw this band list at all?
  *
  * Printing skips rows that would draw nothing, but **editing never does**: the surface is

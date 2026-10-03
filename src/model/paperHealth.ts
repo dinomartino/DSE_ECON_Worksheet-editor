@@ -2,9 +2,9 @@ import { requireQuestionType } from '@/registry';
 import type { QuestionHealthFacts } from '@/registry/types';
 import type { DocumentShape } from './documentShape';
 import { anchorSchemeMismatch } from './markScheme';
-import { questionMarks, sectionMarksById } from './marks';
+import { answerCountOf, questionMarks, sectionMarksById } from './marks';
 import { computeNumbering, toUpperLetter } from './numbering';
-import { summarizePaper, targetMisses, type PaperSummary } from './paperSummary';
+import { positive as positiveMarks, summarizePaper, targetMisses, type PaperSummary } from './paperSummary';
 import { plain } from './text';
 import { collectTexts, needsTranslation } from './textWalk';
 import type { BiText, LanguageMode, LayoutElement, VersionMode, Worksheet } from './types';
@@ -72,7 +72,11 @@ export interface SectionTotal {
   sectionId?: string;
   label: string;
   questions: number;
+  /** Counted marks: an "answer any n" section counts its best n questions. */
   marks: number;
+  /** "Answer any n" of `questions`; absent = all. */
+  answerCount?: number;
+  targetMarks?: number;
 }
 
 export interface LetterBalance {
@@ -259,7 +263,7 @@ export function checkPaper(
   return {
     shape,
     questionCount: entries.length,
-    totalMarks: entries.reduce((sum, e) => sum + e.marks, 0),
+    totalMarks: summary.marks.actual,
     sections: sectionTotals(worksheet, plan.questions, sectionsById),
     letters,
     minutes,
@@ -434,7 +438,16 @@ function sectionTotals(
     if (sectionId === undefined && questions === 0) continue;
     const element = sectionId ? sectionsById.get(sectionId) : undefined;
     const label = element ? sectionShortName(element.text) : 'Before the first section';
-    totals.push({ sectionId, label, questions, marks: total });
+    const answerCount = answerCountOf(element, questions);
+    const targetMarks = positiveMarks(element?.targetMarks);
+    totals.push({
+      sectionId,
+      label,
+      questions,
+      marks: total,
+      ...(answerCount !== undefined ? { answerCount } : {}),
+      ...(targetMarks !== undefined ? { targetMarks } : {}),
+    });
   }
   return totals;
 }

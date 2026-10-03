@@ -35,7 +35,7 @@ the whole schema, one file.
 - `src/model/migrations.ts:KNOWN_KEYS` · `:CURRENT_SCHEMA_VERSION` · `:migrate` · `:serializeWorksheet` · `:writtenSchemaVersion` · `:isNewerThanBuild`
 - `src/model/flow.ts:resolveFlow` · `:applyOrder` · `:moveRunInFlow` — display order
 - `src/model/numbering.ts:computeNumbering` · `:listIndentScheme` — derived numbers
-- `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` — derived totals
+- `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` · `:sectionRuns` — derived totals; an "answer any n" section (`answerCount`) counts its best n
 - `src/model/edits.ts:applyEditTarget` · `:applyDeleteTarget` · `:insertBlockAfter` — every mutation recipe
 - `src/model/lineage.ts:freshIds` · `:copyQuestion` · `:rootIdOf` · `:questionIdOwners` — every id a question holds, renewed for a copy (a diagram's own geometry is kept); `src/model/dedupeIds.ts:dedupeIds` — ids held twice repaired on open, in `src/storage/document.ts:parseWorksheet`
 - `src/model/topics.ts:TOPICS` · `:topicOf` · `:parentCode` · `:matchesTopic` · `:topicLabel` — the EDB topic taxonomy as data; `Question.tags` stores codes, names are looked up. On screen a topic is its name, never its slug: `:topicDisplay` ("Law of demand 需求定律"; an unknown code as stored) · `:topicHeading` ("C · Law of demand", and tooltips), with `src/model/patterns.ts:tagText` for a tag of any kind. The tag grammar: `:TOPIC_CODE_PATTERN` · `:SYSTEM_TAG_SIGIL` · `:rollupTopic` · `:stringTags`, with `src/model/patterns.ts:isReservedTag` · `:freeTagIssue`
@@ -44,9 +44,9 @@ the whole schema, one file.
 - `src/model/text.ts:BiText` helpers — `:rt` · `:plain` · `:normalizeRuns` · `:applyRunFormat`
 - `src/model/page.ts:pageSetupOf` · `:headerFooterOffsets` · `src/model/pageFurniture.ts:furnitureBoxes`
 - `src/model/cover.ts:createCoverPage` · `src/model/documentShape.ts:documentShape` · `:paperKind` (the shape refined by content: dotted answer space → LQ worksheet)
-- `src/model/versions.ts:activeVersion` · `:shuffledOrder` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored
+- `src/model/versions.ts:activeVersion` · `:shuffledOrder` · `:versionHeaderText` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored; the letter rides the running header as a last row (`src/model/page.ts:versionRowStandsAlone`)
 - `src/model/markScheme.ts:schemeMax` · `:groupMax` · `:schemeMismatch` — HKEAA marking-scheme totals, derived; types in `src/model/markSchemeTypes.ts:MarkScheme`
-- `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
+- `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it, for the edition chosen in Export (`src/components/editor/ExportPaperCheck.tsx:ExportPaperCheck`; another mode's page count comes from a hidden `src/components/preview/PageCountProbe.tsx:PageCountProbe`)
 - `src/model/paperSummary.ts:summarizePaper` · `:estimateMinutes` · `:MINUTES_PER_MARK` · `:targetOf` — per-type counts, marks, minutes against the optional `Worksheet.target`; the one time model (`checkPaper` reads it); `src/components/editor/PaperSummaryBar.tsx:PaperSummaryBar` is the toolbar line, the Target row is in `DocumentSettings`
 - `src/model/diagram.ts:Diagram` · `src/model/diagramDraw.ts:applyDrag` · `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
 - `src/model/diagramAreas.ts:areaPolygon` · `:presetArea` · `:detachAreas` — shaded areas as references; `src/model/diagramShift.ts:shiftCurve` — D→D₁ plus the new equilibrium, both equilibria anchored and unnamed (`:equilibriumLabelSide` places a name added later)
@@ -451,7 +451,7 @@ Invariants:
 ## scripts — the harnesses
 
 - `.claude/skills/jev/SKILL.md` — session tooling, not app code: `bin/find.mjs` (ranked doc and file pointers), `bin/verify-plan.mjs` (which checks a diff needs), the edit guard's `rules.json`; hooks registered in `.claude/settings.json`
-- `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`)
+- `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`, `--port=` / `--url=`)
 - `scripts/demo.mjs` — website video + screenshots into `demo-media/` (`npm run demo`); steps in `scripts/demo/record.mjs:STORYBOARD`
 - `scripts/demo/diagrams.mjs:diagramStoryboard` — the diagram film (`npm run demo:diagrams`): one recording, numbered stills and the exported `.docx` into `demo-media/diagrams/`; seed from `scripts/demo/diagrams-seed.test.ts`
 - `scripts/emit-samples.test.ts` — real `.docx` files (`npm run samples`)

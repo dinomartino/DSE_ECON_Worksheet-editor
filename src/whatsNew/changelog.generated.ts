@@ -279,6 +279,14 @@ a version heading is edited afterwards.
   現在會詢問儲存位置，與桌面版相同。一次匯出多個檔案（學生版和教師版、A、B、C 卷，
   或連同答案頁）時，只需選一次資料夾，不用逐個檔案詢問，也不會覆蓋已有的檔案。
   Firefox 和 Safari 仍會儲存到「下載」資料夾。 -->
+- **Sections where students answer any ONE question.** Select a section and set Candidates
+  answer to "Any 1 of 2" (or any number). The section's marks, the paper's full marks, the
+  time estimate, the paper check and the answer key total then count only the questions a
+  student can choose, not all of them. A section can also have its own target marks, which
+  the paper check compares against.
+  <!-- zh: **可設定「任選一題」的部分。** 選取一個部分，把「考生須作答」設為「2 題中任選 1 題」
+  （或任何題數）。該部分的分數、全卷總分、估計時間、試卷檢查和答案頁的總分，便只計算學生
+  可選作答的題目，而不是全部題目。每個部分亦可設定自己的目標分數，試卷檢查會加以比較。 -->
 
 ### Changed
 - **The paper check now warns when a marking scheme does not add up.** Before you export,
@@ -452,6 +460,32 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **Every page of a paper version says which version it is.** With versions on, "Version B"
+  now prints in the header of every page, not only above question 1, so a loose sheet
+  still shows its version. It sits under your own header, or on its own if the paper has
+  none. Papers without versions are unchanged.
+  <!-- zh: **試卷每個版本的每一頁都標明版本。** 開啟版本後，「版本 B」會印在每頁的頁首，而不只
+  在第 1 題上方，即使散頁也能看出屬哪個版本。它位於你自訂的頁首之下；若試卷沒有頁首，則
+  單獨列出。沒有版本的試卷不受影響。 -->
+- **The MCQ panel lists options in the order the page shows.** Viewing Version B, the
+  options, the correct answer and the rationale rows in the side panel now follow Version
+  B's order and letters, so A on the panel is A on the page.
+  <!-- zh: **MCQ 面板的選項次序與頁面相同。** 檢視版本 B 時，側面板的選項、正確答案和解說
+  列，現在都按版本 B 的次序和字母排列，面板上的 A 就是頁面上的 A。 -->
+- **Export counts the pages of the paper you are about to export.** The paper check at the
+  top of Export now adds the page count, and it follows the language, copy and version you
+  choose there. Editing in EN+中 and exporting English, it says how long the English paper
+  is, not the bilingual one on screen. The check of one-language text follows that choice
+  too.
+  <!-- zh: **匯出時會計算你即將匯出的試卷頁數。** 匯出視窗頂部的試卷檢查現在會列出頁數，並按你在
+  該處選擇的語言、學生或教師版及版本計算。以 EN+中 編輯而匯出英文版時，顯示的是英文試卷的
+  頁數，而不是畫面上雙語版的頁數。檢查只有一種語言的文字，亦按該選擇進行。 -->
+- **A versioned answer key letters each explanation as that version prints it.** When
+  options are shuffled, the key now gives every version its own explanations, with each
+  option's rationale under the letter it has in that version, instead of one list in
+  Version A's letters.
+  <!-- zh: **有版本的答案頁，解說按各版本的字母列出。** 選項打亂後，答案頁現在為每個版本分別
+  列出解說，每個選項的解說都用它在該版本的字母，而不是只按版本 A 的字母列一次。 -->
 - **A Teacher Word file with no header text no longer starts its header with a stray
   dash.** It now prints "Teacher Version" on its own. A header with your own text still
   shows that text, then the dash, then "Teacher Version".
