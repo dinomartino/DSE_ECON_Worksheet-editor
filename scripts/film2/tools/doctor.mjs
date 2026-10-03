@@ -53,6 +53,12 @@ async function timeline() {
     if (i > 0 && off(s.from) > FRAME + 1e-6) bad(`cut into ${s.id} at ${s.from.toFixed(3)} s is ${(off(s.from) * 1000).toFixed(0)} ms off the pulse grid`);
     const half = TL.halfIn(s);
     if (i > 0 && (half > (s.to - s.from) / 2 || half > (TL.SCENES[i - 1].to - TL.SCENES[i - 1].from) / 2)) bad(`the transition into ${s.id} is longer than a neighbour can hold`);
+    if (!['cut', 'match', 'push', 'iris'].includes(s.in?.type ?? 'cut')) bad(`scene ${s.id}: unknown transition ${s.in.type}`);
+    for (const c of s.cuts ?? []) {
+      if (!(c > s.from && c < s.to)) bad(`scene ${s.id}: declared cut ${c} s is outside ${s.from.toFixed(3)}..${s.to.toFixed(3)}`);
+      else if (off(c) > FRAME + 1e-6) bad(`scene ${s.id}: declared cut ${c.toFixed(3)} s is off the pulse grid`);
+    }
+    for (const [a, b] of s.holds ?? []) if (!(a < b && a >= s.from - half && b <= s.to + 1e-6)) bad(`scene ${s.id}: hold ${a}..${b} is empty or outside the scene`);
     at = s.to;
   });
   if (Math.abs(at - TL.DURATION) > 1e-6) bad(`scenes end at ${at} s, DURATION is ${TL.DURATION} s`);
