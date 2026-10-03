@@ -11,6 +11,7 @@ import { sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering, listIndentScheme } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
 import { activeVersion, versionLetter, versionSeed } from '@/model/versions';
+import { versionInPageOneHeader } from '@/model/headerMarks';
 import type {
   Band,
   BandField,
@@ -110,8 +111,12 @@ export interface RenderedWorksheet {
    */
   title?: RenderNode;
   instructions?: RenderNode;
-  /** "Version B", under the masthead — present only when the paper has versions. */
+  /** "Version B", under the masthead: only when the paper has versions and page 1's
+   *  running header does not already name it (`versionInPageOneHeader`). */
   versionLabel?: RenderNode;
+  /** The label the page-1 header already carries: a backend with no header (the
+   *  clipboard) prints it in `versionLabel`'s place. */
+  headerVersionLabel?: RenderNode;
   /**
    * Everything in the document body, in printed order.
    *
@@ -400,8 +405,10 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   const version = activeVersion(worksheet, mode);
   const seed = versionSeed(worksheet);
   const variantKey = version === undefined ? '' : `${seed}:${version}`;
-  const versionLabel =
+  const anyVersionLabel =
     version === undefined ? undefined : renderVersionLabel(versionLetter(version), mode);
+  const labelInHeader = anyVersionLabel !== undefined && versionInPageOneHeader(worksheet, mode);
+  const versionLabel = labelInHeader ? undefined : anyVersionLabel;
 
   // A restarting section opens a new Word list stream (native `w:num`), keyed on the
   // section element's id — a dragged marker keeps its identity.
@@ -593,7 +600,11 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     .filter((item): item is Extract<RenderedItem, { type: 'question' }> => item.type === 'question')
     .map((item) => item.question);
 
-  return { bands, cover, title, instructions, versionLabel, items, questions };
+  return {
+    bands, cover, title, instructions, versionLabel,
+    ...(labelInHeader ? { headerVersionLabel: anyVersionLabel } : {}),
+    items, questions,
+  };
 }
 
 /** Derived, so it carries no edit target; one line in every language mode. */

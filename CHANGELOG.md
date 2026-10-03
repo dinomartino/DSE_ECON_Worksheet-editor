@@ -497,6 +497,13 @@ a version heading is edited afterwards.
   straight away, without opening or saving it.
   <!-- zh: **以 0.5.0 版儲存的題庫會再次顯示為題庫。** 若題庫最後是以 0.5.0 版儲存，開始畫面會
   把它顯示為工作紙。現在無須開啟或儲存，它會即時顯示為題庫。 -->
+- **The version letter prints once at the top of page 1.** With versions on, "Version B"
+  above question 1 repeated the header's "Version B" on the same page. It now prints above
+  question 1 only when "Header on page 1" is set to Nothing or Its own, so page 1's header
+  does not show it. The page, the PDF and Word agree. Copy for Word still includes it.
+  <!-- zh: **版本字母在第 1 頁頂部只印一次。** 開啟版本後，第 1 題上方的「版本 B」與同頁頁首的
+  「版本 B」重複。現在只在「第 1 頁頁首」設為「不印」或「獨立設定」、第 1 頁頁首沒有版本時，才在第 1 題
+  上方印出；畫面、PDF 和 Word 一致。「複製到 Word」仍會包括它。 -->
 - **Every page of a paper version says which version it is.** With versions on, "Version B"
   now prints in the header of every page, not only above question 1, so a loose sheet
   still shows its version. It sits under your own header, or on its own if the paper has

@@ -8,6 +8,7 @@ import { newId } from '@/model/factories';
 import { bi } from '@/model/text';
 import { versionHeaderText } from '@/model/versions';
 import type { HeaderFooter, OutputMode, Worksheet } from '@/model/types';
+import { worksheetClipboardHtml } from '@/export/clipboard';
 import { buildDocxParts } from './index';
 
 /** The running header names the paper version on every page, not only atop page 1. */
@@ -57,6 +58,14 @@ describe('the version in the running header', () => {
     const first = buildDocxParts(versioned(own), mode('C'));
     expect(plainText(first.headerFooter.header)).toBe('S5 EconomicsVersion C');
     expect(plainText(first.headerFooter.headerFirst)).toBe('S5 Economics');
+  });
+
+  it('drops the body label when page 1’s header names the version; Copy for Word keeps it', () => {
+    const body = (ws: Worksheet) => plainText(buildDocxParts(ws, mode('B')).documentXml);
+    expect(body(versioned())).not.toContain('Version B');
+    expect(body(versioned(ownHeader()))).not.toContain('Version B');
+    expect(body(versioned(ownHeader({ showOnFirstPage: false })))).toContain('Version B');
+    expect(worksheetClipboardHtml(versioned(), mode('B'))).toContain('Version B');
   });
 
   it('leaves an unversioned document exactly as it was', () => {

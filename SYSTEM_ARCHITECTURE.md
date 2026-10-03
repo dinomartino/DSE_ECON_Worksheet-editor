@@ -1898,7 +1898,10 @@ type needs only a definition.
   order. MCQ shuffles options only: combination questions, pinned options
   (`McqOption.pinned`) and positional text ("All of the above", 以上皆是) never move, and
   `answerIndex` follows its option. With versions on, the answer key prints a grid per
-  version and a version map (printed letter → version A letter).
+  version and a version map (printed letter → version A letter). The letter rides the
+  running header (`versionHeaderText`); the "Version B" label above question 1 prints only
+  when page 1's header lacks it (`src/model/headerMarks.ts:versionInPageOneHeader`), and the
+  clipboard, which has no header, prints it always (`RenderedWorksheet.headerVersionLabel`).
 - **MCQ teacher notes are teacher-only and keyed by option.** `McqOption.rationale` lives on
   the option, so a shuffled version letters it where its option prints; `McqQuestion.provenance`
   is the source note ("Source: DSE 2023 Q1"). The teacher version prints them under the key,
