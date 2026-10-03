@@ -1,0 +1,31 @@
+{
+  "slug": "mixkit-31",
+  "file": "audio-stock/music/mixkit-31.mp3",
+  "duration": 110.38,
+  "method": "constant tempo, consensus inliers (tol 0.04 s) + least squares over librosa beat_times",
+  "bpm": 134.9541,
+  "beat": 0.444596,
+  "bar": 1.778383,
+  "beatsPerBar": 4,
+  "firstBeat": 0.038,
+  "firstDownbeat": 0.038,
+  "phase": 0,
+  "phaseCosts": [
+    0.756,
+    1.692,
+    3.69,
+    2.754
+  ],
+  "inliers": "204/233 (125 on the beat, the rest on the off-beat)",
+  "residual": {
+    "rms": 0.0132,
+    "max": 0.0422
+  },
+  "sections": [
+    12.6,
+    30.8,
+    73,
+    99.6,
+    105
+  ]
+}
