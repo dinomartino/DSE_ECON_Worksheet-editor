@@ -163,6 +163,18 @@ describe('HKEAA style', () => {
     expect(firstDiagram).toBeLessThan(firstPoint);
   });
 
+  it('numbers figures per key, from 1 in each part of a combined key, storing nothing', () => {
+    const worksheet = hkeaa(0);
+    const question = worksheet.questions[0] as Extract<Worksheet['questions'][number], { type: 'structured' }>;
+    question.parts[0] = { ...question.parts[0], answerDiagram: { ...createAnswerDiagram(), id: 'fig-a' } };
+    const saved = JSON.stringify(worksheet);
+    const captions = (nodes: RenderNode[]) =>
+      texts(nodes).map(en).filter((text) => /^Figure \d+$/.test(text));
+    expect(captions(renderCombinedAnswerKey([worksheet, worksheet], 'en'))).toEqual(['Figure 1', 'Figure 1']);
+    expect(captions(renderAnswerKey(worksheet, 'en'))).toEqual(['Figure 1']);
+    expect(JSON.stringify(worksheet)).toBe(saved);
+  });
+
   it('opens with the disclaimer and the notation legend, one side per row in bilingual', () => {
     const nodes = renderAnswerKey(hkeaa(2), 'bilingual');
     expect(texts(nodes).some((node) => node.text === KEY_LAYOUT_WORDING.disclaimer)).toBe(true);

@@ -27,7 +27,7 @@ import {
   answerKeyParts,
   answerKeyRunningHead,
   answerKeyTitle,
-  renderCombinedAnswerKey,
+  renderAnswerKey,
 } from '@/render/answerKey';
 import {
   collectAnswerGraphNodes,
@@ -648,8 +648,8 @@ export { buildParts as buildDocxParts };
  * body size; no cover, bands, header or page furniture — only a centred page number.
  * Its IR has no list streams (`w:num` does not apply); its only pictures are model
  * answer diagrams, rasterised by `exportAnswerKeyDocx` into `diagramImages`.
- * `others`: further documents whose keys follow, each from a new page, in this one's
- * page setup (`renderCombinedAnswerKey`); none leaves the single key unchanged.
+ * `others`: further documents whose keys follow, each its own section in its own page
+ * setup (`buildCombinedAnswerKeyParts`); none leaves the single key unchanged.
  */
 function buildAnswerKeyParts(
   worksheet: Worksheet,
@@ -663,7 +663,7 @@ function buildAnswerKeyParts(
   const { width: pageWidth, height: pageHeight } = pageDimensions(setup);
   const textWidth = contentWidth(setup);
 
-  const nodes = renderCombinedAnswerKey([worksheet, ...others], language);
+  const nodes = renderAnswerKey(worksheet, language);
   const { assets, bySrc } = collectNodeImages(nodes, diagramImages);
 
   let drawingId = 1;

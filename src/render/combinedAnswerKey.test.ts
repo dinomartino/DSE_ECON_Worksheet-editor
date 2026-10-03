@@ -192,6 +192,17 @@ describe('combined answer key .docx', () => {
     expect(parts.documentXml.match(/<w:footerReference/g)).toHaveLength(2);
   });
 
+  it('sets each paper in its own fonts', () => {
+    const one = paper1();
+    const two = { ...paper2(), fonts: { latin: 'Arial', eastAsia: 'PMingLiU' } };
+    expect(one.fonts.latin).not.toBe('Arial');
+    const [firstPart, secondPart] = buildAnswerKeyDocxParts(one, 'en', [two]).documentXml.split('</w:sectPr>');
+    expect(firstPart).toContain(`w:ascii="${one.fonts.latin}"`);
+    expect(firstPart).not.toContain('w:ascii="Arial"');
+    expect(secondPart).toContain('w:ascii="Arial"');
+    expect(secondPart).not.toContain(`w:ascii="${one.fonts.latin}"`);
+  });
+
   it('a combined key at one size writes no style twins', () => {
     const parts = buildAnswerKeyDocxParts(paper1(), 'en', [paper2()]);
     expect(parts.stylesXml).not.toMatch(/Sz\d+/);
