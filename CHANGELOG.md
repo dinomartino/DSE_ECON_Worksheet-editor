@@ -468,6 +468,13 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **The diagram drawing toolbar fits on one row on a laptop screen.** On narrower windows,
+  Copy, Paste, Duplicate and Delete sit in one ⋯ menu, the tools show their icons with the
+  names in the tooltip, and the Span tool's style and position choices appear over the
+  drawing. Every control is still there.
+  <!-- zh: **圖表繪製工具列在手提電腦螢幕上可放在同一行。** 視窗較窄時，複製、貼上、建立副本和刪除
+  會收進一個 ⋯ 選單，工具只顯示圖示（名稱見提示），跨距工具的樣式和位置選項則顯示在圖上方。所有
+  控制項仍然可用。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when

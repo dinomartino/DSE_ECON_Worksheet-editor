@@ -441,6 +441,7 @@ export const DIAGRAM_CANVAS_MESSAGES = defineMessages({
   paste: { en: 'Paste', zh: '貼上' },
   duplicate: { en: 'Duplicate', zh: '建立副本' },
   delete: { en: 'Delete', zh: '刪除' },
+  clipboardMenu: { en: 'Copy, paste, duplicate or delete', zh: '複製、貼上、建立副本或刪除' },
   snap: { en: 'Snap', zh: '吸附' },
   zoom: { en: 'Zoom', zh: '縮放' },
   crop: { en: 'Crop', zh: '裁剪' },

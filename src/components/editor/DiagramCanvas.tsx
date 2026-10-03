@@ -64,6 +64,7 @@ import { diagramBlockSvg } from '@/render/diagramPage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, Eyebrow, IconButton, Segmented, SelectField } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
+import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { resolveMessages, sideOf, type TextKey } from '@/i18n/catalogue';
 import { uiLanguage, useMessages } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
@@ -1077,6 +1078,21 @@ export function DiagramCanvas({
     setSelected([]);
   }, [diagram, selected, setDiagram]);
 
+  const doDuplicate = useCallback(() => {
+    if (selected.length === 0) return;
+    const { diagram: next, handles } = pasteInto(diagram, copyHandles(diagram, selected), newId);
+    setDiagram(next);
+    setSelected(handles);
+  }, [diagram, selected, setDiagram]);
+
+  // One list for both forms: the row of buttons (2xl) and the overflow menu below it.
+  const clipboardItems: MenuItem[] = [
+    { label: m.copy, hint: '⌘C', onSelect: doCopy, disabled: selected.length === 0 },
+    { label: m.paste, hint: '⌘V', onSelect: doPaste, disabled: isClipEmpty(clip) },
+    { label: m.duplicate, hint: '⌘D', onSelect: doDuplicate, disabled: selected.length === 0 },
+    { label: m.delete, hint: '⌫', onSelect: doDelete, disabled: selected.length === 0, danger: true },
+  ];
+
   // Shortcuts are scoped to the overlay and ignored while a field has focus, the same
   // rule the preview follows (§ "Direct manipulation on the page") — otherwise Backspace
   // in a label field would delete the element being labelled, and ⌘C would steal the
@@ -1240,6 +1256,8 @@ export function DiagramCanvas({
     return null;
   }, [editing, labelAnchors, projection, diagram, language, block.widthPx, spanClear]);
 
+  const toolNameClass = embedded ? 'sr-only 2xl:not-sr-only' : 'sr-only min-[1360px]:not-sr-only';
+
   const toolbarHint = cropping
     ? m.hintCrop
     : spanDraft
@@ -1297,9 +1315,10 @@ export function DiagramCanvas({
               }
             >
               <span aria-hidden className="text-lg leading-none">{item.glyph}</span>
-              {/* Embedded below 2xl the tools are glyphs (the name stays for readers and in
-                  the tooltip), so the toolbar keeps one row at 1280. */}
-              <span className={`text-xs font-medium ${embedded ? 'sr-only 2xl:not-sr-only' : ''}`}>{m[item.name]}</span>
+              {/* Narrow, the tools are glyphs (the name stays for readers and in the
+                  tooltip), so the toolbar keeps one row: embedded below 2xl, the overlay
+                  below 1360. */}
+              <span className={`text-xs font-medium ${toolNameClass}`}>{m[item.name]}</span>
             </button>
           ))}
           <ShadeMenu
@@ -1332,41 +1351,31 @@ export function DiagramCanvas({
           }
         >
           <span aria-hidden className="text-lg leading-none">✓</span>
-          <span className={`text-xs font-medium ${embedded ? 'sr-only 2xl:not-sr-only' : ''}`}>{m.drawAnswer}</span>
+          <span className={`text-xs font-medium ${toolNameClass}`}>{m.drawAnswer}</span>
         </button>
-
-        {tool === 'span' && (
-          <SpanSelects style={spanStyle} along={spanAlong} onStyle={setSpanStyle} onAlong={setSpanAlong} />
-        )}
 
         <span className="h-8 w-px bg-line-strong" />
 
         {/* Clipboard actions are buttons as well as shortcuts: a teacher who has never
             met ⌘D should still find "Duplicate", and the labels double as the place the
             shortcut is discovered. */}
-        <div className="flex gap-1">
-          <ToolbarButton compact label={m.copy} hint="⌘C" onClick={doCopy} disabled={selected.length === 0} />
-          <ToolbarButton compact label={m.paste} hint="⌘V" onClick={doPaste} disabled={isClipEmpty(clip)} />
-          <ToolbarButton
-            compact
-            label={m.duplicate}
-            hint="⌘D"
-            disabled={selected.length === 0}
-            onClick={() => {
-              if (selected.length === 0) return;
-              const { diagram: next, handles } = pasteInto(diagram, copyHandles(diagram, selected), newId);
-              setDiagram(next);
-              setSelected(handles);
-            }}
-          />
-          <ToolbarButton
-            compact
-            label={m.delete}
-            hint="⌫"
-            danger
-            onClick={doDelete}
-            disabled={selected.length === 0}
-          />
+        {/* Four buttons from 2xl; below it one overflow menu holds the same four, so
+            the row stays one row at 1440 (`clipboardItems`). */}
+        <div className="hidden gap-1 2xl:flex">
+          {clipboardItems.map((item) => (
+            <ToolbarButton
+              key={item.label}
+              compact
+              label={item.label}
+              hint={item.hint ?? ''}
+              danger={item.danger}
+              onClick={item.onSelect}
+              disabled={item.disabled}
+            />
+          ))}
+        </div>
+        <div className="2xl:hidden" data-testid="canvas-clipboard-menu">
+          <Menu items={clipboardItems} label={m.clipboardMenu} align="left" overOverlay />
         </div>
 
         <span className="h-8 w-px bg-line-strong" />
@@ -1446,7 +1455,12 @@ export function DiagramCanvas({
             what is drawn on is exactly the geometry that will be exported. */}
         <div className="relative flex min-w-0 flex-1 items-center justify-center overflow-auto p-8">
           {!embedded && !previewing && toolbarHint && (
-            <p className="pointer-events-none absolute right-3 top-2 max-w-xl text-right text-[11px] leading-snug text-ink-muted">
+            <p
+              className={`pointer-events-none absolute right-3 top-2 text-right text-[11px] leading-snug text-ink-muted ${
+                // Clear of the span options at the stage's left.
+                tool === 'span' ? 'max-w-[min(36rem,calc(100%-20rem))]' : 'max-w-xl'
+              }`}
+            >
               {toolbarHint}
             </p>
           )}
@@ -1459,12 +1473,23 @@ export function DiagramCanvas({
               onChange={setPreviewVersion}
             />
           ) : (
-            (drawAnswers || hasAnswerLayer(diagram)) && (
-              <p className="pointer-events-none absolute left-3 top-2 flex items-center gap-1.5 text-[11px] text-ink-muted">
-                {/* The swatch is the paper's own answer ink, not a UI token. */}
-                <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: ANSWER_INK }} />
-                {m.answerLegend}
-              </p>
+            // The span tool's options sit over the stage, not in the toolbar: two selects
+            // there wrapped the row at 1440. The answer legend shares the strip.
+            (tool === 'span' || drawAnswers || hasAnswerLayer(diagram)) && (
+              <div className="pointer-events-none absolute left-3 top-1 z-10 flex items-center gap-3">
+                {tool === 'span' && (
+                  <div className="pointer-events-auto" data-testid="canvas-span-options">
+                    <SpanSelects style={spanStyle} along={spanAlong} onStyle={setSpanStyle} onAlong={setSpanAlong} />
+                  </div>
+                )}
+                {(drawAnswers || hasAnswerLayer(diagram)) && (
+                  <p className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                    {/* The swatch is the paper's own answer ink, not a UI token. */}
+                    <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: ANSWER_INK }} />
+                    {m.answerLegend}
+                  </p>
+                )}
+              </div>
             )
           )}
           {previewing ? (
@@ -2290,7 +2315,7 @@ function SpanSelects({
 }) {
   const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
   const choices = spanOptions(useMessages(DIAGRAM_RELATION_MESSAGES));
-  const selectClass = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-xs text-ink';
+  const selectClass = 'h-7 rounded-md border border-line-strong bg-surface-raised px-1.5 text-xs text-ink';
   return (
     <div className="flex items-center gap-1.5">
       <select
