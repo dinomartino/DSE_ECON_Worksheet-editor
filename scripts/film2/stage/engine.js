@@ -36,6 +36,7 @@ const FONTS = [
   ['400 100px Inter', 'Aa'],
   ['500 100px Inter', 'Aa'],
   ['600 100px Inter', 'Aa'],
+  ['300 100px "PingFang HK"', '經濟備課室中文'], // 中文 inside serif headlines (lib/type.js)
   ['400 100px "PingFang HK"', '經濟備課室'],
   ['500 100px "PingFang HK"', '經濟備課室'],
 ];
@@ -269,6 +270,7 @@ function text() {
       scene: el.closest('.scene')?.dataset.scene,
       revealed: shown && el.dataset.revealed === '1',
       widths: spans.map((s) => s.offsetWidth),
+      lines: spans.map((s) => s.textContent),
       box: { l: r.l / k, t: r.t / k, r: r.r / k, b: r.b / k },
     });
   }
