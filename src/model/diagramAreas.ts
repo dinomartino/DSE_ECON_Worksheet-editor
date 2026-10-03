@@ -267,7 +267,8 @@ const same = (text: string): BiText => ({ en: [{ text }], zh: [{ text }] });
 export const AREA_PRESETS: Array<{ id: AreaPreset; name: string; needsTax: boolean; label: BiText }> = [
   { id: 'consumerSurplus', name: 'Consumer surplus', needsTax: false, label: same('CS') },
   { id: 'producerSurplus', name: 'Producer surplus', needsTax: false, label: same('PS') },
-  { id: 'deadweightLoss', name: 'Deadweight loss', needsTax: true, label: same('DWL') },
+  // 中文 as the other DWL presets print it (EDB rank 1); CS and PS stay letters.
+  { id: 'deadweightLoss', name: 'Deadweight loss', needsTax: true, label: { en: [{ text: 'DWL' }], zh: [{ text: '效率損失' }] } },
   {
     id: 'taxRevenue',
     name: 'Tax revenue',

@@ -114,3 +114,19 @@ export function parseTermsCsv(text: string): { rows: CsvTermRow[] } | { error: '
   }));
   return { rows };
 }
+
+/**
+ * A CSV file's text. UTF-8 (with or without the BOM) as written here; else Big5, the code
+ * page Excel on a Hong Kong Windows uses when a teacher saves as plain "CSV", which read
+ * as UTF-8 would turn every Chinese character into U+FFFD.
+ */
+export function decodeTermsCsv(bytes: Uint8Array): string {
+  for (const encoding of ['utf-8', 'big5']) {
+    try {
+      return new TextDecoder(encoding, { fatal: true }).decode(bytes);
+    } catch {
+      // Not this encoding (or the engine lacks it): try the next.
+    }
+  }
+  return new TextDecoder().decode(bytes);
+}

@@ -82,6 +82,9 @@ export interface TranslationPlan {
   jobs: ReadonlyMap<string, TranslationJob>;
   /** Symbol-only: no model call. */
   copies: TranslationWrite[];
+  /** Copies whose 中文 is a glossary term, by EDB key (an area's DWL → deadweight loss);
+   *  `writesFor` fills them from the glossary, or drops them without one. */
+  worded?: ReadonlyMap<TextPath, string>;
   chunks: Chunk[];
   counts: PlanCounts;
 }

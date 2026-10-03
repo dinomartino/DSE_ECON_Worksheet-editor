@@ -38,8 +38,8 @@ export function AiBar() {
   const phase = useAiRun((s) => s.phase);
   // Re-render on every edit: Undo all hides once its commit is no longer the latest.
   const worksheet = useWorksheetStore((s) => s.worksheet);
-  // The card belongs to one outcome: a new run, Done or Undo all closes it by itself.
-  const [cardFor, setCardFor] = useState<ReviewOutcome | null>(null);
+  // The card belongs to one run: a new run, Done or Undo all closes it by itself.
+  const [cardFor, setCardFor] = useState<number | null>(null);
 
   // Another document: highlights and Undo all belong to the one that ran.
   const docId = useRef(worksheet.id);
@@ -54,10 +54,10 @@ export function AiBar() {
   const review = phase.kind === 'review' ? phase : null;
   const items = review && review.outcome.kind !== 'nothing' ? review.outcome.items : NO_ITEMS;
   const current = review ? items[review.index] : undefined;
-  const cardOpen = review !== null && cardFor === review.outcome;
+  const cardOpen = review !== null && cardFor === review.runId;
   const setCardOpen = useCallback((on: boolean) => {
     const now = useAiRun.getState().phase;
-    setCardFor(on && now.kind === 'review' ? now.outcome : null);
+    setCardFor(on && now.kind === 'review' ? now.runId : null);
   }, []);
   const marks = useMemo(() => (items.length ? markTones(items) : null), [items]);
   usePageMarks(marks, cardOpen ? current?.targetKey : undefined);
@@ -109,7 +109,14 @@ export function AiBar() {
   return (
     <>
       {cardOpen && current && (
-        <ItemCard item={current} position={position} onPrev={() => walk(-1)} onNext={() => walk(1)} onClose={() => setCardOpen(false)} />
+        <ItemCard
+          item={current}
+          position={position}
+          onAct={() => review && run.act(review.index)}
+          onPrev={() => walk(-1)}
+          onNext={() => walk(1)}
+          onClose={() => setCardOpen(false)}
+        />
       )}
       <div data-print-hide className="pointer-events-none fixed bottom-16 left-[76px] right-[400px] z-[45] flex justify-center px-4">
         <div
@@ -158,7 +165,7 @@ function ReviewBody({
   const m = useMessages(AI_UI_MESSAGES);
   const run = useAiRun.getState();
   const tones = (['look', 'failed', 'finding'] as const).flatMap((tone) => {
-    const n = items.filter((item) => item.tone === tone).length;
+    const n = items.filter((item) => item.tone === tone && !item.resolved).length;
     return n > 0 ? [{ tone, n }] : [];
   });
   let actions: ReactNode = null;

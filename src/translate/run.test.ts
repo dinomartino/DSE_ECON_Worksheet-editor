@@ -4,6 +4,7 @@ import { AiError, type CompletionRequest, type CompletionResult } from '@/ai/typ
 import { plain } from '@/model/text';
 import type { SlotKind } from '@/model/textSlots';
 import type { RichText } from '@/model/types';
+import { loadGlossary } from '@/glossary/load';
 import { fakeGlossary } from './fakeGlossary';
 import { announcedSleep, runTranslation, translateOne, writesFor } from './run';
 import { payloadOf, reply, scriptedClient } from './testKit';
@@ -258,6 +259,20 @@ describe('writesFor', () => {
     expect(writes.map((w) => [w.path, plain(w.next)])).toEqual([['t1/p0', '解釋。'], ['t1/p1', '解釋。'], ['cell', '2024']]);
     expect(writes[0]).toMatchObject({ side: 'zh', sourceSnapshot: [{ text: 'Explain.' }], targetSnapshot: [] });
     expect(writesFor(plan, outcome, new Set(['t2']), false).map((w) => w.path)).toEqual(['t2/p0']);
+  });
+
+  it("writes a worded copy as the glossary's term, keeping its formatting; without the term it is dropped", async () => {
+    const plan = planOf([]);
+    const area = { path: 'area', side: 'zh' as const, sourceSnapshot: [{ text: 'DWL', bold: true }], targetSnapshot: [], next: [{ text: 'DWL', bold: true }] };
+    plan.copies.push(area);
+    const worded = { ...plan, worded: new Map([['area', 'deadweight loss']]) };
+    const outcome = await run(plan, depsFor(scriptedClient([])));
+    const edb = await loadGlossary({ choices: {}, related: {} });
+    expect(writesFor(worded, outcome, new Set(), true, edb).map((w) => w.next)).toEqual([[{ text: '效率損失', bold: true }]]);
+    const chosen = await loadGlossary({ choices: { 'deadweight loss': '無謂損失' }, related: {} });
+    expect(writesFor(worded, outcome, new Set(), true, chosen).map((w) => plain(w.next))).toEqual(['無謂損失']);
+    expect(writesFor(worded, outcome, new Set(), true)).toEqual([]);
+    expect(writesFor({ ...plan, worded: new Map([['area', 'no such term']]) }, outcome, new Set(), true, edb)).toEqual([]);
   });
 });
 

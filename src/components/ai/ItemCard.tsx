@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { ReviewItem } from '@/assist/types';
 import { Button, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
@@ -65,6 +65,7 @@ function useAnchor(targetKey: string | undefined, card: React.RefObject<HTMLDivE
 export function ItemCard({
   item,
   position,
+  onAct,
   onPrev,
   onNext,
   onClose,
@@ -72,6 +73,8 @@ export function ItemCard({
   item: ReviewItem;
   /** "3 / 12"; absent with a single item. */
   position?: string;
+  /** Runs `item.action` through the run, which marks the item resolved. */
+  onAct(): void;
   onPrev(): void;
   onNext(): void;
   onClose(): void;
@@ -79,8 +82,7 @@ export function ItemCard({
   const m = useMessages(AI_UI_MESSAGES);
   const ref = useRef<HTMLDivElement>(null);
   useAnchor(item.targetKey, ref);
-  const [done, setDone] = useState<ReadonlySet<string>>(new Set());
-  const acted = done.has(item.id);
+  const acted = !!item.resolved;
   return (
     <div
       ref={ref}
@@ -113,10 +115,7 @@ export function ItemCard({
           <Button
             size="sm"
             disabled={acted}
-            onClick={() => {
-              item.action?.run();
-              setDone((prev) => new Set(prev).add(item.id));
-            }}
+            onClick={onAct}
           >
             {acted ? m.done : item.action.label}
           </Button>

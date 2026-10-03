@@ -63,6 +63,30 @@ describe('useAiRun', () => {
     expect(useAiRun.getState().phase).toEqual({ kind: 'idle' });
   });
 
+  it("act runs a card's action once, marks it resolved and re-reads a findings bar", async () => {
+    const fix = vi.fn(() => true);
+    const stale = vi.fn(() => false);
+    let left = 2;
+    const findings = (): VerbOutcome => ({
+      kind: 'findings',
+      summary: '2 to fix',
+      items: [{ ...item('a'), tone: 'finding', action: { label: 'Fix', run: fix } }, { ...item('b'), tone: 'finding', action: { label: 'Fix', run: stale } }],
+      applyAll: { label: 'Replace 2', run: () => {} },
+      refresh: () => ((left -= 1), left > 0 ? { summary: `${left} to fix`, applyAll: { label: `Replace ${left}`, run: () => {} } } : { summary: 'All fixed' }),
+    });
+    registerVerb(fakeVerb('t.find', async () => findings()));
+    await useAiRun.getState().startVerb('t.find');
+    const first = useAiRun.getState().phase;
+    useAiRun.getState().act(1);
+    expect(useAiRun.getState().phase).toBe(first);
+    useAiRun.getState().act(0);
+    useAiRun.getState().act(0);
+    expect(fix).toHaveBeenCalledTimes(1);
+    const phase = useAiRun.getState().phase;
+    expect(phase).toMatchObject({ kind: 'review', outcome: { summary: '1 to fix', applyAll: { label: 'Replace 1' }, items: [{ resolved: true }, { id: 'b' }] } });
+    expect(phase.kind === 'review' && phase.runId).toBe(first.kind === 'review' && first.runId);
+  });
+
   it('stop aborts the signal; the verb returns what finished', async () => {
     const { release, released } = gate();
     let aborted = false;
