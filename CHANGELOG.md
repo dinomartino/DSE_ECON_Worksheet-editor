@@ -451,6 +451,12 @@ a version heading is edited afterwards.
   B's order and letters, so A on the panel is A on the page.
   <!-- zh: **MCQ 面板的選項次序與頁面相同。** 檢視版本 B 時，側面板的選項、正確答案和解說
   列，現在都按版本 B 的次序和字母排列，面板上的 A 就是頁面上的 A。 -->
+- **A versioned answer key letters each explanation as that version prints it.** When
+  options are shuffled, the key now gives every version its own explanations, with each
+  option's rationale under the letter it has in that version, instead of one list in
+  Version A's letters.
+  <!-- zh: **有版本的答案頁，解說按各版本的字母列出。** 選項打亂後，答案頁現在為每個版本分別
+  列出解說，每個選項的解說都用它在該版本的字母，而不是只按版本 A 的字母列一次。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.

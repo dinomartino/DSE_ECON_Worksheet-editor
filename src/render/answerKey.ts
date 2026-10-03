@@ -109,6 +109,8 @@ export interface ChoiceVersion {
   letter?: string;
   /** Per printed option, its Version A letter; absent = the authored order. */
   sourceLetters?: string[];
+  /** The rationale lettered as this version prints its options; absent = the authored order. */
+  rationale?: ChoiceRationale[];
 }
 
 export interface KeyChoice {
@@ -192,6 +194,7 @@ export function collectAnswerKey(worksheet: Worksheet): AnswerKeyData {
         return {
           letter: keyed.kind === 'choice' ? keyed.letter : undefined,
           sourceLetters: shown.sourceLetters,
+          ...(keyed.kind === 'choice' && keyed.rationale ? { rationale: keyed.rationale } : {}),
         };
       });
       group.choices.push({
@@ -334,7 +337,7 @@ export function renderStandardKey(
 
 /**
  * With versions on: one MC key per version (the layout's table; the list prints as the
- * grid), then the notes and schemes once (they do not change between versions), the
+ * grid), then the notes and schemes once (rationale per version once options move), the
  * paper total, then the version map.
  */
 function renderVersionedKey(
@@ -376,7 +379,22 @@ function renderVersionedKey(
       nodes.push(heading(group));
       pushGap(nodes);
     }
-    renderNotes(nodes, group.choices, language, true, own);
+    // Rationales are lettered by position, so once a version reorders a question's
+    // options, each version gets its own explanations under its own letters.
+    const reletters = group.choices.some(
+      (choice) => (choice.rationale?.length ?? 0) > 0 && choice.versions.some((shown) => shown.sourceLetters),
+    );
+    if (reletters) {
+      letters.forEach((letter, version) => {
+        if (version > 0) pushGap(nodes);
+        const lettered = group.choices.map((choice) =>
+          choice.rationale ? { ...choice, rationale: choice.versions[version]?.rationale ?? choice.rationale } : choice,
+        );
+        renderNotes(nodes, lettered, language, true, own, ANSWER_KEY_WORDING.explanationsVersion(letter));
+      });
+    } else {
+      renderNotes(nodes, group.choices, language, true, own);
+    }
     for (const scheme of group.schemes) {
       pushGap(nodes);
       LQ_KEY_RENDERERS[layout.lqLayout](nodes, scheme, context);

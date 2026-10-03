@@ -13,6 +13,8 @@ export const ANSWER_KEY_WORDING = {
     en: 'Explanations (option letters as in Version A)',
     zh: '解說（選項字母以版本 A 為準）',
   },
+  /** One version's explanations, each rationale under the letter its option prints with there. */
+  explanationsVersion: (letter: string) => ({ en: `Explanations: Version ${letter}`, zh: `解說：版本 ${letter}` }),
   question: (n: number) => ({ en: `Question ${n}`, zh: `第${n}題` }),
   version: (letter: string) => ({ en: `Version ${letter}`, zh: `版本 ${letter}` }),
   versionMap: { en: 'Version map', zh: '版本對照' },
