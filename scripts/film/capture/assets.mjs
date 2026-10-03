@@ -95,13 +95,13 @@ const SHEET_VIEWPORT = { width: 1700, height: 1400 };
 /** Element capture of sheet `index` in print preview: the page exactly as it prints. */
 async function sheet(page, cdp, index, file) {
   const paper = page.locator('#print-root .paper').nth(index);
-  await paper.evaluate((el) => el.scrollIntoView({ block: 'start' }));
-  await settle(page, 300);
-  await page.evaluate(() => {
+  // scrollTop, not scrollIntoView: the virtual clock eases scrollIntoView over frames, and a
+  // crop measured mid-scroll comes out shifted (a band of desk across the sheet's top).
+  await paper.evaluate((el) => {
     const sc = document.querySelector('main.overflow-auto');
-    sc.scrollTop -= 60;
+    sc.scrollTop += el.getBoundingClientRect().top - sc.getBoundingClientRect().top - 60;
   });
-  await settle(page, 300);
+  await settle(page, 600);
   const b = await paper.boundingBox();
   const zoom = await page.getByTitle('Reset zoom to fit').textContent();
   if (zoom.trim() !== '100%') throw new Error(`capture: sheets need 100% zoom, the page shows ${zoom}`);

@@ -8,6 +8,7 @@ import { demoPageScript } from '../../film/capture/draw-diagram.mjs';
 import { settle, pointer } from '../../film/capture/session.mjs';
 import { ANSWER_DOC, PAPER, SHIFT_DOC } from './content.mjs';
 import { seededDocs, withDocs } from './seed.mjs';
+import { SHEET_JOBS } from './sheets.mjs';
 
 export { seedState } from './seed.mjs';
 
@@ -358,5 +359,5 @@ export const CLIPS = [
   },
 ];
 
-export const ASSET_JOBS = [];
+export const ASSET_JOBS = SHEET_JOBS;
 export { seededDocs };
