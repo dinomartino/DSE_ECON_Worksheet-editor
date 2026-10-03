@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
-import { registerPatterns } from '@/library/usePatterns';
+import { isReadOnlyRegistry, registerPatterns, usePatternRegistry } from '@/library/usePatterns';
 import { samePatternName } from '@/model/patterns';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { topicDisplay } from '@/model/topics';
@@ -66,6 +66,7 @@ export function PatternPicker({
   onChange: (name: string | null | undefined, created: boolean) => void;
 }) {
   const m = useMessages(PATTERN_PICKER_MESSAGES);
+  const readOnly = isReadOnlyRegistry(usePatternRegistry());
   const topicName = topicDisplay(topic, useUiLanguage() === 'zh-HK' ? 'zh' : 'en');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -209,6 +210,11 @@ export function PatternPicker({
         ))}
       </ul>
       {options.length === 0 && <p className="px-1.5 py-1 text-[11px] text-ink-subtle">{m.none(kind)}</p>}
+      {readOnly && options.some((option) => option.kind === 'new') && (
+        <p role="status" className="px-1.5 py-1 text-[10.5px] text-warn-ink">
+          {m.readOnly}
+        </p>
+      )}
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10.5px] text-ink-subtle">{m.keys}</span>
         <button

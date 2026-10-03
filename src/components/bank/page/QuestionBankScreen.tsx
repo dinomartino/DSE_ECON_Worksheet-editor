@@ -17,7 +17,7 @@ import {
   type PatternId,
   type PatternItem,
 } from '@/library/patterns';
-import { registerPatterns, renameRegisteredPattern, unregisterPattern, usePatternRegistry } from '@/library/usePatterns';
+import { isReadOnlyRegistry, registerPatterns, renameRegisteredPattern, unregisterPattern, usePatternRegistry } from '@/library/usePatterns';
 import { holdsPatterns } from '@/model/patterns';
 import type { BankGroup, BankRow } from '@/library/types';
 import { useBank } from '@/library/useBank';
@@ -952,6 +952,7 @@ export function QuestionBankScreen({
           items={patternItems}
           scope={level.topic}
           busy={busy}
+          readOnly={isReadOnlyRegistry(registry)}
           onScope={(scope) => setLevel({ kind: 'patterns', topic: scope })}
           onCreate={createPattern}
           onRename={renamePattern}

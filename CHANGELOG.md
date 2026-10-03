@@ -506,6 +506,11 @@ a version heading is edited afterwards.
   <!-- zh: **「更新題庫副本」會保留較新的課題。** 若題庫副本的課題在你的工作紙之後才改動（例如在
   另一個分頁），更新時現在會帶入你的新內容，但保留那些較新的課題。長題目的各部分亦會與題庫
   的保持對應，逐部分設定的課題仍然一致。 -->
+- **The 題型 page says when its list can't be saved.** If your 題型 list was saved by a
+  newer version of Econ Studio, the 題型 page and the 題型 picker now say that changes to
+  the list are not saved here, instead of seeming to save them.
+  <!-- zh: **題型清單無法儲存時，題型頁面會說明。** 若你的題型清單由較新版本的 Econ Studio
+  儲存，題型頁面和題型選擇器現在會說明在這裏對清單所作的修改不會儲存，而不會看似已經儲存。 -->
 
 ## 0.5.0 — 2026-09-28
 

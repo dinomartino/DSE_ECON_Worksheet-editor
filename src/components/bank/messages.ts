@@ -198,4 +198,8 @@ export const PATTERN_PICKER_MESSAGES = defineMessages({
   },
   keys: { en: '↑↓ to move · Enter to pick', zh: '↑↓ 移動 · Enter 選取' },
   cancel: { en: 'Cancel', zh: '取消' },
+  readOnly: {
+    en: 'The 題型 list is from a newer version of Econ Studio, so a new name is not saved to it.',
+    zh: '題型清單由較新版本的 Econ Studio 儲存，因此新名稱不會存入清單。',
+  },
 });
