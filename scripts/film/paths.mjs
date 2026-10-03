@@ -22,9 +22,12 @@ function mainRoot() {
 
 export const MAIN_ROOT = mainRoot();
 // FILM_OUT moves every output (build, audio, the film) elsewhere, e.g. to keep a parallel
-// session's renders and score apart; the asset store stays shared.
+// session's renders and score apart; the asset store stays shared. FILM_STORE moves the
+// asset store itself (another film's footage, e.g. demo-media/film-v2/assets).
 export const OUT = process.env.FILM_OUT ? resolve(process.env.FILM_OUT) : resolve(MAIN_ROOT, 'demo-media/film');
-export const ASSETS = resolve(MAIN_ROOT, 'demo-media/film/assets');
+export const ASSETS = process.env.FILM_STORE
+  ? resolve(process.env.FILM_STORE)
+  : resolve(MAIN_ROOT, 'demo-media/film/assets');
 export const BUILD = resolve(OUT, 'build');
 export const AUDIO = resolve(OUT, 'audio');
 

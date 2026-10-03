@@ -1,6 +1,7 @@
 // Shared driving for the demo: a mouse that travels visibly, and the app actions both
 // the recording and the screenshots are built from. Selectors are the app's own roles
 // and aria-labels, so a renamed control fails here loudly rather than silently.
+import { selectors } from 'playwright-core';
 import { MCQS, STRUCTURED, QUIZ_NAME, LIBRARY } from './content.mjs';
 
 export const VIEWPORT = { width: 1440, height: 900 };
@@ -129,13 +130,31 @@ export function makeDriver(page, { smooth = false, url } = {}) {
 
 // ---- locators --------------------------------------------------------------
 
-/** The i-th question on the page (0-based, page order). */
-export const question = (page, i) => page.locator('#print-root [data-question-id]').nth(i);
+// A question that breaks across sheets renders one [data-question-id] fragment per sheet,
+// and the measuring probe holds copies outside #print-root. This engine counts questions,
+// not fragments: `econ-question=3` is every fragment of the 4th question on the page.
+const ENGINE = 'econ-question';
+try {
+  await selectors.register(ENGINE, () => ({
+    queryAll(_root, body) {
+      const all = [...document.querySelectorAll('#print-root [data-question-id]')];
+      const id = [...new Set(all.map((e) => e.getAttribute('data-question-id')))][Number(body)];
+      return id == null ? [] : all.filter((e) => e.getAttribute('data-question-id') === id);
+    },
+    query(root, body) {
+      return this.queryAll(root, body)[0] ?? null;
+    },
+  }));
+} catch (e) {
+  if (!/already registered/.test(String(e?.message))) throw e;
+}
+/** The i-th question on the page (0-based, page order): its first fragment. */
+export const question = (page, i) => page.locator(`${ENGINE}=${i}`).first();
 /**
- * The j-th editable field of question i. Bilingual mode alternates EN, 中文:
- * MCQ = stem, then A..D; structured = stem, then (a), (b), ...
+ * The j-th editable field of question i, across all its fragments. Bilingual mode
+ * alternates EN, 中文: MCQ = stem, then A..D; structured = stem, then (a), (b), ...
  */
-export const field = (page, i, j) => question(page, i).locator('[role=textbox]').nth(j);
+export const field = (page, i, j) => page.locator(`${ENGINE}=${i}`).locator('[role=textbox]').nth(j);
 export const flowRow = (page, text) =>
   page.locator('#print-root [data-flow-id]').filter({ hasText: text }).first();
 
