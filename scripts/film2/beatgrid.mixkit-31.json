@@ -1,0 +1,48 @@
+{
+  "slug": "mixkit-31",
+  "source": "audio/grid/mixkit-31.grid.json",
+  "title": "Dreaming Big",
+  "bpm": 67.485,
+  "beat": 0.88908,
+  "pulse": 0.44454,
+  "bar": 3.55632,
+  "beatsPerBar": 4,
+  "firstDownbeat": 1.795,
+  "duration": 110.38,
+  "audibleEnd": 107.65,
+  "sections": [
+    {
+      "t": 0,
+      "label": "intro"
+    },
+    {
+      "t": 12.464,
+      "label": "build"
+    },
+    {
+      "t": 30.246,
+      "label": "body"
+    },
+    {
+      "t": 72.921,
+      "label": "lift"
+    },
+    {
+      "t": 94.259,
+      "label": "pullback"
+    },
+    {
+      "t": 104.928,
+      "label": "tail"
+    }
+  ],
+  "residualMs": {
+    "rms": 10,
+    "max": 34.2,
+    "drift_15s_window_max": 5.4,
+    "matched": 122,
+    "of": 233,
+    "lattice_s": 0.4445,
+    "gate_ms": 35
+  }
+}
