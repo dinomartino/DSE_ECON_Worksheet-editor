@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { chromium } from 'playwright-core';
+import { convertToPdf, DEFAULT_LO_PROFILE, ensureLoProfile } from './soffice.mjs';
 
 const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -27,7 +28,8 @@ const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.me
  * which is exactly the blind spot the blank-sheet bug hid in.
  *
  *   node scripts/lq-verify.mjs [--out=/tmp/lq-verify] [--url=http://localhost:3000]
- *                              [--skip-fixtures]
+ *                              [--skip-fixtures] [--language=en|zh|bilingual]
+ *                              [--lo-profile=<dir>]
  *
  *   `--out` (default $LQ_DIR, else the path shown) also receives the fixtures.
  */
@@ -42,7 +44,14 @@ const opt = (name, fallback) => {
 };
 const OUT = opt('out', process.env.LQ_DIR ?? '/tmp/lq-verify');
 const URL_BASE = opt('url', 'http://localhost:3000');
-const SOFFICE = '/Applications/LibreOffice.app/Contents/MacOS/soffice';
+const LO_PROFILE = ensureLoProfile(opt('lo-profile', DEFAULT_LO_PROFILE));
+// Exported and previewed in this language; the preview leg clicks its toolbar button.
+const LANGUAGE = opt('language', 'en');
+const LANGUAGE_BUTTON = { en: 'EN', zh: '中文', bilingual: 'EN+中' }[LANGUAGE];
+if (!LANGUAGE_BUTTON) {
+  console.error(`unknown --language=${LANGUAGE}`);
+  process.exit(1);
+}
 
 /**
  * Fixture geometry: cover + 6 body sheets (see scripts/lq-fixtures.test.ts).
@@ -112,11 +121,11 @@ const checkPages = (pages, label) => {
 
 // ── 1. Fixture ──────────────────────────────────────────────────────────────────
 if (!args.includes('--skip-fixtures')) {
-  run('npx', ['vitest', 'run', 'scripts/lq-fixtures.test.ts'], 'emit fixture', false, { ...process.env, LQ_DIR: OUT });
+  run('npx', ['vitest', 'run', 'scripts/lq-fixtures.test.ts'], 'emit fixture', false, { ...process.env, LQ_DIR: OUT, LQ_LANGUAGE: LANGUAGE });
 }
 
 // ── 2. .docx leg ────────────────────────────────────────────────────────────────
-run(SOFFICE, ['--headless', '--convert-to', 'pdf', '--outdir', OUT, `${OUT}/lq.docx`], 'soffice');
+convertToPdf(`${OUT}/lq.docx`, OUT, LO_PROFILE);
 checkPages(pdfPages(`${OUT}/lq.pdf`, 'docx'), 'docx');
 run('pdftoppm', ['-r', '90', '-png', '-f', String(PURE_PAGE), '-l', String(PURE_PAGE), `${OUT}/lq.pdf`, `${OUT}/lq-docx`], 'pdftoppm docx');
 collectPage(`${OUT}/lq-docx`, `${OUT}/lq-docx.png`);
@@ -182,6 +191,9 @@ try {
   await page.goto(URL_BASE, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: new RegExp(title) }).first().click();
   await page.waitForSelector('[data-cover]', { timeout: 15_000 });
+  if (LANGUAGE !== 'en') {
+    await page.getByRole('radio', { name: LANGUAGE_BUTTON, exact: true }).first().click();
+  }
   // Let the measure → pack → (fill-resolve) cycle settle before counting sheets.
   await page.waitForTimeout(1500);
 
@@ -219,7 +231,9 @@ try {
     if (!ok) failures.push(`fill resolved to ${stored}, fixture stored ${fill.lines} — recalibrate`);
   }
 
-  await page.addStyleTag({ content: '[data-print-hide]{display:none !important}' });
+  // Scoped to #print-root: the measurement probe is data-print-hide too, and hiding it
+  // measures every block at 0 and repacks the sheets the print leg then captures.
+  await page.addStyleTag({ content: '#print-root [data-print-hide]{display:none !important}' });
   const sheet = page.locator(`#print-root [data-page-index="${PURE_BODY_INDEX}"] .paper`);
   await sheet.scrollIntoViewIfNeeded();
   const clip = await sheet.evaluate((el) => {

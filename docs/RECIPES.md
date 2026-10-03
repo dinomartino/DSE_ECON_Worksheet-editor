@@ -332,6 +332,12 @@ node scripts/cover-verify.mjs                   # cover: preview vs .docx vs pri
 node scripts/lq-verify.mjs                      # the QAB booklet, same three ways
 ```
 
+Both take `--language=en|bilingual|zh`. Their Word leg runs LibreOffice under a private
+profile holding the system CJK fonts (`scripts/soffice.mjs`; `--lo-profile=<dir>`, default
+`$TMPDIR/econ-lo-profile`): stock soffice drops every Chinese glyph, so a zh page count
+from it is not real. Never hide `[data-print-hide]` page-wide in a harness: the
+measurement probe carries it, and hiding it repacks the sheets (scope to `#print-root`).
+
 Seed the shot — an empty document hides exactly the crowding this is meant to catch.
 After any UI work, open an exported `.docx` in Word: it is the load-bearing output.
 

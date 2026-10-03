@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { chromium } from 'playwright-core';
+import { convertToPdf, DEFAULT_LO_PROFILE, ensureLoProfile } from './soffice.mjs';
 
 const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -20,8 +21,11 @@ const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.me
  *
  *   node scripts/cover-verify.mjs [--out=/tmp/cover-verify] [--url=http://localhost:3000]
  *                                 [--skip-fixtures] [--language=en|zh|bilingual]
+ *                                 [--lo-profile=<dir>]
  *
  *   `--out` (default $COVER_DIR, else the path shown) also receives the fixtures.
+ *
+ * `--lo-profile` is the LibreOffice profile holding the system CJK fonts (scripts/soffice.mjs).
  *
  * Needs LibreOffice and pdftoppm (poppler). Starts `npm run dev` itself if the URL is
  * not already serving, and stops it again on exit.
@@ -44,7 +48,7 @@ if (!LANGUAGE_BUTTON) {
   console.error(`unknown --language=${LANGUAGE}`);
   process.exit(1);
 }
-const SOFFICE = '/Applications/LibreOffice.app/Contents/MacOS/soffice';
+const LO_PROFILE = ensureLoProfile(opt('lo-profile', DEFAULT_LO_PROFILE));
 
 const PAPERS = [
   { name: 'p1', reference: 'real_life_reference/DSE2021_Paper 1.pdf' },
@@ -112,7 +116,7 @@ const pageFailures = [];
 
 for (const { name } of PAPERS) {
   const docx = `${OUT}/cover-${name}.docx`;
-  run(SOFFICE, ['--headless', '--convert-to', 'pdf', '--outdir', OUT, docx], `soffice ${name}`);
+  convertToPdf(docx, OUT, LO_PROFILE);
 
   const info = run('pdfinfo', [`${OUT}/cover-${name}.pdf`], `pdfinfo ${name}`, true);
   const pages = Number(/^Pages:\s*(\d+)$/m.exec(info ?? '')?.[1]);
@@ -207,8 +211,9 @@ try {
     await page.waitForTimeout(800);
 
     // The preview leg represents the printed sheet, so editing chrome (hint pill,
-    // affordances) is stripped the same way print CSS strips it.
-    await page.addStyleTag({ content: '[data-print-hide]{display:none !important}' });
+    // affordances) is stripped the same way print CSS strips it. Scoped to #print-root:
+    // the measurement probe is data-print-hide too, and hiding it repacks every sheet.
+    await page.addStyleTag({ content: '#print-root [data-print-hide]{display:none !important}' });
     // The sheets sit inside a `scale()` transform, and an element screenshot uses the
     // untransformed box — capturing the layout height with the visual height painted at
     // scale, so grey shows below the sheet. Clip to the *visual* rect instead.
