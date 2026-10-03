@@ -27,7 +27,7 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   (not hidden, trashed or newer-build documents; those are reported), and every surface
   reads one set per question: **the newest tag change wins** (§ One tag set). The editor's
   Topic row does the same (`src/components/editor/topicSync.ts`): the open copy through
-  the store (⌘Z undoes it, and only it), every other indexed copy of its root through
+  the store (⌘Z undoes it and its writes to the other copies), every other indexed copy of its root through
   storage, never the open document; every copy it reaches ends with the edited set. A copy
   taken from the bank (Insert, Fill, Add to, New worksheet from these) starts with the
   shared set and its stamp, not the picked copy's tags
@@ -230,8 +230,9 @@ write could not reach (hidden, trashed, newer-build, restored) brought the tag b
   rewrites or dirties it. An edit in the Topic row is read against what it showed.
 - **Trashed and hidden copies are not indexed**, so they never override. Restored or
   unhidden, their older stamp loses to the newest set.
-- **⌘Z after a topic edit** restores the open copy's old tags and stamp, but the other
-  copies hold the newer change, so the Topic row keeps showing it. Edit the topic back.
+- **⌘Z after a topic edit** restores the open copy's old tags and stamp, and steps every
+  other copy it wrote back to its own (⇧⌘Z forward again), each only while it still holds
+  what the edit left (`src/library/tagWrites.ts:swapTags`); a copy tagged since keeps it.
 - **Clock skew is accepted.** Stamps come from each device's clock; a desktop and a web
   copy whose clocks disagree can let the earlier change win. Kept simple on purpose.
 

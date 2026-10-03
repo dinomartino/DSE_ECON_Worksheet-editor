@@ -470,6 +470,15 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **Undo after changing a question's topics undoes it in every worksheet.** A topic change
+  in the Topics row also updates the same question in your other worksheets. ⌘Z used to
+  take it back in the open paper only, so the bank kept showing the change. Now ⌘Z takes
+  it back everywhere, and ⇧⌘Z puts it back everywhere. A copy whose topics you changed
+  again in the meantime keeps your newer topics, and the Topics row names it.
+  <!-- zh: **更改題目課題後按復原，所有工作紙都會一併復原。** 在「課題」列更改課題，會同時更新
+  其他工作紙中的同一題目。以往按 ⌘Z 只會復原目前開啟的工作紙，題庫仍顯示更改後的課題。現在
+  ⌘Z 會在所有工作紙復原，⇧⌘Z 會在所有工作紙重做。期間再次更改過課題的副本會保留較新的課題，
+  「課題」列會列出該工作紙。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when

@@ -212,6 +212,85 @@ describe('the editor Topic row writes every copy', () => {
   });
 });
 
+/** Lets the undo/redo write queued behind the store change land. */
+const settle = () => setQuestionTopics('no-such-question', [], harness([]).deps).then(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+describe('⌘Z and ⇧⌘Z after a synced edit step the other copies too', () => {
+  let original: Question;
+  let copyB: Question;
+  let docA: Worksheet;
+  let docB: Worksheet;
+
+  beforeEach(() => {
+    original = { ...choiceQuestion('Along a straight-line demand curve…', '', ['C']), tagsAt: T1 };
+    docA = docWith([original], { title: bi('Paper A', '') });
+    copyB = { ...copyQuestion(original, docA.id), tags: ['C'], tagsAt: T1 };
+    docB = docWith([copyB], { title: bi('Paper B', '') });
+  });
+
+  it('undo puts every copy back exactly, tags and stamp; redo writes the change again', async () => {
+    const { saved, notices, deps } = harness([docA, docB]);
+    open(docB);
+    await setQuestionTopics(copyB.id, ['C', 'D'], deps, ['C']);
+    const stamped = saved.get(docA.id)!.questions[0];
+    expect(stamped.tags).toEqual(['C', 'D']);
+
+    useWorksheetStore.getState().undo();
+    await settle();
+    expect(saved.get(docA.id)!.questions[0]).toEqual(original);
+    expect(tagsIn(useWorksheetStore.getState().worksheet, copyB.id)).toEqual(['C']);
+    expect(notices.at(-1)).toBe('Also undone in 1 other worksheet.');
+    // The shared state is the old one again: the bank and the Topic row show C alone.
+    const rows = withSharedTags([useWorksheetStore.getState().worksheet, saved.get(docA.id)!].flatMap((doc) => rowsOf(doc)));
+    expect(rows.map((row) => row.tags)).toEqual([['C'], ['C']]);
+
+    useWorksheetStore.getState().redo();
+    await settle();
+    expect(saved.get(docA.id)!.questions[0]).toEqual(stamped);
+    expect(notices.at(-1)).toBe('Also updated in 1 other worksheet.');
+  });
+
+  it('a copy tagged since the edit keeps its newer tags and is named', async () => {
+    const { saved, notices, deps } = harness([docA, docB]);
+    open(docB);
+    await setQuestionTopics(copyB.id, ['C', 'D'], deps, ['C']);
+    // The bank screen (or another tab) tags paper A's copy again.
+    const later = { ...saved.get(docA.id)!.questions[0], tags: ['C', 'D', 'E'], tagsAt: '2030-01-01T00:00:00.000Z' };
+    saved.set(docA.id, { ...saved.get(docA.id)!, questions: [later] });
+
+    useWorksheetStore.getState().undo();
+    await settle();
+    expect(saved.get(docA.id)!.questions[0]).toEqual(later);
+    expect(notices.at(-1)).toBe('“Paper A” keeps its newer topics: they changed since.');
+  });
+
+  it('only tags and their stamp move back: content edited meanwhile stays', async () => {
+    const { saved, deps } = harness([docA, docB]);
+    open(docB);
+    await setQuestionTopics(copyB.id, ['C', 'D'], deps, ['C']);
+    const edited = { ...saved.get(docA.id)!.questions[0], marks: 7 } as Question;
+    saved.set(docA.id, { ...saved.get(docA.id)!, questions: [edited] });
+
+    useWorksheetStore.getState().undo();
+    await settle();
+    const back = saved.get(docA.id)!.questions[0];
+    expect(back.tags).toEqual(['C']);
+    expect(back.tagsAt).toBe(T1);
+    expect((back as unknown as { marks: number }).marks).toBe(7);
+  });
+
+  it('an undo of an unrelated later edit leaves the copies alone', async () => {
+    const { writes, deps } = harness([docA, docB]);
+    open(docB);
+    await setQuestionTopics(copyB.id, ['C', 'D'], deps, ['C']);
+    useWorksheetStore.getState().updateWorksheet({ title: bi('Renamed', '') });
+    const before = writes.length;
+    useWorksheetStore.getState().undo();
+    await settle();
+    expect(writes.length).toBe(before);
+  });
+});
+
 describe('the Topic row on a question tagged per part', () => {
   const partTags = (doc: Worksheet | undefined, id: string) =>
     (doc?.questions.find((q) => q.id === id) as StructuredQuestion | undefined)?.parts.map((part) => part.tags);
