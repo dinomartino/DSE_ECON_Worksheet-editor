@@ -13,6 +13,40 @@ export function coverColumns(cover: CoverPage) {
 }
 
 /**
+ * The split as printed: never wider than `textWidth` (twips).
+ *
+ * The stored default sums to 9317tw, wider than A4 at 1-inch margins (9026) and the
+ * booklet's (9314); Word and LibreOffice resolve an overfull `w:cols` differently. The
+ * panel column gives first, down to `panelWidth`: its boxes are fixed, while the
+ * instructions' line breaks were set against the reference's 5328tw left column. A split
+ * that already fits is returned unchanged.
+ */
+export function fitCoverColumns(
+  columns: { left: number; gap: number; right: number },
+  textWidth: number,
+  panelWidth: number,
+) {
+  const total = columns.left + columns.gap + columns.right;
+  if (total <= textWidth) return columns;
+  const right = Math.max(
+    Math.min(columns.right, panelWidth),
+    columns.right - (total - textWidth),
+  );
+  const left = textWidth - columns.gap - right;
+  if (left >= panelWidth) return { left, gap: columns.gap, right };
+  // A page too narrow for that: shrink everything in proportion.
+  const scale = textWidth / total;
+  const fitLeft = Math.floor(columns.left * scale);
+  const fitGap = Math.round(columns.gap * scale);
+  return { left: fitLeft, gap: fitGap, right: textWidth - fitLeft - fitGap };
+}
+
+/** The width the candidate panel's tables need, in twips (§ `COVER_PANEL`). */
+export function coverPanelWidth(cover: CoverPage): number {
+  return COVER_PANEL.indent + COVER_PANEL.labelWidth + (cover.panelBoxes ?? 0) * COVER_PANEL.boxWidth;
+}
+
+/**
  * The candidate panel's geometry, in twips — the reference's own numbers, read out of
  * its `word/document.xml` (`tblInd=340`, label cell `1558`, digit cells `290` wide in a
  * row `504` exact-high; the barcode box above them is `1584` tall). One definition for

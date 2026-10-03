@@ -208,6 +208,10 @@ panel right, a rule between) — a shape no stack of full-width bands can make, 
   page: a ✕ per line, "+ Instruction" below. Controls are `data-print-hide`, absolutely
   positioned, each in a `pointer-events-none` strip spanning back to its line. Reached
   through `EditContext.coverLines`, optional like `tableGrid`.
+- **Printed columns never exceed the text width** (`fitCoverColumns`, in the IR so both
+  backends read one split): the stored 9317tw overruns A4 at 1 inch (9026) and the
+  booklet (9314), and Word and LibreOffice resolve an overfull `w:cols` differently. The
+  panel column gives first, down to its boxes; the left keeps the reference's 5328.
 - **A framed note pins `w:tblW` to the column width** (auto measures against the
   section's full text width and overflows).
 - **The corner block floats** — an anchored `wpg:wgp` group at (−0.65in, −0.25in), a
@@ -569,7 +573,9 @@ reference paper's model. All vertical rhythm comes from the line box. Consequenc
     spacing a teacher authored is never dropped with it. The preview keys on that flag
     (`data-gap-carrier`), never on the presence of `spaceBefore`.
   - **The gap is still measured into the item's height** — the probe paginates with it,
-    which is what an item's fit depends on when it does *not* lead a sheet.
+    which is what an item's fit depends on when it does *not* lead a sheet. The probe
+    also records each block's carrier margin (`leadGaps`); `packPages` and
+    `resolveFillCounts` drop it for the whole item that leads a sheet, as the render does.
   - A gap-bearing paragraph is the one place an untouched document emits `w:spacing`
     with nothing overridden; `exactLineFor()` is restated with it, or direct formatting
     drops that paragraph off the 12pt rhythm.

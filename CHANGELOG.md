@@ -464,11 +464,22 @@ a version heading is edited afterwards.
   中文：左右邊界各兩行，底部一行。 -->
 - **A bilingual Paper 2 cover fits on one page.** With English and 中文 stacked, the
   instructions ran off the bottom of the cover on screen and onto a second page in Word.
-  A bilingual cover now uses less space between its lines, so it fits on one page
-  everywhere. English-only and 中文-only covers are unchanged.
+  A bilingual cover now uses less space between its lines, and the cover's two columns
+  always fit inside the page margins, so it fits on one page everywhere, on any margins.
+  On margins wider than the booklet's, the name and class panel's column is slightly
+  narrower; covers are otherwise unchanged.
   <!-- zh: **雙語 Paper 2 封面可印在一頁內。** 英文和中文並列時，考生須知曾超出封面底部，在 Word
-  中更會跑到第二頁。雙語封面現在行與行之間的空位較少，在任何地方都能印在一頁內。只有英文或
-  只有中文的封面不變。 -->
+  中更會跑到第二頁。雙語封面現在行與行之間的空位較少，封面的兩欄亦一定在頁邊界之內，因此無論
+  邊界大小，在任何地方都能印在一頁內。邊界比答題簿闊時，填寫姓名和班別的一欄會稍窄；封面其他
+  部分不變。 -->
+- **A page no longer ends one line early.** A page that starts with a heading or a closing
+  line, such as Section B or END OF SECTION B, kept room for a gap that never prints at the
+  top of a page. On screen and in the PDF, the last line could then move to a page of its
+  own while Word fitted it, and a booklet's last page could get one answer line too few.
+  <!-- zh: **頁面不再提早一行結束。** 以標題或結束語（例如 Section B 或 END OF SECTION B）開始
+  的頁面，曾為一段不會在頁頂印出的空位預留位置。結果在屏幕和 PDF 上，最後一行可能被移到新的
+  一頁，Word 卻放得下；答題簿最後一頁的答題線亦可能少一行。 -->
+
 - **The year code in a bilingual cover's corner prints once.** A cover line that reads the
   same in English and 中文, like "2026-27", printed twice on a bilingual paper. It now
   prints once, on screen, in the PDF and in Word, and editing it changes both languages.

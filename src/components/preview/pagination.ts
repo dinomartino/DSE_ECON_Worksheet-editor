@@ -135,6 +135,12 @@ export function packPages<T extends PackItem>(
   items: T[],
   heights: Map<string, number>,
   contentHeightPx: number,
+  /**
+   * Each item's boundary gap: measured into its height, but dropped when it leads a sheet
+   * (`.leads-sheet`; Word drops `w:before` at a page top too). Charging it there cost a
+   * sheet its last line for a gap that never prints.
+   */
+  leadGaps?: Map<string, number>,
 ): PackedPages<T> {
   // Before the first measurement everything goes on page one. That renders a single
   // correct-looking page for one frame instead of flashing an empty one.
@@ -158,7 +164,7 @@ export function packPages<T extends PackItem>(
   for (let cursor = 0; cursor < queue.length; cursor += 1) {
     const { item, piece } = queue[cursor];
     // A piece's height is what its own range measures, not the whole item's.
-    const height = piece ? pieceHeight(item, piece, heights) : (heights.get(item.key) ?? 0);
+    const measured = piece ? pieceHeight(item, piece, heights) : (heights.get(item.key) ?? 0);
     const current = pages[pages.length - 1];
 
     /*
@@ -177,7 +183,7 @@ export function packPages<T extends PackItem>(
     // height is the count it resolved to *last* time, not a claim on this sheet.
     const overflows =
       current.length > 0 &&
-      (item.fillsPage ? used >= contentHeightPx : used + height > contentHeightPx);
+      (item.fillsPage ? used >= contentHeightPx : used + measured > contentHeightPx);
 
     /*
      * An item that does not fit moves to a fresh sheet **whole and first**, even when it is
@@ -205,6 +211,12 @@ export function packPages<T extends PackItem>(
     // A forced break is a positioning instruction, not content: it starts the new page
     // but must not occupy space on it.
     if (item.forceBreak) continue;
+
+    // Leading its sheet, a whole item sheds its boundary gap (§ `leadGaps`).
+    const height =
+      !piece && pages[pages.length - 1].length === 0
+        ? Math.max(0, measured - (leadGaps?.get(item.key) ?? 0))
+        : measured;
 
     // Leading a sheet, a continued table draws its heading again (§ `leadKey`).
     if (item.leadKey && pages[pages.length - 1].length === 0) {
@@ -476,6 +488,8 @@ export function resolveFillCounts<T extends PackItem>(
   fillPitchOf: (key: string) => number | undefined,
   minLines: number,
   fragments?: Map<string, Fragment>,
+  /** As `packPages` takes it: a sheet's leading item does not pay its gap. */
+  leadGaps?: Map<string, number>,
 ): Map<string, number> {
   const counts = new Map<string, number>();
   if (contentHeightPx <= 0) return counts;
@@ -487,7 +501,9 @@ export function resolveFillCounts<T extends PackItem>(
     const used = page.reduce((sum, item, position) => {
       if (fillPitchOf(item.key) !== undefined) return sum;
       const piece = fragments?.get(placementKey(pageIndex, position));
-      return sum + (piece ? pieceHeight(item, piece, heights) : (heights.get(item.key) ?? 0));
+      if (piece) return sum + pieceHeight(item, piece, heights);
+      const lead = position === 0 ? (leadGaps?.get(item.key) ?? 0) : 0;
+      return sum + Math.max(0, (heights.get(item.key) ?? 0) - lead);
     }, 0);
 
     fills.forEach((item, index) => {

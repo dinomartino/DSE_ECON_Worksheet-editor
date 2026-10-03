@@ -42,7 +42,10 @@ import {
   coverHasPanel,
   coverLinePrintsOnce,
   coverLines,
+  coverPanelWidth,
+  fitCoverColumns,
 } from '@/model/cover';
+import { contentWidth, pageSetupOf } from '@/model/page';
 import type { CoverLine, CoverPage } from '@/model/coverTypes';
 
 /** Twips: the gutter a "(1)" sits in, and where the instruction text column starts. */
@@ -214,6 +217,8 @@ const questionRenderCache = new WeakMap<
 function renderCover(
   cover: CoverPage,
   language: LanguageMode,
+  /** The page's text width in twips; the columns never exceed it. */
+  textWidth: number,
   baseFontSize?: number,
 ): CoverRenderNode {
   // The cover's own font reaches every line, merged *under* the line's own format.
@@ -306,7 +311,7 @@ function renderCover(
 
   return {
     kind: 'cover',
-    columns: coverColumns(cover),
+    columns: fitCoverColumns(coverColumns(cover), textWidth, coverPanelWidth(cover)),
     corner: withGaps(coverLines(cover, 'corner')),
     cornerRule: cover.cornerRule ?? false,
     head: withGaps(coverLines(cover, 'head')),
@@ -363,7 +368,12 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     .filter((node): node is RenderNode => node !== undefined);
 
   const cover = worksheet.cover && !mode.omitCover
-    ? renderCover(worksheet.cover, mode.language, worksheet.baseFontSize)
+    ? renderCover(
+        worksheet.cover,
+        mode.language,
+        contentWidth(pageSetupOf(worksheet)),
+        worksheet.baseFontSize,
+      )
     : undefined;
 
   const title: RenderNode | undefined = isBiTextEmpty(worksheet.title)

@@ -3515,6 +3515,8 @@ export function usePagination(
   openedBy: (string | undefined)[];
   /** Each block's measured height, for callers that need to reason about a page's fill. */
   heights: Map<string, number>;
+  /** Each block's boundary gap, shed when it leads a sheet. */
+  leadGaps: Map<string, number>;
   /** The slice each placement renders, for the blocks that had to be broken. */
   fragments: Map<string, ItemFragment>;
   probeRef: React.RefObject<HTMLDivElement | null>;
@@ -3537,9 +3539,16 @@ export function usePagination(
    * update) — under fast input those pile up into "Maximum update depth exceeded".
    * Starts as the state's own maps, so `isFresh` holds before anything is measured.
    */
-  const lastMeasured = useRef<{ heights: Map<string, number>; nodes: Map<string, number[]> }>({
+  /** Per block: the boundary gap it sheds when it leads a sheet (§ `packPages` `leadGaps`). */
+  const [leadGaps, setLeadGaps] = useState<Map<string, number>>(NO_HEIGHTS);
+  const lastMeasured = useRef<{
+    heights: Map<string, number>;
+    nodes: Map<string, number[]>;
+    leads: Map<string, number>;
+  }>({
     heights: NO_HEIGHTS,
     nodes: NO_NODE_HEIGHTS,
+    leads: NO_HEIGHTS,
   });
 
   // Measure after paint, and re-measure whenever the content or the page geometry
@@ -3565,9 +3574,13 @@ export function usePagination(
     const measure = () => {
       const next = new Map<string, number>();
       const nodeTops = new Map<string, number[]>();
+      const nextLeads = new Map<string, number>();
       const children = Array.from(probe.children) as HTMLElement[];
-      const probeEnd = probe.getBoundingClientRect().bottom;
-      let prevBottom = probe.getBoundingClientRect().top;
+      const probeRect = probe.getBoundingClientRect();
+      const probeEnd = probeRect.bottom;
+      // Computed margins are layout px; rects are screen px.
+      const probeScale = probe.offsetWidth > 0 ? probeRect.width / probe.offsetWidth : 1;
+      let prevBottom = probeRect.top;
       for (const [index, child] of children.entries()) {
         const key = child.dataset.blockKey;
         if (!key) continue;
@@ -3575,8 +3588,16 @@ export function usePagination(
           index === children.length - 1
             ? Math.max(probeEnd, child.getBoundingClientRect().bottom)
             : child.getBoundingClientRect().bottom;
-        next.set(key, Math.max(0, bottom - prevBottom));
+        const height = Math.max(0, bottom - prevBottom);
+        next.set(key, height);
         prevBottom = bottom;
+
+        // What `.leads-sheet [data-gap-carrier]` removes when this block leads a sheet.
+        let lead = 0;
+        for (const carrier of Array.from(child.querySelectorAll<HTMLElement>("[data-gap-carrier]"))) {
+          lead += (parseFloat(getComputedStyle(carrier).marginTop) || 0) * probeScale;
+        }
+        if (lead > 0) nextLeads.set(key, Math.min(lead, height));
 
         /*
          * The cumulative bottom of each of the block's nodes, measured from the block's
@@ -3621,6 +3642,10 @@ export function usePagination(
         last.nodes = nodeTops;
         setNodeHeights(nodeTops);
       }
+      if (!(last.leads.size === nextLeads.size && [...nextLeads].every(([k, v]) => last.leads.get(k) === v))) {
+        last.leads = nextLeads;
+        setLeadGaps(nextLeads);
+      }
     };
 
     measure();
@@ -3652,16 +3677,19 @@ export function usePagination(
   );
 
   const { pages, openedBy, fragments } = useMemo(
-    () => packPages(packable, heights, contentHeightPx),
-    [packable, heights, contentHeightPx],
+    () => packPages(packable, heights, contentHeightPx, leadGaps),
+    [packable, heights, contentHeightPx, leadGaps],
   );
 
   const isFresh = useCallback(
-    () => lastMeasured.current.heights === heights && lastMeasured.current.nodes === nodeHeights,
-    [heights, nodeHeights],
+    () =>
+      lastMeasured.current.heights === heights &&
+      lastMeasured.current.nodes === nodeHeights &&
+      lastMeasured.current.leads === leadGaps,
+    [heights, nodeHeights, leadGaps],
   );
 
-  return { pages, openedBy, heights, fragments, probeRef, isFresh };
+  return { pages, openedBy, heights, leadGaps, fragments, probeRef, isFresh };
 }
 
 /**
@@ -6307,6 +6335,7 @@ export function Preview({
     pages,
     openedBy,
     heights: heightsOf,
+    leadGaps,
     fragments,
     probeRef,
     isFresh,
@@ -6472,6 +6501,7 @@ export function Preview({
       (key) => fillPitch.get(key),
       MIN_ANSWER_LINES,
       fragments,
+      leadGaps,
     );
     if (counts.size === 0) return;
 
@@ -6491,6 +6521,7 @@ export function Preview({
   }, [
     pages,
     heightsOf,
+    leadGaps,
     fragments,
     contentHeightPx,
     worksheet,
