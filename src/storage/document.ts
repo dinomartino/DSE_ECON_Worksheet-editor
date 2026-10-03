@@ -3,6 +3,7 @@ import { CURRENT_SCHEMA_VERSION, migrate, serializeWorksheet } from '@/model/mig
 import { documentName } from '@/model/text';
 import type { Worksheet } from '@/model/types';
 import type { WorksheetSummary } from './types';
+import { INDEX_ROW_REV } from './summaries';
 
 /** Reading, writing and naming a document — the parts no store implementation owns. */
 
@@ -51,9 +52,10 @@ export function summarize(worksheet: Worksheet): WorksheetSummary {
     updatedAt: worksheet.updatedAt,
     questionCount: worksheet.questions.length,
     hasCover: Boolean(worksheet.cover),
-    // Only written when set (a bank, or a later build's kind, passed through untouched),
-    // so a paper's index row is byte-identical to before.
+    // Only written when set (a bank, or a later build's kind, passed through untouched).
     ...(typeof worksheet.kind === 'string' ? { kind: worksheet.kind } : {}),
+    // Says the absent kind above means "a paper" (§ INDEX_ROW_REV).
+    indexRev: INDEX_ROW_REV,
   };
 }
 

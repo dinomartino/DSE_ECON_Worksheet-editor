@@ -2919,6 +2919,9 @@ in-flight values stay local; the store is called on pointer-up.
 - **The index is what the file list reads**, never the documents. `WorksheetSummary`
   carries optional `questionCount`/`hasCover`; entries are validated **per row** — one
   malformed summary must not empty the list.
+- **A row without `indexRev` ≥ 2 does not prove "paper"**: v0.5.0 writes no `kind`, even
+  for a bank. `list()` reads such a row's kind from its document once and writes it back
+  (`kindRepairs` in `summaries.ts`); a document that will not load keeps its row as is.
 - **A rename writes `worksheet.name`** (loads and re-saves), never `title` — see § *What
   a document is called is not what it prints*. It stays a field on the document because
   the index is derived from it, so patching the entry alone is undone by the next

@@ -4,7 +4,7 @@ import type { Worksheet } from '@/model/types';
 import { isDesktop } from '@/platform';
 import { NewerDocumentError, parseWorksheet, stringifyWorksheet, summarize } from './document';
 import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
-import { usableSummaries, withSummaryFirst } from './summaries';
+import { kindRepairs, usableSummaries, withKindRepairs, withSummaryFirst } from './summaries';
 import { settleTrash, untrashed, usableTrash } from './trash';
 import {
   copyAssignment,
@@ -333,10 +333,30 @@ export class FileWorksheetStore implements WorksheetStore {
   async list(): Promise<WorksheetSummary[]> {
     try {
       const index = await this.readIndex();
-      if (index) return index;
+      if (index) return await this.repairKinds(index);
       return await this.rebuildIndex();
     } catch {
       return [];
+    }
+  }
+
+  /**
+   * A row an older build wrote (or v0.5.0 rebuilt) gets its `kind` from the document,
+   * once, written back into a fresh read of the index (§ kindRepairs).
+   */
+  private async repairKinds(rows: WorksheetSummary[]): Promise<WorksheetSummary[]> {
+    const repairs = await kindRepairs(rows, (id) => this.load(id));
+    if (repairs.size === 0) return rows;
+    const listed = rows.map((row) => repairs.get(row.id) ?? row);
+    try {
+      const fs = await this.fs();
+      const opts = await this.base();
+      const next = withKindRepairs(JSON.parse(await fs.readTextFile(INDEX, opts)), repairs);
+      await fs.writeTextFile(INDEX, JSON.stringify(next, null, 2), opts);
+      return usableSummaries(next);
+    } catch {
+      // Not written back: listed right anyway, and tried again next time.
+      return listed;
     }
   }
 

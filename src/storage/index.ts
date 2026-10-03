@@ -11,7 +11,7 @@ import {
 import { FileWorksheetStore } from './fileStore';
 import { withChangeFeed } from './changes';
 import { triggerDownload } from './download';
-import { usableSummaries, withSummaryFirst } from './summaries';
+import { kindRepairs, usableSummaries, withKindRepairs, withSummaryFirst } from './summaries';
 import { settleTrash, untrashed, usableTrash } from './trash';
 import {
   forgetDocuments,
@@ -94,14 +94,30 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
    *
    * **One damaged entry may not cost the whole list** — the per-row rule and the sort
    * live in `usableSummaries` (§ summaries.ts), shared with the desktop store so the
-   * two cannot drift.
+   * two cannot drift. A row an older build wrote gets its `kind` from the document once,
+   * written back (§ kindRepairs).
    */
   async list(): Promise<WorksheetSummary[]> {
     const storage = this.storage;
     if (!storage) return [];
+    const rows = this.readIndex(storage);
+    if (rows.length === 0) return rows;
+    const repairs = await kindRepairs(rows, (id) => this.load(id));
+    if (repairs.size === 0) return rows;
+    try {
+      // A fresh read: a save that landed while the documents were read is kept.
+      const next = withKindRepairs(JSON.parse(storage.getItem(INDEX_KEY) ?? '[]'), repairs);
+      storage.setItem(INDEX_KEY, JSON.stringify(next));
+      return usableSummaries(next);
+    } catch {
+      // Not written back (quota, say): listed right anyway, and tried again next time.
+      return rows.map((row) => repairs.get(row.id) ?? row);
+    }
+  }
+
+  private readIndex(storage: Storage): WorksheetSummary[] {
     const raw = storage.getItem(INDEX_KEY);
     if (!raw) return [];
-
     try {
       return usableSummaries(JSON.parse(raw));
     } catch {
