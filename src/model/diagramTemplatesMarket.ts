@@ -106,6 +106,15 @@ function doubleShiftGrid(): Diagram {
   );
 }
 
+/**
+ * Unitary elastic D: P × Q = 0.1 at every point, drawn curved. Its readings follow the
+ * drawn spline (`curvePath`), so the + and − rectangles come out equal.
+ */
+function unitElasticRevenue(): Diagram {
+  const hyperbola: Pair[] = [0.125, 0.16, 0.21, 0.28, 0.38, 0.52, 0.7, 0.9].map((x) => [x, 0.1 / x]);
+  return alongDemand(hyperbola, 0.5, 0.25, undefined, { shape: 'curved' });
+}
+
 function fixedSupply(): Diagram {
   const s = upright(0.46, sym('S'), 0.9);
   const d0 = curve([[0.06, 0.66], [0.68, 0.1]], sub('D', '0'));
@@ -211,6 +220,38 @@ function ceilingLowered(): Diagram {
         labelOffset: { x: 0.3, y: 0 },
         labelPlacement: 'leader',
       }),
+  );
+}
+
+/**
+ * D falls under a ceiling: the quantity sold (on S at Pc) stays, the efficient Q falls, so
+ * DWL₁ (between D₁ and S) is a smaller triangle inside DWL₀. Both are the controlDwl preset.
+ */
+function ceilingDemandFalls(): Diagram {
+  const d0 = curve([[0.08, 0.92], [0.84, 0.16]], sub('D', '0'));
+  const d1 = shiftOf(d0, -0.22, 0, sub('D', '1'));
+  const s = MC_S();
+  const pc = priceLine(0.24, sub('P', 'c'));
+  const qt = reading(s, pc, sub('Q', 't'));
+  return finish(
+    axes(AXIS.quantity, AXIS.price, {
+      curves: [d0, d1, s, pc],
+      points: [
+        eq(d0, s, '0', { p: '', q: 'Q' }, { dot: false }),
+        eq(d1, s, '1', { p: '', q: 'Q' }, { dot: false }),
+        qt,
+      ],
+      // Between D₁ and D₀, right of DWL₀.
+      arrows: [arrow([0.64, 0.32], [0.48, 0.32])],
+    }),
+    (r) => {
+      const roles = (d: DiagramCurve) => ({ demand: d.id, supply: s.id, control: { curve: pc.id } });
+      // DWL₀ named above D₀; DWL₁ in the clear wedge left of Qt, under D₁.
+      return [
+        ...shade(r, 'controlDwl', roles(d0), { label: sub('DWL', '0'), pattern: 'diagonal', labelOffset: { x: 0.06, y: 0.32 }, labelPlacement: 'leader' }),
+        ...shade(r, 'controlDwl', roles(d1), { label: sub('DWL', '1'), pattern: 'reverse', labelOffset: { x: -0.13, y: 0 }, labelPlacement: 'leader' }),
+      ];
+    },
   );
 }
 
@@ -530,6 +571,66 @@ function subsidyEfficiency(): Diagram {
   );
 }
 
+/** A tax underproduces: at Q₁, MB (on D) is above MC (on S₀); the DWL between. */
+function taxEfficiency(): Diagram {
+  const d = MB_D();
+  const s0 = curve([[0.06, 0.08], [0.6, 0.62]], lab('S', ['0'], ' = MC'));
+  const s1 = shiftOf(s0, 0, 0.24, sub('S', '1'));
+  const e0 = eq(d, s0, '0');
+  const e1 = eq(d, s1, '1', { p: '' }, { label: sym('MB'), labelSide: 'right' });
+  const mc = pin({ on: s0.id, x: at(e1) }, [s0, e1], sym('MC'), { labelSide: 'right' });
+  const x = { x: 0.2, y: 0 };
+  return finish(
+    axes(AXIS.quantity, AXIS.price, {
+      curves: [d, s0, s1],
+      points: [e0, e1, mc],
+      spans: [span({ on: s0.id, x }, { on: s1.id, x }, 'arrow', { label: sym('t') })],
+      labels: [label(0.1, 0.97, lab('at Q', ['1'], ': MB > MC'), { align: 'left' })],
+    }),
+    // Below D, right of the triangle: clear of the S₀ = MC name above it.
+    (r) =>
+      shade(r, 'deadweightLoss', { demand: d.id, supply: s0.id, shifted: s1.id }, {
+        labelPlacement: 'leader',
+        labelOffset: { x: 0.2, y: -0.3 },
+      }),
+  );
+}
+
+/**
+ * Market value under a tax: buyers pay P₁ × Q₁; sellers keep (P₁ − t) × Q₁, read at the
+ * sellers' price on S₀ under E₁, and the rest is tax revenue. Both follow a drag.
+ */
+function taxNetRevenue(): Diagram {
+  const d = plainD();
+  const s0 = curve([[0.06, 0.08], [0.6, 0.62]], sub('S', '0'));
+  const s1 = shiftOf(s0, 0, 0.26, sub('S', '1'));
+  const e0 = eq(d, s0, '0', { p: '', q: 'Q' });
+  const e1 = eq(d, s1, '1');
+  const kept = pin({ on: s0.id, x: at(e1) }, [s0, e1], undefined, {
+    dot: false,
+    dropTo: ['y'],
+    yTickLabel: subPlus('P', '1', ' − t'),
+  });
+  const x = { x: 0.5, y: 0 };
+  return finish(
+    axes(AXIS.quantity, AXIS.price, {
+      curves: [d, s0, s1],
+      points: [e0, e1, kept],
+      spans: [span({ on: s0.id, x }, { on: s1.id, x }, 'arrow', { label: sym('t') })],
+      areas: [
+        {
+          ...revenueArea('totalRevenue', { before: at(kept) }, newId())!,
+          label: bi('revenue\nnet of tax', '稅後收入'),
+          // S₀ and S₁ cross the rectangle: the name sits below D, right of Q₀.
+          labelPlacement: 'leader',
+          labelOffset: { x: 0.47, y: -0.08 },
+        },
+      ],
+    }),
+    (r) => shade(r, 'taxRevenue', { demand: d.id, supply: s0.id, shifted: s1.id }, { labelPlacement: 'leader' }),
+  );
+}
+
 export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'supply-shift',
@@ -565,6 +666,13 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     name: bi('Inelastic demand: revenue', '低彈性需求：總收入'),
     hint: bi('A price rise along a steep D: gain (+) > loss (−).', '沿陡峭需求曲線加價：收入增加 (+) > 減少 (−)。'),
     build: () => alongDemand([[0.3, 0.92], [0.62, 0.1]], 0.3, 0.56),
+  },
+  {
+    id: 'unit-elastic-revenue',
+    group: 'supplyDemand',
+    name: bi('Unitary elastic demand: revenue', '單一彈性需求：總收入'),
+    hint: bi('A rectangular hyperbola D: a price fall, gain (+) = loss (−).', '直角雙曲線需求：減價時收入增加 (+) = 減少 (−)。'),
+    build: unitElasticRevenue,
   },
   {
     id: 'fixed-supply',
@@ -621,6 +729,13 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     name: bi('Ceiling lowered: more DWL', '上限下調：效率損失增加'),
     hint: bi('Pc₀ → Pc₁: DWL₀ and the increase in DWL, shaded apart.', 'Pc₀ → Pc₁：DWL₀ 及效率損失的增加。'),
     build: ceilingLowered,
+  },
+  {
+    id: 'ceiling-demand-falls',
+    group: 'controls',
+    name: bi('Ceiling: demand falls, less DWL', '價格上限：需求下降，效率損失減少'),
+    hint: bi('D₀ → D₁ under Pc: DWL₁ is a smaller triangle than DWL₀.', '上限下 D₀ → D₁：DWL₁ 是較 DWL₀ 小的三角形。'),
+    build: ceilingDemandFalls,
   },
   {
     id: 'ceiling-cs-change',
@@ -705,5 +820,19 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     name: bi('Subsidy: overproduction', '津貼：生產過剩'),
     hint: bi('At Q₁, MC on S₀ is above MB on D; the DWL between them.', '在 Q₁，S₀ 上的 MC 高於 D 上的 MB；其間為效率損失。'),
     build: subsidyEfficiency,
+  },
+  {
+    id: 'tax-efficiency',
+    group: 'taxSubsidy',
+    name: bi('Tax: underproduction', '稅項：生產不足'),
+    hint: bi('At Q₁, MB on D is above MC on S₀; the DWL between them.', '在 Q₁，D 上的 MB 高於 S₀ 上的 MC；其間為效率損失。'),
+    build: taxEfficiency,
+  },
+  {
+    id: 'tax-net-revenue',
+    group: 'taxSubsidy',
+    name: bi('Tax: revenue net of tax', '稅項：扣除稅款後的收入'),
+    hint: bi('Sellers keep (P₁ − t) × Q₁; the tax revenue above it.', '賣方收入為 (P₁ − t) × Q₁；其上為稅收。'),
+    build: taxNetRevenue,
   },
 ];

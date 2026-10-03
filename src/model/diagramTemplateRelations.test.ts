@@ -79,7 +79,7 @@ describe('template relations', () => {
     expect(styles('gap-narrows')).toEqual(['doubleArrow:x', 'doubleArrow:x']);
     expect(styles('price-ceiling')).toEqual(['bracket:-']);
     expect(styles('shortage-change')).toHaveLength(2);
-    expect(styles('ppf-linear-trade')).toEqual(['bracket:x', 'bracket:y']);
+    expect(styles('ppf-linear-trade')).toEqual(['bracket:x', 'bracket:y', 'doubleArrow:-']);
   });
 
   it('shades with the Shade presets: the tariff letters a–d are the welfare areas', () => {

@@ -17,6 +17,7 @@ import { areaPolygon, areaReferences, detachAreas, freezeArea, insidePolygon, is
 import {
   anchorReferences,
   curveCrossing,
+  curvePath,
   deriveReferences,
   detachRelations,
   isFixedPlace,
@@ -366,12 +367,13 @@ const mapById = <T extends { id: string }>(items: T[], id: string, patch: (item:
 const shift = (points: DiagramPoint[], dx: number, dy: number): DiagramPoint[] =>
   points.map((p) => clampPoint({ x: p.x + dx, y: p.y + dy }));
 
-/** The point on `curve`'s polyline nearest `p` (anchors resolve on the polyline too). */
+/** The point on `curve` as drawn (`curvePath`) nearest `p`, where its anchors resolve too. */
 function nearestOnPolyline(curve: DiagramCurve, p: DiagramPoint): DiagramPoint | null {
   let best: { at: DiagramPoint; d: number } | null = null;
-  for (let i = 0; i < curve.points.length - 1; i += 1) {
-    const a = curve.points[i];
-    const b = curve.points[i + 1];
+  const path = curvePath(curve);
+  for (let i = 0; i < path.length - 1; i += 1) {
+    const a = path[i];
+    const b = path[i + 1];
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const lengthSq = dx * dx + dy * dy;

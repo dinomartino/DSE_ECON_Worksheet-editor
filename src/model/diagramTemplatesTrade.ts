@@ -1,4 +1,4 @@
-import type { Diagram, DiagramCurve } from './diagram';
+import type { Diagram, DiagramCurve, DiagramPointMark } from './diagram';
 import { PRESET_PATTERNS, revenueArea } from './diagramAreas';
 import {
   AXIS,
@@ -242,6 +242,24 @@ function monopolyRisingMc(): Diagram {
   );
 }
 
+/**
+ * U-shaped MC: a curved MC whose readings follow the drawn spline (`curvePath`). MR cuts
+ * it on its rising arm, so Qm, Pm and Qc, Pc are anchored crossings as with a straight MC.
+ */
+function monopolyUShapedMc(): Diagram {
+  const { d, mr } = demandAndMr(0.9, 0.9, 0.1);
+  const mc = curve([[0.06, 0.52], [0.18, 0.3], [0.3, 0.26], [0.48, 0.38], [0.74, 0.8]], sym('MC'), { shape: 'curved' });
+  const pm = monopolyPoint(d, mr, mc, 'm');
+  const pc = eq(d, mc, 'c');
+  return finish(
+    axes(AXIS.quantity, AXIS.price, {
+      curves: [d, mr, mc],
+      points: [pm, pin(cross(mr, mc), [mr, mc]), pc],
+    }),
+    (r) => shade(r, 'monopolyDwl', { demand: d.id, mr: mr.id, mc: mc.id }, { labelPlacement: 'leader' }),
+  );
+}
+
 /** MC rises MC₁ → MC₂ (DSE2018): Q₂ < QM, P₂ > PM, and the DWL at MC₂. */
 function monopolyMcRises(): Diagram {
   const { d, mr } = demandAndMr(0.9, 0.9, 0.1);
@@ -337,20 +355,32 @@ function monopolyCostFall(): Diagram {
   );
 }
 
+/** The gain from trade: C down to the PPF directly below it, beside C's drop line; named past the CPF. */
+const gainFromTrade = (c: ReturnType<typeof pin>, ppf: DiagramCurve) =>
+  span(at(c), { on: ppf.id, x: at(c) }, 'doubleArrow', {
+    offset: 0.03,
+    label: bi('gain from\ntrade', '貿易得益'),
+    labelOffset: { x: 0.08, y: 0.04 },
+  });
+
 function ppfLinearTrade(): Diagram {
-  const ppf = placeLabel(curve([[0, 0.5], [0.6, 0]], sym('PPF')), 0.1, 0.34);
+  // Under the PPF: C's drop line runs above it at C's height.
+  const ppf = placeLabel(curve([[0, 0.5], [0.6, 0]], sym('PPF')), 0.12, 0.27);
   const cpf = placeLabel(curve([[0, 0.9], [0.6, 0]], sym('CPF')), 0.1, 0.83);
   // Production at PPF's X intercept; consumption on the CPF (slope = TOT), outside the PPF.
   const b = pin({ on: ppf.id, y: 0 }, [ppf], sym('B'), { labelSide: 'upRight' });
-  const c = pin({ on: cpf.id, x: { x: 0.25, y: 0 } }, [cpf], sym('C'), { labelSide: 'upRight', dropTo: ['x', 'y'] });
+  const a = pin({ on: ppf.id, x: { x: 0.36, y: 0 } }, [ppf], sym('A'), { labelSide: 'downLeft' });
+  // The same X as before trade: C on the CPF straight above A, following it.
+  const c = pin({ on: cpf.id, x: at(a) }, [cpf, a], sym('C'), { labelSide: 'upRight', dropTo: ['x', 'y'] });
   return finish(
     axes(GOOD.x, GOOD.y, {
       curves: [ppf, cpf],
-      points: [pin({ on: ppf.id, x: { x: 0.36, y: 0 } }, [ppf], sym('A'), { labelSide: 'upRight' }), b, c],
+      points: [a, b, c],
       // Export and import volumes as brackets outside the axes, clear of the frontiers.
       spans: [
         span(at(c), at(b), 'bracket', { along: 'x', label: bi('exports', '出口') }),
         span(at(b), at(c), 'bracket', { along: 'y', label: bi('imports', '進口') }),
+        gainFromTrade(c, ppf),
       ],
     }),
   );
@@ -383,14 +413,17 @@ function ppfConcaveTrade(): Diagram {
     stroke: 'dashed',
     weight: 0.8,
   });
-  const pc = pin({ on: cpf.id, x: { x: home.x + 0.07, y: 0 } }, [cpf], sym('C'), { labelSide: 'upRight' });
+  const pa = pin({ on: ppf.id, x: { x: home.x, y: 0 } }, [ppf], sym('A'), { labelSide: 'downLeft' });
+  // The same X as before trade: C on the CPF straight above A, following it.
+  const pc = pin({ on: cpf.id, x: at(pa) }, [cpf, pa], sym('C'), { labelSide: 'upRight' });
   return finish(
     axes(GOOD.x, GOOD.y, {
       curves: [ppf, cpf, tot],
-      points: [pin({ on: ppf.id, x: { x: home.x, y: 0 } }, [ppf], sym('A'), { labelSide: 'downLeft' }), pb, pc],
+      points: [pa, pb, pc],
       spans: [
         span(at(pc), at(pb), 'bracket', { along: 'x', label: bi('exports', '出口') }),
         span(at(pb), at(pc), 'bracket', { along: 'y', label: bi('imports', '進口') }),
+        gainFromTrade(pc, ppf),
       ],
     }),
   );
@@ -421,6 +454,33 @@ function ppfShift(): Diagram {
     curves: [p0, p1],
     arrows: [arrow([0.4, 0.43], [0.55, 0.6])],
   });
+}
+
+/**
+ * Growth with trade: PPF₁ parallel to PPF₀ through its new intercept; each CPF runs through
+ * its specialisation point B parallel to one TOT guide, so the CPF shifts out with the PPF
+ * at the same TOT, and re-angling the TOT turns both.
+ */
+function ppfGrowthTrade(): Diagram {
+  // Names placed in the gaps between the lines (from each line's far end, so they travel).
+  const ppf0 = placeLabel(curve([[0, 0.24], [0.48, 0]], sub('PPF', '0')), 0.1, 0.09);
+  const ppf1 = placeLabel(
+    derived({ kind: 'parallel', to: ppf0.id, through: { x: 0.68, y: 0 } }, [ppf0], sub('PPF', '1')),
+    0.05,
+    0.38,
+  );
+  const guide = curve([[0.6, 0.7], [0.75, 0.505]], sym('TOT'), { stroke: 'dashed', weight: 0.8 });
+  const b0 = pin({ on: ppf0.id, y: 0 }, [ppf0], sub('B', '0'), { labelSide: 'upRight' });
+  const b1 = pin({ on: ppf1.id, y: 0 }, [ppf1], sub('B', '1'), { labelSide: 'upRight' });
+  const cpf = (b: DiagramPointMark, n: string, x: number, y: number) =>
+    placeLabel(derived({ kind: 'parallel', to: guide.id, through: at(b) }, [guide, b], sub('CPF', n)), x, y);
+  return finish(
+    axes(GOOD.x, GOOD.y, {
+      curves: [ppf0, ppf1, cpf(b0, '0', 0.13, 0.53), cpf(b1, '1', 0.31, 0.6), guide],
+      points: [b0, b1],
+      arrows: [arrow([0.15, 0.18], [0.18, 0.24]), arrow([0.29, 0.3], [0.42, 0.3])],
+    }),
+  );
 }
 
 // Chinese on one line: a bilingual title may take three lines under the axis, not four.
@@ -515,6 +575,13 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     build: monopolyRisingMc,
   },
   {
+    id: 'monopoly-u-mc',
+    group: 'electives',
+    name: bi('Monopoly with U-shaped MC', 'U 形邊際成本的壟斷'),
+    hint: bi('MR cuts the rising arm of MC: Qm, Pm; Qc, Pc where D meets MC.', 'MR 與 MC 上升部分相交：Qm、Pm；D 與 MC 相交的 Qc、Pc。'),
+    build: monopolyUShapedMc,
+  },
+  {
     id: 'monopoly-mc-zero',
     group: 'electives',
     name: bi('Monopoly with MC = 0', '邊際成本為零的壟斷'),
@@ -576,6 +643,13 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     name: bi('PPF shifts outward', 'PPF 向外移'),
     hint: bi('PPF₀ → PPF₁: both intercepts rise.', 'PPF₀ → PPF₁：兩個截距上升。'),
     build: ppfShift,
+  },
+  {
+    id: 'ppf-growth-trade',
+    group: 'electives',
+    name: bi('Growth with trade: PPF and CPF', '經濟增長與貿易：PPF 及 CPF'),
+    hint: bi('PPF₀ → PPF₁ shifts the CPF out too, parallel at the same TOT.', 'PPF₀ → PPF₁，CPF 亦在相同貿易比率下平行外移。'),
+    build: ppfGrowthTrade,
   },
   {
     id: 'lorenz',

@@ -22,11 +22,43 @@ import {
 
 const EPS = 1e-9;
 
+/** Bézier samples per hop when a `curved` curve is read as a polyline. */
+const SPLINE_STEPS = 24;
+const pathCache = new WeakMap<DiagramPoint[], DiagramPoint[]>();
+
+/**
+ * The line a curve is drawn as, as a polyline: its points, or a `curved` curve's spline
+ * sampled finely (built with y scaled by the plot aspect, as the renderer draws it). Every
+ * reading (heights, crossings, area edges) goes through this, so a mark sits on the line
+ * the reader sees, not on its control polygon.
+ */
+export function curvePath(curve: DiagramCurve): DiagramPoint[] {
+  const pts = curve.points;
+  if (curve.shape !== 'curved' || pts.length < 3) return pts;
+  const cached = pathCache.get(pts);
+  if (cached) return cached;
+  const k = DIAGRAM_PLOT_ASPECT;
+  const out: DiagramPoint[] = [pts[0]];
+  for (const { p1, c1, c2, p2 } of splineSegments(pts.map((p) => ({ x: p.x, y: p.y * k })))) {
+    for (let s = 1; s <= SPLINE_STEPS; s += 1) {
+      const t = s / SPLINE_STEPS;
+      const u = 1 - t;
+      const at = (a: number, b: number, c: number, d: number) =>
+        u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
+      out.push({ x: at(p1.x, c1.x, c2.x, p2.x), y: at(p1.y, c1.y, c2.y, p2.y) / k });
+    }
+  }
+  out[out.length - 1] = pts[pts.length - 1];
+  pathCache.set(pts, out);
+  return out;
+}
+
 /** The curve's height at `x` — the first non-vertical segment spanning it — or null. */
 export function curveYAt(curve: DiagramCurve, x: number): number | null {
-  for (let i = 0; i < curve.points.length - 1; i += 1) {
-    const a = curve.points[i];
-    const b = curve.points[i + 1];
+  const path = curvePath(curve);
+  for (let i = 0; i < path.length - 1; i += 1) {
+    const a = path[i];
+    const b = path[i + 1];
     if (Math.abs(b.x - a.x) < EPS) continue;
     const lo = Math.min(a.x, b.x);
     const hi = Math.max(a.x, b.x);
@@ -39,9 +71,10 @@ export function curveYAt(curve: DiagramCurve, x: number): number | null {
 
 /** Where the curve reaches height `y` — the first non-flat segment spanning it — or null. */
 export function curveXAt(curve: DiagramCurve, y: number): number | null {
-  for (let i = 0; i < curve.points.length - 1; i += 1) {
-    const a = curve.points[i];
-    const b = curve.points[i + 1];
+  const path = curvePath(curve);
+  for (let i = 0; i < path.length - 1; i += 1) {
+    const a = path[i];
+    const b = path[i + 1];
     if (Math.abs(b.y - a.y) < EPS) continue;
     const lo = Math.min(a.y, b.y);
     const hi = Math.max(a.y, b.y);
@@ -72,9 +105,11 @@ function segmentCrossing(
 
 /** Where two curves first cross, walking `a` from its start; null if they never do. */
 export function curveCrossing(a: DiagramCurve, b: DiagramCurve): DiagramPoint | null {
-  for (let i = 0; i < a.points.length - 1; i += 1) {
-    for (let j = 0; j < b.points.length - 1; j += 1) {
-      const hit = segmentCrossing(a.points[i], a.points[i + 1], b.points[j], b.points[j + 1]);
+  const pa = curvePath(a);
+  const pb = curvePath(b);
+  for (let i = 0; i < pa.length - 1; i += 1) {
+    for (let j = 0; j < pb.length - 1; j += 1) {
+      const hit = segmentCrossing(pa[i], pa[i + 1], pb[j], pb[j + 1]);
       if (hit) return hit;
     }
   }

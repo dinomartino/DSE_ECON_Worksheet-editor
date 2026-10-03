@@ -67,7 +67,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Buyers' and sellers' burdens; steepness matches | buyersBurden, sellersBurden presets; steepness by drag | C |
 | Subsidy CB and PB | consumerBenefit, producerBenefit presets | C |
 | Extreme cases (flat D, vertical S); tax revenue | tax presets read a flat line named D as demand; vertical S by + Vertical line | C |
-| TE / market value net of tax | Revenue › Total revenue, point re-picked to P₁ − t | P — needs the point re-picked |
+| TE / market value net of tax | `tax-net-revenue`: (P₁ − t) × Q₁ under the tax revenue | C |
 
 ### 7. Quota
 | Item | Met by | St. |
@@ -112,7 +112,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 |---|---|---|
 | S₀ = MC and the shifted S, with arrows | `subsidy-efficiency`: shift + arrow | C |
 | Q₀ and Q₁ | anchors | C |
-| MC on S₀ and MB on D at Q₁ | `subsidy-efficiency` anchors; the tax case by hand | P — no tax variant |
+| MC on S₀ and MB on D at Q₁ | `subsidy-efficiency`, `tax-efficiency` anchors | C |
 | DWL triangle | subsidyDwl preset | C |
 | CB / PB optional | `per-unit-subsidy` | C |
 
@@ -173,7 +173,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Vertical Ms, falling Md, nominal rate | `money-market`: vertical | C |
 | Md shifters | `money-demand-shift` | C |
 | Ms shifters | `money-supply-shift` | C |
-| A rate change is a movement along Md | manual (a point on Md) | P — no template |
+| A rate change is a movement along Md | `money-rate-change`: arrow span E₀ → E₁ beside Md | C |
 
 ## D · international and electives
 
@@ -198,7 +198,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Item | Met by | St. |
 |---|---|---|
 | MR from D's intercept, twice as steep | MR derived in every monopoly template | C |
-| MC horizontal, zero, upward or U-shaped | `monopoly`, `monopoly-mc-zero`, `monopoly-rising-mc`; U-shape drawn curved | P — U-shaped MC by hand |
+| MC horizontal, zero, upward or U-shaped | `monopoly`, `monopoly-mc-zero`, `monopoly-rising-mc`, `monopoly-u-mc` (curved MC, read as drawn) | C |
 | Qm at MR = MC, Pm up to D | anchor on D above MR ∩ MC | C |
 | Efficient Qc, Pc where D = MC | anchor; `monopoly`, `monopoly-rising-mc` | C |
 | DWL triangle labelled | monopolyDwl preset | C |
@@ -211,9 +211,9 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Linear PPFs from data; specialise at an intercept | `ppf-linear-trade`, `ppf-two-countries` (axis max 100) | C |
 | Concave: production where TOT is tangent | `ppf-concave-trade`: CPF tangent at B | C |
 | CPF slope TOT, parallel to the world price line, for both | TOT guide parallel to CPF; `ppf-two-countries` parallel CPFs | C |
-| Consumption on the CPF outside the PPF; "same X" constraint | C anchored on the CPF at a fixed X | P — X not tied to A |
+| Consumption on the CPF outside the PPF; "same X" constraint | C anchored on the CPF above A (A's X), in both PPF-trade templates | C |
 | Export and import volumes as axis brackets | `bracket` spans in both PPF-trade templates | C |
-| Growth shifts the PPF (and CPF) | `ppf-shift`; CPF by hand | P — CPF not in the template |
+| Growth shifts the PPF (and CPF) | `ppf-shift`; `ppf-growth-trade` (CPF₁ parallel through B₁ at the same TOT) | C |
 | One mark per element | — | n/a |
 
 ## E · S4 rounds
@@ -267,7 +267,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 |---|---|---|
 | Subsidy: CB and PB, relative size | `per-unit-subsidy` | C |
 | Quota: kinked S shifts right; gain vs loss | `quota-enlarged` + Revenue presets | C |
-| Ceiling DWL; after D shifts left, a smaller triangle | `price-control-dwl` + Shift D, then controlDwl on D₁ | P — second DWL added by hand |
+| Ceiling DWL; after D shifts left, a smaller triangle | `ceiling-demand-falls`: controlDwl on D₀ and on D₁ | C |
 
 ### MCQ graph patterns
 | Item | Met by | St. |
@@ -275,7 +275,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Shift vs movement along | shift and revenue templates | C |
 | Four-point double-shift grid | `double-shift-grid` | C |
 | Related-market option diagrams | one diagram per option | C |
-| TR: rectangular hyperbola, upper half of a line elastic | curved D by hand; revenue presets read its polyline | P — no hyperbola template |
+| TR: rectangular hyperbola, upper half of a line elastic | `unit-elastic-revenue` (+ = −); `elastic-revenue` | C |
 
 ## F · S5–S6 rounds
 
@@ -342,7 +342,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Item | Met by | St. |
 |---|---|---|
 | Specialisation point, trade line at world price, consumption | `ppf-linear-trade`, `ppf-concave-trade` | C |
-| Gain as C's distance from the PPF; export / import brackets | brackets in both; the gain as a span by hand | P — gain span manual |
+| Gain as C's distance from the PPF; export / import brackets | brackets in both; the gain a `doubleArrow` span from C to the PPF below it | C |
 
 ### Money market (MCQ)
 | Item | Met by | St. |
@@ -351,17 +351,9 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 
 ## Totals
 
-167 rows: **147 covered · 9 partial · 0 not covered · 11 n/a**.
+167 rows: **156 covered · 0 partial · 0 not covered · 11 n/a**.
 
 ## Not covered
 
-Nothing is wholly uncovered. The partial rows, and why:
-
-- Net-of-tax revenue needs the Revenue point re-picked to P₁ − t.
-- MC and MB at Q₁ for a tax (the subsidy has its template).
-- A change in r as a movement along Md.
-- U-shaped MC, and the TR hyperbola, are drawn by hand (crossings read the polyline).
-- Consumption "same X as before" is not tied to the no-trade point.
-- Growth shifting the CPF with the PPF.
-- A second, smaller ceiling DWL after D shifts left.
-- The gain from trade as a span from C to the PPF.
+Nothing. A `curved` curve is read as drawn (`src/model/diagramAnchors.ts:curvePath`), so
+crossings, readings and shaded edges on a U-shaped MC or a hyperbola sit on the line.
