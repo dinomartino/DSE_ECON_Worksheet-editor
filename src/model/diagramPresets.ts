@@ -12,6 +12,8 @@ import {
   curveSlopeSign,
   curveYAt,
   guessMarketCurves,
+  isFlatCurve,
+  isFlatDemand,
   newPresetArea,
   resolveAnchor,
   type AreaPreset,
@@ -166,13 +168,7 @@ function along(curve: string, level: PriceLevel): DiagramAnchorRef | null {
   return onCurveAtLevelSupported() ? ({ on: curve, y: level.level } as unknown as DiagramAnchorRef) : null;
 }
 
-/** A horizontal line: two or more points at one height, with some width. */
-export function isFlatCurve(curve: DiagramCurve): boolean {
-  if (curve.points.length < 2) return false;
-  const ys = curve.points.map((p) => p.y);
-  const xs = curve.points.map((p) => p.x);
-  return Math.max(...ys) - Math.min(...ys) < 1e-6 && Math.max(...xs) - Math.min(...xs) > 1e-6;
-}
+export { isFlatCurve };
 
 const curveOf = (diagram: Diagram, id: string) => diagram.curves.find((c) => c.id === id);
 
@@ -203,7 +199,11 @@ function shiftDirection(diagram: Diagram, r: PresetRoles): 'tax' | 'subsidy' | s
   const e1 = at(diagram, cross(r.demand!, r.shifted!));
   if (!e0) return 'Demand and supply do not cross';
   if (!e1) return 'The shifted supply does not cross demand';
-  if (Math.abs(e1.y - e0.y) < 1e-6) return 'The two supply curves meet demand at one price';
+  // A flat D (Ed = ∞) keeps the price; then the quantity says which way S moved.
+  if (Math.abs(e1.y - e0.y) < 1e-6) {
+    if (Math.abs(e1.x - e0.x) < 1e-6) return 'The two supply curves meet demand at one price';
+    return e1.x < e0.x ? 'tax' : 'subsidy';
+  }
   return e1.y > e0.y ? 'tax' : 'subsidy';
 }
 
@@ -515,7 +515,7 @@ export const ROLE_NAMES: Record<PresetRole, string> = {
 
 /** What the menu says when a role has nothing to fill it. */
 const ROLE_NEEDS: Record<PresetRole, string> = {
-  demand: 'Needs a falling demand curve',
+  demand: 'Needs a demand curve: a falling one, or a flat line named D',
   supply: 'Needs a rising supply curve',
   shifted: 'Needs a shifted supply curve. Shift S first',
   mr: 'Needs a falling MR curve beside demand',
@@ -538,6 +538,7 @@ export function roleCandidates(diagram: Diagram, role: PresetRole): Array<string
   const { curves } = diagram;
   switch (role) {
     case 'demand':
+      return curves.filter((c) => curveSlopeSign(c) < 0 || isFlatDemand(c)).map((c) => c.id);
     case 'mr':
       return curves.filter((c) => curveSlopeSign(c) < 0).map((c) => c.id);
     case 'supply':
@@ -616,7 +617,7 @@ function guessRolesByShape(diagram: Diagram, preset: ShadePreset): PresetRoles {
     const mc = mcs.find((c) => /^MC/i.test(labelText(c))) ?? mcs[0];
     return { demand: demand?.id, mr: mr?.id, mc: mc?.id };
   }
-  const demand = falling[0];
+  const demand = falling[0] ?? diagram.curves.find(isFlatDemand);
   const [supply, next] = supplyPair(diagram, demand);
   const roles: PresetRoles = { demand: demand?.id, supply };
   if (preset.roles.some((r) => r.role === 'shifted')) roles.shifted = next;

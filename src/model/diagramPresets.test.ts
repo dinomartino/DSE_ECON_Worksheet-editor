@@ -152,6 +152,33 @@ describe('tax presets', () => {
   });
 });
 
+// Ed = ∞: a flat D at 0.5, S taxed up by 0.1. Sellers bear the whole tax.
+describe('a flat demand curve', () => {
+  const base: Diagram = {
+    ...market(),
+    curves: [line('D', [[0.04, 0.5], [0.9, 0.5]], 'D'), line('S', [[0.08, 0.12], [0.86, 0.88]])],
+  };
+  let n = 0;
+  const diagram = shiftCurve(base, 'S', { x: 0, y: 0.1 }, () => `f${(n += 1)}`)!.diagram;
+  const s1 = diagram.curves[2];
+  const e1 = curveCrossing(diagram.curves[0], s1)!;
+  const seller = curveYAt(diagram.curves[1], e1.x)!;
+
+  it('is read as demand, and Pw-style flat lines still are not', () => {
+    expect(guessRoles(diagram, shadePreset('taxRevenue'))).toMatchObject({ demand: 'D', supply: 'S', shifted: s1.id });
+    const priced = market(line('Pw', [[0, 0.3], [0.9, 0.3]], 'Pw'));
+    expect(guessRoles(priced, shadePreset('consumerSurplus')).demand).toBe('D');
+    expect(presetIsAmbiguous(priced, shadePreset('consumerSurplus'))).toBe(false);
+  });
+
+  it('shades tax revenue, all of it the sellers’ burden, and the DWL', () => {
+    expect(e1.y).toBeCloseTo(0.5, 9);
+    expect(size(polygonOf(diagram, 'taxRevenue'))).toBeCloseTo((0.5 - seller) * e1.x, 9);
+    expect(size(polygonOf(diagram, 'sellersBurden'))).toBeCloseTo((0.5 - seller) * e1.x, 9);
+    expect(size(polygonOf(diagram, 'deadweightLoss'))).toBeGreaterThan(0);
+  });
+});
+
 describe('subsidy presets', () => {
   const diagram = shifted(-0.1);
   const e1 = curveCrossing(diagram.curves[0], diagram.curves[2])!;

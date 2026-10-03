@@ -312,8 +312,24 @@ export function curveSlopeSign(curve: DiagramCurve): -1 | 0 | 1 {
  * next is the taxed one (a tax raises the price buyers pay). The panel lets the
  * teacher re-pick every bound, so a wrong guess costs a click, not a redraw.
  */
+/** A horizontal line: two or more points at one height, with some width. */
+export function isFlatCurve(curve: DiagramCurve): boolean {
+  if (curve.points.length < 2) return false;
+  const ys = curve.points.map((p) => p.y);
+  const xs = curve.points.map((p) => p.x);
+  return Math.max(...ys) - Math.min(...ys) < 1e-6 && Math.max(...xs) - Math.min(...xs) > 1e-6;
+}
+
+/** A flat line named as demand (D, AR): perfectly elastic demand, not a price line. */
+export const isFlatDemand = (curve: DiagramCurve): boolean =>
+  isFlatCurve(curve) && /^(D|AR)/i.test((curve.label?.en ?? []).map((run) => run.text).join('').trim());
+
 export function guessMarketCurves(diagram: Diagram): MarketCurves {
-  const demand = diagram.curves.find((c) => curveSlopeSign(c) < 0);
+  // Falling first; a flat D (Ed = ∞) when nothing falls.
+  const demand =
+    diagram.curves.find((c) => curveSlopeSign(c) < 0) ??
+    diagram.curves.find(isFlatDemand) ??
+    diagram.curves.find(isFlatCurve);
   const rising = diagram.curves.filter((c) => curveSlopeSign(c) > 0);
   if (!demand) return { supply: rising[0]?.id };
   const crossing = rising

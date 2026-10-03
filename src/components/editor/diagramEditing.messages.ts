@@ -633,7 +633,7 @@ const MODEL_TEXT_ZH: Readonly<Record<string, string>> = {
   'A price line is gone': '有一條價格線已不存在',
   'Needs the world price below the domestic equilibrium': '需要世界價格低於本地均衡價格',
   'Nothing to shade. The curves do not bound that area': '沒有可填色的範圍。這些曲線圍不成該區域',
-  'Needs a falling demand curve': '需要一條向下傾斜的需求曲線',
+  'Needs a demand curve: a falling one, or a flat line named D': '需要一條需求曲線：向下傾斜的，或名為 D 的水平線',
   'Needs a rising supply curve': '需要一條向上傾斜的供應曲線',
   'Needs a shifted supply curve. Shift S first': '需要平移後的供應曲線。請先平移 S',
   'Needs a falling MR curve beside demand': '需要一條位於需求旁、向下傾斜的 MR 曲線',

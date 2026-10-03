@@ -554,6 +554,11 @@ a version heading is edited afterwards.
   <!-- zh: **中英並列時，上下排列的缺口箭嘴不再擠在一起。** 在「缺口收窄」中，gap₁ / 缺口₁ 標示
   佔兩行，其下的缺口₀ 箭嘴以往會穿過第二行。現在排在另一箭嘴下方的箭嘴，會按每多出的一行向下
   移，在屏幕、PDF 和 Word 中都一樣。 -->
+- **Shade a tax on a flat demand curve.** A horizontal line named D (perfectly elastic
+  demand) now counts as demand in the Shade menu, so tax revenue, the sellers' burden and
+  the deadweight loss shade as they do on a falling D.
+  <!-- zh: **需求曲線為水平時，也可為稅項加陰影。** 名為 D 的水平線（完全有彈性的需求）現在在
+  「陰影」選單中會被視為需求曲線，稅收、賣方稅負和效率損失都可以與向下傾斜的 D 一樣加上陰影。 -->
 
 ## 0.5.0 — 2026-09-28
 
