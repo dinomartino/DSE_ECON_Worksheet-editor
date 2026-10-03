@@ -382,7 +382,8 @@ function ppfConcaveTrade(): Diagram {
   // Between the frontier's vertices, so pressing B grabs the point, not the curve's handle.
   const prod = onFrontier(37);
   const ppf = placeLabel(curve(frontier(a, b), sym('PPF'), { shape: 'curved' }), 0.1, 0.7);
-  const pb = point(prod.x, prod.y, sym('B'), { labelSide: 'left' });
+  // A and B are pinned on the frontier, so dragging either slides it along the PPF.
+  const pb = pin({ on: ppf.id, x: { x: prod.x, y: 0 } }, [ppf], sym('B'), { labelSide: 'left' });
   const cpf = derived({ kind: 'tangent', to: ppf.id, at: at(pb) }, [ppf, pb], sym('CPF'), { labelAt: 'start' });
   const tot = derived({ kind: 'parallel', to: cpf.id, through: { x: 0.03, y: 0.44 }, ys: [0.14, 0.44] }, [cpf], sym('TOT'), {
     stroke: 'dashed',
@@ -392,7 +393,7 @@ function ppfConcaveTrade(): Diagram {
   return finish(
     axes(GOOD.x, GOOD.y, {
       curves: [ppf, cpf, tot],
-      points: [point(home.x, home.y, sym('A'), { labelSide: 'downLeft' }), pb, pc],
+      points: [pin({ on: ppf.id, x: { x: home.x, y: 0 } }, [ppf], sym('A'), { labelSide: 'downLeft' }), pb, pc],
       spans: [
         span(at(pc), at(pb), 'bracket', { along: 'x', label: bi('exports', '出口') }),
         span(at(pb), at(pc), 'bracket', { along: 'y', label: bi('imports', '進口') }),

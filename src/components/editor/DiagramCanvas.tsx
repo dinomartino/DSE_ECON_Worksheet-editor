@@ -13,6 +13,7 @@ import {
   cursorFor,
   deleteHandles,
   dragHandles,
+  nudgeHandles,
   drawn,
   handleId,
   handleText,
@@ -1172,12 +1173,10 @@ export function DiagramCanvas({
         // precision.
         const size = event.shiftKey ? NUDGE_COARSE : NUDGE_FINE;
         setDiagram(
-          dragHandles(
-            seedAreaLabels(diagram, selected, projection, language),
-            selected,
-            { x: 0, y: 0 },
-            { x: step.dx * size, y: step.dy * size },
-          ),
+          nudgeHandles(seedAreaLabels(diagram, selected, projection, language), selected, {
+            x: step.dx * size,
+            y: step.dy * size,
+          }),
         );
       }
     };

@@ -366,6 +366,41 @@ const mapById = <T extends { id: string }>(items: T[], id: string, patch: (item:
 const shift = (points: DiagramPoint[], dx: number, dy: number): DiagramPoint[] =>
   points.map((p) => clampPoint({ x: p.x + dx, y: p.y + dy }));
 
+/** The point on `curve`'s polyline nearest `p` (anchors resolve on the polyline too). */
+function nearestOnPolyline(curve: DiagramCurve, p: DiagramPoint): DiagramPoint | null {
+  let best: { at: DiagramPoint; d: number } | null = null;
+  for (let i = 0; i < curve.points.length - 1; i += 1) {
+    const a = curve.points[i];
+    const b = curve.points[i + 1];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lengthSq = dx * dx + dy * dy;
+    const t = lengthSq === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq));
+    const at = { x: a.x + t * dx, y: a.y + t * dy };
+    const d = dist(at, p);
+    if (!best || d < best.d) best = { at, d };
+  }
+  return best?.at ?? null;
+}
+
+/**
+ * A point pinned on a curve at a fixed x or y (A on the PPF) slides along it: the drag
+ * moves the pin, not the point off the curve. Null for any other anchor, which detaches.
+ */
+function slideAlongCurve(diagram: Diagram, mark: DiagramPointMark, target: DiagramPoint): DiagramPointMark | null {
+  const ref = mark.anchor;
+  if (!ref || !('on' in ref)) return null;
+  const byX = 'x' in ref;
+  if (byX ? !isFixedPlace(ref.x) : typeof ref.y !== 'number') return null;
+  const curve = diagram.curves.find((c) => c.id === ref.on);
+  const at = curve && nearestOnPolyline(curve, target);
+  if (!at) return null;
+  const anchor: DiagramAnchorRef = byX
+    ? { on: ref.on, x: { x: at.x, y: (ref.x as DiagramPoint).y } }
+    : { on: ref.on, y: at.y };
+  return { ...mark, at, anchor };
+}
+
 /**
  * Apply a drag to the diagram.
  *
@@ -386,7 +421,8 @@ export function applyDrag(
   const target = clampPoint(to);
 
   switch (handle.kind) {
-    // Reshaping a derived curve detaches it; so does dragging an anchored point.
+    // Reshaping a derived curve detaches it; so does dragging an anchored point, unless
+    // it is pinned on a curve (`slideAlongCurve`).
     case 'vertex':
       return {
         ...diagram,
@@ -421,6 +457,8 @@ export function applyDrag(
       return {
         ...diagram,
         points: mapById(diagram.points, handle.pointId, (mark) => {
+          const slid = slideAlongCurve(diagram, mark, target);
+          if (slid) return slid;
           const rest = { ...mark, at: target };
           delete rest.anchor;
           return rest;
@@ -1317,8 +1355,14 @@ export function dragHandles(
   handles: DiagramHandle[],
   from: DiagramPoint,
   to: DiagramPoint,
+  originOf?: (handle: DiagramHandle) => DiagramPoint | null,
 ): Diagram {
-  const moved = handles.reduce((current, handle) => applyDrag(current, handle, from, to), diagram);
+  const moved = handles.reduce((current, handle) => {
+    const origin = originOf?.(handle);
+    return origin
+      ? applyDrag(current, handle, origin, { x: origin.x + to.x - from.x, y: origin.y + to.y - from.y })
+      : applyDrag(current, handle, from, to);
+  }, diagram);
   // A point or curve moved together with everything its relation names keeps it.
   const bodies = new Set(
     handles.flatMap((h) => (h.kind === 'curve' ? [h.curveId] : h.kind === 'point' ? [h.pointId] : [])),
@@ -1340,6 +1384,44 @@ export function dragHandles(
         : curve;
     }),
   };
+}
+
+/**
+ * Where a handle that `applyDrag` moves *to* the pointer sits now, so a delta can be
+ * applied to it; null for handles that take the delta itself.
+ */
+function handleOrigin(diagram: Diagram, handle: DiagramHandle): DiagramPoint | null {
+  switch (handle.kind) {
+    case 'vertex':
+      return diagram.curves.find((c) => c.id === handle.curveId)?.points[handle.index] ?? null;
+    case 'point':
+      return diagram.points.find((p) => p.id === handle.pointId)?.at ?? null;
+    case 'label':
+      return diagram.labels.find((l) => l.id === handle.labelId)?.at ?? null;
+    case 'arrowFrom':
+    case 'arrowTo': {
+      const arrow = diagram.arrows.find((a) => a.id === handle.arrowId);
+      return arrow ? (handle.kind === 'arrowFrom' ? arrow.from : arrow.to) : null;
+    }
+    case 'areaVertex':
+      return diagram.areas?.find((a) => a.id === handle.areaId)?.vertices?.[handle.index] ?? null;
+    case 'spanFrom':
+    case 'spanTo': {
+      const span = diagram.spans?.find((x) => x.id === handle.spanId);
+      if (!span) return null;
+      const at = resolvePlace(diagram, handle.kind === 'spanFrom' ? span.from : span.to);
+      const normal = span.along ? null : spanGeometry(diagram, span)?.normal;
+      const offset = span.offset ?? 0;
+      return at && normal ? { x: at.x + normal.x * offset, y: at.y + normal.y * offset } : at;
+    }
+    default:
+      return null;
+  }
+}
+
+/** Arrow-key nudge: every handle moves by `delta`, the ones a drag places included. */
+export function nudgeHandles(diagram: Diagram, handles: DiagramHandle[], delta: DiagramPoint): Diagram {
+  return dragHandles(diagram, handles, { x: 0, y: 0 }, delta, (handle) => handleOrigin(diagram, handle));
 }
 
 /*

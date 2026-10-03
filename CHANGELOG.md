@@ -539,6 +539,14 @@ a version heading is edited afterwards.
   Drag D₁ itself to change how far it shifted, or choose "Detach: keep it where it is" to fix it in place.
   <!-- zh: **「平移副本」現在會建立跟隨原曲線的曲線**，與現成圖表一樣。移動 D 時 D₁ 會一起移動，
   新均衡點保持在 D₁ 與 S 的交點。拖曳 D₁ 本身可改變平移幅度，或選擇「分離：保持在原位」把它固定。 -->
+- **A point on a PPF stays on it when you drag it.** Drag A or B in the PPF diagrams and it
+  slides along the frontier, and the CPF and the export and import brackets follow. Choose
+  "Detach: keep it where it is" first to move it off the curve.
+  <!-- zh: **拖曳 PPF 上的點時，點不會離開曲線。** 在 PPF 圖表中拖曳 A 或 B，點會沿生產可能
+  曲線滑動，CPF 及出口和進口括號亦會跟著移動。如要把點移離曲線，請先選擇「分離：保持在原位」。 -->
+- **Arrow keys move a selected point, label or line end by a small step.** They used to send
+  it to the bottom-left corner of the diagram.
+  <!-- zh: **方向鍵會把選取的點、標示或線段端點移動一小步。** 以往會把它移到圖表的左下角。 -->
 
 ## 0.5.0 — 2026-09-28
 
