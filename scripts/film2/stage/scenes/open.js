@@ -26,7 +26,8 @@ const CURSOR = [
   [P(-2), pg(TOOL(LINE_TOOL)), outSoft],
   [P(-1), pg(SUPPLY[0]), inOutSoft],
   [P(1), pg(CROOKED_END), inOutSoft],
-  [P(2), pg(CROOKED_END)],
+  [P(1.5), pg([CROOKED_END[0] + 16, CROOKED_END[1] + 14]), inOutSoft], // lets go, looks
+  [P(2), pg(CROOKED_END), inOutSoft], // …and reaches back for the handle
   [P(3), pg(GRAB_END), inOutSoft],
   [P(3.4), pg(GRAB_END)],
   [P(4), pg(TOOL(TEXT_TOOL)), outSoft],
