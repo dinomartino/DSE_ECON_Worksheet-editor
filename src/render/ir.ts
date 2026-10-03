@@ -235,6 +235,8 @@ export interface TableNodeCell {
    * `edit`. Preview only; inert in export.
    */
   segments?: { en: EditSegment[]; zh: EditSegment[] };
+  /** The question a key cell answers (an MC table's number and letter); a click selects it. Preview only; inert in export. */
+  questionId?: string;
 }
 
 export interface TableNode {

@@ -1785,7 +1785,8 @@ type needs only a definition.
   `OutputMode`**: the view picks *which* IR the page draws, not how, so every `version`
   rule (leak guards, the render cache) is untouched. It draws `answerKeyView()` — the very
   nodes `renderAnswerKey` gives the `.docx` (a test pins it), plus each node's question for
-  click-to-select — cut into keep-together runs (`keepNext`) and packed by the paper's
+  click-to-select (an MC table's cells name their own, `TableNodeCell.questionId`, inert in
+  export) — cut into keep-together runs (`keepNext`) and packed by the paper's
   paginator under the key's page rules, inside `#print-root`, so PDF and Copy for Word
   follow the view. No paper chrome (rails, drag, bands, add buttons). Export opens on
   Answer key from it.

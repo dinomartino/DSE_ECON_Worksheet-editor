@@ -1827,6 +1827,8 @@ function TableNodeView({
                     <td
                       key={cellIndex}
                       data-table-cell={address?.cellId}
+                      // An answer key's MC cell names its question (`TableNodeCell.questionId`).
+                      data-question-id={cell.questionId}
                       colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
                       rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
                       onContextMenu={
@@ -1868,7 +1870,7 @@ function TableNodeView({
                         node.borders === "box" || cell.edges
                           ? ""
                           : "border border-slate-500"
-                      } ${cell.vAlign === "top" ? "align-top" : "align-middle"} ${isActive ? "ring-2 ring-inset ring-[#0d77c9]" : ""} ${
+                      } ${cell.vAlign === "top" ? "align-top" : "align-middle"} ${cell.questionId ? "cursor-pointer" : ""} ${isActive ? "ring-2 ring-inset ring-[#0d77c9]" : ""} ${
                         rangeEdge ? "bg-[#0d77c9]/[0.12]" : ""
                       }`}
                       style={{

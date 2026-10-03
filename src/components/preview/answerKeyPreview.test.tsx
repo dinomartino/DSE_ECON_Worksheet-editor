@@ -6,7 +6,9 @@ import type { Worksheet } from '@/model/types';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { answerKeyView } from '@/render/answerKey';
 import type { RenderNode } from '@/render/ir';
-import { AnswerKeyPreview, keepTogetherRuns, keyUnits, runNodes } from './AnswerKeyPreview';
+import { createMcqQuestion } from '@/model/factories';
+import { withFlow } from '@/test/fixtures';
+import { AnswerKeyPreview, keepTogetherRuns, keyUnits, runNodes, selectedCellRule } from './AnswerKeyPreview';
 
 const text = (keepNext?: boolean): RenderNode => ({
   kind: 'text',
@@ -96,6 +98,19 @@ describe('the Marking scheme view', () => {
     expect(markup).not.toContain('data-bank-ghost');
     // Each entry names its question, so a click selects it for the sidebar.
     expect(markup).toContain(`data-question-id="${worksheet.questions[0].id}"`);
+  });
+
+  it('an MC cell names its question, and the selected question tints its cells', () => {
+    const base = buildMarkSchemeWorksheet();
+    const mcq = createMcqQuestion();
+    const worksheet = withFlow(base, [mcq, ...base.questions]);
+    const markup = renderToStaticMarkup(
+      <AnswerKeyPreview worksheet={worksheet} language="en" selectedQuestionId={mcq.id} onEdit={() => {}} />,
+    );
+    expect(markup).toMatch(new RegExp(`<td[^>]*data-question-id="${mcq.id}"[^>]*class="[^"]*cursor-pointer`));
+    expect(markup).toContain(`<style>${selectedCellRule(mcq.id)}</style>`);
+    const unselected = renderToStaticMarkup(<AnswerKeyPreview worksheet={worksheet} language="en" onEdit={() => {}} />);
+    expect(unselected).not.toContain('<style>');
   });
 
   it('read-only (print preview, a newer file) has no textbox', () => {

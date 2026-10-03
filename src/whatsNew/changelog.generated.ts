@@ -433,6 +433,11 @@ a version heading is edited afterwards.
   定也放在這裏。 -->
 
 ### Fixed
+- **Click an MC answer in the Marking scheme view to select its question**, as you can with
+  a long question's answer. The question's number and key are tinted and its settings open
+  in the sidebar.
+  <!-- zh: **在評卷參考檢視中按一下 MC 答案，即可選取該題**，與長題目的答案一樣。該題的題號和
+  答案會以顏色標示，側欄顯示其設定。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.
