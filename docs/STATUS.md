@@ -21,6 +21,13 @@ off the bottom.** It is the first thing a fresh session reads — then
   Then (user's calls): Fill never translates alt text; "Teacher Version" in the header on every
   preview/PDF page as in Word (`src/model/headerMarks.ts`); no "Version B" above Q1 when page 1's
   header shows it.
+- **2026-10-03 (second sweep):** the rest of the open gaps, on `fix/gaps2-*`, all merged: preview
+  pages break where Word does (keep runs, glued tails); a covered paper's page-1 header is the first
+  body sheet; no blank header rows in `.docx`; canvas toolbar one row (⋯ clipboard menu); Q_A a
+  span (`last` anchor, schema 2); Shift-a-copy arrows follow; CPF label clears the axis; COVERAGE
+  0 partial (7 templates, `curvePath` reads curves as drawn); CS/PS reach the price axis; 題庫
+  "Adding to" picker + "Already in this paper", text→topic suggestions (`termTopics.ts`), synced
+  undo, second-tab tag guard, coalesced publish, virtualised rail, desktop `pack.json`+journal.
 - `scripts/soffice.mjs` gives LibreOffice the CJK fonts (zh/bilingual Word legs used to drop
   Chinese); `cover-verify` / `lq-verify` take `--language`; `shot.mjs --seed [--port=]` works.
 
@@ -43,37 +50,31 @@ off the bottom.** It is the first thing a fresh session reads — then
   wording breaks Google's terms. Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key.
 - Bank authoring proposal (`docs/design/bank-authoring.md`, 3 questions).
+- Text-derived topic suggestions are marked ✦, which elsewhere means the AI door; a new
+  題庫 "New Paper 2" makes the full booklet; the tray lost its separate "New worksheet" button.
 
 ## Open threads and known gaps
 
 - **Old releases:** v0.4/0.5 can still export a schema-2 file (student copy shows answers) and
   "Duplicate as editable copy" it; v0.2–0.3 have no read-only guard. They also don't draw revenue
   areas or model answer diagrams (no leak).
-- **Never checked:** a real import of our exports into the four other apps; graph answer space and
-  model answer diagrams in Word; print-PDF of shaded areas; HKEAA Chinese labels and EC wording;
-  the desktop feedback opener; curves stopping short of the y-axis on a CS/PS strip; bilingual
-  `.docx` page breaks with real PMingLiU.
-- Diagrams: canvas toolbar still wraps at 1440px; import-quota Q_A label is free text; a "Shift a
-  copy" arrow stays put when its curve moves; dragging B on the concave PPF can push the CPF label
-  onto the y-axis; 9 partial rows in `docs/Diagram_Requirements/COVERAGE.md`.
-- Bank: ⌘Z after a synced tag/part edit undoes the open copy only; second-tab tag sync (S4),
-  publish coalescing (S8), virtualised rail, C8 target picker, ✦ Suggest topics; desktop index
-  load reads one file per document (unmeasured at scale).
-- A question taller than the rest of sheet 1 starts on sheet 2 (Word: page 1). On a covered
-  paper with page 1 header Nothing/Its own, preview and Word disagree on the first body sheet's
-  header; a teacher `.docx` prints 2+ blank header rows the preview drops.
+- **Never checked:** a real import of our exports into the four other apps; the desktop feedback
+  opener; real Word/PMingLiU (LibreOffice + a Ming face agree); the desktop `pack.json` in Tauri.
+- Diagrams: template arrows (not Shift-a-copy) stay fixed; `curvePath` assumes the 3:4 plot.
+- Bank: ✦ Fill writes from another tab can still lose to an open editor's autosave.
+- Pagination now follows Word, so existing worksheets break differently on screen and in PDF.
 - Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
   updater key lives only at `~/.tauri/econ-worksheet.key`. `scripts/*.test.ts` are hand-run.
 
-## Last verified (2026-10-03, `develop` 1aff751)
+## Last verified (2026-10-03, `develop` 2d99f95)
 
-- `npm test` 3859 passed; typecheck clean; lint 40 (baseline was 41); `npm run build` green (postbuild
-  bundle check); `npm run samples` exports.
-- `lq-verify` and `cover-verify` pass in en, bilingual and zh with Chinese rendering in Word;
-  bilingual Paper 2 cover one page in all three backends (looked at the contact sheet).
+- `npm test` 3962 passed; typecheck clean; lint 40 (baseline); `npm run build` green; samples export.
+- `cover-verify` 2/2 pages both papers; `lq-verify` passes en, zh, bilingual.
 
 ## Log
 
+- **2026-10-03** — Second gap sweep: 6 Opus worktree branches, merged (CHANGELOG unions,
+  `curveXAt` reads `curvePath` and takes `last`, rail badge moved into `RailItem`). Nothing pushed.
 - **2026-10-03** — Gap sweep: 8 Opus worktree branches (paused once, resumed) + 5 follow-ups
   (cover fit + CJK harness, schema audit vs real v0.5.0 code, section target stays 1, index
   `kind` repair, prompt space). All merged; nothing pushed.
