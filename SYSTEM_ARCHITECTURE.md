@@ -1659,6 +1659,11 @@ resolves the three states in one place, shared by exporter and preview. `w:title
 switches page 1 *wholesale*, so once either edge differs **both** need a first-page
 part; a part is emitted when either the running rows or page 1's would print.
 
+**On a covered paper, page 1 is the first body sheet.** The cover is its own section and
+`w:titlePg` sits on the body's, so the preview passes `firstOfSection` (sheet index 0),
+not "page number 1", to `HeaderFooterBand`. A blank page 1 draws no rule (Word's part
+is empty).
+
 **A write aimed at page 1 creates the separation**: `scope: 'firstPage'` creates
 `firstPage` on first write (and sets `showOnFirstPage: true`). The panel ("Header &
 footer" tab) is organised by page: two page miniatures act as tabs. Page 1 offers, per

@@ -2794,6 +2794,7 @@ export function HeaderFooterBand({
   language,
   edge,
   pageNumber,
+  firstOfSection = pageNumber === 1,
   pageCount,
   totalMarks,
   editing,
@@ -2810,6 +2811,12 @@ export function HeaderFooterBand({
   teacherMark?: boolean;
   /** 1-based index of the sheet this band belongs to. */
   pageNumber: number;
+  /**
+   * The body's first sheet, which prints page 1's header and footer. Word's `w:titlePg`
+   * belongs to the body section, so on a paper with a cover this is sheet 2 (the cover
+   * is its own section). Defaults to `pageNumber === 1`.
+   */
+  firstOfSection?: boolean;
   pageCount: number;
   totalMarks: number;
   /**
@@ -2841,14 +2848,14 @@ export function HeaderFooterBand({
    */
   const m = useMessages(PREVIEW_MESSAGES);
   const resolved =
-    pageNumber === 1
+    firstOfSection
       ? firstPageHeaderFooter(value)
       : { bands: value.bands ?? [], rule: value.rule, differs: false };
 
   // Derived and read-only: the last row, under the running rows wherever they print, or
   // the whole header (every page, no rule) when the document's own prints nothing.
   const versionAlone = versionRow !== undefined && versionRowStandsAlone(value);
-  const derivedHere = pageNumber !== 1 || derivedMarksOnPageOne(value, versionRow !== undefined);
+  const derivedHere = !firstOfSection || derivedMarksOnPageOne(value, versionRow !== undefined);
   const versionLine =
     versionRow !== undefined && derivedHere ? (
       <div className="flex items-baseline justify-end">
@@ -2880,7 +2887,7 @@ export function HeaderFooterBand({
 
   // Which row list a structural edit here belongs to (`pageBandScope`): page 1 edits the
   // running rows only in "same" mode, so a row added to a blank page 1 becomes its own.
-  const scope: BandScope = pageBandScope(value, pageNumber);
+  const scope: BandScope = pageBandScope(value, firstOfSection ? 1 : Math.max(2, pageNumber));
 
   /*
    * An empty band list still renders while editing, so there is somewhere to put the
@@ -2898,7 +2905,9 @@ export function HeaderFooterBand({
   const drawsBands = bandsShouldRender(bands, Boolean(editing) || Boolean(editable));
   const markLine = markLineOf(drawsBands ? bands : []);
   if (!drawsBands && !versionLine && !markLine) return null;
-  const rule = versionAlone || markOnly ? false : resolved.rule;
+  // A blank page 1 is an empty part in Word, with no rule under nothing.
+  const blankHere = resolved.differs && resolved.bands.length === 0;
+  const rule = versionAlone || markOnly || blankHere ? false : resolved.rule;
   const trail: BandTrail | undefined =
     place?.bandId && drawsBands && !markLine
       ? {
@@ -6997,6 +7006,7 @@ export function Preview({
                   language={language}
                   edge="header"
                   pageNumber={pageIndex + 1 + pageNumberOffset}
+                  firstOfSection={pageIndex === 0}
                   pageCount={pages.length + pageNumberOffset}
                   totalMarks={worksheetMarks(worksheet)}
                   // Editing handlers are withheld while the region is idle, so the band
@@ -7113,6 +7123,7 @@ export function Preview({
                   language={language}
                   edge="footer"
                   pageNumber={pageIndex + 1 + pageNumberOffset}
+                  firstOfSection={pageIndex === 0}
                   pageCount={pages.length + pageNumberOffset}
                   totalMarks={worksheetMarks(worksheet)}
                   editing={

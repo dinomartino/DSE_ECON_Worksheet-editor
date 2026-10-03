@@ -893,6 +893,9 @@ function FirstPageEdge({
   const setFirstPageMode = useWorksheetStore((s) => s.setFirstPageMode);
   const { value, withheld, enabled } = useEdge(which);
   const title = m.edgeOnPage1(which);
+  // The cover is its own section; Word's page-1 setting applies to the sheet after it.
+  const covered = useWorksheetStore((s) => Boolean(s.worksheet.cover));
+  const coverHint = covered ? m.page1AfterCover : undefined;
 
   if (withheld || !enabled) {
     return (
@@ -911,6 +914,7 @@ function FirstPageEdge({
     <section className="space-y-2.5">
       <EdgeHeading
         title={title}
+        hint={coverHint}
         action={
           <Segmented<FirstPageMode>
             label={title}

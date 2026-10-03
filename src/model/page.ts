@@ -206,10 +206,11 @@ export type BandScope = 'running' | 'firstPage';
  *
  * Page 1 edits the running rows only when it prints them ('same'). When it is blank, a
  * row added there is the request for page 1 to have its own rows, not for every later
- * page to gain one.
+ * page to gain one. `sheet` counts from the body's first sheet: a cover is its own Word
+ * section, so on a covered paper "page 1" is the sheet after it (`w:titlePg`).
  */
-export function pageBandScope(value: HeaderFooter, pageNumber: number): BandScope {
-  return pageNumber === 1 && firstPageModeOf(value) !== 'same' ? 'firstPage' : 'running';
+export function pageBandScope(value: HeaderFooter, sheet: number): BandScope {
+  return sheet === 1 && firstPageModeOf(value) !== 'same' ? 'firstPage' : 'running';
 }
 
 /**

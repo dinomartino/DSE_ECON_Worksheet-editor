@@ -478,6 +478,14 @@ a version heading is edited afterwards.
   <!-- zh: **題目現在與 Word 在同一頁開始。** 以往題目放不進該頁餘下的位置時，畫面和 PDF 會把整題移到下一頁，
   而 Word 則在原頁開始、再續到下一頁。現在兩者在同一位置分頁；Word 會與下一題連在一起的標題或最後一個分題，
   亦會一同移頁。Paper 1 中長過一頁的題目，不再超出頁底。 -->
+- **On a paper with a cover, the page-1 header shows where Word prints it.** With the page 1
+  header or footer set to Nothing or Its own, Word applies it to the first page after the
+  cover, but the screen and the PDF showed the usual header there. They now match Word, a
+  blank page 1 no longer prints a line across the top, and the setting says which page it
+  means.
+  <!-- zh: **設有封面的試卷，第 1 頁頁首的位置與 Word 一致。** 第 1 頁頁首或頁尾設為「不印」或「獨立設定」時，
+  Word 會套用於封面後的第一頁，但畫面和 PDF 在該頁仍顯示一般頁首。現在兩者與 Word 一致；第 1 頁不印頁首時，
+  頂部不再印出橫線；設定亦會註明所指的是哪一頁。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when
