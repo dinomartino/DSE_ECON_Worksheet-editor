@@ -523,6 +523,11 @@ a version heading is edited afterwards.
   topics as set on that part. Its Topic row now says they are set on the whole question.
   <!-- zh: **較舊的長題目會保留「已設定於整條題目」。** 課題設定於整條題目、並在兩份或以上工作紙有
   副本的長題目，以往會把每個分題的課題顯示為該分題自己的設定。現在課題列會說明課題設定於整條題目。 -->
+- **Edit topics says which sub-parts have their own topics.** In the question bank's Edit
+  topics, a sub-part with its own list now reads "Its own" in the part column, as the
+  worksheet's Topic row does.
+  <!-- zh: **編輯課題時會標明哪些小分題另設課題。** 在題庫編輯題目的課題時，另設課題的小分題現在會在
+  分題欄顯示「另設課題」，與工作紙的課題列一致。 -->
 
 ## 0.5.0 — 2026-09-28
 
