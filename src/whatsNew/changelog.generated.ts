@@ -452,6 +452,30 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **A Teacher Word file with no header text no longer starts its header with a stray
+  dash.** It now prints "Teacher Version" on its own. A header with your own text still
+  shows that text, then the dash, then "Teacher Version".
+  <!-- zh: **沒有頁首文字的教師版 Word 檔案，頁首不再以多餘的破折號開頭。** 現在只印
+  「Teacher Version」。有自訂文字的頁首，仍會在你的文字後加上破折號和「Teacher Version」。 -->
+- **The margin note on a bilingual booklet now matches on screen and in Word.** "Answers
+  written in the margins will not be marked" showed only in English on screen but stacked
+  English over 中文 in Word, squeezed into a strip too narrow for both. Both now print
+  English and 中文: two lines down each side margin, and one line along the bottom.
+  <!-- zh: **雙語答題簿的邊界提示，在屏幕和 Word 中現在一致。** 「寫於邊界以外的答案，將不予
+  評閱。」在屏幕上只顯示英文，在 Word 中卻把英文和中文擠在過窄的位置。現在兩者都印出英文和
+  中文：左右邊界各兩行，底部一行。 -->
+- **A bilingual Paper 2 cover fits on one page.** With English and 中文 stacked, the
+  instructions ran off the bottom of the cover on screen and onto a second page in Word.
+  A bilingual cover now uses less space between its lines, so it fits on one page
+  everywhere. English-only and 中文-only covers are unchanged.
+  <!-- zh: **雙語 Paper 2 封面可印在一頁內。** 英文和中文並列時，考生須知曾超出封面底部，在 Word
+  中更會跑到第二頁。雙語封面現在行與行之間的空位較少，在任何地方都能印在一頁內。只有英文或
+  只有中文的封面不變。 -->
+- **The year code in a bilingual cover's corner prints once.** A cover line that reads the
+  same in English and 中文, like "2026-27", printed twice on a bilingual paper. It now
+  prints once, on screen, in the PDF and in Word, and editing it changes both languages.
+  <!-- zh: **雙語封面角落的年份編號只印一次。** 英文和中文相同的封面文字，例如「2026-27」，
+  在雙語試卷上曾印兩次；現在在屏幕、PDF 和 Word 中都只印一次，修改時兩種語言一併更新。 -->
 - **In the HKEAA marking scheme, a point's marks now sit on its first line.** A point that
   runs onto a second line shows its "(1)" beside where it starts, as HKEAA prints it, on
   screen, in the PDF and in Word.

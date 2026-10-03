@@ -15,8 +15,11 @@ import { createCoverPage } from '@/model/cover';
 import { createMcqQuestion, createStructuredQuestion, createWorksheet } from '@/model/factories';
 import { bi } from '@/model/text';
 import { stringifyWorksheet } from '@/storage';
+import type { LanguageMode } from '@/model/types';
 
 const OUT = process.env.COVER_DIR ?? '/tmp/cover-verify';
+// `cover-verify.mjs --language=bilingual` exports the bilingual cover instead.
+const LANGUAGE = (process.env.COVER_LANGUAGE ?? 'en') as LanguageMode;
 
 it('emits cover fixtures', async () => {
   mkdirSync(OUT, { recursive: true });
@@ -31,7 +34,7 @@ it('emits cover fixtures', async () => {
     // A question after the cover, so the body section (and the continuous sectPr
     // boundary between them) is exercised rather than exporting a cover-only file.
     worksheet.questions.push(paperStyle === 'mcq' ? createMcqQuestion() : createStructuredQuestion());
-    const bytes = await exportDocxBuffer(worksheet, { language: 'en', version: 'student' });
+    const bytes = await exportDocxBuffer(worksheet, { language: LANGUAGE, version: 'student' });
     writeFileSync(`${OUT}/cover-${name}.docx`, bytes);
     writeFileSync(`${OUT}/cover-${name}.worksheet.json`, stringifyWorksheet(worksheet));
     console.log(`${bytes.length} bytes -> ${OUT}/cover-${name}.docx`);

@@ -636,4 +636,41 @@ describe('mock-exam cover', () => {
       }
     }
   });
+
+  it('prints a line whose sides read the same once in bilingual, keeping the stored pair', () => {
+    const worksheet = coverWorksheet('writeIn');
+    const code = coverLines(worksheet.cover!, 'corner')[0];
+    expect(plain(code.text.en)).toBe(plain(code.text.zh));
+    const count = (xml: string) => xml.split(`>${escapeForXml(plain(code.text.en))}<`).length - 1;
+
+    const bilingual: OutputMode = { language: 'bilingual', version: 'student' };
+    const node = renderWorksheet(worksheet, bilingual).cover!.corner[0];
+    expect(node.kind === 'text' && node.text.zh).toEqual([]);
+    // The one editable side carries the whole pair, so an edit cannot drop the other.
+    expect(node.kind === 'text' && node.segments?.en).toEqual([
+      { edit: { kind: 'coverLine', lineId: code.id }, value: code.text },
+    ]);
+    expect(count(buildDocxParts(worksheet, bilingual).documentXml)).toBe(1);
+
+    // Single-language output and a line with two different sides are untouched.
+    const subject = renderWorksheet(worksheet, bilingual).cover!.corner[1];
+    expect(subject.kind === 'text' && plain(subject.text.zh)).toBe('經濟');
+    const en = renderWorksheet(worksheet, EN).cover!.corner[0];
+    expect(en.kind === 'text' && en.text).toEqual(code.text);
+  });
+
+  it('tightens a bilingual cover’s rhythm so Paper 2 still fits one page', () => {
+    const worksheet = coverWorksheet('writeIn');
+    const spacers = (nodes: Array<{ kind: string }>) => nodes.filter((node) => node.kind === 'spacer').length;
+    const en = renderWorksheet(worksheet, EN).cover!;
+    const both = renderWorksheet(worksheet, { language: 'bilingual', version: 'student' }).cover!;
+
+    // English keeps the reference's measured gaps (1 + 2 + 1 + 6).
+    expect(spacers(en.head)).toBe(10);
+    // Bilingual caps each gap at one line, and runs the instructions together; the
+    // blank under the heading stays.
+    expect(spacers(both.head)).toBe(4);
+    expect(spacers(both.instructions)).toBe(1);
+    expect(spacers(en.instructions)).toBe(coverLines(worksheet.cover!, 'instructions').length);
+  });
 });

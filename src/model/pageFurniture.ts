@@ -1,5 +1,5 @@
-import type { PageFurniture, PageMargins } from './types';
-import { bi } from './text';
+import type { BiText, LanguageMode, PageFurniture, PageMargins } from './types';
+import { bi, plain } from './text';
 
 export type { PageFurniture } from './types';
 
@@ -53,6 +53,11 @@ export const FURNITURE_GEOMETRY = {
    * the inset that positions it is measured from the text column.
    */
   noteWidthVertical: 380,
+  /**
+   * The strip's width for a **stacked** bilingual note: two rotated lines, English over
+   * 中文, on the 12pt line a textbox paragraph keeps.
+   */
+  noteWidthStacked: 480,
   /** The left note's left edge sits this far left of the text column. */
   noteLeftInset: 400,
   /** The right note's left edge sits this far right of the text column. */
@@ -126,12 +131,16 @@ export function furnitureBoxes(
   pageWidth: number,
   pageHeight: number,
   margins: PageMargins,
-  options?: { verticalNote?: boolean },
+  options?: { verticalNote?: boolean; stackedNote?: boolean },
 ): FurnitureBoxes {
   const g = FURNITURE_GEOMETRY;
   const columnLeft = margins.left;
   const columnRight = pageWidth - margins.right;
-  const noteWidth = options?.verticalNote ? g.noteWidthVertical : g.noteWidth;
+  const noteWidth = options?.verticalNote
+    ? g.noteWidthVertical
+    : options?.stackedNote
+      ? g.noteWidthStacked
+      : g.noteWidth;
   return {
     frame: {
       left: columnLeft - g.frameOutset,
@@ -165,6 +174,43 @@ export function furnitureBoxes(
     },
   };
 }
+
+/**
+ * Which sides of the margin note print, in order — one answer for the preview and the
+ * `.docx`. A single-language page prints its own side (the other when it is empty);
+ * bilingual prints both, English first, unless they read the same.
+ */
+export function marginNoteSides(
+  note: BiText | undefined,
+  language: LanguageMode,
+): Array<'en' | 'zh'> {
+  if (!note) return [];
+  const en = plain(note.en).length > 0;
+  const zh = plain(note.zh).length > 0;
+  if (language === 'zh') return zh ? ['zh'] : en ? ['en'] : [];
+  if (language === 'bilingual' && en && zh && plain(note.en) !== plain(note.zh)) {
+    return ['en', 'zh'];
+  }
+  return en ? ['en'] : zh ? ['zh'] : [];
+}
+
+/**
+ * How the margin strips set the note: upright vertical for a Chinese page's own side,
+ * stacked rotated lines for bilingual, otherwise one rotated line. The bottom note is
+ * always one horizontal line, a bilingual pair side by side.
+ */
+export function marginNoteSetting(
+  sides: Array<'en' | 'zh'>,
+  language: LanguageMode,
+): { verticalNote: boolean; stackedNote: boolean } {
+  return {
+    verticalNote: language === 'zh' && sides[0] === 'zh',
+    stackedNote: sides.length > 1,
+  };
+}
+
+/** The gap between the two sides of a bilingual bottom note. */
+export const MARGIN_NOTE_JOINER = '\u3000';
 
 /**
  * Whether a document is the Question-Answer Book.

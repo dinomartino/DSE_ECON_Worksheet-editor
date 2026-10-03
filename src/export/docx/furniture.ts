@@ -1,7 +1,12 @@
-import type { FontPair, LanguageMode, PageFurniture, PageMargins } from '@/model/types';
-import { furnitureBoxes, FURNITURE_GEOMETRY } from '@/model/pageFurniture';
-import { isBiTextEmpty } from '@/model/text';
-import { biTextRuns } from './runs';
+import type { BiText, FontPair, LanguageMode, PageFurniture, PageMargins } from '@/model/types';
+import {
+  furnitureBoxes,
+  FURNITURE_GEOMETRY,
+  MARGIN_NOTE_JOINER,
+  marginNoteSetting,
+  marginNoteSides,
+} from '@/model/pageFurniture';
+import { lineBreak, richTextRuns } from './runs';
 
 /**
  * The QAB's per-page furniture, as anchored shapes in the running header
@@ -127,34 +132,38 @@ export function furnitureHeaderXml(
 ): string {
   if (!furniture) return '';
   /*
-   * Chinese sets upright and vertical, Latin rotates (§ `NoteDirection`). Keyed on what
-   * `biTextRuns` will actually emit: only a pure `zh` export puts Chinese alone in the
-   * box, while `bilingual` stacks both sides and must stay rotated — setting a Latin
-   * sentence `eaVert` would print it one letter per line down the margin.
-   *
-   * Decided before the boxes, because it also decides how wide the strips are.
+   * Chinese sets upright and vertical, Latin rotates (§ `NoteDirection`); bilingual
+   * stacks both rotated in a wider strip (§ `marginNoteSetting`). Decided before the
+   * boxes, because it also decides how wide the strips are.
    */
-  const eaVertical =
-    language === 'zh' &&
-    !!furniture.marginNote &&
-    !isBiTextEmpty({ en: [], zh: furniture.marginNote.zh });
-  const boxes = furnitureBoxes(pageWidth, pageHeight, margins, { verticalNote: eaVertical });
+  const note = furniture.marginNote;
+  const sides = marginNoteSides(note, language);
+  const setting = marginNoteSetting(sides, language);
+  const boxes = furnitureBoxes(pageWidth, pageHeight, margins, setting);
   const parts: string[] = [];
 
   if (furniture.frame) parts.push(frameXml(boxes.frame));
 
-  if (furniture.marginNote && !isBiTextEmpty(furniture.marginNote)) {
+  if (note && sides.length > 0) {
     // 9pt, the size a strip this narrow can hold; per-run formatting can override.
-    const runs = biTextRuns(furniture.marginNote, fonts, language, { fontSize: 9 });
+    const sideRuns = (text: BiText['en']) => richTextRuns(text, fonts, { fontSize: 9 });
+    const runs = sides.map((side) => sideRuns(note[side])).join(lineBreak());
     const side: { direction: NoteDirection } = {
-      direction: eaVertical ? 'eaVert' : 'vert270',
+      direction: setting.verticalNote ? 'eaVert' : 'vert270',
     };
     parts.push(noteXml(boxes.noteLeft, runs, FURNITURE_DRAWING_ID_BASE + 1, 'Margin note left', side));
     parts.push(noteXml(boxes.noteRight, runs, FURNITURE_DRAWING_ID_BASE + 2, 'Margin note right', side));
     // The same sentence once more, horizontal, just below the frame's bottom edge —
-    // the reference prints it above its footer line on every interior page.
+    // the reference prints it above its footer line on every interior page. One line,
+    // so a bilingual pair sits side by side rather than running into the footer.
+    const bottomRuns = sideRuns(
+      sides.flatMap((key, index) => [
+        ...(index > 0 ? [{ text: MARGIN_NOTE_JOINER }] : []),
+        ...note[key],
+      ]),
+    );
     parts.push(
-      noteXml(boxes.noteBottom, runs, FURNITURE_DRAWING_ID_BASE + 3, 'Margin note bottom', {
+      noteXml(boxes.noteBottom, bottomRuns, FURNITURE_DRAWING_ID_BASE + 3, 'Margin note bottom', {
         direction: 'horz',
       }),
     );

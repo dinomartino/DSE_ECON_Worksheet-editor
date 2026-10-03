@@ -36,7 +36,13 @@ import {
   type NodeStyle,
   type RenderNode,
 } from './ir';
-import { coverColumns, coverHasPanel, coverLines } from '@/model/cover';
+import {
+  coverColumns,
+  coverGapLines,
+  coverHasPanel,
+  coverLinePrintsOnce,
+  coverLines,
+} from '@/model/cover';
 import type { CoverLine, CoverPage } from '@/model/coverTypes';
 
 /** Twips: the gutter a "(1)" sits in, and where the instruction text column starts. */
@@ -218,15 +224,29 @@ function renderCover(
   const withGaps = (lines: CoverLine[]): RenderNode[] =>
     lines.flatMap((line) => [
       asText(line),
-      ...Array.from({ length: line.gapAfter ?? 0 }, () => blankLine()),
+      ...Array.from({ length: coverGapLines(line.gapAfter, language) }, () => blankLine()),
     ]);
+
+  /*
+   * A line whose sides read the same prints once in bilingual (§ `coverLinePrintsOnce`).
+   * Its one editable side carries the whole stored pair, so an edit keeps the other side
+   * (the preview mirrors it — § `mirrorBilingualEdit`).
+   */
+  const printed = (line: CoverLine) => {
+    const edit = { kind: 'coverLine' as const, lineId: line.id };
+    if (!coverLinePrintsOnce(line.text, language)) return { text: line.text, edit };
+    return {
+      text: { en: line.text.en, zh: [] },
+      edit,
+      segments: { en: [{ edit, value: line.text }], zh: [] },
+    };
+  };
 
   const asText = (line: CoverLine, style: NodeStyle = 'Body'): RenderNode => ({
     kind: 'text',
     style,
-    text: line.text,
+    ...printed(line),
     format: withFonts(line.format),
-    edit: { kind: 'coverLine', lineId: line.id },
   });
 
   const instructionLines = coverLines(cover, 'instructions');
@@ -269,14 +289,17 @@ function renderCover(
           format: withFonts(undefined),
         },
         {
-          text: line.text,
+          ...printed(line),
           at: 0.5,
           format: withFonts(line.format),
-          edit: { kind: 'coverLine', lineId: line.id },
         },
       ],
     });
-    if (index < instructionLines.length - 1) instructions.push(blankLine());
+    // Bilingual runs them together: the hung number already separates two-language
+    // instructions, and the blanks are what pushed the column off the page.
+    if (index < instructionLines.length - 1 && language !== 'bilingual') {
+      instructions.push(blankLine());
+    }
   });
 
   const panelPresent = coverHasPanel(cover);
