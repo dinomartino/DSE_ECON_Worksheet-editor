@@ -145,7 +145,11 @@ export const CLIPS = [
       await r.moveTo(() => onCanvas(page, 0.9, 0.12), { dur: 0.8 });
       await r.clickAt(5.6, canvasTool(page, 'Done'), { dur: 0.6, label: 'Done' });
       // A click on the desk beside the page lets the question go: the page alone, answer in red.
-      await r.clickAt(6.4, { x: 1027, y: 640 }, { dur: 0.6, label: 'deselect' });
+      const desk = async () => {
+        const b = await page.locator('#print-root .paper').first().boundingBox();
+        return { x: b.x + b.width + 14, y: 640 };
+      };
+      await r.clickAt(6.4, desk, { dur: 0.6, label: 'deselect' });
       await r.until(8.0);
     },
   },
