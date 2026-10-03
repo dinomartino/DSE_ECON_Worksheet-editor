@@ -34,6 +34,8 @@ import { AI_SETTINGS } from '@/settings/aiSettings';
 import { useSettings } from '@/settings/store';
 import type { BankItemTone, BankReviewItem, BankUnit } from '@/assist/bankRun';
 import { loadGlossary } from '@/glossary/load';
+import { useGlossary } from '@/glossary/useGlossary';
+import { rowText, textTopics } from '@/library/termTopics';
 import { identicalCopies, type CopySkip } from '@/library/sameCopies';
 import { isDesktop } from '@/platform';
 import { createRunDeps } from '@/translate/deps';
@@ -73,6 +75,7 @@ import {
   readLevel,
   readRailHidden,
   suggestTopics,
+  termsByTopic,
   TOPICS_LEVEL,
   writeLevel,
   writeRailHidden,
@@ -324,7 +327,11 @@ export function QuestionBankScreen({
   const restoredAt = restoring ? untagged.findIndex((group) => group.rootId === restoring.group.rootId) : -1;
   const tagGroup = restoring ? (restoredAt >= 0 ? untagged[restoredAt] : restoring.group) : untagged[tagPosition];
   const tagRow = tagGroup?.rows[0];
-  const suggestions = useMemo(() => (tagRow ? suggestTopics(tagRow, rows) : []), [tagRow, rows]);
+  // ✦ The question's own words, through the EDB glossary (loaded once tagging starts).
+  const glossary = useGlossary(level.kind === 'untagged');
+  const textHits = useMemo(() => (tagRow && glossary ? textTopics(rowText(tagRow, glossary), glossary) : []), [tagRow, glossary]);
+  const suggestions = useMemo(() => (tagRow ? suggestTopics(tagRow, rows, undefined, textHits) : []), [tagRow, rows, textHits]);
+  const fromText = useMemo(() => termsByTopic(textHits, suggestions, glossary), [textHits, suggestions, glossary]);
   const tagRoot = tagGroup?.rootId;
   // Picks belong to one question: the next one starts with nothing ticked, on the whole question.
   const picksHere = chosenFor.root === tagRoot ? chosenFor : NO_PICKS;
@@ -958,6 +965,7 @@ export function QuestionBankScreen({
           lastSaved={tagHistory.length > 0 ? tagSaveText(tagHistory[tagHistory.length - 1], m, lang) : undefined}
           onUndo={undoTagSave}
           suggestions={suggestions}
+          fromText={fromText}
           chosen={chosen}
           partial={tagTicks?.partial}
           canSave={tagDraft !== undefined && hasTopic(tagDraft)}

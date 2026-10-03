@@ -23,6 +23,15 @@ export const TAG_AS_YOU_GO_MESSAGES = defineMessages({
     en: (n: number) => `Suggestions come from topics used on the same worksheet, then your most used. Press 1 to ${n} or click; Enter saves and moves on.`,
     zh: (n: number) => `建議來自同一份工作紙用過的課題，其次是你最常用的課題。按 1 至 ${n} 或點擊選擇；按 Enter 儲存並前往下一條。`,
   },
+  hintText: {
+    en: (n: number) => `Suggestions marked ✦ come from words in the question; the rest from topics used on the same worksheet, then your most used. Press 1 to ${n} or click; Enter saves and moves on.`,
+    zh: (n: number) => `標有 ✦ 的建議來自題目中的詞語；其餘來自同一份工作紙用過的課題，其次是你最常用的課題。按 1 至 ${n} 或點擊選擇；按 Enter 儲存並前往下一條。`,
+  },
+  fromTextTitle: {
+    en: (title: string, terms: string) => `${title}. In the question: ${terms}`,
+    zh: (title: string, terms: string) => `${title}。題目中的詞語：${terms}`,
+  },
+  termSep: { en: '; ', zh: '；' },
   hintNone: {
     en: 'Nothing to suggest yet: choose from All topics. Enter saves and moves on.',
     zh: '暫時沒有建議：請從「全部課題」選擇。按 Enter 儲存並前往下一條。',

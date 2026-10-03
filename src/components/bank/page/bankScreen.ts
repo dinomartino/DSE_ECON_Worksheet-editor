@@ -6,6 +6,8 @@ import type { BankGroup, BankRow, BankSlot } from '@/library/types';
 import { refsOf, rowUsedWith } from '@/library/history';
 import { comparePatterns, rowPatterns, type PatternId } from '@/library/patterns';
 import { slotsMatching, type SlotQuery } from '@/library/slotMatch';
+import type { TextTopic } from '@/library/termTopics';
+import type { Glossary } from '@/glossary';
 import { holdsPatterns } from '@/model/patterns';
 import { classChoices, typeName, type ClassChoice, type TopicPick } from './bankPage';
 import { BANK_PAGE_MESSAGES as M } from './bankPage.messages';
@@ -361,16 +363,21 @@ export function topicsByPart(row: Pick<BankRow, 'slots'>): { label: string; tags
 /** Keys offered before "… All topics": the row holds six, numbered 1 to 6. */
 export const SUGGESTION_COUNT = 5;
 
+/** At most this many keys go to topics the question's own words point to, so neighbours still show. */
+export const TEXT_SUGGESTION_COUNT = 3;
+
 /**
- * The topics offered for an untagged question, best first. First the topic codes on the
- * other questions in the same document: most questions first, then the nearest by printed
- * number, then guide order. Then the codes used most across the whole bank (distinct
- * questions). Free tags are never offered.
+ * The topics offered for an untagged question, best first. First those its own words point
+ * to (`fromText`, `src/library/termTopics.ts:textTopics`, the best three). Then the topic
+ * codes on the other questions in the same document: most questions first, then the
+ * nearest by printed number, then guide order. Then the codes used most across the whole
+ * bank (distinct questions). Free tags are never offered.
  */
 export function suggestTopics(
   target: Pick<BankRow, 'docId' | 'rootId' | 'number'>,
   rows: readonly BankRow[],
   limit = SUGGESTION_COUNT,
+  fromText: readonly Pick<TextTopic, 'code'>[] = [],
 ): string[] {
   const local = new Map<string, { roots: Set<string>; distance: number }>();
   const overall = new Map<string, Set<string>>();
@@ -396,7 +403,28 @@ export function suggestTopics(
     )
     .map(([code]) => code);
   const rest = [...overall.keys()].filter((code) => !local.has(code)).sort((a, b) => size(b) - size(a) || guide(a) - guide(b));
-  return [...first, ...rest].slice(0, limit);
+  const text = fromText.map((topic) => topic.code).filter((code) => topicOf(code)).slice(0, TEXT_SUGGESTION_COUNT);
+  return [...new Set([...text, ...first, ...rest])].slice(0, limit);
+}
+
+/**
+ * For the suggested keys that came from the question's words: the terms that found them,
+ * as the key's tooltip names them ("price ceiling 價格上限", the glossary's English and
+ * first 中文). A code the neighbours also suggest still names its terms.
+ */
+export function termsByTopic(
+  hits: readonly TextTopic[],
+  suggestions: readonly string[],
+  glossary: Pick<Glossary, 'entries'> | null,
+): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  if (!glossary) return out;
+  const preferred = (key: string) => glossary.entries.find((entry) => entry.en === key)?.preferred;
+  for (const hit of hits) {
+    if (!suggestions.includes(hit.code)) continue;
+    out.set(hit.code, hit.terms.map((key) => [key, preferred(key)].filter(Boolean).join(' ')));
+  }
+  return out;
 }
 
 /* ------------------------------------------------------------------------------------ */
