@@ -33,4 +33,6 @@ export const SELECTION_TRAY_MESSAGES = defineMessages({
   addToTitle: { en: (title: string) => `Open “${title}” and add them at the end`, zh: (title: string) => `開啟「${title}」並將題目加到最後` },
   addTo: { en: (title: string) => `Add to “${title}”`, zh: (title: string) => `加到「${title}」` },
   newWorksheet: { en: 'New worksheet from these', zh: '以這些題目新增工作紙' },
+  newPaper1: { en: 'New Paper 1 from these', zh: '以這些題目新增 Paper 1' },
+  newPaper2: { en: 'New Paper 2 from these', zh: '以這些題目新增 Paper 2' },
 });

@@ -287,6 +287,23 @@ a version heading is edited afterwards.
   <!-- zh: **可設定「任選一題」的部分。** 選取一個部分，把「考生須作答」設為「2 題中任選 1 題」
   （或任何題數）。該部分的分數、全卷總分、估計時間、試卷檢查和答案頁的總分，便只計算學生
   可選作答的題目，而不是全部題目。每個部分亦可設定自己的目標分數，試卷檢查會加以比較。 -->
+- **Choose where your list goes in the question bank.** Above the list of questions,
+  "Adding to" names the paper your list will go into, and you can switch it to any of your
+  worksheets, or to a new classroom worksheet, Paper 1 or Paper 2. Questions that paper
+  already holds read "Already in this paper", with their number. A new Paper 1 or Paper 2
+  puts each question in the section for its type, before END OF PAPER.
+  <!-- zh: **在題庫中選擇清單要加到哪裏。** 題目清單上方的「加入至」會列出清單將加到的試卷，
+  你可以改為任何一份工作紙，或新增課堂工作紙、Paper 1 或 Paper 2。該試卷已有的題目會標示
+  「已在此工作紙」及題號。新增的 Paper 1 或 Paper 2 會把每條題目放到其題型所屬的部分，並放在
+  END OF PAPER 之前。 -->
+- **✦ Topic suggestions from the question's own words.** When you tag questions one at a
+  time in the question bank, the first suggestions now come from economics terms in the
+  question itself, in English or 中文 (a price ceiling suggests Market intervention), read
+  with the EDB glossary on your computer, no AI key needed. They are marked ✦, and pointing
+  at one shows the terms that found it.
+  <!-- zh: **✦ 按題目字詞建議課題。** 在題庫逐題標記課題時，最先的建議現在來自題目本身的經濟學
+  詞語，英文或中文皆可（例如「價格上限」會建議「市場干預」）。建議以本機的教育局詞彙表判斷，
+  毋須 AI 金鑰。這些建議標有 ✦，將游標移到上面便會顯示找到的詞語。 -->
 
 ### Changed
 - **The paper check now warns when a marking scheme does not add up.** Before you export,

@@ -6,7 +6,7 @@ import { marksLabel, sourceLabel, typeLabel } from '@/components/bank/BankRow';
 import type { BankRow } from '@/library/types';
 import { useMessages } from '@/i18n/language';
 import { cartTopicLabel, cartTotals, isSortedByType, readCartOpen, sortLabel, stepTarget, typeSplitLabel, writeCartOpen } from './bankCart';
-import { mixLabel, rowKey, traySummary } from './bankPage';
+import { mixLabel, rowKey, traySummary, type BankTarget, type NewTargetType } from './bankPage';
 import { BANK_PAGE_MESSAGES } from './bankPage.messages';
 import { SELECTION_TRAY_MESSAGES } from './SelectionTray.messages';
 
@@ -27,15 +27,18 @@ interface Drag {
 
 type Control = 'handle' | 'up' | 'down' | 'remove';
 
+const NEW_FROM = { classroom: 'newWorksheet', paper1: 'newPaper1', lqMock: 'newPaper2' } as const satisfies Record<NewTargetType, string>;
+
 /**
  * The cart: what is picked, in the order it will print, and what to do with it. The bar
  * sums it up (count, marks, MCQ/LQ split, minutes) and holds the actions; the list above
  * it names each pick (excerpt, topic, type, marks, where it lives) and reorders them by
- * drag, the ↑ ↓ buttons or Alt+↑ ↓. One filled button: New worksheet from these.
+ * drag, the ↑ ↓ buttons or Alt+↑ ↓. One filled button, as the "Adding to" picker sets
+ * it: Add to “Mock”, or New worksheet / Paper 1 / Paper 2 from these.
  */
 export function SelectionTray({
   rows,
-  targetTitle,
+  target,
   busy,
   canUndo,
   onRemove,
@@ -45,13 +48,12 @@ export function SelectionTray({
   onUndo,
   onDismiss,
   onSetTopic,
-  onAddTo,
-  onNewWorksheet,
+  onAdd,
 }: {
   /** The picks, in cart order. */
   rows: readonly BankRow[];
-  /** The worksheet "Add to" puts them in; absent hides the action. */
-  targetTitle?: string;
+  /** Where the one action puts them (the "Adding to" picker): a saved paper, or a new document. */
+  target: BankTarget;
   busy: boolean;
   /** The list was just emptied here and can come back. */
   canUndo: boolean;
@@ -64,8 +66,7 @@ export function SelectionTray({
   /** Closing an emptied tray: the Undo is forgotten. */
   onDismiss: () => void;
   onSetTopic: () => void;
-  onAddTo: () => void;
-  onNewWorksheet: () => void;
+  onAdd: () => void;
 }) {
   const m = useMessages(SELECTION_TRAY_MESSAGES);
   const w = useMessages(BANK_PAGE_MESSAGES);
@@ -332,13 +333,17 @@ export function SelectionTray({
         <Button size="sm" onClick={onSetTopic} disabled={busy || empty}>
           {m.setTopic}
         </Button>
-        {targetTitle !== undefined && (
-          <Button size="sm" onClick={onAddTo} disabled={busy || empty} title={m.addToTitle(targetTitle)} className="max-w-[220px]">
-            <span className="truncate">{m.addTo(targetTitle)}</span>
-          </Button>
-        )}
-        <Button variant="primary" size="sm" onClick={onNewWorksheet} disabled={busy || empty}>
-          {m.newWorksheet}
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={onAdd}
+          disabled={busy || empty}
+          title={target.kind === 'paper' ? m.addToTitle(target.summary.title) : undefined}
+          className="max-w-[260px]"
+        >
+          <span className="truncate">
+            {target.kind === 'paper' ? m.addTo(target.summary.title) : m[NEW_FROM[target.documentType]]}
+          </span>
         </Button>
       </div>
     </div>

@@ -30,6 +30,7 @@ export function TagAsYouGo({
   position,
   left,
   suggestions,
+  fromText,
   chosen,
   partial,
   canSave,
@@ -51,6 +52,8 @@ export function TagAsYouGo({
   position: number;
   left: number;
   suggestions: string[];
+  /** Suggestions the question's own words found, with the terms that did (`termsByTopic`): marked ✦. */
+  fromText?: ReadonlyMap<string, string[]>;
   /** Topics on where the keys tag now: the whole question (on every part), or one part. */
   chosen: ReadonlySet<string>;
   /** The whole question: topics on some parts only, with where. */
@@ -138,13 +141,17 @@ export function TagAsYouGo({
             const { code: coarse, name, zh } = suggestionLabel(code, lang);
             const on = chosen.has(code);
             const some = on ? undefined : partial?.get(code);
+            const terms = fromText?.get(code);
+            const heading = topicTitle(code, 'both', lang);
+            const title = some ? m.partialTitle(heading, some.join(', ')) : heading;
             return (
               <button
                 key={code}
                 type="button"
                 data-tag-key
                 aria-pressed={on ? true : some ? 'mixed' : false}
-                title={some ? m.partialTitle(topicTitle(code, 'both', lang), some.join(', ')) : topicTitle(code, 'both', lang)}
+                data-tag-from-text={terms ? '' : undefined}
+                title={terms ? m.fromTextTitle(title, terms.join(m.termSep)) : title}
                 onClick={() => onToggle(code)}
                 className={`relative grid min-w-0 cursor-pointer content-start rounded-[7px] border px-2 py-1.5 text-left text-[12px] transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   on
@@ -156,6 +163,11 @@ export function TagAsYouGo({
               >
                 <span className="absolute right-1.5 top-1 text-[10.5px] tabular-nums text-ink-subtle">
                   {some && <span className="mr-1 text-accent-ink">{some.join(' ')}</span>}
+                  {terms && (
+                    <span aria-hidden className="mr-1 text-accent-ink">
+                      ✦
+                    </span>
+                  )}
                   {index + 1}
                 </span>
                 <b className="text-[13px] font-semibold text-ink">{coarse}</b>
@@ -176,7 +188,7 @@ export function TagAsYouGo({
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <p className="min-w-0 flex-1 text-[12.5px] text-ink-muted">
-            {suggestions.length > 0 ? m.hint(suggestions.length + 1) : m.hintNone}
+            {suggestions.length > 0 ? (fromText?.size ? m.hintText(suggestions.length + 1) : m.hint(suggestions.length + 1)) : m.hintNone}
             {parts && m.hintParts}
           </p>
           <Button variant="primary" size="sm" disabled={busy || !canSave} onClick={onSave} data-tag-save>

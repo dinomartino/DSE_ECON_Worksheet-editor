@@ -32,13 +32,13 @@ export const useBankReturn = create<BankReturnStore>((set) => ({
 
 /**
  * The "Add to" target kept while a paper is open only to look (the bank's "open in
- * worksheet"), so looking never moves it. Any other open forgets it (`EditorHost`); Home
- * does not. Session state (memory only).
+ * worksheet"), so looking never moves it, and the one the "Adding to" picker chose. Any
+ * other open forgets it (`EditorHost`); Home does not. Session state (memory only).
  */
 export interface KeptTarget {
-  /** The target before the look; absent when there was none. */
+  /** The picker's choice (a document id, or `new:` and a type); absent when there was none. */
   targetId?: string;
-  /** The paper opened to look. */
+  /** The document open when it was kept (the paper opened to look, or the one open when picked). */
   lookedAt: string;
 }
 

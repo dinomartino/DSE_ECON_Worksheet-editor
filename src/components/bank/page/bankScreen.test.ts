@@ -1,3 +1,4 @@
+import type { Glossary } from '@/glossary';
 import { describe, expect, it } from 'vitest';
 import { groupRows } from '@/library/group';
 import { rowsOf } from '@/library/indexer';
@@ -20,6 +21,7 @@ import {
   serializeLevel,
   suggestionLabel,
   suggestTopics,
+  termsByTopic,
   TOPICS_LEVEL,
   type BankLevel,
 } from './bankScreen';
@@ -150,6 +152,30 @@ describe('suggestTopics', () => {
     ];
     expect(suggestTopics(rows[0], rows)).toEqual(['J.trade', 'E.equity']);
     expect(suggestTopics(rows[0], [rows[0]])).toEqual([]);
+  });
+
+  it('puts the topics the question\'s own words point to first, three at most, then the neighbours', () => {
+    const rows = [
+      row({ docId: 'w', rootId: 't', number: 2, tags: [] }),
+      row({ docId: 'w', rootId: 'a', number: 1, tags: ['H.money'] }),
+      row({ docId: 'x', rootId: 'b', tags: ['C.ped'] }),
+    ];
+    const text = [{ code: 'C.intervention' }, { code: 'H.money' }, { code: 'C.equilibrium' }, { code: 'C.surplus' }];
+    expect(suggestTopics(rows[0], rows, 5, text)).toEqual(['C.intervention', 'H.money', 'C.equilibrium', 'C.ped']);
+    // A code this build does not know is never offered.
+    expect(suggestTopics(rows[0], rows, 5, [{ code: 'C.later' }])).toEqual(['H.money', 'C.ped']);
+    // Nothing tagged anywhere: the text alone still suggests.
+    expect(suggestTopics(rows[0], [rows[0]], 5, [{ code: 'J.trade' }])).toEqual(['J.trade']);
+  });
+
+  it('names the terms behind each suggestion from the text, in both languages', () => {
+    const glossary = { entries: [{ en: 'price ceiling', preferred: '價格上限' }, { en: 'shortage', preferred: '短缺' }] as unknown as Glossary['entries'] };
+    const hits = [
+      { code: 'C.intervention', hits: 1, terms: ['price ceiling'] },
+      { code: 'C.equilibrium', hits: 1, terms: ['shortage'] },
+    ];
+    expect([...termsByTopic(hits, ['C.intervention', 'H.money'], glossary)]).toEqual([['C.intervention', ['price ceiling 價格上限']]]);
+    expect(termsByTopic(hits, ['C.intervention'], null).size).toBe(0);
   });
 
   it('never counts the question itself, or a copy of it', () => {

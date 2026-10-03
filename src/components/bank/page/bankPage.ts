@@ -426,9 +426,80 @@ export function addTarget(
   kept?: KeptTarget | null,
 ): WorksheetSummary | undefined {
   const id = kept && kept.lookedAt === lastOpenId ? kept.targetId : lastOpenId;
+  return paperTargets(summaries, rows).find((summary) => summary.id === id);
+}
+
+/** The documents "Add to" may name: every saved one but a bank (by its index row or its rows). */
+export function paperTargets(summaries: readonly WorksheetSummary[], rows: readonly BankRow[]): WorksheetSummary[] {
   const banks = new Set(rows.filter((row) => row.docKind === 'bank').map((row) => row.docId));
-  const usable = summaries.filter((summary) => !banks.has(summary.id));
-  return usable.find((summary) => summary.id === id);
+  return summaries.filter((summary) => summary.kind !== 'bank' && !banks.has(summary.id));
+}
+
+/** The new documents the target picker offers, in its order: what the New worksheet form calls Classroom, Paper 1, Paper 2. */
+export const NEW_TARGET_TYPES = ['classroom', 'paper1', 'lqMock'] as const;
+export type NewTargetType = (typeof NEW_TARGET_TYPES)[number];
+
+/** A choice in the picker: a document id, or `new:` and a type. Session state only, never stored in a document. */
+const NEW_PREFIX = 'new:';
+export const newTargetChoice = (type: NewTargetType) => `${NEW_PREFIX}${type}`;
+
+/** Where the picks go: a saved paper, or a new document of a type. */
+export type BankTarget = { kind: 'paper'; summary: WorksheetSummary } | { kind: 'new'; documentType: NewTargetType };
+
+/** The default with no paper to add to: a new classroom worksheet, as "New worksheet from these" always made. */
+export const NEW_WORKSHEET_TARGET: BankTarget = { kind: 'new', documentType: 'classroom' };
+
+/**
+ * The picker's choice as a target. A paper that is gone (trashed, removed) or became a bank
+ * falls back to a new classroom worksheet, never to another paper.
+ */
+export function resolveTarget(
+  choice: string | undefined,
+  summaries: readonly WorksheetSummary[],
+  rows: readonly BankRow[],
+): BankTarget {
+  if (choice?.startsWith(NEW_PREFIX)) {
+    const type = NEW_TARGET_TYPES.find((t) => newTargetChoice(t) === choice);
+    return type ? { kind: 'new', documentType: type } : NEW_WORKSHEET_TARGET;
+  }
+  const summary = choice === undefined ? undefined : paperTargets(summaries, rows).find((s) => s.id === choice);
+  return summary ? { kind: 'paper', summary } : NEW_WORKSHEET_TARGET;
+}
+
+/**
+ * The picker's starting choice: a new document chosen this visit while nothing else was
+ * opened since (`kept`, as the picker records it), else `addTarget`'s paper. Undefined
+ * when there is none yet (the screen keeps asking until the summaries load).
+ */
+export function initialTargetChoice(
+  summaries: readonly WorksheetSummary[],
+  rows: readonly BankRow[],
+  lastOpenId: string | undefined,
+  kept?: KeptTarget | null,
+): string | undefined {
+  const keptChoice = kept && kept.lookedAt === lastOpenId ? kept.targetId : undefined;
+  if (keptChoice?.startsWith(NEW_PREFIX)) return keptChoice;
+  return addTarget(summaries, rows, lastOpenId, kept)?.id;
+}
+
+/** The value a target has in the picker. */
+export const targetChoiceOf = (target: BankTarget) => (target.kind === 'paper' ? target.summary.id : newTargetChoice(target.documentType));
+
+/**
+ * The questions already in the target paper, by `rootId` (any copy, edited or not), with
+ * the first copy's printed number: the rail's "In this paper · Q4". Read from the index's
+ * rows, so it needs no load; Add to re-checks against the saved paper.
+ */
+export function rootsInPaper(rows: readonly BankRow[], docId: string | undefined): Map<string, { number?: number }> {
+  const out = new Map<string, { number?: number }>();
+  if (docId === undefined) return out;
+  for (const row of rows) {
+    if (row.docId !== docId) continue;
+    const seen = out.get(row.rootId);
+    if (seen && (seen.number === undefined || (row.number ?? Infinity) >= seen.number)) continue;
+    out.set(row.rootId, row.number !== undefined ? { number: row.number } : {});
+  }
+  return out;
 }
 
 /** "11 questions · 3 worksheets · 1 bank". */

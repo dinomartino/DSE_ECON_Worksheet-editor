@@ -60,6 +60,18 @@ export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet 
   };
 }
 
+/**
+ * The empty exam paper (Paper 1, or the Paper 2 booklet; no sample question) the picker's "New Paper 1 / Paper
+ * 2 from these" opens, named as `worksheetFromPicks` names. The picks go in afterwards
+ * through the store (`addPicksToOpenDocument`), so each lands where the editor puts an
+ * unanchored insert: in the section made for its type, ahead of "END OF PAPER".
+ */
+export function paperForPicks(picks: readonly PickedQuestion[], documentType: 'paper1' | 'lqMock'): Worksheet {
+  const known = uniquePicks(picks).filter((pick) => getQuestionType(pick.question.type));
+  const topic = sharedTopic(known.map((pick) => pick.question));
+  return createWorksheetFrom({ documentType, seedSample: false, name: topic ? topic.en : BANK_WORKSHEET_NAME });
+}
+
 /** The filing name of a worksheet made from picks that share no topic. */
 export const BANK_WORKSHEET_NAME = 'Questions from bank';
 

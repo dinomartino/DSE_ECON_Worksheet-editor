@@ -6,6 +6,12 @@ import {
   activeFilters,
   addTarget,
   classChoices,
+  initialTargetChoice,
+  newTargetChoice,
+  paperTargets,
+  resolveTarget,
+  rootsInPaper,
+  targetChoiceOf,
   classChoiceText,
   clearFilter,
   coverage,
@@ -210,6 +216,49 @@ describe('targets', () => {
     expect(addTarget(summaries, rows, 'target', { targetId: 'gone', lookedAt: 'looked' })?.id).toBe('target');
     // The kept target was trashed meanwhile: none, never the paper looked at.
     expect(addTarget(summaries, rows, 'looked', { targetId: 'gone', lookedAt: 'looked' })).toBeUndefined();
+  });
+
+  it('the picker lists every paper but a bank, by its index row or its rows', () => {
+    const summaries = [summary('a', '3'), { ...summary('b', '2'), kind: 'bank' }, summary('c', '1'), summary('d', '0')];
+    const rows = [row({ docId: 'c', docKind: 'bank' })];
+    expect(paperTargets(summaries, rows).map((s) => s.id)).toEqual(['a', 'd']);
+    // An empty bank has no rows, but its index row says so.
+    expect(addTarget(summaries, rows, 'b')).toBeUndefined();
+  });
+
+  it('a choice resolves to a paper, a new document, or (gone) a new worksheet', () => {
+    const summaries = [summary('a', '2'), summary('bank', '1')];
+    const rows = [row({ docId: 'bank', docKind: 'bank' })];
+    expect(resolveTarget('a', summaries, rows)).toEqual({ kind: 'paper', summary: summaries[0] });
+    expect(resolveTarget(newTargetChoice('paper1'), summaries, rows)).toEqual({ kind: 'new', documentType: 'paper1' });
+    expect(resolveTarget(newTargetChoice('lqMock'), summaries, rows)).toEqual({ kind: 'new', documentType: 'lqMock' });
+    for (const gone of [undefined, 'gone', 'bank', 'new:later-type']) {
+      expect(resolveTarget(gone, summaries, rows)).toEqual({ kind: 'new', documentType: 'classroom' });
+    }
+    expect(targetChoiceOf(resolveTarget('a', summaries, rows))).toBe('a');
+    expect(targetChoiceOf(resolveTarget(newTargetChoice('paper1'), summaries, rows))).toBe('new:paper1');
+  });
+
+  it('starts on a new document chosen this visit, until another paper is opened', () => {
+    const summaries = [summary('open', '2'), summary('other', '1')];
+    expect(initialTargetChoice(summaries, [], 'open')).toBe('open');
+    expect(initialTargetChoice(summaries, [], 'open', { targetId: 'new:paper1', lookedAt: 'open' })).toBe('new:paper1');
+    expect(initialTargetChoice(summaries, [], 'open', { targetId: 'other', lookedAt: 'open' })).toBe('other');
+    // Opened something since: the open paper again.
+    expect(initialTargetChoice(summaries, [], 'other', { targetId: 'new:paper1', lookedAt: 'open' })).toBe('other');
+    expect(initialTargetChoice([], [], undefined)).toBeUndefined();
+  });
+
+  it('knows which questions the target already holds, by root, with the first number', () => {
+    const rows = [
+      row({ docId: 'p', rootId: 'x', number: 4 }),
+      row({ docId: 'p', rootId: 'x', number: 2 }),
+      row({ docId: 'p', rootId: 'y' }),
+      row({ docId: 'q', rootId: 'z', number: 1 }),
+    ];
+    const roots = rootsInPaper(rows, 'p');
+    expect([...roots]).toEqual([['x', { number: 2 }], ['y', {}]]);
+    expect(rootsInPaper(rows, undefined).size).toBe(0);
   });
 });
 
