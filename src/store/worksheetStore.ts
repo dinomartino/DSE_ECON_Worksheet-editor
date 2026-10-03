@@ -309,6 +309,13 @@ interface WorksheetState {
    * history for the same reason as `resolveAnswerSpaceFills`.
    */
   trimQuestionAnswerSpace: (questionId: string, lines: number) => void;
+  /**
+   * Take in a change another tab or window saved to this document (`adoptNewerTags`):
+   * `recipe` runs over the worksheet and every undo/redo snapshot, so neither an autosave
+   * nor a later ⌘Z puts the older state back. Outside history and leaves `dirty` as it is:
+   * the change is already saved, and an unsaved edit still saves with it. Inert read-only.
+   */
+  adoptSavedElsewhere: (recipe: (worksheet: Worksheet) => Worksheet) => void;
   /** Replace one block by id — the route a page-opened editor commits through. */
   replaceBlock: (blockId: string, next: ContentBlock) => void;
   /** Insert a new block directly after an existing one — the page's insert route. */
@@ -1132,6 +1139,16 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         after = element.id;
       }
       return next;
+    }),
+  adoptSavedElsewhere: (recipe) =>
+    set((state) => {
+      if (state.readOnly) return state;
+      const worksheet = recipe(state.worksheet);
+      const past = state.past.map(recipe);
+      const future = state.future.map(recipe);
+      const same = (a: readonly Worksheet[], b: readonly Worksheet[]) => a.every((item, index) => item === b[index]);
+      if (worksheet === state.worksheet && same(past, state.past) && same(future, state.future)) return state;
+      return { worksheet, past, future };
     }),
   resolveAnswerSpaceFills: (counts) =>
     set((state) => {

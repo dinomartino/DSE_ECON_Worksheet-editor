@@ -3,12 +3,15 @@ import { summarize } from '@/storage/document';
 import { rowsOf } from '@/library/indexer';
 import { choiceQuestion, docWith, partedQuestion, partsQuestion, row } from '@/library/testKit';
 import { copyQuestion } from '@/model/lineage';
+import { bi } from '@/model/text';
 import { derivedTags, slotRef, tagStateOf } from '@/model/tagSlots';
 import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
 import { renamePatternEdit } from './patterns';
 import { withSharedTags } from './sharedTags';
 import {
   addTopics,
+  adoptNewerTags,
+  REVISION_BUSY,
   atSlot,
   bulkTopicEdit,
   copyWrites,
@@ -382,5 +385,99 @@ describe('writes to a question tagged per part', () => {
     );
     expect(isStateEdit(addTopics(['C']))).toBe(false);
     expect(isStateEdit(wholeQuestion(addTopics(['C'])))).toBe(true);
+  });
+});
+
+describe('a second tab holding the same paper (S4)', () => {
+  const T1 = '2026-01-01T00:00:00.000Z';
+  const T2 = '2026-01-02T00:00:00.000Z';
+  const T3 = '2026-01-03T00:00:00.000Z';
+
+  /** A store another tab saves into between this tab's reads (`between` runs before each load). */
+  function racingStore(docs: Worksheet[], between: (saved: Map<string, Worksheet>, loads: number) => void) {
+    const saved = new Map(docs.map((doc) => [doc.id, doc]));
+    let loads = 0;
+    const writes: Worksheet[] = [];
+    return {
+      saved,
+      writes,
+      list: async () => [...saved.values()].map(summarize),
+      load: async (id: string) => {
+        loads += 1;
+        between(saved, loads);
+        return saved.get(id);
+      },
+      save: async (worksheet: Worksheet) => {
+        writes.push(worksheet);
+        saved.set(worksheet.id, worksheet);
+      },
+    };
+  }
+
+  it('a save made elsewhere after the read is kept: the edit is made again on top of it', async () => {
+    const q = choiceQuestion('one', '', ['C']);
+    const doc = docWith([q]);
+    // The other tab saves a content edit right after this tab first reads the paper.
+    const store = racingStore([doc], (saved, loads) => {
+      if (loads !== 2) return;
+      const current = saved.get(doc.id)!;
+      saved.set(doc.id, { ...current, title: bi('Edited in the other tab', ''), updatedAt: T3 });
+    });
+    const report = await writeTags(store, [{ docId: doc.id, questionId: q.id }], addTopics(['D']), undefined, NOW);
+    expect(report.saved).toEqual([doc.id]);
+    const after = store.saved.get(doc.id)!;
+    expect(after.title).toEqual(bi('Edited in the other tab', ''));
+    expect(after.questions[0].tags).toEqual(['C', 'D']);
+  });
+
+  it('gives up, and says so, when the paper changes on every try', async () => {
+    const q = choiceQuestion('one', '', ['C']);
+    const doc = docWith([q]);
+    const store = racingStore([doc], (saved, loads) => {
+      const current = saved.get(doc.id)!;
+      saved.set(doc.id, { ...current, updatedAt: `2026-02-${String(loads).padStart(2, '0')}T00:00:00.000Z` });
+    });
+    const report = await writeTags(store, [{ docId: doc.id, questionId: q.id }], addTopics(['D']), undefined, NOW);
+    expect(report).toEqual({ saved: [], failed: [{ docId: doc.id, reason: REVISION_BUSY }] });
+    expect(store.writes).toEqual([]);
+  });
+
+  it('a copy tagged after the bank read its rows keeps that change: the edit applies to its own tags', async () => {
+    // The bank row said C (stamped T1); the other tab has since tagged this copy C + E at T2.
+    const q = { ...choiceQuestion('one', '', ['C', 'E']), tagsAt: T2 };
+    const doc = docWith([q]);
+    const store = racingStore([doc], () => {});
+    const [write] = copyWrites([row({ docId: doc.id, questionId: q.id, rootId: q.id, tags: ['C'], tagsAt: T1 })], [q.id]);
+    expect(write.sharedAt).toBe(T1);
+    await writeTags(store, [write], addTopics(['D']), undefined, NOW);
+    expect(store.saved.get(doc.id)!.questions[0].tags).toEqual(['C', 'E', 'D']);
+  });
+
+  it('an older copy still adopts the shared state the bank showed', async () => {
+    const q = { ...choiceQuestion('one', '', ['C', 'X']), tagsAt: T1 };
+    const doc = docWith([q]);
+    const store = racingStore([doc], () => {});
+    const [write] = copyWrites([row({ docId: doc.id, questionId: q.id, rootId: q.id, tags: ['C'], tagsAt: T2 })], [q.id]);
+    await writeTags(store, [write], addTopics(['D']), undefined, NOW);
+    expect(store.saved.get(doc.id)!.questions[0].tags).toEqual(['C', 'D']);
+  });
+
+  it('adoptNewerTags: the open editor takes newer tags only, keeping its own content', () => {
+    const q1 = { ...choiceQuestion('mine, edited', '', ['C']), tagsAt: T1 };
+    const q2 = { ...choiceQuestion('two', '', ['F']), tagsAt: T3 };
+    const open = docWith([q1, q2]);
+    const savedElsewhere: Worksheet = {
+      ...open,
+      questions: [
+        { ...choiceQuestion('older text'), id: q1.id, tags: ['C', 'D'], tagsAt: T2 },
+        { ...q2, tags: ['G'], tagsAt: T2 },
+      ],
+    };
+    const next = adoptNewerTags(open, savedElsewhere);
+    expect(next.questions[0]).toEqual({ ...q1, tags: ['C', 'D'], tagsAt: T2 });
+    // Our own newer change wins over theirs.
+    expect(next.questions[1]).toBe(q2);
+    expect(adoptNewerTags(next, savedElsewhere)).toBe(next);
+    expect(adoptNewerTags(open, { ...savedElsewhere, id: 'another' })).toBe(open);
   });
 });

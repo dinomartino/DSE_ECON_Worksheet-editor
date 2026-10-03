@@ -25,7 +25,7 @@ import type { TranslationWrite } from '@/model/textSlots';
 import { mapWorksheetTexts } from '@/model/textWalk';
 import { createWorksheet } from '@/model/factories';
 import { questionIdOwners } from '@/model/lineage';
-import type { DiagramBlock, McqQuestion, Question, StructuredQuestion, TableBlock } from '@/model/types';
+import type { DiagramBlock, McqQuestion, Question, StructuredQuestion, TableBlock, Worksheet } from '@/model/types';
 import { buildAcceptanceWorksheet, withFlow } from '@/test/fixtures';
 import { richMcq, richStructured } from '@/test/idFixture';
 import { buildTranslateFixture } from '@/test/translateFixture';
@@ -1356,5 +1356,35 @@ describe('insertQuestionCopies', () => {
     expect(store().insertQuestionCopies([richMcq()])).toEqual([]);
     expect(store().past).toHaveLength(0);
     useWorksheetStore.setState({ readOnly: false });
+  });
+});
+
+describe('adoptSavedElsewhere (a second tab saved this paper)', () => {
+  const theirs = bi('Theirs', '');
+  const retitle = (doc: Worksheet) => (doc.title === theirs ? doc : { ...doc, title: theirs });
+
+  it('changes the worksheet and every undo snapshot, outside history, leaving dirty as it was', () => {
+    useWorksheetStore.setState({ worksheet: createWorksheet(), past: [], future: [], dirty: false, readOnly: false });
+    store().updateWorksheet({ title: bi('One', '') });
+    store().updateWorksheet({ title: bi('Two', '') });
+    store().undo();
+    useWorksheetStore.setState({ dirty: false });
+    store().adoptSavedElsewhere(retitle);
+    expect(store().worksheet.title).toBe(theirs);
+    expect(store().past.map((doc) => doc.title)).toEqual([theirs]);
+    expect(store().future.map((doc) => doc.title)).toEqual([theirs]);
+    expect(store().past).toHaveLength(1);
+    expect(store().dirty).toBe(false);
+  });
+
+  it('is inert read-only, and a no-op keeps the state', () => {
+    useWorksheetStore.setState({ worksheet: createWorksheet(), past: [], future: [], readOnly: true });
+    const before = store().worksheet;
+    store().adoptSavedElsewhere(retitle);
+    expect(store().worksheet).toBe(before);
+    useWorksheetStore.setState({ readOnly: false });
+    const state = useWorksheetStore.getState();
+    store().adoptSavedElsewhere((doc) => doc);
+    expect(useWorksheetStore.getState()).toBe(state);
   });
 });

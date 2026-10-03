@@ -479,6 +479,13 @@ a version heading is edited afterwards.
   其他工作紙中的同一題目。以往按 ⌘Z 只會復原目前開啟的工作紙，題庫仍顯示更改後的課題。現在
   ⌘Z 會在所有工作紙復原，⇧⌘Z 會在所有工作紙重做。期間再次更改過課題的副本會保留較新的課題，
   「課題」列會列出該工作紙。 -->
+- **Topics set in one browser tab are no longer lost to a paper open in another.** If you
+  tag questions in the 題庫 while the same paper is open in a second tab, that tab now
+  picks up the new topics and keeps them when it saves, and a tag change no longer saves
+  over an edit the other tab made a moment before.
+  <!-- zh: **在一個瀏覽器分頁設定的課題，不會再被另一分頁開啟的同一工作紙覆蓋。** 在題庫為題目
+  加上課題時，如同一份工作紙在另一分頁開啟，該分頁現在會接收新課題並在儲存時保留；更改課題
+  亦不會再覆蓋另一分頁剛作出的修改。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when

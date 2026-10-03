@@ -37,8 +37,9 @@ import { TOPIC_SYNC_MESSAGES } from './topicSync.messages';
  * The edit itself travels, not a before/after diff: `atSlot` finds part (b) in each copy
  * by its key, so a reordered copy gets the change on the right part.
  *
- * Known risk, not solved here: another tab holding one of those documents open saves its
- * own copy over this write on its next autosave (the same as any two-tab edit).
+ * Another tab holding one of those documents open takes the newer tags in from the
+ * browser's `storage` event (`EditorApp`, `adoptNewerTags`), so its next autosave keeps
+ * them; each write re-reads its document just before saving (`saveRevised`, S4).
  */
 
 /** A synced edit's undo step: the store snapshots either side of it and what it wrote elsewhere. */

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { LocalStorageWorksheetStore, duplicateWorksheet, worksheetTitle } from '.';
+import { LocalStorageWorksheetStore, duplicateWorksheet, onDocumentSavedElsewhere, stringifyWorksheet, worksheetTitle } from '.';
 import { createMcqQuestion, createWorksheet, newId } from '@/model/factories';
 import { bi, emptyBiText, plain } from '@/model/text';
 
@@ -209,5 +209,28 @@ describe('clearing', () => {
   it('is safe to call when nothing has ever been saved', async () => {
     await expect(store().clear()).resolves.toBeUndefined();
     expect(await store().list()).toEqual([]);
+  });
+});
+
+describe('a document saved in another tab (S4)', () => {
+  it('reports each document another tab writes, parsed, and nothing else', () => {
+    const listeners: ((event: Partial<StorageEvent>) => void)[] = [];
+    vi.stubGlobal('window', {
+      localStorage: storage,
+      addEventListener: (_type: string, fn: (event: Partial<StorageEvent>) => void) => listeners.push(fn),
+      removeEventListener: (_type: string, fn: (event: Partial<StorageEvent>) => void) => listeners.splice(listeners.indexOf(fn), 1),
+    });
+    const heard: string[] = [];
+    const stop = onDocumentSavedElsewhere((worksheet) => heard.push(worksheet.id));
+    const doc = createWorksheet();
+    const fire = (event: Partial<StorageEvent>) => listeners.forEach((fn) => fn(event));
+    fire({ key: `econ-worksheet:${doc.id}`, newValue: stringifyWorksheet(doc) });
+    fire({ key: 'econ-worksheet-index', newValue: '[]' });
+    fire({ key: `econ-worksheet:${doc.id}`, newValue: null });
+    fire({ key: `econ-worksheet:${doc.id}`, newValue: '{ damaged' });
+    fire({ key: `econ-worksheet:${doc.id}`, newValue: stringifyWorksheet({ ...doc, schemaVersion: 999 }) });
+    expect(heard).toEqual([doc.id]);
+    stop();
+    expect(listeners).toEqual([]);
   });
 });

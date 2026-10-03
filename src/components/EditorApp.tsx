@@ -23,7 +23,8 @@ import { toRunPatch } from '@/model/text';
 import type { BandFieldSide, BiText, TextFormat, Worksheet } from '@/model/types';
 import type { EditTarget } from '@/render/ir';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
-import { worksheetStore } from '@/storage';
+import { onDocumentSavedElsewhere, worksheetStore } from '@/storage';
+import { adoptNewerTags } from '@/library/tagWrites';
 import { BankReviewBar } from '@/components/bank/BankReviewBar';
 import { useBankSession } from '@/components/bank/bankSession';
 import { BankDragLayer, isBankDragActive, useBankDrag } from '@/components/bank/bankDrag';
@@ -378,6 +379,17 @@ export function EditorApp({
     }, 1200);
     return () => clearTimeout(timer);
   }, [worksheet, dirty, markSaved]);
+
+  // Another tab tagged this paper (its 題庫 screen, or a synced Topic row edit): take the
+  // newer tags in, so this tab's next autosave keeps them rather than saving over them.
+  useEffect(
+    () =>
+      onDocumentSavedElsewhere((saved) => {
+        const { worksheet: open, adoptSavedElsewhere } = useWorksheetStore.getState();
+        if (saved.id === open.id) adoptSavedElsewhere((doc) => adoptNewerTags(doc, saved));
+      }),
+    [],
+  );
 
   /*
    * Print preview is a class on `<body>`, not a prop threaded through the preview.
