@@ -104,6 +104,14 @@ interface Props {
   fillWidth?: boolean;
   /** Paint the empty prompt muted grey rather than blue: a secondary field. */
   quietPlaceholder?: boolean;
+  /**
+   * A side that prints nothing (the empty half of a bilingual field): while empty and
+   * idle its prompt is out of flow, at its static position after the text, so the page
+   * measures what Word prints. Editing opens its own line, as the text will print.
+   */
+  floating?: boolean;
+  /** Hover title for the prompt (a floating one shows the short form). */
+  promptTitle?: string;
 }
 
 export function InlineEditable({
@@ -120,11 +128,15 @@ export function InlineEditable({
   onSelectionChange,
   keepEditing = false,
   printHidden = false,
-  fillWidth = false,
+  fillWidth: fillWidthProp = false,
   quietPlaceholder = false,
+  floating = false,
+  promptTitle,
   onTab,
 }: Props) {
   const m = useMessages(PREVIEW_HANDLE_MESSAGES);
+  // A floating prompt has no line end to stretch from (§ `floating`).
+  const fillWidth = fillWidthProp && !floating;
   const [editing, setEditing] = useState(false);
   const spanRef = useRef<HTMLSpanElement>(null);
 
@@ -211,6 +223,7 @@ export function InlineEditable({
   if (editing) {
     return (
       <>
+        {floating && <br />}
         {/*
           The open editor gets the same single rectangle the selected state does, and
           for the same reason: the editable is `inline` (it must be — see below), so its
@@ -370,6 +383,9 @@ export function InlineEditable({
   }
 
   const isEmpty = plain(runs).trim().length === 0;
+  // Out of flow, so it paints its own box like a cell does (§ `floating`).
+  const floats = floating && isEmpty;
+  const ownBox = fillWidth || floats;
 
   return (
     <>
@@ -394,7 +410,7 @@ export function InlineEditable({
         or intercept the click that opens the editor. `data-print-hide` because a
         selection ring is chrome; the print rules strip it like every other affordance.
       */}
-      {selected && !fillWidth && (
+      {selected && !ownBox && (
         <span
           ref={boxRef}
           aria-hidden
@@ -427,7 +443,9 @@ export function InlineEditable({
       data-empty-placeholder={isEmpty ? 'true' : undefined}
       // Chrome, not content: removed from the printed sheet rather than merely made
       // invisible, so it reserves no width inside the phrase it sits in.
-      data-print-hide={printHidden && isEmpty ? 'true' : undefined}
+      data-print-hide={printHidden && isEmpty || floats ? 'true' : undefined}
+      data-floating-prompt={floats ? 'true' : undefined}
+      title={isEmpty ? promptTitle : undefined}
       /*
        * The cursor states what the next click does. Unselected, that is "engage this
        * field" — a pointer. **Once locked it is the I-beam**: the next click opens the
@@ -439,7 +457,13 @@ export function InlineEditable({
        * positioned sibling and would otherwise paint over them. Positioning only — the
        * box stays `inline`, so the paragraph's hanging indent still applies.
        */
-      className={`relative z-10 rounded-sm transition-[color,background-color,box-shadow] duration-150 ease-out-soft focus:outline-none ${
+      className={`${
+        /*
+         * Floating: `absolute` with no offsets sits at its static position, right after
+         * the text it follows, and reserves no line (§ `floating`).
+         */
+        floats ? 'absolute ml-[0.5em] whitespace-nowrap' : 'relative'
+      } z-10 rounded-sm transition-[color,background-color,box-shadow] duration-150 ease-out-soft focus:outline-none ${
         selected ? 'cursor-text' : 'cursor-pointer'
       } ${
         /*
@@ -449,7 +473,7 @@ export function InlineEditable({
          * single rectangle the cell wants.
          */
         selected
-          ? fillWidth
+          ? ownBox
             ? 'bg-[#d9ebf8] shadow-[0_0_0_2px_#0d77c9]'
             : ''
           : 'hover:bg-[#eef6fc] hover:shadow-[0_1px_0_0_#8fc2e9]'

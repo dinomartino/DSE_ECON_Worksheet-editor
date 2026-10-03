@@ -2257,6 +2257,10 @@ hover                      → margin drag grip → reorder
   (an `inline-block` cannot inherit the paragraph's hanging indent) and must not reset
   `text-indent`.
 - **One language at a time** — bilingual halves are separate editable spans.
+- **An empty bilingual side takes no line** (`InlineEditable.floating`): Word prints the
+  other side alone, so its short prompt is `absolute` at its static position after the
+  text, `data-print-hide`, skipped by the marks measure. Editing opens its line. Sides
+  are keyed so the editor survives the move into the flow. `floatingPrompt.test.tsx`.
 - **Two-step engagement makes keyboard delete safe**: Delete acts on a deliberate
   selection, ignored while focus is in a field; `⌘Z` scoped the same way.
 - **Only one layer owns the keyboard** (`ui/modalLayer.ts`): every keydown listener is
