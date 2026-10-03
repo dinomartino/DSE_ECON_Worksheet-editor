@@ -526,6 +526,11 @@ a version heading is edited afterwards.
   worksheet's Topic row does.
   <!-- zh: **編輯課題時會標明哪些小分題另設課題。** 在題庫編輯題目的課題時，另設課題的小分題現在會在
   分題欄顯示「另設課題」，與工作紙的課題列一致。 -->
+- **The question list no longer hides the question you step to.** Moving up the list in
+  the question bank with ↑ could leave the chosen question half under a topic's heading at
+  the top. It now stops just below the heading.
+  <!-- zh: **題目清單不會再遮住你移到的題目。** 以往在題庫按 ↑ 向上移動時，選中的題目可能有一半被
+  頂部的課題標題遮住。現在會停在標題之下。 -->
 
 ## 0.5.0 — 2026-09-28
 
