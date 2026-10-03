@@ -182,16 +182,38 @@ describe('the answer key', () => {
     ]);
   });
 
-  it('letters rationale as Version A, and says so, when versions are on', () => {
+  it("letters rationale per version, each under that version's own letters", () => {
     const question = mcq(['w', 'x', 'y', 'z'], 1);
     question.options[1].rationale = bi('x is right', 'x 正確');
     const worksheet: Worksheet = { ...createWorksheet(), questions: [question], versions: { count: 3, seed: 99 } };
     const nodes = renderAnswerKey(worksheet, 'en');
-    expect(texts(nodes)).toContainEqual(['1.', 'B.x is right']);
     const headings = nodes
       .filter((node): node is TextNode => node.kind === 'text')
       .map((node) => plain(node.text.en));
-    expect(headings).toContain('Explanations (option letters as in Version A)');
+    expect(headings).not.toContain('Explanations (option letters as in Version A)');
+    // Each version's explanation block, its rationale under the letter the key gives.
+    const keys = ['A', 'B', 'C'].map((letter) => {
+      const mode: OutputMode = { language: 'en', version: 'student', variant: letter };
+      const shown = renderWorksheet(worksheet, mode).questions[0].nodes
+        .filter((node): node is TextNode => node.kind === 'text' && node.style === 'MCQ Option')
+        .map((node) => plain(node.text.en));
+      return String.fromCharCode(65 + shown.indexOf('x'));
+    });
+    expect(new Set(keys).size).toBeGreaterThan(1);
+    const blocks = ['A', 'B', 'C'].map((letter) => {
+      const at = nodes.findIndex((node) => node.kind === 'text' && plain(node.text.en) === `Explanations: Version ${letter}`);
+      expect(at, letter).toBeGreaterThan(-1);
+      return texts(nodes.slice(at + 1, at + 2))[0];
+    });
+    expect(blocks).toEqual(keys.map((key) => ['1.', `${key}.x is right`]));
+
+    // A question no version reorders keeps one block, lettered as Version A.
+    const pinned = { ...question, options: question.options.map((option) => ({ ...option, pinned: true })) };
+    const fixed = renderAnswerKey({ ...worksheet, questions: [pinned] }, 'en');
+    expect(texts(fixed)).toContainEqual(['1.', 'B.x is right']);
+    expect(
+      fixed.filter((node): node is TextNode => node.kind === 'text').map((node) => plain(node.text.en)),
+    ).toContain('Explanations (option letters as in Version A)');
 
     // Explanation-only keys keep their old heading.
     const plainKey = renderAnswerKey(

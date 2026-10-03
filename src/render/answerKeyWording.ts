@@ -13,6 +13,8 @@ export const ANSWER_KEY_WORDING = {
     en: 'Explanations (option letters as in Version A)',
     zh: '解說（選項字母以版本 A 為準）',
   },
+  /** One version's explanations, each rationale under the letter its option prints with there. */
+  explanationsVersion: (letter: string) => ({ en: `Explanations: Version ${letter}`, zh: `解說：版本 ${letter}` }),
   question: (n: number) => ({ en: `Question ${n}`, zh: `第${n}題` }),
   version: (letter: string) => ({ en: `Version ${letter}`, zh: `版本 ${letter}` }),
   versionMap: { en: 'Version map', zh: '版本對照' },
@@ -44,6 +46,9 @@ export const KEY_LAYOUT_WORDING = {
     { symbol: bi('max: n', '最高n分'), meaning: bi('the most marks the points above can earn.', '以上各項最多可得的分數。') },
     { symbol: bi('OR', '或'), meaning: bi('separates two complete alternative answers.', '分隔兩個完整的不同答案。') },
   ],
+  /** HKEAA's figure in the Marks column layout: its caption, and the lead of the points shown in it. */
+  figure: (n: number) => bi(`Figure ${n}`, `圖${n}`),
+  indicateIn: (n: number) => bi(`Indicate in Figure ${n}:`, `在圖${n}中顯示：`),
   /** The Marks column's running head. */
   marksHeader: bi('Marks', '分數'),
   questionTotal: (n: number) => bi(`(Total: ${n} ${n === 1 ? 'mark' : 'marks'})`, `（共${n}分）`),

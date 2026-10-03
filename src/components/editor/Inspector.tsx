@@ -4,13 +4,13 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { editTargetKey } from '@/model/edits';
 import { MIN_ANSWER_LINES, MIN_SPACER_PT } from '@/model/flow';
 import { newId } from '@/model/factories';
-import { questionMarks } from '@/model/marks';
+import { questionMarks, sectionRuns } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
 import { emptyBiText, plain } from '@/model/text';
 import type { LayoutElement } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Button, CheckField, GroupHeader, IconButton, Pill } from '@/components/ui';
+import { Button, CheckField, GroupHeader, IconButton, NumberField, Pill, SelectField } from '@/components/ui';
 import { CloseIcon, ListIcon } from '@/components/ui/icons';
 import { SizeStepper } from '@/components/ui/SizeStepper';
 import { biExcerpt, ExcerptRow } from './panelRows';
@@ -91,6 +91,47 @@ function textRowFor(element: LayoutElement, m: M) {
   );
 }
 
+/**
+ * "Answer any n" and the section's marks target. Both are paper-check facts: the totals
+ * count the best n questions; the printed instruction stays the teacher's own text.
+ */
+function SectionChoiceFields({ element }: { element: Extract<LayoutElement, { kind: 'section' }> }) {
+  const m = useMessages(INSPECTOR_MESSAGES);
+  const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
+  const questions = useWorksheetStore(
+    (s) => sectionRuns(s.worksheet).find((run) => run.sectionId === element.id)?.questions.length ?? 0,
+  );
+  const stored = element.answerCount;
+  const choices = Array.from({ length: Math.max(0, questions - 1) }, (_, index) => index + 1);
+  // A stored count the section no longer exceeds stays listed, so it can be cleared.
+  if (stored !== undefined && stored >= 1 && !choices.includes(stored)) choices.push(stored);
+  return (
+    <div className="space-y-2">
+      {choices.length > 0 && (
+        <SelectField<number>
+          label={m.answerCount}
+          value={stored ?? 0}
+          options={[
+            { value: 0, label: m.answerAll },
+            ...choices.map((n) => ({ value: n, label: m.answerAny(n, questions) })),
+          ]}
+          onChange={(n) => updateLayoutElement(element.id, { answerCount: n === 0 ? undefined : n })}
+        />
+      )}
+      {stored !== undefined && <p className="text-[11px] leading-relaxed text-ink-muted">{m.answerCountHint}</p>}
+      <NumberField
+        clearable
+        label={m.sectionTarget}
+        value={element.targetMarks}
+        placeholder="–"
+        onChange={(targetMarks) =>
+          updateLayoutElement(element.id, { targetMarks: targetMarks ? targetMarks : undefined })
+        }
+      />
+    </div>
+  );
+}
+
 function LayoutElementPanel({ element }: { element: LayoutElement }) {
   const m = useMessages(INSPECTOR_MESSAGES);
   const showZhNotes = useUiLanguage() !== 'zh-HK';
@@ -117,6 +158,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
             checked={Boolean(element.showMarks)}
             onChange={(showMarks) => updateLayoutElement(element.id, { showMarks })}
           />
+          <SectionChoiceFields element={element} />
         </div>
       )}
 

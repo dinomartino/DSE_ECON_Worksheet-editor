@@ -36,6 +36,19 @@ export function activeVersion(worksheet: Worksheet, mode: OutputMode): number | 
   return index >= 0 && index < count ? index : 0;
 }
 
+/**
+ * "Version B" as the running header prints it on every page, so a loose sheet still
+ * says which version it belongs to; `undefined` when versions are off. Derived, never
+ * stored; the preview and the `.docx` both append it as a last, right-aligned row.
+ */
+export function versionHeaderText(worksheet: Worksheet, mode: OutputMode): string | undefined {
+  const version = activeVersion(worksheet, mode);
+  if (version === undefined) return undefined;
+  const letter = versionLetter(version);
+  if (mode.language === 'zh') return `版本 ${letter}`;
+  return mode.language === 'bilingual' ? `Version ${letter} 版本 ${letter}` : `Version ${letter}`;
+}
+
 /** The stored seed, or 0 on a hand-edited document that lost it. */
 export const versionSeed = (worksheet: Worksheet): number =>
   Number.isFinite(worksheet.versions?.seed) ? worksheet.versions!.seed : 0;

@@ -6,8 +6,10 @@ import type { Worksheet } from '@/model/types';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { readCorpus } from '@/translate/testKit';
+import { registerVerb, resetVerbsForTest } from '../registry';
+import { resetAiRunForTest, useAiRun } from '../runStore';
 import type { VerbContext, VerbOutcome } from '../types';
-import { TERMS_MATCH, checkTermsVerb } from './checkTerms';
+import { checkTermsVerb } from './checkTerms';
 
 /** Check terms over the real glossary and store: findings, one fix, Replace N. */
 
@@ -46,7 +48,65 @@ describe('Check terms', () => {
     expect(verb.available(question)).toBeNull();
     load(paperOf([['Explain market failure.', '解釋市場失效。']]));
     expect(verb.available(ctx())).toEqual({});
-    expect(await verb.run(ctx(), io)).toEqual({ kind: 'nothing', summary: TERMS_MATCH });
+    // market failure, and a term in the default instructions.
+    expect(await verb.run(ctx(), io)).toEqual({ kind: 'nothing', summary: '2 terms match the EDB glossary' });
+    const only = () => ({ ...ctx(), scope: { kind: 'questions' as const, ids: [store().worksheet.questions[0].id] } });
+    expect(await verb.run(only(), io)).toEqual({ kind: 'nothing', summary: '1 term matches the EDB glossary' });
+    load(paperOf([['Explain it.', '解釋。']]));
+    expect(await verb.run(only(), io)).toEqual({ kind: 'nothing', summary: 'No EDB glossary terms found' });
+  });
+
+  it('counts the terms that already match beside the findings', async () => {
+    const outcome = await check(paperOf([
+      ['Explain market failure.', '解釋市場失靈。'],
+      ['Explain the opportunity cost.', '解釋機會成本。'],
+    ]));
+    // opportunity cost, and a term in the default instructions.
+    expect(outcome.summary).toBe('1 to fix · 2 match');
+  });
+
+  it("a card's fix updates the bar at once: summary, chips and Replace N re-read the paper", async () => {
+    resetVerbsForTest();
+    resetAiRunForTest();
+    registerVerb(checkTermsVerb());
+    load(priceLevelPaper());
+    useWorksheetStore.getState().setMode({ language: 'bilingual', version: 'student' });
+    await useAiRun.getState().startVerb('check.terms');
+    const before = useAiRun.getState().phase;
+    if (before.kind !== 'review' || before.outcome.kind !== 'findings') throw new Error(before.kind);
+    expect(before.outcome.applyAll?.label).toBe('Replace 3');
+    const index = before.outcome.items.findIndex((i) => i.action?.label === 'Replace with 總收入');
+    useAiRun.getState().act(index);
+    const after = useAiRun.getState().phase;
+    if (after.kind !== 'review' || after.outcome.kind !== 'findings') throw new Error(after.kind);
+    expect(after.runId).toBe(before.runId);
+    expect(after.outcome.items[index].resolved).toBe(true);
+    expect(after.outcome.applyAll?.label).toBe('Replace 2');
+    expect(after.outcome.summary).not.toBe(before.outcome.summary);
+    // Replace N now reads the fixed text: the rest of that row is not skipped as stale.
+    after.outcome.applyAll!.run();
+    expect(useAppDialogs.getState().notice?.message).toBe('Replaced 2 terms');
+    useAiRun.getState().act(index);
+    expect(store().past).toHaveLength(2);
+    resetAiRunForTest();
+  });
+
+  it("a card's fix that finds its text changed stays open", async () => {
+    resetVerbsForTest();
+    resetAiRunForTest();
+    registerVerb(checkTermsVerb());
+    load(priceLevelPaper());
+    await useAiRun.getState().startVerb('check.terms');
+    const phase = useAiRun.getState().phase;
+    if (phase.kind !== 'review' || phase.outcome.kind !== 'findings') throw new Error(phase.kind);
+    const index = phase.outcome.items.findIndex((i) => i.action);
+    useWorksheetStore.setState({
+      worksheet: mapWorksheetTexts(store().worksheet, (slot) => ({ ...slot.text, zh: [{ text: '老師自己寫的。' }] })),
+    });
+    useAiRun.getState().act(index);
+    expect(useAiRun.getState().phase).toBe(phase);
+    expect(useAppDialogs.getState().notice?.message).toMatch(/^Nothing replaced/);
+    resetAiRunForTest();
   });
 
   it('Replace N applies the safe fixes in one commit, flashes an Undo that restores the paper', async () => {
@@ -72,7 +132,7 @@ describe('Check terms', () => {
       ['The tax incidence falls on buyers.', '稅項歸宿落在買方。'],
       ['Explain the deadweight loss.', '解釋無謂損失。'],
     ]));
-    expect(outcome.summary).toBe('1 to fix · 1 textbook variant · 1 acceptable but not the first choice');
+    expect(outcome.summary).toBe('1 to fix · 1 textbook variant · 1 acceptable but not the first choice · 1 match');
     expect(outcome.applyAll?.label).toBe('Replace 1');
     outcome.applyAll!.run();
     const [wrong, variant, lower] = outcome.items;

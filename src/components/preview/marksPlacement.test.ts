@@ -147,3 +147,62 @@ describe('marks sit on the last line with text', () => {
     expect(body).toContain('blankLines');
   });
 });
+
+/**
+ * In a Marks column (the HKEAA layout) the label sits on the paragraph's **first** line,
+ * as HKEAA prints "(1)" beside the start of the point it rewards.
+ */
+describe('a Marks column label sits on the first line', () => {
+  const xmlFor = (node: Partial<RenderNode & { kind: 'text' }>) =>
+    renderNodeXml(
+      {
+        kind: 'text',
+        style: 'Marking Scheme',
+        text: bi('A long marking point that wraps onto a second line in Word', ''),
+        marksColumn: 1080,
+        ...node,
+      } as RenderNode,
+      {
+        fonts: DEFAULT_FONTS,
+        language: 'en',
+        contentWidth: 9026,
+        numIds: new Map(),
+        imageRelId: () => undefined,
+        nextDrawingId: () => 7,
+      },
+    );
+
+  it('the .docx anchors the label at the paragraph top, in the column, before the text', () => {
+    const xml = xmlFor({ trail: bi('(1)', '(1)') });
+    expect(xml).not.toContain('<w:tab/>');
+    expect(xml).not.toContain('<w:tabs>');
+    const anchor = xml.indexOf('<wp:anchor');
+    expect(anchor).toBeGreaterThan(-1);
+    expect(anchor).toBeLessThan(xml.indexOf('A long marking point'));
+    expect(xml).toContain('<wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset>');
+    expect(xml).toContain(`<wp:posOffset>${(9026 - 1080) * 635}</wp:posOffset>`);
+    expect(xml).toContain(`<wp:extent cx="${1080 * 635}" cy="${240 * 635}"/>`);
+    expect(xml).toMatch(/<w:txbxContent><w:p><w:pPr><w:pStyle w:val="MarkingScheme"\/>.*<w:jc w:val="right"\/>.*\(1\)/);
+    // The text still stops short of the column.
+    expect(xml).toContain('w:right="1080"');
+  });
+
+  it('trailing breaks stay where they are: the label is not on the last line', () => {
+    const xml = xmlFor({ trail: bi('(1)', '(1)'), text: bi('a\nb\n', '') });
+    expect(xml.indexOf('<wp:anchor')).toBeLessThan(xml.indexOf('<w:br/>'));
+    expect(xml.match(/<w:br\/>/g)).toHaveLength(2);
+  });
+
+  it('a line with no label carries no box', () => {
+    expect(xmlFor({})).not.toContain('<wp:anchor');
+  });
+
+  it('the preview pins a column label to the top, the clipboard floats it from the start', () => {
+    const source = readFileSync('src/components/preview/Preview.tsx', 'utf8');
+    const trail = source.slice(source.indexOf('function MarksTrail'));
+    const body = trail.slice(0, trail.indexOf('\n}\n'));
+    expect(body).toContain('column ? { top: 0 }');
+    const clipboard = readFileSync('src/export/clipboard.ts', 'utf8');
+    expect(clipboard).toContain('`<p style="${css}">${marks}${marker}${body}</p>`');
+  });
+});

@@ -2,9 +2,9 @@ import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import { buildAnswerKeyDocxParts, exportAnswerKeyDocxBuffer, exportDocxBuffer } from '@/export/docx';
 import { answerKeyClipboardHtml, worksheetClipboardHtml } from '@/export/clipboard';
-import { createMcqQuestion, createWorksheet } from '@/model/factories';
+import { createAnswerDiagram, createMcqQuestion, createWorksheet } from '@/model/factories';
 import { bi, plain } from '@/model/text';
-import type { AnswerKeyLayout, LanguageMode, McqQuestion, OutputMode, Worksheet } from '@/model/types';
+import type { AnswerKeyLayout, BiText, LanguageMode, McqQuestion, OutputMode, Worksheet } from '@/model/types';
 import { buildAcceptanceWorksheet, withFlow } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { parseWorksheet, stringifyWorksheet } from '@/storage/document';
@@ -131,6 +131,48 @@ describe('HKEAA style', () => {
     // No long questions, no column: a Paper 1 key in HKEAA style has no header.
     const mcOnly = withLayout(withFlow(createWorksheet(), [mcq(0), mcq(1)]), { preset: 'hkeaa' });
     expect(buildAnswerKeyDocxParts(mcOnly, 'en').headerFooter.header).toBeUndefined();
+  });
+
+  it('captions a model answer diagram "Figure n", its points under "Indicate in Figure n:"', () => {
+    const worksheet = hkeaa(0);
+    const question = worksheet.questions[0] as Extract<Worksheet['questions'][number], { type: 'structured' }>;
+    question.parts[0] = { ...question.parts[0], answerDiagram: { ...createAnswerDiagram(), id: 'fig-a' } };
+    question.parts[1] = { ...question.parts[1], subParts: [], marks: 2, scheme: undefined, answerDiagram: { ...createAnswerDiagram(), id: 'fig-b' } };
+    for (const language of LANGUAGES) {
+      const nodes = renderAnswerKey(worksheet, language);
+      const at = (predicate: (node: RenderNode) => boolean) => nodes.findIndex(predicate);
+      const line = (text: BiText) =>
+        at((node) => node.kind === 'text' && plain(node.text.en) === plain(text.en) && plain(node.text.zh) === plain(text.zh));
+      const diagram = (id: string) => at((node) => node.kind === 'diagram' && node.blockId === id);
+      const firstPoint = at((node) => node.kind === 'text' && plain(node.text.en).startsWith('Supply decreases'));
+      // (a): lead, points, caption, figure — HKEAA's order.
+      expect(line(KEY_LAYOUT_WORDING.indicateIn(1))).toBeGreaterThan(-1);
+      expect(line(KEY_LAYOUT_WORDING.indicateIn(1))).toBeLessThan(firstPoint);
+      expect(firstPoint).toBeLessThan(line(KEY_LAYOUT_WORDING.figure(1)));
+      expect(line(KEY_LAYOUT_WORDING.figure(1)) + 1).toBe(diagram('fig-a'));
+      expect((nodes[line(KEY_LAYOUT_WORDING.indicateIn(1))] as TextNode).marksColumn).toBe(marksColumnWidth(language));
+      // (b) has no scheme: its figure is numbered and captioned, with no lead.
+      expect(line(KEY_LAYOUT_WORDING.figure(2)) + 1).toBe(diagram('fig-b'));
+      expect(line(KEY_LAYOUT_WORDING.indicateIn(2))).toBe(-1);
+    }
+    // Classic prints the same diagrams uncaptioned, before the scheme, as it always has.
+    const classic = renderAnswerKey(withLayout(worksheet, { preset: 'classic' }), 'en');
+    expect(texts(classic).some((node) => en(node).startsWith('Figure') || en(node).startsWith('Indicate'))).toBe(false);
+    const firstDiagram = classic.findIndex((node) => node.kind === 'diagram');
+    const firstPoint = classic.findIndex((node) => node.kind === 'text' && plain(node.text.en).startsWith('Supply decreases'));
+    expect(firstDiagram).toBeLessThan(firstPoint);
+  });
+
+  it('numbers figures per key, from 1 in each part of a combined key, storing nothing', () => {
+    const worksheet = hkeaa(0);
+    const question = worksheet.questions[0] as Extract<Worksheet['questions'][number], { type: 'structured' }>;
+    question.parts[0] = { ...question.parts[0], answerDiagram: { ...createAnswerDiagram(), id: 'fig-a' } };
+    const saved = JSON.stringify(worksheet);
+    const captions = (nodes: RenderNode[]) =>
+      texts(nodes).map(en).filter((text) => /^Figure \d+$/.test(text));
+    expect(captions(renderCombinedAnswerKey([worksheet, worksheet], 'en'))).toEqual(['Figure 1', 'Figure 1']);
+    expect(captions(renderAnswerKey(worksheet, 'en'))).toEqual(['Figure 1']);
+    expect(JSON.stringify(worksheet)).toBe(saved);
   });
 
   it('opens with the disclaimer and the notation legend, one side per row in bilingual', () => {

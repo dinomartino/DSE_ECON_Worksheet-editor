@@ -230,7 +230,7 @@ export async function runBankFill(req: FillRequest, deps: BankRunDeps, signal: A
       break;
     }
     // Hard failures are never written: `writesFor` takes the usable results only.
-    const writes = writesFor(plan, outcome, ok, true);
+    const writes = writesFor(plan, outcome, ok, true, resolved.deps.glossary);
     const result = await exclusively(deps, () => writeIntoCopies(deps.store, { sourceSlots: read.slots, writes, copies: req.copiesOf(unit), expectedKey: unit.contentKey }, now(deps)));
     records.push(...result.written);
     skipped.push(...result.skipped);

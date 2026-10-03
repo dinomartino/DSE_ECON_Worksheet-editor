@@ -35,7 +35,7 @@ the whole schema, one file.
 - `src/model/migrations.ts:KNOWN_KEYS` · `:CURRENT_SCHEMA_VERSION` · `:migrate` · `:serializeWorksheet` · `:writtenSchemaVersion` · `:isNewerThanBuild`
 - `src/model/flow.ts:resolveFlow` · `:applyOrder` · `:moveRunInFlow` — display order
 - `src/model/numbering.ts:computeNumbering` · `:listIndentScheme` — derived numbers
-- `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` — derived totals
+- `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` · `:sectionRuns` — derived totals; an "answer any n" section (`answerCount`) counts its best n
 - `src/model/edits.ts:applyEditTarget` · `:applyDeleteTarget` · `:insertBlockAfter` — every mutation recipe
 - `src/model/lineage.ts:freshIds` · `:copyQuestion` · `:rootIdOf` · `:questionIdOwners` — every id a question holds, renewed for a copy (a diagram's own geometry is kept); `src/model/dedupeIds.ts:dedupeIds` — ids held twice repaired on open, in `src/storage/document.ts:parseWorksheet`
 - `src/model/topics.ts:TOPICS` · `:topicOf` · `:parentCode` · `:matchesTopic` · `:topicLabel` — the EDB topic taxonomy as data; `Question.tags` stores codes, names are looked up. On screen a topic is its name, never its slug: `:topicDisplay` ("Law of demand 需求定律"; an unknown code as stored) · `:topicHeading` ("C · Law of demand", and tooltips), with `src/model/patterns.ts:tagText` for a tag of any kind. The tag grammar: `:TOPIC_CODE_PATTERN` · `:SYSTEM_TAG_SIGIL` · `:rollupTopic` · `:stringTags`, with `src/model/patterns.ts:isReservedTag` · `:freeTagIssue`
@@ -44,9 +44,9 @@ the whole schema, one file.
 - `src/model/text.ts:BiText` helpers — `:rt` · `:plain` · `:normalizeRuns` · `:applyRunFormat`
 - `src/model/page.ts:pageSetupOf` · `:headerFooterOffsets` · `src/model/pageFurniture.ts:furnitureBoxes`
 - `src/model/cover.ts:createCoverPage` · `src/model/documentShape.ts:documentShape` · `:paperKind` (the shape refined by content: dotted answer space → LQ worksheet)
-- `src/model/versions.ts:activeVersion` · `:shuffledOrder` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored
+- `src/model/versions.ts:activeVersion` · `:shuffledOrder` · `:versionHeaderText` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored; the letter rides the running header as a last row (`src/model/page.ts:versionRowStandsAlone`)
 - `src/model/markScheme.ts:schemeMax` · `:groupMax` · `:schemeMismatch` — HKEAA marking-scheme totals, derived; types in `src/model/markSchemeTypes.ts:MarkScheme`
-- `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
+- `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it, for the edition chosen in Export (`src/components/editor/ExportPaperCheck.tsx:ExportPaperCheck`; another mode's page count comes from a hidden `src/components/preview/PageCountProbe.tsx:PageCountProbe`)
 - `src/model/paperSummary.ts:summarizePaper` · `:estimateMinutes` · `:MINUTES_PER_MARK` · `:targetOf` — per-type counts, marks, minutes against the optional `Worksheet.target`; the one time model (`checkPaper` reads it); `src/components/editor/PaperSummaryBar.tsx:PaperSummaryBar` is the toolbar line, the Target row is in `DocumentSettings`
 - `src/model/diagram.ts:Diagram` · `src/model/diagramDraw.ts:applyDrag` · `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
 - `src/model/diagramAreas.ts:areaPolygon` · `:presetArea` · `:detachAreas` — shaded areas as references; `src/model/diagramShift.ts:shiftCurve` — D→D₁ plus the new equilibrium, both equilibria anchored and unnamed (`:equilibriumLabelSide` places a name added later)
@@ -105,7 +105,7 @@ Invariants:
 - `src/model/answerKeyLayout.ts:resolveAnswerKeyLayout` — `Worksheet.answerKeyLayout` (preset + deltas) to every setting; `:ANSWER_KEY_PRESETS` · `:withAnswerKeyPreset` · `:withAnswerKeySetting` · `:normalizeAnswerKeyLayout` (on load)
 - `src/render/answerKeySections.ts:answerKeyRunningHead` — "Marks / 分數" atop every page of a key with a Marks column (`TextNode.marksColumn`); the `.docx` header and the preview read the same
 - `src/render/answerKey.ts:AnswerKeyRow` — `diagram` carries a leaf's model answer diagram; `src/render/ir.ts:diagramNodeFor` builds its node
-- `src/render/answerKey.ts:renderCombinedAnswerKey` · `:answerKeyPartTitle` — several saved documents' keys in one file, each under its paper's heading, from a new page
+- `src/render/answerKey.ts:renderCombinedAnswerKey` · `:answerKeyPartTitle` · `:answerKeyParts` — several saved documents' keys in one file, each under its paper's heading; in the `.docx` a section each, in its document's page setup and body size
 - `src/render/markScheme.ts:renderMarkScheme` — a part's HKEAA scheme as `Marking Scheme` paragraphs; marks ride `TextNode.trail` (`src/render/ir.ts:trailLabel`); given `at`, its text carries scheme edit targets (`src/model/markScheme.ts:withSchemeText` writes them)
 - `src/render/diagram.ts:diagramSvg` · `:diagramPlot` · `:diagramSize` · `:flowChartLayout` · `:forumChartLayout`
 - `src/render/answerGraph.ts:answerGraphNode` · `:answerGraphBox` · `:answerGraphSvg` — blank answer axes (`src/model/answerGraph.ts:createAnswerGraph`); PNG via the diagram pre-pass, whole 12pt lines
@@ -356,7 +356,7 @@ through `AppSettingsHost` alone.
 - `src/model/textWalk.ts:mapWorksheetTexts` · `src/model/textWalk.ts:collectTexts` · `src/model/textWalk.ts:slotsForTarget` — the one identity-preserving walk over every BiText, in print order; questions through `src/registry/types.ts:QuestionTypeDefinition` `mapTexts`
 - `src/model/textWalk.ts:needsTranslation` · `src/model/textWalk.ts:countUntranslated` · `src/model/textWalk.ts:fieldNeedsFill` — one definition of "missing", per edition
 - `src/model/diagramText.ts:mapDiagramTexts` — every BiText in a diagram (parity with `src/model/diagramDraw.ts:handleText`)
-- `src/model/symbols.ts:isSymbolOnly` · `src/model/symbols.ts:CAPITAL_WORDS` — E₀, `MC = MR`, `$14 000`: never sent, counted only where it prints as a gap; `PAPER 2`, `ONE`, `No` are words
+- `src/model/symbols.ts:isSymbolOnly` · `src/model/symbols.ts:CAPITAL_WORDS` — E₀, `MC = MR`, `$14 000`: never sent, counted only where it prints as a gap; `PAPER 2`, `ONE`, `No` are words; `src/model/symbols.ts:WORDED_SYMBOLS` · `src/model/textWalk.ts:wordedLabel` — an area's DWL / TR takes the glossary's 中文 (`src/translate/run.ts:writesFor`)
 - `src/model/translationApply.ts:applyTranslationBatch` — stale-guarded batch apply; re-measures a changed diagram bilingually
 - `src/components/editor/useUntranslatedCount.ts:useUntranslatedCount` — the toolbar pill, cached per question
 - `src/test/translateFixture.ts:buildTranslateFixture` — the kitchen sink: every slot kind; `src/model/textWalk.census.test.ts` proves the walk misses no `{en, zh}`
@@ -451,7 +451,7 @@ Invariants:
 ## scripts — the harnesses
 
 - `.claude/skills/jev/SKILL.md` — session tooling, not app code: `bin/find.mjs` (ranked doc and file pointers), `bin/verify-plan.mjs` (which checks a diff needs), the edit guard's `rules.json`; hooks registered in `.claude/settings.json`
-- `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`)
+- `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`, `--port=` / `--url=`)
 - `scripts/demo.mjs` — website video + screenshots into `demo-media/` (`npm run demo`); steps in `scripts/demo/record.mjs:STORYBOARD`
 - `scripts/demo/diagrams.mjs:diagramStoryboard` — the diagram film (`npm run demo:diagrams`): one recording, numbered stills and the exported `.docx` into `demo-media/diagrams/`; seed from `scripts/demo/diagrams-seed.test.ts`
 - `scripts/emit-samples.test.ts` — real `.docx` files (`npm run samples`)

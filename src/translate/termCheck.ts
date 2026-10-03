@@ -24,12 +24,26 @@ function checked(slots: readonly TextSlot[], glossary: Glossary, scope: Translat
     .map((slot) => ({ slot, checks: glossary.checkEnToZh(plain(slot.text.en), plain(slot.text.zh)) }));
 }
 
-/** Pure core of `buildTermCheck`, over hand-built or walked slots. */
-export function termRowsFromSlots(slots: readonly TextSlot[], glossary: Glossary, scope: TranslateScope): TermRow[] {
-  return checked(slots, glossary, scope).flatMap(({ slot, checks }) => {
+const matches = (check: TermCheck) => check.state === 'ok' || check.state === 'ok-abbr';
+
+/** The rows to act on, and how many terms already read as the glossary (or the teacher) wants. */
+export function termResultFromSlots(
+  slots: readonly TextSlot[],
+  glossary: Glossary,
+  scope: TranslateScope,
+): { rows: TermRow[]; matched: number } {
+  let matched = 0;
+  const rows = checked(slots, glossary, scope).flatMap(({ slot, checks }) => {
     const kept = checks.filter(actionable);
+    matched += checks.filter((check) => matches(check) && !actionable(check)).length;
     return kept.length ? [{ path: slot.path, slot, en: slot.text.en, zh: slot.text.zh, checks: kept }] : [];
   });
+  return { rows, matched };
+}
+
+/** Pure core of `buildTermCheck`, over hand-built or walked slots. */
+export function termRowsFromSlots(slots: readonly TextSlot[], glossary: Glossary, scope: TranslateScope): TermRow[] {
+  return termResultFromSlots(slots, glossary, scope).rows;
 }
 
 export function buildTermCheck(ws: Worksheet, glossary: Glossary, scope: TranslateScope): TermRow[] {

@@ -43,6 +43,10 @@ export const MCQ_PANEL_MESSAGES = defineMessages({
     en: 'A combination question keeps its option order in every version.',
     zh: '組合題在每個版本都保持選項次序。',
   },
+  versionOrder: {
+    en: (letter: string) => `Listed in Version ${letter} order, as the page shows them.`,
+    zh: (letter: string) => `按版本 ${letter} 的次序列出，與頁面相同。`,
+  },
   pinned: { en: 'Pinned', zh: '已固定' },
   pinnedPlace: {
     en: 'Its wording depends on its place, so it keeps its letter in every version',

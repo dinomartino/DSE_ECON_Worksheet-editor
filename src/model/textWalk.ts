@@ -2,11 +2,11 @@ import type { EditTarget } from '@/render/ir';
 import { getQuestionType } from '@/registry';
 import { applyBandFieldSide } from './bandSegments';
 import type { CoverPage } from './coverTypes';
-import { mapDiagramTexts } from './diagramText';
+import { isAreaOrFreeLabelPath, mapDiagramTexts } from './diagramText';
 import { resolveFlow } from './flow';
 import type { MarkScheme } from './markSchemeTypes';
 import { computeNumbering } from './numbering';
-import { isSymbolOnly } from './symbols';
+import { isSymbolOnly, wordedSymbol } from './symbols';
 import {
   mapSame,
   missingSide,
@@ -32,6 +32,7 @@ import type {
   LayoutElement,
   OutputMode,
   Question,
+  RichText,
   TableBlock,
   Worksheet,
 } from './types';
@@ -580,6 +581,12 @@ export function slotsForTarget(ws: Worksheet, target: EditTarget): TextSlot[] {
 }
 
 /** Missing one side that this edition prints, and not a symbol-only text that prints fine. */
+/** A diagram's area or free label that is exactly DWL or TR: the EDB key its 中文 comes
+ *  from (`WORDED_SYMBOLS`), so it is filled rather than falling back to the English. */
+export function wordedLabel(slot: Pick<TextSlot, 'path' | 'fallsBack'>, en: RichText): string | undefined {
+  return slot.fallsBack && isAreaOrFreeLabelPath(slot.path) ? wordedSymbol(en) : undefined;
+}
+
 export function needsTranslation(slot: TextSlot, mode: Pick<OutputMode, 'language' | 'version'>): boolean {
   const missing = missingSide(slot.text);
   if (!missing) return false;
@@ -590,7 +597,8 @@ export function needsTranslation(slot: TextSlot, mode: Pick<OutputMode, 'languag
   if (mode.language !== 'bilingual' && mode.language !== missing) return false;
   const present = missing === 'zh' ? slot.text.en : slot.text.zh;
   // Diagram text falls back to the other side; EN+中 prints both sides anyway.
-  if (isSymbolOnly(present) && (slot.fallsBack || mode.language === 'bilingual')) return false;
+  const worded = missing === 'zh' && wordedLabel(slot, present) !== undefined;
+  if (!worded && isSymbolOnly(present) && (slot.fallsBack || mode.language === 'bilingual')) return false;
   return true;
 }
 

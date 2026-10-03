@@ -9,10 +9,11 @@ import type { BiText, ContentBlock, McqOptionLayout, McqQuestion } from '@/model
 import {
   keepsOptionOrder,
   optionStaysPut,
+  printedOptionOrder,
   resolveOptionLayout,
   suggestOptionLayout,
 } from '@/registry/mcq';
-import { versionCount } from '@/model/versions';
+import { activeVersion, versionCount, versionLetter, versionSeed } from '@/model/versions';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { documentShape } from '@/model/documentShape';
@@ -42,6 +43,13 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
   // Pins matter only once the paper has shuffled versions (Setup → Versions).
   const versioned = useWorksheetStore((s) => versionCount(s.worksheet) > 1);
   const fixedOrder = versioned && keepsOptionOrder(question);
+  // The rows follow the version the page shows, lettered as it prints them; every edit
+  // still addresses the authored option. `order[printed] = authored`.
+  const shownVersion = useWorksheetStore((s) => activeVersion(s.worksheet, s.mode) ?? 0);
+  const seed = useWorksheetStore((s) => versionSeed(s.worksheet));
+  const order = printedOptionOrder(question, seed, shownVersion);
+  const reordered = order.some((authored, printed) => authored !== printed);
+  const printed = order.map((authored) => ({ option: question.options[authored], index: authored }));
 
   const setStatements = (next: BiText[]) =>
     onChange({ statements: next.length > 0 ? next : undefined });
@@ -142,7 +150,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             className="flex items-center gap-1"
           >
             <span className="text-[11px] font-medium text-ink-muted">{m.answer}</span>
-            {question.options.map((option, index) => {
+            {printed.map(({ option, index }, position) => {
               const isAnswer = question.answerIndex === index;
               return (
                 <button
@@ -150,7 +158,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                   type="button"
                   role="radio"
                   aria-checked={isAnswer}
-                  aria-label={m.optionIsCorrect(optionLabel(index))}
+                  aria-label={m.optionIsCorrect(optionLabel(position))}
                   title={
                     isAnswer ? m.isCorrect : m.markCorrect
                   }
@@ -161,7 +169,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                       : 'text-ink-subtle hover:bg-surface-hover hover:text-ink'
                   }`}
                 >
-                  {optionLabel(index)}
+                  {optionLabel(position)}
                 </button>
               );
             })}
@@ -239,7 +247,10 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             {m.fixedOrder}
           </p>
         )}
-        {question.options.map((option, index) => {
+        {reordered && (
+          <p className="pb-1 text-[11px] text-ink-muted">{m.versionOrder(versionLetter(shownVersion))}</p>
+        )}
+        {printed.map(({ option, index }, position) => {
           const isAnswer = question.answerIndex === index;
           const hasBlocks = (option.blocks?.length ?? 0) > 0;
           const autoFixed = !option.pinned && optionStaysPut(option);
@@ -248,7 +259,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
               <ExcerptRow
                 marker={
                   <span className={isAnswer ? 'font-semibold text-ok' : undefined}>
-                    {optionLabel(index)}
+                    {optionLabel(position)}
                   </span>
                 }
                 text={biExcerpt(option.text)}
@@ -410,7 +421,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
               the option into every shuffled version. */}
           <div className="space-y-0.5">
             <span className="text-[11px] font-medium text-ink-muted">{m.rationale}</span>
-            {question.options.map((option, index) => {
+            {printed.map(({ option, index }, position) => {
               const open = openRationale.has(option.id);
               const isAnswer = question.answerIndex === index;
               const key = editTargetKey({
@@ -438,7 +449,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                         isAnswer ? 'text-ok' : 'text-ink-muted'
                       }`}
                     >
-                      {optionLabel(index)}
+                      {optionLabel(position)}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[11px] text-ink-subtle">
                       {/* Open, the field below shows the text; the row names its job. */}
@@ -453,7 +464,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                     <div className="animate-fade-in pb-1.5 pl-7 pt-0.5">
                       <BiTextField
                         translate={{ kind: 'rationale' }}
-                        ariaLabel={m.rationaleFor(optionLabel(index))}
+                        ariaLabel={m.rationaleFor(optionLabel(position))}
                         value={option.rationale ?? emptyBiText()}
                         onChange={(text) => setRationale(option.id, text)}
                         placeholderEn={isAnswer ? 'Why it is correct…' : 'Why it is wrong…'}
