@@ -435,7 +435,7 @@ a version heading is edited afterwards.
   instructions ran off the bottom of the cover on screen and onto a second page in Word.
   A bilingual cover now uses less space between its lines, so it fits on one page
   everywhere. English-only and 中文-only covers are unchanged.
-  <!-- zh: **雙語試卷二封面可印在一頁內。** 英文和中文並列時，考生須知曾超出封面底部，在 Word
+  <!-- zh: **雙語 Paper 2 封面可印在一頁內。** 英文和中文並列時，考生須知曾超出封面底部，在 Word
   中更會跑到第二頁。雙語封面現在行與行之間的空位較少，在任何地方都能印在一頁內。只有英文或
   只有中文的封面不變。 -->
 - **The year code in a bilingual cover's corner prints once.** A cover line that reads the
