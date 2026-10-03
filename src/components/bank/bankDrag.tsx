@@ -11,7 +11,7 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { DRAG_THRESHOLD_PX } from '@/components/start/dashboardDrag';
 import { DragChip } from '@/components/ui/DragGhost';
 import { useModalLayer } from '@/components/ui/modalLayer';
-import { isUndoRedoKey } from '@/components/ui/undoChord';
+import { gestureKey } from '@/components/ui/undoChord';
 import { useMessages } from '@/i18n/language';
 import type { BankRow } from '@/library/types';
 import { flowOf } from '@/model/flow';
@@ -351,10 +351,7 @@ export function isBankDragActive(): boolean {
 }
 
 /** What a key does while the drag lasts: Esc cancels; undo/redo are swallowed, not acted on. */
-export function bankDragKey(event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'shiftKey'>): 'cancel' | 'swallow' | null {
-  if (event.key === 'Escape') return 'cancel';
-  return isUndoRedoKey(event) ? 'swallow' : null;
-}
+export const bankDragKey = gestureKey;
 
 /** Test seam: aim the drag as a pointer over the page would. */
 export function aimBankDragForTest(slot: number | null) {

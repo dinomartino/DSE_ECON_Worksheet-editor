@@ -153,6 +153,21 @@ describe('axis spans rest outside the axes, past the tick labels', () => {
     expect(p.label.x - FONT * 0.55 * 8).toBeGreaterThanOrEqual(0);
   });
 
+  // gap₀ is offset under gap₁ for one-line labels; in English and 中文 gap₁ takes two.
+  it('a stacked axis span clears the label of the one inside it, in either language', () => {
+    const diagram = buildFromTemplate('gap-narrows');
+    const [outer, inner] = diagram.spans!;
+    const room = (language: 'en' | 'bilingual') => {
+      const size = diagramSize(diagram, 400, language);
+      const proj = diagramPlot(diagram, { ...size, language });
+      const clear = axisSpanClearance(diagram, proj, 1, language);
+      const lines = language === 'bilingual' ? 2 : 1;
+      const labelFoot = spanLayout(diagram, inner, proj, 1, clear)!.label.y + (lines - 1) * FONT * 1.15;
+      return spanLayout(diagram, outer, proj, 1, clear)!.lines[0][0].y - labelFoot;
+    };
+    expect(room('bilingual')).toBeCloseTo(room('en'), 0);
+  });
+
   it('an unlabelled pair of axis arrows fits the ordinary pads', () => {
     const bare = shiftDiagram([]);
     expect(diagramSize(shiftDiagram([qArrow, pArrow]), 400, 'en')).toEqual(diagramSize(bare, 400, 'en'));

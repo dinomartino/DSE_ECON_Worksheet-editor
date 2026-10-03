@@ -20,7 +20,6 @@ import {
   newId,
   pin,
   placeLabel,
-  point,
   priceLine,
   reading,
   shade,
@@ -128,15 +127,9 @@ function tariffWelfare(): Diagram {
 }
 
 /** "S with quota": S up to Pw, flat for the quota QA, then S shifted right by QA. */
-function quotaSupply(sPts: Pair[], pwY: number, quota: number) {
-  const kink = xOn(sPts, pwY);
-  return {
-    kink,
-    curve: curve(
-      [sPts[0], [kink, pwY], [kink + quota, pwY], [xOn(sPts, 0.9) + quota, 0.9]],
-      bi('S with quota', '有配額的供應'),
-    ),
-  };
+/** S with the quota, derived from S at Pw, so its step follows a drag of either. */
+function quotaSupply(s: DiagramCurve, pw: DiagramCurve, quota: number) {
+  return derived({ kind: 'importQuota', of: s.id, price: cross(s, pw), by: quota }, [s, pw], bi('S with quota', '有配額的供應'));
 }
 
 function importQuota(): Diagram {
@@ -145,7 +138,8 @@ function importQuota(): Diagram {
   const quota = 0.22;
   const s = curve(sPts, sym('S'));
   const pw = priceLine(pwY, sub('P', 'w'));
-  const { kink, curve: withQuota } = quotaSupply(sPts, pwY, quota);
+  const kink = xOn(sPts, pwY);
+  const withQuota = quotaSupply(s, pw, quota);
   const d = curve([[0.06, 0.9], [0.9, 0.12]], sym('D'));
   const ea = eq(d, withQuota, 'A', { p: 'P', q: '' }, { yTickLabel: sub('P', 'A') });
   return finish(
@@ -163,7 +157,7 @@ function importQuotaDemand(): Diagram {
   const pwY = 0.28;
   const s = curve(sPts, sym('S'));
   const pw = priceLine(pwY, sub('P', 'w'));
-  const { curve: withQuota } = quotaSupply(sPts, pwY, 0.18);
+  const withQuota = quotaSupply(s, pw, 0.18);
   const d0 = curve([[0.06, 0.8], [0.8, 0.12]], sub('D', '0'));
   const d1 = shiftOf(d0, 0.14, 0, sub('D', '1'));
   const e0 = eq(d0, withQuota, '0', { p: '', q: '' });
@@ -382,7 +376,8 @@ function ppfConcaveTrade(): Diagram {
   // Between the frontier's vertices, so pressing B grabs the point, not the curve's handle.
   const prod = onFrontier(37);
   const ppf = placeLabel(curve(frontier(a, b), sym('PPF'), { shape: 'curved' }), 0.1, 0.7);
-  const pb = point(prod.x, prod.y, sym('B'), { labelSide: 'left' });
+  // A and B are pinned on the frontier, so dragging either slides it along the PPF.
+  const pb = pin({ on: ppf.id, x: { x: prod.x, y: 0 } }, [ppf], sym('B'), { labelSide: 'left' });
   const cpf = derived({ kind: 'tangent', to: ppf.id, at: at(pb) }, [ppf, pb], sym('CPF'), { labelAt: 'start' });
   const tot = derived({ kind: 'parallel', to: cpf.id, through: { x: 0.03, y: 0.44 }, ys: [0.14, 0.44] }, [cpf], sym('TOT'), {
     stroke: 'dashed',
@@ -392,7 +387,7 @@ function ppfConcaveTrade(): Diagram {
   return finish(
     axes(GOOD.x, GOOD.y, {
       curves: [ppf, cpf, tot],
-      points: [point(home.x, home.y, sym('A'), { labelSide: 'downLeft' }), pb, pc],
+      points: [pin({ on: ppf.id, x: { x: home.x, y: 0 } }, [ppf], sym('A'), { labelSide: 'downLeft' }), pb, pc],
       spans: [
         span(at(pc), at(pb), 'bracket', { along: 'x', label: bi('exports', '出口') }),
         span(at(pb), at(pc), 'bracket', { along: 'y', label: bi('imports', '進口') }),

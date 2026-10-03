@@ -205,6 +205,10 @@ export const DIAGRAM_RELATION_MESSAGES = defineMessages({
     zh: (to: string, through: string) => `平行於 ${to}，通過 ${through}`,
   },
   shifted: { en: (curve: string) => `${curve}, shifted`, zh: (curve: string) => `${curve}（已平移）` },
+  importQuota: {
+    en: (curve: string, at: string) => `${curve} plus the quota at ${at}`,
+    zh: (curve: string, at: string) => `${curve} 加上於 ${at} 的配額`,
+  },
   tangent: {
     en: (to: string, at: string) => `Tangent to ${to} at ${at}`,
     zh: (to: string, at: string) => `${to} 的切線，於 ${at}`,
@@ -394,8 +398,8 @@ export const DIAGRAM_AREA_MESSAGES = defineMessages({
     zh: '這樣平移會令曲線超出圖表。請試較小的幅度。',
   },
   shiftNote: {
-    en: 'Moves a copy by that share of the axis, with a shift arrow and the new equilibrium dashed to both axes.',
-    zh: '把曲線副本按坐標軸的該比例平移，並加上平移箭頭，以及連到兩條軸的新均衡虛線。',
+    en: 'Moves a copy by that share of the axis, with a shift arrow and the new equilibrium dashed to both axes. The copy follows the original when you move it.',
+    zh: '把曲線副本按坐標軸的該比例平移，並加上平移箭頭，以及連到兩條軸的新均衡虛線。移動原曲線時，副本會跟著移動。',
   },
 });
 
@@ -633,7 +637,7 @@ const MODEL_TEXT_ZH: Readonly<Record<string, string>> = {
   'A price line is gone': '有一條價格線已不存在',
   'Needs the world price below the domestic equilibrium': '需要世界價格低於本地均衡價格',
   'Nothing to shade. The curves do not bound that area': '沒有可填色的範圍。這些曲線圍不成該區域',
-  'Needs a falling demand curve': '需要一條向下傾斜的需求曲線',
+  'Needs a demand curve: a falling one, or a flat line named D': '需要一條需求曲線：向下傾斜的，或名為 D 的水平線',
   'Needs a rising supply curve': '需要一條向上傾斜的供應曲線',
   'Needs a shifted supply curve. Shift S first': '需要平移後的供應曲線。請先平移 S',
   'Needs a falling MR curve beside demand': '需要一條位於需求旁、向下傾斜的 MR 曲線',

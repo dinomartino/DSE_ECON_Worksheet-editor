@@ -212,6 +212,19 @@ export function translateCurvePoints(points: DiagramPoint[], delta: DiagramPoint
     : null;
 }
 
+/**
+ * S with an import quota at `price`: S below it, `by` along it from S, then S moved right
+ * by `by`, trimmed to the plot. Null when S does not reach `price`.
+ */
+export function importQuotaPoints(points: DiagramPoint[], price: number, by: number): DiagramPoint[] | null {
+  const kx = curveXAt({ id: '', points, shape: 'straight' }, price);
+  if (kx === null) return null;
+  const byY = [...points].sort((a, b) => a.y - b.y);
+  const kink = { x: kx, y: price };
+  const upper = translateCurvePoints([kink, ...byY.filter((p) => p.y > price + EPS)], { x: by, y: 0 });
+  return [...byY.filter((p) => p.y < price - EPS), kink, ...(upper ?? [{ x: clampUnit(kx + by), y: price }])];
+}
+
 /** The part of a straight segment between heights `lo` and `hi`, or null (a flat one is kept whole). */
 function withinHeights(line: DiagramPoint[], [lo, hi]: [number, number]): DiagramPoint[] | null {
   const [a, b] = line;
@@ -405,6 +418,11 @@ function createResolver(diagram: Diagram, aspect: number): Resolver {
         const source = curve(derive.of);
         return source ? translateCurvePoints(source.points, derive.by) : null;
       }
+      case 'importQuota': {
+        const source = curve(derive.of);
+        const price = coordinate(derive.price, 'y');
+        return source && price !== null ? importQuotaPoints(source.points, price, derive.by) : null;
+      }
       case 'tangent': {
         const source = curve(derive.to);
         const near = place(derive.at);
@@ -507,6 +525,8 @@ export function deriveReferences(derive: DiagramCurveDerive): string[] {
       return [derive.to, ...placeReferences(derive.through)];
     case 'shift':
       return [derive.of];
+    case 'importQuota':
+      return [derive.of, ...(typeof derive.price === 'number' ? [] : anchorReferences(derive.price))];
     case 'tangent':
       return [derive.to, ...placeReferences(derive.at)];
     case 'level':
@@ -544,6 +564,12 @@ export function renameDerive(derive: DiagramCurveDerive, renamed: Map<string, st
       return { ...derive, to: id(derive.to), through: renamePlace(derive.through, renamed) };
     case 'shift':
       return { ...derive, of: id(derive.of), by: { ...derive.by } };
+    case 'importQuota':
+      return {
+        ...derive,
+        of: id(derive.of),
+        price: typeof derive.price === 'number' ? derive.price : renameAnchor(derive.price, renamed),
+      };
     case 'tangent':
       return { ...derive, to: id(derive.to), at: renamePlace(derive.at, renamed) };
     case 'level':

@@ -66,7 +66,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | P₁, P₁ − t (or P₁ + s), Q₁ | anchors (sellers' price on S₀ under E₁) | C |
 | Buyers' and sellers' burdens; steepness matches | buyersBurden, sellersBurden presets; steepness by drag | C |
 | Subsidy CB and PB | consumerBenefit, producerBenefit presets | C |
-| Extreme cases (flat D, vertical S); tax revenue | taxRevenue preset; flat D / vertical S manual | P — presets do not read a flat line as demand |
+| Extreme cases (flat D, vertical S); tax revenue | tax presets read a flat line named D as demand; vertical S by + Vertical line | C |
 | TE / market value net of tax | Revenue › Total revenue, point re-picked to P₁ − t | P — needs the point re-picked |
 
 ### 7. Quota
@@ -192,7 +192,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Domestic S and D, Pw below autarky | `tariff` | C |
 | Tariff: "Pw + t", Q₁, QM bracket, revenue; PS gain, DWL | `tariff`, `tariff-welfare`: level + shift, `bracket` span, tariff presets | C |
 | Quota: kinked S with quota, EA, D shift first, quota rent | `import-quota`, `import-quota-demand` (quotaRent) | C |
-| Pw + t moves with Pw; binding quota price independent of Pw | Pw + t a shift of Pw; S with quota is drawn geometry | P — the quota step does not follow Pw |
+| Pw + t moves with Pw; binding quota price independent of Pw | Pw + t a shift of Pw; S with quota derived from S at Pw (`importQuota`) | C |
 
 ### C. Monopoly
 | Item | Met by | St. |
@@ -351,17 +351,15 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 
 ## Totals
 
-167 rows: **145 covered · 11 partial · 0 not covered · 11 n/a**.
+167 rows: **147 covered · 9 partial · 0 not covered · 11 n/a**.
 
 ## Not covered
 
 Nothing is wholly uncovered. The partial rows, and why:
 
-- A flat demand curve (Ed = ∞) is not read as demand by the presets.
 - Net-of-tax revenue needs the Revenue point re-picked to P₁ − t.
 - MC and MB at Q₁ for a tax (the subsidy has its template).
 - A change in r as a movement along Md.
-- The import quota's "S with quota" is drawn geometry: its step does not follow Pw.
 - U-shaped MC, and the TR hyperbola, are drawn by hand (crossings read the polyline).
 - Consumption "same X as before" is not tied to the no-trade point.
 - Growth shifting the CPF with the PPF.

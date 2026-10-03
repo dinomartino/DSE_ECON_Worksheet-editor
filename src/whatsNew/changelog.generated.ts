@@ -559,14 +559,14 @@ a version heading is edited afterwards.
   差不多一行，在評卷參考檢視中尤其明顯，令頁面可能提早兩行分頁。 -->
 - **Papers using newer features warn you in an older version of the app.** A paper with
   answers drawn on a diagram, a marking scheme layout other than Classic, a section where
-  students answer any ONE question, or an essay question with its own answer or marking
-  scheme now opens read-only in versions 0.4 and 0.5, with a note to update first. Those
+  students answer any ONE question, an essay question with its own answer or marking
+  scheme, or an import quota diagram whose step follows Pw now opens read-only in versions 0.4 and 0.5, with a note to update first. Those
   versions cannot hide those answers from the student copy, follow the layout, total such a
   section correctly or print an essay's answer, and can no longer save over the paper. Every
   other paper, including one with topics, classes or a section's own target marks, still
   opens and edits there as before.
   <!-- zh: **使用新功能的工作紙，在舊版程式中會提示你。** 在圖表上繪有答案、評卷參考版面並非
-  「經典」、設有「任選一題」的部分，或論述題設有自己的答案或評分方案的工作紙，在 0.4 和 0.5
+  「經典」、設有「任選一題」的部分，論述題設有自己的答案或評分方案，或含跟隨 Pw 的進口配額圖表的工作紙，在 0.4 和 0.5
   版中會以唯讀方式開啟，並提示先更新。這些版本無法在學生版中隱藏這些答案、跟從評卷參考版面、
   正確計算這類部分的總分，或印出論述題的答案，而且不能再覆寫這份工作紙。其他工作紙（包括設有
   課題、班別或部分自訂目標分數的）在這些版本中照常開啟和編輯。 -->
@@ -702,6 +702,63 @@ a version heading is edited afterwards.
   <!-- zh: **在 Excel 編輯過的翻譯用語，匯入時中文不會變亂碼。** 香港 Windows 電腦上的 Excel 以
   Big5 儲存一般 CSV，以往匯入後會變成亂碼。現在「匯入 CSV」可以讀取；解壓後再壓縮的備份，亦能還
   原你的用語。 -->
+- **Clicking a row of a label list opens it in the Edit tab.** Clicking "Name:" or its
+  value on the page used to leave the sidebar where it was. Now the Edit tab shows the
+  list with that row marked, as it does for every other element.
+  <!-- zh: **按標籤清單的一行，「編輯」分頁會顯示該清單。** 以往在頁面上按「姓名：」或其內容，
+  側欄不會轉變。現在「編輯」分頁會顯示該清單並標示該行，與其他元素一樣。 -->
+- **You can see where you are typing in an empty box.** Opening an empty table cell, answer
+  or option showed no blinking cursor until the first letter appeared, in Chrome and Safari.
+  The cursor now shows straight away, drawn in black so it stands out from the blue outline.
+  <!-- zh: **在空白欄位中也看到輸入位置。** 以往開啟空白的表格儲存格、答案或選項時，在 Chrome
+  和 Safari 中要輸入第一個字才會出現閃動的游標。現在游標會即時顯示，並以黑色繪畫，與藍色外框
+  分得清楚。 -->
+- **Undo waits while you resize on the page.** Pressing ⌘Z (or Ctrl+Z) while dragging a
+  picture's, diagram's or answer space's handle used to change the paper under the drag.
+  Now it does nothing until you let go, and Esc still cancels the resize.
+  <!-- zh: **在頁面上調整大小時，復原會暫停。** 拖曳圖片、圖表或答題空間的控點時按 ⌘Z（或
+  Ctrl+Z），以往會在拖曳途中改動試卷。現在放手之前不會有任何動作，按 Esc 仍可取消調整。 -->
+- **Drawing a diagram, the tools fit on one row on a 13-inch or 14-inch laptop.** Zoom,
+  Crop and Done no longer drop to a second row, so the diagram gets that room back. The
+  tip for the tool you are using now shows above the diagram, and shortcuts such as ⌘C
+  show when you point at Copy, Paste, Duplicate and Delete.
+  <!-- zh: **繪製圖表時，工具在 13 吋或 14 吋手提電腦上可排成一行。** 縮放、裁剪和完成不再跌到
+  第二行，圖表因此有更多空間。目前所用工具的提示現在顯示在圖表上方；把游標移到複製、貼上、建立
+  副本和刪除上，便會顯示 ⌘C 等快捷鍵。 -->
+- **"Shift a copy" now makes a curve that follows the original**, as the ready-made
+  diagrams do. Move D and D₁ moves with it, and the new equilibrium stays where D₁ meets S.
+  Drag D₁ itself to change how far it shifted, or choose "Detach: keep it where it is" to fix it in place.
+  <!-- zh: **「平移副本」現在會建立跟隨原曲線的曲線**，與現成圖表一樣。移動 D 時 D₁ 會一起移動，
+  新均衡點保持在 D₁ 與 S 的交點。拖曳 D₁ 本身可改變平移幅度，或選擇「分離：保持在原位」把它固定。 -->
+- **A point on a PPF stays on it when you drag it.** Drag A or B in the PPF diagrams and it
+  slides along the frontier, and the CPF and the export and import brackets follow. Choose
+  "Detach: keep it where it is" first to move it off the curve.
+  <!-- zh: **拖曳 PPF 上的點時，點不會離開曲線。** 在 PPF 圖表中拖曳 A 或 B，點會沿生產可能
+  曲線滑動，CPF 及出口和進口括號亦會跟著移動。如要把點移離曲線，請先選擇「分離：保持在原位」。 -->
+- **Arrow keys move a selected point, label or line end by a small step.** They used to send
+  it to the bottom-left corner of the diagram.
+  <!-- zh: **方向鍵會把選取的點、標示或線段端點移動一小步。** 以往會把它移到圖表的左下角。 -->
+- **Stacked gap arrows no longer crowd in English and 中文.** In "Gap narrows", the label
+  gap₁ / 缺口₁ takes two lines, and the gap₀ arrow under it used to run through the second.
+  An arrow stacked under another now moves down by each extra line, on screen, in the PDF
+  and in Word.
+  <!-- zh: **中英並列時，上下排列的缺口箭嘴不再擠在一起。** 在「缺口收窄」中，gap₁ / 缺口₁ 標示
+  佔兩行，其下的缺口₀ 箭嘴以往會穿過第二行。現在排在另一箭嘴下方的箭嘴，會按每多出的一行向下
+  移，在屏幕、PDF 和 Word 中都一樣。 -->
+- **Shade a tax on a flat demand curve.** A horizontal line named D (perfectly elastic
+  demand) now counts as demand in the Shade menu, so tax revenue, the sellers' burden and
+  the deadweight loss shade as they do on a falling D.
+  <!-- zh: **需求曲線為水平時，也可為稅項加陰影。** 名為 D 的水平線（完全有彈性的需求）現在在
+  「陰影」選單中會被視為需求曲線，稅收、賣方稅負和效率損失都可以與向下傾斜的 D 一樣加上陰影。 -->
+- **In the import quota diagrams, the quota step follows Pw.** Move Pw, or S, and "S with
+  quota" keeps its step at the new world price, the quota wide, with the domestic price
+  following it. Papers with these diagrams open read-only in versions 0.4 and 0.5.
+  <!-- zh: **在進口配額圖表中，配額的一段會跟隨 Pw。** 移動 Pw 或 S 時，「有配額的供應」的水平段
+  會保持在新的世界價格，長度等於配額，本地價格亦會跟著改變。含這些圖表的工作紙在 0.4 和 0.5 版
+  中會以唯讀方式開啟。 -->
+- **Pie chart hatching and dots print in solid black in the PDF.** They used to come out
+  a faint grey, which a photocopy could lose.
+  <!-- zh: **圓形圖的斜線和圓點在 PDF 中以實黑色印出。** 以往會印成淺灰色，影印時可能看不清。 -->
 
 ## 0.5.0 — 2026-09-28
 

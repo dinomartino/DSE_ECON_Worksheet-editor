@@ -13,6 +13,7 @@ import {
   cursorFor,
   deleteHandles,
   dragHandles,
+  nudgeHandles,
   drawn,
   handleId,
   handleText,
@@ -1172,12 +1173,10 @@ export function DiagramCanvas({
         // precision.
         const size = event.shiftKey ? NUDGE_COARSE : NUDGE_FINE;
         setDiagram(
-          dragHandles(
-            seedAreaLabels(diagram, selected, projection, language),
-            selected,
-            { x: 0, y: 0 },
-            { x: step.dx * size, y: step.dy * size },
-          ),
+          nudgeHandles(seedAreaLabels(diagram, selected, projection, language), selected, {
+            x: step.dx * size,
+            y: step.dy * size,
+          }),
         );
       }
     };
@@ -1257,8 +1256,10 @@ export function DiagramCanvas({
           : 'zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm'
       }
     >
-      <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
-        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">{m.heading}</span>}
+      {/* One row from 1470 (a 13-inch Mac): the heading is for readers only, clipboard
+          shortcuts live in the tooltip, and the overlay's hint sits over the stage. */}
+      <header className="flex flex-wrap items-center gap-2 border-b border-line bg-surface px-4 py-3 text-ink">
+        {!embedded && <span className="sr-only">{m.heading}</span>}
 
         {/* Edit or look, named both ways like the page's own switch (`Toolbar.tsx`). */}
         <Segmented
@@ -1275,7 +1276,7 @@ export function DiagramCanvas({
         <div className={previewing ? 'contents invisible' : 'contents'} inert={previewing}>
         <span className="h-8 w-px bg-line-strong" />
 
-        <div className="flex gap-1.5">
+        <div className="flex gap-1">
           {TOOLS.map((item) => (
             <button
               key={item.id}
@@ -1288,7 +1289,7 @@ export function DiagramCanvas({
                 setSnapCue(null);
               }}
               className={
-                'flex h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
+                'flex h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2.5 text-base ' +
                 'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
                 (tool === item.id
                   ? 'border-accent bg-accent text-on-accent'
@@ -1323,7 +1324,7 @@ export function DiagramCanvas({
           title={m.drawAnswerTitle}
           onClick={() => setDrawAnswers((on) => !on)}
           className={
-            'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
+            'flex h-11 items-center gap-1.5 rounded-lg border px-2.5 text-base ' +
             'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
             (drawAnswers
               ? 'border-danger bg-danger-soft text-danger-ink'
@@ -1343,11 +1344,11 @@ export function DiagramCanvas({
         {/* Clipboard actions are buttons as well as shortcuts: a teacher who has never
             met ⌘D should still find "Duplicate", and the labels double as the place the
             shortcut is discovered. */}
-        <div className="flex gap-1.5">
-          <ToolbarButton compact={embedded} label={m.copy} hint="⌘C" onClick={doCopy} disabled={selected.length === 0} />
-          <ToolbarButton compact={embedded} label={m.paste} hint="⌘V" onClick={doPaste} disabled={isClipEmpty(clip)} />
+        <div className="flex gap-1">
+          <ToolbarButton compact label={m.copy} hint="⌘C" onClick={doCopy} disabled={selected.length === 0} />
+          <ToolbarButton compact label={m.paste} hint="⌘V" onClick={doPaste} disabled={isClipEmpty(clip)} />
           <ToolbarButton
-            compact={embedded}
+            compact
             label={m.duplicate}
             hint="⌘D"
             disabled={selected.length === 0}
@@ -1359,7 +1360,7 @@ export function DiagramCanvas({
             }}
           />
           <ToolbarButton
-            compact={embedded}
+            compact
             label={m.delete}
             hint="⌫"
             danger
@@ -1381,6 +1382,7 @@ export function DiagramCanvas({
         </label>
         </div>
 
+        <span className="h-8 w-px bg-line-strong" />
         <label className="flex items-center gap-2 text-xs font-medium text-ink">
           {m.zoom}
           <select
@@ -1408,7 +1410,7 @@ export function DiagramCanvas({
           title={m.cropTitle}
           onClick={toggleCrop}
           className={
-            'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
+            'flex h-11 items-center gap-1.5 rounded-lg border px-2.5 text-base ' +
             'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
             (cropping
               ? 'border-accent bg-accent text-on-accent'
@@ -1427,11 +1429,11 @@ export function DiagramCanvas({
         {/* The hint is the toolbar's own teaching line; slate-300 because 400 sat below
             comfortable contrast on the dark bar. */}
         <span
-          title={embedded ? toolbarHint : undefined}
+          title={toolbarHint}
           aria-hidden={previewing || undefined}
-          className={`max-w-96 text-xs leading-snug text-ink-muted ${
-            // Embedded, the hint takes what the row has left rather than a row of its own.
-            embedded ? 'line-clamp-2 min-w-0 basis-0 grow-[100]' : ''
+          // The hint takes what the row has left rather than a row of its own.
+          className={`line-clamp-2 min-w-0 max-w-96 basis-0 grow-[100] text-xs leading-snug text-ink-muted ${
+            embedded ? '' : 'hidden'
           } ${previewing ? 'invisible' : ''}`}
         >
           {toolbarHint}
@@ -1443,6 +1445,11 @@ export function DiagramCanvas({
         {/* Stage. The SVG is rendered at its stored pixel size and scaled to fit, so
             what is drawn on is exactly the geometry that will be exported. */}
         <div className="relative flex min-w-0 flex-1 items-center justify-center overflow-auto p-8">
+          {!embedded && !previewing && toolbarHint && (
+            <p className="pointer-events-none absolute right-3 top-2 max-w-xl text-right text-[11px] leading-snug text-ink-muted">
+              {toolbarHint}
+            </p>
+          )}
           {previewing ? (
             <PreviewVersion
               version={shownVersion}
@@ -2327,7 +2334,7 @@ function ToolbarButton({
   onClick: () => void;
   disabled?: boolean;
   danger?: boolean;
-  /** The shortcut only in the tooltip below 2xl. */
+  /** The shortcut only in the tooltip. */
   compact?: boolean;
 }) {
   return (
@@ -2337,7 +2344,7 @@ function ToolbarButton({
       disabled={disabled}
       title={`${label} (${hint})`}
       className={
-        'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium ' +
+        'flex h-11 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium ' +
         'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
         'disabled:pointer-events-none disabled:opacity-35 ' +
         // Danger styling only while the button can actually act: a permanently red
@@ -2348,7 +2355,7 @@ function ToolbarButton({
       }
     >
       {label}
-      <span aria-hidden className={`text-[10px] text-ink-subtle ${compact ? 'hidden 2xl:inline' : ''}`}>
+      <span aria-hidden className={`text-[10px] text-ink-subtle ${compact ? 'hidden' : ''}`}>
         {hint}
       </span>
     </button>

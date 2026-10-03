@@ -440,7 +440,7 @@ export function ShadeMenu({
         title={m.shadeTitle}
         onClick={() => (open ? close() : onOpenChange(true))}
         className={
-          'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
+          'flex h-11 items-center gap-1.5 rounded-lg border px-2.5 text-base ' +
           'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
           (open
             ? 'border-accent bg-accent text-on-accent'

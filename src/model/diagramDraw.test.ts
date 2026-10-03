@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Diagram } from './diagram';
+import { buildFromTemplate } from './diagramTemplates';
 import {
   applyDrag,
   copyHandles,
@@ -10,6 +11,7 @@ import {
   handleText,
   hitTest,
   insertVertex,
+  nudgeHandles,
   isBody,
   isClipEmpty,
   isTextHandle,
@@ -271,6 +273,28 @@ describe('dragging anchored text', () => {
     const after = applyDrag(base, { kind: 'axisTick', axis: 'x', tickId: 't' }, { x: 0, y: 0 }, { x: 0.07, y: 0.3 });
     expect(after.x.ticks![0].offset).toBeCloseTo(0.07);
     expect(after.x.ticks![0].at).toBe(0.5);
+  });
+
+  // Arrow keys used to send a point, vertex, label or arrow end to the origin: a drag
+  // places those *at* the pointer, and the nudge passed only a delta.
+  it('nudges every handle a drag places by the step, not to the origin', () => {
+    const d = buildFromTemplate('demand-shift');
+    const delta = { x: 0.02, y: 0.02 };
+    const near = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+      expect(a.x).toBeCloseTo(b.x + delta.x, 9);
+      expect(a.y).toBeCloseTo(b.y + delta.y, 9);
+    };
+    const free = d.points.find((p) => !p.anchor) ?? d.points[0];
+    near(nudgeHandles(d, [{ kind: 'point', pointId: free.id }], delta).points.find((p) => p.id === free.id)!.at, free.at);
+    const plain = d.curves.find((c) => !c.derive)!;
+    near(nudgeHandles(d, [{ kind: 'vertex', curveId: plain.id, index: 0 }], delta).curves.find((c) => c.id === plain.id)!.points[0], plain.points[0]);
+    const arrow = d.arrows[0];
+    near(nudgeHandles(d, [{ kind: 'arrowTo', arrowId: arrow.id }], delta).arrows[0].to, arrow.to);
+    const withLabel: Diagram = { ...d, labels: [{ id: 'l', at: { x: 0.5, y: 0.5 }, text: { en: [{ text: 'x' }], zh: [] } }] };
+    near(nudgeHandles(withLabel, [{ kind: 'label', labelId: 'l' }], delta).labels[0].at, { x: 0.5, y: 0.5 });
+    // Offset handles still take the step itself.
+    const titled = nudgeHandles(d, [{ kind: 'axisTitle', axis: 'x' }], delta);
+    expect(titled.x.titleOffset).toEqual({ x: 0.02, y: 0.02 });
   });
 
   it('nudges an arrow label without re-aiming the arrow', () => {

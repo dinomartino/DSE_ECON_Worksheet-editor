@@ -25,7 +25,7 @@ import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
 import { resolveDiagram, splineSegments } from '@/model/diagramAnchors';
 import { answerLayer, type AnswerLayerKind } from '@/model/diagramAnswers';
-import { spanGeometry, type SpanClearance } from '@/model/diagramSpans';
+import { spanGeometry, type SpanClearance, type SpanGeometry } from '@/model/diagramSpans';
 import { spanLayout, SPAN_LABEL_GAP, SPAN_TICK } from './diagramSpan';
 import {
   boxAround,
@@ -524,6 +524,26 @@ function tickLabelsOn(diagram: Diagram, axis: 'x' | 'y', language: LanguageMode)
 const tickRowHeight = (count: number) => (count > 0 ? (count - 1) * FONT_SIZE * 1.15 + FONT_SIZE : 0);
 
 /**
+ * Stacked x spans (gap₀ under gap₁) are offset for one-line labels; each further line
+ * an inner span's label takes (English and 中文) pushes this one down by a line.
+ */
+function stackedLabelLines(diagram: Diagram, span: DiagramSpan, geometry: SpanGeometry, language: LanguageMode): number {
+  const range = (g: SpanGeometry) => [Math.min(...g.base.map((p) => p.x)), Math.max(...g.base.map((p) => p.x))];
+  const [lo, hi] = range(geometry);
+  let extra = 0;
+  for (const inner of diagram.spans ?? []) {
+    if (inner === span || inner.along !== 'x' || (inner.offset ?? 0) >= (span.offset ?? 0)) continue;
+    const g = spanGeometry(diagram, inner);
+    if (!g) continue;
+    const [a, b] = range(g);
+    if (b < lo || a > hi) continue;
+    const lines = pickSides(inner.label, language).length;
+    extra += Math.max(0, lines - 1) * FONT_SIZE * 1.15;
+  }
+  return extra;
+}
+
+/**
  * px (nominal) from an axis span's axis to its shaft at rest: the tick-label row (x) or
  * the widest y label the span passes, plus air and the heads' reach, so none overlaps.
  */
@@ -534,7 +554,7 @@ function axisSpanClearancePx(diagram: Diagram, span: DiagramSpan, language: Lang
   if (span.along === 'x') {
     // The deepest label's ink, subscript feet included: the heads' reach starts there.
     const depth = Math.max(0, ...labels.map((label) => inkHeight(label.lines, FONT_SIZE)));
-    return X_TICK_TOP + depth + X_SPAN_AIR + SPAN_REACH;
+    return X_TICK_TOP + depth + X_SPAN_AIR + SPAN_REACH + stackedLabelLines(diagram, span, geometry, language);
   }
   const ys = geometry.base.map((p) => p.y);
   const lo = Math.min(...ys) - 0.03;
@@ -1580,41 +1600,41 @@ const PIE_PAD = 14;
 /**
  * Slice fills, cycling by index: white → hatch → grey → dots → cross-hatch → light
  * grey. Patterns rather than colours because the papers print in black and white —
- * the reference chart itself uses exactly white/hatch/grey/dots.
+ * the reference chart itself uses exactly white/hatch/grey/dots. Patterns are clipped
+ * lines and dots on white, as shaded areas are: Chrome's PDF rasterises an SVG
+ * `<pattern>`, which printed grey.
  */
-const PIE_FILLS = [
-  '#fff',
-  'url(#pieHatch)',
-  '#c4c4c4',
-  'url(#pieDots)',
-  'url(#pieCross)',
-  '#ececec',
+type PieFill = { tint: string } | { lines: Array<[number, number, number]> } | 'dots';
+const PIE_FILLS: PieFill[] = [
+  { tint: '#fff' },
+  { lines: PATTERN_LINES.diagonal },
+  { tint: '#c4c4c4' },
+  'dots',
+  { lines: PATTERN_LINES.cross },
+  { tint: '#ececec' },
 ];
 
-/** The pattern tiles behind `PIE_FILLS`. Sized in user units, so scaled explicitly. */
-function piePatternDefs(scale: number): string {
-  const cell = n(6 * scale);
-  const line = `stroke="#000" stroke-width="${n(scale)}"`;
-  const ground = `<rect width="${cell}" height="${cell}" fill="#fff"/>`;
-  const pattern = (id: string, rotate: boolean, content: string) =>
-    `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${cell}" height="${cell}"` +
-    (rotate ? ' patternTransform="rotate(45)"' : '') +
-    `>${ground}${content}</pattern>`;
-  return (
-    '<defs>' +
-    pattern('pieHatch', true, `<line x1="0" y1="0" x2="0" y2="${cell}" ${line}/>`) +
-    pattern(
-      'pieDots',
-      false,
-      `<circle cx="${n(1.6 * scale)}" cy="${n(1.6 * scale)}" r="${n(0.9 * scale)}" fill="#000"/>`,
-    ) +
-    pattern(
-      'pieCross',
-      true,
-      `<line x1="0" y1="0" x2="0" y2="${cell}" ${line}/><line x1="0" y1="0" x2="${cell}" y2="0" ${line}/>`,
-    ) +
-    '</defs>'
-  );
+/** Pattern pitch and dot radius, px at nominal size (the old 6px tile). */
+const PIE_PATTERN_GAP = 6;
+const PIE_DOT_RADIUS = 0.9;
+
+/** A wedge as a polygon, the arc sampled every degree or finer, for the pattern to clip to. */
+function wedgePolygon(cx: number, cy: number, r: number, a0: number, a1: number): Pt[] {
+  const at = (a: number) => ({ x: cx + Math.sin(a) * r, y: cy - Math.cos(a) * r });
+  const steps = Math.max(2, Math.ceil(((a1 - a0) * 180) / Math.PI));
+  const arc = Array.from({ length: steps + 1 }, (_, i) => at(a0 + ((a1 - a0) * i) / steps));
+  return a1 - a0 >= Math.PI * 2 - 1e-6 ? arc.slice(0, -1) : [{ x: cx, y: cy }, ...arc];
+}
+
+/** A pattern slice's ink, clipped to its wedge; empty for a tint. */
+function piePatternMarkup(fill: PieFill, pts: Pt[], scale: number): string {
+  if (typeof fill === 'object' && 'tint' in fill) return '';
+  if (fill === 'dots') {
+    const d = hatchDots(pts, (PIE_PATTERN_GAP * scale) / AREA_DOT_PITCH, PIE_DOT_RADIUS * scale).join(' ');
+    return d ? `<path d="${d}" fill="#000" stroke="none"/>` : '';
+  }
+  const d = fill.lines.flatMap(([a, b, norm]) => hatchLines(pts, a, b, norm, PIE_PATTERN_GAP * scale)).join(' ');
+  return d ? `<path d="${d}" fill="none" stroke="#000" stroke-width="${n(scale)}" stroke-linecap="butt"/>` : '';
 }
 
 /**
@@ -1716,14 +1736,18 @@ function pieSvg(diagram: Diagram, pie: PieChart, options: DiagramSvgOptions): st
     const a0 = angle;
     const a1 = angle + (slice.value / total) * Math.PI * 2;
     angle = a1;
-    const fill = `fill="${PIE_FILLS[index % PIE_FILLS.length]}"`;
+    const paint = PIE_FILLS[index % PIE_FILLS.length];
+    const fill = `fill="${typeof paint === 'object' && 'tint' in paint ? paint.tint : '#fff'}"`;
     // A lone slice is the whole circle; its wedge path would collapse (the arc's two
     // endpoints coincide), so it is drawn as the circle it is.
-    wedges.push(
-      a1 - a0 >= Math.PI * 2 - 1e-6
-        ? `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(radius)}" ${fill} ${stroke}/>`
-        : `<path d="${wedgePath(cx, cy, radius, a0, a1)}" ${fill} ${stroke}/>`,
-    );
+    const whole = a1 - a0 >= Math.PI * 2 - 1e-6;
+    const shape = (attrs: string) =>
+      whole
+        ? `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(radius)}" ${attrs}/>`
+        : `<path d="${wedgePath(cx, cy, radius, a0, a1)}" ${attrs}/>`;
+    const pattern = piePatternMarkup(paint, wedgePolygon(cx, cy, radius, a0, a1), scale);
+    // The outline goes over the pattern, so the ink's ends sit under the stroke.
+    wedges.push(pattern ? shape(`${fill} stroke="none"`) + pattern + shape(`fill="none" ${stroke}`) : shape(`${fill} ${stroke}`));
 
     // Name over derived percent, centred as a block on the slice's own centroid, with
     // a white halo so the letters survive the hatched and dotted fills.
@@ -1762,7 +1786,6 @@ function pieSvg(diagram: Diagram, pie: PieChart, options: DiagramSvgOptions): st
   );
 
   const body = [
-    piePatternDefs(scale),
     // White ground: a transparent PNG would print as whatever is behind it in Word.
     `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>`,
     empty,

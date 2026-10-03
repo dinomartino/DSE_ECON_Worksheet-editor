@@ -3095,7 +3095,8 @@ intact but unreachable.
   raises the mark only in documents that use it, so they open read-only there and nothing
   else does. v2 = v1 + any of: the diagram answer layer (`answer: true`, any diagram
   anywhere); `answerKeyLayout`; a section's `answerCount`; a part-less question's own
-  non-blank `answer` or `scheme` (the essay). The 1→2 step is identity. Graphs follow the
+  non-blank `answer` or `scheme` (the essay); an `importQuota` derived curve (v0.5 throws
+  editing around an unknown derive kind). The 1→2 step is identity. Graphs follow the
   same rule. A section's `targetMarks` alone, and bank and organising metadata (topics,
   題型, `tagsAt`, lineage, part roots, `kind`, `classes`, `satOn`, `bankHidden`), stay at
   1: v0.5.0 keeps them and prints the same. v0.4–0.5 open a v2 file read-only (export stays possible there);

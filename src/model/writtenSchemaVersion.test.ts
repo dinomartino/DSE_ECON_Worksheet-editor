@@ -128,6 +128,7 @@ describe('the version a document is written at', () => {
   it('agrees with `hasAnswerLayer` on every template, flagged per element, and on a pie', () => {
     for (const template of DIAGRAM_TEMPLATES) {
       const diagram = buildFromTemplate(template.id);
+      if (diagram.curves.some((c) => c.derive?.kind === 'importQuota')) continue;
       expect(writtenSchemaVersion(1, { kind: 'diagram', diagram })).toBe(1);
       for (const id of elementIds(diagram)) {
         const flagged = setAnswer(diagram, [id], true);
@@ -140,6 +141,15 @@ describe('the version a document is written at', () => {
     const pie: Diagram = { ...ppfAnswerDiagram(), pie: { slices: [] } };
     expect(hasAnswerLayer(pie)).toBe(false);
     expect(writtenSchemaVersion(1, { kind: 'diagram', diagram: pie })).toBe(1);
+  });
+
+  // v0.5.0 draws the stored points but throws on deleting or group-moving around a
+  // derive kind it does not know.
+  it('is above 1 with an import-quota supply, and back to 1 once it is detached', () => {
+    const diagram = buildFromTemplate('import-quota');
+    expect(writtenSchemaVersion(1, { kind: 'diagram', diagram })).toBe(2);
+    const detached = { ...diagram, curves: diagram.curves.map(({ derive: _d, ...c }) => (_d?.kind === 'importQuota' ? c : { ...c, ...(_d ? { derive: _d } : {}) })) };
+    expect(writtenSchemaVersion(1, { kind: 'diagram', diagram: detached })).toBe(1);
   });
 
   it('is above 1 with an answer key layout, and back to 1 when the key returns to Classic', () => {

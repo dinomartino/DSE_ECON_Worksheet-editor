@@ -78,6 +78,8 @@ export type DiagramCurveDerive =
   | { kind: 'parallel'; to: string; through: DiagramPlace; ys?: [number, number] }
   /** `of`'s own points moved by `by`, trimmed to the plot: D₁, or S₁ = S + t. Moves with `of`. */
   | { kind: 'shift'; of: string; by: DiagramPoint }
+  /** S with an import quota: `of` up to `price` (Pw), along it by `by`, then `of` moved right by `by`. */
+  | { kind: 'importQuota'; of: string; price: DiagramAnchorRef | number; by: number }
   /** Tangent to `to` at the point on it nearest `at`. */
   | { kind: 'tangent'; to: string; at: DiagramPlace }
   | { kind: 'level'; y: DiagramAnchorRef | number; from?: number; to?: number }
