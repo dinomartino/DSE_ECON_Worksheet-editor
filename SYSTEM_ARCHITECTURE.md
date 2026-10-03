@@ -1770,8 +1770,10 @@ type needs only a definition.
   modules for `'mcq'`/`'structured'` literals.
 - **The paper check asks, never inspects.** `model/paperHealth.ts:checkPaper` (the Export
   dialog's pre-print summary: letter balance and runs, missing keys, marks, time estimate,
-  untranslated strings) is derived, never stored; per-type facts come from `healthFacts?`.
-  A type without it contributes marks and translations only. Counts and the time estimate
+  untranslated strings, scheme totals) is derived, never stored; per-type facts come from
+  `healthFacts?`, scheme totals from `qualityView?` anchors (`anchorSchemeMismatch`, the
+  same check the quality review runs). A type without either contributes marks and
+  translations only. Counts and the time estimate
   come from `model/paperSummary.ts` (registry `summary?`: label, `minutesPerItem`), which
   also measures them against the optional stored `Worksheet.target` — the only stored input.
 - **The answer key is its own document, built as IR** (`render/answerKey.ts`). Each type
@@ -1785,7 +1787,8 @@ type needs only a definition.
   `OutputMode`**: the view picks *which* IR the page draws, not how, so every `version`
   rule (leak guards, the render cache) is untouched. It draws `answerKeyView()` — the very
   nodes `renderAnswerKey` gives the `.docx` (a test pins it), plus each node's question for
-  click-to-select — cut into keep-together runs (`keepNext`) and packed by the paper's
+  click-to-select (an MC table's cells name their own, `TableNodeCell.questionId`, inert in
+  export) — cut into keep-together runs (`keepNext`) and packed by the paper's
   paginator under the key's page rules, inside `#print-root`, so PDF and Copy for Word
   follow the view. No paper chrome (rails, drag, bands, add buttons). Export opens on
   Answer key from it.
@@ -1861,14 +1864,15 @@ type needs only a definition.
   stored. Others load read-only through the store (`parseWorksheet` →
   `migrate`); one that will not open or render is skipped and named, never fatal, never
   resaved. One document is the single key unchanged, byte for byte.
-- **A marking scheme is notation, not prose** (`model/markSchemeTypes.ts`). A part or
-  sub-part may carry `scheme?: MarkScheme` beside `answer`: OR routes → groups (`each`
+- **A marking scheme is notation, not prose** (`model/markSchemeTypes.ts`). A part,
+  sub-part or essay (a structured question with no parts, which is its own leaf) may carry
+  `scheme?: MarkScheme` beside `answer`: OR routes → groups (`each`
   = `n@`, `take` = any N, `firstOnly`, `max`) → points (`marks`, `/` alternatives),
   plus `levels` and `ec`. Optional and additive — no migration; `answer` still prints.
   Totals are derived (`model/markScheme.ts`) and checked against the printed marks in
-  the panel, never stored. `render/markScheme.ts` emits it once, teacher-only on the
+  the panel and the paper check, never stored. `render/markScheme.ts` emits it once, teacher-only on the
   paper and plain in the answer key. Its authored text is typed on the page in both, given
-  the leaf's address (`at`): `schemePoint`, `schemeAlternative` (by index), `schemeLevel`,
+  the leaf's address (`at`; no `partId` = the essay itself): `schemePoint`, `schemeAlternative` (by index), `schemeLevel`,
   `schemeEc`. A line joining fields with derived wording (`text / alt`, "Level 1: " +
   descriptor) carries `TextNode.segments` instead of `edit`: per side, its pieces, each
   field editable alone; joined they are `text`. Structure (points, routes, levels, marks)

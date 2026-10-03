@@ -148,6 +148,26 @@ describe('checkPaper', () => {
       expect(finding?.questions).toHaveLength(1);
     });
 
+    it('warns on a marking scheme that totals differently from the printed marks', () => {
+      const scheme = (marks: number) => ({
+        routes: [{ id: newId(), groups: [{ id: newId(), points: [{ id: newId(), text: bi('Point', '要點'), marks }] }] }],
+      });
+      const agrees = structured(2);
+      agrees.parts[0].scheme = scheme(2);
+      const differs = structured(4);
+      differs.parts[0].scheme = scheme(3);
+      // Unmarked: the paper prints no marks, so there is nothing to disagree with.
+      const unmarked = structured(undefined);
+      unmarked.parts[0].scheme = scheme(3);
+      const report = checkPaper(sheet(agrees, differs, unmarked));
+      const finding = report.findings.find((f) => f.id === 'schemeMarks');
+      expect(finding?.severity).toBe('warn');
+      expect(finding?.questions?.map((q) => q.number)).toEqual([2]);
+      expect(finding?.message).toBe('1 question has a marking scheme that totals differently from the marks printed.');
+      differs.parts[0].scheme = scheme(4);
+      expect(ids(checkPaper(sheet(agrees, differs, unmarked)))).not.toContain('schemeMarks');
+    });
+
     it('warns on empty questions, blank options and duplicate options', () => {
       const blank = mcq(0, 'b');
       blank.options[3].text = bi('', '');

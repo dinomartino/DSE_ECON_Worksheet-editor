@@ -285,11 +285,27 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
           )}
         </section>
       )}
+      {/* An essay's answer, model diagram and scheme, in print order, as a leaf part's. */}
+      {question.parts.length === 0 && (
+        <BiTextField
+          translate={{ kind: 'answer' }}
+          label={m.answerTeacher}
+          value={question.answer ?? emptyBiText()}
+          onChange={(answer) => onChange({ answer })}
+        />
+      )}
       {question.parts.length === 0 && question.answerDiagram && (
         <AnswerDiagramRow
           block={question.answerDiagram}
           onChange={(answerDiagram) => onChange({ answerDiagram })}
           onRemove={() => onChange({ answerDiagram: undefined })}
+        />
+      )}
+      {question.parts.length === 0 && (
+        <MarkSchemeEditor
+          scheme={question.scheme}
+          printedMarks={question.marks}
+          onChange={(scheme) => onChange({ scheme })}
         />
       )}
       {question.parts.length === 0 && question.answerGraph && (

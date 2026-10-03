@@ -68,7 +68,7 @@ function strip<T>(value: T): T {
   if (!value || typeof value !== 'object') return value;
   return Object.fromEntries(
     Object.entries(value)
-      .filter(([key]) => key !== 'edit' && key !== 'segments')
+      .filter(([key]) => key !== 'edit' && key !== 'segments' && key !== 'questionId')
       .map(([key, entry]) => [key, strip(entry)]),
   ) as T;
 }
@@ -233,6 +233,36 @@ describe('scheme text edit targets', () => {
     }
     expect(buildDocxParts(next, { language: 'en', version: 'teacher' }).documentXml).toContain('SECRET-SCHEME-POINT');
     expect(buildAnswerKeyDocxParts(next, 'en').documentXml).toContain('SECRET-SCHEME-POINT');
+  });
+});
+
+describe('MC table cells select their question', () => {
+  /** Every key table cell naming a question, as [questionId, printed text]. */
+  const ownedCells = (nodes: RenderNode[]) =>
+    nodes.flatMap((node) =>
+      node.kind === 'table'
+        ? node.rows.flat().flatMap((cell) => (cell.questionId ? [[cell.questionId, plain(cell.text.en)]] : []))
+        : [],
+    );
+
+  it('the number and key cells of every MC layout name their question; headings and padding none', () => {
+    const worksheet = fixture();
+    const mcq = worksheet.questions.find((q) => q.type === 'mcq')!;
+    for (const mcLayout of ['grid', 'hkeaaTable', 'rationaleTable'] as const) {
+      const doc: Worksheet = { ...worksheet, answerKeyLayout: { mcLayout } };
+      const cells = ownedCells(answerKeyView(doc, 'en').nodes);
+      // The grid prints "1" and "C"; the tables "1." and "C".
+      expect(cells.map(([id]) => id)).toEqual([mcq.id, mcq.id]);
+      expect(cells[1][1]).toBe('C');
+    }
+  });
+
+  it('with versions on, each version’s table names the same question', () => {
+    const worksheet = { ...fixture(), versions: { count: 3, seed: 7 } };
+    const mcq = worksheet.questions.find((q) => q.type === 'mcq')!;
+    const cells = ownedCells(answerKeyView(worksheet, 'en').nodes);
+    expect(cells).toHaveLength(6);
+    expect(new Set(cells.map(([id]) => id))).toEqual(new Set([mcq.id]));
   });
 });
 

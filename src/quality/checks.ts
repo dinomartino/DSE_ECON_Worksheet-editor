@@ -1,4 +1,4 @@
-import { schemeMismatch } from '@/model/markScheme';
+import { anchorSchemeMismatch } from '@/model/markScheme';
 import { plain } from '@/model/text';
 import type { QualityAnchor } from '@/registry/types';
 import type { QualityFinding, QualityQuestion } from './types';
@@ -30,7 +30,7 @@ export function deterministicFindings(question: QualityQuestion): QualityFinding
     });
 
   for (const anchor of question.anchors) {
-    const mismatch = schemeMismatch(anchor.scheme, anchor.schemeMarks ?? anchor.marks);
+    const mismatch = anchorSchemeMismatch(anchor);
     if (mismatch) {
       add(anchor, {
         issue: 'schemeMarks',
