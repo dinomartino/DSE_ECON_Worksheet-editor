@@ -433,6 +433,13 @@ a version heading is edited afterwards.
   定也放在這裏。 -->
 
 ### Fixed
+- **The margin note on a bilingual booklet now matches on screen and in Word.** "Answers
+  written in the margins will not be marked" showed only in English on screen but stacked
+  English over 中文 in Word, squeezed into a strip too narrow for both. Both now print
+  English and 中文: two lines down each side margin, and one line along the bottom.
+  <!-- zh: **雙語答題簿的邊界提示，在屏幕和 Word 中現在一致。** 「寫於邊界以外的答案，將不予
+  評閱。」在屏幕上只顯示英文，在 Word 中卻把英文和中文擠在過窄的位置。現在兩者都印出英文和
+  中文：左右邊界各兩行，底部一行。 -->
 - **A bilingual Paper 2 cover fits on one page.** With English and 中文 stacked, the
   instructions ran off the bottom of the cover on screen and onto a second page in Word.
   A bilingual cover now uses less space between its lines, so it fits on one page

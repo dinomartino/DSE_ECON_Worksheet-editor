@@ -68,7 +68,13 @@ import type {
   TextFormat,
   Worksheet,
 } from "@/model/types";
-import { frameBottomIntrusion, furnitureBoxes } from "@/model/pageFurniture";
+import {
+  frameBottomIntrusion,
+  furnitureBoxes,
+  MARGIN_NOTE_JOINER,
+  marginNoteSetting,
+  marginNoteSides,
+} from "@/model/pageFurniture";
 import {
   cellsInRange,
   columnCountOf,
@@ -1354,16 +1360,14 @@ function PageFurnitureLayer({
     width: mm(box.width),
     height: mm(box.height),
   });
+  // Which sides print and how, from the helpers the exporter calls (§ `marginNoteSides`).
   const note = furniture.marginNote;
-  const zhSide = language === 'zh' && !!note && !!plain(note.zh);
-  const noteText = note
-    ? zhSide
-      ? plain(note.zh)
-      : plain(note.en) || plain(note.zh)
-    : '';
-  // Upright vertical text needs a strip a whole glyph wide, so the box depends on the
-  // script — resolved from the same helper the exporter calls, with the same flag.
-  const boxes = furnitureBoxes(width, height, setup.margins, { verticalNote: zhSide });
+  const sides = marginNoteSides(note, language);
+  const setting = marginNoteSetting(sides, language);
+  const zhSide = setting.verticalNote;
+  const noteLines = note ? sides.map((side) => plain(note[side])) : [];
+  const noteText = noteLines.join(MARGIN_NOTE_JOINER);
+  const boxes = furnitureBoxes(width, height, setup.margins, setting);
 
   /*
    * Latin is rotated (-90° over a horizontal line); Chinese is set vertically
@@ -1396,6 +1400,17 @@ function PageFurnitureLayer({
     };
   };
 
+  // Stacked bilingual lines sit on the 12pt line the exported textbox keeps.
+  const stripText = setting.stackedNote ? (
+    <div style={{ lineHeight: '12pt', textAlign: 'center' }}>
+      {noteLines.map((text, index) => (
+        <div key={index}>{text}</div>
+      ))}
+    </div>
+  ) : (
+    noteText
+  );
+
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
       {furniture.frame && (
@@ -1406,8 +1421,8 @@ function PageFurnitureLayer({
       )}
       {noteText && (
         <>
-          <div style={noteStyle(boxes.noteLeft)}>{noteText}</div>
-          <div style={noteStyle(boxes.noteRight)}>{noteText}</div>
+          <div style={noteStyle(boxes.noteLeft)}>{stripText}</div>
+          <div style={noteStyle(boxes.noteRight)}>{stripText}</div>
           {/* The same sentence horizontal below the frame, as the reference's footer
               textbox has it — ranged left, not centred. */}
           <div
