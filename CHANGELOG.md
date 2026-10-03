@@ -469,11 +469,11 @@ a version heading is edited afterwards.
 
 ### Fixed
 - **Consumer and producer surplus shade right up to the price axis.** In the "Consumer and
-  producer surplus" and "MC rises: TSS loss" graphs, the curves stopped just short of the
-  price axis, so a thin unshaded strip was left beside it. The curves now start on the axis
+  producer surplus" graph and the TSS loss graph, the curves stopped just short of the price
+  axis, so a thin unshaded strip was left beside it. The curves now start on the axis
   and the shading reaches it. Graphs you have already added keep their shape.
-  <!-- zh: **消費者及生產者盈餘的陰影伸展至價格軸。** 在「消費者及生產者盈餘」和「邊際成本上升：
-  總社會盈餘損失」圖表中，曲線在價格軸前停下，軸旁留有一條沒有陰影的窄帶。現在曲線由價格軸開始，
+  <!-- zh: **消費者及生產者盈餘的陰影伸展至價格軸。** 在「消費者及生產者盈餘」圖表和總社會盈餘損失
+  圖表中，曲線在價格軸前停下，軸旁留有一條沒有陰影的窄帶。現在曲線由價格軸開始，
   陰影亦伸展至軸上。已加入的圖表保持原狀。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
