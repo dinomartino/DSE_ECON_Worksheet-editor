@@ -512,6 +512,13 @@ a version heading is edited afterwards.
   卷上會印出英文，「補上缺少的中文」也會略過。現在會按 EDB 詞彙表（或你在「翻譯用語」中選用的
   寫法）填上效率損失或總收入，✦ AI 的數目亦會計算在內。新加入的「稅項的效率損失」區域會以效率損
   失開始，與其他效率損失區域一致。D、S、E 等曲線和點的字母則保持不變。 -->
+- **Translation terms you edited in Excel import with their Chinese.** Excel on a Hong Kong
+  Windows computer saves a plain CSV in Big5, which used to import as garbled characters.
+  Import CSV now reads it, and a backup you unzipped and zipped again still restores your
+  terms.
+  <!-- zh: **在 Excel 編輯過的翻譯用語，匯入時中文不會變亂碼。** 香港 Windows 電腦上的 Excel 以
+  Big5 儲存一般 CSV，以往匯入後會變成亂碼。現在「匯入 CSV」可以讀取；解壓後再壓縮的備份，亦能還
+  原你的用語。 -->
 
 ## 0.5.0 — 2026-09-28
 
