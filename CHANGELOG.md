@@ -13,6 +13,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Give an essay question its own answer and marking scheme.** A structured question with
+  no parts, such as a long essay, now takes a teacher answer and marking points, level
+  descriptors and effective communication, as a part does. They print in the teacher
+  version and the marking scheme, never in the student paper, and you can type them on
+  the page in either.
+  <!-- zh: **論述題可加入答案及評分方案。** 沒有分題的結構題（例如長篇論述題）現在可以像分題
+  一樣加入教師答案、評分要點、等級描述及有效溝通。這些內容會印在教師版和評卷參考，不會出現在
+  學生版，並可在任何一個版本的頁面上直接輸入。 -->
 - **Lay out the marking scheme your way, or like an HKEAA one.** In the Marking scheme view,
   the Layout tab offers two styles: Classic (as before) and HKEAA style, with the MC key as a
   Question No. and Key table, a Marks column headed on every page, the notation legend and a
@@ -271,6 +279,11 @@ a version heading is edited afterwards.
   Firefox 和 Safari 仍會儲存到「下載」資料夾。 -->
 
 ### Changed
+- **The paper check now warns when a marking scheme does not add up.** Before you export,
+  it lists the questions whose marking scheme awards a different total from the marks
+  printed on the paper. Before, you only saw this in the question's marking scheme panel.
+  <!-- zh: **試卷檢查現會提示評分方案總分不符。** 匯出前，試卷檢查會列出評分方案總分與試卷印出
+  分數不同的題目。以往只在該題的評分方案面板才看得到。 -->
 - **A larger Settings window.** Settings now fills most of your screen, so Translation
   terms shows far more terms at once and the import preview has room to breathe. On a
   big monitor it stops growing at a comfortable size.
@@ -437,6 +450,20 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **Papers with diagram answers warn you in an older version of the app.** A paper with
+  answers drawn on a diagram, or with a marking scheme layout other than Classic, now opens
+  read-only in versions 0.4 and 0.5, with a note to update first. Those versions cannot hide
+  those answers from the student copy or follow the layout, and can no longer save over the
+  paper. Every other paper still opens and edits there as before.
+  <!-- zh: **含圖表答案的工作紙，在舊版程式中會提示你。** 在圖表上繪有答案，或評卷參考版面並非
+  「經典」的工作紙，在 0.4 和 0.5 版中會以唯讀方式開啟，並提示先更新。這些版本無法在學生版中
+  隱藏這些答案，也無法跟從評卷參考版面，而且不能再覆寫這份工作紙。其他工作紙在這些版本中照常
+  開啟和編輯。 -->
+- **Click an MC answer in the Marking scheme view to select its question**, as you can with
+  a long question's answer. The question's number and key are tinted and its settings open
+  in the sidebar.
+  <!-- zh: **在評卷參考檢視中按一下 MC 答案，即可選取該題**，與長題目的答案一樣。該題的題號和
+  答案會以顏色標示，側欄顯示其設定。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.

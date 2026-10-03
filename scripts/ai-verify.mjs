@@ -201,7 +201,7 @@ const FIXTURES = {
   source: named(sourceFixture(), 'ai-verify-source', 'AI verify source'),
   quality: named(qualityFixture(), 'ai-verify-quality', 'AI verify quality'),
   // A newer build's file opens read-only: no AI entry point may show.
-  newer: { ...named(englishOnly(corpus), 'ai-verify-newer', 'AI verify newer build'), schemaVersion: 2 },
+  newer: { ...named(englishOnly(corpus), 'ai-verify-newer', 'AI verify newer build'), schemaVersion: 99 },
 };
 const TITLES = Object.fromEntries(Object.entries(FIXTURES).map(([k, doc]) => [k, doc.title.en[0].text]));
 

@@ -6,6 +6,33 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Current initiatives
 
+- **PAUSED 2026-10-03: fix every known gap before v0.6.0** (user's ask). Merged on `develop`:
+  `fix/gaps-schema-guard` (schema 2 only when answer layers / key layout are used; v2 corpus) and
+  `fix/gaps-scheme-editing` (MC cells select, paper-check scheme mismatch, essay answer + scheme).
+  Six branches paused mid-task, all cut from 4e51998, worktrees under `.claude/worktrees/agent-*`
+  (untracked `zz-*`/`scratch*` files there are agent probes, delete before merge). To resume: one
+  Opus worktree agent per branch, told to continue that branch, finish what's left, run the full
+  checks, then merge `--no-ff` here (union CHANGELOG, `npm run changelog`).
+  - `fix/gaps-answer-key`: all 4 gaps committed (HKEAA marks on first line, "Indicate in Figure n",
+    picture height = `.docx`, combined key per-part setup). Left: tests, CHANGELOG, verification.
+  - `fix/gaps-bank`: 9 of 10 committed. Left: per-document desktop index files (plan or skip),
+    verification. Then, after merge: **user decided "Open in worksheet" must not change the Add-to
+    target**.
+  - `fix/gaps-editor-diagrams`: label-list cell key, empty-field caret done. Left: ⌘Z mid-resize,
+    canvas toolbar wrap at 1512, Shift → derived shift, PPF point on frontier, gap-narrows bilingual,
+    flat D / import-quota follows Pw, pie hatch as clipped lines.
+  - `fix/gaps-ai`: Replace count, Check terms count, billing URLs, DWL/TR 中文, Big5 CSV done; a WIP
+    commit (TermsSection wiring, ai-verify). Left: finish WIP, badge vs "Fill missing" report, ai-verify.
+  - `fix/gaps-export`: optional sections (best n, per-section target) done; WIP commit holds versions
+    (header letter, panel order, per-version rationale) + `shot.mjs`. Left: finish + test those, paper
+    summary page count by export language, verification.
+  - `fix/gaps-cover-header`: all done per user decisions (P2 cover code once, one page, margin note
+    EN+中文 both backends; empty teacher header prints "Teacher Version"). Left: teacher marker in
+    preview/PDF (`pageFurniture.ts`), cover-verify + lq-verify, samples.
+  - After all merge: full checks, trim this file under 80 lines, retire done IDEAS § A lines (PDF of
+    the key, on-page scheme editing, panel-only mismatch). Old releases can still export a schema-2
+    file's answers into a student copy (can't fix; the update notice shows first).
+
 - **Jev dev tooling (2026-09-30, on `develop`, dev only)**: `.claude/skills/jev/` + hooks in
   `.claude/settings.json`. Doc pointers on each prompt, an edit guard (`rules.json`), `verify-plan`
   for a diff, lint shown against a baseline. Key in `~/.claude/jev.env`; all hooks fail open.

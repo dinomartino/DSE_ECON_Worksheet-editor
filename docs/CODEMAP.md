@@ -32,7 +32,7 @@ StartScreen ──open──► worksheetStore (Zustand, undo/redo) ──► Wo
 `src/model/types.ts:Worksheet` · `ContentBlock` · `LayoutElement` · `Question` —
 the whole schema, one file.
 
-- `src/model/migrations.ts:KNOWN_KEYS` · `:CURRENT_SCHEMA_VERSION` · `:migrate` · `:serializeWorksheet` · `:isNewerThanBuild`
+- `src/model/migrations.ts:KNOWN_KEYS` · `:CURRENT_SCHEMA_VERSION` · `:migrate` · `:serializeWorksheet` · `:writtenSchemaVersion` · `:isNewerThanBuild`
 - `src/model/flow.ts:resolveFlow` · `:applyOrder` · `:moveRunInFlow` — display order
 - `src/model/numbering.ts:computeNumbering` · `:listIndentScheme` — derived numbers
 - `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` — derived totals
