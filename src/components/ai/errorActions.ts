@@ -1,5 +1,5 @@
 import { presetFor } from '@/ai/providers';
-import type { AiErrorInfo, ProviderId } from '@/ai/types';
+import type { AiErrorInfo, ProviderId, ProviderPreset } from '@/ai/types';
 import { useAiRun } from '@/assist/runStore';
 import { copyMessages } from '@/components/translate/text';
 import { openExternal } from '@/platform';
@@ -14,7 +14,7 @@ const SHORT_NAME: Partial<Record<ProviderId, string>> = { deepseek: 'DeepSeek', 
 
 export type ErrorAction =
   | { kind: 'useProvider'; provider: ProviderId; label: string }
-  | { kind: 'keyPage' | 'fallbackModel' | 'chooseModel' | 'settings' | 'retry'; label: string };
+  | { kind: 'keyPage' | 'billingPage' | 'fallbackModel' | 'chooseModel' | 'settings' | 'retry'; label: string };
 
 /** The buttons an error earns, in order: only the actions it names (the old ErrorPanel's rules). */
 export function errorActions(error: AiErrorInfo): ErrorAction[] {
@@ -31,7 +31,7 @@ export function errorActions(error: AiErrorInfo): ErrorAction[] {
     }
   }
   if (has('openKeyPage') && preset.keyUrl) out.push({ kind: 'keyPage', label: copy.getNewKey });
-  if (has('openBilling') && preset.keyUrl) out.push({ kind: 'keyPage', label: copy.openProvider(preset.label) });
+  if (has('openBilling') && billingPage(preset)) out.push({ kind: 'billingPage', label: copy.openProvider(preset.label) });
   const fallback = preset.quotaFallbackModel;
   if (has('useFallbackModel') && fallback) {
     out.push({ kind: 'fallbackModel', label: copy.switchModel(preset.models.find((m) => m.id === fallback)?.label ?? fallback) });
@@ -42,6 +42,9 @@ export function errorActions(error: AiErrorInfo): ErrorAction[] {
   if (!region && has('retry')) out.push({ kind: 'retry', label: copy.tryAgain });
   return out;
 }
+
+/** Where a billing error sends the teacher: the provider's billing page, else its key page. */
+export const billingPage = (preset: ProviderPreset): string | undefined => preset.billingUrl ?? preset.keyUrl;
 
 /** Only Gemini's region error carries a note: keep the VPN on, or use DeepSeek or Qwen. */
 export const errorNote = (error: AiErrorInfo): string | undefined =>
@@ -73,8 +76,10 @@ export function runErrorAction(action: ErrorAction, error: AiErrorInfo, run: Run
       if (!keySaved(action.provider)) return openSettings(run, 'key', { provider: action.provider, reason: 'region' });
       appSettings.write(AI_SETTINGS, { provider: action.provider });
       return run.retry();
-    case 'keyPage': {
-      const url = presetFor(error.provider).keyUrl;
+    case 'keyPage':
+    case 'billingPage': {
+      const preset = presetFor(error.provider);
+      const url = action.kind === 'billingPage' ? billingPage(preset) : preset.keyUrl;
       if (url) void openExternal(url);
       return;
     }

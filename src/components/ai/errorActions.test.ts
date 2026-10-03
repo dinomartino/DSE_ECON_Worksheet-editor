@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AiErrorInfo } from '@/ai/types';
 import type { ReviewItem } from '@/assist/types';
-import { errorActions, errorNote } from './errorActions';
+import { openExternal } from '@/platform';
+import { errorActions, errorNote, runErrorAction } from './errorActions';
+
+vi.mock('@/platform', async (actual) => ({ ...(await actual<object>()), openExternal: vi.fn(async () => {}) }));
 import { markTones } from './pageMarks';
 
 const error = (over: Partial<AiErrorInfo>): AiErrorInfo => ({
@@ -29,6 +32,27 @@ describe('errorActions', () => {
     expect(labels(error({ kind: 'model', actions: ['chooseModel'] }))).toEqual(['Choose a model…']);
     expect(labels(error({ actions: [] }))).toEqual([]);
     expect(errorNote(error({}))).toBeUndefined();
+  });
+});
+
+describe('billing', () => {
+  const billing = (provider: AiErrorInfo['provider']) => error({ kind: 'billing', provider, actions: ['openBilling', 'switchProvider'] });
+  const open = (provider: AiErrorInfo['provider']) => {
+    vi.mocked(openExternal).mockClear();
+    const e = billing(provider);
+    const action = errorActions(e).find((a) => a.kind === 'billingPage')!;
+    runErrorAction(action, e, { retry: () => {}, dismiss: () => {} });
+    return vi.mocked(openExternal).mock.calls.map(([url]) => url);
+  };
+
+  it("opens the provider's billing page, not the key page", () => {
+    expect(labels(billing('deepseek'))).toEqual(['Open DeepSeek', 'Switch provider…']);
+    expect(open('deepseek')).toEqual(['https://platform.deepseek.com/top_up']);
+    expect(open('openrouter')).toEqual(['https://openrouter.ai/settings/credits']);
+  });
+
+  it('falls back to the key page where there is no billing page (Qwen)', () => {
+    expect(open('qwen')).toEqual(['https://modelstudio.console.alibabacloud.com/']);
   });
 });
 

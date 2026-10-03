@@ -495,6 +495,11 @@ a version heading is edited afterwards.
   the term you just fixed until you pressed Done.
   <!-- zh: **「檢查用詞」的工具列會即時更新。** 在卡片上取代一個用詞後，工具列的數目和「取代」
   按鈕會立即更新，不會再在你按「完成」之前，仍然顯示剛修正的用詞。 -->
+- **When your AI balance runs out, the button opens the page where you add credit.** For
+  Gemini, DeepSeek, OpenRouter, OpenAI and Claude it used to open the API key page. Qwen
+  still opens the Model Studio console.
+  <!-- zh: **AI 帳戶餘額不足時，按鈕會開啟增值的頁面。** Gemini、DeepSeek、OpenRouter、OpenAI 和
+  Claude 以往會開啟 API key 頁面。Qwen 仍會開啟 Model Studio 控制台。 -->
 
 ## 0.5.0 — 2026-09-28
 

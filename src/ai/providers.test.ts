@@ -12,7 +12,7 @@ describe('PRESETS', () => {
 
   it('uses https everywhere except Ollama on localhost', () => {
     for (const preset of all) {
-      const urls = [preset.baseUrl, preset.keyUrl, ...(preset.baseUrlChoices ?? []).map((c) => c.url)].filter(
+      const urls = [preset.baseUrl, preset.keyUrl, preset.billingUrl, ...(preset.baseUrlChoices ?? []).map((c) => c.url)].filter(
         (url): url is string => !!url,
       );
       for (const url of urls) {
@@ -47,6 +47,12 @@ describe('PRESETS', () => {
       expect(preset.concurrency).toBeGreaterThan(0);
       expect(preset.outputCap).toBeGreaterThan(0);
     }
+  });
+
+  it('gives a billing page to every provider whose billing error has a real one; Qwen falls back to its key page', () => {
+    const billed = all.filter((p) => p.billingUrl).map((p) => p.id).sort();
+    expect(billed).toEqual(['anthropic', 'deepseek', 'gemini', 'openai', 'openrouter']);
+    for (const preset of all) if (preset.billingUrl) expect(preset.billingUrl).not.toBe(preset.keyUrl);
   });
 
   it('keeps model ids to the characters the model field accepts', () => {
