@@ -253,6 +253,109 @@ export const CLIPS = [
       await r.until(5.0);
     },
   },
+  {
+    name: 'bank-screen',
+    dur: 8,
+    about: 'Start screen → Question bank 題庫 (0.9): topic cards with coverage bars; open Market and Price (3.4); its questions.',
+    pointer: { x: 230, y: 520 }, // the library panel: over the file grid a thumbnail lights up
+    async prepare({ page }) {
+      await page.waitForSelector('text=Question bank');
+      await settle(page, 600);
+    },
+    async record(r, { page }) {
+      await r.hold(0.2);
+      await r.clickAt(0.9, page.getByRole('button', { name: /^Question bank/ }).first(), { dur: 0.6, label: 'Question bank 題庫' });
+      await r.moveTo({ x: 720, y: 640 }, { dur: 1.0 });
+      await r.clickAt(3.4, page.getByRole('button', { name: /^C\s*Market and Price/ }).first(), { dur: 0.7, label: 'Market and Price' });
+      await r.hold(0.6);
+      await r.moveTo({ x: 1400, y: 560 }, { dur: 1.0 });
+      await r.until(8.0);
+    },
+  },
+  {
+    name: 'bank-drag',
+    dur: 8,
+    about: 'Editor, 題庫 tab filtered to one question: press (0.9), drag onto the page above Q2 (1.0–2.4); the page shows it in place as Q2, the rest renumbered (hold to 3.6); release (3.6); the 1 question added · Undo toast stays.',
+    pointer: { x: 1180, y: 330 },
+    async prepare({ page }) {
+      await openPaper(page, PAPER.name);
+      await page.getByRole('tab', { name: /題庫/ }).click();
+      await settle(page, 800);
+      await page.getByPlaceholder(/^Search/).first().fill('MTR');
+      await settle(page, 800);
+      await page.evaluate(() => document.activeElement?.blur?.());
+      await scrollToShow(page, page.locator('#print-root').getByText('When the price of bubble tea').first(), 330);
+    },
+    async record(r, { page }) {
+      const row = page.locator('aside').getByText(/demand for MTR rides/).first();
+      const q2 = page.locator('#print-root').getByText('When the price of bubble tea').first();
+      await r.hold(0.2);
+      const from = await r.moveTo(row, { dur: 0.6, fx: 0.3 });
+      await r.hold(0.1);
+      await r.frame(async () => {
+        r.event('drag-start', 'bank question', from);
+        await page.mouse.down();
+      });
+      // The slot is the first gap the pointer meets on the page, and holds while the page
+      // makes room under it: drop down the sidebar to Q2's line, then cross onto the page.
+      const box = await q2.boundingBox();
+      await r.moveTo({ x: from.x - 60, y: box.y + 4 }, { dur: 0.6, arc: 0.02 });
+      await r.moveTo({ x: box.x + 120, y: box.y + 4 }, { dur: 0.9, arc: 0.03 });
+      await r.until(3.6);
+      await r.frame(async () => {
+        r.event('drag-end', 'drop', r.mouse);
+        await page.mouse.up();
+      });
+      await r.hold(0.6);
+      await r.moveTo({ x: 1180, y: 600 }, { dur: 0.9 });
+      await r.until(8.0);
+    },
+  },
+  {
+    name: 'check-terms',
+    dur: 7,
+    about: '中文 page: AI (0.8) → Check terms (1.6): wavy underlines on wording that differs from the EDB glossary; Next (3.0) opens the first; Replace with 消費者盈餘 (4.4).',
+    pointer: { x: 1000, y: 220 },
+    async prepare({ page }) {
+      await openPaper(page, PAPER.name, 'zh');
+    },
+    async record(r, { page }) {
+      await r.hold(0.2);
+      await r.clickAt(0.8, page.getByTitle(/^AI tools/).first(), { dur: 0.5, label: 'AI' });
+      await r.clickAt(1.6, page.getByText('Check terms against EDB glossary').first(), { dur: 0.45, label: 'Check terms' });
+      await r.clickAt(3.0, page.getByRole('button', { name: 'Next', exact: true }).first(), { dur: 0.8, label: 'Next finding' });
+      await r.clickAt(4.4, page.getByRole('button', { name: /^Replace with/ }).first(), { dur: 0.7, label: 'Replace with 消費者盈餘' });
+      await r.hold(0.5);
+      await r.moveTo({ x: 1200, y: 800 }, { dur: 0.9 }); // below the outline: no row hover
+      await r.until(7.0);
+    },
+  },
+  {
+    name: 'zh-interface',
+    dur: 7,
+    about: 'Start screen: Settings (0.8) → Language 語言 (1.8) → 繁體中文 (3.0): the interface flips; 完成 (4.4) leaves the start screen in 中文.',
+    pointer: { x: 1100, y: 62 }, // the header row: over the grid a thumbnail lights up
+    async prepare({ page }) {
+      await page.waitForSelector('text=Question bank');
+      // Open Settings once off camera: its code loads lazily, and on the frozen clock a
+      // first open would wait on it with nothing on screen.
+      await page.getByRole('button', { name: 'Settings', exact: true }).first().click();
+      await page.getByRole('dialog').getByRole('tab', { name: /Language/ }).waitFor();
+      await page.getByRole('dialog').getByRole('button', { name: 'Done', exact: true }).click();
+      await settle(page, 600);
+    },
+    async record(r, { page }) {
+      const dialog = page.getByRole('dialog');
+      await r.hold(0.2);
+      await r.clickAt(0.8, page.getByRole('button', { name: 'Settings', exact: true }).first(), { dur: 0.5, label: 'Settings' });
+      await r.clickAt(1.8, dialog.getByRole('tab', { name: /Language/ }), { dur: 0.6, label: 'Language 語言' });
+      await r.clickAt(3.0, dialog.getByRole('radio', { name: /^繁體中文/ }), { dur: 0.6, label: '繁體中文', kind: 'toggle' });
+      await r.clickAt(4.4, dialog.getByRole('button', { name: /^(Done|完成)$/ }), { dur: 0.7, label: '完成' });
+      await r.hold(0.4);
+      await r.moveTo({ x: 1415, y: 690 }, { dur: 0.9 }); // the margin right of the grid
+      await r.until(7.0);
+    },
+  },
 ];
 
 export const ASSET_JOBS = [];
