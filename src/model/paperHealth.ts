@@ -1,6 +1,7 @@
 import { requireQuestionType } from '@/registry';
 import type { QuestionHealthFacts } from '@/registry/types';
 import type { DocumentShape } from './documentShape';
+import { anchorSchemeMismatch } from './markScheme';
 import { questionMarks, sectionMarksById } from './marks';
 import { computeNumbering, toUpperLetter } from './numbering';
 import { summarizePaper, targetMisses, type PaperSummary } from './paperSummary';
@@ -25,6 +26,7 @@ export type HealthFindingId =
   | 'letterRun'
   | 'untranslated'
   | 'unanswered'
+  | 'schemeMarks'
   | 'unmarked'
   | 'timeMismatch'
   | 'overTarget'
@@ -119,6 +121,8 @@ interface Entry {
   ref: QuestionRef;
   marks: number;
   facts: QuestionHealthFacts;
+  /** A marking scheme totals differently from the marks its leaf prints (`anchorSchemeMismatch`). */
+  schemeMismatch: boolean;
 }
 
 export function checkPaper(
@@ -149,6 +153,7 @@ export function checkPaper(
       ref: { questionId: question.id, number, label: `${prefix}Q${number}` },
       marks: questionMarks(question),
       facts: definition.healthFacts?.(question) ?? { empty: false },
+      schemeMismatch: (definition.qualityView?.(question).anchors ?? []).some((anchor) => anchorSchemeMismatch(anchor)),
     };
   });
 
@@ -183,6 +188,10 @@ export function checkPaper(
   );
   flag('duplicateOptions', 'warn', live.filter((e) => e.facts.duplicateOptions), (n) =>
     `${plural(n, 'MCQ has', 'MCQs have')} two options with the same wording.`,
+  );
+
+  flag('schemeMarks', 'warn', live.filter((e) => e.schemeMismatch), (n) =>
+    `${plural(n, 'question has', 'questions have')} a marking scheme that totals differently from the marks printed.`,
   );
 
   const letters = letterBalance(choice);

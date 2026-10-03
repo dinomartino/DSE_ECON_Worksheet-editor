@@ -1,6 +1,6 @@
 import { createDiagramBlock, DEFAULT_DIAGRAM_SIZE, newId } from './factories';
 import { getDiagramTemplate } from './diagramTemplates';
-import { CURRENT_SCHEMA_VERSION, migrate } from './migrations';
+import { CURRENT_SCHEMA_VERSION, migrate, writtenSchemaVersion } from './migrations';
 import { biTextExcerpt } from './excerpt';
 import { plain } from './text';
 import { diagramSize } from '@/render/diagram';
@@ -23,7 +23,7 @@ export interface SavedGraph {
   /** Which side(s) its labels draw in. */
   language: LanguageMode;
   fonts: FontPair;
-  /** The worksheet schema version the block was written under. */
+  /** The worksheet schema version: in memory this build's, stored as `writtenSchemaVersion`. */
   schemaVersion: number;
   templateId?: string;
   createdAt: string;
@@ -140,10 +140,12 @@ export function migrateGraph(raw: unknown): SavedGraph {
   return graph;
 }
 
-/** What is stored: the graph with a newer build's fields spliced back. */
+/** What is stored: the graph with a newer build's fields spliced back, at the version its content needs. */
 export function serializeGraph(graph: SavedGraph): Record<string, unknown> {
   const { __unknown, ...rest } = graph;
-  return { ...(__unknown ?? {}), ...rest };
+  const out: Record<string, unknown> = { ...(__unknown ?? {}), ...rest };
+  out.schemaVersion = writtenSchemaVersion(graph.schemaVersion, out);
+  return out;
 }
 
 export function parseGraph(json: string): SavedGraph {

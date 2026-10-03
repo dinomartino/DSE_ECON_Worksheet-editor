@@ -38,6 +38,8 @@ const QUESTION_FIELDS: Record<AnyQuestionKey, 'content' | 'metadata'> = {
   answerSpace: 'content',
   answerGraph: 'content',
   answerDiagram: 'content',
+  answer: 'content',
+  scheme: 'content',
   showTotalMarks: 'content',
 };
 

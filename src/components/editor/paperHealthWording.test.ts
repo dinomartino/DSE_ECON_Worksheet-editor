@@ -16,7 +16,12 @@ function mcq(answer: number | undefined, tag: string) {
 }
 
 describe('the Paper check wording', () => {
-  const questions = [...Array.from({ length: 10 }, (_, i) => mcq(0, `q${i}`)), mcq(undefined, 'x'), createStructuredQuestion()];
+  // A part whose scheme awards 1 against 2 printed marks.
+  const essay = createStructuredQuestion();
+  essay.blocks = [createParagraphBlock(bi('Explain.', '解釋。'))];
+  essay.parts[0].marks = 2;
+  essay.parts[0].scheme = { routes: [{ id: newId(), groups: [{ id: newId(), points: [{ id: newId(), text: bi('P', 'P'), marks: 1 }] }] }] };
+  const questions = [...Array.from({ length: 10 }, (_, i) => mcq(0, `q${i}`)), mcq(undefined, 'x'), createStructuredQuestion(), essay];
   const worksheet = withFlow(createWorksheet(), questions, { replaceLayout: true });
   worksheet.target = { marks: 3, counts: { mcq: 40 } };
   const report = checkPaper(worksheet);
@@ -26,6 +31,10 @@ describe('the Paper check wording', () => {
   it('says in English exactly what the model says', () => {
     expect(report.findings.length).toBeGreaterThan(4);
     for (const finding of report.findings) expect(wording(finding, report.summary, en, false)).toBe(finding.message);
+  });
+
+  it('includes the scheme/marks mismatch', () => {
+    expect(report.findings.map((f) => f.id)).toContain('schemeMarks');
   });
 
   it('says every finding in Chinese', () => {

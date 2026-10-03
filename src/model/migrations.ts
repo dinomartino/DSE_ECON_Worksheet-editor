@@ -10,27 +10,41 @@ import type { Worksheet } from './types';
  *  - **Change a field's meaning/shape** — append to `MIGRATIONS`, bump
  *    `CURRENT_SCHEMA_VERSION`, prove against the frozen corpus.
  *  - **Remove a field** — only by migrating its data elsewhere first.
- * The chain is empty because v1 *is* current (pre-release steps upgraded documents
- * that never existed), not because migrations are optional. `migrate` still runs on
- * every load: validate, normalize, run the chain, stash unknown fields in
- * `__unknown` so a newer build's document survives a round-trip.
+ * `migrate` runs on every load: validate, normalize, run the chain, stash unknown fields
+ * in `__unknown` so a newer build's document survives a round-trip.
+ *
+ * **Written version ≠ build version** (`writtenSchemaVersion`): a document is saved at the
+ * oldest version that reads it correctly, so it is marked newer only when it uses
+ * something an older build would mis-print.
  */
 
-export const CURRENT_SCHEMA_VERSION = 1;
+/** The newest schema this build reads and writes. */
+export const CURRENT_SCHEMA_VERSION = 2;
+
+/**
+ * v2 = v1 plus the diagram answer layer (`answer: true`) and `answerKeyLayout`. v0.5.0
+ * reads v1 and ignores both, printing teacher answers on the student copy and every key
+ * as Classic, so a document using either is written at 2 and opens read-only there.
+ */
+const ANSWER_LAYER_VERSION = 2;
 
 type RawDoc = Record<string, unknown>;
 
 /**
  * Ordered chain. Index i migrates a document at version (i + 1) to version (i + 2).
  *
- * Empty only because v1 is current. A step added here must be **pure and total**: it
+ * A step added here must be **pure and total**: it
  * receives whatever a real saved document contained, including fields this build has
  * never seen, and must not assume any optional structure is present. Prove each new
  * step against the frozen corpus in `src/model/backwardCompat.test.ts` — that fixture
  * is the only input written by an older build, and so the only one that can catch a
  * step which drops data.
  */
-const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [];
+const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [
+  // 1 → 2: additive (§ ANSWER_LAYER_VERSION). Nothing to change; a develop build's v1
+  // document already carrying either field keeps it.
+  (doc) => doc,
+];
 
 /**
  * Top-level keys this build understands; anything else is preserved as unknown.
@@ -155,8 +169,47 @@ function normalize(worksheet: Worksheet): Worksheet {
   };
 }
 
-/** Inverse of `migrate`'s unknown-field stashing: splice them back for saving. */
+/**
+ * Inverse of `migrate`'s unknown-field stashing: splice them back for saving, at the
+ * version the content needs (§ `writtenSchemaVersion`).
+ */
 export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown> {
   const { __unknown, ...rest } = worksheet;
-  return { ...(__unknown ?? {}), ...rest };
+  const out: RawDoc = { ...(__unknown ?? {}), ...rest };
+  out.schemaVersion = writtenSchemaVersion(worksheet.schemaVersion, out);
+  return out;
+}
+
+/**
+ * The `schemaVersion` to store: a newer build's own version is kept; otherwise the oldest
+ * version whose builds print this content correctly. Re-derived on every save, so a
+ * document that stops using a v2 feature opens editable in v0.5.0 again. `doc` is the
+ * stored record (a worksheet, or a saved graph); unreadable parts never lower the mark.
+ */
+export function writtenSchemaVersion(version: number, doc: unknown): number {
+  if (version > CURRENT_SCHEMA_VERSION) return version;
+  if (isRecord(doc) && doc.answerKeyLayout !== undefined) return ANSWER_LAYER_VERSION;
+  return hasAnswerElement(doc) ? ANSWER_LAYER_VERSION : 1;
+}
+
+function isRecord(value: unknown): value is RawDoc {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Answer-layer lists; pie, flow and forum diagrams never draw them (`hasAnswerLayer`). */
+const ANSWER_LISTS = ['curves', 'points', 'labels', 'arrows', 'areas', 'spans'];
+
+/** Any diagram anywhere in `value` with an element flagged `answer` (as `hasAnswerLayer`). */
+function hasAnswerElement(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasAnswerElement);
+  if (!isRecord(value)) return false;
+  const diagram = value.kind === 'diagram' ? value.diagram : undefined;
+  if (isRecord(diagram) && !diagram.pie && !diagram.flow && !diagram.forum) {
+    const flagged = ANSWER_LISTS.some((list) => {
+      const elements = diagram[list];
+      return Array.isArray(elements) && elements.some((element) => isRecord(element) && Boolean(element.answer));
+    });
+    if (flagged) return true;
+  }
+  return Object.values(value).some(hasAnswerElement);
 }
