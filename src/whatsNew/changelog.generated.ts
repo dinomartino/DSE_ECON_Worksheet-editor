@@ -529,6 +529,13 @@ a version heading is edited afterwards.
   Now it does nothing until you let go, and Esc still cancels the resize.
   <!-- zh: **在頁面上調整大小時，復原會暫停。** 拖曳圖片、圖表或答題空間的控點時按 ⌘Z（或
   Ctrl+Z），以往會在拖曳途中改動試卷。現在放手之前不會有任何動作，按 Esc 仍可取消調整。 -->
+- **Drawing a diagram, the tools fit on one row on a 13-inch or 14-inch laptop.** Zoom,
+  Crop and Done no longer drop to a second row, so the diagram gets that room back. The
+  tip for the tool you are using now shows above the diagram, and shortcuts such as ⌘C
+  show when you point at Copy, Paste, Duplicate and Delete.
+  <!-- zh: **繪製圖表時，工具在 13 吋或 14 吋手提電腦上可排成一行。** 縮放、裁剪和完成不再跌到
+  第二行，圖表因此有更多空間。目前所用工具的提示現在顯示在圖表上方；把游標移到複製、貼上、建立
+  副本和刪除上，便會顯示 ⌘C 等快捷鍵。 -->
 
 ## 0.5.0 — 2026-09-28
 
