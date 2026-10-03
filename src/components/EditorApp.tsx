@@ -25,6 +25,7 @@ import type { EditTarget } from '@/render/ir';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { onDocumentSavedElsewhere, worksheetStore } from '@/storage';
 import { adoptNewerTags } from '@/library/tagWrites';
+import { holdBankDocument } from '@/library/useBank';
 import { BankReviewBar } from '@/components/bank/BankReviewBar';
 import { useBankSession } from '@/components/bank/bankSession';
 import { BankDragLayer, isBankDragActive, useBankDrag } from '@/components/bank/bankDrag';
@@ -379,6 +380,14 @@ export function EditorApp({
     }, 1200);
     return () => clearTimeout(timer);
   }, [worksheet, dirty, markSaved]);
+
+  // The bank indexes this paper's autosaves late (the editor never shows its own rows):
+  // let go on leaving or switching papers, so the start screen and 題庫 see the last save.
+  const openId = worksheet.id;
+  useEffect(() => {
+    holdBankDocument(openId);
+    return () => holdBankDocument(undefined);
+  }, [openId]);
 
   // Another tab tagged this paper (its 題庫 screen, or a synced Topic row edit): take the
   // newer tags in, so this tab's next autosave keeps them rather than saving over them.

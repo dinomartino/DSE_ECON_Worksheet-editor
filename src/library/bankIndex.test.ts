@@ -404,3 +404,109 @@ describe('createBankIndex — a document it cannot read into rows', () => {
   });
 });
 
+describe('createBankIndex — saves coalesce (S8)', () => {
+  let t = Date.UTC(2026, 5, 1);
+  /** `paper`, with a valid stamp however many are made. */
+  const fresh = (stem: string) => paper([stem], { updatedAt: new Date((t += 60_000)).toISOString() });
+
+  /** A memory backend that counts its commits. */
+  function countingBackend() {
+    const inner = createMemoryBackend();
+    const commits: string[][] = [];
+    const backend: BankIndexBackend = {
+      load: () => inner.load(),
+      clear: () => inner.clear(),
+      commit: (put, drop) => {
+        commits.push([...put.map(([id]) => id), ...drop]);
+        return inner.commit(put, drop);
+      },
+    };
+    return { backend, commits };
+  }
+
+  async function ready(backend: BankIndexBackend, docs: Worksheet[], holdMs?: number, quietMs?: number) {
+    const feed = localFeed();
+    const other = new LocalStorageWorksheetStore();
+    const store = withChangeFeed(other, feed.emit);
+    for (const doc of docs) await other.save(doc);
+    const index = createBankIndex(other, noPause, { backend, changes: feed.subscribe, holdMs, quietMs });
+    let publishes = 0;
+    index.subscribe(() => (publishes += 1));
+    await index.refresh();
+    await index.settled();
+    return { index, store, publishes: () => publishes };
+  }
+
+  it('a burst of saves over many papers is indexed in one pass: one commit, one publish', async () => {
+    const { backend, commits } = countingBackend();
+    const docs = Array.from({ length: 40 }, (_, i) => fresh(`Stem ${i}`));
+    const { index, store, publishes } = await ready(backend, docs, undefined, 20);
+    commits.length = 0;
+    const before = publishes();
+    // As a bank tag write over 40 papers saves them, one after another.
+    for (const doc of docs) await store.save(edited(doc, `Tagged ${doc.questions[0].id}`));
+    await index.settled();
+    expect(publishes() - before).toBe(1);
+    expect(commits).toHaveLength(1);
+    expect(commits[0]).toHaveLength(40);
+    expect(excerpts(index).every((text) => text.startsWith('Tagged'))).toBe(true);
+  });
+
+  it('the paper open in the editor is indexed when let go, with its last save only', async () => {
+    const { backend, commits } = countingBackend();
+    const doc = fresh('First');
+    const { index, store, publishes } = await ready(backend, [doc]);
+    index.hold(doc.id);
+    commits.length = 0;
+    const before = publishes();
+    let current = doc;
+    for (let i = 0; i < 5; i++) {
+      current = edited(current, `Autosave ${i}`);
+      await store.save(current);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(excerpts(index)).toEqual(['First']);
+    expect(commits).toEqual([]);
+
+    index.hold(undefined);
+    await index.settled();
+    expect(excerpts(index)).toEqual(['Autosave 4']);
+    expect(publishes() - before).toBe(1);
+    expect(commits).toEqual([[doc.id]]);
+  });
+
+  it('a reader that asks (flush) gets the held paper’s rows at once', async () => {
+    const doc = fresh('First');
+    const { index, store } = await ready(createMemoryBackend(), [doc]);
+    index.hold(doc.id);
+    await store.save(edited(doc, 'Typed'));
+    await index.flush();
+    expect(excerpts(index)).toEqual(['Typed']);
+  });
+
+  it('holds no longer than holdMs', async () => {
+    const doc = fresh('First');
+    const { index, store } = await ready(createMemoryBackend(), [doc], 5);
+    index.hold(doc.id);
+    await store.save(edited(doc, 'Typed'));
+    expect(excerpts(index)).toEqual(['First']);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    await index.settled();
+    expect(excerpts(index)).toEqual(['Typed']);
+  });
+
+  it('other papers are not held, and a held paper trashed meanwhile stays gone', async () => {
+    const open = fresh('Open');
+    const elsewhere = fresh('Elsewhere');
+    const { index, store } = await ready(createMemoryBackend(), [open, elsewhere]);
+    index.hold(open.id);
+    await store.save(edited(elsewhere, 'Tagged elsewhere'));
+    await store.save(edited(open, 'Typed'));
+    await store.trash(open.id);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    index.hold(undefined);
+    await index.settled();
+    expect(excerpts(index)).toEqual(['Tagged elsewhere']);
+  });
+});
+
