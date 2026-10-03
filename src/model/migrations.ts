@@ -24,9 +24,10 @@ export const CURRENT_SCHEMA_VERSION = 2;
 /**
  * v2 = v1 plus what v0.5.0 reads as v1 but mis-prints: the diagram answer layer
  * (`answer: true`; teacher answers on the student copy), `answerKeyLayout` (every key as
- * Classic), a section's `answerCount` (it totals every question) or `targetMarks`, and an
- * essay's own `answer` or `scheme` (a question with no parts; its teacher copy and key
- * leave them out). A document using any of them is written at 2 and opens read-only there.
+ * Classic), a section's `answerCount` (it totals every question), and an essay's own
+ * `answer` or `scheme` (a question with no parts; its teacher copy and key leave them
+ * out). A document using any of them is written at 2 and opens read-only there. A
+ * section's `targetMarks` alone stays at 1: v0.5.0 keeps it and prints the same.
  */
 const ANSWER_LAYER_VERSION = 2;
 
@@ -190,7 +191,7 @@ export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown
  */
 export function writtenSchemaVersion(version: number, doc: unknown): number {
   if (version > CURRENT_SCHEMA_VERSION) return version;
-  if (isRecord(doc) && (doc.answerKeyLayout !== undefined || hasSectionMarks(doc.layout) || hasEssayAnswer(doc.questions))) {
+  if (isRecord(doc) && (doc.answerKeyLayout !== undefined || hasAnswerAnySection(doc.layout) || hasEssayAnswer(doc.questions))) {
     return ANSWER_LAYER_VERSION;
   }
   return hasAnswerElement(doc) ? ANSWER_LAYER_VERSION : 1;
@@ -200,15 +201,15 @@ function isRecord(value: unknown): value is RawDoc {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** A section with "answer any n" or its own marks target (`model/marks.ts:answerCountOf`). */
-function hasSectionMarks(layout: unknown): boolean {
+/** A section with "answer any n" (`model/marks.ts:answerCountOf`). */
+function hasAnswerAnySection(layout: unknown): boolean {
   return (
     Array.isArray(layout) &&
     layout.some(
       (element) =>
         isRecord(element) &&
         element.kind === 'section' &&
-        (element.answerCount !== undefined || element.targetMarks !== undefined),
+        element.answerCount !== undefined,
     )
   );
 }

@@ -4,9 +4,9 @@
  * Run once, deliberately (it refuses without the variable):
  *   EMIT_V2_OPTIONAL_CORPUS=1 npx vitest run scripts/emit-v2-optional-sections-corpus.test.ts
  *
- * v2 also marks a section's `answerCount` / `targetMarks` and an essay's own `answer` /
- * `scheme` (§ `writtenSchemaVersion`). This file carries each, beside the metadata that
- * stays at 1 (topics, lineage), so `backwardCompat.test.ts` can prove a later migration
+ * v2 also marks a section's `answerCount` and an essay's own `answer` / `scheme`
+ * (§ `writtenSchemaVersion`). This file carries each, beside fields that stay at 1 (a
+ * section's `targetMarks`, topics, lineage), so `backwardCompat.test.ts` can prove a later migration
  * keeps them. Never regenerate it; a v3 gets files of its own.
  */
 import { writeFileSync } from 'node:fs';

@@ -2,10 +2,10 @@
  * "Bump only when used" (§ `writtenSchemaVersion`). v0.5.0 reads schema 1 and opens any
  * higher `schemaVersion` read-only, never overwriting it. It ignores the diagram answer
  * layer (teacher answers on the student copy), `answerKeyLayout` (the key as Classic), a
- * section's `answerCount`/`targetMarks` (every question totalled) and an essay's own
- * `answer`/`scheme` (left out of its teacher copy and key), so a document using any must
- * be written above 1. Everything else, bank metadata included, stays at 1: v0.5.0 keeps
- * it and prints the same.
+ * section's `answerCount` (every question totalled) and an essay's own `answer`/`scheme`
+ * (left out of its teacher copy and key), so a document using any must be written above 1.
+ * Everything else, a section's `targetMarks` and bank metadata included, stays at 1:
+ * v0.5.0 keeps it and prints the same.
  */
 import { describe, expect, it } from 'vitest';
 import v1Corpus from '@/test/corpus/v1-published.json';
@@ -238,14 +238,19 @@ const withSection = (worksheet: Worksheet, patch: Partial<Section>): Worksheet =
 });
 
 describe('optional sections ("answer any ONE") and section targets', () => {
-  // v0.5.0 keeps both fields but totals every question: "(22 marks)" for "(12 marks)".
+  // v0.5.0 keeps both fields. It totals every question despite an answer count ("(22 marks)"
+  // for "(12 marks)"), but prints a marks target the same, so only the count raises the mark.
   it('are written at 1 without either field', () => {
     expect(written(sectionedPaper())).toBe(V050_READS);
   });
 
-  it('are written at 2 with an answer count, a marks target, or both', () => {
+  it('are written at 1 with a marks target alone', () => {
+    expect(written(sectionedPaper({ targetMarks: 20 }))).toBe(V050_READS);
+    expect(written(reloaded(sectionedPaper({ targetMarks: 20 })))).toBe(V050_READS);
+  });
+
+  it('are written at 2 with an answer count, alone or with a marks target', () => {
     expect(written(sectionedPaper({ answerCount: 1 }))).toBe(2);
-    expect(written(sectionedPaper({ targetMarks: 20 }))).toBe(2);
     expect(written(sectionedPaper({ answerCount: 1, targetMarks: 12 }))).toBe(2);
   });
 
