@@ -6,8 +6,11 @@
 //   P(4)..P(6)   a text box "S" is placed, then jumps into the text below, which reflows;
 //                "should not take all evening" on P(6)
 //   P(8)         bar 1: the line straightens (blue), the box goes home, the text flows back
-//   P(9)..P(11)  the page leaves; the line travels and turns into the mark's vertical axis
-//   P(11)..P(12) the axis draws back into its base, where the mark (next act) grows it again
+//   P(9)..P(12)  the page leaves; the line travels to the frame's centre and docks, exactly on
+//                the cut, as the mark's vertical axis (its colour and width): the mark act
+//                opens with that axis drawn and grows the tile around it (scenes/mark.js)
+// Layout: the headline stacks in the left column (x 96, four serif lines); the page stands
+// on the right, its edge on the safe line, bleeding off the bottom only.
 import { h, s, svg, place, show, C } from '../lib/dom.js';
 import { block } from '../lib/type.js';
 import { keys, tween, tw, f } from '../lib/tween.js';
@@ -16,7 +19,6 @@ import { P, PAGE, pg, SUPPLY, CROOKED_END, GRAB_END, SNAP_END, KINKS, TOOL, LINE
 import { buildPage } from './open/page.js';
 
 const LINE_W = 4.2 * PAGE.k;
-const inQuad = (p) => p * p;
 const BOX_CLICK = [BOX.home[0] + 26, BOX.home[1] + 30];
 const CLICKS = [P(-2), P(-1), P(2), P(4), P(5)];
 
@@ -76,10 +78,11 @@ const scene = {
     ctx.handles = [0, 1].map(() => s('rect', { width: 13, height: 13, x: -6.5, y: -6.5, rx: 2, fill: C.paper, stroke: C.inkSubtle, 'stroke-width': 1.6 }, ov));
     ctx.cursor = s('g', {}, ov);
     s('path', { d: 'M0 0V25.5L6.2 19.6L10.4 29.2L14.6 27.4L10.5 18H19Z', fill: C.ink, stroke: C.paper, 'stroke-width': 1.6, 'stroke-linejoin': 'round' }, ctx.cursor);
-    const col = { x: 120, w: 1000, align: 'left', size: 96, zhSize: 44, rise: 14 };
-    ctx.q1 = block(ctx.el, { ...ctx.copy.q1, ...col, y: 0, maxLines: 1 });
-    // Narrow on purpose: the greedy wrap breaks "should not take / all evening".
-    ctx.q2 = block(ctx.el, { ...ctx.copy.q2, ...col, w: 660, y: 0, maxLines: 2 });
+    // Narrow on purpose: the greedy wrap breaks "A supply curve / in Word" and
+    // "should not take / all evening".
+    const col = { x: 96, w: 700, align: 'left', size: 96, zhSize: 44, rise: 14, maxLines: 2 };
+    ctx.q1 = block(ctx.el, { ...ctx.copy.q1, ...col, y: 0 });
+    ctx.q2 = block(ctx.el, { ...ctx.copy.q2, ...col, y: 0 });
     const gap = 44;
     const top = 540 - (ctx.q1.height + gap + ctx.q2.height) / 2;
     ctx.q1.el.style.top = `${f(top, 2)}px`;
@@ -89,8 +92,8 @@ const scene = {
     const { page } = ctx;
     // The page: settles in, then leaves downwards as the line takes over.
     const enter = outSoft(prog(t, 0, 0.9));
-    const leave = inOutSoft(prog(t, P(9), P(11)));
-    place(page.el, { y: 56 * (1 - enter) + 1000 * leave, scale: PAGE.k, opacity: enter });
+    const leave = inOutSoft(prog(t, P(9.5), P(12)));
+    place(page.el, { y: 56 * (1 - enter) + 1100 * leave, scale: PAGE.k, opacity: enter });
     show(page.toolbar, spring(prog(t, P(-3), P(-2))));
     page.toolbar.setAttribute('transform', `translate(0 ${f(10 * (1 - outSoft(prog(t, P(-3), P(-2)))), 2)})`);
     show(page.tools[LINE_TOOL], tw(t, P(-2), 0.12) - tw(t, P(4), 0.12));
@@ -110,17 +113,16 @@ const scene = {
     // The line: drawn crooked, snapped wrong, straightened, then off to the mark.
     const { e, bend } = lineEnd(t);
     let a = pg(SUPPLY[0]), b = pg(e);
-    const go = inOutSoft(prog(t, P(9), P(11)));
+    // Docks at the cut: still (velocity 0) on the act's last frame, axis-coloured.
+    const go = inOutSoft(prog(t, P(9), P(12)));
     a = [lerp(a[0], AXIS.base[0], go), lerp(a[1], AXIS.base[1], go)];
     b = [lerp(b[0], AXIS.top[0], go), lerp(b[1], AXIS.top[1], go)];
-    const back = inQuad(prog(t, P(11), P(12)));
-    b = [lerp(b[0], a[0], back), lerp(b[1], a[1], back)];
     ctx.line.setAttribute('d', crooked(a, b, bend));
-    const blue = outSoft(prog(t, P(8), P(8) + 0.3)) - inOutSoft(prog(t, P(9.5), P(11)));
-    const base = t < P(9.5) ? C.ink : AXIS.color;
+    const blue = outSoft(prog(t, P(8), P(8) + 0.3)) - inOutSoft(prog(t, P(10.5), P(12) - 0.05));
+    const base = t < P(10.5) ? C.ink : AXIS.color;
     ctx.line.setAttribute('stroke', mix(base, C.markBlue, blue));
     ctx.line.setAttribute('stroke-width', f(lerp(LINE_W, AXIS.width, go), 3));
-    show(ctx.line, t >= P(-1) && back < 0.999 ? 1 : 0);
+    show(ctx.line, t >= P(-1) ? 1 : 0);
     const sel = tw(t, P(1), 0.15) - tw(t, P(8), 0.25);
     [a, b].forEach((p, i) => {
       ctx.handles[i].setAttribute('transform', `translate(${f(p[0], 2)} ${f(p[1], 2)})`);
@@ -134,8 +136,8 @@ const scene = {
     ctx.cursor.setAttribute('transform', `translate(${f(cx, 2)} ${f(cy, 2)}) scale(${f(cs, 4)})`);
     show(ctx.cursor, (t >= P(-3) ? 1 : 0) - outSoft(prog(t, P(8), P(8.6))));
 
-    ctx.q1.show(t, { at: P(0), out: P(10), outDur: 0.5 });
-    ctx.q2.show(t, { at: P(6), out: P(10), outDur: 0.5 });
+    ctx.q1.show(t, { at: P(0), out: P(10.5), outDur: 0.6 });
+    ctx.q2.show(t, { at: P(6), out: P(10.5), outDur: 0.6 });
   },
 };
 
