@@ -142,8 +142,8 @@ export const cueAt = (id) => {
 // Every on-screen string (FILM.md §3), en + zh. A line never ends in , . ， 。 ; ；
 // (doctor enforces it). "\n" forces a line break.
 export const COPY = {
-  // The axis chapter's label per act it opens (engine.js chapter()). PLACEHOLDERS: the
-  // coordinator settles them with the user; an empty pair draws the axes with no label.
+  // The axis chapter's label per act it opens (engine.js chapter()); user-approved
+  // 2026-10-04. An empty pair draws the axes with no label.
   chapters: {
     draw: { en: 'Draw', zh: '繪圖' },
     papers: { en: 'Papers', zh: '試卷' },
@@ -169,7 +169,7 @@ export const COPY = {
   },
   papers: {
     marks: { en: 'Marks add themselves up', zh: '分數自動加總' },
-    scheme: { en: 'A marking scheme, HKEAA-style', zh: '評卷參考，HKEAA 格式' },
+    scheme: { en: 'A marking scheme, HKEAA-style', zh: '評卷參考，HKEAA 風格' },
     mock: { en: 'Mock papers, cover to key', zh: '模擬試卷，由封面到答案' },
   },
   bank: {
@@ -178,13 +178,13 @@ export const COPY = {
     terms: { en: 'Chinese checked against the EDB glossary', zh: '中文用詞，按教育局詞彙表檢查' },
   },
   everywhere: {
-    word: { en: 'A real Word document', zh: '真正的 Word 文件' },
+    word: { en: 'A real Word document', zh: '真正的 Word 檔案' },
     platforms: { en: 'On the web, Mac and Windows', zh: '網頁版、Mac、Windows 都用得' },
   },
   end: {
     less: { en: 'Less formatting', zh: '少排版' },
     more: { en: 'More teaching', zh: '多教學' },
-    free: { en: 'Free · No account needed', zh: '免費使用 · 無需註冊' },
+    free: { en: 'Free · No account needed', zh: '免費使用・毋須註冊' },
     name: { en: 'Econ Studio', zh: '經濟備課室' },
   },
 };
