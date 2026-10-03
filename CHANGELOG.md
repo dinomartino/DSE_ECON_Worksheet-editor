@@ -431,6 +431,11 @@ a version heading is edited afterwards.
   定也放在這裏。 -->
 
 ### Fixed
+- **In the HKEAA marking scheme, a point's marks now sit on its first line.** A point that
+  runs onto a second line shows its "(1)" beside where it starts, as HKEAA prints it, on
+  screen, in the PDF and in Word.
+  <!-- zh: **HKEAA 評卷參考中，評分要點的分數現在列在首行。** 要點跨越兩行時，「(1)」會列在要點
+  開首的一行，與 HKEAA 的格式相同，在屏幕、PDF 和 Word 中都一樣。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.

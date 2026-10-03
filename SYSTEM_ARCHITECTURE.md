@@ -1830,10 +1830,11 @@ type needs only a definition.
   (`keyUnits`), a piece joining the one above without a second rule, and a piece opening a
   sheet redraws the heading rows, charged by the packer through `PackItem.leadKey`.
 - **The Marks column is a right indent, not a table** (`TextNode.marksColumn`): the text
-  stops short of it (`w:ind w:right`; preview `padding-right`) while the marks keep the
-  right tab at the content edge, which Word and LibreOffice honour past the right indent.
-  So the label stays on the last line, as everywhere (§ "(4 marks)" sits on the last line),
-  not the first as HKEAA prints it. A line whose own marks no scheme point claims shows
+  stops short of it (`w:ind w:right`; preview `padding-right`). **Its label sits on the
+  paragraph's first line**, as HKEAA prints "(1)" beside the start of its point: the `.docx`
+  anchors a borderless text box at the paragraph's top spanning the column (no tab reaches
+  the first line of wrapped text), the preview pins it `top: 0`, the clipboard floats it
+  from the paragraph's start. Elsewhere marks stay on the last line. A line whose own marks no scheme point claims shows
   them as "(n)". A key with the column carries a running head "Marks / 分數"
   (`answerKeyRunningHead`, from the nodes): a one-row header part in the `.docx`, the same
   line in each preview sheet's margin. A combined key has one header: it shows if any part

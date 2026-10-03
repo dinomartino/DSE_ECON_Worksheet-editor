@@ -526,7 +526,8 @@ function MarksTrail({
   blankLines: number;
   /**
    * The paragraph keeps a Marks column clear (`TextNode.marksColumn`, its right padding):
-   * the label sits in that column, so the text's last line reserves nothing for it.
+   * the label sits in that column on the paragraph's *first* line (HKEAA), so no line
+   * reserves anything for it.
    */
   column?: boolean;
 }) {
@@ -541,7 +542,7 @@ function MarksTrail({
   const [needsOwnLine, setNeedsOwnLine] = useState(false);
 
   useLayoutEffect(() => {
-    if (blankLines === 0) {
+    if (blankLines === 0 || column) {
       setNeedsOwnLine(false);
       return;
     }
@@ -630,7 +631,7 @@ function MarksTrail({
            * correct on the styles that scale their exact line box (\u00a7 `exact` does not
            * grow) instead of assuming the 12pt body grid.
            */
-          bottom: blankLines ? `${blankLines}lh` : 0,
+          ...(column ? { top: 0 } : { bottom: blankLines ? `${blankLines}lh` : 0 }),
         }}
       >
         {label}
