@@ -444,6 +444,11 @@ a version heading is edited afterwards.
   <!-- zh: **頁首和頁尾設定按頁面整理。** 在頁面設定中，先選「第 1 頁」或「第 2 頁起」
   ，再選擇第 1 頁的頁首和頁尾與其後頁面相同、自成一套，或不設。第 1 頁的標題設
   定也放在這裏。 -->
+- **Looking at a question keeps your "Add to" paper.** In the question bank, opening a
+  question in its worksheet just to look at it no longer changes the paper that "Add to"
+  puts your picks in. Come back, and "Add to" still names the paper you chose.
+  <!-- zh: **查看題目不會改變「加到」的工作紙。** 在題庫中開啟題目所在的工作紙查看，不會再改變
+  「加到」放入所選題目的工作紙。返回題庫後，「加到」仍是你原先選定的工作紙。 -->
 - **A large question bank stays quick to save on the desktop app.** Each worksheet's share
   of the question bank is kept in a small file of its own, so saving one paper writes only
   that file.

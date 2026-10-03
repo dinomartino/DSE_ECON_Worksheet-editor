@@ -39,6 +39,9 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   in the paper; ↻ swaps one pick.
 - **Bank screen look:** light surfaces for lists; the desk tone only behind the paper. EDB
   sub-topics stay and head the review page's list.
+- **"Add to" is the paper open last, but looking never moves it** (the user, 2026-10-03):
+  a paper opened from the bank to look (Open in worksheet) keeps the target as it was,
+  through Home and back; any other open sets it (`src/components/bank/page/bankReturn.ts:useKeptTarget`).
 - **The C3 "Insert from another document" dialog is dropped.** The 題庫 tab's From filter
   does the job.
 

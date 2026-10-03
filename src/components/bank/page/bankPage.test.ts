@@ -198,6 +198,19 @@ describe('targets', () => {
     expect(addTarget(summaries, rows, undefined)).toBeUndefined();
     expect(addTarget([], rows, undefined)).toBeUndefined();
   });
+
+  it('a paper opened from the bank only to look keeps the target it had, or none', () => {
+    const summaries = [summary('looked', '3'), summary('target', '2'), summary('bank', '1')];
+    const rows = [row({ docId: 'bank', docKind: 'bank' })];
+    expect(addTarget(summaries, rows, 'looked', { targetId: 'target', lookedAt: 'looked' })?.id).toBe('target');
+    expect(addTarget(summaries, rows, 'looked', { lookedAt: 'looked' })).toBeUndefined();
+    // Looking at a bank still keeps the paper.
+    expect(addTarget(summaries, rows, 'bank', { targetId: 'target', lookedAt: 'bank' })?.id).toBe('target');
+    // Another paper open since: the kept target no longer applies.
+    expect(addTarget(summaries, rows, 'target', { targetId: 'gone', lookedAt: 'looked' })?.id).toBe('target');
+    // The kept target was trashed meanwhile: none, never the paper looked at.
+    expect(addTarget(summaries, rows, 'looked', { targetId: 'gone', lookedAt: 'looked' })).toBeUndefined();
+  });
 });
 
 describe('the missing-language filter', () => {

@@ -30,6 +30,30 @@ export const useBankReturn = create<BankReturnStore>((set) => ({
   clear: () => set((state) => (state.saved ? { saved: null } : state)),
 }));
 
+/**
+ * The "Add to" target kept while a paper is open only to look (the bank's "open in
+ * worksheet"), so looking never moves it. Any other open forgets it (`EditorHost`); Home
+ * does not. Session state (memory only).
+ */
+export interface KeptTarget {
+  /** The target before the look; absent when there was none. */
+  targetId?: string;
+  /** The paper opened to look. */
+  lookedAt: string;
+}
+
+interface KeptTargetStore {
+  kept: KeptTarget | null;
+  keep: (value: KeptTarget) => void;
+  forget: () => void;
+}
+
+export const useKeptTarget = create<KeptTargetStore>((set) => ({
+  kept: null,
+  keep: (kept) => set({ kept }),
+  forget: () => set((state) => (state.kept ? { kept: null } : state)),
+}));
+
 /** Position of the tag-as-you-go question in its list, or 0 when it is gone. */
 export function tagIndexOf(roots: readonly string[], tagRoot: string | undefined): number {
   const at = tagRoot === undefined ? -1 : roots.indexOf(tagRoot);
