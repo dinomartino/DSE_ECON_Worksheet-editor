@@ -47,10 +47,10 @@ const PAGE = [0, 0, SHEET_W, SHEET_H];
 
 // The closing spread: [sheet id, dx, width, deal pulse]; the version page sits on top.
 const FAN = [
-  ['sheets-key-hkeaa', -600, 330, 45],
-  ['sheets-lq-1', 600, 330, 45],
-  ['sheets-p1-cover', -320, 370, 44],
-  ['sheets-p2-cover', 320, 370, 44],
+  ['sheets-key-hkeaa', -680, 320, 45],
+  ['sheets-lq-1', 680, 320, 45],
+  ['sheets-p1-cover', -350, 360, 44],
+  ['sheets-p2-cover', 350, 360, 44],
 ];
 const FAN_W = 420;
 
@@ -116,7 +116,7 @@ const scene = {
     if (live === SEG.lines) {
       const grow = inOutSoft(prog(t, P(8), P(10)));
       const lay = { x: lerp(DEMO.x, BIG.x, grow), y: lerp(DEMO.y, BIG.y, grow), w: lerp(DEMO.w, BIG.w, grow) };
-      const [z, cx, cy] = keys(t, [[P(2), FULL], [P(4.5), [2.2, 1180, 370], inOutSoft], [P(8), [2.2, 1180, 370]], [P(10), FULL, inOutSoft]]);
+      const [z, cx, cy] = keys(t, [[P(2), FULL], [P(4.5), [2.7, 1240, 365], inOutSoft], [P(8), [2.7, 1240, 365]], [P(10), FULL, inOutSoft]]);
       pose = { ...lay, z, cx, cy };
     } else if (live === SEG.teacher) {
       const [z, cx, cy] = keys(t, [[P(12.5), [1.45, 560, 320]], [P(14.5), [1.75, 480, 560], inOutSoft]]);
@@ -125,13 +125,14 @@ const scene = {
       const [z, cx, cy] = keys(t, [[P(18.2), [1.8, 640, 150]], [P(19.8), FULL, inOutSoft]]);
       pose = { ...DEMO, z, cx, cy };
     } else if (live === SEG.layouts) {
-      const z = lerp(1.2, 1.3, ease.sineInOut(prog(t, P(20), P(26))));
-      pose = { ...DEMO, z, cx: 900, cy: 340 };
+      pose = { ...DEMO, z: 1.55, cx: 500, cy: 340 }; // the page: its title and shape change per layout
     } else if (live === SEG.versions) {
       const z = lerp(1.9, 2.05, ease.sineInOut(prog(t, P(38), P(40))));
       pose = { ...DEMO, z, cx: 740, cy: 590 };
     }
     if (pose) {
+      // Footage never sits still: a slow push across every segment.
+      pose.z *= 1 + 0.06 * prog(t, live.from, live.to); // linear: it moves from the cut on
       sh.set(pose);
       sh.play(seg, live.ct(t));
     } else {
@@ -162,7 +163,7 @@ const scene = {
     const inKeys = t >= P(26) && t < P(32);
     ctx.keyRow.forEach((sht, i) => {
       const d = deal(t, 26 + i);
-      const g = 1 + 0.035 * ease.sineInOut(prog(t, P(26), P(32))); // a slow push while it holds
+      const g = 1 + 0.06 * ease.sineInOut(prog(t, P(26), P(32))); // a slow push while it holds
       const w = 372 * g;
       sht.set({ x: 960 + (i - 1.5) * (w + 40 * g), y: 622 + d.dy, w: w * d.scale, opacity: inKeys ? d.opacity : 0 });
     });
@@ -171,7 +172,7 @@ const scene = {
     const inMock = t >= P(32) && t < P(38);
     ctx.mockRow.forEach((sht, i) => {
       const d = deal(t, 32 + i);
-      const g = 1 + 0.025 * ease.sineInOut(prog(t, P(32), P(38)));
+      const g = 1 + 0.05 * ease.sineInOut(prog(t, P(32), P(38)));
       const w = 320 * g;
       sht.set({ x: 960 + (i - 2) * (w + 24 * g), y: 622 + d.dy, w: w * d.scale, opacity: inMock ? d.opacity : 0 });
     });
@@ -182,7 +183,7 @@ const scene = {
     const open = inOutSoft(prog(t, P(43), P(45)));
     const crop = CROP.map((c, k) => lerp(c, PAGE[k], open));
     ctx.ver.set({
-      x: 960, y: lerp(628, 540, open), w: lerp(1270, FAN_W, open), crop, face,
+      x: 960, y: lerp(628, 540, open), w: lerp(1270 * (1 + 0.04 * ease.sineInOut(prog(t, P(40), P(43.5)))), FAN_W, open), crop, face,
       opacity: inFin ? 1 : 0,
     });
     ctx.fan.forEach((sht, i) => {
