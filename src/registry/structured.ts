@@ -131,10 +131,31 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     question.blocks.length === 0;
   if (isLeaf && !stemClaimed) attachMarksToLastText(nodes, 0, stemMarks);
 
+  // An essay's answer, model diagram and scheme, as a leaf part's, at the stem's column.
+  if (isLeaf && !isBiTextEmpty(question.answer)) {
+    nodes.push({
+      kind: 'text',
+      style: 'Marking Scheme',
+      teacherOnly: true,
+      text: question.answer!,
+      indent: context.indents.stemText,
+      ...(question.answerDiagram ? { keepNext: true } : {}),
+      edit: { kind: 'questionAnswer', questionId: question.id },
+    });
+  }
   // The leaf question's own writing room, under the stem it answers (§ the LQ line).
   // Absent prints nothing, like marks. Blank axes to draw on come first (§ AnswerGraph),
-  // after the teacher's model diagram.
+  // after the teacher's model diagram and scheme.
   if (isLeaf) pushAnswerDiagram(nodes, question.answerDiagram);
+  if (isLeaf) {
+    nodes.push(
+      ...renderMarkScheme(question.scheme, {
+        indent: context.indents.stemText,
+        teacherOnly: true,
+        at: { questionId: question.id },
+      }),
+    );
+  }
   if (isLeaf && question.answerGraph) nodes.push(answerGraphNode(question.answerGraph));
   if (isLeaf && question.answerSpace !== undefined && question.answerSpace > 0) {
     nodes.push({ kind: 'answerSpace', lines: question.answerSpace });
@@ -375,10 +396,10 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
 }
 
 /**
- * Print order: stem, answer figure, blank axes, then each part — interlude, body, its
+ * Print order: stem, answer, answer figure, scheme, blank axes, then each part — interlude, body, its
  * sub-parts (body, answer, answer figure, scheme, blank axes), answer, answer figure,
  * scheme, blank axes. A part without sub-parts prints its answer before the (empty)
- * sub-parts, so one order serves both. Question-level figures print only without parts.
+ * sub-parts, so one order serves both. Question-level answers print only without parts.
  * Letters label review rows only; they are never text to translate.
  */
 function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQuestion {
@@ -386,7 +407,11 @@ function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQue
   const own = question.parts.length > 0 ? walk.unprinted() : walk;
   return patch(question, {
     blocks: walk.blocks('blocks', question.blocks, { paragraphKind: 'stem' }),
+    answer: own.optional('answer', question.answer, {
+      kind: 'answer', role: 'teacher', target: { kind: 'questionAnswer', questionId },
+    }),
     answerDiagram: own.diagramBlock('answerDiagram', question.answerDiagram, 'teacher'),
+    scheme: own.scheme('scheme', question.scheme),
     answerGraph: own.answerGraph('answerGraph', question.answerGraph, 'print'),
     parts: mapSame(question.parts, (part, index) => {
       const partId = part.id;
@@ -418,11 +443,20 @@ function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQue
 }
 
 /**
- * Each answerable leaf — a part without sub-parts, or a sub-part — for the AI answer
- * writer. The part is every leaf's stamp: editing its body or any sub-part is stale.
+ * Each answerable leaf — a part without sub-parts, a sub-part, or an essay with no parts
+ * — for the AI answer writer. The part is every leaf's stamp: editing its body or any sub-part is stale.
  */
 function mapAnswers(question: StructuredQuestion, visit: AnswerVisitor): StructuredQuestion {
   const questionId = question.id;
+  // An essay is its own one leaf.
+  if (question.parts.length === 0) {
+    return fillWritten(question, visit({
+      shape: 'written', key: 'question', label: '', stamp: question,
+      ...(question.marks !== undefined ? { marks: question.marks } : {}),
+      blank: areBlocksEmpty(question.blocks), answer: question.answer, scheme: question.scheme,
+      answerTarget: { kind: 'questionAnswer', questionId },
+    }));
+  }
   return patch(question, {
     parts: mapSame(question.parts, (part, index) => {
       const partId = part.id;
@@ -447,27 +481,30 @@ function mapAnswers(question: StructuredQuestion, visit: AnswerVisitor): Structu
   });
 }
 
-/** A part's answer covers its sub-parts; otherwise each unanswered leaf counts once. */
+/**
+ * A part's answer covers its sub-parts; otherwise each unanswered leaf counts once. An
+ * essay with no parts is one leaf.
+ */
 function healthFacts(question: StructuredQuestion): QuestionHealthFacts {
-  let unansweredParts = 0;
+  // A marking scheme, a model diagram or an answer drawn on the leaf's own diagram
+  // answers it as fully as answer text does.
+  const answered = (leaf: {
+    answer?: BiText;
+    scheme?: MarkScheme;
+    answerDiagram?: DiagramBlock;
+    blocks: ContentBlock[];
+    blocksBefore?: ContentBlock[];
+  }) =>
+    !isBiTextEmpty(leaf.answer) ||
+    !isSchemeEmpty(leaf.scheme) ||
+    Boolean(leaf.answerDiagram) ||
+    answeredDiagrams([...(leaf.blocksBefore ?? []), ...leaf.blocks]).length > 0;
+  let unansweredParts = question.parts.length === 0 && !answered(question) ? 1 : 0;
   let bodyEmpty = true;
   for (const part of question.parts) {
     const subParts = part.subParts ?? [];
     if (!areBlocksEmpty(part.blocksBefore) || !areBlocksEmpty(part.blocks)) bodyEmpty = false;
     if (subParts.some((sub) => !areBlocksEmpty(sub.blocks))) bodyEmpty = false;
-    // A marking scheme, a model diagram or an answer drawn on the leaf's own diagram
-    // answers it as fully as answer text does.
-    const answered = (leaf: {
-      answer?: BiText;
-      scheme?: MarkScheme;
-      answerDiagram?: DiagramBlock;
-      blocks: ContentBlock[];
-      blocksBefore?: ContentBlock[];
-    }) =>
-      !isBiTextEmpty(leaf.answer) ||
-      !isSchemeEmpty(leaf.scheme) ||
-      Boolean(leaf.answerDiagram) ||
-      answeredDiagrams([...(leaf.blocksBefore ?? []), ...leaf.blocks]).length > 0;
     if (answered(part)) continue;
     unansweredParts += subParts.length === 0 ? 1 : subParts.filter((sub) => !answered(sub)).length;
   }
@@ -537,10 +574,21 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
     }
   });
   // With no parts the question is the leaf, and its marks ride on its own line; its
-  // model diagram is an unlabelled row under the number.
+  // answer, model diagram and scheme are an unlabelled row under the number.
   const marks = question.parts.length === 0 ? questionMarks(question) || undefined : undefined;
-  if (question.parts.length === 0 && question.answerDiagram) {
-    rows.push({ depth: 1, diagram: question.answerDiagram });
+  if (
+    question.parts.length === 0 &&
+    (!isBiTextEmpty(question.answer) || question.answerDiagram || !isSchemeEmpty(question.scheme))
+  ) {
+    const at = { questionId: question.id };
+    rows.push({
+      depth: 1,
+      ...(!isBiTextEmpty(question.answer) ? { answer: question.answer } : {}),
+      ...(question.answerDiagram ? { diagram: question.answerDiagram } : {}),
+      ...(question.scheme ? { scheme: question.scheme } : {}),
+      answerEdit: { kind: 'questionAnswer', ...at },
+      schemeAt: at,
+    });
   }
   if (question.parts.length === 0) drawn(1, question.blocks);
   return { kind: 'scheme', marks, rows, stem: paragraphLines(question.blocks) };
@@ -552,9 +600,11 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
  * scheme is checked against it, as the editor does.
  */
 function qualityView(question: StructuredQuestion): QualityView {
+  const leaf = question.parts.length === 0;
   const anchors: QualityAnchor[] = [{
     ref: 'stem', role: 'stem', label: '', blocks: question.blocks,
-    ...(question.parts.length === 0 && question.marks !== undefined ? { marks: question.marks } : {}),
+    ...(leaf && question.marks !== undefined ? { marks: question.marks } : {}),
+    ...(leaf && question.scheme ? { scheme: question.scheme } : {}),
   }];
   question.parts.forEach((part, index) => {
     const ref = partLabel(index);

@@ -250,3 +250,25 @@ describe('the optional `kind` on an index row', () => {
     expect((await store().list()).find((r) => r.id === 'notes-1')?.kind).toBe('notes');
   });
 });
+
+describe('a document written at schema 2 (answer layer or key layout)', () => {
+  const V2_ENTRY = { id: 'v2-doc', title: 'Mock with answers', updatedAt: '2026-10-03T00:00:00.000Z', questionCount: 1 };
+  const V2_DOC = { ...LEGACY_DOC, schemaVersion: 2, id: 'v2-doc', answerKeyLayout: { preset: 'suggested' } };
+
+  it('lists beside a v1 row and a damaged one, opens editable, and saves back at 2', async () => {
+    storage.setItem(INDEX_KEY, JSON.stringify([LEGACY_ENTRY, { id: 'broken' }, V2_ENTRY]));
+    storage.setItem(PREFIX + 'legacy-doc', JSON.stringify(LEGACY_DOC));
+    storage.setItem(PREFIX + 'v2-doc', JSON.stringify(V2_DOC));
+
+    expect((await store().list()).map((entry) => entry.id).sort()).toEqual(['legacy-doc', 'v2-doc']);
+    const loaded = (await store().load('v2-doc'))!;
+    expect(loaded.answerKeyLayout).toEqual({ preset: 'suggested' });
+    // Not newer than this build: the save is allowed, and the mark is kept.
+    await store().save(loaded);
+    expect(JSON.parse(storage.getItem(PREFIX + 'v2-doc')!).schemaVersion).toBe(2);
+
+    // A v1 document saved here stays at 1.
+    await store().save((await store().load('legacy-doc'))!);
+    expect(JSON.parse(storage.getItem(PREFIX + 'legacy-doc')!).schemaVersion).toBe(1);
+  });
+});

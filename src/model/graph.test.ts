@@ -26,7 +26,9 @@ describe('the frozen graph corpus (v1)', () => {
     expect(graph.id).toBe('graph-corpus-v1');
     expect(graph.name).toBe('Rice market');
     expect(graph.language).toBe('bilingual');
-    expect(graph.schemaVersion).toBe(1);
+    expect(graph.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    // No answer layer, so it is still written at 1 (§ writtenSchemaVersion).
+    expect(serializeGraph(graph).schemaVersion).toBe(1);
     expect(graph.templateId).toBe('supply-demand');
     expect(graph.__unknown).toBeUndefined();
     const { block } = graph;

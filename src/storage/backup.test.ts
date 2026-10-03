@@ -7,6 +7,8 @@ import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWorksheet } from '@/model/factories';
 import v1Corpus from '@/test/corpus/v1-published.json';
+import v2Corpus from '@/test/corpus/v2-published.json';
+import { migrate } from '@/model/migrations';
 import { LocalStorageWorksheetStore, stringifyWorksheet } from '.';
 import {
   backupEntryName,
@@ -84,6 +86,22 @@ describe('building a backup', () => {
     expect(failures).toEqual([]);
     const byId = (id: string) => worksheets.find((entry) => entry.worksheet.id === id)!.worksheet;
     expect(docs.map((d) => stringifyWorksheet(byId(d.id)))).toEqual(docs.map(stringifyWorksheet));
+  });
+
+  it('writes a v2 document at 2 beside a v1 one at 1; the manifest names the highest', async () => {
+    const v1 = { ...migrate(structuredClone(v1Corpus)), id: 'one' };
+    const v2 = migrate(structuredClone(v2Corpus));
+    const bytes = await buildBackup([v1, v2], '2026-10-03T00:00:00.000Z');
+    const zip = await JSZip.loadAsync(bytes);
+    expect(JSON.parse(await zip.file(MANIFEST_NAME)!.async('string')).schemaVersion).toBe(2);
+    const version = async (worksheet: typeof v1) =>
+      JSON.parse(await zip.file(backupEntryName(worksheet))!.async('string')).schemaVersion;
+    expect(await version(v1)).toBe(1);
+    expect(await version(v2)).toBe(2);
+    const { worksheets } = await readBackup(bytes);
+    expect(worksheets.map((entry) => stringifyWorksheet(entry.worksheet)).sort()).toEqual(
+      [v1, v2].map(stringifyWorksheet).sort(),
+    );
   });
 
   it('names an entry safely', () => {

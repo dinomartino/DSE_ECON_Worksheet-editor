@@ -90,6 +90,9 @@ a default is "Add an optional Worksheet field" above. Only a changed meaning or 
 1. `src/model/migrations.ts` — append one pure, total step to `MIGRATIONS` (index = *from*
    version − 1).
 2. Bump `CURRENT_SCHEMA_VERSION`; add any new top-level keys to `KNOWN_KEYS`.
+   Saves store `src/model/migrations.ts:writtenSchemaVersion`: make it return the new
+   version for every document in the new shape (only for documents using the field, when
+   the change is additive but would mis-print in older builds).
 3. Freeze a **new** `src/test/corpus/v<N>-published.json`, written by the last build of the
    old version. Never regenerate an existing corpus — it is the only fixture not built by
    the current build, and so the only one that can catch a step that drops data.
