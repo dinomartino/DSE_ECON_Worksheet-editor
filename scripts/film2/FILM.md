@@ -1,6 +1,6 @@
 # Econ Studio — product film v2 bible
 
-Status: DRAFT 2026-10-04, awaiting the user's sign-off on story and music. Lives at
+Status: APPROVED 2026-10-04 (story + track). Lives at
 `scripts/film2/FILM.md` once committed. Where code must disagree, the code wins and this
 file is fixed in the same change.
 
@@ -64,11 +64,14 @@ Spine: **"Everything an Economics teacher prepares, drawn in one studio."** The 
 drawn like an economics diagram: lines draw themselves, the blue equilibrium dot is the
 through-line that carries us from scene to scene.
 
-Music (default, pending the user's ear): **"Dreaming Big", Ahjay Stelino, Mixkit**
-(`demo-media/film-v2/audio-stock/music/mixkit-31.mp3`), 110.4 s, ~136 BPM (beat ≈ 0.441 s,
-bar ≈ 1.765 s), piano + strings. Shape: soft intro 0–12.6, build 12.6–30.8, body
-30.8–73.0, full lift 73.0–99.6, pull-back 99.6–105, tail. Times below are approximate;
-the timeline snaps every boundary to the verified beat grid.
+Music (approved): **"Dreaming Big", Ahjay Stelino, Mixkit**, muxed from the normalised
+master `demo-media/film-v2/audio/music/mixkit-31.norm.wav` (−16 LUFS), 110.4 s, audible to
+107.65. Verified grid `audio/grid/mixkit-31.grid.json`: 135 BPM eighths (pulse 0.4445 s,
+the unit for cuts and accents), quarter 0.889 s, bar 3.556 s, first downbeat 1.795 s.
+Piano + strings. Sections: intro 0–12.46, build 12.46–30.25, body 30.25–72.92, full lift
+72.92–94.26, pull-back 94.26–104.93, tail. Times in the table are approximate; `SCENES`
+in `timeline.mjs` holds the real bar lines (`music.mjs` is the one line that picks the
+track).
 
 | # | Act | ≈ time | Music | Picture (2D) | Copy en / zh (no line-end punctuation) |
 |---|---|---|---|---|---|

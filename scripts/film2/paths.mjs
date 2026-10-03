@@ -15,9 +15,10 @@ export const ASSETS = resolve(MEDIA, 'assets');
 export const STOCK = resolve(MEDIA, 'audio-stock');
 export const BUILD = resolve(OUT, 'build');
 export const AUDIO = resolve(OUT, 'audio');
-/** The music track and its librosa analysis (music.mjs picks the track). */
-export const MUSIC_FILE = resolve(STOCK, 'music', `${MUSIC.slug}.mp3`);
-export const MUSIC_ANALYSIS = resolve(STOCK, 'music', `${MUSIC.slug}.analysis.json`);
+/** The muxed music master and its verified grid (music.mjs picks the track). */
+export const MUSIC_FILE = resolve(MEDIA, MUSIC.audio);
+export const MUSIC_GRID = resolve(MEDIA, MUSIC.grid);
+export const SFX = resolve(MEDIA, 'audio/sfx');
 
 export function ensureDirs() {
   for (const dir of [OUT, BUILD, AUDIO]) mkdirSync(dir, { recursive: true });
