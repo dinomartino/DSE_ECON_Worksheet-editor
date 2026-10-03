@@ -28,6 +28,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   0 partial (7 templates, `curvePath` reads curves as drawn); CS/PS reach the price axis; 題庫
   "Adding to" picker + "Already in this paper", text→topic suggestions (`termTopics.ts`), synced
   undo, second-tab tag guard, coalesced publish, virtualised rail, desktop `pack.json`+journal.
+  題庫 "New Paper 2" makes the full booklet; the tray has no separate "New worksheet" button;
+  text-derived topic keys are underlined with dots (user's calls).
 - `scripts/soffice.mjs` gives LibreOffice the CJK fonts (zh/bilingual Word legs used to drop
   Chinese); `cover-verify` / `lq-verify` take `--language`; `shot.mjs --seed [--port=]` works.
 
@@ -50,8 +52,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   wording breaks Google's terms. Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key.
 - Bank authoring proposal (`docs/design/bank-authoring.md`, 3 questions).
-- Text-derived topic suggestions are marked ✦, which elsewhere means the AI door; a new
-  題庫 "New Paper 2" makes the full booklet; the tray lost its separate "New worksheet" button.
 
 ## Open threads and known gaps
 

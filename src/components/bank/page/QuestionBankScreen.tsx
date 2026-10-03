@@ -327,7 +327,7 @@ export function QuestionBankScreen({
   const restoredAt = restoring ? untagged.findIndex((group) => group.rootId === restoring.group.rootId) : -1;
   const tagGroup = restoring ? (restoredAt >= 0 ? untagged[restoredAt] : restoring.group) : untagged[tagPosition];
   const tagRow = tagGroup?.rows[0];
-  // ✦ The question's own words, through the EDB glossary (loaded once tagging starts).
+  // The question's own words, through the EDB glossary (loaded once tagging starts).
   const glossary = useGlossary(level.kind === 'untagged');
   const textHits = useMemo(() => (tagRow && glossary ? textTopics(rowText(tagRow, glossary), glossary) : []), [tagRow, glossary]);
   const suggestions = useMemo(() => (tagRow ? suggestTopics(tagRow, rows, undefined, textHits) : []), [tagRow, rows, textHits]);

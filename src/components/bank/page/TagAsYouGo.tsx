@@ -52,7 +52,7 @@ export function TagAsYouGo({
   position: number;
   left: number;
   suggestions: string[];
-  /** Suggestions the question's own words found, with the terms that did (`termsByTopic`): marked ✦. */
+  /** Suggestions the question's own words found, with the terms that did (`termsByTopic`): name underlined with dots. */
   fromText?: ReadonlyMap<string, string[]>;
   /** Topics on where the keys tag now: the whole question (on every part), or one part. */
   chosen: ReadonlySet<string>;
@@ -163,15 +163,14 @@ export function TagAsYouGo({
               >
                 <span className="absolute right-1.5 top-1 text-[10.5px] tabular-nums text-ink-subtle">
                   {some && <span className="mr-1 text-accent-ink">{some.join(' ')}</span>}
-                  {terms && (
-                    <span aria-hidden className="mr-1 text-accent-ink">
-                      ✦
-                    </span>
-                  )}
                   {index + 1}
                 </span>
                 <b className="text-[13px] font-semibold text-ink">{coarse}</b>
-                <small className="line-clamp-2 text-[12px] leading-snug text-ink-muted">{name}</small>
+                <small
+                  className={`line-clamp-2 text-[12px] leading-snug text-ink-muted ${terms ? 'underline decoration-ink-muted decoration-dotted underline-offset-2' : ''}`}
+                >
+                  {name}
+                </small>
                 {zh && <small className="truncate text-[12px] leading-snug text-ink-subtle">{zh}</small>}
               </button>
             );

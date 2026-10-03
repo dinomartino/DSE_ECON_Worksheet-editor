@@ -294,14 +294,14 @@ a version heading is edited afterwards.
   你可以改為任何一份工作紙，或新增課堂工作紙、Paper 1 或 Paper 2。該試卷已有的題目會標示
   「已在此工作紙」及題號。新增的 Paper 1 或 Paper 2 會把每條題目放到其題型所屬的部分，並放在
   END OF PAPER 之前。 -->
-- **✦ Topic suggestions from the question's own words.** When you tag questions one at a
+- **Topic suggestions from the question's own words.** When you tag questions one at a
   time in the question bank, the first suggestions now come from economics terms in the
   question itself, in English or 中文 (a price ceiling suggests Market intervention), read
-  with the EDB glossary on your computer, no AI key needed. They are marked ✦, and pointing
-  at one shows the terms that found it.
-  <!-- zh: **✦ 按題目字詞建議課題。** 在題庫逐題標記課題時，最先的建議現在來自題目本身的經濟學
+  with the EDB glossary on your computer, no AI key needed. They are underlined with dots,
+  and pointing at one shows the terms that found it.
+  <!-- zh: **按題目字詞建議課題。** 在題庫逐題標記課題時，最先的建議現在來自題目本身的經濟學
   詞語，英文或中文皆可（例如「價格上限」會建議「市場干預」）。建議以本機的教育局詞彙表判斷，
-  毋須 AI 金鑰。這些建議標有 ✦，將游標移到上面便會顯示找到的詞語。 -->
+  毋須 AI 金鑰。這些建議以虛線底線標示，將游標移到上面便會顯示找到的詞語。 -->
 - **Seven more diagram templates, so every diagram the marking schemes ask for starts from
   one.** Monopoly with a U-shaped MC, unitary elastic demand (a curved D where the revenue
   gain equals the loss), a tax's underproduction (MB above MC at Q₁), revenue net of a tax,
