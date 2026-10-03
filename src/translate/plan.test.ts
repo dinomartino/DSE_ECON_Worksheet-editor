@@ -71,6 +71,17 @@ describe('planFromSlots', () => {
     expect(planFromSlots('ws', all, { kind: 'block', blockId: 'd1', questionId: 'q2' }, options()).jobs.size).toBe(0);
   });
 
+  it('never plans alt text, even with teacher text included; teacher text still goes', () => {
+    const alt = slot('A demand curve', '', { kind: 'altText', role: 'meta', blockIds: ['img'] });
+    const teacher = slot('Model answer.', '', { role: 'teacher' });
+    const bothAlt = slot('A curve', '一條曲線', { kind: 'altText', role: 'meta', blockIds: ['img'] });
+    const plan = planFromSlots('ws', [alt, teacher, bothAlt, slot('Explain.', '')], paper, options({ includeTeacher: true }));
+    expect([...plan.jobs.values()].flatMap((j) => j.slots.map((s) => s.path))).not.toContain(alt.path);
+    expect(plan.counts).toMatchObject({ toZh: 2, teacher: 1, contextLines: 0 });
+    const block = { kind: 'block', blockId: 'img' } as const;
+    expect(planFromSlots('ws', [alt, bothAlt], block, options({ retranslate: 'zh' })).jobs.size).toBe(0);
+  });
+
   it('copies symbol-only text per direction, never diagram text', () => {
     const cell = slot('2024', '', { kind: 'tableCell' });
     const tick = slot('Q0', '', { kind: 'tickLabel', fallsBack: true });

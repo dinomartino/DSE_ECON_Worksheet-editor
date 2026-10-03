@@ -2460,7 +2460,8 @@ There is no pre-insert review. A verb click runs, writes, then shows what it wro
   view to the side or the Teacher version it wrote.
 - **Direct insert, one commit.** Fill missing 中文 / English and Re-translate
   (`src/assist/verbs/translate.ts`) plan with the defaults a click implies — one direction,
-  teacher text when the Teacher version shows or `ai.includeTeacherText` is on, diagram
+  teacher text when the Teacher version shows or `ai.includeTeacherText` is on (alt text
+  never: `roleAllowed` in `src/translate/plan.ts`, so Fill counts what the badge does), diagram
   labels on, symbol copies per the edition rule — run, then make ONE `applyTranslations`
   with every usable result. Hard failures come back as `failed` items; warnings and content
   risks are written and come back as `look`. Stale-guard skips are reported, never retried

@@ -470,6 +470,14 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **Fill missing no longer translates image descriptions.** With "Include answers and mark
+  schemes" on, Fill missing 中文 or English also sent the alt text of pictures and
+  diagrams, so it counted more texts than the ✦ AI badge. It now covers answers and
+  marking schemes only, and the two counts match. You can still fill a picture's
+  description from its own field.
+  <!-- zh: **「補上缺少的中文／英文」不再翻譯圖片描述。** 開啟「翻譯時包括答案和評卷參考」後，
+  補上語言時亦會一併送出圖片和圖表的替代文字，因此數目比 ✦ AI 標記多。現在只包括答案和評卷
+  參考，兩個數目一致。圖片描述仍可在它自己的欄位補上。 -->
 - **A bilingual paper with one language missing is as long on screen as in Word.** When a
   title, question or option has English but no 中文 (or the other way round), the "Add 中文"
   prompt now sits at the end of the line instead of on a line of its own. The page and the
