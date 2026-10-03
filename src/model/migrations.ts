@@ -22,9 +22,11 @@ import type { Worksheet } from './types';
 export const CURRENT_SCHEMA_VERSION = 2;
 
 /**
- * v2 = v1 plus the diagram answer layer (`answer: true`) and `answerKeyLayout`. v0.5.0
- * reads v1 and ignores both, printing teacher answers on the student copy and every key
- * as Classic, so a document using either is written at 2 and opens read-only there.
+ * v2 = v1 plus what v0.5.0 reads as v1 but mis-prints: the diagram answer layer
+ * (`answer: true`; teacher answers on the student copy), `answerKeyLayout` (every key as
+ * Classic), a section's `answerCount` (it totals every question) or `targetMarks`, and an
+ * essay's own `answer` or `scheme` (a question with no parts; its teacher copy and key
+ * leave them out). A document using any of them is written at 2 and opens read-only there.
  */
 const ANSWER_LAYER_VERSION = 2;
 
@@ -188,12 +190,56 @@ export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown
  */
 export function writtenSchemaVersion(version: number, doc: unknown): number {
   if (version > CURRENT_SCHEMA_VERSION) return version;
-  if (isRecord(doc) && doc.answerKeyLayout !== undefined) return ANSWER_LAYER_VERSION;
+  if (isRecord(doc) && (doc.answerKeyLayout !== undefined || hasSectionMarks(doc.layout) || hasEssayAnswer(doc.questions))) {
+    return ANSWER_LAYER_VERSION;
+  }
   return hasAnswerElement(doc) ? ANSWER_LAYER_VERSION : 1;
 }
 
 function isRecord(value: unknown): value is RawDoc {
   return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** A section with "answer any n" or its own marks target (`model/marks.ts:answerCountOf`). */
+function hasSectionMarks(layout: unknown): boolean {
+  return (
+    Array.isArray(layout) &&
+    layout.some(
+      (element) =>
+        isRecord(element) &&
+        element.kind === 'section' &&
+        (element.answerCount !== undefined || element.targetMarks !== undefined),
+    )
+  );
+}
+
+/** A question with no parts carrying its own answer or scheme (as the essay prints them). */
+function hasEssayAnswer(questions: unknown): boolean {
+  return (
+    Array.isArray(questions) &&
+    questions.some(
+      (question) =>
+        isRecord(question) &&
+        Array.isArray(question.parts) &&
+        question.parts.length === 0 &&
+        (hasWords(question.answer) || schemeHasContent(question.scheme)),
+    )
+  );
+}
+
+/** As `isSchemeEmpty`, read structurally: any level, an EC block, or a worded point. */
+function schemeHasContent(scheme: unknown): boolean {
+  if (!isRecord(scheme)) return false;
+  if ((Array.isArray(scheme.levels) && scheme.levels.length > 0) || scheme.ec) return true;
+  return hasWords(scheme.routes);
+}
+
+/** Any run anywhere in `value` with non-blank `text` (as `isBiTextEmpty`, negated). */
+function hasWords(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasWords);
+  if (!isRecord(value)) return false;
+  if (typeof value.text === 'string') return value.text.trim().length > 0;
+  return Object.values(value).some(hasWords);
 }
 
 /** Answer-layer lists; pie, flow and forum diagrams never draw them (`hasAnswerLayer`). */

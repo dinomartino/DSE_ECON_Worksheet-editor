@@ -80,6 +80,11 @@ Guard: `src/model/flow.test.ts`, `src/render/gaps.test.ts`.
 
 No migration and no version bump: an absent optional field is valid v1.
 
+Nested fields too: if the last release would mis-print a document using it (answers on the
+student copy, wrong totals, typed content left out), add it to
+`src/model/migrations.ts:writtenSchemaVersion` with a test; kept and printed the same
+stays at 1.
+
 Guard: `src/model/backwardCompat.test.ts` (round-trips the frozen corpus).
 
 ## Changing the shape of stored data

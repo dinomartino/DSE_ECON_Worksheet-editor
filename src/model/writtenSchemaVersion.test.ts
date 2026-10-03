@@ -1,9 +1,11 @@
 /**
  * "Bump only when used" (§ `writtenSchemaVersion`). v0.5.0 reads schema 1 and opens any
  * higher `schemaVersion` read-only, never overwriting it. It ignores the diagram answer
- * layer (it would print teacher answers on the student copy) and `answerKeyLayout` (it
- * would print the key as Classic), so a document using either must be written above 1,
- * and every other document must stay written at 1.
+ * layer (teacher answers on the student copy), `answerKeyLayout` (the key as Classic), a
+ * section's `answerCount`/`targetMarks` (every question totalled) and an essay's own
+ * `answer`/`scheme` (left out of its teacher copy and key), so a document using any must
+ * be written above 1. Everything else, bank metadata included, stays at 1: v0.5.0 keeps
+ * it and prints the same.
  */
 import { describe, expect, it } from 'vitest';
 import v1Corpus from '@/test/corpus/v1-published.json';
@@ -21,12 +23,16 @@ import {
   createSubPart,
   createWorksheet,
 } from './factories';
-import { createStimulusElement } from './flow';
+import { createSectionElement, createStimulusElement } from './flow';
+import { applyDeleteTarget } from './edits';
+import { copyQuestion } from './lineage';
+import { bi } from './text';
+import type { MarkScheme } from './markSchemeTypes';
 import { createGraph, migrateGraph, serializeGraph } from './graph';
 import { withAnswerKeyLayout, withAnswerKeyPreset } from './answerKeyLayout';
 import { editableCopy } from '@/storage/document';
 import type { Diagram } from './diagram';
-import type { DiagramBlock, Worksheet } from './types';
+import type { DiagramBlock, LayoutElement, StructuredQuestion, Worksheet } from './types';
 
 /** v0.5.0's `CURRENT_SCHEMA_VERSION`: it opens anything written above this read-only. */
 const V050_READS = 1;
@@ -203,5 +209,132 @@ describe('saved graphs follow the same rule', () => {
     const back = migrateGraph(JSON.parse(JSON.stringify(serializeGraph(answered))));
     expect(back.block.diagram.curves[0].answer).toBe(true);
     expect(back.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+  });
+});
+
+type Section = Extract<LayoutElement, { kind: 'section' }>;
+
+/** Section A, then Section B holding two LQs; `extra` goes on Section B. */
+function sectionedPaper(extra: Partial<Section> = {}): Worksheet {
+  const worksheet = createWorksheet();
+  const a = createSectionElement(bi('Section A', '甲部'));
+  const b: Section = { ...(createSectionElement(bi('Section B', '乙部')) as Section), ...extra };
+  const questions = [createStructuredQuestion(), createStructuredQuestion(), createStructuredQuestion()];
+  worksheet.questions = questions;
+  worksheet.layout = [a, b];
+  worksheet.flow = [
+    { type: 'layout', id: a.id },
+    { type: 'question', id: questions[0].id },
+    { type: 'layout', id: b.id },
+    { type: 'question', id: questions[1].id },
+    { type: 'question', id: questions[2].id },
+  ];
+  return worksheet;
+}
+
+const withSection = (worksheet: Worksheet, patch: Partial<Section>): Worksheet => ({
+  ...worksheet,
+  layout: worksheet.layout.map((element, i) => (i === 1 ? ({ ...element, ...patch } as LayoutElement) : element)),
+});
+
+describe('optional sections ("answer any ONE") and section targets', () => {
+  // v0.5.0 keeps both fields but totals every question: "(22 marks)" for "(12 marks)".
+  it('are written at 1 without either field', () => {
+    expect(written(sectionedPaper())).toBe(V050_READS);
+  });
+
+  it('are written at 2 with an answer count, a marks target, or both', () => {
+    expect(written(sectionedPaper({ answerCount: 1 }))).toBe(2);
+    expect(written(sectionedPaper({ targetMarks: 20 }))).toBe(2);
+    expect(written(sectionedPaper({ answerCount: 1, targetMarks: 12 }))).toBe(2);
+  });
+
+  it('drop back to 1 when the Inspector clears them, and reload unchanged at 2', () => {
+    const optional = sectionedPaper({ answerCount: 1, targetMarks: 12 });
+    expect(reloaded(optional).layout[1]).toMatchObject({ answerCount: 1, targetMarks: 12 });
+    expect(written(reloaded(optional))).toBe(2);
+    const cleared = withSection(optional, { answerCount: undefined, targetMarks: undefined });
+    expect(written(cleared)).toBe(V050_READS);
+    expect(written(reloaded(cleared))).toBe(V050_READS);
+  });
+
+  it('only a section marks it: the field on any other layout element is not read', () => {
+    const other = sectionedPaper();
+    other.layout = [...other.layout, { kind: 'text', id: 'stray', text: bi('', ''), answerCount: 1 } as unknown as LayoutElement];
+    expect(written(other)).toBe(V050_READS);
+  });
+});
+
+const POINTS: MarkScheme = {
+  routes: [{ id: 'r', groups: [{ id: 'g', points: [{ id: 'p', text: bi('Define it', '定義'), marks: 2 }] }] }],
+};
+
+/** One structured question with no parts: an essay. */
+function essayPaper(extra: Partial<StructuredQuestion> = {}): Worksheet {
+  const worksheet = createWorksheet();
+  const question: StructuredQuestion = { ...createStructuredQuestion(), parts: [], marks: 12, ...extra };
+  worksheet.questions = [question];
+  worksheet.flow = [{ type: 'question', id: question.id }];
+  return worksheet;
+}
+
+describe('an essay’s own answer and scheme', () => {
+  // v0.5.0 keeps both but prints neither: its teacher copy and key lose what was typed.
+  it('is written at 1 with neither, or with only blank ones', () => {
+    expect(written(essayPaper())).toBe(V050_READS);
+    expect(written(essayPaper({ answer: bi('  ', '') }))).toBe(V050_READS);
+    expect(written(essayPaper({ scheme: { routes: [] } }))).toBe(V050_READS);
+    const blankPoint: MarkScheme = { routes: [{ id: 'r', groups: [{ id: 'g', points: [{ id: 'p', text: bi('', ''), marks: 2 }] }] }] };
+    expect(written(essayPaper({ scheme: blankPoint }))).toBe(V050_READS);
+  });
+
+  it('is written at 2 with an answer, a worded point, an alternative, a level or an EC block', () => {
+    expect(written(essayPaper({ answer: bi('', '提高工資') }))).toBe(2);
+    expect(written(essayPaper({ scheme: POINTS }))).toBe(2);
+    const alternative: MarkScheme = {
+      routes: [{ id: 'r', groups: [{ id: 'g', points: [{ id: 'p', text: bi('', ''), alternatives: [bi('Or', '或')] }] }] }],
+    };
+    expect(written(essayPaper({ scheme: alternative }))).toBe(2);
+    expect(written(essayPaper({ scheme: { routes: [], levels: [{ id: 'l', min: 1, max: 4, descriptor: bi('', '') }] } }))).toBe(2);
+    expect(written(essayPaper({ scheme: { routes: [], ec: { max: 2, descriptors: [] } } }))).toBe(2);
+  });
+
+  it('drops back to 1 when the answer is deleted and the scheme removed', () => {
+    const worksheet = essayPaper({ answer: bi('Raises wages', '提高工資'), scheme: POINTS });
+    expect(written(reloaded(worksheet))).toBe(2);
+    const questionId = worksheet.questions[0].id;
+    const noAnswer = applyDeleteTarget(worksheet, { kind: 'questionAnswer', questionId });
+    expect(written(noAnswer)).toBe(2);
+    const neither = { ...noAnswer, questions: noAnswer.questions.map((q) => ({ ...q, scheme: undefined })) };
+    expect(written(neither)).toBe(V050_READS);
+  });
+
+  it('is not read on a question with parts, which prints it in neither build', () => {
+    const question = { ...createStructuredQuestion(), answer: bi('Stale', '舊'), scheme: POINTS };
+    expect(question.parts.length).toBeGreaterThan(0);
+    const worksheet = createWorksheet();
+    worksheet.questions = [question];
+    worksheet.flow = [{ type: 'question', id: question.id }];
+    expect(written(worksheet)).toBe(V050_READS);
+  });
+});
+
+describe('what v0.5.0 keeps and prints the same stays at 1', () => {
+  // Proven against the v0.5.0 tag: each survives its load, edits, translation and save.
+  it('topics, 題型, tag stamps, lineage, part and sub-part roots', () => {
+    const worksheet = createWorksheet();
+    const question = copyQuestion(createStructuredQuestion(), 'doc-source');
+    question.tags = ['C', 'C.ped::Calculate PED', 'past paper'];
+    question.tagsAt = '2026-09-30T01:02:03.000Z';
+    question.parts[0] = { ...question.parts[0], tags: ['C.ped'], subParts: [{ ...createSubPart(), tags: ['D'], rootId: 'root-sub' }] };
+    const mcq = { ...copyQuestion(createMcqQuestion(), 'doc-source'), tags: ['B'] };
+    worksheet.questions = [question, mcq];
+    worksheet.flow = worksheet.questions.map((q) => ({ type: 'question' as const, id: q.id }));
+    expect(written(worksheet)).toBe(V050_READS);
+  });
+
+  it('the bank fields: kind, classes, satOn, bankHidden', () => {
+    const bank = { ...createWorksheet(), kind: 'bank' as const, classes: ['5A'], satOn: '2025-11-03', bankHidden: true };
+    expect(written(bank)).toBe(V050_READS);
   });
 });
