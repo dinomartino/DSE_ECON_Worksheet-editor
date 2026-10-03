@@ -428,6 +428,25 @@ async function layoutChecks(engine, browser) {
     });
     await context.close();
   }
+  const { context, page } = await newContext(browser, { level: { kind: 'review', topic: 'EL2.growth' } });
+  await openBank(page);
+  await check(engine, 'layout: ↑ up the rail stops each row below the sticky heading', async () => {
+    await page.locator('[data-rail-root]').last().click();
+    let worst = Infinity;
+    for (let i = 0; i < 20; i += 1) {
+      await page.keyboard.press('ArrowUp');
+      await page.waitForTimeout(60);
+      const gap = await page.evaluate(() => {
+        const row = document.querySelector('[data-rail-entry][aria-current="true"]');
+        const heading = row?.closest('section')?.querySelector('h3');
+        return row && heading ? row.getBoundingClientRect().top - heading.getBoundingClientRect().bottom : NaN;
+      });
+      worst = Math.min(worst, gap);
+    }
+    expect(worst >= -0.5, `a row went ${-worst}px under the heading`);
+    return `closest ${worst.toFixed(1)}px below`;
+  });
+  await context.close();
 }
 
 const GROUPS = { fill: fillChecks, batch: batchChecks, terms: termsChecks, setup: setupChecks, error: errorChecks, layout: layoutChecks };
