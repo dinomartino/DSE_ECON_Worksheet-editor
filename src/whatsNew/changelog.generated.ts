@@ -486,12 +486,14 @@ a version heading is edited afterwards.
   <!-- zh: **在一個瀏覽器分頁設定的課題，不會再被另一分頁開啟的同一工作紙覆蓋。** 在題庫為題目
   加上課題時，如同一份工作紙在另一分頁開啟，該分頁現在會接收新課題並在儲存時保留；更改課題
   亦不會再覆蓋另一分頁剛作出的修改。 -->
-- **The question bank stays quick with thousands of questions.** The desktop app opens the
-  題庫 from one saved file instead of reading a file for every worksheet, and changing
+- **The question bank stays quick with thousands of questions.** The list beside a question
+  scrolls and moves with the arrow keys smoothly however long it is. The desktop app opens
+  the 題庫 from one saved file instead of reading a file for every worksheet, and changing
   topics across many worksheets, or typing in a long paper, no longer makes the bank
   refresh again and again.
-  <!-- zh: **題庫有數千條題目時仍然流暢。** 桌面版開啟題庫時只需讀取一個已儲存的檔案，不必逐份
-  工作紙讀取；在多份工作紙更改課題，或在長篇試卷中輸入內容，題庫亦不會再反覆重新整理。 -->
+  <!-- zh: **題庫有數千條題目時仍然流暢。** 題目旁的清單無論多長，捲動及用方向鍵移動都很順暢。
+  桌面版開啟題庫時只需讀取一個已儲存的檔案，不必逐份工作紙讀取；在多份工作紙更改課題，
+  或在長篇試卷中輸入內容，題庫亦不會再反覆重新整理。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when
