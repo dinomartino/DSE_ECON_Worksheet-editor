@@ -700,10 +700,19 @@ async function termsChecks(engine, browser) {
     for (let i = 0; i < 8 && !(await fix.count()); i += 1) await card.getByRole('button', { name: 'Next' }).click();
     await page.waitForTimeout(500);
     await shot(page, 'terms-02-card');
+    const summary = async () => (await bar(page).locator('span[title]').first().getAttribute('title')) ?? '';
+    const chips = async () => (await bar(page).getByRole('button', { name: /^\d+ findings?$/ }).innerText().catch(() => '')) || '';
+    const [summaryBefore, chipsBefore] = [await summary(), await chips()];
     await fix.click();
     await page.waitForTimeout(400);
     expect((await pageText(page)).includes('稅收承擔'), '稅收承擔 is not on the page');
     expect((await card.getByRole('button', { name: 'Done' }).count()) === 1, 'the card did not mark the fix done');
+    const [summaryAfter, chipsAfter] = [await summary(), await chips()];
+    expect(/ · \d+ match$/.test(summaryBefore), `no match count in "${summaryBefore}"`);
+    expect(summaryAfter !== summaryBefore, `the bar still reads "${summaryBefore}" after the fix`);
+    expect(chipsAfter !== chipsBefore, `the chip still reads "${chipsBefore}" after the fix`);
+    await shot(page, 'terms-02b-after-card-fix');
+    return `${summaryBefore} → ${summaryAfter}`;
   });
 
   await check(engine, 'Replace N applies the safe fixes in one go', async () => {
