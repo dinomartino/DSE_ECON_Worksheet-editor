@@ -286,7 +286,7 @@ export function questionOwnsBlock(question: Question, blockId: string): boolean 
 /** The question a target belongs to, if it names one. Used to sync selection. */
 export function targetQuestionId(worksheet: Worksheet, target: EditTarget): string | undefined {
   if ('questionId' in target) return target.questionId;
-  if (target.kind === 'blockText' || target.kind === 'blockCaption' || target.kind === 'tableCell') {
+  if ('blockId' in target) {
     for (const question of worksheet.questions) {
       if (questionOwnsBlock(question, target.blockId)) return question.id;
     }
@@ -358,15 +358,16 @@ export function editTargetKey(target: EditTarget): string {
  * `targetQuestionId`, for the same purpose: a component selected on the page selects
  * the item that contains it, and a stimulus owns blocks exactly as a question does.
  *
- * `layoutText` names its element outright; a block target has to be searched for,
+ * `layoutText` and `labelListCell` name their element outright; a block target (cell,
+ * caption, source line included) has to be searched for,
  * flattened so a figure row's children resolve to the same owner as the row.
  */
 export function targetLayoutElementId(
   worksheet: Worksheet,
   target: EditTarget,
 ): string | undefined {
-  if (target.kind === 'layoutText') return target.elementId;
-  if (target.kind === 'blockText' || target.kind === 'blockCaption' || target.kind === 'tableCell') {
+  if ('elementId' in target) return target.elementId;
+  if ('blockId' in target) {
     for (const element of worksheet.layout) {
       for (const blocks of layoutBlockLists(element)) {
         if (flattenBlocks(blocks).some((block) => block.id === target.blockId)) return element.id;

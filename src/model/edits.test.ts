@@ -25,6 +25,7 @@ import {
   createFigureRowBlock,
   createParagraphBlock,
   createSourceBlock,
+  createStructuredQuestion,
   createTableBlock,
   createWorksheet,
 } from './factories';
@@ -624,6 +625,21 @@ describe('selecting a component selects its container', () => {
     // No question owns it, so the question lookup must decline rather than guess.
     expect(targetQuestionId(worksheet, target)).toBeUndefined();
     expect(targetLayoutElementId(worksheet, target)).toBe('stim-1');
+  });
+
+  it('resolves a label-list cell to its element, so the Edit panel opens on it', () => {
+    const target: EditTarget = { kind: 'labelListCell', elementId: 'list-1', rowId: 'r', column: 'value' };
+    expect(targetQuestionId(createWorksheet(), target)).toBeUndefined();
+    expect(targetLayoutElementId(createWorksheet(), target)).toBe('list-1');
+  });
+
+  it('resolves a source line to the item holding the source', () => {
+    const source = createSourceBlock();
+    const question = { ...createStructuredQuestion(), blocks: [source] };
+    const worksheet: Worksheet = { ...createWorksheet(), questions: [question] };
+    for (const kind of ['sourceLabel', 'sourceFootnote'] as const) {
+      expect(targetQuestionId(worksheet, { kind, blockId: source.id })).toBe(question.id);
+    }
   });
 
   it('keys a control by id, so reordering cannot point it at a sibling', () => {

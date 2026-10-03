@@ -486,6 +486,11 @@ a version heading is edited afterwards.
   <!-- zh: **從題庫分頁拖曳時，復原會暫停。** 拖曳途中按 ⌘Z（或 Ctrl+Z），以往會在你手
   上的題目下方改動工作紙。現在放手之前不會有任何動作；放下後，按一次復原便會把
   新題目移走。 -->
+- **Clicking a row of a label list opens it in the Edit tab.** Clicking "Name:" or its
+  value on the page used to leave the sidebar where it was. Now the Edit tab shows the
+  list with that row marked, as it does for every other element.
+  <!-- zh: **按標籤清單的一行，「編輯」分頁會顯示該清單。** 以往在頁面上按「姓名：」或其內容，
+  側欄不會轉變。現在「編輯」分頁會顯示該清單並標示該行，與其他元素一樣。 -->
 
 ## 0.5.0 — 2026-09-28
 
