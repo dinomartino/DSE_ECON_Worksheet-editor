@@ -26,9 +26,10 @@ import type { DiagramNode, RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
 import {
   answerKeyPartTitle,
+  answerKeyParts,
   answerKeyRunningHead,
   answerKeyTitle,
-  renderCombinedAnswerKey,
+  renderAnswerKey,
 } from '@/render/answerKey';
 import {
   collectAnswerGraphNodes,
@@ -44,6 +45,7 @@ import {
   buildCorePropsXml,
   buildCoverFooterXml,
   buildDocumentXml,
+  buildSectionProperties,
   pageGeometryXml,
   REL_FOOTER_COVER,
   buildEmptyHeaderXml,
@@ -58,9 +60,10 @@ import {
   type HeaderFooterParts,
   type ImageAsset,
   type PackageParts,
+  type SectionOptions,
 } from './package';
 import { formatRunOptions, lineBreak, rFonts, richTextRuns, run, runProperties } from './runs';
-import { buildStylesXml, STYLE_IDS } from './styles';
+import { buildStylesXml, DEFAULT_BASE_FONT_SIZE_PT, STYLE_IDS, withBodyStyleVariant } from './styles';
 
 /**
  * .docx export orchestration (§7). Consumes the neutral render IR, so it does not
@@ -411,9 +414,11 @@ function buildParts(
   const footer = headerFooterOf(worksheet.footer, defaultFooter);
 
   // A teacher-version marker rides in the header so it is unmistakable on every
-  // printed page, appended to whatever the teacher authored there.
+  // printed page, appended to whatever the teacher authored there. Alone in an empty
+  // header it drops the joining dash.
+  const teacherLabel = 'Teacher Version / 教師版';
   const teacherMark =
-    mode.version === 'teacher' ? run('  —  Teacher Version / 教師版', fonts, { bold: true }) : '';
+    mode.version === 'teacher' ? run(`  —  ${teacherLabel}`, fonts, { bold: true }) : '';
 
   const headerLayout = headerFooterLayout(
     header.bands, header.rule, fonts, mode.language, textWidth, 'bottom', worksheetMarks(worksheet),
@@ -421,14 +426,14 @@ function buildParts(
   if (teacherMark) {
     // Appended to the rightmost occupied zone of the LAST row, so it never displaces
     // authored content and always lands on the line nearest the document.
-    if (headerLayout.rows.length === 0) {
-      headerLayout.rows.push({ left: '', center: '', right: teacherMark });
-    } else {
-      const row = headerLayout.rows[headerLayout.rows.length - 1];
-      if (row.right) row.right += teacherMark;
-      else if (row.center) row.center += teacherMark;
-      else row.left += teacherMark;
-    }
+    const row = headerLayout.rows[headerLayout.rows.length - 1];
+    if (!row || (!row.left && !row.center && !row.right)) {
+      const alone = run(teacherLabel, fonts, { bold: true });
+      if (row) row.right = alone;
+      else headerLayout.rows.push({ left: '', center: '', right: alone });
+    } else if (row.right) row.right += teacherMark;
+    else if (row.center) row.center += teacherMark;
+    else row.left += teacherMark;
   }
 
   /*
@@ -669,8 +674,8 @@ export { buildParts as buildDocxParts };
  * body size; no cover, bands, header or page furniture — only a centred page number.
  * Its IR has no list streams (`w:num` does not apply); its only pictures are model
  * answer diagrams, rasterised by `exportAnswerKeyDocx` into `diagramImages`.
- * `others`: further documents whose keys follow, each from a new page, in this one's
- * page setup (`renderCombinedAnswerKey`); none leaves the single key unchanged.
+ * `others`: further documents whose keys follow, each its own section in its own page
+ * setup (`buildCombinedAnswerKeyParts`); none leaves the single key unchanged.
  */
 function buildAnswerKeyParts(
   worksheet: Worksheet,
@@ -678,12 +683,13 @@ function buildAnswerKeyParts(
   others: Worksheet[] = [],
   diagramImages: DiagramImageMap = new Map(),
 ): PackageParts {
+  if (others.length > 0) return buildCombinedAnswerKeyParts([worksheet, ...others], language, diagramImages);
   const fonts = worksheet.fonts;
   const setup = pageSetupOf(worksheet);
   const { width: pageWidth, height: pageHeight } = pageDimensions(setup);
   const textWidth = contentWidth(setup);
 
-  const nodes = renderCombinedAnswerKey([worksheet, ...others], language);
+  const nodes = renderAnswerKey(worksheet, language);
   const { assets, bySrc } = collectNodeImages(nodes, diagramImages);
 
   let drawingId = 1;
@@ -739,6 +745,96 @@ function buildAnswerKeyParts(
 }
 
 /**
+ * A combined key's package: one section per document, each in that document's own page
+ * setup, fonts and body size (a 10pt Paper 2 inside an 11pt Paper 1 stays 10pt, through
+ * body styles' twins at its size, `withBodyStyleVariant`). A section break, not a page
+ * break, starts each part. The header and footer align by paragraph rather than by tab,
+ * so one pair serves sections of any width; the Marks head shows if any part has the column.
+ */
+function buildCombinedAnswerKeyParts(
+  worksheets: Worksheet[],
+  language: LanguageMode,
+  diagramImages: DiagramImageMap,
+): PackageParts {
+  const [first] = worksheets;
+  const fonts = first.fonts;
+  const baseSize = first.baseFontSize ?? DEFAULT_BASE_FONT_SIZE_PT;
+  const parts = answerKeyParts(worksheets, language);
+  const { assets, bySrc } = collectNodeImages(parts.flat(), diagramImages);
+  const head = answerKeyRunningHead(parts.flat(), language);
+
+  let drawingId = 1;
+  const variants = new Set<number>();
+  const body = parts
+    .map((nodes, index) => {
+      const worksheet = worksheets[index];
+      const setup = pageSetupOf(worksheet);
+      const context: BodyContext = {
+        fonts: worksheet.fonts,
+        language,
+        contentWidth: contentWidth(setup),
+        numIds: new Map(),
+        imageRelId: (src) => bySrc.get(src),
+        diagramSrc: (blockId) => diagramImages.get(blockId),
+        nextDrawingId: () => (drawingId += 1),
+      };
+      let xml = nodes.map((node) => renderNodeXml(node, context)).join('');
+      const size = worksheet.baseFontSize ?? DEFAULT_BASE_FONT_SIZE_PT;
+      if (size !== baseSize) {
+        variants.add(size);
+        xml = withBodyStyleVariant(xml, size);
+      }
+      // Every section but the last ends in a collapsed paragraph carrying its sectPr.
+      if (index === parts.length - 1) return xml;
+      return (
+        xml +
+        `<w:p><w:pPr><w:pStyle w:val="${STYLE_IDS.Body}"/><w:spacing w:line="20" w:lineRule="exact"/>` +
+        `${buildSectionProperties(answerKeySection(worksheet, head !== undefined))}</w:pPr></w:p>`
+      );
+    })
+    .join('');
+
+  const pageNumber = fieldRuns('PAGE', runProperties(fonts, {}), '1');
+  const title = answerKeyPartTitle(first);
+  const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return {
+    documentXml: buildDocumentXml(body, answerKeySection(worksheets[worksheets.length - 1], head !== undefined)),
+    stylesXml: buildStylesXml(fonts, { baseFontSize: first.baseFontSize, variantBaseSizes: [...variants] }),
+    numberingXml: buildNumberingXml([], fonts, listIndentScheme(documentShape(first))),
+    headerFooter: {
+      ...(head
+        ? {
+            header: buildEmptyHeaderXml(
+              'hdr',
+              `<w:p><w:pPr><w:jc w:val="right"/></w:pPr>${richTextRuns([{ text: head, bold: true }], fonts, {})}</w:p>`,
+            ),
+          }
+        : {}),
+      footer: buildEmptyHeaderXml('ftr', `<w:p><w:pPr><w:jc w:val="center"/></w:pPr>${pageNumber}</w:p>`),
+    },
+    fontTableXml: buildFontTableXml(fonts),
+    coreXml: buildCorePropsXml(plain(language === 'zh' ? title.zh : title.en), timestamp),
+    assets,
+  };
+}
+
+/** One answer-key section's geometry and parts, in its document's page setup. */
+function answerKeySection(worksheet: Worksheet, hasHeader: boolean): SectionOptions {
+  const setup = pageSetupOf(worksheet);
+  const { width, height } = pageDimensions(setup);
+  return {
+    pageWidth: width,
+    pageHeight: height,
+    margins: setup.margins,
+    landscape: setup.orientation === 'landscape',
+    hasHeader,
+    hasFooter: true,
+    differentFirstPage: false,
+    edgeOffsets: headerFooterOffsets(setup.margins, hasHeader ? BAND_ROW_TWIPS : 0, BAND_ROW_TWIPS),
+  };
+}
+
+/**
  * The answer key as a .docx. `language` alone: a key has no student version. `others`
  * append their keys after this one's, in one file.
  */
@@ -749,9 +845,14 @@ export async function exportAnswerKeyDocx(
 ): Promise<Blob> {
   // Model answer diagrams rasterise first, as the paper's diagrams do; a missing one
   // stops the export rather than dropping the figure.
-  const nodes = renderCombinedAnswerKey([worksheet, ...others], language);
-  const diagramImages = await renderNodeDiagramImages(nodes, worksheet.fonts, language);
-  assertDiagramsRasterized(collectDiagramNodesIn(nodes), diagramImages);
+  // Each part's figures in its own document's fonts.
+  const all = [worksheet, ...others];
+  const parts = answerKeyParts(all, language);
+  const diagramImages: DiagramImageMap = new Map();
+  for (const [index, nodes] of parts.entries()) {
+    for (const [key, src] of await renderNodeDiagramImages(nodes, all[index].fonts, language)) diagramImages.set(key, src);
+  }
+  assertDiagramsRasterized(collectDiagramNodesIn(parts.flat()), diagramImages);
   return zipPackage(buildAnswerKeyParts(worksheet, language, others, diagramImages));
 }
 

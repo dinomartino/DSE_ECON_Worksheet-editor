@@ -23,6 +23,7 @@ const gemini: ProviderPreset = {
   baseUrlEditable: false,
   keyRequired: true,
   keyUrl: 'https://aistudio.google.com/apikey',
+  billingUrl: 'https://console.cloud.google.com/billing',
   keyHint: 'Turn on your VPN first.',
   models: [
     {
@@ -57,6 +58,7 @@ const deepseek: ProviderPreset = {
   baseUrlEditable: false,
   keyRequired: true,
   keyUrl: 'https://platform.deepseek.com/api_keys',
+  billingUrl: 'https://platform.deepseek.com/top_up',
   keyPrefix: /^sk-/,
   models: [
     { id: 'deepseek-flash', label: 'DeepSeek Flash' },
@@ -101,6 +103,7 @@ const qwen: ProviderPreset = {
   baseUrlEditable: false,
   keyRequired: true,
   keyUrl: 'https://modelstudio.console.alibabacloud.com/',
+  // No billingUrl: a billing error opens the Model Studio console (keyUrl).
   keyPrefix: /^sk-/,
   models: [
     { id: 'qwen3.8-flash', label: 'Qwen 3.8 Flash' }, // †
@@ -126,6 +129,7 @@ const openrouter: ProviderPreset = {
   baseUrlEditable: false,
   keyRequired: true,
   keyUrl: 'https://openrouter.ai/keys',
+  billingUrl: 'https://openrouter.ai/settings/credits',
   keyPrefix: /^sk-or-/,
   models: [
     { id: 'qwen/qwen3.8-flash', label: 'Qwen 3.8 Flash' },
@@ -159,6 +163,7 @@ const openai: ProviderPreset = {
   baseUrlEditable: false,
   keyRequired: true,
   keyUrl: 'https://platform.openai.com/api-keys',
+  billingUrl: 'https://platform.openai.com/settings/organization/billing/overview',
   keyPrefix: /^sk-/,
   models: [
     { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
@@ -183,6 +188,7 @@ const anthropic: ProviderPreset = {
   baseUrlEditable: false,
   keyRequired: true,
   keyUrl: 'https://console.anthropic.com/settings/keys',
+  billingUrl: 'https://console.anthropic.com/settings/billing',
   keyPrefix: /^sk-ant-/,
   models: [{ id: 'claude-sonnet-5', label: 'Claude Sonnet 5' }],
   structured: 'anthropic',

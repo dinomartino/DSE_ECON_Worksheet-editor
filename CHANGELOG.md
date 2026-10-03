@@ -450,6 +450,12 @@ a version heading is edited afterwards.
   <!-- zh: **頁首和頁尾設定按頁面整理。** 在頁面設定中，先選「第 1 頁」或「第 2 頁起」
   ，再選擇第 1 頁的頁首和頁尾與其後頁面相同、自成一套，或不設。第 1 頁的標題設
   定也放在這裏。 -->
+- **Check terms says how many terms already match.** The bar now reads, for example,
+  "1 to fix · 12 match", and "12 terms match the EDB glossary" when nothing needs fixing.
+  If the text uses no glossary term at all, it says so.
+  <!-- zh: **「檢查用詞」會顯示有多少用詞已經一致。** 工具列現在會顯示例如「1 個需修正 · 12 個
+  相符」；沒有需要修正的用詞時，會顯示「12 個用詞與 EDB 詞彙表一致」。如文字沒有用上詞彙表
+  的任何用詞，也會說明。 -->
 
 ### Fixed
 - **Every page of a paper version says which version it is.** With versions on, "Version B"
@@ -478,6 +484,51 @@ a version heading is edited afterwards.
   Version A's letters.
   <!-- zh: **有版本的答案頁，解說按各版本的字母列出。** 選項打亂後，答案頁現在為每個版本分別
   列出解說，每個選項的解說都用它在該版本的字母，而不是只按版本 A 的字母列一次。 -->
+- **A Teacher Word file with no header text no longer starts its header with a stray
+  dash.** It now prints "Teacher Version" on its own. A header with your own text still
+  shows that text, then the dash, then "Teacher Version".
+  <!-- zh: **沒有頁首文字的教師版 Word 檔案，頁首不再以多餘的破折號開頭。** 現在只印
+  「Teacher Version」。有自訂文字的頁首，仍會在你的文字後加上破折號和「Teacher Version」。 -->
+- **The margin note on a bilingual booklet now matches on screen and in Word.** "Answers
+  written in the margins will not be marked" showed only in English on screen but stacked
+  English over 中文 in Word, squeezed into a strip too narrow for both. Both now print
+  English and 中文: two lines down each side margin, and one line along the bottom.
+  <!-- zh: **雙語答題簿的邊界提示，在屏幕和 Word 中現在一致。** 「寫於邊界以外的答案，將不予
+  評閱。」在屏幕上只顯示英文，在 Word 中卻把英文和中文擠在過窄的位置。現在兩者都印出英文和
+  中文：左右邊界各兩行，底部一行。 -->
+- **A bilingual Paper 2 cover fits on one page.** With English and 中文 stacked, the
+  instructions ran off the bottom of the cover on screen and onto a second page in Word.
+  A bilingual cover now uses less space between its lines, so it fits on one page
+  everywhere. English-only and 中文-only covers are unchanged.
+  <!-- zh: **雙語 Paper 2 封面可印在一頁內。** 英文和中文並列時，考生須知曾超出封面底部，在 Word
+  中更會跑到第二頁。雙語封面現在行與行之間的空位較少，在任何地方都能印在一頁內。只有英文或
+  只有中文的封面不變。 -->
+- **The year code in a bilingual cover's corner prints once.** A cover line that reads the
+  same in English and 中文, like "2026-27", printed twice on a bilingual paper. It now
+  prints once, on screen, in the PDF and in Word, and editing it changes both languages.
+  <!-- zh: **雙語封面角落的年份編號只印一次。** 英文和中文相同的封面文字，例如「2026-27」，
+  在雙語試卷上曾印兩次；現在在屏幕、PDF 和 Word 中都只印一次，修改時兩種語言一併更新。 -->
+- **In the HKEAA marking scheme, a point's marks now sit on its first line.** A point that
+  runs onto a second line shows its "(1)" beside where it starts, as HKEAA prints it, on
+  screen, in the PDF and in Word.
+  <!-- zh: **HKEAA 評卷參考中，評分要點的分數現在列在首行。** 要點跨越兩行時，「(1)」會列在要點
+  開首的一行，與 HKEAA 的格式相同，在屏幕、PDF 和 Word 中都一樣。 -->
+- **The HKEAA marking scheme numbers its model answer diagrams.** Each one is captioned
+  "Figure 1", "Figure 2" and so on, after its marking points, which are headed "Indicate in
+  Figure 1:" as in an HKEAA scheme.
+  <!-- zh: **HKEAA 評卷參考為示範答案圖表編號。** 每幅圖表標上「圖1」、「圖2」等，列在評分要點之後，
+  要點以「在圖1中顯示：」開首，與 HKEAA 評卷參考相同。 -->
+- **A combined answer key prints each paper at its own size.** When Export joins several
+  papers' keys in one Word file, each part now keeps its own paper's page size, margins,
+  fonts and text size, so a 10pt Paper 2 key stays 10pt after an 11pt worksheet's.
+  <!-- zh: **合併的評卷參考，每份試卷按其本身的大小列印。** 匯出時把多份試卷的評卷參考合併成一個
+  Word 檔案，每部分現在會保留該試卷的紙張大小、邊界、字型和字體大小，10pt 的 Paper 2 評卷參考
+  排在 11pt 的工作紙之後，仍保持 10pt。 -->
+- **Pages with diagrams or pictures now break where Word breaks them.** On screen each
+  figure took up nearly a line more than in the Word file, most visibly in the Marking
+  scheme view, so a page could end two lines early.
+  <!-- zh: **含圖表或圖片的頁面，現在與 Word 在同一位置分頁。** 以往每幅圖在屏幕上比 Word 檔多佔
+  差不多一行，在評卷參考檢視中尤其明顯，令頁面可能提早兩行分頁。 -->
 - **Papers with diagram answers warn you in an older version of the app.** A paper with
   answers drawn on a diagram, or with a marking scheme layout other than Classic, now opens
   read-only in versions 0.4 and 0.5, with a note to update first. Those versions cannot hide
@@ -545,6 +596,33 @@ a version heading is edited afterwards.
   <!-- zh: **從題庫分頁拖曳時，復原會暫停。** 拖曳途中按 ⌘Z（或 Ctrl+Z），以往會在你手
   上的題目下方改動工作紙。現在放手之前不會有任何動作；放下後，按一次復原便會把
   新題目移走。 -->
+- **Check terms' bar keeps up with your fixes.** After you replace a term from its card,
+  the bar's count and its Replace button update straight away, instead of still offering
+  the term you just fixed until you pressed Done.
+  <!-- zh: **「檢查用詞」的工具列會即時更新。** 在卡片上取代一個用詞後，工具列的數目和「取代」
+  按鈕會立即更新，不會再在你按「完成」之前，仍然顯示剛修正的用詞。 -->
+- **When your AI balance runs out, the button opens the page where you add credit.** For
+  Gemini, DeepSeek, OpenRouter, OpenAI and Claude it used to open the API key page. Qwen
+  still opens the Model Studio console.
+  <!-- zh: **AI 帳戶餘額不足時，按鈕會開啟增值的頁面。** Gemini、DeepSeek、OpenRouter、OpenAI 和
+  Claude 以往會開啟 API key 頁面。Qwen 仍會開啟 Model Studio 控制台。 -->
+- **DWL and TR on a diagram get their 中文.** A shaded area or a text label that reads just
+  DWL or TR used to print in English on the 中文 paper, and Fill missing 中文 skipped it. It
+  now fills in 效率損失 or 總收入 from the EDB glossary (or the wording you chose in
+  Translation terms), and the ✦ AI count includes it. A new "DWL of a tax" area starts
+  with 效率損失, like the other DWL areas. Curve and point letters such as D, S and E stay as
+  they are.
+  <!-- zh: **圖表上的 DWL 和 TR 會有中文。** 以往只寫著 DWL 或 TR 的陰影區域或文字標示，在中文試
+  卷上會印出英文，「補上缺少的中文」也會略過。現在會按 EDB 詞彙表（或你在「翻譯用語」中選用的
+  寫法）填上效率損失或總收入，✦ AI 的數目亦會計算在內。新加入的「稅項的效率損失」區域會以效率損
+  失開始，與其他效率損失區域一致。D、S、E 等曲線和點的字母則保持不變。 -->
+- **Translation terms you edited in Excel import with their Chinese.** Excel on a Hong Kong
+  Windows computer saves a plain CSV in Big5, which used to import as garbled characters.
+  Import CSV now reads it, and a backup you unzipped and zipped again still restores your
+  terms.
+  <!-- zh: **在 Excel 編輯過的翻譯用語，匯入時中文不會變亂碼。** 香港 Windows 電腦上的 Excel 以
+  Big5 儲存一般 CSV，以往匯入後會變成亂碼。現在「匯入 CSV」可以讀取；解壓後再壓縮的備份，亦能還
+  原你的用語。 -->
 
 ## 0.5.0 — 2026-09-28
 

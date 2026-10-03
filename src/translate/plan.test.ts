@@ -83,6 +83,22 @@ describe('planFromSlots', () => {
     expect(off.copies).toEqual([]);
   });
 
+  it("an area's or free label's DWL / TR is worded from the glossary; a curve's letters still fall back", () => {
+    const area = slot('DWL', '', { kind: 'diagramLabel', fallsBack: true, path: 'q:1/b:d/d/area:a1' });
+    const free = slot(' TR ', '', { kind: 'diagramLabel', fallsBack: true, path: 'q:1/b:d/d/label:l1' });
+    const curve = slot('TR', '', { kind: 'diagramLabel', fallsBack: true, path: 'q:1/b:d/d/curve:c1' });
+    const page = slot('DWL', '', { kind: 'tableCell' });
+    const toEn = slot('', 'DWL', { kind: 'diagramLabel', fallsBack: true, path: 'q:1/b:d/d/area:a2' });
+    const plan = planFromSlots('ws', [area, free, curve, page, toEn], paper, options());
+    expect(plan.copies.map((c) => c.path)).toEqual([area.path, free.path]);
+    expect([...(plan.worded ?? [])]).toEqual([[area.path, 'deadweight loss'], [free.path, 'total revenue']]);
+    expect(plan.jobs.size).toBe(0);
+    expect(plan.counts.copied).toBe(2);
+    // Re-translating never replaces a label the teacher already has.
+    const both = slot('DWL', 'DWL', { kind: 'diagramLabel', fallsBack: true, path: 'q:1/b:d/d/area:a3' });
+    expect(planFromSlots('ws', [both], { kind: 'paths', paths: [both.path] }, options({ retranslate: 'zh' })).copies).toEqual([]);
+  });
+
   it('defaults symbol copies to the side this edition prints alone', () => {
     expect(defaultTranslateOptions({ language: 'zh', version: 'student' }, true).copySymbols).toEqual({ toZh: true, toEn: false });
     expect(defaultTranslateOptions({ language: 'bilingual', version: 'student' }, false).copySymbols).toEqual({ toZh: false, toEn: false });

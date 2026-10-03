@@ -45,7 +45,9 @@ Words this repository uses in its own way. One line each, with where the thing l
   · `src/render/answerKey.ts:ANSWER_KEY_STYLES`
 - **HKEAA style (HKEAA 評卷參考)** — the preset modelled on HKEAA marking schemes: the MC key
   as a Question No. | Key table in two column pairs ruled in fives, a right-hand Marks column
-  headed "Marks / 分數" on every page, the notation legend and a note for markers.
+  headed "Marks / 分數" on every page (a point's "(1)" on its first line), model answer
+  diagrams captioned "Figure n" under "Indicate in Figure n:", the notation legend and a
+  note for markers.
   `src/render/answerKeySections.ts:hkeaaTable` · `src/render/answerKeySections.ts:LQ_KEY_RENDERERS`
 - **Suggested answers (參考答案)** — the student-handout preset: answers, model diagrams and the
   first route's marking points as plain bullets; never notation, levels, EC, legend,

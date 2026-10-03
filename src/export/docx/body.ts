@@ -24,6 +24,7 @@ import { biTextRuns, formatRunOptions, lineBreak, marksRuns, richTextRuns, run }
 import {
   ANSWER_LINE_STYLE_ID,
   LQ_ANSWER_LINE_STYLE_ID,
+  FIXED_LINE_TWIPS,
   STYLE_IDS,
   exactLineFor,
 } from './styles';
@@ -228,7 +229,17 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
   // A scheme's "(1)" / "max: 4" rides the same tab as a marks label (§ `TextNode.trail`).
   const trail =
     node.marks === undefined && node.trail ? trailLabel(node.trail, context.language) : '';
-  if (node.marks !== undefined || trail) {
+  const labelled = node.marks !== undefined || trail !== '';
+  // In a Marks column the label sits on the paragraph's first line (HKEAA), which no tab
+  // can reach once the text wraps: it rides an anchored box at the paragraph's top.
+  const firstLine = labelled && node.marksColumn !== undefined;
+  if (firstLine) {
+    const label =
+      node.marks !== undefined
+        ? marksRuns(node.marks, context.fonts, context.language)
+        : richTextRuns([{ text: trail }], context.fonts, {});
+    runs = marksColumnLabelXml(label, styleId, node.marksColumn!, context) + runs;
+  } else if (labelled) {
     const marks =
       '<w:r><w:tab/></w:r>' +
       (node.marks !== undefined
@@ -279,10 +290,44 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
      * honour a tab stop past the right indent, so the label lands in the column.
      */
     indentRight: node.marksColumn,
-    tabRight: node.marks !== undefined || trail !== '',
+    tabRight: labelled && !firstLine,
     tabRightAt: context.contentWidth,
     format: node.format,
   });
+}
+
+/**
+ * A Marks column label as a borderless text box anchored at the top of its paragraph,
+ * spanning the column and right-aligned in it: the first line's height and style, so it
+ * sits on that line's baseline. `wrapNone`: the right indent already keeps text clear.
+ */
+function marksColumnLabelXml(label: string, styleId: string, column: number, context: BodyContext): string {
+  const id = context.nextDrawingId();
+  const cx = column * EMU_PER_TWIP;
+  const cy = FIXED_LINE_TWIPS * EMU_PER_TWIP;
+  return (
+    '<w:r><w:drawing>' +
+    '<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" ' +
+    'relativeHeight="251660288" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1">' +
+    '<wp:simplePos x="0" y="0"/>' +
+    `<wp:positionH relativeFrom="column"><wp:posOffset>${(context.contentWidth - column) * EMU_PER_TWIP}</wp:posOffset></wp:positionH>` +
+    '<wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>' +
+    `<wp:extent cx="${cx}" cy="${cy}"/>` +
+    '<wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/>' +
+    `<wp:docPr id="${id}" name="Marks ${id}"/>` +
+    '<wp:cNvGraphicFramePr/>' +
+    '<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">' +
+    '<wps:wsp><wps:cNvSpPr txBox="1"/><wps:spPr bwMode="auto">' +
+    `<a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr>' +
+    '<wps:txbx><w:txbxContent><w:p><w:pPr>' +
+    `<w:pStyle w:val="${styleId}"/><w:ind w:left="0" w:right="0" w:firstLine="0"/><w:jc w:val="right"/>` +
+    `</w:pPr>${label}</w:p></w:txbxContent></wps:txbx>` +
+    '<wps:bodyPr rot="0" vert="horz" wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t" anchorCtr="0">' +
+    '<a:noAutofit/></wps:bodyPr></wps:wsp>' +
+    '</a:graphicData></a:graphic></wp:anchor>' +
+    '</w:drawing></w:r>'
+  );
 }
 
 function cellParagraph(cellText: string, align: string, format?: TextFormat, keepNext?: boolean): string {

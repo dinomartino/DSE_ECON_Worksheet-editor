@@ -19,7 +19,7 @@ const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.me
  * plus a pairwise diff table on stdout (scripts/cover-compare.py).
  *
  *   node scripts/cover-verify.mjs [--out=/tmp/cover-verify] [--url=http://localhost:3000]
- *                                 [--skip-fixtures]
+ *                                 [--skip-fixtures] [--language=en|zh|bilingual]
  *
  *   `--out` (default $COVER_DIR, else the path shown) also receives the fixtures.
  *
@@ -37,6 +37,13 @@ const opt = (name, fallback) => {
 };
 const OUT = opt('out', process.env.COVER_DIR ?? '/tmp/cover-verify');
 const URL_BASE = opt('url', 'http://localhost:3000');
+// Exported and previewed in this language; the preview leg clicks its toolbar button.
+const LANGUAGE = opt('language', 'en');
+const LANGUAGE_BUTTON = { en: 'EN', zh: '中文', bilingual: 'EN+中' }[LANGUAGE];
+if (!LANGUAGE_BUTTON) {
+  console.error(`unknown --language=${LANGUAGE}`);
+  process.exit(1);
+}
 const SOFFICE = '/Applications/LibreOffice.app/Contents/MacOS/soffice';
 
 const PAPERS = [
@@ -82,7 +89,7 @@ if (!args.includes('--skip-fixtures')) {
     ['vitest', 'run', 'scripts/cover-fixtures.test.ts'],
     'emit fixtures',
     false,
-    { ...process.env, COVER_DIR: OUT },
+    { ...process.env, COVER_DIR: OUT, COVER_LANGUAGE: LANGUAGE },
   );
 }
 
@@ -194,6 +201,9 @@ try {
      */
     await page.getByRole('button', { name: new RegExp(title) }).first().click();
     await page.waitForSelector('[data-cover]', { timeout: 15_000 });
+    if (LANGUAGE !== 'en') {
+      await page.getByRole('radio', { name: LANGUAGE_BUTTON, exact: true }).first().click();
+    }
     await page.waitForTimeout(800);
 
     // The preview leg represents the printed sheet, so editing chrome (hint pill,

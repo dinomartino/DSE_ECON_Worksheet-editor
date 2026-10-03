@@ -193,7 +193,11 @@ export async function readBackup(data: Uint8Array | ArrayBuffer | Blob): Promise
       failures.push({ name: entry.name, reason: cause instanceof SyntaxError ? 'not valid JSON' : 'not a graph' });
     }
   }
-  const terms = await zip.file(TERMS_ENTRY)?.async('string').catch(() => undefined);
+  // Like the documents, found inside a folder too (a backup unzipped and zipped again).
+  const termsEntry =
+    zip.file(TERMS_ENTRY) ??
+    Object.values(zip.files).find((entry) => !entry.dir && !entry.name.startsWith('__MACOSX/') && entry.name.endsWith(`/${TERMS_ENTRY}`));
+  const terms = await termsEntry?.async('string').catch(() => undefined);
   return { worksheets, failures, folders, patterns, graphs, ...(terms ? { terms } : {}) };
 }
 

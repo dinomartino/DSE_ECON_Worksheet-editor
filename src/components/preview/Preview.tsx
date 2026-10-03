@@ -25,7 +25,7 @@ import { TableColumnResizer } from "./TableColumnResizer";
 import { TableGridControls } from "./TableGridControls";
 import { sheetStackMargin } from "./sheetStack";
 import { zonesOf, type ZoneName } from "@/model/bands";
-import { bandFieldPrintText } from "@/model/bandSegments";
+import { bandFieldPrintText, mirrorBilingualEdit } from "@/model/bandSegments";
 import { COVER_PANEL } from "@/model/cover";
 import {
   describeDelete,
@@ -71,7 +71,13 @@ import type {
   TextFormat,
   Worksheet,
 } from "@/model/types";
-import { frameBottomIntrusion, furnitureBoxes } from "@/model/pageFurniture";
+import {
+  frameBottomIntrusion,
+  furnitureBoxes,
+  MARGIN_NOTE_JOINER,
+  marginNoteSetting,
+  marginNoteSides,
+} from "@/model/pageFurniture";
 import {
   cellsInRange,
   columnCountOf,
@@ -422,6 +428,8 @@ function segmentNodes(
     ));
   if (language === "en") return side("en");
   if (language === "zh") return side("zh");
+  // A side with no pieces prints nothing (a cover line printed once).
+  if (segments.zh.length === 0) return side("en");
   return (
     <>
       {side("en")}
@@ -529,7 +537,8 @@ function MarksTrail({
   blankLines: number;
   /**
    * The paragraph keeps a Marks column clear (`TextNode.marksColumn`, its right padding):
-   * the label sits in that column, so the text's last line reserves nothing for it.
+   * the label sits in that column on the paragraph's *first* line (HKEAA), so no line
+   * reserves anything for it.
    */
   column?: boolean;
 }) {
@@ -544,7 +553,7 @@ function MarksTrail({
   const [needsOwnLine, setNeedsOwnLine] = useState(false);
 
   useLayoutEffect(() => {
-    if (blankLines === 0) {
+    if (blankLines === 0 || column) {
       setNeedsOwnLine(false);
       return;
     }
@@ -633,7 +642,7 @@ function MarksTrail({
            * correct on the styles that scale their exact line box (\u00a7 `exact` does not
            * grow) instead of assuming the 12pt body grid.
            */
-          bottom: blankLines ? `${blankLines}lh` : 0,
+          ...(column ? { top: 0 } : { bottom: blankLines ? `${blankLines}lh` : 0 }),
         }}
       >
         {label}
@@ -1140,6 +1149,13 @@ function BlockCaption({
  * mechanism. `mx-auto` in particular reads as "centre" whatever `align` says, which is
  * why neither figure carries it any more.
  */
+/**
+ * A picture's line box: the `.docx` puts it alone in an auto-spaced paragraph that is
+ * exactly its height (LibreOffice measures it so). A margin or the strut's descent here
+ * made every figure taller on the page than in the file, so the sheets broke earlier.
+ */
+const PICTURE_BOX: React.CSSProperties = { lineHeight: 0 };
+
 function figureAlignClass(align: TableAlign): string {
   return align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
 }
@@ -1191,8 +1207,11 @@ function DiagramNodeView({
   // No caption either side: a diagram's words are `diagram.title`, drawn inside the SVG
   // above and rasterized into the same PNG on export. The page must show exactly what
   // Word will print, so there is nothing to add around the picture here.
+  //
+  // Exactly the picture's height, as the `.docx`'s picture paragraph is: no margin, and
+  // `lineHeight: 0` so the line's strut adds no descent under it (§ `PICTURE_BOX`).
   return (
-    <div className={`my-2 ${figureAlignClass(node.align)}`}>
+    <div className={figureAlignClass(node.align)} style={PICTURE_BOX}>
       <SizedBlock
         blockId={node.blockId}
         widthPx={node.widthPx}
@@ -1356,16 +1375,14 @@ function PageFurnitureLayer({
     width: mm(box.width),
     height: mm(box.height),
   });
+  // Which sides print and how, from the helpers the exporter calls (§ `marginNoteSides`).
   const note = furniture.marginNote;
-  const zhSide = language === 'zh' && !!note && !!plain(note.zh);
-  const noteText = note
-    ? zhSide
-      ? plain(note.zh)
-      : plain(note.en) || plain(note.zh)
-    : '';
-  // Upright vertical text needs a strip a whole glyph wide, so the box depends on the
-  // script — resolved from the same helper the exporter calls, with the same flag.
-  const boxes = furnitureBoxes(width, height, setup.margins, { verticalNote: zhSide });
+  const sides = marginNoteSides(note, language);
+  const setting = marginNoteSetting(sides, language);
+  const zhSide = setting.verticalNote;
+  const noteLines = note ? sides.map((side) => plain(note[side])) : [];
+  const noteText = noteLines.join(MARGIN_NOTE_JOINER);
+  const boxes = furnitureBoxes(width, height, setup.margins, setting);
 
   /*
    * Latin is rotated (-90° over a horizontal line); Chinese is set vertically
@@ -1398,6 +1415,17 @@ function PageFurnitureLayer({
     };
   };
 
+  // Stacked bilingual lines sit on the 12pt line the exported textbox keeps.
+  const stripText = setting.stackedNote ? (
+    <div style={{ lineHeight: '12pt', textAlign: 'center' }}>
+      {noteLines.map((text, index) => (
+        <div key={index}>{text}</div>
+      ))}
+    </div>
+  ) : (
+    noteText
+  );
+
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
       {furniture.frame && (
@@ -1408,8 +1436,8 @@ function PageFurnitureLayer({
       )}
       {noteText && (
         <>
-          <div style={noteStyle(boxes.noteLeft)}>{noteText}</div>
-          <div style={noteStyle(boxes.noteRight)}>{noteText}</div>
+          <div style={noteStyle(boxes.noteLeft)}>{stripText}</div>
+          <div style={noteStyle(boxes.noteRight)}>{stripText}</div>
           {/* The same sentence horizontal below the frame, as the reference's footer
               textbox has it — ranged left, not centred. */}
           <div
@@ -2603,23 +2631,25 @@ export function NodeView({
 
   if (node.kind === "image") {
     return (
-      <div className={`my-2 ${figureAlignClass(node.align)}`}>
+      <div className={figureAlignClass(node.align)}>
         <BlockCaption node={node} side="above" style="Image Caption" language={language} ctx={ctx} />
-        <SizedBlock
-          blockId={node.blockId}
-          widthPx={node.widthPx}
-          heightPx={node.heightPx}
-          ctx={ctx}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={node.src}
-            alt={plain(node.altText.en) || plain(node.altText.zh) || ""}
-            width={node.widthPx}
-            height={node.heightPx}
-            className="inline-block"
-          />
-        </SizedBlock>
+        <div style={PICTURE_BOX}>
+          <SizedBlock
+            blockId={node.blockId}
+            widthPx={node.widthPx}
+            heightPx={node.heightPx}
+            ctx={ctx}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={node.src}
+              alt={plain(node.altText.en) || plain(node.altText.zh) || ""}
+              width={node.widthPx}
+              height={node.heightPx}
+              className="inline-block"
+            />
+          </SizedBlock>
+        </div>
         <BlockCaption node={node} side="below" style="Image Caption" language={language} ctx={ctx} />
       </div>
     );
@@ -5453,14 +5483,21 @@ export function Preview({
     return true;
   };
 
+  // A cover line printed once edits both of its identical sides (§ `coverLinePrintsOnce`).
+  const mirrored = (target: EditTarget, next: BiText) => {
+    if (target.kind !== "coverLine") return next;
+    const before = textOf?.(target);
+    return before ? mirrorBilingualEdit(before, next, language) : next;
+  };
+
   const ctx: EditContext | undefined = onEdit
     ? {
         contextMenu: openPageMenu,
         onEdit: (target, next) => {
-          onEdit(target, next);
+          onEdit(target, mirrored(target, next));
           setSelectedElement(undefined);
         },
-        onEditKeepingSelection: onEdit,
+        onEditKeepingSelection: (target, next) => onEdit(target, mirrored(target, next)),
         onSelectElement: (target, side) => {
           setSelectedElement({ target, side });
           // Selecting text drops the picture selection, so the handles never linger

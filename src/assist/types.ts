@@ -76,14 +76,23 @@ export interface ReviewItem {
   source?: string;
   /** Card lines: "EDB: 物價水平", "Bold not kept", "Two options are defensible". */
   notes: string[];
-  /** One-click action in the card: "Replace with 稅收承擔", "Remove". Commits once. */
-  action?: { label: string; run(): void };
+  /** One-click action in the card: "Replace with 稅收承擔", "Remove". Commits once;
+   *  `false` = nothing changed (the text moved on), so the item stays open. */
+  action?: { label: string; run(): boolean | void };
+  /** Its action ran: the card reads Done, no chip counts it. Set by `useAiRun.act`. */
+  resolved?: true;
+}
+
+/** A findings outcome's bar after a card's action, re-read from the paper as it is now. */
+export interface FindingsRefresh {
+  summary: string;
+  applyAll?: { label: string; run(): void };
 }
 
 export type VerbOutcome =
   /** Something was written: `undo` reverts exactly that one commit (null once stale). */
   | { kind: 'inserted'; summary: string; items: ReviewItem[]; undo: { run(): void; live(): boolean } | null; showSide?: 'en' | 'zh'; showTeacher?: boolean }
   /** Nothing written, things to look at (Check terms, Quality check). */
-  | { kind: 'findings'; summary: string; items: ReviewItem[]; applyAll?: { label: string; run(): void } }
+  | { kind: 'findings'; summary: string; items: ReviewItem[]; applyAll?: { label: string; run(): void }; refresh?(): FindingsRefresh }
   | { kind: 'nothing'; summary: string }
   | { kind: 'error'; error: AiErrorInfo };

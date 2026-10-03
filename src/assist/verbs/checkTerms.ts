@@ -6,13 +6,14 @@ import { isRichTextEmpty, plain } from '@/model/text';
 import type { TextPath } from '@/model/textSlots';
 import { useAppDialogs } from '@/store/appDialogs';
 import { slotInScope } from '@/translate/plan';
-import { termFixWrites, termRowsFromSlots } from '@/translate/termCheck';
+import { useWorksheetStore } from '@/store/worksheetStore';
+import { termFixWrites, termResultFromSlots } from '@/translate/termCheck';
 import type { TermRow } from '@/translate/types';
 import { copyMessages } from '@/components/translate/text';
 import { assistMessages } from '../text';
 import { registerVerb } from '../registry';
-import { termNotes, termTally, tallySummary } from '../termRules';
-import type { AiVerb, ReviewItem, VerbContext, VerbOutcome } from '../types';
+import { termNotes, termTally, tallySummary, type TermTally } from '../termRules';
+import type { AiVerb, FindingsRefresh, ReviewItem, VerbContext, VerbOutcome } from '../types';
 import { applyWrites, commitUndo, slotsOf, whereOf } from './translateShared';
 
 /**
@@ -33,10 +34,43 @@ function replace(rows: readonly TermRow[], accepted: Map<TextPath, Set<number>>,
   return terms;
 }
 
-export function termFindings(ctx: VerbContext, rows: readonly TermRow[]): VerbOutcome {
-  if (rows.length === 0) return { kind: 'nothing', summary: assistMessages().termsMatch };
+/** Rows and matches as the check reads them; re-read after a card's action. */
+export interface TermResult {
+  rows: readonly TermRow[];
+  matched: number;
+}
+
+const summaryOf = ({ rows, matched }: TermResult, tally: TermTally): string => {
+  if (rows.length === 0) return matched > 0 ? assistMessages().termsMatchN(matched) : assistMessages().noTermsFound;
+  const fixes = tallySummary(tally);
+  return matched > 0 ? `${fixes} · ${assistMessages().matchedN(matched)}` : fixes;
+};
+
+function applyAllOf(rows: readonly TermRow[], safe: Map<TextPath, Set<number>>, n: number, worksheetId: string) {
+  if (n === 0) return undefined;
+  return {
+    label: assistMessages().replaceN(n),
+    run: () => {
+      const terms = replace(rows, safe, worksheetId);
+      if (terms === 0) return useAppDialogs.getState().notify(copyMessages().nothingReplaced);
+      const undo = commitUndo();
+      useAppDialogs.getState().notify(copy.replacedTermsFlash(terms), { label: copyMessages().undoAction, ...undo });
+    },
+  };
+}
+
+/** The bar for a result: summary and Replace N. */
+function barOf(result: TermResult, worksheetId: string): FindingsRefresh {
+  const { tally, safe, safeCount } = termTally(result.rows);
+  const applyAll = applyAllOf(result.rows, safe, safeCount, worksheetId);
+  return { summary: summaryOf(result, tally), ...(applyAll ? { applyAll } : {}) };
+}
+
+/** `recheck` re-reads the paper after a card's fix, so the bar never counts a fixed term. */
+export function termFindings(ctx: VerbContext, result: TermResult, recheck?: () => TermResult): VerbOutcome {
+  const { rows } = result;
+  if (rows.length === 0) return { kind: 'nothing', summary: summaryOf(result, termTally(rows).tally) };
   const items: ReviewItem[] = [];
-  const { tally, safe, safeCount: n } = termTally(rows);
   for (const row of rows) {
     const slot = row.slot;
     row.checks.forEach((check, index) => {
@@ -54,9 +88,9 @@ export function termFindings(ctx: VerbContext, rows: readonly TermRow[]): VerbOu
               action: {
                 label: assistMessages().replaceWith(fix.to),
                 run: () => {
-                  if (replace([row], new Map([[row.path, new Set([index])]]), ctx.worksheet.id) === 0) {
-                    useAppDialogs.getState().notify(assistMessages().nothingReplacedOne);
-                  }
+                  if (replace([row], new Map([[row.path, new Set([index])]]), ctx.worksheet.id) > 0) return true;
+                  useAppDialogs.getState().notify(assistMessages().nothingReplacedOne);
+                  return false;
                 },
               },
             }
@@ -64,24 +98,11 @@ export function termFindings(ctx: VerbContext, rows: readonly TermRow[]): VerbOu
       });
     });
   }
-  const summary = tallySummary(tally);
   return {
     kind: 'findings',
-    summary,
+    ...barOf(result, ctx.worksheet.id),
     items,
-    ...(n > 0
-      ? {
-          applyAll: {
-            label: assistMessages().replaceN(n),
-            run: () => {
-              const terms = replace(rows, safe, ctx.worksheet.id);
-              if (terms === 0) return useAppDialogs.getState().notify(copyMessages().nothingReplaced);
-              const undo = commitUndo();
-              useAppDialogs.getState().notify(copy.replacedTermsFlash(terms), { label: copyMessages().undoAction, ...undo });
-            },
-          },
-        }
-      : {}),
+    ...(recheck ? { refresh: () => barOf(recheck(), ctx.worksheet.id) } : {}),
   };
 }
 
@@ -111,7 +132,8 @@ export function checkTermsVerb(load: () => Promise<Glossary> = loadGlossary): Ai
           error: { kind: 'badOutput', provider: 'gemini', message: copyMessages().termsUnavailable, fatal: false, actions: ['retry'] },
         };
       }
-      return termFindings(ctx, termRowsFromSlots(slotsOf(ctx.worksheet), glossary, ctx.scope));
+      const read = (): TermResult => termResultFromSlots(slotsOf(useWorksheetStore.getState().worksheet), glossary, ctx.scope);
+      return termFindings(ctx, termResultFromSlots(slotsOf(ctx.worksheet), glossary, ctx.scope), read);
     },
   };
 }

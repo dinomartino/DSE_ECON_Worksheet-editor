@@ -46,6 +46,9 @@ export const KEY_LAYOUT_WORDING = {
     { symbol: bi('max: n', '最高n分'), meaning: bi('the most marks the points above can earn.', '以上各項最多可得的分數。') },
     { symbol: bi('OR', '或'), meaning: bi('separates two complete alternative answers.', '分隔兩個完整的不同答案。') },
   ],
+  /** HKEAA's figure in the Marks column layout: its caption, and the lead of the points shown in it. */
+  figure: (n: number) => bi(`Figure ${n}`, `圖${n}`),
+  indicateIn: (n: number) => bi(`Indicate in Figure ${n}:`, `在圖${n}中顯示：`),
   /** The Marks column's running head. */
   marksHeader: bi('Marks', '分數'),
   questionTotal: (n: number) => bi(`(Total: ${n} ${n === 1 ? 'mark' : 'marks'})`, `（共${n}分）`),

@@ -178,7 +178,8 @@ export interface TextNode {
    * A paragraph joining several authored fields with derived wording (a scheme point
    * and its `/` alternatives; "Level 1: " and its descriptor): per side, its pieces in
    * print order, each field editable on its own. Joined, a side's pieces are exactly
-   * `text`'s side. Set instead of `edit`. Preview only; inert in export.
+   * `text`'s side. Set instead of `edit`, or beside it for a cover line printed once.
+   * Preview only; inert in export.
    */
   segments?: { en: EditSegment[]; zh: EditSegment[] };
   /**
