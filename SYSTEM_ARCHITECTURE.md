@@ -3085,11 +3085,11 @@ intact but unreachable.
   document is at `CURRENT_SCHEMA_VERSION`. A field an older build would silently mis-print
   raises the mark only in documents that use it, so they open read-only there and nothing
   else does. v2 = v1 + any of: the diagram answer layer (`answer: true`, any diagram
-  anywhere); `answerKeyLayout`; a section's `answerCount` or `targetMarks`; a part-less
-  question's own non-blank `answer` or `scheme` (the essay). The 1→2 step is identity.
-  Graphs follow the same rule. Bank and organising metadata (topics, 題型, `tagsAt`,
-  lineage, part roots, `kind`, `classes`, `satOn`, `bankHidden`) stays at 1: v0.5.0 keeps
-  it and prints the same. v0.4–0.5 open a v2 file read-only (export stays possible there);
+  anywhere); `answerKeyLayout`; a section's `answerCount`; a part-less question's own
+  non-blank `answer` or `scheme` (the essay). The 1→2 step is identity. Graphs follow the
+  same rule. A section's `targetMarks` alone, and bank and organising metadata (topics,
+  題型, `tagsAt`, lineage, part roots, `kind`, `classes`, `satOn`, `bankHidden`), stay at
+  1: v0.5.0 keeps them and prints the same. v0.4–0.5 open a v2 file read-only (export stays possible there);
   v0.2–0.3 have no guard and open it editable, keeping the fields and the mark.
 - **A shape change** appends one `MIGRATIONS` step, bumps `CURRENT_SCHEMA_VERSION`, and adds
   a new frozen `src/test/corpus/v<N>-published.json` written by that version's last build;
