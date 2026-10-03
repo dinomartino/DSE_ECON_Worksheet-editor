@@ -108,13 +108,28 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
 | answer red | #DC2626 | teacher answers only |
 | sketch greys | #948D80 #DCD7CD #C9C3B7 | illustrated pages (PaperSketch) |
 
-- **Type**: Newsreader 400 (self-hosted woff2, OFL) for headlines, tracking −0.01em;
-  Inter or SF for labels; PingFang HK for Chinese (local) or Noto Sans/Serif HK
-  self-hosted. Scale at 1080p: hero 140, headline 96, subhead 40, eyebrow 22 caps +0.08em,
-  caption 26. Chinese sits under English at ~0.5× size, ink-muted. Safe area 96 px sides,
-  72 px top/bottom.
-- **Footage** sits in a flat window card: radius 16, 1 px line border, the paper shadow,
-  optional generic title bar. No tilt, no perspective, no reflection.
+- **Type system** (`stage/lib/type.js`; spread a preset, never type a size):
+  - `HEADLINE`: Newsreader 72, lh 1.08, −0.012em, ONE line, cap top y 96 at x 96 (w 1728);
+    zh 32 #5A544D, gap 12. Every footage beat. Fully visible ≥ 2 s; the slot is never empty
+    while footage is on screen.
+  - `STATEMENT`: 112, lh 1.04, −0.02em, ≤ 2 lines (`\n` in COPY); zh 48, gap 20. Text-led
+    frames. Defaults are C3 (centred); C2 is `{ ...STATEMENT, ...layout.C2.statement }`.
+  - `LABEL`: Inter 500 22 caps +0.08em, zh 24 on the same line, ink-muted (`label()`).
+  - `END_CARD`: the act-1 lockup geometry (tile 360 at top 155, wordmark 110, zh 46 tracked
+    0.30em) + the tagline slot (Inter 500 38 / zh 26, gap 60), pushing 1.0 → 1.03 to the end.
+  - 中文 inside a serif line is a PingFang HK 300 span at 0.9em, no tracking; Latin inside a
+    zh line has no zh tracking. A small zh line never sits under 4.5:1 (#5A544D, never
+    #7F7973). No rendered line ends in `, . ， 。 ; ；` (the doctor reads the wrapped lines).
+- **Compositions** (`stage/lib/layout.js`): safe area 96 px sides, 72 px top/bottom; 12
+  columns of 122 + 24 gutter. **C1** HEADLINE over a 1728 × 744 card at (96, 264), footage
+  1.2×, its bottom on y 1008; **C1N** the same slot, card 1144 × 744 at x 680 (portrait
+  subjects); **C2** STATEMENT left (x 96, w 784, middle on 540) + an object at x 1008…1824
+  that may bleed off the bottom only; **C3** one statement or the mark, centred.
+- **Legibility**: no word is cut by a frame or card edge (camera `safe` rects); a printed page
+  is shown ≥ 1190 px wide (11 pt → 22 px) or held ≤ 1 s and followed by a legible crop.
+- **Footage** sits in a flat window card (radius 16, 1 px line border, the paper shadow) at
+  WIDE and MEDIUM, and fills the frame with no card at CLOSE (§5 camera). No tilt, no
+  perspective, no reflection.
 - **Graphic grammar**: strokes draw on (dash offset); the dot is the motif and the
   transition device (it travels, grows into an iris, or lands as a click); axes and
   hairlines divide the frame; illustrated pages use PaperSketch's flat bars.
@@ -130,7 +145,23 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   downbeat (bar line). Big moves on the music's section changes (12.6, 30.8, 73.0, 99.6).
 - Cuts or motivated moves only. **Never crossfade two different UI states**; never dissolve
   two frames that already match. Camera moves on footage are 2D (scale + translate), with
-  a focus mask (dim the rest, rounded spotlight) and callout lines that draw on.
+  callout lines that draw on.
+- **Camera grammar** (`lib/camera.js`): three shot sizes. WIDE = the card at 0.62 of the
+  frame, the whole UI, cream around. MEDIUM = the C1 (or C1N) card under a HEADLINE. CLOSE =
+  2.4–3.0× full-bleed: no card edge, no border, no dim, no headline. **One move per shot**
+  (a push or pull on inOutSoft, 4 pulses by default) or a drift ≤ 3 %; **every cut changes
+  the shot size**; a dim (MEDIUM only) is ≤ 0.16 and eases in and out on inOutSoft. Budget:
+  ≤ 35 % of the film in MEDIUM demo-card frames, ≥ 25 % in CLOSE (the doctor measures it).
+- **Axis chapter** (engine.js, `in: { type: 'axis', pulses: 4 }`): the act changes at 30.25,
+  51.58 and 94.26. In pulses from the bar line B: B−2…B0 a 4 px ink stroke wipes 1920 → 96
+  (the new act right of it), the 12 px blue dot on its top; B0…B+2 the horizontal axis draws
+  along y 1008; B+1…B+4 the chapter LABEL (`COPY.chapters`) sits on it at x 120; B+4…B+6
+  both strokes retract into the origin and the dot travels to `in.dotTo` (or rides down).
+  The dot irises stay for the two biggest section changes (12.46, 72.92).
+- **Re-ink lift** (`lib/reink.js`): after a footage proof, the proven element leaves as
+  vector at frame scale: trace (1 pulse), lift to ≤ 1400 px (`lift`, inOutSoft, pencil sfx),
+  hold while the detail draws on (`stroke`, `hatch`, `roll`, `bars`, `wavy`), then cut.
+  Each lift ≤ 7 pulses.
 - `update(t)` is a pure function of t. No clocks, no randomness, no state between calls.
 - 60 fps, no motion blur needed; nothing may stall or jump outside a cut.
 
@@ -141,7 +172,10 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
 - SFX from `demo-media/film-v2/audio-stock/sfx/` (Mixkit Free License): soft clicks on real
   clicks in footage, typing under typing, pencil under line-draws, paper under page moves,
   whoosh under travels, a pop on the dot, one soft impact on the title, a chime on the end
-  card. Sparse: music first. Mixed under the music, master −16 LUFS, ≤ −1 dBTP.
+  card. Music first, but every sound must be heard: UI sounds peak 3–6 dB over the local
+  music RMS; typing is one tick per key; every section change has a sound; the music ducks
+  under impacts, travels and dense UI. The mix fades only after the music resolves
+  (AUDIBLE_END 107.65 s). Master −16 LUFS, ≤ −1 dBTP.
 - `demo-media/film-v2/audio-stock/SOURCES.md` records every asset's license.
 
 ## 7. Architecture (`scripts/film2/`)
@@ -149,7 +183,7 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
 A sibling of `scripts/film/`, reusing its capture and tools by import; v1 keeps working.
 
 - `timeline.mjs` (browser-safe data): the music file, its verified beat grid
-  (`BEATS`, `BARS` in seconds), `beat(n)`/`bar(n)`, `SCENES` (id, from, to, in-transition: cut, match, push or iris;
+  (`BEATS`, `BARS` in seconds), `beat(n)`/`bar(n)`, `SCENES` (id, from, to, in-transition: cut, match, push, iris or axis;
   intended in-act `cuts`, footage `ui` changes and still `holds`, which
   `tools/motion-check.mjs` exempts),
   `CUES` (id, t, kind: sfx/accent), `COPY` (every string, en + zh), `DURATION`.
@@ -157,16 +191,45 @@ A sibling of `scripts/film/`, reusing its capture and tools by import; v1 keeps 
   {ready, fps, duration, frames, size, seek(t), events(), text(), placements(), errors()}`;
   a 1920×1080 design-space DOM/SVG root; scenes `stage/scenes/<id>.js` =
   `{setup(ctx), update(ctx, t), events?}`; `lib/` = ease, tween/keyframes helpers, stroke
-  draw, type (fit + reveal), window card, focus mask, callout, dot/iris transitions, clip
-  player (JPEG frames → `<img>`/canvas with LRU, awaits decode before the screenshot),
-  PaperSketch-style page illustrations, the mark (exact `src/launch/` geometry).
+  draw, type (presets, fit + reveal), layout (compositions), camera, re-ink, window card,
+  focus mask, callout, clip player (JPEG frames → `<img>` with LRU, awaits decode before the
+  screenshot), PaperSketch-style page illustrations, the mark (exact `src/launch/` geometry).
+  The engine poses the transitions (cut, match, push, iris, axis).
+- **Scene recipe** (the system a scene adopts):
+  ```js
+  import { block, HEADLINE, STATEMENT, label, LABEL } from '../lib/type.js';
+  import { C1, C2, C3 } from '../lib/layout.js';
+  import { camera } from '../lib/camera.js';
+  import * as reink from '../lib/reink.js';
+  // setup
+  ctx.head = block(ctx.el, { ...HEADLINE, ...ctx.copy.draw });
+  ctx.cam = camera(ctx, { src: { w: 1440, h: 900 } });
+  ctx.clip = await ctx.load.clip('draw-diagram', ctx.cam.box, ctx.cam.content); // or cam.image(url)
+  ctx.cam.shots([                       // scene seconds; rects in the clip's CSS px
+    { at: 0, size: 'medium', focus: TOOLBAR },
+    { at: P(6), size: 'close', focus: AXES, safe: LABELS, move: { to: { zoom: 2.8 } } },
+    { at: P(12), size: 'wide' },
+  ]);                                   // returns lint problems (same-size cuts, unsafe crops)
+  // update
+  ctx.cam.update(t); ctx.clip.at(clipTime); ctx.head.show(t, { at: 0, out: P(12) });
+  const [x, y] = ctx.cam.toScreen([cssX, cssY]); // dots and callouts on the footage
+  ```
+  A shot: `{ at, size: 'wide'|'medium'|'narrow'|'close', focus, safe?, zoom?, anchor?,
+  move?: { to: {size, focus, safe, zoom}, at?, dur? }, drift? (≤ 0.03), dim?: { rect, on,
+  off, dur } }`. Re-ink: `reink.lift(t, fromRect, toRect, { at, dur })` → `{ css }` for a
+  layer; `reink.stroke(path, t, { at, dur, reverse })`; `reink.hatch(svg, { points, gap })
+  .at(t, …)`; `reink.roll(t, { from, to, at, dur })` → text; `reink.bars(svg, { x, y, w, h,
+  values }).at(t, …)`; `reink.wavy(svg, { x, y, w })` then `stroke`.
+- `scenes/_lab.js` is not in the timeline: `node scripts/film2/tools/lab.mjs --at=…` renders
+  it alone (`?lab=<id>`) to try lib pieces on real clips.
 - `render.mjs`: v1's worker loop (serve, Chrome, seek, CDP screenshot, lossless segments,
   concat, encode) without the GPU gate or score hash; `--from/--to` in seconds; `--at`
   stills; mux music + sfx mix.
 - `audio/`: music edit + loudness, SFX placement from `events()` into `sfx.wav`, mix.
 - `tools/doctor.mjs`: timeline tiles 0..DURATION, cuts on beats, assets present, clip
-  windows inside clips, text fit + title-safe, **no line-end punctuation in COPY**, audio
-  present and long enough, capture age vs `src/`.
+  windows inside clips, text fit + title-safe, **no line-end punctuation in COPY or in any
+  rendered (wrapped) line**, headline/statement sizes are presets, headlines fully visible
+  ≥ 2 s, the shot budget, audio present and long enough.
 - Asset store: `demo-media/film-v2/assets/` (its own; never writes v1's store). Capture
   reuses `scripts/film/capture/` with a store override.
 - `npm run film2`, `film2:doctor`, `film2:stills`, `film2:capture`.

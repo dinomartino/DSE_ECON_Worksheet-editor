@@ -42,7 +42,7 @@ const load = (name) => {
  * two keys of a typing run joins the run (the typing bed carries it, no click on top).
  */
 function tidyUi(raw, dropped) {
-  const isKey = (r) => SFX_MAP[r.kind].burst;
+  const isKey = (r) => SFX_MAP[r.kind].burst || SFX_MAP[r.kind].tick;
   for (let i = raw.length - 1; i >= 0; i--) {
     const r = raw[i];
     if (isKey(r) && SILENT_KEYS.test(String(r.e.label ?? ''))) {
@@ -83,17 +83,18 @@ export function plan(events, { duration = DURATION } = {}) {
   const events2 = [], lastOf = {};
   for (const r of raw) {
     const last = lastOf[r.kind];
-    if (SFX_MAP[r.kind].burst && last && r.e.t - last.end < BURST_GAP) {
+    if ((SFX_MAP[r.kind].burst || SFX_MAP[r.kind].tick) && last && r.e.t - last.end < BURST_GAP) {
       last.end = Math.max(last.end, r.e.t + (r.e.dur ?? 0));
       last.n++;
+      last.keys.push(r.e);
       continue;
     }
-    events2.push((lastOf[r.kind] = { kind: r.kind, e: r.e, t: r.e.t, end: r.e.t + (r.e.dur ?? 0), n: 1 }));
+    events2.push((lastOf[r.kind] = { kind: r.kind, e: r.e, t: r.e.t, end: r.e.t + (r.e.dur ?? 0), n: 1, keys: [r.e] }));
   }
 
   for (let i = events2.length - 1; i >= 0; i--) {
     const v = events2[i];
-    if (SFX_MAP[v.kind].burst && v.n < MIN_RUN) {
+    if ((SFX_MAP[v.kind].burst || SFX_MAP[v.kind].tick) && v.n < MIN_RUN) {
       dropped.push({ kind: v.kind, t: v.t, why: `a run of ${v.n} key(s): the click carries it` });
       events2.splice(i, 1);
     }
@@ -120,6 +121,7 @@ export function plan(events, { duration = DURATION } = {}) {
 
   const counters = {};
   const voices = [];
+  let tickN;
   for (const v of kept) {
     const m = SFX_MAP[v.kind];
     const idx = (counters[v.kind] = (counters[v.kind] ?? -1) + 1);
@@ -130,9 +132,24 @@ export function plan(events, { duration = DURATION } = {}) {
     const pan = v.e.pan ?? (m.panX && Number.isFinite(v.e.x) ? m.panX * Math.max(-1, Math.min(1, (v.e.x / 2880) * 2 - 1)) : 0);
     const base = { kind: v.kind, file: name, event_t: +v.t.toFixed(4), gain_db: +gain.toFixed(2), pan: +pan.toFixed(3), fade: m.fade };
     const dur = cat.duration_s;
-    if (m.end) {
-      const D = Math.min(v.e.dur ?? m.defDur ?? 3, dur);
+    if (m.end || v.e.end) {
+      const D = Math.min(v.e.dur ?? m.defDur ?? m.maxDur ?? 3, dur);
       voices.push({ ...base, pos: v.t - D, from: dur - D, len: D, onset: null, fade: [Math.min(m.fade[0], D / 2), m.fade[1]] });
+    } else if (m.tick) {
+      // One tick per key, thinned to ≤ maxRate per second; the run's last key always sounds.
+      const gap = 1 / m.tick.maxRate, ticks = [];
+      for (const k of v.keys) if (!ticks.length || k.t - ticks[ticks.length - 1].t >= gap - 1e-6) ticks.push(k);
+      const lastKey = v.keys[v.keys.length - 1];
+      if (ticks[ticks.length - 1] !== lastKey) ticks[ticks.length - 1] = lastKey;
+      for (const k of ticks) {
+        const j = (tickN = (tickN ?? -1) + 1);
+        const f = m.files[j % m.files.length], c = catalog()[f];
+        const rate = 2 ** (((hash(j * 7 + 3) * 2 - 1) * m.tick.semis) / 12);
+        const g = m.gain_db + (m.trim_db?.[f] ?? 0) + (hash(j * 13 + 1) * 2 - 1) * m.tick.jitter_db + (/^Enter$/.test(String(k.label)) ? m.tick.enter_db : 0);
+        const len = Math.min(m.maxDur, c.duration_s / rate);
+        voices.push({ ...base, file: f, event_t: +k.t.toFixed(4), gain_db: +g.toFixed(2), pos: k.t - c.onset_s / rate, from: 0, len, onset: c.onset_s, rate: +rate.toFixed(4) });
+      }
+      if (v.keys.length > ticks.length) dropped.push({ kind: v.kind, t: v.t, why: `typing run: ${v.keys.length} keys → ${ticks.length} ticks (≤ ${m.tick.maxRate}/s)` });
     } else if (m.burst) {
       const total = Math.max(0.5, v.end - v.t + 0.3);
       for (let k = 0, at = v.t; ; k++) {
@@ -164,17 +181,22 @@ export function mixVoices(voices, duration) {
     const n = Math.round(v.len * SR), s0 = Math.round(v.from * SR), p0 = Math.round(v.pos * SR);
     const fi = Math.max(1, Math.round(v.fade[0] * SR)), fo = Math.max(1, Math.min(n, Math.round(v.fade[1] * SR)));
     const mono = w.ch.length === 1;
+    const rate = v.rate ?? 1; // playback rate (a pitch shift): read the source at s0 + i × rate
+    const at = (ch, x) => {
+      const k = Math.floor(x), u = x - k;
+      return ch[k] + (k + 1 < w.n ? (ch[k + 1] - ch[k]) * u : 0);
+    };
     for (let i = 0; i < n; i++) {
       const o = p0 + i;
       if (o < 0 || o >= N) continue;
-      const s = s0 + i;
-      if (s >= w.n) break;
+      const s = s0 + i * rate;
+      if (s >= w.n - 1) break;
       let f = 1;
       if (v.fade[0] > 0 && i < fi) f = 0.5 - 0.5 * Math.cos((Math.PI * i) / fi);
       if (n - i <= fo) f *= 0.5 + 0.5 * Math.cos((Math.PI * (fo - (n - i))) / fo);
       if (v.pos * SR + i < 0) f = 0;
-      L[o] += w.ch[0][s] * gl * f;
-      R[o] += w.ch[mono ? 0 : 1][s] * gr * f;
+      L[o] += (rate === 1 ? w.ch[0][s] : at(w.ch[0], s)) * gl * f;
+      R[o] += (rate === 1 ? w.ch[mono ? 0 : 1][s] : at(w.ch[mono ? 0 : 1], s)) * gr * f;
     }
   }
   return [L, R];
@@ -209,7 +231,7 @@ export async function buildSfx({ events, outDir = AUDIO, duration = DURATION }) 
   const report = {
     duration, sampleRate: SR, events: events.length, voices: voices.length, byKind,
     peakDbfs: +(20 * Math.log10(peak || 1e-9)).toFixed(2), thinned: dropped,
-    placed: voices.map((v) => ({ kind: v.kind, file: v.file, event_t: v.event_t, start: +Math.max(0, v.pos).toFixed(4), len: +v.len.toFixed(3), gain_db: v.gain_db, pan: v.pan, duck: !!SFX_MAP[v.kind].duck })),
+    placed: voices.map((v) => ({ kind: v.kind, file: v.file, event_t: v.event_t, start: +Math.max(0, v.pos).toFixed(4), len: +v.len.toFixed(3), gain_db: v.gain_db, pan: v.pan, duck: SFX_MAP[v.kind].duck ?? false })),
   };
   writeFileSync(resolve(outDir, 'sfx-events.json'), `${JSON.stringify(report, null, 1)}\n`);
   return { wav, report };

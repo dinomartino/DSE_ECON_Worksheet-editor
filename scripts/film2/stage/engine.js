@@ -7,7 +7,7 @@ import * as TL from '../timeline.mjs';
 import { asset, assetUrl } from '../assets.mjs';
 import * as lib from './lib/index.js';
 import { ClipPlayer, loadClipMeta, placedEvents } from './lib/clip.js';
-import { clamp, inOutSoft, spring } from './lib/ease.js';
+import { clamp, lerp, prog, inOutSoft, outSoft, spring } from './lib/ease.js';
 import { f } from './lib/tween.js';
 
 const q = new URLSearchParams(location.search);
@@ -16,6 +16,14 @@ const W = num('w', TL.W);
 const H = num('h', TL.H);
 const FPS = num('fps', TL.FPS);
 const DW = TL.W, DH = TL.H;
+
+// ?lab=<id>&labdur=<s>: render one scene file (e.g. scenes/_lab.js, not in the timeline) alone
+// from 0 s, for trying lib pieces (camera sizes, re-ink lifts) without touching the film.
+const LAB = q.get('lab');
+const LAB_INFO = LAB && { id: LAB, from: 0, to: num('labdur', 8), bars: [0, 0], in: { type: 'cut' } };
+const SC = LAB
+  ? { list: [LAB_INFO], at: (t) => (t >= 0 && t < LAB_INFO.to ? [LAB] : []), window: () => ({ start: 0, end: LAB_INFO.to, from: 0, to: LAB_INFO.to }) }
+  : { list: TL.SCENES, at: TL.sceneAt, window: TL.sceneWindow };
 
 const root = document.getElementById('film');
 const fx = document.getElementById('fx');
@@ -36,6 +44,7 @@ const FONTS = [
   ['400 100px Inter', 'Aa'],
   ['500 100px Inter', 'Aa'],
   ['600 100px Inter', 'Aa'],
+  ['300 100px "PingFang HK"', '經濟備課室中文'], // 中文 inside serif headlines (lib/type.js)
   ['400 100px "PingFang HK"', '經濟備課室'],
   ['500 100px "PingFang HK"', '經濟備課室'],
 ];
@@ -51,11 +60,11 @@ const sceneDef = (id) => {
   if (!defs.has(id)) defs.set(id, import(`./scenes/${id}.js`).then((m) => m.default));
   return defs.get(id);
 };
-const infoOf = (id) => TL.SCENES.find((s) => s.id === id);
+const infoOf = (id) => SC.list.find((s) => s.id === id);
 
 function assetFor(id, scene, kind) {
   const a = asset(id);
-  if (!a.scenes?.includes(scene)) throw new Error(`asset "${id}" is not registered for scene ${scene} (assets.mjs)`);
+  if (!LAB && !a.scenes?.includes(scene)) throw new Error(`asset "${id}" is not registered for scene ${scene} (assets.mjs)`);
   if ((kind === 'clip') !== (a.kind === 'clip')) throw new Error(`asset "${id}" is a ${a.kind}, not a ${kind}`);
   return a;
 }
@@ -72,7 +81,7 @@ async function createSlot(id, { dry = false } = {}) {
   const ctx = {
     id, el, dry, lib, tl: TL,
     W: DW, H: DH, fps: FPS,
-    from: info.from, to: info.to, dur: info.to - info.from, window: TL.sceneWindow(id),
+    from: info.from, to: info.to, dur: info.to - info.from, window: SC.window(id),
     PULSE: TL.PULSE, BEAT: TL.BEAT, BAR: TL.BAR,
     /** Scene-local seconds of pulse / beat / bar n counted from the scene's start. */
     pulse: (n) => n * TL.PULSE,
@@ -99,7 +108,15 @@ async function createSlot(id, { dry = false } = {}) {
       placements.push({ name: assetId, at: 0, from: 0, rate: 1, ...p });
     },
     placements,
+    /** lib/camera.js declares its shot list here (the doctor's shot-size budget). */
+    registerShots(name, list, problems = []) {
+      shots.push(...list.map((s) => ({ ...s, rig: name })));
+      shotProblems.push(...problems.map((p) => `${name}: ${p}`));
+    },
   };
+  const shots = [], shotProblems = [];
+  ctx.shotList = shots;
+  ctx.shotProblems = shotProblems;
   await def.setup?.(ctx);
   return { id, info, def, ctx, res, el, wrap };
 }
@@ -177,13 +194,66 @@ function pose(active, t) {
       irisRing.setAttribute('stroke-width', f(10 * (1 - open), 3));
       irisRing.style.visibility = open < 1 ? 'visible' : 'hidden';
     }
+  } else if (tr.type === 'axis') {
+    // The wipe edge travels 1920 → 96 over the 2 pulses before the bar: the new act right of it.
+    if (t >= B.info.from) hide(A.wrap);
+    else B.wrap.style.clipPath = `inset(0px 0px 0px ${f(axisWipeX(t, B.info.from), 2)}px)`;
   } else hide(t >= B.info.from ? A.wrap : B.wrap);
+}
+
+// ---- the axis chapter (FILM.md §5): the frame draws the mark's axes between two acts ------
+// Pulses from the bar line B: B-2..B0 a 4 px ink stroke wipes 1920 → 96 (inOutSoft), the blue
+// dot riding its top; B0..B+2 the horizontal axis draws 96 → 1824 along y 1008 (outSoft);
+// B+1..B+4 the chapter LABEL (COPY.chapters[id]) sits on the axis at x 120; B+4..B+6 both
+// strokes retract into the origin (inOutSoft) and the dot travels to `in.dotTo` (or rides the
+// vertical down) and shrinks away.
+const AX = lib.layout.AXES;
+const chV = lib.s('line', { stroke: lib.C.ink, 'stroke-width': 4, 'stroke-linecap': 'round' }, fx);
+const chH = lib.s('line', { stroke: lib.C.ink, 'stroke-width': 4, 'stroke-linecap': 'round' }, fx);
+const chDot = lib.s('circle', { r: 0, fill: lib.C.markBlue }, fx);
+const fxh = lib.h('div', { style: { position: 'absolute', left: 0, top: 0, width: `${DW}px`, height: `${DH}px`, transformOrigin: '0 0', transform: `scale(${W / DW})`, pointerEvents: 'none', zIndex: 101 } }, document.getElementById('stage'));
+const chLabels = new Map();
+const axisWipeX = (t, B) => lerp(DW, AX.x, inOutSoft(prog(t, B - 2 * TL.PULSE, B)));
+
+function chapter(t) {
+  const P = TL.PULSE;
+  for (const el of [chV, chH, chDot]) el.style.visibility = 'hidden';
+  for (const l of chLabels.values()) l.show(0);
+  const s = SC.list.find((x) => x.in?.type === 'axis' && t >= x.from - 2 * P && t < x.from + 6 * P);
+  if (!s) return;
+  const B = s.from;
+  const back = inOutSoft(prog(t, B + 4 * P, B + 6 * P)); // the retract
+  const x = t < B ? axisWipeX(t, B) : AX.x;
+  const top = lerp(AX.top, AX.y, back);
+  const right = t < B ? AX.x : lerp(lerp(AX.x, AX.right, outSoft(prog(t, B, B + 2 * P))), AX.x, back);
+  const attrs = (el, a) => Object.entries(a).forEach(([k, v]) => el.setAttribute(k, f(v, 2)));
+  if (AX.y - top > 0.5) {
+    attrs(chV, { x1: x, y1: top, x2: x, y2: AX.y });
+    chV.style.visibility = 'visible';
+  }
+  if (right - AX.x > 0.5) {
+    attrs(chH, { x1: AX.x, y1: AX.y, x2: right, y2: AX.y });
+    chH.style.visibility = 'visible';
+  }
+  const to = s.in.dotTo;
+  const travel = to ? back : 0;
+  const [dx, dy] = [lerp(x, to?.[0] ?? x, travel), lerp(top, to?.[1] ?? top, travel)];
+  const r = 6 * spring(clamp(prog(t, B - 2 * P, B - 1.5 * P))) * (1 - inOutSoft(prog(t, B + 5.2 * P, B + 6 * P)));
+  if (r > 0.05) {
+    attrs(chDot, { cx: dx, cy: dy, r });
+    chDot.style.visibility = 'visible';
+  }
+  if (!chLabels.has(s.id)) {
+    const c = TL.COPY.chapters?.[s.id] ?? { en: '', zh: '' };
+    chLabels.set(s.id, lib.label(fxh, { ...lib.LABEL, en: c.en, zh: c.zh, x: 120, y: 984 }));
+  }
+  chLabels.get(s.id).show(outSoft(prog(t, B + P, B + 2 * P)) - outSoft(prog(t, B + 4 * P, B + 5 * P)));
 }
 
 const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
 async function doSeek(t) {
-  const ids = TL.sceneAt(t);
+  const ids = SC.at(t);
   for (const [id, pending] of slots) {
     if (ids.includes(id)) continue;
     slots.delete(id);
@@ -195,6 +265,7 @@ async function doSeek(t) {
   for (const s of active) s.def.update?.(s.ctx, t - s.info.from);
   for (const s of active) await Promise.all(s.res.clips.map((c) => c.flush()));
   pose(active, t);
+  chapter(t);
   await document.fonts.ready;
   await raf2();
   if (errors.length) throw new Error(errors.join('\n'));
@@ -210,7 +281,7 @@ function seek(t) {
 
 // ---- events and doctor probes -------------------------------------------------------
 async function forEachDry(fn) {
-  for (const info of TL.SCENES) {
+  for (const info of SC.list) {
     const slot = await createSlot(info.id, { dry: true });
     try {
       await fn(info, slot);
@@ -224,7 +295,7 @@ async function forEachDry(fn) {
 async function events() {
   const out = TL.CUES.map((c) => ({ ...c, source: 'cue' }));
   await forEachDry(async (info, slot) => {
-    const win = TL.sceneWindow(info.id);
+    const win = SC.window(info.id);
     for (const e of slot.def.events ?? []) out.push({ ...e, t: info.from + e.t, source: 'scene', scene: info.id });
     for (const p of slot.ctx.placements) {
       let meta;
@@ -244,13 +315,27 @@ async function events() {
 async function placements() {
   const out = [];
   await forEachDry((info, slot) => {
-    const win = TL.sceneWindow(info.id);
+    const win = SC.window(info.id);
     for (const p of slot.ctx.placements) {
       const dur = Math.min(p.dur ?? Infinity, win.end - (info.from + p.at));
       out.push({ scene: info.id, clip: p.name, at: p.at, from: p.from, rate: p.rate, dur });
     }
   });
   return out;
+}
+
+/** Every declared camera shot (lib/camera.js), film seconds, clipped to its scene's window. */
+async function shots() {
+  const out = [], problems = [];
+  await forEachDry((info, slot) => {
+    const win = SC.window(info.id);
+    problems.push(...slot.ctx.shotProblems.map((p) => `${info.id}: ${p}`));
+    for (const s of slot.ctx.shotList) {
+      const from = Math.max(win.start, info.from + s.at), to = Math.min(win.end, info.from + s.end);
+      if (to > from) out.push({ scene: info.id, rig: s.rig, from, to, size: s.size, to_size: s.to, moveAt: info.from + s.moveAt });
+    }
+  });
+  return { shots: out, problems };
 }
 
 /** The text blocks on screen now, design px: fit data, reveal, line widths and bounds. */
@@ -269,6 +354,7 @@ function text() {
       scene: el.closest('.scene')?.dataset.scene,
       revealed: shown && el.dataset.revealed === '1',
       widths: spans.map((s) => s.offsetWidth),
+      lines: spans.map((s) => s.textContent),
       box: { l: r.l / k, t: r.t / k, r: r.r / k, b: r.b / k },
     });
   }
@@ -289,9 +375,10 @@ window.film = {
   seek,
   events,
   placements,
+  shots,
   text,
   errors: () => errors.slice(),
-  scenesAt: (t) => TL.sceneAt(t),
+  scenesAt: (t) => SC.at(t),
   // No WebGL: the DOM stage needs no GPU (v1's chrome.mjs asks for this).
   gpu: () => ({ renderer: 'DOM/SVG (no WebGL)', vendor: 'n/a' }),
 };

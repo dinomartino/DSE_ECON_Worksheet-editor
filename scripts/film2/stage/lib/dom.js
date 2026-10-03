@@ -104,7 +104,7 @@ export const C = {
 export const PAPER_SHADOW = '0 1px 2px rgb(0 0 0 / .07), 0 8px 24px -6px rgb(0 0 0 / .13), 0 24px 48px -12px rgb(0 0 0 / .11)';
 
 export const FONT = {
-  serif: '"Newsreader", ui-serif, Georgia, serif',
+  serif: '"Newsreader", "PingFang HK", ui-serif, Georgia, serif', // CJK falls back deterministically
   sans: '"Inter", -apple-system, "SF Pro Text", system-ui, sans-serif',
   zh: '"PingFang HK", "PingFang TC", "Noto Sans HK", "Heiti TC", sans-serif',
 };

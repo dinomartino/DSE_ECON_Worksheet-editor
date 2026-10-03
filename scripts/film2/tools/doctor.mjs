@@ -6,7 +6,9 @@
 //   3 assets    every registry file exists (clips: every frame); the grid copy is current
 //   4 audio     the music master exists and lasts at least DURATION
 //   5 stage     (Chrome) clip windows inside their clips; text fits its box and title-safe;
-//               no missing files or page errors
+//               no missing files or page errors; type rules on the RENDERED lines (no line
+//               ends in punctuation after wrapping; headline/statement sizes are presets;
+//               a headline is fully visible ≥ 2.0 s); the camera shot budget (lib/camera.js)
 // --skip-stage runs 1-4 only.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -15,6 +17,7 @@ import * as TL from '../timeline.mjs';
 import { ASSETS as REGISTRY, asset } from '../assets.mjs';
 import { ASSETS, MUSIC_FILE, MUSIC_GRID, FILM2_DIR } from '../paths.mjs';
 import { ASSETS as V1_ASSETS } from '../../film/paths.mjs';
+import { PRESET_SIZES } from '../stage/lib/type.js';
 
 const FLAGS = { 'skip-stage': 'checks 1-4 only (no browser)', step: 'text sampling step in s (0.2)', help: 'this text' };
 const args = {};
@@ -53,7 +56,7 @@ async function timeline() {
     if (i > 0 && off(s.from) > FRAME + 1e-6) bad(`cut into ${s.id} at ${s.from.toFixed(3)} s is ${(off(s.from) * 1000).toFixed(0)} ms off the pulse grid`);
     const half = TL.halfIn(s);
     if (i > 0 && (half > (s.to - s.from) / 2 || half > (TL.SCENES[i - 1].to - TL.SCENES[i - 1].from) / 2)) bad(`the transition into ${s.id} is longer than a neighbour can hold`);
-    if (!['cut', 'match', 'push', 'iris'].includes(s.in?.type ?? 'cut')) bad(`scene ${s.id}: unknown transition ${s.in.type}`);
+    if (!['cut', 'match', 'push', 'iris', 'axis'].includes(s.in?.type ?? 'cut')) bad(`scene ${s.id}: unknown transition ${s.in.type}`);
     for (const c of s.cuts ?? []) {
       if (!(c > s.from && c < s.to)) bad(`scene ${s.id}: declared cut ${c} s is outside ${s.from.toFixed(3)}..${s.to.toFixed(3)}`);
       else if (off(c) > FRAME + 1e-6) bad(`scene ${s.id}: declared cut ${c.toFixed(3)} s is off the pulse grid`);
@@ -71,7 +74,7 @@ async function timeline() {
     if (!scenes.has(String(c.id).split('.')[0])) bad(`cue ${c.id}: not <scene>.<name>`);
     if (!(c.t >= 0 && c.t <= TL.DURATION)) bad(`cue ${c.id} at ${c.t} s is outside 0..${TL.DURATION}`);
     if (i && c.t < TL.CUES[i - 1].t - 1e-6) bad(`cue ${c.id} comes before ${TL.CUES[i - 1].id}`);
-    if (off(c.t) > FRAME + 1e-6) say('warn', `cue ${c.id} at ${c.t.toFixed(3)} s is off the pulse grid`);
+    if (c.grid !== false && off(c.t) > FRAME + 1e-6) say('warn', `cue ${c.id} at ${c.t.toFixed(3)} s is off the pulse grid`);
   });
   // The iris into write opens out of the mark's dot.
   const { MARK_DOT } = await import('../stage/scenes/mark.js');
@@ -85,9 +88,14 @@ function copy() {
   head('2. copy');
   let n = 0;
   const scenes = new Set(TL.SCENES.map((s) => s.id));
+  const axisActs = TL.SCENES.filter((s) => s.in?.type === 'axis').map((s) => s.id);
+  for (const id of axisActs) if (!TL.COPY.chapters?.[id]) { n++; say('error', `COPY.chapters.${id} is missing (the axis chapter into ${id})`); }
   for (const [scene, entries] of Object.entries(TL.COPY)) {
-    if (!scenes.has(scene)) { n++; say('error', `COPY.${scene}: no such scene`); }
+    const chapters = scene === 'chapters';
+    if (!chapters && !scenes.has(scene)) { n++; say('error', `COPY.${scene}: no such scene`); }
     for (const [key, pair] of Object.entries(entries)) {
+      if (chapters && !axisActs.includes(key)) say('warn', `COPY.chapters.${key}: ${key} does not open with an axis chapter`);
+      if (chapters && !pair.en && !pair.zh) continue; // an unlabelled chapter is allowed
       for (const lang of ['en', 'zh']) {
         if (typeof pair[lang] !== 'string' || !pair[lang].trim()) {
           n++;
@@ -173,6 +181,7 @@ async function stage() {
     }
     if (!bad) say('ok', `${placements.length} clip placements inside their clips`);
     await textFit(page);
+    await shotBudget(page);
     const errs = [...new Set(logs)];
     if (errs.length) say('error', `page messages:\n        ${errs.slice(0, 10).join('\n        ')}`);
     if (server.missing.size) say('error', `the stage asked for missing files: ${[...server.missing].join(', ')}`);
@@ -218,6 +227,53 @@ async function textFit(page) {
   if (!bad) say('ok', `${blocks.size - hidden.length} text blocks inside their boxes and title-safe${shrunk.length ? `; ${shrunk.length} shrunk to fit` : ''}`);
   if (shrunk.length) console.log(`        shrunk: ${shrunk.map((b) => `${q(b)} ${Math.round(b.scale * 100)}%`).join(', ')}`);
   if (hidden.length) say('warn', `never fully revealed (fit only): ${hidden.join(', ')}`);
+  typeRules([...blocks.values()], step);
+}
+
+// 5c. Type rules on what the stage drew: no RENDERED line (after wrapping) ends in , . ， 。 ; ；;
+// a serif headline or statement (≥ 56 px) uses a preset size (lib/type.js); a headline stays
+// fully visible ≥ 2.0 s in one run.
+function typeRules(blocks, step) {
+  head('5c. type rules (rendered lines, presets, hold)');
+  let n = 0;
+  const q = (b) => JSON.stringify((b.en || b.zh).replace(/\n/g, ' / '));
+  for (const b of blocks) {
+    for (const line of b.rendered ?? []) {
+      if (/[,.，。;；]\s*$/u.test(line)) { n++; say('error', `${b.scene}: ${q(b)} renders a line ending in punctuation: "${line}"`); }
+    }
+  }
+  const heads = blocks.filter((b) => b.face !== 'sans' && b.size >= 56);
+  for (const b of heads) {
+    if (!PRESET_SIZES.includes(b.size)) say('warn', `${b.scene}: ${q(b)} is ${b.size} px, not a preset (HEADLINE ${PRESET_SIZES[0]} / STATEMENT ${PRESET_SIZES[1]})`);
+    if (!b.shown.length) continue;
+    let best = 0, start = b.shown[0].t, prev = start;
+    for (const s of b.shown.slice(1)) {
+      if (s.t - prev > step * 1.5) { best = Math.max(best, prev - start + step); start = s.t; }
+      prev = s.t;
+    }
+    best = Math.max(best, prev - start + step);
+    if (best < 2.0 - 1e-6) say('warn', `${b.scene}: ${q(b)} is fully visible for ${best.toFixed(1)} s in one run (≥ 2.0 s)`);
+  }
+  if (!n) say('ok', `${blocks.reduce((s, b) => s + (b.rendered?.length ?? 0), 0)} rendered lines, none ends in punctuation; ${heads.length} headlines and statements checked`);
+}
+
+// 5d. Shot budget (lib/camera.js shots): every cut changes size; ≤ 35 % of the film in
+// demo-card frames (MEDIUM), ≥ 25 % in CLOSE.
+async function shotBudget(page) {
+  head('5d. shot budget (lib/camera.js)');
+  const { shots, problems } = await page.evaluate(() => window.film.shots());
+  for (const p of problems) say('warn', p);
+  if (!shots.length) return say('warn', 'no camera shots declared yet (lib/camera.js): the budget is not measured');
+  const time = { wide: 0, medium: 0, close: 0 };
+  for (const s of shots) {
+    const cls = (z) => (z === 'narrow' ? 'medium' : z);
+    const m = Math.min(Math.max(s.moveAt, s.from), s.to);
+    time[cls(s.size)] += m - s.from;
+    time[cls(s.to_size)] += s.to - m;
+  }
+  const pc = (x) => (100 * x) / TL.DURATION;
+  const msg = `CLOSE ${pc(time.close).toFixed(0)} %, MEDIUM ${pc(time.medium).toFixed(0)} %, WIDE ${pc(time.wide).toFixed(0)} % of ${TL.DURATION.toFixed(1)} s (${shots.length} shots)`;
+  say(pc(time.medium) > 35 || pc(time.close) < 25 ? 'warn' : 'ok', `${msg}; budget MEDIUM ≤ 35 %, CLOSE ≥ 25 %`);
 }
 
 const t0 = Date.now();

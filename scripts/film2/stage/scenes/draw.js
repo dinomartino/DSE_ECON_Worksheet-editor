@@ -70,7 +70,7 @@ const SPOTS = [
 ];
 function spotAt(t) {
   for (const sp of SPOTS) {
-    const a = env(t, sp.on, sp.off, 0.45, 0.45);
+    const a = env(t, sp.on, sp.off, 0.5, 0.5, inOutSoft, inOutSoft); // eased at both ends (lib/focus.js caps it at 0.16)
     if (a > 0) return { rect: keys(t, sp.keys), amount: a };
   }
   return { rect: R.menu, amount: 0 };

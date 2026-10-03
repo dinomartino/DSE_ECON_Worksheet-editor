@@ -43,7 +43,8 @@ export const DURATION = bar(END_BAR);
 // starts at 0 s. Bar 3 = build (12.46 s), 8 = body, 20 = lift (72.92 s), 26 = pull-back.
 // `in` = the transition into the act, centred on its first bar line:
 //   cut | match (a cut whose two frames share a shape) | push {dir: 'left'|'up', pulses}
-//   | iris {pulses, at: [x, y] design px}
+//   | iris {pulses, at: [x, y] design px} | axis {pulses: 4, dotTo?: [x, y]} (the axis chapter:
+//   engine.js draws the frame's axes over B-2..B+6 pulses; its label is COPY.chapters[id])
 // `cuts` = the act's intended hard changes inside it (film s, on pulses: footage cuts, a
 // page swapped at once); `ui` = clicks in the real footage whose response is an instant
 // change (a dialog opens, a toggle flips: the clip's event time); `holds` = [from, to] film s
@@ -57,13 +58,13 @@ const ACTS = [
     cuts: [pulse(29), pulse(42), pulse(55)], // → type-mcq; → language-toggle; → zh-interface
     // type-mcq's double-click into the 中文 line; EN, 中文, EN+中; 繁體中文; 完成 closes Settings
     ui: [18.011, pulse(43), pulse(46), pulse(49), pulse(57), pulse(60)] },
-  { id: 'draw', bars: [8, 14], in: { type: 'push', dir: 'left', pulses: 4 },
+  { id: 'draw', bars: [8, 14], in: { type: 'axis', pulses: 4 },
     cuts: [pulse(93), pulse(96), pulse(104)], // → the Templates grid; → Draw answer; → Student/Teacher
     ui: [pulse(106)] }, // Teacher: the red answer snaps on
   // Footage segments (P10, P16, P20, P38), key layouts switching in the real app (P21, P23,
   // P25), the printed rows replacing the footage (P26, P32), the version close-up (P40) and
   // the fan's covers (P44). The other deals (P27–P29, P33–P36, P41, P42, P45) rise in: motion.
-  { id: 'papers', bars: [14, 20], in: { type: 'push', dir: 'left', pulses: 4 },
+  { id: 'papers', bars: [14, 20], in: { type: 'axis', pulses: 4 },
     cuts: PC(112, [10, 16, 20, 21, 23, 25, 26, 32, 38, 40, 44]),
     ui: PC(112, [12, 18]) }, // Teacher: red answers; Marking scheme opens beside them
   { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] },
@@ -72,7 +73,7 @@ const ACTS = [
   { id: 'everywhere', bars: [24, 26], in: { type: 'cut' },
     cuts: [pulse(196), pulse(203)], // → the real .docx page; → the three windows
     ui: [87.397] }, // Export… opens the dialog (the clip's click)
-  { id: 'end', bars: [26, END_BAR], in: { type: 'push', dir: 'up', pulses: 4 },
+  { id: 'end', bars: [26, END_BAR], in: { type: 'axis', pulses: 4 },
     holds: [[pulse(210), pulse(219)], [103.3, bar(END_BAR)]] }, // the statement is read; the end card
 ];
 
@@ -109,18 +110,27 @@ export function sceneAt(t) {
 }
 
 // Accents and sounds, by stable id <scene>.<name>. kind: 'accent' (a visual hit on the
-// music) | 'sfx' (sound: `sfx` names an entry of audio/sfx/catalog.json). Sorted by t.
+// music) | 'sfx' (sound: `sfx` names a SFX_MAP kind in audio/sfxmap.mjs; an accent may carry one
+// too). Optional: `end: true` (the sound ENDS on t), `dur`, `file`, `gain_db`; `grid: false`
+// marks a cue deliberately off the pulse grid (the doctor skips it). Sorted by t.
 export const CUES = [
   { id: 'mark.tile', t: bar(1.5), kind: 'accent', note: 'the mark starts drawing on the half-bar' },
   { id: 'mark.dot', t: pulse(12 + 5), kind: 'sfx', sfx: 'pop', note: 'the equilibrium dot pops in (splash 740 ms × 3)' },
   { id: 'write.build', t: bar(3), kind: 'accent', note: 'the build: the dot drops onto the desk' },
-  { id: 'draw.body', t: bar(8), kind: 'accent', note: 'body: the hero act' },
-  { id: 'papers.turn', t: bar(14), kind: 'accent' },
-  { id: 'papers.scheme', t: bar(16), kind: 'accent', note: 'cut to the Marking scheme view, its headline' },
+  // Section changes carry a sound (sync review #4): the axis chapters land on whoosh-s.
+  { id: 'draw.body', t: bar(8), kind: 'accent', sfx: 'whoosh-s', note: 'body: the hero act; the chapter axis lands' },
+  { id: 'papers.turn', t: bar(14), kind: 'accent', sfx: 'whoosh-s', note: 'the papers chapter axis lands' },
+  { id: 'papers.scheme', t: bar(16), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the Marking scheme view, its headline' },
   { id: 'papers.mock', t: bar(18), kind: 'accent', note: 'mock papers: the headline, the Paper 1 cover dealt' },
-  { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens' },
-  { id: 'everywhere.cuts', t: bar(24), kind: 'accent' },
+  // The lift (sync review #3): a riser ends 50 ms before the hit so it never smears the impact
+  // (2.7 s, from ~70.2 s); a whoosh into the iris ends 0.35 s after it, when the ring is open.
+  { id: 'bank.riser', t: r6(bar(20) - 0.05), kind: 'sfx', sfx: 'riser', dur: 2.7, grid: false, note: 'the build into the lift' },
+  { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens (bank.js plays the impact)' },
+  { id: 'bank.whoosh', t: r6(bar(20) + 0.35), kind: 'sfx', sfx: 'whoosh', end: true, file: 'whoosh__air-woosh__mixkit-1489', grid: false, note: 'ends as the iris opens' },
+  { id: 'everywhere.cuts', t: bar(24), kind: 'accent', sfx: 'whoosh-s' },
+  { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', grid: false, note: 'the pull-back: its onset half a second before the bar' },
   { id: 'end.pullback', t: bar(26), kind: 'accent', note: 'the pull-back: everything collapses into lines' },
+  { id: 'end.stab', t: r6(bar(29) - 0.5), kind: 'sfx', sfx: 'shimmer', gain_db: -2, grid: false, note: "the music's last stab (104.4 s)" },
 ].sort((a, b) => a.t - b.t);
 
 export const cueAt = (id) => {
@@ -132,6 +142,13 @@ export const cueAt = (id) => {
 // Every on-screen string (FILM.md §3), en + zh. A line never ends in , . ， 。 ; ；
 // (doctor enforces it). "\n" forces a line break.
 export const COPY = {
+  // The axis chapter's label per act it opens (engine.js chapter()). PLACEHOLDERS: the
+  // coordinator settles them with the user; an empty pair draws the axes with no label.
+  chapters: {
+    draw: { en: 'Draw', zh: '繪圖' },
+    papers: { en: 'Papers', zh: '試卷' },
+    end: { en: '', zh: '' },
+  },
   open: {
     q1: { en: 'A supply curve in Word', zh: '在 Word 畫一條供應曲線' },
     q2: { en: 'should not take all evening', zh: '不應花上一整晚' },
