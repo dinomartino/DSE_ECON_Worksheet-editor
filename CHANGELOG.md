@@ -431,6 +431,11 @@ a version heading is edited afterwards.
   定也放在這裏。 -->
 
 ### Fixed
+- **A Teacher Word file with no header text no longer starts its header with a stray
+  dash.** It now prints "Teacher Version" on its own. A header with your own text still
+  shows that text, then the dash, then "Teacher Version".
+  <!-- zh: **沒有頁首文字的教師版 Word 檔案，頁首不再以多餘的破折號開頭。** 現在只印
+  「Teacher Version」。有自訂文字的頁首，仍會在你的文字後加上破折號和「Teacher Version」。 -->
 - **The margin note on a bilingual booklet now matches on screen and in Word.** "Answers
   written in the margins will not be marked" showed only in English on screen but stacked
   English over 中文 in Word, squeezed into a strip too narrow for both. Both now print

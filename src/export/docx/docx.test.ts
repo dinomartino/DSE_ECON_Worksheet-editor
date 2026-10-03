@@ -1686,7 +1686,22 @@ describe('page setup and authored header/footer', () => {
     const worksheet = buildAcceptanceWorksheet();
     worksheet.header = { enabled: false, bands: [] };
     const { read } = await open(worksheet, TEACHER_BI);
-    expect(await read('word/header1.xml')).toContain('Teacher Version / 教師版');
+    const header = await read('word/header1.xml');
+    expect(header).toContain('Teacher Version / 教師版');
+    // Alone, it has nothing to join to: no dangling "— ".
+    expect(header).not.toContain('—');
+  });
+
+  it('joins the teacher marker to authored header text with a dash', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = {
+      enabled: true,
+      bands: [createBand({ left: [createTextField(bi('Unit 3 quiz', ''))] })],
+    };
+    const { read } = await open(worksheet, TEACHER_BI);
+    const header = await read('word/header1.xml');
+    expect(header).toContain('Unit 3 quiz');
+    expect(header).toContain('  —  Teacher Version / 教師版');
   });
 });
 

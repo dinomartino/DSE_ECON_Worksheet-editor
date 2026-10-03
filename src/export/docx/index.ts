@@ -409,9 +409,11 @@ function buildParts(
   const footer = headerFooterOf(worksheet.footer, defaultFooter);
 
   // A teacher-version marker rides in the header so it is unmistakable on every
-  // printed page, appended to whatever the teacher authored there.
+  // printed page, appended to whatever the teacher authored there. Alone in an empty
+  // header it drops the joining dash.
+  const teacherLabel = 'Teacher Version / 教師版';
   const teacherMark =
-    mode.version === 'teacher' ? run('  —  Teacher Version / 教師版', fonts, { bold: true }) : '';
+    mode.version === 'teacher' ? run(`  —  ${teacherLabel}`, fonts, { bold: true }) : '';
 
   const headerLayout = headerFooterLayout(
     header.bands, header.rule, fonts, mode.language, textWidth, 'bottom', worksheetMarks(worksheet),
@@ -419,14 +421,14 @@ function buildParts(
   if (teacherMark) {
     // Appended to the rightmost occupied zone of the LAST row, so it never displaces
     // authored content and always lands on the line nearest the document.
-    if (headerLayout.rows.length === 0) {
-      headerLayout.rows.push({ left: '', center: '', right: teacherMark });
-    } else {
-      const row = headerLayout.rows[headerLayout.rows.length - 1];
-      if (row.right) row.right += teacherMark;
-      else if (row.center) row.center += teacherMark;
-      else row.left += teacherMark;
-    }
+    const row = headerLayout.rows[headerLayout.rows.length - 1];
+    if (!row || (!row.left && !row.center && !row.right)) {
+      const alone = run(teacherLabel, fonts, { bold: true });
+      if (row) row.right = alone;
+      else headerLayout.rows.push({ left: '', center: '', right: alone });
+    } else if (row.right) row.right += teacherMark;
+    else if (row.center) row.center += teacherMark;
+    else row.left += teacherMark;
   }
 
   /*
