@@ -585,7 +585,9 @@ reference paper's model. All vertical rhythm comes from the line box. Consequenc
 - **A picture's paragraph is the one exception** (`w:lineRule="auto"` in `pictureXml`) —
   `exact` clips a 225pt figure to a 12pt slice painted behind the text above, while the
   image still selects at full size in Word. Separation around the figure stays a blank
-  line.
+  line. LibreOffice sets that paragraph at exactly the picture's height, so the preview's
+  picture box is exactly that too: no margin, `lineHeight: 0` (`PICTURE_BOX`), or the
+  paginator breaks sheets earlier than the file (`pictureGeometry.test.ts`).
 - **A picture is placed by `w:jc` on that paragraph**; `align` on
   `ImageBlock`/`DiagramBlock` resolves in the IR, defaulting to **`center`** (every
   reference figure is centred). The preview expresses it as `text-align` — no `mx-auto`.

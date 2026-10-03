@@ -443,6 +443,11 @@ a version heading is edited afterwards.
   Figure 1:" as in an HKEAA scheme.
   <!-- zh: **HKEAA 評卷參考為示範答案圖表編號。** 每幅圖表標上「圖1」、「圖2」等，列在評分要點之後，
   要點以「在圖1中顯示：」開首，與 HKEAA 評卷參考相同。 -->
+- **Pages with diagrams or pictures now break where Word breaks them.** On screen each
+  figure took up nearly a line more than in the Word file, most visibly in the Marking
+  scheme view, so a page could end two lines early.
+  <!-- zh: **含圖表或圖片的頁面，現在與 Word 在同一位置分頁。** 以往每幅圖在屏幕上比 Word 檔多佔
+  差不多一行，在評卷參考檢視中尤其明顯，令頁面可能提早兩行分頁。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.
