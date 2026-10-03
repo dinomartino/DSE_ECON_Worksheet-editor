@@ -36,7 +36,13 @@ import {
   type NodeStyle,
   type RenderNode,
 } from './ir';
-import { coverColumns, coverHasPanel, coverLinePrintsOnce, coverLines } from '@/model/cover';
+import {
+  coverColumns,
+  coverGapLines,
+  coverHasPanel,
+  coverLinePrintsOnce,
+  coverLines,
+} from '@/model/cover';
 import type { CoverLine, CoverPage } from '@/model/coverTypes';
 
 /** Twips: the gutter a "(1)" sits in, and where the instruction text column starts. */
@@ -218,7 +224,7 @@ function renderCover(
   const withGaps = (lines: CoverLine[]): RenderNode[] =>
     lines.flatMap((line) => [
       asText(line),
-      ...Array.from({ length: line.gapAfter ?? 0 }, () => blankLine()),
+      ...Array.from({ length: coverGapLines(line.gapAfter, language) }, () => blankLine()),
     ]);
 
   /*
@@ -289,7 +295,11 @@ function renderCover(
         },
       ],
     });
-    if (index < instructionLines.length - 1) instructions.push(blankLine());
+    // Bilingual runs them together: the hung number already separates two-language
+    // instructions, and the blanks are what pushed the column off the page.
+    if (index < instructionLines.length - 1 && language !== 'bilingual') {
+      instructions.push(blankLine());
+    }
   });
 
   const panelPresent = coverHasPanel(cover);

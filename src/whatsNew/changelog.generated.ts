@@ -433,6 +433,13 @@ a version heading is edited afterwards.
   定也放在這裏。 -->
 
 ### Fixed
+- **A bilingual Paper 2 cover fits on one page.** With English and 中文 stacked, the
+  instructions ran off the bottom of the cover on screen and onto a second page in Word.
+  A bilingual cover now uses less space between its lines, so it fits on one page
+  everywhere. English-only and 中文-only covers are unchanged.
+  <!-- zh: **雙語試卷二封面可印在一頁內。** 英文和中文並列時，考生須知曾超出封面底部，在 Word
+  中更會跑到第二頁。雙語封面現在行與行之間的空位較少，在任何地方都能印在一頁內。只有英文或
+  只有中文的封面不變。 -->
 - **The year code in a bilingual cover's corner prints once.** A cover line that reads the
   same in English and 中文, like "2026-27", printed twice on a bilingual paper. It now
   prints once, on screen, in the PDF and in Word, and editing it changes both languages.

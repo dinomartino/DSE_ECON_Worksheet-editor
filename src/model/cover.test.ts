@@ -658,4 +658,19 @@ describe('mock-exam cover', () => {
     const en = renderWorksheet(worksheet, EN).cover!.corner[0];
     expect(en.kind === 'text' && en.text).toEqual(code.text);
   });
+
+  it('tightens a bilingual cover’s rhythm so Paper 2 still fits one page', () => {
+    const worksheet = coverWorksheet('writeIn');
+    const spacers = (nodes: Array<{ kind: string }>) => nodes.filter((node) => node.kind === 'spacer').length;
+    const en = renderWorksheet(worksheet, EN).cover!;
+    const both = renderWorksheet(worksheet, { language: 'bilingual', version: 'student' }).cover!;
+
+    // English keeps the reference's measured gaps (1 + 2 + 1 + 6).
+    expect(spacers(en.head)).toBe(10);
+    // Bilingual caps each gap at one line, and runs the instructions together; the
+    // blank under the heading stays.
+    expect(spacers(both.head)).toBe(4);
+    expect(spacers(both.instructions)).toBe(1);
+    expect(spacers(en.instructions)).toBe(coverLines(worksheet.cover!, 'instructions').length);
+  });
 });

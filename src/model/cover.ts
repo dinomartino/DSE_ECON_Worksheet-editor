@@ -53,6 +53,16 @@ export function coverLinePrintsOnce(text: BiText, language: LanguageMode): boole
   return en.length > 0 && en === plain(text.zh);
 }
 
+/**
+ * A cover gap in blank lines. Bilingual stacks every line, so the reference's rhythm
+ * pushed Paper 2's column off the page: there a gap caps at one line, and the
+ * instructions drop the blank between them (§ `renderCover`).
+ */
+export function coverGapLines(gapAfter: number | undefined, language: LanguageMode): number {
+  const gap = gapAfter ?? 0;
+  return language === 'bilingual' ? Math.min(gap, 1) : gap;
+}
+
 const line = (
   en: string,
   zh = '',
