@@ -213,7 +213,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | CPF slope TOT, parallel to the world price line, for both | TOT guide parallel to CPF; `ppf-two-countries` parallel CPFs | C |
 | Consumption on the CPF outside the PPF; "same X" constraint | C anchored on the CPF above A (A's X), in both PPF-trade templates | C |
 | Export and import volumes as axis brackets | `bracket` spans in both PPF-trade templates | C |
-| Growth shifts the PPF (and CPF) | `ppf-shift`; CPF by hand | P — CPF not in the template |
+| Growth shifts the PPF (and CPF) | `ppf-shift`; `ppf-growth-trade` (CPF₁ parallel through B₁ at the same TOT) | C |
 | One mark per element | — | n/a |
 
 ## E · S4 rounds
@@ -351,17 +351,9 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 
 ## Totals
 
-167 rows: **147 covered · 9 partial · 0 not covered · 11 n/a**.
+167 rows: **156 covered · 0 partial · 0 not covered · 11 n/a**.
 
 ## Not covered
 
-Nothing is wholly uncovered. The partial rows, and why:
-
-- Net-of-tax revenue needs the Revenue point re-picked to P₁ − t.
-- MC and MB at Q₁ for a tax (the subsidy has its template).
-- A change in r as a movement along Md.
-- U-shaped MC, and the TR hyperbola, are drawn by hand (crossings read the polyline).
-- Consumption "same X as before" is not tied to the no-trade point.
-- Growth shifting the CPF with the PPF.
-- A second, smaller ceiling DWL after D shifts left.
-- The gain from trade as a span from C to the PPF.
+Nothing. A `curved` curve is read as drawn (`src/model/diagramAnchors.ts:curvePath`), so
+crossings, readings and shaded edges on a U-shaped MC or a hyperbola sit on the line.

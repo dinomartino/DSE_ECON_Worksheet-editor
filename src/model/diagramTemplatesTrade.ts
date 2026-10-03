@@ -1,4 +1,4 @@
-import type { Diagram, DiagramCurve } from './diagram';
+import type { Diagram, DiagramCurve, DiagramPointMark } from './diagram';
 import { PRESET_PATTERNS, revenueArea } from './diagramAreas';
 import {
   AXIS,
@@ -456,6 +456,33 @@ function ppfShift(): Diagram {
   });
 }
 
+/**
+ * Growth with trade: PPF₁ parallel to PPF₀ through its new intercept; each CPF runs through
+ * its specialisation point B parallel to one TOT guide, so the CPF shifts out with the PPF
+ * at the same TOT, and re-angling the TOT turns both.
+ */
+function ppfGrowthTrade(): Diagram {
+  // Names placed in the gaps between the lines (from each line's far end, so they travel).
+  const ppf0 = placeLabel(curve([[0, 0.24], [0.48, 0]], sub('PPF', '0')), 0.1, 0.12);
+  const ppf1 = placeLabel(
+    derived({ kind: 'parallel', to: ppf0.id, through: { x: 0.68, y: 0 } }, [ppf0], sub('PPF', '1')),
+    0.08,
+    0.36,
+  );
+  const guide = curve([[0.6, 0.7], [0.75, 0.505]], sym('TOT'), { stroke: 'dashed', weight: 0.8 });
+  const b0 = pin({ on: ppf0.id, y: 0 }, [ppf0], sub('B', '0'), { labelSide: 'upRight' });
+  const b1 = pin({ on: ppf1.id, y: 0 }, [ppf1], sub('B', '1'), { labelSide: 'upRight' });
+  const cpf = (b: DiagramPointMark, n: string, x: number, y: number) =>
+    placeLabel(derived({ kind: 'parallel', to: guide.id, through: at(b) }, [guide, b], sub('CPF', n)), x, y);
+  return finish(
+    axes(GOOD.x, GOOD.y, {
+      curves: [ppf0, ppf1, cpf(b0, '0', 0.02, 0.7), cpf(b1, '1', 0.31, 0.6), guide],
+      points: [b0, b1],
+      arrows: [arrow([0.15, 0.18], [0.18, 0.24]), arrow([0.17, 0.45], [0.3, 0.45])],
+    }),
+  );
+}
+
 // Chinese on one line: a bilingual title may take three lines under the axis, not four.
 const POPULATION = bi('Cumulative %\nof population', '人口累積百分比');
 
@@ -616,6 +643,13 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     name: bi('PPF shifts outward', 'PPF 向外移'),
     hint: bi('PPF₀ → PPF₁: both intercepts rise.', 'PPF₀ → PPF₁：兩個截距上升。'),
     build: ppfShift,
+  },
+  {
+    id: 'ppf-growth-trade',
+    group: 'electives',
+    name: bi('Growth with trade: PPF and CPF', '經濟增長與貿易：PPF 及 CPF'),
+    hint: bi('PPF₀ → PPF₁ shifts the CPF out too, parallel at the same TOT.', 'PPF₀ → PPF₁，CPF 亦在相同貿易比率下平行外移。'),
+    build: ppfGrowthTrade,
   },
   {
     id: 'lorenz',

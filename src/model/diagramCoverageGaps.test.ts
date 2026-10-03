@@ -169,6 +169,43 @@ describe.each(['ppf-linear-trade', 'ppf-concave-trade'])('%s: consumption and th
   });
 });
 
+describe('ppf-growth-trade', () => {
+  const d = buildFromTemplate('ppf-growth-trade');
+  const slope = (c: DiagramCurve) => {
+    const [a, z] = [c.points[0], c.points[c.points.length - 1]];
+    return (z.y - a.y) / (z.x - a.x);
+  };
+  const through = (x: Diagram, line: string, mark: string) => {
+    const c = curveNamed(x, line);
+    const p = pointNamed(x, mark).at;
+    return c.points[0].y + slope(c) * (p.x - c.points[0].x) - p.y;
+  };
+
+  it('shifts PPF and CPF out together: CPF₁ parallel to CPF₀ at the TOT, through B₁', () => {
+    expect(slope(curveNamed(d, 'PPF1'))).toBeCloseTo(slope(curveNamed(d, 'PPF0')), 9);
+    expect(slope(curveNamed(d, 'CPF1'))).toBeCloseTo(slope(curveNamed(d, 'CPF0')), 9);
+    expect(slope(curveNamed(d, 'CPF0'))).toBeCloseTo(slope(curveNamed(d, 'TOT')), 9);
+    expect(through(d, 'CPF0', 'B0')).toBeCloseTo(0, 9);
+    expect(through(d, 'CPF1', 'B1')).toBeCloseTo(0, 9);
+    expect(pointNamed(d, 'B1').at.x).toBeGreaterThan(pointNamed(d, 'B0').at.x + 0.1);
+  });
+
+  it('turns both CPFs when the TOT is re-angled', () => {
+    const tot = curveNamed(d, 'TOT');
+    const moved = resolveDiagram(
+      applyDrag(d, { kind: 'vertex', curveId: tot.id, index: 1 }, tot.points[1], { x: tot.points[1].x, y: tot.points[1].y + 0.08 }),
+    );
+    expect(slope(curveNamed(moved, 'CPF0'))).not.toBeCloseTo(slope(curveNamed(d, 'CPF0')), 3);
+    expect(slope(curveNamed(moved, 'CPF1'))).toBeCloseTo(slope(curveNamed(moved, 'CPF0')), 9);
+  });
+
+  it('carries B₁ and CPF₁ with PPF₁ when it is dragged further out', () => {
+    const moved = drag(d, curveNamed(d, 'PPF1').id, 0.06, 0);
+    expect(pointNamed(moved, 'B1').at.x).toBeCloseTo(pointNamed(d, 'B1').at.x + 0.06, 6);
+    expect(through(moved, 'CPF1', 'B1')).toBeCloseTo(0, 9);
+  });
+});
+
 describe('money-rate-change', () => {
   const d = buildFromTemplate('money-rate-change');
   const md = curveNamed(d, 'Md');
