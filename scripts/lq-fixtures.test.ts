@@ -16,12 +16,19 @@ import { exportDocxBuffer } from '@/export/docx';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import { createAnswerSpaceElement, createPageBreakElement } from '@/model/flow';
 import { bi } from '@/model/text';
-import type { FlowItem, StructuredQuestion } from '@/model/types';
+import type { FlowItem, LanguageMode, StructuredQuestion } from '@/model/types';
 import { stringifyWorksheet } from '@/storage';
 
 const OUT = process.env.LQ_DIR ?? '/tmp/lq-verify';
+// `lq-verify.mjs --language=bilingual` exports the bilingual booklet instead.
+const LANGUAGE = (process.env.LQ_LANGUAGE ?? 'en') as LanguageMode;
 
-const p = (id: string, text: string) => ({ kind: 'paragraph' as const, id, text: bi(text, '') });
+/** A paragraph; its 中文 is used only off English, so the English fixture stays as it was. */
+const p = (id: string, text: string, zh: string) => ({
+  kind: 'paragraph' as const,
+  id,
+  text: bi(text, LANGUAGE === 'en' ? '' : zh),
+});
 
 /**
  * A full dotted sheet at the fixture's default A4 geometry.
@@ -31,6 +38,9 @@ const p = (id: string, text: string) => ({ kind: 'paragraph' as const, id, text:
  * the sheet actually holds. The verify run measures the rendered pitch regardless.
  */
 const FULL_PAGE_LINES = 29;
+
+/** The closing fill's calibrated count per language: bilingual headings take two lines. */
+const CLOSING_FILL_LINES: Record<LanguageMode, number> = { en: 26, bilingual: 25, zh: 26 };
 
 it('emits the LQ fixture', async () => {
   mkdirSync(OUT, { recursive: true });
@@ -42,39 +52,39 @@ it('emits the LQ fixture', async () => {
     // sample question must not be in it.
     seedSample: false,
   });
-  worksheet.title = bi('LQ harness booklet', '');
+  worksheet.title = bi('LQ harness booklet', LANGUAGE === 'en' ? '' : '長題目測試卷');
 
   const questions: StructuredQuestion[] = [
     {
       id: 'q1',
       type: 'structured',
-      blocks: [p('q1s', 'A town weighs two uses for a plot of reclaimed land.')],
+      blocks: [p('q1s', 'A town weighs two uses for a plot of reclaimed land.', '某市正考慮一幅填海土地的兩種用途。')],
       parts: [
-        { id: 'q1a', blocks: [p('q1a1', 'State the opportunity cost of building a park there.')], marks: 2, answerSpace: 5 },
-        { id: 'q1b', blocks: [p('q1b1', 'Explain how a height limit changes that cost.')], marks: 3, answerSpace: 7 },
+        { id: 'q1a', blocks: [p('q1a1', 'State the opportunity cost of building a park there.', '寫出在該處興建公園的機會成本。')], marks: 2, answerSpace: 5 },
+        { id: 'q1b', blocks: [p('q1b1', 'Explain how a height limit changes that cost.', '解釋高度限制如何改變該成本。')], marks: 3, answerSpace: 7 },
       ],
     },
     {
       id: 'q2',
       type: 'structured',
-      blocks: [p('q2s', 'A bakery replaces two ovens with one larger oven.')],
+      blocks: [p('q2s', 'A bakery replaces two ovens with one larger oven.', '一間麵包店以一個較大的焗爐取代兩個焗爐。')],
       parts: [
-        { id: 'q2a', blocks: [p('q2a1', 'Identify the type of efficiency the bakery pursues.')], marks: 2, answerSpace: 5 },
-        { id: 'q2b', blocks: [p('q2b1', 'Discuss ONE cost of the change to its workers.')], marks: 4, answerSpace: 9 },
+        { id: 'q2a', blocks: [p('q2a1', 'Identify the type of efficiency the bakery pursues.', '指出該麵包店追求的效率類型。')], marks: 2, answerSpace: 5 },
+        { id: 'q2b', blocks: [p('q2b1', 'Discuss ONE cost of the change to its workers.', '討論該轉變對其員工的一項成本。')], marks: 4, answerSpace: 9 },
       ],
     },
     {
       id: 'q3',
       type: 'structured',
-      blocks: [p('q3s', 'A city considers a levy on single-use cups.')],
+      blocks: [p('q3s', 'A city considers a levy on single-use cups.', '某城市考慮向即棄杯徵費。')],
       parts: [
         {
           id: 'q3a',
-          blocks: [p('q3a1', 'With reference to the levy:')],
+          blocks: [p('q3a1', 'With reference to the levy:', '參考該徵費：')],
           marks: 5,
           subParts: [
-            { id: 'q3ai', blocks: [p('q3ai1', 'Describe its effect on quantity consumed.')], marks: 2, answerSpace: 5 },
-            { id: 'q3aii', blocks: [p('q3aii1', 'Explain who bears more of its burden.')], marks: 3, answerSpace: 8 },
+            { id: 'q3ai', blocks: [p('q3ai1', 'Describe its effect on quantity consumed.', '描述其對消費量的影響。')], marks: 2, answerSpace: 5 },
+            { id: 'q3aii', blocks: [p('q3aii1', 'Explain who bears more of its burden.', '解釋誰承擔較大的負擔。')], marks: 3, answerSpace: 8 },
           ],
         },
       ],
@@ -82,10 +92,10 @@ it('emits the LQ fixture', async () => {
     {
       id: 'q4',
       type: 'structured',
-      blocks: [p('q4s', 'A country removes a quota on imported rice.')],
+      blocks: [p('q4s', 'A country removes a quota on imported rice.', '某國取消進口米的配額。')],
       parts: [
-        { id: 'q4a', blocks: [p('q4a1', 'Explain the change in the domestic price of rice.')], marks: 4, answerSpace: 10 },
-        { id: 'q4b', blocks: [p('q4b1', 'Evaluate the effect on domestic growers.')], marks: 6, answerSpace: 12 },
+        { id: 'q4a', blocks: [p('q4a1', 'Explain the change in the domestic price of rice.', '解釋本地米價的變化。')], marks: 4, answerSpace: 10 },
+        { id: 'q4b', blocks: [p('q4b1', 'Evaluate the effect on domestic growers.', '評估其對本地種植者的影響。')], marks: 6, answerSpace: 12 },
       ],
     },
   ];
@@ -120,7 +130,7 @@ it('emits the LQ fixture', async () => {
    * given its own sheet — for most of that history the fill sat on a sheet with no room
    * and was resolving to the floor, which tested the floor rather than the fill.
    */
-  const closingFill = createAnswerSpaceElement(26, true);
+  const closingFill = createAnswerSpaceElement(CLOSING_FILL_LINES[LANGUAGE], true);
   /** Opens the last sheet, so Section C's fill has a whole page to resolve into. */
   const sectionCBreak = createPageBreakElement();
   worksheet.layout = [
@@ -188,7 +198,7 @@ it('emits the LQ fixture', async () => {
   ];
   worksheet.flow = flow;
 
-  const bytes = await exportDocxBuffer(worksheet, { language: 'en', version: 'student' });
+  const bytes = await exportDocxBuffer(worksheet, { language: LANGUAGE, version: 'student' });
   writeFileSync(`${OUT}/lq.docx`, bytes);
   writeFileSync(`${OUT}/lq.worksheet.json`, stringifyWorksheet(worksheet));
   console.log(`${bytes.length} bytes -> ${OUT}/lq.docx`);

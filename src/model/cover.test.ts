@@ -5,8 +5,10 @@ import {
   coverColumns,
   coverHasPanel,
   coverLines,
+  coverPanelWidth,
   createCoverPage,
   findCoverLine,
+  fitCoverColumns,
   setCoverLineText,
   type CoverPaperStyle,
 } from './cover';
@@ -39,13 +41,42 @@ describe('mock-exam cover', () => {
     expect(coverHasPanel(cover)).toBe(true);
   });
 
+  it('fits the columns to the text width, the panel giving first', () => {
+    const stored = { left: 5328, gap: 144, right: 3845 };
+    const panel = coverPanelWidth(createCoverPage({ paperStyle: 'writeIn' }));
+    // A split that fits is left alone.
+    expect(fitCoverColumns(stored, 9317, panel)).toBe(stored);
+    expect(fitCoverColumns(stored, 10206, panel)).toBe(stored);
+    // A4 at 1 inch, and the booklet's own margins: the left column keeps 5328.
+    expect(fitCoverColumns(stored, 9026, panel)).toEqual({ left: 5328, gap: 144, right: 3554 });
+    expect(fitCoverColumns(stored, 9314, panel)).toEqual({ left: 5328, gap: 144, right: 3842 });
+    // Too narrow for the panel's boxes and the left column both: proportional.
+    const narrow = fitCoverColumns(stored, 4000, panel);
+    expect(narrow.left + narrow.gap + narrow.right).toBe(4000);
+    expect(narrow.left).toBeGreaterThan(narrow.right);
+  });
+
+  it('never exports cover columns wider than the page’s text width', () => {
+    for (const [left, right] of [[1440, 1440], [1296, 1296], [2880, 2880], [850, 850]]) {
+      const worksheet = coverWorksheet('writeIn');
+      worksheet.pageSetup = {
+        paper: 'A4',
+        orientation: 'portrait',
+        margins: { top: 1440, bottom: 1440, left, right },
+      };
+      const { columns } = renderWorksheet(worksheet, EN).cover!;
+      expect(columns.left + columns.gap + columns.right).toBeLessThanOrEqual(11906 - left - right);
+    }
+  });
+
   it('exports the two columns as a real Word section', () => {
     const document = buildDocxParts(coverWorksheet('writeIn'), EN).documentXml;
 
     // `w:cols` is the mechanism; nothing else produces side-by-side regions in Word.
     expect(document).toContain('<w:cols w:num="2" w:equalWidth="0"');
     expect(document).toContain('<w:col w:w="5328"');
-    expect(document).toContain('<w:col w:w="3845"');
+    // 1-inch margins leave 9026tw, so the panel gives up the stored split's overflow.
+    expect(document).toContain('<w:col w:w="3554"');
     // A column break is what moves the panel into the right column.
     expect(document).toContain('w:br w:type="column"');
     /*

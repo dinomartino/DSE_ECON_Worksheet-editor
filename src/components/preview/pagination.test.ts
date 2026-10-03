@@ -42,6 +42,20 @@ describe('packing the flow onto sheets', () => {
     expect(keysOf([item('q1'), item('q2'), item('q3')])).toEqual([['q1', 'q2'], ['q3']]);
   });
 
+  it('does not charge a sheet its leading item’s boundary gap', () => {
+    // A gap dies at a sheet top on screen and in Word (§ `.leads-sheet`). Charged there,
+    // a bilingual booklet's END OF SECTION B left the page it fits on in the `.docx`.
+    const items = [item('q1'), brk('b1'), item('q2'), item('end')];
+    const sized = new Map([['q1', 50], ['b1', 0], ['q2', 60], ['end', 45]]);
+    const leads = new Map([['q2', 10], ['end', 10]]);
+    const keys = (gaps?: Map<string, number>) =>
+      packPages(items, sized, PAGE, gaps).pages.map((page) => page.map((block) => block.key));
+    expect(keys()).toEqual([['q1'], ['q2'], ['end']]);
+    // q2 leads its sheet at 50; `end` is not leading, so it still pays its own gap.
+    expect(keys(leads)).toEqual([['q1'], ['q2', 'end']]);
+    expect(keys(new Map([['end', 10]]))).toEqual([['q1'], ['q2'], ['end']]);
+  });
+
   it('keeps a trailing page that a manual break opened', () => {
     /*
      * The reported bug: adding "New page" with nothing after it changed nothing on
@@ -385,6 +399,20 @@ describe('resolveFillCounts (§3.2)', () => {
     // 100 - 42 = 58px of slack → 5 whole lines. The fill's own measured 30px is not a
     // claim on the page — the element is what is being sized.
     expect(counts.get('fill')).toBe(5);
+  });
+
+  it('gives a fill the gap its sheet’s leading item sheds', () => {
+    const counts = resolveFillCounts(
+      [[item('q1'), item('fill')]],
+      heights({ q1: 42, fill: 30 }),
+      100,
+      pitchOf(['fill']),
+      1,
+      undefined,
+      new Map([['q1', 12]]),
+    );
+    // 100 - (42 - 12) = 70px → 7 lines, not the 5 a charged gap would leave.
+    expect(counts.get('fill')).toBe(7);
   });
 
   it('resolves a fill alone on a sheet to a full page of lines', () => {
