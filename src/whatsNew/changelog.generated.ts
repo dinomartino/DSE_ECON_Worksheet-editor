@@ -470,6 +470,11 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **A question bank saved in version 0.5.0 lists as a bank again.** If a bank was last
+  saved with 0.5.0, the start screen showed it as a worksheet. It now shows as a bank
+  straight away, without opening or saving it.
+  <!-- zh: **以 0.5.0 版儲存的題庫會再次顯示為題庫。** 若題庫最後是以 0.5.0 版儲存，開始畫面會
+  把它顯示為工作紙。現在無須開啟或儲存，它會即時顯示為題庫。 -->
 - **Every page of a paper version says which version it is.** With versions on, "Version B"
   now prints in the header of every page, not only above question 1, so a loose sheet
   still shows its version. It sits under your own header, or on its own if the paper has

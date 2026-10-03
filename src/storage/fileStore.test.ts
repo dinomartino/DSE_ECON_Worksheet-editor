@@ -189,6 +189,46 @@ describe('FileWorksheetStore', () => {
     const store = new FileWorksheetStore();
     expect((await store.list()).map((entry) => entry.id)).toEqual(['a']);
   });
+
+  it('a bank whose row v0.5.0 wrote or rebuilt (no kind) lists as a bank, repaired once', async () => {
+    const bank = { ...worksheet('bank', '2026-09-20T00:00:00.000Z'), kind: 'bank' as const };
+    files.set(doc('bank'), stringifyWorksheet(bank));
+    files.set(doc('a'), stringifyWorksheet(worksheet('a', '2024-01-01T00:00:00.000Z')));
+    // As v0.5.0's summarize writes them, beside a damaged row and one whose file is gone.
+    const v050 = (id: string, updatedAt: string) => ({
+      id,
+      title: `Doc ${id}`,
+      updatedAt,
+      questionCount: 0,
+      hasCover: false,
+    });
+    files.set(
+      INDEX,
+      JSON.stringify([
+        v050('bank', bank.updatedAt),
+        { title: 'No id' },
+        v050('a', '2024-01-01T00:00:00.000Z'),
+        v050('gone', '2023-01-01T00:00:00.000Z'),
+      ]),
+    );
+
+    const store = new FileWorksheetStore();
+    const listed = await store.list();
+    expect(listed.map((entry) => entry.id)).toEqual(['bank', 'a', 'gone']);
+    expect(listed[0].kind).toBe('bank');
+    expect(listed[1]).not.toHaveProperty('kind');
+
+    const raw = JSON.parse(files.get(INDEX)!);
+    expect(raw).toEqual([
+      { ...v050('bank', bank.updatedAt), kind: 'bank', indexRev: 2 },
+      { title: 'No id' },
+      { ...v050('a', '2024-01-01T00:00:00.000Z'), indexRev: 2 },
+      v050('gone', '2023-01-01T00:00:00.000Z'),
+    ]);
+    // Once: the row now says so itself, so the document is not asked again.
+    files.set(doc('bank'), 'not json');
+    expect((await store.list())[0].kind).toBe('bank');
+  });
 });
 
 describe('FileWorksheetStore Trash', () => {

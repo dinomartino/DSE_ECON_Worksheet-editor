@@ -29,6 +29,11 @@ export interface WorksheetSummary {
    * through. Absent = a paper; read it as `=== 'bank'`.
    */
   kind?: 'bank' | (string & {});
+  /**
+   * The row's revision (§ INDEX_ROW_REV in summaries.ts). Absent on a row v0.5.0 or
+   * earlier wrote: that row's missing `kind` is read from the document, once.
+   */
+  indexRev?: number;
 }
 
 /** A Trash row: the summary the document had when it was deleted, plus when. */

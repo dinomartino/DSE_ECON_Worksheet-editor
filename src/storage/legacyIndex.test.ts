@@ -251,6 +251,84 @@ describe('the optional `kind` on an index row', () => {
   });
 });
 
+/**
+ * v0.5.0's `summarize` writes no `kind`, so a bank it saved (or its desktop build
+ * re-indexed) has a row that reads as a paper. This build reads that row's kind from the
+ * document once and writes it back.
+ */
+describe('a bank whose index row v0.5.0 wrote', () => {
+  // Exactly the row v0.5.0 writes: no `kind`, no `indexRev`.
+  const V050_BANK_ROW = {
+    id: 'bank-1',
+    title: 'Question bank',
+    updatedAt: '2026-09-20T00:00:00.000Z',
+    questionCount: 0,
+    hasCover: false,
+  };
+  const BANK_DOC = { ...LEGACY_DOC, id: 'bank-1', kind: 'bank', title: { en: [{ text: 'Question bank' }], zh: [] } };
+
+  beforeEach(() => {
+    storage.setItem(
+      INDEX_KEY,
+      JSON.stringify([V050_BANK_ROW, { id: 'broken' }, LEGACY_ENTRY, { ...LEGACY_ENTRY, id: 'gone' }]),
+    );
+    storage.setItem(PREFIX + 'bank-1', JSON.stringify(BANK_DOC));
+    storage.setItem(PREFIX + 'legacy-doc', JSON.stringify(LEGACY_DOC));
+  });
+
+  it('lists as a bank, not a paper, beside a v1 row and a damaged one', async () => {
+    const listed = await store().list();
+    expect(listed.map((row) => row.id).sort()).toEqual(['bank-1', 'gone', 'legacy-doc']);
+    expect(listed.find((row) => row.id === 'bank-1')?.kind).toBe('bank');
+    expect(visibleSummaries(listed, { ...DEFAULT_QUERY, kind: 'worksheet' }).map((row) => row.id)).not.toContain(
+      'bank-1',
+    );
+    // The v1 paper keeps everything it had (no count invented) and stays a paper.
+    const paper = listed.find((row) => row.id === 'legacy-doc')!;
+    expect(paper).not.toHaveProperty('kind');
+    expect(paper.questionCount).toBeUndefined();
+    expect(paper.title).toBe(LEGACY_ENTRY.title);
+  });
+
+  it('writes the repair back once, and leaves the damaged row and a missing document’s row alone', async () => {
+    await store().list();
+    const raw = JSON.parse(storage.getItem(INDEX_KEY)!) as Record<string, unknown>[];
+    expect(raw).toHaveLength(4);
+    expect(raw[0]).toEqual({ ...V050_BANK_ROW, kind: 'bank', indexRev: 2 });
+    expect(raw[1]).toEqual({ id: 'broken' });
+    expect(raw[2]).toEqual({ ...LEGACY_ENTRY, indexRev: 2 });
+    // Its document is not there to ask: the row stays as it was, still listed.
+    expect(raw[3]).toEqual({ ...LEGACY_ENTRY, id: 'gone' });
+
+    // Not read from the document again: the row now says so itself.
+    storage.setItem(PREFIX + 'bank-1', '{ not json');
+    expect((await store().list()).find((row) => row.id === 'bank-1')?.kind).toBe('bank');
+  });
+
+  it('keeps the row of a document that will not load, unrepaired', async () => {
+    storage.setItem(PREFIX + 'bank-1', '{ not json');
+    const listed = await store().list();
+    expect(listed.map((row) => row.id).sort()).toEqual(['bank-1', 'gone', 'legacy-doc']);
+    expect(listed.find((row) => row.id === 'bank-1')).not.toHaveProperty('kind');
+  });
+
+  it('a row written by this build is trusted, and a later build’s kind comes through', async () => {
+    storage.setItem(INDEX_KEY, JSON.stringify([{ ...LEGACY_ENTRY, indexRev: 2 }, { ...V050_BANK_ROW, id: 'notes-1' }]));
+    storage.setItem(PREFIX + 'legacy-doc', JSON.stringify({ ...LEGACY_DOC, kind: 'bank' }));
+    storage.setItem(PREFIX + 'notes-1', JSON.stringify({ ...LEGACY_DOC, id: 'notes-1', kind: 'notes' }));
+    const listed = await store().list();
+    expect(listed.find((row) => row.id === 'legacy-doc')).not.toHaveProperty('kind');
+    expect(listed.find((row) => row.id === 'notes-1')?.kind).toBe('notes');
+  });
+
+  it('a save here writes the revised row', async () => {
+    const bank = (await store().load('bank-1'))!;
+    await store().save({ ...bank, updatedAt: '2026-10-01T00:00:00.000Z' });
+    const raw = JSON.parse(storage.getItem(INDEX_KEY)!) as Record<string, unknown>[];
+    expect(raw[0]).toMatchObject({ id: 'bank-1', kind: 'bank', indexRev: 2 });
+  });
+});
+
 describe('a document written at schema 2 (answer layer or key layout)', () => {
   const V2_ENTRY = { id: 'v2-doc', title: 'Mock with answers', updatedAt: '2026-10-03T00:00:00.000Z', questionCount: 1 };
   const V2_DOC = { ...LEGACY_DOC, schemaVersion: 2, id: 'v2-doc', answerKeyLayout: { preset: 'suggested' } };
