@@ -6,7 +6,9 @@
 //   3 assets    every registry file exists (clips: every frame); the grid copy is current
 //   4 audio     the music master exists and lasts at least DURATION
 //   5 stage     (Chrome) clip windows inside their clips; text fits its box and title-safe;
-//               no missing files or page errors
+//               no missing files or page errors; type rules on the RENDERED lines (no line
+//               ends in punctuation after wrapping; headline/statement sizes are presets;
+//               a headline is fully visible ≥ 2.0 s); the camera shot budget (lib/camera.js)
 // --skip-stage runs 1-4 only.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -15,6 +17,7 @@ import * as TL from '../timeline.mjs';
 import { ASSETS as REGISTRY, asset } from '../assets.mjs';
 import { ASSETS, MUSIC_FILE, MUSIC_GRID, FILM2_DIR } from '../paths.mjs';
 import { ASSETS as V1_ASSETS } from '../../film/paths.mjs';
+import { PRESET_SIZES } from '../stage/lib/type.js';
 
 const FLAGS = { 'skip-stage': 'checks 1-4 only (no browser)', step: 'text sampling step in s (0.2)', help: 'this text' };
 const args = {};
@@ -178,6 +181,7 @@ async function stage() {
     }
     if (!bad) say('ok', `${placements.length} clip placements inside their clips`);
     await textFit(page);
+    await shotBudget(page);
     const errs = [...new Set(logs)];
     if (errs.length) say('error', `page messages:\n        ${errs.slice(0, 10).join('\n        ')}`);
     if (server.missing.size) say('error', `the stage asked for missing files: ${[...server.missing].join(', ')}`);
@@ -223,6 +227,53 @@ async function textFit(page) {
   if (!bad) say('ok', `${blocks.size - hidden.length} text blocks inside their boxes and title-safe${shrunk.length ? `; ${shrunk.length} shrunk to fit` : ''}`);
   if (shrunk.length) console.log(`        shrunk: ${shrunk.map((b) => `${q(b)} ${Math.round(b.scale * 100)}%`).join(', ')}`);
   if (hidden.length) say('warn', `never fully revealed (fit only): ${hidden.join(', ')}`);
+  typeRules([...blocks.values()], step);
+}
+
+// 5c. Type rules on what the stage drew: no RENDERED line (after wrapping) ends in , . ， 。 ; ；;
+// a serif headline or statement (≥ 56 px) uses a preset size (lib/type.js); a headline stays
+// fully visible ≥ 2.0 s in one run.
+function typeRules(blocks, step) {
+  head('5c. type rules (rendered lines, presets, hold)');
+  let n = 0;
+  const q = (b) => JSON.stringify((b.en || b.zh).replace(/\n/g, ' / '));
+  for (const b of blocks) {
+    for (const line of b.rendered ?? []) {
+      if (/[,.，。;；]\s*$/u.test(line)) { n++; say('error', `${b.scene}: ${q(b)} renders a line ending in punctuation: "${line}"`); }
+    }
+  }
+  const heads = blocks.filter((b) => b.face !== 'sans' && b.size >= 56);
+  for (const b of heads) {
+    if (!PRESET_SIZES.includes(b.size)) say('warn', `${b.scene}: ${q(b)} is ${b.size} px, not a preset (HEADLINE ${PRESET_SIZES[0]} / STATEMENT ${PRESET_SIZES[1]})`);
+    if (!b.shown.length) continue;
+    let best = 0, start = b.shown[0].t, prev = start;
+    for (const s of b.shown.slice(1)) {
+      if (s.t - prev > step * 1.5) { best = Math.max(best, prev - start + step); start = s.t; }
+      prev = s.t;
+    }
+    best = Math.max(best, prev - start + step);
+    if (best < 2.0 - 1e-6) say('warn', `${b.scene}: ${q(b)} is fully visible for ${best.toFixed(1)} s in one run (≥ 2.0 s)`);
+  }
+  if (!n) say('ok', `${blocks.reduce((s, b) => s + (b.rendered?.length ?? 0), 0)} rendered lines, none ends in punctuation; ${heads.length} headlines and statements checked`);
+}
+
+// 5d. Shot budget (lib/camera.js shots): every cut changes size; ≤ 35 % of the film in
+// demo-card frames (MEDIUM), ≥ 25 % in CLOSE.
+async function shotBudget(page) {
+  head('5d. shot budget (lib/camera.js)');
+  const { shots, problems } = await page.evaluate(() => window.film.shots());
+  for (const p of problems) say('warn', p);
+  if (!shots.length) return say('warn', 'no camera shots declared yet (lib/camera.js): the budget is not measured');
+  const time = { wide: 0, medium: 0, close: 0 };
+  for (const s of shots) {
+    const cls = (z) => (z === 'narrow' ? 'medium' : z);
+    const m = Math.min(Math.max(s.moveAt, s.from), s.to);
+    time[cls(s.size)] += m - s.from;
+    time[cls(s.to_size)] += s.to - m;
+  }
+  const pc = (x) => (100 * x) / TL.DURATION;
+  const msg = `CLOSE ${pc(time.close).toFixed(0)} %, MEDIUM ${pc(time.medium).toFixed(0)} %, WIDE ${pc(time.wide).toFixed(0)} % of ${TL.DURATION.toFixed(1)} s (${shots.length} shots)`;
+  say(pc(time.medium) > 35 || pc(time.close) < 25 ? 'warn' : 'ok', `${msg}; budget MEDIUM ≤ 35 %, CLOSE ≥ 25 %`);
 }
 
 const t0 = Date.now();
