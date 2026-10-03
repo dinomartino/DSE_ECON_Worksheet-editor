@@ -547,6 +547,13 @@ a version heading is edited afterwards.
 - **Arrow keys move a selected point, label or line end by a small step.** They used to send
   it to the bottom-left corner of the diagram.
   <!-- zh: **方向鍵會把選取的點、標示或線段端點移動一小步。** 以往會把它移到圖表的左下角。 -->
+- **Stacked gap arrows no longer crowd in English and 中文.** In "Gap narrows", the label
+  gap₁ / 缺口₁ takes two lines, and the gap₀ arrow under it used to run through the second.
+  An arrow stacked under another now moves down by each extra line, on screen, in the PDF
+  and in Word.
+  <!-- zh: **中英並列時，上下排列的缺口箭嘴不再擠在一起。** 在「缺口收窄」中，gap₁ / 缺口₁ 標示
+  佔兩行，其下的缺口₀ 箭嘴以往會穿過第二行。現在排在另一箭嘴下方的箭嘴，會按每多出的一行向下
+  移，在屏幕、PDF 和 Word 中都一樣。 -->
 
 ## 0.5.0 — 2026-09-28
 

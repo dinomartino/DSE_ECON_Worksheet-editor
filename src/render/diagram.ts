@@ -25,7 +25,7 @@ import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
 import { resolveDiagram, splineSegments } from '@/model/diagramAnchors';
 import { answerLayer, type AnswerLayerKind } from '@/model/diagramAnswers';
-import { spanGeometry, type SpanClearance } from '@/model/diagramSpans';
+import { spanGeometry, type SpanClearance, type SpanGeometry } from '@/model/diagramSpans';
 import { spanLayout, SPAN_LABEL_GAP, SPAN_TICK } from './diagramSpan';
 import {
   boxAround,
@@ -524,6 +524,26 @@ function tickLabelsOn(diagram: Diagram, axis: 'x' | 'y', language: LanguageMode)
 const tickRowHeight = (count: number) => (count > 0 ? (count - 1) * FONT_SIZE * 1.15 + FONT_SIZE : 0);
 
 /**
+ * Stacked x spans (gap₀ under gap₁) are offset for one-line labels; each further line
+ * an inner span's label takes (English and 中文) pushes this one down by a line.
+ */
+function stackedLabelLines(diagram: Diagram, span: DiagramSpan, geometry: SpanGeometry, language: LanguageMode): number {
+  const range = (g: SpanGeometry) => [Math.min(...g.base.map((p) => p.x)), Math.max(...g.base.map((p) => p.x))];
+  const [lo, hi] = range(geometry);
+  let extra = 0;
+  for (const inner of diagram.spans ?? []) {
+    if (inner === span || inner.along !== 'x' || (inner.offset ?? 0) >= (span.offset ?? 0)) continue;
+    const g = spanGeometry(diagram, inner);
+    if (!g) continue;
+    const [a, b] = range(g);
+    if (b < lo || a > hi) continue;
+    const lines = pickSides(inner.label, language).length;
+    extra += Math.max(0, lines - 1) * FONT_SIZE * 1.15;
+  }
+  return extra;
+}
+
+/**
  * px (nominal) from an axis span's axis to its shaft at rest: the tick-label row (x) or
  * the widest y label the span passes, plus air and the heads' reach, so none overlaps.
  */
@@ -534,7 +554,7 @@ function axisSpanClearancePx(diagram: Diagram, span: DiagramSpan, language: Lang
   if (span.along === 'x') {
     // The deepest label's ink, subscript feet included: the heads' reach starts there.
     const depth = Math.max(0, ...labels.map((label) => inkHeight(label.lines, FONT_SIZE)));
-    return X_TICK_TOP + depth + X_SPAN_AIR + SPAN_REACH;
+    return X_TICK_TOP + depth + X_SPAN_AIR + SPAN_REACH + stackedLabelLines(diagram, span, geometry, language);
   }
   const ys = geometry.base.map((p) => p.y);
   const lo = Math.min(...ys) - 0.03;
