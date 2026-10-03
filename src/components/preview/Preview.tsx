@@ -22,7 +22,7 @@ import { TableColumnResizer } from "./TableColumnResizer";
 import { TableGridControls } from "./TableGridControls";
 import { sheetStackMargin } from "./sheetStack";
 import { zonesOf, type ZoneName } from "@/model/bands";
-import { bandFieldPrintText } from "@/model/bandSegments";
+import { bandFieldPrintText, mirrorBilingualEdit } from "@/model/bandSegments";
 import { COVER_PANEL } from "@/model/cover";
 import {
   describeDelete,
@@ -419,6 +419,8 @@ function segmentNodes(
     ));
   if (language === "en") return side("en");
   if (language === "zh") return side("zh");
+  // A side with no pieces prints nothing (a cover line printed once).
+  if (segments.zh.length === 0) return side("en");
   return (
     <>
       {side("en")}
@@ -5409,14 +5411,21 @@ export function Preview({
     return true;
   };
 
+  // A cover line printed once edits both of its identical sides (§ `coverLinePrintsOnce`).
+  const mirrored = (target: EditTarget, next: BiText) => {
+    if (target.kind !== "coverLine") return next;
+    const before = textOf?.(target);
+    return before ? mirrorBilingualEdit(before, next, language) : next;
+  };
+
   const ctx: EditContext | undefined = onEdit
     ? {
         contextMenu: openPageMenu,
         onEdit: (target, next) => {
-          onEdit(target, next);
+          onEdit(target, mirrored(target, next));
           setSelectedElement(undefined);
         },
-        onEditKeepingSelection: onEdit,
+        onEditKeepingSelection: (target, next) => onEdit(target, mirrored(target, next)),
         onSelectElement: (target, side) => {
           setSelectedElement({ target, side });
           // Selecting text drops the picture selection, so the handles never linger

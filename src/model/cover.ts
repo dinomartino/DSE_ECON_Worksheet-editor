@@ -1,6 +1,6 @@
 import { newId } from './factories';
-import { bi, emptyBiText, isBiTextEmpty, rt } from './text';
-import type { BiText, RichText, TextFormat } from './types';
+import { bi, emptyBiText, isBiTextEmpty, plain, rt } from './text';
+import type { BiText, LanguageMode, RichText, TextFormat } from './types';
 import type { CoverLine, CoverPage, CoverPaperStyle, CoverRegion } from './coverTypes';
 
 export type { CoverLine, CoverPage, CoverPaperStyle, CoverRegion } from './coverTypes';
@@ -41,6 +41,16 @@ export const COVER_PANEL = {
  */
 export function coverHasPanel(cover: CoverPage): boolean {
   return !isBiTextEmpty(cover.panelNote) || (cover.panelBoxes ?? 0) > 0;
+}
+
+/**
+ * Whether a cover line prints one side only in bilingual: its two sides read the same
+ * (a corner code is stored `line(code, code)`). Display-time; the stored pair stays.
+ */
+export function coverLinePrintsOnce(text: BiText, language: LanguageMode): boolean {
+  if (language !== 'bilingual') return false;
+  const en = plain(text.en);
+  return en.length > 0 && en === plain(text.zh);
 }
 
 const line = (

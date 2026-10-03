@@ -431,6 +431,11 @@ a version heading is edited afterwards.
   定也放在這裏。 -->
 
 ### Fixed
+- **The year code in a bilingual cover's corner prints once.** A cover line that reads the
+  same in English and 中文, like "2026-27", printed twice on a bilingual paper. It now
+  prints once, on screen, in the PDF and in Word, and editing it changes both languages.
+  <!-- zh: **雙語封面角落的年份編號只印一次。** 英文和中文相同的封面文字，例如「2026-27」，
+  在雙語試卷上曾印兩次；現在在屏幕、PDF 和 Word 中都只印一次，修改時兩種語言一併更新。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.
