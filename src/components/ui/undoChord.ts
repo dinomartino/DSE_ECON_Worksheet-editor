@@ -15,3 +15,12 @@ export function undoChord(event: Keys): UndoAction | null {
 export function isUndoRedoKey(event: Keys): boolean {
   return undoChord(event) !== null || (event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'y');
 }
+
+/**
+ * A key during an in-flight drag: Esc cancels it; undo/redo are swallowed, since an
+ * undo mid-gesture would land the release on a document the drag never saw.
+ */
+export function gestureKey(event: Keys): 'cancel' | 'swallow' | null {
+  if (event.key === 'Escape') return 'cancel';
+  return isUndoRedoKey(event) ? 'swallow' : null;
+}

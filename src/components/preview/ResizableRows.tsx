@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMessages } from '@/i18n/language';
+import { useModalLayer } from '@/components/ui/modalLayer';
+import { gestureKey } from '@/components/ui/undoChord';
 import { PREVIEW_HANDLE_MESSAGES } from './messages';
 
 /**
@@ -116,15 +118,19 @@ export function ResizableRows({
     if (next !== active.startValue) onResize(elementId, next);
   }, [elementId, onResize]);
 
-  // Escape abandons the gesture, matching every other cancellable interaction on the
-  // page. The listener exists only while dragging, so it cannot swallow the key that
-  // clears a selection.
+  // Escape abandons the gesture; undo/redo are swallowed (capture phase, so the
+  // editor's own ⌘Z never runs) and page shortcuts stand down via the modal layer.
+  // The listener exists only while dragging, so it cannot swallow the key that clears
+  // a selection.
+  useModalLayer(draft !== undefined);
   useEffect(() => {
     if (draft === undefined) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
+      const action = gestureKey(event);
+      if (!action) return;
       event.preventDefault();
       event.stopPropagation();
+      if (action === 'swallow') return;
       gesture.current = null;
       latest.current = undefined;
       setDraft(undefined);

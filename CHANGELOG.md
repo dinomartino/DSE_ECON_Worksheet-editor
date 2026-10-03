@@ -522,6 +522,11 @@ a version heading is edited afterwards.
   <!-- zh: **在空白欄位中也看到輸入位置。** 以往開啟空白的表格儲存格、答案或選項時，在 Chrome
   和 Safari 中要輸入第一個字才會出現閃動的游標。現在游標會即時顯示，並以黑色繪畫，與藍色外框
   分得清楚。 -->
+- **Undo waits while you resize on the page.** Pressing ⌘Z (or Ctrl+Z) while dragging a
+  picture's, diagram's or answer space's handle used to change the paper under the drag.
+  Now it does nothing until you let go, and Esc still cancels the resize.
+  <!-- zh: **在頁面上調整大小時，復原會暫停。** 拖曳圖片、圖表或答題空間的控點時按 ⌘Z（或
+  Ctrl+Z），以往會在拖曳途中改動試卷。現在放手之前不會有任何動作，按 Esc 仍可取消調整。 -->
 
 ## 0.5.0 — 2026-09-28
 
