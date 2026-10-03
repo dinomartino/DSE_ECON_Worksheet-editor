@@ -448,6 +448,11 @@ a version heading is edited afterwards.
   <!-- zh: **試卷每個版本的每一頁都標明版本。** 開啟版本後，「版本 B」會印在每頁的頁首，而不只
   在第 1 題上方，即使散頁也能看出屬哪個版本。它位於你自訂的頁首之下；若試卷沒有頁首，則
   單獨列出。沒有版本的試卷不受影響。 -->
+- **The MCQ panel lists options in the order the page shows.** Viewing Version B, the
+  options, the correct answer and the rationale rows in the side panel now follow Version
+  B's order and letters, so A on the panel is A on the page.
+  <!-- zh: **MCQ 面板的選項次序與頁面相同。** 檢視版本 B 時，側面板的選項、正確答案和解說
+  列，現在都按版本 B 的次序和字母排列，面板上的 A 就是頁面上的 A。 -->
 - **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
   in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
   above it, on screen, in the Graphs editor, in the PDF and in Word.
