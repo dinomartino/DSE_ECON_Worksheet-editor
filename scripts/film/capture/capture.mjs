@@ -6,7 +6,8 @@
 //   node scripts/film/capture/capture.mjs --list          # what can be captured
 //   node scripts/film/capture/capture.mjs --only=type-mcq,stills
 //   flags: --reseed (rebuild the seed documents), --no-build (use out/ as is),
-//          --no-review (skip contact sheets and review mp4s), --help
+//          --no-review (skip contact sheets and review mp4s), --help,
+//          --clips=<module> (more clips/asset jobs from another film, e.g. scripts/film2/capture/clips.mjs)
 //   (npm run film:capture -- <flags>). manifest.json records each asset's app commit.
 //
 // Needs `npm run build` output in out/ (built here if missing), system Chrome, ffmpeg,
@@ -14,12 +15,12 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { serveStatic } from './server.mjs';
 import { ensureOut, launch, PORT, OUT, REVIEW } from './session.mjs';
 import { seedState } from './seed.mjs';
-import { CLIPS, DIAGRAM_DONE_STATE, recordClip } from './clips.mjs';
-import { ASSET_JOBS } from './assets.mjs';
+import { CLIPS as BASE_CLIPS, DIAGRAM_DONE_STATE, recordClip } from './clips.mjs';
+import { ASSET_JOBS as BASE_JOBS } from './assets.mjs';
 import { review } from './review.mjs';
 import { appCommit, writeManifest } from './manifest.mjs';
 
@@ -32,8 +33,9 @@ const USAGE = `npm run film:capture -- [flags]   (node scripts/film/capture/capt
   --reseed            rebuild the seed documents
   --no-build          use out/ as is (default: npm run build when out/ is missing)
   --no-review         skip contact sheets and review mp4s
+  --clips=<module>    add the CLIPS / ASSET_JOBS (and seedState) a module exports
   --help              this text`;
-const KNOWN = ['list', 'only', 'reseed', 'no-build', 'no-review', 'help'];
+const KNOWN = ['list', 'only', 'reseed', 'no-build', 'no-review', 'clips', 'help'];
 for (const a of args) {
   const name = /^--([^=]+)/.exec(a)?.[1];
   if (!KNOWN.includes(name)) {
@@ -49,12 +51,19 @@ const flag = (name) => args.includes(`--${name}`);
 const opt = (name) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const log = (m) => console.log(m);
 
+// Another film's clips: same names override, new ones append; its seedState extends ours.
+const extra = opt('clips') ? await import(pathToFileURL(path.resolve(opt('clips'))).href) : {};
+const merge = (base, more = []) => [...base.filter((b) => !more.some((m) => m.name === b.name)), ...more];
+const CLIPS = merge(BASE_CLIPS, extra.CLIPS);
+const ASSET_JOBS = merge(BASE_JOBS, extra.ASSET_JOBS);
+
 const GROUPS = {
   p0: CLIPS.filter((c) => c.priority === 0).map((c) => c.name),
   p1: CLIPS.filter((c) => c.priority === 1).map((c) => c.name),
   p2: CLIPS.filter((c) => c.priority === 2).map((c) => c.name),
   clips: CLIPS.map((c) => c.name),
   assets: ASSET_JOBS.map((j) => j.name),
+  extra: [...(extra.CLIPS ?? []), ...(extra.ASSET_JOBS ?? [])].map((c) => c.name),
 };
 
 if (flag('list')) {
@@ -97,7 +106,10 @@ const browser = await launch(2);
 const results = [];
 try {
   if (flag('reseed')) fs.rmSync(DIAGRAM_DONE_STATE, { force: true });
-  const state = await seedState({ browser, url: server.url, root: ROOT, force: flag('reseed'), log });
+  const base = await seedState({ browser, url: server.url, root: ROOT, force: flag('reseed'), log });
+  const state = extra.seedState
+    ? await extra.seedState({ browser, url: server.url, root: ROOT, force: flag('reseed'), log, base })
+    : base;
   const env = { browser, url: server.url, state, root: ROOT, log };
   for (const clip of CLIPS.filter((c) => wanted.has(c.name))) {
     const meta = await recordClip(clip, env);
