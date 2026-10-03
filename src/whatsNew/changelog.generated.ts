@@ -491,6 +491,12 @@ a version heading is edited afterwards.
   list with that row marked, as it does for every other element.
   <!-- zh: **按標籤清單的一行，「編輯」分頁會顯示該清單。** 以往在頁面上按「姓名：」或其內容，
   側欄不會轉變。現在「編輯」分頁會顯示該清單並標示該行，與其他元素一樣。 -->
+- **You can see where you are typing in an empty box.** Opening an empty table cell, answer
+  or option showed no blinking cursor until the first letter appeared, in Chrome and Safari.
+  The cursor now shows straight away, drawn in black so it stands out from the blue outline.
+  <!-- zh: **在空白欄位中也看到輸入位置。** 以往開啟空白的表格儲存格、答案或選項時，在 Chrome
+  和 Safari 中要輸入第一個字才會出現閃動的游標。現在游標會即時顯示，並以黑色繪畫，與藍色外框
+  分得清楚。 -->
 
 ## 0.5.0 — 2026-09-28
 

@@ -282,8 +282,9 @@ export function InlineEditable({
          * the defaults do not carry it here: the caret is drawn in the text colour at
          * whatever contrast it happens to have against the field's blue tint, and the
          * default selection highlight is a blue close enough to that tint to be hard to
-         * read. The accent for the caret (it must be findable in a wrapped paragraph),
-         * and a deeper, opaque wash for the range so selected words stay legible.
+         * read. An ink caret (an accent one at the field's left edge, where an empty
+         * field puts it, merges with the box's 2px accent ring and disappears), and a
+         * deeper, opaque wash for the range so selected words stay legible.
          *
          * Literal colours for the reason the box's are literal: this is *on the paper*,
          * which never themes.
@@ -295,7 +296,7 @@ export function InlineEditable({
          * stem's hanging indent, and a cell has none. Width only — reserving height
          * would make the row measure taller than it prints.
          */
-        className={`m-0 cursor-text rounded-sm p-0 caret-[#0d77c9] outline-none selection:bg-[#9fcdee] selection:text-[#101010] ${
+        className={`m-0 cursor-text rounded-sm p-0 caret-[#101010] outline-none selection:bg-[#9fcdee] selection:text-[#101010] ${
           fillWidth
             ? 'inline-block w-full bg-[#eef6fc] shadow-[0_0_0_2px_#0d77c9]'
             : 'relative z-10'

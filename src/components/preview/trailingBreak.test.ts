@@ -37,5 +37,7 @@ describe('an empty editing field', () => {
     // `:empty::after` with a zero-width space: not a child node, so `readRuns` cannot
     // read it back into the model as phantom text.
     expect(GLOBALS).toMatch(/\.rich-text-editable:empty::after\s*\{\s*content: '\\200b';/);
+    // And `inline-block` while empty, or Chrome and WebKit draw no caret in the field.
+    expect(GLOBALS).toMatch(/\.rich-text-editable:empty\s*\{\s*display: inline-block;\s*min-width: 2px;/);
   });
 });

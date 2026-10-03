@@ -441,7 +441,15 @@ body {
    paragraph below drew over it until the first character arrived. A zero-width space in
    a pseudo-element keeps one line box open while the field is empty: it is not DOM
    content, so `readRuns` never sees it and nothing phantom reaches the model. `:empty`
-   stops matching the moment the browser inserts a text node. */
+   stops matching the moment the browser inserts a text node.
+   `inline-block` while empty: Chrome and WebKit draw no caret in an empty *inline*
+   editable whose only content is the pseudo-element. Empty, it has no wrapped lines
+   whose hanging indent an own formatting context could break. WebKit also needs the
+   box to be wider than nothing. */
+.rich-text-editable:empty {
+  display: inline-block;
+  min-width: 2px;
+}
 .rich-text-editable:empty::after {
   content: '\200b';
 }

@@ -78,9 +78,10 @@ describe('the cursor matches what the click does', () => {
   });
 
   it('states the caret’s own colour', () => {
-    // Left to the browser it is drawn in the text colour, at whatever contrast that
-    // happens to have against the field's blue tint.
-    expect(inline).toContain('caret-[#0d77c9]');
+    // Ink, never the accent: an empty field's caret sits on the box's left edge, where an
+    // accent caret merges with the 2px accent ring and the field looks caretless.
+    expect(inline).toContain('caret-[#101010]');
+    expect(inline).not.toContain('caret-[#0d77c9]');
   });
 });
 
