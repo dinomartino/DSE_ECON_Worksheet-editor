@@ -107,6 +107,8 @@ export const CUES = [
   { id: 'write.build', t: bar(3), kind: 'accent', note: 'the build: the dot drops onto the desk' },
   { id: 'draw.body', t: bar(8), kind: 'accent', note: 'body: the hero act' },
   { id: 'papers.turn', t: bar(14), kind: 'accent' },
+  { id: 'papers.scheme', t: bar(16), kind: 'accent', note: 'cut to the Marking scheme view, its headline' },
+  { id: 'papers.mock', t: bar(18), kind: 'accent', note: 'mock papers: the headline, the Paper 1 cover dealt' },
   { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens' },
   { id: 'everywhere.cuts', t: bar(24), kind: 'accent' },
   { id: 'end.pullback', t: bar(26), kind: 'accent', note: 'the pull-back: everything collapses into lines' },
