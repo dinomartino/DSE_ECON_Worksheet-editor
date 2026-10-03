@@ -45,24 +45,33 @@ export const DURATION = bar(END_BAR);
 //   cut | match (a cut whose two frames share a shape) | push {dir: 'left'|'up', pulses}
 //   | iris {pulses, at: [x, y] design px}
 // `cuts` = the act's intended hard changes inside it (film s, on pulses: footage cuts, a
-// page dealt in at once, a real UI dialog changing state); `holds` = [from, to] film s where
-// a still picture is meant. tools/motion-check.mjs exempts both; a flag elsewhere is a bug.
+// page swapped at once); `ui` = clicks in the real footage whose response is an instant
+// change (a dialog opens, a toggle flips: the clip's event time); `holds` = [from, to] film s
+// where a still picture is meant. tools/motion-check.mjs exempts all three; a flag elsewhere
+// is a bug.
 const PC = (n0, ns) => ns.map((n) => pulse(n0 + n)); // pulses counted from an act's first pulse
 const ACTS = [
   { id: 'open', bars: [0, 1.5], in: { type: 'cut' } },
   { id: 'mark', bars: [1.5, 3], in: { type: 'match' } }, // the straightened line becomes the axis
   { id: 'write', bars: [3, 8], in: { type: 'iris', pulses: 4, at: [960, 338] }, // at: the mark's dot (scenes/mark.js MARK_DOT)
-    cuts: [pulse(29), pulse(42), pulse(55)] }, // → type-mcq; → language-toggle; → zh-interface
+    cuts: [pulse(29), pulse(42), pulse(55)], // → type-mcq; → language-toggle; → zh-interface
+    // type-mcq's double-click into the 中文 line; EN, 中文, EN+中; 繁體中文; 完成 closes Settings
+    ui: [18.011, pulse(43), pulse(46), pulse(49), pulse(57), pulse(60)] },
   { id: 'draw', bars: [8, 14], in: { type: 'push', dir: 'left', pulses: 4 },
-    cuts: [pulse(93), pulse(96), pulse(104)] }, // → the Templates grid; → Draw answer; → Student/Teacher
+    cuts: [pulse(93), pulse(96), pulse(104)], // → the Templates grid; → Draw answer; → Student/Teacher
+    ui: [pulse(106)] }, // Teacher: the red answer snaps on
   // Footage segments (P10, P16, P20, P38), key layouts switching in the real app (P21, P23,
-  // P25), printed pages dealt in at once (P26–P29, P32–P36, P44, P45), version faces (P40–P42).
+  // P25), the printed rows replacing the footage (P26, P32), the version close-up (P40) and
+  // the fan's covers (P44). The other deals (P27–P29, P33–P36, P41, P42, P45) rise in: motion.
   { id: 'papers', bars: [14, 20], in: { type: 'push', dir: 'left', pulses: 4 },
-    cuts: PC(112, [10, 16, 20, 21, 23, 25, 26, 27, 28, 29, 32, 33, 34, 35, 36, 38, 40, 41, 42, 44, 45]) },
+    cuts: PC(112, [10, 16, 20, 21, 23, 25, 26, 32, 38, 40, 44]),
+    ui: PC(112, [12, 18]) }, // Teacher: red answers; Marking scheme opens beside them
   { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] },
-    cuts: [pulse(168), pulse(172), pulse(182)] }, // the footage's topic click (P8); → bank-drag (P12); → check-terms (P22)
+    cuts: [pulse(168), pulse(172), pulse(182)], // the footage's topic click (P8); → bank-drag (P12); → check-terms (P22)
+    ui: [pulse(183)] }, // Check terms opens its panel
   { id: 'everywhere', bars: [24, 26], in: { type: 'cut' },
-    cuts: [pulse(196), pulse(203)] }, // → the real .docx page; → the three windows
+    cuts: [pulse(196), pulse(203)], // → the real .docx page; → the three windows
+    ui: [87.397] }, // Export… opens the dialog (the clip's click)
   { id: 'end', bars: [26, END_BAR], in: { type: 'push', dir: 'up', pulses: 4 },
     holds: [[pulse(210), pulse(219)], [103.3, bar(END_BAR)]] }, // the statement is read; the end card
 ];

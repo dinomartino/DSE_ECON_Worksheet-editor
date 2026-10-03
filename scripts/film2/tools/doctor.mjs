@@ -58,6 +58,7 @@ async function timeline() {
       if (!(c > s.from && c < s.to)) bad(`scene ${s.id}: declared cut ${c} s is outside ${s.from.toFixed(3)}..${s.to.toFixed(3)}`);
       else if (off(c) > FRAME + 1e-6) bad(`scene ${s.id}: declared cut ${c.toFixed(3)} s is off the pulse grid`);
     }
+    for (const u of s.ui ?? []) if (!(u > s.from - half && u < s.to)) bad(`scene ${s.id}: footage UI change ${u} s is outside the act`);
     for (const [a, b] of s.holds ?? []) if (!(a < b && a >= s.from - half && b <= s.to + 1e-6)) bad(`scene ${s.id}: hold ${a}..${b} is empty or outside the scene`);
     at = s.to;
   });

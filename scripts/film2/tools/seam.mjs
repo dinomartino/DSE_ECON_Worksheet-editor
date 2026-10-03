@@ -39,7 +39,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       const at = Math.max(mad[k] ?? 0, mad[k - 1] ?? 0, mad[k + 1] ?? 0);
       const side = [...Array.from({ length: n }, (_, j) => mad[k - 2 - j]), ...Array.from({ length: n }, (_, j) => mad[k + 2 + j])].filter((x) => x != null);
       const other = Math.max(0, ...side), quiet = Math.max(0.3, side.length ? Math.min(...side) : 0.3);
-      const flag = at < 1.5 ? 'weak cut (no visible change)' : other > spike * quiet && other > 3 ? `spike beside the cut (MAD ${other.toFixed(2)})` : null;
+      const flag = at < 1.5 && s.in?.type !== 'match' ? 'weak cut (no visible change)' : other > spike * quiet && other > 3 ? `spike beside the cut (MAD ${other.toFixed(2)})` : null;
       if (flag) {
         bad++;
         console.log(`  FLAG: ${flag}`);

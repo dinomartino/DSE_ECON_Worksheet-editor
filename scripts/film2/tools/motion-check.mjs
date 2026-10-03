@@ -5,12 +5,15 @@
 // change at its `from`, and so is every time in a scene's `cuts`; push and iris transitions are
 // planned motion around their `from`). Flags
 //   stalls     MAD under --still for longer than --stall s (default 0.3), unless inside a hold
+//              (± 0.1 s: easing out of or into a hold is still for a few frames)
 //   jumps      a MAD spike (> --jump × the local median and > 3) outside a transition window
 //              and outside a planned cut (from 1 frame before it to 0.1 s after: a page dealt
-//              in at once settles over a few frames)
+//              in at once settles over a few frames), and outside a declared footage UI
+//              change (a scene's `ui` times: a dialog opening in the real app, to 0.12 s after)
 //   flashes    a run of ≤ 0.15 s whose mean luma is black (< 8) or white (> 247) while the
 //              picture on both sides is not
-//   weakCuts   a scene cut that shows no change (MAD < 1.5 within ± 1 frame)
+//   weakCuts   a scene cut that shows no change (MAD < 1.5 within ± 1 frame); not a match cut,
+//              whose two frames are meant to agree
 //   staleCuts  the same for a declared in-act cut: reported, not failed (the scene moved on)
 // A hold is declared in timeline.mjs as `holds: [[from, to], …]` (film seconds) on a scene, or
 // with --hold=a-b,c-d. Exit 1 when any of the first three, or a weak cut, is found.
@@ -24,6 +27,7 @@ import { SCENES, halfIn, isCut } from '../timeline.mjs';
 import { OUT } from '../paths.mjs';
 
 export const SW = 240, SH = 136;
+const HOLD_EASE = 0.1; // s a still run may start before or end after a declared hold
 
 /** --name[=value] flags and positionals; unknown flags exit 2, --help exits 0. */
 export function parseFlags(name, summary, known, argv = process.argv.slice(2), { positional = 1 } = {}) {
@@ -92,14 +96,15 @@ export async function frameStats(video) {
 
 /** Planned hard cuts (a scene entered by a cut), transition windows and declared holds, film seconds. */
 export function plannedChanges() {
-  const cuts = [], transitions = [], holds = [];
+  const cuts = [], transitions = [], holds = [], ui = [];
   SCENES.forEach((s, i) => {
     if (i > 0 && isCut(s)) cuts.push({ t: s.from, scene: s.id, kind: s.in?.type ?? 'cut' });
     for (const t of s.cuts ?? []) cuts.push({ t, scene: s.id, kind: 'in-act' });
+    for (const t of s.ui ?? []) ui.push({ t, scene: s.id });
     if (i > 0 && !isCut(s)) transitions.push({ a: s.from - halfIn(s), b: s.from + halfIn(s), scene: s.id, type: s.in.type });
     for (const h of s.holds ?? (s.hold ? [s.hold] : [])) holds.push(Array.isArray(h) ? h : [h.from, h.to]);
   });
-  return { cuts, transitions, holds };
+  return { cuts, transitions, holds, ui };
 }
 
 const median = (a) => {
@@ -108,13 +113,14 @@ const median = (a) => {
 };
 
 export function analyse({ mad, luma }, { fps, from = 0, still = 0.08, stall = 0.3, jump = 5, extraHolds = [] }) {
-  const { cuts, transitions, holds: declared } = plannedChanges();
+  const { cuts, transitions, holds: declared, ui } = plannedChanges();
   const holds = [...declared, ...extraHolds];
   const t = (i) => from + i / fps;
   const nearCut = (i) => cuts.some((c) => Math.abs(t(i) - c.t) <= 1.01 / fps);
-  const afterCut = (i) => cuts.some((c) => t(i) - c.t >= -1.01 / fps && t(i) - c.t <= 0.1 + 0.01 / fps);
+  const after = (list, d) => (i) => list.some((c) => t(i) - c.t >= -1.01 / fps && t(i) - c.t <= d + 0.01 / fps);
+  const afterCut = after(cuts, 0.1), afterUi = after(ui, 0.12);
   const inTransition = (i) => transitions.some((x) => t(i) >= x.a - 1 / fps && t(i) <= x.b + 1 / fps);
-  const inHold = (a, b) => holds.some(([h0, h1]) => a >= h0 - 1 / fps && b <= h1 + 1 / fps);
+  const inHold = (a, b) => holds.some(([h0, h1]) => a >= h0 - HOLD_EASE && b <= h1 + HOLD_EASE);
 
   const stalls = [];
   for (let i = 1; i < mad.length; ) {
@@ -131,7 +137,7 @@ export function analyse({ mad, luma }, { fps, from = 0, still = 0.08, stall = 0.
 
   const jumps = [];
   for (let i = 1; i < mad.length; i++) {
-    if (mad[i] <= 3 || afterCut(i) || inTransition(i)) continue;
+    if (mad[i] <= 3 || afterCut(i) || afterUi(i) || inTransition(i)) continue;
     const near = [...mad.slice(Math.max(1, i - 6), i), ...mad.slice(i + 1, i + 7)];
     const local = Math.max(median(near), 0.3);
     if (mad[i] > jump * local) jumps.push({ t: +t(i).toFixed(3), frame: i, mad: +mad[i].toFixed(2), local: +local.toFixed(2), hardCut: mad[i] > 20 });
@@ -159,14 +165,14 @@ export function analyse({ mad, luma }, { fps, from = 0, still = 0.08, stall = 0.
     const m = Math.max(...[k - 1, k, k + 1].map((x) => mad[x] ?? 0));
     return { ...c, mad: +m.toFixed(2), frame: k };
   }).filter((c) => c.t >= from && c.frame < mad.length && c.mad < 1.5);
-  const weakCuts = weak.filter((c) => c.kind !== 'in-act');
+  const weakCuts = weak.filter((c) => c.kind !== 'in-act' && c.kind !== 'match');
   const staleCuts = weak.filter((c) => c.kind === 'in-act');
 
   const sorted = mad.slice(1).sort((a, b) => a - b);
   const q = (p) => +(sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] ?? 0).toFixed(3);
   return {
     frames: mad.length, fps, from, duration: +(mad.length / fps).toFixed(3),
-    planned: { cuts: cuts.filter((c) => c.t >= from && c.t < from + mad.length / fps), transitions, holds },
+    planned: { cuts: cuts.filter((c) => c.t >= from && c.t < from + mad.length / fps), transitions, holds, ui },
     stats: { mean: +(sorted.reduce((a, b) => a + b, 0) / Math.max(1, sorted.length)).toFixed(3), p50: q(0.5), p95: q(0.95), p99: q(0.99), max: q(1) },
     stalls, jumps, flashes, weakCuts, staleCuts,
   };
@@ -193,7 +199,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   writeFileSync(file, `${JSON.stringify({ video, ...r }, null, 1)}\n`);
   console.log(`${basename(video)}: ${r.frames} frames at ${r.fps} fps from ${r.from} s; MAD mean ${r.stats.mean}, p95 ${r.stats.p95}, max ${r.stats.max}`);
   const sceneCuts = r.planned.cuts.filter((c) => c.kind !== 'in-act');
-  console.log(`  planned: ${sceneCuts.map((c) => `${c.scene}@${c.t.toFixed(2)}`).join(' ') || 'no scene cut'}; ${r.planned.cuts.length - sceneCuts.length} in-act cuts, ${r.planned.transitions.length} transitions, ${r.planned.holds.length} holds`);
+  console.log(`  planned: ${sceneCuts.map((c) => `${c.scene}@${c.t.toFixed(2)}`).join(' ') || 'no scene cut'}; ${r.planned.cuts.length - sceneCuts.length} in-act cuts, ${r.planned.ui.length} footage UI changes, ${r.planned.transitions.length} transitions, ${r.planned.holds.length} holds`);
   for (const k of ['stalls', 'jumps', 'flashes', 'weakCuts', 'staleCuts']) {
     console.log(`  ${k}: ${r[k].length}`);
     for (const x of r[k].slice(0, 12)) console.log(`    ${JSON.stringify(x)}`);
