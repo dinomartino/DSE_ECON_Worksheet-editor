@@ -287,6 +287,18 @@ a version heading is edited afterwards.
   <!-- zh: **可設定「任選一題」的部分。** 選取一個部分，把「考生須作答」設為「2 題中任選 1 題」
   （或任何題數）。該部分的分數、全卷總分、估計時間、試卷檢查和答案頁的總分，便只計算學生
   可選作答的題目，而不是全部題目。每個部分亦可設定自己的目標分數，試卷檢查會加以比較。 -->
+- **Seven more diagram templates, so every diagram the marking schemes ask for starts from
+  one.** Monopoly with a U-shaped MC, unitary elastic demand (a curved D where the revenue
+  gain equals the loss), a tax's underproduction (MB above MC at Q₁), revenue net of a tax,
+  an interest rate change as a movement along Md, a smaller ceiling DWL after demand falls,
+  and growth with trade, where the CPF moves out with the PPF. In the PPF trade templates,
+  consumption C now sits above A (the same amount of X as before trade) and the gain from
+  trade is marked. Points on a curved line now sit exactly on the line you see.
+  <!-- zh: **新增七個圖表範本，評分參考要求的每種圖表都有範本可用。** U 形邊際成本的壟斷、單一
+  彈性需求（曲線需求，收入增加等於減少）、稅項引致的生產不足（在 Q₁ MB 高於 MC）、扣除稅款後的
+  收入、利率變動即沿 Md 移動、需求下降後較小的價格上限效率損失，以及經濟增長與貿易（CPF 隨 PPF
+  外移）。在 PPF 貿易範本中，消費點 C 現位於 A 的正上方（X 的數量與貿易前相同），並標示貿易得益。
+  曲線上的點現在準確落在你看到的線上。 -->
 
 ### Changed
 - **The paper check now warns when a marking scheme does not add up.** Before you export,

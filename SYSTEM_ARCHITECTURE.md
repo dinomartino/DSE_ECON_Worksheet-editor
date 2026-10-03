@@ -1268,7 +1268,9 @@ fallback. The four welfare presets (CS, PS, DWL, tax revenue) are bands built by
   Pinned: `src/render/diagramAreas.frozen.json`, written before either feature existed.
 - **Deleting what an area leans on freezes it** into vertices at its last shape
   (`detachAreas`, run by `deleteHandle`); copying an area without its curves does the same.
-- A `curved` curve is read as its polyline, so an area against it is approximate.
+- A `curved` curve is read as drawn: `model/diagramAnchors.ts:curvePath` samples its spline
+  (in plot-aspect space, as the renderer builds it), and heights, crossings, pins and area
+  edges all read that path, so a mark on a U-shaped MC sits on the line.
 
 **Shifting a curve** (`model/diagramShift.ts:shiftCurve`) adds a translated copy
 (trimmed to the plot, never clamped, so the slope survives), a shift arrow and, where
