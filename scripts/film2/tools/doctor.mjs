@@ -53,7 +53,7 @@ async function timeline() {
     if (i > 0 && off(s.from) > FRAME + 1e-6) bad(`cut into ${s.id} at ${s.from.toFixed(3)} s is ${(off(s.from) * 1000).toFixed(0)} ms off the pulse grid`);
     const half = TL.halfIn(s);
     if (i > 0 && (half > (s.to - s.from) / 2 || half > (TL.SCENES[i - 1].to - TL.SCENES[i - 1].from) / 2)) bad(`the transition into ${s.id} is longer than a neighbour can hold`);
-    if (!['cut', 'match', 'push', 'iris'].includes(s.in?.type ?? 'cut')) bad(`scene ${s.id}: unknown transition ${s.in.type}`);
+    if (!['cut', 'match', 'push', 'iris', 'axis'].includes(s.in?.type ?? 'cut')) bad(`scene ${s.id}: unknown transition ${s.in.type}`);
     for (const c of s.cuts ?? []) {
       if (!(c > s.from && c < s.to)) bad(`scene ${s.id}: declared cut ${c} s is outside ${s.from.toFixed(3)}..${s.to.toFixed(3)}`);
       else if (off(c) > FRAME + 1e-6) bad(`scene ${s.id}: declared cut ${c.toFixed(3)} s is off the pulse grid`);
@@ -85,9 +85,14 @@ function copy() {
   head('2. copy');
   let n = 0;
   const scenes = new Set(TL.SCENES.map((s) => s.id));
+  const axisActs = TL.SCENES.filter((s) => s.in?.type === 'axis').map((s) => s.id);
+  for (const id of axisActs) if (!TL.COPY.chapters?.[id]) { n++; say('error', `COPY.chapters.${id} is missing (the axis chapter into ${id})`); }
   for (const [scene, entries] of Object.entries(TL.COPY)) {
-    if (!scenes.has(scene)) { n++; say('error', `COPY.${scene}: no such scene`); }
+    const chapters = scene === 'chapters';
+    if (!chapters && !scenes.has(scene)) { n++; say('error', `COPY.${scene}: no such scene`); }
     for (const [key, pair] of Object.entries(entries)) {
+      if (chapters && !axisActs.includes(key)) say('warn', `COPY.chapters.${key}: ${key} does not open with an axis chapter`);
+      if (chapters && !pair.en && !pair.zh) continue; // an unlabelled chapter is allowed
       for (const lang of ['en', 'zh']) {
         if (typeof pair[lang] !== 'string' || !pair[lang].trim()) {
           n++;

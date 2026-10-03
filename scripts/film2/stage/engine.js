@@ -7,7 +7,7 @@ import * as TL from '../timeline.mjs';
 import { asset, assetUrl } from '../assets.mjs';
 import * as lib from './lib/index.js';
 import { ClipPlayer, loadClipMeta, placedEvents } from './lib/clip.js';
-import { clamp, inOutSoft, spring } from './lib/ease.js';
+import { clamp, lerp, prog, inOutSoft, outSoft, spring } from './lib/ease.js';
 import { f } from './lib/tween.js';
 
 const q = new URLSearchParams(location.search);
@@ -194,7 +194,60 @@ function pose(active, t) {
       irisRing.setAttribute('stroke-width', f(10 * (1 - open), 3));
       irisRing.style.visibility = open < 1 ? 'visible' : 'hidden';
     }
+  } else if (tr.type === 'axis') {
+    // The wipe edge travels 1920 → 96 over the 2 pulses before the bar: the new act right of it.
+    if (t >= B.info.from) hide(A.wrap);
+    else B.wrap.style.clipPath = `inset(0px 0px 0px ${f(axisWipeX(t, B.info.from), 2)}px)`;
   } else hide(t >= B.info.from ? A.wrap : B.wrap);
+}
+
+// ---- the axis chapter (FILM.md §5): the frame draws the mark's axes between two acts ------
+// Pulses from the bar line B: B-2..B0 a 4 px ink stroke wipes 1920 → 96 (inOutSoft), the blue
+// dot riding its top; B0..B+2 the horizontal axis draws 96 → 1824 along y 1008 (outSoft);
+// B+1..B+4 the chapter LABEL (COPY.chapters[id]) sits on the axis at x 120; B+4..B+6 both
+// strokes retract into the origin (inOutSoft) and the dot travels to `in.dotTo` (or rides the
+// vertical down) and shrinks away.
+const AX = lib.layout.AXES;
+const chV = lib.s('line', { stroke: lib.C.ink, 'stroke-width': 4, 'stroke-linecap': 'round' }, fx);
+const chH = lib.s('line', { stroke: lib.C.ink, 'stroke-width': 4, 'stroke-linecap': 'round' }, fx);
+const chDot = lib.s('circle', { r: 0, fill: lib.C.markBlue }, fx);
+const fxh = lib.h('div', { style: { position: 'absolute', left: 0, top: 0, width: `${DW}px`, height: `${DH}px`, transformOrigin: '0 0', transform: `scale(${W / DW})`, pointerEvents: 'none', zIndex: 101 } }, document.getElementById('stage'));
+const chLabels = new Map();
+const axisWipeX = (t, B) => lerp(DW, AX.x, inOutSoft(prog(t, B - 2 * TL.PULSE, B)));
+
+function chapter(t) {
+  const P = TL.PULSE;
+  for (const el of [chV, chH, chDot]) el.style.visibility = 'hidden';
+  for (const l of chLabels.values()) l.show(0);
+  const s = SC.list.find((x) => x.in?.type === 'axis' && t >= x.from - 2 * P && t < x.from + 6 * P);
+  if (!s) return;
+  const B = s.from;
+  const back = inOutSoft(prog(t, B + 4 * P, B + 6 * P)); // the retract
+  const x = t < B ? axisWipeX(t, B) : AX.x;
+  const top = lerp(AX.top, AX.y, back);
+  const right = t < B ? AX.x : lerp(lerp(AX.x, AX.right, outSoft(prog(t, B, B + 2 * P))), AX.x, back);
+  const attrs = (el, a) => Object.entries(a).forEach(([k, v]) => el.setAttribute(k, f(v, 2)));
+  if (AX.y - top > 0.5) {
+    attrs(chV, { x1: x, y1: top, x2: x, y2: AX.y });
+    chV.style.visibility = 'visible';
+  }
+  if (right - AX.x > 0.5) {
+    attrs(chH, { x1: AX.x, y1: AX.y, x2: right, y2: AX.y });
+    chH.style.visibility = 'visible';
+  }
+  const to = s.in.dotTo;
+  const travel = to ? back : 0;
+  const [dx, dy] = [lerp(x, to?.[0] ?? x, travel), lerp(top, to?.[1] ?? top, travel)];
+  const r = 6 * spring(clamp(prog(t, B - 2 * P, B - 1.5 * P))) * (1 - inOutSoft(prog(t, B + 5.2 * P, B + 6 * P)));
+  if (r > 0.05) {
+    attrs(chDot, { cx: dx, cy: dy, r });
+    chDot.style.visibility = 'visible';
+  }
+  if (!chLabels.has(s.id)) {
+    const c = TL.COPY.chapters?.[s.id] ?? { en: '', zh: '' };
+    chLabels.set(s.id, lib.label(fxh, { ...lib.LABEL, en: c.en, zh: c.zh, x: 120, y: 984 }));
+  }
+  chLabels.get(s.id).show(outSoft(prog(t, B + P, B + 2 * P)) - outSoft(prog(t, B + 4 * P, B + 5 * P)));
 }
 
 const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -212,6 +265,7 @@ async function doSeek(t) {
   for (const s of active) s.def.update?.(s.ctx, t - s.info.from);
   for (const s of active) await Promise.all(s.res.clips.map((c) => c.flush()));
   pose(active, t);
+  chapter(t);
   await document.fonts.ready;
   await raf2();
   if (errors.length) throw new Error(errors.join('\n'));
