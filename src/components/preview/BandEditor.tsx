@@ -59,6 +59,8 @@ interface Props {
    * header, not every page's" visible at the point of editing.
    */
   label?: string;
+  /** The Teacher version's header marker, printed after this zone's fields (`teacherMarkPlacement`). */
+  trail?: BandTrail;
   /**
    * The sheet these rows are printing on, so a page-number field shows a number.
    *
@@ -139,6 +141,17 @@ export function bandFieldStyle(field: BandField): React.CSSProperties {
   };
 }
 
+/** Derived text appended to one zone of one row; printed, never editable. */
+export interface BandTrail {
+  bandId: string;
+  zone: ZoneName;
+  text: string;
+}
+
+export function BandTrailText({ text }: { text: string }) {
+  return <span className="mx-0.5 whitespace-pre-wrap font-bold">{text}</span>;
+}
+
 const ALIGN: Record<ZoneName, string> = {
   left: 'justify-start text-left',
   center: 'justify-center text-center',
@@ -156,6 +169,7 @@ export function BandEditor({
   onAddRow,
   onRemoveRow,
   label,
+  trail,
   page,
   selection,
 }: Props) {
@@ -425,6 +439,8 @@ export function BandEditor({
                       </button>
                     </span>
                   ))}
+
+                  {trail?.bandId === band.id && trail.zone === zone && <BandTrailText text={trail.text} />}
 
                   {/* An empty zone still needs a target, but it is a print preview first:
                       the affordance stays invisible until the row is hovered, so the page

@@ -470,6 +470,14 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **The teacher version says so at the top of every page, on screen and in the PDF.** Word
+  already printed "Teacher Version / 教師版" in the header of each page. The page and the
+  PDF now print it there too, after your own header text, and leave page 1 without it when
+  page 1 has no header or its own. The questions stay where they were. A teacher version
+  whose header is switched off no longer prints that header's hidden text in Word.
+  <!-- zh: **教師版每頁頂部都會註明，畫面和 PDF 亦然。** Word 一向在每頁頁首印上「Teacher Version / 教師版」。
+  現在頁面和 PDF 亦會在頁首、你自己的頁首文字之後印出；如第 1 頁沒有頁首或另有頁首，第 1 頁便不印。
+  題目位置不變。關閉了頁首的教師版，Word 檔案不再印出該頁首隱藏的文字。 -->
 - **Fill missing no longer translates image descriptions.** With "Include answers and mark
   schemes" on, Fill missing 中文 or English also sent the alt text of pictures and
   diagrams, so it counted more texts than the ✦ AI badge. It now covers answers and

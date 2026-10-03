@@ -19,6 +19,7 @@ import { listIndentScheme } from '@/model/numbering';
 import { bandFieldPrintSides, bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
 import { versionHeaderText } from '@/model/versions';
+import { TEACHER_HEADER_JOIN, TEACHER_HEADER_MARK, teacherMarkPlacement } from '@/model/headerMarks';
 import { furnitureHeaderXml } from './furniture';
 import { plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
@@ -414,26 +415,24 @@ function buildParts(
   const footer = headerFooterOf(worksheet.footer, defaultFooter);
 
   // A teacher-version marker rides in the header so it is unmistakable on every
-  // printed page, appended to whatever the teacher authored there. Alone in an empty
-  // header it drops the joining dash.
-  const teacherLabel = 'Teacher Version / 教師版';
+  // printed page, appended to whatever the teacher authored there (`teacherMarkPlacement`).
+  // Alone it drops the joining dash and the rule, and a disabled header lends it no rows.
   const teacherMark =
-    mode.version === 'teacher' ? run(`  —  ${teacherLabel}`, fonts, { bold: true }) : '';
+    mode.version === 'teacher' ? run(`${TEACHER_HEADER_JOIN}${TEACHER_HEADER_MARK}`, fonts, { bold: true }) : '';
+  const markOnly = Boolean(teacherMark) && !isHeaderFooterActive(header);
+  const runningHeaderBands = teacherMark && !header.enabled ? [] : header.bands;
 
   const headerLayout = headerFooterLayout(
-    header.bands, header.rule, fonts, mode.language, textWidth, 'bottom', worksheetMarks(worksheet),
+    runningHeaderBands, markOnly ? undefined : header.rule, fonts, mode.language, textWidth, 'bottom', worksheetMarks(worksheet),
   );
   if (teacherMark) {
-    // Appended to the rightmost occupied zone of the LAST row, so it never displaces
-    // authored content and always lands on the line nearest the document.
+    const place = teacherMarkPlacement(header, { totalMarks: worksheetMarks(worksheet) }, mode.language);
     const row = headerLayout.rows[headerLayout.rows.length - 1];
-    if (!row || (!row.left && !row.center && !row.right)) {
-      const alone = run(teacherLabel, fonts, { bold: true });
+    if (place.alone || !row) {
+      const alone = run(TEACHER_HEADER_MARK, fonts, { bold: true });
       if (row) row.right = alone;
       else headerLayout.rows.push({ left: '', center: '', right: alone });
-    } else if (row.right) row.right += teacherMark;
-    else if (row.center) row.center += teacherMark;
-    else row.left += teacherMark;
+    } else row[place.zone] += teacherMark;
   }
 
   /*
@@ -517,8 +516,7 @@ function buildParts(
     const build = which === 'hdr' ? buildHeaderXml : buildFooterXml;
     if (!resolved.differs) return build(running, extra);
     if (resolved.bands.length === 0) return buildEmptyHeaderXml(which, extra);
-    // The teacher-version marker deliberately does not ride along here: it is appended
-    // to the running header above, and page 1 carries its own authored rows.
+    // The teacher-version marker does not ride along: page 1 carries its own rows.
     return build(
       headerFooterLayout(
         resolved.bands,
@@ -567,7 +565,9 @@ function buildParts(
       ? 0
       : versionOnly && !teacherMark
         ? BAND_ROW_TWIPS
-        : bandsHeight(header.bands ?? [], header.rule) + (versionText ? BAND_ROW_TWIPS : 0),
+        : (teacherMark
+            ? Math.max(BAND_ROW_TWIPS, bandsHeight(runningHeaderBands ?? [], markOnly ? undefined : header.rule))
+            : bandsHeight(header.bands ?? [], header.rule)) + (versionText ? BAND_ROW_TWIPS : 0),
     hasFooter ? bandsHeight(footer.bands ?? [], footer.rule) : 0,
   );
 
