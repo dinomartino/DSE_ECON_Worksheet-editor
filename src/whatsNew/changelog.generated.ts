@@ -529,6 +529,28 @@ a version heading is edited afterwards.
   <!-- zh: **圖表繪製工具列在手提電腦的畫面上可放在同一行。** 視窗較窄時，複製、貼上、建立副本和刪除
   會收進一個 ⋯ 選單，工具只顯示圖示（名稱見提示），跨距工具的樣式和位置選項則顯示在圖上方。所有
   控制項仍然可用。 -->
+- **A question now starts on the page it starts on in Word.** When a question did not fit the
+  rest of a page, the page on screen and the PDF moved all of it to the next page, while Word
+  started it where it was and carried on overleaf. They now break it at the same place as
+  Word, and a heading or a last part that Word keeps with the next question moves with it.
+  A Paper 1 question too long for one page no longer runs off the bottom of the page.
+  <!-- zh: **題目現在與 Word 在同一頁開始。** 以往題目放不進該頁餘下的位置時，畫面和 PDF 會把整題移到下一頁，
+  而 Word 則在原頁開始、再續到下一頁。現在兩者在同一位置分頁；Word 會與下一題連在一起的標題或最後一個分題，
+  亦會一同移頁。Paper 1 中長過一頁的題目，不再超出頁底。 -->
+- **On a paper with a cover, the page-1 header shows where Word prints it.** With the page 1
+  header or footer set to Nothing or Its own, Word applies it to the first page after the
+  cover, but the screen and the PDF showed the usual header there. They now match Word, a
+  blank page 1 no longer prints a line across the top, and the setting says which page it
+  means.
+  <!-- zh: **設有封面的試卷，第 1 頁頁首的位置與 Word 一致。** 第 1 頁頁首或頁尾設為「不印」或「獨立設定」時，
+  Word 會套用於封面後的第一頁，但畫面和 PDF 在該頁仍顯示一般頁首。現在兩者與 Word 一致；第 1 頁不印頁首時，
+  頂部不再印出橫線；設定亦會註明所指的是哪一頁。 -->
+- **Empty header and footer rows no longer print blank lines in Word.** A row you added and
+  left empty shows nothing on the page, but the Word file printed it as a blank line, so a
+  teacher version could open with two or more empty lines above "Teacher Version". Word now
+  leaves such rows out, as the page and the PDF do.
+  <!-- zh: **空白的頁首及頁尾行不再在 Word 印出空行。** 加入後留空的行在頁面上不會顯示，但 Word 檔案會把它印成空行，
+  教師版因此可能在「Teacher Version」上方多出兩行或以上的空行。現在 Word 與頁面及 PDF 一樣略去這些行。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when

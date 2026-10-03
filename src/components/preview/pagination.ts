@@ -42,19 +42,31 @@ export interface PackItem {
   fillsPage?: boolean;
   /**
    * Where this item is allowed to break, as node indices into its own IR array, and how
-   * tall it is up to each one (§ *An item taller than a page breaks at a node boundary*).
+   * tall it is up to each one (§ *An item breaks where Word breaks it*).
    *
-   * Absent means atomic — the item packs whole, exactly as everything did before
-   * splitting existed. Present, and only consulted when the item does not fit a whole
-   * page, so an item that fits packs byte-identically either way.
+   * Absent means atomic — the item packs whole. Present, consulted only when the item
+   * does not fit the room left on its sheet.
    */
   breakPoints?: BreakPoint[];
+  /**
+   * Every node boundary, legal or not, measured like `breakPoints`. Used only for a piece
+   * already leading a sheet that no legal boundary can fit: Word breaks a keep chain longer
+   * than a page where the page ends, so the preview cuts it at the last node that fits
+   * rather than letting it run off the paper (a Paper 1 question is one chain).
+   */
+  looseBreakPoints?: BreakPoint[];
   /**
    * The measured key of what this item gains when it opens a sheet: a table continued from
    * the sheet before draws its heading rows again there (`TableNode.headerRows`), as Word
    * repeats `w:tblHeader` rows. Charged only on the sheet the item leads.
    */
   leadKey?: string;
+  /**
+   * The item's last node keeps with the next one (`keepNext`): a heading, or a part whose
+   * line Word holds against the next question's stem. Word moves that tail along when the
+   * next item's first chain does not fit (§ `pullGluedTail`).
+   */
+  keepsWithNext?: boolean;
 }
 
 /**
@@ -121,10 +133,12 @@ export function placementKey(page: number, position: number): string {
  * final table and the essay instruction, and left the preview one sheet shorter than the
  * `.docx`, which had broken the question correctly all along.
  *
- * The order matters: an item that does not fit is **moved first and split second**, so it
- * is only ever broken while it has a sheet to itself. Splitting on the way out — filling
- * the outgoing sheet's slack with the first piece — is what Word does not do, and a
- * preview that did it ended the document a sheet shorter than the export.
+ * **An item that does not fit the room left is broken the way Word breaks it**: Word knows
+ * no questions, only keep chains, so it fills the sheet up to the last legal boundary
+ * (`breakPoints`) whose head fits, and moves the item whole only when its first chain does
+ * not fit. A question whose stem fits under the previous one therefore starts on that
+ * sheet in both backends. An item with no legal boundary (a Paper 1 question is one chain)
+ * moves whole, and is only then cut if it is taller than a sheet.
  *
  * The break lands where the IR says it may: after a node whose `keepNext` is falsy
  * (`breakPoints`). That is the same chain Word reads, so the sheet the screen ends and
@@ -159,12 +173,14 @@ export function packPages<T extends PackItem>(
    * is what lets an item three pages tall cross three sheets without the loop knowing how
    * many pieces there will be.
    */
-  const queue: { item: T; piece?: Fragment }[] = items.map((item) => ({ item }));
+  const queue: { item: T; piece?: Fragment; glued?: boolean }[] = items.map((item) => ({ item }));
 
   for (let cursor = 0; cursor < queue.length; cursor += 1) {
-    const { item, piece } = queue[cursor];
+    const { item, piece, glued } = queue[cursor];
     // A piece's height is what its own range measures, not the whole item's.
-    const measured = piece ? pieceHeight(item, piece, heights) : (heights.get(item.key) ?? 0);
+    const measured = piece
+      ? pieceHeight(item, piece, heights, leadGaps)
+      : (heights.get(item.key) ?? 0);
     const current = pages[pages.length - 1];
 
     /*
@@ -186,18 +202,53 @@ export function packPages<T extends PackItem>(
       (item.fillsPage ? used >= contentHeightPx : used + measured > contentHeightPx);
 
     /*
-     * An item that does not fit moves to a fresh sheet **whole and first**, even when it is
-     * too tall to fit there either — it is only split once it is at the top of a page, by
-     * the rule below.
-     *
-     * Filling the outgoing sheet's slack with the first piece instead is the tempting
-     * wrong answer, and it is wrong twice over. Word moves the paragraph and *then*
-     * breaks it, so a preview that split early ended the document a sheet shorter than
-     * the export — the disagreement this whole change exists to remove. And a question
-     * whose opening lines trail the bottom of the previous sheet reads as a continuation
-     * of what is above it, which on a data-response question means the stem lands under
-     * somebody else's answer lines.
+     * Too tall for the room left: fill the sheet up to the last legal boundary whose head
+     * fits, as Word does (it breaks after any paragraph not kept with the next). Only when
+     * the item's first chain does not fit does it move to a fresh sheet **whole**, where
+     * the rule below splits it again if it is taller than a sheet.
      */
+    if (overflows && !mustBreak && !item.forceBreak && !item.fillsPage) {
+      // The head is not leading this sheet, so it pays its boundary gap, which the node
+      // heights are measured from below (§ `leadGaps`).
+      const room = contentHeightPx - used - (piece ? 0 : (leadGaps?.get(item.key) ?? 0));
+      const split = splitItem(item, piece, heights, room, false);
+      if (split) {
+        const target = pages[pages.length - 1];
+        fragments.set(placementKey(pages.length - 1, target.length), split.head);
+        target.push(item);
+        queue.splice(cursor + 1, 0, { item, piece: split.tail });
+        pages.push([]);
+        openedBy.push(undefined);
+        used = 0;
+        continue;
+      }
+    }
+
+    /*
+     * Moving to a fresh sheet: whatever on this one keeps with it goes too, as Word moves
+     * a keep chain whole — a heading never strands at a sheet's foot, and a question's
+     * last part travels with the next stem it is held against.
+     */
+    if (overflows && !mustBreak && !item.forceBreak && !item.fillsPage && !glued) {
+      const pulled = pullGluedTail(
+        pages[pages.length - 1],
+        pages.length - 1,
+        fragments,
+        heights,
+        leadGaps,
+        contentHeightPx - firstChainHeight(item, piece, heights, leadGaps),
+      );
+      if (pulled.length > 0) {
+        pages.push([]);
+        openedBy.push(undefined);
+        used = 0;
+        queue[cursor] = { item, piece, glued: true };
+        queue.splice(cursor, 0, ...pulled);
+        cursor -= 1;
+        continue;
+      }
+    }
+
     if (mustBreak || overflows) {
       pages.push([]);
       openedBy.push(mustBreak ? item.breakId : undefined);
@@ -230,7 +281,7 @@ export function packPages<T extends PackItem>(
      * gain by moving it again, so it breaks here or it is partly invisible.
      */
     if (!item.fillsPage && used + height > contentHeightPx) {
-      const split = splitItem(item, piece, heights, contentHeightPx - used);
+      const split = splitItem(item, piece, heights, contentHeightPx - used, true);
       if (split) {
         const target = pages[pages.length - 1];
         fragments.set(placementKey(pages.length - 1, target.length), split.head);
@@ -277,6 +328,82 @@ export function packPages<T extends PackItem>(
 }
 
 /**
+ * How tall an item's first keep chain is, gap included: up to its first legal boundary,
+ * or the whole of it when it has none.
+ */
+function firstChainHeight<T extends PackItem>(
+  item: T,
+  piece: Fragment | undefined,
+  heights: Map<string, number>,
+  leadGaps?: Map<string, number>,
+): number {
+  const whole = piece ? pieceHeight(item, piece, heights, leadGaps) : (heights.get(item.key) ?? 0);
+  const from = piece?.from ?? 0;
+  const first = (item.breakPoints ?? []).find((point) => point.index >= from && point.index < (piece?.to ?? Number.MAX_SAFE_INTEGER));
+  if (!first) return whole;
+  const before =
+    from > 0 ? pieceHeight(item, { from: 0, to: from - 1, continued: false }, heights) : 0;
+  return first.height - before + (piece ? 0 : (leadGaps?.get(item.key) ?? 0));
+}
+
+/**
+ * Take off the end of a sheet what keeps with the item about to move past it.
+ *
+ * Walks back over placements whose last node keeps with the next (`keepsWithNext`). One
+ * with a legal boundary inside it is split there and only its tail moves; one without
+ * moves whole, and the walk goes on to the one before. Returns the pieces to pack at the
+ * top of the next sheet, in order — or nothing, when the chain would not fit `room` there
+ * (Word lets a chain longer than a page break) or would leave the sheet empty.
+ *
+ * Mutates `page` and `fragments` only when it returns something.
+ */
+function pullGluedTail<T extends PackItem>(
+  page: T[],
+  pageIndex: number,
+  fragments: Map<string, Fragment>,
+  heights: Map<string, number>,
+  leadGaps: Map<string, number> | undefined,
+  room: number,
+): { item: T; piece?: Fragment }[] {
+  const moved: { item: T; piece?: Fragment }[] = [];
+  let left = room;
+  let split: { position: number; head: Fragment } | undefined;
+  let position = page.length - 1;
+  for (; position >= 0; position -= 1) {
+    const prev = page[position];
+    if (!prev.keepsWithNext || prev.structural || prev.forceBreak || prev.fillsPage) break;
+    const placed = fragments.get(placementKey(pageIndex, position));
+    const from = placed?.from ?? 0;
+    const to = placed?.to ?? Number.MAX_SAFE_INTEGER;
+    const inside = (prev.breakPoints ?? []).filter((point) => point.index >= from && point.index < to);
+    const boundary = inside[inside.length - 1];
+    if (boundary) {
+      const tail: Fragment = { from: boundary.index + 1, to, continued: true };
+      if (pieceHeight(prev, tail, heights, leadGaps) > left) return [];
+      split = { position, head: { from, to: boundary.index, continued: placed?.continued ?? false } };
+      moved.unshift({ item: prev, piece: tail });
+      break;
+    }
+    // Moving the sheet's only content gains nothing: the next sheet is no roomier.
+    if (position === 0) return [];
+    const whole = placed
+      ? pieceHeight(prev, placed, heights, leadGaps)
+      : Math.max(0, (heights.get(prev.key) ?? 0) - (leadGaps?.get(prev.key) ?? 0));
+    if (whole > left) return [];
+    left -= whole;
+    moved.unshift({ item: prev, piece: placed });
+  }
+  if (moved.length === 0) return [];
+
+  // Commit: drop the whole placements off the sheet, and cut the split one.
+  const keep = split ? split.position + 1 : position + 1;
+  for (let at = keep; at < page.length; at += 1) fragments.delete(placementKey(pageIndex, at));
+  page.length = keep;
+  if (split) fragments.set(placementKey(pageIndex, split.position), split.head);
+  return moved;
+}
+
+/**
  * How tall one piece of an item is.
  *
  * Read off the same cumulative `breakPoints` the split chose from, so a piece's height and
@@ -289,9 +416,15 @@ function pieceHeight<T extends PackItem>(
   item: T,
   piece: Fragment,
   heights: Map<string, number>,
+  /**
+   * The item's boundary gap. The node heights are measured from below it, the item's
+   * own height from above it, so a tail ending at the item's end subtracts it.
+   */
+  leadGaps?: Map<string, number>,
 ): number {
   const total = heights.get(item.key) ?? 0;
-  const points = item.breakPoints;
+  // The loose points include every legal one, so a cut at either kind measures right.
+  const points = item.looseBreakPoints?.length ? item.looseBreakPoints : item.breakPoints;
   if (!points || points.length === 0) return total;
   const upTo = (index: number) => {
     if (index < 0) return 0;
@@ -304,7 +437,8 @@ function pieceHeight<T extends PackItem>(
   };
   // `to` beyond the last break point means "to the end", whose height is the measured one.
   const lastPoint = points[points.length - 1];
-  const end = piece.to >= lastPoint.index ? total : upTo(piece.to);
+  const end =
+    piece.to >= lastPoint.index ? total - (leadGaps?.get(item.key) ?? 0) : upTo(piece.to);
   return Math.max(0, end - upTo(piece.from - 1));
 }
 
@@ -321,36 +455,41 @@ function pieceHeight<T extends PackItem>(
  * boundary that fits wins** — filling the sheet is what keeps the preview's page count
  * equal to the export's.
  *
- * When no legal boundary fits the room, the **first** one is taken anyway: the caller only
- * asks after the item has a sheet to itself, so there is no more room to be had, and the
- * alternative is the silent overflow this replaced. That is the oversized-atom case — a
- * source frame taller than a page — and a frame cut across two sheets is at least a thing
- * a teacher can see and shorten, which content hanging off the paper is not.
+ * `forced` is set only once the piece leads a sheet, so there is no more room to be had.
+ * Then a chain no legal boundary can fit is cut at the last node that fits
+ * (`looseBreakPoints`), as Word cuts a keep chain longer than a page; failing that, at
+ * the **first** boundary anyway. That is the oversized-atom case — a source frame taller
+ * than a page — and a frame cut across two sheets is at least a thing a teacher can see
+ * and shorten, which content hanging off the paper is not. Unforced, only a legal
+ * boundary that fits will do: otherwise the item moves whole.
  */
 function splitItem<T extends PackItem>(
   item: T,
   piece: Fragment | undefined,
   heights: Map<string, number>,
   room: number,
+  forced: boolean,
 ): { head: Fragment; tail: Fragment } | undefined {
-  const points = item.breakPoints;
-  if (!points || points.length === 0) return undefined;
-
   const from = piece?.from ?? 0;
   const to = piece?.to ?? Number.MAX_SAFE_INTEGER;
+  // Boundaries strictly inside this piece: one at its own end would leave an empty tail.
+  const within = (points: BreakPoint[] | undefined) =>
+    (points ?? []).filter((point) => point.index >= from && point.index < to);
+  const inside = within(item.breakPoints);
+  const loose = forced ? within(item.looseBreakPoints) : [];
+  if (inside.length === 0 && loose.length === 0) return undefined;
+
   const before =
     from > 0 ? pieceHeight(item, { from: 0, to: from - 1, continued: false }, heights) : 0;
+  const lastFitting = (points: BreakPoint[]) =>
+    points.filter((point) => point.height - before <= room).pop();
 
-  // Boundaries strictly inside this piece: one at its own end would leave an empty tail.
-  const inside = points.filter((point) => point.index >= from && point.index < to);
-  if (inside.length === 0) return undefined;
-
-  const fits = inside.filter((point) => point.height - before <= room);
-  const forced = fits.length > 0 ? fits[fits.length - 1] : inside[0];
+  const chosen = lastFitting(inside) ?? (forced ? (lastFitting(loose) ?? inside[0] ?? loose[0]) : undefined);
+  if (!chosen) return undefined;
 
   return {
-    head: { from, to: forced.index, continued: piece?.continued ?? false },
-    tail: { from: forced.index + 1, to, continued: true },
+    head: { from, to: chosen.index, continued: piece?.continued ?? false },
+    tail: { from: chosen.index + 1, to, continued: true },
   };
 }
 
@@ -501,7 +640,7 @@ export function resolveFillCounts<T extends PackItem>(
     const used = page.reduce((sum, item, position) => {
       if (fillPitchOf(item.key) !== undefined) return sum;
       const piece = fragments?.get(placementKey(pageIndex, position));
-      if (piece) return sum + pieceHeight(item, piece, heights);
+      if (piece) return sum + pieceHeight(item, piece, heights, leadGaps);
       const lead = position === 0 ? (leadGaps?.get(item.key) ?? 0) : 0;
       return sum + Math.max(0, (heights.get(item.key) ?? 0) - lead);
     }, 0);

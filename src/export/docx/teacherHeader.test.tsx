@@ -97,6 +97,24 @@ describe('the Teacher version marker in the running header', () => {
     for (const page of [1, 2]) expect(htmlText(preview(ws, page, mode))).toBe(`${MARK}Version B`);
   });
 
+  it('prints no blank lines for empty header rows, as the page draws none', () => {
+    const paragraphs = (xml = '') => xml.match(/<w:p>/g)?.length ?? 0;
+    // Three empty rows: Word printed two blank lines above the marker.
+    const blank = sheet(header({ bands: [row(''), row(''), row('')] }));
+    const parts = buildDocxParts(blank, TEACHER);
+    expect(plainText(parts.headerFooter.header)).toBe(MARK);
+    expect(paragraphs(parts.headerFooter.header)).toBe(1);
+    expect(htmlText(preview(blank, 2))).toBe(MARK);
+
+    // Empty rows under authored text: one line, with the rule under it.
+    const mixed = sheet(header({ bands: [row('S5 Economics'), row(''), row('')] }));
+    for (const mode of [TEACHER, { language: 'en', version: 'student' } as OutputMode]) {
+      const xml = buildDocxParts(mixed, mode).headerFooter.header;
+      expect(paragraphs(xml)).toBe(mode.version === 'teacher' ? 2 : 1);
+      expect(xml).toContain('w:pBdr');
+    }
+  });
+
   it('leaves the student copy alone', () => {
     const student: OutputMode = { language: 'en', version: 'student' };
     expect(buildDocxParts(sheet(undefined), student).headerFooter.header).toBeUndefined();

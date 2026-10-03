@@ -19,7 +19,7 @@ import { listIndentScheme } from '@/model/numbering';
 import { bandFieldPrintSides, bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
 import { versionHeaderText } from '@/model/versions';
-import { TEACHER_HEADER_JOIN, TEACHER_HEADER_MARK, teacherMarkPlacement } from '@/model/headerMarks';
+import { bandPrints, TEACHER_HEADER_JOIN, TEACHER_HEADER_MARK, teacherMarkPlacement } from '@/model/headerMarks';
 import { furnitureHeaderXml } from './furniture';
 import { plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
@@ -301,16 +301,22 @@ function headerFooterLayout(
   width: number,
   ruleEdge: 'top' | 'bottom',
   totalMarks: number,
+  /** A row kept even when it prints nothing: the one the teacher marker is written into. */
+  keepBandId?: string,
 ): HeaderFooterLayout {
   return {
-    rows: (bands ?? []).map((band) => {
-      const zones = zonesOf(band);
-      return {
-        left: zoneRuns(zones.left, fonts, language, totalMarks),
-        center: zoneRuns(zones.center, fonts, language, totalMarks),
-        right: zoneRuns(zones.right, fonts, language, totalMarks),
-      };
-    }),
+    // A row that prints nothing is a zero-height line on the page; in Word it was a blank
+    // line, so a header of empty rows printed blank lines the preview did not.
+    rows: (bands ?? [])
+      .filter((band) => band.id === keepBandId || bandPrints(band, { totalMarks }, language))
+      .map((band) => {
+        const zones = zonesOf(band);
+        return {
+          left: zoneRuns(zones.left, fonts, language, totalMarks),
+          center: zoneRuns(zones.center, fonts, language, totalMarks),
+          right: zoneRuns(zones.right, fonts, language, totalMarks),
+        };
+      }),
     contentWidth: width,
     rule,
     ruleEdge,
@@ -422,11 +428,15 @@ function buildParts(
   const markOnly = Boolean(teacherMark) && !isHeaderFooterActive(header);
   const runningHeaderBands = teacherMark && !header.enabled ? [] : header.bands;
 
+  const place = teacherMark
+    ? teacherMarkPlacement(header, { totalMarks: worksheetMarks(worksheet) }, mode.language)
+    : undefined;
   const headerLayout = headerFooterLayout(
     runningHeaderBands, markOnly ? undefined : header.rule, fonts, mode.language, textWidth, 'bottom', worksheetMarks(worksheet),
+    // The marker's row stays even when blank: the marker is what it prints.
+    place?.bandId,
   );
-  if (teacherMark) {
-    const place = teacherMarkPlacement(header, { totalMarks: worksheetMarks(worksheet) }, mode.language);
+  if (place) {
     const row = headerLayout.rows[headerLayout.rows.length - 1];
     if (place.alone || !row) {
       const alone = run(TEACHER_HEADER_MARK, fonts, { bold: true });

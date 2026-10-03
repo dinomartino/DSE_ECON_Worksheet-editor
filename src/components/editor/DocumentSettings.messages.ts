@@ -196,6 +196,10 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
     en: (which: Edge) => `${which === 'header' ? 'Header' : 'Footer'} on page 1`,
     zh: (which: Edge) => `第 1 頁${zhEdge(which)}`,
   },
+  page1AfterCover: {
+    en: 'On a paper with a cover, page 1 is the first page after the cover.',
+    zh: '設有封面的試卷，第 1 頁即封面後的第一頁。',
+  },
   edgeOnLater: {
     en: (which: Edge) => `${which === 'header' ? 'Header' : 'Footer'} on pages 2+`,
     zh: (which: Edge) => `第 2 頁起${zhEdge(which)}`,

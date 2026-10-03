@@ -483,9 +483,8 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
           gapLines: atTrueTop
             ? 0
             : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0)),
-          // Kept whole in Word as an exam question is: the preview's paginator never
-          // splits an item, so without the chain the .docx stranded the lead-in at a
-          // page bottom the screen had pushed whole.
+          // Kept whole as an exam question is, in Word and so in the preview, which
+          // reads the same chain (§ keepQuestionWhole).
           keepWhole: shape === 'paper1',
         };
       }
@@ -530,9 +529,8 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     const wanted = boundaryGapLines(shape, previous, question, worksheet.examGapLines);
     const gap = atTrueTop ? 0 : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0));
 
-    // On the exam paper a question is kept whole in Word too — the preview's paginator
-    // never splits an item, so without the keep chain the .docx broke pages in
-    // different places than the screen (§ keepQuestionWhole).
+    // On the exam paper a question is kept whole, in Word and so in the preview, which
+    // reads the same keep chain (§ keepQuestionWhole).
     const keepWhole = shape === 'paper1';
 
     // The leading gap is part of the cached array, so an unchanged question hands back
@@ -713,11 +711,10 @@ interface StimulusRender {
 
 /**
  * Word's keep-together, spelled over one question's nodes: every node but the last
- * keeps with the next, and a text or columns row keeps its own lines. The preview's
- * paginator never splits an item, so without this the .docx let Word break a question
- * across pages the screen had pushed whole to the next sheet — the two disagreed
- * about every page from there on. The last node stays free, or the chain would run
- * through the boundary gap and glue every question to the next.
+ * keeps with the next, and a text or columns row keeps its own lines. The exam paper
+ * keeps each question on one sheet; the preview's paginator reads the same chain, so
+ * both move it whole (§ An item breaks where Word breaks it). The last node stays free,
+ * or the chain would run through the boundary gap and glue every question to the next.
  */
 function keepQuestionWhole(nodes: RenderNode[]): RenderNode[] {
   return nodes.map((node, index) => {

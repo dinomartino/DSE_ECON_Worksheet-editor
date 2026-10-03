@@ -2794,6 +2794,7 @@ export function HeaderFooterBand({
   language,
   edge,
   pageNumber,
+  firstOfSection = pageNumber === 1,
   pageCount,
   totalMarks,
   editing,
@@ -2810,6 +2811,12 @@ export function HeaderFooterBand({
   teacherMark?: boolean;
   /** 1-based index of the sheet this band belongs to. */
   pageNumber: number;
+  /**
+   * The body's first sheet, which prints page 1's header and footer. Word's `w:titlePg`
+   * belongs to the body section, so on a paper with a cover this is sheet 2 (the cover
+   * is its own section). Defaults to `pageNumber === 1`.
+   */
+  firstOfSection?: boolean;
   pageCount: number;
   totalMarks: number;
   /**
@@ -2841,14 +2848,14 @@ export function HeaderFooterBand({
    */
   const m = useMessages(PREVIEW_MESSAGES);
   const resolved =
-    pageNumber === 1
+    firstOfSection
       ? firstPageHeaderFooter(value)
       : { bands: value.bands ?? [], rule: value.rule, differs: false };
 
   // Derived and read-only: the last row, under the running rows wherever they print, or
   // the whole header (every page, no rule) when the document's own prints nothing.
   const versionAlone = versionRow !== undefined && versionRowStandsAlone(value);
-  const derivedHere = pageNumber !== 1 || derivedMarksOnPageOne(value, versionRow !== undefined);
+  const derivedHere = !firstOfSection || derivedMarksOnPageOne(value, versionRow !== undefined);
   const versionLine =
     versionRow !== undefined && derivedHere ? (
       <div className="flex items-baseline justify-end">
@@ -2880,7 +2887,7 @@ export function HeaderFooterBand({
 
   // Which row list a structural edit here belongs to (`pageBandScope`): page 1 edits the
   // running rows only in "same" mode, so a row added to a blank page 1 becomes its own.
-  const scope: BandScope = pageBandScope(value, pageNumber);
+  const scope: BandScope = pageBandScope(value, firstOfSection ? 1 : Math.max(2, pageNumber));
 
   /*
    * An empty band list still renders while editing, so there is somewhere to put the
@@ -2898,7 +2905,9 @@ export function HeaderFooterBand({
   const drawsBands = bandsShouldRender(bands, Boolean(editing) || Boolean(editable));
   const markLine = markLineOf(drawsBands ? bands : []);
   if (!drawsBands && !versionLine && !markLine) return null;
-  const rule = versionAlone || markOnly ? false : resolved.rule;
+  // A blank page 1 is an empty part in Word, with no rule under nothing.
+  const blankHere = resolved.differs && resolved.bands.length === 0;
+  const rule = versionAlone || markOnly || blankHere ? false : resolved.rule;
   const trail: BandTrail | undefined =
     place?.bandId && drawsBands && !markLine
       ? {
@@ -3632,17 +3641,22 @@ export function breakAfterNodes(nodes: RenderNode[]): number[] {
   return indices;
 }
 
+/** Whether an item's last node keeps with whatever follows it, as Word reads `keepNext`. */
+export function keepsWithNext(nodes: RenderNode[]): boolean {
+  const last = nodes[nodes.length - 1];
+  return Boolean(last && 'keepNext' in last && last.keepNext);
+}
+
 /**
  * Splits the flow across real sheets. Pagination is *measured*, not computed (only
  * the browser knows font metrics, bilingual stacking and wrapping): the flow renders
  * once in a hidden probe at true content width, heights are recorded, blocks pack
  * into page-height buckets.
  *
- * A block that fits is kept whole. One **taller than a whole page** is broken at a node
- * boundary its IR declares legal, because the alternative — the rule this replaced — was
- * to give it its own sheet and let the remainder hang off the paper, where it printed over
- * the footer and was then simply missing (§ `packPages`). The probe therefore measures
- * each block's *nodes* as well as the block, so the packer has boundaries to choose from.
+ * A block that fits is kept whole. One that does not is broken where Word breaks it: at
+ * the last boundary its IR's `keepNext` chain allows that fits (§ `packPages`). The probe
+ * therefore measures each block's *nodes* as well as the block, so the packer has
+ * boundaries to choose from.
  */
 /** Never mutated: each measurement is a new map. */
 const NO_HEIGHTS: Map<string, number> = new Map();
@@ -3810,11 +3824,15 @@ export function usePagination(
     () =>
       blocks.map((block) => {
         const tops = nodeHeights.get(block.key);
-        if (!tops || !block.breakAfter || block.breakAfter.length === 0) return block;
+        if (!tops || !block.breakAfter || tops.length < 2) return block;
         const breakPoints = block.breakAfter
           .filter((index) => index < tops.length - 1)
           .map((index) => ({ index, height: tops[index] }));
-        return breakPoints.length > 0 ? { ...block, breakPoints } : block;
+        // Every node boundary, for a keep chain longer than a sheet (§ `looseBreakPoints`).
+        const looseBreakPoints = tops.slice(0, -1).map((height, index) => ({ index, height }));
+        return breakPoints.length > 0
+          ? { ...block, breakPoints, looseBreakPoints }
+          : { ...block, looseBreakPoints };
       }),
     [blocks, nodeHeights],
   );
@@ -3931,7 +3949,7 @@ interface ItemBodyProps {
   onSelect: (event: React.MouseEvent) => void;
   /**
    * The slice of the item's nodes this copy renders, when it was split across sheets
-   * (§ *An item taller than a page breaks at a node boundary*). Absent renders all of
+   * (§ *An item breaks where Word breaks it*). Absent renders all of
    * them, which is every item in a document with nothing too tall in it.
    */
   range?: { from: number; to: number };
@@ -6413,6 +6431,10 @@ export function Preview({
             : breakAfterNodes(
                 item.type === 'question' ? item.question.nodes : item.layout.nodes,
               ),
+        keepsWithNext:
+          !isManualBreak && !fillsPage && keepsWithNext(
+            item.type === 'question' ? item.question.nodes : item.layout.nodes,
+          ),
         node: wrap(bodyFor()),
         slice: (range) => wrap(bodyFor(range)),
       });
@@ -6984,6 +7006,7 @@ export function Preview({
                   language={language}
                   edge="header"
                   pageNumber={pageIndex + 1 + pageNumberOffset}
+                  firstOfSection={pageIndex === 0}
                   pageCount={pages.length + pageNumberOffset}
                   totalMarks={worksheetMarks(worksheet)}
                   // Editing handlers are withheld while the region is idle, so the band
@@ -7100,6 +7123,7 @@ export function Preview({
                   language={language}
                   edge="footer"
                   pageNumber={pageIndex + 1 + pageNumberOffset}
+                  firstOfSection={pageIndex === 0}
                   pageCount={pages.length + pageNumberOffset}
                   totalMarks={worksheetMarks(worksheet)}
                   editing={
