@@ -516,6 +516,11 @@ a version heading is edited afterwards.
   accent colour.
   <!-- zh: **深色模式下的剔選方格不再刺眼。** 題庫（以及程式其他地方）的剔選方格現在以深色顯示，
   與深色面板一致，已剔選的方格則以強調色顯示。 -->
+- **Older long questions keep "Set on the whole question".** A long question whose topics
+  were set on the whole question, with copies in two or more worksheets, showed each part's
+  topics as set on that part. Its Topic row now says they are set on the whole question.
+  <!-- zh: **較舊的長題目會保留「已設定於整條題目」。** 課題設定於整條題目、並在兩份或以上工作紙有
+  副本的長題目，以往會把每個分題的課題顯示為該分題自己的設定。現在課題列會說明課題設定於整條題目。 -->
 
 ## 0.5.0 — 2026-09-28
 

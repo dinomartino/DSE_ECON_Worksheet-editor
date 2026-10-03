@@ -192,6 +192,18 @@ describe('sharedState: per-part topics across copies', () => {
     expect(union.slots.map((slot) => slot.own)).toEqual([['C.equilibrium', 'C.ped'], ['C.equilibrium']]);
   });
 
+  it('keeps the union on the whole question when no copy tagged a part (older, unstamped copies)', () => {
+    const legacy = { ...partedQuestion([{}, { subs: [undefined] }]), tags: ['C.equilibrium', 'mock'] };
+    const copy = { ...copyQuestion(legacy, 'bank'), tags: ['C.ped', 'C.equilibrium'] };
+    const shared = sharedState([at(legacy), at(copy)]);
+    expect(shared.tagsAt).toBeUndefined();
+    expect(shared.state.tags).toEqual(['C.equilibrium', 'mock', 'C.ped']);
+    // Every part inherits, as the editor's "Set on the whole question" note reads it.
+    expect(shared.state.slots.map((slot) => slot.own)).toEqual([undefined, undefined, undefined]);
+    const shown = stateFor(tagStateOf(copy), shared.state);
+    expect(shown.slots.every((slot) => !slot.own)).toBe(true);
+  });
+
   it('is sharedTags for copies without parts', () => {
     const copies = [
       { state: { tags: ['C', 'mock'], slots: [] }, tagsAt: T1 },
