@@ -51,12 +51,13 @@ function schemeSlot(target: SchemeTarget): SchemeTextSlot {
   }
 }
 
-/** A leaf that may carry a scheme: a part, or a sub-part. Read structurally (§ registry). */
+/** A leaf that may carry a scheme: a part, a sub-part or an essay. Read structurally (§ registry). */
 type SchemeLeaf = { id: string; scheme?: MarkScheme; subParts?: SchemeLeaf[] };
 
 /** The scheme of the leaf a scheme target addresses. */
 function targetScheme(worksheet: Worksheet, target: SchemeTarget): MarkScheme | undefined {
   const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+  if (target.partId === undefined) return (question as { scheme?: MarkScheme } | undefined)?.scheme;
   const part = (question as { parts?: SchemeLeaf[] } | undefined)?.parts?.find(
     (entry) => entry.id === target.partId,
   );
@@ -75,6 +76,7 @@ function applySchemeText(worksheet: Worksheet, target: SchemeTarget, text: BiTex
   if (next === scheme) return worksheet;
   const write = (leaf: SchemeLeaf): SchemeLeaf => ({ ...leaf, scheme: next });
   return mapQuestionById(worksheet, target.questionId, (question) => {
+    if (target.partId === undefined) return { ...question, scheme: next } as Question;
     const parts = (question as { parts?: SchemeLeaf[] }).parts;
     if (!parts) return question;
     return {
@@ -326,6 +328,8 @@ export function editTargetKey(target: EditTarget): string {
       return `mcqRationale:${target.optionId}`;
     case 'mcqProvenance':
       return `mcqProvenance:${target.questionId}`;
+    case 'questionAnswer':
+      return `questionAnswer:${target.questionId}`;
     case 'partAnswer':
       return `partAnswer:${target.partId}`;
     case 'subPartAnswer':
@@ -867,6 +871,13 @@ export function applyEditTarget(
         (question) => withNote(question, 'provenance', text) as Question,
       );
 
+    case 'questionAnswer':
+      return mapQuestionById(
+        worksheet,
+        target.questionId,
+        (question) => ({ ...question, answer: text }) as Question,
+      );
+
     case 'partAnswer':
       return mapQuestionById(worksheet, target.questionId, (question) => {
         const parts = (question as { parts?: Array<{ id: string }> }).parts;
@@ -1170,6 +1181,10 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
     case 'mcqProvenance': {
       const question = worksheet.questions.find((entry) => entry.id === target.questionId);
       return (question as { provenance?: BiText } | undefined)?.provenance;
+    }
+    case 'questionAnswer': {
+      const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+      return (question as { answer?: BiText } | undefined)?.answer;
     }
     case 'partAnswer': {
       const question = worksheet.questions.find((entry) => entry.id === target.questionId);
@@ -1520,6 +1535,7 @@ export function describeDelete(target: EditTarget): DeletePlan | undefined {
       return { kind: 'answer', label: 'rationale' };
     case 'mcqProvenance':
       return { kind: 'answer', label: 'source note' };
+    case 'questionAnswer':
     case 'partAnswer':
     case 'subPartAnswer':
       return { kind: 'answer', label: 'answer' };
@@ -1696,6 +1712,13 @@ export function applyDeleteTarget(worksheet: Worksheet, target: EditTarget): Wor
     case 'mcqRationale':
     case 'mcqProvenance':
       return applyEditTarget(worksheet, target, EMPTY);
+
+    case 'questionAnswer':
+      return mapQuestionById(
+        worksheet,
+        target.questionId,
+        (question) => ({ ...question, answer: undefined }) as Question,
+      );
 
     case 'partAnswer':
       return mapQuestionById(worksheet, target.questionId, (question) => {

@@ -1,0 +1,1949 @@
+{
+  "schemaVersion": 2,
+  "id": "v2-published-corpus",
+  "title": {
+    "en": [
+      {
+        "text": "S5 Economics Mock Examination"
+      }
+    ],
+    "zh": [
+      {
+        "text": "中五經濟科模擬試"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions in Section A."
+      }
+    ],
+    "zh": [
+      {
+        "text": "甲部所有題目均須作答。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1296,
+      "right": 1296,
+      "bottom": 1440,
+      "left": 1296
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "id002",
+        "zones": {
+          "left": [
+            {
+              "kind": "pageNumber",
+              "id": "id003",
+              "pattern": "plain",
+              "prefix": {
+                "en": [
+                  {
+                    "text": "2026-27-ECON 2–"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "2026-27-ECON 2–"
+                  }
+                ]
+              },
+              "format": {
+                "fontSize": 9
+              }
+            }
+          ],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "id004",
+              "pattern": "plain",
+              "format": {
+                "fontSize": 14
+              }
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "id005",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "id006",
+          "text": {
+            "en": [
+              {
+                "text": "A city plans to turn a harbour-front car park into a public garden."
+              }
+            ],
+            "zh": [
+              {
+                "text": "某城市計劃將海旁停車場改建為公園。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "id007",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "id008",
+              "text": {
+                "en": [
+                  {
+                    "text": "State the opportunity cost of the plan."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "寫出該計劃的機會成本。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2,
+          "answerSpace": 5
+        },
+        {
+          "id": "id009",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "id010",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain ONE reason why the garden may be under-provided by the market."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋市場可能對公園供應不足的"
+                  },
+                  {
+                    "text": "一個",
+                    "bold": true
+                  },
+                  {
+                    "text": "原因。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "answerSpace": 8
+        }
+      ]
+    },
+    {
+      "id": "id011",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "id012",
+          "text": {
+            "en": [
+              {
+                "text": "Study Source A."
+              }
+            ],
+            "zh": [
+              {
+                "text": "細閱資料 A。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "source",
+          "id": "id013",
+          "label": {
+            "en": [
+              {
+                "text": "Source A: "
+              }
+            ],
+            "zh": [
+              {
+                "text": "資料A："
+              }
+            ]
+          },
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "id014",
+              "text": {
+                "en": [
+                  {
+                    "text": "The market for rice."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "白米市場。"
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "diagram",
+              "id": "id015",
+              "diagram": {
+                "title": {
+                  "en": [
+                    {
+                      "text": "Figure 1"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "圖 1"
+                    }
+                  ]
+                },
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "數量"
+                      }
+                    ]
+                  }
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Price"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "id016",
+                    "points": [
+                      {
+                        "x": 0.1,
+                        "y": 0.9
+                      },
+                      {
+                        "x": 0.9,
+                        "y": 0.1
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D₀"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D₀"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "id017",
+                    "points": [
+                      {
+                        "x": 0.1,
+                        "y": 0.1
+                      },
+                      {
+                        "x": 0.9,
+                        "y": 0.9
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "S"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "S"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "id018",
+                    "points": [
+                      {
+                        "x": 0.25,
+                        "y": 0.95
+                      },
+                      {
+                        "x": 0.95,
+                        "y": 0.25
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D₁"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D₁"
+                        }
+                      ]
+                    },
+                    "labelAt": "end",
+                    "answer": true
+                  },
+                  {
+                    "id": "id019",
+                    "points": [
+                      {
+                        "x": 0.25,
+                        "y": 0.95
+                      },
+                      {
+                        "x": 0.6,
+                        "y": 0.25
+                      }
+                    ],
+                    "shape": "straight",
+                    "derive": {
+                      "kind": "marginalRevenue",
+                      "of": "id018"
+                    }
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "id020",
+                    "at": {
+                      "x": 0.5,
+                      "y": 0.5
+                    },
+                    "anchor": {
+                      "cross": [
+                        "id016",
+                        "id017"
+                      ]
+                    },
+                    "label": {
+                      "en": [
+                        {
+                          "text": "E₀"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "E₀"
+                        }
+                      ]
+                    },
+                    "dot": true
+                  },
+                  {
+                    "id": "id021",
+                    "at": {
+                      "x": 0.6,
+                      "y": 0.6
+                    },
+                    "anchor": {
+                      "cross": [
+                        "id018",
+                        "id017"
+                      ]
+                    },
+                    "label": {
+                      "en": [
+                        {
+                          "text": "E₁"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "E₁"
+                        }
+                      ]
+                    },
+                    "dot": true,
+                    "dropTo": [
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "id": "id022",
+                    "at": {
+                      "x": 0.7,
+                      "y": 0.5
+                    },
+                    "answer": true,
+                    "label": {
+                      "en": [
+                        {
+                          "text": "A"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "A"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "labels": [
+                  {
+                    "id": "id023",
+                    "at": {
+                      "x": 0.75,
+                      "y": 0.85
+                    },
+                    "text": {
+                      "en": [
+                        {
+                          "text": "Income rises"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "收入上升"
+                        }
+                      ]
+                    },
+                    "answer": true
+                  }
+                ],
+                "arrows": [
+                  {
+                    "id": "id024",
+                    "from": {
+                      "x": 0.55,
+                      "y": 0.3
+                    },
+                    "to": {
+                      "x": 0.68,
+                      "y": 0.43
+                    },
+                    "answer": true
+                  }
+                ],
+                "areas": [
+                  {
+                    "id": "id025",
+                    "band": {
+                      "edges": [
+                        {
+                          "curve": "id016"
+                        },
+                        {
+                          "level": {
+                            "point": "id020"
+                          }
+                        }
+                      ],
+                      "from": 0,
+                      "to": {
+                        "point": "id020"
+                      }
+                    }
+                  },
+                  {
+                    "id": "id026",
+                    "band": {
+                      "edges": [
+                        {
+                          "curve": "id018"
+                        },
+                        {
+                          "level": {
+                            "point": "id021"
+                          }
+                        }
+                      ],
+                      "from": 0,
+                      "to": {
+                        "point": "id021"
+                      }
+                    }
+                  },
+                  {
+                    "id": "id027",
+                    "band": {
+                      "edges": [
+                        {
+                          "curve": "id016"
+                        },
+                        {
+                          "level": {
+                            "point": "id020"
+                          }
+                        }
+                      ],
+                      "from": 0,
+                      "to": {
+                        "point": "id020"
+                      }
+                    },
+                    "answer": true
+                  }
+                ],
+                "spans": [
+                  {
+                    "id": "id028",
+                    "from": {
+                      "point": "id020"
+                    },
+                    "to": {
+                      "point": "id021"
+                    },
+                    "style": "arrow",
+                    "along": "x"
+                  },
+                  {
+                    "id": "id029",
+                    "from": {
+                      "x": 0.2,
+                      "y": 0.2
+                    },
+                    "to": {
+                      "x": 0.3,
+                      "y": 0.2
+                    },
+                    "style": "bracket",
+                    "answer": true
+                  }
+                ]
+              },
+              "widthPx": 400,
+              "heightPx": 384,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Rice market"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "Rice market"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "id": "id030",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "id031",
+              "text": {
+                "en": [
+                  {
+                    "text": "Draw the effect of a rise in income in Figure 1."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "在圖 1 中繪畫收入上升的影響。"
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "diagram",
+              "id": "id032",
+              "diagram": {
+                "title": {
+                  "en": [
+                    {
+                      "text": "Figure 1"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "圖 1"
+                    }
+                  ]
+                },
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "數量"
+                      }
+                    ]
+                  }
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Price"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "id016",
+                    "points": [
+                      {
+                        "x": 0.1,
+                        "y": 0.9
+                      },
+                      {
+                        "x": 0.9,
+                        "y": 0.1
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D₀"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D₀"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "id017",
+                    "points": [
+                      {
+                        "x": 0.1,
+                        "y": 0.1
+                      },
+                      {
+                        "x": 0.9,
+                        "y": 0.9
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "S"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "S"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "id018",
+                    "points": [
+                      {
+                        "x": 0.25,
+                        "y": 0.95
+                      },
+                      {
+                        "x": 0.95,
+                        "y": 0.25
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D₁"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D₁"
+                        }
+                      ]
+                    },
+                    "labelAt": "end",
+                    "answer": true
+                  },
+                  {
+                    "id": "id019",
+                    "points": [
+                      {
+                        "x": 0.25,
+                        "y": 0.95
+                      },
+                      {
+                        "x": 0.6,
+                        "y": 0.25
+                      }
+                    ],
+                    "shape": "straight",
+                    "derive": {
+                      "kind": "marginalRevenue",
+                      "of": "id018"
+                    }
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "id020",
+                    "at": {
+                      "x": 0.5,
+                      "y": 0.5
+                    },
+                    "anchor": {
+                      "cross": [
+                        "id016",
+                        "id017"
+                      ]
+                    },
+                    "label": {
+                      "en": [
+                        {
+                          "text": "E₀"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "E₀"
+                        }
+                      ]
+                    },
+                    "dot": true
+                  },
+                  {
+                    "id": "id021",
+                    "at": {
+                      "x": 0.6,
+                      "y": 0.6
+                    },
+                    "anchor": {
+                      "cross": [
+                        "id018",
+                        "id017"
+                      ]
+                    },
+                    "label": {
+                      "en": [
+                        {
+                          "text": "E₁"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "E₁"
+                        }
+                      ]
+                    },
+                    "dot": true,
+                    "dropTo": [
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "id": "id022",
+                    "at": {
+                      "x": 0.7,
+                      "y": 0.5
+                    },
+                    "answer": true,
+                    "label": {
+                      "en": [
+                        {
+                          "text": "A"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "A"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "labels": [
+                  {
+                    "id": "id023",
+                    "at": {
+                      "x": 0.75,
+                      "y": 0.85
+                    },
+                    "text": {
+                      "en": [
+                        {
+                          "text": "Income rises"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "收入上升"
+                        }
+                      ]
+                    },
+                    "answer": true
+                  }
+                ],
+                "arrows": [
+                  {
+                    "id": "id024",
+                    "from": {
+                      "x": 0.55,
+                      "y": 0.3
+                    },
+                    "to": {
+                      "x": 0.68,
+                      "y": 0.43
+                    },
+                    "answer": true
+                  }
+                ],
+                "areas": [
+                  {
+                    "id": "id025",
+                    "band": {
+                      "edges": [
+                        {
+                          "curve": "id016"
+                        },
+                        {
+                          "level": {
+                            "point": "id020"
+                          }
+                        }
+                      ],
+                      "from": 0,
+                      "to": {
+                        "point": "id020"
+                      }
+                    }
+                  },
+                  {
+                    "id": "id026",
+                    "band": {
+                      "edges": [
+                        {
+                          "curve": "id018"
+                        },
+                        {
+                          "level": {
+                            "point": "id021"
+                          }
+                        }
+                      ],
+                      "from": 0,
+                      "to": {
+                        "point": "id021"
+                      }
+                    }
+                  },
+                  {
+                    "id": "id027",
+                    "band": {
+                      "edges": [
+                        {
+                          "curve": "id016"
+                        },
+                        {
+                          "level": {
+                            "point": "id020"
+                          }
+                        }
+                      ],
+                      "from": 0,
+                      "to": {
+                        "point": "id020"
+                      }
+                    },
+                    "answer": true
+                  }
+                ],
+                "spans": [
+                  {
+                    "id": "id028",
+                    "from": {
+                      "point": "id020"
+                    },
+                    "to": {
+                      "point": "id021"
+                    },
+                    "style": "arrow",
+                    "along": "x"
+                  },
+                  {
+                    "id": "id029",
+                    "from": {
+                      "x": 0.2,
+                      "y": 0.2
+                    },
+                    "to": {
+                      "x": 0.3,
+                      "y": 0.2
+                    },
+                    "style": "bracket",
+                    "answer": true
+                  }
+                ]
+              },
+              "widthPx": 400,
+              "heightPx": 384,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Figure 1"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "Figure 1"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "answer": {
+            "en": [
+              {
+                "text": "Demand rises: D shifts right to D₁."
+              }
+            ],
+            "zh": [
+              {
+                "text": "需求上升：D 向右移至 D₁。"
+              }
+            ]
+          }
+        },
+        {
+          "id": "id033",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "id034",
+              "text": {
+                "en": [
+                  {
+                    "text": "Construct the PPF in Diagram 1."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "在圖 1 中繪畫生產可能曲線。"
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "figureRow",
+              "id": "id035",
+              "figure": {
+                "kind": "diagram",
+                "id": "id036",
+                "diagram": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Diagram 1"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "圖 1"
+                      }
+                    ]
+                  },
+                  "x": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Good X"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "X 物品"
+                        }
+                      ]
+                    },
+                    "max": 25,
+                    "ticks": [
+                      {
+                        "id": "id037",
+                        "at": 0.2,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id038",
+                        "at": 0.4,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id039",
+                        "at": 0.6,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id040",
+                        "at": 0.8,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id041",
+                        "at": 1,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      }
+                    ]
+                  },
+                  "y": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Good Y"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Y 物品"
+                        }
+                      ]
+                    },
+                    "max": 25,
+                    "ticks": [
+                      {
+                        "id": "id042",
+                        "at": 0.2,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id043",
+                        "at": 0.4,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id044",
+                        "at": 0.6,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id045",
+                        "at": 0.8,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id046",
+                        "at": 1,
+                        "label": {
+                          "en": [],
+                          "zh": []
+                        }
+                      }
+                    ]
+                  },
+                  "curves": [
+                    {
+                      "id": "id047",
+                      "points": [
+                        {
+                          "x": 0,
+                          "y": 1
+                        },
+                        {
+                          "x": 0.8,
+                          "y": 0
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "PPF"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "PPF"
+                          }
+                        ]
+                      },
+                      "labelAt": "end",
+                      "answer": true
+                    }
+                  ],
+                  "points": [
+                    {
+                      "id": "id048",
+                      "at": {
+                        "x": 0.4,
+                        "y": 0.5
+                      },
+                      "anchor": {
+                        "on": "id047",
+                        "x": {
+                          "x": 0.4,
+                          "y": 0
+                        }
+                      },
+                      "label": {
+                        "en": [
+                          {
+                            "text": "A (10, 12.5)"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "A (10, 12.5)"
+                          }
+                        ]
+                      },
+                      "labelSide": "upRight",
+                      "dot": true,
+                      "dropTo": [
+                        "x",
+                        "y"
+                      ],
+                      "answer": true
+                    }
+                  ],
+                  "labels": [],
+                  "arrows": [],
+                  "showOrigin": true
+                },
+                "widthPx": 400,
+                "heightPx": 384,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "Diagram 1"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "Diagram 1"
+                    }
+                  ]
+                }
+              },
+              "table": {
+                "kind": "table",
+                "id": "id049",
+                "rows": [
+                  {
+                    "id": "id050",
+                    "cells": [
+                      {
+                        "id": "id051",
+                        "text": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id052",
+                        "text": {
+                          "en": [],
+                          "zh": []
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "id053",
+                    "cells": [
+                      {
+                        "id": "id054",
+                        "text": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id055",
+                        "text": {
+                          "en": [],
+                          "zh": []
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "id056",
+                    "cells": [
+                      {
+                        "id": "id057",
+                        "text": {
+                          "en": [],
+                          "zh": []
+                        }
+                      },
+                      {
+                        "id": "id058",
+                        "text": {
+                          "en": [],
+                          "zh": []
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "id059",
+      "text": {
+        "en": [
+          {
+            "text": "Section A"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部"
+          }
+        ]
+      },
+      "restartNumbering": false,
+      "showMarks": true,
+      "format": {
+        "fontSize": 10,
+        "bold": true
+      }
+    },
+    {
+      "kind": "text",
+      "id": "id060",
+      "text": {
+        "en": [
+          {
+            "text": "END OF SECTION A"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部完"
+          }
+        ]
+      },
+      "format": {
+        "bold": true,
+        "align": "center"
+      }
+    },
+    {
+      "kind": "section",
+      "id": "id061",
+      "text": {
+        "en": [
+          {
+            "text": "Section B"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部"
+          }
+        ]
+      },
+      "restartNumbering": false,
+      "showMarks": true,
+      "format": {
+        "fontSize": 10,
+        "bold": true
+      }
+    },
+    {
+      "kind": "text",
+      "id": "id062",
+      "text": {
+        "en": [
+          {
+            "text": "END OF SECTION B"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部完"
+          }
+        ]
+      },
+      "format": {
+        "bold": true,
+        "align": "center"
+      }
+    },
+    {
+      "kind": "section",
+      "id": "id063",
+      "text": {
+        "en": [
+          {
+            "text": "Section C"
+          }
+        ],
+        "zh": [
+          {
+            "text": "丙部"
+          }
+        ]
+      },
+      "restartNumbering": false,
+      "showMarks": true,
+      "format": {
+        "fontSize": 10,
+        "bold": true
+      }
+    },
+    {
+      "kind": "text",
+      "id": "id064",
+      "text": {
+        "en": [
+          {
+            "text": "Answer any ONE question."
+          }
+        ],
+        "zh": [
+          {
+            "text": "選答一題。"
+          }
+        ]
+      },
+      "format": {
+        "bold": true
+      }
+    },
+    {
+      "kind": "text",
+      "id": "id065",
+      "text": {
+        "en": [
+          {
+            "text": "END OF PAPER"
+          }
+        ],
+        "zh": [
+          {
+            "text": "試卷完"
+          }
+        ]
+      },
+      "format": {
+        "bold": true,
+        "align": "center"
+      }
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "id059"
+    },
+    {
+      "type": "question",
+      "id": "id005"
+    },
+    {
+      "type": "layout",
+      "id": "id060"
+    },
+    {
+      "type": "layout",
+      "id": "id061"
+    },
+    {
+      "type": "layout",
+      "id": "id062"
+    },
+    {
+      "type": "layout",
+      "id": "id063"
+    },
+    {
+      "type": "layout",
+      "id": "id064"
+    },
+    {
+      "type": "layout",
+      "id": "id065"
+    },
+    {
+      "type": "question",
+      "id": "id011"
+    }
+  ],
+  "createdAt": "2026-10-03T00:00:00.000Z",
+  "updatedAt": "2026-10-03T00:00:00.000Z",
+  "baseFontSize": 10,
+  "pageFurniture": {
+    "frame": true,
+    "marginNote": {
+      "en": [
+        {
+          "text": "Answers written in the margins will not be marked."
+        }
+      ],
+      "zh": [
+        {
+          "text": "寫於邊界以外的答案，將不予評閱。"
+        }
+      ]
+    }
+  },
+  "cover": {
+    "cornerLines": [
+      {
+        "id": "id066",
+        "text": {
+          "en": [
+            {
+              "text": "2026-27"
+            }
+          ],
+          "zh": [
+            {
+              "text": "2026-27"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "bold": true,
+          "fontSize": 11
+        }
+      },
+      {
+        "id": "id067",
+        "text": {
+          "en": [
+            {
+              "text": "ECON"
+            }
+          ],
+          "zh": [
+            {
+              "text": "經濟"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "bold": true,
+          "fontSize": 11
+        }
+      },
+      {
+        "id": "id068",
+        "text": {
+          "en": [
+            {
+              "text": "PAPER 2"
+            }
+          ],
+          "zh": [
+            {
+              "text": "卷二"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 10.5,
+          "spaceBefore": 5.75
+        },
+        "gapAfter": 1
+      }
+    ],
+    "cornerRule": true,
+    "headLines": [
+      {
+        "id": "id069",
+        "text": {
+          "en": [
+            {
+              "text": "SCHOOL NAME"
+            }
+          ],
+          "zh": [
+            {
+              "text": "學校名稱"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 11
+        },
+        "gapAfter": 1
+      },
+      {
+        "id": "id070",
+        "text": {
+          "en": [
+            {
+              "text": "S.6 MOCK EXAMINATION 2026 – 2027"
+            }
+          ],
+          "zh": [
+            {
+              "text": "2026 – 2027 年度中六模擬考試"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 11
+        },
+        "gapAfter": 2
+      },
+      {
+        "id": "id071",
+        "text": {
+          "en": [
+            {
+              "text": "ECONOMICS   PAPER 2"
+            }
+          ],
+          "zh": [
+            {
+              "text": "經濟  試卷二"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 14,
+          "bold": true
+        }
+      },
+      {
+        "id": "id072",
+        "text": {
+          "en": [
+            {
+              "text": "Question-Answer Book"
+            }
+          ],
+          "zh": [
+            {
+              "text": "試題答題簿"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 14,
+          "bold": true
+        },
+        "gapAfter": 1
+      },
+      {
+        "id": "id073",
+        "text": {
+          "en": [
+            {
+              "text": "10:15 am – 12:45 pm (2 hours 30 minutes)"
+            }
+          ],
+          "zh": [
+            {
+              "text": "兩小時三十分完卷\n（上午十時十五分至下午十二時四十五分）"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          }
+        }
+      },
+      {
+        "id": "id074",
+        "text": {
+          "en": [
+            {
+              "text": "This paper must be answered in English"
+            }
+          ],
+          "zh": [
+            {
+              "text": "本試卷必須用中文作答"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          }
+        },
+        "gapAfter": 6
+      }
+    ],
+    "instructionsHeading": {
+      "en": [
+        {
+          "text": "INSTRUCTIONS"
+        }
+      ],
+      "zh": [
+        {
+          "text": "考生須知"
+        }
+      ]
+    },
+    "instructionMarker": "paren",
+    "instructions": [
+      {
+        "id": "id075",
+        "text": {
+          "en": [
+            {
+              "text": "Write your name, class and class number in the spaces provided on this cover."
+            }
+          ],
+          "zh": [
+            {
+              "text": "在封面指定位置填寫姓名、班別及班號。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id076",
+        "text": {
+          "en": [
+            {
+              "text": "Do not open this question paper until you are told to do so."
+            }
+          ],
+          "zh": [
+            {
+              "text": "未獲監考員指示前，不得翻閱試卷。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id077",
+        "text": {
+          "en": [
+            {
+              "text": "Answer "
+            },
+            {
+              "text": "ALL",
+              "bold": true
+            },
+            {
+              "text": " questions in Section A and Section B. Answer any "
+            },
+            {
+              "text": "ONE",
+              "bold": true
+            },
+            {
+              "text": " question in Section C."
+            }
+          ],
+          "zh": [
+            {
+              "text": "甲部及乙部所有題目均須作答。丙部只須選答一題。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id078",
+        "text": {
+          "en": [
+            {
+              "text": "Write your answers in the spaces provided in this booklet."
+            }
+          ],
+          "zh": [
+            {
+              "text": "請在本試題答題簿指定的空位內作答。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id079",
+        "text": {
+          "en": [
+            {
+              "text": "Answers written in the margins will not be marked."
+            }
+          ],
+          "zh": [
+            {
+              "text": "寫於邊界以外的答案，將不予評閱。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id080",
+        "text": {
+          "en": [
+            {
+              "text": "Write your answers legibly in ink. Working may be written in pencil."
+            }
+          ],
+          "zh": [
+            {
+              "text": "請用墨水筆清楚書寫答案，計算過程可用鉛筆。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id081",
+        "text": {
+          "en": [
+            {
+              "text": "The marks for each question are shown in brackets at the end of the question."
+            }
+          ],
+          "zh": [
+            {
+              "text": "每題的分數在題末括號內列出。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id082",
+        "text": {
+          "en": [
+            {
+              "text": "Supplementary answer sheets are available on request. Write your name and the question number on each sheet used."
+            }
+          ],
+          "zh": [
+            {
+              "text": "如需補充作答紙可向監考員索取，並在每張紙上填寫姓名及題號。"
+            }
+          ]
+        }
+      }
+    ],
+    "panelNote": {
+      "en": [
+        {
+          "text": "Write your name and class in the spaces below."
+        }
+      ],
+      "zh": [
+        {
+          "text": "請在下欄填寫姓名及班別。"
+        }
+      ]
+    },
+    "panelFieldLabel": {
+      "en": [
+        {
+          "text": "Class No."
+        }
+      ],
+      "zh": [
+        {
+          "text": "班號"
+        }
+      ]
+    },
+    "panelBoxes": 3,
+    "footLines": [
+      {
+        "id": "id083",
+        "text": {
+          "en": [
+            {
+              "text": "SCHOOL NAME"
+            }
+          ],
+          "zh": [
+            {
+              "text": "學校名稱"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "bold": true,
+          "fontSize": 12
+        }
+      }
+    ],
+    "fonts": {
+      "latin": "Arial",
+      "eastAsia": "Microsoft JhengHei"
+    },
+    "columns": {
+      "left": 5328,
+      "gap": 144,
+      "right": 3845
+    }
+  },
+  "answerKeyLayout": {
+    "preset": "suggested",
+    "title": {
+      "en": [
+        {
+          "text": "Suggested answers"
+        }
+      ],
+      "zh": [
+        {
+          "text": "參考答案"
+        }
+      ]
+    },
+    "subtitle": {
+      "en": [
+        {
+          "text": "S5 Mock 2026"
+        }
+      ],
+      "zh": [
+        {
+          "text": "中五模擬試 2026"
+        }
+      ]
+    },
+    "showMcStems": true
+  }
+}
