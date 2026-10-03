@@ -659,6 +659,7 @@ const TARGET_NAME: Record<EditTarget["kind"], TextKey<typeof PREVIEW_MESSAGES>> 
   mcqExplanation: "targetExplanation",
   mcqRationale: "targetRationale",
   mcqProvenance: "targetSourceNote",
+  questionAnswer: "targetAnswer",
   partAnswer: "targetAnswer",
   subPartAnswer: "targetAnswer",
   schemePoint: "targetSchemePoint",

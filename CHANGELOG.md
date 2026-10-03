@@ -13,6 +13,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Give an essay question its own answer and marking scheme.** A structured question with
+  no parts, such as a long essay, now takes a teacher answer and marking points, level
+  descriptors and effective communication, as a part does. They print in the teacher
+  version and the marking scheme, never in the student paper, and you can type them on
+  the page in either.
+  <!-- zh: **論述題可加入答案及評分方案。** 沒有分題的結構題（例如長篇論述題）現在可以像分題
+  一樣加入教師答案、評分要點、等級描述及有效溝通。這些內容會印在教師版和評卷參考，不會出現在
+  學生版，並可在任何一個版本的頁面上直接輸入。 -->
 - **Lay out the marking scheme your way, or like an HKEAA one.** In the Marking scheme view,
   the Layout tab offers two styles: Classic (as before) and HKEAA style, with the MC key as a
   Question No. and Key table, a Marks column headed on every page, the notation legend and a

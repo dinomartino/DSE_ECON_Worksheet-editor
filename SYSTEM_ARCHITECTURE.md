@@ -1864,14 +1864,15 @@ type needs only a definition.
   stored. Others load read-only through the store (`parseWorksheet` →
   `migrate`); one that will not open or render is skipped and named, never fatal, never
   resaved. One document is the single key unchanged, byte for byte.
-- **A marking scheme is notation, not prose** (`model/markSchemeTypes.ts`). A part or
-  sub-part may carry `scheme?: MarkScheme` beside `answer`: OR routes → groups (`each`
+- **A marking scheme is notation, not prose** (`model/markSchemeTypes.ts`). A part,
+  sub-part or essay (a structured question with no parts, which is its own leaf) may carry
+  `scheme?: MarkScheme` beside `answer`: OR routes → groups (`each`
   = `n@`, `take` = any N, `firstOnly`, `max`) → points (`marks`, `/` alternatives),
   plus `levels` and `ec`. Optional and additive — no migration; `answer` still prints.
   Totals are derived (`model/markScheme.ts`) and checked against the printed marks in
-  the panel, never stored. `render/markScheme.ts` emits it once, teacher-only on the
+  the panel and the paper check, never stored. `render/markScheme.ts` emits it once, teacher-only on the
   paper and plain in the answer key. Its authored text is typed on the page in both, given
-  the leaf's address (`at`): `schemePoint`, `schemeAlternative` (by index), `schemeLevel`,
+  the leaf's address (`at`; no `partId` = the essay itself): `schemePoint`, `schemeAlternative` (by index), `schemeLevel`,
   `schemeEc`. A line joining fields with derived wording (`text / alt`, "Level 1: " +
   descriptor) carries `TextNode.segments` instead of `edit`: per side, its pieces, each
   field editable alone; joined they are `text`. Structure (points, routes, levels, marks)
