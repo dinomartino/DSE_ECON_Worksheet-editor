@@ -13,21 +13,23 @@ import { buildDesk, updateDesk } from './write/desk.js';
 
 const { prog, outSoft, inOutSoft, spring, lerp } = ease;
 const SHEETS = ['sheets-en', 'sheets-zh', 'sheets-bi'];
+const ROW_CX = SHEET.x0 + (3 * SHEET.w + 2 * SHEET.gap) / 2;
 const PUSH = CARD.y + CARD.h + 60; // the card rises out of the frame by this much; the sheets rise in from as far
 
 // Camera keys [t, [z, cx, cy], ease] per footage beat (CSS px of the 1440 × 900 footage).
 const CAM_TYPE = [
   [P(5), [1, 720, 450]],
-  [P(7), [2.3, 450, 398], inOutSoft],
-  [P(14.4), [2.3, 450, 398]],
+  [P(7), [2.3, 440, 396], inOutSoft],
+  [P(14.4), [2.3, 476, 404], ease.sineInOut], // drifts with the caret, line by line
   [P(16), [1.7, 540, 455], inOutSoft],
 ];
 const CAM_LANG = [[P(18), [1.55, 650, 290]], [P(27.5), [1.7, 640, 280], ease.sineInOut]];
 const CAM_UI = [
-  [P(31), [1.55, 560, 230]],
-  [P(33), [1.9, 490, 262], inOutSoft],
-  [P(34.6), [1.9, 490, 262]],
-  [P(36.6), [1, 720, 450], inOutSoft],
+  [P(31), [1.32, 610, 300]],
+  [P(33), [1.45, 590, 300], inOutSoft], // the whole dialog edge to edge, the language cards whole
+  [P(34.6), [1.5, 585, 296], ease.sineInOut], // a breath closer while it is read
+  [P(36.6), [1.05, 700, 440], inOutSoft],
+  [P(38), [1, 720, 450], ease.sineInOut], // settles to the clean frame the push takes
 ];
 
 const scene = {
@@ -103,12 +105,13 @@ const scene = {
     place(ctx.card.el, { y: live === 'lang' ? -PUSH * out : 0 });
 
     // The dot marks each click in the footage: a pop, then a ripple.
-    const hit = clicks.find(([at]) => t >= at - 0.02 && t < at + 0.7);
+    const hit = clicks.find(([at]) => t >= at - 0.02 && t < at + 0.55);
     if (hit) {
       const [at, pt] = hit;
       const [x, y] = cam.at(pt);
-      const p = prog(t, at - 0.02, at + 0.7);
-      const pop = spring(prog(t, at - 0.02, at + 0.18)) * (1 - outSoft(prog(t, at + 0.3, at + 0.7)));
+      // Short: the toolbar can re-flow under it right after the click.
+      const p = prog(t, at - 0.02, at + 0.55);
+      const pop = spring(prog(t, at - 0.02, at + 0.16)) * (1 - outSoft(prog(t, at + 0.2, at + 0.45)));
       for (const el of [ctx.click.dot, ctx.click.ring]) { el.setAttribute('cx', f(x, 2)); el.setAttribute('cy', f(y, 2)); }
       ctx.click.dot.setAttribute('r', f(8 * pop, 3));
       ctx.click.ring.setAttribute('r', f(lerp(8, 34, outSoft(p)), 2));
@@ -123,7 +126,10 @@ const scene = {
     // The printed sheets rise in on the card's push, a hair apart, left to right.
     ctx.sheets.forEach((el, i) => {
       const p = tw(t, LANG.exit + i * 0.05, LANG.end - LANG.exit, inOutSoft);
-      place(el, { y: PUSH * (1 - p), opacity: t >= LANG.exit && t < UI.at ? 1 : 0 });
+      // …then the row breathes in a touch while it is read.
+      const k = 1 + 0.025 * ease.sineInOut(prog(t, LANG.end, UI.at));
+      const dx = (SHEET.x0 + i * (SHEET.w + SHEET.gap) + SHEET.w / 2 - ROW_CX) * (k - 1);
+      place(el, { x: dx, y: PUSH * (1 - p), scale: k, opacity: t >= LANG.exit && t < UI.at ? 1 : 0 });
     });
 
     // Headlines: one per beat, each gone before the next arrives.

@@ -81,9 +81,10 @@ export function updateDesk(d, t) {
 
   // The dot: the iris's dot shrinks to the mark's size, then drops into the diagram.
   const shrink = outSoft(prog(t, -0.36, P(1.2)));
-  const fall = prog(t, P(2), P(3));
+  // A small hop up, then gravity: a parabola that leaves upwards and lands on P(3).
+  const fall = prog(t, P(1.5), P(3));
   const x = lerp(DOT0[0], DOT1[0], inOutSoft(fall));
-  const y = lerp(DOT0[1], DOT1[1], inQuad(fall));
+  const y = lerp(DOT0[1], DOT1[1], inQuad(fall)) - 150 * fall * (1 - fall);
   const r = fall > 0 ? lerp(13, DOT1_R, outSoft(prog(fall, 0.6, 1))) : lerp(IRIS_R, 13, shrink);
   d.dot.setAttribute('cx', f(x, 2));
   d.dot.setAttribute('cy', f(y, 2));
