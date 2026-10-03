@@ -1,7 +1,7 @@
 import { zonesOf, type ZoneName } from './bands';
 import { bandFieldPrintText, type BandSegmentContext } from './bandSegments';
 import { defaultHeader, firstPageHeaderFooter, headerFooterOf, versionRowStandsAlone } from './page';
-import type { HeaderFooter, LanguageMode, OutputMode, Worksheet } from './types';
+import type { Band, HeaderFooter, LanguageMode, OutputMode, Worksheet } from './types';
 import { versionHeaderText } from './versions';
 
 /**
@@ -21,6 +21,24 @@ export interface TeacherMarkPlacement {
   alone: boolean;
 }
 
+/** Whether one zone of a row prints anything in `language`, as the page draws it. */
+function zonePrints(band: Band, zone: ZoneName, context: BandSegmentContext, language: LanguageMode): boolean {
+  const sides = language === 'bilingual' ? (['en', 'zh'] as const) : [language];
+  return zonesOf(band)[zone].some((field) => {
+    const text = bandFieldPrintText(field, context, language);
+    return sides.some((side) => text[side].length > 0);
+  });
+}
+
+/**
+ * Whether a header/footer row prints anything in `language`. A row that does not is a
+ * zero-height line on the page, so the `.docx` leaves it out too rather than printing a
+ * blank line there.
+ */
+export function bandPrints(band: Band, context: BandSegmentContext, language: LanguageMode): boolean {
+  return (['left', 'center', 'right'] as const).some((zone) => zonePrints(band, zone, context, language));
+}
+
 /** Appended to the rightmost printing zone of the running header's last row; a disabled
  *  header lends it no rows. */
 export function teacherMarkPlacement(
@@ -31,13 +49,9 @@ export function teacherMarkPlacement(
   const bands = header.enabled ? (header.bands ?? []) : [];
   const last = bands[bands.length - 1];
   if (!last) return { zone: 'right', alone: true };
-  const sides = language === 'bilingual' ? (['en', 'zh'] as const) : [language];
-  const prints = (zone: ZoneName) =>
-    zonesOf(last)[zone].some((field) => {
-      const text = bandFieldPrintText(field, context, language);
-      return sides.some((side) => text[side].length > 0);
-    });
-  const zone = (['right', 'center', 'left'] as const).find(prints);
+  const zone = (['right', 'center', 'left'] as const).find((name) =>
+    zonePrints(last, name, context, language),
+  );
   return zone ? { bandId: last.id, zone, alone: false } : { bandId: last.id, zone: 'right', alone: true };
 }
 

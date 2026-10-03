@@ -486,6 +486,12 @@ a version heading is edited afterwards.
   <!-- zh: **設有封面的試卷，第 1 頁頁首的位置與 Word 一致。** 第 1 頁頁首或頁尾設為「不印」或「獨立設定」時，
   Word 會套用於封面後的第一頁，但畫面和 PDF 在該頁仍顯示一般頁首。現在兩者與 Word 一致；第 1 頁不印頁首時，
   頂部不再印出橫線；設定亦會註明所指的是哪一頁。 -->
+- **Empty header and footer rows no longer print blank lines in Word.** A row you added and
+  left empty shows nothing on the page, but the Word file printed it as a blank line, so a
+  teacher version could open with two or more empty lines above "Teacher Version". Word now
+  leaves such rows out, as the page and the PDF do.
+  <!-- zh: **空白的頁首及頁尾行不再在 Word 印出空行。** 加入後留空的行在頁面上不會顯示，但 Word 檔案會把它印成空行，
+  教師版因此可能在「Teacher Version」上方多出兩行或以上的空行。現在 Word 與頁面及 PDF 一樣略去這些行。 -->
 - **The teacher version says so at the top of every page, on screen and in the PDF.** Word
   already printed "Teacher Version / 教師版" in the header of each page. The page and the
   PDF now print it there too, after your own header text, and leave page 1 without it when

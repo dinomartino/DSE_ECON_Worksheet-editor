@@ -1639,7 +1639,9 @@ needed, clamped at `MIN_EDGE_TWIPS`.
 - Rows taller than the whole margin are reported (`BandOverflowNotice`), not fixed.
 
 Each row exports as one paragraph with tab stops from live content width. A rule draws
-only on the edge-most row.
+only on the edge-most row. A row that prints nothing in the language (`bandPrints`) is
+not exported: the page draws it at zero height, so Word must not print a blank line for
+it. The row the teacher marker is written into is kept.
 
 **Bilingual stacks a field's whole lines, and only lines that differ.**
 `bandFieldPrintSides` decides for page, masthead IR and .docx alike: identical sides
