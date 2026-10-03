@@ -40,18 +40,7 @@ Remove from this list once released.
 
 ## A. Export and paper checks
 
-Loose ends on shipped features:
-- **Optional sections** (S–M): "answer any ONE" sections are summed in full by the paper
-  check and summary; a target cannot be set per section.
-- **Versions** (S): the version letter prints only atop page 1, not in the running
-  header; the side panel lists options in version A order while the page shows B; a
-  versioned key prints MCQ rationale once, in Version A letters.
-- **PDF of the answer key** (S): PDF export prints the question paper only.
-- **Mark scheme** (S–M): text is edited in the panel, not on the page; the scheme/marks
-  mismatch warning is panel-only, not in the paper check.
-- **Combined answer key** (S): every part takes the current document's page setup and
-  font size.
-- **Paper summary** (S): page count follows the preview's language, not the export's.
+None open: the loose ends listed here were fixed on `develop` 2026-10-03 (see CHANGELOG).
 
 ## B. Content model
 
