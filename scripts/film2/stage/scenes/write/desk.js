@@ -1,96 +1,70 @@
-// The desk beat (P(-2)…P(5)): the iris opens on the mark's dot; the four paper kinds rise as
-// flat sketches (illustration, PaperSketch geometry) and write themselves; the dot drops into
-// the Classroom worksheet's diagram; that page opens into the window card and lands exactly
-// where the real page sits in the footage, for the cut at P(5).
-import { h, s, svg, sketch, place, show, C, PAPER_SHADOW, SKETCH_KINDS, ease, tw, f } from '../../lib/index.js';
-import { P, DESK, deskX, DOT0, DOT1, DOT1_R, CARD, PAGE_IN_CARD, DESK_FILL } from './geom.js';
+// The desk (P(-2)…P(5)): the iris opens on a composed frame, the four paper kinds already on
+// the desk at full opacity (illustration, PaperSketch geometry), writing themselves; the dot
+// shrinks to the mark's size, hops and drops into the Classroom worksheet's diagram (P3);
+// then the camera dives into that page (P3.25…P5) so its first question lands where the real
+// stem is in the CLOSE that follows: the cut is a push-in onto the same line.
+import { h, s, svg, sketch, show, C, SKETCH_KINDS, ease, f } from '../../lib/index.js';
+import { P, BEAT, DESK, deskX, DOT0, DOT1, DOT1_R } from './geom.js';
 
-const { lerp, prog, outSoft, inOutSoft, spring } = ease;
+const { lerp, prog, outSoft, inOutSoft, spring, sineInOut } = ease;
 const inQuad = (p) => p * p;
 const IRIS_R = 44; // the engine's iris dot
+const STEM = [20, 46.3]; // the Classroom sketch's first question bar (sketch units)
 
 export function buildDesk(parent) {
   const el = h('div', { style: { position: 'absolute', inset: 0 } }, parent);
-  // The opening card: a container that grows from the sketch's box into the window card.
-  // Built after the other three so it opens over them.
-  const morph = h('div', { style: {
-    position: 'absolute', overflow: 'hidden', boxSizing: 'border-box', border: '1px solid transparent',
-  } });
-  const pages = SKETCH_KINDS.map((kind, i) => sketch(i === 0 ? morph : el, kind, { x: i === 0 ? 0 : deskX(i), y: i === 0 ? 0 : DESK.y, w: DESK.w }));
-  el.appendChild(morph);
-  pages[0].el.style.transformOrigin = '0 0';
-  const ov = svg(el, {});
+  const group = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: '0 0' } }, el);
+  const pages = SKETCH_KINDS.map((kind, i) => sketch(group, kind, { x: deskX(i), y: DESK.y, w: DESK.w }));
+  const ov = svg(group, {});
   const ring = s('rect', { fill: 'none', stroke: C.markBlue, 'stroke-width': 3, rx: 9 }, ov);
   const ripple = s('circle', { cx: DOT1[0], cy: DOT1[1], fill: 'none', stroke: C.markBlue }, ov);
   const dot = s('circle', { r: IRIS_R, fill: C.markBlue }, ov);
-  return { el, morph, pages, ring, ripple, dot };
+  return { el, group, pages, ring, ripple, dot };
 }
 
-/** The Classroom page's box (frame px) and the card's box at scene time t. */
-function opening(t) {
-  const lift = 1 + 0.03 * spring(prog(t, P(3), P(3.6)));
-  const p = inOutSoft(prog(t, P(3.25), P(5)));
-  const w0 = DESK.w * lift, h0 = DESK.h * lift;
-  const x0 = deskX(0) - (w0 - DESK.w) / 2, y0 = DESK.y - (h0 - DESK.h) / 2;
-  const page = {
-    x: lerp(x0, CARD.x + PAGE_IN_CARD.x, p), y: lerp(y0, CARD.y + PAGE_IN_CARD.y, p),
-    w: lerp(w0, PAGE_IN_CARD.w, p), h: lerp(h0, PAGE_IN_CARD.h, p),
-  };
-  const card = { x: lerp(x0, CARD.x, p), y: lerp(y0, CARD.y, p), w: lerp(w0, CARD.w, p), h: lerp(h0, CARD.h, p) };
-  return { p, page, card };
-}
+/** target: { x, y, k } the stem's screen point and the page's px per sketch unit in the CLOSE. */
+export function updateDesk(d, t, target) {
+  show(d.el, t < BEAT.type ? 1 : 0);
+  if (t >= BEAT.type) return;
 
-export function updateDesk(d, t) {
-  show(d.el, t < P(5) ? 1 : 0);
-  if (t >= P(5)) return;
+  // The pages write themselves (left to right, 90 ms apart) as the iris opens.
+  d.pages.forEach((pg, i) => pg.write(prog(t, P(-1) + i * 0.09, P(2.2) + i * 0.09)));
 
-  // The four pages rise and write themselves; the other three leave as the first opens.
-  d.pages.forEach((pg, i) => {
-    const rise = tw(t, P(0) + i * 0.08, 0.75);
-    pg.write(prog(t, P(0.3) + i * 0.08, P(2.4) + i * 0.08));
-    if (i === 0) return;
-    const away = tw(t, P(3) + (i - 1) * 0.06, 0.45, inOutSoft);
-    place(pg.el, { y: 48 * (1 - rise) + 60 * away, opacity: rise * (1 - away) });
-  });
+  // The camera: a slow breath on the desk, then the dive into the Classroom page.
+  const sx = deskX(0) + (STEM[0] * DESK.w) / 120, sy = DESK.y + (STEM[1] * DESK.h) / 170;
+  const breath = 1 + 0.02 * sineInOut(prog(t, P(-2), BEAT.dive));
+  const p = inOutSoft(prog(t, BEAT.dive + P(0.25), BEAT.type));
+  const k1 = target.k / (DESK.w / 120);
+  const k = Math.exp(lerp(Math.log(breath), Math.log(k1), p));
+  // The stem point travels from its breathing place to the target, on the same curve.
+  const bx = 960 + (sx - 960) * breath, by = 540 + (sy - 540) * breath;
+  const x = lerp(bx, target.x, p), y = lerp(by, target.y, p);
+  d.group.style.transform = `translate(${f(x - sx * k, 2)}px, ${f(y - sy * k, 2)}px) scale(${f(k, 5)})`;
+  // The sketched marks give way to a clean page over the dive's second half.
+  d.pages.forEach((pg) => show(pg.svg, 1 - outSoft(prog(p, 0.35, 0.85))));
 
-  // The Classroom page: rises with the rest, lifts when the dot lands, opens into the card.
-  const rise0 = tw(t, P(0), 0.75);
-  const { p, page, card } = opening(t);
-  Object.assign(d.morph.style, {
-    left: `${f(card.x, 2)}px`, top: `${f(card.y + 48 * (1 - rise0), 2)}px`, width: `${f(card.w, 2)}px`, height: `${f(card.h, 2)}px`,
-    borderRadius: `${f(lerp(3, 16, p), 2)}px`,
-    background: p > 0 ? DESK_FILL : 'transparent',
-    borderColor: p > 0.02 ? C.line : 'transparent',
-    boxShadow: p > 0 ? PAPER_SHADOW : 'none',
-  });
-  show(d.morph, rise0);
-  const k = page.w / DESK.w;
-  d.pages[0].el.style.transform = `translate(${f(page.x - card.x, 2)}px, ${f(page.y - card.y, 2)}px) scale(${f(k, 5)})`;
-  d.pages[0].el.style.boxShadow = p > 0 ? 'none' : PAPER_SHADOW;
-  // Its sketched marks fade as it opens: a clean page lands where the real one is.
-  show(d.pages[0].svg, 1 - outSoft(prog(p, 0.05, 0.7)));
-
-  // The selection ring: springs in on the landing, fades as the page opens.
+  // The selection ring springs in on the landing and fades as the dive starts.
   const sel = spring(prog(t, P(3), P(3.5)));
   const pad = 8 * sel;
-  d.ring.setAttribute('x', f(page.x - pad, 2));
-  d.ring.setAttribute('y', f(page.y - pad, 2));
-  d.ring.setAttribute('width', f(page.w + 2 * pad, 2));
-  d.ring.setAttribute('height', f(page.h + 2 * pad, 2));
+  d.ring.setAttribute('x', f(deskX(0) - pad, 2));
+  d.ring.setAttribute('y', f(DESK.y - pad, 2));
+  d.ring.setAttribute('width', f(DESK.w + 2 * pad, 2));
+  d.ring.setAttribute('height', f(DESK.h + 2 * pad, 2));
   show(d.ring, Math.min(sel, 1) * (1 - outSoft(prog(t, P(3.4), P(4.2)))));
 
-  // The dot: the iris's dot shrinks to the mark's size, then drops into the diagram.
+  // The dot: the iris's dot shrinks to the mark's size, hops and drops into the diagram.
+  // Its path is drawn in the frame, so the breath's scale is undone for its first part.
   const shrink = outSoft(prog(t, -0.36, P(1.2)));
-  // A small hop up, then gravity: a parabola that leaves upwards and lands on P(3).
   const fall = prog(t, P(1.5), P(3));
-  const x = lerp(DOT0[0], DOT1[0], inOutSoft(fall));
-  const y = lerp(DOT0[1], DOT1[1], inQuad(fall)) - 150 * fall * (1 - fall);
-  const r = fall > 0 ? lerp(13, DOT1_R, outSoft(prog(fall, 0.6, 1))) : lerp(IRIS_R, 13, shrink);
-  d.dot.setAttribute('cx', f(x, 2));
-  d.dot.setAttribute('cy', f(y, 2));
+  const ox = x - sx * k, oy = y - sy * k; // the group's origin in the frame
+  const dx = lerp(DOT0[0], ox + DOT1[0] * k, inOutSoft(fall));
+  const dy = lerp(DOT0[1], oy + DOT1[1] * k, inQuad(fall)) - 150 * fall * (1 - fall);
+  const [gx, gy] = [(dx - ox) / k, (dy - oy) / k]; // frame → group units
+  const r = (fall > 0 ? lerp(13, DOT1_R, outSoft(prog(fall, 0.6, 1))) : lerp(IRIS_R, 13, shrink)) / k;
+  d.dot.setAttribute('cx', f(gx, 2));
+  d.dot.setAttribute('cy', f(gy, 2));
   d.dot.setAttribute('r', f(r, 3));
   show(d.dot, t < P(3) ? 1 : 0);
-  // The landing ripple (the splash's: grows out while fading).
   const pr = prog(t, P(3), P(3) + 0.55);
   d.ripple.setAttribute('r', f(lerp(6, 40, outSoft(pr)), 2));
   d.ripple.setAttribute('stroke-width', f(lerp(3, 1, pr), 3));

@@ -1,120 +1,154 @@
-// Act 2, write (FILM.md §3 row 2), bar 3 → bar 8, the build. Beats (P(n) = scene pulse n):
-//   P(-2)…P(5)  the iris opens on the mark's dot; the four paper kinds rise as sketches; the
-//               dot drops into the Classroom worksheet, which opens into the window card
-//   P(5)…P(18)  cut to type-mcq at the real page's place: the camera pushes in (2.3×) as the
-//               question is typed, English then 中文, and eases out as the options land
-//   P(18)…P(26) language-toggle: EN (P19), 中文 (P22), EN+中 (P25), the dot marks each click
-//   P(26)…P(31) the card rises away; the printed sheets rise in, one per language
-//   P(31)…P(40) zh-interface: Settings in English, 繁體中文 on P(33), the camera pulls back
-//               as 完成 (P36) leaves the start screen in 中文; a clean demo frame for the push
-import { h, s, svg, card, block, place, show, C, PAPER_SHADOW, ease, keys, tw, f } from '../lib/index.js';
-import { P, HEAD, CARD, camera, TYPE, typeClipT, LANG, langClipT, LANG_CLICKS, UI, uiClipT, UI_CLICKS, SHEET } from './write/geom.js';
+// Act 2, write (FILM.md §3 row 2), bar 3 → bar 8, the build. Each beat shows its money
+// moment in CLOSE first, then the frame that names it (P(n) = scene pulse n):
+//   P(-2)…P(5)  the iris opens on the desk: four paper kinds, writing themselves; the dot
+//               drops into the Classroom worksheet (P3) and the camera dives into its stem
+//   P(5)…P(11)  CLOSE: the stem is typed on the page (the double-click lands on the cut)
+//   P(11)…P(17) MEDIUM + "Type right on the page": the 中文 line and the options land
+//   P(17)…P(23) CLOSE locked on Q1: EN (on the cut), 中文 (P19), EN+中 (P21); the toggle is
+//               re-inked above it as three labels and the dot
+//   P(23)…P(29) the printed Q1 in each language at 1190 px page width + "English, 中文, or both"
+//   P(29)…P(33) CLOSE on Settings › Language: 繁體中文 (P31) flips it
+//   P(33)…P(40) WIDE on 完成: the start screen in 中文 + "An interface in 中文 too"; the draw
+//               act's axis wipes in over P(38)…P(40) (x 96 / y 1008 stay clear)
+import { h, s, svg, block, label, show, place, C, PAPER_SHADOW, HEADLINE, LABEL, ease, f } from '../lib/index.js';
+import { camera, frame } from '../lib/camera.js';
+import {
+  P, BEAT, TYPE, TYPE_STEM, TYPE_CLOSE, TYPE_MED, TYPE_DBL, typeClipT, LANG, langClipT, LANG_STATES, REFLOW,
+  LANG_CLOSE, LANG_SAFE, UI, uiClipT, UI_CLOSE, UI_SAFE, UI_TOGGLE, PRINT_K, PRINTS,
+} from './write/geom.js';
 import { buildDesk, updateDesk } from './write/desk.js';
 
-const { prog, outSoft, inOutSoft, spring, lerp } = ease;
-const SHEETS = ['sheets-en', 'sheets-zh', 'sheets-bi'];
-const ROW_CX = SHEET.x0 + (3 * SHEET.w + 2 * SHEET.gap) / 2;
-const PUSH = CARD.y + CARD.h + 60; // the card rises out of the frame by this much; the sheets rise in from as far
-
-// Camera keys [t, [z, cx, cy], ease] per footage beat (CSS px of the 1440 × 900 footage).
-const CAM_TYPE = [
-  [P(5), [1, 720, 450]],
-  [P(7), [2.3, 440, 396], inOutSoft],
-  [P(14.4), [2.3, 476, 404], ease.sineInOut], // drifts with the caret, line by line
-  [P(16), [1.7, 540, 455], inOutSoft],
-];
-const CAM_LANG = [[P(18), [1.55, 650, 290]], [P(27.5), [1.7, 640, 280], ease.sineInOut]];
-const CAM_UI = [
-  [P(31), [1.32, 610, 300]],
-  [P(33), [1.45, 590, 300], inOutSoft], // the whole dialog edge to edge, the language cards whole
-  [P(34.6), [1.5, 585, 296], ease.sineInOut], // a breath closer while it is read
-  [P(36.6), [1.05, 700, 440], inOutSoft],
-  [P(38), [1, 720, 450], ease.sineInOut], // settles to the clean frame the push takes
-];
+const { prog, outSoft, spring, lerp, sineInOut } = ease;
+const between = (t, a, b) => t >= a && t < b;
+const HEAD_IN = { dur: 0.5, stagger: 0.06, outDur: 0.05 }; // in fast, out on the cut
 
 const scene = {
   events: [
-    { t: P(0.2), kind: 'paper', label: 'the four paper kinds rise onto the desk' },
+    { t: P(-1), kind: 'pencil', label: 'the four paper kinds write themselves' },
     { t: P(3), kind: 'drop', label: 'the dot drops into the Classroom worksheet' },
-    { t: P(3.25), kind: 'whoosh', size: 'm', label: 'the page opens into the editor' },
-    { t: P(26), kind: 'whoosh', size: 's', label: 'the editor gives way to the printed sheets' },
-    { t: P(26.4), kind: 'paper', label: 'three printed sheets: English, 中文, both' },
+    { t: P(3.25), kind: 'whoosh', size: 'm', label: 'the camera dives into the page' },
+    { t: P(23), kind: 'paper', label: 'three printed Q1s: English, 中文, both' },
   ],
   async setup(ctx) {
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
     ctx.desk = buildDesk(ctx.el);
 
-    // The printed sheets, one per language (under the card: it pushes them in).
-    ctx.sheets = await Promise.all(SHEETS.map(async (id, i) => {
-      const el = h('div', { style: {
-        position: 'absolute', left: `${f(SHEET.x0 + i * (SHEET.w + SHEET.gap), 2)}px`, top: `${SHEET.y}px`,
-        width: `${SHEET.w}px`, height: `${f(SHEET.h, 2)}px`, background: C.paper, boxShadow: PAPER_SHADOW, overflow: 'hidden',
-      } }, ctx.el);
-      const img = h('img', { src: ctx.load.url(id), style: { display: 'block', width: '100%', height: '100%' } }, el);
-      await img.decode();
-      return el;
-    }));
-
-    // The window card and its camera; one player per clip, only the live one shown.
-    ctx.card = card(ctx.el, { x: CARD.x, y: CARD.y, w: CARD.w, h: CARD.h });
-    ctx.cam = h('div', { style: { position: 'absolute', left: 0, top: 0, width: '1440px', height: '900px', transformOrigin: '0 0' } }, ctx.card.body);
-    const box = { x: 0, y: 0, w: 1440, h: 900 };
-    ctx.clips = {
-      type: await ctx.load.clip('type-mcq', box, ctx.cam),
-      lang: await ctx.load.clip('language-toggle', box, ctx.cam),
-      ui: await ctx.load.clip('zh-interface', box, ctx.cam),
+    // Three rigs, one per clip, each shown only inside its own shots.
+    const rig = async (name, clipId, shots, inner = false) => {
+      const r = camera(ctx, { name });
+      const parent = inner ? h('div', { style: { position: 'absolute', inset: 0 } }, r.content) : r.content;
+      r.inner = parent;
+      r.clip = await ctx.load.clip(clipId, r.box, parent);
+      r.problems = r.shots(shots);
+      r.span = [shots[0].at, shots[shots.length - 1].end];
+      return r;
     };
-    const ov = svg(ctx.card.body, { w: CARD.w, h: CARD.h });
+    const typeClose = { size: 'close', focus: TYPE_CLOSE, safe: TYPE_STEM, zoom: 2.6 };
+    ctx.rigs = {
+      type: await rig('type', 'type-mcq', [
+        { at: BEAT.type, end: BEAT.typeMed, ...typeClose },
+        { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_MED },
+      ]),
+      lang: await rig('lang', 'language-toggle', [
+        { at: BEAT.lang, end: BEAT.print, size: 'close', focus: LANG_CLOSE, safe: LANG_SAFE, zoom: 2.85 },
+      ], true),
+      ui: await rig('ui', 'zh-interface', [
+        { at: BEAT.ui, end: BEAT.uiWide, size: 'close', focus: UI_CLOSE, safe: UI_SAFE, zoom: 2.4 },
+        { at: BEAT.uiWide, end: BEAT.end + P(2), size: 'wide' },
+      ]),
+    };
+    // The desk dives to where the real stem sits in the first CLOSE (px per sketch unit k).
+    const q = frame(typeClose).pose;
+    ctx.target = { x: q.a[0] + q.s * (261 - q.c[0]), y: q.a[1] + q.s * (383 - q.c[1]), k: (1032 / 120) * q.s };
+
+    ctx.placeClip('type-mcq', { at: TYPE.at, from: TYPE.from, rate: 1, dur: TYPE.tS - TYPE.at });
+    ctx.placeClip('type-mcq', { at: TYPE.tS, from: TYPE.s, rate: TYPE.rate2, dur: BEAT.lang - TYPE.tS });
+    ctx.placeClip('language-toggle', { at: LANG.at, from: LANG.from, rate: LANG.rate, dur: BEAT.print - LANG.at });
+    ctx.placeClip('zh-interface', { at: UI.at, from: UI.from, rate: UI.r1, dur: P(2) });
+    ctx.placeClip('zh-interface', { at: UI.mid, from: 3.0, rate: UI.r2, dur: P(2) });
+    ctx.placeClip('zh-interface', { at: BEAT.uiWide, from: 4.4, rate: 1, dur: UI.end - 4.4 });
+
+    // The printed Q1s, cropped at 1190 px page width, side by side under the headline.
+    ctx.prints = [];
+    for (const pr of PRINTS) {
+      const [x, y] = pr.at;
+      const [sx, sy, sw, sh] = pr.src.map((v) => v * PRINT_K);
+      const el = h('div', { style: {
+        position: 'absolute', left: `${f(x, 2)}px`, top: `${y}px`, width: `${f(sw, 2)}px`, height: `${f(sh, 2)}px`,
+        background: C.paper, boxShadow: PAPER_SHADOW, overflow: 'hidden', borderRadius: '3px', transformOrigin: '50% 0',
+      } }, ctx.el);
+      const img = h('img', { src: ctx.load.url(pr.id), style: { position: 'absolute', left: `${f(-sx, 2)}px`, top: `${f(-sy, 2)}px`, width: `${f(2379 * PRINT_K, 2)}px` } }, el);
+      await img.decode();
+      const cap = label(ctx.el, { ...LABEL, ...pr.label, x, y: y - 16 });
+      ctx.prints.push({ el, cap });
+    }
+
+    // The toggle, re-inked over the locked CLOSE: three labels, the dot under the live one.
+    ctx.chip = LANG_STATES.map(([, en], i) => {
+      const o = en === '中文' ? { en: '', zh: '中文' } : { en, zh: '' };
+      const at = { x: 96 + i * 132, y: 100 };
+      return { on: label(ctx.el, { ...LABEL, ...o, ...at, color: C.ink, zhColor: C.ink }), off: label(ctx.el, { ...LABEL, ...o, ...at, color: C.inkSubtle, zhColor: C.inkSubtle }), x: at.x };
+    });
+    ctx.chip.forEach((c) => (c.cx = c.x + c.on.width / 2));
+
+    const ov = svg(ctx.el, {});
+    ctx.chipDot = s('circle', { r: 6, fill: C.markBlue }, ov);
     ctx.click = { dot: s('circle', { r: 9, fill: C.markBlue }, ov), ring: s('circle', { fill: 'none', stroke: C.markBlue }, ov) };
 
-    ctx.placeClip('type-mcq', { at: TYPE.at, from: TYPE.from, rate: 1, dur: TYPE.t1 - TYPE.at });
-    ctx.placeClip('type-mcq', { at: TYPE.t1, from: TYPE.fast, rate: TYPE.rate2, dur: TYPE.end - TYPE.t1 });
-    ctx.placeClip('language-toggle', { at: LANG.at, from: LANG.from, rate: LANG.rate, dur: LANG.end - LANG.at });
-    ctx.placeClip('zh-interface', { at: UI.at, from: UI.from, rate: UI.rate, dur: (UI.hold - UI.from) / UI.rate });
-
-
-    const head = { x: HEAD.x, y: HEAD.y, align: 'left', w: HEAD.w, maxLines: 2, size: HEAD.size, zhSize: HEAD.zhSize, zhGap: 12, rise: 12 };
-    ctx.heads = ['type', 'lang', 'ui'].map((k) => block(ctx.el, { ...ctx.copy[k], ...head }));
+    ctx.heads = ['type', 'lang', 'ui'].map((k) => block(ctx.el, { ...HEADLINE, ...ctx.copy[k] }));
   },
 
   update(ctx, t) {
-    updateDesk(ctx.desk, t);
+    updateDesk(ctx.desk, t, ctx.target);
 
-    // Which footage is live, its clip time and its camera.
-    const live = t < P(5) ? null : t < LANG.at ? 'type' : t < LANG.end ? 'lang' : t >= UI.at ? 'ui' : null;
-    for (const [k, c] of Object.entries(ctx.clips)) c.el.style.visibility = k === live ? 'visible' : 'hidden';
-    let cam = camera(1, 720, 450), clicks = [];
-    if (live === 'type') {
-      ctx.clips.type.at(typeClipT(t));
-      cam = camera(...keys(t, CAM_TYPE));
-    } else if (live === 'lang') {
-      ctx.clips.lang.at(langClipT(t));
-      cam = camera(...keys(t, CAM_LANG));
-      clicks = LANG_CLICKS;
-    } else if (live === 'ui') {
-      ctx.clips.ui.at(uiClipT(t));
-      cam = camera(...keys(t, CAM_UI));
-      clicks = UI_CLICKS;
+    // Footage: each rig lives only inside its shots.
+    const { type, lang, ui } = ctx.rigs;
+    for (const r of [type, lang, ui]) {
+      const live = between(t, ...r.span);
+      r.el.style.display = live ? '' : 'none';
+      if (live) r.update(t);
     }
-    ctx.cam.style.transform = `translate(${f(cam.tx, 2)}px, ${f(cam.ty, 2)}px) scale(${f(cam.S, 5)})`;
+    type.clip.at(Math.max(0, typeClipT(t)));
+    const lt = Math.max(0, langClipT(t));
+    lang.clip.at(lt);
+    // The EN+中 state brings the pages rail back and the page moves: shift it home.
+    const back = lang.clip.index(lt) >= 240;
+    lang.inner.style.transform = back ? `translate(${-REFLOW[0]}px, ${-REFLOW[1]}px)` : 'none';
+    ui.clip.at(Math.max(0, uiClipT(t)));
 
-    // The card: in on the desk's cut; it rises out of the frame (right of the headline column)
-    // to bring the sheets in; back on a cut for the interface.
-    const out = tw(t, LANG.exit, LANG.end - LANG.exit, inOutSoft);
-    show(ctx.card.el, live ? 1 : 0);
-    place(ctx.card.el, { y: live === 'lang' ? -PUSH * out : 0 });
+    // The printed Q1s rise in one after another, then the row breathes while it is read.
+    const pOn = between(t, BEAT.print, BEAT.ui);
+    ctx.prints.forEach(({ el, cap }, i) => {
+      const r = outSoft(prog(t, BEAT.print + P(i * 0.5), BEAT.print + P(i * 0.5) + 0.6));
+      const k = 1 + 0.02 * sineInOut(prog(t, BEAT.print, BEAT.ui));
+      place(el, { y: 90 * (1 - r), scale: k, opacity: pOn ? r : 0 });
+      cap.show(pOn ? r : 0);
+    });
 
-    // The dot marks each click in the footage: a pop, then a ripple.
-    const hit = clicks.find(([at]) => t >= at - 0.02 && t < at + 0.55);
+    // The chip: the live state's label in ink, the dot springs across on each click.
+    const lOn = between(t, BEAT.lang, BEAT.print);
+    const idx = LANG_STATES.findLastIndex(([at]) => t >= at);
+    ctx.chip.forEach((c, i) => {
+      c.on.show(lOn && i === idx ? 1 : 0);
+      c.off.show(lOn && i !== idx ? 1 : 0);
+    });
+    let cx = ctx.chip[0].cx;
+    for (let i = 1; i < LANG_STATES.length; i++) cx = lerp(cx, ctx.chip[i].cx, spring(prog(t, LANG_STATES[i][0], LANG_STATES[i][0] + 0.32)));
+    ctx.chipDot.setAttribute('cx', f(cx, 2));
+    ctx.chipDot.setAttribute('cy', '120');
+    show(ctx.chipDot, lOn ? 1 : 0);
+
+    // The dot marks a click in a CLOSE: a pop, then a ripple.
+    const hits = [[BEAT.type, type, TYPE_DBL], [P(31), ui, UI_TOGGLE]];
+    const hit = hits.find(([at]) => t >= at - 0.02 && t < at + 0.55);
     if (hit) {
-      const [at, pt] = hit;
-      const [x, y] = cam.at(pt);
-      // Short: the toolbar can re-flow under it right after the click.
+      const [at, r, pt] = hit;
+      const [x, y] = r.toScreen(pt);
       const p = prog(t, at - 0.02, at + 0.55);
       const pop = spring(prog(t, at - 0.02, at + 0.16)) * (1 - outSoft(prog(t, at + 0.2, at + 0.45)));
       for (const el of [ctx.click.dot, ctx.click.ring]) { el.setAttribute('cx', f(x, 2)); el.setAttribute('cy', f(y, 2)); }
-      ctx.click.dot.setAttribute('r', f(8 * pop, 3));
-      ctx.click.ring.setAttribute('r', f(lerp(8, 34, outSoft(p)), 2));
+      ctx.click.dot.setAttribute('r', f(10 * pop, 3));
+      ctx.click.ring.setAttribute('r', f(lerp(10, 44, outSoft(p)), 2));
       ctx.click.ring.setAttribute('stroke-width', f(lerp(3, 1, p), 3));
       show(ctx.click.dot, pop > 0.01 ? 1 : 0);
       show(ctx.click.ring, 0.6 * (1 - p));
@@ -123,19 +157,10 @@ const scene = {
       show(ctx.click.ring, 0);
     }
 
-    // The printed sheets rise in on the card's push, a hair apart, left to right.
-    ctx.sheets.forEach((el, i) => {
-      const p = tw(t, LANG.exit + i * 0.05, LANG.end - LANG.exit, inOutSoft);
-      // …then the row breathes in a touch while it is read.
-      const k = 1 + 0.025 * ease.sineInOut(prog(t, LANG.end, UI.at));
-      const dx = (SHEET.x0 + i * (SHEET.w + SHEET.gap) + SHEET.w / 2 - ROW_CX) * (k - 1);
-      place(el, { x: dx, y: PUSH * (1 - p), scale: k, opacity: t >= LANG.exit && t < UI.at ? 1 : 0 });
-    });
-
-    // Headlines: one per beat, each gone before the next arrives.
-    ctx.heads[0].show(t, { at: P(4), out: P(18) - 0.05, outDur: 0.35 });
-    ctx.heads[1].show(t, { at: P(18), out: P(31) - 0.05, outDur: 0.35 });
-    ctx.heads[2].show(t, { at: P(31) });
+    // Headlines: each arrives with the frame that names its beat and leaves on the next cut.
+    ctx.heads[0].show(t, { at: BEAT.typeMed, out: BEAT.lang, ...HEAD_IN });
+    ctx.heads[1].show(t, { at: BEAT.print, out: BEAT.ui, ...HEAD_IN });
+    ctx.heads[2].show(t, { at: BEAT.uiWide, ...HEAD_IN });
   },
 };
 
