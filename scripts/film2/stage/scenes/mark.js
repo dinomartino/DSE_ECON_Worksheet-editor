@@ -1,12 +1,15 @@
-// Act 1, the mark (FILM.md §3): "Draw the market" at hero scale on cream, exactly the
-// launch splash (src/launch/) played ~3× slower, scaled so the blue dot pops on pulse 5.
-// The mark draws centred in the frame; as the wordmark arrives the whole lockup glides up
-// (pulses 4–7) to make room for the tagline (pulse 6). The next act's iris opens out of the
-// dot: timeline.mjs write.in.at must equal MARK_DOT (doctor checks).
+// Act 1, the mark (FILM.md §3): "Draw the market" at hero scale on cream, the launch splash
+// (src/launch/) played ~3× slower, scaled so the blue dot pops on pulse 5 (cue mark.dot).
 // The hand-off from the cold open: its line docks on the cut as this mark's vertical axis, so
 // the act opens with axis V already drawn (solid, the colour it has on the tile) and the tile
 // grows out of that line around it; the rest of the splash runs on its own clock.
-import { lockup, block, h, s, place, tween, ease, f, C } from '../lib/index.js';
+// Beats (scene pulses, P0 = bar 1.5 = 7.13 s):
+//   P0..P1.4  the tile grows out of the axis      P0.75..P2.75 the mark glides up from the centre
+//   P2        "Econ Studio 經濟備課室" rises         P3.5       the tagline
+//   P5        knock + dot (the pop), the ripple    P3.5..end  one slow push (1 → 1.06) on the dot
+//   P10..P11.5 the words track out, leaving the tile for the iris that opens out of the dot
+// The next act's iris opens out of the dot: timeline.mjs write.in.at must equal MARK_DOT.
+import { lockup, block, h, s, place, show, tween, ease, f, C } from '../lib/index.js';
 
 export const SIZE = 360; // the mark, px
 const EN = 110, ZH = 46;
@@ -18,6 +21,9 @@ const DROP = 540 - MARK_DOT[1]; // the mark starts centred
 // Axis V on the tile: cream at .34 over the tile (#3A342E) is exactly #7C7772.
 export const AXIS_COLOR = '#7C7772';
 const GROW = 0.62; // s: the tile grows out of the axis (the splash's own tile phase is 0.48 s)
+// The dot's pop reads ~3 frames after its first frame: run the splash that much early so the
+// dot is visible on the pop sound (cue mark.dot, sync review #7).
+const LEAD = 0.05;
 
 const scene = {
   setup(ctx) {
@@ -28,7 +34,7 @@ const scene = {
     ctx.lock = lockup(ctx.group, { cx: 960, top: TOP, size: SIZE, en: EN, zh: ZH, copy: ctx.copy.word });
     ctx.tag = block(ctx.group, {
       ...ctx.copy.tagline, x: 960, y: ctx.lock.bottom + TAG_GAP, w: 1500, maxLines: 1, face: 'sans', weight: 500,
-      size: TAG, tracking: 0, color: C.inkMuted, zhSize: TAG_ZH, zhTracking: 0.08, zhColor: C.inkSubtle, zhGap: 8, rise: 10,
+      size: TAG, tracking: 0, color: C.inkMuted, zhSize: TAG_ZH, zhTracking: 0.08, zhColor: C.inkMuted, zhGap: 8, rise: 10,
     });
     // Axis V drawn solid from the first frame (under the curves, like the original).
     const { g, axes, axisV } = ctx.lock.mark.parts;
@@ -37,7 +43,8 @@ const scene = {
     g.insertBefore(ctx.axisV, axes);
   },
   update(ctx, t) {
-    ctx.lock.at(Math.max(0, t) * ctx.msPerS);
+    const P = ctx.pulse;
+    ctx.lock.at(Math.max(0, t + LEAD) * ctx.msPerS);
     // The tile: full opacity and scale from the start, its rect growing out of the axis line
     // (x 108–128, y 96–404: the stroke's own outline) to the 512 tile.
     const { g, tile } = ctx.lock.mark.parts;
@@ -51,10 +58,18 @@ const scene = {
     tile.setAttribute('width', r(20, 512));
     tile.setAttribute('height', r(308, 512));
     tile.setAttribute('rx', r(10, 114));
-    // A slow push-in towards the dot keeps the held lockup alive until the iris takes it.
-    const push = 1 + 0.02 * ease.sineInOut(t / ctx.dur);
-    place(ctx.group, { y: tween(t, ctx.pulse(4), ctx.pulse(3), DROP, 0, ease.inOutSoft), scale: push });
-    ctx.tag.show(t, { at: ctx.pulse(6), dur: 0.8, stagger: 0.12 });
+    // The words: in on P2 (wordmark) and P3.5 (tagline), out from P10 so the iris opens on the
+    // tile alone.
+    const out = ease.outSoft(ease.prog(t, P(10), P(11.5)));
+    const word = ease.outSoft(ease.prog(t, P(2), P(2) + 0.9));
+    ctx.lock.wordAt(word);
+    show(ctx.lock.word.el, word * (1 - out));
+    ctx.lock.word.el.style.transform = `translateY(${f((1 - word) * 6 * ctx.lock.k - 16 * out, 2)}px)`;
+    ctx.tag.show(t, { at: P(3.5), dur: 0.8, stagger: 0.12, out: P(11.5), outDur: P(1.5) });
+    // The mark glides up from the centre as the words arrive; one slow push towards the dot
+    // keeps the lockup alive until the iris takes it.
+    const push = 1 + 0.06 * ease.sineInOut(ease.prog(t, P(3.5), ctx.window.end - ctx.from));
+    place(ctx.group, { y: tween(t, P(0.75), P(2), DROP, 0, ease.inOutSoft), scale: push });
   },
 };
 

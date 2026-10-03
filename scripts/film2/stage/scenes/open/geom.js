@@ -1,36 +1,48 @@
 // Act 0's geometry and clock. Every time is a grid pulse (timeline.mjs pulse(n), film time;
 // the act starts at 0 s, so scene time = film time). The act ends on pulse 12 = bar 1.5, the
-// cut into the mark. Points are design px (frame), page points page px.
+// cut into the mark. Frame points are design px; page points are page px (the sheet is drawn
+// 700 × 992 and posed by the camera below).
 import { pulse } from '../../../timeline.mjs';
 import { SIZE, AXIS_COLOR } from '../mark.js';
 
 /** Scene time of grid pulse n (pulse 0 = the first downbeat, 1.795 s). */
 export const P = (n) => pulse(n);
 
-// The page: a flat sheet on the right, its right edge on the safe line (x 1824), running off
-// the bottom edge only. k: page px → frame px (the sheet is drawn at 700 px, shown at 864).
-export const PAGE = { x: 960, y: 120, w: 700, h: 992, k: 864 / 700 };
-export const pg = ([x, y]) => [PAGE.x + x * PAGE.k, PAGE.y + y * PAGE.k];
+export const PAGE = { w: 700, h: 992 };
 
-// The diagram on the page (page px): axes, the demand line already there, the supply line
-// the teacher means to draw.
-export const AX = { o: [120, 560], top: 262, right: 486 };
-export const DEMAND = [[166, 300], [446, 528]];
-export const SUPPLY = [[166, 528], [446, 300]];
-export const CROOKED_END = [430, 322]; // where the first drag lets go
-export const GRAB_END = [440, 306]; // the handle dragged towards the right place
-export const SNAP_END = [458, 528]; // …and snapped onto the demand line's end instead
+// The diagram on the page (page px), set near the sheet's left margin so the camera can hold
+// the whole struggle in the sheet's left half while the statement sits on the cream beside it.
+export const AX = { o: [70, 540], top: 250, right: 420 };
+export const DEMAND = [[110, 288], [394, 516]];
+export const SUPPLY = [[110, 516], [394, 288]];
+export const CROOKED_END = [376, 312]; // where the first drag lets go
+export const GRAB_END = [386, 296]; // the handle dragged towards the right place
+export const SNAP_END = [404, 516]; // …and snapped onto the demand line's end instead
 // Kinks the clumsy line tool leaves: [fraction along, px off the line].
-export const KINKS = [[0.36, 26], [0.68, -12]];
+export const KINKS = [[0.34, 22], [0.66, -11]];
+export const LINE_W = 3.6; // page px
 
 // The toolbar (page px): four generic tools, line and text box used.
-export const TOOLBAR = { x: 316, y: 196, w: 208, h: 46 };
+export const TOOLBAR = { x: 222, y: 184, w: 208, h: 46 };
 export const TOOL = (i) => [TOOLBAR.x + 32 + i * 48, TOOLBAR.y + TOOLBAR.h / 2];
 export const LINE_TOOL = 0, TEXT_TOOL = 2;
 
 // The text box: placed by the line's end, then it jumps into the text below.
-export const BOX = { w: 56, h: 52, home: [462, 252], jump: [66, 586] };
-export const REFLOW = 66; // px the text under the diagram is pushed down
+export const BOX = { w: 56, h: 52, home: [328, 232], jump: [14, 556] };
+export const FLOW_Y = 588; // question 2's first line, pushed down by REFLOW
+export const REFLOW = 58;
+
+// The camera: the sheet's pose { k (frame px per page px), at: the frame point where the
+// anchor page point sits }. A: an extreme close-up on the drag, full-bleed (the sheet's edge
+// is off the frame); B: the sheet slides right so its left edge stands at x ≈ 940 and the
+// statement takes the cream; C: the pull-back, the whole sheet in C2's object slot.
+export const ANCHOR = [244, 414];
+export const CAM = {
+  A: { k: 3.9, at: [960, 492] },
+  B: { k: 2.16, at: [940 + 244 * 2.16, (414 - 152) * 2.16] },
+  B2: { k: 2.25 },
+  C: { k: 0.9, at: [1101 + 244 * 0.9, 93.5 + 414 * 0.9] },
+};
 
 // The hand-off (scenes/mark.js at its start): the mark tile, SIZE px, starts centred in
 // the frame; its first drawn stroke is the axis V 'M118 394V106' of the 512-unit tile,
