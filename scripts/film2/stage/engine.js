@@ -64,7 +64,9 @@ async function createSlot(id, { dry = false } = {}) {
   await fontsReady;
   const info = infoOf(id);
   const def = await sceneDef(id);
-  const el = lib.h('div', { class: 'scene', 'data-scene': id }, root);
+  // The engine poses `wrap` (transitions: transform, clip, opacity); the scene owns `el`.
+  const wrap = lib.h('div', { class: 'slot', 'data-slot': id }, root);
+  const el = lib.h('div', { class: 'scene', 'data-scene': id }, wrap);
   const res = { clips: [], disposers: [] };
   const placements = [];
   const ctx = {
@@ -99,7 +101,7 @@ async function createSlot(id, { dry = false } = {}) {
     placements,
   };
   await def.setup?.(ctx);
-  return { id, info, def, ctx, res, el };
+  return { id, info, def, ctx, res, el, wrap };
 }
 
 function disposeSlot(slot) {
@@ -110,7 +112,7 @@ function disposeSlot(slot) {
   }
   for (const fn of slot.res.disposers) fn();
   for (const c of slot.res.clips) c.dispose();
-  slot.el.remove();
+  slot.wrap.remove();
 }
 
 const slots = new Map();
@@ -123,18 +125,22 @@ const slotFor = (id) => {
 const irisDot = lib.s('circle', { r: 0, fill: lib.C.markBlue }, fx);
 const irisRing = lib.s('circle', { r: 0, fill: 'none', stroke: lib.C.markBlue }, fx);
 
-function resetPose(el) {
-  el.style.transform = 'none';
-  el.style.clipPath = 'none';
-  el.style.visibility = 'visible';
+// A slot is hidden with opacity, never visibility: a descendant that lib show() set to
+// visibility: visible would ignore a hidden ancestor and leak into the other act.
+const hide = (wrap) => (wrap.style.opacity = '0');
+
+function resetPose(wrap) {
+  wrap.style.transform = 'none';
+  wrap.style.clipPath = 'none';
+  wrap.style.opacity = '1';
 }
 
 function pose(active, t) {
   irisDot.style.visibility = 'hidden';
   irisRing.style.visibility = 'hidden';
   active.forEach((s, i) => {
-    resetPose(s.el);
-    s.el.style.zIndex = String(i + 1);
+    resetPose(s.wrap);
+    s.wrap.style.zIndex = String(i + 1);
   });
   if (active.length < 2) return;
   const [A, B] = active;
@@ -144,8 +150,8 @@ function pose(active, t) {
   if (tr.type === 'push') {
     const e = inOutSoft(p);
     const [ax, ay] = tr.dir === 'up' ? [0, -DH] : [-DW, 0];
-    A.el.style.transform = `translate(${f(ax * e, 2)}px, ${f(ay * e, 2)}px)`;
-    B.el.style.transform = `translate(${f(-ax * (1 - e), 2)}px, ${f(-ay * (1 - e), 2)}px)`;
+    A.wrap.style.transform = `translate(${f(ax * e, 2)}px, ${f(ay * e, 2)}px)`;
+    B.wrap.style.transform = `translate(${f(-ax * (1 - e), 2)}px, ${f(-ay * (1 - e), 2)}px)`;
   } else if (tr.type === 'iris') {
     // The dot grows on A (a spring), then opens into B as a circle that covers the frame.
     const [cx, cy] = tr.at ?? [DW / 2, DH / 2];
@@ -155,21 +161,23 @@ function pose(active, t) {
     const open = inOutSoft(clamp((p - 0.3) / 0.7));
     const r = r0 + (R - r0) * open;
     if (open <= 0) {
-      B.el.style.visibility = 'hidden';
+      hide(B.wrap);
       irisDot.setAttribute('cx', cx);
       irisDot.setAttribute('cy', cy);
       irisDot.setAttribute('r', f(r0 * grow, 2));
       irisDot.style.visibility = 'visible';
     } else {
-      B.el.style.clipPath = `circle(${f(r, 2)}px at ${cx}px ${cy}px)`;
+      // A path, not circle(): Chrome's compositor erased everything outside a circle() clip
+      // whose box overhangs the slot on every side (transparent corners in the screenshot).
+      const rr = f(r, 2);
+      B.wrap.style.clipPath = `path('M ${f(cx - r, 2)} ${cy} a ${rr} ${rr} 0 1 0 ${f(2 * r, 2)} 0 a ${rr} ${rr} 0 1 0 ${f(-2 * r, 2)} 0 Z')`;
       irisRing.setAttribute('cx', cx);
       irisRing.setAttribute('cy', cy);
       irisRing.setAttribute('r', f(r, 2));
       irisRing.setAttribute('stroke-width', f(10 * (1 - open), 3));
       irisRing.style.visibility = open < 1 ? 'visible' : 'hidden';
     }
-  } else if (t >= B.info.from) A.el.style.visibility = 'hidden';
-  else B.el.style.visibility = 'hidden';
+  } else hide(t >= B.info.from ? A.wrap : B.wrap);
 }
 
 const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -183,7 +191,7 @@ async function doSeek(t) {
   }
   const active = [];
   for (const id of ids) active.push(await slotFor(id));
-  for (const el of root.children) if (!active.some((s) => s.el === el)) el.style.visibility = 'hidden';
+  for (const el of root.children) if (!active.some((s) => s.wrap === el)) hide(el);
   for (const s of active) s.def.update?.(s.ctx, t - s.info.from);
   for (const s of active) await Promise.all(s.res.clips.map((c) => c.flush()));
   pose(active, t);

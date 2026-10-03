@@ -42,16 +42,38 @@ export const DURATION = bar(END_BAR);
 // The acts of FILM.md §3. `bars` = [first, last) bar line (halves allowed); the first act
 // starts at 0 s. Bar 3 = build (12.46 s), 8 = body, 20 = lift (72.92 s), 26 = pull-back.
 // `in` = the transition into the act, centred on its first bar line:
-//   cut | push {dir: 'left'|'up', pulses} | iris {pulses, at: [x, y] design px}
+//   cut | match (a cut whose two frames share a shape) | push {dir: 'left'|'up', pulses}
+//   | iris {pulses, at: [x, y] design px}
+// `cuts` = the act's intended hard changes inside it (film s, on pulses: footage cuts, a
+// page swapped at once); `ui` = clicks in the real footage whose response is an instant
+// change (a dialog opens, a toggle flips: the clip's event time); `holds` = [from, to] film s
+// where a still picture is meant. tools/motion-check.mjs exempts all three; a flag elsewhere
+// is a bug.
+const PC = (n0, ns) => ns.map((n) => pulse(n0 + n)); // pulses counted from an act's first pulse
 const ACTS = [
   { id: 'open', bars: [0, 1.5], in: { type: 'cut' } },
-  { id: 'mark', bars: [1.5, 3], in: { type: 'cut' } },
-  { id: 'write', bars: [3, 8], in: { type: 'iris', pulses: 4, at: [960, 338] } }, // at: the mark's dot (scenes/mark.js MARK_DOT)
-  { id: 'draw', bars: [8, 14], in: { type: 'push', dir: 'left', pulses: 4 } },
-  { id: 'papers', bars: [14, 20], in: { type: 'push', dir: 'left', pulses: 4 } },
-  { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] } },
-  { id: 'everywhere', bars: [24, 26], in: { type: 'cut' } },
-  { id: 'end', bars: [26, END_BAR], in: { type: 'push', dir: 'up', pulses: 4 } },
+  { id: 'mark', bars: [1.5, 3], in: { type: 'match' } }, // the straightened line becomes the axis
+  { id: 'write', bars: [3, 8], in: { type: 'iris', pulses: 4, at: [960, 338] }, // at: the mark's dot (scenes/mark.js MARK_DOT)
+    cuts: [pulse(29), pulse(42), pulse(55)], // → type-mcq; → language-toggle; → zh-interface
+    // type-mcq's double-click into the 中文 line; EN, 中文, EN+中; 繁體中文; 完成 closes Settings
+    ui: [18.011, pulse(43), pulse(46), pulse(49), pulse(57), pulse(60)] },
+  { id: 'draw', bars: [8, 14], in: { type: 'push', dir: 'left', pulses: 4 },
+    cuts: [pulse(93), pulse(96), pulse(104)], // → the Templates grid; → Draw answer; → Student/Teacher
+    ui: [pulse(106)] }, // Teacher: the red answer snaps on
+  // Footage segments (P10, P16, P20, P38), key layouts switching in the real app (P21, P23,
+  // P25), the printed rows replacing the footage (P26, P32), the version close-up (P40) and
+  // the fan's covers (P44). The other deals (P27–P29, P33–P36, P41, P42, P45) rise in: motion.
+  { id: 'papers', bars: [14, 20], in: { type: 'push', dir: 'left', pulses: 4 },
+    cuts: PC(112, [10, 16, 20, 21, 23, 25, 26, 32, 38, 40, 44]),
+    ui: PC(112, [12, 18]) }, // Teacher: red answers; Marking scheme opens beside them
+  { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] },
+    cuts: [pulse(168), pulse(172), pulse(182)], // the footage's topic click (P8); → bank-drag (P12); → check-terms (P22)
+    ui: [pulse(183)] }, // Check terms opens its panel
+  { id: 'everywhere', bars: [24, 26], in: { type: 'cut' },
+    cuts: [pulse(196), pulse(203)], // → the real .docx page; → the three windows
+    ui: [87.397] }, // Export… opens the dialog (the clip's click)
+  { id: 'end', bars: [26, END_BAR], in: { type: 'push', dir: 'up', pulses: 4 },
+    holds: [[pulse(210), pulse(219)], [103.3, bar(END_BAR)]] }, // the statement is read; the end card
 ];
 
 export const SCENES = ACTS.map((a, i) => ({
@@ -60,8 +82,10 @@ export const SCENES = ACTS.map((a, i) => ({
   to: i === ACTS.length - 1 ? DURATION : bar(a.bars[1]),
 }));
 
+/** A transition with no duration: a cut or a match cut. */
+export const isCut = (s) => !s?.in || s.in.type === 'cut' || s.in.type === 'match';
 /** Half the transition into scene `s`, in seconds (0 for a cut). */
-export const halfIn = (s) => (s?.in && s.in.type !== 'cut' ? ((s.in.pulses ?? 2) * PULSE) / 2 : 0);
+export const halfIn = (s) => (isCut(s) ? 0 : ((s.in.pulses ?? 2) * PULSE) / 2);
 
 /** [start, end) of scene `id`, transitions included. */
 export function sceneWindow(id) {
@@ -92,6 +116,8 @@ export const CUES = [
   { id: 'write.build', t: bar(3), kind: 'accent', note: 'the build: the dot drops onto the desk' },
   { id: 'draw.body', t: bar(8), kind: 'accent', note: 'body: the hero act' },
   { id: 'papers.turn', t: bar(14), kind: 'accent' },
+  { id: 'papers.scheme', t: bar(16), kind: 'accent', note: 'cut to the Marking scheme view, its headline' },
+  { id: 'papers.mock', t: bar(18), kind: 'accent', note: 'mock papers: the headline, the Paper 1 cover dealt' },
   { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens' },
   { id: 'everywhere.cuts', t: bar(24), kind: 'accent' },
   { id: 'end.pullback', t: bar(26), kind: 'accent', note: 'the pull-back: everything collapses into lines' },

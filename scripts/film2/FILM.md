@@ -149,7 +149,9 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
 A sibling of `scripts/film/`, reusing its capture and tools by import; v1 keeps working.
 
 - `timeline.mjs` (browser-safe data): the music file, its verified beat grid
-  (`BEATS`, `BARS` in seconds), `beat(n)`/`bar(n)`, `SCENES` (id, from, to, in-transition),
+  (`BEATS`, `BARS` in seconds), `beat(n)`/`bar(n)`, `SCENES` (id, from, to, in-transition: cut, match, push or iris;
+  intended in-act `cuts`, footage `ui` changes and still `holds`, which
+  `tools/motion-check.mjs` exempts),
   `CUES` (id, t, kind: sfx/accent), `COPY` (every string, en + zh), `DURATION`.
 - `stage/` 2D engine: `index.html` + `engine.js` exposing `window.film =
   {ready, fps, duration, frames, size, seek(t), events(), text(), placements(), errors()}`;

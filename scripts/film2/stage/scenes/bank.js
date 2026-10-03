@@ -31,8 +31,7 @@ const scene = {
     { t: P(24), kind: 'pencil', label: 'the glossary underlines draw on' },
   ],
   async setup(ctx) {
-    // Everything hangs off one root: the engine hides a scene with visibility, which a child
-    // that lib show() made visible would ignore; opacity on the root cannot leak.
+    // Everything hangs off one root (the engine poses the iris on its own wrapper).
     ctx.root = h('div', { style: { position: 'absolute', inset: 0 } }, ctx.el);
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.root);
     // The window: footage inside a camera-posed content box (CSS px, origin 0 0).
@@ -63,14 +62,6 @@ const scene = {
     ctx.lines = UNDERLINES.map((r) => crop(pre, r, ctx.strips));
   },
   update(ctx, t) {
-    // Hidden until the iris starts to open (engine.js pose: 30 % into the transition).
-    const h0 = ctx.tl.halfIn(ctx.tl.SCENES.find((s) => s.id === ctx.id));
-    ctx.root.style.opacity = t < -0.4 * h0 ? '0' : '1';
-    // …and clipped by the iris itself: the engine's clip on the scene misses descendants that
-    // share a composited layer with the previous act's text (Chrome), so repeat it here.
-    const open = inOutSoft(clamp(((t + h0) / (2 * h0) - 0.3) / 0.7));
-    const R = 44 + (Math.hypot(960, 540) + 4 - 44) * open;
-    ctx.root.style.clipPath = open < 1 ? `circle(${R.toFixed(2)}px at 960px 540px)` : 'none';
     const q = camera(t);
     ctx.float.style.transform = camTransform(q);
     ctx.content.style.transform = camTransform(q, BODY);

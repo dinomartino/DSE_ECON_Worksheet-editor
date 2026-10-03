@@ -6,8 +6,9 @@
 //   node scripts/film2/tools/contact.mjs <video|stills dir> [--count=24] [--cols=6] [--cell=320]
 //        [--from=<s>] [--to=<s>] [--every=<s>] [--out=<png>]
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { basename, dirname, resolve } from 'node:path';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OUT } from '../paths.mjs';
 import { parseFlags, probe } from './motion-check.mjs';
@@ -32,7 +33,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const out = resolve(o.out ?? resolve(OUT, 'contact', `${basename(input).replace(/\.[^.]+$/, '')}.png`));
   mkdirSync(dirname(out), { recursive: true });
   const isDir = statSync(input).isDirectory();
-  let times = [], args;
+  let times = [], args, seq = null;
   if (isDir) {
     const files = readdirSync(input).filter((f) => /\.(png|jpe?g)$/i.test(f)).sort();
     if (!files.length) {
@@ -43,10 +44,18 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const picks = Array.from({ length: count }, (_, i) => files[Math.round((i * (files.length - 1)) / Math.max(1, count - 1))]);
     times = picks;
     const rows = Math.ceil(count / cols);
-    // a concat list of the picks: stable order, no pattern guessing
-    const list = `${out}.list.txt`;
-    writeFileSync(list, picks.map((f) => `file '${resolve(input, f).replace(/'/g, "'\\''")}'\nduration 1`).join('\n') + '\n');
-    args = ['-f', 'concat', '-safe', '0', '-i', list, '-vf', `scale=${cell}:-2,tile=${cols}x${rows}:padding=4:margin=4:color=black`];
+    // The picks, linked as a numbered sequence (the image2 demuxer: one frame per file, in
+    // order). -reinit_filter 0: a frame whose format or size differs (an RGBA screenshot among
+    // RGB ones) would otherwise rebuild the graph and restart the tile, dropping every cell
+    // before it.
+    const ext = extname(picks[0]).toLowerCase();
+    if (picks.some((f) => extname(f).toLowerCase() !== ext)) {
+      console.error('contact: mixed image types in one directory');
+      process.exit(1);
+    }
+    seq = mkdtempSync(resolve(tmpdir(), 'contact-'));
+    picks.forEach((f, i) => symlinkSync(resolve(input, f), resolve(seq, `${String(i).padStart(5, '0')}${ext}`)));
+    args = ['-framerate', '1', '-start_number', '0', '-reinit_filter', '0', '-i', resolve(seq, `%05d${ext}`), '-vf', `scale=${cell}:-2,tile=${cols}x${rows}:padding=4:margin=4:color=black`];
   } else {
     const { fps, duration } = await probe(input);
     const a = Number(o.from ?? 0), b = Math.min(Number(o.to ?? duration), duration);
@@ -59,6 +68,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     void fps;
   }
   const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args, '-frames:v', '1', '-fps_mode', 'passthrough', out], { encoding: 'utf8' });
+  if (seq) rmSync(seq, { recursive: true, force: true });
   if (r.status !== 0) {
     console.error(`contact: ffmpeg failed\n${r.stderr}`);
     process.exit(1);
