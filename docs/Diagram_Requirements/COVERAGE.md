@@ -173,7 +173,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 | Vertical Ms, falling Md, nominal rate | `money-market`: vertical | C |
 | Md shifters | `money-demand-shift` | C |
 | Ms shifters | `money-supply-shift` | C |
-| A rate change is a movement along Md | manual (a point on Md) | P — no template |
+| A rate change is a movement along Md | `money-rate-change`: arrow span E₀ → E₁ beside Md | C |
 
 ## D · international and electives
 
@@ -267,7 +267,7 @@ Status: **C** covered · **P** partial · **N** not covered · **n/a**.
 |---|---|---|
 | Subsidy: CB and PB, relative size | `per-unit-subsidy` | C |
 | Quota: kinked S shifts right; gain vs loss | `quota-enlarged` + Revenue presets | C |
-| Ceiling DWL; after D shifts left, a smaller triangle | `price-control-dwl` + Shift D, then controlDwl on D₁ | P — second DWL added by hand |
+| Ceiling DWL; after D shifts left, a smaller triangle | `ceiling-demand-falls`: controlDwl on D₀ and on D₁ | C |
 
 ### MCQ graph patterns
 | Item | Met by | St. |

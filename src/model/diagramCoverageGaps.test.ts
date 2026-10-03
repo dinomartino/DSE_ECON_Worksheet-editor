@@ -3,6 +3,7 @@ import type { Diagram, DiagramCurve } from './diagram';
 import { buildFromTemplate } from './diagramTemplates';
 import { curvePath, curveYAt, resolveAnchor, resolveDiagram, splineSegments } from './diagramAnchors';
 import { applyDrag } from './diagramDraw';
+import { spanGeometry } from './diagramSpans';
 import { areaPolygon, polygonCentroid } from './diagramAreas';
 import { plain } from './text';
 
@@ -140,5 +141,49 @@ describe('tax-net-revenue', () => {
     const after = drag(d, curveNamed(d, 'D').id, 0.05, 0);
     expect(box(after).w).toBeGreaterThan(box(d).w);
     expect(box(after).h).toBeCloseTo(sellers(after).y, 9);
+  });
+});
+
+describe('money-rate-change', () => {
+  const d = buildFromTemplate('money-rate-change');
+  const md = curveNamed(d, 'Md');
+  const along = d.spans!.find((s) => !s.along)!;
+
+  it('moves along one Md, from r₀ up to r₁, with no Md shift', () => {
+    expect(md.derive).toBeUndefined();
+    expect(d.curves.filter((c) => plain(c.label?.en).startsWith('Md'))).toHaveLength(1);
+    const [e0, e1] = [tick(d, 'y', 'r0').at, tick(d, 'y', 'r1').at];
+    expect(e1.y).toBeGreaterThan(e0.y);
+    for (const e of [e0, e1]) expect(e.y).toBeCloseTo(curveYAt(md, e.x)!, 9);
+  });
+
+  it('draws the movement as an arrow from E₀ to E₁ that follows a drag of Ms', () => {
+    const before = spanGeometry(d, along)!.base;
+    expect(before[1].y).toBeCloseTo(tick(d, 'y', 'r1').at.y, 9);
+    const after = drag(d, curveNamed(d, 'Ms1').id, -0.05, 0);
+    expect(spanGeometry(after, along)!.base[1].y).toBeCloseTo(tick(after, 'y', 'r1').at.y, 9);
+    expect(spanGeometry(after, along)!.base[1].y).toBeGreaterThan(before[1].y);
+  });
+});
+
+describe('ceiling-demand-falls', () => {
+  const d = buildFromTemplate('ceiling-demand-falls');
+  const areas = (x: Diagram) => ['DWL0', 'DWL1'].map((n) => shoelace(areaPolygon(x, areaNamed(x, n))!));
+
+  it('draws DWL₁ after D falls as a smaller triangle than DWL₀', () => {
+    const [dwl0, dwl1] = areas(d);
+    expect(dwl1).toBeGreaterThan(0.005);
+    expect(dwl1).toBeLessThan(dwl0 * 0.6);
+  });
+
+  it('keeps both triangles on the quantity sold, read off S at Pc', () => {
+    const qt = tick(d, 'x', 'Qt').at.x;
+    for (const n of ['DWL0', 'DWL1']) expect(Math.min(...areaPolygon(d, areaNamed(d, n))!.map((p) => p.x))).toBeCloseTo(qt, 9);
+  });
+
+  it('grows DWL₁ back toward DWL₀ as D₁ is dragged back right', () => {
+    const after = drag(d, curveNamed(d, 'D1').id, 0.1, 0);
+    expect(areas(after)[1]).toBeGreaterThan(areas(d)[1]);
+    expect(areas(after)[0]).toBeCloseTo(areas(d)[0], 9);
   });
 });

@@ -223,6 +223,38 @@ function ceilingLowered(): Diagram {
   );
 }
 
+/**
+ * D falls under a ceiling: the quantity sold (on S at Pc) stays, the efficient Q falls, so
+ * DWL₁ (between D₁ and S) is a smaller triangle inside DWL₀. Both are the controlDwl preset.
+ */
+function ceilingDemandFalls(): Diagram {
+  const d0 = curve([[0.08, 0.92], [0.84, 0.16]], sub('D', '0'));
+  const d1 = shiftOf(d0, -0.22, 0, sub('D', '1'));
+  const s = MC_S();
+  const pc = priceLine(0.24, sub('P', 'c'));
+  const qt = reading(s, pc, sub('Q', 't'));
+  return finish(
+    axes(AXIS.quantity, AXIS.price, {
+      curves: [d0, d1, s, pc],
+      points: [
+        eq(d0, s, '0', { p: '', q: 'Q' }, { dot: false }),
+        eq(d1, s, '1', { p: '', q: 'Q' }, { dot: false }),
+        qt,
+      ],
+      // Between D₁ and D₀, right of DWL₀.
+      arrows: [arrow([0.64, 0.32], [0.48, 0.32])],
+    }),
+    (r) => {
+      const roles = (d: DiagramCurve) => ({ demand: d.id, supply: s.id, control: { curve: pc.id } });
+      // DWL₀ named above D₀; DWL₁ in the clear wedge left of Qt, under D₁.
+      return [
+        ...shade(r, 'controlDwl', roles(d0), { label: sub('DWL', '0'), pattern: 'diagonal', labelOffset: { x: 0.06, y: 0.32 }, labelPlacement: 'leader' }),
+        ...shade(r, 'controlDwl', roles(d1), { label: sub('DWL', '1'), pattern: 'reverse', labelOffset: { x: -0.13, y: 0 }, labelPlacement: 'leader' }),
+      ];
+    },
+  );
+}
+
 /** A ceiling above equilibrium fixes nothing: Q stays at Qe. */
 function ineffectiveCeiling(): Diagram {
   const d = plainD();
@@ -692,6 +724,13 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     name: bi('Ceiling lowered: more DWL', '上限下調：效率損失增加'),
     hint: bi('Pc₀ → Pc₁: DWL₀ and the increase in DWL, shaded apart.', 'Pc₀ → Pc₁：DWL₀ 及效率損失的增加。'),
     build: ceilingLowered,
+  },
+  {
+    id: 'ceiling-demand-falls',
+    group: 'controls',
+    name: bi('Ceiling: demand falls, less DWL', '價格上限：需求下降，效率損失減少'),
+    hint: bi('D₀ → D₁ under Pc: DWL₁ is a smaller triangle than DWL₀.', '上限下 D₀ → D₁：DWL₁ 是較 DWL₀ 小的三角形。'),
+    build: ceilingDemandFalls,
   },
   {
     id: 'ceiling-cs-change',

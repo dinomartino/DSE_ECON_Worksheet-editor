@@ -301,6 +301,31 @@ function moneyDemandShift(): Diagram {
   );
 }
 
+/**
+ * A change in the rate is a movement along Md, not a shift: Ms₀ → Ms₁ raises r, and the
+ * quantity demanded slides up Md from E₀ to E₁ (an arrow beside Md, following both).
+ */
+function moneyRateChange(): Diagram {
+  const ms0 = upright(0.6, sub('Ms', '0'), 0.9);
+  const ms1 = shiftOf(ms0, -0.24, 0, sub('Ms', '1'));
+  const md = curve([[0.06, 0.84], [0.9, 0.16]], sym('Md'));
+  const e0 = eq(md, ms0, '0', R);
+  const e1 = eq(md, ms1, '1', R);
+  return finish(
+    moneyAxes({
+      curves: [ms0, ms1, md],
+      points: [e0, e1],
+      arrows: [arrow([0.57, 0.84], [0.41, 0.84])],
+      spans: [
+        ...axisArrows(e0, e1, ['y']),
+        // Beside Md (left of E₀ → E₁), pointing the way the point moves.
+        span(at(e0), at(e1), 'arrow', { offset: 0.06 }),
+      ],
+      labels: [label(0.64, 0.7, bi('a movement\nalong Md', '沿 Md\n的移動'), { align: 'left' })],
+    }),
+  );
+}
+
 export const MACRO_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'ad-shift',
@@ -392,5 +417,12 @@ export const MACRO_TEMPLATES: DiagramTemplate[] = [
     name: bi('Money demand shift', '貨幣需求變動'),
     hint: bi('Md₀ → Md₁ against a vertical Ms: the interest rate rises.', 'Md₀ → Md₁：利率上升。'),
     build: moneyDemandShift,
+  },
+  {
+    id: 'money-rate-change',
+    group: 'money',
+    name: bi('Interest rate change: along Md', '利率變動：沿 Md 移動'),
+    hint: bi('Ms₀ → Ms₁ raises r: a movement along Md, not a shift of it.', 'Ms₀ → Ms₁ 令利率上升：沿 Md 移動，而非 Md 移動。'),
+    build: moneyRateChange,
   },
 ];
