@@ -75,6 +75,19 @@ describe('diagram templates', () => {
     }
   });
 
+  it('shades every area measured from quantity 0 right up to the y-axis', () => {
+    // A curve that stops short of the axis bounds the band where it stops: CS, PS and
+    // the TSS loss then left an unshaded strip beside the axis.
+    for (const t of DIAGRAM_TEMPLATES) {
+      const d = t.build();
+      for (const area of d.areas ?? []) {
+        if (area.band?.from !== 0) continue;
+        const left = Math.min(...areaPolygon(d, area)!.map((p) => p.x));
+        expect(left, `${t.id} ${plain(area.label?.en)}`).toBeCloseTo(0, 6);
+      }
+    }
+  });
+
   it('mints fresh ids on every build', () => {
     for (const t of DIAGRAM_TEMPLATES) {
       const ids = (d: Diagram) => [...d.curves, ...d.points, ...d.labels, ...d.arrows].map((x) => x.id);
