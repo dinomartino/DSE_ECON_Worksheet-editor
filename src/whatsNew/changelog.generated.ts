@@ -295,10 +295,10 @@ a version heading is edited afterwards.
   consumption C now sits above A (the same amount of X as before trade) and the gain from
   trade is marked. Points on a curved line now sit exactly on the line you see.
   <!-- zh: **新增七個圖表範本，評分參考要求的每種圖表都有範本可用。** U 形邊際成本的壟斷、單一
-  彈性需求（曲線需求，收入增加等於減少）、稅項引致的生產不足（在 Q₁ MB 高於 MC）、扣除稅款後的
+  彈性需求（曲線 D，收入增加等於減少）、稅項引致的生產不足（在 Q₁ MB 高於 MC）、扣除稅款後的
   收入、利率變動即沿 Md 移動、需求下降後較小的價格上限效率損失，以及經濟增長與貿易（CPF 隨 PPF
   外移）。在 PPF 貿易範本中，消費點 C 現位於 A 的正上方（X 的數量與貿易前相同），並標示貿易得益。
-  曲線上的點現在準確落在你看到的線上。 -->
+  位於曲線的點現在與你看到的曲線完全吻合。 -->
 
 ### Changed
 - **The paper check now warns when a marking scheme does not add up.** Before you export,
