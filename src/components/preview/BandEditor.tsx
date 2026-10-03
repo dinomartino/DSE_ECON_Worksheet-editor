@@ -59,6 +59,8 @@ interface Props {
    * header, not every page's" visible at the point of editing.
    */
   label?: string;
+  /** The Teacher version's header marker, printed after this zone's fields (`teacherMarkPlacement`). */
+  trail?: BandTrail;
   /**
    * The sheet these rows are printing on, so a page-number field shows a number.
    *
@@ -139,6 +141,19 @@ export function bandFieldStyle(field: BandField): React.CSSProperties {
   };
 }
 
+/** Derived text appended to one zone of one row; printed, never editable. */
+export interface BandTrail {
+  bandId: string;
+  zone: ZoneName;
+  text: string;
+}
+
+/** Never wraps: a zone is a third of the row here but a tab stop in Word, where the
+ *  marker runs on along the line; wrapping it would grow the header and move the body. */
+export function BandTrailText({ text }: { text: string }) {
+  return <span className="mx-0.5 shrink-0 whitespace-pre font-bold">{text}</span>;
+}
+
 const ALIGN: Record<ZoneName, string> = {
   left: 'justify-start text-left',
   center: 'justify-center text-center',
@@ -156,6 +171,7 @@ export function BandEditor({
   onAddRow,
   onRemoveRow,
   label,
+  trail,
   page,
   selection,
 }: Props) {
@@ -247,6 +263,8 @@ export function BandEditor({
               // Only the band being dragged from can be dropped into: a field belongs to
               // one printed row, and moving it between rows is a different operation.
               const droppable = dragging?.bandId === band.id;
+              // The trail's zone never wraps (`BandTrailText`), as the read-only row.
+              const trailHere = trail?.bandId === band.id && trail.zone === zone;
 
               return (
                 <div
@@ -280,7 +298,7 @@ export function BandEditor({
                    * horizontal breathing room comes back as a negative-inset ring rather
                    * than as padding that would shift the text.
                    */
-                  className={`flex flex-1 flex-wrap items-baseline gap-x-1 rounded transition-[background-color,box-shadow] duration-150 ease-out-soft ${ALIGN[zone]} ${
+                  className={`flex flex-1 ${trailHere ? 'min-w-0 flex-nowrap' : 'flex-wrap'} items-baseline gap-x-1 rounded transition-[background-color,box-shadow] duration-150 ease-out-soft ${ALIGN[zone]} ${
                     isOver
                       ? 'bg-[#d9ebf8] ring-2 ring-[#0d77c9]'
                       : droppable
@@ -328,7 +346,9 @@ export function BandEditor({
                        * lied about the document. `pre-wrap` rather than `pre` so a long
                        * header row still wraps.
                        */
-                      className={`group/field inline-flex cursor-grab items-baseline whitespace-pre-wrap active:cursor-grabbing ${
+                      className={`group/field inline-flex cursor-grab items-baseline active:cursor-grabbing ${
+                        trailHere ? 'shrink-0 whitespace-pre' : 'whitespace-pre-wrap'
+                      } ${
                         dragging?.fieldId === field.id ? 'opacity-40' : ''
                       }`}
                       style={bandFieldStyle(field)}
@@ -425,6 +445,8 @@ export function BandEditor({
                       </button>
                     </span>
                   ))}
+
+                  {trailHere && <BandTrailText text={trail.text} />}
 
                   {/* An empty zone still needs a target, but it is a print preview first:
                       the affordance stays invisible until the row is hovered, so the page

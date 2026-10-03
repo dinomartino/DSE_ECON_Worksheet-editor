@@ -5,7 +5,8 @@ import { exportFileCount } from '@/components/editor/exportSession';
 import { createMcqQuestion, createWorksheet } from '@/model/factories';
 import { migrate, serializeWorksheet } from '@/model/migrations';
 import { bi, plain } from '@/model/text';
-import type { McqQuestion, OutputMode, Worksheet } from '@/model/types';
+import type { HeaderFooter, McqQuestion, OutputMode, Worksheet } from '@/model/types';
+import { createBand, createTextField } from '@/model/bands';
 import { mcqType } from '@/registry/mcq';
 import { renderAnswerKey } from '@/render/answerKey';
 import type { RenderNode, TableNode, TextNode } from '@/render/ir';
@@ -26,6 +27,8 @@ function mcq(texts: string[], answerIndex = 0): McqQuestion {
   question.answerIndex = answerIndex;
   return question;
 }
+
+const ownRow = () => createBand({ left: [createTextField(bi('S5 Economics', ''))] });
 
 function paper(questions: McqQuestion[], versions?: Worksheet['versions']): Worksheet {
   return { ...createWorksheet(), questions, ...(versions ? { versions } : {}) };
@@ -132,11 +135,36 @@ describe('rendered versions', () => {
   it('prints the version letter only when versions are on', () => {
     const off = paper([mcq(['w', 'x', 'y', 'z'])]);
     expect(renderWorksheet(off, { ...STUDENT, variant: 'B' }).versionLabel).toBeUndefined();
-    const on = paper(off.questions as McqQuestion[], { count: 2, seed: 5 });
+    // Page 1 with no header: the letter prints above question 1.
+    const on = {
+      ...paper(off.questions as McqQuestion[], { count: 2, seed: 5 }),
+      header: { enabled: true, bands: [ownRow()], rule: false, showOnFirstPage: false },
+    };
     const label = renderWorksheet(on, { ...STUDENT, variant: 'B' }).versionLabel as TextNode;
     expect(plain(label.text.en)).toBe('Version B');
     const zh = renderWorksheet(on, { language: 'zh', version: 'student', variant: 'B' }).versionLabel as TextNode;
     expect(plain(zh.text.zh)).toBe('版本 B');
+  });
+
+  it('drops the letter above question 1 when page 1’s header already names it', () => {
+    const base = paper([mcq(['w', 'x', 'y', 'z'])], { count: 2, seed: 5 });
+    const B = { ...STUDENT, variant: 'B' };
+    const withHeader = (extra: Partial<HeaderFooter>): Worksheet => ({
+      ...base,
+      header: { enabled: true, bands: [ownRow()], rule: false, showOnFirstPage: true, ...extra },
+    });
+    // No header of its own (the row alone, page 1 too), or page 1 printing the running rows.
+    for (const ws of [base, withHeader({})]) {
+      const rendered = renderWorksheet(ws, B);
+      expect(rendered.versionLabel).toBeUndefined();
+      expect(plain((rendered.headerVersionLabel as TextNode).text.en)).toBe('Version B');
+    }
+    // Page 1 blank or its own rows: its header has no letter, so the label stays.
+    for (const ws of [withHeader({ showOnFirstPage: false }), withHeader({ firstPage: { bands: [ownRow()] } })]) {
+      const rendered = renderWorksheet(ws, B);
+      expect(rendered.versionLabel).toBeDefined();
+      expect(rendered.headerVersionLabel).toBeUndefined();
+    }
   });
 
   it('prints A as authored and B shuffled, and the teacher key follows', () => {

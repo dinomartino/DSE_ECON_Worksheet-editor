@@ -23,7 +23,7 @@ export type TranslateScope =
 
 export interface TranslateOptions {
   directions: { toZh: boolean; toEn: boolean };
-  /** Roles 'teacher' and 'meta'. */
+  /** Role 'teacher' (answers, schemes). Alt text ('meta') is never planned. */
   includeTeacher: boolean;
   includeDiagramLabels: boolean;
   /** Symbol-only page text only (never diagram text). */

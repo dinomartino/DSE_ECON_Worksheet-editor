@@ -102,6 +102,19 @@ describe('Fill missing 中文 over the real engine and store', () => {
     expect(deps.resolved).toBe(0);
   });
 
+  it("with teacher text on, Fill skips alt text, so its count matches the ✦ AI badge", () => {
+    const ws = paperOf([['Explain.', '']]);
+    const q = ws.questions[0];
+    const image = { kind: 'image' as const, id: 'img', src: 'data:image/png;base64,', widthPx: 100, heightPx: 100, altText: { en: [{ text: 'A demand curve' }], zh: [] } };
+    const parts = q.type === 'structured' ? q.parts.map((p) => ({ ...p, answer: { en: [{ text: 'Model answer.' }], zh: [] } })) : [];
+    load({ ...ws, questions: [{ ...q, blocks: [...q.blocks, image], parts } as typeof q] });
+    const teacher: OutputMode = { language: 'bilingual', version: 'teacher' };
+    const fill = translateVerb('zh', false, depsWith(scriptedClient(['{}']), { includeTeacherText: () => true }));
+    const count = fill.available(ctx(teacher))?.count;
+    expect(count).toBe(countUntranslated(store().worksheet, teacher));
+    expect(count).toBe(2);
+  });
+
   it('inserts every answer in one commit; Undo all restores the paper and retires on a later edit', async () => {
     load(oneSided(buildAcceptanceWorksheet(), 'en'));
     const before = store().worksheet;

@@ -21,6 +21,12 @@ import {
   versionRowStandsAlone,
 } from "@/model/page";
 import { versionHeaderText } from "@/model/versions";
+import {
+  derivedMarksOnPageOne,
+  TEACHER_HEADER_JOIN,
+  TEACHER_HEADER_MARK,
+  teacherMarkPlacement,
+} from "@/model/headerMarks";
 import { TableColumnResizer } from "./TableColumnResizer";
 import { TableGridControls } from "./TableGridControls";
 import { sheetStackMargin } from "./sheetStack";
@@ -144,7 +150,7 @@ import {
   PlusIcon,
   StructuredIcon,
 } from "@/components/ui/icons";
-import { BandEditor, bandFieldStyle, withPageNumber } from "./BandEditor";
+import { BandEditor, BandTrailText, bandFieldStyle, withPageNumber, type BandTrail } from "./BandEditor";
 
 /**
  * What an editable row of zones needs from its host.
@@ -2793,12 +2799,15 @@ export function HeaderFooterBand({
   editing,
   editable,
   versionRow,
+  teacherMark,
 }: {
   value: HeaderFooter;
   language: LanguageMode;
   edge: "header" | "footer";
   /** A versioned paper's "Version B" (`versionHeaderText`), placed as the `.docx` places it. */
   versionRow?: string;
+  /** The Teacher version's marker (`teacherMarkPlacement`), placed as the `.docx` places it. */
+  teacherMark?: boolean;
   /** 1-based index of the sheet this band belongs to. */
   pageNumber: number;
   pageCount: number;
@@ -2839,16 +2848,30 @@ export function HeaderFooterBand({
   // Derived and read-only: the last row, under the running rows wherever they print, or
   // the whole header (every page, no rule) when the document's own prints nothing.
   const versionAlone = versionRow !== undefined && versionRowStandsAlone(value);
+  const derivedHere = pageNumber !== 1 || derivedMarksOnPageOne(value, versionRow !== undefined);
   const versionLine =
-    versionRow !== undefined && (versionAlone || pageNumber !== 1 || !resolved.differs) ? (
+    versionRow !== undefined && derivedHere ? (
       <div className="flex items-baseline justify-end">
         <span className="mx-0.5 whitespace-pre-wrap font-bold">{versionRow}</span>
       </div>
     ) : null;
-  if (versionAlone && !(value.enabled && (editing || editable))) {
+  // The teacher marker joins the running rows' last row, or stands alone on a line of its own.
+  const markHere = Boolean(teacherMark) && derivedHere;
+  const markOnly = markHere && !isHeaderFooterActive(value);
+  const place = markHere ? teacherMarkPlacement(value, { totalMarks }, language) : undefined;
+  const markLineOf = (drawn: Band[]) =>
+    place && !(place.bandId && drawn.some((band) => band.id === place.bandId)) ? (
+      <div className="flex items-baseline justify-end">
+        <BandTrailText text={TEACHER_HEADER_MARK} />
+      </div>
+    ) : null;
+  if ((versionAlone || markOnly) && !(value.enabled && (editing || editable))) {
     return (
       <div data-band-rows className="mb-2 flex items-baseline gap-2 text-xs text-[#111111]">
-        <div className="flex-1">{versionLine}</div>
+        <div className="flex-1">
+          {markLineOf([])}
+          {versionLine}
+        </div>
       </div>
     );
   }
@@ -2873,8 +2896,17 @@ export function HeaderFooterBand({
    */
   const bands = resolved.bands;
   const drawsBands = bandsShouldRender(bands, Boolean(editing) || Boolean(editable));
-  if (!drawsBands && !versionLine) return null;
-  const rule = versionAlone ? false : resolved.rule;
+  const markLine = markLineOf(drawsBands ? bands : []);
+  if (!drawsBands && !versionLine && !markLine) return null;
+  const rule = versionAlone || markOnly ? false : resolved.rule;
+  const trail: BandTrail | undefined =
+    place?.bandId && drawsBands && !markLine
+      ? {
+          bandId: place.bandId,
+          zone: place.zone,
+          text: place.alone ? TEACHER_HEADER_MARK : `${TEACHER_HEADER_JOIN}${TEACHER_HEADER_MARK}`,
+        }
+      : undefined;
 
   const body = !drawsBands ? null : editing ? (
     <BandEditor
@@ -2905,6 +2937,7 @@ export function HeaderFooterBand({
               : m.footerEvery
       }
       selection={editing.selection}
+      trail={trail}
     />
   ) : (
     bands.map((band) => (
@@ -2914,6 +2947,7 @@ export function HeaderFooterBand({
         language={language}
         totalMarks={totalMarks}
         page={{ number: pageNumber, count: pageCount }}
+        trail={trail?.bandId === band.id ? trail : undefined}
       />
     ))
   );
@@ -2947,6 +2981,7 @@ export function HeaderFooterBand({
     >
       <div className="flex-1">
         {body}
+        {markLine}
         {versionLine}
       </div>
     </div>
@@ -2959,22 +2994,30 @@ export function HeaderFooterBand({
  * Used by the read-only preview and the print path, where `BandEditor`'s zone outlines
  * and add buttons must not appear at all — not hidden, absent (§ read-only preview).
  */
+const TRAIL_JUSTIFY: Record<ZoneName, string> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
 function ReadOnlyBandRow({
   band,
   language,
   totalMarks,
   page,
+  trail,
 }: {
   band: Band;
   language: LanguageMode;
   totalMarks: number;
   /** The sheet being drawn, so a page-number field prints its number (§ `withPageNumber`). */
   page?: { number: number; count: number };
+  trail?: BandTrail;
 }) {
   const zones = zonesOf(band);
-  const cell = (name: ZoneName, align: string) => (
-    <div className={`flex-1 ${align}`}>
-      {zones[name].map((field) => (
+  const cell = (name: ZoneName, align: string) => {
+    const trailHere = trail?.zone === name;
+    const fields = zones[name].map((field) => (
         // `bandFieldStyle` is shared with `BandEditor` rather than reimplemented, and it
         // was previously missing here entirely: a field's `fontSize`, weight, colour and
         // font were dropped, so a 14pt bold title previewed *and printed* at the
@@ -2983,7 +3026,11 @@ function ReadOnlyBandRow({
         // `whitespace-pre-wrap` for the reason `BandEditor` sets it: a field's wording
         // carries its own spacing ("Full marks: " · 45 · " marks"), and HTML would
         // collapse it away — here on the path that actually prints and becomes the PDF.
-        <span key={field.id} className="mx-0.5 whitespace-pre-wrap" style={bandFieldStyle(field)}>
+        <span
+          key={field.id}
+          className={`mx-0.5 ${trailHere ? "whitespace-pre" : "whitespace-pre-wrap"}`}
+          style={bandFieldStyle(field)}
+        >
           {/* The sheet is passed to `bandFieldPrintText`, which substitutes the page
               number only when one is given — the .docx backend passes none, so Word
               still gets the placeholder it needs to emit a live PAGE field rather than a
@@ -2997,9 +3044,19 @@ function ReadOnlyBandRow({
               the export both honour. */}
           {richNodes(bandFieldPrintText(field, { totalMarks, page }, language), language)}
         </span>
-      ))}
-    </div>
-  );
+      ));
+    if (!trailHere) return <div className={`flex-1 ${align}`}>{fields}</div>;
+    // Like a Word tab stop: the zone keeps its width and nothing in it wraps; the line
+    // overflows away from its alignment edge instead of growing the header.
+    return (
+      <div className={`flex min-w-0 flex-1 ${align} ${TRAIL_JUSTIFY[name]}`}>
+        <span className="shrink-0 whitespace-pre">
+          {fields}
+          <BandTrailText text={trail.text} />
+        </span>
+      </div>
+    );
+  };
   return (
     <div className="flex items-baseline gap-2">
       {cell("left", "text-left")}
@@ -4601,14 +4658,24 @@ export function Preview({
   const runningBands = (value: HeaderFooter) =>
     value.enabled ? bandsHeight(value.bands ?? [], value.rule) : 0;
 
-  // A versioned paper's "Version B" row joins the running header (`versionHeaderText`).
+  // A versioned paper's "Version B" row joins the running header (`versionHeaderText`),
+  // and the Teacher version's marker at least a row of its own (as the `.docx` sizes them).
   const versionRow = versionHeaderText(worksheet, mode);
+  const teacherMark = mode.version === "teacher";
+  const runningHeader = teacherMark
+    ? Math.max(
+        BAND_ROW_TWIPS,
+        header.enabled
+          ? bandsHeight(header.bands ?? [], isHeaderFooterActive(header) ? header.rule : undefined)
+          : 0,
+      )
+    : runningBands(header);
   const headerEstimate =
     versionRow === undefined
-      ? runningBands(header)
-      : versionRowStandsAlone(header)
+      ? runningHeader
+      : versionRowStandsAlone(header) && !teacherMark
         ? BAND_ROW_TWIPS
-        : runningBands(header) + BAND_ROW_TWIPS;
+        : runningHeader + BAND_ROW_TWIPS;
   const footerEstimate = runningBands(footer);
   const edgeOffsets = headerFooterOffsets(setup.margins, headerEstimate, footerEstimate);
 
@@ -6928,6 +6995,7 @@ export function Preview({
                   }
                   editable={Boolean(headerEditing)}
                   versionRow={versionRow}
+                  teacherMark={teacherMark}
                 />
                 {focusRegion !== "header" && (
                   <RegionWake

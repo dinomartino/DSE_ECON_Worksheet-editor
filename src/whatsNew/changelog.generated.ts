@@ -470,6 +470,22 @@ a version heading is edited afterwards.
   的任何用詞，也會說明。 -->
 
 ### Fixed
+- **The teacher version says so at the top of every page, on screen and in the PDF.** Word
+  already printed "Teacher Version / 教師版" in the header of each page. The page and the
+  PDF now print it there too, after your own header text, and leave page 1 without it when
+  page 1 has no header or its own. The questions stay where they were. A teacher version
+  whose header is switched off no longer prints that header's hidden text in Word.
+  <!-- zh: **教師版每頁頂部都會註明，畫面和 PDF 亦然。** Word 一向在每頁頁首印上「Teacher Version / 教師版」。
+  現在頁面和 PDF 亦會在頁首、你自己的頁首文字之後印出；如第 1 頁沒有頁首或另有頁首，第 1 頁便不印。
+  題目位置不變。關閉了頁首的教師版，Word 檔案不再印出該頁首隱藏的文字。 -->
+- **Fill missing no longer translates image descriptions.** With "Include answers and mark
+  schemes" on, Fill missing 中文 or English also sent the alt text of pictures and
+  diagrams, so it counted more texts than the ✦ AI badge. It now covers answers and
+  marking schemes only, and the two counts match. You can still fill a picture's
+  description from its own field.
+  <!-- zh: **「補上缺少的中文／英文」不再翻譯圖片描述。** 開啟「翻譯時包括答案和評卷參考」後，
+  補上語言時亦會一併送出圖片和圖表的替代文字，因此數目比 ✦ AI 標記多。現在只包括答案和評卷
+  參考，兩個數目一致。圖片描述仍可在它自己的欄位補上。 -->
 - **A bilingual paper with one language missing is as long on screen as in Word.** When a
   title, question or option has English but no 中文 (or the other way round), the "Add 中文"
   prompt now sits at the end of the line instead of on a line of its own. The page and the
@@ -483,6 +499,13 @@ a version heading is edited afterwards.
   straight away, without opening or saving it.
   <!-- zh: **以 0.5.0 版儲存的題庫會再次顯示為題庫。** 若題庫最後是以 0.5.0 版儲存，開始畫面會
   把它顯示為工作紙。現在無須開啟或儲存，它會即時顯示為題庫。 -->
+- **The version letter prints once at the top of page 1.** With versions on, "Version B"
+  above question 1 repeated the header's "Version B" on the same page. It now prints above
+  question 1 only when "Header on page 1" is set to Nothing or Its own, so page 1's header
+  does not show it. The page, the PDF and Word agree. Copy for Word still includes it.
+  <!-- zh: **版本字母在第 1 頁頂部只印一次。** 開啟版本後，第 1 題上方的「版本 B」與同頁頁首的
+  「版本 B」重複。現在只在「第 1 頁頁首」設為「不印」或「獨立設定」、第 1 頁頁首沒有版本時，才在第 1 題
+  上方印出；畫面、PDF 和 Word 一致。「複製到 Word」仍會包括它。 -->
 - **Every page of a paper version says which version it is.** With versions on, "Version B"
   now prints in the header of every page, not only above question 1, so a loose sheet
   still shows its version. It sits under your own header, or on its own if the paper has

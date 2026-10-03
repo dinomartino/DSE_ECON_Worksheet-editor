@@ -69,7 +69,9 @@ function groupKeyOf(slot: TextSlot): string {
 const whereOf = (slot: TextSlot) => [slot.group.label, slot.label].filter(Boolean).join(' · ');
 const noteOf = (slot: TextSlot) =>
   slot.kind === 'wording' && slot.aroundValue ? `printed ${slot.aroundValue} a value the app fills in` : undefined;
-const roleAllowed = (slot: TextSlot, options: TranslateOptions) => slot.role === 'print' || options.includeTeacher;
+/** Alt text ('meta') never: the ✦ AI badge doesn't count it; its field has its own Fill. */
+const roleAllowed = (slot: TextSlot, options: TranslateOptions) =>
+  slot.role === 'print' || (slot.role === 'teacher' && options.includeTeacher);
 const both = (slot: TextSlot) => !isRichTextEmpty(slot.text.en) && !isRichTextEmpty(slot.text.zh);
 
 function emptyCounts(): PlanCounts {
