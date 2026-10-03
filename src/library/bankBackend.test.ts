@@ -1,25 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import { summarize } from '@/storage/document';
-import { createJsonFileBackend, STORED_INDEX_FORMAT, isBankRow, type TextFilePort } from './bankBackend';
+import { createDocFilesBackend, readDocFile, STORED_INDEX_FORMAT, isBankRow, type DocFilesPort, type TextFilePort } from './bankBackend';
 import { docsFromRecords } from './idbBackend';
 import { rowsOf } from './indexer';
 import { choiceQuestion, docWith, partedQuestion, row } from './testKit';
 
-function memoryFile(initial?: string) {
-  const file = { text: initial, writes: 0, removes: 0 };
-  const port: TextFilePort = {
-    read: async () => file.text,
-    write: async (text) => {
-      file.writes += 1;
+function memoryFiles(initial: Record<string, string> = {}, legacyText?: string) {
+  const files = new Map(Object.entries(initial));
+  const counts = { writes: 0, removes: 0 };
+  const port: DocFilesPort = {
+    ids: async () => [...files.keys()],
+    read: async (id) => files.get(id),
+    write: async (id, text) => {
+      counts.writes += 1;
       await Promise.resolve();
-      file.text = text;
+      files.set(id, text);
     },
+    remove: async (id) => {
+      counts.removes += 1;
+      files.delete(id);
+    },
+    clear: async () => files.clear(),
+  };
+  const legacy = { text: legacyText, removes: 0 };
+  const legacyPort: TextFilePort = {
+    read: async () => legacy.text,
     remove: async () => {
-      file.removes += 1;
-      file.text = undefined;
+      legacy.removes += 1;
+      legacy.text = undefined;
     },
   };
-  return { file, port };
+  return { files, counts, port, legacy, legacyPort };
 }
 
 const doc = docWith([choiceQuestion('One'), choiceQuestion('Two'), choiceQuestion('Three')]);
@@ -40,66 +51,108 @@ describe('isBankRow', () => {
   });
 });
 
-describe('createJsonFileBackend', () => {
-  it('round-trips documents, keeping printed order', async () => {
-    const { port, file } = memoryFile();
-    await createJsonFileBackend(port).commit([[doc.id, stored]], []);
-    expect(JSON.parse(file.text!).format).toBe(STORED_INDEX_FORMAT);
+const docFile = (value: object) => JSON.stringify({ format: STORED_INDEX_FORMAT, ...value });
 
-    const reloaded = await createJsonFileBackend(port).load();
+describe('createDocFilesBackend', () => {
+  it('round-trips documents, one file each, keeping printed order', async () => {
+    const { port, files } = memoryFiles();
+    await createDocFilesBackend(port).commit([[doc.id, stored]], []);
+    expect([...files.keys()]).toEqual([doc.id]);
+    expect(JSON.parse(files.get(doc.id)!).format).toBe(STORED_INDEX_FORMAT);
+
+    const reloaded = await createDocFilesBackend(port).load();
     expect(reloaded?.get(doc.id)?.rows.map((r) => r.excerpt.en)).toEqual(['One', 'Two', 'Three']);
   });
 
-  it('drops documents and clears', async () => {
-    const { port, file } = memoryFile();
-    const backend = createJsonFileBackend(port);
-    await backend.commit([[doc.id, stored], ['empty', { updatedAt: 'x', rows: [] }]], []);
-    await backend.commit([], [doc.id]);
-    expect([...(await createJsonFileBackend(port).load())!.keys()]).toEqual(['empty']);
-    await backend.clear();
-    expect(file.text).toBeUndefined();
+  it('a commit writes only the documents it names', async () => {
+    const { port, counts } = memoryFiles();
+    const backend = createDocFilesBackend(port);
+    await backend.commit(Array.from({ length: 10 }, (_, i) => [`d${i}`, { updatedAt: 't', rows: [] }]), []);
+    counts.writes = 0;
+    await backend.commit([['d3', { updatedAt: 'u', rows: [] }]], []);
+    expect(counts.writes).toBe(1);
   });
 
-  it('coalesces a burst of commits into at most two writes', async () => {
-    const { port, file } = memoryFile();
-    const backend = createJsonFileBackend(port);
-    await Promise.all(
-      Array.from({ length: 10 }, (_, i) => backend.commit([[`d${i}`, { updatedAt: 't', rows: [] }]], [])),
-    );
-    expect(file.writes).toBeLessThanOrEqual(2);
-    expect(Object.keys(JSON.parse(file.text!).docs)).toHaveLength(10);
+  it('drops documents and clears', async () => {
+    const { port, files } = memoryFiles();
+    const backend = createDocFilesBackend(port);
+    await backend.commit([[doc.id, stored], ['empty', { updatedAt: 'x', rows: [] }]], []);
+    await backend.commit([], [doc.id]);
+    expect([...(await createDocFilesBackend(port).load())!.keys()]).toEqual(['empty']);
+    await backend.clear();
+    expect(files.size).toBe(0);
   });
 
   it.each([
     ['not JSON', '{oops'],
-    ['another format', JSON.stringify({ format: 'another', docs: {} })],
-  ])('drops a file holding %s, so the index rebuilds', async (_label, text) => {
-    const { port, file } = memoryFile(text);
-    expect(await createJsonFileBackend(port).load()).toBeUndefined();
-    expect(file.removes).toBe(1);
-  });
-
-  it.each([
-    ['a row that is not a row', { updatedAt: 't', rows: [{}] }],
-    ['a row filed under another document', stored],
-    ['no stamp', { rows: stored.rows }],
-    ['a rootId that is not a string', { ...stored, rows: [{ ...stored.rows[0], rootId: 42 }] }],
-  ])('drops only the document holding %s; the rest load', async (_label, bad) => {
+    ['another format', JSON.stringify({ format: 'another', updatedAt: 't', rows: [] })],
+    ['a row that is not a row', docFile({ updatedAt: 't', rows: [{}] })],
+    ['a row filed under another document', docFile(stored)],
+    ['no stamp', docFile({ rows: stored.rows })],
+    ['a rootId that is not a string', docFile({ ...stored, rows: [{ ...stored.rows[0], rootId: 42 }] })],
+  ])('drops only the document whose file holds %s; the rest load', async (_label, text) => {
     const good = docWith([choiceQuestion('Kept')]);
-    const text = JSON.stringify({
-      format: STORED_INDEX_FORMAT,
-      docs: { bad, [good.id]: { updatedAt: good.updatedAt, rows: rowsOf(good, summarize(good)) } },
-    });
-    const { port, file } = memoryFile(text);
-    const loaded = await createJsonFileBackend(port).load();
+    const { port, files } = memoryFiles({ bad: text, [good.id]: docFile({ updatedAt: good.updatedAt, rows: rowsOf(good, summarize(good)) }) });
+    const loaded = await createDocFilesBackend(port).load();
     expect([...loaded!.keys()]).toEqual([good.id]);
-    expect(file.removes).toBe(0);
+    expect(files.has('bad')).toBe(false);
   });
 
-  it('treats a read that throws as nothing stored', async () => {
-    const { port } = memoryFile();
+  it('treats a listing or read that throws as nothing stored', async () => {
+    const { port } = memoryFiles({ [doc.id]: docFile(stored) });
     port.read = () => Promise.reject(new Error('EACCES'));
-    expect(await createJsonFileBackend(port).load()).toBeUndefined();
+    expect(await createDocFilesBackend(port).load()).toBeUndefined();
+    port.ids = () => Promise.reject(new Error('EACCES'));
+    expect(await createDocFilesBackend(port).load()).toBeUndefined();
+  });
+});
+
+describe('createDocFilesBackend, migrating the single-file index', () => {
+  const legacyText = (docs: Record<string, unknown>, format: string = STORED_INDEX_FORMAT) => JSON.stringify({ format, docs });
+
+  it('writes each entry as its own file, then removes the old file', async () => {
+    const { port, files, legacy, legacyPort } = memoryFiles({}, legacyText({ [doc.id]: stored }));
+    const loaded = await createDocFilesBackend(port, legacyPort).load();
+    expect(loaded?.get(doc.id)?.rows).toHaveLength(3);
+    expect(readDocFile(doc.id, files.get(doc.id)!)?.rows).toHaveLength(3);
+    expect(legacy.text).toBeUndefined();
+  });
+
+  it('keeps a document file newer than the old entry, and the old entry when it is newer', async () => {
+    const other = docWith([choiceQuestion('Other')]);
+    const otherRows = rowsOf(other, summarize(other));
+    const { port, legacyPort } = memoryFiles(
+      { [doc.id]: docFile({ ...stored, updatedAt: '2026-10-02' }), [other.id]: docFile({ updatedAt: '2026-01-01', rows: otherRows }) },
+      legacyText({ [doc.id]: { ...stored, updatedAt: '2026-01-01' }, [other.id]: { updatedAt: '2026-10-02', rows: otherRows } }),
+    );
+    const loaded = (await createDocFilesBackend(port, legacyPort).load())!;
+    expect(loaded.get(doc.id)?.updatedAt).toBe('2026-10-02');
+    expect(loaded.get(other.id)?.updatedAt).toBe('2026-10-02');
+  });
+
+  it('one bad old entry costs only its document; another format or bad JSON is just removed', async () => {
+    const good = docWith([choiceQuestion('Kept')]);
+    const { port, legacyPort } = memoryFiles({}, legacyText({ bad: { updatedAt: 't', rows: [{}] }, [good.id]: { updatedAt: 't', rows: rowsOf(good, summarize(good)) } }));
+    expect([...(await createDocFilesBackend(port, legacyPort).load())!.keys()]).toEqual([good.id]);
+
+    for (const text of ['{oops', legacyText({ [doc.id]: stored }, 'another')]) {
+      const next = memoryFiles({}, text);
+      expect(await createDocFilesBackend(next.port, next.legacyPort).load()).toBeUndefined();
+      expect(next.legacy.text).toBeUndefined();
+    }
+  });
+
+  it('keeps the old file when a migrated entry could not be written', async () => {
+    const { port, legacy, legacyPort } = memoryFiles({}, legacyText({ [doc.id]: stored }));
+    port.write = () => Promise.reject(new Error('ENOSPC'));
+    expect((await createDocFilesBackend(port, legacyPort).load())?.has(doc.id)).toBe(true);
+    expect(legacy.text).toBeDefined();
+  });
+
+  it('clear removes the old file too', async () => {
+    const { port, legacy, legacyPort } = memoryFiles({}, legacyText({}));
+    await createDocFilesBackend(port, legacyPort).clear();
+    expect(legacy.removes).toBe(1);
   });
 });
 

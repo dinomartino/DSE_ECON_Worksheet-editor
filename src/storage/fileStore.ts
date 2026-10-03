@@ -72,14 +72,72 @@ export async function savedWorksheetPath(id: string): Promise<string | undefined
 type Fs = typeof import('@tauri-apps/plugin-fs');
 
 /** The question bank's derived index (§ src/library/bankBackend.ts), relative to `$APPDATA`. */
-export const LIBRARY_INDEX = `${DIR}/library/index.json`;
 const LIBRARY_DIR = `${DIR}/library`;
+/** One file per document: `<encoded docId>.json`. */
+export const LIBRARY_DOCS_DIR = `${LIBRARY_DIR}/docs`;
+/** The single file unreleased builds wrote; read once to migrate, then removed. */
+export const LIBRARY_INDEX = `${LIBRARY_DIR}/index.json`;
+const LIBRARY_DOC_SUFFIX = '.json';
+const libraryDocPath = (id: string) => `${LIBRARY_DOCS_DIR}/${encodeURIComponent(id)}${LIBRARY_DOC_SUFFIX}`;
 
 /**
- * Text access to `worksheets/library/index.json` for the bank index. A subdirectory, so
- * no build's rebuild-by-scan or `clear()` reads it as a document. Inert on the web: read
- * is `undefined`, writes do nothing. Errors propagate; the index treats them as "rebuild".
+ * The bank index's per-document files. A subdirectory, so no build's rebuild-by-scan or
+ * `clear()` reads them as documents. Inert on the web. Errors propagate; the index treats
+ * them as "rebuild".
  */
+export const libraryDocFiles = {
+  async ids(): Promise<string[]> {
+    if (!isDesktop()) return [];
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(LIBRARY_DOCS_DIR, opts))) return [];
+    return (await fs.readDir(LIBRARY_DOCS_DIR, opts))
+      .map((entry) => entry.name ?? '')
+      .filter((name) => name.endsWith(LIBRARY_DOC_SUFFIX))
+      .flatMap((name) => {
+        try {
+          return [decodeURIComponent(name.slice(0, -LIBRARY_DOC_SUFFIX.length))];
+        } catch {
+          return [];
+        }
+      });
+  },
+  async read(id: string): Promise<string | undefined> {
+    if (!isDesktop()) return undefined;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    const path = libraryDocPath(id);
+    if (!(await fs.exists(path, opts))) return undefined;
+    return fs.readTextFile(path, opts);
+  },
+  async write(id: string, text: string): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(LIBRARY_DOCS_DIR, opts))) await fs.mkdir(LIBRARY_DOCS_DIR, { ...opts, recursive: true });
+    await fs.writeTextFile(libraryDocPath(id), text, opts);
+  },
+  async remove(id: string): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    const path = libraryDocPath(id);
+    if (await fs.exists(path, opts)) await fs.remove(path, opts);
+  },
+  async clear(): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(LIBRARY_DOCS_DIR, opts))) return;
+    for (const entry of await fs.readDir(LIBRARY_DOCS_DIR, opts)) {
+      if (!entry.name?.endsWith(LIBRARY_DOC_SUFFIX)) continue;
+      // Keep going: one undeletable file must not keep the rest.
+      await fs.remove(`${LIBRARY_DOCS_DIR}/${entry.name}`, opts).catch(() => undefined);
+    }
+  },
+};
+
+/** The legacy single file, `worksheets/library/index.json`. Inert on the web. */
 export const libraryIndexFile = {
   async read(): Promise<string | undefined> {
     if (!isDesktop()) return undefined;
@@ -87,13 +145,6 @@ export const libraryIndexFile = {
     const opts = { baseDir: fs.BaseDirectory.AppData };
     if (!(await fs.exists(LIBRARY_INDEX, opts))) return undefined;
     return fs.readTextFile(LIBRARY_INDEX, opts);
-  },
-  async write(text: string): Promise<void> {
-    if (!isDesktop()) return;
-    const fs = await import('@tauri-apps/plugin-fs');
-    const opts = { baseDir: fs.BaseDirectory.AppData };
-    if (!(await fs.exists(LIBRARY_DIR, opts))) await fs.mkdir(LIBRARY_DIR, { ...opts, recursive: true });
-    await fs.writeTextFile(LIBRARY_INDEX, text, opts);
   },
   async remove(): Promise<void> {
     if (!isDesktop()) return;

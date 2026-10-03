@@ -442,6 +442,11 @@ a version heading is edited afterwards.
   <!-- zh: **頁首和頁尾設定按頁面整理。** 在頁面設定中，先選「第 1 頁」或「第 2 頁起」
   ，再選擇第 1 頁的頁首和頁尾與其後頁面相同、自成一套，或不設。第 1 頁的標題設
   定也放在這裏。 -->
+- **A large question bank stays quick to save on the desktop app.** Each worksheet's share
+  of the question bank is kept in a small file of its own, so saving one paper writes only
+  that file.
+  <!-- zh: **桌面版中，大型題庫亦能快速儲存。** 每份工作紙在題庫中的資料各自存放在一個小檔案，
+  儲存一份工作紙只會寫入該檔案。 -->
 
 ### Fixed
 - **Papers with diagram answers warn you in an older version of the app.** A paper with

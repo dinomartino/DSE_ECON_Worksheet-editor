@@ -2970,8 +2970,10 @@ in-flight values stay local; the store is called on pointer-up.
   (`src/library/bankIndex.ts`). The store singleton is wrapped in a change feed
   (`storage/changes.ts`) that announces each mutation after it succeeds — the only choke
   point every save passes. Rows persist in IndexedDB `econ-worksheet-library` (web) or
-  `worksheets/library/index.json` (desktop, a subdirectory no rebuild or `clear()`
-  reads), with a stamp per document (`updatedAt`). On first use stored rows paint, then a
+  `worksheets/library/docs/<id>.json` (desktop, one file per document so an autosave
+  rewrites only its own; a subdirectory no rebuild or `clear()` reads; the single
+  `library/index.json` unreleased builds wrote is migrated once, then removed), with a
+  stamp per document (`updatedAt`). On first use stored rows paint, then a
   reconcile re-indexes only documents whose stamp differs and drops those `list()` no
   longer names; events keep it current (saved/restored → re-index, trashed/removed →
   drop, cleared → wipe). A format mismatch (`STORED_INDEX_FORMAT`: the rows version `INDEX_FORMAT` plus a hash of

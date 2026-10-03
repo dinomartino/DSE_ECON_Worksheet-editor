@@ -120,84 +120,100 @@ export function createMemoryBackend(): BankIndexBackend & { docs: IndexedDocs } 
   };
 }
 
-/** One text file: the desktop's `worksheets/library/index.json` (`libraryIndexFile`). */
+/** One text file: the single-file index older desktop builds wrote, read once to migrate it. */
 export interface TextFilePort {
   read(): Promise<string | undefined>;
-  write(text: string): Promise<void>;
   remove(): Promise<void>;
 }
 
-/**
- * The whole index as one JSON file, `{ format, docs: { [docId]: { updatedAt, rows } } }`.
- * Held in memory; writes coalesce, so a burst of commits costs one or two file writes.
- */
-export function createJsonFileBackend(port: TextFilePort): BankIndexBackend {
-  let docs: IndexedDocs = new Map();
-  let writing: Promise<void> | undefined;
-  let again = false;
+/** One file per document: the desktop's `worksheets/library/docs/` (`libraryDocFiles`). */
+export interface DocFilesPort {
+  /** Every document with a file. */
+  ids(): Promise<string[]>;
+  read(docId: string): Promise<string | undefined>;
+  write(docId: string, text: string): Promise<void>;
+  remove(docId: string): Promise<void>;
+  clear(): Promise<void>;
+}
 
-  const serialize = () =>
-    JSON.stringify({ format: STORED_INDEX_FORMAT, docs: Object.fromEntries(docs) });
-
-  function flush(): Promise<void> {
-    if (writing) {
-      again = true;
-      return writing;
+/** `{ format, docs: { [docId]: { updatedAt, rows } } }` → its valid entries; another format is `undefined`. */
+export function readJsonIndex(text: string): IndexedDocs | undefined {
+  try {
+    const parsed = JSON.parse(text) as { format?: unknown; docs?: unknown };
+    if (parsed?.format !== STORED_INDEX_FORMAT || !parsed.docs || typeof parsed.docs !== 'object') return undefined;
+    const loaded: IndexedDocs = new Map();
+    for (const [id, value] of Object.entries(parsed.docs)) {
+      const doc = storedDoc(id, value);
+      if (doc) loaded.set(id, doc);
     }
-    writing = (async () => {
-      try {
-        do {
-          again = false;
-          await port.write(serialize());
-        } while (again);
-      } finally {
-        writing = undefined;
-      }
-    })();
-    return writing;
-  }
-
-  async function drop(): Promise<undefined> {
-    docs = new Map();
-    await port.remove().catch(() => undefined);
+    return loaded;
+  } catch {
     return undefined;
+  }
+}
+
+/** One document's file, `{ format, updatedAt, rows }`; anything else is `undefined`. */
+export function readDocFile(docId: string, text: string): StoredDoc | undefined {
+  try {
+    const parsed = JSON.parse(text) as { format?: unknown };
+    return parsed?.format === STORED_INDEX_FORMAT ? storedDoc(docId, parsed) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const PARALLEL = 16;
+async function inChunks<T>(items: readonly T[], each: (item: T) => Promise<void>): Promise<void> {
+  for (let at = 0; at < items.length; at += PARALLEL) {
+    await Promise.all(items.slice(at, at + PARALLEL).map((item) => each(item).catch(() => undefined)));
+  }
+}
+
+/**
+ * A file per document, so an autosave rewrites only its own document's rows. A file that
+ * fails to read or validate costs only its document (and is removed). `legacy`, the old
+ * single file, is read once: entries newer than their document's file are written out as
+ * files, then it is removed.
+ */
+export function createDocFilesBackend(files: DocFilesPort, legacy?: TextFilePort): BankIndexBackend {
+  const writeDoc = (id: string, doc: StoredDoc) =>
+    files.write(id, JSON.stringify({ format: STORED_INDEX_FORMAT, updatedAt: doc.updatedAt, rows: doc.rows }));
+
+  async function migrate(loaded: IndexedDocs): Promise<void> {
+    if (!legacy) return;
+    const text = await legacy.read().catch(() => undefined);
+    if (text === undefined) return;
+    const old = readJsonIndex(text) ?? new Map<string, StoredDoc>();
+    const newer = [...old].filter(([id, doc]) => {
+      const mine = loaded.get(id);
+      return !mine || mine.updatedAt < doc.updatedAt;
+    });
+    for (const [id, doc] of newer) loaded.set(id, doc);
+    let failed = false;
+    await inChunks(newer, ([id, doc]) => writeDoc(id, doc).catch(() => void (failed = true)));
+    if (!failed) await legacy.remove().catch(() => undefined);
   }
 
   return {
     async load() {
-      let text: string | undefined;
-      try {
-        text = await port.read();
-      } catch {
-        return drop();
-      }
-      if (text === undefined) return undefined;
-      try {
-        const parsed = JSON.parse(text) as { format?: unknown; docs?: unknown };
-        if (parsed?.format !== STORED_INDEX_FORMAT || !parsed.docs || typeof parsed.docs !== 'object') {
-          return drop();
-        }
-        const loaded: IndexedDocs = new Map();
-        for (const [id, value] of Object.entries(parsed.docs)) {
-          // A bad entry costs only its own document, which the reconcile re-indexes.
-          const doc = storedDoc(id, value);
-          if (doc) loaded.set(id, doc);
-        }
-        docs = loaded;
-        return new Map(docs);
-      } catch {
-        return drop();
-      }
+      const loaded: IndexedDocs = new Map();
+      const ids = await files.ids().catch(() => [] as string[]);
+      await inChunks(ids, async (id) => {
+        const text = await files.read(id).catch(() => undefined);
+        const doc = text === undefined ? undefined : readDocFile(id, text);
+        if (doc) loaded.set(id, doc);
+        else await files.remove(id);
+      });
+      await migrate(loaded);
+      return loaded.size > 0 ? loaded : undefined;
     },
-    commit(put, dropIds) {
-      for (const id of dropIds) docs.delete(id);
-      for (const [id, doc] of put) docs.set(id, doc);
-      return flush();
+    async commit(put, drop) {
+      await inChunks(drop, (id) => files.remove(id));
+      await inChunks(put, ([id, doc]) => writeDoc(id, doc));
     },
     async clear() {
-      docs = new Map();
-      if (writing) await writing.catch(() => undefined);
-      await port.remove();
+      await files.clear();
+      if (legacy) await legacy.remove().catch(() => undefined);
     },
   };
 }

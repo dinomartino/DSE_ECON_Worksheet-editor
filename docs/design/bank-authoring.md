@@ -351,8 +351,8 @@ is built before load), the registry, the IR, the exporters, storage, migrations.
 **Engineering risks:**
 
 - **Big banks.** Each autosave rewrites the whole bank document (web quota; desktop file
-  plus the single `index.json`, ~14 MB at 9k questions: a known cost, `docs/IDEAS.md` §C
-  Engineering). The sheet does not add to it, but it makes banks grow faster.
+  plus its own bank index file; the single ~14 MB `index.json` became a file per document
+  on 2026-10-03). The sheet does not add to it, but it makes banks grow faster.
 - **Two trees mounted** (bank screen and editor). The dimmed rail re-renders per autosave
   publish (~10 ms at 9k rows). Accept, and measure in the browser pass.
 - **Preview internals that read the store** (`buildPageMenu`, the AI multi-select button)
