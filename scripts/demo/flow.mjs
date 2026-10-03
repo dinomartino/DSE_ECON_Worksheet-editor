@@ -129,13 +129,21 @@ export function makeDriver(page, { smooth = false, url } = {}) {
 
 // ---- locators --------------------------------------------------------------
 
-/** The i-th question on the page (0-based, page order). */
-export const question = (page, i) => page.locator('#print-root [data-question-id]').nth(i);
+// A question that breaks across sheets renders one [data-question-id] fragment per sheet;
+// FIRST is each question's first fragment, so indices count questions, not fragments.
+// (Only the page carries data-question-id. Chrome's XPath returns nothing when this
+// predicate is combined with an ancestor test, so there is none.)
+const FIRST = '//*[@data-question-id][not(@data-question-id = preceding::*/@data-question-id)]';
+/** The i-th question on the page (0-based, page order): its first fragment. */
+export const question = (page, i) => page.locator(`xpath=(${FIRST})[${i + 1}]`);
 /**
- * The j-th editable field of question i. Bilingual mode alternates EN, 中文:
- * MCQ = stem, then A..D; structured = stem, then (a), (b), ...
+ * The j-th editable field of question i, across all its fragments. Bilingual mode
+ * alternates EN, 中文: MCQ = stem, then A..D; structured = stem, then (a), (b), ...
  */
-export const field = (page, i, j) => question(page, i).locator('[role=textbox]').nth(j);
+export const field = (page, i, j) =>
+  page
+    .locator(`xpath=//*[@role='textbox'][ancestor::*[@data-question-id = (${FIRST})[${i + 1}]/@data-question-id]]`)
+    .nth(j);
 export const flowRow = (page, text) =>
   page.locator('#print-root [data-flow-id]').filter({ hasText: text }).first();
 
