@@ -2,15 +2,14 @@
 // the act starts at 0 s, so scene time = film time). The act ends on pulse 12 = bar 1.5, the
 // cut into the mark. Points are design px (frame), page points page px.
 import { pulse } from '../../../timeline.mjs';
-import { SIZE } from '../mark.js';
+import { SIZE, AXIS_COLOR } from '../mark.js';
 
 /** Scene time of grid pulse n (pulse 0 = the first downbeat, 1.795 s). */
 export const P = (n) => pulse(n);
 
-// The page: a flat sheet on the right, running off the frame.
-// k: page px → frame px (the sheet is drawn at 700 px and shown larger, bleeding off the right
-// and bottom edges).
-export const PAGE = { x: 1170, y: 112, w: 700, h: 992, k: 1.3 };
+// The page: a flat sheet on the right, its right edge on the safe line (x 1824), running off
+// the bottom edge only. k: page px → frame px (the sheet is drawn at 700 px, shown at 864).
+export const PAGE = { x: 960, y: 120, w: 700, h: 992, k: 864 / 700 };
 export const pg = ([x, y]) => [PAGE.x + x * PAGE.k, PAGE.y + y * PAGE.k];
 
 // The diagram on the page (page px): axes, the demand line already there, the supply line
@@ -42,7 +41,7 @@ export const AXIS = {
   base: [tileX + 118 * k, tileY + 394 * k],
   top: [tileX + 118 * k, tileY + 106 * k],
   width: 20 * k,
-  color: '#7C7772',
+  color: AXIS_COLOR,
 };
 
 /** Hex colour mix a → b by p. */

@@ -3,7 +3,10 @@
 // The mark draws centred in the frame; as the wordmark arrives the whole lockup glides up
 // (pulses 4–7) to make room for the tagline (pulse 6). The next act's iris opens out of the
 // dot: timeline.mjs write.in.at must equal MARK_DOT (doctor checks).
-import { lockup, block, h, place, tween, ease, C } from '../lib/index.js';
+// The hand-off from the cold open: its line docks on the cut as this mark's vertical axis, so
+// the act opens with axis V already drawn (solid, the colour it has on the tile) and the tile
+// grows out of that line around it; the rest of the splash runs on its own clock.
+import { lockup, block, h, s, place, tween, ease, f, C } from '../lib/index.js';
 
 export const SIZE = 360; // the mark, px
 const EN = 110, ZH = 46;
@@ -12,6 +15,9 @@ const TAG = 38, TAG_ZH = 26, TAG_GAP = 60;
 export const TOP = 158;
 export const MARK_DOT = [960, TOP + SIZE / 2];
 const DROP = 540 - MARK_DOT[1]; // the mark starts centred
+// Axis V on the tile: cream at .34 over the tile (#3A342E) is exactly #7C7772.
+export const AXIS_COLOR = '#7C7772';
+const GROW = 0.62; // s: the tile grows out of the axis (the splash's own tile phase is 0.48 s)
 
 const scene = {
   setup(ctx) {
@@ -24,9 +30,27 @@ const scene = {
       ...ctx.copy.tagline, x: 960, y: ctx.lock.bottom + TAG_GAP, w: 1500, maxLines: 1, face: 'sans', weight: 500,
       size: TAG, tracking: 0, color: C.inkMuted, zhSize: TAG_ZH, zhTracking: 0.08, zhColor: C.inkSubtle, zhGap: 8, rise: 10,
     });
+    // Axis V drawn solid from the first frame (under the curves, like the original).
+    const { g, axes, axisV } = ctx.lock.mark.parts;
+    axisV.remove();
+    ctx.axisV = s('path', { d: 'M118 394V106', fill: 'none', stroke: AXIS_COLOR, 'stroke-width': 20, 'stroke-linecap': 'round' });
+    g.insertBefore(ctx.axisV, axes);
   },
   update(ctx, t) {
     ctx.lock.at(Math.max(0, t) * ctx.msPerS);
+    // The tile: full opacity and scale from the start, its rect growing out of the axis line
+    // (x 108–128, y 96–404: the stroke's own outline) to the 512 tile.
+    const { g, tile } = ctx.lock.mark.parts;
+    g.removeAttribute('transform');
+    g.setAttribute('opacity', '1');
+    g.style.visibility = 'visible';
+    const p = ease.outSoft(ease.prog(t, 0, GROW));
+    const r = (a, b) => f(ease.lerp(a, b, p), 3);
+    tile.setAttribute('x', r(108, 0));
+    tile.setAttribute('y', r(96, 0));
+    tile.setAttribute('width', r(20, 512));
+    tile.setAttribute('height', r(308, 512));
+    tile.setAttribute('rx', r(10, 114));
     // A slow push-in towards the dot keeps the held lockup alive until the iris takes it.
     const push = 1 + 0.02 * ease.sineInOut(t / ctx.dur);
     place(ctx.group, { y: tween(t, ctx.pulse(4), ctx.pulse(3), DROP, 0, ease.inOutSoft), scale: push });
