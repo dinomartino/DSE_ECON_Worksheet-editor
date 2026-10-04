@@ -30,9 +30,9 @@ export const LABEL = Object.freeze({
 });
 /** The end card = the act-1 lockup geometry (lib/mark.js lockup) + the tagline slot under it. */
 export const END_CARD = Object.freeze({
-  cx: 960, top: 155, size: 360, en: 110, zh: 46, zhTracking: 0.3,
+  cx: 960, top: 158, size: 360, en: 110, zh: 46, zhTracking: 0.3,
   tagline: Object.freeze({ gap: 60, face: 'sans', weight: 500, size: 38, zhSize: 26, zhGap: 8, zhColor: C.inkMuted, maxLines: 1, w: 1400 }),
-  push: [1.0, 1.03], // a slow scale over the hold (sineInOut) that is still moving on the last frame
+  push: [1.0, 1.045], // a slow scale over the hold (sineInOut) that is still moving on the last frame
 });
 /** Serif sizes the doctor accepts for headlines and statements (110 = the lockup wordmark). */
 export const PRESET_SIZES = [HEADLINE.size, STATEMENT.size, END_CARD.en];

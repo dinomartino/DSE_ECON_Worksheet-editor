@@ -53,7 +53,8 @@ export const DURATION = bar(END_BAR);
 const PC = (n0, ns) => ns.map((n) => pulse(n0 + n)); // pulses counted from an act's first pulse
 const ACTS = [
   { id: 'open', bars: [0, 1.5], in: { type: 'cut' } },
-  { id: 'mark', bars: [1.5, 3], in: { type: 'match' } }, // the straightened line becomes the axis
+  { id: 'mark', bars: [1.5, 3], in: { type: 'match' }, // the straightened line becomes the axis
+    holds: [[pulse(14.5), pulse(23.5)]] }, // alive: tagline, dot, ripple, 6 % push, track-out (thin strokes read as still)
   { id: 'write', bars: [3, 8], in: { type: 'iris', pulses: 4, at: [960, 338] }, // at: the mark's dot (scenes/mark.js MARK_DOT)
     cuts: [pulse(29), pulse(42), pulse(55)], // → type-mcq; → language-toggle; → zh-interface
     // type-mcq's double-click into the 中文 line; EN, 中文, EN+中; 繁體中文; 完成 closes Settings
@@ -74,7 +75,7 @@ const ACTS = [
     cuts: [pulse(196), pulse(203)], // → the real .docx page; → the three windows
     ui: [87.397] }, // Export… opens the dialog (the clip's click)
   { id: 'end', bars: [26, END_BAR], in: { type: 'axis', pulses: 4 },
-    holds: [[pulse(210), pulse(219)], [103.3, bar(END_BAR)]] }, // the statement is read; the end card
+    holds: [[pulse(208), pulse(219.5)], [pulse(224), AUDIBLE_END], [AUDIBLE_END, bar(END_BAR)]] }, // statement read; lockup drift; final still
 ];
 
 export const SCENES = ACTS.map((a, i) => ({
