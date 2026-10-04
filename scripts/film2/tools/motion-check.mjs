@@ -16,7 +16,10 @@
 //              whose two frames are meant to agree
 //   staleCuts  the same for a declared in-act cut: reported, not failed (the scene moved on)
 // A hold is declared in timeline.mjs as `holds: [[from, to], …]` (film seconds) on a scene, or
-// with --hold=a-b,c-d. Exit 1 when any of the first three, or a weak cut, is found.
+// with --hold=a-b,c-d. An `alive: [[from, to, still?], …]` range on a scene (or --alive) is an
+// intentional slow drift (a lockup push, a breathing chart): there a frame counts as still only
+// under its own threshold (default --alive-still=0.02), so a frozen picture still flags.
+// Exit 1 when any of the first three, or a weak cut, is found.
 //   node scripts/film2/tools/motion-check.mjs <video> [--from=<film s of the first frame>]
 //                                             [--out=<dir>] [--still=0.08] [--stall=0.3] [--jump=5]
 import { spawn } from 'node:child_process';
@@ -96,15 +99,16 @@ export async function frameStats(video) {
 
 /** Planned hard cuts (a scene entered by a cut), transition windows and declared holds, film seconds. */
 export function plannedChanges() {
-  const cuts = [], transitions = [], holds = [], ui = [];
+  const cuts = [], transitions = [], holds = [], ui = [], alive = [];
   SCENES.forEach((s, i) => {
     if (i > 0 && isCut(s)) cuts.push({ t: s.from, scene: s.id, kind: s.in?.type ?? 'cut' });
     for (const t of s.cuts ?? []) cuts.push({ t, scene: s.id, kind: 'in-act' });
     for (const t of s.ui ?? []) ui.push({ t, scene: s.id });
+    for (const r of s.alive ?? []) alive.push(r);
     if (i > 0 && !isCut(s)) transitions.push({ a: s.from - halfIn(s), b: s.from + halfIn(s), scene: s.id, type: s.in.type });
     for (const h of s.holds ?? (s.hold ? [s.hold] : [])) holds.push(Array.isArray(h) ? h : [h.from, h.to]);
   });
-  return { cuts, transitions, holds, ui };
+  return { cuts, transitions, holds, ui, alive };
 }
 
 const median = (a) => {
@@ -112,8 +116,9 @@ const median = (a) => {
   return s.length ? s[Math.floor(s.length / 2)] : 0;
 };
 
-export function analyse({ mad, luma }, { fps, from = 0, still = 0.08, stall = 0.3, jump = 5, extraHolds = [] }) {
-  const { cuts, transitions, holds: declared, ui } = plannedChanges();
+export function analyse({ mad, luma }, { fps, from = 0, still = 0.08, stall = 0.3, jump = 5, extraHolds = [], aliveStill = 0.02, extraAlive = [] }) {
+  const { cuts, transitions, holds: declared, ui, alive: aliveDeclared } = plannedChanges();
+  const alive = [...aliveDeclared, ...extraAlive];
   const holds = [...declared, ...extraHolds];
   const t = (i) => from + i / fps;
   const nearCut = (i) => cuts.some((c) => Math.abs(t(i) - c.t) <= 1.01 / fps);
@@ -122,16 +127,20 @@ export function analyse({ mad, luma }, { fps, from = 0, still = 0.08, stall = 0.
   const inTransition = (i) => transitions.some((x) => t(i) >= x.a - 1 / fps && t(i) <= x.b + 1 / fps);
   const inHold = (a, b) => holds.some(([h0, h1]) => a >= h0 - HOLD_EASE && b <= h1 + HOLD_EASE);
 
+  // Inside an `alive` range a slow drift is meant: a frame is still only under that range's
+  // lower threshold (default aliveStill), so a truly frozen picture (MAD ≈ 0) still flags.
+  const aliveAt = (i) => alive.find(([a, b]) => t(i) >= a && t(i) < b);
+  const isStill = (i) => mad[i] < (aliveAt(i)?.[2] ?? (aliveAt(i) ? aliveStill : still));
   const stalls = [];
   for (let i = 1; i < mad.length; ) {
-    if (mad[i] >= still || nearCut(i)) {
+    if (!isStill(i) || nearCut(i)) {
       i++;
       continue;
     }
     let j = i;
-    while (j < mad.length && mad[j] < still) j++;
+    while (j < mad.length && isStill(j)) j++;
     const secs = (j - i + 1) / fps; // the run of identical frames, the first of them included
-    if (secs > stall && !inHold(t(i - 1), t(j - 1))) stalls.push({ t: +t(i - 1).toFixed(3), seconds: +secs.toFixed(3), frames: j - i + 1 });
+    if (secs > stall && !inHold(t(i - 1), t(j - 1))) stalls.push({ t: +t(i - 1).toFixed(3), seconds: +secs.toFixed(3), frames: j - i + 1, ...(aliveAt(i) ? { alive: true } : {}) });
     i = j;
   }
 
@@ -172,7 +181,7 @@ export function analyse({ mad, luma }, { fps, from = 0, still = 0.08, stall = 0.
   const q = (p) => +(sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] ?? 0).toFixed(3);
   return {
     frames: mad.length, fps, from, duration: +(mad.length / fps).toFixed(3),
-    planned: { cuts: cuts.filter((c) => c.t >= from && c.t < from + mad.length / fps), transitions, holds, ui },
+    planned: { cuts: cuts.filter((c) => c.t >= from && c.t < from + mad.length / fps), transitions, holds, ui, alive },
     stats: { mean: +(sorted.reduce((a, b) => a + b, 0) / Math.max(1, sorted.length)).toFixed(3), p50: q(0.5), p95: q(0.95), p99: q(0.99), max: q(1) },
     stalls, jumps, flashes, weakCuts, staleCuts,
   };
@@ -188,11 +197,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     stall: '<s> a still run longer than this is a stall (default 0.3)',
     jump: '<x> spike over this multiple of the local median is a jump (default 5)',
     hold: '<a-b,c-d> extra holds, film seconds',
+    alive: '<a-b,c-d> extra alive ranges (a slow drift is meant), film seconds',
+    'alive-still': '<mad> the still threshold inside an alive range (default 0.02)',
   });
   const video = resolve(pos[0]);
   const { fps } = await probe(video);
   const stats = await frameStats(video);
-  const r = analyse(stats, { fps, from: Number(o.from ?? 0), still: Number(o.still ?? 0.08), stall: Number(o.stall ?? 0.3), jump: Number(o.jump ?? 5), extraHolds: parseRange(o.hold) });
+  const r = analyse(stats, { fps, from: Number(o.from ?? 0), still: Number(o.still ?? 0.08), stall: Number(o.stall ?? 0.3), jump: Number(o.jump ?? 5), extraHolds: parseRange(o.hold), extraAlive: parseRange(o.alive), aliveStill: Number(o['alive-still'] ?? 0.02) });
   const dir = resolve(o.out ?? resolve(OUT, 'motion'));
   mkdirSync(dir, { recursive: true });
   const file = resolve(dir, `${basename(video).replace(/\.[^.]+$/, '')}.json`);

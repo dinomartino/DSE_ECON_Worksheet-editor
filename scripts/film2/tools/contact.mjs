@@ -13,6 +13,10 @@ import { fileURLToPath } from 'node:url';
 import { OUT } from '../paths.mjs';
 import { parseFlags, probe } from './motion-check.mjs';
 
+// Gaps and unfilled cells are mid grey, never black: a reviewer read an empty last cell as
+// "the film ends on a black frame" (round 2; the last frame is the lockup on cream).
+const GAP = '0x8C8C8C';
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const { o, pos } = parseFlags('node scripts/film2/tools/contact.mjs', 'contact sheet of a video or a directory of stills', {
     count: '<n> cells (default 24)',
@@ -55,7 +59,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     }
     seq = mkdtempSync(resolve(tmpdir(), 'contact-'));
     picks.forEach((f, i) => symlinkSync(resolve(input, f), resolve(seq, `${String(i).padStart(5, '0')}${ext}`)));
-    args = ['-framerate', '1', '-start_number', '0', '-reinit_filter', '0', '-i', resolve(seq, `%05d${ext}`), '-vf', `scale=${cell}:-2,tile=${cols}x${rows}:padding=4:margin=4:color=black`];
+    args = ['-framerate', '1', '-start_number', '0', '-reinit_filter', '0', '-i', resolve(seq, `%05d${ext}`), '-vf', `scale=${cell}:-2,tile=${cols}x${rows}:padding=4:margin=4:color=${GAP}`];
   } else {
     const { fps, duration } = await probe(input);
     const a = Number(o.from ?? 0), b = Math.min(Number(o.to ?? duration), duration);
@@ -64,7 +68,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     times = Array.from({ length: count }, (_, i) => +(a + i * step).toFixed(3));
     const rows = Math.ceil(count / cols);
     // fps=1/step starting at a: cell i is the frame at a + i·step (the first frame at or after it)
-    args = ['-ss', String(a), '-t', String(b - a), '-i', input, '-vf', `fps=1/${step},scale=${cell}:-2,tile=${cols}x${rows}:padding=4:margin=4:color=black`];
+    args = ['-ss', String(a), '-t', String(b - a), '-i', input, '-vf', `fps=1/${step},scale=${cell}:-2,tile=${cols}x${rows}:padding=4:margin=4:color=${GAP}`];
     void fps;
   }
   const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args, '-frames:v', '1', '-fps_mode', 'passthrough', out], { encoding: 'utf8' });

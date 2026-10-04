@@ -44,12 +44,21 @@ export const DURATION = bar(END_BAR);
 // `in` = the transition into the act, centred on its first bar line:
 //   cut | match (a cut whose two frames share a shape) | push {dir: 'left'|'up', pulses}
 //   | iris {pulses, at: [x, y] design px} | axis {pulses: 4, dotTo?: [x, y]} (the axis chapter:
-//   engine.js draws the frame's axes over B-2..B+6 pulses; its label is COPY.chapters[id])
+//   engine.js draws the frame's axes over B-2..B+4 pulses, AXIS_CHAPTER; its label is
+//   COPY.chapters[id])
 // `cuts` = the act's intended hard changes inside it (film s, on pulses: footage cuts, a
 // page swapped at once); `ui` = clicks in the real footage whose response is an instant
 // change (a dialog opens, a toggle flips: the clip's event time); `holds` = [from, to] film s
 // where a still picture is meant. tools/motion-check.mjs exempts all three; a flag elsewhere
-// is a bug.
+// is a bug. `alive` = [[from, to, still?], …] film s where a slow drift is meant (a push, a
+// breathing card): motion-check counts a frame as still there only under `still` (default
+// 0.02 MAD), so a truly frozen frame still flags.
+/**
+ * The axis chapter's marks, in pulses from the act's bar line B (FILM.md §5): the vertical wipe,
+ * the horizontal draw, the label in / out (fully visible labelIn[1]..labelOut[0] = 3 pulses,
+ * 1.33 s), both strokes retracting, the dot shrinking; nothing of it is left after `end`.
+ */
+export const AXIS_CHAPTER = Object.freeze({ wipe: [-2, 0], draw: [0, 1.5], labelIn: [0.25, 0.5], labelOut: [3.5, 4], back: [2.5, 4], dotOut: [3.5, 4], end: 4 });
 const PC = (n0, ns) => ns.map((n) => pulse(n0 + n)); // pulses counted from an act's first pulse
 const ACTS = [
   { id: 'open', bars: [0, 1.5], in: { type: 'cut' } },
@@ -139,9 +148,14 @@ export const CUES = [
   // (2.7 s, from ~70.2 s); a whoosh into the iris ends 0.35 s after it, when the ring is open.
   { id: 'bank.riser', t: r6(bar(20) - 0.05), kind: 'sfx', sfx: 'riser', dur: 2.7, grid: false, note: 'the build into the lift' },
   { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens (bank.js plays the impact)' },
-  { id: 'bank.whoosh', t: r6(bar(20) + 0.35), kind: 'sfx', sfx: 'whoosh', end: true, file: 'whoosh__air-woosh__mixkit-1489', grid: false, note: 'ends as the iris opens' },
+  { id: 'bank.whoosh', t: r6(bar(20) + 0.75), kind: 'sfx', sfx: 'whoosh', end: true, file: 'whoosh__air-woosh__mixkit-1489', grid: false, note: 'ends as the iris is fully open (≈73.7)' },
   { id: 'everywhere.cuts', t: bar(24), kind: 'accent', sfx: 'whoosh-s' },
-  { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', grid: false, note: 'the pull-back: its onset half a second before the bar' },
+  // Hard cuts that had no sound (sync review 2); the lift's loudness-aware gain lifts the bank two.
+  { id: 'write.cut11', t: pulse(24 + 11), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'CLOSE → the wide editor (the double-click follows at 17.505)' },
+  { id: 'draw.cut33', t: pulse(64 + 33), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'the Templates wall → "The answer, on the same axes"' },
+  { id: 'bank.cut13', t: pulse(160 + 13), kind: 'sfx', sfx: 'whoosh-s', note: 'cut to the drag CLOSE in the editor' },
+  { id: 'bank.cut16', t: pulse(160 + 16), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'cut to the drop' },
+  { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', gain_db: 4, grid: false, note: 'the pull-back: its onset half a second before the bar (+4 and the loudness boost ≈ +8 dB)' },
   { id: 'end.pullback', t: bar(26), kind: 'accent', note: 'the pull-back: everything collapses into lines' },
   { id: 'end.stab', t: r6(bar(29) - 0.5), kind: 'sfx', sfx: 'shimmer', gain_db: -2, grid: false, note: "the music's last stab (104.4 s)" },
 ].sort((a, b) => a.t - b.t);

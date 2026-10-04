@@ -2,7 +2,7 @@
 export * as ease from './ease.js';
 export * from './tween.js';
 export { h, s, svg, drawable, place, show, C, FONT, PAPER_SHADOW } from './dom.js';
-export { block, label, fillMixed, contrast, HEADLINE, STATEMENT, LABEL, END_CARD, PRESET_SIZES } from './type.js';
+export { block, label, fillMixed, contrast, HEADLINE, STATEMENT, LABEL, END_CARD, DISPLAY, PRESET_SIZES } from './type.js';
 export * as layout from './layout.js';
 export { card } from './card.js';
 export { focus, focusEnv, callout, FOCUS_MAX } from './focus.js';

@@ -202,11 +202,13 @@ function pose(active, t) {
 }
 
 // ---- the axis chapter (FILM.md §5): the frame draws the mark's axes between two acts ------
-// Pulses from the bar line B: B-2..B0 a 4 px ink stroke wipes 1920 → 96 (inOutSoft), the blue
-// dot riding its top; B0..B+2 the horizontal axis draws 96 → 1824 along y 1008 (outSoft);
-// B+1..B+4 the chapter LABEL (COPY.chapters[id]) sits on the axis at x 120; B+4..B+6 both
-// strokes retract into the origin (inOutSoft) and the dot travels to `in.dotTo` (or rides the
-// vertical down) and shrinks away.
+// Six pulses, from the bar line B: B-2..B0 a 4 px ink stroke wipes 1920 → 96 (inOutSoft), the
+// blue dot riding its top; B0..B+1.5 the horizontal axis draws 96 → 1824 along y 1008
+// (outSoft); the chapter LABEL (COPY.chapters[id]) sits on the axis at x 120: in B+0.25..B+0.5,
+// fully visible B+0.5..B+3.5 (3 pulses, 1.33 s), out B+3.5..B+4 as the axis under it leaves;
+// B+2.5..B+4 both strokes retract into the origin (inOutSoft) and the dot travels to
+// `in.dotTo` (or rides the vertical down); it shrinks away B+3.5..B+4. CH = timeline.mjs AXIS_CHAPTER (pulses from B; scenes read it too).
+const CH = TL.AXIS_CHAPTER;
 const AX = lib.layout.AXES;
 const chV = lib.s('line', { stroke: lib.C.ink, 'stroke-width': 4, 'stroke-linecap': 'round' }, fx);
 const chH = lib.s('line', { stroke: lib.C.ink, 'stroke-width': 4, 'stroke-linecap': 'round' }, fx);
@@ -219,13 +221,14 @@ function chapter(t) {
   const P = TL.PULSE;
   for (const el of [chV, chH, chDot]) el.style.visibility = 'hidden';
   for (const l of chLabels.values()) l.show(0);
-  const s = SC.list.find((x) => x.in?.type === 'axis' && t >= x.from - 2 * P && t < x.from + 6 * P);
+  const s = SC.list.find((x) => x.in?.type === 'axis' && t >= x.from + CH.wipe[0] * P && t < x.from + CH.end * P);
   if (!s) return;
   const B = s.from;
-  const back = inOutSoft(prog(t, B + 4 * P, B + 6 * P)); // the retract
+  const at = ([a, b]) => [B + a * P, B + b * P];
+  const back = inOutSoft(prog(t, ...at(CH.back))); // the retract
   const x = t < B ? axisWipeX(t, B) : AX.x;
   const top = lerp(AX.top, AX.y, back);
-  const right = t < B ? AX.x : lerp(lerp(AX.x, AX.right, outSoft(prog(t, B, B + 2 * P))), AX.x, back);
+  const right = t < B ? AX.x : lerp(lerp(AX.x, AX.right, outSoft(prog(t, ...at(CH.draw)))), AX.x, back);
   const attrs = (el, a) => Object.entries(a).forEach(([k, v]) => el.setAttribute(k, f(v, 2)));
   if (AX.y - top > 0.5) {
     attrs(chV, { x1: x, y1: top, x2: x, y2: AX.y });
@@ -238,7 +241,7 @@ function chapter(t) {
   const to = s.in.dotTo;
   const travel = to ? back : 0;
   const [dx, dy] = [lerp(x, to?.[0] ?? x, travel), lerp(top, to?.[1] ?? top, travel)];
-  const r = 6 * spring(clamp(prog(t, B - 2 * P, B - 1.5 * P))) * (1 - inOutSoft(prog(t, B + 5.2 * P, B + 6 * P)));
+  const r = 6 * spring(clamp(prog(t, B - 2 * P, B - 1.5 * P))) * (1 - inOutSoft(prog(t, ...at(CH.dotOut))));
   if (r > 0.05) {
     attrs(chDot, { cx: dx, cy: dy, r });
     chDot.style.visibility = 'visible';
@@ -247,7 +250,7 @@ function chapter(t) {
     const c = TL.COPY.chapters?.[s.id] ?? { en: '', zh: '' };
     chLabels.set(s.id, lib.label(fxh, { ...lib.LABEL, en: c.en, zh: c.zh, x: 120, y: 984 }));
   }
-  chLabels.get(s.id).show(outSoft(prog(t, B + P, B + 2 * P)) - outSoft(prog(t, B + 4 * P, B + 5 * P)));
+  chLabels.get(s.id).show(outSoft(prog(t, ...at(CH.labelIn))) - inOutSoft(prog(t, ...at(CH.labelOut))));
 }
 
 const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));

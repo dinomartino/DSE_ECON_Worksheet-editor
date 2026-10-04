@@ -115,9 +115,12 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   - `STATEMENT`: 112, lh 1.04, −0.02em, ≤ 2 lines (`\n` in COPY); zh 48, gap 20. Text-led
     frames. Defaults are C3 (centred); C2 is `{ ...STATEMENT, ...layout.C2.statement }`.
   - `LABEL`: Inter 500 22 caps +0.08em, zh 24 on the same line, ink-muted (`label()`).
+  - `DISPLAY`: Newsreader 160, lh 1, −0.02em, one centred line: the re-ink total ("Total: 7
+    marks"); the only size above STATEMENT.
   - `END_CARD`: the act-1 lockup geometry (tile 360 at top 155, wordmark 110, zh 46 tracked
     0.30em) + the tagline slot (Inter 500 38 / zh 26, gap 60), pushing 1.0 → 1.03 to the end.
-  - 中文 inside a serif line is a PingFang HK 300 span at 0.9em, no tracking; Latin inside a
+  - 中文 inside a serif line is a PingFang HK 300 span at 0.9em, no tracking, line-height 0 (it
+    never grows the line box); Latin inside a
     zh line has no zh tracking. A small zh line never sits under 4.5:1 (#5A544D, never
     #7F7973). No rendered line ends in `, . ， 。 ; ；` (the doctor reads the wrapped lines).
 - **Compositions** (`stage/lib/layout.js`): safe area 96 px sides, 72 px top/bottom; 12
@@ -154,12 +157,14 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   ≤ 35 % of the film in MEDIUM demo-card frames, ≥ 25 % in CLOSE (the doctor measures it).
 - **Axis chapter** (engine.js, `in: { type: 'axis', pulses: 4 }`): the act changes at 30.25,
   51.58 and 94.26. In pulses from the bar line B: B−2…B0 a 4 px ink stroke wipes 1920 → 96
-  (the new act right of it), the 12 px blue dot on its top; B0…B+2 the horizontal axis draws
-  along y 1008; B+1…B+4 the chapter LABEL (`COPY.chapters`) sits on it at x 120; B+4…B+6
-  both strokes retract into the origin and the dot travels to `in.dotTo` (or rides down).
+  (the new act right of it), the 12 px blue dot on its top; B0…B+1.5 the horizontal axis
+  draws along y 1008; the chapter LABEL (`COPY.chapters`) sits on it at x 120, in by B+0.5,
+  fully visible B+0.5…B+3.5 (3 pulses, 1.33 s), out by B+4; B+2.5…B+4 both strokes retract
+  into the origin and the dot travels to `in.dotTo` (or rides down) and shrinks away. Six
+  pulses in all, nothing left after B+4 (`AXIS_CHAPTER` in `timeline.mjs` holds the marks).
   The dot irises stay for the two biggest section changes (12.46, 72.92).
 - **Re-ink lift** (`lib/reink.js`): after a footage proof, the proven element leaves as
-  vector at frame scale: trace (1 pulse), lift to ≤ 1400 px (`lift`, inOutSoft, pencil sfx),
+  vector at frame scale: trace (1 pulse), lift to ≤ 1400 px (`lift`, outSoft from where it sits on screen; `carry` takes the source card along and fades it over 1.5 pulses; pencil sfx),
   hold while the detail draws on (`stroke`, `hatch`, `roll`, `bars`, `wavy`), then cut.
   Each lift ≤ 7 pulses.
 - `update(t)` is a pure function of t. No clocks, no randomness, no state between calls.
@@ -175,7 +180,9 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   card. Music first, but every sound must be heard: UI sounds peak 3–6 dB over the local
   music RMS; typing is one tick per key; every section change has a sound; the music ducks
   under impacts, travels and dense UI. The mix fades only after the music resolves
-  (AUDIBLE_END 107.65 s). Master −16 LUFS, ≤ −1 dBTP.
+  (AUDIBLE_END 107.65 s). Master −16 LUFS, ≤ −1 dBTP. Gains are loudness-aware (`LOUDNESS` in
+  `audio/sfxmap.mjs`): a sound gains the local music RMS over −19 dB (≤ +6), so the lift needs
+  no hand trims; files rotate and never repeat back to back within a family.
 - `demo-media/film-v2/audio-stock/SOURCES.md` records every asset's license.
 
 ## 7. Architecture (`scripts/film2/`)
@@ -216,7 +223,7 @@ A sibling of `scripts/film/`, reusing its capture and tools by import; v1 keeps 
   ```
   A shot: `{ at, size: 'wide'|'medium'|'narrow'|'close', focus, safe?, zoom?, anchor?,
   move?: { to: {size, focus, safe, zoom}, at?, dur? }, drift? (≤ 0.03), dim?: { rect, on,
-  off, dur } }`. Re-ink: `reink.lift(t, fromRect, toRect, { at, dur })` → `{ css }` for a
+  off, dur } }`. Re-ink: `reink.lift(t, from, toRect, { at, dur, carry })` → `{ css, rect, carry? }` (from: design rect, screen rect, element or `{ cam, rect }`) for a
   layer; `reink.stroke(path, t, { at, dur, reverse })`; `reink.hatch(svg, { points, gap })
   .at(t, …)`; `reink.roll(t, { from, to, at, dur })` → text; `reink.bars(svg, { x, y, w, h,
   values }).at(t, …)`; `reink.wavy(svg, { x, y, w })` then `stroke`.
