@@ -14,7 +14,7 @@ export const ASSETS = {
   'zh-interface': { kind: 'clip', path: 'clips/zh-interface', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=zh-interface --no-build', scenes: ['write'] },
   // draw
   'draw-diagram': { kind: 'clip', path: 'clips/draw-diagram', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=draw-diagram --no-build', scenes: ['draw'] },
-  'shade-area': { kind: 'clip', path: 'clips/shade-area', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=shade-area --no-build', scenes: ['draw'] },
+  'shade-area': { kind: 'clip', path: 'clips/shade-area', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=shade-area --no-build', scenes: ['draw', 'everywhere'] },
   'template-picker': { kind: 'clip', path: 'clips/template-picker', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=template-picker --no-build', scenes: ['draw'] },
   'answer-draw': { kind: 'clip', path: 'clips/answer-draw', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=answer-draw --no-build', scenes: ['draw'] },
   'answer-layer': { kind: 'clip', path: 'clips/answer-layer', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=answer-layer --no-build', scenes: ['draw'] },
@@ -26,7 +26,7 @@ export const ASSETS = {
   'versions': { kind: 'clip', path: 'clips/versions', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=versions --no-build', scenes: ['papers'] },
   'scroll-paper': { kind: 'clip', path: 'clips/scroll-paper', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=scroll-paper --no-build', scenes: ['papers'] },
   // bank
-  'bank-screen': { kind: 'clip', path: 'clips/bank-screen', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=bank-screen --no-build', scenes: ['bank'] },
+  'bank-screen': { kind: 'clip', path: 'clips/bank-screen', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=bank-screen --no-build', scenes: ['bank', 'everywhere'] },
   'bank-drag': { kind: 'clip', path: 'clips/bank-drag', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=bank-drag --no-build', scenes: ['bank'] },
   'check-terms': { kind: 'clip', path: 'clips/check-terms', capture: 'FILM_STORE=… npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=check-terms --no-build', scenes: ['bank'] },
   // everywhere

@@ -93,12 +93,18 @@ const ACTS = [
     holds: [[pulse(132), pulse(150)]],
     alive: [[pulse(120), pulse(123)], [pulse(152), pulse(158)]] },
   { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] },
-    // → the topic page (P8); → the editor, WIDE (P12); → the drag CLOSE (P13); → the drop (P16);
-    // → the Check terms row (P22); → the underlined page (P24); → the term lift (P27); → Replace (P30)
-    cuts: PC(160, [8, 12, 13, 16, 22, 24, 27, 30]),
-    ui: [79.208] }, // bank-drag: the page makes room (frame 111, 1.85 s; the press at 0.9 s is P172)
+    // → the topic page (P9); → the editor, WIDE (P12); → the drag CLOSE (P13); → the drop (P16);
+    // → the Check terms row (P22); → the underlined page (P24); → Replace (P30) (the term lift at
+    // P27 is a move: the line lifts off its page, which rides along and fades)
+    cuts: PC(160, [9, 12, 13, 16, 22, 24, 30]),
+    ui: [pulse(174)], // bank-drag: the page makes room (frame 111, 1.85 s, played to land on P14)
+    // the finished chart's push; the topic page's push; the Check terms row's push; the term at frame scale
+    alive: [[pulse(166), pulse(169)], [pulse(169), pulse(172)], [pulse(182), pulse(184)], [pulse(188), pulse(190)]] },
   { id: 'everywhere', bars: [24, 26], in: { type: 'cut' },
-    cuts: [pulse(195), pulse(200)] }, // → the real .docx page; → the three windows (the Export… click is on the act's cut)
+    // → the .docx page (C2); → the diagram paper CLOSE; → the browser; → the three windows
+    // (the Export… click is on the act's cut)
+    cuts: [pulse(194), pulse(199), pulse(201), pulse(203)],
+    alive: [[pulse(192), pulse(194)], [pulse(199), pulse(203)]] }, // the dialog CLOSE; the page CLOSE, the browser
   { id: 'end', bars: [26, END_BAR], in: { type: 'axis', pulses: 4 },
     alive: [[bar(26), bar(END_BAR)]] }, // the statement's push, the fold, the lockup's drift to the last frame
 ];
