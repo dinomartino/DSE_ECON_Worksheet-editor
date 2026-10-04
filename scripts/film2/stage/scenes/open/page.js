@@ -2,7 +2,7 @@
 // hairlines), a diagram with its demand line already drawn, a generic four-tool palette and
 // the text box that jumps. Illustration only: no product pixels, no logos.
 import { h, s, C, FONT, PAPER_SHADOW } from '../../lib/dom.js';
-import { PAGE, AX, DEMAND, TOOLBAR, TOOL, BOX } from './geom.js';
+import { PAGE, AX, DEMAND, TOOLBAR, TOOL, BOX, FLOW_Y } from './geom.js';
 
 const HEAD = C.sketchHead, TEXT = C.sketchText, RULE = C.sketchRule;
 const bar = (g, x, y, w, ht = 12, fill = TEXT) => s('rect', { x, y, width: w, height: ht, rx: ht / 2, fill }, g);
@@ -12,7 +12,7 @@ const label = (g, x, y, text, size = 20, fill = HEAD) =>
 /** Builds the page into `parent`. → { el, svg, tools: [highlight rects], box, boxFrame, boxText, flow, label } */
 export function buildPage(parent) {
   const el = h('div', { style: {
-    position: 'absolute', left: `${PAGE.x}px`, top: `${PAGE.y}px`, width: `${PAGE.w}px`, height: `${PAGE.h}px`,
+    position: 'absolute', left: 0, top: 0, width: `${PAGE.w}px`, height: `${PAGE.h}px`,
     background: C.paper, boxShadow: PAPER_SHADOW, borderRadius: '4px', overflow: 'hidden', transformOrigin: '0 0',
   } }, parent);
   const svg = s('svg', { viewBox: `0 0 ${PAGE.w} ${PAGE.h}`, width: PAGE.w, height: PAGE.h, style: { display: 'block' } }, el);
@@ -28,18 +28,25 @@ export function buildPage(parent) {
   // The diagram: axes, P and Q, the demand line.
   const [ox, oy] = AX.o;
   s('path', { d: `M${ox} ${AX.top}V${oy}H${AX.right}`, fill: 'none', stroke: HEAD, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
-  label(svg, ox - 30, AX.top + 12, 'P');
-  label(svg, AX.right - 6, oy + 34, 'Q');
+  label(svg, ox - 28, AX.top + 14, 'P');
+  label(svg, AX.right + 8, oy + 8, 'Q'); // beside the axis end: the close-up keeps it in frame
   s('line', { x1: DEMAND[0][0], y1: DEMAND[0][1], x2: DEMAND[1][0], y2: DEMAND[1][1], stroke: HEAD, 'stroke-width': 4, 'stroke-linecap': 'round' }, svg);
-  label(svg, DEMAND[1][0] + 8, DEMAND[1][1] + 30, 'D');
+  label(svg, DEMAND[1][0] + 8, DEMAND[1][1] - 8, 'D');
+
+  // Beside the diagram: part (b)'s lines, so the sheet reads as a worksheet once it is whole.
+  bar(svg, 490, 300, 22, 12, HEAD);
+  for (const [y, w] of [[300, 116], [326, 150], [352, 104]]) bar(svg, y === 300 ? 524 : 490, y, w);
+  for (let y = 400; y <= 520; y += 40) {
+    s('line', { x1: 490, x2: 640, y1: y, y2: y, stroke: RULE, 'stroke-width': 2.2, 'stroke-dasharray': '0.1 8', 'stroke-linecap': 'round' }, svg);
+  }
 
   // Question 2 and its dotted answer lines: the text the jumping box pushes down.
   const flow = s('g', {}, svg);
-  bar(flow, 60, 618, 22, 12, HEAD);
-  bar(flow, 96, 618, 470);
-  bar(flow, 96, 644, 380);
-  bar(flow, 560, 644, 80, 10, RULE);
-  for (let y = 696; y < PAGE.h; y += 40) {
+  bar(flow, 60, FLOW_Y, 22, 12, HEAD);
+  bar(flow, 96, FLOW_Y, 470);
+  bar(flow, 96, FLOW_Y + 26, 380);
+  bar(flow, 560, FLOW_Y + 26, 80, 10, RULE);
+  for (let y = FLOW_Y + 78; y < PAGE.h; y += 40) {
     s('line', { x1: 96, x2: 640, y1: y, y2: y, stroke: RULE, 'stroke-width': 2.2, 'stroke-dasharray': '0.1 8', 'stroke-linecap': 'round' }, flow);
   }
 
