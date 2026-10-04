@@ -35,9 +35,12 @@ export const SECTIONS = GRID.sections.map((x) => ({ ...x, t: r6(x.t - MUSIC.offs
 /** The last audible moment of the music, film time. */
 export const AUDIBLE_END = r6(GRID.audibleEnd - MUSIC.offset);
 
-/** The film ends on this bar line, about a second after the music dies away. */
-export const END_BAR = 30;
+/** The film ends on this half-bar line (106.71 s), as the music's tail dies away: past it the
+ *  mix is under −45 dB and the picture would hold in silence. */
+export const END_BAR = 29.5;
 export const DURATION = bar(END_BAR);
+/** The mix fades out from the music's tail section (104.93 s) to exactly DURATION (audio/mix.mjs). */
+export const FADE_FROM = SECTIONS.find((x) => x.label === 'tail').t;
 
 // The acts of FILM.md §3. `bars` = [first, last) bar line (halves allowed); the first act
 // starts at 0 s. Bar 3 = build (12.46 s), 8 = body, 20 = lift (72.92 s), 26 = pull-back.
