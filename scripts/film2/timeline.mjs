@@ -74,15 +74,14 @@ const ACTS = [
     holds: [[pulse(53), pulse(55)]], // Settings › Language in English is read before the flip
     alive: [[pulse(47), pulse(53)]] }, // the printed Q1s breathe inside their cards
   { id: 'draw', bars: [8, 14], in: { type: 'axis', pulses: 4 },
-    // CLOSE → narrow; → the CS lift on cream; → the Templates wall; → Draw answer; → the
-    // Student | Teacher split; → the red answer CLOSE (scenes/draw.js P10, P27, P30, P33, P40, P45)
-    cuts: [pulse(74), pulse(91), pulse(94), pulse(97), pulse(104), pulse(109)],
-    // the D and S labels, E0 placed; Shade ▾ opens, Consumer surplus lands; Draw answer, D
-    // selected, Shift a copy draws D1 (the clips' events as draw.js places them)
-    ui: [33.251, 34.548, 34.983, 39.67, pulse(87), 45.215, 46.215, 47.415],
-    // read and drifting: the re-ink detail, "Shade…" over its canvas, the CS CLOSE, the CS lift, the wall, "The
-    // answer…" over its canvas, D1 drawn, the held red answer
-    holds: [[36.646, 38.025], [38.514, 39.314], [41.98, 42.248], [43.226, 43.582], [44.293, 44.915], [45.182, 45.76], [47.4, 48.027], [50.25, 50.694]] },
+    // CLOSE → narrow (the Point click); → the CS CLOSE (the Consumer surplus click); → the
+    // Templates wall; → Draw answer (its click); → the Student | Teacher split (the Teacher click);
+    // → the red answer CLOSE (scenes/draw.js P10, P24, P28, P32, P40, P44)
+    cuts: [pulse(74), pulse(88), pulse(92), pulse(96), pulse(104), pulse(108)],
+    // the D and S labels, E0 placed; Shade ▾ opens; S0 selected, Shift up, Shift a copy draws S1
+    // (the clips' events as draw.js places them)
+    ui: [32.233, 34.252, 35.141, 40.115, 45.044, 45.546, 46.694],
+    alive: [[36.6, 38.1], [38.9, 40.9], [49.8, 50.7]] }, // the re-ink detail drifting; the shade MEDIUM read (cursor to Shade ▾); the red answer CLOSE
   // Cuts (scenes/papers.js beat table): question 1 CLOSE after the lift (P11), HKEAA style (P16),
   // the printed key and its layouts (P20, P24, P26, P28), mock papers (P30), Versions (P38), the
   // version page CLOSE (P40). ui: the Teacher click in place (P12); Version B, C swapped in place
@@ -146,7 +145,7 @@ export const CUES = [
   { id: 'write.build', t: bar(3), kind: 'accent', note: 'the build: the dot drops onto the desk' },
   // Section changes carry a sound (sync review #4): the axis chapters land on whoosh-s.
   { id: 'draw.body', t: bar(8), kind: 'accent', sfx: 'whoosh-s', note: 'body: the hero act; the chapter axis lands' },
-  { id: 'draw.answer', t: pulse(109), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the held red answer CLOSE' },
+  { id: 'draw.answer', t: pulse(108), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the held red answer CLOSE' },
   { id: 'papers.turn', t: bar(14), kind: 'accent', sfx: 'whoosh-s', note: 'the papers chapter axis lands' },
   { id: 'papers.scheme', t: bar(16), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the Marking scheme view, its headline' },
   { id: 'papers.mock', t: pulse(142), kind: 'accent', note: 'mock papers: the headline, the Paper 1 cover dealt' },
@@ -158,7 +157,7 @@ export const CUES = [
   { id: 'everywhere.cuts', t: bar(24), kind: 'accent', sfx: 'whoosh-s' },
   // Hard cuts that had no sound (sync review 2); the lift's loudness-aware gain lifts the bank two.
   { id: 'write.cut11', t: pulse(24 + 11), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'CLOSE → the wide editor (the double-click follows at 17.505)' },
-  { id: 'draw.cut33', t: pulse(64 + 33), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'the Templates wall → "The answer, on the same axes"' },
+  { id: 'draw.cut32', t: pulse(64 + 32), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'the Templates wall → "The answer, on the same axes"' },
   { id: 'bank.cut13', t: pulse(160 + 13), kind: 'sfx', sfx: 'whoosh-s', note: 'cut to the drag CLOSE in the editor' },
   { id: 'bank.cut16', t: pulse(160 + 16), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'cut to the drop' },
   { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', gain_db: 4, grid: false, note: 'the pull-back: its onset half a second before the bar (+4 and the loudness boost ≈ +8 dB)' },
