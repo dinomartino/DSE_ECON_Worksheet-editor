@@ -17,7 +17,7 @@
 //   the first (mean MAD ≥ 0.05 over 102..106.71 at 240×136, motion-check's measure)
 // The lockup is the act-1 hero lockup (END_CARD: tile 360, wordmark 110, zh 46), at the mark
 // act's own top (scenes/mark.js TOP) so the film ends on the shape it opened with.
-import { lockup, block, h, place, show, f, C, ease, STATEMENT, END_CARD } from '../lib/index.js';
+import { lockup, block, h, place, f, C, ease, STATEMENT, END_CARD } from '../lib/index.js';
 import { C3, STACK_GAP } from '../lib/layout.js';
 import { AXIS_COLOR, TOP, ramp } from './mark.js';
 import { PULSE } from '../../timeline.mjs';

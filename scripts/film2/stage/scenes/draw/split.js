@@ -8,7 +8,6 @@ import { h, show, C } from '../../lib/dom.js';
 import { label, LABEL } from '../../lib/type.js';
 import { clamp, prog, outSoft, spring, inOutSoft, sineInOut } from '../../lib/ease.js';
 import { f } from '../../lib/tween.js';
-import { PULSE } from '../../../timeline.mjs';
 import { TAX } from './geom.js';
 import { layer, line, head, dot, text, mapper, lerpPt } from './vec.js';
 

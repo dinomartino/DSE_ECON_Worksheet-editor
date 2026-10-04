@@ -12,7 +12,7 @@ import * as reink from '../lib/reink.js';
 const Q1 = [330, 300, 640, 200]; // CSS px of type-mcq: question 1 and its options
 const Q1_TEXT = [340, 300, 600, 180];
 
-export default {
+const lab = {
   async setup(ctx) {
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
     ctx.cam = camera(ctx, { src: { w: 1440, h: 900 } });
@@ -69,3 +69,4 @@ export default {
     ctx.num.textContent = reink.roll(u, { from: 4, to: 7, at: 0.6, dur: 0.8 });
   },
 };
+export default lab;
