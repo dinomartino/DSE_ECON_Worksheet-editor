@@ -60,6 +60,12 @@ export const SHADE_CLOSE = { zoom: 2.4, focus: [160, 262, 800, 450] };
  * 數量 (y 770), and the inspector's Shift curve rows and Follows box (to y 640).
  */
 export const ANSWER_DOWN = [0, 158, 1440, 620];
+/**
+ * answer-draw CLOSE (2.6×) on the shifted copy (clip ≥ 3.9 s): S0 and S1 with their labels (S1 at
+ * y 290, S0 at 415), the shift arrow, E0/E1 and P1/P0 (x 255); Price (to y 230) above and D (y 665)
+ * below fall wholly outside, the canvas's right edge (995) too.
+ */
+export const SHIFT_CLOSE = { zoom: 2.6, focus: [250, 280, 400, 330], safe: [252, 278, 385, 225] };
 /** answer-layer CLOSE: the red answer from the y-axis tip to the Q arrow (Price above, the blue marking points below, both outside). */
 export const LAYER_CLOSE = { zoom: 2.634, focus: [298, 211, 729, 410] };
 

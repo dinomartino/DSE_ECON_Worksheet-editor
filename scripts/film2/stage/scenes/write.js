@@ -4,8 +4,8 @@
 //               four paper kinds, writing themselves; the dot drops into the Classroom
 //               worksheet (P2) as the camera dives to the real page's scale, onto its stem
 //   P(5)…P(11)  CLOSE: the stem is typed on the page (the double-click lands on the cut)
-//   P(11)…P(17) MEDIUM + "Type right on the page": the 中文 line and the options land; the
-//               push ends on the page alone (the panel leaves whole, no word on an edge)
+//   P(11)…P(17) MEDIUM + "Type right on the page" on the page alone (the card's right edge on
+//               the panel divider, a 3 % drift): the 中文 line and the options land
 //   P(17)…P(23) CLOSE locked on Q1: EN (on the cut), 中文 (P19), EN+中 (P21); the toggle is
 //               re-inked above it as three labels and the dot
 //   P(23)…P(29) the printed Q1 in each language at 1190 px page width + "English, 中文, or both"
@@ -15,7 +15,7 @@
 import { h, s, svg, block, label, show, place, C, PAPER_SHADOW, HEADLINE, LABEL, ease, f } from '../lib/index.js';
 import { camera, frame } from '../lib/camera.js';
 import {
-  P, BEAT, TYPE, TYPE_STEM, TYPE_CLOSE, TYPE_MED, TYPE_PAGE, TYPE_PAGE_ZOOM, TYPE_DBL, typeClipT, LANG, langClipT, LANG_STATES, REFLOW,
+  P, BEAT, TYPE, TYPE_STEM, TYPE_CLOSE, TYPE_PAGE, TYPE_PAGE_ZOOM, TYPE_DBL, typeClipT, LANG, langClipT, LANG_STATES, REFLOW,
   LANG_CLOSE, LANG_ANCHOR, LANG_SAFE, UI, uiClipT, UI_CLOSE, UI_SAFE, UI_PUSH, UI_PUSH_SAFE, UI_TOGGLE, UI_RAIL, PRINT_K, PRINTS,
 } from './write/geom.js';
 import { buildDesk, updateDesk } from './write/desk.js';
@@ -50,7 +50,9 @@ const scene = {
     ctx.rigs = {
       type: await rig('type', 'type-mcq', [
         { at: BEAT.type, end: BEAT.typeMed, ...typeClose },
-        { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_MED, move: { at: P(0.5), dur: P(4), to: { focus: TYPE_PAGE, zoom: TYPE_PAGE_ZOOM } } }, // the panel leaves whole
+        // The card opens on the page alone (its right edge on the panel divider): no push, so the
+        // options panel never slides out through the card edge; a 3 % drift keeps it alive.
+        { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_PAGE, zoom: TYPE_PAGE_ZOOM, drift: 0.03 },
       ]),
       lang: await rig('lang', 'language-toggle', [
         { at: BEAT.lang, end: BEAT.print, size: 'close', focus: LANG_CLOSE, anchor: LANG_ANCHOR, safe: LANG_SAFE, zoom: 2.85, move: { at: -P(3), dur: P(12), to: { zoom: 2.96 } } }, // locked: a slow push only
@@ -127,7 +129,8 @@ const scene = {
     const breathe = `scale(${f(1 + 0.03 * sineInOut(prog(t, BEAT.print, BEAT.ui + P(2))), 5)})`; // still moving at the cut
     ctx.prints.forEach(({ el, img, cap }, i) => {
       img.style.transform = breathe;
-      const r = outSoft(prog(t, BEAT.print + P(i * 0.5), BEAT.print + P(i * 0.5) + 0.6));
+      const d = P([0, 0.5, 0][i]); // EN and EN+中 (the top row, both at y 300) rise together, 中文 after
+      const r = outSoft(prog(t, BEAT.print + d, BEAT.print + d + 0.6));
       place(el, { y: 90 * (1 - r), opacity: pOn ? r : 0 });
       cap.show(pOn ? r : 0);
     });
@@ -166,7 +169,7 @@ const scene = {
     }
 
     // Headlines: each arrives with the frame that names its beat and leaves on the next cut.
-    ctx.heads[0].show(t, { at: BEAT.typeMed, out: BEAT.lang, ...HEAD_IN });
+    ctx.heads[0].show(t, { at: BEAT.typeMed, out: BEAT.lang, ...HEAD_IN, dur: 0.35 }); // the CLOSE before it is full-bleed page text: a quicker rise instead
     ctx.heads[1].show(t, { at: BEAT.print, out: BEAT.ui, ...HEAD_IN });
     ctx.heads[2].show(t, { at: BEAT.uiWide, ...HEAD_IN });
   },

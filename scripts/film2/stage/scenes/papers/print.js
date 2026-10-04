@@ -7,7 +7,8 @@
 //            in place, one slow push accelerating into the bank's iris
 // update(t) is pure; every time is scene seconds from the caller's T.
 import { h, s, svg, show, place, label, LABEL, f, C } from '../../lib/index.js';
-import { lerp, prog, outSoft, inOutSoft, sineInOut } from '../../lib/ease.js';
+import { clamp, lerp, prog, outSoft, inOutSoft, sineInOut } from '../../lib/ease.js';
+import { PULSE } from '../../../timeline.mjs';
 import * as reink from '../../lib/reink.js';
 import { sheet, loadSheet, SHEET_W, SHEET_H } from './sheet.js';
 
@@ -28,6 +29,13 @@ const LIST = { x: 120, dot: 102, y: 290, step: 56 }; // the layout list: label b
 const RISE = 168; // the key page's rise after the headline: its top from y 264 to 96
 const PUSH = 0.045; // the versions push: every printed word stays 48 px inside the frame
 const VHEAD = [1825, 2088, 200]; // "Version A 版本 A": x0, x1, underline y (sheet px)
+// The reshuffle (sheet px, measured on the three pages): option rows at y 753, 849, 945, 1041
+// (pitch 96), each its sentence and 中文 line, x 516–1497; the letters A–D (x 445–484) stay put.
+const ROWS = { x: 500, y: 747, w: 1020, pitch: 96 };
+const ORDER = [['gov', 'rent', 'tax', 'uni'], ['tax', 'gov', 'uni', 'rent'], ['gov', 'uni', 'tax', 'rent']]; // A, B, C
+const VLABEL = [1810, 140, 290, 52]; // the version label (ink 1824–2085 × 152–185), above its underline
+const STAGGER = 0.06, SWAP = PULSE + 3 * STAGGER; // the rows' travel; the old page shows until it ends
+const POP = 0.75 * PULSE; // the label 1 → 1.2 → 1
 
 export async function prints(parent, { url, T }) {
   const ids = [...new Set([...LAYOUTS.map((l) => l.id), ...MOCK])];
@@ -48,6 +56,19 @@ export async function prints(parent, { url, T }) {
 
   const fin = h('div', { style: { position: 'absolute', inset: 0 } }, parent);
   const vers = sheet(fin, vcv);
+  // One overlay per swap, in sheet px under the page's transform: a paper mask over the old rows,
+  // the old rows (crops of the real page) that slide to their slots on the next page, its label.
+  const crop = (img, [x, y, w, ht], parent2) => {
+    const cv = h('canvas', { width: w, height: ht, style: { position: 'absolute', left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${ht}px`, transformOrigin: '50% 50%' } }, parent2);
+    cv.getContext('2d').drawImage(img, x, y, w, ht, 0, 0, w, ht);
+    return cv;
+  };
+  const swaps = [0, 1].map((i) => {
+    const el = h('div', { style: { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0' } }, fin);
+    h('div', { style: { position: 'absolute', left: `${ROWS.x - 5}px`, top: `${ROWS.y}px`, width: `${ROWS.w + 10}px`, height: `${4 * ROWS.pitch}px`, background: C.paper } }, el);
+    const rows = ORDER[i].map((o, j) => ({ el: crop(vcv[i], [ROWS.x, ROWS.y + j * ROWS.pitch, ROWS.w, ROWS.pitch], el), dy: (ORDER[i + 1].indexOf(o) - j) * ROWS.pitch }));
+    return { el, rows, label: crop(vcv[i + 1], VLABEL, el) };
+  });
   const uSvg = svg(fin, {});
   const under = s('line', { stroke: C.markBlue, 'stroke-width': 4, 'stroke-linecap': 'round' }, uSvg);
   await Promise.all([keys, ...mock, vers].map((x) => x.ready));
@@ -91,16 +112,26 @@ export async function prints(parent, { url, T }) {
     const inFin = t >= T.vers[0] && t < T.vers[1];
     show(fin, inFin ? 1 : 0);
     if (!inFin) return;
-    const face = Math.max(0, T.verCuts.findLastIndex((c) => t >= c));
+    const cut = Math.max(0, T.verCuts.findLastIndex((c) => t >= c)), t0 = T.verCuts[cut];
+    const moving = cut > 0 && t < t0 + SWAP; // swap cut − 1: its rows travel, its old page under them
     const u = prog(t, T.vers[0], T.vers[1]);
     const w = 1920 * (1 + PUSH * (u + u * u) / 2); // gathering: slow at first, faster into the lift
-    vers.set({ x: 960, y: 540, w, crop: VCROP, face });
-    // A blue underline under the version letter: it stays while the pages swap.
+    vers.set({ x: 960, y: 540, w, crop: VCROP, face: moving ? cut - 1 : cut });
     const k = w / VCROP[2], left = 960 - w / 2, top = 540 - ht(w, VCROP) / 2;
+    swaps.forEach((sw, i) => {
+      const on = moving && i === cut - 1;
+      show(sw.el, on ? 1 : 0);
+      if (!on) return;
+      sw.el.style.transform = `translate(${f(left - VCROP[0] * k, 2)}px, ${f(top - VCROP[1] * k, 2)}px) scale(${f(k, 5)})`;
+      sw.rows.forEach((r, j) => { r.el.style.transform = `translateY(${f(r.dy * inOutSoft(prog(t, t0 + j * STAGGER, t0 + j * STAGGER + PULSE)), 3)}px)`; });
+      const q = clamp((t - t0) / POP);
+      sw.label.style.transform = `scale(${f(q < 0.5 ? lerp(1, 1.2, outSoft(q * 2)) : lerp(1.2, 1, inOutSoft(q * 2 - 1)), 4)})`;
+    });
+    // A blue underline under the version label: it redraws with each new version.
     const ux = (sx) => left + (sx - VCROP[0]) * k, uy = top + (VHEAD[2] - VCROP[1]) * k;
     Object.entries({ x1: ux(VHEAD[0]), x2: ux(VHEAD[1]), y1: uy, y2: uy }).forEach(([a2, v]) => under.setAttribute(a2, f(v, 2)));
     under.__len = ux(VHEAD[1]) - ux(VHEAD[0]); // its length changes with the push: measure each frame
-    if (reink.stroke(under, t, { at: T.vers[0] + 0.05, dur: 0.35 }) <= 0) under.style.visibility = 'hidden';
+    if (reink.stroke(under, t, { at: cut ? t0 : T.vers[0] + 0.05, dur: 0.35 }) <= 0) under.style.visibility = 'hidden';
   }
   update(-1);
   return { update };
