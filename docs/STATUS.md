@@ -28,8 +28,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   0 partial (7 templates, `curvePath` reads curves as drawn); CS/PS reach the price axis; 題庫
   "Adding to" picker + "Already in this paper", text→topic suggestions (`termTopics.ts`), synced
   undo, second-tab tag guard, coalesced publish, virtualised rail, desktop `pack.json`+journal.
-  題庫 "New Paper 2" makes the full booklet; the tray has no separate "New worksheet" button;
-  text-derived topic keys are underlined with dots (user's calls).
+  題庫 "New Paper 2" makes the full booklet; text-derived topic keys are dot-underlined.
+- **2026-10-04: film v2** on `feature/film-v2` (not `develop`): 106.7 s 2D film, `scripts/film2/`,
+  `npm run film2` → `demo-media/film-v2/econ-studio-film.mp4`. Shows unreleased features: publish
+  only after v0.6.0. Skill `econ-film` covers it; v1 (`scripts/film/`) kept.
 - `scripts/soffice.mjs` gives LibreOffice the CJK fonts (zh/bilingual Word legs used to drop
   Chinese); `cover-verify` / `lq-verify` take `--language`; `shot.mjs --seed [--port=]` works.
 
@@ -63,8 +65,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Diagrams: template arrows (not Shift-a-copy) stay fixed; `curvePath` assumes the 3:4 plot.
 - Bank: ✦ Fill writes from another tab can still lose to an open editor's autosave.
 - Pagination now follows Word, so existing worksheets break differently on screen and in PDF.
-- Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
-  updater key lives only at `~/.tauri/econ-worksheet.key`. `scripts/*.test.ts` are hand-run.
+- App copy: Detailed table key says 評分準則 (view: 評卷參考); versions print 版本 A (HK: 甲卷).
+  Windows builds unsigned; updater key only at `~/.tauri/econ-worksheet.key`.
 
 ## Last verified (2026-10-03, `develop` 2d99f95)
 
@@ -73,8 +75,6 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-03** — Second gap sweep: 6 Opus worktree branches, merged (CHANGELOG unions,
-  `curveXAt` reads `curvePath` and takes `last`, rail badge moved into `RailItem`). Nothing pushed.
-- **2026-10-03** — Gap sweep: 8 Opus worktree branches (paused once, resumed) + 5 follow-ups
-  (cover fit + CJK harness, schema audit vs real v0.5.0 code, section target stays 1, index
-  `kind` repair, prompt space). All merged; nothing pushed.
+- **2026-10-04** — Film v2: research → bible → engine/capture/audio → 8 acts → 3 review rounds
+  (Opus builders, Sonnet research/audio/review). On `feature/film-v2*`; nothing pushed or on `develop`.
+- **2026-10-03** — Two gap sweeps (14 Opus worktree branches + follow-ups), all merged; nothing pushed.
