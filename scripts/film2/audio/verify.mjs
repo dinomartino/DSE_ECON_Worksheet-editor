@@ -1,56 +1,47 @@
 #!/usr/bin/env node
-// Checks a built mix: loudness and true peak (ebur128), and that every impact's transient
-// lands on its event time. The hit is found in sfx.wav (clean) as the sample peak inside
-// ±60 ms of the event, and in mix.wav as the largest 1 ms energy rise in the same window.
-// Exit 1 when LUFS is off by > 0.1, TP > -1, or a hit is off by > --tol ms.
+// Checks a built mix: loudness and true peak (ebur128), and that every bloom and bell lands on
+// its event time: the hit is where the sound first reaches 25 % of its peak in sfx.wav (clean),
+// and sfx.wav's waveform must sit in mix.wav at lag 0 (cross-correlation). Prints each sound's
+// loudness against the music's at its event (LU). Exit 1 when LUFS is off by > 0.1, TP > -1,
+// or a hit is off by > --tol ms.
 //   node scripts/film2/audio/verify.mjs [--dir=<audio dir>] [--tol=5]
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AUDIO, SFX } from '../paths.mjs';
+import { AUDIO, MUSIC_FILE } from '../paths.mjs';
+import { kPower, momentary } from './kit/dsp.mjs';
 import { readWav } from './wav.mjs';
 import { measure } from './mix.mjs';
 import { cli } from './cli.mjs';
 
 const SR = 48000;
 
-function peakTime(w, t, span) {
-  let pk = 0, at = t;
-  for (let i = Math.max(0, Math.round((t - span) * SR)); i < Math.min(w.n, Math.round((t + span) * SR)); i++) {
-    const a = Math.max(Math.abs(w.ch[0][i]), Math.abs(w.ch[1][i]));
-    if (a > pk) { pk = a; at = i / SR; }
-  }
-  return at;
+/**
+ * Film time where the sound at t speaks: the first sample from t − span whose |x| reaches 25 % of
+ * the loudest |x| over [t, t + 0.15] (a low thump's energy peaks a cycle late; its onset does not).
+ */
+function hitTime(w, t, span = 0.06) {
+  const amp = (i) => Math.max(Math.abs(w.ch[0][i]), Math.abs(w.ch[1][i]));
+  let pk = 0;
+  for (let i = Math.round(t * SR); i < Math.round((t + 0.15) * SR); i++) pk = Math.max(pk, amp(i));
+  for (let i = Math.round((t - span) * SR); i < Math.round((t + 0.15) * SR); i++) if (amp(i) >= 0.25 * pk) return i / SR;
+  return NaN;
 }
 
-/** 1 ms energy-rise series of w over [t0, t1). */
-function rises(w, t0, t1) {
-  const win = 48, out = [];
-  let prev = 0;
-  for (let s = Math.round(t0 * SR); s + win < Math.min(w.n, Math.round(t1 * SR)); s += win) {
-    let e = 0;
-    for (let i = s; i < s + win; i++) e += w.ch[0][i] ** 2 + w.ch[1][i] ** 2;
-    e = Math.sqrt(e);
-    out.push(Math.max(0, e - prev));
-    prev = e;
-  }
-  return out;
-}
-
-/** Lag (ms) at which the mix's energy rises best match sfx.wav's around t: 0 = the hit is where the sfx put it. */
+/** Lag (ms) of sfx.wav's waveform inside mix.wav around t (the music is uncorrelated with it): 0 = in place. */
 function mixLag(sfx, mixw, t) {
-  const a = rises(sfx, t - 0.3, t + 0.3), b = rises(mixw, t - 0.3, t + 0.3);
+  const a = Math.round((t - 0.1) * SR), b = Math.round((t + 0.4) * SR), L = 48 * 20;
   let best = -Infinity, lag = 0;
-  for (let l = -20; l <= 20; l++) {
+  for (let l = -L; l <= L; l++) {
     let c = 0;
-    for (let i = 25; i < a.length - 25; i++) c += a[i] * b[i + l];
+    for (let i = a; i < b; i += 2) c += sfx.ch[0][i] * (mixw.ch[0][i + l] ?? 0) + sfx.ch[1][i] * (mixw.ch[1][i + l] ?? 0);
     if (c > best) { best = c; lag = l; }
   }
-  return lag;
+  return (lag / SR) * 1000;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const a = cli('node scripts/film2/audio/verify.mjs', 'loudness, true peak and impact timing of a built mix', {
+  const a = cli('node scripts/film2/audio/verify.mjs', 'loudness, true peak, hit timing and SFX levels of a built mix', {
     dir: '<dir> folder with sfx.wav, sfx-events.json, mix.wav (default $FILM_OUT/audio)',
     tol: '<ms> allowed hit error (default 5)',
   });
@@ -60,15 +51,22 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const m = measure(resolve(dir, 'mix.wav'));
   console.log(`mix: ${m.lufs} LUFS integrated, ${m.tp} dBTP, LRA ${m.lra}`);
   let bad = Math.abs(m.lufs + 16) > 0.1 || m.tp > -1;
-  const cat = Object.fromEntries(JSON.parse(readFileSync(resolve(SFX, 'catalog.json'), 'utf8')).map((c) => [c.name, c]));
-  for (const v of report.placed.filter((p) => p.duck === true)) {
-    // the file's own loudest sample near its onset marks where its hit sits; it must land at event_t + that distance
-    const src = readWav(resolve(SFX, `${v.file}.wav`)), on = cat[v.file].onset_s;
-    const dist = peakTime(src, on + 0.03, 0.06) - on;
-    const got = peakTime(sfx, v.event_t + dist, 0.03);
-    const err = (got - (v.event_t + dist)) * 1000, lag = mixLag(sfx, mixw, v.event_t);
-    console.log(`impact ${v.file} @ ${v.event_t} s: hit peak ${got.toFixed(4)} s = event + ${(dist * 1000).toFixed(1)} ms (onset to peak), error ${err.toFixed(2)} ms; mix vs sfx lag ${lag} ms`);
+  for (const v of report.placed.filter((p) => p.sound === 'bloom' || p.sound === 'bell')) {
+    const got = hitTime(sfx, v.event_t), err = (got - v.event_t) * 1000, lag = mixLag(sfx, mixw, v.event_t);
+    console.log(`${v.sound} ${v.file} @ ${v.event_t} s: hit ${got.toFixed(4)} s, error ${err.toFixed(2)} ms; mix vs sfx lag ${lag.toFixed(2)} ms`);
     if (Math.abs(err) > tol || Math.abs(lag) > tol) bad = true;
+  }
+  // Each sound's loudest momentary loudness (sfx alone) against the music's there, in LU.
+  const sp = kPower(sfx.ch), mp = kPower(readWav(MUSIC_FILE).ch);
+  console.log('   t      sound    file          LU vs music  what');
+  for (const v of report.placed) {
+    let best = -Infinity, at = 0;
+    for (let j = Math.max(0, Math.round(v.pos * 100)); j < Math.min(sp.length, Math.round((v.pos + v.len) * 100)); j++) {
+      const x = momentary(sp, j);
+      if (x > best) { best = x; at = j; }
+    }
+    const d = best - momentary(mp, at);
+    console.log(`${v.event_t.toFixed(3).padStart(8)}  ${v.sound.padEnd(8)} ${v.file.padEnd(13)} ${d >= 0 ? '+' : ''}${d.toFixed(1).padStart(5)}        ${v.what}`);
   }
   if (bad) {
     console.error('verify: out of tolerance');

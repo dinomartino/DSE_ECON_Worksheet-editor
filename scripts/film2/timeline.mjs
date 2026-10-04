@@ -153,32 +153,28 @@ export function sceneAt(t) {
 // engine.js events()). Sorted by t.
 export const CUES = [
   { id: 'mark.tile', t: bar(1.5), kind: 'accent', note: 'the mark starts drawing on the half-bar' },
-  { id: 'mark.dot', t: pulse(12 + 5), kind: 'sfx', sfx: 'pop', note: 'the equilibrium dot pops in (splash 740 ms × 3)' },
+  { id: 'mark.dot', t: pulse(12 + 5), kind: 'sfx', sfx: 'pop', note: 'the equilibrium dot pops in: a plip (splash 740 ms × 3)' },
   { id: 'write.build', t: bar(3), kind: 'accent', note: 'the build: the dot drops onto the desk' },
-  // Section changes carry a sound (sync review #4): the axis chapters land on whoosh-s.
-  { id: 'draw.body', t: bar(8), kind: 'accent', sfx: 'whoosh-s', note: 'body: the hero act; the chapter axis lands' },
+  // The axis chapters carry the kit's chapter tone (the chord under the bar line). Cut cues
+  // name `whoosh-s` (the kit's air); sfxmap.mjs RULES drop the ones on a strong music accent.
+  { id: 'draw.body', t: bar(8), kind: 'accent', sfx: 'chapter', note: 'body: the hero act; the chapter axis lands' },
   { id: 'draw.answer', t: pulse(108), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the held red answer CLOSE' },
-  { id: 'papers.turn', t: bar(14), kind: 'accent', sfx: 'whoosh-s', note: 'the papers chapter axis lands' },
+  { id: 'papers.turn', t: bar(14), kind: 'accent', sfx: 'chapter', note: 'the papers chapter axis lands' },
   { id: 'papers.scheme', t: bar(16), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the Marking scheme view, its headline' },
   { id: 'papers.mock', t: pulse(142), kind: 'accent', note: 'mock papers: the headline, the Paper 1 cover dealt' },
-  // The lift (sync review #3): a riser ends 50 ms before the hit so it never smears the impact
-  // (2.7 s, from ~70.2 s); a whoosh into the iris ends 0.35 s after it, when the ring is open.
-  { id: 'bank.riser', t: r6(bar(20) - 0.05), kind: 'sfx', sfx: 'riser', dur: 2.7, grid: false, note: 'the build into the lift' },
-  { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens (bank.js plays the impact)' },
-  { id: 'bank.whoosh', t: r6(bar(20) + 0.75), kind: 'sfx', sfx: 'whoosh', end: true, file: 'whoosh__air-woosh__mixkit-1489', gain_db: -5, grid: false, note: 'ends as the iris is fully open (≈73.7); -5 keeps it at the level tuned before whoosh went to -10' },
-  { id: 'everywhere.cuts', t: bar(24), kind: 'accent', sfx: 'whoosh-s', gain_db: 6, note: 'the hardest cut in the film, under the lift at its loudest: +6 (sync review 3)' },
-  // Hard cuts that had no sound (sync review 2); the lift's loudness-aware gain lifts the bank two.
-  { id: 'write.cut11', t: pulse(24 + 11), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'CLOSE → the wide editor (the double-click follows at 17.505)' },
+  // The lift: bank.js's impact event is the kit's bloom (its reverse swell leads into the bar).
+  { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens (bank.js plays the impact → bloom)' },
+  { id: 'everywhere.cuts', t: bar(24), kind: 'accent', sfx: 'whoosh-s', note: 'the hardest cut in the film, under the lift at its loudest' },
+  // Hard cuts (sync review 2): air unless a click or a bigger sound owns the beat.
+  { id: 'write.cut11', t: pulse(24 + 11), kind: 'sfx', sfx: 'whoosh-s', note: 'CLOSE → the wide editor (the double-click follows at 17.505)' },
   // The triangle's lift reads as motion from 41.93 s (MAD), not at its scene event (41.63): its
-  // whoosh-s starts with the move (sync review 5).
+  // air starts with the move (sync review 5).
   { id: 'draw.lift', t: 41.9, kind: 'sfx', sfx: 'whoosh-s', grid: false, replaces: { scene: 'draw', label: 'the triangle lifts' }, note: 'the triangle lifts off the footage' },
-  { id: 'draw.cut32', t: pulse(64 + 32), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'the Templates wall → "The answer, on the same axes"' },
+  { id: 'draw.cut32', t: pulse(64 + 32), kind: 'sfx', sfx: 'whoosh-s', note: 'the Templates wall → "The answer, on the same axes"' },
   { id: 'bank.cut13', t: pulse(160 + 13), kind: 'sfx', sfx: 'whoosh-s', note: 'cut to the drag CLOSE in the editor' },
-  { id: 'bank.cut16', t: pulse(160 + 16), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'cut to the drop' },
-  { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', gain_db: -1, grid: false, note: 'the pull-back: it starts 0.1 s after t and swells to its peak on the bar (whoosh peakAlign 0.45)' },
-  { id: 'end.pullback', t: bar(26), kind: 'accent', note: 'the pull-back: everything collapses into lines' },
-  // Read from 40 ms before the sparkle's peak (not from its quiet lead-in), so it starts on the stab.
-  { id: 'end.stab', t: 104.43, kind: 'sfx', sfx: 'shimmer', gain_db: 4.5, peakAlign: 0.04, lead: 0.04, grid: false, note: "the music's last stab (104.43 s): it starts on the stab at ≈ -9 dB, heard over the tail" },
+  { id: 'bank.cut16', t: pulse(160 + 16), kind: 'sfx', sfx: 'whoosh-s', note: 'cut to the drop' },
+  { id: 'end.pullback', t: bar(26), kind: 'accent', sfx: 'chapter', note: 'the pull-back: everything collapses into lines; the chapter tone on the IV chord' },
+  { id: 'end.stab', t: 104.4, kind: 'sfx', sfx: 'bell', grid: false, note: "the music's last stab (onset 104.39-104.40 s): the bell on the tonic, over the tail" },
 ].sort((a, b) => a.t - b.t);
 
 export const cueAt = (id) => {

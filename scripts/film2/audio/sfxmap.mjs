@@ -33,13 +33,13 @@ export const MAP = {
 };
 
 export const SOUNDS = {
-  tick: { rel_lu: -16, pick: 'cycle', panX: 0.2 },
-  plip: { rel_lu: -9, pick: 'degree' },
-  air: { rel_lu: -14 },
-  glint: { rel_lu: -10, pick: 'chord' },
-  chapter: { rel_lu: -9, pick: 'chord' },
-  bloom: { rel_lu: -4, pick: 'lift', duck: 'bloom' },
-  bell: { rel_lu: -5, pick: 'chord', duck: 'bell' },
+  tick: { rel_lu: -19, pick: 'cycle', panX: 0.2 },
+  plip: { rel_lu: -6, pick: 'degree' },
+  air: { rel_lu: -15 },
+  glint: { rel_lu: -9, pick: 'chord' },
+  chapter: { rel_lu: -8, pick: 'chord' },
+  bloom: { rel_lu: -1, pick: 'lift', duck: 'bloom' },
+  bell: { rel_lu: -2, pick: 'chord', duck: 'bell' },
 };
 
 /** What each sound marks (the reel's legend, REEL.md). */
@@ -50,7 +50,7 @@ export const USED_FOR = {
   glint: 'a line drawing on, a trace or re-ink (replaces every pencil sound)',
   chapter: 'an axis chapter (Draw, Papers, the pull-back)',
   bloom: 'the lift at 72.92 s: reverse swell, sub thump, pad',
-  bell: 'the end card dot (101.37 s, A) and the music’s last stab (104.43 s, D)',
+  bell: 'the end card dot (101.37 s, A) and the music’s last stab (104.40 s, D)',
 };
 
 /**

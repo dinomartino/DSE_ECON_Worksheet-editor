@@ -172,9 +172,9 @@ export function kPower(ch) {
 }
 /** Momentary loudness (LUFS, 400 ms) of a 10 ms power series, window centred at hop index j. */
 export function momentary(pw, j) {
-  let e = 0, n = 0;
-  for (let i = Math.max(0, j - 20); i < Math.min(pw.length, j + 20); i++, n++) e += pw[i];
-  return -0.691 + 10 * Math.log10(e / Math.max(1, n) + 1e-12);
+  let e = 0; // outside the series counts as silence: a window is always 400 ms
+  for (let i = Math.max(0, j - 20); i < Math.min(pw.length, j + 20); i++) e += pw[i];
+  return -0.691 + 10 * Math.log10(e / 40 + 1e-12);
 }
 /** The loudest momentary loudness of a sound and where (s). */
 export function maxMomentary(ch) {
