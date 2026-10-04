@@ -6,12 +6,13 @@
 import { h, s, svg, show, place, f, C, FONT } from '../../lib/index.js';
 import { clamp, lerp, prog, outSoft, inOutSoft, spring, sineInOut } from '../../lib/ease.js';
 import * as reink from '../../lib/reink.js';
+import { DISPLAY } from '../../lib/type.js';
 
 /** The fields' values in the footage (answer-lines: (a) 4, (b) 3, Total: 7 marks). */
 export const VALUES = { a: 4, b: 3, total: 7 };
 
 // Frame-scale layout (design px): the two fields over the total line.
-const BOX_W = 280, GAP = 120, ROW_Y = 330, TOTAL_TOP = 600, TOTAL_SIZE = 160;
+const BOX_W = 280, GAP = 120, ROW_Y = 330, TOTAL_TOP = 600, TOTAL_SIZE = DISPLAY.size; // lib/type.js DISPLAY
 const PAD = 4; // the trace sits this far outside a field (footage px)
 
 /**
@@ -45,7 +46,7 @@ export function marks(parent, { fieldA, fieldB, T }) {
   ];
 
   // "Total: _ marks" with a fixed slot for the rolling number (the 7 in the dot's blue).
-  const row = h('div', { style: { position: 'absolute', left: 0, top: `${TOTAL_TOP}px`, width: '1920px', textAlign: 'center', whiteSpace: 'pre', font: `400 ${TOTAL_SIZE}px ${FONT.serif}`, letterSpacing: '-0.02em', lineHeight: '1', color: C.ink } }, group);
+  const row = h('div', { style: { position: 'absolute', left: 0, top: `${TOTAL_TOP}px`, width: '1920px', textAlign: 'center', whiteSpace: 'pre', font: `400 ${TOTAL_SIZE}px ${FONT.serif}`, letterSpacing: `${DISPLAY.tracking}em`, lineHeight: String(DISPLAY.lh), color: DISPLAY.color } }, group);
   const word = (text) => h('span', { text, style: { display: 'inline-block' } }, row);
   const w1 = word('Total: ');
   const slot = h('span', { style: { display: 'inline-block', textAlign: 'center', color: C.markBlue, width: `${TOTAL_SIZE * 0.56}px` } }, row);

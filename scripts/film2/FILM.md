@@ -115,9 +115,12 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   - `STATEMENT`: 112, lh 1.04, −0.02em, ≤ 2 lines (`\n` in COPY); zh 48, gap 20. Text-led
     frames. Defaults are C3 (centred); C2 is `{ ...STATEMENT, ...layout.C2.statement }`.
   - `LABEL`: Inter 500 22 caps +0.08em, zh 24 on the same line, ink-muted (`label()`).
+  - `DISPLAY`: Newsreader 160, lh 1, −0.02em, one centred line: the re-ink total ("Total: 7
+    marks"); the only size above STATEMENT.
   - `END_CARD`: the act-1 lockup geometry (tile 360 at top 155, wordmark 110, zh 46 tracked
     0.30em) + the tagline slot (Inter 500 38 / zh 26, gap 60), pushing 1.0 → 1.03 to the end.
-  - 中文 inside a serif line is a PingFang HK 300 span at 0.9em, no tracking; Latin inside a
+  - 中文 inside a serif line is a PingFang HK 300 span at 0.9em, no tracking, line-height 0 (it
+    never grows the line box); Latin inside a
     zh line has no zh tracking. A small zh line never sits under 4.5:1 (#5A544D, never
     #7F7973). No rendered line ends in `, . ， 。 ; ；` (the doctor reads the wrapped lines).
 - **Compositions** (`stage/lib/layout.js`): safe area 96 px sides, 72 px top/bottom; 12

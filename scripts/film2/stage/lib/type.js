@@ -34,8 +34,17 @@ export const END_CARD = Object.freeze({
   tagline: Object.freeze({ gap: 60, face: 'sans', weight: 500, size: 38, zhSize: 26, zhGap: 8, zhColor: C.inkMuted, maxLines: 1, w: 1400 }),
   push: [1.0, 1.045], // a slow scale over the hold (sineInOut) that is still moving on the last frame
 });
+/**
+ * The display number of a re-ink lift ("Total: 7 marks", the papers act): Newsreader 160,
+ * lh 1, −0.02em, ink, the rolling figure in the dot's blue. One line, centred on the frame;
+ * the only size above the statement. Spread it: { ...DISPLAY } or read DISPLAY.size.
+ */
+export const DISPLAY = Object.freeze({
+  preset: 'display', face: 'serif', size: 160, lh: 1, tracking: -0.02, color: C.ink, figure: C.markBlue,
+  x: 960, align: 'center', maxLines: 1, w: 1728,
+});
 /** Serif sizes the doctor accepts for headlines and statements (110 = the lockup wordmark). */
-export const PRESET_SIZES = [HEADLINE.size, STATEMENT.size, END_CARD.en];
+export const PRESET_SIZES = [HEADLINE.size, STATEMENT.size, END_CARD.en, DISPLAY.size];
 
 const CJK = /[　-〿㐀-鿿豈-﫿＀-￯]+/gu;
 const LATIN = /[A-Za-z0-9](?:[A-Za-z0-9 .\-'’&+]*[A-Za-z0-9])?/g;
@@ -64,7 +73,9 @@ export function fillMixed(el, text, zhLine) {
   let at = 0;
   for (const m of str.matchAll(zhLine ? LATIN : CJK)) {
     if (m.index > at) el.append(document.createTextNode(str.slice(at, m.index)));
-    const sp = h('span', { text: m[0], style: zhLine ? { letterSpacing: '0' } : { font: `300 0.9em ${FONT.zh}`, letterSpacing: '0' } }, el);
+    // `font` resets line-height to normal (PingFang's is tall): lineHeight 0 keeps the span
+    // from growing the line box, so a line with 中文 in it sits exactly like one without.
+    const sp = h('span', { text: m[0], style: zhLine ? { letterSpacing: '0' } : { font: `300 0.9em ${FONT.zh}`, lineHeight: '0', letterSpacing: '0' } }, el);
     if (!zhLine) sp.lang = 'zh-HK';
     at = m.index + m[0].length;
   }
