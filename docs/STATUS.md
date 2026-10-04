@@ -75,7 +75,6 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-03** — Second gap sweep: 6 Opus worktree branches, merged (CHANGELOG unions,
-  `curveXAt` reads `curvePath` and takes `last`, rail badge moved into `RailItem`). Nothing pushed.
 - **2026-10-04** — Released v0.6.0 (Windows rename test skipped, user's call). Site screenshot
   harness fixed + 6 new shots (Opus worktree, merged) for the DSE_Mentor page.
+- **2026-10-03** — Second gap sweep: 6 Opus worktree branches, merged.
