@@ -63,7 +63,6 @@ const CLICK_AT = P(22);
 const scene = {
   events: [
     { t: 0, kind: 'impact', label: 'the lift: the 題庫 opens' },
-    // (the whoosh into the lift is timeline.mjs CUES bank.whoosh: it ends 0.35 s after the hit)
     { t: P(0.25), kind: 'shimmer', label: 'the coverage bars draw on' },
     { t: P(3), kind: 'pencil', label: 'the bars leave the cards for the baseline' },
     { t: P(4.5), kind: 'pop', label: 'the bars stand up as a chart, left to right' },

@@ -25,7 +25,7 @@ pitfalls are [reference/v2.md](reference/v2.md); licences are in `scripts/film2/
 | `assets.mjs` | Registry: id → clip/image in the v2 store, capture command, scenes allowed |
 | `capture/` | `clips.mjs` (jobs), `content.mjs` + `seed*.mjs` (seed documents), `sheets.mjs`, `manifest.mjs` → `MANIFEST.md` |
 | `stage/engine.js`, `stage/lib/`, `stage/scenes/<act>.js` | Renderer, shared library, one module per act |
-| `audio/` | `sfx.mjs` (events → sfx.wav), `mix.mjs` (master −16 LUFS), `verify.mjs`, `sfxmap.mjs` |
+| `audio/` | `sfx.mjs` (events → sfx.wav), `mix.mjs` (master −16 LUFS), `verify.mjs`, `sfxmap.mjs`, `kit/` (the synthesised SFX kit) |
 | `render.mjs`, `paths.mjs` | Frames → mp4; outputs to `$FILM_OUT` or `<main>/demo-media/film-v2/`, store `…/film-v2/assets` |
 | `tools/` | `doctor`, `motion-check`, `seam`, `contact`, `lab`, `beatgrid`, `serve` |
 

@@ -173,17 +173,26 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
 ## 6. Sound
 
 - Music: the stock track, edited only at bar lines; loudness-normalised; the ending made to
-  resolve (cut on a downbeat into the tail, or a soft impact + reverb tail).
-- SFX from `demo-media/film-v2/audio-stock/sfx/` (Mixkit Free License): soft clicks on real
-  clicks in footage, typing under typing, pencil under line-draws, paper under page moves,
-  whoosh under travels, a pop on the dot, one soft impact on the title, a chime on the end
-  card. Music first, but every sound must be heard: UI sounds peak 3–6 dB over the local
-  music RMS; typing is one tick per key; every section change has a sound; the music ducks
-  under impacts, travels and dense UI. The film ends on bar 29.5 (`END_BAR`, 106.71 s):
-  the mix fades (raised cosine) from the tail section (`FADE_FROM`, 104.93 s) to exactly `DURATION`. Master −16 LUFS, ≤ −1 dBTP. Gains are loudness-aware (`LOUDNESS` in
-  `audio/sfxmap.mjs`): a sound gains the local music RMS over −19 dB (≤ +6), so the lift needs
-  no hand trims; files rotate and never repeat back to back within a family.
-- `demo-media/film-v2/audio-stock/SOURCES.md` records every asset's license.
+  resolve. The film ends on bar 29.5 (`END_BAR`, 106.71 s): the mix fades (raised cosine) from
+  the tail section (`FADE_FROM`, 104.93 s) to exactly `DURATION`. Master −16 LUFS, ≤ −1 dBTP.
+- SFX: a small **synthesised kit**, soft, warm and tonal; the music leads. The track is in
+  D major (`audio/kit/harmony.json`: key, the chord on every beat, every pulse's accent), and every
+  pitched sound plays the chord under its event. `audio/kit/gen.mjs` builds it from
+  `kit/params.mjs` through one shared room (RT60 ≈ 0.5 s, wet ≤ 22 %) into
+  `demo-media/film-v2/audio/kit/` (+ `reel.mp3`, `REEL.md`); `kit/check.py` proves it from DSP
+  (onset/offset fades, nothing above 8 kHz, pitch within 15 cents, the room).
+  `tick` (a real click, toggle or drag), `plip` (the dot, a chip or total popping in), `air`
+  (a travel or a cut off the accents), `glint` (a line drawing on: an in-key arpeggio, never a
+  pencil), `chapter` (the axis chapters 30.25, 51.58, 94.26), `bloom` (the lift at 72.92: reverse
+  swell, sub thump, pad), `bell` (the end-card dot 101.37 and the last stab 104.40). Typing,
+  paper, pages, snaps and shutters are silent: the music carries them.
+- Selection (`audio/sfxmap.mjs` `RULES`): at most one sound per beat (the higher priority wins;
+  the bloom, bell and chapters own a window); no air on a cut that lands on a strong accent;
+  clicks inside a typing run join it. `sfx-events.json` lists every sound and every silent
+  event with why. Levels are loudness-aware: a sound's loudest momentary loudness sits `rel_lu`
+  from the music's at the event (ticks −19, air −15, plip −6, glint −9, chapter −8, bloom −1,
+  bell −2 LU), so it is felt more than heard. The music ducks only under the bloom and the bell.
+- The Mixkit SFX in `demo-media/film-v2/audio/sfx/` are no longer used (kept on disk).
 
 ## 7. Architecture (`scripts/film2/`)
 
@@ -233,7 +242,7 @@ A sibling of `scripts/film/`, reusing its capture and tools by import; v1 keeps 
 - `render.mjs`: v1's worker loop (serve, Chrome, seek, CDP screenshot, lossless segments,
   concat, encode) without the GPU gate or score hash; `--from/--to` in seconds; `--at`
   stills; mux music + sfx mix.
-- `audio/`: music edit + loudness, SFX placement from `events()` into `sfx.wav`, mix.
+- `audio/`: music edit + loudness, the synthesised kit (`kit/`), SFX placement from `events()` into `sfx.wav`, mix, verify.
 - `tools/doctor.mjs`: timeline tiles 0..DURATION, cuts on beats, assets present, clip
   windows inside clips, text fit + title-safe, **no line-end punctuation in COPY or in any
   rendered (wrapped) line**, headline/statement sizes are presets, headlines fully visible

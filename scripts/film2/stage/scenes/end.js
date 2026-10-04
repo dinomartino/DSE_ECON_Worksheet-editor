@@ -158,7 +158,7 @@ const scene = {
     for (const r of ctx.routes) parts[r.stroke].style.visibility = squash > 0.02 ? 'visible' : 'hidden';
 
     // The last stab: the dot beats once and one ripple runs out to the tile's edge (3 pulses);
-    // the shimmer (timeline end.stab) is its sound.
+    // the bell (timeline end.stab) is its sound.
     const stab = t - (STAB - ctx.from);
     const about = (k) => `translate(256 256) scale(${f(k, 5)}) translate(-256 -256)`;
     if (stab >= 0) {

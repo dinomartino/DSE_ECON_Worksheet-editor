@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Music + sfx → $FILM_OUT/audio/mix.wav (48 kHz stereo, 24-bit), mastered to -16 LUFS
-// integrated and ≤ -1 dBTP. Order: music (from MUSIC.offset) ducked lightly under impacts and
-// dense sfx clusters, + sfx.wav, tail fade, then gain + ffmpeg alimiter iterated against
+// integrated and ≤ -1 dBTP. Order: music (from MUSIC.offset) ducked lightly under the bloom and
+// the bell, + sfx.wav, tail fade, then gain + ffmpeg alimiter iterated against
 // ebur128 until both numbers hold (ffmpeg's loudnorm falls back to dynamic mode; not used).
 // Ducking reads sfx-events.json beside sfx.wav. Writes mix-report.json.
 //   node scripts/film2/audio/mix.mjs [--sfx=<wav>] [--out=<wav>] [--duration=<s>] [--fade=1]
@@ -19,11 +19,10 @@ import { cli } from './cli.mjs';
 
 const SR = 48000;
 const LIM_DELAY = 5 * 48; // samples: alimiter attack 5 ms at 48 kHz
+// Light ducking under the two sounds that must sit just above the music, nowhere else.
 const DUCK = {
-  impact: { depth: 3.5, pre: 0.05, hold: 0.3, release: 1.2 }, // dB, s
-  cluster: { depth: 2, pre: 0.08, hold: 0.0, release: 0.5, count: 5, window: 1.0 }, // dense UI: ≥ count voices within window
-  light: { depth: 1.5, pre: 0.02, hold: 0.15, release: 0.4 }, // under whooshes, pops, the chime
-  paper: { depth: 1, pre: 0.02, hold: 0.25, release: 0.3 }, // under paper deals
+  bloom: { depth: 2.5, pre: 0.3, hold: 0.4, release: 1.2 }, // dB, s: from the swell's last 0.3 s
+  bell: { depth: 1.5, pre: 0.02, hold: 0.3, release: 0.8 },
 };
 
 /** Music gain envelope in dB (≤ 0), one value per ms: the minimum of every duck. */
@@ -39,23 +38,11 @@ export function duckEnvelope(placed, duration) {
     }
   };
   const ducks = [];
-  for (const v of placed) if (v.duck) {
-    const kind = v.duck === true ? 'impact' : v.duck;
-    const d = DUCK[kind];
+  for (const v of placed) {
+    const d = DUCK[v.duck];
     if (!d) continue;
     duck(v.event_t, v.event_t + d.hold, d);
-    ducks.push({ kind, t: v.event_t, ...d });
-  }
-  const ts = placed.map((v) => v.event_t).sort((a, b) => a - b);
-  const C = DUCK.cluster;
-  for (let i = 0; i + C.count - 1 < ts.length; i++) {
-    if (ts[i + C.count - 1] - ts[i] <= C.window) {
-      let j = i + C.count - 1;
-      while (j + 1 < ts.length && ts[j + 1] - ts[j] <= C.window / C.count) j++;
-      duck(ts[i], ts[j], C);
-      ducks.push({ kind: 'cluster', t: ts[i], end: ts[j], depth: C.depth });
-      i = j;
-    }
+    ducks.push({ kind: v.duck, t: v.event_t, ...d });
   }
   return { env, ducks };
 }
