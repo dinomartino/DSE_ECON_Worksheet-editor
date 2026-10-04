@@ -356,13 +356,16 @@ npm run demo                                            # or: node scripts/demo.
 ```
 
 Output lands in `demo-media/` (gitignored): `demo.mp4`, `demo-poster.jpg`, `demo.gif`,
-`screenshots/*.webp` and a generated `README.md` with sizes and the timed storyboard.
+`screenshots/*.webp` (1920 wide, for the website; the raw 2× captures in
+`screenshots/png/`) and a generated `README.md` with sizes and the timed storyboard.
 Needs system Chrome and `ffmpeg`; `cwebp` if present, else screenshots are JPEG.
 
 To show a new feature, add one step to `scripts/demo/record.mjs:STORYBOARD` (`name`,
 `caption`, `run(d)`, optional `speed` to fast-forward it) or one entry to
 `scripts/demo/screenshots.mjs:SHOTS`. What gets typed lives in `scripts/demo/content.mjs`,
-and must stay original text, never past-paper questions. Keep the video under 60 s.
+and must stay original text, never past-paper questions. Keep the video under 60 s. The
+screenshots also seed a library (`scripts/demo/content.mjs:SITE`, written by
+`scripts/demo/site-seed.test.ts`), which fails on any term the EDB glossary flags.
 
 ### The diagram film
 
