@@ -7,11 +7,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Where we are
 
-- **v0.5.0 released 2026-09-28.** `develop` holds everything since (unreleased, ~350 commits):
-  題庫 question bank (+ ✦ AI, topics per part, 題型), Marking scheme view and layouts (Classic,
-  HKEAA, Suggested answers, Detailed table), Translation terms, 中文 interface, Graphs 圖表庫,
-  diagram answer layer, Econ Studio rename, launch animation, UI polish rounds. Merge to `main`
-  only on the user's word (`RELEASING.md`).
+- **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
+  question bank, Marking scheme view and layouts, Translation terms, 中文 interface, Graphs
+  圖表庫, diagram answer layer, the Econ Studio rename. Next work goes on `develop` as usual.
 - **2026-10-03: every known gap fixed** (user's ask) on `fix/gaps-*` branches, all merged. Schema
   rule now "bump only when used": `writtenSchemaVersion` writes 2 for diagram `answer`,
   `answerKeyLayout`, section `answerCount`, essay answer/scheme, `importQuota` derive; else 1.
@@ -35,7 +33,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Before release (only the user can do these)
 
-- Windows: the rename hook (`src-tauri/windows/hooks.nsh`) test in `RELEASING.md` gates v0.6.0;
+- Windows: 0.6.0 shipped without the rename hook test (`RELEASING.md`), user's call; check one install;
   Keychain prompt in a built app; 標楷體 export in Word.
 - A real AI key: Save & test, Fill, Re-translate, `npm run eval:translate` (model ids in
   `src/ai/providers.ts` unverified); one try from an HK network without VPN.
@@ -43,8 +41,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   files (`worksheets/library/docs/`; check 題庫 lists every paper); macOS self-rename on a real
   `/Applications` update; Export → PDF multi-page; folder drag; `.json` drop; Translation terms
   CSV + backup; launch animation once per cold start; real print dialog; paste a graph into Word.
-- **At release:** emit frozen bank fixtures from the release commit (list in
-  `docs/design/question-library.md`); bump `Cargo.lock` on `develop` after.
+- **Still owed from v0.6.0:** emit frozen bank fixtures from tag `v0.6.0` (list in
+  `docs/design/part-tags.md` § M5 frozen bank fixtures). `Cargo.lock` is bumped.
 
 ## Waiting on the user's call
 
