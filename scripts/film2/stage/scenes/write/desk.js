@@ -10,7 +10,14 @@ const { lerp, prog, outSoft, inOutSoft, spring, sineInOut } = ease;
 const inQuad = (p) => p * p;
 const IRIS_R = 44; // the engine's iris dot
 const STEM = [20, 46.3]; // the Classroom sketch's first question bar (sketch units)
-const DIVE = 4; // the dive's scale (MAD peak ≤ 7 over 2.9 pulses)
+// The dive's scale: the sketch page (400 px) ends near the real page's width in the CLOSE
+// (1032 CSS × 2.6 = 2683 px), so the cut changes the content, hardly the framing. It starts
+// as the dot falls (P1.4) to keep the MAD peak ≤ 7.
+const DIVE = 5.6;
+const DIVE_AT = P(1.4);
+// The iris opens on the second page, whole (not on the gutter between two pages); the desk
+// settles to centre as the ring widens.
+const PAN = 960 - (deskX(1) + DESK.w / 2);
 
 export function buildDesk(parent) {
   const el = h('div', { style: { position: 'absolute', inset: 0 } }, parent);
@@ -34,10 +41,11 @@ export function updateDesk(d, t, target) {
   // The camera: a slow breath on the desk, then the dive into the Classroom page.
   const sx = deskX(0) + (STEM[0] * DESK.w) / 120, sy = DESK.y + (STEM[1] * DESK.h) / 170;
   const breath = 1 + 0.02 * sineInOut(prog(t, P(-2), BEAT.dive));
-  const p = sineInOut(prog(t, BEAT.dive + P(0.1), BEAT.type)); // sine: a lower velocity peak than inOutSoft
+  const p = sineInOut(prog(t, DIVE_AT, BEAT.type)); // sine: a lower velocity peak than inOutSoft
+  const pan = PAN * (1 - inOutSoft(prog(t, P(0), P(1.6))));
   const k = Math.exp(lerp(Math.log(breath), Math.log(DIVE), p));
   // The stem point travels from its breathing place to the target, on the same curve.
-  const bx = 960 + (sx - 960) * breath, by = 540 + (sy - 540) * breath;
+  const bx = 960 + (sx - 960) * breath + pan, by = 540 + (sy - 540) * breath;
   const x = lerp(bx, target.x, p), y = lerp(by, target.y, p);
   d.group.style.transform = `translate(${f(x - sx * k, 2)}px, ${f(y - sy * k, 2)}px) scale(${f(k, 5)})`;
   // The sketched marks stay to the cut: the first question's bar becomes the real stem.

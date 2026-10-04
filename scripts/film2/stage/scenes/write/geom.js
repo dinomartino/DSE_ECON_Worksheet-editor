@@ -34,7 +34,10 @@ export const DOT1_R = (2.3 * DESK.w) / 120;
 export const TYPE_STEM = [250, 360, 520, 46]; // "Which of the following is a positive statement?"
 export const TYPE_CLOSE = [180, 250, 740, 330];
 export const TYPE_MED = [0, 150, 1440, 620];
-export const TYPE_Q1 = [100, 280, 1000, 360]; // Q1 with its options (the MEDIUM's push)
+// The MEDIUM's push ends on the page alone: the card's right edge on the panel divider (CSS
+// 1040), its left on the rail's edge, its bottom in the gap between option D and Section B.
+export const TYPE_PAGE = [78, 200, 958, 412];
+export const TYPE_PAGE_ZOOM = 1728 / 958;
 export const TYPE_DBL = [287, 382]; // the double-click into the stem
 // Clip time: the double-click (0.72/0.80) on the cut; from 4.5 s (between the 中文 line and the
 // options) the pasted options run at 1.6×, the rate ramping over half a second.
@@ -68,16 +71,23 @@ export const uiClipT = (t) => Math.min(UI.end, t < UI.mid ? UI.from + (t - UI.at
 // Settings › Language: the heading 語言 and the two cards (the sidebar, with its AI row, stays out).
 export const UI_CLOSE = [309, 106, 800, 450];
 export const UI_SAFE = [322, 126, 726, 150];
+// The push after the flip: its top-left corner stays on the sidebar's edge and the dialog's
+// header line (x 305, y 106), so the AI row and the header text never enter; the cards' boxes
+// leave by the right edge, every word (≤ CSS 842) stays in.
+export const UI_PUSH = [305, 106, 662, 372];
+export const UI_PUSH_SAFE = [322, 126, 540, 150];
 export const UI_TOGGLE = [868, 213];
 export const UI_RAIL = [0, 60, 1150, 500]; // the start screen's left rail and heading, in 中文
 
-// The printed Q1 (A4 2379 × 3366 px) at 0.6 × (a 1427 px page: legible, FILM.md print rule):
-// EN over 中文 in the left column, EN+中 (twice as tall) on the right. src = image px.
+// The printed Q1 (A4 2379 × 3366 px) at 0.6 × (a 1427 px page: legible, FILM.md print rule),
+// Section header to option D (the instruction line is left out). Three 780 px cards on the C1
+// grid: EN over 中文 at x 96, EN+中 (taller) at x 1044, right edge 1824; the labels' tops sit
+// on y 264 (the C1 card top), 38 px under the headline's zh line. src = image px.
 export const PRINT_K = 0.6;
 export const PRINTS = [
-  { id: 'sheets-en', label: { en: 'EN', zh: '' }, src: [250, 260, 1290, 560], at: [96, 270] },
-  { id: 'sheets-zh', label: { en: '', zh: '中文' }, src: [270, 260, 930, 560], at: [96, 660] },
-  { id: 'sheets-bi', label: { en: 'EN+中', zh: '' }, src: [270, 260, 1260, 900], at: [918, 270] },
+  { id: 'sheets-en', label: { en: 'EN', zh: '' }, src: [250, 360, 1300, 456], at: [96, 300] },
+  { id: 'sheets-zh', label: { en: '', zh: '中文' }, src: [250, 355, 1300, 456], at: [96, 638] },
+  { id: 'sheets-bi', label: { en: 'EN+中', zh: '' }, src: [250, 408, 1300, 755], at: [1044, 300] },
 ];
 
 export { clamp };

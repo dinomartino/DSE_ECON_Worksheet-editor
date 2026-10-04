@@ -1,20 +1,22 @@
 // Act 2, write (FILM.md §3 row 2), bar 3 → bar 8, the build. Each beat shows its money
 // moment in CLOSE first, then the frame that names it (P(n) = scene pulse n):
-//   P(-2)…P(5)  the iris opens on the desk: four paper kinds, writing themselves; the dot
-//               drops into the Classroom worksheet (P2) and the camera dives into its stem
+//   P(-2)…P(5)  the iris opens on the desk (on one page, whole; the desk settles to centre):
+//               four paper kinds, writing themselves; the dot drops into the Classroom
+//               worksheet (P2) as the camera dives to the real page's scale, onto its stem
 //   P(5)…P(11)  CLOSE: the stem is typed on the page (the double-click lands on the cut)
-//   P(11)…P(17) MEDIUM + "Type right on the page": the 中文 line and the options land
+//   P(11)…P(17) MEDIUM + "Type right on the page": the 中文 line and the options land; the
+//               push ends on the page alone (the panel leaves whole, no word on an edge)
 //   P(17)…P(23) CLOSE locked on Q1: EN (on the cut), 中文 (P19), EN+中 (P21); the toggle is
 //               re-inked above it as three labels and the dot
 //   P(23)…P(29) the printed Q1 in each language at 1190 px page width + "English, 中文, or both"
-//   P(29)…P(33) CLOSE on Settings › Language: 繁體中文 (P31) flips it
+//   P(29)…P(33) CLOSE on Settings › Language: 繁體中文 (P31) flips it; pushing to the cut
 //   P(33)…P(40) WIDE on 完成: the start screen in 中文 + "An interface in 中文 too"; the draw
 //               act's axis wipes in over P(38)…P(40) (x 96 / y 1008 stay clear)
 import { h, s, svg, block, label, show, place, C, PAPER_SHADOW, HEADLINE, LABEL, ease, f } from '../lib/index.js';
 import { camera, frame } from '../lib/camera.js';
 import {
-  P, BEAT, TYPE, TYPE_STEM, TYPE_CLOSE, TYPE_MED, TYPE_Q1, TYPE_DBL, typeClipT, LANG, langClipT, LANG_STATES, REFLOW,
-  LANG_CLOSE, LANG_ANCHOR, LANG_SAFE, UI, uiClipT, UI_CLOSE, UI_SAFE, UI_TOGGLE, UI_RAIL, PRINT_K, PRINTS,
+  P, BEAT, TYPE, TYPE_STEM, TYPE_CLOSE, TYPE_MED, TYPE_PAGE, TYPE_PAGE_ZOOM, TYPE_DBL, typeClipT, LANG, langClipT, LANG_STATES, REFLOW,
+  LANG_CLOSE, LANG_ANCHOR, LANG_SAFE, UI, uiClipT, UI_CLOSE, UI_SAFE, UI_PUSH, UI_PUSH_SAFE, UI_TOGGLE, UI_RAIL, PRINT_K, PRINTS,
 } from './write/geom.js';
 import { buildDesk, updateDesk } from './write/desk.js';
 
@@ -48,13 +50,13 @@ const scene = {
     ctx.rigs = {
       type: await rig('type', 'type-mcq', [
         { at: BEAT.type, end: BEAT.typeMed, ...typeClose },
-        { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_MED, move: { dur: P(6), to: { focus: TYPE_Q1, zoom: 1.45 } } },
+        { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_MED, move: { at: P(0.5), dur: P(5), to: { focus: TYPE_PAGE, zoom: TYPE_PAGE_ZOOM } } }, // the panel leaves whole
       ]),
       lang: await rig('lang', 'language-toggle', [
         { at: BEAT.lang, end: BEAT.print, size: 'close', focus: LANG_CLOSE, anchor: LANG_ANCHOR, safe: LANG_SAFE, zoom: 2.85, move: { at: -P(3), dur: P(12), to: { zoom: 2.96 } } }, // locked: a slow push only
       ], true),
       ui: await rig('ui', 'zh-interface', [
-        { at: BEAT.ui, end: BEAT.uiWide, size: 'close', focus: UI_CLOSE, safe: UI_SAFE, zoom: 2.4, move: { at: -P(1.5), dur: P(7), to: { zoom: 2.5 } } }, // in motion on the cut
+        { at: BEAT.ui, end: BEAT.uiWide, size: 'close', focus: UI_CLOSE, safe: UI_SAFE, zoom: 2.4, move: { dur: P(5), to: { focus: UI_PUSH, safe: UI_PUSH_SAFE, zoom: 2.9 } } }, // still pushing on the cut
         { at: BEAT.uiWide, end: BEAT.end + P(2), size: 'wide', move: { at: -P(1), dur: P(6), to: { size: 'medium', focus: UI_RAIL, zoom: 1.5 } } },
       ]),
     };
@@ -81,8 +83,9 @@ const scene = {
       } }, ctx.printGroup);
       const img = h('img', { src: ctx.load.url(pr.id), style: { position: 'absolute', left: `${f(-sx, 2)}px`, top: `${f(-sy, 2)}px`, width: `${f(2379 * PRINT_K, 2)}px` } }, el);
       await img.decode();
+      img.style.transformOrigin = `${f(sx + sw / 2, 2)}px ${f(sy + sh / 2, 2)}px`;
       const cap = label(ctx.printGroup, { ...LABEL, ...pr.label, x, y: y - 16 });
-      ctx.prints.push({ el, cap });
+      ctx.prints.push({ el, img, cap });
     }
 
     // The toggle, re-inked over the locked CLOSE: three labels, the dot under the live one.
@@ -120,8 +123,10 @@ const scene = {
 
     // The printed Q1s rise in one after another, then the row breathes while it is read.
     const pOn = between(t, BEAT.print, BEAT.ui);
-    place(ctx.printGroup, { scale: 1 + 0.03 * sineInOut(prog(t, BEAT.print, BEAT.ui + P(2))) }); // still moving at the cut
-    ctx.prints.forEach(({ el, cap }, i) => {
+    // The print breathes inside each card, so the cards stay on the grid (x 96 … 1824).
+    const breathe = `scale(${f(1 + 0.03 * sineInOut(prog(t, BEAT.print, BEAT.ui + P(2))), 5)})`; // still moving at the cut
+    ctx.prints.forEach(({ el, img, cap }, i) => {
+      img.style.transform = breathe;
       const r = outSoft(prog(t, BEAT.print + P(i * 0.5), BEAT.print + P(i * 0.5) + 0.6));
       place(el, { y: 90 * (1 - r), opacity: pOn ? r : 0 });
       cap.show(pOn ? r : 0);
