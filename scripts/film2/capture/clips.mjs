@@ -44,6 +44,41 @@ async function onCanvas(page, fx, fy) {
   return { x: s.left + fx * s.width, y: s.top + fy * s.height };
 }
 
+/**
+ * A unit-space point of the open canvas's plot (x right, y up). The plot sits inside the
+ * drawing surface at fixed fractions of it (measured on the 400×335 diagram at 2×).
+ */
+async function onPlot(page, ux, uy) {
+  return onCanvas(page, (128.4 + 493.5 * ux) / 800, (578.2 - 459.3 * uy) / 670);
+}
+
+/** The shift arrow "Shift a copy" draws from S0 (`shiftArrowEnds`): its x, a grip low on its shaft, S0's slope. */
+const ARROW = { x: 0.4646, grab: 0.615, slope: 0.59 / 0.5394 };
+
+/**
+ * answer-draw's state: answer-layer's own tax question with only D, S0 and E0 left on its
+ * answer layer (S1, E1, P1 − t and the spans go), so what is drawn on camera is a part of
+ * the answer its Teacher copy shows, on the same geometry.
+ */
+function taxToDraw(state) {
+  const next = structuredClone(state);
+  for (const kv of next.origins[0].localStorage) {
+    if (!kv.name.startsWith('econ-worksheet:')) continue;
+    const doc = JSON.parse(kv.value);
+    if (doc.name !== ANSWER_DOC.name) continue;
+    for (const block of doc.questions.flatMap((q) => (q.parts ?? []).flatMap((p) => p.blocks))) {
+      if (block.kind !== 'diagram') continue;
+      const g = block.diagram;
+      const shifted = new Set(g.curves.filter((c) => c.derive).map((c) => c.id));
+      g.curves = g.curves.filter((c) => !shifted.has(c.id));
+      g.points = g.points.filter((p) => p.anchor?.cross && !p.anchor.cross.some((id) => shifted.has(id)));
+      g.spans = [];
+    }
+    kv.value = JSON.stringify(doc);
+  }
+  return next;
+}
+
 /** Open `name`, bilingual, nothing selected, page at the top. */
 async function openPaper(page, name, language = 'bilingual') {
   await openDoc(page, name);
@@ -126,31 +161,40 @@ export const CLIPS = [
   },
   {
     name: 'answer-draw',
-    dur: 8,
-    about: 'Canvas on given D and S: Draw answer (0.8), select D in the list (1.8), Shift a copy (3.0) draws D1, the shift and new equilibrium in red; Done (5.6); a click on the desk (6.4) leaves the Teacher page with the answer in red.',
+    dur: 8.5,
+    about: 'Teacher copy of the tax question (answer-layer\'s), D, S0 and E0 drawn: Draw answer (0.8), select S0 (1.6), ↑ (2.3), by 26% (2.9, ⌘A, typed 3.1), Shift a copy (3.9) draws S1, the shift arrow and P1/Q1 in red; the arrow dragged onto the tax wedge (4.9–5.5); Done (6.4); a click on the desk (7.2) leaves the page.',
     pointer: { x: 760, y: 120 },
+    state: (env) => taxToDraw(env.state),
     async prepare({ page }) {
-      await openPaper(page, SHIFT_DOC.name);
+      await openPaper(page, ANSWER_DOC.name);
       await setVersion(page, 'teacher');
       await openCanvas(page);
     },
     async record(r, { page }) {
+      const panel = canvasPanel(page);
       await r.hold(0.2);
       await r.clickAt(0.8, canvasTool(page, 'Draw answer'), { dur: 0.5, label: 'Draw answer', kind: 'toggle' });
-      // D from the canvas's own list (the line's place depends on the axis titles' language).
-      await r.clickAt(1.8, canvasPanel(page).getByRole('button', { name: /^D\s*Curve$/ }), { dur: 0.6, label: 'select D' });
-      await r.clickAt(3.0, canvasPanel(page).getByRole('button', { name: 'Shift a copy' }), { dur: 0.7, label: 'Shift a copy' });
-      await r.hold(0.3);
-      await r.press('Escape', { label: 'deselect' });
-      await r.moveTo(() => onCanvas(page, 0.9, 0.12), { dur: 0.8 });
-      await r.clickAt(5.6, canvasTool(page, 'Done'), { dur: 0.6, label: 'Done' });
+      await r.clickAt(1.6, panel.getByRole('button', { name: /^S\s*0\s*Curve$/ }), { dur: 0.6, label: 'select S0' });
+      await r.clickAt(2.3, panel.getByTitle(/^Shift up/), { dur: 0.5, label: 'Shift up', kind: 'toggle' });
+      // The tax: 26% of the axis, the template's S0 → S1 (⌘A selects the 15; '2' replaces it).
+      await r.clickAt(2.9, panel.getByRole('spinbutton'), { dur: 0.45, label: 'by %' });
+      await r.press('ControlOrMeta+A', { label: 'select all' });
+      await r.until(3.1);
+      await r.type('26', { cps: 8 });
+      await r.clickAt(3.9, panel.getByRole('button', { name: 'Shift a copy' }), { dur: 0.5, label: 'Shift a copy' });
+      // The shift arrow rises from E0; along S0 to x = 0.56 it is the tax wedge t of the key.
+      await r.until(4.3);
+      await r.drag(() => onPlot(page, ARROW.x, ARROW.grab), () => onPlot(page, 0.56, ARROW.grab + ARROW.slope * (0.56 - ARROW.x)), {
+        approach: 0.5, settle: 0.1, dur: 0.6, label: 'shift arrow → t',
+      });
+      await r.clickAt(6.4, canvasTool(page, 'Done'), { dur: 0.6, label: 'Done' });
       // A click on the desk beside the page lets the question go: the page alone, answer in red.
       const desk = async () => {
         const b = await page.locator('#print-root .paper').first().boundingBox();
         return { x: b.x + b.width + 14, y: 640 };
       };
-      await r.clickAt(6.4, desk, { dur: 0.6, label: 'deselect' });
-      await r.until(8.0);
+      await r.clickAt(7.2, desk, { dur: 0.6, label: 'deselect' });
+      await r.until(8.5);
     },
   },
   {
