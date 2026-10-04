@@ -145,9 +145,9 @@ export function sceneAt(t) {
 }
 
 // Accents and sounds, by stable id <scene>.<name>. kind: 'accent' (a visual hit on the
-// music) | 'sfx' (sound: `sfx` names a SFX_MAP kind in audio/sfxmap.mjs; an accent may carry one
-// too). Optional: `end: true` (the sound ENDS on t), `dur`, `file`, `gain_db`, `peakAlign` and
-// `lead` (override the kind's, audio/sfxmap.mjs); `grid: false`
+// music) | 'sfx' (sound: `sfx` names a kind in audio/sfxmap.mjs MAP, played by the synthesised
+// kit; an accent may carry one too). Optional: `gain_db` (a trim on top of the kind's level,
+// for exceptions only); `grid: false`
 // marks a cue deliberately off the pulse grid (the doctor skips it); `replaces: { scene, label }`
 // silences that scene's events whose label starts with `label` (the cue is their sound, retimed;
 // engine.js events()). Sorted by t.
