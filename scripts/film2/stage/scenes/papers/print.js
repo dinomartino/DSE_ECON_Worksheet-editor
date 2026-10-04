@@ -1,13 +1,13 @@
 // The act's printed pages (A4 print previews of the real app, 2379×3366): flat paper, never a
 // thumbnail while it is meant to be read (FILM.md §4: ≥ 1190 px wide, 11 pt → 22 px).
-//   keys     one marking-scheme page, 1240 px wide, its four layouts cut in place on beats,
-//            each named with the app's own layout name (a LABEL over a hairline)
+//   keys     one marking-scheme page, 1240 px wide, its four layouts cut in place on beats; the
+//            left column lists the four by the app's own names, the blue dot on the one shown
 //   mock     Paper 1 cover, Paper 2 cover, its answer page, an answer key: dealt on beats, 1240 wide
-//   vers     Version A, B, C full-bleed: the header and question 1 (the options reshuffle)
-//   fan      five sheets across the frame: the version page at its centre (a cut), the rest dealt
+//   vers     Version A, B, C full-bleed (the header and question 1; the options reshuffle), swapped
+//            in place, one slow push accelerating into the bank's iris
 // update(t) is pure; every time is scene seconds from the caller's T.
 import { h, s, svg, show, place, label, LABEL, f, C } from '../../lib/index.js';
-import { clamp, lerp, prog, outSoft, sineInOut } from '../../lib/ease.js';
+import { lerp, prog, outSoft, inOutSoft, sineInOut } from '../../lib/ease.js';
 import * as reink from '../../lib/reink.js';
 import { sheet, loadSheet, SHEET_W, SHEET_H } from './sheet.js';
 
@@ -20,37 +20,37 @@ export const LAYOUTS = [
 ];
 export const MOCK = ['sheets-p1-cover', 'sheets-p2-cover', 'sheets-p2-page', 'sheets-key-classic']; // cover to key
 export const VERSIONS = ['sheets-version-a', 'sheets-version-b', 'sheets-version-c'];
-const FAN = [ // [sheet id, slot −2…2]; the centre (0) is the version page
-  ['sheets-lq-1', -2], ['sheets-key-hkeaa', 2], ['sheets-p1-cover', -1], ['sheets-p2-cover', 1],
-];
 
 const PAGE = { x: 584, top: 264, w: 1240 }; // keys and mock: right of the label column
 const KEY_ANCHOR = [1204, 432]; // the page title: the slow push closes on it
 const VCROP = [188, 60, 2000, 1125]; // version header + question 1 and its options, filling the frame
-const FAN_W = 508, FAN_STEP = 305;
+const LIST = { x: 120, dot: 102, y: 290, step: 56 }; // the layout list: label baselines, the dot's x
+const RISE = 168; // the key page's rise after the headline: its top from y 264 to 96
+const PUSH = 0.045; // the versions push: every printed word stays 48 px inside the frame
 const VHEAD = [1825, 2088, 200]; // "Version A 版本 A": x0, x1, underline y (sheet px)
 
 export async function prints(parent, { url, T }) {
-  const ids = [...new Set([...LAYOUTS.map((l) => l.id), ...MOCK, ...FAN.map((x) => x[0])])];
+  const ids = [...new Set([...LAYOUTS.map((l) => l.id), ...MOCK])];
   const cv = {};
   await Promise.all(ids.map(async (id) => { cv[id] = await loadSheet(url(id), 1400); }));
   const vcv = await Promise.all(VERSIONS.map((id) => loadSheet(url(id), SHEET_W))); // full-bleed: full res
 
   const keyLayer = h('div', { style: { position: 'absolute', inset: 0 } }, parent);
   const keys = sheet(keyLayer, LAYOUTS.map((l) => cv[l.id]));
-  const names = LAYOUTS.map((l) => label(keyLayer, { ...LABEL, en: l.en, zh: l.zh, x: 96, y: 441 }));
-  const ruleSvg = svg(keyLayer, {});
-  const rule = s('line', { x1: 96, y1: 466, x2: PAGE.x - 24, y2: 466, stroke: C.lineStrong, 'stroke-width': 2, 'stroke-linecap': 'round' }, ruleSvg);
+  // Each name twice (muted, and ink for the one shown): a cut between them, never a blend.
+  const row = (l, i, color) => label(keyLayer, { ...LABEL, en: l.en, zh: l.zh, color, zhColor: color, x: LIST.x, y: LIST.y + i * LIST.step });
+  const names = LAYOUTS.map((l, i) => [row(l, i, C.inkMuted), row(l, i, C.ink)]);
+  const listSvg = svg(keyLayer, {});
+  const dot = s('circle', { cx: LIST.dot, r: 6, fill: C.markBlue }, listSvg);
 
   const mockLayer = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: '960px 640px' } }, parent);
   const mock = MOCK.map((id) => sheet(mockLayer, [cv[id]]));
 
-  const fin = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: '960px 540px' } }, parent);
-  const fan = FAN.map(([id]) => sheet(fin, [cv[id]]));
+  const fin = h('div', { style: { position: 'absolute', inset: 0 } }, parent);
   const vers = sheet(fin, vcv);
   const uSvg = svg(fin, {});
   const under = s('line', { stroke: C.markBlue, 'stroke-width': 4, 'stroke-linecap': 'round' }, uSvg);
-  await Promise.all([keys, ...mock, ...fan, vers].map((x) => x.ready));
+  await Promise.all([keys, ...mock, vers].map((x) => x.ready));
 
   const ht = (w, crop = [0, 0, SHEET_W, SHEET_H]) => (crop[3] * w) / crop[2];
   function update(t) {
@@ -61,10 +61,19 @@ export async function prints(parent, { url, T }) {
       const face = T.keyCuts.findLastIndex((c) => t >= c);
       const g = 1 + 0.025 * sineInOut(prog(t, T.keys[0], T.keys[1]));
       const w = PAGE.w * g, cx = KEY_ANCHOR[0] + (PAGE.x + PAGE.w / 2 - KEY_ANCHOR[0]) * g;
-      const top = KEY_ANCHOR[1] + (PAGE.top - KEY_ANCHOR[1]) * g;
+      // Once the headline has gone, the page rises into its slot (the list stays): no empty band.
+      const top = KEY_ANCHOR[1] + (PAGE.top - KEY_ANCHOR[1]) * g - RISE * inOutSoft(prog(t, ...T.keyRise));
       keys.set({ x: cx, y: top + ht(w) / 2, w, face });
-      names.forEach((n, i) => n.show(i === face ? 1 : 0));
-      reink.stroke(rule, t, { at: T.keys[0], dur: 0.6 });
+      // The list rises in (70 ms stagger); the dot slides to the layout shown on each cut.
+      names.forEach(([dim, lit], i) => {
+        const p = outSoft(prog(t, T.keys[0] + i * 0.07, T.keys[0] + i * 0.07 + 0.5));
+        dim.show(i === face ? 0 : p);
+        lit.show(i === face ? p : 0);
+      });
+      const at = T.keyCuts[face], from = face ? face - 1 : face;
+      const row = lerp(from, face, outSoft(prog(t, at, at + 0.3)));
+      dot.setAttribute('cy', f(LIST.y - 8 + row * LIST.step, 2));
+      dot.setAttribute('r', f(6 * outSoft(prog(t, T.keys[0] + 0.1, T.keys[0] + 0.5)), 2));
     }
 
     // ---- mock: dealt on beats, each one 80 px right of the last, rising into place --------
@@ -78,37 +87,20 @@ export async function prints(parent, { url, T }) {
       place(mockLayer, { scale: 1 + 0.02 * sineInOut(prog(t, T.mock[0], T.mock[1])) });
     }
 
-    // ---- versions, then the fan they open into -----------------------------------------
-    const inFin = t >= T.vers[0];
+    // ---- versions: one full-bleed CLOSE, the page swapped in place, one push into the iris --
+    const inFin = t >= T.vers[0] && t < T.vers[1];
     show(fin, inFin ? 1 : 0);
     if (!inFin) return;
     const face = Math.max(0, T.verCuts.findLastIndex((c) => t >= c));
-    // A cut, not a pull: zooming a full-frame page out 3.8× in a second whips (MAD 10+).
-    const open = t >= T.open ? 1 : 0;
-    const g = 1 + 0.015 * sineInOut(prog(t, T.vers[0], T.open));
-    const crop = VCROP.map((c, k) => lerp(c, [0, 0, SHEET_W, SHEET_H][k], open));
-    const w = lerp(1920 * g, FAN_W, open);
-    const rise = open ? 70 * (1 - outSoft(prog(t, T.open, T.open + 0.6))) : 0; // dealt into the fan's centre
-    vers.set({ x: 960, y: 540 + rise, w, crop, face });
+    const u = prog(t, T.vers[0], T.vers[1]);
+    const w = 1920 * (1 + PUSH * (u + u * u) / 2); // gathering: slow at first, faster into the lift
+    vers.set({ x: 960, y: 540, w, crop: VCROP, face });
     // A blue underline under the version letter: it stays while the pages swap.
-    const k = w / crop[2], left = 960 - w / 2, top = 540 - ht(w, crop) / 2;
-    const ux = (sx) => left + (sx - crop[0]) * k, uy = top + (VHEAD[2] - crop[1]) * k;
-    Object.entries({ x1: ux(VHEAD[0]), x2: ux(VHEAD[1]), y1: uy, y2: uy }).forEach(([a, v]) => under.setAttribute(a, f(v, 2)));
+    const k = w / VCROP[2], left = 960 - w / 2, top = 540 - ht(w, VCROP) / 2;
+    const ux = (sx) => left + (sx - VCROP[0]) * k, uy = top + (VHEAD[2] - VCROP[1]) * k;
+    Object.entries({ x1: ux(VHEAD[0]), x2: ux(VHEAD[1]), y1: uy, y2: uy }).forEach(([a2, v]) => under.setAttribute(a2, f(v, 2)));
     under.__len = ux(VHEAD[1]) - ux(VHEAD[0]); // its length changes with the push: measure each frame
-    if (open || reink.stroke(under, t, { at: T.vers[0] + 0.05, dur: 0.35 }) <= 0) under.style.visibility = 'hidden';
-    // The fan: inner pair, then outer pair, slide out from behind the centre; then the whole
-    // fan spreads and pushes in, accelerating into the iris.
-    // q² up to the hit, then on at the speed it reached (no stop under the opening iris).
-    const u = (t - T.build[0]) / (T.build[1] - T.build[0]);
-    const q2 = u <= 0 ? 0 : u <= 1 ? u * u : 2 * u - 1;
-    const spread = 1 + 0.08 * q2;
-    fan.forEach((sh, i) => {
-      const slot = FAN[i][1], at = Math.abs(slot) === 1 ? T.deals[0] : T.deals[1];
-      const p = outSoft(prog(t, at, at + 0.6));
-      const from = Math.abs(slot) === 1 ? 0 : Math.sign(slot);
-      sh.set({ x: 960 + lerp(from, slot, p) * FAN_STEP * spread, y: 540, w: FAN_W, opacity: t >= at ? 1 : 0 });
-    });
-    place(fin, { scale: 1 + 0.1 * q2 });
+    if (reink.stroke(under, t, { at: T.vers[0] + 0.05, dur: 0.35 }) <= 0) under.style.visibility = 'hidden';
   }
   update(-1);
   return { update };
