@@ -1,18 +1,20 @@
 // Act 3, draw (FILM.md §3, the hero): from blank axes to the model answer in red. Scene pulses
 // P(n) (the act starts on bar 8, so every P(n) is on the grid). The axis chapter owns P-2..P6.
-//   P-2..P12  CLOSE, full-bleed: the canvas's origin is pinned to the chapter's own axes (x 96,
-//             y 1008); the page opens out of that corner (P2..P4) and the chapter's strokes
-//             retract onto the canvas axes (P4..P6); D and S are dragged in; a pull to C1
-//             narrow lands as E0 is placed; "Draw it in seconds"
-//   P13..P21  re-ink: the pen traces the lines, the window falls away, the diagram lifts to
-//             frame scale, arrowheads, the blue dot, the guides and labels draw on; it lands on
-//             the shade canvas's lines and the footage takes over under them
-//   P19.5..   "Shade any area in one click": MEDIUM, Shade ▾ → Consumer surplus lands on P23;
-//             push to CLOSE on the hatch (P25.5..P27.5)
-//   P27.5..   re-ink lift: the CS triangle is traced, lifted to frame scale, its hatch re-drawn
-//   P31..P34  the Templates wall: twelve real template cards dealt full frame
-//   P34..P40  "The answer, on the same axes": MEDIUM answer-draw, Draw answer, Shift a copy → D1
-//   P40..P45  Student | Teacher split; the red answer draws on Teacher from P42 (48.91 s)
+//   P-2..P10  CLOSE, full-bleed: the canvas's origin is pinned to the chapter's own axes (x 96,
+//             y 1008); the page opens out of that corner as the x axis draws (P0.5..P5.4), the
+//             chapter's strokes retract onto the canvas's own axes (P4..P6); D and S are dragged
+//             in under a slow push about the origin; E0 placed (P10.66)
+//   P10..P13  cut to C1 narrow, "Draw it in seconds"
+//   P11..P19.9 re-ink: a blue pen traces the lines, the window falls away, the diagram lifts to
+//             frame scale in ink, arrowheads, the blue dot, the guides and labels draw on; it lands
+//             exactly on the shade canvas's lines (P17.5..P19) and the footage returns under it
+//   P17.8..   "Shade any area in one click": MEDIUM, Shade ▾ → Consumer surplus lands on P23;
+//             push to CLOSE on the hatch (P23.3..P26.9); the pen traces the CS triangle
+//   P27..P30  re-ink lift: the CS triangle at frame scale on cream, its hatch re-drawn in blue
+//   P30..P33  the Templates wall: twelve real template cards dealt full frame
+//   P33..P40  "The answer, on the same axes": MEDIUM answer-draw, Draw answer, Shift a copy → D1
+//   P40..P45  Student | Teacher split (the clip's Teacher click sounds on the cut); the red answer
+//             draws on Teacher from P42 (48.91 s)
 //   P45..P48  CLOSE on the real Teacher copy, the red answer held; the papers chapter wipes in
 import { h, C } from '../lib/dom.js';
 import { block, HEADLINE } from '../lib/type.js';
