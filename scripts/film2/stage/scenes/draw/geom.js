@@ -52,9 +52,9 @@ export const DRAW_NARROW = { zoom: 1.03, anchor: [680 + 572, 264 + 372], focus: 
 /** shade-area / answer-draw MEDIUM: the toolbar, the Shade menu and the top of the diagram. */
 export const TOP = [0, 0, 1440, 620];
 /** shade-area CLOSE: CS and PS fill the frame (the x axis and Q0 fall just outside). */
-export const SHADE_CLOSE = { zoom: 2.4, focus: [160, 272, 800, 450] };
+export const SHADE_CLOSE = { zoom: 2.4, focus: [160, 262, 800, 450] };
 /** answer-draw pushed in: the diagram, D1 and the Shift a copy button, P labels kept whole. */
-export const ANSWER_IN = { zoom: 1.45, focus: [248, 107, 1192, 513] };
+export const ANSWER_IN = { zoom: 1.4, focus: [222.4, 112, 1217.6, 532] };
 /** answer-layer CLOSE: the red answer from the y-axis tip to the Q arrow (Price above, the blue marking points below, both outside). */
 export const LAYER_CLOSE = { zoom: 2.634, focus: [298, 211, 729, 410] };
 

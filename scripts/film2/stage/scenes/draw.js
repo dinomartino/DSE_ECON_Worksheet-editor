@@ -40,7 +40,7 @@ const CLIPS = {
     [D5 + 2.835, 5.25],
   ] },
   shade: { id: 'shade-area', show: [P(18), P(27)], keys: [[P(23) - 1.6, 0], [P(23) + 1.1, 2.7]] }, // Consumer surplus on P23
-  answer: { id: 'answer-draw', show: [P(33), P(40)], keys: [[P(33), 0.5], [P(33) + 3.4, 3.9]] }, // Shift a copy on P38.6
+  answer: { id: 'answer-draw', show: [P(33), P(40)], keys: [[P(33), 0.5], [P(33) + 2.8, 3.3]] }, // Shift a copy on P38.6; held before the deselect (its panel would be cut)
   // Its Teacher click (1.5 s) lands on the P40 cut into the split; the CLOSE shows it from P45.
   layer: { id: 'answer-layer', show: [P(45), Infinity], keys: [[P(40), 1.5], [P(40) + 4.3, 5.8]] },
 };
@@ -57,17 +57,23 @@ const SHOTS = {
     { at: -P(2), size: 'close', ...G.DRAW_CLOSE, move: { at: P(5), dur: P(7), to: { zoom: 2.52 } } }, // a slow push about the origin, P3..P10
     { at: P(10), size: 'narrow', ...G.DRAW_NARROW, drift: 0.03, end: P(13) },
   ],
-  shade: [{ at: P(18), size: 'medium', focus: G.TOP, move: { at: P(5.8), dur: P(2), to: { size: 'close', ...G.SHADE_CLOSE } }, end: P(27) }],
+  shade: [{ at: P(18), size: 'medium', focus: G.TOP, move: { at: P(5.3), dur: P(3.6), to: { size: 'close', ...G.SHADE_CLOSE } }, end: P(27) }],
   answer: [{ at: P(33), size: 'medium', focus: G.TOP, move: { at: P(3), dur: P(2), to: { ...G.ANSWER_IN } }, end: P(40) }],
   layer: [{ at: P(45), size: 'close', ...G.LAYER_CLOSE, drift: 0.03, end: P(50) }],
 };
-/** An extra content drift on a MEDIUM card whose shot spends its one move on the push: [from, to, peak, back?]. */
+/** An extra content drift on a MEDIUM card whose shot spends its one move on the push: k(t), about card point o (fractions). */
 const EXTRA = {
   // up while the headline is read, back to 0 under the push (the CLOSE pose is the CS lift's
   // start), then a second drift through the CLOSE hold
-  shade: (t) => 1 + 0.02 * (sineInOut(prog(t, P(19), P(23.8))) - inOutSoft(prog(t, P(23.8), P(25.8)))) + 0.015 * sineInOut(prog(t, P(25.8), P(27.6))),
-  answer: (t) => 1 + 0.025 * sineInOut(prog(t, P(33), P(40))),
+  shade: { o: [0.5, 0.5], k: (t) => 1 + 0.02 * (sineInOut(prog(t, P(19.9), P(23.3))) - inOutSoft(prog(t, P(23.3), P(26.9)))) + 0.015 * sineInOut(prog(t, P(26.9), P(27.6))) },
+  // about the card's right-bottom corner: the inspector's edge and the Follows box stay whole
+  answer: { o: [1, 1], k: (t) => 1 + 0.015 * sineInOut(prog(t, P(33), P(40))) },
 };
+/** A rig's live pose with its EXTRA content drift applied (what the footage shows at t). */
+function livePose(rig, x, t) {
+  const r = rig.state.frame.rect;
+  return about(rig.state.frame.pose, x.k(t), [r.x + r.w * x.o[0], r.y + r.h * x.o[1]]);
+}
 /** Pose P scaled by k about design point O (the content drift above, about the card centre). */
 const about = (Pz, k, O) => ({ a: [O[0] + k * (Pz.a[0] - O[0]), O[1] + k * (Pz.a[1] - O[1])], c: Pz.c, s: Pz.s * k });
 
@@ -87,9 +93,9 @@ function sdPose(t) {
   return t < P(17.5) ? T1d : lerpPose(T1d, SHADE_A, inOutSoft(prog(t, P(17.5), P(19))));
 }
 function csPose(t) {
-  const B = about(SHADE_B, EXTRA.shade(Math.min(t, P(27))), [960, 540]);
+  const B = about(SHADE_B, EXTRA.shade.k(Math.min(t, P(27))), [960, 540]);
   if (t < P(27)) return B;
-  return scalePose(lerpPose(B, T2, inOutSoft(prog(t, P(27), P(28.5)))), 1 + 0.025 * sineInOut(prog(t, P(28.5), P(30))));
+  return scalePose(lerpPose(B, T2, inOutSoft(prog(t, P(27), P(28.8)))), 1 + 0.025 * sineInOut(prog(t, P(28.8), P(30))));
 }
 
 const scene = {
@@ -117,6 +123,7 @@ const scene = {
       });
     }
     ctx.problems = Object.entries(SHOTS).flatMap(([k, list]) => ctx.rigs[k].shots(list));
+    ctx.veil = h('div', { style: { position: 'absolute', left: '1390px', top: 0, width: '530px', height: '1080px', background: C.cream } }, ctx.el);
     ctx.sd = sdInk(ctx.el);
     ctx.cs = csInk(ctx.el);
     const tp = await ctx.load.clip('template-picker', { x: 0, y: 0, w: 1, h: 1 }, ctx.el);
@@ -141,31 +148,33 @@ const scene = {
       rig.clip.at(clipT(c, t));
       const x = EXTRA[k];
       if (x) {
-        const kx = x(t);
-        const r = rig.state.frame.rect, cx = r.w / 2, cy = r.h / 2;
+        const kx = x.k(t);
+        const r = rig.state.frame.rect, cx = r.w * x.o[0], cy = r.h * x.o[1];
         rig.content.style.transform = `translate(${f(cx, 2)}px, ${f(cy, 2)}px) scale(${f(kx, 5)}) translate(${f(-cx, 2)}px, ${f(-cy, 2)}px) ${rig.content.style.transform}`;
       }
     }
-    // The page opens out of the chapter's corner as its x axis draws (P0..P3), right of x 1372
-    // once the retracting axis has cleared Quantity (P4.7), then the margins (P5.2..P6.2).
+    // The page opens out of the chapter's corner as its x axis draws (P0.5..P4.3), right of x 1390
+    // as the retracting axis clears Quantity (a fade, so no word is cut), then the margins.
     const ax = lerp(96, 1824, outSoft(prog(t, 0, P(2))));
-    const e1 = prog(t, P(0.5), P(4.3)), em = inOutSoft(prog(t, P(5.2), P(6.2))), e2 = inOutSoft(prog(t, P(4.3), P(5.3)));
-    const x0 = lerp(96, 0, em), x1 = Math.min(ax, 1372), xr = lerp(1920, 1372, e2); // the right part wipes in from the edge
+    const e1 = prog(t, P(0.5), P(4.3)), em = inOutSoft(prog(t, P(4), P(5))), e2 = inOutSoft(prog(t, P(4.4), P(5.4)));
+    const x0 = lerp(96, 0, em), x1 = e2 > 0 ? 1920 : Math.min(ax, 1390);
     const y0 = lerp(1008, 0, e1), y1 = lerp(1008, 1080, em);
     const dr = ctx.rigs.draw.el.style;
     const rect = (a, b) => `M${f(a, 2)} ${f(y0, 2)}H${f(b, 2)}V${f(y1, 2)}H${f(a, 2)}Z`;
-    dr.clipPath = e2 >= 1 && em >= 1 && e1 >= 1 ? 'none' : `path('${rect(x0, x1)}${rect(xr, 1920)}')`;
+    dr.clipPath = em >= 1 && e1 >= 1 ? 'none' : `path('${rect(x0, x1)}')`;
+    ctx.veil.style.display = e2 < 1 ? 'block' : 'none';
+    ctx.veil.style.opacity = f(1 - e2, 4);
     dr.opacity = String(1 - outSoft(prog(t, P(11.95), P(13)))); // the window falls away
-    ctx.rigs.shade.el.style.opacity = String(inOutSoft(prog(t, P(18.1), P(18.9))));
+    ctx.rigs.shade.el.style.opacity = String(inOutSoft(prog(t, P(18.9), P(19.6)))); // once the vector has landed
 
     // Re-ink 1: supply and demand.
-    const sdOn = t >= P(11) && t < P(19.4);
+    const sdOn = t >= P(11) && t < P(19.95);
     ctx.sd.el.style.display = sdOn ? 'block' : 'none';
     if (sdOn) {
       const lift = inOutSoft(prog(t, P(13), P(15))), land = inOutSoft(prog(t, P(17.5), P(19)));
       ctx.sd.el.style.clipPath = t > P(17.5) ? 'inset(0 0 72px 0)' : 'none';
       ctx.sd.set(t < P(13) ? ctx.rigs.draw.state.frame.pose : sdPose(t), {
-        m: land, ink: land, hue: inOutSoft(prog(t, P(12.2), P(13.2))), o: 1 - outSoft(prog(t, P(18.95), P(19.4))),
+        m: land, ink: land, hue: inOutSoft(prog(t, P(12.2), P(13.2))), o: 1 - outSoft(prog(t, P(19.5), P(19.95))),
         w: t < P(17.5) ? lerp(1.45, 1.15, lift) : lerp(1.15, 1, land),
         pen: {
           y: outSoft(prog(t, P(11), P(11.55))), x: outSoft(prog(t, P(11.1), P(11.65))),
@@ -179,11 +188,11 @@ const scene = {
     }
 
     // Re-ink 2: the consumer-surplus triangle.
-    const csOn = t >= P(25.8) && t < P(30);
+    const csOn = t >= P(26) && t < P(30);
     ctx.cs.el.style.display = csOn ? 'block' : 'none';
     if (csOn) {
-      ctx.cs.set(csPose(t), {
-        o: 1, trace: prog(t, P(25.8), P(26.6)), ink: prog(t, P(27), P(27.6)), lines: t >= P(27) ? 1 : 0,
+      ctx.cs.set(t < P(27) ? livePose(ctx.rigs.shade, EXTRA.shade, t) : csPose(t), {
+        o: 1, trace: prog(t, P(26), P(26.8)), ink: prog(t, P(27), P(27.6)), lines: t >= P(27) ? 1 : 0,
         hatch: prog(t, P(27.3), P(28.9)), label: outSoft(prog(t, P(28.4), P(29.2))),
       });
     }
