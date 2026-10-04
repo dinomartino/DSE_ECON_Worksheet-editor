@@ -10,6 +10,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
   question bank, Marking scheme view and layouts, Translation terms, 中文 interface, Graphs
   圖表庫, diagram answer layer, the Econ Studio rename. Next work goes on `develop` as usual.
+  Website shots: `node scripts/demo.mjs --shots` → 14 WebP at 1920 in `demo-media/screenshots/`.
 - **2026-10-03: every known gap fixed** (user's ask) on `fix/gaps-*` branches, all merged. Schema
   rule now "bump only when used": `writtenSchemaVersion` writes 2 for diagram `answer`,
   `answerKeyLayout`, section `answerCount`, essay answer/scheme, `importQuota` derive; else 1.
@@ -59,6 +60,10 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Never checked:** a real import of our exports into the four other apps; the desktop feedback
   opener; real Word/PMingLiU (LibreOffice + a Ming face agree); the desktop `pack.json` in Tauri.
 - Diagrams: template arrows (not Shift-a-copy) stay fixed; `curvePath` assumes the 3:4 plot.
+- Minimum-wage template: the default "surplus (unemployment)" label touches the S curve (the site
+  shots offset it in `scripts/demo/content.mjs`; the template itself is unfixed).
+- Flaky: `src/registry/mcqRationale.test.ts` "letters rationale per version" (fixed seed, random ids;
+  all three versions sometimes share a key). Seen once 2026-10-04.
 - Bank: ✦ Fill writes from another tab can still lose to an open editor's autosave.
 - Pagination now follows Word, so existing worksheets break differently on screen and in PDF.
 - Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
