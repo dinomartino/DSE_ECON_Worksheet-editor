@@ -63,7 +63,7 @@ const PC = (n0, ns) => ns.map((n) => pulse(n0 + n)); // pulses counted from an a
 const ACTS = [
   { id: 'open', bars: [0, 1.5], in: { type: 'cut' } },
   { id: 'mark', bars: [1.5, 3], in: { type: 'match' }, // the straightened line becomes the axis
-    holds: [[pulse(14.5), pulse(23.5)]] }, // alive: tagline, dot, ripple, 6 % push, track-out (thin strokes read as still)
+    alive: [[bar(1.5), bar(3)]] }, // the push on the dot (constant speed), the dot swelling into the iris
   { id: 'write', bars: [3, 8], in: { type: 'iris', pulses: 4, at: [960, 338] }, // at: the mark's dot (scenes/mark.js MARK_DOT)
     // → type CLOSE (its double-click on the cut); → MEDIUM; → language CLOSE (EN on the cut);
     // → the printed Q1s; → Settings CLOSE; → WIDE on 完成 (scenes/write/geom.js BEAT)
@@ -100,7 +100,7 @@ const ACTS = [
   { id: 'everywhere', bars: [24, 26], in: { type: 'cut' },
     cuts: [pulse(195), pulse(200)] }, // → the real .docx page; → the three windows (the Export… click is on the act's cut)
   { id: 'end', bars: [26, END_BAR], in: { type: 'axis', pulses: 4 },
-    holds: [[pulse(208), pulse(219.5)], [pulse(224), AUDIBLE_END], [AUDIBLE_END, bar(END_BAR)]] }, // statement read; lockup drift; final still
+    alive: [[bar(26), bar(END_BAR)]] }, // the statement's push, the fold, the lockup's drift to the last frame
 ];
 
 export const SCENES = ACTS.map((a, i) => ({

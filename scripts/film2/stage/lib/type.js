@@ -32,7 +32,7 @@ export const LABEL = Object.freeze({
 export const END_CARD = Object.freeze({
   cx: 960, top: 158, size: 360, en: 110, zh: 46, zhTracking: 0.3,
   tagline: Object.freeze({ gap: 60, face: 'sans', weight: 500, size: 38, zhSize: 26, zhGap: 8, zhColor: C.inkMuted, maxLines: 1, w: 1400 }),
-  push: [1.0, 1.045], // a slow scale over the hold (sineInOut) that is still moving on the last frame
+  push: [1.0, 1.13], // constant-speed drift about the dot to the last frame (comment only; end.js owns it)
 });
 /**
  * The display number of a re-ink lift ("Total: 7 marks", the papers act): Newsreader 160,
