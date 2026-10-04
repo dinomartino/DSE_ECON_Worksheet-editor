@@ -5,9 +5,11 @@
 // grows out of that line around it; the rest of the splash runs on its own clock.
 // Beats (scene pulses, P0 = bar 1.5 = 7.13 s):
 //   P0..P1.4  the tile grows out of the axis      P0.75..P2.75 the mark glides up from the centre
-//   P2        "Econ Studio 經濟備課室" rises         P3.5       the tagline
-//   P5        knock + dot (the pop), the ripple    P3.5..end  one slow push (1 → 1.06) on the dot
-//   P10..P11.5 the words track out, leaving the tile for the iris that opens out of the dot
+//   P2        "Econ Studio 經濟備課室" rises         P2.5       the tagline (read 2.4 s)
+//   P5        knock + dot (the pop), the ripple    P1.5..end  one push (1 → PUSH) on the dot at
+//                                                             constant speed: alive on every frame
+//   P7..P10.5 the dot swells (1 → DOT_SWELL) inside its knock: the iris (engine, from P10) grows
+//             out of it, one object      P10..P11.5 the words track out, leaving the tile
 // The next act's iris opens out of the dot: timeline.mjs write.in.at must equal MARK_DOT.
 import { lockup, block, h, s, place, show, tween, ease, f, C } from '../lib/index.js';
 
@@ -24,6 +26,17 @@ const GROW = 0.62; // s: the tile grows out of the axis (the splash's own tile p
 // The dot's pop reads ~3 frames after its first frame: run the splash that much early so the
 // dot is visible on the pop sound (cue mark.dot, sync review #7).
 const LEAD = 0.05;
+const PUSH = 1.08;
+const DOT_SWELL = 1.4; // r 30 → 42 tile units, inside the knock (r 46)
+
+/**
+ * 0..1 through [t0, t1]: accelerates over `r` s, then constant speed, so a slow push or drift
+ * moves visibly on every frame (sineInOut crawls for a second at each end and reads as frozen).
+ */
+export function ramp(t, t0, t1, r) {
+  const x = t <= t0 ? 0 : t < t0 + r ? (t - t0) ** 2 / (2 * r) : r / 2 + (t - t0 - r);
+  return Math.min(1, x / (t1 - t0 - r / 2));
+}
 
 const scene = {
   setup(ctx) {
@@ -65,10 +78,13 @@ const scene = {
     ctx.lock.wordAt(word);
     show(ctx.lock.word.el, word * (1 - out));
     ctx.lock.word.el.style.transform = `translateY(${f((1 - word) * 6 * ctx.lock.k - 16 * out, 2)}px)`;
-    ctx.tag.show(t, { at: P(3.5), dur: 0.8, stagger: 0.12, out: P(11.5), outDur: P(1.5) });
-    // The mark glides up from the centre as the words arrive; one slow push towards the dot
-    // keeps the lockup alive until the iris takes it.
-    const push = 1 + 0.06 * ease.sineInOut(ease.prog(t, P(3.5), ctx.window.end - ctx.from));
+    ctx.tag.show(t, { at: P(2.5), dur: 0.8, stagger: 0.12, out: P(11.5), outDur: P(1.5) });
+    // The dot swells into the iris (after the splash has posed it at full size).
+    const swell = ramp(t, P(7), P(10.5), P(1));
+    if (swell > 0) ctx.lock.mark.parts.dot.setAttribute('transform', `translate(256 256) scale(${f(ease.lerp(1, DOT_SWELL, swell), 5)}) translate(-256 -256)`);
+    // The mark glides up from the centre as the words arrive; one push towards the dot, at
+    // constant speed, keeps the lockup alive until the iris takes it.
+    const push = ease.lerp(1, PUSH, ramp(t, P(1.5), ctx.window.end - ctx.from, P(1.5)));
     place(ctx.group, { y: tween(t, P(0.75), P(2), DROP, 0, ease.inOutSoft), scale: push });
   },
 };

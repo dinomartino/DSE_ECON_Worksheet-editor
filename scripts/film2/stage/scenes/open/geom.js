@@ -22,27 +22,27 @@ export const SNAP_END = [404, 516]; // …and snapped onto the demand line's end
 export const KINKS = [[0.34, 22], [0.66, -11]];
 export const LINE_W = 3.6; // page px
 
-// The toolbar (page px): four generic tools, line and text box used.
-export const TOOLBAR = { x: 222, y: 184, w: 208, h: 46 };
-export const TOOL = (i) => [TOOLBAR.x + 32 + i * 48, TOOLBAR.y + TOOLBAR.h / 2];
-export const LINE_TOOL = 0, TEXT_TOOL = 2;
-
 // The text box: placed by the line's end, then it jumps into the text below.
-export const BOX = { w: 56, h: 52, home: [328, 232], jump: [14, 556] };
+export const BOX = { w: 56, h: 52, home: [328, 232], jump: [24, 556] };
 export const FLOW_Y = 588; // question 2's first line, pushed down by REFLOW
 export const REFLOW = 58;
 
 // The camera: the sheet's pose { k (frame px per page px), at: the frame point where the
 // anchor page point sits }. A: an extreme close-up on the drag, full-bleed (the sheet's edge
-// is off the frame); B: the sheet slides right so its left edge stands at x ≈ 940 and the
-// statement takes the cream; C: the pull-back, the whole sheet in C2's object slot.
+// is off the frame); B: the sheet slides right so its left edge stands on C2's object edge
+// (x 1008) and the statement takes the cream; the diagram centred on y 540, question 1's first
+// line just above the slot's top (y 96); B2: the slow push under the struggle (about ANCHOR,
+// the Q label stays left of x 1824); C: the pull-back, the whole sheet in C2's object slot.
+// The sheet is seen through VIEW (scenes/open.js): C2's object rect, bleeding off the bottom.
 export const ANCHOR = [244, 414];
 export const CAM = {
-  A: { k: 3.9, at: [960, 470] },
-  B: { k: 2.16, at: [940 + 244 * 2.16, (414 - 152) * 2.16] },
-  B2: { k: 2.25 },
-  C: { k: 0.9, at: [1101 + 244 * 0.9, 93.5 + 414 * 0.9] },
+  A: { k: 3.9, at: [940, 470] },
+  B: { k: 1.75, at: [1008 + 244 * 1.75, -178 + 414 * 1.75] },
+  B2: { k: 1.88 },
+  C: { k: 0.9, at: [1101 + 244 * 0.9, 96 + 414 * 0.9] },
 };
+/** C2's object slot (lib/layout.js C2.object), open at the bottom: the sheet's window from P0.5. */
+export const VIEW = { x: 1008, y: 96, r: 1824, b: 1e4 };
 
 // The hand-off (scenes/mark.js at its start): the mark tile, SIZE px, starts centred in
 // the frame; its first drawn stroke is the axis V 'M118 394V106' of the 512-unit tile,
