@@ -1,15 +1,19 @@
 // Re-ink lifts (FILM.md §7 "Re-ink"): after a footage proof, the proven element leaves the
 // screen as vector art at frame scale. Builders run at setup; every `at`/update is a pure
 // function of t (attributes only, no state). Sound the lift with a pencil event.
-//   lift(t, from, to, { at, dur })    the pose that carries a traced element from its footage
-//                                     rect (design px) to frame scale (fitRect: ≤ 1400 px wide)
+//   lift(t, from, to, { at, dur, carry }) the pose that carries a traced element from where it
+//                                     sits (design rect, screen rect, element or { cam, rect })
+//                                     to frame scale (fitRect: ≤ 1400 px wide); carry: the
+//                                     source card rides along and fades over 1.5 pulses
+//   screenRect(r)                     any of those rect forms → a design rect
 //   stroke(path, t, { at, dur })      animated stroke draw (dash offset, round caps hidden at 0)
 //   hatch(svg, { points, gap })       45° hatch fill of a polygon, revealed line by line
 //   roll(t, { from, to, at, dur })    a number rolling to its total ('7', '7.5'), for marks
 //   bars(svg, { x, y, w, h, values }) a bar chart growing from its baseline (coverage bars)
 //   wavyPath(x, y, w) / wavy(svg, …)  the Check terms dotted-wave underline, drawn on
 import { s } from './dom.js';
-import { clamp, lerp, prog, outSoft, inOutSoft } from './ease.js';
+import { clamp, lerp, prog, outSoft, sineInOut } from './ease.js';
+import { PULSE } from '../../timeline.mjs';
 import { f } from './tween.js';
 
 /** Eased progress through [at, at + dur]. */
@@ -24,15 +28,61 @@ export function fitRect(r, { box = { x: 96, y: 72, w: 1728, h: 936 }, maxW = 140
 }
 
 /**
- * The lift: a transform pose { x, y, scale } that, applied to an element drawn at `from`'s
- * geometry (origin 0 0 = from.x, from.y), carries it to `to` over [at, at + dur] on inOutSoft.
- * CSS: `translate(x, y) scale(scale)` with transform-origin 0 0 on a layer at (0, 0).
+ * A lift's start rect in design px, from any of: a design rect { x, y, w, h }; a screen rect
+ * (a DOMRect, or { left, top, width, height } in viewport px, e.g. el.getBoundingClientRect());
+ * an element (its bounding box now); or { cam, rect } (a rect in a camera's source CSS px,
+ * through cam.toScreen at its current pose: call cam.update(t) first).
  */
-export function lift(t, from, to, { at = 0, dur = 0.89, ease = inOutSoft } = {}) {
+export function screenRect(r) {
+  if (r == null) throw new Error('reink.screenRect: no rect');
+  if (r.cam) {
+    const [x0, y0] = r.cam.toScreen([r.rect.x, r.rect.y]);
+    const [x1, y1] = r.cam.toScreen([r.rect.x + r.rect.w, r.rect.y + r.rect.h]);
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+  if (typeof r.getBoundingClientRect === 'function') r = r.getBoundingClientRect();
+  if (r.x != null && r.w != null) return r;
+  // Viewport px → design px: the stage root (#film) is 1920 wide, scaled to the viewport.
+  const st = document.getElementById('film')?.getBoundingClientRect() ?? { left: 0, top: 0, width: 1920 };
+  const k = st.width / 1920;
+  return { x: (r.left - st.left) / k, y: (r.top - st.top) / k, w: r.width / k, h: r.height / k };
+}
+
+/**
+ * The lift: a transform pose { x, y, scale } that, applied to an element drawn at `from`'s
+ * geometry (origin 0 0 = from.x, from.y), carries it to `to` over [at, at + dur]. The rect
+ * moves and grows together on outSoft (fast off the page, settling at frame scale); `rect` is
+ * the element's current design rect. CSS: `translate(x, y) scale(scale)` with
+ * transform-origin 0 0 on a layer at (0, 0). `from` takes anything screenRect() does, so a
+ * lift starts where the element really sits on screen.
+ *   carry: true | { fade }  the source card rides along: `carry.css` is the same transform for
+ *          the card's layer (origin 0 0 at design 0, 0, e.g. cam.el); `carry.opacity` fades it
+ *          1 → 0 over `fade` s (default 1.5 pulses) from `at`; carry.apply(el) sets both, so
+ *          the element never sits at source size on bare cream.
+ * (Before round 3: inOutSoft on a log scale, which held the element at source size ~0.3 s.)
+ */
+export function lift(t, from0, to, { at = 0, dur = 0.89, ease = outSoft, carry = null } = {}) {
+  const from = screenRect(from0);
   const p = pr(t, at, dur, ease);
-  const k = Math.exp(lerp(0, Math.log(to.w / from.w), p));
+  const k = lerp(1, to.w / from.w, p);
   const x = lerp(from.x, to.x, p), y = lerp(from.y, to.y, p);
-  return { x: x - from.x * k, y: y - from.y * k, scale: k, p, css: `translate(${f(x - from.x * k, 2)}px, ${f(y - from.y * k, 2)}px) scale(${f(k, 5)})` };
+  const tx = x - from.x * k, ty = y - from.y * k;
+  const css = `translate(${f(tx, 2)}px, ${f(ty, 2)}px) scale(${f(k, 5)})`;
+  const out = { x: tx, y: ty, scale: k, p, css, rect: { x, y, w: from.w * k, h: from.h * k }, from };
+  if (carry) {
+    const fade = (carry === true ? null : carry.fade) ?? 1.5 * PULSE;
+    const opacity = 1 - sineInOut(prog(t, at, at + fade));
+    out.carry = {
+      css, opacity,
+      apply(el) {
+        el.style.transformOrigin = '0 0';
+        el.style.transform = t >= at ? css : 'none';
+        el.style.opacity = f(t >= at ? opacity : 1, 4);
+        el.style.visibility = t < at || opacity > 0 ? '' : 'hidden';
+      },
+    };
+  }
+  return out;
 }
 
 /** Draws the first p of `path`'s length (any SVG geometry element); hidden at 0. */

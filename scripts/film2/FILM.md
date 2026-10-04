@@ -159,7 +159,7 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   both strokes retract into the origin and the dot travels to `in.dotTo` (or rides down).
   The dot irises stay for the two biggest section changes (12.46, 72.92).
 - **Re-ink lift** (`lib/reink.js`): after a footage proof, the proven element leaves as
-  vector at frame scale: trace (1 pulse), lift to ≤ 1400 px (`lift`, inOutSoft, pencil sfx),
+  vector at frame scale: trace (1 pulse), lift to ≤ 1400 px (`lift`, outSoft from where it sits on screen; `carry` takes the source card along and fades it over 1.5 pulses; pencil sfx),
   hold while the detail draws on (`stroke`, `hatch`, `roll`, `bars`, `wavy`), then cut.
   Each lift ≤ 7 pulses.
 - `update(t)` is a pure function of t. No clocks, no randomness, no state between calls.
@@ -216,7 +216,7 @@ A sibling of `scripts/film/`, reusing its capture and tools by import; v1 keeps 
   ```
   A shot: `{ at, size: 'wide'|'medium'|'narrow'|'close', focus, safe?, zoom?, anchor?,
   move?: { to: {size, focus, safe, zoom}, at?, dur? }, drift? (≤ 0.03), dim?: { rect, on,
-  off, dur } }`. Re-ink: `reink.lift(t, fromRect, toRect, { at, dur })` → `{ css }` for a
+  off, dur } }`. Re-ink: `reink.lift(t, from, toRect, { at, dur, carry })` → `{ css, rect, carry? }` (from: design rect, screen rect, element or `{ cam, rect }`) for a
   layer; `reink.stroke(path, t, { at, dur, reverse })`; `reink.hatch(svg, { points, gap })
   .at(t, …)`; `reink.roll(t, { from, to, at, dur })` → text; `reink.bars(svg, { x, y, w, h,
   values }).at(t, …)`; `reink.wavy(svg, { x, y, w })` then `stroke`.
