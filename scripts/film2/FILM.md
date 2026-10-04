@@ -118,7 +118,7 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   - `DISPLAY`: Newsreader 160, lh 1, −0.02em, one centred line: the re-ink total ("Total: 7
     marks"); the only size above STATEMENT.
   - `END_CARD`: the act-1 lockup geometry (tile 360 at top 155, wordmark 110, zh 46 tracked
-    0.30em) + the tagline slot (Inter 500 38 / zh 26, gap 60), drifting 1.0 → 1.2 about the card's centre (960, 540) at constant speed from P15 to the last frame, with a kick on the 104.4 stab (mean MAD ≥ 0.05 over 102–106.71).
+    0.30em) + the tagline slot (Inter 500 38 / zh 26 tracked 0.08em, gap 60; act 1 and the end card share it), drifting 1.0 → 1.2 about the card's centre (960, 540) at constant speed from P15 to the last frame, with a kick on the 104.4 stab (mean MAD ≥ 0.05 over 102–106.71).
   - 中文 inside a serif line is a PingFang HK 300 span at 0.9em, no tracking, line-height 0 (it
     never grows the line box); Latin inside a
     zh line has no zh tracking. A small zh line never sits under 4.5:1 (#5A544D, never

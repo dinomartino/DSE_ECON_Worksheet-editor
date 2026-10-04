@@ -31,7 +31,7 @@ export const LABEL = Object.freeze({
 /** The end card = the act-1 lockup geometry (lib/mark.js lockup) + the tagline slot under it. */
 export const END_CARD = Object.freeze({
   cx: 960, top: 158, size: 360, en: 110, zh: 46, zhTracking: 0.3,
-  tagline: Object.freeze({ gap: 60, face: 'sans', weight: 500, size: 38, zhSize: 26, zhGap: 8, zhColor: C.inkMuted, maxLines: 1, w: 1400 }),
+  tagline: Object.freeze({ gap: 60, face: 'sans', weight: 500, size: 38, zhSize: 26, zhTracking: 0.08, zhGap: 8, zhColor: C.inkMuted, maxLines: 1, w: 1400 }), // the act-1 and end taglines both read it
   push: [1.0, 1.2], // constant-speed drift about the card centre to the last frame (comment only; end.js owns it)
 });
 /**

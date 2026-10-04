@@ -84,7 +84,7 @@ const scene = {
     ctx.free = block(ctx.group, {
       ...ctx.copy.free, x: END_CARD.cx, y: ctx.lock.bottom + tg.gap, w: tg.w, maxLines: tg.maxLines, face: tg.face, weight: tg.weight,
       // Ink-muted in en and zh, the act-1 tagline's tone (scenes/mark.js).
-      size: tg.size, tracking: 0, color: C.inkMuted, zhSize: tg.zhSize, zhTracking: 0.04, zhColor: tg.zhColor, zhGap: tg.zhGap, rise: 16,
+      size: tg.size, tracking: 0, color: C.inkMuted, zhSize: tg.zhSize, zhTracking: tg.zhTracking, zhColor: tg.zhColor, zhGap: tg.zhGap, rise: 16,
     });
 
     // Each text line's rule: through its glyphs' middle, as wide as the line, in frame px,
