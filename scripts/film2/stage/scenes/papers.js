@@ -30,7 +30,8 @@ const PANEL = [1040, 205, 400, 260]; // the panel alone, from its left border to
 const FIELD_A = [1286, 311, 46, 26], FIELD_B = [1286, 347, 46, 26];
 const PANEL_SHOT = { size: 'narrow', focus: PANEL, zoom: 2.86 };
 // teacher-toggle: question 1, its options and (after the click) "Answer: C 答案：C".
-const Q1 = [400, 315, 480, 210], Q1_SAFE = [344, 318, 420, 205];
+// The push keeps its top edge at y 200, above the red "Teacher Version / 教師版" (y 204–219).
+const Q1 = [400, 315, 480, 210], Q1_IN = [400, 291, 480, 210], Q1_SAFE = [344, 204, 420, 319];
 // key-layouts: the toolbar, the page's title and the four style cards; then the title + cards.
 const KEYS = [0, 0, 1440, 620], KEYS_IN = [200, 70, 1240, 535];
 // versions: Document setup, its nav to the dialog's edge, the Versions row (Off 2 3 4 · Reshuffle ·
@@ -43,7 +44,7 @@ const SEG = [
   { id: 'answer-lines', rig: 0, from: -P(2), to: P(5), ct: (t) => Math.max(0, t - LINES_AT) },
   { id: 'teacher-toggle', rig: 0, from: P(10), to: P(16), ct: (t) => 1.0 + (t - P(11)) },
   { id: 'key-layouts', rig: 0, from: P(16), to: P(20), ct: (t) => 1.0 + 0.6 * (t - P(16)) }, // HKEAA style 1.0–2.2
-  { id: 'versions', rig: 1, from: P(38), to: P(40), ct: (t) => 1.67 + 0.85 * (t - P(38)) }, // Versions 3; Close at 2.5
+  { id: 'versions', rig: 1, from: P(38), to: P(40), ct: (t) => 1.6667 + 0.85 * (t - P(38)) }, // Versions 3 (frame 100); Close at 2.5
 ];
 
 const T_MARKS = {
@@ -76,25 +77,31 @@ const scene = {
     { t: P(45), kind: 'paper', label: 'the fan: outer pair' },
   ],
   async setup(ctx) {
-    for (const g of SEG) ctx.placeClip(g.id, { at: g.from, from: g.ct(g.from), rate: g.id === 'key-layouts' ? 0.6 : g.id === 'versions' ? 0.85 : 1, dur: g.to - g.from });
-    if (ctx.dry) return;
-    h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
-
-    ctx.print = await prints(ctx.el, { url: (id) => ctx.load.url(id), T: T_PRINT });
+    // answer-lines holds frame 0 until LINES_AT (no clip time passes): its placement starts there.
+    for (const g of SEG) {
+      const at = g.id === 'answer-lines' ? LINES_AT : g.from;
+      ctx.placeClip(g.id, { at, from: g.ct(at), rate: g.id === 'key-layouts' ? 0.6 : g.id === 'versions' ? 0.85 : 1, dur: g.to - at });
+    }
+    // The ground and the printed pages sit under the rigs; the rigs and their shot lists exist
+    // in the dry pass too, so the doctor's shot budget sees them.
+    const base = h('div', { style: { position: 'absolute', inset: 0 } }, ctx.el);
     // Two rigs: the act's footage, and the versions dialog after the printed pages (its own
     // frame: the cut into it comes from paper, not from the MEDIUM before).
     ctx.rigs = [camera(ctx, { src: SRC, name: 'papers' }), camera(ctx, { src: SRC, name: 'papers-versions' })];
-    ctx.clips = [];
-    for (const g of SEG) ctx.clips.push(await ctx.load.clip(g.id, ctx.rigs[g.rig].box, ctx.rigs[g.rig].content));
     ctx.rigs[0].shots([
       { at: -P(2), end: P(5), size: 'narrow', focus: LINES, zoom: 0.963, move: { at: P(2), dur: P(4), to: PANEL_SHOT } },
       { at: P(10), end: P(11), size: 'wide' },
-      { at: P(11), end: P(16), size: 'close', focus: Q1, safe: Q1_SAFE, zoom: 2.45, move: { dur: P(5), to: { zoom: 2.75 } } },
+      { at: P(11), end: P(16), size: 'close', focus: Q1, safe: Q1_SAFE, zoom: 2.45, move: { dur: P(5), to: { focus: Q1_IN, zoom: 2.75 } } },
       { at: P(16), end: P(20), size: 'medium', focus: KEYS, move: { dur: P(4), to: { focus: KEYS_IN, zoom: 1.39 } } },
     ]);
     ctx.rigs[1].shots([{ at: P(38), end: P(40), size: 'medium', focus: VROW, zoom: 2.0 }]);
     // Version A, B, C fill the frame (print.js): a full-bleed CLOSE of the printed page.
     ctx.registerShots('papers-print', [{ at: P(40), end: P(43), size: 'close', to: 'close', moveAt: P(40) }]);
+    if (ctx.dry) return;
+    h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, base);
+    ctx.print = await prints(base, { url: (id) => ctx.load.url(id), T: T_PRINT });
+    ctx.clips = [];
+    for (const g of SEG) ctx.clips.push(await ctx.load.clip(g.id, ctx.rigs[g.rig].box, ctx.rigs[g.rig].content));
     const settled = frame(PANEL_SHOT, SRC);
     ctx.marks = marks(ctx.el, { fieldA: onScreen(settled, FIELD_A), fieldB: onScreen(settled, FIELD_B), T: T_MARKS });
 
