@@ -72,11 +72,12 @@ const ACTS = [
     cuts: PC(112, [5, 10, 11, 16, 20, 24, 26, 28, 30, 38, 40, 41, 42, 43]),
     holds: [[pulse(120), pulse(122)], [pulse(132), pulse(150)]] },
   { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] },
-    cuts: [pulse(168), pulse(172), pulse(182)], // the footage's topic click (P8); → bank-drag (P12); → check-terms (P22)
-    ui: [pulse(183)] }, // Check terms opens its panel
+    // → the topic page (P8); → the editor, WIDE (P12); → the drag CLOSE (P13); → the drop (P16);
+    // → the Check terms row (P22); → the underlined page (P24); → the term lift (P27); → Replace (P30)
+    cuts: PC(160, [8, 12, 13, 16, 22, 24, 27, 30]),
+    ui: [79.208] }, // bank-drag: the page makes room (frame 111, 1.85 s; the press at 0.9 s is P172)
   { id: 'everywhere', bars: [24, 26], in: { type: 'cut' },
-    cuts: [pulse(196), pulse(203)], // → the real .docx page; → the three windows
-    ui: [87.397] }, // Export… opens the dialog (the clip's click)
+    cuts: [pulse(195), pulse(200)] }, // → the real .docx page; → the three windows (the Export… click is on the act's cut)
   { id: 'end', bars: [26, END_BAR], in: { type: 'axis', pulses: 4 },
     holds: [[pulse(208), pulse(219.5)], [pulse(224), AUDIBLE_END], [AUDIBLE_END, bar(END_BAR)]] }, // statement read; lockup drift; final still
 ];
