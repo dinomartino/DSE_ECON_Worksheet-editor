@@ -58,21 +58,27 @@ A "draw the diagram" question: Student shows blank axes; Teacher at t=1.5 draws 
 
 ### answer-draw (v2)
 
-Canvas on given D and S: Draw answer (0.8), select D in the list (1.8), Shift a copy (3.0) draws D1, the shift and new equilibrium in red; Done (5.6); a click on the desk (6.4) leaves the Teacher page with the answer in red.
+Teacher copy of the tax question (answer-layer's), D, S0 and E0 drawn: Draw answer (0.8), select S0 (1.6), ↑ (2.3), by 26% (2.9, ⌘A, typed 3.1), Shift a copy (3.9) draws S1, the shift arrow and P1/Q1 in red; the arrow dragged onto the tax wedge (4.9–5.5); Done (6.4); a click on the desk (7.2) leaves the page.
 
-- Duration 8 s, 480 frames @ 60 fps, 2880×1800 (1440×900 CSS @2×)
-- Best in/out: **0.40 → 7.60 s**
-- Strip (0.60 / 3.40 / 7.00 s): `/Users/tino/Documents/Econ worksheet gen/demo-media/film-v2/assets/strips/answer-draw-3.jpg`
-- Drawing canvas, Teacher copy: Draw answer turns red; Shift a copy draws D1, the shift arrow and P1/Q1 guides in red; Done returns to the page with the answer in red.
+- Duration 8.5 s, 510 frames @ 60 fps, 2880×1800 (1440×900 CSS @2×)
+- Best in/out: **0.40 → 8.20 s**
+- Strip (0.60 / 4.30 / 8.00 s): `/Users/tino/Documents/Econ worksheet gen/demo-media/film-v2/assets/strips/answer-draw-3.jpg`
+- Drawing canvas on answer-layer's tax question (Teacher copy; D, S0, E0 already red): Draw answer, S0, ↑ 26%, Shift a copy draws S1, the shift arrow and P1/Q1 in red; the arrow is dragged along S0 to where the key's t wedge stands; Done returns to the page. End state ⊂ answer-layer's Teacher answer (missing only the t label, P1 − t and the axis arrows).
 
 | t (s) | kind | label | frame px |
 |---|---|---|---|
 | 0.80 | toggle | Draw answer | 1540, 68 |
-| 1.80 | click | select D | 2561, 548 |
-| 3.00 | click | Shift a copy | 2361, 988 |
-| 3.32 | key | deselect | 2361, 988 |
-| 5.60 | click | Done | 2790, 68 |
-| 6.40 | click | deselect | 1938, 1280 |
+| 1.60 | click | select S0 | 2561, 612 |
+| 2.30 | toggle | Shift up | 2428, 912 |
+| 2.90 | click | by % | 2635, 912 |
+| 2.92 | key | select all | 2635, 912 |
+| 3.10 | key | 2 | 2635, 912 |
+| 3.23 | key | 6 | 2635, 912 |
+| 3.90 | click | Shift a copy | 2361, 988 |
+| 4.90 | drag-start | shift arrow → t | 1035, 890 |
+| 5.52 | drag-end | shift arrow → t | 1130, 795 |
+| 6.40 | click | Done | 2790, 68 |
+| 7.20 | click | deselect | 1938, 1280 |
 
 ### shade-area (v2)
 
