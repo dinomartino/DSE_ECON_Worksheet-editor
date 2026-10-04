@@ -44,12 +44,19 @@ export const DURATION = bar(END_BAR);
 // `in` = the transition into the act, centred on its first bar line:
 //   cut | match (a cut whose two frames share a shape) | push {dir: 'left'|'up', pulses}
 //   | iris {pulses, at: [x, y] design px} | axis {pulses: 4, dotTo?: [x, y]} (the axis chapter:
-//   engine.js draws the frame's axes over B-2..B+6 pulses; its label is COPY.chapters[id])
+//   engine.js draws the frame's axes over B-2..B+4 pulses, AXIS_CHAPTER; its label is
+//   COPY.chapters[id])
 // `cuts` = the act's intended hard changes inside it (film s, on pulses: footage cuts, a
 // page swapped at once); `ui` = clicks in the real footage whose response is an instant
 // change (a dialog opens, a toggle flips: the clip's event time); `holds` = [from, to] film s
 // where a still picture is meant. tools/motion-check.mjs exempts all three; a flag elsewhere
 // is a bug.
+/**
+ * The axis chapter's marks, in pulses from the act's bar line B (FILM.md §5): the vertical wipe,
+ * the horizontal draw, the label in / out (fully visible labelIn[1]..labelOut[0] = 3 pulses,
+ * 1.33 s), both strokes retracting, the dot shrinking; nothing of it is left after `end`.
+ */
+export const AXIS_CHAPTER = Object.freeze({ wipe: [-2, 0], draw: [0, 1.5], labelIn: [0.25, 0.5], labelOut: [3.5, 4], back: [2.5, 4], dotOut: [3.5, 4], end: 4 });
 const PC = (n0, ns) => ns.map((n) => pulse(n0 + n)); // pulses counted from an act's first pulse
 const ACTS = [
   { id: 'open', bars: [0, 1.5], in: { type: 'cut' } },

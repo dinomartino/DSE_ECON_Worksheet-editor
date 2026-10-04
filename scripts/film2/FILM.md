@@ -157,9 +157,11 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   ≤ 35 % of the film in MEDIUM demo-card frames, ≥ 25 % in CLOSE (the doctor measures it).
 - **Axis chapter** (engine.js, `in: { type: 'axis', pulses: 4 }`): the act changes at 30.25,
   51.58 and 94.26. In pulses from the bar line B: B−2…B0 a 4 px ink stroke wipes 1920 → 96
-  (the new act right of it), the 12 px blue dot on its top; B0…B+2 the horizontal axis draws
-  along y 1008; B+1…B+4 the chapter LABEL (`COPY.chapters`) sits on it at x 120; B+4…B+6
-  both strokes retract into the origin and the dot travels to `in.dotTo` (or rides down).
+  (the new act right of it), the 12 px blue dot on its top; B0…B+1.5 the horizontal axis
+  draws along y 1008; the chapter LABEL (`COPY.chapters`) sits on it at x 120, in by B+0.5,
+  fully visible B+0.5…B+3.5 (3 pulses, 1.33 s), out by B+4; B+2.5…B+4 both strokes retract
+  into the origin and the dot travels to `in.dotTo` (or rides down) and shrinks away. Six
+  pulses in all, nothing left after B+4 (`AXIS_CHAPTER` in `timeline.mjs` holds the marks).
   The dot irises stay for the two biggest section changes (12.46, 72.92).
 - **Re-ink lift** (`lib/reink.js`): after a footage proof, the proven element leaves as
   vector at frame scale: trace (1 pulse), lift to ≤ 1400 px (`lift`, outSoft from where it sits on screen; `carry` takes the source card along and fades it over 1.5 pulses; pencil sfx),
