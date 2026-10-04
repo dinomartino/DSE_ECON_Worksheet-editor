@@ -1,25 +1,31 @@
 // Act 3, draw (FILM.md §3, the hero): from blank axes to the model answer in red. Scene pulses
-// P(n) (the act starts on bar 8, so every P(n) is on the grid). The axis chapter owns P-2..P6.
+// P(n) (the act starts on bar 8, so every P(n) is on the grid). The axis chapter owns P-2..P4.
 //   P-2..P10  CLOSE, full-bleed: the canvas's origin is pinned to the chapter's own axes (x 96,
-//             y 1008); the page opens out of that corner as the x axis draws (P0.5..P5.4), the
-//             chapter's strokes retract onto the canvas's own axes (P4..P6); D and S are dragged
-//             in under a slow push about the origin; E0 placed (P10.66)
-//   P10..P13  cut to C1 narrow, "Draw it in seconds"
+//             y 1008); the page opens out of that corner as the x axis draws (P0.5..P2.5), the
+//             margins and the Quantity side open as the chapter's strokes retract (P2.5..P3.8);
+//             D is dragged in from P2, S from P6.5 (the clip at ×0.96) under a push about the
+//             origin (from P1, still moving at the cut); the Point tool's click is the cut
+//   P10..P13  C1 narrow, "Draw it in seconds"; E0 placed on P11
 //   P11..P19.9 re-ink: a blue pen traces the lines, the window falls away, the diagram lifts to
 //             frame scale in ink, arrowheads, the blue dot, the guides and labels draw on; it lands
 //             exactly on the shade canvas's lines (P17.5..P19) and the footage returns under it
-//   P17.8..   "Shade any area in one click": MEDIUM, Shade ▾ → Consumer surplus lands on P23;
-//             push to CLOSE on the hatch (P23.3..P26.9); the pen traces the CS triangle
-//   P27..P30  re-ink lift: the CS triangle at frame scale on cream, its hatch re-drawn in blue
-//   P30..P33  the Templates wall: twelve real template cards dealt full frame
-//   P33..P40  "The answer, on the same axes": MEDIUM answer-draw, Draw answer, Shift a copy → D1
-//   P40..P45  Student | Teacher split (the clip's Teacher click sounds on the cut); the red answer
-//             draws on Teacher from P42 (48.91 s)
-//   P45..P48  CLOSE on the real Teacher copy, the red answer held; the papers chapter wipes in
+//   P17.8..   "Shade any area in one click": MEDIUM, Shade ▾ opens (P22.2)
+//   P24..P28  the Consumer surplus click is the cut to CLOSE: the hatch lands; the pen traces the
+//             triangle; it lifts from where it sits (P25, the card carried and fading) to frame
+//             scale on cream, its hatch re-drawn in blue, "CS" set in
+//   P28..P32  the Templates wall: twelve real template cards dealt full frame, held ≥ 1 s
+//   P32..P40  "The answer, on the same axes": MEDIUM on the tax question's Teacher canvas. The
+//             Draw answer click is the cut; S0 selected, Shift up by 26 %, Shift a copy (P37) draws
+//             S1, the shift arrow, P1 and Q1 in red; the arrow dragged onto the tax wedge
+//   P40..P44  Student | Teacher split (the clip's Teacher click sounds on the cut): Student keeps
+//             its blank axes; on Teacher the same answer draws on in red, S1 sliding up from S0 by
+//             t, then E1, P1 and P1 − t, Q1 left of Q0
+//   P44..P48  CLOSE on the real Teacher copy (answer-layer), that answer held; the papers chapter
+//             wipes in from P46
 import { h, C } from '../lib/dom.js';
 import { block, HEADLINE } from '../lib/type.js';
 import { camera, frame } from '../lib/camera.js';
-import { clamp, lerp, prog, outSoft, inOutSoft, spring, sineInOut } from '../lib/ease.js';
+import { lerp, prog, outSoft, inOutSoft, spring, sineInOut } from '../lib/ease.js';
 import { f } from '../lib/tween.js';
 import { PULSE } from '../../timeline.mjs';
 import * as G from './draw/geom.js';
@@ -27,24 +33,25 @@ import { sdInk, csInk } from './draw/reink.js';
 import { split } from './draw/split.js';
 import { wall } from './draw/wall.js';
 import { lerpPose, scalePose } from './draw/vec.js';
+import * as reink from '../lib/reink.js';
 
 const P = (n) => n * PULSE;
 
 // Footage: clip time follows `keys` [[scene s, clip s], …] (linear between, held at both ends);
 // the rig shows in [show). Each key segment is one placement (its clicks and keys sound).
-const D5 = P(5); // draw-diagram's D drag starts on P5
+// draw-diagram: D's drag (clip 1.0) starts on P2 and the Point tool's click (4.40) lands on the
+// P10 cut (×0.956, the drags read at their own speed); E0 (4.85) on P11; held from 5.25.
+const DR = 3.4 / P(8);
+// answer-draw: the Draw answer click (0.8) is the P32 cut; ×1.4 through S0, Shift up, 26 % and
+// Shift a copy (3.9) on P37; ×2 while the cursor walks to the arrow; its drag (4.9–5.52) at ×1.0.
+const AS = P(37);
 const CLIPS = {
-  draw: { id: 'draw-diagram', show: [-Infinity, P(13)], keys: [
-    [D5 - 0.8, 0], [D5 + 0.496, 1.62], // ×1.25: the Curve click, D dragged in
-    [D5 + 1.369, 2.93], // ×1.5 through the label and the walk back to the toolbar
-    [D5 + 1.865, 3.55], // ×1.25: S dragged in (P8.1)
-    [D5 + 2.515, 4.85], // ×2 while the cursor is off the canvas (label, Point tool): E0 placed on P10.66
-    [D5 + 2.835, 5.25],
-  ] },
-  shade: { id: 'shade-area', show: [P(18), P(27)], keys: [[P(23) - 1.6, 0], [P(23) + 1.1, 2.7]] }, // Consumer surplus on P23
-  answer: { id: 'answer-draw', show: [P(33), P(40)], keys: [[P(33), 0.5], [P(33) + 2.8, 3.3]] }, // Shift a copy on P38.6; held before the deselect (its panel would be cut)
-  // Its Teacher click (1.5 s) lands on the P40 cut into the split; the CLOSE shows it from P45.
-  layer: { id: 'answer-layer', show: [P(45), Infinity], keys: [[P(40), 1.5], [P(40) + 4.3, 5.8]] },
+  draw: { id: 'draw-diagram', show: [-Infinity, P(13)], keys: [[P(2) - 1.0 / DR, 0], [P(10), 4.4], [P(10) + 0.85, 5.25]] },
+  // Shade ▾ (0.8) on P22.2, Consumer surplus (1.6) on the P24 cut; carried until the lift fades it.
+  shade: { id: 'shade-area', show: [P(18), P(27)], keys: [[P(19), 0], [P(24) - 0.8, 0.8], [P(24) + 1.1, 2.7]] },
+  answer: { id: 'answer-draw', show: [P(32), P(40)], keys: [[P(32), 0.8], [AS, 3.9], [AS + 0.5, 4.9], [AS + 1.12, 5.52], [P(40), 5.52 + P(40) - AS - 1.12]] },
+  // Its Teacher click (1.5 s) lands on the P40 cut into the split; the CLOSE shows it from P44.
+  layer: { id: 'answer-layer', show: [P(44), Infinity], keys: [[P(40), 1.5], [P(40) + 4.3, 5.8]] },
 };
 function clipT(c, t) {
   const k = c.keys;
@@ -56,60 +63,60 @@ function clipT(c, t) {
 
 const SHOTS = {
   draw: [
-    { at: -P(2), size: 'close', ...G.DRAW_CLOSE, move: { at: P(5), dur: P(7), to: { zoom: 2.52 } } }, // a slow push about the origin, P3..P10
+    { at: -P(2), size: 'close', ...G.DRAW_CLOSE, move: { at: P(3), dur: P(11), to: { zoom: 2.62 } } }, // a push about the origin from P1, still moving at the P10 cut
     { at: P(10), size: 'narrow', ...G.DRAW_NARROW, drift: 0.03, end: P(13) },
   ],
-  shade: [{ at: P(18), size: 'medium', focus: G.TOP, move: { at: P(5.3), dur: P(3.6), to: { size: 'close', ...G.SHADE_CLOSE } }, end: P(27) }],
-  answer: [{ at: P(33), size: 'medium', focus: G.TOP, move: { at: P(3), dur: P(2), to: { ...G.ANSWER_IN } }, end: P(40) }],
-  layer: [{ at: P(45), size: 'close', ...G.LAYER_CLOSE, drift: 0.03, end: P(50) }],
+  // The Consumer surplus click is the cut to CLOSE (no push: round 2's push peaked at MAD 6.6).
+  shade: [
+    { at: P(18), size: 'medium', focus: G.TOP, drift: 0.03 },
+    { at: P(24), size: 'close', ...G.SHADE_CLOSE, drift: 0.02, end: P(25) },
+  ],
+  // A slow tilt down from the toolbar (the Draw answer click) to the whole diagram from P33, still
+  // travelling as S1 lands (P37), as the arrow is dragged and at the cut (it would end at P40.5).
+  answer: [{ at: P(32), size: 'medium', focus: G.TOP, move: { at: P(1), dur: P(7.5), to: { focus: G.ANSWER_DOWN } }, end: P(40) }],
+  layer: [{ at: P(44), size: 'close', ...G.LAYER_CLOSE, drift: 0.03, end: P(50) }],
 };
-/** An extra content drift on a MEDIUM card whose shot spends its one move on the push: k(t), about card point o (fractions). */
-const EXTRA = {
-  // up while the headline is read, back to 0 under the push (the CLOSE pose is the CS lift's
-  // start), then a second drift through the CLOSE hold
-  shade: { o: [0.5, 0.5], k: (t) => 1 + 0.02 * (sineInOut(prog(t, P(19.9), P(23.3))) - inOutSoft(prog(t, P(23.3), P(26.9)))) + 0.015 * sineInOut(prog(t, P(26.9), P(27.6))) },
-  // about the card's right-bottom corner: the inspector's edge and the Follows box stay whole
-  answer: { o: [1, 1], k: (t) => 1 + 0.015 * sineInOut(prog(t, P(33), P(40))) },
-};
-/** A rig's live pose with its EXTRA content drift applied (what the footage shows at t). */
-function livePose(rig, x, t) {
-  const r = rig.state.frame.rect;
-  return about(rig.state.frame.pose, x.k(t), [r.x + r.w * x.o[0], r.y + r.h * x.o[1]]);
-}
-/** Pose P scaled by k about design point O (the content drift above, about the card centre). */
-const about = (Pz, k, O) => ({ a: [O[0] + k * (Pz.a[0] - O[0]), O[1] + k * (Pz.a[1] - O[1])], c: Pz.c, s: Pz.s * k });
 
 // Re-ink poses (design px ← CSS px).
 const NARROW = scalePose(frame({ size: 'narrow', ...G.DRAW_NARROW }).pose, 1.03); // at the drift's end
 const SHADE_A = frame({ size: 'medium', focus: G.TOP }).pose;
-const SHADE_B = frame({ size: 'close', ...G.SHADE_CLOSE }).pose;
 const MIDC = [(G.DRAWN.o[0] + G.DRAWN.xTip) / 2, (G.DRAWN.yTip + G.DRAWN.o[1]) / 2];
 const T1 = { s: 1.56, c: MIDC, a: [860 + 1.56 * (MIDC[0] - G.DRAWN.o[0]), 990 - 1.56 * (G.DRAWN.o[1] - MIDC[1])] }; // origin at (860, 990)
+// The CS lift: from the triangle's box as it sits in the CLOSE (2.45×) to that box at 3.5×
+// centred on (860, 640) (its D edge runs on off the right of the frame). inOutSoft over 2.5
+// pulses, the card carried and gone in 1: never small on cream, and no whip (outSoft over 2
+// pulses with the hatch-dense card peaked at MAD ≈ 11; this peaks ≈ 5.5).
+const CS_BOX = (() => {
+  const xs = G.CS.map((p) => p[0]), ys = G.CS.map((p) => p[1]);
+  return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+})();
 const CSC = G.CS.reduce((a, p) => [a[0] + p[0] / 3, a[1] + p[1] / 3], [0, 0]);
-const T2 = { s: 4.0, c: CSC, a: [860, 640] }; // the triangle's box centred in the frame
+const CS_K = 3.5;
+const CS_TO = { x: 860 + CS_K * (CS_BOX.x - CSC[0]), y: 640 + CS_K * (CS_BOX.y - CSC[1]), w: CS_K * CS_BOX.w, h: CS_K * CS_BOX.h };
+const LIFT = { at: P(25), dur: P(2.5), ease: inOutSoft };
 
-function sdPose(t) {
+function sdPose(t, land) {
   if (t < P(13)) return NARROW;
   if (t < P(15)) return lerpPose(NARROW, T1, inOutSoft(prog(t, P(13), P(15))));
   const T1d = scalePose(T1, 1 + 0.03 * sineInOut(prog(t, P(15), P(17.5))));
-  return t < P(17.5) ? T1d : lerpPose(T1d, SHADE_A, inOutSoft(prog(t, P(17.5), P(19))));
+  return t < P(17.5) ? T1d : lerpPose(T1d, land, inOutSoft(prog(t, P(17.5), P(19))));
 }
-function csPose(t) {
-  const B = about(SHADE_B, EXTRA.shade.k(Math.min(t, P(27))), [960, 540]);
-  if (t < P(27)) return B;
-  return scalePose(lerpPose(B, T2, inOutSoft(prog(t, P(27), P(28.8)))), 1 + 0.025 * sineInOut(prog(t, P(28.8), P(30))));
-}
+/** Pose Pz under the lift's transform (design p → k p + [x, y]). */
+const lifted = (Pz, L) => ({ a: [L.scale * Pz.a[0] + L.x, L.scale * Pz.a[1] + L.y], c: Pz.c, s: Pz.s * L.scale });
 
 const scene = {
   events: [
     { t: P(11), kind: 'pencil', label: 'the pen traces the canvas lines' },
-    { t: P(13), kind: 'whoosh', size: 's', label: 'the diagram lifts to frame scale' },
+    // The lift and the landing move on inOutSoft (fastest at P14 and P18.25): each whoosh starts
+    // half a pulse in, so its body is on the fastest motion (round 2: 0.4 s early).
+    { t: P(13.5), kind: 'whoosh', size: 's', label: 'the diagram lifts to frame scale' },
     { t: P(14.5), kind: 'pop', label: 'the equilibrium dot' },
-    { t: P(17.5), kind: 'whoosh', size: 's', label: 'the diagram lands on the shade canvas' },
-    { t: P(27), kind: 'whoosh', size: 's', label: 'the consumer-surplus triangle lifts' },
-    { t: P(27.3), kind: 'pencil', label: 'its hatch is re-drawn' },
-    { t: P(30), kind: 'shutter', label: 'the Templates wall deals in' },
-    { t: P(42), kind: 'pencil', label: 'the red answer draws on the Teacher panel' },
+    { t: P(17.75), kind: 'whoosh', size: 's', label: 'the diagram lands on the shade canvas' },
+    { t: P(24.2), kind: 'pencil', label: 'the pen traces the consumer-surplus triangle' },
+    { t: P(25.6), kind: 'whoosh', size: 's', label: 'the triangle lifts from where it sits (on its fastest growth)' },
+    { t: P(25.3), kind: 'pencil', label: 'its hatch is re-drawn' },
+    { t: P(28), kind: 'shutter', label: 'the Templates wall deals in' },
+    { t: P(41.5), kind: 'pencil', label: 'the red answer draws on the Teacher panel' },
   ],
   async setup(ctx) {
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
@@ -148,17 +155,12 @@ const scene = {
       if (!on) continue;
       rig.update(t);
       rig.clip.at(clipT(c, t));
-      const x = EXTRA[k];
-      if (x) {
-        const kx = x.k(t);
-        const r = rig.state.frame.rect, cx = r.w * x.o[0], cy = r.h * x.o[1];
-        rig.content.style.transform = `translate(${f(cx, 2)}px, ${f(cy, 2)}px) scale(${f(kx, 5)}) translate(${f(-cx, 2)}px, ${f(-cy, 2)}px) ${rig.content.style.transform}`;
-      }
     }
-    // The page opens out of the chapter's corner as its x axis draws (P0.5..P4.3), right of x 1390
-    // as the retracting axis clears Quantity (a fade, so no word is cut), then the margins.
+    // The page opens out of the chapter's corner as its x axis draws (P0.5..P2.5); the margins
+    // open as the chapter's strokes retract onto the canvas's own axes (P2.5..P3.5); right of
+    // x 1390 it fades in once the retracting axis has cleared Quantity (≈P3.1), so no word is cut.
     const ax = lerp(96, 1824, outSoft(prog(t, 0, P(2))));
-    const e1 = prog(t, P(0.5), P(4.3)), em = inOutSoft(prog(t, P(4), P(5))), e2 = inOutSoft(prog(t, P(4.4), P(5.4)));
+    const e1 = inOutSoft(prog(t, P(0.5), P(2.5))), em = inOutSoft(prog(t, P(2.5), P(3.5))), e2 = inOutSoft(prog(t, P(3.1), P(3.8)));
     const x0 = lerp(96, 0, em), x1 = e2 > 0 ? 1920 : Math.min(ax, 1390);
     const y0 = lerp(1008, 0, e1), y1 = lerp(1008, 1080, em);
     const dr = ctx.rigs.draw.el.style;
@@ -167,15 +169,19 @@ const scene = {
     ctx.veil.style.display = e2 < 1 ? 'block' : 'none';
     ctx.veil.style.opacity = f(1 - e2, 4);
     dr.opacity = String(1 - outSoft(prog(t, P(11.95), P(13)))); // the window falls away
-    ctx.rigs.shade.el.style.opacity = String(inOutSoft(prog(t, P(18.9), P(19.6)))); // once the vector has landed
+    const sh = ctx.rigs.shade.el.style;
+    sh.opacity = String(inOutSoft(prog(t, P(18.9), P(19.6)))); // once the vector has landed
+    sh.transform = 'none';
+    sh.visibility = '';
 
     // Re-ink 1: supply and demand.
     const sdOn = t >= P(11) && t < P(19.95);
     ctx.sd.el.style.display = sdOn ? 'block' : 'none';
     if (sdOn) {
       const lift = inOutSoft(prog(t, P(13), P(15))), land = inOutSoft(prog(t, P(17.5), P(19)));
+      const onto = t >= P(18) ? ctx.rigs.shade.state.frame.pose : SHADE_A; // the shade card's live pose
       ctx.sd.el.style.clipPath = t > P(17.5) ? 'inset(0 0 72px 0)' : 'none';
-      ctx.sd.set(t < P(13) ? ctx.rigs.draw.state.frame.pose : sdPose(t), {
+      ctx.sd.set(t < P(13) ? ctx.rigs.draw.state.frame.pose : sdPose(t, onto), {
         m: land, ink: land, hue: inOutSoft(prog(t, P(12.2), P(13.2))), o: 1 - outSoft(prog(t, P(19.5), P(19.95))),
         w: t < P(17.5) ? lerp(1.45, 1.15, lift) : lerp(1.15, 1, land),
         pen: {
@@ -189,27 +195,34 @@ const scene = {
       });
     }
 
-    // Re-ink 2: the consumer-surplus triangle.
-    const csOn = t >= P(26) && t < P(30);
+    // Re-ink 2: the consumer-surplus triangle, traced over the CLOSE, then lifted from where it
+    // sits with the card carried along (fading over 1.5 pulses), so it is never small on cream.
+    const csOn = t >= P(24.2) && t < P(28);
     ctx.cs.el.style.display = csOn ? 'block' : 'none';
     if (csOn) {
-      ctx.cs.set(t < P(27) ? livePose(ctx.rigs.shade, EXTRA.shade, t) : csPose(t), {
-        o: 1, trace: prog(t, P(26), P(26.8)), ink: prog(t, P(27), P(27.6)), lines: t >= P(27) ? 1 : 0,
-        hatch: prog(t, P(27.3), P(28.9)), label: outSoft(prog(t, P(28.4), P(29.2))),
+      const cam = ctx.rigs.shade;
+      cam.update(Math.min(t, LIFT.at)); // the CLOSE is still from LIFT.at (its shot ends there)
+      const L = reink.lift(t, { cam, rect: CS_BOX }, CS_TO, { ...LIFT, carry: { fade: P(1) } }); // the card is gone before the fastest growth
+      if (t >= LIFT.at) L.carry.apply(cam.el);
+      const k = 1 + 0.02 * sineInOut(prog(t, P(26.6), P(28.4)));
+      ctx.cs.set(t < LIFT.at ? cam.state.frame.pose : scalePose(lifted(cam.state.frame.pose, L), k), {
+        o: 1, trace: prog(t, P(24.2), P(25)), ink: prog(t, LIFT.at, LIFT.at + P(0.6)), lines: t >= LIFT.at ? 1 : 0,
+        hatch: prog(t, P(25.3), P(26.9)), label: outSoft(prog(t, P(26.5), P(27.2))),
       });
     }
 
-    const wOn = t >= P(30) && t < P(33);
+    const wOn = t >= P(28) && t < P(32);
     ctx.wall.el.style.display = wOn ? 'block' : 'none';
-    if (wOn) ctx.wall.set(t - P(30));
-    const sOn = t >= P(40) && t < P(45);
+    if (wOn) ctx.wall.set(t - P(28));
+    const sOn = t >= P(40) && t < P(44);
     ctx.split.el.style.display = sOn ? 'block' : 'none';
     if (sOn) ctx.split.set((t - P(40)) / PULSE);
 
+    // h2 and h3 leave with the cut into a CLOSE (no headline there), not before it.
     const hd = { dur: 0.5, stagger: 0.06, outDur: 0.3 };
     ctx.h1.show(t, { ...hd, at: P(10), out: P(17.5) });
-    ctx.h2.show(t, { ...hd, at: P(17.8), out: P(24.3) });
-    ctx.h3.show(t, { ...hd, at: P(33), out: P(45) });
+    ctx.h2.show(t, { ...hd, at: P(17.8), out: P(24), outDur: 0.034 });
+    ctx.h3.show(t, { ...hd, at: P(32), out: P(44), outDur: 0.034 });
   },
 };
 

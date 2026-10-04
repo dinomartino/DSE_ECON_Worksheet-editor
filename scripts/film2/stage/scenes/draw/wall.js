@@ -1,6 +1,6 @@
 // The Templates flash as a full-frame wall: twelve real template cards cut from
 // template-picker frames (product pixels, rearranged), dealt 4 × 3 on a diagonal stagger,
-// then held with a drift until the cut. Each tile is the card's own pixels at 2.4×.
+// then held with a drift until the cut (dealt by 0.53 s, held ≥ 1.2 s of its 4 pulses). Each tile is the card's own pixels at 2.4×.
 import { h, show } from '../../lib/dom.js';
 import { prog, outSoft, sineInOut } from '../../lib/ease.js';
 import { f } from '../../lib/tween.js';
@@ -31,9 +31,9 @@ export function wall(parent, frameUrl) {
   });
   const ready = Promise.all(imgs.map((im) => im.decode()));
   function set(t) {
-    el.style.transform = `scale(${f(1 + 0.02 * sineInOut(prog(t, 0.3, 1.33)), 5)})`;
+    el.style.transform = `scale(${f(1 + 0.025 * sineInOut(prog(t, 0.2, 1.78)), 5)})`;
     for (const tl of tiles) {
-      const p = outSoft(prog(t, tl.order * 0.05, tl.order * 0.05 + 0.42));
+      const p = outSoft(prog(t, tl.order * 0.04, tl.order * 0.04 + 0.33));
       show(tl.box, p);
       tl.box.style.transform = p < 1 ? `translateY(${f((1 - p) * 40, 2)}px) scale(${f(0.94 + 0.06 * p, 4)})` : 'none';
     }
