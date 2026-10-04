@@ -129,13 +129,22 @@ export function makeDriver(page, { smooth = false, url } = {}) {
 
 // ---- locators --------------------------------------------------------------
 
-/** The i-th question on the page (0-based, page order). */
-export const question = (page, i) => page.locator('#print-root [data-question-id]').nth(i);
 /**
- * The j-th editable field of question i. Bilingual mode alternates EN, 中文:
- * MCQ = stem, then A..D; structured = stem, then (a), (b), ...
+ * Every fragment of the i-th question (0-based, page order). A question that straddles a
+ * page break renders one `[data-question-id]` per sheet, so counting elements is wrong:
+ * this counts distinct ids, then matches all the elements carrying the i-th one.
  */
-export const field = (page, i, j) => question(page, i).locator('[role=textbox]').nth(j);
+const ON_PAGE = "//*[@id='print-root']//*[@data-question-id]";
+const FIRST_FRAGMENTS = `${ON_PAGE}[not(@data-question-id = preceding::*[@data-question-id][ancestor::*[@id='print-root']]/@data-question-id)]`;
+export const questionParts = (page, i) =>
+  page.locator(`xpath=${ON_PAGE}[@data-question-id = (${FIRST_FRAGMENTS})[${i + 1}]/@data-question-id]`);
+/** The i-th question's first fragment (all of it, unless it crosses a page break). */
+export const question = (page, i) => questionParts(page, i).first();
+/**
+ * The j-th editable field of question i, across its fragments. Bilingual mode alternates
+ * EN, 中文: MCQ = stem, then A..D; structured = stem, then (a), (b), ...
+ */
+export const field = (page, i, j) => questionParts(page, i).locator('[role=textbox]').nth(j);
 export const flowRow = (page, text) =>
   page.locator('#print-root [data-flow-id]').filter({ hasText: text }).first();
 
