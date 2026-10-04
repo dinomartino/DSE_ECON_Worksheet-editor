@@ -36,9 +36,9 @@ export const TYPE_CLOSE = [180, 250, 740, 330];
 export const TYPE_MED = [0, 150, 1440, 620];
 export const TYPE_Q1 = [100, 280, 1000, 360]; // Q1 with its options (the MEDIUM's push)
 export const TYPE_DBL = [287, 382]; // the double-click into the stem
-// Clip time: the double-click (0.72) on the cut; from 4.5 s (between the 中文 line and the
+// Clip time: the double-click (0.72/0.80) on the cut; from 4.5 s (between the 中文 line and the
 // options) the pasted options run at 1.6×, the rate ramping over half a second.
-export const TYPE = { at: BEAT.type, from: 0.72, s: 4.5, rate2: 1.6, ramp: 0.25 };
+export const TYPE = { at: BEAT.type, from: 0.78, s: 4.5, rate2: 1.6, ramp: 0.25 };
 TYPE.tS = TYPE.at + (TYPE.s - TYPE.from);
 export function typeClipT(t) {
   const a = TYPE.tS - TYPE.ramp, b = TYPE.tS + TYPE.ramp, k = TYPE.rate2 - 1;
@@ -53,7 +53,10 @@ export const LANG = { at: BEAT.lang, from: 1.0, rate: 1.5 / (2 * PULSE) };
 export const langClipT = (t) => LANG.from + (t - LANG.at) * LANG.rate;
 export const LANG_STATES = [[BEAT.lang, 'EN'], [P(19), '中文'], [P(21), 'EN+中']];
 export const REFLOW = [86, 29]; // CSS px the page moves in the EN+中 state
-export const LANG_CLOSE = [236, 117, 674, 379]; // at 2.85×: the page from its top margin to the gap under Q2
+// The locked CLOSE pins CSS y 497.5 (under Q2 in every state: EN's Q3 starts at 500, EN+中's
+// Q2 中文 line ends at 494) to the frame's bottom edge, so its slow push never cuts a line.
+export const LANG_CLOSE = [236, 397.5, 674, 200];
+export const LANG_ANCHOR = [960, 1080];
 export const LANG_SAFE = [252, 270, 500, 170];
 
 // zh-interface: from 1.85 (the Language panel has settled: frames ≤ 108 are the AI panel and

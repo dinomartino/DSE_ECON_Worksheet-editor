@@ -14,7 +14,7 @@ import { h, s, svg, block, label, show, place, C, PAPER_SHADOW, HEADLINE, LABEL,
 import { camera, frame } from '../lib/camera.js';
 import {
   P, BEAT, TYPE, TYPE_STEM, TYPE_CLOSE, TYPE_MED, TYPE_Q1, TYPE_DBL, typeClipT, LANG, langClipT, LANG_STATES, REFLOW,
-  LANG_CLOSE, LANG_SAFE, UI, uiClipT, UI_CLOSE, UI_SAFE, UI_TOGGLE, UI_RAIL, PRINT_K, PRINTS,
+  LANG_CLOSE, LANG_ANCHOR, LANG_SAFE, UI, uiClipT, UI_CLOSE, UI_SAFE, UI_TOGGLE, UI_RAIL, PRINT_K, PRINTS,
 } from './write/geom.js';
 import { buildDesk, updateDesk } from './write/desk.js';
 
@@ -51,7 +51,7 @@ const scene = {
         { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_MED, move: { dur: P(6), to: { focus: TYPE_Q1, zoom: 1.45 } } },
       ]),
       lang: await rig('lang', 'language-toggle', [
-        { at: BEAT.lang, end: BEAT.print, size: 'close', focus: LANG_CLOSE, safe: LANG_SAFE, zoom: 2.85, drift: 0.03 },
+        { at: BEAT.lang, end: BEAT.print, size: 'close', focus: LANG_CLOSE, anchor: LANG_ANCHOR, safe: LANG_SAFE, zoom: 2.85, move: { at: -P(3), dur: P(12), to: { zoom: 2.96 } } }, // locked: a slow push only
       ], true),
       ui: await rig('ui', 'zh-interface', [
         { at: BEAT.ui, end: BEAT.uiWide, size: 'close', focus: UI_CLOSE, safe: UI_SAFE, zoom: 2.4, move: { at: -P(1.5), dur: P(7), to: { zoom: 2.5 } } }, // in motion on the cut
@@ -65,7 +65,7 @@ const scene = {
     ctx.placeClip('type-mcq', { at: TYPE.at, from: TYPE.from, rate: 1, dur: TYPE.tS - TYPE.at });
     ctx.placeClip('type-mcq', { at: TYPE.tS, from: TYPE.s, rate: TYPE.rate2, dur: BEAT.lang - TYPE.tS });
     ctx.placeClip('language-toggle', { at: LANG.at, from: LANG.from, rate: LANG.rate, dur: BEAT.print - LANG.at });
-    ctx.placeClip('zh-interface', { at: UI.at, from: UI.from, rate: UI.r1, dur: P(2) });
+    ctx.placeClip('zh-interface', { at: UI.at, from: UI.from, rate: UI.r1, dur: P(2) - 0.01 });
     ctx.placeClip('zh-interface', { at: UI.mid, from: 3.0, rate: UI.r2, dur: P(2) });
     ctx.placeClip('zh-interface', { at: BEAT.uiWide, from: 4.4, rate: 1, dur: UI.end - 4.4 });
 
