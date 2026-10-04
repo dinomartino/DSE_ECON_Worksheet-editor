@@ -6,7 +6,7 @@ file is fixed in the same change.
 
 ## 1. What we are making
 
-A ~110 s (never over 2:00) 2D motion-design showcase film for **Econ Studio 經濟備課室**,
+A 106.7 s (never over 2:00) 2D motion-design showcase film for **Econ Studio 經濟備課室**,
 the HKDSE Economics teacher app in this repo. A calm, premium, cinematic piece: flat vector
 graphics in the app's own "warm studio" language, intercut with real app footage presented
 as clean 2D cards, every cut on the music. It replaces film v1 (`scripts/film/`, 3D, 94 s),
@@ -82,7 +82,7 @@ track).
 | 4 | Mark and papers | 52–73 | body, rising | Marks roll up into the total; Student → Teacher, answers in red; the Marking scheme view; its four layouts cut on four beats (Classic, HKEAA style, Suggested answers, Detailed table); covers of Paper 1 and Paper 2 deal in flat, one per beat; versions A B C D. | "Marks add themselves up" / "分數自動加總"; "A marking scheme, HKEAA-style" / "評卷參考，HKEAA 格式"; "Mock papers, cover to key" / "模擬試卷，由封面到答案" |
 | 5 | Bank (climax) | 73–92 | **full lift** | The lift hits as the 題庫 opens: topic cards fill, coverage bars draw on. Open a topic → in the editor, drag a question from the 題庫 tab onto the page; the page makes room and renumbers. Check terms: dotted underlines draw under Chinese terms, one replace. | "Every question you have written, by topic" / "你寫過的每一題，按課題排好"; "Drag one in, the page makes room" / "拖進頁面，自動排好"; "Chinese checked against the EDB glossary" / "中文用詞，按教育局詞彙表檢查" |
 | 6 | Everywhere | 92–99.6 | lift, end | Fast beat cuts: Export → the real `.docx` page → format chips (PDF, Answer key, Kahoot, Blooket, ZipGrade) → three flat windows: browser, Mac, Windows (generic chrome). | "A real Word document" / "真正的 Word 文件"; "On the web, Mac and Windows" / "網頁版、Mac、Windows 都用得" |
-| 7 | End | 99.6–110.4 | pull-back, tail | Everything collapses back into lines → the lines re-form the mark (small) → end card. Hold to silence. | "Less formatting" / "少排版" · "More teaching" / "多教學"; "Free · No account needed" / "免費使用 · 無需註冊"; "Econ Studio 經濟備課室" |
+| 7 | End | 94.3–106.7 | pull-back, tail | Everything collapses back into lines → the lines re-form the mark (small) → end card, drifting to the last frame; the film ends on bar 29.5 (106.71 s) as the tail dies. | "Less formatting" / "少排版" · "More teaching" / "多教學"; "Free · No account needed" / "免費使用 · 無需註冊"; "Econ Studio 經濟備課室" |
 
 The copy above is a draft; the user signs it off. `COPY` in `timeline.mjs` is the only
 place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
@@ -118,7 +118,7 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   - `DISPLAY`: Newsreader 160, lh 1, −0.02em, one centred line: the re-ink total ("Total: 7
     marks"); the only size above STATEMENT.
   - `END_CARD`: the act-1 lockup geometry (tile 360 at top 155, wordmark 110, zh 46 tracked
-    0.30em) + the tagline slot (Inter 500 38 / zh 26, gap 60), drifting 1.0 → 1.13 about the dot to the last frame, with a kick on the 104.4 stab.
+    0.30em) + the tagline slot (Inter 500 38 / zh 26 tracked 0.08em, gap 60; act 1 and the end card share it), drifting 1.0 → 1.2 about the card's centre (960, 540) at constant speed from P15 to the last frame, with a kick on the 104.4 stab (mean MAD ≥ 0.05 over 102–106.71).
   - 中文 inside a serif line is a PingFang HK 300 span at 0.9em, no tracking, line-height 0 (it
     never grows the line box); Latin inside a
     zh line has no zh tracking. A small zh line never sits under 4.5:1 (#5A544D, never
@@ -157,7 +157,7 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   ≤ 35 % of the film in MEDIUM demo-card frames, ≥ 25 % in CLOSE (the doctor measures it).
 - **Axis chapter** (engine.js, `in: { type: 'axis', pulses: 4 }`): the act changes at 30.25,
   51.58 and 94.26. In pulses from the bar line B: B−2…B0 a 4 px ink stroke wipes 1920 → 96
-  (the new act right of it), the 12 px blue dot on its top; B0…B+1.5 the horizontal axis
+  (the new act right of it), the 18 px blue dot on its top, one soft ring rippling out of it as it lands (B0…B+2, r 9 → 40); B0…B+1.5 the horizontal axis
   draws along y 1008; the chapter LABEL (`COPY.chapters`) sits on it at x 120, in by B+0.5,
   fully visible B+0.5…B+3.5 (3 pulses, 1.33 s), out by B+4; B+2.5…B+4 both strokes retract
   into the origin and the dot travels to `in.dotTo` (or rides down) and shrinks away. Six
@@ -179,8 +179,8 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   whoosh under travels, a pop on the dot, one soft impact on the title, a chime on the end
   card. Music first, but every sound must be heard: UI sounds peak 3–6 dB over the local
   music RMS; typing is one tick per key; every section change has a sound; the music ducks
-  under impacts, travels and dense UI. The mix fades only after the music resolves
-  (AUDIBLE_END 107.65 s). Master −16 LUFS, ≤ −1 dBTP. Gains are loudness-aware (`LOUDNESS` in
+  under impacts, travels and dense UI. The film ends on bar 29.5 (`END_BAR`, 106.71 s):
+  the mix fades (raised cosine) from the tail section (`FADE_FROM`, 104.93 s) to exactly `DURATION`. Master −16 LUFS, ≤ −1 dBTP. Gains are loudness-aware (`LOUDNESS` in
   `audio/sfxmap.mjs`): a sound gains the local music RMS over −19 dB (≤ +6), so the lift needs
   no hand trims; files rotate and never repeat back to back within a family.
 - `demo-media/film-v2/audio-stock/SOURCES.md` records every asset's license.
@@ -193,7 +193,8 @@ A sibling of `scripts/film/`, reusing its capture and tools by import; v1 keeps 
   (`BEATS`, `BARS` in seconds), `beat(n)`/`bar(n)`, `SCENES` (id, from, to, in-transition: cut, match, push, iris or axis;
   intended in-act `cuts`, footage `ui` changes and still `holds`, which
   `tools/motion-check.mjs` exempts),
-  `CUES` (id, t, kind: sfx/accent), `COPY` (every string, en + zh), `DURATION`.
+  `CUES` (id, t, kind: sfx/accent; `replaces: { scene, label }` retimes a scene event's sound
+  without touching the scene), `COPY` (every string, en + zh), `DURATION`.
 - `stage/` 2D engine: `index.html` + `engine.js` exposing `window.film =
   {ready, fps, duration, frames, size, seek(t), events(), text(), placements(), errors()}`;
   a 1920×1080 design-space DOM/SVG root; scenes `stage/scenes/<id>.js` =

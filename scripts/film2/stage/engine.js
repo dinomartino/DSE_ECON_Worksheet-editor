@@ -203,7 +203,7 @@ function pose(active, t) {
 
 // ---- the axis chapter (FILM.md §5): the frame draws the mark's axes between two acts ------
 // Six pulses, from the bar line B: B-2..B0 a 4 px ink stroke wipes 1920 → 96 (inOutSoft), the
-// blue dot riding its top; B0..B+1.5 the horizontal axis draws 96 → 1824 along y 1008
+// blue dot (r 9) riding its top, one ring rippling out of it as it lands (B0..B+2, r 9 → 40); B0..B+1.5 the horizontal axis draws 96 → 1824 along y 1008
 // (outSoft); the chapter LABEL (COPY.chapters[id]) sits on the axis at x 120: in B+0.25..B+0.5,
 // fully visible B+0.5..B+3.5 (3 pulses, 1.33 s), out B+3.5..B+4 as the axis under it leaves;
 // B+2.5..B+4 both strokes retract into the origin (inOutSoft) and the dot travels to
@@ -213,13 +213,16 @@ const AX = lib.layout.AXES;
 const chV = lib.s('line', { stroke: lib.C.ink, 'stroke-width': 4, 'stroke-linecap': 'round' }, fx);
 const chH = lib.s('line', { stroke: lib.C.ink, 'stroke-width': 4, 'stroke-linecap': 'round' }, fx);
 const chDot = lib.s('circle', { r: 0, fill: lib.C.markBlue }, fx);
+const chRing = lib.s('circle', { r: 0, fill: 'none', stroke: lib.C.markBlue }, fx);
+const DOT_R = 9; // the chapter dot, px (story review: 6 read as a speck)
+const RING = { r: [DOT_R, 40], pulses: 2, opacity: 0.55, width: 3 }; // one ripple as the vertical lands (B0)
 const fxh = lib.h('div', { style: { position: 'absolute', left: 0, top: 0, width: `${DW}px`, height: `${DH}px`, transformOrigin: '0 0', transform: `scale(${W / DW})`, pointerEvents: 'none', zIndex: 101 } }, document.getElementById('stage'));
 const chLabels = new Map();
 const axisWipeX = (t, B) => lerp(DW, AX.x, inOutSoft(prog(t, B - 2 * TL.PULSE, B)));
 
 function chapter(t) {
   const P = TL.PULSE;
-  for (const el of [chV, chH, chDot]) el.style.visibility = 'hidden';
+  for (const el of [chV, chH, chDot, chRing]) el.style.visibility = 'hidden';
   for (const l of chLabels.values()) l.show(0);
   const s = SC.list.find((x) => x.in?.type === 'axis' && t >= x.from + CH.wipe[0] * P && t < x.from + CH.end * P);
   if (!s) return;
@@ -241,10 +244,17 @@ function chapter(t) {
   const to = s.in.dotTo;
   const travel = to ? back : 0;
   const [dx, dy] = [lerp(x, to?.[0] ?? x, travel), lerp(top, to?.[1] ?? top, travel)];
-  const r = 6 * spring(clamp(prog(t, B - 2 * P, B - 1.5 * P))) * (1 - inOutSoft(prog(t, ...at(CH.dotOut))));
+  const r = DOT_R * spring(clamp(prog(t, B - 2 * P, B - 1.5 * P))) * (1 - inOutSoft(prog(t, ...at(CH.dotOut))));
   if (r > 0.05) {
     attrs(chDot, { cx: dx, cy: dy, r });
     chDot.style.visibility = 'visible';
+  }
+  // The landing: one soft ring runs out of the dot where the vertical comes to rest (x 96, B0).
+  const ring = prog(t, B, B + RING.pulses * P);
+  if (ring > 0 && ring < 1) {
+    const k = outSoft(ring);
+    attrs(chRing, { cx: AX.x, cy: AX.top, r: lerp(RING.r[0], RING.r[1], k), 'stroke-width': RING.width * (1 - 0.5 * k), opacity: RING.opacity * (1 - k) });
+    chRing.style.visibility = 'visible';
   }
   if (!chLabels.has(s.id)) {
     const c = TL.COPY.chapters?.[s.id] ?? { en: '', zh: '' };
@@ -311,6 +321,13 @@ async function events() {
       for (const e of placedEvents(meta, p, info.from)) if (e.t >= win.start && e.t < win.end) out.push({ ...e, source: 'clip', scene: info.id });
     }
   });
+  // A cue with `replaces: { scene, label }` is that scene event's sound, retimed: the scene
+  // events whose label starts with `label` go silent. `replaced` counts them (sfx.mjs warns at 0).
+  for (const c of out.filter((x) => x.source === 'cue' && x.replaces)) {
+    const hit = (e) => e.source === 'scene' && e.scene === c.replaces.scene && String(e.label ?? '').startsWith(c.replaces.label);
+    c.replaced = out.filter(hit).length;
+    for (let i = out.length - 1; i >= 0; i--) if (hit(out[i])) out.splice(i, 1);
+  }
   return out.sort((a, b) => a.t - b.t);
 }
 

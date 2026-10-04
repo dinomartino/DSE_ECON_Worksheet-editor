@@ -11,7 +11,7 @@
 //   P7..P10.5 the dot swells (1 → DOT_SWELL) inside its knock: the iris (engine, from P10) grows
 //             out of it, one object      P10..P11.5 the words track out, leaving the tile
 // The next act's iris opens out of the dot: timeline.mjs write.in.at must equal MARK_DOT.
-import { lockup, block, h, s, place, show, tween, ease, f, C } from '../lib/index.js';
+import { lockup, block, h, s, place, show, tween, ease, f, C, END_CARD } from '../lib/index.js';
 
 export const SIZE = 360; // the mark, px
 const EN = 110, ZH = 46;
@@ -47,7 +47,7 @@ const scene = {
     ctx.lock = lockup(ctx.group, { cx: 960, top: TOP, size: SIZE, en: EN, zh: ZH, copy: ctx.copy.word });
     ctx.tag = block(ctx.group, {
       ...ctx.copy.tagline, x: 960, y: ctx.lock.bottom + TAG_GAP, w: 1500, maxLines: 1, face: 'sans', weight: 500,
-      size: TAG, tracking: 0, color: C.inkMuted, zhSize: TAG_ZH, zhTracking: 0.08, zhColor: C.inkMuted, zhGap: 8, rise: 10,
+      size: TAG, tracking: 0, color: C.inkMuted, zhSize: TAG_ZH, zhTracking: END_CARD.tagline.zhTracking, zhColor: C.inkMuted, zhGap: 8, rise: 10,
     });
     // Axis V drawn solid from the first frame (under the curves, like the original).
     const { g, axes, axisV } = ctx.lock.mark.parts;

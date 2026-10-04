@@ -35,9 +35,12 @@ export const SECTIONS = GRID.sections.map((x) => ({ ...x, t: r6(x.t - MUSIC.offs
 /** The last audible moment of the music, film time. */
 export const AUDIBLE_END = r6(GRID.audibleEnd - MUSIC.offset);
 
-/** The film ends on this bar line, about a second after the music dies away. */
-export const END_BAR = 30;
+/** The film ends on this half-bar line (106.71 s), as the music's tail dies away: past it the
+ *  mix is under −45 dB and the picture would hold in silence. */
+export const END_BAR = 29.5;
 export const DURATION = bar(END_BAR);
+/** The mix fades out from the music's tail section (104.93 s) to exactly DURATION (audio/mix.mjs). */
+export const FADE_FROM = SECTIONS.find((x) => x.label === 'tail').t;
 
 // The acts of FILM.md §3. `bars` = [first, last) bar line (halves allowed); the first act
 // starts at 0 s. Bar 3 = build (12.46 s), 8 = body, 20 = lift (72.92 s), 26 = pull-back.
@@ -143,8 +146,11 @@ export function sceneAt(t) {
 
 // Accents and sounds, by stable id <scene>.<name>. kind: 'accent' (a visual hit on the
 // music) | 'sfx' (sound: `sfx` names a SFX_MAP kind in audio/sfxmap.mjs; an accent may carry one
-// too). Optional: `end: true` (the sound ENDS on t), `dur`, `file`, `gain_db`; `grid: false`
-// marks a cue deliberately off the pulse grid (the doctor skips it). Sorted by t.
+// too). Optional: `end: true` (the sound ENDS on t), `dur`, `file`, `gain_db`, `peakAlign` and
+// `lead` (override the kind's, audio/sfxmap.mjs); `grid: false`
+// marks a cue deliberately off the pulse grid (the doctor skips it); `replaces: { scene, label }`
+// silences that scene's events whose label starts with `label` (the cue is their sound, retimed;
+// engine.js events()). Sorted by t.
 export const CUES = [
   { id: 'mark.tile', t: bar(1.5), kind: 'accent', note: 'the mark starts drawing on the half-bar' },
   { id: 'mark.dot', t: pulse(12 + 5), kind: 'sfx', sfx: 'pop', note: 'the equilibrium dot pops in (splash 740 ms × 3)' },
@@ -159,16 +165,20 @@ export const CUES = [
   // (2.7 s, from ~70.2 s); a whoosh into the iris ends 0.35 s after it, when the ring is open.
   { id: 'bank.riser', t: r6(bar(20) - 0.05), kind: 'sfx', sfx: 'riser', dur: 2.7, grid: false, note: 'the build into the lift' },
   { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens (bank.js plays the impact)' },
-  { id: 'bank.whoosh', t: r6(bar(20) + 0.75), kind: 'sfx', sfx: 'whoosh', end: true, file: 'whoosh__air-woosh__mixkit-1489', grid: false, note: 'ends as the iris is fully open (≈73.7)' },
-  { id: 'everywhere.cuts', t: bar(24), kind: 'accent', sfx: 'whoosh-s' },
+  { id: 'bank.whoosh', t: r6(bar(20) + 0.75), kind: 'sfx', sfx: 'whoosh', end: true, file: 'whoosh__air-woosh__mixkit-1489', gain_db: -5, grid: false, note: 'ends as the iris is fully open (≈73.7); -5 keeps it at the level tuned before whoosh went to -10' },
+  { id: 'everywhere.cuts', t: bar(24), kind: 'accent', sfx: 'whoosh-s', gain_db: 6, note: 'the hardest cut in the film, under the lift at its loudest: +6 (sync review 3)' },
   // Hard cuts that had no sound (sync review 2); the lift's loudness-aware gain lifts the bank two.
   { id: 'write.cut11', t: pulse(24 + 11), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'CLOSE → the wide editor (the double-click follows at 17.505)' },
+  // The triangle's lift reads as motion from 41.93 s (MAD), not at its scene event (41.63): its
+  // whoosh-s starts with the move (sync review 5).
+  { id: 'draw.lift', t: 41.9, kind: 'sfx', sfx: 'whoosh-s', grid: false, replaces: { scene: 'draw', label: 'the triangle lifts' }, note: 'the triangle lifts off the footage' },
   { id: 'draw.cut32', t: pulse(64 + 32), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'the Templates wall → "The answer, on the same axes"' },
   { id: 'bank.cut13', t: pulse(160 + 13), kind: 'sfx', sfx: 'whoosh-s', note: 'cut to the drag CLOSE in the editor' },
   { id: 'bank.cut16', t: pulse(160 + 16), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'cut to the drop' },
-  { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', gain_db: 4, grid: false, note: 'the pull-back: its onset half a second before the bar (+4 and the loudness boost ≈ +8 dB)' },
+  { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', gain_db: -1, grid: false, note: 'the pull-back: it starts 0.1 s after t and swells to its peak on the bar (whoosh peakAlign 0.45)' },
   { id: 'end.pullback', t: bar(26), kind: 'accent', note: 'the pull-back: everything collapses into lines' },
-  { id: 'end.stab', t: r6(bar(29) - 0.5), kind: 'sfx', sfx: 'shimmer', gain_db: -2, grid: false, note: "the music's last stab (104.4 s)" },
+  // Read from 40 ms before the sparkle's peak (not from its quiet lead-in), so it starts on the stab.
+  { id: 'end.stab', t: 104.43, kind: 'sfx', sfx: 'shimmer', gain_db: 4.5, peakAlign: 0.04, lead: 0.04, grid: false, note: "the music's last stab (104.43 s): it starts on the stab at ≈ -9 dB, heard over the tail" },
 ].sort((a, b) => a.t - b.t);
 
 export const cueAt = (id) => {

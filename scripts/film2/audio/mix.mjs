@@ -9,9 +9,10 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DURATION, MUSIC, AUDIBLE_END } from '../timeline.mjs';
-// The tail fade starts only once the music has resolved (AUDIBLE_END, 107.65 s): never under it.
-const TAIL = Math.max(0.05, DURATION - AUDIBLE_END);
+import { DURATION, MUSIC, FADE_FROM } from '../timeline.mjs';
+// The tail fade (raised cosine) runs from the music's tail section (FADE_FROM, 104.93 s) to
+// exactly the last sample of the film: the tail dies away with the picture, never a cut.
+const TAIL = Math.max(0.05, DURATION - FADE_FROM);
 import { AUDIO, MUSIC_FILE } from '../paths.mjs';
 import { readWav, writeWav } from './wav.mjs';
 import { cli } from './cli.mjs';
@@ -134,7 +135,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     sfx: '<wav> sfx track (default $FILM_OUT/audio/sfx.wav; music only if missing)',
     out: '<wav> output (default $FILM_OUT/audio/mix.wav)',
     duration: '<s> length (default the film DURATION)',
-    fade: `<s> tail fade-out (default ${TAIL.toFixed(2)}: from AUDIBLE_END to the end)`,
+    fade: `<s> tail fade-out (default ${TAIL.toFixed(2)}: from FADE_FROM to the end)`,
     target: '<LUFS> integrated loudness (default -16)',
     tp: '<dBTP> true-peak ceiling (default -1)',
   });

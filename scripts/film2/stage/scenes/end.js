@@ -11,15 +11,15 @@
 //   P16.25   the wordmark                         P20      "Free · No account needed" rises
 //   104.40   the music's last stab (P22.8): the dot beats, a ripple runs out to the tile's edge
 //            and the drift gets a soft kick that settles over 3 pulses
-//   P14..the last frame: the lockup drifts 1 → DRIFT at constant speed about the dot, so it is
-//   visibly moving on every frame (no hold; timeline alive range, not holds), with a soft push
-//   accent (KICK) on the stab; a fifth of the drift is front-loaded (sine-out to P22) so the
-//   card moves fastest while it has the least on it (before the free line)
+//   P15..the last frame (bar 29.5, 106.71 s): the card drifts 1 → DRIFT at constant speed about
+//   its own centre (DRIFT_O: the lockup + free line span y 158..922), so it is visibly moving on every frame (no hold; timeline alive range, not holds), with a soft push
+//   accent (KICK) on the stab; all of it at one speed, so the last seconds move as much as
+//   the first (mean MAD ≥ 0.05 over 102..106.71 at 240×136, motion-check's measure)
 // The lockup is the act-1 hero lockup (END_CARD: tile 360, wordmark 110, zh 46), at the mark
 // act's own top (scenes/mark.js TOP) so the film ends on the shape it opened with.
 import { lockup, block, h, place, show, f, C, ease, STATEMENT, END_CARD } from '../lib/index.js';
 import { C3, STACK_GAP } from '../lib/layout.js';
-import { AXIS_COLOR, TOP, MARK_DOT, ramp } from './mark.js';
+import { AXIS_COLOR, TOP, ramp } from './mark.js';
 import { PULSE } from '../../timeline.mjs';
 
 const SIZE = END_CARD.size;
@@ -27,7 +27,8 @@ const K = SIZE / 512;
 const X0 = END_CARD.cx - SIZE / 2;
 const STMT_PUSH = 1.09; // the statement's push, about STMT_O
 const STMT_O = [960, 1008]; // on the chapter's axis: the words grow up out of it, so they rise as they push
-const DRIFT = 1.13; // the end card's drift about the dot, P14 → the last frame (+ KICK: ink stays above y 1000)
+const DRIFT = 1.2; // the end card's drift about DRIFT_O, P15 → the last frame (+ KICK: ink y 81..999, measured)
+const DRIFT_O = [960, 540]; // the card's centre: it pushes in evenly, the tile's edges carry the motion
 const KICK = 0.012; // a push accent on the stab, settled over SETTLE pulses
 const SETTLE = 3;
 const STAB = 104.4; // film s: the music's last stab (RMS onset, mixkit-31 104.38–104.40)
@@ -63,7 +64,7 @@ const scene = {
   ],
   setup(ctx) {
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
-    ctx.group = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: `${MARK_DOT[0]}px ${MARK_DOT[1]}px` } }, ctx.el);
+    ctx.group = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: `${DRIFT_O[0]}px ${DRIFT_O[1]}px` } }, ctx.el);
     ctx.stmt = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: `${STMT_O[0]}px ${STMT_O[1]}px` } }, ctx.el);
     const stmt = { ...STATEMENT, ...C3.statement, valign: 'top', y: 0 };
     ctx.less = block(ctx.stmt, { ...stmt, ...ctx.copy.less });
@@ -83,7 +84,7 @@ const scene = {
     ctx.free = block(ctx.group, {
       ...ctx.copy.free, x: END_CARD.cx, y: ctx.lock.bottom + tg.gap, w: tg.w, maxLines: tg.maxLines, face: tg.face, weight: tg.weight,
       // Ink-muted in en and zh, the act-1 tagline's tone (scenes/mark.js).
-      size: tg.size, tracking: 0, color: C.inkMuted, zhSize: tg.zhSize, zhTracking: 0.04, zhColor: tg.zhColor, zhGap: tg.zhGap, rise: 16,
+      size: tg.size, tracking: 0, color: C.inkMuted, zhSize: tg.zhSize, zhTracking: tg.zhTracking, zhColor: tg.zhColor, zhGap: tg.zhGap, rise: 16,
     });
 
     // Each text line's rule: through its glyphs' middle, as wide as the line, in frame px,
@@ -172,11 +173,11 @@ const scene = {
 
     ctx.lock.wordAt(outSoft(prog(t, P(16.25), P(16.25) + 0.9)));
     ctx.free.show(t, { at: P(20), dur: P(2) });
-    // The drift: about the dot at constant speed from P14 to the last frame (still moving there),
+    // The drift: about the card's centre at constant speed from P15 (as the strokes land) to the last frame (still moving there),
     // plus two kicks that ease out and stay: the landing (the chime) and the stab.
     const end = ctx.window.end - ctx.from;
     const kick = KICK * outSoft(prog(stab, 0, P(SETTLE)));
-    const drift = 0.8 * ramp(t, P(14), end, P(1.5)) + 0.2 * Math.sin((Math.PI / 2) * prog(t, P(14), P(22)));
+    const drift = ramp(t, P(15), end, P(1.5));
     place(ctx.group, { scale: lerp(1, DRIFT, drift) + kick });
   },
 };
