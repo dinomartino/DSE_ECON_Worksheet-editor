@@ -14,6 +14,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.6.0 — 2026-10-04
+
 ### Added
 - **Give an essay question its own answer and marking scheme.** A structured question with
   no parts, such as a long essay, now takes a teacher answer and marking points, level
