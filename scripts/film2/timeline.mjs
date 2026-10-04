@@ -50,7 +50,9 @@ export const DURATION = bar(END_BAR);
 // page swapped at once); `ui` = clicks in the real footage whose response is an instant
 // change (a dialog opens, a toggle flips: the clip's event time); `holds` = [from, to] film s
 // where a still picture is meant. tools/motion-check.mjs exempts all three; a flag elsewhere
-// is a bug.
+// is a bug. `alive` = [[from, to, still?], …] film s where a slow drift is meant (a push, a
+// breathing card): motion-check counts a frame as still there only under `still` (default
+// 0.02 MAD), so a truly frozen frame still flags.
 /**
  * The axis chapter's marks, in pulses from the act's bar line B (FILM.md §5): the vertical wipe,
  * the horizontal draw, the label in / out (fully visible labelIn[1]..labelOut[0] = 3 pulses,

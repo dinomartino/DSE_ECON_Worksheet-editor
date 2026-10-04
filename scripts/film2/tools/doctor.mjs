@@ -63,6 +63,7 @@ async function timeline() {
     }
     for (const u of s.ui ?? []) if (!(u > s.from - half && u < s.to)) bad(`scene ${s.id}: footage UI change ${u} s is outside the act`);
     for (const [a, b] of s.holds ?? []) if (!(a < b && a >= s.from - half && b <= s.to + 1e-6)) bad(`scene ${s.id}: hold ${a}..${b} is empty or outside the scene`);
+    for (const [a, b] of s.alive ?? []) if (!(a < b && a >= s.from - half && b <= s.to + 1e-6)) bad(`scene ${s.id}: alive ${a}..${b} is empty or outside the scene`);
     at = s.to;
   });
   if (Math.abs(at - TL.DURATION) > 1e-6) bad(`scenes end at ${at} s, DURATION is ${TL.DURATION} s`);
