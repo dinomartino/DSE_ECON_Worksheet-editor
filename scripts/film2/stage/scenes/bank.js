@@ -24,7 +24,7 @@ import { C1 } from '../lib/layout.js';
 import { stroke, lift as reinkLift } from '../lib/reink.js';
 import { block, HEADLINE } from '../lib/type.js';
 import { camera } from '../lib/camera.js';
-import { prog, outSoft, inOutSoft, spring, clamp, lerp } from '../lib/ease.js';
+import { prog, outSoft, inOutSoft, spring, sineInOut, cubicBezier, clamp, lerp } from '../lib/ease.js';
 import { f } from '../lib/tween.js';
 import {
   P, CARDS, GRID, gridPt, TOPIC, DRAG_CLOSE, DRAG_CLOSE_END, DRAG_AFTER, DRAG_PAGE, AI_BUTTON,
@@ -49,6 +49,8 @@ const box = { x: 0, y: 0, w: 1440, h: 900 };
 const ROW_PUSH = ROW_W[1] / ROW_W[0];
 const grow = (r, k) => ({ x: r.x + (r.w * (1 - k)) / 2, y: r.y + (r.h * (1 - k)) / 2, w: r.w * k, h: r.h * k });
 const LIFT_AT = P(3); // the cards' bars become the chart (lib chart.js LIFT)
+// The term lift's ease: a gentle start (outSoft whipped the dense page, MAD ≈ 9), a soft landing.
+const LIFT_EASE = cubicBezier(0.4, 0, 0.2, 1);
 const TOPIC_CUT = P(9); // the topic page
 // The renumbering, ringed with the dot's blue (CSS px of bank-drag): old Q2 becomes "3."
 // while the question hovers; the dropped question is "2." after the release (P18.07).
@@ -218,15 +220,23 @@ const scene = {
     show(ctx.q1dGap, lifting ? 1 : 0);
     if (ctx.q1d && lifting) {
       ctx.camT.update(P(27) - 1e-3); // the MEDIUM pose at the lift
-      const L = reinkLift(t, { cam: ctx.camT, rect: Q1D }, ctx.q1d.target, { at: P(27), dur: P(1.75), carry: true });
-      L.carry.apply(ctx.camT.el);
+      const L = reinkLift(t, { cam: ctx.camT, rect: Q1D }, ctx.q1d.target, { at: P(27), dur: P(1.75), ease: LIFT_EASE });
+      // The page rides along at a fifth of the line's growth and a quarter of its travel, fading
+      // over 1.5 pulses (carried at the line's full 6× it whipped: MAD ≈ 11 for 0.3 s).
+      const F = [L.from.x + L.from.w / 2, L.from.y + L.from.h / 2], N = [L.rect.x + L.rect.w / 2, L.rect.y + L.rect.h / 2];
+      const kc = 1 + (L.scale - 1) * 0.2;
+      const [tx, ty] = [0, 1].map((i) => F[i] + 0.25 * (N[i] - F[i]) - kc * F[i]);
+      Object.assign(ctx.camT.el.style, { transformOrigin: '0 0', transform: `translate(${f(tx, 2)}px, ${f(ty, 2)}px) scale(${f(kc, 5)})` });
+      show(ctx.camT.el, carrying ? 1 - sineInOut(prog(t, P(27), P(28.5))) : 0);
       ctx.q1d.at(t, { L, lift: P(27), dur: P(1.75), draw: P(27.75), swapAt: P(29) });
     } else ctx.camT.el.style.transform = 'none'; // (opacity: show() above, every frame)
 
     // ---- headlines: off in CLOSE and WIDE frames; the terms one is up from the row's cut ----
-    ctx.head[0].show(t, { at: 0, dur: 0.45, out: P(12), outDur: 0.05 });
-    ctx.head[1].show(t, { at: P(16), dur: 0.45, out: P(22), outDur: 0.05 });
-    ctx.head[2].show(t, { at: P(22), dur: 0.45, out: P(30), outDur: 0.05 });
+    // Each one stands until its cut, gone on the cut's own frame (no headline-less footage frame).
+    [[0, P(12)], [P(16), P(22)], [P(22), P(30)]].forEach(([at, out], i) => {
+      ctx.head[i].show(t, { at, dur: 0.45 });
+      if (t >= out) show(ctx.head[i].el, 0);
+    });
   },
 };
 
