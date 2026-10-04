@@ -69,15 +69,13 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
   updater key lives only at `~/.tauri/econ-worksheet.key`. `scripts/*.test.ts` are hand-run.
 
-## Last verified (2026-10-03, `develop` 2d99f95)
+## Last verified (2026-10-04, `develop` 9454f03)
 
-- `npm test` 3962 passed; typecheck clean; lint 40 (baseline); `npm run build` green; samples export.
-- `cover-verify` 2/2 pages both papers; `lq-verify` passes en, zh, bilingual.
+- `npm test` 3962 passed; typecheck clean; `npm run build` green; v0.6.0 draft assets complete.
 
 ## Log
 
 - **2026-10-03** — Second gap sweep: 6 Opus worktree branches, merged (CHANGELOG unions,
   `curveXAt` reads `curvePath` and takes `last`, rail badge moved into `RailItem`). Nothing pushed.
-- **2026-10-03** — Gap sweep: 8 Opus worktree branches (paused once, resumed) + 5 follow-ups
-  (cover fit + CJK harness, schema audit vs real v0.5.0 code, section target stays 1, index
-  `kind` repair, prompt space). All merged; nothing pushed.
+- **2026-10-04** — Released v0.6.0 (Windows rename test skipped, user's call). Site screenshot
+  harness fixed + 6 new shots (Opus worktree, merged) for the DSE_Mentor page.
