@@ -146,9 +146,14 @@ export const CUES = [
   // (2.7 s, from ~70.2 s); a whoosh into the iris ends 0.35 s after it, when the ring is open.
   { id: 'bank.riser', t: r6(bar(20) - 0.05), kind: 'sfx', sfx: 'riser', dur: 2.7, grid: false, note: 'the build into the lift' },
   { id: 'bank.lift', t: bar(20), kind: 'accent', note: 'the full lift: the 題庫 opens (bank.js plays the impact)' },
-  { id: 'bank.whoosh', t: r6(bar(20) + 0.35), kind: 'sfx', sfx: 'whoosh', end: true, file: 'whoosh__air-woosh__mixkit-1489', grid: false, note: 'ends as the iris opens' },
+  { id: 'bank.whoosh', t: r6(bar(20) + 0.75), kind: 'sfx', sfx: 'whoosh', end: true, file: 'whoosh__air-woosh__mixkit-1489', grid: false, note: 'ends as the iris is fully open (≈73.7)' },
   { id: 'everywhere.cuts', t: bar(24), kind: 'accent', sfx: 'whoosh-s' },
-  { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', grid: false, note: 'the pull-back: its onset half a second before the bar' },
+  // Hard cuts that had no sound (sync review 2); the lift's loudness-aware gain lifts the bank two.
+  { id: 'write.cut11', t: pulse(24 + 11), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'CLOSE → the wide editor (the double-click follows at 17.505)' },
+  { id: 'draw.cut33', t: pulse(64 + 33), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'the Templates wall → "The answer, on the same axes"' },
+  { id: 'bank.cut13', t: pulse(160 + 13), kind: 'sfx', sfx: 'whoosh-s', note: 'cut to the drag CLOSE in the editor' },
+  { id: 'bank.cut16', t: pulse(160 + 16), kind: 'sfx', sfx: 'whoosh-s', gain_db: -2, note: 'cut to the drop' },
+  { id: 'end.whoosh', t: r6(bar(26) - 0.5), kind: 'sfx', sfx: 'whoosh', gain_db: 4, grid: false, note: 'the pull-back: its onset half a second before the bar (+4 and the loudness boost ≈ +8 dB)' },
   { id: 'end.pullback', t: bar(26), kind: 'accent', note: 'the pull-back: everything collapses into lines' },
   { id: 'end.stab', t: r6(bar(29) - 0.5), kind: 'sfx', sfx: 'shimmer', gain_db: -2, grid: false, note: "the music's last stab (104.4 s)" },
 ].sort((a, b) => a.t - b.t);

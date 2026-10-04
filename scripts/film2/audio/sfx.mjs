@@ -8,9 +8,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DURATION } from '../timeline.mjs';
-import { AUDIO, BUILD, SFX } from '../paths.mjs';
-import { SFX_MAP, kindOf } from './sfxmap.mjs';
+import { DURATION, MUSIC } from '../timeline.mjs';
+import { AUDIO, BUILD, SFX, MUSIC_FILE } from '../paths.mjs';
+import { SFX_MAP, LOUDNESS, kindOf } from './sfxmap.mjs';
 import { readWav, writeWav } from './wav.mjs';
 import { cli } from './cli.mjs';
 
@@ -35,6 +35,34 @@ const load = (name) => {
   }
   return wavCache.get(name);
 };
+
+/** Seconds from a file's start to its loudest 10 ms window (cached; the peakAlign anchor). */
+const peaks = new Map();
+function peakOf(name) {
+  if (!peaks.has(name)) {
+    const w = load(name), win = SR / 100;
+    let best = -1, at = 0;
+    for (let s = 0; s + win <= w.n; s += win) {
+      let e = 0;
+      for (let i = s; i < s + win; i++) e += w.ch[0][i] ** 2;
+      if (e > best) { best = e; at = s; }
+    }
+    peaks.set(name, at / SR);
+  }
+  return peaks.get(name);
+}
+
+/** The music master's local level: t (film s) → RMS dB over ±window s (LOUDNESS). */
+export function musicLevel(file = MUSIC_FILE, { window = LOUDNESS.window } = {}) {
+  if (!existsSync(file)) return null;
+  const m = readWav(file);
+  return (t) => {
+    const a = Math.max(0, Math.round((t + MUSIC.offset - window) * m.sr)), b = Math.min(m.n, Math.round((t + MUSIC.offset + window) * m.sr));
+    let e = 0;
+    for (let i = a; i < b; i++) for (const ch of m.ch) e += ch[i] ** 2;
+    return 10 * Math.log10(e / Math.max(1, (b - a) * m.ch.length) + 1e-12);
+  };
+}
 
 /**
  * Footage events → what a viewer should hear (in place, on events sorted by t): synthetic keys
@@ -69,7 +97,7 @@ function tidyUi(raw, dropped) {
 }
 
 /** Events → voices: { kind, file, t, pos (s, film time of the file's sample 0), from, len (s), gain_db, pan, fade }. */
-export function plan(events, { duration = DURATION } = {}) {
+export function plan(events, { duration = DURATION, level = null } = {}) {
   const dropped = [];
   const raw = [];
   for (const e of events) {
@@ -119,20 +147,31 @@ export function plan(events, { duration = DURATION } = {}) {
     kept.push(v);
   }
 
-  const counters = {};
+  const counters = {}, lastFile = {};
   const voices = [];
   let tickN;
   for (const v of kept) {
     const m = SFX_MAP[v.kind];
     const idx = (counters[v.kind] = (counters[v.kind] ?? -1) + 1);
-    const name = v.e.file && catalog()[v.e.file] ? v.e.file : m.files[idx % m.files.length];
+    // Files rotate by index; within a family a file never plays twice in a row.
+    const fam = m.family ?? v.kind;
+    let name = v.e.file && catalog()[v.e.file] ? v.e.file : null;
+    for (let j = 0; !name || (j < m.files.length && name === lastFile[fam] && !v.e.file); j++) name = m.files[(idx + j) % m.files.length];
+    lastFile[fam] = name;
     const cat = catalog()[name];
     if (!cat) throw new Error(`sfxmap: ${name} is not in catalog.json`);
-    const gain = m.gain_db + (m.trim_db?.[name] ?? 0) + (hash(idx) - 0.5) * 1.4 + (v.e.gain_db ?? 0) + (v.kind === 'impact' && v.e.strength != null ? 20 * Math.log10(Math.max(0.1, v.e.strength)) : 0);
+    const boost = level && m.loud !== false ? Math.min(LOUDNESS.max, Math.max(m.loudMin ?? 0, level(v.t) - LOUDNESS.ref)) : 0;
+    const gain = m.gain_db + (m.trim_db?.[name] ?? 0) + (hash(idx) - 0.5) * 1.4 + (v.e.gain_db ?? 0) + boost + (v.kind === 'impact' && v.e.strength != null ? 20 * Math.log10(Math.max(0.1, v.e.strength)) : 0);
     const pan = v.e.pan ?? (m.panX && Number.isFinite(v.e.x) ? m.panX * Math.max(-1, Math.min(1, (v.e.x / 2880) * 2 - 1)) : 0);
-    const base = { kind: v.kind, file: name, event_t: +v.t.toFixed(4), gain_db: +gain.toFixed(2), pan: +pan.toFixed(3), fade: m.fade };
+    const base = { kind: v.kind, file: name, event_t: +v.t.toFixed(4), gain_db: +gain.toFixed(2), boost_db: +boost.toFixed(2), pan: +pan.toFixed(3), fade: m.fade };
     const dur = cat.duration_s;
-    if (m.end || v.e.end) {
+    if (m.peakAlign != null && !(m.end || v.e.end)) {
+      // The file's loudest 10 ms lands at t + peakAlign; read from `lead` before it, at a pitch.
+      const pk = peakOf(name), rate = m.semis ? 2 ** (((hash(idx * 5 + 2) * 2 - 1) * m.semis) / 12) : 1;
+      const from = Math.max(0, pk - (m.lead ?? 0.12));
+      const len = Math.min(m.maxDur ?? dur, (dur - from) / rate);
+      voices.push({ ...base, pos: v.t + m.peakAlign - (pk - from) / rate, from, len, onset: cat.onset_s, rate: +rate.toFixed(4) });
+    } else if (m.end || v.e.end) {
       const D = Math.min(v.e.dur ?? m.defDur ?? m.maxDur ?? 3, dur);
       voices.push({ ...base, pos: v.t - D, from: dur - D, len: D, onset: null, fade: [Math.min(m.fade[0], D / 2), m.fade[1]] });
     } else if (m.tick) {
@@ -145,7 +184,7 @@ export function plan(events, { duration = DURATION } = {}) {
         const j = (tickN = (tickN ?? -1) + 1);
         const f = m.files[j % m.files.length], c = catalog()[f];
         const rate = 2 ** (((hash(j * 7 + 3) * 2 - 1) * m.tick.semis) / 12);
-        const g = m.gain_db + (m.trim_db?.[f] ?? 0) + (hash(j * 13 + 1) * 2 - 1) * m.tick.jitter_db + (/^Enter$/.test(String(k.label)) ? m.tick.enter_db : 0);
+        const g = m.gain_db + boost + (m.trim_db?.[f] ?? 0) + (hash(j * 13 + 1) * 2 - 1) * m.tick.jitter_db + (/^Enter$/.test(String(k.label)) ? m.tick.enter_db : 0);
         const len = Math.min(m.maxDur, c.duration_s / rate);
         voices.push({ ...base, file: f, event_t: +k.t.toFixed(4), gain_db: +g.toFixed(2), pos: k.t - c.onset_s / rate, from: 0, len, onset: c.onset_s, rate: +rate.toFixed(4) });
       }
@@ -218,9 +257,9 @@ async function fetchEvents() {
   }
 }
 
-export async function buildSfx({ events, outDir = AUDIO, duration = DURATION }) {
+export async function buildSfx({ events, outDir = AUDIO, duration = DURATION, level = musicLevel() }) {
   mkdirSync(outDir, { recursive: true });
-  const { voices, dropped } = plan(events, { duration });
+  const { voices, dropped } = plan(events, { duration, level });
   const [L, R] = mixVoices(voices, duration);
   let peak = 0;
   for (let i = 0; i < L.length; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
@@ -231,7 +270,7 @@ export async function buildSfx({ events, outDir = AUDIO, duration = DURATION }) 
   const report = {
     duration, sampleRate: SR, events: events.length, voices: voices.length, byKind,
     peakDbfs: +(20 * Math.log10(peak || 1e-9)).toFixed(2), thinned: dropped,
-    placed: voices.map((v) => ({ kind: v.kind, file: v.file, event_t: v.event_t, start: +Math.max(0, v.pos).toFixed(4), len: +v.len.toFixed(3), gain_db: v.gain_db, pan: v.pan, duck: SFX_MAP[v.kind].duck ?? false })),
+    placed: voices.map((v) => ({ kind: v.kind, file: v.file, event_t: v.event_t, start: +Math.max(0, v.pos).toFixed(4), len: +v.len.toFixed(3), gain_db: v.gain_db, boost_db: v.boost_db, music_db: level ? +level(v.event_t).toFixed(1) : null, pan: v.pan, duck: SFX_MAP[v.kind].duck ?? false })),
   };
   writeFileSync(resolve(outDir, 'sfx-events.json'), `${JSON.stringify(report, null, 1)}\n`);
   return { wav, report };

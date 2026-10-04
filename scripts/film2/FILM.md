@@ -180,7 +180,9 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   card. Music first, but every sound must be heard: UI sounds peak 3–6 dB over the local
   music RMS; typing is one tick per key; every section change has a sound; the music ducks
   under impacts, travels and dense UI. The mix fades only after the music resolves
-  (AUDIBLE_END 107.65 s). Master −16 LUFS, ≤ −1 dBTP.
+  (AUDIBLE_END 107.65 s). Master −16 LUFS, ≤ −1 dBTP. Gains are loudness-aware (`LOUDNESS` in
+  `audio/sfxmap.mjs`): a sound gains the local music RMS over −19 dB (≤ +6), so the lift needs
+  no hand trims; files rotate and never repeat back to back within a family.
 - `demo-media/film-v2/audio-stock/SOURCES.md` records every asset's license.
 
 ## 7. Architecture (`scripts/film2/`)
