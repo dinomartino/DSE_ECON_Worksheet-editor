@@ -2,7 +2,7 @@
 // thumbnail while it is meant to be read (FILM.md §4: ≥ 1190 px wide, 11 pt → 22 px).
 //   keys     one marking-scheme page, 1240 px wide, its four layouts cut in place on beats,
 //            each named with the app's own layout name (a LABEL over a hairline)
-//   mock     Paper 1 cover, Paper 2 cover, its answer page, an LQ page: dealt on beats, 1240 wide
+//   mock     Paper 1 cover, Paper 2 cover, its answer page, an answer key: dealt on beats, 1240 wide
 //   vers     Version A, B, C: the header and question 1 at 0.66 (the options reshuffle)
 //   fan      five sheets across the frame; the version page opens into its centre
 // update(t) is pure; every time is scene seconds from the caller's T.
@@ -18,7 +18,7 @@ export const LAYOUTS = [
   { id: 'sheets-key-suggested', en: 'Suggested answers', zh: '參考答案' },
   { id: 'sheets-key-detailed', en: 'Detailed table', zh: '詳細表格' },
 ];
-export const MOCK = ['sheets-p1-cover', 'sheets-p2-cover', 'sheets-p2-page', 'sheets-lq-1'];
+export const MOCK = ['sheets-p1-cover', 'sheets-p2-cover', 'sheets-p2-page', 'sheets-key-classic']; // cover to key
 export const VERSIONS = ['sheets-version-a', 'sheets-version-b', 'sheets-version-c'];
 const FAN = [ // [sheet id, slot −2…2]; the centre (0) is the version page
   ['sheets-lq-1', -2], ['sheets-key-hkeaa', 2], ['sheets-p1-cover', -1], ['sheets-p2-cover', 1],
@@ -73,7 +73,7 @@ export async function prints(parent, { url, T }) {
     if (inMock) {
       mock.forEach((sh, i) => {
         const at = T.mockDeals[i], p = outSoft(prog(t, at, at + 0.55));
-        sh.set({ x: PAGE.x - 240 + 80 * i + PAGE.w / 2, y: PAGE.top + ht(PAGE.w) / 2 + 140 * (1 - p), w: PAGE.w * lerp(0.97, 1, p), opacity: t >= at ? clamp((t - at) / 0.08) : 0 });
+        sh.set({ x: PAGE.x - 240 + 80 * i + PAGE.w / 2, y: PAGE.top + ht(PAGE.w) / 2 + 140 * (1 - p), w: PAGE.w * lerp(0.97, 1, p), opacity: t >= at ? 1 : 0 }); // dealt: there at once, rising
       });
       place(mockLayer, { scale: 1 + 0.02 * sineInOut(prog(t, T.mock[0], T.mock[1])) });
     }
@@ -98,15 +98,17 @@ export async function prints(parent, { url, T }) {
     else under.style.visibility = 'hidden';
     // The fan: inner pair, then outer pair, slide out from behind the centre; then the whole
     // fan spreads and pushes in, accelerating into the iris.
-    const q = prog(t, T.build[0], T.build[1]);
-    const spread = 1 + 0.05 * q * q;
+    // q² up to the hit, then on at the speed it reached (no stop under the opening iris).
+    const u = (t - T.build[0]) / (T.build[1] - T.build[0]);
+    const q2 = u <= 0 ? 0 : u <= 1 ? u * u : 2 * u - 1;
+    const spread = 1 + 0.08 * q2;
     fan.forEach((sh, i) => {
       const slot = FAN[i][1], at = Math.abs(slot) === 1 ? T.deals[0] : T.deals[1];
       const p = outSoft(prog(t, at, at + 0.6));
       const from = Math.abs(slot) === 1 ? 0 : Math.sign(slot);
       sh.set({ x: 960 + lerp(from, slot, p) * FAN_STEP * spread, y: 540, w: FAN_W, opacity: t >= at ? 1 : 0 });
     });
-    place(fin, { scale: 1 + 0.07 * q * q });
+    place(fin, { scale: 1 + 0.1 * q2 });
   }
   update(-1);
   return { update };

@@ -30,7 +30,7 @@ const PANEL = [1040, 205, 400, 260]; // the panel alone, from its left border to
 const FIELD_A = [1286, 311, 46, 26], FIELD_B = [1286, 347, 46, 26];
 const PANEL_SHOT = { size: 'narrow', focus: PANEL, zoom: 2.86 };
 // teacher-toggle: question 1, its options and (after the click) "Answer: C 答案：C".
-const Q1 = [340, 315, 470, 210], Q1_SAFE = [344, 318, 420, 205];
+const Q1 = [400, 315, 480, 210], Q1_SAFE = [344, 318, 420, 205];
 // key-layouts: the toolbar, the page's title and the four style cards; then the title + cards.
 const KEYS = [0, 0, 1440, 620], KEYS_IN = [200, 70, 1240, 535];
 // versions: Document setup's Versions row (Off 2 3 4 · Reshuffle · Page shows A B C).
@@ -52,7 +52,7 @@ const T_MARKS = {
 const T_PRINT = {
   keys: [P(20), P(30)], keyCuts: [P(20), P(24), P(26), P(28)],
   mock: [P(30), P(38)], mockDeals: [P(30), P(32), P(34), P(36)],
-  vers: [P(40)], verCuts: [P(40), P(41), P(42)], open: [P(43), P(44.5)], deals: [P(44), P(45)], build: [P(45.5), P(50)],
+  vers: [P(40)], verCuts: [P(40), P(41), P(42)], open: [P(43), P(44.5)], deals: [P(44), P(45)], build: [P(45.5), P(48)],
 };
 
 /** A CSS rect under a framing's pose, in design px. */
