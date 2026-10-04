@@ -1,9 +1,96 @@
 ---
 name: econ-film
-description: Build, edit, re-render and verify the Econ Worksheet product film (the 94 s Apple-style launch/demo video in scripts/film/) and new cuts made from its engine. Use for any request touching the product film, demo video, showcase or promo video — changing its on-screen text or Chinese copy, re-capturing footage after a UI or feature change, adding or replacing a scene, retiming cuts or cues, re-scoring the music, rendering previews, stills or the final mp4, checking it with film:doctor — and for making a new film from it (a 30 s feature spotlight, a 9:16 social cut) or orchestrating several agents on film work.
+description: Build, edit, re-render and verify the Econ Studio product films, v2 (scripts/film2, current: 2D motion design to stock music, about 108 s) and v1 (scripts/film, 3D, kept, 94 s), and make new cuts from their engines. Use for any request touching the product film, demo video, showcase or promo video — changing its on-screen text or Chinese copy, re-capturing footage after a UI or feature change, adding or replacing a scene, retiming cuts or cues, swapping or re-scoring the music, rendering previews, stills or the final mp4, checking it with film2:doctor or film:doctor — and for making a new film (a 30 s feature spotlight, a 9:16 social cut) or orchestrating several agents on film work.
 ---
 
-# The Econ Worksheet product film
+# The Econ Studio product films
+
+**Two films.** **v2** (`scripts/film2/`, current, 2D) is the one to change by default.
+**v1** (`scripts/film/`, 3D Three.js, synthesised score) is kept and renderable; v2 reuses
+its capture CLI, Chrome helper and clip store format. Everything below the v2 sections
+describes v1 and applies only when the request names v1.
+
+## Film v2 (scripts/film2, current)
+
+~108 s, 1920×1080, 60 fps, 2D DOM/SVG stage (no GPU), real-app footage as clean cards,
+cut to the stock track "Dreaming Big" (Mixkit) on a verified beat grid. Output:
+`demo-media/film-v2/econ-studio-film.mp4` in the main checkout (gitignored). The bible is
+`scripts/film2/FILM.md` (read the section you touch); the contracts, review method and
+pitfalls are [reference/v2.md](reference/v2.md); licences are in `scripts/film2/README.md`.
+
+| Path (under `scripts/film2/`) | Owns |
+|---|---|
+| `timeline.mjs` | Grid helpers `pulse/beat/bar(n)`, `SCENES` (acts by bar; `in`, `cuts`, `ui`, `holds`, `alive`), `CUES`, `COPY`, `AXIS_CHAPTER`. Pure data |
+| `music.mjs`, `beatgrid.<slug>.json` | The one entry that picks the track; its verified grid (versioned copy) |
+| `assets.mjs` | Registry: id → clip/image in the v2 store, capture command, scenes allowed |
+| `capture/` | `clips.mjs` (jobs), `content.mjs` + `seed*.mjs` (seed documents), `sheets.mjs`, `manifest.mjs` → `MANIFEST.md` |
+| `stage/engine.js`, `stage/lib/`, `stage/scenes/<act>.js` | Renderer, shared library, one module per act |
+| `audio/` | `sfx.mjs` (events → sfx.wav), `mix.mjs` (master −16 LUFS), `verify.mjs`, `sfxmap.mjs` |
+| `render.mjs`, `paths.mjs` | Frames → mp4; outputs to `$FILM_OUT` or `<main>/demo-media/film-v2/`, store `…/film-v2/assets` |
+| `tools/` | `doctor`, `motion-check`, `seam`, `contact`, `lab`, `beatgrid`, `serve` |
+
+### v2 golden commands (repo root; agents wrap in `.claude/skills/econ-film/bin/timeout 100`)
+
+```sh
+npm run film2:doctor                          # health check; run after EVERY change (--skip-stage = no Chrome)
+npm run film2:stills -- --scene=draw          # 960×540 stills, 1 per second
+node scripts/film2/render.mjs --final --at=19.4,70.9 --workers=4      # exact 1080p frames → $FILM_OUT/stills/
+node scripts/film2/render.mjs --final --from=34 --to=36 --workers=4   # ≤ 6 s of real video
+npm run film2:audio                           # sfx + mix + verify (after cue/cut/copy-free timing changes)
+npm run film2                                 # the final mp4 (long: run in the background)
+# re-capture one clip into the v2 store, then regenerate the manifest
+FILM_STORE="$PWD/demo-media/film-v2/assets" FILM_OUT="$PWD/demo-media/film-v2" \
+  npm run film:capture -- --clips=scripts/film2/capture/clips.mjs --only=<clip> --no-build
+FILM_STORE="$PWD/demo-media/film-v2/assets" node scripts/film2/capture/manifest.mjs
+node scripts/film2/tools/lab.mjs --at=0.5,2,3.5          # try lib pieces on real clips (scenes/_lab.js)
+node scripts/film2/tools/motion-check.mjs <mp4> --from=<s>   # stalls / jumps / flashes / weak cuts
+node scripts/film2/tools/seam.mjs <mp4> --scene=<id>     # frames either side of each cut
+node scripts/film2/tools/contact.mjs <mp4|dir> --cell=320   # contact sheet, cells ≤ 480 px
+```
+
+Scripts take `--help` and reject unknown flags. Use `FILM_OUT=<scratch>` for every
+exploratory render. Never re-capture without `--only`.
+
+### What kind of change is it? (v2)
+
+- **Words** → edit `COPY` in `timeline.mjs` only. No line ends in `, . ， 。` (doctor reads
+  the wrapped lines). **The user signs off copy**: never change it unprompted. Then
+  `film2:doctor` and stills at the moment it is fully shown.
+- **The app's UI changed** → re-capture the affected clip jobs into the v2 store, run the
+  manifest, then retime the act: the clip's event times move, so fix the scene's `placeClip`
+  and the act's `cuts`/`ui` in `timeline.mjs`; stills of every cut.
+- **Retime** → `ACTS` bars, or a scene's pulse table; then update that act's `cuts`, `ui`,
+  `holds`, `alive` declarations, cue times, run `film2:audio`; `motion-check` must report 0.
+- **New feature scene** → bible row (§3) first, then capture job in `clips.mjs`, `assets.mjs`
+  entry, scene module built from the lib presets and `camera.shots`, cues, declarations.
+- **Swap the music** → `music.mjs` + a verified `beatgrid.<slug>.json` (`tools/beatgrid.mjs`),
+  then re-bar every act (`SCENES`), cues and declarations; doctor checks cuts sit on the grid.
+- **9:16 or a 30 s spotlight** → not built in v2 (no portrait format); see reference/v2.md.
+
+### v2 rules that are never negotiable
+
+1. **No fake UI**: product pixels from the real app or its real export; illustrations are
+   plainly illustration; no third-party logo; no "AI"/Gemini on screen around Check terms.
+2. **Re-ink lifts carry the app's real values** (7 marks, the coverage numbers, the term).
+3. **`update(t)` is pure**: no clocks, no `Math.random`, no state; seek order never matters.
+4. **Type and layout from presets only** (`HEADLINE`, `STATEMENT`, `LABEL`, `DISPLAY`, `C1`…`C3`);
+   never a literal size. Every cut changes shot size. No word is cut by a frame or card edge.
+5. **Print is legible**: a printed page ≥ 1190 px wide or on screen ≤ 1 s. Headlines fully
+   visible ≥ 2 s and present whenever footage is on screen.
+6. **One owner per shared file** (`timeline.mjs`, `engine.js`, `lib/`, `audio/`, `assets.mjs`);
+   scene agents own only their own `scenes/<act>*`.
+7. Outputs to `demo-media/film-v2`, scratch via `FILM_OUT`. The v2 store
+   `demo-media/film-v2/assets` is never v1's store; v2 never writes v1's.
+8. `src/` is never edited for the film; branch `feature/film-v2*`; never push, never commit
+   to `main`/`develop`.
+
+Verify a v2 change: `film2:doctor` exit 0; stills at every touched moment as a downscaled
+grid; `motion-check` and `seam` on a short `--final` range; `film2:audio` when timing moved;
+`npm test`.
+
+---
+
+# Film v1 (scripts/film, 3D)
 
 A 94 s, 1920×1080, 60 fps film generated entirely by code in `scripts/film/`: the real app
 captured frame-perfect in virtual time (Playwright), composed in 3D (Three.js stage,
