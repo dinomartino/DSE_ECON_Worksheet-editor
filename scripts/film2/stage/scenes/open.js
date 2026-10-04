@@ -113,11 +113,9 @@ const scene = {
     const top = 540 - (ctx.q1.height + STACK_GAP + ctx.q2.height) / 2;
     ctx.q1.el.style.top = `${f(top, 2)}px`;
     ctx.q2.el.style.top = `${f(top + ctx.q1.height + STACK_GAP, 2)}px`;
-    // The doctor's shot budget: a close-up (an illustrated one) until the pull-back.
-    ctx.registerShots?.('open', [
-      { at: 0, end: P(8), size: 'close', to: 'close', moveAt: P(8) },
-      { at: P(8), end: ctx.dur, size: 'close', to: 'wide', moveAt: P(9) },
-    ]);
+    // The doctor's shot budget: only the full-bleed close-up counts (until mid-slide); the
+    // statement + sheet frame after it is a C2 composition, not a camera shot.
+    ctx.registerShots?.('open', [{ at: 0, end: P(-0.75), size: 'close', to: 'close', moveAt: P(-0.75) }]);
   },
   update(ctx, t) {
     const { page } = ctx;
