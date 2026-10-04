@@ -40,8 +40,7 @@ export function updateDesk(d, t, target) {
   const bx = 960 + (sx - 960) * breath, by = 540 + (sy - 540) * breath;
   const x = lerp(bx, target.x, p), y = lerp(by, target.y, p);
   d.group.style.transform = `translate(${f(x - sx * k, 2)}px, ${f(y - sy * k, 2)}px) scale(${f(k, 5)})`;
-  // The sketched marks give way to a clean page over the dive's second half.
-  d.pages.forEach((pg) => show(pg.svg, 1 - outSoft(prog(p, 0.35, 0.85))));
+  // The sketched marks stay to the cut: the first question's bar becomes the real stem.
 
   // The selection ring springs in on the landing and fades as the dive starts.
   const sel = spring(prog(t, P(3), P(3.5)));

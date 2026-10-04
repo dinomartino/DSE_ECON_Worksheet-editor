@@ -34,6 +34,7 @@ export const DOT1_R = (2.3 * DESK.w) / 120;
 export const TYPE_STEM = [250, 360, 520, 46]; // "Which of the following is a positive statement?"
 export const TYPE_CLOSE = [180, 250, 740, 330];
 export const TYPE_MED = [0, 150, 1440, 620];
+export const TYPE_Q1 = [100, 280, 1000, 360]; // Q1 with its options (the MEDIUM's push)
 export const TYPE_DBL = [287, 382]; // the double-click into the stem
 // Clip time: the double-click (0.72) on the cut; from 4.5 s (between the 中文 line and the
 // options) the pasted options run at 1.6×, the rate ramping over half a second.
@@ -55,14 +56,16 @@ export const REFLOW = [86, 29]; // CSS px the page moves in the EN+中 state
 export const LANG_CLOSE = [236, 117, 674, 379]; // at 2.85×: the page from its top margin to the gap under Q2
 export const LANG_SAFE = [252, 270, 500, 170];
 
-// zh-interface: Language (1.8) on the cut P29, 繁體中文 (3.0) on P31, 完成 (4.4) on P33.
-export const UI = { at: BEAT.ui, from: 1.8, r1: 1.2 / (2 * PULSE), r2: 1.4 / (2 * PULSE), end: 6.6 };
+// zh-interface: from 1.85 (the Language panel has settled: frames ≤ 108 are the AI panel and
+// a blank), 繁體中文 (3.0) on P31, 完成 (4.4) on P33.
+export const UI = { at: BEAT.ui, from: 1.85, r1: 1.15 / (2 * PULSE), r2: 1.4 / (2 * PULSE), end: 6.6 };
 UI.mid = UI.at + P(2);
 export const uiClipT = (t) => Math.min(UI.end, t < UI.mid ? UI.from + (t - UI.at) * UI.r1 : t < BEAT.uiWide ? 3.0 + (t - UI.mid) * UI.r2 : 4.4 + (t - BEAT.uiWide));
 // Settings › Language: the heading 語言 and the two cards (the sidebar, with its AI row, stays out).
 export const UI_CLOSE = [309, 106, 800, 450];
-export const UI_SAFE = [318, 126, 740, 150];
+export const UI_SAFE = [322, 126, 726, 150];
 export const UI_TOGGLE = [868, 213];
+export const UI_RAIL = [0, 60, 1150, 500]; // the start screen's left rail and heading, in 中文
 
 // The printed Q1 (A4 2379 × 3366 px) at 0.6 × (a 1427 px page: legible, FILM.md print rule):
 // EN over 中文 in the left column, EN+中 (twice as tall) on the right. src = image px.

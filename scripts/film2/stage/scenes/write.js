@@ -13,8 +13,8 @@
 import { h, s, svg, block, label, show, place, C, PAPER_SHADOW, HEADLINE, LABEL, ease, f } from '../lib/index.js';
 import { camera, frame } from '../lib/camera.js';
 import {
-  P, BEAT, TYPE, TYPE_STEM, TYPE_CLOSE, TYPE_MED, TYPE_DBL, typeClipT, LANG, langClipT, LANG_STATES, REFLOW,
-  LANG_CLOSE, LANG_SAFE, UI, uiClipT, UI_CLOSE, UI_SAFE, UI_TOGGLE, PRINT_K, PRINTS,
+  P, BEAT, TYPE, TYPE_STEM, TYPE_CLOSE, TYPE_MED, TYPE_Q1, TYPE_DBL, typeClipT, LANG, langClipT, LANG_STATES, REFLOW,
+  LANG_CLOSE, LANG_SAFE, UI, uiClipT, UI_CLOSE, UI_SAFE, UI_TOGGLE, UI_RAIL, PRINT_K, PRINTS,
 } from './write/geom.js';
 import { buildDesk, updateDesk } from './write/desk.js';
 
@@ -27,6 +27,7 @@ const scene = {
     { t: P(-1), kind: 'pencil', label: 'the four paper kinds write themselves' },
     { t: P(3), kind: 'drop', label: 'the dot drops into the Classroom worksheet' },
     { t: P(3.25), kind: 'whoosh', size: 'm', label: 'the camera dives into the page' },
+    { t: P(29), kind: 'click', label: 'cut to Settings › Language (the sidebar click, off frame)' },
     { t: P(23), kind: 'paper', label: 'three printed Q1s: English, 中文, both' },
   ],
   async setup(ctx) {
@@ -47,14 +48,14 @@ const scene = {
     ctx.rigs = {
       type: await rig('type', 'type-mcq', [
         { at: BEAT.type, end: BEAT.typeMed, ...typeClose },
-        { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_MED },
+        { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_MED, move: { dur: P(6), to: { focus: TYPE_Q1, zoom: 1.45 } } },
       ]),
       lang: await rig('lang', 'language-toggle', [
-        { at: BEAT.lang, end: BEAT.print, size: 'close', focus: LANG_CLOSE, safe: LANG_SAFE, zoom: 2.85 },
+        { at: BEAT.lang, end: BEAT.print, size: 'close', focus: LANG_CLOSE, safe: LANG_SAFE, zoom: 2.85, drift: 0.03 },
       ], true),
       ui: await rig('ui', 'zh-interface', [
-        { at: BEAT.ui, end: BEAT.uiWide, size: 'close', focus: UI_CLOSE, safe: UI_SAFE, zoom: 2.4 },
-        { at: BEAT.uiWide, end: BEAT.end + P(2), size: 'wide' },
+        { at: BEAT.ui, end: BEAT.uiWide, size: 'close', focus: UI_CLOSE, safe: UI_SAFE, zoom: 2.4, move: { at: -P(1.5), dur: P(7), to: { zoom: 2.5 } } }, // in motion on the cut
+        { at: BEAT.uiWide, end: BEAT.end + P(2), size: 'wide', move: { at: -P(1), dur: P(6), to: { size: 'medium', focus: UI_RAIL, zoom: 1.5 } } },
       ]),
     };
     // The desk dives to where the real stem sits in the first CLOSE (px per sketch unit k).
@@ -70,16 +71,17 @@ const scene = {
 
     // The printed Q1s, cropped at 1190 px page width, side by side under the headline.
     ctx.prints = [];
+    ctx.printGroup = h('div', { style: { position: 'absolute', inset: 0, transformOrigin: '960px 640px' } }, ctx.el);
     for (const pr of PRINTS) {
       const [x, y] = pr.at;
       const [sx, sy, sw, sh] = pr.src.map((v) => v * PRINT_K);
       const el = h('div', { style: {
         position: 'absolute', left: `${f(x, 2)}px`, top: `${y}px`, width: `${f(sw, 2)}px`, height: `${f(sh, 2)}px`,
-        background: C.paper, boxShadow: PAPER_SHADOW, overflow: 'hidden', borderRadius: '3px', transformOrigin: '50% 0',
-      } }, ctx.el);
+        background: C.paper, boxShadow: PAPER_SHADOW, overflow: 'hidden', borderRadius: '3px',
+      } }, ctx.printGroup);
       const img = h('img', { src: ctx.load.url(pr.id), style: { position: 'absolute', left: `${f(-sx, 2)}px`, top: `${f(-sy, 2)}px`, width: `${f(2379 * PRINT_K, 2)}px` } }, el);
       await img.decode();
-      const cap = label(ctx.el, { ...LABEL, ...pr.label, x, y: y - 16 });
+      const cap = label(ctx.printGroup, { ...LABEL, ...pr.label, x, y: y - 16 });
       ctx.prints.push({ el, cap });
     }
 
@@ -118,10 +120,10 @@ const scene = {
 
     // The printed Q1s rise in one after another, then the row breathes while it is read.
     const pOn = between(t, BEAT.print, BEAT.ui);
+    place(ctx.printGroup, { scale: 1 + 0.03 * sineInOut(prog(t, BEAT.print, BEAT.ui + P(2))) }); // still moving at the cut
     ctx.prints.forEach(({ el, cap }, i) => {
       const r = outSoft(prog(t, BEAT.print + P(i * 0.5), BEAT.print + P(i * 0.5) + 0.6));
-      const k = 1 + 0.02 * sineInOut(prog(t, BEAT.print, BEAT.ui));
-      place(el, { y: 90 * (1 - r), scale: k, opacity: pOn ? r : 0 });
+      place(el, { y: 90 * (1 - r), opacity: pOn ? r : 0 });
       cap.show(pOn ? r : 0);
     });
 
@@ -129,14 +131,15 @@ const scene = {
     const lOn = between(t, BEAT.lang, BEAT.print);
     const idx = LANG_STATES.findLastIndex(([at]) => t >= at);
     ctx.chip.forEach((c, i) => {
-      c.on.show(lOn && i === idx ? 1 : 0);
-      c.off.show(lOn && i !== idx ? 1 : 0);
+      const inP = outSoft(prog(t, BEAT.lang + i * 0.06, BEAT.lang + i * 0.06 + 0.45)); // rises in on the cut
+      c.on.show(lOn && i === idx ? inP : 0);
+      c.off.show(lOn && i !== idx ? inP : 0);
     });
     let cx = ctx.chip[0].cx;
     for (let i = 1; i < LANG_STATES.length; i++) cx = lerp(cx, ctx.chip[i].cx, spring(prog(t, LANG_STATES[i][0], LANG_STATES[i][0] + 0.32)));
     ctx.chipDot.setAttribute('cx', f(cx, 2));
     ctx.chipDot.setAttribute('cy', '120');
-    show(ctx.chipDot, lOn ? 1 : 0);
+    show(ctx.chipDot, lOn ? outSoft(prog(t, BEAT.lang + 0.1, BEAT.lang + 0.5)) : 0);
 
     // The dot marks a click in a CLOSE: a pop, then a ripple.
     const hits = [[BEAT.type, type, TYPE_DBL], [P(31), ui, UI_TOGGLE]];
