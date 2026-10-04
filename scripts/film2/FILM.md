@@ -157,7 +157,7 @@ place it lives. Line breaks are deliberate; a line never ends in `, . ， 。`
   ≤ 35 % of the film in MEDIUM demo-card frames, ≥ 25 % in CLOSE (the doctor measures it).
 - **Axis chapter** (engine.js, `in: { type: 'axis', pulses: 4 }`): the act changes at 30.25,
   51.58 and 94.26. In pulses from the bar line B: B−2…B0 a 4 px ink stroke wipes 1920 → 96
-  (the new act right of it), the 12 px blue dot on its top; B0…B+1.5 the horizontal axis
+  (the new act right of it), the 18 px blue dot on its top, one soft ring rippling out of it as it lands (B0…B+2, r 9 → 40); B0…B+1.5 the horizontal axis
   draws along y 1008; the chapter LABEL (`COPY.chapters`) sits on it at x 120, in by B+0.5,
   fully visible B+0.5…B+3.5 (3 pulses, 1.33 s), out by B+4; B+2.5…B+4 both strokes retract
   into the origin and the dot travels to `in.dotTo` (or rides down) and shrinks away. Six
