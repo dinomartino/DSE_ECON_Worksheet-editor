@@ -69,8 +69,10 @@ const ACTS = [
     // → the printed Q1s; → Settings CLOSE; → WIDE on 完成 (scenes/write/geom.js BEAT)
     cuts: PC(24, [5, 11, 17, 23, 29, 33]),
     // type-mcq's double-click into the 中文 line; 中文, EN+中; 繁體中文
-    ui: [17.505, pulse(43), pulse(45), pulse(55)],
-    holds: [[pulse(53), pulse(55)]] }, // Settings › Language in English is read before the flip
+    // …plus type-mcq's option pastes, visible now that the MEDIUM push rests
+    ui: [17.505, 18.719, 18.855, 19.032, 19.167, 19.344, 19.48, 19.657, 19.792, pulse(43), pulse(45), pulse(55)],
+    holds: [[pulse(53), pulse(55)]], // Settings › Language in English is read before the flip
+    alive: [[pulse(47), pulse(53)]] }, // the printed Q1s breathe inside their cards
   { id: 'draw', bars: [8, 14], in: { type: 'axis', pulses: 4 },
     // CLOSE → narrow; → the CS lift on cream; → the Templates wall; → Draw answer; → the
     // Student | Teacher split; → the red answer CLOSE (scenes/draw.js P10, P27, P30, P33, P40, P45)
