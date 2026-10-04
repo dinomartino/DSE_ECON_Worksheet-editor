@@ -12,7 +12,9 @@
 //   104.40   the music's last stab (P22.8): the dot beats, a ripple runs out to the tile's edge
 //            and the drift gets a soft kick that settles over 3 pulses
 //   P14..the last frame: the lockup drifts 1 → DRIFT at constant speed about the dot, so it is
-//   visibly moving on every frame (no hold; timeline alive range, not holds)
+//   visibly moving on every frame (no hold; timeline alive range, not holds), with a soft push
+//   accent (KICK) on the stab; a fifth of the drift is front-loaded (sine-out to P22) so the
+//   card moves fastest while it has the least on it (before the free line)
 // The lockup is the act-1 hero lockup (END_CARD: tile 360, wordmark 110, zh 46), at the mark
 // act's own top (scenes/mark.js TOP) so the film ends on the shape it opened with.
 import { lockup, block, h, place, show, f, C, ease, STATEMENT, END_CARD } from '../lib/index.js';
@@ -25,8 +27,8 @@ const K = SIZE / 512;
 const X0 = END_CARD.cx - SIZE / 2;
 const STMT_PUSH = 1.09; // the statement's push, about STMT_O
 const STMT_O = [960, 1008]; // on the chapter's axis: the words grow up out of it, so they rise as they push
-const DRIFT = 1.12; // the end card's drift about the dot, P15 → the last frame
-const KICK = 0.012; // the stab's push, settled over SETTLE pulses
+const DRIFT = 1.13; // the end card's drift about the dot, P14 → the last frame (+ KICK: ink stays above y 1000)
+const KICK = 0.012; // a push accent on the stab, settled over SETTLE pulses
 const SETTLE = 3;
 const STAB = 104.4; // film s: the music's last stab (RMS onset, mixkit-31 104.38–104.40)
 const LEAD = 0.05; // s the dot runs early so it is visible on the chime's attack (sync #7)
@@ -170,11 +172,12 @@ const scene = {
 
     ctx.lock.wordAt(outSoft(prog(t, P(16.25), P(16.25) + 0.9)));
     ctx.free.show(t, { at: P(20), dur: P(2) });
-    // The drift: about the dot at constant speed from P15 to the last frame (still moving there),
-    // plus the stab's kick, which eases out over SETTLE pulses and stays.
+    // The drift: about the dot at constant speed from P14 to the last frame (still moving there),
+    // plus two kicks that ease out and stay: the landing (the chime) and the stab.
     const end = ctx.window.end - ctx.from;
     const kick = KICK * outSoft(prog(stab, 0, P(SETTLE)));
-    place(ctx.group, { scale: lerp(1, DRIFT, ramp(t, P(14), end, P(1.5))) + kick });
+    const drift = 0.8 * ramp(t, P(14), end, P(1.5)) + 0.2 * Math.sin((Math.PI / 2) * prog(t, P(14), P(22)));
+    place(ctx.group, { scale: lerp(1, DRIFT, drift) + kick });
   },
 };
 
