@@ -95,7 +95,8 @@ export const LIBRARY = [
  * earlier, so the start screen, the 題庫 bank and the marking scheme have real content.
  * Questions are [English, 中文]; `tags` are topic codes (`src/model/topics.ts`), on the
  * question for an MCQ and per part for a structured question. `points` are HKEAA
- * marking points: [English, 中文, marks]. `diagram` is a model-answer diagram template.
+ * marking points: [English, 中文, marks]. `diagram` is a model-answer diagram template;
+ * `diagramLabelOffset` nudges its bracket's label (unit space).
  * `daysAgo` dates each document. The seed test fails on any term the EDB glossary flags.
  */
 export const SITE = {
@@ -181,6 +182,8 @@ export const SITE = {
               lines: 6,
               tags: ['C.intervention'],
               diagram: 'minimum-wage',
+              // The template's two-line bracket label sits on S at this size: lift it clear.
+              diagramLabelOffset: { x: -0.03, y: 0.14 },
               points: [
                 ['Correct diagram: labour demand and supply, minimum wage set above the equilibrium wage', '正確的圖：勞工的需求和供應，最低工資高於均衡工資', 2],
                 ['Quantity demanded of labour falls, so employment falls', '勞工的需求量下降，因此就業量下降', 1],
