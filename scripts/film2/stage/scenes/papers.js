@@ -123,7 +123,7 @@ const scene = {
     ctx.marks.update(t);
     ctx.print.update(t);
 
-    ctx.h1.show(t, { at: P(4.5), dur: 0.5, out: P(11), outDur: 0.1 });
+    ctx.h1.show(t, { at: P(4.75), dur: 0.5, out: P(11), outDur: 0.1 }); // after the chapter's vertical has left the slot
     ctx.h2.show(t, { at: P(16), dur: 0.5, out: P(24), outDur: 0.3 });
     ctx.h3.show(t, { at: P(30), dur: 0.5, out: P(40), outDur: 0.1 });
   },
