@@ -9,7 +9,7 @@ export const P = (n) => n * PULSE;
 
 // The beats (cuts on pulses; each beat = its CLOSE money shot, then the frame that names it).
 export const BEAT = {
-  dive: P(3), // the dot has landed: the camera dives into the Classroom page
+  dive: P(2), // the dot has landed: the camera dives into the Classroom page
   type: P(5), // cut: CLOSE on the stem as it is typed (the double-click lands on the cut)
   typeMed: P(11), // cut: MEDIUM, "Type right on the page", the 中文 line and the options land
   lang: P(17), // cut: CLOSE locked on Q1: EN (on the cut), 中文 P19, EN+中 P21
@@ -63,7 +63,8 @@ export const LANG_SAFE = [252, 270, 500, 170];
 // a blank), 繁體中文 (3.0) on P31, 完成 (4.4) on P33.
 export const UI = { at: BEAT.ui, from: 1.85, r1: 1.15 / (2 * PULSE), r2: 1.4 / (2 * PULSE), end: 6.6 };
 UI.mid = UI.at + P(2);
-export const uiClipT = (t) => Math.min(UI.end, t < UI.mid ? UI.from + (t - UI.at) * UI.r1 : t < BEAT.uiWide ? 3.0 + (t - UI.mid) * UI.r2 : 4.4 + (t - BEAT.uiWide));
+// (The CLOSE never reaches 完成's frame: the start screen appears only with the cut to WIDE.)
+export const uiClipT = (t) => Math.min(UI.end, t < UI.mid ? UI.from + (t - UI.at) * UI.r1 : t < BEAT.uiWide ? Math.min(4.38, 3.0 + (t - UI.mid) * UI.r2) : 4.4 + (t - BEAT.uiWide));
 // Settings › Language: the heading 語言 and the two cards (the sidebar, with its AI row, stays out).
 export const UI_CLOSE = [309, 106, 800, 450];
 export const UI_SAFE = [322, 126, 726, 150];

@@ -1,7 +1,7 @@
 // Act 2, write (FILM.md §3 row 2), bar 3 → bar 8, the build. Each beat shows its money
 // moment in CLOSE first, then the frame that names it (P(n) = scene pulse n):
 //   P(-2)…P(5)  the iris opens on the desk: four paper kinds, writing themselves; the dot
-//               drops into the Classroom worksheet (P3) and the camera dives into its stem
+//               drops into the Classroom worksheet (P2) and the camera dives into its stem
 //   P(5)…P(11)  CLOSE: the stem is typed on the page (the double-click lands on the cut)
 //   P(11)…P(17) MEDIUM + "Type right on the page": the 中文 line and the options land
 //   P(17)…P(23) CLOSE locked on Q1: EN (on the cut), 中文 (P19), EN+中 (P21); the toggle is
@@ -25,8 +25,8 @@ const HEAD_IN = { dur: 0.5, stagger: 0.06, outDur: 0.05 }; // in fast, out on th
 const scene = {
   events: [
     { t: P(-1), kind: 'pencil', label: 'the four paper kinds write themselves' },
-    { t: P(3), kind: 'drop', label: 'the dot drops into the Classroom worksheet' },
-    { t: P(3.25), kind: 'whoosh', size: 'm', label: 'the camera dives into the page' },
+    { t: P(2), kind: 'drop', label: 'the dot drops into the Classroom worksheet' },
+    { t: P(2.25), kind: 'whoosh', size: 'm', label: 'the camera dives into the page' },
     { t: P(29), kind: 'click', label: 'cut to Settings › Language (the sidebar click, off frame)' },
     { t: P(23), kind: 'paper', label: 'three printed Q1s: English, 中文, both' },
   ],
@@ -58,9 +58,9 @@ const scene = {
         { at: BEAT.uiWide, end: BEAT.end + P(2), size: 'wide', move: { at: -P(1), dur: P(6), to: { size: 'medium', focus: UI_RAIL, zoom: 1.5 } } },
       ]),
     };
-    // The desk dives to where the real stem sits in the first CLOSE (px per sketch unit k).
+    // The desk dives to where the real stem sits in the first CLOSE.
     const q = frame(typeClose).pose;
-    ctx.target = { x: q.a[0] + q.s * (261 - q.c[0]), y: q.a[1] + q.s * (383 - q.c[1]), k: (1032 / 120) * q.s };
+    ctx.target = { x: q.a[0] + q.s * (261 - q.c[0]), y: q.a[1] + q.s * (383 - q.c[1]) };
 
     ctx.placeClip('type-mcq', { at: TYPE.at, from: TYPE.from, rate: 1, dur: TYPE.tS - TYPE.at });
     ctx.placeClip('type-mcq', { at: TYPE.tS, from: TYPE.s, rate: TYPE.rate2, dur: BEAT.lang - TYPE.tS });
