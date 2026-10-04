@@ -16,7 +16,8 @@
 //   P28..P32  the Templates wall: twelve real template cards dealt full frame, held ≥ 1 s
 //   P32..P40  "The answer, on the same axes": MEDIUM on the tax question's Teacher canvas. The
 //             Draw answer click is the cut; S0 selected, Shift up by 26 %, Shift a copy (P37) draws
-//             S1, the shift arrow, P1 and Q1 in red; the arrow dragged onto the tax wedge
+//             S1, the shift arrow, P1 and Q1 in red; P37.5 a push into CLOSE (2.6×) on the shifted
+//             copy, settled P39.75 as the arrow is dragged onto the tax wedge
 //   P40..P44  Student | Teacher split (the clip's Teacher click sounds on the cut): Student keeps
 //             its blank axes; on Teacher the same answer draws on in red, S1 sliding up from S0 by
 //             t, then E1, P1 and P1 − t, Q1 left of Q0
@@ -49,7 +50,9 @@ const CLIPS = {
   draw: { id: 'draw-diagram', show: [-Infinity, P(13)], keys: [[P(2) - 1.0 / DR, 0], [P(10), 4.4], [P(10) + 0.85, 5.25]] },
   // Shade ▾ (0.8) on P22.2, Consumer surplus (1.6) on the P24 cut; carried until the lift fades it.
   shade: { id: 'shade-area', show: [P(18), P(27)], keys: [[P(19), 0], [P(24) - 0.8, 0.8], [P(24) + 1.1, 2.7]] },
-  answer: { id: 'answer-draw', show: [P(32), P(40)], keys: [[P(32), 0.8], [AS, 3.9], [AS + 0.5, 4.9], [AS + 1.12, 5.52], [P(40), 5.52 + P(40) - AS - 1.12]] },
+  answer: { id: 'answer-draw', show: [P(32), P(37.5)], keys: [[P(32), 0.8], [AS, 3.9], [AS + 0.5, 4.9], [AS + 1.12, 5.52], [P(40), 5.52 + P(40) - AS - 1.12]] },
+  // The same clip in a second rig for the push into CLOSE on the shifted copy (placed once, above).
+  answer2: { id: 'answer-draw', show: [P(37.5), P(40)], place: false, keys: [[P(32), 0.8], [AS, 3.9], [AS + 0.5, 4.9], [AS + 1.12, 5.52], [P(40), 5.52 + P(40) - AS - 1.12]] },
   // Its Teacher click (1.5 s) lands on the P40 cut into the split; the CLOSE shows it from P44.
   layer: { id: 'answer-layer', show: [P(44), Infinity], keys: [[P(40), 1.5], [P(40) + 4.3, 5.8]] },
 };
@@ -71,9 +74,11 @@ const SHOTS = {
     { at: P(18), size: 'medium', focus: G.TOP, drift: 0.03 },
     { at: P(24), size: 'close', ...G.SHADE_CLOSE, drift: 0.02, end: P(25) },
   ],
-  // A slow tilt down from the toolbar (the Draw answer click) to the whole diagram from P33, still
-  // travelling as S1 lands (P37), as the arrow is dragged and at the cut (it would end at P40.5).
-  answer: [{ at: P(32), size: 'medium', focus: G.TOP, move: { at: P(1), dur: P(7.5), to: { focus: G.ANSWER_DOWN } }, end: P(40) }],
+  // A tilt down from the toolbar (the Draw answer click) to the whole diagram, P33–P37.5, S1
+  // landing on P37; then (a second rig, picking up that exact pose) a push into CLOSE on the
+  // shifted copy, settled by P39.75 while the arrow is dragged onto the tax wedge.
+  answer: [{ at: P(32), size: 'medium', focus: G.TOP, move: { at: P(1), dur: P(4.5), to: { focus: G.ANSWER_DOWN } }, end: P(37.5) }],
+  answer2: [{ at: P(37.5), size: 'medium', focus: G.ANSWER_DOWN, move: { dur: P(2.25), to: { size: 'close', ...G.SHIFT_CLOSE } }, end: P(40) }],
   layer: [{ at: P(44), size: 'close', ...G.LAYER_CLOSE, drift: 0.03, end: P(50) }],
 };
 
@@ -126,7 +131,7 @@ const scene = {
       rig.clip = await ctx.load.clip(c.id, rig.box, rig.content);
       ctx.rigs[k] = rig;
       const end = Math.min(c.show[1], ctx.window.end - ctx.from);
-      c.keys.slice(1).forEach(([t1, c1], i) => {
+      if (c.place !== false) c.keys.slice(1).forEach(([t1, c1], i) => {
         const [t0, c0] = c.keys[i];
         if (t0 < end) ctx.placeClip(c.id, { at: t0, from: c0, rate: (c1 - c0) / (t1 - t0), dur: Math.min(t1, end) - t0 - 1e-6 });
       });
@@ -218,11 +223,11 @@ const scene = {
     ctx.split.el.style.display = sOn ? 'block' : 'none';
     if (sOn) ctx.split.set((t - P(40)) / PULSE);
 
-    // h2 and h3 leave with the cut into a CLOSE (no headline there), not before it.
+    // h2 leaves with the cut into a CLOSE (no headline there); h3 as its card starts growing into one.
     const hd = { dur: 0.5, stagger: 0.06, outDur: 0.3 };
     ctx.h1.show(t, { ...hd, at: P(10), out: P(17.5) });
     ctx.h2.show(t, { ...hd, at: P(17.8), out: P(24), outDur: 0.034 });
-    ctx.h3.show(t, { ...hd, at: P(32), out: P(44), outDur: 0.034 });
+    ctx.h3.show(t, { ...hd, at: P(32), dur: 0.35, out: P(37.5) + 0.3 }); // gone before the card reaches its band
   },
 };
 
