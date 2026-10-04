@@ -65,12 +65,12 @@ const ACTS = [
   { id: 'draw', bars: [8, 14], in: { type: 'axis', pulses: 4 },
     cuts: [pulse(93), pulse(96), pulse(104)], // → the Templates grid; → Draw answer; → Student/Teacher
     ui: [pulse(106)] }, // Teacher: the red answer snaps on
-  // Footage segments (P10, P16, P20, P38), key layouts switching in the real app (P21, P23,
-  // P25), the printed rows replacing the footage (P26, P32), the version close-up (P40) and
-  // the fan's covers (P44). The other deals (P27–P29, P33–P36, P41, P42, P45) rise in: motion.
+  // Cuts (scenes/papers.js beat table): the lift (P5), Student WIDE (P10), Teacher CLOSE (P11),
+  // HKEAA style (P16), the printed key and its layouts (P20, P24, P26, P28), mock papers (P30),
+  // versions (P38, P40–P42), the fan (P43). Holds: the lift's total; the printed pages read.
   { id: 'papers', bars: [14, 20], in: { type: 'axis', pulses: 4 },
-    cuts: PC(112, [10, 16, 20, 21, 23, 25, 26, 32, 38, 40, 44]),
-    ui: PC(112, [12, 18]) }, // Teacher: red answers; Marking scheme opens beside them
+    cuts: PC(112, [5, 10, 11, 16, 20, 24, 26, 28, 30, 38, 40, 41, 42, 43]),
+    holds: [[pulse(120), pulse(122)], [pulse(132), pulse(150)]] },
   { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] },
     cuts: [pulse(168), pulse(172), pulse(182)], // the footage's topic click (P8); → bank-drag (P12); → check-terms (P22)
     ui: [pulse(183)] }, // Check terms opens its panel
@@ -125,7 +125,7 @@ export const CUES = [
   { id: 'draw.body', t: bar(8), kind: 'accent', sfx: 'whoosh-s', note: 'body: the hero act; the chapter axis lands' },
   { id: 'papers.turn', t: bar(14), kind: 'accent', sfx: 'whoosh-s', note: 'the papers chapter axis lands' },
   { id: 'papers.scheme', t: bar(16), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the Marking scheme view, its headline' },
-  { id: 'papers.mock', t: bar(18), kind: 'accent', note: 'mock papers: the headline, the Paper 1 cover dealt' },
+  { id: 'papers.mock', t: pulse(142), kind: 'accent', note: 'mock papers: the headline, the Paper 1 cover dealt' },
   // The lift (sync review #3): a riser ends 50 ms before the hit so it never smears the impact
   // (2.7 s, from ~70.2 s); a whoosh into the iris ends 0.35 s after it, when the ring is open.
   { id: 'bank.riser', t: r6(bar(20) - 0.05), kind: 'sfx', sfx: 'riser', dur: 2.7, grid: false, note: 'the build into the lift' },
