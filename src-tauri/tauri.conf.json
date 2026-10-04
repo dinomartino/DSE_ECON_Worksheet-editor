@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Econ Studio",
   "mainBinaryName": "econ-worksheet",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "identifier": "hk.econworksheet.desktop",
   "build": {
     "frontendDist": "../out",
