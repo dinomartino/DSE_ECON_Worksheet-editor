@@ -50,7 +50,7 @@ const scene = {
     ctx.rigs = {
       type: await rig('type', 'type-mcq', [
         { at: BEAT.type, end: BEAT.typeMed, ...typeClose },
-        { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_MED, move: { at: P(0.5), dur: P(5), to: { focus: TYPE_PAGE, zoom: TYPE_PAGE_ZOOM } } }, // the panel leaves whole
+        { at: BEAT.typeMed, end: BEAT.lang, size: 'medium', focus: TYPE_MED, move: { at: P(0.5), dur: P(4), to: { focus: TYPE_PAGE, zoom: TYPE_PAGE_ZOOM } } }, // the panel leaves whole
       ]),
       lang: await rig('lang', 'language-toggle', [
         { at: BEAT.lang, end: BEAT.print, size: 'close', focus: LANG_CLOSE, anchor: LANG_ANCHOR, safe: LANG_SAFE, zoom: 2.85, move: { at: -P(3), dur: P(12), to: { zoom: 2.96 } } }, // locked: a slow push only
@@ -148,7 +148,7 @@ const scene = {
 
     // The dot marks a click in a CLOSE: a pop, then a ripple.
     const hits = [[BEAT.type, type, TYPE_DBL], [P(31), ui, UI_TOGGLE]];
-    const hit = hits.find(([at]) => t >= at - 0.02 && t < at + 0.55);
+    const hit = hits.find(([at, r]) => t >= at - 0.02 && t < at + 0.55 && r.el.style.display !== 'none'); // its rig is live (posed)
     if (hit) {
       const [at, r, pt] = hit;
       const [x, y] = r.toScreen(pt);
