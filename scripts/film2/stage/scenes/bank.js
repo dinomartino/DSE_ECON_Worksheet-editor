@@ -21,7 +21,7 @@ import { camera } from '../lib/camera.js';
 import { prog, outSoft, inOutSoft, clamp } from '../lib/ease.js';
 import { f } from '../lib/tween.js';
 import {
-  P, CARDS, GRID, gridPt, TOPIC, DRAG_CLOSE, DRAG_AFTER, DRAG_PAGE, AI_BUTTON,
+  P, CARDS, GRID, gridPt, TOPIC, DRAG_CLOSE, DRAG_CLOSE_END, DRAG_AFTER, DRAG_PAGE, AI_BUTTON,
   ROW, ROW_ZOOM, ROW_CARD, TERMS_PAGE, REPLACE, REPLACE_SAFE, UNDERLINES, Q1D,
 } from './bank/geom.js';
 import { frameImage, crop, topicCard } from './bank/crops.js';
@@ -31,6 +31,7 @@ import { termsLift } from './bank/terms.js';
 const TOPIC_AT = 3.4; // bank-screen: the click on Market and Price (the topic page is frame 204)
 const PRESS_AT = 0.9; // bank-drag: the press on the bank question
 const CT_CLICK = 1.6, CT_ROW = 1.55, CT_PAGE = 1.75, CT_REPLACE = 4.4; // check-terms
+const CT_RATE = 0.9; // the page plays 1.75 → 2.95 s: the finding card (Next, 3.0 s) opens off screen
 const SRC = { w: 1440, h: 900 };
 const inset = (r) => `inset(0 ${(100 * (1 - clamp(r))).toFixed(3)}% 0 0)`;
 const box = { x: 0, y: 0, w: 1440, h: 900 };
@@ -49,7 +50,7 @@ const scene = {
     { t: P(0.25), kind: 'shimmer', label: 'the coverage bars draw on' },
     { t: P(4.25), kind: 'pencil', label: 'the bars stand up as a chart' },
     { t: P(24), kind: 'pencil', label: 'the glossary underlines draw on' },
-    { t: P(27.75), kind: 'pencil', label: 'the underline drawn at frame scale' },
+    { t: P(27), kind: 'pencil', label: 'the term lifts off the page; its underline draws at frame scale' },
     { t: P(29), kind: 'pop', label: 'the glossary term sets in' },
   ],
   async setup(ctx) {
@@ -75,9 +76,9 @@ const scene = {
     ctx.camS.shots([{ at: P(8), end: P(12), size: 'medium', focus: TOPIC, move: { at: -P(1), dur: P(5.5), to: { zoom: 1.3 } } }]);
     ctx.camD.shots([
       { at: P(12), size: 'wide' },
-      // A slight pull: its top and bottom edges stay in the gaps between text lines before and
-      // after the page makes room (y 166..616 at the end).
-      { at: P(13), size: 'close', focus: DRAG_CLOSE, zoom: 2.45, move: { at: -P(1), dur: P(4), to: { zoom: 2.4 } } },
+      // A pull, its top edge held in the gap above Q1 (y 176): the bottom edge opens from
+      // y 600 to 626 as the page makes room, in the gaps between text lines before and after.
+      { at: P(13), size: 'close', focus: DRAG_CLOSE, zoom: 2.55, move: { at: -P(1), dur: P(6), to: { zoom: 2.4, focus: DRAG_CLOSE_END } } },
       // The page in a spotlight while the question hovers and drops (the panel and pages dim).
       { at: P(16), end: P(22), size: 'medium', focus: DRAG_AFTER, drift: 0.02, dim: { rect: DRAG_PAGE, on: P(16), off: P(22), dur: P(1.5) } },
     ]);
@@ -96,7 +97,7 @@ const scene = {
     ctx.placeClip('check-terms', { at: P(22), from: CT_CLICK, dur: 0.02 }); // the click, on the cut
     ctx.placeClip('check-terms', { at: P(22), from: CT_ROW, rate: 0, dur: P(2) }); // the row (frozen)
     ctx.placeClip('check-terms', { at: P(22), from: 1.567, rate: 0, dur: P(5) }); // the strips (frozen)
-    ctx.placeClip('check-terms', { at: P(24), from: CT_PAGE, dur: P(3) });
+    ctx.placeClip('check-terms', { at: P(24), from: CT_PAGE, rate: CT_RATE, dur: P(3) }); // ends before Next (3.0 s)
     ctx.placeClip('check-terms', { at: P(30), from: CT_REPLACE, dur: P(2) });
 
     ctx.head = ['bank', 'drag', 'terms'].map((k) => block(ctx.root, { ...HEADLINE, ...ctx.copy[k] }));
@@ -150,7 +151,7 @@ const scene = {
       r.el.style.opacity = f(1 - inOutSoft(prog(t, P(20.75), P(21.9))), 3);
       r.el.style.visibility = t >= r.at && t >= P(16) && t < P(22) ? 'visible' : 'hidden';
     });
-    ctx.terms.at(t < P(24) ? CT_ROW : t < P(30) ? CT_PAGE + Math.min(t - P(24), P(3)) : CT_REPLACE + (t - P(30)));
+    ctx.terms.at(t < P(24) ? CT_ROW : t < P(30) ? CT_PAGE + CT_RATE * Math.min(t - P(24), P(3)) : CT_REPLACE + (t - P(30)));
     // The underlines draw on: strips of the frame before the click wipe away, left to right.
     show(ctx.strips, t >= P(24) && t < P(27) ? 1 : 0);
     ctx.lines?.forEach((cv, i) => {

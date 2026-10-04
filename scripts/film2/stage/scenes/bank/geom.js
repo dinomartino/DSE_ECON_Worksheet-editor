@@ -38,7 +38,8 @@ export const columnX = (i) => CHART.x + i * COLUMN_W * (1 + CHART.gap);
 /** bank-screen after the topic click: the sub-topic list and the preview, toolbar out. */
 export const TOPIC = [0, 48, 1440, 620];
 /** bank-drag: the page from Q1 to Q3 (CLOSE); its edges fall between text lines. */
-export const DRAG_CLOSE = [236, 166, 800, 450];
+export const DRAG_CLOSE = [236, 176, 800, 1080 / 2.55]; // at 2.55×
+export const DRAG_CLOSE_END = [236, 176, 800, 450]; // at 2.4×
 /** bank-drag after the drop: Q1's options to Q4 and the "1 question added" toast. */
 export const DRAG_AFTER = [0, 238, 1440, 620];
 export const DRAG_PAGE = [252, 238, 763, 620]; // the page column (the spotlight)
