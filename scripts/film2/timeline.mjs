@@ -83,12 +83,16 @@ const ACTS = [
     // read and drifting: the re-ink detail, "Shade…" over its canvas, the CS CLOSE, the CS lift, the wall, "The
     // answer…" over its canvas, D1 drawn, the held red answer
     holds: [[36.646, 38.025], [38.514, 39.314], [41.98, 42.248], [43.226, 43.582], [44.293, 44.915], [45.182, 45.76], [47.4, 48.027], [50.25, 50.694]] },
-  // Cuts (scenes/papers.js beat table): the lift (P5), Student WIDE (P10), Teacher CLOSE (P11),
-  // HKEAA style (P16), the printed key and its layouts (P20, P24, P26, P28), mock papers (P30),
-  // versions (P38, P40–P42), the fan (P43). Holds: the lift's total; the printed pages read.
+  // Cuts (scenes/papers.js beat table): question 1 CLOSE after the lift (P11), HKEAA style (P16),
+  // the printed key and its layouts (P20, P24, P26, P28), mock papers (P30), Versions (P38), the
+  // version page CLOSE (P40). ui: the Teacher click in place (P12); Version B, C swapped in place
+  // (P42, P44). Holds: the printed pages read. Alive (drifts, not holds): the total breathes 3 %;
+  // the version pages under a push that gathers 4.5 %.
   { id: 'papers', bars: [14, 20], in: { type: 'axis', pulses: 4 },
-    cuts: PC(112, [5, 10, 11, 16, 20, 24, 26, 28, 30, 38, 40, 41, 42, 43]),
-    holds: [[pulse(120), pulse(122)], [pulse(132), pulse(150)]] },
+    cuts: PC(112, [11, 16, 20, 24, 26, 28, 30, 38, 40]),
+    ui: PC(112, [12, 42, 44]),
+    holds: [[pulse(132), pulse(150)]],
+    alive: [[pulse(120), pulse(123)], [pulse(152), pulse(158)]] },
   { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] },
     // → the topic page (P8); → the editor, WIDE (P12); → the drag CLOSE (P13); → the drop (P16);
     // → the Check terms row (P22); → the underlined page (P24); → the term lift (P27); → Replace (P30)
