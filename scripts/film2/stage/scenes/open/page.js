@@ -1,15 +1,15 @@
 // Act 0's illustrated page: a flat worksheet sheet in PaperSketch's vocabulary (grey bars,
-// hairlines), a diagram with its demand line already drawn, a generic four-tool palette and
-// the text box that jumps. Illustration only: no product pixels, no logos.
+// hairlines), a diagram with its demand line already drawn and the text box that jumps
+// (no tool palette: nothing that could pass for a real product's toolbar). Illustration only: no product pixels, no logos.
 import { h, s, C, FONT, PAPER_SHADOW } from '../../lib/dom.js';
-import { PAGE, AX, DEMAND, TOOLBAR, TOOL, BOX, FLOW_Y } from './geom.js';
+import { PAGE, AX, DEMAND, BOX, FLOW_Y } from './geom.js';
 
 const HEAD = C.sketchHead, TEXT = C.sketchText, RULE = C.sketchRule;
 const bar = (g, x, y, w, ht = 12, fill = TEXT) => s('rect', { x, y, width: w, height: ht, rx: ht / 2, fill }, g);
 const label = (g, x, y, text, size = 20, fill = HEAD) =>
   s('text', { x, y, fill, 'font-family': FONT.sans, 'font-size': size, 'font-weight': 500, text }, g);
 
-/** Builds the page into `parent`. → { el, svg, tools: [highlight rects], box, boxFrame, boxText, flow, label } */
+/** Builds the page into `parent`. → { el, svg, box, boxFrame, boxText, flow } */
 export function buildPage(parent) {
   const el = h('div', { style: {
     position: 'absolute', left: 0, top: 0, width: `${PAGE.w}px`, height: `${PAGE.h}px`,
@@ -34,10 +34,11 @@ export function buildPage(parent) {
   label(svg, DEMAND[1][0] + 8, DEMAND[1][1] - 8, 'D');
 
   // Beside the diagram: part (b)'s lines, so the sheet reads as a worksheet once it is whole.
-  bar(svg, 490, 300, 22, 12, HEAD);
-  for (const [y, w] of [[300, 116], [326, 150], [352, 104]]) bar(svg, y === 300 ? 524 : 490, y, w);
+  // x ≥ 502: off the right of the opening close-up (page x 502 lands at frame x 1946).
+  bar(svg, 502, 300, 22, 12, HEAD);
+  for (const [y, w] of [[300, 104], [326, 138], [352, 104]]) bar(svg, y === 300 ? 536 : 502, y, w);
   for (let y = 400; y <= 520; y += 40) {
-    s('line', { x1: 490, x2: 640, y1: y, y2: y, stroke: RULE, 'stroke-width': 2.2, 'stroke-dasharray': '0.1 8', 'stroke-linecap': 'round' }, svg);
+    s('line', { x1: 502, x2: 640, y1: y, y2: y, stroke: RULE, 'stroke-width': 2.2, 'stroke-dasharray': '0.1 8', 'stroke-linecap': 'round' }, svg);
   }
 
   // Question 2 and its dotted answer lines: the text the jumping box pushes down.
@@ -50,27 +51,10 @@ export function buildPage(parent) {
     s('line', { x1: 96, x2: 640, y1: y, y2: y, stroke: RULE, 'stroke-width': 2.2, 'stroke-dasharray': '0.1 8', 'stroke-linecap': 'round' }, flow);
   }
 
-  // The tool palette: line, arrow, text box, rectangle.
-  const tb = s('g', {}, svg);
-  s('rect', { x: TOOLBAR.x, y: TOOLBAR.y, width: TOOLBAR.w, height: TOOLBAR.h, rx: 12, fill: C.panel, stroke: C.line, 'stroke-width': 1.5 }, tb);
-  const tools = [0, 1, 2, 3].map((i) => {
-    const [cx, cy] = TOOL(i);
-    return s('rect', { x: cx - 20, y: cy - 17, width: 40, height: 34, rx: 8, fill: C.accentSoft, opacity: 0 }, tb);
-  });
-  const icon = (i, d, extra = {}) => {
-    const [cx, cy] = TOOL(i);
-    s('path', { d, transform: `translate(${cx} ${cy})`, fill: 'none', stroke: C.inkMuted, 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', ...extra }, tb);
-  };
-  icon(0, 'M-9 8L9 -8');
-  icon(1, 'M-9 8L8 -7M1 -8H9V0');
-  icon(2, 'M-11 -10H11V10H-11Z', { 'stroke-width': 1.6, 'stroke-dasharray': '3 3' });
-  icon(2, 'M-5 -5H5M0 -5V6');
-  icon(3, 'M-10 -7H10V7H-10Z');
-
   // The text box: dashed frame + "S"; posed by the scene.
   const box = s('g', {}, svg);
   const boxFrame = s('rect', { x: 0, y: 0, width: BOX.w, height: BOX.h, rx: 2, fill: C.paper, stroke: HEAD, 'stroke-width': 1.6, 'stroke-dasharray': '5 4' }, box);
   const boxText = s('text', { x: BOX.w / 2, y: BOX.h / 2 + 10, 'text-anchor': 'middle', fill: C.ink, 'font-family': FONT.sans, 'font-size': 28, 'font-weight': 500, text: 'S' }, box);
 
-  return { el, svg, tools, toolbar: tb, box, boxFrame, boxText, flow };
+  return { el, svg, box, boxFrame, boxText, flow };
 }

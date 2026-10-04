@@ -2,10 +2,12 @@
 // curve with clumsy line tools. Beats on the grid (P(n), timeline pulse n; frame 0 = P(-4)):
 //   0..P(-1.5)    an extreme close-up (3.9 px per page px, full-bleed): the drag, the line comes
 //                 out crooked under a 2× cursor from the first frame
-//   P(-2)..P(.5)  the sheet slides right (pull-out to 2.16) and the cream takes the left half;
+//   P(-2)..P(.5)  the sheet slides right (pull-out to 1.75) and the cream takes the left half;
+//                 the frame's window closes to C2's object slot (x 1008…1824, top 96, open at
+//                 the bottom: VIEW), so the sheet never bleeds off the top or right;
 //                 "A supply curve in Word" (STATEMENT, C2) rises on P0
 //   P(.5)..P(1.5) the end handle is dragged right; on P1.5 it snaps onto the demand line instead
-//   P(2.5)..P(4)  the text tool; a box "S" is placed and typed;
+//   P(2.5)..P(4)  the cursor moves off; a text box "S" is placed and typed;
 //                 "should not take all evening" on P3
 //   P(4.5)        the box jumps into the text below, which reflows; P(5.5)..P(6.5) dragged back,
 //                 it springs to the wrong place again
@@ -13,27 +15,30 @@
 //                 the camera pulls back 2.25 → 0.9 (P8..P10.5): the whole sheet, the reveal
 //   P(10)..P(12)  the line lifts off and docks, exactly on the cut, as the mark's vertical axis
 //                 (its colour and width): the mark act grows the tile around it (scenes/mark.js)
-// A slow push (2.16 → 2.25) runs under the struggle so the frame never stalls.
-import { h, s, svg, show, C } from '../lib/dom.js';
+// A slow push (1.75 → 1.88, constant speed) runs under the struggle so the frame never stalls.
+import { h, s, svg, show, C, PAPER_SHADOW } from '../lib/dom.js';
 import { block, STATEMENT } from '../lib/type.js';
 import { C2, STACK_GAP } from '../lib/layout.js';
 import { keys, tw, f } from '../lib/tween.js';
-import { lerp, prog, outSoft, inOutSoft, spring, outBack, sineInOut } from '../lib/ease.js';
+import { lerp, prog, outSoft, inOutSoft, spring, outBack, sineInOut, cubicBezier } from '../lib/ease.js';
+
+const ARC_IN = cubicBezier(0.6, 0, 0.75, 0.75); // arrives moving
+const ARC_OUT = cubicBezier(0.25, 0.25, 0.35, 1); // leaves moving
 import {
-  P, SUPPLY, CROOKED_END, GRAB_END, SNAP_END, KINKS, LINE_W, TOOL, LINE_TOOL, TEXT_TOOL, BOX, REFLOW, AXIS,
-  ANCHOR, CAM, mix,
+  P, SUPPLY, CROOKED_END, GRAB_END, SNAP_END, KINKS, LINE_W, BOX, REFLOW, AXIS, ANCHOR, CAM, VIEW, PAGE, mix,
 } from './open/geom.js';
 import { buildPage } from './open/page.js';
+import { ramp } from './mark.js';
 
 const BOX_GRAB = [BOX.jump[0] + 30, BOX.jump[1] + 28];
 const BOX_PULL = [150, 470]; // where the box is dragged back to before it springs away again
-const CLICKS = [P(0.5), P(2.5), P(3.5), P(4), P(5.5)];
+const CLICKS = [P(0.5), P(3.5), P(4), P(5.5)];
 
 /** The sheet's pose at t: { k, ox, oy } (frame = o + k · page). */
 function camAt(t) {
   const logk = (a, b, p) => Math.exp(lerp(Math.log(a), Math.log(b), p));
   const ab = inOutSoft(prog(t, P(-2), P(0.5)));
-  const push = sineInOut(prog(t, P(0.5), P(8)));
+  const push = ramp(t, P(0.5), P(8), P(1)); // constant speed: the struggle never sits still
   const back = inOutSoft(prog(t, P(8), P(10.5)));
   let k = logk(CAM.A.k, CAM.B.k, ab);
   k = logk(k, CAM.B2.k, push);
@@ -56,8 +61,9 @@ const CURSOR = [
   [P(0.5), CROOKED_END, inOutSoft], // …and reaches back for the handle
   [P(1.5), GRAB_END, inOutSoft],
   [P(1.7), GRAB_END],
-  [P(2.5), TOOL(TEXT_TOOL), inOutSoft],
-  [P(3.5), [BOX.home[0] + 26, BOX.home[1] + 30], inOutSoft],
+  // Lets go and hunts across the diagram for a fix (one arc: it never stops at the turn).
+  [P(2.6), [318, 404], ARC_IN],
+  [P(3.5), [BOX.home[0] + 26, BOX.home[1] + 30], ARC_OUT],
   [P(4.5), [BOX.home[0] + 52, BOX.home[1] + 60], inOutSoft],
   [P(5.5), BOX_GRAB, inOutSoft],
   [P(6.5), [BOX_PULL[0] + 30, BOX_PULL[1] + 28], inOutSoft],
@@ -88,7 +94,6 @@ const scene = {
     { t: 0.05, kind: 'pencil', label: 'the drag: a crooked line' },
     { t: P(0.5), kind: 'drag', label: 'grabs the end handle' },
     { t: P(1.5), kind: 'snap', label: 'the handle snaps onto the demand line' },
-    { t: P(2.5), kind: 'click', label: 'the text box tool' },
     { t: P(3.5), kind: 'click', label: 'places the "S" box' },
     { t: P(4), kind: 'click', label: 'types "S"' },
     { t: P(4.5), kind: 'snap', label: 'the box jumps, the text reflows' },
@@ -99,7 +104,10 @@ const scene = {
   ],
   setup(ctx) {
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
-    ctx.page = buildPage(ctx.el);
+    // The sheet's window: the frame at first, closing to VIEW as the sheet slides right.
+    ctx.view = h('div', { style: { position: 'absolute', overflow: 'hidden', background: C.paper, boxShadow: PAPER_SHADOW } }, ctx.el);
+    ctx.page = buildPage(ctx.view);
+    ctx.page.el.style.boxShadow = 'none';
     const ov = svg(ctx.el, {});
     ctx.line = s('path', { fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, ov);
     ctx.handles = [0, 1].map(() => s('rect', { width: 1, height: 1, x: -0.5, y: -0.5, rx: 0.15, fill: C.paper, stroke: C.inkSubtle, 'stroke-width': 0.12 }, ov));
@@ -122,10 +130,14 @@ const scene = {
     const cam = camAt(t);
     // The sheet: posed by the camera; it falls away as the line takes over.
     const leave = inOutSoft(prog(t, P(10.5), P(11.75)));
-    page.el.style.transform = `translate(${f(cam.ox, 2)}px, ${f(cam.oy + 140 * leave, 2)}px) scale(${f(cam.k, 5)})`;
-    show(page.el, 1 - leave);
-    show(page.tools[LINE_TOOL], 1 - tw(t, P(2.5), 0.12));
-    show(page.tools[TEXT_TOOL], tw(t, P(2.5), 0.12) - tw(t, P(8), 0.3));
+    // The window: the sheet's rect ∩ the slot, the slot closing from the frame to VIEW.
+    const ab = inOutSoft(prog(t, P(-2), P(0.5)));
+    const py = cam.oy + 140 * leave;
+    const vx = Math.max(cam.ox, lerp(0, VIEW.x, ab)), vy = Math.max(py, lerp(0, VIEW.y, ab));
+    const vr = Math.min(cam.ox + PAGE.w * cam.k, lerp(1920, VIEW.r, ab)), vb = Math.min(py + PAGE.h * cam.k, lerp(1080, VIEW.b, ab));
+    Object.assign(ctx.view.style, { left: `${f(vx, 2)}px`, top: `${f(vy, 2)}px`, width: `${f(vr - vx, 2)}px`, height: `${f(vb - vy, 2)}px`, borderRadius: `${f(4 * ab, 2)}px` });
+    page.el.style.transform = `translate(${f(cam.ox - vx, 2)}px, ${f(py - vy, 2)}px) scale(${f(cam.k, 5)})`;
+    show(ctx.view, 1 - leave);
 
     // The text box: pops in, jumps into the text (which reflows), is dragged back, springs
     // away again, and goes home on the fix.
