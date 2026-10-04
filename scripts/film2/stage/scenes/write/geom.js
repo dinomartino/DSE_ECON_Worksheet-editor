@@ -35,9 +35,11 @@ export const TYPE_STEM = [250, 360, 520, 46]; // "Which of the following is a po
 export const TYPE_CLOSE = [180, 250, 740, 330];
 export const TYPE_MED = [0, 150, 1440, 620];
 // The MEDIUM's push ends on the page alone: the card's right edge on the panel divider (CSS
-// 1040), its left on the rail's edge, its bottom in the gap between option D and Section B.
-export const TYPE_PAGE = [78, 200, 958, 412];
-export const TYPE_PAGE_ZOOM = 1728 / 958;
+// 1040), its top in the gap under "Answer ALL questions" (277…301), its bottom under Section B
+// in every reflow state (the pasted options push it from ≈575 to 623…673), so no word sits on
+// an edge at rest (the rail's icons stay above y 200).
+export const TYPE_PAGE = [0, 280, 1036, 446];
+export const TYPE_PAGE_ZOOM = 1728 / 1036;
 export const TYPE_DBL = [287, 382]; // the double-click into the stem
 // Clip time: the double-click (0.72/0.80) on the cut; from 4.5 s (between the 中文 line and the
 // options) the pasted options run at 1.6×, the rate ramping over half a second.
