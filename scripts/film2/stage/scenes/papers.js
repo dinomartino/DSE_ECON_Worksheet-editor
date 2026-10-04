@@ -31,7 +31,11 @@ const SRC = { w: 1440, h: 900 };
 const MARKS_FOCUS = [1056, 262, 380, 180]; // "Parts & marks" to "Total: 7 marks"
 const MARKS_SAFE = [1052, 266, 284, 174]; // the title, both rows' labels and Marks fields, "+ Part"
 const FIELD_A = [1286, 311, 46, 26], FIELD_B = [1286, 347, 46, 26];
-const MARKS_END = { size: 'close', focus: MARKS_FOCUS, safe: MARKS_SAFE, zoom: 3.0 }; // the push settles here
+const MARKS_END = { size: 'close', focus: MARKS_FOCUS, safe: MARKS_SAFE, zoom: 3.06 }; // the drift settles here
+// The page column left of the panel (css x < 939) cannot leave a CLOSE frame (the screen's right
+// edge pins the pose), so a cream scrim on the card hides its cut lines: opaque to SCRIM[0], clear
+// by SCRIM[1] (design px). The chapter's stroke and label at x 96 then sit on a calm field.
+const SCRIM = [300, 600];
 // teacher-toggle: question 1, its options and (after the click) "Answer: C 答案：C".
 // The push keeps its top edge at y 200, above the red "Teacher Version / 教師版" (y 204–219).
 const Q1 = [400, 315, 480, 210], Q1_IN = [400, 291, 480, 210], Q1_SAFE = [344, 204, 420, 319];
@@ -87,8 +91,8 @@ const scene = {
     // another shot (the marks CLOSE; the Teacher CLOSE → the scheme MEDIUM; the versions dialog).
     ctx.rigs = [camera(ctx, { src: SRC, name: 'papers' }), camera(ctx, { src: SRC, name: 'papers-versions' }), camera(ctx, { src: SRC, name: 'papers-teacher' })];
     ctx.rigs[0].shots([
-      // 2.6: the page's cursor (bottom left, frame 0) stays below the frame; the push settles by P3.
-      { at: -P(2), end: P(6.5), size: 'close', focus: MARKS_FOCUS, safe: MARKS_SAFE, zoom: 2.6, move: { at: P(0.5), dur: P(4.5), to: { zoom: MARKS_END.zoom } } },
+      // 2.97 → 3.06, a 3 % drift: the page column stays under the scrim, the cursor below the frame.
+      { at: -P(2), end: P(6.5), size: 'close', focus: MARKS_FOCUS, safe: MARKS_SAFE, zoom: 2.97, move: { at: P(0.5), dur: P(4.5), to: { zoom: MARKS_END.zoom } } },
     ]);
     ctx.rigs[2].shots([
       { at: P(11), end: P(16), size: 'close', focus: Q1, safe: Q1_SAFE, zoom: 2.45, move: { dur: P(5), to: { focus: Q1_IN, zoom: 2.75 } } },
@@ -102,6 +106,9 @@ const scene = {
     ctx.print = await prints(base, { url: (id) => ctx.load.url(id), T: T_PRINT });
     ctx.clips = [];
     for (const g of SEG) ctx.clips.push(await ctx.load.clip(g.id, ctx.rigs[g.rig].box, ctx.rigs[g.rig].content));
+    const stop = (x, a) => `rgb(241 236 227 / ${a}) ${x}px`; // C.cream
+    h('div', { style: { position: 'absolute', left: 0, top: 0, width: `${SCRIM[1]}px`, height: '1080px', pointerEvents: 'none',
+      background: `linear-gradient(to right, ${stop(0, 1)}, ${stop(SCRIM[0], 1)}, ${stop((SCRIM[0] + SCRIM[1]) / 2, 0.5)}, ${stop(SCRIM[1], 0)})` } }, ctx.rigs[0].card); // rides with the carry
     const settled = frame(MARKS_END, SRC);
     ctx.marks = marks(ctx.el, { fieldA: onScreen(settled, FIELD_A), fieldB: onScreen(settled, FIELD_B), T: T_MARKS });
 
