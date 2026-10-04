@@ -56,9 +56,12 @@ const ACTS = [
   { id: 'mark', bars: [1.5, 3], in: { type: 'match' }, // the straightened line becomes the axis
     holds: [[pulse(14.5), pulse(23.5)]] }, // alive: tagline, dot, ripple, 6 % push, track-out (thin strokes read as still)
   { id: 'write', bars: [3, 8], in: { type: 'iris', pulses: 4, at: [960, 338] }, // at: the mark's dot (scenes/mark.js MARK_DOT)
-    cuts: [pulse(29), pulse(42), pulse(55)], // → type-mcq; → language-toggle; → zh-interface
-    // type-mcq's double-click into the 中文 line; EN, 中文, EN+中; 繁體中文; 完成 closes Settings
-    ui: [18.011, pulse(43), pulse(46), pulse(49), pulse(57), pulse(60)] },
+    // → type CLOSE (its double-click on the cut); → MEDIUM; → language CLOSE (EN on the cut);
+    // → the printed Q1s; → Settings CLOSE; → WIDE on 完成 (scenes/write/geom.js BEAT)
+    cuts: PC(24, [5, 11, 17, 23, 29, 33]),
+    // type-mcq's double-click into the 中文 line; 中文, EN+中; 繁體中文
+    ui: [17.505, pulse(43), pulse(45), pulse(55)],
+    holds: [[pulse(53), pulse(55)]] }, // Settings › Language in English is read before the flip
   { id: 'draw', bars: [8, 14], in: { type: 'axis', pulses: 4 },
     cuts: [pulse(93), pulse(96), pulse(104)], // → the Templates grid; → Draw answer; → Student/Teacher
     ui: [pulse(106)] }, // Teacher: the red answer snaps on
