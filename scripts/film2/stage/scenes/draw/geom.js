@@ -17,7 +17,7 @@ export const DRAWN = {
   S: [[336.8, 659], [683.8, 345]],
   E: [533.7, 480.9],
 };
-/** shade-area / answer-draw at the start: D, S, E0 and its guides, Price 價格 / Quantity 數量. */
+/** shade-area at the start: D, S, E0 and its guides, Price 價格 / Quantity 數量. */
 export const GIVEN = {
   o: AX.o, yTip: 238.5, xTip: AX.x,
   D: [[327.1, 323], [713, 672]],
@@ -31,6 +31,8 @@ export const PS = [[327.1, 497.5], [520.2, 497.5], [327.1, 672]];
 /**
  * answer-layer (Teacher from clip 1.5 s): a per-unit tax. Black axes; the answer is all red:
  * D, S0, S1 = S0 shifted up by t, E0, E1, the P/Q guides, the arrows. Student: the axes alone.
+ * answer-draw draws the same answer on this question's canvas (S0 → Shift a copy → S1, the
+ * shift arrow, P1/Q1): its end state is this one less the t label, P1 − t and the axis arrows.
  */
 export const TAX = {
   o: [465, 554.5], yTip: 215.5, xTip: 829.5,
@@ -49,12 +51,15 @@ export const TAX = {
 export const DRAW_CLOSE = { zoom: 2.4, anchor: [96, 1008], focus: [AX.o[0], AX.o[1], 0, 0] };
 /** draw-diagram in C1 narrow: the paper and its labels, no toolbar, the inspector just outside. */
 export const DRAW_NARROW = { zoom: 1.03, anchor: [680 + 572, 264 + 372], focus: [4.6, 95, 1110.6, 722] };
-/** shade-area / answer-draw MEDIUM: the toolbar, the Shade menu and the top of the diagram. */
+/** shade-area / answer-draw MEDIUM: the toolbar (Shade ▾, Draw answer) and the top of the diagram. */
 export const TOP = [0, 0, 1440, 620];
 /** shade-area CLOSE: CS and PS fill the frame (the x axis and Q0 fall just outside). */
 export const SHADE_CLOSE = { zoom: 2.4, focus: [160, 262, 800, 450] };
-/** answer-draw pushed in: the diagram, D1 and the Shift a copy button, P labels kept whole. */
-export const ANSWER_IN = { zoom: 1.4, focus: [222.4, 112, 1217.6, 532] };
+/**
+ * answer-draw tilted down (same 1.2×): the whole diagram, Price 價格 (y 170) to Q1 Q0 and
+ * 數量 (y 770), and the inspector's Shift curve rows and Follows box (to y 640).
+ */
+export const ANSWER_DOWN = [0, 158, 1440, 620];
 /** answer-layer CLOSE: the red answer from the y-axis tip to the Q arrow (Price above, the blue marking points below, both outside). */
 export const LAYER_CLOSE = { zoom: 2.634, focus: [298, 211, 729, 410] };
 

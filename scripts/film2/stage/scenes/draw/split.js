@@ -1,7 +1,9 @@
 // The answer layer as a split screen (story.json): two paper panels in the C1 band, Student
-// and Teacher, the same tax diagram re-inked from answer-layer's geometry. Student keeps its
-// blank axes; on Teacher the model answer draws on in red (D, S0, E0, S1 shifted up by t, E1,
-// the guides, the arrows) a pulse after the cut. Illustration: the footage proves it next.
+// and Teacher, the tax diagram re-inked from answer-layer's Teacher geometry (the answer that
+// answer-draw has just drawn). Student keeps its blank axes; on Teacher the model answer draws
+// on in red from 1.5 pulses after the cut: D, S0, E0, then S1 slides up from S0 by t (the Shift
+// a copy of the footage) with the t arrow, E1, the P1 / P1 − t / Q1 guides, the price-up and
+// quantity-down arrows. Four pulses; illustration: the CLOSE on the real Teacher copy follows.
 import { h, show, C } from '../../lib/dom.js';
 import { label, LABEL } from '../../lib/type.js';
 import { clamp, prog, outSoft, spring, inOutSoft, sineInOut } from '../../lib/ease.js';
@@ -45,7 +47,7 @@ export function split(parent, copy) {
   const dash = [6 * S, 5 * S];
 
   function set(t) {
-    const k = 1 + 0.04 * sineInOut(prog(t, 0.5, 5)); // a slow push on both panels while the answer draws
+    const k = 1 + 0.04 * sineInOut(prog(t, 0.5, 4.2)); // a slow push on both panels while the answer draws
     el.style.transform = `scale(${f(k, 5)})`;
     const pe = (a, d) => outSoft(prog(t, a, a + d));
     panels.forEach((p, i) => {
@@ -67,47 +69,49 @@ export function split(parent, copy) {
       A.shu.set(m([842.5, 584]), { size: 23, o: lo });
       A.zero.set(m([450.5, 580]), { size: 25, o: lo, anchor: 'middle' });
     });
-    // The answer, on Teacher only, from pulse 2 (48.91 s).
+    // The answer, on Teacher only, from pulse 1.5 (48.70 s); R maps round 2's 5-pulse times onto 4 so
+    // the last labels settle by pulse 3.9.
     const m = mapper(panels[1].P);
+    const R = (x) => (x < 3 ? x - 0.5 : 2.5 + (x - 3) * 0.8);
     const red = { w: w(3), color: RED };
-    r.D.set(m(TAX.D[0]), m(TAX.D[1]), { ...red, p: inOutSoft(prog(t, 2, 2.7)) });
-    r.S0.set(m(TAX.S0[0]), m(TAX.S0[1]), { ...red, p: inOutSoft(prog(t, 2.15, 2.85)) });
+    r.D.set(m(TAX.D[0]), m(TAX.D[1]), { ...red, p: inOutSoft(prog(t, R(2), R(2.7))) });
+    r.S0.set(m(TAX.S0[0]), m(TAX.S0[1]), { ...red, p: inOutSoft(prog(t, R(2.15), R(2.85))) });
     // S1: a copy of S0 slides up by t while the tax arrow grows with it.
-    const sh = inOutSoft(prog(t, 3.1, 3.8));
+    const sh = inOutSoft(prog(t, R(3.1), R(3.8)));
     const dy = (TAX.S1[0][1] - TAX.S0[0][1]) * sh;
-    const on = t >= 3.1 ? 1 : 0;
+    const on = t >= R(3.1) ? 1 : 0;
     r.S1.set(m([TAX.S0[0][0], TAX.S0[0][1] + dy]), m([TAX.S0[1][0], TAX.S0[1][1] + dy]), { ...red, o: on });
     const tipY = TAX.tax[0][1] + (TAX.tax[1][1] - TAX.tax[0][1]) * sh;
     r.tax.set(m(TAX.tax[0]), m([TAX.tax[0][0], tipY + 8]), { w: w(2.6), color: RED, o: sh > 0.15 ? 1 : 0 });
     r.hTax.set(m([TAX.tax[0][0], tipY]), [0, -1], sh > 0.15 ? w(11) : 0, w(6), RED);
     // Equilibria, guides, arrows.
     const pop = (a) => spring(prog(t, a, a + 0.5));
-    r.E0.set(m(TAX.E0), w(4) * pop(2.8), { color: RED });
-    r.E1.set(m(TAX.E1), w(4) * pop(3.8), { color: RED });
+    r.E0.set(m(TAX.E0), w(4) * pop(R(2.8)), { color: RED });
+    r.E1.set(m(TAX.E1), w(4) * pop(R(3.8)), { color: RED });
     const gd = { w: w(1.6), color: RED, dash };
-    const g0 = pe(2.8, 0.6), g1 = pe(3.8, 0.6);
+    const g0 = pe(R(2.8), 0.6), g1 = pe(R(3.8), 0.6);
     r.gP0.set(m(TAX.E0), m([TAX.o[0], TAX.E0[1]]), { ...gd, p: g0 });
     r.gQ0.set(m(TAX.E0), m([TAX.E0[0], TAX.o[1]]), { ...gd, p: g0 });
     r.gP1.set(m(TAX.E1), m([TAX.o[0], TAX.E1[1]]), { ...gd, p: g1 });
     r.gQ1.set(m(TAX.E1), m([TAX.E1[0], TAX.o[1]]), { ...gd, p: g1 });
     r.gPt.set(m([TAX.E1[0], TAX.Pt]), m([TAX.o[0], TAX.Pt]), { ...gd, p: g1 });
-    const ar = pe(4.0, 0.5);
+    const ar = pe(R(4.0), 0.5);
     r.up.set(m(TAX.up[0]), m(lerpPt(TAX.up[0], TAX.up[1], 0.75)), { w: w(2.2), color: RED, p: ar });
     r.hUp.set(m(lerpPt(TAX.up[0], TAX.up[1], ar)), [0, -1], w(9) * clamp(ar * 3), w(5), RED);
     r.left.set(m(TAX.left[0]), m(lerpPt(TAX.left[0], TAX.left[1], 0.75)), { w: w(2.2), color: RED, p: ar });
     r.hLeft.set(m(lerpPt(TAX.left[0], TAX.left[1], ar)), [-1, 0], w(9) * clamp(ar * 3), w(5), RED);
     // Labels set in as their lines land.
     const L = (el, at, pt, o = {}) => el.set(m(pt), { size: 24, color: RED, o: pe(at, 0.6), ...o });
-    L(r.lD, 2.6, [766, 525]);
-    L(r.lS0, 2.8, [682, 342]);
-    L(r.lS1, 3.7, [682, 259]);
-    L(r.lt, 3.6, [641, 317]);
-    L(r.lP0, 3.0, [457, 396], { anchor: 'end' });
-    L(r.lQ0, 3.0, [624.4, 582], { anchor: 'middle' });
-    L(r.lP1, 4.0, [457, 356.5], { anchor: 'end' });
-    L(r.lQ1, 4.0, [581.4, 582], { anchor: 'middle' });
-    L(r.lPt, 4.0, [432, 440], { anchor: 'end' });
-    L(r.lPt2, 4.0, [457, 440], { anchor: 'end' });
+    L(r.lD, R(2.6), [766, 525]);
+    L(r.lS0, R(2.8), [682, 342]);
+    L(r.lS1, R(3.7), [682, 259]);
+    L(r.lt, R(3.6), [641, 317]);
+    L(r.lP0, R(3.0), [457, 396], { anchor: 'end' });
+    L(r.lQ0, R(3.0), [624.4, 582], { anchor: 'middle' });
+    L(r.lP1, R(4.0), [457, 356.5], { anchor: 'end' });
+    L(r.lQ1, R(4.0), [581.4, 582], { anchor: 'middle' });
+    L(r.lPt, R(4.0), [432, 440], { anchor: 'end' });
+    L(r.lPt2, R(4.0), [457, 440], { anchor: 'end' });
   }
   return { el, set };
 }
