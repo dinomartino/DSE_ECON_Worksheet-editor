@@ -233,8 +233,10 @@ const scene = {
 
     // ---- headlines: off in CLOSE and WIDE frames; the terms one is up from the row's cut ----
     // Each one stands until its cut, gone on the cut's own frame (no headline-less footage frame).
+    // The drag one rises fast on the drop (the CLOSE before it is full-bleed page text: a
+    // headline there would sit on printed lines), so it reads ≈ 2.35 s.
     [[0, P(12)], [P(16), P(22)], [P(22), P(30)]].forEach(([at, out], i) => {
-      ctx.head[i].show(t, { at, dur: 0.45 });
+      ctx.head[i].show(t, { at, dur: i === 1 ? 0.25 : 0.45 });
       if (t >= out) show(ctx.head[i].el, 0);
     });
   },
