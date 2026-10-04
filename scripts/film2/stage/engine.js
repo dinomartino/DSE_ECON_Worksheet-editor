@@ -311,6 +311,13 @@ async function events() {
       for (const e of placedEvents(meta, p, info.from)) if (e.t >= win.start && e.t < win.end) out.push({ ...e, source: 'clip', scene: info.id });
     }
   });
+  // A cue with `replaces: { scene, label }` is that scene event's sound, retimed: the scene
+  // events whose label starts with `label` go silent. `replaced` counts them (sfx.mjs warns at 0).
+  for (const c of out.filter((x) => x.source === 'cue' && x.replaces)) {
+    const hit = (e) => e.source === 'scene' && e.scene === c.replaces.scene && String(e.label ?? '').startsWith(c.replaces.label);
+    c.replaced = out.filter(hit).length;
+    for (let i = out.length - 1; i >= 0; i--) if (hit(out[i])) out.splice(i, 1);
+  }
   return out.sort((a, b) => a.t - b.t);
 }
 

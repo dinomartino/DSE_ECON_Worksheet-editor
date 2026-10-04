@@ -193,7 +193,8 @@ A sibling of `scripts/film/`, reusing its capture and tools by import; v1 keeps 
   (`BEATS`, `BARS` in seconds), `beat(n)`/`bar(n)`, `SCENES` (id, from, to, in-transition: cut, match, push, iris or axis;
   intended in-act `cuts`, footage `ui` changes and still `holds`, which
   `tools/motion-check.mjs` exempts),
-  `CUES` (id, t, kind: sfx/accent), `COPY` (every string, en + zh), `DURATION`.
+  `CUES` (id, t, kind: sfx/accent; `replaces: { scene, label }` retimes a scene event's sound
+  without touching the scene), `COPY` (every string, en + zh), `DURATION`.
 - `stage/` 2D engine: `index.html` + `engine.js` exposing `window.film =
   {ready, fps, duration, frames, size, seek(t), events(), text(), placements(), errors()}`;
   a 1920×1080 design-space DOM/SVG root; scenes `stage/scenes/<id>.js` =

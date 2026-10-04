@@ -15,7 +15,8 @@
 //             enter_db }; the run's last key is always kept
 //   ui        thinned to at least 60 ms spacing against the other ui voices
 //   peakAlign the file's loudest 10 ms lands at t + peakAlign (s), read from `lead` s before
-//             that peak (default 0.12), for files whose body comes late (long whooshes, paper)
+//             that peak (default 0.12), for files whose body comes late (long whooshes, paper);
+//             an event (a cue) may carry its own peakAlign and lead
 //   semis     ± semitones of a per-voice pitch (playback-rate) variation, deterministic
 //   family    kinds sharing files (paper, page): no file plays twice in a row within a family
 //             (files rotate by index, a repeat steps to the next file)
@@ -51,15 +52,19 @@ export const SFX_MAP = {
   'whoosh-s': { files: ['whoosh__fast-transitions-swoosh__mixkit-3115', 'whoosh__air-woosh__mixkit-1489', 'ui-zoom__ui-zoom-in__mixkit-2617', 'whoosh__transition-windy-swoosh__mixkit-1474'],
     gain_db: -10, loudMin: -4, fade: [0.03, 0.15], peakAlign: 0.04, lead: 0.25, maxDur: 0.5, semis: 1,
     trim_db: { 'whoosh__air-woosh__mixkit-1489': 1, 'ui-zoom__ui-zoom-in__mixkit-2617': 1, 'whoosh__transition-windy-swoosh__mixkit-1474': 1 } },
-  whoosh: { files: ['whoosh__air-woosh__mixkit-1489', 'whoosh__transition-windy-swoosh__mixkit-1474'], gain_db: -15, fade: [0.02, 0.2], maxDur: 1.8, duck: 'light' },
+  // A travel (the dive, the line into the mark, the pull-back): both files swell for ~0.6-1 s,
+  // so the swell's peak lands 0.45 s after t, read from 0.4 s before it: the sound starts with
+  // the move instead of half a second ahead of it. -10: at -15 it sat under the music (sync review 3).
+  whoosh: { files: ['whoosh__air-woosh__mixkit-1489', 'whoosh__transition-windy-swoosh__mixkit-1474'], gain_db: -10, fade: [0.04, 0.2], peakAlign: 0.45, lead: 0.4, maxDur: 1.8, duck: 'light' },
   'whoosh-l': { files: ['whoosh__cinematic-tunnel-reverb-woosh__mixkit-1486', 'whoosh__transition-windy-swoosh__mixkit-1474'], gain_db: -14, fade: [0.02, 0.6], maxDur: 3.2, duck: 'light' },
   pencil: { files: ['pencil__writing-pencil__mixkit-3194', 'pencil__short-pencil-writing__mixkit-2376', 'pencil__writing-scribble-on-paper__mixkit-2369'], gain_db: -5, fade: [0.03, 0.12], maxDur: 1.8, trim_db: { 'pencil__writing-pencil__mixkit-3194': 3 }, duck: 'light' }, // -17 sat 13-24 dB under the music (sync review 2)
   // The two paper files peak late and sit ~-36 dBFS in their first 150 ms: +8 trims them up.
   paper: { files: ['paper__paper-quick-movement__mixkit-2380', 'paper__paper-slide__mixkit-1530', 'paper__page-turn-single__mixkit-1104'], gain_db: -13, fade: [0, 0.1],
     trim_db: { 'paper__paper-quick-movement__mixkit-2380': 8, 'paper__paper-slide__mixkit-1530': 8, 'paper__page-turn-single__mixkit-1104': -4 }, duck: 'paper', family: 'paper' },
-  // A page swapped or dealt: the three paper files rotated (peak 30 ms after t), ±1.5 st.
+  // A page swapped or dealt: the three paper files rotated, ±1.5 st, read from 60 ms before their
+  // peak so the sound starts on the cut's first frame (t + 15 ms), never ahead of it (sync review 3).
   page: { files: ['paper__page-turn-single__mixkit-1104', 'paper__paper-quick-movement__mixkit-2380', 'paper__paper-slide__mixkit-1530'], gain_db: -13, fade: [0.01, 0.1],
-    peakAlign: 0.03, lead: 0.1, maxDur: 0.45, semis: 1.5, trim_db: { 'paper__paper-quick-movement__mixkit-2380': -3 }, family: 'paper' },
+    peakAlign: 0.075, lead: 0.06, maxDur: 0.45, semis: 1.5, trim_db: { 'paper__paper-quick-movement__mixkit-2380': -3 }, family: 'paper' },
   chime: { files: ['chime__crystal-chime__mixkit-3108', 'chime__uplifting-bells-notification__mixkit-938', 'chime__success-software-tone__mixkit-2865', 'chime__positive-notification__mixkit-951'], gain_db: -14, fade: [0, 0.8], maxDur: 2.6, duck: 'light' },
   // The lift's hit (bank, 72.92 s): 498 is a clean low hit (peak 30 ms after its onset, gone in
   // ~1 s). 2900 and 788 are swells with no transient at their catalog onsets: they never land.

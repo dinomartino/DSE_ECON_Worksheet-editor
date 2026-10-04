@@ -165,12 +165,15 @@ export function plan(events, { duration = DURATION, level = null } = {}) {
     const pan = v.e.pan ?? (m.panX && Number.isFinite(v.e.x) ? m.panX * Math.max(-1, Math.min(1, (v.e.x / 2880) * 2 - 1)) : 0);
     const base = { kind: v.kind, file: name, event_t: +v.t.toFixed(4), gain_db: +gain.toFixed(2), boost_db: +boost.toFixed(2), pan: +pan.toFixed(3), fade: m.fade };
     const dur = cat.duration_s;
-    if (m.peakAlign != null && !(m.end || v.e.end)) {
+    const peakAlign = v.e.peakAlign ?? m.peakAlign, lead = v.e.lead ?? m.lead; // a cue may place its own sound
+    if (peakAlign != null && !(m.end || v.e.end)) {
       // The file's loudest 10 ms lands at t + peakAlign; read from `lead` before it, at a pitch.
       const pk = peakOf(name), rate = m.semis ? 2 ** (((hash(idx * 5 + 2) * 2 - 1) * m.semis) / 12) : 1;
-      const from = Math.max(0, pk - (m.lead ?? 0.12));
+      const from = Math.max(0, pk - (lead ?? 0.12));
       const len = Math.min(m.maxDur ?? dur, (dur - from) / rate);
-      voices.push({ ...base, pos: v.t + m.peakAlign - (pk - from) / rate, from, len, onset: cat.onset_s, rate: +rate.toFixed(4) });
+      // Read from mid-file: at least 5 ms of fade-in so the cut never clicks.
+      const fade = [Math.max(m.fade[0], from > 0 ? 0.005 : 0), m.fade[1]];
+      voices.push({ ...base, fade, pos: v.t + peakAlign - (pk - from) / rate, from, len, onset: cat.onset_s, rate: +rate.toFixed(4) });
     } else if (m.end || v.e.end) {
       const D = Math.min(v.e.dur ?? m.defDur ?? m.maxDur ?? 3, dur);
       voices.push({ ...base, pos: v.t - D, from: dur - D, len: D, onset: null, fade: [Math.min(m.fade[0], D / 2), m.fade[1]] });
@@ -296,6 +299,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     }
     events = JSON.parse(readFileSync(file, 'utf8'));
   }
+  for (const c of events) if (c.replaces && !c.replaced) console.warn(`sfx: cue ${c.id} replaces no event (${c.replaces.scene}: "${c.replaces.label}…"); the scene's label changed?`);
   const { wav, report } = await buildSfx({ events, outDir: a.out ? resolve(a.out) : AUDIO, duration: Number(a.duration ?? DURATION) });
   console.log(`sfx: ${report.voices} voices from ${report.events} events (${report.thinned.length} thinned), peak ${report.peakDbfs} dBFS → ${wav}`);
   console.log(`  ${Object.entries(report.byKind).map(([k, n]) => `${k} ${n}`).join(', ')}`);
