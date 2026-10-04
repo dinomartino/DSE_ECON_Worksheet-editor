@@ -11,10 +11,10 @@
 //   P20–P30  the printed key, 1240 px: HKEAA style P20, Classic P24, Suggested answers P26,
 //            Detailed table P28, each named by the app's own layout name
 //   P30–P38  "Mock papers, cover to key": P1 cover, P2 cover, its answer page, LQ, dealt P30–P36
-//   P38–P40  CLOSE Document setup: Versions 3 (its click on the cut), "Page shows A B C"
-//   P40–P43  Version A, B, C, one per pulse (header + question 1: the options reshuffle)
-//   P43–P50  the version page opens into the centre of a five-sheet fan across the frame,
-//            dealt P44, P45; it spreads and pushes in, accelerating into the iris (P48)
+//   P38–P40  MEDIUM Document setup at 2×: Versions 3 (its click on the cut), "Page shows A B C"
+//   P40–P43  CLOSE Version A, B, C full-bleed, one per pulse (header + question 1 reshuffle)
+//   P43–P50  cut to the version page at the centre of a five-sheet fan across the frame, the
+//            rest dealt P44, P45; it spreads and pushes in, accelerating into the iris (P48)
 import { block, HEADLINE, h, show, C } from '../lib/index.js';
 import { camera, frame } from '../lib/camera.js';
 import { PULSE } from '../../timeline.mjs';
@@ -33,16 +33,17 @@ const PANEL_SHOT = { size: 'narrow', focus: PANEL, zoom: 2.86 };
 const Q1 = [400, 315, 480, 210], Q1_SAFE = [344, 318, 420, 205];
 // key-layouts: the toolbar, the page's title and the four style cards; then the title + cards.
 const KEYS = [0, 0, 1440, 620], KEYS_IN = [200, 70, 1240, 535];
-// versions: Document setup's Versions row (Off 2 3 4 · Reshuffle · Page shows A B C).
-const VROW = [480, 420, 640, 360], VROW_SAFE = [545, 540, 535, 95];
+// versions: Document setup, its nav to the dialog's edge, the Versions row (Off 2 3 4 · Reshuffle ·
+// Page shows A B C) at 2× in the C1 card: no word cut.
+const VROW = [330, 404, 864, 372];
 
 // Footage segments: clip time of scene time t. Each click lands on its cut.
 const LINES_AT = P(1) - 1.0; // the Lines click (1.0) at P1; frame 0 holds before
 const SEG = [
-  { id: 'answer-lines', from: -P(2), to: P(5), ct: (t) => Math.max(0, t - LINES_AT) },
-  { id: 'teacher-toggle', from: P(10), to: P(16), ct: (t) => 1.0 + (t - P(11)) },
-  { id: 'key-layouts', from: P(16), to: P(20), ct: (t) => 1.0 + 0.6 * (t - P(16)) }, // HKEAA style 1.0–2.2
-  { id: 'versions', from: P(38), to: P(40), ct: (t) => 1.67 + 0.85 * (t - P(38)) }, // Versions 3; Close at 2.5
+  { id: 'answer-lines', rig: 0, from: -P(2), to: P(5), ct: (t) => Math.max(0, t - LINES_AT) },
+  { id: 'teacher-toggle', rig: 0, from: P(10), to: P(16), ct: (t) => 1.0 + (t - P(11)) },
+  { id: 'key-layouts', rig: 0, from: P(16), to: P(20), ct: (t) => 1.0 + 0.6 * (t - P(16)) }, // HKEAA style 1.0–2.2
+  { id: 'versions', rig: 1, from: P(38), to: P(40), ct: (t) => 1.67 + 0.85 * (t - P(38)) }, // Versions 3; Close at 2.5
 ];
 
 const T_MARKS = {
@@ -52,7 +53,7 @@ const T_MARKS = {
 const T_PRINT = {
   keys: [P(20), P(30)], keyCuts: [P(20), P(24), P(26), P(28)],
   mock: [P(30), P(38)], mockDeals: [P(30), P(32), P(34), P(36)],
-  vers: [P(40)], verCuts: [P(40), P(41), P(42)], open: [P(43), P(44.5)], deals: [P(44), P(45)], build: [P(45.5), P(48)],
+  vers: [P(40)], verCuts: [P(40), P(41), P(42)], open: P(43), deals: [P(44), P(45)], build: [P(45.5), P(48)],
 };
 
 /** A CSS rect under a framing's pose, in design px. */
@@ -70,7 +71,7 @@ const scene = {
     ...[24, 26, 28].map((n) => ({ t: P(n), kind: 'page', label: 'the next layout' })),
     ...[30, 32, 34, 36].map((n) => ({ t: P(n), kind: 'paper', label: 'a mock paper is dealt' })),
     ...[40, 41, 42].map((n) => ({ t: P(n), kind: 'page', label: 'the next version' })),
-    { t: P(43), kind: 'whoosh', size: 'm', label: 'the version page opens into the fan' },
+    { t: P(43), kind: 'paper', label: 'the fan: the version page at its centre' },
     { t: P(44), kind: 'paper', label: 'the fan: inner pair' },
     { t: P(45), kind: 'paper', label: 'the fan: outer pair' },
   ],
@@ -80,16 +81,20 @@ const scene = {
     h('div', { style: { position: 'absolute', inset: 0, background: C.cream } }, ctx.el);
 
     ctx.print = await prints(ctx.el, { url: (id) => ctx.load.url(id), T: T_PRINT });
-    ctx.cam = camera(ctx, { src: SRC, name: 'papers' });
+    // Two rigs: the act's footage, and the versions dialog after the printed pages (its own
+    // frame: the cut into it comes from paper, not from the MEDIUM before).
+    ctx.rigs = [camera(ctx, { src: SRC, name: 'papers' }), camera(ctx, { src: SRC, name: 'papers-versions' })];
     ctx.clips = [];
-    for (const g of SEG) ctx.clips.push(await ctx.load.clip(g.id, ctx.cam.box, ctx.cam.content));
-    ctx.cam.shots([
+    for (const g of SEG) ctx.clips.push(await ctx.load.clip(g.id, ctx.rigs[g.rig].box, ctx.rigs[g.rig].content));
+    ctx.rigs[0].shots([
       { at: -P(2), end: P(5), size: 'narrow', focus: LINES, zoom: 0.963, move: { at: P(2), dur: P(4), to: PANEL_SHOT } },
       { at: P(10), end: P(11), size: 'wide' },
       { at: P(11), end: P(16), size: 'close', focus: Q1, safe: Q1_SAFE, zoom: 2.45, move: { dur: P(5), to: { zoom: 2.75 } } },
       { at: P(16), end: P(20), size: 'medium', focus: KEYS, move: { dur: P(4), to: { focus: KEYS_IN, zoom: 1.39 } } },
-      { at: P(38), end: P(40), size: 'close', focus: VROW, safe: VROW_SAFE, zoom: 3.0 },
     ]);
+    ctx.rigs[1].shots([{ at: P(38), end: P(40), size: 'medium', focus: VROW, zoom: 2.0 }]);
+    // Version A, B, C fill the frame (print.js): a full-bleed CLOSE of the printed page.
+    ctx.registerShots('papers-print', [{ at: P(40), end: P(43), size: 'close', to: 'close', moveAt: P(40) }]);
     const settled = frame(PANEL_SHOT, SRC);
     ctx.marks = marks(ctx.el, { fieldA: onScreen(settled, FIELD_A), fieldB: onScreen(settled, FIELD_B), T: T_MARKS });
 
@@ -101,19 +106,19 @@ const scene = {
   update(ctx, t) {
     // Footage: one rig, one clip at a time, hidden between its shots.
     const seg = SEG.findIndex((g) => t >= g.from && t < g.to);
-    show(ctx.cam.el, seg >= 0 ? 1 : 0);
+    ctx.rigs.forEach((r, k) => show(r.el, seg >= 0 && SEG[seg].rig === k ? 1 : 0));
     ctx.clips.forEach((c, i) => {
       c.el.style.visibility = i === seg ? 'visible' : 'hidden';
       if (i === seg) c.at(Math.min(c.duration - 1 / c.fps, SEG[i].ct(t)));
     });
-    if (seg >= 0) ctx.cam.update(t);
+    if (seg >= 0) ctx.rigs[SEG[seg].rig].update(t);
 
     ctx.marks.update(t);
     ctx.print.update(t);
 
     ctx.h1.show(t, { at: P(4.5), dur: 0.5, out: P(11), outDur: 0.1 });
     ctx.h2.show(t, { at: P(16), dur: 0.5, out: P(24), outDur: 0.3 });
-    ctx.h3.show(t, { at: P(30), dur: 0.5, out: P(38), outDur: 0.1 });
+    ctx.h3.show(t, { at: P(30), dur: 0.5, out: P(40), outDur: 0.1 });
   },
 };
 

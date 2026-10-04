@@ -3,11 +3,11 @@
 //   keys     one marking-scheme page, 1240 px wide, its four layouts cut in place on beats,
 //            each named with the app's own layout name (a LABEL over a hairline)
 //   mock     Paper 1 cover, Paper 2 cover, its answer page, an answer key: dealt on beats, 1240 wide
-//   vers     Version A, B, C: the header and question 1 at 0.66 (the options reshuffle)
-//   fan      five sheets across the frame; the version page opens into its centre
+//   vers     Version A, B, C full-bleed: the header and question 1 (the options reshuffle)
+//   fan      five sheets across the frame: the version page at its centre (a cut), the rest dealt
 // update(t) is pure; every time is scene seconds from the caller's T.
 import { h, s, svg, show, place, label, LABEL, f, C } from '../../lib/index.js';
-import { clamp, lerp, prog, outSoft, inOutSoft, sineInOut } from '../../lib/ease.js';
+import { clamp, lerp, prog, outSoft, sineInOut } from '../../lib/ease.js';
 import * as reink from '../../lib/reink.js';
 import { sheet, loadSheet, SHEET_W, SHEET_H } from './sheet.js';
 
@@ -26,15 +26,15 @@ const FAN = [ // [sheet id, slot −2…2]; the centre (0) is the version page
 
 const PAGE = { x: 584, top: 264, w: 1240 }; // keys and mock: right of the label column
 const KEY_ANCHOR = [1204, 432]; // the page title: the slow push closes on it
-const VCROP = [240, 110, 1920, 1040]; // version header + question 1 with its options
-const VW = 1500, FAN_W = 508, FAN_STEP = 305;
+const VCROP = [188, 60, 2000, 1125]; // version header + question 1 and its options, filling the frame
+const FAN_W = 508, FAN_STEP = 305;
 const VHEAD = [1825, 2088, 200]; // "Version A 版本 A": x0, x1, underline y (sheet px)
 
 export async function prints(parent, { url, T }) {
   const ids = [...new Set([...LAYOUTS.map((l) => l.id), ...MOCK, ...FAN.map((x) => x[0])])];
   const cv = {};
   await Promise.all(ids.map(async (id) => { cv[id] = await loadSheet(url(id), 1400); }));
-  const vcv = await Promise.all(VERSIONS.map((id) => loadSheet(url(id), 1700)));
+  const vcv = await Promise.all(VERSIONS.map((id) => loadSheet(url(id), SHEET_W))); // full-bleed: full res
 
   const keyLayer = h('div', { style: { position: 'absolute', inset: 0 } }, parent);
   const keys = sheet(keyLayer, LAYOUTS.map((l) => cv[l.id]));
@@ -83,19 +83,19 @@ export async function prints(parent, { url, T }) {
     show(fin, inFin ? 1 : 0);
     if (!inFin) return;
     const face = Math.max(0, T.verCuts.findLastIndex((c) => t >= c));
-    const open = inOutSoft(prog(t, T.open[0], T.open[1]));
-    const g = 1 + 0.04 * sineInOut(prog(t, T.vers[0], T.open[0]));
+    // A cut, not a pull: zooming a full-frame page out 3.8× in a second whips (MAD 10+).
+    const open = t >= T.open ? 1 : 0;
+    const g = 1 + 0.015 * sineInOut(prog(t, T.vers[0], T.open));
     const crop = VCROP.map((c, k) => lerp(c, [0, 0, SHEET_W, SHEET_H][k], open));
-    const w = lerp(VW * g, FAN_W, open);
-    vers.set({ x: 960, y: 540, w, crop, face });
+    const w = lerp(1920 * g, FAN_W, open);
+    const rise = open ? 70 * (1 - outSoft(prog(t, T.open, T.open + 0.6))) : 0; // dealt into the fan's centre
+    vers.set({ x: 960, y: 540 + rise, w, crop, face });
     // A blue underline under the version letter: it stays while the pages swap.
     const k = w / crop[2], left = 960 - w / 2, top = 540 - ht(w, crop) / 2;
     const ux = (sx) => left + (sx - crop[0]) * k, uy = top + (VHEAD[2] - crop[1]) * k;
     Object.entries({ x1: ux(VHEAD[0]), x2: ux(VHEAD[1]), y1: uy, y2: uy }).forEach(([a, v]) => under.setAttribute(a, f(v, 2)));
     under.__len = ux(VHEAD[1]) - ux(VHEAD[0]); // its length changes with the push: measure each frame
-    const uo = 1 - clamp((t - T.open[0]) / 0.25);
-    if (reink.stroke(under, t, { at: T.vers[0] + 0.05, dur: 0.35 }) > 0 && uo > 0) under.style.opacity = f(uo, 3);
-    else under.style.visibility = 'hidden';
+    if (open || reink.stroke(under, t, { at: T.vers[0] + 0.05, dur: 0.35 }) <= 0) under.style.visibility = 'hidden';
     // The fan: inner pair, then outer pair, slide out from behind the centre; then the whole
     // fan spreads and pushes in, accelerating into the iris.
     // q² up to the hit, then on at the speed it reached (no stop under the opening iris).
