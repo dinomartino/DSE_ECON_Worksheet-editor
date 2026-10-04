@@ -63,8 +63,15 @@ const ACTS = [
     ui: [17.505, pulse(43), pulse(45), pulse(55)],
     holds: [[pulse(53), pulse(55)]] }, // Settings › Language in English is read before the flip
   { id: 'draw', bars: [8, 14], in: { type: 'axis', pulses: 4 },
-    cuts: [pulse(93), pulse(96), pulse(104)], // → the Templates grid; → Draw answer; → Student/Teacher
-    ui: [pulse(106)] }, // Teacher: the red answer snaps on
+    // CLOSE → narrow; → the CS lift on cream; → the Templates wall; → Draw answer; → the
+    // Student | Teacher split; → the red answer CLOSE (scenes/draw.js P10, P27, P30, P33, P40, P45)
+    cuts: [pulse(74), pulse(91), pulse(94), pulse(97), pulse(104), pulse(109)],
+    // the D and S labels, E0 placed; Shade ▾ opens, Consumer surplus lands; Draw answer, D
+    // selected, Shift a copy draws D1 (the clips' events as draw.js places them)
+    ui: [33.251, 34.548, 34.983, 39.67, pulse(87), 45.215, 46.215, 47.415],
+    // read and drifting: the re-ink detail, "Shade…" over its canvas, the CS CLOSE, the CS lift, the wall, "The
+    // answer…" over its canvas, D1 drawn, the held red answer
+    holds: [[36.646, 38.025], [38.514, 39.314], [41.98, 42.248], [43.226, 43.582], [44.293, 44.915], [45.182, 45.76], [47.4, 48.027], [50.25, 50.694]] },
   // Cuts (scenes/papers.js beat table): the lift (P5), Student WIDE (P10), Teacher CLOSE (P11),
   // HKEAA style (P16), the printed key and its layouts (P20, P24, P26, P28), mock papers (P30),
   // versions (P38, P40–P42), the fan (P43). Holds: the lift's total; the printed pages read.
@@ -124,6 +131,7 @@ export const CUES = [
   { id: 'write.build', t: bar(3), kind: 'accent', note: 'the build: the dot drops onto the desk' },
   // Section changes carry a sound (sync review #4): the axis chapters land on whoosh-s.
   { id: 'draw.body', t: bar(8), kind: 'accent', sfx: 'whoosh-s', note: 'body: the hero act; the chapter axis lands' },
+  { id: 'draw.answer', t: pulse(109), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the held red answer CLOSE' },
   { id: 'papers.turn', t: bar(14), kind: 'accent', sfx: 'whoosh-s', note: 'the papers chapter axis lands' },
   { id: 'papers.scheme', t: bar(16), kind: 'accent', sfx: 'whoosh-s', note: 'cut to the Marking scheme view, its headline' },
   { id: 'papers.mock', t: pulse(142), kind: 'accent', note: 'mock papers: the headline, the Paper 1 cover dealt' },
@@ -171,6 +179,8 @@ export const COPY = {
     draw: { en: 'Draw it in seconds', zh: '幾秒畫好一幅圖' },
     shade: { en: 'Shade any area in one click', zh: '一按塗上任何面積' },
     answer: { en: 'The answer, on the same axes', zh: '答案直接畫在同一幅圖上' },
+    student: { en: 'Student', zh: '學生版' }, // the app's own toolbar labels (Toolbar.messages.ts)
+    teacher: { en: 'Teacher', zh: '教師版' },
   },
   papers: {
     marks: { en: 'Marks add themselves up', zh: '分數自動加總' },
