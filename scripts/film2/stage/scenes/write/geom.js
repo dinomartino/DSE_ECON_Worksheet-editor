@@ -33,8 +33,7 @@ export const DOT1_R = (2.3 * DESK.w) / 120;
 // type-mcq (page at 130 %: A4 = 1032 CSS wide from x 100, y 111). The stem line is y 383.
 export const TYPE_STEM = [250, 360, 520, 46]; // "Which of the following is a positive statement?"
 export const TYPE_CLOSE = [180, 250, 740, 330];
-export const TYPE_MED = [0, 150, 1440, 620];
-// The MEDIUM's push ends on the page alone: the card's right edge on the panel divider (CSS
+// The MEDIUM frames the page alone: the card's right edge on the panel divider (CSS
 // 1040), its top in the gap under "Answer ALL questions" (277…301), its bottom under Section B
 // in every reflow state (the pasted options push it from ≈575 to 623…673), so no word sits on
 // an edge at rest (the rail's icons stay above y 200).
