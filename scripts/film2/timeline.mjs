@@ -94,7 +94,7 @@ const ACTS = [
     cuts: PC(112, [11, 16, 20, 24, 26, 28, 30, 38, 40]),
     ui: PC(112, [12, 42, 44]),
     holds: [[pulse(132), pulse(150)]],
-    alive: [[pulse(120), pulse(123)], [pulse(152), pulse(158)]] },
+    alive: [[pulse(113), pulse(115.5)], [pulse(120), pulse(123)], [pulse(152), pulse(158)]] }, // + the marks CLOSE's 3 % drift under the chapter label
   { id: 'bank', bars: [20, 24], in: { type: 'iris', pulses: 4, at: [960, 540] },
     // → the topic page (P9); → the editor, WIDE (P12); → the drag CLOSE (P13); → the drop (P16);
     // → the Check terms row (P22); → the underlined page (P24); → Replace (P30) (the term lift at
