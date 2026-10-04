@@ -20,7 +20,8 @@ Outputs go to `demo-media/film-v2/` in the main checkout (gitignored): the film
 `econ-studio-film.mp4`, `build/`, `audio/`, `stills/`. Set `FILM_OUT=<dir>` to move them for
 scratch renders. Footage and the music are read from `demo-media/film-v2/assets` and
 `demo-media/film-v2/audio-stock`; the SFX kit is synthesised into `demo-media/film-v2/audio/kit`
-(`node scripts/film2/audio/kit/gen.mjs`; checks: `kit/check.py`). Re-capture footage as described in `capture/MANIFEST.md`.
+(`node scripts/film2/audio/kit/gen.mjs`; checks: `kit/check.py` and re-analysis `kit/harmony.py` need
+`python3 -m venv scripts/film2/.venv && scripts/film2/.venv/bin/pip install -r scripts/film2/audio/kit/requirements.txt`). Re-capture footage as described in `capture/MANIFEST.md`.
 
 ## Licences
 

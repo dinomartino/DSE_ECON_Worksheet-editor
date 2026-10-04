@@ -61,4 +61,5 @@ skills-lock.json
 # product film (scripts/film has its own deps; the score's Python venv)
 /scripts/film/node_modules/
 /scripts/film/score/.venv/
+/scripts/film2/.venv/
 __pycache__/
