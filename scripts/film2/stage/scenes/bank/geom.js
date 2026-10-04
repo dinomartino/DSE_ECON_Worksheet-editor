@@ -35,8 +35,9 @@ export const COLUMN_W = CHART.w / (12 + CHART.gap * 11);
 export const columnX = (i) => CHART.x + i * COLUMN_W * (1 + CHART.gap);
 
 // ---- the camera shots (CSS px of the clips) ----------------------------------------------
-/** bank-screen after the topic click: the sub-topic list and the preview, toolbar out. */
-export const TOPIC = [0, 48, 1440, 620];
+/** bank-screen after the topic click: the sub-topic list and the preview, whole width (no word
+ * cut at either edge); its top under the "23 questions" / "Question 1 of 26" header strip (y 60–76). */
+export const TOPIC = [0, 86, 1440, 620];
 /** bank-drag: the page from Q1 to Q3 (CLOSE); its edges fall between text lines. */
 export const DRAG_CLOSE = [236, 176, 800, 1080 / 2.55]; // at 2.55×
 export const DRAG_CLOSE_END = [236, 176, 800, 450]; // at 2.4×
@@ -47,9 +48,15 @@ export const DRAG_PAGE = [252, 238, 763, 620]; // the page column (the spotlight
 export const AI_BUTTON = [1220, 9, 58, 36];
 
 // check-terms: the menu row alone, the page with the underlines, the finding card.
-export const ROW = [916, 122, 354, 36]; // "Check terms against EDB glossary   free" (inside the popover borders)
-export const ROW_ZOOM = 3.0;
-export const ROW_CARD = { x: 960 - (ROW[2] * ROW_ZOOM) / 2, y: 540 - (ROW[3] * ROW_ZOOM) / 2, w: ROW[2] * ROW_ZOOM, h: ROW[3] * ROW_ZOOM };
+// "Check terms against EDB glossary   free": the row's own rounded fill (918.5–1268.5 × 124.5–155.5),
+// eroded 1.5 px so no popover white rings it; the card takes the fill's corner radius.
+export const ROW = [920, 126, 346, 28];
+export const ROW_RADIUS = 4; // CSS px
+export const ROW_W = [1600, 1728]; // design px: the card at the cut, after its push (HEADLINE + object)
+export const ROW_ZOOM = ROW_W[0] / ROW[2];
+export const ROW_CARD = { x: 960 - ROW_W[0] / 2, y: 610 - (ROW[3] * ROW_ZOOM) / 2, w: ROW_W[0], h: ROW[3] * ROW_ZOOM };
+/** Where the click marker lands on the row (CSS px): the gap between "glossary" and "free". */
+export const ROW_CLICK = [1190, 140];
 export const TERMS_PAGE = [0, 160, 1440, 620]; // title to Section B Q1; the findings bar out
 // Q1 D and the finding card: the frame's edges sit in the gaps between text lines (y 156, 606).
 export const REPLACE = [90, 156, 800, 450];
