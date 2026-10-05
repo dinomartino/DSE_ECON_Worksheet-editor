@@ -1,6 +1,6 @@
 # Library folder: one teacher, two computers (F9)
 
-Status: **build plan, not built.** Written 2026-10-05 against `develop` at `93ba8a0`.
+Status: **build plan, parked 2026-10-05 (user: "not yet").** Written 2026-10-05 against `develop` at `93ba8a0`.
 Source: `docs/research/2026-09-paid-product/K-free-sync.md` § 4 (Phase A, written against
 `ccaff59`), re-verified against the code below. Reused from the shelved
 `docs/design/drive-sync.md`: conflict naming, the first-connect merge, the never-delete rules.
@@ -496,6 +496,10 @@ until Stage 5 adds the entry point). Sizes: S ≈ 1–2 days, M ≈ 3–5, L ≈
 ---
 
 ## 8. Open questions for the user
+
+**Answered 2026-10-05:** the setting is **Storage location / 儲存位置**; a missing folder shows the
+**wait screen**; conflict copies are kept automatically with a "Needs attention" list (survey);
+computer name asked at setup; Translation terms per computer until Stage 6. Start: parked.
 
 1. **The name.** "Library location / 資料庫位置" as briefed, or **Storage location / 儲存位置**?
    *Recommended:* Storage location / 儲存位置. "Library" is already 資源庫 (the start screen's

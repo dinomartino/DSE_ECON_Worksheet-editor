@@ -7,7 +7,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Where we are
 
-- **2026-10-05: cross-device sync initiative (F9), planned, not built.** Teachers run the desktop
+- **2026-10-05: cross-device sync (F9), planned and parked.** Teachers run the desktop
   app on a work and a home computer. Chosen: the library lives in a folder the teacher picks in
   their own cloud drive (OneDrive default). Plan `docs/design/library-folder.md` (stages 0–6,
   ~4–6 weeks); survey `docs/research/2026-10-sync-survey.md`; Drive API design shelved
@@ -46,8 +46,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
-- Sync plan's open questions (`docs/design/library-folder.md` § 8) and Stage 0 (provider
-  conflict-copy names, by hand on real machines).
+- When to start sync (parked 2026-10-05; questions answered in `docs/design/library-folder.md` § 8).
 - Paid service (`docs/research/2026-09-paid-product/`): what first; the in-app "use a VPN" Gemini
   wording breaks Google's terms. Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key.
