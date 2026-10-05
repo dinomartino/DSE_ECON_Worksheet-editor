@@ -22,9 +22,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   Frozen `v2-published.json`, `graph-v2.json`, `v2-optional-sections.json`. Index rows carry
   `indexRev`; rows v0.5.0 wrote get their `kind` repaired from the document.
   The bilingual empty-side prompt floats (no page space; `InlineEditable` `floating`).
-  Then (user's calls): Fill never translates alt text; "Teacher Version" in the header on every
-  preview/PDF page as in Word (`src/model/headerMarks.ts`); no "Version B" above Q1 when page 1's
-  header shows it.
 - **2026-10-03 (second sweep):** the rest of the open gaps, on `fix/gaps2-*`, all merged: preview
   pages break where Word does (keep runs, glued tails); a covered paper's page-1 header is the first
   body sheet; no blank header rows in `.docx`; canvas toolbar one row (⋯ clipboard menu); Q_A a
@@ -83,4 +80,3 @@ off the bottom.** It is the first thing a fresh session reads — then
   Then sync: Drive API design (shelved), library-folder plan, sync survey (Opus agents, merged).
 - **2026-10-04** — Released v0.6.0 (Windows rename test skipped, user's call). Site screenshot
   harness fixed + 6 new shots (Opus worktree, merged) for the DSE_Mentor page.
-- **2026-10-03** — Second gap sweep: 6 Opus worktree branches, merged.
