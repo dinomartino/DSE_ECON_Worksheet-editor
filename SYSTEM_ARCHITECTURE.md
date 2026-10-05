@@ -3000,6 +3000,12 @@ in-flight values stay local; the store is called on pointer-up.
   `econ-worksheet-patterns-corrupt-<time>`; desktop: `worksheets/patterns.corrupt-<time>.json`),
   or not replaced at all; `clear()` leaves those copies. Desktop writes go through
   `patterns.json.tmp` and a rename.
+- **Sync** (`src/sync/`, `docs/design/sync-engine.md`; not wired in yet) mirrors the store to a
+  `SyncSource` (folder, cloud API, server): the store stays primary, a pure planner compares
+  local, remote and the last-synced base per document (hashes and revisions, never clocks), and
+  changed-on-both keeps both. It writes through `adopt()`, which may replace a newer build's
+  document but never with an older schema (`adoptRefused`), announced with `origin: 'sync'` so a
+  download is not uploaded back; `loadTrashed()` reads Trash. Sync state lives outside documents.
 - **Backup** (`storage/backup.ts`) is one zip of `.worksheet.json` entries plus
   `manifest.json`; Trash is left out. Restore parses every entry through `migrate`, skips
   and names bad ones, and **never overwrites**: an identical live id is skipped, any

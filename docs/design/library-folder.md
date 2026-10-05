@@ -13,6 +13,10 @@ The web is unchanged.
 
 ## 0. Key decisions
 
+**Superseded in part (2026-10-05):** the local store stays primary and the folder is a mirror,
+reconciled by the shared sync engine (`docs/design/sync-engine.md`); "the folder replaces
+`worksheets/`" below no longer holds.
+
 1. **The folder is the `worksheets/` directory, moved.** Same file names, same bytes, so every
    released build opens any file in it. No schema change.
 2. **Nothing derived or multi-writer goes in the folder**: no `index.json`, no
