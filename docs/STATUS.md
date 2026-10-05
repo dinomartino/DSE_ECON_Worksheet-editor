@@ -47,7 +47,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
-- Sync engine open questions (`docs/design/sync-engine.md`): purge propagation, empty remote.
+- (none on sync: engine decisions recorded in `docs/design/sync-engine.md`)
 - Paid service (`docs/research/2026-09-paid-product/`): what first; the in-app "use a VPN" Gemini
   wording breaks Google's terms. Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key.

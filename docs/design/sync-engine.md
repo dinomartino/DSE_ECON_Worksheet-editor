@@ -110,3 +110,13 @@ identical; no version is held twice. 5,000 seeds at up to 120 steps passed while
    never write under the open editor; one tab on the web. `clear()` must forget the base.
 5. Interface: Storage location, "Needs attention", localised `CopyNamer` from a messages catalogue.
 6. Folders, 題型, graphs as later keys.
+
+## Decisions (2026-10-05)
+
+- **Delete forever / Trash expiry removes the cloud copy** (as built): it lands in the provider's own
+  recycle bin; the other computer keeps its local Trash copy until its own expiry. (User.)
+- **An empty remote is refilled from this computer, with a notice**: "The cloud copy was empty, so
+  it was refilled from this computer." The run report's `remoteWasEmpty` drives it (UI stage). (User.)
+- `clear()` forgets the base (scheduler stage). A provider-renamed **lone** file holding the only
+  copy is adopted as the original, not trashed plus copied (planner change, next stage). A copy's
+  name carries that version's own last-edit time. (Coordinator.)
