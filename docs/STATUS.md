@@ -7,6 +7,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Where we are
 
+- **2026-10-05: cross-device sync initiative (F9), planned, not built.** Teachers run the desktop
+  app on a work and a home computer. Chosen: the library lives in a folder the teacher picks in
+  their own cloud drive (OneDrive default). Plan `docs/design/library-folder.md` (stages 0–6,
+  ~4–6 weeks); survey `docs/research/2026-10-sync-survey.md`; Drive API design shelved
+  (`docs/design/drive-sync.md`, cannot mix with folder mode).
 - **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
   question bank, Marking scheme view and layouts, Translation terms, 中文 interface, Graphs
   圖表庫, diagram answer layer, the Econ Studio rename. Next work goes on `develop` as usual.
@@ -45,6 +50,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
+- Sync plan's open questions (`docs/design/library-folder.md` § 8) and Stage 0 (provider
+  conflict-copy names, by hand on real machines).
 - Paid service (`docs/research/2026-09-paid-product/`): what first; the in-app "use a VPN" Gemini
   wording breaks Google's terms. Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key.
@@ -73,6 +80,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   at tag v0.6.0 (`src/test/corpus/bank-v0.6.0-*.json`, guards in backwardCompat/legacyIndex/
   `bankCorpus.test.ts`); min-wage template label lifted (demo workaround removed); flaky
   rationale test pinned to a fixed id. IDEAS reordered: classes findability, then D1.
+  Then sync: Drive API design (shelved), library-folder plan, sync survey (Opus agents, merged).
 - **2026-10-04** — Released v0.6.0 (Windows rename test skipped, user's call). Site screenshot
   harness fixed + 6 new shots (Opus worktree, merged) for the DSE_Mentor page.
 - **2026-10-03** — Second gap sweep: 6 Opus worktree branches, merged.
