@@ -46,6 +46,14 @@ export interface WorksheetStore {
   list(): Promise<WorksheetSummary[]>;
   load(id: string): Promise<Worksheet | undefined>;
   save(worksheet: Worksheet): Promise<void>;
+  /**
+   * Write a document the sync engine downloaded: `save`, except it may replace a newer
+   * build's document — but never with an older schema (§ `adoptRefused`, which throws
+   * `NewerDocumentError`). Announced with `origin: 'sync'`.
+   */
+  adopt(worksheet: Worksheet): Promise<void>;
+  /** A trashed document's content (`load` reads only live ones on desktop). */
+  loadTrashed(id: string): Promise<Worksheet | undefined>;
   /** Give a saved document a new name, without opening it. Never touches its title. */
   rename(id: string, name: string): Promise<void>;
   /** Delete for good, bypassing Trash. Also drops a row naming a document that is gone. */

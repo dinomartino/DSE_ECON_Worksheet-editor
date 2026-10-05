@@ -51,12 +51,17 @@ export function withChangeFeed(
   return {
     list: () => store.list(),
     load: (id) => store.load(id),
+    loadTrashed: (id) => store.loadTrashed(id),
     listTrash: () => store.listTrash(),
     readFolders: () => store.readFolders(),
     writeFolders: (state) => store.writeFolders(state),
     async save(worksheet) {
       await store.save(worksheet);
       announce({ docId: worksheet.id, kind: 'saved' }, worksheet);
+    },
+    async adopt(worksheet) {
+      await store.adopt(worksheet);
+      announce({ docId: worksheet.id, kind: 'saved', origin: 'sync' }, worksheet);
     },
     async rename(id, name) {
       await store.rename(id, name);

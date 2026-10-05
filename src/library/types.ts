@@ -136,4 +136,6 @@ export interface BankStatus {
 export interface StoreChange {
   docId?: string;
   kind: 'saved' | 'trashed' | 'restored' | 'removed' | 'cleared';
+  /** 'sync': written by the sync engine (`adopt`), so the engine does not upload it back. In memory only. */
+  origin?: 'sync';
 }
