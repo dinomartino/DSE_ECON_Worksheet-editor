@@ -42,8 +42,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   files (`worksheets/library/docs/`; check 題庫 lists every paper); macOS self-rename on a real
   `/Applications` update; Export → PDF multi-page; folder drag; `.json` drop; Translation terms
   CSV + backup; launch animation once per cold start; real print dialog; paste a graph into Word.
-- **Still owed from v0.6.0:** emit frozen bank fixtures from tag `v0.6.0` (list in
-  `docs/design/part-tags.md` § M5 frozen bank fixtures). `Cargo.lock` is bumped.
 
 ## Waiting on the user's call
 
@@ -60,21 +58,21 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Never checked:** a real import of our exports into the four other apps; the desktop feedback
   opener; real Word/PMingLiU (LibreOffice + a Ming face agree); the desktop `pack.json` in Tauri.
 - Diagrams: template arrows (not Shift-a-copy) stay fixed; `curvePath` assumes the 3:4 plot.
-- Minimum-wage template: the default "surplus (unemployment)" label touches the S curve (the site
-  shots offset it in `scripts/demo/content.mjs`; the template itself is unfixed).
-- Flaky: `src/registry/mcqRationale.test.ts` "letters rationale per version" (fixed seed, random ids;
-  all three versions sometimes share a key). Seen once 2026-10-04.
 - Bank: ✦ Fill writes from another tab can still lose to an open editor's autosave.
 - Pagination now follows Word, so existing worksheets break differently on screen and in PDF.
 - Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
   updater key lives only at `~/.tauri/econ-worksheet.key`. `scripts/*.test.ts` are hand-run.
 
-## Last verified (2026-10-04, `develop` 9454f03)
+## Last verified (2026-10-05, `develop` 15f0ad4)
 
-- `npm test` 3962 passed; typecheck clean; `npm run build` green; v0.6.0 draft assets complete.
+- `npm test` 3976 passed; typecheck clean; lint 40 (one under the 41 baseline).
 
 ## Log
 
+- **2026-10-05** — Housekeeping (3 Opus worktree branches, merged): frozen 題庫 fixtures emitted
+  at tag v0.6.0 (`src/test/corpus/bank-v0.6.0-*.json`, guards in backwardCompat/legacyIndex/
+  `bankCorpus.test.ts`); min-wage template label lifted (demo workaround removed); flaky
+  rationale test pinned to a fixed id. IDEAS reordered: classes findability, then D1.
 - **2026-10-04** — Released v0.6.0 (Windows rename test skipped, user's call). Site screenshot
   harness fixed + 6 new shots (Opus worktree, merged) for the DSE_Mentor page.
 - **2026-10-03** — Second gap sweep: 6 Opus worktree branches, merged.
