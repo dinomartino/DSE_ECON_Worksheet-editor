@@ -1,5 +1,5 @@
 import { dedupeIds } from '@/model/dedupeIds';
-import { CURRENT_SCHEMA_VERSION, migrate, serializeWorksheet } from '@/model/migrations';
+import { CURRENT_SCHEMA_VERSION, isNewerThanBuild, migrate, serializeWorksheet } from '@/model/migrations';
 import { documentName } from '@/model/text';
 import type { Worksheet } from '@/model/types';
 import type { WorksheetSummary } from './types';
@@ -31,6 +31,23 @@ export class NewerDocumentError extends Error {
     super('This worksheet was saved by a newer version of Econ Studio. Update to change it.');
     this.name = 'NewerDocumentError';
   }
+}
+
+/**
+ * `adopt()`'s one refusal: writing `incoming` over `stored` (the text under the same id)
+ * would replace a newer build's document with an older schema. A newer or equal
+ * schema may replace it — that is the other computer's newer build updating its own
+ * document. Stored text that cannot be read is never replaced: its version is unknown.
+ */
+export function adoptRefused(stored: string, incoming: Pick<Worksheet, 'schemaVersion'>): boolean {
+  let version: unknown;
+  try {
+    version = (JSON.parse(stored) as { schemaVersion?: unknown }).schemaVersion;
+  } catch {
+    return true;
+  }
+  if (typeof version !== 'number') return true;
+  return isNewerThanBuild({ schemaVersion: version }) && incoming.schemaVersion < version;
 }
 
 /**

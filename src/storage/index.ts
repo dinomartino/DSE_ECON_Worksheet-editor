@@ -2,6 +2,7 @@ import type { Worksheet } from '@/model/types';
 import { isDesktop, JSON_FILTERS, pickTextFile, saveFile, type SavedTo } from '@/platform';
 import { isNewerThanBuild } from '@/model/migrations';
 import {
+  adoptRefused,
   NewerDocumentError,
   parseWorksheet,
   stringifyWorksheet,
@@ -76,12 +77,16 @@ const FOLDERS_KEY = 'econ-worksheet-folders';
 
 export class LocalStorageWorksheetStore implements WorksheetStore {
   private readonly now: () => number;
+  private readonly storageOverride: (() => Storage | undefined) | undefined;
 
-  constructor(now: () => number = Date.now) {
+  /** `storage` replaces `window.localStorage` (tests simulating two computers). */
+  constructor(now: () => number = Date.now, storage?: () => Storage | undefined) {
     this.now = now;
+    this.storageOverride = storage;
   }
 
   private get storage(): Storage | undefined {
+    if (this.storageOverride) return this.storageOverride();
     if (typeof window === 'undefined') return undefined;
     try {
       return window.localStorage;
@@ -136,6 +141,14 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     return parseWorksheet(raw);
   }
 
+  /** On the web a trashed document keeps its key, so this is `load` gated on its Trash row. */
+  async loadTrashed(id: string): Promise<Worksheet | undefined> {
+    const storage = this.storage;
+    if (!storage) return undefined;
+    if (!this.readTrash(storage).some((row) => row.id === id)) return undefined;
+    return this.load(id);
+  }
+
   async save(worksheet: Worksheet): Promise<void> {
     const storage = this.storage;
     if (!storage) return;
@@ -143,6 +156,19 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     if (isNewerThanBuild(worksheet) && storage.getItem(PREFIX + worksheet.id) !== null) {
       throw new NewerDocumentError();
     }
+    await this.write(storage, worksheet);
+  }
+
+  /** The key is shared with a trashed copy, so the rule also guards Trash (§ adoptRefused). */
+  async adopt(worksheet: Worksheet): Promise<void> {
+    const storage = this.storage;
+    if (!storage) return;
+    const stored = storage.getItem(PREFIX + worksheet.id);
+    if (stored !== null && adoptRefused(stored, worksheet)) throw new NewerDocumentError();
+    await this.write(storage, worksheet);
+  }
+
+  private async write(storage: Storage, worksheet: Worksheet): Promise<void> {
     storage.setItem(PREFIX + worksheet.id, stringifyWorksheet(worksheet));
 
     const next = withSummaryFirst(await this.list(), summarize(worksheet));

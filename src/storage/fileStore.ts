@@ -2,7 +2,7 @@ import { newId } from '@/model/factories';
 import { isNewerThanBuild } from '@/model/migrations';
 import type { Worksheet } from '@/model/types';
 import { isDesktop } from '@/platform';
-import { NewerDocumentError, parseWorksheet, stringifyWorksheet, summarize } from './document';
+import { adoptRefused, NewerDocumentError, parseWorksheet, stringifyWorksheet, summarize } from './document';
 import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 import { kindRepairs, usableSummaries, withKindRepairs, withSummaryFirst } from './summaries';
 import { settleTrash, untrashed, usableTrash } from './trash';
@@ -423,10 +423,39 @@ export class FileWorksheetStore implements WorksheetStore {
     }
   }
 
-  private async write(worksheet: Worksheet): Promise<void> {
+  /** The trashed file, which `load` never reads (it is a separate file here). */
+  async loadTrashed(id: string): Promise<Worksheet | undefined> {
     const fs = await this.fs();
-    // A newer build's document is never overwritten by this one (§ NewerDocumentError).
-    if (isNewerThanBuild(worksheet) && (await fs.exists(docPath(worksheet.id), await this.base()))) {
+    const opts = await this.base();
+    try {
+      if (!(await fs.exists(trashPath(id), opts))) return undefined;
+      return parseWorksheet(await fs.readTextFile(trashPath(id), opts));
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Only the live file is guarded (§ adoptRefused): a trashed copy is a separate file. */
+  async adopt(worksheet: Worksheet): Promise<void> {
+    const write = this.write(worksheet, true);
+    this.saving.add(write);
+    try {
+      await write;
+    } finally {
+      this.saving.delete(write);
+    }
+  }
+
+  private async write(worksheet: Worksheet, adopting = false): Promise<void> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    if (adopting) {
+      const stored = (await fs.exists(docPath(worksheet.id), opts))
+        ? await fs.readTextFile(docPath(worksheet.id), opts)
+        : undefined;
+      if (stored !== undefined && adoptRefused(stored, worksheet)) throw new NewerDocumentError();
+    } else if (isNewerThanBuild(worksheet) && (await fs.exists(docPath(worksheet.id), opts))) {
+      // A newer build's document is never overwritten by this one (§ NewerDocumentError).
       throw new NewerDocumentError();
     }
     await this.ensureDir();

@@ -170,6 +170,7 @@ Invariants:
 - `src/storage/backup.ts:buildBackup` · `:readBackup` · `:restoreBackup` — one-zip backup; restore never overwrites
 - `src/storage/document.ts:parseWorksheet` · `:summarize` · `src/storage/download.ts:triggerDownload`
 - `src/storage/document.ts:NewerDocumentError` · `:editableCopy` — `save()` refuses to overwrite a newer build's document; the copy is downgraded, under a new id
+- `src/storage/types.ts:WorksheetStore` `adopt` · `loadTrashed` — the sync engine's write (origin `'sync'` on the feed) and Trash read
 
 Invariants:
 - One malformed index row must never empty the list — §The published-document promise.
@@ -178,6 +179,22 @@ Invariants:
   `econ-worksheet:`), `worksheets/trash/` on desktop — §Persistence.
 - Folders are never a field on an index row (an older build's rewrite drops it): key
   `econ-worksheet-folders`, `worksheets/folders.json`; in a backup, inside `manifest.json` — §Persistence.
+
+## sync — one engine for every storage source (not wired in yet)
+
+`docs/design/sync-engine.md`. The store stays primary; a source is a mirror. Pure TypeScript.
+
+- `src/sync/types.ts:SyncSource` · `:BaseStore` · `:CopyNamer` — entries `{ key, revision, size }`, CAS writes
+- `src/sync/plan.ts:planSync` · `:planDocument` · `:planStray` — pure three-way plan (local, remote, base)
+- `src/sync/run.ts:runSync` — executor: CAS, re-plan on change, base moves last; `SyncReport`
+- `src/sync/snapshot.ts:readLocal` · `:readRemote` — the two sides as the planner sees them
+- `src/sync/memorySource.ts:MemoryCloud` — test source with faults; `src/sync/testKit.ts:computer` — simulated computers
+- `src/storage/document.ts:adoptRefused` — `adopt()`'s one refusal (older schema over a newer build's document)
+
+Invariants:
+- Never compares two computers' clocks; never hard-deletes by sync; a newer build's file is never uploaded over.
+- No `@tauri-apps/*` and no paths in `src/sync/`; the folder's specifics live in its source.
+- Guard: `src/sync/property.test.ts` (no version lost, both computers identical, none held twice).
 
 ## platform / desktop
 
