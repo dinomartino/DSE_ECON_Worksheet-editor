@@ -13,28 +13,19 @@ load-bearing output, saved documents always reopen.
 ## Where we stand
 
 No HK tool does bilingual on-page authoring of DSE-format papers with native `.docx`;
-international builders treat Word as a lossy export. Released through 0.5.0: the export
-dialog (answer keys, versions, other apps), paper checks and targets, marking schemes,
-diagram areas and templates, file management, and ✦ AI translation. The question bank is
-built on `develop`. What remains open: getting existing material in (D), what happens
-after the paper is sat (G), and AI authoring (E1/E3/E4 built but paused).
-
-## Built on `develop`, awaiting release
-
-Remove from this list once released.
-
-- **Question bank 題庫** (C1 tags, C2 bank, C4 usage history, C5 classes + sat-on date +
-  derived cohort, C6 one tag set across copies (newest change wins), C7 cart, C11 names
-  not codes + search by paper, C24 teacher-defined 題型) — CHANGELOG
-  Unreleased;
-  `docs/design/question-library.md`.
+international builders treat Word as a lossy export. Released through 0.6.0: the export
+dialog (answer keys, versions, other apps), paper checks and targets, marking schemes and
+their layouts, diagram areas, templates and Graphs, file management, ✦ AI translation, the
+中文 interface, and the question bank 題庫. What remains open: getting existing material in
+(D), what happens after the paper is sat (G), and AI authoring (E1/E3/E4 built but paused).
 
 ## Recommended order
 
-1. **Now** — release the question bank (polished and hardened 2026-09-30; emit the frozen
-   bank fixtures from the release commit); then C8–C10 and C11's remaining filters.
-2. **Next** — paste-to-structure (D1), the cheapest way to fill the bank; item analysis
-   (G1), which also completes C4's facility.
+1. **Now** — make classes + sat-on findable (the greyed 題庫 Class filter should open Setup at
+   the field; it sits low in Setup's Worksheet tab); then paste-to-structure (D1), the
+   cheapest way to fill the bank.
+2. **Next** — item analysis (G1), which also completes C4's facility; C9–C10 and C11's
+   remaining filters.
 3. **Later** — `.docx` import (D2), unpausing E1/E3/E4 after live evals, data charts
    (B3b), answer frames and the examiner grid (B6, B7), dashboard extras (F).
 
@@ -58,13 +49,11 @@ None open: the loose ends listed here were fixed on `develop` 2026-10-03 (see CH
 
 Design: `docs/design/question-library.md` (a bank is a Worksheet; the index is derived and
 rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
-`docs/research/2026-09-question-bank.md`. C1, C2, C4's usage history, C5, C6 and C24 are built (above).
+`docs/research/2026-09-question-bank.md`. C1, C2, C4's usage history, C5–C8 and C24 shipped in 0.6.0.
 - **題型 in Fill and coverage** (S–M): spread picks across 題型, show missing 題型 of a
   tested sub-topic (user chose group + filter only for now).
 
 **The build flow** — every mature bank starts from the paper or shows the target:
-- **C8 Choose where it goes** (S–M): a visible "Adding to: ‹paper ▾›" picker, or a new
-  Paper 1 / Paper 2 / Classroom sheet with sections; "already in this paper" badges.
 - **C9 Add from bank inside the editor** (M): the review page opens as a drawer with the
   open paper as target and running totals; one filter module instead of two.
 - **C10 Blueprint and fill to spec** (M, schema): "36 MCQ across A–J, 45 min" or "60 marks
