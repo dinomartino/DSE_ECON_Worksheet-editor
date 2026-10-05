@@ -47,7 +47,6 @@ interface Part {
   lines: number;
   tags?: string[];
   diagram?: string;
-  diagramLabelOffset?: { x: number; y: number };
   points?: Array<Array<string | number>>;
   scheme?: Pair;
 }
@@ -71,14 +70,6 @@ function scheme(points: Array<Array<string | number>>): MarkScheme {
   };
 }
 
-/** The part's model-answer diagram, its bracket label nudged clear of the curves. */
-function answerDiagram(p: Part) {
-  const block = createAnswerDiagram(p.diagram);
-  const offset = p.diagramLabelOffset;
-  if (offset) block.diagram.spans = block.diagram.spans?.map((span) => ({ ...span, labelOffset: { ...offset } }));
-  return block;
-}
-
 function structured(s: Structured): StructuredQuestion {
   const q = createStructuredQuestion();
   q.blocks = [createParagraphBlock(bp(s.stem))];
@@ -90,7 +81,7 @@ function structured(s: Structured): StructuredQuestion {
     ...(p.tags ? { tags: [...p.tags] } : {}),
     ...(p.points ? { scheme: scheme(p.points) } : {}),
     ...(p.scheme ? { answer: bp(p.scheme) } : {}),
-    ...(p.diagram ? { answerDiagram: answerDiagram(p) } : {}),
+    ...(p.diagram ? { answerDiagram: createAnswerDiagram(p.diagram) } : {}),
   }));
   return q;
 }
