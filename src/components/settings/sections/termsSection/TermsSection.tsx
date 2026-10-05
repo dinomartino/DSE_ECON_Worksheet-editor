@@ -4,6 +4,7 @@ import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react';
 import { escapeClears } from '@/components/bank/escapeClears';
 import { Button, IconButton, Segmented } from '@/components/ui';
 import { CloseIcon, PencilIcon, PlusIcon } from '@/components/ui/icons';
+import { useNotices } from '@/components/ui/NoticeLayer';
 import { loadGlossary } from '@/glossary/load';
 import type { ChoosableTerm, Glossary, RelatedTerm, TermChoice } from '@/glossary/types';
 import type { Messages } from '@/i18n/catalogue';
@@ -372,7 +373,12 @@ export default function TermsSection() {
   const [limit, setLimit] = useState(PAGE);
   const [form, setForm] = useState<{ id?: string } | null>(null);
   const [importing, setImporting] = useState<{ name: string; preview: ImportPreview } | null>(null);
-  const [notice, setNotice] = useState<{ text: string; error?: boolean }>();
+  // Import and export results float over the Settings dialog's foot (its notice scope).
+  const notices = useNotices();
+  const setNotice = (next: { text: string; error?: boolean } | undefined) => {
+    if (!next) notices.dismiss('terms-file');
+    else notices.notify({ id: 'terms-file', tone: next.error ? 'error' : 'success', body: next.text });
+  };
   const fileInput = useRef<HTMLInputElement>(null);
 
   const edbRows = useMemo(() => (base ? base.terms.filter((t) => !t.custom) : NO_TERMS), [base]);
@@ -562,11 +568,6 @@ export default function TermsSection() {
           />
         </div>
       </div>
-      {notice && (
-        <p role="status" className={`mt-1 text-[12px] ${notice.error ? 'text-danger-ink' : 'text-ok'}`}>
-          {notice.text}
-        </p>
-      )}
       {form && !form.id && (
         <TermForm
           m={m}

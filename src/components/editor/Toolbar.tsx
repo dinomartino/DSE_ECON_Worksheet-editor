@@ -30,7 +30,9 @@ import { hasCoverSheet } from './sheets';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
-import { useAppDialogs, type NoticeAction } from '@/store/appDialogs';
+import { useAppDialogs } from '@/store/appDialogs';
+import { pruneDeadActions, type NoticeAction, type NoticeTone } from '@/store/notices';
+import { useNotices } from '@/components/ui/NoticeLayer';
 import { useSettingsSections } from '@/settings/sections';
 import { fillVerbFor, toolbarSettingsEntries } from '@/components/translate/translateMenu';
 import { openAi } from '@/assist/menuStore';
@@ -39,20 +41,6 @@ import { AiButton } from '@/components/ai/AiButton';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages } from '@/i18n/language';
 import { TOOLBAR_MESSAGES } from './Toolbar.messages';
-
-/** A transient status line, optionally with one follow-up action. */
-type Notice = { message: string; action?: NoticeAction };
-
-/** An action (desktop "Show in Finder", Undo) stays long enough to be reached. */
-function showNotice(
-  set: (update: (current: Notice | undefined) => Notice | undefined) => void,
-  message: string,
-  action?: Notice['action'],
-) {
-  const next: Notice = { message, action };
-  set(() => next);
-  setTimeout(() => set((current) => (current === next ? undefined : current)), action ? 8000 : 2400);
-}
 
 /**
  * `[mark] Econ Studio › name`: one button home to the start screen, the editor's only route
@@ -125,8 +113,7 @@ export function Toolbar({
   const readOnly = useWorksheetStore((s) => s.readOnly);
 
   const [busy, setBusy] = useState<string | undefined>();
-  const [error, setError] = useState<string | undefined>();
-  const [notice, setNotice] = useState<Notice | undefined>();
+  const notices = useNotices();
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [exporting, setExporting] = useState(false);
   // Stable, so the dialog does not re-focus its panel on every store update.
@@ -136,32 +123,25 @@ export function Toolbar({
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
 
-  const flash = (message: string, action?: Notice['action']) => showNotice(setNotice, message, action);
+  /** A result, in the app's notice stack; one with a reveal stays until closed. */
+  const flash = (message: string, action?: NoticeAction, tone: NoticeTone = 'success') =>
+    notices.notify({ id: 'toolbar-result', tone, body: message, actions: action ? [action] : undefined });
+  // Failures stay until closed or until the next attempt clears them.
+  const setError = (message: string | undefined) => {
+    if (message === undefined) notices.dismiss('toolbar-error');
+    else notices.notify({ id: 'toolbar-error', tone: 'error', body: message });
+  };
 
   const appVersion = useUpdateStore((s) => s.current);
 
-  // Settings opens through the one app-dialog store (never stacked); it and BiTextField
-  // report back through it, so every status line shares this flash.
-  useEffect(
-    () =>
-      useAppDialogs.subscribe((state, prev) => {
-        if (state.notice && state.notice !== prev.notice) showNotice(setNotice, state.notice.message, state.notice.action);
-      }),
-    [],
-  );
   // An action tied to one commit (Undo) goes as soon as history moves past it.
   useEffect(
     () =>
       useWorksheetStore.subscribe((state, prev) => {
-        if (state.worksheet === prev.worksheet) return;
-        setNotice((current) => (current?.action?.live && !current.action.live() ? undefined : current));
+        if (state.worksheet !== prev.worksheet) pruneDeadActions();
       }),
     [],
   );
-  const runNotice = (action: NoticeAction) => {
-    setNotice(undefined);
-    action.run();
-  };
   /** Export is a component-owned dialog: it closes before the AI menu opens. */
   const aiFromExport = (finding: 'untranslated' | 'terminology') => {
     setExporting(false);
@@ -183,13 +163,13 @@ export function Toolbar({
   const handleCheckUpdates = async () => {
     const status = await useUpdateStore.getState().check();
     const found = useUpdateStore.getState().available;
-    if (status === 'current') flash(m.latest(appVersion ?? ''));
-    else if (status === 'failed') flash(m.checkFailed);
-    else if (status === 'downloading') flash(m.downloading(String(found)));
+    if (status === 'current') flash(m.latest(appVersion ?? ''), undefined, 'info');
+    else if (status === 'failed') flash(m.checkFailed, undefined, 'warning');
+    else if (status === 'downloading') flash(m.downloading(String(found)), undefined, 'info');
   };
 
   /** Desktop only: a saved file's path becomes a one-click reveal. */
-  const revealAction = (path: string | undefined): Notice['action'] =>
+  const revealAction = (path: string | undefined): NoticeAction | undefined =>
     path === undefined
       ? undefined
       : { label: revealLabel(), run: () => void revealFile(path).catch(() => undefined) };
@@ -468,33 +448,6 @@ export function Toolbar({
         />
 
       </div>
-
-      {/* Floats under the bar, over the canvas's top margin: inline, it wrapped the row and
-          moved the page; at the right edge it covered the sidebar's tabs. */}
-      {notice && (
-        <div
-          key={notice.message}
-          role="status"
-          data-print-hide
-          className="absolute left-1/2 top-full z-30 mt-1.5 flex -translate-x-1/2 animate-fade-in items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1 text-[11px] shadow-sm"
-        >
-          <span className="font-medium text-ok">{notice.message}</span>
-          {notice.action && (
-            <Button variant="ghostAccent" size="sm" onClick={() => notice.action && runNotice(notice.action)}>
-              {notice.action.label}
-            </Button>
-          )}
-        </div>
-      )}
-
-      {error && (
-        <p
-          role="alert"
-          className="mt-2 animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
-        >
-          {error}
-        </p>
-      )}
 
       {exporting && (
         <ExportDialog

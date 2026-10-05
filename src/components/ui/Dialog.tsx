@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { IconButton } from './index';
 import { ChevronDownIcon, CloseIcon } from './icons';
 import { useModalLayer } from './modalLayer';
@@ -8,6 +8,8 @@ import { ScrollEdgeHints } from './ScrollEdgeHints';
 import { useScrollEdges } from './scrollEdges';
 import { useMessages } from '@/i18n/language';
 import { UI_MESSAGES } from './messages';
+import { NoticeScopeContext, NoticeStack } from './NoticeLayer';
+import { dismissScope } from '@/store/notices';
 
 /**
  * A centred modal dialog.
@@ -33,6 +35,7 @@ export function Dialog({
   height,
   size,
   scrollBody = true,
+  noticeScope,
 }: {
   title: string;
   description?: string;
@@ -61,8 +64,17 @@ export function Dialog({
    * below. Defaults to true so a plain dialog behaves the obvious way.
    */
   scrollBody?: boolean;
+  /**
+   * Where notices raised for this dialog go (`useNotices({ scope })` in the component that
+   * renders it). Content inside the dialog finds the scope by context without it.
+   */
+  noticeScope?: string;
 }) {
   useModalLayer();
+  const ownScope = useId();
+  const scope = noticeScope ?? ownScope;
+  // Its notices close with it.
+  useEffect(() => () => dismissScope(scope), [scope]);
   const m = useMessages(UI_MESSAGES);
   const panelRef = useRef<HTMLDivElement>(null);
   // How to scroll the body on, while it has more below; shown in the footer.
@@ -133,20 +145,27 @@ export function Dialog({
         {/* Tabbed dialogs scroll *inside* each pane, so the body only clips; an untabbed
             one has no inner scroller and needs its own. Two scrollers would otherwise
             stack a scrollbar around the whole body as well as within the panel. */}
-        <MoreBelowContext.Provider value={reportMore}>
-          {scrollBody ? (
-            <ScrollPane className="flex flex-col">{children}</ScrollPane>
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
-          )}
-        </MoreBelowContext.Provider>
+        <NoticeScopeContext.Provider value={scope}>
+          {/* The dialog's notices float over the foot of its body, inside the panel: above
+              the scrim, never part of a click outside, and never changing the height. */}
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <MoreBelowContext.Provider value={reportMore}>
+              {scrollBody ? (
+                <ScrollPane className="flex flex-col">{children}</ScrollPane>
+              ) : (
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+              )}
+            </MoreBelowContext.Provider>
+            <NoticeStack scope={scope} className="absolute bottom-3 right-3 z-10 w-[min(360px,calc(100%-24px))]" />
+          </div>
 
-        {footer && (
-          <footer className="flex items-center justify-end gap-2 border-t border-line bg-surface-sunken px-5 py-3">
-            {more && <MoreBelow onClick={more} />}
-            {footer}
-          </footer>
-        )}
+          {footer && (
+            <footer className="flex items-center justify-end gap-2 border-t border-line bg-surface-sunken px-5 py-3">
+              {more && <MoreBelow onClick={more} />}
+              {footer}
+            </footer>
+          )}
+        </NoticeScopeContext.Provider>
       </div>
     </div>
   );

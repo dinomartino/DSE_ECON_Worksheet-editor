@@ -87,7 +87,7 @@ export interface TopicSyncDeps {
   store: Pick<WorksheetStore, 'list' | 'load' | 'save'>;
   /** The bank index's rows (`bankRowsNow`). */
   rows: () => Promise<readonly BankRow[]>;
-  /** A quiet status line: the Topic row shows it under the topics (the toolbar flash would sit under a docked format bar). */
+  /** A quiet result line, raised as an app notice (`notify`). */
   notify: (message: string) => void;
 }
 

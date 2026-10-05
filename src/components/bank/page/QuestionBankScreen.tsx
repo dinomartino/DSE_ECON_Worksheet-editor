@@ -158,7 +158,6 @@ const bulkText = (m: Words): Record<BulkTopicMode, { description: string; confir
 export function QuestionBankScreen({
   summaries,
   loaded,
-  banner,
   settings,
   onHome,
   onOpenDocument,
@@ -171,8 +170,6 @@ export function QuestionBankScreen({
 }: {
   summaries: WorksheetSummary[];
   loaded: boolean;
-  /** The start screen's error or notice, shown under the bar. */
-  banner?: ReactNode;
   /** The Settings gear. */
   settings?: ReactNode;
   onHome: () => void;
@@ -182,6 +179,7 @@ export function QuestionBankScreen({
   onOpenWorksheet: (worksheet: Worksheet) => void;
   /** Saved documents changed under the start screen: re-read the list. */
   onDocumentsChanged: () => void;
+  /** A result or failure: the host raises it as a notice (`notify`), never inline. */
   onNotice: (message: string) => void;
   onError: (message: string) => void;
   /** The level changed: a result notice from the last one is done. An error stays until dismissed. */
@@ -888,8 +886,6 @@ export function QuestionBankScreen({
         )}
         {settings}
       </header>
-
-      {banner && <div className="shrink-0 px-4 pt-3">{banner}</div>}
 
       <div className="relative flex min-h-0 flex-1 flex-col">
       {level.kind === 'topics' && !noDocuments && (

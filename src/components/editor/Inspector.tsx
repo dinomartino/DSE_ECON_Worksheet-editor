@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { editTargetKey } from '@/model/edits';
 import { MIN_ANSWER_LINES, MIN_SPACER_PT } from '@/model/flow';
 import { newId } from '@/model/factories';
@@ -302,8 +302,6 @@ export function Inspector({
   const updateQuestion = useWorksheetStore((s) => s.updateQuestion);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
   // "Also updated in 2 other worksheets": shown in the Topic row of the question it is about.
-  const [topicNote, setTopicNote] = useState<{ questionId: string; text: string }>();
-
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
   // The question's one topic set across copies (newest change wins); display only.
   const shownTags = useShownTags(selected);
@@ -449,34 +447,15 @@ export function Inspector({
               key={selected.id}
               question={selected}
               shown={shownState}
-              note={topicNote?.questionId === selected.id ? topicNote.text : undefined}
-              onEdit={(edit) => {
-                const questionId = selected.id;
-                setTopicNote(undefined);
-                void setQuestionTags(
-                  questionId,
-                  edit,
-                  { ...topicSyncDeps(), notify: (text) => setTopicNote({ questionId, text }) },
-                  shownState,
-                );
-              }}
+              // What reached the other copies is said in the app's notice stack.
+              onEdit={(edit) => void setQuestionTags(selected.id, edit, topicSyncDeps(), shownState)}
             />
           ) : (
             <TopicRow
               key={selected.id}
               tags={shownTags}
               typeId={selected.type}
-              note={topicNote?.questionId === selected.id ? topicNote.text : undefined}
-              onChange={(tags) => {
-                const questionId = selected.id;
-                setTopicNote(undefined);
-                void setQuestionTopics(
-                  questionId,
-                  tags,
-                  { ...topicSyncDeps(), notify: (text) => setTopicNote({ questionId, text }) },
-                  shownTags,
-                );
-              }}
+              onChange={(tags) => void setQuestionTopics(selected.id, tags, topicSyncDeps(), shownTags)}
             />
           )}
         </div>

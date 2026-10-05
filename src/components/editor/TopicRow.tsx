@@ -207,7 +207,6 @@ export function TopicPicker({
 export function TopicRow({
   tags,
   typeId,
-  note,
   onChange,
   title,
   hint,
@@ -219,8 +218,6 @@ export function TopicRow({
   tags: readonly string[] | undefined;
   /** The question's registry type: its 題型 list (MCQ and LQ lists are separate). */
   typeId: string;
-  /** A quiet line after an edit, e.g. "Also updated in 2 other worksheets." */
-  note?: string;
   /** `undefined` clears the field, so an untagged question carries none. */
   onChange: (tags: string[] | undefined) => void;
   title?: string;
@@ -323,11 +320,6 @@ export function TopicRow({
             );
           })}
         </ul>
-      )}
-      {note && (
-        <p role="status" className="animate-fade-in text-[11px] text-ink-subtle">
-          {note}
-        </p>
       )}
 
       {open && (

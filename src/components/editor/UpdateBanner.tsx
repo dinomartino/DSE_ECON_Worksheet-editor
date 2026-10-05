@@ -2,67 +2,55 @@
 
 import { useEffect } from 'react';
 import { checkOnLaunch, useUpdateStore, type UpdateStatus } from '@/desktop/updateStore';
-import { Button, IconButton } from '@/components/ui';
+import { IconButton } from '@/components/ui';
 import { RefreshIcon } from '@/components/ui/icons';
-import { useMessages } from '@/i18n/language';
+import { resolveMessages } from '@/i18n/catalogue';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
+import { dismiss, notify, type NoticeInput } from '@/store/notices';
 import { UPDATE_MESSAGES } from './shell.messages';
 
 /**
- * "Version X is ready" — desktop only, shown once the update has downloaded silently.
- *
- * The web never finds an update, so the bar simply never appears there.
- * `data-print-hide` because this is on-page chrome and would otherwise print.
+ * "Version X is ready": desktop only, raised once the update has downloaded silently, as
+ * a notice in the app's stack (`NoticeLayer`), never a row that pushes the screen down.
+ * The web never finds an update, so it never appears there.
  */
 
 type State = 'offer' | 'installing' | 'failed';
 
-/** The bar itself, with no async of its own, so it can be rendered in a test. */
-export function UpdateBar({
-  version,
-  state,
-  onInstall,
-  onDismiss,
-}: {
-  version: string;
-  state: State;
-  onInstall: () => void;
-  onDismiss: () => void;
-}) {
-  const m = useMessages(UPDATE_MESSAGES);
-  return (
-    <div
-      data-print-hide
-      role="status"
-      className="flex animate-slide-down-in items-center gap-3 border-b border-line bg-accent-soft px-4 py-1.5 text-[13px] text-accent-ink"
-    >
-      <span className="min-w-0 flex-1 truncate">
-        {state === 'installing'
-          ? m.installing(version)
-          : state === 'failed'
-            ? m.failed(version)
-            : m.ready(version)}
-      </span>
-      <Button
-        size="sm"
-        variant="primary"
-        disabled={state === 'installing'}
-        onClick={onInstall}
-      >
-        {state === 'failed' ? m.tryAgain : m.restartNow}
-      </Button>
-      <Button size="sm" variant="subtle" onClick={onDismiss}>
-        {m.later}
-      </Button>
-    </div>
-  );
+export const UPDATE_NOTICE_ID = 'app-update';
+
+/** The notice itself, with no async of its own, so it can be checked in a test. */
+export function updateNotice(
+  version: string,
+  state: State,
+  language: UiLanguage,
+  handlers: { onInstall: () => void; onDismiss: () => void },
+): NoticeInput {
+  const m = resolveMessages(UPDATE_MESSAGES, language);
+  return {
+    id: UPDATE_NOTICE_ID,
+    tone: state === 'failed' ? 'warning' : 'info',
+    body: state === 'installing' ? m.installing(version) : state === 'failed' ? m.failed(version) : m.ready(version),
+    actions: [
+      {
+        label: state === 'failed' ? m.tryAgain : m.restartNow,
+        primary: true,
+        disabled: state === 'installing',
+        keepOpen: true,
+        run: handlers.onInstall,
+      },
+      { label: m.later, run: handlers.onDismiss },
+    ],
+    onDismiss: handlers.onDismiss,
+  };
 }
 
 export function UpdateBanner() {
   const status = useUpdateStore((s) => s.status);
   const available = useUpdateStore((s) => s.available);
   const dismissed = useUpdateStore((s) => s.dismissed);
-  const restart = useUpdateStore((s) => s.restart);
-  const dismiss = useUpdateStore((s) => s.dismiss);
+  const language = useUiLanguage();
 
   // Mounted on every screen; `checkOnLaunch` makes that one check per launch.
   useEffect(checkOnLaunch, []);
@@ -76,16 +64,23 @@ export function UpdateBanner() {
         : status === 'installFailed'
           ? 'failed'
           : undefined;
-  if (!state || !available || dismissed) return null;
+  const shownState = available && !dismissed ? state : undefined;
 
-  return (
-    <UpdateBar
-      version={available}
-      state={state}
-      onInstall={() => void restart()}
-      onDismiss={dismiss}
-    />
-  );
+  useEffect(() => {
+    if (!shownState || !available) {
+      dismiss(UPDATE_NOTICE_ID);
+      return;
+    }
+    const store = useUpdateStore.getState();
+    notify(
+      updateNotice(available, shownState, language, {
+        onInstall: () => void store.restart(),
+        onDismiss: store.dismiss,
+      }),
+    );
+  }, [shownState, available, language]);
+
+  return null;
 }
 
 /**

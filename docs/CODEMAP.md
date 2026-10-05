@@ -189,7 +189,7 @@ Invariants:
 - `src/platform/index.ts:listenForFileDrops` · `:readDroppedFile` — Finder/Explorer file drops arrive as Tauri's native event, never HTML5 `drop`; effects use `:subscribeToFileDrops`, and every Tauri unlisten goes through `:unlistenSafely` (it can reject before the listener registers)
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
 - `src/desktop/updater.ts:checkForUpdate` · `:currentVersion` · `src/desktop/updateStore.ts:checkOnLaunch` — one check per launch
-- `src/components/editor/UpdateBanner.tsx:UpdateBanner` · `:VersionLine`
+- `src/components/editor/UpdateBanner.tsx:UpdateBanner` (raises the "update ready" notice) · `:VersionLine`
 - `src/components/editor/NewerVersionNotice.tsx:NewerVersionNotice` — the read-only bar: check for updates (desktop) / download link (web), "Duplicate as editable copy"
 - `src/whatsNew/changelog.ts:parseChangelog` · `:sectionMarkdown` · `:compareVersions` — `CHANGELOG.md` as data, shared with `scripts/release-notes.mjs`; each entry is `{ en, zh? }`, `zh` from the `<!-- zh: … -->` under it, which `sectionMarkdown` (the release body) leaves out
 - `src/whatsNew/changelog.generated.ts:CHANGELOG_MD` — the bundled copy, written by `scripts/sync-changelog.mjs` (`predev`/`prebuild`); `src/whatsNew/notes.ts:CHANGELOG` parses it once
@@ -345,8 +345,14 @@ Invariants:
 `src/components/ui/index.tsx:Button` · `:SelectField` · `:Segmented`;
 `src/components/ui/Dialog.tsx:Dialog` · `:DialogTabs`; `src/components/ui/Menu.tsx`;
 `src/components/ui/modalLayer.ts:useModalLayer`.
+- Notices: `src/store/notices.ts:notify` · `:dismiss` · `:closeNotice` · `:pruneDeadActions`;
+  `src/components/ui/NoticeLayer.tsx:NoticeLayer` (once, in `src/app/EditorHost.tsx`) ·
+  `:useNotices` · `:useDialogNotices` · `:useNoticeInset`. `src/store/appDialogs.ts` `notify(message)`
+  forwards here for callers outside React.
 
-Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the paper takes literal hex.
+Invariants:
+- Chrome uses semantic tokens (`src/app/globals.css`); anything on the paper takes literal hex.
+- Dismissible notices go through `notify()`, never inline; a dialog's float inside it — §Notices float. Guard: `src/store/notices.test.ts`.
 
 ## Translation, glossary, settings
 

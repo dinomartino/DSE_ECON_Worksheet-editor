@@ -3,6 +3,9 @@ import { defineMessages } from '@/i18n/catalogue';
 /** Shared controls: dialog chrome, menu trigger, steppers, pickers. */
 export const UI_MESSAGES = defineMessages({
   close: { en: 'Close', zh: '關閉' },
+  notifications: { en: 'Notifications', zh: '通知' },
+  dismissNotice: { en: 'Dismiss notification', zh: '關閉通知' },
+  moreNotices: { en: (n: number) => `+${n} more`, zh: (n: number) => `還有 ${n} 則` },
   moreBelow: { en: 'More below', zh: '下方還有內容' },
   settingsSections: { en: 'Settings sections', zh: '設定分類' },
   moreActions: { en: 'More actions', zh: '更多操作' },
