@@ -14,8 +14,11 @@
  * change to the module makes these literals wrong, that change orphans real documents,
  * and this test is where it must fail.
  */
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import bankIndexCorpus from '@/test/corpus/bank-v0.6.0-index.json';
 import { LocalStorageWorksheetStore } from '.';
+import { usableSummaries } from './summaries';
 import { DEFAULT_QUERY, visibleSummaries } from '@/components/start/dashboard';
 
 const INDEX_KEY = 'econ-worksheet-index';
@@ -348,5 +351,53 @@ describe('a document written at schema 2 (answer layer or key layout)', () => {
     // A v1 document saved here stays at 1.
     await store().save((await store().load('legacy-doc'))!);
     expect(JSON.parse(storage.getItem(PREFIX + 'legacy-doc')!).schemaVersion).toBe(1);
+  });
+});
+
+/**
+ * The frozen v0.6.0 corpus: the index rows (`kind`, `indexRev` 2) and both documents as
+ * the release stored them (`scripts/emit-bank-v0.6.0-corpus.test.ts`). Never regenerated.
+ */
+describe('the index v0.6.0 wrote, beside its paper and bank', () => {
+  const ROWS = bankIndexCorpus['econ-worksheet-index'];
+  const RAW_INDEX = JSON.stringify(ROWS);
+
+  beforeEach(() => {
+    storage.setItem(INDEX_KEY, RAW_INDEX);
+    for (const name of ['paper', 'bank']) {
+      const raw = readFileSync(`src/test/corpus/bank-v0.6.0-${name}.json`, 'utf8');
+      storage.setItem(PREFIX + `bank-v060-${name}`, raw.trimEnd());
+    }
+  });
+
+  it('lists every row with every field it was written with, and rewrites nothing', async () => {
+    expect(ROWS).toHaveLength(2);
+    expect(usableSummaries(ROWS)).toHaveLength(2);
+    const listed = await store().list();
+    expect(listed).toEqual(ROWS);
+    expect(listed.find((row) => row.id === 'bank-v060-bank')?.kind).toBe('bank');
+    expect(listed.find((row) => row.id === 'bank-v060-paper')).not.toHaveProperty('kind');
+    // indexRev 2 says the rows record kind: no repair is read or written back.
+    expect(storage.getItem(INDEX_KEY)).toBe(RAW_INDEX);
+    expect(visibleSummaries(listed, { ...DEFAULT_QUERY, kind: 'worksheet' }).map((row) => row.id)).toEqual([
+      'bank-v060-paper',
+    ]);
+  });
+
+  it('opens the document each row names, holding the questions it counts', async () => {
+    for (const row of ROWS) {
+      const loaded = await store().load(row.id);
+      expect(loaded?.id).toBe(row.id);
+      expect(loaded?.questions).toHaveLength(row.questionCount);
+    }
+  });
+
+  it('a save here keeps both rows and every field of the saved one', async () => {
+    const paper = (await store().load('bank-v060-paper'))!;
+    await store().save(paper);
+    const raw = JSON.parse(storage.getItem(INDEX_KEY)!) as Record<string, unknown>[];
+    expect(raw.map((row) => row.id)).toEqual(['bank-v060-paper', 'bank-v060-bank']);
+    expect(raw[0]).toMatchObject(ROWS.find((row) => row.id === 'bank-v060-paper')!);
+    expect(raw[1]).toEqual(ROWS.find((row) => row.id === 'bank-v060-bank'));
   });
 });
