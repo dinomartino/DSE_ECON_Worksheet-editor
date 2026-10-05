@@ -1,6 +1,8 @@
 # Google Drive sync — design
 
-Status: proposal for approval, 2026-10-05, written against `develop` at `1cd1fea`. Not built.
+Status: **shelved 2026-10-05.** Teachers run the desktop app on both computers, so the user chose
+the library-folder approach (`docs/design/library-folder.md`, from K Phase A). Keep this for
+web-only teachers. Written against `develop` at `1cd1fea`. Not built.
 Decisions by the user (2026-10-05): Google Drive first (OneDrive maybe later, so the design
 is provider-agnostic); free, in the teacher's own Drive; client-side OAuth only; scope
 `drive.file`; a visible **Econ Studio** folder holding the same `.json` files; local stays

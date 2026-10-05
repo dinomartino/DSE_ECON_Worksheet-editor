@@ -147,10 +147,10 @@ without one (`src/ai/providers.ts`). Never embed a key; never send student scrip
   answer key can combine documents.
 - **F8 Department sharing via a shared cloud folder** on desktop (M): read-only until
   "Copy to edit", author initials, conflicted-copy detection. *OCR, Kognity.*
-- **F9 One teacher, two computers: Google Drive sync** (L, staged): local stays primary, a
-  mirror in the teacher's own Drive (`drive.file`, no server); design for approval in
-  `docs/design/drive-sync.md`. Its keep-both conflict rule and Drive layout are what F8
-  would later share between teachers.
+- **F9 One teacher, two computers** (M–L, chosen 2026-10-05): the desktop library lives in a
+  folder the teacher picks inside their own cloud drive (K Phase A; plan
+  `docs/design/library-folder.md`). The Google Drive API route (`docs/design/drive-sync.md`) is
+  shelved for web-only teachers. F8 would build on the same folder.
 
 ## G. After the paper is sat
 
