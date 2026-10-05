@@ -7,11 +7,12 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Where we are
 
-- **2026-10-05: cross-device sync (F9), planned and parked.** Teachers run the desktop
-  app on a work and a home computer. Chosen: the library lives in a folder the teacher picks in
-  their own cloud drive (OneDrive default). Plan `docs/design/library-folder.md` (stages 0–6,
-  ~4–6 weeks); survey `docs/research/2026-10-sync-survey.md`; Drive API design shelved
-  (`docs/design/drive-sync.md`, cannot mix with folder mode).
+- **2026-10-05: cross-device sync (F9).** One source-agnostic engine, local primary + mirror for
+  every source (`src/sync/`, `docs/design/sync-engine.md`), merged with no entry point. Next: base
+  persistence, hash cache, folder source, scheduler, UI (`docs/design/library-folder.md`, survey
+  `docs/research/2026-10-sync-survey.md`; Drive API design shelved).
+- **2026-10-05: dismissible notices float** bottom-right via `notify()` (`src/store/notices.ts`);
+  follow-ups (題庫 "List cleared · Undo", reserved tag line) on `feature/notice-followups`.
 - **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
   question bank, Marking scheme view and layouts, Translation terms, 中文 interface, Graphs
   圖表庫, diagram answer layer, the Econ Studio rename. Next work goes on `develop` as usual.
@@ -46,7 +47,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
-- When to start sync (parked 2026-10-05; questions answered in `docs/design/library-folder.md` § 8).
+- Sync engine open questions (`docs/design/sync-engine.md`): purge propagation, empty remote.
 - Paid service (`docs/research/2026-09-paid-product/`): what first; the in-app "use a VPN" Gemini
   wording breaks Google's terms. Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key.
@@ -64,9 +65,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
   updater key lives only at `~/.tauri/econ-worksheet.key`. `scripts/*.test.ts` are hand-run.
 
-## Last verified (2026-10-05, `develop` 15f0ad4)
+## Last verified (2026-10-05, `develop` bfd8db7)
 
-- `npm test` 3976 passed; typecheck clean; lint 40 (one under the 41 baseline).
+- `npm test` 4239 passed; typecheck clean; lint 40 (one under the 41 baseline).
 
 ## Log
 
@@ -74,6 +75,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   at tag v0.6.0 (`src/test/corpus/bank-v0.6.0-*.json`, guards in backwardCompat/legacyIndex/
   `bankCorpus.test.ts`); min-wage template label lifted (demo workaround removed); flaky
   rationale test pinned to a fixed id. IDEAS reordered: classes findability, then D1.
-  Then sync: Drive API design (shelved), library-folder plan, sync survey (Opus agents, merged).
+  Then sync: Drive API design (shelved), library-folder plan, survey, sync engine core; notice overlay.
 - **2026-10-04** — Released v0.6.0 (Windows rename test skipped, user's call). Site screenshot
   harness fixed + 6 new shots (Opus worktree, merged) for the DSE_Mentor page.
