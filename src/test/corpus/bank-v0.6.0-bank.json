@@ -1,0 +1,318 @@
+{
+  "schemaVersion": 1,
+  "id": "bank-v060-bank",
+  "title": {
+    "en": [
+      {
+        "text": "Question bank"
+      }
+    ],
+    "zh": [
+      {
+        "text": "題庫"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "v060-052",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "v060-053"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "v060-056",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "v060-061",
+          "text": {
+            "en": [
+              {
+                "text": "A price ceiling set below the equilibrium price leads to"
+              }
+            ],
+            "zh": [
+              {
+                "text": "價格上限低於均衡價格會導致"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "v060-057",
+          "text": {
+            "en": [
+              {
+                "text": "a shortage"
+              }
+            ],
+            "zh": [
+              {
+                "text": "短缺"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v060-058",
+          "text": {
+            "en": [
+              {
+                "text": "a surplus"
+              }
+            ],
+            "zh": [
+              {
+                "text": "過剩"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v060-059",
+          "text": {
+            "en": [
+              {
+                "text": "no change"
+              }
+            ],
+            "zh": [
+              {
+                "text": "沒有改變"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v060-060",
+          "text": {
+            "en": [
+              {
+                "text": "a higher price"
+              }
+            ],
+            "zh": [
+              {
+                "text": "價格上升"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0,
+      "tags": [
+        "C.intervention",
+        "mock 2026"
+      ],
+      "tagsAt": "2026-10-04T08:00:00.000Z",
+      "lineage": {
+        "rootId": "v060-006",
+        "fromDocId": "bank-v060-paper",
+        "copiedAt": "2026-10-04T09:30:00.000Z"
+      }
+    },
+    {
+      "id": "v060-062",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "v060-063",
+          "text": {
+            "en": [
+              {
+                "text": "The government sets a price ceiling on rice."
+              }
+            ],
+            "zh": [
+              {
+                "text": "政府為米設定價格上限。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "v060-068",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "v060-064",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain the effect on quantity demanded."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋對需求量的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2,
+          "answer": {
+            "en": [
+              {
+                "text": "Quantity demanded rises."
+              }
+            ],
+            "zh": [
+              {
+                "text": "需求量上升。"
+              }
+            ]
+          },
+          "tags": [
+            "C.ped",
+            "C.ped::Explain PED"
+          ],
+          "rootId": "v060-018"
+        },
+        {
+          "id": "v060-069",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "v060-065",
+              "text": {
+                "en": [
+                  {
+                    "text": "With reference to the ceiling:"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "參考價格上限："
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "tags": [
+            "C.intervention"
+          ],
+          "subParts": [
+            {
+              "id": "v060-070",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "v060-066",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Draw the shortage."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "繪圖顯示短缺。"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "marks": 2,
+              "rootId": "v060-024"
+            },
+            {
+              "id": "v060-071",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "v060-067",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Is the outcome efficient?"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "結果是否有效率？"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "marks": 3,
+              "tags": [
+                "E.efficiency"
+              ],
+              "rootId": "v060-027"
+            }
+          ],
+          "rootId": "v060-021"
+        }
+      ],
+      "tags": [
+        "mock 2026"
+      ],
+      "tagsAt": "2026-10-04T08:00:00.000Z",
+      "lineage": {
+        "rootId": "v060-013",
+        "fromDocId": "bank-v060-paper",
+        "copiedAt": "2026-10-04T09:30:00.000Z"
+      }
+    }
+  ],
+  "layout": [],
+  "flow": [
+    {
+      "type": "question",
+      "id": "v060-056"
+    },
+    {
+      "type": "question",
+      "id": "v060-062"
+    }
+  ],
+  "createdAt": "2026-10-04T09:00:00.000Z",
+  "updatedAt": "2026-10-04T09:30:00.000Z",
+  "name": "S5 bank",
+  "kind": "bank"
+}

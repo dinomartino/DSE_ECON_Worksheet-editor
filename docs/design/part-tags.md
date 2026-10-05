@@ -707,6 +707,7 @@ Never printed:
 - Opening a document whose partful question has question-level topics leaves it unchanged
   (no `withQuestionTags` call; the open-save writes it as loaded).
 
+**Done 2026-10-05:** emitted from tag v0.6.0 as `src/test/corpus/bank-v0.6.0-*.json`, guarded by `backwardCompat`, `legacyIndex` and `bankCorpus` tests.
 **M5 frozen bank fixtures (STATUS.md:87) must add**: a structured question with part `tags`,
 a sub-part own list, part and sub-part `rootId`s, question-level free tags only; a copy pair
 sharing part roots across two documents; one legacy-shaped question (question-level topics on

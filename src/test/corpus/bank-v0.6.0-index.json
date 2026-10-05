@@ -1,0 +1,612 @@
+{
+  "writtenBy": "v0.6.0 (39e20ed333d20a15779be0de77b1c5e412e0c498)",
+  "storedIndexFormat": "7.156qg8gqcnq",
+  "econ-worksheet-index": [
+    {
+      "id": "bank-v060-bank",
+      "title": "S5 bank",
+      "updatedAt": "2026-10-04T09:30:00.000Z",
+      "questionCount": 2,
+      "hasCover": false,
+      "kind": "bank",
+      "indexRev": 2
+    },
+    {
+      "id": "bank-v060-paper",
+      "title": "S5 Price controls quiz",
+      "updatedAt": "2026-10-04T08:00:00.000Z",
+      "questionCount": 3,
+      "hasCover": false,
+      "indexRev": 2
+    }
+  ],
+  "library/docs": {
+    "bank-v060-bank": {
+      "format": "7.156qg8gqcnq",
+      "updatedAt": "2026-10-04T09:30:00.000Z",
+      "rows": [
+        {
+          "docId": "bank-v060-bank",
+          "docTitle": "S5 bank",
+          "docUpdatedAt": "2026-10-04T09:30:00.000Z",
+          "usedOn": "2026-10-04T09:00:00.000Z",
+          "docKind": "bank",
+          "questionId": "v060-056",
+          "rootId": "v060-006",
+          "typeId": "mcq",
+          "marks": 1,
+          "tags": [
+            "C.intervention",
+            "mock 2026"
+          ],
+          "tagsAt": "2026-10-04T08:00:00.000Z",
+          "excerpt": {
+            "en": "A price ceiling set below the equilibrium price leads to",
+            "zh": "價格上限低於均衡價格會導致"
+          },
+          "searchText": "a price ceiling set below the equilibrium price leads to\n價格上限低於均衡價格會導致\na shortage\n短缺\na surplus\n過剩\nno change\n沒有改變\na higher price\n價格上升\nc.intervention\nmarket intervention\n市場干預\nmock 2026\nmock 2026\nmock 2026",
+          "hasDiagram": false,
+          "languages": [
+            "en",
+            "zh"
+          ],
+          "contentKey": "dl6prr1yjc",
+          "number": 1
+        },
+        {
+          "docId": "bank-v060-bank",
+          "docTitle": "S5 bank",
+          "docUpdatedAt": "2026-10-04T09:30:00.000Z",
+          "usedOn": "2026-10-04T09:00:00.000Z",
+          "docKind": "bank",
+          "questionId": "v060-062",
+          "rootId": "v060-013",
+          "typeId": "structured",
+          "marks": 7,
+          "tags": [
+            "C.ped",
+            "C.ped::Explain PED",
+            "C.intervention",
+            "E.efficiency",
+            "mock 2026"
+          ],
+          "tagsAt": "2026-10-04T08:00:00.000Z",
+          "slots": [
+            {
+              "key": "v060-018",
+              "path": "0",
+              "label": "(a)",
+              "leaf": true,
+              "own": [
+                "C.ped",
+                "C.ped::Explain PED"
+              ],
+              "tags": [
+                "C.ped",
+                "C.ped::Explain PED"
+              ]
+            },
+            {
+              "key": "v060-021",
+              "path": "1",
+              "label": "(b)",
+              "leaf": false,
+              "own": [
+                "C.intervention"
+              ],
+              "tags": [
+                "C.intervention"
+              ]
+            },
+            {
+              "key": "v060-024",
+              "path": "1.0",
+              "label": "(b)(i)",
+              "parent": "v060-021",
+              "leaf": true,
+              "tags": [
+                "C.intervention"
+              ]
+            },
+            {
+              "key": "v060-027",
+              "path": "1.1",
+              "label": "(b)(ii)",
+              "parent": "v060-021",
+              "leaf": true,
+              "own": [
+                "E.efficiency"
+              ],
+              "tags": [
+                "E.efficiency"
+              ]
+            }
+          ],
+          "ownTags": [
+            "mock 2026"
+          ],
+          "excerpt": {
+            "en": "The government sets a price ceiling on rice.",
+            "zh": "政府為米設定價格上限。"
+          },
+          "searchText": "the government sets a price ceiling on rice.\n政府為米設定價格上限。\nexplain the effect on quantity demanded.\n解釋對需求量的影響。\nwith reference to the ceiling:\n參考價格上限：\ndraw the shortage.\n繪圖顯示短缺。\nis the outcome efficient?\n結果是否有效率？\nc.ped\nprice elasticity of demand\n需求價格彈性\nexplain ped\nc.intervention\nmarket intervention\n市場干預\ne.efficiency\nefficiency\n效率\nmock 2026\nmock 2026\nmock 2026",
+          "hasDiagram": false,
+          "languages": [
+            "en",
+            "zh"
+          ],
+          "contentKey": "10sngk3eatg",
+          "number": 2
+        }
+      ]
+    },
+    "bank-v060-paper": {
+      "format": "7.156qg8gqcnq",
+      "updatedAt": "2026-10-04T08:00:00.000Z",
+      "rows": [
+        {
+          "docId": "bank-v060-paper",
+          "docTitle": "S5 Price controls quiz",
+          "docUpdatedAt": "2026-10-04T08:00:00.000Z",
+          "usedOn": "2026-10-02",
+          "docKind": "paper",
+          "classes": [
+            "5A",
+            "5B"
+          ],
+          "questionId": "v060-006",
+          "rootId": "v060-006",
+          "typeId": "mcq",
+          "marks": 1,
+          "tags": [
+            "C.intervention",
+            "mock 2026"
+          ],
+          "tagsAt": "2026-10-04T08:00:00.000Z",
+          "excerpt": {
+            "en": "A price ceiling set below the equilibrium price leads to",
+            "zh": "價格上限低於均衡價格會導致"
+          },
+          "searchText": "a price ceiling set below the equilibrium price leads to\n價格上限低於均衡價格會導致\na shortage\n短缺\na surplus\n過剩\nno change\n沒有改變\na higher price\n價格上升\nc.intervention\nmarket intervention\n市場干預\nmock 2026\nmock 2026\nmock 2026",
+          "hasDiagram": false,
+          "languages": [
+            "en",
+            "zh"
+          ],
+          "contentKey": "dl6prr1yjc",
+          "number": 1
+        },
+        {
+          "docId": "bank-v060-paper",
+          "docTitle": "S5 Price controls quiz",
+          "docUpdatedAt": "2026-10-04T08:00:00.000Z",
+          "usedOn": "2026-10-02",
+          "docKind": "paper",
+          "classes": [
+            "5A",
+            "5B"
+          ],
+          "questionId": "v060-030",
+          "rootId": "v060-013",
+          "typeId": "structured",
+          "marks": 7,
+          "tags": [
+            "C.ped",
+            "C.ped::Explain PED",
+            "C.intervention",
+            "E.efficiency",
+            "mock 2026"
+          ],
+          "tagsAt": "2026-10-04T08:00:00.000Z",
+          "slots": [
+            {
+              "key": "v060-018",
+              "path": "0",
+              "label": "(a)",
+              "leaf": true,
+              "own": [
+                "C.ped",
+                "C.ped::Explain PED"
+              ],
+              "tags": [
+                "C.ped",
+                "C.ped::Explain PED"
+              ]
+            },
+            {
+              "key": "v060-021",
+              "path": "1",
+              "label": "(b)",
+              "leaf": false,
+              "own": [
+                "C.intervention"
+              ],
+              "tags": [
+                "C.intervention"
+              ]
+            },
+            {
+              "key": "v060-024",
+              "path": "1.0",
+              "label": "(b)(i)",
+              "parent": "v060-021",
+              "leaf": true,
+              "tags": [
+                "C.intervention"
+              ]
+            },
+            {
+              "key": "v060-027",
+              "path": "1.1",
+              "label": "(b)(ii)",
+              "parent": "v060-021",
+              "leaf": true,
+              "own": [
+                "E.efficiency"
+              ],
+              "tags": [
+                "E.efficiency"
+              ]
+            }
+          ],
+          "ownTags": [
+            "mock 2026"
+          ],
+          "excerpt": {
+            "en": "The government sets a price ceiling on rice.",
+            "zh": "政府為米設定價格上限。"
+          },
+          "searchText": "the government sets a price ceiling on rice.\n政府為米設定價格上限。\nexplain the effect on quantity demanded.\n解釋對需求量的影響。\nwith reference to the ceiling:\n參考價格上限：\ndraw the shortage.\n繪圖顯示短缺。\nis the outcome efficient?\n結果是否有效率？\nc.ped\nprice elasticity of demand\n需求價格彈性\nexplain ped\nc.intervention\nmarket intervention\n市場干預\ne.efficiency\nefficiency\n效率\nmock 2026\nmock 2026\nmock 2026",
+          "hasDiagram": false,
+          "languages": [
+            "en",
+            "zh"
+          ],
+          "contentKey": "10sngk3eatg",
+          "number": 2
+        },
+        {
+          "docId": "bank-v060-paper",
+          "docTitle": "S5 Price controls quiz",
+          "docUpdatedAt": "2026-10-04T08:00:00.000Z",
+          "usedOn": "2026-10-02",
+          "docKind": "paper",
+          "classes": [
+            "5A",
+            "5B"
+          ],
+          "questionId": "v060-040",
+          "rootId": "v060-040",
+          "typeId": "structured",
+          "marks": 4,
+          "tags": [
+            "C.equilibrium",
+            "mock 2026"
+          ],
+          "slots": [
+            {
+              "key": "v060-042",
+              "path": "0",
+              "label": "(a)",
+              "leaf": true,
+              "tags": [
+                "C.equilibrium"
+              ]
+            }
+          ],
+          "ownTags": [
+            "C.equilibrium",
+            "mock 2026"
+          ],
+          "excerpt": {
+            "en": "A bumper harvest of apples.",
+            "zh": "蘋果大豐收。"
+          },
+          "searchText": "a bumper harvest of apples.\n蘋果大豐收。\ndraw the effect on the market.\n繪圖顯示對市場的影響。\nc.equilibrium\ndemand, supply and price\n需求、供應和價格的相互作用\nmock 2026\nmock 2026\nmock 2026",
+          "hasDiagram": false,
+          "languages": [
+            "en",
+            "zh"
+          ],
+          "contentKey": "ewyog9ekzz",
+          "number": 3
+        }
+      ]
+    }
+  },
+  "library/pack.json": {
+    "format": "7.156qg8gqcnq",
+    "docs": {
+      "bank-v060-bank": {
+        "updatedAt": "2026-10-04T09:30:00.000Z",
+        "rows": [
+          {
+            "docId": "bank-v060-bank",
+            "docTitle": "S5 bank",
+            "docUpdatedAt": "2026-10-04T09:30:00.000Z",
+            "usedOn": "2026-10-04T09:00:00.000Z",
+            "docKind": "bank",
+            "questionId": "v060-056",
+            "rootId": "v060-006",
+            "typeId": "mcq",
+            "marks": 1,
+            "tags": [
+              "C.intervention",
+              "mock 2026"
+            ],
+            "tagsAt": "2026-10-04T08:00:00.000Z",
+            "excerpt": {
+              "en": "A price ceiling set below the equilibrium price leads to",
+              "zh": "價格上限低於均衡價格會導致"
+            },
+            "searchText": "a price ceiling set below the equilibrium price leads to\n價格上限低於均衡價格會導致\na shortage\n短缺\na surplus\n過剩\nno change\n沒有改變\na higher price\n價格上升\nc.intervention\nmarket intervention\n市場干預\nmock 2026\nmock 2026\nmock 2026",
+            "hasDiagram": false,
+            "languages": [
+              "en",
+              "zh"
+            ],
+            "contentKey": "dl6prr1yjc",
+            "number": 1
+          },
+          {
+            "docId": "bank-v060-bank",
+            "docTitle": "S5 bank",
+            "docUpdatedAt": "2026-10-04T09:30:00.000Z",
+            "usedOn": "2026-10-04T09:00:00.000Z",
+            "docKind": "bank",
+            "questionId": "v060-062",
+            "rootId": "v060-013",
+            "typeId": "structured",
+            "marks": 7,
+            "tags": [
+              "C.ped",
+              "C.ped::Explain PED",
+              "C.intervention",
+              "E.efficiency",
+              "mock 2026"
+            ],
+            "tagsAt": "2026-10-04T08:00:00.000Z",
+            "slots": [
+              {
+                "key": "v060-018",
+                "path": "0",
+                "label": "(a)",
+                "leaf": true,
+                "own": [
+                  "C.ped",
+                  "C.ped::Explain PED"
+                ],
+                "tags": [
+                  "C.ped",
+                  "C.ped::Explain PED"
+                ]
+              },
+              {
+                "key": "v060-021",
+                "path": "1",
+                "label": "(b)",
+                "leaf": false,
+                "own": [
+                  "C.intervention"
+                ],
+                "tags": [
+                  "C.intervention"
+                ]
+              },
+              {
+                "key": "v060-024",
+                "path": "1.0",
+                "label": "(b)(i)",
+                "parent": "v060-021",
+                "leaf": true,
+                "tags": [
+                  "C.intervention"
+                ]
+              },
+              {
+                "key": "v060-027",
+                "path": "1.1",
+                "label": "(b)(ii)",
+                "parent": "v060-021",
+                "leaf": true,
+                "own": [
+                  "E.efficiency"
+                ],
+                "tags": [
+                  "E.efficiency"
+                ]
+              }
+            ],
+            "ownTags": [
+              "mock 2026"
+            ],
+            "excerpt": {
+              "en": "The government sets a price ceiling on rice.",
+              "zh": "政府為米設定價格上限。"
+            },
+            "searchText": "the government sets a price ceiling on rice.\n政府為米設定價格上限。\nexplain the effect on quantity demanded.\n解釋對需求量的影響。\nwith reference to the ceiling:\n參考價格上限：\ndraw the shortage.\n繪圖顯示短缺。\nis the outcome efficient?\n結果是否有效率？\nc.ped\nprice elasticity of demand\n需求價格彈性\nexplain ped\nc.intervention\nmarket intervention\n市場干預\ne.efficiency\nefficiency\n效率\nmock 2026\nmock 2026\nmock 2026",
+            "hasDiagram": false,
+            "languages": [
+              "en",
+              "zh"
+            ],
+            "contentKey": "10sngk3eatg",
+            "number": 2
+          }
+        ]
+      },
+      "bank-v060-paper": {
+        "updatedAt": "2026-10-04T08:00:00.000Z",
+        "rows": [
+          {
+            "docId": "bank-v060-paper",
+            "docTitle": "S5 Price controls quiz",
+            "docUpdatedAt": "2026-10-04T08:00:00.000Z",
+            "usedOn": "2026-10-02",
+            "docKind": "paper",
+            "classes": [
+              "5A",
+              "5B"
+            ],
+            "questionId": "v060-006",
+            "rootId": "v060-006",
+            "typeId": "mcq",
+            "marks": 1,
+            "tags": [
+              "C.intervention",
+              "mock 2026"
+            ],
+            "tagsAt": "2026-10-04T08:00:00.000Z",
+            "excerpt": {
+              "en": "A price ceiling set below the equilibrium price leads to",
+              "zh": "價格上限低於均衡價格會導致"
+            },
+            "searchText": "a price ceiling set below the equilibrium price leads to\n價格上限低於均衡價格會導致\na shortage\n短缺\na surplus\n過剩\nno change\n沒有改變\na higher price\n價格上升\nc.intervention\nmarket intervention\n市場干預\nmock 2026\nmock 2026\nmock 2026",
+            "hasDiagram": false,
+            "languages": [
+              "en",
+              "zh"
+            ],
+            "contentKey": "dl6prr1yjc",
+            "number": 1
+          },
+          {
+            "docId": "bank-v060-paper",
+            "docTitle": "S5 Price controls quiz",
+            "docUpdatedAt": "2026-10-04T08:00:00.000Z",
+            "usedOn": "2026-10-02",
+            "docKind": "paper",
+            "classes": [
+              "5A",
+              "5B"
+            ],
+            "questionId": "v060-030",
+            "rootId": "v060-013",
+            "typeId": "structured",
+            "marks": 7,
+            "tags": [
+              "C.ped",
+              "C.ped::Explain PED",
+              "C.intervention",
+              "E.efficiency",
+              "mock 2026"
+            ],
+            "tagsAt": "2026-10-04T08:00:00.000Z",
+            "slots": [
+              {
+                "key": "v060-018",
+                "path": "0",
+                "label": "(a)",
+                "leaf": true,
+                "own": [
+                  "C.ped",
+                  "C.ped::Explain PED"
+                ],
+                "tags": [
+                  "C.ped",
+                  "C.ped::Explain PED"
+                ]
+              },
+              {
+                "key": "v060-021",
+                "path": "1",
+                "label": "(b)",
+                "leaf": false,
+                "own": [
+                  "C.intervention"
+                ],
+                "tags": [
+                  "C.intervention"
+                ]
+              },
+              {
+                "key": "v060-024",
+                "path": "1.0",
+                "label": "(b)(i)",
+                "parent": "v060-021",
+                "leaf": true,
+                "tags": [
+                  "C.intervention"
+                ]
+              },
+              {
+                "key": "v060-027",
+                "path": "1.1",
+                "label": "(b)(ii)",
+                "parent": "v060-021",
+                "leaf": true,
+                "own": [
+                  "E.efficiency"
+                ],
+                "tags": [
+                  "E.efficiency"
+                ]
+              }
+            ],
+            "ownTags": [
+              "mock 2026"
+            ],
+            "excerpt": {
+              "en": "The government sets a price ceiling on rice.",
+              "zh": "政府為米設定價格上限。"
+            },
+            "searchText": "the government sets a price ceiling on rice.\n政府為米設定價格上限。\nexplain the effect on quantity demanded.\n解釋對需求量的影響。\nwith reference to the ceiling:\n參考價格上限：\ndraw the shortage.\n繪圖顯示短缺。\nis the outcome efficient?\n結果是否有效率？\nc.ped\nprice elasticity of demand\n需求價格彈性\nexplain ped\nc.intervention\nmarket intervention\n市場干預\ne.efficiency\nefficiency\n效率\nmock 2026\nmock 2026\nmock 2026",
+            "hasDiagram": false,
+            "languages": [
+              "en",
+              "zh"
+            ],
+            "contentKey": "10sngk3eatg",
+            "number": 2
+          },
+          {
+            "docId": "bank-v060-paper",
+            "docTitle": "S5 Price controls quiz",
+            "docUpdatedAt": "2026-10-04T08:00:00.000Z",
+            "usedOn": "2026-10-02",
+            "docKind": "paper",
+            "classes": [
+              "5A",
+              "5B"
+            ],
+            "questionId": "v060-040",
+            "rootId": "v060-040",
+            "typeId": "structured",
+            "marks": 4,
+            "tags": [
+              "C.equilibrium",
+              "mock 2026"
+            ],
+            "slots": [
+              {
+                "key": "v060-042",
+                "path": "0",
+                "label": "(a)",
+                "leaf": true,
+                "tags": [
+                  "C.equilibrium"
+                ]
+              }
+            ],
+            "ownTags": [
+              "C.equilibrium",
+              "mock 2026"
+            ],
+            "excerpt": {
+              "en": "A bumper harvest of apples.",
+              "zh": "蘋果大豐收。"
+            },
+            "searchText": "a bumper harvest of apples.\n蘋果大豐收。\ndraw the effect on the market.\n繪圖顯示對市場的影響。\nc.equilibrium\ndemand, supply and price\n需求、供應和價格的相互作用\nmock 2026\nmock 2026\nmock 2026",
+            "hasDiagram": false,
+            "languages": [
+              "en",
+              "zh"
+            ],
+            "contentKey": "ewyog9ekzz",
+            "number": 3
+          }
+        ]
+      }
+    }
+  }
+}

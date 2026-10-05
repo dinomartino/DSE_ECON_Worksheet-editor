@@ -22,6 +22,8 @@ import v1Corpus from '@/test/corpus/v1-published.json';
 import v2Corpus from '@/test/corpus/v2-published.json';
 import graphV2 from '@/test/corpus/graph-v2.json';
 import optionalCorpus from '@/test/corpus/v2-optional-sections.json';
+import bankPaperCorpus from '@/test/corpus/bank-v0.6.0-paper.json';
+import bankBankCorpus from '@/test/corpus/bank-v0.6.0-bank.json';
 import { migrate, serializeWorksheet, CURRENT_SCHEMA_VERSION, isNewerThanBuild } from '@/model/migrations';
 import { parseWorksheet, stringifyWorksheet } from '@/storage/document';
 import { isGraphNewerThanBuild, migrateGraph, parseGraph, stringifyGraph } from '@/model/graph';
@@ -33,6 +35,7 @@ import { resolveFlow } from '@/model/flow';
 import { createMcqQuestion, createStructuredQuestion, createSubPart } from '@/model/factories';
 import { copyQuestion } from '@/model/lineage';
 import { parsePatternTag } from '@/model/patterns';
+import { derivedTags, effectiveSlotTags, tagStateOf } from '@/model/tagSlots';
 import { bi } from '@/model/text';
 import type { McqQuestion, OutputMode, StructuredQuestion } from '@/model/types';
 
@@ -411,5 +414,87 @@ describe('the v2 optional-sections corpus: answer any ONE, section targets, essa
     const saved = stringifyWorksheet(parseWorksheet(raw));
     expect(saved).toBe(raw.trimEnd());
     expect(JSON.parse(saved).schemaVersion).toBe(2);
+  });
+});
+
+describe('the v0.6.0 bank corpus: part tags, part roots, a copy pair and the legacy shape', () => {
+  // `bank-v0.6.0-paper.json` / `bank-v0.6.0-bank.json`: frozen, written once by the v0.6.0
+  // release itself (`scripts/emit-bank-v0.6.0-corpus.test.ts` refuses any other commit).
+  // The storage index and bank index rows beside them: `legacyIndex` and `bankCorpus` tests.
+  const FILES = [
+    ['src/test/corpus/bank-v0.6.0-paper.json', bankPaperCorpus],
+    ['src/test/corpus/bank-v0.6.0-bank.json', bankBankCorpus],
+  ] as const;
+  const paper = () => migrate(structuredClone(bankPaperCorpus));
+  const bank = () => migrate(structuredClone(bankBankCorpus));
+  const parted = (worksheet: ReturnType<typeof migrate>, id: string) =>
+    worksheet.questions.find((q) => q.id === id) as StructuredQuestion;
+  const roots = (q: StructuredQuestion) => [
+    q.lineage?.rootId,
+    ...q.parts.flatMap((part) => [part.rootId, ...(part.subParts ?? []).map((sub) => sub.rootId)]),
+  ];
+
+  it('both documents open editable here, with nothing unrecognised and all text', () => {
+    for (const [, corpus] of FILES) {
+      const worksheet = migrate(structuredClone(corpus));
+      expect(corpus.schemaVersion).toBe(1);
+      expect(isNewerThanBuild(worksheet)).toBe(false);
+      expect(worksheet.__unknown).toBeUndefined();
+      expect(countText(worksheet)).toBe(countText(corpus));
+      expect(worksheet.questions.length).toBe(corpus.questions.length);
+    }
+    expect(bank().kind).toBe('bank');
+    expect(paper().kind).toBeUndefined();
+    expect([paper().classes, paper().satOn]).toEqual([['5A', '5B'], '2026-10-02']);
+  });
+
+  it('keeps part lists, a sub-part’s own list, every part root and free tags on the question', () => {
+    const question = parted(paper(), 'v060-030');
+    expect(question.tags).toEqual(['mock 2026']);
+    expect(question.tagsAt).toBe('2026-10-04T08:00:00.000Z');
+    expect(question.lineage).toEqual({ rootId: 'v060-013', fromDocId: 'bank-v060-earlier-paper', copiedAt: '2026-10-04T08:00:00.000Z' });
+    const [a, b] = question.parts;
+    expect([a.rootId, a.tags]).toEqual(['v060-018', ['C.ped', 'C.ped::Explain PED']]);
+    expect([b.rootId, b.tags]).toEqual(['v060-021', ['C.intervention']]);
+    expect(b.subParts?.map((sub) => [sub.rootId, sub.tags])).toEqual([
+      ['v060-024', undefined],
+      ['v060-027', ['E.efficiency']],
+    ]);
+    // What they mean is unchanged too: (b)(i) inherits (b), (b)(ii) replaces it.
+    expect(Object.fromEntries(effectiveSlotTags(tagStateOf(question)))).toEqual({
+      'v060-018': ['C.ped', 'C.ped::Explain PED'],
+      'v060-021': ['C.intervention'],
+      'v060-024': ['C.intervention'],
+      'v060-027': ['E.efficiency'],
+    });
+  });
+
+  it('keeps the copy pair: one root, and the same part and sub-part roots in both documents', () => {
+    const inPaper = parted(paper(), 'v060-030');
+    const inBank = parted(bank(), 'v060-062');
+    expect(roots(inPaper)).toEqual(['v060-013', 'v060-018', 'v060-021', 'v060-024', 'v060-027']);
+    expect(roots(inBank)).toEqual(roots(inPaper));
+    expect(tagStateOf(inBank)).toEqual(tagStateOf(inPaper));
+    expect(inBank.lineage).toEqual({ rootId: 'v060-013', fromDocId: 'bank-v060-paper', copiedAt: '2026-10-04T09:30:00.000Z' });
+    const mcq = bank().questions.find((q) => q.type === 'mcq')!;
+    expect([mcq.lineage?.rootId, mcq.tags]).toEqual(['v060-006', ['C.intervention', 'mock 2026']]);
+  });
+
+  it('keeps the legacy shape: topics on the whole of a question with parts, as loaded', () => {
+    const legacy = parted(paper(), 'v060-040');
+    expect(legacy.tags).toEqual(['C.equilibrium', 'mock 2026']);
+    expect(legacy.parts.map((part) => [part.rootId, part.tags])).toEqual([[undefined, undefined]]);
+    // Still every untagged part's default; opening never moves it onto the part.
+    expect(Object.fromEntries(effectiveSlotTags(tagStateOf(legacy)))).toEqual({ 'v060-042': ['C.equilibrium'] });
+    expect(derivedTags(legacy)).toEqual(['C.equilibrium', 'mock 2026']);
+  });
+
+  it('round-trips byte for byte, still written at 1', () => {
+    for (const [path] of FILES) {
+      const raw = readFileSync(path, 'utf8');
+      const saved = stringifyWorksheet(parseWorksheet(raw));
+      expect(saved).toBe(raw.trimEnd());
+      expect(JSON.parse(saved).schemaVersion).toBe(1);
+    }
   });
 });

@@ -497,6 +497,7 @@ refuses to write without `EMIT_V1_CORPUS=1`.
 
 - `src/test/fixtures.ts:buildAcceptanceWorksheet` — the shared document
 - `src/test/corpus/v1-published.json` — frozen v1 output; **never regenerate**
+- `src/test/corpus/bank-v0.6.0-paper.json` · `bank-v0.6.0-bank.json` · `bank-v0.6.0-index.json` — written by tag v0.6.0 itself (`scripts/emit-bank-v0.6.0-corpus.test.ts` refuses any other commit): part tags and roots, a copy pair, the legacy shape, INDEX_FORMAT 7 rows; guarded by `src/library/bankCorpus.test.ts`; **never regenerate**
 - `src/model/backwardCompat.test.ts` · `src/storage/legacyIndex.test.ts` — the two guards
 - `src/registry/registry.test.ts` — the no-type-branching grep
 - `src/test/codemap.test.ts` — keeps these docs honest

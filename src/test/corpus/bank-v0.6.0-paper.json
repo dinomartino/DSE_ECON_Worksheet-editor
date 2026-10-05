@@ -1,0 +1,426 @@
+{
+  "schemaVersion": 1,
+  "id": "bank-v060-paper",
+  "title": {
+    "en": [
+      {
+        "text": "S5 Economics: Price controls"
+      }
+    ],
+    "zh": [
+      {
+        "text": "中五經濟：價格管制"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "v060-047",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "v060-048"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "v060-006",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "v060-012",
+          "text": {
+            "en": [
+              {
+                "text": "A price ceiling set below the equilibrium price leads to"
+              }
+            ],
+            "zh": [
+              {
+                "text": "價格上限低於均衡價格會導致"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "v060-008",
+          "text": {
+            "en": [
+              {
+                "text": "a shortage"
+              }
+            ],
+            "zh": [
+              {
+                "text": "短缺"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v060-009",
+          "text": {
+            "en": [
+              {
+                "text": "a surplus"
+              }
+            ],
+            "zh": [
+              {
+                "text": "過剩"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v060-010",
+          "text": {
+            "en": [
+              {
+                "text": "no change"
+              }
+            ],
+            "zh": [
+              {
+                "text": "沒有改變"
+              }
+            ]
+          }
+        },
+        {
+          "id": "v060-011",
+          "text": {
+            "en": [
+              {
+                "text": "a higher price"
+              }
+            ],
+            "zh": [
+              {
+                "text": "價格上升"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0,
+      "tags": [
+        "C.intervention",
+        "mock 2026"
+      ],
+      "tagsAt": "2026-10-04T08:00:00.000Z"
+    },
+    {
+      "id": "v060-030",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "v060-031",
+          "text": {
+            "en": [
+              {
+                "text": "The government sets a price ceiling on rice."
+              }
+            ],
+            "zh": [
+              {
+                "text": "政府為米設定價格上限。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "v060-036",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "v060-032",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain the effect on quantity demanded."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋對需求量的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2,
+          "answer": {
+            "en": [
+              {
+                "text": "Quantity demanded rises."
+              }
+            ],
+            "zh": [
+              {
+                "text": "需求量上升。"
+              }
+            ]
+          },
+          "tags": [
+            "C.ped",
+            "C.ped::Explain PED"
+          ],
+          "rootId": "v060-018"
+        },
+        {
+          "id": "v060-037",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "v060-033",
+              "text": {
+                "en": [
+                  {
+                    "text": "With reference to the ceiling:"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "參考價格上限："
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "tags": [
+            "C.intervention"
+          ],
+          "subParts": [
+            {
+              "id": "v060-038",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "v060-034",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Draw the shortage."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "繪圖顯示短缺。"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "marks": 2,
+              "rootId": "v060-024"
+            },
+            {
+              "id": "v060-039",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "v060-035",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Is the outcome efficient?"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "結果是否有效率？"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "marks": 3,
+              "tags": [
+                "E.efficiency"
+              ],
+              "rootId": "v060-027"
+            }
+          ],
+          "rootId": "v060-021"
+        }
+      ],
+      "tags": [
+        "mock 2026"
+      ],
+      "tagsAt": "2026-10-04T08:00:00.000Z",
+      "lineage": {
+        "rootId": "v060-013",
+        "fromDocId": "bank-v060-earlier-paper",
+        "copiedAt": "2026-10-04T08:00:00.000Z"
+      }
+    },
+    {
+      "id": "v060-040",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "v060-044",
+          "text": {
+            "en": [
+              {
+                "text": "A bumper harvest of apples."
+              }
+            ],
+            "zh": [
+              {
+                "text": "蘋果大豐收。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "v060-042",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "v060-045",
+              "text": {
+                "en": [
+                  {
+                    "text": "Draw the effect on the market."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "繪圖顯示對市場的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4
+        }
+      ],
+      "tags": [
+        "C.equilibrium",
+        "mock 2026"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "v060-049",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "v060-050",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構性問題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "v060-049"
+    },
+    {
+      "type": "layout",
+      "id": "v060-050"
+    },
+    {
+      "type": "question",
+      "id": "v060-006"
+    },
+    {
+      "type": "question",
+      "id": "v060-030"
+    },
+    {
+      "type": "question",
+      "id": "v060-040"
+    }
+  ],
+  "createdAt": "2026-10-04T08:00:00.000Z",
+  "updatedAt": "2026-10-04T08:00:00.000Z",
+  "name": "S5 Price controls quiz",
+  "classes": [
+    "5A",
+    "5B"
+  ],
+  "satOn": "2026-10-02"
+}
