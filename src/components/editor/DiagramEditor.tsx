@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
 import { hasAnswerLayer } from '@/model/diagramAnswers';
 import { graphFromBlock, rebaseOnGraph } from '@/model/graph';
@@ -10,6 +10,7 @@ import type { CaptionPlacement, DiagramBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { diagramSize, diagramSvg } from '@/render/diagram';
 import { Button, FigureAlignField, NumberField, Segmented } from '@/components/ui';
+import { useNotices } from '@/components/ui/NoticeLayer';
 import { sideOf } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
@@ -40,24 +41,18 @@ export function DiagramEditor({ block, onChange }: Props) {
   const language = useWorksheetStore((s) => s.mode.language);
   const fonts = useWorksheetStore((s) => s.worksheet.fonts);
   const [drawing, setDrawing] = useState(false);
-  const [notice, setNotice] = useState<{ text: string; tone: 'ok' | 'error' } | undefined>();
-  const noticeTimer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
+  const notices = useNotices();
 
   const diagram = block.diagram;
 
   const saveToGraphs = async () => {
     const graph = graphFromBlock(block, language, fonts);
-    let next: { text: string; tone: 'ok' | 'error' };
     try {
       await graphStore.save(graph);
-      next = { tone: 'ok', text: m.savedToGraphs(graph.name) };
+      notices.notify({ id: 'diagram-to-graphs', tone: 'success', body: m.savedToGraphs(graph.name) });
     } catch {
-      next = { tone: 'error', text: m.saveFailed };
+      notices.notify({ id: 'diagram-to-graphs', tone: 'error', body: m.saveFailed });
     }
-    setNotice(next);
-    window.clearTimeout(noticeTimer.current);
-    noticeTimer.current = window.setTimeout(() => setNotice(undefined), next.tone === 'error' ? 8000 : 4000);
   };
 
   /*
@@ -206,14 +201,6 @@ export function DiagramEditor({ block, onChange }: Props) {
         <Button size="sm" variant="subtle" onClick={() => void saveToGraphs()} title={m.saveToGraphsHint}>
           {m.saveToGraphs}
         </Button>
-        {notice && (
-          <span
-            role={notice.tone === 'error' ? 'alert' : 'status'}
-            className={`animate-fade-in text-[11px] ${notice.tone === 'error' ? 'text-danger-ink' : 'text-ink-muted'}`}
-          >
-            {notice.text}
-          </span>
-        )}
       </div>
 
       {/* Wraps, because the controls have genuinely different needs: Width is sized by

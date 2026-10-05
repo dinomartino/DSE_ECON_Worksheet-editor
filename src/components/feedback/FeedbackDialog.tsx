@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import pkg from '../../../package.json';
 import { Button, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
+import { useDialogNotices } from '@/components/ui/NoticeLayer';
 import { useMessages } from '@/i18n/language';
 import { isDesktop, openExternal } from '@/platform';
 import type { LanguageMode } from '@/model/types';
@@ -45,7 +46,12 @@ export function FeedbackDialog({
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState<Sent | undefined>();
   const [copied, setCopied] = useState(false);
-  const [error, setError] = useState<string | undefined>();
+  // What happened after a click floats over the dialog's foot, never lengthening it.
+  const notices = useDialogNotices();
+  const setError = (message: string | undefined) => {
+    if (message === undefined) notices.dismiss('feedback-error');
+    else notices.notify({ id: 'feedback-error', tone: 'error', body: message });
+  };
   const messageRef = useRef<HTMLTextAreaElement>(null);
 
   // After Dialog's own effect, which focuses the panel.
@@ -84,6 +90,11 @@ export function FeedbackDialog({
     try {
       await openExternal(link.url);
       setSent({ via, truncated: link.truncated });
+      notices.notify({
+        id: 'feedback-sent',
+        tone: 'success',
+        body: `${via === 'github' ? m.sentGithub : m.sentMail}${link.truncated ? m.truncated : ''}`,
+      });
     } catch {
       setError(via === 'github' ? m.noGithub : m.noMail);
     }
@@ -98,6 +109,7 @@ export function FeedbackDialog({
 
   return (
     <Dialog
+      noticeScope={notices.scope}
       title={m.title}
       description={m.description}
       width={540}
@@ -186,18 +198,6 @@ export function FeedbackDialog({
           {m.githubNote(!!FEEDBACK_EMAIL)}
         </p>
 
-        {sent && (
-          <p role="status" className="animate-slide-up-in rounded-lg bg-accent-soft px-3 py-2 text-[13px] text-accent-ink">
-            {sent.via === 'github' ? m.sentGithub : m.sentMail}
-            {sent.truncated && m.truncated}
-          </p>
-        )}
-
-        {error && (
-          <p role="alert" className="animate-slide-up-in rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger-ink">
-            {error}
-          </p>
-        )}
       </div>
     </Dialog>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Button } from '@/components/ui';
+import { useNoticeInset } from '@/components/ui/NoticeLayer';
 import { marksLabel, sourceLabel, typeLabel } from '@/components/bank/BankRow';
 import type { BankRow } from '@/library/types';
 import { useMessages } from '@/i18n/language';
@@ -191,9 +192,12 @@ export function SelectionTray({
   };
 
   const summaryText = empty ? m.isEmpty : undefined;
+  // Docked along the foot of the window: the app's notices stack above it, clear of Add.
+  const insetRef = useNoticeInset('bank-tray');
 
   return (
     <div
+      ref={insetRef}
       role="region"
       aria-label={m.yourList}
       data-cart-panel

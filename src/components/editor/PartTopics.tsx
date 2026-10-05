@@ -25,13 +25,11 @@ import { partTopicLines, questionFreeTags, topicMode, topicsWithPatterns, type T
 export function PartTopics({
   question,
   shown,
-  note,
   onEdit,
 }: {
   question: Question;
   /** The question's tag state as the editor shows it (`useShownTagState`). */
   shown: TagState;
-  note?: string;
   onEdit: (edit: StateEdit) => void;
 }) {
   const m = useMessages(PART_TOPICS_MESSAGES);
@@ -71,7 +69,7 @@ export function PartTopics({
     const wholeLink = <QuietLink onClick={() => setFocus('question')}>{m.wholeQuestion}</QuietLink>;
 
     if (mode.kind === 'question') {
-      return <WholeQuestionTopics shown={shown} note={note} onEdit={onEdit} onPick={(key) => setFocus({ key })} />;
+      return <WholeQuestionTopics shown={shown} onEdit={onEdit} onPick={(key) => setFocus({ key })} />;
     }
 
     const slot = slotOf(mode.key);
@@ -89,7 +87,7 @@ export function PartTopics({
           title={m.topicsFor(slot.label)}
           tags={tags}
           typeId={question.type}
-          note={note}
+         
           noFreeTag={noFreeTag}
           empty={m.noTopicDot}
           onChange={setTags}
@@ -116,7 +114,7 @@ export function PartTopics({
         tags={tags}
         parentTags={topicsOf(parent.key)}
         typeId={question.type}
-        note={note}
+       
         noFreeTag={noFreeTag}
         wholeLink={wholeLink}
         onSetTags={setTags}
@@ -176,7 +174,6 @@ function SubPartTopics({
   tags,
   parentTags,
   typeId,
-  note,
   noFreeTag,
   wholeLink,
   onSetTags,
@@ -187,7 +184,6 @@ function SubPartTopics({
   tags: string[];
   parentTags: string[];
   typeId: string;
-  note?: string;
   noFreeTag: string;
   wholeLink: ReactNode;
   onSetTags: (tags: string[] | undefined) => void;
@@ -222,7 +218,7 @@ function SubPartTopics({
         title={m.topicsFor(slot.label)}
         tags={tags}
         typeId={typeId}
-        note={note}
+       
         noFreeTag={noFreeTag}
         empty={m.noTopicDot}
         startOpen={!own}
@@ -250,11 +246,6 @@ function SubPartTopics({
         <p className="text-[11px] text-ink-subtle">{m.parentNoTopic(parent.label)}</p>
       )}
       <p className="text-[11px] text-ink-subtle">{wholeLink}</p>
-      {note && (
-        <p role="status" className="animate-fade-in text-[11px] text-ink-subtle">
-          {note}
-        </p>
-      )}
     </div>
   );
 }
@@ -296,12 +287,10 @@ function TopicLines({ tags }: { tags: string[] }) {
  */
 function WholeQuestionTopics({
   shown,
-  note,
   onEdit,
   onPick,
 }: {
   shown: TagState;
-  note?: string;
   onEdit: (edit: StateEdit) => void;
   onPick: (key: string) => void;
 }) {
@@ -367,11 +356,6 @@ function WholeQuestionTopics({
         />
       )}
       <FreeTagsLine tags={questionFreeTags(shown)} onEdit={onEdit} />
-      {note && (
-        <p role="status" className="animate-fade-in text-[11px] text-ink-subtle">
-          {note}
-        </p>
-      )}
     </div>
   );
 }

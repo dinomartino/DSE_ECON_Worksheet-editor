@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
+import { useNotices } from '@/components/ui/NoticeLayer';
 import { Menu } from '@/components/ui/Menu';
 import { DiagramIcon, PlusIcon } from '@/components/ui/icons';
 import { DiagramTemplateCards } from '@/components/editor/DiagramTemplatePicker';
@@ -37,7 +38,12 @@ export function GraphLibrary({
   const [creating, setCreating] = useState(false);
   const [renaming, setRenaming] = useState<SavedGraph | undefined>();
   const [deleting, setDeleting] = useState<SavedGraph | undefined>();
-  const [error, setError] = useState<string | undefined>();
+  // A failed action is an error notice: it stays until closed or the next action.
+  const notices = useNotices();
+  const setError = (message: string | undefined) => {
+    if (message === undefined) notices.dismiss('graph-library-error');
+    else notices.notify({ id: 'graph-library-error', tone: 'error', body: message });
+  };
 
   const show = useCallback((listing: GraphListing) => {
     setGraphs(listing.graphs);
@@ -145,18 +151,12 @@ export function GraphLibrary({
         {settings}
       </header>
 
-      {(error || unreadable > 0) && (
-        <div className="shrink-0 space-y-2 px-4 pt-3">
-          {error && (
-            <p role="alert" className="animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink">
-              {error}
-            </p>
-          )}
-          {unreadable > 0 && (
-            <p className="rounded-lg bg-warn-soft px-2.5 py-1.5 text-xs text-warn-ink">
-              {m.unreadable(unreadable)}
-            </p>
-          )}
+      {/* A standing fact about what is stored, read on load: stays in the page. */}
+      {unreadable > 0 && (
+        <div className="shrink-0 px-4 pt-3">
+          <p className="rounded-lg bg-warn-soft px-2.5 py-1.5 text-xs text-warn-ink">
+            {m.unreadable(unreadable)}
+          </p>
         </div>
       )}
 

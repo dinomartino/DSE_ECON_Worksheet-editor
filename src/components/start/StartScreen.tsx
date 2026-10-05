@@ -15,6 +15,8 @@ import {
   ZIP_FILTERS,
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
+import { useNotices } from '@/components/ui/NoticeLayer';
+import { useNoticeStore } from '@/store/notices';
 import { AppMark } from '@/components/ui/AppMark';
 import { ScrollEdgeHints } from '@/components/ui/ScrollEdgeHints';
 import { useScrollEdges } from '@/components/ui/scrollEdges';
@@ -97,8 +99,12 @@ async function textOf(data: Uint8Array | Blob): Promise<string> {
 /** The folder-name dialog: a new folder (optionally filing one document into it), or a rename. */
 type Naming = { folder?: Folder; fileDoc?: WorksheetSummary };
 
+/** The start screen's one result notice and one failure notice: each new one replaces its own. */
+const START_RESULT = 'start-result';
+const START_ERROR = 'start-error';
+
 /** A result worth reading: backup written, backup restored, document restored. */
-type Notice = {
+type Result = {
   message: string;
   /** Per-file lines — what was unreadable or did not fit. */
   details?: string[];
@@ -130,7 +136,6 @@ export function StartScreen({
   const [summaries, setSummaries] = useState<WorksheetSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [creating, setCreating] = useState<DocumentType | undefined>();
-  const [error, setError] = useState<string | undefined>();
   const [renaming, setRenaming] = useState<WorksheetSummary | undefined>();
   const [renameError, setRenameError] = useState<string | undefined>();
   const [confirmingDelete, setConfirmingDelete] = useState<WorksheetSummary | undefined>();
@@ -138,7 +143,36 @@ export function StartScreen({
   const [showingTrash, setShowingTrash] = useState(false);
   const [confirmingPurge, setConfirmingPurge] = useState<TrashedSummary | undefined>();
   const [confirmingEmpty, setConfirmingEmpty] = useState(false);
-  const [notice, setNotice] = useState<Notice | undefined>();
+  // Results and failures go to the app's notice stack, never into the screen's flow.
+  const notices = useNotices();
+  // The graph count re-reads after each result (a restore may have brought graphs).
+  const [lastResult, setLastResult] = useState('');
+  const setNotice = useCallback(
+    (result?: Result) => {
+      if (!result) {
+        notices.dismiss(START_RESULT);
+        return;
+      }
+      const details = result.details ?? [];
+      setLastResult(result.message);
+      notices.notify({
+        id: START_RESULT,
+        // A list of what was skipped stays until closed: it may be the only record of it.
+        tone: details.length > 0 ? 'warning' : 'success',
+        body: result.message,
+        details: details.length > 8 ? [...details.slice(0, 8), t.andMore(details.length - 8)] : details,
+        actions: result.action ? [result.action] : undefined,
+      });
+    },
+    [notices, t],
+  );
+  const setError = useCallback(
+    (message?: string) => {
+      if (message === undefined) notices.dismiss(START_ERROR);
+      else notices.notify({ id: START_ERROR, tone: 'error', body: message });
+    },
+    [notices],
+  );
   const [busy, setBusy] = useState<'backup' | 'restore' | undefined>();
   const [dropOverlay, setDropOverlay] = useState<DropOverlay>();
   const [feedback, setFeedback] = useState(false);
@@ -153,17 +187,17 @@ export function StartScreen({
   // Back from a worksheet opened from a bank question: straight into the bank.
   const [view, setView] = useState<'home' | 'bank' | 'graphs'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
   const { groups: bankGroups } = useBank();
-  const graphTotal = useGraphCount(`${view}:${notice?.message ?? ''}`);
+  const graphTotal = useGraphCount(`${view}:${lastResult}`);
   const closeFeedback = useCallback(() => setFeedback(false), []);
   // First launch, or everything deleted: the desk welcomes instead of listing. Never
   // while storage is still being read, so a returning teacher sees no flash of it.
   const empty = loaded && summaries.length === 0;
   // A plain result ("Topics saved.") is done once the teacher moves on. One listing files
   // stays until dismissed, like an error: it may be the only record of what was skipped.
-  const clearPassingNotice = useCallback(
-    () => setNotice((current) => (current && !current.details?.length ? undefined : current)),
-    [],
-  );
+  const clearPassingNotice = useCallback(() => {
+    const current = useNoticeStore.getState().notices.find((n) => n.id === START_RESULT);
+    if (current && !current.details?.length) notices.dismiss(START_RESULT);
+  }, [notices]);
   const showView = (next: 'home' | 'bank' | 'graphs') => {
     clearPassingNotice();
     setView(next);
@@ -685,18 +719,6 @@ export function StartScreen({
           <QuestionBankScreen
             summaries={summaries}
             loaded={loaded}
-            banner={
-              error ? (
-                <div role="alert" className="flex animate-slide-down-in items-start gap-3 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink">
-                  <p className="min-w-0 flex-1 py-0.5">{error}</p>
-                  <Button variant="subtle" size="sm" onClick={() => setError(undefined)}>
-                    {t.dismiss}
-                  </Button>
-                </div>
-              ) : notice ? (
-                <NoticeBox notice={notice} onDismiss={() => setNotice(undefined)} flush />
-              ) : undefined
-            }
             settings={<SettingsButton separated />}
             onHome={() => {
               useBankReturn.getState().clear();
@@ -815,16 +837,6 @@ export function StartScreen({
 
       {/* The desk side: every document already on the desk, as its first page. */}
       <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:py-12 xl:px-14">
-        {/* Results sit above the list: below it, a long archive scrolls them out of view. */}
-        {error && (
-          <p
-            role="alert"
-            className="mx-auto mb-5 max-w-5xl animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
-          >
-            {error}
-          </p>
-        )}
-        {notice && <NoticeBox notice={notice} onDismiss={() => setNotice(undefined)} />}
         {showingTrash ? (
           <TrashList
             rows={trashRows}
@@ -1368,39 +1380,6 @@ function TextLink({
     >
       {children}
     </button>
-  );
-}
-
-function NoticeBox({ notice, onDismiss, flush }: { notice: Notice; onDismiss: () => void; flush?: boolean }) {
-  const t = useMessages(START_SCREEN_MESSAGES);
-  const details = notice.details ?? [];
-  return (
-    <div
-      role="status"
-      className={`zone-light animate-slide-down-in rounded-xl border border-line bg-surface px-4 py-3 ${flush ? '' : 'mx-auto mb-5 max-w-5xl'}`}
-    >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <p className="min-w-0 flex-1 text-[12.5px] font-medium text-ink">{notice.message}</p>
-        {notice.action && (
-          <Button variant="ghostAccent" size="sm" onClick={notice.action.run}>
-            {notice.action.label}
-          </Button>
-        )}
-        <Button variant="subtle" size="sm" onClick={onDismiss}>
-          {t.dismiss}
-        </Button>
-      </div>
-      {details.length > 0 && (
-        <ul className="mt-2 space-y-0.5 text-[11px] leading-snug text-ink-muted">
-          {details.slice(0, 8).map((line) => (
-            <li key={line} className="truncate">
-              {line}
-            </li>
-          ))}
-          {details.length > 8 && <li>{t.andMore(details.length - 8)}</li>}
-        </ul>
-      )}
-    </div>
   );
 }
 

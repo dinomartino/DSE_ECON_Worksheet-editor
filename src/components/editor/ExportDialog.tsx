@@ -19,6 +19,7 @@ import { buildAppExport, type AppExport, type AppFormat } from '@/export/csv/ans
 import { answerKeyFileName, docxFileName } from '@/export/docx/fileNames';
 import { Button, CheckField, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
+import { useDialogNotices } from '@/components/ui/NoticeLayer';
 import { DownloadIcon, PdfIcon } from '@/components/ui/icons';
 import { versionLetters } from '@/model/versions';
 import { answerKeyPreset } from '@/model/answerKeyLayout';
@@ -326,7 +327,12 @@ export function ExportDialog({
   const combinable =
     format === 'docx' && (what === 'answerKey' || what === 'both') && otherDocuments.length > 0;
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>();
+  // A failed export floats over the dialog's foot until the next try (`useDialogNotices`).
+  const notices = useDialogNotices();
+  const setError = (message: string | undefined) => {
+    if (message === undefined) notices.dismiss('export-error');
+    else notices.notify({ id: 'export-error', tone: 'error', body: message });
+  };
   // A combined key that had to leave a document out: said here before the dialog goes.
   const [leftOut, setLeftOut] = useState<string>();
   // Web only: files built but waiting for their own click, and what has already gone.
@@ -461,6 +467,7 @@ export function ExportDialog({
 
   return (
     <Dialog
+      noticeScope={notices.scope}
       title={m.title}
       description={m.description}
       width={480}
@@ -705,11 +712,6 @@ export function ExportDialog({
           </p>
         )}
 
-        {error && (
-          <p role="alert" className="rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink">
-            {error}
-          </p>
-        )}
       </div>
     </Dialog>
   );

@@ -14,6 +14,15 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Changed
+- **Messages now float in the bottom-right corner instead of pushing the page around.**
+  Results such as "Copied", a restored backup, an export error or a new version to install
+  appear as small cards that never move your worksheet, list or dialog. Plain results fade
+  after a few seconds; warnings, errors and anything with a button stay until you close them.
+  <!-- zh: **訊息改為浮現在右下角，不再推動頁面。** 「已複製」、還原備份的結果、匯出錯誤或新版本
+  提示等，會以小卡片顯示，不會移動工作紙、清單或對話框。一般結果數秒後自動消失；警告、錯誤及附有按鈕的
+  訊息會保留，直至你關閉為止。 -->
+
 ### Fixed
 - **The minimum wage diagram's "surplus (unemployment)" label no longer touches the
   supply curve.** A newly inserted minimum wage diagram now places the label clear of both

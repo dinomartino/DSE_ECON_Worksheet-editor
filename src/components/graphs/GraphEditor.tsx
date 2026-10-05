@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui';
 import { DownloadIcon } from '@/components/ui/icons';
+import { useNotices } from '@/components/ui/NoticeLayer';
 import { undoChord } from '@/components/ui/undoChord';
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
 import { ForumFields, PieSliceFields } from '@/components/editor/DiagramDataFields';
@@ -52,14 +53,13 @@ export function GraphEditor({
   const [using, setUsing] = useState(false);
   const [missing, setMissing] = useState(false);
   const [saveState, setSaveState] = useState<GraphSaveState>('saved');
-  const [flash, setFlash] = useState<Flash | undefined>();
+  const notices = useNotices();
   const graphRef = useRef<SavedGraph | undefined>(undefined);
   const savedRef = useRef<SavedGraph | undefined>(undefined);
   const writing = useRef<Promise<void>>(Promise.resolve());
   const past = useRef<SavedGraph[]>([]);
   const future = useRef<SavedGraph[]>([]);
   const lastPush = useRef(0);
-  const flashTimer = useRef<number | undefined>(undefined);
 
   const readOnly = !!graph && isGraphNewerThanBuild(graph);
 
@@ -161,11 +161,14 @@ export function GraphEditor({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [commit, using]);
 
-  const show = (next: Flash) => {
-    setFlash(next);
-    window.clearTimeout(flashTimer.current);
-    flashTimer.current = window.setTimeout(() => setFlash(undefined), next.tone === 'error' ? 8000 : 4000);
-  };
+  /** A result or failure, in the app's notice stack; each replaces the last. */
+  const show = (next: Flash) =>
+    notices.notify({
+      id: 'graph-editor',
+      tone: next.tone === 'error' ? 'error' : 'success',
+      body: next.text,
+      actions: next.action ? [next.action] : undefined,
+    });
 
   const leave = async () => {
     try {
@@ -254,25 +257,6 @@ export function GraphEditor({
           </span>
         )}
         <span className="flex-1" />
-        {flash && (
-          <span
-            role={flash.tone === 'error' ? 'alert' : 'status'}
-            className={`flex min-w-0 animate-fade-in items-center gap-2 truncate text-[12px] ${
-              flash.tone === 'error' ? 'text-danger-ink' : 'text-ink-muted'
-            }`}
-          >
-            <span className="truncate">{flash.text}</span>
-            {flash.action && (
-              <button
-                type="button"
-                onClick={flash.action.run}
-                className="shrink-0 cursor-pointer text-accent-ink underline-offset-2 hover:underline"
-              >
-                {flash.action.label}
-              </button>
-            )}
-          </span>
-        )}
         <Button size="sm" disabled={!graph} onClick={copyImage} title={m.copyImageTitle}>
           {m.copyImage}
         </Button>

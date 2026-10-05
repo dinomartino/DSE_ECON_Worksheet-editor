@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
+import { useDialogNotices } from '@/components/ui/NoticeLayer';
 import { relativeTime } from '@/components/start/dashboard';
 import type { SavedGraph } from '@/model/graph';
 import { isNewerThanBuild } from '@/model/migrations';
@@ -36,7 +37,12 @@ export function UseInWorksheetDialog({
   const [summaries, setSummaries] = useState<WorksheetSummary[] | undefined>();
   const [search, setSearch] = useState('');
   const [worksheet, setWorksheet] = useState<Worksheet | undefined>();
-  const [error, setError] = useState<string | undefined>();
+  // A document that cannot take the graph: an error floating over this dialog's foot.
+  const notices = useDialogNotices();
+  const setError = (message: string | undefined) => {
+    if (message === undefined) notices.dismiss('use-graph-error');
+    else notices.notify({ id: 'use-graph-error', tone: 'error', body: message });
+  };
 
   useEffect(() => {
     let live = true;
@@ -68,6 +74,7 @@ export function UseInWorksheetDialog({
 
   return (
     <Dialog
+      noticeScope={notices.scope}
       title={worksheet ? m.whereTitle : m.title}
       description={
         worksheet
@@ -133,11 +140,6 @@ export function UseInWorksheetDialog({
                 className="h-8 w-full rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
               />
             </label>
-            {error && (
-              <p role="alert" className="mt-2 animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink">
-                {error}
-              </p>
-            )}
           </div>
           <div className="scroll-slim min-h-0 flex-1 overflow-y-auto px-3 pb-3">
             {summaries === undefined ? null : summaries.length === 0 ? (
