@@ -21,6 +21,9 @@ import type { BaseEntry, CopyNamer, Place } from './types';
  * No base (first sync, a second computer joining): one side only → copy it across;
  * same content → link (a trashed side is restored: live wins); different → keep both.
  * Keep both: the remote keeps the id, this computer's version becomes a copy.
+ * A newer build's file is never uploaded over; unreadable files are held, never read
+ * as deleted. Remote files not at their own id's key, and a Trash file beside a live
+ * one, are planned first (`planStray`).
  */
 
 export interface PlanContext {
@@ -98,6 +101,9 @@ export function planDocument(
   base: BaseEntry | undefined,
   ctx: PlanContext,
 ): SyncAction {
+  // A Trash file beside a live one is planned on its own (`planSync`); here it is not
+  // there, so no write can land on it unresolved — a write expecting nothing conflicts.
+  if (remote?.live && remote.trash) remote = { live: remote.live };
   const file = stateFile(remote);
   if (localDoc?.content === 'unreadable') return { kind: 'hold', id, reason: 'unreadable-local' };
   if (file?.content === 'unreadable') return { kind: 'hold', id, key: file.key, reason: 'unreadable' };
@@ -200,24 +206,32 @@ export function planDocument(
 
 /**
  * A provider's conflict copy: the id inside decides, the name only labels. The same
- * content as its document's own file is a duplicate to drop; anything else becomes its
- * own document under an id derived from its content, so every computer makes the same one.
+ * content as its document's live (or only) file is a duplicate to drop; anything else
+ * becomes its own document under an id derived from its content, so every computer
+ * makes the same one. A Trash file beside a live one is judged the same way.
  */
 export function planStray(
   stray: RemoteFile,
   remote: RemoteSnapshot,
   base: Map<string, BaseEntry>,
   ctx: PlanContext,
+  local: Map<string, LocalDoc> = new Map(),
 ): SyncAction {
   if (!stray.content || stray.content === 'unreadable') return { kind: 'hold', key: stray.key, reason: 'unreadable' };
   if (stray.content.newer) return { kind: 'hold', key: stray.key, reason: 'newer-build' };
   const inner = stray.content.worksheet.id;
+  // This computer's own unsynced version (a run stopped mid-upload): its document's own
+  // action uploads or copies it, so the stray holds nothing that would be lost.
+  const mine = local.get(inner)?.content;
+  if (mine && mine !== 'unreadable' && mine.hash === stray.content.hash && mine.hash !== base.get(inner)?.hash) {
+    return { kind: 'dropDuplicate', from: keyRev(stray) };
+  }
   const own = stateFile(remote.docs.get(inner));
   const ownBase = base.get(inner);
   const ownHash =
     own?.content && own.content !== 'unreadable'
       ? own.content.hash
-      : own && ownBase && own.revision === ownBase.revision
+      : own && ownBase && own.place === ownBase.place && own.revision === ownBase.revision
         ? ownBase.hash
         : undefined;
   if (ownHash === stray.content.hash) return { kind: 'dropDuplicate', from: keyRev(stray) };
@@ -234,6 +248,8 @@ export function planSync(
 ): SyncAction[] {
   const ids = [...new Set([...local.keys(), ...remote.docs.keys(), ...base.keys()])].sort();
   const actions = ids.map((id) => planDocument(id, local.get(id), remote.docs.get(id), base.get(id), ctx));
-  const strays = remote.strays.map((stray) => planStray(stray, remote, base, ctx));
-  return [...actions, ...strays].filter((action) => action.kind !== 'nothing');
+  const extras = [...remote.docs.values()].flatMap((doc) => (doc.live && doc.trash ? [doc.trash] : []));
+  const strays = [...extras, ...remote.strays].map((stray) => planStray(stray, remote, base, ctx, local));
+  // Strays first: a document's own action must not write over one still unresolved.
+  return [...strays, ...actions].filter((action) => action.kind !== 'nothing');
 }

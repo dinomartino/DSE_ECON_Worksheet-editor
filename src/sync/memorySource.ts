@@ -30,7 +30,7 @@ interface PendingOp {
   key: string;
   /** null: a delete. */
   text: string | null;
-  /** The committed revision the client's change was based on; null: none. */
+  /** The revision the client saw when it changed the key; null: none. */
   base: string | null;
   revision: string;
 }
@@ -142,8 +142,8 @@ export class MemoryCloud {
       return revision;
     }
     const ops = this.pending.get(client) ?? [];
-    const earlier = ops.filter((op) => op.key === key).at(0);
-    ops.push({ key, text, base: earlier ? earlier.base : (this.files.get(key)?.revision ?? null), revision });
+    // Based on what this client saw, so its own successive writes chain on delivery.
+    ops.push({ key, text, base: this.view(client, key)?.revision ?? null, revision });
     this.pending.set(client, ops);
     return revision;
   }

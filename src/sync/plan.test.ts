@@ -255,6 +255,36 @@ describe('provider conflict copies: the id inside decides', () => {
   });
 });
 
+describe('a Trash file beside a live one', () => {
+  const both = { live: file('live', 'r1', v2), trash: file('trash', 'r2', v1) };
+
+  it('is planned first, like a provider copy, and no document write can land on it', () => {
+    const actions = planSync(new Map([[ID, local('trash', v0)]]), { docs: new Map([[ID, both]]), strays: [] }, new Map([[ID, base('live')]]), ctx);
+    expect(actions.map(shape)).toEqual(['providerCopy', 'download live']);
+    // Moving this document to Trash would expect no Trash file: a write that conflicts, never one that overwrites.
+    expect(plan(local('trash', v1), { live: file('live', 'r0'), trash: file('trash', 'r2', v2) }, base('live'))).toMatchObject({
+      kind: 'upload',
+      place: 'trash',
+      expect: null,
+    });
+  });
+
+  it('holding the live content, it is a duplicate', () => {
+    const same = { live: file('live', 'r1', v2), trash: file('trash', 'r2', v2) };
+    expect(planSync(new Map(), { docs: new Map([[ID, same]]), strays: [] }, new Map(), ctx).map(shape)).toContain('dropDuplicate');
+  });
+
+  it('holding this computer’s unsynced version (a stopped upload), it is a duplicate: the upload follows', () => {
+    const actions = planSync(
+      new Map([[ID, local('trash', v1)]]),
+      { docs: new Map([[ID, { live: file('live', 'r0'), trash: file('trash', 'r2', v1) }]]), strays: [] },
+      new Map([[ID, base('live')]]),
+      ctx,
+    );
+    expect(actions.map(shape)).toEqual(['dropDuplicate', 'upload trash +cleanup']);
+  });
+});
+
 describe('planSync', () => {
   it('plans every id on either side or in the base, then the strays, and leaves out nothing-to-do', () => {
     const a = { ...v0, worksheet: { ...v0.worksheet, id: 'a' } };

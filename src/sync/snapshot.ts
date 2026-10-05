@@ -24,7 +24,7 @@ export interface RemoteFile {
   content?: Content | 'unreadable';
 }
 
-/** A document's canonical files. Both present: live wins. */
+/** A document's canonical files. Both present: live wins; the Trash file is an extra (`plan.ts`). */
 export interface RemoteDoc {
   live?: RemoteFile;
   trash?: RemoteFile;
@@ -104,6 +104,15 @@ export async function readRemote(
     if (kind.stem === undefined) strays.push(file);
     else if (content === 'unreadable' || content.worksheet.id === kind.stem) place(kind.stem, file);
     else strays.push(file);
+  }
+  // A Trash file beside a live one (a delete that crossed an edit) is resolved like a
+  // provider copy, which needs its content.
+  for (const doc of docs.values()) {
+    if (!doc.live || !doc.trash || doc.trash.content) continue;
+    const read = await source.read(doc.trash.key);
+    if (read.status === 'unavailable') return read;
+    if (read.status === 'missing') delete doc.trash;
+    else doc.trash = { ...doc.trash, revision: read.revision, content: remoteContent(read.text) };
   }
   return { docs, strays };
 }
