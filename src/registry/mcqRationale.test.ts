@@ -21,8 +21,10 @@ import { mcqType } from './mcq';
 
 const LANGUAGES: LanguageMode[] = ['en', 'zh', 'bilingual'];
 
-function mcq(texts: string[], answerIndex = 0): McqQuestion {
+/** `id` keys the version shuffle; pass a fixed one wherever a test depends on the order. */
+function mcq(texts: string[], answerIndex = 0, id?: string): McqQuestion {
   const question = createMcqQuestion();
+  if (id) question.id = id;
   question.blocks = [{ kind: 'paragraph', id: `${question.id}-stem`, text: bi('Stem', '題幹') }];
   question.options = texts.map((text, index) => ({ id: `${question.id}-${index}`, text: bi(text, text) }));
   question.answerIndex = answerIndex;
@@ -183,7 +185,9 @@ describe('the answer key', () => {
   });
 
   it("letters rationale per version, each under that version's own letters", () => {
-    const question = mcq(['w', 'x', 'y', 'z'], 1);
+    // A fixed id: with seed 99 it puts x at B, D, A in versions A, B, C. A random id
+    // gives all three the same key about 1 run in 23.
+    const question = mcq(['w', 'x', 'y', 'z'], 1, 'rationale-q');
     question.options[1].rationale = bi('x is right', 'x 正確');
     const worksheet: Worksheet = { ...createWorksheet(), questions: [question], versions: { count: 3, seed: 99 } };
     const nodes = renderAnswerKey(worksheet, 'en');
