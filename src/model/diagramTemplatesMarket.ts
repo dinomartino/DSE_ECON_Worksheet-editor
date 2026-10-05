@@ -315,8 +315,15 @@ function minimumWage(): Diagram {
     axes(AXIS.labour, AXIS.wage, {
       curves: [d, s, w],
       points: [e, qd, qs],
-      // Above W, between D and S: the surplus of labour.
-      spans: [span(at(qd), at(qs), 'bracket', { offset: 0.04, label: bi('surplus\n(unemployment)', '過剩（失業）') })],
+      // Above W, between D and S: the surplus of labour. The two-line label is lifted
+      // to where D and S have spread apart, or "(unemployment)" touches S.
+      spans: [
+        span(at(qd), at(qs), 'bracket', {
+          offset: 0.04,
+          label: bi('surplus\n(unemployment)', '過剩（失業）'),
+          labelOffset: { x: -0.03, y: 0.14 },
+        }),
+      ],
     }),
   );
 }

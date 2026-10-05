@@ -12,6 +12,13 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Fixed
+- **The minimum wage diagram's "surplus (unemployment)" label no longer touches the
+  supply curve.** A newly inserted minimum wage diagram now places the label clear of both
+  curves. Diagrams already in your papers keep their labels where they are.
+  <!-- zh: **最低工資圖的「過剩（失業）」標籤不再碰到供應曲線。** 新插入的最低工資圖，標籤會與
+  兩條曲線保持距離。工作紙內已有的圖，標籤位置保持不變。 -->
+
 ## 0.6.0 — 2026-10-04
 
 ### Added
