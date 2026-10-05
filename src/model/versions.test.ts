@@ -181,7 +181,7 @@ describe('rendered versions', () => {
   });
 
   it('re-renders when the seed changes, though the question object did not', () => {
-    const question = mcq(['w', 'x', 'y', 'z']);
+    const question = { ...mcq(['w', 'x', 'y', 'z']), id: 'q1' }; // the id keys the shuffle
     const mode = { ...STUDENT, variant: 'B' };
     const seeds = new Set<string>();
     for (let seed = 1; seed < 8; seed++) {
