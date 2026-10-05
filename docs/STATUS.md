@@ -31,8 +31,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   undo, second-tab tag guard, coalesced publish, virtualised rail, desktop `pack.json`+journal.
   題庫 "New Paper 2" makes the full booklet; the tray has no separate "New worksheet" button;
   text-derived topic keys are underlined with dots (user's calls).
-- `scripts/soffice.mjs` gives LibreOffice the CJK fonts (zh/bilingual Word legs used to drop
-  Chinese); `cover-verify` / `lq-verify` take `--language`; `shot.mjs --seed [--port=]` works.
+- `cover-verify` / `lq-verify` take `--language` (`scripts/soffice.mjs` gives LibreOffice CJK fonts).
 
 ## Before release (only the user can do these)
 
@@ -61,8 +60,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   areas or model answer diagrams (no leak).
 - **Never checked:** a real import of our exports into the four other apps; the desktop feedback
   opener; real Word/PMingLiU (LibreOffice + a Ming face agree); the desktop `pack.json` in Tauri.
-- Diagrams: template arrows (not Shift-a-copy) stay fixed; `curvePath` assumes the 3:4 plot.
-- Bank: ✦ Fill writes from another tab can still lose to an open editor's autosave.
+- Diagrams: template arrows stay fixed; `curvePath` assumes 3:4. Bank: ✦ Fill from another tab can lose to autosave.
 - Pagination now follows Word, so existing worksheets break differently on screen and in PDF.
 - Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
   updater key lives only at `~/.tauri/econ-worksheet.key`. `scripts/*.test.ts` are hand-run.
