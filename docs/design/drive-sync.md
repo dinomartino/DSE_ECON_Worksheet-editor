@@ -3,6 +3,10 @@
 Status: **shelved 2026-10-05.** Teachers run the desktop app on both computers, so the user chose
 the library-folder approach (`docs/design/library-folder.md`, from K Phase A). Keep this for
 web-only teachers. Written against `develop` at `1cd1fea`. Not built.
+**It cannot share a library with a folder-mode computer** (`drive.file` sees only files this app
+created, not ones Drive for desktop wrote): if built, it is a separate kind of library used on every
+computer. A direct-API stage for desktop teachers should use OneDrive's App Folder instead
+(`docs/research/2026-10-sync-survey.md`).
 Decisions by the user (2026-10-05): Google Drive first (OneDrive maybe later, so the design
 is provider-agnostic); free, in the teacher's own Drive; client-side OAuth only; scope
 `drive.file`; a visible **Econ Studio** folder holding the same `.json` files; local stays
