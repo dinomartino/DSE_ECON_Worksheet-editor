@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { NoticeInput } from '@/store/notices';
 import { roundMinutes } from '@/model/paperSummary';
 import { isPatternTag } from '@/model/patterns';
 import { topicOf } from '@/model/topics';
@@ -241,6 +242,23 @@ export interface BankCart {
   reset: () => void;
   /** Drop picks whose question is gone; returns how many. */
   prune: (exists: (key: string) => boolean) => number;
+}
+
+/** The one "List cleared · Undo" notice (`notify`): the tray has closed; Undo brings it back. */
+export const LIST_CLEARED_NOTICE = 'bank-list-cleared';
+
+export function listClearedNotice(
+  text: { listCleared: string; undo: string },
+  cart: Pick<BankCart, 'undoClear' | 'dismissUndo'>,
+): NoticeInput {
+  return {
+    id: LIST_CLEARED_NOTICE,
+    tone: 'info',
+    body: text.listCleared,
+    actions: [{ label: text.undo, run: cart.undoClear }],
+    // Closed without Undo: the emptied list is forgotten.
+    onDismiss: cart.dismissUndo,
+  };
 }
 
 /** A cart over the given storage; the app's one is `useBankCart`. */

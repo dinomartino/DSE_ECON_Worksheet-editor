@@ -6,10 +6,6 @@ export const SELECTION_TRAY_MESSAGES = defineMessages({
   orderHint: { en: ' · prints in this order · drag, or Alt+↑ ↓, to move', zh: ' · 按此順序列印 · 拖曳或按 Alt+↑ ↓ 移動' },
   sortedTitle: { en: 'Already in this order', zh: '已是此順序' },
   sortTitle: { en: 'Keep each type in its order', zh: '各類型按順序排列' },
-  emptyHint: {
-    en: 'Tick a question, or press Space on it, to add it here.',
-    zh: '剔選題目，或在題目上按空白鍵，即可加入這裏。',
-  },
   listLabel: { en: 'Picked questions, in print order', zh: '已選題目（按列印順序）' },
   untitled: { en: 'Untitled question', zh: '未命名題目' },
   handleLabel: {
@@ -20,11 +16,11 @@ export const SELECTION_TRAY_MESSAGES = defineMessages({
   moveUp: { en: (n: number) => `Move question ${n} up`, zh: (n: number) => `將第 ${n} 題上移` },
   moveDown: { en: (n: number) => `Move question ${n} down`, zh: (n: number) => `將第 ${n} 題下移` },
   takeOff: { en: (n: number) => `Take question ${n} off the list`, zh: (n: number) => `將第 ${n} 題移出清單` },
-  isEmpty: { en: 'Your list is empty', zh: '清單是空的' },
   topicsTitle: { en: (mix: string) => `Topics: ${mix}`, zh: (mix: string) => `課題：${mix}` },
   minutes: { en: (n: number) => `≈ ${n} min`, zh: (n: number) => `≈ ${n} 分鐘` },
   undo: { en: 'Undo', zh: '復原' },
-  close: { en: 'Close', zh: '關閉' },
+  /** The notice after Clear (or taking off the last question); the tray has closed. */
+  listCleared: { en: 'List cleared', zh: '已清除清單' },
   hide: { en: 'Hide your list', zh: '隱藏清單' },
   show: { en: 'Show your list', zh: '顯示清單' },
   clear: { en: 'Clear', zh: '清除' },
