@@ -30,6 +30,8 @@ The web is unchanged.
 9. **`clear()` in folder mode detaches; it never deletes from the folder** (§ 3.7).
 10. **A marker file** `econ-studio-library.json` in the folder carries a layout `format`,
     so a later build can change the layout and older builds open it read-only (§ 6).
+11. **The sync core never assumes a folder** (§ 3.12), so an account server or a cloud API can
+    later plug in as another source without rewriting it.
 
 ---
 
@@ -174,6 +176,9 @@ $APPDATA/ (hk.econworksheet.desktop)  this computer only
   all). `src/storage/fileStore.test.ts` must pass unchanged.
 - `folderDir`: the Rust commands (§ 4), reached by `import('@tauri-apps/api/core')` inside a
   function, in `src/platform/` (new `src/platform/library.ts`).
+
+This port is filesystem-shaped on purpose and belongs to the folder source; the sync core sits on
+the entry interface of § 3.12, never on paths.
 
 The store resolves its mode lazily on first call (`library_location`), since
 `src/storage/index.ts:worksheetStore` is built synchronously at module load. A mode change
@@ -320,6 +325,28 @@ reloads the webview; nothing re-points live.
 
 ---
 
+### 3.12 Future storage sources (login, cloud APIs)
+
+Not built now; a constraint on Stage 2 so login or a direct cloud API later reuses the sync core.
+Asked by the user 2026-10-05.
+
+- **Two layers.** The *source* knows where bytes live (folder, account server, OneDrive/Drive
+  API). The *sync core* above it (scan-diff and cache, compare-and-swap, keep-both conflicts,
+  Needs attention, local history, pending saves, the join merge, Trash rules) knows only entries.
+- **The core speaks in entries, not paths.** An entry is `{ key, revision, size }`, `key` being
+  the logical name (`<id>.worksheet.json`, `trash/<id>…`, `graphs/<id>…`). `revision` is opaque:
+  a content hash for a folder, an ETag or server version later. Compare-and-swap is
+  `write(key, text, { expectRevision })`; the core never reads `mtimeMs` or a path.
+- **Folder-only operations stay inside the folder source**: `rename`, `mkdir`, temp-file atomic
+  writes, provider conflict-copy name patterns, the file watcher. The core asks `changes()` for
+  "keys changed since my last look"; a folder answers from its watcher + scan, a server from a
+  change feed.
+- **Same rules everywhere.** Sync metadata stays outside documents; files keep today's bytes; the
+  device id and name become an account's devices; login never gates local work
+  (`docs/research/2026-09-paid-product/B-auth.md`).
+- **Check in review:** the core's tests run against an in-memory source as well as the fake
+  folder, and nothing outside the folder source imports the Rust library commands.
+
 ## 4. Tauri permissions
 
 Today `src-tauri/capabilities/default.json` grants fs read/write/remove/rename/exists/read-dir
@@ -442,7 +469,7 @@ until Stage 5 adds the entry point). Sizes: S ≈ 1–2 days, M ≈ 3–5, L ≈
 |---|---|---|---|
 | 0 | Provider probe (by hand, no code) | S | none |
 | 1 | Rust library commands + bridge | M | `src-tauri/src/library.rs` (new), `src-tauri/src/lib.rs`, `src-tauri/build.rs`, `src-tauri/Cargo.toml`, `src-tauri/capabilities/default.json`, `src/platform/library.ts` (new) |
-| 2 | `LibraryDir` port; folder-mode store: scan + cache, CAS, atomic writes, conflict detection, Trash by scan, folders/題型/graphs, `clear()` detach, pending saves | L | `src/storage/libraryDir.ts` (new), `src/storage/fileStore.ts`, `src/storage/index.ts`, `src/storage/graphs.ts`, `src/storage/document.ts` (`ChangedOnDiskError`), tests above |
+| 2 | `LibraryDir` port and the entry-level sync core (§ 3.12); folder-mode store: scan + cache, CAS, atomic writes, conflict detection, Trash by scan, folders/題型/graphs, `clear()` detach, pending saves | L | `src/storage/libraryDir.ts` (new), `src/storage/fileStore.ts`, `src/storage/index.ts`, `src/storage/graphs.ts`, `src/storage/document.ts` (`ChangedOnDiskError`), tests above |
 | 3 | Watcher, rescans, feed `origin`, start screen relist, editor reload / copy switch | M | `src/storage/changes.ts`, `src/library/types.ts`, `src/components/EditorApp.tsx`, `src/app/EditorHost.tsx`, `src/components/start/StartScreen.tsx` |
 | 4 | Conflict resolution (deterministic keep-both), conflict notice, local history + Earlier versions, replaced-by-older notice | M | store, `src/components/start/`, editor ⋯ menu, a `messages.ts` |
 | 5 | Settings section, setup dialog, move / join / move back, interrupted-move recovery, missing-folder screen, marker + fixtures, CHANGELOG line | L | `src/components/settings/sections/`, `src/storage/backup.ts`, `src/test/corpus/` |
