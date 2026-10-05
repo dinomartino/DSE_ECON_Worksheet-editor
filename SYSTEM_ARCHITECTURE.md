@@ -2364,6 +2364,27 @@ hover                      → margin drag grip → reorder
   (macOS overlay scrollbars are invisible until scrolled): `useScrollEdges` +
   `ScrollEdgeHints` (`src/components/ui/`), as on the start screen's aside.
 
+### Notices float; they never take space (`src/store/notices.ts`, `ui/NoticeLayer.tsx`)
+
+- **A result, failure or offer that can go away is a notice, raised with `notify()`**
+  (or `useNotices()` in a component), never rendered inline. Inline, every one moved the
+  page when it came and again when it closed. The same `id` replaces; same text re-flashes.
+- **Where it shows**: the app's one stack, bottom-right (`NoticeLayer`, mounted once in
+  `EditorHost`, so the start screen, 題庫, Graphs and the editor share it), newest on top,
+  four visible then "+N more". A bar docked along the window's foot reports its height
+  (`useNoticeInset`, 題庫's selection tray) so the stack sits above it.
+- **Dialogs**: a notice raised inside a `Dialog` (context, or `useDialogNotices()` +
+  `noticeScope` for the component that renders the dialog) floats over the foot of that
+  dialog's body and closes with it. The app stack sits under the scrim (z 48 < 50), so no
+  notice hides behind a backdrop and none is ever a click outside a dialog.
+- **Lifetime**: plain info/success fades after 6 s, paused while hovered, focused or the
+  window is in the background; warnings, errors and anything with a button stay until
+  closed. Escape never closes one, and a notice never takes focus.
+- **Stays inline**: field validation beside its input, persistent state (the newer-build
+  read-only bar, "Not saved yet", a read-only pattern list), and the floating run/review
+  bars (AI, 題庫 review), which are tools rather than notices.
+- Guard: `src/store/notices.test.ts` fails on a live region drawn as an inline banner.
+
 ---
 
 ## Interface language (`src/i18n/`)
