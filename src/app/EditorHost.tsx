@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UpdateBanner } from '@/components/editor/UpdateBanner';
 import { AppSettingsHost } from '@/components/settings/AppSettingsHost';
+import { NoticeLayer } from '@/components/ui/NoticeLayer';
 import { setBeforeRestart } from '@/desktop/updateStore';
 import { useBankReturn, useKeptTarget } from '@/components/bank/page/bankReturn';
 import { StartScreen } from '@/components/start/StartScreen';
@@ -170,10 +171,9 @@ export function EditorHost() {
   // `data-app-booting` tells the launch splash the start screen is not up yet.
   if (!hydrated) return <div data-app-booting className="h-screen bg-desk" />;
 
-  // The banner takes its own row; the screen below gets what is left, so neither ever
-  // overflows the window (both used to be `h-screen` under the banner).
   return (
     <div className="flex h-screen flex-col">
+      {/* Raises the desktop "update ready" notice; draws nothing itself. */}
       <UpdateBanner />
       {/* App Settings: the start screen and the editor both reach it. */}
       <AppSettingsHost />
@@ -184,6 +184,8 @@ export function EditorHost() {
           <EditorApp onOpenFiles={() => void leave()} onBackToBank={cameFromBank ? () => void backToBank() : undefined} onClearAll={clearAndLeave} onOpenDocument={open} />
         )}
       </div>
+      {/* The one app notice stack: start screen, 題庫, Graphs and the editor all share it. */}
+      <NoticeLayer />
     </div>
   );
 }
