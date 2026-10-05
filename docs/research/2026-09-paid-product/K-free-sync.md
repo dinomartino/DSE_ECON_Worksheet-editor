@@ -193,6 +193,8 @@ Documents, `folders.json`, `patterns.json` and `trash/` arrive independently, in
 | **Logseq** (file graphs) | Official FAQ lists iCloud duplicates, missed notifications and stuck uploads, and advises "avoid editing files on multiple devices at the same time" and backups; deleted or conflicted files go to `logseq/bak` ([FAQ](https://discuss.logseq.com/t/im-using-logseq-with-icloud-but-experiencing-data-loss-or-file-conflict-errors-whats-going-on/13393)). "File modified on disk" prompts and data loss are in the issue tracker ([#8269](https://github.com/logseq/logseq/issues/8269), [#5802](https://github.com/logseq/logseq/issues/5802)). | Its editor held state that raced the disk. **That is exactly our autosave hazard.** A `bak/` folder is the same idea as our local history. |
 | **Zotero** | "Storing your Zotero data directory in a cloud storage folder … is extremely likely to corrupt your database", because cloud tools don't honour SQLite locks and conflicted copies "would quickly proliferate" ([Zotero KB](https://www.zotero.org/support/kb/data_directory_in_cloud_storage_folder)). | **Never put a multi-writer database or index in the synced folder.** Our per-document JSON is the safe shape. The shared `index.json` is the Zotero-shaped risk. |
 
+Wider survey (about 20 apps, five sync models, the "no cloud client" case): `docs/research/2026-10-sync-survey.md`.
+
 ---
 
 ## 3. Web access to the same documents, at zero cost
