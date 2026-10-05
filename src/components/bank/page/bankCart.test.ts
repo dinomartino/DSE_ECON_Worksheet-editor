@@ -7,6 +7,7 @@ import {
   cartTotals,
   createBankCart,
   isSortedByType,
+  listClearedNotice,
   movePick,
   parseCart,
   prunePicks,
@@ -21,6 +22,9 @@ import {
   type CartPick,
 } from './bankCart';
 import { rowKey } from './bankPage';
+import { SELECTION_TRAY_MESSAGES } from './SelectionTray.messages';
+import { closeNotice, notify, resetNoticesForTest, runNoticeAction, useNoticeStore } from '@/store/notices';
+import { resolveMessages } from '@/i18n/catalogue';
 
 const MCQ = createMcqQuestion().type;
 const LQ = createStructuredQuestion().type;
@@ -209,6 +213,35 @@ describe('the cart store', () => {
     cart.getState().reset();
     expect(cart.getState().picks).toEqual([]);
     expect(cart.getState().cleared).toBeNull();
+  });
+
+  it('after Clear, the floating "List cleared" notice brings the list back with Undo', () => {
+    resetNoticesForTest();
+    const cart = createBankCart(() => memory());
+    cart.getState().toggle(r('a'), () => undefined);
+    cart.getState().toggle(r('b'), () => undefined);
+    cart.getState().clear();
+    const text = resolveMessages(SELECTION_TRAY_MESSAGES, 'en');
+    const id = notify(listClearedNotice(text, cart.getState()));
+    const notice = useNoticeStore.getState().notices[0];
+    expect(notice).toMatchObject({ tone: 'info', body: 'List cleared' });
+    // An action keeps it up until closed or used (the agreed rule), never a timeout.
+    expect(notice.actions?.map((a) => a.label)).toEqual(['Undo']);
+    runNoticeAction(id, notice.actions![0]);
+    expect(keys(cart.getState().picks)).toEqual(['a', 'b']);
+    expect(useNoticeStore.getState().notices).toHaveLength(0);
+  });
+
+  it('closing the "List cleared" notice forgets the Undo', () => {
+    resetNoticesForTest();
+    const cart = createBankCart(() => memory());
+    cart.getState().toggle(r('a'), () => undefined);
+    cart.getState().clear();
+    const id = notify(listClearedNotice(resolveMessages(SELECTION_TRAY_MESSAGES, 'zh-HK'), cart.getState()));
+    expect(useNoticeStore.getState().notices[0].body).toBe('已清除清單');
+    closeNotice(id);
+    expect(cart.getState().cleared).toBeNull();
+    expect(cart.getState().picks).toEqual([]);
   });
 
   it('sorts and prunes through the store', () => {

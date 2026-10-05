@@ -41,31 +41,23 @@ export function SelectionTray({
   rows,
   target,
   busy,
-  canUndo,
   onRemove,
   onMove,
   onSortByType,
   onClear,
-  onUndo,
-  onDismiss,
   onSetTopic,
   onAdd,
 }: {
-  /** The picks, in cart order. */
+  /** The picks, in cart order; never empty (Clear closes the tray, its Undo is a notice). */
   rows: readonly BankRow[];
   /** Where the one action puts them (the "Adding to" picker): a saved paper, or a new document. */
   target: BankTarget;
   busy: boolean;
-  /** The list was just emptied here and can come back. */
-  canUndo: boolean;
   onRemove: (key: string) => void;
   /** Move the pick to sit before `beforeKey`, or to the end. */
   onMove: (key: string, beforeKey?: string) => void;
   onSortByType: () => void;
   onClear: () => void;
-  onUndo: () => void;
-  /** Closing an emptied tray: the Undo is forgotten. */
-  onDismiss: () => void;
   onSetTopic: () => void;
   onAdd: () => void;
 }) {
@@ -79,7 +71,6 @@ export function SelectionTray({
   const totals = cartTotals(rows);
   const split = typeSplitLabel(totals);
   const mix = mixLabel(traySummary(rows).mix);
-  const empty = rows.length === 0;
   const keys = rows.map(rowKey);
   const sorted = isSortedByType(rows.map((row) => row.typeId));
   const listRef = useRef<HTMLOListElement>(null);
@@ -103,9 +94,6 @@ export function SelectionTray({
     const target = row?.querySelector<HTMLElement>(`[data-cart-control="${want.control}"]:not(:disabled)`) ?? row?.querySelector<HTMLElement>('[data-cart-control="handle"]');
     (target ?? list.closest<HTMLElement>('[data-cart-panel]')?.querySelector<HTMLElement>('[data-cart-heading]'))?.focus();
   });
-
-  // The emptied tray, closed: nothing to undo any more.
-  useEffect(() => () => onDismiss(), [onDismiss]);
 
   // Esc during a drag cancels it, before the screen's own Esc (a window listener) goes up a level.
   useEffect(() => {
@@ -191,7 +179,6 @@ export function SelectionTray({
     onMove(current.key, keys[current.gap]);
   };
 
-  const summaryText = empty ? m.isEmpty : undefined;
   // Docked along the foot of the window: the app's notices stack above it, clear of Add.
   const insetRef = useNoticeInset('bank-tray');
 
@@ -208,140 +195,111 @@ export function SelectionTray({
           <div className="flex items-center gap-3 px-4 pb-1 pt-2">
             <h2 data-cart-heading tabIndex={-1} className="min-w-0 flex-1 truncate text-[11.5px] text-ink-subtle outline-none">
               <span className="font-semibold uppercase tracking-[0.08em]">{m.yourList}</span>
-              {!empty && <span>{m.orderHint}</span>}
+              <span>{m.orderHint}</span>
             </h2>
-            {!empty && (
-              <Button
-                variant="subtle"
-                size="sm"
-                onClick={onSortByType}
-                disabled={busy || sorted}
-                title={sorted ? m.sortedTitle : m.sortTitle}
-              >
-                {sortLabel()}
-              </Button>
-            )}
-          </div>
-          {empty ? (
-            <p className="px-4 pb-3 pt-1 text-[12.5px] leading-relaxed text-ink-muted">
-              {m.emptyHint}
-            </p>
-          ) : (
-            <ol
-              ref={listRef}
-              aria-label={m.listLabel}
-              className="scroll-slim relative max-h-[min(34vh,320px)] overflow-y-auto pb-1.5"
+            <Button
+              variant="subtle"
+              size="sm"
+              onClick={onSortByType}
+              disabled={busy || sorted}
+              title={sorted ? m.sortedTitle : m.sortTitle}
             >
-              {rows.map((row, index) => {
-                const key = keys[index];
-                const excerpt = row.excerpt.en || row.excerpt.zh || m.untitled;
-                const topic = cartTopicLabel(row.tags);
-                const meta = [topic ?? w.noTopic, typeLabel(row.typeId), marksLabel(row.marks), sourceLabel(row)].join(' · ');
-                const dragging = drag?.moving && drag.key === key;
-                return (
-                  <li
-                    key={key}
-                    data-cart-key={key}
-                    onKeyDown={(event) => onRowKey(event, key)}
-                    className={`grid grid-cols-[22px_20px_minmax(0,1fr)_auto] items-center gap-x-1.5 px-3 py-1 transition-colors duration-100 ${
-                      dragging ? 'bg-surface-sunken opacity-60' : 'hover:bg-surface-hover'
-                    }`}
+              {sortLabel()}
+            </Button>
+          </div>
+          <ol
+            ref={listRef}
+            aria-label={m.listLabel}
+            className="scroll-slim relative max-h-[min(34vh,320px)] overflow-y-auto pb-1.5"
+          >
+            {rows.map((row, index) => {
+              const key = keys[index];
+              const excerpt = row.excerpt.en || row.excerpt.zh || m.untitled;
+              const topic = cartTopicLabel(row.tags);
+              const meta = [topic ?? w.noTopic, typeLabel(row.typeId), marksLabel(row.marks), sourceLabel(row)].join(' · ');
+              const dragging = drag?.moving && drag.key === key;
+              return (
+                <li
+                  key={key}
+                  data-cart-key={key}
+                  onKeyDown={(event) => onRowKey(event, key)}
+                  className={`grid grid-cols-[22px_20px_minmax(0,1fr)_auto] items-center gap-x-1.5 px-3 py-1 transition-colors duration-100 ${
+                    dragging ? 'bg-surface-sunken opacity-60' : 'hover:bg-surface-hover'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    data-cart-control="handle"
+                    aria-label={m.handleLabel(index + 1)}
+                    title={m.handleTitle}
+                    onPointerDown={(event) => onHandleDown(event, key)}
+                    onPointerMove={onHandleMove}
+                    onPointerUp={onHandleUp}
+                    onPointerCancel={() => setDrag(undefined)}
+                    className="grid h-7 w-[22px] cursor-grab touch-none place-items-center rounded-md text-ink-subtle transition-colors duration-150 hover:bg-surface-sunken hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:cursor-grabbing"
                   >
-                    <button
-                      type="button"
-                      data-cart-control="handle"
-                      aria-label={m.handleLabel(index + 1)}
-                      title={m.handleTitle}
-                      onPointerDown={(event) => onHandleDown(event, key)}
-                      onPointerMove={onHandleMove}
-                      onPointerUp={onHandleUp}
-                      onPointerCancel={() => setDrag(undefined)}
-                      className="grid h-7 w-[22px] cursor-grab touch-none place-items-center rounded-md text-ink-subtle transition-colors duration-150 hover:bg-surface-sunken hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:cursor-grabbing"
+                    <GripGlyph />
+                  </button>
+                  <span className="text-right text-[12px] tabular-nums text-ink-subtle">{index + 1}</span>
+                  <div className="min-w-0 py-0.5">
+                    <p className="truncate text-[12.5px] leading-[1.4] text-ink" title={excerpt}>
+                      {excerpt}
+                    </p>
+                    <p className="truncate text-[11px] tabular-nums text-ink-subtle" title={meta}>
+                      {meta}
+                    </p>
+                  </div>
+                  <span className="flex items-center">
+                    <RowButton control="up" label={m.moveUp(index + 1)} disabled={busy || index === 0} onClick={() => move(key, -1, 'up')}>
+                      ↑
+                    </RowButton>
+                    <RowButton
+                      control="down"
+                      label={m.moveDown(index + 1)}
+                      disabled={busy || index === rows.length - 1}
+                      onClick={() => move(key, 1, 'down')}
                     >
-                      <GripGlyph />
-                    </button>
-                    <span className="text-right text-[12px] tabular-nums text-ink-subtle">{index + 1}</span>
-                    <div className="min-w-0 py-0.5">
-                      <p className="truncate text-[12.5px] leading-[1.4] text-ink" title={excerpt}>
-                        {excerpt}
-                      </p>
-                      <p className="truncate text-[11px] tabular-nums text-ink-subtle" title={meta}>
-                        {meta}
-                      </p>
-                    </div>
-                    <span className="flex items-center">
-                      <RowButton control="up" label={m.moveUp(index + 1)} disabled={busy || index === 0} onClick={() => move(key, -1, 'up')}>
-                        ↑
-                      </RowButton>
-                      <RowButton
-                        control="down"
-                        label={m.moveDown(index + 1)}
-                        disabled={busy || index === rows.length - 1}
-                        onClick={() => move(key, 1, 'down')}
-                      >
-                        ↓
-                      </RowButton>
-                      <RowButton control="remove" label={m.takeOff(index + 1)} disabled={busy} onClick={() => remove(key, 'remove')}>
-                        ×
-                      </RowButton>
-                    </span>
-                  </li>
-                );
-              })}
-              {drag?.moving && (
-                <li aria-hidden className="pointer-events-none absolute inset-x-3 h-0.5 -translate-y-px rounded-full bg-accent" style={{ top: drag.lineTop }} />
-              )}
-            </ol>
-          )}
+                      ↓
+                    </RowButton>
+                    <RowButton control="remove" label={m.takeOff(index + 1)} disabled={busy} onClick={() => remove(key, 'remove')}>
+                      ×
+                    </RowButton>
+                  </span>
+                </li>
+              );
+            })}
+            {drag?.moving && (
+              <li aria-hidden className="pointer-events-none absolute inset-x-3 h-0.5 -translate-y-px rounded-full bg-accent" style={{ top: drag.lineTop }} />
+            )}
+          </ol>
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
         <p className="min-w-0 flex-1 truncate text-[12.5px] tabular-nums text-ink" title={mix ? m.topicsTitle(mix) : undefined} aria-live="polite">
-          {summaryText ? (
-            <span className="text-ink-muted">{summaryText}</span>
-          ) : (
-            <>
-              <b className="font-semibold">
-                {w.questions(totals.count)}
-              </b>
-              <span className="text-ink-muted">
-                {' · '}
-                {marksLabel(totals.marks)}
-                {split && ` · ${split}`} · {m.minutes(totals.minutes)}
-              </span>
-            </>
-          )}
+          <b className="font-semibold">
+            {w.questions(totals.count)}
+          </b>
+          <span className="text-ink-muted">
+            {' · '}
+            {marksLabel(totals.marks)}
+            {split && ` · ${split}`} · {m.minutes(totals.minutes)}
+          </span>
         </p>
-        {empty ? (
-          <>
-            {canUndo && (
-              <Button variant="subtle" size="sm" onClick={onUndo}>
-                {m.undo}
-              </Button>
-            )}
-            <Button variant="subtle" size="sm" onClick={onDismiss}>
-              {m.close}
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button variant="subtle" size="sm" aria-expanded={open} onClick={() => setOpen(!open)}>
-              {open ? m.hide : m.show}
-            </Button>
-            <Button variant="subtle" size="sm" onClick={onClear} disabled={busy} title={m.clearTitle}>
-              {m.clear}
-            </Button>
-          </>
-        )}
-        <Button size="sm" onClick={onSetTopic} disabled={busy || empty}>
+        <Button variant="subtle" size="sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? m.hide : m.show}
+        </Button>
+        <Button variant="subtle" size="sm" onClick={onClear} disabled={busy} title={m.clearTitle}>
+          {m.clear}
+        </Button>
+        <Button size="sm" onClick={onSetTopic} disabled={busy}>
           {m.setTopic}
         </Button>
         <Button
           variant="primary"
           size="sm"
           onClick={onAdd}
-          disabled={busy || empty}
+          disabled={busy}
           title={target.kind === 'paper' ? m.addToTitle(target.summary.title) : undefined}
           className="max-w-[260px]"
         >

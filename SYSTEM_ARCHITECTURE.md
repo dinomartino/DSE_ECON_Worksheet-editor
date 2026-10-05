@@ -2372,7 +2372,8 @@ hover                      → margin drag grip → reorder
 - **Where it shows**: the app's one stack, bottom-right (`NoticeLayer`, mounted once in
   `EditorHost`, so the start screen, 題庫, Graphs and the editor share it), newest on top,
   four visible then "+N more". A bar docked along the window's foot reports its height
-  (`useNoticeInset`, 題庫's selection tray) so the stack sits above it.
+  (`useNoticeInset`, 題庫's selection tray) so the stack sits above it. Clear closes that
+  tray at once; its Undo is a "List cleared" notice (`bankCart.ts:listClearedNotice`).
 - **Dialogs**: a notice raised inside a `Dialog` (context, or `useDialogNotices()` +
   `noticeScope` for the component that renders the dialog) floats over the foot of that
   dialog's body and closes with it. The app stack sits under the scrim (z 48 < 50), so no

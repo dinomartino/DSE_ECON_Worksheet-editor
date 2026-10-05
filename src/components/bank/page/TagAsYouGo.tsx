@@ -134,7 +134,11 @@ export function TagAsYouGo({
             {m.open}
           </Button>
         </div>
-        {undoLine}
+        {/* Its row is held from the start, so the first save (and the next question) never
+            moves the topic buttons under the pointer. */}
+        <div data-undo-slot className="grid h-6 min-w-0 items-center">
+          {undoLine}
+        </div>
         {parts && <PartStrip {...parts} />}
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label={parts ? m.topicsFor(parts.name) : m.topicsForQuestion}>
           {suggestions.map((code, index) => {

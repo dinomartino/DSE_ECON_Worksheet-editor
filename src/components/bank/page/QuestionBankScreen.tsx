@@ -45,7 +45,9 @@ import { BankAiBar, BankAiNote } from './BankAiBar';
 import { BankAiMenu } from './BankAiMenu';
 import { addPicksToOpenDocument, nothingAddedText, splitAlreadyInPaper } from './addToOpen';
 import { afterOpen, revealQuestion, tagIndexOf, useBankReturn, useKeptTarget } from './bankReturn';
-import { useBankCart } from './bankCart';
+import { LIST_CLEARED_NOTICE, listClearedNotice, useBankCart } from './bankCart';
+import { SELECTION_TRAY_MESSAGES } from './SelectionTray.messages';
+import { useNotices } from '@/components/ui/NoticeLayer';
 import {
   activeFilters,
   bankCountLabel,
@@ -202,6 +204,20 @@ export function QuestionBankScreen({
   // The cart: kept per tab across Open in worksheet, Home and a reload (`bankCart.ts`).
   const cart = useBankCart();
   const picks = useMemo(() => cart.picks.map(rowKey), [cart.picks]);
+  // Emptied (Clear, or the last question taken off): the tray closes and its Undo floats in
+  // the notice stack until closed or used; any later change to the list retires it.
+  const notices = useNotices();
+  const tray = useMessages(SELECTION_TRAY_MESSAGES);
+  const listCleared = cart.cleared !== null;
+  useEffect(() => {
+    if (!listCleared) {
+      notices.dismiss(LIST_CLEARED_NOTICE);
+      return;
+    }
+    notices.notify(listClearedNotice(tray, useBankCart.getState()));
+  }, [listCleared, notices, tray]);
+  // Leaving the bank forgets the Undo, as closing the emptied tray did.
+  useEffect(() => () => useBankCart.getState().dismissUndo(), []);
   const [railHidden, setRailHiddenState] = useState(readRailHidden);
   const [language, setLanguage] = useState<LanguageMode>('en');
   const [version, setVersion] = useState<VersionMode>('teacher');
@@ -998,18 +1014,15 @@ export function QuestionBankScreen({
       <BankAiBar run={bankAi} left={level.kind === 'review' ? (railHidden ? 52 : 300) : 0} />
       </div>
 
-      {(pickedRows.length > 0 || cart.cleared) && level.kind !== 'untagged' && level.kind !== 'patterns' && (
+      {pickedRows.length > 0 && level.kind !== 'untagged' && level.kind !== 'patterns' && (
         <SelectionTray
           rows={pickedRows}
           target={target}
           busy={busy}
-          canUndo={cart.cleared !== null}
           onRemove={cart.remove}
           onMove={cart.move}
           onSortByType={() => cart.sortByType((key) => byKey.get(key)?.typeId)}
           onClear={cart.clear}
-          onUndo={cart.undoClear}
-          onDismiss={cart.dismissUndo}
           onSetTopic={() => setPicker({ mode: 'bulk', topicMode: 'add' })}
           onAdd={() => void (target.kind === 'paper' ? addTo(pickedRows, target.summary) : newDocument(target.documentType))}
         />
