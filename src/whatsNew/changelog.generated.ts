@@ -35,6 +35,11 @@ a version heading is edited afterwards.
   curves. Diagrams already in your papers keep their labels where they are.
   <!-- zh: **最低工資圖的「過剩（失業）」標籤不再碰到供應曲線。** 新插入的最低工資圖，標籤會與
   兩條曲線保持距離。工作紙內已有的圖，標籤位置保持不變。 -->
+- **Typing while your work is being saved no longer loses those last keystrokes.** An edit
+  made at the very moment of an automatic save, or of Save, used to be counted as saved
+  without being written. It is now saved a moment later, like any other edit.
+  <!-- zh: **在自動儲存期間輸入，最後幾個字不會再遺失。** 以往在自動儲存或按「儲存」的一刻所作的
+  修改，會被當作已儲存但其實未寫入。現在會在稍後一併儲存，與其他修改一樣。 -->
 
 ## 0.6.0 — 2026-10-04
 

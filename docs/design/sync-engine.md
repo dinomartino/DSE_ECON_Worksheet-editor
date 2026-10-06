@@ -204,3 +204,15 @@ seeds at 40 steps and 1,500 at 120 passed.
 - `clear()` forgets the base (scheduler stage). A provider-renamed **lone** file holding the only
   copy is adopted as the original, not trashed plus copied (planner change, next stage). A copy's
   name carries that version's own last-edit time. (Coordinator.)
+
+## First real run (by hand, `npm run desktop:dev`, a scratch folder: choosing one uploads the library)
+
+1. Devtools: `__econSync` is `undefined` (nothing started).
+2. `await window.__TAURI_INTERNALS__.invoke('library_choose', { title: null })`, pick an empty folder;
+   `invoke('library_location')` → status `ok`.
+3. Reload (Cmd+R): `__econSync.status()` is `idle`, `lastReport.counts.uploaded` = your paper count,
+   and the folder holds `<id>.worksheet.json` files.
+4. Edit a paper, wait ~5 s: `uploaded` 1. Edit a folder file by hand: `downloaded` within seconds, and an
+   open, clean editor reloads with a notice. `__econSync.syncNow()` forces a run.
+5. Undo: `invoke('library_forget')`, reload.
+

@@ -10,32 +10,26 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **2026-10-05: cross-device sync (F9).** One source-agnostic engine, local primary + mirror for
   every source (`src/sync/`, `docs/design/sync-engine.md`), merged with no entry point. 2026-10-06:
   base persistence (per source), hash cache and the folder source (Rust `library_*` commands,
-  `src/platform/library.ts`, `src/sync/folderSource.ts`) merged; next the scheduler, then UI (`docs/design/library-folder.md`, survey
-  `docs/research/2026-10-sync-survey.md`; Drive API design shelved).
+  `src/platform/library.ts`, `src/sync/folderSource.ts`) and the scheduler (`src/sync/librarySync.ts`,
+  starts in `EditorHost` only when a folder is chosen; `isBusy` holds unsaved open documents)
+  merged; next the UI: Storage location, Needs attention, notices (`docs/design/library-folder.md`,
+  survey `docs/research/2026-10-sync-survey.md`; Drive API design shelved).
 - **2026-10-05: dismissible notices float** bottom-right via `notify()` (`src/store/notices.ts`);
   follow-ups (題庫 Clear → floating Undo, reserved tag line) merged (`bcf57c4`).
 - **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
   question bank, Marking scheme view and layouts, Translation terms, 中文 interface, Graphs
   圖表庫, diagram answer layer, the Econ Studio rename. Next work goes on `develop` as usual.
   Website shots: `node scripts/demo.mjs --shots` → 14 WebP at 1920 in `demo-media/screenshots/`.
-- **2026-10-03: every known gap fixed** (user's ask) on `fix/gaps-*` branches, all merged. Schema
-  rule now "bump only when used": `writtenSchemaVersion` writes 2 for diagram `answer`,
-  `answerKeyLayout`, section `answerCount`, essay answer/scheme, `importQuota` derive; else 1.
-  Frozen `v2-published.json`, `graph-v2.json`, `v2-optional-sections.json`. Index rows carry
-  `indexRev`; rows v0.5.0 wrote get their `kind` repaired from the document.
-  The bilingual empty-side prompt floats (no page space; `InlineEditable` `floating`).
-- **2026-10-03 (second sweep):** the rest of the open gaps, on `fix/gaps2-*`, all merged: preview
-  pages break where Word does (keep runs, glued tails); a covered paper's page-1 header is the first
-  body sheet; no blank header rows in `.docx`; canvas toolbar one row (⋯ clipboard menu); Q_A a
-  span (`last` anchor, schema 2); Shift-a-copy arrows follow; CPF label clears the axis; COVERAGE
-  0 partial (7 templates, `curvePath` reads curves as drawn); CS/PS reach the price axis; 題庫
-  "Adding to" picker + "Already in this paper", text→topic suggestions (`termTopics.ts`), synced
-  undo, second-tab tag guard, coalesced publish, virtualised rail, desktop `pack.json`+journal.
-  題庫 "New Paper 2" makes the full booklet; the tray has no separate "New worksheet" button;
-  text-derived topic keys are underlined with dots (user's calls).
+- **2026-10-03: every known gap fixed** (two sweeps, `fix/gaps-*` / `fix/gaps2-*`, merged; detail in
+  `git show 3818f89:docs/STATUS.md`). Schema rule "bump only when used" (`writtenSchemaVersion`);
+  frozen `v2-*.json` corpora; index rows carry `indexRev`. Preview pages break where Word does.
 - `cover-verify` / `lq-verify` take `--language` (`scripts/soffice.mjs` gives LibreOffice CJK fonts).
 
 ## Before release (only the user can do these)
+
+- Sync's first real run: `desktop:dev` with a scratch folder, devtools steps in
+  `docs/design/sync-engine.md` § First real run; then Stage 0
+  provider probe (`library-folder.md` § 7) on two computers.
 
 - Windows: 0.6.0 shipped without the rename hook test (`RELEASING.md`), user's call; check one install;
   Keychain prompt in a built app; 標楷體 export in Word.
@@ -47,6 +41,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   CSV + backup; launch animation once per cold start; real print dialog; paste a graph into Word.
 
 ## Waiting on the user's call
+
+- Sync: "Clear saved documents" with a folder chosen forgets the base, so the folder refills the
+  library on the next run (as designed). Keep that, or make Clear also detach the folder? Its
+  confirm text must say which (UI stage).
 
 - Paid service (`docs/research/2026-09-paid-product/`): what first; the in-app "use a VPN" Gemini
   wording breaks Google's terms. Gemini privacy line may be dropped.
@@ -65,16 +63,17 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
   updater key lives only at `~/.tauri/econ-worksheet.key`. `scripts/*.test.ts` are hand-run.
 
-## Last verified (2026-10-06, `develop` after the folder-source merge)
+## Last verified (2026-10-06, `develop` after the scheduler merge)
 
-- `npm test` 4463 passed; `npm run build` green; typecheck clean; lint 40 (one under the 41 baseline).
+- `npm test` 4745 passed; `npm run build` green; typecheck clean; lint 40 (one under the 41 baseline).
 
 ## Log
 
 - **2026-10-06** — Sync base persists (web IndexedDB `econ-worksheet-sync`, desktop
   `$APPDATA/sync/`), hash cache (`forgetOnWrite`), folder source (`cargo test` 31 passed; run and
-  property tests run through both sources): 3 Opus worktree branches, merged. None run in a real
-  Tauri shell, browser, Windows or cloud provider yet; the scheduler stage proves them.
+  property tests run through both sources), scheduler + open-editor guard; autosave no longer marks
+  an edit typed mid-save as saved (CHANGELOG): 4 Opus worktree branches, merged. None run in a real
+  Tauri shell, browser, Windows or cloud provider yet.
 - **2026-10-05** — Housekeeping (3 Opus worktree branches, merged): frozen 題庫 fixtures emitted
   at tag v0.6.0 (`src/test/corpus/bank-v0.6.0-*.json`, guards in backwardCompat/legacyIndex/
   `bankCorpus.test.ts`); min-wage template label lifted (demo workaround removed); flaky
