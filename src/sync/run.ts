@@ -56,6 +56,13 @@ export interface RunOptions {
    * when every write to `store` forgets (`forgetOnWrite`). Absent: every document is loaded.
    */
   hashCache?: HashCache;
+  /**
+   * A document open with unsaved edits. Nothing is done to it while this says so (held
+   * `busy`): its edits are based on what is stored, so they are saved first and the next
+   * run compares them. Asked again after each local write: an edit that arrived during
+   * one leaves the base as it was, so the edit's save meets that version as a conflict.
+   */
+  isBusy?: (id: string) => boolean;
 }
 
 class SourceUnavailable extends Error {
@@ -65,6 +72,8 @@ class SourceUnavailable extends Error {
 }
 /** The document changed since it was planned, on either side: re-plan it. */
 class Stale extends Error {}
+/** Open with unsaved edits (`isBusy`): hold it this run. */
+class Busy extends Error {}
 
 const COUNT: Partial<Record<SyncAction['kind'], Count>> = {
   upload: 'uploaded',
@@ -142,10 +151,12 @@ class Executor {
     // Planned from a cached hash: load it whole and plan again. Not a retry.
     if (action.kind === 'needsLocal') return this.apply(await this.replan(action.id), attempt);
     try {
+      if (action.kind !== 'hold' && 'id' in action && this.busy(action.id)) throw new Busy();
       await this.step(action);
       const count = COUNT[action.kind];
       if (count) this.report.counts[count] += 1;
     } catch (error) {
+      if (error instanceof Busy) return this.heldBusy(action);
       if (!(error instanceof Stale)) throw error;
       if (!('id' in action) || !action.id || attempt >= this.maxAttempts) {
         throw new Error('It kept changing during sync; trying again next time.');
@@ -160,6 +171,27 @@ class Executor {
     const local = await this.local(id);
     const base = (await this.options.base.load()).get(id);
     return planDocument(id, local, remote, base, this.ctx);
+  }
+
+  private heldBusy(action: SyncAction): void {
+    const id = 'id' in action ? action.id : undefined;
+    const key = 'from' in action ? action.from.key : undefined;
+    this.report.held.push({ ...(id ? { id } : {}), ...(key && !id ? { key } : {}), reason: 'busy' });
+    this.report.counts.held += 1;
+  }
+
+  private busy(id: string): boolean {
+    return this.options.isBusy?.(id) ?? false;
+  }
+
+  /** A local write to `id`, never under unsaved edits: checked before, and again after. */
+  private async touch<T>(id: string, work: () => Promise<T>): Promise<T> {
+    if (this.busy(id)) throw new Busy();
+    const result = await work();
+    // An edit arrived while this wrote: it is based on the version before. The base is
+    // left as it was, so that edit's save is compared with this version (keep both).
+    if (this.busy(id)) throw new Busy();
+    return result;
   }
 
   /** Fresh and whole; it refreshes the hash cache too. */
@@ -206,8 +238,8 @@ class Executor {
       }
       case 'moveLocal': {
         const content = await this.confirmLocal(action.id, action.seen);
-        if (action.to === 'trash') await store.trash(action.id);
-        else if ((await store.restore(action.id)) !== action.id) throw new Error('Restored under another id.');
+        if (action.to === 'trash') await this.touch(action.id, () => store.trash(action.id));
+        else if ((await this.touch(action.id, () => store.restore(action.id))) !== action.id) throw new Error('Restored under another id.');
         return this.record(action.id, action.to, content, action.revision);
       }
       case 'conflict': {
@@ -282,11 +314,11 @@ class Executor {
     if (!unchanged) throw new Stale();
     const differs = !now || (now.content as Content).hash !== incoming.hash;
     if (place === 'live') {
-      if (now?.place === 'trash' && (await store.restore(id)) !== id) throw new Error('Restored under another id.');
-      if (differs) await store.adopt(incoming.worksheet);
+      if (now?.place === 'trash' && (await this.touch(id, () => store.restore(id))) !== id) throw new Error('Restored under another id.');
+      if (differs) await this.touch(id, () => store.adopt(incoming.worksheet));
     } else {
-      if (differs) await store.adopt(incoming.worksheet);
-      if (differs || now?.place === 'live') await store.trash(id);
+      if (differs) await this.touch(id, () => store.adopt(incoming.worksheet));
+      if (differs || now?.place === 'live') await this.touch(id, () => store.trash(id));
     }
     const after = await this.local(id);
     if (!after || after.content === 'unreadable') throw new Error('The downloaded document will not load.');
@@ -303,8 +335,8 @@ class Executor {
     const existing = await this.local(copy.id);
     if (existing && (existing.content === 'unreadable' || existing.content.hash !== copy.hash)) return;
     if (!existing) {
-      await store.adopt(copy.worksheet);
-      if (copy.place === 'trash') await store.trash(copy.id);
+      await this.touch(copy.id, () => store.adopt(copy.worksheet));
+      if (copy.place === 'trash') await this.touch(copy.id, () => store.trash(copy.id));
     }
     const key = documentKey(copy.id, copy.place);
     const written = await source.write(key, copy.text, { expectRevision: null });

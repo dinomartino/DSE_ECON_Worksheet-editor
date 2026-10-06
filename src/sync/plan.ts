@@ -49,7 +49,8 @@ export interface Copy extends Content {
   place: Place;
 }
 
-export type HoldReason = 'unreadable' | 'unreadable-local' | 'newer-build';
+/** `busy`: open with unsaved edits (`RunOptions.isBusy`); synced once they are saved. */
+export type HoldReason = 'unreadable' | 'unreadable-local' | 'newer-build' | 'busy';
 
 export type SyncAction =
   | { kind: 'nothing'; id: string }

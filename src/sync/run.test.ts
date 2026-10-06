@@ -11,6 +11,7 @@ import {
   edit,
   library,
   memoryConnect,
+  openEditor,
   paper,
   settle,
   titles,
@@ -598,6 +599,83 @@ describe.each(SOURCES)("%s source", (_source, connect) => {
         expect(a.loads.count).toBe(1);
         expect(a.hashCache.get(doc.id)).toBeUndefined();
       }
+    });
+  });
+
+  describe("the open editor", () => {
+    async function shared(title: string) {
+      const { cloud, a, b } = pair();
+      const doc = paper(title);
+      await a.store.save(doc);
+      await settle(cloud, a, b);
+      return { cloud, a, b, doc };
+    }
+
+    const shown = (worksheet: { title: { en: { text: string }[] } }) => worksheet.title.en.map((run) => run.text).join("");
+
+    it("clean: the download is taken in and the editor shows it", async () => {
+      const { a, b, doc } = await shared("One");
+      const editor = await openEditor(b, doc.id);
+      await edit(a, doc.id, "Two");
+      await a.sync();
+      expect((await b.sync()).counts.downloaded).toBe(1);
+      expect(editor.reloads).toBe(1);
+      expect(shown(editor.worksheet)).toBe("Two");
+    });
+
+    it("unsaved edits: nothing is done to it until they are saved, then both are kept", async () => {
+      const { cloud, a, b, doc } = await shared("One");
+      const editor = await openEditor(b, doc.id);
+      editor.type("Mine");
+      await edit(a, doc.id, "Theirs");
+      await a.sync();
+      const held = await b.sync();
+      expect(held.held).toEqual([{ id: doc.id, reason: "busy" }]);
+      expect(held.counts.downloaded).toBe(0);
+      expect(await titles(b)).toEqual({ live: ["One"], trash: [] });
+      expect(editor.reloads).toBe(0);
+      await editor.save();
+      const report = await b.sync();
+      expect(report.counts.conflicts).toBe(1);
+      // The editor stays on its id, which now holds the other computer's version.
+      expect(report.conflicts).toEqual([{ id: doc.id, copyId: expect.any(String), name: expect.stringContaining("(from B,") }]);
+      expect(shown(editor.worksheet)).toBe("Theirs");
+      await settle(cloud, a, b);
+      expect(await titles(a)).toEqual({ live: ["Mine", "Theirs"], trash: [] });
+      expect(await library(a)).toEqual(await library(b));
+    });
+
+    it("unsaved edits hold an upload too, so they are never compared with a stale base", async () => {
+      const { a, b, doc } = await shared("One");
+      await edit(b, doc.id, "Saved");
+      const editor = await openEditor(b, doc.id);
+      editor.type("Typing");
+      expect((await b.sync()).held).toEqual([{ id: doc.id, reason: "busy" }]);
+      await editor.save();
+      expect((await b.sync()).counts.uploaded).toBe(1);
+      await a.sync();
+      expect(await titles(a)).toEqual({ live: ["Typing"], trash: [] });
+    });
+
+    it("an edit typed while sync writes the open document keeps both", async () => {
+      const { cloud, a, b, doc } = await shared("One");
+      const editor = await openEditor(b, doc.id);
+      await edit(a, doc.id, "Theirs");
+      await a.sync();
+      b.hooks.beforeAdopt = (id) => {
+        if (id === doc.id) editor.type("Mine");
+      };
+      const raced = await b.sync();
+      b.hooks.beforeAdopt = undefined;
+      expect(raced.held).toEqual([{ id: doc.id, reason: "busy" }]);
+      expect(editor.reloads).toBe(0);
+      expect((await b.sync()).held).toEqual([{ id: doc.id, reason: "busy" }]);
+      await editor.save();
+      expect((await b.sync()).counts.conflicts).toBe(1);
+      expect(shown(editor.worksheet)).toBe("Theirs");
+      await settle(cloud, a, b);
+      expect(await titles(a)).toEqual({ live: ["Mine", "Theirs"], trash: [] });
+      expect(await library(a)).toEqual(await library(b));
     });
   });
 });
