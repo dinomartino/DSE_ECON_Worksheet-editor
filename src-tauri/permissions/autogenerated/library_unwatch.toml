@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-library-unwatch"
+description = "Enables the library_unwatch command without any pre-configured scope."
+commands.allow = ["library_unwatch"]
+
+[[permission]]
+identifier = "deny-library-unwatch"
+description = "Denies the library_unwatch command without any pre-configured scope."
+commands.deny = ["library_unwatch"]
