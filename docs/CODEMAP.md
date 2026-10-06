@@ -188,6 +188,8 @@ Invariants:
 - `src/sync/plan.ts:planSync` · `:planDocument` · `:planStray` — pure three-way plan (local, remote, base)
 - `src/sync/run.ts:runSync` — executor: CAS, re-plan on change, base moves last; `SyncReport`
 - `src/sync/snapshot.ts:readLocal` · `:readRemote` — the two sides as the planner sees them
+- `src/sync/persistentBase.ts:createBaseStore` — the base per (computer, source): web IndexedDB `econ-worksheet-sync`,
+  desktop `$APPDATA/sync/base-<hash>.json` (`src/storage/fileStore.ts:syncBaseFile`); a bad row or file reads as absent
 - `src/sync/memorySource.ts:MemoryCloud` — test source with faults; `src/sync/testKit.ts:computer` — simulated computers
 - `src/storage/document.ts:adoptRefused` — `adopt()`'s one refusal (older schema over a newer build's document)
 

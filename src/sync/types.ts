@@ -68,13 +68,17 @@ export interface BaseEntry {
 }
 
 /**
- * Where the base lives. Real persistence comes later (desktop: a file under `$APPDATA`;
- * web: IndexedDB); `memoryBaseStore` serves tests.
+ * Where the base lives: one per (computer, source). `createBaseStore` (`persistentBase.ts`)
+ * persists it (desktop: a file under `$APPDATA`; web: IndexedDB); `memoryBaseStore` serves tests.
+ * An empty base is always safe (first-sync rules); a wrong one is not, so `load` drops what it
+ * cannot read and `clear` throws rather than leave a base behind.
  */
 export interface BaseStore {
   load(): Promise<Map<string, BaseEntry>>;
   put(entry: BaseEntry): Promise<void>;
   remove(id: string): Promise<void>;
+  /** Forget the whole base for this source. */
+  clear(): Promise<void>;
 }
 
 /**
