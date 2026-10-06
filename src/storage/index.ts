@@ -25,6 +25,8 @@ import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 import { localPatternFile, PATTERNS_KEY, type PatternFile } from './patterns';
 import { graphDirFiles, patternsFile } from './fileStore';
 import { browserStorage, GRAPH_PREFIX, GraphStore, localGraphFiles } from './graphs';
+import { forgetOnWrite, memoryHashCache } from '@/sync/hashCache';
+import type { HashCache } from '@/sync/types';
 
 export type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 export {
@@ -395,16 +397,23 @@ export async function pickWorksheetFile(): Promise<Worksheet | undefined> {
 }
 
 /**
+ * Local documents' content hashes, for the sync engine (`src/sync/hashCache.ts`). Sound only
+ * because every write through `worksheetStore` forgets its id: no other writer may bypass it.
+ */
+export const worksheetHashCache: HashCache = memoryHashCache();
+
+/**
  * The store this build uses.
  *
  * Chosen once, at module load, by where we are running: the desktop shell keeps
  * documents as files under its app data directory, the browser keeps them in
  * `localStorage`. Both implement the same interface and the same rules, so nothing
  * above this line knows which it has. Wrapped in the change feed (§ changes.ts), which
- * announces every successful mutation — the question bank's index listens to it.
+ * announces every successful mutation — the question bank's index listens to it — over
+ * `forgetOnWrite`, which drops each written id's cached hash before that announcement.
  */
 export const worksheetStore: WorksheetStore = withChangeFeed(
-  isDesktop() ? new FileWorksheetStore() : new LocalStorageWorksheetStore(),
+  forgetOnWrite(isDesktop() ? new FileWorksheetStore() : new LocalStorageWorksheetStore(), worksheetHashCache),
 );
 
 /**

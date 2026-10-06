@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fakeLocalStorage } from '@/library/bankTestKit';
 import { LocalStorageWorksheetStore } from '@/storage';
 import type { WorksheetStore } from '@/storage/types';
@@ -85,5 +85,76 @@ describe('forgetOnWrite', () => {
     };
     await expect(store.save({ ...doc, name: 'Edited' })).rejects.toThrow();
     expect(cache.get(doc.id)).toBeUndefined();
+  });
+});
+
+/** Every `WorksheetStore` method and its argument count: the compiler keeps this whole. */
+const EVERY_METHOD: Record<keyof WorksheetStore, number> = {
+  list: 0,
+  load: 1,
+  save: 1,
+  adopt: 1,
+  loadTrashed: 1,
+  rename: 2,
+  remove: 1,
+  trash: 1,
+  listTrash: 0,
+  restore: 1,
+  purge: 1,
+  emptyTrash: 0,
+  readFolders: 0,
+  writeFolders: 1,
+  clear: 0,
+};
+
+describe('forgetOnWrite around the app store', () => {
+  it('forwards every WorksheetStore method, with its arguments and its result, and adds none', async () => {
+    const received = new Map<string, unknown[]>();
+    const inner = Object.fromEntries(
+      Object.keys(EVERY_METHOD).map((name) => [
+        name,
+        async (...args: unknown[]) => {
+          received.set(name, args);
+          return `result of ${name}`;
+        },
+      ]),
+    ) as unknown as WorksheetStore;
+    const wrapped = forgetOnWrite(inner, memoryHashCache()) as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
+    expect(Object.keys(wrapped).sort()).toEqual(Object.keys(EVERY_METHOD).sort());
+    for (const [name, arity] of Object.entries(EVERY_METHOD)) {
+      const args = [{ id: 'x' }, 'second'].slice(0, arity);
+      await expect(wrapped[name](...args), name).resolves.toBe(`result of ${name}`);
+      expect(received.get(name), name).toEqual(args);
+    }
+  });
+
+  it('the app singleton forgets each id it writes and otherwise behaves as the store', async () => {
+    vi.resetModules();
+    vi.stubGlobal('window', { localStorage: fakeLocalStorage() });
+    try {
+      const { worksheetStore, worksheetHashCache, onStoreChange } = await import('@/storage');
+      const changes: string[] = [];
+      const stop = onStoreChange((change) => changes.push(`${change.kind}${change.origin ? `:${change.origin}` : ''}`));
+      const doc = paper('One');
+      await worksheetStore.save(doc);
+      expect(await worksheetStore.load(doc.id)).toEqual(doc);
+      expect((await worksheetStore.list()).map((row) => row.id)).toEqual([doc.id]);
+      worksheetHashCache.put(entry(doc.id), worksheetHashCache.ticket(doc.id));
+      await worksheetStore.trash(doc.id);
+      expect(worksheetHashCache.get(doc.id)).toBeUndefined();
+      expect(await worksheetStore.list()).toEqual([]);
+      expect(await worksheetStore.restore(doc.id)).toBe(doc.id);
+      worksheetHashCache.put(entry(doc.id), worksheetHashCache.ticket(doc.id));
+      await worksheetStore.adopt({ ...doc, name: 'Synced' });
+      expect(worksheetHashCache.get(doc.id)).toBeUndefined();
+      expect((await worksheetStore.load(doc.id))?.name).toBe('Synced');
+      await worksheetStore.clear();
+      expect(await worksheetStore.list()).toEqual([]);
+      expect(changes).toEqual(['saved', 'trashed', 'restored', 'saved:sync', 'cleared']);
+      stop();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
   });
 });
