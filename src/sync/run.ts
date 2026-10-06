@@ -14,6 +14,8 @@ import type { BaseStore, CopyNamer, HashCache, Place, SyncSource, SyncStore } fr
 
 export interface SyncReport {
   status: 'ok' | 'unavailable';
+  /** With `unavailable`: the source's reason, when it gave one. */
+  reason?: string;
   /**
    * The source held no documents at all although the base says it had live ones: a
    * folder emptied or swapped, not a mass delete (deletes go to Trash, which stays). The base was dropped and this run treated as
@@ -56,7 +58,11 @@ export interface RunOptions {
   hashCache?: HashCache;
 }
 
-class SourceUnavailable extends Error {}
+class SourceUnavailable extends Error {
+  constructor(readonly reason?: string) {
+    super('unavailable');
+  }
+}
 /** The document changed since it was planned, on either side: re-plan it. */
 class Stale extends Error {}
 
@@ -83,11 +89,11 @@ export async function runSync(options: RunOptions): Promise<SyncReport> {
   const { store, source, base } = options;
   const report = emptyReport();
   const listing = await source.list();
-  if (listing.status === 'unavailable') return { ...report, status: 'unavailable' };
+  if (listing.status === 'unavailable') return unavailable(report, listing.reason);
   const baseEntries = await base.load();
   const local = await readLocal(store, options.hashCache);
   const remote = await readRemote(source, listing.entries, baseEntries);
-  if ('status' in remote) return { ...report, status: 'unavailable' };
+  if ('status' in remote) return unavailable(report, remote.reason);
 
   const hadLive = [...baseEntries.values()].some((entry) => entry.place === 'live');
   if (hadLive && remote.docs.size === 0 && remote.strays.length === 0) {
@@ -102,12 +108,18 @@ export async function runSync(options: RunOptions): Promise<SyncReport> {
     try {
       await executor.apply(action, 1);
     } catch (error) {
-      if (error instanceof SourceUnavailable) return { ...report, status: 'unavailable' };
+      if (error instanceof SourceUnavailable) return unavailable(report, error.reason);
       report.errors.push({ key: keyOf(action), message: error instanceof Error ? error.message : String(error) });
     }
   }
   return report;
 }
+
+const unavailable = (report: SyncReport, reason?: string): SyncReport => ({
+  ...report,
+  status: 'unavailable',
+  ...(reason ? { reason } : {}),
+});
 
 function keyOf(action: SyncAction): string {
   if ('id' in action && action.id) return documentKey(action.id, 'live');
@@ -144,7 +156,7 @@ class Executor {
 
   private async replan(id: string): Promise<SyncAction> {
     const remote = await readRemoteDoc(this.options.source, id);
-    if ('status' in remote) throw new SourceUnavailable();
+    if ('status' in remote) throw new SourceUnavailable(remote.reason);
     const local = await this.local(id);
     const base = (await this.options.base.load()).get(id);
     return planDocument(id, local, remote, base, this.ctx);
@@ -209,7 +221,7 @@ class Executor {
       }
       case 'purgeRemote': {
         const removed = await source.remove(action.from.key, { expectRevision: action.from.revision });
-        if (removed.status === 'unavailable') throw new SourceUnavailable();
+        if (removed.status === 'unavailable') throw new SourceUnavailable(removed.reason);
         if (removed.status === 'conflict') throw new Stale();
         return base.remove(action.id);
       }
@@ -217,7 +229,7 @@ class Executor {
         await this.placeCopy(action.copy);
         // The provider's file goes only once the canonical copy reads back the same.
         const back = await source.read(documentKey(action.copy.id, action.copy.place));
-        if (back.status === 'unavailable') throw new SourceUnavailable();
+        if (back.status === 'unavailable') throw new SourceUnavailable(back.reason);
         if (back.status === 'ok' && sameContent(back.text, action.copy)) await this.removeIfUnchanged(action.from);
         return;
       }
@@ -235,22 +247,23 @@ class Executor {
 
   private async write(key: string, text: string, expect: string | null): Promise<string> {
     const written = await this.options.source.write(key, text, { expectRevision: expect });
-    if (written.status === 'unavailable') throw new SourceUnavailable();
+    if (written.status === 'unavailable') throw new SourceUnavailable(written.reason);
     if (written.status === 'conflict') throw new Stale();
     return written.revision;
   }
 
   private async readExact(from: KeyRevision): Promise<string> {
     const read = await this.options.source.read(from.key);
-    if (read.status === 'unavailable') throw new SourceUnavailable();
-    if (read.status === 'missing' || read.revision !== from.revision) throw new Stale();
+    if (read.status === 'unavailable') throw new SourceUnavailable(read.reason);
+    // Gone, changed or unreadable since it was planned: plan it again (an unreadable one is held).
+    if (read.status !== 'ok' || read.revision !== from.revision) throw new Stale();
     return read.text;
   }
 
   /** A key whose content is already elsewhere. Changed since: left alone (an edit wins). */
   private async removeIfUnchanged(from: KeyRevision): Promise<void> {
     const removed = await this.options.source.remove(from.key, { expectRevision: from.revision });
-    if (removed.status === 'unavailable') throw new SourceUnavailable();
+    if (removed.status === 'unavailable') throw new SourceUnavailable(removed.reason);
   }
 
   private async record(id: string, place: Place, content: Content, revision: string): Promise<void> {
@@ -295,12 +308,12 @@ class Executor {
     }
     const key = documentKey(copy.id, copy.place);
     const written = await source.write(key, copy.text, { expectRevision: null });
-    if (written.status === 'unavailable') throw new SourceUnavailable();
+    if (written.status === 'unavailable') throw new SourceUnavailable(written.reason);
     let revision: string;
     if (written.status === 'ok') revision = written.revision;
     else {
       const there = await source.read(key);
-      if (there.status === 'unavailable') throw new SourceUnavailable();
+      if (there.status === 'unavailable') throw new SourceUnavailable(there.reason);
       if (there.status !== 'ok' || !sameContent(there.text, copy)) return;
       revision = there.revision;
     }

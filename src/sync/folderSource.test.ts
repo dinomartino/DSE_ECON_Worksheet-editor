@@ -70,8 +70,8 @@ describe('folderSource', () => {
     await a.sync();
     for (const reason of ['root-missing', 'no-marker', 'newer-format'] as const) {
       fakeA.root = reason;
-      expect(await folderSource(fakeA).list()).toEqual({ status: 'unavailable' });
-      expect((await a.sync()).status).toBe('unavailable');
+      expect(await folderSource(fakeA).list()).toEqual({ status: 'unavailable', reason });
+      expect(await a.sync()).toMatchObject({ status: 'unavailable', reason });
     }
     fakeA.root = null;
     expect(await titles(a)).toEqual({ live: ['Kept'], trash: [] });
@@ -96,6 +96,24 @@ describe('folderSource', () => {
     fakeB.placeholders.delete(key);
     await settle(cloud, a, b);
     expect(await titles(a)).toEqual({ live: ['Edited'], trash: [] });
+  });
+
+  it('a file that will not read is unreadable, never missing; its document and a stray are held', async () => {
+    const { cloud, a, b, fakeB } = folder();
+    const doc = paper('Synced');
+    await a.store.save(doc);
+    await settle(cloud, a, b);
+    const key = documentKey(doc.id, 'live');
+    const stray = 'x.worksheet (1).json';
+    cloud.put(stray, stringifyWorksheet(paper('Stray')));
+    fakeB.placeholders.set(key, 'stuck');
+    fakeB.placeholders.set(stray, 'stuck');
+    expect(await folderSource(fakeB).read(key)).toEqual({ status: 'unreadable' });
+    const report = await b.sync();
+    expect(report.status).toBe('ok');
+    expect(report.held).toEqual(expect.arrayContaining([{ key: stray, reason: 'unreadable' }, { id: doc.id, key, reason: 'unreadable' }]));
+    expect(await library(b)).toEqual([`live ${doc.id} Synced`]);
+    expect(cloud.files.has(stray)).toBe(true);
   });
 
   it('a placeholder not yet downloaded is read (so downloaded) and found unchanged', async () => {
@@ -192,9 +210,9 @@ describe('folderSource changes', () => {
     fake.emit(['stale.worksheet.json'], { session: 0 });
     expect(await source.changes(cursor)).toEqual({ status: 'ok', keys: [], cursor });
     fake.root = 'root-missing';
-    expect(await source.list()).toEqual({ status: 'unavailable' });
+    expect(await source.list()).toEqual({ status: 'unavailable', reason: 'root-missing' });
     expect(fake.watching).toBe(false);
-    expect(await source.changes(cursor)).toEqual({ status: 'unavailable' });
+    expect(await source.changes(cursor)).toEqual({ status: 'unavailable', reason: 'root-missing' });
     fake.root = null;
     expect((await source.changes(cursor)).status).toBe('reset');
     expect(fake.watching).toBe(true);

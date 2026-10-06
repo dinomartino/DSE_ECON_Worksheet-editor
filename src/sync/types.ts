@@ -16,13 +16,20 @@ export interface SourceEntry {
 /** The source cannot be reached now. Sync pauses; nothing is read as deleted. */
 export interface Unavailable {
   status: 'unavailable';
+  /** The source's own word for why (a folder source: `LibraryUnavailableReason`), for the interface. */
+  reason?: string;
 }
 
 export type ListResult = { status: 'ok'; entries: SourceEntry[] } | Unavailable;
 
+/**
+ * `unreadable`: the entry is there but will not read now (a cloud placeholder that will not
+ * download, no permission). The engine holds that document; it is never read as deleted.
+ */
 export type ReadResult =
   | { status: 'ok'; text: string; revision: string }
   | { status: 'missing' }
+  | { status: 'unreadable' }
   | Unavailable;
 
 /** `conflict`: the entry's revision is not the one expected; nothing was written. */

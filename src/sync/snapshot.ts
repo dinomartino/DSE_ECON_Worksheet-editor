@@ -106,6 +106,9 @@ export async function readLocalDoc(store: SyncStore, id: string, cache?: HashCac
   return undefined;
 }
 
+/** The revision of a file that would not read, where no listing gave one. */
+const UNREAD_REVISION = 'unread';
+
 function remoteContent(text: string): Content | 'unreadable' {
   try {
     return contentOfText(text);
@@ -137,8 +140,10 @@ export async function readRemote(
     const read = await source.read(entry.key);
     if (read.status === 'unavailable') return read;
     if (read.status === 'missing') continue; // Gone since the listing: the next run sees it.
-    const content = remoteContent(read.text);
-    const file: RemoteFile = { key: entry.key, revision: read.revision, place: kind.place, content };
+    // Will not read now: held under the listing's revision, never read as deleted.
+    const content = read.status === 'ok' ? remoteContent(read.text) : 'unreadable';
+    const revision = read.status === 'ok' ? read.revision : entry.revision;
+    const file: RemoteFile = { key: entry.key, revision, place: kind.place, content };
     if (kind.stem === undefined) strays.push(file);
     else if (content === 'unreadable' || content.worksheet.id === kind.stem) place(kind.stem, file);
     else strays.push(file);
@@ -150,6 +155,7 @@ export async function readRemote(
     const read = await source.read(doc.trash.key);
     if (read.status === 'unavailable') return read;
     if (read.status === 'missing') delete doc.trash;
+    else if (read.status === 'unreadable') doc.trash = { ...doc.trash, content: 'unreadable' };
     else doc.trash = { ...doc.trash, revision: read.revision, content: remoteContent(read.text) };
   }
   return { docs, strays };
@@ -163,6 +169,11 @@ export async function readRemoteDoc(source: SyncSource, id: string): Promise<Rem
     const read = await source.read(key);
     if (read.status === 'unavailable') return read;
     if (read.status === 'missing') continue;
+    if (read.status === 'unreadable') {
+      // No revision without the bytes: one no base holds, so the document is held.
+      doc[where] = { key, revision: UNREAD_REVISION, place: where, content: 'unreadable' };
+      continue;
+    }
     const content = remoteContent(read.text);
     // A file at this key holding another id is a stray; the next full run copies it.
     if (content !== 'unreadable' && content.worksheet.id !== id) continue;
