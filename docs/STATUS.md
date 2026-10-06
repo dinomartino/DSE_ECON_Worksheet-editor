@@ -12,7 +12,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   persistence, hash cache, folder source, scheduler, UI (`docs/design/library-folder.md`, survey
   `docs/research/2026-10-sync-survey.md`; Drive API design shelved).
 - **2026-10-05: dismissible notices float** bottom-right via `notify()` (`src/store/notices.ts`);
-  follow-ups (題庫 "List cleared · Undo", reserved tag line) on `feature/notice-followups`.
+  follow-ups (題庫 Clear → floating Undo, reserved tag line) merged (`bcf57c4`).
 - **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
   question bank, Marking scheme view and layouts, Translation terms, 中文 interface, Graphs
   圖表庫, diagram answer layer, the Econ Studio rename. Next work goes on `develop` as usual.
