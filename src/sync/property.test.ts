@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { folderConnect } from './folderTestKit';
 import { MemoryCloud } from './memorySource';
-import { computer, edit, library, paper, settle, type Computer } from './testKit';
+import { computer, edit, library, memoryConnect, paper, settle, type Computer, type Connect } from './testKit';
 
 /**
  * Random interleavings of edits, trashes, restores, syncs, deliveries and offline
  * spells on two computers. Every version that existed at a sync point must survive —
  * itself, or a later edit made from it — live, as a copy, or in Trash; the two
  * computers must end identical, with no version held twice. (Delete forever and expiry
- * are deliberate deletions and left out.)
+ * are deliberate deletions and left out.) Run directly and through the folder source,
+ * whose revisions are content hashes.
  */
 
 function mulberry32(seed: number) {
@@ -28,12 +30,12 @@ async function present(c: Computer): Promise<{ place: string; id: string; marker
   });
 }
 
-async function scenario(seed: number, steps: number) {
+async function scenario(seed: number, steps: number, connect: Connect) {
   const random = mulberry32(seed);
   const pick = <T,>(items: T[]): T | undefined => items[Math.floor(random() * items.length)];
   const cloud = new MemoryCloud();
   cloud.delayed = random() < 0.5;
-  const computers = [computer(cloud, 'A'), computer(cloud, 'B')];
+  const computers = [computer(cloud, 'A', undefined, connect), computer(cloud, 'B', undefined, connect)];
   const parent = new Map<string, string | null>();
   const atSyncPoint = new Set<string>();
   let next = 0;
@@ -79,9 +81,12 @@ const descends = (parent: Map<string, string | null>, from: string, to: string) 
   return false;
 };
 
-describe('two computers, random interleavings', () => {
+describe.each([
+  ['memory', memoryConnect],
+  ['folder', folderConnect],
+] as [string, Connect][])('two computers, random interleavings, %s source', (_source, connect) => {
   it.each(Array.from({ length: 120 }, (_, i) => i + 1))('seed %i: nothing synced is lost, both end identical', async (seed) => {
-    const { computers, parent, atSyncPoint } = await scenario(seed, 40);
+    const { computers, parent, atSyncPoint } = await scenario(seed, 40, connect);
     const [a, b] = computers;
     expect(await library(a)).toEqual(await library(b));
     const held = (await present(a)).map((doc) => doc.marker);

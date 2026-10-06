@@ -14,12 +14,21 @@ import type { SyncSource } from './types';
 
 export type Computer = ReturnType<typeof computer>;
 
-export function computer(cloud: MemoryCloud, name: string, wrap: (source: SyncSource) => SyncSource = (s) => s) {
+/** How a computer reaches the cloud: directly, or through a folder (`folderTestKit.ts`). */
+export type Connect = (cloud: MemoryCloud, name: string) => SyncSource;
+export const memoryConnect: Connect = (cloud, name) => cloud.client(name);
+
+export function computer(
+  cloud: MemoryCloud,
+  name: string,
+  wrap: (source: SyncSource) => SyncSource = (s) => s,
+  connect: Connect = memoryConnect,
+) {
   const storage = fakeLocalStorage();
   const feed = localFeed();
   const store = withChangeFeed(new LocalStorageWorksheetStore(Date.now, () => storage), feed.emit);
   const base = memoryBaseStore();
-  const source = wrap(cloud.client(name));
+  const source = wrap(connect(cloud, name));
   return {
     name,
     storage,
