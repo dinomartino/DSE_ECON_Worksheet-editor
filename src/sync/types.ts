@@ -52,6 +52,11 @@ export interface SyncSource {
   remove(key: string, options: { expectRevision: string }): Promise<RemoveResult>;
   /** Only says *when* to run; what to do is always decided from a full comparison. */
   changes(cursor: string | null): Promise<ChangesResult>;
+  /**
+   * Optional: `listener` is called whenever `changes` may have news (a folder's watcher).
+   * Only a hint: a source without it is still rescanned. Returns the unsubscribe.
+   */
+  onHint?(listener: () => void): () => void;
 }
 
 /** Where a document is, on either side. */

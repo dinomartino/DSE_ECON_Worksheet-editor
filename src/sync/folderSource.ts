@@ -35,6 +35,7 @@ class LibraryFolderSource implements FolderSource {
   private epoch = 0;
   private generation = 0;
   private log: { generation: number; keys: string[] }[] = [];
+  private readonly hints = new Set<() => void>();
   private watch?: LibraryWatch;
   private starting?: Promise<'ok' | 'none' | Unavailable>;
   private closed = false;
@@ -94,8 +95,14 @@ class LibraryFolderSource implements FolderSource {
     return { status: 'ok', keys, cursor: now };
   }
 
+  onHint(listener: () => void): () => void {
+    this.hints.add(listener);
+    return () => void this.hints.delete(listener);
+  }
+
   close(): void {
     this.closed = true;
+    this.hints.clear();
     this.dropWatch();
   }
 
@@ -142,10 +149,19 @@ class LibraryFolderSource implements FolderSource {
   private heard(event: LibraryChanged): void {
     if (!this.watch || event.session !== this.watch.session) return;
     // The root itself changed (moved, deleted, remounted): watch it afresh.
-    if (event.rescan) return this.dropWatch();
-    this.generation += 1;
-    this.log.push({ generation: this.generation, keys: event.paths });
-    if (this.log.length > this.maxLog) this.restart();
+    if (event.rescan) this.dropWatch();
+    else {
+      this.generation += 1;
+      this.log.push({ generation: this.generation, keys: event.paths });
+      if (this.log.length > this.maxLog) this.restart();
+    }
+    for (const hint of [...this.hints]) {
+      try {
+        hint();
+      } catch {
+        // A listener's failure is its own.
+      }
+    }
   }
 
   private dropWatch(): void {
