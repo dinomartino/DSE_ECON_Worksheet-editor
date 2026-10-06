@@ -16,13 +16,20 @@ export interface SourceEntry {
 /** The source cannot be reached now. Sync pauses; nothing is read as deleted. */
 export interface Unavailable {
   status: 'unavailable';
+  /** The source's own word for why (a folder source: `LibraryUnavailableReason`), for the interface. */
+  reason?: string;
 }
 
 export type ListResult = { status: 'ok'; entries: SourceEntry[] } | Unavailable;
 
+/**
+ * `unreadable`: the entry is there but will not read now (a cloud placeholder that will not
+ * download, no permission). The engine holds that document; it is never read as deleted.
+ */
 export type ReadResult =
   | { status: 'ok'; text: string; revision: string }
   | { status: 'missing' }
+  | { status: 'unreadable' }
   | Unavailable;
 
 /** `conflict`: the entry's revision is not the one expected; nothing was written. */
@@ -45,6 +52,11 @@ export interface SyncSource {
   remove(key: string, options: { expectRevision: string }): Promise<RemoveResult>;
   /** Only says *when* to run; what to do is always decided from a full comparison. */
   changes(cursor: string | null): Promise<ChangesResult>;
+  /**
+   * Optional: `listener` is called whenever `changes` may have news (a folder's watcher).
+   * Only a hint: a source without it is still rescanned. Returns the unsubscribe.
+   */
+  onHint?(listener: () => void): () => void;
 }
 
 /** Where a document is, on either side. */

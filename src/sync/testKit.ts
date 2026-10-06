@@ -34,12 +34,15 @@ export function computer(
   const source = wrap(connect(cloud, name));
   /** Documents the engine loaded whole (`load` + `loadTrashed`). */
   const loads = { count: 0 };
+  /** Runs just before each engine `adopt` reaches the store: a teacher acting mid-write. */
+  const hooks: { beforeAdopt?: (id: string) => void } = {};
   const engineStore: SyncStore = {
     ...store,
     load: (id) => ((loads.count += 1), store.load(id)),
     loadTrashed: (id) => ((loads.count += 1), store.loadTrashed(id)),
+    adopt: (worksheet) => (hooks.beforeAdopt?.(worksheet.id), store.adopt(worksheet)),
   };
-  return {
+  const self = {
     name,
     storage,
     store,
@@ -47,9 +50,63 @@ export function computer(
     feed,
     hashCache,
     loads,
+    hooks,
+    /** The open editor, if any (`openEditor`). */
+    editor: undefined as Editor | undefined,
     sync: () =>
-      runSync({ store: engineStore, source, base, hashCache, namer: plainNamer(name), now: () => new Date(2026, 9, 5, 14, 32) }),
+      runSync({
+        store: engineStore,
+        source,
+        base,
+        hashCache,
+        namer: plainNamer(name),
+        now: () => new Date(2026, 9, 5, 14, 32),
+        isBusy: (id) => self.editor?.worksheet.id === id && self.editor.dirty,
+      }),
   };
+  return self;
+}
+
+/**
+ * The open editor as the app keeps it (`src/sync/openEditor.ts`): a document in memory,
+ * maybe with unsaved edits. A sync download of it is taken in only while it is clean.
+ */
+export interface Editor {
+  worksheet: Worksheet;
+  dirty: boolean;
+  reloads: number;
+  type(title: string, updatedAt?: string): void;
+  save(): Promise<void>;
+  close(): void;
+}
+
+export async function openEditor(c: Computer, id: string): Promise<Editor> {
+  const loaded = await c.store.load(id);
+  if (!loaded) throw new Error(`${c.name} has no ${id}`);
+  const unsubscribe = c.feed.subscribe((change, saved) => {
+    if (change.origin !== 'sync' || !saved || change.docId !== editor.worksheet.id || editor.dirty) return;
+    editor.worksheet = saved;
+    editor.reloads += 1;
+  });
+  const editor: Editor = {
+    worksheet: loaded,
+    dirty: false,
+    reloads: 0,
+    type(title, updatedAt = new Date().toISOString()) {
+      editor.worksheet = { ...editor.worksheet, title: bi(title, ''), updatedAt };
+      editor.dirty = true;
+    },
+    async save() {
+      await c.store.save(editor.worksheet);
+      editor.dirty = false;
+    },
+    close() {
+      unsubscribe();
+      c.editor = undefined;
+    },
+  };
+  c.editor = editor;
+  return editor;
 }
 
 /** A paper whose printed title is `title`: the tests' content marker. */

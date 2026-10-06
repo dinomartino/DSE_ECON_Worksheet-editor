@@ -1,8 +1,9 @@
 # Sync engine
 
-Status: **core built 2026-10-05** on `feature/sync-engine` (`src/sync/`). Nothing in the app calls
-it yet; teachers see no change. Decision (coordinator, 2026-10-05): **one engine, every storage
-source plugs into it** (cloud folder, later Drive API, OneDrive API, an own account server).
+Status: **core built 2026-10-05; scheduler wired 2026-10-06** (`src/sync/`). The desktop app runs it
+only once a library folder is chosen, and nothing chooses one yet, so teachers see no change.
+Decision (coordinator, 2026-10-05): **one engine, every storage source plugs into it** (cloud
+folder, later Drive API, OneDrive API, an own account server).
 
 ## The model: local primary, the source a mirror
 
@@ -25,10 +26,13 @@ Entries are `{ key, revision, size }`. `key` is a logical name: `<id>.worksheet.
 | Call | Result |
 |---|---|
 | `list()` | entries, or `unavailable` |
-| `read(key)` | `{ text, revision }`, `missing`, `unavailable` |
+| `read(key)` | `{ text, revision }`, `missing`, `unreadable` (held, never deleted), `unavailable` |
 | `write(key, text, { expectRevision })` | new revision, or `conflict` (`null` = must not exist) |
 | `remove(key, { expectRevision })` | `ok`, `missing`, `conflict`; a source uses its own trash where it has one |
 | `changes(cursor)` | changed keys + next cursor, or `reset` (rescan) |
+| `onHint(listener)` | optional: `changes` may have news (a watcher burst) |
+
+`unavailable` may carry the source's `reason`; the run report passes it on.
 
 No paths, mtimes, rename or mkdir: those stay inside a folder source. `memorySource.ts` is the
 test source (offline, mid-run failure, delayed visibility, outside edits, provider conflict copies).
@@ -46,7 +50,7 @@ A cloud-synced folder the teacher picks (`<chosen>/Econ Studio/`, marker `econ-s
 - **Unusable root** (none chosen, missing, no marker, a newer `format`) is `unavailable`, never an
   empty listing. A newer build's library is never written by this one.
 - **A file that will not read** (cloud placeholder that will not download, no permission) is listed,
-  never dropped, and reads as unparseable text: the planner holds it; a write over it conflicts.
+  never dropped, and reads as `unreadable`: the planner holds it; a write over it conflicts.
   A placeholder not yet downloaded is listed unhashed; reading it downloads it.
 - **`changes()`** comes from the watcher (~1 s bursts of paths). It answers `reset` whenever an event
   may be lost: first call, watcher restart, a rescan, an overflowing log, no watcher. The listing is
@@ -101,6 +105,46 @@ with the same content.
   of every document on the other computer before this one synced comes back.
 - Report: counts, `conflicts` (id, copy id, name: the future "Needs attention" list), `held`, `errors`.
 
+## The open editor (`RunOptions.isBusy`, `src/sync/openEditor.ts`)
+
+- **Unsaved edits** (`dirty`, set until the write that clears it lands): every action on that
+  document is held (`busy`), uploads too. Its save makes it edited here; if the other computer
+  changed it too, the next run keeps both, and the editor stays on its id (now the other version).
+- **Asked again after each local write.** An edit typed while sync wrote leaves the base as it was,
+  so that edit's save meets the written version as a conflict: both kept.
+- **Clean:** sync may download over it. The editor takes the download in when `adopt` announces it
+  (before an edit can start from the old version), then a notice: "Updated from your other
+  computer.", or, when its own version became the copy, where it went. A clean open document
+  trashed elsewhere is trashed here while shown; an edit then brings it back (an edit wins).
+- Autosave and Save now leave the document dirty when it changed during the write.
+
+## The scheduler (`src/sync/scheduler.ts`, `src/sync/librarySync.ts`)
+
+- **When:** start; focus or visibility regained; 3 s after the last local save; a source hint whose
+  keys are not this computer's own last writes; `reset`; every 60 s while visible. Every run is full.
+- **One run at a time**; triggers during a run coalesce into one follow-up. `changes()` is taken
+  just before each run, so what changes during it is reported after it.
+- **Ignored:** `origin: 'sync'` changes and the engine's own Trash moves; a hint naming only keys
+  this computer wrote (or removed) in the last 30 s that still read back with that hash (up to 20).
+- **`unavailable`** (or a run that throws: reason `error`) backs off 5 s, 30 s, 2 min; any trigger
+  still runs at once. The base is `flush`ed after every run; `stop()` closes the source.
+- **Status** (`status()`, `subscribe`): `idle` / `running` / `unavailable` + reason, the last report
+  (`conflicts`, `held`, `errors`, `remoteWasEmpty`), `lastSyncedAt`, `retryAt`. No UI reads it yet;
+  the desktop console has `__econSync.status()` and `.syncNow()` while it runs.
+- **Wiring:** desktop only, started by `EditorHost` (via `import()`) when `library_location` is `ok`
+  at launch; a folder chosen or back later starts at the next launch (the UI stage restarts it).
+  Base id `folder:<deviceId>:<root>`. Copy names from `localNamer` (interface language at the
+  time; computer "Mac" / "Windows PC" until setup asks). **Clear saved documents** forgets the
+  base, then clears, with no run between (a base that will not clear stops it first); the next
+  run is a first sync, so the folder refills the library.
+- **Web, later:** `exclusive: webLock()` so one tab runs at a time; forget the hash of every
+  `econ-worksheet:` key another tab's `storage` event names.
+
+Known gaps: a save not from the editor (the outgoing document's save when switching papers, a
+題庫 write) can land between the engine's re-read and its `adopt` on desktop (one IPC round trip);
+a per-id write lock in the store would close it. A provider copy made by two computers in
+different interface languages gets two names, so a second copy.
+
 ## The local hash cache (`src/sync/hashCache.ts`)
 
 - `HashCache` (injected, optional): id → `{ place, updatedAt, hash, schemaVersion, newer }`, plain
@@ -145,13 +189,10 @@ seeds at 40 steps and 1,500 at 120 passed.
 2. ~~A local hash cache~~ (built: § The local hash cache).
 3. ~~The folder source~~ **done** (above). `run.test.ts` and `property.test.ts` run through it over a fake
    of the Rust rules (`folderTestKit.ts`). Unverified: a real Tauri runtime, Windows, real providers.
-4. Scheduler: run on launch, focus, after a save (debounced), on `changes()`; ignore `origin: 'sync'`;
-   never write under the open editor; one tab on the web. `clear()` must forget the base. Passing
-   a hash cache: wrap the `worksheetStore` singleton in `forgetOnWrite`, and on the web forget the
-   id of every `econ-worksheet:` key another tab's `storage` event names. `flush()` the base after each run.
-   Folder source: run on `reset`, `close()` it on teardown, and skip watcher bursts that only
-   name paths this run just wrote with the same hash (else every run triggers one empty run).
-5. Interface: Storage location, "Needs attention", localised `CopyNamer` from a messages catalogue.
+4. ~~Scheduler~~ **done** (§ The scheduler, § The open editor). Web parts noted there, not built.
+   Unverified: a real Tauri shell, Windows, real providers.
+5. Interface: Storage location (choose, restart the scheduler), "Needs attention" (`conflicts`,
+   `held`), the empty-remote notice; the localised `CopyNamer` is built (`localNamer.ts`).
 6. Folders, 題型, graphs as later keys.
 
 ## Decisions (2026-10-05)

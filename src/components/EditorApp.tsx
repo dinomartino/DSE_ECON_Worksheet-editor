@@ -376,7 +376,11 @@ export function EditorApp({
     const timer = setTimeout(() => {
       // Cleaned since it was armed (Clear saved documents): nothing to write back.
       if (!useWorksheetStore.getState().dirty) return;
-      void worksheetStore.save(worksheet).then(markSaved);
+      // Clean only if nothing changed during the write: an edit made meanwhile stays
+      // unsaved (and sync keeps holding the document) until its own save lands.
+      void worksheetStore.save(worksheet).then(() => {
+        if (useWorksheetStore.getState().worksheet === worksheet) markSaved();
+      });
     }, 1200);
     return () => clearTimeout(timer);
   }, [worksheet, dirty, markSaved]);

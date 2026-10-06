@@ -286,8 +286,10 @@ reloads the webview; nothing re-points live.
   (`src/library/bankIndex.ts`); its stamps compare `updatedAt` for equality, so clock skew is harmless.
 - **Today nothing on the start screen hears the feed** (`src/components/start/StartScreen.tsx`
   lists on mount and after its own actions). It must relist on `elsewhere` events.
-- The open editor: changed elsewhere and clean → replace the worksheet and toast; dirty → wait,
-  the next save meets § 3.3. Never written under the editor.
+- The open editor (built: `sync-engine.md` § The open editor): changed elsewhere and clean → replace
+  the worksheet and toast; dirty → held until saved, then a both-sides change keeps both: the
+  editor's version becomes the copy and the editor shows the other computer's, with the § 1.4
+  notice. Never written under unsaved edits.
 
 ### 3.7 `clear()` never empties a synced folder
 

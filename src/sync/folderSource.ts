@@ -8,11 +8,11 @@ import type { ChangesResult, ListResult, ReadResult, RemoveResult, SyncSource, U
  * - Keys are the folder's relative paths, every `*.json` the shell lists. A provider's conflict
  *   copy ("x.worksheet (1).json") keeps its own name, so the planner sees it as a stray.
  * - Revision = SHA-256 of the file's bytes. Writes and removes are compare-and-swap on it.
- * - A root that cannot be used (missing, no marker, a newer build's) is `unavailable`.
- * - A file that will not read reads as `ok` with empty text and a revision no hash can equal:
- *   the engine finds it unparseable and holds that document, never reads it as deleted, and
- *   its compare-and-swap writes over it conflict. (`missing` would trash it; `unavailable`
- *   would stop every run for one bad file.)
+ * - A root that cannot be used (missing, no marker, a newer build's) is `unavailable`, with the
+ *   shell's reason.
+ * - A file that will not read is `unreadable`: the engine holds that document, and the shell
+ *   makes every compare-and-swap write over it conflict. (`missing` would trash it;
+ *   `unavailable` would stop every run for one bad file.)
  */
 
 export interface FolderSource extends SyncSource {
@@ -21,8 +21,6 @@ export interface FolderSource extends SyncSource {
 }
 
 const UNAVAILABLE: Unavailable = { status: 'unavailable' };
-/** The revision of a file that would not read. */
-export const UNREADABLE_REVISION = 'unreadable';
 
 /** Listed but not hashed (not downloaded, or unreadable): differs from every base, so it is read. */
 function revisionOf(file: LibraryFile): string {
@@ -37,8 +35,9 @@ class LibraryFolderSource implements FolderSource {
   private epoch = 0;
   private generation = 0;
   private log: { generation: number; keys: string[] }[] = [];
+  private readonly hints = new Set<() => void>();
   private watch?: LibraryWatch;
-  private starting?: Promise<'ok' | 'none' | 'unavailable'>;
+  private starting?: Promise<'ok' | 'none' | Unavailable>;
   private closed = false;
 
   constructor(
@@ -48,7 +47,7 @@ class LibraryFolderSource implements FolderSource {
 
   async list(): Promise<ListResult> {
     const listed = await this.bridge.list();
-    if (listed.status !== 'ok') return this.lost();
+    if (listed.status !== 'ok') return this.lost(listed.reason);
     return { status: 'ok', entries: listed.files.map((file) => ({ key: file.path, revision: revisionOf(file), size: file.size })) };
   }
 
@@ -60,21 +59,21 @@ class LibraryFolderSource implements FolderSource {
       case 'missing':
         return { status: 'missing' };
       case 'unreadable':
-        return { status: 'ok', text: '', revision: UNREADABLE_REVISION };
+        return { status: 'unreadable' };
       default:
-        return this.lost();
+        return this.lost(read.reason);
     }
   }
 
   async write(key: string, text: string, options: { expectRevision: string | null }): Promise<WriteResult> {
     const written = await this.bridge.write(key, text, options.expectRevision ?? 'absent');
     if (written.status === 'ok') return { status: 'ok', revision: written.hash };
-    return written.status === 'conflict' ? written : this.lost();
+    return written.status === 'conflict' ? written : this.lost(written.reason);
   }
 
   async remove(key: string, options: { expectRevision: string }): Promise<RemoveResult> {
     const removed = await this.bridge.remove(key, options.expectRevision);
-    return removed.status === 'unavailable' ? this.lost() : removed;
+    return removed.status === 'unavailable' ? this.lost(removed.reason) : removed;
   }
 
   /**
@@ -84,7 +83,7 @@ class LibraryFolderSource implements FolderSource {
    */
   async changes(cursor: string | null): Promise<ChangesResult> {
     const watching = await this.ensureWatching();
-    if (watching === 'unavailable') return UNAVAILABLE;
+    if (typeof watching === 'object') return watching;
     const now = this.cursor();
     if (watching === 'none' || cursor === null) return { status: 'reset', cursor: now };
     const split = cursor.lastIndexOf(':');
@@ -96,8 +95,14 @@ class LibraryFolderSource implements FolderSource {
     return { status: 'ok', keys, cursor: now };
   }
 
+  onHint(listener: () => void): () => void {
+    this.hints.add(listener);
+    return () => void this.hints.delete(listener);
+  }
+
   close(): void {
     this.closed = true;
+    this.hints.clear();
     this.dropWatch();
   }
 
@@ -115,7 +120,7 @@ class LibraryFolderSource implements FolderSource {
     this.log = [];
   }
 
-  private ensureWatching(): Promise<'ok' | 'none' | 'unavailable'> {
+  private ensureWatching(): Promise<'ok' | 'none' | Unavailable> {
     if (this.watch) return Promise.resolve('ok');
     if (this.closed) return Promise.resolve('none');
     this.starting ??= this.startWatching().finally(() => {
@@ -124,14 +129,14 @@ class LibraryFolderSource implements FolderSource {
     return this.starting;
   }
 
-  private async startWatching(): Promise<'ok' | 'none' | 'unavailable'> {
+  private async startWatching(): Promise<'ok' | 'none' | Unavailable> {
     let started: Awaited<ReturnType<LibraryBridge['watch']>>;
     try {
       started = await this.bridge.watch((event) => this.heard(event));
     } catch {
       return 'none';
     }
-    if ('status' in started) return 'unavailable';
+    if ('status' in started) return { status: 'unavailable', reason: started.reason };
     if (this.closed) {
       started.stop();
       return 'none';
@@ -144,10 +149,19 @@ class LibraryFolderSource implements FolderSource {
   private heard(event: LibraryChanged): void {
     if (!this.watch || event.session !== this.watch.session) return;
     // The root itself changed (moved, deleted, remounted): watch it afresh.
-    if (event.rescan) return this.dropWatch();
-    this.generation += 1;
-    this.log.push({ generation: this.generation, keys: event.paths });
-    if (this.log.length > this.maxLog) this.restart();
+    if (event.rescan) this.dropWatch();
+    else {
+      this.generation += 1;
+      this.log.push({ generation: this.generation, keys: event.paths });
+      if (this.log.length > this.maxLog) this.restart();
+    }
+    for (const hint of [...this.hints]) {
+      try {
+        hint();
+      } catch {
+        // A listener's failure is its own.
+      }
+    }
   }
 
   private dropWatch(): void {
@@ -157,9 +171,9 @@ class LibraryFolderSource implements FolderSource {
   }
 
   /** The root went away: its watcher watches nothing now. */
-  private lost(): Unavailable {
+  private lost(reason?: string): Unavailable {
     if (this.watch) this.dropWatch();
-    return UNAVAILABLE;
+    return reason ? { status: 'unavailable', reason } : UNAVAILABLE;
   }
 }
 

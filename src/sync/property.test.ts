@@ -3,7 +3,7 @@ import type { Worksheet } from '@/model/types';
 import { contentOf } from './content';
 import { folderConnect } from './folderTestKit';
 import { MemoryCloud } from './memorySource';
-import { computer, edit, library, memoryConnect, paper, settle, type Computer, type Connect } from './testKit';
+import { computer, edit, library, memoryConnect, openEditor, paper, settle, type Computer, type Connect } from './testKit';
 
 /**
  * Random interleavings of edits, trashes, restores, syncs, deliveries and offline
@@ -13,6 +13,8 @@ import { computer, edit, library, memoryConnect, paper, settle, type Computer, t
  * are deliberate deletions and left out.) Run directly and through the folder source,
  * whose revisions are content hashes. Both computers keep a hash cache; in even seeds
  * every edit carries the same `updatedAt`, so only `forgetOnWrite` keeps it honest.
+ * With editors, each computer may also hold one document open, typing into it unsaved
+ * (`RunOptions.isBusy`); its edits count once saved, and leaving saves them.
  */
 
 const FROZEN = '2026-10-05T06:32:00.000Z';
@@ -52,7 +54,7 @@ async function falseHits(c: Computer): Promise<string[]> {
   return wrong;
 }
 
-async function scenario(seed: number, steps: number, connect: Connect) {
+async function scenario(seed: number, steps: number, connect: Connect, editors = false) {
   const random = mulberry32(seed);
   const pick = <T,>(items: T[]): T | undefined => items[Math.floor(random() * items.length)];
   const cloud = new MemoryCloud();
@@ -72,8 +74,27 @@ async function scenario(seed: number, steps: number, connect: Connect) {
   for (let step = 0; step < steps; step += 1) {
     const c = pick(computers)!;
     const docs = (await present(c)).sort((x, y) => x.marker.localeCompare(y.marker));
-    const live = docs.filter((doc) => doc.place === 'live');
-    const trash = docs.filter((doc) => doc.place === 'trash');
+    // The open document is the editor's: nothing else on this computer writes it.
+    const live = docs.filter((doc) => doc.place === 'live' && doc.id !== c.editor?.worksheet.id);
+    const trash = docs.filter((doc) => doc.place === 'trash' && doc.id !== c.editor?.worksheet.id);
+    if (editors && random() < 0.3) {
+      const open = c.editor;
+      const act = random();
+      if (!open) {
+        const doc = pick(live);
+        if (doc) await openEditor(c, doc.id);
+      } else if (act < 0.5) {
+        const from = open.worksheet.title.en.map((run) => run.text).join('');
+        open.type(marker(from), seed % 2 === 0 ? FROZEN : undefined);
+      } else if (act < 0.8) {
+        if (open.dirty) await open.save();
+      } else {
+        if (open.dirty) await open.save();
+        open.close();
+      }
+      for (const other of computers) wrongHits.push(...(await falseHits(other)));
+      continue;
+    }
     const roll = random();
     if (roll < 0.15) {
       await c.store.save(paper(marker(null), { id: `doc${next}` }));
@@ -95,6 +116,10 @@ async function scenario(seed: number, steps: number, connect: Connect) {
     }
     for (const other of computers) wrongHits.push(...(await falseHits(other)));
   }
+  for (const c of computers) {
+    if (c.editor?.dirty) await c.editor.save();
+    c.editor?.close();
+  }
   for (const c of computers) for (const doc of await present(c)) atSyncPoint.add(doc.marker);
   await settle(cloud, ...computers);
   for (const c of computers) wrongHits.push(...(await falseHits(c)));
@@ -106,12 +131,27 @@ const descends = (parent: Map<string, string | null>, from: string, to: string) 
   return false;
 };
 
-describe.each([
+const SOURCES = [
   ['memory', memoryConnect],
   ['folder', folderConnect],
-] as [string, Connect][])('two computers, random interleavings, %s source', (_source, connect) => {
+] as [string, Connect][];
+
+describe.each(SOURCES)('two computers, random interleavings, %s source', (_source, connect) => {
   it.each(Array.from({ length: 120 }, (_, i) => i + 1))('seed %i: nothing synced is lost, both end identical', async (seed) => {
     const { computers, parent, atSyncPoint, wrongHits } = await scenario(seed, 40, connect);
+    const [a, b] = computers;
+    expect(wrongHits, `the hash cache vouched for a stale hash (seed ${seed})`).toEqual([]);
+    expect(await library(a)).toEqual(await library(b));
+    const held = (await present(a)).map((doc) => doc.marker);
+    const lost = [...atSyncPoint].filter((m) => !held.some((h) => descends(parent, m, h)));
+    expect(lost, `lost versions (seed ${seed})`).toEqual([]);
+    expect(new Set(held).size, `a version held twice (seed ${seed})`).toBe(held.length);
+  });
+});
+
+describe.each(SOURCES)('two computers with open editors, %s source', (_source, connect) => {
+  it.each(Array.from({ length: 120 }, (_, i) => i + 1))('seed %i: unsaved edits are never written under, nothing is lost', async (seed) => {
+    const { computers, parent, atSyncPoint, wrongHits } = await scenario(seed, 60, connect, true);
     const [a, b] = computers;
     expect(wrongHits, `the hash cache vouched for a stale hash (seed ${seed})`).toEqual([]);
     expect(await library(a)).toEqual(await library(b));

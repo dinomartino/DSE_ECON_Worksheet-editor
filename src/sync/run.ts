@@ -14,6 +14,8 @@ import type { BaseStore, CopyNamer, HashCache, Place, SyncSource, SyncStore } fr
 
 export interface SyncReport {
   status: 'ok' | 'unavailable';
+  /** With `unavailable`: the source's reason, when it gave one. */
+  reason?: string;
   /**
    * The source held no documents at all although the base says it had live ones: a
    * folder emptied or swapped, not a mass delete (deletes go to Trash, which stays). The base was dropped and this run treated as
@@ -54,11 +56,24 @@ export interface RunOptions {
    * when every write to `store` forgets (`forgetOnWrite`). Absent: every document is loaded.
    */
   hashCache?: HashCache;
+  /**
+   * A document open with unsaved edits. Nothing is done to it while this says so (held
+   * `busy`): its edits are based on what is stored, so they are saved first and the next
+   * run compares them. Asked again after each local write: an edit that arrived during
+   * one leaves the base as it was, so the edit's save meets that version as a conflict.
+   */
+  isBusy?: (id: string) => boolean;
 }
 
-class SourceUnavailable extends Error {}
+class SourceUnavailable extends Error {
+  constructor(readonly reason?: string) {
+    super('unavailable');
+  }
+}
 /** The document changed since it was planned, on either side: re-plan it. */
 class Stale extends Error {}
+/** Open with unsaved edits (`isBusy`): hold it this run. */
+class Busy extends Error {}
 
 const COUNT: Partial<Record<SyncAction['kind'], Count>> = {
   upload: 'uploaded',
@@ -83,11 +98,11 @@ export async function runSync(options: RunOptions): Promise<SyncReport> {
   const { store, source, base } = options;
   const report = emptyReport();
   const listing = await source.list();
-  if (listing.status === 'unavailable') return { ...report, status: 'unavailable' };
+  if (listing.status === 'unavailable') return unavailable(report, listing.reason);
   const baseEntries = await base.load();
   const local = await readLocal(store, options.hashCache);
   const remote = await readRemote(source, listing.entries, baseEntries);
-  if ('status' in remote) return { ...report, status: 'unavailable' };
+  if ('status' in remote) return unavailable(report, remote.reason);
 
   const hadLive = [...baseEntries.values()].some((entry) => entry.place === 'live');
   if (hadLive && remote.docs.size === 0 && remote.strays.length === 0) {
@@ -102,12 +117,18 @@ export async function runSync(options: RunOptions): Promise<SyncReport> {
     try {
       await executor.apply(action, 1);
     } catch (error) {
-      if (error instanceof SourceUnavailable) return { ...report, status: 'unavailable' };
+      if (error instanceof SourceUnavailable) return unavailable(report, error.reason);
       report.errors.push({ key: keyOf(action), message: error instanceof Error ? error.message : String(error) });
     }
   }
   return report;
 }
+
+const unavailable = (report: SyncReport, reason?: string): SyncReport => ({
+  ...report,
+  status: 'unavailable',
+  ...(reason ? { reason } : {}),
+});
 
 function keyOf(action: SyncAction): string {
   if ('id' in action && action.id) return documentKey(action.id, 'live');
@@ -130,10 +151,12 @@ class Executor {
     // Planned from a cached hash: load it whole and plan again. Not a retry.
     if (action.kind === 'needsLocal') return this.apply(await this.replan(action.id), attempt);
     try {
+      if (action.kind !== 'hold' && 'id' in action && this.busy(action.id)) throw new Busy();
       await this.step(action);
       const count = COUNT[action.kind];
       if (count) this.report.counts[count] += 1;
     } catch (error) {
+      if (error instanceof Busy) return this.heldBusy(action);
       if (!(error instanceof Stale)) throw error;
       if (!('id' in action) || !action.id || attempt >= this.maxAttempts) {
         throw new Error('It kept changing during sync; trying again next time.');
@@ -144,10 +167,31 @@ class Executor {
 
   private async replan(id: string): Promise<SyncAction> {
     const remote = await readRemoteDoc(this.options.source, id);
-    if ('status' in remote) throw new SourceUnavailable();
+    if ('status' in remote) throw new SourceUnavailable(remote.reason);
     const local = await this.local(id);
     const base = (await this.options.base.load()).get(id);
     return planDocument(id, local, remote, base, this.ctx);
+  }
+
+  private heldBusy(action: SyncAction): void {
+    const id = 'id' in action ? action.id : undefined;
+    const key = 'from' in action ? action.from.key : undefined;
+    this.report.held.push({ ...(id ? { id } : {}), ...(key && !id ? { key } : {}), reason: 'busy' });
+    this.report.counts.held += 1;
+  }
+
+  private busy(id: string): boolean {
+    return this.options.isBusy?.(id) ?? false;
+  }
+
+  /** A local write to `id`, never under unsaved edits: checked before, and again after. */
+  private async touch<T>(id: string, work: () => Promise<T>): Promise<T> {
+    if (this.busy(id)) throw new Busy();
+    const result = await work();
+    // An edit arrived while this wrote: it is based on the version before. The base is
+    // left as it was, so that edit's save is compared with this version (keep both).
+    if (this.busy(id)) throw new Busy();
+    return result;
   }
 
   /** Fresh and whole; it refreshes the hash cache too. */
@@ -194,8 +238,8 @@ class Executor {
       }
       case 'moveLocal': {
         const content = await this.confirmLocal(action.id, action.seen);
-        if (action.to === 'trash') await store.trash(action.id);
-        else if ((await store.restore(action.id)) !== action.id) throw new Error('Restored under another id.');
+        if (action.to === 'trash') await this.touch(action.id, () => store.trash(action.id));
+        else if ((await this.touch(action.id, () => store.restore(action.id))) !== action.id) throw new Error('Restored under another id.');
         return this.record(action.id, action.to, content, action.revision);
       }
       case 'conflict': {
@@ -209,7 +253,7 @@ class Executor {
       }
       case 'purgeRemote': {
         const removed = await source.remove(action.from.key, { expectRevision: action.from.revision });
-        if (removed.status === 'unavailable') throw new SourceUnavailable();
+        if (removed.status === 'unavailable') throw new SourceUnavailable(removed.reason);
         if (removed.status === 'conflict') throw new Stale();
         return base.remove(action.id);
       }
@@ -217,7 +261,7 @@ class Executor {
         await this.placeCopy(action.copy);
         // The provider's file goes only once the canonical copy reads back the same.
         const back = await source.read(documentKey(action.copy.id, action.copy.place));
-        if (back.status === 'unavailable') throw new SourceUnavailable();
+        if (back.status === 'unavailable') throw new SourceUnavailable(back.reason);
         if (back.status === 'ok' && sameContent(back.text, action.copy)) await this.removeIfUnchanged(action.from);
         return;
       }
@@ -235,22 +279,23 @@ class Executor {
 
   private async write(key: string, text: string, expect: string | null): Promise<string> {
     const written = await this.options.source.write(key, text, { expectRevision: expect });
-    if (written.status === 'unavailable') throw new SourceUnavailable();
+    if (written.status === 'unavailable') throw new SourceUnavailable(written.reason);
     if (written.status === 'conflict') throw new Stale();
     return written.revision;
   }
 
   private async readExact(from: KeyRevision): Promise<string> {
     const read = await this.options.source.read(from.key);
-    if (read.status === 'unavailable') throw new SourceUnavailable();
-    if (read.status === 'missing' || read.revision !== from.revision) throw new Stale();
+    if (read.status === 'unavailable') throw new SourceUnavailable(read.reason);
+    // Gone, changed or unreadable since it was planned: plan it again (an unreadable one is held).
+    if (read.status !== 'ok' || read.revision !== from.revision) throw new Stale();
     return read.text;
   }
 
   /** A key whose content is already elsewhere. Changed since: left alone (an edit wins). */
   private async removeIfUnchanged(from: KeyRevision): Promise<void> {
     const removed = await this.options.source.remove(from.key, { expectRevision: from.revision });
-    if (removed.status === 'unavailable') throw new SourceUnavailable();
+    if (removed.status === 'unavailable') throw new SourceUnavailable(removed.reason);
   }
 
   private async record(id: string, place: Place, content: Content, revision: string): Promise<void> {
@@ -269,11 +314,11 @@ class Executor {
     if (!unchanged) throw new Stale();
     const differs = !now || (now.content as Content).hash !== incoming.hash;
     if (place === 'live') {
-      if (now?.place === 'trash' && (await store.restore(id)) !== id) throw new Error('Restored under another id.');
-      if (differs) await store.adopt(incoming.worksheet);
+      if (now?.place === 'trash' && (await this.touch(id, () => store.restore(id))) !== id) throw new Error('Restored under another id.');
+      if (differs) await this.touch(id, () => store.adopt(incoming.worksheet));
     } else {
-      if (differs) await store.adopt(incoming.worksheet);
-      if (differs || now?.place === 'live') await store.trash(id);
+      if (differs) await this.touch(id, () => store.adopt(incoming.worksheet));
+      if (differs || now?.place === 'live') await this.touch(id, () => store.trash(id));
     }
     const after = await this.local(id);
     if (!after || after.content === 'unreadable') throw new Error('The downloaded document will not load.');
@@ -290,17 +335,17 @@ class Executor {
     const existing = await this.local(copy.id);
     if (existing && (existing.content === 'unreadable' || existing.content.hash !== copy.hash)) return;
     if (!existing) {
-      await store.adopt(copy.worksheet);
-      if (copy.place === 'trash') await store.trash(copy.id);
+      await this.touch(copy.id, () => store.adopt(copy.worksheet));
+      if (copy.place === 'trash') await this.touch(copy.id, () => store.trash(copy.id));
     }
     const key = documentKey(copy.id, copy.place);
     const written = await source.write(key, copy.text, { expectRevision: null });
-    if (written.status === 'unavailable') throw new SourceUnavailable();
+    if (written.status === 'unavailable') throw new SourceUnavailable(written.reason);
     let revision: string;
     if (written.status === 'ok') revision = written.revision;
     else {
       const there = await source.read(key);
-      if (there.status === 'unavailable') throw new SourceUnavailable();
+      if (there.status === 'unavailable') throw new SourceUnavailable(there.reason);
       if (there.status !== 'ok' || !sameContent(there.text, copy)) return;
       revision = there.revision;
     }

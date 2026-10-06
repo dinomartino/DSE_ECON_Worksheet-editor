@@ -843,8 +843,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   // Explicit "Save now", not waiting for the autosave debounce.
   save: async () => {
     if (get().readOnly) return;
-    await worksheetStore.save(get().worksheet);
-    get().markSaved();
+    const worksheet = get().worksheet;
+    await worksheetStore.save(worksheet);
+    // An edit made during the write is not saved yet: it stays dirty.
+    if (get().worksheet === worksheet) get().markSaved();
   },
 
   // A view change, not an edit: bypasses `commit`, so no history entry and no dirty.

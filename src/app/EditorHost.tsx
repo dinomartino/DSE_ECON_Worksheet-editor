@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { UpdateBanner } from '@/components/editor/UpdateBanner';
 import { AppSettingsHost } from '@/components/settings/AppSettingsHost';
 import { NoticeLayer } from '@/components/ui/NoticeLayer';
@@ -9,6 +9,7 @@ import { setBeforeRestart } from '@/desktop/updateStore';
 import { useBankReturn, useKeptTarget } from '@/components/bank/page/bankReturn';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
+import { isDesktop } from '@/platform';
 import { NewerDocumentError, worksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 
@@ -50,12 +51,19 @@ export async function flushBeforeLeaving(save = (w: Worksheet) => worksheetStore
   }
 }
 
+/** The store's `clear`; on desktop through sync, which forgets the folder's base first. */
+async function clearStore(): Promise<void> {
+  if (!isDesktop()) return worksheetStore.clear();
+  const { clearSavedLibrary } = await import('@/sync/librarySync');
+  return clearSavedLibrary(() => worksheetStore.clear());
+}
+
 /**
  * "Clear saved documents": the open document goes with the rest. Marked clean *before*
  * the clear, so neither a due autosave nor a flush writes it back; the caller then
  * leaves without `flushBeforeLeaving`. A failed clear restores `dirty`.
  */
-export async function clearSavedDocuments(clear = () => worksheetStore.clear()): Promise<void> {
+export async function clearSavedDocuments(clear = clearStore): Promise<void> {
   const { dirty } = useWorksheetStore.getState();
   useWorksheetStore.setState({ dirty: false });
   try {
@@ -91,6 +99,29 @@ export function EditorHost() {
   const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
   const [chosen, setChosen] = useState(false);
   const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
+
+  // Sync's open-editor guard reads it outside React (`src/sync/openEditor.ts`).
+  const editorOpen = useRef(false);
+  useEffect(() => {
+    editorOpen.current = chosen;
+  }, [chosen]);
+
+  // Library folder sync: desktop only, and only once a folder is chosen (`librarySync.ts`).
+  useEffect(() => {
+    if (!isDesktop()) return;
+    let stop: (() => void) | undefined;
+    let left = false;
+    void import('@/sync/librarySync')
+      .then(({ startLibrarySync }) => {
+        if (!left) stop = startLibrarySync({ isEditorOpen: () => editorOpen.current });
+      })
+      // No sync this session; the library itself is untouched.
+      .catch(() => undefined);
+    return () => {
+      left = true;
+      stop?.();
+    };
+  }, []);
 
   // Restarting into an update kills the autosave debounce; write pending edits first.
   useEffect(

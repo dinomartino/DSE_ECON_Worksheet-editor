@@ -180,20 +180,28 @@ Invariants:
 - Folders are never a field on an index row (an older build's rewrite drops it): key
   `econ-worksheet-folders`, `worksheets/folders.json`; in a backup, inside `manifest.json` — §Persistence.
 
-## sync — one engine for every storage source (not wired in yet)
+## sync — one engine for every storage source (runs only once a folder is chosen: no UI chooses one yet)
 
 `docs/design/sync-engine.md`. The store stays primary; a source is a mirror. Pure TypeScript.
 
 - `src/sync/types.ts:SyncSource` · `:BaseStore` · `:CopyNamer` — entries `{ key, revision, size }`, CAS writes
 - `src/sync/plan.ts:planSync` · `:planDocument` · `:planStray` — pure three-way plan (local, remote, base)
-- `src/sync/run.ts:runSync` — executor: CAS, re-plan on change, base moves last; `SyncReport`
+- `src/sync/run.ts:runSync` — executor: CAS, re-plan on change, base moves last; `SyncReport`; `isBusy` holds a
+  document open with unsaved edits
+- `src/sync/scheduler.ts:createScheduler` — when runs happen: start, focus, debounced saves, source hints, 60 s rescan;
+  single-flight, backoff, own-echo skip, observable `status()`; `:webLock` for a future web source
+- `src/sync/librarySync.ts:startLibrarySync` — the app's wiring (desktop, folder `ok` only), loaded by `import()` from
+  `src/app/EditorHost.tsx`; `:clearSavedLibrary` forgets the base before Clear saved documents
+- `src/sync/openEditor.ts:openEditorGuard` — never writes under unsaved edits; a clean open document reloads, with a notice
+- `src/sync/localNamer.ts:localNamer` — copy names from `src/sync/messages.ts:SYNC_MESSAGES`, in the interface language
+- `src/storage/index.ts:worksheetHashCache` — the one hash cache; `worksheetStore` is `withChangeFeed(forgetOnWrite(…))`
 - `src/sync/snapshot.ts:readLocal` · `:readRemote` — the two sides as the planner sees them
 - `src/sync/persistentBase.ts:createBaseStore` — the base per (computer, source): web IndexedDB `econ-worksheet-sync`,
   desktop `$APPDATA/sync/base-<hash>.json` (`src/storage/fileStore.ts:syncBaseFile`); a bad row or file reads as absent
 - `src/sync/hashCache.ts:memoryHashCache` · `:forgetOnWrite` — local hashes by `updatedAt`, sound only while every write forgets
 - `src/sync/folderSource.ts:folderSource` — the cloud folder as a source, over `src/platform/library.ts:LibraryBridge`:
   keys = relative paths (provider copies keep theirs: strays), revision = content hash, `changes()` from watcher bursts
-  (`reset` whenever one may be missed); a file that will not read reads as unparseable, so it is held
+  (`reset` whenever one may be missed), `onHint` per burst; a file that will not read is `unreadable`, so it is held
 - `src/sync/memorySource.ts:MemoryCloud` — test source with faults; `src/sync/testKit.ts:computer` — simulated computers;
   `src/sync/folderTestKit.ts:FakeLibrary` — the Rust commands' rules over `MemoryCloud`. `run.test.ts` and
   `property.test.ts` run through both sources (`src/sync/testKit.ts:Connect`)
@@ -201,8 +209,10 @@ Invariants:
 
 Invariants:
 - Never compares two computers' clocks; never hard-deletes by sync; a newer build's file is never uploaded over.
-- No `@tauri-apps/*` and no paths in `src/sync/`; the folder's specifics live in its source.
-- Guard: `src/sync/property.test.ts` (no version lost, both computers identical, none held twice, no stale cached hash).
+- No `@tauri-apps/*` in `src/sync/`, and no paths in the engine; the folder's specifics live in its source.
+- Never writes a document open with unsaved edits; the web runs nothing until it has a source.
+- Guard: `src/sync/property.test.ts` (no version lost, both computers identical, none held twice, no stale cached hash;
+  a variant with open editors typing unsaved on both computers).
 
 ## platform / desktop
 
