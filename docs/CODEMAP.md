@@ -190,7 +190,12 @@ Invariants:
 - `src/sync/snapshot.ts:readLocal` · `:readRemote` — the two sides as the planner sees them
 - `src/sync/persistentBase.ts:createBaseStore` — the base per (computer, source): web IndexedDB `econ-worksheet-sync`,
   desktop `$APPDATA/sync/base-<hash>.json` (`src/storage/fileStore.ts:syncBaseFile`); a bad row or file reads as absent
-- `src/sync/memorySource.ts:MemoryCloud` — test source with faults; `src/sync/testKit.ts:computer` — simulated computers
+- `src/sync/folderSource.ts:folderSource` — the cloud folder as a source, over `src/platform/library.ts:LibraryBridge`:
+  keys = relative paths (provider copies keep theirs: strays), revision = content hash, `changes()` from watcher bursts
+  (`reset` whenever one may be missed); a file that will not read reads as unparseable, so it is held
+- `src/sync/memorySource.ts:MemoryCloud` — test source with faults; `src/sync/testKit.ts:computer` — simulated computers;
+  `src/sync/folderTestKit.ts:FakeLibrary` — the Rust commands' rules over `MemoryCloud`. `run.test.ts` and
+  `property.test.ts` run through both sources (`src/sync/testKit.ts:Connect`)
 - `src/storage/document.ts:adoptRefused` — `adopt()`'s one refusal (older schema over a newer build's document)
 
 Invariants:
@@ -204,6 +209,10 @@ Invariants:
 - `src/platform/index.ts:chooseSavePath` · `:savePdf` — desktop PDF: the save sheet, then the shell's `print_to_pdf` command
 - `src/platform/index.ts:chooseSaveTarget` · `:chooseFolderTarget` · `:canChooseLocation` — ask where first (inside the click), write after the build; `src/platform/webPicker.ts` is the browser's Save As / folder picker (Chrome, Edge), the anchor download elsewhere
 - `src-tauri/src/pdf/mod.rs` — the one app command, `print_to_pdf` (path, page box, sheet count); `src-tauri/src/pdf/macos.rs` (WKWebView save job) · `src-tauri/src/pdf/windows.rs` (WebView2 `PrintToPdf`). Declared in `src-tauri/build.rs`, granted as `allow-print-to-pdf` in `src-tauri/capabilities/default.json`
+- `src-tauri/src/library.rs` — the library folder's commands (`library_location` · `_choose` · `_forget` · `_list` · `_read` ·
+  `_write` · `_remove` · `_watch` · `_unwatch`, `cargo test`): root picked in Rust and kept in `$APPDATA/library-location.json`
+  (denied to plugin-fs), paths relative and inside the root, CAS by SHA-256, temp + fsync + rename, identical bytes skipped,
+  an unusable root `unavailable`, placeholders listed unhashed. Bridge: `src/platform/library.ts:desktopLibrary`
 - `src-tauri/src/bundle_rename.rs:decide` · `:rename_legacy_bundle` — macOS, before any window: an updated `Econ Worksheet.app` renames itself `Econ Studio.app` and relaunches once, else logs why it skipped (`cargo test`)
 - `src/platform/index.ts:listenForFileDrops` · `:readDroppedFile` — Finder/Explorer file drops arrive as Tauri's native event, never HTML5 `drop`; effects use `:subscribeToFileDrops`, and every Tauri unlisten goes through `:unlistenSafely` (it can reject before the listener registers)
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
