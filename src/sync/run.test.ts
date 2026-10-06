@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CURRENT_SCHEMA_VERSION } from '@/model/migrations';
 import { bi } from '@/model/text';
+import { LocalStorageWorksheetStore } from '@/storage';
 import { stringifyWorksheet } from '@/storage/document';
 import { documentKey } from './keys';
 import { MemoryCloud } from './memorySource';
@@ -407,5 +408,83 @@ describe('a newer build’s document', () => {
     const report = await b.sync();
     expect(report.held).toEqual([{ id: doc.id, reason: 'newer-build' }]);
     expect(b.storage.getItem(`econ-worksheet:${doc.id}`)).toBe(before);
+  });
+});
+
+describe('the hash cache', () => {
+  it('an unchanged library loads no document on the next run, on either computer', async () => {
+    const { cloud, a, b } = pair();
+    const docs = [paper('One'), paper('Two'), paper('Three')];
+    for (const doc of docs) await a.store.save(doc);
+    await a.store.trash(docs[2].id);
+    await settle(cloud, a, b);
+    for (const c of [a, b]) {
+      c.loads.count = 0;
+      const report = await c.sync();
+      expect(Object.values(report.counts).every((n) => n === 0)).toBe(true);
+      expect(c.loads.count, c.name).toBe(0);
+    }
+    // An edit costs that one document: read for the plan, re-read before the upload.
+    await edit(a, docs[0].id, 'OneEdited');
+    a.loads.count = 0;
+    expect((await a.sync()).counts.uploaded).toBe(1);
+    expect(a.loads.count).toBe(2);
+  });
+
+  it('an edit that keeps the same updatedAt is still uploaded', async () => {
+    const { cloud, a, b } = pair();
+    const stamp = '2026-10-05T06:32:00.000Z';
+    const doc = paper('One', { updatedAt: stamp });
+    await a.store.save(doc);
+    await settle(cloud, a, b);
+    await edit(a, doc.id, 'Two', stamp);
+    expect((await a.sync()).counts.uploaded).toBe(1);
+    await b.sync();
+    expect(await titles(b)).toEqual({ live: ['Two'], trash: [] });
+  });
+
+  it('a write it never heard of (another tab) is seen by its new updatedAt', async () => {
+    const { cloud, a, b } = pair();
+    const doc = paper('One', { updatedAt: '2026-10-05T06:32:00.000Z' });
+    await a.store.save(doc);
+    await settle(cloud, a, b);
+    const otherTab = new LocalStorageWorksheetStore(Date.now, () => a.storage);
+    await otherTab.save({ ...doc, title: bi('Two', ''), updatedAt: '2026-10-05T06:33:00.000Z' });
+    expect((await a.sync()).counts.uploaded).toBe(1);
+    await b.sync();
+    expect(await titles(b)).toEqual({ live: ['Two'], trash: [] });
+  });
+
+  it('a conflict planned from a cached hash loads this computer’s version for the copy', async () => {
+    const { cloud, a, b } = pair();
+    const doc = paper('Base');
+    await a.store.save(doc);
+    await settle(cloud, a, b);
+    await edit(b, doc.id, 'FromB');
+    cloud.failAfter('B', 1); // B lists and hashes its edit, then cannot upload it
+    expect((await b.sync()).status).toBe('unavailable');
+    cloud.setUnavailable('B', false);
+    expect(b.hashCache.get(doc.id)).toBeDefined();
+    await edit(a, doc.id, 'FromA');
+    await a.sync();
+    b.loads.count = 0;
+    expect((await b.sync()).counts.conflicts).toBe(1);
+    expect(b.loads.count).toBeGreaterThan(0);
+    await settle(cloud, a, b);
+    expect(await titles(a)).toEqual({ live: ['FromA', 'FromB'], trash: [] });
+    expect(await library(a)).toEqual(await library(b));
+  });
+
+  it('an unreadable document is held every run, never cached', async () => {
+    const { a } = pair();
+    const doc = paper('Torn');
+    await a.store.save(doc);
+    a.storage.setItem(`econ-worksheet:${doc.id}`, '{"torn');
+    for (let run = 0; run < 2; run += 1) {
+      a.loads.count = 0;
+      expect((await a.sync()).held).toEqual([{ id: doc.id, reason: 'unreadable-local' }]);
+      expect(a.loads.count).toBe(1);
+      expect(a.hashCache.get(doc.id)).toBeUndefined();
+    }
   });
 });

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import type { Worksheet } from '@/model/types';
+import { contentOf } from './content';
 import { MemoryCloud } from './memorySource';
 import { computer, edit, library, paper, settle, type Computer } from './testKit';
 
@@ -7,8 +9,11 @@ import { computer, edit, library, paper, settle, type Computer } from './testKit
  * spells on two computers. Every version that existed at a sync point must survive —
  * itself, or a later edit made from it — live, as a copy, or in Trash; the two
  * computers must end identical, with no version held twice. (Delete forever and expiry
- * are deliberate deletions and left out.)
+ * are deliberate deletions and left out.) Both computers keep a hash cache; in even
+ * seeds every edit carries the same `updatedAt`, so only `forgetOnWrite` keeps it honest.
  */
+
+const FROZEN = '2026-10-05T06:32:00.000Z';
 
 function mulberry32(seed: number) {
   let a = seed >>> 0;
@@ -28,6 +33,23 @@ async function present(c: Computer): Promise<{ place: string; id: string; marker
   });
 }
 
+/** Rows the hash cache would vouch for with a hash that is not the document's: a false "same". */
+async function falseHits(c: Computer): Promise<string[]> {
+  const wrong: string[] = [];
+  const check = async (id: string, updatedAt: string, place: 'live' | 'trash', load: () => Promise<Worksheet | undefined>) => {
+    const hit = c.hashCache.get(id);
+    if (!hit || hit.place !== place || hit.updatedAt !== updatedAt) return;
+    const worksheet = await load().catch(() => undefined);
+    if (!worksheet || contentOf(worksheet).hash !== hit.hash) wrong.push(`${c.name} ${place} ${id}`);
+  };
+  const live = await c.store.list();
+  for (const row of live) await check(row.id, row.updatedAt, 'live', () => c.store.load(row.id));
+  for (const row of await c.store.listTrash()) {
+    if (!live.some((l) => l.id === row.id)) await check(row.id, row.updatedAt, 'trash', () => c.store.loadTrashed(row.id));
+  }
+  return wrong;
+}
+
 async function scenario(seed: number, steps: number) {
   const random = mulberry32(seed);
   const pick = <T,>(items: T[]): T | undefined => items[Math.floor(random() * items.length)];
@@ -36,6 +58,7 @@ async function scenario(seed: number, steps: number) {
   const computers = [computer(cloud, 'A'), computer(cloud, 'B')];
   const parent = new Map<string, string | null>();
   const atSyncPoint = new Set<string>();
+  const wrongHits: string[] = [];
   let next = 0;
   const marker = (from: string | null) => {
     next += 1;
@@ -54,7 +77,7 @@ async function scenario(seed: number, steps: number) {
       await c.store.save(paper(marker(null), { id: `doc${next}` }));
     } else if (roll < 0.45 && live.length) {
       const doc = pick(live)!;
-      await edit(c, doc.id, marker(doc.marker));
+      await edit(c, doc.id, marker(doc.marker), seed % 2 === 0 ? FROZEN : undefined);
     } else if (roll < 0.52 && live.length) {
       await c.store.trash(pick(live)!.id);
     } else if (roll < 0.57 && trash.length) {
@@ -68,10 +91,12 @@ async function scenario(seed: number, steps: number) {
       await c.sync();
       if (offline) cloud.setUnavailable(c.name, false);
     }
+    for (const other of computers) wrongHits.push(...(await falseHits(other)));
   }
   for (const c of computers) for (const doc of await present(c)) atSyncPoint.add(doc.marker);
   await settle(cloud, ...computers);
-  return { computers, parent, atSyncPoint };
+  for (const c of computers) wrongHits.push(...(await falseHits(c)));
+  return { computers, parent, atSyncPoint, wrongHits };
 }
 
 const descends = (parent: Map<string, string | null>, from: string, to: string) => {
@@ -81,8 +106,9 @@ const descends = (parent: Map<string, string | null>, from: string, to: string) 
 
 describe('two computers, random interleavings', () => {
   it.each(Array.from({ length: 120 }, (_, i) => i + 1))('seed %i: nothing synced is lost, both end identical', async (seed) => {
-    const { computers, parent, atSyncPoint } = await scenario(seed, 40);
+    const { computers, parent, atSyncPoint, wrongHits } = await scenario(seed, 40);
     const [a, b] = computers;
+    expect(wrongHits, `the hash cache vouched for a stale hash (seed ${seed})`).toEqual([]);
     expect(await library(a)).toEqual(await library(b));
     const held = (await present(a)).map((doc) => doc.marker);
     const lost = [...atSyncPoint].filter((m) => !held.some((h) => descends(parent, m, h)));

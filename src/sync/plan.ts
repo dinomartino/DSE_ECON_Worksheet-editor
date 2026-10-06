@@ -3,7 +3,7 @@ import type { Worksheet } from '@/model/types';
 import { worksheetTitle } from '@/storage/document';
 import { contentOf, type Content } from './content';
 import { derivedId } from './hash';
-import type { LocalDoc, RemoteDoc, RemoteFile, RemoteSnapshot } from './snapshot';
+import type { LocalContent, LocalDoc, RemoteDoc, RemoteFile, RemoteSnapshot } from './snapshot';
 import type { BaseEntry, CopyNamer, Place } from './types';
 
 /**
@@ -63,7 +63,9 @@ export type SyncAction =
   | { kind: 'purgeRemote'; id: string; from: KeyRevision }
   | { kind: 'providerCopy'; from: KeyRevision; copy: Copy }
   | { kind: 'dropDuplicate'; from: KeyRevision }
-  | { kind: 'hold'; id?: string; key?: string; reason: HoldReason };
+  | { kind: 'hold'; id?: string; key?: string; reason: HoldReason }
+  /** This computer's version is needed whole (a copy is made of it) but only its hash was read. */
+  | { kind: 'needsLocal'; id: string };
 
 type Delta = 'same' | 'edited' | 'moved' | 'gone';
 
@@ -72,7 +74,7 @@ const keyRev = (file: RemoteFile): KeyRevision => ({ key: file.key, revision: fi
 /** Remote's state is its live file if it has one (live wins), else its trashed one. */
 const stateFile = (remote: RemoteDoc | undefined) => remote?.live ?? remote?.trash;
 
-function localDelta(local: Content | undefined, place: Place | undefined, base: BaseEntry): Delta {
+function localDelta(local: LocalContent | undefined, place: Place | undefined, base: BaseEntry): Delta {
   if (!local) return 'gone';
   if (local.hash !== base.hash) return 'edited';
   return place === base.place ? 'same' : 'moved';
@@ -111,7 +113,7 @@ export function planDocument(
   const place = localDoc?.place;
   const seen: Seen | null = local && place ? { place, hash: local.hash } : null;
 
-  const link = (f: RemoteFile, c: Content, at: Place = f.place): SyncAction => ({
+  const link = (f: RemoteFile, c: Pick<Content, 'hash' | 'schemaVersion'>, at: Place = f.place): SyncAction => ({
     kind: 'link',
     id,
     entry: { id, kind: 'worksheet', place: at, hash: c.hash, revision: f.revision, schemaVersion: c.schemaVersion },
@@ -127,6 +129,7 @@ export function planDocument(
   const conflict = (f: RemoteFile): SyncAction => {
     if (!local || !place || !seen) return download(f);
     if (local.newer && remoteSchema(f, base) < local.schemaVersion) return { kind: 'hold', id, reason: 'newer-build' };
+    if (!local.worksheet) return { kind: 'needsLocal', id };
     const at = Date.parse(local.worksheet.updatedAt);
     const name = ctx.namer.conflictCopy(worksheetTitle(local.worksheet), Number.isNaN(at) ? ctx.now : new Date(at));
     // Derived from this version, so a run interrupted after the copy re-makes the same one.

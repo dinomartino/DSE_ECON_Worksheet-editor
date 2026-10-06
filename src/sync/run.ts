@@ -2,7 +2,7 @@ import { contentOfText, type Content } from './content';
 import { documentKey } from './keys';
 import { planDocument, planSync, type Copy, type HoldReason, type KeyRevision, type PlanContext, type Seen, type SyncAction } from './plan';
 import { readLocal, readLocalDoc, readRemote, readRemoteDoc } from './snapshot';
-import type { BaseStore, CopyNamer, Place, SyncSource, SyncStore } from './types';
+import type { BaseStore, CopyNamer, HashCache, Place, SyncSource, SyncStore } from './types';
 
 /**
  * The executor: one run = list both sides, plan, apply. Every remote write is a
@@ -49,6 +49,11 @@ export interface RunOptions {
   now?: () => Date;
   /** Attempts per document when it keeps changing under the run. */
   maxAttempts?: number;
+  /**
+   * Hashes of unchanged local documents, so they are not loaded every run. Sound only
+   * when every write to `store` forgets (`forgetOnWrite`). Absent: every document is loaded.
+   */
+  hashCache?: HashCache;
 }
 
 class SourceUnavailable extends Error {}
@@ -80,7 +85,7 @@ export async function runSync(options: RunOptions): Promise<SyncReport> {
   const listing = await source.list();
   if (listing.status === 'unavailable') return { ...report, status: 'unavailable' };
   const baseEntries = await base.load();
-  const local = await readLocal(store);
+  const local = await readLocal(store, options.hashCache);
   const remote = await readRemote(source, listing.entries, baseEntries);
   if ('status' in remote) return { ...report, status: 'unavailable' };
 
@@ -122,6 +127,8 @@ class Executor {
   }
 
   async apply(action: SyncAction, attempt: number): Promise<void> {
+    // Planned from a cached hash: load it whole and plan again. Not a retry.
+    if (action.kind === 'needsLocal') return this.apply(await this.replan(action.id), attempt);
     try {
       await this.step(action);
       const count = COUNT[action.kind];
@@ -138,9 +145,14 @@ class Executor {
   private async replan(id: string): Promise<SyncAction> {
     const remote = await readRemoteDoc(this.options.source, id);
     if ('status' in remote) throw new SourceUnavailable();
-    const local = await readLocalDoc(this.options.store, id);
+    const local = await this.local(id);
     const base = (await this.options.base.load()).get(id);
     return planDocument(id, local, remote, base, this.ctx);
+  }
+
+  /** Fresh and whole; it refreshes the hash cache too. */
+  private local(id: string) {
+    return readLocalDoc(this.options.store, id, this.options.hashCache);
   }
 
   private async step(action: SyncAction): Promise<void> {
@@ -216,7 +228,7 @@ class Executor {
 
   /** The local document as planned, or Stale: the teacher saved, trashed or restored since. */
   private async confirmLocal(id: string, seen: Seen): Promise<Content> {
-    const now = await readLocalDoc(this.options.store, id);
+    const now = await this.local(id);
     if (!now || now.place !== seen.place || now.content === 'unreadable' || now.content.hash !== seen.hash) throw new Stale();
     return now.content;
   }
@@ -250,7 +262,7 @@ class Executor {
     const { store } = this.options;
     const incoming = contentOfText(await this.readExact(from));
     if (incoming.worksheet.id !== id) throw new Error('The file holds another document.');
-    const now = await readLocalDoc(store, id);
+    const now = await this.local(id);
     const unchanged = seen
       ? now && now.place === seen.place && now.content !== 'unreadable' && now.content.hash === seen.hash
       : !now;
@@ -263,7 +275,7 @@ class Executor {
       if (differs) await store.adopt(incoming.worksheet);
       if (differs || now?.place === 'live') await store.trash(id);
     }
-    const after = await readLocalDoc(store, id);
+    const after = await this.local(id);
     if (!after || after.content === 'unreadable') throw new Error('The downloaded document will not load.');
     await this.record(id, place, after.content, from.revision);
   }
@@ -275,7 +287,7 @@ class Executor {
    */
   private async placeCopy(copy: Copy): Promise<void> {
     const { store, source } = this.options;
-    const existing = await readLocalDoc(store, copy.id);
+    const existing = await this.local(copy.id);
     if (existing && (existing.content === 'unreadable' || existing.content.hash !== copy.hash)) return;
     if (!existing) {
       await store.adopt(copy.worksheet);
@@ -292,7 +304,7 @@ class Executor {
       if (there.status !== 'ok' || !sameContent(there.text, copy)) return;
       revision = there.revision;
     }
-    const placed = await readLocalDoc(store, copy.id);
+    const placed = await this.local(copy.id);
     if (!placed || placed.content === 'unreadable') throw new Error('The copy will not load.');
     await this.record(copy.id, copy.place, placed.content, revision);
   }
