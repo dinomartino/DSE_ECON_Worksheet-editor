@@ -33,6 +33,26 @@ Entries are `{ key, revision, size }`. `key` is a logical name: `<id>.worksheet.
 No paths, mtimes, rename or mkdir: those stay inside a folder source. `memorySource.ts` is the
 test source (offline, mid-run failure, delayed visibility, outside edits, provider conflict copies).
 
+## The folder source (`src/sync/folderSource.ts`, `src-tauri/src/library.rs`)
+
+A cloud-synced folder the teacher picks (`<chosen>/Econ Studio/`, marker `econ-studio-library.json`
+`{ "format": 1 }`), reached only through the shell's `library_*` commands (`library-folder.md` § 4).
+
+- **Keys are relative paths**, every `*.json` but the marker, dot-names and temp files. A provider's
+  conflict copy keeps its own name, so the planner sees it as a stray.
+- **Revision = SHA-256 of the bytes.** Write and remove compare it first; a mismatch writes nothing.
+  Writes are temp + fsync + rename (Windows: ~1 s of retries, then in place); identical bytes are not
+  written. Remove is a plain delete: the provider's recycle bin is the backstop.
+- **Unusable root** (none chosen, missing, no marker, a newer `format`) is `unavailable`, never an
+  empty listing. A newer build's library is never written by this one.
+- **A file that will not read** (cloud placeholder that will not download, no permission) is listed,
+  never dropped, and reads as unparseable text: the planner holds it; a write over it conflicts.
+  A placeholder not yet downloaded is listed unhashed; reading it downloads it.
+- **`changes()`** comes from the watcher (~1 s bursts of paths). It answers `reset` whenever an event
+  may be lost: first call, watcher restart, a rescan, an overflowing log, no watcher. The listing is
+  the truth; a `list()` that finds the root gone drops the watcher, and the next call restarts it.
+- The device id (random, once per computer) lives beside the root in `$APPDATA/library-location.json`.
+
 ## The planner (`src/sync/plan.ts`, pure)
 
 Local changed = content hash (of what `stringifyWorksheet` writes) ≠ base. Remote changed =
@@ -123,11 +143,14 @@ seeds at 40 steps and 1,500 at 120 passed.
    Desktop writes coalesce (at most one per second, `flush()` to settle): the file may lag the engine's
    last puts, never run ahead, and a lagging row is an earlier real agreement, as after a crash.
 2. ~~A local hash cache~~ (built: § The local hash cache).
-3. The folder source (`library-folder.md` § 3.0–3.4, 3.6: Rust commands, atomic write, watcher).
+3. ~~The folder source~~ **done** (above). `run.test.ts` and `property.test.ts` run through it over a fake
+   of the Rust rules (`folderTestKit.ts`). Unverified: a real Tauri runtime, Windows, real providers.
 4. Scheduler: run on launch, focus, after a save (debounced), on `changes()`; ignore `origin: 'sync'`;
    never write under the open editor; one tab on the web. `clear()` must forget the base. Passing
    a hash cache: wrap the `worksheetStore` singleton in `forgetOnWrite`, and on the web forget the
    id of every `econ-worksheet:` key another tab's `storage` event names. `flush()` the base after each run.
+   Folder source: run on `reset`, `close()` it on teardown, and skip watcher bursts that only
+   name paths this run just wrote with the same hash (else every run triggers one empty run).
 5. Interface: Storage location, "Needs attention", localised `CopyNamer` from a messages catalogue.
 6. Folders, 題型, graphs as later keys.
 

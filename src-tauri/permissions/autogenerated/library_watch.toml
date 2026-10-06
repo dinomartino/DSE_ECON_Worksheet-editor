@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-library-watch"
+description = "Enables the library_watch command without any pre-configured scope."
+commands.allow = ["library_watch"]
+
+[[permission]]
+identifier = "deny-library-watch"
+description = "Denies the library_watch command without any pre-configured scope."
+commands.deny = ["library_watch"]

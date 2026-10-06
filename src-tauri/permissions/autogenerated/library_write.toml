@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-library-write"
+description = "Enables the library_write command without any pre-configured scope."
+commands.allow = ["library_write"]
+
+[[permission]]
+identifier = "deny-library-write"
+description = "Denies the library_write command without any pre-configured scope."
+commands.deny = ["library_write"]

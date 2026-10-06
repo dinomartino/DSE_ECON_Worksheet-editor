@@ -15,14 +15,23 @@ import type { SyncSource, SyncStore } from './types';
 
 export type Computer = ReturnType<typeof computer>;
 
-export function computer(cloud: MemoryCloud, name: string, wrap: (source: SyncSource) => SyncSource = (s) => s) {
+/** How a computer reaches the cloud: directly, or through a folder (`folderTestKit.ts`). */
+export type Connect = (cloud: MemoryCloud, name: string) => SyncSource;
+export const memoryConnect: Connect = (cloud, name) => cloud.client(name);
+
+export function computer(
+  cloud: MemoryCloud,
+  name: string,
+  wrap: (source: SyncSource) => SyncSource = (s) => s,
+  connect: Connect = memoryConnect,
+) {
   const storage = fakeLocalStorage();
   const feed = localFeed();
   const hashCache = memoryHashCache();
   // As the app will: every write, the engine's and the teacher's, forgets its cached hash.
   const store = withChangeFeed(forgetOnWrite(new LocalStorageWorksheetStore(Date.now, () => storage), hashCache), feed.emit);
   const base = memoryBaseStore();
-  const source = wrap(cloud.client(name));
+  const source = wrap(connect(cloud, name));
   /** Documents the engine loaded whole (`load` + `loadTrashed`). */
   const loads = { count: 0 };
   const engineStore: SyncStore = {

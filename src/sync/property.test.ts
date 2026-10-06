@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import type { Worksheet } from '@/model/types';
 import { contentOf } from './content';
+import { folderConnect } from './folderTestKit';
 import { MemoryCloud } from './memorySource';
-import { computer, edit, library, paper, settle, type Computer } from './testKit';
+import { computer, edit, library, memoryConnect, paper, settle, type Computer, type Connect } from './testKit';
 
 /**
  * Random interleavings of edits, trashes, restores, syncs, deliveries and offline
  * spells on two computers. Every version that existed at a sync point must survive —
  * itself, or a later edit made from it — live, as a copy, or in Trash; the two
  * computers must end identical, with no version held twice. (Delete forever and expiry
- * are deliberate deletions and left out.) Both computers keep a hash cache; in even
- * seeds every edit carries the same `updatedAt`, so only `forgetOnWrite` keeps it honest.
+ * are deliberate deletions and left out.) Run directly and through the folder source,
+ * whose revisions are content hashes. Both computers keep a hash cache; in even seeds
+ * every edit carries the same `updatedAt`, so only `forgetOnWrite` keeps it honest.
  */
 
 const FROZEN = '2026-10-05T06:32:00.000Z';
@@ -50,12 +52,12 @@ async function falseHits(c: Computer): Promise<string[]> {
   return wrong;
 }
 
-async function scenario(seed: number, steps: number) {
+async function scenario(seed: number, steps: number, connect: Connect) {
   const random = mulberry32(seed);
   const pick = <T,>(items: T[]): T | undefined => items[Math.floor(random() * items.length)];
   const cloud = new MemoryCloud();
   cloud.delayed = random() < 0.5;
-  const computers = [computer(cloud, 'A'), computer(cloud, 'B')];
+  const computers = [computer(cloud, 'A', undefined, connect), computer(cloud, 'B', undefined, connect)];
   const parent = new Map<string, string | null>();
   const atSyncPoint = new Set<string>();
   const wrongHits: string[] = [];
@@ -104,9 +106,12 @@ const descends = (parent: Map<string, string | null>, from: string, to: string) 
   return false;
 };
 
-describe('two computers, random interleavings', () => {
+describe.each([
+  ['memory', memoryConnect],
+  ['folder', folderConnect],
+] as [string, Connect][])('two computers, random interleavings, %s source', (_source, connect) => {
   it.each(Array.from({ length: 120 }, (_, i) => i + 1))('seed %i: nothing synced is lost, both end identical', async (seed) => {
-    const { computers, parent, atSyncPoint, wrongHits } = await scenario(seed, 40);
+    const { computers, parent, atSyncPoint, wrongHits } = await scenario(seed, 40, connect);
     const [a, b] = computers;
     expect(wrongHits, `the hash cache vouched for a stale hash (seed ${seed})`).toEqual([]);
     expect(await library(a)).toEqual(await library(b));

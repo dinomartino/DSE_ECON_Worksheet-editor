@@ -1,6 +1,7 @@
 # Library folder: one teacher, two computers (F9)
 
 Status: **build plan, parked 2026-10-05 (user: "not yet").** Written 2026-10-05 against `develop` at `93ba8a0`.
+The folder source is built (2026-10-06, `src/sync/folderSource.ts`, § 4); store-level parts are marked superseded.
 Source: `docs/research/2026-09-paid-product/K-free-sync.md` § 4 (Phase A, written against
 `ccaff59`), re-verified against the code below. Reused from the shelved
 `docs/design/drive-sync.md`: conflict naming, the first-connect merge, the never-delete rules.
@@ -170,6 +171,9 @@ $APPDATA/ (hk.econworksheet.desktop)  this computer only
 
 ### 3.0 The seam: a `LibraryDir` port
 
+> **Superseded** by the mirror model (`sync-engine.md`): no port in the store; the folder is reached only by the source's
+> `src/platform/library.ts:LibraryBridge`.
+
 `src/storage/fileStore.ts` calls plugin-fs directly with `BaseDirectory.AppData` in about
 40 places (store, Trash, `patternsFile`, `graphDirFiles`). Extract a port (new
 `src/storage/libraryDir.ts`): `list(dir)` → `{ name, isDir, size, mtimeMs }[]`,
@@ -189,6 +193,9 @@ The store resolves its mode lazily on first call (`library_location`), since
 reloads the webview; nothing re-points live.
 
 ### 3.1 List by scanning
+
+> **Superseded** by the mirror model (`sync-engine.md`): the store keeps `index.json`; the engine lists the folder each run
+> (`library_list`, hashes cached by path, size and mtime). Unreadable files are listed, never dropped.
 
 - Folder mode never reads or writes `index.json`. `list()` = one `library_list` call (names,
   sizes, mtimes in one IPC), cached summaries for unchanged `(name, size, mtime)`, a read only
@@ -213,6 +220,9 @@ reloads the webview; nothing re-points live.
 - Scans ignore dot-names and `.tmp`; a launch removes this app's own temp files older than a day.
 
 ### 3.3 Compare-and-swap before overwrite
+
+> **Superseded** by the mirror model (`sync-engine.md`): no store-level CAS or `ChangedOnDiskError`. CAS by content hash is in
+> `library_write` / `library_remove`; the engine keeps both versions on a conflict (`src/sync/run.ts`).
 
 - The store remembers, per id, the hash it last read or wrote (in the cache, so it survives a
   restart). `save()` passes it as `expect`; Rust compares with the file's current hash and
@@ -280,6 +290,9 @@ reloads the webview; nothing re-points live.
   the next save meets § 3.3. Never written under the editor.
 
 ### 3.7 `clear()` never empties a synced folder
+
+> **Superseded** by the mirror model (`sync-engine.md`): `clear()` empties only the local store; the scheduler forgets the base,
+> and a source suddenly empty is refilled, never read as deletes (`sync-engine.md`).
 
 - Folder mode: `clear()` ("Clear saved documents", `src/app/EditorHost.tsx:clearSavedDocuments`)
   **detaches**: location back to local, cache and history kept, nothing removed in the folder.
@@ -351,40 +364,47 @@ Asked by the user 2026-10-05.
 - **Check in review:** the core's tests run against an in-memory source as well as the fake
   folder, and nothing outside the folder source imports the Rust library commands.
 
-## 4. Tauri permissions
+## 4. Tauri permissions (built: `src-tauri/src/library.rs`)
 
-Today `src-tauri/capabilities/default.json` grants fs read/write/remove/rename/exists/read-dir
-on `$APPDATA/**` only, and its description says `$HOME/**` is deliberately not granted.
+App commands, declared in `src-tauri/build.rs`, granted as `allow-library-*` in
+`src-tauri/capabilities/default.json`. Each runs on the blocking pool. Results are tagged by `status`.
 
-**Recommended: app commands in a new `src-tauri/src/library.rs`**, declared in
-`src-tauri/build.rs` like `print_to_pdf`, granted as `allow-library-*`:
-
-| Command | Does |
+| Command | Result |
 |---|---|
-| `library_location` | the state from `library-location.json` |
-| `library_choose` | opens the native folder picker **from Rust** (`tauri_plugin_dialog` `pick_folder`), validates, writes the root; JS never supplies an absolute path |
-| `library_list` / `library_read` / `library_write` / `library_remove` / `library_rename` | paths relative to the root; reject absolute, `..`, and anything that canonicalises outside the root (symlinks) |
-| `library_watch` | starts the watcher for the current root |
-| `library_set_state` | `moving` → `folder` → `local`; never a new root |
-| `library_reveal` | opens the root in Finder or Explorer (`opener:allow-open-path` does not cover cloud folders) |
+| `library_location` | `{ deviceId, root, status: none \| ok \| unavailable, reason? }`; makes the device id once |
+| `library_choose(title?)` | `chosen { root }` \| `cancelled`. Native folder picker run in Rust; the picked folder if it holds the marker, else `<picked>/Econ Studio/`, created with its marker |
+| `library_forget` | detaches; nothing in the folder is touched |
+| `library_list` | `ok { files: { path, size, mtimeMs, hash, state: ok \| placeholder \| unreadable }[] }` \| `unavailable { reason }` |
+| `library_read(path)` | `ok { text, hash }` \| `missing` \| `unreadable` \| `unavailable` |
+| `library_write(path, text, expect)` | `ok { hash }` \| `conflict` \| `unavailable`; `expect` = hash or `"absent"` |
+| `library_remove(path, expect)` | `ok` \| `missing` \| `conflict` \| `unavailable` |
+| `library_watch` / `library_unwatch(session)` | `ok { session }` \| `unavailable`; emits `library-changed { session, paths, rescan }` |
 
-- **Root kept across restarts** in `$APPDATA/library-location.json`, written only by Rust
-  (temp + rename). The capability adds a **deny** for that path to `fs:allow-write-text-file`,
-  `fs:allow-remove` and `fs:allow-rename`, so page script cannot forge a root. Rust re-validates
-  on load (exists, is a directory, has the marker or is the one being moved into).
-- Hashing uses `sha2` (already in `src-tauri/Cargo.lock`); add `notify`,
-  `notify-debouncer-full` to `src-tauri/Cargo.toml`. Update the capability description.
-- **Rejected: dialog plugin + `tauri-plugin-persisted-scope`.** The dialog grants the picked
-  directory to the fs scope (`allow_directory`, recursive only with `recursive: true`,
-  source-read dialog 2.7.3), and persisted-scope would keep it. But: the grant covers whatever
-  the teacher picked (a whole OneDrive); persisted-scope also keeps every save-dialog and
-  file-drop grant forever; plugin-fs gives no fsync, no CAS and no sharing-violation retry; and
-  its state file sits under `$APPDATA`, which page script can write **[unverified exact path]**.
-- Security trade-off, stated: page script can read and write inside the chosen root through
-  these commands, no more. The root changes only through a native dialog the teacher answers.
-- No `@tauri-apps/*` import at top level: the bridge is `src/platform/library.ts` (new), dynamic
-  import behind `isDesktop()`; `src/test/tauriImports.test.ts` and
-  `scripts/check-web-bundle.mjs` guard it.
+- `unavailable` reasons: `no-location`, `root-missing`, `not-a-folder`, `no-marker`, `newer-format`
+  (marker `format` above 1: a newer build's library, never written), `io`. Never an empty listing.
+- Paths: relative, `/`-separated, at most 8 deep; no `..`, dot-names, `\`, `:`, trailing dot or space,
+  `.tmp`, or the top-level marker; refused when the nearest existing part canonicalises outside the
+  root (symlinks). The listing skips symlinks. A bad path is an `Err` (the bridge call rejects).
+- Listing: every `*.json` under the root except the marker; hashes cached in memory by (path, size,
+  mtime), never for a file changed in the last 2 s. A placeholder (macOS dataless, Windows
+  recall-on-access or offline, a legacy `.<name>.icloud` stub) is listed unhashed: reading downloads it.
+  A folder that will not list fails the whole listing (`io`). The first listing per root per launch
+  removes this app's own temp files (`.<name>.econ-<hex>.tmp`) older than a day.
+- Writes: CAS on the current bytes' hash (an unreadable file never matches), identical bytes skipped,
+  temp beside the target + `sync_all` + rename + directory fsync; Windows sharing violations retried
+  for ~1 s, then written in place with fsync. Parent folders (`trash/`) are created. One write or
+  remove at a time per process. Remove is a plain delete (the provider's recycle bin is the backstop).
+- Watcher: `notify-debouncer-full`, recursive, 1 s debounce; temp and dot-names filtered, an iCloud
+  stub named as its file; an error, a rescan flag or the root itself changing sets `rescan`.
+- **Root kept in `$APPDATA/library-location.json`** (`{ deviceId, root }`), written only by Rust
+  (temp + rename). The capability's global `fs:scope` denies that file to every plugin-fs command, in
+  any letter case. Rust re-validates the root (folder, marker) on every call, so a forged root could
+  only point at a folder that already holds a marker.
+- Rejected: dialog plugin + `tauri-plugin-persisted-scope` (the grant covers whatever the teacher
+  picked, persists every dialog grant, and gives no fsync, CAS or retry).
+- Security trade-off: page script can read and write inside the chosen root through these commands,
+  no more. The root changes only through a native dialog the teacher answers.
+- No `@tauri-apps/*` import at top level: `src/platform/library.ts` imports inside each call.
 
 ---
 

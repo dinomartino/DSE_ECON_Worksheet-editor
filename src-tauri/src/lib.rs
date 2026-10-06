@@ -1,5 +1,6 @@
 #[cfg(any(target_os = "macos", test))]
 pub mod bundle_rename;
+pub mod library;
 pub mod pdf;
 pub mod secrets;
 
@@ -14,8 +15,18 @@ pub fn run() {
       pdf::print_to_pdf,
       secrets::secret_get,
       secrets::secret_set,
-      secrets::secret_delete
+      secrets::secret_delete,
+      library::library_location,
+      library::library_choose,
+      library::library_forget,
+      library::library_list,
+      library::library_read,
+      library::library_write,
+      library::library_remove,
+      library::library_watch,
+      library::library_unwatch
     ])
+    .manage(library::LibraryState::default())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_opener::init())

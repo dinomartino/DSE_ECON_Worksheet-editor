@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-library-choose"
+description = "Enables the library_choose command without any pre-configured scope."
+commands.allow = ["library_choose"]
+
+[[permission]]
+identifier = "deny-library-choose"
+description = "Denies the library_choose command without any pre-configured scope."
+commands.deny = ["library_choose"]
