@@ -14,8 +14,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   starts in `EditorHost` only when a folder is chosen; `isBusy` holds unsaved open documents)
   merged; next the UI: Storage location, Needs attention, notices (`docs/design/library-folder.md`,
   survey `docs/research/2026-10-sync-survey.md`; Drive API design shelved).
-- **2026-10-05: dismissible notices float** bottom-right via `notify()` (`src/store/notices.ts`);
-  follow-ups (題庫 Clear → floating Undo, reserved tag line) merged (`bcf57c4`).
+- **2026-10-05: notices float** bottom-right via `notify()` (`src/store/notices.ts`), follow-ups merged.
 - **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
   question bank, Marking scheme view and layouts, Translation terms, 中文 interface, Graphs
   圖表庫, diagram answer layer, the Econ Studio rename. Next work goes on `develop` as usual.
@@ -79,5 +78,3 @@ off the bottom.** It is the first thing a fresh session reads — then
   `bankCorpus.test.ts`); min-wage template label lifted (demo workaround removed); flaky
   rationale test pinned to a fixed id. IDEAS reordered: classes findability, then D1.
   Then sync: Drive API design (shelved), library-folder plan, survey, sync engine core; notice overlay.
-- **2026-10-04** — Released v0.6.0 (Windows rename test skipped, user's call). Site screenshot
-  harness fixed + 6 new shots (Opus worktree, merged) for the DSE_Mentor page.
