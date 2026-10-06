@@ -103,7 +103,12 @@ identical; no version is held twice. 5,000 seeds at up to 120 steps passed while
 
 ## Next
 
-1. Real base persistence: desktop `$APPDATA` file, web IndexedDB (never inside `econ-worksheet-library`).
+1. ~~Real base persistence~~ **done** (`persistentBase.ts:createBaseStore(sourceId)`): web IndexedDB
+   `econ-worksheet-sync` (store `base`, keyed `[sourceId, id]`), session memory where it cannot open;
+   desktop `$APPDATA/sync/base-<sha256(sourceId)>.json`, temp + rename. A bad row, a torn or foreign file
+   reads as absent (empty base is safe, a guessed one is not); `clear()` throws rather than leave one.
+   Desktop writes coalesce (at most one per second, `flush()` to settle): the file may lag the engine's
+   last puts, never run ahead, and a lagging row is an earlier real agreement, as after a crash.
 2. A local hash cache (by `updatedAt`), so a run does not hash every document.
 3. The folder source (`library-folder.md` § 3.0–3.4, 3.6: Rust commands, atomic write, watcher).
 4. Scheduler: run on launch, focus, after a save (debounced), on `changes()`; ignore `origin: 'sync'`;

@@ -16,6 +16,7 @@ import {
 } from './folders';
 import type { PatternFile } from './patterns';
 import { GRAPH_SUFFIX, GRAPHS_DIR, type GraphFiles } from './graphs';
+import { sha256 } from '@/sync/hash';
 
 /**
  * The desktop store: real files under the app's data directory.
@@ -86,7 +87,7 @@ const libraryDocPath = (id: string) => `${LIBRARY_DOCS_DIR}/${encodeURIComponent
  * them as "rebuild".
  */
 let libraryFsModule: Promise<Fs> | undefined;
-/** The fs plugin, imported once for the library files (dynamic: never in the web bundle). */
+/** The fs plugin, imported once for the library and sync files (dynamic: never in the web bundle). */
 const libraryFs = (): Promise<Fs> => (libraryFsModule ??= import('@tauri-apps/plugin-fs'));
 
 export const libraryDocFiles = {
@@ -195,6 +196,52 @@ function libraryTextFile(path: string) {
 
 export const libraryPackFile = libraryTextFile(LIBRARY_PACK);
 export const libraryJournalFile = libraryTextFile(LIBRARY_JOURNAL);
+
+/** Sync state, beside (never inside) `worksheets/`: no build's scan or `clear()` reaches it. */
+export const SYNC_DIR = 'sync';
+
+/** `sync/base-<hash of sourceId>.json`: a filename any source id maps to safely. */
+export function syncBasePath(sourceId: string): string {
+  return `${SYNC_DIR}/base-${sha256(sourceId).slice(0, 32)}.json`;
+}
+
+/**
+ * One source's sync base (§ src/sync/persistentBase.ts), as whole text. Inert on the web.
+ * A write goes to a temp file renamed over the old one, never in place: a crash leaves the
+ * old base or the new, and a refused rename loses only this write (the base lags, which is safe).
+ */
+export function syncBaseFile(sourceId: string) {
+  const path = syncBasePath(sourceId);
+  const temp = `${path}.tmp`;
+  return {
+    async read(): Promise<string | undefined> {
+      if (!isDesktop()) return undefined;
+      const fs = await libraryFs();
+      return fs.readTextFile(path, { baseDir: fs.BaseDirectory.AppData }).catch(() => undefined);
+    },
+    async write(text: string): Promise<void> {
+      if (!isDesktop()) return;
+      const fs = await libraryFs();
+      const opts = { baseDir: fs.BaseDirectory.AppData };
+      if (!(await fs.exists(SYNC_DIR, opts))) await fs.mkdir(SYNC_DIR, { ...opts, recursive: true });
+      await fs.writeTextFile(temp, text, opts);
+      try {
+        await fs.rename(temp, path, { oldPathBaseDir: opts.baseDir, newPathBaseDir: opts.baseDir });
+      } catch (error) {
+        await fs.remove(temp, opts).catch(() => undefined);
+        throw error;
+      }
+    },
+    /** Throws if the file stays: a forgotten base must really be gone. */
+    async remove(): Promise<void> {
+      if (!isDesktop()) return;
+      const fs = await libraryFs();
+      const opts = { baseDir: fs.BaseDirectory.AppData };
+      if (await fs.exists(path, opts)) await fs.remove(path, opts);
+      await fs.remove(temp, opts).catch(() => undefined);
+    },
+  };
+}
 
 /**
  * Text access to `worksheets/patterns.json` (§ patterns.ts). Inert on the web. Written
