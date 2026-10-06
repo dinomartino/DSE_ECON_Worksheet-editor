@@ -111,9 +111,12 @@ export function EditorHost() {
     if (!isDesktop()) return;
     let stop: (() => void) | undefined;
     let left = false;
-    void import('@/sync/librarySync').then(({ startLibrarySync }) => {
-      if (!left) stop = startLibrarySync({ isEditorOpen: () => editorOpen.current });
-    });
+    void import('@/sync/librarySync')
+      .then(({ startLibrarySync }) => {
+        if (!left) stop = startLibrarySync({ isEditorOpen: () => editorOpen.current });
+      })
+      // No sync this session; the library itself is untouched.
+      .catch(() => undefined);
     return () => {
       left = true;
       stop?.();
