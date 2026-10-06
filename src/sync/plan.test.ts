@@ -177,6 +177,13 @@ describe('keep both', () => {
     expect(plan(local('live', v1), remote(file('live', 'r1', v2)), base('live'))).toEqual(action);
   });
 
+  it('asks for this computer’s version whole when only its cached hash was read', () => {
+    const hashOnly = { hash: v1.hash, schemaVersion: v1.schemaVersion, newer: false };
+    expect(plan({ id: ID, place: 'live', content: hashOnly }, remote(file('live', 'r1', v2)), base('live'))).toEqual({ kind: 'needsLocal', id: ID });
+    // Every other decision needs only the hash.
+    expect(shape(plan({ id: ID, place: 'live', content: hashOnly }, remote(file('live', 'r0')), base('live')))).toBe('upload live');
+  });
+
   it('never compares clocks: a remote edit stamped earlier than the base still wins the id', () => {
     const earlier = version('edited there, clock behind', { updatedAt: '2001-01-01T00:00:00.000Z' });
     expect(shape(plan(local('live', v0), remote(file('live', 'r1', earlier)), base('live')))).toBe('download live');

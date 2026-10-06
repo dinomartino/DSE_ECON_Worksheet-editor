@@ -190,13 +190,14 @@ Invariants:
 - `src/sync/snapshot.ts:readLocal` · `:readRemote` — the two sides as the planner sees them
 - `src/sync/persistentBase.ts:createBaseStore` — the base per (computer, source): web IndexedDB `econ-worksheet-sync`,
   desktop `$APPDATA/sync/base-<hash>.json` (`src/storage/fileStore.ts:syncBaseFile`); a bad row or file reads as absent
+- `src/sync/hashCache.ts:memoryHashCache` · `:forgetOnWrite` — local hashes by `updatedAt`, sound only while every write forgets
 - `src/sync/memorySource.ts:MemoryCloud` — test source with faults; `src/sync/testKit.ts:computer` — simulated computers
 - `src/storage/document.ts:adoptRefused` — `adopt()`'s one refusal (older schema over a newer build's document)
 
 Invariants:
 - Never compares two computers' clocks; never hard-deletes by sync; a newer build's file is never uploaded over.
 - No `@tauri-apps/*` and no paths in `src/sync/`; the folder's specifics live in its source.
-- Guard: `src/sync/property.test.ts` (no version lost, both computers identical, none held twice).
+- Guard: `src/sync/property.test.ts` (no version lost, both computers identical, none held twice, no stale cached hash).
 
 ## platform / desktop
 

@@ -1,19 +1,24 @@
 import type { Worksheet } from '@/model/types';
 import { contentOf, contentOfText, type Content } from './content';
 import { classifyKey, documentKey } from './keys';
-import type { BaseEntry, Place, SourceEntry, SyncSource, SyncStore, Unavailable } from './types';
+import type { WorksheetSummary } from '@/storage/types';
+import type { BaseEntry, HashCache, Place, SourceEntry, SyncSource, SyncStore, Unavailable } from './types';
 
 /**
  * The two sides as the planner sees them. Reading is here; deciding is in `plan.ts`.
- * Local is read whole; a remote file is read only when its revision differs from the
- * base (or its name does not prove its id), so an unchanged library costs one listing.
+ * A local document is loaded only when the hash cache cannot vouch for it; a remote file
+ * is read only when its revision differs from the base (or its name does not prove its
+ * id). So an unchanged library costs the listings and nothing else.
  */
 
-/** 'unreadable': listed but will not load. Never read as deleted. */
-export interface LocalDoc {
+/** What the planner needs of a local document; `worksheet` and `text` are absent on a cache hit. */
+export type LocalContent = Omit<Content, 'worksheet' | 'text'> & Partial<Pick<Content, 'worksheet' | 'text'>>;
+
+/** 'unreadable': listed but will not load. Never read as deleted, never cached. */
+export interface LocalDoc<C extends LocalContent = LocalContent> {
   id: string;
   place: Place;
-  content: Content | 'unreadable';
+  content: C | 'unreadable';
 }
 
 export interface RemoteFile {
@@ -36,34 +41,67 @@ export interface RemoteSnapshot {
   strays: RemoteFile[];
 }
 
-async function localContent(load: () => Promise<Worksheet | undefined>): Promise<Content | 'unreadable'> {
+/** A stamp the cache can key on: a parseable time, as a save writes it. */
+const stampOf = (updatedAt: unknown): string | undefined =>
+  typeof updatedAt === 'string' && !Number.isNaN(Date.parse(updatedAt)) ? updatedAt : undefined;
+
+/** Loaded whole, and cached under the loaded document's own `updatedAt`. */
+async function localContent(
+  id: string,
+  place: Place,
+  load: () => Promise<Worksheet | undefined>,
+  cache: HashCache | undefined,
+): Promise<Content | 'unreadable'> {
+  const ticket = cache?.ticket(id) ?? 0;
+  let content: Content;
   try {
     const worksheet = await load();
-    return worksheet ? contentOf(worksheet) : 'unreadable';
+    if (!worksheet) return 'unreadable';
+    content = contentOf(worksheet);
   } catch {
     return 'unreadable';
   }
+  const updatedAt = stampOf(content.worksheet.updatedAt);
+  if (cache && updatedAt) {
+    cache.put({ id, place, updatedAt, hash: content.hash, schemaVersion: content.schemaVersion, newer: content.newer }, ticket);
+  }
+  return content;
 }
 
-export async function readLocal(store: SyncStore): Promise<Map<string, LocalDoc>> {
+/** The cached hash when the row's stamp matches it (§ `hashCache.ts`), else loaded. */
+async function listedContent(
+  row: WorksheetSummary,
+  place: Place,
+  load: () => Promise<Worksheet | undefined>,
+  cache: HashCache | undefined,
+): Promise<LocalContent | 'unreadable'> {
+  const hit = cache?.get(row.id);
+  const stamp = stampOf(row.updatedAt);
+  if (hit && stamp && hit.place === place && hit.updatedAt === stamp) {
+    return { hash: hit.hash, schemaVersion: hit.schemaVersion, newer: hit.newer };
+  }
+  return localContent(row.id, place, load, cache);
+}
+
+export async function readLocal(store: SyncStore, cache?: HashCache): Promise<Map<string, LocalDoc>> {
   const docs = new Map<string, LocalDoc>();
   for (const row of await store.list()) {
-    docs.set(row.id, { id: row.id, place: 'live', content: await localContent(() => store.load(row.id)) });
+    docs.set(row.id, { id: row.id, place: 'live', content: await listedContent(row, 'live', () => store.load(row.id), cache) });
   }
   for (const row of await store.listTrash()) {
     if (docs.has(row.id)) continue;
-    docs.set(row.id, { id: row.id, place: 'trash', content: await localContent(() => store.loadTrashed(row.id)) });
+    docs.set(row.id, { id: row.id, place: 'trash', content: await listedContent(row, 'trash', () => store.loadTrashed(row.id), cache) });
   }
   return docs;
 }
 
-/** One document, fresh: the executor's check before it writes locally. */
-export async function readLocalDoc(store: SyncStore, id: string): Promise<LocalDoc | undefined> {
+/** One document, fresh and whole: the executor's check before it writes locally. Never a cache hit. */
+export async function readLocalDoc(store: SyncStore, id: string, cache?: HashCache): Promise<LocalDoc<Content> | undefined> {
   if ((await store.list()).some((row) => row.id === id)) {
-    return { id, place: 'live', content: await localContent(() => store.load(id)) };
+    return { id, place: 'live', content: await localContent(id, 'live', () => store.load(id), cache) };
   }
   if ((await store.listTrash()).some((row) => row.id === id)) {
-    return { id, place: 'trash', content: await localContent(() => store.loadTrashed(id)) };
+    return { id, place: 'trash', content: await localContent(id, 'trash', () => store.loadTrashed(id), cache) };
   }
   return undefined;
 }

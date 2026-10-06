@@ -82,6 +82,33 @@ export interface BaseStore {
 }
 
 /**
+ * A local document's hash as of its own `updatedAt` (`hashCache.ts`). Plain JSON, so a
+ * cache could be persisted; tickets are per process and are not.
+ */
+export interface HashEntry {
+  id: string;
+  place: Place;
+  updatedAt: string;
+  hash: string;
+  schemaVersion: number;
+  newer: boolean;
+}
+
+/**
+ * Saves `readLocal` loading and hashing a document whose list row says it is unchanged.
+ * Sound only while every local write calls `forget` (`forgetOnWrite`): `updatedAt` is the
+ * document's own field, not a store stamp.
+ */
+export interface HashCache {
+  get(id: string): HashEntry | undefined;
+  /** Taken before loading `id`; a `put` under a ticket older than its last `forget` is dropped. */
+  ticket(id: string): number;
+  put(entry: HashEntry, ticket: number): void;
+  /** A local write to `id` (every id when absent) happened or is under way. */
+  forget(id?: string): void;
+}
+
+/**
  * Names for the copies sync makes. Injected so the interface layer can localise them;
  * the engine itself holds no interface text.
  */

@@ -5,10 +5,11 @@ import type { Worksheet } from '@/model/types';
 import { LocalStorageWorksheetStore } from '@/storage';
 import { withChangeFeed } from '@/storage/changes';
 import { memoryBaseStore } from './baseStore';
+import { forgetOnWrite, memoryHashCache } from './hashCache';
 import type { MemoryCloud } from './memorySource';
 import { plainNamer } from './names';
 import { runSync } from './run';
-import type { SyncSource } from './types';
+import type { SyncSource, SyncStore } from './types';
 
 /** Test-only: simulated computers, each with its own store and base, on one cloud. */
 
@@ -17,16 +18,28 @@ export type Computer = ReturnType<typeof computer>;
 export function computer(cloud: MemoryCloud, name: string, wrap: (source: SyncSource) => SyncSource = (s) => s) {
   const storage = fakeLocalStorage();
   const feed = localFeed();
-  const store = withChangeFeed(new LocalStorageWorksheetStore(Date.now, () => storage), feed.emit);
+  const hashCache = memoryHashCache();
+  // As the app will: every write, the engine's and the teacher's, forgets its cached hash.
+  const store = withChangeFeed(forgetOnWrite(new LocalStorageWorksheetStore(Date.now, () => storage), hashCache), feed.emit);
   const base = memoryBaseStore();
   const source = wrap(cloud.client(name));
+  /** Documents the engine loaded whole (`load` + `loadTrashed`). */
+  const loads = { count: 0 };
+  const engineStore: SyncStore = {
+    ...store,
+    load: (id) => ((loads.count += 1), store.load(id)),
+    loadTrashed: (id) => ((loads.count += 1), store.loadTrashed(id)),
+  };
   return {
     name,
     storage,
     store,
     base,
     feed,
-    sync: () => runSync({ store, source, base, namer: plainNamer(name), now: () => new Date(2026, 9, 5, 14, 32) }),
+    hashCache,
+    loads,
+    sync: () =>
+      runSync({ store: engineStore, source, base, hashCache, namer: plainNamer(name), now: () => new Date(2026, 9, 5, 14, 32) }),
   };
 }
 
@@ -35,10 +48,11 @@ export function paper(title: string, extra: Partial<Worksheet> = {}): Worksheet 
   return { ...createWorksheet(), title: bi(title, ''), ...extra };
 }
 
-export async function edit(c: Computer, id: string, title: string): Promise<void> {
+/** `updatedAt` is the edit's stamp: pass a fixed one to make every edit look the same to the hash cache. */
+export async function edit(c: Computer, id: string, title: string, updatedAt = new Date().toISOString()): Promise<void> {
   const worksheet = await c.store.load(id);
   if (!worksheet) throw new Error(`${c.name} has no ${id}`);
-  await c.store.save({ ...worksheet, title: bi(title, ''), updatedAt: new Date().toISOString() });
+  await c.store.save({ ...worksheet, title: bi(title, ''), updatedAt });
 }
 
 /** Every document on a computer: "live|trash  id  printed title  name", sorted. */

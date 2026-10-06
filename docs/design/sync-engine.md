@@ -81,6 +81,17 @@ with the same content.
   of every document on the other computer before this one synced comes back.
 - Report: counts, `conflicts` (id, copy id, name: the future "Needs attention" list), `held`, `errors`.
 
+## The local hash cache (`src/sync/hashCache.ts`)
+
+- `HashCache` (injected, optional): id → `{ place, updatedAt, hash, schemaVersion, newer }`, plain
+  JSON. An unchanged library loads no document; a conflict loads its one (`needsLocal`, re-planned).
+- **A hit needs the row's `updatedAt` to match and no local write to the id since.** `updatedAt` is
+  the document's own field, so same-millisecond saves, a write whose index row failed and hand edits
+  keep it: every write must `forget` (`forgetOnWrite`, failed writes included; tickets drop a hash
+  read before a write that landed). Unreadable documents are never cached.
+- A false hit cannot lose a version (local writes re-read first); it would only delay an upload.
+- In memory only. Persisting it needs a stamp other processes' writes cannot keep.
+
 ## Store additions
 
 - `StoreChange.origin?: 'sync'` (memory only): `adopt` announces with it, so a download reindexes
@@ -99,7 +110,9 @@ with the same content.
 `src/sync/property.test.ts`: random edits, trashes, restores, syncs, deliveries and offline
 spells on two computers (delayed visibility in half the seeds). Every version that existed at a
 sync point survives (itself or a later edit of it) live, as a copy or in Trash; both computers end
-identical; no version is held twice. 5,000 seeds at up to 120 steps passed while building.
+identical; no version is held twice. 5,000 seeds at up to 120 steps passed while building. With
+the hash cache on (every edit stamped alike in even seeds), no cached hash is ever stale; 5,000
+seeds at 40 steps and 1,500 at 120 passed.
 
 ## Next
 
@@ -109,10 +122,12 @@ identical; no version is held twice. 5,000 seeds at up to 120 steps passed while
    reads as absent (empty base is safe, a guessed one is not); `clear()` throws rather than leave one.
    Desktop writes coalesce (at most one per second, `flush()` to settle): the file may lag the engine's
    last puts, never run ahead, and a lagging row is an earlier real agreement, as after a crash.
-2. A local hash cache (by `updatedAt`), so a run does not hash every document.
+2. ~~A local hash cache~~ (built: § The local hash cache).
 3. The folder source (`library-folder.md` § 3.0–3.4, 3.6: Rust commands, atomic write, watcher).
 4. Scheduler: run on launch, focus, after a save (debounced), on `changes()`; ignore `origin: 'sync'`;
-   never write under the open editor; one tab on the web. `clear()` must forget the base.
+   never write under the open editor; one tab on the web. `clear()` must forget the base. Passing
+   a hash cache: wrap the `worksheetStore` singleton in `forgetOnWrite`, and on the web forget the
+   id of every `econ-worksheet:` key another tab's `storage` event names. `flush()` the base after each run.
 5. Interface: Storage location, "Needs attention", localised `CopyNamer` from a messages catalogue.
 6. Folders, 題型, graphs as later keys.
 

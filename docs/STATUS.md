@@ -8,8 +8,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Where we are
 
 - **2026-10-05: cross-device sync (F9).** One source-agnostic engine, local primary + mirror for
-  every source (`src/sync/`, `docs/design/sync-engine.md`), merged with no entry point. Next: base
-  persistence, hash cache, folder source, scheduler, UI (`docs/design/library-folder.md`, survey
+  every source (`src/sync/`, `docs/design/sync-engine.md`), merged with no entry point. 2026-10-06:
+  base persistence (per source) and the hash cache merged; folder source in progress on
+  `feature/sync-folder-source`; then scheduler, UI (`docs/design/library-folder.md`, survey
   `docs/research/2026-10-sync-survey.md`; Drive API design shelved).
 - **2026-10-05: dismissible notices float** bottom-right via `notify()` (`src/store/notices.ts`);
   follow-ups (題庫 Clear → floating Undo, reserved tag line) merged (`bcf57c4`).
@@ -64,12 +65,15 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Film still says Econ Worksheet (`scripts/film/timeline.mjs`). Windows builds unsigned. The
   updater key lives only at `~/.tauri/econ-worksheet.key`. `scripts/*.test.ts` are hand-run.
 
-## Last verified (2026-10-05, `develop` bfd8db7)
+## Last verified (2026-10-06, `develop` after the hash-cache merge)
 
-- `npm test` 4239 passed; typecheck clean; lint 40 (one under the 41 baseline).
+- `npm test` 4272 passed; typecheck clean; lint 40 (one under the 41 baseline).
 
 ## Log
 
+- **2026-10-06** — Sync base persists (web IndexedDB `econ-worksheet-sync`, desktop
+  `$APPDATA/sync/`), hash cache (`forgetOnWrite`): 2 Opus worktree branches, merged. Neither
+  run in a real Tauri shell or browser yet; the scheduler stage proves them.
 - **2026-10-05** — Housekeeping (3 Opus worktree branches, merged): frozen 題庫 fixtures emitted
   at tag v0.6.0 (`src/test/corpus/bank-v0.6.0-*.json`, guards in backwardCompat/legacyIndex/
   `bankCorpus.test.ts`); min-wage template label lifted (demo workaround removed); flaky
