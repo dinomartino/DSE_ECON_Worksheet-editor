@@ -12,7 +12,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   base persistence (per source), hash cache and the folder source (Rust `library_*` commands,
   `src/platform/library.ts`, `src/sync/folderSource.ts`) and the scheduler (`src/sync/librarySync.ts`,
   starts in `EditorHost` only when a folder is chosen; `isBusy` holds unsaved open documents)
-  merged. 2026-10-07 (`feature/sync-ui`): Settings → Storage location, Needs attention, notices,
+  merged. 2026-10-07 merged: Settings → Storage location, Needs attention, notices,
   computer name; Clear detaches the folder; no missing-folder screen (`docs/design/library-folder.md`).
 - **2026-10-05: notices float** bottom-right via `notify()` (`src/store/notices.ts`), follow-ups merged.
 - **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
@@ -25,6 +25,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 - `cover-verify` / `lq-verify` take `--language` (`scripts/soffice.mjs` gives LibreOffice CJK fonts).
 
 ## Before release (only the user can do these)
+
+- **`develop` now carries the sync entry point**: do not release it before the first real run below.
 
 - Sync's first real run: `desktop:dev` with a scratch folder, steps in
   `docs/design/sync-engine.md` § First real run (now through Settings → Storage location); then Stage 0
