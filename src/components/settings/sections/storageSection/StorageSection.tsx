@@ -208,7 +208,7 @@ export function StorageSectionView({ view, actions, initialStep = 'idle' }: { vi
           </Button>
         </div>
       </div>
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <StatusLine view={view} m={m} />
         <Button size="sm" disabled={pending || view.status.state === 'running' || view.status.state === 'stopped'} onClick={actions.syncNow}>
           {m.syncNow}
@@ -226,13 +226,14 @@ export function StorageSectionView({ view, actions, initialStep = 'idle' }: { vi
             <h3 className="text-[13px] font-semibold text-ink">{m.stopTitle}</h3>
             <p className="text-[12px] leading-snug text-ink-muted">{m.stopBody}</p>
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              <Button
+              <button
+                type="button"
                 disabled={pending}
-                className="border-transparent bg-danger text-white hover:bg-danger hover:brightness-95"
                 onClick={() => void run(actions.stop)}
+                className="inline-flex h-[34px] cursor-pointer items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-[background-color,border-color,color,opacity,transform,scale,filter] duration-150 ease-out-soft hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
               >
                 {m.stopConfirm}
-              </Button>
+              </button>
               <Button variant="subtle" disabled={pending} onClick={() => setStep('idle')}>
                 {m.cancel}
               </Button>

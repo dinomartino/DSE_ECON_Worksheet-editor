@@ -56,6 +56,12 @@ export function useSyncFolderChosen(): boolean {
   return useSyncExternalStore(subscribeSyncView, () => syncView().location?.root != null, () => false);
 }
 
+// Dev builds only (Next inlines NODE_ENV, so production drops it): screenshots of Settings →
+// Storage location set a view (Needs attention) that needs no real folder or second computer.
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+  Object.assign(window, { __econSyncView: { set: setSyncView } });
+}
+
 /** Test seam. */
 export function resetSyncViewForTest(): void {
   view = INITIAL;
