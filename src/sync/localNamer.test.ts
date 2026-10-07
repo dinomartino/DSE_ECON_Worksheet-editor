@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defaultComputerName, localNamer } from './localNamer';
+import { appSettings } from '@/settings/store';
+import { SYNC_SETTINGS } from '@/settings/sync';
+import { computerName, defaultComputerName, localNamer } from './localNamer';
 
 const AT = new Date(2026, 9, 5, 14, 32);
 
@@ -36,5 +38,28 @@ describe('localNamer', () => {
     vi.stubGlobal('navigator', { platform: 'Linux x86_64', userAgent: 'Mozilla/5.0 (X11; Linux x86_64)' });
     expect(defaultComputerName('en')).toBe('Computer');
     expect(defaultComputerName('zh-HK')).toBe('電腦');
+  });
+});
+
+describe('computerName', () => {
+  afterEach(() => {
+    appSettings.reset(SYNC_SETTINGS);
+    vi.unstubAllGlobals();
+  });
+
+  it('is the name the teacher gave this computer, else the platform default', () => {
+    vi.stubGlobal('navigator', { platform: 'MacIntel', userAgent: 'Mozilla/5.0 (Macintosh)' });
+    expect(computerName('en')).toBe('Mac');
+    appSettings.write(SYNC_SETTINGS, { computerName: '  Home   Mac ' });
+    expect(computerName('en')).toBe('Home Mac');
+    expect(localNamer(computerName, () => 'en').conflictCopy('Mock', AT)).toBe('Mock (Home Mac, 5 Oct 14:32)');
+    appSettings.write(SYNC_SETTINGS, { computerName: '   ' });
+    expect(computerName('zh-HK')).toBe('Mac');
+  });
+
+  it('a stored value too long or not text reads as the default', () => {
+    vi.stubGlobal('navigator', { platform: 'Win32', userAgent: 'Windows' });
+    appSettings.write(SYNC_SETTINGS, { computerName: 'x'.repeat(41) });
+    expect(computerName('en')).toBe('Windows PC');
   });
 });

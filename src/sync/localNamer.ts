@@ -1,6 +1,8 @@
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
+import { appSettings } from '@/settings/store';
+import { cleanComputerName, SYNC_SETTINGS } from '@/settings/sync';
 import { SYNC_MESSAGES } from './messages';
 import type { CopyNamer } from './types';
 
@@ -11,7 +13,7 @@ import type { CopyNamer } from './types';
 
 const two = (n: number) => String(n).padStart(2, '0');
 
-/** This computer's name until setup asks for one: from the platform. */
+/** This computer's name until the teacher gives one: from the platform. */
 export function defaultComputerName(lang: UiLanguage = uiLanguage()): string {
   const m = resolveMessages(SYNC_MESSAGES, lang);
   if (typeof navigator === 'undefined') return m.computerOther;
@@ -22,8 +24,13 @@ export function defaultComputerName(lang: UiLanguage = uiLanguage()): string {
   return m.computerOther;
 }
 
+/** The name the teacher gave this computer (Settings → Storage location), else the default. */
+export function computerName(lang: UiLanguage = uiLanguage()): string {
+  return cleanComputerName(appSettings.read(SYNC_SETTINGS).computerName) || defaultComputerName(lang);
+}
+
 export function localNamer(
-  computer: (lang: UiLanguage) => string = defaultComputerName,
+  computer: (lang: UiLanguage) => string = computerName,
   language: () => UiLanguage = uiLanguage,
 ): CopyNamer {
   return {
