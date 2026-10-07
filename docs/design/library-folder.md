@@ -1,7 +1,8 @@
 # Library folder: one teacher, two computers (F9)
 
 Status: **build plan, parked 2026-10-05 (user: "not yet").** Written 2026-10-05 against `develop` at `93ba8a0`.
-The folder source is built (2026-10-06, `src/sync/folderSource.ts`, § 4); store-level parts are marked superseded.
+The folder source is built (2026-10-06, `src/sync/folderSource.ts`, § 4) and the interface (2026-10-07, § 1);
+store-level and move parts are marked superseded.
 Source: `docs/research/2026-09-paid-product/K-free-sync.md` § 4 (Phase A, written against
 `ccaff59`), re-verified against the code below. Reused from the shelved
 `docs/design/drive-sync.md`: conflict naming, the first-connect merge, the never-delete rules.
@@ -41,6 +42,11 @@ reconciled by the shared sync engine (`docs/design/sync-engine.md`); "the folder
 ---
 
 ## 1. What the teacher sees
+
+> **Built 2026-10-07** (`src/components/settings/sections/storageSection/`, `sync-engine.md` § The scheduler),
+> adapted to the mirror model: choosing a folder just starts syncing (no Move, no preview, no Join
+> dialog: the first sync keeps both versions of anything differing); "Move back" is **Stop syncing on
+> this computer…** (the folder is left as it is). The setup step shows the general tips before the picker.
 
 Strings go in an area `messages.ts` (en + HK zh, `docs/design/ui-language.md`; OneDrive,
 iCloud, Google Drive, Dropbox, Finder stay English; no em dash). The working name is
@@ -119,7 +125,8 @@ Folders merge with `src/storage/folders.ts:mergeBackupFolders`; 題型 rows unio
 - **Folder unreachable mid-session:** "Can't reach the storage folder. Your edits are kept on this
   computer and will be saved there when it is back." 「無法連接儲存資料夾。你的修改已保留在這部電腦，
   資料夾恢復後會自動儲存。」
-- **Folder missing at launch** (a screen, not a toast): "Can't find the storage folder
+- ~~**Folder missing at launch** (a screen, not a toast)~~ **Superseded (2026-10-07):** the local library
+  is primary, so a missing folder only pauses sync and raises the unreachable warning above. Was: "Can't find the storage folder
   …/OneDrive/Econ Studio. Your cloud drive may be signed out or still starting."
   **Try again / 再試一次** · **Choose the folder again… / 重新選擇資料夾…** ·
   **Use this computer's copy (5 Oct) / 使用這部電腦的副本（10月5日）** (Q5).
@@ -293,8 +300,8 @@ reloads the webview; nothing re-points live.
 
 ### 3.7 `clear()` never empties a synced folder
 
-> **Superseded** by the mirror model (`sync-engine.md`): `clear()` empties only the local store; the scheduler forgets the base,
-> and a source suddenly empty is refilled, never read as deletes (`sync-engine.md`).
+> **Mirror model** (`sync-engine.md`): `clear()` empties only the local store. Clear with a folder chosen
+> detaches it (user, 2026-10-07): base and folder forgotten, the folder's files untouched, nothing refills.
 
 - Folder mode: `clear()` ("Clear saved documents", `src/app/EditorHost.tsx:clearSavedDocuments`)
   **detaches**: location back to local, cache and history kept, nothing removed in the folder.
@@ -411,6 +418,8 @@ App commands, declared in `src-tauri/build.rs`, granted as `allow-library-*` in
 ---
 
 ## 5. Moving the library, and back
+
+> **Superseded** by the mirror model: nothing moves. Choosing a folder starts syncing; stopping forgets it.
 
 `library-location.json` is a small state machine: `local` → `moving { root, manifest }` →
 `folder { root, manifest }` → (move back) `local`. Switching is one atomic write of that file.
@@ -551,7 +560,7 @@ until Stage 5 adds the entry point). Sizes: S ≈ 1–2 days, M ≈ 3–5, L ≈
 ## 8. Open questions for the user
 
 **Answered 2026-10-05:** the setting is **Storage location / 儲存位置**; a missing folder shows the
-**wait screen**; conflict copies are kept automatically with a "Needs attention" list (survey);
+**wait screen** (superseded 2026-10-07, Q5); conflict copies are kept automatically with a "Needs attention" list (survey);
 computer name asked at setup; Translation terms per computer until Stage 6. Start: parked.
 
 1. **The name.** "Library location / 資料庫位置" as briefed, or **Storage location / 儲存位置**?
@@ -565,7 +574,8 @@ computer name asked at setup; Translation terms per computer until Stage 6. Star
    (`terms/translation-terms.csv`) for a one-off copy.
 4. **Computer name in copy names:** ask during setup, prefilled "Mac" / "Windows PC"?
    *Recommended:* yes; "this computer" means the opposite on the other machine.
-5. **Folder missing at launch:** a screen that waits for the teacher (Try again / Choose again /
+5. **Superseded (2026-10-07, coordinator):** no screen; the local library is primary, so a missing
+   folder pauses sync with one warning. Was: **Folder missing at launch:** a screen that waits for the teacher (Try again / Choose again /
    Use this computer's copy), or open the stale local copy automatically? *Recommended:* the
    screen. Silently editing the stale copy creates a second, diverging library.
 

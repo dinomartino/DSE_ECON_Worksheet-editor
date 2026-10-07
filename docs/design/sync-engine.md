@@ -1,7 +1,7 @@
 # Sync engine
 
-Status: **core built 2026-10-05; scheduler wired 2026-10-06** (`src/sync/`). The desktop app runs it
-only once a library folder is chosen, and nothing chooses one yet, so teachers see no change.
+Status: **core built 2026-10-05; scheduler wired 2026-10-06; interface 2026-10-07** (`src/sync/`,
+Settings → Storage location, desktop only). Unverified in a real Tauri shell or cloud provider.
 Decision (coordinator, 2026-10-05): **one engine, every storage source plugs into it** (cloud
 folder, later Drive API, OneDrive API, an own account server).
 
@@ -129,14 +129,21 @@ with the same content.
 - **`unavailable`** (or a run that throws: reason `error`) backs off 5 s, 30 s, 2 min; any trigger
   still runs at once. The base is `flush`ed after every run; `stop()` closes the source.
 - **Status** (`status()`, `subscribe`): `idle` / `running` / `unavailable` + reason, the last report
-  (`conflicts`, `held`, `errors`, `remoteWasEmpty`), `lastSyncedAt`, `retryAt`. No UI reads it yet;
-  the desktop console has `__econSync.status()` and `.syncNow()` while it runs.
-- **Wiring:** desktop only, started by `EditorHost` (via `import()`) when `library_location` is `ok`
-  at launch; a folder chosen or back later starts at the next launch (the UI stage restarts it).
-  Base id `folder:<deviceId>:<root>`. Copy names from `localNamer` (interface language at the
-  time; computer "Mac" / "Windows PC" until setup asks). **Clear saved documents** forgets the
-  base, then clears, with no run between (a base that will not clear stops it first); the next
-  run is a first sync, so the folder refills the library.
+  (`conflicts`, `held`, `errors`, `remoteWasEmpty`), `lastSyncedAt`, `retryAt`. The controller
+  publishes it to `syncView.ts`; the desktop console keeps `__econSync.status()` and `.syncNow()`.
+- **Controller** (`librarySync.ts`): desktop only, attached by `EditorHost` (via `import()`). Runs the
+  scheduler whenever a folder is chosen, reachable or not (a missing folder only pauses sync: no launch
+  screen). Choose, stop, Clear, attach and detach share one queue; the scheduler stops before the
+  folder changes, since one folder's base run against another reads every absent document as deleted.
+  Base id `folder:<deviceId>:<root>`; stopping keeps the base, so the same folder again resumes.
+- **Copy names** from `localNamer`: interface language at the time; the computer name from Settings
+  (`econgen.settings.sync`, per computer, never synced), else "Mac" / "Windows PC".
+- **Clear saved documents** with a folder detaches it (user, 2026-10-07): stop, forget the base,
+  `library_forget`, then clear. The folder's files are untouched and nothing refills the library. A
+  base that will not clear (or a folder that will not detach) stops it before anything is deleted.
+- **Notices** (`syncNotices.ts`, stable ids): conflict copies (every copy this session, Review opens
+  Settings), an empty remote refilled, the folder unreachable (once per outage, down at the next good run).
+  Needs attention lists this session's copies, then what the last run held (not `busy`) or failed on.
 - **Web, later:** `exclusive: webLock()` so one tab runs at a time; forget the hash of every
   `econ-worksheet:` key another tab's `storage` event names.
 
@@ -191,8 +198,8 @@ seeds at 40 steps and 1,500 at 120 passed.
    of the Rust rules (`folderTestKit.ts`). Unverified: a real Tauri runtime, Windows, real providers.
 4. ~~Scheduler~~ **done** (§ The scheduler, § The open editor). Web parts noted there, not built.
    Unverified: a real Tauri shell, Windows, real providers.
-5. Interface: Storage location (choose, restart the scheduler), "Needs attention" (`conflicts`,
-   `held`), the empty-remote notice; the localised `CopyNamer` is built (`localNamer.ts`).
+5. ~~Interface~~ **done** (§ The scheduler: controller, notices; Settings → Storage location). Opening a
+   conflict copy from Needs attention is not built (no route from Settings to a document yet).
 6. Folders, 題型, graphs as later keys.
 
 ## Decisions (2026-10-05)
@@ -201,18 +208,18 @@ seeds at 40 steps and 1,500 at 120 passed.
   recycle bin; the other computer keeps its local Trash copy until its own expiry. (User.)
 - **An empty remote is refilled from this computer, with a notice**: "The cloud copy was empty, so
   it was refilled from this computer." The run report's `remoteWasEmpty` drives it (UI stage). (User.)
-- `clear()` forgets the base (scheduler stage). A provider-renamed **lone** file holding the only
+- `clear()` detaches the folder, base included (user, 2026-10-07; was: forgets the base and refills). A provider-renamed **lone** file holding the only
   copy is adopted as the original, not trashed plus copied (planner change, next stage). A copy's
   name carries that version's own last-edit time. (Coordinator.)
 
 ## First real run (by hand, `npm run desktop:dev`, a scratch folder: choosing one uploads the library)
 
 1. Devtools: `__econSync` is `undefined` (nothing started).
-2. `await window.__TAURI_INTERNALS__.invoke('library_choose', { title: null })`, pick an empty folder;
-   `invoke('library_location')` → status `ok`.
-3. Reload (Cmd+R): `__econSync.status()` is `idle`, `lastReport.counts.uploaded` = your paper count,
+2. Settings → Storage location → Choose a folder… → Choose folder…, pick an empty folder.
+3. At once: "Synced at …"; `__econSync.status().lastReport.counts.uploaded` = your paper count,
    and the folder holds `<id>.worksheet.json` files.
 4. Edit a paper, wait ~5 s: `uploaded` 1. Edit a folder file by hand: `downloaded` within seconds, and an
    open, clean editor reloads with a notice. `__econSync.syncNow()` forces a run.
-5. Undo: `invoke('library_forget')`, reload.
+5. Undo: Stop syncing on this computer…. Also try: rename the folder (warning once, status says why),
+   rename it back (warning gone); a conflict (edit one paper on both sides offline) shows in Needs attention.
 

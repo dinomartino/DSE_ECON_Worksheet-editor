@@ -180,7 +180,7 @@ Invariants:
 - Folders are never a field on an index row (an older build's rewrite drops it): key
   `econ-worksheet-folders`, `worksheets/folders.json`; in a backup, inside `manifest.json` — §Persistence.
 
-## sync — one engine for every storage source (runs only once a folder is chosen: no UI chooses one yet)
+## sync — one engine for every storage source (desktop: Settings → Storage location chooses the folder)
 
 `docs/design/sync-engine.md`. The store stays primary; a source is a mirror. Pure TypeScript.
 
@@ -190,8 +190,13 @@ Invariants:
   document open with unsaved edits
 - `src/sync/scheduler.ts:createScheduler` — when runs happen: start, focus, debounced saves, source hints, 60 s rescan;
   single-flight, backoff, own-echo skip, observable `status()`; `:webLock` for a future web source
-- `src/sync/librarySync.ts:startLibrarySync` — the app's wiring (desktop, folder `ok` only), loaded by `import()` from
-  `src/app/EditorHost.tsx`; `:clearSavedLibrary` forgets the base before Clear saved documents
+- `src/sync/librarySync.ts:startLibrarySync` — the controller (desktop), attached by `import()` from `src/app/EditorHost.tsx`:
+  runs the scheduler whenever a folder is chosen (reachable or not); `:chooseFolder` · `:stopSyncing` · `:syncNow`, one
+  queue; `:clearSavedLibrary` detaches the folder (base and folder forgotten) before Clear saved documents
+- `src/sync/syncView.ts:useSyncView` — what the interface reads (`location`, `status`, Needs attention); Tauri-free
+- `src/sync/syncNotices.ts:syncNotices` — conflict copies, refilled remote, unreachable (one per outage), stable ids
+- `src/components/settings/sections/storageSection/StorageSection.tsx:StorageSectionView` — Settings → Storage location;
+  this computer's name in `src/settings/sync.ts:SYNC_SETTINGS`, read by `src/sync/localNamer.ts:computerName`
 - `src/sync/openEditor.ts:openEditorGuard` — never writes under unsaved edits; a clean open document reloads, with a notice
 - `src/sync/localNamer.ts:localNamer` — copy names from `src/sync/messages.ts:SYNC_MESSAGES`, in the interface language
 - `src/storage/index.ts:worksheetHashCache` — the one hash cache; `worksheetStore` is `withChangeFeed(forgetOnWrite(…))`
