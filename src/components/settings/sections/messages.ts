@@ -26,4 +26,10 @@ export const SECTION_MESSAGES = defineMessages({
     en: 'The language of buttons, menus and dialogs. Worksheets print exactly as you wrote them.',
     zh: '按鈕、選單和對話框所用的語言。工作紙照你所寫的內容列印，不受影響。',
   },
+  storageLabel: { en: 'Storage location', zh: '儲存位置' },
+  storageHint: { en: 'Worksheets on two computers', zh: '在兩部電腦使用工作紙' },
+  storageDescription: {
+    en: 'Keep your worksheets in a cloud folder to have them on your other computer too.',
+    zh: '把工作紙存放在雲端資料夾，在另一部電腦也可使用。',
+  },
 });
