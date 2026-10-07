@@ -28,6 +28,16 @@ export const STORAGE_MESSAGES = defineMessages({
     en: 'A folder named Econ Studio is made inside the one you choose. The worksheets already here are copied into it.',
     zh: '程式會在你選擇的資料夾內建立名為 Econ Studio 的資料夾，並把這部電腦現有的工作紙複製進去。',
   },
+  cloudFound: { en: 'Cloud folders on this computer:', zh: '這部電腦上的雲端資料夾：' },
+  cloudOpen: { en: (label: string) => `Choose a folder in ${label}`, zh: (label: string) => `在 ${label} 選擇資料夾` },
+  noGoogleDrive: {
+    en: "Google Drive isn't on this computer. To use it, install Google Drive for desktop and sign in; the Google Drive website alone gives no folder.",
+    zh: '這部電腦未有 Google Drive。如要使用，請安裝 Google Drive for desktop（電腦版）並登入；只用 Google Drive 網頁版不會有資料夾。',
+  },
+  noCloud: {
+    en: "No cloud folder was found on this computer. Install your cloud drive's desktop app first (OneDrive, Google Drive for desktop, iCloud Drive or Dropbox).",
+    zh: '這部電腦未找到雲端資料夾。請先安裝雲端硬碟的電腦版程式（OneDrive、Google Drive for desktop、iCloud Drive 或 Dropbox）。',
+  },
   pickerTitle: { en: 'Choose a folder in your cloud drive', zh: '在雲端硬碟選擇資料夾' },
   chooseNow: { en: 'Choose folder…', zh: '選擇資料夾…' },
   choosing: { en: 'Choosing…', zh: '選擇中…' },

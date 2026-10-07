@@ -39,8 +39,8 @@ vi.mock('@/platform/library', async (original) => ({
     watch: (onChange: Parameters<LibraryBridge['watch']>[0]) => bridge.current!.watch(onChange),
   },
   libraryLocation: () => shell.location(),
-  chooseLibraryFolder: async () => {
-    shell.calls.push(`choose (watching: ${(bridge.current as FakeLibrary).watching})`);
+  chooseLibraryFolder: async (_title?: string, start?: string) => {
+    shell.calls.push(`choose (watching: ${(bridge.current as FakeLibrary).watching})${start ? ` at ${start}` : ''}`);
     if (shell.next === null) return { status: 'cancelled' };
     shell.root = shell.next;
     return { status: 'chosen', root: shell.next };
@@ -223,7 +223,8 @@ describe('chooseFolder', () => {
     shell.root = DRIVE;
     stop = startLibrarySync({ isEditorOpen: () => false });
     await vi.waitFor(() => expect(librarySync()).toBeDefined());
-    await expect(chooseFolder()).resolves.toBe('cancelled');
+    await expect(chooseFolder('Pick', 'onedrive')).resolves.toBe('cancelled');
+    expect(shell.calls).toEqual(['choose (watching: false) at onedrive']);
     expect(syncView().location?.root).toBe(DRIVE);
     await vi.waitFor(() => expect(syncView().status.lastSyncedAt).toBeDefined());
     expect(fake().watching).toBe(true);

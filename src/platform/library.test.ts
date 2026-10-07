@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { chooseLibraryFolder, desktopLibrary, LIBRARY_CHANGED_EVENT, libraryLocation, type LibraryChanged } from './library';
+import { chooseLibraryFolder, cloudFolders, desktopLibrary, LIBRARY_CHANGED_EVENT, libraryLocation, type LibraryChanged } from './library';
 
 const shell = {
   calls: [] as Array<{ command: string; args: unknown }>,
@@ -48,12 +48,16 @@ describe('library bridge', () => {
     await desktopLibrary.write('a.worksheet.json', 'text', 'absent');
     await desktopLibrary.remove('a.worksheet.json', 'abc');
     await chooseLibraryFolder();
+    await chooseLibraryFolder('Pick', 'onedrive');
+    await cloudFolders();
     expect(shell.calls).toEqual([
       { command: 'library_list', args: undefined },
       { command: 'library_read', args: { path: 'trash/a.worksheet.json' } },
       { command: 'library_write', args: { path: 'a.worksheet.json', text: 'text', expect: 'absent' } },
       { command: 'library_remove', args: { path: 'a.worksheet.json', expect: 'abc' } },
-      { command: 'library_choose', args: { title: null } },
+      { command: 'library_choose', args: { title: null, start: null } },
+      { command: 'library_choose', args: { title: 'Pick', start: 'onedrive' } },
+      { command: 'library_cloud_folders', args: undefined },
     ]);
   });
 

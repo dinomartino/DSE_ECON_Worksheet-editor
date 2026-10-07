@@ -77,9 +77,27 @@ export function libraryLocation(): Promise<LibraryLocation> {
   return call('library_location');
 }
 
-/** The native folder picker, shown by the shell. `title`: the sheet's (localised) title. */
-export function chooseLibraryFolder(title?: string): Promise<{ status: 'chosen'; root: string } | { status: 'cancelled' }> {
-  return call('library_choose', { title: title ?? null });
+/**
+ * The native folder picker, shown by the shell. `title`: the sheet's (localised) title;
+ * `start`: a `CloudFolder.id` to open it at (the shell finds the folder again, never a path).
+ */
+export function chooseLibraryFolder(title?: string, start?: string): Promise<{ status: 'chosen'; root: string } | { status: 'cancelled' }> {
+  return call('library_choose', { title: title ?? null, start: start ?? null });
+}
+
+export type CloudProvider = 'google-drive' | 'onedrive' | 'icloud' | 'dropbox' | 'box';
+
+/** A cloud drive's folder on this computer. `id`: the provider's, or `onedrive-2` for a second account. */
+export interface CloudFolder {
+  id: string;
+  provider: CloudProvider;
+  label: string;
+  path: string;
+}
+
+/** The cloud drive folders on this computer, found from paths alone (no network, no prompt). */
+export function cloudFolders(): Promise<CloudFolder[]> {
+  return call('library_cloud_folders');
 }
 
 /** This computer stops using the folder; nothing in it is touched. */

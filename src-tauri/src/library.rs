@@ -744,13 +744,17 @@ pub async fn library_location<R: Runtime>(app: AppHandle<R>) -> Result<Location,
   .await
 }
 
-/// The native folder picker, run here: page script never supplies the root.
+/// The native folder picker, run here: page script never supplies the root. `start`: a
+/// `library_cloud_folders` id to open the picker at, found again here, never a path.
 #[tauri::command]
-pub async fn library_choose<R: Runtime>(app: AppHandle<R>, title: Option<String>) -> Result<ChooseResult, String> {
+pub async fn library_choose<R: Runtime>(app: AppHandle<R>, title: Option<String>, start: Option<String>) -> Result<ChooseResult, String> {
   blocking(move || {
     let mut dialog = app.dialog().file().set_can_create_directories(true);
     if let Some(title) = title.filter(|t| !t.is_empty() && t.len() <= 200) {
       dialog = dialog.set_title(title);
+    }
+    if let Some(folder) = start.and_then(|id| crate::cloud::this_computer().into_iter().find(|f| f.id == id)) {
+      dialog = dialog.set_directory(folder.path);
     }
     let Some(picked) = dialog.blocking_pick_folder() else { return Ok(ChooseResult::Cancelled) };
     let picked = picked.into_path().map_err(|e| e.to_string())?;
@@ -765,6 +769,12 @@ pub async fn library_choose<R: Runtime>(app: AppHandle<R>, title: Option<String>
     Ok(ChooseResult::Chosen { root: root.to_string_lossy().into_owned() })
   })
   .await
+}
+
+/// The cloud drive folders on this computer (`cloud.rs`), for the setup step. Paths only.
+#[tauri::command]
+pub async fn library_cloud_folders() -> Result<Vec<crate::cloud::CloudFolder>, String> {
+  blocking(|| Ok(crate::cloud::this_computer())).await
 }
 
 /// Detach: this computer stops using the folder. Nothing in the folder is touched.

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui';
 import { resolveMessages, type Messages } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { openFolder } from '@/platform';
+import { cloudFolders, type CloudFolder } from '@/platform/library';
 import { useSettings } from '@/settings/store';
 import { cleanComputerName, COMPUTER_NAME_MAX, SYNC_SETTINGS } from '@/settings/sync';
 import { chooseFolder, stopSyncing, syncNow } from '@/sync/librarySync';
@@ -16,7 +17,8 @@ import { STORAGE_MESSAGES } from './messages';
 
 /**
  * Settings → Storage location 儲存位置 (desktop only; `library-folder.md` § 1). No folder: what
- * a folder is for, then a setup step (tips, this computer's name) before the native picker.
+ * a folder is for, then a setup step (tips, this computer's name, the cloud folders found here)
+ * before the native picker.
  * A folder: where, the status, Sync now, Show folder, the name, Needs attention, and Stop.
  * Steps and the stop confirm are inline: a second dialog would stack on Settings.
  */
@@ -24,7 +26,9 @@ import { STORAGE_MESSAGES } from './messages';
 type M = Messages<typeof STORAGE_MESSAGES>;
 
 export interface StorageActions {
-  choose(title: string): Promise<'chosen' | 'cancelled'>;
+  /** `start`: a `CloudFolder.id` the picker opens at. */
+  choose(title: string, start?: string): Promise<'chosen' | 'cancelled'>;
+  cloudFolders(): Promise<CloudFolder[]>;
   stop(): Promise<void>;
   syncNow(): void;
   showFolder(path: string): Promise<void>;
@@ -142,12 +146,71 @@ function Tips({ m }: { m: M }) {
   );
 }
 
+/**
+ * The cloud folders found on this computer, each opening the picker there, and what to install
+ * when Google Drive (or every drive) is missing: its website alone gives no folder. `null`:
+ * detection failed or is still running, so nothing is said.
+ */
+export function CloudFolders({
+  folders,
+  disabled,
+  onOpen,
+  m,
+}: {
+  folders: readonly CloudFolder[] | null;
+  disabled: boolean;
+  onOpen(id: string): void;
+  m: M;
+}) {
+  if (folders === null) return null;
+  if (folders.length === 0) return <p className="text-[12px] leading-snug text-ink-muted">{m.noCloud}</p>;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-0.5 text-[12px] font-medium text-ink">{m.cloudFound}</span>
+        {folders.map((folder) => (
+          <Button key={folder.id} size="sm" disabled={disabled} title={m.cloudOpen(folder.label)} onClick={() => onOpen(folder.id)}>
+            {folder.label}
+          </Button>
+        ))}
+      </div>
+      {!folders.some((folder) => folder.provider === 'google-drive') && (
+        <p className="text-[11px] leading-snug text-ink-muted">{m.noGoogleDrive}</p>
+      )}
+    </div>
+  );
+}
+
 type Step = 'idle' | 'setup' | 'confirm-stop';
 
-export function StorageSectionView({ view, actions, initialStep = 'idle' }: { view: SyncView; actions: StorageActions; initialStep?: Step }) {
+export function StorageSectionView({
+  view,
+  actions,
+  initialStep = 'idle',
+  initialCloud = null,
+}: {
+  view: SyncView;
+  actions: StorageActions;
+  initialStep?: Step;
+  initialCloud?: readonly CloudFolder[] | null;
+}) {
   const m = useMessages(STORAGE_MESSAGES);
   const [step, setStep] = useState<Step>(initialStep);
   const [failed, setFailed] = useState(false);
+  const [cloud, setCloud] = useState(initialCloud);
+  const setup = step === 'setup';
+  useEffect(() => {
+    if (!setup) return;
+    let live = true;
+    // A failure says nothing: the plain picker still works.
+    actions.cloudFolders().then(
+      (folders) => live && setCloud(folders),
+      () => live && setCloud(null),
+    );
+    return () => {
+      live = false;
+    };
+  }, [setup, actions]);
   const root = view.location?.root ?? null;
   const pending = view.pending !== undefined;
 
@@ -176,6 +239,12 @@ export function StorageSectionView({ view, actions, initialStep = 'idle' }: { vi
             <h3 className="text-[13px] font-semibold text-ink">{m.setupTitle}</h3>
             <Tips m={m} />
             <ComputerName m={m} />
+            <CloudFolders
+              folders={cloud}
+              disabled={pending}
+              onOpen={(id) => void run(async () => (await actions.choose(m.pickerTitle, id)) === 'chosen')}
+              m={m}
+            />
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <Button
                 variant="primary"
@@ -246,7 +315,7 @@ export function StorageSectionView({ view, actions, initialStep = 'idle' }: { vi
   );
 }
 
-const ACTIONS: StorageActions = { choose: chooseFolder, stop: stopSyncing, syncNow, showFolder: openFolder };
+const ACTIONS: StorageActions = { choose: chooseFolder, cloudFolders, stop: stopSyncing, syncNow, showFolder: openFolder };
 
 export default function StorageSection() {
   return <StorageSectionView view={useSyncView()} actions={ACTIONS} />;

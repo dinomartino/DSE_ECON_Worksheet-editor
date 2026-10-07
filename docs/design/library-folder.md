@@ -70,6 +70,11 @@ New section file beside `src/components/settings/sections/index.ts`.
 
 ### 1.2 Setup (a dialog, after the native folder picker)
 
+As built, the setup step also lists the cloud folders on this computer (`library_cloud_folders`,
+`src-tauri/src/cloud.rs`: paths only, a macOS CloudStorage folder counts only while its app is
+installed); each opens the picker there (`library_choose` `start`, an id Rust resolves again).
+No Google Drive says it needs Google Drive for desktop; none at all says to install one first.
+
 1. **Where.** Picked folder holds the marker → use it. Its `Econ Studio` subfolder holds it →
    use that. Otherwise create `<picked>/Econ Studio/`. Refused: inside the app data directory,
    a drive root, the home folder.
