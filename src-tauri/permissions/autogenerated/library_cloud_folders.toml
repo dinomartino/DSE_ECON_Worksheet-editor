@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-library-cloud-folders"
+description = "Enables the library_cloud_folders command without any pre-configured scope."
+commands.allow = ["library_cloud_folders"]
+
+[[permission]]
+identifier = "deny-library-cloud-folders"
+description = "Denies the library_cloud_folders command without any pre-configured scope."
+commands.deny = ["library_cloud_folders"]

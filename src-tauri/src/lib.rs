@@ -1,5 +1,6 @@
 #[cfg(any(target_os = "macos", test))]
 pub mod bundle_rename;
+pub mod cloud;
 pub mod library;
 pub mod pdf;
 pub mod secrets;
@@ -18,6 +19,7 @@ pub fn run() {
       secrets::secret_delete,
       library::library_location,
       library::library_choose,
+      library::library_cloud_folders,
       library::library_forget,
       library::library_list,
       library::library_read,
