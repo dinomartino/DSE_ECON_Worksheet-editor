@@ -31,6 +31,7 @@ import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
 import { useAppDialogs } from '@/store/appDialogs';
+import { useSyncFolderChosen } from '@/sync/syncView';
 import { pruneDeadActions, type NoticeAction, type NoticeTone } from '@/store/notices';
 import { useNotices } from '@/components/ui/NoticeLayer';
 import { useSettingsSections } from '@/settings/sections';
@@ -115,6 +116,8 @@ export function Toolbar({
   const [busy, setBusy] = useState<string | undefined>();
   const notices = useNotices();
   const [confirmingClear, setConfirmingClear] = useState(false);
+  // Clear detaches a storage folder (`clearSavedLibrary`); the confirm says so.
+  const syncFolder = useSyncFolderChosen();
   const [exporting, setExporting] = useState(false);
   // Stable, so the dialog does not re-focus its panel on every store update.
   const closeExport = useCallback(() => setExporting(false), []);
@@ -517,6 +520,11 @@ export function Toolbar({
           <p className="text-[13px] leading-relaxed text-ink-subtle">
             {m.clearBody(isDesktop())}
           </p>
+          {syncFolder && (
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-subtle">
+              {m.clearDetaches}
+            </p>
+          )}
           <p className="mt-2 text-[13px] leading-relaxed text-ink-subtle">
             {m.clearKept}
           </p>

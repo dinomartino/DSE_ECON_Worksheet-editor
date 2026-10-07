@@ -99,6 +99,10 @@ export const TOOLBAR_MESSAGES = defineMessages({
     zh: (desktop: boolean) =>
       `開始畫面上的工作紙都儲存在${desktop ? '這部電腦' : '這個瀏覽器'}，而不是程式碼內，所以重新啟動後你的工作仍會保留。清除後會清空該列表，並返回開始畫面。`,
   },
+  clearDetaches: {
+    en: 'This computer also stops syncing with your storage folder. The folder and the files in it are left as they are.',
+    zh: '這部電腦亦會停止與儲存資料夾同步，資料夾及其中的檔案會保持原狀。',
+  },
   clearKept: {
     en: 'Your settings and AI keys are kept. Remove a key in Settings → AI & translation.',
     zh: '你的設定和 AI 金鑰會保留。如要移除金鑰，請前往「設定 → AI 與翻譯」。',
