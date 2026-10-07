@@ -12,6 +12,15 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Desktop: use the same worksheets on two computers.** In Settings → Storage location,
+  choose a folder inside OneDrive, Google Drive, iCloud Drive or Dropbox, then choose the same
+  folder on your other computer. Your worksheets stay on each computer and are copied through
+  the folder; if one was changed on both, both versions are kept and listed under Needs attention.
+  <!-- zh: **桌面版：在兩部電腦使用相同的工作紙。** 在「設定 → 儲存位置」選擇 OneDrive、Google Drive、
+  iCloud Drive 或 Dropbox 內的一個資料夾，再在另一部電腦選擇同一個資料夾。工作紙會保留在每部電腦，並透過該資料夾
+  互相複製；如果同一份在兩邊都有修改，兩個版本都會保留，並列於「需要處理」。 -->
+
 ### Changed
 - **Messages now float in the bottom-right corner instead of pushing the page around.**
   Results such as "Copied", a restored backup, an export error or a new version to install

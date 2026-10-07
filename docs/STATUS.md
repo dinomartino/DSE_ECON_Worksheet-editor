@@ -12,8 +12,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   base persistence (per source), hash cache and the folder source (Rust `library_*` commands,
   `src/platform/library.ts`, `src/sync/folderSource.ts`) and the scheduler (`src/sync/librarySync.ts`,
   starts in `EditorHost` only when a folder is chosen; `isBusy` holds unsaved open documents)
-  merged; next the UI: Storage location, Needs attention, notices (`docs/design/library-folder.md`,
-  survey `docs/research/2026-10-sync-survey.md`; Drive API design shelved).
+  merged. 2026-10-07 (`feature/sync-ui`): Settings → Storage location, Needs attention, notices,
+  computer name; Clear detaches the folder; no missing-folder screen (`docs/design/library-folder.md`).
 - **2026-10-05: notices float** bottom-right via `notify()` (`src/store/notices.ts`), follow-ups merged.
 - **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
   question bank, Marking scheme view and layouts, Translation terms, 中文 interface, Graphs
@@ -26,8 +26,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Before release (only the user can do these)
 
-- Sync's first real run: `desktop:dev` with a scratch folder, devtools steps in
-  `docs/design/sync-engine.md` § First real run; then Stage 0
+- Sync's first real run: `desktop:dev` with a scratch folder, steps in
+  `docs/design/sync-engine.md` § First real run (now through Settings → Storage location); then Stage 0
   provider probe (`library-folder.md` § 7) on two computers.
 
 - Windows: 0.6.0 shipped without the rename hook test (`RELEASING.md`), user's call; check one install;
@@ -40,10 +40,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   CSV + backup; launch animation once per cold start; real print dialog; paste a graph into Word.
 
 ## Waiting on the user's call
-
-- Sync: "Clear saved documents" with a folder chosen forgets the base, so the folder refills the
-  library on the next run (as designed). Keep that, or make Clear also detach the folder? Its
-  confirm text must say which (UI stage).
 
 - Paid service (`docs/research/2026-09-paid-product/`): what first; the in-app "use a VPN" Gemini
   wording breaks Google's terms. Gemini privacy line may be dropped.
@@ -68,6 +64,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-10-07** — Sync interface (`feature/sync-ui`): controller (`librarySync.ts`: choose/stop/sync
+  now in one queue, runs while the folder is away), `syncView.ts`, `syncNotices.ts`, Settings → Storage
+  location (screenshots via a faked shell + dev-only `__econSyncView`), Clear detaches. Not run in Tauri.
 - **2026-10-06** — Sync base persists (web IndexedDB `econ-worksheet-sync`, desktop
   `$APPDATA/sync/`), hash cache (`forgetOnWrite`), folder source (`cargo test` 31 passed; run and
   property tests run through both sources), scheduler + open-editor guard; autosave no longer marks
