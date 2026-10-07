@@ -74,8 +74,5 @@ off the bottom.** It is the first thing a fresh session reads — then
   property tests run through both sources), scheduler + open-editor guard; autosave no longer marks
   an edit typed mid-save as saved (CHANGELOG): 4 Opus worktree branches, merged. None run in a real
   Tauri shell, browser, Windows or cloud provider yet.
-- **2026-10-05** — Housekeeping (3 Opus worktree branches, merged): frozen 題庫 fixtures emitted
-  at tag v0.6.0 (`src/test/corpus/bank-v0.6.0-*.json`, guards in backwardCompat/legacyIndex/
-  `bankCorpus.test.ts`); min-wage template label lifted (demo workaround removed); flaky
-  rationale test pinned to a fixed id. IDEAS reordered: classes findability, then D1.
-  Then sync: Drive API design (shelved), library-folder plan, survey, sync engine core; notice overlay.
+- **2026-10-05** — Frozen 題庫 fixtures at v0.6.0 (`src/test/corpus/bank-v0.6.0-*.json`); sync
+  design, survey, engine core; notice overlay.
