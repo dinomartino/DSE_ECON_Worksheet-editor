@@ -202,13 +202,14 @@ export function startLibrarySync(options: StartOptions): () => void {
 /**
  * Settings → Choose a folder…: the native picker (which also commits the folder), then
  * syncing starts at once. Sync is stopped while the picker is open and the folder changes.
+ * `start`: a `CloudFolder.id` the picker opens at.
  */
-export function chooseFolder(title?: string): Promise<'chosen' | 'cancelled'> {
+export function chooseFolder(title?: string, start?: string): Promise<'chosen' | 'cancelled'> {
   return serial(async () => {
     setSyncView({ pending: 'choose' });
     try {
       await stopRunning();
-      const picked = await chooseLibraryFolder(title).catch(() => ({ status: 'cancelled' as const }));
+      const picked = await chooseLibraryFolder(title, start).catch(() => ({ status: 'cancelled' as const }));
       await refreshLocation();
       return picked.status;
     } finally {

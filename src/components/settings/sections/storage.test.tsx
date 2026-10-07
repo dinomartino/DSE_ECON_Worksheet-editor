@@ -1,13 +1,17 @@
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { resolveMessages } from '@/i18n/catalogue';
 import { UiLanguageOverride } from '@/i18n/language';
+import type { CloudFolder } from '@/platform/library';
 import { settingsSections } from '@/settings/sections';
 import type { SyncView } from '@/sync/syncView';
-import { StorageSectionView, type StorageActions } from './storageSection/StorageSection';
+import { STORAGE_MESSAGES } from './storageSection/messages';
+import { CloudFolders, StorageSectionView, type StorageActions } from './storageSection/StorageSection';
 
 const actions: StorageActions = {
   choose: async () => 'cancelled',
+  cloudFolders: async () => [],
   stop: async () => {},
   syncNow: () => {},
   showFolder: async () => {},
@@ -51,6 +55,56 @@ describe('Settings → Storage location', () => {
     const zh = html(<StorageSectionView view={NONE} actions={actions} initialStep="setup" />, 'zh-HK');
     expect(zh).toContain('這部電腦的名稱');
     expect(zh).toContain('請在另一部電腦也安裝此更新');
+  });
+
+  it('the setup step names the cloud folders found here, and what Google Drive needs', () => {
+    const found: CloudFolder[] = [
+      { id: 'onedrive', provider: 'onedrive', label: 'OneDrive', path: '/Users/t/Library/CloudStorage/OneDrive-School' },
+      { id: 'icloud', provider: 'icloud', label: 'iCloud Drive', path: '/Users/t/Library/Mobile Documents/com~apple~CloudDocs' },
+    ];
+    const setup = (cloud: CloudFolder[] | null, lang: 'en' | 'zh-HK' = 'en') =>
+      html(<StorageSectionView view={NONE} actions={actions} initialStep="setup" initialCloud={cloud} />, lang);
+    const en = setup(found);
+    expect(en).toContain('Cloud folders on this computer:');
+    expect(en).toMatch(/<button[^>]*title="Choose a folder in OneDrive"[^>]*>OneDrive<\/button>/);
+    expect(en).toMatch(/<button[^>]*title="Choose a folder in iCloud Drive"[^>]*>iCloud Drive<\/button>/);
+    expect(en).toContain('install Google Drive for desktop and sign in; the Google Drive website alone gives no folder.');
+    const zh = setup(found, 'zh-HK');
+    expect(zh).toContain('這部電腦上的雲端資料夾：');
+    expect(zh).toContain('這部電腦未有 Google Drive。');
+
+    const withDrive = setup([...found, { id: 'google-drive', provider: 'google-drive', label: 'Google Drive', path: '/p' }]);
+    expect(withDrive).toContain('>Google Drive</button>');
+    expect(withDrive).not.toContain('Google Drive for desktop');
+
+    expect(setup([])).toContain('No cloud folder was found on this computer.');
+    expect(setup([])).not.toContain('Cloud folders on this computer');
+    // Detection failed (or not back yet): nothing extra, the plain picker stays.
+    const failed = setup(null);
+    for (const text of ['Cloud folders', 'No cloud folder', 'Google Drive for desktop']) expect(failed).not.toContain(text);
+    expect(failed).toContain('Choose folder…');
+  });
+
+  it('a cloud folder button opens the picker there', () => {
+    const opened: string[] = [];
+    const view = CloudFolders({
+      folders: [{ id: 'onedrive-2', provider: 'onedrive', label: 'OneDrive (School)', path: '/p' }],
+      disabled: false,
+      onOpen: (id) => opened.push(id),
+      m: resolveMessages(STORAGE_MESSAGES, 'en'),
+    });
+    const buttons: ReactElement<{ onClick(): void }>[] = [];
+    const walk = (node: unknown) => {
+      if (!node || typeof node !== 'object') return;
+      if (Array.isArray(node)) return node.forEach(walk);
+      const element = node as ReactElement<{ children?: unknown; onClick?: () => void }>;
+      if (element.props?.onClick) buttons.push(element as ReactElement<{ onClick(): void }>);
+      walk(element.props?.children);
+    };
+    walk(view);
+    expect(buttons).toHaveLength(1);
+    buttons[0].props.onClick();
+    expect(opened).toEqual(['onedrive-2']);
   });
 
   it('with a folder: the path, synced at, Sync now, Show folder, Stop; no Needs attention when empty', () => {
