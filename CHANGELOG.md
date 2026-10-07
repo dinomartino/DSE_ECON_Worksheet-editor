@@ -20,6 +20,13 @@ a version heading is edited afterwards.
   <!-- zh: **桌面版：在兩部電腦使用相同的工作紙。** 在「設定 → 儲存位置」選擇 OneDrive、Google Drive、
   iCloud Drive 或 Dropbox 內的一個資料夾，再在另一部電腦選擇同一個資料夾。工作紙會保留在每部電腦，並透過該資料夾
   互相複製；如果同一份在兩邊都有修改，兩個版本都會保留，並列於「需要處理」。 -->
+- **Storage location shows the cloud folders on your computer.** Before you choose, it lists
+  the ones it finds, such as OneDrive or iCloud Drive; click one to start choosing there. If
+  Google Drive is missing, it tells you to install Google Drive for desktop: the website alone
+  gives no folder on your computer.
+  <!-- zh: **儲存位置會顯示電腦上的雲端資料夾。** 選擇之前，會列出找到的資料夾，例如 OneDrive 或
+  iCloud Drive；按一下便可從該處開始選擇。如果未有 Google Drive，會提示你安裝 Google Drive for desktop
+  （電腦版）：只用網頁版不會在電腦上有資料夾。 -->
 
 ### Changed
 - **Messages now float in the bottom-right corner instead of pushing the page around.**
