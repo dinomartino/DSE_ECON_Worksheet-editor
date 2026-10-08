@@ -7,6 +7,7 @@ export const ANSWER_GRAPH_MESSAGES = defineMessages({
   height: { en: 'Height', zh: '高度' },
   heightIn: { en: 'Height in lines', zh: '高度（行數）' },
   lines: { en: 'lines', zh: '行' },
+  customLines: { en: 'Height in lines, 6 to 40', zh: '高度行數（6 至 40）' },
   linesTitle: {
     en: (lines: number, cm: number) => `${lines} lines (${cm} cm)`,
     zh: (lines: number, cm: number) => `${lines} 行（${cm} cm）`,
