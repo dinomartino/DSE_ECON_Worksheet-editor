@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { chooseLibraryFolder, cloudFolders, desktopLibrary, LIBRARY_CHANGED_EVENT, libraryLocation, type LibraryChanged } from './library';
+import {
+  chooseLibraryFolder,
+  cloudFolders,
+  desktopLibrary,
+  foundLibrary,
+  LIBRARY_CHANGED_EVENT,
+  libraryLocation,
+  type LibraryChanged,
+} from './library';
 
 const shell = {
   calls: [] as Array<{ command: string; args: unknown }>,
@@ -50,6 +58,7 @@ describe('library bridge', () => {
     await chooseLibraryFolder();
     await chooseLibraryFolder('Pick', 'onedrive');
     await cloudFolders();
+    await foundLibrary();
     expect(shell.calls).toEqual([
       { command: 'library_list', args: undefined },
       { command: 'library_read', args: { path: 'trash/a.worksheet.json' } },
@@ -58,6 +67,7 @@ describe('library bridge', () => {
       { command: 'library_choose', args: { title: null, start: null } },
       { command: 'library_choose', args: { title: 'Pick', start: 'onedrive' } },
       { command: 'library_cloud_folders', args: undefined },
+      { command: 'library_found', args: undefined },
     ]);
   });
 

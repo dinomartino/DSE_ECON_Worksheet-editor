@@ -833,7 +833,8 @@ pub async fn library_location<R: Runtime>(app: AppHandle<R>) -> Result<Location,
 }
 
 /// The native folder picker, run here: page script never supplies the root. `start`: a
-/// `library_cloud_folders` id to open the picker at, found again here, never a path.
+/// `library_cloud_folders` id, found again here, never a path; the picker opens at the
+/// library in it (`library_found`), else at the folder.
 #[tauri::command]
 pub async fn library_choose<R: Runtime>(app: AppHandle<R>, title: Option<String>, start: Option<String>) -> Result<ChooseResult, String> {
   blocking(move || {
@@ -841,8 +842,8 @@ pub async fn library_choose<R: Runtime>(app: AppHandle<R>, title: Option<String>
     if let Some(title) = title.filter(|t| !t.is_empty() && t.len() <= 200) {
       dialog = dialog.set_title(title);
     }
-    if let Some(folder) = start.and_then(|id| crate::cloud::this_computers(&id)) {
-      dialog = dialog.set_directory(folder.path);
+    if let Some(path) = start.and_then(|id| crate::cloud::this_computers_start(&id)) {
+      dialog = dialog.set_directory(path);
     }
     let Some(picked) = dialog.blocking_pick_folder() else { return Ok(ChooseResult::Cancelled) };
     let picked = picked.into_path().map_err(|e| e.to_string())?;
@@ -867,6 +868,13 @@ pub async fn library_choose<R: Runtime>(app: AppHandle<R>, title: Option<String>
 #[tauri::command]
 pub async fn library_cloud_folders() -> Result<Vec<crate::cloud::CloudFolder>, String> {
   blocking(|| Ok(crate::cloud::this_computer())).await
+}
+
+/// The first cloud folder holding a library another computer made, if any: its id, provider
+/// and label only (`cloud::library_in`).
+#[tauri::command]
+pub async fn library_found() -> Result<Option<crate::cloud::FoundLibrary>, String> {
+  blocking(|| Ok(crate::cloud::this_computers_library())).await
 }
 
 /// Detach: this computer stops using the folder. Nothing in the folder is touched.
@@ -1068,6 +1076,23 @@ mod tests {
     // Picked directly, too.
     assert_eq!(adopt(&root), Ok(fs::canonicalize(&root).unwrap()));
     assert_eq!(names(&root), vec![stub]);
+  }
+
+  /// What `library_found` offers: the picker opens at the library's parent.
+  #[test]
+  fn another_computers_library_is_adopted_from_its_parent_or_itself_as_it_is() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("Documents").join(LIBRARY_DIR);
+    fs::create_dir_all(root.join("docs")).unwrap();
+    let marker = "{ \"format\": 1, \"madeBy\": \"other\" }\n";
+    fs::write(root.join(MARKER), marker).unwrap();
+    fs::write(root.join("docs/a.json"), "{}").unwrap();
+    let real = fs::canonicalize(&root).unwrap();
+    assert_eq!(adopt(&dir.path().join("Documents")), Ok(real.clone()));
+    assert_eq!(adopt(&root), Ok(real));
+    assert_eq!(fs::read_to_string(root.join(MARKER)).unwrap(), marker);
+    assert_eq!(names(&root), vec!["docs".to_string(), MARKER.to_string()]);
+    assert_eq!(names(&dir.path().join("Documents")), vec![LIBRARY_DIR.to_string()]);
   }
 
   #[test]
