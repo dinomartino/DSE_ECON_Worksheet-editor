@@ -55,14 +55,30 @@ export function inferLevels(lines: readonly SourceLine[], forced: ReadonlyMap<Fa
   }
   const letterParts = PART_FAMILIES.filter((f) => values.has(f));
   if (!letterParts.length) for (const f of ROMAN_FAMILIES) if (values.has(f)) levels.set(f, 'part');
-  // Two letter families where one always sits deeper: the deeper one is the sub-part level.
+  // Two letter families where one always sits deeper: the deeper one is the sub-part level,
+  // but only if it ever opens inside the other. "a)" in one question and "⇥(a)" in another
+  // (a real Word paste) are one level that the teacher typed two ways.
   if (letterParts.length === 2 && !ROMAN_FAMILIES.some((f) => values.has(f))) {
     const mean = (f: Family) => depths.get(f)!.reduce((a, b) => a + b, 0) / depths.get(f)!.length;
     const [a, b] = letterParts;
-    if (Math.abs(mean(a) - mean(b)) >= 1) levels.set(mean(a) > mean(b) ? a : b, 'subpart');
+    const [outer, inner] = mean(a) > mean(b) ? [b, a] : [a, b];
+    if (Math.abs(mean(a) - mean(b)) >= 1 && nests(lines, levels, outer, inner)) levels.set(inner, 'subpart');
   }
   for (const [f, level] of forced) levels.set(f, level);
   return levels;
+}
+
+/** Whether an `inner` label follows an `outer` one with no question label between them. */
+function nests(lines: readonly SourceLine[], levels: ReadonlyMap<Family, Level>, outer: Family, inner: Family): boolean {
+  let open = false;
+  for (const line of lines) {
+    const f = line.labelInfo?.family;
+    if (!f) continue;
+    if (levels.get(f) === 'question') open = false;
+    else if (f === outer) open = true;
+    else if (f === inner && open) return true;
+  }
+  return false;
 }
 
 export type RunVerdict = 'ok' | 'skip' | 'restart' | 'nested' | 'instructions' | 'outlier';
