@@ -14,6 +14,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.7.0 — 2026-10-08
+
 ### Added
 - **Desktop: use the same worksheets on two computers.** In Settings → Storage location,
   choose a folder inside OneDrive, Google Drive, iCloud Drive or Dropbox, then choose the same
