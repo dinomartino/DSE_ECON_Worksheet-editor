@@ -1196,6 +1196,8 @@ geometry underneath stays byte-identical to what exports.
 - **The shift arrow follows too**: "Shift a copy" stores `DiagramArrow.follows` (the copy's
   id); `resolveDiagram` redraws it between the source and copy (`shiftArrowEnds`), plus a
   `followOffset` a whole-arrow drag writes. Dragging an end, or losing the copy, detaches it.
+  Templates draw theirs with `shiftArrow` (the offset centres it where the template put it);
+  a template saved before keeps its fixed arrow (`src/render/diagramTemplatesStored.frozen.json`).
 - **`{ on, y, last }`** reads the last place a curve reaches a height: the far end of an
   import quota's flat step, which the template's Q_A span measures. Written at schema 2.
 - **A shifted copy is `shift`, not `parallel`**: D₁ or S₁ = S + t is the source's own
@@ -1276,7 +1278,8 @@ fallback. The four welfare presets (CS, PS, DWL, tax revenue) are bands built by
 - **Deleting what an area leans on freezes it** into vertices at its last shape
   (`detachAreas`, run by `deleteHandle`); copying an area without its curves does the same.
 - A `curved` curve is read as drawn: `model/diagramAnchors.ts:curvePath` samples its spline
-  (in plot-aspect space, as the renderer builds it), and heights, crossings, pins and area
+  with y scaled by the plot's real height ÷ width (`plotAspectOf` of the shared projection,
+  passed by the renderer and canvas; 3:4 when absent), and heights, crossings, pins and area
   edges all read that path, so a mark on a U-shaped MC sits on the line.
 
 **Shifting a curve** (`model/diagramShift.ts:shiftCurve`) adds a translated copy

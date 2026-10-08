@@ -54,6 +54,17 @@ a version heading is edited afterwards.
   without being written. It is now saved a moment later, like any other edit.
   <!-- zh: **在自動儲存期間輸入，最後幾個字不會再遺失。** 以往在自動儲存或按「儲存」的一刻所作的
   修改，會被當作已儲存但其實未寫入。現在會在稍後一併儲存，與其他修改一樣。 -->
+- **Dragging a shifted curve in a new template diagram now moves its arrow too.** In a
+  diagram such as a demand shift, the arrow from D₀ to D₁ now follows when you drag either
+  curve or change the size of the shift. Diagrams already in your papers keep their arrows
+  where they are.
+  <!-- zh: **在新插入的範本圖中拖動已移動的曲線，箭咀亦會一併移動。** 例如需求移動圖，拖動任何一條
+  曲線或改變移動幅度時，由 D₀ 指向 D₁ 的箭咀會跟隨移動。工作紙內已有的圖，箭咀位置保持不變。 -->
+- **Shading and marked points on a curved line now sit exactly on it, whatever the graph's
+  shape.** An area or point measured along a curved line, such as a U-shaped MC, could sit
+  slightly off the line, most visibly on a tall or wide graph. It now follows the line as drawn.
+  <!-- zh: **無論圖表形狀如何，弧形曲線上的陰影及標示點都會準確落在線上。** 沿弧形曲線（例如 U 形
+  的 MC）量度的陰影或標示點，以往可能稍為偏離曲線，在較高或較闊的圖表中尤其明顯，現在會緊貼畫出的曲線。 -->
 
 ## 0.6.0 — 2026-10-04
 
