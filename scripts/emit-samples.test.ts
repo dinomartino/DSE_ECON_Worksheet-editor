@@ -12,6 +12,7 @@ import {
 } from '@/export/docx';
 import { createAnswerDiagram, createParagraphBlock, createWorksheet } from '@/model/factories';
 import { bi } from '@/model/text';
+import { answerGraphNode } from '@/render/answerGraph';
 import { buildAcceptanceWorksheet, TINY_PNG } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import type { OutputMode, StructuredQuestion } from '@/model/types';
@@ -133,16 +134,26 @@ it('emits a long question with a model answer diagram, and its answer key', asyn
         blocks: [createParagraphBlock(bi('With the aid of a diagram, explain the shortage.', '試用圖解釋短缺。'))],
         marks: 4,
         answer: bi('Qd rises, Qs falls: a shortage Qd − Qs.', '需求量上升，供應量下降，出現短缺。'),
-        answerDiagram: { ...createAnswerDiagram(), id: 'sample-answer-diagram' },
-        answerGraph: { lines: 16, width: 'half' },
+        answerDiagram: {
+          ...createAnswerDiagram(),
+          id: 'sample-answer-diagram',
+          altText: bi('A price ceiling below equilibrium: a shortage', '低於均衡價格的價格上限：短缺'),
+        },
+        // A custom height, as a drag or the number field leaves it.
+        answerGraph: { lines: 23, width: 'half' },
       },
     ],
   };
   worksheet.questions = [question];
   worksheet.flow = [{ type: 'question', id: question.id }];
+  // The worksheet itself, so a browser harness can open the same document.
+  writeFileSync(`${OUT}/answer-diagram.worksheet.json`, JSON.stringify(worksheet));
   // Node has no canvas to rasterise with, so a stand-in PNG takes the diagram's slot;
   // the browser's Export rasterises the real figure into the same place.
-  const images = new Map([['sample-answer-diagram', TINY_PNG]]);
+  const images = new Map([
+    ['sample-answer-diagram', TINY_PNG],
+    [answerGraphNode(question.parts[0]!.answerGraph!).key, TINY_PNG],
+  ]);
   for (const version of ['teacher', 'student'] as const) {
     const bytes = await exportDocxBuffer(worksheet, { language: 'bilingual', version }, images);
     const path = `${OUT}/answer-diagram-${version}.docx`;
