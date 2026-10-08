@@ -226,8 +226,8 @@ export function EditorHost() {
     void openDocument(worksheet, chosen, () => {
       editorOpen.current = true;
     });
-    // Only the new-document form reports a language; opening a saved worksheet leaves
-    // the current view mode alone, since the document does not store one.
+    // Only a new document (the form, or the 題庫's picks) reports a language; opening a
+    // saved worksheet leaves the current view mode alone, since the document stores none.
     if (language) setMode({ language });
     setChosen(true);
   };

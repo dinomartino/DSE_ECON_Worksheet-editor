@@ -9,6 +9,7 @@ import { DiagramIcon, PlusIcon } from '@/components/ui/icons';
 import { DiagramTemplateCards } from '@/components/editor/DiagramTemplatePicker';
 import { relativeTime } from '@/components/start/dashboard';
 import { createGraph, type SavedGraph } from '@/model/graph';
+import { paperLanguage } from '@/settings/paperLanguage';
 import { graphStore, NewerGraphError, type GraphListing } from '@/storage';
 import { graphCount, searchGraphs } from './graphList';
 import { GRAPH_LIBRARY_MESSAGES } from './messages';
@@ -64,7 +65,7 @@ export function GraphLibrary({
   const create = async (templateId: string) => {
     setCreating(false);
     setError(undefined);
-    const graph = createGraph(templateId);
+    const graph = createGraph(templateId, paperLanguage());
     try {
       // Saved before it is edited, so it is on the list even if nothing is drawn.
       await graphStore.save(graph);

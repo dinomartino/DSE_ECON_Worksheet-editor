@@ -2,7 +2,7 @@
  * The new-worksheet form asks for a name first, and will not create without one.
  * The name is `Worksheet.name` (filing only); the factory side is in newWorksheet.test.ts.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { DocumentType } from '@/model/newWorksheet';
 import {
@@ -12,6 +12,9 @@ import {
   newWorksheetName,
 } from './NewWorksheetForm';
 import { START_KINDS } from './startKinds';
+import { UiLanguageOverride } from '@/i18n/language';
+import { LANGUAGE_SETTINGS } from '@/settings/language';
+import { appSettings } from '@/settings/store';
 
 const TYPES: DocumentType[] = ['classroom', 'lqWorksheet', 'paper1', 'lqMock'];
 const render = (initialType?: DocumentType) =>
@@ -72,5 +75,30 @@ describe('the document type gallery', () => {
     expect(checked).toHaveLength(1);
     expect(checked[0]).toContain(`>${kind.title}<`);
     expect(markup).toContain(`>${kind.hint}<`);
+  });
+});
+
+describe('the Language switch', () => {
+  afterEach(() => appSettings.reset(LANGUAGE_SETTINGS));
+  /** The pressed segment's label (EN / 中文 / EN+中). */
+  const chosen = (markup: string) =>
+    markup.match(/aria-label="(?:Language|語言)"[\s\S]*?role="radio" aria-checked="true"[^>]*>(EN\+中|EN|中文)</)?.[1];
+
+  it('starts in English by default', () => {
+    expect(chosen(render())).toBe('EN');
+  });
+
+  it('starts in the paper language setting, whatever the interface language', () => {
+    appSettings.write(LANGUAGE_SETTINGS, { paper: 'zh' });
+    expect(chosen(render())).toBe('中文');
+    const zhChrome = renderToStaticMarkup(
+      <UiLanguageOverride.Provider value="zh-HK">
+        <NewWorksheetForm onCreate={() => {}} />
+      </UiLanguageOverride.Provider>,
+    );
+    expect(chosen(zhChrome)).toBe('中文');
+    appSettings.write(LANGUAGE_SETTINGS, { paper: 'bilingual' });
+    expect(chosen(render())).toBe('EN+中');
+    expect(appSettings.read(LANGUAGE_SETTINGS).ui).toBe('en');
   });
 });

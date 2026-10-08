@@ -34,6 +34,7 @@ import {
   setRowHeight,
 } from '@/model/table';
 import { createWorksheet, newId } from '@/model/factories';
+import { paperLanguage } from '@/settings/paperLanguage';
 import { copyQuestion, freshIds } from '@/model/lineage';
 import {
   applyOrder,
@@ -749,7 +750,8 @@ function bandHolds(band: Band, fieldId: string): boolean {
 
 export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   worksheet: createWorksheet(),
-  mode: { language: 'en', version: 'student' },
+  // A document stores no language: the editor starts in the paper language setting.
+  mode: { language: paperLanguage(), version: 'student' },
   printPreview: false,
   documentView: 'paper',
   dirty: false,
