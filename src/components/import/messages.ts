@@ -314,40 +314,34 @@ export const IMPORT_MESSAGES = defineMessages({
   nothingWritten: { en: 'Nothing is saved until you press Save.', zh: '按「儲存」之前不會儲存任何內容。' },
   saveAll: { en: (n: number) => `Save ${n} papers`, zh: (n: number) => `儲存 ${n} 份試卷` },
 
-  // Results (notices)
-  savedAs: {
-    en: (kind: string, name: string, n: number) => `Saved “${name}” as a new ${kind} with ${n} ${plural(n, 'question')}.`,
-    zh: (kind: string, name: string, n: number) => `已把「${name}」儲存為新的${kind}，共 ${n} 條題目。`,
+  // Results (notices): a short headline, then one row per paper or bank
+  importedPapers: { en: (n: number) => `Imported ${n} ${plural(n, 'paper')}`, zh: (n: number) => `已匯入 ${n} 份試卷` },
+  paperMeta: {
+    en: (kind: string, n: number) => `${kind} · ${n} ${plural(n, 'question')}`,
+    zh: (kind: string, n: number) => `${kind} · ${n} 條題目`,
   },
-  noAnswerAfter: {
-    en: (n: number) => ` ${n} MC ${n === 1 ? 'has' : 'have'} no answer yet and ${n === 1 ? 'shows' : 'show'} A for now.`,
+  openNow: { en: 'Open now', zh: '已開啟' },
+  openPaper: { en: 'Open', zh: '開啟' },
+  morePapers: { en: (n: number) => `And ${n} more on the home screen`, zh: (n: number) => `另有 ${n} 份在主畫面` },
+  noAnswer: {
+    en: (n: number) => `${n} MC ${n === 1 ? 'has' : 'have'} no answer yet and ${n === 1 ? 'shows' : 'show'} A for now.`,
     zh: (n: number) => `${n} 條 MC 未有答案，暫時顯示為 A。`,
   },
   addedToBank: {
-    en: (n: number, bank: string) => `Added ${n} ${plural(n, 'question')} to ${bank}. They are under Untagged in 題庫.`,
-    zh: (n: number, bank: string) => `已把 ${n} 條題目加入「${bank}」，可在題庫的「未標記」找到。`,
+    en: (n: number) => `Added ${n} ${plural(n, 'question')} to 題庫`,
+    zh: (n: number) => `已把 ${n} 條題目加入題庫`,
   },
-  bankHadAll: {
-    en: (bank: string) => `${bank} already has every one of these questions. Nothing was added.`,
-    zh: (bank: string) => `「${bank}」已有這些題目，沒有加入任何內容。`,
-  },
+  bankHadAll: { en: 'Nothing new to add to 題庫', zh: '沒有新題目可加入題庫' },
+  bankUntagged: { en: 'Find them under Untagged', zh: '可在「未標記」找到' },
+  bankHasAll: { en: 'Already has every one of these questions', zh: '已有這些題目' },
   skippedDuplicates: {
-    en: (n: number) => ` ${n} ${plural(n, 'question')} already in the bank ${n === 1 ? 'was' : 'were'} skipped.`,
-    zh: (n: number) => `已略過 ${n} 條題庫已有的題目。`,
+    en: (n: number) => `${n} already there, skipped`,
+    zh: (n: number) => `已略過 ${n} 條已有的題目`,
   },
   stimulusNotInBank: {
-    en: ' The shared stimulus stays out of the bank; save as a paper to keep it.',
+    en: 'The shared stimulus stays out of the bank; save as a paper to keep it.',
     zh: '共用資料不會加入題庫；如要保留，請儲存為試卷。',
   },
-  savedMany: {
-    en: (n: number, first: string) => `${n} papers imported. “${first}” is open; the others are on the home screen.`,
-    zh: (n: number, first: string) => `已匯入 ${n} 份試卷。已開啟「${first}」，其餘可在主畫面找到。`,
-  },
-  savedPaperLine: {
-    en: (name: string, kind: string, n: number) => `${name}: ${kind}, ${n} ${plural(n, 'question')}`,
-    zh: (name: string, kind: string, n: number) => `${name}：${kind}，${n} 條題目`,
-  },
-  openPaper: { en: (name: string) => `Open ${name}`, zh: (name: string) => `開啟 ${name}` },
   saveFailed: { en: 'Nothing was saved: the new paper could not be made. Try again.', zh: '沒有儲存任何內容：無法建立新試卷，請再試一次。' },
   bankFailed: { en: 'Could not save the question bank.', zh: '無法儲存題庫。' },
 });

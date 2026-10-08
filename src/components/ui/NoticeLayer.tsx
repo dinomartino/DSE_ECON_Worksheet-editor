@@ -14,6 +14,7 @@ import {
   useNoticeStore,
   type Notice,
   type NoticeInput,
+  type NoticeRow,
   type NoticeTone,
 } from '@/store/notices';
 import { useMessages } from '@/i18n/language';
@@ -252,6 +253,14 @@ export function NoticeCard({ notice }: { notice: Notice }) {
         <p className={`break-words text-[12.5px] leading-snug ${notice.title ? 'mt-0.5 text-ink-muted' : 'font-medium'}`}>
           {notice.body}
         </p>
+        {notice.rows && notice.rows.length > 0 && (
+          <ul className="mt-2 space-y-1.5">
+            {notice.rows.map((row, k) => (
+              <NoticeRowView key={k} row={row} onAction={(action) => runNoticeAction(notice.id, action)} />
+            ))}
+          </ul>
+        )}
+        {notice.rowsNote && <p className="mt-1.5 text-[11px] leading-snug text-ink-muted">{notice.rowsNote}</p>}
         {details.length > 0 && (
           <ul className="mt-1.5 space-y-0.5 text-[11px] leading-snug text-ink-muted">
             {details.map((line) => (
@@ -283,5 +292,49 @@ export function NoticeCard({ notice }: { notice: Notice }) {
         </IconButton>
       )}
     </div>
+  );
+}
+
+/**
+ * A label split for a middle ellipsis: the head gives way, the last word or few characters
+ * stay, so two names alike ("… Assessment 1", "… Assessment 2") are still told apart.
+ */
+export function splitLabel(label: string): [head: string, tail: string] {
+  const chars = Array.from(label);
+  // Width in Latin letters: a CJK character draws about two.
+  const width = (c: string) => (/[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]/.test(c) ? 2 : 1);
+  if (chars.reduce((sum, c) => sum + width(c), 0) <= 24) return [label, ''];
+  const space = label.indexOf(' ', label.length - 16);
+  if (space > 0 && space < label.length - 1) return [label.slice(0, space), label.slice(space)];
+  let cut = chars.length;
+  for (let kept = 0; kept < 12 && cut > 0; ) kept += width(chars[--cut]);
+  return [chars.slice(0, cut).join(''), chars.slice(cut).join('')];
+}
+
+/** One row: the label on one line (cut in the middle), a muted line, a tag or a text link. */
+function NoticeRowView({ row, onAction }: { row: NoticeRow; onAction: (action: NonNullable<NoticeRow['action']>) => void }) {
+  const [head, tail] = splitLabel(row.label);
+  return (
+    <li data-notice-row className="flex min-w-0 items-center gap-3">
+      <div className="min-w-0 flex-1">
+        <p title={row.label} className="flex min-w-0 text-[12.5px] font-medium leading-snug">
+          <span className="min-w-0 truncate">{head}</span>
+          {tail && <span className="shrink-0 whitespace-pre">{tail}</span>}
+        </p>
+        {row.meta && <p className="break-words text-[11px] leading-snug text-ink-muted">{row.meta}</p>}
+      </div>
+      {row.action ? (
+        <button
+          type="button"
+          disabled={row.action.disabled}
+          onClick={() => onAction(row.action!)}
+          className="shrink-0 cursor-pointer rounded-md px-1.5 py-0.5 text-xs font-medium text-accent-ink transition-colors duration-150 hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-40"
+        >
+          {row.action.label}
+        </button>
+      ) : (
+        row.tag && <span className="shrink-0 px-1.5 text-[11px] text-ink-subtle">{row.tag}</span>
+      )}
+    </li>
   );
 }
