@@ -51,10 +51,25 @@ export interface PreviewItem {
   language: LanguageMode;
 }
 
+/**
+ * The teacher version, so answers and schemes from an answers file show under their
+ * part (the pane frames them as teacher-only). The MC letter line is left out: the
+ * option's wash already says it.
+ */
 const MODE: Record<'en' | 'zh', OutputMode> = {
-  en: { language: 'en', version: 'student', omitAnswerSpace: true, omitCover: true },
-  zh: { language: 'zh', version: 'student', omitAnswerSpace: true, omitCover: true },
+  en: { language: 'en', version: 'teacher', omitAnswerSpace: true, omitCover: true },
+  zh: { language: 'zh', version: 'teacher', omitAnswerSpace: true, omitCover: true },
 };
+
+const isAnswerLetter = (node: RenderNode) => node.kind === 'text' && node.style === 'Answer' && node.teacherOnly === true;
+/** Kept by the render cache's nodes, so an unchanged question keeps its array (and its memo). */
+const withoutLetters = new WeakMap<RenderNode[], RenderNode[]>();
+function previewNodes(nodes: RenderNode[]): RenderNode[] {
+  if (!nodes.some(isAnswerLetter)) return nodes;
+  let out = withoutLetters.get(nodes);
+  if (!out) withoutLetters.set(nodes, (out = nodes.filter((n) => !isAnswerLetter(n))));
+  return out;
+}
 
 /**
  * The batch rendered for the preview, one item per question (and one for a lead), in
@@ -104,7 +119,7 @@ export function previewItems(base: Worksheet, analysis: Analysis, batch: ImportB
   questions.forEach((question, k) => {
     const side = sides[k];
     const found = rendered[side]?.questions.find((entry) => entry.questionId === question.id);
-    if (found) items.push({ question: k, nodes: found.nodes, language: side });
+    if (found) items.push({ question: k, nodes: previewNodes(found.nodes), language: side });
   });
   return items;
 }

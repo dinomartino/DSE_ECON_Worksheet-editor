@@ -223,7 +223,9 @@ export function EditorHost() {
      * work", reachable in about four seconds). The list must never miss a document the
      * teacher has seen on screen. Both writes run with sync held (`saveOnOpen`).
      */
-    void openDocument(worksheet, chosen, () => {
+    // The ref, not `chosen`: an import notice's Open runs this from the editor through the
+    // start screen's (stale) closure, and the outgoing edits must still be flushed.
+    void openDocument(worksheet, editorOpen.current, () => {
       editorOpen.current = true;
     });
     // Only a new document (the form, or the 題庫's picks) reports a language; opening a

@@ -22,13 +22,22 @@ a version heading is edited afterwards.
   "Figure 1" with nothing after it), select the place and paste a screenshot (⌘V). Then save it
   as a new Classroom worksheet, LQ worksheet, Paper 1 mock or Paper 2 mock, which opens ready to
   edit, or add the questions to 題庫 only, where questions it already has are skipped. A scanned
-  PDF, an older .doc file or a file with a password says what to do instead.
+  PDF, an older .doc file or a file with a password says what to do instead. Choose or drop
+  several files at once when the answers are in another file: Econ Studio tells the papers from
+  the answer keys and marking schemes, pairs them by name, and lets you relink any of them. Each
+  paper is then checked in turn with its MC answers and marking schemes already in place, shown
+  as they will print in the teacher copy, with a list of anything to check (a missing answer, or
+  an answer that differs from the paper). Save them all as new papers in one go, or add them to
+  題庫.
   <!-- zh: **從 Word 或 PDF 匯入試卷。** 在主頁選擇「從 Word 或 PDF 匯入…」（或把 .docx 或 .pdf 檔案拖放到主頁）。
   Econ Studio 會讀取檔案，判斷哪些行是題目、分題、選項和分數，並在旁邊顯示列印效果。按一下或按一個鍵即可修正任何一行，
   修正亦會套用到所有相似的行。按一下選項即可設為答案。Word 檔案中的圖片會一併匯入，PDF 中的圖表會從頁面裁剪出來。
   如仍缺少圖片（例如 Word 繪製的圖表，或「圖一」之後沒有圖片），選取該位置後貼上截圖（⌘V）即可。然後把它儲存為新的
   課堂工作紙、LQ 工作紙、Paper 1 Mock 或 Paper 2 Mock，並直接開啟編輯，或只把題目加入題庫，題庫已有的題目會略過。
-  掃描的 PDF、舊版 .doc 檔案或設有密碼的檔案，會說明應怎樣做。 -->
+  掃描的 PDF、舊版 .doc 檔案或設有密碼的檔案，會說明應怎樣做。答案在另一個檔案？可一次選擇或拖放多個檔案：
+  Econ Studio 會分辨哪些是試卷、哪些是答案或評卷參考，按檔名配對，你亦可重新配對。之後逐份檢查試卷，MC 答案和評卷參考
+  已經放好，並以教師版的列印效果顯示，另列出需要檢查的地方（例如欠缺答案，或答案與試卷不同）。最後可一次把全部儲存為
+  新試卷，或加入題庫。 -->
 - **Desktop: your second computer finds your synced folder.** When Econ Studio starts on a
   computer with no folder chosen yet, and your Econ Studio folder is already in OneDrive, Google
   Drive, iCloud Drive or Dropbox, it asks once whether to use it here too. Choose it, and the

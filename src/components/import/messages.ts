@@ -157,6 +157,112 @@ export const IMPORT_MESSAGES = defineMessages({
   flagUnlabelledStart: { en: 'Text before the first number became a question.', zh: '第一個編號之前的文字成為了一條題目。' },
   flagMixedContent: { en: 'Options and parts in one question. Check the split.', zh: '同一題目內有選項和分題，請檢查分拆。' },
 
+  // Several files: reading them
+  readingMany: { en: (n: number, of: number) => `Reading file ${n} of ${of}…`, zh: (n: number, of: number) => `正在讀取第 ${n} 個檔案（共 ${of} 個）…` },
+  fileRead: { en: 'Read', zh: '已讀取' },
+  fileWaiting: { en: 'Waiting', zh: '等候中' },
+  fileProblem: { en: 'Cannot be read', zh: '無法讀取' },
+
+  // Several files: linking papers and answers
+  linkTitle: { en: 'Papers and answers', zh: '試卷與答案' },
+  linkHint: {
+    en: 'Check which files are question papers and which hold answers, then pick the answers for each paper.',
+    zh: '請檢查哪些檔案是試卷、哪些是答案，然後為每份試卷選擇答案。',
+  },
+  filesHeading: { en: 'Files', zh: '檔案' },
+  papersHeading: { en: 'Answers for each paper', zh: '每份試卷的答案' },
+  roleIs: { en: 'This file holds', zh: '這個檔案內容' },
+  roleQuestions: { en: 'Questions', zh: '試題' },
+  roleAnswers: { en: 'Answers', zh: '答案' },
+  roleBoth: { en: 'Both', zh: '兩者' },
+  roleQuestionsHint: { en: 'A question paper', zh: '試卷' },
+  roleAnswersHint: { en: 'An answer key or marking scheme', zh: '答案或評卷參考' },
+  roleBothHint: { en: 'A paper with its answers in it', zh: '附有答案的試卷' },
+  removeFile: { en: (name: string) => `Leave ${name} out of the import`, zh: (name: string) => `不匯入 ${name}` },
+  answersFrom: { en: 'Answers from', zh: '答案來自' },
+  answersNone: { en: 'No answers', zh: '沒有答案' },
+  answersOwn: { en: 'Its own answers (in this file)', zh: '檔案內附的答案' },
+  reasonName: { en: 'name says answers', zh: '檔名顯示是答案' },
+  reasonKey: { en: 'has an answer key', zh: '有答案表' },
+  reasonScheme: { en: 'has a marking scheme', zh: '有評卷參考' },
+  reasonMc: { en: 'has MC questions', zh: '有 MC 題目' },
+  reasonWritten: { en: 'has written questions', zh: '有文字題' },
+  reasonAnswersInPaper: { en: 'answers inside the paper', zh: '試卷內附答案' },
+  reasonNoText: { en: 'no text to read', zh: '沒有可讀取的文字' },
+  scanAnswers: {
+    en: (pages: number) =>
+      `A scanned image${pages ? `, ${pages} ${plural(pages, 'page')}` : ''}. Answers cannot be read from a scan yet (text recognition is coming), so it links to no paper.`,
+    zh: (pages: number) => `掃描圖像${pages ? `（${pages} 頁）` : ''}。暫時未能從掃描檔讀取答案（文字辨識功能即將推出），因此不會連結任何試卷。`,
+  },
+  scanPaper: {
+    en: (pages: number) => `A scanned image${pages ? `, ${pages} ${plural(pages, 'page')}` : ''}, so there is no text to read.`,
+    zh: (pages: number) => `掃描圖像${pages ? `（${pages} 頁）` : ''}，沒有可讀取的文字。`,
+  },
+  noPapers: { en: 'No question paper among these files. Mark a file as Questions or Both.', zh: '這些檔案中沒有試卷。請把其中一個檔案標示為「試題」或「兩者」。' },
+  reviewPapers: {
+    en: (n: number) => (n === 1 ? 'Review the paper' : `Review ${n} papers`),
+    zh: (n: number) => (n === 1 ? '檢查試卷' : `檢查 ${n} 份試卷`),
+  },
+  chooseOthers: { en: 'Choose other files…', zh: '選擇其他檔案…' },
+
+  // Several files: one paper's review
+  paperOf: { en: (n: number, of: number) => `${n} of ${of} papers`, zh: (n: number, of: number) => `第 ${n} 份（共 ${of} 份試卷）` },
+  backToLinks: { en: 'Papers and answers', zh: '試卷與答案' },
+  previousPaper: { en: 'Previous paper', zh: '上一份試卷' },
+  nextPaper: { en: 'Next paper', zh: '下一份試卷' },
+
+  // Answers from a file: the summary
+  mcFromFile: {
+    en: (set: number, of: number, name: string) => `${set} of ${of} MC answers set from ${name}`,
+    zh: (set: number, of: number, name: string) => `已從 ${name} 設定 ${set} / ${of} 條 MC 答案`,
+  },
+  answersFromFile: { en: (name: string) => `Answers from ${name}`, zh: (name: string) => `答案來自 ${name}` },
+  schemeCount: {
+    en: (n: number) => `${n} ${plural(n, 'marking scheme')}`,
+    zh: (n: number) => `${n} 項評卷參考`,
+  },
+  answersAllMatched: { en: 'every answer placed', zh: '所有答案已配對' },
+  schemeBadge: { en: 'Scheme', zh: '評卷參考' },
+  answerTextBadge: { en: 'Answer', zh: '答案' },
+  removeSheetBadge: { en: (what: string) => `${what} from the answers file: leave it out`, zh: (what: string) => `答案檔的${what}：不使用` },
+  teacherOnly: { en: 'Teacher copy only', zh: '只在教師版' },
+
+  // Answers from a file: rows to check
+  questionRef: {
+    en: (q: string, section: string) => (section ? `Q${q} (Part ${section})` : `Q${q}`),
+    zh: (q: string, section: string) => (section ? `第 ${q} 題（${section} 部）` : `第 ${q} 題`),
+  },
+  rowMissing: { en: (q: string) => `${q}: no answer in the answers file`, zh: (q: string) => `${q}：答案檔沒有這題的答案` },
+  rowConflict: {
+    en: (q: string, paper: string, sheet: string) => `${q}: the paper marks ${paper}, the answers file says ${sheet}. Using ${sheet}.`,
+    zh: (q: string, paper: string, sheet: string) => `${q}：試卷標示 ${paper}，答案檔寫 ${sheet}，現採用 ${sheet}。`,
+  },
+  rowOutOfRange: {
+    en: (q: string, letter: string, n: number) => `${q}: answer ${letter}, but the question has ${n} ${plural(n, 'option')}`,
+    zh: (q: string, letter: string, n: number) => `${q}：答案是 ${letter}，但題目只有 ${n} 個選項`,
+  },
+  rowNoLetter: { en: (q: string) => `${q}: the answers file has words but no letter for this MC`, zh: (q: string) => `${q}：答案檔有文字，但沒有這條 MC 的答案字母` },
+  rowNotWritten: {
+    en: (q: string) => `${q}: the answers file gives a letter, but this is a written question`,
+    zh: (q: string) => `${q}：答案檔提供了字母，但這是文字題`,
+  },
+  rowNeedsPart: {
+    en: (q: string) => `${q}: the answer names no part, and this question has parts`,
+    zh: (q: string) => `${q}：答案沒有註明分題，但這題有分題`,
+  },
+  rowNoSuchQuestion: { en: (q: string) => `${q} in the answers file: this paper has no such question`, zh: (q: string) => `答案檔的${q}：試卷沒有這題` },
+  rowNoSuchPart: { en: (q: string) => `${q} in the answers file: the question has no such part`, zh: (q: string) => `答案檔的${q}：題目沒有這個分題` },
+  rowDuplicate: { en: (q: string) => `${q}: a second answer in the answers file, left out`, zh: (q: string) => `${q}：答案檔有第二個答案，不會使用` },
+  rowSeveral: {
+    en: (q: string, letters: string, first: string) => `${q}: the answers file accepts ${letters}. Using ${first}.`,
+    zh: (q: string, letters: string, first: string) => `${q}：答案檔接受 ${letters}，現採用 ${first}。`,
+  },
+  rowMarks: {
+    en: (q: string, sheet: number, paper: number) => `${q}: the answers file gives ${sheet} ${plural(sheet, 'mark')}, the paper prints ${paper}`,
+    zh: (q: string, sheet: number, paper: number) => `${q}：答案檔給 ${sheet} 分，試卷印 ${paper} 分`,
+  },
+  or: { en: ' or ', zh: '或' },
+
   // Footer
   cancel: { en: 'Cancel', zh: '取消' },
   nothingToImport: { en: 'No questions found yet. Fix a line, or choose another file.', zh: '仍未找到題目。請修正某一行，或選擇其他檔案。' },
@@ -197,6 +303,17 @@ export const IMPORT_MESSAGES = defineMessages({
     zh: (n: number) => `這份試卷用於文字作答。${n} 條 MC 仍會連同選項加入。`,
   },
 
+  // Save as: several papers
+  newPapers: { en: (n: number) => `${n} new papers`, zh: (n: number) => `${n} 份新試卷` },
+  paperType: { en: 'Type', zh: '類型' },
+  suggestedType: { en: (title: string) => `${title} (suggested)`, zh: (title: string) => `${title}（建議）` },
+  paperSummary: {
+    en: (questions: number, answers: number) => `${questions} ${plural(questions, 'question')}${answers ? ` · ${answers} with answers` : ''}`,
+    zh: (questions: number, answers: number) => `${questions} 條題目${answers ? ` · ${answers} 條有答案` : ''}`,
+  },
+  nothingWritten: { en: 'Nothing is saved until you press Save.', zh: '按「儲存」之前不會儲存任何內容。' },
+  saveAll: { en: (n: number) => `Save ${n} papers`, zh: (n: number) => `儲存 ${n} 份試卷` },
+
   // Results (notices)
   savedAs: {
     en: (kind: string, name: string, n: number) => `Saved “${name}” as a new ${kind} with ${n} ${plural(n, 'question')}.`,
@@ -222,6 +339,15 @@ export const IMPORT_MESSAGES = defineMessages({
     en: ' The shared stimulus stays out of the bank; save as a paper to keep it.',
     zh: '共用資料不會加入題庫；如要保留，請儲存為試卷。',
   },
+  savedMany: {
+    en: (n: number, first: string) => `${n} papers imported. “${first}” is open; the others are on the home screen.`,
+    zh: (n: number, first: string) => `已匯入 ${n} 份試卷。已開啟「${first}」，其餘可在主畫面找到。`,
+  },
+  savedPaperLine: {
+    en: (name: string, kind: string, n: number) => `${name}: ${kind}, ${n} ${plural(n, 'question')}`,
+    zh: (name: string, kind: string, n: number) => `${name}：${kind}，${n} 條題目`,
+  },
+  openPaper: { en: (name: string) => `Open ${name}`, zh: (name: string) => `開啟 ${name}` },
   saveFailed: { en: 'Nothing was saved: the new paper could not be made. Try again.', zh: '沒有儲存任何內容：無法建立新試卷，請再試一次。' },
   bankFailed: { en: 'Could not save the question bank.', zh: '無法儲存題庫。' },
 });

@@ -36,6 +36,8 @@ export interface LineView {
   question?: number;
   /** A line outside every question with a picture: the question (index) the picture opens. */
   pictureTo?: number;
+  /** Badge words for `pins`, by position, where the kind alone does not say enough (a scheme's part). */
+  pinLabels?: string[];
 }
 
 export function ReviewLines({
@@ -108,12 +110,12 @@ const LineRow = memo(function LineRow({
   onChip: (line: number, anchor: HTMLElement) => void;
   onRemovePin: (pin: Pin) => void;
 }) {
-  const { line, role, pinned, pins, flags, pictureTo } = row;
+  const { line, role, pinned, pins, flags, pictureTo, pinLabels } = row;
   if (line.blank || role === 'ignore') return <div role="listitem" data-line={line.i} className="h-2" aria-hidden />;
   const chip = CHIP[role];
   const name = m[chip.name] + (pinned ? m.pinnedSuffix : '');
   const out = chip.tone === 'out';
-  const badges = pins.filter((p) => p.kind === 'newQuestion' || p.kind === 'join' || p.kind === 'image' || p.kind === 'noPicture');
+  const badges = pins.flatMap((pin, k) => (pin.kind in BADGE ? [{ pin, label: pinLabels?.[k] }] : []));
   return (
     <div
       role="listitem"
@@ -148,16 +150,21 @@ const LineRow = memo(function LineRow({
       >
         {line.raw || (line.image ? <ImageIcon size={13} className="inline text-ink-subtle" /> : null)}
       </button>
-      {badges.map((pin) => {
-        const label = pin.kind === 'image' && pictureTo !== undefined ? m.pictureToQuestion(pictureTo + 1) : BADGE[pin.kind as keyof typeof BADGE](m);
+      {badges.map(({ pin, label: given }, k) => {
+        const label = given || (pin.kind === 'image' && pictureTo !== undefined ? m.pictureToQuestion(pictureTo + 1) : BADGE[pin.kind as keyof typeof BADGE](m));
+        // A scheme came from the answers file: its badge leaves it out (⌘Z brings it back).
+        const fromFile = pin.kind === 'scheme';
+        const title = fromFile ? m.removeSheetBadge(label) : m.removeBadge(label);
         return (
           <button
-            key={pin.kind === 'image' ? pin.id : pin.kind}
+            key={pin.kind === 'image' ? pin.id : `${pin.kind}${k}`}
             type="button"
             onClick={() => onRemovePin(pin)}
-            title={m.removeBadge(label)}
-            aria-label={m.removeBadge(label)}
-            className="mt-px shrink-0 cursor-pointer rounded-full bg-accent-soft px-1.5 py-px text-[10.5px] text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            title={title}
+            aria-label={title}
+            className={`mt-px shrink-0 cursor-pointer whitespace-nowrap rounded-full px-1.5 py-px text-[10.5px] transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              fromFile ? 'bg-ok-soft text-ok' : 'bg-accent-soft text-accent-ink'
+            }`}
           >
             {label} ×
           </button>
@@ -178,6 +185,7 @@ const BADGE = {
   join: (m: Text) => m.joinedBadge,
   image: (m: Text) => m.pictureBadge,
   noPicture: (m: Text) => m.noPictureBadge,
+  scheme: (m: Text) => m.schemeBadge,
 };
 
 /**
