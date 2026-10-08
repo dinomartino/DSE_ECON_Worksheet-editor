@@ -173,7 +173,7 @@ export function pdfChrome(input: ChromeInput): PdfChrome {
         continue;
       }
       if (got.pageCount) unsupported.push({ where, text: got.pageCount, reason: 'pageCount' });
-      if (!rowIsEmpty(got.row)) rows.push(got.row);
+      rows.push(...got.rows.filter((row) => !rowIsEmpty(row)));
     }
     return rows;
   };
@@ -184,7 +184,7 @@ export function pdfChrome(input: ChromeInput): PdfChrome {
         unsupported.push({ where, text: got.tooMany, reason: 'tooMany' });
         return [];
       }
-      return rowIsEmpty(got.row) ? [] : [got.row];
+      return got.rows.filter((row) => !rowIsEmpty(row));
     });
 
   const chrome: PageChrome = { unsupported };
@@ -224,12 +224,8 @@ export function pdfChrome(input: ChromeInput): PdfChrome {
   const masthead: ChromeRow[] = [];
   for (const row of leading.slice(0, span)) {
     taken.add(row);
-    const segs = segmentsOf(row, l, r, bodySize);
-    for (let k = 0; k < segs.length; k += 3) {
-      const chunk = segs.slice(k, k + 3);
-      const got = rowOf(segs.length > 3 ? chunk.map((s, n) => ({ ...s, zone: (['left', 'center', 'right'] as const)[n] })) : chunk);
-      if (!('tooMany' in got) && !rowIsEmpty(got.row)) masthead.push(got.row);
-    }
+    const got = rowOf(segmentsOf(row, l, r, bodySize), { split: true });
+    if (!('tooMany' in got)) masthead.push(...got.rows.filter((row) => !rowIsEmpty(row)));
   }
   if (masthead.length) chrome.masthead = masthead;
 

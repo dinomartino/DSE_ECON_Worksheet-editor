@@ -4,8 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChromeLeftover, PageChrome } from '@/import';
 import { planChrome } from '@/import/chromePlan';
 import type { Band, HeaderFooter, LanguageMode } from '@/model/types';
-import { renderBand } from '@/render/worksheet';
-import { HeaderFooterBand, NodeView } from '@/components/preview/Preview';
+import { HeaderFooterBand } from '@/components/preview/Preview';
 import { Button, CheckField } from '@/components/ui';
 import type { Messages } from '@/i18n/catalogue';
 import type { IMPORT_MESSAGES } from './messages';
@@ -183,22 +182,18 @@ export function ChromeReview({
               <p className="text-[11px] italic text-[#6b7280]" style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif' }}>
                 {m.chromePage1Blank}
               </p>
-            ) : strip.edge ? (
-              // The page's own header and footer row, so the review wraps and aligns as the sheet will.
+            ) : (
+              // The page's own band rows (three zones, as the editor draws header, footer and
+              // title block), so the review wraps and aligns as the sheet will.
               <HeaderFooterBand
                 value={{ enabled: true, bands: strip.bands, rule: strip.rule ?? false }}
                 language={language}
-                edge={strip.edge}
+                edge={strip.edge ?? 'header'}
                 pageNumber={strip.page1 ? 1 : 2}
                 firstOfSection={false}
                 pageCount={2}
                 totalMarks={totalMarks}
               />
-            ) : (
-              strip.bands.map((band) => {
-                const node = renderBand(band, totalMarks, language);
-                return node ? <NodeView key={band.id} node={node} language={language} /> : null;
-              })
             )}
           </div>
         </div>

@@ -303,7 +303,7 @@ function addRow(segments: Segment[], rows: ChromeRow[], found: Found[]): void {
     return;
   }
   if (got.pageCount) found.push({ text: got.pageCount, reason: 'pageCount' });
-  if (!rowIsEmpty(got.row)) rows.push(got.row);
+  rows.push(...got.rows.filter((row) => !rowIsEmpty(row)));
 }
 
 const dedupe = (found: Found[]) => found.filter((f, k) => found.findIndex((g) => g.text === f.text && g.reason === f.reason) === k);
@@ -469,15 +469,10 @@ export function docxMasthead(lines: readonly RawLine[], width: number, bodySize:
   for (const line of lines.slice(0, taken)) {
     const segments = lineSegments(line, width, bodySize).filter((s) => s.text.trim());
     if (!segments.length) continue;
-    for (let k = 0; k < segments.length; k += 3) {
-      const chunk = segments.slice(k, k + 3);
-      // A split line's pieces spread over the row's three zones, in order.
-      const placed = segments.length > 3 ? chunk.map((s, n) => ({ ...s, zone: (['left', 'center', 'right'] as const)[n] })) : chunk;
-      const got = rowOf(placed);
-      if ('tooMany' in got) continue;
-      if (got.pageCount) found.push({ where: 'masthead', text: got.pageCount, reason: 'pageCount' });
-      if (!rowIsEmpty(got.row)) rows.push(got.row);
-    }
+    const got = rowOf(segments, { split: true });
+    if ('tooMany' in got) continue; // never with `split`
+    if (got.pageCount) found.push({ where: 'masthead', text: got.pageCount, reason: 'pageCount' });
+    rows.push(...got.rows.filter((row) => !rowIsEmpty(row)));
   }
   return { taken, rows, found };
 }

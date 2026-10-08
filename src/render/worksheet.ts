@@ -136,7 +136,7 @@ export interface RenderedWorksheet {
  * which is what a masthead needs; an occupied-zones-only layout would centre the middle
  * of the *content* instead and drift as fields are added.
  */
-export function renderBand(
+function renderBand(
   band: Band,
   totalMarks: number,
   language: LanguageMode,

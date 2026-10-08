@@ -169,8 +169,8 @@ export function classifyText(raw: string, style: ChromeStyle = {}): { pieces: Ch
   const rest = text.slice(from).trim();
   if (pieces.length) {
     const last = pieces[pieces.length - 1];
-    // "( )" after a blank is the class-number box: it rides on the field.
-    if (rest && /^[(（][\s　]*[)）]$/.test(rest) && last.kind === 'fillIn') last.suffix = ` ${rest}`;
+    // Short words after a blank ("( )", "– 1 - 2022", "分") ride on the field as its suffix.
+    if (rest && last.kind === 'fillIn' && rest.length <= 24 && !FILL_LABEL.test(rest) && !/\s{3,}/.test(rest)) last.suffix = `${/^\s/.test(text.slice(from)) ? ' ' : ''}${rest}`;
     else if (rest) pieces.push(...restPieces(rest, styled));
     return { pieces };
   }
@@ -195,21 +195,41 @@ export interface Segment {
   style?: ChromeStyle;
 }
 
+const SPREAD: Record<number, ChromeZone[]> = { 1: ['left'], 2: ['left', 'right'], 3: ['left', 'center', 'right'] };
+
 /**
- * Segments (each already given a zone) as a row. Several in one zone stay in order.
- * More than three non-empty segments cannot be told apart by position: `tooMany`.
+ * Segments (each already given a zone) as rows: one field per zone, since two fields in one
+ * zone print on top of each other. A zone that got two (a line of blanks set with spaces)
+ * spreads its row's fields over the three zones in reading order. More than three fields
+ * cannot be placed: `tooMany`, or with `split` (the masthead) rows of three.
  */
-export function rowOf(segments: readonly Segment[]): { row: ChromeRow; pageCount?: string } | { tooMany: string } {
+export function rowOf(segments: readonly Segment[], options: { split?: boolean } = {}): { rows: ChromeRow[]; pageCount?: string } | { tooMany: string } {
   const inked = segments.filter((s) => s.text.trim());
-  if (inked.length > 3) return { tooMany: unmark(inked.map((s) => s.text.trim()).join('\t')) };
-  const row = emptyRow();
+  const tooMany = { tooMany: unmark(inked.map((s) => s.text.trim()).join('\t')) };
+  if (inked.length > 3 && !options.split) return tooMany;
+  const placed: Array<{ zone: ChromeZone; piece: ChromePiece }> = [];
   let pageCount: string | undefined;
   for (const s of inked) {
     const got = classifyText(s.text, s.style);
-    row[s.zone].push(...got.pieces);
+    for (const piece of got.pieces) {
+      const prev = placed[placed.length - 1];
+      // Words set a little after a blank, in the same zone ("Date: ____  – 1 - 2022"): its suffix.
+      if (prev?.zone === s.zone && prev.piece.kind === 'fillIn' && !prev.piece.suffix && piece.kind === 'text' && piece.text.length <= 24) prev.piece.suffix = ` ${piece.text}`;
+      else placed.push({ zone: s.zone, piece });
+    }
     pageCount ??= got.pageCount;
   }
-  return { row, ...(pageCount ? { pageCount } : {}) };
+  const crowded = CHROME_ZONES.some((z) => placed.filter((p) => p.zone === z).length > 1);
+  if (crowded && placed.length > 3 && !options.split) return tooMany;
+  const rows: ChromeRow[] = [];
+  const step = crowded ? 3 : Math.max(placed.length, 1);
+  for (let k = 0; k < placed.length; k += step) {
+    const chunk = placed.slice(k, k + step);
+    const row = emptyRow();
+    chunk.forEach((p, n) => row[crowded ? SPREAD[chunk.length][n] : p.zone].push(p.piece));
+    rows.push(row);
+  }
+  return { rows, ...(pageCount ? { pageCount } : {}) };
 }
 
 /** Zone of a tab stop or a piece at `at` (0–1 across the text column). */

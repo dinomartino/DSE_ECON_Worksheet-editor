@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chromeText, planChrome } from './chromePlan';
-import { PAGE_MARK, PAGES_MARK, classifyText, mastheadSpan, mastheadVerdict, type ChromeRow, type PageChrome } from './pageChrome';
+import { PAGE_MARK, PAGES_MARK, classifyText, mastheadSpan, mastheadVerdict, rowOf, rowText, type ChromeRow, type PageChrome } from './pageChrome';
 
 const row = (zones: Partial<ChromeRow>): ChromeRow => ({ left: [], center: [], right: [], ...zones });
 const strip = <T,>(value: T): T => JSON.parse(JSON.stringify(value, (k, v) => (k === 'id' ? undefined : v)));
@@ -25,6 +25,23 @@ describe('what a piece of text is', () => {
     expect(classifyText('Full marks: 45 marks').pieces).toEqual([{ kind: 'totalMarks', prefix: 'Full marks: ', marks: 45, suffix: ' marks' }]);
     expect(classifyText('總分：60分').pieces).toEqual([{ kind: 'totalMarks', prefix: '總分：', marks: 60, suffix: '分' }]);
     expect(classifyText('Time allowed: 1 hour', { bold: true }).pieces).toEqual([{ kind: 'text', text: 'Time allowed: 1 hour', bold: true }]);
+  });
+
+  it('one field per zone: blanks set with spaces spread over the row; words after a blank are its suffix', () => {
+    const got = rowOf([{ text: 'Name: ________   Class: ____', zone: 'left' }, { text: 'Date: ______ – 1 - 2022', zone: 'right' }]);
+    expect(got).toEqual({
+      rows: [
+        {
+          left: [{ kind: 'fillIn', prefix: 'Name:', suffix: '', widthCh: 8 }],
+          center: [{ kind: 'fillIn', prefix: 'Class:', suffix: '', widthCh: 4 }],
+          right: [{ kind: 'fillIn', prefix: 'Date:', suffix: ' – 1 - 2022', widthCh: 6 }],
+        },
+      ],
+    });
+    const four = [{ text: 'Name: ___  Class: ___  No.: ___  Date: ___', zone: 'left' as const }];
+    expect(rowOf(four)).toEqual({ tooMany: 'Name: ___  Class: ___  No.: ___  Date: ___' });
+    const split = rowOf(four, { split: true });
+    expect('rows' in split && split.rows.map(rowText)).toEqual(['Name:____\tClass:____\tNo.:____', 'Date:____']);
   });
 
   it('a masthead is the run of heading-like lines before the first question, instructions or prose', () => {

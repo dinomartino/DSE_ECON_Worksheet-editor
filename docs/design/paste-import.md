@@ -643,9 +643,13 @@ blank on page 1), `masthead` (rows) and `unsupported` (`ChromeLeftover`: where, 
   counts up page by page) is `pageNumber`: "P.n" `pDot`, "Page n of N" `longForm`, else `plain`
   with the words around it as prefix/suffix; a count elsewhere ("1 / 6") is kept as `plain` and
   listed (`pageCount`). Blanks (`___`, `＿＿`, dot leaders, an underlined gap) with their label are
-  `fillIn` ("( )" after one rides as its suffix); a bare Name/Class/學號 label is a 14-wide
-  `fillIn`. "Full marks: 45 marks" / 總分 is `totalMarks`. The rest is `text`, bold/italic and a
-  size that differs from the body kept as `format`.
+  `fillIn` (short words after one, "( )" or "– 1 - 2022", are its suffix); a bare
+  Name/Class/學號 label is a 14-wide `fillIn`. "Full marks: 45 marks" / 總分 is `totalMarks`. The
+  rest is `text`, bold/italic and a size that differs from the body kept as `format`.
+- **One field per zone** (`rowOf`): two fields in one zone print over each other, so a row whose
+  zone got two (blanks set apart with spaces) spreads its fields left, centre, right in reading
+  order; past three it is a leftover (`tooMany`) in a header or footer, rows of three in the
+  masthead.
 - **.docx** (`src/import/docxChrome.ts`): the running parts are the largest section's (by text),
   page 1's are the first section's `w:titlePg` parts (none = blank page 1); `w:tab` follows the
   paragraph's tab stops (style ones folded in; centre/right by kind, left by position in
@@ -670,8 +674,8 @@ blank on page 1), `masthead` (rows) and `unsupported` (`ChromeLeftover`: where, 
   (`marksDiffer`). Text goes on the side its script reads as, or on both when the paper does
   not print that side.
 - **Dialog** (`src/components/import/ChromeReview.tsx`): the review's right pane opens with
-  "Header, footer and title block" (header and footer drawn by `HeaderFooterBand`, the title
-  block by `renderBand`), the keep-preset switch (per paper), and leftovers with Copy. Save as
+  "Header, footer and title block" (every strip drawn by the page's own `HeaderFooterBand`
+  rows), the keep-preset switch (per paper), and leftovers with Copy. Save as
   lists a mock's cover leftovers; Save applies everything in the one `createImportedDocument`
   save.
 
