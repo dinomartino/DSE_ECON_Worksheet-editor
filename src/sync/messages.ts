@@ -55,8 +55,8 @@ export const SYNC_MESSAGES = defineMessages({
   },
   reasonNotAFolder: { en: 'That place is no longer a folder.', zh: '該位置已不再是資料夾。' },
   reasonNoMarker: {
-    en: 'The folder is missing its econ-studio-library.json file.',
-    zh: '資料夾缺少 econ-studio-library.json 檔案。',
+    en: 'This folder was not set up by Econ Studio. Choose the Econ Studio folder inside it, or choose a folder again.',
+    zh: '這個資料夾不是由 Econ Studio 設定的。請選擇裏面的 Econ Studio 資料夾，或重新選擇資料夾。',
   },
   reasonNewerFormat: {
     en: 'A newer version of Econ Studio set up this folder. Update the app to use it.',
