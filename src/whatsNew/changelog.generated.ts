@@ -15,31 +15,22 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
-- **Paste questions from Word or a PDF.** Choose Paste questions… in the Question menu, or in
-  題庫, and paste a whole paper. Econ Studio works out which lines are questions, parts, options
-  and marks, and shows them beside the questions as they will print. Fix any line with one click
-  or one key, and the fix spreads to every line like it. Click an option to make it the answer.
-  Then insert the questions into your paper (⌘Z takes them all out) or add them to 題庫, where
-  questions it already has are skipped.
-  <!-- zh: **從 Word 或 PDF 貼上題目。** 在「題目」選單或題庫中選擇「貼上題目…」，然後貼上整份試卷。Econ Studio
-  會判斷哪些行是題目、分題、選項和分數，並在旁邊顯示列印效果。按一下或按一個鍵即可修正任何一行，修正亦會套用到
-  所有相似的行。按一下選項即可設為答案。然後把題目插入工作紙（⌘Z 可一次全部移除），或加入題庫，題庫已有的題目會略過。 -->
-- **Put the graphs back into pasted questions.** A paste from Word or a PDF leaves its pictures
-  behind, so wherever a picture is missing (a lost image, or a line such as "Figure 1" or "the
-  diagram below"), Paste questions shows a space for it. Take a screenshot of the graph, select
-  the place and press ⌘V, or drop an image file there. You can add a picture after any line, too:
-  select it and paste, or choose Add a picture here… in its menu.
-  <!-- zh: **把圖表放回貼上的題目。** 從 Word 或 PDF 貼上時，圖片不會一併帶來。凡是缺少圖片的地方（遺失的圖片，或「圖一」、
-  「下圖」之類的字句），「貼上題目」都會留出空位。為圖表截圖，選取該位置後按 ⌘V，或把圖片檔拖放到那裏即可。你亦可在任何一行之後
-  加入圖片：選取該行再貼上，或在該行的選單中選擇「在此加入圖片…」。 -->
-- **Paste questions finds more missing pictures.** An MC that asks "Which diagram…" (哪一個圖)
-  or whose options are 圖甲 to 圖丁 gets a space under each option. Pictures and graphs drawn in
-  Word on a Mac are now found too, and a graph's labels no longer turn into stray lines. A
-  picture on a heading goes at the start of the next question, and its line says which. An
-  iPhone photo or a PDF that cannot be added says what to do instead.
-  <!-- zh: **「貼上題目」能找出更多缺少的圖片。** 問「下列哪一個圖…」的 MC，或選項為圖甲至圖丁的 MC，每個選項下都會留出空位。
-  Mac 版 Word 中的圖片和繪製的圖表現在也能找到，圖表上的標籤亦不會再變成零散的行。放在標題上的圖片會放在下一題的開首，
-  該行會註明是哪一題。無法加入的 iPhone 相片或 PDF 會說明應怎樣做。 -->
+- **Import a paper from Word or PDF.** On the home screen, choose Import from Word or PDF… (or
+  drop a .docx or .pdf file there). Econ Studio reads the file, works out which lines are
+  questions, parts, options and marks, and shows them beside the questions as they will print.
+  Fix any line with one click or one key, and the fix spreads to every line like it. Click an
+  option to make it the answer. Pictures in a Word file come with it, and graphs in a PDF are
+  cropped from the page. Where a picture is still missing (a chart Word drew, or a line such as
+  "Figure 1" with nothing after it), select the place and paste a screenshot (⌘V). Then save it
+  as a new Classroom worksheet, LQ worksheet, Paper 1 mock or Paper 2 mock, which opens ready to
+  edit, or add the questions to 題庫 only, where questions it already has are skipped. A scanned
+  PDF, an older .doc file or a file with a password says what to do instead.
+  <!-- zh: **從 Word 或 PDF 匯入試卷。** 在主頁選擇「從 Word 或 PDF 匯入…」（或把 .docx 或 .pdf 檔案拖放到主頁）。
+  Econ Studio 會讀取檔案，判斷哪些行是題目、分題、選項和分數，並在旁邊顯示列印效果。按一下或按一個鍵即可修正任何一行，
+  修正亦會套用到所有相似的行。按一下選項即可設為答案。Word 檔案中的圖片會一併匯入，PDF 中的圖表會從頁面裁剪出來。
+  如仍缺少圖片（例如 Word 繪製的圖表，或「圖一」之後沒有圖片），選取該位置後貼上截圖（⌘V）即可。然後把它儲存為新的
+  課堂工作紙、LQ 工作紙、Paper 1 Mock 或 Paper 2 Mock，並直接開啟編輯，或只把題目加入題庫，題庫已有的題目會略過。
+  掃描的 PDF、舊版 .doc 檔案或設有密碼的檔案，會說明應怎樣做。 -->
 - **Desktop: your second computer finds your synced folder.** When Econ Studio starts on a
   computer with no folder chosen yet, and your Econ Studio folder is already in OneDrive, Google
   Drive, iCloud Drive or Dropbox, it asks once whether to use it here too. Choose it, and the
