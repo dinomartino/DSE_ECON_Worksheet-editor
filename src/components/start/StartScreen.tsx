@@ -45,7 +45,7 @@ import {
 } from './fileDrop';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { useBankReturn } from '@/components/bank/page/bankReturn';
-import { DEFAULT_FILTERS, rowKey } from '@/components/bank/page/bankPage';
+import { DEFAULT_FILTERS } from '@/components/bank/page/bankPage';
 import { LazyImportDialog } from '@/components/import/ImportHost';
 import type { ImportFile } from '@/components/import/ImportDialog';
 import { QuestionBankScreen } from '@/components/bank/page/QuestionBankScreen';
@@ -402,12 +402,12 @@ export function StartScreen({
     }
   };
 
-  /** 題庫 only: the bank opens on its untagged questions, the first one added in view. */
-  const showAdded = (bankId: string, questionIds: string[]) => {
+  /** 題庫 only: the bank opens on its Untagged questions (tag as you go), at the first one added. */
+  const showAdded = (questionIds: string[]) => {
     useBankReturn.getState().set({
-      level: { kind: 'review', topic: 'untagged' },
-      filters: { ...DEFAULT_FILTERS, topic: 'untagged' },
-      ...(questionIds[0] ? { focusKey: rowKey({ docId: bankId, questionId: questionIds[0] }) } : {}),
+      level: { kind: 'untagged' },
+      filters: DEFAULT_FILTERS,
+      ...(questionIds[0] ? { tagRoot: questionIds[0] } : {}),
     });
     void refresh();
     showView('bank');
@@ -979,7 +979,7 @@ export function StartScreen({
             }
             onOpen(worksheet, language);
           }}
-          onAddedToBank={showAdded}
+          onAddedToBank={(_bankId, ids) => showAdded(ids)}
         />
       )}
 

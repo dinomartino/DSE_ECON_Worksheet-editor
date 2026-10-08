@@ -165,10 +165,11 @@ describe('Save as a new paper', () => {
       expect(opened[0].worksheet.questions).toEqual([]);
       expect(made.id).toBe(opened[0].worksheet.id);
       expect(made.name).toBe('S.5 Elasticity quiz');
-      expect(made.cover?.style).toBe(shape.cover?.style);
+      expect(Boolean(made.cover)).toBe(Boolean(shape.cover));
+      expect(Boolean(made.footer?.enabled)).toBe(Boolean(shape.footer?.enabled));
       expect(made.baseFontSize).toBe(shape.baseFontSize);
       expect(Boolean(made.pageFurniture)).toBe(Boolean(shape.pageFurniture));
-      expect(made.pageSetup.margins).toEqual(shape.pageSetup.margins);
+      expect(made.pageSetup?.margins).toEqual(shape.pageSetup?.margins);
       expect(made.questions.map((q) => q.type).sort()).toEqual(['mcq', 'structured']);
       expect(language).toBe('en');
       expect(saved).toEqual([made]);

@@ -189,9 +189,8 @@ export const IMPORT_MESSAGES = defineMessages({
   },
   paperLanguage: { en: 'Paper language', zh: '試卷語言' },
   misfitWritten: {
-    en: (n: number) =>
-      `A Paper 1 mock is for MC. ${n} written ${plural(n, 'question')} will still be added, but ${n === 1 ? 'it has' : 'they have'} no answer space there.`,
-    zh: (n: number) => `Paper 1 Mock 只用於 MC。${n} 條文字題仍會加入，但卷中沒有答題空間。`,
+    en: (n: number) => `A Paper 1 mock is for MC. ${n} written ${plural(n, 'question')} will still be added. Check how ${n === 1 ? 'it prints' : 'they print'}.`,
+    zh: (n: number) => `Paper 1 Mock 只用於 MC。${n} 條文字題仍會加入，請檢查列印效果。`,
   },
   misfitMc: {
     en: (n: number) => `This paper is for written answers. ${n} MC will still be added with their options.`,
