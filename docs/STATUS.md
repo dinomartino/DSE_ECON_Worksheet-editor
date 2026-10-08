@@ -12,8 +12,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   Also: the editor shell no longer scrolls into empty space (paginator probes are `h-0 overflow-hidden`).
 - **Merged, unreleased:** import brings in the file's header, footer (incl. page 1's own) and title block
   (`src/import/pageChrome.ts`, `chromePlan.ts`; `paste-import.md` § 12); file's wins over the preset, a box keeps
-  the preset; what can't be reproduced is listed with Copy. In flight: `fix/band-row-layout` (band zones are
-  fixed thirds in preview/PDF, so a long header wraps where Word keeps one line).
+  the preset; what can't be reproduced is listed with Copy. Band rows now lay out like Word tab stops
+  (`BandRowFrame`, `src/components/preview/bandRow.tsx`); .docx bytes changed for centre/right-first masthead rows,
+  left+right-only header rows, and two fields in one zone (now space-joined). Left: a pageNumber in the masthead
+  exports a literal "#"; clipboard still writes band rows as a table.
 - `npm run typecheck` trips on `src-tauri/target/**/tauri-codegen-assets/*.ts` after a local `desktop:build`
   (tsconfig excludes only `node_modules`); source itself is clean.
 - **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
@@ -86,4 +88,4 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Log
 
 - **2026-10-08** — Found-folder offer; import (design, engine, docx/pdf readers, home-screen file import,
-  answers from another file); paper language; OCR survey + trial; table distribute rows/columns; editor overscroll fix; import header/footer/title block. 18 Opus branches merged.
+  answers from another file); paper language; OCR survey + trial; table distribute rows/columns; editor overscroll fix; import header/footer/title block; band rows like Word tabs. 19 Opus branches merged.
