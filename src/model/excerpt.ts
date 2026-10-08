@@ -9,6 +9,11 @@ import type { BiText, ContentBlock, LanguageMode, Question } from './types';
 
 type ExcerptLang = LanguageMode;
 
+/** A stored pair (a bank row's excerpt) in `lang`, as `biTextExcerpt` picks: 'bilingual' leads with English. */
+export function sideOf(pair: { en: string; zh: string }, lang: ExcerptLang = 'en'): string {
+  return lang === 'zh' ? pair.zh || pair.en : pair.en || pair.zh;
+}
+
 /** A bilingual value as plain text, preferring `lang` and falling back to the other side. */
 export function biTextExcerpt(value: BiText | undefined, lang: ExcerptLang = 'en'): string {
   if (!value) return '';

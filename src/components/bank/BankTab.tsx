@@ -41,7 +41,7 @@ import { insertFromBank, type InsertReport } from './bankSession';
 import { useBankDrag, useBankRowDrag } from './bankDrag';
 import { BANK_TAB_MESSAGES } from './messages';
 import { emptySentence, markBandLabel, typePlural } from './tabText';
-import { versionDiff } from './bankText';
+import { rowExcerpt, versionDiff } from './bankText';
 
 /**
  * The editor's 題庫 tab: find questions in the other saved documents and drag copies onto
@@ -204,7 +204,7 @@ export function BankTab() {
   const drag = useBankRowDrag({ enabled: !readOnly && !printPreview && !busy, onReport: reportMissing });
   const draggingKey = useBankDrag((s) => s.active?.key);
   const dragFor = (row: BankRowData) =>
-    drag.sourceProps(row, rowKey(row), (language === 'zh' ? row.excerpt.zh || row.excerpt.en : row.excerpt.en || row.excerpt.zh) || m.fallbackLabel);
+    drag.sourceProps(row, rowKey(row), rowExcerpt(row, language) || m.fallbackLabel);
   // No visible button: a focused row takes Enter or Space, and copies after the anchor.
   const where = splitDestinations
     ? m.whereSplit

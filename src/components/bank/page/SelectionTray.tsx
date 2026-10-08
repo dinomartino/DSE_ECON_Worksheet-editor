@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as Rea
 import { Button } from '@/components/ui';
 import { useNoticeInset } from '@/components/ui/NoticeLayer';
 import { marksLabel, sourceLabel, typeLabel } from '@/components/bank/BankRow';
+import { rowExcerpt } from '@/components/bank/bankText';
 import type { BankRow } from '@/library/types';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { useViewLanguage } from '@/settings/paperLanguage';
@@ -217,7 +218,7 @@ export function SelectionTray({
           >
             {rows.map((row, index) => {
               const key = keys[index];
-              const excerpt = row.excerpt.en || row.excerpt.zh || m.untitled;
+              const excerpt = rowExcerpt(row, view) || m.untitled;
               const topic = cartTopicLabel(row.tags, view);
               const meta = [topic ?? w.noTopic, typeLabel(row.typeId), marksLabel(row.marks), sourceLabel(row)].join(' · ');
               const dragging = drag?.moving && drag.key === key;

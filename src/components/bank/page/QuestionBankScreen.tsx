@@ -22,6 +22,7 @@ import { holdsPatterns } from '@/model/patterns';
 import type { BankGroup, BankRow } from '@/library/types';
 import { useBank } from '@/library/useBank';
 import { escapeClears } from '@/components/bank/escapeClears';
+import { rowExcerpt } from '@/components/bank/bankText';
 import { topicOf } from '@/model/topics';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { Messages } from '@/i18n/catalogue';
@@ -1192,7 +1193,7 @@ const hasParts = (row: BankRow) => (row.slots?.length ?? 0) > 0;
 /** "“A progressive tax…” tagged C · Public Finance", or "tagged (a) C · …; (b) I · …": what Undo would take back. */
 function tagSaveText({ group, parts }: TagSave, m: Words, view: LanguageMode): string {
   const lead = group.rows[0];
-  const text = lead?.excerpt.en || lead?.excerpt.zh || m.questionFallback;
+  const text = (lead && rowExcerpt(lead, view)) || m.questionFallback;
   const short = text.length > 48 ? `${text.slice(0, 47).trimEnd()}…` : text;
   const where = parts.map(({ label, codes }) => `${label ? `${label} ` : ''}${codes.map((code) => topicTitle(code, view)).join(m.sep)}`);
   return m.tagSaved(short, where.join(m.semi));

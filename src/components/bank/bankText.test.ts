@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allOf, countOf, diffSnippet, versionDiff } from './bankText';
+import { allOf, countOf, diffSnippet, rowExcerpt, versionDiff } from './bankText';
 
 describe('counts agree with their noun', () => {
   it('says one and many', () => {
@@ -57,5 +57,21 @@ describe('what an edited version changed', () => {
   it('says a version was reworded when it shares neither its start nor its end', () => {
     const other = { excerpt: { en: 'When the price of a good rises from $10 to $12, total revenue rises.', zh: '' } };
     expect(versionDiff({ excerpt: { en: now, zh: '' } }, other, 'en')).toBe('Reworded');
+  });
+});
+
+describe('a row reads in the view language', () => {
+  const both = { excerpt: { en: 'Demand rises', zh: '需求上升' } };
+
+  it('picks the view side, English first for both languages', () => {
+    expect(rowExcerpt(both, 'zh')).toBe('需求上升');
+    expect(rowExcerpt(both, 'en')).toBe('Demand rises');
+    expect(rowExcerpt(both, 'bilingual')).toBe('Demand rises');
+  });
+
+  it('falls back to the other side only when the view side is empty', () => {
+    expect(rowExcerpt({ excerpt: { en: 'Demand rises', zh: '' } }, 'zh')).toBe('Demand rises');
+    expect(rowExcerpt({ excerpt: { en: '', zh: '需求上升' } }, 'en')).toBe('需求上升');
+    expect(rowExcerpt({ excerpt: { en: '', zh: '需求上升' } }, 'bilingual')).toBe('需求上升');
   });
 });

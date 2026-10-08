@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Button, Segmented } from '@/components/ui';
 import { marksLabel, SourceText, sourceLabel, tagTitle, typeLabel, sittingLabel, usedLabel } from '@/components/bank/BankRow';
-import { versionDiff } from '@/components/bank/bankText';
+import { rowExcerpt, versionDiff } from '@/components/bank/bankText';
 import { refsOf, usedWith as usedWithTargets } from '@/library/history';
 import { anySameStudents } from '@/library/cohort';
 import type { BankItemTone, BankMark } from '@/assist/bankRun';
@@ -275,6 +275,7 @@ function RailItem({
   const m = useMessages(REVIEW_PAGE_MESSAGES);
   const { group } = entry;
   const lead = group.rows[0];
+  const excerpt = rowExcerpt(lead, state.language);
   const used = state.usedWith ? usedWithTargets(group, [state.usedWith.target]) : undefined;
   const where = whereText(entry);
   const held = state.inTarget?.get(group.rootId);
@@ -300,15 +301,15 @@ function RailItem({
       <input
         type="checkbox"
         tabIndex={-1}
-        aria-label={m.selectLabel(lead.excerpt.en || lead.excerpt.zh || m.questionWord)}
+        aria-label={m.selectLabel(excerpt || m.questionWord)}
         checked={state.picked.has(group.rootId)}
         onClick={(event) => event.stopPropagation()}
         onChange={() => onPick(lead)}
         className="mt-[3px] h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
       />
       <div className="min-w-0">
-        <p className="line-clamp-2 text-[13px] leading-[1.4] text-ink" title={lead.excerpt.en || lead.excerpt.zh}>
-          {lead.excerpt.en || lead.excerpt.zh || <span className="text-ink-subtle">{m.untitled}</span>}
+        <p className="line-clamp-2 text-[13px] leading-[1.4] text-ink" title={excerpt}>
+          {excerpt || <span className="text-ink-subtle">{m.untitled}</span>}
         </p>
         {/* Look-alikes (a copy, a retyped question) read apart by where they live. */}
         <p className="flex min-w-0 text-[11px] tabular-nums text-ink-subtle">
@@ -522,7 +523,7 @@ function NumberStrip({
               data-rail-root={group.rootId}
               data-rail-entry={entry.key}
               onClick={() => onFocus(lead, entry.key)}
-              title={lead.excerpt.en || lead.excerpt.zh}
+              title={rowExcerpt(lead, state.language)}
               className={`relative flex w-full cursor-pointer items-center justify-center gap-1 py-1.5 text-[12px] tabular-nums transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 on ? 'bg-surface font-semibold text-ink' : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
               }`}

@@ -23,7 +23,7 @@ import type { NumberingPlan } from '@/model/numbering';
 import { resolveFlow } from '@/model/flow';
 import { bi, documentName, plain } from '@/model/text';
 import { questionExcerpt } from '@/model/excerpt';
-import type { LayoutElement, Question, Worksheet } from '@/model/types';
+import type { LanguageMode, LayoutElement, Question, Worksheet } from '@/model/types';
 import { listQuestionTypes, requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import type { PageComposition } from '@/components/preview/pagination';
@@ -555,13 +555,14 @@ function dragLabelFor(
   m: Messages<typeof OUTLINE_MESSAGES>,
   kinds: Messages<typeof LAYOUT_KIND_MESSAGES>,
   lang: UiLanguage,
+  view: LanguageMode,
 ) {
   if (!dragId) return undefined;
 
   const question = worksheet.questions.find((q) => q.id === dragId);
   if (question) {
     const number = numbering.byQuestionId.get(dragId)?.number;
-    const excerpt = questionExcerpt(question, 'en');
+    const excerpt = questionExcerpt(question, view);
     return {
       label: m.dragQuestion(number ? String(number) : ''),
       // The type's own name comes from the registry, so a new type labels its ghost
@@ -669,6 +670,7 @@ export function Outline({
   const addQuestion = useWorksheetStore((s) => s.addQuestion);
   const addLayoutElement = useWorksheetStore((s) => s.addLayoutElement);
   const dragQuestionId = useWorksheetStore((s) => s.dragQuestionId);
+  const view = useWorksheetStore((s) => s.mode.language);
 
   /*
    * Which page groups are folded away, by group key.
@@ -680,7 +682,7 @@ export function Outline({
    */
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
 
-  const ghost = dragLabelFor(worksheet, numbering, dragQuestionId, m, kinds, lang);
+  const ghost = dragLabelFor(worksheet, numbering, dragQuestionId, m, kinds, lang, view);
 
   // The shared chain, so the outline, the toolbar, the file list and the `.docx`
   // filename give one answer to "what is this document called". Spelling the fallback
