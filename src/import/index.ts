@@ -1,11 +1,12 @@
 /**
  * Paste-to-structure (D1), the public entry. Pure: no DOM, no store.
  *
- *   const read = readPaste({ plain, html });         // once per paste
+ *   const read = readPaste({ plain, html });         // once per paste (or `await readDocx(bytes)`)
  *   const analysis = analyseLines(read, { pins });   // again on every pin (fast)
  *   const batch = buildImport(analysis);             // → store.insertQuestionBatch(batch.builds, { worksheetId, lead: batch.lead })
  */
 import { toSourceLines } from './lines';
+import { readDocxLines, type DocxOptions } from './readDocx';
 import { readHtml } from './readHtml';
 import { readPlain } from './readPlain';
 import { pasteKind } from './scan';
@@ -13,11 +14,12 @@ import { solve } from './solve';
 import type { AnalyseOptions, Analysis, PasteInput, SourceLine } from './types';
 
 export { buildImport, previewFigure, type ImportBatch } from './build';
+export { DocxReadError, type DocxErrorKind, type DocxOptions } from './readDocx';
 export type * from './types';
 
 export interface ReadPaste {
   lines: SourceLine[];
-  source: 'plain' | 'html';
+  source: 'plain' | 'html' | 'docx' | 'pdf';
 }
 
 const inked = (lines: readonly SourceLine[]) => lines.reduce((n, l) => n + l.raw.replace(/\s/g, '').length, 0);
@@ -31,6 +33,15 @@ export function readPaste(input: PasteInput): ReadPaste {
   const plainInk = inked(plain);
   if (htmlInk === 0 && plainInk === 0 && html.some((l) => l.image)) return { lines: html, source: 'html' };
   return htmlInk > 0 && htmlInk >= plainInk * 0.6 ? { lines: html, source: 'html' } : { lines: plain, source: 'plain' };
+}
+
+/**
+ * Read a `.docx` file. `title` is the document's title, or its first heading. Rejects with
+ * a `DocxReadError` (`unreadable` · `encrypted` · `notDocx`) when the file cannot be read.
+ */
+export async function readDocx(bytes: ArrayBuffer, options?: DocxOptions): Promise<ReadPaste & { title?: string }> {
+  const read = await readDocxLines(bytes, options);
+  return { lines: toSourceLines(read.lines), source: 'docx', ...(read.title ? { title: read.title } : {}) };
 }
 
 /** Solve a read paste. Re-run with each new pin; the read is reused. */

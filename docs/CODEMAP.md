@@ -514,6 +514,7 @@ Invariants:
 - `src/import/index.ts:readPaste` → `:analyseLines` (re-run on every pin) → `src/import/build.ts:buildImport` → the store's `insertQuestionBatch`; `:analysePaste` does the first two
 - `src/import/types.ts:SourceLine` · `:Pin` · `:LayoutProfile` · `:Outline` · `:Analysis` — the shapes; flags are codes (`:FlagKind`), worded by the UI
 - `src/import/readPlain.ts:readPlain` · `src/import/readHtml.ts:readHtml` → `src/import/lines.ts:toSourceLines` — readers, then labels, marks, cells and multi-item rows split off
+- `src/import/index.ts:readDocx` — a `.docx` file to the same lines: `src/import/readDocx.ts:readDocxLines` (package, pictures, title; rejects with `:DocxReadError`) · `src/import/docxBody.ts:BodyReader` (paragraphs, tables, text boxes at their anchor, drawings → pictures or slots) · `src/import/docxNumbering.ts:Numbering` · `:Styles` · `src/import/xml.ts:parseXml`; tests build invented files with `src/import/fixtures/docx.ts:makeDocx`
 - `src/import/detectors.ts:DETECTORS` — one function per convention; `src/import/levels.ts:inferLevels` · `:settleQuestionRuns` — family levels and question runs; `src/import/walk.ts:walk` — the outline
 - `src/import/solve.ts:solve` — pins, answers, language, the inferred profile; `src/import/scan.ts:pasteKind` — `empty` / `scan` / `ok`
 - `src/import/figures.ts:missingFigures` · `:placeFigures` — captions and references with no picture, lost pictures (slots), image pins placed after their line; `src/import/build.ts:previewFigure` reads a preview block back to its pin or slot

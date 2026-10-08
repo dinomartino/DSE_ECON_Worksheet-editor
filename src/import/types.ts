@@ -242,7 +242,7 @@ export interface AnalyseOptions {
 export interface Analysis {
   /** `scan`: an image-only paste or OCR text; the outline is a best effort. */
   kind: 'ok' | 'empty' | 'scan';
-  source: 'plain' | 'html';
+  source: 'plain' | 'html' | 'docx' | 'pdf';
   lines: SourceLine[];
   /** Index-aligned with `lines`. */
   roles: LineRole[];

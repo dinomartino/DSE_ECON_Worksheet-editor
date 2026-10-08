@@ -2,6 +2,7 @@
 
 Status: **proposal** (2026-10-08), written against `develop` @ c886017. Phase 0 and phase 1 are
 built (§ 10): the engine (`feature/paste-import-core`) and the review dialog (`feature/paste-import-ui`).
+Phase 2's `.docx` reader is built (§ 10, `feature/import-docx`).
 Open questions for the user are in § 9.
 
 ## 0. The answer in one paragraph
@@ -333,4 +334,49 @@ are explained in a notice; OCR text can still be reviewed.
   a question (its first line). "Add a picture here…" in the role menu and "Choose a picture…" on a
   slot open a file chooser. Every picture goes through `imageBlockFromFile`. A placed picture has
   a × on the paper and a "Picture ×" badge on its line; ⌘Z takes back the last one like any fix.
+
+### The `.docx` reader, as built (2026-10-08)
+
+```ts
+readDocx(bytes: ArrayBuffer, options?: { prepareImage?: (blob: Blob) => Promise<ImageRef | null> })
+  : Promise<ReadPaste & { title?: string }>          // source: 'docx'; then analyseLines as usual
+```
+
+`ReadPaste.source` is `'plain' | 'html' | 'docx' | 'pdf'`; a `.docx` reads as paragraphs and is
+never OCR. A file that cannot be read rejects with `DocxReadError`, `kind` `unreadable` (corrupt
+zip or XML), `encrypted` (password-protected) or `notDocx` (`.doc`, a PDF, a spreadsheet). The
+detectors, solver and builder are unchanged: the reader only gives them better lines.
+
+- **Order:** `document.xml` body only (headers, footers, footnotes and comments are other parts).
+  Tracked insertions kept, deletions dropped; fields read as their shown result; hidden text,
+  placeholder text and the VML `mc:Fallback` copy skipped (one branch only).
+- **Numbering:** real counters per abstract list (two `w:num`s on one list share them, as in
+  Word), `startOverride` restarts, `lvlRestart`, style-linked numbering, Word's formats
+  (Chinese counting → `一、`; circled → `(1)`). The label is a `list` label at depth `ilvl`.
+- **Tables:** rows with cells, numbered cells as `A.⇥…` so an option table splits into options;
+  a one-column table is a frame and reads as body text.
+- **Text boxes** go where their anchor paragraph is: before it when set above it, else after.
+- **Pictures** become data URLs on their own line, at the display size Word gives
+  (`wp:extent`), natural size from the header; `prepareImage` lets the UI downsize. Grouped
+  shapes holding pictures give the pictures and any long text-box text.
+- **Slots** (`imageLost`): EMF/WMF and other formats a browser cannot draw, charts, SmartArt,
+  ink, linked pictures, and drawings made of Word shapes. A drawing is a diagram when it mixes
+  lines with two or more short labels, has a freeform, or has four or more shapes; floating
+  pieces from neighbouring empty paragraphs are pooled, so a graph drawn shape by shape is one
+  slot. Its labels and legend stay with the slot; a `Figure 3` caption stays as text.
+- **Answer lines:** tab-only, underlined-blank and dotted-leader paragraphs read as `tabOnly`.
+- **Title:** `dc:title`, else a Title or Heading-styled paragraph, else the running header's
+  title-like pieces, else a bold or centred line (exam words first).
+
+Local run on the real files (never committed), against the paste numbers above:
+
+| File | Paste | `.docx` reader |
+|---|---|---|
+| DBS Assessment 1 | 25/25 | 25/25: 19 MC with 4 options each and 4 statement sets (one with its options in a table), 6 written with parts and marks; title from the header |
+| 2019 HKEAA Paper 2 | 14/14 | 14/14 with every part, sub-part and mark; 8 pictures and the text of a source graphic recovered (the paste lost both); the 4 hand-drawn graphs are 4 slots; 1 `duplicateMarks` from a stray marks value in the file |
+| Econ Studio export (MC, 5 questions) | — | 5/5: options, statements and the table question as exported |
+| Econ Studio export (1 question) | — | 1/1 |
+
+Reading takes 3–70 ms and solving under 15 ms on these files. Still slots, not pictures: charts,
+SmartArt, EMF/WMF, and diagrams drawn with Word shapes (a teacher pastes a screenshot into the slot).
 
