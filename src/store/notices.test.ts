@@ -2,12 +2,17 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  ACTION_AUTO_HIDE_MS,
   APP_SCOPE,
+  AUTO_HIDE_MS,
   MAX_VISIBLE,
+  autoHideDelay,
   autoHides,
   closeNotice,
   dismiss,
+  dismissHistoryActions,
   dismissScope,
+  holdHistoryNotices,
   notify,
   pruneDeadActions,
   resetNoticesForTest,
@@ -51,6 +56,16 @@ describe('notices', () => {
     expect(autoHides({ tone: 'warning' })).toBe(false);
     expect(autoHides({ tone: 'error' })).toBe(false);
     expect(autoHides({ tone: 'success', actions: [{ label: 'Show in Finder', run: () => {} }] })).toBe(false);
+  });
+
+  it('a convenience button (autoHide) still fades, later; never a warning or an error', () => {
+    const reveal = [{ label: 'Show in Finder', run: () => {} }];
+    expect(autoHides({ tone: 'success', actions: reveal, autoHide: true })).toBe(true);
+    expect(autoHides({ tone: 'warning', actions: reveal, autoHide: true })).toBe(false);
+    expect(autoHides({ tone: 'error', autoHide: true })).toBe(false);
+    expect(autoHideDelay({ actions: reveal })).toBe(ACTION_AUTO_HIDE_MS);
+    expect(autoHideDelay({})).toBe(AUTO_HIDE_MS);
+    expect(ACTION_AUTO_HIDE_MS).toBeGreaterThan(AUTO_HIDE_MS);
   });
 
   it('past the cap, the oldest fading notice goes first; sticky ones are kept', () => {
@@ -101,6 +116,32 @@ describe('notices', () => {
     live = false;
     pruneDeadActions();
     expect(list().map((n) => n.body)).toEqual(['Other']);
+  });
+
+  it('an editor going away takes every Undo with it, live or not', () => {
+    notify({ tone: 'info', body: 'Replaced 2 terms', actions: [{ label: 'Undo', run: () => {}, live: () => true }] });
+    notify({ tone: 'success', body: 'Saved', actions: [{ label: 'Show in Finder', run: () => {} }] });
+    notify({ tone: 'error', body: 'Could not sync' });
+    dismissHistoryActions();
+    expect(list().map((n) => n.body)).toEqual(['Saved', 'Could not sync']);
+  });
+
+  it('holdHistoryNotices prunes on each history move and clears on teardown', () => {
+    let move: () => void = () => {};
+    const stop = vi.fn();
+    const release = holdHistoryNotices((onMove) => {
+      move = onMove;
+      return stop;
+    });
+    let live = true;
+    notify({ tone: 'info', body: 'Translated', actions: [{ label: 'Undo', run: () => {}, live: () => live }] });
+    notify({ tone: 'info', body: 'Replaced', actions: [{ label: 'Undo', run: () => {}, live: () => true }] });
+    live = false;
+    move();
+    expect(list().map((n) => n.body)).toEqual(['Replaced']);
+    release();
+    expect(stop).toHaveBeenCalledOnce();
+    expect(list()).toHaveLength(0);
   });
 
   it('keeps a docked bar clear, per owner', () => {
