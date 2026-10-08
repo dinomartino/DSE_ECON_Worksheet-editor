@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Flag, Pin, ReadPaste, Role } from '@/import';
+import { imageBlockFromFile } from '@/export/imageImport';
 import { addToBank, bankChoices, nextBankName, type BankChoice } from '@/library/bankDocs';
+import { newId } from '@/model/factories';
 import type { Side } from '@/model/textSlots';
 import type { Question } from '@/model/types';
 import { worksheetStore, worksheetTitle } from '@/storage';
@@ -19,7 +21,10 @@ import { PASTE_IMPORT_MESSAGES } from './messages';
 import {
   FLAG_TEXT,
   checkPlaces,
+  dragHasFiles,
   flagsByLine,
+  imageFiles,
+  imagePin,
   nextPlace,
   pasteInput,
   pasteVerdict,
@@ -33,7 +38,7 @@ import {
 } from './pasteSession';
 import { materialize, previewBase, previewItems, type PreviewCache } from './previewDoc';
 import { ReviewLines, RoleMenu, type LineView } from './ReviewLines';
-import { ReviewPreview, type PreviewCard } from './ReviewPreview';
+import { ReviewPreview, type FigureActions, type PreviewCard } from './ReviewPreview';
 
 /**
  * Paste questions (D1, `docs/design/paste-import.md` § 3): a paste box, then the review.
@@ -103,7 +108,8 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
   const result = useMemo(() => (read ? review(read, pins, language) : undefined), [read, pins, language]);
   const analysis = result?.analysis;
   const batch = result?.batch;
-  const items = useMemo(() => (analysis && batch ? previewItems(base, analysis, batch, cache) : []), [analysis, batch, base, cache]);
+  const shown = result?.preview;
+  const items = useMemo(() => (analysis && shown ? previewItems(base, analysis, shown, cache) : []), [analysis, shown, base, cache]);
   const places = useMemo(() => (analysis ? checkPlaces(analysis) : { check: [], noAnswer: [] }), [analysis]);
 
   const latest = useRef({ analysis, pins });
@@ -130,6 +136,90 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [read, undoLast]);
+
+  // ---- pictures: pasted, dropped or chosen; each becomes an image pin after its line ----
+
+  const [dropLine, setDropLine] = useState<number>();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const chooseFor = useRef<number | undefined>(undefined);
+  const selectedRef = useRef(selectedLine);
+  useLayoutEffect(() => {
+    selectedRef.current = selectedLine;
+  });
+
+  const addPictures = useCallback(
+    (line: number, files: File[]) => {
+      for (const file of files) {
+        // The same reduction every stored picture takes (§ `prepareImageForStorage`).
+        imageBlockFromFile(file)
+          .then((block) => addPin(imagePin(line, block, newId())))
+          .catch(() => notices.notify({ id: 'paste-picture', tone: 'error', body: m.pictureUnreadable }));
+      }
+    },
+    [addPin, notices, m],
+  );
+
+  const choosePicture = useCallback((line: number) => {
+    chooseFor.current = line;
+    fileInput.current?.click();
+  }, []);
+
+  // ⌘V of a screenshot puts it after the selected line (or slot). Text pastes pass by.
+  useEffect(() => {
+    if (!read) return;
+    const onPaste = (event: ClipboardEvent) => {
+      const files = imageFiles(event.clipboardData);
+      if (files.length === 0) return;
+      event.preventDefault();
+      const line = selectedRef.current;
+      if (line === undefined) notices.notify({ id: 'paste-picture', tone: 'info', body: m.pickPlaceFirst });
+      else addPictures(line, files);
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [read, addPictures, notices, m]);
+
+  const figures: FigureActions = useMemo(
+    () => ({
+      select: (line) => setSelectedLine(line),
+      choose: choosePicture,
+      dismiss: (line) => addPin({ kind: 'noPicture', line }),
+      remove: (id) => setPins((list) => list.filter((p) => !(p.kind === 'image' && p.id === id))),
+    }),
+    [choosePicture, addPin],
+  );
+
+  /** The line a drop lands on: a row, a slot, a placed picture's question, or a card's first line. */
+  const dropTarget = (target: EventTarget | null): number | undefined => {
+    const el = target instanceof Element ? target : null;
+    const hit = el?.closest<HTMLElement>('[data-slot],[data-line],[data-start]');
+    if (!hit) return undefined;
+    const value = hit.dataset.slot ?? hit.dataset.line ?? hit.dataset.start;
+    return value === undefined ? undefined : Number(value);
+  };
+  const dragHandlers = {
+    onDragOver: (event: React.DragEvent) => {
+      if (!dragHasFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      const line = dropTarget(event.target);
+      event.dataTransfer.dropEffect = line === undefined ? 'none' : 'copy';
+      setDropLine(line);
+    },
+    onDragLeave: (event: React.DragEvent) => {
+      if (!(event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))) setDropLine(undefined);
+    },
+    onDrop: (event: React.DragEvent) => {
+      if (!dragHasFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setDropLine(undefined);
+      const line = dropTarget(event.target);
+      const files = imageFiles(event.dataTransfer);
+      if (line === undefined || files.length === 0) return;
+      setSelectedLine(line);
+      addPictures(line, files);
+    },
+  };
 
   // ---- step 1 ----
 
@@ -465,7 +555,23 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
       {!read || !analysis ? (
         <PasteStep text={m} draft={draft} onDraft={setDraft} onPaste={proceed} />
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col" {...dragHandlers}>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(event) => {
+              const line = chooseFor.current;
+              const files = imageFiles(event.currentTarget);
+              event.currentTarget.value = '';
+              if (line !== undefined && files.length) {
+                setSelectedLine(line);
+                addPictures(line, files);
+              }
+            }}
+          />
           <ReviewBar
             text={m}
             questions={builds.length}
@@ -480,7 +586,10 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
           />
           <div className="flex min-h-0 flex-1">
             <div className="flex min-h-0 w-[42%] min-w-0 flex-col border-r border-line">
-              <p className="shrink-0 border-b border-line px-3 py-1.5 text-[11px] font-medium text-ink-subtle">{m.pastedLines}</p>
+              <p className="shrink-0 truncate border-b border-line px-3 py-1.5 text-[11px] font-medium text-ink-subtle" title={m.pictureHint}>
+                {m.pastedLines}
+                <span className="font-normal"> · {m.pictureHint}</span>
+              </p>
               <ReviewLines
                 rows={rows}
                 selectedQuestion={selectedQuestion}
@@ -490,6 +599,7 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
                 onSelectLine={selectLine}
                 onChip={onChip}
                 onRemovePin={removePin}
+                dropLine={dropLine}
                 end={<NoticeInsetSpacer />}
               />
             </div>
@@ -506,6 +616,9 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
                 onSelect={selectCard}
                 onAnswer={onAnswer}
                 onLanguage={onLanguage}
+                figures={figures}
+                selectedLine={selectedLine}
+                dropLine={dropLine}
                 end={<NoticeInsetSpacer />}
               />
             </div>
@@ -528,6 +641,10 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
               }}
               onJoin={() => {
                 addPin({ kind: 'join', line: menu.line });
+                closeMenu(true);
+              }}
+              onPicture={() => {
+                choosePicture(menu.line);
                 closeMenu(true);
               }}
               onRemovePin={(pin) => {

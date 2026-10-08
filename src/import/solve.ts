@@ -4,6 +4,7 @@
  * line spreads to its whole family.
  */
 import { detect, type DetectContext } from './detectors';
+import { placeFigures } from './figures';
 import { labelLevel } from './labels';
 import { inferLevels, settleQuestionRuns } from './levels';
 import { repeatKey } from './normalize';
@@ -122,7 +123,11 @@ export function solve(
   }
   // One lead per insert: a shared stem later in the paste stays in its first question.
   for (const stim of outline.stimuli) if (stim.before > 0) flags.push({ kind: 'sharedStemFolded', line: stim.start, question: stim.before });
-  for (const line of lines) if (line.image && !/^data:image\//.test(line.image.src)) flags.push({ kind: 'imageLost', line: line.i, question: walked.owner[line.i] });
+  const figures = placeFigures(outline, lines, walked.roles, walked.owner, pins);
+  flags.push(...figures.flags);
+  for (const line of lines) {
+    if (line.image && !/^data:image\//.test(line.image.src) && !figures.settled.has(line.i)) flags.push({ kind: 'imageLost', line: line.i, question: walked.owner[line.i] });
+  }
   for (const flag of flags) if (flag.kind === 'unknownLine' || flag.kind === 'sequenceBreak') conf[flag.line] = Math.min(conf[flag.line], 0.5);
 
   const out: LineRole[] = lines.map((line) => ({

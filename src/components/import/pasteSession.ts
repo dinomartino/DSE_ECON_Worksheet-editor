@@ -12,6 +12,7 @@ import {
   type Role,
 } from '@/import';
 import type { Side } from '@/model/textSlots';
+import type { ImageBlock } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
 import type { TextKey } from '@/i18n/catalogue';
 import type { PASTE_IMPORT_MESSAGES } from './messages';
@@ -35,13 +36,16 @@ export type Language = Side | 'auto';
 
 export interface Review {
   analysis: Analysis;
+  /** What Insert and Add to 題庫 write. */
   batch: ImportBatch;
+  /** The same for the review pane: figure slots shown, pictures it can find again. */
+  preview: ImportBatch;
 }
 
 /** One solve of the read paste with the teacher's fixes. Fast (~4 ms for 60 questions). */
 export function review(read: ReadPaste, pins: readonly Pin[], language: Language): Review {
   const analysis = analyseLines(read, { pins, language });
-  return { analysis, batch: buildImport(analysis) };
+  return { analysis, batch: buildImport(analysis), preview: buildImport(analysis, { preview: true }) };
 }
 
 export { readPaste };
@@ -64,7 +68,8 @@ const questionOf = (analysis: Analysis, line: number) => analysis.roles[line]?.q
 
 /** Two pins that answer the same question about the same thing: the newer replaces the older. */
 function sameSubject(a: Pin, b: Pin, analysis: Analysis): boolean {
-  if (a.kind === 'role' && b.kind === 'role') return a.line === b.line;
+  if ((a.kind === 'role' && b.kind === 'role') || (a.kind === 'noPicture' && b.kind === 'noPicture')) return a.line === b.line;
+  if (a.kind === 'image' && b.kind === 'image') return a.id === b.id;
   // A line starts a new question or joins the one above, never both.
   if ((a.kind === 'newQuestion' || a.kind === 'join') && (b.kind === 'newQuestion' || b.kind === 'join')) return a.line === b.line;
   if ((a.kind === 'answer' && b.kind === 'answer') || (a.kind === 'language' && b.kind === 'language')) {
@@ -74,7 +79,10 @@ function sameSubject(a: Pin, b: Pin, analysis: Analysis): boolean {
   return false;
 }
 
-const samePin = (a: Pin, b: Pin) => JSON.stringify(a) === JSON.stringify(b);
+const samePin = (a: Pin, b: Pin) =>
+  a.kind === 'image' || b.kind === 'image'
+    ? a.kind === 'image' && b.kind === 'image' && a.id === b.id
+    : JSON.stringify(a) === JSON.stringify(b);
 
 /**
  * The pins after one fix, newest last (⌘Z takes the last off). A fix replaces an older
@@ -90,9 +98,41 @@ export function withoutPin(pins: readonly Pin[], pin: Pin): Pin[] {
   return pins.filter((p) => p !== pin && !samePin(p, pin));
 }
 
-/** The fixes made on one line (its role, a new question or a join), for its chip and badges. */
+/** The fixes made on one line (role, new question, join, pictures, no picture), for its chip and badges. */
 export function pinsOn(pins: readonly Pin[], line: number): Pin[] {
-  return pins.filter((p) => (p.kind === 'role' || p.kind === 'newQuestion' || p.kind === 'join') && p.line === line);
+  return pins.filter((p) => p.kind !== 'answer' && p.kind !== 'language' && p.line === line);
+}
+
+// ---- pictures ----
+
+/**
+ * The image files a paste or drop carries. A screenshot arrives as a file item; a file
+ * dragged in arrives in `files` (Chrome lists it in both, so `files` wins when present).
+ */
+export function imageFiles(data: { files?: FileList | null; items?: DataTransferItemList } | null | undefined): File[] {
+  if (!data) return [];
+  const isImage = (f: File | null | undefined): f is File => Boolean(f && f.type.startsWith('image/'));
+  const files = [...(data.files ?? [])].filter(isImage);
+  if (files.length) return files;
+  return [...(data.items ?? [])].filter((item) => item.kind === 'file' && item.type.startsWith('image/')).map((item) => item.getAsFile()).filter(isImage);
+}
+
+/** Whether a drag carries files (their types are hidden until the drop). */
+export const dragHasFiles = (data: Pick<DataTransfer, 'types'> | null | undefined) => Boolean(data && [...data.types].includes('Files'));
+
+/** An image pin from a block `imageBlockFromFile` made: the same bytes and sizes, placed after `line`. */
+export function imagePin(line: number, block: ImageBlock, id: string): Extract<Pin, { kind: 'image' }> {
+  return {
+    kind: 'image',
+    id,
+    line,
+    image: {
+      src: block.src,
+      widthPx: block.widthPx,
+      heightPx: block.heightPx,
+      ...(block.naturalWidthPx && block.naturalHeightPx ? { naturalWidthPx: block.naturalWidthPx, naturalHeightPx: block.naturalHeightPx } : {}),
+    },
+  };
 }
 
 /** The roles a teacher can give a line, each with its one-key shortcut (the chip's letter). */
@@ -143,6 +183,7 @@ export const FLAG_TEXT: Record<FlagKind, Key | 'flagOptionCount'> = {
   duplicateMarks: 'flagDuplicateMarks',
   unknownLine: 'flagUnknownLine',
   imageLost: 'flagImageLost',
+  figureMissing: 'flagFigureMissing',
   optionsByOrder: 'flagOptionsByOrder',
   textAfterOptions: 'flagTextAfterOptions',
   sharedStemFolded: 'flagSharedStemFolded',

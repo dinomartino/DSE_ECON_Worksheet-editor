@@ -82,6 +82,24 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
   joinedBadge: { en: 'Joined', zh: '已合併' },
   removeBadge: { en: (what: string) => `${what}: undo this fix`, zh: (what: string) => `${what}：復原此修正` },
 
+  // Pictures
+  addPicture: { en: 'Add a picture here…', zh: '在此加入圖片…' },
+  pictureBadge: { en: 'Picture', zh: '圖片' },
+  noPictureBadge: { en: 'No picture', zh: '不需圖片' },
+  pictureHint: { en: 'Select a line, then paste a picture (⌘V) to add it there.', zh: '選取一行，然後貼上圖片（⌘V），即可加在該處。' },
+  slotMissing: {
+    en: 'Picture missing here. Paste a screenshot or drop an image.',
+    zh: '此處缺少圖片。請貼上截圖，或把圖片拖放到這裏。',
+  },
+  choosePicture: { en: 'Choose a picture…', zh: '選擇圖片…' },
+  noPictureNeeded: { en: 'No picture needed', zh: '不需要圖片' },
+  removePicture: { en: 'Remove picture', zh: '移除圖片' },
+  pickPlaceFirst: {
+    en: 'Click a line or a missing picture first, then paste the picture again.',
+    zh: '請先按一下某一行或缺少圖片的位置，然後再貼上圖片。',
+  },
+  pictureUnreadable: { en: 'Could not read that picture.', zh: '無法讀取這張圖片。' },
+
   // Flags
   flagSequenceBreak: { en: 'The numbering skips here.', zh: '編號在此跳過。' },
   flagNumberRestart: { en: 'Numbering starts again with no heading.', zh: '編號重新開始，但沒有標題。' },
@@ -98,6 +116,7 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
   flagDuplicateMarks: { en: 'Two marks for one part. The first is kept.', zh: '同一分題有兩個分數，只保留第一個。' },
   flagUnknownLine: { en: 'A line with no clear role, kept as text.', zh: '這行的角色不明確，已保留為文字。' },
   flagImageLost: { en: 'A picture did not come with the paste.', zh: '圖片未能隨貼上的內容一併帶來。' },
+  flagFigureMissing: { en: 'A figure is named here, but no picture came with the paste.', zh: '這裏提及圖表，但貼上的內容沒有圖片。' },
   flagOptionsByOrder: {
     en: 'Option letters were apart from their text, so they were paired in order.',
     zh: '選項字母與文字分開，已按次序配對。',
