@@ -109,6 +109,9 @@ import {
 } from './partTopics';
 import { stateOfRow } from '@/library/sharedTags';
 import { PatternsPage } from './PatternsPage';
+import { PASTE_IMPORT_MESSAGES } from '@/components/import/messages';
+import { LazyPasteImportDialog } from '@/components/import/PasteImportHost';
+import { PasteIcon } from '@/components/ui/icons';
 import { BANK_SCREEN_MESSAGES } from './QuestionBankScreen.messages';
 import { topicName, topicTitle } from './topicText';
 import {
@@ -238,6 +241,9 @@ export function QuestionBankScreen({
   // Every document write this screen makes, one at a time: tagging fast, or tagging while a
   // ✦ run writes, must never load a document before the last save to it lands.
   const [writes] = useState(createWriteQueue);
+  // Paste questions: new questions straight into a bank (`PasteImportDialog`).
+  const [pasting, setPasting] = useState(false);
+  const paste = useMessages(PASTE_IMPORT_MESSAGES);
   // ✦ AI: one run at a time, for this visit. Leaving the screen stops it and waits for
   // its last write, so no document is written once the editor may hold it.
   const [bankAi] = useState(() => createBankAi({ store: worksheetStore, createRunDeps, loadGlossary, desktop: isDesktop, exclusive: writes.run }));
@@ -888,6 +894,16 @@ export function QuestionBankScreen({
         {(level.kind === 'topics' || level.kind === 'review') && (
           <button
             type="button"
+            onClick={() => setPasting(true)}
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink-muted transition-colors duration-150 ease-out-soft hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <PasteIcon size={14} />
+            {paste.pasteQuestions}
+          </button>
+        )}
+        {(level.kind === 'topics' || level.kind === 'review') && (
+          <button
+            type="button"
             onClick={() => setLevel({ kind: 'patterns', topic: level.kind === 'review' && topicOf(level.topic) ? level.topic : undefined })}
             title={m.patternsButtonTitle}
             className="shrink-0 cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink-muted transition-colors duration-150 ease-out-soft hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -1141,6 +1157,9 @@ export function QuestionBankScreen({
             else saveTags(edit);
           }}
         />
+      )}
+      {pasting && (
+        <LazyPasteImportDialog target="bank" onClose={() => setPasting(false)} exclusive={writes.run} onBankChanged={onDocumentsChanged} />
       )}
     </div>
   );

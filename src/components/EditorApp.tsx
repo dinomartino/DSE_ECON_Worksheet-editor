@@ -12,6 +12,7 @@ import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { NewerVersionNotice } from '@/components/editor/NewerVersionNotice';
 import { AiHost } from '@/components/ai/AiHost';
+import { PasteImportHost } from '@/components/import/PasteImportHost';
 import { IconButton } from '@/components/ui';
 import { ChevronRightIcon, CloseIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
@@ -608,6 +609,7 @@ export function EditorApp({
 
       {/* The AI door: menu, run bar and ⌘J / Ctrl+J. */}
       <AiHost />
+      <PasteImportHost />
       <BankReviewBar />
       <BankDragLayer />
 
