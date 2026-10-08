@@ -58,3 +58,30 @@ Sources: [PP-OCRv6](https://www.paddleocr.ai/latest/en/version3.x/algorithm/PP-O
 [RecognizeDocumentsRequest](https://developer.apple.com/documentation/vision/recognizedocumentsrequest),
 [Windows AI text recognition](https://learn.microsoft.com/en-us/windows/ai/apis/text-recognition),
 [Windows.Media.Ocr](https://learn.microsoft.com/uwp/api/windows.media.ocr), [Mistral OCR 3](https://mistral.ai/fr/news/mistral-ocr-3/).
+
+## Local trial on real scans (2026-10-08, M5 Mac)
+
+Four real scans (a phone-scanned marking scheme with a 45-answer key grid and a two-column scheme
+table; HKEAA English MC, English structured and Chinese structured papers), 200 DPI, each engine's
+boxes fed through `layoutPdf` → the engine. Scratch only; no real text kept in the repo.
+
+| Engine | Text errors (scheme / 中文) | Labels found (of 59) | Key (of 45) | s/page | Adds to installer |
+|---|---|---|---|---|---|
+| macOS Vision (accurate) | 0.8 % / 2.6 % | 49: drops lone "1.", "D." | 39 | 0.2–0.6 | 0 |
+| PP-OCRv5 mobile (Rust `ort`) | 0.8 % / 1.6 % | 59 | 21–45 (detector size) | 1.2 | ~41 MB |
+| **PP-OCRv6 small (Rust `ort`, `oar-ocr` 0.10)** | **0 % / 0 %** | **59** | 44 | 1.0 | 26 MB models (gz) + ~20 MB runtime |
+| PP-OCRv6 medium | 0 % / 0 % | 58 | 44 | 3.1 | 139 MB |
+| PP-OCRv6 tiny | 中文 12 % (dictionary lacks common characters) | | | 0.2 | out |
+| PP-OCRv6 small in the webview (WASM) | same as Rust | 56 | 45 | 2.6 | 2–2.7 GB renderer memory: no |
+| PaddleOCR-VL-1.6 (llama.cpp, Metal) | exact | no positions | 45 via plain text | ~10 | 1.8 GB on demand |
+
+- **Decision: PP-OCRv6 small (det + rec) in the Rust shell via `ort`, statically linked** (no
+  separate dylib to sign; vendor the ORT archive in CI with `ORT_LIB_LOCATION`).
+- Layout/table models (PP-DocLayout, SLANet+) garbled the key grid and peak at 2.5 GB: not bundled.
+- macOS Vision is callable from Rust via `objc2-vision` (no Swift) but drops short labels: a cheap
+  fallback only. Windows.Media.Ocr needs an admin-installed zh pack: no.
+- Detection settings, not recognition, decide end-to-end scores: an OCR → `PdfItem` adapter
+  (px→pt, baseline, unclip shrink, rotated margin text, split glued labels like "3.一位") is required.
+- No engine read a red handwritten correction; they read the printed answer underneath.
+- Engine fixes found: parse a key row cell by cell (one bad cell lost 6 answers); OCR text needs its
+  own `source: 'ocr'` or `pasteKind` calls it a scan; `layoutPdf` merged two scheme columns under a grid.
