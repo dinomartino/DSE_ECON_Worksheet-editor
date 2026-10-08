@@ -2,14 +2,18 @@
 
 Status: **proposal** (2026-10-08), written against `develop` @ c886017. Phase 0 and phase 1 are
 built (§ 10): the engine (`feature/paste-import-core`) and the review dialog (`feature/paste-import-ui`).
-Phase 2's `.docx` reader is built (§ 10, `feature/import-docx`).
+Phase 2's `.docx` reader and phase 3's `.pdf` reader are built (§ 10).
+**The way in is file-only** (user decision, 2026-10-08: "if a teacher can copy the text, they
+can paste it into a worksheet themselves"): Import from Word or PDF… on the home screen, or a
+file dropped there (§ 6, § 10). The clipboard readers stay in the engine, tested, unused by the app.
 Open questions for the user are in § 9.
 
 ## 0. The answer in one paragraph
 
 Every teacher's paper is laid out differently, so the importer must not be a fixed grammar.
-It **infers the layout from the paste itself**. A reader turns any source (Word paste, PDF
-paste, a `.docx` or `.pdf` file) into one list of lines with features. Many small detectors
+It **infers the layout from the file itself**. A reader turns a `.docx` or `.pdf` file (the
+engine also reads a Word or PDF paste, which the app no longer offers) into one list of lines
+with features. Many small detectors
 each suggest a **role** for each line (question, option, part, marks…). A **sequence solver**
 then picks the reading in which the numbering is most consistent: which label style runs
 1, 2, 3, which runs (a), (b), and which runs A–D. That consistency, not any one teacher's
@@ -191,12 +195,15 @@ back through the same pipeline and review.
 
 ## 6. Entry points
 
-- **Paste questions… / 貼上題目…** in the add-question menu and in 題庫: opens the dialog
-  with a paste box. A `.docx`/`.pdf` can be dropped on the box from phase 2 on.
-- **Large paste into a stem:** a paste that has 2 or more question labels shows a notice,
-  "Looks like 12 questions. Turn them into questions?", which opens the dialog with that
-  paste. The plain-text paste already done stays as it is unless the teacher accepts.
-- The start screen's file drop also accepts `.docx` (phase 2), and the import creates a new paper.
+File-only (2026-10-08). The home screen is the one way in:
+
+- **Import from Word or PDF… / 從 Word 或 PDF 匯入…**, a secondary button under New worksheet
+  (empty desk or not). It opens the system file chooser (`.docx`, `.pdf`, and `.doc` so an old
+  file can be explained); the native open sheet on desktop.
+- **A dropped `.docx` or `.pdf`** on the home screen (web drop or the desktop shell's native
+  drop) opens the same dialog. A paper among several dropped files is left out.
+- There is no import from inside a paper and no text paste box: the add rail's Paste
+  questions… and 題庫's header button were removed before release.
 
 ## 7. Tests
 
@@ -287,14 +294,17 @@ option letters (the question becomes written text, flagged); an instructions lis
 like the questions with no heading after it; a structured question whose part letters were
 lost by OCR.
 
-### The review dialog, as built (2026-10-08)
+### The dialog, as built (2026-10-08)
 
-`src/components/import/`. **Paste questions… / 貼上題目…** in the add rail's Question flyout and
-in 題庫's header. The paste box reads `text/html` and `text/plain` from the paste event; the HTML
-goes to the engine as a string and never into the page. Empty, image-only (`scan`) and OCR text
-are explained in a notice; OCR text can still be reviewed.
+`src/components/import/ImportDialog.tsx`, lazy (`ImportHost.tsx`): the readers and pdf.js never
+load with the home screen. Steps: **reading** (the file name; a big PDF takes seconds), a
+**problem** (`.doc` → save as .docx; a password; not a Word or PDF file; damaged; a **scan**
+with its page count) with Choose another file… and Close, the **review**, then **Save as**.
+A PDF whose text was read from a scan (OCR) is reviewed with a warning notice. The review's
+language starts on the Paper language setting (`paperSide() ?? 'auto'`), or on detection when
+every question is in the other language (`startLanguage`).
 
-- **Left:** every pasted line with a chip whose letter is its shortcut (Q P S O T M H N; `·` text,
+- **Left:** every line of the file with a chip whose letter is its shortcut (Q P S O T M H N; `·` text,
   `▦` table row, `_` answer space). A chip opens the role menu (letters pick, arrows move), with
   "Start a new question here" and "Join with the line above". A fixed chip has a ring; new-question
   and join fixes show as badges that take the fix back. ⌘Z takes back the last fix (captured, so it
@@ -308,11 +318,20 @@ are explained in a notice; OCR text can still be reviewed.
 - **Header:** "N questions · M to check" counts structural flags by question; MC without an
   answer are counted apart ("4 MC without an answer →" steps through them), since a paste with no
   key flags every MC. The left pane scrolls the right and back, led by the pane under the pointer.
-- **Insert into this paper:** one `insertQuestionBatch` at the add menu's anchor, then a notice
-  with Undo (and how many MC still show A). **Add to 題庫:** `addToBank` into a chosen or new bank;
-  questions are originals (no lineage), and any the bank already says the same (`contentKey`) is
-  skipped and counted. A shared stimulus lead is not added to a bank (the notice says so).
-- Not built: layout profiles, the large-paste notice in a stem, file drops (phase 2+).
+- **Save as** (`SaveAsStep.tsx`): the four kinds of paper drawn as the New worksheet gallery
+  draws them, and 題庫 only. A paper takes a name (the file's title, else its name without the
+  extension) and is made by `createWorksheetFrom` (cover, sections, furniture; no sample; a
+  classroom worksheet without sections so the file's order holds), opened, then filled by one
+  `insertQuestionBatch` and saved by value (`createImportedDocument`). Its language: 中文
+  questions give a 中文 paper, both give EN+中, else the Paper language setting (English
+  questions never land on a 中文-only paper). **Suggested type** (`defaultDocumentType`): 20 or
+  more questions, all MC → Paper 1 mock; 4 or more, all written, under a section heading
+  (`Section A`, `Part B`, 甲部) → Paper 2 mock; else Classroom worksheet. A type that does not
+  fit (written questions on Paper 1, MC on an LQ paper) says so and still saves. **題庫 only**:
+  `addToBank` into a chosen or new bank, questions as originals; any the bank already says
+  the same (`contentKey`) is skipped and counted; a shared stimulus lead stays out. Then 題庫
+  opens on its Untagged questions (tag as you go). Nothing is written before Save.
+- Not built: layout profiles.
 
 ### Figures, as built (2026-10-08)
 
@@ -456,4 +475,19 @@ readPdf(bytes: ArrayBuffer, options?: { prepareImage?: (blob: Blob) => Promise<I
 - **Weak cases**: two columns need at least 5 rows and 3 prose rows a side; a table needs 2 aligned
   rows; vector figures are a heuristic; text drawn as outlines or Type 3 glyphs is not read; an
   OCR'd scan reads as its text layer.
+
+### Real files through the dialog (2026-10-08, this Mac, local only)
+
+Imported in `next dev`, Chromium, with the app's downsizer as `prepareImage`, saved with the
+suggested type, exported to `.docx` (student and teacher), and opened in LibreOffice:
+
+| File | Read | Suggested | Saved | Export |
+|---|---|---|---|---|
+| DBS Assessment 1 `.docx` | 25 questions (19 MC, 6 written), nothing to check, 2.4 s | Classroom worksheet | 25 questions, 6 pages | opens; student copy no answer labels, teacher 19 |
+| DBS Assessment 1 `.pdf` | the same 25, 6 pages, 2.4 s | Classroom worksheet | 25 questions | the same |
+| 2019 HKEAA Paper 2 `.docx` | 14 written, 3 to check, 8 pictures, 4 slots | Paper 2 mock | 14 questions, 8 pictures | opens (24 pages in LibreOffice), no answer labels |
+| 2019 HKEAA Paper 2 `.pdf` (scan) | "a scanned image, 23 pages" | n/a | n/a | n/a |
+
+Not checked: the desktop shell's open sheet and native drop (the same code path as the web
+chooser and drop once the bytes arrive).
 

@@ -7,7 +7,7 @@ import type { McqQuestion, Question, Worksheet } from '@/model/types';
 import type { WorksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { resolveMessages } from '@/i18n/catalogue';
-import { PASTE_IMPORT_MESSAGES } from './messages';
+import { IMPORT_MESSAGES } from './messages';
 import {
   CHIP,
   FLAG_TEXT,
@@ -15,7 +15,6 @@ import {
   checkPlaces,
   nextPlace,
   optionIndexAt,
-  pasteInput,
   pasteVerdict,
   readPaste,
   review,
@@ -27,24 +26,10 @@ import { materialize, previewBase, previewItems } from './previewDoc';
 
 const fixture = (name: string) => readFileSync(path.resolve(__dirname, '../../import/fixtures', name), 'utf8');
 
-/** A clipboard as the paste event hands it over. */
-const clipboard = (data: Record<string, string>) => ({ getData: (type: string) => data[type] ?? '' });
-
 const start = (plain: string) => review(readPaste({ plain }), [], 'auto');
 
-describe('the paste box', () => {
-  it('carries both clipboard flavours to the engine, which reads the HTML when it holds the paper', () => {
-    const html = fixture('11-html-word-msolist.html');
-    const input = pasteInput(clipboard({ 'text/html': html, 'text/plain': 'one line' }));
-    expect(input).toEqual({ plain: 'one line', html });
-    expect(readPaste(input).source).toBe('html');
-  });
-
-  it('sends no HTML when the clipboard has none', () => {
-    expect(pasteInput(clipboard({ 'text/plain': '1.\tWhy?' }))).toEqual({ plain: '1.\tWhy?' });
-  });
-
-  it('says why an empty paste or a scan is not reviewed, and offers OCR text with a warning', () => {
+describe('what can be reviewed', () => {
+  it('says why an empty read or a scan is not reviewed, and offers OCR text with a warning', () => {
     expect(pasteVerdict(start(fixture('17-empty.txt')))).toBe('empty');
     const image = 'data:image/png;base64,iVBORw0KGgo=';
     const scan = review(readPaste({ plain: '', html: `<p><img src="${image}" width="600" height="800"></p>` }), [], 'auto');
@@ -169,17 +154,17 @@ describe('insert and 題庫', () => {
 describe('interface text', () => {
   it('words every role, flag and shortcut in English and Chinese', () => {
     for (const lang of ['en', 'zh-HK'] as const) {
-      const m = resolveMessages(PASTE_IMPORT_MESSAGES, lang);
+      const m = resolveMessages(IMPORT_MESSAGES, lang);
       for (const key of [...Object.values(CHIP).map((c) => c.name), ...PINNABLE.map((p) => p.name)]) expect(m[key]).toBeTruthy();
       for (const key of Object.values(FLAG_TEXT)) {
         const text = key === 'flagOptionCount' ? m.flagOptionCount(3) : m[key];
         expect(text, key).toBeTruthy();
       }
     }
-    const en = resolveMessages(PASTE_IMPORT_MESSAGES, 'en');
+    const en = resolveMessages(IMPORT_MESSAGES, 'en');
     expect(en.questionCount(1)).toBe('1 question');
     expect(en.questionCount(38)).toBe('38 questions');
     expect(en.toCheck(3)).toBe('3 to check');
-    expect(resolveMessages(PASTE_IMPORT_MESSAGES, 'zh-HK').questionCount(38)).toBe('38 條題目');
+    expect(resolveMessages(IMPORT_MESSAGES, 'zh-HK').questionCount(38)).toBe('38 條題目');
   });
 });

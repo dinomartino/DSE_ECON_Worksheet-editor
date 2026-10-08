@@ -12,7 +12,17 @@ import type { FileDragEvent } from '@/platform';
 import type { UiLanguage } from '@/settings/language';
 import { START_SCREEN_MESSAGES } from './screen.messages';
 
-export type DropKind = 'worksheet' | 'backup';
+/** `paper`: a Word or PDF file to import questions from (a `.doc` too, to say how). */
+export type DropKind = 'worksheet' | 'backup' | 'paper';
+
+const PAPER_TYPES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+]);
+
+/** What the Import from Word or PDF chooser offers. */
+export const PAPER_ACCEPT = '.docx,.pdf,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword';
 
 /** What a dropped file is, by name (and MIME type, when the browser gives one). */
 export function droppedKind(name: string, type = ''): DropKind | undefined {
@@ -21,6 +31,7 @@ export function droppedKind(name: string, type = ''): DropKind | undefined {
     return 'backup';
   }
   if (lower.endsWith('.json') || type === 'application/json') return 'worksheet';
+  if (/\.(docx?|pdf)$/.test(lower) || PAPER_TYPES.has(type)) return 'paper';
   return undefined;
 }
 
@@ -31,12 +42,14 @@ export function fileNameOf(path: string): string {
 }
 
 /**
- * One file opens (a worksheet) or restores (a backup) — what a drop has always meant.
- * Several are imported into the library, none opened. Nothing usable is rejected.
+ * One file opens (a worksheet), restores (a backup) or is imported from (a Word or PDF
+ * paper) — what a drop has always meant. Several are imported into the library, none
+ * opened; a paper among several is left out. Nothing usable is rejected.
  */
 export type DropPlan<T> =
   | { kind: 'open'; file: T }
   | { kind: 'restore'; file: T }
+  | { kind: 'paper'; file: T }
   | { kind: 'import'; worksheets: T[]; backups: T[]; ignored: number }
   | { kind: 'reject' };
 
@@ -46,6 +59,7 @@ export function planDrop<T>(
 ): DropPlan<T> {
   const worksheets: T[] = [];
   const backups: T[] = [];
+  if (files.length === 1 && kindOf(files[0]) === 'paper') return { kind: 'paper', file: files[0] };
   for (const file of files) {
     const kind = kindOf(file);
     if (kind === 'worksheet') worksheets.push(file);

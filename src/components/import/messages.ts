@@ -2,36 +2,43 @@ import { defineMessages } from '@/i18n/catalogue';
 
 const plural = (n: number, one: string, many = `${one}s`) => (n === 1 ? one : many);
 
-/** The Paste questions dialog (`PasteImportDialog`) and its entry points. */
-export const PASTE_IMPORT_MESSAGES = defineMessages({
-  // Entry points
-  pasteQuestions: { en: 'Paste questions…', zh: '貼上題目…' },
-  pasteQuestionsHint: { en: 'from Word or a PDF', zh: '來自 Word 或 PDF' },
-
-  // Step 1
-  title: { en: 'Paste questions', zh: '貼上題目' },
-  pasteDescription: {
-    en: 'Copy the questions from Word or a PDF and paste them here. Nothing is added until you choose.',
-    zh: '從 Word 或 PDF 複製題目，然後貼在這裏。在你選擇之前，不會加入任何內容。',
+/** Import from Word or PDF (`ImportDialog`): reading the file, the review, and Save as. */
+export const IMPORT_MESSAGES = defineMessages({
+  // The file: reading it, and why it could not be read
+  title: { en: 'Import from Word or PDF', zh: '從 Word 或 PDF 匯入' },
+  reading: { en: (name: string) => `Reading ${name}…`, zh: (name: string) => `正在讀取 ${name}…` },
+  readingHint: { en: 'A long PDF can take a few seconds.', zh: '較長的 PDF 可能需時數秒。' },
+  pages: { en: (n: number) => `${n} ${plural(n, 'page')}`, zh: (n: number) => `${n} 頁` },
+  problemTitle: { en: 'This file cannot be imported', zh: '無法匯入這個檔案' },
+  problemLegacyDoc: {
+    en: 'This is an older Word file (.doc). Open it in Word, save it as .docx, then import that.',
+    zh: '這是舊版 Word 檔案（.doc）。請在 Word 開啟，另存為 .docx，然後匯入該檔案。',
   },
-  pasteLabel: { en: 'Pasted text', zh: '貼上的文字' },
-  pastePlaceholder: { en: 'Paste here (⌘V)', zh: '在此貼上（⌘V）' },
-  read: { en: 'Read questions', zh: '讀取題目' },
-  emptyPaste: {
-    en: 'There is no text in this paste. Copy the questions again from Word or a PDF.',
-    zh: '貼上的內容沒有文字。請再從 Word 或 PDF 複製題目。',
+  problemEncrypted: {
+    en: 'This file has a password. Open it in Word or Acrobat, remove the password, and try again.',
+    zh: '這個檔案設有密碼。請在 Word 或 Acrobat 開啟，移除密碼，然後再試一次。',
   },
-  scanPaste: {
-    en: 'This looks like a scanned paper, so there is no text to read. Copy from the Word file instead, if you have it.',
-    zh: '這似乎是掃描的試卷，沒有可讀取的文字。如有 Word 檔案，請改從 Word 檔案複製。',
+  problemNotPaper: {
+    en: 'This is not a Word (.docx) or PDF file. Choose the paper as a .docx or a .pdf.',
+    zh: '這不是 Word（.docx）或 PDF 檔案。請選擇 .docx 或 .pdf 格式的試卷。',
+  },
+  problemUnreadable: {
+    en: 'This file could not be read. It may be damaged. Open it in Word or Acrobat, save a new copy, and try again.',
+    zh: '無法讀取這個檔案，檔案可能已損壞。請在 Word 或 Acrobat 開啟並另存新檔，然後再試一次。',
+  },
+  problemScan: {
+    en: (pages: number) =>
+      `This PDF is a scanned image${pages ? `, ${pages} ${plural(pages, 'page')}` : ''}, so there is no text to read. If you have the Word file, import that instead.`,
+    zh: (pages: number) => `這份 PDF 是掃描圖像${pages ? `（${pages} 頁）` : ''}，沒有可讀取的文字。如有 Word 檔案，請改為匯入該檔案。`,
   },
   scanOcr: {
-    en: 'This looks like text read from a scan, so some letters and numbers may be wrong. Copy from the Word file instead, if you have it.',
-    zh: '這似乎是從掃描讀取的文字，部分字母和數字可能有誤。如有 Word 檔案，請改從 Word 檔案複製。',
+    en: 'This PDF looks like a scan with its text read by a computer, so some letters and numbers may be wrong. Check each question, or import the Word file if you have it.',
+    zh: '這份 PDF 似乎是經電腦辨識文字的掃描檔，部分字母和數字可能有誤。請逐題檢查，或如有 Word 檔案，請改為匯入該檔案。',
   },
-  reviewAnyway: { en: 'Review anyway', zh: '仍然檢查' },
+  chooseAnother: { en: 'Choose another file…', zh: '選擇其他檔案…' },
+  close: { en: 'Close', zh: '關閉' },
 
-  // Step 2: header
+  // The review: header
   questionCount: {
     en: (n: number) => `${n} ${plural(n, 'question')}`,
     zh: (n: number) => `${n} 條題目`,
@@ -44,15 +51,15 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
   },
   nextToCheck: { en: 'Next to check', zh: '下一處待檢查' },
   nextNoAnswer: { en: 'Go to the next MC without an answer', zh: '前往下一條未有答案的 MC' },
-  pasteAgain: { en: 'Paste again', zh: '重新貼上' },
   undoFix: { en: 'Undo fix', zh: '復原修正' },
   undoFixHint: { en: '⌘Z', zh: '⌘Z' },
   languageAll: { en: 'Language', zh: '語言' },
   languageAuto: { en: 'Auto', zh: '自動' },
   english: { en: 'EN', zh: 'EN' },
   chinese: { en: '中文', zh: '中文' },
+  bilingual: { en: 'EN+中', zh: 'EN+中' },
   languageFor: { en: (n: number) => `Language of question ${n}`, zh: (n: number) => `第 ${n} 題的語言` },
-  pastedLines: { en: 'Pasted lines', zh: '貼上的內容' },
+  pastedLines: { en: 'Lines in the file', zh: '檔案內容' },
   asPrinted: { en: 'As it will print', zh: '列印效果' },
   setAnswerHint: { en: 'Click an option to make it the answer.', zh: '按一下選項，設為答案。' },
   answerIs: { en: (letter: string) => `Answer ${letter}`, zh: (letter: string) => `答案 ${letter}` },
@@ -132,11 +139,11 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
   flagMarksMoved: { en: 'Marks moved to the part above.', zh: '分數已移到上方的分題。' },
   flagDuplicateMarks: { en: 'Two marks for one part. The first is kept.', zh: '同一分題有兩個分數，只保留第一個。' },
   flagUnknownLine: { en: 'A line with no clear role, kept as text.', zh: '這行的角色不明確，已保留為文字。' },
-  flagImageLost: { en: 'A picture did not come with the paste.', zh: '圖片未能隨貼上的內容一併帶來。' },
-  flagFigureMissing: { en: 'A figure is named here, but no picture came with the paste.', zh: '這裏提及圖表，但貼上的內容沒有圖片。' },
+  flagImageLost: { en: 'A picture here could not be read from the file.', zh: '無法從檔案讀取此處的圖片。' },
+  flagFigureMissing: { en: 'A figure is named here, but no picture came with it.', zh: '這裏提及圖表，但沒有附上圖片。' },
   flagFigureAsked: {
-    en: 'This question asks about pictures, but none came with the paste.',
-    zh: '這題問及圖表，但貼上的內容沒有圖片。',
+    en: 'This question asks about pictures, but none came with it.',
+    zh: '這題問及圖表，但沒有附上圖片。',
   },
   flagOptionsByOrder: {
     en: 'Option letters were apart from their text, so they were paired in order.',
@@ -152,31 +159,56 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
 
   // Footer
   cancel: { en: 'Cancel', zh: '取消' },
-  insert: { en: 'Insert into this paper', zh: '插入至這份工作紙' },
-  addToBank: { en: 'Add to 題庫', zh: '加入題庫' },
-  bankTarget: { en: 'Which question bank', zh: '加入哪個題庫' },
-  newBank: { en: (name: string) => `New bank: ${name}`, zh: (name: string) => `新題庫：${name}` },
-  nothingToImport: { en: 'No questions found yet. Fix a line, or paste again.', zh: '仍未找到題目。請修正某一行，或重新貼上。' },
+  nothingToImport: { en: 'No questions found yet. Fix a line, or choose another file.', zh: '仍未找到題目。請修正某一行，或選擇其他檔案。' },
   leftOut: {
     en: (n: number) => `${n} ${plural(n, 'line')} left out (headings, page furniture, answer keys)`,
     zh: (n: number) => `${n} 行不會匯入（標題、頁首頁尾、答案表）`,
   },
-  readOnly: { en: 'This paper is read-only.', zh: '這份工作紙是唯讀的。' },
+  saveAs: { en: 'Save as…', zh: '儲存為…' },
+  backToReview: { en: 'Back to review', zh: '返回檢查' },
+  saveAndOpen: { en: 'Save and open', zh: '儲存並開啟' },
+  addToBank: { en: 'Add to 題庫', zh: '加入題庫' },
   busy: { en: 'Saving…', zh: '儲存中…' },
 
+  // Save as
+  saveAsTitle: { en: 'Save as', zh: '儲存為' },
+  bankOnly: { en: '題庫 only', zh: '只加入題庫' },
+  suggested: { en: 'Suggested', zh: '建議' },
+  bankOnlyHint: {
+    en: 'The questions go into a question bank, ready for any paper. No new paper is made.',
+    zh: '題目只會加入題庫，日後可用於任何試卷，不會建立新試卷。',
+  },
+  name: { en: 'Name', zh: '名稱' },
+  nameHint: { en: 'From the file. You can change it later.', zh: '取自檔案，日後可以更改。' },
+  bankTarget: { en: 'Which question bank', zh: '加入哪個題庫' },
+  newBank: { en: (name: string) => `New bank: ${name}`, zh: (name: string) => `新題庫：${name}` },
+  summary: { en: 'What is saved', zh: '儲存內容' },
+  mixCount: {
+    en: (mc: number, written: number) => `${mc} MC, ${written} written`,
+    zh: (mc: number, written: number) => `${mc} 條 MC，${written} 條文字題`,
+  },
+  paperLanguage: { en: 'Paper language', zh: '試卷語言' },
+  misfitWritten: {
+    en: (n: number) => `A Paper 1 mock is for MC. ${n} written ${plural(n, 'question')} will still be added. Check how ${n === 1 ? 'it prints' : 'they print'}.`,
+    zh: (n: number) => `Paper 1 Mock 只用於 MC。${n} 條文字題仍會加入，請檢查列印效果。`,
+  },
+  misfitMc: {
+    en: (n: number) => `This paper is for written answers. ${n} MC will still be added with their options.`,
+    zh: (n: number) => `這份試卷用於文字作答。${n} 條 MC 仍會連同選項加入。`,
+  },
+
   // Results (notices)
-  inserted: {
-    en: (n: number) => `Inserted ${n} ${plural(n, 'question')}.`,
-    zh: (n: number) => `已插入 ${n} 條題目。`,
+  savedAs: {
+    en: (kind: string, name: string, n: number) => `Saved “${name}” as a new ${kind} with ${n} ${plural(n, 'question')}.`,
+    zh: (kind: string, name: string, n: number) => `已把「${name}」儲存為新的${kind}，共 ${n} 條題目。`,
   },
   noAnswerAfter: {
     en: (n: number) => ` ${n} MC ${n === 1 ? 'has' : 'have'} no answer yet and ${n === 1 ? 'shows' : 'show'} A for now.`,
     zh: (n: number) => `${n} 條 MC 未有答案，暫時顯示為 A。`,
   },
-  undo: { en: 'Undo', zh: '復原' },
   addedToBank: {
-    en: (n: number, bank: string) => `Added ${n} ${plural(n, 'question')} to ${bank}.`,
-    zh: (n: number, bank: string) => `已把 ${n} 條題目加入「${bank}」。`,
+    en: (n: number, bank: string) => `Added ${n} ${plural(n, 'question')} to ${bank}. They are under Untagged in 題庫.`,
+    zh: (n: number, bank: string) => `已把 ${n} 條題目加入「${bank}」，可在題庫的「未標記」找到。`,
   },
   bankHadAll: {
     en: (bank: string) => `${bank} already has every one of these questions. Nothing was added.`,
@@ -187,9 +219,9 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
     zh: (n: number) => `已略過 ${n} 條題庫已有的題目。`,
   },
   stimulusNotInBank: {
-    en: ' The shared stimulus stays out of the bank; insert into a paper to keep it.',
-    zh: '共用資料不會加入題庫；如要保留，請插入至工作紙。',
+    en: ' The shared stimulus stays out of the bank; save as a paper to keep it.',
+    zh: '共用資料不會加入題庫；如要保留，請儲存為試卷。',
   },
-  insertRefused: { en: 'Nothing was inserted: the paper changed. Try again.', zh: '沒有插入任何內容：工作紙已改變，請再試一次。' },
+  saveFailed: { en: 'Nothing was saved: the new paper could not be made. Try again.', zh: '沒有儲存任何內容：無法建立新試卷，請再試一次。' },
   bankFailed: { en: 'Could not save the question bank.', zh: '無法儲存題庫。' },
 });

@@ -20,7 +20,7 @@ import { useNoticeStore } from '@/store/notices';
 import { AppMark } from '@/components/ui/AppMark';
 import { ScrollEdgeHints } from '@/components/ui/ScrollEdgeHints';
 import { useScrollEdges } from '@/components/ui/scrollEdges';
-import { ArchiveIcon, BankIcon, DiagramIcon, FolderIcon, FolderOpenIcon, PlusIcon, SheetIcon } from '@/components/ui/icons';
+import { ArchiveIcon, BankIcon, DiagramIcon, FolderIcon, FolderOpenIcon, ImportIcon, PlusIcon, SheetIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
@@ -38,12 +38,16 @@ import {
   fileNameOf,
   importSummary,
   overlayFor,
+  PAPER_ACCEPT,
   planDrop,
   type DropOverlay,
   type ImportCounts,
 } from './fileDrop';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { useBankReturn } from '@/components/bank/page/bankReturn';
+import { DEFAULT_FILTERS } from '@/components/bank/page/bankPage';
+import { LazyImportDialog } from '@/components/import/ImportHost';
+import type { ImportFile } from '@/components/import/ImportDialog';
 import { QuestionBankScreen } from '@/components/bank/page/QuestionBankScreen';
 import { GraphsScreen, useGraphCount } from '@/components/graphs/GraphsScreen';
 import { placeGraphInOpenDocument } from '@/components/graphs/placeGraph';
@@ -210,6 +214,10 @@ export function StartScreen({
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
   const fileInput = useRef<HTMLInputElement>(null);
+  const paperInput = useRef<HTMLInputElement>(null);
+  // Import from Word or PDF: the file being read and reviewed; a new one replaces the dialog.
+  const [importing, setImporting] = useState<ImportFile & { key: number }>();
+  const startImport = (file: ImportFile) => setImporting({ ...file, key: Date.now() });
   const backupInput = useRef<HTMLInputElement>(null);
   const { ref: asideRef, edges: asideEdges } = useScrollEdges<HTMLElement>();
   const rejectTimer = useRef<number | undefined>(undefined);
@@ -380,6 +388,31 @@ export function StartScreen({
     }
   };
 
+  /** Import from Word or PDF…: the native open sheet on desktop, the file input on the web. */
+  const choosePaper = async () => {
+    if (!isDesktop()) {
+      paperInput.current?.click();
+      return;
+    }
+    try {
+      const picked = await pickFile([{ name: t.paperFilterName, extensions: ['docx', 'pdf', 'doc'] }]);
+      if (picked) startImport({ name: picked.name, read: async () => picked.bytes.slice().buffer as ArrayBuffer });
+    } catch {
+      setError(t.couldNotOpenFile);
+    }
+  };
+
+  /** 題庫 only: the bank opens on its Untagged questions (tag as you go), at the first one added. */
+  const showAdded = (questionIds: string[]) => {
+    useBankReturn.getState().set({
+      level: { kind: 'untagged' },
+      filters: DEFAULT_FILTERS,
+      ...(questionIds[0] ? { tagRoot: questionIds[0] } : {}),
+    });
+    void refresh();
+    showView('bank');
+  };
+
   const moveToTrash = async (summary: WorksheetSummary) => {
     setError(undefined);
     try {
@@ -509,6 +542,11 @@ export function StartScreen({
       return;
     }
     setDropOverlay(undefined);
+    if (plan.kind === 'paper') {
+      const file = plan.file;
+      startImport({ name: file.name, read: async () => toBuffer(await file.read()) });
+      return;
+    }
     if (plan.kind === 'import') {
       await importDropped(plan.worksheets, plan.backups, plan.ignored);
       return;
@@ -786,6 +824,7 @@ export function StartScreen({
         <StartNewSection
           empty={empty}
           onCreate={() => setCreating(readLastKind())}
+          onImport={() => void choosePaper()}
           onOpenFile={() => void importFile()}
         />
 
@@ -914,6 +953,35 @@ export function StartScreen({
           event.target.value = '';
         }}
       />
+
+      <input
+        ref={paperInput}
+        type="file"
+        accept={PAPER_ACCEPT}
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) startImport({ name: file.name, read: () => file.arrayBuffer() });
+          event.target.value = '';
+        }}
+      />
+
+      {importing && (
+        <LazyImportDialog
+          key={importing.key}
+          file={importing}
+          onClose={() => setImporting(undefined)}
+          onChooseAnother={() => void choosePaper()}
+          onOpenDocument={(worksheet, language) => {
+            // Filed in the open folder, as the New worksheet form files.
+            if (folderId && folders.folders.some((f) => f.id === folderId)) {
+              void updateFolders(worksheetStore, (state) => moveToFolder(state, [worksheet.id], folderId)).catch(() => undefined);
+            }
+            onOpen(worksheet, language);
+          }}
+          onAddedToBank={(_bankId, ids) => showAdded(ids)}
+        />
+      )}
 
       {dropOverlay && (
         <div className="pointer-events-none fixed inset-0 z-40 flex animate-scrim-in items-center justify-center bg-accent/10 backdrop-blur-[1px]">
@@ -1154,16 +1222,18 @@ export function StartScreen({
 
 /**
  * The panel's ways to start: one New worksheet button (the dialog's gallery picks the
- * type), then "Open a file…". The button stays on an empty desk; the file row does not,
+ * type), Import from Word or PDF…, then "Open a file…". The button stays on an empty desk; the file row does not,
  * since the welcome carries its own file routes.
  */
 export function StartNewSection({
   empty,
   onCreate,
+  onImport,
   onOpenFile,
 }: {
   empty: boolean;
   onCreate: () => void;
+  onImport: () => void;
   onOpenFile: () => void;
 }) {
   const m = useMessages(START_PANEL_MESSAGES);
@@ -1172,6 +1242,10 @@ export function StartNewSection({
       <Button variant="primary" size="lg" className="w-full" onClick={onCreate}>
         <PlusIcon size={16} />
         {m.newWorksheet}
+      </Button>
+      <Button variant="default" size="lg" className="mt-2 w-full" onClick={onImport}>
+        <ImportIcon size={16} />
+        {m.importPaper}
       </Button>
       {!empty && (
         // Quieter than the button: one line, colour-only hover.
@@ -1393,6 +1467,10 @@ function TextLink({
       {children}
     </button>
   );
+}
+
+async function toBuffer(data: Uint8Array | Blob): Promise<ArrayBuffer> {
+  return data instanceof Blob ? data.arrayBuffer() : (data.slice().buffer as ArrayBuffer);
 }
 
 function isZip(file: File): boolean {

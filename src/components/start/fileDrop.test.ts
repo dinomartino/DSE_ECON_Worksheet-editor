@@ -21,8 +21,16 @@ describe('droppedKind', () => {
     expect(droppedKind('econ-backup-2026-09-25.zip')).toBe('backup');
   });
 
+  it('takes a Word or PDF file as a paper to import (a .doc too, to explain it)', () => {
+    expect(droppedKind('Mock 2025.docx')).toBe('paper');
+    expect(droppedKind('PAPER.PDF')).toBe('paper');
+    expect(droppedKind('old.doc')).toBe('paper');
+    expect(droppedKind('download', 'application/pdf')).toBe('paper');
+  });
+
   it('refuses everything else', () => {
-    expect(droppedKind('paper.docx')).toBeUndefined();
+    expect(droppedKind('graph.png')).toBeUndefined();
+    expect(droppedKind('marks.xlsx')).toBeUndefined();
     expect(droppedKind('notes.json.txt')).toBeUndefined();
     expect(droppedKind('json')).toBeUndefined();
   });
@@ -45,6 +53,11 @@ describe('planDrop', () => {
   it('opens one worksheet and restores one backup — what a drop has always meant', () => {
     expect(planDrop(['/a/one.json'], byPath)).toEqual({ kind: 'open', file: '/a/one.json' });
     expect(planDrop(['/a/b.zip'], byPath)).toEqual({ kind: 'restore', file: '/a/b.zip' });
+  });
+
+  it('imports from one Word or PDF file; among several, a paper is left out', () => {
+    expect(planDrop(['/a/mock.pdf'], byPath)).toEqual({ kind: 'paper', file: '/a/mock.pdf' });
+    expect(planDrop(['/a/mock.docx', '/a/b.pdf'], byPath)).toEqual({ kind: 'reject' });
   });
 
   it('imports several, opening none, and counts what it ignored', () => {
@@ -97,7 +110,8 @@ describe('importSummary', () => {
 describe('overlayFor (desktop native drag)', () => {
   it('shows the hint for usable files and the rejection for anything else, from enter', () => {
     expect(overlayFor({ type: 'enter', paths: ['/a/1.json'] }, undefined)).toBe('hint');
-    expect(overlayFor({ type: 'enter', paths: ['/a/p.docx'] }, undefined)).toBe('rejected');
+    expect(overlayFor({ type: 'enter', paths: ['/a/p.docx'] }, undefined)).toBe('hint');
+    expect(overlayFor({ type: 'enter', paths: ['/a/p.png'] }, undefined)).toBe('rejected');
   });
 
   it('keeps the decision while hovering and clears on leave or drop', () => {

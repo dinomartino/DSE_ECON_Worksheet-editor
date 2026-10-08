@@ -1,23 +1,26 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { pictureHome, type Flag, type Pin, type ReadPaste, type Role } from '@/import';
+import { pictureHome, type Flag, type ImageRef, type Pin, type ReadPaste, type Role } from '@/import';
 import { UndecodableImageError, imageBlockFromFile } from '@/export/imageImport';
 import { addToBank, bankChoices, nextBankName, type BankChoice } from '@/library/bankDocs';
 import { newId } from '@/model/factories';
+import type { DocumentType } from '@/model/newWorksheet';
 import type { Side } from '@/model/textSlots';
-import type { Question } from '@/model/types';
+import type { LanguageMode, Question, Worksheet } from '@/model/types';
+import { paperLanguage, paperSide } from '@/settings/paperLanguage';
 import { worksheetStore, worksheetTitle } from '@/storage';
 import { notify } from '@/store/notices';
-import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, IconButton } from '@/components/ui';
 import { Dialog, NoticeInsetSpacer } from '@/components/ui/Dialog';
 import { useDialogNotices } from '@/components/ui/NoticeLayer';
 import { UndoIcon } from '@/components/ui/icons';
 import { undoChord } from '@/components/ui/undoChord';
+import { kindText } from '@/components/start/startKinds';
 import type { Messages } from '@/i18n/catalogue';
-import { useMessages } from '@/i18n/language';
-import { PASTE_IMPORT_MESSAGES } from './messages';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import { createImportedDocument, defaultDocumentType, importLanguageMode, importName, misfit, readPaperFile, startLanguage, type FileOutcome, type FileProblem } from './fileImport';
+import { IMPORT_MESSAGES } from './messages';
 import {
   FLAG_TEXT,
   carriedFiles,
@@ -27,10 +30,7 @@ import {
   imagePin,
   isHeic,
   nextPlace,
-  pasteInput,
-  pasteVerdict,
   pinsOn,
-  readPaste,
   review,
   withoutPin,
   withPin,
@@ -40,24 +40,33 @@ import {
 import { materialize, previewBase, previewItems, type PreviewCache } from './previewDoc';
 import { ReviewLines, RoleMenu, type LineView } from './ReviewLines';
 import { ReviewPreview, type FigureActions, type PreviewCard } from './ReviewPreview';
+import { SaveAsStep, type Destination } from './SaveAsStep';
 
 /**
- * Paste questions (D1, `docs/design/paste-import.md` § 3): a paste box, then the review.
- * The left pane is the paste with a role chip per line; the right is the result as it
- * will print. A fix is a `Pin` and re-solves at once. Nothing is written until Insert
- * (one `insertQuestionBatch`, one ⌘Z) or Add to 題庫 (`addToBank`, duplicates skipped).
+ * Import from Word or PDF (`docs/design/paste-import.md` § 6): the file is read, then
+ * reviewed. The left pane is the file's lines with a role chip each; the right is the
+ * result as it will print. A fix is a `Pin` and re-solves at once. Save as makes a new
+ * paper (one `insertQuestionBatch` into it) or adds to 題庫 (`addToBank`, duplicates
+ * skipped). Nothing is written before Save.
  */
 
-type Text = Messages<typeof PASTE_IMPORT_MESSAGES>;
+type Text = Messages<typeof IMPORT_MESSAGES>;
 
-export interface PasteImportProps {
-  /** `paper`: opened from the editor (Insert and Add to 題庫); `bank`: from 題庫 (Add only). */
-  target: 'paper' | 'bank';
+/** A chosen or dropped file; read once the dialog is up. */
+export interface ImportFile {
+  name: string;
+  read: () => Promise<ArrayBuffer>;
+}
+
+export interface ImportDialogProps {
+  file: ImportFile;
   onClose: () => void;
-  /** Runs a bank write in the caller's queue (題庫 writes one document at a time). */
-  exclusive?: <T>(work: () => Promise<T>) => Promise<T>;
-  /** A bank was written: the caller re-reads its list. */
-  onBankChanged?: () => void;
+  /** Choose another file (the start screen's chooser); the dialog is replaced. */
+  onChooseAnother: () => void;
+  /** Open a new document in the editor (the start screen's open). */
+  onOpenDocument: (worksheet: Worksheet, language: LanguageMode) => void;
+  /** Questions were added to a bank: show them there. */
+  onAddedToBank: (bankId: string, questionIds: string[]) => void;
 }
 
 const NEW_BANK = '';
@@ -72,11 +81,28 @@ const isTyping = () => {
   return active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement || (active instanceof HTMLElement && active.isContentEditable);
 };
 
-export default function PasteImportDialog({ target, onClose, exclusive, onBankChanged }: PasteImportProps) {
-  const m = useMessages(PASTE_IMPORT_MESSAGES);
+/** The app's downsizer for the readers: a picture this browser cannot draw stays a slot. */
+async function prepareImage(blob: Blob): Promise<ImageRef | null> {
+  const type = blob.type || 'image/png';
+  const block = await imageBlockFromFile(new File([blob], `figure.${type.split('/')[1] ?? 'png'}`, { type }), 420, { decodedOnly: true }).catch(() => null);
+  if (!block) return null;
+  return {
+    src: block.src,
+    widthPx: block.widthPx,
+    heightPx: block.heightPx,
+    ...(block.naturalWidthPx && block.naturalHeightPx ? { naturalWidthPx: block.naturalWidthPx, naturalHeightPx: block.naturalHeightPx } : {}),
+  };
+}
+
+type Loaded = { read: ReadPaste; title?: string; pages?: number };
+
+export default function ImportDialog({ file, onClose, onChooseAnother, onOpenDocument, onAddedToBank }: ImportDialogProps) {
+  const m = useMessages(IMPORT_MESSAGES);
+  const lang = useUiLanguage();
   const notices = useDialogNotices();
-  const [read, setRead] = useState<ReadPaste>();
-  const [draft, setDraft] = useState('');
+  const [loaded, setLoaded] = useState<Loaded>();
+  const [problem, setProblem] = useState<{ problem: FileProblem; pages?: number }>();
+  const read = loaded?.read;
   const [pins, setPins] = useState<Pin[]>([]);
   const [language, setLanguage] = useState<Language>('auto');
   const [selectedLine, setSelectedLine] = useState<number>();
@@ -84,19 +110,45 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
   const [banks, setBanks] = useState<BankChoice[]>([]);
   const [bankTarget, setBankTarget] = useState(NEW_BANK);
   const [busy, setBusy] = useState(false);
-  const [base] = useState(() => previewBase(target === 'paper' ? useWorksheetStore.getState().worksheet : undefined));
-  const readOnly = useWorksheetStore((s) => s.readOnly);
-  const openDocId = useWorksheetStore((s) => s.worksheet.id);
+  const [step, setStep] = useState<'review' | 'saveAs'>('review');
+  const [destination, setDestination] = useState<Destination>();
+  const [name, setName] = useState('');
+  const [base] = useState(() => previewBase());
   const [cache] = useState<PreviewCache>(() => new Map());
 
-  // The banks Add to 題庫 can write: never the open document (the editor saves it).
+  // Read the file once. pdf.js and the readers load here, never with the start screen.
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const outcome: FileOutcome = await file
+        .read()
+        .then((bytes) => readPaperFile(file.name, bytes, { prepareImage }))
+        .catch((): FileOutcome => ({ kind: 'problem', problem: 'unreadable' }));
+      if (!live) return;
+      if (outcome.kind === 'problem') {
+        setProblem({ problem: outcome.problem, ...(outcome.pages ? { pages: outcome.pages } : {}) });
+        return;
+      }
+      setLanguage(startLanguage(outcome.read, paperSide()));
+      setName(importName(outcome.title, file.name));
+      setLoaded({ read: outcome.read, ...(outcome.title ? { title: outcome.title } : {}), ...(outcome.pages ? { pages: outcome.pages } : {}) });
+      if (outcome.ocr) notices.notify({ id: 'import-kind', tone: 'warning', body: m.scanOcr });
+    })();
+    return () => {
+      live = false;
+    };
+    // Once per file: the dialog is replaced for another one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file]);
+
+  // The banks 題庫 only can write.
   useEffect(() => {
     let live = true;
     void worksheetStore
       .list()
       .then((rows) => {
         if (!live) return;
-        const choices = bankChoices(rows.filter((row) => row.kind === 'bank' && (target === 'bank' || row.id !== openDocId)));
+        const choices = bankChoices(rows.filter((row) => row.kind === 'bank'));
         setBanks(choices);
         setBankTarget(choices[0]?.id ?? NEW_BANK);
       })
@@ -104,7 +156,7 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
     return () => {
       live = false;
     };
-  }, [target, openDocId]);
+  }, []);
 
   const result = useMemo(() => (read ? review(read, pins, language) : undefined), [read, pins, language]);
   const analysis = result?.analysis;
@@ -125,18 +177,18 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
   const removePin = useCallback((pin: Pin) => setPins((list) => withoutPin(list, pin)), []);
   const undoLast = useCallback(() => setPins((list) => list.slice(0, -1)), []);
 
-  // ⌘Z takes back the last fix, and never reaches the document behind the dialog.
+  // ⌘Z takes back the last fix, and never reaches anything behind the dialog.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const action = undoChord(event);
       if (!action || isTyping()) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (action === 'undo' && read) undoLast();
+      if (action === 'undo' && read && step === 'review') undoLast();
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [read, undoLast]);
+  }, [read, step, undoLast]);
 
   // ---- pictures: pasted, dropped or chosen; each becomes an image pin after its line ----
 
@@ -237,30 +289,6 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
       setSelectedLine(line);
       addPictures(line, files);
     },
-  };
-
-  // ---- step 1 ----
-
-  const proceed = (input: { plain?: string; html?: string }) => {
-    const next = readPaste(input);
-    const verdict = pasteVerdict(review(next, [], 'auto'));
-    const enter = () => {
-      setRead(next);
-      setPins([]);
-      setLanguage('auto');
-      setSelectedLine(undefined);
-      notices.dismiss('paste-kind');
-    };
-    if (verdict !== 'ok') {
-      notices.notify({
-        id: 'paste-kind',
-        tone: 'warning',
-        body: verdict === 'empty' ? m.emptyPaste : verdict === 'scan' ? m.scanPaste : m.scanOcr,
-        ...(verdict === 'ocr' ? { actions: [{ label: m.reviewAnyway, run: enter }] } : {}),
-      });
-      return;
-    }
-    enter();
   };
 
   // ---- step 2: what each pane shows ----
@@ -465,80 +493,78 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
     setPins((list) => list.filter((p) => p.kind !== 'language'));
   };
 
-  // ---- actions ----
+  // ---- Save as ----
 
   const builds = batch?.builds ?? [];
   const noAnswer = places.noAnswer.length;
-  const canInsert = target === 'paper' && !readOnly && builds.length > 0 && !busy;
+  const suggested = analysis ? defaultDocumentType(analysis) : 'classroom';
+  const chosen: Destination = destination ?? suggested;
+  const languageMode: LanguageMode = analysis ? importLanguageMode(analysis, paperLanguage()) : 'en';
 
-  const insert = () => {
-    if (!batch || !canInsert) return;
-    const store = useWorksheetStore.getState();
-    const report = store.insertQuestionBatch(batch.builds, { worksheetId: store.worksheet.id, ...(batch.lead ? { lead: batch.lead } : {}) });
+  const saveDocument = (documentType: DocumentType) => {
+    if (!batch || builds.length === 0 || busy) return;
+    const filingName = name.trim() || importName(loaded?.title, file.name);
+    const report = createImportedDocument(batch, { documentType, name: filingName }, (worksheet) => onOpenDocument(worksheet, languageMode), (w) =>
+      worksheetStore.save(w),
+    );
     if (!report.ok) {
-      notices.notify({ id: 'paste-result', tone: 'error', body: m.insertRefused });
+      notices.notify({ id: 'import-result', tone: 'error', body: m.saveFailed });
       return;
     }
-    const committed = report.committed;
-    const live = () => useWorksheetStore.getState().worksheet === committed;
-    store.select(report.questionIds[0]);
     notify({
       tone: 'success',
-      body: m.inserted(report.questionIds.length) + (noAnswer > 0 ? m.noAnswerAfter(noAnswer) : ''),
-      actions: [{ label: m.undo, run: () => live() && useWorksheetStore.getState().undo(), live }],
+      body: m.savedAs(kindText(documentType, lang).title, filingName, report.questionIds.length) + (noAnswer > 0 ? m.noAnswerAfter(noAnswer) : ''),
       autoHide: true,
     });
     onClose();
   };
 
-  const addBank = () => {
+  const saveToBank = () => {
     if (!batch || builds.length === 0 || busy) return;
     const questions = batch.builds.map(materialize).filter((q): q is Question => q !== undefined);
-    const newName = nextBankName(banks.map((b) => b.name));
-    const to = bankTarget === NEW_BANK ? { name: newName } : bankTarget;
-    const run = exclusive ?? (<T,>(work: () => Promise<T>) => work());
+    const to = bankTarget === NEW_BANK ? { name: nextBankName(banks.map((b) => b.name)) } : bankTarget;
     setBusy(true);
-    run(() => addToBank(questions, to, { openDocId: target === 'paper' ? openDocId : '' }))
+    addToBank(questions, to, { openDocId: '' })
       .then(({ bank, copied, already }) => {
-        onBankChanged?.();
-        const name = worksheetTitle(bank);
+        const bankName = worksheetTitle(bank);
+        const skipped = new Set(already.map((q) => q.id));
         const body =
           copied === 0
-            ? m.bankHadAll(name)
-            : m.addedToBank(copied, name) + (already.length > 0 ? m.skippedDuplicates(already.length) : '') + (batch.lead ? m.stimulusNotInBank : '');
+            ? m.bankHadAll(bankName)
+            : m.addedToBank(copied, bankName) + (already.length > 0 ? m.skippedDuplicates(already.length) : '') + (batch.lead ? m.stimulusNotInBank : '');
         notify({ tone: copied === 0 ? 'info' : 'success', body });
         onClose();
+        if (copied > 0) onAddedToBank(bank.id, questions.filter((q) => !skipped.has(q.id)).map((q) => q.id));
       })
       .catch(() => {
         setBusy(false);
-        notices.notify({ id: 'paste-result', tone: 'error', body: m.bankFailed });
+        notices.notify({ id: 'import-result', tone: 'error', body: m.bankFailed });
       });
   };
 
-  const pasteAgain = () => {
-    setRead(undefined);
-    setPins([]);
-    setDraft('');
-  };
+  const save = () => (chosen === 'bank' ? saveToBank() : saveDocument(chosen));
 
   // ---- render ----
 
-  const reason =
-    builds.length === 0 ? m.nothingToImport : target === 'paper' && readOnly ? m.readOnly : batch && batch.skipped.length > 0 ? m.leftOut(batch.skipped.length) : undefined;
+  const reason = builds.length === 0 ? m.nothingToImport : batch && batch.skipped.length > 0 ? m.leftOut(batch.skipped.length) : undefined;
+  const fit = analysis && chosen !== 'bank' ? misfit(chosen, analysis) : undefined;
+  const mc = analysis?.outline.questions.filter((q) => q.kind === 'mc').length ?? 0;
 
-  const footer = !read ? (
+  const footer = !analysis ? (
     <>
-      <Button variant="subtle" onClick={onClose}>
-        {m.cancel}
-      </Button>
-      <Button variant="primary" disabled={!draft.trim()} onClick={() => proceed({ plain: draft })}>
-        {m.read}
+      {problem && (
+        <Button variant="subtle" className="mr-auto" onClick={onChooseAnother}>
+          {m.chooseAnother}
+        </Button>
+      )}
+      <Button variant={problem ? 'primary' : 'subtle'} onClick={onClose}>
+        {problem ? m.close : m.cancel}
       </Button>
     </>
-  ) : (
+  ) : step === 'review' ? (
     <>
-      <Button variant="subtle" onClick={pasteAgain}>
-        {m.pasteAgain}
+      <Button variant="subtle" onClick={onChooseAnother}>
+        {m.chooseAnother}
       </Button>
       <span title={reason} className={`min-w-0 flex-1 truncate text-xs ${builds.length === 0 ? 'text-warn-ink' : 'text-ink-subtle'}`}>
         {reason}
@@ -546,38 +572,54 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
       <Button variant="subtle" onClick={onClose}>
         {m.cancel}
       </Button>
-      {banks.length > 0 && (
-        <select
-          aria-label={m.bankTarget}
-          value={bankTarget}
-          onChange={(event) => setBankTarget(event.target.value)}
-          className="h-[34px] max-w-[200px] cursor-pointer truncate rounded-lg border border-line bg-surface px-2 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft hover:border-line-strong focus:border-accent focus:ring-2 focus:ring-accent/25"
-        >
-          {banks.map((bank) => (
-            <option key={bank.id} value={bank.id}>
-              {bank.name}
-            </option>
-          ))}
-          <option value={NEW_BANK}>{m.newBank(nextBankName(banks.map((b) => b.name)))}</option>
-        </select>
-      )}
-      <Button variant={target === 'bank' ? 'primary' : 'default'} disabled={builds.length === 0 || busy} onClick={addBank}>
-        {busy ? m.busy : m.addToBank}
+      <Button variant="primary" disabled={builds.length === 0} onClick={() => setStep('saveAs')}>
+        {m.saveAs}
       </Button>
-      {target === 'paper' && (
-        <Button variant="primary" disabled={!canInsert} onClick={insert}>
-          {m.insert}
-        </Button>
-      )}
+    </>
+  ) : (
+    <>
+      <Button variant="subtle" onClick={() => setStep('review')}>
+        ← {m.backToReview}
+      </Button>
+      <span className="flex-1" />
+      <Button variant="subtle" onClick={onClose}>
+        {m.cancel}
+      </Button>
+      <Button variant="primary" disabled={builds.length === 0 || busy || (chosen !== 'bank' && !name.trim())} onClick={save}>
+        {busy ? m.busy : chosen === 'bank' ? m.addToBank : m.saveAndOpen}
+      </Button>
     </>
   );
 
   const menuRow = menu && analysis ? analysis.roles[menu.line] : undefined;
+  const description = loaded?.pages ? `${file.name} · ${m.pages(loaded.pages)}` : file.name;
 
   return (
-    <Dialog title={m.title} size="large" scrollBody={false} onClose={onClose} footer={footer} noticeScope={notices.scope}>
-      {!read || !analysis ? (
-        <PasteStep text={m} draft={draft} onDraft={setDraft} onPaste={proceed} />
+    <Dialog title={m.title} description={description} size="large" scrollBody={false} onClose={onClose} footer={footer} noticeScope={notices.scope}>
+      {!analysis ? (
+        problem ? (
+          <ProblemStep text={m} problem={problem.problem} pages={problem.pages ?? 0} />
+        ) : (
+          <ReadingStep text={m} name={file.name} />
+        )
+      ) : step === 'saveAs' ? (
+        <SaveAsStep
+          text={m}
+          destination={chosen}
+          suggested={suggested}
+          onDestination={setDestination}
+          name={name}
+          onName={setName}
+          banks={banks}
+          bankTarget={bankTarget}
+          newBankName={nextBankName(banks.map((b) => b.name))}
+          onBankTarget={setBankTarget}
+          questions={builds.length}
+          mc={mc}
+          language={languageMode}
+          misfit={fit}
+          onSubmit={save}
+        />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col" {...dragHandlers}>
           <input
@@ -684,35 +726,32 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
   );
 }
 
-function PasteStep({
-  text: m,
-  draft,
-  onDraft,
-  onPaste,
-}: {
-  text: Text;
-  draft: string;
-  onDraft: (value: string) => void;
-  onPaste: (input: { plain?: string; html?: string }) => void;
-}) {
+/** The file is being read: big PDFs take seconds, and pdf.js loads on first use. */
+function ReadingStep({ text: m, name }: { text: Text; name: string }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-4">
-      <p className="max-w-[60ch] text-[13px] leading-relaxed text-ink-muted">{m.pasteDescription}</p>
-      <label className="flex min-h-0 flex-1 flex-col gap-1.5">
-        <span className="sr-only">{m.pasteLabel}</span>
-        <textarea
-          autoFocus
-          value={draft}
-          placeholder={m.pastePlaceholder}
-          onChange={(event) => onDraft(event.target.value)}
-          onPaste={(event) => {
-            // Both flavours go to the engine; the HTML is read as text, never put in the page.
-            event.preventDefault();
-            onPaste(pasteInput(event.clipboardData));
-          }}
-          className="scroll-slim min-h-[240px] flex-1 resize-none rounded-xl border border-dashed border-line-strong bg-surface-sunken px-4 py-3 text-[13px] leading-relaxed text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-solid focus:border-accent focus:bg-surface focus:ring-2 focus:ring-accent/25"
-        />
-      </label>
+    <div role="status" className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <span aria-hidden className="h-6 w-6 rounded-full border-2 border-line border-t-accent motion-safe:animate-spin" />
+      <p className="max-w-[60ch] break-all text-[14px] font-medium text-ink">{m.reading(name)}</p>
+      <p className="text-[12px] text-ink-muted">{m.readingHint}</p>
+    </div>
+  );
+}
+
+const PROBLEM_TEXT: Record<Exclude<FileProblem, 'scan'>, 'problemLegacyDoc' | 'problemEncrypted' | 'problemNotPaper' | 'problemUnreadable'> = {
+  legacyDoc: 'problemLegacyDoc',
+  encrypted: 'problemEncrypted',
+  notPaper: 'problemNotPaper',
+  unreadable: 'problemUnreadable',
+};
+
+/** Why the file cannot be imported, in a teacher's words; the footer has the ways back. */
+function ProblemStep({ text: m, problem, pages }: { text: Text; problem: FileProblem; pages: number }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16">
+      <div role="alert" className="max-w-[520px] rounded-xl border border-line bg-surface-sunken px-6 py-5">
+        <p className="text-[15px] font-semibold text-ink">{m.problemTitle}</p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">{problem === 'scan' ? m.problemScan(pages) : m[PROBLEM_TEXT[problem]]}</p>
+      </div>
     </div>
   );
 }

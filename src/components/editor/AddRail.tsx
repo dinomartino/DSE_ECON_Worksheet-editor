@@ -33,7 +33,6 @@ import {
   McqIcon,
   PageBreakIcon,
   PartHeaderIcon,
-  PasteIcon,
   PlusIcon,
   QuestionCountIcon,
   SectionIcon,
@@ -44,8 +43,6 @@ import {
 } from '@/components/ui/icons';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { ADD_RAIL_MESSAGES } from './AddRail.messages';
-import { PASTE_IMPORT_MESSAGES } from '@/components/import/messages';
-import { usePasteImport } from '@/components/import/pasteImportStore';
 
 /**
  * The add rail: a permanent vertical strip of icon targets (Canva's shape), each
@@ -68,7 +65,6 @@ interface Entry {
 
 export function AddRail() {
   const m = useMessages(ADD_RAIL_MESSAGES);
-  const paste = useMessages(PASTE_IMPORT_MESSAGES);
   const lang = useUiLanguage();
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const insertAnchorId = useWorksheetStore((s) => s.insertAnchorId);
@@ -184,14 +180,6 @@ export function AddRail() {
     hint: m.fromBankHint,
     icon: <ListIcon size={18} />,
     run: () => useBankSession.getState().openBank(),
-  });
-  // Questions from a Word or PDF paste, inserted at the same anchor (`PasteImportDialog`).
-  questionEntries.push({
-    id: 'paste',
-    label: paste.pasteQuestions,
-    hint: paste.pasteQuestionsHint,
-    icon: <PasteIcon size={18} />,
-    run: () => usePasteImport.getState().show(),
   });
 
   const layoutEntries: Entry[] = [

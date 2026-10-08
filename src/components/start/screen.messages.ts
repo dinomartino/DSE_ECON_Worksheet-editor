@@ -45,6 +45,7 @@ export const START_SCREEN_MESSAGES = defineMessages({
   couldNotOpenExportsFolder: { en: 'Could not open the exports folder.', zh: '無法開啟匯出資料夾。' },
   couldNotShowFile: { en: 'Could not show that file.', zh: '無法顯示該檔案。' },
   openFilterName: { en: 'Worksheet or backup', zh: '工作紙或備份' },
+  paperFilterName: { en: 'Word or PDF', zh: 'Word 或 PDF' },
   // The ⋯ menu beside the document count.
   backingUp: { en: 'Backing up…', zh: '備份中…' },
   backUpAll: { en: 'Back up all…', zh: '全部備份…' },
@@ -111,12 +112,12 @@ export const START_SCREEN_MESSAGES = defineMessages({
   emptyTrash: { en: 'Empty Trash', zh: '清空垃圾桶' },
   // Dropping files on the screen.
   dropHint: {
-    en: 'Drop a .json to open it, or a backup .zip to restore it',
-    zh: '放開 .json 即可開啟，放開備份 .zip 即可還原',
+    en: 'Drop a .json to open it, a backup .zip to restore it, or one Word or PDF file to import its questions',
+    zh: '放開 .json 即可開啟，放開備份 .zip 即可還原，放開一個 Word 或 PDF 檔案即可匯入題目',
   },
   dropRejected: {
-    en: 'Only .json worksheets or a backup .zip can be dropped',
-    zh: '只能放入 .json 工作紙或備份 .zip',
+    en: 'Only .json worksheets, a backup .zip, or one Word or PDF file can be dropped',
+    zh: '只能放入 .json 工作紙、備份 .zip，或一個 Word 或 PDF 檔案',
   },
   importNothing: { en: 'Nothing to import.', zh: '沒有可匯入的內容。' },
   importImported: {
@@ -228,7 +229,7 @@ export const WELCOME_MESSAGES = defineMessages({
   openFile: { en: 'Open a file…', zh: '開啟檔案…' },
   restoring: { en: 'Restoring…', zh: '還原中…' },
   restoreBackup: { en: 'Restore a backup…', zh: '還原備份…' },
-  orDrop: { en: 'Or drop a .json or .zip anywhere here.', zh: '或將 .json 或 .zip 放到這裏。' },
+  orDrop: { en: 'Or drop a .json, a .zip, or a Word or PDF file anywhere here.', zh: '或將 .json、.zip，或 Word 或 PDF 檔案放到這裏。' },
   /** Desktop, no folder chosen: the Settings setup step's other-computer tip, from this side. */
   otherComputer: {
     en: 'Using Econ Studio on another computer? Choose the same folder here too.',

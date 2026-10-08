@@ -12,7 +12,7 @@ import { NodeView } from '@/components/preview/Preview';
 import { CloseIcon, ImageIcon, WarningIcon } from '@/components/ui/icons';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
-import { PASTE_IMPORT_MESSAGES } from './messages';
+import { IMPORT_MESSAGES } from './messages';
 import { optionIndexAt, optionPlace } from './pasteSession';
 import type { PreviewItem } from './previewDoc';
 
@@ -83,7 +83,7 @@ export function ReviewPreview({
   /** Last in the scroller: the dialog's notice spacer. */
   end?: React.ReactNode;
 }) {
-  const m = useMessages(PASTE_IMPORT_MESSAGES);
+  const m = useMessages(IMPORT_MESSAGES);
   const column = Math.round(contentWidth(pageSetupOf(base)) / 15);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -131,7 +131,7 @@ export function ReviewPreview({
   );
 }
 
-type Text = Messages<typeof PASTE_IMPORT_MESSAGES>;
+type Text = Messages<typeof IMPORT_MESSAGES>;
 
 const Card = memo(
   function Card({
