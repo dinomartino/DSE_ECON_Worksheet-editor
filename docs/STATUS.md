@@ -5,14 +5,13 @@ off the bottom.** It is the first thing a fresh session reads — then
 [`CODEMAP.md`](./CODEMAP.md). The long per-feature notes before 2026-10-03 are in
 `git show 672ea2b:docs/STATUS.md`; what shipped is in `CHANGELOG.md`.
 
-## Next session starts here (user, 2026-10-08)
+## Next session starts here
 
-- **Build: offer the folder on a new computer.** On a fresh install nothing syncs until the teacher
-  finds Settings → 儲存位置 on that computer too; nothing tells them. At desktop launch with no folder
-  set, look for an existing `Econ Studio` (marker) in the detected cloud folders (`src-tauri/src/cloud.rs`);
-  if found, one dismissible notice "Found your Econ Studio folder in OneDrive. Use it on this computer
-  too?" whose button opens the picker at it (`library_choose` with `start`; never auto-connect, never a
-  page-supplied path); dismissed = never again. Mirror the setup step's tip in the empty start screen.
+- **Found-folder offer merged (2026-10-08, unreleased):** a desktop launch with no folder set looks for
+  an existing `Econ Studio` library in the cloud folders (`library_found`, `src/sync/foundFolder.ts`)
+  and offers it once; the picker opens at the library's parent. The empty start screen points to
+  Settings → Storage location. Only checked with a faked shell: run `desktop:dev` on a machine with a
+  synced library (picker location, the "done" flag surviving a restart).
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
@@ -61,13 +60,14 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Windows builds unsigned. The updater key lives only at `~/.tauri/econ-worksheet.key`. Film copy
   says Econ Studio but is not re-rendered; `film:doctor` timed out once (unchecked).
 
-## Last verified (2026-10-08, `develop` after the pre-release fixes)
+## Last verified (2026-10-08, `develop` after found-folder merge)
 
-- `npm test` 5067, `cargo test` 44, samples 6 passed; build, typecheck, cover/lq-verify (en + zh) green;
+- `npm test` 5079, `cargo test` 51; found-folder branch: build, samples 6, lint 40. Before it: samples 6 passed; build, typecheck, cover/lq-verify (en + zh) green;
   lint 40; CI green incl. `rust (windows-latest)`.
 
 ## Log
 
+- **2026-10-08** — Found-folder offer on a new computer (`feature/found-folder`, 1 Opus agent), merged.
 - **2026-10-08** — Pre-release check: 4 Opus reviewers, 6 fix branches merged (`fix/sync-safety`,
   `fix/library-rust`, `fix/notices-ui`, `fix/diagram-gaps`, `fix/answer-gaps`, `fix/release-tooling`).
   Cloud folder detection in setup. Demo: `demo-media/storage-location/` (zh, subtitled, simulated shell).
