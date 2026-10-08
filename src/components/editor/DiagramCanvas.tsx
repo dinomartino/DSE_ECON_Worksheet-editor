@@ -754,7 +754,7 @@ export function DiagramCanvas({
     const at = toUnit(event);
 
     if (tool === 'select') {
-      const handle = hitTest(diagram, at, radii.grab, labelAnchors, spanClear);
+      const handle = hitTest(diagram, at, radii.grab, labelAnchors, spanClear, aspect);
 
       if (!handle) {
         // Empty space starts a marquee. Holding Shift keeps what is already selected,
@@ -812,7 +812,7 @@ export function DiagramCanvas({
 
     if (tool === 'span') {
       // Two clicks, each end snapping to a point or crossing it can then follow.
-      const end = snapping ? snapPlace(diagram, at, radii.snap) : { place: at, at };
+      const end = snapping ? snapPlace(diagram, at, radii.snap, aspect) : { place: at, at };
       if (!spanDraft) {
         setSpanDraft({ from: end.place, at: end.at });
         return;
@@ -842,7 +842,7 @@ export function DiagramCanvas({
         } else {
           // Placed on a crossing, it attaches there and follows the curves.
           const placed = { ...diagram, points: [...diagram.points, drawn.point(id, snapped)] };
-          setDiagram(snapping ? attachPointOnDrop(placed, id, radii.snap) : placed);
+          setDiagram(snapping ? attachPointOnDrop(placed, id, radii.snap, aspect) : placed);
           setSelected([{ kind: 'point', pointId: id }]);
         }
         setSnapCue(null);
@@ -893,10 +893,10 @@ export function DiagramCanvas({
     // grabbable so the cursor can say so. Grab-and-go has no visible arming step, so the
     // cursor is the only thing that tells you a press here will move something.
     if (!gesture) {
-      if (tool === 'select') setHovering(hitTest(diagram, at, radii.grab, labelAnchors, spanClear));
+      if (tool === 'select') setHovering(hitTest(diagram, at, radii.grab, labelAnchors, spanClear, aspect));
       // Placing a point or a span end: show what a click here would attach to.
       if (tool === 'point' || tool === 'span') {
-        const target = snapping ? snapPlace(diagram, at, radii.snap) : null;
+        const target = snapping ? snapPlace(diagram, at, radii.snap, aspect) : null;
         setSnapCue(target && target.at !== target.place ? target.at : null);
         if (tool === 'span') setPointerAt(at);
       }
@@ -965,7 +965,7 @@ export function DiagramCanvas({
     }
 
     gesture.moved = true;
-    const next = dragHandles(gesture.base, gesture.handles, gesture.from, at);
+    const next = dragHandles(gesture.base, gesture.handles, gesture.from, at, undefined, aspect);
     if (gesture.kind === 'move') gesture.last = { diagram: next, at };
     setDiagram(next);
   };
@@ -983,7 +983,7 @@ export function DiagramCanvas({
 
     if (gesture.kind === 'marquee') {
       if (!gesture.moved) return; // A click in empty space: the deselect already happened.
-      const caught = selectWithin(gesture.base, { from: gesture.from, to: marqueeEnd.current }, labelAnchors, spanClear);
+      const caught = selectWithin(gesture.base, { from: gesture.from, to: marqueeEnd.current }, labelAnchors, spanClear, aspect);
       setSelected((current) => {
         if (!gesture.additive) return caught;
         const merged = [...current];
@@ -1007,9 +1007,9 @@ export function DiagramCanvas({
       const single = gesture.handles.length === 1 ? gesture.handles[0] : null;
       if (single && gesture.last && snapping) {
         const { diagram: last, at } = gesture.last;
-        if (single.kind === 'point') setDiagram(attachPointOnDrop(last, single.pointId, radii.snap));
+        if (single.kind === 'point') setDiagram(attachPointOnDrop(last, single.pointId, radii.snap, aspect));
         if (single.kind === 'spanFrom' || single.kind === 'spanTo') {
-          setDiagram(attachSpanEndOnDrop(last, single.spanId, single.kind === 'spanFrom' ? 'from' : 'to', at, radii.snap));
+          setDiagram(attachSpanEndOnDrop(last, single.spanId, single.kind === 'spanFrom' ? 'from' : 'to', at, radii.snap, aspect));
         }
       }
       // The drag is over. A transient grab releases its selection so the moved element is
@@ -1045,7 +1045,7 @@ export function DiagramCanvas({
    */
   const onDoubleClick = (event: React.MouseEvent) => {
     const at = toUnit(event);
-    const handle = hitTest(diagram, at, radii.grab, labelAnchors, spanClear);
+    const handle = hitTest(diagram, at, radii.grab, labelAnchors, spanClear, aspect);
     if (!handle) return;
     if (isTextHandle(handle)) {
       // The selection follows the edit, so the sidebar is already showing the same thing
@@ -1059,8 +1059,8 @@ export function DiagramCanvas({
 
   const doCopy = useCallback(() => {
     if (selected.length === 0) return;
-    setClip(copyHandles(diagram, selected));
-  }, [diagram, selected]);
+    setClip(copyHandles(diagram, selected, aspect));
+  }, [diagram, selected, aspect]);
 
   const doPaste = useCallback(() => {
     if (isClipEmpty(clip)) return;
@@ -1074,16 +1074,16 @@ export function DiagramCanvas({
 
   const doDelete = useCallback(() => {
     if (selected.length === 0) return;
-    setDiagram(deleteHandles(diagram, selected));
+    setDiagram(deleteHandles(diagram, selected, aspect));
     setSelected([]);
-  }, [diagram, selected, setDiagram]);
+  }, [diagram, selected, setDiagram, aspect]);
 
   const doDuplicate = useCallback(() => {
     if (selected.length === 0) return;
-    const { diagram: next, handles } = pasteInto(diagram, copyHandles(diagram, selected), newId);
+    const { diagram: next, handles } = pasteInto(diagram, copyHandles(diagram, selected, aspect), newId);
     setDiagram(next);
     setSelected(handles);
-  }, [diagram, selected, setDiagram]);
+  }, [diagram, selected, setDiagram, aspect]);
 
   // One list for both forms: the row of buttons (2xl) and the overflow menu below it.
   const clipboardItems: MenuItem[] = [
@@ -1158,14 +1158,14 @@ export function DiagramCanvas({
         // Duplicate in place: copy and paste in one stroke, without disturbing the clip.
         event.preventDefault();
         if (selected.length === 0) return;
-        const { diagram: next, handles } = pasteInto(diagram, copyHandles(diagram, selected), newId);
+        const { diagram: next, handles } = pasteInto(diagram, copyHandles(diagram, selected, aspect), newId);
         setDiagram(next);
         setSelected(handles);
         return;
       }
       if (accel && event.key.toLowerCase() === 'a') {
         event.preventDefault();
-        setSelected(selectWithin(diagram, { from: { x: 0, y: 0 }, to: { x: 1, y: 1 } }, labelAnchors, spanClear));
+        setSelected(selectWithin(diagram, { from: { x: 0, y: 0 }, to: { x: 1, y: 1 } }, labelAnchors, spanClear, aspect));
         return;
       }
       if (event.key === 'Delete' || event.key === 'Backspace') {
@@ -1189,16 +1189,18 @@ export function DiagramCanvas({
         // precision.
         const size = event.shiftKey ? NUDGE_COARSE : NUDGE_FINE;
         setDiagram(
-          nudgeHandles(seedAreaLabels(diagram, selected, projection, language), selected, {
-            x: step.dx * size,
-            y: step.dy * size,
-          }),
+          nudgeHandles(
+            seedAreaLabels(diagram, selected, projection, language),
+            selected,
+            { x: step.dx * size, y: step.dy * size },
+            aspect,
+          ),
         );
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, diagram, labelAnchors, setDiagram, onClose, embedded, doCopy, doPaste, doDelete, cropping, shadeOpen, spanDraft, projection, language, spanClear, keysSuspended, previewing]);
+  }, [selected, diagram, labelAnchors, setDiagram, onClose, embedded, doCopy, doPaste, doDelete, cropping, shadeOpen, spanDraft, projection, aspect, language, spanClear, keysSuspended, previewing]);
 
   // Preview's keys, in a listener of their own: registered once per Preview, so no
   // re-render can swap it out mid-keypress. Escape goes back to Edit, as the page's
@@ -1618,6 +1620,7 @@ export function DiagramCanvas({
               <AnswerToggle diagram={diagram} selected={selected} onChange={setDiagram} />
               <SelectionInspector
                 diagram={diagram}
+                aspect={aspect}
                 selected={selected}
                 newId={newId}
                 onChange={setDiagram}
@@ -1987,7 +1990,7 @@ function HandleOverlay({
       {(diagram.areas ?? [])
         .filter((area) => isOn({ kind: 'area', areaId: area.id }))
         .map((area) => {
-          const polygon = areaPolygon(diagram, area);
+          const polygon = areaPolygon(diagram, area, plotAspectOf(projection));
           if (!polygon) return null;
           return (
             <polygon
@@ -2038,7 +2041,7 @@ function HandleOverlay({
         ),
       )}
       {(diagram.spans ?? []).flatMap((span) => {
-        const geometry = spanGeometry(diagram, span, spanClear);
+        const geometry = spanGeometry(diagram, span, spanClear, plotAspectOf(projection));
         if (!geometry) return [];
         return [
           dot(`${span.id}-from`, geometry.ends[0], { kind: 'spanFrom', spanId: span.id }, 'round'),
@@ -2398,6 +2401,7 @@ function ToolbarButton({
  */
 function SelectionInspector({
   diagram,
+  aspect,
   selected,
   newId,
   onChange,
@@ -2406,6 +2410,8 @@ function SelectionInspector({
   onEdit,
 }: {
   diagram: Diagram;
+  /** The plot's height ÷ width (`plotAspectOf`), so a frozen area keeps its drawn shape. */
+  aspect: number;
   selected: DiagramHandle[];
   newId: () => string;
   onChange: (diagram: Diagram) => void;
@@ -2462,7 +2468,7 @@ function SelectionInspector({
 
   const area = (diagram.areas ?? []).find((a) => a.id === id);
   if (area) {
-    return <AreaInspector diagram={diagram} area={area} onChange={onChange} onDelete={onDelete} />;
+    return <AreaInspector diagram={diagram} aspect={aspect} area={area} onChange={onChange} onDelete={onDelete} />;
   }
 
   const span = (diagram.spans ?? []).find((s) => s.id === id);

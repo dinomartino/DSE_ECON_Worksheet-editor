@@ -29,10 +29,11 @@ export function spanLayout(
   /** An axis span's rest outside its tick labels: `axisSpanClearance` for this projection. */
   clearance?: SpanClearance,
 ): SpanLayout | null {
-  const geometry = spanGeometry(diagram, span, clearance);
-  if (!geometry) return null;
   const spanX = proj.plot.right - proj.plot.left;
   const spanY = proj.plot.bottom - proj.plot.top;
+  // Ends on a spline are read at the plot's real shape (`plotAspectOf`), as it is drawn.
+  const geometry = spanGeometry(diagram, span, clearance, spanX > 0 ? spanY / spanX : undefined);
+  if (!geometry) return null;
   const a = { x: proj.px(geometry.ends[0].x), y: proj.py(geometry.ends[0].y) };
   const b = { x: proj.px(geometry.ends[1].x), y: proj.py(geometry.ends[1].y) };
 

@@ -747,11 +747,14 @@ function RevenueBounds({
 /** The selected area's properties: label, fill, and what bounds it. */
 export function AreaInspector({
   diagram,
+  aspect,
   area,
   onChange,
   onDelete,
 }: {
   diagram: Diagram;
+  /** The plot's height ÷ width (`plotAspectOf`): Freeze keeps the shape as drawn. */
+  aspect?: number;
   area: DiagramArea;
   onChange: (diagram: Diagram) => void;
   onDelete: () => void;
@@ -844,7 +847,7 @@ export function AreaInspector({
         {area.revenue ? (
           <>
             <RevenueBounds diagram={diagram} area={area} revenue={area.revenue} patch={patch} />
-            <FreezeButton diagram={diagram} area={area} patch={patch} />
+            <FreezeButton diagram={diagram} aspect={aspect} area={area} patch={patch} />
           </>
         ) : band ? (
           <>
@@ -882,7 +885,7 @@ export function AreaInspector({
               />
             )}
             <p className="text-[11px] text-ink-muted">{m.followNote}</p>
-            <FreezeButton diagram={diagram} area={area} patch={patch} />
+            <FreezeButton diagram={diagram} aspect={aspect} area={area} patch={patch} />
           </>
         ) : (
           <p className="text-[11px] text-ink-muted">{m.freeNote}</p>
@@ -907,10 +910,12 @@ export function AreaInspector({
 
 function FreezeButton({
   diagram,
+  aspect,
   area,
   patch,
 }: {
   diagram: Diagram;
+  aspect?: number;
   area: DiagramArea;
   patch: (next: DiagramArea) => void;
 }) {
@@ -920,7 +925,7 @@ function FreezeButton({
       size="sm"
       variant="subtle"
       onClick={() => {
-        const frozen = freezeArea(diagram, area);
+        const frozen = freezeArea(diagram, area, aspect);
         if (frozen) patch(frozen);
       }}
     >

@@ -1,6 +1,7 @@
 import {
   clampPoint,
   clampUnit,
+  DIAGRAM_PLOT_ASPECT,
   type Diagram,
   type DiagramAnchorRef,
   type DiagramArea,
@@ -280,6 +281,8 @@ export function hitTest(
   labels: LabelAnchor[] = [],
   /** An axis span's measured rest outside its tick labels (renderer-owned, like `labels`). */
   clearance?: SpanClearance,
+  /** The plot's height ÷ width (`plotAspectOf`): splines are read as drawn. */
+  aspect: number = DIAGRAM_PLOT_ASPECT,
 ): DiagramHandle | null {
   let best: { handle: DiagramHandle; d: number } | null = null;
   const consider = (handle: DiagramHandle, d: number) => {
@@ -316,7 +319,7 @@ export function hitTest(
     consider({ kind: 'label', labelId: label.id }, dist(at, label.at));
   }
   for (const span of diagram.spans ?? []) {
-    const geometry = spanGeometry(diagram, span, clearance);
+    const geometry = spanGeometry(diagram, span, clearance, aspect);
     if (!geometry) continue;
     consider({ kind: 'spanFrom', spanId: span.id }, dist(at, geometry.ends[0]));
     consider({ kind: 'spanTo', spanId: span.id }, dist(at, geometry.ends[1]));
@@ -332,7 +335,7 @@ export function hitTest(
   // --- Pass 2: bodies. Topmost (last drawn) wins, so iterate in reverse. ---
   const spans = diagram.spans ?? [];
   for (let i = spans.length - 1; i >= 0; i -= 1) {
-    const geometry = spanGeometry(diagram, spans[i], clearance);
+    const geometry = spanGeometry(diagram, spans[i], clearance, aspect);
     if (geometry && distanceToSegment(at, geometry.ends[0], geometry.ends[1]) <= tolerance) {
       return { kind: 'span', spanId: spans[i].id };
     }
@@ -354,7 +357,7 @@ export function hitTest(
   // Areas draw under everything, so they are the last body to claim a press.
   const areas = diagram.areas ?? [];
   for (let i = areas.length - 1; i >= 0; i -= 1) {
-    const polygon = areaPolygon(diagram, areas[i]);
+    const polygon = areaPolygon(diagram, areas[i], aspect);
     if (polygon && insidePolygon(at, polygon)) return { kind: 'area', areaId: areas[i].id };
   }
   return null;
@@ -368,9 +371,9 @@ const shift = (points: DiagramPoint[], dx: number, dy: number): DiagramPoint[] =
   points.map((p) => clampPoint({ x: p.x + dx, y: p.y + dy }));
 
 /** The point on `curve` as drawn (`curvePath`) nearest `p`, where its anchors resolve too. */
-function nearestOnPolyline(curve: DiagramCurve, p: DiagramPoint): DiagramPoint | null {
+function nearestOnPolyline(curve: DiagramCurve, p: DiagramPoint, aspect: number): DiagramPoint | null {
   let best: { at: DiagramPoint; d: number } | null = null;
-  const path = curvePath(curve);
+  const path = curvePath(curve, aspect);
   for (let i = 0; i < path.length - 1; i += 1) {
     const a = path[i];
     const b = path[i + 1];
@@ -389,13 +392,18 @@ function nearestOnPolyline(curve: DiagramCurve, p: DiagramPoint): DiagramPoint |
  * A point pinned on a curve at a fixed x or y (A on the PPF) slides along it: the drag
  * moves the pin, not the point off the curve. Null for any other anchor, which detaches.
  */
-function slideAlongCurve(diagram: Diagram, mark: DiagramPointMark, target: DiagramPoint): DiagramPointMark | null {
+function slideAlongCurve(
+  diagram: Diagram,
+  mark: DiagramPointMark,
+  target: DiagramPoint,
+  aspect: number,
+): DiagramPointMark | null {
   const ref = mark.anchor;
   if (!ref || !('on' in ref)) return null;
   const byX = 'x' in ref;
   if (byX ? !isFixedPlace(ref.x) : typeof ref.y !== 'number') return null;
   const curve = diagram.curves.find((c) => c.id === ref.on);
-  const at = curve && nearestOnPolyline(curve, target);
+  const at = curve && nearestOnPolyline(curve, target, aspect);
   if (!at) return null;
   const anchor: DiagramAnchorRef = byX
     ? { on: ref.on, x: { x: at.x, y: (ref.x as DiagramPoint).y } }
@@ -410,13 +418,14 @@ function slideAlongCurve(diagram: Diagram, mark: DiagramPointMark, target: Diagr
  * delta between them is what a *body* drag uses, while a handle drag simply moves the
  * handle to `to`. Both are computed against the **original** diagram passed in, so the
  * caller can re-apply the same gesture from the pre-drag geometry on every pointer move
- * and get no accumulated drift.
+ * and get no accumulated drift. `aspect` is the plot's height ÷ width (`plotAspectOf`).
  */
 export function applyDrag(
   diagram: Diagram,
   handle: DiagramHandle,
   from: DiagramPoint,
   to: DiagramPoint,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
 ): Diagram {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
@@ -459,7 +468,7 @@ export function applyDrag(
       return {
         ...diagram,
         points: mapById(diagram.points, handle.pointId, (mark) => {
-          const slid = slideAlongCurve(diagram, mark, target);
+          const slid = slideAlongCurve(diagram, mark, target, aspect);
           if (slid) return slid;
           const rest = { ...mark, at: target };
           delete rest.anchor;
@@ -589,7 +598,7 @@ export function applyDrag(
         ...diagram,
         spans: mapById(diagram.spans ?? [], handle.spanId, (span) => ({
           ...span,
-          offset: draggedSpanOffset(diagram, span, dx, dy),
+          offset: draggedSpanOffset(diagram, span, dx, dy, aspect),
         })),
       };
     case 'spanFrom':
@@ -600,7 +609,7 @@ export function applyDrag(
       return {
         ...diagram,
         spans: mapById(diagram.spans ?? [], handle.spanId, (span) => {
-          const normal = span.along ? null : spanGeometry(diagram, span)?.normal;
+          const normal = span.along ? null : spanGeometry(diagram, span, undefined, aspect)?.normal;
           const offset = span.offset ?? 0;
           const at = normal ? clampPoint({ x: target.x - normal.x * offset, y: target.y - normal.y * offset }) : target;
           return { ...span, [end]: at };
@@ -782,8 +791,8 @@ export function setHandleText(diagram: Diagram, handle: DiagramHandle, text: BiT
  * Remove whatever a handle addresses. A vertex removal falls back to the whole curve.
  * An area, point, curve or span that leaned on removed geometry is frozen where it was.
  */
-export function deleteHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
-  return detachAreas(diagram, detachRelations(diagram, removeHandle(diagram, handle)));
+export function deleteHandle(diagram: Diagram, handle: DiagramHandle, aspect: number = DIAGRAM_PLOT_ASPECT): Diagram {
+  return detachAreas(diagram, detachRelations(diagram, removeHandle(diagram, handle), aspect), aspect);
 }
 
 function removeHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
@@ -1096,6 +1105,7 @@ export function selectWithin(
   /** Anchored text, so a box drawn around a label catches the label. */
   labels: LabelAnchor[] = [],
   clearance?: SpanClearance,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
 ): DiagramHandle[] {
   const r = normalizeRect(rect);
   const handles: DiagramHandle[] = [];
@@ -1115,11 +1125,11 @@ export function selectWithin(
     if (inside(arrow.from, r) && inside(arrow.to, r)) handles.push({ kind: 'arrow', arrowId: arrow.id });
   }
   for (const area of diagram.areas ?? []) {
-    const polygon = areaPolygon(diagram, area);
+    const polygon = areaPolygon(diagram, area, aspect);
     if (polygon && polygon.every((p) => inside(p, r))) handles.push({ kind: 'area', areaId: area.id });
   }
   for (const span of diagram.spans ?? []) {
-    const geometry = spanGeometry(diagram, span, clearance);
+    const geometry = spanGeometry(diagram, span, clearance, aspect);
     if (geometry && geometry.ends.every((p) => inside(p, r))) handles.push({ kind: 'span', spanId: span.id });
   }
   return handles;
@@ -1163,7 +1173,11 @@ export function isClipEmpty(clip: DiagramClip | null): boolean {
  * curve around it. Duplicate handles for one element collapse, so selecting both ends of
  * an arrow and copying yields one arrow rather than two.
  */
-export function copyHandles(diagram: Diagram, handles: DiagramHandle[]): DiagramClip {
+export function copyHandles(
+  diagram: Diagram,
+  handles: DiagramHandle[],
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): DiagramClip {
   const curveIds = new Set<string>();
   const pointIds = new Set<string>();
   const labelIds = new Set<string>();
@@ -1223,7 +1237,7 @@ export function copyHandles(diagram: Diagram, handles: DiagramHandle[]): Diagram
   const copied = new Set([...curveIds, ...pointIds]);
   if (spanIds.size > 0) {
     const fix = (place: DiagramPlace): DiagramPlace | null =>
-      placeReferences(place).every((id) => copied.has(id)) ? place : resolvePlace(diagram, place);
+      placeReferences(place).every((id) => copied.has(id)) ? place : resolvePlace(diagram, place, aspect);
     clip.spans = (diagram.spans ?? []).flatMap((span) => {
       if (!spanIds.has(span.id)) return [];
       const from = fix(span.from);
@@ -1235,7 +1249,7 @@ export function copyHandles(diagram: Diagram, handles: DiagramHandle[]): Diagram
   const areas = (diagram.areas ?? [])
     .filter((area) => areaIds.has(area.id))
     .map((area) =>
-      areaReferences(area).every((id) => copied.has(id)) ? area : freezeArea(diagram, area),
+      areaReferences(area).every((id) => copied.has(id)) ? area : freezeArea(diagram, area, aspect),
     )
     .filter((area): area is DiagramArea => area !== null);
   return { ...clip, areas };
@@ -1356,15 +1370,19 @@ function renameAreaRefs(band: AreaBand, renamed: Map<string, string>): AreaBand 
  * later handle point at the wrong element. Vertex handles are the exception and are
  * applied **last, highest index first**, since those genuinely are positional.
  */
-export function deleteHandles(diagram: Diagram, handles: DiagramHandle[]): Diagram {
+export function deleteHandles(
+  diagram: Diagram,
+  handles: DiagramHandle[],
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): Diagram {
   const vertices = handles.filter((h) => h.kind === 'vertex') as Array<
     Extract<DiagramHandle, { kind: 'vertex' }>
   >;
   const others = handles.filter((h) => h.kind !== 'vertex');
 
-  let next = others.reduce(deleteHandle, diagram);
+  let next = others.reduce((current, handle) => deleteHandle(current, handle, aspect), diagram);
   for (const vertex of [...vertices].sort((a, b) => b.index - a.index)) {
-    next = deleteHandle(next, vertex);
+    next = deleteHandle(next, vertex, aspect);
   }
   return next;
 }
@@ -1376,12 +1394,13 @@ export function dragHandles(
   from: DiagramPoint,
   to: DiagramPoint,
   originOf?: (handle: DiagramHandle) => DiagramPoint | null,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
 ): Diagram {
   const moved = handles.reduce((current, handle) => {
     const origin = originOf?.(handle);
     return origin
-      ? applyDrag(current, handle, origin, { x: origin.x + to.x - from.x, y: origin.y + to.y - from.y })
-      : applyDrag(current, handle, from, to);
+      ? applyDrag(current, handle, origin, { x: origin.x + to.x - from.x, y: origin.y + to.y - from.y }, aspect)
+      : applyDrag(current, handle, from, to, aspect);
   }, diagram);
   // A point or curve moved together with everything its relation names keeps it.
   const bodies = new Set(
@@ -1424,7 +1443,7 @@ export function dragHandles(
  * Where a handle that `applyDrag` moves *to* the pointer sits now, so a delta can be
  * applied to it; null for handles that take the delta itself.
  */
-function handleOrigin(diagram: Diagram, handle: DiagramHandle): DiagramPoint | null {
+function handleOrigin(diagram: Diagram, handle: DiagramHandle, aspect: number): DiagramPoint | null {
   switch (handle.kind) {
     case 'vertex':
       return diagram.curves.find((c) => c.id === handle.curveId)?.points[handle.index] ?? null;
@@ -1443,8 +1462,8 @@ function handleOrigin(diagram: Diagram, handle: DiagramHandle): DiagramPoint | n
     case 'spanTo': {
       const span = diagram.spans?.find((x) => x.id === handle.spanId);
       if (!span) return null;
-      const at = resolvePlace(diagram, handle.kind === 'spanFrom' ? span.from : span.to);
-      const normal = span.along ? null : spanGeometry(diagram, span)?.normal;
+      const at = resolvePlace(diagram, handle.kind === 'spanFrom' ? span.from : span.to, aspect);
+      const normal = span.along ? null : spanGeometry(diagram, span, undefined, aspect)?.normal;
       const offset = span.offset ?? 0;
       return at && normal ? { x: at.x + normal.x * offset, y: at.y + normal.y * offset } : at;
     }
@@ -1454,8 +1473,13 @@ function handleOrigin(diagram: Diagram, handle: DiagramHandle): DiagramPoint | n
 }
 
 /** Arrow-key nudge: every handle moves by `delta`, the ones a drag places included. */
-export function nudgeHandles(diagram: Diagram, handles: DiagramHandle[], delta: DiagramPoint): Diagram {
-  return dragHandles(diagram, handles, { x: 0, y: 0 }, delta, (handle) => handleOrigin(diagram, handle));
+export function nudgeHandles(
+  diagram: Diagram,
+  handles: DiagramHandle[],
+  delta: DiagramPoint,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): Diagram {
+  return dragHandles(diagram, handles, { x: 0, y: 0 }, delta, (handle) => handleOrigin(diagram, handle, aspect), aspect);
 }
 
 /*
@@ -1470,6 +1494,7 @@ export function nearestCrossing(
   diagram: Diagram,
   at: DiagramPoint,
   tolerance: number,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
 ): { ref: DiagramAnchorRef; at: DiagramPoint } | null {
   let best: { ref: DiagramAnchorRef; at: DiagramPoint; d: number } | null = null;
   for (let i = 0; i < diagram.curves.length; i += 1) {
@@ -1477,7 +1502,7 @@ export function nearestCrossing(
       const a = diagram.curves[i];
       const b = diagram.curves[j];
       for (const [first, second] of [[a, b], [b, a]] as const) {
-        const hit = curveCrossing(first, second);
+        const hit = curveCrossing(first, second, aspect);
         const d = hit ? dist(hit, at) : Infinity;
         if (hit && d <= tolerance && (!best || d < best.d - 1e-12)) {
           best = { ref: { cross: [first.id, second.id] }, at: hit, d };
@@ -1496,13 +1521,14 @@ export function snapPlace(
   diagram: Diagram,
   at: DiagramPoint,
   tolerance: number,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
 ): { place: DiagramPlace; at: DiagramPoint } {
   let best: { place: DiagramPlace; at: DiagramPoint; d: number } | null = null;
   for (const mark of diagram.points) {
     const d = dist(mark.at, at);
     if (d <= tolerance && (!best || d < best.d)) best = { place: { point: mark.id }, at: mark.at, d };
   }
-  const crossing = nearestCrossing(diagram, at, tolerance);
+  const crossing = nearestCrossing(diagram, at, tolerance, aspect);
   if (crossing && (!best || dist(crossing.at, at) < best.d - 1e-9)) {
     return { place: crossing.ref, at: crossing.at };
   }
@@ -1511,10 +1537,15 @@ export function snapPlace(
 }
 
 /** A point released on a crossing attaches to it (`anchor`), exactly at the crossing. */
-export function attachPointOnDrop(diagram: Diagram, pointId: string, tolerance: number): Diagram {
+export function attachPointOnDrop(
+  diagram: Diagram,
+  pointId: string,
+  tolerance: number,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): Diagram {
   const mark = diagram.points.find((p) => p.id === pointId);
   if (!mark) return diagram;
-  const hit = nearestCrossing(diagram, mark.at, tolerance);
+  const hit = nearestCrossing(diagram, mark.at, tolerance, aspect);
   if (!hit) return diagram;
   return {
     ...diagram,
@@ -1529,8 +1560,9 @@ export function attachSpanEndOnDrop(
   end: 'from' | 'to',
   at: DiagramPoint,
   tolerance: number,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
 ): Diagram {
-  const { place } = snapPlace(diagram, at, tolerance);
+  const { place } = snapPlace(diagram, at, tolerance, aspect);
   if (isFixedPlace(place)) return diagram;
   return {
     ...diagram,
