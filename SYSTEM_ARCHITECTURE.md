@@ -2411,6 +2411,8 @@ the chrome between English and Hong Kong Traditional Chinese. Design and wording
 - **Curriculum names are paper-side.** Topic and sub-topic names follow the view language
   (`useViewLanguage()`: the 題庫 screen's view, the sidebar's document mode, else the paper
   language) through `topicNamesFor(language, room)`, both names only where there is room.
+  Question excerpts likewise (`rowExcerpt`: the view's side, else the other). A 中文 entry
+  that glues such a name to Chinese is a `spaced` template (`src/i18n/spacing.ts`).
 - **English is today's text exactly**, so English mode changes nothing and existing tests
   hold. Chinese drops the English half of bilingual chrome.
 - **Catalogues are co-located** (`messages.ts` beside the components; `defineMessages`
