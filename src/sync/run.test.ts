@@ -6,6 +6,7 @@ import { stringifyWorksheet } from "@/storage/document";
 import { documentKey } from "./keys";
 import { folderConnect } from "./folderTestKit";
 import { MemoryCloud } from "./memorySource";
+import { LOCAL_UNREADABLE } from "./run";
 import {
   computer,
   edit,
@@ -273,7 +274,7 @@ describe.each(SOURCES)("%s source", (_source, connect) => {
         [...cloud.files.keys()].some((key) => key.includes("conflict copy")),
       ).toBe(false);
       const copy = (await library(a)).find((row) =>
-        row.includes("(from another computer)"),
+        row.includes("(from another computer / 來自另一部電腦)"),
       );
       expect(copy).toBeDefined();
     });
@@ -453,13 +454,25 @@ describe.each(SOURCES)("%s source", (_source, connect) => {
       expect(await library(a)).toEqual([`live ${doc.id} One`]);
     });
 
-    it("a library wiped here is brought back from the mirror, not deleted there", async () => {
+    it("a library empty here stops the run (a listing that failed): nothing is deleted there", async () => {
       const { cloud, a, b } = pair();
       await a.store.save(paper("Two"));
       await settle(cloud, a, b);
       b.storage.clear();
+      expect(await b.sync()).toMatchObject({ status: "unavailable", reason: LOCAL_UNREADABLE });
+      await settle(cloud, a, b);
+      expect(await titles(a)).toEqual({ live: ["Two"], trash: [] });
+    });
+
+    it("a document lost here is brought back from the mirror, not deleted there", async () => {
+      const { cloud, a, b } = pair();
+      const lost = paper("Two");
+      await a.store.save(paper("One"));
+      await a.store.save(lost);
+      await settle(cloud, a, b);
+      await b.store.remove(lost.id);
       expect((await b.sync()).counts.downloaded).toBe(1);
-      expect(await titles(b)).toEqual({ live: ["Two"], trash: [] });
+      expect(await titles(b)).toEqual({ live: ["One", "Two"], trash: [] });
     });
   });
 

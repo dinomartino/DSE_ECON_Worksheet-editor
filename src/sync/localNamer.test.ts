@@ -14,13 +14,14 @@ describe('localNamer', () => {
     const namer = localNamer(() => 'Home Mac', () => 'en');
     expect(namer.conflictCopy('Mock', AT)).toBe('Mock (Home Mac, 5 Oct 14:32)');
     expect(namer.conflictCopy('Mock', new Date(2026, 0, 9, 8, 5))).toBe('Mock (Home Mac, 9 Jan 08:05)');
-    expect(namer.providerCopy('Mock')).toBe('Mock (from another computer)');
+    expect(namer.providerCopy('Mock')).toBe('Mock (from another computer / 來自另一部電腦)');
   });
 
   it('and in Hong Kong Chinese', () => {
     const namer = localNamer(() => 'Home Mac', () => 'zh-HK');
     expect(namer.conflictCopy('測驗', AT)).toBe('測驗（Home Mac，10月5日 14:32）');
-    expect(namer.providerCopy('測驗')).toBe('測驗（來自另一部電腦）');
+    // One name in both languages, so two computers make the same copy.
+    expect(namer.providerCopy('測驗')).toBe('測驗 (from another computer / 來自另一部電腦)');
   });
 
   it('follows the interface language at the moment a copy is made, the default name too', () => {
