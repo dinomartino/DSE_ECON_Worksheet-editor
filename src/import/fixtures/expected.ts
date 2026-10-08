@@ -108,7 +108,7 @@ export const FIXTURES: ExpectedFixture[] = [
         parts: [
           { text: 'Refer to Source A.', subParts: [{ text: 'Explain how the charge affects', marks: 3 }, { text: 'Explain why some households', marks: 2 }] },
           { text: 'Refer to Sources B and C.', marks: 3 },
-          { text: 'With reference to the sources', before: 'For part (c), candidates', marks: 12, answerSpace: 8 },
+          { text: 'With reference to the sources', before: 'For part (c), set out', marks: 12, answerSpace: 8 },
         ],
       },
     ],
