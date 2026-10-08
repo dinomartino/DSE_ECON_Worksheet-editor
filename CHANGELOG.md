@@ -23,10 +23,12 @@ a version heading is edited afterwards.
 - **Storage location shows the cloud folders on your computer.** Before you choose, it lists
   the ones it finds, such as OneDrive or iCloud Drive; click one to start choosing there. If
   Google Drive is missing, it tells you to install Google Drive for desktop: the website alone
-  gives no folder on your computer.
+  gives no folder on your computer. If you pick a folder it can't use, such as a whole drive or
+  your home folder, it says why so you can choose another.
   <!-- zh: **儲存位置會顯示電腦上的雲端資料夾。** 選擇之前，會列出找到的資料夾，例如 OneDrive 或
   iCloud Drive；按一下便可從該處開始選擇。如果未有 Google Drive，會提示你安裝 Google Drive for desktop
-  （電腦版）：只用網頁版不會在電腦上有資料夾。 -->
+  （電腦版）：只用網頁版不會在電腦上有資料夾。如果所選的資料夾無法使用，例如整個磁碟或個人資料夾，
+  會說明原因，讓你另選一個。 -->
 
 ### Changed
 - **Messages now float in the bottom-right corner instead of pushing the page around.**

@@ -230,7 +230,7 @@ Invariants:
   (denied to plugin-fs), paths relative and inside the root, CAS by SHA-256, temp + fsync + rename, identical bytes skipped,
   an unusable root `unavailable`, placeholders listed unhashed. Bridge: `src/platform/library.ts:desktopLibrary`
 - `src-tauri/src/cloud.rs:detect` — `library_cloud_folders`: the cloud drive folders on this computer, from paths and env only
-  (macOS CloudStorage needs the provider's app installed; Windows env, drive letters, profile folders); `cargo test` over a fake
+  (macOS CloudStorage needs the provider's app installed; Windows env, fixed drives only, Google Drive by volume label, profile folders); `cargo test` over a fake
   `Machine`. Bridge `src/platform/library.ts:cloudFolders`; shown by `src/components/settings/sections/storageSection/StorageSection.tsx:CloudFolders`
 - `src-tauri/src/bundle_rename.rs:decide` · `:rename_legacy_bundle` — macOS, before any window: an updated `Econ Worksheet.app` renames itself `Econ Studio.app` and relaunches once, else logs why it skipped (`cargo test`)
 - `src/platform/index.ts:listenForFileDrops` · `:readDroppedFile` — Finder/Explorer file drops arrive as Tauri's native event, never HTML5 `drop`; effects use `:subscribeToFileDrops`, and every Tauri unlisten goes through `:unlistenSafely` (it can reject before the listener registers)
