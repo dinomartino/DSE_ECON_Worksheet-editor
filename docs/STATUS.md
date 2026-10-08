@@ -7,6 +7,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
+- **Merged, unreleased (2026-10-08):** table bar "Same height" / "Same width" (Word's Distribute rows/columns)
+  over a swept range only (`distributeRows`/`distributeColumns` in `src/model/table.ts`). Not yet tried in the Tauri window.
 - **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
   only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
 - **Merged, unreleased (2026-10-08):** **Import from Word or PDF** on the home screen (file chooser or
@@ -77,4 +79,4 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Log
 
 - **2026-10-08** — Found-folder offer; import (design, engine, docx/pdf readers, home-screen file import,
-  answers from another file); paper language; OCR survey + trial. 15 Opus branches merged.
+  answers from another file); paper language; OCR survey + trial; table distribute rows/columns. 16 Opus branches merged.
