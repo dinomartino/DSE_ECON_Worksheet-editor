@@ -240,7 +240,10 @@ function toLines(piece: Piece, base: Omit<SourceLine, 'i' | 'runs' | 'text' | 'r
 export function toSourceLines(raw: readonly RawLine[]): SourceLine[] {
   const out: SourceLine[] = [];
   for (const line of raw) {
-    const base = line.pageBreak ? { pageBreak: true } : {};
+    const base = {
+      ...(line.pageBreak ? { pageBreak: true } : {}),
+      ...(line.page !== undefined ? { page: line.page, x: line.x, y: line.y } : {}),
+    };
     if (line.image) {
       out.push({ ...base, i: 0, runs: [], text: '', raw: '', depth: 0, image: line.image });
       continue;
@@ -253,8 +256,8 @@ export function toSourceLines(raw: readonly RawLine[]): SourceLine[] {
     for (const piece of pieces) {
       const before = out.length;
       toLines(piece, base, out);
-      // A table row the reader saw as cells keeps them unless it split into items.
-      if (line.cells && pieces.length === 1 && out.length === before + 1 && !out[before].cells && !out[before].labelInfo) {
+      // A table row the reader saw as cells keeps them (empty ones too) unless it split into items.
+      if (line.cells && pieces.length === 1 && out.length === before + 1 && !out[before].labelInfo) {
         const cells = line.cells.map((c) => trimRuns(clean(c)));
         if (cells.filter((c) => plainOf(c).trim()).length >= 2) out[before].cells = cells;
       }

@@ -1,7 +1,9 @@
 /**
  * Paste-to-structure (D1), the public entry. Pure: no DOM, no store.
  *
- *   const read = readPaste({ plain, html });         // once per paste (or `await readDocx(bytes)`)
+ *   const read = readPaste({ plain, html });         // once per paste
+ *   const read = await readDocx(bytes);              // or a .docx file
+ *   const read = await readPdf(bytes);               // or a .pdf file: pdf.js loads on first use
  *   const analysis = analyseLines(read, { pins });   // again on every pin (fast)
  *   const batch = buildImport(analysis);             // → store.insertQuestionBatch(batch.builds, { worksheetId, lead: batch.lead })
  */
@@ -15,6 +17,7 @@ import type { AnalyseOptions, Analysis, PasteInput, SourceLine } from './types';
 
 export { buildImport, previewFigure, type ImportBatch } from './build';
 export { DocxReadError, type DocxErrorKind, type DocxOptions } from './readDocx';
+export { isPdfReadError, readPdf, type PdfRead, type PdfReadError, type ReadPdfOptions } from './readPdf';
 export type * from './types';
 
 export interface ReadPaste {

@@ -17,7 +17,8 @@ const STRUCTURAL: ReadonlySet<Role> = new Set(['question', 'part', 'subpart', 'o
 
 /** `visual`: a PDF copy, one line per printed line. Word and HTML pastes are paragraphs. */
 export function detectLineMode(lines: readonly SourceLine[], source: Analysis['source']): LayoutProfile['lineMode'] {
-  if (source === 'html' || source === 'docx') return 'paragraph';
+  // Only a plain paste can be a PDF copy; the PDF reader joins its own wrapped lines.
+  if (source !== 'plain') return 'paragraph';
   const body = lines.filter((l) => !l.blank && !l.tabOnly && !l.image && l.raw.trim());
   if (body.length < 3) return 'paragraph';
   if (body.filter((l) => l.raw.includes('\t')).length / body.length > 0.1) return 'paragraph';

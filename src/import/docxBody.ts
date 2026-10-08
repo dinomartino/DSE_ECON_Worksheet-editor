@@ -513,10 +513,11 @@ export class BodyReader {
     }
     const after: RawLine[] = [];
     for (const tr of rows) {
-      const cells: RawRun[][] = cellsOf(tr).map((tc) => this.cell(tc, after));
+      // A break inside a cell joins with a space, as in the HTML paste.
+      const cells: RawRun[][] = cellsOf(tr).map((tc) => this.cell(tc, after).map((r) => ({ ...r, text: r.text.replace(/\n/g, ' ') })));
       if (!cells.some((c) => c.some((r) => r.text.trim()))) continue;
       const joined: RawRun[] = [];
-      cells.forEach((c, k) => joined.push(...(k ? [{ text: '\t' }] : []), ...c.map((r) => ({ ...r, text: r.text.replace(/\n/g, ' ') }))));
+      cells.forEach((c, k) => joined.push(...(k ? [{ text: '\t' }] : []), ...c));
       out.push({ runs: joined, cells });
     }
     out.push(...after);
