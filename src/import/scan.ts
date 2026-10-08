@@ -26,11 +26,11 @@ export function ocrScore(lines: readonly SourceLine[]): { points: number; ratio:
 }
 
 /** A Word or HTML paste (TABs, markup) is never OCR, even with full-width brackets typed by hand. */
-export function pasteKind(lines: readonly SourceLine[], source: 'plain' | 'html'): 'ok' | 'empty' | 'scan' {
+export function pasteKind(lines: readonly SourceLine[], source: 'plain' | 'html' | 'docx' | 'pdf'): 'ok' | 'empty' | 'scan' {
   const text = lines.some((l) => matchKey(l.raw) !== '' || l.cells?.length);
   if (!text) return lines.some((l) => l.image) ? 'scan' : 'empty';
   const body = lines.filter((l) => l.raw.trim());
-  if (source === 'html' || body.filter((l) => l.raw.includes('\t')).length > body.length * 0.1) return 'ok';
+  if (source === 'html' || source === 'docx' || body.filter((l) => l.raw.includes('\t')).length > body.length * 0.1) return 'ok';
   const { points, ratio } = ocrScore(lines);
   return points >= 3 && ratio >= 0.04 ? 'scan' : 'ok';
 }

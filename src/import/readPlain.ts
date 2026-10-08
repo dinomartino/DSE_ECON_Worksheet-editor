@@ -17,6 +17,10 @@ export interface RawLine {
   cells?: RawRun[][];
   image?: ImageRef;
   pageBreak?: boolean;
+  /** Where the line starts on the page (PDF reader): points, y up from the bottom. */
+  page?: number;
+  x?: number;
+  y?: number;
 }
 
 /** `text/plain`: one line per line. A form feed marks a page break; Word's soft break (`\v`) is a line. */

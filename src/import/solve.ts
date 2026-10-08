@@ -16,8 +16,9 @@ const ENDS_SENTENCE = /[.?!。？！:：;；]["'”’)]?$/;
 const STRUCTURAL: ReadonlySet<Role> = new Set(['question', 'part', 'subpart', 'option', 'statement']);
 
 /** `visual`: a PDF copy, one line per printed line. Word and HTML pastes are paragraphs. */
-export function detectLineMode(lines: readonly SourceLine[], source: 'plain' | 'html'): LayoutProfile['lineMode'] {
-  if (source === 'html') return 'paragraph';
+export function detectLineMode(lines: readonly SourceLine[], source: 'plain' | 'html' | 'docx' | 'pdf'): LayoutProfile['lineMode'] {
+  // Only a plain paste can be a PDF copy; the PDF reader joins its own wrapped lines.
+  if (source !== 'plain') return 'paragraph';
   const body = lines.filter((l) => !l.blank && !l.tabOnly && !l.image && l.raw.trim());
   if (body.length < 3) return 'paragraph';
   if (body.filter((l) => l.raw.includes('\t')).length / body.length > 0.1) return 'paragraph';
@@ -64,7 +65,7 @@ export interface Solved {
 
 export function solve(
   lines: readonly SourceLine[],
-  opts: { pins?: readonly Pin[]; profile?: LayoutProfile; language?: Side | 'auto'; source: 'plain' | 'html' },
+  opts: { pins?: readonly Pin[]; profile?: LayoutProfile; language?: Side | 'auto'; source: 'plain' | 'html' | 'docx' | 'pdf' },
 ): Solved {
   const pins = opts.pins ?? [];
   const lineMode = opts.profile?.lineMode ?? detectLineMode(lines, opts.source);
