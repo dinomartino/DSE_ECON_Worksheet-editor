@@ -47,6 +47,14 @@ a version heading is edited afterwards.
   <!-- zh: **試卷語言可與程式介面分開設定。** 「設定 → 語言」現有兩個選項：「介面」決定按鈕和選單的語言，「試卷」決定
   新試卷的起始語言（EN、中文或 EN+中）。新工作紙、題庫和新圖表都會以此語言開啟，每份試卷仍可個別切換。 -->
 
+### Changed
+- **Topic names follow the language of your questions.** In 題庫, topic and sub-topic names
+  read in the language the questions are shown in (EN, 中文 or both with EN+中), not the app's.
+  In a paper, the side panel names them in the paper's language. Buttons and counts stay in the
+  app's language.
+  <!-- zh: **課題名稱跟隨題目的語言。** 在題庫中，課題及分課題名稱會以題目顯示的語言呈現（EN、中文，或 EN+中
+  時兩者並列），而非程式介面的語言。在試卷中，側欄會以試卷的語言顯示課題名稱。按鈕和數目仍跟隨介面語言。 -->
+
 ## 0.7.0 — 2026-10-08
 
 ### Added
