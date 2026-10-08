@@ -15,6 +15,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Paste questions from Word or a PDF.** Choose Paste questions… in the Question menu, or in
+  題庫, and paste a whole paper. Econ Studio works out which lines are questions, parts, options
+  and marks, and shows them beside the questions as they will print. Fix any line with one click
+  or one key, and the fix spreads to every line like it. Click an option to make it the answer.
+  Then insert the questions into your paper (⌘Z takes them all out) or add them to 題庫, where
+  questions it already has are skipped.
+  <!-- zh: **從 Word 或 PDF 貼上題目。** 在「題目」選單或題庫中選擇「貼上題目…」，然後貼上整份試卷。Econ Studio
+  會判斷哪些行是題目、分題、選項和分數，並在旁邊顯示列印效果。按一下或按一個鍵即可修正任何一行，修正亦會套用到
+  所有相似的行。按一下選項即可設為答案。然後把題目插入工作紙（⌘Z 可一次全部移除），或加入題庫，題庫已有的題目會略過。 -->
 - **Desktop: your second computer finds your synced folder.** When Econ Studio starts on a
   computer with no folder chosen yet, and your Econ Studio folder is already in OneDrive, Google
   Drive, iCloud Drive or Dropbox, it asks once whether to use it here too. Choose it, and the

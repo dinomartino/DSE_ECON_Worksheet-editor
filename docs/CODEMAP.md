@@ -307,7 +307,7 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/library/types.ts:BankRow` · `:BankGroup` · `:BankQuery` · `:BankStatus` · `:StoreChange` — the contracts
 - `src/library/indexer.ts:rowsOf` — a document's rows (text only, never images; `bankHidden` yields none)
 - `src/library/contentKey.ts:contentKey` · `:IGNORED` · `:IGNORED_PART` — content fingerprint ignoring ids and the metadata fields (`lineage`, `tags`, `tagsAt`, `gapBefore`; on every part and sub-part `tags`, `rootId`); `src/library/contentKeyFields.test.ts` classifies every question, part and sub-part field as content or metadata and fails on a new one
-- `src/library/bankDocs.ts:copyToBank` · `:bankHolds` · `:updateBankCopy` — the only writes into a bank document; a bank never holds two copies of one root (a question already there is skipped; an edited one is updated, never copied again); a new bank takes the teacher's name (`:nextBankName`, picker labels `:bankChoices`); UI in `src/components/editor/BankActions.tsx:useBankActions` (Treat as a new question asks first, in plain words: `:TREAT_NEW_TEXT`)
+- `src/library/bankDocs.ts:copyToBank` · `:addToBank` · `:bankHolds` · `:updateBankCopy` — the only writes into a bank document (`:addToBank`: new questions from a paste, as originals, skipping any the bank holds by content); a bank never holds two copies of one root (a question already there is skipped; an edited one is updated, never copied again); a new bank takes the teacher's name (`:nextBankName`, picker labels `:bankChoices`); UI in `src/components/editor/BankActions.tsx:useBankActions` (Treat as a new question asks first, in plain words: `:TREAT_NEW_TEXT`)
 - `src/library/search.ts:searchRows` (words match the question or its paper's title, read at query time) · `src/library/group.ts:groupRows` · `src/library/history.ts:usedIn` · `:usedWith` · `:newestFirst` · `src/library/fill.ts:pickFill`
 - `src/model/classes.ts:dateOfUse` · `:parseClasses` · `:foldLegacyClassTag` — who sat a paper (`classes`, `satOn`) and when it counts from; `:commitClassInput` — Setup's Classes box (Enter or a comma commits a class; new form-led names in capitals, stored ones never rewritten; classes compare by `:classKey`, case-insensitive); `src/library/cohort.ts:cohortOf` · `:sameStudents` — the derived DSE cohort the anti-repeat filters match by
 - `src/library/useBank.ts:useBank` — the one read both surfaces use, over the persistent index below
@@ -518,10 +518,18 @@ Invariants:
 - `src/import/solve.ts:solve` — pins, answers, language, the inferred profile; `src/import/scan.ts:pasteKind` — `empty` / `scan` / `ok`
 - `src/import/scorecard.test.ts` over `src/import/fixtures/expected.ts:FIXTURES` (synthetic only: the repo is public, real paper text never enters it)
 
+The review dialog (`src/components/import/`):
+
+- `src/components/import/PasteImportDialog.tsx:PasteImportDialog` — paste box, then review; Insert is one `insertQuestionBatch`, Add to 題庫 is `src/library/bankDocs.ts:addToBank`. Opened by `src/components/import/PasteImportHost.tsx:PasteImportHost` (add rail, `src/components/import/pasteImportStore.ts:usePasteImport`) and from 題庫's header (`src/components/import/PasteImportHost.tsx:LazyPasteImportDialog`)
+- `src/components/import/pasteSession.ts:pasteInput` · `:pasteVerdict` · `:withPin` · `:checkPlaces` · `:optionIndexAt` — the dialog's logic, pure: clipboard flavours, empty/scan/OCR, fixes as pins, flags to visit, the clicked option
+- `src/components/import/previewDoc.ts:previewItems` — the batch in a scratch worksheet, rendered by `renderWorksheet`; questions cached by outline so an unchanged one keeps its nodes
+- `src/components/import/ReviewLines.tsx:ReviewLines` · `:RoleMenu` — the paste with role chips; `src/components/import/ReviewPreview.tsx:ReviewPreview` — the editor's `NodeView`, read-only, zoomed to fit
+
 Invariants:
 - Text is never dropped: a line the walk cannot place stays in the nearest stem, flagged.
 - Only `src/import/build.ts` names question types (`src/import/solve.test.ts` guards it).
 - Nothing is stored in a document: imported questions are ordinary questions.
+- The dialog never puts pasted HTML in the page; ⌘Z inside it takes back a fix, never the document.
 
 ## scripts — the harnesses
 

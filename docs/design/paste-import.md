@@ -1,7 +1,7 @@
 # Paste-to-structure (D1): design
 
-Status: **proposal** (2026-10-08), written against `develop` @ c886017. Phase 0 and the engine
-half of phase 1 are built (§ 10, `feature/paste-import-core`); the review dialog is not.
+Status: **proposal** (2026-10-08), written against `develop` @ c886017. Phase 0 and phase 1 are
+built (§ 10): the engine (`feature/paste-import-core`) and the review dialog (`feature/paste-import-ui`).
 Open questions for the user are in § 9.
 
 ## 0. The answer in one paragraph
@@ -264,3 +264,31 @@ flags); OCR excerpts 86% and 100% split. Re-solving a 60-question paste takes ab
 option letters (the question becomes written text, flagged); an instructions list numbered
 like the questions with no heading after it; a structured question whose part letters were
 lost by OCR.
+
+### The review dialog, as built (2026-10-08)
+
+`src/components/import/`. **Paste questions… / 貼上題目…** in the add rail's Question flyout and
+in 題庫's header. The paste box reads `text/html` and `text/plain` from the paste event; the HTML
+goes to the engine as a string and never into the page. Empty, image-only (`scan`) and OCR text
+are explained in a notice; OCR text can still be reviewed.
+
+- **Left:** every pasted line with a chip whose letter is its shortcut (Q P S O T M H N; `·` text,
+  `▦` table row, `_` answer space). A chip opens the role menu (letters pick, arrows move), with
+  "Start a new question here" and "Join with the line above". A fixed chip has a ring; new-question
+  and join fixes show as badges that take the fix back. ⌘Z takes back the last fix (captured, so it
+  never reaches the document behind).
+- **Right:** each question rendered by the editor's own `NodeView` (student version, no answer
+  space) at the open paper's column width, zoomed to fit. Questions are cached by their outline
+  (`previewItems`), so a fix re-renders only the questions it changed (a fix that changes all 60
+  paints in about 50 ms in a dev build). A click on an option is an `answer` pin; the answer is a
+  green wash, screen only. Each question has an EN / 中文 switch (`language` pin); "Language"
+  sets all and clears the per-question ones.
+- **Header:** "N questions · M to check" counts structural flags by question; MC without an
+  answer are counted apart ("4 MC without an answer →" steps through them), since a paste with no
+  key flags every MC. The left pane scrolls the right and back, led by the pane under the pointer.
+- **Insert into this paper:** one `insertQuestionBatch` at the add menu's anchor, then a notice
+  with Undo (and how many MC still show A). **Add to 題庫:** `addToBank` into a chosen or new bank;
+  questions are originals (no lineage), and any the bank already says the same (`contentKey`) is
+  skipped and counted. A shared stimulus lead is not added to a bank (the notice says so).
+- Not built: layout profiles, the large-paste notice in a stem, file drops (phase 2+).
+
