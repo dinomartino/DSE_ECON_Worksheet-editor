@@ -12,6 +12,16 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Desktop: your second computer finds your synced folder.** When Econ Studio starts on a
+  computer with no folder chosen yet, and your Econ Studio folder is already in OneDrive, Google
+  Drive, iCloud Drive or Dropbox, it asks once whether to use it here too. Choose it, and the
+  folder picker opens right beside it. With nothing saved yet, the start screen also points to
+  Storage location.
+  <!-- zh: **桌面版：第二部電腦會找到你的同步資料夾。** Econ Studio 在未選擇資料夾的電腦上啟動時，如果你的
+  Econ Studio 資料夾已在 OneDrive、Google Drive、iCloud Drive 或 Dropbox 內，會詢問一次是否也在這部電腦使用。
+  按「選擇資料夾…」，選擇資料夾的視窗便會在它旁邊打開。未有儲存任何工作紙時，開始畫面亦會提示前往「儲存位置」。 -->
+
 ## 0.7.0 — 2026-10-08
 
 ### Added

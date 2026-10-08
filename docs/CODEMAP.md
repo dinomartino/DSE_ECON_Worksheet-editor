@@ -195,6 +195,8 @@ Invariants:
   queue; `:clearSavedLibrary` detaches the folder (base and folder forgotten) before Clear saved documents
 - `src/sync/syncView.ts:useSyncView` — what the interface reads (`location`, `status`, Needs attention); Tauri-free
 - `src/sync/syncNotices.ts:syncNotices` — conflict copies, refilled remote, unreachable (one per outage), stable ids
+- `src/sync/foundFolder.ts:offerFoundFolder` — at launch with no folder: one notice offering a library `library_found` saw in a cloud
+  folder; its button is `:chooseFolder`'s flow; closed or used is kept in localStorage (`:FOUND_DONE_KEY`), so once per computer
 - `src/components/settings/sections/storageSection/StorageSection.tsx:StorageSectionView` — Settings → Storage location;
   this computer's name in `src/settings/sync.ts:SYNC_SETTINGS`, read by `src/sync/localNamer.ts:computerName`
 - `src/sync/openEditor.ts:openEditorGuard` — never writes under unsaved edits; a clean open document reloads, with a notice
@@ -232,6 +234,8 @@ Invariants:
 - `src-tauri/src/cloud.rs:detect` — `library_cloud_folders`: the cloud drive folders on this computer, from paths and env only
   (macOS CloudStorage needs the provider's app installed; Windows env, fixed drives only, Google Drive by volume label, profile folders); `cargo test` over a fake
   `Machine`. Bridge `src/platform/library.ts:cloudFolders`; shown by `src/components/settings/sections/storageSection/StorageSection.tsx:CloudFolders`
+- `src-tauri/src/cloud.rs:library_in` · `:find_library` · `:picker_start` — `library_found`: a library in `<cloud folder>/Econ Studio` or one
+  folder down (stat only, hidden folders skipped); `library_choose` `start` opens at its parent. Bridge `src/platform/library.ts:foundLibrary`
 - `src-tauri/src/bundle_rename.rs:decide` · `:rename_legacy_bundle` — macOS, before any window: an updated `Econ Worksheet.app` renames itself `Econ Studio.app` and relaunches once, else logs why it skipped (`cargo test`)
 - `src/platform/index.ts:listenForFileDrops` · `:readDroppedFile` — Finder/Explorer file drops arrive as Tauri's native event, never HTML5 `drop`; effects use `:subscribeToFileDrops`, and every Tauri unlisten goes through `:unlistenSafely` (it can reject before the listener registers)
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
