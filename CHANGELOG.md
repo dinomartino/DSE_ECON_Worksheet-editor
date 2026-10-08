@@ -39,10 +39,10 @@ a version heading is edited afterwards.
   Econ Studio 資料夾已在 OneDrive、Google Drive、iCloud Drive 或 Dropbox 內，會詢問一次是否也在這部電腦使用。
   按「選擇資料夾…」，選擇資料夾的視窗便會在它旁邊打開。未有儲存任何工作紙時，開始畫面亦會提示前往「儲存位置」。 -->
 - **Choose the language of your papers apart from the app's.** Settings → Language now has two
-  choices: Interface, for buttons and menus, and Papers, the language a new paper starts in (EN,
-  中文 or EN+中). New worksheets, 題庫 and new graphs open in it, and each paper can still be
+  choices: UI language, for buttons and menus, and Paper language, the language a new paper starts
+  in (EN, 中文 or EN+中). New worksheets, 題庫 and new graphs open in it, and each paper can still be
   switched on its own.
-  <!-- zh: **試卷語言可與程式介面分開設定。** 「設定 → 語言」現有兩個選項：「介面」決定按鈕和選單的語言，「試卷」決定
+  <!-- zh: **試卷語言可與程式介面分開設定。** 「設定 → 語言」現有兩個選項：「介面語言」決定按鈕和選單的語言，「試卷語言」決定
   新試卷的起始語言（EN、中文或 EN+中）。新工作紙、題庫和新圖表都會以此語言開啟，每份試卷仍可個別切換。 -->
 
 ## 0.7.0 — 2026-10-08
