@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -142,6 +144,14 @@ describe('Settings → Storage location', () => {
     expect(en).toContain('Update the app to sync it.');
     expect(en).toContain('It will try again.');
     expect(html(<StorageSectionView view={view} actions={actions} />, 'zh-HK')).toContain('需要處理');
+  });
+
+  it('a failed folder action is a notice, not a line left in the panel', () => {
+    const source = readFileSync(path.join(__dirname, 'storageSection', 'StorageSection.tsx'), 'utf8');
+    expect(source).toContain("notify({ id: 'storage-error', tone: 'error', body: m.failed })");
+    expect(source).toContain("notices.dismiss('storage-error')");
+    expect(source).not.toMatch(/role="alert"/);
+    expect(html(<StorageSectionView view={SYNCED} actions={actions} />)).not.toContain('role="alert"');
   });
 
   it('the stop confirm says the papers stay and the folder is left as it is', () => {
