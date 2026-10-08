@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { pictureHome, type Flag, type Pin, type Role } from '@/import';
+import { pictureHome, type Flag, type PageChrome, type Pin, type Role } from '@/import';
 import { UndecodableImageError, imageBlockFromFile } from '@/export/imageImport';
 import { newId } from '@/model/factories';
 import type { Side } from '@/model/textSlots';
-import type { Worksheet } from '@/model/types';
+import type { LanguageMode, Worksheet } from '@/model/types';
 import type { NoticeInput } from '@/store/notices';
 import { Button, IconButton } from '@/components/ui';
 import { NoticeInsetSpacer } from '@/components/ui/Dialog';
@@ -31,6 +31,8 @@ import {
 import { previewItems, type PreviewCache } from './previewDoc';
 import { ReviewLines, RoleMenu, type LineView } from './ReviewLines';
 import { ReviewPreview, type FigureActions, type PreviewCard } from './ReviewPreview';
+import { ChromeReview } from './ChromeReview';
+import { importedMarks } from './fileImport';
 
 /**
  * One paper's review: the file's lines with a role chip each (left), the questions as they
@@ -94,6 +96,7 @@ export function ReviewStep({
   base,
   cache,
   notify,
+  chrome,
 }: {
   text: Text;
   result: PaperReview;
@@ -104,8 +107,11 @@ export function ReviewStep({
   base: Worksheet;
   cache: PreviewCache;
   notify: (notice: NoticeInput & { id: string }) => void;
+  /** The file's header, footer and title block, drawn above the questions. */
+  chrome?: { value: PageChrome; language: LanguageMode; keepPreset: boolean; onKeepPreset: (keep: boolean) => void };
 }) {
   const { analysis, batch, preview: shown } = result;
+  const totalMarks = useMemo(() => importedMarks(batch), [batch]);
   const pins = state.pins;
   const [selectedLine, setSelectedLine] = useState<number>();
   const [menu, setMenu] = useState<{ line: number; anchor: HTMLElement }>();
@@ -510,6 +516,21 @@ export function ReviewStep({
             selectedLine={selectedLine}
             dropLine={dropLine}
             end={<NoticeInsetSpacer />}
+            {...(chrome
+              ? {
+                  top: (layout) => (
+                    <ChromeReview
+                      text={m}
+                      chrome={chrome.value}
+                      language={chrome.language}
+                      totalMarks={totalMarks}
+                      keepPreset={chrome.keepPreset}
+                      onKeepPreset={chrome.onKeepPreset}
+                      layout={layout}
+                    />
+                  ),
+                }
+              : {})}
           />
         </div>
       </div>

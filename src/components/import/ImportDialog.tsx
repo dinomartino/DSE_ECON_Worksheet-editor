@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { analyseLines, type FileRole, type ImageRef } from '@/import';
+import { analyseLines, hasChrome, type ChromeLeftover, type FileRole, type ImageRef, type PageChrome } from '@/import';
+import { planChrome } from '@/import/chromePlan';
 import { imageBlockFromFile } from '@/export/imageImport';
 import { addToBank, bankChoices, nextBankName, type BankChoice } from '@/library/bankDocs';
 import type { DocumentType } from '@/model/newWorksheet';
@@ -17,7 +18,19 @@ import { undoChord } from '@/components/ui/undoChord';
 import { kindText } from '@/components/start/startKinds';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
-import { createImportedDocument, createImportedDocuments, defaultDocumentType, importLanguageMode, importName, misfit, readPaperFile, startLanguage, type FileOutcome, type FileProblem } from './fileImport';
+import {
+  createImportedDocument,
+  createImportedDocuments,
+  defaultDocumentType,
+  importedMarks,
+  importLanguageMode,
+  importName,
+  misfit,
+  readPaperFile,
+  startLanguage,
+  type FileOutcome,
+  type FileProblem,
+} from './fileImport';
 import {
   NO_LINKS,
   answerSource,
@@ -97,6 +110,17 @@ const isTyping = () => {
 
 type Step = 'reading' | 'link' | 'review' | 'saveAs';
 
+/** The file's header, footer and title block, when it has any. */
+const chromeOf = (file: BatchFile | undefined): PageChrome | undefined =>
+  file?.outcome.kind === 'ok' && hasChrome(file.outcome.chrome) ? file.outcome.chrome : undefined;
+
+/** What a mock's cover leaves over from the file's chrome (the cover is chosen in Save as). */
+function notOnCover(chrome: PageChrome | undefined, type: Destination, result: PaperReview, keepPreset: boolean): ChromeLeftover[] {
+  if (!chrome || (type !== 'paper1' && type !== 'lqMock')) return [];
+  const plan = planChrome(chrome, { documentType: type, language: importLanguageMode(result.analysis, paperLanguage()), totalMarks: importedMarks(result.batch), keepPreset });
+  return plan.leftovers.filter((l) => l.reason === 'noCoverPlace' || l.reason === 'noHeader');
+}
+
 /** Questions with an answer or a scheme, for Save as. */
 function answered(result: PaperReview): number {
   return result.analysis.outline.questions.filter(
@@ -121,6 +145,8 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
   const [names, setNames] = useState<Record<string, string>>({});
   const [types, setTypes] = useState<Record<string, DocumentType>>({});
   const [bankOnly, setBankOnly] = useState(false);
+  // Per paper: keep the paper type's header and footer rather than the file's.
+  const [keepPreset, setKeepPreset] = useState<Record<string, boolean>>({});
   const [base] = useState(() => previewBase());
   const [cache] = useState<PreviewCache>(() => new Map());
 
@@ -257,6 +283,7 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
       questions: result.batch.builds.length,
       answered: answered(result),
       ...(fit ? { misfit: fit } : {}),
+      notOnCover: notOnCover(chromeOf(p), type, result, Boolean(keepPreset[p.id])),
     };
   });
 
@@ -294,8 +321,12 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
     }
     const languageMode = importLanguageMode(one.result.analysis, paperLanguage());
     const name = row.name.trim() || importName(undefined, row.fileName);
-    const report = createImportedDocument(one.result.batch, { documentType: chosen, name }, (worksheet) => onOpenDocument(worksheet, languageMode), (w) =>
-      worksheetStore.save(w),
+    const chrome = chromeOf(one.paper);
+    const report = createImportedDocument(
+      one.result.batch,
+      { documentType: chosen, name, language: languageMode, ...(chrome ? { chrome, keepPreset: Boolean(keepPreset[one.paper.id]) } : {}) },
+      (worksheet) => onOpenDocument(worksheet, languageMode),
+      (w) => worksheetStore.save(w),
     );
     if (!report.ok) {
       notices.notify({ id: 'import-result', tone: 'error', body: m.saveFailed });
@@ -313,7 +344,7 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
    */
   const saveMany = async () => {
     if (busy || all.length === 0) return;
-    const rows = toSave.map((row, k) => ({ row, result: all[k].result })).filter(({ row }) => row.questions > 0);
+    const rows = toSave.map((row, k) => ({ row, result: all[k].result, paper: all[k].paper })).filter(({ row }) => row.questions > 0);
     if (bankOnly) {
       finishBank(
         rows.flatMap(({ result }) => result.batch.builds.map(materialize).filter((q): q is Question => q !== undefined)),
@@ -323,12 +354,16 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
     }
     if (rows.length === 0) return;
     setBusy(true);
-    const papersToMake = rows.map(({ row, result }) => ({
-      batch: result.batch,
-      documentType: row.type,
-      name: row.name.trim() || importName(undefined, row.fileName),
-      language: importLanguageMode(result.analysis, paperLanguage()),
-    }));
+    const papersToMake = rows.map(({ row, result, paper: p }) => {
+      const chrome = chromeOf(p);
+      return {
+        batch: result.batch,
+        documentType: row.type,
+        name: row.name.trim() || importName(undefined, row.fileName),
+        language: importLanguageMode(result.analysis, paperLanguage()),
+        ...(chrome ? { chrome, keepPreset: Boolean(keepPreset[p.id]) } : {}),
+      };
+    });
     const made: Awaited<ReturnType<typeof createImportedDocuments>> = [];
     try {
       await createImportedDocuments(papersToMake, (worksheet) => onOpenDocument(worksheet, papersToMake[0].language), (w) => worksheetStore.save(w), made);
@@ -514,6 +549,7 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
             mc={all[0]?.result.analysis.outline.questions.filter((q) => q.kind === 'mc').length ?? 0}
             language={all[0] ? importLanguageMode(all[0].result.analysis, paperLanguage()) : 'en'}
             misfit={oneDestination !== 'bank' && all[0] ? misfit(oneDestination, all[0].result.analysis) : undefined}
+            notOnCover={all[0] ? notOnCover(chromeOf(all[0].paper), oneDestination, all[0].result, Boolean(keepPreset[all[0].paper.id])) : undefined}
             onSubmit={save}
           />
         )
@@ -528,6 +564,16 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
           base={base}
           cache={cache}
           notify={notices.notify}
+          {...(paper && chromeOf(paper)
+            ? {
+                chrome: {
+                  value: chromeOf(paper)!,
+                  language: importLanguageMode(current.result.analysis, paperLanguage()),
+                  keepPreset: Boolean(keepPreset[paper.id]),
+                  onKeepPreset: (keep: boolean) => setKeepPreset((all) => ({ ...all, [paper.id]: keep })),
+                },
+              }
+            : {})}
         />
       ) : null}
     </Dialog>

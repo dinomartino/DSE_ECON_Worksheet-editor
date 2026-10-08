@@ -7,6 +7,8 @@ import { Segmented } from '@/components/ui';
 import { kindText, START_KINDS } from '@/components/start/startKinds';
 import type { Messages } from '@/i18n/catalogue';
 import { useUiLanguage } from '@/i18n/language';
+import type { ChromeLeftover } from '@/import';
+import { ChromeLeftovers } from './ChromeReview';
 import type { IMPORT_MESSAGES } from './messages';
 
 /**
@@ -26,6 +28,8 @@ export interface PaperToSave {
   /** Questions that carry an answer or scheme. */
   answered: number;
   misfit?: { kind: 'written' | 'mc'; count: number };
+  /** On a mock: the file's title block lines the cover has no place for. */
+  notOnCover?: ChromeLeftover[];
 }
 
 const NEW_BANK = '';
@@ -134,6 +138,14 @@ export function SaveManyStep({
                     {paper.misfit.kind === 'written' ? m.misfitWritten(paper.misfit.count) : m.misfitMc(paper.misfit.count)}
                   </p>
                 )}
+                {paper.notOnCover?.length ? (
+                  <details className="text-[11.5px]">
+                    <summary className="cursor-pointer text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">{m.notOnCover(paper.notOnCover.length)}</summary>
+                    <div className="mt-1.5">
+                      <ChromeLeftovers text={m} leftovers={paper.notOnCover} />
+                    </div>
+                  </details>
+                ) : null}
               </li>
             ))}
           </ul>

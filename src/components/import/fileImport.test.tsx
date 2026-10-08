@@ -3,7 +3,7 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { analyseLines, readPaste, type Analysis } from '@/import';
-import { makeDocx, para } from '@/import/fixtures/docx';
+import { field, footerPart, headerPart, makeDocx, para, pp, r, tabs } from '@/import/fixtures/docx';
 import { bufferOf, makePdf, type PdfText } from '@/import/fixtures/pdfWriter';
 import { addToBank } from '@/library/bankDocs';
 import { createWorksheet } from '@/model/factories';
@@ -178,6 +178,66 @@ describe('Save as a new paper', () => {
       expect(useWorksheetStore.getState().worksheet.questions).toEqual([]);
     });
   }
+});
+
+describe('the file’s header, footer and title block', () => {
+  beforeEach(() => useWorksheetStore.getState().replaceWorksheet(createWorksheet()));
+
+  /** An invented paper with a running header, a page-numbered footer and a masthead. */
+  const chromePaper = () =>
+    makeDocx({
+      body: [
+        pp('<w:jc w:val="center"/>', r('Holy Hill College', { b: true })),
+        para('S.6 Mock Examination 2026'),
+        para('Name: __________'),
+        para('Full marks: 4 marks'),
+        para('1.\tWhich of the following is a free good?'),
+        ...['A.\tair', 'B.\tbread', 'C.\ttea', 'D.\trice'].map((t) => para(t)),
+        para('2.\tExplain why the demand for salt is price inelastic.\t(3 marks)'),
+      ].join(''),
+      rels: { h1: ['header', 'h1.xml'], f1: ['footer', 'f1.xml'] },
+      parts: { 'word/h1.xml': headerPart(para('Economics Mock')), 'word/f1.xml': footerPart(pp(tabs(['center', 4513]), r('Holy Hill\t') + field('PAGE'))) },
+      sectPr: '<w:headerReference w:type="default" r:id="h1"/><w:footerReference w:type="default" r:id="f1"/>',
+    });
+
+  const save = async (documentType: DocumentType, keepPreset = false) => {
+    const outcome = await readPaperFile('mock.docx', await chromePaper());
+    if (outcome.kind !== 'ok') throw new Error(outcome.problem);
+    const { batch } = review(outcome.read, [], 'auto');
+    const saved: Worksheet[] = [];
+    const report = createImportedDocument(
+      batch,
+      { documentType, name: 'Mock', language: 'en', ...(outcome.chrome ? { chrome: outcome.chrome } : {}), keepPreset },
+      (worksheet) => useWorksheetStore.getState().replaceWorksheet(worksheet),
+      async (w) => void saved.push(w),
+    );
+    if (!report.ok) throw new Error(report.refused);
+    return { made: useWorksheetStore.getState().worksheet, saved, outcome };
+  };
+  const words = (fields: Array<{ kind: string; text?: { en: Array<{ text: string }> }; prefix?: { en: Array<{ text: string }> } }>) =>
+    fields.map((f) => f.kind + ':' + (f.text ?? f.prefix)?.en.map((r) => r.text).join(''));
+
+  it('a classroom worksheet takes the file’s header, footer and title block in the one save', async () => {
+    const { made, saved, outcome } = await save('classroom');
+    expect(outcome.kind === 'ok' && outcome.read.lines.some((l) => /Holy Hill|Full marks/.test(l.text))).toBe(false);
+    expect(words(made.header!.bands[0].zones.left)).toEqual(['text:Economics Mock']);
+    expect(words(made.footer!.bands[0].zones.left)).toEqual(['text:Holy Hill']);
+    expect(made.footer!.bands[0].zones.center.map((f) => f.kind)).toEqual(['pageNumber']);
+    expect(made.bands?.map((b) => [...b.zones.left, ...b.zones.center].map((f) => f.kind))).toEqual([['text'], ['text'], ['fillIn'], ['totalMarks']]);
+    expect(saved).toEqual([made]);
+    expect(made.questions).toHaveLength(2);
+  });
+
+  it('a Paper 1 mock fills its cover; keeping the preset keeps the mock’s own footer', async () => {
+    const { made } = await save('paper1');
+    expect(made.cover?.headLines?.slice(0, 2).map((l) => l.text.en.map((r) => r.text).join(''))).toEqual(['Holy Hill College', 'S.6 Mock Examination 2026']);
+    expect(made.bands).toBeUndefined();
+    expect(words(made.footer!.bands[0].zones.left)).toEqual(['text:Holy Hill']);
+    const kept = await save('paper1', true);
+    const preset = createWorksheetFrom({ documentType: 'paper1', seedSample: false });
+    expect(kept.made.footer?.bands[0].zones.left.map((f) => f.kind)).toEqual(preset.footer?.bands[0].zones.left.map((f) => f.kind));
+    expect(kept.made.footer?.bands[0].zones.left[0]).toMatchObject({ kind: 'pageNumber', prefix: { en: [{ text: expect.stringMatching(/-ECON 1–$/) }] } });
+  });
 });
 
 describe('題庫 only', () => {

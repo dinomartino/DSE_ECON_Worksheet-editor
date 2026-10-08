@@ -67,6 +67,7 @@ export function ReviewPreview({
   selectedLine,
   dropLine,
   end,
+  top,
 }: {
   cards: PreviewCard[];
   base: Worksheet;
@@ -82,6 +83,8 @@ export function ReviewPreview({
   onLanguage: (question: number, side: Side) => void;
   /** Last in the scroller: the dialog's notice spacer. */
   end?: React.ReactNode;
+  /** Above the questions, at the strips' zoom and width: the file's header, footer and title block. */
+  top?: (layout: { zoom: number; width: number; paper: React.CSSProperties }) => React.ReactNode;
 }) {
   const m = useMessages(IMPORT_MESSAGES);
   const column = Math.round(contentWidth(pageSetupOf(base)) / 15);
@@ -105,6 +108,7 @@ export function ReviewPreview({
     <div ref={scrollRef} data-preview-scroll className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-desk px-5 py-4">
       <style>{PAPER_CSS}</style>
       <div className="mx-auto flex flex-col gap-3" style={{ width: strip * zoom }}>
+        {top?.({ zoom, width: strip, paper })}
         {cards.map((card) => {
           const slots = slotLines(card.item.nodes);
           return (

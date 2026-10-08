@@ -1,9 +1,12 @@
-import { DocxReadError, isPdfReadError, readDocx, readPdf, type Analysis, type ImageRef, type ImportBatch, type ReadPaste } from '@/import';
+import { DocxReadError, isPdfReadError, readDocx, readPdf, type Analysis, type ImageRef, type ImportBatch, type PageChrome, type ReadPaste } from '@/import';
+import { planChrome } from '@/import/chromePlan';
+import { questionMarks } from '@/model/marks';
 import { createWorksheetFrom, type DocumentType } from '@/model/newWorksheet';
 import type { Side } from '@/model/textSlots';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { useWorksheetStore, type QuestionBatchReport } from '@/store/worksheetStore';
 import { pasteVerdict, review, type Language } from './pasteSession';
+import { materialize } from './previewDoc';
 
 /**
  * Import from Word or PDF: a file read into the review, and the review saved as a new
@@ -14,7 +17,7 @@ import { pasteVerdict, review, type Language } from './pasteSession';
 export type FileProblem = 'legacyDoc' | 'encrypted' | 'notPaper' | 'unreadable' | 'scan';
 
 export type FileOutcome =
-  | { kind: 'ok'; read: ReadPaste; title?: string; pages?: number; ocr: boolean }
+  | { kind: 'ok'; read: ReadPaste; title?: string; pages?: number; ocr: boolean; chrome?: PageChrome }
   | { kind: 'problem'; problem: FileProblem; pages?: number };
 
 const head = (bytes: ArrayBuffer, n: number) => new Uint8Array(bytes, 0, Math.min(n, bytes.byteLength));
@@ -44,11 +47,11 @@ export async function readPaperFile(
   if (kind === 'pdf') {
     const result = await readPdf(bytes, options).catch(() => ({ kind: 'unreadable' as const }));
     if (isPdfReadError(result)) return { kind: 'problem', problem: result.kind === 'notPdf' ? 'notPaper' : result.kind };
-    return verdict(result, result.title, result.pages);
+    return verdict(result, result.title, result.pages, result.chrome);
   }
   try {
     const result = await readDocx(bytes, options);
-    return verdict(result, result.title);
+    return verdict(result, result.title, undefined, result.chrome);
   } catch (error) {
     const problem = error instanceof DocxReadError ? error.kind : 'unreadable';
     if (problem === 'notDocx') return { kind: 'problem', problem: kind === 'ole' || legacy ? 'legacyDoc' : 'notPaper' };
@@ -56,10 +59,18 @@ export async function readPaperFile(
   }
 }
 
-function verdict(read: ReadPaste, title: string | undefined, pages?: number): FileOutcome {
+function verdict(read: ReadPaste, title: string | undefined, pages?: number, chrome?: PageChrome): FileOutcome {
   const seen = pasteVerdict(review(read, [], 'auto'));
   if (seen === 'scan' || seen === 'empty') return { kind: 'problem', problem: 'scan', ...(pages ? { pages } : {}) };
-  return { kind: 'ok', read, ...(title ? { title } : {}), ...(pages ? { pages } : {}), ocr: seen === 'ocr' };
+  return { kind: 'ok', read, ...(title ? { title } : {}), ...(pages ? { pages } : {}), ocr: seen === 'ocr', ...(chrome ? { chrome } : {}) };
+}
+
+/** What the questions in a batch add up to, as the new paper will total them. */
+export function importedMarks(batch: ImportBatch): number {
+  return batch.builds.reduce((sum, build) => {
+    const question = materialize(build);
+    return sum + (question ? questionMarks(question) : 0);
+  }, 0);
 }
 
 /** The new document's name: the file's title, else the file name without its extension. */
@@ -113,6 +124,17 @@ export function misfit(type: DocumentType, analysis: Analysis): { kind: 'written
   return undefined;
 }
 
+/** One paper as Save makes it: its type and name, and the file's chrome to apply. */
+export interface ImportedPaper {
+  documentType: DocumentType;
+  name: string;
+  /** The new paper's language: chrome text goes on the side it prints. */
+  language?: LanguageMode;
+  chrome?: PageChrome;
+  /** Keep the paper type's header and footer rather than the file's. */
+  keepPreset?: boolean;
+}
+
 /**
  * A new document of `documentType` (the New worksheet form's own factory: cover, sections
  * and furniture as it makes them, no sample question), opened by `open`, then the batch
@@ -121,17 +143,31 @@ export function misfit(type: DocumentType, analysis: Analysis): { kind: 'written
  */
 export function createImportedDocument(
   batch: ImportBatch,
-  options: { documentType: DocumentType; name: string },
+  options: ImportedPaper,
   open: (worksheet: Worksheet) => void,
   save?: (worksheet: Worksheet) => Promise<unknown>,
 ): QuestionBatchReport {
-  const worksheet = createWorksheetFrom({
+  // The file's header, footer and title block (or cover lines), in the same document.
+  const plan = planChrome(options.chrome, {
+    documentType: options.documentType,
+    language: options.language ?? 'en',
+    totalMarks: importedMarks(batch),
+    keepPreset: options.keepPreset,
+  });
+  const made = createWorksheetFrom({
     documentType: options.documentType,
     name: options.name,
     seedSample: false,
     // A classroom worksheet keeps the file's order: no sections to route questions into.
     sections: false,
+    ...(plan.cover ? { coverDetails: plan.cover } : {}),
   });
+  const worksheet: Worksheet = {
+    ...made,
+    ...(plan.header ? { header: plan.header } : {}),
+    ...(plan.footer ? { footer: plan.footer } : {}),
+    ...(plan.bands ? { bands: plan.bands } : {}),
+  };
   open(worksheet);
   const store = useWorksheetStore.getState();
   const report = store.insertQuestionBatch(batch.builds, { worksheetId: worksheet.id, ...(batch.lead ? { lead: batch.lead } : {}) });
@@ -149,15 +185,15 @@ export function createImportedDocument(
  * made last and opened. In paper order; throws when one cannot be made, after the others.
  */
 export async function createImportedDocuments(
-  papers: ReadonlyArray<{ batch: ImportBatch; documentType: DocumentType; name: string }>,
+  papers: ReadonlyArray<ImportedPaper & { batch: ImportBatch }>,
   open: (worksheet: Worksheet, index: number) => void,
   save: (worksheet: Worksheet) => Promise<unknown>,
   made: Array<{ index: number; worksheet: Worksheet; questions: number }> = [],
 ): Promise<Array<{ index: number; worksheet: Worksheet; questions: number }>> {
   const order = [...papers.keys()].slice(1).concat(papers.length ? [0] : []);
   for (const index of order) {
-    const { batch, documentType, name } = papers[index];
-    const report = createImportedDocument(batch, { documentType, name }, (worksheet) =>
+    const { batch, ...paper } = papers[index];
+    const report = createImportedDocument(batch, paper, (worksheet) =>
       index === 0 ? open(worksheet, index) : useWorksheetStore.getState().replaceWorksheet(worksheet),
     );
     if (!report.ok) throw new Error(report.refused);
