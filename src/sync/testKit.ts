@@ -38,13 +38,13 @@ export function computer(
    * Run around each engine `adopt`: a teacher acting mid-write (before), or a save not
    * from the editor landing just after it (after).
    */
-  const hooks: { beforeAdopt?: (id: string) => void; afterAdopt?: (id: string) => Promise<void> } = {};
+  const hooks: { beforeAdopt?: (id: string) => void | Promise<void>; afterAdopt?: (id: string) => Promise<void> } = {};
   const engineStore: SyncStore = {
     ...store,
     load: (id) => ((loads.count += 1), store.load(id)),
     loadTrashed: (id) => ((loads.count += 1), store.loadTrashed(id)),
     adopt: async (worksheet, expect) => {
-      hooks.beforeAdopt?.(worksheet.id);
+      await hooks.beforeAdopt?.(worksheet.id);
       const adopted = await store.adopt(worksheet, expect);
       await hooks.afterAdopt?.(worksheet.id);
       return adopted;

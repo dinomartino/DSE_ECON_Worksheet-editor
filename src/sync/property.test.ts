@@ -14,8 +14,13 @@ import { computer, edit, library, memoryConnect, openEditor, paper, settle, type
  * whose revisions are content hashes. Both computers keep a hash cache; in even seeds
  * every edit carries the same `updatedAt`, so only `forgetOnWrite` keeps it honest.
  * With editors, each computer may also hold one document open, typing into it unsaved
- * (`RunOptions.isBusy`); its edits count once saved, and leaving saves them.
+ * (`RunOptions.isBusy`); its edits count once saved, and leaving saves them. With outside
+ * writers, a save not from the editor (an outgoing document's, a 題庫 write) lands just
+ * before or after the engine writes a download, made from what was stored before the run:
+ * it counts the moment it is written. `SYNC_SEEDS` raises the seed count for a long run.
  */
+
+const SEEDS = Number(process.env.SYNC_SEEDS) || 120;
 
 const FROZEN = '2026-10-05T06:32:00.000Z';
 
@@ -54,7 +59,28 @@ async function falseHits(c: Computer): Promise<string[]> {
   return wrong;
 }
 
-async function scenario(seed: number, steps: number, connect: Connect, editors = false) {
+/**
+ * During `c`'s next run: once, a save of a document the engine downloads, made from the copy
+ * stored before the run, just before or just after the engine's write. Disarmed by the caller.
+ */
+async function armOutsideWriter(c: Computer, random: () => number, written: (from: string) => string): Promise<void> {
+  const stale = new Map<string, Worksheet>();
+  for (const row of await c.store.list()) {
+    const worksheet = await c.store.load(row.id);
+    if (worksheet && row.id !== c.editor?.worksheet.id) stale.set(row.id, worksheet);
+  }
+  const write = async (id: string) => {
+    const from = stale.get(id);
+    if (!from) return;
+    c.hooks.beforeAdopt = c.hooks.afterAdopt = undefined;
+    const marker = written(from.title.en.map((run) => run.text).join(''));
+    await c.store.save({ ...from, title: { ...from.title, en: [{ text: marker }] }, updatedAt: new Date().toISOString() });
+  };
+  if (random() < 0.5) c.hooks.beforeAdopt = write;
+  else c.hooks.afterAdopt = write;
+}
+
+async function scenario(seed: number, steps: number, connect: Connect, editors = false, outside = false) {
   const random = mulberry32(seed);
   const pick = <T,>(items: T[]): T | undefined => items[Math.floor(random() * items.length)];
   const cloud = new MemoryCloud();
@@ -111,7 +137,16 @@ async function scenario(seed: number, steps: number, connect: Connect, editors =
       for (const doc of docs) atSyncPoint.add(doc.marker);
       const offline = random() < 0.15;
       if (offline) cloud.failAfter(c.name, Math.floor(random() * 8));
+      if (outside && random() < 0.4) {
+        // A teacher's save is never to be lost: it counts at once.
+        await armOutsideWriter(c, random, (from) => {
+          const written = marker(from);
+          atSyncPoint.add(written);
+          return written;
+        });
+      }
       await c.sync();
+      c.hooks.beforeAdopt = c.hooks.afterAdopt = undefined;
       if (offline) cloud.setUnavailable(c.name, false);
     }
     for (const other of computers) wrongHits.push(...(await falseHits(other)));
@@ -137,7 +172,7 @@ const SOURCES = [
 ] as [string, Connect][];
 
 describe.each(SOURCES)('two computers, random interleavings, %s source', (_source, connect) => {
-  it.each(Array.from({ length: 120 }, (_, i) => i + 1))('seed %i: nothing synced is lost, both end identical', async (seed) => {
+  it.each(Array.from({ length: SEEDS }, (_, i) => i + 1))('seed %i: nothing synced is lost, both end identical', async (seed) => {
     const { computers, parent, atSyncPoint, wrongHits } = await scenario(seed, 40, connect);
     const [a, b] = computers;
     expect(wrongHits, `the hash cache vouched for a stale hash (seed ${seed})`).toEqual([]);
@@ -150,8 +185,21 @@ describe.each(SOURCES)('two computers, random interleavings, %s source', (_sourc
 });
 
 describe.each(SOURCES)('two computers with open editors, %s source', (_source, connect) => {
-  it.each(Array.from({ length: 120 }, (_, i) => i + 1))('seed %i: unsaved edits are never written under, nothing is lost', async (seed) => {
+  it.each(Array.from({ length: SEEDS }, (_, i) => i + 1))('seed %i: unsaved edits are never written under, nothing is lost', async (seed) => {
     const { computers, parent, atSyncPoint, wrongHits } = await scenario(seed, 60, connect, true);
+    const [a, b] = computers;
+    expect(wrongHits, `the hash cache vouched for a stale hash (seed ${seed})`).toEqual([]);
+    expect(await library(a)).toEqual(await library(b));
+    const held = (await present(a)).map((doc) => doc.marker);
+    const lost = [...atSyncPoint].filter((m) => !held.some((h) => descends(parent, m, h)));
+    expect(lost, `lost versions (seed ${seed})`).toEqual([]);
+    expect(new Set(held).size, `a version held twice (seed ${seed})`).toBe(held.length);
+  });
+});
+
+describe.each(SOURCES)('two computers, editors and saves not from the editor mid-run, %s source', (_source, connect) => {
+  it.each(Array.from({ length: SEEDS }, (_, i) => i + 1))('seed %i: a save landing beside a download is never lost', async (seed) => {
+    const { computers, parent, atSyncPoint, wrongHits } = await scenario(seed, 60, connect, true, true);
     const [a, b] = computers;
     expect(wrongHits, `the hash cache vouched for a stale hash (seed ${seed})`).toEqual([]);
     expect(await library(a)).toEqual(await library(b));
