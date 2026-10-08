@@ -2,6 +2,7 @@
  * Paste-to-structure (D1), the public entry. Pure: no DOM, no store.
  *
  *   const read = readPaste({ plain, html });         // once per paste
+ *   const read = await readPdf(bytes);               // or a .pdf file: pdf.js loads on first use
  *   const analysis = analyseLines(read, { pins });   // again on every pin (fast)
  *   const batch = buildImport(analysis);             // → store.insertQuestionBatch(batch.builds, { worksheetId, lead: batch.lead })
  */
@@ -13,11 +14,12 @@ import { solve } from './solve';
 import type { AnalyseOptions, Analysis, PasteInput, SourceLine } from './types';
 
 export { buildImport, previewFigure, type ImportBatch } from './build';
+export { isPdfReadError, readPdf, type PdfRead, type PdfReadError, type ReadPdfOptions } from './readPdf';
 export type * from './types';
 
 export interface ReadPaste {
   lines: SourceLine[];
-  source: 'plain' | 'html';
+  source: 'plain' | 'html' | 'docx' | 'pdf';
 }
 
 const inked = (lines: readonly SourceLine[]) => lines.reduce((n, l) => n + l.raw.replace(/\s/g, '').length, 0);
