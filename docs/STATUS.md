@@ -17,9 +17,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   2026-10-08: pre-release review fixed (sync data safety, library folder Rust, notices). **User chose to
   ship Storage location visible** before the real run; CI now builds the Rust on Windows + macOS.
 - **2026-10-05: notices float** bottom-right via `notify()` (`src/store/notices.ts`), follow-ups merged.
-- **v0.6.0 released 2026-10-04** (`main` = `develop` + version bump; web deployed). Ships the 題庫
-  question bank, Marking scheme view and layouts, Translation terms, 中文 interface, Graphs
-  圖表庫, diagram answer layer, the Econ Studio rename. Next work goes on `develop` as usual.
+- **v0.7.0 released 2026-10-08** (published, `latest`; web deployed from `main`). Ships Storage location
+  sync (desktop), floating notices, the pre-release fixes. v0.6.0 (2026-10-04) shipped 題庫, Marking
+  scheme, Translation terms, 中文 interface, Graphs 圖表庫, the Econ Studio rename.
   Website shots: `node scripts/demo.mjs --shots` → 14 WebP at 1920 in `demo-media/screenshots/`.
 - **2026-10-03: every known gap fixed** (two sweeps, `fix/gaps-*` / `fix/gaps2-*`, merged; detail in
   `git show 3818f89:docs/STATUS.md`). Schema rule "bump only when used" (`writtenSchemaVersion`);
