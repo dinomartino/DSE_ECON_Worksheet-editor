@@ -6,7 +6,6 @@ import {
   type Flag,
   type FlagKind,
   type ImportBatch,
-  type PasteInput,
   type Pin,
   type ReadPaste,
   type Role,
@@ -15,28 +14,21 @@ import type { Side } from '@/model/textSlots';
 import type { ImageBlock } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
 import type { TextKey } from '@/i18n/catalogue';
-import type { PASTE_IMPORT_MESSAGES } from './messages';
+import type { IMPORT_MESSAGES } from './messages';
 
 /**
- * The Paste questions dialog's logic, kept out of React so it can be tested without a
- * DOM: what a paste carries, how a fix becomes a pin, which flags the header counts, and
- * which option a click in the preview landed on. The engine is `src/import/`.
+ * The import review's logic, kept out of React so it can be tested without a DOM: how a
+ * fix becomes a pin, which flags the header counts, which pictures a paste or drop carries,
+ * and which option a click in the preview landed on. The engine is `src/import/`.
  */
 
-type Key = TextKey<typeof PASTE_IMPORT_MESSAGES>;
-
-/** Both clipboard flavours: the engine reads the HTML when it carries the paper, else the plain text. */
-export function pasteInput(data: Pick<DataTransfer, 'getData'>): PasteInput {
-  const plain = data.getData('text/plain');
-  const html = data.getData('text/html');
-  return { plain, ...(html.trim() ? { html } : {}) };
-}
+type Key = TextKey<typeof IMPORT_MESSAGES>;
 
 export type Language = Side | 'auto';
 
 export interface Review {
   analysis: Analysis;
-  /** What Insert and Add to 題庫 write. */
+  /** What Save as writes. */
   batch: ImportBatch;
   /** The same for the review pane: figure slots shown, pictures it can find again. */
   preview: ImportBatch;
@@ -51,9 +43,8 @@ export function review(read: ReadPaste, pins: readonly Pin[], language: Language
 export { readPaste };
 
 /**
- * What the paste box does with a paste: review it, or say why not. `scan` has no text
- * to read (an image-only paste); `ocr` is text read from a scan, offered for review with
- * a warning.
+ * Whether a read file can be reviewed: `scan` has no text to read (pictures only), `ocr`
+ * is text read from a scan, offered for review with a warning.
  */
 export function pasteVerdict({ analysis, batch }: Review): 'ok' | 'empty' | 'scan' | 'ocr' {
   if (analysis.kind === 'empty') return 'empty';

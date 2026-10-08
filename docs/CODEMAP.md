@@ -267,7 +267,7 @@ Invariants:
 - `src/components/start/dashboard.ts:visibleSummaries` · `:scopedSummaries` — folder scope, then filter and sort, pure
 - `src/components/start/dashboardDrag.ts:stepDrag` · `:parseDropTarget` — document→folder drag state machine, pure
 - `src/components/start/useDocumentDrag.tsx:useDocumentDrag` — pointer-event drag: capture, ghost, one `drop` on release
-- `src/components/start/fileDrop.ts:planDrop` · `:overlayFor` · `:importSummary` — files dropped on the start screen (web `File`s, desktop paths): one opens/restores, several import, pure
+- `src/components/start/fileDrop.ts:planDrop` · `:overlayFor` · `:importSummary` — files dropped on the start screen (web `File`s, desktop paths): one opens/restores (a Word or PDF file opens Import), several import, pure
 - `src/components/start/TrashList.tsx:TrashList` — Restore / Delete forever / Empty Trash
 - `src/components/start/PageThumbnail.tsx:PageThumbnail` · `src/components/start/thumbnail.ts:loadThumbnail` — derived first page
 - `src/launch/splash.ts:splashMode` · `src/launch/splash.ts:SPLASH_BOOT_SCRIPT` · `src/launch/splash.ts:SPLASH_HTML` · `src/launch/splash.css` — the launch splash: static in `layout.tsx`, drawn by keyframes, handed off to the start screen's `[data-launch-target]` mark by the inline script
@@ -307,7 +307,7 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/library/types.ts:BankRow` · `:BankGroup` · `:BankQuery` · `:BankStatus` · `:StoreChange` — the contracts
 - `src/library/indexer.ts:rowsOf` — a document's rows (text only, never images; `bankHidden` yields none)
 - `src/library/contentKey.ts:contentKey` · `:IGNORED` · `:IGNORED_PART` — content fingerprint ignoring ids and the metadata fields (`lineage`, `tags`, `tagsAt`, `gapBefore`; on every part and sub-part `tags`, `rootId`); `src/library/contentKeyFields.test.ts` classifies every question, part and sub-part field as content or metadata and fails on a new one
-- `src/library/bankDocs.ts:copyToBank` · `:addToBank` · `:bankHolds` · `:updateBankCopy` — the only writes into a bank document (`:addToBank`: new questions from a paste, as originals, skipping any the bank holds by content); a bank never holds two copies of one root (a question already there is skipped; an edited one is updated, never copied again); a new bank takes the teacher's name (`:nextBankName`, picker labels `:bankChoices`); UI in `src/components/editor/BankActions.tsx:useBankActions` (Treat as a new question asks first, in plain words: `:TREAT_NEW_TEXT`)
+- `src/library/bankDocs.ts:copyToBank` · `:addToBank` · `:bankHolds` · `:updateBankCopy` — the only writes into a bank document (`:addToBank`: new questions from an imported file, as originals, skipping any the bank holds by content); a bank never holds two copies of one root (a question already there is skipped; an edited one is updated, never copied again); a new bank takes the teacher's name (`:nextBankName`, picker labels `:bankChoices`); UI in `src/components/editor/BankActions.tsx:useBankActions` (Treat as a new question asks first, in plain words: `:TREAT_NEW_TEXT`)
 - `src/library/search.ts:searchRows` (words match the question or its paper's title, read at query time) · `src/library/group.ts:groupRows` · `src/library/history.ts:usedIn` · `:usedWith` · `:newestFirst` · `src/library/fill.ts:pickFill`
 - `src/model/classes.ts:dateOfUse` · `:parseClasses` · `:foldLegacyClassTag` — who sat a paper (`classes`, `satOn`) and when it counts from; `:commitClassInput` — Setup's Classes box (Enter or a comma commits a class; new form-led names in capitals, stored ones never rewritten; classes compare by `:classKey`, case-insensitive); `src/library/cohort.ts:cohortOf` · `:sameStudents` — the derived DSE cohort the anti-repeat filters match by
 - `src/library/useBank.ts:useBank` — the one read both surfaces use, over the persistent index below
@@ -507,11 +507,11 @@ Invariants:
 - Highlights are imperative chrome: no IR or `ItemBody` read, never printed, never in the `.docx`.
 - A verb's network call happens only on its menu click; nothing AI-related is stored in a document.
 
-## import — paste-to-structure (D1), the engine
+## import — Import from Word or PDF (D1), the engine
 
 `docs/design/paste-import.md` (§ 10 As built). Pure: no React, no store, no DOM (the PDF reader's optional figure crops aside).
 
-- `src/import/index.ts:readPaste` → `:analyseLines` (re-run on every pin) → `src/import/build.ts:buildImport` → the store's `insertQuestionBatch`; `:analysePaste` does the first two
+- `src/import/index.ts:readDocx` / `src/import/readPdf.ts:readPdf` → `src/import/index.ts:analyseLines` (re-run on every pin) → `src/import/build.ts:buildImport` → the store's `insertQuestionBatch`. `:readPaste` / `:analysePaste` (clipboard text) are kept and tested, but the app no longer calls them: import is file-only
 - `src/import/types.ts:SourceLine` · `:Pin` · `:LayoutProfile` · `:Outline` · `:Analysis` — the shapes; flags are codes (`:FlagKind`), worded by the UI
 - `src/import/readPlain.ts:readPlain` · `src/import/readHtml.ts:readHtml` → `src/import/lines.ts:toSourceLines` — readers, then labels, marks, cells and multi-item rows split off
 - `src/import/index.ts:readDocx` — a `.docx` file to the same lines: `src/import/readDocx.ts:readDocxLines` (package, pictures, title; rejects with `:DocxReadError`) · `src/import/docxBody.ts:BodyReader` (paragraphs, tables, text boxes at their anchor, drawings → pictures or slots) · `src/import/docxNumbering.ts:Numbering` · `:Styles` · `src/import/xml.ts:parseXml`; tests build invented files with `src/import/fixtures/docx.ts:makeDocx`
@@ -521,19 +521,21 @@ Invariants:
 - `src/import/figures.ts:missingFigures` · `:placeFigures` — captions and references with no picture, lost pictures (slots), image pins placed after their line; `src/import/build.ts:previewFigure` reads a preview block back to its pin or slot
 - `src/import/scorecard.test.ts` over `src/import/fixtures/expected.ts:FIXTURES` (synthetic only: the repo is public, real paper text never enters it)
 
-The review dialog (`src/components/import/`):
+The dialog (`src/components/import/`), reached only from the start screen:
 
-- `src/components/import/PasteImportDialog.tsx:PasteImportDialog` — paste box, then review; Insert is one `insertQuestionBatch`, Add to 題庫 is `src/library/bankDocs.ts:addToBank`. Opened by `src/components/import/PasteImportHost.tsx:PasteImportHost` (add rail, `src/components/import/pasteImportStore.ts:usePasteImport`) and from 題庫's header (`src/components/import/PasteImportHost.tsx:LazyPasteImportDialog`)
-- `src/components/import/pasteSession.ts:pasteInput` · `:pasteVerdict` · `:withPin` · `:checkPlaces` · `:optionIndexAt` — the dialog's logic, pure: clipboard flavours, empty/scan/OCR, fixes as pins, flags to visit, the clicked option; `:imageFiles` · `:imagePin` — a pasted or dropped picture as an image pin
+- `src/components/start/StartScreen.tsx:StartNewSection` — "Import from Word or PDF…" under New worksheet; a dropped `.docx`/`.pdf` (`src/components/start/fileDrop.ts:planDrop` → `paper`) opens the same dialog through `src/components/import/ImportHost.tsx:LazyImportDialog` (lazy: the readers and pdf.js never load with the start screen)
+- `src/components/import/ImportDialog.tsx:ImportDialog` — reading, a problem (`.doc`, password, not a paper, unreadable, scan), the review, then Save as (`src/components/import/SaveAsStep.tsx:SaveAsStep`): a new paper of one of the four types, or 題庫 only (`src/library/bankDocs.ts:addToBank`)
+- `src/components/import/fileImport.ts:readPaperFile` · `:defaultDocumentType` · `:misfit` · `:importLanguageMode` · `:startLanguage` · `:createImportedDocument` — pure apart from the last: the file to a review or a problem, the suggested type, the type that does not fit, the new paper's language, and the new paper made by `createWorksheetFrom`, opened, then the batch in one commit
+- `src/components/import/pasteSession.ts:pasteVerdict` · `:withPin` · `:checkPlaces` · `:optionIndexAt` — the review's logic, pure: empty/scan/OCR, fixes as pins, flags to visit, the clicked option; `:carriedFiles` · `:imagePin` — a pasted or dropped picture as an image pin
 - `src/components/import/previewDoc.ts:previewItems` — the batch in a scratch worksheet, rendered by `renderWorksheet`; questions cached by outline so an unchanged one keeps its nodes
-- `src/components/import/ReviewLines.tsx:ReviewLines` · `:RoleMenu` — the paste with role chips; `src/components/import/ReviewPreview.tsx:ReviewPreview` — the editor's `NodeView`, read-only, zoomed to fit
+- `src/components/import/ReviewLines.tsx:ReviewLines` · `:RoleMenu` — the file's lines with role chips; `src/components/import/ReviewPreview.tsx:ReviewPreview` — the editor's `NodeView`, read-only, zoomed to fit
 
 Invariants:
 - Text is never dropped: a line the walk cannot place stays in the nearest stem, flagged. The PDF reader drops only running headers/footers, page numbers, rotated margin text and a figure's own labels.
 - pdf.js stays out of the app's first load: reached only through `import('./pdfjs')`.
 - Only `src/import/build.ts` names question types (`src/import/solve.test.ts` guards it).
 - Nothing is stored in a document: imported questions are ordinary questions.
-- The dialog never puts pasted HTML in the page; ⌘Z inside it takes back a fix, never the document.
+- Nothing is written before Save; ⌘Z inside the dialog takes back a fix, never a document.
 
 ## scripts — the harnesses
 

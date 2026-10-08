@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import type { Pin, Role, SourceLine } from '@/import';
 import type { Messages } from '@/i18n/catalogue';
 import { ImageIcon, WarningIcon } from '@/components/ui/icons';
-import { PASTE_IMPORT_MESSAGES } from './messages';
+import { IMPORT_MESSAGES } from './messages';
 import { CHIP, PINNABLE, roleForKey, type ChipTone } from './pasteSession';
 
 /**
@@ -14,7 +14,7 @@ import { CHIP, PINNABLE, roleForKey, type ChipTone } from './pasteSession';
  * Fixes show on the chip (a ring) and as badges that take the fix back.
  */
 
-type Text = Messages<typeof PASTE_IMPORT_MESSAGES>;
+type Text = Messages<typeof IMPORT_MESSAGES>;
 
 const TONE: Record<ChipTone, string> = {
   question: 'bg-accent-soft text-accent-ink',

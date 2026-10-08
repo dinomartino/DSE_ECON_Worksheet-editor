@@ -3,7 +3,7 @@ import { previewFigure } from '@/import';
 import { createImageBlock } from '@/model/factories';
 import type { StructuredQuestion } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
-import { carriedFiles, checkPlaces, imagePin, isHeic, pasteInput, pinsOn, readPaste, review, withPin, withoutPin } from './pasteSession';
+import { carriedFiles, checkPlaces, imagePin, isHeic, pinsOn, readPaste, review, withPin, withoutPin } from './pasteSession';
 import { materialize, previewBase, previewItems } from './previewDoc';
 
 /** Invented paper; the picture is a made-up data URL. */
@@ -35,10 +35,9 @@ describe('pictures in the review', () => {
     const tiff = new File(['x'], 'scan.tiff', { type: 'image/tiff' });
     expect(carriedFiles(clip({ files: [heic, tiff] }))).toEqual({ images: [heic, tiff], others: [] });
     expect([heic, new File(['x'], 'a.heic', { type: 'image/heic' }), tiff, png].map(isHeic)).toEqual([true, true, false, false]);
-    // A text paste carries no picture, and still reaches the engine as before.
+    // A text paste carries no picture.
     const text = clip({ items: [{ kind: 'string', type: 'text/plain' }, { kind: 'string', type: 'text/html' }] });
     expect(carriedFiles(text)).toEqual({ images: [], others: [] });
-    expect(pasteInput({ getData: (t: string) => (t === 'text/plain' ? '1.\tWhy?' : '') })).toEqual({ plain: '1.\tWhy?' });
   });
 
   it('a pasted picture becomes a pin, shows in the preview, and inserts as the block imageBlockFromFile made', () => {

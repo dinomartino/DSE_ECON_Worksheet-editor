@@ -38,7 +38,7 @@ describe('the welcome desk', () => {
 
   it('leaves the panel one New worksheet button, empty or not; Open a file only once something is saved', () => {
     const panel = (empty: boolean) =>
-      renderToStaticMarkup(<StartNewSection empty={empty} onCreate={() => {}} onOpenFile={() => {}} />);
+      renderToStaticMarkup(<StartNewSection empty={empty} onCreate={() => {}} onImport={() => {}} onOpenFile={() => {}} />);
     for (const empty of [true, false]) {
       expect(panel(empty)).toContain('New worksheet');
       for (const kind of START_KINDS) expect(panel(empty)).not.toContain(`>${kind.title}<`);
