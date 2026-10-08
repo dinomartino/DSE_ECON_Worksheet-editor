@@ -1,9 +1,19 @@
 import { defineMessages } from '@/i18n/catalogue';
 
 export const LANGUAGE_MESSAGES = defineMessages({
-  group: { en: 'Interface language', zh: '介面語言' },
-  unchanged: {
-    en: 'Printed worksheets, document defaults and the editing language (EN / 中文) stay as they are.',
-    zh: '列印出來的工作紙、文件預設字眼和編輯語言（EN / 中文）都不會改變。',
+  interface: { en: 'Interface', zh: '介面' },
+  interfaceNote: {
+    en: 'Buttons, menus and dialogs. Papers print the same in either.',
+    zh: '按鈕、選單和對話框所用的語言。試卷不受影響。',
   },
+  group: { en: 'Interface language', zh: '介面語言' },
+  papers: { en: 'Papers', zh: '試卷' },
+  papersNote: {
+    en: 'The language new papers and imported questions start in. Each paper can still be switched on its own.',
+    zh: '新試卷和匯入題目的起始語言。每份試卷仍可個別切換。',
+  },
+  papersGroup: { en: 'Paper language', zh: '試卷語言' },
+  paperEn: { en: 'English only', zh: '只用英文' },
+  paperZh: { en: '中文 only', zh: '只用中文' },
+  paperBoth: { en: 'Bilingual', zh: '中英對照' },
 });

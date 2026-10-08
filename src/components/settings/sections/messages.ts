@@ -21,10 +21,10 @@ export const SECTION_MESSAGES = defineMessages({
     zh: '頁面周圍的配色。工作紙一律以白底黑字列印。',
   },
   languageLabel: { en: 'Language 語言', zh: '語言' },
-  languageHint: { en: 'English or 繁體中文', zh: 'English 或繁體中文' },
+  languageHint: { en: 'Interface and papers', zh: '介面及試卷' },
   languageDescription: {
-    en: 'The language of buttons, menus and dialogs. Worksheets print exactly as you wrote them.',
-    zh: '按鈕、選單和對話框所用的語言。工作紙照你所寫的內容列印，不受影響。',
+    en: 'Two separate choices: the language of the app, and the language new papers start in.',
+    zh: '兩個獨立選項：程式介面的語言，以及新試卷的起始語言。',
   },
   storageLabel: { en: 'Storage location', zh: '儲存位置' },
   storageHint: { en: 'Sync two computers', zh: '兩部電腦同步' },
