@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui';
-import { Dialog } from '@/components/ui/Dialog';
+import { Dialog, NoticeInsetSpacer } from '@/components/ui/Dialog';
 import { useDialogNotices } from '@/components/ui/NoticeLayer';
 import { relativeTime } from '@/components/start/dashboard';
 import type { SavedGraph } from '@/model/graph';
@@ -119,6 +119,7 @@ export function UseInWorksheetDialog({
               </li>
             ))}
           </ul>
+          <NoticeInsetSpacer />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col" data-use-step="worksheet">
@@ -162,6 +163,7 @@ export function UseInWorksheetDialog({
                 ))}
               </ul>
             )}
+            <NoticeInsetSpacer />
           </div>
         </div>
       )}
