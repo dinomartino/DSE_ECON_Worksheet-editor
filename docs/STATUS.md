@@ -76,7 +76,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-08** — D1 design, engine, dialog, picture slots, gaps, docx + pdf readers; paper language
-  setting; topic names paper-side. then file-only import from the home screen
-  (paste-text importer removed, user); 題庫 view-language fixes. 12 Opus branches merged.
-- **2026-10-08** — Found-folder offer on a new computer (`feature/found-folder`, 1 Opus agent), merged.
+- **2026-10-08** — Found-folder offer; import (design, engine, docx/pdf readers, home-screen file import,
+  answers from another file); paper language; OCR survey + trial. 15 Opus branches merged.
