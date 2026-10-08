@@ -75,15 +75,7 @@ export async function copyToBank(
   io: BankIO = {},
 ): Promise<CopyToBankResult> {
   const store = io.store ?? worksheetStore;
-  if (typeof to === 'string' && to === openId(io)) throw new Error('That bank is open; close it first.');
-  let bank: Worksheet;
-  if (typeof to !== 'string') {
-    bank = createBank(to.name);
-  } else {
-    const loaded = await store.load(to);
-    if (!loaded || loaded.kind !== 'bank') throw new Error('That is not a question bank.');
-    bank = loaded;
-  }
+  const bank = await bankFor(to, io);
   const held = new Set(bank.questions.map(rootIdOf));
   const fresh: Question[] = [];
   const already: Question[] = [];
@@ -105,6 +97,47 @@ export async function copyToBank(
   };
   await store.save(next);
   return { bank: next, copied: copies.length, already };
+}
+
+/** The bank `to` names, loaded, or a new one. Never the open document. */
+async function bankFor(to: BankTarget, io: BankIO): Promise<Worksheet> {
+  const store = io.store ?? worksheetStore;
+  if (typeof to === 'string' && to === openId(io)) throw new Error('That bank is open; close it first.');
+  if (typeof to !== 'string') return createBank(to.name);
+  const loaded = await store.load(to);
+  if (!loaded || loaded.kind !== 'bank') throw new Error('That is not a question bank.');
+  return loaded;
+}
+
+/**
+ * New questions (a paste, `src/import/`) appended to a bank as originals: they come from
+ * no document, so they carry no lineage. One that says what a question in the bank (or
+ * an earlier one of `questions`) already says, by `contentKey`, is not added: it is
+ * returned in `already`. Nothing to add saves nothing. One save.
+ */
+export async function addToBank(questions: Question[], to: BankTarget = {}, io: BankIO = {}): Promise<CopyToBankResult> {
+  const store = io.store ?? worksheetStore;
+  const bank = await bankFor(to, io);
+  const held = new Set(bank.questions.map(contentKey));
+  const fresh: Question[] = [];
+  const already: Question[] = [];
+  for (const question of questions) {
+    const key = contentKey(question);
+    if (held.has(key)) already.push(question);
+    else {
+      held.add(key);
+      fresh.push(question);
+    }
+  }
+  if (fresh.length === 0) return { bank, copied: 0, already };
+  const next: Worksheet = {
+    ...bank,
+    questions: [...bank.questions, ...fresh],
+    flow: [...bank.flow, ...fresh.map((q) => ({ type: 'question' as const, id: q.id }))],
+    updatedAt: new Date().toISOString(),
+  };
+  await store.save(next);
+  return { bank: next, copied: fresh.length, already };
 }
 
 
