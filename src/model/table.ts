@@ -398,6 +398,25 @@ export function cellsInRange(
   );
 }
 
+/**
+ * The grid rows and columns a range covers, each ascending. A range is a rectangle
+ * (`cellsInRange` grows it over merges), so these are contiguous; a merged cell
+ * counts once per row and column it spans.
+ */
+export function rangeGridSpan(rects: ReadonlyArray<CellRect>): {
+  rows: number[];
+  columns: number[];
+} {
+  if (rects.length === 0) return { rows: [], columns: [] };
+  const r0 = Math.min(...rects.map((rect) => rect.r0));
+  const r1 = Math.max(...rects.map((rect) => rect.r1));
+  const c0 = Math.min(...rects.map((rect) => rect.c0));
+  const c1 = Math.max(...rects.map((rect) => rect.c1));
+  const span = (from: number, to: number) =>
+    Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  return { rows: span(r0, r1), columns: span(c0, c1) };
+}
+
 /** Patch every cell in a list of positions — the range's bulk edit, one commit. */
 export function patchCells(
   block: TableBlock,
@@ -635,6 +654,39 @@ export function resizeColumn(
   return { ...block, columnWidths: next };
 }
 
+/**
+ * Word's Distribute Columns over a selection: the named **grid** columns share their
+ * current combined width equally, and every other column keeps its width exactly, so
+ * the rest of the table does not move. Fewer than two valid columns, or no change,
+ * returns the block itself (the caller skips the commit). Distributing every column
+ * stores nothing, since absent widths already mean equal.
+ */
+export function distributeColumns(
+  block: TableBlock,
+  gridColumns: ReadonlyArray<number>,
+  count = spannedColumnCount(block),
+): TableBlock {
+  const chosen = [...new Set(gridColumns)].filter(
+    (index) => Number.isInteger(index) && index >= 0 && index < count,
+  );
+  if (chosen.length < 2) return block;
+
+  // The stored values when they are usable, so an untouched column keeps its number
+  // bit-for-bit (the selection's total is preserved, so the render's normalising
+  // divides by the same sum); the resolved fallback otherwise.
+  const stored = block.columnWidths;
+  const usable =
+    stored?.length === count &&
+    stored.every((value) => typeof value === 'number' && Number.isFinite(value) && value > 0);
+  const widths = usable ? [...stored] : resolveColumnWidths(block, count);
+  const share = chosen.reduce((sum, index) => sum + widths[index], 0) / chosen.length;
+  const next = [...widths];
+  for (const index of chosen) next[index] = share;
+
+  if (next.every((value, i) => Math.abs(value - widths[i]) < 1e-9)) return block;
+  return { ...block, columnWidths: chosen.length === count ? undefined : next };
+}
+
 /* ------------------------------------------------- the table's own box */
 
 /** A table may not be dragged narrower than this fraction of the content width. */
@@ -794,6 +846,47 @@ export function setRowHeight(
         minHeight: Math.min(MAX_ROW_HEIGHT_TWIPS, Math.max(MIN_ROW_HEIGHT_TWIPS, Math.round(twips))),
       };
     }),
+  };
+}
+
+/**
+ * Word's Distribute Rows over a selection: every named row takes the tallest one's
+ * height as its floor. `measuredTwips[i]` is row `rowIndices[i]`'s **rendered** height
+ * (the page measures it; content can make a row taller than its stored floor). A missing
+ * measurement falls back to the stored floor. Clamped like a drag, so a row taller than
+ * `MAX_ROW_HEIGHT_TWIPS` stays taller than the rest. Rows outside the list are untouched;
+ * fewer than two rows, or no change, returns the block itself.
+ */
+export function distributeRows(
+  block: TableBlock,
+  rowIndices: ReadonlyArray<number>,
+  measuredTwips: ReadonlyArray<number>,
+): TableBlock {
+  const heightOf = new Map<number, number>();
+  rowIndices.forEach((index, i) => {
+    if (!Number.isInteger(index) || index < 0 || index >= block.rows.length) return;
+    const measured = measuredTwips[i];
+    const height =
+      typeof measured === 'number' && Number.isFinite(measured) && measured > 0
+        ? measured
+        : block.rows[index].minHeight ?? 0;
+    heightOf.set(index, Math.max(heightOf.get(index) ?? 0, height));
+  });
+  if (heightOf.size < 2) return block;
+
+  const tallest = Math.max(...heightOf.values());
+  if (tallest <= 0) return block;
+  const target = Math.min(
+    MAX_ROW_HEIGHT_TWIPS,
+    Math.max(MIN_ROW_HEIGHT_TWIPS, Math.round(tallest)),
+  );
+
+  if ([...heightOf.keys()].every((index) => block.rows[index].minHeight === target)) {
+    return block;
+  }
+  return {
+    ...block,
+    rows: block.rows.map((row, r) => (heightOf.has(r) ? { ...row, minHeight: target } : row)),
   };
 }
 
