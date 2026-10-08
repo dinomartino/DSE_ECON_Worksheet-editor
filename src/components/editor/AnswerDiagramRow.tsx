@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
+import { altTextAfterTemplateSwap } from '@/model/factories';
 import { rebaseOnGraph } from '@/model/graph';
 import { plain } from '@/model/text';
 import type { DiagramBlock } from '@/model/types';
@@ -13,12 +14,13 @@ import { DiagramCanvas } from './DiagramCanvas';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
 import { FlowCanvas } from './FlowCanvas';
 import { ForumCanvas } from './ForumCanvas';
+import { DiagramWordsFields } from './DiagramWordsFields';
 import { ANSWER_DIAGRAM_MESSAGES } from './AnswerDiagramRow.messages';
 
 /**
  * A leaf's model answer diagram (§ `QuestionPart.answerDiagram`), compact: thumbnail,
- * Draw…, template and width. Drawing opens the same canvases a stem diagram uses; the
- * alt text is the template's.
+ * Draw…, template and width, then the alt text and title a stem diagram's panel offers.
+ * Drawing opens the same canvases a stem diagram uses.
  */
 export function AnswerDiagramRow({
   block,
@@ -85,7 +87,12 @@ export function AnswerDiagramRow({
             onPick={(templateId) => {
               // Re-measured: templates disagree about their box (see `DiagramEditor`).
               const next = buildFromTemplate(templateId);
-              onChange({ ...block, ...diagramSize(next, block.widthPx, language), diagram: next });
+              onChange({
+                ...block,
+                ...diagramSize(next, block.widthPx, language),
+                altText: altTextAfterTemplateSwap(block.altText, diagram.templateId, templateId),
+                diagram: next,
+              });
             }}
             onPickGraph={(graph) => onChange(rebaseOnGraph(block, graph, language))}
           />
@@ -100,6 +107,7 @@ export function AnswerDiagramRow({
           />
         </div>
       </div>
+      <DiagramWordsFields block={block} onChange={onChange} />
       <p className="text-[11px] leading-snug text-ink-subtle">{m.onQuestionDiagram}</p>
       {drawing &&
         drawable &&

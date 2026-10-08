@@ -10,7 +10,9 @@ import {
   updateField,
   type ZoneName,
 } from '@/model/bands';
+import { clampAnswerGraphLines } from '@/model/answerGraph';
 import {
+  applyAnswerGraph,
   applyClearCells,
   applyDeleteTarget,
   applyEditTarget,
@@ -88,7 +90,7 @@ import type {
   TextFormat,
   Worksheet,
 } from '@/model/types';
-import type { EditTarget } from '@/render/ir';
+import type { EditTarget, SchemeAddress } from '@/render/ir';
 import { listQuestionTypes } from '@/registry';
 import { worksheetStore } from '@/storage';
 import { applyAnswerWrites } from '@/answers/apply';
@@ -285,6 +287,10 @@ interface WorksheetState {
    * One verb: the element's own kind decides which field holds its size.
    */
   resizeLayoutElement: (elementId: string, value: number) => void;
+  /** Set a graph answer space's height in whole lines (clamped 6–40), one undo step. */
+  resizeAnswerGraph: (owner: SchemeAddress, lines: number) => void;
+  /** Remove a leaf's graph answer space. */
+  removeAnswerGraph: (owner: SchemeAddress) => void;
   /**
    * Divide answer lines: `keep` rows stay, `overflow` becomes new element(s) after —
    * what a drag past the end of the page means. Chopped into `perPage`-sized pieces
@@ -316,6 +322,13 @@ interface WorksheetState {
    * the change is already saved, and an unsaved edit still saves with it. Inert read-only.
    */
   adoptSavedElsewhere: (recipe: (worksheet: Worksheet) => Worksheet) => void;
+  /**
+   * Take in another tab's save of this document whole (a ✦ Fill, a tag edit), when this
+   * tab has nothing unsaved. History is dropped: an undo back to the older copy would
+   * autosave over the newer one. Returns false, changing nothing, when this tab is
+   * dirty, read-only, or holds another document; the caller then adopts only the tags.
+   */
+  adoptSavedDocument: (saved: Worksheet) => boolean;
   /** Replace one block by id — the route a page-opened editor commits through. */
   replaceBlock: (blockId: string, next: ContentBlock) => void;
   /** Insert a new block directly after an existing one — the page's insert route. */
@@ -1099,6 +1112,14 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         return element;
       }),
     })),
+  resizeAnswerGraph: (owner, lines) =>
+    get().commit((draft) =>
+      applyAnswerGraph(draft, owner, (graph) => {
+        const next = clampAnswerGraphLines(lines);
+        return next === graph.lines ? graph : { ...graph, lines: next };
+      }),
+    ),
+  removeAnswerGraph: (owner) => get().commit((draft) => applyAnswerGraph(draft, owner, () => undefined)),
   splitLayoutRows: (elementId, keep, overflow, perPage) =>
     get().commit((draft) => {
       const existing = draft.layout.find((element) => element.id === elementId);
@@ -1152,6 +1173,22 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       if (worksheet === state.worksheet && same(past, state.past) && same(future, state.future)) return state;
       return { worksheet, past, future };
     }),
+  adoptSavedDocument: (saved) => {
+    const state = get();
+    if (state.readOnly || state.dirty || saved.id !== state.worksheet.id) return false;
+    if (isNewerThanBuild(saved)) return false;
+    if (JSON.stringify(saved) === JSON.stringify(state.worksheet)) return true;
+    const kept = (id: string | undefined) =>
+      id !== undefined && saved.questions.some((question) => question.id === id) ? id : undefined;
+    set({
+      worksheet: saved,
+      past: [],
+      future: [],
+      // A selection naming a question the newer copy no longer holds would point at nothing.
+      selectedQuestionId: kept(state.selectedQuestionId),
+    });
+    return true;
+  },
   resolveAnswerSpaceFills: (counts) =>
     set((state) => {
       let changed = false;

@@ -32,6 +32,7 @@ describe('Delete precedence on the page', () => {
   it.each([
     ['selectedElement', 'a selected text target'],
     ['selectedBlockId', 'a selected picture'],
+    ['selectedGraph', 'a selected graph answer space'],
     ['activeCell', 'a selected table cell'],
   ])('stands the whole-item handler down for %s', (guard, what) => {
     expect(
@@ -48,7 +49,7 @@ describe('Delete precedence on the page', () => {
       source.indexOf('if (!selectedQuestionId && !selectedLayoutId) return;'),
     );
     const list = deps.slice(deps.indexOf('}, ['), deps.indexOf(']);') + 3);
-    for (const guard of ['selectedElement', 'selectedBlockId', 'activeCell']) {
+    for (const guard of ['selectedElement', 'selectedBlockId', 'selectedGraph', 'activeCell']) {
       expect(list, `${guard} guards the handler but is not a dependency`).toContain(guard);
     }
   });

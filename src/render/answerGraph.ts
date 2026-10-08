@@ -6,7 +6,7 @@ import {
 import { isBiTextEmpty, plain, runLines } from '@/model/text';
 import { cssFontFamilies } from '@/model/fonts';
 import type { AnswerGraph, BiText, FontPair, LanguageMode } from '@/model/types';
-import type { AnswerGraphNode } from './ir';
+import type { AnswerGraphNode, SchemeAddress } from './ir';
 
 /**
  * The graph answer space's IR node, its printed box, and its drawing (§ `AnswerGraph`).
@@ -46,8 +46,8 @@ const PAD = { top: 4, right: 4, bottom: 24, left: 28 };
 const GRID_STEP = ANSWER_GRAPH_LINE_PT * PX_PER_PT;
 const GRID_COLOUR = '#bfbfbf';
 
-/** The resolved node for one stored box. */
-export function answerGraphNode(graph: AnswerGraph): AnswerGraphNode {
+/** The resolved node for one stored box; `owner` addresses its leaf for the page. */
+export function answerGraphNode(graph: AnswerGraph, owner?: SchemeAddress): AnswerGraphNode {
   const lines = clampAnswerGraphLines(graph.lines);
   const widthShare = answerGraphWidthShare(graph);
   const grid = Boolean(graph.grid);
@@ -63,6 +63,7 @@ export function answerGraphNode(graph: AnswerGraph): AnswerGraphNode {
     showOrigin,
     ...(xTitle ? { xTitle } : {}),
     ...(yTitle ? { yTitle } : {}),
+    ...(owner ? { owner } : {}),
   };
 }
 

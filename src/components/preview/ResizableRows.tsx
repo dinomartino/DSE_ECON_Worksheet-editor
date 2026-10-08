@@ -55,6 +55,10 @@ interface Props {
    * stayed at their old number, so the drag read as broken until it was released.
    */
   children: (value: number) => React.ReactNode;
+  /** The handle's name, when it is not answer lines being added or removed. */
+  handleLabel?: string;
+  /** What the readout says at the cap, when the cap is not the bottom of the page. */
+  capNote?: string;
 }
 
 export function ResizableRows({
@@ -70,6 +74,8 @@ export function ResizableRows({
   onResize,
   unit,
   children,
+  handleLabel,
+  capNote,
 }: Props) {
   // The value being dragged towards, or undefined when no gesture is in flight. Local
   // rather than in the store: transient interaction state that must never reach an
@@ -221,7 +227,7 @@ export function ResizableRows({
               is both easier to hit and an honest picture of what moves. */}
           <button
             type="button"
-            aria-label={m.dragLines}
+            aria-label={handleLabel ?? m.dragLines}
             data-print-hide
             style={{
               cursor: 'ns-resize',
@@ -263,7 +269,7 @@ export function ResizableRows({
               }}
             >
               {live} {unitWord(live)}
-              {atMax && m.fillsPage}
+              {atMax && (capNote ?? m.fillsPage)}
             </div>
           )}
         </>

@@ -5,7 +5,7 @@ import { buildFromTemplate, defaultDiagramAltText } from './diagramTemplates';
 // `migrations` import below is commented for.
 import { createSectionElement } from './flow';
 import { CURRENT_SCHEMA_VERSION } from './migrations';
-import { bi, emptyBiText } from './text';
+import { bi, emptyBiText, isBiTextEmpty, plain } from './text';
 // Value import from `render/` — safe for the reason spelled out in `model/edits.ts`:
 // `render/diagram.ts` takes only types from `model/`, so the edge stays one-way.
 import { diagramSize } from '@/render/diagram';
@@ -107,6 +107,22 @@ export function createDiagramBlock(
     ...diagramSize(diagram, widthPx, 'bilingual'),
     altText: defaultDiagramAltText(templateId),
   };
+}
+
+/**
+ * A diagram's alt text after its template is swapped: it follows the new template while
+ * it is empty or still the old template's default; words the teacher typed are kept.
+ */
+export function altTextAfterTemplateSwap(
+  altText: BiText,
+  fromTemplateId: string | undefined,
+  toTemplateId: string,
+): BiText {
+  const old = defaultDiagramAltText(fromTemplateId ?? 'blank');
+  const untouched =
+    isBiTextEmpty(altText) ||
+    (plain(altText.en) === plain(old.en) && plain(altText.zh) === plain(old.zh));
+  return untouched ? defaultDiagramAltText(toTemplateId) : altText;
 }
 
 /**

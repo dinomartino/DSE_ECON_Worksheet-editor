@@ -97,13 +97,18 @@ import {
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramNodeSvg } from "@/render/diagramPage";
-import { AnswerGraphView } from "./AnswerGraphView";
+import {
+  AnswerGraphOnPage,
+  answerGraphKey,
+  type AnswerGraphPageControls,
+} from "./AnswerGraphView";
 import {
   BLANK_LINE_PT,
   type CoverRenderNode,
   type EditTarget,
   type NodeStyle,
   type RenderNode,
+  type SchemeAddress,
   type TableNode,
   type TextNode,
   trailLabel,
@@ -962,6 +967,12 @@ export interface EditContext {
      */
     slackFor: (elementId: string) => number;
   };
+  /**
+   * Selecting and resizing a graph answer space (§ `AnswerGraphNode.owner`). Its own
+   * entry because it addresses a question leaf, not a layout element or a block, in
+   * whole 12pt lines. Absent on read-only paths, which keeps them free of handles.
+   */
+  answerGraph?: AnswerGraphPageControls;
 }
 
 /**
@@ -2588,7 +2599,7 @@ export function NodeView({
   }
 
   if (node.kind === "answerGraph") {
-    return <AnswerGraphView node={node} language={language} />;
+    return <AnswerGraphOnPage node={node} language={language} controls={ctx?.answerGraph} />;
   }
 
   if (node.kind === "pageBreak") {
@@ -4215,6 +4226,13 @@ interface Props {
    */
   onResizeRows?: (elementId: string, value: number) => void;
   /**
+   * Set a graph answer space's height, dragged on the page; once per gesture, on
+   * release. Omit to draw the boxes without a handle.
+   */
+  onResizeAnswerGraph?: (owner: SchemeAddress, lines: number) => void;
+  /** Remove a selected graph answer space (Delete). */
+  onRemoveAnswerGraph?: (owner: SchemeAddress) => void;
+  /**
    * Move a table's column boundary, dragged on the page. Omit to render tables without
    * boundary handles, which is what keeps the print path and the thumbnails clean.
    *
@@ -4558,6 +4576,8 @@ export function Preview({
   onInsertBlank,
   onResizeBlock,
   onResizeRows,
+  onResizeAnswerGraph,
+  onRemoveAnswerGraph,
   onResizeTableColumn,
   onResizeTableEdge,
   onResizeTableRow,
@@ -4884,7 +4904,15 @@ export function Preview({
   // `selectedElement`, because a block has no language side and nothing to format —
   // see `EditContext.resize`. The two are mutually exclusive: selecting one clears the
   // other, so Delete and the format toolbar always have an unambiguous subject.
-  const [selectedBlockId, setSelectedBlockId] = useState<string | undefined>();
+  const [selectedBlockId, setSelectedBlockIdOnly] = useState<string | undefined>();
+  // The graph answer space selected on the page. Every path that sets or drops the
+  // picture selection drops this too (`setSelectedBlockId`), so it can never linger
+  // armed for Delete beside whatever was clicked next.
+  const [selectedGraph, setSelectedGraph] = useState<SchemeAddress | undefined>();
+  const setSelectedBlockId = useCallback((blockId: string | undefined) => {
+    setSelectedBlockIdOnly(blockId);
+    setSelectedGraph(undefined);
+  }, []);
 
   // The item being dragged on the page. Local rather than in the store, because it is
   // transient interaction state that must never reach an undo entry or a save.
@@ -5018,7 +5046,7 @@ export function Preview({
     return useWorksheetStore.subscribe((state, previous) => {
       if (state.blockSelectRequest !== previous.blockSelectRequest) take(state.blockSelectRequest);
     });
-  }, []);
+  }, [setSelectedBlockId]);
 
   /*
    * How much taller this element could get before running past its page. Measured off
@@ -5769,6 +5797,24 @@ export function Preview({
               slackFor: (elementId) => measureSlack(elementId),
             }
           : undefined,
+        answerGraph: onResizeAnswerGraph
+          ? {
+              scale,
+              selectedKey: selectedGraph ? answerGraphKey(selectedGraph) : undefined,
+              onSelect: (owner) => {
+                setSelectedElement(undefined);
+                setSelectedBlockId(undefined);
+                setSelectedLayoutId(undefined);
+                // Selected from the page: the question is already where the teacher is
+                // looking, so the sidebar-driven scroll stands down.
+                selfSelected.current ||= selectedQuestionId !== owner.questionId;
+                // Points the sidebar at the question holding the box (§ `selectOwnerOf`).
+                selectOwnerOf({ kind: "questionAnswer", questionId: owner.questionId });
+                setSelectedGraph(owner);
+              },
+              onResize: onResizeAnswerGraph,
+            }
+          : undefined,
       }
     : undefined;
 
@@ -5790,6 +5836,7 @@ export function Preview({
     contentWidthPx,
     selectedBlockId ?? "",
     selectedLayoutId ?? "",
+    selectedGraph ? answerGraphKey(selectedGraph) : "",
     // The indent map is derived from the shape, so the shape stands in for it.
     shape,
     // Empty-field prompts are chrome text read at render time.
@@ -5868,7 +5915,37 @@ export function Preview({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedBlockId, onDelete]);
+  }, [selectedBlockId, onDelete, setSelectedBlockId]);
+
+  /*
+   * Keys that act on a selected graph answer space: Escape deselects, Delete removes the
+   * box (not the question holding it). The more specific selection, so the whole-item
+   * handler below stands down while it is set.
+   */
+  useEffect(() => {
+    if (!selectedGraph) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedGraph(undefined);
+        return;
+      }
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      if (isModalLayerOpen()) return;
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLInputElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      onRemoveAnswerGraph?.(selectedGraph);
+      setSelectedGraph(undefined);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedGraph, onRemoveAnswerGraph]);
 
   /*
    * Delete / Backspace on a whole selected item (question or layout element). Never
@@ -5885,6 +5962,7 @@ export function Preview({
   useEffect(() => {
     if (selectedElement) return; // The text-target handler above owns this key.
     if (selectedBlockId) return; // The picture handler above owns it.
+    if (selectedGraph) return; // The graph handler above owns it.
     if (activeCell) return; // The cell handler below owns it.
     if (!selectedQuestionId && !selectedLayoutId) return;
 
@@ -5914,6 +5992,7 @@ export function Preview({
   }, [
     selectedElement,
     selectedBlockId,
+    selectedGraph,
     activeCell,
     selectedQuestionId,
     selectedLayoutId,
