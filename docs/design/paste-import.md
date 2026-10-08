@@ -2,7 +2,8 @@
 
 Status: **proposal** (2026-10-08), written against `develop` @ c886017. Phase 0 and phase 1 are
 built (§ 10): the engine (`feature/paste-import-core`) and the review dialog (`feature/paste-import-ui`).
-Phase 2's `.docx` reader and phase 3's `.pdf` reader are built (§ 10).
+Phase 2's `.docx` reader and phase 3's `.pdf` reader are built (§ 10). The engine for
+answers kept in another file is built (§ 11); its UI is not.
 **The way in is file-only** (user decision, 2026-10-08: "if a teacher can copy the text, they
 can paste it into a worksheet themselves"): Import from Word or PDF… on the home screen, or a
 file dropped there (§ 6, § 10). The clipboard readers stay in the engine, tested, unused by the app.
@@ -490,4 +491,87 @@ suggested type, exported to `.docx` (student and teacher), and opened in LibreOf
 
 Not checked: the desktop shell's open sheet and native drop (the same code path as the web
 chooser and drop once the bytes arrive).
+
+## 11. Answers from another file (engine, 2026-10-08)
+
+The request: "sometimes the answers are in another file". Several files are chosen at once,
+the engine guesses which hold questions and which answers, and which belong together; the
+teacher relinks. Pure, in `src/import/`. The UI (multi-file choose, linking, per-paper
+review) builds on these calls:
+
+```ts
+classifyImport(read: ReadPaste, fileName: string): FileClass
+  // { role: 'questions' | 'answers' | 'both'; confidence: 0.5–0.99; reasons: ClassifyReason[] }
+suggestPairs(files: { id: string; name: string; role: FileRole }[]): { questions: string; answers?: string }[]
+splitAnswers(read: ReadPaste): { questions: ReadPaste; answers?: ReadPaste & { offset: number } }
+readAnswerSheet(read: ReadPaste & { pages?: number }): AnswerSheet
+matchAnswers(analysis: Analysis, sheet: AnswerSource): { pins: Pin[]; report: AnswerMatch[]; sections: number[]; unused: number[] }
+  // then analyseLines(read, { pins: [...sheetPins, ...teacherPins] }) → buildImport
+```
+
+Types: `src/import/answerSheet.ts` (`AnswerSheet`, `AnswerEntry`, `AnswerPoint`, `AnswerNote`,
+`AnswerSection`), `src/import/matchAnswers.ts` (`AnswerMatch`, `MatchStatus`, `MatchDetail`),
+`src/import/answerFiles.ts` (`FileClass`, `ClassifyReason`).
+
+- **Classify:** the name (ans, answer(s), key, MS, marking, scheme, soln, solution, suggested,
+  答案, 參考答案, 評卷, 評分, 題解, 解答) and the content: key entries and schemes with a mark
+  per point, against MC with options and stems that ask. `both`: most MC already answered (a
+  key at the end, bold, "Ans:"), or `splitAnswers` finds answers after the paper. A scan or
+  an empty file has only its name (`noText`).
+- **Pair:** names without answer words, separators and case (`nameTokens`: "2021-22" and
+  "2021-2022" are one token; "P1", "Paper I" and 卷一 are all `paper 1`). Number tokens must
+  agree, or the answer name leaves one out (a series file: "S6 Mock marking scheme" for
+  Paper I and II). Each answer file goes to its best paper first; a paper left over then
+  shares the best answer file that fits (the `.docx` and `.pdf` of one paper). A `both`
+  file pairs with itself; ties go to the file nearest after in the list; a file named only
+  "Answers" pairs with a lone paper.
+- **Read:** key grids ("1. B 2. C", "1C⇥6B", tables, "1–5 BCDAA", a number row over a letter
+  row, 「１．Ｂ」; "A/C" kept as `letters`), sections (Part/Section A, 甲部; Paper 1 and 卷一 as
+  `paper`; or numbering going back), scheme labels ("1(a)", "3a)", "1a.", "6.(a)", "9a(i)",
+  "Q3 (b)(ii)", "(b)", "b.", "(i)", "c.ii"), marks per point ("(1)", "[1]", "(1 mark)", "1M",
+  "1A", "(1分)", "(0.5)", a marks cell, "(1)" alone under a table or diagram). Inline marks
+  cut a line into points ("Yes (1) the tax falls (1)"; "(1) and (2) only" stays text). Rules:
+  "Max: 4", "1@", "(1@, max 2)". A marker's notes: a repeated label ("1a. no → 0") and the
+  lines after it, or the right column of an answer | notes table. A line that wraps (lower
+  case after an unfinished, unmarked point) joins it. Every line gets a `use`; `unknown`
+  lists the lines no entry took. A scan is `kind: 'scan'` with `pages`.
+- **Match:** each sheet section goes to one of the paper's numbering runs (a run ends where
+  numbering goes back): by section name first, then by numbers of the right kind (a letter
+  for an MC, points for a written question). A section that fits nowhere is `unused`, so one
+  file answering Paper 1 and Paper 2 gives each paper its own part. Within a run: question
+  number, then part and sub-part by label (by position when the paper's parts have none).
+  One row per paper question (`matched` / `missing` / `conflict` / `mismatch`), then `extra`
+  rows (`noSuchQuestion`, `noSuchPart`, `duplicate`). `conflict`: the paper's own answer
+  differs; the sheet's pin wins, and a teacher's later click wins over it. A letter past the
+  options is `mismatch` (`letterOutOfRange`) and pins nothing. `marks` lists leaves whose
+  sheet total differs from the printed marks; `missingParts` the parts that got nothing.
+  `matchAnswers` reads only entries and sections (`AnswerSource`), so OCR or AI can supply them.
+- **Pins:** an MC gets `{ kind: 'answer', line, index, from: 'sheet' }`. Text goes in
+  `{ kind: 'scheme', line, part?, subPart?, points, notes?, each?, max? }`: `line` is the
+  question's first line (keyed by line like every pin), `part`/`subPart` 0-based. A pin
+  whose target is gone does nothing; removing the pin takes the text back out.
+- **Where it lands** (existing fields only: no schema or `KNOWN_KEYS` change). A written leaf
+  (a sub-part; a part without sub-parts; a part with sub-parts, for a scheme of the whole
+  group; a question with no parts) gets `scheme: MarkScheme` when anything carries marks or
+  `each`/`max`: one route, one group, a point per line with its mark, `each`/`max` on the
+  group. The marker's notes follow as a second group of unmarked points (the model has no
+  notes field). With no marks at all it gets `answer`: the lines joined by line breaks,
+  notes after a blank line. An MC's text after the letter goes to `explanation`. Text is
+  verbatim apart from the label and the marks tokens it was read from.
+
+**Local check (real files, never committed):** DBS Assessment 1's answer file (a key table
+with "A/C", Part B restarting at 1, "3a)" labels, "(1)" in a marks column, "@2", "Max: 4", a
+table inside an answer) against the paper's `.docx` and `.pdf`: 19/19 MC and 8/8 schemes
+matched, and the answer file pairs with both. An S6 mock from another school (Word-made
+PDFs): Paper I carries its key on its last page (`both`; 45 questions, 44 MC); Paper II
+carries its scheme after "-- End of Paper --" (`both`; `splitAnswers` gives 10 questions and
+27 schemes placed, with notes from the flattened notes column; 4 `extra`, from Q10's source
+table read as parts (a)–(d) on the paper side). Its separate marking scheme is a phone scan:
+`scan`, 6 pages, no entries.
+
+**Known weak cases:** a scheme whose numbering restarts with no heading and no change of
+kind reads the second "1." as a numbered point; the unlabelled line after a lone "1. B" is
+read as its explanation; "OR" between alternative answers stays a point, not a second route;
+in a PDF, flattened answer | notes columns are told apart only by repeated labels; scans
+need text recognition first.
 
