@@ -190,6 +190,8 @@ export interface AnswerRow {
   /** The question's index and first line, when it is in the paper. */
   question?: number;
   line?: number;
+  /** The part and sub-part it is about (0-based), for the order within a question. */
+  at?: [number, number];
   letters?: string[];
   paperLetter?: string;
   sheetLetter?: string;
@@ -270,8 +272,8 @@ export function answerSummary(result: PaperReview, sheet: AnswerSheet): AnswerSu
       case 'matched': {
         const rows: AnswerRow[] = [];
         if (r.detail === 'severalAnswers' && r.letters) rows.push({ kind: 'several', where: at(k!), ...base, letters: r.letters.map(letter) });
-        for (const p of r.missingParts ?? []) rows.push({ kind: 'missingPart', where: at(k!, p.part), ...base });
-        for (const d of r.marks ?? []) rows.push({ kind: 'marks', where: at(k!, d.part, d.subPart), ...base, marks: { sheet: d.sheet, paper: d.paper } });
+        for (const p of r.missingParts ?? []) rows.push({ kind: 'missingPart', where: at(k!, p.part), ...base, at: [p.part, -1] });
+        for (const d of r.marks ?? []) rows.push({ kind: 'marks', where: at(k!, d.part, d.subPart), ...base, at: [d.part ?? -1, d.subPart ?? -1], marks: { sheet: d.sheet, paper: d.paper } });
         return rows;
       }
     }
@@ -280,13 +282,17 @@ export function answerSummary(result: PaperReview, sheet: AnswerSheet): AnswerSu
   const partRows = (r: AnswerMatch): AnswerRow[] =>
     r.status === 'conflict' || r.status === 'mismatch'
       ? [
-          ...(r.missingParts ?? []).map((p) => ({ kind: 'missingPart' as const, where: at(r.question!, p.part), question: r.question, line: questions[r.question!].start })),
-          ...(r.marks ?? []).map((d) => ({ kind: 'marks' as const, where: at(r.question!, d.part, d.subPart), question: r.question, line: questions[r.question!].start, marks: { sheet: d.sheet, paper: d.paper } })),
+          ...(r.missingParts ?? []).map((p) => ({ kind: 'missingPart' as const, where: at(r.question!, p.part), question: r.question, line: questions[r.question!].start, at: [p.part, -1] as [number, number] })),
+          ...(r.marks ?? []).map((d) => ({ kind: 'marks' as const, where: at(r.question!, d.part, d.subPart), question: r.question, line: questions[r.question!].start, at: [d.part ?? -1, d.subPart ?? -1] as [number, number], marks: { sheet: d.sheet, paper: d.paper } })),
         ]
       : [];
   const rows = match.report.flatMap((r) => [...row(r), ...partRows(r)]);
-  // Paper order; rows about the sheet alone (no question) last.
-  out.rows = rows.map((r, n) => ({ r, n })).sort((a, b) => (a.r.line ?? Infinity) - (b.r.line ?? Infinity) || a.n - b.n).map(({ r }) => r);
+  // Paper order, parts in order within a question; rows about the sheet alone (no question) last.
+  const key = (r: AnswerRow) => [r.line ?? Infinity, r.at?.[0] ?? -1, r.at?.[1] ?? -1];
+  out.rows = rows
+    .map((r, n) => ({ r, n, k: key(r) }))
+    .sort((a, b) => a.k[0] - b.k[0] || a.k[1] - b.k[1] || a.k[2] - b.k[2] || a.n - b.n)
+    .map(({ r }) => r);
   return out;
 }
 

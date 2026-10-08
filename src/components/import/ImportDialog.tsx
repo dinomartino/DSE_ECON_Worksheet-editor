@@ -99,7 +99,7 @@ type Step = 'reading' | 'link' | 'review' | 'saveAs';
 /** Questions with an answer or a scheme, for Save as. */
 function answered(result: PaperReview): number {
   return result.analysis.outline.questions.filter(
-    (q) => q.answer?.from === 'sheet' || q.scheme || q.parts.some((p) => p.scheme || p.subParts.some((s) => s.scheme)),
+    (q) => q.answer || q.scheme || q.parts.some((p) => p.scheme || p.subParts.some((s) => s.scheme)),
   ).length;
 }
 
@@ -454,7 +454,7 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
       : step === 'link'
         ? m.linkTitle
         : step === 'review' && paper
-          ? several
+          ? papers.length > 1
             ? `${m.paperOf(at + 1, papers.length)} · ${paper.name}`
             : pagesOf(paper)
               ? `${paper.name} · ${m.pages(pagesOf(paper)!)}`
