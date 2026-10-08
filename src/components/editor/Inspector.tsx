@@ -7,7 +7,7 @@ import { newId } from '@/model/factories';
 import { questionMarks, sectionRuns } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
 import { emptyBiText, plain } from '@/model/text';
-import type { LayoutElement } from '@/model/types';
+import type { LanguageMode, LayoutElement } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, GroupHeader, IconButton, NumberField, Pill, SelectField } from '@/components/ui';
@@ -69,7 +69,7 @@ const LAYOUT_NAME_KEY: Record<LayoutElement['kind'], Key> = {
 };
 
 /** The kinds whose printed words live on the page, shown here as an address row. */
-function textRowFor(element: LayoutElement, m: M) {
+function textRowFor(element: LayoutElement, m: M, language: LanguageMode) {
   if (
     element.kind !== 'section' &&
     element.kind !== 'heading' &&
@@ -79,8 +79,7 @@ function textRowFor(element: LayoutElement, m: M) {
   ) {
     return null;
   }
-  const text =
-    'text' in element ? biExcerpt(element.text) : '';
+  const text = 'text' in element ? biExcerpt(element.text, language) : '';
   return (
     <ExcerptRow
       text={text}
@@ -135,6 +134,7 @@ function SectionChoiceFields({ element }: { element: Extract<LayoutElement, { ki
 function LayoutElementPanel({ element }: { element: LayoutElement }) {
   const m = useMessages(INSPECTOR_MESSAGES);
   const showZhNotes = useUiLanguage() !== 'zh-HK';
+  const language = useWorksheetStore((s) => s.mode.language);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
   const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
@@ -142,7 +142,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
 
   return (
     <div className="space-y-4">
-      {textRowFor(element, m)}
+      {textRowFor(element, m, language)}
 
       {element.kind === 'section' && (
         <div className="space-y-2">
@@ -234,7 +234,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
           {element.rows.map((row) => (
             <ExcerptRow
               key={row.id}
-              text={[biExcerpt(row.label), biExcerpt(row.value)]
+              text={[biExcerpt(row.label, language), biExcerpt(row.value, language)]
                 .filter(Boolean)
                 .join(': ')}
               targetKey={editTargetKey({

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { biTextExcerpt, blocksExcerpt } from '@/model/excerpt';
-import type { BiText, ContentBlock } from '@/model/types';
+import type { BiText, ContentBlock, LanguageMode } from '@/model/types';
 import { useMessages } from '@/i18n/language';
 import { PANEL_ROWS_MESSAGES } from './panelRows.messages';
 
@@ -28,14 +28,14 @@ export function scrollPageTo(targetKey: string): void {
     ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-/** One line of a bilingual value, preferring whichever side has words. */
-export function biExcerpt(value: BiText | undefined): string {
-  return biTextExcerpt(value, 'en');
+/** One line of a bilingual value in the document's language (`mode.language`), else the other side. */
+export function biExcerpt(value: BiText | undefined, language: LanguageMode = 'en'): string {
+  return biTextExcerpt(value, language);
 }
 
-/** The first paragraph's text, for naming a collapsed card or a block row. */
-export function excerptOfBlocks(blocks: ContentBlock[]): string {
-  return blocksExcerpt(blocks, 'en');
+/** The first paragraph's text in the document's language, for naming a collapsed card or a block row. */
+export function excerptOfBlocks(blocks: ContentBlock[], language: LanguageMode = 'en'): string {
+  return blocksExcerpt(blocks, language);
 }
 
 /**

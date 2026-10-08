@@ -170,7 +170,7 @@ export function BlockEditor({
             <ExcerptRow
               key={block.id}
               marker="¶"
-              text={biExcerpt(block.text)}
+              text={biExcerpt(block.text, language)}
               targetKey={editTargetKey({ kind: 'blockText', blockId: block.id })}
               actions={controlButtons(index)}
             />
@@ -925,6 +925,7 @@ function SourceBlockEditor({
   block: Extract<ContentBlock, { kind: 'source' }>;
   onChange: (block: ContentBlock) => void;
 }) {
+  const language = useWorksheetStore((s) => s.mode.language);
   // An emptied label or footnote emits no node at all on the page (§ renderSource:
   // nothing renders an unmeasurable box) — so absent text needs a seed button here,
   // or a cleared line would be unrecoverable. Present text is typed on the page.
@@ -938,7 +939,7 @@ function SourceBlockEditor({
         <GroupHeader title={m.label} hint={m.labelHint} />
         {hasLabel ? (
           <ExcerptRow
-            text={biExcerpt(block.label)}
+            text={biExcerpt(block.label, language)}
             targetKey={editTargetKey({ kind: 'sourceLabel', blockId: block.id })}
             actions={
               <IconButton
@@ -1006,7 +1007,7 @@ function SourceBlockEditor({
         />
         {hasFootnote ? (
           <ExcerptRow
-            text={biExcerpt(block.footnote)}
+            text={biExcerpt(block.footnote, language)}
             targetKey={editTargetKey({ kind: 'sourceFootnote', blockId: block.id })}
             actions={
               <IconButton

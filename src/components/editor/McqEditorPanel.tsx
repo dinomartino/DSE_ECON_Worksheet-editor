@@ -262,7 +262,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                     {optionLabel(position)}
                   </span>
                 }
-                text={biExcerpt(option.text)}
+                text={biExcerpt(option.text, language)}
                 targetKey={editTargetKey({
                   kind: 'mcqOption',
                   questionId: question.id,
@@ -355,7 +355,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           <ExcerptRow
             key={index}
             marker={statementLabel(index)}
-            text={biExcerpt(statement)}
+            text={biExcerpt(statement, language)}
             targetKey={editTargetKey({
               kind: 'mcqStatement',
               questionId: question.id,
@@ -429,7 +429,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                 questionId: question.id,
                 optionId: option.id,
               });
-              const excerpt = biExcerpt(option.rationale);
+              const excerpt = biExcerpt(option.rationale, language);
               return (
                 <div key={option.id} data-edit-target={key} className="rounded-md">
                   <button

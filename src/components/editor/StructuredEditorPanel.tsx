@@ -176,6 +176,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
   const setParts = (parts: QuestionPart[]) => onChange({ parts });
 
   const selectedTargetKey = useWorksheetStore((s) => s.selectedTargetKey);
+  const language = useWorksheetStore((s) => s.mode.language);
   const owner = targetOwner(question, selectedTargetKey);
 
   // A lone part (or lone sub-part) opens by default — collapsing the only thing
@@ -419,7 +420,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                   open={partOpen}
                   onToggle={() => togglePart(part.id)}
                   label={partLabel(partIndex)}
-                  excerpt={excerptOfBlocks(part.blocks)}
+                  excerpt={excerptOfBlocks(part.blocks, language)}
                   targetKey={editTargetKey({
                     kind: 'partAnswer',
                     questionId: question.id,
@@ -546,7 +547,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                 open={subOpen}
                                 onToggle={() => toggleSub(subPart.id)}
                                 label={subPartLabel(subIndex)}
-                                excerpt={excerptOfBlocks(subPart.blocks)}
+                                excerpt={excerptOfBlocks(subPart.blocks, language)}
                                 targetKey={editTargetKey({
                                   kind: 'subPartAnswer',
                                   questionId: question.id,
