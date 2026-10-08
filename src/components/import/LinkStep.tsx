@@ -1,7 +1,7 @@
 'use client';
 
 import type { FileRole } from '@/import';
-import { CloseIcon, DocumentIcon, PdfIcon, WarningIcon } from '@/components/ui/icons';
+import { CloseIcon, DocumentIcon, WarningIcon } from '@/components/ui/icons';
 import { IconButton } from '@/components/ui';
 import type { Messages } from '@/i18n/catalogue';
 import {
@@ -165,7 +165,7 @@ function FileRow({
   return (
     <li data-file={file.name} className="flex items-start gap-3 px-4 py-3">
       <span aria-hidden className={`mt-0.5 shrink-0 ${pdf ? 'text-danger-ink' : 'text-accent-ink'}`}>
-        {pdf ? <PdfIcon size={18} /> : <DocumentIcon size={18} />}
+        <DocumentIcon size={18} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium text-ink" title={file.name}>

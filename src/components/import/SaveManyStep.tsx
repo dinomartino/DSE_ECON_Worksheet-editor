@@ -102,7 +102,7 @@ export function SaveManyStep({
           <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
             {papers.map((paper) => (
               <li key={paper.id} data-save-paper={paper.fileName} className="space-y-1.5 px-4 py-3">
-                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,220px)] items-end gap-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,300px)] items-end gap-3">
                   <label className="block min-w-0">
                     <span className="mb-1 block truncate text-[11px] text-ink-muted" title={paper.fileName}>
                       {m.name} · {paper.fileName}

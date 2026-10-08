@@ -459,9 +459,9 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
             : pagesOf(paper)
               ? `${paper.name} · ${m.pages(pagesOf(paper)!)}`
               : paper.name
-          : single
-            ? single.name
-            : m.linkTitle;
+          : step === 'saveAs'
+            ? m.saveAsTitle
+            : (single?.name ?? m.linkTitle);
 
   return (
     <Dialog title={m.title} description={description} size="large" scrollBody={false} onClose={onClose} footer={footer} noticeScope={notices.scope}>
