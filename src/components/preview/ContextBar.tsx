@@ -3,12 +3,15 @@
 import { useEffect, useState } from 'react';
 import {
   cellsInRange,
+  distributeColumns,
+  distributeRows,
   isMerged,
   locateCell,
   mergeDown,
   mergeRight,
   patchCell,
   patchCells,
+  rangeGridSpan,
   resolveTableAlign,
   setTableAlign,
   unmerge,
@@ -23,6 +26,7 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { ptToTwips } from '@/model/page';
 import { TOOLBAR_ACTIVE, TOOLBAR_BTN, TOOLBAR_ENTER, TOOLBAR_IDLE } from './FormatToolbar';
 import { useMessages } from '@/i18n/language';
 import { CONTEXT_BAR_MESSAGES } from './ContextBar.messages';
@@ -70,6 +74,28 @@ function BarButton({
   );
 }
 
+/**
+ * Each row's **rendered** height in twips, read from the page — what Distribute Rows
+ * evens out, since content can make a row taller than its stored floor. Scoped to
+ * `#print-root` (the paginator's probe holds a second copy); the scale is the table's
+ * on-screen width over its layout width, the same page-pixel conversion the row drag
+ * uses. A row the page does not show measures NaN and the verb falls back to its floor.
+ */
+function measureRowTwips(blockId: string, rowIndices: number[]): number[] {
+  const table = document.querySelector<HTMLTableElement>(
+    `#print-root table[data-table-block="${CSS.escape(blockId)}"]`,
+  );
+  if (!table) return rowIndices.map(() => Number.NaN);
+  const scale =
+    table.offsetWidth > 0 ? table.getBoundingClientRect().width / table.offsetWidth : 1;
+  return rowIndices.map((index) => {
+    const row = table.rows[index];
+    if (!row) return Number.NaN;
+    const px = row.getBoundingClientRect().height / (scale || 1);
+    return ptToTwips((px * 72) / 96);
+  });
+}
+
 function TableRow({ block }: { block: TableBlock }) {
   const m = useMessages(CONTEXT_BAR_MESSAGES);
   const activeCell = useWorksheetStore((s) => s.activeCell);
@@ -94,10 +120,15 @@ function TableRow({ block }: { block: TableBlock }) {
     (position) => block.rows[position.rowIndex].cells[position.cellIndex],
   );
   const multi = range.length > 1;
+  // The grid rows and columns the sweep covers — Distribute acts on exactly these.
+  const covered = rangeGridSpan(range);
 
   // A structural edit can delete the very cell the bar is aimed at (§ the panel's
   // `apply`); pointing at nothing beats pointing at a ghost.
   const apply = (next: TableBlock) => {
+    // A verb with nothing to change hands the block back; committing it would still
+    // cost the teacher an undo press.
+    if (next === block) return;
     const store = useWorksheetStore.getState();
     store.replaceBlock(block.id, next);
     if (activeCell && !locateCell(next, activeCell.cellId)) store.setActiveCell(undefined);
@@ -139,6 +170,38 @@ function TableRow({ block }: { block: TableBlock }) {
               </BarButton>
             );
           })}
+
+          {/* Word's Distribute Rows / Columns, over the swept range only. Each shows
+              when the range covers two or more of its rows or grid columns. */}
+          {multi && (covered.rows.length > 1 || covered.columns.length > 1) && (
+            <>
+              <span className={DIVIDER} aria-hidden />
+              {covered.rows.length > 1 && (
+                <BarButton
+                  label={m.distributeRowsTitle}
+                  onClick={() =>
+                    apply(
+                      distributeRows(
+                        block,
+                        covered.rows,
+                        measureRowTwips(block.id, covered.rows),
+                      ),
+                    )
+                  }
+                >
+                  {m.distributeRows}
+                </BarButton>
+              )}
+              {covered.columns.length > 1 && (
+                <BarButton
+                  label={m.distributeColumnsTitle}
+                  onClick={() => apply(distributeColumns(block, covered.columns))}
+                >
+                  {m.distributeColumns}
+                </BarButton>
+              )}
+            </>
+          )}
 
           {/* Merge keeps a single subject; over a sweep it would silently act on the
               anchor alone, which is not what the highlight says — so it steps aside. */}

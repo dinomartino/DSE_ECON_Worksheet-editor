@@ -834,6 +834,10 @@ anchor; a click collapses the range.
   clicked next. `clearPageSelection` clears it too.
 - **Delete clears the range's contents, in one commit** (`clearCells` → `applyClearCells`),
   never one `deleteTarget` per cell — that would cost one undo per cell.
+- **Distribute acts on the range only** (`rangeGridSpan` → `distributeColumns` /
+  `distributeRows`, one commit each). Columns: the covered *grid* columns share their
+  combined width; every other column keeps its stored number. Rows: each covered row's
+  `minHeight` becomes the tallest one's **rendered** height (measured in `#print-root`).
 
 ### A cell formats like any other text
 

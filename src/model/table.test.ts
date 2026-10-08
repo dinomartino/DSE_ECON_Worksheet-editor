@@ -33,7 +33,14 @@ import {
   unmerge,
 } from './table';
 import type { TableBlock } from './types';
-import { cellsInRange, patchCells } from './table';
+import {
+  cellsInRange,
+  distributeColumns,
+  distributeRows,
+  MAX_ROW_HEIGHT_TWIPS,
+  patchCells,
+  rangeGridSpan,
+} from './table';
 import { renderContentBlocks, type RenderNode } from '@/render/ir';
 
 /** `renderContentBlocks` appends into the caller's stream; these tests start one fresh. */
@@ -660,5 +667,92 @@ describe('a swept range of cells', () => {
     ).toEqual(['center', 'center', 'center', 'center']);
     // The source block is untouched — the verbs stay pure.
     expect(block.rows[0].cells[0].align).toBeUndefined();
+  });
+});
+
+describe('distributing a selection, as Word does', () => {
+  const idAt = (block: TableBlock, rowIndex: number, cellIndex: number) =>
+    block.rows[rowIndex].cells[cellIndex].id;
+  const span = (block: TableBlock, anchorId: string, focusId: string) =>
+    rangeGridSpan(
+      cellsInRange(
+        block.rows.map((row) => row.cells),
+        anchorId,
+        focusId,
+        (_, rowIndex, cellIndex) => block.rows[rowIndex]?.cells[cellIndex]?.id,
+      ),
+    );
+
+  it('shares the selected columns their combined width and leaves the rest exactly', () => {
+    const block = { ...createTableBlock(2, 4), columnWidths: [0.4, 0.1, 0.3, 0.2] };
+    const next = distributeColumns(block, [1, 2]);
+    expect(next.columnWidths?.[0]).toBe(0.4);
+    expect(next.columnWidths?.[3]).toBe(0.2);
+    expect(next.columnWidths?.[1]).toBeCloseTo(0.2);
+    expect(next.columnWidths?.[2]).toBeCloseTo(0.2);
+    expect(next.columnWidths!.reduce((sum, w) => sum + w, 0)).toBeCloseTo(1);
+  });
+
+  it('counts a merged cell once per grid column it spans', () => {
+    // Row 0's first cell spans grid columns 0-1; sweeping it with (0,2) covers three
+    // grid columns, not the two cells the row holds.
+    let block: TableBlock = { ...createTableBlock(2, 4), columnWidths: [0.1, 0.2, 0.3, 0.4] };
+    block = mergeRight(block, 0, 0);
+    const { columns } = span(block, idAt(block, 0, 0), idAt(block, 0, 2));
+    expect(columns).toEqual([0, 1, 2]);
+    const widths = distributeColumns(block, columns).columnWidths!;
+    expect(widths.slice(0, 3).every((w) => Math.abs(w - 0.2) < 1e-9)).toBe(true);
+    expect(widths[3]).toBe(0.4);
+  });
+
+  it('distributes a ragged table by its grid, not its first row', () => {
+    let block = createTableBlock(2, 3);
+    block = { ...block, rows: [block.rows[0], { ...block.rows[1], cells: block.rows[1].cells.slice(0, 2) }] };
+    block = { ...block, columnWidths: [0.6, 0.3, 0.1] };
+    const widths = distributeColumns(block, [1, 2]).columnWidths!;
+    expect(widths[0]).toBe(0.6);
+    expect(widths[1]).toBeCloseTo(0.2);
+    expect(widths[2]).toBeCloseTo(0.2);
+  });
+
+  it('stores nothing when every column is distributed, and leaves an even table alone', () => {
+    const uneven = { ...createTableBlock(2, 3), columnWidths: [0.5, 0.3, 0.2] };
+    expect(distributeColumns(uneven, [0, 1, 2]).columnWidths).toBeUndefined();
+    // An untouched table is already even: the same object back, so no commit.
+    const untouched = createTableBlock(2, 3);
+    expect(distributeColumns(untouched, [0, 1])).toBe(untouched);
+    expect(distributeColumns(untouched, [0, 1, 2])).toBe(untouched);
+    // One column is not a distribution.
+    expect(distributeColumns(uneven, [1])).toBe(uneven);
+  });
+
+  it('gives the selected rows the tallest one’s rendered height as their floor', () => {
+    const block = setRowHeight(createTableBlock(4, 2), 3, 900);
+    const next = distributeRows(block, [0, 1, 2], [300, 720, 400]);
+    expect(next.rows.map((row) => row.minHeight)).toEqual([720, 720, 720, 900]);
+  });
+
+  it('spans a vertically merged cell’s rows and falls back to the stored floor', () => {
+    let block = createTableBlock(3, 2);
+    block = mergeDown(block, 0, 0);
+    const { rows } = span(block, idAt(block, 0, 0), idAt(block, 0, 1));
+    expect(rows).toEqual([0, 1]);
+    block = setRowHeight(block, 1, 1000);
+    // Row 1 unmeasured (a NaN from a missing DOM row): its stored floor still counts.
+    const next = distributeRows(block, rows, [500, Number.NaN]);
+    expect(next.rows.map((row) => row.minHeight)).toEqual([1000, 1000, undefined]);
+  });
+
+  it('clamps like a drag and does nothing for one row or no change', () => {
+    const block = createTableBlock(3, 2);
+    expect(distributeRows(block, [0, 1], [9000, 300]).rows[0].minHeight).toBe(
+      MAX_ROW_HEIGHT_TWIPS,
+    );
+    expect(distributeRows(block, [0, 1], [10, 20]).rows[1].minHeight).toBe(
+      MIN_ROW_HEIGHT_TWIPS,
+    );
+    expect(distributeRows(block, [1], [600])).toBe(block);
+    const even = distributeRows(block, [0, 1], [600, 600]);
+    expect(distributeRows(even, [0, 1], [600, 600])).toBe(even);
   });
 });

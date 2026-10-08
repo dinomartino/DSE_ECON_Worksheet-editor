@@ -54,6 +54,12 @@ a version heading is edited afterwards.
   switched on its own.
   <!-- zh: **試卷語言可與程式介面分開設定。** 「設定 → 語言」現有兩個選項：「介面語言」決定按鈕和選單的語言，「試卷語言」決定
   新試卷的起始語言（EN、中文或 EN+中）。新工作紙、題庫和新圖表都會以此語言開啟，每份試卷仍可個別切換。 -->
+- **Even out rows and columns in a table, as in Word.** Drag across some cells, then choose
+  ⇕ Same height to give those rows the height of the tallest one, or ⇔ Same width to share
+  those columns' width equally. Only the cells you selected change; the rest of the table stays
+  where it is.
+  <!-- zh: **表格可平均分配列高和欄寬，與 Word 一樣。** 拖曳選取一些儲存格，再按「⇕ 平均列高」令這些列與最高的一列同高，
+  或按「⇔ 平均欄寬」令這些欄平分它們的總寬度。只有所選的儲存格會改變，表格其餘部分保持不變。 -->
 
 ### Changed
 - **Topic names and question previews follow the language of your questions.** In 題庫, topic

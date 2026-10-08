@@ -15,6 +15,16 @@ export const CONTEXT_BAR_MESSAGES = defineMessages({
   mergeRight: { en: 'Merge →', zh: '合併 →' },
   mergeDownTitle: { en: 'Merge with the cell below', zh: '與下方的儲存格合併' },
   mergeDown: { en: 'Merge ↓', zh: '合併 ↓' },
+  distributeRowsTitle: {
+    en: 'Distribute rows: give the selected rows the same height',
+    zh: '平均分配列高：所選的列設為相同高度',
+  },
+  distributeRows: { en: '⇕ Same height', zh: '⇕ 平均列高' },
+  distributeColumnsTitle: {
+    en: 'Distribute columns: share the selected columns’ width equally',
+    zh: '平均分配欄寬：所選的欄平分它們的總寬度',
+  },
+  distributeColumns: { en: '⇔ Same width', zh: '⇔ 平均欄寬' },
   alignTableLeft: { en: 'Align table left', zh: '表格靠左對齊' },
   alignTableCenter: { en: 'Align table center', zh: '表格置中對齊' },
   alignTableRight: { en: 'Align table right', zh: '表格靠右對齊' },
