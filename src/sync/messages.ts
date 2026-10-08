@@ -47,7 +47,14 @@ export const SYNC_MESSAGES = defineMessages({
     en: "Can't reach the storage folder. Your edits are kept on this computer and will be saved there when it is back.",
     zh: '無法連接儲存資料夾。你的修改已保留在這部電腦，資料夾恢復後會自動儲存。',
   },
-  /** Why the folder cannot be used: `LibraryUnavailableReason`, or `error` when a run failed. */
+  /** At launch, no folder chosen here, and a cloud folder holds one (`foundFolder.ts`). */
+  found: {
+    en: (label: string) => `Found your Econ Studio folder in ${label}. Use it on this computer too?`,
+    zh: (label: string) => `在 ${label} 找到你的 Econ Studio 資料夾。要在這部電腦也使用嗎？`,
+  },
+  foundChoose: { en: 'Choose it…', zh: '選擇資料夾…' },
+  openStorage: { en: 'Storage location', zh: '儲存位置' },
+  /** Why the folder cannot be used:`LibraryUnavailableReason`, or `error` when a run failed. */
   reasonRootMissing: {
     en: 'The folder is not there. Your cloud drive may be signed out or still starting.',
     zh: '找不到資料夾。你的雲端硬碟可能已登出，或仍在啟動。',

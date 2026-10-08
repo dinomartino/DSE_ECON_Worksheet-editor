@@ -9,6 +9,7 @@ import {
 } from '@/platform/library';
 import { onStoreChange, worksheetHashCache, worksheetStore } from '@/storage';
 import { folderSource } from './folderSource';
+import { offerFoundFolder, resetFoundFolderForTest, withdrawFoundFolder } from './foundFolder';
 import { classifyKey } from './keys';
 import { localNamer } from './localNamer';
 import { openEditorGuard } from './openEditor';
@@ -182,7 +183,8 @@ async function ensureRunning(): Promise<void> {
 
 /**
  * Attaches the controller (EditorHost, once): reads the location, syncs if a folder is
- * chosen. Returns the detach, which stops syncing. Safe to call and detach at once.
+ * chosen, else offers a library found in a cloud folder (`foundFolder.ts`, not awaited).
+ * Returns the detach, which stops syncing. Safe to call and detach at once.
  */
 export function startLibrarySync(options: StartOptions): () => void {
   if (!isDesktop()) return () => {};
@@ -190,8 +192,9 @@ export function startLibrarySync(options: StartOptions): () => void {
   host = mine;
   void serial(async () => {
     if (host !== mine) return;
-    await refreshLocation();
+    const location = await refreshLocation();
     if (host === mine) await ensureRunning();
+    if (host === mine && location?.status === 'none') void offerFoundFolder({ choose: chooseFolder });
   });
   return () => {
     if (host !== mine) return;
@@ -211,7 +214,9 @@ export function chooseFolder(title?: string, start?: string): Promise<LibraryCho
     try {
       await stopRunning();
       // A failure rejects, for the caller to say so; a refusal or a cancel changed nothing.
-      return await chooseLibraryFolder(title, start);
+      const picked = await chooseLibraryFolder(title, start);
+      if (picked.status === 'chosen') withdrawFoundFolder();
+      return picked;
     } finally {
       await refreshLocation();
       setSyncView({ pending: undefined });
@@ -279,4 +284,5 @@ export async function resetLibrarySyncForTest(): Promise<void> {
   await serial(stopRunning);
   conflicts = new Map();
   notices.reset();
+  resetFoundFolderForTest();
 }
