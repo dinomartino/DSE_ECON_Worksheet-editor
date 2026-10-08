@@ -15,6 +15,7 @@ import {
   label,
   newId,
   onCurve,
+  shiftArrow,
   shiftOf,
   span,
   sub,
@@ -61,7 +62,7 @@ function adShift(): Diagram {
     macro({
       curves: [ad0, ad1, sras],
       points: [e0, e1],
-      arrows: [arrow([0.2, 0.72], [0.36, 0.72])],
+      arrows: [shiftArrow(ad0, ad1, [0.2, 0.72], [0.36, 0.72])],
       spans: axisArrows(e0, e1),
     }),
   );
@@ -80,7 +81,7 @@ function srasShift(): Diagram {
     macro({
       curves: [ad, s0, s1],
       points: [e0, e1],
-      arrows: [arrow([xAt(s0, y) - 0.03, y], [xAt(s1, y) + 0.03, y])],
+      arrows: [shiftArrow(s0, s1, [xAt(s0, y) - 0.03, y], [xAt(s1, y) + 0.03, y])],
       spans: axisArrows(e0, e1),
     }),
   );
@@ -98,7 +99,7 @@ function adSrasLeft(): Diagram {
     macro({
       curves: [ad0, ad1, s0, s1],
       points: [e0, e1],
-      arrows: [arrow([0.34, 0.72], [0.2, 0.72]), arrow([0.84, 0.66], [0.69, 0.66])],
+      arrows: [shiftArrow(ad0, ad1, [0.34, 0.72], [0.2, 0.72]), shiftArrow(s0, s1, [0.84, 0.66], [0.69, 0.66])],
       spans: axisArrows(e0, e1, ['x']),
       labels: [label(0.04, 0.95, bi('Y falls; P may rise or fall', 'Y 下降；P 可升可跌'), { align: 'left' })],
     }),
@@ -158,7 +159,7 @@ function gapNarrows(): Diagram {
       x: { title: AXIS.realOutput, ticks: [yf(full)] },
       curves: [ad0, ad1, sras, l],
       points: [e0, e1],
-      arrows: [arrow([0.16, 0.66], [0.32, 0.66])],
+      arrows: [shiftArrow(ad0, ad1, [0.16, 0.66], [0.32, 0.66])],
       spans: [
         span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.12, label: subBi('gap', '缺口', '0') }),
         span(at(e1), yf0, 'doubleArrow', { along: 'x', label: subBi('gap', '缺口', '1') }),
@@ -218,7 +219,7 @@ function shockRecovery(): Diagram {
       curves: [ad, s0, s1, l],
       points: [e0, e1],
       arrows: [
-        arrow([xAt(s0, hi) - 0.02, hi], [xAt(s1, hi) + 0.02, hi], { label: sym('1'), labelOffset: { x: 0.03, y: 0 } }),
+        shiftArrow(s0, s1, [xAt(s0, hi) - 0.02, hi], [xAt(s1, hi) + 0.02, hi], { label: sym('1'), labelOffset: { x: 0.03, y: 0 } }),
         arrow([xAt(s1, lo) + 0.02, lo], [xAt(s0, lo) - 0.02, lo], { label: sym('2') }),
       ],
     }),
@@ -238,7 +239,7 @@ function adShiftAtCapacity(): Diagram {
       x: { title: AXIS.realOutput, ticks: [yf(full)] },
       curves: [ad0, ad1, l],
       points: [e0, e1],
-      arrows: [arrow([0.17, 0.72], [0.32, 0.72])],
+      arrows: [shiftArrow(ad0, ad1, [0.17, 0.72], [0.32, 0.72])],
       spans: axisArrows(e0, e1, ['y']),
     }),
   );
@@ -258,7 +259,7 @@ function lrasGrowth(): Diagram {
     macro({
       curves: [ad0, ad1, l0, l1],
       points: [e0, e1],
-      arrows: [arrow([0.35, 0.86], [0.59, 0.86]), arrow([0.365, y], [0.555, y])],
+      arrows: [shiftArrow(l0, l1, [0.35, 0.86], [0.59, 0.86]), shiftArrow(ad0, ad1, [0.365, y], [0.555, y])],
       spans: axisArrows(e0, e1),
     }),
   );
@@ -277,7 +278,7 @@ function moneySupplyShift(): Diagram {
     moneyAxes({
       curves: [ms0, ms1, md],
       points: [e0, e1],
-      arrows: [arrow([0.41, 0.82], [0.57, 0.82])],
+      arrows: [shiftArrow(ms0, ms1, [0.41, 0.82], [0.57, 0.82])],
       spans: axisArrows(e0, e1, ['y']),
     }),
   );
@@ -295,7 +296,7 @@ function moneyDemandShift(): Diagram {
     moneyAxes({
       curves: [ms, md0, md1],
       points: [e0, e1],
-      arrows: [arrow([xAt(md0, y) + 0.03, y], [xAt(md1, y) - 0.03, y])],
+      arrows: [shiftArrow(md0, md1, [xAt(md0, y) + 0.03, y], [xAt(md1, y) - 0.03, y])],
       spans: axisArrows(e0, e1, ['y']),
     }),
   );
@@ -315,7 +316,7 @@ function moneyRateChange(): Diagram {
     moneyAxes({
       curves: [ms0, ms1, md],
       points: [e0, e1],
-      arrows: [arrow([0.57, 0.84], [0.41, 0.84])],
+      arrows: [shiftArrow(ms0, ms1, [0.57, 0.84], [0.41, 0.84])],
       spans: [
         ...axisArrows(e0, e1, ['y']),
         // Beside Md (left of E₀ → E₁), pointing the way the point moves.

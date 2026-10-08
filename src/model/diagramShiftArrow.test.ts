@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Diagram, DiagramArrow } from './diagram';
 import { resolveDiagram, shiftArrowEnds } from './diagramAnchors';
 import { applyDrag, copyHandles, deleteHandle, dragHandles, pasteInto } from './diagramDraw';
-import { buildFromTemplate } from './diagramTemplates';
+import { buildFromTemplate, DIAGRAM_TEMPLATES } from './diagramTemplates';
 import { shiftCurve } from './diagramShift';
 
 /** "Shift a copy" draws an arrow that follows the curve and its copy (`DiagramArrow.follows`). */
@@ -106,10 +106,72 @@ describe('the shift arrow follows its curve and copy', () => {
   });
 
   it('an arrow without `follows` (every older document) is untouched', () => {
-    const d = buildFromTemplate('demand-shift');
+    // A template as an older build inserted it: its arrow fixed.
+    const built = buildFromTemplate('demand-shift');
+    const fixed = (arrow: DiagramArrow): DiagramArrow => {
+      const rest = { ...arrow };
+      delete rest.follows;
+      delete rest.followOffset;
+      return rest;
+    };
+    const d = { ...built, arrows: built.arrows.map(fixed) };
     expect(d.arrows.length).toBeGreaterThan(0);
     const source = d.curves.find((c) => !c.derive)!;
     const moved = drag(d, source.id, 0.05, 0);
     expect(moved.arrows).toEqual(d.arrows);
+  });
+});
+
+describe('a template shift arrow follows its curves', () => {
+  // Every arrow a template draws between a curve and its shifted copy.
+  const shifts = DIAGRAM_TEMPLATES.flatMap((t) => {
+    const d = buildFromTemplate(t.id);
+    return d.arrows.filter((a) => a.follows).map((arrow) => ({ id: t.id, d, arrow }));
+  });
+
+  it('ships following in every template that shifts a curve with an arrow', () => {
+    const ids = new Set(shifts.map((s) => s.id));
+    for (const id of ['demand-shift', 'simultaneous-shifts', 'ad-shift', 'sras-shift', 'lras-growth', 'monopoly-mc-rises']) {
+      expect(ids, id).toContain(id);
+    }
+    expect(shifts.length).toBeGreaterThanOrEqual(25);
+  });
+
+  it('is shipped resolved: an older build draws the same arrow', () => {
+    for (const { d } of shifts) expect(resolveDiagram(d).arrows).toBe(d.arrows);
+  });
+
+  it('moves with the source curve and re-aims with the copy', () => {
+    for (const { id, d, arrow } of shifts) {
+      const copy = d.curves.find((c) => c.id === arrow.follows)!;
+      const derive = copy.derive as Extract<NonNullable<typeof copy.derive>, { kind: 'shift' }>;
+      const source = d.curves.find((c) => c.id === derive.of)!;
+      // Wherever the source goes (a vertical line keeps its relation and moves in x only).
+      const after = drag(d, derive.of, 0.03, -0.02);
+      const [was, now] = [source, after.curves.find((c) => c.id === derive.of)!].map((c) => c.points[0]);
+      const step = { x: now.x - was.x, y: now.y - was.y };
+      const moved = arrowOf(after, arrow.id);
+      expect(Math.hypot(step.x, step.y), id).toBeGreaterThan(0.01);
+      expect(moved.from.x, id).toBeCloseTo(arrow.from.x + step.x, 9);
+      expect(moved.to.y, id).toBeCloseTo(arrow.to.y + step.y, 9);
+      // Dragging the copy grows the shift: the head moves 85% of the way, the tail 15%.
+      const grown = arrowOf(drag(d, copy.id, 0.04, 0), arrow.id);
+      expect(grown.to.x, id).toBeCloseTo(arrow.to.x + 0.04 * 0.85, 9);
+      expect(grown.from.x, id).toBeCloseTo(arrow.from.x + 0.04 * 0.15, 9);
+    }
+  });
+
+  it('points the way the curve shifted, inside the plot', () => {
+    for (const { id, d, arrow } of shifts) {
+      const derive = d.curves.find((c) => c.id === arrow.follows)!.derive as { by: { x: number; y: number } };
+      const along = (arrow.to.x - arrow.from.x) * derive.by.x + (arrow.to.y - arrow.from.y) * derive.by.y;
+      expect(along, id).toBeGreaterThan(0);
+      for (const p of [arrow.from, arrow.to]) {
+        expect(p.x, id).toBeGreaterThanOrEqual(0);
+        expect(p.x, id).toBeLessThanOrEqual(1);
+        expect(p.y, id).toBeGreaterThanOrEqual(0);
+        expect(p.y, id).toBeLessThanOrEqual(1);
+      }
+    }
   });
 });

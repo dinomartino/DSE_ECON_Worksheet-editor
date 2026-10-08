@@ -17,7 +17,7 @@ import type {
   DiagramSpanStyle,
 } from './diagram';
 import { curveCrossing, curveYAt, revenueArea } from './diagramAreas';
-import { resolveAnchor, resolveDiagram } from './diagramAnchors';
+import { resolveAnchor, resolveDiagram, shiftArrowEnds } from './diagramAnchors';
 import { planPreset, shadePreset, type PresetRoles, type ShadePresetId } from './diagramPresets';
 import { bi } from './text';
 
@@ -106,6 +106,30 @@ export function label(x: number, y: number, text: BiText, extra: Partial<Diagram
 
 export function arrow(from: Pair, to: Pair, extra: Partial<DiagramArrow> = {}): DiagramArrow {
   return { id: newId(), from: { x: from[0], y: from[1] }, to: { x: to[0], y: to[1] }, ...extra };
+}
+
+/**
+ * The arrow from `source` to its `shiftOf` copy, centred on `from`–`to`. It follows the
+ * copy as Shift a copy's does (`shiftArrowEnds` plus `followOffset`), so dragging either
+ * curve carries it; its length is the shift's.
+ */
+export function shiftArrow(
+  source: DiagramCurve,
+  copy: DiagramCurve,
+  from: Pair,
+  to: Pair,
+  extra: Partial<DiagramArrow> = {},
+): DiagramArrow {
+  const derive = copy.derive;
+  const ends = derive?.kind === 'shift' && derive.of === source.id ? shiftArrowEnds(source.points, derive.by) : null;
+  if (!ends) throw new Error('template shift arrow needs a shifted copy');
+  const tidy = (v: number) => Math.round(v * 1e6) / 1e6;
+  const followOffset = {
+    x: tidy((from[0] + to[0] - ends[0].x - ends[1].x) / 2),
+    y: tidy((from[1] + to[1] - ends[0].y - ends[1].y) / 2),
+  };
+  const [tail, head] = ends.map((p): Pair => [p.x + followOffset.x, p.y + followOffset.y]);
+  return { ...arrow(tail, head, extra), follows: copy.id, followOffset };
 }
 
 /** A straight line moved by (dx, dy): the parallel shift every template draws. */

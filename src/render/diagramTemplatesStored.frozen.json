@@ -1,0 +1,1330 @@
+{
+ "sras-shift": {
+  "diagram": {
+   "x": {
+    "title": {
+     "en": [
+      {
+       "text": "Real output"
+      }
+     ],
+     "zh": [
+      {
+       "text": "實質產出"
+      }
+     ]
+    }
+   },
+   "y": {
+    "title": {
+     "en": [
+      {
+       "text": "Price level"
+      }
+     ],
+     "zh": [
+      {
+       "text": "物價水平"
+      }
+     ]
+    }
+   },
+   "curves": [
+    {
+     "id": "8gIYhMkiYj",
+     "points": [
+      {
+       "x": 0.06,
+       "y": 0.82
+      },
+      {
+       "x": 0.8,
+       "y": 0.14
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "AD"
+       }
+      ],
+      "zh": [
+       {
+        "text": "AD"
+       }
+      ]
+     },
+     "labelAt": "end"
+    },
+    {
+     "id": "M5UCmkz0N0",
+     "points": [
+      {
+       "x": 0.24,
+       "y": 0.14
+      },
+      {
+       "x": 0.86,
+       "y": 0.8
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "SRAS"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "SRAS"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end"
+    },
+    {
+     "id": "Wl0dS96sbT",
+     "points": [
+      {
+       "x": 0.03999999999999998,
+       "y": 0.14
+      },
+      {
+       "x": 0.6599999999999999,
+       "y": 0.8
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "SRAS"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "SRAS"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end",
+     "labelOffset": {
+      "x": -0.19,
+      "y": -0.01
+     },
+     "derive": {
+      "kind": "shift",
+      "of": "M5UCmkz0N0",
+      "by": {
+       "x": -0.2,
+       "y": 0
+      }
+     }
+    }
+   ],
+   "points": [
+    {
+     "id": "Io-w9wW40i",
+     "at": {
+      "x": 0.4994461538461539,
+      "y": 0.4161846153846153
+     },
+     "labelSide": "right",
+     "dot": true,
+     "dropTo": [
+      "x",
+      "y"
+     ],
+     "xTickLabel": {
+      "en": [
+       {
+        "text": "Y"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "Y"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "yTickLabel": {
+      "en": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "anchor": {
+      "cross": [
+       "8gIYhMkiYj",
+       "M5UCmkz0N0"
+      ]
+     }
+    },
+    {
+     "id": "S1xFWqjCUA",
+     "at": {
+      "x": 0.3921054945054944,
+      "y": 0.514821978021978
+     },
+     "labelSide": "right",
+     "dot": true,
+     "dropTo": [
+      "x",
+      "y"
+     ],
+     "xTickLabel": {
+      "en": [
+       {
+        "text": "Y"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "Y"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "yTickLabel": {
+      "en": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "anchor": {
+      "cross": [
+       "8gIYhMkiYj",
+       "Wl0dS96sbT"
+      ]
+     }
+    }
+   ],
+   "labels": [],
+   "arrows": [
+    {
+     "id": "WaPUHRbl1_",
+     "from": {
+      "x": 0.642121212121212,
+      "y": 0.6
+     },
+     "to": {
+      "x": 0.502121212121212,
+      "y": 0.6
+     }
+    }
+   ],
+   "showOrigin": true,
+   "spans": [
+    {
+     "id": "YVSD96ytl0",
+     "from": {
+      "point": "Io-w9wW40i"
+     },
+     "to": {
+      "point": "S1xFWqjCUA"
+     },
+     "style": "arrow",
+     "along": "y"
+    },
+    {
+     "id": "8PcMQmLTRG",
+     "from": {
+      "point": "Io-w9wW40i"
+     },
+     "to": {
+      "point": "S1xFWqjCUA"
+     },
+     "style": "arrow",
+     "along": "x"
+    }
+   ],
+   "templateId": "sras-shift"
+  },
+  "svg": {
+   "en": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"320\" viewBox=\"0 0 400 320\" font-family=\"Times New Roman, serif\"><rect width=\"400\" height=\"320\" fill=\"#fff\"/><path d=\"M 64 274 L 303.33 274\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 294.33 269 L 304.33 274 L 294.33 279 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 64 274 L 64 30\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 59 39 L 64 29 L 69 39 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"57\" y=\"290.49\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>0</tspan></text><text x=\"311.33\" y=\"276.99\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Real output</tspan></text><text x=\"52\" y=\"22\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Price level</tspan></text><path d=\"M 77.52 85.4 L 244.27 241.8\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"251.56\" y=\"251.63\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>AD</tspan></text><path d=\"M 118.08 241.8 L 257.79 90\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"264.56\" y=\"85.63\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>SRAS</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 73.01 241.8 L 212.72 90\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"176.68\" y=\"87.93\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>SRAS</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 208.69 136 L 177.14 136\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 186.14 141 L 176.14 136 L 186.14 131 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 37.33 178.28 L 37.33 155.59\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 32.33 164.59 L 37.33 154.59 L 42.33 164.59 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 176.54 300.07 L 152.35 300.07\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 161.35 305.07 L 151.35 300.07 L 161.35 295.07 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 176.54 178.28 L 176.54 274\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 176.54 178.28 L 64 178.28\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"176.54\" cy=\"178.28\" r=\"3.2\" fill=\"#000\"/><text x=\"176.54\" y=\"287.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Y</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><text x=\"58\" y=\"181.26\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 152.35 155.59 L 152.35 274\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 152.35 155.59 L 64 155.59\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"152.35\" cy=\"155.59\" r=\"3.2\" fill=\"#000\"/><text x=\"152.35\" y=\"287.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Y</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><text x=\"58\" y=\"158.58\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text></svg>",
+   "bilingual": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"335\" viewBox=\"0 0 400 335\" font-family=\"Times New Roman, serif\"><rect width=\"400\" height=\"335\" fill=\"#fff\"/><path d=\"M 64 289 L 303.33 289\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 294.33 284 L 304.33 289 L 294.33 294 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 64 289 L 64 45.33\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 59 54.33 L 64 44.33 L 69 54.33 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"57\" y=\"305.49\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>0</tspan></text><text x=\"311.33\" y=\"291.99\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Real output</tspan></text><text x=\"311.33\" y=\"307.32\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>實質產出</tspan></text><text x=\"52\" y=\"22\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Price level</tspan></text><text x=\"52\" y=\"37.33\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>物價水平</tspan></text><path d=\"M 77.52 100.67 L 244.27 256.85\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"251.57\" y=\"266.67\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>AD</tspan></text><path d=\"M 118.08 256.85 L 257.79 105.27\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"264.56\" y=\"100.9\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>SRAS</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 73.01 256.85 L 212.72 105.27\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"176.68\" y=\"103.2\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>SRAS</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 208.69 151.2 L 177.14 151.2\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 186.14 156.2 L 176.14 151.2 L 186.14 146.2 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 37.33 193.42 L 37.33 170.76\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 32.33 179.76 L 37.33 169.76 L 42.33 179.76 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 176.54 315.07 L 152.35 315.07\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 161.35 320.07 L 151.35 315.07 L 161.35 310.07 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 176.54 193.42 L 176.54 289\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 176.54 193.42 L 64 193.42\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"176.54\" cy=\"193.42\" r=\"3.2\" fill=\"#000\"/><text x=\"176.54\" y=\"302.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Y</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><text x=\"58\" y=\"196.4\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 152.35 170.76 L 152.35 289\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 152.35 170.76 L 64 170.76\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"152.35\" cy=\"170.76\" r=\"3.2\" fill=\"#000\"/><text x=\"152.35\" y=\"302.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Y</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><text x=\"58\" y=\"173.75\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text></svg>"
+  }
+ },
+ "mc-rise-tss": {
+  "diagram": {
+   "x": {
+    "title": {
+     "en": [
+      {
+       "text": "Quantity"
+      }
+     ],
+     "zh": [
+      {
+       "text": "數量"
+      }
+     ]
+    }
+   },
+   "y": {
+    "title": {
+     "en": [
+      {
+       "text": "Price"
+      }
+     ],
+     "zh": [
+      {
+       "text": "價格"
+      }
+     ]
+    }
+   },
+   "curves": [
+    {
+     "id": "EwTpfaIWjK",
+     "points": [
+      {
+       "x": 0.08,
+       "y": 0.9
+      },
+      {
+       "x": 0.84,
+       "y": 0.14
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "D"
+       }
+      ],
+      "zh": [
+       {
+        "text": "D"
+       }
+      ]
+     },
+     "labelAt": "end"
+    },
+    {
+     "id": "w1AVM96YYX",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.06
+      },
+      {
+       "x": 0.58,
+       "y": 0.66
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "S"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       },
+       {
+        "text": " = MC"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "S"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       },
+       {
+        "text": " = MC"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end"
+    },
+    {
+     "id": "QfVuYoGXDI",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.28
+      },
+      {
+       "x": 0.58,
+       "y": 0.88
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "S"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       },
+       {
+        "text": " = MC"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "S"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       },
+       {
+        "text": " = MC"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end",
+     "derive": {
+      "kind": "shift",
+      "of": "w1AVM96YYX",
+      "by": {
+       "x": 0,
+       "y": 0.22
+      }
+     }
+    }
+   ],
+   "points": [
+    {
+     "id": "a325gL93Dt",
+     "at": {
+      "x": 0.4522033898305085,
+      "y": 0.5277966101694915
+     },
+     "labelSide": "right",
+     "dot": true,
+     "dropTo": [
+      "x",
+      "y"
+     ],
+     "xTickLabel": {
+      "en": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "yTickLabel": {
+      "en": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "anchor": {
+      "cross": [
+       "EwTpfaIWjK",
+       "w1AVM96YYX"
+      ]
+     }
+    },
+    {
+     "id": "PkxdA-MWdt",
+     "at": {
+      "x": 0.3440677966101695,
+      "y": 0.6359322033898305
+     },
+     "labelSide": "right",
+     "dot": true,
+     "dropTo": [
+      "x",
+      "y"
+     ],
+     "xTickLabel": {
+      "en": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "yTickLabel": {
+      "en": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "anchor": {
+      "cross": [
+       "EwTpfaIWjK",
+       "QfVuYoGXDI"
+      ]
+     }
+    }
+   ],
+   "labels": [],
+   "arrows": [
+    {
+     "id": "chQr36ZcWc",
+     "from": {
+      "x": 0.56,
+      "y": 0.66
+     },
+     "to": {
+      "x": 0.56,
+      "y": 0.84
+     }
+    }
+   ],
+   "showOrigin": true,
+   "spans": [
+    {
+     "id": "qjcatJ7MrE",
+     "from": {
+      "point": "a325gL93Dt"
+     },
+     "to": {
+      "point": "PkxdA-MWdt"
+     },
+     "style": "arrow",
+     "along": "y"
+    },
+    {
+     "id": "lg2rIOpPtT",
+     "from": {
+      "point": "a325gL93Dt"
+     },
+     "to": {
+      "point": "PkxdA-MWdt"
+     },
+     "style": "arrow",
+     "along": "x"
+    }
+   ],
+   "areas": [
+    {
+     "band": {
+      "edges": [
+       {
+        "curve": "QfVuYoGXDI"
+       },
+       {
+        "curve": "w1AVM96YYX"
+       }
+      ],
+      "from": 0,
+      "to": {
+       "cross": [
+        "EwTpfaIWjK",
+        "w1AVM96YYX"
+       ]
+      },
+      "cap": {
+       "curve": "EwTpfaIWjK"
+      }
+     },
+     "label": {
+      "en": [
+       {
+        "text": "TSS loss"
+       }
+      ],
+      "zh": [
+       {
+        "text": "總社會盈餘損失"
+       }
+      ]
+     },
+     "fill": "hatch",
+     "pattern": "horizontal",
+     "id": "JzSI-GyNwF",
+     "labelOffset": {
+      "x": 0.65,
+      "y": 0.03
+     }
+    }
+   ],
+   "templateId": "mc-rise-tss"
+  },
+  "svg": {
+   "en": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"320\" viewBox=\"0 0 400 320\" font-family=\"Times New Roman, serif\"><rect width=\"400\" height=\"320\" fill=\"#fff\"/><path d=\"M 146.75 130 L 151.53 130 M 141.55 135 L 156.91 135 M 136.35 140 L 162.29 140 M 131.15 145 L 167.66 145 M 125.96 150 L 173.04 150 M 120.76 155 L 173.36 155 M 115.56 160 L 168.16 160 M 110.36 165 L 162.96 165 M 105.16 170 L 157.76 170 M 99.97 175 L 152.57 175 M 94.77 180 L 147.37 180 M 89.57 185 L 142.17 185 M 84.37 190 L 136.97 190 M 79.18 195 L 131.78 195 M 73.98 200 L 126.58 200 M 68.78 205 L 121.38 205 M 64 210 L 116.18 210 M 64 215 L 110.99 215 M 64 220 L 105.79 220 M 64 225 L 100.59 225 M 64 230 L 95.39 230 M 64 235 L 90.2 235 M 64 240 L 85 240 M 64 245 L 79.8 245 M 64 250 L 74.6 250 M 64 255 L 69.41 255 M 64 260 L 64.21 260\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linecap=\"butt\"/><path d=\"M 64 274 L 325.33 274\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 316.33 269 L 326.33 274 L 316.33 279 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 64 274 L 64 30\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 59 39 L 64 29 L 69 39 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"57\" y=\"290.49\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>0</tspan></text><text x=\"333.33\" y=\"276.99\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Quantity</tspan></text><text x=\"52\" y=\"22\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Price</tspan></text><path d=\"M 83.79 67 L 271.76 241.8\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"279.08\" y=\"251.6\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>D</tspan></text><path d=\"M 64 260.2 L 207.45 122.2\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"214.66\" y=\"118.25\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>S</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan><tspan> = MC</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 64 209.6 L 207.45 71.6\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"214.66\" y=\"67.65\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>S</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan><tspan> = MC</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 202.51 122.2 L 202.51 80.8\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 197.51 89.8 L 202.51 79.8 L 207.51 89.8 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 37.33 152.61 L 37.33 127.74\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 32.33 136.74 L 37.33 126.74 L 42.33 136.74 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 175.84 300.07 L 149.1 300.07\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 158.1 305.07 L 148.1 300.07 L 158.1 295.07 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 175.84 152.61 L 175.84 274\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 175.84 152.61 L 64 152.61\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"175.84\" cy=\"152.61\" r=\"3.2\" fill=\"#000\"/><text x=\"175.84\" y=\"287.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><text x=\"58\" y=\"155.59\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 149.1 127.74 L 149.1 274\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 149.1 127.74 L 64 127.74\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"149.1\" cy=\"127.74\" r=\"3.2\" fill=\"#000\"/><text x=\"149.1\" y=\"287.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><text x=\"58\" y=\"130.72\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 240.97 188.39 L 124.57 188.39\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linecap=\"round\" data-leader=\"\"/><path d=\"M 129.97 191.39 L 123.97 188.39 L 129.97 185.39 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"274.31\" y=\"184.48\" font-size=\"13.33\" text-anchor=\"middle\" style=\"paint-order:stroke;stroke:#fff;stroke-width:3px\"><tspan>TSS loss</tspan></text></svg>",
+   "bilingual": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"335\" viewBox=\"0 0 400 335\" font-family=\"Times New Roman, serif\"><rect width=\"400\" height=\"335\" fill=\"#fff\"/><path d=\"M 146.96 145 L 151.31 145 M 141.76 150 L 156.69 150 M 136.55 155 L 162.08 155 M 131.35 160 L 167.46 160 M 126.14 165 L 172.85 165 M 120.94 170 L 173.54 170 M 115.73 175 L 168.33 175 M 110.53 180 L 163.13 180 M 105.32 185 L 157.92 185 M 100.12 190 L 152.72 190 M 94.91 195 L 147.51 195 M 89.71 200 L 142.31 200 M 84.5 205 L 137.1 205 M 79.3 210 L 131.9 210 M 74.09 215 L 126.69 215 M 68.89 220 L 121.49 220 M 64 225 L 116.28 225 M 64 230 L 111.08 230 M 64 235 L 105.87 235 M 64 240 L 100.66 240 M 64 245 L 95.46 245 M 64 250 L 90.25 250 M 64 255 L 85.05 255 M 64 260 L 79.84 260 M 64 265 L 74.64 265 M 64 270 L 69.43 270 M 64 275 L 64.23 275\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linecap=\"butt\"/><path d=\"M 64 289 L 325.33 289\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 316.33 284 L 326.33 289 L 316.33 294 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 64 289 L 64 45.33\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 59 54.33 L 64 44.33 L 69 54.33 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"57\" y=\"305.49\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>0</tspan></text><text x=\"333.33\" y=\"291.99\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Quantity</tspan></text><text x=\"333.33\" y=\"307.32\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>數量</tspan></text><text x=\"52\" y=\"22\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Price</tspan></text><text x=\"52\" y=\"37.33\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>價格</tspan></text><path d=\"M 83.79 82.3 L 271.76 256.85\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"279.09\" y=\"266.64\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>D</tspan></text><path d=\"M 64 275.22 L 207.45 137.42\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"214.67\" y=\"133.48\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>S</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan><tspan> = MC</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 64 224.69 L 207.45 86.89\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"214.67\" y=\"82.95\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>S</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan><tspan> = MC</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 202.51 137.42 L 202.51 96.08\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 197.51 105.08 L 202.51 95.08 L 207.51 105.08 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 37.33 167.78 L 37.33 142.95\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 32.33 151.95 L 37.33 141.95 L 42.33 151.95 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 175.84 315.07 L 149.1 315.07\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 158.1 320.07 L 148.1 315.07 L 158.1 310.07 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 175.84 167.78 L 175.84 289\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 175.84 167.78 L 64 167.78\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"175.84\" cy=\"167.78\" r=\"3.2\" fill=\"#000\"/><text x=\"175.84\" y=\"302.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><text x=\"58\" y=\"170.77\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 149.1 142.95 L 149.1 289\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 149.1 142.95 L 64 142.95\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"149.1\" cy=\"142.95\" r=\"3.2\" fill=\"#000\"/><text x=\"149.1\" y=\"302.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><text x=\"58\" y=\"145.93\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 225.64 203.51 L 124.74 203.51\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linecap=\"round\" data-leader=\"\"/><path d=\"M 130.14 206.51 L 124.14 203.51 L 130.14 200.51 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"274.31\" y=\"191.94\" font-size=\"13.33\" text-anchor=\"middle\" style=\"paint-order:stroke;stroke:#fff;stroke-width:3px\"><tspan>TSS loss</tspan></text><text x=\"274.31\" y=\"207.28\" font-size=\"13.33\" text-anchor=\"middle\" style=\"paint-order:stroke;stroke:#fff;stroke-width:3px\"><tspan>總社會盈餘損失</tspan></text></svg>"
+  }
+ },
+ "monopoly-mc-rises": {
+  "diagram": {
+   "x": {
+    "title": {
+     "en": [
+      {
+       "text": "Quantity"
+      }
+     ],
+     "zh": [
+      {
+       "text": "數量"
+      }
+     ]
+    }
+   },
+   "y": {
+    "title": {
+     "en": [
+      {
+       "text": "Price"
+      }
+     ],
+     "zh": [
+      {
+       "text": "價格"
+      }
+     ]
+    }
+   },
+   "curves": [
+    {
+     "id": "KPkBPJCSpD",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.9
+      },
+      {
+       "x": 0.9,
+       "y": 0.1
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "D"
+       }
+      ],
+      "zh": [
+       {
+        "text": "D"
+       }
+      ]
+     },
+     "labelAt": "end"
+    },
+    {
+     "id": "e9Q_0YNdbA",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.9
+      },
+      {
+       "x": 0.50625,
+       "y": 0
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "MR"
+       }
+      ],
+      "zh": [
+       {
+        "text": "MR"
+       }
+      ]
+     },
+     "labelAt": "end",
+     "labelOffset": {
+      "x": 0.01,
+      "y": 0.08
+     },
+     "derive": {
+      "kind": "marginalRevenue",
+      "of": "KPkBPJCSpD"
+     }
+    },
+    {
+     "id": "wRBtwi81ot",
+     "points": [
+      {
+       "x": 0.1,
+       "y": 0.12
+      },
+      {
+       "x": 0.8,
+       "y": 0.68
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "MC"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "MC"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end"
+    },
+    {
+     "id": "6AU65UGf2c",
+     "points": [
+      {
+       "x": 0.1,
+       "y": 0.38
+      },
+      {
+       "x": 0.8,
+       "y": 0.9400000000000001
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "MC"
+       },
+       {
+        "text": "2",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "MC"
+       },
+       {
+        "text": "2",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end",
+     "derive": {
+      "kind": "shift",
+      "of": "wRBtwi81ot",
+      "by": {
+       "x": 0,
+       "y": 0.26
+      }
+     }
+    }
+   ],
+   "points": [
+    {
+     "id": "Q09VEOb-nf",
+     "at": {
+      "x": 0.3336206896551724,
+      "y": 0.603448275862069
+     },
+     "labelSide": "right",
+     "dot": true,
+     "dropTo": [
+      "x",
+      "y"
+     ],
+     "xTickLabel": {
+      "en": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "M",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "M",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "yTickLabel": {
+      "en": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "M",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "M",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "anchor": {
+      "on": "KPkBPJCSpD",
+      "x": {
+       "cross": [
+        "e9Q_0YNdbA",
+        "wRBtwi81ot"
+       ]
+      }
+     }
+    },
+    {
+     "id": "RI5AApe-Uh",
+     "at": {
+      "x": 0.23275862068965514,
+      "y": 0.6931034482758621
+     },
+     "labelSide": "right",
+     "dot": true,
+     "dropTo": [
+      "x",
+      "y"
+     ],
+     "xTickLabel": {
+      "en": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "2",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "2",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "yTickLabel": {
+      "en": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "2",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "P"
+       },
+       {
+        "text": "2",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "anchor": {
+      "on": "KPkBPJCSpD",
+      "x": {
+       "cross": [
+        "e9Q_0YNdbA",
+        "6AU65UGf2c"
+       ]
+      }
+     }
+    }
+   ],
+   "labels": [],
+   "arrows": [
+    {
+     "id": "Bk61yfcFI2",
+     "from": {
+      "x": 0.7,
+      "y": 0.64
+     },
+     "to": {
+      "x": 0.7,
+      "y": 0.82
+     }
+    }
+   ],
+   "showOrigin": true,
+   "areas": [
+    {
+     "band": {
+      "edges": [
+       {
+        "curve": "KPkBPJCSpD"
+       },
+       {
+        "curve": "6AU65UGf2c"
+       }
+      ],
+      "from": {
+       "cross": [
+        "e9Q_0YNdbA",
+        "6AU65UGf2c"
+       ]
+      },
+      "to": {
+       "cross": [
+        "KPkBPJCSpD",
+        "6AU65UGf2c"
+       ]
+      }
+     },
+     "label": {
+      "en": [
+       {
+        "text": "DWL"
+       }
+      ],
+      "zh": [
+       {
+        "text": "效率損失"
+       }
+      ]
+     },
+     "fill": "hatch",
+     "pattern": "cross",
+     "id": "kr8XKJRkTd",
+     "labelPlacement": "leader"
+    }
+   ],
+   "templateId": "monopoly-mc-rises"
+  },
+  "svg": {
+   "en": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"320\" viewBox=\"0 0 400 320\" font-family=\"Times New Roman, serif\"><rect width=\"400\" height=\"320\" fill=\"#fff\"/><path d=\"M 121.57 118.85 L 123.9 116.51 M 121.57 125.92 L 127.77 119.71 M 121.57 132.99 L 131.64 122.91 M 121.57 140.06 L 135.52 126.11 M 121.57 147.13 L 139.39 129.31 M 121.57 154.2 L 143.26 132.51 M 121.57 161.27 L 147.13 135.71 M 145.67 144.24 L 151 138.91 M 121.57 156.92 L 124.58 159.93 M 121.57 149.85 L 128.63 156.92 M 121.57 142.78 L 132.69 153.9 M 121.57 135.71 L 136.74 150.88 M 121.57 128.64 L 140.8 147.87 M 121.57 121.57 L 144.85 144.85 M 122.08 115.01 L 148.91 141.84\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linecap=\"butt\"/><path d=\"M 64 274 L 325.33 274\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 316.33 269 L 326.33 274 L 316.33 279 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 64 274 L 64 30\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 59 39 L 64 29 L 69 39 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"57\" y=\"290.49\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>0</tspan></text><text x=\"333.33\" y=\"276.99\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Quantity</tspan></text><text x=\"52\" y=\"22\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Price</tspan></text><path d=\"M 64 67 L 286.6 251\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"294.31\" y=\"260.36\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>D</tspan></text><path d=\"M 64 67 L 189.21 274\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"196.86\" y=\"267.14\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>MR</tspan></text><path d=\"M 88.73 246.4 L 261.87 117.6\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"269.89\" y=\"114.62\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>MC</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 88.73 186.6 L 261.87 57.8\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"269.89\" y=\"54.82\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>MC</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">2</tspan></text><path d=\"M 237.13 126.8 L 237.13 85.4\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 232.13 94.4 L 237.13 84.4 L 242.13 94.4 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 146.52 135.21 L 146.52 274\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 146.52 135.21 L 64 135.21\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"146.52\" cy=\"135.21\" r=\"3.2\" fill=\"#000\"/><text x=\"146.52\" y=\"287.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">M</tspan></text><text x=\"58\" y=\"138.19\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">M</tspan></text><path d=\"M 121.57 114.59 L 121.57 274\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 121.57 114.59 L 64 114.59\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"121.57\" cy=\"114.59\" r=\"3.2\" fill=\"#000\"/><text x=\"121.57\" y=\"287.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">2</tspan></text><text x=\"58\" y=\"117.57\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">2</tspan></text><path d=\"M 131.67 95.86 L 131.67 135.76\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linecap=\"round\" data-leader=\"\"/><path d=\"M 134.67 130.36 L 131.67 136.36 L 128.67 130.36 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"131.67\" y=\"91.78\" font-size=\"13.33\" text-anchor=\"middle\" style=\"paint-order:stroke;stroke:#fff;stroke-width:3px\"><tspan>DWL</tspan></text></svg>",
+   "bilingual": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"335\" viewBox=\"0 0 400 335\" font-family=\"Times New Roman, serif\"><rect width=\"400\" height=\"335\" fill=\"#fff\"/><path d=\"M 121.57 132.99 L 123.31 131.25 M 121.57 140.06 L 127.18 134.45 M 121.57 147.13 L 131.05 137.65 M 121.57 154.2 L 134.93 140.84 M 121.57 161.27 L 138.8 144.04 M 121.57 168.34 L 142.68 147.24 M 121.57 175.42 L 146.55 150.44 M 141.61 162.45 L 150.42 153.63 M 121.57 171.07 L 125.17 174.66 M 121.57 164 L 129.22 171.65 M 121.57 156.92 L 133.28 168.64 M 121.57 149.85 L 137.34 165.62 M 121.57 142.78 L 141.39 162.61 M 121.57 135.71 L 145.45 159.59 M 128.31 135.38 L 149.51 156.58\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linecap=\"butt\"/><path d=\"M 64 289 L 325.33 289\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 316.33 284 L 326.33 289 L 316.33 294 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 64 289 L 64 45.33\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 59 54.33 L 64 44.33 L 69 54.33 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"57\" y=\"305.49\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>0</tspan></text><text x=\"333.33\" y=\"291.99\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Quantity</tspan></text><text x=\"333.33\" y=\"307.32\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>數量</tspan></text><text x=\"52\" y=\"22\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Price</tspan></text><text x=\"52\" y=\"37.33\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>價格</tspan></text><path d=\"M 64 82.3 L 286.6 266.03\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"294.31\" y=\"275.39\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>D</tspan></text><path d=\"M 64 82.3 L 189.21 289\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"196.87\" y=\"282.17\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>MR</tspan></text><path d=\"M 88.73 261.44 L 261.87 132.83\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"269.89\" y=\"129.85\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>MC</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 88.73 201.73 L 261.87 73.11\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"269.89\" y=\"70.14\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>MC</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">2</tspan></text><path d=\"M 237.13 142.01 L 237.13 100.67\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 232.13 109.67 L 237.13 99.67 L 242.13 109.67 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 146.52 150.41 L 146.52 289\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 146.52 150.41 L 64 150.41\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"146.52\" cy=\"150.41\" r=\"3.2\" fill=\"#000\"/><text x=\"146.52\" y=\"302.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">M</tspan></text><text x=\"58\" y=\"153.39\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">M</tspan></text><path d=\"M 121.57 129.82 L 121.57 289\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><path d=\"M 121.57 129.82 L 64 129.82\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"121.57\" cy=\"129.82\" r=\"3.2\" fill=\"#000\"/><text x=\"121.57\" y=\"302.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">2</tspan></text><text x=\"58\" y=\"132.8\" font-size=\"13.33\" text-anchor=\"end\"><tspan>P</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">2</tspan></text><path d=\"M 131.67 110.73 L 131.67 150.63\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linecap=\"round\" data-leader=\"\"/><path d=\"M 134.67 145.23 L 131.67 151.23 L 128.67 145.23 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"131.67\" y=\"91.31\" font-size=\"13.33\" text-anchor=\"middle\" style=\"paint-order:stroke;stroke:#fff;stroke-width:3px\"><tspan>DWL</tspan></text><text x=\"131.67\" y=\"106.65\" font-size=\"13.33\" text-anchor=\"middle\" style=\"paint-order:stroke;stroke:#fff;stroke-width:3px\"><tspan>效率損失</tspan></text></svg>"
+  }
+ },
+ "fixed-export-price": {
+  "diagram": {
+   "x": {
+    "title": {
+     "en": [
+      {
+       "text": "Quantity\nof exports"
+      }
+     ],
+     "zh": [
+      {
+       "text": "出口量"
+      }
+     ]
+    }
+   },
+   "y": {
+    "title": {
+     "en": [
+      {
+       "text": "Price (Yen)"
+      }
+     ],
+     "zh": [
+      {
+       "text": "價格（日圓）"
+      }
+     ]
+    }
+   },
+   "curves": [
+    {
+     "id": "Lnan9_18Jw",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.48
+      },
+      {
+       "x": 0.9,
+       "y": 0.48
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "P"
+       }
+      ],
+      "zh": [
+       {
+        "text": "P"
+       }
+      ]
+     },
+     "labelAt": "start",
+     "weight": 0.8,
+     "derive": {
+      "kind": "level",
+      "y": 0.48,
+      "from": 0,
+      "to": 0.9
+     }
+    },
+    {
+     "id": "cMDqLILSRx",
+     "points": [
+      {
+       "x": 0.06,
+       "y": 0.86
+      },
+      {
+       "x": 0.6,
+       "y": 0.12
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "D"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "D"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end"
+    },
+    {
+     "id": "fVJzEoQ87W",
+     "points": [
+      {
+       "x": 0.28,
+       "y": 0.86
+      },
+      {
+       "x": 0.82,
+       "y": 0.12
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "D"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "D"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end",
+     "derive": {
+      "kind": "shift",
+      "of": "cMDqLILSRx",
+      "by": {
+       "x": 0.22,
+       "y": 0
+      }
+     }
+    }
+   ],
+   "points": [
+    {
+     "id": "EEGrEwAZEz",
+     "at": {
+      "x": 0.3372972972972973,
+      "y": 0.48000000000000004
+     },
+     "labelSide": "right",
+     "dot": true,
+     "dropTo": [
+      "x"
+     ],
+     "xTickLabel": {
+      "en": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "anchor": {
+      "cross": [
+       "cMDqLILSRx",
+       "Lnan9_18Jw"
+      ]
+     }
+    },
+    {
+     "id": "efH_FwQq7f",
+     "at": {
+      "x": 0.5572972972972973,
+      "y": 0.48000000000000004
+     },
+     "labelSide": "right",
+     "dot": true,
+     "dropTo": [
+      "x"
+     ],
+     "xTickLabel": {
+      "en": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "Q"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "anchor": {
+      "cross": [
+       "fVJzEoQ87W",
+       "Lnan9_18Jw"
+      ]
+     }
+    }
+   ],
+   "labels": [],
+   "arrows": [
+    {
+     "id": "RNZy-eABVS",
+     "from": {
+      "x": 0.13,
+      "y": 0.74
+     },
+     "to": {
+      "x": 0.31,
+      "y": 0.74
+     }
+    }
+   ],
+   "showOrigin": true,
+   "spans": [
+    {
+     "id": "UIlZQzz_zq",
+     "from": {
+      "point": "EEGrEwAZEz"
+     },
+     "to": {
+      "point": "efH_FwQq7f"
+     },
+     "style": "arrow",
+     "along": "x"
+    }
+   ],
+   "areas": [
+    {
+     "id": "T0RTm4isXA",
+     "revenue": {
+      "change": "gain",
+      "from": {
+       "point": "EEGrEwAZEz"
+      },
+      "to": {
+       "point": "efH_FwQq7f"
+      }
+     },
+     "label": {
+      "en": [
+       {
+        "text": "+"
+       }
+      ],
+      "zh": [
+       {
+        "text": "+"
+       }
+      ]
+     },
+     "fill": "hatch",
+     "pattern": "dots"
+    }
+   ],
+   "templateId": "fixed-export-price"
+  },
+  "svg": {
+   "en": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"320\" viewBox=\"0 0 400 320\" font-family=\"Times New Roman, serif\"><rect width=\"400\" height=\"320\" fill=\"#fff\"/><path d=\"M 143.1 168 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 168 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 168 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 168 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 168 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 168 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 168 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 168 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 168 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 174 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 174 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 174 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 174 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 174 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 174 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 174 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 174 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z\" fill=\"#000\" stroke=\"none\"/><path d=\"M 64 274 L 310.67 274\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 301.67 269 L 311.67 274 L 301.67 279 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 64 274 L 64 30\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 59 39 L 64 29 L 69 39 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"57\" y=\"290.49\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>0</tspan></text><text x=\"318.67\" y=\"276.99\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Quantity</tspan></text><text x=\"318.67\" y=\"292.32\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>of exports</tspan></text><text x=\"52\" y=\"22\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Price (Yen)</tspan></text><path d=\"M 64 163.6 L 273.4 163.6\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"54\" y=\"166.59\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>P</tspan></text><path d=\"M 77.96 76.2 L 203.6 246.4\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"209.54\" y=\"257.43\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>D</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 129.15 76.2 L 254.79 246.4\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"260.73\" y=\"257.43\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>D</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 94.25 103.8 L 136.13 103.8\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 127.13 98.8 L 137.13 103.8 L 127.13 108.8 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 142.48 300.07 L 193.66 300.07\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 184.66 295.07 L 194.66 300.07 L 184.66 305.07 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 142.48 163.6 L 142.48 274\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"142.48\" cy=\"163.6\" r=\"3.2\" fill=\"#000\"/><text x=\"142.48\" y=\"287.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 193.66 163.6 L 193.66 274\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"193.66\" cy=\"163.6\" r=\"3.2\" fill=\"#000\"/><text x=\"193.66\" y=\"287.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><text x=\"168.07\" y=\"221.79\" font-size=\"13.33\" text-anchor=\"middle\" style=\"paint-order:stroke;stroke:#fff;stroke-width:3px\"><tspan>+</tspan></text></svg>",
+   "bilingual": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"335\" viewBox=\"0 0 400 335\" font-family=\"Times New Roman, serif\"><rect width=\"400\" height=\"335\" fill=\"#fff\"/><path d=\"M 143.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 180 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 186 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 192 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 198 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 204 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 210 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 216 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 222 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 228 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 234 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 240 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 246 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 252 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 258 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 264 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 270 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 276 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 276 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 276 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 276 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 276 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 276 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 276 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 276 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 276 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 146.1 282 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 152.1 282 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 158.1 282 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 164.1 282 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 170.1 282 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 176.1 282 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 182.1 282 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 188.1 282 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 143.1 288 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 149.1 288 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 155.1 288 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 161.1 288 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 167.1 288 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 173.1 288 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 179.1 288 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 185.1 288 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z M 191.1 288 a 0.9 0.9 0 1 0 1.8 0 a 0.9 0.9 0 1 0 -1.8 0 Z\" fill=\"#000\" stroke=\"none\"/><path d=\"M 64 289 L 310.67 289\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 301.67 284 L 311.67 289 L 301.67 294 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 64 289 L 64 45.33\" stroke=\"#000\" stroke-width=\"2\" fill=\"none\"/><path d=\"M 59 54.33 L 64 44.33 L 69 54.33 z\" fill=\"#000\" data-arrowhead=\"\"/><text x=\"57\" y=\"305.49\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>0</tspan></text><text x=\"318.67\" y=\"291.99\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Quantity</tspan></text><text x=\"318.67\" y=\"307.32\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>of exports</tspan></text><text x=\"318.67\" y=\"322.65\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>出口量</tspan></text><text x=\"52\" y=\"22\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>Price (Yen)</tspan></text><text x=\"52\" y=\"37.33\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>價格（日圓）</tspan></text><path d=\"M 64 178.76 L 273.4 178.76\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"54\" y=\"181.75\" font-size=\"13.33\" text-anchor=\"end\" style=\"font-weight:bold\"><tspan>P</tspan></text><path d=\"M 77.96 91.49 L 203.6 261.44\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"209.54\" y=\"272.47\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>D</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 129.15 91.49 L 254.79 261.44\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"260.73\" y=\"272.47\" font-size=\"13.33\" text-anchor=\"start\" style=\"font-weight:bold\"><tspan>D</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><path d=\"M 94.25 119.05 L 136.13 119.05\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 127.13 114.05 L 137.13 119.05 L 127.13 124.05 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 142.48 315.07 L 193.66 315.07\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.8\"/><path d=\"M 184.66 310.07 L 194.66 315.07 L 184.66 320.07 z\" fill=\"#000\" data-arrowhead=\"\"/><path d=\"M 142.48 178.76 L 142.48 289\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"142.48\" cy=\"178.76\" r=\"3.2\" fill=\"#000\"/><text x=\"142.48\" y=\"302.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">0</tspan></text><path d=\"M 193.66 178.76 L 193.66 289\" fill=\"none\" stroke=\"#000\" stroke-width=\"1\" stroke-dasharray=\"4,3\"/><circle cx=\"193.66\" cy=\"178.76\" r=\"3.2\" fill=\"#000\"/><text x=\"193.66\" y=\"302.6\" font-size=\"13.33\" text-anchor=\"middle\"><tspan>Q</tspan><tspan baseline-shift=\"sub\" font-size=\"9.6\">1</tspan></text><text x=\"168.07\" y=\"236.87\" font-size=\"13.33\" text-anchor=\"middle\" style=\"paint-order:stroke;stroke:#fff;stroke-width:3px\"><tspan>+</tspan></text></svg>"
+  }
+ }
+}

@@ -23,6 +23,7 @@ import {
   priceLine,
   reading,
   shade,
+  shiftArrow,
   shiftOf,
   span,
   sub,
@@ -51,7 +52,7 @@ function fixedExportPrice(): Diagram {
     axes(bi('Quantity\nof exports', '出口量'), bi('Price (Yen)', '價格（日圓）'), {
       curves: [p, d0, d1],
       points: [e0, e1],
-      arrows: [arrow([0.13, 0.74], [0.31, 0.74])],
+      arrows: [shiftArrow(d0, d1, [0.13, 0.74], [0.31, 0.74])],
       spans: axisArrows(e0, e1, ['x']),
       areas: [{ ...revenueArea('revenueGain', { before: at(e0), after: at(e1) }, newId())!, label: sym('+') }],
     }),
@@ -69,7 +70,7 @@ function substituteRevenue(): Diagram {
     axes(bi('Quantity\nof imports', '進口量'), bi('Price (HK$)', '價格（港元）'), {
       curves: [d1, d2, s],
       points: [e1, e2],
-      arrows: [arrow([0.66, 0.36], [0.48, 0.36])],
+      arrows: [shiftArrow(d1, d2, [0.66, 0.36], [0.48, 0.36])],
       spans: axisArrows(e1, e2),
       areas: [{ ...revenueArea('revenueLoss', { before: at(e1), after: at(e2) }, newId())!, labelPlacement: 'leader' }],
     }),
@@ -176,7 +177,7 @@ function importQuotaDemand(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [s, pw, withQuota, d0, d1, p1],
       points: [e0, e1],
-      arrows: [arrow([0.2, 0.72], [0.34, 0.72])],
+      arrows: [shiftArrow(d0, d1, [0.2, 0.72], [0.34, 0.72])],
     }),
     (r) => shade(r, 'quotaRent', { demand: d1.id, supply: s.id, world: { curve: pw.id }, raised: { curve: p1.id } }),
   );
@@ -185,10 +186,11 @@ function importQuotaDemand(): Diagram {
 /** The earlier quota figure (DSE2017/P1/Q42): a kinked S₁ shifting to S₂. */
 function importQuotaIncrease(): Diagram {
   const s1 = curve([[0.06, 0.14], [0.22, 0.4], [0.44, 0.4], [0.66, 0.82]], sub('S', '1'));
+  const s2 = shiftOf(s1, 0.18, 0, sub('S', '2'));
   return finish(
     axes(bi('Quantity of Good X', '物品X的數量'), AXIS.price, {
-      curves: [curve([[0.06, 0.9], [0.86, 0.26]], sym('D')), s1, shiftOf(s1, 0.18, 0, sub('S', '2'))],
-      arrows: [arrow([0.5, 0.6], [0.66, 0.6])],
+      curves: [curve([[0.06, 0.9], [0.86, 0.26]], sym('D')), s1, s2],
+      arrows: [shiftArrow(s1, s2, [0.5, 0.6], [0.66, 0.6])],
     }),
   );
 }
@@ -275,7 +277,7 @@ function monopolyMcRises(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, mr, mc1, mc2],
       points: [m, e2],
-      arrows: [arrow([0.7, 0.64], [0.7, 0.82])],
+      arrows: [shiftArrow(mc1, mc2, [0.7, 0.64], [0.7, 0.82])],
     }),
     (r) => shade(r, 'monopolyDwl', { demand: d.id, mr: mr.id, mc: mc2.id }, { labelPlacement: 'leader' }),
   );
@@ -294,7 +296,7 @@ function monopolySameOutput(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, mr, mc0, mc1],
       points: [pm],
-      arrows: [arrow([0.72, 0.8], [0.72, 0.66])],
+      arrows: [shiftArrow(mc0, mc1, [0.72, 0.8], [0.72, 0.66])],
       areas: [
         {
           id: newId(),
