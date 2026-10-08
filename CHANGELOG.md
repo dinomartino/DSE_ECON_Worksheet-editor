@@ -22,6 +22,14 @@ a version heading is edited afterwards.
   <!-- zh: **從 Word 或 PDF 貼上題目。** 在「題目」選單或題庫中選擇「貼上題目…」，然後貼上整份試卷。Econ Studio
   會判斷哪些行是題目、分題、選項和分數，並在旁邊顯示列印效果。按一下或按一個鍵即可修正任何一行，修正亦會套用到
   所有相似的行。按一下選項即可設為答案。然後把題目插入工作紙（⌘Z 可一次全部移除），或加入題庫，題庫已有的題目會略過。 -->
+- **Put the graphs back into pasted questions.** A paste from Word or a PDF leaves its pictures
+  behind, so wherever a picture is missing (a lost image, or a line such as "Figure 1" or "the
+  diagram below"), Paste questions shows a space for it. Take a screenshot of the graph, select
+  the place and press ⌘V, or drop an image file there. You can add a picture after any line, too:
+  select it and paste, or choose Add a picture here… in its menu.
+  <!-- zh: **把圖表放回貼上的題目。** 從 Word 或 PDF 貼上時，圖片不會一併帶來。凡是缺少圖片的地方（遺失的圖片，或「圖一」、
+  「下圖」之類的字句），「貼上題目」都會留出空位。為圖表截圖，選取該位置後按 ⌘V，或把圖片檔拖放到那裏即可。你亦可在任何一行之後
+  加入圖片：選取該行再貼上，或在該行的選單中選擇「在此加入圖片…」。 -->
 - **Desktop: your second computer finds your synced folder.** When Econ Studio starts on a
   computer with no folder chosen yet, and your Econ Studio folder is already in OneDrive, Google
   Drive, iCloud Drive or Dropbox, it asks once whether to use it here too. Choose it, and the

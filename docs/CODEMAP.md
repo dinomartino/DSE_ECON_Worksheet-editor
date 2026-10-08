@@ -516,12 +516,13 @@ Invariants:
 - `src/import/readPlain.ts:readPlain` · `src/import/readHtml.ts:readHtml` → `src/import/lines.ts:toSourceLines` — readers, then labels, marks, cells and multi-item rows split off
 - `src/import/detectors.ts:DETECTORS` — one function per convention; `src/import/levels.ts:inferLevels` · `:settleQuestionRuns` — family levels and question runs; `src/import/walk.ts:walk` — the outline
 - `src/import/solve.ts:solve` — pins, answers, language, the inferred profile; `src/import/scan.ts:pasteKind` — `empty` / `scan` / `ok`
+- `src/import/figures.ts:missingFigures` · `:placeFigures` — captions and references with no picture, lost pictures (slots), image pins placed after their line; `src/import/build.ts:previewFigure` reads a preview block back to its pin or slot
 - `src/import/scorecard.test.ts` over `src/import/fixtures/expected.ts:FIXTURES` (synthetic only: the repo is public, real paper text never enters it)
 
 The review dialog (`src/components/import/`):
 
 - `src/components/import/PasteImportDialog.tsx:PasteImportDialog` — paste box, then review; Insert is one `insertQuestionBatch`, Add to 題庫 is `src/library/bankDocs.ts:addToBank`. Opened by `src/components/import/PasteImportHost.tsx:PasteImportHost` (add rail, `src/components/import/pasteImportStore.ts:usePasteImport`) and from 題庫's header (`src/components/import/PasteImportHost.tsx:LazyPasteImportDialog`)
-- `src/components/import/pasteSession.ts:pasteInput` · `:pasteVerdict` · `:withPin` · `:checkPlaces` · `:optionIndexAt` — the dialog's logic, pure: clipboard flavours, empty/scan/OCR, fixes as pins, flags to visit, the clicked option
+- `src/components/import/pasteSession.ts:pasteInput` · `:pasteVerdict` · `:withPin` · `:checkPlaces` · `:optionIndexAt` — the dialog's logic, pure: clipboard flavours, empty/scan/OCR, fixes as pins, flags to visit, the clicked option; `:imageFiles` · `:imagePin` — a pasted or dropped picture as an image pin
 - `src/components/import/previewDoc.ts:previewItems` — the batch in a scratch worksheet, rendered by `renderWorksheet`; questions cached by outline so an unchanged one keeps its nodes
 - `src/components/import/ReviewLines.tsx:ReviewLines` · `:RoleMenu` — the paste with role chips; `src/components/import/ReviewPreview.tsx:ReviewPreview` — the editor's `NodeView`, read-only, zoomed to fit
 

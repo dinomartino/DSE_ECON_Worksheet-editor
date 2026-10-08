@@ -326,13 +326,17 @@ function PaperNode({
       <div
         data-slot={line}
         data-print-hide
-        className={`my-1 flex cursor-pointer flex-col items-center gap-1.5 rounded-md border-2 px-3 py-3 text-center font-sans text-[13px] leading-snug transition-colors duration-150 ease-out-soft ${
+        // The chrome's own face, not the paper's.
+        style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif' }}
+        className={`my-1 flex cursor-pointer flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-md border-2 px-3 py-2.5 text-[13px] leading-snug transition-colors duration-150 ease-out-soft ${
           lit ? 'border-solid border-[#2f6fd6] bg-[#eef4fd] text-[#1d4f9e]' : 'border-dashed border-[#a9b4c2] bg-[#f6f8fa] text-[#4b5563] hover:border-[#7d8a9b]'
         }`}
       >
-        <ImageIcon size={18} className="shrink-0 opacity-70" />
-        <p className="max-w-[40ch]">{m.slotMissing}</p>
-        <div className="flex flex-wrap justify-center gap-1.5">
+        <p className="flex min-w-0 items-center gap-2">
+          <ImageIcon size={16} className="shrink-0 opacity-70" />
+          <span>{m.slotMissing}</span>
+        </p>
+        <div className="flex shrink-0 gap-1.5">
           <button
             type="button"
             onClick={(event) => {

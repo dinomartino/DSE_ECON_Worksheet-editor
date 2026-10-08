@@ -130,6 +130,24 @@ is found, sets `answerIndex`; otherwise the MC is flagged "no answer". `answerSp
 counted TAB lines. Images become image blocks in the nearest stem. Unknown lines are never
 dropped: they stay in the stem as text, flagged.
 
+### 2.5 Figures
+
+Economics papers are full of graphs, tables drawn as pictures and diagrams. What each source gives:
+
+| Source | Figures |
+|---|---|
+| Word paste | lost: clip images arrive as `file://` links the browser cannot read, and text boxes vanish. HTML that carries `data:` images keeps them |
+| `.docx` file (phase 2) | pictures kept. Word-shape drawings and charts are hard (no single picture to take); EMF/WMF are flagged, since browsers cannot draw them |
+| PDF paste or file (phase 3) | never in the text; a region crop of the rendered page |
+| Scan | the page is a picture; a region crop |
+
+So the review step lets a teacher put a picture into any question at any point: select a line or
+a slot and paste a screenshot (⌘⇧4 / Win+Shift+S, then ⌘V), or drop or choose an image file. Where
+a picture is missing (a lost image, or a caption or reference with none after it: `Figure 1`,
+`圖一`, `資料A`, "the diagram below", 下圖) the preview shows a **figure slot**, counted to check
+until filled or dismissed. Pictures stay pictures (image blocks). They never become editable
+diagrams; a teacher who wants one rebuilds it from Graphs 圖表庫.
+
 ## 3. The review screen
 
 A dialog (`Dialog`, wide). The left pane shows the pasted lines with a coloured **role chip**
@@ -205,8 +223,7 @@ Phase 1 alone covers Word pastes, which is where most teachers' papers live.
 1. **Answer keys:** where do teachers keep MC answers? Bold or highlighted in the paper, a key
    at the end, or a separate file? Today's samples have none.
 2. **Marking schemes:** import them too (phase 2+), or questions only?
-3. **Figures:** a Word paste loses them. The `.docx` file import keeps them as **images**, not
-   editable diagrams. Is that acceptable?
+3. **Figures:** decided: pictures, added in the review by screenshot or file (§ 2.5).
 4. **Where it lands first:** the open paper, 題庫, or both from day one?
 
 ## 10. As built (engine, 2026-10-08)
@@ -217,13 +234,13 @@ Pure TypeScript in `src/import/`: no React, no store, no DOM. The UI calls three
 readPaste(input: { plain?: string; html?: string }): ReadPaste                 // once per paste
 analyseLines(read: ReadPaste, options?: { pins?: Pin[]; profile?: LayoutProfile;
   language?: 'en' | 'zh' | 'auto' }): Analysis                                  // on every pin
-buildImport(analysis: Analysis): ImportBatch   // → insertQuestionBatch(batch.builds, { worksheetId, lead: batch.lead })
+buildImport(analysis: Analysis, options?: { preview?: boolean }): ImportBatch   // → insertQuestionBatch(batch.builds, { worksheetId, lead: batch.lead })
 analysePaste(input, options) = analyseLines(readPaste(input), options)
 ```
 
 `Analysis` is `{ kind: 'ok' | 'empty' | 'scan', source, lines, roles, outline, flags, profile }`;
 `roles[i]` is `{ role, confidence, pinned?, question? }` for `lines[i]`. A `Pin` is
-`role` · `newQuestion` · `join` · `language` · `answer`. Flags are codes (`FlagKind`) with a
+`role` · `newQuestion` · `join` · `language` · `answer` · `image` · `noPicture`. Flags are codes (`FlagKind`) with a
 line and a question index; the dialog words them. Types: `src/import/types.ts`.
 
 | File | Does |
@@ -236,6 +253,7 @@ line and a question index; the dialog words them. Types: `src/import/types.ts`.
 | `src/import/walk.ts` | the outline: parts, sub-parts, contexts, sources, marks re-attachment, order pairing |
 | `src/import/solve.ts` | orchestration, pins, answers, language, the returned profile |
 | `src/import/scan.ts` · `src/import/build.ts` | empty/OCR verdict; outline → `QuestionBuild[]` + `lead` |
+| `src/import/figures.ts` | figure slots (lost pictures; captions and references with none) and image pins, placed after the walk |
 
 **Scorecard** (`src/import/scorecard.test.ts`, 17 synthetic fixtures in `src/import/fixtures/`):
 every Word plain/HTML and PDF-style fixture 100% split and detail; the two OCR fixtures are
@@ -257,7 +275,7 @@ flags); OCR excerpts 86% and 100% split. Re-solving a 60-question paste takes ab
 - Headings, noise and answer keys are not imported (`ImportBatch.skipped`); no section elements.
 - An MC with no marks keeps the factory's 1 mark; parts and sub-parts with none stay absent.
 - Body text keeps smart quotes and full-width punctuation; only matching keys are normalised.
-- Images: only `data:` URLs become image blocks; Word's `file://` clip images are `imageLost`.
+- Images: only `data:` URLs become image blocks; Word's `file://` clip images are `imageLost` and show as slots.
 - Confidence is the detector weight lowered by walk decisions, not calibrated.
 
 **Known weak cases:** `pdftotext` column blocks that interleave two questions; OCR that loses
@@ -291,4 +309,28 @@ are explained in a notice; OCR text can still be reviewed.
   questions are originals (no lineage), and any the bank already says the same (`contentKey`) is
   skipped and counted. A shared stimulus lead is not added to a bank (the notice says so).
 - Not built: layout profiles, the large-paste notice in a stem, file drops (phase 2+).
+
+### Figures, as built (2026-10-08)
+
+- **Pin:** `{ kind: 'image'; id; line; image: ImageRef }` (`src`, display `widthPx`/`heightPx`,
+  `naturalWidthPx`/`naturalHeightPx`, as `imageBlockFromFile` made them) and
+  `{ kind: 'noPicture'; line }` (a slot dismissed). Pins are keyed by line, so a picture follows
+  its line through every re-solve and other fix.
+- **Placement** (`placeFigures`, after the walk): right after the content of the line's block in
+  the question that owns it: the stem, a part's or sub-part's blocks, inside a source panel when
+  the line is in one. An option line puts it under that option (`McqOption.blocks`, capped at
+  `OPTION_DIAGRAM_WIDTH_PX`); a statement line after the stem. Several per question, in line
+  order; two on one line in the order added. A line outside every question goes to the next one.
+- **Slots:** a lost picture keeps its place; a caption with no picture beside it, or a "below"
+  reference with none before the next part, gets one right after the line (`figureMissing`). A
+  table or source caption counts any rows or text after it. "Above" references are not read.
+  Filled or dismissed lines are `settled`: no flag, no slot.
+- **Build:** a real `buildImport` drops slots and gives pictures fresh ids. `{ preview: true }`
+  shows each slot as a stand-in image whose id `previewFigure` reads back (`pi-slot:<line>`,
+  `pi-pin:<id>`), so the pane draws the slot and the remove control exactly where the block prints.
+- **Dialog:** ⌘V with an image on the clipboard (a window `paste` listener, review step only)
+  adds it after the selected line or slot; a text paste passes by. Drops land on a row, a slot, or
+  a question (its first line). "Add a picture here…" in the role menu and "Choose a picture…" on a
+  slot open a file chooser. Every picture goes through `imageBlockFromFile`. A placed picture has
+  a × on the paper and a "Picture ×" badge on its line; ⌘Z takes back the last one like any fix.
 

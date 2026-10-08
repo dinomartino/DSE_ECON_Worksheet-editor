@@ -89,7 +89,7 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
   pictureHint: { en: 'Select a line, then paste a picture (⌘V) to add it there.', zh: '選取一行，然後貼上圖片（⌘V），即可加在該處。' },
   slotMissing: {
     en: 'Picture missing here. Paste a screenshot or drop an image.',
-    zh: '此處缺少圖片。請貼上螢幕截圖，或把圖片拖放到這裏。',
+    zh: '此處缺少圖片。請貼上截圖，或把圖片拖放到這裏。',
   },
   choosePicture: { en: 'Choose a picture…', zh: '選擇圖片…' },
   noPictureNeeded: { en: 'No picture needed', zh: '不需要圖片' },

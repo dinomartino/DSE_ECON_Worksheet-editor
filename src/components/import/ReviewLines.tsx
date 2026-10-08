@@ -301,7 +301,6 @@ export function RoleMenu({
         {joins && <span aria-hidden className="text-accent-ink">✓</span>}
       </button>
       <button type="button" role="menuitem" onClick={onPicture} className={item}>
-        <ImageIcon size={14} className="shrink-0 text-ink-muted" />
         <span className="min-w-0 flex-1">{m.addPicture}</span>
       </button>
       {rolePin && (
