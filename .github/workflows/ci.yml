@@ -28,3 +28,35 @@ jobs:
       - run: npm test
 
       - run: npm run build
+
+  # The scripts/*.test.ts harnesses are not in `npm test`; they write real files, so their
+  # output goes to the runner temp dir. Never add scripts/emit-*-corpus.test.ts here: they
+  # rewrite the frozen corpus.
+  script-harnesses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: >
+          npx vitest run
+          scripts/release-notes.test.ts
+          scripts/sync-version.test.ts
+          scripts/cover-fixtures.test.ts
+          scripts/lq-fixtures.test.ts
+          scripts/template-gallery.test.ts
+          scripts/q6-sample.test.ts
+          scripts/emit-samples.test.ts
+          scripts/relation-drag.test.ts
+        env:
+          SAMPLE_DIR: ${{ runner.temp }}/samples
+          COVER_DIR: ${{ runner.temp }}/cover
+          LQ_DIR: ${{ runner.temp }}/lq
+          GALLERY_DIR: ${{ runner.temp }}/gallery
+          DRAG_DIR: ${{ runner.temp }}/drag
