@@ -334,3 +334,44 @@ are explained in a notice; OCR text can still be reviewed.
   slot open a file chooser. Every picture goes through `imageBlockFromFile`. A placed picture has
   a × on the paper and a "Picture ×" badge on its line; ⌘Z takes back the last one like any fix.
 
+### PDF reader, as built (2026-10-08)
+
+```ts
+readPdf(bytes: ArrayBuffer, options?: { prepareImage?: (blob: Blob) => Promise<ImageRef | null> })
+  : Promise<(ReadPaste & { title?: string; pages: number }) | { kind: 'unreadable' | 'encrypted' | 'notPdf' }>
+```
+
+`isPdfReadError` tells the two apart. The result goes to `analyseLines` like a paste (`source: 'pdf'`).
+
+- **pdf.js** (`pdfjs-dist` 6.4, the legacy build: the modern one calls `getOrInsertComputed` and
+  `Math.sumPrecise` unpolyfilled) loads only on the first `readPdf` call. Its worker is bundled by
+  Turbopack from `src/import/pdf.worker.ts` and served beside the page, same origin, no CDN. If the
+  worker cannot start, pdf.js parses on the main thread (`useMainThread`). The desktop CSP is `null`.
+  WebKit gives a `tauri://` URL the origin `null`, which Turbopack's worker bootstrap refuses, so the
+  macOS shell probably takes the fallback (unproven: no desktop build was run).
+- **Layout** (`layoutPdf`, pure, tested on plain item arrays): rows by baseline; rows repeated in
+  the same place on most pages, lone page numbers and rotated text dropped; two-column bands read
+  column by column; a lone label item takes the text to its right (detached letters, hanging numbers);
+  right-aligned marks stay on their line or join the line above; rows aligned in columns become
+  cells, with empty cells kept; a line that wraps (close below, at the body's indent, after a line
+  that reached the margin) joins the one above. So a PDF is read in `paragraph` mode and the walk
+  never joins twice. Bold and italic come from font names. A drawn rule in a gap is `______`.
+- **Figures** (`findFigures`): images, and path clusters with a curve, a slant or an untexted fill.
+  Table borders, shaded cells and frames are not figures. A figure takes its axes and short labels.
+  Each becomes an image line with `src: ''`: a slot, flagged `imageLost`. With `prepareImage` in a
+  browser, the page is rendered at 2× and the region cropped to PNG. A file with no text at all is
+  one picture per page, which reads as `scan`.
+- **Title**: the metadata title (with "Microsoft Word - " and the extension removed), else the first
+  large-type line.
+- **Real files** (local): DBS Assessment 1 splits 25/25 (19 MC with 4 options each, the 4 statement
+  sets, parts `a)`/`b)` and `(a)`/`(b)` and every mark right, 7 tables as cells), as good as the
+  Preview paste. The three HKEAA scans read as `scan` with 18, 23 and 28 pages. Proven in
+  `next dev` and the static `out/` in Chromium and Playwright WebKit, with the worker and with it
+  blocked.
+- **Bundle**: the first load is unchanged. pdf.js is a lazy chunk (480 KB, 145 KB gzip) with a
+  22 KB Buffer shim. The worker code (1.2 MB, 372 KB gzip) loads in the worker, or on the main
+  thread only for the fallback.
+- **Weak cases**: two columns need at least 5 rows and 3 prose rows a side; a table needs 2 aligned
+  rows; vector figures are a heuristic; text drawn as outlines or Type 3 glyphs is not read; an
+  OCR'd scan reads as its text layer.
+

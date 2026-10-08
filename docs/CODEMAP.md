@@ -509,11 +509,12 @@ Invariants:
 
 ## import — paste-to-structure (D1), the engine
 
-`docs/design/paste-import.md` (§ 10 As built). Pure: no React, no store, no DOM.
+`docs/design/paste-import.md` (§ 10 As built). Pure: no React, no store, no DOM (the PDF reader's optional figure crops aside).
 
 - `src/import/index.ts:readPaste` → `:analyseLines` (re-run on every pin) → `src/import/build.ts:buildImport` → the store's `insertQuestionBatch`; `:analysePaste` does the first two
 - `src/import/types.ts:SourceLine` · `:Pin` · `:LayoutProfile` · `:Outline` · `:Analysis` — the shapes; flags are codes (`:FlagKind`), worded by the UI
 - `src/import/readPlain.ts:readPlain` · `src/import/readHtml.ts:readHtml` → `src/import/lines.ts:toSourceLines` — readers, then labels, marks, cells and multi-item rows split off
+- `src/import/readPdf.ts:readPdf` — a `.pdf` file: pdf.js items and drawing ops → `src/import/pdfLayout.ts:layoutPdf` (pure: rows, columns, re-attached labels and marks, tables, joined paragraphs, noise) · `:findFigures` (slots, PNG crops via `prepareImage`). pdf.js loads only here: `src/import/pdfjs.ts:pdfjsLib` (legacy build, worker from `src/import/pdf.worker.ts`, `:useMainThread` when a webview refuses it). Tests build PDFs with `src/import/fixtures/pdfWriter.ts:makePdf`
 - `src/import/detectors.ts:DETECTORS` — one function per convention; `src/import/levels.ts:inferLevels` · `:settleQuestionRuns` — family levels and question runs; `src/import/walk.ts:walk` — the outline
 - `src/import/solve.ts:solve` — pins, answers, language, the inferred profile; `src/import/scan.ts:pasteKind` — `empty` / `scan` / `ok`
 - `src/import/figures.ts:missingFigures` · `:placeFigures` — captions and references with no picture, lost pictures (slots), image pins placed after their line; `src/import/build.ts:previewFigure` reads a preview block back to its pin or slot
@@ -527,7 +528,8 @@ The review dialog (`src/components/import/`):
 - `src/components/import/ReviewLines.tsx:ReviewLines` · `:RoleMenu` — the paste with role chips; `src/components/import/ReviewPreview.tsx:ReviewPreview` — the editor's `NodeView`, read-only, zoomed to fit
 
 Invariants:
-- Text is never dropped: a line the walk cannot place stays in the nearest stem, flagged.
+- Text is never dropped: a line the walk cannot place stays in the nearest stem, flagged. The PDF reader drops only running headers/footers, page numbers, rotated margin text and a figure's own labels.
+- pdf.js stays out of the app's first load: reached only through `import('./pdfjs')`.
 - Only `src/import/build.ts` names question types (`src/import/solve.test.ts` guards it).
 - Nothing is stored in a document: imported questions are ordinary questions.
 - The dialog never puts pasted HTML in the page; ⌘Z inside it takes back a fix, never the document.
