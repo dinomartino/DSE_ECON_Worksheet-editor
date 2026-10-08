@@ -12,6 +12,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   and offers it once; the picker opens at the library's parent. The empty start screen points to
   Settings → Storage location. Only checked with a faked shell: run `desktop:dev` on a machine with a
   synced library (picker location, the "done" flag surviving a restart).
+- **Paste-to-structure (D1) designed:** `docs/design/paste-import.md`. Ask the user its § 9
+  questions, then build phase 0+1 with Opus agents. The layout survey (real-paper pastes, fixtures)
+  is local only, never in git (public repo).
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
@@ -67,6 +70,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-10-08** — D1 design: 3 research agents (code map, real-paper paste survey, other importers).
 - **2026-10-08** — Found-folder offer on a new computer (`feature/found-folder`, 1 Opus agent), merged.
 - **2026-10-08** — Pre-release check: 4 Opus reviewers, 6 fix branches merged (`fix/sync-safety`,
   `fix/library-rust`, `fix/notices-ui`, `fix/diagram-gaps`, `fix/answer-gaps`, `fix/release-tooling`).
@@ -74,5 +78,3 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **2026-10-07** — Sync interface (`feature/sync-ui`): controller (`librarySync.ts`: choose/stop/sync
   now in one queue, runs while the folder is away), `syncView.ts`, `syncNotices.ts`, Settings → Storage
   location (screenshots via a faked shell + dev-only `__econSyncView`), Clear detaches. Not run in Tauri.
-- **2026-10-06** — Sync base persists, hash cache, folder source, scheduler + open-editor guard;
-  autosave keeps an edit typed mid-save. 4 Opus worktree branches, merged.

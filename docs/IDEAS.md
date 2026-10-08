@@ -21,9 +21,9 @@ their layouts, diagram areas, templates and Graphs, file management, ✦ AI tran
 
 ## Recommended order
 
-1. **Now** — offer the synced folder on a new computer (STATUS § Next session); then make classes + sat-on findable (the greyed 題庫 Class filter should open Setup at
-   the field; it sits low in Setup's Worksheet tab); then paste-to-structure (D1), the
-   cheapest way to fill the bank.
+1. **Now** — paste-to-structure (D1), any layout: design in `docs/design/paste-import.md`,
+   waiting on its § 9 questions. Not urgent (user, 2026-10-08): make classes + sat-on findable
+   (the greyed 題庫 Class filter should open Setup at the field).
 2. **Next** — item analysis (G1), which also completes C4's facility; C9–C10 and C11's
    remaining filters.
 3. **Later** — `.docx` import (D2), unpausing E1/E3/E4 after live evals, data charts
@@ -110,11 +110,10 @@ second tab holding the same paper.
 
 ## D. Getting existing material in
 
-- **D1 Paste-to-structure** (M): numbered MCQs with A–D and "(a)(i) … (3 marks)"
-  parts become real questions, with a review step before commit. Today paste is plain
-  text (`src/components/preview/RichTextEditable.tsx`). *Doc-to-Form, MS Forms Quick
-  Import, Akindi Importer.*
-- **D2 `.docx` import** (L), then PDF/photo (L). Publishers hand out banks as Word.
+- **D1 Paste-to-structure** (M): designed, `docs/design/paste-import.md`. Infers each
+  paper's layout from its numbering runs; review screen with one-click role fixes;
+  layout profiles. *MS Forms Quick Import, Akindi, Respondus.*
+- **D2 `.docx` / `.pdf` file import**: phases 2–3 of the D1 design (same pipeline).
 
 ## E. AI — bring your own key, one ✦ AI door, results insert directly
 
