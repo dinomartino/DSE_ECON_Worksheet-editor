@@ -12,7 +12,7 @@ import { pasteKind } from './scan';
 import { solve } from './solve';
 import type { AnalyseOptions, Analysis, PasteInput, SourceLine } from './types';
 
-export { buildImport, type ImportBatch } from './build';
+export { buildImport, previewFigure, type ImportBatch } from './build';
 export type * from './types';
 
 export interface ReadPaste {

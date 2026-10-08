@@ -143,6 +143,7 @@ export const FLAG_TEXT: Record<FlagKind, Key | 'flagOptionCount'> = {
   duplicateMarks: 'flagDuplicateMarks',
   unknownLine: 'flagUnknownLine',
   imageLost: 'flagImageLost',
+  figureMissing: 'flagFigureMissing',
   optionsByOrder: 'flagOptionsByOrder',
   textAfterOptions: 'flagTextAfterOptions',
   sharedStemFolded: 'flagSharedStemFolded',

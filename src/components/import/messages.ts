@@ -98,6 +98,7 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
   flagDuplicateMarks: { en: 'Two marks for one part. The first is kept.', zh: '同一分題有兩個分數，只保留第一個。' },
   flagUnknownLine: { en: 'A line with no clear role, kept as text.', zh: '這行的角色不明確，已保留為文字。' },
   flagImageLost: { en: 'A picture did not come with the paste.', zh: '圖片未能隨貼上的內容一併帶來。' },
+  flagFigureMissing: { en: 'A figure is named here, but no picture came with the paste.', zh: '這裏提及圖表，但貼上的內容沒有圖片。' },
   flagOptionsByOrder: {
     en: 'Option letters were apart from their text, so they were paired in order.',
     zh: '選項字母與文字分開，已按次序配對。',

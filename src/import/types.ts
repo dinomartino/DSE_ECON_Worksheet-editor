@@ -55,6 +55,9 @@ export interface ImageRef {
   src: string;
   widthPx?: number;
   heightPx?: number;
+  /** The stored bytes' own size (`ImageBlock.naturalWidthPx`), when it differs from the display size. */
+  naturalWidthPx?: number;
+  naturalHeightPx?: number;
   alt?: string;
 }
 
@@ -109,7 +112,14 @@ export type Pin =
   /** `line`: any line of the question. */
   | { kind: 'language'; line: number; side: Side }
   /** `line`: any line of the question; `index`: 0 = A. */
-  | { kind: 'answer'; line: number; index: number };
+  | { kind: 'answer'; line: number; index: number }
+  /**
+   * A picture the teacher added, placed right after `line`'s content in the question that
+   * owns it (an option line: under that option). `id` tells two pictures on one line apart.
+   */
+  | { kind: 'image'; id: string; line: number; image: ImageRef }
+  /** The figure slot at `line` needs no picture. */
+  | { kind: 'noPicture'; line: number };
 
 export type MarksStyle = '(n marks)' | '[n]' | '（n分）';
 
@@ -131,12 +141,18 @@ export type OutBlock =
   | { kind: 'paragraph'; lines: number[]; runs: InlineRun[] }
   | { kind: 'table'; lines: number[]; rows: InlineRun[][][] }
   | { kind: 'source'; lines: number[]; label: InlineRun[]; blocks: OutBlock[] }
-  | { kind: 'image'; lines: number[]; image: ImageRef };
+  /**
+   * `pin`: placed by an image pin (its id). `missing`: a figure slot, a picture lost in the
+   * paste or one a caption refers to; it is never inserted (`buildImport`'s `preview` shows it).
+   */
+  | { kind: 'image'; lines: number[]; image: ImageRef; pin?: string; missing?: true };
 
 export interface OutText {
   lines: number[];
   runs: InlineRun[];
   emphasis?: SourceLine['emphasis'];
+  /** Pictures under an option (`McqOption.blocks`). */
+  blocks?: OutBlock[];
 }
 
 export interface OutSubPart {
@@ -197,6 +213,7 @@ export type FlagKind =
   | 'duplicateMarks'
   | 'unknownLine' // text with no clear role, kept in the stem
   | 'imageLost' // an image whose data the paste did not carry
+  | 'figureMissing' // a caption ("Figure 1", 圖一) or reference ("the diagram below") with no picture
   | 'optionsByOrder' // detached letters, options paired by order
   | 'textAfterOptions'
   | 'sharedStemFolded' // a shared stem kept in its first question (one lead per insert)
