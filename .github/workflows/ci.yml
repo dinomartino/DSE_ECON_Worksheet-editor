@@ -60,3 +60,27 @@ jobs:
           LQ_DIR: ${{ runner.temp }}/lq
           GALLERY_DIR: ${{ runner.temp }}/gallery
           DRAG_DIR: ${{ runner.temp }}/drag
+
+  # The desktop shell's Rust on the systems it ships for: `cfg(windows)` code cannot be
+  # checked from a Mac. Debug builds use `devUrl`, so no web build is needed.
+  rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.platform }}
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: cargo check --locked --all-targets
+
+      - run: cargo test --locked

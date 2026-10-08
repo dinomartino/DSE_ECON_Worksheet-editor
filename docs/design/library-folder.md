@@ -72,12 +72,15 @@ New section file beside `src/components/settings/sections/index.ts`.
 
 As built, the setup step also lists the cloud folders on this computer (`library_cloud_folders`,
 `src-tauri/src/cloud.rs`: paths only, a macOS CloudStorage folder counts only while its app is
-installed); each opens the picker there (`library_choose` `start`, an id Rust resolves again).
-No Google Drive says it needs Google Drive for desktop; none at all says to install one first.
+installed; on Windows only fixed drives are touched, Google Drive found by its volume label);
+each opens the picker there (`library_choose` `start`, an id Rust resolves again with only
+that provider's checks). No Google Drive says it needs Google Drive for desktop; none at all
+says to install one first.
 
 1. **Where.** Picked folder holds the marker → use it. Its `Econ Studio` subfolder holds it →
-   use that. Otherwise create `<picked>/Econ Studio/`. Refused: inside the app data directory,
-   a drive root, the home folder.
+   use that. Otherwise create `<picked>/Econ Studio/`. A marker's undownloaded iCloud stub counts
+   as the marker (never a second one). Refused, with a notice saying why: the app data directory
+   or inside it, the home folder, a drive or volume root, inside another library.
 2. **Tips**, one line each, shown for the provider the path suggests (always the last two):
    - OneDrive: "In Finder or File Explorer, right-click the Econ Studio folder and choose
      Always keep on this device." 「在 Finder 或檔案總管右按 Econ Studio 資料夾，選擇「一律保留在此裝置上」。」
@@ -225,7 +228,8 @@ reloads the webview; nothing re-points live.
   `writeTextFile` truncates in place and never fsyncs (source-read), so a cloud client can
   upload half a file today.
 - Windows: rename over a file OneDrive or antivirus holds open fails with a sharing violation.
-  Retry with backoff (about 1 s total), then write in place with fsync rather than lose the save.
+  Retry with backoff (about 1 s total), re-checking the hash before each retry (changed: conflict);
+  still held, an error and the engine retries next run. Never in place: that can tear the file.
 - **Skip identical bytes**: when the file already holds them, write nothing. Opening a paper
   saves it once (`src/app/EditorHost.tsx`); without the skip every open uploads and bumps mtime
   on both computers.
@@ -386,7 +390,7 @@ App commands, declared in `src-tauri/build.rs`, granted as `allow-library-*` in
 | Command | Result |
 |---|---|
 | `library_location` | `{ deviceId, root, status: none \| ok \| unavailable, reason? }`; makes the device id once |
-| `library_choose(title?)` | `chosen { root }` \| `cancelled`. Native folder picker run in Rust; the picked folder if it holds the marker, else `<picked>/Econ Studio/`, created with its marker |
+| `library_choose(title?, start?)` | `chosen { root }` \| `cancelled` \| `refused { reason: app-data \| home \| drive-root \| inside-library }` (nothing made). Native folder picker run in Rust; the picked folder if it holds the marker, else `<picked>/Econ Studio/`, created with its marker (§ 1.2) |
 | `library_forget` | detaches; nothing in the folder is touched |
 | `library_list` | `ok { files: { path, size, mtimeMs, hash, state: ok \| placeholder \| unreadable }[] }` \| `unavailable { reason }` |
 | `library_read(path)` | `ok { text, hash }` \| `missing` \| `unreadable` \| `unavailable` |
@@ -400,15 +404,19 @@ App commands, declared in `src-tauri/build.rs`, granted as `allow-library-*` in
   `.tmp`, or the top-level marker; refused when the nearest existing part canonicalises outside the
   root (symlinks). The listing skips symlinks. A bad path is an `Err` (the bridge call rejects).
 - Listing: every `*.json` under the root except the marker; hashes cached in memory by (path, size,
-  mtime), never for a file changed in the last 2 s. A placeholder (macOS dataless, Windows
+  mtime) as stat'ed before the read, and only if a stat after it agrees; never for a file changed in
+  the last 2 s. A placeholder (macOS dataless, Windows
   recall-on-access or offline, a legacy `.<name>.icloud` stub) is listed unhashed: reading downloads it.
-  A folder that will not list fails the whole listing (`io`). The first listing per root per launch
+  A folder that will not list fails the whole listing (`io`); a subfolder gone since its parent was
+  listed is skipped. The first listing per root per launch
   removes this app's own temp files (`.<name>.econ-<hex>.tmp`) older than a day.
 - Writes: CAS on the current bytes' hash (an unreadable file never matches), identical bytes skipped,
   temp beside the target + `sync_all` + rename + directory fsync; Windows sharing violations retried
-  for ~1 s, then written in place with fsync. Parent folders (`trash/`) are created. One write or
+  for ~1 s, the hash re-checked before each retry (changed: `conflict`; unreadable or still held: an
+  error), never written in place. Remove retries the same way. Parent folders (`trash/`) are created. One write or
   remove at a time per process. Remove is a plain delete (the provider's recycle bin is the backstop).
-- Watcher: `notify-debouncer-full`, recursive, 1 s debounce; temp and dot-names filtered, an iCloud
+- Watcher: `notify-debouncer-full`, recursive, 1 s debounce, no file-id cache and no symlink
+  following (the cache walks the tree on start); temp and dot-names filtered, an iCloud
   stub named as its file; an error, a rescan flag or the root itself changing sets `rescan`.
 - **Root kept in `$APPDATA/library-location.json`** (`{ deviceId, root }`), written only by Rust
   (temp + rename). The capability's global `fs:scope` denies that file to every plugin-fs command, in

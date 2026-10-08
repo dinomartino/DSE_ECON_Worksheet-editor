@@ -45,8 +45,8 @@ A cloud-synced folder the teacher picks (`<chosen>/Econ Studio/`, marker `econ-s
 - **Keys are relative paths**, every `*.json` but the marker, dot-names and temp files. A provider's
   conflict copy keeps its own name, so the planner sees it as a stray.
 - **Revision = SHA-256 of the bytes.** Write and remove compare it first; a mismatch writes nothing.
-  Writes are temp + fsync + rename (Windows: ~1 s of retries, then in place); identical bytes are not
-  written. Remove is a plain delete: the provider's recycle bin is the backstop.
+  Writes are temp + fsync + rename (Windows: ~1 s of retries, each re-checking the hash; still held,
+  an error for the next run, never in place); identical bytes are not written. Remove is a plain delete: the provider's recycle bin is the backstop.
 - **Unusable root** (none chosen, missing, no marker, a newer `format`) is `unavailable`, never an
   empty listing. A newer build's library is never written by this one.
 - **A file that will not read** (cloud placeholder that will not download, no permission) is listed,

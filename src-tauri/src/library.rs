@@ -137,6 +137,22 @@ pub struct Location {
 pub enum ChooseResult {
   Chosen { root: String },
   Cancelled,
+  /// Nothing was created or saved.
+  Refused { reason: Refusal },
+}
+
+/// Why a picked folder is not used (`docs/design/library-folder.md` § 1.2).
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum Refusal {
+  /// This app's own data folder, or one inside it.
+  AppData,
+  /// The home folder itself.
+  Home,
+  /// A drive or volume root.
+  DriveRoot,
+  /// Inside another library, which would list this one's marker as a document.
+  InsideLibrary,
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -293,14 +309,16 @@ impl HashCache {
     (*size == meta.len() && *time == mtime(meta)).then(|| hash.clone())
   }
 
-  /// Remembers `hash` for the file as it is now, unless it changed too recently to trust.
-  fn put(&self, path: &Path, hash: &str) {
-    let Ok(meta) = fs::metadata(path) else { return };
-    let time = mtime(&meta);
+  /// Remembers `hash` for bytes read after `before` was taken, keyed on `before`: only if the
+  /// file still has its size and mtime (a cloud client may replace it mid-read, with the other
+  /// computer's older mtime), and not if it changed too recently to trust.
+  fn put(&self, path: &Path, before: &fs::Metadata, hash: &str) {
+    let held = fs::metadata(path).is_ok_and(|after| after.len() == before.len() && mtime(&after) == mtime(before));
+    let time = mtime(before);
     let settled = SystemTime::now().duration_since(time).map(|age| age >= RACY).unwrap_or(false);
     if let Ok(mut map) = self.map.lock() {
-      if settled {
-        map.insert(path.to_path_buf(), (meta.len(), time, hash.to_string()));
+      if held && settled {
+        map.insert(path.to_path_buf(), (before.len(), time, hash.to_string()));
       } else {
         map.remove(path);
       }
@@ -334,7 +352,13 @@ fn walk(
   found: &mut BTreeMap<String, FileEntry>,
 ) -> Result<(), Reason> {
   // A folder that will not list fails the whole listing: its files must not read as deleted.
-  for entry in fs::read_dir(dir).map_err(|_| Reason::Io)? {
+  // One removed since its parent was listed is gone with its files: skipped.
+  let entries = match fs::read_dir(dir) {
+    Ok(entries) => entries,
+    Err(e) if depth > 0 && e.kind() == io::ErrorKind::NotFound => return Ok(()),
+    Err(_) => return Err(Reason::Io),
+  };
+  for entry in entries {
     let entry = entry.map_err(|_| Reason::Io)?;
     let Some(name) = entry.file_name().to_str().map(str::to_owned) else { continue };
     let path = entry.path();
@@ -381,7 +405,7 @@ fn walk(
       None => match fs::read(&path) {
         Ok(bytes) => {
           let hash = hash_bytes(&bytes);
-          cache.put(&path, &hash);
+          cache.put(&path, &meta, &hash);
           (Some(hash), FileState::Ok)
         }
         Err(_) => (None, FileState::Unreadable),
@@ -395,10 +419,13 @@ fn walk(
 
 pub fn read(root: &Path, rel: &str, cache: &HashCache) -> Result<ReadResult, String> {
   let path = resolve(root, rel)?;
+  let before = fs::metadata(&path);
   Ok(match fs::read(&path) {
     Ok(bytes) => {
       let hash = hash_bytes(&bytes);
-      cache.put(&path, &hash);
+      if let Ok(before) = &before {
+        cache.put(&path, before, &hash);
+      }
       match String::from_utf8(bytes) {
         Ok(text) => ReadResult::Ok { text, hash },
         Err(_) => ReadResult::Unreadable,
@@ -446,9 +473,16 @@ pub fn write(root: &Path, rel: &str, text: &str, expect: &str, cache: &HashCache
   if let Some(parent) = path.parent() {
     fs::create_dir_all(parent).map_err(|e| e.to_string())?;
   }
-  write_atomic(&path, text.as_bytes()).map_err(|e| e.to_string())?;
-  cache.put(&path, &hash);
-  Ok(WriteResult::Ok { hash })
+  let done = replace(&path, text.as_bytes(), &mut |from, to| fs::rename(from, to), is_sharing_violation, &pause, &|| {
+    still(&path, expect)
+  })
+  .map_err(|e| e.to_string())?;
+  // Just written, so too fresh to cache anyway.
+  cache.forget(&path);
+  Ok(match done {
+    Done::Ok => WriteResult::Ok { hash },
+    Done::Changed => WriteResult::Conflict,
+  })
 }
 
 /// Compare-and-swap delete. A plain delete: the provider's own recycle bin is the backstop.
@@ -461,9 +495,21 @@ pub fn remove(root: &Path, rel: &str, expect: &str, cache: &HashCache) -> Result
   if !expected(&now, expect) {
     return Ok(RemoveResult::Conflict);
   }
-  with_retry(|| fs::remove_file(&path), is_sharing_violation, &pause).map_err(|e| e.to_string())?;
+  let done = with_retry(|| fs::remove_file(&path), is_sharing_violation, &pause, &|| still(&path, expect)).map_err(|e| e.to_string())?;
   cache.forget(&path);
-  Ok(RemoveResult::Ok)
+  Ok(match done {
+    Done::Ok => RemoveResult::Ok,
+    Done::Changed => RemoveResult::Conflict,
+  })
+}
+
+/// Before a retry: the file is still what `expect` says. One held so it will not read is an
+/// error, not a guess: the engine tries again next run, and the local copy stays the truth.
+fn still(path: &Path, expect: &str) -> io::Result<bool> {
+  match current(path) {
+    Current::Unreadable => Err(io::Error::other("the file is held open")),
+    now => Ok(expected(&now, expect)),
+  }
 }
 
 fn random_hex(bytes: usize) -> String {
@@ -476,18 +522,31 @@ fn random_hex(bytes: usize) -> String {
   buf.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// Temp file beside the target, fsync, rename over it.
+/// Temp file beside the target, fsync, rename over it. For files only this app writes.
 pub fn write_atomic(target: &Path, bytes: &[u8]) -> io::Result<()> {
-  replace(target, bytes, &mut |from, to| fs::rename(from, to), is_sharing_violation, &pause)
+  replace(target, bytes, &mut |from, to| fs::rename(from, to), is_sharing_violation, &pause, &|| Ok(true)).map(|_| ())
 }
 
+/// How a retried rename or delete ended.
+#[derive(Debug, PartialEq)]
+enum Done {
+  Ok,
+  /// The target changed while it was held open: nothing was done.
+  Changed,
+}
+
+/// Temp beside `target`, fsync, rename over it; the temp is gone on every path. A rename
+/// refused while the file is held open is retried for about a second, each retry only while
+/// `unchanged` holds; still held, it is an error. Never written in place: truncate-then-write
+/// can tear the file, or overwrite what a cloud client is downloading.
 fn replace(
   target: &Path,
   bytes: &[u8],
   rename: &mut dyn FnMut(&Path, &Path) -> io::Result<()>,
   retryable: fn(&io::Error) -> bool,
   wait: &dyn Fn(Duration),
-) -> io::Result<()> {
+  unchanged: &dyn Fn() -> io::Result<bool>,
+) -> io::Result<Done> {
   let dir = target.parent().ok_or_else(|| io::Error::other("no parent folder"))?;
   let name = target.file_name().and_then(|n| n.to_str()).ok_or_else(|| io::Error::other("bad file name"))?;
   let temp = dir.join(format!(".{name}{TEMP_TAG}{}.tmp", random_hex(6)));
@@ -496,42 +555,34 @@ fn replace(
     file.write_all(bytes)?;
     file.sync_all()
   })();
-  if let Err(e) = written {
-    let _ = fs::remove_file(&temp);
-    return Err(e);
+  let result = written.and_then(|()| with_retry(|| rename(&temp, target), retryable, wait, unchanged));
+  if matches!(result, Ok(Done::Ok)) {
+    sync_dir(dir);
   }
-  let result = match with_retry(|| rename(&temp, target), retryable, wait) {
-    Ok(()) => {
-      sync_dir(dir);
-      Ok(())
-    }
-    // Still held open after about a second: write in place rather than lose the save.
-    Err(e) if retryable(&e) => write_in_place(target, bytes),
-    Err(e) => Err(e),
-  };
   let _ = fs::remove_file(&temp);
   result
 }
 
-fn write_in_place(target: &Path, bytes: &[u8]) -> io::Result<()> {
-  let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(target)?;
-  file.write_all(bytes)?;
-  file.sync_all()
-}
-
+/// `op`, retried on `retryable` errors for about a second; before each retry `unchanged` must
+/// still hold (whoever held the file may have replaced it).
 fn with_retry(
   mut op: impl FnMut() -> io::Result<()>,
   retryable: fn(&io::Error) -> bool,
   wait: &dyn Fn(Duration),
-) -> io::Result<()> {
+  unchanged: &dyn Fn() -> io::Result<bool>,
+) -> io::Result<Done> {
   let mut attempt = 0;
   loop {
     match op() {
+      Ok(()) => return Ok(Done::Ok),
       Err(e) if retryable(&e) && attempt < RETRY_MS.len() => {
         wait(Duration::from_millis(RETRY_MS[attempt]));
         attempt += 1;
+        if !unchanged()? {
+          return Ok(Done::Changed);
+        }
       }
-      other => return other,
+      Err(e) => return Err(e),
     }
   }
 }
@@ -566,18 +617,52 @@ fn sync_dir(dir: &Path) {
 // Choosing a folder, and this computer's own state.
 
 /// The picked folder's library: the folder itself when it is one, else `<picked>/Econ Studio`,
-/// created with its marker. An existing marker is never rewritten.
-pub fn adopt_folder(picked: &Path) -> io::Result<PathBuf> {
-  if picked.join(MARKER).is_file() {
-    return fs::canonicalize(picked);
+/// created with its marker. An existing marker, or its undownloaded iCloud stub, is never
+/// written. `app_data` and `home` are this computer's, for the refusals (`refusal`).
+pub fn adopt_folder(picked: &Path, app_data: &Path, home: Option<&Path>) -> io::Result<Result<PathBuf, Refusal>> {
+  let picked = fs::canonicalize(picked)?;
+  let real = |path: &Path| fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+  if let Some(reason) = refusal(&picked, &real(app_data), home.map(real).as_deref()) {
+    return Ok(Err(reason));
+  }
+  if has_marker(&picked) {
+    return Ok(Ok(picked));
   }
   let root = picked.join(LIBRARY_DIR);
   fs::create_dir_all(&root)?;
   let marker = root.join(MARKER);
-  if !marker.exists() {
+  if !marker.exists() && !has_marker(&root) {
     write_atomic(&marker, format!("{{ \"format\": {LIBRARY_FORMAT} }}\n").as_bytes())?;
   }
-  fs::canonicalize(root)
+  fs::canonicalize(root).map(Ok)
+}
+
+/// The marker, or its legacy iCloud stub (not downloaded yet, but there).
+fn has_marker(dir: &Path) -> bool {
+  dir.join(MARKER).is_file() || dir.join(format!(".{MARKER}.icloud")).is_file()
+}
+
+/// Why `picked` (canonical, as are the others) cannot hold a library, if it cannot.
+pub fn refusal(picked: &Path, app_data: &Path, home: Option<&Path>) -> Option<Refusal> {
+  if picked.starts_with(app_data) {
+    Some(Refusal::AppData)
+  } else if home == Some(picked) {
+    Some(Refusal::Home)
+  } else if is_drive_root(picked) {
+    Some(Refusal::DriveRoot)
+  } else if picked.ancestors().skip(1).any(has_marker) {
+    Some(Refusal::InsideLibrary)
+  } else {
+    None
+  }
+}
+
+/// `C:\`, a share's root, `/`, or a mounted volume (`/Volumes/USB`).
+fn is_drive_root(path: &Path) -> bool {
+  match path.parent() {
+    None => true,
+    Some(parent) => parent == Path::new("/Volumes"),
+  }
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq)]
@@ -649,12 +734,12 @@ pub fn changed_paths<'a>(root: &Path, paths: impl IntoIterator<Item = &'a Path>)
 // ---------------------------------------------------------------------------------------
 // Tauri commands. Each runs on the blocking pool: a cloud folder can stall any call.
 
-use notify_debouncer_full::notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, RecommendedCache};
+use notify_debouncer_full::notify::{Config, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, NoCache};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_dialog::DialogExt;
 
-type Watcher = Debouncer<RecommendedWatcher, RecommendedCache>;
+type Watcher = Debouncer<RecommendedWatcher, NoCache>;
 
 struct Watch {
   session: u64,
@@ -677,7 +762,10 @@ pub fn watch_root(root: &Path, on_change: impl Fn(Vec<String>, bool) + Send + 's
       on_change(paths, rescan);
     }
   };
-  let mut debouncer = new_debouncer(Duration::from_secs(1), None, handler).map_err(|e| e.to_string())?;
+  // No file-id cache: it walks the tree on start following links, so a link to `/` or home
+  // would walk everything (and raise macOS privacy prompts). Links are not followed either.
+  let config = Config::default().with_follow_symlinks(false);
+  let mut debouncer = new_debouncer_opt(Duration::from_secs(1), None, handler, NoCache, config).map_err(|e| e.to_string())?;
   debouncer.watch(root, RecursiveMode::Recursive).map_err(|e| e.to_string())?;
   Ok(debouncer)
 }
@@ -753,15 +841,19 @@ pub async fn library_choose<R: Runtime>(app: AppHandle<R>, title: Option<String>
     if let Some(title) = title.filter(|t| !t.is_empty() && t.len() <= 200) {
       dialog = dialog.set_title(title);
     }
-    if let Some(folder) = start.and_then(|id| crate::cloud::this_computer().into_iter().find(|f| f.id == id)) {
+    if let Some(folder) = start.and_then(|id| crate::cloud::this_computers(&id)) {
       dialog = dialog.set_directory(folder.path);
     }
     let Some(picked) = dialog.blocking_pick_folder() else { return Ok(ChooseResult::Cancelled) };
     let picked = picked.into_path().map_err(|e| e.to_string())?;
-    let root = adopt_folder(&picked).map_err(|e| e.to_string())?;
+    let dir = app_dir(&app)?;
+    let home = app.path().home_dir().ok();
+    let root = match adopt_folder(&picked, &dir, home.as_deref()).map_err(|e| e.to_string())? {
+      Ok(root) => root,
+      Err(reason) => return Ok(ChooseResult::Refused { reason }),
+    };
     let state = app.state::<LibraryState>();
     let _guard = state.location.lock().map_err(|e| e.to_string())?;
-    let dir = app_dir(&app)?;
     let mut location = location_with_device(&dir).map_err(|e| e.to_string())?;
     location.root = Some(root.clone());
     save_location(&dir, &location).map_err(|e| e.to_string())?;
@@ -904,9 +996,14 @@ mod tests {
   use super::*;
   use std::cell::Cell;
 
+  /// `adopt_folder` on a computer whose app data and home are elsewhere.
+  fn adopt(picked: &Path) -> Result<PathBuf, Refusal> {
+    adopt_folder(picked, Path::new("/nowhere/app-data"), None).unwrap()
+  }
+
   fn library() -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::tempdir().unwrap();
-    let root = adopt_folder(dir.path()).unwrap();
+    let root = adopt(dir.path()).unwrap();
     (dir, root)
   }
 
@@ -924,13 +1021,53 @@ mod tests {
   #[test]
   fn choosing_a_folder_makes_a_library_inside_it_once() {
     let dir = tempfile::tempdir().unwrap();
-    let root = adopt_folder(dir.path()).unwrap();
+    let root = adopt(dir.path()).unwrap();
     assert!(root.ends_with(LIBRARY_DIR));
     assert_eq!(fs::read_to_string(root.join(MARKER)).unwrap(), "{ \"format\": 1 }\n");
     // Picking the library itself, or its parent again, finds the same one.
-    assert_eq!(adopt_folder(&root).unwrap(), root);
-    assert_eq!(adopt_folder(dir.path()).unwrap(), root);
+    assert_eq!(adopt(&root), Ok(root.clone()));
+    assert_eq!(adopt(dir.path()), Ok(root.clone()));
     assert_eq!(names(&root), vec![MARKER.to_string()]);
+  }
+
+  #[test]
+  fn app_data_home_drive_roots_and_folders_inside_a_library_are_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let base = fs::canonicalize(dir.path()).unwrap();
+    let (app, home) = (base.join("app"), base.join("home"));
+    for path in [app.join("sub"), home.join("Documents"), base.join("lib"), base.join("stub/inner")] {
+      fs::create_dir_all(path).unwrap();
+    }
+    let pick = |path: &Path| adopt_folder(path, &app, Some(&home)).unwrap();
+    assert_eq!(pick(&app), Err(Refusal::AppData));
+    assert_eq!(pick(&app.join("sub")), Err(Refusal::AppData));
+    assert_eq!(pick(&home), Err(Refusal::Home));
+    assert_eq!(pick(Path::new("/")), Err(Refusal::DriveRoot));
+    assert!(is_drive_root(Path::new("/Volumes/USB")) && !is_drive_root(Path::new("/Volumes/USB/Econ")));
+    // Inside a library, even below a folder of it, or below a marker iCloud has not downloaded.
+    let lib = pick(&base.join("lib")).unwrap();
+    fs::create_dir(lib.join("trash")).unwrap();
+    assert_eq!(pick(&lib.join("trash")), Err(Refusal::InsideLibrary));
+    fs::write(base.join("stub").join(format!(".{MARKER}.icloud")), "").unwrap();
+    assert_eq!(pick(&base.join("stub/inner")), Err(Refusal::InsideLibrary));
+    // Nothing was made by a refusal.
+    assert_eq!(names(&app), vec!["sub"]);
+    assert_eq!(names(&home), vec!["Documents"]);
+    assert_eq!(pick(&home.join("Documents")), Ok(home.join("Documents").join(LIBRARY_DIR)));
+  }
+
+  #[test]
+  fn a_library_whose_marker_is_not_downloaded_is_adopted_without_a_second_marker() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join(LIBRARY_DIR);
+    fs::create_dir(&root).unwrap();
+    let stub = format!(".{MARKER}.icloud");
+    fs::write(root.join(&stub), "").unwrap();
+    assert_eq!(adopt(dir.path()), Ok(fs::canonicalize(&root).unwrap()));
+    assert_eq!(names(&root), vec![stub.clone()]);
+    // Picked directly, too.
+    assert_eq!(adopt(&root), Ok(fs::canonicalize(&root).unwrap()));
+    assert_eq!(names(&root), vec![stub]);
   }
 
   #[test]
@@ -1080,6 +1217,34 @@ mod tests {
   }
 
   #[test]
+  fn a_file_replaced_mid_read_is_not_cached_with_the_old_hash() {
+    let (_dir, root) = library();
+    let path = root.join("a.worksheet.json");
+    fs::write(&path, "A").unwrap();
+    age(&path, 60);
+    let before = fs::metadata(&path).unwrap();
+    // Replaced while "A" was being read, with the other computer's older edit time.
+    fs::write(&path, "B").unwrap();
+    age(&path, 120);
+    let cache = HashCache::default();
+    cache.put(&path, &before, &hash_bytes(b"A"));
+    assert!(cache.map.lock().unwrap().is_empty());
+    assert_eq!(list(&root, &cache, false).unwrap()[0].hash, Some(hash_bytes(b"B")));
+    // Held still: cached, keyed on the stat taken before the read.
+    assert_eq!(cache.get(&path, &fs::metadata(&path).unwrap()), Some(hash_bytes(b"B")));
+  }
+
+  #[test]
+  fn a_subfolder_removed_mid_listing_is_skipped_the_root_is_not() {
+    let (_dir, root) = library();
+    let cache = HashCache::default();
+    let mut found = BTreeMap::new();
+    assert_eq!(walk(&root.join("trash"), "trash", 1, &cache, false, &mut found), Ok(()));
+    assert!(found.is_empty());
+    assert_eq!(walk(&root.join("gone"), "", 0, &cache, false, &mut found), Err(Reason::Io));
+  }
+
+  #[test]
   fn the_first_listing_removes_this_apps_stale_temp_files_only() {
     let (_dir, root) = library();
     for name in [".old.json.econ-aa.tmp", ".new.json.econ-bb.tmp", ".other.tmp"] {
@@ -1148,8 +1313,10 @@ mod tests {
     assert_eq!(remove(&root, "a.worksheet.json", &hash_bytes(b"A"), &cache).unwrap(), RemoveResult::Missing);
   }
 
+  const HELD: fn(&io::Error) -> bool = |e| e.kind() == io::ErrorKind::PermissionDenied;
+
   #[test]
-  fn a_file_held_open_is_retried_then_written_in_place() {
+  fn a_file_held_open_is_retried_then_left_alone() {
     let dir = tempfile::tempdir().unwrap();
     let target = dir.path().join("a.json");
     fs::write(&target, "old").unwrap();
@@ -1159,11 +1326,32 @@ mod tests {
       attempts.set(attempts.get() + 1);
       Err(io::Error::from(io::ErrorKind::PermissionDenied))
     };
-    let retryable: fn(&io::Error) -> bool = |e| e.kind() == io::ErrorKind::PermissionDenied;
-    replace(&target, b"new", &mut rename, retryable, &|d| waited.set(waited.get() + d)).unwrap();
+    let result = replace(&target, b"new", &mut rename, HELD, &|d| waited.set(waited.get() + d), &|| Ok(true));
+    assert_eq!(result.unwrap_err().kind(), io::ErrorKind::PermissionDenied);
     assert_eq!(attempts.get(), RETRY_MS.len() + 1);
     assert_eq!(waited.get(), Duration::from_millis(1000));
-    assert_eq!(fs::read_to_string(&target).unwrap(), "new");
+    assert_eq!(fs::read_to_string(&target).unwrap(), "old");
+    assert_eq!(names(dir.path()), vec!["a.json"]);
+  }
+
+  #[test]
+  fn a_file_replaced_while_held_open_is_a_conflict_and_kept() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("a.json");
+    fs::write(&target, "old").unwrap();
+    let old = hash_bytes(b"old");
+    // The cloud client holding it finishes downloading the other computer's version.
+    let mut rename = |_: &Path, to: &Path| {
+      fs::write(to, "theirs").unwrap();
+      Err(io::Error::from(io::ErrorKind::PermissionDenied))
+    };
+    let result = replace(&target, b"mine", &mut rename, HELD, &|_| (), &|| still(&target, &old));
+    assert_eq!(result.unwrap(), Done::Changed);
+    assert_eq!(fs::read_to_string(&target).unwrap(), "theirs");
+    assert_eq!(names(dir.path()), vec!["a.json"]);
+    // Held so it will not even read: an error, not a guess.
+    let mut rename = |_: &Path, _: &Path| Err(io::Error::from(io::ErrorKind::PermissionDenied));
+    assert!(replace(&target, b"mine", &mut rename, HELD, &|_| (), &|| Err(io::Error::other("held"))).is_err());
     assert_eq!(names(dir.path()), vec!["a.json"]);
   }
 
@@ -1173,7 +1361,7 @@ mod tests {
     let target = dir.path().join("a.json");
     fs::write(&target, "old").unwrap();
     let mut rename = |_: &Path, _: &Path| Err(io::Error::other("disk gone"));
-    assert!(replace(&target, b"new", &mut rename, |_| false, &|_| ()).is_err());
+    assert!(replace(&target, b"new", &mut rename, |_| false, &|_| (), &|| Ok(true)).is_err());
     assert_eq!(fs::read_to_string(&target).unwrap(), "old");
     assert_eq!(names(dir.path()), vec!["a.json"]);
   }

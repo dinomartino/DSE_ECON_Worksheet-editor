@@ -77,11 +77,17 @@ export function libraryLocation(): Promise<LibraryLocation> {
   return call('library_location');
 }
 
+/** Why a picked folder was not used: this app's own data folder (or inside it), the home folder, a drive root, inside another library. */
+export type LibraryRefusal = 'app-data' | 'home' | 'drive-root' | 'inside-library';
+
+/** `refused`: nothing was created or saved. */
+export type LibraryChooseResult = { status: 'chosen'; root: string } | { status: 'cancelled' } | { status: 'refused'; reason: LibraryRefusal };
+
 /**
  * The native folder picker, shown by the shell. `title`: the sheet's (localised) title;
  * `start`: a `CloudFolder.id` to open it at (the shell finds the folder again, never a path).
  */
-export function chooseLibraryFolder(title?: string, start?: string): Promise<{ status: 'chosen'; root: string } | { status: 'cancelled' }> {
+export function chooseLibraryFolder(title?: string, start?: string): Promise<LibraryChooseResult> {
   return call('library_choose', { title: title ?? null, start: start ?? null });
 }
 

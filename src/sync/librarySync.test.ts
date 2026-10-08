@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeLocalStorage } from '@/library/bankTestKit';
-import type { LibraryBridge, LibraryLocation } from '@/platform/library';
+import type { LibraryBridge, LibraryChooseResult, LibraryLocation } from '@/platform/library';
 import { stringifyWorksheet } from '@/storage/document';
 import { closeNotice, resetNoticesForTest, useNoticeStore } from '@/store/notices';
 import { memoryBaseStore } from './baseStore';
@@ -15,10 +15,14 @@ import type { BaseStore } from './types';
 const bridge: { current?: LibraryBridge } = {};
 const bases = new Map<string, BaseStore & { flush(): Promise<void> }>();
 
-/** The shell's `library_*` location commands. `next`: what the picker answers (null: cancelled). */
+/**
+ * The shell's `library_*` location commands. `next`: what the picker answers (null: cancelled);
+ * `answer`: a refusal or failure instead.
+ */
 const shell = {
   root: null as string | null,
   next: null as string | null,
+  answer: null as null | (() => Promise<LibraryChooseResult>),
   calls: [] as string[],
   location: vi.fn(
     async (): Promise<LibraryLocation> => ({
@@ -41,6 +45,7 @@ vi.mock('@/platform/library', async (original) => ({
   libraryLocation: () => shell.location(),
   chooseLibraryFolder: async (_title?: string, start?: string) => {
     shell.calls.push(`choose (watching: ${(bridge.current as FakeLibrary).watching})${start ? ` at ${start}` : ''}`);
+    if (shell.answer) return shell.answer();
     if (shell.next === null) return { status: 'cancelled' };
     shell.root = shell.next;
     return { status: 'chosen', root: shell.next };
@@ -93,6 +98,7 @@ beforeEach(() => {
   bridge.current = new FakeLibrary(new MemoryCloud(), 'A');
   shell.root = null;
   shell.next = null;
+  shell.answer = null;
   shell.calls = [];
   shell.location.mockClear();
   resetSyncViewForTest();
@@ -197,7 +203,7 @@ describe('chooseFolder', () => {
     await settle();
     expect(librarySync()).toBeUndefined();
     shell.next = DRIVE;
-    await expect(chooseFolder('Pick')).resolves.toBe('chosen');
+    await expect(chooseFolder('Pick')).resolves.toEqual({ status: 'chosen', root: DRIVE });
     expect(syncView().location?.root).toBe(DRIVE);
     expect(syncView().pending).toBeUndefined();
     await vi.waitFor(() => expect(syncView().status.lastSyncedAt).toBeDefined());
@@ -223,11 +229,26 @@ describe('chooseFolder', () => {
     shell.root = DRIVE;
     stop = startLibrarySync({ isEditorOpen: () => false });
     await vi.waitFor(() => expect(librarySync()).toBeDefined());
-    await expect(chooseFolder('Pick', 'onedrive')).resolves.toBe('cancelled');
+    await expect(chooseFolder('Pick', 'onedrive')).resolves.toEqual({ status: 'cancelled' });
     expect(shell.calls).toEqual(['choose (watching: false) at onedrive']);
     expect(syncView().location?.root).toBe(DRIVE);
     await vi.waitFor(() => expect(syncView().status.lastSyncedAt).toBeDefined());
     expect(fake().watching).toBe(true);
+  });
+
+  it('refused or failed: said to the caller, never read as cancelled; the folder it had keeps syncing', async () => {
+    asDesktop();
+    shell.root = DRIVE;
+    stop = startLibrarySync({ isEditorOpen: () => false });
+    await vi.waitFor(() => expect(librarySync()).toBeDefined());
+    shell.answer = async () => ({ status: 'refused', reason: 'inside-library' });
+    await expect(chooseFolder()).resolves.toEqual({ status: 'refused', reason: 'inside-library' });
+    shell.answer = async () => {
+      throw new Error('picker failed');
+    };
+    await expect(chooseFolder()).rejects.toThrow('picker failed');
+    expect(syncView()).toMatchObject({ location: { root: DRIVE }, pending: undefined });
+    await vi.waitFor(() => expect(fake().watching).toBe(true));
   });
 
   it('detached while the picker is open: nothing starts afterwards', async () => {
