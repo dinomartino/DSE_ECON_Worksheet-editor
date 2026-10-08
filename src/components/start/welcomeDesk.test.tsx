@@ -27,6 +27,15 @@ describe('the welcome desk', () => {
     expect(markup).toContain('Restore a backup…');
   });
 
+  it('names the other computer only when asked to (desktop, no folder chosen)', () => {
+    expect(markup).not.toContain('another computer');
+    const desktop = renderToStaticMarkup(
+      <WelcomeDesk onCreate={() => {}} onOpenFile={() => {}} onRestore={() => {}} onOtherComputer={() => {}} />,
+    );
+    expect(desktop).toContain('Using Econ Studio on another computer? Choose the same folder here too.');
+    expect(desktop).toContain('Storage location…');
+  });
+
   it('leaves the panel one New worksheet button, empty or not; Open a file only once something is saved', () => {
     const panel = (empty: boolean) =>
       renderToStaticMarkup(<StartNewSection empty={empty} onCreate={() => {}} onOpenFile={() => {}} />);

@@ -6,7 +6,7 @@ import { useNotices } from '@/components/ui/NoticeLayer';
 import { resolveMessages, type Messages } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { openFolder } from '@/platform';
-import { cloudFolders, type CloudFolder, type LibraryChooseResult, type LibraryRefusal } from '@/platform/library';
+import { cloudFolders, type CloudFolder, type LibraryChooseResult } from '@/platform/library';
 import { useSettings } from '@/settings/store';
 import { cleanComputerName, COMPUTER_NAME_MAX, SYNC_SETTINGS } from '@/settings/sync';
 import { chooseFolder, stopSyncing, syncNow } from '@/sync/librarySync';
@@ -15,6 +15,7 @@ import { SYNC_MESSAGES } from '@/sync/messages';
 import { reasonText } from '@/sync/syncNotices';
 import { useSyncView, type AttentionItem, type SyncView } from '@/sync/syncView';
 import { STORAGE_MESSAGES } from './messages';
+import { refusalText } from './refusal';
 
 /**
  * Settings → Storage location 儲存位置 (desktop only; `library-folder.md` § 1). No folder: what
@@ -44,19 +45,7 @@ const clock = (at: number) => {
   return `${two(date.getHours())}:${two(date.getMinutes())}`;
 };
 
-/** Why the shell would not use the picked folder, for the teacher. */
-export function refusalText(m: M, reason: LibraryRefusal): string {
-  switch (reason) {
-    case 'app-data':
-      return m.refusedAppData;
-    case 'home':
-      return m.refusedHome;
-    case 'drive-root':
-      return m.refusedDriveRoot;
-    case 'inside-library':
-      return m.refusedInsideLibrary;
-  }
-}
+export { refusalText };
 
 function ComputerName({ m }: { m: M }) {
   const [{ computerName }, update] = useSettings(SYNC_SETTINGS);

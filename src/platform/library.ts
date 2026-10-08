@@ -106,6 +106,18 @@ export function cloudFolders(): Promise<CloudFolder[]> {
   return call('library_cloud_folders');
 }
 
+/** A cloud folder on this computer holding a library another computer made. No path. */
+export interface FoundLibrary {
+  id: string;
+  provider: CloudProvider;
+  label: string;
+}
+
+/** The first cloud folder holding a library (`<folder>/Econ Studio`, or one folder down), if any. */
+export function foundLibrary(): Promise<FoundLibrary | null> {
+  return call('library_found');
+}
+
 /** This computer stops using the folder; nothing in it is touched. */
 export function forgetLibraryFolder(): Promise<void> {
   return call('library_forget');

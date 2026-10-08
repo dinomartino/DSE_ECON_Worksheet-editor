@@ -20,6 +20,7 @@ pub fn run() {
       library::library_location,
       library::library_choose,
       library::library_cloud_folders,
+      library::library_found,
       library::library_forget,
       library::library_list,
       library::library_read,

@@ -6,6 +6,9 @@
 //! folder is checked for existence; only Google Drive's own drive root is listed (Windows).
 //! On macOS a `~/Library/CloudStorage` folder counts only while its app is installed: an
 //! uninstalled client leaves its folder behind. On Windows only fixed drives are touched.
+//!
+//! `library_in` looks for a library another computer made (`<folder>/Econ Studio`, or one
+//! folder down): folders are listed and the marker stat'ed, never a file read or downloaded.
 
 use serde::Serialize;
 use std::collections::HashSet;
@@ -58,6 +61,8 @@ pub struct CloudFolder {
 /// What detection may look at, so it runs over a fake in tests.
 pub trait Machine {
   fn is_dir(&self, path: &str) -> bool;
+  /// A stat, never a read: a cloud placeholder is not downloaded.
+  fn is_file(&self, path: &str) -> bool;
   /// The names in a folder; empty when it will not list.
   fn entries(&self, path: &str) -> Vec<String>;
   fn env(&self, key: &str) -> Option<String>;
@@ -249,11 +254,63 @@ fn detect_some(os: Os, m: &impl Machine, want: Option<Provider>) -> Vec<CloudFol
   folders
 }
 
+/// A cloud folder holding a library another computer made. Page script gets no path.
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct FoundLibrary {
+  pub id: String,
+  pub provider: Provider,
+  pub label: String,
+}
+
+/// At most this many folders are looked into, one level down.
+const MAX_CHILDREN: usize = 200;
+
+/// The folder in `folder` whose `Econ Studio` holds the marker (or its undownloaded iCloud
+/// stub): `folder` itself, else its first child by name (OneDrive/Documents). Hidden and
+/// system folders are skipped.
+pub fn library_in(os: Os, m: &impl Machine, folder: &str) -> Option<String> {
+  let sep = if os == Os::Windows { '\\' } else { '/' };
+  let join = |dir: &str, name: &str| format!("{}{sep}{name}", dir.trim_end_matches(['\\', '/']));
+  let holds = |dir: &str| {
+    let lib = join(dir, crate::library::LIBRARY_DIR);
+    let marker = crate::library::MARKER;
+    m.is_dir(&lib) && (m.is_file(&join(&lib, marker)) || m.is_file(&join(&lib, &format!(".{marker}.icloud"))))
+  };
+  if holds(folder) {
+    return Some(folder.to_string());
+  }
+  let mut children: Vec<String> = m
+    .entries(folder)
+    .into_iter()
+    .filter(|n| !n.starts_with(['.', '$']) && n != "System Volume Information" && n != crate::library::LIBRARY_DIR)
+    .collect();
+  children.sort();
+  children.into_iter().take(MAX_CHILDREN).map(|n| join(folder, &n)).find(|dir| holds(dir))
+}
+
+/// The first cloud folder (provider order) holding a library.
+pub fn find_library(os: Os, m: &impl Machine) -> Option<FoundLibrary> {
+  detect(os, m)
+    .into_iter()
+    .find(|f| library_in(os, m, &f.path).is_some())
+    .map(|f| FoundLibrary { id: f.id, provider: f.provider, label: f.label })
+}
+
+/// Where the picker opens for `id`: the found library's parent, else the cloud folder.
+pub fn picker_start(os: Os, m: &impl Machine, id: &str) -> Option<String> {
+  let folder = find(os, m, id)?;
+  Some(library_in(os, m, &folder.path).unwrap_or(folder.path))
+}
+
 struct RealMachine;
 
 impl Machine for RealMachine {
   fn is_dir(&self, path: &str) -> bool {
     std::fs::metadata(path).is_ok_and(|meta| meta.is_dir())
+  }
+
+  fn is_file(&self, path: &str) -> bool {
+    std::fs::metadata(path).is_ok_and(|meta| meta.is_file())
   }
 
   fn entries(&self, path: &str) -> Vec<String> {
@@ -293,9 +350,14 @@ pub fn this_computer() -> Vec<CloudFolder> {
   on_this_computer(detect).unwrap_or_default()
 }
 
-/// The one folder a `CloudFolder.id` names on this computer.
-pub fn this_computers(id: &str) -> Option<CloudFolder> {
-  on_this_computer(|os, m| find(os, m, id)).flatten()
+/// Where the picker opens for a `CloudFolder.id` on this computer (`picker_start`).
+pub fn this_computers_start(id: &str) -> Option<String> {
+  on_this_computer(|os, m| picker_start(os, m, id)).flatten()
+}
+
+/// A library another computer made, in this computer's cloud folders.
+pub fn this_computers_library() -> Option<FoundLibrary> {
+  on_this_computer(find_library).flatten()
 }
 
 /// The only Windows calls here, kept small: what they return is decided on above, under test.
@@ -360,6 +422,7 @@ mod tests {
   #[derive(Default)]
   struct Fake {
     dirs: HashSet<String>,
+    files: HashSet<String>,
     env: HashMap<String, String>,
     drives: Vec<(String, String)>,
     drives_asked: Cell<bool>,
@@ -383,6 +446,19 @@ mod tests {
       fake
     }
 
+    /// Files, each with its folders.
+    fn with_files(mut self, files: &[&str]) -> Self {
+      for file in files {
+        let mut dir = *file;
+        while let Some((parent, _)) = dir.rsplit_once(self.sep) {
+          self.dirs.insert(parent.to_string());
+          dir = parent;
+        }
+        self.files.insert(file.to_string());
+      }
+      self
+    }
+
     fn drive(mut self, letter: &str, label: &str) -> Self {
       self.drives.push((letter.into(), label.into()));
       self
@@ -392,6 +468,10 @@ mod tests {
   impl Machine for Fake {
     fn is_dir(&self, path: &str) -> bool {
       self.dirs.contains(path)
+    }
+
+    fn is_file(&self, path: &str) -> bool {
+      self.files.contains(path)
     }
 
     fn entries(&self, path: &str) -> Vec<String> {
@@ -559,10 +639,79 @@ mod tests {
     assert_eq!(serde_json::to_string(&Provider::Icloud).unwrap(), r#""icloud""#);
   }
 
+  const ONEDRIVE: &str = "/Users/t/Library/CloudStorage/OneDrive-School";
+  const ICLOUD: &str = "/Users/t/Library/Mobile Documents/com~apple~CloudDocs";
+
+  fn mac_drives(files: &[&str]) -> Fake {
+    Fake::mac(&[ONEDRIVE, ICLOUD, "/Applications/OneDrive.app"]).with_files(files)
+  }
+
+  fn found(fake: &Fake) -> Option<(String, String)> {
+    find_library(Os::Mac, fake).map(|f| (f.id, f.label))
+  }
+
+  #[test]
+  fn a_library_directly_in_a_cloud_folder_is_found_and_the_picker_opens_there() {
+    let fake = mac_drives(&[&format!("{ONEDRIVE}/Econ Studio/econ-studio-library.json")]);
+    assert_eq!(library_in(Os::Mac, &fake, ONEDRIVE), Some(ONEDRIVE.to_string()));
+    assert_eq!(found(&fake), Some(("onedrive".into(), "OneDrive".into())));
+    assert_eq!(picker_start(Os::Mac, &fake, "onedrive").as_deref(), Some(ONEDRIVE));
+  }
+
+  #[test]
+  fn a_library_one_folder_down_is_found_two_down_is_not() {
+    let fake = mac_drives(&[&format!("{ONEDRIVE}/Documents/Econ Studio/econ-studio-library.json")]);
+    let parent = format!("{ONEDRIVE}/Documents");
+    assert_eq!(library_in(Os::Mac, &fake, ONEDRIVE), Some(parent.clone()));
+    assert_eq!(picker_start(Os::Mac, &fake, "onedrive"), Some(parent));
+    let deep = mac_drives(&[&format!("{ONEDRIVE}/School/2026/Econ Studio/econ-studio-library.json")]);
+    assert_eq!(found(&deep), None);
+    // Windows, with a drive root as the cloud folder.
+    let win = Fake::windows(&[], &[]).with_files(&[r"G:\Work\Econ Studio\econ-studio-library.json"]);
+    assert_eq!(library_in(Os::Windows, &win, r"G:\"), Some(r"G:\Work".to_string()));
+  }
+
+  #[test]
+  fn an_undownloaded_icloud_marker_counts() {
+    let fake = mac_drives(&[&format!("{ICLOUD}/Econ Studio/.econ-studio-library.json.icloud")]);
+    assert_eq!(found(&fake), Some(("icloud".into(), "iCloud Drive".into())));
+  }
+
+  #[test]
+  fn nothing_found_without_a_marker_and_the_picker_opens_at_the_cloud_folder() {
+    let fake = mac_drives(&[&format!("{ONEDRIVE}/Econ Studio/notes.json"), &format!("{ONEDRIVE}/econ-studio-library.json")]);
+    assert_eq!(found(&fake), None);
+    assert_eq!(picker_start(Os::Mac, &fake, "onedrive").as_deref(), Some(ONEDRIVE));
+    assert_eq!(picker_start(Os::Mac, &fake, "dropbox"), None);
+    assert_eq!(found(&Fake::mac(&[])), None);
+  }
+
+  #[test]
+  fn hidden_and_system_folders_are_not_looked_into() {
+    let mac = mac_drives(&[&format!("{ONEDRIVE}/.Trash/Econ Studio/econ-studio-library.json")]);
+    assert_eq!(found(&mac), None);
+    let win = Fake::windows(&[], &[]).with_files(&[
+      r"C:\Users\t\Dropbox\$RECYCLE.BIN\Econ Studio\econ-studio-library.json",
+      r"C:\Users\t\Dropbox\System Volume Information\Econ Studio\econ-studio-library.json",
+    ]);
+    assert!(win.is_dir(r"C:\Users\t\Dropbox"));
+    assert_eq!(find_library(Os::Windows, &win), None);
+  }
+
+  #[test]
+  fn the_first_provider_holding_a_library_is_offered() {
+    let fake = mac_drives(&[
+      &format!("{ICLOUD}/Econ Studio/econ-studio-library.json"),
+      &format!("{ONEDRIVE}/Documents/Econ Studio/econ-studio-library.json"),
+    ]);
+    let found = find_library(Os::Mac, &fake).unwrap();
+    assert_eq!(serde_json::to_string(&found).unwrap(), r#"{"id":"onedrive","provider":"onedrive","label":"OneDrive"}"#);
+  }
+
   /// `cargo test this_computer -- --ignored --nocapture`: what this machine holds.
   #[test]
   #[ignore]
   fn this_computer_prints_what_it_finds() {
-    println!("{:#?}", this_computer());
+    println!("{:#?}\n{:#?}", this_computer(), this_computers_library());
   }
 }

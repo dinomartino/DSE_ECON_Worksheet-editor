@@ -11,6 +11,7 @@ fn main() {
         "library_location",
         "library_choose",
         "library_cloud_folders",
+        "library_found",
         "library_forget",
         "library_list",
         "library_read",

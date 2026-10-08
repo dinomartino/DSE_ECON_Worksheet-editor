@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeLocalStorage } from '@/library/bankTestKit';
-import type { LibraryBridge, LibraryChooseResult, LibraryLocation } from '@/platform/library';
+import type { FoundLibrary, LibraryBridge, LibraryChooseResult, LibraryLocation } from '@/platform/library';
 import { stringifyWorksheet } from '@/storage/document';
-import { closeNotice, resetNoticesForTest, useNoticeStore } from '@/store/notices';
+import { closeNotice, resetNoticesForTest, runNoticeAction, useNoticeStore } from '@/store/notices';
 import { memoryBaseStore } from './baseStore';
 import { FakeLibrary } from './folderTestKit';
 import { MemoryCloud } from './memorySource';
@@ -24,6 +24,7 @@ const shell = {
   next: null as string | null,
   answer: null as null | (() => Promise<LibraryChooseResult>),
   calls: [] as string[],
+  found: null as FoundLibrary | null,
   location: vi.fn(
     async (): Promise<LibraryLocation> => ({
       deviceId: 'device-1',
@@ -43,6 +44,7 @@ vi.mock('@/platform/library', async (original) => ({
     watch: (onChange: Parameters<LibraryBridge['watch']>[0]) => bridge.current!.watch(onChange),
   },
   libraryLocation: () => shell.location(),
+  foundLibrary: async () => shell.found,
   chooseLibraryFolder: async (_title?: string, start?: string) => {
     shell.calls.push(`choose (watching: ${(bridge.current as FakeLibrary).watching})${start ? ` at ${start}` : ''}`);
     if (shell.answer) return shell.answer();
@@ -100,6 +102,7 @@ beforeEach(() => {
   shell.next = null;
   shell.answer = null;
   shell.calls = [];
+  shell.found = null;
   shell.location.mockClear();
   resetSyncViewForTest();
   resetNoticesForTest();
@@ -159,6 +162,44 @@ describe('startLibrarySync', () => {
     stop = undefined;
     await settle();
     expect(librarySync()).toBeUndefined();
+  });
+});
+
+describe('a library found in a cloud folder', () => {
+  const ONEDRIVE: FoundLibrary = { id: 'onedrive', provider: 'onedrive', label: 'OneDrive' };
+
+  it('is offered at launch with no folder chosen; its button is the Settings choose, and the offer goes', async () => {
+    asDesktop();
+    shell.found = ONEDRIVE;
+    shell.next = DRIVE;
+    stop = startLibrarySync({ isEditorOpen: () => false });
+    await vi.waitFor(() => expect(noticeIds()).toEqual(['sync-found-folder']));
+    const notice = useNoticeStore.getState().notices[0];
+    runNoticeAction(notice.id, notice.actions![0]);
+    await vi.waitFor(() => expect(syncView().status.lastSyncedAt).toBeDefined());
+    expect(shell.calls[0]).toBe('choose (watching: false) at onedrive');
+    expect(noticeIds()).toEqual([]);
+  });
+
+  it('is not offered with a folder chosen, reachable or not', async () => {
+    asDesktop();
+    shell.found = ONEDRIVE;
+    shell.root = DRIVE;
+    fake().root = 'root-missing';
+    stop = startLibrarySync({ isEditorOpen: () => false });
+    await vi.waitFor(() => expect(syncView().status.state).toBe('unavailable'));
+    await settle();
+    expect(noticeIds()).toEqual(['sync-unreachable']);
+  });
+
+  it('a folder chosen in Settings meanwhile takes it down', async () => {
+    asDesktop();
+    shell.found = ONEDRIVE;
+    shell.next = DRIVE;
+    stop = startLibrarySync({ isEditorOpen: () => false });
+    await vi.waitFor(() => expect(noticeIds()).toEqual(['sync-found-folder']));
+    await chooseFolder('Pick');
+    expect(noticeIds()).toEqual([]);
   });
 });
 

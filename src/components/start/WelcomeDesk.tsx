@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui';
-import { ArchiveIcon, FolderOpenIcon } from '@/components/ui/icons';
+import { ArchiveIcon, FolderIcon, FolderOpenIcon } from '@/components/ui/icons';
 import type { DocumentType } from '@/model/newWorksheet';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { PaperSketch } from './PaperSketch';
@@ -21,11 +21,14 @@ export function WelcomeDesk({
   onOpenFile,
   onRestore,
   restoring = false,
+  onOtherComputer,
 }: {
   onCreate: (type: DocumentType) => void;
   onOpenFile: () => void;
   onRestore: () => void;
   restoring?: boolean;
+  /** Desktop with no folder chosen: the other-computer line, opening Storage location. */
+  onOtherComputer?: () => void;
 }) {
   const m = useMessages(WELCOME_MESSAGES);
   const lang = useUiLanguage();
@@ -103,6 +106,15 @@ export function WelcomeDesk({
         <span className="basis-full text-[11px] text-ink-subtle xl:ml-auto xl:basis-auto">
           {m.orDrop}
         </span>
+        {onOtherComputer && (
+          <span className="flex basis-full flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="mr-1 text-[12px] text-ink-muted">{m.otherComputer}</span>
+            <Button variant="subtle" size="sm" onClick={onOtherComputer}>
+              <FolderIcon size={14} />
+              {m.openStorage}
+            </Button>
+          </span>
+        )}
       </div>
     </section>
   );

@@ -89,6 +89,8 @@ import {
   renameFolder,
 } from '@/storage/folders';
 import { SettingsButton } from '@/components/settings/SettingsButton';
+import { useAppDialogs } from '@/store/appDialogs';
+import { useSyncNoFolder } from '@/sync/syncView';
 
 /** A dropped file from either source: a browser `File`, or a desktop path. */
 type Dropped = { name: string; type?: string; read: () => Promise<Uint8Array | Blob> };
@@ -193,6 +195,8 @@ export function StartScreen({
   // First launch, or everything deleted: the desk welcomes instead of listing. Never
   // while storage is still being read, so a returning teacher sees no flash of it.
   const empty = loaded && summaries.length === 0;
+  // Only ever true on desktop: the sync controller is what reads the location.
+  const noFolder = useSyncNoFolder();
   // A plain result ("Topics saved.") is done once the teacher moves on. One listing files
   // stays until dismissed, like an error: it may be the only record of what was skipped.
   const clearPassingNotice = useCallback(() => {
@@ -875,6 +879,9 @@ export function StartScreen({
                 onOpenFile={() => void importFile()}
                 onRestore={() => void pickBackup()}
                 restoring={busy === 'restore'}
+                onOtherComputer={
+                  noFolder ? () => useAppDialogs.getState().openSettings({ section: 'storage' }) : undefined
+                }
               />
             }
           />

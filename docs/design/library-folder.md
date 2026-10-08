@@ -77,6 +77,11 @@ each opens the picker there (`library_choose` `start`, an id Rust resolves again
 that provider's checks). No Google Drive says it needs Google Drive for desktop; none at all
 says to install one first.
 
+On a second computer (built 2026-10-08, `src/sync/foundFolder.ts`): at launch with no folder chosen,
+`library_found` looks for a marker in `<cloud folder>/Econ Studio` and one folder down (folders listed,
+marker stat'ed, nothing read); the first found is offered once in a notice whose button runs this
+choose flow with the picker at the library's parent. The empty start screen links to Storage location.
+
 1. **Where.** Picked folder holds the marker → use it. Its `Econ Studio` subfolder holds it →
    use that. Otherwise create `<picked>/Econ Studio/`. A marker's undownloaded iCloud stub counts
    as the marker (never a second one). Refused, with a notice saying why: the app data directory
@@ -391,6 +396,7 @@ App commands, declared in `src-tauri/build.rs`, granted as `allow-library-*` in
 |---|---|
 | `library_location` | `{ deviceId, root, status: none \| ok \| unavailable, reason? }`; makes the device id once |
 | `library_choose(title?, start?)` | `chosen { root }` \| `cancelled` \| `refused { reason: app-data \| home \| drive-root \| inside-library }` (nothing made). Native folder picker run in Rust; the picked folder if it holds the marker, else `<picked>/Econ Studio/`, created with its marker (§ 1.2) |
+| `library_found` | `{ id, provider, label }` of the first cloud folder holding a library (§ 1.2), or `null`; never a path |
 | `library_forget` | detaches; nothing in the folder is touched |
 | `library_list` | `ok { files: { path, size, mtimeMs, hash, state: ok \| placeholder \| unreadable }[] }` \| `unavailable { reason }` |
 | `library_read(path)` | `ok { text, hash }` \| `missing` \| `unreadable` \| `unavailable` |

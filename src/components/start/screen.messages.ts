@@ -229,6 +229,12 @@ export const WELCOME_MESSAGES = defineMessages({
   restoring: { en: 'Restoring…', zh: '還原中…' },
   restoreBackup: { en: 'Restore a backup…', zh: '還原備份…' },
   orDrop: { en: 'Or drop a .json or .zip anywhere here.', zh: '或將 .json 或 .zip 放到這裏。' },
+  /** Desktop, no folder chosen: the Settings setup step's other-computer tip, from this side. */
+  otherComputer: {
+    en: 'Using Econ Studio on another computer? Choose the same folder here too.',
+    zh: '已在另一部電腦使用 Econ Studio？請在這裏也選擇同一個資料夾。',
+  },
+  openStorage: { en: 'Storage location…', zh: '儲存位置…' },
 });
 
 export const RENAME_MESSAGES = defineMessages({

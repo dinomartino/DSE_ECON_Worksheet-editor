@@ -56,6 +56,11 @@ export function useSyncFolderChosen(): boolean {
   return useSyncExternalStore(subscribeSyncView, () => syncView().location?.root != null, () => false);
 }
 
+/** The controller has read that no folder is chosen on this computer (never on the web). */
+export function useSyncNoFolder(): boolean {
+  return useSyncExternalStore(subscribeSyncView, () => syncView().location?.status === 'none', () => false);
+}
+
 // Dev builds only (Next inlines NODE_ENV, so production drops it): screenshots of Settings →
 // Storage location set a view (Needs attention) that needs no real folder or second computer.
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
