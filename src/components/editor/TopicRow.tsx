@@ -9,7 +9,8 @@ import { patternNames } from '@/library/patterns';
 import { useBank } from '@/library/useBank';
 import { usePatternRegistry } from '@/library/usePatterns';
 import { freeTagIssue, holdsPatterns, isPatternTag, parsePatternTag, patternsIn, tagText, withPattern, type FreeTagIssue } from '@/model/patterns';
-import { isTopicCode, stringTags, TOPICS, topicHeading, topicOf, type Topic } from '@/model/topics';
+import { isTopicCode, stringTags, TOPICS, topicDisplay, topicHeading, topicNamesFor, topicOf, type Topic } from '@/model/topics';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
@@ -80,7 +81,7 @@ export function TopicPicker({
 }) {
   const m = useMessages(TOPIC_ROW_MESSAGES);
   const lang = useUiLanguage();
-  const zh = lang === 'zh-HK';
+  const names = topicNamesFor(useViewLanguage(), 'wide');
   const [query, setQuery] = useState('');
   /** Enter was pressed on text that cannot be added: say why until the text changes. */
   const [refused, setRefused] = useState(false);
@@ -133,13 +134,13 @@ export function TopicPicker({
           {/* A topic's letter; a sub-topic, indented under it, reads by its name alone. */}
           {!indent && <span className="w-7 shrink-0 tabular-nums text-ink-subtle">{topic.code}</span>}
           <span className="min-w-0 flex-1">
-            {zh ? (
-              topic.zh
-            ) : (
+            {names === 'both' ? (
               <>
                 {topic.en}
                 <span className="ml-1.5 font-normal text-ink-muted">{topic.zh}</span>
               </>
+            ) : (
+              topic[names]
             )}
           </span>
         </button>
@@ -232,8 +233,8 @@ export function TopicRow({
   startOpen?: boolean;
 }) {
   const m = useMessages(TOPIC_ROW_MESSAGES);
-  const lang = useUiLanguage();
-  const zh = lang === 'zh-HK';
+  const view = useViewLanguage();
+  const names = topicNamesFor(view, 'wide');
   const current = tags ?? [];
   const { rows } = useBank();
   const registry = usePatternRegistry();
@@ -281,16 +282,16 @@ export function TopicRow({
             return (
               <li key={tag} className="text-xs text-ink-muted">
                 <div className="flex items-center gap-1">
-                  <span className="min-w-0 flex-1 truncate" title={topic ? topicHeading(tag, zh ? 'zh' : 'both') : tag}>
+                  <span className="min-w-0 flex-1 truncate" title={topic ? topicHeading(tag, names) : tag}>
                     {topic ? (
                       <>
                         <span className="tabular-nums text-ink-subtle">{topic.parent ?? topic.code}</span>{' '}
-                        {zh ? (
-                          topic.zh
-                        ) : (
+                        {names === 'both' ? (
                           <>
                             {topic.en} <span className="text-ink-subtle">{topic.zh}</span>
                           </>
+                        ) : (
+                          topicDisplay(tag, names)
                         )}
                       </>
                     ) : isTopicCode(tag) ? (
@@ -300,7 +301,7 @@ export function TopicRow({
                       tag
                     )}
                   </span>
-                  <IconButton label={m.removeTopic(tagText(tag, zh ? 'zh' : 'en'))} onClick={() => remove(tag)}>
+                  <IconButton label={m.removeTopic(tagText(tag, topicNamesFor(view)))} onClick={() => remove(tag)}>
                     <CloseIcon size={12} />
                   </IconButton>
                 </div>

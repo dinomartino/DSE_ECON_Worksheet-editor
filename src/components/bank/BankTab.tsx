@@ -31,7 +31,8 @@ import { useBank } from '@/library/useBank';
 import { escapeClears } from './escapeClears';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
-import { TOPICS, topicHeading } from '@/model/topics';
+import { TOPICS, topicDisplay, topicHeading, topicNamesFor, type TopicNames } from '@/model/topics';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { listQuestionTypes } from '@/registry';
 import { useAppDialogs } from '@/store/appDialogs';
 import { unanchoredQuestionSectionLabel, useWorksheetStore } from '@/store/worksheetStore';
@@ -53,20 +54,20 @@ const PAGE = 60;
 const FILL_COUNTS = [1, 2, 3, 4, 5, 6, 8, 10] as const;
 
 /** Each topic an optgroup: the whole topic first, then its sub-topics. */
-function topicGroups(names: 'en' | 'zh', allOf: (code: string, name: string) => string) {
+function topicGroups(names: TopicNames, allOf: (code: string, name: string) => string) {
   return TOPICS.map((topic) => ({
-    label: `${topic.code} · ${topic[names]}`,
+    label: `${topic.code} · ${topicDisplay(topic.code, names)}`,
     options: [
-      { value: topic.code, label: allOf(topic.code, topic[names]) },
-      ...topic.children.map((child) => ({ value: child.code, label: child[names] })),
+      { value: topic.code, label: allOf(topic.code, topicDisplay(topic.code, names)) },
+      ...topic.children.map((child) => ({ value: child.code, label: topicDisplay(child.code, names) })),
     ],
   }));
 }
 
 function TopicOptions() {
   const m = useMessages(BANK_TAB_MESSAGES);
-  const zh = useUiLanguage() === 'zh-HK';
-  const groups = useMemo(() => topicGroups(zh ? 'zh' : 'en', m.allOfTopic), [zh, m]);
+  const names = topicNamesFor(useViewLanguage());
+  const groups = useMemo(() => topicGroups(names, m.allOfTopic), [names, m]);
   return (
     <>
       <option value="">{m.anyTopic}</option>
@@ -120,11 +121,11 @@ function MiniSelect({
 export function BankTab() {
   const m = useMessages(BANK_TAB_MESSAGES);
   const ui = useUiLanguage();
-  const topicNames = ui === 'zh-HK' ? 'zh' : 'en';
   const { status, rows, refresh } = useBank();
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const anchorId = useWorksheetStore((s) => s.insertAnchorId);
   const language = useWorksheetStore((s) => s.mode.language);
+  const topicNames = topicNamesFor(language);
   const readOnly = useWorksheetStore((s) => s.readOnly);
   const printPreview = useWorksheetStore((s) => s.printPreview);
 
@@ -300,7 +301,7 @@ export function BankTab() {
     const blocking = blockingFilter(rows, filters, ctx);
     body = (
       <StateNote>
-        {emptySentence(filters, classLabel, ui)}{' '}
+        {emptySentence(filters, classLabel, ui, language)}{' '}
         {blocking ? (
           <LinkButton onClick={() => update(clearFilter(filters, blocking))}>{m.clearFilterBtn(filterLabel(blocking))}</LinkButton>
         ) : (

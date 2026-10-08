@@ -1,7 +1,8 @@
 'use client';
 
 import { tagText } from '@/model/patterns';
-import { stringTags } from '@/model/topics';
+import { stringTags, topicNamesFor } from '@/model/topics';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { tagTitle, typeLabel } from '@/components/bank/BankRow';
 import { useEffect, useRef, useState } from 'react';
 import { copyForWord, questionClipboardHtml } from '@/export/clipboard';
@@ -301,14 +302,15 @@ function QuestionRow({
       element.kind === 'section' && element.id !== currentSectionId,
   );
 
-  const topicSide = lang === 'zh-HK' ? 'zh' : 'en';
+  const view = useViewLanguage();
+  const topicSide = topicNamesFor(view);
   const bank = useBankActions(question);
   // The question's one topic set across copies (newest change wins), as the Topic row shows it.
   const tags = stringTags(useShownTags(question));
   // Tagged per part: each part's names after its label when the parts differ; the tooltip goes part by part.
   const shownState = useShownTagState(question);
   const byPart = shownState && shownState.slots.length > 0 ? outlineTagLine(shownState, topicSide, { noTopic: m.noTopicYet, tags: m.tagsLabel }) : undefined;
-  const tagLine = byPart ?? (tags.length > 0 ? { text: tags.map((tag) => tagText(tag, topicSide)).join(' · '), title: tagTitle(tags) } : undefined);
+  const tagLine = byPart ?? (tags.length > 0 ? { text: tags.map((tag) => tagText(tag, topicSide)).join(' · '), title: tagTitle(tags, view) } : undefined);
 
   const menuItems: MenuItem[] = [
     { label: m.duplicate, onSelect: () => duplicateQuestion(question.id) },

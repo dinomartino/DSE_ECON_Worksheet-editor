@@ -6,7 +6,8 @@ import { CloseIcon } from '@/components/ui/icons';
 import { addTopics, atSlot, freeTags, inheritAtSlot, matchEdit, wholeQuestion, type StateEdit } from '@/library/tagWrites';
 import { freeTagIssue, tagText } from '@/model/patterns';
 import { effectiveSlotTags, isTopicalTag, questionTagSlots, slotRef, type SlotState, type TagState } from '@/model/tagSlots';
-import { topicHeading, topicOf } from '@/model/topics';
+import { topicDisplay, topicHeading, topicNamesFor, topicOf } from '@/model/topics';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import type { Question } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { CURRENT_ATTR } from './panelTarget';
@@ -252,22 +253,22 @@ function SubPartTopics({
 
 /** Topics as read-only lines: "C Law of demand 需求定律 · 題型 Price ceiling". */
 function TopicLines({ tags }: { tags: string[] }) {
-  const zh = useUiLanguage() === 'zh-HK';
+  const names = topicNamesFor(useViewLanguage(), 'wide');
   return (
     <ul className="space-y-0.5">
       {topicsWithPatterns(tags).map(({ topic, pattern }) => {
         const known = topicOf(topic);
         return (
-          <li key={topic} className="truncate text-xs text-ink-muted" title={topicHeading(topic, zh ? 'zh' : 'both')}>
+          <li key={topic} className="truncate text-xs text-ink-muted" title={topicHeading(topic, names)}>
             {known ? (
               <>
                 <span className="tabular-nums text-ink-subtle">{known.parent ?? known.code}</span>{' '}
-                {zh ? (
-                  known.zh
-                ) : (
+                {names === 'both' ? (
                   <>
                     {known.en} <span className="text-ink-subtle">{known.zh}</span>
                   </>
+                ) : (
+                  topicDisplay(topic, names)
                 )}
               </>
             ) : (
@@ -295,7 +296,8 @@ function WholeQuestionTopics({
   onPick: (key: string) => void;
 }) {
   const m = useMessages(PART_TOPICS_MESSAGES);
-  const names = useUiLanguage() === 'zh-HK' ? 'zh' : 'en';
+  const view = useViewLanguage();
+  const names = topicNamesFor(view);
   const [open, setOpen] = useState(false);
   const lines = partTopicLines(shown);
   const effective = effectiveSlotTags(shown);
@@ -327,7 +329,7 @@ function WholeQuestionTopics({
             >
               <span className="w-8 shrink-0 font-semibold tabular-nums text-ink-muted">{line.label}</span>
               {line.tags.length > 0 ? (
-                <span className="min-w-0 flex-1 truncate text-ink-muted" title={line.tags.map((tag) => topicHeading(tag, names === 'zh' ? 'zh' : 'both')).join('\n')}>
+                <span className="min-w-0 flex-1 truncate text-ink-muted" title={line.tags.map((tag) => topicHeading(tag, topicNamesFor(view, 'wide'))).join('\n')}>
                   {topicsWithPatterns(line.tags).map(({ topic, pattern }, index) => (
                     <span key={topic}>
                       {index > 0 && ' · '}
