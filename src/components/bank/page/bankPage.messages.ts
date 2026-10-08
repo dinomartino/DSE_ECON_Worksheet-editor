@@ -1,4 +1,5 @@
 import { defineMessages } from '@/i18n/catalogue';
+import { spaced } from '@/i18n/spacing';
 
 const plural = (n: number, one: string, many = `${one}s`) => (n === 1 ? one : many);
 
@@ -71,13 +72,13 @@ export const BANK_PAGE_MESSAGES = defineMessages({
   // Which part tests it
   partsAnd: {
     en: (head: string, last: string) => `${head} and ${last}`,
-    zh: (head: string, last: string) => `${head}及${last}`,
+    zh: (head: string, last: string) => spaced`${head}及${last}`,
   },
   partTestsThis: { en: (label: string) => `Part ${label} tests this`, zh: (label: string) => `分題 ${label} 考核此項` },
   partsTestThis: { en: (list: string) => `Parts ${list} test this`, zh: (list: string) => `分題 ${list} 考核此項` },
-  partTests: { en: (label: string, what: string) => `Part ${label} tests ${what}`, zh: (label: string, what: string) => `分題 ${label} 考核${what}` },
-  partsTest: { en: (list: string, what: string) => `Parts ${list} test ${what}`, zh: (list: string, what: string) => `分題 ${list} 考核${what}` },
-  alsoIn: { en: (list: string) => `Also in ${list}`, zh: (list: string) => `同時屬於${list}` },
+  partTests: { en: (label: string, what: string) => `Part ${label} tests ${what}`, zh: (label: string, what: string) => spaced`分題 ${label} 考核${what}` },
+  partsTest: { en: (list: string, what: string) => `Parts ${list} test ${what}`, zh: (list: string, what: string) => spaced`分題 ${list} 考核${what}` },
+  alsoIn: { en: (list: string) => `Also in ${list}`, zh: (list: string) => spaced`同時屬於${list}` },
   wholeQuestion: { en: 'the whole question', zh: '整條題目' },
   targetPart: { en: (label: string) => `part ${label}`, zh: (label: string) => `分題 ${label}` },
   targetSubPart: { en: (label: string) => `sub-part ${label}`, zh: (label: string) => `子分題 ${label}` },

@@ -1,4 +1,5 @@
 import { defineMessages } from '@/i18n/catalogue';
+import { spaced } from '@/i18n/spacing';
 
 /** The editor's 題庫 tab: filters, Fill, states and the empty-result sentence. */
 export const BANK_TAB_MESSAGES = defineMessages({
@@ -43,12 +44,12 @@ export const BANK_TAB_MESSAGES = defineMessages({
     en: 'Save another worksheet with questions and they appear here.',
     zh: '再儲存另一份有題目的工作紙，題目便會出現在這裏。',
   },
-  clearFilterBtn: { en: (what: string) => `Clear ${what}`, zh: (what: string) => `清除${what}` },
+  clearFilterBtn: { en: (what: string) => `Clear ${what}`, zh: (what: string) => spaced`清除${what}` },
   clearFilters: { en: 'Clear filters', zh: '清除篩選' },
   filterText: { en: (t: string) => `“${t}”`, zh: (t: string) => `「${t}」` },
   filterNotUsed: { en: (c: string) => `not used with ${c}`, zh: (c: string) => `未用於 ${c}` },
   filterBanksOnly: { en: 'banks only', zh: '僅題庫文件' },
-  filterFrom: { en: (title: string) => `from ${title}`, zh: (title: string) => `來自${title}` },
+  filterFrom: { en: (title: string) => `from ${title}`, zh: (title: string) => spaced`來自${title}` },
   filterOneWorksheet: { en: 'one worksheet', zh: '一份工作紙' },
   filterMarks: { en: 'marks', zh: '分數' },
   showMore: { en: (n: number) => `Show ${n} more`, zh: (n: number) => `再顯示 ${n} 條` },
@@ -80,14 +81,14 @@ export const BANK_TAB_MESSAGES = defineMessages({
     en: (n: number) => `Add ${n} ${n === 1 ? 'question' : 'questions'}`,
     zh: (n: number) => `加入 ${n} 條題目`,
   },
-  nothingLeft: { en: (topic: string) => `Nothing left in ${topic}.`, zh: (topic: string) => `${topic}已沒有可用的題目。` },
+  nothingLeft: { en: (topic: string) => `Nothing left in ${topic}.`, zh: (topic: string) => spaced`${topic}已沒有可用的題目。` },
   alreadyUsed: {
     en: (n: number, c: string) => `${n} already used with ${c}`,
     zh: (n: number, c: string) => `有 ${n} 條已用於 ${c}`,
   },
   onlyLeft: {
     en: (n: number, topic: string) => `Only ${n} left in ${topic}.`,
-    zh: (n: number, topic: string) => `${topic}只剩 ${n} 條。`,
+    zh: (n: number, topic: string) => spaced`${topic}只剩 ${n} 條。`,
   },
   noneUsed: {
     en: (c: string, where: string) => `None used with ${c} · adds ${where}`,
@@ -109,7 +110,7 @@ export const BANK_TAB_MESSAGES = defineMessages({
   emptyDoc: { en: 'in that worksheet', zh: '來源：該工作紙' },
   emptySentence: {
     en: (noun: string, rest: string) => `No ${noun}${rest ? ` ${rest}` : ''}.`,
-    zh: (noun: string, rest: string) => `沒有符合條件的${noun}${rest ? `（${rest}）` : ''}。`,
+    zh: (noun: string, rest: string) => spaced`沒有符合條件的${noun}${rest ? `（${rest}）` : ''}。`,
   },
   paperTakes: {
     en: (takes: string) => `This paper usually takes ${takes} only.`,
@@ -165,7 +166,7 @@ export const PATTERN_PICKER_MESSAGES = defineMessages({
   clearedOnSave: { en: '· cleared on save', zh: '· 儲存時清除' },
   keep: {
     en: (kind: string, topic: string) => `Keep the ${kind} 題型 under ${topic}`,
-    zh: (kind: string, topic: string) => `保留${topic}下的 ${kind} 題型`,
+    zh: (kind: string, topic: string) => spaced`保留${topic}下的 ${kind} 題型`,
   },
   clear: { en: 'Clear 題型', zh: '清除題型' },
   change: {
@@ -176,7 +177,7 @@ export const PATTERN_PICKER_MESSAGES = defineMessages({
   add: { en: '+ Add 題型', zh: '+ 新增題型' },
   inputLabel: {
     en: (kind: string, topic: string) => `${kind} 題型 for ${topic}`,
-    zh: (kind: string, topic: string) => `${topic}的 ${kind} 題型`,
+    zh: (kind: string, topic: string) => spaced`${topic}的 ${kind} 題型`,
   },
   placeholder: {
     en: (kind: string) => `Pick an ${kind} 題型 or type a new one`,
@@ -184,7 +185,7 @@ export const PATTERN_PICKER_MESSAGES = defineMessages({
   },
   listLabel: {
     en: (kind: string, topic: string) => `${kind} 題型 under ${topic}`,
-    zh: (kind: string, topic: string) => `${topic}下的 ${kind} 題型`,
+    zh: (kind: string, topic: string) => spaced`${topic}下的 ${kind} 題型`,
   },
   similar: { en: 'similar', zh: '相近' },
   newPattern: { en: (name: string) => `New 題型 “${name}”`, zh: (name: string) => `新增題型「${name}」` },

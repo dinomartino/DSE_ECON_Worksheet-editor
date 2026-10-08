@@ -1,4 +1,5 @@
 import { defineMessages } from '@/i18n/catalogue';
+import { spaced } from '@/i18n/spacing';
 
 /** Level 3 of the bank: the untagged questions, one at a time. */
 export const TAG_AS_YOU_GO_MESSAGES = defineMessages({
@@ -13,7 +14,7 @@ export const TAG_AS_YOU_GO_MESSAGES = defineMessages({
   livesIn: { en: 'Lives in ', zh: '所在位置：' },
   open: { en: 'Open in worksheet', zh: '在工作紙中開啟' },
   openTitle: { en: 'Open this question in its worksheet (O)', zh: '在所屬工作紙中開啟這條題目（O）' },
-  topicsFor: { en: (name: string) => `Topics for ${name}`, zh: (name: string) => `${name}的課題` },
+  topicsFor: { en: (name: string) => `Topics for ${name}`, zh: (name: string) => spaced`${name}的課題` },
   topicsForQuestion: { en: 'Topics for this question', zh: '這條題目的課題' },
   partialTitle: {
     en: (heading: string, where: string) => `${heading}: on ${where} only. Press to put it on every part.`,

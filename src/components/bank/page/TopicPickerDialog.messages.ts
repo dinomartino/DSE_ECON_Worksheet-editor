@@ -1,10 +1,11 @@
 import { defineMessages } from '@/i18n/catalogue';
+import { spaced } from '@/i18n/spacing';
 
 /** The topic pickers: tick topics for one question, a question with parts, or many at once. */
 export const TOPIC_PICKER_MESSAGES = defineMessages({
   keepOnly: {
     en: (name: string) => `Keep ${name}, remove only its 題型`,
-    zh: (name: string) => `保留${name}，只移除其題型`,
+    zh: (name: string) => spaced`保留${name}，只移除其題型`,
   },
   onCount: { en: (n: number) => `(on ${n})`, zh: (n: number) => `（${n} 條）` },
   noneTicked: { en: 'No topic ticked', zh: '未剔選課題' },
@@ -30,7 +31,7 @@ export const TOPIC_PICKER_MESSAGES = defineMessages({
     en: 'Ticks here go on every part. Then pick a part to change it alone.',
     zh: '在這裏剔選會套用到每個分題。之後可選擇某個分題單獨更改。',
   },
-  notePart: { en: (name: string) => `Ticks here change ${name} only.`, zh: (name: string) => `在這裏剔選只會更改${name}。` },
+  notePart: { en: (name: string) => `Ticks here change ${name} only.`, zh: (name: string) => spaced`在這裏剔選只會更改${name}。` },
   noteInherits: {
     en: (label: string, parent: string) => `${label} has the same topics as ${parent}. Tick or untick one to give it its own.`,
     zh: (label: string, parent: string) => `${label} 的課題與 ${parent} 相同。剔選或取消剔選任何一項，即可讓它有自己的課題。`,
