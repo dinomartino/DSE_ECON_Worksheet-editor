@@ -581,6 +581,8 @@ function Stage({
   const testsWhat = testsWhatText(
     testing.map((slot) => slot.label),
     query,
+    undefined,
+    language,
   );
   const highlight = testing.map((slot) => slot.key);
   const shown = shownLanguage(row, language);
@@ -671,17 +673,17 @@ function Stage({
                   {byPart.map((line) => {
                     const names = line.tags.filter((tag) => !isPatternTag(tag));
                     return (
-                      <span key={line.label} className="flex min-w-0 gap-1.5" title={tagTitle(line.tags)}>
+                      <span key={line.label} className="flex min-w-0 gap-1.5" title={tagTitle(line.tags, language)}>
                         <span className="shrink-0 text-ink-muted">{line.label}</span>
                         <span className={`min-w-0 truncate ${names.length === 0 ? 'text-ink-subtle' : ''}`}>
-                          {names.length === 0 ? m.noTopicYet : names.map((tag) => topicName(tag, 'both')).join(' · ')}
+                          {names.length === 0 ? m.noTopicYet : names.map((tag) => topicName(tag, language, 'wide')).join(' · ')}
                         </span>
                       </span>
                     );
                   })}
                 </span>
               ) : (
-                <span title={tagTitle(topicTags)}>{topicTags.map((tag) => topicName(tag, 'both')).join(' · ')}</span>
+                <span title={tagTitle(topicTags, language)}>{topicTags.map((tag) => topicName(tag, language, 'wide')).join(' · ')}</span>
               )}
               {onEditTopics && worksheet && !isNewerThanBuild(worksheet) && (
                 <button
@@ -698,7 +700,7 @@ function Stage({
                 <dt className="text-ink-subtle">{m.pattern}</dt>
                 <dd className="min-w-0" data-fact-patterns>
                   {patterns.map((ref, i) => (
-                    <span key={`${ref.topic} ${ref.name}`} title={`${topicName(ref.topic, 'both')} · ${ref.name}`}>
+                    <span key={`${ref.topic} ${ref.name}`} title={`${topicName(ref.topic, language, 'wide')} · ${ref.name}`}>
                       {i > 0 && ' · '}
                       {ref.name}
                     </span>

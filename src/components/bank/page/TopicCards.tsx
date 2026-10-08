@@ -1,8 +1,9 @@
 'use client';
 
 import type { PatternItem } from '@/library/patterns';
-import { topicOf } from '@/model/topics';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { topicNamesFor, topicOf } from '@/model/topics';
+import { useMessages } from '@/i18n/language';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { barPercent, typeName, type Coverage } from './bankPage';
 import type { ClassUsage } from './bankScreen';
 import { TOPIC_CARDS_MESSAGES } from './TopicCards.messages';
@@ -36,7 +37,8 @@ export function TopicCards({
   onClassGap: (choice: ClassUsage['choice']) => void;
 }) {
   const { bars, max, untagged, total } = coverage;
-  const lang = useUiLanguage();
+  const view = useViewLanguage();
+  const names = topicNamesFor(view, 'wide');
   const m = useMessages(TOPIC_CARDS_MESSAGES);
   const w = useMessages(BANK_PAGE_MESSAGES);
   return (
@@ -77,7 +79,7 @@ export function TopicCards({
           const split = bar.byType.filter((part) => part.count > 0);
           const splitTitle = split.map((part) => `${part.count} ${typeName(part.typeId)}`).join(w.sep);
           const own = patterns?.get(bar.code) ?? [];
-          const patternTitle = own.map((item) => `${topicName(item.topic, 'en', lang)} · ${item.name} · ${typeName(item.typeId)} ×${item.count}`).join('\n');
+          const patternTitle = own.map((item) => `${topicName(item.topic, view)} · ${item.name} · ${typeName(item.typeId)} ×${item.count}`).join('\n');
           return (
             <li key={bar.code} className="flex">
               <button
@@ -88,13 +90,13 @@ export function TopicCards({
                 <span className="flex items-baseline gap-2.5">
                   <span className="font-display min-w-[34px] shrink-0 text-[26px] leading-none text-ink">{bar.code}</span>
                   <span className="grid min-w-0 text-[13px] leading-[1.25] text-ink">
-                    {lang === 'zh-HK' ? (
-                      <span className="group-hover:text-accent-ink">{topic?.zh}</span>
-                    ) : (
+                    {names === 'both' ? (
                       <>
                         <span className="group-hover:text-accent-ink">{topic?.en}</span>
                         <small className="text-[12px] text-ink-subtle">{topic?.zh}</small>
                       </>
+                    ) : (
+                      <span className="group-hover:text-accent-ink">{topic?.[names]}</span>
                     )}
                   </span>
                 </span>

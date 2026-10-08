@@ -2408,6 +2408,9 @@ the chrome between English and Hong Kong Traditional Chinese. Design and wording
   document decides: the editor's starting mode, the new-worksheet form, the 題庫 view (and
   papers made from it), new graphs; paste import takes `paperSide()`. Never the chrome;
   an open document's language is its own, and documents store none.
+- **Curriculum names are paper-side.** Topic and sub-topic names follow the view language
+  (`useViewLanguage()`: the 題庫 screen's view, the sidebar's document mode, else the paper
+  language) through `topicNamesFor(language, room)`, both names only where there is room.
 - **English is today's text exactly**, so English mode changes nothing and existing tests
   hold. Chinese drops the English half of bilingual chrome.
 - **Catalogues are co-located** (`messages.ts` beside the components; `defineMessages`

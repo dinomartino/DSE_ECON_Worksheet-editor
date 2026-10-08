@@ -1,4 +1,6 @@
-import { rollupTopic, topicOf, TOPICS } from '@/model/topics';
+import { rollupTopic, topicNamesFor, topicOf, TOPICS } from '@/model/topics';
+import type { LanguageMode } from '@/model/types';
+import { paperLanguage } from '@/settings/paperLanguage';
 import { uiLanguage } from '@/i18n/language';
 import { resolveMessages } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
@@ -165,7 +167,12 @@ const unique = <T>(list: readonly T[]) => [...new Set(list)];
  * question is listed under every heading its tags (every part's) name, each entry saying
  * where else it is; groups keep their incoming order within a section.
  */
-export function railSections(groups: readonly BankGroup[], topic: TopicPick, lang: UiLanguage = uiLanguage()): RailSection[] {
+export function railSections(
+  groups: readonly BankGroup[],
+  topic: TopicPick,
+  lang: UiLanguage = uiLanguage(),
+  view: LanguageMode = paperLanguage(),
+): RailSection[] {
   const m = words(lang);
   const picked = topic === 'all' || topic === 'untagged' ? undefined : topicOf(topic);
   const buckets = new Map<string, BankGroup[]>();
@@ -188,7 +195,7 @@ export function railSections(groups: readonly BankGroup[], topic: TopicPick, lan
     if (key === 'general') return m.general;
     if (key === 'none') return m.noTopic;
     const found = topicOf(key);
-    return found ? (found.parent ? topicName(key, 'en', lang) : `${found.code} · ${topicName(key, 'en', lang)}`) : key;
+    return found ? (found.parent ? topicName(key, view) : `${found.code} · ${topicName(key, view)}`) : key;
   };
   const query = (key: string): SlotQuery | undefined =>
     key === 'none' ? undefined : { topic: key === 'general' && picked ? picked.code : key };
@@ -323,10 +330,15 @@ export function testsThisText(labels: readonly string[], lang: UiLanguage = uiLa
 }
 
 /** The stage's line: "Part (b) tests Price elasticity of demand", "Parts (a) and (c) test Calculate PED". */
-export function testsWhatText(labels: readonly string[], query: SlotQuery | undefined, lang: UiLanguage = uiLanguage()): string | undefined {
+export function testsWhatText(
+  labels: readonly string[],
+  query: SlotQuery | undefined,
+  lang: UiLanguage = uiLanguage(),
+  view: LanguageMode = paperLanguage(),
+): string | undefined {
   if (labels.length === 0 || !query) return undefined;
   const m = words(lang);
-  const what = 'topic' in query ? topicName(query.topic, 'en', lang) : query.pattern.name;
+  const what = 'topic' in query ? topicName(query.topic, view) : query.pattern.name;
   return labels.length === 1 ? m.partTests(labels[0], what) : m.partsTest(partList(labels, lang), what);
 }
 
@@ -466,10 +478,11 @@ export function latestClassUsage(rows: readonly BankRow[], lang: UiLanguage = ui
   };
 }
 
-/** The key's lines: the coarse code, then the sub-topic's (or topic's) own name, in English and 中文. */
-export function suggestionLabel(code: string, lang: UiLanguage = uiLanguage()): { code: string; name: string; zh?: string } {
+/** The key's lines: the coarse code, then the sub-topic's (or topic's) own name; a bilingual view adds the 中文 under it. */
+export function suggestionLabel(code: string, view: LanguageMode = paperLanguage()): { code: string; name: string; zh?: string } {
   const topic = topicOf(code);
   if (!topic) return { code, name: code };
-  if (lang === 'zh-HK') return { code: topic.parent ?? topic.code, name: topic.zh };
-  return { code: topic.parent ?? topic.code, name: topic.en, zh: topic.zh };
+  const names = topicNamesFor(view, 'wide');
+  if (names === 'both') return { code: topic.parent ?? topic.code, name: topic.en, zh: topic.zh };
+  return { code: topic.parent ?? topic.code, name: topic[names] };
 }

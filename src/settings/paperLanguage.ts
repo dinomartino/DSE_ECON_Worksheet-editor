@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { createContext, useContext, useSyncExternalStore } from 'react';
 import type { Side } from '@/model/textSlots';
 import type { LanguageMode } from '@/model/types';
 import { LANGUAGE_SETTINGS } from './language';
@@ -25,4 +25,18 @@ export function usePaperLanguage(): LanguageMode {
 /** The one side a one-language paper starts on; undefined for both (detect instead). */
 export function paperSide(language: LanguageMode = paperLanguage()): Side | undefined {
   return language === 'bilingual' ? undefined : language;
+}
+
+/**
+ * The language the questions on screen are shown in: the open document's mode in the
+ * editor, the 題庫 page's view language there. Paper words on screen (topic names) follow
+ * it; the chrome never does.
+ */
+const ViewLanguageContext = createContext<LanguageMode | undefined>(undefined);
+export const ViewLanguageProvider = ViewLanguageContext.Provider;
+
+/** The view language; the paper language where no document or bank view decides. */
+export function useViewLanguage(): LanguageMode {
+  const paper = usePaperLanguage();
+  return useContext(ViewLanguageContext) ?? paper;
 }

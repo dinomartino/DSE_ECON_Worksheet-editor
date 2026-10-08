@@ -3,6 +3,8 @@ import { rollupTopic, topicOf, TOPICS } from '@/model/topics';
 import { uiLanguage } from '@/i18n/language';
 import { resolveMessages, type TextKey } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
+import type { LanguageMode } from '@/model/types';
+import { paperLanguage } from '@/settings/paperLanguage';
 import { getQuestionType, listQuestionTypes } from '@/registry';
 import { cohortLabel, schoolYearEnd, schoolYearLabel, type ClassTarget } from '@/library/cohort';
 import { refsOf, rowUsedWith } from '@/library/history';
@@ -313,12 +315,12 @@ export interface ActiveFilter {
   label: string;
 }
 
-export function activeFilters(filters: BankFilters, lang: UiLanguage = uiLanguage()): ActiveFilter[] {
+export function activeFilters(filters: BankFilters, lang: UiLanguage = uiLanguage(), view: LanguageMode = paperLanguage()): ActiveFilter[] {
   const m = words(lang);
   const active: ActiveFilter[] = [];
   if (filters.text.trim()) active.push({ key: 'text', label: m.quoted(filters.text.trim()) });
   if (filters.topic === 'untagged') active.push({ key: 'topic', label: m.filterUntagged });
-  else if (filters.topic !== 'all') active.push({ key: 'topic', label: topicTitle(filters.topic, 'en', lang) });
+  else if (filters.topic !== 'all') active.push({ key: 'topic', label: topicTitle(filters.topic, view) });
   if (filters.typeId) active.push({ key: 'typeId', label: typeName(filters.typeId) });
   if (filters.marks !== 'any') {
     const band = MARKS_BANDS.find((b) => b.value === filters.marks);
@@ -398,9 +400,9 @@ export function traySummary(rows: readonly BankRow[]): TraySummary {
 }
 
 /** "Price elasticity of demand ×3, Market intervention ×1"; the first three, then "+N more". */
-export function mixLabel(mix: TraySummary['mix'], shown = 3, lang: UiLanguage = uiLanguage()): string {
+export function mixLabel(mix: TraySummary['mix'], shown = 3, lang: UiLanguage = uiLanguage(), view: LanguageMode = paperLanguage()): string {
   const m = words(lang);
-  const head = mix.slice(0, shown).map(({ code, count }) => `${topicName(code, 'en', lang)} ×${count}`).join(m.sep);
+  const head = mix.slice(0, shown).map(({ code, count }) => `${topicName(code, view)} ×${count}`).join(m.sep);
   const rest = mix.length - shown;
   return rest > 0 ? m.mixMore(head, rest) : head;
 }
@@ -510,8 +512,8 @@ export function bankCountLabel(coverage: Pick<Coverage, 'total' | 'papers' | 'ba
 }
 
 /** "C.ped Price elasticity of demand" lines for the preview's Topics; 題型 are listed apart (`patternLines`). */
-export function tagLines(tags: readonly string[], lang: UiLanguage = uiLanguage()): { code: string; name?: string }[] {
-  return tags.filter((tag) => !isPatternTag(tag)).map((tag) => (topicOf(tag) ? { code: tag, name: tagName(tag, lang) } : { code: tag }));
+export function tagLines(tags: readonly string[], view: LanguageMode = paperLanguage()): { code: string; name?: string }[] {
+  return tags.filter((tag) => !isPatternTag(tag)).map((tag) => (topicOf(tag) ? { code: tag, name: tagName(tag, view) } : { code: tag }));
 }
 
 /** A row's 題型 as the preview lists them: sub-topic code and name. */

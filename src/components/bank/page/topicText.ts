@@ -1,24 +1,24 @@
-import { topicDisplay, topicHeading, topicLabel } from '@/model/topics';
-import { uiLanguage } from '@/i18n/language';
-import type { UiLanguage } from '@/settings/language';
+import { topicDisplay, topicHeading, topicNamesFor } from '@/model/topics';
+import type { LanguageMode } from '@/model/types';
+import { paperLanguage } from '@/settings/paperLanguage';
 
 /**
- * Topic names in the interface language: English mode reads as it always did (`names`),
- * 繁體中文 mode shows the Chinese name alone.
+ * Topic names in the language the questions are shown in (`topicNamesFor`), never the
+ * interface's. `wide`: both names when the view is bilingual; `tight`: one.
  */
-const zh = (lang: UiLanguage) => lang === 'zh-HK';
+type Room = 'tight' | 'wide';
 
-/** The name; `names: 'both'` is English then 中文 in English mode. */
-export function topicName(code: string, names: 'en' | 'both' = 'en', lang: UiLanguage = uiLanguage()): string {
-  return topicDisplay(code, zh(lang) ? 'zh' : names);
+/** The name. */
+export function topicName(code: string, language: LanguageMode = paperLanguage(), room: Room = 'tight'): string {
+  return topicDisplay(code, topicNamesFor(language, room));
 }
 
 /** The name with its coarse letter first (`topicHeading`). */
-export function topicTitle(code: string, names: 'en' | 'both' = 'en', lang: UiLanguage = uiLanguage()): string {
-  return topicHeading(code, zh(lang) ? 'zh' : names);
+export function topicTitle(code: string, language: LanguageMode = paperLanguage(), room: Room = 'tight'): string {
+  return topicHeading(code, topicNamesFor(language, room));
 }
 
-/** `topicLabel`: the name of a tag. */
-export function tagName(tag: string, lang: UiLanguage = uiLanguage()): string {
-  return topicLabel(tag, zh(lang) ? 'zh' : 'en');
+/** The name of a tag; a free tag as stored. */
+export function tagName(tag: string, language: LanguageMode = paperLanguage()): string {
+  return topicName(tag, language);
 }

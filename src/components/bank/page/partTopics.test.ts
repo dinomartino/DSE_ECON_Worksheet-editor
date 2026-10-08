@@ -105,7 +105,7 @@ describe('tagging a question part by part (Edit topics, tag as you go)', () => {
     expect(detail[1]).toBe('Same as (a)');
     expect(detail[2].startsWith('Its own · ')).toBe(true);
     expect(detail[0].startsWith('Its own')).toBe(false);
-    expect(partDetail(partLines(draft)[2], zh, '、', 'zh-HK').startsWith('另設課題 · ')).toBe(true);
+    expect(partDetail(partLines(draft)[2], zh, '、', 'zh').startsWith('另設課題 · ')).toBe(true);
     const back = applyDraft(draft, sameAsPart(draft, key['(a)(ii)']));
     expect(partLines(back)[2].inherits).toBe(true);
     expect(targetName(draft, key['(a)(ii)'])).toBe('sub-part (a)(ii)');

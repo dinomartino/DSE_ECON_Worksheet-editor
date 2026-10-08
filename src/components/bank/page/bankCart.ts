@@ -6,6 +6,8 @@ import { topicOf } from '@/model/topics';
 import { uiLanguage } from '@/i18n/language';
 import { resolveMessages } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
+import type { LanguageMode } from '@/model/types';
+import { paperLanguage } from '@/settings/paperLanguage';
 import { listQuestionTypes } from '@/registry';
 import type { BankRow } from '@/library/types';
 import { rowKey, rowMinutes, typeName } from './bankPage';
@@ -214,10 +216,10 @@ export function typeSplitLabel(totals: Pick<CartTotals, 'byType'>, lang: UiLangu
 }
 
 /** The row's first topic by name ("C · Law of demand"), "+1" for each more; free tags and 題型 are left out. */
-export function cartTopicLabel(tags: readonly string[], lang: UiLanguage = uiLanguage()): string | undefined {
+export function cartTopicLabel(tags: readonly string[], view: LanguageMode = paperLanguage()): string | undefined {
   const topics = tags.filter((tag) => !isPatternTag(tag) && topicOf(tag));
   if (topics.length === 0) return undefined;
-  const name = topicTitle(topics[0], 'en', lang);
+  const name = topicTitle(topics[0], view);
   return topics.length > 1 ? `${name} +${topics.length - 1}` : name;
 }
 

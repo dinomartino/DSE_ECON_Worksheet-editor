@@ -8,6 +8,8 @@ import { holdsPatterns } from '@/model/patterns';
 import { useMessages, useUiLanguage, uiLanguage } from '@/i18n/language';
 import { resolveMessages } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
+import type { LanguageMode } from '@/model/types';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import {
   activeFilters,
   classChoiceText,
@@ -119,6 +121,7 @@ function Panel({
   useModalLayer();
   const m = useMessages(FILTER_MESSAGES);
   const lang = useUiLanguage();
+  const view = useViewLanguage();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -163,7 +166,7 @@ function Panel({
           options={[
             { value: '', label: patterns.length === 0 ? m.noPatternYet : m.anyPattern },
             // Closed, the chosen 題型 reads by its name: the sub-topic would push it out of view.
-            ...patterns.map((item, index) => ({ value: String(index), label: patternOption(item, scope, lang), closedLabel: patternOption(item, item.topic, lang) })),
+            ...patterns.map((item, index) => ({ value: String(index), label: patternOption(item, scope, view), closedLabel: patternOption(item, item.topic, view) })),
           ]}
         />
       </Field>
@@ -256,8 +259,8 @@ function patternValue(patterns: PatternItem[], filters: BankFilters): string {
 }
 
 /** "Calculate PED from TR · MCQ ×3"; the sub-topic's name first unless the page is that sub-topic. */
-function patternOption(item: PatternItem, scope: string, lang: UiLanguage): string {
-  const where = holdsPatterns(scope) ? '' : `${topicName(item.topic, 'en', lang)} · `;
+function patternOption(item: PatternItem, scope: string, view: LanguageMode): string {
+  const where = holdsPatterns(scope) ? '' : `${topicName(item.topic, view)} · `;
   return `${where}${item.name} · ${typeName(item.typeId)} ×${item.count}`;
 }
 

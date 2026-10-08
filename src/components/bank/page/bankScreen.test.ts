@@ -202,9 +202,10 @@ describe('suggestTopics', () => {
     expect(latestClassUsage([row({})])).toBeUndefined();
   });
 
-  it('labels a key by its coarse code and own name', () => {
-    expect(suggestionLabel('H.money-supply')).toEqual({ code: 'H', name: 'Money supply', zh: '貨幣供應' });
-    expect(suggestionLabel('C')).toEqual({ code: 'C', name: 'Market and Price', zh: '市場與價格' });
+  it('labels a key by its coarse code and own name, in the view language', () => {
+    expect(suggestionLabel('H.money-supply', 'en')).toEqual({ code: 'H', name: 'Money supply' });
+    expect(suggestionLabel('H.money-supply', 'zh')).toEqual({ code: 'H', name: '貨幣供應' });
+    expect(suggestionLabel('C', 'bilingual')).toEqual({ code: 'C', name: 'Market and Price', zh: '市場與價格' });
     expect(suggestionLabel('C.new')).toEqual({ code: 'C.new', name: 'C.new' });
   });
 });

@@ -4,6 +4,8 @@
  * topic never touches a document. Fine codes are frozen slugs — never renumber or remove.
  */
 
+import type { LanguageMode } from './types';
+
 export type TopicLang = 'en' | 'zh';
 
 export interface Topic {
@@ -194,6 +196,16 @@ export function topicLabel(code: string, lang: TopicLang): string {
 
 /** Which names a label shows: one language, or both ("Law of demand 需求定律"). */
 export type TopicNames = TopicLang | 'both';
+
+/**
+ * **Topic names are paper words**: they follow the language the questions are shown in,
+ * never the interface. Both languages show both where there is `room`, else English, the
+ * side a bilingual paper leads with.
+ */
+export function topicNamesFor(language: LanguageMode, room: 'tight' | 'wide' = 'tight'): TopicNames {
+  if (language !== 'bilingual') return language;
+  return room === 'wide' ? 'both' : 'en';
+}
 
 /**
  * **How a topic reads on screen**, everywhere: its name, never its slug ("Law of demand",

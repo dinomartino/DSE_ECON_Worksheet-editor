@@ -1,10 +1,11 @@
 import { paperTypeIds, typesOutsidePaper } from '@/library/paperTypes';
 import { MARK_BANDS, type TabFilters } from '@/library/tabFilters';
-import type { Worksheet } from '@/model/types';
+import type { LanguageMode, Worksheet } from '@/model/types';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
-import { topicHeading } from '@/model/topics';
+import { topicHeading, topicNamesFor } from '@/model/topics';
 import type { UiLanguage } from '@/settings/language';
+import { paperLanguage } from '@/settings/paperLanguage';
 import { typeLabel } from './BankRow';
 import { BANK_TAB_MESSAGES } from './messages';
 
@@ -34,10 +35,11 @@ export function emptySentence(
   filters: TabFilters,
   classLabel: string | undefined,
   lang: UiLanguage = uiLanguage(),
+  view: LanguageMode = paperLanguage(),
 ): string {
   const m = resolveMessages(BANK_TAB_MESSAGES, lang);
   const parts: string[] = [];
-  if (filters.topic) parts.push(m.emptyIn(topicHeading(filters.topic, lang === 'zh-HK' ? 'zh' : 'en')));
+  if (filters.topic) parts.push(m.emptyIn(topicHeading(filters.topic, topicNamesFor(view))));
   const band = MARK_BANDS.find((entry) => entry.value === filters.marks);
   if (band?.range) parts.push(m.emptyWorth(markBandLabel(band.value, lang)));
   if (filters.text.trim()) parts.push(m.emptyMatching(filters.text.trim()));

@@ -11,6 +11,7 @@ import { ANSWER_KEY_LAYOUT_MESSAGES } from './AnswerKeyLayoutPanel.messages';
 import type { PageComposition } from '@/components/preview/pagination';
 import { Outline } from './Outline';
 import { useMessages } from '@/i18n/language';
+import { ViewLanguageProvider } from '@/settings/paperLanguage';
 import { SIDEBAR_MESSAGES } from './shell.messages';
 import { LAYOUT_KIND_MESSAGES } from './layoutKind.messages';
 
@@ -44,6 +45,7 @@ export function Sidebar({
   onOpenSettings: () => void;
 }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
+  const language = useWorksheetStore((s) => s.mode.language);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const selectedElementId = useWorksheetStore((s) => s.selectedElementId);
   const numbering = computeNumbering(worksheet);
@@ -153,17 +155,20 @@ export function Sidebar({
           that changed underneath it while the editor was showing. Keyed by tab so the
           incoming panel fades in. Opacity only: a lingering transform here would become
           the containing block for the fixed popovers and canvases the panels open. */}
-      <div key={tab} className="flex min-h-0 flex-1 animate-fade-in flex-col">
-        {tab === 'content' ? (
-          <Outline numbering={numbering} pages={pages} onOpenSettings={onOpenSettings} />
-        ) : tab === 'layout' ? (
-          <AnswerKeyLayoutPanel />
-        ) : tab === 'bank' ? (
-          <BankTab />
-        ) : (
-          <Inspector numbering={numbering} onShowContent={() => setTab('content')} />
-        )}
-      </div>
+      {/* Topic names in the panels follow the document's language (`useViewLanguage`). */}
+      <ViewLanguageProvider value={language}>
+        <div key={tab} className="flex min-h-0 flex-1 animate-fade-in flex-col">
+          {tab === 'content' ? (
+            <Outline numbering={numbering} pages={pages} onOpenSettings={onOpenSettings} />
+          ) : tab === 'layout' ? (
+            <AnswerKeyLayoutPanel />
+          ) : tab === 'bank' ? (
+            <BankTab />
+          ) : (
+            <Inspector numbering={numbering} onShowContent={() => setTab('content')} />
+          )}
+        </div>
+      </ViewLanguageProvider>
     </aside>
   );
 }
