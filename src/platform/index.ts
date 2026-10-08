@@ -408,6 +408,35 @@ export async function pickFile(
   return { name: await basename(path), path, bytes };
 }
 
+/**
+ * The open sheet with several files allowed (Import from Word or PDF…). Each file is read
+ * when its `read` is called, so the caller can show progress. `[]` when cancelled, and
+ * always on the web.
+ */
+export async function pickFiles(
+  filters: SaveFilter[],
+): Promise<Array<{ name: string; path: string; read: () => Promise<Uint8Array> }>> {
+  if (!isDesktop()) return [];
+
+  const { open } = await import('@tauri-apps/plugin-dialog');
+  const folder = await startFolder();
+  const picked: unknown = await open({
+    multiple: true,
+    directory: false,
+    filters,
+    ...(folder ? { defaultPath: folder } : {}),
+  });
+  const paths = (Array.isArray(picked) ? picked : typeof picked === 'string' ? [picked] : []).filter(
+    (p): p is string => typeof p === 'string',
+  );
+  if (paths.length === 0) return [];
+
+  await rememberFolderOf(paths[0]);
+  const { readFile } = await import('@tauri-apps/plugin-fs');
+  const { basename } = await import('@tauri-apps/api/path');
+  return Promise.all(paths.map(async (path) => ({ name: await basename(path), path, read: () => readFile(path) })));
+}
+
 /** A native file drag over the window, as the start screen needs it (positions dropped). */
 export type FileDragEvent =
   | { type: 'enter'; paths: string[] }

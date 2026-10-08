@@ -55,9 +55,9 @@ describe('planDrop', () => {
     expect(planDrop(['/a/b.zip'], byPath)).toEqual({ kind: 'restore', file: '/a/b.zip' });
   });
 
-  it('imports from one Word or PDF file; among several, a paper is left out', () => {
-    expect(planDrop(['/a/mock.pdf'], byPath)).toEqual({ kind: 'paper', file: '/a/mock.pdf' });
-    expect(planDrop(['/a/mock.docx', '/a/b.pdf'], byPath)).toEqual({ kind: 'reject' });
+  it('imports from one or several Word or PDF files; among worksheets, a paper is left out', () => {
+    expect(planDrop(['/a/mock.pdf'], byPath)).toEqual({ kind: 'papers', files: ['/a/mock.pdf'] });
+    expect(planDrop(['/a/mock.docx', '/a/b.pdf'], byPath)).toEqual({ kind: 'papers', files: ['/a/mock.docx', '/a/b.pdf'] });
   });
 
   it('imports several, opening none, and counts what it ignored', () => {

@@ -210,8 +210,8 @@ describe('the home screen', () => {
     expect(zh).toContain('從 Word 或 PDF 匯入…');
   });
 
-  it('has a chooser for Word and PDF files beside the button', () => {
+  it('has a chooser for several Word and PDF files beside the button', () => {
     const screen = renderToStaticMarkup(<StartScreen onOpen={() => {}} />);
-    expect(screen).toMatch(/<input type="file" accept="\.docx,\.pdf,[^"]*application\/pdf[^"]*wordprocessingml\.document/);
+    expect(screen).toMatch(/<input type="file" accept="\.docx,\.pdf,[^"]*application\/pdf[^"]*wordprocessingml\.document[^"]*" multiple=""/);
   });
 });

@@ -141,3 +141,28 @@ export function createImportedDocument(
   }
   return report;
 }
+
+/**
+ * Several new papers, each made as `createImportedDocument` makes one. The later ones go
+ * through the store alone and are written one after another (the saved-documents list is
+ * read, changed and written back, so two writes at once could lose an entry); the first is
+ * made last and opened. In paper order; throws when one cannot be made, after the others.
+ */
+export async function createImportedDocuments(
+  papers: ReadonlyArray<{ batch: ImportBatch; documentType: DocumentType; name: string }>,
+  open: (worksheet: Worksheet, index: number) => void,
+  save: (worksheet: Worksheet) => Promise<unknown>,
+  made: Array<{ index: number; worksheet: Worksheet; questions: number }> = [],
+): Promise<Array<{ index: number; worksheet: Worksheet; questions: number }>> {
+  const order = [...papers.keys()].slice(1).concat(papers.length ? [0] : []);
+  for (const index of order) {
+    const { batch, documentType, name } = papers[index];
+    const report = createImportedDocument(batch, { documentType, name }, (worksheet) =>
+      index === 0 ? open(worksheet, index) : useWorksheetStore.getState().replaceWorksheet(worksheet),
+    );
+    if (!report.ok) throw new Error(report.refused);
+    await save(report.committed);
+    made.push({ index, worksheet: report.committed, questions: report.questionIds.length });
+  }
+  return [...made].sort((a, b) => a.index - b.index);
+}

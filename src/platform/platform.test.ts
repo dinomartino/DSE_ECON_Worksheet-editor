@@ -21,6 +21,7 @@ import {
   openExternal,
   openFolder,
   pickFile,
+  pickFiles,
   pickTextFile,
   PDF_FILTERS,
   revealFile,
@@ -222,7 +223,7 @@ const tauri = {
   saveCalls: [] as Array<{ defaultPath?: string }>,
   openCalls: [] as Array<{ defaultPath?: string; multiple?: boolean; directory?: boolean }>,
   saveResult: null as string | null,
-  openResult: null as string | null,
+  openResult: null as string | string[] | null,
   mkdirFails: false,
   mkdirs: [] as string[],
   written: new Map<string, string>(),
@@ -586,6 +587,27 @@ describe('pickFile on desktop', () => {
     expect(await pickFile(ZIP_FILTERS)).toBeUndefined();
     vi.unstubAllGlobals();
     expect(await pickFile(ZIP_FILTERS)).toBeUndefined();
+  });
+});
+
+describe('pickFiles on desktop', () => {
+  it('asks for several files and reads each when asked, remembering the folder', async () => {
+    const storage = desktop();
+    tauri.openResult = ['/Users/t/Papers/Mock P1.pdf', '/Users/t/Papers/Mock P1 ANS.docx'];
+    tauri.readable.set('/Users/t/Papers/Mock P1.pdf', '%PDF-');
+    tauri.readable.set('/Users/t/Papers/Mock P1 ANS.docx', 'PK');
+    const picked = await pickFiles([{ name: 'Word or PDF', extensions: ['docx', 'pdf', 'doc'] }]);
+    expect(tauri.openCalls[0]).toMatchObject({ multiple: true, directory: false, defaultPath: DEFAULT, filters: [{ extensions: ['docx', 'pdf', 'doc'] }] });
+    expect(picked.map((f) => f.name)).toEqual(['Mock P1.pdf', 'Mock P1 ANS.docx']);
+    expect(new TextDecoder().decode(await picked[1].read())).toBe('PK');
+    expect(storage !== 'throws' && storage.getItem(LAST_FOLDER_KEY)).toBe('/Users/t/Papers');
+  });
+
+  it('gives nothing when cancelled, and always on the web', async () => {
+    desktop();
+    expect(await pickFiles([])).toEqual([]);
+    vi.unstubAllGlobals();
+    expect(await pickFiles([])).toEqual([]);
   });
 });
 

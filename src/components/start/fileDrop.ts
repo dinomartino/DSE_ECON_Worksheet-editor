@@ -42,14 +42,15 @@ export function fileNameOf(path: string): string {
 }
 
 /**
- * One file opens (a worksheet), restores (a backup) or is imported from (a Word or PDF
- * paper) — what a drop has always meant. Several are imported into the library, none
- * opened; a paper among several is left out. Nothing usable is rejected.
+ * One file opens (a worksheet) or restores (a backup); Word and PDF files, one or several,
+ * are imported from (papers and their answers). Several worksheets and backups are
+ * imported into the library, none opened; a paper among them is left out. Nothing usable
+ * is rejected.
  */
 export type DropPlan<T> =
   | { kind: 'open'; file: T }
   | { kind: 'restore'; file: T }
-  | { kind: 'paper'; file: T }
+  | { kind: 'papers'; files: T[] }
   | { kind: 'import'; worksheets: T[]; backups: T[]; ignored: number }
   | { kind: 'reject' };
 
@@ -59,7 +60,7 @@ export function planDrop<T>(
 ): DropPlan<T> {
   const worksheets: T[] = [];
   const backups: T[] = [];
-  if (files.length === 1 && kindOf(files[0]) === 'paper') return { kind: 'paper', file: files[0] };
+  if (files.length > 0 && files.every((file) => kindOf(file) === 'paper')) return { kind: 'papers', files: [...files] };
   for (const file of files) {
     const kind = kindOf(file);
     if (kind === 'worksheet') worksheets.push(file);

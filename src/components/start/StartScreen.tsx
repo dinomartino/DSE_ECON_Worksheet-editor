@@ -8,6 +8,7 @@ import {
   isDesktop,
   openFolder,
   pickFile,
+  pickFiles,
   readDroppedFile,
   revealFile,
   revealLabel,
@@ -215,9 +216,11 @@ export function StartScreen({
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
   const fileInput = useRef<HTMLInputElement>(null);
   const paperInput = useRef<HTMLInputElement>(null);
-  // Import from Word or PDF: the file being read and reviewed; a new one replaces the dialog.
-  const [importing, setImporting] = useState<ImportFile & { key: number }>();
-  const startImport = (file: ImportFile) => setImporting({ ...file, key: Date.now() });
+  // Import from Word or PDF: the files being read and reviewed; new ones replace the dialog.
+  const [importing, setImporting] = useState<{ files: ImportFile[]; key: number }>();
+  const startImport = (files: ImportFile[]) => {
+    if (files.length > 0) setImporting({ files, key: Date.now() });
+  };
   const backupInput = useRef<HTMLInputElement>(null);
   const { ref: asideRef, edges: asideEdges } = useScrollEdges<HTMLElement>();
   const rejectTimer = useRef<number | undefined>(undefined);
@@ -395,8 +398,8 @@ export function StartScreen({
       return;
     }
     try {
-      const picked = await pickFile([{ name: t.paperFilterName, extensions: ['docx', 'pdf', 'doc'] }]);
-      if (picked) startImport({ name: picked.name, read: async () => picked.bytes.slice().buffer as ArrayBuffer });
+      const picked = await pickFiles([{ name: t.paperFilterName, extensions: ['docx', 'pdf', 'doc'] }]);
+      startImport(picked.map((file) => ({ name: file.name, read: async () => toBuffer(await file.read()) })));
     } catch {
       setError(t.couldNotOpenFile);
     }
@@ -542,9 +545,8 @@ export function StartScreen({
       return;
     }
     setDropOverlay(undefined);
-    if (plan.kind === 'paper') {
-      const file = plan.file;
-      startImport({ name: file.name, read: async () => toBuffer(await file.read()) });
+    if (plan.kind === 'papers') {
+      startImport(plan.files.map((file) => ({ name: file.name, read: async () => toBuffer(await file.read()) })));
       return;
     }
     if (plan.kind === 'import') {
@@ -958,10 +960,10 @@ export function StartScreen({
         ref={paperInput}
         type="file"
         accept={PAPER_ACCEPT}
+        multiple
         className="hidden"
         onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) startImport({ name: file.name, read: () => file.arrayBuffer() });
+          startImport([...(event.target.files ?? [])].map((file) => ({ name: file.name, read: () => file.arrayBuffer() })));
           event.target.value = '';
         }}
       />
@@ -969,16 +971,16 @@ export function StartScreen({
       {importing && (
         <LazyImportDialog
           key={importing.key}
-          file={importing}
+          files={importing.files}
           onClose={() => setImporting(undefined)}
           onChooseAnother={() => void choosePaper()}
-          onOpenDocument={(worksheet, language) => {
+          onCreated={(ids) => {
             // Filed in the open folder, as the New worksheet form files.
             if (folderId && folders.folders.some((f) => f.id === folderId)) {
-              void updateFolders(worksheetStore, (state) => moveToFolder(state, [worksheet.id], folderId)).catch(() => undefined);
+              void updateFolders(worksheetStore, (state) => moveToFolder(state, ids, folderId)).catch(() => undefined);
             }
-            onOpen(worksheet, language);
           }}
+          onOpenDocument={onOpen}
           onAddedToBank={(_bankId, ids) => showAdded(ids)}
         />
       )}

@@ -230,25 +230,40 @@ const Card = memo(
           lang={item.language === 'zh' ? 'zh-HK' : 'en'}
           style={{ ...paper, width, padding: `${PAD_Y}px ${PAD_X}px`, zoom }}
         >
-          {item.nodes.map((node, n) => (
-            <div
-              key={n}
-              data-node={n}
-              className={n === 0 ? 'leads-sheet' : undefined}
-              {...optionAttrs(node, isMc)}
-              {...(place?.node === n ? (place.cell === undefined ? { 'data-answer-node': '' } : { 'data-answer-cell': place.cell }) : {})}
-            >
-              <PaperNode
-                node={node}
-                language={item.language}
-                figures={figures}
-                slotSelected={slotSelected}
-                slotDrop={slotDrop}
-                text={m}
-                underLetter={n > 0 && isBareOption(item.nodes[n - 1])}
-              />
-            </div>
-          ))}
+          {teacherRuns(item.nodes).map(({ teacher, from, to }) => {
+            const nodes = item.nodes.slice(from, to).map((node, k) => {
+              const n = from + k;
+              return (
+                <div
+                  key={n}
+                  data-node={n}
+                  className={n === 0 ? 'leads-sheet' : undefined}
+                  {...optionAttrs(node, isMc)}
+                  {...(place?.node === n ? (place.cell === undefined ? { 'data-answer-node': '' } : { 'data-answer-cell': place.cell }) : {})}
+                >
+                  <PaperNode
+                    node={node}
+                    language={item.language}
+                    figures={figures}
+                    slotSelected={slotSelected}
+                    slotDrop={slotDrop}
+                    text={m}
+                    underLetter={n > 0 && isBareOption(item.nodes[n - 1])}
+                  />
+                </div>
+              );
+            });
+            if (!teacher) return nodes;
+            // Screen chrome on the paper: literal hex, the chrome's own face.
+            return (
+              <div key={`t${from}`} data-teacher-only className="my-1 rounded-[3px] border-l-2 border-[#6b8fb8] bg-[#f3f6fa] py-1 pl-2.5 pr-1">
+                <p data-print-hide className="mb-0.5 text-[10.5px] font-medium uppercase tracking-wide text-[#4a6a90]" style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif' }}>
+                  {m.teacherOnly}
+                </p>
+                {nodes}
+              </div>
+            );
+          })}
         </div>
       </section>
     );
@@ -271,6 +286,18 @@ const Card = memo(
     a.paper.fontFamily === b.paper.fontFamily &&
     a.paper.fontSize === b.paper.fontSize,
 );
+
+/** The nodes in runs: teacher-only ones (answers, schemes) framed together on the strip. */
+function teacherRuns(nodes: readonly RenderNode[]): Array<{ teacher: boolean; from: number; to: number }> {
+  const out: Array<{ teacher: boolean; from: number; to: number }> = [];
+  nodes.forEach((node, n) => {
+    const teacher = 'teacherOnly' in node && node.teacherOnly === true;
+    const last = out[out.length - 1];
+    if (last && last.teacher === teacher) last.to = n + 1;
+    else out.push({ teacher, from: n, to: n + 1 });
+  });
+  return out;
+}
 
 /** An option line with a letter and no words: its picture (or slot) prints under the letter. */
 const isBareOption = (node: RenderNode): boolean =>
