@@ -9,6 +9,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **Merged, unreleased (2026-10-08):** table bar "Same height" / "Same width" (Word's Distribute rows/columns)
   over a swept range only (`distributeRows`/`distributeColumns` in `src/model/table.ts`). Not yet tried in the Tauri window.
+  Also: the editor shell no longer scrolls into empty space (paginator probes are `h-0 overflow-hidden`).
+- `npm run typecheck` trips on `src-tauri/target/**/tauri-codegen-assets/*.ts` after a local `desktop:build`
+  (tsconfig excludes only `node_modules`); source itself is clean.
 - **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
   only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
 - **Merged, unreleased (2026-10-08):** **Import from Word or PDF** on the home screen (file chooser or
@@ -79,4 +82,4 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Log
 
 - **2026-10-08** — Found-folder offer; import (design, engine, docx/pdf readers, home-screen file import,
-  answers from another file); paper language; OCR survey + trial; table distribute rows/columns. 16 Opus branches merged.
+  answers from another file); paper language; OCR survey + trial; table distribute rows/columns; editor overscroll fix. 17 Opus branches merged.
