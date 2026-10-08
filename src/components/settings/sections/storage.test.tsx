@@ -7,10 +7,10 @@ import type { CloudFolder } from '@/platform/library';
 import { settingsSections } from '@/settings/sections';
 import type { SyncView } from '@/sync/syncView';
 import { STORAGE_MESSAGES } from './storageSection/messages';
-import { CloudFolders, StorageSectionView, type StorageActions } from './storageSection/StorageSection';
+import { CloudFolders, refusalText, StorageSectionView, type StorageActions } from './storageSection/StorageSection';
 
 const actions: StorageActions = {
-  choose: async () => 'cancelled',
+  choose: async () => ({ status: 'cancelled' }),
   cloudFolders: async () => [],
   stop: async () => {},
   syncNow: () => {},
@@ -149,5 +149,16 @@ describe('Settings → Storage location', () => {
     expect(en).toContain('Your worksheets stay on this computer, and the folder is left as it is.');
     expect(en).toContain('>Stop syncing<');
     expect(html(<StorageSectionView view={SYNCED} actions={actions} initialStep="confirm-stop" />, 'zh-HK')).toContain('資料夾亦會保持原狀');
+  });
+
+  it('says why a folder was refused, every reason in both languages', () => {
+    const reasons = ['app-data', 'home', 'drive-root', 'inside-library'] as const;
+    for (const lang of ['en', 'zh-HK'] as const) {
+      const m = resolveMessages(STORAGE_MESSAGES, lang);
+      const texts = reasons.map((reason) => refusalText(m, reason));
+      expect(new Set(texts).size).toBe(reasons.length);
+      for (const text of texts) expect(text).not.toMatch(/—|^$/);
+    }
+    expect(refusalText(resolveMessages(STORAGE_MESSAGES, 'en'), 'drive-root')).toBe('It is a whole drive. Choose a folder inside it.');
   });
 });

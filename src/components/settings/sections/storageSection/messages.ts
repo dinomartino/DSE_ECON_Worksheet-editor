@@ -63,6 +63,23 @@ export const STORAGE_MESSAGES = defineMessages({
   },
   stopConfirm: { en: 'Stop syncing', zh: '停止同步' },
   failed: { en: 'That did not work. Please try again.', zh: '未能完成，請再試一次。' },
+  refusedTitle: { en: "That folder can't be used", zh: '無法使用該資料夾' },
+  refusedAppData: {
+    en: 'It belongs to Econ Studio itself. Choose a folder in your cloud drive.',
+    zh: '該資料夾屬於 Econ Studio 程式本身。請在雲端硬碟選擇資料夾。',
+  },
+  refusedHome: {
+    en: 'It is your whole home folder. Choose a folder in your cloud drive.',
+    zh: '這是你整個個人資料夾。請在雲端硬碟選擇資料夾。',
+  },
+  refusedDriveRoot: {
+    en: 'It is a whole drive. Choose a folder inside it.',
+    zh: '這是整個磁碟。請在其中選擇一個資料夾。',
+  },
+  refusedInsideLibrary: {
+    en: 'It is inside another Econ Studio folder. Choose that Econ Studio folder itself, or a folder outside it.',
+    zh: '該資料夾位於另一個 Econ Studio 資料夾內。請選擇該 Econ Studio 資料夾本身，或其以外的資料夾。',
+  },
   attention: { en: 'Needs attention', zh: '需要處理' },
   attentionConflict: {
     en: 'Changed on both computers, so both versions are kept. This is the copy; the original keeps its name.',

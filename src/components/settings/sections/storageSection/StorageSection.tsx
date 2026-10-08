@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui';
+import { useNotices } from '@/components/ui/NoticeLayer';
 import { resolveMessages, type Messages } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { openFolder } from '@/platform';
-import { cloudFolders, type CloudFolder } from '@/platform/library';
+import { cloudFolders, type CloudFolder, type LibraryChooseResult, type LibraryRefusal } from '@/platform/library';
 import { useSettings } from '@/settings/store';
 import { cleanComputerName, COMPUTER_NAME_MAX, SYNC_SETTINGS } from '@/settings/sync';
 import { chooseFolder, stopSyncing, syncNow } from '@/sync/librarySync';
@@ -27,7 +28,7 @@ type M = Messages<typeof STORAGE_MESSAGES>;
 
 export interface StorageActions {
   /** `start`: a `CloudFolder.id` the picker opens at. */
-  choose(title: string, start?: string): Promise<'chosen' | 'cancelled'>;
+  choose(title: string, start?: string): Promise<LibraryChooseResult>;
   cloudFolders(): Promise<CloudFolder[]>;
   stop(): Promise<void>;
   syncNow(): void;
@@ -42,6 +43,20 @@ const clock = (at: number) => {
   const date = new Date(at);
   return `${two(date.getHours())}:${two(date.getMinutes())}`;
 };
+
+/** Why the shell would not use the picked folder, for the teacher. */
+export function refusalText(m: M, reason: LibraryRefusal): string {
+  switch (reason) {
+    case 'app-data':
+      return m.refusedAppData;
+    case 'home':
+      return m.refusedHome;
+    case 'drive-root':
+      return m.refusedDriveRoot;
+    case 'inside-library':
+      return m.refusedInsideLibrary;
+  }
+}
 
 function ComputerName({ m }: { m: M }) {
   const [{ computerName }, update] = useSettings(SYNC_SETTINGS);
@@ -196,7 +211,6 @@ export function StorageSectionView({
 }) {
   const m = useMessages(STORAGE_MESSAGES);
   const [step, setStep] = useState<Step>(initialStep);
-  const [failed, setFailed] = useState(false);
   const [cloud, setCloud] = useState(initialCloud);
   const setup = step === 'setup';
   useEffect(() => {
@@ -214,16 +228,26 @@ export function StorageSectionView({
   const root = view.location?.root ?? null;
   const pending = view.pending !== undefined;
 
+  const notices = useNotices();
+  const failed = () => notices.notify({ id: 'storage-failed', tone: 'error', body: m.failed });
+
   /** `work` resolves false to stay on the step (the picker was closed without a folder). */
   const run = async (work: () => Promise<boolean | void>) => {
-    setFailed(false);
     try {
       if ((await work()) !== false) setStep('idle');
     } catch {
-      setFailed(true);
+      failed();
     }
   };
-  const failure = failed && <p role="alert" className="text-[12px] text-danger-ink">{m.failed}</p>;
+  /** The picker; a refused folder is said why, and the step stays for another try. */
+  const choose = (start?: string) =>
+    void run(async () => {
+      const picked = await actions.choose(m.pickerTitle, start);
+      if (picked.status === 'refused') {
+        notices.notify({ id: 'storage-refused', tone: 'warning', title: m.refusedTitle, body: refusalText(m, picked.reason) });
+      }
+      return picked.status === 'chosen';
+    });
 
   if (root === null) {
     return (
@@ -242,15 +266,11 @@ export function StorageSectionView({
             <CloudFolders
               folders={cloud}
               disabled={pending}
-              onOpen={(id) => void run(async () => (await actions.choose(m.pickerTitle, id)) === 'chosen')}
+              onOpen={choose}
               m={m}
             />
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              <Button
-                variant="primary"
-                disabled={pending}
-                onClick={() => void run(async () => (await actions.choose(m.pickerTitle)) === 'chosen')}
-              >
+              <Button variant="primary" disabled={pending} onClick={() => choose()}>
                 {view.pending === 'choose' ? m.choosing : m.chooseNow}
               </Button>
               <Button variant="subtle" disabled={pending} onClick={() => setStep('idle')}>
@@ -259,7 +279,6 @@ export function StorageSectionView({
             </div>
           </div>
         )}
-        {failure}
       </div>
     );
   }
@@ -272,7 +291,7 @@ export function StorageSectionView({
           <code className="min-w-0 flex-1 break-all rounded-lg border border-line bg-surface-sunken px-2 py-1.5 font-mono text-[11px] leading-snug text-ink">
             {root}
           </code>
-          <Button size="sm" onClick={() => void actions.showFolder(root).catch(() => setFailed(true))}>
+          <Button size="sm" onClick={() => void actions.showFolder(root).catch(failed)}>
             {m.showFolder}
           </Button>
         </div>
@@ -310,7 +329,6 @@ export function StorageSectionView({
           </div>
         )}
       </div>
-      {failure}
     </div>
   );
 }

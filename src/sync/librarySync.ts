@@ -4,6 +4,7 @@ import {
   desktopLibrary,
   forgetLibraryFolder,
   libraryLocation,
+  type LibraryChooseResult,
   type LibraryLocation,
 } from '@/platform/library';
 import { onStoreChange, worksheetHashCache, worksheetStore } from '@/storage';
@@ -204,15 +205,15 @@ export function startLibrarySync(options: StartOptions): () => void {
  * syncing starts at once. Sync is stopped while the picker is open and the folder changes.
  * `start`: a `CloudFolder.id` the picker opens at.
  */
-export function chooseFolder(title?: string, start?: string): Promise<'chosen' | 'cancelled'> {
+export function chooseFolder(title?: string, start?: string): Promise<LibraryChooseResult> {
   return serial(async () => {
     setSyncView({ pending: 'choose' });
     try {
       await stopRunning();
-      const picked = await chooseLibraryFolder(title, start).catch(() => ({ status: 'cancelled' as const }));
-      await refreshLocation();
-      return picked.status;
+      // A failure rejects, for the caller to say so; a refusal or a cancel changed nothing.
+      return await chooseLibraryFolder(title, start);
     } finally {
+      await refreshLocation();
       setSyncView({ pending: undefined });
       await ensureRunning();
     }
