@@ -458,13 +458,13 @@ export function QuestionBankScreen({
         return;
       }
       if (documentType === 'classroom') {
-        onOpenWorksheet(worksheetFromPicks(picked), language);
+        onOpenWorksheet(worksheetFromPicks(picked, language), language);
         useBankCart.getState().reset();
         return;
       }
       // An exam paper opens empty, then takes the picks the way Add to does: each into the
       // section for its type, ahead of the closing line, one ⌘Z, the 題庫 review on them.
-      onOpenWorksheet(paperForPicks(picked, documentType), language);
+      onOpenWorksheet(paperForPicks(picked, documentType, language), language);
       const { inserted } = addPicksToOpenDocument(picked);
       if (inserted.length > 0) useBankCart.getState().reset();
       if (inserted[0]) revealQuestion(inserted[0]);

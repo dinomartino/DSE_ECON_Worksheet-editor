@@ -2,10 +2,12 @@ import { withRowTags } from '@/library/sharedTags';
 import type { BankRow } from '@/library/types';
 import { copyQuestion } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
+import { sideOf } from '@/model/excerpt';
 import { derivedTags } from '@/model/tagSlots';
 import { rollupTopic, topicOf } from '@/model/topics';
-import type { Question, Worksheet } from '@/model/types';
+import type { LanguageMode, Question, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
+import { paperLanguage } from '@/settings/paperLanguage';
 import type { WorksheetStore } from '@/storage/types';
 import { uniquePicks } from './addToOpen';
 
@@ -40,17 +42,16 @@ export async function readPicks(
  * them) holding a copy of each pick, numbered in the order picked. Copies get fresh ids
  * and keep `lineage` (`copyQuestion`); a type this build does not know is left out, as
  * `insertQuestionCopies` does, and so is a second copy of a question already picked
- * (`uniquePicks`). Named after the topic when every pick shares one, otherwise
- * `BANK_WORKSHEET_NAME`; never titled, as the New worksheet form never titles: the name
+ * (`uniquePicks`). Named after the topic when every pick shares one, in the language the
+ * picks were viewed in (`pickedName`), otherwise `BANK_WORKSHEET_NAME`; never titled, as the New worksheet form never titles: the name
  * files it, and the printed heading is the teacher's to type.
  */
-export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet {
+export function worksheetFromPicks(picks: readonly PickedQuestion[], language: LanguageMode = paperLanguage()): Worksheet {
   const known = uniquePicks(picks).filter((pick) => getQuestionType(pick.question.type));
-  const topic = sharedTopic(known.map((pick) => pick.question));
   const base = createWorksheetFrom({
     documentType: 'classroom',
     sections: false,
-    name: topic ? topic.en : BANK_WORKSHEET_NAME,
+    name: pickedName(known, language),
   });
   const questions = known.map((pick) => copyQuestion(pick.question, pick.fromDocId));
   return {
@@ -66,10 +67,19 @@ export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet 
  * through the store (`addPicksToOpenDocument`), so each lands where the editor puts an
  * unanchored insert: in the section made for its type, ahead of "END OF PAPER".
  */
-export function paperForPicks(picks: readonly PickedQuestion[], documentType: 'paper1' | 'lqMock'): Worksheet {
+export function paperForPicks(
+  picks: readonly PickedQuestion[],
+  documentType: 'paper1' | 'lqMock',
+  language: LanguageMode = paperLanguage(),
+): Worksheet {
   const known = uniquePicks(picks).filter((pick) => getQuestionType(pick.question.type));
-  const topic = sharedTopic(known.map((pick) => pick.question));
-  return createWorksheetFrom({ documentType, seedSample: false, name: topic ? topic.en : BANK_WORKSHEET_NAME });
+  return createWorksheetFrom({ documentType, seedSample: false, name: pickedName(known, language) });
+}
+
+/** The shared topic's name in the view language (bilingual leads with English), else `BANK_WORKSHEET_NAME`. */
+function pickedName(picks: readonly PickedQuestion[], language: LanguageMode): string {
+  const topic = sharedTopic(picks.map((pick) => pick.question));
+  return topic ? sideOf(topic, language) : BANK_WORKSHEET_NAME;
 }
 
 /** The filing name of a worksheet made from picks that share no topic. */
