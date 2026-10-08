@@ -22,7 +22,7 @@ describe('the Language section', () => {
     const Pane = (await settingsSections({ desktop: false })[3].load()).default;
     const html = renderToStaticMarkup(<Pane env={{ desktop: false }} setCloseGuard={() => {}} />);
     const groups = html.match(/role="radiogroup" aria-label="[^"]*"/g);
-    expect(groups).toEqual(['role="radiogroup" aria-label="Interface language"', 'role="radiogroup" aria-label="Paper language"']);
+    expect(groups).toEqual(['role="radiogroup" aria-label="UI language"', 'role="radiogroup" aria-label="Paper language"']);
     const papers = html.slice(html.indexOf('aria-label="Paper language"'));
     expect(papers.match(/aria-checked="true"/g)).toHaveLength(1);
     expect(papers).toMatch(/aria-checked="true"[\s\S]*?>EN</);
