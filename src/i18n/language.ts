@@ -1,6 +1,6 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useSyncExternalStore } from 'react';
 import { LANGUAGE_SETTINGS, type UiLanguage } from '@/settings/language';
-import { appSettings, useSettings } from '@/settings/store';
+import { appSettings } from '@/settings/store';
 import { resolveMessages, type Catalogue, type Messages } from './catalogue';
 
 /** Pins a subtree's language (tests, a side-by-side preview); absent means the setting. */
@@ -11,9 +11,11 @@ export function uiLanguage(): UiLanguage {
   return appSettings.read(LANGUAGE_SETTINGS).ui;
 }
 
-/** The interface language; re-renders when it changes. */
+const subscribe = (listener: () => void) => appSettings.subscribe(LANGUAGE_SETTINGS, listener);
+
+/** The interface language; re-renders when it changes (not when the paper language does). */
 export function useUiLanguage(): UiLanguage {
-  const [{ ui }] = useSettings(LANGUAGE_SETTINGS);
+  const ui = useSyncExternalStore(subscribe, uiLanguage, () => 'en' as const);
   return useContext(UiLanguageOverride) ?? ui;
 }
 
