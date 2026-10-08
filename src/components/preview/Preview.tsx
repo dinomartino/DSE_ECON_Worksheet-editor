@@ -7237,12 +7237,14 @@ export function Preview({
         out of flow and out of the accessibility tree — it exists to be measured. It
         must carry `.paper` (the typographic contract with the exporter); without it
         the probe inherits the shell's 16px/1.5 and measures every block taller than
-        it renders.
+        it renders. Zero-height and clipped: its containing block sits outside the
+        scrolling desk, so an unclipped probe made the whole window scroll.
       */}
       <div
         aria-hidden
         data-print-hide
-        className="paper pointer-events-none invisible absolute -z-10"
+        data-measure-probe
+        className="paper pointer-events-none invisible absolute -z-10 h-0 overflow-hidden"
         style={{
           position: "absolute",
           top: 0,

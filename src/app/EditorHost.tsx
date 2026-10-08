@@ -240,8 +240,9 @@ export function EditorHost() {
   // `data-app-booting` tells the launch splash the start screen is not up yet.
   if (!hydrated) return <div data-app-booting className="h-screen bg-desk" />;
 
+  // The shell fills the window and never scrolls; its panes do. Print keeps its old overflow.
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden print:overflow-visible">
       {/* Raises the desktop "update ready" notice; draws nothing itself. */}
       <UpdateBanner />
       {/* App Settings: the start screen and the editor both reach it. */}
