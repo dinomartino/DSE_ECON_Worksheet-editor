@@ -111,8 +111,15 @@ export type Pin =
   | { kind: 'join'; line: number }
   /** `line`: any line of the question. */
   | { kind: 'language'; line: number; side: Side }
-  /** `line`: any line of the question; `index`: 0 = A. */
-  | { kind: 'answer'; line: number; index: number }
+  /** `line`: any line of the question; `index`: 0 = A. `from: 'sheet'`: set by `matchAnswers`. */
+  | { kind: 'answer'; line: number; index: number; from?: 'sheet' }
+  /**
+   * A marking scheme or answer from an answer file (`matchAnswers`). `line`: any line of the
+   * question; `part`/`subPart`: 0-based positions in it, absent for the question itself.
+   * A written leaf gets `scheme` when any point has marks (or `each`/`max`), else `answer`;
+   * an MC gets the text as its `explanation`. `notes`: a marker's notes, printed after the points.
+   */
+  | { kind: 'scheme'; line: number; part?: number; subPart?: number; points: SchemePoint[]; notes?: InlineRun[][]; each?: number; max?: number }
   /**
    * A picture the teacher added, placed right after `line`'s content in the question that
    * owns it (an option line: under that option). `id` tells two pictures on one line apart.
@@ -120,6 +127,20 @@ export type Pin =
   | { kind: 'image'; id: string; line: number; image: ImageRef }
   /** The figure slot at `line` needs no picture. */
   | { kind: 'noPicture'; line: number };
+
+/** One marking point, verbatim: a line of the answer file with its own mark. */
+export interface SchemePoint {
+  runs: InlineRun[];
+  marks?: number;
+}
+
+/** What a `scheme` pin put on a question, part or sub-part. */
+export interface OutScheme {
+  points: SchemePoint[];
+  notes?: InlineRun[][];
+  each?: number;
+  max?: number;
+}
 
 export type MarksStyle = '(n marks)' | '[n]' | '（n分）';
 
@@ -161,6 +182,8 @@ export interface OutSubPart {
   blocks: OutBlock[];
   marks?: number;
   answerSpace?: number;
+  /** From an answer file (`scheme` pin). */
+  scheme?: OutScheme;
 }
 
 export interface OutPart extends OutSubPart {
@@ -182,7 +205,9 @@ export interface OutQuestion {
   parts: OutPart[];
   marks?: number;
   answerSpace?: number;
-  answer?: { index: number; from: 'key' | 'format' | 'inline' | 'pin' };
+  answer?: { index: number; from: 'key' | 'format' | 'inline' | 'pin' | 'sheet' };
+  /** From an answer file (`scheme` pin): a written question's own scheme, or an MC's explanation. */
+  scheme?: OutScheme;
   side: Side;
 }
 

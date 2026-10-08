@@ -15,6 +15,7 @@ import {
   newId,
 } from '@/model/factories';
 import { createStimulusElement } from '@/model/flow';
+import type { MarkScheme } from '@/model/markSchemeTypes';
 import { normalizeRuns } from '@/model/text';
 import type { Side } from '@/model/textSlots';
 import type {
@@ -30,7 +31,7 @@ import type {
 } from '@/model/types';
 import type { QuestionBuild } from '@/store/worksheetStore';
 import { cjkShare } from './normalize';
-import type { Analysis, ImageRef, OutBlock, OutPart, OutQuestion, OutStimulus, OutSubPart } from './types';
+import type { Analysis, ImageRef, OutBlock, OutPart, OutQuestion, OutScheme, OutStimulus, OutSubPart } from './types';
 import { blocksText } from './walk';
 
 export interface ImportBatch {
@@ -125,6 +126,35 @@ function contentBlocks(blocks: readonly OutBlock[], side: Side, ctx: Ctx, inSour
   });
 }
 
+/** Lines of runs joined by line breaks; `gap` puts a blank line before the notes. */
+const lines = (rows: ReadonlyArray<readonly InlineRun[]>): InlineRun[] => rows.flatMap((r, k) => (k ? [{ text: '\n' }, ...r] : [...r]));
+
+/** An answer file's points, verbatim, then any marker's notes after a blank line. */
+const joined = (scheme: OutScheme): InlineRun[] => {
+  const body = lines(scheme.points.map((p) => p.runs).filter((r) => r.length));
+  return scheme.notes?.length ? [...body, { text: '\n\n' }, ...lines(scheme.notes)] : body;
+};
+
+/**
+ * An answer file's text on a written leaf: a `scheme` (one route; a group with a point per
+ * line and its mark, then the marker's notes as a second, unmarked group) when anything
+ * carries marks, else the model `answer` (notes after a blank line).
+ */
+function schemeFields(scheme: OutScheme | undefined, side: Side): { scheme?: MarkScheme; answer?: BiText } {
+  if (!scheme?.points.length && !scheme?.notes?.length) return {};
+  const marked = scheme.each !== undefined || scheme.max !== undefined || scheme.points.some((p) => p.marks !== undefined);
+  if (!marked) return { answer: bi(joined(scheme), side) };
+  const point = (runs: InlineRun[], marks?: number) => ({ id: newId(), text: bi(runs, side), ...(marks !== undefined ? { marks } : {}) });
+  const group = {
+    id: newId(),
+    points: scheme.points.map((p) => point(p.runs, p.marks)),
+    ...(scheme.each !== undefined ? { each: scheme.each } : {}),
+    ...(scheme.max !== undefined ? { max: scheme.max } : {}),
+  };
+  const notes = scheme.notes?.length ? [{ id: newId(), points: scheme.notes.map((n) => point(n)) }] : [];
+  return { scheme: { routes: [{ id: newId(), groups: [group, ...notes] }] } };
+}
+
 /** Never an empty stem: a fresh question keeps its one empty paragraph to type into. */
 const stemOr = (blocks: ContentBlock[], fresh: ContentBlock[]) => (blocks.length ? blocks : fresh);
 
@@ -136,6 +166,7 @@ function subPart(sub: OutSubPart, side: Side, ctx: Ctx): QuestionSubPart {
     blocks: stemOr(contentBlocks(sub.blocks, side, ctx), fresh.blocks),
     ...(sub.marks !== undefined ? { marks: sub.marks } : {}),
     ...(sub.answerSpace ? { answerSpace: sub.answerSpace } : {}),
+    ...schemeFields(sub.scheme, side),
   };
 }
 
@@ -151,6 +182,7 @@ function part(p: OutPart, side: Side, ctx: Ctx): QuestionPart {
     ...(p.marks !== undefined ? { marks: p.marks } : {}),
     ...(p.subParts.length ? { subParts: p.subParts.map((s) => subPart(s, side, ctx)) } : {}),
     ...(p.answerSpace ? { answerSpace: p.answerSpace } : {}),
+    ...schemeFields(p.scheme, side),
   };
 }
 
@@ -169,6 +201,7 @@ function fillMcq(q: OutQuestion, extra: Extra, ctx: Ctx): QuestionBuild['fill'] 
         return { id: mcq.options[k]?.id ?? newId(), text: bi(o.runs, q.side), ...(blocks.length ? { blocks } : {}) };
       }),
       answerIndex: q.answer?.index ?? 0,
+      ...(q.scheme && (q.scheme.points.length || q.scheme.notes?.length) ? { explanation: bi(joined(q.scheme), q.side) } : {}),
       ...(q.marks !== undefined ? { marks: q.marks } : {}),
     } satisfies McqQuestion;
   };
@@ -187,6 +220,7 @@ function fillStructured(q: OutQuestion, extra: Extra, ctx: Ctx): QuestionBuild['
       parts: q.parts.map((p) => part(p, q.side, ctx)),
       ...(leaf && q.marks !== undefined ? { marks: q.marks } : {}),
       ...(leaf && q.answerSpace ? { answerSpace: q.answerSpace } : {}),
+      ...(leaf ? schemeFields(q.scheme, q.side) : {}),
     } satisfies StructuredQuestion;
   };
 }
