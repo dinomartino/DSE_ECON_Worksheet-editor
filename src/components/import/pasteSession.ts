@@ -105,17 +105,23 @@ export function pinsOn(pins: readonly Pin[], line: number): Pin[] {
 
 // ---- pictures ----
 
+/** A picture by its type, or by its name when the system gave no type. */
+const isPicture = (f: File) => f.type.startsWith('image/') || (f.type === '' && /\.(png|jpe?g|gif|webp|bmp|tiff?|heic|heif|avif)$/i.test(f.name));
+
 /**
- * The image files a paste or drop carries. A screenshot arrives as a file item; a file
- * dragged in arrives in `files` (Chrome lists it in both, so `files` wins when present).
+ * Every file a paste or drop carries: the pictures, and the rest (a PDF, a Word file) to
+ * explain. A screenshot arrives as a file item; a file dragged in arrives in `files`
+ * (Chrome lists it in both, so `files` wins when present).
  */
-export function imageFiles(data: { files?: FileList | null; items?: DataTransferItemList } | null | undefined): File[] {
-  if (!data) return [];
-  const isImage = (f: File | null | undefined): f is File => Boolean(f && f.type.startsWith('image/'));
-  const files = [...(data.files ?? [])].filter(isImage);
-  if (files.length) return files;
-  return [...(data.items ?? [])].filter((item) => item.kind === 'file' && item.type.startsWith('image/')).map((item) => item.getAsFile()).filter(isImage);
+export function carriedFiles(data: { files?: FileList | null; items?: DataTransferItemList } | null | undefined): { images: File[]; others: File[] } {
+  if (!data) return { images: [], others: [] };
+  let all = [...(data.files ?? [])];
+  if (!all.length) all = [...(data.items ?? [])].filter((item) => item.kind === 'file').map((item) => item.getAsFile()).filter((f): f is File => Boolean(f));
+  return { images: all.filter(isPicture), others: all.filter((f) => !isPicture(f)) };
 }
+
+/** An iPhone photo, which only Safari's engine can decode. */
+export const isHeic = (f: File) => /^image\/hei[cf]/.test(f.type) || /\.hei[cf]$/i.test(f.name);
 
 /** Whether a drag carries files (their types are hidden until the drop). */
 export const dragHasFiles = (data: Pick<DataTransfer, 'types'> | null | undefined) => Boolean(data && [...data.types].includes('Files'));
@@ -184,6 +190,7 @@ export const FLAG_TEXT: Record<FlagKind, Key | 'flagOptionCount'> = {
   unknownLine: 'flagUnknownLine',
   imageLost: 'flagImageLost',
   figureMissing: 'flagFigureMissing',
+  figureAsked: 'flagFigureAsked',
   optionsByOrder: 'flagOptionsByOrder',
   textAfterOptions: 'flagTextAfterOptions',
   sharedStemFolded: 'flagSharedStemFolded',

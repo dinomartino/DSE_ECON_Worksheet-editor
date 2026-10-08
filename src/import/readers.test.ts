@@ -1,8 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseLabel, trailingMarks } from './labels';
 import { toSourceLines } from './lines';
 import { labelZone, tidyText } from './normalize';
-import { readHtml } from './readHtml';
+import { DRAWING_SRC, readHtml } from './readHtml';
 import { readPlain } from './readPlain';
 
 const lines = (plain: string) => toSourceLines(readPlain(plain));
@@ -80,6 +81,36 @@ describe('HTML reader', () => {
   it('numbers <ol start type> items from their attributes, including inside table cells', () => {
     const source = '<ol start="4"><li><p>Which?</p></li></ol><table><tr><td><ol type="A"><li>yes</li></ol></td><td><ol type="A" start="2"><li>no</li></ol></td></tr></table>';
     expect(html(source).map((l) => [l.label, l.text])).toEqual([['4.', 'Which?'], ['A.', 'yes'], ['B.', 'no']]);
+  });
+
+  it('reads a Mac Word copy: bare VML pictures and drawings, text boxes as paragraphs', () => {
+    const read = html(readFileSync('src/import/fixtures/18-html-mac-word-vml.html', 'utf8'));
+    expect(read.filter((l) => l.image).map((l) => l.image)).toEqual([
+      // A floating picture: `v:imagedata` with a file:// path only, sized from its shape (pt → px).
+      { src: expect.stringMatching(/^file:\/\/\/\/Users\/.*clip_image001\.png$/), widthPx: 400, heightPx: 240 },
+      // A graph drawn from lines and text boxes: one picture, its labels kept as alt text.
+      { src: DRAWING_SRC, widthPx: 320, heightPx: 240, alt: 'Price ($) · Quantity' },
+      // A picture group inside a framed one-cell table: after the table, never inside a cell.
+      { src: expect.stringMatching(/clip_image002\.png$/), widthPx: 120, heightPx: 80, alt: 'A cup of tea' },
+    ]);
+    const texts = read.map((l) => l.text);
+    // A text box's own `<![if !mso]><table>` is not a table row; drawing labels are not lines.
+    expect(texts).toContain('Figure 1');
+    expect(read.find((l) => l.text === 'Figure 1')?.cells).toBeUndefined();
+    expect(texts.some((t) => /Price \(\$\)|Quantity|A cup of tea/.test(t))).toBe(false);
+    const after = read.findIndex((l) => l.text.startsWith('Twelve new bubble tea'));
+    expect(read[after + 1].image?.alt).toBe('A cup of tea');
+  });
+
+  it('keeps a picture right after a bare list label as its own line, label first', () => {
+    const png = 'data:image/png;base64,iVBORw0KGgo';
+    const source = `<p style='mso-list:l1 level1 lfo2'><![if !supportLists]><span style='mso-list:Ignore'>A.<span>&nbsp;</span></span><![endif]><img width=160 height=120 src="${png}"></p><p>B.<span style='mso-tab-count:1'> </span><img width=160 height=120 src="${png}"></p>`;
+    expect(html(source).map((l) => [l.label, l.text, Boolean(l.image)])).toEqual([
+      ['A.', '', false],
+      [undefined, '', true],
+      ['B.', '', false],
+      [undefined, '', true],
+    ]);
   });
 
   it('keeps highlight as emphasis, decodes entities, skips head and scripts', () => {

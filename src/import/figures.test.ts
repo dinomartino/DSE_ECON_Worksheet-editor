@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ContentBlock, McqQuestion, Question, StructuredQuestion } from '@/model/types';
 import { listQuestionTypes } from '@/registry';
-import { analyseLines, buildImport, previewFigure, readPaste, type Analysis, type OutBlock, type Pin } from '.';
+import { analyseLines, buildImport, pictureHome, previewFigure, readPaste, type Analysis, type OutBlock, type Pin } from '.';
 
 /** Invented papers; pictures are made-up data URLs, never real exam figures. */
 const PNG = (tag: string) => `data:image/png;base64,iVBORw0KGgo${tag}`;
@@ -140,5 +140,114 @@ describe('figure slots', () => {
       expect(result.flags.map((f) => f.kind)).not.toContain('figureMissing');
     }
     expect(kinds(analyseLines(read, { pins: [image('f', 1)] }).outline.questions[0].stem)).toEqual(['paragraph', 'paragraph', 'f']);
+  });
+});
+
+describe('MC questions that ask about pictures', () => {
+  const mc = (stem: string, options: string[]) => [`1.\t${stem}`, ...options.map((o, k) => `${'ABCD'[k]}.\t${o}`.trimEnd())].join('\n');
+  const asked = (plain: string) =>
+    analyseLines(readPaste({ plain }))
+      .flags.filter((f) => f.kind === 'figureAsked' || f.kind === 'figureMissing')
+      .map((f) => `${f.kind}@${f.line}`);
+
+  it('puts a slot under each option when the options name pictures', () => {
+    const cases = [
+      mc('下列哪一個圖表示需求下降？', ['圖甲', '圖乙', '圖丙', '圖丁']),
+      mc('哪幅圖顯示供應增加？', ['圖一', '圖二', '圖三', '圖四']),
+      mc('Which diagram shows a fall in demand?', ['P', 'Q', 'R', 'S']),
+      mc('Which of the following graphs shows a rise in supply?', ['W', 'X', 'Y', 'Z']),
+      mc('In which of the following figures is demand perfectly elastic?', ['Figure 1', 'Figure 2', 'Figure 3', 'Figure 4']),
+      mc('Which of the following shows a movement along the curve?', ['Diagram A', 'Diagram B', 'Diagram C', 'Diagram D']),
+      mc('Which one is correct?', ['(1)', '(2)', '(3)', '(4)']),
+      mc('Which diagram shows a fall in demand?', ['', '', '', '']),
+    ];
+    for (const plain of cases) expect(asked(plain), plain).toEqual(['figureAsked@1', 'figureAsked@2', 'figureAsked@3', 'figureAsked@4']);
+  });
+
+  it('builds the option slots at option width, and a picture pin fills one of them', () => {
+    const read = readPaste({ plain: mc('下列哪一個圖表示需求下降？', ['圖甲', '圖乙', '圖丙', '圖丁']) });
+    const [shown] = materialize(analyseLines(read), true) as McqQuestion[];
+    expect(shown.options.map((o) => o.blocks?.map((b) => [previewFigure(b.id), b.kind === 'image' && b.widthPx]))).toEqual(
+      [1, 2, 3, 4].map((line) => [[{ slot: line }, 240]]),
+    );
+    // A bare-label option is an option without text, not a detached letter.
+    const bare = analyseLines(readPaste({ plain: mc('Which diagram shows a fall in demand?', ['', '', '', '']) }));
+    expect(bare.flags.map((f) => f.kind)).not.toContain('optionsByOrder');
+    expect(bare.outline.questions[0].options.map((o) => o.lines)).toEqual([[1], [2], [3], [4]]);
+    const filled = analyseLines(read, { pins: [image('b', 2)] });
+    expect(filled.flags.filter((f) => f.kind === 'figureAsked').map((f) => f.line)).toEqual([1, 3, 4]);
+    const [q] = materialize(filled) as McqQuestion[];
+    expect(q.options.map((o) => srcs(o.blocks ?? []))).toEqual([[], [PNG('b')], [], []]);
+  });
+
+  it('puts one slot after the stem when it asks for a picture but the options are text, or name points', () => {
+    expect(asked(mc('Which of the following diagrams best shows a public good?', ['one', 'two', 'three', 'four']))).toEqual(['figureMissing@0']);
+    expect(asked(mc('Which diagram shows the effect of a subsidy?', ['a rise in price', 'a fall in price', 'no change', 'a shortage']))).toEqual(['figureAsked@0']);
+    expect(asked(mc('下列哪一個圖表顯示價格上限？', ['價格上升', '價格下降', '沒有改變', '出現短缺']))).toEqual(['figureAsked@0']);
+    expect(asked(mc('Which point shows the new equilibrium?', ['P', 'Q', 'R', 'S']))).toEqual(['figureAsked@0']);
+    // The slot goes after the whole stem.
+    const two = ['1.\tA tax is imposed on wine.', 'Which point shows the new equilibrium?', 'A.\tP', 'B.\tQ', 'C.\tR', 'D.\tS'].join('\n');
+    expect(asked(two)).toEqual(['figureAsked@1']);
+    expect(kinds(analyseLines(readPaste({ plain: two })).outline.questions[0].stem)).toEqual(['paragraph', 'paragraph', 'slot']);
+  });
+
+  it('leaves alone questions that only look alike', () => {
+    const quiet = [
+      mc('Which of the following is a feature of a table tennis club?', ['It is a free good.', 'It is a public good.', 'It is a club good.', 'It is a merit good.']),
+      mc('以下哪一項是公共物品？', ['燈塔', '公園', '麵包', '汽車']),
+      mc('下列哪一項表示需求上升？', ['價格上升', '價格下降', '收入上升', '收入下降']),
+      mc('Which curve shifts when income rises?', ['demand', 'supply', 'both', 'neither']),
+      mc('How many workers should the firm hire?', ['1', '2', '3', '4']),
+      mc('Firm W and firm X sell rice. Which firm earns more?', ['W', 'X', 'both', 'neither']),
+      mc('Country W has more capital than country X. Which country exports cars?', ['W', 'X', 'Y', 'Z']),
+      ['1.\tWhich firm earns the most?', 'Firm\tProfit', 'W\t10', 'X\t20', 'Y\t30', 'Z\t40', 'A.\tW', 'B.\tX', 'C.\tY', 'D.\tZ'].join('\n'),
+    ];
+    for (const plain of quiet) expect(asked(plain), plain).toEqual([]);
+  });
+
+  it('counts a picture already there: in the stem, or under the options', () => {
+    const png = PNG('x');
+    const stem = `<p>1. 下列哪一個圖表示需求下降？</p><p><img src="${png}" width="300" height="200"></p><p>A. 圖甲</p><p>B. 圖乙</p><p>C. 圖丙</p><p>D. 圖丁</p>`;
+    expect(analyseLines(readPaste({ html: stem })).flags.map((f) => f.kind)).not.toContain('figureAsked');
+    // Word's "A.⇥[picture]": each picture goes under its option, and the question is answered.
+    const options = `<p>1.\tWhich of the following diagrams shows a fall in demand?</p>${'ABCD'
+      .split('')
+      .map((l) => `<p>${l}.<span style='mso-tab-count:1'> </span><img src="${png}" width="160" height="120"></p>`)
+      .join('')}`;
+    const result = analyseLines(readPaste({ html: options }));
+    expect(result.flags.map((f) => f.kind).filter((k) => k.startsWith('figure') || k === 'optionsByOrder')).toEqual([]);
+    const [q] = materialize(result) as McqQuestion[];
+    expect(q.options.map((o) => o.blocks?.length)).toEqual([1, 1, 1, 1]);
+    expect(q.options[0].blocks![0]).toMatchObject({ kind: 'image', src: png, widthPx: 160 });
+    // Lost ones (file://) are slots under their options.
+    const lost = analyseLines(readPaste({ html: options.replaceAll(png, 'file:///C:/x/clip_image001.png') }));
+    expect(lost.flags.filter((f) => f.kind === 'imageLost')).toHaveLength(4);
+    const [shown] = materialize(lost, true) as McqQuestion[];
+    expect(shown.options.map((o) => o.blocks?.map((b) => previewFigure(b.id)))).toEqual([2, 4, 6, 8].map((line) => [{ slot: line }]));
+  });
+});
+
+describe('a picture on a line outside every question', () => {
+  const PAPER = ['Section A', '1.\tWhat is GDP?', '2.\tWhat is inflation?', 'Section B', '3.\tWhat is a tax?', 'END OF PAPER'].join('\n');
+
+  it('opens the next question, deliberately: pictureHome says which', () => {
+    const read = readPaste({ plain: PAPER });
+    const plain = analyseLines(read);
+    expect(plain.roles[3].role).toBe('heading');
+    expect(pictureHome(plain.outline, plain.roles, 3)).toBe(2);
+    expect(pictureHome(plain.outline, plain.roles, 0)).toBe(0);
+    expect(pictureHome(plain.outline, plain.roles, 1)).toBe(0);
+    const result = analyseLines(read, { pins: [image('h', 3)] });
+    expect(kinds(result.outline.questions[2].stem)).toEqual(['h', 'paragraph']);
+    expect(kinds(result.outline.questions[1].stem)).toEqual(['paragraph']);
+  });
+
+  it('has no home after the last question, and is never put into it', () => {
+    const read = readPaste({ plain: PAPER });
+    const plain = analyseLines(read);
+    expect(plain.roles[5].question).toBeUndefined();
+    expect(pictureHome(plain.outline, plain.roles, 5)).toBeUndefined();
+    const result = analyseLines(read, { pins: [image('end', 5)] });
+    expect(JSON.stringify(result.outline)).not.toContain('"end"');
   });
 });

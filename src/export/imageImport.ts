@@ -348,6 +348,14 @@ export async function prepareImageForStorage(file: File): Promise<PreparedImage>
   }
 }
 
+/** `imageBlockFromFile` with `decodedOnly`: the browser could not decode the file. */
+export class UndecodableImageError extends Error {
+  constructor(readonly type: string) {
+    super(`Cannot decode ${type || 'this file'} here.`);
+    this.name = 'UndecodableImageError';
+  }
+}
+
 /**
  * A ready `ImageBlock` from a picked file — the one composition of
  * `prepareImageForStorage` and the sizing defaults, shared by the sidebar's insert
@@ -357,8 +365,11 @@ export async function prepareImageForStorage(file: File): Promise<PreparedImage>
  * option passes something narrower). Never upscales, and the stored natural size is
  * the *stored* bytes' own (§ `prepareImageForStorage`).
  */
-export async function imageBlockFromFile(file: File, maxWidth = 420): Promise<ImageBlock> {
+export async function imageBlockFromFile(file: File, maxWidth = 420, options: { decodedOnly?: boolean } = {}): Promise<ImageBlock> {
   const prepared = await prepareImageForStorage(file);
+  // `decodedOnly`: a caller that would rather refuse a picture this browser cannot draw
+  // (HEIC or TIFF in Chrome) than store it unseen.
+  if (options.decodedOnly && !prepared.naturalWidthPx) throw new UndecodableImageError(file.type);
   // Zero means it could not be decoded here; fall back to the display width so the
   // block still has a ratio to resize by.
   const naturalWidth = prepared.naturalWidthPx || maxWidth;

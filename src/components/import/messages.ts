@@ -99,6 +99,23 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
     zh: '請先按一下某一行或缺少圖片的位置，然後再貼上圖片。',
   },
   pictureUnreadable: { en: 'Could not read that picture.', zh: '無法讀取這張圖片。' },
+  pictureHeic: {
+    en: 'This is an iPhone photo (HEIC), which this browser cannot show. Export it as JPEG or PNG, or take a screenshot of it (⌘⇧4), then add it again.',
+    zh: '這是 iPhone 相片（HEIC），此瀏覽器無法顯示。請先匯出為 JPEG 或 PNG，或為它截圖（⌘⇧4），然後再加入。',
+  },
+  pictureUndecodable: {
+    en: 'This browser cannot show this kind of picture. Save it as PNG or JPEG, or take a screenshot of it (⌘⇧4), then add it again.',
+    zh: '此瀏覽器無法顯示這種圖片。請另存為 PNG 或 JPEG，或為它截圖（⌘⇧4），然後再加入。',
+  },
+  notAPicture: {
+    en: 'Only pictures can go here. For a PDF or a Word file, take a screenshot of the part you need (⌘⇧4) and paste it.',
+    zh: '這裏只可加入圖片。如是 PDF 或 Word 檔案，請為所需部分截圖（⌘⇧4），然後貼上。',
+  },
+  pictureNoQuestion: {
+    en: 'There is no question after this line to put a picture in. Click a line inside a question first.',
+    zh: '這行之後沒有題目可放圖片。請先按一下題目內的某一行。',
+  },
+  pictureToQuestion: { en: (n: number) => `Picture → question ${n}`, zh: (n: number) => `圖片 → 第 ${n} 題` },
 
   // Flags
   flagSequenceBreak: { en: 'The numbering skips here.', zh: '編號在此跳過。' },
@@ -117,6 +134,10 @@ export const PASTE_IMPORT_MESSAGES = defineMessages({
   flagUnknownLine: { en: 'A line with no clear role, kept as text.', zh: '這行的角色不明確，已保留為文字。' },
   flagImageLost: { en: 'A picture did not come with the paste.', zh: '圖片未能隨貼上的內容一併帶來。' },
   flagFigureMissing: { en: 'A figure is named here, but no picture came with the paste.', zh: '這裏提及圖表，但貼上的內容沒有圖片。' },
+  flagFigureAsked: {
+    en: 'This question asks about pictures, but none came with the paste.',
+    zh: '這題問及圖表，但貼上的內容沒有圖片。',
+  },
   flagOptionsByOrder: {
     en: 'Option letters were apart from their text, so they were paired in order.',
     zh: '選項字母與文字分開，已按次序配對。',

@@ -14,7 +14,8 @@ type SourcePanel = Extract<OutBlock, { kind: 'source' }>;
 type ListLevel = 'statement' | 'option';
 
 type Event =
-  | { kind: 'slot'; level: ListLevel; count: number; line: number }
+  /** `blocks`: pictures right after a label-only option line ("A.⇥[picture]"). */
+  | { kind: 'slot'; level: ListLevel; count: number; line: number; blocks?: OutBlock[] }
   | { kind: 'item'; level: ListLevel; text: OutText; line: number }
   | { kind: 'loose'; text: OutText; line: number; join?: boolean };
 
@@ -274,7 +275,9 @@ class Walker {
     this.ensureQuestion(line);
     this.closeSource();
     const q = this.q!.q;
-    if (this.q!.events.length) this.flag('mixedContent', line.i);
+    // Options before a part: but one stray "D: Demand" (a figure's legend) is text, not options.
+    const listed = this.q!.events.reduce((n, e) => n + (e.kind === 'slot' ? e.count : e.kind === 'item' ? 1 : 0), 0);
+    if (listed >= 2) this.flag('mixedContent', line.i);
     const part: OutPart = { start: line.i, label: line.label, before: this.context, blocks: [], subParts: [] };
     this.context = [];
     q.parts.push(part);
@@ -479,6 +482,13 @@ class Walker {
   }
 
   private addImage(line: SourceLine) {
+    const option = this.optionBefore(line);
+    if (option) {
+      // "A.⇥[picture]": the picture is the option (`McqOption.blocks`).
+      this.own(line.i);
+      (option.blocks ??= []).push({ kind: 'image', lines: [line.i], image: line.image! });
+      return;
+    }
     const ctr = this.target();
     if (!ctr) {
       this.pre.push(line);
@@ -487,6 +497,16 @@ class Walker {
     this.own(line.i);
     ctr.push({ kind: 'image', lines: [line.i], image: line.image! });
     this.lastPara = null;
+  }
+
+  /** The option line right before `line` (blanks between), when no part has opened since. */
+  private optionBefore(line: SourceLine): { blocks?: OutBlock[] } | undefined {
+    const d = this.q;
+    if (!d || this.part) return undefined;
+    const last = d.events[d.events.length - 1];
+    if (!last || last.kind === 'loose' || last.level !== 'option' || (last.kind === 'slot' && last.count !== 1)) return undefined;
+    for (let k = line.i - 1; k > last.line; k--) if (!this.lines[k].blank && !this.lines[k].tabOnly) return undefined;
+    return last.kind === 'item' ? last.text : last;
   }
 
   private heading(line: SourceLine) {
@@ -669,6 +689,7 @@ class Walker {
         const line = this.lines[e.line];
         const runs = e.kind === 'loose' ? e.text.runs : this.full(line);
         if (runs.length) q.stem.push({ kind: 'paragraph', lines: [e.line], runs });
+        q.stem.push(...((e.kind === 'slot' ? e.blocks : e.kind === 'item' ? e.text.blocks : undefined) ?? []));
         this.setRole(e.line, 'stem', 0.6);
       }
       return;
@@ -716,6 +737,15 @@ class Walker {
       return { items, extra };
     }
     const slots = events.reduce((n, e) => n + (e.kind === 'slot' ? e.count : e.kind === 'item' ? 1 : 0), 0);
+    if (level === 'option' && this.input.lineMode === 'paragraph' && events.every((e) => e.kind === 'slot' && e.count === 1)) {
+      // Every option a bare label ("A." alone, a picture or nothing after it): options without
+      // text, each on its own line, not detached letters waiting for text.
+      for (const e of events as Array<Extract<Event, { kind: 'slot' }>>) {
+        items.push({ lines: [e.line], runs: [], ...(e.blocks ? { blocks: e.blocks } : {}) });
+        this.setRole(e.line, level, 0.7);
+      }
+      return { items, extra };
+    }
     const texts: OutText[] = events.filter((e) => e.kind !== 'slot').map((e) => ({ ...(e as { text: OutText }).text, lines: [...(e as { text: OutText }).text.lines] }));
     while (texts.length > slots) {
       let best = -1;
@@ -737,6 +767,15 @@ class Walker {
     this.flags.push({ kind: 'optionsByOrder', line: events[0].line, question: d.index });
     if (items.length < slots) this.flags.push({ kind: level === 'option' ? 'optionCount' : 'statementCount', line: events[0].line, question: d.index, detail: items.length });
     while (items.length < slots && level === 'option') items.push({ lines: [], runs: [] });
+    // A picture after a bare label goes with the text paired to that label.
+    let at = 0;
+    for (const e of events) {
+      if (e.kind === 'slot' && e.blocks) {
+        const item = items[at] ?? items[items.length - 1];
+        if (item) (item.blocks ??= []).push(...e.blocks);
+      }
+      at += e.kind === 'slot' ? e.count : e.kind === 'item' ? 1 : 0;
+    }
     return { items, extra };
   }
 }

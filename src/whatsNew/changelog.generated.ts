@@ -32,6 +32,14 @@ a version heading is edited afterwards.
   <!-- zh: **把圖表放回貼上的題目。** 從 Word 或 PDF 貼上時，圖片不會一併帶來。凡是缺少圖片的地方（遺失的圖片，或「圖一」、
   「下圖」之類的字句），「貼上題目」都會留出空位。為圖表截圖，選取該位置後按 ⌘V，或把圖片檔拖放到那裏即可。你亦可在任何一行之後
   加入圖片：選取該行再貼上，或在該行的選單中選擇「在此加入圖片…」。 -->
+- **Paste questions finds more missing pictures.** An MC that asks "Which diagram…" (哪一個圖)
+  or whose options are 圖甲 to 圖丁 gets a space under each option. Pictures and graphs drawn in
+  Word on a Mac are now found too, and a graph's labels no longer turn into stray lines. A
+  picture on a heading goes at the start of the next question, and its line says which. An
+  iPhone photo or a PDF that cannot be added says what to do instead.
+  <!-- zh: **「貼上題目」能找出更多缺少的圖片。** 問「下列哪一個圖…」的 MC，或選項為圖甲至圖丁的 MC，每個選項下都會留出空位。
+  Mac 版 Word 中的圖片和繪製的圖表現在也能找到，圖表上的標籤亦不會再變成零散的行。放在標題上的圖片會放在下一題的開首，
+  該行會註明是哪一題。無法加入的 iPhone 相片或 PDF 會說明應怎樣做。 -->
 - **Desktop: your second computer finds your synced folder.** When Econ Studio starts on a
   computer with no folder chosen yet, and your Econ Studio folder is already in OneDrive, Google
   Drive, iCloud Drive or Dropbox, it asks once whether to use it here too. Choose it, and the

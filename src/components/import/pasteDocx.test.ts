@@ -63,6 +63,8 @@ describe('a pasted paper exports to .docx', () => {
     const read = readPaste({ plain });
     const first = review(read, [], 'auto');
     expect(first.analysis.flags.map((f) => f.kind)).toContain('figureMissing');
+    // "Which diagram…" with options P Q R S: a slot under each option, none of which exports.
+    expect(first.analysis.flags.filter((f) => f.kind === 'figureAsked').map((f) => f.line)).toEqual([4, 5, 6, 7]);
     const graph = { ...createImageBlock(drawnGraph(), 420, 315), naturalWidthPx: 160, naturalHeightPx: 120 };
     const option = { ...createImageBlock(drawnGraph(), 400, 300), naturalWidthPx: 160, naturalHeightPx: 120 };
     const pins = [imagePin(1, graph, 'fig'), imagePin(5, option, 'opt')];

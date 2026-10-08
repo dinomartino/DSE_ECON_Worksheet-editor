@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useRef, useState, type RefObject } from 'react';
 import { cssFontFamilies } from '@/model/fonts';
+import { isBiTextEmpty } from '@/model/text';
 import { contentWidth, pageSetupOf } from '@/model/page';
 import type { Worksheet } from '@/model/types';
 import type { Side } from '@/model/textSlots';
@@ -237,7 +238,15 @@ const Card = memo(
               {...optionAttrs(node, isMc)}
               {...(place?.node === n ? (place.cell === undefined ? { 'data-answer-node': '' } : { 'data-answer-cell': place.cell }) : {})}
             >
-              <PaperNode node={node} language={item.language} figures={figures} slotSelected={slotSelected} slotDrop={slotDrop} text={m} />
+              <PaperNode
+                node={node}
+                language={item.language}
+                figures={figures}
+                slotSelected={slotSelected}
+                slotDrop={slotDrop}
+                text={m}
+                underLetter={n > 0 && isBareOption(item.nodes[n - 1])}
+              />
             </div>
           ))}
         </div>
@@ -262,6 +271,10 @@ const Card = memo(
     a.paper.fontFamily === b.paper.fontFamily &&
     a.paper.fontSize === b.paper.fontSize,
 );
+
+/** An option line with a letter and no words: its picture (or slot) prints under the letter. */
+const isBareOption = (node: RenderNode): boolean =>
+  node.kind === 'text' && node.edit?.kind === 'mcqOption' && isBiTextEmpty(node.text);
 
 function optionAttrs(node: RenderNode, isMc: boolean): Record<string, string> {
   if (!isMc) return {};
@@ -294,6 +307,7 @@ function PaperNode({
   slotSelected,
   slotDrop,
   text: m,
+  underLetter = false,
 }: {
   node: RenderNode;
   language: PreviewItem['language'];
@@ -301,6 +315,8 @@ function PaperNode({
   slotSelected?: number;
   slotDrop?: number;
   text: Text;
+  /** Right after an option's bare letter, whose empty line takes no height: clear it. */
+  underLetter?: boolean;
 }) {
   if (node.kind === 'source' && hasFigure(node.nodes)) {
     return (
@@ -327,7 +343,7 @@ function PaperNode({
         data-slot={line}
         data-print-hide
         // The chrome's own face, not the paper's.
-        style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif' }}
+        style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif', ...(underLetter ? { marginTop: '1.5em' } : {}) }}
         className={`my-1 flex cursor-pointer flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-md border-2 px-3 py-2.5 text-[13px] leading-snug transition-colors duration-150 ease-out-soft ${
           lit ? 'border-solid border-[#2f6fd6] bg-[#eef4fd] text-[#1d4f9e]' : 'border-dashed border-[#a9b4c2] bg-[#f6f8fa] text-[#4b5563] hover:border-[#7d8a9b]'
         }`}

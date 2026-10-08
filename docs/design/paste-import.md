@@ -256,7 +256,7 @@ line and a question index; the dialog words them. Types: `src/import/types.ts`.
 | `src/import/scan.ts` · `src/import/build.ts` | empty/OCR verdict; outline → `QuestionBuild[]` + `lead` |
 | `src/import/figures.ts` | figure slots (lost pictures; captions and references with none) and image pins, placed after the walk |
 
-**Scorecard** (`src/import/scorecard.test.ts`, 17 synthetic fixtures in `src/import/fixtures/`):
+**Scorecard** (`src/import/scorecard.test.ts`, 19 synthetic fixtures in `src/import/fixtures/`):
 every Word plain/HTML and PDF-style fixture 100% split and detail; the two OCR fixtures are
 read as `scan` and score 89–95%. Floors: Word 95%, PDF 85%, OCR 50% (per fixture). The fixtures
 were written alongside the engine, so the local run on the real survey pastes is the honest
@@ -277,6 +277,9 @@ flags); OCR excerpts 86% and 100% split. Re-solving a 60-question paste takes ab
 - An MC with no marks keeps the factory's 1 mark; parts and sub-parts with none stay absent.
 - Body text keeps smart quotes and full-width punctuation; only matching keys are normalised.
 - Images: only `data:` URLs become image blocks; Word's `file://` clip images are `imageLost` and show as slots.
+  A Mac Word copy writes VML bare (not in a comment): `v:imagedata` is read as a lost picture, a
+  `v:group` that draws (lines, connectors, pictures) as one lost picture with its text-box labels as
+  `alt`, and a text box's `<![if !mso]><table>` as paragraphs. A drawing inside a table cell comes after the table.
 - Confidence is the detector weight lowered by walk decisions, not calibrated.
 
 **Known weak cases:** `pdftotext` column blocks that interleave two questions; OCR that loses
@@ -321,10 +324,22 @@ are explained in a notice; OCR text can still be reviewed.
   the question that owns it: the stem, a part's or sub-part's blocks, inside a source panel when
   the line is in one. An option line puts it under that option (`McqOption.blocks`, capped at
   `OPTION_DIAGRAM_WIDTH_PX`); a statement line after the stem. Several per question, in line
-  order; two on one line in the order added. A line outside every question goes to the next one.
+  order; two on one line in the order added. A line outside every question (a heading) opens the
+  next question, or the shared stimulus printed before it (`pictureHome` says which; the line's badge
+  reads "Picture → question N" and selecting it outlines that question). After the last question
+  there is no home: the dialog refuses the picture with a notice and the engine never places it.
 - **Slots:** a lost picture keeps its place; a caption with no picture beside it, or a "below"
   reference with none before the next part, gets one right after the line (`figureMissing`). A
   table or source caption counts any rows or text after it. "Above" references are not read.
+- **MC that ask about pictures** (`askedFigures`, flag `figureAsked`): options that only name
+  pictures (圖甲, 圖一, "Figure 2", "Diagram B", "(3)", or nothing) get a slot under each option,
+  and so do bare letters when the stem asks which diagram/graph/figure (哪一個圖, 哪幅圖, 哪一幅).
+  Asking with text options, or bare letters with no ask (points P Q R S), gives one slot after the
+  stem. Nothing when the question already has a picture or a caption/reference slot (letters
+  only), or when its letters are named in its text or table ("firm W"). "Which of the following
+  is…", 以下哪一項, 哪一項表示, "which curve" with text options and numeric options stay quiet.
+  "A.⇥[picture]" puts the picture under that option; an MC whose options are all bare labels has
+  options without text, not detached letters.
   Filled or dismissed lines are `settled`: no flag, no slot.
 - **Build:** a real `buildImport` drops slots and gives pictures fresh ids. `{ preview: true }`
   shows each slot as a stand-in image whose id `previewFigure` reads back (`pi-slot:<line>`,
@@ -334,6 +349,27 @@ are explained in a notice; OCR text can still be reviewed.
   a question (its first line). "Add a picture here…" in the role menu and "Choose a picture…" on a
   slot open a file chooser. Every picture goes through `imageBlockFromFile`. A placed picture has
   a × on the paper and a "Picture ×" badge on its line; ⌘Z takes back the last one like any fix.
+  A file that is not a picture (a PDF) is refused with a notice; one the browser cannot decode
+  (HEIC or TIFF in Chromium; WebKit decodes both and stores PNG/JPEG) is refused with a hint to
+  export or screenshot it (`imageBlockFromFile(…, { decodedOnly: true })`), never stored unseen.
+
+### Checked for real (2026-10-08, this Mac)
+
+- **Word clipboard** (Word for Mac, `copy object` on ranges of the reference papers, read-only;
+  dumps stay local): 17 flavours, of which the engine reads `public.html` and
+  `public.utf8-plain-text`. Lists arrive as `mso-list` spans in `<![if !supportLists]>`; a partial
+  copy's HTML renumbers its list from 1 (the plain text keeps 16, 17…), which only shifts numbers.
+  Inline pictures carry `data:` PNGs (`<![if !vml]><img>`); floating pictures and drawn graphs are
+  bare VML with `file://` only. Split, HTML and plain alike: DBS Part A Q1–6 6/6, a table run 4/4,
+  Part B 6/6, whole paper 25/25; 2019 Paper 2 Q1–2 2/2, Q6–7 2/2, Q9 1/1, Q12 1/1, whole 14/14,
+  with every question's options, statements and parts matching between the two flavours. A PDFKit
+  copy of the DBS PDF (Preview is PDFKit) splits 25/25.
+- **Browsers:** the whole dialog (paste, a role fix, an answer, a slot filled by ⌘V and by drop,
+  Insert, Add to 題庫) runs in Playwright Chromium and WebKit, en and zh; the preview's zoom and
+  the scroll link measure the same in both. A real `screencapture -c` picture (`public.png` only)
+  pasted with ⌘V in headed Chrome and headed WebKit lands in the selected slot.
+- **Not checked:** a real Finder drag (driven with a file-backed `DataTransfer`, the same code
+  path), and the desktop shell's WKWebView.
 
 ### The `.docx` reader, as built (2026-10-08)
 

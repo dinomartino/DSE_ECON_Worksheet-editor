@@ -209,6 +209,26 @@ function listLabel(type: string, n: number): string {
   return `${n}.`;
 }
 
+/** A text box's own layout table (`<![if !mso]><table>…`): not a table of the paper. */
+const TABLE_TAGS = new Set(['table', 'tbody', 'thead', 'tfoot', 'tr', 'td', 'th']);
+/** VML that draws: a group holding any of these is a figure, not text. */
+const VML_DRAWING = new Set(['v:line', 'v:polyline', 'v:curve', 'v:rect', 'v:roundrect', 'v:oval', 'v:arc', 'v:imagedata']);
+/** VML shape types that are not drawings: a text box and a picture frame (its `v:imagedata` decides). */
+const VML_NOT_DRAWING = /^#_x0000_t(202|75)$/;
+/** The `src` of a drawn figure (shapes, no picture data): lost like a `file://` picture. */
+export const DRAWING_SRC = 'vml:drawing';
+
+/** A VML `style` size in pt, as px; group-internal shapes use unitless coordinates and get none. */
+function vmlSize(style: Map<string, string>): Pick<ImageRef, 'widthPx' | 'heightPx'> {
+  const px = (v: string | undefined) => {
+    const m = /^([\d.]+)pt$/.exec(v ?? '');
+    return m ? Math.round((+m[1] * 4) / 3) : undefined;
+  };
+  const w = px(style.get('width'));
+  const h = px(style.get('height'));
+  return w && h ? { widthPx: w, heightPx: h } : {};
+}
+
 const BLOCK = new Set([
   'p', 'div', 'li', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'tr', 'td', 'th', 'blockquote',
   'pre', 'section', 'article', 'header', 'footer', 'dl', 'dt', 'dd', 'center', 'body', 'tbody', 'thead', 'tfoot',
@@ -232,6 +252,13 @@ export function readHtml(html: string): RawLine[] {
   let row: RawRun[][] | null = null;
   let cell: RawRun[] | null = null;
   let blockHadText = false;
+  // Word's VML, which a Mac Word copy writes bare (Windows Word hides it in a comment and adds
+  // an `<img>`): a text box reads as paragraphs, and a drawing group is one lost picture.
+  let textbox = 0;
+  let groupDepth = 0;
+  let group: { mark: number; cell?: RawRun[]; figure: boolean; src?: string; size: Pick<ImageRef, 'widthPx' | 'heightPx'> } | null = null;
+  const rowFigures: ImageRef[] = [];
+  let shapeSize: Pick<ImageRef, 'widthPx' | 'heightPx'> = {};
 
   const fmt = () => fmtStack[fmtStack.length - 1]?.fmt ?? {};
   const inTabs = () => fmtStack.some((f) => f.tabs);
@@ -305,6 +332,37 @@ export function readHtml(html: string): RawLine[] {
     }
     const name = token.name;
     if (token.t === 'close') {
+      if (name === 'v:textbox') {
+        flush();
+        textbox = Math.max(0, textbox - 1);
+        continue;
+      }
+      if (textbox && TABLE_TAGS.has(name)) {
+        flush();
+        continue;
+      }
+      if (name === 'v:group' && groupDepth > 0) {
+        groupDepth -= 1;
+        if (groupDepth === 0 && group) {
+          flush();
+          const g = group;
+          group = null;
+          if (g.figure) {
+            // One picture for the whole drawing; its labels (text boxes) go with it, as its alt text.
+            const inner = g.cell ? [g.cell.splice(g.mark).map((r) => r.text).join('')] : out.splice(g.mark).map((l) => l.runs.map((r) => r.text).join(''));
+            const alt = inner
+              .flatMap((t) => t.split('\n'))
+              .map((t) => t.trim())
+              .filter(Boolean)
+              .join(' · ');
+            const image: ImageRef = { src: g.src ?? DRAWING_SRC, ...g.size, ...(alt ? { alt } : {}) };
+            // A drawing in a table cell (a framed source) comes after the table: a cell holds no picture.
+            if (g.cell) rowFigures.push(image);
+            else out.push({ runs: [], image });
+          }
+        }
+        continue;
+      }
       if (name === 'td' || name === 'th') {
         if (tableDepth === 1 && cell && row) {
           row.push(trimRuns(cell.filter((r, k, all) => !(r.text === '\n' && k === all.length - 1))));
@@ -324,6 +382,7 @@ export function readHtml(html: string): RawLine[] {
       }
       if (name === 'table') {
         tableDepth = Math.max(0, tableDepth - 1);
+        if (tableDepth === 0) for (const image of rowFigures.splice(0)) out.push({ runs: [], image });
         continue;
       }
       if (name === 'ol' || name === 'ul') lists.pop();
@@ -356,9 +415,39 @@ export function readHtml(html: string): RawLine[] {
       else flush(true);
       continue;
     }
+    if (name === 'v:textbox' && !token.selfClose) {
+      flush();
+      textbox += 1;
+      continue;
+    }
+    if (textbox && TABLE_TAGS.has(name)) {
+      flush();
+      continue;
+    }
+    if (name === 'v:group' && !token.selfClose) {
+      if (groupDepth === 0) {
+        flush(false, true);
+        group = cell ? { mark: cell.length, cell, figure: false, size: vmlSize(style) } : { mark: out.length, figure: false, size: vmlSize(style) };
+      }
+      groupDepth += 1;
+      continue;
+    }
+    if (name === 'v:shape') {
+      shapeSize = vmlSize(style);
+      if (group && !VML_NOT_DRAWING.test(attrs.type ?? '')) group.figure = true;
+    }
+    if (group && VML_DRAWING.has(name)) group.figure = true;
+    if (name === 'v:imagedata') {
+      if (group) group.src ??= attrs.src || undefined;
+      else if (!cell && attrs.src) {
+        flush(false, true);
+        out.push({ runs: [], image: { src: attrs.src, ...shapeSize } });
+      }
+      continue;
+    }
     if (name === 'img') {
       if (cell || !attrs.src) continue;
-      flush();
+      flush(false, true);
       const image: ImageRef = {
         src: attrs.src,
         ...(+attrs.width ? { widthPx: +attrs.width } : {}),
@@ -413,6 +502,7 @@ export function readHtml(html: string): RawLine[] {
     fmtStack.push({ name, fmt: fmtOf(name, attrs, style, fmt()), tabs: !!tabCount, ignore });
   }
   flush();
+  for (const image of rowFigures.splice(0)) out.push({ runs: [], image });
   return out.map((line) => ({ ...line, runs: line.runs.map((r) => ({ ...r, text: tidyText(r.text) })) }));
 }
 

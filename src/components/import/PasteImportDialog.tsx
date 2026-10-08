@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Flag, Pin, ReadPaste, Role } from '@/import';
-import { imageBlockFromFile } from '@/export/imageImport';
+import { pictureHome, type Flag, type Pin, type ReadPaste, type Role } from '@/import';
+import { UndecodableImageError, imageBlockFromFile } from '@/export/imageImport';
 import { addToBank, bankChoices, nextBankName, type BankChoice } from '@/library/bankDocs';
 import { newId } from '@/model/factories';
 import type { Side } from '@/model/textSlots';
@@ -20,11 +20,12 @@ import { useMessages } from '@/i18n/language';
 import { PASTE_IMPORT_MESSAGES } from './messages';
 import {
   FLAG_TEXT,
+  carriedFiles,
   checkPlaces,
   dragHasFiles,
   flagsByLine,
-  imageFiles,
   imagePin,
+  isHeic,
   nextPlace,
   pasteInput,
   pasteVerdict,
@@ -148,12 +149,29 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
   });
 
   const addPictures = useCallback(
-    (line: number, files: File[]) => {
-      for (const file of files) {
-        // The same reduction every stored picture takes (§ `prepareImageForStorage`).
-        imageBlockFromFile(file)
+    (line: number, { images, others }: { images: File[]; others: File[] }) => {
+      const current = latest.current.analysis;
+      if (images.length === 0) {
+        if (others.length) notices.notify({ id: 'paste-picture', tone: 'warning', body: m.notAPicture });
+        return;
+      }
+      // A line after the last question has nowhere to put a picture.
+      if (!current || pictureHome(current.outline, current.roles, line) === undefined) {
+        notices.notify({ id: 'paste-picture', tone: 'warning', body: m.pictureNoQuestion });
+        return;
+      }
+      for (const file of images) {
+        // The same reduction every stored picture takes (§ `prepareImageForStorage`); one this
+        // browser cannot draw (HEIC or TIFF in Chrome) is refused rather than stored unseen.
+        imageBlockFromFile(file, undefined, { decodedOnly: true })
           .then((block) => addPin(imagePin(line, block, newId())))
-          .catch(() => notices.notify({ id: 'paste-picture', tone: 'error', body: m.pictureUnreadable }));
+          .catch((error: unknown) =>
+            notices.notify({
+              id: 'paste-picture',
+              tone: 'warning',
+              body: !(error instanceof UndecodableImageError) ? m.pictureUnreadable : isHeic(file) ? m.pictureHeic : m.pictureUndecodable,
+            }),
+          );
       }
     },
     [addPin, notices, m],
@@ -168,8 +186,8 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
   useEffect(() => {
     if (!read) return;
     const onPaste = (event: ClipboardEvent) => {
-      const files = imageFiles(event.clipboardData);
-      if (files.length === 0) return;
+      const files = carriedFiles(event.clipboardData);
+      if (files.images.length === 0 && files.others.length === 0) return;
       event.preventDefault();
       const line = selectedRef.current;
       if (line === undefined) notices.notify({ id: 'paste-picture', tone: 'info', body: m.pickPlaceFirst });
@@ -214,8 +232,8 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
       event.stopPropagation();
       setDropLine(undefined);
       const line = dropTarget(event.target);
-      const files = imageFiles(event.dataTransfer);
-      if (line === undefined || files.length === 0) return;
+      const files = carriedFiles(event.dataTransfer);
+      if (line === undefined) return;
       setSelectedLine(line);
       addPictures(line, files);
     },
@@ -262,6 +280,10 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
               .map((f) => flagText(m, f))
               .join('\n'),
             ...(analysis.roles[i].question !== undefined ? { question: analysis.roles[i].question } : {}),
+            // A picture on a line outside every question opens the next one: say which.
+            ...(analysis.roles[i].question === undefined && pinsOn(pins, i).some((p) => p.kind === 'image')
+              ? { pictureTo: pictureHome(analysis.outline, analysis.roles, i) }
+              : {}),
           }))
         : [],
     [analysis, pins, byLine, m],
@@ -283,7 +305,8 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
     });
   }, [analysis, batch, items, m]);
 
-  const selectedQuestion = selectedLine !== undefined ? analysis?.roles[selectedLine]?.question : undefined;
+  // A line outside every question selects the question a picture pasted there would open.
+  const selectedQuestion = selectedLine !== undefined && analysis ? pictureHome(analysis.outline, analysis.roles, selectedLine) : undefined;
 
   // ---- linked scrolling: the pane under the pointer leads ----
 
@@ -381,7 +404,8 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
 
   /** Bring a line and its question into view in whichever pane is not leading. */
   const reveal = useCallback((line: number, both = false) => {
-    const q = latest.current.analysis?.roles[line]?.question;
+    const current = latest.current.analysis;
+    const q = current ? pictureHome(current.outline, current.roles, line) : undefined;
     const smooth = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     if (both || leader.current !== 'left') {
       leftRef.current?.querySelector(`[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: smooth });
@@ -564,9 +588,9 @@ export default function PasteImportDialog({ target, onClose, exclusive, onBankCh
             hidden
             onChange={(event) => {
               const line = chooseFor.current;
-              const files = imageFiles(event.currentTarget);
+              const files = carriedFiles(event.currentTarget);
               event.currentTarget.value = '';
-              if (line !== undefined && files.length) {
+              if (line !== undefined) {
                 setSelectedLine(line);
                 addPictures(line, files);
               }

@@ -18,6 +18,7 @@ import type { AnalyseOptions, Analysis, PasteInput, SourceLine } from './types';
 export { buildImport, previewFigure, type ImportBatch } from './build';
 export { DocxReadError, type DocxErrorKind, type DocxOptions } from './readDocx';
 export { isPdfReadError, readPdf, type PdfRead, type PdfReadError, type ReadPdfOptions } from './readPdf';
+export { pictureHome } from './figures';
 export type * from './types';
 
 export interface ReadPaste {

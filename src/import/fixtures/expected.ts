@@ -294,4 +294,42 @@ export const FIXTURES: ExpectedFixture[] = [
     ],
   },
   { file: '17-empty.txt', category: 'empty', kind: 'empty', questions: [] },
+  {
+    // A Mac Word copy: bare VML, a floating picture (`v:imagedata`, file:// only), a drawn
+    // graph (`v:group` of lines and text boxes), text boxes in `<![if !mso]><table>`, and a
+    // picture group inside a framed one-cell table.
+    file: '18-html-mac-word-vml.html',
+    category: 'word',
+    kind: 'ok',
+    questions: [
+      {
+        stem: 'Study the market for durians in Hong Kong.',
+        kind: 'structured',
+        parts: [
+          { text: 'State the law of demand.', marks: 2 },
+          { text: 'Explain why the price of durians rose', marks: 4 },
+        ],
+      },
+      {
+        stem: 'The government sets a price ceiling for rice. Figure 1 D: Demand',
+        kind: 'structured',
+        parts: [
+          { text: 'With the aid of Figure 1', marks: 4 },
+          { text: 'Suggest one problem', marks: 2 },
+        ],
+      },
+      { stem: 'Read the news about bubble tea shops. Twelve new bubble tea shops', kind: 'structured', parts: [{ text: 'Explain why the price of a cup fell.', marks: 3 }] },
+    ],
+  },
+  {
+    // Real Word plain text: one question's parts typed "a)⇥", another's "⇥(a)⇥". One level.
+    file: '19-word-plain-part-labels.txt',
+    category: 'word',
+    kind: 'ok',
+    questions: [
+      { stem: 'A bakery in Sha Tin', kind: 'structured', parts: [{ text: 'State one factor', marks: 1 }, { text: 'Explain why the bakery', marks: 2 }] },
+      { stem: 'A school library lends books', kind: 'structured', parts: [{ text: 'Is a library book', marks: 2 }, { text: 'Give one example', marks: 1 }] },
+      { stem: 'A café raises the price', kind: 'structured', parts: [{ text: 'Calculate the percentage', marks: 1 }, { text: 'Explain one reason', marks: 3 }] },
+    ],
+  },
 ];
