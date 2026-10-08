@@ -42,8 +42,6 @@ None open: the loose ends listed here were fixed on `develop` 2026-10-03 (see CH
   *Econ Excelsior "LQ答題框架", PickMyQuiz.*
 - **B7 "For examiner's use" marks grid on the cover** (S–M), from derived marks, as a
   real table. *LaTeX `\gradetable`, OCR covers.*
-- **Loose ends** (S each): graph answer space has no on-page select/resize and no custom
-  height (four fixed sizes); a model answer diagram has no alt text or title field.
 
 ## C. Question library
 

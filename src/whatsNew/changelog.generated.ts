@@ -29,6 +29,16 @@ a version heading is edited afterwards.
   <!-- zh: **儲存位置會顯示電腦上的雲端資料夾。** 選擇之前，會列出找到的資料夾，例如 OneDrive 或
   iCloud Drive；按一下便可從該處開始選擇。如果未有 Google Drive，會提示你安裝 Google Drive for desktop
   （電腦版）：只用網頁版不會在電腦上有資料夾。 -->
+- **A model answer diagram now has alt text and a title.** They sit under the diagram in the
+  question's panel, as they do for a question's own diagram. Choosing another template
+  updates the alt text, unless you typed your own.
+  <!-- zh: **參考圖表現在可設定替代文字及標題。** 兩者位於題目面板中的圖表下方，與題目本身的圖表相同。
+  選擇另一個範本時，替代文字會隨之更新，除非你已自行輸入。 -->
+- **Graph space: any height, set on the page.** Type any height from 6 to 40 lines beside
+  the four sizes, or click the graph space on the page and drag its bottom edge. Delete
+  removes it.
+  <!-- zh: **作圖空間：任何高度，可直接在頁面上調整。** 除四個預設高度外，可輸入 6 至 40 行的任何高度，
+  或在頁面上按一下作圖空間，再拖曳其底邊。按 Delete 可移除。 -->
 
 ### Changed
 - **Messages now float in the bottom-right corner instead of pushing the page around.**
@@ -41,6 +51,11 @@ a version heading is edited afterwards.
   訊息會保留，直至你關閉為止。在題庫按「清除」會即時收起清單，並在角落提供「復原」。 -->
 
 ### Fixed
+- **A ✦ Fill made in 題庫 in another tab is no longer lost to this tab's autosave.** If you
+  had nothing unsaved here, the paper now updates to the filled version. If you did, its
+  topics are kept and a message offers Reload to see the other tab's version.
+  <!-- zh: **在另一分頁的題庫使用 ✦ 填寫後，不會再被此分頁的自動儲存蓋掉。** 如果此分頁沒有未儲存的修改，
+  試卷會更新為已填寫的版本；如有，則保留課題，並顯示訊息讓你按「重新載入」查看另一分頁的版本。 -->
 - **Tagging the questions that have no topic in 題庫 no longer shifts the topic buttons
   after your first save.** The line that shows what was saved, with Undo, now has its own
   space from the start.
