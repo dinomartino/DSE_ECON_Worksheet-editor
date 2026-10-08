@@ -35,7 +35,8 @@ const RULES: Rule[] = [
   { re: /^第\s*(\d{1,3})\s*題[.:、]?/, read: (m) => ({ family: '第n題', value: +m[1] }) },
   { re: /^Q(?:uestion)?\s*\.?\s*(\d{1,3})\s*[.:)]?(?=\s|$)/, read: (m) => ({ family: 'Qn', value: +m[1] }) },
   { re: /^\(\s*(\d{1,2})\s*\)/, read: (m) => ({ family: '(n)', value: +m[1] }) },
-  { re: /^(\d{1,3})\s?[.、:](?=\s|$)/, read: (m) => ({ family: 'n.', value: +m[1] }) },
+  // "6.(a)": a part label pressed against the number.
+  { re: /^(\d{1,3})\s?[.、:](?=\s|$|\([a-z]{1,4}\))/, read: (m) => ({ family: 'n.', value: +m[1] }) },
   { re: /^(\d{1,3})\)(?=\s|$)/, read: (m) => ({ family: 'n)', value: +m[1] }) },
   { re: /^(\d{1,3})(?=\t)/, read: (m) => ({ family: 'n.', value: +m[1] }), guard: PROSE_AFTER_TAB },
   { re: /^\(\s*([a-z]{1,4})\s*\)/, read: (m) => lowerOf(m[1], '(a)', '(i)') },
