@@ -34,6 +34,8 @@ export interface LineView {
   flags: string;
   /** Its question index, for the selection. */
   question?: number;
+  /** A line outside every question with a picture: the question (index) the picture opens. */
+  pictureTo?: number;
 }
 
 export function ReviewLines({
@@ -106,7 +108,7 @@ const LineRow = memo(function LineRow({
   onChip: (line: number, anchor: HTMLElement) => void;
   onRemovePin: (pin: Pin) => void;
 }) {
-  const { line, role, pinned, pins, flags } = row;
+  const { line, role, pinned, pins, flags, pictureTo } = row;
   if (line.blank || role === 'ignore') return <div role="listitem" data-line={line.i} className="h-2" aria-hidden />;
   const chip = CHIP[role];
   const name = m[chip.name] + (pinned ? m.pinnedSuffix : '');
@@ -147,7 +149,7 @@ const LineRow = memo(function LineRow({
         {line.raw || (line.image ? <ImageIcon size={13} className="inline text-ink-subtle" /> : null)}
       </button>
       {badges.map((pin) => {
-        const label = BADGE[pin.kind as keyof typeof BADGE](m);
+        const label = pin.kind === 'image' && pictureTo !== undefined ? m.pictureToQuestion(pictureTo + 1) : BADGE[pin.kind as keyof typeof BADGE](m);
         return (
           <button
             key={pin.kind === 'image' ? pin.id : pin.kind}

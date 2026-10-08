@@ -3,7 +3,7 @@ import { previewFigure } from '@/import';
 import { createImageBlock } from '@/model/factories';
 import type { StructuredQuestion } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
-import { checkPlaces, imageFiles, imagePin, pasteInput, pinsOn, readPaste, review, withPin, withoutPin } from './pasteSession';
+import { carriedFiles, checkPlaces, imagePin, isHeic, pasteInput, pinsOn, readPaste, review, withPin, withoutPin } from './pasteSession';
 import { materialize, previewBase, previewItems } from './previewDoc';
 
 /** Invented paper; the picture is a made-up data URL. */
@@ -25,13 +25,19 @@ const clip = (opts: { files?: File[]; items?: Array<{ kind: string; type: string
 describe('pictures in the review', () => {
   it('reads a pasted screenshot or a dropped file, and nothing from a text paste', () => {
     const png = new File([new Uint8Array([137, 80, 78, 71])], 'shot.png', { type: 'image/png' });
-    expect(imageFiles(clip({ items: [{ kind: 'string', type: 'text/plain' }, { kind: 'file', type: 'image/png', file: png }] }))).toEqual([png]);
-    expect(imageFiles(clip({ files: [png], items: [{ kind: 'file', type: 'image/png', file: png }] }))).toEqual([png]);
+    expect(carriedFiles(clip({ items: [{ kind: 'string', type: 'text/plain' }, { kind: 'file', type: 'image/png', file: png }] }))).toEqual({ images: [png], others: [] });
+    expect(carriedFiles(clip({ files: [png], items: [{ kind: 'file', type: 'image/png', file: png }] }))).toEqual({ images: [png], others: [] });
+    // A PDF is no picture, but is kept to explain why nothing was added.
     const pdf = new File(['x'], 'a.pdf', { type: 'application/pdf' });
-    expect(imageFiles(clip({ files: [pdf] }))).toEqual([]);
+    expect(carriedFiles(clip({ files: [pdf, png] }))).toEqual({ images: [png], others: [pdf] });
+    // An iPhone photo or a TIFF with no type from the system still counts as a picture, by its name.
+    const heic = new File(['x'], 'IMG_0001.HEIC', { type: '' });
+    const tiff = new File(['x'], 'scan.tiff', { type: 'image/tiff' });
+    expect(carriedFiles(clip({ files: [heic, tiff] }))).toEqual({ images: [heic, tiff], others: [] });
+    expect([heic, new File(['x'], 'a.heic', { type: 'image/heic' }), tiff, png].map(isHeic)).toEqual([true, true, false, false]);
     // A text paste carries no picture, and still reaches the engine as before.
     const text = clip({ items: [{ kind: 'string', type: 'text/plain' }, { kind: 'string', type: 'text/html' }] });
-    expect(imageFiles(text)).toEqual([]);
+    expect(carriedFiles(text)).toEqual({ images: [], others: [] });
     expect(pasteInput({ getData: (t: string) => (t === 'text/plain' ? '1.\tWhy?' : '') })).toEqual({ plain: '1.\tWhy?' });
   });
 

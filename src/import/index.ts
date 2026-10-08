@@ -13,6 +13,7 @@ import { solve } from './solve';
 import type { AnalyseOptions, Analysis, PasteInput, SourceLine } from './types';
 
 export { buildImport, previewFigure, type ImportBatch } from './build';
+export { pictureHome } from './figures';
 export type * from './types';
 
 export interface ReadPaste {

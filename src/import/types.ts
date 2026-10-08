@@ -214,6 +214,7 @@ export type FlagKind =
   | 'unknownLine' // text with no clear role, kept in the stem
   | 'imageLost' // an image whose data the paste did not carry
   | 'figureMissing' // a caption ("Figure 1", 圖一) or reference ("the diagram below") with no picture
+  | 'figureAsked' // an MC that asks "which diagram…" (哪一個圖) or names pictures as options, with none
   | 'optionsByOrder' // detached letters, options paired by order
   | 'textAfterOptions'
   | 'sharedStemFolded' // a shared stem kept in its first question (one lead per insert)
