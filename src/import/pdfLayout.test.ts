@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyseLines } from './index';
 import { toSourceLines } from './lines';
+import { rowText } from './pageChrome';
 import { findFigures, layoutPdf, type PdfItem, type PdfPage } from './pdfLayout';
 
 /** An item whose width is estimated from its text: Latin ~0.5 em, CJK 1 em. */
@@ -127,8 +128,9 @@ describe('layoutPdf', () => {
   it('drops headers repeated in place across pages and lone page numbers', () => {
     const p = (n: number) => page([at('Economics Test', 42, 800), at(`${n}`, 295, 40), at(`${n}.`, 42, 700), at(`Question ${n} text.`, 66, 700)]);
     expect(raws([p(1), p(2)])).toEqual(['1. Question 1 text.', '2. Question 2 text.']);
-    // One page: nothing repeats, so only the page number goes.
-    expect(raws([p(1)])).toEqual(['Economics Test', '1. Question 1 text.']);
+    // One page: nothing repeats, so only the page number goes; the title is the masthead now.
+    expect(raws([p(1)])).toEqual(['1. Question 1 text.']);
+    expect(layoutPdf([p(1)]).chrome?.masthead?.map(rowText)).toEqual(['Economics Test']);
   });
 
   it('keeps a superscript on its line', () => {

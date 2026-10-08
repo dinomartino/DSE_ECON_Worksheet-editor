@@ -1,4 +1,4 @@
-import { createCoverPage, defaultCoverCode, type CoverPaperStyle } from './cover';
+import { createCoverPage, defaultCoverCode, type CoverPaperStyle, type CoverText } from './cover';
 import { createQuestionCountElement, createSectionElement } from './flow';
 import { DEFAULT_FONTS, createWorksheet, newId } from './factories';
 import { DEFAULT_MARGINS } from './page';
@@ -50,13 +50,16 @@ export interface NewWorksheetOptions {
    * classroom worksheet must not opt out of exam furniture it never wanted.
    */
   cover?: CoverPaperStyle;
-  /** Values for the cover's own fields; ignored when the document has no cover. */
+  /**
+   * Values for the cover's own fields; ignored when the document has no cover. A string
+   * sets the English side; `{ en, zh }` sets either (an import fills the side it read).
+   */
   coverDetails?: {
     code?: string;
-    school?: string;
-    examName?: string;
-    paperName?: string;
-    timeAllowed?: string;
+    school?: CoverText;
+    examName?: CoverText;
+    paperName?: CoverText;
+    timeAllowed?: CoverText;
   };
   /**
    * Whether to ship section headings.
@@ -334,6 +337,14 @@ function sampleMcqQuestion(): McqQuestion {
   };
 }
 
+/** A cover value trimmed, its empty sides dropped; nothing left is `undefined` (the placeholder stays). */
+function coverValue(value: CoverText | undefined): CoverText | undefined {
+  if (typeof value === 'string') return value.trim() || undefined;
+  const en = value?.en?.trim();
+  const zh = value?.zh?.trim();
+  return en || zh ? { ...(en ? { en } : {}), ...(zh ? { zh } : {}) } : undefined;
+}
+
 export function createWorksheetFrom(options: NewWorksheetOptions = {}): Worksheet {
   const base = createWorksheet();
   const documentType = resolveDocumentType(options);
@@ -471,10 +482,10 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
             // the teacher then types over on the page — the cover is never a form to
             // complete before it can be looked at (§ `createCoverPage`).
             code: options.coverDetails?.code?.trim() || undefined,
-            school: options.coverDetails?.school?.trim() || undefined,
-            examName: options.coverDetails?.examName?.trim() || undefined,
-            paperName: options.coverDetails?.paperName?.trim() || undefined,
-            timeAllowed: options.coverDetails?.timeAllowed?.trim() || undefined,
+            school: coverValue(options.coverDetails?.school),
+            examName: coverValue(options.coverDetails?.examName),
+            paperName: coverValue(options.coverDetails?.paperName),
+            timeAllowed: coverValue(options.coverDetails?.timeAllowed),
           }),
         }
       : {}),

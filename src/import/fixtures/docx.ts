@@ -161,7 +161,23 @@ export interface DocxSpec {
   title?: string;
   /** Extra parts, path → content. */
   parts?: Record<string, string>;
+  /** The body's `w:sectPr` content: header/footer references, `w:titlePg`, page size. */
+  sectPr?: string;
+  /** `word/settings.xml` content (e.g. `<w:evenAndOddHeaders/>`). */
+  settings?: string;
 }
+
+/** A header or footer part around `content` (paragraphs, tables). */
+export const headerPart = (content: string) => `<?xml version="1.0"?><w:hdr ${NS}>${content}</w:hdr>`;
+export const footerPart = (content: string) => `<?xml version="1.0"?><w:ftr ${NS}>${content}</w:ftr>`;
+
+/** A field as Word writes it: begin, code, separate, the shown result, end. */
+export const field = (code: string, shown = '1') =>
+  `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> ${code} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>${shown}</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
+
+/** A paragraph with raw `pPr` content (tab stops, `w:jc`, `w:framePr`, borders) around runs. */
+export const pp = (pPr: string, content: string) => `<w:p><w:pPr>${pPr}</w:pPr>${content}</w:p>`;
+export const tabs = (...stops: Array<[val: string, pos: number]>) => `<w:tabs>${stops.map(([v, pos]) => `<w:tab w:val="${v}" w:pos="${pos}"/>`).join('')}</w:tabs>`;
 
 export async function makeDocx(spec: DocxSpec): Promise<ArrayBuffer> {
   const zip = new JSZip();
@@ -170,8 +186,12 @@ export async function makeDocx(spec: DocxSpec): Promise<ArrayBuffer> {
     '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
   );
   zip.file('_rels/.rels', `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`);
-  zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${spec.body}<w:sectPr/></w:body></w:document>`);
+  zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${spec.body}<w:sectPr>${spec.sectPr ?? ''}</w:sectPr></w:body></w:document>`);
   const rels: Record<string, [string, string]> = { ...spec.rels };
+  if (spec.settings !== undefined) {
+    zip.file('word/settings.xml', `<?xml version="1.0"?><w:settings ${NS}>${spec.settings}</w:settings>`);
+    rels.rIdSettings = ['settings', 'settings.xml'];
+  }
   if (spec.numbering) {
     zip.file('word/numbering.xml', `<?xml version="1.0"?><w:numbering ${NS}>${spec.numbering}</w:numbering>`);
     rels.rIdNum = ['numbering', 'numbering.xml'];

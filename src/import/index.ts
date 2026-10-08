@@ -16,6 +16,7 @@ import { readHtml } from './readHtml';
 import { readPlain } from './readPlain';
 import { pasteKind } from './scan';
 import { solve } from './solve';
+import type { PageChrome } from './pageChrome';
 import type { AnalyseOptions, Analysis, PasteInput, SourceLine } from './types';
 
 export { buildImport, previewFigure, type ImportBatch } from './build';
@@ -33,6 +34,7 @@ export { matchAnswers, type AnswerMatch, type AnswerMatchResult, type AnswerSour
 export { DocxReadError, type DocxErrorKind, type DocxOptions } from './readDocx';
 export { isPdfReadError, readPdf, type PdfRead, type PdfReadError, type ReadPdfOptions } from './readPdf';
 export { pictureHome } from './figures';
+export * from './pageChrome';
 export type * from './types';
 
 export interface ReadPaste {
@@ -57,9 +59,9 @@ export function readPaste(input: PasteInput): ReadPaste {
  * Read a `.docx` file. `title` is the document's title, or its first heading. Rejects with
  * a `DocxReadError` (`unreadable` · `encrypted` · `notDocx`) when the file cannot be read.
  */
-export async function readDocx(bytes: ArrayBuffer, options?: DocxOptions): Promise<ReadPaste & { title?: string }> {
+export async function readDocx(bytes: ArrayBuffer, options?: DocxOptions): Promise<ReadPaste & { title?: string; chrome?: PageChrome }> {
   const read = await readDocxLines(bytes, options);
-  return { lines: toSourceLines(read.lines), source: 'docx', ...(read.title ? { title: read.title } : {}) };
+  return { lines: toSourceLines(read.lines), source: 'docx', ...(read.title ? { title: read.title } : {}), ...(read.chrome ? { chrome: read.chrome } : {}) };
 }
 
 /** Solve a read paste. Re-run with each new pin; the read is reused. */

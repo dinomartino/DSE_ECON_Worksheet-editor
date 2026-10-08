@@ -4,7 +4,7 @@
  * SmartArt, EMF, a drawing made of Word shapes) as an image line with no data so the
  * figure check shows a slot. Pictures are only noted here; `readDocx` loads them.
  */
-import { indLeftOf, readRunProps, type Numbering, type RunProps, type Styles } from './docxNumbering';
+import { foldTabs, indLeftOf, readRunProps, tabStopsOf, type Numbering, type RunProps, type Styles } from './docxNumbering';
 import type { RawLine, RawRun } from './readPlain';
 import type { ImageRef } from './types';
 import { child, elements, find, onOff, textOf, val, type XmlElement } from './xml';
@@ -193,6 +193,8 @@ export class BodyReader {
   readonly headings: Heading[] = [];
   private pageBreakPending = false;
   private depth = 0;
+  /** The largest type in the paragraph being read (points). */
+  private paraSize = 0;
 
   constructor(private ctx: BodyContext) {}
 
@@ -249,6 +251,8 @@ export class BodyReader {
 
     const pageBreak = this.pageBreakPending || onOff(child(pPr, 'w:pageBreakBefore')) === true;
     this.pageBreakPending = false;
+    const outerSize = this.paraSize;
+    this.paraSize = 0;
     const lines: RawRun[][] = [[]];
     const breaks: boolean[] = [false];
     const para: ParaOut = { before: [], after: [], loose: [] };
@@ -274,9 +278,12 @@ export class BodyReader {
       }
       const answerLine = first && label ? false : lineText.trim() === '' ? lineText.includes('\t') || runs.some((r) => r.underline && r.text.length > 0) : LEADERS.test(lineText) && (lineText.match(/[._…⋯‧·＿]/g)?.length ?? 0) >= 8;
       if (!hasInk && !answerLine && (para.before.length || para.after.length || para.loose.length)) return;
+      const jc = val(child(pPr, 'w:jc')) ?? style?.jc;
+      const tabs = foldTabs(style?.tabs, tabStopsOf(pPr));
       out.push({
         runs: answerLine ? [{ text: '\t' }] : lineText.trim() === '' && !(first && label) ? [] : runs,
         ...(first && label ? { listLabel: label, listDepth: item!.ilvl } : {}),
+        ...(first && this.depth === 0 ? { layout: { ...(jc ? { jc } : {}), ...(tabs?.length ? { tabs } : {}), ...(this.paraSize ? { size: this.paraSize } : {}) } } : {}),
         ...(marginDepth ? { marginDepth } : {}),
         ...((first && pageBreak) || breaks[k] ? { pageBreak: true } : {}),
       });
@@ -286,6 +293,7 @@ export class BodyReader {
     out.push(...para.after);
     for (const parts of para.loose) mergeParts(pool.parts, parts);
     if (hasInk) this.flushPool(pool, out);
+    this.paraSize = Math.max(outerSize, this.paraSize);
   }
 
   private hasText(p: XmlElement): boolean {
@@ -339,6 +347,7 @@ export class BodyReader {
     const rPr = child(r, 'w:rPr');
     const props: RunProps = { ...base, ...this.ctx.styles.get(val(child(rPr, 'w:rStyle')))?.run, ...readRunProps(rPr) };
     if (props.hidden) return;
+    if (props.size && textOf(r).trim()) this.paraSize = Math.max(this.paraSize, props.size);
     const fmt: Omit<RawRun, 'text'> = {
       ...(props.bold ? { bold: true } : {}),
       ...(props.italic ? { italic: true } : {}),

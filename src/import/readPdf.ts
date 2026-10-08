@@ -7,10 +7,11 @@
 import type { ReadPaste } from './index';
 import { toSourceLines } from './lines';
 import { layoutPdf, type PdfBox, type PdfGraphic, type PdfItem, type PdfLine, type PdfPage } from './pdfLayout';
+import type { PageChrome } from './pageChrome';
 import type { ImageRef } from './types';
 
 export type PdfReadError = { kind: 'unreadable' | 'encrypted' | 'notPdf' };
-export type PdfRead = ReadPaste & { title?: string; pages: number };
+export type PdfRead = ReadPaste & { title?: string; pages: number; chrome?: PageChrome };
 
 export interface ReadPdfOptions {
   /** Turns a cropped figure (PNG) into an image; browser only. Without it figures are slots. */
@@ -281,7 +282,7 @@ export async function readPdf(bytes: ArrayBuffer, options: ReadPdfOptions = {}):
         return rest;
       }),
     );
-    return { lines, source: 'pdf', pages: doc.numPages, ...(title ? { title } : {}) };
+    return { lines, source: 'pdf', pages: doc.numPages, ...(title ? { title } : {}), ...(layout.chrome ? { chrome: layout.chrome } : {}) };
   } catch {
     return { kind: 'unreadable' };
   } finally {
