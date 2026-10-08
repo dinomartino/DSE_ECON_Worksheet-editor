@@ -5,8 +5,9 @@ import { IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import { isReadOnlyRegistry, registerPatterns, usePatternRegistry } from '@/library/usePatterns';
 import { samePatternName } from '@/model/patterns';
-import { useMessages, useUiLanguage } from '@/i18n/language';
-import { topicDisplay } from '@/model/topics';
+import { useMessages } from '@/i18n/language';
+import { topicDisplay, topicNamesFor } from '@/model/topics';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { PATTERN_PICKER_MESSAGES } from './messages';
 import { patternOptions, stepActive, type PatternOption } from './patternOptions';
 
@@ -67,7 +68,7 @@ export function PatternPicker({
 }) {
   const m = useMessages(PATTERN_PICKER_MESSAGES);
   const readOnly = isReadOnlyRegistry(usePatternRegistry());
-  const topicName = topicDisplay(topic, useUiLanguage() === 'zh-HK' ? 'zh' : 'en');
+  const topicName = topicDisplay(topic, topicNamesFor(useViewLanguage()));
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   // The highlight the teacher moved to; undefined follows the list's default.

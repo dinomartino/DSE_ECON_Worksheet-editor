@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui';
 import { SourceText } from '@/components/bank/BankRow';
 import type { BankRow } from '@/library/types';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import type { LanguageMode } from '@/model/types';
 import { suggestionLabel } from './bankScreen';
 import type { PartLine, PartTarget } from './partTopics';
@@ -77,7 +78,6 @@ export function TagAsYouGo({
   onUndo?: () => void;
 }) {
   const m = useMessages(TAG_AS_YOU_GO_MESSAGES);
-  const lang = useUiLanguage();
   const undoLine = lastSaved && onUndo && <UndoLine text={lastSaved} onUndo={onUndo} />;
   const { worksheet, failed } = useOwningDocument(row);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -142,11 +142,11 @@ export function TagAsYouGo({
         {parts && <PartStrip {...parts} />}
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label={parts ? m.topicsFor(parts.name) : m.topicsForQuestion}>
           {suggestions.map((code, index) => {
-            const { code: coarse, name, zh } = suggestionLabel(code, lang);
+            const { code: coarse, name, zh } = suggestionLabel(code, language);
             const on = chosen.has(code);
             const some = on ? undefined : partial?.get(code);
             const terms = fromText?.get(code);
-            const heading = topicTitle(code, 'both', lang);
+            const heading = topicTitle(code, language, 'wide');
             const title = some ? m.partialTitle(heading, some.join(', ')) : heading;
             return (
               <button
@@ -210,7 +210,7 @@ export function TagAsYouGo({
 function PartStrip({ lines, at, onAt }: { lines: PartLine[]; at: PartTarget; onAt: (at: PartTarget) => void }) {
   const m = useMessages(TAG_AS_YOU_GO_MESSAGES);
   const w = useMessages(BANK_PAGE_MESSAGES);
-  const lang = useUiLanguage();
+  const view = useViewLanguage();
   return (
     <div role="group" aria-label={m.partsLabel} className="flex min-w-0 flex-wrap items-stretch gap-1.5">
       <PartChip selected={at === undefined} label={m.whole} detail={m.everyPart} onClick={() => onAt(undefined)} />
@@ -225,7 +225,7 @@ function PartStrip({ lines, at, onAt }: { lines: PartLine[]; at: PartTarget; onA
               ? m.sameAs(line.parentLabel ?? '')
               : line.codes.length === 0
                 ? m.noTopicYet
-                : line.codes.map((code) => topicName(code, 'en', lang)).join(w.sep)
+                : line.codes.map((code) => topicName(code, view)).join(w.sep)
           }
           quiet={line.inherits || line.codes.length === 0}
           onClick={() => onAt(line.key)}

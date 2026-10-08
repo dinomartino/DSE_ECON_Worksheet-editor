@@ -7,10 +7,11 @@ import type { StateEdit } from '@/library/tagWrites';
 import { thenState } from '@/library/tagWrites';
 import { holdsPatterns } from '@/model/patterns';
 import { sameTagState, type TagState } from '@/model/tagSlots';
-import { TOPICS, topicOf, type Topic } from '@/model/topics';
+import { TOPICS, topicNamesFor, topicOf, type Topic } from '@/model/topics';
+import type { LanguageMode } from '@/model/types';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { Messages } from '@/i18n/catalogue';
-import type { UiLanguage } from '@/settings/language';
 import { escapeClears } from '../escapeClears';
 import { PatternPicker } from '../PatternPicker';
 import {
@@ -104,7 +105,7 @@ export function TopicPickerDialog<M extends string = never>({
   onDone: (codes: string[], picked: PickedPatterns) => void;
 }) {
   const m = useMessages(TOPIC_PICKER_MESSAGES);
-  const lang = useUiLanguage();
+  const view = useViewLanguage();
   const [chosenPatterns, setChosenPatterns] = useState<Record<string, string | null | undefined>>(() => ({ ...(patterns?.initial ?? {}) }));
   const [onlyPattern, setOnlyPattern] = useState<ReadonlySet<string>>(new Set());
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(initial.filter((tag) => topicOf(tag))));
@@ -148,7 +149,7 @@ export function TopicPickerDialog<M extends string = never>({
             }
             className="h-3 w-3 shrink-0 translate-y-[1px] cursor-pointer accent-[var(--accent)]"
           />
-          {m.keepOnly(lang === 'zh-HK' ? child.zh : child.en)}
+          {m.keepOnly(topicName(child.code, view))}
           <span className="tabular-nums text-ink-subtle">{m.onCount(carrying)}</span>
         </label>
       );
@@ -242,6 +243,7 @@ export function PartTopicPickerDialog({
   const m = useMessages(TOPIC_PICKER_MESSAGES);
   const w = useMessages(BANK_PAGE_MESSAGES);
   const lang = useUiLanguage();
+  const view = useViewLanguage();
   const [draft, setDraft] = useState(state);
   const [edits, setEdits] = useState<StateEdit[]>([]);
   const [at, setAt] = useState<PartTarget>(undefined);
@@ -310,7 +312,7 @@ export function PartTopicPickerDialog({
               onClick={() => setAt(entry.key)}
               label={entry.sub ? entry.short : entry.label}
               title={entry.label}
-              detail={partDetail(entry, m, w.sep, lang)}
+              detail={partDetail(entry, m, w.sep, view)}
               quiet={entry.inherits || entry.codes.length === 0}
             />
           ))}
@@ -337,10 +339,10 @@ export function PartTopicPickerDialog({
  * A part's line in the column: its topics' names (led by "Its own" on a sub-part with its
  * own list, first so the column's truncation never hides it), "Same as (a)", or "No topic yet".
  */
-export function partDetail(line: PartLine, m: Messages<typeof TOPIC_PICKER_MESSAGES>, sep: string, lang: UiLanguage): string {
+export function partDetail(line: PartLine, m: Messages<typeof TOPIC_PICKER_MESSAGES>, sep: string, view: LanguageMode): string {
   if (line.inherits) return m.sameAs(line.parentLabel ?? '');
   if (line.codes.length === 0) return m.noTopicYet;
-  return `${line.sub ? m.itsOwnPrefix : ''}${line.codes.map((code) => topicName(code, 'en', lang)).join(sep)}`;
+  return `${line.sub ? m.itsOwnPrefix : ''}${line.codes.map((code) => topicName(code, view)).join(sep)}`;
 }
 
 /** What ticking does here, in one line; a sub-part also says whose topics it has. */
@@ -522,7 +524,8 @@ function TopicCheck({
   onToggle: () => void;
 }) {
   const m = useMessages(TOPIC_PICKER_MESSAGES);
-  const lang = useUiLanguage();
+  const view = useViewLanguage();
+  const names = topicNamesFor(view, 'wide');
   const partial = !checked && where !== undefined && where.length > 0;
   return (
     <label className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2 rounded-md px-1.5 py-1 text-[12.5px] text-ink transition-colors hover:bg-surface-hover">
@@ -538,13 +541,13 @@ function TopicCheck({
       />
       {/* A topic's letter, which its card shows too; a sub-topic reads by its name alone. */}
       {!topic.parent && <span className="w-7 shrink-0 text-[11px] font-semibold tabular-nums text-ink-subtle">{topic.code}</span>}
-      <span className="min-w-0 flex-1" title={topicTitle(topic.code, 'both', lang)}>
-        {lang === 'zh-HK' ? (
-          topic.zh
-        ) : (
+      <span className="min-w-0 flex-1" title={topicTitle(topic.code, view, 'wide')}>
+        {names === 'both' ? (
           <>
             {topic.en} <span className="text-ink-subtle">{topic.zh}</span>
           </>
+        ) : (
+          topic[names]
         )}
       </span>
       {partial && (

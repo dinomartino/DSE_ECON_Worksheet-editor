@@ -1,6 +1,7 @@
 'use client';
 
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { barPx, typeName, type Coverage } from './bankPage';
 import { SPLIT_FILL } from './TopicCards';
 import { TOPIC_CARDS_MESSAGES } from './TopicCards.messages';
@@ -17,7 +18,7 @@ const FULL = 44;
  */
 export function CoverageBar({ coverage, onTopic }: { coverage: Coverage; onTopic: (code: string) => void }) {
   const { bars, max, typeIds } = coverage;
-  const lang = useUiLanguage();
+  const view = useViewLanguage();
   const m = useMessages(TOPIC_CARDS_MESSAGES);
   const w = useMessages(BANK_PAGE_MESSAGES);
   return (
@@ -26,7 +27,7 @@ export function CoverageBar({ coverage, onTopic }: { coverage: Coverage; onTopic
         <p className="w-16 shrink-0 self-start pt-0.5 text-[12px] font-semibold text-ink">{m.coverage}</p>
         <ul className="grid min-w-0 flex-1 grid-flow-col auto-cols-fr gap-2">
           {bars.map((bar) => {
-            const name = topicName(bar.code, 'en', lang);
+            const name = topicName(bar.code, view);
             const parts = bar.byType.filter((part) => part.count > 0);
             const detail = parts.map((part) => `${part.count} ${typeName(part.typeId)}`).join(w.sep);
             const label = m.coverageLabel(bar.code, name, bar.total);

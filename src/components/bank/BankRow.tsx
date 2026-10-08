@@ -1,7 +1,7 @@
 'use client';
 
 import { isPatternTag, tagText } from '@/model/patterns';
-import { topicDisplay, topicHeading } from '@/model/topics';
+import { topicDisplay, topicHeading, topicNamesFor } from '@/model/topics';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { BankRow as BankRowData, BankUse } from '@/library/types';
 import { plain } from '@/model/text';
@@ -11,6 +11,7 @@ import { GripIcon } from '@/components/ui/icons';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
+import { paperLanguage } from '@/settings/paperLanguage';
 import type { RowDragProps } from './bankDrag';
 import { BANK_ROW_MESSAGES } from './messages';
 
@@ -81,7 +82,7 @@ export function BankRow({
   const m = resolveMessages(BANK_ROW_MESSAGES, ui);
   const excerpt = language === 'zh' ? row.excerpt.zh : row.excerpt.en;
   const missing = missingLanguageLabel(row, language, ui);
-  const tags = row.tags.map((tag) => tagText(tag, language === 'zh' ? 'zh' : 'en')).join(' · ');
+  const tags = row.tags.map((tag) => tagText(tag, topicNamesFor(language))).join(' · ');
   const excerptText = (
     <span className="line-clamp-2 text-xs leading-snug text-ink" title={excerpt}>
       {excerpt || <span className="text-ink-subtle">{m.untitled}</span>}
@@ -144,13 +145,13 @@ export function BankRow({
           {partsFor && partsFor.labels.length > 0 && (
             <span
               className="min-w-0 max-w-full truncate text-ink-muted"
-              title={m.partsTest(partsFor.labels.join(m.partsJoin), partsFor.labels.length, topicHeading(partsFor.topic, 'both'))}
+              title={m.partsTest(partsFor.labels.join(m.partsJoin), partsFor.labels.length, topicHeading(partsFor.topic, topicNamesFor(language, 'wide')))}
             >
-              {partsFor.labels.join(' ')} {topicDisplay(partsFor.topic, language === 'zh' ? 'zh' : 'en')}
+              {partsFor.labels.join(' ')} {topicDisplay(partsFor.topic, topicNamesFor(language))}
             </span>
           )}
           {tags && (
-            <span className="min-w-0 max-w-full truncate" title={tagTitle(row.tags)}>
+            <span className="min-w-0 max-w-full truncate" title={tagTitle(row.tags, language)}>
               {tags}
             </span>
           )}
@@ -230,9 +231,9 @@ export function SourceText({
   );
 }
 
-/** A row's topics in full, for the tooltip behind a cut-off tag line: "C · Law of demand 需求定律". */
-export function tagTitle(tags: readonly string[]): string {
-  return tags.map((tag) => (isPatternTag(tag) ? `題型 ${tagText(tag)}` : topicHeading(tag, 'both'))).join('\n');
+/** A row's topics in full, for the tooltip behind a cut-off tag line: "C · Law of demand", both names in a bilingual view. */
+export function tagTitle(tags: readonly string[], view: LanguageMode = paperLanguage()): string {
+  return tags.map((tag) => (isPatternTag(tag) ? `題型 ${tagText(tag)}` : topicHeading(tag, topicNamesFor(view, 'wide')))).join('\n');
 }
 
 /** "中文 only" / "English only" when the paper prints a language the question lacks. */

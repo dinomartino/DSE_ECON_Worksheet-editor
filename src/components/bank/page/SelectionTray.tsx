@@ -5,7 +5,8 @@ import { Button } from '@/components/ui';
 import { useNoticeInset } from '@/components/ui/NoticeLayer';
 import { marksLabel, sourceLabel, typeLabel } from '@/components/bank/BankRow';
 import type { BankRow } from '@/library/types';
-import { useMessages } from '@/i18n/language';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { cartTopicLabel, cartTotals, isSortedByType, readCartOpen, sortLabel, stepTarget, typeSplitLabel, writeCartOpen } from './bankCart';
 import { mixLabel, rowKey, traySummary, type BankTarget, type NewTargetType } from './bankPage';
 import { BANK_PAGE_MESSAGES } from './bankPage.messages';
@@ -70,7 +71,9 @@ export function SelectionTray({
   };
   const totals = cartTotals(rows);
   const split = typeSplitLabel(totals);
-  const mix = mixLabel(traySummary(rows).mix);
+  const ui = useUiLanguage();
+  const view = useViewLanguage();
+  const mix = mixLabel(traySummary(rows).mix, undefined, ui, view);
   const keys = rows.map(rowKey);
   const sorted = isSortedByType(rows.map((row) => row.typeId));
   const listRef = useRef<HTMLOListElement>(null);
@@ -215,7 +218,7 @@ export function SelectionTray({
             {rows.map((row, index) => {
               const key = keys[index];
               const excerpt = row.excerpt.en || row.excerpt.zh || m.untitled;
-              const topic = cartTopicLabel(row.tags);
+              const topic = cartTopicLabel(row.tags, view);
               const meta = [topic ?? w.noTopic, typeLabel(row.typeId), marksLabel(row.marks), sourceLabel(row)].join(' · ');
               const dragging = drag?.moving && drag.key === key;
               return (

@@ -25,7 +25,6 @@ import { escapeClears } from '@/components/bank/escapeClears';
 import { topicOf } from '@/model/topics';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { Messages } from '@/i18n/catalogue';
-import type { UiLanguage } from '@/settings/language';
 import { distinctDocLabels } from '@/library/docLabels';
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetSummary } from '@/storage';
@@ -39,7 +38,7 @@ import { rowText, textTopics } from '@/library/termTopics';
 import { identicalCopies, type CopySkip } from '@/library/sameCopies';
 import { isDesktop } from '@/platform';
 import { createRunDeps } from '@/translate/deps';
-import { paperLanguage } from '@/settings/paperLanguage';
+import { paperLanguage, ViewLanguageProvider } from '@/settings/paperLanguage';
 import { createBankAi } from './bankAi';
 import type { BankVerbId } from './bankAiScopes';
 import { BankAiBar, BankAiNote } from './BankAiBar';
@@ -330,8 +329,8 @@ export function QuestionBankScreen({
       filters.missing && aiTones.size > 0
         ? filterRows(rows, { ...filters, topic, missing: undefined }, undefined, { teacherText }).filter((row) => aiTones.has(row.rootId) && !admitted.includes(row))
         : [];
-    return railSections(groupRows([...admitted, ...kept]), topic, lang);
-  }, [rows, filters, topic, level.kind, teacherText, aiTones, lang]);
+    return railSections(groupRows([...admitted, ...kept]), topic, lang, language);
+  }, [rows, filters, topic, level.kind, teacherText, aiTones, lang, language]);
   const order = useMemo(() => railOrder(sections), [sections]);
   const candidate = focusKey ? byKey.get(focusKey) : undefined;
   const candidateAt = entryIndex(order, candidate?.rootId, focusEntry);
@@ -811,7 +810,7 @@ export function QuestionBankScreen({
       <h1 className="min-w-0 truncate text-[13.5px] text-ink-muted">
         {found ? (
           <>
-            <b className="font-semibold text-ink">{found.code}</b> {topicName(found.code, 'both')}
+            <b className="font-semibold text-ink">{found.code}</b> {topicName(found.code, language, 'wide')}
           </>
         ) : (
           <b className="font-semibold text-ink">{level.search ? m.searchResults : m.allQuestionsTitle}</b>
@@ -823,8 +822,8 @@ export function QuestionBankScreen({
 
   const emptyReview = (() => {
     if (scanning && rows.length === 0) return <p role="status">{m.reading(status.done, status.total)}</p>;
-    const active = activeFilters({ ...filters, topic: 'all' }, lang);
-    const where = level.kind === 'review' && level.topic !== 'all' ? topicName(level.topic, 'en', lang) : '';
+    const active = activeFilters({ ...filters, topic: 'all' }, lang, language);
+    const where = level.kind === 'review' && level.topic !== 'all' ? topicName(level.topic, language) : '';
     if (active.length === 0) return <p>{m.noQuestionsYet(where)}</p>;
     return (
       <>
@@ -843,6 +842,7 @@ export function QuestionBankScreen({
   })();
 
   return (
+    <ViewLanguageProvider value={language}>
     <div className="zone-light flex h-full min-h-0 flex-col bg-surface text-ink">
       <header className="flex h-12 shrink-0 items-center gap-3.5 whitespace-nowrap border-b border-line bg-surface px-4">
         <button
@@ -864,7 +864,7 @@ export function QuestionBankScreen({
               type="search"
               value={filters.text}
               placeholder={
-                level.kind === 'review' && level.topic !== 'all' ? m.searchIn(topicName(level.topic, 'en', lang)) : m.searchAll
+                level.kind === 'review' && level.topic !== 'all' ? m.searchIn(topicName(level.topic, language)) : m.searchAll
               }
               onChange={(event) => onSearch(event.target.value)}
               onKeyDown={(event) => {
@@ -992,7 +992,7 @@ export function QuestionBankScreen({
           row={tagRow}
           position={restoring && restoredAt < 0 ? 0 : restoring ? restoredAt : tagPosition}
           left={untagged.length + (restoring && restoredAt < 0 ? 1 : 0)}
-          lastSaved={tagHistory.length > 0 ? tagSaveText(tagHistory[tagHistory.length - 1], m, lang) : undefined}
+          lastSaved={tagHistory.length > 0 ? tagSaveText(tagHistory[tagHistory.length - 1], m, language) : undefined}
           onUndo={undoTagSave}
           suggestions={suggestions}
           fromText={fromText}
@@ -1164,6 +1164,7 @@ export function QuestionBankScreen({
         <LazyPasteImportDialog target="bank" onClose={() => setPasting(false)} exclusive={writes.run} onBankChanged={onDocumentsChanged} />
       )}
     </div>
+    </ViewLanguageProvider>
   );
 }
 
@@ -1189,11 +1190,11 @@ const NO_PICKS: TagPicks = { edits: [], at: undefined };
 const hasParts = (row: BankRow) => (row.slots?.length ?? 0) > 0;
 
 /** "“A progressive tax…” tagged C · Public Finance", or "tagged (a) C · …; (b) I · …": what Undo would take back. */
-function tagSaveText({ group, parts }: TagSave, m: Words, lang: UiLanguage): string {
+function tagSaveText({ group, parts }: TagSave, m: Words, view: LanguageMode): string {
   const lead = group.rows[0];
   const text = lead?.excerpt.en || lead?.excerpt.zh || m.questionFallback;
   const short = text.length > 48 ? `${text.slice(0, 47).trimEnd()}…` : text;
-  const where = parts.map(({ label, codes }) => `${label ? `${label} ` : ''}${codes.map((code) => topicTitle(code, 'en', lang)).join(m.sep)}`);
+  const where = parts.map(({ label, codes }) => `${label ? `${label} ` : ''}${codes.map((code) => topicTitle(code, view)).join(m.sep)}`);
   return m.tagSaved(short, where.join(m.semi));
 }
 

@@ -5,8 +5,9 @@ import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import type { PatternId, PatternItem } from '@/library/patterns';
 import { cleanPatternName, matchPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
-import { TOPICS, type Topic } from '@/model/topics';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { TOPICS, topicNamesFor, type Topic } from '@/model/topics';
+import { useMessages } from '@/i18n/language';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { listQuestionTypes } from '@/registry';
 import { escapeClears } from '../escapeClears';
 import { typeName } from './bankPage';
@@ -49,7 +50,7 @@ export function PatternsPage({
   onShow: (item: PatternItem) => void;
 }) {
   const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  const lang = useUiLanguage();
+  const view = useViewLanguage();
   const [confirm, setConfirm] = useState<Confirm>();
   const types = listQuestionTypes().map((type) => type.id);
   const subTopics = useMemo(
@@ -82,13 +83,13 @@ export function PatternsPage({
             >
               <option value="">{m.allTopics}</option>
               {TOPICS.map((topic) => (
-                <optgroup key={topic.code} label={`${topic.code} · ${topicName(topic.code, 'en', lang)}`}>
+                <optgroup key={topic.code} label={`${topic.code} · ${topicName(topic.code, view)}`}>
                   <option value={topic.code}>
                     {m.allSubTopics(topic.code)}
                   </option>
                   {topic.children.map((child) => (
                     <option key={child.code} value={child.code}>
-                      {topicName(child.code, 'en', lang)}
+                      {topicName(child.code, view)}
                     </option>
                   ))}
                 </optgroup>
@@ -101,25 +102,25 @@ export function PatternsPage({
 
         {shown.length === 0 ? (
           <p className="text-[13px] text-ink-muted">
-            {m.noneIn(scope ? topicName(scope, 'en', lang) : '')}
+            {m.noneIn(scope ? topicName(scope, view) : '')}
           </p>
         ) : (
           shown.map((child) => (
             <section
               key={child.code}
-              aria-label={topicName(child.code, 'en', lang)}
+              aria-label={topicName(child.code, view)}
               className="rounded-[10px] border border-line bg-surface-raised px-4 pb-3 pt-3.5"
               data-pattern-topic={child.code}
             >
               <h2 className="flex flex-wrap items-baseline gap-x-2 text-[13.5px] text-ink">
                 <span className="tabular-nums text-ink-subtle">{child.parent}</span>
-                {lang === 'zh-HK' ? (
-                  <span className="font-semibold">{child.zh}</span>
-                ) : (
+                {topicNamesFor(view, 'wide') === 'both' ? (
                   <>
                     <span className="font-semibold">{child.en}</span>
                     <span className="text-ink-subtle">{child.zh}</span>
                   </>
+                ) : (
+                  <span className="font-semibold">{topicName(child.code, view)}</span>
                 )}
               </h2>
               <div className="mt-2.5 grid gap-x-6 gap-y-3 md:grid-cols-2">
@@ -373,7 +374,7 @@ function NewPattern({
   onCreate: (pattern: PatternId) => void;
 }) {
   const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  const lang = useUiLanguage();
+  const view = useViewLanguage();
   const [topic, setTopic] = useState('');
   const [typeId, setTypeId] = useState(types[0] ?? '');
   const [name, setName] = useState('');
@@ -410,12 +411,12 @@ function NewPattern({
           </option>
         )}
         {TOPICS.filter((parent) => subTopics.some((child) => child.parent === parent.code)).map((parent) => (
-          <optgroup key={parent.code} label={`${parent.code} · ${topicName(parent.code, 'en', lang)}`}>
+          <optgroup key={parent.code} label={`${parent.code} · ${topicName(parent.code, view)}`}>
             {subTopics
               .filter((child) => child.parent === parent.code)
               .map((child) => (
                 <option key={child.code} value={child.code}>
-                  {topicName(child.code, 'en', lang)}
+                  {topicName(child.code, view)}
                 </option>
               ))}
           </optgroup>
