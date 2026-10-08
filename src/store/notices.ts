@@ -35,6 +35,8 @@ export interface NoticeInput {
   onDismiss?: () => void;
   /** `APP_SCOPE`, or the dialog it was raised in (`useNotices` fills this in). */
   scope?: string;
+  /** Fades even with a button, after `ACTION_AUTO_HIDE_MS`: its action is a convenience (Show in Finder). */
+  autoHide?: boolean;
 }
 
 export interface Notice extends NoticeInput {
@@ -51,9 +53,21 @@ export const AUTO_HIDE_MS = 6000;
 /** How many a stack shows; older ones wait behind a "+N more" line. */
 export const MAX_VISIBLE = 4;
 
-/** Fades by itself: a plain result. Warnings, errors and anything with a button stay. */
-export function autoHides(notice: Pick<Notice, 'tone' | 'actions'>): boolean {
-  return (notice.tone === 'info' || notice.tone === 'success') && !notice.actions?.length;
+/** A fading notice with a button (`autoHide`) stays this long, so the button can be reached. */
+export const ACTION_AUTO_HIDE_MS = 10000;
+
+/**
+ * Fades by itself: a plain result, or a result whose button is a convenience (`autoHide`).
+ * Warnings, errors and anything else with a button stay.
+ */
+export function autoHides(notice: Pick<Notice, 'tone' | 'actions' | 'autoHide'>): boolean {
+  if (notice.tone !== 'info' && notice.tone !== 'success') return false;
+  return !notice.actions?.length || notice.autoHide === true;
+}
+
+/** How long a fading notice stays, from when it can be read. */
+export function autoHideDelay(notice: Pick<Notice, 'actions'>): number {
+  return notice.actions?.length ? ACTION_AUTO_HIDE_MS : AUTO_HIDE_MS;
 }
 
 export interface NoticesState {
@@ -133,6 +147,30 @@ export function pruneDeadActions(): void {
   const { notices } = useNoticeStore.getState();
   const kept = notices.filter((n) => !n.actions?.some((a) => a.live && !a.live()));
   if (kept.length !== notices.length) useNoticeStore.setState({ notices: kept });
+}
+
+/**
+ * Drops every notice tied to the open document's history (an action with `live`): the
+ * editor going away takes its Undo with it, rather than leave a button that would undo a
+ * document no longer on screen.
+ */
+export function dismissHistoryActions(): void {
+  const { notices } = useNoticeStore.getState();
+  const kept = notices.filter((n) => !n.actions?.some((a) => a.live));
+  if (kept.length !== notices.length) useNoticeStore.setState({ notices: kept });
+}
+
+/**
+ * While an editor is up: prune dead Undo notices each time its history moves, and take
+ * every history-bound notice down with it. `subscribe` calls back on each move and
+ * returns its own teardown; this returns the editor's.
+ */
+export function holdHistoryNotices(subscribe: (onMove: () => void) => () => void): () => void {
+  const stop = subscribe(pruneDeadActions);
+  return () => {
+    stop();
+    dismissHistoryActions();
+  };
 }
 
 /** Keep `px` clear at the bottom of the app stack while `owner` is on screen; undefined releases. */

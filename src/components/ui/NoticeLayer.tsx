@@ -3,8 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   APP_SCOPE,
-  AUTO_HIDE_MS,
   MAX_VISIBLE,
+  autoHideDelay,
   autoHides,
   closeNotice,
   dismiss,
@@ -182,12 +182,13 @@ function useWindowActive(): boolean {
 export function NoticeCard({ notice }: { notice: Notice }) {
   const m = useMessages(UI_MESSAGES);
   const fades = autoHides(notice);
+  const delay = autoHideDelay(notice);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   // The rev that started fading: a replace (new rev) or a hover brings the notice back.
   const [fadingRev, setFadingRev] = useState<number | null>(null);
   const leaving = fadingRev === notice.rev;
-  const remaining = useRef(AUTO_HIDE_MS);
+  const remaining = useRef(delay);
   const timedRev = useRef(notice.rev);
   // Paused while pointed at, focused, or while the window is behind another (a link
   // opened in the browser): it fades only after it could have been read.
@@ -198,7 +199,7 @@ export function NoticeCard({ notice }: { notice: Notice }) {
     if (!fades || paused) return;
     if (timedRev.current !== notice.rev) {
       timedRev.current = notice.rev;
-      remaining.current = AUTO_HIDE_MS;
+      remaining.current = delay;
     }
     const started = Date.now();
     const rev = notice.rev;
@@ -212,7 +213,7 @@ export function NoticeCard({ notice }: { notice: Notice }) {
       window.clearTimeout(timer);
       if (!fired) remaining.current = Math.max(0, remaining.current - (Date.now() - started));
     };
-  }, [fades, paused, notice.rev]);
+  }, [fades, paused, notice.rev, delay]);
 
   useEffect(() => {
     if (!leaving) return;
@@ -254,7 +255,7 @@ export function NoticeCard({ notice }: { notice: Notice }) {
         {details.length > 0 && (
           <ul className="mt-1.5 space-y-0.5 text-[11px] leading-snug text-ink-muted">
             {details.map((line) => (
-              <li key={line} className="truncate" title={line}>
+              <li key={line} className="break-words">
                 {line}
               </li>
             ))}

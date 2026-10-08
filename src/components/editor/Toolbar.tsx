@@ -32,7 +32,7 @@ import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useSyncFolderChosen } from '@/sync/syncView';
-import { pruneDeadActions, type NoticeAction, type NoticeTone } from '@/store/notices';
+import { holdHistoryNotices, type NoticeAction, type NoticeTone } from '@/store/notices';
 import { useNotices } from '@/components/ui/NoticeLayer';
 import { useSettingsSections } from '@/settings/sections';
 import { fillVerbFor, toolbarSettingsEntries } from '@/components/translate/translateMenu';
@@ -126,9 +126,9 @@ export function Toolbar({
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
 
-  /** A result, in the app's notice stack; one with a reveal stays until closed. */
+  /** A result, in the app's notice stack; one with a reveal (a convenience) fades later. */
   const flash = (message: string, action?: NoticeAction, tone: NoticeTone = 'success') =>
-    notices.notify({ id: 'toolbar-result', tone, body: message, actions: action ? [action] : undefined });
+    notices.notify({ id: 'toolbar-result', tone, body: message, actions: action ? [action] : undefined, autoHide: true });
   // Failures stay until closed or until the next attempt clears them.
   const setError = (message: string | undefined) => {
     if (message === undefined) notices.dismiss('toolbar-error');
@@ -137,12 +137,15 @@ export function Toolbar({
 
   const appVersion = useUpdateStore((s) => s.current);
 
-  // An action tied to one commit (Undo) goes as soon as history moves past it.
+  // An action tied to one commit (Undo) goes as soon as history moves past it, and with
+  // the editor: on Home it would undo a document no longer on screen, which never saves.
   useEffect(
     () =>
-      useWorksheetStore.subscribe((state, prev) => {
-        if (state.worksheet !== prev.worksheet) pruneDeadActions();
-      }),
+      holdHistoryNotices((onMove) =>
+        useWorksheetStore.subscribe((state, prev) => {
+          if (state.worksheet !== prev.worksheet) onMove();
+        }),
+      ),
     [],
   );
   /** Export is a component-owned dialog: it closes before the AI menu opens. */

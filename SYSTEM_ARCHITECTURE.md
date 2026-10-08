@@ -2379,8 +2379,12 @@ hover                      → margin drag grip → reorder
   dialog's body and closes with it. The app stack sits under the scrim (z 48 < 50), so no
   notice hides behind a backdrop and none is ever a click outside a dialog.
 - **Lifetime**: plain info/success fades after 6 s, paused while hovered, focused or the
-  window is in the background; warnings, errors and anything with a button stay until
-  closed. Escape never closes one, and a notice never takes focus.
+  window is in the background; one whose button is a convenience (`autoHide`, Show in
+  Finder) fades after 10 s; warnings, errors and any other button stay until closed.
+  Escape never closes one, and a notice never takes focus. Details wrap, never truncate.
+- **History-bound actions** (`live`, an Undo) go when history moves past them and when
+  the editor unmounts (`holdHistoryNotices` in the Toolbar): an Undo on Home would edit a
+  document no longer on screen, which never saves.
 - **Stays inline**: field validation beside its input, persistent state (the newer-build
   read-only bar, "Not saved yet", a read-only pattern list), and the floating run/review
   bars (AI, 題庫 review), which are tools rather than notices.

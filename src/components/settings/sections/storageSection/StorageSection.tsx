@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui';
+import { useNotices } from '@/components/ui/NoticeLayer';
 import { resolveMessages, type Messages } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { openFolder } from '@/platform';
@@ -196,7 +197,9 @@ export function StorageSectionView({
 }) {
   const m = useMessages(STORAGE_MESSAGES);
   const [step, setStep] = useState<Step>(initialStep);
-  const [failed, setFailed] = useState(false);
+  // A failure floats in the dialog's notices until the next try, never inline.
+  const notices = useNotices();
+  const fail = () => notices.notify({ id: 'storage-error', tone: 'error', body: m.failed });
   const [cloud, setCloud] = useState(initialCloud);
   const setup = step === 'setup';
   useEffect(() => {
@@ -216,14 +219,13 @@ export function StorageSectionView({
 
   /** `work` resolves false to stay on the step (the picker was closed without a folder). */
   const run = async (work: () => Promise<boolean | void>) => {
-    setFailed(false);
+    notices.dismiss('storage-error');
     try {
       if ((await work()) !== false) setStep('idle');
     } catch {
-      setFailed(true);
+      fail();
     }
   };
-  const failure = failed && <p role="alert" className="text-[12px] text-danger-ink">{m.failed}</p>;
 
   if (root === null) {
     return (
@@ -259,7 +261,6 @@ export function StorageSectionView({
             </div>
           </div>
         )}
-        {failure}
       </div>
     );
   }
@@ -272,7 +273,7 @@ export function StorageSectionView({
           <code className="min-w-0 flex-1 break-all rounded-lg border border-line bg-surface-sunken px-2 py-1.5 font-mono text-[11px] leading-snug text-ink">
             {root}
           </code>
-          <Button size="sm" onClick={() => void actions.showFolder(root).catch(() => setFailed(true))}>
+          <Button size="sm" onClick={() => void actions.showFolder(root).catch(fail)}>
             {m.showFolder}
           </Button>
         </div>
@@ -310,7 +311,6 @@ export function StorageSectionView({
           </div>
         )}
       </div>
-      {failure}
     </div>
   );
 }

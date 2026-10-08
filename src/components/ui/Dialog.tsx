@@ -80,6 +80,7 @@ export function Dialog({
   // How to scroll the body on, while it has more below; shown in the footer.
   const [more, setMore] = useState<(() => void) | null>(null);
   const reportMore = useCallback((scrollOn: (() => void) | null) => setMore(() => scrollOn), []);
+  const [noticeInset, measureNotices] = useStackInset();
 
   // Escape closes, and focus moves into the panel so the first Tab lands inside the
   // dialog rather than back in the document behind it. Not when focus is already inside:
@@ -150,13 +151,20 @@ export function Dialog({
               the scrim, never part of a click outside, and never changing the height. */}
           <div className="relative flex min-h-0 flex-1 flex-col">
             <MoreBelowContext.Provider value={reportMore}>
-              {scrollBody ? (
-                <ScrollPane className="flex flex-col">{children}</ScrollPane>
-              ) : (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
-              )}
+              <NoticeInsetContext.Provider value={noticeInset}>
+                {scrollBody ? (
+                  <ScrollPane className="flex flex-col">{children}</ScrollPane>
+                ) : (
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+                )}
+              </NoticeInsetContext.Provider>
             </MoreBelowContext.Provider>
-            <NoticeStack scope={scope} className="absolute bottom-3 right-3 z-10 w-[min(360px,calc(100%-24px))]" />
+            <div
+              ref={measureNotices}
+              className="pointer-events-none absolute bottom-3 right-3 z-10 w-[min(360px,calc(100%-24px))]"
+            >
+              <NoticeStack scope={scope} />
+            </div>
           </div>
 
           {footer && (
@@ -179,6 +187,46 @@ const LARGE = {
   maxWidth: '100%',
   maxHeight: '100%',
 } as const;
+
+/**
+ * Room a dialog's notice stack takes over the foot of its body, so a scroller can end
+ * that far past its content: a sticky error never hides the last control for good.
+ */
+const NoticeInsetContext = createContext(0);
+
+/** The stack's offset from the body's foot (`bottom-3`) and a gap above it. */
+const STACK_CLEARANCE = 12 + 8;
+
+/** Bottom space a scroller needs below its content for a stack `height` tall. */
+export function noticeInsetFor(height: number): number {
+  return height > 0 ? Math.ceil(height) + STACK_CLEARANCE : 0;
+}
+
+/**
+ * Space at the end of a scroller while the dialog's notices are up: put it last inside
+ * a body that scrolls itself. Plain and tabbed dialogs have it already.
+ */
+export function NoticeInsetSpacer() {
+  const inset = useContext(NoticeInsetContext);
+  return inset > 0 ? <div aria-hidden data-notice-inset className="shrink-0" style={{ height: inset }} /> : null;
+}
+
+/** Measures the notice stack; returns its inset and the ref for its box. */
+function useStackInset(): [number, (node: HTMLElement | null) => void] {
+  const [inset, setInset] = useState(0);
+  const observer = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((node: HTMLElement | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
+    if (!node) return;
+    const report = () => setInset(noticeInsetFor(node.getBoundingClientRect().height));
+    report();
+    if (typeof ResizeObserver === 'undefined') return;
+    observer.current = new ResizeObserver(report);
+    observer.current.observe(node);
+  }, []);
+  return [inset, ref];
+}
 
 /** The dialog's scroll pane reports here how to show more of it, or null at the end. */
 const MoreBelowContext = createContext<((scrollOn: (() => void) | null) => void) | null>(null);
@@ -243,6 +291,7 @@ function ScrollPane({ className, children }: { className: string; children: Reac
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       <div ref={setPane} data-dialog-scroll className={`scroll-slim min-h-0 flex-1 overflow-y-auto ${className}`}>
         {children}
+        <NoticeInsetSpacer />
       </div>
       <ScrollEdgeHints edges={edges} />
     </div>

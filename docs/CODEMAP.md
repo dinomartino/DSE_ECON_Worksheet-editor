@@ -392,7 +392,7 @@ Invariants:
 `src/components/ui/index.tsx:Button` · `:SelectField` · `:Segmented`;
 `src/components/ui/Dialog.tsx:Dialog` · `:DialogTabs`; `src/components/ui/Menu.tsx`;
 `src/components/ui/modalLayer.ts:useModalLayer`.
-- Notices: `src/store/notices.ts:notify` · `:dismiss` · `:closeNotice` · `:pruneDeadActions`;
+- Notices: `src/store/notices.ts:notify` · `:dismiss` · `:closeNotice` · `:pruneDeadActions` · `:holdHistoryNotices`;
   `src/components/ui/NoticeLayer.tsx:NoticeLayer` (once, in `src/app/EditorHost.tsx`) ·
   `:useNotices` · `:useDialogNotices` · `:useNoticeInset`. `src/store/appDialogs.ts` `notify(message)`
   forwards here for callers outside React.

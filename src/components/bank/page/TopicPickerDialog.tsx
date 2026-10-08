@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { Button, Segmented } from '@/components/ui';
-import { Dialog } from '@/components/ui/Dialog';
+import { Dialog, NoticeInsetSpacer } from '@/components/ui/Dialog';
 import type { StateEdit } from '@/library/tagWrites';
 import { thenState } from '@/library/tagWrites';
 import { holdsPatterns } from '@/model/patterns';
@@ -326,6 +326,7 @@ export function PartTopicPickerDialog({
             onToggle={(code) => apply(toggleAt(draft, at, code, !ticks.ticked.has(code)))}
             below={patternFor}
           />
+          <NoticeInsetSpacer />
         </div>
       </div>
     </Dialog>

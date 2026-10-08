@@ -32,11 +32,15 @@ a version heading is edited afterwards.
 - **Messages now float in the bottom-right corner instead of pushing the page around.**
   Results such as "Copied", a restored backup, an export error or a new version to install
   appear as small cards that never move your worksheet, list or dialog. Plain results fade
-  after a few seconds; warnings, errors and anything with a button stay until you close them.
+  after a few seconds, and a saved file's "Show in Finder" after ten; warnings, errors and
+  other buttons stay until you close them. A message inside a dialog never hides a setting:
+  scroll down to reach it. An Undo leaves with its worksheet when you go Home.
   In 題庫, Clear now closes your list at once and offers Undo in the corner.
   <!-- zh: **訊息改為浮現在右下角，不再推動頁面。** 「已複製」、還原備份的結果、匯出錯誤或新版本
-  提示等，會以小卡片顯示，不會移動工作紙、清單或對話框。一般結果數秒後自動消失；警告、錯誤及附有按鈕的
-  訊息會保留，直至你關閉為止。在題庫按「清除」會即時收起清單，並在角落提供「復原」。 -->
+  提示等，會以小卡片顯示，不會移動工作紙、清單或對話框。一般結果數秒後自動消失，已儲存檔案的「在 Finder
+  中顯示」則十秒後消失；警告、錯誤及其他附有按鈕的訊息會保留，直至你關閉為止。對話框內的訊息不會遮住任何
+  設定，向下捲動便可看到。返回主頁時，該工作紙的「復原」會一併消失。在題庫按「清除」會即時收起清單，並在
+  角落提供「復原」。 -->
 
 ### Fixed
 - **Tagging the questions that have no topic in 題庫 no longer shifts the topic buttons

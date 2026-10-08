@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetNoticesForTest, useNoticeStore } from '@/store/notices';
 import type { SyncReport } from './run';
-import { syncNotices } from './syncNotices';
+import { resolveMessages } from '@/i18n/catalogue';
+import { SYNC_MESSAGES } from './messages';
+import { reasonText, syncNotices } from './syncNotices';
 
 const notices = () => useNoticeStore.getState().notices;
 
@@ -71,5 +73,14 @@ describe('syncNotices', () => {
     expect(notices()).toEqual([
       expect.objectContaining({ id: 'sync-refilled', tone: 'info', body: 'The cloud copy was empty, so it was refilled from this computer.' }),
     ]);
+  });
+
+  it('a folder Econ Studio did not set up says what to choose instead', () => {
+    expect(reasonText(resolveMessages(SYNC_MESSAGES, 'en'), 'no-marker')).toBe(
+      'This folder was not set up by Econ Studio. Choose the Econ Studio folder inside it, or choose a folder again.',
+    );
+    const zh = reasonText(resolveMessages(SYNC_MESSAGES, 'zh-HK'), 'no-marker');
+    expect(zh).toContain('Econ Studio 資料夾');
+    expect(zh).not.toContain('.json');
   });
 });

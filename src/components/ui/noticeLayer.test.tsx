@@ -62,4 +62,11 @@ describe('NoticeStackView', () => {
     expect(markup).toContain('broken.json: not valid JSON');
     expect(markup).toContain('Show in Finder');
   });
+
+  it('wraps a long detail line instead of cutting it off', () => {
+    const reason = 'A newer version of Econ Studio set up this folder. Update the app to use it.';
+    const markup = draw([notice({ id: 'a', tone: 'warning', body: 'Cannot reach the folder', details: [reason] })]);
+    expect(markup).toMatch(new RegExp(`<li class="break-words">${reason}</li>`));
+    expect(markup).not.toMatch(/<li[^>]*truncate/);
+  });
 });
