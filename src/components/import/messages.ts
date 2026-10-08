@@ -263,6 +263,72 @@ export const IMPORT_MESSAGES = defineMessages({
   },
   or: { en: ' or ', zh: '或' },
 
+  // Header, footer and title block from the file
+  chromeTitle: { en: 'Header, footer and title block', zh: '頁首、頁尾及標題區' },
+  chromeFromFile: { en: 'From the file', zh: '取自檔案' },
+  chromeHeader: { en: 'Header', zh: '頁首' },
+  chromeHeaderLater: { en: 'Header · pages 2+', zh: '頁首 · 第 2 頁起' },
+  chromePage1Header: { en: 'Page 1 header', zh: '第 1 頁頁首' },
+  chromeFooter: { en: 'Footer', zh: '頁尾' },
+  chromeFooterLater: { en: 'Footer · pages 2+', zh: '頁尾 · 第 2 頁起' },
+  chromePage1Footer: { en: 'Page 1 footer', zh: '第 1 頁頁尾' },
+  chromePage1Blank: { en: 'None on page 1', zh: '第 1 頁沒有' },
+  chromeTitleBlock: { en: 'Title block', zh: '標題區' },
+  chromeNotApplied: { en: 'Not used', zh: '不使用' },
+  chromeCoverNote: {
+    en: 'On a Paper 1 or Paper 2 mock, the title block fills the cover instead.',
+    zh: '如儲存為 Paper 1 或 Paper 2 Mock，標題區的內容會填入封面。',
+  },
+  keepPreset: { en: 'Keep the preset header and footer instead', zh: '改用預設的頁首和頁尾' },
+  keepPresetHint: {
+    en: 'The ones the paper type you choose in Save as comes with.',
+    zh: '即「儲存為」所選試卷類型本身的頁首和頁尾。',
+  },
+  retypeTitle: { en: (n: number) => `To type in yourself (${n})`, zh: (n: number) => `需要自行輸入（${n}）` },
+  copy: { en: 'Copy', zh: '複製' },
+  copied: { en: 'Copied', zh: '已複製' },
+  whereHeader: { en: 'header', zh: '頁首' },
+  whereFooter: { en: 'footer', zh: '頁尾' },
+  whereMasthead: { en: 'title block', zh: '標題區' },
+  leftoverPicture: {
+    en: (where: string) => `A picture, logo or drawing in the ${where} is not brought in.`,
+    zh: (where: string) => `${where}中的圖片、標誌或繪圖不會匯入。`,
+  },
+  leftoverTable: {
+    en: (where: string) => `Part of the ${where} is laid out as a table. Type it into the ${where} yourself.`,
+    zh: (where: string) => `${where}有部分以表格排版，請自行輸入到${where}。`,
+  },
+  leftoverTextBox: {
+    en: (where: string) => `Text in a text box in the ${where} is not brought in.`,
+    zh: (where: string) => `${where}文字方塊內的文字不會匯入。`,
+  },
+  leftoverTooMany: {
+    en: (where: string) => `More than three pieces on one line of the ${where}. Type it in yourself.`,
+    zh: (where: string) => `${where}有一行多於三個部分，請自行輸入。`,
+  },
+  leftoverEvenPages: {
+    en: (where: string) => `Even pages have a different ${where}. Only one ${where} is kept.`,
+    zh: (where: string) => `雙數頁有不同的${where}，只會保留一個${where}。`,
+  },
+  leftoverOtherSection: {
+    en: (where: string) => `Another part of the file, such as a cover page, has its own ${where}.`,
+    zh: (where: string) => `檔案另一部分（例如封面）有自己的${where}。`,
+  },
+  leftoverPageCount: {
+    en: 'The total number of pages is left out. The page number is kept.',
+    zh: '總頁數不會保留，頁碼會保留。',
+  },
+  leftoverMarksDiffer: {
+    en: (stated: number, counted: number) => `The file says ${stated} marks, but the questions add up to ${counted}. Kept as text, not as a live total.`,
+    zh: (stated: number, counted: number) => `檔案寫 ${stated} 分，但題目合共 ${counted} 分。會保留為文字，不會自動計算總分。`,
+  },
+  leftoverNoCoverPlace: { en: 'The cover has no line for this.', zh: '封面沒有位置放這一行。' },
+  leftoverNoHeader: { en: 'A Paper 2 mock prints no header.', zh: 'Paper 2 Mock 不印頁首。' },
+  notOnCover: {
+    en: (n: number) => `${n} ${plural(n, 'line')} from the file not on the cover`,
+    zh: (n: number) => `檔案有 ${n} 行不在封面上`,
+  },
+
   // Footer
   cancel: { en: 'Cancel', zh: '取消' },
   nothingToImport: { en: 'No questions found yet. Fix a line, or choose another file.', zh: '仍未找到題目。請修正某一行，或選擇其他檔案。' },

@@ -13,6 +13,8 @@ import { normalizeRuns } from '@/model/text';
 import { labelLevel, marksOnly, parseLabel, trailingMarks } from './labels';
 import { labelZone, repeatKey, tidyText } from './normalize';
 import type { RawLine, RawRun } from './readPlain';
+import type { PageChrome } from './pageChrome';
+import { pdfChrome } from './pdfChrome';
 import { joinRuns } from './walk';
 
 export interface PdfItem {
@@ -60,6 +62,8 @@ export interface PdfLayout {
   lines: PdfLine[];
   /** The first large-type line near the top of the first page. */
   heading?: string;
+  /** Running header and footer, page 1's own, and the masthead (its rows are not in `lines`). */
+  chrome?: PageChrome;
 }
 
 // ---- small helpers ----
@@ -581,9 +585,10 @@ export function layoutPdf(pages: readonly PdfPage[]): PdfLayout {
   });
   const noise = noiseRows(prepared);
   const textPages = prepared.filter((p) => p.rows.length).length;
+  const chrome = pdfChrome({ pages: prepared.map(({ page, rows }) => ({ width: page.width, height: page.height, rows })), noise });
 
   const regions = prepared.flatMap(({ rows, figures, page }, k) => {
-    const kept = rows.filter((r) => !noise.has(r));
+    const kept = rows.filter((r) => !noise.has(r) && !chrome.taken.has(r));
     // In a document with no text at all (a scan), every page is a picture.
     const boxes = textPages ? figures : [{ x: 0, y: 0, w: page.width, h: page.height }];
     const figureRows: Row[] = boxes.map((f) => ({ top: f.y + f.h, y: f.y + f.h, size: 0, items: [], figure: f }));
@@ -627,5 +632,11 @@ export function layoutPdf(pages: readonly PdfPage[]): PdfLayout {
       });
     }
   }
-  return { lines: out, ...(heading ? { heading } : {}) };
+  if (heading === undefined && chrome.taken.size) {
+    // The title may be in page 1's header or masthead, which are no longer lines.
+    const top = (prepared[0]?.rows ?? []).filter((r) => chrome.taken.has(r)).sort((a, b) => b.y - a.y);
+    const big = top.find((r) => r.size >= docGeo.bodySize * 1.15 && rowText(r).trim());
+    if (big) heading = rowText(big).trim();
+  }
+  return { lines: out, ...(heading ? { heading } : {}), ...(chrome.chrome ? { chrome: chrome.chrome } : {}) };
 }

@@ -1,12 +1,15 @@
 /**
  * `.docx` file reader: the package (jszip) → the same raw lines the paste readers give,
- * but richer: real list numbers, text boxes, tables and pictures. Headers, footers,
- * footnotes and comments live in other parts and are never read.
+ * but richer: real list numbers, text boxes, tables and pictures. Headers and footers are
+ * read as page chrome (`docxChrome.ts`), and the masthead is taken off the top of the
+ * lines; footnotes and comments are never read.
  */
 import JSZip from 'jszip';
 import { BodyReader, type PendingImage, type Rel } from './docxBody';
+import { docxMasthead, readHeadersFooters, sectionsOf } from './docxChrome';
 import { Numbering, Styles } from './docxNumbering';
 import { tidyText } from './normalize';
+import type { PageChrome } from './pageChrome';
 import type { RawLine, RawRun } from './readPlain';
 import type { ImageRef } from './types';
 import { child, find, findAll, parseXml, textOf, type XmlElement } from './xml';
@@ -29,6 +32,8 @@ export interface DocxOptions {
 export interface DocxRead {
   lines: RawLine[];
   title?: string;
+  /** Header, footer and masthead; the masthead's lines are no longer in `lines`. */
+  chrome?: PageChrome;
 }
 
 const OFFICE_DOC = /\/officeDocument$/;
@@ -203,7 +208,36 @@ export async function readDocxLines(data: ArrayBuffer | Uint8Array, options: Doc
   await loadImages(zip, reader.images, options);
 
   const title = await titleOf(zip, body, rels, reader.headings).catch(() => undefined);
-  return { lines, ...(title ? { title } : {}) };
+  const chrome = await chromeOf(zip, body, rels, styles, lines).catch(() => undefined);
+  const body1 = chrome ? lines.slice(chrome.taken) : lines;
+  return { lines: body1, ...(title ? { title } : {}), ...(chrome?.chrome ? { chrome: chrome.chrome } : {}) };
+}
+
+/** Header, footer and masthead, and how many leading lines the masthead took. */
+async function chromeOf(zip: JSZip, body: XmlElement, rels: Map<string, Rel & { type: string }>, styles: Styles, lines: RawLine[]): Promise<{ chrome?: PageChrome; taken: number }> {
+  const settingsRel = [...rels.values()].find((r) => r.type.endsWith('/settings') && !r.external);
+  const settings = settingsRel ? await xmlPart(zip, settingsRel.target).catch(() => undefined) : undefined;
+  const evenAndOdd = !!settings && child(settings, 'w:evenAndOddHeaders') !== undefined && child(settings, 'w:evenAndOddHeaders')?.attrs['w:val'] !== '0';
+  const edges = await readHeadersFooters(
+    body,
+    styles,
+    async (id) => {
+      const rel = rels.get(id);
+      return rel && !rel.external ? xmlPart(zip, rel.target) : undefined;
+    },
+    evenAndOdd,
+  );
+  const sections = sectionsOf(body);
+  const width = sections.reduce((best, s) => (s.size >= best.size ? s : best), sections[0]).width;
+  const bodySize = styles.get(styles.defaultParagraph)?.run.size ?? styles.defaults.size;
+  const masthead = docxMasthead(lines, width, bodySize);
+  const chrome: PageChrome = {
+    ...edges,
+    ...(masthead.rows.length ? { masthead: masthead.rows } : {}),
+    unsupported: [...edges.unsupported, ...masthead.found],
+  };
+  const any = chrome.header || chrome.footer || chrome.firstPageHeader || chrome.firstPageFooter || chrome.masthead || chrome.unsupported.length;
+  return { taken: masthead.taken, ...(any ? { chrome } : {}) };
 }
 
 // ---- the title ----

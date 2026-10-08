@@ -9,6 +9,8 @@ import { PaperSketch } from '@/components/start/PaperSketch';
 import { kindText, START_KINDS } from '@/components/start/startKinds';
 import type { Messages } from '@/i18n/catalogue';
 import { useUiLanguage } from '@/i18n/language';
+import type { ChromeLeftover } from '@/import';
+import { ChromeLeftovers } from './ChromeReview';
 import type { IMPORT_MESSAGES } from './messages';
 
 /** Where an import goes: a new document of a type, or 題庫 only. */
@@ -38,6 +40,7 @@ export function SaveAsStep({
   mc,
   language,
   misfit,
+  notOnCover,
   onSubmit,
 }: {
   text: Text;
@@ -54,6 +57,8 @@ export function SaveAsStep({
   mc: number;
   language: LanguageMode;
   misfit?: { kind: 'written' | 'mc'; count: number };
+  /** On a mock: the file's title block lines the cover has no place for, to copy. */
+  notOnCover?: readonly ChromeLeftover[];
   onSubmit: () => void;
 }) {
   const lang = useUiLanguage();
@@ -133,6 +138,12 @@ export function SaveAsStep({
             {misfit.kind === 'written' ? m.misfitWritten(misfit.count) : m.misfitMc(misfit.count)}
           </p>
         )}
+
+        {destination !== 'bank' && notOnCover?.length ? (
+          <div key={destination} className="animate-fade-in">
+            <ChromeLeftovers text={m} leftovers={notOnCover} />
+          </div>
+        ) : null}
 
         {destination === 'bank' ? (
           <Field label={m.bankTarget}>

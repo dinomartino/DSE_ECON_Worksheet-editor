@@ -16,6 +16,14 @@ export interface RunProps {
   vertAlign?: 'superscript' | 'subscript';
   /** `w:sym`-style fonts whose private-use characters need mapping. */
   font?: string;
+  /** Point size (`w:sz` is half-points). */
+  size?: number;
+}
+
+/** A paragraph tab stop: `w:val` (left, center, right, clear…) at `pos` twips. */
+export interface TabStop {
+  val: string;
+  pos: number;
 }
 
 export interface NumRef {
@@ -32,6 +40,27 @@ export interface StyleInfo {
   num?: NumRef;
   indLeft?: number;
   outlineLvl?: number;
+  /** Paragraph alignment (`w:jc`). */
+  jc?: string;
+  /** Tab stops, the `basedOn` chain folded in (a `clear` removes an inherited stop). */
+  tabs?: TabStop[];
+}
+
+/** A `w:tabs` element's stops, `clear` ones included. */
+export function tabStopsOf(pPr: XmlElement | undefined): TabStop[] | undefined {
+  const tabs = child(pPr, 'w:tabs');
+  if (!tabs) return undefined;
+  return childrenNamed(tabs, 'w:tab')
+    .map((t) => ({ val: t.attrs['w:val'] ?? 'left', pos: +(t.attrs['w:pos'] ?? NaN) }))
+    .filter((t) => Number.isFinite(t.pos));
+}
+
+/** Stops `own` sets on top of `inherited`: same place replaced, `clear` removed. */
+export function foldTabs(inherited: readonly TabStop[] | undefined, own: readonly TabStop[] | undefined): TabStop[] | undefined {
+  if (!own) return inherited ? [...inherited] : undefined;
+  const out = (inherited ?? []).filter((t) => !own.some((o) => Math.abs(o.pos - t.pos) < 2));
+  out.push(...own.filter((o) => o.val !== 'clear'));
+  return out.sort((a, b) => a.pos - b.pos);
 }
 
 export function readRunProps(rPr: XmlElement | undefined): RunProps {
@@ -53,6 +82,8 @@ export function readRunProps(rPr: XmlElement | undefined): RunProps {
   const va = val(child(rPr, 'w:vertAlign'));
   if (va === 'superscript' || va === 'subscript') out.vertAlign = va;
   else if (va === 'baseline') out.vertAlign = undefined;
+  const sz = val(child(rPr, 'w:sz'));
+  if (sz !== undefined && Number.isFinite(+sz) && +sz > 0) out.size = +sz / 2;
   const fonts = child(rPr, 'w:rFonts');
   const font = fonts?.attrs['w:ascii'] ?? fonts?.attrs['w:hAnsi'];
   if (font) out.font = font;
@@ -96,6 +127,8 @@ export class Styles {
         num: readNumPr(child(pPr, 'w:numPr')),
         indLeft: indLeftOf(pPr),
         ...(outline !== undefined ? { outlineLvl: +outline } : {}),
+        ...(val(child(pPr, 'w:jc')) ? { jc: val(child(pPr, 'w:jc')) } : {}),
+        ...(tabStopsOf(pPr) ? { tabs: tabStopsOf(pPr) } : {}),
       });
       if (type === 'paragraph' && /^(1|true|on)$/.test(s.attrs['w:default'] ?? '')) this.defaultParagraph = id;
     }
@@ -120,7 +153,10 @@ export class Styles {
       if (s.num) out.num = { ...out.num, ...s.num };
       if (s.indLeft !== undefined) out.indLeft = s.indLeft;
       if (s.outlineLvl !== undefined) out.outlineLvl = s.outlineLvl;
+      if (s.jc !== undefined) out.jc = s.jc;
     }
+    out.tabs = [...chain].reverse().reduce<TabStop[] | undefined>((acc, s) => foldTabs(acc, s.tabs), undefined);
+    if (!out.tabs) delete out.tabs;
     // A paragraph style's own numId of 0 switches inherited numbering off.
     if (own.num?.numId === '0') out.num = undefined;
     this.resolved.set(id, out);

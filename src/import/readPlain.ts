@@ -1,3 +1,4 @@
+import type { TabStop } from './docxNumbering';
 import type { InlineRun } from '@/model/types';
 import { tidyText } from './normalize';
 import type { ImageRef } from './types';
@@ -21,6 +22,8 @@ export interface RawLine {
   page?: number;
   x?: number;
   y?: number;
+  /** `.docx` paragraph layout, for the masthead (`docxChrome.ts`): alignment, tab stops, largest type. */
+  layout?: { jc?: string; tabs?: TabStop[]; size?: number };
 }
 
 /** `text/plain`: one line per line. A form feed marks a page break; Word's soft break (`\v`) is a line. */

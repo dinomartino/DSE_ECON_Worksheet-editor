@@ -630,3 +630,66 @@ questions themselves print; teacher copies carry every MC answer and every schem
 **Not checked:** the desktop shell's open sheet with several files and its native multi-file
 drop were not driven (unit-tested through `pickFiles` and `planDrop`).
 
+## 12. Header, footer and title block (as built, 2026-10-08)
+
+A file's page chrome comes in with its questions. `readDocx`/`readPdf` return `chrome?:
+PageChrome` (`src/import/pageChrome.ts`): `header`, `footer`, `firstPageHeader`,
+`firstPageFooter` (`DetectedChrome`: rows of left/centre/right `ChromePiece`s, `rows: []` =
+blank on page 1), `masthead` (rows) and `unsupported` (`ChromeLeftover`: where, text, reason).
+`planChrome(chrome, { documentType, language, totalMarks, keepPreset })`
+(`src/import/chromePlan.ts`) maps it onto the model; no schema change.
+
+- **Pieces** (`classifyText`): a page number mark (Word `PAGE`/`NUMPAGES`, or a PDF number that
+  counts up page by page) is `pageNumber`: "P.n" `pDot`, "Page n of N" `longForm`, else `plain`
+  with the words around it as prefix/suffix; a count elsewhere ("1 / 6") is kept as `plain` and
+  listed (`pageCount`). Blanks (`___`, `＿＿`, dot leaders, an underlined gap) with their label are
+  `fillIn` (short words after one, "( )" or "– 1 - 2022", are its suffix); a bare
+  Name/Class/學號 label is a 14-wide `fillIn`. "Full marks: 45 marks" / 總分 is `totalMarks`. The
+  rest is `text`, bold/italic and a size that differs from the body kept as `format`.
+- **One field per zone** (`rowOf`): two fields in one zone print over each other, so a row whose
+  zone got two (blanks set apart with spaces) spreads its fields left, centre, right in reading
+  order; past three it is a leftover (`tooMany`) in a header or footer, rows of three in the
+  masthead.
+- **.docx** (`src/import/docxChrome.ts`): the running parts are the largest section's (by text),
+  page 1's are the first section's `w:titlePg` parts (none = blank page 1); `w:tab` follows the
+  paragraph's tab stops (style ones folded in; centre/right by kind, left by position in
+  thirds; none: centre then right), `w:ptab` its alignment, else `w:jc`. A framed paragraph
+  (Word's page number box) joins the next line's row. A bottom border under a header (top over
+  a footer) is the rule. Pictures, text boxes, tables, a fourth piece, even-page parts (with
+  `w:evenAndOddHeaders`) and another section's parts (a cover) are leftovers.
+- **PDF** (`src/import/pdfChrome.ts`): the running rows `layoutPdf` drops become the header and
+  footer, zoned against the text column (centred within 8%, else an edge, else thirds). When
+  page 1 lacks the running header, its rows down to 1.6 lines under the running one are page 1's
+  header (the footer likewise); the rest stay for the masthead.
+- **Masthead** (`mastheadVerdict`, shared): page 1's leading lines that are a blank to fill, a
+  marks/time/date line, or a short heading (centred, bold, large, or title words), up to 8; it
+  stops at a numbered question, a section heading, instructions, a sentence, a picture. Its
+  lines leave the review (never questions or headings). More than three pieces on a line split
+  into rows of three; a table row of up to three short cells is one row.
+- **Mapping:** the file's header/footer replace the preset's unless kept; an edge the file lacks
+  keeps the preset's; a Paper 2 booklet's header is its furniture, so the file's is a leftover
+  (`noHeader`). The masthead is `Worksheet.bands` on a classroom or LQ worksheet; on a mock it
+  fills the cover's school, exam, paper and time lines (`coverDetails` takes `{ en, zh }`) and
+  the rest is listed (`noCoverPlace`). A full marks the questions do not add up to stays text
+  (`marksDiffer`). Text goes on the side its script reads as, or on both when the paper does
+  not print that side.
+- **Dialog** (`src/components/import/ChromeReview.tsx`): the review's right pane opens with
+  "Header, footer and title block" (every strip drawn by the page's own `HeaderFooterBand`
+  rows), the keep-preset switch (per paper), and leftovers with Copy. Save as
+  lists a mock's cover leftovers; Save applies everything in the one `createImportedDocument`
+  save.
+
+**Real files (local):** DBS Assessment 1 `.docx` and `.pdf` read the same: running header
+"DBS Economics G11 Enhancement Class (2025-26) Assessment 1" (left), page 1's own header (the
+14pt bold title centred; "Assessment 1" centre, "Name:____" right), footer "© 2026-27 Tino Ho"
+left and the page number centre, masthead "Full marks: 45 marks" (live: the questions add up
+to 45) and "Time allowed: 60 minutes". The exported header and footer parts match the file.
+The S6 mock Paper I/II PDFs: header "…Economics I" left, page number right; masthead school,
+exam and paper lines (a Paper 1 mock's cover takes them) and "Full marks … Date: ____". The
+2019 HKEAA `.docx`: footer "2019-DSE-ECON 2–#" left and "#" centre; its margin text boxes and
+the cover section's footer are listed.
+
+**Known weak cases:** a header row whose text is wider than a third wraps inside its zone on
+screen and in the PDF, while Word keeps it on one line (band zones are fixed thirds); a PDF's
+page-1 header far below the running one reads as masthead; an even-page header is never applied.
+
