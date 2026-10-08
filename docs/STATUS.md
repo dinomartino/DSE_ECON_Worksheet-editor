@@ -17,7 +17,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   2026-10-08: pre-release review fixed (sync data safety, library folder Rust, notices). **User chose to
   ship Storage location visible** before the real run; CI now builds the Rust on Windows + macOS.
 - **2026-10-05: notices float** bottom-right via `notify()` (`src/store/notices.ts`), follow-ups merged.
-- **v0.7.0 released 2026-10-08** (published, `latest`; web deployed from `main`). Ships Storage location
+- **v0.7.0 released 2026-10-08** (published, `latest`; `main` pushed, Vercel deploy not checked from here). Ships Storage location
   sync (desktop), floating notices, the pre-release fixes. v0.6.0 (2026-10-04) shipped 題庫, Marking
   scheme, Translation terms, 中文 interface, Graphs 圖表庫, the Econ Studio rename.
   Website shots: `node scripts/demo.mjs --shots` → 14 WebP at 1920 in `demo-media/screenshots/`.
