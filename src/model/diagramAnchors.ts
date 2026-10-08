@@ -24,20 +24,21 @@ const EPS = 1e-9;
 
 /** Bézier samples per hop when a `curved` curve is read as a polyline. */
 const SPLINE_STEPS = 24;
-const pathCache = new WeakMap<DiagramPoint[], DiagramPoint[]>();
+const pathCache = new WeakMap<DiagramPoint[], Map<number, DiagramPoint[]>>();
 
 /**
  * The line a curve is drawn as, as a polyline: its points, or a `curved` curve's spline
- * sampled finely (built with y scaled by the plot aspect, as the renderer draws it). Every
- * reading (heights, crossings, area edges) goes through this, so a mark sits on the line
- * the reader sees, not on its control polygon.
+ * sampled finely (built with y scaled by `aspect`, the plot's height ÷ width, as the
+ * renderer draws it). Every reading (heights, crossings, area edges) goes through this,
+ * so a mark sits on the line the reader sees, not on its control polygon.
  */
-export function curvePath(curve: DiagramCurve): DiagramPoint[] {
+export function curvePath(curve: DiagramCurve, aspect: number = DIAGRAM_PLOT_ASPECT): DiagramPoint[] {
   const pts = curve.points;
   if (curve.shape !== 'curved' || pts.length < 3) return pts;
-  const cached = pathCache.get(pts);
+  let byAspect = pathCache.get(pts);
+  const cached = byAspect?.get(aspect);
   if (cached) return cached;
-  const k = DIAGRAM_PLOT_ASPECT;
+  const k = aspect;
   const out: DiagramPoint[] = [pts[0]];
   for (const { p1, c1, c2, p2 } of splineSegments(pts.map((p) => ({ x: p.x, y: p.y * k })))) {
     for (let s = 1; s <= SPLINE_STEPS; s += 1) {
@@ -49,13 +50,14 @@ export function curvePath(curve: DiagramCurve): DiagramPoint[] {
     }
   }
   out[out.length - 1] = pts[pts.length - 1];
-  pathCache.set(pts, out);
+  if (!byAspect) pathCache.set(pts, (byAspect = new Map()));
+  byAspect.set(aspect, out);
   return out;
 }
 
 /** The curve's height at `x` — the first non-vertical segment spanning it — or null. */
-export function curveYAt(curve: DiagramCurve, x: number): number | null {
-  const path = curvePath(curve);
+export function curveYAt(curve: DiagramCurve, x: number, aspect: number = DIAGRAM_PLOT_ASPECT): number | null {
+  const path = curvePath(curve, aspect);
   for (let i = 0; i < path.length - 1; i += 1) {
     const a = path[i];
     const b = path[i + 1];
@@ -73,8 +75,13 @@ export function curveYAt(curve: DiagramCurve, x: number): number | null {
  * Where the curve reaches height `y` — the first non-flat segment spanning it (the last,
  * with `last`) — or null.
  */
-export function curveXAt(curve: DiagramCurve, y: number, last = false): number | null {
-  const path = curvePath(curve);
+export function curveXAt(
+  curve: DiagramCurve,
+  y: number,
+  last = false,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): number | null {
+  const path = curvePath(curve, aspect);
   const n = path.length - 1;
   for (let k = 0; k < n; k += 1) {
     const i = last ? n - 1 - k : k;
@@ -109,9 +116,13 @@ function segmentCrossing(
 }
 
 /** Where two curves first cross, walking `a` from its start; null if they never do. */
-export function curveCrossing(a: DiagramCurve, b: DiagramCurve): DiagramPoint | null {
-  const pa = curvePath(a);
-  const pb = curvePath(b);
+export function curveCrossing(
+  a: DiagramCurve,
+  b: DiagramCurve,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): DiagramPoint | null {
+  const pa = curvePath(a, aspect);
+  const pb = curvePath(b, aspect);
   for (let i = 0; i < pa.length - 1; i += 1) {
     for (let j = 0; j < pb.length - 1; j += 1) {
       const hit = segmentCrossing(pa[i], pa[i + 1], pb[j], pb[j + 1]);
@@ -429,18 +440,18 @@ function createResolver(diagram: Diagram, aspect: number): Resolver {
     if ('cross' in ref) {
       const a = curve(ref.cross[0]);
       const b = curve(ref.cross[1]);
-      return a && b ? curveCrossing(a, b) : null;
+      return a && b ? curveCrossing(a, b, aspect) : null;
     }
     if ('on' in ref) {
       const on = curve(ref.on);
       if (!on) return null;
       if ('x' in ref) {
         const base = anchor(ref.x);
-        const y = base ? curveYAt(on, base.x) : null;
+        const y = base ? curveYAt(on, base.x, aspect) : null;
         return base && y !== null ? { x: base.x, y } : null;
       }
       const level = coordinate(ref.y, 'y');
-      const x = level === null ? null : curveXAt(on, level, ref.last === true);
+      const x = level === null ? null : curveXAt(on, level, ref.last === true, aspect);
       return level !== null && x !== null ? { x, y: level } : null;
     }
     const x = coordinate(ref.x, 'x');
@@ -539,7 +550,7 @@ const samePoints = (a: DiagramPoint[], b: DiagramPoint[]) =>
  * The diagram with every anchored point's `at` and every derived curve's `points` at
  * their current value. Returns the same object when nothing moves, so a diagram with no
  * relations — every older document — renders byte-identically. `aspect` is the plot's
- * height ÷ width (only a tangent to a spline depends on it).
+ * height ÷ width (only readings of a spline depend on it).
  */
 export function resolveDiagram(diagram: Diagram, aspect: number = DIAGRAM_PLOT_ASPECT): Diagram {
   const following = (diagram.arrows ?? []).some((a) => a.follows);
@@ -662,10 +673,10 @@ export function renameDerive(derive: DiagramCurveDerive, renamed: Map<string, st
  * derived curves keep the position they had in `before`, a span end becomes that
  * fixed point (a span that could not be drawn then is dropped).
  */
-export function detachRelations(before: Diagram, after: Diagram): Diagram {
+export function detachRelations(before: Diagram, after: Diagram, aspect: number = DIAGRAM_PLOT_ASPECT): Diagram {
   const alive = new Set([...after.curves.map((c) => c.id), ...after.points.map((p) => p.id)]);
   const broken = (ids: string[]) => ids.some((id) => !alive.has(id));
-  const resolved = resolveDiagram(before);
+  const resolved = resolveDiagram(before, aspect);
   let changed = false;
 
   const points = after.points.map((mark) => {
@@ -704,7 +715,7 @@ export function detachRelations(before: Diagram, after: Diagram): Diagram {
     spans = after.spans.flatMap((span) => {
       if (!broken(spanReferences(span))) return [span];
       const fix = (place: DiagramPlace) =>
-        broken(placeReferences(place)) ? resolvePlace(resolved, place) : place;
+        broken(placeReferences(place)) ? resolvePlace(resolved, place, aspect) : place;
       const from = fix(span.from);
       const to = fix(span.to);
       return from && to ? [{ ...span, from, to }] : [];

@@ -1,13 +1,14 @@
-import type {
-  Diagram,
-  DiagramAnchorRef,
-  DiagramArea,
-  DiagramAreaEdge,
-  DiagramAreaPattern,
-  DiagramAreaRevenue,
-  DiagramAreaX,
-  DiagramCurve,
-  DiagramPoint,
+import {
+  DIAGRAM_PLOT_ASPECT,
+  type Diagram,
+  type DiagramAnchorRef,
+  type DiagramArea,
+  type DiagramAreaEdge,
+  type DiagramAreaPattern,
+  type DiagramAreaRevenue,
+  type DiagramAreaX,
+  type DiagramCurve,
+  type DiagramPoint,
 } from './diagram';
 import type { BiText } from './types';
 import { anchorReferences, curveCrossing, curvePath, curveYAt, resolveAnchor } from './diagramAnchors';
@@ -21,16 +22,17 @@ export { curveCrossing, curveYAt, resolveAnchor };
  * Pure and renderer-free: `render/diagram.ts` projects the polygon, the canvas
  * hit-tests it. A reference that no longer resolves (its curve deleted) yields no
  * polygon — `detachAreas` freezes such areas into vertices before that can happen.
- * Curves are read as drawn (`curvePath`): a `curved` curve as its sampled spline.
+ * Curves are read as drawn (`curvePath`): a `curved` curve as its sampled spline, at the
+ * plot's real `aspect` (height ÷ width, `plotAspectOf`) where the caller has it.
  */
 
 const EPS = 1e-9;
 
 /** The x-range a curve covers, ignoring vertical segments (they have no y at an x). */
-function curveSpan(curve: DiagramCurve): [number, number] | null {
+function curveSpan(curve: DiagramCurve, aspect: number): [number, number] | null {
   let lo = Infinity;
   let hi = -Infinity;
-  const path = curvePath(curve);
+  const path = curvePath(curve, aspect);
   for (let i = 0; i < path.length - 1; i += 1) {
     const a = path[i];
     const b = path[i + 1];
@@ -43,19 +45,23 @@ function curveSpan(curve: DiagramCurve): [number, number] | null {
 
 const curveById = (diagram: Diagram, id: string) => diagram.curves.find((c) => c.id === id);
 
-export function resolveAreaX(diagram: Diagram, x: DiagramAreaX): number | null {
-  return typeof x === 'number' ? x : (resolveAnchor(diagram, x)?.x ?? null);
+export function resolveAreaX(
+  diagram: Diagram,
+  x: DiagramAreaX,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): number | null {
+  return typeof x === 'number' ? x : (resolveAnchor(diagram, x, aspect)?.x ?? null);
 }
 
 /** An edge's height at `x`: a curve's own, or a level's constant. */
-function edgeYAt(diagram: Diagram, edge: DiagramAreaEdge, x: number): number | null {
+function edgeYAt(diagram: Diagram, edge: DiagramAreaEdge, x: number, aspect: number): number | null {
   if ('curve' in edge) {
     const curve = curveById(diagram, edge.curve);
-    return curve ? curveYAt(curve, x) : null;
+    return curve ? curveYAt(curve, x, aspect) : null;
   }
   return typeof edge.level === 'number'
     ? edge.level
-    : (resolveAnchor(diagram, edge.level)?.y ?? null);
+    : (resolveAnchor(diagram, edge.level, aspect)?.y ?? null);
 }
 
 /**
@@ -95,9 +101,9 @@ export function rectangleDifference(outer: DiagramPoint, inner: DiagramPoint): D
 }
 
 /** A revenue change's region now: gain = new rectangle less old, loss = old less new. */
-function revenuePolygon(diagram: Diagram, revenue: DiagramAreaRevenue): DiagramPoint[] | null {
-  const before = resolveAnchor(diagram, revenue.from);
-  const after = resolveAnchor(diagram, revenue.to);
+function revenuePolygon(diagram: Diagram, revenue: DiagramAreaRevenue, aspect: number): DiagramPoint[] | null {
+  const before = resolveAnchor(diagram, revenue.from, aspect);
+  const after = resolveAnchor(diagram, revenue.to, aspect);
   if (!before || !after) return null;
   return revenue.change === 'gain' ? rectangleDifference(after, before) : rectangleDifference(before, after);
 }
@@ -114,14 +120,18 @@ export function isAnchoredArea(area: DiagramArea): boolean {
  * curve vertex between — exact for polylines. The range is clipped to where both edges
  * exist, so a curve that stops short of the y-axis bounds the area where it stops.
  */
-export function areaPolygon(diagram: Diagram, area: DiagramArea): DiagramPoint[] | null {
-  if (area.revenue) return revenuePolygon(diagram, area.revenue);
-  if (area.band?.cap) return cappedBandPolygon(diagram, area.band, area.band.cap);
+export function areaPolygon(
+  diagram: Diagram,
+  area: DiagramArea,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): DiagramPoint[] | null {
+  if (area.revenue) return revenuePolygon(diagram, area.revenue, aspect);
+  if (area.band?.cap) return cappedBandPolygon(diagram, area.band, area.band.cap, aspect);
   if (!area.band) return area.vertices && area.vertices.length >= 3 ? area.vertices : null;
 
   const { edges, from, to } = area.band;
-  const x0 = resolveAreaX(diagram, from);
-  const x1 = resolveAreaX(diagram, to);
+  const x0 = resolveAreaX(diagram, from, aspect);
+  const x1 = resolveAreaX(diagram, to, aspect);
   if (x0 === null || x1 === null) return null;
   let lo = Math.max(0, Math.min(x0, x1));
   let hi = Math.min(1, Math.max(x0, x1));
@@ -130,11 +140,11 @@ export function areaPolygon(diagram: Diagram, area: DiagramArea): DiagramPoint[]
   for (const edge of edges) {
     if (!('curve' in edge)) continue;
     const curve = curveById(diagram, edge.curve);
-    const span = curve ? curveSpan(curve) : null;
+    const span = curve ? curveSpan(curve, aspect) : null;
     if (!curve || !span) return null;
     lo = Math.max(lo, span[0]);
     hi = Math.min(hi, span[1]);
-    breaks.push(...curvePath(curve).map((p) => p.x));
+    breaks.push(...curvePath(curve, aspect).map((p) => p.x));
   }
   if (hi - lo < 1e-6) return null;
 
@@ -144,7 +154,7 @@ export function areaPolygon(diagram: Diagram, area: DiagramArea): DiagramPoint[]
   const walk = (edge: DiagramAreaEdge) => {
     const out: DiagramPoint[] = [];
     for (const x of unique) {
-      const y = edgeYAt(diagram, edge, x);
+      const y = edgeYAt(diagram, edge, x, aspect);
       if (y === null) return null;
       out.push({ x, y });
     }
@@ -217,8 +227,12 @@ export function areaReferences(area: DiagramArea): string[] {
 }
 
 /** An area as a free polygon, frozen at the shape it has in `diagram`. Null if undrawable. */
-export function freezeArea(diagram: Diagram, area: DiagramArea): DiagramArea | null {
-  const polygon = areaPolygon(diagram, area);
+export function freezeArea(
+  diagram: Diagram,
+  area: DiagramArea,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): DiagramArea | null {
+  const polygon = areaPolygon(diagram, area, aspect);
   if (!polygon) return null;
   const frozen: DiagramArea = { ...area, vertices: polygon.map((p) => ({ x: p.x, y: p.y })) };
   delete frozen.band;
@@ -233,7 +247,7 @@ export function freezeArea(diagram: Diagram, area: DiagramArea): DiagramArea | n
  * the teacher last saw, so deleting a curve never deletes — or silently hides — the
  * shading that leaned on it. An area that could not be drawn even then is dropped.
  */
-export function detachAreas(before: Diagram, after: Diagram): Diagram {
+export function detachAreas(before: Diagram, after: Diagram, aspect: number = DIAGRAM_PLOT_ASPECT): Diagram {
   if (!after.areas || after.areas.length === 0) return after;
   const alive = new Set([...after.curves.map((c) => c.id), ...after.points.map((p) => p.id)]);
   let changed = false;
@@ -244,7 +258,7 @@ export function detachAreas(before: Diagram, after: Diagram): Diagram {
       continue;
     }
     changed = true;
-    const frozen = freezeArea(before, area);
+    const frozen = freezeArea(before, area, aspect);
     if (frozen) areas.push(frozen);
   }
   return changed ? { ...after, areas } : after;
@@ -462,9 +476,9 @@ type AreaBand = NonNullable<DiagramArea['band']>;
  * band's and the cap's vertices plus every x where the cap crosses an edge, so it is
  * exact for polylines. Where the cap curve does not reach, edge 0 is left as it is.
  */
-function cappedBandPolygon(diagram: Diagram, band: AreaBand, cap: DiagramAreaEdge): DiagramPoint[] | null {
-  const x0 = resolveAreaX(diagram, band.from);
-  const x1 = resolveAreaX(diagram, band.to);
+function cappedBandPolygon(diagram: Diagram, band: AreaBand, cap: DiagramAreaEdge, aspect: number): DiagramPoint[] | null {
+  const x0 = resolveAreaX(diagram, band.from, aspect);
+  const x1 = resolveAreaX(diagram, band.to, aspect);
   if (x0 === null || x1 === null) return null;
   let lo = Math.max(0, Math.min(x0, x1));
   let hi = Math.min(1, Math.max(x0, x1));
@@ -473,17 +487,17 @@ function cappedBandPolygon(diagram: Diagram, band: AreaBand, cap: DiagramAreaEdg
   for (const edge of band.edges) {
     if (!('curve' in edge)) continue;
     const curve = curveById(diagram, edge.curve);
-    const span = curve ? curveSpan(curve) : null;
+    const span = curve ? curveSpan(curve, aspect) : null;
     if (!curve || !span) return null;
     lo = Math.max(lo, span[0]);
     hi = Math.min(hi, span[1]);
-    breaks.push(...curvePath(curve).map((p) => p.x));
+    breaks.push(...curvePath(curve, aspect).map((p) => p.x));
   }
   if ('curve' in cap) {
     const curve = curveById(diagram, cap.curve);
     if (!curve) return null;
-    breaks.push(...curvePath(curve).map((p) => p.x));
-  } else if (edgeYAt(diagram, cap, lo) === null) return null;
+    breaks.push(...curvePath(curve, aspect).map((p) => p.x));
+  } else if (edgeYAt(diagram, cap, lo, aspect) === null) return null;
   if (hi - lo < 1e-6) return null;
 
   const sorted = (xs: number[]) =>
@@ -495,8 +509,8 @@ function cappedBandPolygon(diagram: Diagram, band: AreaBand, cap: DiagramAreaEdg
     const [a, b] = [xs[i], xs[i + 1]];
     for (const edge of band.edges) {
       const gap = (x: number) => {
-        const c = edgeYAt(diagram, cap, x);
-        const e = edgeYAt(diagram, edge, x);
+        const c = edgeYAt(diagram, cap, x, aspect);
+        const e = edgeYAt(diagram, edge, x, aspect);
         return c === null || e === null ? null : c - e;
       };
       const ga = gap(a);
@@ -509,10 +523,10 @@ function cappedBandPolygon(diagram: Diagram, band: AreaBand, cap: DiagramAreaEdg
   const first: DiagramPoint[] = [];
   const second: DiagramPoint[] = [];
   for (const x of xs) {
-    const y0 = edgeYAt(diagram, band.edges[0], x);
-    const y1 = edgeYAt(diagram, band.edges[1], x);
+    const y0 = edgeYAt(diagram, band.edges[0], x, aspect);
+    const y1 = edgeYAt(diagram, band.edges[1], x, aspect);
     if (y0 === null || y1 === null) return null;
-    const c = edgeYAt(diagram, cap, x);
+    const c = edgeYAt(diagram, cap, x, aspect);
     const y = c === null ? y0 : [y0, c, y1].sort((a, b) => a - b)[1];
     first.push({ x, y });
     second.push({ x, y: y1 });

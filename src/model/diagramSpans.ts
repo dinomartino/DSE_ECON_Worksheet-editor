@@ -1,4 +1,11 @@
-import type { Diagram, DiagramPlace, DiagramPoint, DiagramSpan, DiagramSpanStyle } from './diagram';
+import {
+  DIAGRAM_PLOT_ASPECT,
+  type Diagram,
+  type DiagramPlace,
+  type DiagramPoint,
+  type DiagramSpan,
+  type DiagramSpanStyle,
+} from './diagram';
 import { resolvePlace } from './diagramAnchors';
 
 /**
@@ -37,9 +44,14 @@ function spanNormal(span: DiagramSpan, a: DiagramPoint, b: DiagramPoint): Diagra
 }
 
 /** Where a span is drawn now, or null when an end no longer resolves. */
-export function spanGeometry(diagram: Diagram, span: DiagramSpan, clearance?: SpanClearance): SpanGeometry | null {
-  const from = resolvePlace(diagram, span.from);
-  const to = resolvePlace(diagram, span.to);
+export function spanGeometry(
+  diagram: Diagram,
+  span: DiagramSpan,
+  clearance?: SpanClearance,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): SpanGeometry | null {
+  const from = resolvePlace(diagram, span.from, aspect);
+  const to = resolvePlace(diagram, span.to, aspect);
   if (!from || !to) return null;
   const project = (p: DiagramPoint): DiagramPoint =>
     span.along === 'x' ? { x: p.x, y: 0 } : span.along === 'y' ? { x: 0, y: p.y } : { x: p.x, y: p.y };
@@ -91,8 +103,14 @@ export function shiftWedge(diagram: Diagram, span: DiagramSpan): 'forward' | 're
 }
 
 /** The offset after a body drag by (dx, dy): the drag's component along the normal. */
-export function draggedSpanOffset(diagram: Diagram, span: DiagramSpan, dx: number, dy: number): number {
-  const geometry = spanGeometry(diagram, span);
+export function draggedSpanOffset(
+  diagram: Diagram,
+  span: DiagramSpan,
+  dx: number,
+  dy: number,
+  aspect: number = DIAGRAM_PLOT_ASPECT,
+): number {
+  const geometry = spanGeometry(diagram, span, undefined, aspect);
   const normal = geometry?.normal ?? { x: 0, y: 1 };
   return (span.offset ?? 0) + dx * normal.x + dy * normal.y;
 }

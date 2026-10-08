@@ -20,6 +20,7 @@ import {
   priceLine,
   reading,
   shade,
+  shiftArrow,
   shiftOf,
   span,
   sub,
@@ -60,7 +61,7 @@ export function oneShift(which: 'demand' | 'supply'): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [c0, c1, k],
       points: [e0, e1],
-      arrows: [arrow([x0 + 0.03, y], [x0 + 0.15, y])],
+      arrows: [shiftArrow(c0, c1, [x0 + 0.03, y], [x0 + 0.15, y])],
       spans: axisArrows(e0, e1),
     }),
   );
@@ -78,7 +79,7 @@ function simultaneous(): Diagram {
       curves: [d0, d1, s0, s1],
       points: [e0, e1],
       // The dominant shift is drawn visibly larger — the mark the schemes award for it.
-      arrows: [arrow([0.15, 0.72], [0.38, 0.72]), arrow([0.165, 0.2], [0.25, 0.2])],
+      arrows: [shiftArrow(d0, d1, [0.15, 0.72], [0.38, 0.72]), shiftArrow(s0, s1, [0.165, 0.2], [0.25, 0.2])],
       spans: axisArrows(e0, e1),
       labels: [label(0.28, 0.9, bi('shift of D > shift of S', 'D 的移動 > S 的移動'))],
     }),
@@ -125,7 +126,7 @@ function fixedSupply(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [s, d0, d1],
       points: [e0, e1],
-      arrows: [arrow([0.13, 0.7], [0.29, 0.7])],
+      arrows: [shiftArrow(d0, d1, [0.13, 0.7], [0.29, 0.7])],
       spans: axisArrows(e0, e1, ['y']),
     }),
   );
@@ -181,7 +182,7 @@ function shortageChange(): Diagram {
         qd0,
         qd1,
       ],
-      arrows: [arrow([0.2, 0.74], [0.34, 0.74])],
+      arrows: [shiftArrow(d0, d1, [0.2, 0.74], [0.34, 0.74])],
       spans: [
         // shortage₀'s name sits left of S, clear of shortage₁ below it.
         span(at(qs), at(qd0), 'bracket', { offset: -0.05, label: subBi('shortage', '短缺', '0'), labelOffset: { x: -0.23, y: 0.02 } }),
@@ -242,7 +243,7 @@ function ceilingDemandFalls(): Diagram {
         qt,
       ],
       // Between D₁ and D₀, right of DWL₀.
-      arrows: [arrow([0.64, 0.32], [0.48, 0.32])],
+      arrows: [shiftArrow(d0, d1, [0.64, 0.32], [0.48, 0.32])],
     }),
     (r) => {
       const roles = (d: DiagramCurve) => ({ demand: d.id, supply: s.id, control: { curve: pc.id } });
@@ -366,7 +367,7 @@ function labourImport(): Diagram {
     axes(AXIS.labour, AXIS.wage, {
       curves: [d, local, both],
       points: [e0, e1, localJobs],
-      arrows: [arrow([xOn(localPts, y) + 0.03, y], [xOn(localPts, y) + 0.21, y])],
+      arrows: [shiftArrow(local, both, [xOn(localPts, y) + 0.03, y], [xOn(localPts, y) + 0.21, y])],
     }),
   );
 }
@@ -397,7 +398,7 @@ function mcRiseTss(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s0, s1],
       points: [e0, e1],
-      arrows: [arrow([0.56, 0.66], [0.56, 0.84])],
+      arrows: [shiftArrow(s0, s1, [0.56, 0.66], [0.56, 0.84])],
       spans: axisArrows(e0, e1),
     }),
     // Right of D: left to the placer, the long 總社會盈餘損失 lands on D in EN+中.
@@ -487,7 +488,7 @@ function quotaDemandIncrease(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d0, d1, s, sq],
       points: [e0, e1, f0, f1],
-      arrows: [arrow([0.6, 0.2], [0.73, 0.2])],
+      arrows: [shiftArrow(d0, d1, [0.6, 0.2], [0.73, 0.2])],
       spans: axisArrows(e0, e1, ['y']),
       areas: [
         band([{ curve: d0.id }, { curve: s.id }], at(e0), at(f0), {

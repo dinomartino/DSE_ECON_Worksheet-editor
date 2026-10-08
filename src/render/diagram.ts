@@ -1173,7 +1173,7 @@ function layoutAreaLabel(
   scale: number,
   placed: Pt[][],
 ): { layout: AreaLabelLayout | null; box?: Pt[] } {
-  const polygon = areaPolygon(diagram, area);
+  const polygon = areaPolygon(diagram, area, plotAspectOf(proj));
   if (!polygon) return { layout: null };
   const pts = polygon.map(project(proj));
   const centroid = project(proj)(polygonCentroid(polygon));
@@ -1196,7 +1196,7 @@ function layoutAreaLabel(
   const obstacles = () => {
     const { lines, regions } = leaderObstacles(diagram, proj, language, scale);
     for (const other of diagram.areas ?? []) {
-      const polygon = other.id === area.id ? null : areaPolygon(diagram, other);
+      const polygon = other.id === area.id ? null : areaPolygon(diagram, other, plotAspectOf(proj));
       if (polygon) regions.push(polygon.map(project(proj)));
     }
     return { lines, regions: [...regions, ...placed] };
@@ -1251,7 +1251,7 @@ export function areaLabelSeedOffset(
   language: LanguageMode,
 ): DiagramPoint | null {
   if (area.labelOffset) return area.labelOffset;
-  const polygon = areaPolygon(diagram, area);
+  const polygon = areaPolygon(diagram, area, plotAspectOf(proj));
   const layout = areaLabelLayout(diagram, area, proj, language, 1);
   if (!polygon || !layout || layout.placement === 'inside') return null;
   const centre = polygonCentroid(polygon);
@@ -1359,7 +1359,7 @@ export function areaFillMarkup(pts: Pt[], paint: AreaPaint, scale: number): stri
 }
 
 function areaFillSvg(diagram: Diagram, area: DiagramArea, proj: Projection, scale: number): string {
-  const polygon = areaPolygon(diagram, area);
+  const polygon = areaPolygon(diagram, area, plotAspectOf(proj));
   if (!polygon) return '';
   return areaFillMarkup(polygon.map(project(proj)), area, scale);
 }

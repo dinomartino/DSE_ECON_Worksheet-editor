@@ -163,8 +163,8 @@ Guard: `src/render/diagram.test.ts`, `src/model/diagramDraw.test.ts`.
    `…Trade.ts`) in relations, never free coordinates, so a drag keeps the scheme's marks
    (kit: `src/model/diagramTemplateKit.ts`):
    - equilibria and readings as anchors — `eq(a, b)`, `reading(curve, line)`, `pin(ref)`;
-   - shifted copies `shiftOf`, prices `priceLine` (level), verticals `upright`, MR /
-     tangent / parallel via `derived`;
+   - shifted copies `shiftOf` with their arrow `shiftArrow` (it follows), prices
+     `priceLine` (level), verticals `upright`, MR / tangent / parallel via `derived`;
    - change arrows, gaps, brackets and wedges as spans — `axisArrows`, `span`;
    - welfare areas through the Shade presets — `shade(resolved, id, roles)` inside `finish`.
    Return `finish(…)`: it resolves every relation into `at`/`points` for older builds.
