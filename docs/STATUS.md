@@ -7,16 +7,20 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **Found-folder offer merged (2026-10-08, unreleased):** a desktop launch with no folder set looks for
-  an existing `Econ Studio` library in the cloud folders (`library_found`, `src/sync/foundFolder.ts`)
-  and offers it once; the picker opens at the library's parent. The empty start screen points to
-  Settings → Storage location. Only checked with a faked shell: run `desktop:dev` on a machine with a
-  synced library (picker location, the "done" flag surviving a restart).
-- **Paste questions (D1 phase 1) merged, unreleased:** engine `src/import/`, dialog
-  `src/components/import/`, picture slots (paste a screenshot into a missing figure). Design + as built:
-  `docs/design/paste-import.md`. Untested: a real Word/Google Docs clipboard, the desktop shell, Safari.
-  MC without a key inserts answer A (flagged in the notice). Next: phase 2 (`.docx` file import:
-  text boxes, pictures; layout profiles; large-paste notice). Real-paper survey is local only (public repo).
+- **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
+  only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
+- **Paused 2026-10-08 (user left), resume both:**
+  - `feature/import-from-file` (worktree `agent-aa7436579ecb5faae`, at 5284546, nothing written yet): home
+    button "Import from Word or PDF…" → `readDocx`/`readPdf` → review dialog → Save as Classroom / LQ /
+    Paper 1 mock / Paper 2 mock / 題庫 only (new doc opens); drop on home; empty-card Paste button;
+    import language from `paperSide()`. Real-file end-to-end + `.docx` export check local only.
+  - `fix/bank-view-language` (worktree `agent-abebd3a569872fa45`, 5 commits on 029f749): 題庫 excerpts
+    follow the view language, zh chrome spaces Latin names, new-from-picks named in view language.
+    Left: build, screenshots, merge.
+- **Merged, unreleased:** Paste questions (engine `src/import/`, dialog `src/components/import/`, picture
+  slots, real Word clipboard fixes), `.docx` + `.pdf` readers (pdfjs-dist legacy, lazy; macOS shell
+  likely uses the main-thread fallback), UI language / Paper language settings, topic names follow the
+  paper language. Design + as built: `docs/design/paste-import.md`. Untested: Tauri window.
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
@@ -67,13 +71,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified (2026-10-08, `develop` after Paste questions merge)
 
-- `npm test` 5141; samples, build, lint 40 on the branches. Earlier: `npm test` 5079, `cargo test` 51; found-folder branch: build, samples 6, lint 40. Before it: samples 6 passed; build, typecheck, cover/lq-verify (en + zh) green;
+- `npm test` 5210, lint 40, typecheck; build green after the pdf merge. Earlier: `npm test` 5079, `cargo test` 51; found-folder branch: build, samples 6, lint 40. Before it: samples 6 passed; build, typecheck, cover/lq-verify (en + zh) green;
   lint 40; CI green incl. `rust (windows-latest)`.
 
 ## Log
 
-- **2026-10-08** — D1 design (3 research agents), then engine, dialog, picture slots: 3 Opus branches merged.
+- **2026-10-08** — D1 design, engine, dialog, picture slots, gaps, docx + pdf readers; paper language
+  setting; topic names paper-side. 9 Opus branches merged; 2 paused (see top).
 - **2026-10-08** — Found-folder offer on a new computer (`feature/found-folder`, 1 Opus agent), merged.
-- **2026-10-08** — Pre-release check: 4 Opus reviewers, 6 fix branches merged (`fix/sync-safety`,
-  `fix/library-rust`, `fix/notices-ui`, `fix/diagram-gaps`, `fix/answer-gaps`, `fix/release-tooling`).
-  Cloud folder detection in setup. Demo: `demo-media/storage-location/` (zh, subtitled, simulated shell).
