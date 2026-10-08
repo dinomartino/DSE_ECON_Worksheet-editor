@@ -33,7 +33,22 @@ const cargoChanged = patch(
   `$1version = "${version}"`,
 );
 
-const touched = [confChanged && 'tauri.conf.json', cargoChanged && 'Cargo.toml'].filter(Boolean);
+// Cargo.lock: only the app's own [[package]] block (named by Cargo.toml), never a dependency's.
+// `cargo --locked` rejects a lock whose app version disagrees with Cargo.toml.
+const appName = /\[package\][\s\S]*?\nname = "([^"]+)"/.exec(readFileSync(cargoPath, 'utf8'))?.[1];
+if (!appName) throw new Error(`no package name found in ${cargoPath}`);
+const escaped = appName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const lockChanged = patch(
+  join(repoRoot, 'src-tauri', 'Cargo.lock'),
+  new RegExp(`(\\[\\[package\\]\\]\\nname = "${escaped}"\\n)version = "[^"]*"`),
+  `$1version = "${version}"`,
+);
+
+const touched = [
+  confChanged && 'tauri.conf.json',
+  cargoChanged && 'Cargo.toml',
+  lockChanged && 'Cargo.lock',
+].filter(Boolean);
 console.log(
   touched.length
     ? `sync-version: ${version} → ${touched.join(', ')}`
