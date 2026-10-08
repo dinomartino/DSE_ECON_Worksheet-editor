@@ -147,7 +147,7 @@ export async function readPage(pdfjs: Pdfjs, page: PdfPageProxy): Promise<PdfPag
       str: raw.str,
       x: e,
       y: height - f,
-      w: raw.width * (viewport.scale || 1),
+      w: raw.width,
       size,
       ...(style.bold ? { bold: true } : {}),
       ...(style.italic ? { italic: true } : {}),
@@ -167,29 +167,28 @@ function titleOf(info: unknown): string | undefined {
   return GENERIC_TITLE.test(title) ? undefined : title;
 }
 
-/** Render each page with figures once, crop each figure to PNG, and let the caller store it. */
+/** Render each page with figures once (lines come in page order), crop each figure to PNG, and let the caller store it. */
 async function cropFigures(doc: PdfDoc, lines: PdfLine[], prepareImage: NonNullable<ReadPdfOptions['prepareImage']>): Promise<void> {
   const scale = 2;
   const pad = 4;
-  const pages = new Map<number, HTMLCanvasElement | null>();
+  let renderedPage = 0;
+  let canvas: HTMLCanvasElement | null = null;
   for (const line of lines) {
     if (!line.figure) continue;
     try {
-      if (!pages.has(line.page)) {
+      if (renderedPage !== line.page) {
+        renderedPage = line.page;
+        canvas = null;
         const page = await doc.getPage(line.page);
         const viewport = page.getViewport({ scale });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.ceil(viewport.width);
-        canvas.height = Math.ceil(viewport.height);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          pages.set(line.page, null);
-          continue;
-        }
-        await page.render({ canvasContext: ctx, canvas, viewport }).promise;
-        pages.set(line.page, canvas);
+        const target = document.createElement('canvas');
+        target.width = Math.ceil(viewport.width);
+        target.height = Math.ceil(viewport.height);
+        const ctx = target.getContext('2d');
+        if (!ctx) continue;
+        await page.render({ canvasContext: ctx, canvas: target, viewport }).promise;
+        canvas = target;
       }
-      const canvas = pages.get(line.page);
       if (!canvas) continue;
       const box = line.figure;
       const sx = Math.max(0, (box.x - pad) * scale);

@@ -110,6 +110,20 @@ describe('layoutPdf', () => {
     expect(lines[1]).toMatch(/^column right line 1 .* column right line 6/);
   });
 
+  it('splits a narrow gap when the rows around it start a column at the same x', () => {
+    const rows = [
+      ['First option:', 'to study at HKU', 652],
+      ['Second option:', 'to study at CUHK', 640], // the label ends 14 pt before the column
+      ['Third option:', 'to study abroad', 628],
+    ] as const;
+    const items = rows.flatMap(([a, b, y]) => [at(a, 82, y, { w: a.length * 4.8 }), at(b, 163, y)]);
+    expect(layoutPdf([page(items)]).lines.map((l) => l.cells?.map((c) => c.map((r) => r.text).join('')))).toEqual([
+      ['First option:', 'to study at HKU'],
+      ['Second option:', 'to study at CUHK'],
+      ['Third option:', 'to study abroad'],
+    ]);
+  });
+
   it('drops headers repeated in place across pages and lone page numbers', () => {
     const p = (n: number) => page([at('Economics Test', 42, 800), at(`${n}`, 295, 40), at(`${n}.`, 42, 700), at(`Question ${n} text.`, 66, 700)]);
     expect(raws([p(1), p(2)])).toEqual(['1. Question 1 text.', '2. Question 2 text.']);
@@ -152,6 +166,15 @@ describe('findFigures', () => {
     expect(figures).toHaveLength(1);
     expect(figures[0].x).toBe(100);
     expect(figures[0].y).toBeLessThan(400); // grown down to the "Quantity" label
+  });
+
+  it('ignores a bordered table: rules and the dots where they meet', () => {
+    const graphics = [0, 18, 36].flatMap((y) => [
+      { kind: 'rule' as const, box: { x: 64, y: 660 + y, w: 450, h: 0.5 } },
+      { kind: 'rule' as const, box: { x: 64, y: 660 + y, w: 0.5, h: 0.5 } },
+      { kind: 'rule' as const, box: { x: 312, y: 660 + y, w: 0.5, h: 0.5 } },
+    ]);
+    expect(findFigures(page([at('Number of owners', 76, 680), at('3', 320, 680)], { graphics })).figures).toEqual([]);
   });
 
   it('ignores a page-sized image under a text layer (an OCR’d scan)', () => {

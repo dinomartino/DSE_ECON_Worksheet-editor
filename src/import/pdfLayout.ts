@@ -112,13 +112,16 @@ export function findFigures(page: PdfPage): { figures: PdfBox[]; rules: PdfBox[]
   const isDrawing = (g: PdfGraphic) =>
     g.kind === 'image' || (g.kind === 'shape' && (g.curved || !centres.some((c) => contains(g.box, c.x, c.y))));
   // A filled box behind text (a shaded cell, a frame) or a page-sized path is never part of a picture.
-  const drawn = graphics.filter((g) => g.kind === 'image' || g.kind === 'rule' || (isDrawing(g) && g.box.w * g.box.h < area * 0.9));
+  const drawn = graphics
+    .filter((g) => g.kind === 'image' || g.kind === 'rule' || (isDrawing(g) && g.box.w * g.box.h < area * 0.9))
+    .sort((a, b) => a.box.x - b.box.x);
 
-  // Union-find over graphics that touch.
+  // Union-find over graphics that touch, swept by x so a dense chart stays fast.
   const parent = drawn.map((_, k) => k);
   const find = (k: number): number => (parent[k] === k ? k : (parent[k] = find(parent[k])));
   for (let a = 0; a < drawn.length; a++) {
-    for (let b = a + 1; b < drawn.length; b++) if (overlaps(drawn[a].box, drawn[b].box, 3)) parent[find(a)] = find(b);
+    const reach = drawn[a].box.x + drawn[a].box.w + 3;
+    for (let b = a + 1; b < drawn.length && drawn[b].box.x <= reach; b++) if (overlaps(drawn[a].box, drawn[b].box, 3)) parent[find(a)] = find(b);
   }
   const groups = new Map<number, PdfGraphic[]>();
   for (let k = 0; k < drawn.length; k++) groups.set(find(k), [...(groups.get(find(k)) ?? []), drawn[k]]);
@@ -134,30 +137,25 @@ export function findFigures(page: PdfPage): { figures: PdfBox[]; rules: PdfBox[]
     if (inside.reduce((sum, it) => sum + it.w * it.size, 0) > box.w * box.h * 0.2) continue;
     figures.push(box);
   }
-  // Grow each figure by the axes beside it and its short labels ("P", "Quantity", "0"),
-  // so a crop shows them and they stay out of the text. Lines that start with a label
-  // ("A. …") are never taken.
-  const labels = page.items.filter((it) => it.str.trim() && it.str.trim().length <= 24 && !isLabelText(it.str) && !it.rotated);
+  // Grow each figure by the axes beside it, then once by its short labels ("P", "Quantity",
+  // "0"), so a crop shows them and they stay out of the text. Nothing that starts with a
+  // label ("A. …") is taken, and labels never chain.
+  const labels = page.items.filter((it) => {
+    const t = it.str.trim();
+    return t && t.length <= 24 && !it.rotated && !parseLabel(labelZone(t));
+  });
   for (let k = 0; k < figures.length; k++) {
     for (let grown = true; grown; ) {
       grown = false;
       for (const r of rules) {
-        if (!contains(figures[k], r.x, r.y) && overlaps(figures[k], r, 12) && r.w < page.width * 0.6) {
-          const next = union(figures[k], r);
-          grown = next.w !== figures[k].w || next.h !== figures[k].h;
-          figures[k] = next;
-        }
-      }
-      for (const it of labels) {
-        const box = { x: it.x, y: it.y - it.size * 0.25, w: it.w, h: it.size * 1.2 };
-        if (!overlaps(figures[k], box, 8)) continue;
-        const next = union(figures[k], box);
-        if (next.w !== figures[k].w || next.h !== figures[k].h) {
-          grown = true;
-          figures[k] = next;
-        }
+        if (r.w > page.width * 0.6 || r.h > page.height * 0.6 || !overlaps(figures[k], r, 12)) continue;
+        const next = union(figures[k], r);
+        if (next.w !== figures[k].w || next.h !== figures[k].h) grown = true;
+        figures[k] = next;
       }
     }
+    const near = labels.map((it) => ({ x: it.x, y: it.y - it.size * 0.25, w: it.w, h: it.size * 1.2 })).filter((b) => overlaps(figures[k], b, 8));
+    figures[k] = near.reduce(union, figures[k]);
   }
   // Merge figures that overlap after growing (a graph drawn in several clusters).
   for (let changed = true; changed; ) {
