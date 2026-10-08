@@ -159,9 +159,14 @@ around a derived question range** (the `questionCount` decomposition) plus a ful
 ### Bands and zones (`src/model/bands.ts`)
 
 Placement is **slot-based, never free**: a `Band` is one printed row with three drop
-zones (left/centre/right), one Word paragraph with tab stops. Zone positions are fixed
-thirds (0, 0.5, 1). `totalMarks` and the `partHeader` suffix print **computed** numbers
-— a stored total goes stale.
+zones (left/centre/right), one Word paragraph with a centre stop at 0.5 and a right stop
+at 1 (one tab per zone after the left; fields in a zone one space apart). `totalMarks`
+and the `partHeader` suffix print **computed** numbers — a stored total goes stale.
+
+**The page lays a row out as Word does** (`BandRowFrame`), not as thirds: each zone is as
+wide as its text, the centre sits on the middle unless a side is too long and pushes it
+(a long right zone pushes it left, where Word would push the right text instead), and
+nothing wraps until the zones cannot share one line; then each keeps its longest word.
 
 ### A field is authored wording around a derived value
 
@@ -1764,10 +1769,12 @@ include", § the answer key); its PDF and the question paper are this document's
 
 ### Both band paths must agree
 
-`BandEditor` (active) and `ReadOnlyBandRow` (idle + print/PDF) draw the same rows.
-Formatting is one shared function (`bandFieldStyle`); chrome reserves no space
-(drop-zone outlines use `ring`; spacing belongs to `HeaderFooterBand`, applied in both
-paths). Verify by measuring the same text node in both states.
+`BandEditor` (active) and `ReadOnlyBandRow` (idle + print/PDF) draw the same rows, and
+the IR masthead (`ColumnsNode.band`, the page-count probe) too: one frame
+(`BandRowFrame`), one style function (`bandFieldStyle`). Chrome reserves no space: rings,
+not padding; an empty zone's `+`, an empty affix's `+` and a field's ✕ are positioned,
+since a zone is only as wide as its text. Verify by measuring the same text node in both
+states.
 
 ---
 

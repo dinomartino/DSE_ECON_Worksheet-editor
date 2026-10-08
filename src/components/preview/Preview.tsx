@@ -156,6 +156,7 @@ import {
   StructuredIcon,
 } from "@/components/ui/icons";
 import { BandEditor, BandTrailText, bandFieldStyle, withPageNumber, type BandTrail } from "./BandEditor";
+import { BAND_FIELD_SEPARATOR, BAND_ZONE_CLASS, BandRowFrame } from "./bandRow";
 
 /**
  * What an editable row of zones needs from its host.
@@ -2460,6 +2461,35 @@ export function NodeView({
     );
   }
 
+  if (node.kind === "columns" && node.band) {
+    // A masthead band read-only (the page-count probe, a preview without editing): the
+    // same frame and zones as `BandEditor` and `ReadOnlyBandRow`, so all three agree.
+    const zone = (align: ZoneName) => {
+      const cells = node.cells.filter((cell) => (cell.align ?? "left") === align);
+      return (
+        <div className={BAND_ZONE_CLASS[align]}>
+          {cells.map((cell, index) => (
+            <Fragment key={index}>
+              {index > 0 && BAND_FIELD_SEPARATOR}
+              <span className="whitespace-pre-wrap" style={bandFieldStyle({ format: cell.format })}>
+                {richNodes(cell.text, language)}
+              </span>
+            </Fragment>
+          ))}
+        </div>
+      );
+    };
+    return (
+      <BandRowFrame
+        className={`${STYLE_CLASS[node.style] ?? ""} ${node.rule ? "border-b border-[#999999] pb-0.5" : ""}`}
+      >
+        {zone("left")}
+        {zone("center")}
+        {zone("right")}
+      </BandRowFrame>
+    );
+  }
+
   if (node.kind === "columns") {
     // `at` is already a fraction of the row's own width (the IR normalises for
     // `indent`), so a percentage inside the shifted container is exactly right.
@@ -2999,7 +3029,9 @@ export function HeaderFooterBand({
             : "mt-2"
       }`}
     >
-      <div className="flex-1">
+      {/* `min-w-0`: a band row in its one-line layout is as wide as its text at least,
+          and without it that width would widen the header past the margin. */}
+      <div className="min-w-0 flex-1">
         {body}
         {markLine}
         {versionLine}
@@ -3014,12 +3046,6 @@ export function HeaderFooterBand({
  * Used by the read-only preview and the print path, where `BandEditor`'s zone outlines
  * and add buttons must not appear at all — not hidden, absent (§ read-only preview).
  */
-const TRAIL_JUSTIFY: Record<ZoneName, string> = {
-  left: "justify-start",
-  center: "justify-center",
-  right: "justify-end",
-};
-
 function ReadOnlyBandRow({
   band,
   language,
@@ -3035,20 +3061,21 @@ function ReadOnlyBandRow({
   trail?: BandTrail;
 }) {
   const zones = zonesOf(band);
-  const cell = (name: ZoneName, align: string) => {
+  const cell = (name: ZoneName) => {
     const trailHere = trail?.zone === name;
-    const fields = zones[name].map((field) => (
-        // `bandFieldStyle` is shared with `BandEditor` rather than reimplemented, and it
-        // was previously missing here entirely: a field's `fontSize`, weight, colour and
-        // font were dropped, so a 14pt bold title previewed *and printed* at the
-        // container's 12pt. That also made the region focus look like a bug — entering
-        // the header seemed to enlarge its text, when the idle state was the wrong one.
-        // `whitespace-pre-wrap` for the reason `BandEditor` sets it: a field's wording
-        // carries its own spacing ("Full marks: " · 45 · " marks"), and HTML would
-        // collapse it away — here on the path that actually prints and becomes the PDF.
+    const fields = zones[name].map((field, index) => (
+      <Fragment key={field.id}>
+        {index > 0 && BAND_FIELD_SEPARATOR}
+        {/* `bandFieldStyle` is shared with `BandEditor` rather than reimplemented, and it
+            was previously missing here entirely: a field's `fontSize`, weight, colour and
+            font were dropped, so a 14pt bold title previewed *and printed* at the
+            container's 12pt. That also made the region focus look like a bug — entering
+            the header seemed to enlarge its text, when the idle state was the wrong one.
+            `whitespace-pre-wrap` for the reason `BandEditor` sets it: a field's wording
+            carries its own spacing ("Full marks: " · 45 · " marks"), and HTML would
+            collapse it away — here on the path that actually prints and becomes the PDF. */}
         <span
-          key={field.id}
-          className={`mx-0.5 ${trailHere ? "whitespace-pre" : "whitespace-pre-wrap"}`}
+          className={trailHere ? "whitespace-pre" : "whitespace-pre-wrap"}
           style={bandFieldStyle(field)}
         >
           {/* The sheet is passed to `bandFieldPrintText`, which substitutes the page
@@ -3064,25 +3091,28 @@ function ReadOnlyBandRow({
               the export both honour. */}
           {richNodes(bandFieldPrintText(field, { totalMarks, page }, language), language)}
         </span>
-      ));
-    if (!trailHere) return <div className={`flex-1 ${align}`}>{fields}</div>;
-    // Like a Word tab stop: the zone keeps its width and nothing in it wraps; the line
-    // overflows away from its alignment edge instead of growing the header.
+      </Fragment>
+    ));
     return (
-      <div className={`flex min-w-0 flex-1 ${align} ${TRAIL_JUSTIFY[name]}`}>
-        <span className="shrink-0 whitespace-pre">
-          {fields}
-          <BandTrailText text={trail.text} />
-        </span>
+      <div className={BAND_ZONE_CLASS[name]}>
+        {trailHere ? (
+          // The marker runs on along its zone's line, as in Word; it never wraps.
+          <span className="whitespace-pre">
+            {fields}
+            <BandTrailText text={trail.text} />
+          </span>
+        ) : (
+          fields
+        )}
       </div>
     );
   };
   return (
-    <div className="flex items-baseline gap-2">
-      {cell("left", "text-left")}
-      {cell("center", "text-center")}
-      {cell("right", "text-right")}
-    </div>
+    <BandRowFrame>
+      {cell("left")}
+      {cell("center")}
+      {cell("right")}
+    </BandRowFrame>
   );
 }
 

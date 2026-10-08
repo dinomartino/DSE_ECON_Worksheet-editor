@@ -130,11 +130,9 @@ export interface RenderedWorksheet {
 }
 
 /**
- * Render one band as a row of columns.
- *
- * Zone positions are fixed thirds so the centre zone is genuinely centred on the page,
- * which is what a masthead needs; an occupied-zones-only layout would centre the middle
- * of the *content* instead and drift as fields are added.
+ * Render one band as a row: one cell per field, positioned by its zone's tab stop
+ * (left 0, centre 0.5, right 1), so the centre zone is centred on the page rather than
+ * on the content. `band: true` tells backends to lay it out as a tab-stop paragraph.
  */
 function renderBand(
   band: Band,
@@ -170,7 +168,7 @@ function renderBand(
     }
   }
 
-  return { kind: 'columns', style: 'Body', cells, rule: band.rule };
+  return { kind: 'columns', style: 'Body', cells, rule: band.rule, band: true };
 }
 
 /**

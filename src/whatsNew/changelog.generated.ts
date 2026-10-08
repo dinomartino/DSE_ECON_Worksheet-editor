@@ -81,6 +81,18 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱和題目預覽跟隨題目的語言。** 在題庫中，課題及分課題名稱和每條題目的預覽文字會以題目顯示的語言呈現
   （EN、中文，或 EN+中 時兩者並列），而非程式介面的語言；以所選題目建立的新工作紙亦以此語言命名。在試卷中，側欄亦然。按鈕和數目仍跟隨介面語言。 -->
 
+### Fixed
+- **Headers, footers and title blocks are laid out on the page as Word prints them.** A long
+  line such as "DBS Economics G11 Enhancement Class (2025-26) Assessment 1" now stays on one
+  line on the page and in the PDF instead of wrapping into a narrow column, and a centred title
+  stays centred beside a Name line. In the Word file, a title block line that starts in the
+  middle or on the right now prints there rather than at the left margin, a line with text on
+  the left and the right keeps both on one line, and two items in the same place have a space
+  between them.
+  <!-- zh: **頁首、頁尾和標題區在頁面上的排版與 Word 列印的一致。** 較長的一行（例如「DBS Economics G11 Enhancement
+  Class (2025-26) Assessment 1」）在頁面和 PDF 中會保持在同一行，不再擠成窄窄的一欄；置中的標題在「姓名」欄旁邊仍會置中。
+  在 Word 檔案中，標題區內由中間或右邊開始的一行會印在該處，不再印在左邊界；左右兩邊都有文字的一行會保持在同一行；同一位置的兩項之間會有空格。 -->
+
 ## 0.7.0 — 2026-10-08
 
 ### Added

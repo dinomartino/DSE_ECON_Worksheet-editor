@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { ZONES, zonesOf, type ZoneName } from '@/model/bands';
+import { Fragment, useState } from 'react';
+import { ZONES, bandIsEmpty, zonesOf, type ZoneName } from '@/model/bands';
 import { bandFieldSegments, mirrorBilingualEdit } from '@/model/bandSegments';
 import { plain } from '@/model/text';
 import type { Band, BandField, BandFieldSide, BiText, LanguageMode } from '@/model/types';
 import { InlineEditable } from './InlineEditable';
 import { useMessages } from '@/i18n/language';
 import { BAND_EDITOR_MESSAGES, BAND_LABEL_KEYS } from './BandEditor.messages';
+import { BAND_FIELD_SEPARATOR, BAND_ZONE_CLASS, BandRowFrame } from './bandRow';
 
 /**
  * The masthead, edited in place with fixed drop zones.
@@ -116,7 +117,7 @@ export function withPageNumber(
  * that reached the export but not the page would break the rule that the preview is the
  * document.
  */
-export function bandFieldStyle(field: BandField): React.CSSProperties {
+export function bandFieldStyle(field: Pick<BandField, 'format'>): React.CSSProperties {
   return {
     /*
      * An enlarged field needs a line box to match, or it overprints the row above.
@@ -148,16 +149,16 @@ export interface BandTrail {
   text: string;
 }
 
-/** Never wraps: a zone is a third of the row here but a tab stop in Word, where the
- *  marker runs on along the line; wrapping it would grow the header and move the body. */
+/** Never wraps: in Word the marker runs on along its zone's line after the fields. */
 export function BandTrailText({ text }: { text: string }) {
   return <span className="mx-0.5 shrink-0 whitespace-pre font-bold">{text}</span>;
 }
 
-const ALIGN: Record<ZoneName, string> = {
-  left: 'justify-start text-left',
-  center: 'justify-center text-center',
-  right: 'justify-end text-right',
+/** Where an empty zone's `+` and drop target sit: on its own tab stop. */
+const EMPTY_ZONE_SPOT: Record<ZoneName, string> = {
+  left: 'left-0',
+  center: 'left-1/2 -translate-x-1/2',
+  right: 'right-0',
 };
 
 export function BandEditor({
@@ -221,15 +222,13 @@ export function BandEditor({
       {bands.map((band) => {
         const zones = zonesOf(band);
         return (
-          <div
+          <BandRowFrame
             key={band.id}
             // The rule takes the literal `#999999` the exporter writes into `w:pBdr`,
             // matching `ReadOnlyBandRow` — the two paths draw the same rows, so a
             // `slate` token here would redraw the hairline the moment the region is
             // focused (§ Both band paths must agree).
-            className={`group/band relative flex items-baseline gap-1 ${
-              band.rule ? 'border-b border-[#999999] pb-0.5' : ''
-            }`}
+            className={`group/band relative ${band.rule ? 'border-b border-[#999999] pb-0.5' : ''}`}
           >
             {/* Remove this printed row. In the left margin rather than inline, because a
                 control between the zones would take width from the row it is deleting and
@@ -294,11 +293,11 @@ export function BandEditor({
                    *
                    * The drop-zone outline is therefore drawn *outside* the flow: `ring`
                    * paints beyond the border box without reserving width, and the empty
-                   * zone's own `+` keeps a bare zone clickable without a min-height. The
-                   * horizontal breathing room comes back as a negative-inset ring rather
-                   * than as padding that would shift the text.
+                   * zone's `+` and drop target are positioned, so a bare zone stays
+                   * clickable without taking a width the read-only row does not give it
+                   * (an empty zone is no wider than its track: § `BandRowFrame`).
                    */
-                  className={`flex flex-1 ${trailHere ? 'min-w-0 flex-nowrap' : 'flex-wrap'} items-baseline gap-x-1 rounded transition-[background-color,box-shadow] duration-150 ease-out-soft ${ALIGN[zone]} ${
+                  className={`relative rounded transition-[background-color,box-shadow] duration-150 ease-out-soft ${BAND_ZONE_CLASS[zone]} ${trailHere ? 'whitespace-nowrap' : ''} ${zones[zone].length === 0 ? 'self-stretch' : ''} ${
                     isOver
                       ? 'bg-[#d9ebf8] ring-2 ring-[#0d77c9]'
                       : droppable
@@ -306,9 +305,10 @@ export function BandEditor({
                         : 'group-hover/band:ring-1 group-hover/band:ring-dashed group-hover/band:ring-[#d6d1cb]'
                   }`}
                 >
-                  {zones[zone].map((field) => (
+                  {zones[zone].map((field, fieldIndex) => (
+                    <Fragment key={field.id}>
+                    {fieldIndex > 0 && BAND_FIELD_SEPARATOR}
                     <span
-                      key={field.id}
                       data-field-id={field.id}
                       draggable
                       onDragStart={(event) => {
@@ -346,7 +346,7 @@ export function BandEditor({
                        * lied about the document. `pre-wrap` rather than `pre` so a long
                        * header row still wraps.
                        */
-                      className={`group/field inline-flex cursor-grab items-baseline active:cursor-grabbing ${
+                      className={`group/field relative inline-flex cursor-grab items-baseline active:cursor-grabbing ${
                         trailHere ? 'shrink-0 whitespace-pre' : 'whitespace-pre-wrap'
                       } ${
                         dragging?.fieldId === field.id ? 'opacity-40' : ''
@@ -369,11 +369,28 @@ export function BandEditor({
                       */}
                       {bandFieldSegments(field, { totalMarks, page }).map((segment, index) =>
                         segment.kind === 'text' ? (
-                          <InlineEditable
+                          /*
+                           * An empty side of a computed field is only its `+`, which the
+                           * printed row has no room for: until it is selected it hangs
+                           * outside the field (before a prefix, after a suffix) in a box
+                           * of no width, so engaging the band moves nothing. `contents`
+                           * otherwise, so the tree (and the editor's state) never changes.
+                           */
+                          <span
                             // Keyed by side, not by index: a page-number pattern change
                             // reshapes the middle of the list, and an index key would
                             // hand a prefix's editing state to a suffix.
                             key={`${field.id}:${segment.side}`}
+                            className={
+                              field.kind !== 'text' &&
+                              plain(segment.text.en).length === 0 &&
+                              plain(segment.text.zh).length === 0 &&
+                              !(selection?.isSelected(field.id, segment.side) ?? false)
+                                ? `inline-flex w-0 whitespace-nowrap ${segment.side === 'prefix' ? 'justify-end' : ''}`
+                                : 'contents'
+                            }
+                          >
+                          <InlineEditable
                             value={segment.text}
                             side={language === 'zh' ? 'zh' : 'en'}
                             placeholder={
@@ -413,6 +430,7 @@ export function BandEditor({
                           >
                             {plain(language === 'zh' ? segment.text.zh : segment.text.en)}
                           </InlineEditable>
+                          </span>
                         ) : (
                           // Derived: computed at render time, so there is nowhere to
                           // write a change back to. It still takes the field's format,
@@ -439,32 +457,49 @@ export function BandEditor({
                         aria-label={m.removeField}
                         title={m.removeField}
                         onClick={() => onRemoveField(field.id)}
-                        className="ml-0.5 hidden text-[10px] leading-none text-[#8f8a86] transition-[color] duration-150 ease-out-soft hover:text-[#dc2626] group-hover/field:inline"
+                        // Positioned past the field's end, so revealing it never widens
+                        // the zone and moves the row being edited.
+                        className="absolute left-full top-0 ml-0.5 hidden text-[10px] leading-none text-[#8f8a86] transition-[color] duration-150 ease-out-soft hover:text-[#dc2626] group-hover/field:inline"
                       >
                         ✕
                       </button>
                     </span>
+                    </Fragment>
                   ))}
 
                   {trailHere && <BandTrailText text={trail.text} />}
 
                   {/* An empty zone still needs a target, but it is a print preview first:
                       the affordance stays invisible until the row is hovered, so the page
-                      reads as the worksheet rather than as a form. */}
+                      reads as the worksheet rather than as a form. Positioned while the row
+                      prints something, so it takes no width the printed row does not give
+                      the zone; a row with nothing in it keeps them in the flow, as they are
+                      all there is to see and click. */}
                   {zones[zone].length === 0 && (
                     <button
                       type="button"
                       onClick={() => onAddField(band.id, zone)}
                       aria-label={m.addField(zone)}
-                      className="text-[10px] text-transparent transition-[color] duration-150 ease-out-soft group-hover/band:text-[#a5a09b] hover:!text-[#0a5c9e]"
+                      className={`text-[10px] text-transparent transition-[color] duration-150 ease-out-soft group-hover/band:text-[#a5a09b] hover:!text-[#0a5c9e] ${
+                        bandIsEmpty(band) ? '' : `absolute bottom-0 z-20 ${EMPTY_ZONE_SPOT[zone]}`
+                      }`}
                     >
                       +
                     </button>
                   )}
+                  {/* While a field is dragged, an empty zone is a target even when its
+                      track is narrow or zero (an empty centre beside two short sides). */}
+                  {zones[zone].length === 0 && droppable && (
+                    <span
+                      aria-hidden
+                      data-print-hide
+                      className={`absolute inset-y-0 z-20 w-16 ${EMPTY_ZONE_SPOT[zone]}`}
+                    />
+                  )}
                 </div>
               );
             })}
-          </div>
+          </BandRowFrame>
         );
       })}
     </div>

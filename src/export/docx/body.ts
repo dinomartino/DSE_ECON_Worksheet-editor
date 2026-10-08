@@ -161,37 +161,81 @@ function paragraph(options: {
  *
  * The first cell is emitted without a leading tab so it starts at the paragraph indent.
  */
+/** A band row's cells grouped by zone, in left, centre, right order; empty zones dropped. */
+function bandZones(node: ColumnsNode): ColumnsNode['cells'][] {
+  return (['left', 'center', 'right'] as const)
+    .map((align) => node.cells.filter((cell) => (cell.align ?? 'left') === align))
+    .filter((cells) => cells.length > 0);
+}
+
+/**
+ * A band row's stops: one per occupied centre or right zone, as the header paragraph has
+ * (§ `headerFooterParagraph`). Every zone after the left one is reached by a single tab.
+ */
+function bandStops(node: ColumnsNode, width: number): string {
+  const indent = node.indent ?? 0;
+  return bandZones(node)
+    .map((cells) => cells[0])
+    .filter((cell) => cell.align === 'center' || cell.align === 'right')
+    .map((cell) => `<w:tab w:val="${cell.align}" w:pos="${Math.round(indent + cell.at * width)}"/>`)
+    .join('');
+}
+
+/**
+ * A band row's runs: a tab before each zone but a left one (so a row starting in the
+ * centre or on the right is not printed at the margin), fields in a zone one space apart.
+ */
+function bandCellRuns(node: ColumnsNode, context: BodyContext): string {
+  return bandZones(node)
+    .map((cells) => {
+      const lead = cells[0].align === 'center' || cells[0].align === 'right' ? '<w:r><w:tab/></w:r>' : '';
+      const fields = cells
+        .map((cell) => {
+          const fonts = cell.format?.fonts ?? context.fonts;
+          return biTextRuns(cell.text, fonts, context.language, formatRunOptions(cell.format));
+        })
+        .filter(Boolean)
+        .join(run(' ', context.fonts));
+      return lead + fields;
+    })
+    .join('');
+}
+
 function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
   // `at` is relative to the row, so stops are measured from the paragraph indent.
   const indent = node.indent ?? 0;
   const width = Math.max(720, context.contentWidth - indent);
 
-  const stops = node.cells
-    .slice(1)
-    .map((cell, index) => {
-      const value = cell.align === 'right' ? 'right' : cell.align === 'center' ? 'center' : 'left';
-      /*
-       * With a hang, the *second* cell is the text column: it starts at `indent`, which
-       * is where Word returns every wrapped line to. Placing it from `at` instead would
-       * put the stop somewhere inside the text column and the wrap would not line up
-       * (§ ColumnsNode.hanging). Later cells still measure from `at`.
-       */
-      const pos =
-        node.hanging && index === 0 ? indent : indent + cell.at * width;
-      return `<w:tab w:val="${value}" w:pos="${Math.round(pos)}"/>`;
-    })
-    .join('');
+  const stops = node.band
+    ? bandStops(node, width)
+    : node.cells
+        .slice(1)
+        .map((cell, index) => {
+          const value = cell.align === 'right' ? 'right' : cell.align === 'center' ? 'center' : 'left';
+          /*
+           * With a hang, the *second* cell is the text column: it starts at `indent`, which
+           * is where Word returns every wrapped line to. Placing it from `at` instead would
+           * put the stop somewhere inside the text column and the wrap would not line up
+           * (§ ColumnsNode.hanging). Later cells still measure from `at`.
+           */
+          const pos =
+            node.hanging && index === 0 ? indent : indent + cell.at * width;
+          return `<w:tab w:val="${value}" w:pos="${Math.round(pos)}"/>`;
+        })
+        .join('');
 
-  const runs = node.cells
-    .map((cell, index) => {
-      const fonts = cell.format?.fonts ?? context.fonts;
-      const marker = cell.marker
-        ? run(`${cell.marker} `, fonts, formatRunOptions(cell.format))
-        : '';
-      const body = biTextRuns(cell.text, fonts, context.language, formatRunOptions(cell.format));
-      return (index > 0 ? '<w:r><w:tab/></w:r>' : '') + marker + body;
-    })
-    .join('');
+  const runs = node.band
+    ? bandCellRuns(node, context)
+    : node.cells
+        .map((cell, index) => {
+          const fonts = cell.format?.fonts ?? context.fonts;
+          const marker = cell.marker
+            ? run(`${cell.marker} `, fonts, formatRunOptions(cell.format))
+            : '';
+          const body = biTextRuns(cell.text, fonts, context.language, formatRunOptions(cell.format));
+          return (index > 0 ? '<w:r><w:tab/></w:r>' : '') + marker + body;
+        })
+        .join('');
 
   const props =
     `<w:pStyle w:val="${STYLE_IDS[node.style]}"/>` +

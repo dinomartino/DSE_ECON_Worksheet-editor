@@ -283,7 +283,10 @@ function zoneRuns(
         )
         .join(lineBreak());
     })
-    .join('');
+    // Fields sharing a zone print one space apart, as on the page (§ Bands and zones);
+    // run together, "…2025-2026" and "P.5" read as one word.
+    .filter(Boolean)
+    .join(run(' ', fonts));
 }
 
 /**
