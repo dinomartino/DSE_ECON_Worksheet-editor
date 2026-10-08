@@ -443,6 +443,17 @@ export function ListIcon(props: IconProps) {
   );
 }
 
+/** A clipboard with lines: Paste questions. */
+export function PasteIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="2.5" width="6" height="3.5" rx="1" />
+      <path d="M9 11h6M9 15h4" />
+    </Svg>
+  );
+}
+
 /** A pencil — the sidebar's "Edit" tab, and the on-page edit affordance. */
 export function PencilIcon(props: IconProps) {
   return (
