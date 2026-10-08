@@ -753,7 +753,7 @@ pub async fn library_choose<R: Runtime>(app: AppHandle<R>, title: Option<String>
     if let Some(title) = title.filter(|t| !t.is_empty() && t.len() <= 200) {
       dialog = dialog.set_title(title);
     }
-    if let Some(folder) = start.and_then(|id| crate::cloud::this_computer().into_iter().find(|f| f.id == id)) {
+    if let Some(folder) = start.and_then(|id| crate::cloud::this_computers(&id)) {
       dialog = dialog.set_directory(folder.path);
     }
     let Some(picked) = dialog.blocking_pick_folder() else { return Ok(ChooseResult::Cancelled) };
