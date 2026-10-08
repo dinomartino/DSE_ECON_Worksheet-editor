@@ -10,6 +10,10 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Merged, unreleased (2026-10-08):** table bar "Same height" / "Same width" (Word's Distribute rows/columns)
   over a swept range only (`distributeRows`/`distributeColumns` in `src/model/table.ts`). Not yet tried in the Tauri window.
   Also: the editor shell no longer scrolls into empty space (paginator probes are `h-0 overflow-hidden`).
+- **Merged, unreleased:** import brings in the file's header, footer (incl. page 1's own) and title block
+  (`src/import/pageChrome.ts`, `chromePlan.ts`; `paste-import.md` § 12); file's wins over the preset, a box keeps
+  the preset; what can't be reproduced is listed with Copy. In flight: `fix/band-row-layout` (band zones are
+  fixed thirds in preview/PDF, so a long header wraps where Word keeps one line).
 - `npm run typecheck` trips on `src-tauri/target/**/tauri-codegen-assets/*.ts` after a local `desktop:build`
   (tsconfig excludes only `node_modules`); source itself is clean.
 - **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
@@ -82,4 +86,4 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Log
 
 - **2026-10-08** — Found-folder offer; import (design, engine, docx/pdf readers, home-screen file import,
-  answers from another file); paper language; OCR survey + trial; table distribute rows/columns; editor overscroll fix. 17 Opus branches merged.
+  answers from another file); paper language; OCR survey + trial; table distribute rows/columns; editor overscroll fix; import header/footer/title block. 18 Opus branches merged.
