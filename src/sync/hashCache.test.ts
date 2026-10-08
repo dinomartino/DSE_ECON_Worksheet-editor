@@ -90,15 +90,15 @@ describe('forgetOnWrite', () => {
 
 /** Every `WorksheetStore` method and its argument count: the compiler keeps this whole. */
 const EVERY_METHOD: Record<keyof WorksheetStore, number> = {
-  list: 0,
+  list: 1,
   load: 1,
   save: 1,
-  adopt: 1,
+  adopt: 2,
   loadTrashed: 1,
   rename: 2,
   remove: 1,
   trash: 1,
-  listTrash: 0,
+  listTrash: 1,
   restore: 1,
   purge: 1,
   emptyTrash: 0,

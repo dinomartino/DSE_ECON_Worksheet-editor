@@ -2,7 +2,8 @@ import { dedupeIds } from '@/model/dedupeIds';
 import { CURRENT_SCHEMA_VERSION, isNewerThanBuild, migrate, serializeWorksheet } from '@/model/migrations';
 import { documentName } from '@/model/text';
 import type { Worksheet } from '@/model/types';
-import type { WorksheetSummary } from './types';
+import { sha256 } from '@/sync/hash';
+import type { AdoptExpect, WorksheetSummary } from './types';
 import { INDEX_ROW_REV } from './summaries';
 
 /** Reading, writing and naming a document — the parts no store implementation owns. */
@@ -48,6 +49,20 @@ export function adoptRefused(stored: string, incoming: Pick<Worksheet, 'schemaVe
   }
   if (typeof version !== 'number') return true;
   return isNewerThanBuild({ schemaVersion: version }) && incoming.schemaVersion < version;
+}
+
+/**
+ * `adopt(…, expect)`'s check: what is stored under the id (`null`: nothing) is what the sync
+ * engine planned against. Text that will not parse never matches.
+ */
+export function holdsExpected(stored: { place: 'live' | 'trash'; text: string } | null, expect: AdoptExpect): boolean {
+  if (!stored || !expect) return stored === expect;
+  if (stored.place !== expect.place) return false;
+  try {
+    return sha256(stringifyWorksheet(parseWorksheet(stored.text))) === expect.hash;
+  } catch {
+    return false;
+  }
 }
 
 /**

@@ -10,18 +10,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWorksheet } from '@/model/factories';
 import { CURRENT_SCHEMA_VERSION } from '@/model/migrations';
-import { NewerDocumentError, stringifyWorksheet } from './document';
-import { createFolder, folderOf, moveToFolder, updateFolders } from './folders';
+import { NewerDocumentError, parseWorksheet, stringifyWorksheet } from './document';
+import { sha256 } from '@/sync/hash';
+import { createFolder, EMPTY_FOLDERS, folderOf, moveToFolder, updateFolders } from './folders';
 
 const files = new Map<string, string>();
 const dirs = new Set<string>();
+/** Paths whose every call fails, as an IPC or disk error would. */
+const failing = new Set<string>();
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   BaseDirectory: { AppData: 13 },
-  exists: async (path: string) =>
+  exists: async (path: string) => {
+    if (failing.has(path)) throw new Error(`EIO ${path}`);
+    return (
     files.has(path) ||
     dirs.has(path) ||
-    [...files.keys()].some((key) => key.startsWith(`${path}/`)),
+    [...files.keys()].some((key) => key.startsWith(`${path}/`))
+    );
+  },
   mkdir: async (path: string) => {
     dirs.add(path);
   },
@@ -75,6 +82,7 @@ function worksheet(id: string, updatedAt: string) {
 beforeEach(() => {
   files.clear();
   dirs.clear();
+  failing.clear();
 });
 
 describe('FileWorksheetStore', () => {
@@ -444,5 +452,64 @@ describe('FileWorksheetStore and a newer build’s document', () => {
 
     await store.save({ ...loaded, id: 'imported' });
     expect(files.get(doc('imported'))).toContain('futureTopLevel');
+  });
+});
+
+describe('FileWorksheetStore under concurrent writes', () => {
+  const at = '2024-01-01T00:00:00.000Z';
+  const hashOf = (id: string) => sha256(stringifyWorksheet(parseWorksheet(files.get(doc(id))!)));
+
+  it('keeps every index row when saves, a sync adopt, a trash, a restore and a rename overlap', async () => {
+    const store = new FileWorksheetStore();
+    for (const id of ['t', 'r', 'k']) await store.save(worksheet(id, at));
+    await store.trash('r');
+    // The teacher's first save of a new paper, while sync adopts and trashes.
+    await Promise.all([
+      store.save(worksheet('new', at)),
+      store.adopt(worksheet('synced', at)),
+      store.trash('t'),
+      store.restore('r'),
+      store.rename('k', 'Renamed'),
+      store.writeFolders(moveToFolder(createFolder(EMPTY_FOLDERS, 'Unit 1', 'f1'), ['k'], 'f1')),
+    ]);
+    expect((await store.list()).map((row) => row.id).sort()).toEqual(['k', 'new', 'r', 'synced']);
+    expect((await store.listTrash()).map((row) => row.id)).toEqual(['t']);
+    expect((await store.load('k'))?.name).toBe('Renamed');
+  });
+
+  it('adopt with an expectation writes only over what was expected, else answers changed', async () => {
+    const store = new FileWorksheetStore();
+    await store.save(worksheet('a', at));
+    const expected = { place: 'live' as const, hash: hashOf('a') };
+    // A save lands first, though the engine read the document before it.
+    const saved = store.save({ ...worksheet('a', at), name: 'Saved meanwhile' });
+    expect(await store.adopt({ ...worksheet('a', at), name: 'Downloaded' }, expected)).toBe('changed');
+    await saved;
+    expect((await store.load('a'))?.name).toBe('Saved meanwhile');
+    expect(await store.adopt({ ...worksheet('a', at), name: 'Downloaded' }, { place: 'live', hash: hashOf('a') })).toBeUndefined();
+    expect((await store.load('a'))?.name).toBe('Downloaded');
+    // Nothing expected: a document there, live or trashed, is a change.
+    expect(await store.adopt(worksheet('a', at), null)).toBe('changed');
+    await store.trash('a');
+    expect(await store.adopt(worksheet('a', at), null)).toBe('changed');
+    expect(await store.adopt(worksheet('b', at), null)).toBeUndefined();
+  });
+
+  it('a listing that fails is an error with strict, never an empty library written back', async () => {
+    const store = new FileWorksheetStore();
+    await store.save(worksheet('a', at));
+    await store.save(worksheet('b', at));
+    const index = files.get(INDEX);
+    failing.add(INDEX);
+    expect(await store.list()).toEqual([]);
+    await expect(store.list({ strict: true })).rejects.toThrow('EIO');
+    // A save then fails rather than write an index holding only itself.
+    await expect(store.save(worksheet('c', at))).rejects.toThrow('EIO');
+    failing.clear();
+    expect(files.get(INDEX)).toBe(index);
+    await store.trash('a');
+    failing.add(TRASH_INDEX);
+    await expect(store.listTrash({ strict: true })).rejects.toThrow('EIO');
+    expect(await store.listTrash()).toEqual([]);
   });
 });

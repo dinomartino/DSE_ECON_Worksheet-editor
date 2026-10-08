@@ -42,16 +42,30 @@ export interface TrashedSummary extends WorksheetSummary {
   deletedAt: string;
 }
 
+/**
+ * What `adopt` must find stored for the id first: `{ place, hash }` (the content hash the sync
+ * engine computes, `sha256(stringifyWorksheet(…))`, of the live or the trashed document), or
+ * `null` for nothing at all.
+ */
+export type AdoptExpect = { place: 'live' | 'trash'; hash: string } | null;
+
+/** `strict`: reject when the library cannot be read, instead of answering an empty list. */
+export interface ListOptions {
+  strict?: boolean;
+}
+
 export interface WorksheetStore {
-  list(): Promise<WorksheetSummary[]>;
+  list(options?: ListOptions): Promise<WorksheetSummary[]>;
   load(id: string): Promise<Worksheet | undefined>;
   save(worksheet: Worksheet): Promise<void>;
   /**
    * Write a document the sync engine downloaded: `save`, except it may replace a newer
    * build's document — but never with an older schema (§ `adoptRefused`, which throws
-   * `NewerDocumentError`). Announced with `origin: 'sync'`.
+   * `NewerDocumentError`). Announced with `origin: 'sync'`. With `expect`, the stored state
+   * is checked first, with no other write of this store in between: anything else and
+   * nothing is written, resolving `'changed'`.
    */
-  adopt(worksheet: Worksheet): Promise<void>;
+  adopt(worksheet: Worksheet, expect?: AdoptExpect): Promise<void | 'changed'>;
   /** A trashed document's content (`load` reads only live ones on desktop). */
   loadTrashed(id: string): Promise<Worksheet | undefined>;
   /** Give a saved document a new name, without opening it. Never touches its title. */
@@ -64,7 +78,7 @@ export interface WorksheetStore {
    * Trashed documents, most recently deleted first. Purges anything past the retention
    * window on the way out — lazily, so no timer has to be running when it expires.
    */
-  listTrash(): Promise<TrashedSummary[]>;
+  listTrash(options?: ListOptions): Promise<TrashedSummary[]>;
   /**
    * Back into `list()`. Resolves to the id it is live under — a fresh one if that id is
    * live again already (never overwritten) — or `undefined` if nothing was there.

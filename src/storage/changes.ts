@@ -49,18 +49,18 @@ export function withChangeFeed(
     }
   };
   return {
-    list: () => store.list(),
+    list: (options) => store.list(options),
     load: (id) => store.load(id),
     loadTrashed: (id) => store.loadTrashed(id),
-    listTrash: () => store.listTrash(),
+    listTrash: (options) => store.listTrash(options),
     readFolders: () => store.readFolders(),
     writeFolders: (state) => store.writeFolders(state),
     async save(worksheet) {
       await store.save(worksheet);
       announce({ docId: worksheet.id, kind: 'saved' }, worksheet);
     },
-    async adopt(worksheet) {
-      await store.adopt(worksheet);
+    async adopt(worksheet, expect) {
+      if ((await store.adopt(worksheet, expect)) === 'changed') return 'changed';
       announce({ docId: worksheet.id, kind: 'saved', origin: 'sync' }, worksheet);
     },
     async rename(id, name) {
