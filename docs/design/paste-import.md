@@ -2,8 +2,8 @@
 
 Status: **proposal** (2026-10-08), written against `develop` @ c886017. Phase 0 and phase 1 are
 built (§ 10): the engine (`feature/paste-import-core`) and the review dialog (`feature/paste-import-ui`).
-Phase 2's `.docx` reader and phase 3's `.pdf` reader are built (§ 10). The engine for
-answers kept in another file is built (§ 11); its UI is not.
+Phase 2's `.docx` reader and phase 3's `.pdf` reader are built (§ 10). Answers kept in
+another file are built, engine and UI (§ 11).
 **The way in is file-only** (user decision, 2026-10-08: "if a teacher can copy the text, they
 can paste it into a worksheet themselves"): Import from Word or PDF… on the home screen, or a
 file dropped there (§ 6, § 10). The clipboard readers stay in the engine, tested, unused by the app.
@@ -200,9 +200,10 @@ File-only (2026-10-08). The home screen is the one way in:
 
 - **Import from Word or PDF… / 從 Word 或 PDF 匯入…**, a secondary button under New worksheet
   (empty desk or not). It opens the system file chooser (`.docx`, `.pdf`, and `.doc` so an old
-  file can be explained); the native open sheet on desktop.
-- **A dropped `.docx` or `.pdf`** on the home screen (web drop or the desktop shell's native
-  drop) opens the same dialog. A paper among several dropped files is left out.
+  file can be explained), several files at once; the native open sheet on desktop (`pickFiles`).
+- **Dropped `.docx` or `.pdf` files** on the home screen (web drop or the desktop shell's native
+  drop) open the same dialog, one or several (`planDrop` → `papers`). A paper dropped together
+  with worksheets or backups is left out.
 - There is no import from inside a paper and no text paste box: the add rail's Paste
   questions… and 題庫's header button were removed before release.
 
@@ -574,4 +575,58 @@ kind reads the second "1." as a numbered point; the unlabelled line after a lone
 read as its explanation; "OR" between alternative answers stays a point, not a second route;
 in a PDF, flattened answer | notes columns are told apart only by repeated labels; scans
 need text recognition first.
+
+### The UI, as built (2026-10-08)
+
+`src/components/import/ImportDialog.tsx` orchestrates; the logic is pure in
+`src/components/import/importBatch.ts` (tested without a DOM in `importAnswers.test.tsx`).
+
+1. **Choose several:** the chooser takes several files (`multiple`; desktop `pickFiles`, the
+   open sheet with `multiple: true`, each file read when its turn comes) and so does a drop.
+2. **Read all:** one after another, a row each (read, waiting, cannot be read). Each read file
+   is `examineFile`d: `classifyImport` (a scan or a file that would not open: by name alone) and
+   `splitAnswers`.
+3. **Link** (`LinkStep.tsx`), only with several files or one that holds only answers. Each file
+   row: its pages, question count and the guess's reasons in plain words ("name says answers",
+   "has an answer key"…, `REASON_TEXT`), a Questions / Answers / Both control, problems (a scan, a
+   damaged file), and × to leave it out. A scanned answers file says answers cannot be read from
+   a scan yet and is never a choice. Then each paper (a readable file that is not Answers) with
+   an **Answers from** picker: No answers, Its own answers (a cut was found, or the teacher said
+   Both), or any answers file; one file may serve several papers. `linkedAnswers`: the
+   teacher's pick while it is still a choice, else `suggestPairs`. One file that is a paper goes
+   straight to its review, its own answers applied when `splitAnswers` cut any.
+4. **Review per paper** ("2 of 3 papers · file"; Previous paper / Next paper). `paperReview`:
+   `matchAnswers` on the paper solved with the teacher's fixes but not their answer clicks (so a
+   conflict is still reported), then `analyseLines` with `[...sheetPins, ...teacherPins]`: a
+   click on an option wins. The answers bar (`answerSummary`): "19 of 19 MC answers set from
+   file · 8 marking schemes · 2 to check", Next to check stepping through the rows (`AnswerRow`,
+   worded by `answerRowText`: missing, a part missing, conflict, a letter past the options, no
+   letter, a letter for a written question, no part label, no such question or part, a second
+   answer, several letters, marks that differ), in paper order and part order; a question the
+   teacher answered by clicking is settled. Each row also heads its question's card. The
+   preview renders the **teacher version** (`previewDoc.ts`, the MC "Answer: X" line left out:
+   the wash says it), and the teacher-only nodes are framed and labelled "Teacher copy only". Each
+   `scheme` pin is a badge on its question's first line ("Scheme (a)", "Answer" when it has no
+   marks or is an MC's explanation); its × leaves it out (`PaperState.dropped`), ⌘Z brings it back.
+5. **Save as:** one paper keeps the gallery (`SaveAsStep`). Several (`SaveManyStep.tsx`): a row
+   per paper with its name (from the file) and type (`defaultDocumentType` marked suggested,
+   `misfit` warned), or 題庫 only for all (one `addToBank` over every paper's questions).
+   `createImportedDocuments`: each paper as `createImportedDocument` makes one, the later ones
+   through the store alone and written one at a time (the documents index is read-modify-write),
+   the first last and opened. The notice lists every paper with an Open button for the others
+   (up to three); `EditorHost`'s `open` reads the editor's state from a ref, so an Open from the
+   editor flushes the open paper first. Nothing is written before Save; answers and schemes are
+   in the questions (existing fields only).
+
+**Real files through the dialog (local only, Chromium `next dev`):** DBS Assessment 1 `.docx`
+with its answers `.docx`: paired by name; 19 of 19 MC answers and 8 schemes set, 1 row ("accepts
+A or C. Using A."). The S6 mock trio: the marking scheme is a scan (6 pages, links nothing);
+Paper I and Paper II each take their own answers (Paper I's key on its last page: 44 of 45
+answered; Paper II cut after "End of Paper": 27 schemes and 19 rows: 8 marks that differ from
+the printed marks, 7 parts with no answer (6 from Q10's source table read as parts) and 4
+sub-parts the paper does not have). Exported to `.docx`
+(LibreOffice text): student copies carry no "Answer:" line and no scheme text beyond wording the
+questions themselves print; teacher copies carry every MC answer and every scheme point.
+**Not checked:** the desktop shell's open sheet with several files and its native multi-file
+drop were not driven (unit-tested through `pickFiles` and `planDrop`).
 
