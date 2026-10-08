@@ -21,8 +21,8 @@ their layouts, diagram areas, templates and Graphs, file management, ✦ AI tran
 
 ## Recommended order
 
-1. **Now** — paste-to-structure (D1), any layout: design in `docs/design/paste-import.md`,
-   waiting on its § 9 questions. Not urgent (user, 2026-10-08): make classes + sat-on findable
+1. **Now** — D1/D2 import from Word or PDF built (unreleased, `docs/design/paste-import.md`);
+   next: OCR for scanned PDFs via ✦ AI (BYOK), layout profiles. Not urgent (user, 2026-10-08): make classes + sat-on findable
    (the greyed 題庫 Class filter should open Setup at the field).
 2. **Next** — item analysis (G1), which also completes C4's facility; C9–C10 and C11's
    remaining filters.
@@ -110,10 +110,8 @@ second tab holding the same paper.
 
 ## D. Getting existing material in
 
-- **D1 Paste-to-structure** (M): designed, `docs/design/paste-import.md`. Infers each
-  paper's layout from its numbering runs; review screen with one-click role fixes;
-  layout profiles. *MS Forms Quick Import, Akindi, Respondus.*
-- **D2 `.docx` / `.pdf` file import**: phases 2–3 of the D1 design (same pipeline).
+- **D1/D2 Import from Word or PDF**: built, file-only (user rejected a paste-text importer).
+  Open: scanned PDFs (✦ AI vision, BYOK), layout profiles remembered per paper series.
 
 ## E. AI — bring your own key, one ✦ AI door, results insert directly
 
