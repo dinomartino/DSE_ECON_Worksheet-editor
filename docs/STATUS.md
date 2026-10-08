@@ -13,12 +13,16 @@ off the bottom.** It is the first thing a fresh session reads — then
   drop) → review (`src/components/import/ImportDialog.tsx`) → Save as Classroom / LQ / Paper 1 mock /
   Paper 2 mock / 題庫 only. Engine `src/import/` (`readDocx`, `readPdf` with pdfjs-dist legacy, lazy).
   **File-only by the user's decision**: the paste-text importer was removed. Also merged: UI language /
-  Paper language settings; topic names, 題庫 and panel excerpts follow the paper language.
+  Paper language settings; topic names, 題庫 and panel excerpts follow the paper language. Several files
+  at once + "Answers from" linking (answer keys, marking schemes from another file; § 11).
   Design + as built: `docs/design/paste-import.md`.
+- **Next (waiting on the user's go: installer +~45 MB):** in-app OCR for scans/photos: PP-OCRv6 small
+  in Rust via `ort`/`oar-ocr`, adapter → `layoutPdf`, `source: 'ocr'`, key rows cell by cell
+  (`docs/research/2026-10-ocr-survey.md`). Users are desktop-only: design for the Tauri app.
 - **Check next:** the Tauri window (native open sheet and drop, pdf.js main-thread fallback on macOS);
   the editor showed 31 pages for the imported 2019 Paper 2 vs 24 in LibreOffice (uninvestigated);
-  題庫 only lands on an arbitrary untagged question, not the first added; a partial Word copy renumbers
-  from 1 (only mattered for paste, now gone).
+  題庫 only lands on an arbitrary untagged question, not the first added; S6 Paper I Q42 ("B" without a dot)
+  and a source table's (a)–(d) rows read as parts.
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
@@ -26,11 +30,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Cross-device sync (F9), shipped in 0.7.0.** Local primary + folder mirror (`src/sync/`,
   `docs/design/sync-engine.md`, `docs/design/library-folder.md`); Settings → Storage location, Needs
   attention, Clear detaches, no missing-folder screen. Shipped visible before any real run (user's call).
-- **2026-10-05: notices float** bottom-right via `notify()` (`src/store/notices.ts`), follow-ups merged.
 - **v0.7.0 released 2026-10-08** (published, `latest`; Vercel deploy not checked). Ships Storage location sync
   (desktop), floating notices, the pre-release fixes. v0.6.0 (2026-10-04) shipped 題庫, Marking
   scheme, Translation terms, 中文 interface, Graphs 圖表庫, the Econ Studio rename.
-  Website shots: `node scripts/demo.mjs --shots` → 14 WebP at 1920 in `demo-media/screenshots/`.
 
 ## Before release (only the user can do these)
 
