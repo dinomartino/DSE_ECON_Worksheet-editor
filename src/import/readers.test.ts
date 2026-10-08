@@ -18,6 +18,7 @@ describe('labels', () => {
     expect(family('第3題 寫出')).toBe('第n題');
     expect(family('Q12. Explain')).toBe('Qn');
     expect(family('(ii) text')).toBe('(i)');
+    expect(family('6.(a) Explain')).toBe('n.');
     expect(parseLabel(labelZone('(i) text'))).toMatchObject({ family: '(i)', value: 1, alt: { family: '(a)', value: 9 } });
   });
 
@@ -61,6 +62,10 @@ describe('plain reader', () => {
     expect(lines('3.\t(a)\tDefine cost.\t(2 marks)').map((l) => [l.label, l.text, l.trailingMarks])).toEqual([
       ['3.', '', undefined],
       ['(a)', 'Define cost.', 2],
+    ]);
+    expect(lines('6.(a) Define cost.').map((l) => [l.label, l.text])).toEqual([
+      ['6.', ''],
+      ['(a)', 'Define cost.'],
     ]);
   });
 });

@@ -6,6 +6,9 @@
  *   const read = await readPdf(bytes);               // or a .pdf file: pdf.js loads on first use
  *   const analysis = analyseLines(read, { pins });   // again on every pin (fast)
  *   const batch = buildImport(analysis);             // → store.insertQuestionBatch(batch.builds, { worksheetId, lead: batch.lead })
+ *
+ * Answers from another file: `classifyImport` each file, `suggestPairs`, then per paper
+ * `matchAnswers(analysis, readAnswerSheet(answerRead))` → pins into `analyseLines`.
  */
 import { toSourceLines } from './lines';
 import { readDocxLines, type DocxOptions } from './readDocx';
@@ -16,6 +19,17 @@ import { solve } from './solve';
 import type { AnalyseOptions, Analysis, PasteInput, SourceLine } from './types';
 
 export { buildImport, previewFigure, type ImportBatch } from './build';
+export {
+  readAnswerSheet,
+  type AnswerEntry,
+  type AnswerLineUse,
+  type AnswerNote,
+  type AnswerPoint,
+  type AnswerSection,
+  type AnswerSheet,
+} from './answerSheet';
+export { classifyImport, splitAnswers, suggestPairs, type ClassifyReason, type FileClass, type FileRole } from './answerFiles';
+export { matchAnswers, type AnswerMatch, type AnswerMatchResult, type AnswerSource, type MatchDetail, type MatchStatus } from './matchAnswers';
 export { DocxReadError, type DocxErrorKind, type DocxOptions } from './readDocx';
 export { isPdfReadError, readPdf, type PdfRead, type PdfReadError, type ReadPdfOptions } from './readPdf';
 export { pictureHome } from './figures';

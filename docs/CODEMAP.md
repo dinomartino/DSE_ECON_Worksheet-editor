@@ -519,6 +519,7 @@ Invariants:
 - `src/import/detectors.ts:DETECTORS` — one function per convention; `src/import/levels.ts:inferLevels` · `:settleQuestionRuns` — family levels and question runs; `src/import/walk.ts:walk` — the outline
 - `src/import/solve.ts:solve` — pins, answers, language, the inferred profile; `src/import/scan.ts:pasteKind` — `empty` / `scan` / `ok`
 - `src/import/figures.ts:missingFigures` · `:placeFigures` — captions and references with no picture, lost pictures (slots), image pins placed after their line; `src/import/build.ts:previewFigure` reads a preview block back to its pin or slot
+- Answers from another file (§ 11): `src/import/answerFiles.ts:classifyImport` · `:suggestPairs` · `:splitAnswers` — which files hold questions or answers, which go together, a paper's own answers cut off; `src/import/answerSheet.ts:readAnswerSheet` — keys and schemes as entries, every line given a use; `src/import/matchAnswers.ts:matchAnswers` — entries to `answer` and `scheme` pins and a per-question report. `src/import/solve.ts:applySchemes` puts them on the outline; `src/import/build.ts:schemeFields` writes `scheme`, `answer` or `explanation`. Tests: `src/import/answers.test.ts`
 - `src/import/scorecard.test.ts` over `src/import/fixtures/expected.ts:FIXTURES` (synthetic only: the repo is public, real paper text never enters it)
 
 The dialog (`src/components/import/`), reached only from the start screen:

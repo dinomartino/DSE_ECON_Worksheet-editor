@@ -117,6 +117,7 @@ export function solve(
   const { outline, flags } = walked;
 
   applyAnswers(outline, walked.owner, pins);
+  applySchemes(outline, walked.owner, pins);
   for (const [k, q] of outline.questions.entries()) {
     if (opts.language && opts.language !== 'auto') q.side = opts.language;
     for (const pin of pins) if (pin.kind === 'language' && questionAt(outline, walked.owner, pin.line) === k) q.side = pin.side;
@@ -162,7 +163,25 @@ function applyAnswers(outline: Outline, owner: ReadonlyArray<number | undefined>
     if (pin.kind !== 'answer') continue;
     const at = questionAt(outline, owner, pin.line);
     const q = at === undefined || at < 0 ? undefined : outline.questions[at];
-    if (q?.kind === 'mc' && pin.index >= 0 && pin.index < q.options.length) q.answer = { index: pin.index, from: 'pin' };
+    if (q?.kind === 'mc' && pin.index >= 0 && pin.index < q.options.length) q.answer = { index: pin.index, from: pin.from ?? 'pin' };
+  }
+}
+
+/** Answer-file schemes onto their question, part or sub-part; a pin whose target is gone does nothing. */
+function applySchemes(outline: Outline, owner: ReadonlyArray<number | undefined>, pins: readonly Pin[]): void {
+  for (const pin of pins) {
+    if (pin.kind !== 'scheme') continue;
+    const at = questionAt(outline, owner, pin.line);
+    const q = at === undefined || at < 0 ? undefined : outline.questions[at];
+    if (!q) continue;
+    const scheme = { points: pin.points, ...(pin.notes?.length ? { notes: pin.notes } : {}), ...(pin.each !== undefined ? { each: pin.each } : {}), ...(pin.max !== undefined ? { max: pin.max } : {}) };
+    if (pin.part === undefined) {
+      if (q.kind === 'mc' || q.parts.length === 0) q.scheme = scheme;
+      continue;
+    }
+    const part = q.kind === 'written' ? q.parts[pin.part] : undefined;
+    const target = pin.subPart === undefined ? part : part?.subParts[pin.subPart];
+    if (target) target.scheme = scheme;
   }
 }
 
