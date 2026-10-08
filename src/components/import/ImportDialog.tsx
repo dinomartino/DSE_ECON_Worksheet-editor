@@ -36,6 +36,7 @@ import {
   type PaperReview,
   type PaperState,
 } from './importBatch';
+import { papersDoneNotice } from './doneNotice';
 import { LinkStep } from './LinkStep';
 import { IMPORT_MESSAGES } from './messages';
 import { materialize, previewBase, type PreviewCache } from './previewDoc';
@@ -266,11 +267,13 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
       .then(({ bank, copied, already }) => {
         const bankName = worksheetTitle(bank);
         const skipped = new Set(already.map((q) => q.id));
-        const body =
-          copied === 0
-            ? m.bankHadAll(bankName)
-            : m.addedToBank(copied, bankName) + (already.length > 0 ? m.skippedDuplicates(already.length) : '') + (hasLead ? m.stimulusNotInBank : '');
-        notify({ tone: copied === 0 ? 'info' : 'success', body });
+        const meta = copied === 0 ? m.bankHasAll : [m.bankUntagged, ...(already.length > 0 ? [m.skippedDuplicates(already.length)] : [])].join(' · ');
+        notify({
+          tone: copied === 0 ? 'info' : 'success',
+          body: copied === 0 ? m.bankHadAll : m.addedToBank(copied),
+          rows: [{ label: bankName, meta }],
+          ...(copied > 0 && hasLead ? { details: [m.stimulusNotInBank] } : {}),
+        });
         onClose();
         if (copied > 0) onAddedToBank(bank.id, questions.filter((q) => !skipped.has(q.id)).map((q) => q.id));
       })
@@ -300,11 +303,7 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
     }
     onCreated([report.committed.id]);
     const noAnswer = one.result.analysis.flags.filter((f) => f.kind === 'noAnswer').length;
-    notify({
-      tone: 'success',
-      body: m.savedAs(kindText(chosen, lang).title, name, report.questionIds.length) + (noAnswer > 0 ? m.noAnswerAfter(noAnswer) : ''),
-      autoHide: true,
-    });
+    notify(papersDoneNotice(m, [{ name, kind: kindText(chosen, lang).title, questions: report.questionIds.length }], () => {}, noAnswer));
     onClose();
   };
 
@@ -341,20 +340,18 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
     }
     const docs = [...made].sort((a, b) => a.index - b.index).map((d) => ({ ...papersToMake[d.index], id: d.worksheet.id, questions: d.questions }));
     onCreated(docs.map((d) => d.id));
-    notify({
-      tone: 'success',
-      body: m.savedMany(docs.length, docs[0].name),
-      details: docs.map((d) => m.savedPaperLine(d.name, kindText(d.documentType, lang).title, d.questions)),
-      actions: docs.slice(1, 4).map((d) => ({
-        label: m.openPaper(d.name),
-        run: () => {
+    notify(
+      papersDoneNotice(
+        m,
+        docs.map((d) => ({ name: d.name, kind: kindText(d.documentType, lang).title, questions: d.questions })),
+        (k) => {
+          const d = docs[k];
           void worksheetStore.load(d.id).then((worksheet) => {
             if (worksheet) onOpenDocument(worksheet, d.language);
           });
         },
-      })),
-      autoHide: true,
-    });
+      ),
+    );
     onClose();
   };
 

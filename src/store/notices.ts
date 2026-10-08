@@ -20,6 +20,21 @@ export interface NoticeAction {
   live?: () => boolean;
 }
 
+/**
+ * One item in a notice's list (each paper an import made). Its label stays on one line,
+ * cut short with an ellipsis; its action is a quiet text link, never a full-width button.
+ */
+export interface NoticeRow {
+  /** One line, full text on hover. */
+  label: string;
+  /** A muted line under the label; wraps. */
+  meta?: string;
+  /** A quiet word at the right (Open now); drawn when there is no action. */
+  tag?: string;
+  /** A text link at the right; runs as a notice button does. */
+  action?: NoticeAction;
+}
+
 export interface NoticeInput {
   /** The same id replaces the notice in place instead of stacking a second one. */
   id?: string;
@@ -28,6 +43,10 @@ export interface NoticeInput {
   body: string;
   /** Per-item lines under the body (what was unreadable, what was skipped). */
   details?: readonly string[];
+  /** A list under the body, one compact row per item. */
+  rows?: readonly NoticeRow[];
+  /** A muted line after the rows: what did not fit (and 2 more on the home screen). */
+  rowsNote?: string;
   actions?: readonly NoticeAction[];
   /** False hides the close button: only its owner can take it down. Default true. */
   dismissible?: boolean;
@@ -56,18 +75,23 @@ export const MAX_VISIBLE = 4;
 /** A fading notice with a button (`autoHide`) stays this long, so the button can be reached. */
 export const ACTION_AUTO_HIDE_MS = 10000;
 
+/** Every action a notice offers: its buttons, then its rows' links. */
+export function noticeActions(notice: Pick<Notice, 'actions' | 'rows'>): NoticeAction[] {
+  return [...(notice.actions ?? []), ...(notice.rows ?? []).flatMap((r) => (r.action ? [r.action] : []))];
+}
+
 /**
  * Fades by itself: a plain result, or a result whose button is a convenience (`autoHide`).
  * Warnings, errors and anything else with a button stay.
  */
-export function autoHides(notice: Pick<Notice, 'tone' | 'actions' | 'autoHide'>): boolean {
+export function autoHides(notice: Pick<Notice, 'tone' | 'actions' | 'rows' | 'autoHide'>): boolean {
   if (notice.tone !== 'info' && notice.tone !== 'success') return false;
-  return !notice.actions?.length || notice.autoHide === true;
+  return noticeActions(notice).length === 0 || notice.autoHide === true;
 }
 
 /** How long a fading notice stays, from when it can be read. */
-export function autoHideDelay(notice: Pick<Notice, 'actions'>): number {
-  return notice.actions?.length ? ACTION_AUTO_HIDE_MS : AUTO_HIDE_MS;
+export function autoHideDelay(notice: Pick<Notice, 'actions' | 'rows'>): number {
+  return noticeActions(notice).length ? ACTION_AUTO_HIDE_MS : AUTO_HIDE_MS;
 }
 
 export interface NoticesState {
@@ -145,7 +169,7 @@ export function dismissScope(scope: string): void {
 /** Drops each notice whose action no longer applies (`live()` false). Call after history moves. */
 export function pruneDeadActions(): void {
   const { notices } = useNoticeStore.getState();
-  const kept = notices.filter((n) => !n.actions?.some((a) => a.live && !a.live()));
+  const kept = notices.filter((n) => !noticeActions(n).some((a) => a.live && !a.live()));
   if (kept.length !== notices.length) useNoticeStore.setState({ notices: kept });
 }
 
@@ -156,7 +180,7 @@ export function pruneDeadActions(): void {
  */
 export function dismissHistoryActions(): void {
   const { notices } = useNoticeStore.getState();
-  const kept = notices.filter((n) => !n.actions?.some((a) => a.live));
+  const kept = notices.filter((n) => !noticeActions(n).some((a) => a.live));
   if (kept.length !== notices.length) useNoticeStore.setState({ notices: kept });
 }
 

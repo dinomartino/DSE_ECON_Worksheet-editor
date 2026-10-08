@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { Notice } from '@/store/notices';
-import { APP_STACK_CLASS, NoticeStackView } from './NoticeLayer';
+import { APP_STACK_CLASS, NoticeStackView, splitLabel } from './NoticeLayer';
 
 const notice = (over: Partial<Notice> & Pick<Notice, 'id' | 'tone' | 'body'>): Notice => ({
   scope: 'app',
@@ -68,5 +68,41 @@ describe('NoticeStackView', () => {
     const markup = draw([notice({ id: 'a', tone: 'warning', body: 'Cannot reach the folder', details: [reason] })]);
     expect(markup).toMatch(new RegExp(`<li class="break-words">${reason}</li>`));
     expect(markup).not.toMatch(/<li[^>]*truncate/);
+  });
+
+  it('draws rows: the label on one line cut in the middle, a tag or a text link at the right', () => {
+    const markup = draw([
+      notice({
+        id: 'a',
+        tone: 'success',
+        body: 'Imported 2 papers',
+        rows: [
+          { label: 'Short name', meta: 'Classroom worksheet', tag: 'Open now' },
+          { label: '經濟科第一次統測二〇二五至二〇二六年度試卷二', action: { label: 'Open', run: () => {} } },
+        ],
+        rowsNote: 'And 3 more on the home screen',
+      }),
+    ]);
+    expect(markup.match(/data-notice-row/g)).toHaveLength(2);
+    expect(markup.match(/class="min-w-0 truncate"/g)).toHaveLength(2);
+    expect(markup).toContain('title="經濟科第一次統測二〇二五至二〇二六年度試卷二"');
+    expect(markup).toMatch(/<button[^>]*shrink-0[^>]*>Open<\/button>/);
+    expect(markup).toContain('And 3 more on the home screen');
+  });
+});
+
+describe('splitLabel', () => {
+  it('keeps a short label whole', () => {
+    expect(splitLabel('Test 1')).toEqual(['Test 1', '']);
+  });
+
+  it('keeps the last words of a long Latin name, the last characters of a long Chinese one', () => {
+    expect(splitLabel('DBS Economics G11 Enhancement Class (2025-26) Assessment 2')).toEqual(['DBS Economics G11 Enhancement Class (2025-26)', ' Assessment 2']);
+    const zh = '經濟科第一次統測二〇二五至二〇二六年度試卷二';
+    const [head, tail] = splitLabel(zh);
+    expect(head + tail).toBe(zh);
+    expect(tail).toBe('六年度試卷二');
+    const unbroken = 'x'.repeat(80);
+    expect(splitLabel(unbroken)[1]).toHaveLength(12);
   });
 });
