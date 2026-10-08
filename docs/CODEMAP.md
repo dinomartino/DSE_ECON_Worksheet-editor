@@ -507,6 +507,22 @@ Invariants:
 - Highlights are imperative chrome: no IR or `ItemBody` read, never printed, never in the `.docx`.
 - A verb's network call happens only on its menu click; nothing AI-related is stored in a document.
 
+## import — paste-to-structure (D1), the engine
+
+`docs/design/paste-import.md` (§ 10 As built). Pure: no React, no store, no DOM.
+
+- `src/import/index.ts:readPaste` → `:analyseLines` (re-run on every pin) → `src/import/build.ts:buildImport` → the store's `insertQuestionBatch`; `:analysePaste` does the first two
+- `src/import/types.ts:SourceLine` · `:Pin` · `:LayoutProfile` · `:Outline` · `:Analysis` — the shapes; flags are codes (`:FlagKind`), worded by the UI
+- `src/import/readPlain.ts:readPlain` · `src/import/readHtml.ts:readHtml` → `src/import/lines.ts:toSourceLines` — readers, then labels, marks, cells and multi-item rows split off
+- `src/import/detectors.ts:DETECTORS` — one function per convention; `src/import/levels.ts:inferLevels` · `:settleQuestionRuns` — family levels and question runs; `src/import/walk.ts:walk` — the outline
+- `src/import/solve.ts:solve` — pins, answers, language, the inferred profile; `src/import/scan.ts:pasteKind` — `empty` / `scan` / `ok`
+- `src/import/scorecard.test.ts` over `src/import/fixtures/expected.ts:FIXTURES` (synthetic only: the repo is public, real paper text never enters it)
+
+Invariants:
+- Text is never dropped: a line the walk cannot place stays in the nearest stem, flagged.
+- Only `src/import/build.ts` names question types (`src/import/solve.test.ts` guards it).
+- Nothing is stored in a document: imported questions are ordinary questions.
+
 ## scripts — the harnesses
 
 - `.claude/skills/jev/SKILL.md` — session tooling, not app code: `bin/find.mjs` (ranked doc and file pointers), `bin/verify-plan.mjs` (which checks a diff needs), the edit guard's `rules.json`; hooks registered in `.claude/settings.json`
