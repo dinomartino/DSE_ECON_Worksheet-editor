@@ -734,7 +734,7 @@ export function StartScreen({
               showView('home');
             }}
             onOpenDocument={(id, then) => void openSaved(id, then)}
-            onOpenWorksheet={(worksheet) => onOpen(worksheet)}
+            onOpenWorksheet={(worksheet, language) => onOpen(worksheet, language)}
             onDocumentsChanged={() => void refresh()}
             onNotice={(message) => {
               setError(undefined);

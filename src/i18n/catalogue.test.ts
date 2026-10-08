@@ -55,7 +55,7 @@ describe('catalogues', () => {
 
 describe('language setting', () => {
   it('defaults to English and accepts only en / zh-HK', () => {
-    expect(LANGUAGE_SETTINGS.defaults({ desktop: false })).toEqual({ ui: 'en' });
+    expect(LANGUAGE_SETTINGS.defaults({ desktop: false })).toEqual({ ui: 'en', paper: 'en' });
     expect(LANGUAGE_SETTINGS.fields.ui('zh-HK')).toBe('zh-HK');
     expect(LANGUAGE_SETTINGS.fields.ui('zh-CN')).toBeUndefined();
   });

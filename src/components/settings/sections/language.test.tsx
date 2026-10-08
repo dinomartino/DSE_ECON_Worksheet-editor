@@ -17,6 +17,19 @@ describe('the Language section', () => {
     expect(html).toMatch(/role="radio" aria-checked="false" lang="zh-HK"[^>]*>.*繁體中文/);
   });
 
+  it('keeps the paper language a separate group, English by default', async () => {
+    await import('./index');
+    const Pane = (await settingsSections({ desktop: false })[3].load()).default;
+    const html = renderToStaticMarkup(<Pane env={{ desktop: false }} setCloseGuard={() => {}} />);
+    const groups = html.match(/role="radiogroup" aria-label="[^"]*"/g);
+    expect(groups).toEqual(['role="radiogroup" aria-label="Interface language"', 'role="radiogroup" aria-label="Paper language"']);
+    const papers = html.slice(html.indexOf('aria-label="Paper language"'));
+    expect(papers.match(/aria-checked="true"/g)).toHaveLength(1);
+    expect(papers).toMatch(/aria-checked="true"[\s\S]*?>EN</);
+    expect(papers).toContain('EN+中');
+    expect(html).toContain('Each paper can still be switched on its own.');
+  });
+
   it('turns the Settings dialog itself into Chinese', async () => {
     await import('./index');
     const sections = settingsSections({ desktop: false });

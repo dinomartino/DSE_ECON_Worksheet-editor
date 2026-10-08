@@ -15,6 +15,7 @@ import type { LanguageMode, PageMargins, PaperSize, Worksheet } from '@/model/ty
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
+import { paperLanguage } from '@/settings/paperLanguage';
 import { PaperSketch } from './PaperSketch';
 import { DOCUMENT_SETTINGS_MESSAGES, MARGIN_PRESET_KEYS } from '@/components/editor/DocumentSettings.messages';
 import { NEW_FORM_MESSAGES } from './screen.messages';
@@ -107,7 +108,7 @@ export function NewWorksheetForm({
   const [name, setName] = useState('');
   const [nameMissing, setNameMissing] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
-  const [language, setLanguage] = useState<LanguageMode>('en');
+  const [language, setLanguage] = useState<LanguageMode>(paperLanguage);
   const [paper, setPaper] = useState<PaperSize>('A4');
   const [marginIndex, setMarginIndex] = useState(0);
   const [fontIndex, setFontIndex] = useState(0);

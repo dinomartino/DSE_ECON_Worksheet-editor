@@ -39,6 +39,7 @@ import { rowText, textTopics } from '@/library/termTopics';
 import { identicalCopies, type CopySkip } from '@/library/sameCopies';
 import { isDesktop } from '@/platform';
 import { createRunDeps } from '@/translate/deps';
+import { paperLanguage } from '@/settings/paperLanguage';
 import { createBankAi } from './bankAi';
 import type { BankVerbId } from './bankAiScopes';
 import { BankAiBar, BankAiNote } from './BankAiBar';
@@ -180,8 +181,9 @@ export function QuestionBankScreen({
   onHome: () => void;
   /** Open a saved document the start screen's way; `then` runs once it is in the editor's store. */
   onOpenDocument: (docId: string, then?: () => void) => void;
-  /** Open a document built here (already complete; the host saves it on open). */
-  onOpenWorksheet: (worksheet: Worksheet) => void;
+  /** Open a document built here (already complete; the host saves it on open), in the
+   *  language the bank was read in. */
+  onOpenWorksheet: (worksheet: Worksheet, language: LanguageMode) => void;
   /** Saved documents changed under the start screen: re-read the list. */
   onDocumentsChanged: () => void;
   /** A result or failure: the host raises it as a notice (`notify`), never inline. */
@@ -222,7 +224,7 @@ export function QuestionBankScreen({
   // Leaving the bank forgets the Undo, as closing the emptied tray did.
   useEffect(() => () => useBankCart.getState().dismissUndo(), []);
   const [railHidden, setRailHiddenState] = useState(readRailHidden);
-  const [language, setLanguage] = useState<LanguageMode>('en');
+  const [language, setLanguage] = useState<LanguageMode>(paperLanguage);
   const [version, setVersion] = useState<VersionMode>('teacher');
   const [picker, setPicker] = useState<Picker>();
   const [busy, setBusy] = useState(false);
@@ -456,13 +458,13 @@ export function QuestionBankScreen({
         return;
       }
       if (documentType === 'classroom') {
-        onOpenWorksheet(worksheetFromPicks(picked));
+        onOpenWorksheet(worksheetFromPicks(picked), language);
         useBankCart.getState().reset();
         return;
       }
       // An exam paper opens empty, then takes the picks the way Add to does: each into the
       // section for its type, ahead of the closing line, one ⌘Z, the 題庫 review on them.
-      onOpenWorksheet(paperForPicks(picked, documentType));
+      onOpenWorksheet(paperForPicks(picked, documentType), language);
       const { inserted } = addPicksToOpenDocument(picked);
       if (inserted.length > 0) useBankCart.getState().reset();
       if (inserted[0]) revealQuestion(inserted[0]);

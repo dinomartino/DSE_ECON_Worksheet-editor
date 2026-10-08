@@ -13,6 +13,8 @@ language, with Hong Kong wording, keeping the terms HK teachers say in English.
   it shows the Chinese alone.
 - **Settings → Language 語言**: English | 繁體中文. Per browser/computer
   (`econgen.settings.language`), like Appearance. `<html lang>` follows it (`en` / `zh-HK`).
+- **Papers 試卷** (2026-10-08, same section and key, field `paper`): EN | 中文 | EN+中, the
+  language a new paper starts in. Separate from the interface; neither follows the other.
 - **What's new follows the setting.** Each CHANGELOG bullet carries its 繁體中文 as a
   `<!-- zh: … -->` comment under it (`docs/RECIPES.md` § Adding a changelog line); 中文
   shows it, English and the GitHub release body never do. AI provider pages and error

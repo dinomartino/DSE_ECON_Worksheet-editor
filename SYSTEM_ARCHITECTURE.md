@@ -2403,6 +2403,11 @@ the chrome between English and Hong Kong Traditional Chinese. Design and wording
 
 - **Chrome only.** The paper, the IR, `.docx`, clipboard and PDF, document defaults and
   the editing language never read it; a document prints identically in either language.
+- **Paper language is a separate field** (`paper: 'en' | 'zh' | 'bilingual'`, default
+  `'en'`, no version bump; `src/settings/paperLanguage.ts`). It is read once where no
+  document decides: the editor's starting mode, the new-worksheet form, the 題庫 view (and
+  papers made from it), new graphs; paste import takes `paperSide()`. Never the chrome;
+  an open document's language is its own, and documents store none.
 - **English is today's text exactly**, so English mode changes nothing and existing tests
   hold. Chinese drops the English half of bilingual chrome.
 - **Catalogues are co-located** (`messages.ts` beside the components; `defineMessages`
