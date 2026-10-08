@@ -5,25 +5,26 @@ off the bottom.** It is the first thing a fresh session reads — then
 [`CODEMAP.md`](./CODEMAP.md). The long per-feature notes before 2026-10-03 are in
 `git show 672ea2b:docs/STATUS.md`; what shipped is in `CHANGELOG.md`.
 
+## Next session starts here (user, 2026-10-08)
+
+- **Build: offer the folder on a new computer.** On a fresh install nothing syncs until the teacher
+  finds Settings → 儲存位置 on that computer too; nothing tells them. At desktop launch with no folder
+  set, look for an existing `Econ Studio` (marker) in the detected cloud folders (`src-tauri/src/cloud.rs`);
+  if found, one dismissible notice "Found your Econ Studio folder in OneDrive. Use it on this computer
+  too?" whose button opens the picker at it (`library_choose` with `start`; never auto-connect, never a
+  page-supplied path); dismissed = never again. Mirror the setup step's tip in the empty start screen.
+- `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
+
 ## Where we are
 
-- **2026-10-05: cross-device sync (F9).** One source-agnostic engine, local primary + mirror for
-  every source (`src/sync/`, `docs/design/sync-engine.md`). 2026-10-06:
-  base persistence (per source), hash cache and the folder source (Rust `library_*` commands,
-  `src/platform/library.ts`, `src/sync/folderSource.ts`) and the scheduler (`src/sync/librarySync.ts`,
-  starts in `EditorHost` only when a folder is chosen; `isBusy` holds unsaved open documents)
-  merged. 2026-10-07 merged: Settings → Storage location, Needs attention, notices,
-  computer name; Clear detaches the folder; no missing-folder screen (`docs/design/library-folder.md`).
-  2026-10-08: pre-release review fixed (sync data safety, library folder Rust, notices). **User chose to
-  ship Storage location visible** before the real run; CI now builds the Rust on Windows + macOS.
+- **Cross-device sync (F9), shipped in 0.7.0.** Local primary + folder mirror (`src/sync/`,
+  `docs/design/sync-engine.md`, `docs/design/library-folder.md`); Settings → Storage location, Needs
+  attention, Clear detaches, no missing-folder screen. Shipped visible before any real run (user's call).
 - **2026-10-05: notices float** bottom-right via `notify()` (`src/store/notices.ts`), follow-ups merged.
-- **v0.7.0 released 2026-10-08** (published, `latest`; `main` pushed, Vercel deploy not checked from here). Ships Storage location
-  sync (desktop), floating notices, the pre-release fixes. v0.6.0 (2026-10-04) shipped 題庫, Marking
+- **v0.7.0 released 2026-10-08** (published, `latest`; Vercel deploy not checked). Ships Storage location sync
+  (desktop), floating notices, the pre-release fixes. v0.6.0 (2026-10-04) shipped 題庫, Marking
   scheme, Translation terms, 中文 interface, Graphs 圖表庫, the Econ Studio rename.
   Website shots: `node scripts/demo.mjs --shots` → 14 WebP at 1920 in `demo-media/screenshots/`.
-- **2026-10-03: every known gap fixed** (two sweeps, `fix/gaps-*` / `fix/gaps2-*`, merged; detail in
-  `git show 3818f89:docs/STATUS.md`). Schema rule "bump only when used" (`writtenSchemaVersion`);
-  frozen `v2-*.json` corpora; index rows carry `indexRev`. Preview pages break where Word does.
 
 ## Before release (only the user can do these)
 

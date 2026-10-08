@@ -21,7 +21,7 @@ their layouts, diagram areas, templates and Graphs, file management, ✦ AI tran
 
 ## Recommended order
 
-1. **Now** — make classes + sat-on findable (the greyed 題庫 Class filter should open Setup at
+1. **Now** — offer the synced folder on a new computer (STATUS § Next session); then make classes + sat-on findable (the greyed 題庫 Class filter should open Setup at
    the field; it sits low in Setup's Worksheet tab); then paste-to-structure (D1), the
    cheapest way to fill the bank.
 2. **Next** — item analysis (G1), which also completes C4's facility; C9–C10 and C11's
