@@ -80,6 +80,7 @@ import {
   type WorksheetSummary,
 } from '@/storage';
 import { backupFileName } from '@/storage/backupName';
+import { whileSyncPaused } from '@/sync/syncPause';
 import {
   copyAssignment,
   createFolder,
@@ -263,7 +264,12 @@ export function StartScreen({
   const openSaved = async (id: string, then?: () => void) => {
     setError(undefined);
     try {
-      const worksheet = await worksheetStore.load(id);
+      // Read and opened with sync held: a download between the two would be saved over.
+      const worksheet = await whileSyncPaused(async () => {
+        const loaded = await worksheetStore.load(id);
+        if (loaded) onOpen(loaded);
+        return loaded;
+      });
       if (!worksheet) {
         // The index and the documents are separate keys, so an entry can outlive what it
         // names — a half-finished `clear`, or storage evicted under quota pressure.
@@ -273,7 +279,6 @@ export function StartScreen({
         await refresh();
         return;
       }
-      onOpen(worksheet);
       then?.();
     } catch {
       setError(t.couldNotOpen);
