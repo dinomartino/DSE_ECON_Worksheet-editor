@@ -12,9 +12,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   and offers it once; the picker opens at the library's parent. The empty start screen points to
   Settings → Storage location. Only checked with a faked shell: run `desktop:dev` on a machine with a
   synced library (picker location, the "done" flag surviving a restart).
-- **Paste-to-structure (D1) designed:** `docs/design/paste-import.md`. Ask the user its § 9
-  questions, then build phase 0+1 with Opus agents. The layout survey (real-paper pastes, fixtures)
-  is local only, never in git (public repo).
+- **Paste questions (D1 phase 1) merged, unreleased:** engine `src/import/`, dialog
+  `src/components/import/`, picture slots (paste a screenshot into a missing figure). Design + as built:
+  `docs/design/paste-import.md`. Untested: a real Word/Google Docs clipboard, the desktop shell, Safari.
+  MC without a key inserts answer A (flagged in the notice). Next: phase 2 (`.docx` file import:
+  text boxes, pictures; layout profiles; large-paste notice). Real-paper survey is local only (public repo).
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
@@ -63,18 +65,15 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Windows builds unsigned. The updater key lives only at `~/.tauri/econ-worksheet.key`. Film copy
   says Econ Studio but is not re-rendered; `film:doctor` timed out once (unchecked).
 
-## Last verified (2026-10-08, `develop` after found-folder merge)
+## Last verified (2026-10-08, `develop` after Paste questions merge)
 
-- `npm test` 5079, `cargo test` 51; found-folder branch: build, samples 6, lint 40. Before it: samples 6 passed; build, typecheck, cover/lq-verify (en + zh) green;
+- `npm test` 5141; samples, build, lint 40 on the branches. Earlier: `npm test` 5079, `cargo test` 51; found-folder branch: build, samples 6, lint 40. Before it: samples 6 passed; build, typecheck, cover/lq-verify (en + zh) green;
   lint 40; CI green incl. `rust (windows-latest)`.
 
 ## Log
 
-- **2026-10-08** — D1 design: 3 research agents (code map, real-paper paste survey, other importers).
+- **2026-10-08** — D1 design (3 research agents), then engine, dialog, picture slots: 3 Opus branches merged.
 - **2026-10-08** — Found-folder offer on a new computer (`feature/found-folder`, 1 Opus agent), merged.
 - **2026-10-08** — Pre-release check: 4 Opus reviewers, 6 fix branches merged (`fix/sync-safety`,
   `fix/library-rust`, `fix/notices-ui`, `fix/diagram-gaps`, `fix/answer-gaps`, `fix/release-tooling`).
   Cloud folder detection in setup. Demo: `demo-media/storage-location/` (zh, subtitled, simulated shell).
-- **2026-10-07** — Sync interface (`feature/sync-ui`): controller (`librarySync.ts`: choose/stop/sync
-  now in one queue, runs while the folder is away), `syncView.ts`, `syncNotices.ts`, Settings → Storage
-  location (screenshots via a faked shell + dev-only `__econSyncView`), Clear detaches. Not run in Tauri.
