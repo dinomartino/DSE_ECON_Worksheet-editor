@@ -5,7 +5,9 @@ import pkg from '../../../package.json';
 import { Button, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { useDialogNotices } from '@/components/ui/NoticeLayer';
+import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
+import type { NoticeInput } from '@/store/notices';
 import { isDesktop, openExternal } from '@/platform';
 import type { LanguageMode } from '@/model/types';
 import {
@@ -24,6 +26,15 @@ const INPUT =
   'rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25';
 
 type Sent = { via: 'github' | 'mail'; truncated: boolean };
+
+/** Where to press send. A cut-short link also asks for a paste, so that one stays until closed. */
+export function sentNotice(sent: Sent, m: Messages<typeof FEEDBACK_MESSAGES>): NoticeInput {
+  return {
+    id: 'feedback-sent',
+    tone: sent.truncated ? 'warning' : 'success',
+    body: `${sent.via === 'github' ? m.sentGithub : m.sentMail}${sent.truncated ? m.truncated : ''}`,
+  };
+}
 
 /**
  * Send a bug, idea or review: a prefilled GitHub issue, an email, or the clipboard.
@@ -90,11 +101,7 @@ export function FeedbackDialog({
     try {
       await openExternal(link.url);
       setSent({ via, truncated: link.truncated });
-      notices.notify({
-        id: 'feedback-sent',
-        tone: 'success',
-        body: `${via === 'github' ? m.sentGithub : m.sentMail}${link.truncated ? m.truncated : ''}`,
-      });
+      notices.notify(sentNotice({ via, truncated: link.truncated }, m));
     } catch {
       setError(via === 'github' ? m.noGithub : m.noMail);
     }
