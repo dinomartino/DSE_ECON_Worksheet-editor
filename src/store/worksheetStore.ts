@@ -10,7 +10,9 @@ import {
   updateField,
   type ZoneName,
 } from '@/model/bands';
+import { clampAnswerGraphLines } from '@/model/answerGraph';
 import {
+  applyAnswerGraph,
   applyClearCells,
   applyDeleteTarget,
   applyEditTarget,
@@ -88,7 +90,7 @@ import type {
   TextFormat,
   Worksheet,
 } from '@/model/types';
-import type { EditTarget } from '@/render/ir';
+import type { EditTarget, SchemeAddress } from '@/render/ir';
 import { listQuestionTypes } from '@/registry';
 import { worksheetStore } from '@/storage';
 import { applyAnswerWrites } from '@/answers/apply';
@@ -285,6 +287,10 @@ interface WorksheetState {
    * One verb: the element's own kind decides which field holds its size.
    */
   resizeLayoutElement: (elementId: string, value: number) => void;
+  /** Set a graph answer space's height in whole lines (clamped 6–40), one undo step. */
+  resizeAnswerGraph: (owner: SchemeAddress, lines: number) => void;
+  /** Remove a leaf's graph answer space. */
+  removeAnswerGraph: (owner: SchemeAddress) => void;
   /**
    * Divide answer lines: `keep` rows stay, `overflow` becomes new element(s) after —
    * what a drag past the end of the page means. Chopped into `perPage`-sized pieces
@@ -1106,6 +1112,14 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         return element;
       }),
     })),
+  resizeAnswerGraph: (owner, lines) =>
+    get().commit((draft) =>
+      applyAnswerGraph(draft, owner, (graph) => {
+        const next = clampAnswerGraphLines(lines);
+        return next === graph.lines ? graph : { ...graph, lines: next };
+      }),
+    ),
+  removeAnswerGraph: (owner) => get().commit((draft) => applyAnswerGraph(draft, owner, () => undefined)),
   splitLayoutRows: (elementId, keep, overflow, perPage) =>
     get().commit((draft) => {
       const existing = draft.layout.find((element) => element.id === elementId);

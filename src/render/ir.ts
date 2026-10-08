@@ -528,6 +528,11 @@ export interface AnswerGraphNode {
   showOrigin: boolean;
   xTitle?: BiText;
   yTitle?: BiText;
+  /**
+   * The leaf that owns the box, so the page can select it and drag its height
+   * (`answerGraph.lines`). Inert in export: never part of `key`.
+   */
+  owner?: SchemeAddress;
 }
 
 /**

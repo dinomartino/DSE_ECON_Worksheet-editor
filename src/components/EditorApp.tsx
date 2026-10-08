@@ -81,6 +81,8 @@ export function EditorApp({
   const insertBlank = useWorksheetStore((s) => s.insertBlank);
   const resizeBlock = useWorksheetStore((s) => s.resizeBlock);
   const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
+  const resizeAnswerGraph = useWorksheetStore((s) => s.resizeAnswerGraph);
+  const removeAnswerGraph = useWorksheetStore((s) => s.removeAnswerGraph);
   const resizeTableColumn = useWorksheetStore((s) => s.resizeTableColumn);
   const resizeTableEdge = useWorksheetStore((s) => s.resizeTableEdge);
   const setTableRowHeight = useWorksheetStore((s) => s.setTableRowHeight);
@@ -567,6 +569,8 @@ export function EditorApp({
                 textOf={textOf}
                 onResizeBlock={resizeBlock}
                 onResizeRows={resizeLayoutElement}
+                onResizeAnswerGraph={resizeAnswerGraph}
+                onRemoveAnswerGraph={removeAnswerGraph}
                 onResizeTableColumn={resizeTableColumn}
                 onResizeTableEdge={resizeTableEdge}
                 onResizeTableRow={setTableRowHeight}

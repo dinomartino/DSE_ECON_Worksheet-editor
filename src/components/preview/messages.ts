@@ -198,6 +198,8 @@ export const PREVIEW_HANDLE_MESSAGES = defineMessages({
   unitName: { en: (unit: string) => unit, zh: (unit: string) => (unit === 'line' || unit === 'lines' ? '行' : unit) },
   dragLines: { en: 'Drag to add or remove lines', zh: '拖曳以增減答題線' },
   fillsPage: { en: ' · fills the page', zh: ' · 已填滿頁面' },
+  graphLargest: { en: ' · largest', zh: ' · 已達上限' },
+  dragGraph: { en: 'Drag to change the height', zh: '拖曳以調整高度' },
   resizeColumn: { en: (n: number) => `Drag to resize column ${n}`, zh: (n: number) => `拖曳以調整第 ${n} 欄的寬度` },
   resizeEdge: {
     en: (side: 'left' | 'right') => `Drag to resize the table's ${side} edge`,

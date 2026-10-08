@@ -1,6 +1,7 @@
 import { withAnswerKeyLayout, withAnswerKeyText } from './answerKeyLayout';
 import { findCoverLine, setCoverLineFormat, setCoverLineText } from './cover';
 import type {
+  AnswerGraph,
   Band,
   BandField,
   BandFieldSide,
@@ -16,7 +17,7 @@ import type {
   TextFormat,
   Worksheet,
 } from './types';
-import type { EditTarget } from '@/render/ir';
+import type { EditTarget, SchemeAddress } from '@/render/ir';
 /*
  * A *value* import from `render/`, which `model/` otherwise avoids.
  *
@@ -91,6 +92,49 @@ function applySchemeText(worksheet: Worksheet, target: SchemeTarget, text: BiTex
       }),
     } as Question;
   });
+}
+
+/** A leaf that may carry a graph answer space. Read structurally (§ registry). */
+type GraphLeaf = { id: string; answerGraph?: AnswerGraph; subParts?: GraphLeaf[] };
+
+/**
+ * Rewrite the graph answer space of the leaf `owner` addresses: `recipe` gets the box and
+ * returns the next one, or undefined to remove it. Unchanged when the address no longer
+ * resolves or the leaf has no box, so a stale handle firing late is simply dropped.
+ */
+export function applyAnswerGraph(
+  worksheet: Worksheet,
+  owner: SchemeAddress,
+  recipe: (graph: AnswerGraph) => AnswerGraph | undefined,
+): Worksheet {
+  let changed = false;
+  const write = <T extends GraphLeaf>(leaf: T): T => {
+    if (!leaf.answerGraph) return leaf;
+    const next = recipe(leaf.answerGraph);
+    if (next === leaf.answerGraph) return leaf;
+    changed = true;
+    const copy: GraphLeaf = { ...leaf };
+    if (next) copy.answerGraph = next;
+    else delete copy.answerGraph;
+    return copy as T;
+  };
+  const next = mapQuestionById(worksheet, owner.questionId, (question) => {
+    if (owner.partId === undefined) return write(question as unknown as GraphLeaf) as unknown as Question;
+    const parts = (question as { parts?: GraphLeaf[] }).parts;
+    if (!parts) return question;
+    return {
+      ...question,
+      parts: parts.map((part) => {
+        if (part.id !== owner.partId) return part;
+        if (owner.subPartId === undefined) return write(part);
+        return {
+          ...part,
+          subParts: part.subParts?.map((sub) => (sub.id === owner.subPartId ? write(sub) : sub)),
+        };
+      }),
+    } as Question;
+  });
+  return changed ? next : worksheet;
 }
 
 /**

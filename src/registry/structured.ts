@@ -156,7 +156,9 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       }),
     );
   }
-  if (isLeaf && question.answerGraph) nodes.push(answerGraphNode(question.answerGraph));
+  if (isLeaf && question.answerGraph) {
+    nodes.push(answerGraphNode(question.answerGraph, { questionId: question.id }));
+  }
   if (isLeaf && question.answerSpace !== undefined && question.answerSpace > 0) {
     nodes.push({ kind: 'answerSpace', lines: question.answerSpace });
   }
@@ -349,7 +351,15 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
 
       // The QAB's writing room, directly under the sub-part it answers (§ the LQ
       // line). Absent prints nothing, like marks.
-      if (subPart.answerGraph) nodes.push(answerGraphNode(subPart.answerGraph));
+      if (subPart.answerGraph) {
+        nodes.push(
+          answerGraphNode(subPart.answerGraph, {
+            questionId: question.id,
+            partId: part.id,
+            subPartId: subPart.id,
+          }),
+        );
+      }
       if (subPart.answerSpace !== undefined && subPart.answerSpace > 0) {
         nodes.push({ kind: 'answerSpace', lines: subPart.answerSpace });
       }
@@ -375,7 +385,9 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
 
     // The part's own writing room, after the whole group. Each sub-part's space is its
     // own field, so this is the per-part room a QAB grants a leaf part.
-    if (part.answerGraph) nodes.push(answerGraphNode(part.answerGraph));
+    if (part.answerGraph) {
+      nodes.push(answerGraphNode(part.answerGraph, { questionId: question.id, partId: part.id }));
+    }
     if (part.answerSpace !== undefined && part.answerSpace > 0) {
       nodes.push({ kind: 'answerSpace', lines: part.answerSpace });
     }
