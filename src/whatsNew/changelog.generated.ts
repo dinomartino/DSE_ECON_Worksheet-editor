@@ -65,7 +65,7 @@ a version heading is edited afterwards.
 - **Shading and marked points on a curved line now sit exactly on it, whatever the graph's
   shape.** An area or point measured along a curved line, such as a U-shaped MC, could sit
   slightly off the line, most visibly on a tall or wide graph. It now follows the line as drawn.
-  <!-- zh: **無論圖表形狀如何，弧形曲線上的陰影及標示點都會準確落在線上。** 沿弧形曲線（例如 U 形
+  <!-- zh: **無論圖表形狀如何，沿弧形曲線的陰影及標示點都會準確貼着曲線。** 沿弧形曲線（例如 U 形
   的 MC）量度的陰影或標示點，以往可能稍為偏離曲線，在較高或較闊的圖表中尤其明顯，現在會緊貼畫出的曲線。 -->
 
 ## 0.6.0 — 2026-10-04
