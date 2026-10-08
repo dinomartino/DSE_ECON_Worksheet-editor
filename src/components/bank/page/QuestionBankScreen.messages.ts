@@ -1,4 +1,5 @@
 import { defineMessages } from '@/i18n/catalogue';
+import { spaced } from '@/i18n/spacing';
 
 const plural = (n: number, one: string, many = `${one}s`) => (n === 1 ? one : many);
 
@@ -69,7 +70,7 @@ export const BANK_SCREEN_MESSAGES = defineMessages({
     en: (title: string, number: string) => `Saved into “${title}”${number}.`,
     zh: (title: string, number: string) => `會儲存到「${title}」${number}。`,
   },
-  tagTitleParts: { en: (name: string) => `Topics for ${name}`, zh: (name: string) => `${name}的課題` },
+  tagTitleParts: { en: (name: string) => `Topics for ${name}`, zh: (name: string) => spaced`${name}的課題` },
   tagTitle: { en: 'Topics for this question', zh: '這條題目的課題' },
   tagDescOne: {
     en: 'Tick every topic it tests. Saving moves on to the next question.',
@@ -79,12 +80,12 @@ export const BANK_SCREEN_MESSAGES = defineMessages({
     en: 'Tick every topic it tests. They go on every part.',
     zh: '剔選它考核的所有課題。課題會套用到每個分題。',
   },
-  tagDescPart: { en: (name: string) => `Tick every topic ${name} tests.`, zh: (name: string) => `剔選${name}考核的所有課題。` },
+  tagDescPart: { en: (name: string) => `Tick every topic ${name} tests.`, zh: (name: string) => spaced`剔選${name}考核的所有課題。` },
   done: { en: 'Done', zh: '完成' },
   saveNext: { en: 'Save and next', zh: '儲存並下一條' },
   tagSaved: {
     en: (short: string, where: string) => `“${short}” tagged ${where}`,
-    zh: (short: string, where: string) => `「${short}」已標記為${where}`,
+    zh: (short: string, where: string) => spaced`「${short}」已標記為${where}`,
   },
   questionFallback: { en: 'Question', zh: '題目' },
   semi: { en: '; ', zh: '；' },
@@ -102,7 +103,7 @@ export const BANK_SCREEN_MESSAGES = defineMessages({
   allQuestionsTitle: { en: 'All questions', zh: '全部題目' },
   tagHint: { en: 'Tag a question, the next one appears', zh: '標記一條題目，下一條便會出現' },
   searchLabel: { en: 'Search questions', zh: '搜尋題目' },
-  searchIn: { en: (topic: string) => `Search in ${topic}`, zh: (topic: string) => `在${topic}中搜尋` },
+  searchIn: { en: (topic: string) => `Search in ${topic}`, zh: (topic: string) => spaced`在${topic}中搜尋` },
   searchAll: { en: 'Search every question 搜尋全部題目', zh: '搜尋全部題目' },
   patternsButtonTitle: { en: 'Define, rename, merge or delete your 題型', zh: '定義、重新命名、合併或刪除你的題型' },
   reading: {

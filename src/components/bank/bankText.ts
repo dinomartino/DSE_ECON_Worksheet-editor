@@ -1,4 +1,5 @@
 import type { BankRow } from '@/library/types';
+import { sideOf } from '@/model/excerpt';
 import type { LanguageMode } from '@/model/types';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
@@ -9,6 +10,14 @@ import { BANK_ROW_MESSAGES } from './messages';
  * The question bank's small words: counts that agree with their noun, and what tells an
  * edited version from the one beside it.
  */
+
+/**
+ * A row's excerpt in the view language (paper content, never the interface's): the other
+ * side when that one is empty; bilingual leads with English.
+ */
+export function rowExcerpt(row: Pick<BankRow, 'excerpt'>, language: LanguageMode): string {
+  return sideOf(row.excerpt, language);
+}
 
 /** "1 question", "3 questions"; `many` for a noun that is not plain -s ("1 copy", "2 copies"). */
 export function countOf(count: number, one: string, many = `${one}s`): string {
@@ -71,10 +80,8 @@ export function versionDiff(
   lang: UiLanguage = uiLanguage(),
 ): string {
   const m = resolveMessages(BANK_ROW_MESSAGES, lang);
-  const side = (row: Pick<BankRow, 'excerpt'>) =>
-    language === 'zh' ? row.excerpt.zh || row.excerpt.en : row.excerpt.en || row.excerpt.zh;
-  const mine = side(version);
-  const theirs = side(beside);
+  const mine = rowExcerpt(version, language);
+  const theirs = rowExcerpt(beside, language);
   const snippet = diffSnippet(mine, theirs);
   if (!snippet) return m.edited;
   const { tokens, theirs: other, start, end } = sharedEnds(mine, theirs);

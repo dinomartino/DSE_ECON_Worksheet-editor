@@ -12,7 +12,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { addPicksToOpenDocument } from './addToOpen';
 import { computeNumbering } from '@/model/numbering';
 import { oneQuestionWorksheet, questionPreviewHtml } from './questionPreview';
-import { readPicks, sharedTopic, worksheetFromPicks } from './fromSelection';
+import { paperForPicks, readPicks, sharedTopic, worksheetFromPicks } from './fromSelection';
 
 describe('worksheetFromPicks', () => {
   it('copies the picks in picked order, with fresh ids and lineage back to their source', () => {
@@ -71,6 +71,14 @@ describe('worksheetFromPicks', () => {
     // Never a printed title, as the New worksheet form: the heading is the teacher's to type.
     expect(made.title).toEqual(createWorksheetFrom({ documentType: 'classroom', sections: false }).title);
     expect(worksheetTitle(made)).toBe('Market and Price');
+  });
+
+  it('names the topic in the language the picks were viewed in', () => {
+    const picks = [{ question: choiceQuestion('a', '', ['C.ped']), fromDocId: 'x' }];
+    expect(worksheetFromPicks(picks, 'zh').name).toBe('市場與價格');
+    expect(worksheetFromPicks(picks, 'bilingual').name).toBe('Market and Price');
+    expect(paperForPicks(picks, 'paper1', 'zh').name).toBe('市場與價格');
+    expect(paperForPicks(picks, 'lqMock', 'en').name).toBe('Market and Price');
   });
 
   it('is named "Questions from bank" when the picks share no topic, and stays untitled', () => {

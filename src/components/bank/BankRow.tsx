@@ -13,6 +13,7 @@ import { uiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
 import { paperLanguage } from '@/settings/paperLanguage';
 import type { RowDragProps } from './bankDrag';
+import { rowExcerpt } from './bankText';
 import { BANK_ROW_MESSAGES } from './messages';
 
 /**
@@ -80,7 +81,7 @@ export function BankRow({
 }: BankRowProps) {
   const ui = uiLanguage();
   const m = resolveMessages(BANK_ROW_MESSAGES, ui);
-  const excerpt = language === 'zh' ? row.excerpt.zh : row.excerpt.en;
+  const excerpt = rowExcerpt(row, language);
   const missing = missingLanguageLabel(row, language, ui);
   const tags = row.tags.map((tag) => tagText(tag, topicNamesFor(language))).join(' · ');
   const excerptText = (
