@@ -60,6 +60,17 @@ a version heading is edited afterwards.
   where it is.
   <!-- zh: **表格可平均分配列高和欄寬，與 Word 一樣。** 拖曳選取一些儲存格，再按「⇕ 平均列高」令這些列與最高的一列同高，
   或按「⇔ 平均欄寬」令這些欄平分它們的總寬度。只有所選的儲存格會改變，表格其餘部分保持不變。 -->
+- **Importing a paper also brings its header, footer and title block.** The running header and
+  footer come in with their page numbers, including a different header on page 1, and the lines
+  above the first question (school, title, Name and Class blanks, full marks, time allowed) become
+  the paper's title block, or fill the cover of a Paper 1 or Paper 2 mock. The file's header and
+  footer replace the paper type's own; tick "Keep the preset header and footer instead" to keep
+  them. Anything that cannot be brought in, such as a logo or a header laid out as a table, is
+  listed with a Copy button so you can type it in yourself.
+  <!-- zh: **匯入試卷時一併匯入頁首、頁尾及標題區。** 每頁的頁首和頁尾連同頁碼一併匯入，包括第 1 頁不同的頁首；第一題之前的
+  各行（學校、標題、姓名和班別空格、總分、時間）會成為試卷的標題區，或填入 Paper 1 或 Paper 2 Mock 的封面。檔案的頁首和頁尾
+  會取代試卷類型本身的；如要保留後者，請剔選「改用預設的頁首和頁尾」。未能匯入的部分（例如標誌，或以表格排版的頁首）會連同
+  「複製」按鈕列出，方便你自行輸入。 -->
 
 ### Changed
 - **Topic names and question previews follow the language of your questions.** In 題庫, topic

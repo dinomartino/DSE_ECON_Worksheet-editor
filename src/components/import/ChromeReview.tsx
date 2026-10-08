@@ -5,7 +5,7 @@ import type { ChromeLeftover, PageChrome } from '@/import';
 import { planChrome } from '@/import/chromePlan';
 import type { Band, HeaderFooter, LanguageMode } from '@/model/types';
 import { renderBand } from '@/render/worksheet';
-import { NodeView } from '@/components/preview/Preview';
+import { HeaderFooterBand, NodeView } from '@/components/preview/Preview';
 import { Button, CheckField } from '@/components/ui';
 import type { Messages } from '@/i18n/catalogue';
 import type { IMPORT_MESSAGES } from './messages';
@@ -111,8 +111,9 @@ interface Strip {
   /** "None on page 1". */
   blank?: boolean;
   rule?: boolean;
-  /** A rule above (a footer's) rather than below. */
-  ruleAbove?: boolean;
+  /** A header or footer row list (drawn as the page draws it); absent: the title block. */
+  edge?: 'header' | 'footer';
+  page1?: boolean;
   dim?: boolean;
 }
 
@@ -124,11 +125,11 @@ function edgeStrips(m: Text, edge: HeaderFooter | undefined, which: 'header' | '
   const differs = edge.firstPage !== undefined || edge.showOnFirstPage === false;
   const out: Strip[] = [];
   const page1Strip: Strip | undefined = edge.firstPage
-    ? { key: `${which}-1`, label: page1, bands: edge.firstPage.bands, rule: edge.firstPage.rule ?? edge.rule, ruleAbove: which === 'footer', dim }
+    ? { key: `${which}-1`, label: page1, bands: edge.firstPage.bands, rule: edge.firstPage.rule ?? edge.rule, edge: which, page1: true, dim }
     : edge.showOnFirstPage === false && edge.bands.length
       ? { key: `${which}-1`, label: page1, bands: [], blank: true, dim }
       : undefined;
-  const running: Strip | undefined = edge.bands.length ? { key: which, label: differs ? later : every, bands: edge.bands, rule: edge.rule, ruleAbove: which === 'footer', dim } : undefined;
+  const running: Strip | undefined = edge.bands.length ? { key: which, label: differs ? later : every, bands: edge.bands, rule: edge.rule, edge: which, dim } : undefined;
   // Page 1 first, as the pages run.
   if (page1Strip) out.push(page1Strip);
   if (running) out.push(running);
@@ -182,13 +183,22 @@ export function ChromeReview({
               <p className="text-[11px] italic text-[#6b7280]" style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif' }}>
                 {m.chromePage1Blank}
               </p>
+            ) : strip.edge ? (
+              // The page's own header and footer row, so the review wraps and aligns as the sheet will.
+              <HeaderFooterBand
+                value={{ enabled: true, bands: strip.bands, rule: strip.rule ?? false }}
+                language={language}
+                edge={strip.edge}
+                pageNumber={strip.page1 ? 1 : 2}
+                firstOfSection={false}
+                pageCount={2}
+                totalMarks={totalMarks}
+              />
             ) : (
-              <div style={strip.rule ? (strip.ruleAbove ? { borderTop: '0.5pt solid #000', paddingTop: 2 } : { borderBottom: '0.5pt solid #000', paddingBottom: 2 }) : undefined}>
-                {strip.bands.map((band) => {
-                  const node = renderBand(band, totalMarks, language);
-                  return node ? <NodeView key={band.id} node={node} language={language} /> : null;
-                })}
-              </div>
+              strip.bands.map((band) => {
+                const node = renderBand(band, totalMarks, language);
+                return node ? <NodeView key={band.id} node={node} language={language} /> : null;
+              })
             )}
           </div>
         </div>
