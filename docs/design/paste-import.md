@@ -1,6 +1,7 @@
 # Paste-to-structure (D1): design
 
-Status: **proposal** (2026-10-08), written against `develop` @ c886017. Nothing built yet.
+Status: **proposal** (2026-10-08), written against `develop` @ c886017. Phase 0 and the engine
+half of phase 1 are built (§ 10, `feature/paste-import-core`); the review dialog is not.
 Open questions for the user are in § 9.
 
 ## 0. The answer in one paragraph
@@ -207,3 +208,59 @@ Phase 1 alone covers Word pastes, which is where most teachers' papers live.
 3. **Figures:** a Word paste loses them. The `.docx` file import keeps them as **images**, not
    editable diagrams. Is that acceptable?
 4. **Where it lands first:** the open paper, 題庫, or both from day one?
+
+## 10. As built (engine, 2026-10-08)
+
+Pure TypeScript in `src/import/`: no React, no store, no DOM. The UI calls three functions:
+
+```ts
+readPaste(input: { plain?: string; html?: string }): ReadPaste                 // once per paste
+analyseLines(read: ReadPaste, options?: { pins?: Pin[]; profile?: LayoutProfile;
+  language?: 'en' | 'zh' | 'auto' }): Analysis                                  // on every pin
+buildImport(analysis: Analysis): ImportBatch   // → insertQuestionBatch(batch.builds, { worksheetId, lead: batch.lead })
+analysePaste(input, options) = analyseLines(readPaste(input), options)
+```
+
+`Analysis` is `{ kind: 'ok' | 'empty' | 'scan', source, lines, roles, outline, flags, profile }`;
+`roles[i]` is `{ role, confidence, pinned?, question? }` for `lines[i]`. A `Pin` is
+`role` · `newQuestion` · `join` · `language` · `answer`. Flags are codes (`FlagKind`) with a
+line and a question index; the dialog words them. Types: `src/import/types.ts`.
+
+| File | Does |
+|---|---|
+| `src/import/readPlain.ts` · `src/import/readHtml.ts` | clipboard → raw lines. HTML: Word `mso-list` labels, `mso-tab-count`, `<ol start type>`, tables, bold/italic/underline/highlight/colour |
+| `src/import/lines.ts` | label, trailing marks, cells split off; option rows and detached-letter clumps split; `*C.` stars |
+| `src/import/labels.ts` · `src/import/normalize.ts` | label families and marks shapes; label-zone normalising (full-width, Cyrillic) |
+| `src/import/detectors.ts` | `DETECTORS`: one small function per convention |
+| `src/import/levels.ts` | family → level by run quality; question runs (restart, nested, skip, instructions) |
+| `src/import/walk.ts` | the outline: parts, sub-parts, contexts, sources, marks re-attachment, order pairing |
+| `src/import/solve.ts` | orchestration, pins, answers, language, the returned profile |
+| `src/import/scan.ts` · `src/import/build.ts` | empty/OCR verdict; outline → `QuestionBuild[]` + `lead` |
+
+**Scorecard** (`src/import/scorecard.test.ts`, 17 synthetic fixtures in `src/import/fixtures/`):
+every Word plain/HTML and PDF-style fixture 100% split and detail; the two OCR fixtures are
+read as `scan` and score 89–95%. Floors: Word 95%, PDF 85%, OCR 50% (per fixture). The fixtures
+were written alongside the engine, so the local run on the real survey pastes is the honest
+check: Word plain/HTML 5/5 at 100%; text-PDF copies (Preview, `pdftotext -layout`) 100%; the
+whole DBS paper splits 25/25 from Word, Preview and `-layout`, the 2019 HKEAA Word file 14/14;
+`pdftotext` column blocks 40% (2/5 on the excerpt, 24/25 on the whole paper with 6 option-count
+flags); OCR excerpts 86% and 100% split. Re-solving a 60-question paste takes about 4 ms.
+
+**Deviations from the proposal**
+
+- The HTML reader is a small tokenizer, not `DOMParser`, so the engine runs in tests and
+  workers. Nothing is ever inserted into a page.
+- `InlineRun` has no highlight, so highlight is line emphasis only. Formatting that marked an
+  answer (bold, colour, `*`) is removed from that option so the student copy does not show it.
+- One `lead` per batch: a shared stem later in the paste is kept as the first text of the
+  question it introduces (`sharedStemFolded`). Several leads need a store change.
+- Headings, noise and answer keys are not imported (`ImportBatch.skipped`); no section elements.
+- An MC with no marks keeps the factory's 1 mark; parts and sub-parts with none stay absent.
+- Body text keeps smart quotes and full-width punctuation; only matching keys are normalised.
+- Images: only `data:` URLs become image blocks; Word's `file://` clip images are `imageLost`.
+- Confidence is the detector weight lowered by walk decisions, not calibrated.
+
+**Known weak cases:** `pdftotext` column blocks that interleave two questions; OCR that loses
+option letters (the question becomes written text, flagged); an instructions list numbered
+like the questions with no heading after it; a structured question whose part letters were
+lost by OCR.
