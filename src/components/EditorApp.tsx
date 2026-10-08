@@ -24,7 +24,8 @@ import type { BandFieldSide, BiText, TextFormat, Worksheet } from '@/model/types
 import type { EditTarget } from '@/render/ir';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { onDocumentSavedElsewhere, worksheetStore } from '@/storage';
-import { adoptNewerTags } from '@/library/tagWrites';
+import { SAVED_ELSEWHERE_NOTICE, takeSavedElsewhere } from '@/components/editor/savedElsewhere';
+import { dismiss as dismissNotice } from '@/store/notices';
 import { holdBankDocument } from '@/library/useBank';
 import { BankReviewBar } from '@/components/bank/BankReviewBar';
 import { useBankSession } from '@/components/bank/bankSession';
@@ -393,16 +394,18 @@ export function EditorApp({
     return () => holdBankDocument(undefined);
   }, [openId]);
 
-  // Another tab tagged this paper (its 題庫 screen, or a synced Topic row edit): take the
-  // newer tags in, so this tab's next autosave keeps them rather than saving over them.
-  useEffect(
-    () =>
-      onDocumentSavedElsewhere((saved) => {
-        const { worksheet: open, adoptSavedElsewhere } = useWorksheetStore.getState();
-        if (saved.id === open.id) adoptSavedElsewhere((doc) => adoptNewerTags(doc, saved));
-      }),
-    [],
-  );
+  // Another tab saved this paper (its 題庫 screen: tags, a ✦ Fill): take the newer copy
+  // in whole when nothing here is unsaved, else its tags plus a Reload warning
+  // (`takeSavedElsewhere`), so this tab's next autosave cannot quietly put the older back.
+  useEffect(() => {
+    const stop = onDocumentSavedElsewhere((saved) => {
+      takeSavedElsewhere(saved, (id) => worksheetStore.load(id));
+    });
+    return () => {
+      stop();
+      dismissNotice(SAVED_ELSEWHERE_NOTICE);
+    };
+  }, []);
 
   /*
    * Print preview is a class on `<body>`, not a prop threaded through the preview.

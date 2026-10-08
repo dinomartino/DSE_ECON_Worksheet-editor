@@ -316,6 +316,13 @@ interface WorksheetState {
    * the change is already saved, and an unsaved edit still saves with it. Inert read-only.
    */
   adoptSavedElsewhere: (recipe: (worksheet: Worksheet) => Worksheet) => void;
+  /**
+   * Take in another tab's save of this document whole (a ✦ Fill, a tag edit), when this
+   * tab has nothing unsaved. History is dropped: an undo back to the older copy would
+   * autosave over the newer one. Returns false, changing nothing, when this tab is
+   * dirty, read-only, or holds another document; the caller then adopts only the tags.
+   */
+  adoptSavedDocument: (saved: Worksheet) => boolean;
   /** Replace one block by id — the route a page-opened editor commits through. */
   replaceBlock: (blockId: string, next: ContentBlock) => void;
   /** Insert a new block directly after an existing one — the page's insert route. */
@@ -1152,6 +1159,22 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       if (worksheet === state.worksheet && same(past, state.past) && same(future, state.future)) return state;
       return { worksheet, past, future };
     }),
+  adoptSavedDocument: (saved) => {
+    const state = get();
+    if (state.readOnly || state.dirty || saved.id !== state.worksheet.id) return false;
+    if (isNewerThanBuild(saved)) return false;
+    if (JSON.stringify(saved) === JSON.stringify(state.worksheet)) return true;
+    const kept = (id: string | undefined) =>
+      id !== undefined && saved.questions.some((question) => question.id === id) ? id : undefined;
+    set({
+      worksheet: saved,
+      past: [],
+      future: [],
+      // A selection naming a question the newer copy no longer holds would point at nothing.
+      selectedQuestionId: kept(state.selectedQuestionId),
+    });
+    return true;
+  },
   resolveAnswerSpaceFills: (counts) =>
     set((state) => {
       let changed = false;
