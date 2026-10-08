@@ -113,6 +113,11 @@ a version heading is edited afterwards.
   角落提供「復原」。 -->
 
 ### Fixed
+- **The editor no longer scrolls up to leave an empty space at the bottom of the window.**
+  With a long paper or marking scheme, scrolling could push the whole editor up; now only the
+  page and the side panel scroll.
+  <!-- zh: **編輯器不會再向上捲動，在視窗底部留下一片空白。** 試卷或評卷參考較長時，捲動可能把整個編輯器推上去；
+  現在只有頁面及側欄會捲動。 -->
 - **A ✦ Fill made in 題庫 in another tab is no longer lost to this tab's autosave.** If you
   had nothing unsaved here, the paper now updates to the filled version. If you did, its
   topics are kept and a message offers Reload to see the other tab's version.

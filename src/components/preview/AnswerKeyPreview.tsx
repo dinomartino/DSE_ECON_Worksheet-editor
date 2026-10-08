@@ -572,11 +572,13 @@ export function AnswerKeyPreview({
         ))}
       </div>
 
-      {/* The measurement probe: the same runs at true content width, as the paper's. */}
+      {/* The measurement probe: the same runs at true content width, as the paper's.
+          Zero-height and clipped, or it scrolls the window (and prints blank pages). */}
       <div
         aria-hidden
         data-print-hide
-        className="paper pointer-events-none invisible absolute -z-10 print:max-h-0 print:overflow-hidden"
+        data-measure-probe
+        className="paper pointer-events-none invisible absolute -z-10 h-0 overflow-hidden"
         style={{
           position: "absolute",
           top: 0,
