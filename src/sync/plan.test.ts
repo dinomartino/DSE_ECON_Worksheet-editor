@@ -246,7 +246,7 @@ describe('provider conflict copies: the id inside decides', () => {
     if (one.kind !== 'providerCopy' || two.kind !== 'providerCopy') throw new Error('expected copies');
     expect(one.copy.id).toBe(derivedId('provider', ID, v1.hash));
     expect(two.copy.id).toBe(one.copy.id);
-    expect(one.copy.worksheet).toMatchObject({ id: one.copy.id, name: 'edited here (from another computer)' });
+    expect(one.copy.worksheet).toMatchObject({ id: one.copy.id, name: 'edited here (from another computer / 來自另一部電腦)' });
     expect(planStray(stray('trash/x (1).worksheet.json', v1), snapshot(file('live', 'r1', v2)), new Map(), ctx)).toMatchObject({
       copy: { place: 'trash' },
     });

@@ -3,6 +3,7 @@ import { isDesktop, JSON_FILTERS, pickTextFile, saveFile, type SavedTo } from '@
 import { isNewerThanBuild } from '@/model/migrations';
 import {
   adoptRefused,
+  holdsExpected,
   NewerDocumentError,
   parseWorksheet,
   stringifyWorksheet,
@@ -21,14 +22,14 @@ import {
   serializeFolders,
   type FolderState,
 } from './folders';
-import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
+import type { AdoptExpect, TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 import { localPatternFile, PATTERNS_KEY, type PatternFile } from './patterns';
 import { graphDirFiles, patternsFile } from './fileStore';
 import { browserStorage, GRAPH_PREFIX, GraphStore, localGraphFiles } from './graphs';
 import { forgetOnWrite, memoryHashCache } from '@/sync/hashCache';
 import type { HashCache } from '@/sync/types';
 
-export type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
+export type { AdoptExpect, ListOptions, TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 export {
   EMPTY_FOLDERS,
   FOLDER_NAME_MAX,
@@ -161,11 +162,21 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     await this.write(storage, worksheet);
   }
 
-  /** The key is shared with a trashed copy, so the rule also guards Trash (§ adoptRefused). */
-  async adopt(worksheet: Worksheet): Promise<void> {
+  /**
+   * The key is shared with a trashed copy, so the rule also guards Trash (§ adoptRefused).
+   * `expect` is checked synchronously before the write: nothing else runs in between.
+   */
+  async adopt(worksheet: Worksheet, expect?: AdoptExpect): Promise<void | 'changed'> {
     const storage = this.storage;
     if (!storage) return;
     const stored = storage.getItem(PREFIX + worksheet.id);
+    if (expect !== undefined) {
+      const trashed =
+        this.readTrash(storage).some((row) => row.id === worksheet.id) &&
+        !this.readIndex(storage).some((row) => row.id === worksheet.id);
+      const found = stored === null ? null : { place: trashed ? ('trash' as const) : ('live' as const), text: stored };
+      if (!holdsExpected(found, expect)) return 'changed';
+    }
     if (stored !== null && adoptRefused(stored, worksheet)) throw new NewerDocumentError();
     await this.write(storage, worksheet);
   }

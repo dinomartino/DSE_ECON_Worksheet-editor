@@ -2,8 +2,8 @@ import { newId } from '@/model/factories';
 import { isNewerThanBuild } from '@/model/migrations';
 import type { Worksheet } from '@/model/types';
 import { isDesktop } from '@/platform';
-import { adoptRefused, NewerDocumentError, parseWorksheet, stringifyWorksheet, summarize } from './document';
-import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
+import { adoptRefused, holdsExpected, NewerDocumentError, parseWorksheet, stringifyWorksheet, summarize } from './document';
+import type { AdoptExpect, ListOptions, TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 import { kindRepairs, usableSummaries, withKindRepairs, withSummaryFirst } from './summaries';
 import { settleTrash, untrashed, usableTrash } from './trash';
 import {
@@ -339,14 +339,26 @@ export const graphDirFiles: GraphFiles = {
   },
 };
 
+/**
+ * Every mutation runs alone, in call order (`exclusive`): each rewrites `index.json` (or the
+ * Trash index) from a read of it, across many IPC awaits, so two at once would drop a row:
+ * a file intact but unreachable. Methods named `…Now` run inside the queue and never call a
+ * public mutation, which would wait for itself.
+ */
 export class FileWorksheetStore implements WorksheetStore {
   private fsModule: Promise<Fs> | undefined;
   private readonly now: () => number;
-  /** Saves still writing: `clear` waits them out, or one lands after it and relists. */
-  private readonly saving = new Set<Promise<void>>();
+  private tail: Promise<unknown> = Promise.resolve();
 
   constructor(now: () => number = Date.now) {
     this.now = now;
+  }
+
+  /** After every mutation already called; a failed one does not stop the next. */
+  private exclusive<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.tail.then(work, work);
+    this.tail = run.catch(() => undefined);
+    return run;
   }
 
   private fs(): Promise<Fs> {
@@ -419,14 +431,16 @@ export class FileWorksheetStore implements WorksheetStore {
     return sorted;
   }
 
-  async list(): Promise<WorksheetSummary[]> {
-    try {
-      const index = await this.readIndex();
-      if (index) return await this.repairKinds(index);
-      return await this.rebuildIndex();
-    } catch {
-      return [];
-    }
+  /** Queued: a rebuild or a kind repair writes the index. Unreadable: `[]`, or with `strict` the error. */
+  list(options?: ListOptions): Promise<WorksheetSummary[]> {
+    return this.exclusive(() => (options?.strict ? this.listNow() : this.listNow().catch(() => [])));
+  }
+
+  /** Rejects when the index cannot be read: a rewrite from `[]` would drop every row. */
+  private async listNow(): Promise<WorksheetSummary[]> {
+    const index = await this.readIndex();
+    if (index) return this.repairKinds(index);
+    return this.rebuildIndex();
   }
 
   /**
@@ -460,14 +474,8 @@ export class FileWorksheetStore implements WorksheetStore {
     }
   }
 
-  async save(worksheet: Worksheet): Promise<void> {
-    const write = this.write(worksheet);
-    this.saving.add(write);
-    try {
-      await write;
-    } finally {
-      this.saving.delete(write);
-    }
+  save(worksheet: Worksheet): Promise<void> {
+    return this.exclusive(() => this.writeNow(worksheet));
   }
 
   /** The trashed file, which `load` never reads (it is a separate file here). */
@@ -482,18 +490,27 @@ export class FileWorksheetStore implements WorksheetStore {
     }
   }
 
-  /** Only the live file is guarded (§ adoptRefused): a trashed copy is a separate file. */
-  async adopt(worksheet: Worksheet): Promise<void> {
-    const write = this.write(worksheet, true);
-    this.saving.add(write);
-    try {
-      await write;
-    } finally {
-      this.saving.delete(write);
-    }
+  /**
+   * Only the live file is guarded (§ adoptRefused): a trashed copy is a separate file.
+   * `expect` is checked in the queue, so no other write of this store lands between.
+   */
+  adopt(worksheet: Worksheet, expect?: AdoptExpect): Promise<void | 'changed'> {
+    return this.exclusive(async () => {
+      if (expect !== undefined && !holdsExpected(await this.storedNow(worksheet.id), expect)) return 'changed';
+      await this.writeNow(worksheet, true);
+    });
   }
 
-  private async write(worksheet: Worksheet, adopting = false): Promise<void> {
+  /** The files as they are: live first (a restore can leave both). */
+  private async storedNow(id: string): Promise<{ place: 'live' | 'trash'; text: string } | null> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    if (await fs.exists(docPath(id), opts)) return { place: 'live', text: await fs.readTextFile(docPath(id), opts) };
+    if (await fs.exists(trashPath(id), opts)) return { place: 'trash', text: await fs.readTextFile(trashPath(id), opts) };
+    return null;
+  }
+
+  private async writeNow(worksheet: Worksheet, adopting = false): Promise<void> {
     const fs = await this.fs();
     const opts = await this.base();
     if (adopting) {
@@ -513,24 +530,30 @@ export class FileWorksheetStore implements WorksheetStore {
       stringifyWorksheet(worksheet),
       await this.base(),
     );
-    await this.writeIndex(withSummaryFirst(await this.list(), summarize(worksheet)));
+    await this.writeIndex(withSummaryFirst(await this.listNow(), summarize(worksheet)));
   }
 
   /**
    * Rename a saved document — `worksheet.name`, never the printed `title`, and through
    * the document rather than the index row, which the next autosave would overwrite.
    */
-  async rename(id: string, name: string): Promise<void> {
-    const worksheet = await this.load(id);
-    if (!worksheet) return;
-    await this.save({ ...worksheet, name, updatedAt: new Date().toISOString() });
+  rename(id: string, name: string): Promise<void> {
+    return this.exclusive(async () => {
+      const worksheet = await this.load(id);
+      if (!worksheet) return;
+      await this.writeNow({ ...worksheet, name, updatedAt: new Date().toISOString() });
+    });
   }
 
   /** Delete the live document for good. A trashed copy is a separate file, left alone. */
-  async remove(id: string): Promise<void> {
+  remove(id: string): Promise<void> {
+    return this.exclusive(() => this.removeNow(id));
+  }
+
+  private async removeNow(id: string): Promise<void> {
     const fs = await this.fs();
     const opts = await this.base();
-    const summaries = await this.list();
+    const summaries = await this.listNow();
     try {
       if (await fs.exists(docPath(id), opts)) await fs.remove(docPath(id), opts);
     } catch {
@@ -552,7 +575,11 @@ export class FileWorksheetStore implements WorksheetStore {
     }
   }
 
-  async writeFolders(state: FolderState): Promise<void> {
+  writeFolders(state: FolderState): Promise<void> {
+    return this.exclusive(() => this.writeFoldersNow(state));
+  }
+
+  private async writeFoldersNow(state: FolderState): Promise<void> {
     const fs = await this.fs();
     const opts = await this.base();
     if (isEmptyFolders(state) && !state.__unknown) {
@@ -568,7 +595,7 @@ export class FileWorksheetStore implements WorksheetStore {
     try {
       const state = await this.readFolders();
       const next = recipe(state);
-      if (next !== state) await this.writeFolders(next);
+      if (next !== state) await this.writeFoldersNow(next);
     } catch {
       // Filing only: a stale assignment names a document that no longer lists.
     }
@@ -636,14 +663,18 @@ export class FileWorksheetStore implements WorksheetStore {
    * Row, then file, then index: interrupted after the row, `listTrash` drops a row whose
    * file never arrived; after the move, the dangling index row is dropped on open.
    */
-  async trash(id: string): Promise<void> {
+  trash(id: string): Promise<void> {
+    return this.exclusive(() => this.trashNow(id));
+  }
+
+  private async trashNow(id: string): Promise<void> {
     const fs = await this.fs();
     const opts = await this.base();
     if (!(await fs.exists(docPath(id), opts))) {
-      await this.remove(id);
+      await this.removeNow(id);
       return;
     }
-    const live = await this.list();
+    const live = await this.listNow();
     const summary =
       live.find((entry) => entry.id === id) ??
       (await this.load(id).then((worksheet) => worksheet && summarize(worksheet))) ??
@@ -655,29 +686,29 @@ export class FileWorksheetStore implements WorksheetStore {
   }
 
   /** Rows whose file is gone are dropped; expired ones are deleted here — no timer. */
-  async listTrash(): Promise<TrashedSummary[]> {
-    try {
-      const fs = await this.fs();
-      const opts = await this.base();
-      const rows = await this.trashRows();
-      const present: TrashedSummary[] = [];
-      for (const row of rows) {
-        if (await fs.exists(trashPath(row.id), opts)) present.push(row);
-      }
-      const { kept, expired, changed } = settleTrash(present, this.now());
-      for (const row of expired) {
-        try {
-          await fs.remove(trashPath(row.id), opts);
-        } catch {
-          // Already gone.
-        }
-      }
-      await this.forgetUnlessLive(expired.map((row) => row.id));
-      if (changed || present.length !== rows.length) await this.writeTrashIndex(kept);
-      return kept;
-    } catch {
-      return [];
+  listTrash(options?: ListOptions): Promise<TrashedSummary[]> {
+    return this.exclusive(() => (options?.strict ? this.listTrashNow() : this.listTrashNow().catch(() => [])));
+  }
+
+  private async listTrashNow(): Promise<TrashedSummary[]> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    const rows = await this.trashRows();
+    const present: TrashedSummary[] = [];
+    for (const row of rows) {
+      if (await fs.exists(trashPath(row.id), opts)) present.push(row);
     }
+    const { kept, expired, changed } = settleTrash(present, this.now());
+    for (const row of expired) {
+      try {
+        await fs.remove(trashPath(row.id), opts);
+      } catch {
+        // Already gone.
+      }
+    }
+    await this.forgetUnlessLive(expired.map((row) => row.id));
+    if (changed || present.length !== rows.length) await this.writeTrashIndex(kept);
+    return kept;
   }
 
   /**
@@ -685,7 +716,11 @@ export class FileWorksheetStore implements WorksheetStore {
    * older build re-imported it). Then it comes back beside that one under a new id —
    * a restore never overwrites.
    */
-  async restore(id: string): Promise<string | undefined> {
+  restore(id: string): Promise<string | undefined> {
+    return this.exclusive(() => this.restoreNow(id));
+  }
+
+  private async restoreNow(id: string): Promise<string | undefined> {
     const fs = await this.fs();
     const opts = await this.base();
     const rows = await this.trashRows();
@@ -695,11 +730,11 @@ export class FileWorksheetStore implements WorksheetStore {
       if (row) await this.writeTrashIndex(rest);
       return undefined;
     }
-    const live = await this.list();
+    const live = await this.listNow();
     if (live.some((entry) => entry.id === id) || (await fs.exists(docPath(id), opts))) {
       const worksheet = parseWorksheet(await fs.readTextFile(trashPath(id), opts));
       const copyId = newId();
-      await this.save({ ...worksheet, id: copyId });
+      await this.writeNow({ ...worksheet, id: copyId });
       await this.editFolders((state) => copyAssignment(state, id, copyId));
       await fs.remove(trashPath(id), opts);
       await this.writeTrashIndex(rest);
@@ -718,16 +753,18 @@ export class FileWorksheetStore implements WorksheetStore {
     return id;
   }
 
-  async purge(id: string): Promise<void> {
-    const fs = await this.fs();
-    const opts = await this.base();
-    try {
-      if (await fs.exists(trashPath(id), opts)) await fs.remove(trashPath(id), opts);
-    } catch {
-      // Already gone; the row still has to go.
-    }
-    await this.writeTrashIndex((await this.trashRows()).filter((row) => row.id !== id));
-    await this.forgetUnlessLive([id]);
+  purge(id: string): Promise<void> {
+    return this.exclusive(async () => {
+      const fs = await this.fs();
+      const opts = await this.base();
+      try {
+        if (await fs.exists(trashPath(id), opts)) await fs.remove(trashPath(id), opts);
+      } catch {
+        // Already gone; the row still has to go.
+      }
+      await this.writeTrashIndex((await this.trashRows()).filter((row) => row.id !== id));
+      await this.forgetUnlessLive([id]);
+    });
   }
 
   /** Purged from Trash: forget the folder, unless the same id is also live. */
@@ -742,12 +779,14 @@ export class FileWorksheetStore implements WorksheetStore {
     await this.forgetFolders(gone);
   }
 
-  async emptyTrash(): Promise<void> {
-    const trashed = (await this.trashRows().catch(() => [] as TrashedSummary[])).map((r) => r.id);
-    await this.clearTrashDir();
-    await this.forgetUnlessLive(trashed);
-    const fs = await this.fs();
-    if (await fs.exists(TRASH_DIR, await this.base())) await this.writeTrashIndex([]);
+  emptyTrash(): Promise<void> {
+    return this.exclusive(async () => {
+      const trashed = (await this.trashRows().catch(() => [] as TrashedSummary[])).map((r) => r.id);
+      await this.clearTrashDir();
+      await this.forgetUnlessLive(trashed);
+      const fs = await this.fs();
+      if (await fs.exists(TRASH_DIR, await this.base())) await this.writeTrashIndex([]);
+    });
   }
 
   /** Every trashed file and the Trash index; anything else in there is not ours. */
@@ -769,11 +808,14 @@ export class FileWorksheetStore implements WorksheetStore {
   /**
    * Forget every saved document — only this app's own worksheets directory, never the
    * wider app data tree, which other things (window state, settings) also live in.
-   * Trash, folders, the 題型 registry and saved graphs included.
+   * Trash, folders, the 題型 registry and saved graphs included. Queued, so a save already
+   * writing (it spans many awaits) finishes first and cannot land after it.
    */
-  async clear(): Promise<void> {
-    // Unlike `localStorage`, a file save spans many awaits and can straddle a clear.
-    await Promise.allSettled(this.saving);
+  clear(): Promise<void> {
+    return this.exclusive(() => this.clearNow());
+  }
+
+  private async clearNow(): Promise<void> {
     const fs = await this.fs();
     const opts = await this.base();
     await this.clearTrashDir();

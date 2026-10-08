@@ -53,14 +53,14 @@ export function forgetOnWrite(store: WorksheetStore, cache: HashCache): Workshee
     }
   };
   return {
-    list: () => store.list(),
+    list: (options) => store.list(options),
     load: (id) => store.load(id),
     loadTrashed: (id) => store.loadTrashed(id),
-    listTrash: () => store.listTrash(),
+    listTrash: (options) => store.listTrash(options),
     readFolders: () => store.readFolders(),
     writeFolders: (state) => store.writeFolders(state),
     save: (worksheet) => forgetting(() => store.save(worksheet), () => [worksheet.id]),
-    adopt: (worksheet) => forgetting(() => store.adopt(worksheet), () => [worksheet.id]),
+    adopt: (worksheet, expect) => forgetting(() => store.adopt(worksheet, expect), () => [worksheet.id]),
     rename: (id, name) => forgetting(() => store.rename(id, name), () => [id]),
     remove: (id) => forgetting(() => store.remove(id), () => [id]),
     trash: (id) => forgetting(() => store.trash(id), () => [id]),

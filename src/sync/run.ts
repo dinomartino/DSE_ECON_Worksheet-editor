@@ -1,4 +1,6 @@
-import { contentOfText, type Content } from './content';
+import type { Worksheet } from '@/model/types';
+import type { AdoptExpect } from '@/storage/types';
+import { contentOf, contentOfText, type Content } from './content';
 import { documentKey } from './keys';
 import { planDocument, planSync, type Copy, type HoldReason, type KeyRevision, type PlanContext, type Seen, type SyncAction } from './plan';
 import { readLocal, readLocalDoc, readRemote, readRemoteDoc } from './snapshot';
@@ -94,17 +96,23 @@ function emptyReport(): SyncReport {
   return { status: 'ok', remoteWasEmpty: false, counts, conflicts: [], held: [], errors: [] };
 }
 
+/** The run's reason when this computer's own library would not list. */
+export const LOCAL_UNREADABLE = 'local-unreadable';
+
 export async function runSync(options: RunOptions): Promise<SyncReport> {
   const { store, source, base } = options;
   const report = emptyReport();
   const listing = await source.list();
   if (listing.status === 'unavailable') return unavailable(report, listing.reason);
   const baseEntries = await base.load();
-  const local = await readLocal(store, options.hashCache);
+  const hadLive = [...baseEntries.values()].some((entry) => entry.place === 'live');
+  const local = await readLocal(store, options.hashCache).catch(() => undefined);
+  // The mirror of `remoteWasEmpty`: no document here at all, though the base had live ones,
+  // is a library that did not list, never everything to download over or purge.
+  if (!local || (hadLive && local.size === 0)) return unavailable(report, LOCAL_UNREADABLE);
   const remote = await readRemote(source, listing.entries, baseEntries);
   if ('status' in remote) return unavailable(report, remote.reason);
 
-  const hadLive = [...baseEntries.values()].some((entry) => entry.place === 'live');
   if (hadLive && remote.docs.size === 0 && remote.strays.length === 0) {
     for (const id of baseEntries.keys()) await base.remove(id);
     baseEntries.clear();
@@ -252,6 +260,7 @@ class Executor {
         return this.pull(action.id, action.place, action.from, action.seen);
       }
       case 'purgeRemote': {
+        await this.confirmGone(action.id);
         const removed = await source.remove(action.from.key, { expectRevision: action.from.revision });
         if (removed.status === 'unavailable') throw new SourceUnavailable(removed.reason);
         if (removed.status === 'conflict') throw new Stale();
@@ -262,7 +271,9 @@ class Executor {
         // The provider's file goes only once the canonical copy reads back the same.
         const back = await source.read(documentKey(action.copy.id, action.copy.place));
         if (back.status === 'unavailable') throw new SourceUnavailable(back.reason);
-        if (back.status === 'ok' && sameContent(back.text, action.copy)) await this.removeIfUnchanged(action.from);
+        if (back.status === 'ok' && (sameContent(back.text, action.copy) || sameButName(back.text, action.copy))) {
+          await this.removeIfUnchanged(action.from);
+        }
         return;
       }
       case 'dropDuplicate':
@@ -302,6 +313,21 @@ class Executor {
     await this.options.base.put({ id, kind: 'worksheet', place, hash: content.hash, revision, schemaVersion: content.schemaVersion });
   }
 
+  /**
+   * Planned as absent here. A listing can miss a document still stored (a dangling index
+   * row, a failed read), so the store is asked for it by id: anything there is a change.
+   */
+  private async confirmGone(id: string): Promise<void> {
+    const { store } = this.options;
+    const stored = (load: () => Promise<Worksheet | undefined>) => load().then((doc) => doc !== undefined, () => true);
+    if ((await stored(() => store.load(id))) || (await stored(() => store.loadTrashed(id)))) throw new Stale();
+  }
+
+  /** Written only over what was planned against: the store checks `expect` with none of its own writes between. */
+  private async adopt(worksheet: Worksheet, expect: AdoptExpect): Promise<void> {
+    if ((await this.touch(worksheet.id, () => this.options.store.adopt(worksheet, expect))) === 'changed') throw new Stale();
+  }
+
   /** Remote's content into the local store, at `place`. */
   private async pull(id: string, place: Place, from: KeyRevision, seen: Seen | null): Promise<void> {
     const { store } = this.options;
@@ -312,16 +338,21 @@ class Executor {
       ? now && now.place === seen.place && now.content !== 'unreadable' && now.content.hash === seen.hash
       : !now;
     if (!unchanged) throw new Stale();
-    const differs = !now || (now.content as Content).hash !== incoming.hash;
+    if (!now) await this.confirmGone(id);
+    const held: AdoptExpect = now ? { place: now.place, hash: (now.content as Content).hash } : null;
+    const differs = !held || held.hash !== incoming.hash;
     if (place === 'live') {
       if (now?.place === 'trash' && (await this.touch(id, () => store.restore(id))) !== id) throw new Error('Restored under another id.');
-      if (differs) await this.touch(id, () => store.adopt(incoming.worksheet));
+      if (differs) await this.adopt(incoming.worksheet, held && { place: 'live', hash: held.hash });
     } else {
-      if (differs) await this.touch(id, () => store.adopt(incoming.worksheet));
+      if (differs) await this.adopt(incoming.worksheet, held);
       if (differs || now?.place === 'live') await this.touch(id, () => store.trash(id));
     }
     const after = await this.local(id);
     if (!after || after.content === 'unreadable') throw new Error('The downloaded document will not load.');
+    // Another write landed since (a save not from the editor): what is here is not what the
+    // remote holds, so no agreement is recorded and the document is planned again (both kept).
+    if (after.place !== place || after.content.hash !== incoming.hash) throw new Stale();
     await this.record(id, place, after.content, from.revision);
   }
 
@@ -335,7 +366,7 @@ class Executor {
     const existing = await this.local(copy.id);
     if (existing && (existing.content === 'unreadable' || existing.content.hash !== copy.hash)) return;
     if (!existing) {
-      await this.touch(copy.id, () => store.adopt(copy.worksheet));
+      await this.adopt(copy.worksheet, null);
       if (copy.place === 'trash') await this.touch(copy.id, () => store.trash(copy.id));
     }
     const key = documentKey(copy.id, copy.place);
@@ -346,7 +377,14 @@ class Executor {
     else {
       const there = await source.read(key);
       if (there.status === 'unavailable') throw new SourceUnavailable(there.reason);
-      if (there.status !== 'ok' || !sameContent(there.text, copy)) return;
+      if (there.status !== 'ok') return;
+      if (!sameContent(there.text, copy)) {
+        // The same copy named by the other computer (an older build): take its name, one copy.
+        if (sameButName(there.text, copy)) {
+          await this.pull(copy.id, copy.place, { key, revision: there.revision }, { place: copy.place, hash: copy.hash });
+        }
+        return;
+      }
       revision = there.revision;
     }
     const placed = await this.local(copy.id);
@@ -358,6 +396,15 @@ class Executor {
 function sameContent(text: string, copy: Copy): boolean {
   try {
     return contentOfText(text).hash === copy.hash;
+  } catch {
+    return false;
+  }
+}
+
+/** The copy under another name only: made by a computer that names copies differently. */
+function sameButName(text: string, copy: Copy): boolean {
+  try {
+    return contentOf({ ...contentOfText(text).worksheet, name: copy.worksheet.name }).hash === copy.hash;
   } catch {
     return false;
   }

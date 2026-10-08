@@ -182,11 +182,11 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
     }
   };
   const engineStore: SyncStore = {
-    list: () => options.store.list(),
-    listTrash: () => options.store.listTrash(),
+    list: (listOptions) => options.store.list(listOptions),
+    listTrash: (listOptions) => options.store.listTrash(listOptions),
     load: (id) => options.store.load(id),
     loadTrashed: (id) => options.store.loadTrashed(id),
-    adopt: (worksheet) => writing(worksheet.id, () => options.store.adopt(worksheet)),
+    adopt: (worksheet, expect) => writing(worksheet.id, () => options.store.adopt(worksheet, expect)),
     trash: (id) => writing(id, () => options.store.trash(id)),
     restore: (id) => writing(id, () => options.store.restore(id)),
   };

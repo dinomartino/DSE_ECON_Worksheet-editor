@@ -88,7 +88,9 @@ with the same content.
   the id inside decides, not the name), and a Trash file beside a live one (a delete that crossed
   an edit). Holding the live content, or this computer's own unsynced version: dropped. Otherwise:
   its own document under an id derived from (inner id, hash), so both computers make one copy.
-  A newer build's stray is held, never re-id'd.
+  A newer build's stray is held, never re-id'd. Its name is one bilingual name on every computer:
+  "… (from another computer / 來自另一部電腦)"; a copy already at the derived key that differs only
+  in `name` (an older build named it) is adopted, not kept twice.
 
 ## The executor (`src/sync/run.ts`)
 
@@ -99,6 +101,13 @@ with the same content.
 - **A move changes content in place first, then moves identical bytes**, old key removed last. No
   moment shows two different versions (which the other computer would keep as a conflict) and the
   remote never holds no copy.
+- **A download is recorded only if the document then reads back as the download.** Anything
+  else (a save not from sync landed) re-plans it: both kept. `adopt` carries what the step
+  planned against (`expect`); the store re-checks it with none of its own writes between.
+- **Absent here is confirmed by id** (`load`, `loadTrashed`) before a download or a remote purge:
+  a listing can miss a document still stored. A listing that fails, or lists nothing while the
+  base had live documents (the mirror of `remoteWasEmpty`), stops the run: `unavailable`,
+  reason `local-unreadable`.
 - One bad document never stops the run; `unavailable` stops it (status `unavailable`).
 - A source suddenly empty while the base had live documents drops the base and refills the
   mirror from this computer (`remoteWasEmpty`), never reads as "trash everything". Cost: a purge
@@ -117,6 +126,10 @@ with the same content.
   computer.", or, when its own version became the copy, where it went. A clean open document
   trashed elsewhere is trashed here while shown; an edit then brings it back (an edit wins).
 - Autosave and Save now leave the document dirty when it changed during the write.
+- **Opening** (`EditorHost.openDocument`): the editor counts as open before the swap. The start
+  screen's read and open, and the open's saves, run with sync held (`whileSyncPaused`, the
+  scheduler's `suspend`; a run in flight finishes first). The incoming save is skipped for a
+  document stored as it is, or stored and since replaced in the editor (by sync, or an edit).
 
 ## The scheduler (`src/sync/scheduler.ts`, `src/sync/librarySync.ts`)
 
@@ -136,8 +149,9 @@ with the same content.
   screen). Choose, stop, Clear, attach and detach share one queue; the scheduler stops before the
   folder changes, since one folder's base run against another reads every absent document as deleted.
   Base id `folder:<deviceId>:<root>`; stopping keeps the base, so the same folder again resumes.
-- **Copy names** from `localNamer`: interface language at the time; the computer name from Settings
-  (`econgen.settings.sync`, per computer, never synced), else "Mac" / "Windows PC".
+- **Copy names** from `localNamer`: a conflict copy in the interface language at the time, with the
+  computer name from Settings (`econgen.settings.sync`, per computer, never synced), else "Mac" /
+  "Windows PC"; a provider copy one bilingual name (§ The planner).
 - **Clear saved documents** with a folder detaches it (user, 2026-10-07): stop, forget the base,
   `library_forget`, then clear. The folder's files are untouched and nothing refills the library. A
   base that will not clear (or a folder that will not detach) stops it before anything is deleted.
@@ -147,10 +161,10 @@ with the same content.
 - **Web, later:** `exclusive: webLock()` so one tab runs at a time; forget the hash of every
   `econ-worksheet:` key another tab's `storage` event names.
 
-Known gaps: a save not from the editor (the outgoing document's save when switching papers, a
-題庫 write) can land between the engine's re-read and its `adopt` on desktop (one IPC round trip);
-a per-id write lock in the store would close it. A provider copy made by two computers in
-different interface languages gets two names, so a second copy.
+Known gaps (closed 2026-10-08: a save landing between the engine's re-read and its `adopt`, by
+`expect`; a provider copy named two ways). Left: an older build and this one resolving the same
+provider copy at the same moment, neither yet seeing the other's copy, still make a second copy.
+Opening from the start screen waits out a run in flight.
 
 ## The local hash cache (`src/sync/hashCache.ts`)
 
@@ -168,10 +182,15 @@ different interface languages gets two names, so a second copy.
 - `StoreChange.origin?: 'sync'` (memory only): `adopt` announces with it, so a download reindexes
   題庫 but does not trigger an upload. Trash and restore by sync are announced plainly; the run
   they trigger finds nothing to do.
-- `adopt(worksheet)` on both stores: `save`, except it may replace a newer build's document. The
+- `adopt(worksheet, expect?)` on both stores: `save`, except it may replace a newer build's document. The
   one refusal (`adoptRefused`, throws `NewerDocumentError`): the stored document is newer than this
   build **and** the incoming schema is lower than the stored one. Stored text that will not parse
-  is never replaced. On the web the rule also guards a trashed copy (it shares the key).
+  is never replaced. On the web the rule also guards a trashed copy (it shares the key). `expect`
+  (`{ place, hash }`, or `null` for nothing) is checked first; a mismatch writes nothing: `'changed'`.
+- **The desktop store runs every mutation in one queue** (`FileWorksheetStore.exclusive`): each
+  rewrites `index.json` from a read of it across IPC awaits, so two at once dropped a row.
+- `list` / `listTrash({ strict: true })` reject when the library cannot be read (desktop); the
+  engine reads with it, and the store's own rewrites read strictly, never from a failed `[]`.
 - `loadTrashed(id)` on both stores: a trashed document's content (desktop `load` reads only live files).
 - The web store takes an optional storage, for two-computer tests. No schema change, nothing in
   `KNOWN_KEYS`, sync state never inside documents.
@@ -183,7 +202,8 @@ spells on two computers (delayed visibility in half the seeds). Every version th
 sync point survives (itself or a later edit of it) live, as a copy or in Trash; both computers end
 identical; no version is held twice. 5,000 seeds at up to 120 steps passed while building. With
 the hash cache on (every edit stamped alike in even seeds), no cached hash is ever stale; 5,000
-seeds at 40 steps and 1,500 at 120 passed.
+seeds at 40 steps and 1,500 at 120 passed. Outside writers (a save from a pre-run read, landing
+just before or after a download's write) join on 2026-10-08; `SYNC_SEEDS=2000` passed.
 
 ## Next
 

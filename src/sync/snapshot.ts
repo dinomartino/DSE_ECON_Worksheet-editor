@@ -83,12 +83,13 @@ async function listedContent(
   return localContent(row.id, place, load, cache);
 }
 
+/** Rejects when a listing fails (`strict`): a library that will not list is never read as empty. */
 export async function readLocal(store: SyncStore, cache?: HashCache): Promise<Map<string, LocalDoc>> {
   const docs = new Map<string, LocalDoc>();
-  for (const row of await store.list()) {
+  for (const row of await store.list({ strict: true })) {
     docs.set(row.id, { id: row.id, place: 'live', content: await listedContent(row, 'live', () => store.load(row.id), cache) });
   }
-  for (const row of await store.listTrash()) {
+  for (const row of await store.listTrash({ strict: true })) {
     if (docs.has(row.id)) continue;
     docs.set(row.id, { id: row.id, place: 'trash', content: await listedContent(row, 'trash', () => store.loadTrashed(row.id), cache) });
   }
@@ -97,10 +98,10 @@ export async function readLocal(store: SyncStore, cache?: HashCache): Promise<Ma
 
 /** One document, fresh and whole: the executor's check before it writes locally. Never a cache hit. */
 export async function readLocalDoc(store: SyncStore, id: string, cache?: HashCache): Promise<LocalDoc<Content> | undefined> {
-  if ((await store.list()).some((row) => row.id === id)) {
+  if ((await store.list({ strict: true })).some((row) => row.id === id)) {
     return { id, place: 'live', content: await localContent(id, 'live', () => store.load(id), cache) };
   }
-  if ((await store.listTrash()).some((row) => row.id === id)) {
+  if ((await store.listTrash({ strict: true })).some((row) => row.id === id)) {
     return { id, place: 'trash', content: await localContent(id, 'trash', () => store.loadTrashed(id), cache) };
   }
   return undefined;

@@ -34,13 +34,21 @@ export function computer(
   const source = wrap(connect(cloud, name));
   /** Documents the engine loaded whole (`load` + `loadTrashed`). */
   const loads = { count: 0 };
-  /** Runs just before each engine `adopt` reaches the store: a teacher acting mid-write. */
-  const hooks: { beforeAdopt?: (id: string) => void } = {};
+  /**
+   * Run around each engine `adopt`: a teacher acting mid-write (before), or a save not
+   * from the editor landing just after it (after).
+   */
+  const hooks: { beforeAdopt?: (id: string) => void | Promise<void>; afterAdopt?: (id: string) => Promise<void> } = {};
   const engineStore: SyncStore = {
     ...store,
     load: (id) => ((loads.count += 1), store.load(id)),
     loadTrashed: (id) => ((loads.count += 1), store.loadTrashed(id)),
-    adopt: (worksheet) => (hooks.beforeAdopt?.(worksheet.id), store.adopt(worksheet)),
+    adopt: async (worksheet, expect) => {
+      await hooks.beforeAdopt?.(worksheet.id);
+      const adopted = await store.adopt(worksheet, expect);
+      await hooks.afterAdopt?.(worksheet.id);
+      return adopted;
+    },
   };
   const self = {
     name,

@@ -1,4 +1,5 @@
 import { defineMessages } from '@/i18n/catalogue';
+import { providerCopyName } from './names';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -16,10 +17,8 @@ export const SYNC_MESSAGES = defineMessages({
     zh: (title: string, computer: string, day: number, month: number, time: string) =>
       `${title}（${computer}，${month}月${day}日 ${time}）`,
   },
-  providerCopy: {
-    en: (title: string) => `${title} (from another computer)`,
-    zh: (title: string) => `${title}（來自另一部電腦）`,
-  },
+  /** One bilingual name in both: two computers in different languages must make the same copy. */
+  providerCopy: { en: providerCopyName, zh: providerCopyName },
   computerMac: { en: 'Mac', zh: 'Mac' },
   computerWindows: { en: 'Windows PC', zh: 'Windows 電腦' },
   computerOther: { en: 'Computer', zh: '電腦' },

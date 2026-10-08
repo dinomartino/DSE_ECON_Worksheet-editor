@@ -10,7 +10,8 @@ import { useBankReturn, useKeptTarget } from '@/components/bank/page/bankReturn'
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { isDesktop } from '@/platform';
-import { NewerDocumentError, worksheetStore } from '@/storage';
+import { NewerDocumentError, stringifyWorksheet, worksheetStore, type WorksheetStore } from '@/storage';
+import { setSyncPause, whileSyncPaused } from '@/sync/syncPause';
 import { useWorksheetStore } from '@/store/worksheetStore';
 
 /**
@@ -75,6 +76,55 @@ export async function clearSavedDocuments(clear = clearStore): Promise<void> {
 }
 
 /**
+ * The writes an open makes, with sync held (`whileSyncPaused`): the outgoing document's unsaved
+ * edits, by value, then the incoming document, so one created and left alone is in the list.
+ * The incoming save is skipped when it is stored as it is (a saved document reopened), or when
+ * it is stored and the editor no longer shows this value of it: sync took a newer version in
+ * while a run finished, or an edit began (autosave writes that). Writing it then would put the
+ * old version back over the new, and the next run would upload it.
+ */
+export async function saveOnOpen(
+  incoming: Worksheet,
+  outgoing: Worksheet | undefined,
+  store: Pick<WorksheetStore, 'load' | 'save'> = worksheetStore,
+): Promise<void> {
+  return whileSyncPaused(async () => {
+    let failed: { error: unknown } | undefined;
+    if (outgoing) await store.save(outgoing).catch((error: unknown) => void (failed = { error }));
+    const stored = await store.load(incoming.id).catch(() => undefined);
+    const shown = useWorksheetStore.getState().worksheet;
+    const current =
+      !stored ||
+      (stringifyWorksheet(stored) !== stringifyWorksheet(incoming) && (shown.id !== incoming.id || shown === incoming));
+    if (current) {
+      await store.save(incoming).catch((error: unknown) => {
+        // A newer build's document already stored is shown read-only, never rewritten.
+        if (!(error instanceof NewerDocumentError)) throw error;
+      });
+    }
+    if (failed) throw failed.error;
+  });
+}
+
+/**
+ * Swap `worksheet` into the editor and write what the open writes (`saveOnOpen`). `markOpen`
+ * runs before the swap: from then on sync's guard treats it as the open document, so a
+ * download of it is taken in rather than saved over (`src/sync/openEditor.ts`).
+ */
+export function openDocument(
+  worksheet: Worksheet,
+  editorShown: boolean,
+  markOpen: () => void,
+  store?: Pick<WorksheetStore, 'load' | 'save'>,
+): Promise<void> {
+  const outgoing = useWorksheetStore.getState();
+  const unsaved = editorShown && outgoing.dirty ? outgoing.worksheet : undefined;
+  markOpen();
+  outgoing.replaceWorksheet(worksheet);
+  return saveOnOpen(worksheet, unsaved, store);
+}
+
+/**
  * Start screen or editor — the one place that decides which.
  *
  * The gate lives *outside* the editor rather than as an overlay inside it, because the
@@ -98,7 +148,6 @@ const noSubscribe = () => () => {};
 export function EditorHost() {
   const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
   const [chosen, setChosen] = useState(false);
-  const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
 
   // Sync's open-editor guard reads it outside React (`src/sync/openEditor.ts`).
   const editorOpen = useRef(false);
@@ -112,13 +161,16 @@ export function EditorHost() {
     let stop: (() => void) | undefined;
     let left = false;
     void import('@/sync/librarySync')
-      .then(({ startLibrarySync }) => {
-        if (!left) stop = startLibrarySync({ isEditorOpen: () => editorOpen.current });
+      .then(({ startLibrarySync, librarySync }) => {
+        if (left) return;
+        stop = startLibrarySync({ isEditorOpen: () => editorOpen.current });
+        setSyncPause(librarySync);
       })
       // No sync this session; the library itself is untouched.
       .catch(() => undefined);
     return () => {
       left = true;
+      setSyncPause(undefined);
       stop?.();
     };
   }, []);
@@ -162,33 +214,17 @@ export function EditorHost() {
     useKeptTarget.getState().forget();
     /*
      * Flush the outgoing document, for the reason above — but by **value**, not through
-     * `store.save()`.
+     * `store.save()`, which saves `getState().worksheet`: swapped by the time the write
+     * runs, so the outgoing document would be skipped and the incoming one written twice.
      *
-     * That method saves `getState().worksheet`, and the `replaceWorksheet` on the next
-     * line has already swapped it by the time the awaited write runs: the outgoing
-     * document would be skipped and the incoming one written twice. Capturing the
-     * worksheet here and handing it to the storage layer directly is what makes the
-     * order unambiguous.
+     * Then save the incoming document immediately, before a single edit:
+     * `replaceWorksheet` marks the store clean and autosave only fires on `dirty`, so a
+     * worksheet created and left alone was never written anywhere ("the app lost my
+     * work", reachable in about four seconds). The list must never miss a document the
+     * teacher has seen on screen. Both writes run with sync held (`saveOnOpen`).
      */
-    const outgoing = useWorksheetStore.getState();
-    if (chosen && outgoing.dirty) void worksheetStore.save(outgoing.worksheet);
-    replaceWorksheet(worksheet);
-
-    /*
-     * Save the incoming document immediately, before a single edit.
-     *
-     * `replaceWorksheet` marks the store **clean** — correctly, since nothing has been
-     * changed yet — and autosave only fires on `dirty`. So a worksheet created and then
-     * left alone was never written anywhere: answer the new-document form, go straight
-     * back to the file list, and the document is simply not there. That is the exact
-     * shape of "the app lost my work", and it was reachable in about four seconds.
-     *
-     * Writing it here also means the list is never missing a document the teacher has
-     * seen on screen, which is the property the file manager has to have to be trusted.
-     */
-    void worksheetStore.save(worksheet).catch((error: unknown) => {
-      // A newer build's document already stored is shown read-only, never rewritten.
-      if (!(error instanceof NewerDocumentError)) throw error;
+    void openDocument(worksheet, chosen, () => {
+      editorOpen.current = true;
     });
     // Only the new-document form reports a language; opening a saved worksheet leaves
     // the current view mode alone, since the document does not store one.
