@@ -140,12 +140,12 @@ export const CHORDS = HARMONY.map((chord, i) => ({ bar: i, chord }));
  * wraps and shrinks a string that outgrows its block (FILM.md §4 Typography).
  */
 export const COPY = {
-  window: 'Econ Worksheet', // app window title bars
+  window: 'Econ Studio', // app window title bars
   opening: {
     supply: 'Supply.',
     demand: 'Demand.',
     equilibrium: 'Equilibrium.',
-    title: 'Econ Worksheet',
+    title: 'Econ Studio',
     sub: 'Worksheets for HKDSE Economics.',
     subZh: '為文憑試經濟科而設。',
   },
@@ -191,7 +191,7 @@ export const COPY = {
     exportZh: '隨心匯出。',
   },
   end: {
-    title: 'Econ Worksheet',
+    title: 'Econ Studio',
     tagline: 'Less formatting. More teaching.',
     taglineZh: '少排版，多教學。',
     small: 'Free. No account needed.',
