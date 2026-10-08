@@ -45,11 +45,14 @@ export function ReviewLines({
   onSelectLine,
   onChip,
   onRemovePin,
+  dropLine,
   end,
 }: {
   rows: LineView[];
   selectedQuestion?: number;
   selectedLine?: number;
+  /** The line an image file is being dragged over. */
+  dropLine?: number;
   scrollRef: RefObject<HTMLDivElement | null>;
   text: Text;
   onSelectLine: (line: number) => void;
@@ -72,6 +75,7 @@ export function ReviewLines({
           row={row}
           inSelected={row.question !== undefined && row.question === selectedQuestion}
           selected={row.line.i === selectedLine}
+          dropping={row.line.i === dropLine}
           text={m}
           onSelectLine={onSelectLine}
           onChip={onChip}
@@ -87,6 +91,7 @@ const LineRow = memo(function LineRow({
   row,
   inSelected,
   selected,
+  dropping,
   text: m,
   onSelectLine,
   onChip,
@@ -95,6 +100,7 @@ const LineRow = memo(function LineRow({
   row: LineView;
   inSelected: boolean;
   selected: boolean;
+  dropping: boolean;
   text: Text;
   onSelectLine: (line: number) => void;
   onChip: (line: number, anchor: HTMLElement) => void;
@@ -105,7 +111,7 @@ const LineRow = memo(function LineRow({
   const chip = CHIP[role];
   const name = m[chip.name] + (pinned ? m.pinnedSuffix : '');
   const out = chip.tone === 'out';
-  const badges = pins.filter((p) => p.kind === 'newQuestion' || p.kind === 'join');
+  const badges = pins.filter((p) => p.kind === 'newQuestion' || p.kind === 'join' || p.kind === 'image' || p.kind === 'noPicture');
   return (
     <div
       role="listitem"
@@ -113,7 +119,9 @@ const LineRow = memo(function LineRow({
       aria-current={selected || undefined}
       className={`relative flex items-start gap-2 py-[3px] pl-3 pr-3 transition-colors duration-150 ease-out-soft ${
         role === 'question' ? 'mt-1.5' : ''
-      } ${selected ? 'bg-accent-soft/70' : inSelected ? 'bg-surface-sunken' : 'hover:bg-surface-hover'}`}
+      } ${selected ? 'bg-accent-soft/70' : inSelected ? 'bg-surface-sunken' : 'hover:bg-surface-hover'} ${
+        dropping ? 'outline-dashed outline-2 -outline-offset-2 outline-accent' : ''
+      }`}
     >
       {selected && <span aria-hidden className="absolute inset-y-0.5 left-0 w-0.5 rounded-full bg-accent" />}
       <button
@@ -139,10 +147,10 @@ const LineRow = memo(function LineRow({
         {line.raw || (line.image ? <ImageIcon size={13} className="inline text-ink-subtle" /> : null)}
       </button>
       {badges.map((pin) => {
-        const label = pin.kind === 'newQuestion' ? m.newQuestionBadge : m.joinedBadge;
+        const label = BADGE[pin.kind as keyof typeof BADGE](m);
         return (
           <button
-            key={pin.kind}
+            key={pin.kind === 'image' ? pin.id : pin.kind}
             type="button"
             onClick={() => onRemovePin(pin)}
             title={m.removeBadge(label)}
@@ -163,6 +171,13 @@ const LineRow = memo(function LineRow({
   );
 });
 
+const BADGE = {
+  newQuestion: (m: Text) => m.newQuestionBadge,
+  join: (m: Text) => m.joinedBadge,
+  image: (m: Text) => m.pictureBadge,
+  noPicture: (m: Text) => m.noPictureBadge,
+};
+
 /**
  * The role menu at a chip: the eight roles with their keys, a new question here, a join
  * with the line above, and, on a fixed line, undoing that fix. Letter keys pick; arrows
@@ -178,6 +193,7 @@ export function RoleMenu({
   onRole,
   onNewQuestion,
   onJoin,
+  onPicture,
   onRemovePin,
   onClose,
 }: {
@@ -190,6 +206,8 @@ export function RoleMenu({
   onRole: (role: Role) => void;
   onNewQuestion: () => void;
   onJoin: () => void;
+  /** Add a picture after this line (opens a file chooser). */
+  onPicture: () => void;
   onRemovePin: (pin: Pin) => void;
   onClose: (refocus: boolean) => void;
 }) {
@@ -281,6 +299,10 @@ export function RoleMenu({
       <button type="button" role="menuitemcheckbox" aria-checked={joins} disabled={!canJoin} onClick={onJoin} className={item}>
         <span className="min-w-0 flex-1">{m.joinAbove}</span>
         {joins && <span aria-hidden className="text-accent-ink">✓</span>}
+      </button>
+      <button type="button" role="menuitem" onClick={onPicture} className={item}>
+        <ImageIcon size={14} className="shrink-0 text-ink-muted" />
+        <span className="min-w-0 flex-1">{m.addPicture}</span>
       </button>
       {rolePin && (
         <>
