@@ -454,6 +454,12 @@ export interface ColumnsNode {
   /** Hairline rule under the row, used by masthead bands. */
   rule?: boolean;
   /**
+   * A band row (§ Bands and zones): each cell is a field placed by its zone (`at` 0, 0.5
+   * or 1), fields sharing a zone print one space apart, and every backend lays the row
+   * out as Word lays out the tab-stop paragraph, not as columns between the `at`s.
+   */
+  band?: boolean;
+  /**
    * Air above the row in points (`w:before`), when this row leads an item and carries
    * its boundary gap (§ `withLeadingGap`). A row-level property because a `ColumnsNode`
    * has no `format` of its own — its formatting is per cell, and the gap belongs to the

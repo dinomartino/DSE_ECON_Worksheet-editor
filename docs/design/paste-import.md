@@ -689,7 +689,7 @@ exam and paper lines (a Paper 1 mock's cover takes them) and "Full marks … Dat
 2019 HKEAA `.docx`: footer "2019-DSE-ECON 2–#" left and "#" centre; its margin text boxes and
 the cover section's footer are listed.
 
-**Known weak cases:** a header row whose text is wider than a third wraps inside its zone on
-screen and in the PDF, while Word keeps it on one line (band zones are fixed thirds); a PDF's
-page-1 header far below the running one reads as masthead; an even-page header is never applied.
+**Known weak cases:** a PDF's page-1 header far below the running one reads as masthead; an
+even-page header is never applied. (A header line wider than a third now stays on one line on
+the page and in the PDF, as in Word: § Bands and zones.)
 

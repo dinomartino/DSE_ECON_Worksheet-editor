@@ -240,18 +240,22 @@ function headerFooterParagraph(
   border: string,
 ): string {
   const { left, center, right } = row;
-  const tabs =
-    '<w:tabs>' +
-    `<w:tab w:val="center" w:pos="${Math.round(contentWidth / 2)}"/>` +
-    `<w:tab w:val="right" w:pos="${Math.round(contentWidth)}"/>` +
-    '</w:tabs>';
+  const centreStop = `<w:tab w:val="center" w:pos="${Math.round(contentWidth / 2)}"/>`;
+  const rightStop = `<w:tab w:val="right" w:pos="${Math.round(contentWidth)}"/>`;
+  /*
+   * A left + right row has no centre stop and one tab. With the stop, the right text took
+   * two tabs, and once the left text passed the middle the first tab jumped to the right
+   * stop and the second off the line, dropping the right text onto a line of its own.
+   */
+  const leftRight = Boolean(left && right && !center);
+  const tabs = `<w:tabs>${leftRight ? '' : centreStop}${rightStop}</w:tabs>`;
 
   // Tabs are emitted only as far as the rightmost occupied slot, so a
   // centre-only header does not carry a trailing tab that shifts it off-centre.
   const tab = '<w:r><w:tab/></w:r>';
   let content = left;
   if (center) content += tab + center;
-  if (right) content += (center ? tab : tab + tab) + right;
+  if (right) content += (center || leftRight ? tab : tab + tab) + right;
 
   return `<w:p><w:pPr>${tabs}${border}</w:pPr>${content}</w:p>`;
 }
