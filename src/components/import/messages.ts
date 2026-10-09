@@ -28,13 +28,52 @@ export const IMPORT_MESSAGES = defineMessages({
   },
   problemScan: {
     en: (pages: number) =>
-      `This PDF is a scanned image${pages ? `, ${pages} ${plural(pages, 'page')}` : ''}, so there is no text to read. If you have the Word file, import that instead.`,
-    zh: (pages: number) => `這份 PDF 是掃描圖像${pages ? `（${pages} 頁）` : ''}，沒有可讀取的文字。如有 Word 檔案，請改為匯入該檔案。`,
+      `This PDF is a scanned image${pages ? `, ${pages} ${plural(pages, 'page')}` : ''}, so it has no text to copy. The Econ Studio desktop app for Mac and Windows reads scans. If you have the Word file, you can import that instead.`,
+    zh: (pages: number) =>
+      `這份 PDF 是掃描圖像${pages ? `（${pages} 頁）` : ''}，沒有可複製的文字。Mac 及 Windows 版 Econ Studio 桌面應用程式可讀取掃描檔。如有 Word 檔案，亦可改為匯入該檔案。`,
+  },
+  problemPictures: {
+    en: (n: number) =>
+      `${n > 1 ? `These ${n} pictures are` : 'This picture is'} a paper with no text to copy. The Econ Studio desktop app for Mac and Windows reads the text in pictures.`,
+    zh: (n: number) => `${n > 1 ? `這 ${n} 張圖片` : '這張圖片'}是試卷的影像，沒有可複製的文字。Mac 及 Windows 版 Econ Studio 桌面應用程式可讀取圖片中的文字。`,
+  },
+  problemNoOcr: {
+    en: 'Text recognition is not available in this copy of the app, so the scanned pages cannot be read. Update the app, or import the Word file if you have it.',
+    zh: '這個版本的應用程式未能使用文字辨識，因此無法讀取掃描頁面。請更新應用程式，或如有 Word 檔案，請改為匯入該檔案。',
+  },
+  problemStopped: {
+    en: 'Reading the scanned pages was stopped. Choose the file again to read it.',
+    zh: '已停止讀取掃描頁面。如要讀取，請再次選擇檔案。',
+  },
+  problemOcrFailed: {
+    en: 'The scanned pages could not be read. Try a clearer scan, or import the Word file if you have it.',
+    zh: '無法讀取掃描頁面。請嘗試較清晰的掃描檔，或如有 Word 檔案，請改為匯入該檔案。',
+  },
+  problemPicture: {
+    en: 'This picture cannot be opened here. Save it as JPEG or PNG, then import that.',
+    zh: '無法在這裏開啟這張圖片。請另存為 JPEG 或 PNG，然後匯入該檔案。',
   },
   scanOcr: {
     en: 'This PDF looks like a scan with its text read by a computer, so some letters and numbers may be wrong. Check each question, or import the Word file if you have it.',
     zh: '這份 PDF 似乎是經電腦辨識文字的掃描檔，部分字母和數字可能有誤。請逐題檢查，或如有 Word 檔案，請改為匯入該檔案。',
   },
+  ocrRead: {
+    en: 'The text of these scanned pages was read by the computer, so some letters and numbers may be wrong. Check each question against the paper.',
+    zh: '這些掃描頁面的文字由電腦辨識，部分字母和數字可能有誤。請對照原卷逐題檢查。',
+  },
+  // Reading scanned pages (desktop text recognition)
+  scanTitle: { en: 'Reading the scanned pages', zh: '正在讀取掃描頁面' },
+  scanPage: {
+    en: (page: number, pages: number) => `Reading page ${page} of ${pages}`,
+    zh: (page: number, pages: number) => `正在讀取第 ${page} 頁（共 ${pages} 頁）`,
+  },
+  scanHint: {
+    en: 'Text recognition runs on this computer, about a second a page.',
+    zh: '文字辨識在這部電腦上進行，每頁約需一秒。',
+  },
+  stopReading: { en: 'Stop', zh: '停止' },
+  pictureCount: { en: (n: number) => `${n} ${plural(n, 'picture')}`, zh: (n: number) => `${n} 張圖片` },
+  readFromScan: { en: 'read from a scan', zh: '從掃描檔讀取' },
   chooseAnother: { en: 'Choose another file…', zh: '選擇其他檔案…' },
   close: { en: 'Close', zh: '關閉' },
 
@@ -191,12 +230,12 @@ export const IMPORT_MESSAGES = defineMessages({
   reasonNoText: { en: 'no text to read', zh: '沒有可讀取的文字' },
   scanAnswers: {
     en: (pages: number) =>
-      `A scanned image${pages ? `, ${pages} ${plural(pages, 'page')}` : ''}. Answers cannot be read from a scan yet (text recognition is coming), so it links to no paper.`,
-    zh: (pages: number) => `掃描圖像${pages ? `（${pages} 頁）` : ''}。暫時未能從掃描檔讀取答案（文字辨識功能即將推出），因此不會連結任何試卷。`,
+      `A scanned image${pages ? `, ${pages} ${plural(pages, 'page')}` : ''}. The desktop app reads answers from a scan; here it links to no paper.`,
+    zh: (pages: number) => `掃描圖像${pages ? `（${pages} 頁）` : ''}。桌面應用程式可從掃描檔讀取答案；在這裏不會連結任何試卷。`,
   },
   scanPaper: {
-    en: (pages: number) => `A scanned image${pages ? `, ${pages} ${plural(pages, 'page')}` : ''}, so there is no text to read.`,
-    zh: (pages: number) => `掃描圖像${pages ? `（${pages} 頁）` : ''}，沒有可讀取的文字。`,
+    en: (pages: number) => `A scanned image${pages ? `, ${pages} ${plural(pages, 'page')}` : ''}, so there is no text to read here. The desktop app reads scans.`,
+    zh: (pages: number) => `掃描圖像${pages ? `（${pages} 頁）` : ''}，在這裏沒有可讀取的文字。桌面應用程式可讀取掃描檔。`,
   },
   noPapers: { en: 'No question paper among these files. Mark a file as Questions or Both.', zh: '這些檔案中沒有試卷。請把其中一個檔案標示為「試題」或「兩者」。' },
   reviewPapers: {

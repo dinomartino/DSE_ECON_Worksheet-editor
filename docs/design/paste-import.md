@@ -300,7 +300,7 @@ lost by OCR.
 
 `src/components/import/ImportDialog.tsx`, lazy (`ImportHost.tsx`): the readers and pdf.js never
 load with the home screen. Steps: **reading** (the file name; a big PDF takes seconds), a
-**problem** (`.doc` → save as .docx; a password; not a Word or PDF file; damaged; a **scan**
+**problem** (`.doc` → save as .docx; a password; not a Word or PDF file; damaged; a **scan** (on desktop it is read instead, § 13)
 with its page count) with Choose another file… and Close, the **review**, then **Save as**.
 A PDF whose text was read from a scan (OCR) is reviewed with a warning notice. The review's
 language starts on the Paper language setting (`paperSide() ?? 'auto'`), or on detection when
@@ -399,7 +399,7 @@ readDocx(bytes: ArrayBuffer, options?: { prepareImage?: (blob: Blob) => Promise<
   : Promise<ReadPaste & { title?: string }>          // source: 'docx'; then analyseLines as usual
 ```
 
-`ReadPaste.source` is `'plain' | 'html' | 'docx' | 'pdf'`; a `.docx` reads as paragraphs and is
+`ReadPaste.source` is `'plain' | 'html' | 'docx' | 'pdf' | 'ocr'` (§ 13); a `.docx` reads as paragraphs and is
 never OCR. A file that cannot be read rejects with `DocxReadError`, `kind` `unreadable` (corrupt
 zip or XML), `encrypted` (password-protected) or `notDocx` (`.doc`, a PDF, a spreadsheet). The
 detectors, solver and builder are unchanged: the reader only gives them better lines.
@@ -692,4 +692,60 @@ the cover section's footer are listed.
 **Known weak cases:** a PDF's page-1 header far below the running one reads as masthead; an
 even-page header is never applied. (A header line wider than a third now stays on one line on
 the page and in the PDF, as in Word: § Bands and zones.)
+
+## 13. OCR (as built, 2026-10-09)
+
+Scans and photos of a paper are read by the desktop shell's PP-OCRv6 small engine
+(`docs/research/2026-10-ocr-survey.md`), then laid out as a PDF's text is. Desktop only; the
+web keeps the problem step, worded to say the desktop app reads scans.
+
+**Contract** (`src/platform/ocr.ts`, dynamic `@tauri-apps/api/core` behind `isDesktop()`):
+`ocr_status` → `{ available, engine, version }`; `ocr_image(<PNG/JPEG bytes>, header
+x-ocr-max-side: 2400)` → `{ width, height, lines: [{ text, score, box: 4 corners clockwise from
+top-left in image px, angle? }], ms }`; errors `decode:` / `model:` / `internal:` → `OcrError`.
+`readyOcrEngine()` is undefined on the web, when the status says unavailable, or when the call
+fails. `setOcrEngine` and `fakeOcrEngine` serve tests; dev builds take `window.__ECON_FAKE_OCR__`.
+
+**Pages** (`src/components/import/scanImport.ts`): a PDF whose verdict is `scan` is rendered one
+page at a time at 200 DPI (`renderPdfPages`, the same pdf.js open and main-thread fallback as
+`readPdf`); a picture is decoded by the webview (rotation applied; HEIC only where the webview
+opens it), fitted to 2400 px, sent as PNG, and read as an A4 page. Pictures chosen together are
+one paper in name order (`groupPictures`). A page the engine cannot decode is skipped; a model
+or internal error fails the file (`ocrFailed`, logged to the console). `readPdf` awaits pdf.js
+closing the file, and an open that meets a closing worker is retried once: the text pass and the
+page pass open the same file back to back.
+
+**Adapter** (`src/import/ocrLayout.ts`, pure): px → pt by the render scale; the page's skew (the
+median angle of long lines) undone; the unclip margin, min(15% of height, 10% of width), taken
+off both ends; size 0.85 × box height, baseline 0.3 × height below the box's centre; lines
+under 0.3 confidence dropped; text tilted past 20° or tall and narrow (the margin's "do not
+write" strip) marked rotated, so `layoutPdf` drops it; glued labels split (`splitGluedLabel`:
+"3.一位", "12.Which", "1：", "A.(1)", "(a)Explain", "la." → "1a."); a label in its own box keeps
+a space before the text it touches. Then `layoutPdf` with a 12 pt running-header tolerance
+(scanned pages drift), so page chrome (§ 12) works as for a PDF. `source: 'ocr'`: `pasteKind`
+never calls it a scan; the review warns (`ocrRead`).
+
+**Engine fixes the trial found:** a key row is read cell by cell, then word by word inside a
+cell (`keyCells`: three answers, at most one bad cell in four), so a misread cell loses only its
+own answer. `layoutPdf`: prose is a row half its side wide and mostly ink (a key grid's row is
+mostly gaps), so a key grid above an answer | notes table stays whole; a band whose last rows
+share a gap with the rows below hands them on; what the page-wide gutter leaves whole is split
+band by band (`localColumns`: rows taken while they share a free gap in the middle half), with
+prose measured against the region, never the band. Text PDFs on this Mac: DBS Assessment 1 and
+the S6 mock Paper II unchanged; Paper I's key grid now one table of 5 rows instead of two.
+
+**Dialog:** the reading step becomes "Reading the scanned pages · Reading page 3 of 12" with a
+progress bar; Stop (footer) ends that file's reading (`stopped`), Cancel closes. Several files:
+the current row shows the page. Then the usual review with the `ocrRead` notice. A scanned
+answers file reads as answers (link step: "read from a scan").
+
+**Trial scans through the adapter** (the 2026-10-08 trial's PP-OCRv6 small boxes, 200 DPI;
+scratch only): key 44/45 (was 39; the loss is the cell with a handwritten correction), scheme
+parts 16/16 (was 13 + 1 extra), merged-column lines 0 (was 3), Paper 1 MC 10/10 (was 9),
+English structured 3/3 questions 5/6 parts, Chinese structured 4/4 questions 7/7 parts (was 3/4,
+4/7).
+
+**Weak cases:** diagrams on a scan come in as stray short lines (no picture regions are found on
+a scan); a page scanned sideways is not turned; handwriting is not read (the printed answer under
+a red correction is).
 

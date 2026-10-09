@@ -12,17 +12,25 @@ import type { FileDragEvent } from '@/platform';
 import type { UiLanguage } from '@/settings/language';
 import { START_SCREEN_MESSAGES } from './screen.messages';
 
-/** `paper`: a Word or PDF file to import questions from (a `.doc` too, to say how). */
+/** `paper`: a Word or PDF file, or a picture of a paper, to import questions from (a `.doc` too, to say how). */
 export type DropKind = 'worksheet' | 'backup' | 'paper';
 
 const PAPER_TYPES = new Set([
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/msword',
+  'image/png',
+  'image/jpeg',
+  'image/heic',
+  'image/heif',
 ]);
 
-/** What the Import from Word or PDF chooser offers. */
-export const PAPER_ACCEPT = '.docx,.pdf,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword';
+/** Pictures of a paper: read by text recognition in the desktop app. */
+export const PICTURE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'heic', 'heif'];
+
+/** What the Import from Word or PDF chooser offers (scans and photos of a paper too). */
+export const PAPER_ACCEPT =
+  '.docx,.pdf,.doc,.png,.jpg,.jpeg,.heic,.heif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,image/png,image/jpeg,image/heic,image/heif';
 
 /** What a dropped file is, by name (and MIME type, when the browser gives one). */
 export function droppedKind(name: string, type = ''): DropKind | undefined {
@@ -31,7 +39,7 @@ export function droppedKind(name: string, type = ''): DropKind | undefined {
     return 'backup';
   }
   if (lower.endsWith('.json') || type === 'application/json') return 'worksheet';
-  if (/\.(docx?|pdf)$/.test(lower) || PAPER_TYPES.has(type)) return 'paper';
+  if (/\.(docx?|pdf|png|jpe?g|heic|heif)$/.test(lower) || PAPER_TYPES.has(type)) return 'paper';
   return undefined;
 }
 
@@ -42,8 +50,8 @@ export function fileNameOf(path: string): string {
 }
 
 /**
- * One file opens (a worksheet) or restores (a backup); Word and PDF files, one or several,
- * are imported from (papers and their answers). Several worksheets and backups are
+ * One file opens (a worksheet) or restores (a backup); Word and PDF files and pictures of
+ * papers, one or several, are imported from (papers and their answers). Several worksheets and backups are
  * imported into the library, none opened; a paper among them is left out. Nothing usable
  * is rejected.
  */

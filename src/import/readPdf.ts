@@ -232,8 +232,14 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, check: () => Error | nu
     );
   });
 
-/** Read a `.pdf` file. Errors come back as `{ kind }`; a scan reads as image lines only (`analyseLines` → `scan`). */
-export async function readPdf(bytes: ArrayBuffer, options: ReadPdfOptions = {}): Promise<PdfRead | PdfReadError> {
+interface OpenedPdf {
+  task: { destroy(): Promise<void> };
+  doc: PdfDoc;
+  pdfjs: Pdfjs;
+}
+
+/** pdf.js loaded and the file opened, on the worker or (when it will not start) this thread. */
+async function openPdf(bytes: ArrayBuffer): Promise<OpenedPdf | PdfReadError> {
   if (!looksLikePdf(bytes)) return { kind: 'notPdf' };
   let lib: typeof import('./pdfjs');
   try {
@@ -251,9 +257,19 @@ export async function readPdf(bytes: ArrayBuffer, options: ReadPdfOptions = {}):
       throw error;
     }
   };
+  // A file read just before (the text pass, then the scan's pages) may still be closing.
+  const settled = async () => {
+    try {
+      return await open();
+    } catch (error) {
+      if (!/being destroyed/i.test((error as Error)?.message ?? '')) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return open();
+    }
+  };
   let opened: Awaited<ReturnType<typeof open>>;
   try {
-    opened = await open();
+    opened = await settled();
   } catch (error) {
     if ((error as { name?: string })?.name === 'PasswordException') return { kind: 'encrypted' };
     if (!lib.workerFailure()) return { kind: 'unreadable' };
@@ -265,8 +281,64 @@ export async function readPdf(bytes: ArrayBuffer, options: ReadPdfOptions = {}):
       return { kind: (again as { name?: string })?.name === 'PasswordException' ? 'encrypted' : 'unreadable' };
     }
   }
+  return { ...opened, pdfjs: lib.pdfjsLib() };
+}
+
+/** One page of a scan, rendered for text recognition. */
+export interface RenderedPage {
+  /** 1-based. */
+  page: number;
+  pages: number;
+  png: Uint8Array;
+  /** Image pixels per PDF point. */
+  scale: number;
+}
+
+/** Pixels past this on a side are never rendered (a poster-sized page). */
+const MAX_RENDER_SIDE = 4000;
+
+/**
+ * Render a PDF's pages one at a time to PNG at `dpi` (browser only), for text recognition.
+ * Only the page being rendered is held. Rejects with `PdfReadError`-shaped `{ kind }` when the
+ * file will not open; stops between pages when `signal` aborts.
+ */
+export async function* renderPdfPages(bytes: ArrayBuffer, options: { dpi?: number; signal?: AbortSignal } = {}): AsyncGenerator<RenderedPage> {
+  const opened = await openPdf(bytes);
+  if ('kind' in opened) throw opened;
   const { task, doc } = opened;
-  const pdfjs = lib.pdfjsLib();
+  try {
+    for (let n = 1; n <= doc.numPages; n++) {
+      if (options.signal?.aborted) return;
+      const page = await doc.getPage(n);
+      const base = page.getViewport({ scale: 1 });
+      const scale = Math.min((options.dpi ?? 200) / 72, MAX_RENDER_SIDE / Math.max(base.width, base.height));
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw { kind: 'unreadable' } satisfies PdfReadError;
+      // A scan on a transparent page would read as black on black.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, canvas, viewport }).promise;
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      canvas.width = 0;
+      canvas.height = 0;
+      page.cleanup();
+      if (!blob) throw { kind: 'unreadable' } satisfies PdfReadError;
+      yield { page: n, pages: doc.numPages, png: new Uint8Array(await blob.arrayBuffer()), scale };
+    }
+  } finally {
+    await task.destroy().catch(() => undefined);
+  }
+}
+
+/** Read a `.pdf` file. Errors come back as `{ kind }`; a scan reads as image lines only (`analyseLines` → `scan`). */
+export async function readPdf(bytes: ArrayBuffer, options: ReadPdfOptions = {}): Promise<PdfRead | PdfReadError> {
+  const opened = await openPdf(bytes);
+  if ('kind' in opened) return opened;
+  const { task, doc, pdfjs } = opened;
   try {
     const pages: PdfPage[] = [];
     for (let n = 1; n <= doc.numPages; n++) pages.push(await readPage(pdfjs, await doc.getPage(n)));
@@ -286,6 +358,6 @@ export async function readPdf(bytes: ArrayBuffer, options: ReadPdfOptions = {}):
   } catch {
     return { kind: 'unreadable' };
   } finally {
-    void task.destroy();
+    await task.destroy().catch(() => undefined);
   }
 }

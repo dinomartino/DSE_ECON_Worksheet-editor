@@ -32,14 +32,14 @@ export {
 export { classifyImport, splitAnswers, suggestPairs, type ClassifyReason, type FileClass, type FileRole } from './answerFiles';
 export { matchAnswers, type AnswerMatch, type AnswerMatchResult, type AnswerSource, type MatchDetail, type MatchStatus } from './matchAnswers';
 export { DocxReadError, type DocxErrorKind, type DocxOptions } from './readDocx';
-export { isPdfReadError, readPdf, type PdfRead, type PdfReadError, type ReadPdfOptions } from './readPdf';
+export { isPdfReadError, readPdf, renderPdfPages, type PdfRead, type PdfReadError, type ReadPdfOptions, type RenderedPage } from './readPdf';
 export { pictureHome } from './figures';
 export * from './pageChrome';
 export type * from './types';
 
 export interface ReadPaste {
   lines: SourceLine[];
-  source: 'plain' | 'html' | 'docx' | 'pdf';
+  source: Analysis['source'];
 }
 
 const inked = (lines: readonly SourceLine[]) => lines.reduce((n, l) => n + l.raw.replace(/\s/g, '').length, 0);

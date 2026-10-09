@@ -266,9 +266,10 @@ export interface AnalyseOptions {
 }
 
 export interface Analysis {
-  /** `scan`: an image-only paste or OCR text; the outline is a best effort. */
+  /** `scan`: an image-only paste or OCR-damaged text; the outline is a best effort. */
   kind: 'ok' | 'empty' | 'scan';
-  source: 'plain' | 'html' | 'docx' | 'pdf';
+  /** `ocr`: text this app recognised on scanned pages (never called a scan; the dialog warns). */
+  source: 'plain' | 'html' | 'docx' | 'pdf' | 'ocr';
   lines: SourceLine[];
   /** Index-aligned with `lines`. */
   roles: LineRole[];

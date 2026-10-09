@@ -129,7 +129,7 @@ describe('several files: read, classify, pair', () => {
       <LinkStep text={en} files={files} links={NO_LINKS} answers={linkedAnswers(files, NO_LINKS)} counts={{ f0: 5, f1: 2 }} onRole={() => {}} onAnswers={() => {}} onRemove={() => {}} />,
     );
     expect(html).toContain('name says answers · has an answer key');
-    expect(html).toContain('Answers cannot be read from a scan yet (text recognition is coming), so it links to no paper.');
+    expect(html).toContain('The desktop app reads answers from a scan; here it links to no paper.');
     expect(html).toContain('2 pages');
     expect(html).toMatch(/aria-label="Answers from: S5 Test 1\.docx"[^>]*>.*?<option value="f2" selected="">S5 Test 1 ans\.docx<\/option>/);
     expect(html).toContain('aria-label="Leave S5 Test 2 ans.pdf out of the import"');
@@ -139,7 +139,7 @@ describe('several files: read, classify, pair', () => {
       </UiLanguageOverride.Provider>,
     );
     expect(zhHtml).toContain('答案來自');
-    expect(zhHtml).toContain('文字辨識功能即將推出');
+    expect(zhHtml).toContain('桌面應用程式可從掃描檔讀取答案');
   });
 
   it('follows a relink, a role changed and a file removed', async () => {
