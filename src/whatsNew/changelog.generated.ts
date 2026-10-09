@@ -15,7 +15,7 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
-- **Import a paper from Word or PDF.** On the home screen, choose Import from Word or PDF… (or
+- **Import a paper from Word or PDF.** On the home screen, choose Import from Word, PDF or picture… (or
   drop a .docx or .pdf file there). Econ Studio reads the file, works out which lines are
   questions, parts, options and marks, and shows them beside the questions as they will print.
   Fix any line with one click or one key, and the fix spreads to every line like it. Click an
@@ -31,7 +31,7 @@ a version heading is edited afterwards.
   as they will print in the teacher copy, with a list of anything to check (a missing answer, or
   an answer that differs from the paper). Save them all as new papers in one go, or add them to
   題庫.
-  <!-- zh: **從 Word 或 PDF 匯入試卷。** 在主頁選擇「從 Word 或 PDF 匯入…」（或把 .docx 或 .pdf 檔案拖放到主頁）。
+  <!-- zh: **從 Word 或 PDF 匯入試卷。** 在主頁選擇「從 Word、PDF 或圖片匯入…」（或把 .docx 或 .pdf 檔案拖放到主頁）。
   Econ Studio 會讀取檔案，判斷哪些行是題目、分題、選項和分數，並在旁邊顯示列印效果。按一下或按一個鍵即可修正任何一行，
   修正亦會套用到所有相似的行。按一下選項即可設為答案。Word 檔案中的圖片會一併匯入，PDF 中的圖表會從頁面裁剪出來。
   如仍缺少圖片（例如 Word 繪製的圖表，或「圖一」之後沒有圖片），選取該位置後貼上截圖（⌘V）即可。然後把它儲存為新的

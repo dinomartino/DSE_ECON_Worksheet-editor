@@ -257,17 +257,17 @@ describe('題庫 only', () => {
 });
 
 describe('the home screen', () => {
-  it('offers Import from Word or PDF under New worksheet, empty desk or not, in either language', () => {
+  it('offers Import from Word, PDF or picture under New worksheet, empty desk or not, in either language', () => {
     for (const empty of [true, false]) {
       const panel = renderToStaticMarkup(<StartNewSection empty={empty} onCreate={() => {}} onImport={() => {}} onOpenFile={() => {}} />);
-      expect(panel.indexOf('Import from Word or PDF…')).toBeGreaterThan(panel.indexOf('New worksheet'));
+      expect(panel.indexOf('Import from Word, PDF or picture…')).toBeGreaterThan(panel.indexOf('New worksheet'));
     }
     const zh = renderToStaticMarkup(
       <UiLanguageOverride.Provider value="zh-HK">
         <StartNewSection empty={false} onCreate={() => {}} onImport={() => {}} onOpenFile={() => {}} />
       </UiLanguageOverride.Provider>,
     );
-    expect(zh).toContain('從 Word 或 PDF 匯入…');
+    expect(zh).toContain('從 Word、PDF 或圖片匯入…');
   });
 
   it('has a chooser for several Word and PDF files beside the button', () => {
