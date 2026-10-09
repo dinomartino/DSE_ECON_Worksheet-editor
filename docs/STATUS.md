@@ -67,12 +67,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Sync: an older and a newer build resolving one provider copy at once can still make a second;
   opening a paper waits out a run in flight; a library with no document at all (none live or in
   Trash) pauses sync. Windows code passes CI but never ran on a real PC or provider.
-- Windows builds unsigned; updater key only at `~/.tauri/econ-worksheet.key`. Film not re-rendered for the rename.
+- Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
 ## Last verified (2026-10-09, `develop` after band-row merges)
 
 - `npm test` 5350, samples 6, lint 40, tsc clean (excluding Tauri build artifacts).
-- Before: build (bundle check), cover/lq-verify (en + zh), CI green incl. `rust (windows-latest)`; `cargo test` 51.
 
 ## Log
 
