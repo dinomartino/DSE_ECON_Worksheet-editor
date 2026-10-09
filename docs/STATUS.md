@@ -13,8 +13,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   with Copy); band rows emulate Word tab stops (`bandTabPlan` pinned to the exporter), masthead page numbers are
   fields, clipboard pastes every ColumnsNode as tab stops. Within 1pt of LibreOffice. **Unverified in Word:**
   clipboard paste, a tab past the last stop. Left: masthead rule 1.5pt vs 1pt, #999 vs 808080.
-- `npm run typecheck` trips on `src-tauri/target/**/tauri-codegen-assets/*.ts` after a local `desktop:build`
-  (tsconfig excludes only `node_modules`); source itself is clean.
+- `npm run typecheck` trips on `src-tauri/target/**` codegen `.ts` after a local `desktop:build`; source is clean.
 - **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
   only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
 - **Merged, unreleased (2026-10-08):** **Import from Word or PDF** (home screen; file-only by the user's
@@ -78,5 +77,4 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **2026-10-09** — Table distribute; overscroll fix; import header/footer/title block; band rows match Word
   (layout, export, clipboard, page numbers, offsets). 8 Opus branches merged.
-- **2026-10-08** — Found-folder offer; import (engine, readers, file import, answers from another file);
-  paper language; OCR survey + trial. 15 Opus branches merged.
+- **2026-10-08** — Found-folder offer; import engine + file import; paper language; OCR survey. 15 branches.
