@@ -12,10 +12,13 @@ off the bottom.** It is the first thing a fresh session reads — then
   Also: the editor shell no longer scrolls into empty space (paginator probes are `h-0 overflow-hidden`).
 - **Merged, unreleased:** import brings in the file's header, footer (incl. page 1's own) and title block
   (`src/import/pageChrome.ts`, `chromePlan.ts`; `paste-import.md` § 12); file's wins over the preset, a box keeps
-  the preset; what can't be reproduced is listed with Copy. Band rows now lay out like Word tab stops
-  (`BandRowFrame`, `src/components/preview/bandRow.tsx`); .docx bytes changed for centre/right-first masthead rows,
-  left+right-only header rows, and two fields in one zone (now space-joined). Left: a pageNumber in the masthead
-  exports a literal "#"; clipboard still writes band rows as a table.
+  the preset; what can't be reproduced is listed with Copy.
+- **Merged, unreleased (2026-10-09): band rows match Word.** `BandRowFrame` + `layoutBandRow` emulate Word's tab
+  stops (`bandTabPlan` pinned to the exporter); header/footer at body size; edit chrome on hover; masthead page
+  numbers are real fields (docx) and real numbers (page); header offset measured per sheet; >11pt band rows get
+  an exact line; clipboard pastes every ColumnsNode as tab stops. Within 1pt of LibreOffice on test docs.
+  **Unverified in Word itself:** clipboard paste (tab-stops, mso-tab-count, mso-field-code; stops from the margin),
+  a tab past the last stop. Left: masthead rule 1.5pt vs 1pt and #999 vs 808080.
 - `npm run typecheck` trips on `src-tauri/target/**/tauri-codegen-assets/*.ts` after a local `desktop:build`
   (tsconfig excludes only `node_modules`); source itself is clean.
 - **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
@@ -80,12 +83,13 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Windows builds unsigned. The updater key lives only at `~/.tauri/econ-worksheet.key`. Film copy
   says Econ Studio but is not re-rendered; `film:doctor` timed out once (unchecked).
 
-## Last verified (2026-10-08, `develop` after Paste questions merge)
+## Last verified (2026-10-09, `develop` after band-row merges)
 
+- `npm test` 5350, samples 6, lint 40, tsc clean (excluding `src-tauri/target` artifacts).
 - `npm test` 5234, lint 40, typecheck, build (bundle check) green after the import merge. Earlier: `npm test` 5079, `cargo test` 51; found-folder branch: build, samples 6, lint 40. Before it: samples 6 passed; build, typecheck, cover/lq-verify (en + zh) green;
   lint 40; CI green incl. `rust (windows-latest)`.
 
 ## Log
 
 - **2026-10-08** — Found-folder offer; import (design, engine, docx/pdf readers, home-screen file import,
-  answers from another file); paper language; OCR survey + trial; table distribute rows/columns; editor overscroll fix; import header/footer/title block; band rows like Word tabs. 19 Opus branches merged.
+  answers from another file); paper language; OCR survey + trial; table distribute rows/columns; editor overscroll fix; import header/footer/title block; band rows like Word tabs; Word parity + export/clipboard gaps. 23 Opus branches merged.
