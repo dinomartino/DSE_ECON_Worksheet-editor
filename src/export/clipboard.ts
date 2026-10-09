@@ -205,7 +205,9 @@ function nodeHtml(
                 ? 'background-image:linear-gradient(to bottom right,transparent calc(50% - 0.5px),' +
                   '#000 calc(50% - 0.5px),#000 calc(50% + 0.5px),transparent calc(50% + 0.5px));'
                 : '') +
-              `text-align:${cell.align};${cell.vAlign ? `vertical-align:${cell.vAlign};` : ''}${formatCss(cell.format)}`;
+              // `CellAlign` wins over a stored `format.align`, as `cellParagraph` writes it.
+              `text-align:${cell.align};${cell.vAlign ? `vertical-align:${cell.vAlign};` : ''}` +
+              formatCss(cell.format && { ...cell.format, align: undefined });
             const span =
               (cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '') +
               (cell.rowSpan > 1 ? ` rowspan="${cell.rowSpan}"` : '');

@@ -228,7 +228,7 @@ function coverNodeHtml(node: RenderNode, language: LanguageMode): string {
         const marker = cell.marker ? `${escapeHtml(cell.marker)}&nbsp;` : '';
         return (
           `<span style="min-width:0;flex:${flex};text-align:${cell.align ?? 'left'};` +
-          `${formatCss(cell.format)}">${marker}${richHtml(cell.text, language)}</span>`
+          `${formatCss(cell.format && { ...cell.format, align: undefined })}">${marker}${richHtml(cell.text, language)}</span>`
         );
       })
       .join('');

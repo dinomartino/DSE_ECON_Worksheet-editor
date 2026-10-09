@@ -1982,7 +1982,6 @@ function TableNodeView({
                         rangeEdge ? "bg-[#0d77c9]/[0.12]" : ""
                       }`}
                       style={{
-                        textAlign: cell.align,
                         /*
                          * A T-account's own edges (§`TableCellEdges`), from the IR the
                          * exporter reads — the two must draw the identical table.
@@ -2035,6 +2034,9 @@ function TableNodeView({
                         // This cell's share of the range outline (see `rangeOutline`).
                         ...(rangeOutline ? { boxShadow: rangeOutline } : {}),
                         ...formatStyle(cell.format),
+                        // After the format: `CellAlign` wins over a stored `format.align`,
+                        // as `cellParagraph` writes it (§ A cell formats like any other text).
+                        textAlign: cell.align,
                       }}
                       /*
                        * Capture, not bubble.
@@ -2524,8 +2526,10 @@ export function NodeView({
                   : index < node.cells.length - 1
                     ? `0 0 ${span(cell.at, node.cells[index + 1].at)}`
                     : "1 1 auto",
-              textAlign: cell.align,
               ...formatStyle(cell.format),
+              // The cell's tab stop places it; Word has no per-cell `w:jc` for a stored
+              // `format.align`, so the stop's alignment wins here too.
+              textAlign: cell.align,
             }}
           >
             {cell.marker && (

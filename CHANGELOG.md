@@ -88,6 +88,19 @@ a version heading is edited afterwards.
   顯示另一組對齊箭咀，每種對齊各有一個位置。按鈕提示亦有說明。 -->
 
 ### Fixed
+- **Table cells line up on the page as they print.** A cell's text sits where the table
+  tools' alignment buttons put it, on the page, in the PDF, in Word and when copied. A cell
+  centred with the formatting bar in an older version used to show centred on the page but
+  printed on the left in Word; it now shows on the left everywhere. To centre it, use the
+  table tools' centre button.
+  <!-- zh: **表格儲存格在頁面上的對齊與列印一致。** 儲存格文字的位置由表格工具的對齊按鈕決定，頁面、PDF、Word
+  及複製的內容都一樣。在舊版本用格式工具列置中的儲存格，以往在頁面上置中，但在 Word 列印時靠左；現在各處都靠左。
+  如要置中，請用表格工具的置中按鈕。 -->
+- **The formatting bar's close button no longer takes a line of its own.** In a narrow
+  window the close button stays at the top right of the bar, and a table cell's bar fits on
+  one line again.
+  <!-- zh: **格式工具列的關閉按鈕不再獨佔一行。** 視窗較窄時，關閉按鈕會留在工具列右上角，表格儲存格的工具列亦
+  再次只佔一行。 -->
 - **In a narrow window the table tools no longer cover the formatting bar.** When the
   formatting bar folds onto two lines, the table tools now sit below both lines instead of
   hiding the second one.
