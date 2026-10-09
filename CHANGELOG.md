@@ -90,6 +90,15 @@ a version heading is edited afterwards.
   <!-- zh: **頁首、頁尾和標題區在頁面上的排版與 Word 列印的一致。** 較長的一行（例如「DBS Economics G11 Enhancement
   Class (2025-26) Assessment 1」）在頁面和 PDF 中會保持在同一行，不再擠成窄窄的一欄；置中的標題在「姓名」欄旁邊仍會置中。
   在 Word 檔案中，標題區內由中間或右邊開始的一行會印在該處，不再印在左邊界；左右兩邊都有文字的一行會保持在同一行；同一位置的兩項之間會有空格。 -->
+- **Long header, footer and title block lines now break where Word breaks them.** When a line
+  is too long to fit, the page shows the same words on the same lines as the printed Word file:
+  a centred title stays centred, and text that no longer fits beside it moves to the next line,
+  as in Word. Header and footer text is shown at the size Word prints it, not smaller. The + for
+  adding words before or after a page number, a total or a fill-in line now appears only when
+  you point at it, and never sits in the page margin or over other text.
+  <!-- zh: **較長的頁首、頁尾和標題區行，換行位置與 Word 一致。** 一行太長放不下時，頁面上每行的字與列印出來的 Word
+  檔案相同：置中的標題保持置中，旁邊放不下的文字如 Word 一樣移到下一行。頁首和頁尾的文字以 Word 列印的字號顯示，不再較小。
+  在頁碼、總分或填寫橫線前後加字的「+」只會在滑鼠指向時出現，亦不會再出現在頁邊或蓋住其他文字。 -->
 
 ## 0.7.0 — 2026-10-08
 

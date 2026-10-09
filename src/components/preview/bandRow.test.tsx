@@ -1,26 +1,30 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
-import { createBand, createFillInField, createTextField } from '@/model/bands';
+import JSZip from 'jszip';
+import { ZONES, createBand, createFillInField, createTextField, type ZoneName } from '@/model/bands';
+import { createPageNumberField } from '@/model/page';
 import { bi } from '@/model/text';
-import type { Band } from '@/model/types';
+import type { Band, Worksheet } from '@/model/types';
 import { renderWorksheet } from '@/render/worksheet';
 import { createWorksheet } from '@/model/factories';
+import { exportDocxBuffer } from '@/export/docx';
 import { BandEditor } from './BandEditor';
-import { BAND_ROW_CLASS, BAND_ZONE_CLASS, fitBandRow } from './bandRow';
+import { bandTabPlan, resolveTab, type BandRowKind } from './bandRow';
 import { NodeView } from './Preview';
 
 /**
- * A band row lays out like the Word tab-stop paragraph it exports as (§ Bands and zones).
- * It used to give each zone a fixed third, so a header Word prints on one line wrapped
- * onto three on the page and in the PDF. jsdom has no layout, so this pins the contract:
- * every band surface uses the one frame, and the frame's layout switch decides correctly.
+ * A band row is laid out as the Word paragraph it exports as (§ Bands and zones): inline
+ * zones, with a spacer per `w:tab` sized the way Word resolves it. jsdom has no layout, so
+ * this pins the parts that need none: the tab plan agrees with the exporter, the tab
+ * arithmetic agrees with Word (as LibreOffice renders it), and every surface uses the frame.
  */
 const noop = () => {};
-const editor = (bands: Band[]) =>
+const editor = (bands: Band[], kind: BandRowKind = 'masthead') =>
   renderToStaticMarkup(
     <BandEditor
       bands={bands}
+      kind={kind}
       language="en"
       totalMarks={10}
       onMove={noop}
@@ -30,35 +34,112 @@ const editor = (bands: Band[]) =>
     />,
   );
 
-describe('band row frame', () => {
-  it('sizes zones by their text: centred unless pushed, wrapping only on overflow', () => {
-    // The sides are at least as wide as their text and share what is left equally, so the
-    // centre sits on the middle stop until a long side pushes it, as in Word.
-    expect(BAND_ROW_CLASS).toContain('grid-cols-[minmax(max-content,1fr)_auto_minmax(max-content,1fr)]');
-    // Only a row whose zones cannot share the line falls back to tracks that wrap.
-    expect(BAND_ROW_CLASS).toContain('data-[band-overflow]:grid-cols-[auto_auto_auto]');
-    // No zone is a fixed third any more.
-    expect(Object.values(BAND_ZONE_CLASS).join(' ')).not.toMatch(/flex-1|basis|w-1\/3/);
+const skeleton = (xml: string) =>
+  xml
+    .replace(/<w:tab w:val="(\w+)" w:pos="\d+"\/>/g, '[$1]')
+    .replace(/<w:tab\/>/g, '⇥')
+    .replace(/<\/w:p>/g, '¶')
+    .replace(/<[^>]+>/g, '')
+    .split('¶')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+async function exported(worksheet: Worksheet, part: RegExp): Promise<string[]> {
+  const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, { language: 'en', version: 'student' }));
+  const names = Object.keys(zip.files).filter((name) => part.test(name)).sort();
+  return (await Promise.all(names.map((name) => zip.file(name)!.async('string')))).flatMap(skeleton);
+}
+
+/** Every non-empty choice of printing zones. */
+const COMBINATIONS = Array.from({ length: 7 }, (_, n) =>
+  Object.fromEntries(ZONES.map((zone, bit) => [zone, Boolean((n + 1) & (1 << bit))])) as Record<ZoneName, boolean>,
+);
+const TEXT: Record<ZoneName, string> = { left: 'Lt', center: 'Ct', right: 'Rt' };
+
+/** What the page's plan says the paragraph is, in the skeleton's spelling. */
+function planned(occupied: Record<ZoneName, boolean>, kind: BandRowKind): string {
+  const plan = bandTabPlan(occupied, kind);
+  return (
+    plan.stops.map((stop) => `[${stop.align}]`).join('') +
+    ZONES.filter((zone) => occupied[zone]).map((zone) => '⇥'.repeat(plan.tabsBefore[zone]) + TEXT[zone]).join('')
+  );
+}
+
+const rowOf = (occupied: Record<ZoneName, boolean>) =>
+  createBand(
+    Object.fromEntries(
+      ZONES.map((zone) => [zone, occupied[zone] ? [createTextField(bi(TEXT[zone], ''))] : []]),
+    ),
+  );
+
+describe('band tab plan', () => {
+  it('is the paragraph the .docx writes for a header row', async () => {
+    for (const occupied of COMBINATIONS) {
+      const worksheet = createWorksheet();
+      worksheet.header = { enabled: true, bands: [rowOf(occupied)] };
+      expect(await exported(worksheet, /^word\/header\d*\.xml$/)).toContain(planned(occupied, 'header'));
+    }
   });
 
+  it('is the paragraph the .docx writes for a masthead row', async () => {
+    for (const occupied of COMBINATIONS) {
+      const worksheet = createWorksheet();
+      worksheet.bands = [rowOf(occupied)];
+      expect(await exported(worksheet, /^word\/document\.xml$/)).toContain(planned(occupied, 'masthead'));
+    }
+  });
+});
+
+describe('resolveTab', () => {
+  // Measured off LibreOffice's render of the same paragraphs (W = 451.3pt, stops at
+  // 225.65 centre and 451.3 right): the start of the text after the tab.
+  const W = 451.3;
+  const both = [
+    { align: 'center' as const, at: 0.5 },
+    { align: 'right' as const, at: 1 },
+  ];
+  it('centres on the centre stop, unless the text before it is in the way', () => {
+    expect(resolveTab(165.4, W, both, 21.9)).toBeCloseTo(214.7, 1);
+    expect(resolveTab(165.4, W, both, 180.3)).toBeCloseTo(165.4, 1);
+  });
+  it('takes the first stop past the text, whichever zone it was meant for', () => {
+    // A left zone past the middle sends the centre text to the right stop.
+    expect(resolveTab(266.1, W, both, 53.1)).toBeCloseTo(398.2, 1);
+  });
+  it('right-aligns what fits on the line; nothing is left past the last stop', () => {
+    expect(resolveTab(410.5, W, both, 32)).toBeCloseTo(419.3, 1);
+    expect(resolveTab(451.3, W, both, 10)).toBeUndefined();
+  });
+});
+
+describe('band row frame', () => {
   it('is the frame of the editor, the idle header and the IR masthead', () => {
     const band = createBand({
       left: [createTextField(bi('DBS Economics G11 Enhancement Class (2025-26) Assessment 1', ''))],
+      right: [createTextField(bi('P.1', ''))],
     });
-    expect(editor([band])).toContain(`data-band-row="" class="${BAND_ROW_CLASS}`);
+    expect(editor([band])).toContain('data-band-row=""');
+    expect(editor([band])).toMatch(/data-band-stops="\[[^"]*right[^"]*\]"/);
 
     const worksheet = createWorksheet();
     worksheet.bands = [band];
     const [node] = renderWorksheet(worksheet, { language: 'en', version: 'student' }).bands;
     expect(node).toMatchObject({ kind: 'columns', band: true });
-    expect(renderToStaticMarkup(<NodeView node={node} language="en" />)).toContain(
-      `data-band-row="" class="${BAND_ROW_CLASS}`,
-    );
+    const html = renderToStaticMarkup(<NodeView node={node} language="en" />);
+    expect(html).toContain('data-band-row=""');
+    expect(html.match(/data-band-tab=""/g)).toHaveLength(1);
 
     // `ReadOnlyBandRow` (idle header and footer, and what they print) is not exported.
     const preview = readFileSync('src/components/preview/Preview.tsx', 'utf8');
     const readOnly = preview.slice(preview.indexOf('function ReadOnlyBandRow('));
-    expect(readOnly.slice(0, readOnly.indexOf('\n}\n'))).toContain('<BandRowFrame>');
+    expect(readOnly.slice(0, readOnly.indexOf('\n}\n'))).toContain('<BandRowFrame');
+  });
+
+  it('sets header and footer text at the body size the .docx gives them', () => {
+    // Exported in `Normal`: the document's body size, not 9pt.
+    const preview = readFileSync('src/components/preview/Preview.tsx', 'utf8');
+    const band = preview.slice(preview.indexOf('export function HeaderFooterBand('));
+    expect(band.slice(0, band.indexOf('\n}\n'))).not.toMatch(/text-xs/);
   });
 
   it('prints fields sharing a zone one space apart, like the .docx', () => {
@@ -73,46 +154,17 @@ describe('band row frame', () => {
     const html = editor([createBand({ left: [createFillInField(bi('Name:', ''))] })]);
     const plus = html.match(/<button[^>]*aria-label="[^"]*(center|centre)[^"]*"[^>]*>/i)?.[0] ?? '';
     expect(plus).toContain('absolute');
-    // A row with nothing in it keeps its + in the flow: it is all there is to click.
-    const empty = editor([createBand()]).match(/<button[^>]*aria-label="[^"]*(center|centre)[^"]*"[^>]*>/i)?.[0] ?? '';
-    expect(empty).not.toContain('absolute');
-  });
-});
-
-describe('fitBandRow', () => {
-  const zone = (right: number, position = 'static') => ({
-    getBoundingClientRect: () => ({ right }),
-    position,
-  });
-  const row = (zones: ReturnType<typeof zone>[]) => {
-    const attrs = new Set<string>();
-    return {
-      attrs,
-      children: zones,
-      getBoundingClientRect: () => ({ right: 600 }),
-      setAttribute: (name: string) => attrs.add(name),
-      removeAttribute: (name: string) => attrs.delete(name),
-    };
-  };
-  afterEach(() => vi.unstubAllGlobals());
-
-  it('keeps the one-line layout while every zone ends inside the row', () => {
-    vi.stubGlobal('getComputedStyle', (el: { position: string }) => ({ position: el.position }));
-    const r = row([zone(200), zone(400), zone(600)]);
-    r.attrs.add('data-band-overflow');
-    fitBandRow(r as unknown as HTMLElement);
-    expect(r.attrs.has('data-band-overflow')).toBe(false);
   });
 
-  it('wraps once a zone runs past the row, ignoring positioned editing chrome', () => {
-    vi.stubGlobal('getComputedStyle', (el: { position: string }) => ({ position: el.position }));
-    const over = row([zone(300), zone(450), zone(720)]);
-    fitBandRow(over as unknown as HTMLElement);
-    expect(over.attrs.has('data-band-overflow')).toBe(true);
-
-    // The remove-row ✕ hangs in the margin; it is not the row's text overflowing.
-    const chrome = row([zone(200), zone(400), zone(600), zone(900, 'absolute')]);
-    fitBandRow(chrome as unknown as HTMLElement);
-    expect(chrome.attrs.has('data-band-overflow')).toBe(false);
+  it('shows an empty affix’s + only on hover, positioned, and never in print', () => {
+    const html = editor([createBand({ right: [createPageNumberField('pDot')] })], 'header');
+    const wrappers = html.match(/<span data-affix-plus="(prefix|suffix)"[^>]*>/g) ?? [];
+    expect(wrappers).toHaveLength(2);
+    for (const wrapper of wrappers) {
+      expect(wrapper).toContain('absolute');
+      expect(wrapper).toContain('opacity-0');
+      expect(wrapper).toContain('group-hover/field:opacity-100');
+    }
+    expect(html).toMatch(/data-print-hide="true"[^>]*>\+</);
   });
 });

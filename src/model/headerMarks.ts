@@ -22,7 +22,7 @@ export interface TeacherMarkPlacement {
 }
 
 /** Whether one zone of a row prints anything in `language`, as the page draws it. */
-function zonePrints(band: Band, zone: ZoneName, context: BandSegmentContext, language: LanguageMode): boolean {
+export function zonePrints(band: Band, zone: ZoneName, context: BandSegmentContext, language: LanguageMode): boolean {
   const sides = language === 'bilingual' ? (['en', 'zh'] as const) : [language];
   return zonesOf(band)[zone].some((field) => {
     const text = bandFieldPrintText(field, context, language);
