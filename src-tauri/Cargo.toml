@@ -55,7 +55,7 @@ tempfile = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSObject", "NSString", "NSURL", "NSValue", "NSDictionary", "NSGeometry", "NSThread"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSObject", "NSString", "NSURL", "NSValue", "NSDictionary", "NSGeometry", "NSThread", "NSProcessInfo"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow", "NSGraphics"] }
 objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "objc2-app-kit", "WKWebView"] }
 

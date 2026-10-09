@@ -73,13 +73,16 @@ a version heading is edited afterwards.
   「複製」按鈕列出，方便你自行輸入。 -->
 - **Desktop: import scanned papers and photos of a paper.** A scanned PDF, or pictures of a paper
   (PNG or JPEG, several at once in name order), is now read page by page on your computer, with
-  nothing sent anywhere: "Reading page 3 of 12", and you can stop it. The questions then open for
+  nothing sent anywhere: "Reading page 3 of 12", and you can stop it or carry on in another
+  app while it reads. The questions then open for
   checking as any import does, with a reminder that some letters and numbers may be misread. A
   scanned answer key or marking scheme can supply the answers too, and an answer key with one
-  smudged cell keeps all its other answers. On the web, a scan says that the desktop app reads it.
+  smudged cell keeps all its other answers. A scan whose title cannot be read is named after its
+  file, never after a line of answers. On the web, a scan says that the desktop app reads it.
   <!-- zh: **桌面版：可匯入掃描試卷及試卷相片。** 掃描 PDF 或試卷圖片（PNG 或 JPEG，可一次選擇多張，按檔名排序）現會在你的
-  電腦上逐頁讀取，不會傳送到任何地方：畫面顯示「正在讀取第 3 頁（共 12 頁）」，亦可隨時停止。讀取後題目會如其他匯入一樣供你檢查，
-  並提醒部分字母和數字可能有誤。掃描的答案表或評卷參考亦可提供答案；答案表即使有一格模糊，其餘答案仍會保留。在網頁版，掃描檔會
+  電腦上逐頁讀取，不會傳送到任何地方：畫面顯示「正在讀取第 3 頁（共 12 頁）」，亦可隨時停止，或在讀取期間轉用其他程式。讀取後題目會如其他匯入一樣供你檢查，
+  並提醒部分字母和數字可能有誤。掃描的答案表或評卷參考亦可提供答案；答案表即使有一格模糊，其餘答案仍會保留。未能讀出標題的掃描檔
+  會以檔案名稱命名，不會以某行答案命名。在網頁版，掃描檔會
   提示可用桌面應用程式讀取。 -->
 
 ### Changed

@@ -29,6 +29,12 @@ const BOLD = /bold|black|heavy|semibold|demibold|[-,_ ]?(?:W[6-9]|SB|Bd)$/i;
 const ITALIC = /italic|oblique|[-,]It$/i;
 const GENERIC_TITLE = /^(untitled|document\s*\d*|slide\s*\d*|\s*)$/i;
 const OPEN_TIMEOUT_MS = 30_000;
+/**
+ * pdf.js draws a `display` render between animation frames, which a hidden or minimised
+ * window never gets (the desktop webview stalled on page 1 until shown). `print` continues
+ * at once and draws the page the same (only annotations follow their print flag).
+ */
+const RENDER_INTENT = 'print';
 
 function looksLikePdf(bytes: ArrayBuffer): boolean {
   const head = new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 1024));
@@ -187,7 +193,7 @@ async function cropFigures(doc: PdfDoc, lines: PdfLine[], prepareImage: NonNulla
         target.height = Math.ceil(viewport.height);
         const ctx = target.getContext('2d');
         if (!ctx) continue;
-        await page.render({ canvasContext: ctx, canvas: target, viewport }).promise;
+        await page.render({ canvasContext: ctx, canvas: target, viewport, intent: RENDER_INTENT }).promise;
         canvas = target;
       }
       if (!canvas) continue;
@@ -321,7 +327,7 @@ export async function* renderPdfPages(bytes: ArrayBuffer, options: { dpi?: numbe
       // A scan on a transparent page would read as black on black.
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: ctx, canvas, viewport }).promise;
+      await page.render({ canvasContext: ctx, canvas, viewport, intent: RENDER_INTENT }).promise;
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       canvas.width = 0;
       canvas.height = 0;

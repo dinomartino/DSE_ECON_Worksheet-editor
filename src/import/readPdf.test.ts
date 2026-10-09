@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { bufferOf, makePdf, type PdfPageSpec, type PdfText } from './fixtures/pdfWriter';
-import { analyseLines, isPdfReadError, readPdf, type PdfRead } from './index';
+import { analyseLines, isPdfReadError, readPdf, renderPdfPages, type PdfRead } from './index';
+import { pdfjsLib } from './pdfjs';
 import type { OutBlock } from './types';
 
 const text = (runs: ReadonlyArray<{ text: string }>) => runs.map((r) => r.text).join('');
@@ -226,5 +227,33 @@ describe('readPdf on generated files', () => {
     await readPdf(bytes);
     expect(bytes.byteLength).toBeGreaterThan(0);
     expect(isPdfReadError(await readPdf(bytes))).toBe(false);
+  });
+});
+
+describe('rendering pages', () => {
+  // A `display` render waits for animation frames between steps, and a hidden or minimised
+  // desktop window gets none: reading a scan stalled on page 1 until the window came back.
+  it('renders with the print intent, which never waits for a frame', async () => {
+    const pdf = { images: [{ x: 0, y: 0, w: 595, h: 842 }] };
+    const bytes = bufferOf(makePdf([pdf, pdf]));
+    const task = pdfjsLib().getDocument({ data: new Uint8Array(bytes.slice(0)) });
+    const proto = Object.getPrototypeOf(await (await task.promise).getPage(1)) as { render: (params: { intent?: string }) => unknown };
+    await task.destroy();
+    const intents: Array<string | undefined> = [];
+    const render = vi.spyOn(proto, 'render').mockImplementation((params) => {
+      intents.push(params.intent);
+      return { promise: Promise.resolve() };
+    });
+    const canvas = { width: 0, height: 0, getContext: () => ({ fillRect() {} }), toBlob: (done: (b: Blob) => void) => done(new Blob([new Uint8Array([1])])) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    try {
+      const pages: number[] = [];
+      for await (const page of renderPdfPages(bytes)) pages.push(page.page);
+      expect(pages).toEqual([1, 2]);
+      expect(intents).toEqual(['print', 'print']);
+    } finally {
+      render.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 });

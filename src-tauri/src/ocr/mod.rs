@@ -97,6 +97,8 @@ pub async fn ocr_image<R: Runtime>(
   let dir = model_dir(&app).ok_or("model: the OCR models are not in this build")?;
   let engine = state.engine.clone();
   tauri::async_runtime::spawn_blocking(move || {
+    #[cfg(target_os = "macos")]
+    let _awake = Awake::begin();
     let mut slot = engine.lock().unwrap_or_else(|p| p.into_inner());
     if slot.is_none() {
       *slot = Some(Engine::load(&dir)?);
@@ -105,6 +107,30 @@ pub async fn ocr_image<R: Runtime>(
   })
   .await
   .map_err(|e| format!("internal: {e}"))?
+}
+
+/// A page being read is work the teacher asked for: App Nap throttles a hidden window's
+/// process, and a scan read behind another app ran about 4× slower per page.
+#[cfg(target_os = "macos")]
+struct Awake(objc2::rc::Retained<objc2::runtime::ProtocolObject<dyn objc2::runtime::NSObjectProtocol>>);
+
+#[cfg(target_os = "macos")]
+impl Awake {
+  fn begin() -> Self {
+    use objc2_foundation::{ns_string, NSActivityOptions, NSProcessInfo};
+    Self(NSProcessInfo::processInfo().beginActivityWithOptions_reason(
+      NSActivityOptions::UserInitiatedAllowingIdleSystemSleep,
+      ns_string!("Reading scanned pages"),
+    ))
+  }
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for Awake {
+  fn drop(&mut self) {
+    // SAFETY: the token is the one `beginActivityWithOptions:reason:` returned.
+    unsafe { objc2_foundation::NSProcessInfo::processInfo().endActivity(&self.0) }
+  }
 }
 
 /// Decodes PNG/JPEG bytes, upright by their EXIF orientation.

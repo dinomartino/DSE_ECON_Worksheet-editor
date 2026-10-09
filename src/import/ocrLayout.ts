@@ -14,7 +14,9 @@
  */
 import type { OcrResult } from '@/platform/ocr';
 import type { ReadPaste } from './index';
+import { marksOnly, parseLabel } from './labels';
 import { toSourceLines } from './lines';
+import { labelZone } from './normalize';
 import type { PageChrome } from './pageChrome';
 import { isLabelText, layoutPdf, type PdfItem, type PdfPage } from './pdfLayout';
 
@@ -115,6 +117,19 @@ export function ocrPage(result: OcrResult, scale: number): PdfPage {
 
 export type OcrRead = ReadPaste & { title?: string; pages: number; chrome?: PageChrome };
 
+/**
+ * The layout's heading, when it can name the paper. OCR's type size is a box's height, so a
+ * key-grid row or a part's line can stand taller than the body: a table row, a labelled
+ * line or a line with no word in it is not a title (the file name is used instead).
+ */
+export function ocrTitle(heading: string | undefined): string | undefined {
+  if (!heading || heading.includes('\t')) return undefined;
+  const t = heading.replace(/\s+/g, ' ').trim();
+  if (parseLabel(labelZone(`${t} `)) || marksOnly(t)) return undefined;
+  // A word, not only a grid's "2B 7A 12B".
+  return /\p{L}{2}/u.test(t) ? t : undefined;
+}
+
 /** Recognised pages, in order, laid out as a PDF's are. `scales[k]`: page k's pixels per point. */
 export function readOcrPages(results: readonly OcrResult[], scales: readonly number[]): OcrRead {
   const pages = results.map((r, n) => ocrPage(r, scales[n] ?? imageScale(r.width)));
@@ -130,7 +145,7 @@ export function readOcrPages(results: readonly OcrResult[], scales: readonly num
     lines,
     source: 'ocr',
     pages: results.length,
-    ...(layout.heading ? { title: layout.heading } : {}),
+    ...(ocrTitle(layout.heading) ? { title: ocrTitle(layout.heading) } : {}),
     ...(layout.chrome ? { chrome: layout.chrome } : {}),
   };
 }
