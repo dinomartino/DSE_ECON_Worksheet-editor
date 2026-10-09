@@ -628,6 +628,50 @@ export function trailLabel(trail: BiText, language: LanguageMode): string {
   return `${en}\u00a0${zh}`;
 }
 
+type BandCell = ColumnsNode['cells'][number];
+
+/**
+ * A band row's cells grouped by zone, left · centre · right, empty zones dropped. Both
+ * exporters lay a row out from this: one tab stop per occupied centre or right zone, a
+ * tab before every zone but a left one, fields in a zone one space apart.
+ */
+export function bandZones(node: ColumnsNode): BandCell[][] {
+  return (['left', 'center', 'right'] as const)
+    .map((align) => node.cells.filter((cell) => (cell.align ?? 'left') === align))
+    .filter((cells) => cells.length > 0);
+}
+
+/**
+ * A page number placed in a band cell: its `parts` carry the `#`/`N` placeholders that
+ * an exporter turns into `PAGE`/`NUMPAGES` fields, where `text` would print them raw.
+ */
+export function bandCellHasPageNumber(cell: BandCell): boolean {
+  return Boolean(cell.parts?.some((part) => part.token === 'page' || part.token === 'pageCount'));
+}
+
+/** The language lines a band cell prints, as `biTextRuns` decides them from its `text`. */
+export function bandCellSides(cell: BandCell, language: LanguageMode): Array<'en' | 'zh'> {
+  if (language !== 'bilingual') return [language];
+  return (['en', 'zh'] as const).filter((side) => plain(cell.text[side]).trim().length > 0);
+}
+
+/** One piece of a band cell's line: a live page field, or text to print as written. */
+export type BandCellPiece =
+  | { field: 'PAGE' | 'NUMPAGES' }
+  | { text: RichText };
+
+/**
+ * A page-number cell's line for `side`, split where a native field belongs. Only a real
+ * placeholder is a field: a pattern's literal ("P.", "Page ") rides as a `page` part too.
+ */
+export function bandCellPieces(cell: BandCell, side: 'en' | 'zh'): BandCellPiece[] {
+  return (cell.parts ?? []).map((part) => {
+    if (part.token === 'pageCount') return { field: 'NUMPAGES' };
+    if (part.token === 'page' && plain(part.text[side]) === '#') return { field: 'PAGE' };
+    return { text: part.text[side] };
+  });
+}
+
 /** Writing room: the primitives `OutputMode.omitAnswerSpace` leaves out. */
 export function isWritingRoom(node: { kind: string }): boolean {
   return node.kind === 'answerSpace' || node.kind === 'answerLines' || node.kind === 'answerGraph';

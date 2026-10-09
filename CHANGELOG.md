@@ -90,6 +90,12 @@ a version heading is edited afterwards.
   <!-- zh: **頁首、頁尾和標題區在頁面上的排版與 Word 列印的一致。** 較長的一行（例如「DBS Economics G11 Enhancement
   Class (2025-26) Assessment 1」）在頁面和 PDF 中會保持在同一行，不再擠成窄窄的一欄；置中的標題在「姓名」欄旁邊仍會置中。
   在 Word 檔案中，標題區內由中間或右邊開始的一行會印在該處，不再印在左邊界；左右兩邊都有文字的一行會保持在同一行；同一位置的兩項之間會有空格。 -->
+- **A page number in the title block prints the page number in the Word file, not "#".**
+  It now updates with the page, as the header and footer page numbers do. Copying a worksheet
+  to paste into Word now brings the title block as lines spaced with tabs, as in the Word file,
+  instead of a table.
+  <!-- zh: **標題區內的頁碼在 Word 檔案中會印出頁碼，不再印出「#」。** 頁碼會隨頁面更新，與頁首和頁尾的頁碼一樣。
+  複製工作紙再貼到 Word 時，標題區會以 Tab 對齊的文字行貼上，與 Word 檔案一致，不再變成表格。 -->
 
 ## 0.7.0 — 2026-10-08
 

@@ -20,7 +20,16 @@ import type {
   TableNode,
   TextNode,
 } from '@/render/ir';
-import { biTextRuns, formatRunOptions, lineBreak, marksRuns, richTextRuns, run } from './runs';
+import {
+  biTextRuns,
+  formatRunOptions,
+  lineBreak,
+  marksRuns,
+  richTextRuns,
+  run,
+  runProperties,
+} from './runs';
+import { fieldRuns } from './package';
 import {
   ANSWER_LINE_STYLE_ID,
   LQ_ANSWER_LINE_STYLE_ID,
@@ -29,7 +38,13 @@ import {
   exactLineFor,
 } from './styles';
 import { marksAnchorRuns, trailingBlankLines } from '@/model/text';
-import { trailLabel } from '@/render/ir';
+import {
+  bandCellHasPageNumber,
+  bandCellPieces,
+  bandCellSides,
+  bandZones,
+  trailLabel,
+} from '@/render/ir';
 import { answerGraphBox, answerGraphLineTwips } from '@/render/answerGraph';
 import { COVER_PANEL } from '@/model/cover';
 import { attrs, escapeXml } from './xml';
@@ -161,13 +176,6 @@ function paragraph(options: {
  *
  * The first cell is emitted without a leading tab so it starts at the paragraph indent.
  */
-/** A band row's cells grouped by zone, in left, centre, right order; empty zones dropped. */
-function bandZones(node: ColumnsNode): ColumnsNode['cells'][] {
-  return (['left', 'center', 'right'] as const)
-    .map((align) => node.cells.filter((cell) => (cell.align ?? 'left') === align))
-    .filter((cells) => cells.length > 0);
-}
-
 /**
  * A band row's stops: one per occupied centre or right zone, as the header paragraph has
  * (§ `headerFooterParagraph`). Every zone after the left one is reached by a single tab.
@@ -192,13 +200,39 @@ function bandCellRuns(node: ColumnsNode, context: BodyContext): string {
       const fields = cells
         .map((cell) => {
           const fonts = cell.format?.fonts ?? context.fonts;
-          return biTextRuns(cell.text, fonts, context.language, formatRunOptions(cell.format));
+          const base = formatRunOptions(cell.format);
+          return bandCellHasPageNumber(cell)
+            ? pageNumberCellRuns(cell, fonts, context.language, base)
+            : biTextRuns(cell.text, fonts, context.language, base);
         })
         .filter(Boolean)
         .join(run(' ', context.fonts));
       return lead + fields;
     })
     .join('');
+}
+
+/**
+ * A masthead page number as live `PAGE`/`NUMPAGES` fields, the header's shape
+ * (`zoneRuns`): `text` holds the raw placeholders, so it would print "#". Cached as 1;
+ * Word and LibreOffice recompute the field on layout.
+ */
+function pageNumberCellRuns(
+  cell: ColumnsNode['cells'][number],
+  fonts: FontPair,
+  language: LanguageMode,
+  base: ReturnType<typeof formatRunOptions>,
+): string {
+  const props = runProperties(fonts, base);
+  return bandCellSides(cell, language)
+    .map((side) =>
+      bandCellPieces(cell, side)
+        .map((piece) =>
+          'field' in piece ? fieldRuns(piece.field, props, '1') : richTextRuns(piece.text, fonts, base),
+        )
+        .join(''),
+    )
+    .join(lineBreak());
 }
 
 function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
