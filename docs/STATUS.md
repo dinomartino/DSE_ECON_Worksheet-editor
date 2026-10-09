@@ -7,29 +7,19 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **Merged, unreleased (2026-10-08):** table bar "Same height" / "Same width" (Word's Distribute rows/columns)
-  over a swept range only (`distributeRows`/`distributeColumns` in `src/model/table.ts`). Not yet tried in the Tauri window.
-  Also: the editor shell no longer scrolls into empty space (paginator probes are `h-0 overflow-hidden`).
-- **Merged, unreleased:** import brings in the file's header, footer (incl. page 1's own) and title block
-  (`src/import/pageChrome.ts`, `chromePlan.ts`; `paste-import.md` § 12); file's wins over the preset, a box keeps
-  the preset; what can't be reproduced is listed with Copy.
-- **Merged, unreleased (2026-10-09): band rows match Word.** `BandRowFrame` + `layoutBandRow` emulate Word's tab
-  stops (`bandTabPlan` pinned to the exporter); header/footer at body size; edit chrome on hover; masthead page
-  numbers are real fields (docx) and real numbers (page); header offset measured per sheet; >11pt band rows get
-  an exact line; clipboard pastes every ColumnsNode as tab stops. Within 1pt of LibreOffice on test docs.
-  **Unverified in Word itself:** clipboard paste (tab-stops, mso-tab-count, mso-field-code; stops from the margin),
-  a tab past the last stop. Left: masthead rule 1.5pt vs 1pt and #999 vs 808080.
+- **Merged, unreleased (2026-10-08/09), none tried in the Tauri window yet:** table "Same height/width" over a
+  swept range (`distributeRows`/`distributeColumns`); editor shell no longer overscrolls (probes `h-0`); import
+  brings header/footer/title block (`src/import/chromePlan.ts`, `paste-import.md` § 12; unreproducible bits listed
+  with Copy); band rows emulate Word tab stops (`bandTabPlan` pinned to the exporter), masthead page numbers are
+  fields, clipboard pastes every ColumnsNode as tab stops. Within 1pt of LibreOffice. **Unverified in Word:**
+  clipboard paste, a tab past the last stop. Left: masthead rule 1.5pt vs 1pt, #999 vs 808080.
 - `npm run typecheck` trips on `src-tauri/target/**/tauri-codegen-assets/*.ts` after a local `desktop:build`
   (tsconfig excludes only `node_modules`); source itself is clean.
 - **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
   only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
-- **Merged, unreleased (2026-10-08):** **Import from Word or PDF** on the home screen (file chooser or
-  drop) → review (`src/components/import/ImportDialog.tsx`) → Save as Classroom / LQ / Paper 1 mock /
-  Paper 2 mock / 題庫 only. Engine `src/import/` (`readDocx`, `readPdf` with pdfjs-dist legacy, lazy).
-  **File-only by the user's decision**: the paste-text importer was removed. Also merged: UI language /
-  Paper language settings; topic names, 題庫 and panel excerpts follow the paper language. Several files
-  at once + "Answers from" linking (answer keys, marking schemes from another file; § 11).
-  Design + as built: `docs/design/paste-import.md`.
+- **Merged, unreleased (2026-10-08):** **Import from Word or PDF** (home screen; file-only by the user's
+  decision) → review → Save as; engine `src/import/`, design `docs/design/paste-import.md`. Also UI language /
+  Paper language settings; several files at once + "Answers from" linking (§ 11).
 - **Next (waiting on the user's go: installer +~45 MB):** in-app OCR for scans/photos: PP-OCRv6 small
   in Rust via `ort`/`oar-ocr`, adapter → `layoutPdf`, `source: 'ocr'`, key rows cell by cell
   (`docs/research/2026-10-ocr-survey.md`). Users are desktop-only: design for the Tauri app.
@@ -41,19 +31,16 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Where we are
 
-- **Cross-device sync (F9), shipped in 0.7.0.** Local primary + folder mirror (`src/sync/`,
-  `docs/design/sync-engine.md`, `docs/design/library-folder.md`); Settings → Storage location, Needs
-  attention, Clear detaches, no missing-folder screen. Shipped visible before any real run (user's call).
+- **Cross-device sync (F9), shipped in 0.7.0** (`src/sync/`, `sync-engine.md`, `library-folder.md`), visible
+  before any real run (user's call).
 - **v0.7.0 released 2026-10-08** (published, `latest`; Vercel deploy not checked). Ships Storage location sync
   (desktop), floating notices, the pre-release fixes. v0.6.0 (2026-10-04) shipped 題庫, Marking
   scheme, Translation terms, 中文 interface, Graphs 圖表庫, the Econ Studio rename.
 
 ## Before release (only the user can do these)
 
-- Sync's first real run: `desktop:dev` with a scratch folder, steps in
-  `docs/design/sync-engine.md` § First real run (now through Settings → Storage location); then Stage 0
-  provider probe (`library-folder.md` § 7) on two computers.
-
+- Sync's first real run (`sync-engine.md` § First real run), then the Stage 0 provider probe on two computers.
+- Paste into Word: a copied worksheet (tabbed MC options, label lists, header rows, page-number field).
 - Windows: 0.6.0 shipped without the rename hook test (`RELEASING.md`), user's call; check one install;
   Keychain prompt in a built app; 標楷體 export in Word.
 - A real AI key: Save & test, Fill, Re-translate, `npm run eval:translate` (model ids in
@@ -80,16 +67,16 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Sync: an older and a newer build resolving one provider copy at once can still make a second;
   opening a paper waits out a run in flight; a library with no document at all (none live or in
   Trash) pauses sync. Windows code passes CI but never ran on a real PC or provider.
-- Windows builds unsigned. The updater key lives only at `~/.tauri/econ-worksheet.key`. Film copy
-  says Econ Studio but is not re-rendered; `film:doctor` timed out once (unchecked).
+- Windows builds unsigned; updater key only at `~/.tauri/econ-worksheet.key`. Film not re-rendered for the rename.
 
 ## Last verified (2026-10-09, `develop` after band-row merges)
 
 - `npm test` 5350, samples 6, lint 40, tsc clean (excluding `src-tauri/target` artifacts).
-- `npm test` 5234, lint 40, typecheck, build (bundle check) green after the import merge. Earlier: `npm test` 5079, `cargo test` 51; found-folder branch: build, samples 6, lint 40. Before it: samples 6 passed; build, typecheck, cover/lq-verify (en + zh) green;
-  lint 40; CI green incl. `rust (windows-latest)`.
+- Before: build (bundle check), cover/lq-verify (en + zh), CI green incl. `rust (windows-latest)`; `cargo test` 51.
 
 ## Log
 
-- **2026-10-08** — Found-folder offer; import (design, engine, docx/pdf readers, home-screen file import,
-  answers from another file); paper language; OCR survey + trial; table distribute rows/columns; editor overscroll fix; import header/footer/title block; band rows like Word tabs; Word parity + export/clipboard gaps. 23 Opus branches merged.
+- **2026-10-09** — Table distribute; overscroll fix; import header/footer/title block; band rows match Word
+  (layout, export, clipboard, page numbers, offsets). 8 Opus branches merged.
+- **2026-10-08** — Found-folder offer; import (engine, readers, file import, answers from another file);
+  paper language; OCR survey + trial. 15 Opus branches merged.
