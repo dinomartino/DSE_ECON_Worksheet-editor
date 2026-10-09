@@ -108,6 +108,13 @@ const THUMBNAIL_CSS =
   '.page p[data-band]:not(:has(>[data-zone=center]))>[data-zone=left]{grid-column:1/3}' +
   '.page p[data-band]>[data-zone=center]{grid-column:2;text-align:center}' +
   '.page p[data-band]>[data-zone=right]{grid-column:3;justify-self:end;text-align:right}' +
+  // Any other tab row (MC options, a label list): each cell spans to the next stop by
+  // its `--w`, a hung first cell pulled back into the hang by its `--x`.
+  '.page p[style*="tab-stops"]:not([data-band]){display:flex;align-items:baseline}' +
+  '.page p[style*="tab-stops"]:not([data-band])>span[style*="mso-tab-count"]{display:none}' +
+  '.page p[style*="tab-stops"]:not([data-band])>span:not([style*="mso-tab-count"])' +
+  '{flex:0 0 var(--w,auto);min-width:0;margin-left:var(--x,0);text-indent:0}' +
+  '.page p[style*="tab-stops"]:not([data-band])>span:last-child{flex:1 1 0}' +
   '.page img{max-width:100%}' +
   // A 1px dotted rule shrunk to a card's width aliases into dashes; a pale solid line
   // reads as the dotted answer line it stands for.

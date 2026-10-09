@@ -267,31 +267,7 @@ function nodeHtml(
     return node.captionPlacement === 'above' ? caption + table : table + caption;
   }
 
-  if (node.kind === 'columns' && node.band) {
-    return bandRowHtml(node, language, fontCss, textWidthTwips);
-  }
-
-  if (node.kind === 'columns') {
-    // A borderless table: Word's paste keeps the column positions. Band rows (above)
-    // paste as tab stops instead, the .docx's shape.
-    const cells = node.cells
-      .map((cell, index) => {
-        const next = node.cells[index + 1];
-        const width = ((next ? next.at - cell.at : 1 - cell.at) * 100).toFixed(1);
-        const marker = cell.marker ? `${escapeHtml(cell.marker)}&nbsp;` : '';
-        const style =
-          `border:none;padding:0 4pt 0 0;vertical-align:top;width:${width}%;` +
-          `text-align:${cell.align ?? 'left'};${formatCss(cell.format)}`;
-        return `<td style="${style}">${marker}${richHtml(cell.text, language) || '&nbsp;'}</td>`;
-      })
-      .join('');
-    const indent = node.indent ? `margin-left:${node.indent / 20}pt;` : '';
-    const rule = node.rule ? 'border-bottom:1px solid #808080;' : '';
-    return (
-      `<table style="border-collapse:collapse;border:none;width:100%;${indent}${rule}${fontCss}` +
-      `${NODE_CSS[node.style] ?? ''}"><tbody><tr>${cells}</tr></tbody></table>`
-    );
-  }
+  if (node.kind === 'columns') return columnsHtml(node, language, fontCss, textWidthTwips);
 
   if (node.kind === 'spacer') {
     return `<p style="height:${node.heightPt}pt;margin:0">&nbsp;</p>`;
@@ -427,12 +403,84 @@ function bandCellHtml(cell: ColumnsNode['cells'][number], language: LanguageMode
     .join('<br/>');
 }
 
+/** A tab stop as Word's `tab-stops` spells it: a left stop is a bare position. */
+function tabStopCss(align: 'left' | 'center' | 'right', twips: number): string {
+  const pos = `${twipsToPt(Math.round(twips))}pt`;
+  return align === 'left' ? pos : `${align} ${pos}`;
+}
+
+/** A row's tab stops and its pieces, each led by the tab span that reaches it. */
+interface TabRow {
+  stops: string[];
+  pieces: string[];
+}
+
 /**
- * A band row as the `.docx` writes it (§ Bands and zones): one paragraph, a tab stop per
- * occupied centre or right zone, a tab before every zone but a left one, fields in a zone
- * one space apart. Word's HTML paste reads `tab-stops` and `mso-tab-count`.
+ * A band row (§ Bands and zones): a stop per occupied centre or right zone, a tab before
+ * every zone but a left one, fields in a zone one space apart (`bandStops`, `bandCellRuns`).
  */
-function bandRowHtml(
+function bandRowParts(node: ColumnsNode, language: LanguageMode, width: number): TabRow {
+  const indent = node.indent ?? 0;
+  const zones = bandZones(node);
+  const stops = zones
+    .map((cells) => cells[0])
+    .filter((cell) => cell.align === 'center' || cell.align === 'right')
+    .map((cell) => tabStopCss(cell.align ?? 'left', indent + cell.at * width));
+  const pieces = zones.map((cells) => {
+    const align = cells[0].align ?? 'left';
+    const lead = align === 'center' || align === 'right' ? TAB_HTML : '';
+    const fields = cells
+      .map((cell) => {
+        const html = bandCellHtml(cell, language);
+        const css = formatCss(cell.format);
+        return html && css ? `<span style="${css}">${html}</span>` : html;
+      })
+      .filter(Boolean)
+      .join(' ');
+    // `data-zone` is inert in Word; the start screen's thumbnail places zones by it.
+    return `${lead}<span data-zone="${align}">${fields}</span>`;
+  });
+  return { stops, pieces };
+}
+
+/**
+ * Any other row, as `columnsNodeXml` writes it: a stop per cell after the first at
+ * `indent + at × width` (hung, the second cell's stop is the indent itself), a tab before
+ * every cell but the first, a marker as literal text. A cell's `--w` (its share up to the
+ * next stop) and `--x` (a hang's pull-back) are inert in Word; the thumbnail lays cells
+ * out by them. No `data-` hook: answer-key exports carry none.
+ */
+function cellRowParts(node: ColumnsNode, language: LanguageMode, width: number): TabRow {
+  const indent = node.indent ?? 0;
+  const hang = node.hanging ?? 0;
+  const stops = node.cells
+    .slice(1)
+    .map((cell, index) =>
+      tabStopCss(cell.align ?? 'left', hang && index === 0 ? indent : indent + cell.at * width),
+    );
+  const pieces = node.cells.map((cell, index) => {
+    const next = node.cells[index + 1];
+    const start = index === 0 || (hang && index === 1) ? 0 : cell.at;
+    const box = !next
+      ? ''
+      : hang && index === 0
+        ? `--w:${hang / 20}pt;--x:-${hang / 20}pt;`
+        : `--w:${((next.at - start) * 100).toFixed(3)}%;`;
+    const marker = cell.marker ? `${escapeHtml(cell.marker)}&nbsp;` : '';
+    const style = `${formatCss(cell.format)}${box}`;
+    return (
+      (index > 0 ? TAB_HTML : '') +
+      `<span${style ? ` style="${style}"` : ''}>${marker}${richHtml(cell.text, language)}</span>`
+    );
+  });
+  return { stops, pieces };
+}
+
+/**
+ * A `ColumnsNode` as the `.docx` writes it (§ ColumnsNode): one paragraph with Word's
+ * `tab-stops` and `mso-tab-count` spans, never a table. Word's HTML paste reads both.
+ */
+function columnsHtml(
   node: ColumnsNode,
   language: LanguageMode,
   fontCss: string,
@@ -440,36 +488,19 @@ function bandRowHtml(
 ): string {
   const indent = node.indent ?? 0;
   const width = Math.max(720, textWidthTwips - indent);
-  const zones = bandZones(node);
-  const stops = zones
-    .map((cells) => cells[0])
-    .filter((cell) => cell.align === 'center' || cell.align === 'right')
-    .map((cell) => `${cell.align} ${twipsToPt(Math.round(indent + cell.at * width))}pt`)
-    .join(' ');
-  const body = zones
-    .map((cells) => {
-      const align = cells[0].align ?? 'left';
-      const lead = align === 'center' || align === 'right' ? TAB_HTML : '';
-      const fields = cells
-        .map((cell) => {
-          const html = bandCellHtml(cell, language);
-          const css = formatCss(cell.format);
-          return html && css ? `<span style="${css}">${html}</span>` : html;
-        })
-        .filter(Boolean)
-        .join(' ');
-      // `data-zone` is inert in Word; the start screen's thumbnail places zones by it.
-      return `${lead}<span data-zone="${align}">${fields}</span>`;
-    })
-    .join('');
+  const { stops, pieces } = node.band
+    ? bandRowParts(node, language, width)
+    : cellRowParts(node, language, width);
   const css =
     `${fontCss}${NODE_CSS[node.style] ?? ''}` +
     (indent ? `margin-left:${indent / 20}pt;` : '') +
+    (node.hanging ? `text-indent:-${node.hanging / 20}pt;` : '') +
     (node.rule ? 'border-bottom:1px solid #808080;' : '') +
-    (stops ? `tab-stops:${stops};` : '') +
+    (stops.length ? `tab-stops:${stops.join(' ')};` : '') +
     // Restated after `tab-stops`, which LibreOffice misreads as an alignment.
     'text-align:left;';
-  return `<p data-band style="${css}">${body || '&nbsp;'}</p>`;
+  // `data-band` is inert in Word; the thumbnail lays a band row out by it.
+  return `<p${node.band ? ' data-band' : ''} style="${css}">${pieces.join('') || '&nbsp;'}</p>`;
 }
 
 function fontCss(fonts: FontPair): string {
