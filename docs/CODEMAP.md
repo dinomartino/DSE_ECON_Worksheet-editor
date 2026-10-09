@@ -384,7 +384,7 @@ Invariants:
 - `src/components/preview/pagination.ts:packPages` · `:composePages` · `:resolveFillCounts`
 - `src/components/preview/InlineEditable.tsx` · `src/components/preview/RichTextEditable.tsx` — click-to-edit
 - `src/components/preview/BandEditor.tsx:BandEditor` · `:bandFieldStyle`
-- `src/components/preview/bandRow.tsx:BandRowFrame` — every band row on the page (editor, idle header, IR masthead) lays out like its Word tab-stop paragraph
+- `src/components/preview/bandRow.tsx:BandRowFrame` · `:layoutBandRow` · `:bandTabPlan` — every band row on the page (editor, idle header, IR masthead) is its Word tab-stop paragraph: inline zones, tab spacers sized as Word resolves them
 - `src/components/preview/ContextBar.tsx` · `src/components/preview/PageContextMenu.tsx`
 
 Invariants:

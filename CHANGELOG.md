@@ -96,6 +96,15 @@ a version heading is edited afterwards.
   instead of a table.
   <!-- zh: **標題區內的頁碼在 Word 檔案中會印出頁碼，不再印出「#」。** 頁碼會隨頁面更新，與頁首和頁尾的頁碼一樣。
   複製工作紙再貼到 Word 時，標題區會以 Tab 對齊的文字行貼上，與 Word 檔案一致，不再變成表格。 -->
+- **Long header, footer and title block lines now break where Word breaks them.** When a line
+  is too long to fit, the page shows the same words on the same lines as the printed Word file:
+  a centred title stays centred, and text that no longer fits beside it moves to the next line,
+  as in Word. Header and footer text is shown at the size Word prints it, not smaller. The + for
+  adding words before or after a page number, a total or a fill-in line now appears only when
+  you point at it, and never sits in the page margin or over other text.
+  <!-- zh: **較長的頁首、頁尾和標題區行，換行位置與 Word 一致。** 一行太長放不下時，頁面上每行的字與列印出來的 Word
+  檔案相同：置中的標題保持置中，旁邊放不下的文字如 Word 一樣移到下一行。頁首和頁尾的文字以 Word 列印的字號顯示，不再較小。
+  在頁碼、總分或填寫橫線前後加字的「+」只會在滑鼠指向時出現，亦不會再出現在頁邊或蓋住其他文字。 -->
 
 ## 0.7.0 — 2026-10-08
 

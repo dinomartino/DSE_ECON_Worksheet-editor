@@ -156,7 +156,7 @@ import {
   StructuredIcon,
 } from "@/components/ui/icons";
 import { BandEditor, BandTrailText, bandFieldStyle, withPageNumber, type BandTrail } from "./BandEditor";
-import { BAND_FIELD_SEPARATOR, BAND_ZONE_CLASS, BandRowFrame } from "./bandRow";
+import { BAND_FIELD_SEPARATOR, BAND_ZONE_CLASS, BandRowFrame, headerZonesPrinting } from "./bandRow";
 
 /**
  * What an editable row of zones needs from its host.
@@ -2464,29 +2464,32 @@ export function NodeView({
   if (node.kind === "columns" && node.band) {
     // A masthead band read-only (the page-count probe, a preview without editing): the
     // same frame and zones as `BandEditor` and `ReadOnlyBandRow`, so all three agree.
-    const zone = (align: ZoneName) => {
-      const cells = node.cells.filter((cell) => (cell.align ?? "left") === align);
-      return (
-        <div className={BAND_ZONE_CLASS[align]}>
-          {cells.map((cell, index) => (
-            <Fragment key={index}>
-              {index > 0 && BAND_FIELD_SEPARATOR}
-              <span className="whitespace-pre-wrap" style={bandFieldStyle({ format: cell.format })}>
-                {richNodes(cell.text, language)}
-              </span>
-            </Fragment>
-          ))}
-        </div>
-      );
-    };
+    const cellsIn = (align: ZoneName) =>
+      node.cells.filter((cell) => (cell.align ?? "left") === align);
+    const zone = (align: ZoneName) => (
+      <span data-band-zone="" className={BAND_ZONE_CLASS}>
+        {cellsIn(align).map((cell, index) => (
+          <Fragment key={index}>
+            {index > 0 && BAND_FIELD_SEPARATOR}
+            <span className="whitespace-pre-wrap" style={bandFieldStyle({ format: cell.format })}>
+              {richNodes(cell.text, language)}
+            </span>
+          </Fragment>
+        ))}
+      </span>
+    );
     return (
       <BandRowFrame
+        kind="masthead"
+        // The exporter writes a stop for every zone with a cell (`bandStops`).
+        occupied={{
+          left: cellsIn("left").length > 0,
+          center: cellsIn("center").length > 0,
+          right: cellsIn("right").length > 0,
+        }}
+        zones={{ left: zone("left"), center: zone("center"), right: zone("right") }}
         className={`${STYLE_CLASS[node.style] ?? ""} ${node.rule ? "border-b border-[#999999] pb-0.5" : ""}`}
-      >
-        {zone("left")}
-        {zone("center")}
-        {zone("right")}
-      </BandRowFrame>
+      />
     );
   }
 
@@ -2915,7 +2918,7 @@ export function HeaderFooterBand({
     ) : null;
   if ((versionAlone || markOnly) && !(value.enabled && (editing || editable))) {
     return (
-      <div data-band-rows className="mb-2 flex items-baseline gap-2 text-xs text-[#111111]">
+      <div data-band-rows className="mb-2 flex items-baseline gap-2 text-[#111111]">
         <div className="flex-1">
           {markLineOf([])}
           {versionLine}
@@ -2961,6 +2964,7 @@ export function HeaderFooterBand({
   const body = !drawsBands ? null : editing ? (
     <BandEditor
       bands={bands}
+      kind="header"
       language={language}
       totalMarks={totalMarks}
       onMove={editing.onMove}
@@ -3018,8 +3022,12 @@ export function HeaderFooterBand({
        *
        * The rule keeps its own grey: it is a hairline, and `#999999` is the literal the
        * exporter puts in `w:pBdr`.
+       *
+       * **No size of its own**: the exporter writes these paragraphs in `Normal`, the
+       * document's body size (`baseFontSize`) on the fixed 12pt line, so the rows take
+       * `.paper`'s. A 9pt preview wrapped long rows where Word does not.
        */
-      className={`flex items-baseline gap-2 text-xs text-[#111111] ${
+      className={`flex items-baseline gap-2 text-[#111111] ${
         edge === "header"
           ? rule
             ? "mb-2 border-b border-[#999999] pb-1"
@@ -3094,7 +3102,7 @@ function ReadOnlyBandRow({
       </Fragment>
     ));
     return (
-      <div className={BAND_ZONE_CLASS[name]}>
+      <span data-band-zone="" className={BAND_ZONE_CLASS}>
         {trailHere ? (
           // The marker runs on along its zone's line, as in Word; it never wraps.
           <span className="whitespace-pre">
@@ -3104,15 +3112,15 @@ function ReadOnlyBandRow({
         ) : (
           fields
         )}
-      </div>
+      </span>
     );
   };
   return (
-    <BandRowFrame>
-      {cell("left")}
-      {cell("center")}
-      {cell("right")}
-    </BandRowFrame>
+    <BandRowFrame
+      kind="header"
+      occupied={headerZonesPrinting(band, { totalMarks }, language, trail)}
+      zones={{ left: cell("left"), center: cell("center"), right: cell("right") }}
+    />
   );
 }
 
@@ -6251,6 +6259,7 @@ export function Preview({
         bandEditing ? (
           <BandEditor
             bands={mastheadBands}
+            kind="masthead"
             language={language}
             totalMarks={worksheetMarks(worksheet)}
             onMove={bandEditing.onMove}

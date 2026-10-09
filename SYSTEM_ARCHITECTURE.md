@@ -163,10 +163,11 @@ zones (left/centre/right), one Word paragraph with a centre stop at 0.5 and a ri
 at 1 (one tab per zone after the left; fields in a zone one space apart). `totalMarks`
 and the `partHeader` suffix print **computed** numbers — a stored total goes stale.
 
-**The page lays a row out as Word does** (`BandRowFrame`), not as thirds: each zone is as
-wide as its text, the centre sits on the middle unless a side is too long and pushes it
-(a long right zone pushes it left, where Word would push the right text instead), and
-nothing wraps until the zones cannot share one line; then each keeps its longest word.
+**The page lays a row out as Word does** (`BandRowFrame`): one inline paragraph, each
+`w:tab` (`bandTabPlan`) a spacer `layoutBandRow` sizes as Word does: first stop past the
+text, centring or right-aligning the words that fit on the line (never over earlier text);
+the rest wraps from the margin; no stop left, or no word fitting, moves the tab down a line.
+Header and footer rows are `Normal`: the body size (`baseFontSize`), never smaller.
 
 ### A field is authored wording around a derived value
 
@@ -1780,8 +1781,10 @@ include", § the answer key); its PDF and the question paper are this document's
 the IR masthead (`ColumnsNode.band`, the page-count probe) too: one frame
 (`BandRowFrame`), one style function (`bandFieldStyle`). Chrome reserves no space: rings,
 not padding; an empty zone's `+`, an empty affix's `+` and a field's ✕ are positioned,
-since a zone is only as wide as its text. Verify by measuring the same text node in both
-states.
+since a zone is only as wide as its text. An affix `+` and the ✕ show on hover or focus,
+outside the field where `layoutBandRow` found room (`data-room-*`, `data-remove`), else
+over its own edge: never in the margin or over another field. Verify by measuring the
+same text node in both states.
 
 ---
 
