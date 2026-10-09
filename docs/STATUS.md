@@ -19,9 +19,10 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Merged, unreleased (2026-10-08):** **Import from Word or PDF** (home screen; file-only by the user's
   decision) → review → Save as; engine `src/import/`, design `docs/design/paste-import.md`. Also UI language /
   Paper language settings; several files at once + "Answers from" linking (§ 11).
-- **In flight (user's go 2026-10-09; `feature/ocr-engine` Rust + `feature/ocr-import` TS):** in-app OCR for scans/photos: PP-OCRv6 small
-  in Rust via `ort`/`oar-ocr`, adapter → `layoutPdf`, `source: 'ocr'`, key rows cell by cell
-  (`docs/research/2026-10-ocr-survey.md`). Users are desktop-only: design for the Tauri app.
+- **OCR merged, unreleased (2026-10-09):** PP-OCRv6 small in Rust on static ORT 1.22 (`src-tauri/src/ocr/`,
+  models fetched by `build.rs`, SHA-pinned), scans + pictures read page by page (`src/import/ocrLayout.ts`,
+  `paste-import.md` § 13). DMG +33 MB. Unverified: Windows CI (push `develop`), Intel Mac, macOS 12–13.2, signed
+  build. In flight: `fix/ocr-e2e` (real-engine end to end + tsconfig excludes the Tauri build folder).
 - **Check next:** the Tauri window (native open sheet and drop, pdf.js main-thread fallback on macOS);
   the editor showed 31 pages for the imported 2019 Paper 2 vs 24 in LibreOffice (uninvestigated);
   題庫 only lands on an arbitrary untagged question, not the first added; S6 Paper I Q42 ("B" without a dot)
@@ -76,5 +77,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-09** — Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align parity. 11 branches.
+- **2026-10-09** — Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR. 13 branches.
 - **2026-10-08** — Found-folder offer; import engine + file import; paper language; OCR survey. 15 branches.
