@@ -26,6 +26,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   the editor showed 31 pages for the imported 2019 Paper 2 vs 24 in LibreOffice (uninvestigated);
   題庫 only lands on an arbitrary untagged question, not the first added; S6 Paper I Q42 ("B" without a dot)
   and a source table's (a)–(d) rows read as parts.
+- Cell `TextFormat.align` (old docs) wins in preview + clipboard but `CellAlign` wins in .docx: backends disagree.
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
@@ -76,5 +77,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Log
 
 - **2026-10-09** — Table distribute; overscroll fix; import header/footer/title block; band rows match Word
-  (layout, export, clipboard, page numbers, offsets). 8 Opus branches merged.
+  (layout, export, clipboard, page numbers, offsets); table bar icons + one cell-align control. 10 branches.
 - **2026-10-08** — Found-folder offer; import engine + file import; paper language; OCR survey. 15 branches.
