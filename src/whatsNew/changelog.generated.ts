@@ -71,6 +71,16 @@ a version heading is edited afterwards.
   各行（學校、標題、姓名和班別空格、總分、時間）會成為試卷的標題區，或填入 Paper 1 或 Paper 2 Mock 的封面。檔案的頁首和頁尾
   會取代試卷類型本身的；如要保留後者，請剔選「改用預設的頁首和頁尾」。未能匯入的部分（例如標誌，或以表格排版的頁首）會連同
   「複製」按鈕列出，方便你自行輸入。 -->
+- **Desktop: import scanned papers and photos of a paper.** A scanned PDF, or pictures of a paper
+  (PNG or JPEG, several at once in name order), is now read page by page on your computer, with
+  nothing sent anywhere: "Reading page 3 of 12", and you can stop it. The questions then open for
+  checking as any import does, with a reminder that some letters and numbers may be misread. A
+  scanned answer key or marking scheme can supply the answers too, and an answer key with one
+  smudged cell keeps all its other answers. On the web, a scan says that the desktop app reads it.
+  <!-- zh: **桌面版：可匯入掃描試卷及試卷相片。** 掃描 PDF 或試卷圖片（PNG 或 JPEG，可一次選擇多張，按檔名排序）現會在你的
+  電腦上逐頁讀取，不會傳送到任何地方：畫面顯示「正在讀取第 3 頁（共 12 頁）」，亦可隨時停止。讀取後題目會如其他匯入一樣供你檢查，
+  並提醒部分字母和數字可能有誤。掃描的答案表或評卷參考亦可提供答案；答案表即使有一格模糊，其餘答案仍會保留。在網頁版，掃描檔會
+  提示可用桌面應用程式讀取。 -->
 
 ### Changed
 - **Topic names and question previews follow the language of your questions.** In 題庫, topic

@@ -40,6 +40,7 @@ import {
   importSummary,
   overlayFor,
   PAPER_ACCEPT,
+  PICTURE_EXTENSIONS,
   planDrop,
   type DropOverlay,
   type ImportCounts,
@@ -398,7 +399,7 @@ export function StartScreen({
       return;
     }
     try {
-      const picked = await pickFiles([{ name: t.paperFilterName, extensions: ['docx', 'pdf', 'doc'] }]);
+      const picked = await pickFiles([{ name: t.paperFilterName, extensions: ['docx', 'pdf', 'doc', ...PICTURE_EXTENSIONS] }]);
       startImport(picked.map((file) => ({ name: file.name, read: async () => toBuffer(await file.read()) })));
     } catch {
       setError(t.couldNotOpenFile);

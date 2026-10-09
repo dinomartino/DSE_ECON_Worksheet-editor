@@ -55,7 +55,8 @@ export interface OcrEngine {
 /** The engine downsizes larger pages itself; boxes still come back in the image's pixels. */
 export const OCR_MAX_SIDE = 2400;
 
-function ocrError(cause: unknown): OcrError {
+/** The shell's error string (`decode: …`, `model: …`, `internal: …`) as an `OcrError`. */
+export function ocrError(cause: unknown): OcrError {
   const text = typeof cause === 'string' ? cause : cause instanceof Error ? cause.message : String(cause);
   const m = /^(decode|model|internal):\s*([\s\S]*)$/.exec(text);
   return m ? new OcrError(m[1] as OcrErrorKind, m[2]) : new OcrError('internal', text);
@@ -85,19 +86,31 @@ export function setOcrEngine(engine: OcrEngine | undefined | null): void {
   injected = engine;
 }
 
+/**
+ * A stand-in engine: `pages` returned in turn (cycling), each after `delayMs`. Tests use it;
+ * so do dev screenshots of the reading step outside the shell.
+ */
+export function fakeOcrEngine(spec: { pages?: OcrResult[]; delayMs?: number; available?: boolean; fail?: string } = {}): OcrEngine & { calls: number } {
+  const engine = {
+    calls: 0,
+    status: async () => ({ available: spec.available !== false, engine: 'fake', version: '0' }),
+    read: async () => {
+      const n = engine.calls++;
+      if (spec.delayMs) await new Promise((resolve) => setTimeout(resolve, spec.delayMs));
+      if (spec.fail) throw ocrError(spec.fail);
+      const pages = spec.pages ?? [];
+      return pages.length ? pages[n % pages.length] : { width: 1654, height: 2339, lines: [], ms: spec.delayMs ?? 0 };
+    },
+  };
+  return engine;
+}
+
 // Dev builds only (Next inlines NODE_ENV, so production drops it): screenshots of the
 // reading step outside the shell set `window.__ECON_FAKE_OCR__` before the app loads.
 function devFake(): OcrEngine | undefined {
   if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') return undefined;
-  const spec = (window as unknown as { __ECON_FAKE_OCR__?: { delayMs?: number; available?: boolean } }).__ECON_FAKE_OCR__;
-  if (!spec) return undefined;
-  return {
-    status: async () => ({ available: spec.available !== false, engine: 'fake', version: '0' }),
-    read: async () => {
-      await new Promise((resolve) => setTimeout(resolve, spec.delayMs ?? 800));
-      return { width: 1654, height: 2339, lines: [], ms: spec.delayMs ?? 800 };
-    },
-  };
+  const spec = (window as unknown as { __ECON_FAKE_OCR__?: Parameters<typeof fakeOcrEngine>[0] }).__ECON_FAKE_OCR__;
+  return spec ? fakeOcrEngine({ delayMs: 800, ...spec }) : undefined;
 }
 
 /** The engine to use, if any: the shell's on desktop, none on the web. */

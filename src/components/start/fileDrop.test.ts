@@ -28,8 +28,16 @@ describe('droppedKind', () => {
     expect(droppedKind('download', 'application/pdf')).toBe('paper');
   });
 
+  it('takes pictures of a paper as papers too (read by text recognition)', () => {
+    expect(droppedKind('page 1.png')).toBe('paper');
+    expect(droppedKind('IMG_2041.JPG')).toBe('paper');
+    expect(droppedKind('scan.jpeg')).toBe('paper');
+    expect(droppedKind('IMG_2042.HEIC')).toBe('paper');
+    expect(droppedKind('download', 'image/jpeg')).toBe('paper');
+  });
+
   it('refuses everything else', () => {
-    expect(droppedKind('graph.png')).toBeUndefined();
+    expect(droppedKind('graph.gif')).toBeUndefined();
     expect(droppedKind('marks.xlsx')).toBeUndefined();
     expect(droppedKind('notes.json.txt')).toBeUndefined();
     expect(droppedKind('json')).toBeUndefined();
@@ -70,7 +78,7 @@ describe('planDrop', () => {
   });
 
   it('does not open a lone worksheet dragged in with other files', () => {
-    expect(planDrop(['/a/1.json', '/a/pic.png'], byPath)).toMatchObject({
+    expect(planDrop(['/a/1.json', '/a/pic.gif'], byPath)).toMatchObject({
       kind: 'import',
       worksheets: ['/a/1.json'],
       ignored: 1,
@@ -78,7 +86,8 @@ describe('planDrop', () => {
   });
 
   it('rejects a drop with nothing usable, or nothing at all', () => {
-    expect(planDrop(['/a/paper.docx', '/a/pic.png'], byPath)).toEqual({ kind: 'reject' });
+    expect(planDrop(['/a/notes.txt', '/a/pic.gif'], byPath)).toEqual({ kind: 'reject' });
+    expect(planDrop(['/a/paper.docx', '/a/page 1.png'], byPath)).toEqual({ kind: 'papers', files: ['/a/paper.docx', '/a/page 1.png'] });
     expect(planDrop([], byPath)).toEqual({ kind: 'reject' });
   });
 });
@@ -111,7 +120,8 @@ describe('overlayFor (desktop native drag)', () => {
   it('shows the hint for usable files and the rejection for anything else, from enter', () => {
     expect(overlayFor({ type: 'enter', paths: ['/a/1.json'] }, undefined)).toBe('hint');
     expect(overlayFor({ type: 'enter', paths: ['/a/p.docx'] }, undefined)).toBe('hint');
-    expect(overlayFor({ type: 'enter', paths: ['/a/p.png'] }, undefined)).toBe('rejected');
+    expect(overlayFor({ type: 'enter', paths: ['/a/p.png'] }, undefined)).toBe('hint');
+    expect(overlayFor({ type: 'enter', paths: ['/a/p.gif'] }, undefined)).toBe('rejected');
   });
 
   it('keeps the decision while hovering and clears on leave or drop', () => {

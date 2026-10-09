@@ -32,7 +32,7 @@ export {
 export { classifyImport, splitAnswers, suggestPairs, type ClassifyReason, type FileClass, type FileRole } from './answerFiles';
 export { matchAnswers, type AnswerMatch, type AnswerMatchResult, type AnswerSource, type MatchDetail, type MatchStatus } from './matchAnswers';
 export { DocxReadError, type DocxErrorKind, type DocxOptions } from './readDocx';
-export { isPdfReadError, readPdf, type PdfRead, type PdfReadError, type ReadPdfOptions } from './readPdf';
+export { isPdfReadError, readPdf, renderPdfPages, type PdfRead, type PdfReadError, type ReadPdfOptions, type RenderedPage } from './readPdf';
 export { pictureHome } from './figures';
 export * from './pageChrome';
 export type * from './types';

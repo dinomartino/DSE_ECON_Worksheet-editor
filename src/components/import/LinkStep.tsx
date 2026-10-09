@@ -16,6 +16,8 @@ import {
   type Links,
 } from './importBatch';
 import type { IMPORT_MESSAGES } from './messages';
+import { problemText } from './problemText';
+import { isDesktop } from '@/platform';
 
 /**
  * Several files: which are papers and which answers (the engine's guess, with its reasons,
@@ -29,13 +31,6 @@ const ROLES: ReadonlyArray<readonly [FileRole, 'roleQuestions' | 'roleAnswers' |
   ['answers', 'roleAnswers', 'roleAnswersHint'],
   ['both', 'roleBoth', 'roleBothHint'],
 ];
-
-const PROBLEM_KEY = {
-  legacyDoc: 'problemLegacyDoc',
-  encrypted: 'problemEncrypted',
-  notPaper: 'problemNotPaper',
-  unreadable: 'problemUnreadable',
-} as const;
 
 const SELECT =
   'h-8 w-full min-w-0 cursor-pointer truncate rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink outline-none transition-colors duration-150 ease-out-soft hover:border-line-strong focus:border-accent focus:ring-2 focus:ring-accent/25';
@@ -151,14 +146,20 @@ function FileRow({
   const pdf = /\.pdf$/i.test(file.name);
   const pages = outcome.pages;
   const reasons = file.guess.reasons.flatMap((r) => (REASON_TEXT[r] && r !== 'noText' ? [m[REASON_TEXT[r]!]] : []));
-  const facts = [...(pages ? [m.pages(pages)] : []), ...(outcome.kind === 'ok' && role !== 'answers' && questions !== undefined ? [m.questionCount(questions)] : []), ...reasons];
+  const pictures = outcome.kind === 'problem' ? outcome.pictures : undefined;
+  const facts = [
+    ...(pictures ? [m.pictureCount(pictures)] : pages ? [m.pages(pages)] : []),
+    ...(outcome.kind === 'ok' && outcome.read.source === 'ocr' ? [m.readFromScan] : []),
+    ...(outcome.kind === 'ok' && role !== 'answers' && questions !== undefined ? [m.questionCount(questions)] : []),
+    ...reasons,
+  ];
   const problem =
     outcome.kind === 'problem'
-      ? outcome.problem === 'scan'
+      ? outcome.problem === 'scan' && !isDesktop()
         ? role === 'answers'
           ? m.scanAnswers(pages ?? 0)
           : m.scanPaper(pages ?? 0)
-        : m[PROBLEM_KEY[outcome.problem]]
+        : problemText(m, outcome, isDesktop())
       : undefined;
   // A scan can only be named; what it holds decides nothing until it can be read.
   const canSetRole = outcome.kind === 'ok' || outcome.problem === 'scan';

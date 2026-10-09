@@ -7,6 +7,7 @@ import type { LanguageMode, Worksheet } from '@/model/types';
 import { useWorksheetStore, type QuestionBatchReport } from '@/store/worksheetStore';
 import { pasteVerdict, review, type Language } from './pasteSession';
 import { materialize } from './previewDoc';
+import { isPictureFile, pdfScanPages, pictureScanPages, recognisePages, type ScanPage, type ScanReader, type ScanResult } from './scanImport';
 
 /**
  * Import from Word or PDF: a file read into the review, and the review saved as a new
@@ -14,11 +15,60 @@ import { materialize } from './previewDoc';
  * Loaded with the dialog, never with the start screen (it pulls in the readers).
  */
 
-export type FileProblem = 'legacyDoc' | 'encrypted' | 'notPaper' | 'unreadable' | 'scan';
+/**
+ * Why a file is not reviewed. `scan`: scanned pages and no text recognition here (the web,
+ * or a desktop app without it); `stopped`: the teacher stopped the reading; `ocrFailed`:
+ * recognition failed; `picture`: a picture this app cannot open.
+ */
+export type FileProblem = 'legacyDoc' | 'encrypted' | 'notPaper' | 'unreadable' | 'scan' | 'stopped' | 'ocrFailed' | 'picture';
 
 export type FileOutcome =
   | { kind: 'ok'; read: ReadPaste; title?: string; pages?: number; ocr: boolean; chrome?: PageChrome }
-  | { kind: 'problem'; problem: FileProblem; pages?: number };
+  /** `pictures`: how many pictures the scan was (else a PDF). */
+  | { kind: 'problem'; problem: FileProblem; pages?: number; pictures?: number };
+
+/** A file to import: read when its turn comes. Several pictures of one paper are one file. */
+export interface PaperFile {
+  name: string;
+  read: () => Promise<ArrayBuffer>;
+  /** The pages of a paper photographed or scanned as pictures, in order. */
+  pictures?: Array<{ name: string; read: () => Promise<ArrayBuffer> }>;
+}
+
+const naturally = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+/**
+ * Pictures chosen together are one paper, a page each, in name order ("page 2" before
+ * "page 10"), where the first of them was; Word and PDF files stay as they are.
+ */
+export function groupPictures<T extends { name: string; read: () => Promise<ArrayBuffer> }>(files: readonly T[]): Array<T | PaperFile> {
+  const pictures = files.filter((f) => isPictureFile(f.name));
+  if (!pictures.length) return [...files];
+  const pages = [...pictures].sort((a, b) => naturally.compare(a.name, b.name));
+  const group: PaperFile = { name: pages[0].name, read: pages[0].read, pictures: pages.map(({ name, read }) => ({ name, read })) };
+  const at = files.findIndex((f) => isPictureFile(f.name));
+  return files.flatMap<T | PaperFile>((f, k) => (k === at ? [group] : isPictureFile(f.name) ? [] : [f]));
+}
+
+/** Scanned pages through the engine, or the problem that stops them. */
+async function readScan(pages: AsyncIterable<ScanPage>, scan: ScanReader | undefined, count: { pages?: number; pictures?: number }): Promise<FileOutcome> {
+  const engine = await scan?.engine().catch(() => undefined);
+  if (!engine) return { kind: 'problem', problem: 'scan', ...count };
+  const result: ScanResult = await recognisePages(pages, engine, { signal: scan?.signal, onProgress: scan?.onProgress });
+  if (result.kind === 'stopped') return { kind: 'problem', problem: 'stopped', ...count };
+  if (result.kind === 'undecodable') return { kind: 'problem', problem: count.pictures ? 'picture' : 'unreadable', ...count };
+  if (result.kind === 'failed') return { kind: 'problem', problem: 'ocrFailed', ...count };
+  const { read } = result;
+  const seen = pasteVerdict(review(read, [], 'auto'));
+  if (seen === 'empty' || read.lines.every((l) => !l.text.trim() && !l.cells?.length)) return { kind: 'problem', problem: 'ocrFailed', ...count };
+  return { kind: 'ok', read, ...(read.title ? { title: read.title } : {}), pages: read.pages, ocr: true, ...(read.chrome ? { chrome: read.chrome } : {}) };
+}
+
+/** Pictures of a paper (one picture, one page), read by text recognition. */
+export function readPictureFiles(pictures: NonNullable<PaperFile['pictures']>, scan?: ScanReader): Promise<FileOutcome> {
+  if (!scan) return Promise.resolve({ kind: 'problem', problem: 'scan', pictures: pictures.length });
+  return readScan(pictureScanPages(pictures, scan.signal, scan.decode), scan, { pictures: pictures.length });
+}
 
 const head = (bytes: ArrayBuffer, n: number) => new Uint8Array(bytes, 0, Math.min(n, bytes.byteLength));
 const starts = (bytes: Uint8Array, sig: number[]) => sig.every((b, k) => bytes[k] === b);
@@ -39,15 +89,23 @@ export function sniffPaper(bytes: ArrayBuffer, name: string): 'docx' | 'pdf' | '
 export async function readPaperFile(
   name: string,
   bytes: ArrayBuffer,
-  options: { prepareImage?: (blob: Blob) => Promise<ImageRef | null> } = {},
+  options: { prepareImage?: (blob: Blob) => Promise<ImageRef | null>; scan?: ScanReader } = {},
 ): Promise<FileOutcome> {
   const kind = sniffPaper(bytes, name);
   const legacy = /\.doc$/i.test(name);
+  if (!kind && isPictureFile(name, bytes)) return readPictureFiles([{ name, read: async () => bytes }], options.scan);
   if (!kind) return { kind: 'problem', problem: legacy ? 'legacyDoc' : 'notPaper' };
   if (kind === 'pdf') {
-    const result = await readPdf(bytes, options).catch(() => ({ kind: 'unreadable' as const }));
+    const result = await readPdf(bytes, { prepareImage: options.prepareImage }).catch(() => ({ kind: 'unreadable' as const }));
     if (isPdfReadError(result)) return { kind: 'problem', problem: result.kind === 'notPdf' ? 'notPaper' : result.kind };
-    return verdict(result, result.title, result.pages, result.chrome);
+    const outcome = verdict(result, result.title, result.pages, result.chrome);
+    // Scanned pages: read them when this computer can.
+    if (outcome.kind === 'problem' && outcome.problem === 'scan' && options.scan) {
+      const render = options.scan.render ?? pdfScanPages;
+      const read = await readScan(render(bytes, options.scan.signal), options.scan, { pages: result.pages });
+      return read.kind === 'ok' && result.title ? { ...read, title: result.title } : read;
+    }
+    return outcome;
   }
   try {
     const result = await readDocx(bytes, options);
@@ -76,7 +134,7 @@ export function importedMarks(batch: ImportBatch): number {
 /** The new document's name: the file's title, else the file name without its extension. */
 export function importName(title: string | undefined, fileName: string): string {
   const clean = (s: string) => s.replace(/\s+/g, ' ').trim().slice(0, 120);
-  return clean(title ?? '') || clean(fileName.replace(/\.(docx?|pdf)$/i, '')) || 'Imported questions';
+  return clean(title ?? '') || clean(fileName.replace(/\.(docx?|pdf|png|jpe?g|heic|heif)$/i, '')) || 'Imported questions';
 }
 
 /**

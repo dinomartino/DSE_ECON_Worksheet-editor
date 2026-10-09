@@ -45,7 +45,7 @@ export const START_SCREEN_MESSAGES = defineMessages({
   couldNotOpenExportsFolder: { en: 'Could not open the exports folder.', zh: '無法開啟匯出資料夾。' },
   couldNotShowFile: { en: 'Could not show that file.', zh: '無法顯示該檔案。' },
   openFilterName: { en: 'Worksheet or backup', zh: '工作紙或備份' },
-  paperFilterName: { en: 'Word or PDF', zh: 'Word 或 PDF' },
+  paperFilterName: { en: 'Word, PDF or picture', zh: 'Word、PDF 或圖片' },
   // The ⋯ menu beside the document count.
   backingUp: { en: 'Backing up…', zh: '備份中…' },
   backUpAll: { en: 'Back up all…', zh: '全部備份…' },
@@ -112,12 +112,12 @@ export const START_SCREEN_MESSAGES = defineMessages({
   emptyTrash: { en: 'Empty Trash', zh: '清空垃圾桶' },
   // Dropping files on the screen.
   dropHint: {
-    en: 'Drop a .json to open it, a backup .zip to restore it, or one Word or PDF file to import its questions',
-    zh: '放開 .json 即可開啟，放開備份 .zip 即可還原，放開一個 Word 或 PDF 檔案即可匯入題目',
+    en: 'Drop a .json to open it, a backup .zip to restore it, or Word, PDF or picture files to import their questions',
+    zh: '放開 .json 即可開啟，放開備份 .zip 即可還原，放開 Word、PDF 或圖片檔案即可匯入題目',
   },
   dropRejected: {
-    en: 'Only .json worksheets, a backup .zip, or one Word or PDF file can be dropped',
-    zh: '只能放入 .json 工作紙、備份 .zip，或一個 Word 或 PDF 檔案',
+    en: 'Only .json worksheets, a backup .zip, or Word, PDF or picture files can be dropped',
+    zh: '只能放入 .json 工作紙、備份 .zip，或 Word、PDF 或圖片檔案',
   },
   importNothing: { en: 'Nothing to import.', zh: '沒有可匯入的內容。' },
   importImported: {

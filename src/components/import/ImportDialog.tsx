@@ -8,6 +8,8 @@ import { addToBank, bankChoices, nextBankName, type BankChoice } from '@/library
 import type { DocumentType } from '@/model/newWorksheet';
 import type { LanguageMode, Question, Worksheet } from '@/model/types';
 import { paperLanguage, paperSide } from '@/settings/paperLanguage';
+import { isDesktop } from '@/platform';
+import { readyOcrEngine, type OcrEngine } from '@/platform/ocr';
 import { worksheetStore, worksheetTitle } from '@/storage';
 import { notify } from '@/store/notices';
 import { Button } from '@/components/ui';
@@ -22,14 +24,16 @@ import {
   createImportedDocument,
   createImportedDocuments,
   defaultDocumentType,
+  groupPictures,
   importedMarks,
   importLanguageMode,
   importName,
   misfit,
   readPaperFile,
+  readPictureFiles,
   startLanguage,
   type FileOutcome,
-  type FileProblem,
+  type PaperFile,
 } from './fileImport';
 import {
   NO_LINKS,
@@ -53,6 +57,8 @@ import { papersDoneNotice } from './doneNotice';
 import { LinkStep } from './LinkStep';
 import { IMPORT_MESSAGES } from './messages';
 import { materialize, previewBase, type PreviewCache } from './previewDoc';
+import { problemText } from './problemText';
+import type { ScanProgress } from './scanImport';
 import { ReviewStep, undoFix } from './ReviewStep';
 import { SaveAsStep, type Destination } from './SaveAsStep';
 import { SaveManyStep, type PaperToSave } from './SaveManyStep';
@@ -69,11 +75,14 @@ export { flagText } from './ReviewStep';
 
 type Text = Messages<typeof IMPORT_MESSAGES>;
 
-/** A chosen or dropped file; read once the dialog is up. */
+/** A chosen or dropped file; read once the dialog is up. Pictures chosen together are one paper. */
 export interface ImportFile {
   name: string;
   read: () => Promise<ArrayBuffer>;
 }
+
+/** Scanned pages being read: which file, which page. */
+type Scanning = ScanProgress & { file: number };
 
 export interface ImportDialogProps {
   files: ImportFile[];
@@ -128,11 +137,15 @@ function answered(result: PaperReview): number {
   ).length;
 }
 
-export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDocument, onCreated, onAddedToBank }: ImportDialogProps) {
+export default function ImportDialog({ files: chosen, onClose, onChooseAnother, onOpenDocument, onCreated, onAddedToBank }: ImportDialogProps) {
   const m = useMessages(IMPORT_MESSAGES);
   const lang = useUiLanguage();
   const notices = useDialogNotices();
+  const [files] = useState<PaperFile[]>(() => groupPictures(chosen));
   const [read, setRead] = useState<Array<BatchFile | undefined>>(() => files.map(() => undefined));
+  const [scanning, setScanning] = useState<Scanning>();
+  // Stops the scanned pages being read now (that file only).
+  const stop = useRef<AbortController | null>(null);
   const [step, setStep] = useState<Step>('reading');
   const [links, setLinks] = useState<Links>(NO_LINKS);
   const [at, setAt] = useState(0);
@@ -151,24 +164,36 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
   const [cache] = useState<PreviewCache>(() => new Map());
 
   // Read the files one by one. pdf.js and the readers load here, never with the start screen.
+  // Scanned pages are read by the desktop app's text recognition, page by page.
   useEffect(() => {
     let live = true;
+    let engine: Promise<OcrEngine | undefined> | undefined;
     void (async () => {
       const out: BatchFile[] = [];
       for (const [k, file] of files.entries()) {
-        const outcome: FileOutcome = await file
-          .read()
-          .then((bytes) => readPaperFile(file.name, bytes, { prepareImage }))
-          .catch((): FileOutcome => ({ kind: 'problem', problem: 'unreadable' }));
+        const controller = new AbortController();
+        stop.current = controller;
+        const scan = {
+          engine: () => (engine ??= readyOcrEngine()),
+          signal: controller.signal,
+          onProgress: (p: ScanProgress) => live && setScanning({ ...p, file: k }),
+        };
+        const outcome: FileOutcome = await (file.pictures
+          ? readPictureFiles(file.pictures, scan)
+          : file.read().then((bytes) => readPaperFile(file.name, bytes, { prepareImage, scan }))
+        ).catch((): FileOutcome => ({ kind: 'problem', problem: 'unreadable' }));
         if (!live) return;
+        setScanning(undefined);
         out.push(examineFile(`f${k}`, file.name, outcome));
         setRead((list) => list.map((x, n) => (n === k ? out[k] : x)));
       }
       if (!live) return;
+      stop.current = null;
       setStep(needsLinking(out) ? 'link' : 'review');
     })();
     return () => {
       live = false;
+      stop.current?.abort();
     };
     // Once per batch: the dialog is replaced for other files.
   }, [files]);
@@ -249,10 +274,10 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, []);
 
-  // A PDF read from a scan is reviewed with a warning.
-  const ocr = step === 'review' && paper?.outcome.kind === 'ok' && paper.outcome.ocr;
+  // Text read from a scan (by this app, or a PDF's own OCR layer) is reviewed with a warning.
+  const ocr = step === 'review' && paper?.outcome.kind === 'ok' && paper.outcome.ocr ? (paper.outcome.read.source === 'ocr' ? m.ocrRead : m.scanOcr) : undefined;
   useEffect(() => {
-    if (ocr) notices.notify({ id: 'import-kind', tone: 'warning', body: m.scanOcr });
+    if (ocr) notices.notify({ id: 'import-kind', tone: 'warning', body: ocr });
     else notices.dismiss('import-kind');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ocr, paper?.id]);
@@ -409,6 +434,11 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
             {m.chooseAnother}
           </Button>
         )}
+        {!problem && scanning && (
+          <Button variant="subtle" className="mr-auto" onClick={() => stop.current?.abort()}>
+            {m.stopReading}
+          </Button>
+        )}
         <Button variant={problem ? 'primary' : 'subtle'} onClick={onClose}>
           {problem ? m.close : m.cancel}
         </Button>
@@ -499,12 +529,14 @@ export default function ImportDialog({ files, onClose, onChooseAnother, onOpenDo
     <Dialog title={m.title} description={description} size="large" scrollBody={false} onClose={onClose} footer={footer} noticeScope={notices.scope}>
       {step === 'reading' ? (
         files.length > 1 ? (
-          <ReadingMany text={m} files={files} read={read} />
+          <ReadingMany text={m} files={files} read={read} scanning={scanning} />
+        ) : scanning ? (
+          <ScanStep text={m} name={files[0]?.name ?? ''} scanning={scanning} pictures={files[0]?.pictures?.length} />
         ) : (
           <ReadingStep text={m} name={files[0]?.name ?? ''} />
         )
       ) : problem ? (
-        <ProblemStep text={m} problem={problem.problem} pages={problem.pages ?? 0} />
+        <ProblemStep text={m} problem={problem} />
       ) : step === 'link' ? (
         <LinkStep
           text={m}
@@ -591,8 +623,31 @@ function ReadingStep({ text: m, name }: { text: Text; name: string }) {
   );
 }
 
+/** Scanned pages, read one at a time by text recognition; the footer can stop it. */
+export function ScanStep({ text: m, name, scanning, pictures }: { text: Text; name: string; scanning: Scanning; pictures?: number }) {
+  const done = Math.max(0, Math.min(1, (scanning.page - 1) / Math.max(1, scanning.pages)));
+  return (
+    <div role="status" aria-live="polite" className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <p className="text-[15px] font-semibold text-ink">{m.scanTitle}</p>
+      <p className="max-w-[60ch] break-all text-[12.5px] text-ink-muted">{pictures && pictures > 1 ? `${name} · ${m.pictureCount(pictures)}` : name}</p>
+      <div
+        role="progressbar"
+        aria-label={m.scanTitle}
+        aria-valuemin={0}
+        aria-valuemax={scanning.pages}
+        aria-valuenow={scanning.page - 1}
+        className="mt-2 h-1.5 w-full max-w-[360px] overflow-hidden rounded-full bg-surface-sunken"
+      >
+        <span className="block h-full rounded-full bg-accent transition-[width] duration-300 ease-out-soft" style={{ width: `${Math.max(4, done * 100)}%` }} />
+      </div>
+      <p className="text-[13px] font-medium tabular-nums text-ink">{m.scanPage(scanning.page, scanning.pages)}</p>
+      <p className="text-[12px] text-ink-muted">{m.scanHint}</p>
+    </div>
+  );
+}
+
 /** Several files, read one after another: each row says where it is. */
-function ReadingMany({ text: m, files, read }: { text: Text; files: ImportFile[]; read: Array<BatchFile | undefined> }) {
+function ReadingMany({ text: m, files, read, scanning }: { text: Text; files: PaperFile[]; read: Array<BatchFile | undefined>; scanning?: Scanning }) {
   const next = read.findIndex((f) => !f);
   return (
     <div role="status" className="flex flex-1 flex-col items-center justify-center px-6 py-12">
@@ -618,8 +673,8 @@ function ReadingMany({ text: m, files, read }: { text: Text; files: ImportFile[]
               <span className="min-w-0 flex-1 truncate text-[13px] text-ink" title={file.name}>
                 {file.name}
               </span>
-              <span className={`shrink-0 text-[11.5px] ${failed ? 'text-warn-ink' : 'text-ink-muted'}`}>
-                {done ? (failed ? m.fileProblem : m.fileRead) : k === next ? '…' : m.fileWaiting}
+              <span className={`shrink-0 text-[11.5px] tabular-nums ${failed ? 'text-warn-ink' : 'text-ink-muted'}`}>
+                {done ? (failed ? m.fileProblem : m.fileRead) : k === next ? (scanning?.file === k ? m.scanPage(scanning.page, scanning.pages) : '…') : m.fileWaiting}
               </span>
             </li>
           );
@@ -630,20 +685,13 @@ function ReadingMany({ text: m, files, read }: { text: Text; files: ImportFile[]
   );
 }
 
-const PROBLEM_TEXT: Record<Exclude<FileProblem, 'scan'>, 'problemLegacyDoc' | 'problemEncrypted' | 'problemNotPaper' | 'problemUnreadable'> = {
-  legacyDoc: 'problemLegacyDoc',
-  encrypted: 'problemEncrypted',
-  notPaper: 'problemNotPaper',
-  unreadable: 'problemUnreadable',
-};
-
 /** Why the file cannot be imported, in a teacher's words; the footer has the ways back. */
-function ProblemStep({ text: m, problem, pages }: { text: Text; problem: FileProblem; pages: number }) {
+export function ProblemStep({ text: m, problem }: { text: Text; problem: Extract<FileOutcome, { kind: 'problem' }> }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div role="alert" className="max-w-[520px] rounded-xl border border-line bg-surface-sunken px-6 py-5">
         <p className="text-[15px] font-semibold text-ink">{m.problemTitle}</p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">{problem === 'scan' ? m.problemScan(pages) : m[PROBLEM_TEXT[problem]]}</p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">{problemText(m, problem, isDesktop())}</p>
       </div>
     </div>
   );
