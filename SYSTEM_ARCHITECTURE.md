@@ -891,11 +891,11 @@ literal text. Carries **no page setup, headers, or cover** — pasting must not 
 this document's furniture; the cover cannot be expressed in clipboard HTML at all (the
 `.docx` is the fidelity path). A test pins the exclusion.
 
-**A band row pastes as the `.docx` writes it**: one `<p>` with Word's `tab-stops` and
-`mso-tab-count` spans, never a table (other `ColumnsNode`s still paste as a borderless
-table). A page number pastes as a Word field (`mso-field-code`) showing 1; plain text
-prints 1. Both exporters read `bandZones` and `bandCellPieces` (`render/ir.ts`). Its
-`data-zone` spans are how the start screen's thumbnail (which renders this HTML) lays the row out.
+**Every `ColumnsNode` pastes as the `.docx` writes it** (`columnsHtml`): one `<p>` with
+Word's `tab-stops` (the `.docx`'s positions; a hang as `text-indent`) and `mso-tab-count`
+spans, never a table. A band row's page number pastes as a Word field (`mso-field-code`)
+showing 1. The start screen's thumbnail renders this HTML and lays rows out by inert hooks:
+a band's `data-zone` spans, other cells' `--w`/`--x` custom properties.
 
 ### An inserted picture is reduced to what the paper can print (`src/export/imageImport.ts`)
 

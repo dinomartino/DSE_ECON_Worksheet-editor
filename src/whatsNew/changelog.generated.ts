@@ -107,6 +107,12 @@ a version heading is edited afterwards.
   <!-- zh: **較長的頁首、頁尾和標題區行，換行位置與 Word 一致。** 一行太長放不下時，頁面上每行的字與列印出來的 Word
   檔案相同：置中的標題保持置中，旁邊放不下的文字如 Word 一樣移到下一行。頁首和頁尾的文字以 Word 列印的字號顯示，不再較小。
   在頁碼、總分或填寫橫線前後加字的「+」只會在滑鼠指向時出現，亦不會再出現在頁邊或蓋住其他文字。 -->
+- **MC options side by side and label lists now paste into Word as tabbed lines, not tables.**
+  When you copy a worksheet to paste into Word, options printed in one row or two columns, and
+  label lists such as numbered instructions, arrive as lines lined up with tabs at the same
+  places as in the Word file, so they edit like the rest of the paper.
+  <!-- zh: **並排的 MC 選項和標籤列表貼到 Word 時會以 Tab 對齊的文字行出現，不再變成表格。** 複製工作紙再貼到 Word 時，
+  排成一行或兩欄的選項，以及編號指示等標籤列表，會以 Tab 對齊，位置與 Word 檔案相同，編輯起來與試卷其他部分一樣。 -->
 
 ## 0.7.0 — 2026-10-08
 
