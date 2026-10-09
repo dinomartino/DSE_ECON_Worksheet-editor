@@ -107,6 +107,9 @@ export const DOCK_GAP_PX = 2;
 /** The format bar's height as one row: `h-7` buttons, `py-1`, a 1 px border. */
 const FORMAT_BAR_ROW_PX = 38;
 
+/** The ✕'s reserved lane: its `right-1.5` inset, its `min-w-7` box, the bar's `gap-0.5`. */
+const CLOSE_LANE_PX = 6 + 28 + 2;
+
 /*
  * The docked format bar's rendered height, published for the context bar under it: a
  * narrow page column wraps the format bar onto a second row, and a fixed one-row step
@@ -223,7 +226,14 @@ export function FormatToolbar({
       // narrow at small window widths, and a single non-wrapping row would push the
       // delete button out of reach rather than folding onto a second line.
       className={`fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-[#454138] bg-[#211f1d]/95 px-1.5 py-1 shadow-xl backdrop-blur ${TOOLBAR_ENTER}`}
-      style={{ left: dock.left, width: dock.width, top: dock.top }}
+      style={{
+        left: dock.left,
+        width: dock.width,
+        top: dock.top,
+        // The ✕'s lane: it is pinned top-right rather than wrapping, so the controls
+        // fold onto a second row before they reach it and it never sits alone on one.
+        ...(onClose ? { paddingRight: CLOSE_LANE_PX } : {}),
+      }}
       /*
        * Keep focus on the page so the bar never steals the selection it is acting on —
        * but *not* by cancelling mousedown outright.
@@ -266,7 +276,7 @@ export function FormatToolbar({
       <select
         aria-label={m.fontSize}
         title={m.fontSize}
-        className="h-7 cursor-pointer rounded bg-[#33302c] px-1 text-xs text-[#f1eee9] outline-none transition-[background-color] duration-150 ease-out-soft hover:bg-[#3d3a35] focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
+        className="h-7 cursor-pointer rounded bg-[#33302c] min-w-9 px-1 [field-sizing:content] text-xs text-[#f1eee9] outline-none transition-[background-color] duration-150 ease-out-soft hover:bg-[#3d3a35] focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
         value={format?.fontSize ?? inheritedPt ?? ''}
         onChange={(event) =>
           onChange({ fontSize: event.target.value ? Number(event.target.value) : undefined })
@@ -490,12 +500,13 @@ export function FormatToolbar({
       {onClose && (
         // Its own dismiss, because a docked bar no longer disappears just by looking
         // away from the selection — and with delete now a bin glyph, an ✕ here cannot
-        // be mistaken for "delete this element".
+        // be mistaken for "delete this element". Out of the flow, in the lane the bar's
+        // right padding reserves: on the first row's line whether or not the bar wraps.
         <button
           type="button"
           aria-label={m.doneFormatting}
           title={m.done}
-          className={`${BTN} ml-auto ${IDLE}`}
+          className={`${BTN} absolute right-1.5 top-1 ${IDLE}`}
           onClick={onClose}
         >
           ✕

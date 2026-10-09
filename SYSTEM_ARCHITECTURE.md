@@ -852,7 +852,8 @@ anchor; a click collapses the range.
 ### A cell formats like any other text
 
 `tableCell` is in `isFormattable`; per-run formatting via `textOfTarget`. `CellAlign`
-wins over `TextFormat.align`. `model/table.ts` rules: **ragged rows are real**
+wins over `TextFormat.align` in every backend (absent = left, as Word prints it); a
+`ColumnsNode` cell's tab stop wins the same way. `model/table.ts` rules: **ragged rows are real**
 (`insertColumn` pads short rows first); **a covered cell is neither merge target nor
 source**; **one row and one column are the floor**.
 
@@ -2153,10 +2154,11 @@ and the way into the drawing canvas for a selected figure.
   cell picture and captions in the sidebar, and the panel's own copies of the bar's
   verbs were removed with it.
 - **Cell text alignment lives only here** (T⇤ T↔ T⇥, `CellAlign`): the format bar
-  hides its align group for a cell (`alignable`); a stored `TextFormat.align` is kept and
-  rendered as before. Table moves carry a drawn table glyph, so no arrow means two things.
+  hides its align group for a cell (`alignable`); a stored `TextFormat.align` is kept but
+  aligns nothing. Table moves carry a drawn table glyph, so no arrow means two things.
 - **Docks at the format bar's measured height** (`useFormatBarStep`): a narrow column
-  wraps the format bar, and `DockShield` claims the 2 px seam either way.
+  wraps the format bar, and `DockShield` claims the 2 px seam either way. The format bar's
+  ✕ is pinned top-right in a reserved lane, never a wrapping item.
 - **Verbs act through `replaceBlock` by id** — the canvases' route — so the bar needs
   no owner and works on nested tables (a figure row's, a source body's) unchanged.
 - Range rules carry over: align acts on the whole sweep and reads pressed only when it
