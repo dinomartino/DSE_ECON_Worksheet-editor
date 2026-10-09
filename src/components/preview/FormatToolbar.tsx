@@ -91,6 +91,27 @@ export const TOOLBAR_BTN =
   'flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium ' +
   'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
   'hover:bg-[#3d3a35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]';
+
+/** How far below the page column's top edge the docked bars sit. */
+export const DOCK_INSET_PX = 8;
+
+/**
+ * Claims the gap above a docked bar, so the page scrolled under it cannot be reached
+ * there: a page hint's tooltip ("Edit the footer (double-click)") would open over the
+ * bar, and a double-click would wake the region behind it.
+ */
+export function DockShield({ gapPx }: { gapPx: number }) {
+  // `bottom-full` meets the padding box, so one more pixel covers the border.
+  return (
+    <span
+      aria-hidden
+      data-print-hide
+      className="absolute -inset-x-px bottom-full"
+      style={{ height: gapPx + 1 }}
+    />
+  );
+}
+
 /** The docked bars' entrance: dropping in from the top edge they dock to. */
 export const TOOLBAR_ENTER = 'animate-pop-in origin-top';
 export const TOOLBAR_ACTIVE = 'bg-[#0d77c9] text-white hover:bg-[#2b8ad3]';
@@ -167,6 +188,7 @@ export function FormatToolbar({
         event.preventDefault();
       }}
     >
+      <DockShield gapPx={DOCK_INSET_PX} />
       {subject && (
         // Names the target, since the bar no longer sits beside it. `mr-auto` pushes
         // every control to the right edge, keeping them in one place as the label's

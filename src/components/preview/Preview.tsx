@@ -189,7 +189,7 @@ export interface BandEditingHandlers {
   };
 }
 import { ContextDock } from "./ContextBar";
-import { FormatToolbar } from "./FormatToolbar";
+import { DOCK_INSET_PX, FormatToolbar } from "./FormatToolbar";
 import {
   PageContextMenu,
   type PageMenuGroup,
@@ -4197,7 +4197,7 @@ function ToolbarDock({
     const measure = () => {
       const paper = sheet.getBoundingClientRect();
       const view = scroller.getBoundingClientRect();
-      setDockRect({ left: paper.left, width: paper.width, top: view.top + 8 });
+      setDockRect({ left: paper.left, width: paper.width, top: view.top + DOCK_INSET_PX });
 
       // The selected text's own paragraph carries the size; the editable span inherits it.
       const selected = container.querySelector<HTMLElement>('[data-selected="true"]');
