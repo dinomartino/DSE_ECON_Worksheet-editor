@@ -5,7 +5,7 @@ export const START_PANEL_MESSAGES = defineMessages({
   greetingFirst: { en: 'Start your first worksheet.', zh: '開始第一份工作紙。' },
   greeting: { en: 'Start a worksheet, or pick up where you left off.', zh: '開始新的工作紙，或繼續上次的工作。' },
   newWorksheet: { en: 'New worksheet', zh: '新增工作紙' },
-  importPaper: { en: 'Import from Word or PDF…', zh: '從 Word 或 PDF 匯入…' },
+  importPaper: { en: 'Import from Word, PDF or picture…', zh: '從 Word、PDF 或圖片匯入…' },
   openFile: { en: 'Open a file…', zh: '開啟檔案…' },
   openFileHint: { en: '.json or backup .zip', zh: '.json 或備份 .zip' },
   library: { en: 'Library', zh: '資源庫' },

@@ -229,7 +229,7 @@ export const WELCOME_MESSAGES = defineMessages({
   openFile: { en: 'Open a file…', zh: '開啟檔案…' },
   restoring: { en: 'Restoring…', zh: '還原中…' },
   restoreBackup: { en: 'Restore a backup…', zh: '還原備份…' },
-  orDrop: { en: 'Or drop a .json, a .zip, or a Word or PDF file anywhere here.', zh: '或將 .json、.zip，或 Word 或 PDF 檔案放到這裏。' },
+  orDrop: { en: 'Or drop a .json, a .zip, or a Word, PDF or picture file anywhere here.', zh: '或將 .json、.zip，或 Word、PDF 或圖片檔案放到這裏。' },
   /** Desktop, no folder chosen: the Settings setup step's other-computer tip, from this side. */
   otherComputer: {
     en: 'Using Econ Studio on another computer? Choose the same folder here too.',

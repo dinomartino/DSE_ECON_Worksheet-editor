@@ -5,7 +5,7 @@ built (§ 10): the engine (`feature/paste-import-core`) and the review dialog (`
 Phase 2's `.docx` reader and phase 3's `.pdf` reader are built (§ 10). Answers kept in
 another file are built, engine and UI (§ 11).
 **The way in is file-only** (user decision, 2026-10-08: "if a teacher can copy the text, they
-can paste it into a worksheet themselves"): Import from Word or PDF… on the home screen, or a
+can paste it into a worksheet themselves"): Import from Word, PDF or picture… on the home screen, or a
 file dropped there (§ 6, § 10). The clipboard readers stay in the engine, tested, unused by the app.
 Open questions for the user are in § 9.
 
@@ -198,7 +198,7 @@ back through the same pipeline and review.
 
 File-only (2026-10-08). The home screen is the one way in:
 
-- **Import from Word or PDF… / 從 Word 或 PDF 匯入…**, a secondary button under New worksheet
+- **Import from Word, PDF or picture… / 從 Word、PDF 或圖片匯入…**, a secondary button under New worksheet
   (empty desk or not). It opens the system file chooser (`.docx`, `.pdf`, and `.doc` so an old
   file can be explained), several files at once; the native open sheet on desktop (`pickFiles`).
 - **Dropped `.docx` or `.pdf` files** on the home screen (web drop or the desktop shell's native

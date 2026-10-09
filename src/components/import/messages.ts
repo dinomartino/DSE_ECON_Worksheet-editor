@@ -5,7 +5,7 @@ const plural = (n: number, one: string, many = `${one}s`) => (n === 1 ? one : ma
 /** Import from Word or PDF (`ImportDialog`): reading the file, the review, and Save as. */
 export const IMPORT_MESSAGES = defineMessages({
   // The file: reading it, and why it could not be read
-  title: { en: 'Import from Word or PDF', zh: '從 Word 或 PDF 匯入' },
+  title: { en: 'Import from Word, PDF or picture', zh: '從 Word、PDF 或圖片匯入' },
   reading: { en: (name: string) => `Reading ${name}…`, zh: (name: string) => `正在讀取 ${name}…` },
   readingHint: { en: 'A long PDF can take a few seconds.', zh: '較長的 PDF 可能需時數秒。' },
   pages: { en: (n: number) => `${n} ${plural(n, 'page')}`, zh: (n: number) => `${n} 頁` },
