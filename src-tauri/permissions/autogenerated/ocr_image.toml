@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ocr-image"
+description = "Enables the ocr_image command without any pre-configured scope."
+commands.allow = ["ocr_image"]
+
+[[permission]]
+identifier = "deny-ocr-image"
+description = "Denies the ocr_image command without any pre-configured scope."
+commands.deny = ["ocr_image"]

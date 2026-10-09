@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ocr-status"
+description = "Enables the ocr_status command without any pre-configured scope."
+commands.allow = ["ocr_status"]
+
+[[permission]]
+identifier = "deny-ocr-status"
+description = "Denies the ocr_status command without any pre-configured scope."
+commands.deny = ["ocr_status"]

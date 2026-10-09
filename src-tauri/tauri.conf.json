@@ -37,6 +37,12 @@
     "longDescription": "Build bilingual (English / 繁體中文) HKDSE Economics worksheets and export native Microsoft Word documents.",
     "copyright": "© Tino Ho",
     "license": "MIT",
+    "resources": {
+      "resources/ocr/det.onnx": "ocr/det.onnx",
+      "resources/ocr/rec.onnx": "ocr/rec.onnx",
+      "resources/ocr/rec_dict.txt": "ocr/rec_dict.txt",
+      "resources/ocr/NOTICE.txt": "ocr/NOTICE.txt"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
