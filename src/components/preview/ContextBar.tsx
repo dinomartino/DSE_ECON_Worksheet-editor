@@ -27,7 +27,14 @@ import type {
 } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { ptToTwips } from '@/model/page';
-import { TOOLBAR_ACTIVE, TOOLBAR_BTN, TOOLBAR_ENTER, TOOLBAR_IDLE } from './FormatToolbar';
+import {
+  DOCK_INSET_PX,
+  DockShield,
+  TOOLBAR_ACTIVE,
+  TOOLBAR_BTN,
+  TOOLBAR_ENTER,
+  TOOLBAR_IDLE,
+} from './FormatToolbar';
 import { useMessages } from '@/i18n/language';
 import { CONTEXT_BAR_MESSAGES } from './ContextBar.messages';
 
@@ -166,7 +173,8 @@ function TableRow({ block }: { block: TableBlock }) {
                   )
                 }
               >
-                {align === 'left' ? '⇤' : align === 'center' ? '↔' : '⇥'}
+                {/* "T" for the text in the cell; the bare arrows below move the table. */}
+                {align === 'left' ? 'T⇤' : align === 'center' ? 'T↔' : 'T⇥'}
               </BarButton>
             );
           })}
@@ -245,7 +253,7 @@ function TableRow({ block }: { block: TableBlock }) {
           pressed={resolveTableAlign(block) === align}
           onClick={() => apply(setTableAlign(block, align))}
         >
-          {align === 'left' ? 'T⇤' : align === 'center' ? 'T↔' : 'T⇥'}
+          {align === 'left' ? '⇤' : align === 'center' ? '↔' : '⇥'}
         </BarButton>
       ))}
 
@@ -356,7 +364,7 @@ export function ContextDock({
     const measure = () => {
       const paper = sheet.getBoundingClientRect();
       const view = scroller.getBoundingClientRect();
-      setDock({ left: paper.left, width: paper.width, top: view.top + 8 });
+      setDock({ left: paper.left, width: paper.width, top: view.top + DOCK_INSET_PX });
     };
     const frame = requestAnimationFrame(measure);
     window.addEventListener('scroll', measure, true);
@@ -395,6 +403,8 @@ export function ContextDock({
       // is acting on; form controls (none today) would keep their own behaviour.
       onMouseDown={(event) => event.preventDefault()}
     >
+      {/* Under the format bar the seam is the 40 px step less its 38 px row. */}
+      <DockShield gapPx={belowFormatBar ? 2 : DOCK_INSET_PX} />
       {table ? (
         <TableRow block={table} />
       ) : figure ? (

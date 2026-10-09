@@ -78,8 +78,18 @@ a version heading is edited afterwards.
   app's language.
   <!-- zh: **課題名稱和題目預覽跟隨題目的語言。** 在題庫中，課題及分課題名稱和每條題目的預覽文字會以題目顯示的語言呈現
   （EN、中文，或 EN+中 時兩者並列），而非程式介面的語言；以所選題目建立的新工作紙亦以此語言命名。在試卷中，側欄亦然。按鈕和數目仍跟隨介面語言。 -->
+- **Table tools: the buttons marked "T" now align the text in a cell.** In the bar above the
+  page, T⇤ T↔ T⇥ align the text in the cells you selected, and the plain arrows ⇤ ↔ ⇥ move the
+  whole table on the page. Their tooltips say so.
+  <!-- zh: **表格工具：標有「T」的按鈕現在用來對齊儲存格內的文字。** 在頁面上方的工具列中，T⇤ T↔ T⇥
+  對齊所選儲存格的文字，而沒有 T 的箭咀 ⇤ ↔ ⇥ 則移動整個表格在頁面上的位置。按鈕提示亦有說明。 -->
 
 ### Fixed
+- **A page hint no longer opens over the tools bar.** With the page scrolled under the bar,
+  pointing just above it could show "Edit the footer (double-click)" on top of the bar, and a
+  double-click there opened the footer. That thin gap now belongs to the bar.
+  <!-- zh: **頁面提示不再蓋住工具列。** 頁面捲動到工具列下方時，指向工具列上方的空隙可能會在工具列上顯示
+  「編輯頁尾（按兩下）」，在該處按兩下更會開始編輯頁尾。現在這道空隙屬於工具列。 -->
 - **Headers, footers and title blocks are laid out on the page as Word prints them.** A long
   line such as "DBS Economics G11 Enhancement Class (2025-26) Assessment 1" now stays on one
   line on the page and in the PDF instead of wrapping into a narrow column, and a centred title
