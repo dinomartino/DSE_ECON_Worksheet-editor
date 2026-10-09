@@ -13,7 +13,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   with Copy); band rows emulate Word tab stops (`bandTabPlan` pinned to the exporter), masthead page numbers are
   fields, clipboard pastes every ColumnsNode as tab stops. Within 1pt of LibreOffice. **Unverified in Word:**
   clipboard paste, a tab past the last stop. Left: masthead rule 1.5pt vs 1pt, #999 vs 808080.
-- `npm run typecheck` trips on the Tauri build folder's codegen .ts after a local `desktop:build`; source is clean.
 - **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
   only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
 - **Merged, unreleased (2026-10-08):** **Import from Word or PDF** (home screen; file-only by the user's
@@ -21,8 +20,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   Paper language settings; several files at once + "Answers from" linking (§ 11).
 - **OCR merged, unreleased (2026-10-09):** PP-OCRv6 small in Rust on static ORT 1.22 (`src-tauri/src/ocr/`,
   models fetched by `build.rs`, SHA-pinned), scans + pictures read page by page (`src/import/ocrLayout.ts`,
-  `paste-import.md` § 13). DMG +33 MB. Unverified: Windows CI (push `develop`), Intel Mac, macOS 12–13.2, signed
-  build. In flight: `fix/ocr-e2e` (real-engine end to end + tsconfig excludes the Tauri build folder).
+  `paste-import.md` § 13). DMG +33 MB. Proven end to end in the release `.app` on real scans + photos.
+  Unverified: Windows CI (push `develop`), Intel Mac, macOS 12–13.2, signed build, the native open sheet.
 - **Check next:** the Tauri window (native open sheet and drop, pdf.js main-thread fallback on macOS);
   the editor showed 31 pages for the imported 2019 Paper 2 vs 24 in LibreOffice (uninvestigated);
   題庫 only lands on an arbitrary untagged question, not the first added; S6 Paper I Q42 ("B" without a dot)
@@ -71,9 +70,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   Trash) pauses sync. Windows code passes CI but never ran on a real PC or provider.
 - Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
-## Last verified (2026-10-09, `develop` after band-row merges)
+## Last verified (2026-10-09, `develop` after the OCR merges)
 
-- `npm test` 5350, samples 6, lint 40, tsc clean (excluding Tauri build artifacts).
+- `npm test` 5403, `cargo test` 68, typecheck + build (bundle check) green, lint 40, samples 6.
 
 ## Log
 
