@@ -28,12 +28,14 @@ import type {
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { ptToTwips } from '@/model/page';
 import {
+  DOCK_GAP_PX,
   DOCK_INSET_PX,
   DockShield,
   TOOLBAR_ACTIVE,
   TOOLBAR_BTN,
   TOOLBAR_ENTER,
   TOOLBAR_IDLE,
+  useFormatBarStep,
 } from './FormatToolbar';
 import { useMessages } from '@/i18n/language';
 import { CONTEXT_BAR_MESSAGES } from './ContextBar.messages';
@@ -78,6 +80,28 @@ function BarButton({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * A small ruled table, drawn rather than typed: `▦` renders as a dense filled block in
+ * the toolbar font and reads as noise at 12 px.
+ */
+function TableGlyph() {
+  return (
+    <svg
+      aria-hidden
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      className="mr-px shrink-0"
+    >
+      <rect x="1.5" y="1.5" width="9" height="9" rx="1" />
+      <path d="M1.5 4.5h9M1.5 7.5h9M6 1.5v9" />
+    </svg>
   );
 }
 
@@ -173,7 +197,7 @@ function TableRow({ block }: { block: TableBlock }) {
                   )
                 }
               >
-                {/* "T" for the text in the cell; the bare arrows below move the table. */}
+                {/* "T" for the text in the cell; a table glyph marks the buttons that move the table. */}
                 {align === 'left' ? 'T⇤' : align === 'center' ? 'T↔' : 'T⇥'}
               </BarButton>
             );
@@ -253,6 +277,8 @@ function TableRow({ block }: { block: TableBlock }) {
           pressed={resolveTableAlign(block) === align}
           onClick={() => apply(setTableAlign(block, align))}
         >
+          {/* The table glyph: these move the whole table, the T buttons its text. */}
+          <TableGlyph />
           {align === 'left' ? '⇤' : align === 'center' ? '↔' : '⇥'}
         </BarButton>
       ))}
@@ -353,6 +379,8 @@ export function ContextDock({
     !table && figureBlockId ? findFigureBlock(worksheet, figureBlockId) : undefined;
 
   const [dock, setDock] = useState<{ left: number; width: number; top: number }>();
+  // The format bar's measured height plus the seam: it wraps to two rows when narrow.
+  const formatBarStep = useFormatBarStep();
 
   const live = Boolean(table || figure);
   useEffect(() => {
@@ -395,16 +423,14 @@ export function ContextDock({
       style={{
         left: dock.left,
         width: dock.width,
-        // Under the format bar when both dock (the bars are one row tall each), where
-        // the format bar would be otherwise.
-        top: dock.top + (belowFormatBar ? 40 : 0),
+        // Under the format bar when both dock, where the format bar would be otherwise.
+        top: dock.top + (belowFormatBar ? formatBarStep : 0),
       }}
       // The same focus rule as the format bar: the page keeps the selection the bar
       // is acting on; form controls (none today) would keep their own behaviour.
       onMouseDown={(event) => event.preventDefault()}
     >
-      {/* Under the format bar the seam is the 40 px step less its 38 px row. */}
-      <DockShield gapPx={belowFormatBar ? 2 : DOCK_INSET_PX} />
+      <DockShield gapPx={belowFormatBar ? DOCK_GAP_PX : DOCK_INSET_PX} />
       {table ? (
         <TableRow block={table} />
       ) : figure ? (

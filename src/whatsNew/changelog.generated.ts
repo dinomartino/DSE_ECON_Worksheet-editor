@@ -80,13 +80,21 @@ a version heading is edited afterwards.
   app's language.
   <!-- zh: **課題名稱和題目預覽跟隨題目的語言。** 在題庫中，課題及分課題名稱和每條題目的預覽文字會以題目顯示的語言呈現
   （EN、中文，或 EN+中 時兩者並列），而非程式介面的語言；以所選題目建立的新工作紙亦以此語言命名。在試卷中，側欄亦然。按鈕和數目仍跟隨介面語言。 -->
-- **Table tools: the buttons marked "T" now align the text in a cell.** In the bar above the
-  page, T⇤ T↔ T⇥ align the text in the cells you selected, and the plain arrows ⇤ ↔ ⇥ move the
-  whole table on the page. Their tooltips say so.
-  <!-- zh: **表格工具：標有「T」的按鈕現在用來對齊儲存格內的文字。** 在頁面上方的工具列中，T⇤ T↔ T⇥
-  對齊所選儲存格的文字，而沒有 T 的箭咀 ⇤ ↔ ⇥ 則移動整個表格在頁面上的位置。按鈕提示亦有說明。 -->
+- **Table tools: the buttons marked "T" align the text in a cell, the ones with a small table
+  move the table.** In the bar above the page, T⇤ T↔ T⇥ align the text in the cells you
+  selected, and the arrows with a table icon move the whole table on the page. With a cell
+  selected, the formatting bar no longer shows a second set of alignment arrows, so each kind
+  of alignment has one place. Their tooltips say so.
+  <!-- zh: **表格工具：標有「T」的按鈕對齊儲存格內的文字，帶有小表格圖示的按鈕則移動表格。** 在頁面上方的工具列中，
+  T⇤ T↔ T⇥ 對齊所選儲存格的文字，而帶有表格圖示的箭咀則移動整個表格在頁面上的位置。選取儲存格時，格式工具列不再
+  顯示另一組對齊箭咀，每種對齊各有一個位置。按鈕提示亦有說明。 -->
 
 ### Fixed
+- **In a narrow window the table tools no longer cover the formatting bar.** When the
+  formatting bar folds onto two lines, the table tools now sit below both lines instead of
+  hiding the second one.
+  <!-- zh: **視窗較窄時，表格工具不再遮住格式工具列。** 格式工具列摺成兩行時，表格工具現在會放在兩行之下，
+  不再遮住第二行。 -->
 - **A page hint no longer opens over the tools bar.** With the page scrolled under the bar,
   pointing just above it could show "Edit the footer (double-click)" on top of the bar, and a
   double-click there opened the footer. That thin gap now belongs to the bar.

@@ -7416,6 +7416,9 @@ export function Preview({
                 : m[TARGET_NAME[selectedElement.target.kind]]
             }
             onClose={() => setSelectedElement(undefined)}
+            /* A cell's alignment is the context bar's T⇤ T↔ T⇥ (`CellAlign`); a second
+               set of arrows here would mean "text" right above ▦ arrows meaning "table". */
+            alignable={selectedElement.target.kind !== "tableCell"}
             /*
              * Report the *selection's* own formatting when a range is live, so the bar
              * shows what those characters actually carry — reporting the element's

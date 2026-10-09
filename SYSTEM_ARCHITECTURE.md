@@ -2152,6 +2152,11 @@ and the way into the drawing canvas for a selected figure.
 - **One verb, one place**: rows/columns stay on the page's grid chips, padding, the
   cell picture and captions in the sidebar, and the panel's own copies of the bar's
   verbs were removed with it.
+- **Cell text alignment lives only here** (T⇤ T↔ T⇥, `CellAlign`): the format bar
+  hides its align group for a cell (`alignable`); a stored `TextFormat.align` is kept and
+  rendered as before. Table moves carry a drawn table glyph, so no arrow means two things.
+- **Docks at the format bar's measured height** (`useFormatBarStep`): a narrow column
+  wraps the format bar, and `DockShield` claims the 2 px seam either way.
 - **Verbs act through `replaceBlock` by id** — the canvases' route — so the bar needs
   no owner and works on nested tables (a figure row's, a source body's) unchanged.
 - Range rules carry over: align acts on the whole sweep and reads pressed only when it

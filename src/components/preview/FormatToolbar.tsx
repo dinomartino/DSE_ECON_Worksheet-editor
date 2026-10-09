@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { TextAlign, TextFormat } from '@/model/types';
 import { useMessages } from '@/i18n/language';
 import type { TextKey } from '@/i18n/catalogue';
@@ -75,6 +75,12 @@ interface Props {
    */
   onInsertBlank?: () => void;
   onReset: () => void;
+  /**
+   * False when something else owns the target's alignment: a table cell's is its
+   * `CellAlign`, set by the context bar's T⇤ T↔ T⇥ right below, and it wins over
+   * `TextFormat.align` in the .docx. Hiding the group leaves any stored align alone.
+   */
+  alignable?: boolean;
   /** Dismiss the bar, clearing the page selection. */
   onClose?: () => void;
   /** Structural actions offered alongside formatting. */
@@ -94,6 +100,42 @@ export const TOOLBAR_BTN =
 
 /** How far below the page column's top edge the docked bars sit. */
 export const DOCK_INSET_PX = 8;
+
+/** The seam between the format bar and the context bar docked under it. */
+export const DOCK_GAP_PX = 2;
+
+/** The format bar's height as one row: `h-7` buttons, `py-1`, a 1 px border. */
+const FORMAT_BAR_ROW_PX = 38;
+
+/*
+ * The docked format bar's rendered height, published for the context bar under it: a
+ * narrow page column wraps the format bar onto a second row, and a fixed one-row step
+ * would lay the context bar over it. Layout height (`offsetHeight`), so the entrance
+ * animation's scale never reads as a shorter bar.
+ */
+let formatBarHeight: number | undefined;
+const formatBarListeners = new Set<() => void>();
+function publishFormatBarHeight(height: number | undefined) {
+  if (height === formatBarHeight) return;
+  formatBarHeight = height;
+  for (const listener of formatBarListeners) listener();
+}
+function subscribeFormatBarHeight(listener: () => void) {
+  formatBarListeners.add(listener);
+  return () => {
+    formatBarListeners.delete(listener);
+  };
+}
+
+/** How far below the format bar's top the next docked bar starts. */
+export function useFormatBarStep(): number {
+  const height = useSyncExternalStore(
+    subscribeFormatBarHeight,
+    () => formatBarHeight,
+    () => undefined,
+  );
+  return (height ?? FORMAT_BAR_ROW_PX) + DOCK_GAP_PX;
+}
 
 /**
  * Claims the gap above a docked bar, so the page scrolled under it cannot be reached
@@ -130,6 +172,7 @@ export function FormatToolbar({
   vertAlign,
   onInsertBlank,
   onReset,
+  alignable = true,
   onClose,
   onDelete,
   onMove,
@@ -147,6 +190,18 @@ export function FormatToolbar({
     window.addEventListener('mousedown', close);
     return () => window.removeEventListener('mousedown', close);
   }, [colorOpen]);
+
+  useLayoutEffect(() => {
+    const bar = ref.current;
+    if (!bar) return;
+    publishFormatBarHeight(bar.offsetHeight);
+    const observer = new ResizeObserver(() => publishFormatBarHeight(bar.offsetHeight));
+    observer.observe(bar);
+    return () => {
+      observer.disconnect();
+      publishFormatBarHeight(undefined);
+    };
+  }, []);
 
   const toggle = (key: 'bold' | 'italic' | 'underline') =>
     onChange({ [key]: format?.[key] ? undefined : true });
@@ -313,23 +368,26 @@ export function FormatToolbar({
         </button>
       )}
 
-      <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
-
-      {ALIGNMENTS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          aria-label={m[option.label]}
-          aria-pressed={format?.align === option.value}
-          title={m[option.label]}
-          className={`${BTN} ${format?.align === option.value ? ACTIVE : IDLE}`}
-          onClick={() =>
-            onChange({ align: format?.align === option.value ? undefined : option.value })
-          }
-        >
-          {option.glyph}
-        </button>
-      ))}
+      {alignable && (
+        <>
+          <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
+          {ALIGNMENTS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-label={m[option.label]}
+              aria-pressed={format?.align === option.value}
+              title={m[option.label]}
+              className={`${BTN} ${format?.align === option.value ? ACTIVE : IDLE}`}
+              onClick={() =>
+                onChange({ align: format?.align === option.value ? undefined : option.value })
+              }
+            >
+              {option.glyph}
+            </button>
+          ))}
+        </>
+      )}
 
       <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
 
