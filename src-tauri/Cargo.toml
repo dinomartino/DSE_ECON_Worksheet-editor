@@ -16,6 +16,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2.6.3", features = [] }
+# Verifies the OCR models build.rs downloads.
+sha2 = "0.10"
 
 [dependencies]
 serde_json = "1.0"
@@ -38,6 +40,13 @@ sha2 = "0.10"
 notify = "8"
 notify-debouncer-full = "0.6"
 getrandom = "0.3"
+# Offline OCR (`src/ocr`): PP-OCRv6 small on ONNX Runtime, linked statically (no dylib in the
+# bundle). rc.10 pins ONNX Runtime 1.22.0, the last pyke static build that includes Intel Macs.
+# CI vendors the same archives through ORT_LIB_LOCATION (`scripts/fetch-onnxruntime.mjs`);
+# `download-binaries` is the local fallback and fetches the same file and SHA-256.
+ort = { version = "=2.0.0-rc.10", default-features = false, features = ["std", "download-binaries"] }
+ort-sys = { version = "=2.0.0-rc.10", default-features = false }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 
 # Export → PDF writes the file natively (`src/pdf`). The versions wry already pulls in,
 # default features off (they default to every framework class).
@@ -58,3 +67,14 @@ windows = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_Sys
 # The updater has no mobile implementation; keep it off any non-desktop target.
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
+
+# `tauri dev` and `cargo test` decode and resample whole scanned pages for OCR; unoptimised,
+# the image crates take seconds a page.
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3

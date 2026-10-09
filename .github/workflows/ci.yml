@@ -81,6 +81,30 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # OCR links ONNX Runtime statically. Vendor the pinned, checksummed archive and point
+      # ort-sys at it, rather than ort-sys downloading into a cache dir a restored target/
+      # would not know is gone.
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ort
+          key: onnxruntime-1.22.0-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Vendor ONNX Runtime
+        shell: bash
+        run: |
+          dir=$(node ../scripts/fetch-onnxruntime.mjs "$(rustc -vV | sed -n 's/^host: //p')" "$RUNNER_TEMP/ort")
+          echo "ORT_LIB_LOCATION=$dir" >> "$GITHUB_ENV"
+
+      # build.rs downloads the OCR models (31 MB, SHA-256 checked) when missing.
+      - uses: actions/cache@v4
+        with:
+          path: src-tauri/resources/ocr/*.onnx*
+          key: ocr-models-${{ hashFiles('src-tauri/build.rs') }}
+
       - run: cargo check --locked --all-targets
 
       - run: cargo test --locked

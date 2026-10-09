@@ -1,0 +1,16 @@
+OCR models bundled with Econ Studio
+
+det.onnx      PP-OCRv6_small_det, https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx
+              revision 28fe5895c24fd108c19eb3e8479f4ab385fbfc62
+              SHA-256 d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e
+rec.onnx      PP-OCRv6_small_rec, https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx
+              revision b8f84f0b80c529de40b4fbb3544b84fa7233a513
+              SHA-256 5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634
+rec_dict.txt  PostProcess.character_dict of that revision's inference.yml, one entry per line
+              SHA-256 b5f2bfe2bdd9448429e3e82b51c789775d9b42f2403d082b00662eb77e401c5d
+
+Copyright (c) PaddlePaddle Authors. Licensed under the Apache License, Version 2.0
+(https://www.apache.org/licenses/LICENSE-2.0). The files are redistributed unmodified.
+
+Inference runs on ONNX Runtime 1.22.0, Copyright (c) Microsoft Corporation, MIT License
+(https://github.com/microsoft/onnxruntime/blob/main/LICENSE).

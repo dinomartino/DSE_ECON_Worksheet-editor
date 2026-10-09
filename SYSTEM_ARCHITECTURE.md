@@ -3391,6 +3391,27 @@ The print sheet stays as the fallback, and needs `core:webview:allow-print`: on 
 shell replaces `window.print` with an async `plugin:webview|print` call that opens it.
 It resolves as the sheet opens; `afterprint` still fires when it closes.
 
+**Offline OCR** (`src-tauri/src/ocr/`) is PP-OCRv6 small (detection + recognition, chosen in
+`docs/research/2026-10-ocr-survey.md`) on ONNX Runtime 1.22.0 through `ort` 2.0.0-rc.10,
+**linked statically**: no dylib in the bundle to sign. Two commands, granted as
+`allow-ocr-status` / `allow-ocr-image`:
+- `ocr_status` → `{ available, engine, version }`; it never loads the models.
+- `ocr_image`: raw body = PNG/JPEG bytes, header `x-ocr-max-side` (default 2400) →
+  `{ width, height, lines: [{ text, score, box, angle? }], ms }`. Boxes are clockwise from
+  the top-left in the decoded image's pixels (EXIF-rotated), even when the page was read
+  scaled down; `angle` is the reading direction (−90: bottom-to-top margin text). Errors
+  start `decode:`, `model:` or `internal:`. The models load once, lazily, into managed
+  state; pages run one at a time on the blocking pool.
+
+Detection runs at ≤960 px (the trial's best settings, `ocr/detect.rs`); lines are cut from
+the full page and recognised 4 at a time. Models are bundle resources (`ocr/`): `build.rs`
+downloads the two `.onnx` files, pinned by Hugging Face revision and SHA-256, into
+`src-tauri/resources/ocr/` (gitignored beside the committed `rec_dict.txt`, `NOTICE.txt`).
+ONNX Runtime is pyke's static build (1.22.0: the last with an Intel-Mac archive). CI and
+releases vendor it per target with `scripts/fetch-onnxruntime.mjs` → `ORT_LIB_LOCATION`;
+local builds fall back to `ort`'s `download-binaries` (same file and hash). The Windows
+archive carries DirectML: `build.rs` links its system libraries and delay-loads their DLLs.
+
 **`app.security.csp` stays `null`.** Next's static export inlines its bootstrap scripts;
 any CSP without `'unsafe-inline'` blanks the app. Tightening it means nonced scripts first.
 

@@ -236,6 +236,7 @@ Invariants:
   `Machine`. Bridge `src/platform/library.ts:cloudFolders`; shown by `src/components/settings/sections/storageSection/StorageSection.tsx:CloudFolders`
 - `src-tauri/src/cloud.rs:library_in` · `:find_library` · `:picker_start` — `library_found`: a library in `<cloud folder>/Econ Studio` or one
   folder down (stat only, hidden folders skipped); `library_choose` `start` opens at its parent. Bridge `src/platform/library.ts:foundLibrary`
+- `src-tauri/src/ocr/mod.rs:ocr_status` · `:ocr_image` — offline OCR (PP-OCRv6 small on statically linked ONNX Runtime): image bytes in, lines with boxes out; `src-tauri/src/ocr/detect.rs` (DB boxes, `DET_PARAMS`) · `src-tauri/src/ocr/recognize.rs` (crop, CTC). Models downloaded by `src-tauri/build.rs`; CI vendors ONNX Runtime with `scripts/fetch-onnxruntime.mjs` — §Desktop shell
 - `src-tauri/src/bundle_rename.rs:decide` · `:rename_legacy_bundle` — macOS, before any window: an updated `Econ Worksheet.app` renames itself `Econ Studio.app` and relaunches once, else logs why it skipped (`cargo test`)
 - `src/platform/index.ts:listenForFileDrops` · `:readDroppedFile` — Finder/Explorer file drops arrive as Tauri's native event, never HTML5 `drop`; effects use `:subscribeToFileDrops`, and every Tauri unlisten goes through `:unlistenSafely` (it can reject before the listener registers)
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`

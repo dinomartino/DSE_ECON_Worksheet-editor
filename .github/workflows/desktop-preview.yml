@@ -50,6 +50,15 @@ jobs:
 
       - run: npm ci
 
+      # OCR links ONNX Runtime statically: the pinned, checksummed archive for this target.
+      - name: Vendor ONNX Runtime
+        shell: bash
+        run: |
+          target='${{ matrix.rust-targets }}'
+          [ -n "$target" ] || target=$(rustc -vV | sed -n 's/^host: //p')
+          dir=$(node scripts/fetch-onnxruntime.mjs "$target" "$RUNNER_TEMP/ort")
+          echo "ORT_LIB_LOCATION=$dir" >> "$GITHUB_ENV"
+
       - run: npx tauri build ${{ matrix.args }}
 
       - uses: actions/upload-artifact@v4

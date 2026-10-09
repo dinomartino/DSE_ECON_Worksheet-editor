@@ -126,6 +126,8 @@ On Windows, SmartScreen warns: **More info → Run anyway**.
 
 ## Good to know
 
+- **The first build downloads ~50 MB** (the OCR models and ONNX Runtime, checked by
+  SHA-256) and reuses them after. Offline, it stops with the address to fetch by hand.
 - **Same data as the installed app.** Every build shares one saved-worksheets folder
   (`~/Library/Application Support/hk.econworksheet.desktop/worksheets/`). Back up first
   (start screen → **Back up all…**) if the build under test changes storage.

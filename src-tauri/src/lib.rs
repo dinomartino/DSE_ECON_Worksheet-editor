@@ -2,6 +2,7 @@
 pub mod bundle_rename;
 pub mod cloud;
 pub mod library;
+pub mod ocr;
 pub mod pdf;
 pub mod secrets;
 
@@ -27,9 +28,12 @@ pub fn run() {
       library::library_write,
       library::library_remove,
       library::library_watch,
-      library::library_unwatch
+      library::library_unwatch,
+      ocr::ocr_status,
+      ocr::ocr_image
     ])
     .manage(library::LibraryState::default())
+    .manage(ocr::OcrState::default())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_opener::init())
