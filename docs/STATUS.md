@@ -21,7 +21,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **OCR merged, unreleased (2026-10-09):** PP-OCRv6 small in Rust on static ORT 1.22 (`src-tauri/src/ocr/`,
   models fetched by `build.rs`, SHA-pinned), scans + pictures read page by page (`src/import/ocrLayout.ts`,
   `paste-import.md` § 13). DMG +33 MB. Proven end to end in the release `.app` on real scans + photos.
-  Unverified: Windows CI (push `develop`), Intel Mac, macOS 12–13.2, signed build, the native open sheet.
+  Windows CI green (links, real-model tests). Unverified: Intel Mac, macOS 12–13.2, signed build, native open sheet.
 - **Check next:** the Tauri window (native open sheet and drop, pdf.js main-thread fallback on macOS);
   the editor showed 31 pages for the imported 2019 Paper 2 vs 24 in LibreOffice (uninvestigated);
   題庫 only lands on an arbitrary untagged question, not the first added; S6 Paper I Q42 ("B" without a dot)
