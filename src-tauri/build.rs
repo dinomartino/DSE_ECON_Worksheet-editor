@@ -5,16 +5,18 @@ use std::process::Command;
 /// the official ONNX exports on PaddlePaddle's Hugging Face pages (Apache-2.0), pinned to a
 /// revision and checked by SHA-256. Too large for git, so the first build downloads them into
 /// `resources/ocr/` (gitignored); `rec_dict.txt` (the recognizer's alphabet) is committed.
-const OCR_MODELS: [(&str, &str, &str); 2] = [
+const OCR_MODELS: [(&str, &str, &str, u64); 2] = [
   (
     "det.onnx",
     "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx/resolve/28fe5895c24fd108c19eb3e8479f4ab385fbfc62/inference.onnx",
     "d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e",
+    9_880_512,
   ),
   (
     "rec.onnx",
     "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.onnx",
     "5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634",
+    21_159_378,
   ),
 ];
 
@@ -24,30 +26,19 @@ fn sha256_hex(path: &Path) -> Option<String> {
   Some(Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect())
 }
 
-/// Present and verified, or downloaded (curl ships with macOS and Windows 10+) and verified.
-/// A file already in place is trusted by size so routine builds do not re-hash 31 MB.
+/// Each model is in place at its exact size (checked by SHA-256 when it was downloaded), or is
+/// downloaded now (curl ships with macOS and Windows 10+) and checked.
 fn ensure_ocr_models() {
   let dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("resources/ocr");
   std::fs::create_dir_all(&dir).expect("create resources/ocr");
-  for (name, url, sha) in OCR_MODELS {
+  for (name, url, sha, size) in OCR_MODELS {
     let path = dir.join(name);
-    let stamp = dir.join(format!("{name}.sha256"));
     println!("cargo:rerun-if-changed={}", path.display());
-    let size = std::fs::metadata(&path).map(|m| m.len()).ok();
-    let stamped = std::fs::read_to_string(&stamp).ok();
-    if size.is_some() && stamped.as_deref().map(str::trim) == Some(sha) {
-      continue;
-    }
-    if size.is_some() && sha256_hex(&path).as_deref() == Some(sha) {
-      std::fs::write(&stamp, sha).ok();
+    if std::fs::metadata(&path).is_ok_and(|m| m.len() == size) {
       continue;
     }
     let part = dir.join(format!("{name}.part"));
-    let status = Command::new("curl")
-      .args(["-fsSL", "--retry", "3", "-o"])
-      .arg(&part)
-      .arg(url)
-      .status();
+    let status = Command::new("curl").args(["-fsSL", "--retry", "3", "-o"]).arg(&part).arg(url).status();
     let got = sha256_hex(&part);
     if !matches!(status, Ok(s) if s.success()) || got.as_deref() != Some(sha) {
       let _ = std::fs::remove_file(&part);
@@ -58,7 +49,6 @@ fn ensure_ocr_models() {
       );
     }
     std::fs::rename(&part, &path).expect("move OCR model into place");
-    std::fs::write(&stamp, sha).ok();
   }
 }
 

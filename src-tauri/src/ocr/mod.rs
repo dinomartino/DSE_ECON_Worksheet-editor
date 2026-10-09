@@ -214,7 +214,9 @@ mod tests {
   fn read_scans_dir() {
     let (Ok(input), Ok(out)) = (std::env::var("OCR_SCANS_IN"), std::env::var("OCR_SCANS_OUT")) else { return };
     std::fs::create_dir_all(&out).unwrap();
+    let t = Instant::now();
     let mut e = engine();
+    eprintln!("models loaded in {} ms", t.elapsed().as_millis());
     let mut files: Vec<_> = std::fs::read_dir(&input).unwrap().filter_map(|f| f.ok()).map(|f| f.path()).collect();
     files.sort();
     for path in files.into_iter().filter(|p| p.extension().is_some_and(|x| x == "png" || x == "jpg")) {
