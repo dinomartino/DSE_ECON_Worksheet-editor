@@ -13,7 +13,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   with Copy); band rows emulate Word tab stops (`bandTabPlan` pinned to the exporter), masthead page numbers are
   fields, clipboard pastes every ColumnsNode as tab stops. Within 1pt of LibreOffice. **Unverified in Word:**
   clipboard paste, a tab past the last stop. Left: masthead rule 1.5pt vs 1pt, #999 vs 808080.
-- `npm run typecheck` trips on `src-tauri/target/**` codegen `.ts` after a local `desktop:build`; source is clean.
+- `npm run typecheck` trips on the Tauri build folder's codegen .ts after a local `desktop:build`; source is clean.
 - **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
   only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
 - **Merged, unreleased (2026-10-08):** **Import from Word or PDF** (home screen; file-only by the user's
@@ -70,7 +70,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified (2026-10-09, `develop` after band-row merges)
 
-- `npm test` 5350, samples 6, lint 40, tsc clean (excluding `src-tauri/target` artifacts).
+- `npm test` 5350, samples 6, lint 40, tsc clean (excluding Tauri build artifacts).
 - Before: build (bundle check), cover/lq-verify (en + zh), CI green incl. `rust (windows-latest)`; `cargo test` 51.
 
 ## Log
