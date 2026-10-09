@@ -19,7 +19,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Merged, unreleased (2026-10-08):** **Import from Word or PDF** (home screen; file-only by the user's
   decision) → review → Save as; engine `src/import/`, design `docs/design/paste-import.md`. Also UI language /
   Paper language settings; several files at once + "Answers from" linking (§ 11).
-- **Next (waiting on the user's go: installer +~45 MB):** in-app OCR for scans/photos: PP-OCRv6 small
+- **In flight (user's go 2026-10-09; `feature/ocr-engine` Rust + `feature/ocr-import` TS):** in-app OCR for scans/photos: PP-OCRv6 small
   in Rust via `ort`/`oar-ocr`, adapter → `layoutPdf`, `source: 'ocr'`, key rows cell by cell
   (`docs/research/2026-10-ocr-survey.md`). Users are desktop-only: design for the Tauri app.
 - **Check next:** the Tauri window (native open sheet and drop, pdf.js main-thread fallback on macOS);
