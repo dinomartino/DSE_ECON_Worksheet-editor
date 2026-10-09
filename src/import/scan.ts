@@ -25,12 +25,15 @@ export function ocrScore(lines: readonly SourceLine[]): { points: number; ratio:
   return { points, ratio: body.length ? points / body.length : 0 };
 }
 
-/** A Word, HTML or `.docx` read (TABs, markup) is never OCR, even with full-width brackets typed by hand. */
+/**
+ * A Word, HTML or `.docx` read (TABs, markup) is never OCR, even with full-width brackets
+ * typed by hand. Text this app recognised (`ocr`) is known to be OCR: reviewed, not a scan.
+ */
 export function pasteKind(lines: readonly SourceLine[], source: Analysis['source']): 'ok' | 'empty' | 'scan' {
   const text = lines.some((l) => matchKey(l.raw) !== '' || l.cells?.length);
   if (!text) return lines.some((l) => l.image) ? 'scan' : 'empty';
   const body = lines.filter((l) => l.raw.trim());
-  if (source === 'html' || source === 'docx' || body.filter((l) => l.raw.includes('\t')).length > body.length * 0.1) return 'ok';
+  if (source === 'html' || source === 'docx' || source === 'ocr' || body.filter((l) => l.raw.includes('\t')).length > body.length * 0.1) return 'ok';
   const { points, ratio } = ocrScore(lines);
   return points >= 3 && ratio >= 0.04 ? 'scan' : 'ok';
 }

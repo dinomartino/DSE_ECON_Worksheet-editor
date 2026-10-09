@@ -37,6 +37,8 @@ export interface ChromeInput {
   pages: ReadonlyArray<{ width: number; height: number; rows: readonly ChromeRowIn[] }>;
   /** Rows `layoutPdf` drops as running headers, footers and page numbers. */
   noise: ReadonlySet<ChromeRowIn>;
+  /** How far (pt) one running line may move between pages: 3 for a PDF, more for scanned pages. */
+  tolerance?: number;
 }
 
 const text = (row: ChromeRowIn) => row.items.map((it) => it.str.trim()).join(' ');
@@ -101,12 +103,13 @@ interface Group {
 /** The noise rows grouped: one group per running line, with every page it is on. */
 function runningGroups(input: ChromeInput): Group[] {
   const out: Group[] = [];
+  const tolerance = input.tolerance ?? 3;
   input.pages.forEach((page, k) => {
     for (const row of page.rows) {
       if (!input.noise.has(row) || !row.items.length) continue;
       const edge = row.y > page.height / 2 ? 'top' : 'bottom';
       const key = repeatKey(text(row));
-      const hit = out.find((g) => g.edge === edge && Math.abs(g.y - row.y) <= 3 && repeatKey(text(g.entries[0].row)) === key);
+      const hit = out.find((g) => g.edge === edge && Math.abs(g.y - row.y) <= tolerance && repeatKey(text(g.entries[0].row)) === key);
       if (hit) hit.entries.push({ page: k, row });
       else out.push({ edge, y: row.y, size: row.size, entries: [{ page: k, row }] });
     }

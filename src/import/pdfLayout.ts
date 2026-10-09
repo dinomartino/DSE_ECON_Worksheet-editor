@@ -58,6 +58,11 @@ export interface PdfLine extends RawLine {
   figure?: PdfBox;
 }
 
+export interface PdfLayoutOptions {
+  /** How far (pt) a running header may move between pages: 3 for a PDF; scanned pages drift. */
+  tolerance?: number;
+}
+
 export interface PdfLayout {
   lines: PdfLine[];
   /** The first large-type line near the top of the first page. */
@@ -210,7 +215,7 @@ const rowLeft = (row: Row) => (row.figure ? row.figure.x : Math.min(...row.items
 const rowRight = (row: Row) => (row.figure ? row.figure.x + row.figure.w : Math.max(...row.items.map(right)));
 
 /** Rows that repeat in the same place on most pages, and lone page numbers, in the top or bottom band. */
-function noiseRows(pages: ReadonlyArray<{ page: PdfPage; rows: Row[] }>): Set<Row> {
+function noiseRows(pages: ReadonlyArray<{ page: PdfPage; rows: Row[] }>, tolerance = 3): Set<Row> {
   const noise = new Set<Row>();
   const edge = (p: PdfPage, row: Row) => row.y > p.height * 0.9 || row.y < p.height * 0.1;
   const byKey = new Map<string, Array<{ page: number; row: Row }>>();
@@ -229,7 +234,7 @@ function noiseRows(pages: ReadonlyArray<{ page: PdfPage; rows: Row[] }>): Set<Ro
   if (pages.length < 2) return noise;
   for (const entries of byKey.values()) {
     for (const e of entries) {
-      const pagesHere = new Set(entries.filter((o) => Math.abs(o.row.y - e.row.y) <= 3).map((o) => o.page));
+      const pagesHere = new Set(entries.filter((o) => Math.abs(o.row.y - e.row.y) <= tolerance).map((o) => o.page));
       if (pagesHere.size >= need) noise.add(e.row);
     }
   }
@@ -248,9 +253,155 @@ interface Region {
 /**
  * Split a page into regions in reading order. A gutter is an x no row crosses; a band of
  * rows that do not cross it is two columns only when both sides hold several lines of
- * prose (a table or an option row also leaves a gap, but its cells are short).
+ * prose (a table or an option row also leaves a gap, but its cells are short). What the
+ * page-wide gutter leaves whole is tried again band by band (`localColumns`).
  */
 export function regionsOf(rows: readonly Row[], page: number): Region[] {
+  return pageRegions(rows, page).flatMap((region) => (region.column === 'full' ? localColumns(region) : [region]));
+}
+
+/**
+ * Rows of prose on one side of a gutter: at least half the side wide, and mostly ink. A key
+ * grid's row is as wide but mostly gaps between its cells.
+ */
+const proseRows = (sideRows: readonly Row[], from: number, to: number) =>
+  sideRows.filter((r) => {
+    if (r.figure || !r.items.length) return false;
+    const span = rowRight(r) - rowLeft(r);
+    const wide = r.items.filter((it, k) => k > 0 && it.x - right(r.items[k - 1]) > r.size * 1.5).length;
+    return span >= (to - from) * 0.5 && wide <= 1 && r.items.reduce((sum, it) => sum + it.w, 0) >= span * 0.6;
+  }).length;
+
+/** One side of a row at gutter `g`, or null when nothing of it is there. */
+function sideOf(row: Row, g: number, side: 'left' | 'right'): Row | null {
+  if (row.figure) return (row.figure.x + row.figure.w / 2 < g) === (side === 'left') ? row : null;
+  const items = row.items.filter((it) => (it.x + it.w / 2 < g) === (side === 'left'));
+  return items.length ? { ...row, items, y: items.reduce((b, it) => (it.w > b.w ? it : b)).y } : null;
+}
+
+const OPTION_START = /^\s*[(（]?[A-E]\s*[.)）．]/;
+
+/**
+ * A band of rows read as two columns at gutter `g`, or null. Both sides need several rows
+ * of prose. Rows at the band's top or bottom that are cells on both sides (a key grid
+ * above an answer | notes table) stay whole, above or below the columns. `options`: an
+ * option grid (B. and D. down the right) is never columns.
+ */
+function columnsOf(band: readonly Row[], g: number, from: number, to: number, page: number, options = false): Region[] | null {
+  const prose = (row: Row, side: 'left' | 'right') => {
+    const half = sideOf(row, g, side);
+    return half ? proseRows([half], side === 'left' ? from : g, side === 'left' ? g : to) > 0 : false;
+  };
+  // Up to the last row with cells on both sides among the leading (trailing) rows without prose.
+  const quiet = (row: Row) => !row.figure && !prose(row, 'left') && !prose(row, 'right');
+  const spanning = (row: Row) => quiet(row) && !!sideOf(row, g, 'left') && !!sideOf(row, g, 'right');
+  let head = 0;
+  for (let k = 0; k < band.length && quiet(band[k]); k++) if (spanning(band[k])) head = k + 1;
+  let tail = band.length;
+  for (let k = band.length - 1; k >= head && quiet(band[k]); k--) if (spanning(band[k])) tail = k;
+  const middle = band.slice(head, tail);
+  const l = middle.map((r) => sideOf(r, g, 'left')).filter((r): r is Row => !!r);
+  const r = middle.map((row) => sideOf(row, g, 'right')).filter((row): row is Row => !!row);
+  if (middle.length < 5 || proseRows(l, from, g) < 3 || proseRows(r, g, to) < 3) return null;
+  if (options && r.filter((row) => row.items.length && OPTION_START.test(row.items[0].str)).length * 2 >= r.length) return null;
+  const full = (rows: readonly Row[]): Region[] => (rows.length ? [{ page, rows: [...rows], column: 'full' }] : []);
+  return [...full(band.slice(0, head)), { page, rows: l, column: 'left' }, { page, rows: r, column: 'right' }, ...full(band.slice(tail))];
+}
+
+/** Regions in order, a full one merged into the full one before it. */
+function pushRegions(out: Region[], regions: readonly Region[]): void {
+  for (const region of regions) {
+    const last = out[out.length - 1];
+    if (region.column === 'full' && last?.column === 'full') last.rows.push(...region.rows);
+    else out.push(region);
+  }
+}
+
+type Gap = [number, number];
+
+/**
+ * Free gaps in the middle half of the text's width, per row, and where two sets of gaps
+ * meet; a gap narrower than about half the type size is no gutter.
+ */
+function gapTools(text: readonly Row[], left: number, rightEdge: number) {
+  const lo = left + (rightEdge - left) * 0.25;
+  const hi = left + (rightEdge - left) * 0.75;
+  const minGap = percentile(text.map((r) => r.size), 0.5, 11) * 0.6;
+  const gapsOf = (row: Row): Gap[] => {
+    const spans: Gap[] = row.figure ? [[row.figure.x, row.figure.x + row.figure.w]] : row.items.map((it) => [it.x, right(it)]);
+    let gaps: Gap[] = [[lo, hi]];
+    for (const [a, b] of spans) gaps = gaps.flatMap(([g0, g1]): Gap[] => (b <= g0 || a >= g1 ? [[g0, g1]] : [...(a > g0 ? [[g0, a] as Gap] : []), ...(b < g1 ? [[b, g1] as Gap] : [])]));
+    return gaps.filter(([a, b]) => b - a >= minGap);
+  };
+  const meet = (a: readonly Gap[], b: readonly Gap[]) =>
+    a.flatMap(([a0, a1]) => b.map(([b0, b1]): Gap => [Math.max(a0, b0), Math.min(a1, b1)])).filter(([x0, x1]) => x1 - x0 >= minGap);
+  return { gapsOf, meet };
+}
+
+/**
+ * Two tables (or column blocks) under one another, each with its own gutter, leave no x
+ * free on the whole page: a marking scheme's answer | notes tables under a key grid. Rows
+ * are taken top down while they still share a free gap; each such band is tested as a
+ * page's columns are, and an option grid (B. and D. down the right) is never columns.
+ */
+function localColumns(region: Region): Region[] {
+  const rows = region.rows;
+  const text = rows.filter((r) => !r.figure && r.items.length);
+  if (text.length < 6) return [region];
+  const left = Math.min(...text.map(rowLeft));
+  const rightEdge = Math.max(...text.map(rowRight));
+  const { gapsOf, meet } = gapTools(text, left, rightEdge);
+
+  const out: Region[] = [];
+  const pushFull = (rs: Row[]) => pushRegions(out, [{ page: region.page, rows: [...rs], column: 'full' }]);
+  let band: Row[] = [];
+  let free: Gap[] = [];
+  const flush = () => {
+    if (band.length) {
+      const [g0, g1] = free.reduce((best, gap) => (gap[1] - gap[0] > best[1] - best[0] ? gap : best));
+      // Prose is measured against the region's width: a narrow numbers column is not prose.
+      const split = columnsOf(band, (g0 + g1) / 2, left, rightEdge, region.page, true);
+      if (split) pushRegions(out, split);
+      else pushFull(band);
+    }
+    band = [];
+    free = [];
+  };
+  for (const row of rows) {
+    const gaps = gapsOf(row);
+    if (!gaps.length) {
+      flush();
+      pushFull([row]);
+      continue;
+    }
+    const next = band.length ? meet(free, gaps) : gaps;
+    if (!next.length) {
+      // The band's last rows may open the next one (a table's first rows under a key grid):
+      // the longest run at its end that shares a gap with this row moves on with it.
+      let carried = gaps;
+      let from = band.length;
+      while (from > 1 && meet(carried, gapsOf(band[from - 1])).length) carried = meet(carried, gapsOf(band[--from]));
+      if (from < band.length) {
+        const moved = band.splice(from);
+        free = band.map(gapsOf).reduce(meet);
+        flush();
+        band = [...moved, row];
+        free = carried;
+      } else {
+        flush();
+        band = [row];
+        free = gaps;
+      }
+      continue;
+    }
+    band.push(row);
+    free = next;
+  }
+  flush();
+  return out.some((r) => r.column !== 'full') ? out : [region];
+}
+
+function pageRegions(rows: readonly Row[], page: number): Region[] {
   const text = rows.filter((r) => !r.figure);
   if (text.length < 5) return [{ page, rows: [...rows], column: 'full' }];
   const left = Math.min(...text.map(rowLeft));
@@ -271,33 +422,25 @@ export function regionsOf(rows: readonly Row[], page: number): Region[] {
   if (best.count > rows.length * 0.6) return [{ page, rows: [...rows], column: 'full' }];
   const g = best.g;
 
-  const prose = (sideRows: Row[], from: number, to: number) =>
-    sideRows.filter((r) => !r.figure && r.items.length && rowRight(r) - rowLeft(r) >= (to - from) * 0.5).length;
   const regions: Region[] = [];
-  const pushFull = (rs: Row[]) => {
-    const last = regions[regions.length - 1];
-    if (last?.column === 'full') last.rows.push(...rs);
-    else regions.push({ page, rows: [...rs], column: 'full' });
-  };
+  const pushFull = (rs: Row[]) => pushRegions(regions, [{ page, rows: [...rs], column: 'full' }]);
   let band: Row[] = [];
   const flush = () => {
     if (!band.length) return;
-    const split = (row: Row, side: 'left' | 'right'): Row | null => {
-      if (row.figure) return (row.figure.x + row.figure.w / 2 < g) === (side === 'left') ? row : null;
-      const items = row.items.filter((it) => (it.x + it.w / 2 < g) === (side === 'left'));
-      return items.length ? { ...row, items, y: items.reduce((b, it) => (it.w > b.w ? it : b)).y } : null;
-    };
-    const l = band.map((r) => split(r, 'left')).filter((r): r is Row => !!r);
-    const r = band.map((row) => split(row, 'right')).filter((row): row is Row => !!row);
-    const twoColumns = band.length >= 5 && prose(l, left, g) >= 3 && prose(r, g, rightEdge) >= 3;
-    if (twoColumns) regions.push({ page, rows: l, column: 'left' }, { page, rows: r, column: 'right' });
+    const split = columnsOf(band, g, left, rightEdge, page);
+    if (split) pushRegions(regions, split);
     else pushFull(band);
     band = [];
   };
+  const { gapsOf, meet } = gapTools(text, left, rightEdge);
   for (const row of rows) {
     if (crosses(row, g)) {
+      // A band's last row that shares a gap with this one opens the table below (its first row).
+      const last = band.length >= 2 ? band[band.length - 1] : undefined;
+      const carried = !!last && !last.figure && meet(gapsOf(last), gapsOf(row)).length > 0;
+      if (carried) band.pop();
       flush();
-      pushFull([row]);
+      pushFull(carried ? [last!, row] : [row]);
     } else band.push(row);
   }
   flush();
@@ -572,7 +715,7 @@ function joins(a: VLine, b: VLine, geo: Geometry): boolean {
 }
 
 /** Lay out every page into reader lines, in reading order. */
-export function layoutPdf(pages: readonly PdfPage[]): PdfLayout {
+export function layoutPdf(pages: readonly PdfPage[], options: PdfLayoutOptions = {}): PdfLayout {
   const prepared = pages.map((page) => {
     const { figures, rules } = findFigures(page);
     const items = page.items.filter((it) => {
@@ -583,9 +726,9 @@ export function layoutPdf(pages: readonly PdfPage[]): PdfLayout {
     });
     return { page, rows: rowsOf(items), figures, rules };
   });
-  const noise = noiseRows(prepared);
+  const noise = noiseRows(prepared, options.tolerance);
   const textPages = prepared.filter((p) => p.rows.length).length;
-  const chrome = pdfChrome({ pages: prepared.map(({ page, rows }) => ({ width: page.width, height: page.height, rows })), noise });
+  const chrome = pdfChrome({ pages: prepared.map(({ page, rows }) => ({ width: page.width, height: page.height, rows })), noise, tolerance: options.tolerance });
 
   const regions = prepared.flatMap(({ rows, figures, page }, k) => {
     const kept = rows.filter((r) => !noise.has(r) && !chrome.taken.has(r));

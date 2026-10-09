@@ -39,7 +39,7 @@ export type * from './types';
 
 export interface ReadPaste {
   lines: SourceLine[];
-  source: 'plain' | 'html' | 'docx' | 'pdf';
+  source: Analysis['source'];
 }
 
 const inked = (lines: readonly SourceLine[]) => lines.reduce((n, l) => n + l.raw.replace(/\s/g, '').length, 0);

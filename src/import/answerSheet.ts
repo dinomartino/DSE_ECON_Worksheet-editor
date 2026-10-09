@@ -116,6 +116,36 @@ export function keyLine(text: string): KeyPair[] | null {
   return out.sort((a, b) => a.at - b.at).map(({ question, letters }) => ({ question, letters }));
 }
 
+/** What a key cell misread by OCR looks like: short, digits and letters, no words. */
+const GARBLED_CELL = /^[\dA-Za-z().,:;/'"|*-]{1,8}$/;
+
+/**
+ * A key row read cell by cell, then word by word inside a cell that is not a key: one
+ * misread cell ("8C" read as "803") loses only its own answer, never the row. Needs three
+ * answers and at most one bad cell in four; a word that is not cell-shaped means the line
+ * is something else.
+ */
+export function keyCells(texts: readonly string[]): KeyPair[] | null {
+  const pairs: KeyPair[] = [];
+  let bad = 0;
+  for (const text of texts) {
+    if (!text.trim()) continue;
+    const whole = keyLine(text);
+    if (whole) {
+      pairs.push(...whole);
+      continue;
+    }
+    for (const token of matchKey(text).trim().split(/\s+/)) {
+      const one = keyLine(token);
+      if (one) pairs.push(...one);
+      else if (GARBLED_CELL.test(token)) bad++;
+      else return null;
+    }
+  }
+  const distinct = new Set(pairs.map((p) => p.question)).size === pairs.length;
+  return pairs.length >= 3 && distinct && bad <= Math.max(1, Math.floor(pairs.length / 4)) ? pairs : null;
+}
+
 const cellsOf = (line: SourceLine) => line.raw.split(/\t+|\s{2,}/).map((c) => c.trim()).filter(Boolean);
 
 /**
@@ -488,7 +518,7 @@ class Reader {
         continue;
       }
       const full = [line.label ?? '', ...(line.cells ? line.cells.map(plain) : [line.text])].join(' ');
-      const flat = keyLine(full);
+      const flat = keyLine(full) ?? keyCells(line.cells ? line.cells.map((c, n) => (n === 0 && line.label ? `${line.label} ${plain(c)}` : plain(c))) : [full]);
       const sideways = flat ? null : sidewaysKey(line, lines.slice(k + 1, k + 4));
       if (flat || sideways) {
         this.keyPairs(flat ?? sideways!.pairs, line);
