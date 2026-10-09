@@ -26,8 +26,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   the editor showed 31 pages for the imported 2019 Paper 2 vs 24 in LibreOffice (uninvestigated);
   題庫 only lands on an arbitrary untagged question, not the first added; S6 Paper I Q42 ("B" without a dot)
   and a source table's (a)–(d) rows read as parts.
-- **Paused mid-work (2026-10-09):** `fix/cell-align-parity`, uncommitted edits in worktree `agent-adee51ed45ff6f17e`:
-  preview + clipboard follow `CellAlign` like the .docx (old `format.align` ignored); format bar ✕ never wraps alone.
+- Cell alignment: `CellAlign` only, in every backend; an old cell with only `format.align` now shows left on screen,
+  as Word always printed it (user-visible change for such documents). Format bar ✕ pinned in a reserved lane.
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
@@ -76,5 +76,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-09** — Table distribute; overscroll; import header/footer/title; band rows match Word; table bar. 10 branches.
+- **2026-10-09** — Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align parity. 11 branches.
 - **2026-10-08** — Found-folder offer; import engine + file import; paper language; OCR survey. 15 branches.
