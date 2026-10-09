@@ -76,6 +76,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-09** — Table distribute; overscroll fix; import header/footer/title block; band rows match Word
-  (layout, export, clipboard, page numbers, offsets); table bar icons + one cell-align control. 10 branches.
+- **2026-10-09** — Table distribute; overscroll; import header/footer/title; band rows match Word; table bar. 10 branches.
 - **2026-10-08** — Found-folder offer; import engine + file import; paper language; OCR survey. 15 branches.
