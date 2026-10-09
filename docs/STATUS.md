@@ -26,7 +26,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   the editor showed 31 pages for the imported 2019 Paper 2 vs 24 in LibreOffice (uninvestigated);
   題庫 only lands on an arbitrary untagged question, not the first added; S6 Paper I Q42 ("B" without a dot)
   and a source table's (a)–(d) rows read as parts.
-- Cell `TextFormat.align` (old docs) wins in preview + clipboard but `CellAlign` wins in .docx: backends disagree.
+- **Paused mid-work (2026-10-09):** `fix/cell-align-parity`, uncommitted edits in worktree `agent-adee51ed45ff6f17e`:
+  preview + clipboard follow `CellAlign` like the .docx (old `format.align` ignored); format bar ✕ never wraps alone.
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
