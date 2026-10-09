@@ -3401,7 +3401,9 @@ It resolves as the sheet opens; `afterprint` still fires when it closes.
   the top-left in the decoded image's pixels (EXIF-rotated), even when the page was read
   scaled down; `angle` is the reading direction (−90: bottom-to-top margin text). Errors
   start `decode:`, `model:` or `internal:`. The models load once, lazily, into managed
-  state; pages run one at a time on the blocking pool.
+  state; pages run one at a time on the blocking pool. On macOS each page holds a
+  user-initiated `NSProcessInfo` activity, so App Nap does not slow a read behind another
+  app (~4× per page).
 
 Detection runs at ≤960 px (the trial's best settings, `ocr/detect.rs`); lines are cut from
 the full page and recognised 4 at a time. Models are bundle resources (`ocr/`): `build.rs`

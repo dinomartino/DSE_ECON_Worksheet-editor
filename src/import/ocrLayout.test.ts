@@ -158,3 +158,29 @@ describe('a scanned marking scheme', () => {
     expect(one.notes?.map((n) => text(n.runs))).toContain('1a. no → 0');
   });
 });
+
+describe('a scan’s title', () => {
+  // OCR's type size is a box's height, so a key-grid row or a part's line can stand taller
+  // than the body and pass for a heading: only text that reads as a title names the paper.
+  const line = (text: string, x: number, y: number, h = 30): OcrResult['lines'][number] => ({
+    text,
+    score: 0.99,
+    box: box(x, y, Math.max(h, text.length * h * 0.45), h),
+  });
+  const body = Array.from({ length: 12 }, (_, k) => line(`The price of a good rises when demand rises and supply stays the same ${k}.`, 200, 700 + k * 60));
+  const titleOf = (top: OcrResult['lines']) => read([page([...top, ...body])]).title;
+
+  it('is never a key-grid row', () => {
+    expect(titleOf(['2B', '7A', '12B', '17B', '22A', '27D'].map((t, k) => line(t, 200 + k * 220, 300, 42)))).toBeUndefined();
+  });
+
+  it('is never a question, part or option line', () => {
+    expect(titleOf([line('(a) Explain whether Statement A is positive. (2 marks)', 200, 300, 42)])).toBeUndefined();
+    expect(titleOf([line('3. Which of the following is a free good?', 200, 300, 42)])).toBeUndefined();
+  });
+
+  it('is kept when it reads as one', () => {
+    expect(titleOf([line('S6 Mock Examination Economics', 500, 300, 42)])).toBe('S6 Mock Examination Economics');
+    expect(titleOf([line('經濟', 700, 300, 42)])).toBe('經濟');
+  });
+});

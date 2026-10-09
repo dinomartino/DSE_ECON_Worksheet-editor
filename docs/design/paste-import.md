@@ -713,7 +713,9 @@ opens it), fitted to 2400 px, sent as PNG, and read as an A4 page. Pictures chos
 one paper in name order (`groupPictures`). A page the engine cannot decode is skipped; a model
 or internal error fails the file (`ocrFailed`, logged to the console). `readPdf` awaits pdf.js
 closing the file, and an open that meets a closing worker is retried once: the text pass and the
-page pass open the same file back to back.
+page pass open the same file back to back. Pages render with pdf.js's `print` intent: a `display` render
+waits for animation frames, which a hidden or minimised window never gets (reading stalled on
+page 1 until the window came back).
 
 **Adapter** (`src/import/ocrLayout.ts`, pure): px → pt by the render scale; the page's skew (the
 median angle of long lines) undone; the unclip margin, min(15% of height, 10% of width), taken
@@ -722,7 +724,9 @@ under 0.3 confidence dropped; text tilted past 20° or tall and narrow (the marg
 write" strip) marked rotated, so `layoutPdf` drops it; glued labels split (`splitGluedLabel`:
 "3.一位", "12.Which", "1：", "A.(1)", "(a)Explain", "la." → "1a."); a label in its own box keeps
 a space before the text it touches. Then `layoutPdf` with a 12 pt running-header tolerance
-(scanned pages drift), so page chrome (§ 12) works as for a PDF. `source: 'ocr'`: `pasteKind`
+(scanned pages drift), so page chrome (§ 12) works as for a PDF. The layout's heading names the paper only
+when it reads as a title (`ocrTitle`: no table row, label or wordless grid line; box heights are
+too noisy to tell a title by size), else the file name does. `source: 'ocr'`: `pasteKind`
 never calls it a scan; the review warns (`ocrRead`).
 
 **Engine fixes the trial found:** a key row is read cell by cell, then word by word inside a
