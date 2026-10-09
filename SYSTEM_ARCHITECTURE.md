@@ -890,6 +890,12 @@ literal text. Carries **no page setup, headers, or cover** — pasting must not 
 this document's furniture; the cover cannot be expressed in clipboard HTML at all (the
 `.docx` is the fidelity path). A test pins the exclusion.
 
+**A band row pastes as the `.docx` writes it**: one `<p>` with Word's `tab-stops` and
+`mso-tab-count` spans, never a table (other `ColumnsNode`s still paste as a borderless
+table). A page number pastes as a Word field (`mso-field-code`) showing 1; plain text
+prints 1. Both exporters read `bandZones` and `bandCellPieces` (`render/ir.ts`). Its
+`data-zone` spans are how the start screen's thumbnail (which renders this HTML) lays the row out.
+
 ### An inserted picture is reduced to what the paper can print (`src/export/imageImport.ts`)
 
 `ImageBlock.src`/`CellImage.src` are `data:` URLs, base64 in the document's own JSON —
@@ -1701,7 +1707,8 @@ presets.
 
 - **A page number is one field with a pattern** (`plain`, `pDot`, `longForm`), shared
   via `pageNumberPlaceholder`: the preview substitutes a chip (`withPageNumber`); the
-  exporter splits on the same placeholders so only numbers become `PAGE`/`NUMPAGES`.
+  exporter splits on the same placeholders so only numbers become `PAGE`/`NUMPAGES`,
+  in the masthead as in the header (a masthead cell's `text` holds the raw `#`).
   `bandFieldText` returns the placeholder. Fill-in rules export as real ruled runs.
 - `patchHeaderFooterBand` searches both band lists; the lists never share ids
   (`setFirstPageMode` re-ids on copy).

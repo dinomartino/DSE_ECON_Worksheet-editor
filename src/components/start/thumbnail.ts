@@ -99,6 +99,15 @@ const THUMBNAIL_CSS =
   '.page *{line-height:max(12pt,calc(12em / 11))}' +
   '.page p,.page h1,.page h2,.page h3,.page ul,.page ol,.page li{margin-block:0}' +
   '.page hr{margin:6px 0}' +
+  // A band row pastes as one tab-stop paragraph, which a browser cannot lay out; its
+  // `data-zone` spans are placed here the way the page places the zones instead.
+  '.page p[data-band]{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}' +
+  '.page p[data-band]>span[style*="mso-tab-count"]{display:none}' +
+  '.page p[data-band]>[data-zone]{grid-row:1}' +
+  '.page p[data-band]>[data-zone=left]{grid-column:1}' +
+  '.page p[data-band]:not(:has(>[data-zone=center]))>[data-zone=left]{grid-column:1/3}' +
+  '.page p[data-band]>[data-zone=center]{grid-column:2;text-align:center}' +
+  '.page p[data-band]>[data-zone=right]{grid-column:3;justify-self:end;text-align:right}' +
   '.page img{max-width:100%}' +
   // A 1px dotted rule shrunk to a card's width aliases into dashes; a pale solid line
   // reads as the dotted answer line it stands for.

@@ -10,7 +10,17 @@ import type {
   TextFormat,
   Worksheet,
 } from '@/model/types';
-import { trailLabel, type EditTarget, type RenderNode, type TextNode } from '@/render/ir';
+import {
+  bandCellHasPageNumber,
+  bandCellPieces,
+  bandCellSides,
+  bandZones,
+  trailLabel,
+  type ColumnsNode,
+  type EditTarget,
+  type RenderNode,
+  type TextNode,
+} from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
 import { renderAnswerKey } from '@/render/answerKey';
 import type { DiagramImageMap } from './diagramImage';
@@ -257,9 +267,13 @@ function nodeHtml(
     return node.captionPlacement === 'above' ? caption + table : table + caption;
   }
 
+  if (node.kind === 'columns' && node.band) {
+    return bandRowHtml(node, language, fontCss, textWidthTwips);
+  }
+
   if (node.kind === 'columns') {
-    // Clipboard HTML cannot carry Word tab stops, so a borderless table is the closest
-    // faithful equivalent — Word's paste path preserves the column positions.
+    // A borderless table: Word's paste keeps the column positions. Band rows (above)
+    // paste as tab stops instead, the .docx's shape.
     const cells = node.cells
       .map((cell, index) => {
         const next = node.cells[index + 1];
@@ -383,6 +397,79 @@ function nodeHtml(
   }
 
   return '';
+}
+
+/**
+ * One tab, as Word's HTML spells it. Word replaces the span with a tab; the tab character
+ * inside is for apps that ignore `mso-tab-count` (LibreOffice pastes it as a tab).
+ */
+const TAB_HTML = "<span style='mso-tab-count:1'>&#9;</span>";
+
+/**
+ * A page number as a Word simple field (`mso-field-code`) whose shown text is 1: Word
+ * pastes a live field, as the `.docx` exports one; any other app pastes the 1.
+ */
+function fieldHtml(field: 'PAGE' | 'NUMPAGES'): string {
+  return `<span style='mso-field-code:" ${field} "'>1</span>`;
+}
+
+/** A field's text, page numbers as fields (§ `bandCellPieces`). */
+function bandCellHtml(cell: ColumnsNode['cells'][number], language: LanguageMode): string {
+  if (!bandCellHasPageNumber(cell)) return richHtml(cell.text, language);
+  return bandCellSides(cell, language)
+    .map((side) =>
+      bandCellPieces(cell, side)
+        .map((piece) =>
+          'field' in piece ? fieldHtml(piece.field) : richHtml({ en: piece.text, zh: [] }, 'en'),
+        )
+        .join(''),
+    )
+    .join('<br/>');
+}
+
+/**
+ * A band row as the `.docx` writes it (§ Bands and zones): one paragraph, a tab stop per
+ * occupied centre or right zone, a tab before every zone but a left one, fields in a zone
+ * one space apart. Word's HTML paste reads `tab-stops` and `mso-tab-count`.
+ */
+function bandRowHtml(
+  node: ColumnsNode,
+  language: LanguageMode,
+  fontCss: string,
+  textWidthTwips: number,
+): string {
+  const indent = node.indent ?? 0;
+  const width = Math.max(720, textWidthTwips - indent);
+  const zones = bandZones(node);
+  const stops = zones
+    .map((cells) => cells[0])
+    .filter((cell) => cell.align === 'center' || cell.align === 'right')
+    .map((cell) => `${cell.align} ${twipsToPt(Math.round(indent + cell.at * width))}pt`)
+    .join(' ');
+  const body = zones
+    .map((cells) => {
+      const align = cells[0].align ?? 'left';
+      const lead = align === 'center' || align === 'right' ? TAB_HTML : '';
+      const fields = cells
+        .map((cell) => {
+          const html = bandCellHtml(cell, language);
+          const css = formatCss(cell.format);
+          return html && css ? `<span style="${css}">${html}</span>` : html;
+        })
+        .filter(Boolean)
+        .join(' ');
+      // `data-zone` is inert in Word; the start screen's thumbnail places zones by it.
+      return `${lead}<span data-zone="${align}">${fields}</span>`;
+    })
+    .join('');
+  const css =
+    `${fontCss}${NODE_CSS[node.style] ?? ''}` +
+    (indent ? `margin-left:${indent / 20}pt;` : '') +
+    (node.rule ? 'border-bottom:1px solid #808080;' : '') +
+    (stops ? `tab-stops:${stops};` : '') +
+    // Restated after `tab-stops`, which LibreOffice misreads as an alignment.
+    'text-align:left;';
+  return `<p data-band style="${css}">${body || '&nbsp;'}</p>`;
 }
 
 function fontCss(fonts: FontPair): string {
@@ -567,6 +654,26 @@ function pushPlain(lines: string[], node: RenderNode, language: LanguageMode): v
           .join('\t'),
       );
     }
+  } else if (node.kind === 'columns' && node.band) {
+    // The band row's tabs (§ `bandRowHtml`): a page number prints its field's shown 1.
+    const field = (cell: ColumnsNode['cells'][number]) =>
+      bandCellSides(cell, language)
+        .map((side) =>
+          bandCellHasPageNumber(cell)
+            ? bandCellPieces(cell, side)
+                .map((piece) => ('field' in piece ? '1' : plain(piece.text)))
+                .join('')
+            : plain(cell.text[side]),
+        )
+        .join(' / ');
+    lines.push(
+      bandZones(node)
+        .map((cells) => {
+          const lead = cells[0].align === 'center' || cells[0].align === 'right' ? '\t' : '';
+          return lead + cells.map(field).filter(Boolean).join(' ');
+        })
+        .join(''),
+    );
   } else if (node.kind === 'columns') {
     // Tab-separated, matching how the docx lays the row out.
     lines.push(
