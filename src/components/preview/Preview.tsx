@@ -1,10 +1,9 @@
 "use client";
 
-import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   BAND_ROW_TWIPS,
   bandsHeight,
-  bandsOverflow,
   bandsShouldRender,
   contentWidth,
   headerFooterOffsets,
@@ -111,6 +110,7 @@ import {
   type SchemeAddress,
   type TableNode,
   type TextNode,
+  bandCellPageText,
   trailLabel,
 } from "@/render/ir";
 import { renderWorksheet, type RenderedItem } from "@/render/worksheet";
@@ -155,7 +155,7 @@ import {
   PlusIcon,
   StructuredIcon,
 } from "@/components/ui/icons";
-import { BandEditor, BandTrailText, bandFieldStyle, withPageNumber, type BandTrail } from "./BandEditor";
+import { BandEditor, BandTrailText, SheetPageContext, bandFieldStyle, withPageNumber, type BandTrail } from "./BandEditor";
 import { BAND_FIELD_SEPARATOR, BAND_ZONE_CLASS, BandRowFrame, headerZonesPrinting } from "./bandRow";
 
 /**
@@ -2462,35 +2462,7 @@ export function NodeView({
   }
 
   if (node.kind === "columns" && node.band) {
-    // A masthead band read-only (the page-count probe, a preview without editing): the
-    // same frame and zones as `BandEditor` and `ReadOnlyBandRow`, so all three agree.
-    const cellsIn = (align: ZoneName) =>
-      node.cells.filter((cell) => (cell.align ?? "left") === align);
-    const zone = (align: ZoneName) => (
-      <span data-band-zone="" className={BAND_ZONE_CLASS}>
-        {cellsIn(align).map((cell, index) => (
-          <Fragment key={index}>
-            {index > 0 && BAND_FIELD_SEPARATOR}
-            <span className="whitespace-pre-wrap" style={bandFieldStyle({ format: cell.format })}>
-              {richNodes(cell.text, language)}
-            </span>
-          </Fragment>
-        ))}
-      </span>
-    );
-    return (
-      <BandRowFrame
-        kind="masthead"
-        // The exporter writes a stop for every zone with a cell (`bandStops`).
-        occupied={{
-          left: cellsIn("left").length > 0,
-          center: cellsIn("center").length > 0,
-          right: cellsIn("right").length > 0,
-        }}
-        zones={{ left: zone("left"), center: zone("center"), right: zone("right") }}
-        className={`${STYLE_CLASS[node.style] ?? ""} ${node.rule ? "border-b border-[#999999] pb-0.5" : ""}`}
-      />
-    );
+    return <MastheadBandRow node={node} language={language} />;
   }
 
   if (node.kind === "columns") {
@@ -2833,6 +2805,48 @@ function RegionWake({
  * become the real number, because the PDF *is* the final paginated artifact and a
  * chip on paper would be a defect. The two are swapped by the print stylesheet.
  */
+/**
+ * A masthead band read-only (the page-count probe, a preview without editing): the same
+ * frame and zones as `BandEditor` and `ReadOnlyBandRow`, so all three agree. A page
+ * number prints the sheet's (`SheetPageContext`), as Word's field does.
+ */
+function MastheadBandRow({
+  node,
+  language,
+}: {
+  node: Extract<RenderNode, { kind: "columns" }>;
+  language: LanguageMode;
+}) {
+  const page = useContext(SheetPageContext);
+  const cellsIn = (align: ZoneName) =>
+    node.cells.filter((cell) => (cell.align ?? "left") === align);
+  const zone = (align: ZoneName) => (
+    <span data-band-zone="" className={BAND_ZONE_CLASS}>
+      {cellsIn(align).map((cell, index) => (
+        <Fragment key={index}>
+          {index > 0 && BAND_FIELD_SEPARATOR}
+          <span className="whitespace-pre-wrap" style={bandFieldStyle({ format: cell.format })}>
+            {richNodes(bandCellPageText(cell, language, page), language)}
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  );
+  return (
+    <BandRowFrame
+      kind="masthead"
+      // The exporter writes a stop for every zone with a cell (`bandStops`).
+      occupied={{
+        left: cellsIn("left").length > 0,
+        center: cellsIn("center").length > 0,
+        right: cellsIn("right").length > 0,
+      }}
+      zones={{ left: zone("left"), center: zone("center"), right: zone("right") }}
+      className={`${STYLE_CLASS[node.style] ?? ""} ${node.rule ? "border-b border-[#999999] pb-0.5" : ""}`}
+    />
+  );
+}
+
 export function HeaderFooterBand({
   value,
   language,
@@ -3021,7 +3035,7 @@ export function HeaderFooterBand({
        * it takes a literal value (§ UI tokens vs the paper).
        *
        * The rule keeps its own grey: it is a hairline, and `#999999` is the literal the
-       * exporter puts in `w:pBdr`.
+       * exporter puts in `w:pBdr`, 1pt from the text (`w:space="1"`), as Word sets it.
        *
        * **No size of its own**: the exporter writes these paragraphs in `Normal`, the
        * document's body size (`baseFontSize`) on the fixed 12pt line, so the rows take
@@ -3030,10 +3044,10 @@ export function HeaderFooterBand({
       className={`flex items-baseline gap-2 text-[#111111] ${
         edge === "header"
           ? rule
-            ? "mb-2 border-b border-[#999999] pb-1"
+            ? "mb-2 border-b border-[#999999] pb-[1pt]"
             : "mb-2"
           : rule
-            ? "mt-2 border-t border-[#999999] pt-1"
+            ? "mt-2 border-t border-[#999999] pt-[1pt]"
             : "mt-2"
       }`}
     >
@@ -4874,7 +4888,15 @@ export function Preview({
    * all this did at first — shrinks the column without moving it, so the header simply
    * printed on top of the first lines of content instead of pushing them clear.
    */
-  const overflow = bandsOverflow(setup.margins, headerRowsTwips, footerRowsTwips);
+  /*
+   * Against the offset the rows are drawn at (`edgeOffsets`, Word's `w:header`, from the
+   * estimate), not one re-derived from the measured height: a wrapped row the estimate
+   * cannot see still starts there in Word, so the body moves by what it really overruns.
+   */
+  const overflow = {
+    header: Math.max(0, edgeOffsets.header + headerRowsTwips - setup.margins.top),
+    footer: Math.max(0, edgeOffsets.footer + footerRowsTwips - setup.margins.bottom),
+  };
   // The paginator works in CSS pixels at 96dpi; twips are 1/1440".
   const bandsOverflowPx = ((overflow.header + overflow.footer) / 1440) * 96;
 
@@ -7163,6 +7185,10 @@ export function Preview({
                     onWake={() => enterRegion("body")}
                   />
                 )}
+                {/* The sheet's page, for a title-block page number (`SheetPageContext`). */}
+                <SheetPageContext.Provider
+                  value={{ number: pageIndex + 1 + pageNumberOffset, count: pages.length + pageNumberOffset }}
+                >
                 {pageBlocks.length === 0 && openedBy[pageIndex] ? (
                   // A page the teacher added that nothing has landed on yet. Rendered
                   // as an affordance rather than as bare paper, because a truly blank
@@ -7229,6 +7255,7 @@ export function Preview({
                     );
                   })
                 )}
+                </SheetPageContext.Provider>
               </div>
 
               <div
@@ -7297,6 +7324,8 @@ export function Preview({
             : {}),
         }}
       >
+        {/* Measured as the first body sheet, where the masthead prints. */}
+        <SheetPageContext.Provider value={{ number: 1 + pageNumberOffset, count: pages.length + pageNumberOffset }}>
         <div ref={probeRef}>
           {blocks.map((block) => (
             <div key={block.key} data-block-key={block.key}>
@@ -7304,6 +7333,7 @@ export function Preview({
             </div>
           ))}
         </div>
+        </SheetPageContext.Provider>
       </div>
 
       {/* The sweep rectangle. Fixed-positioned in viewport coordinates because it is

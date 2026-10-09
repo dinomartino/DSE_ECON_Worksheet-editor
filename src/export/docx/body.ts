@@ -271,6 +271,12 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
         })
         .join('');
 
+  // A masthead row's line box follows its largest field, as the page draws it (§ An
+  // enlarged line box follows its font size); every other row keeps the fixed line.
+  const sizes = node.band
+    ? node.cells.map((cell) => cell.format?.fontSize).filter((size): size is number => size !== undefined)
+    : [];
+  const bandLine = exactLineFor(sizes.length > 0 ? Math.max(...sizes) : undefined);
   const props =
     `<w:pStyle w:val="${STYLE_IDS[node.style]}"/>` +
     (node.keepNext ? '<w:keepNext/>' : '') +
@@ -279,9 +285,10 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
     // line is restated with it for the reason `formatParagraphProps` restates it:
     // direct formatting replaces the style's `w:spacing` element wholesale, so a bare
     // `w:before` would drop this one row off the page's 12pt rhythm.
-    (node.spaceBefore !== undefined
-      ? `<w:spacing w:before="${Math.round(node.spaceBefore * 20)}"` +
-        ` w:line="${exactLineFor(undefined)}" w:lineRule="exact"/>`
+    (node.spaceBefore !== undefined || bandLine !== FIXED_LINE_TWIPS
+      ? '<w:spacing' +
+        (node.spaceBefore !== undefined ? ` w:before="${Math.round(node.spaceBefore * 20)}"` : '') +
+        ` w:line="${bandLine}" w:lineRule="exact"/>`
       : '') +
     (stops ? `<w:tabs>${stops}</w:tabs>` : '') +
     // One `w:ind`, since Word merges the element as a whole — emitting `left` and

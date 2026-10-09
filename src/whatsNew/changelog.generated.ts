@@ -113,6 +113,15 @@ a version heading is edited afterwards.
   places as in the Word file, so they edit like the rest of the paper.
   <!-- zh: **並排的 MC 選項和標籤列表貼到 Word 時會以 Tab 對齊的文字行出現，不再變成表格。** 複製工作紙再貼到 Word 時，
   排成一行或兩欄的選項，以及編號指示等標籤列表，會以 Tab 對齊，位置與 Word 檔案相同，編輯起來與試卷其他部分一樣。 -->
+- **Title block page numbers, and header and footer spacing, now match the Word file.** A page
+  number in the title block shows its real number on the page and in the PDF, counting the
+  cover, instead of "#". Copying or searching a PDF no longer finds stray "+" signs from the
+  editing buttons. A header with a long line that wraps now pushes the questions down on every
+  page by as much as Word does, and a large-print header or title line no longer has its tops
+  cut off in Word.
+  <!-- zh: **標題區頁碼和頁首、頁尾的間距與 Word 檔案一致。** 標題區內的頁碼在頁面和 PDF 上會顯示實際頁碼（連封面計算），
+  不再顯示「#」。在 PDF 中複製或搜尋文字時，不會再找到編輯按鈕留下的「+」。頁首有較長的一行需要換行時，每一頁的題目都會
+  像 Word 一樣向下移；較大字號的頁首或標題行在 Word 中亦不會再被切去頂部。 -->
 
 ## 0.7.0 — 2026-10-08
 

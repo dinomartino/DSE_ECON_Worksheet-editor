@@ -293,15 +293,21 @@ export function bandsShouldRender(bands: Band[], editing: boolean): boolean {
 export const BAND_ROW_TWIPS = 240;
 const RULE_GAP_TWIPS = 120; // The border and its padding, when a rule is drawn.
 
+/** A band row's largest field size in pt, when one is set: what its line box follows. */
+export function bandFontSize(band: Band): number | undefined {
+  const zones = band.zones ?? { left: [], center: [], right: [] };
+  const sizes = (['left', 'center', 'right'] as const)
+    .flatMap((zone) => zones[zone] ?? [])
+    .map((field) => field.format?.fontSize)
+    .filter((size): size is number => typeof size === 'number');
+  return sizes.length > 0 ? Math.max(...sizes) : undefined;
+}
+
 export function bandsHeight(bands: Band[], rule?: boolean): number {
   const rows = bands.reduce((total, band) => {
-    const zones = band.zones ?? { left: [], center: [], right: [] };
-    const sizes = (['left', 'center', 'right'] as const)
-      .flatMap((zone) => zones[zone] ?? [])
-      .map((field) => field.format?.fontSize)
-      .filter((size): size is number => typeof size === 'number');
-    const largest = sizes.length > 0 ? Math.max(...sizes) : 11;
-    // Scale the row against the 11pt body default the estimate is calibrated for.
+    // The row's exact line: the 12pt box, scaled only for a field over 11pt (the
+    // exporter's `exactLineFor`) — a smaller field never shrinks it.
+    const largest = Math.max(11, bandFontSize(band) ?? 11);
     return total + Math.round(BAND_ROW_TWIPS * (largest / 11));
   }, 0);
   return rows + (rule ? RULE_GAP_TWIPS : 0);

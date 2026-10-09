@@ -672,6 +672,29 @@ export function bandCellPieces(cell: BandCell, side: 'en' | 'zh'): BandCellPiece
   });
 }
 
+/**
+ * A band cell's printed text for a sheet that knows its page: the `.docx` pieces with
+ * each field replaced by its number, so the page prints what Word computes. Without a
+ * page, or for a cell with no page number, the cell's own `text`.
+ */
+export function bandCellPageText(
+  cell: BandCell,
+  language: LanguageMode,
+  page?: { number: number; count: number },
+): BiText {
+  if (!page || !bandCellHasPageNumber(cell)) return cell.text;
+  const sides = bandCellSides(cell, language);
+  const line = (side: 'en' | 'zh'): RichText =>
+    sides.includes(side)
+      ? bandCellPieces(cell, side).flatMap((piece) =>
+          'field' in piece
+            ? [{ text: String(piece.field === 'PAGE' ? page.number : page.count) }]
+            : piece.text,
+        )
+      : [];
+  return { en: line('en'), zh: line('zh') };
+}
+
 /** Writing room: the primitives `OutputMode.omitAnswerSpace` leaves out. */
 export function isWritingRoom(node: { kind: string }): boolean {
   return node.kind === 'answerSpace' || node.kind === 'answerLines' || node.kind === 'answerGraph';

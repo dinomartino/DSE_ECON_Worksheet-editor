@@ -215,6 +215,8 @@ export interface HeaderFooterRow {
   left: string;
   center: string;
   right: string;
+  /** The row's exact line in twips, when a field over 11pt enlarges it (`exactLineFor`). */
+  line?: number;
 }
 
 /**
@@ -239,7 +241,7 @@ function headerFooterParagraph(
   /** Only the edge-most row carries the rule, so it frames the block rather than each line. */
   border: string,
 ): string {
-  const { left, center, right } = row;
+  const { left, center, right, line } = row;
   const centreStop = `<w:tab w:val="center" w:pos="${Math.round(contentWidth / 2)}"/>`;
   const rightStop = `<w:tab w:val="right" w:pos="${Math.round(contentWidth)}"/>`;
   /*
@@ -257,7 +259,9 @@ function headerFooterParagraph(
   if (center) content += tab + center;
   if (right) content += (center || leftRight ? tab : tab + tab) + right;
 
-  return `<w:p><w:pPr>${tabs}${border}</w:pPr>${content}</w:p>`;
+  // An enlarged row's line box follows its size, as on the page; the 12pt box clipped it.
+  const spacing = line ? `<w:spacing w:line="${line}" w:lineRule="exact"/>` : '';
+  return `<w:p><w:pPr>${tabs}${border}${spacing}</w:pPr>${content}</w:p>`;
 }
 
 /**

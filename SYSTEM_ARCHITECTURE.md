@@ -168,6 +168,9 @@ and the `partHeader` suffix print **computed** numbers — a stored total goes s
 text, centring or right-aligning the words that fit on the line (never over earlier text);
 the rest wraps from the margin; no stop left, or no word fitting, moves the tab down a line.
 Header and footer rows are `Normal`: the body size (`baseFontSize`), never smaller.
+A row with a field over 11pt gets that field's exact line (`exactLineFor`, `bandFontSize`)
+in every band paragraph the `.docx` writes, as `bandFieldStyle` draws it; the 12pt box
+clipped it in Word.
 
 ### A field is authored wording around a derived value
 
@@ -184,7 +187,8 @@ stays derived; only the wording is `prefix`/`suffix` rich text.
 - Both band paths set `whitespace-pre-wrap`, or HTML collapses boundary spaces the
   `.docx` (`xml:space="preserve"`) prints.
 - An empty side renders a `+` affordance with `data-print-hide` (not
-  `data-empty-placeholder`, which reserves a box).
+  `data-empty-placeholder`, which reserves a box). **All** `BandEditor` chrome is
+  `data-print-hide`: a transparent glyph still lands in the PDF's text layer.
 - v5→v6 inlines its default wordings (importing `DEFAULT_FIELD_WORDING` would create an
   import cycle); a test asserts the spellings agree.
 
@@ -1658,12 +1662,14 @@ needed, clamped at `MIN_EDGE_TWIPS`.
 
 - **Offsets are sized from the running rows**, not the taller page-1 list; the cover
   takes its overflow as extra padding on page 1 only (`pageStyleFor`).
-- **Word gets an estimate; the preview measures.** `bandsHeight()` estimates (~264tw
-  per 11pt row, scaled by field font size); the preview measures real boxes via
-  `ResizeObserver` (`measuredFirst` for page 1).
+- **Word gets an estimate; the preview measures.** `bandsHeight()` estimates (240tw
+  per row, scaled up only for a field over 11pt; wrapping unseen); the preview measures
+  real boxes via `ResizeObserver` (`measuredFirst` for page 1).
 - **Overflow moves the text column, not merely its budget** — header overflow moves the
-  top down, footer overflow the bottom up, separately. Page 1's overflow is computed
-  against `edgeOffsets`.
+  top down, footer overflow the bottom up, separately. Every sheet's overflow is the
+  measured rows against `edgeOffsets` (where Word starts them), so a wrapped row the
+  estimate missed pushes the body exactly as far as in Word. A rule is 1pt off the text
+  (`w:space="1"`).
 - Rows taller than the whole margin are reported (`BandOverflowNotice`), not fixed.
 
 Each row exports as one paragraph with tab stops from live content width. A rule draws
@@ -1709,7 +1715,10 @@ presets.
 - **A page number is one field with a pattern** (`plain`, `pDot`, `longForm`), shared
   via `pageNumberPlaceholder`: the preview substitutes a chip (`withPageNumber`); the
   exporter splits on the same placeholders so only numbers become `PAGE`/`NUMPAGES`,
-  in the masthead as in the header (a masthead cell's `text` holds the raw `#`).
+  in the masthead as in the header (a masthead cell's `text` holds the raw `#`). The
+  masthead is built before pagination, so each sheet (and the probe, as the first body
+  sheet) provides its page through `SheetPageContext`; the read-only row prints
+  `bandCellPageText`.
   `bandFieldText` returns the placeholder. Fill-in rules export as real ruled runs.
 - `patchHeaderFooterBand` searches both band lists; the lists never share ids
   (`setFirstPageMode` re-ids on copy).
