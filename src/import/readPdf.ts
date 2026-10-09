@@ -257,9 +257,19 @@ async function openPdf(bytes: ArrayBuffer): Promise<OpenedPdf | PdfReadError> {
       throw error;
     }
   };
+  // A file read just before (the text pass, then the scan's pages) may still be closing.
+  const settled = async () => {
+    try {
+      return await open();
+    } catch (error) {
+      if (!/being destroyed/i.test((error as Error)?.message ?? '')) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return open();
+    }
+  };
   let opened: Awaited<ReturnType<typeof open>>;
   try {
-    opened = await open();
+    opened = await settled();
   } catch (error) {
     if ((error as { name?: string })?.name === 'PasswordException') return { kind: 'encrypted' };
     if (!lib.workerFailure()) return { kind: 'unreadable' };
@@ -320,7 +330,7 @@ export async function* renderPdfPages(bytes: ArrayBuffer, options: { dpi?: numbe
       yield { page: n, pages: doc.numPages, png: new Uint8Array(await blob.arrayBuffer()), scale };
     }
   } finally {
-    void task.destroy();
+    await task.destroy().catch(() => undefined);
   }
 }
 
@@ -348,6 +358,6 @@ export async function readPdf(bytes: ArrayBuffer, options: ReadPdfOptions = {}):
   } catch {
     return { kind: 'unreadable' };
   } finally {
-    void task.destroy();
+    await task.destroy().catch(() => undefined);
   }
 }

@@ -711,7 +711,9 @@ page at a time at 200 DPI (`renderPdfPages`, the same pdf.js open and main-threa
 `readPdf`); a picture is decoded by the webview (rotation applied; HEIC only where the webview
 opens it), fitted to 2400 px, sent as PNG, and read as an A4 page. Pictures chosen together are
 one paper in name order (`groupPictures`). A page the engine cannot decode is skipped; a model
-or internal error fails the file (`ocrFailed`).
+or internal error fails the file (`ocrFailed`, logged to the console). `readPdf` awaits pdf.js
+closing the file, and an open that meets a closing worker is retried once: the text pass and the
+page pass open the same file back to back.
 
 **Adapter** (`src/import/ocrLayout.ts`, pure): px → pt by the render scale; the page's skew (the
 median angle of long lines) undone; the unclip margin, min(15% of height, 10% of width), taken

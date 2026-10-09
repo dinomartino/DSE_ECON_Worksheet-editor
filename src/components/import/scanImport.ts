@@ -62,12 +62,14 @@ export async function recognisePages(pages: AsyncIterable<ScanPage>, engine: Ocr
           undecodable++;
           continue;
         }
+        console.warn('Text recognition failed:', error);
         return { kind: 'failed' };
       }
       if (options.signal?.aborted) return { kind: 'stopped' };
     }
   } catch (error) {
     if ((error as { kind?: string })?.kind === 'undecodable') return { kind: 'undecodable' };
+    console.warn('Scanned pages could not be prepared:', error);
     return { kind: 'failed' };
   }
   if (options.signal?.aborted) return { kind: 'stopped' };
