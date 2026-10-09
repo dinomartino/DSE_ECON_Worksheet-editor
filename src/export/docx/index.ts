@@ -1,5 +1,6 @@
 import {
   BAND_ROW_TWIPS,
+  bandFontSize,
   bandsAreEmpty,
   bandsHeight,
   contentWidth,
@@ -64,7 +65,7 @@ import {
   type SectionOptions,
 } from './package';
 import { formatRunOptions, lineBreak, rFonts, richTextRuns, run, runProperties } from './runs';
-import { buildStylesXml, DEFAULT_BASE_FONT_SIZE_PT, STYLE_IDS, withBodyStyleVariant } from './styles';
+import { buildStylesXml, DEFAULT_BASE_FONT_SIZE_PT, exactLineFor, FIXED_LINE_TWIPS, STYLE_IDS, withBodyStyleVariant } from './styles';
 
 /**
  * .docx export orchestration (§7). Consumes the neutral render IR, so it does not
@@ -314,10 +315,12 @@ function headerFooterLayout(
       .filter((band) => band.id === keepBandId || bandPrints(band, { totalMarks }, language))
       .map((band) => {
         const zones = zonesOf(band);
+        const line = exactLineFor(bandFontSize(band));
         return {
           left: zoneRuns(zones.left, fonts, language, totalMarks),
           center: zoneRuns(zones.center, fonts, language, totalMarks),
           right: zoneRuns(zones.right, fonts, language, totalMarks),
+          ...(line !== FIXED_LINE_TWIPS ? { line } : {}),
         };
       }),
     contentWidth: width,

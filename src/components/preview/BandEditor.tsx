@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment, createContext, useContext, useState } from 'react';
 import { ZONES, bandIsEmpty, zonesOf, type ZoneName } from '@/model/bands';
 import { bandFieldSegments, mirrorBilingualEdit } from '@/model/bandSegments';
 import { plain } from '@/model/text';
@@ -107,6 +107,14 @@ export function withPageNumber(
 }
 
 /**
+ * The sheet a flow block is drawn on, for a title-block page number (§ `withPageNumber`).
+ *
+ * The masthead is built before pagination, so it cannot be handed its page as a prop;
+ * each sheet (and the probe, as page 1) provides it instead. Absent: the placeholder.
+ */
+export const SheetPageContext = createContext<{ number: number; count: number } | undefined>(undefined);
+
+/**
  * A band field's `TextFormat` as inline CSS.
  *
  * Exported and shared with the read-only row, which is what the print and PDF paths draw.
@@ -199,6 +207,9 @@ export function BandEditor({
   selection,
 }: Props) {
   const m = useMessages(BAND_EDITOR_MESSAGES);
+  // A header passes its sheet; the masthead takes the one it is drawn on.
+  const sheet = useContext(SheetPageContext);
+  const pageHere = page ?? sheet;
   // Transient drag state; never committed, so it can't reach an undo entry.
   const [dragging, setDragging] = useState<{ bandId: string; fieldId: string } | undefined>();
   const [over, setOver] = useState<{ bandId: string; zone: ZoneName } | undefined>();
@@ -372,7 +383,7 @@ export function BandEditor({
                     decomposition the IR and the .docx use, so what is editable here
                     is exactly what carries an `EditTarget` there.
                   */}
-                  {bandFieldSegments(field, { totalMarks, page }).map((segment, index) =>
+                  {bandFieldSegments(field, { totalMarks, page: pageHere }).map((segment, index) =>
                     segment.kind === 'text' ? (
                       /*
                        * An empty side of a computed field is only its `+`, which the
@@ -460,6 +471,7 @@ export function BandEditor({
                   )}
                   <button
                     type="button"
+                    data-print-hide
                     aria-label={m.removeField}
                     title={m.removeField}
                     onClick={() => onRemoveField(field.id)}
@@ -483,6 +495,8 @@ export function BandEditor({
               {zones[zone].length === 0 && (
                 <button
                   type="button"
+                  // Transparent is not absent: without this its "+" reached the PDF's text.
+                  data-print-hide
                   onClick={() => onAddField(band.id, zone)}
                   aria-label={m.addField(zone)}
                   className={`absolute bottom-0 z-20 text-[10px] text-transparent transition-[color] duration-150 ease-out-soft group-hover/band:text-[#a5a09b] hover:!text-[#0a5c9e] ${EMPTY_ZONE_SPOT[zone]}`}

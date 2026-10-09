@@ -107,6 +107,15 @@ a version heading is edited afterwards.
   <!-- zh: **較長的頁首、頁尾和標題區行，換行位置與 Word 一致。** 一行太長放不下時，頁面上每行的字與列印出來的 Word
   檔案相同：置中的標題保持置中，旁邊放不下的文字如 Word 一樣移到下一行。頁首和頁尾的文字以 Word 列印的字號顯示，不再較小。
   在頁碼、總分或填寫橫線前後加字的「+」只會在滑鼠指向時出現，亦不會再出現在頁邊或蓋住其他文字。 -->
+- **Title block page numbers, and header and footer spacing, now match the Word file.** A page
+  number in the title block shows its real number on the page and in the PDF, counting the
+  cover, instead of "#". Copying or searching a PDF no longer finds stray "+" signs from the
+  editing buttons. A header with a long line that wraps now pushes the questions down on every
+  page by as much as Word does, and a large-print header or title line no longer has its tops
+  cut off in Word.
+  <!-- zh: **標題區頁碼和頁首、頁尾的間距與 Word 檔案一致。** 標題區內的頁碼在頁面和 PDF 上會顯示實際頁碼（連封面計算），
+  不再顯示「#」。在 PDF 中複製或搜尋文字時，不會再找到編輯按鈕留下的「+」。頁首有較長的一行需要換行時，每一頁的題目都會
+  像 Word 一樣向下移；較大字號的頁首或標題行在 Word 中亦不會再被切去頂部。 -->
 
 ## 0.7.0 — 2026-10-08
 
