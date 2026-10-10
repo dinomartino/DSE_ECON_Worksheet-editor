@@ -45,6 +45,21 @@ describe('layoutPdf', () => {
     expect(raws([page(row(['A. rises', 'B falls']))])).toEqual(['A. rises B falls']);
   });
 
+  it('splits options C and D set only a word space apart on a row that starts at A', () => {
+    const items = [
+      at('11.', 42, 700),
+      at('A public good is a good', 66, 700),
+      at('A.', 80, 676),
+      at('(1) and (2) only', 98, 676),
+      at('B. (2)', 200, 676),
+      at('and (3) only', 236, 676),
+      at('C. (1) and (3) only', 320, 676),
+      at('D. (1), (2) and (3)', 427, 676),
+    ];
+    const [q] = analyseLines(read([page(items)])).outline.questions;
+    expect(q.options.map((o) => o.runs.map((r) => r.text).join(''))).toEqual(['(1) and (2) only', '(2) and (3) only', '(1) and (3) only', '(1), (2) and (3)']);
+  });
+
   it('joins wrapped lines into paragraphs, a hyphenated break closed up', () => {
     const wide = 'The government of a small open economy has decided to raise the tax on environ-';
     expect(

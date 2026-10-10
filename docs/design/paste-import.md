@@ -296,13 +296,16 @@ option letters (the question becomes written text, flagged); an instructions lis
 like the questions with no heading after it; a structured question whose part letters were
 lost by OCR.
 
-**Two structural rules (2026-10-10):**
+**Structural rules (2026-10-10):**
 
 - **A bare option letter** ("B (1) and (4) only") is option B only inside a run A, B, C, D whose
   other labels (three or more, one family) sit on the lines around it (`labelBareOptions`,
   `src/import/lines.ts`). A PDF row of option segments with one bare letter splits like any option
   row (`optionRowWithBareLetter`, `src/import/pdfLayout.ts`). Prose that opens with a capital has no run.
   Not read: a bare letter inside one pasted line ("A. x B y C. z"), where no gap shows it.
+- **An option a word space after the last** ("C. … D. …" on one line) splits off when it is the
+  next letter in the line's own style, the options above run from A to this one (or this is A and
+  the next line is C), and the next line is not that letter already (`embeddedOption`, `lines.ts`).
 - **A labelled table row** ("(a) on the first $150,000 ⇥ 46%") is a table row, not a part, when
   the label is part-level, cells follow it, it has no marks, and its table has an unlabelled row or
   the same labels start again later in the question (`isLabelledTableRow`). The label stays in the

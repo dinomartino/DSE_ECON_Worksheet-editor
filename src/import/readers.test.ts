@@ -77,6 +77,23 @@ describe('plain reader', () => {
     expect(lines('A. Firm B raises its price\nB. x\nC. y\nD. z').map((l) => l.text)).toEqual(['Firm B raises its price', 'x', 'y', 'z']);
   });
 
+  it('splits the next option set a word space after this one, only when the run from A fits', () => {
+    const texts = (plain: string) => lines(plain).map((l) => [l.label, l.text]);
+    expect(texts('A. (1) only\nB. (2) only\nC. (1) and (3) only D. (1), (2) and (3)')).toEqual([
+      ['A.', '(1) only'],
+      ['B.', '(2) only'],
+      ['C.', '(1) and (3) only'],
+      ['D.', '(1), (2) and (3)'],
+    ]);
+    expect(texts('A. rises B. falls\nC. stays D. none').map(([l]) => l)).toEqual(['A.', 'B.', 'C.', 'D.']);
+    // Prose and runs that do not fit stay whole.
+    expect(texts('A. Exports to the U.S. A firm gains.\nB. x\nC. y\nD. z')[0]).toEqual(['A.', 'Exports to the U.S. A firm gains.']);
+    expect(texts('A. Plan A. B is cheaper.\nB. x\nC. y\nD. z')[0]).toEqual(['A.', 'Plan A. B is cheaper.']);
+    expect(texts('C. Vitamin D. tablets\nD. none')[0]).toEqual(['C.', 'Vitamin D. tablets']);
+    expect(texts('A. x\nB. y\nC. Vitamin D. tablets\nD. none')[2]).toEqual(['C.', 'Vitamin D. tablets']);
+    expect(texts('A. rises B. falls\nD. none')[0]).toEqual(['A.', 'rises B. falls']);
+  });
+
   it('gives "1.⇥(a)⇥text" a line per level', () => {
     expect(lines('3.\t(a)\tDefine cost.\t(2 marks)').map((l) => [l.label, l.text, l.trailingMarks])).toEqual([
       ['3.', '', undefined],
