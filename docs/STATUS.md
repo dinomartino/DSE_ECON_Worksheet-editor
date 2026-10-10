@@ -35,9 +35,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   before any real run (user's call).
 - **v0.8.0 released 2026-10-10** (published, `latest`, all assets + signatures checked): import from Word/PDF/picture with
   OCR, header/footer/title import, table distribute, band rows match Word, cell align. Vercel deploy not checked.
-- **v0.7.0 released 2026-10-08**. Ships Storage location sync
-  (desktop), floating notices, the pre-release fixes. v0.6.0 (2026-10-04) shipped 題庫, Marking
-  scheme, Translation terms, 中文 interface, Graphs 圖表庫, the Econ Studio rename.
+- **v0.7.0 (2026-10-08):** Storage location sync, floating notices. **v0.6.0 (2026-10-04):** 題庫, Marking scheme, 中文 interface, rename.
 
 ## Before release (only the user can do these)
 
