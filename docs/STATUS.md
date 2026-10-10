@@ -7,22 +7,22 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **Merged, unreleased (2026-10-08/09), none tried in the Tauri window yet:** table "Same height/width" over a
+- **Shipped in 0.8.0, none tried in the Tauri window before release:** table "Same height/width" over a
   swept range (`distributeRows`/`distributeColumns`); editor shell no longer overscrolls (probes `h-0`); import
   brings header/footer/title block (`src/import/chromePlan.ts`, `paste-import.md` § 12; unreproducible bits listed
   with Copy); band rows emulate Word tab stops (`bandTabPlan` pinned to the exporter), masthead page numbers are
   fields, clipboard pastes every ColumnsNode as tab stops. Within 1pt of LibreOffice. **Unverified in Word:**
   clipboard paste, a tab past the last stop. Left: masthead rule 1.5pt vs 1pt, #999 vs 808080.
-- **Found-folder offer merged, unreleased** (`library_found`, `src/sync/foundFolder.ts`): faked shell
+- **Found-folder offer, shipped in 0.8.0** (`library_found`, `src/sync/foundFolder.ts`): faked shell
   only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
-- **Merged, unreleased (2026-10-08):** **Import from Word or PDF** (home screen; file-only by the user's
+- **Shipped in 0.8.0:** **Import from Word or PDF** (home screen; file-only by the user's
   decision) → review → Save as; engine `src/import/`, design `docs/design/paste-import.md`. Also UI language /
   Paper language settings; several files at once + "Answers from" linking (§ 11).
-- **OCR merged, unreleased (2026-10-09):** PP-OCRv6 small in Rust on static ORT 1.22 (`src-tauri/src/ocr/`,
+- **OCR, shipped in 0.8.0:** PP-OCRv6 small in Rust on static ORT 1.22 (`src-tauri/src/ocr/`,
   models fetched by `build.rs`, SHA-pinned), scans + pictures read page by page (`src/import/ocrLayout.ts`,
   `paste-import.md` § 13). DMG +33 MB. Proven end to end in the release `.app` on real scans + photos.
   Windows CI green (links, real-model tests). Unverified: Intel Mac, macOS 12–13.2, signed build, native open sheet.
-- **Import leftovers merged (2026-10-10):** bare "B" option + labelled table rows (S6 P1 Q42, P2 Q10), word-space options
+- **Import leftovers, shipped in 0.8.0:** bare "B" option + labelled table rows (S6 P1 Q42, P2 Q10), word-space options
   (Q11), 題庫-only lands on the first added, answer lines break like Word (2019 P2 24/24/24; Paper 2 body ends at the
   frame), scan diagrams come in as pictures. Picture options pair by place (DSE2021 Q36,
   .docx tables too); scheme rows round a figure follow it (S6 Q5). Crop edges trimmed; boxed flow charts become one
@@ -33,7 +33,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **Cross-device sync (F9), shipped in 0.7.0** (`src/sync/`, `sync-engine.md`, `library-folder.md`), visible
   before any real run (user's call).
-- **v0.7.0 released 2026-10-08** (published, `latest`; Vercel deploy not checked). Ships Storage location sync
+- **v0.8.0 released 2026-10-10** (published, `latest`, all assets + signatures checked): import from Word/PDF/picture with
+  OCR, header/footer/title import, table distribute, band rows match Word, cell align. Vercel deploy not checked.
+- **v0.7.0 released 2026-10-08**. Ships Storage location sync
   (desktop), floating notices, the pre-release fixes. v0.6.0 (2026-10-04) shipped 題庫, Marking
   scheme, Translation terms, 中文 interface, Graphs 圖表庫, the Econ Studio rename.
 
@@ -75,4 +77,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-08/09** — Found-folder offer; import + paper language (15 branches); Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR; import leftovers. 19 branches.
+- **2026-10-08/09** — Found-folder offer; import + paper language (15 branches); Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR; import leftovers. 19 branches. 0.8.0 released 2026-10-10.
+- **Open question (2026-10-10):** hide Import's "Which question bank" picker when there are 0–1 bank files (user asked why it exists; proposal not yet approved).
