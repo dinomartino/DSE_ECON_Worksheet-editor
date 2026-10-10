@@ -10,11 +10,13 @@
  * Coordinates are PDF points, y up from the page's bottom; `y` is a baseline.
  */
 import { normalizeRuns } from '@/model/text';
-import { bareOptionLetter, labelLevel, marksOnly, parseLabel, trailingMarks } from './labels';
+import { bareOptionLetter, labelLevel, loneOptionLabel, marksOnly, parseLabel, trailingMarks } from './labels';
 import { labelZone, repeatKey, tidyText } from './normalize';
 import type { RawLine, RawRun } from './readPlain';
 import type { PageChrome } from './pageChrome';
 import { pdfChrome } from './pdfChrome';
+import { pairByPlace } from './pictureOptions';
+import type { Family } from './types';
 import { joinRuns } from './walk';
 
 export interface PdfItem {
@@ -459,14 +461,37 @@ function pageRegions(rows: readonly Row[], page: number): Region[] {
     band = [];
   };
   const { gapsOf, meet } = gapTools(text, left, rightEdge);
+  /** Rows at the band's end below everything on the other side, set off by a gap ("5." over a figure under a table). */
+  const strays = () => {
+    let end = band.length;
+    while (end > 1) {
+      const row = band[end - 1];
+      const above = band[end - 2];
+      const sides = (['left', 'right'] as const).filter((s) => sideOf(row, g, s));
+      if (row.figure || sides.length !== 1 || above.y - row.top < row.size * 2.5) break;
+      const other = band.slice(0, end - 1).filter((r) => sideOf(r, g, sides[0] === 'left' ? 'right' : 'left'));
+      if (!other.length || Math.min(...other.map((r) => r.y)) - row.top < row.size * 2.5) break;
+      end--;
+    }
+    return band.splice(end);
+  };
+  let beside: PdfBox | undefined;
   for (const row of rows) {
+    // Rows level with a figure that crosses the gutter (notes beside a graph) follow it.
+    if (beside && !row.figure && row.y > beside.y && !crosses(row, g)) {
+      pushFull([row]);
+      continue;
+    }
+    beside = undefined;
     if (crosses(row, g)) {
       // A band's last row that shares a gap with this one opens the table below (its first row).
       const last = band.length >= 2 ? band[band.length - 1] : undefined;
       const carried = !!last && !last.figure && meet(gapsOf(last), gapsOf(row)).length > 0;
       if (carried) band.pop();
+      const opening = strays();
       flush();
-      pushFull(carried ? [last!, row] : [row]);
+      pushFull([...opening, ...(carried ? [last!] : []), row]);
+      if (row.figure) beside = row.figure;
     } else band.push(row);
   }
   flush();
@@ -740,6 +765,48 @@ function joins(a: VLine, b: VLine, geo: Geometry): boolean {
   return a.right >= geo.colRight - slack;
 }
 
+/**
+ * Picture options: rows of option letters alone ("A.      B.") beside the page's pictures,
+ * each letter paired with its picture by place (`pairByPlace`). A paired row splits into one
+ * line per letter, in place in `regions`; each set comes back as letter, picture, letter,
+ * picture… for the layout to print in that order.
+ */
+function pictureOptionSets(regions: VLine[][]): VLine[][] {
+  type Letter = { line: VLine; region: VLine[]; seg: Seg; value: number; family: Family };
+  const pages = new Map<number, { letters: Letter[]; figures: VLine[] }>();
+  for (const region of regions) {
+    for (const line of region) {
+      const at = pages.get(line.page) ?? { letters: [], figures: [] };
+      pages.set(line.page, at);
+      if (line.kind === 'figure' && line.figure) at.figures.push(line);
+      if ((line.kind !== 'text' && line.kind !== 'cells') || line.marks || !line.segs.length) continue;
+      const labels = line.segs.map((seg) => loneOptionLabel(labelZone(plain(seg.runs))));
+      if (labels.every(Boolean)) line.segs.forEach((seg, k) => at.letters.push({ line, region, seg, value: labels[k]!.value, family: labels[k]!.family }));
+    }
+  }
+  const sets: VLine[][] = [];
+  for (const { letters, figures } of pages.values()) {
+    if (letters.length < 2 || figures.length < 2) continue;
+    const placed = letters.map((l) => ({ value: l.value, family: l.family, size: l.line.size, box: { x: l.seg.x, y: l.line.y - l.line.size * 0.25, w: l.seg.right - l.seg.x, h: l.line.size } }));
+    const found = pairByPlace(placed, figures.map((f) => f.figure!));    // A letters row is split only when every letter on it found its picture.
+    const paired = new Set(found.flat().map(([i]) => i));
+    const whole = found.filter((set) => set.every(([i]) => letters.every((o, j) => o.line !== letters[i].line || paired.has(j))));
+    const split = new Map<Seg, VLine>();
+    for (const set of whole) {
+      const left = Math.min(...set.map(([i]) => letters[i].seg.x));
+      for (const [i] of set) {
+        const { line, region, seg } = letters[i];
+        if (split.has(seg)) continue;
+        const own = line.segs.map((s) => ({ ...line, kind: 'text' as const, x: s.x, bodyX: s.x, right: s.right, runs: s.runs, segs: [s], rowItem: true, depthX: left, cells: undefined }));
+        line.segs.forEach((s, k) => split.set(s, own[k]));
+        region.splice(region.indexOf(line), 1, ...own);
+      }
+      sets.push(set.flatMap(([i, f]) => [split.get(letters[i].seg)!, figures[f]]));
+    }
+  }
+  return sets;
+}
+
 /** Lay out every page into reader lines, in reading order. */
 export function layoutPdf(pages: readonly PdfPage[], options: PdfLayoutOptions = {}): PdfLayout {
   const prepared = pages.map((page) => {
@@ -773,33 +840,41 @@ export function layoutPdf(pages: readonly PdfPage[], options: PdfLayoutOptions =
     })(),
   }));
   const docGeo = geometryOf(regionLines.filter((r) => r.region.column === 'full').flatMap((r) => r.lines));
-  const settled = regionLines.map(({ region, lines }) => {
-    const geo = region.column === 'full' ? docGeo : geometryOf(lines, docGeo);
-    return { geo, lines: settle(lines, geo) };
-  });
+  const geos = regionLines.map(({ region, lines }) => (region.column === 'full' ? docGeo : geometryOf(lines, docGeo)));
+  const sets = pictureOptionSets(regionLines.map((r) => r.lines));
+  const settled = regionLines.flatMap(({ lines }, k) => settle(lines, geos[k]).map((line) => ({ geo: geos[k], line })));
+  for (const set of sets) {
+    // Each letter, then its picture, where the first of them was.
+    const members = new Set<VLine>(set);
+    const at = settled.findIndex((e) => members.has(e.line));
+    const found = settled.filter((e) => members.has(e.line));
+    if (at < 0 || found.length !== set.length) continue;
+    const before = settled.slice(0, at).filter((e) => !members.has(e.line));
+    const after = settled.slice(at).filter((e) => !members.has(e.line));
+    const ordered = set.map((line) => found.find((e) => e.line === line)!);
+    settled.splice(0, settled.length, ...before, ...ordered, ...after);
+  }
 
   const out: PdfLine[] = [];
   let heading: string | undefined;
   let lastPage = -1;
-  for (const { geo, lines } of settled) {
-    for (const line of lines) {
-      const at = { page: line.page + 1, x: Math.round(line.x * 10) / 10, y: Math.round(line.y * 10) / 10 };
-      const pageBreak = lastPage >= 0 && line.page !== lastPage;
-      lastPage = line.page;
-      if (line.kind === 'figure') {
-        out.push({ ...at, runs: [], image: { src: '' }, figure: line.figure, ...(pageBreak ? { pageBreak } : {}) });
-        continue;
-      }
-      const runs = line.marks ? (joinRuns(line.runs, line.marks) as RawRun[]) : line.runs;
-      if (heading === undefined && out.length < 6 && line.size >= docGeo.bodySize * 1.15 && plain(runs).trim()) heading = plain(runs).trim();
-      out.push({
-        ...at,
-        runs,
-        marginDepth: Math.max(0, Math.round(((line.depthX ?? line.x) - geo.margin) / (geo.bodySize * 2))),
-        ...(line.cells ? { cells: line.cells } : {}),
-        ...(pageBreak ? { pageBreak } : {}),
-      });
+  for (const { geo, line } of settled) {
+    const at = { page: line.page + 1, x: Math.round(line.x * 10) / 10, y: Math.round(line.y * 10) / 10 };
+    const pageBreak = lastPage >= 0 && line.page !== lastPage;
+    lastPage = line.page;
+    if (line.kind === 'figure') {
+      out.push({ ...at, runs: [], image: { src: '' }, figure: line.figure, ...(pageBreak ? { pageBreak } : {}) });
+      continue;
     }
+    const runs = line.marks ? (joinRuns(line.runs, line.marks) as RawRun[]) : line.runs;
+    if (heading === undefined && out.length < 6 && line.size >= docGeo.bodySize * 1.15 && plain(runs).trim()) heading = plain(runs).trim();
+    out.push({
+      ...at,
+      runs,
+      marginDepth: Math.max(0, Math.round(((line.depthX ?? line.x) - geo.margin) / (geo.bodySize * 2))),
+      ...(line.cells ? { cells: line.cells } : {}),
+      ...(pageBreak ? { pageBreak } : {}),
+    });
   }
   if (heading === undefined && chrome.taken.size) {
     // The title may be in page 1's header or masthead, which are no longer lines.

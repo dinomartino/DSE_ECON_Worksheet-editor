@@ -75,6 +75,13 @@ export function bareOptionLetter(text: string): { value: number; length: number 
   return m ? { value: letterValue(m[1]), length: m[0].length } : null;
 }
 
+/** An option letter with nothing after it ("A.", "(B)", "C)"); `zone` is `labelZone`d text. */
+export function loneOptionLabel(zone: string): ParsedLabel | null {
+  const t = zone.trim();
+  const label = t ? parseLabel(`${t} `) : null;
+  return label && labelLevel(label.family) === 'option' && label.text.length >= t.length ? label : null;
+}
+
 /** The level a family takes when nothing else is known. */
 export function labelLevel(family: Family): Level {
   switch (family) {

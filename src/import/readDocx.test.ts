@@ -4,6 +4,10 @@ import { analyseLines, buildImport, DocxReadError, readDocx, readPaste, type Ima
 import { abstractNum, chart, EMF, group, looseLabel, looseLine, makeDocx, num, p, para, picture, PNG_1x1, r, tbl, textBox } from './fixtures/docx';
 import { scoreAnalysis } from './fixtures/score';
 import type { ExpectedQuestion } from './fixtures/expected';
+import { exportDocxBuffer } from '@/export/docx';
+import { createMcqQuestion, createWorksheet } from '@/model/factories';
+import { bi } from '@/model/text';
+import type { McqQuestion, Worksheet } from '@/model/types';
 
 const COMBO = ['(1) and (2) only', '(1) and (3) only', '(2) and (3) only', '(1), (2) and (3)'];
 
@@ -384,5 +388,51 @@ describe('docx reader: the file', () => {
     sheet.file('xl/workbook.xml', '<workbook/>');
     expect(await rejection(await sheet.generateAsync({ type: 'arraybuffer' }))).toBe('notDocx');
     expect(await rejection(await makeDocx({ body: '', parts: { 'word/document.xml': 'not xml at all' } }))).toBe('unreadable');
+  });
+});
+
+describe('docx reader: pictures as options', () => {
+  const rels = Object.fromEntries([5, 6, 7, 8].map((n) => [`rId${n}`, ['image', `media/p${n}.png`] as [string, string]]));
+  const media = Object.fromEntries([5, 6, 7, 8].map((n) => [`media/p${n}.png`, PNG_1x1]));
+  const pic = (n: number) => p(picture(`rId${n}`, 100 + n, 80));
+  const stem = para('36.\tWhich of the following diagrams can best describe the change?');
+  const optionWidths = async (body: string) => {
+    const { analysis } = await analyse({ rels, media, body: stem + body });
+    const q = analysis.outline.questions[0];
+    return { kind: q.kind, options: q.options.map((o) => (o.blocks ?? []).map((b) => (b.kind === 'image' ? b.image.widthPx : b.kind))) };
+  };
+
+  it('gives each letter the picture in its cell (a 2 × 2 table)', async () => {
+    expect(await optionWidths(tbl([[para('A.') + pic(5), para('B.') + pic(6)], [para('C.') + pic(7), para('D.') + pic(8)]]))).toEqual({
+      kind: 'mc',
+      options: [[105], [106], [107], [108]],
+    });
+  });
+
+  it('pairs a row of letters with the row of pictures under it, and the editor’s own one-row tables', async () => {
+    expect(await optionWidths(tbl([[para('A.'), para('B.'), para('C.'), para('D.')], [pic(5), pic(6), pic(7), pic(8)]]))).toEqual({
+      kind: 'mc',
+      options: [[105], [106], [107], [108]],
+    });
+    const exported = tbl([[para('A.\t') + pic(5), para('B.\t') + pic(6)]]) + para('') + tbl([[para('C.\t') + pic(7), para('D.\t') + pic(8)]]);
+    expect(await optionWidths(exported)).toEqual({ kind: 'mc', options: [[105], [106], [107], [108]] });
+  });
+
+  it('reads back a picture-option MC the editor exported', async () => {
+    const question = createMcqQuestion() as McqQuestion;
+    question.blocks = [{ kind: 'paragraph', id: 'stem', text: bi('Which of the following diagrams can best describe the change?', '') }];
+    const png = `data:image/png;base64,${btoa(String.fromCharCode(...PNG_1x1))}`;
+    question.options = question.options.map((o, k) => ({ ...o, text: bi('', ''), blocks: [{ kind: 'image', id: `i${k}`, src: png, widthPx: 120 + k, heightPx: 90, altText: bi('Graph', '') }] }));
+    const worksheet: Worksheet = { ...createWorksheet(), questions: [question], flow: [{ type: 'question', id: question.id }] };
+    const bytes = await exportDocxBuffer(worksheet, { language: 'en', version: 'student' });
+    const read = await readDocx(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+    const q = analyseLines(read).outline.questions[0];
+    expect(q.kind).toBe('mc');
+    expect(q.options.map((o) => (o.blocks ?? []).map((b) => (b.kind === 'image' ? b.image.widthPx : b.kind)))).toEqual([[120], [121], [122], [123]]);
+  });
+
+  it('leaves a table of pictures that are not options as a table with its pictures after it', async () => {
+    const { read } = await analyse({ rels, media, body: tbl([[para('Figure 1') + pic(5), para('Figure 2') + pic(6)]]) });
+    expect(read.lines.map((l) => (l.image ? `img ${l.image.widthPx}` : l.raw))).toEqual(['Figure 1\tFigure 2', 'img 105', 'img 106']);
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readAnswerSheet } from './answerSheet';
 import { analyseLines } from './index';
 import { toSourceLines } from './lines';
 import { rowText } from './pageChrome';
@@ -215,5 +216,89 @@ describe('findFigures', () => {
     const caption = [at('Figure 1', 170, 556)];
     expect(findFigures(page(caption, { graphics: [{ kind: 'image', box }] })).figures[0].h).toBeGreaterThan(150);
     expect(findFigures(page(caption, { graphics: [{ kind: 'image', box, placed: true }] })).figures).toEqual([box]);
+  });
+});
+
+const image = (x: number, y: number, w = 200, h = 140) => ({ kind: 'image' as const, box: { x, y, w, h } });
+
+describe('layoutPdf: pictures as options', () => {
+  const stem = [at('36.', 42, 760), at('Which of the following diagrams can best describe the change?', 66, 760)];
+  const optionPictures = (pages: PdfPage[]) => {
+    const q = analyseLines(read(pages)).outline.questions[0];
+    return { kind: q.kind, texts: q.options.map((o) => o.runs.map((r) => r.text).join('')), pictures: q.options.map((o) => (o.blocks ?? []).filter((b) => b.kind === 'image').length) };
+  };
+
+  it('pairs a 2 × 2 grid by place: each letter at its picture’s top-left corner', () => {
+    // "A.      B." over the top pair, "C.      D." over the bottom pair, pictures listed out of order.
+    const pages = [
+      page([...stem, at('A.', 54, 708), at('B.', 294, 708), at('C.', 54, 518), at('D.', 294, 518)], {
+        graphics: [image(306, 560), image(66, 560), image(306, 370), image(66, 370)],
+      }),
+    ];
+    const lines = layoutPdf(pages).lines;
+    expect(lines.map((l) => (l.figure ? `pic@${l.figure.x},${l.figure.y}` : l.runs.map((r) => r.text).join('')))).toEqual([
+      '36. Which of the following diagrams can best describe the change?',
+      'A.',
+      'pic@66,560',
+      'B.',
+      'pic@306,560',
+      'C.',
+      'pic@66,370',
+      'D.',
+      'pic@306,370',
+    ]);
+    expect(optionPictures(pages)).toEqual({ kind: 'mc', texts: ['', '', '', ''], pictures: [1, 1, 1, 1] });
+  });
+
+  it('pairs a 1 × 4 row with its letters centred under the pictures', () => {
+    const pages = [page([...stem, ...[0, 1, 2, 3].map((k) => at(`${'ABCD'[k]}.`, 110 + k * 130, 590))], { graphics: [0, 1, 2, 3].map((k) => image(60 + k * 130, 600, 110, 120)) })];
+    expect(optionPictures(pages)).toEqual({ kind: 'mc', texts: ['', '', '', ''], pictures: [1, 1, 1, 1] });
+  });
+
+  it('pairs letters printed over their pictures', () => {
+    const pages = [
+      page([...stem, at('A.', 160, 712), at('B.', 400, 712), at('C.', 160, 522), at('D.', 400, 522)], {
+        graphics: [image(66, 560), image(306, 560), image(66, 370), image(306, 370)],
+      }),
+    ];
+    expect(optionPictures(pages)).toEqual({ kind: 'mc', texts: ['', '', '', ''], pictures: [1, 1, 1, 1] });
+  });
+
+  it('leaves pictures that are not options, and option letters far from any picture, as they were', () => {
+    const captions = [page([at('Study the figures below.', 66, 760), at('(1) Before', 140, 530), at('(2) After', 380, 530)], { graphics: [image(66, 560), image(306, 560)] })];
+    expect(raws(captions)).toEqual(['Study the figures below.', '', '', '(1) Before', '(2) After']);
+    const far = [page([...stem, at('A.', 54, 300), at('B.', 294, 300)], { graphics: [image(66, 560), image(306, 560)] })];
+    expect(raws(far)).toEqual([stem.map((it) => it.str).join(' '), '', '', 'A. B.']);
+  });
+});
+
+describe('layoutPdf: a marking scheme of stacked two-column tables', () => {
+  const twoColumns = (top: number, left: string[], right: string[]) =>
+    left.flatMap((t, k) => [at(t, 60, top - k * 12), ...(right[k] ? [at(right[k], 320, top - k * 12)] : [])]);
+  const q4 = twoColumns(
+    760,
+    ['4a. production cost in country A is lower than B (1)', 'so country A will export watches to B (1)', 'as her cost is lower than the terms of trade', 'b. terms of trade of one umbrella is 0.5 W', 'gain from trade is six watches here (2)'],
+    ['4a. wrong production cost or no data → 0', 'correct data and country A exports → 2', 'students should explain the comparison', '4b. one mark for the gain per unit only', 'wrong unit or no unit → max. 1 mark'],
+  );
+  const q6 = twoColumns(
+    360,
+    ['6a. nominal interest rate equals real rate (1)', 'plus the expected inflation rate here', 'b. no (1). the real income would increase (2)', 'if the fall in prices is larger than wages', 'the purchasing power of wages then rises'],
+    ['6a. missing words underlined → 0 overall', 'actual inflation above expected → 1 only', 'b. percentage fall in deflation → -1', 'yes → 0 overall, no standpoint → 0', 'uncertain answers are given no mark at all'],
+  );
+  const notes = ['Tariff revenue (1)', 'S2 (1) EA (1), M (1) P1 (1)', 'Without S2, only 1 mark for EA'].map((t, k) => at(t, 400, 560 - k * 14));
+
+  it('keeps a question number over a figure, and the notes beside the figure, with that question', () => {
+    const pages = [page([...q4, at('5.', 60, 680), ...notes, ...q6], { graphics: [image(60, 420, 300, 240)] })];
+    const lines = raws(pages);
+    const five = lines.indexOf('5.');
+    expect(lines.slice(five, five + 4)).toEqual(['5.', '', 'Tariff revenue (1)', 'S2 (1) EA (1), M (1) P1 (1) Without S2, only 1 mark for EA']);
+    expect(lines.findIndex((l) => l.startsWith('4b.'))).toBeLessThan(five);
+    expect(lines.findIndex((l) => l.startsWith('6a.'))).toBeGreaterThan(five);
+    const sheet = readAnswerSheet(read(pages));
+    const text = (q: number, part?: string) =>
+      sheet.entries.filter((e) => e.question === q && e.part === part).flatMap((e) => (e.points ?? []).map((p) => p.runs.map((r) => r.text).join(''))).join(' | ');
+    expect(text(5)).toContain('Tariff revenue');
+    expect(text(4, 'b')).not.toContain('Tariff');
+    expect(text(6, 'b')).not.toContain('Tariff');
   });
 });

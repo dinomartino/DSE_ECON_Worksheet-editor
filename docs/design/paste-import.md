@@ -781,6 +781,22 @@ answer lines, frames, dark borders); key 45 and question/part counts unchanged. 
 flow chart (its text outweighs it), a portrait split by thin lines; a pie's faint white slice is
 cut off.
 
+**Picture options** (`src/import/pictureOptions.ts`; scans, PDFs and Word alike): an option
+letter alone ("A.      B.") is paired with a picture by place, never by order: each letter takes
+its nearest picture (over, under, left of it, or at its top-left corner), a set runs A, B, C… with
+all letters on one side, each picture nearest its own letter. The layout then prints letter,
+picture, letter, picture, so each picture is that option's (`pairByPlace` in `layoutPdf`). A Word
+table pairs by cell: the picture in the letter's cell, else the picture-only cell right of, under
+or over it (`pairByCell`; the editor's own one-row option tables too). DSE 2021 P1 Q36 (2 × 2,
+letters at each graph's corner) now reads A–D with one graph each; before, both a whole-file and a
+one-page run gave four empty options (counted in the 180) and the review said "0 options". It is
+the paper's only picture-option MC (Q33's A–D are points on one graph).
+
+**Columns round a figure** (`pageRegions`): when a figure crosses the page's gutter, the rows level
+with it (notes beside a graph) follow it, and a band's last rows that sit below everything on the
+other side by a gap ("5." over the figure) leave the columns for it. The mock scheme's Q5 notes
+went to 4b (all one band) and, once its graph was a picture, to 6b (they joined Q6's table); now Q5.
+
 **Weak cases:** a page scanned sideways is not turned; handwriting is not read (the printed
 answer under a red correction is).
 
