@@ -2,7 +2,20 @@ import { describe, expect, it } from 'vitest';
 import type { OcrResult } from '@/platform/ocr';
 import { keyCells, readAnswerSheet } from './answerSheet';
 import { DPI, KEY, mcPaperPages, schemePages, zhStructuredPages } from './fixtures/ocrPages';
-import { GRAPH, SCAN_SCALE, ScanPage, answerLinesPage, barcodePage, darkBorderPage, graphPage, keyGridPage } from './fixtures/scanRaster';
+import {
+  FLOW,
+  GRAPH,
+  SCAN_SCALE,
+  ScanPage,
+  answerLinesPage,
+  barcodePage,
+  boxedTextPage,
+  darkBorderPage,
+  flowChartPage,
+  graphPage,
+  keyGridPage,
+  ruledTablePage,
+} from './fixtures/scanRaster';
 import { analyseLines } from './index';
 import {
   OCR_TOLERANCE,
@@ -258,6 +271,84 @@ describe('drawings on a scanned page', () => {
 
   it('never takes a barcode', () => {
     expect(drawings(barcodePage())).toEqual([]);
+  });
+
+  describe('the crop’s margin', () => {
+    const crop = (p: ScanPage) => {
+      const { figures } = scanFigures(p.result, ink(p), SCAN_SCALE);
+      expect(figures).toHaveLength(1);
+      return figures[0].crop;
+    };
+
+    it('leaves out an option letter’s full stop at the drawing’s corner', () => {
+      // "A." with its "." (311–321 px) just left of "Price ($)" (box from 324 px).
+      const p = graphPage().text('A.', 296, 268);
+      expect(crop(p).x).toBeGreaterThan(321);
+    });
+
+    it('leaves out a speck beside the drawing', () => {
+      const p = graphPage().rect(315, 600, 3, 3);
+      expect(crop(p).x).toBeGreaterThan(318);
+    });
+
+    it('keeps arrow heads, points on the curves and labels by them', () => {
+      const p = graphPage()
+        .rect(695, 620, 10, 10)
+        .rect(444, 394, 12, 12)
+        .line(1000, 900, 1020, 900)
+        .line(1020, 900, 1005, 890, 3)
+        .line(1020, 900, 1005, 910, 3)
+        .text('E', 712, 600)
+        .text('S1', 960, 330);
+      const { x, y, w, h } = crop(p);
+      expect(x).toBeLessThan(330);
+      expect(y).toBeLessThan(300);
+      // The arrow head now past "Quantity", and both points.
+      expect(x + w).toBeGreaterThan(1130);
+      expect(y + h).toBeGreaterThan(935);
+    });
+
+    it('keeps a label the drawing’s region cut short, over a caption beside it', () => {
+      const { x, y, w, h } = crop(graphPage());
+      // "Price ($)" (330–420 px, from 300 px) whole; the margin never more than 4 pt.
+      expect(x).toBeLessThan(330 - 6);
+      expect(y).toBeLessThan(300 - 6);
+      expect(x).toBeGreaterThanOrEqual(330 - 6 - 4 * SCAN_SCALE - 1);
+      expect(x + w).toBeLessThanOrEqual(GRAPH.x1 + 6 + 4 * SCAN_SCALE + 1);
+      expect(y + h).toBeLessThanOrEqual(990);
+    });
+  });
+
+  it('takes a flow chart whole, its boxes’ text and the labels on its arrows with it', () => {
+    const p = flowChartPage();
+    const [chart, ...rest] = drawings(p);
+    expect(rest).toEqual([]);
+    expect(chart.x).toBeLessThanOrEqual(FLOW.x0);
+    expect(chart.y).toBeLessThanOrEqual(FLOW.y0);
+    expect(chart.x + chart.w).toBeGreaterThanOrEqual(FLOW.x1);
+    expect(chart.y + chart.h).toBeGreaterThanOrEqual(FLOW.y1);
+    // Never the stem above it or the sentence and options below.
+    expect(chart.y).toBeGreaterThan(240);
+    expect(chart.y + chart.h).toBeLessThan(840);
+    const { found, figures } = scanFigures(p.result, ink(p), SCAN_SCALE);
+    const pictures: ScanFigures = {
+      found,
+      crops: figures.map((f) => ({
+        box: f.box,
+        image: { src: 'data:image/png;base64,chart' },
+      })),
+    };
+    const r = readOcrPages([p.result], [SCAN_SCALE], [pictures]);
+    const texts = r.lines.map((l) => l.text.trim()).join('\n');
+    for (const gone of ['importers', 'consumers', '$400', '$50', 'raw']) expect(texts).not.toContain(gone);
+    const [q] = analyseLines(r).outline.questions;
+    expect(JSON.stringify(q)).toContain('data:image/png;base64,chart');
+    expect(q.options).toHaveLength(4);
+  });
+
+  it('never takes a ruled table, a boxed extract or answer boxes', () => {
+    expect(drawings(ruledTablePage())).toEqual([]);
+    expect(drawings(boxedTextPage())).toEqual([]);
   });
 
   it('takes a photo standing in a ruled box of text, not the box', () => {

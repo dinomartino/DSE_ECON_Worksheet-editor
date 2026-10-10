@@ -775,11 +775,25 @@ drawing when ≥ 10 × 10 mm in the text area, not one line, not a barcode, ligh
 join it (never a question label, caption, sentence or marked line). The boxes go to `layoutPdf`
 as `placed` images (never regrown), so `findFigures` drops the labels and places the crop as a
 PDF's; each crop is stored at once. Real scans (this Mac, PP-OCRv6 boxes, ~60 ms a page):
-2019 P2 10 of 10 (three small portraits only in part; plus a blank answer graph), 2021 P1 13 of
-14, 2025 中文 P2 5 of 6, mock scheme 4 of 4; no false positives (barcodes, key grid, tables,
-answer lines, frames, dark borders); key 45 and question/part counts unchanged. Misses: a boxed
-flow chart (its text outweighs it), a portrait split by thin lines; a pie's faint white slice is
-cut off.
+2019 P2 10 of 10 (three small portraits only in part; plus a blank answer graph), 2021 P1 14 of
+14 (with the flow chart below), 2025 中文 P2 5 of 6, mock scheme 4 of 4; no false positives (barcodes, key grid, tables,
+answer lines, frames, dark borders); key 45 and question/part counts unchanged. Misses: a portrait
+split by thin lines; a pie's faint white slice is cut off.
+
+**Flow charts** (`flowCharts`): three or more ruled boxes of short text (≤ 4 lines of ≤ 24
+characters, under 45% of the text width), each standing over 2 mm from the others, joined by a
+stroke of their frame or by ink touching two boxes (arrows, labels on them kept), are one drawing
+with its labels within 6 mm. A table's or key grid's cells share their rules, so never count;
+neither does one boxed extract or answer boxes with nothing between them. 2021 P1 Q23: 14 of 14.
+A ruled box whose text a drawing took (a legend) joins it whole. A short label beyond a mark read
+as text ("Good Y" over its arrow head, read "7") joins too. The caption rule counts the page's skew.
+
+**Crop margin** (`cropOf`): up to 4 pt round the region, each side stopping short of another
+line's text (an option letter's full stop: Q36's four dots), a speck (≤ 4 cells, off the
+figure) or a rule along that side; a stroke crossing the edge (an axis name cut short) keeps
+the margin it needs. Edge bits on the four scans' crops: 18 of 33 crops before, 12 of 34 after.
+Left: text inside the region itself (2019 "July 2018:" under the map, a caption level with an
+axis name, the 2025 speech bubbles, the scheme's table box beside a graph).
 
 **Picture options** (`src/import/pictureOptions.ts`; scans, PDFs and Word alike): an option
 letter alone ("A.      B.") is paired with a picture by place, never by order: each letter takes
