@@ -8,6 +8,7 @@ import { takeScreenshots, SHOTS, SITE_WIDTH } from './demo/screenshots.mjs';
 import { recordStoryboard } from './demo/record.mjs';
 import { recordDiagrams } from './demo/diagrams.mjs';
 import { recordAi } from './demo/ai.mjs';
+import { recordImport } from './demo/import.mjs';
 import { sidecars } from './demo/subtitles.mjs';
 
 /**
@@ -30,8 +31,16 @@ import { sidecars } from './demo/subtitles.mjs';
  *   node scripts/demo.mjs --story=ai                         # npm run demo:ai
  *
  * The ✦ AI film: scripts/demo/ai.mjs:aiStoryboard (Fill missing 中文, then Check terms),
- * into `demo-media/ai/`. `--out=<dir>` writes to another demo-media folder (from a
- * worktree, the main checkout's).
+ * into `demo-media/ai/`.
+ *
+ *   node scripts/demo.mjs --story=import [--papers=<dir>]     # npm run demo:import
+ *
+ * The import film: scripts/demo/import.mjs:importStoryboard, a paper and its answers file
+ * imported from Word, reviewed, saved and exported, with numbered stills and the .docx,
+ * into `demo-media/import/`. The paper is read from `--papers=<dir>` (or DEMO_IMPORT_DIR),
+ * by default the main checkout's gitignored `real_life_reference/`.
+ *
+ * `--out=<dir>` writes to another demo-media folder (from a worktree, the main checkout's).
  */
 
 const args = process.argv.slice(2);
@@ -39,8 +48,8 @@ const urlArg = args.find((a) => a.startsWith('--url='));
 const URL = (urlArg ? urlArg.slice(6) : 'http://localhost:3931').replace(/\/?$/, '/');
 const storyAt = args.findIndex((a) => a === '--story' || a.startsWith('--story='));
 const STORY = storyAt < 0 ? 'site' : args[storyAt].startsWith('--story=') ? args[storyAt].slice(8) : args[storyAt + 1];
-if (!['site', 'diagrams', 'ai'].includes(STORY)) {
-  console.error(`demo: unknown story "${STORY}" (site | diagrams | ai)`);
+if (!['site', 'diagrams', 'ai', 'import'].includes(STORY)) {
+  console.error(`demo: unknown story "${STORY}" (site | diagrams | ai | import)`);
   process.exit(1);
 }
 const wantVideo = args.includes('--video') || !args.includes('--shots');
@@ -48,6 +57,8 @@ const wantShots = args.includes('--shots') || !args.includes('--video');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outArg = args.find((a) => a.startsWith('--out='));
 const OUT = outArg ? path.resolve(outArg.slice(6)) : path.join(ROOT, 'demo-media');
+const papersArg = args.find((a) => a.startsWith('--papers='));
+const PAPERS = papersArg ? papersArg.slice(9) : undefined;
 const log = (m) => console.log(m);
 
 const has = (bin) => spawnSync('which', [bin]).status === 0;
@@ -111,6 +122,7 @@ function encodeFilm(rec, base, { gif: wantGif }) {
 
 const DIAGRAMS_OUT = path.join(OUT, 'diagrams');
 const AI_OUT = path.join(OUT, 'ai');
+const IMPORT_OUT = path.join(OUT, 'import');
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'econ-demo-'));
 fs.mkdirSync(OUT, { recursive: true });
 // Without the flag, Chrome's screencast delivers CSS-pixel frames even at 2×, and the
@@ -120,6 +132,7 @@ let timeline = null;
 let cues = [];
 let shots = [];
 let diagrams = null;
+let imported = null;
 const notes = [];
 try {
   if (wantShots && STORY === 'site') await takeScreenshots({ browser, url: URL, root: ROOT, outDir: OUT, tmpDir, encode: encodeImage, log });
@@ -144,6 +157,17 @@ try {
     shots = film.rec.shots;
     encodeFilm(film.rec, path.join(AI_OUT, 'ai'), { gif: false });
     notes.push(...film.notes);
+  } else if (STORY === 'import') {
+    fs.rmSync(IMPORT_OUT, { recursive: true, force: true });
+    fs.mkdirSync(path.join(IMPORT_OUT, 'stills'), { recursive: true });
+    const film = await recordImport({ browser, url: URL, root: ROOT, tmpDir, outDir: IMPORT_OUT, papers: PAPERS, log });
+    timeline = film.rec.timeline;
+    cues = film.rec.cues;
+    shots = film.rec.shots;
+    imported = film;
+    encodeFilm(film.rec, path.join(IMPORT_OUT, 'import'), { gif: false });
+    for (const still of film.stills) still.path = encodeImage(still.png, path.join(IMPORT_OUT, 'stills', still.file));
+    notes.push(...film.notes);
   } else if (wantVideo) {
     const rec = await recordStoryboard({ browser, url: URL, tmpDir, log });
     timeline = rec.timeline;
@@ -156,9 +180,10 @@ try {
   await browser.close();
 }
 
-const DIR = STORY === 'diagrams' ? DIAGRAMS_OUT : STORY === 'ai' ? AI_OUT : OUT;
+const DIR = { diagrams: DIAGRAMS_OUT, ai: AI_OUT, import: IMPORT_OUT }[STORY] ?? OUT;
 if (STORY === 'diagrams') writeDiagramsReadme();
 else if (STORY === 'ai') writeAiReadme();
+else if (STORY === 'import') writeImportReadme();
 else writeReadme();
 log(`done → ${path.relative(ROOT, DIR)}/`);
 for (const f of listFiles(DIR)) log(`  ${f.rel}  ${f.dims}  ${kb(f.size)}`);
@@ -307,6 +332,48 @@ function writeAiReadme() {
     '',
   ].join('\n');
   fs.writeFileSync(path.join(AI_OUT, 'README.md'), text);
+}
+
+function writeImportReadme() {
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const secs = Number(probe(path.join(IMPORT_OUT, 'import.mp4'), 'format=duration')).toFixed(1);
+  const rows = listFiles(IMPORT_OUT).map((f) => {
+    const still = imported.stills.find((s) => f.rel.startsWith(`stills/${s.file}.`));
+    const what =
+      f.rel === 'import.mp4' ? `H.264, 30 fps, ${secs} s, no audio: the whole walkthrough`
+        : f.rel === 'import-poster.jpg' ? 'First frame, for `<video poster>`'
+          : still ? still.caption
+            : /^import\.(vtt|srt)$/.test(f.rel) ? 'The subtitles burned into the film, as a sidecar'
+              : f.rel.endsWith('.docx') ? 'Exported by the film'
+                : f.rel.endsWith('.png') ? 'A page of that .docx, rendered by LibreOffice' : '';
+    return `| \`${f.rel}\` | ${f.dims} | ${kb(f.size)} | ${what} |`;
+  });
+  const text = [
+    '# Demo media: import',
+    '',
+    'A teacher brings in a paper they already have: the Word paper and its answers file',
+    'picked together, linked, reviewed (questions, MC answers, marking schemes, header,',
+    'footer and title block), saved as the suggested paper type, opened in the editor and',
+    'exported back to Word.',
+    '',
+    'Generated by `npm run demo:import` (`scripts/demo/import.mjs`) from the built web app in',
+    'Chrome, from an empty library. The paper is the user\'s own (`--papers=<dir>`, by default',
+    '`real_life_reference/`), so these files show its text: do not publish them without the',
+    'author\'s say. The film is recorded at 2× and framed afterwards by a virtual camera (the',
+    'Camera column); the subtitles are drawn over it, unzoomed, and are also in `import.vtt` /',
+    '`.srt`. Stills are 2× page screenshots, framed as the camera was, scaled to 1440 wide.',
+    '',
+    '| File | Dimensions | Size | What it shows |',
+    '|---|---|---|---|',
+    ...rows,
+    ...(notes.length ? ['', '## Notes on this build', '', ...notes.map((n) => `- ${n}`)] : []),
+    '',
+    '## Video storyboard',
+    '',
+    storyboardTable(fmt),
+    '',
+  ].join('\n');
+  fs.writeFileSync(path.join(IMPORT_OUT, 'README.md'), text);
 }
 
 function writeReadme() {
