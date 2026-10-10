@@ -146,6 +146,84 @@ export function darkBorderPage(): ScanPage {
   return page;
 }
 
+/** An arrow from (x0, y0) to (x1, y1), its head at the end. */
+function arrow(page: ScanPage, x0: number, y0: number, x1: number, y1: number): ScanPage {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  const head = (turn: number) => page.line(x1, y1, x1 - 18 * Math.cos(a + turn), y1 - 18 * Math.sin(a + turn), 3);
+  page.line(x0, y0, x1, y1);
+  head(0.4);
+  return head(-0.4);
+}
+
+/** Where the flow chart on `flowChartPage` is drawn (boxes, arrows and their labels), in pixels. */
+export const FLOW = { x0: 274, y0: 394, x1: 1282, y1: 756 };
+
+/**
+ * An MC question round a flow chart: four ruled boxes of short text, joined by arrows
+ * (slanted ones and one level one), money labels on the arrows, then options.
+ */
+export function flowChartPage(): ScanPage {
+  const page = new ScanPage().text('23. A production chain of Good X in an economy is shown below.', 160, 200);
+  const boxes: Array<[number, number, string, string]> = [
+    [400, 400, 'Local', 'importers'],
+    [400, 600, 'Local', 'farmers'],
+    [700, 500, 'Local', 'retailers'],
+    [1080, 500, 'Local', 'consumers'],
+  ];
+  for (const [x, y, a, b] of boxes)
+    page
+      .frame(x, y, 200, 90)
+      .text(a, x + 60, y + 10)
+      .text(b, x + 40, y + 48);
+  arrow(page, 600, 445, 700, 520);
+  arrow(page, 600, 645, 700, 570);
+  arrow(page, 900, 545, 1080, 545);
+  arrow(page, 280, 445, 400, 445);
+  return page
+    .text('$200', 280, 400)
+    .text('$400', 620, 440)
+    .text('$600', 620, 640)
+    .text('$1 200', 930, 500)
+    .text('raw', 290, 460)
+    .text('$50', 470, 720)
+    .text('The contribution of the chain to the GDP at factor cost is ______.', 160, 840)
+    .text('A.', 200, 920)
+    .text('$1 400', 260, 920)
+    .text('B.', 200, 970)
+    .text('$1 450', 260, 970)
+    .text('C.', 200, 1020)
+    .text('$1 500', 260, 1020)
+    .text('D.', 200, 1070)
+    .text('$1 550', 260, 1070);
+}
+
+/** A ruled table of short cells (rows of a GDP account), in a question. */
+export function ruledTablePage(): ScanPage {
+  const page = new ScanPage().text('24. Refer to the data of an economy.', 160, 200);
+  const [x0, y0, cw, ch] = [300, 300, 300, 70];
+  for (let r = 0; r <= 4; r++) page.line(x0, y0 + r * ch, x0 + 3 * cw, y0 + r * ch);
+  for (let c = 0; c <= 3; c++) page.line(x0 + c * cw, y0, x0 + c * cw, y0 + 4 * ch);
+  const cells = [
+    ['Item', 'Year 1', 'Year 2'],
+    ['Nominal GDP', '+2%', '+3%'],
+    ['Real GDP', '-1%', '+1%'],
+    ['Population', '+1%', '0'],
+  ];
+  cells.forEach((row, r) => row.forEach((text, c) => page.text(text, x0 + c * cw + 30, y0 + r * ch + 18)));
+  return page.text('Which of the following is correct?', 160, 640);
+}
+
+/** A source extract in a ruled box, and three answer boxes in a row, nothing drawn between them. */
+export function boxedTextPage(): ScanPage {
+  const page = new ScanPage().text('Source A', 160, 160).frame(160, 220, 1300, 330);
+  ['A city raised its bus fares by 10% last year.', 'Fewer people took the bus, and', 'more drove to work. The city', 'says traffic got worse.'].forEach(
+    (line, k) => page.text(line, 200, 250 + k * 70),
+  );
+  page.text('Write your answers in the boxes.', 160, 640);
+  for (const [k, label] of ['(a)', '(b)', '(c)'].entries()) page.frame(200 + k * 420, 720, 300, 90).text(label, 220 + k * 420, 745);
+  return page;
+}
+
 /** A cover page's barcode: upright bars of mixed width, and its number under it. */
 export function barcodePage(): ScanPage {
   const page = new ScanPage().text('ECONOMICS PAPER 2', 600, 400).text('Question-Answer Book', 600, 460);

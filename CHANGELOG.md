@@ -76,12 +76,14 @@ a version heading is edited afterwards.
   checking as any import does, with a reminder that some letters and numbers may be misread.
   Graphs, charts and photos on a scanned page come in as pictures in their question, with their
   axis labels inside the picture rather than loose in the text; tables and answer grids stay
-  text. A scanned answer key or marking scheme can supply the answers too, and an answer key with one
+  text. A boxed flow chart comes in as one picture too, and a graph's picture leaves out the
+  full stop of the option letter beside it, specks and the edge of a caption, while keeping its
+  legend box whole. A scanned answer key or marking scheme can supply the answers too, and an answer key with one
   smudged cell keeps all its other answers. A scan whose title cannot be read is named after its
   file, never after a line of answers. On the web, a scan says that the desktop app reads it.
   <!-- zh: **桌面版：可匯入掃描試卷及試卷相片。** 掃描 PDF 或試卷圖片（PNG 或 JPEG，可一次選擇多張，按檔名排序）現會在你的
   電腦上逐頁讀取，不會傳送到任何地方：畫面顯示「正在讀取第 3 頁（共 12 頁）」，亦可隨時停止，或在讀取期間轉用其他程式。讀取後題目會如其他匯入一樣供你檢查，
-  並提醒部分字母和數字可能有誤。掃描頁上的圖表、統計圖和相片會以圖片匯入所屬題目，座標軸標籤留在圖片內，不會散落在文字中；表格和答案格仍為文字。掃描的答案表或評卷參考亦可提供答案；答案表即使有一格模糊，其餘答案仍會保留。未能讀出標題的掃描檔
+  並提醒部分字母和數字可能有誤。掃描頁上的圖表、統計圖和相片會以圖片匯入所屬題目，座標軸標籤留在圖片內，不會散落在文字中；表格和答案格仍為文字。方框流程圖亦會以一張圖片匯入；圖表圖片不會再夾帶旁邊選項字母的句號、污點或圖題的邊緣，而圖例方框則會完整保留。掃描的答案表或評卷參考亦可提供答案；答案表即使有一格模糊，其餘答案仍會保留。未能讀出標題的掃描檔
   會以檔案名稱命名，不會以某行答案命名。在網頁版，掃描檔會
   提示可用桌面應用程式讀取。 -->
 

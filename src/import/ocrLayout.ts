@@ -55,6 +55,9 @@ export function splitGluedLabel(text: string): string {
 const dist = (a: Point, b: Point) => Math.hypot(b[0] - a[0], b[1] - a[1]);
 const angleOf = (a: Point, b: Point) => (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
 
+/** A skew (degrees) the layout undoes; less is left as it is. */
+const LEVEL_FROM = 0.3;
+
 /** The page's skew in degrees: the median angle of its long, nearly level lines. */
 function skewOf(result: OcrResult): number {
   const angles = result.lines
@@ -75,7 +78,7 @@ export function ocrPage(result: OcrResult, scale: number, found: readonly PxBox[
   const width = result.width * k;
   const height = result.height * k;
   const skew = skewOf(result);
-  const turn = Math.abs(skew) >= 0.3 ? (-skew * Math.PI) / 180 : 0;
+  const turn = Math.abs(skew) >= LEVEL_FROM ? (-skew * Math.PI) / 180 : 0;
   const cx = result.width / 2;
   const cy = result.height / 2;
   const level = ([x, y]: Point): Point =>
@@ -443,6 +446,19 @@ function axesIn(cells: readonly number[], b: Bounds, across: Runs, down: Runs, c
   return !boxed && !!upright && !!level && Math.abs(upright.bottom - level.r) <= near && Math.abs(upright.c - level.left) <= near;
 }
 
+/** The recognised lines' boxes, in the ink map's pixels. */
+function textBoxes(result: OcrResult, fx: number, fy: number): TextBox[] {
+  const texts: TextBox[] = [];
+  for (const line of result.lines) {
+    const text = (line.text ?? '').trim();
+    if (!text || !(line.box?.length >= 4)) continue;
+    const xs = line.box.map((p) => p[0] * fx);
+    const ys = line.box.map((p) => p[1] * fy);
+    texts.push({ text, score: line.score, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) });
+  }
+  return texts;
+}
+
 const within = (b: Edges, x: number, y: number) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1;
 
 /** Breaks or ends like a sentence, or carries a mark ("(1)", "(2 marks)"): text, not a label on a drawing. */
@@ -453,7 +469,7 @@ const SENTENCE = /[，。；：,;:]|[.?？!！]$|[(（]\s*\d{1,2}\s*(?:marks?|�
  * then any line it cuts through. Never a question label, a caption, a sentence, or the text
  * after a label on its row ("(a) 在圖1中…").
  */
-function withLabels(box: Edges, texts: readonly TextBox[], reach: number): PxBox {
+function withLabels(box: Edges, texts: readonly TextBox[], reach: number, tilt = 0): PxBox {
   const grown = { ...box };
   const take = (t: TextBox) => {
     grown.x0 = Math.min(grown.x0, t.x0);
@@ -463,22 +479,24 @@ function withLabels(box: Edges, texts: readonly TextBox[], reach: number): PxBox
   };
   const sameRow = (a: TextBox, b: TextBox) => Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) > Math.min(a.y1 - a.y0, b.y1 - b.y0) * 0.5;
   const read = texts.filter((t) => t.score >= MIN_SCORE);
-  const near = read.filter((t) => t.x0 <= box.x1 + reach && t.x1 >= box.x0 - reach && t.y0 <= box.y1 + reach && t.y1 >= box.y0 - reach);
-  for (const t of near) if (within(box, (t.x0 + t.x1) / 2, (t.y0 + t.y1) / 2)) take(t);
+  const nearTo = (b: Edges, t: TextBox) => t.x0 <= b.x1 + reach && t.x1 >= b.x0 - reach && t.y0 <= b.y1 + reach && t.y1 >= b.y0 - reach;
+  for (const t of read) if (within(box, (t.x0 + t.x1) / 2, (t.y0 + t.y1) / 2)) take(t);
   const bare = { ...grown };
   let labelArea = 0;
-  for (const t of near) {
-    if (within(box, (t.x0 + t.x1) / 2, (t.y0 + t.y1) / 2)) continue;
-    if (
-      [...t.text].length <= 24 &&
-      !SENTENCE.test(t.text) &&
-      !isLabelText(splitGluedLabel(t.text)) &&
-      !isCaption(t.text) &&
-      !read.some((l) => l !== t && l.x1 <= t.x0 + (t.y1 - t.y0) && l.x0 < t.x0 && sameRow(l, t) && isLabelText(splitGluedLabel(l.text)))
-    ) {
-      take(t);
-      labelArea += (t.x1 - t.x0) * (t.y1 - t.y0);
-    }
+  const label = (t: TextBox) =>
+    [...t.text].length <= 24 &&
+    !SENTENCE.test(t.text) &&
+    !isLabelText(splitGluedLabel(t.text)) &&
+    !isCaption(t.text) &&
+    !read.some((l) => l !== t && l.x1 <= t.x0 + (t.y1 - t.y0) && l.x0 < t.x0 && sameRow(l, t) && isLabelText(splitGluedLabel(l.text)));
+  const outside = read.filter((t) => !within(box, (t.x0 + t.x1) / 2, (t.y0 + t.y1) / 2) && label(t));
+  const taken = outside.filter((t) => nearTo(box, t));
+  // A short label beyond a mark read as text ("Good Y" over its axis's arrow head, read as "7").
+  const marks = taken.filter((t) => [...t.text].length <= 3);
+  taken.push(...outside.filter((t) => !taken.includes(t) && [...t.text].length <= 12 && marks.some((m) => nearTo(m, t))));
+  for (const t of taken) {
+    take(t);
+    labelArea += (t.x1 - t.x0) * (t.y1 - t.y0);
   }
   // Labels outweighing the drawing (a photo's description in its table cell) are text.
   if (labelArea > (grown.x1 - grown.x0) * (grown.y1 - grown.y0) * 0.15) Object.assign(grown, bare);
@@ -491,12 +509,86 @@ function withLabels(box: Edges, texts: readonly TextBox[], reach: number): PxBox
   // A caption beside an axis name ("Figure 1" level with "Fares ($)") stays text: its middle stays out.
   for (const t of read) {
     const [cx, cy] = [(t.x0 + t.x1) / 2, (t.y0 + t.y1) / 2];
-    if (!isCaption(t.text) || !within(grown, cx, cy) || within(box, cx, cy)) continue;
-    // The layout tests a line's middle a little below its box's, within a point.
-    if (cy < (box.y0 + box.y1) / 2) grown.y0 = Math.max(grown.y0, cy + (t.y1 - t.y0) * 0.25 + 4);
+    // The layout tests a line's middle a little below its box's, within a point, on the page
+    // levelled (`tilt`: the sine of the skew it undoes).
+    const tested = cy + (t.y1 - t.y0) * 0.25 + 4 + (grown.x1 - grown.x0) * tilt;
+    const above = cy < (box.y0 + box.y1) / 2;
+    if (!isCaption(t.text) || within(box, cx, cy) || !within(grown, cx, above ? Math.min(tested, grown.y1) : cy)) continue;
+    if (above) grown.y0 = Math.max(grown.y0, tested);
     else grown.y1 = Math.min(grown.y1, cy - 4);
   }
   return { x: grown.x0, y: grown.y0, w: grown.x1 - grown.x0, h: grown.y1 - grown.y0 };
+}
+
+type Parts = ReturnType<typeof partsOf>;
+
+/**
+ * Flow charts (image px): three or more ruled boxes of short text, each standing apart, joined
+ * by arrows or lines from box to box. `boxes`: the text boxes the frames make; `ruled`: their
+ * frames' cells; `strokes`: the straight strokes (a box's frame and the arrow tails touching
+ * it). Never a table or key grid (its cells share their rules), one boxed extract, or answer
+ * boxes with nothing drawn between them.
+ */
+function flowCharts(
+  boxes: ReadonlyArray<{ part: number; rect: Bounds; texts: TextBox[] }>,
+  ruled: Uint8Array,
+  strokes: Parts,
+  map: InkMap,
+  mm: (v: number) => number,
+  textWidth: number,
+): Edges[] {
+  const { cols, rows, cell } = map;
+  const small = boxes.filter(
+    ({ rect, texts }) => texts.length <= 4 && texts.every((t) => [...t.text].length <= 24) && rect.c1 - rect.c0 + 1 <= textWidth * 0.45 && rect.r1 - rect.r0 + 1 <= mm(30),
+  );
+  if (small.length < 3) return [];
+  // The ink between the boxes: frames and the text in them off, the labels on the arrows kept
+  // (an arrow running under "$500" stays one stroke).
+  const ink = map.ink.slice();
+  for (let k = 0; k < ink.length; k++) if (ruled[k]) ink[k] = 0;
+  for (const { rect } of small) for (let r = rect.r0 + 1; r < rect.r1; r++) ink.fill(0, r * cols + rect.c0 + 1, r * cols + rect.c1);
+  const left = partsOf(ink, cols, rows);
+  const reach = Math.ceil(mm(3));
+  // The ink each box's edge touches.
+  const touching = small.map(({ rect }) => {
+    const ids = new Set<number>();
+    for (let r = Math.max(0, rect.r0 - reach); r <= Math.min(rows - 1, rect.r1 + reach); r++) {
+      for (let c = Math.max(0, rect.c0 - reach); c <= Math.min(cols - 1, rect.c1 + reach); c++) {
+        if (r > rect.r0 + 1 && r < rect.r1 - 1 && c > rect.c0 + 1 && c < rect.c1 - 1) continue;
+        if (left.label[r * cols + c] >= 0) ids.add(left.label[r * cols + c]);
+      }
+    }
+    return ids;
+  });
+  const root = small.map((_, i) => i);
+  const find = (i: number): number => (root[i] === i ? i : (root[i] = find(root[i])));
+  for (let i = 0; i < small.length; i++) {
+    for (let j = i + 1; j < small.length; j++) {
+      if (small[i].part === small[j].part || [...touching[i]].some((id) => touching[j].has(id))) root[find(i)] = find(j);
+    }
+  }
+  const charts: Edges[] = [];
+  for (const head of new Set(small.map((_, i) => find(i)))) {
+    const members = small.flatMap((box, i) => (find(i) === head ? [i] : []));
+    if (members.length < 3) continue;
+    const near = members.reduce((a, i) => {
+      const { rect } = small[i];
+      return { c0: Math.min(a.c0, rect.c0), r0: Math.min(a.r0, rect.r0), c1: Math.max(a.c1, rect.c1), r1: Math.max(a.r1, rect.r1) };
+    }, small[members[0]].rect);
+    const slack = mm(20);
+    // The boxes, their frames' tails, and the arrows touching them; nothing reaching far off.
+    let b = { ...near };
+    const add = (o: Bounds) => {
+      if (o.c0 < near.c0 - slack || o.r0 < near.r0 - slack || o.c1 > near.c1 + slack || o.r1 > near.r1 + slack) return;
+      b = { c0: Math.min(b.c0, o.c0), r0: Math.min(b.r0, o.r0), c1: Math.max(b.c1, o.c1), r1: Math.max(b.r1, o.r1) };
+    };
+    for (const i of members) {
+      add(boundsOf(strokes.parts[small[i].part], cols));
+      for (const id of touching[i]) add(boundsOf(left.parts[id], cols));
+    }
+    charts.push({ x0: b.c0 * cell, y0: b.r0 * cell, x1: (b.c1 + 1) * cell, y1: (b.r1 + 1) * cell });
+  }
+  return charts;
 }
 
 /**
@@ -521,20 +613,13 @@ export function findScanFigures(result: OcrResult, map: InkMap, scale: number): 
   const { cols, rows, cell } = map;
   if (!cols || !rows || !result.width || !result.height) return [];
   const mm = (v: number) => (v * 72 * scale) / 25.4 / cell;
-  const fx = map.width / result.width;
-  const fy = map.height / result.height;
-  const texts: TextBox[] = [];
-  for (const line of result.lines) {
-    const text = (line.text ?? '').trim();
-    if (!text || !(line.box?.length >= 4)) continue;
-    const xs = line.box.map((p) => p[0] * fx);
-    const ys = line.box.map((p) => p[1] * fy);
-    texts.push({ text, score: line.score, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) });
-  }
+  const texts = textBoxes(result, map.width / result.width, map.height / result.height);
   const sure = texts.filter((t) => t.score >= 0.5);
   if (!sure.length) return [];
   const thick = (t: TextBox) => Math.min(t.x1 - t.x0, t.y1 - t.y0);
   const typeHeight = sure.map(thick).sort((a, b) => a - b)[Math.floor(sure.length / 2)];
+  const skew = skewOf(result);
+  const tilt = Math.abs(skew) >= LEVEL_FROM ? Math.abs(Math.sin((skew * Math.PI) / 180)) : 0;
 
   // 1. Text off the ink (a "line" far taller than type is a misread drawing: it stays), but
   //    not a thin rule running on past the text's box (an axis under its tick labels).
@@ -566,6 +651,9 @@ export function findScanFigures(result: OcrResult, map: InkMap, scale: number): 
   for (let k = 0; k < mask.length; k++) straight[k] = mask[k] && (across.len[k] >= longRun || down.len[k] >= longRun) ? 1 : 0;
   const thin = (k: number) => (across.len[k] >= longRun && solid.down.len[k] <= 3) || (down.len[k] >= longRun && solid.across.len[k] <= 3);
   const strokes = partsOf(straight, cols, rows);
+  // The ruled boxes of text the frames make: each one's cell, the stroke it is part of, its text.
+  const boxes: Array<{ part: number; rect: Bounds; texts: TextBox[] }> = [];
+  const ruled = new Uint8Array(mask.length);
   for (const [id, cells] of strokes.parts.entries()) {
     const b = boundsOf(cells, cols);
     const w = b.c1 - b.c0 + 1;
@@ -579,6 +667,12 @@ export function findScanFigures(result: OcrResult, map: InkMap, scale: number): 
       }
       return false;
     };
+    // The first row or column from `from` towards `to` with a rule of this stroke.
+    const nearest = (from: number, to: number, rule: (v: number) => boolean) => {
+      for (let v = from; from <= to ? v <= to : v >= to; v += from <= to ? 1 : -1) if (rule(v)) return v;
+      return to;
+    };
+    const rects: Array<{ rect: Bounds; texts: TextBox[] }> = [];
     // Framed: a rule above, below, left and right of the text (a table's cell, a box), not
     // only a curve above and an axis below.
     for (const t of sure) {
@@ -589,11 +683,23 @@ export function findScanFigures(result: OcrResult, map: InkMap, scale: number): 
       if (ours(b.r0, top - 1, c - 1, c + 1) && ours(bottom + 1, b.r1, c - 1, c + 1) && ours(r - 1, r + 1, b.c0, left - 1) && ours(r - 1, r + 1, right + 1, b.c1)) {
         framed++;
         framedArea += (t.x1 - t.x0) * (t.y1 - t.y0);
+        const rect = {
+          r0: nearest(top - 1, b.r0, (v) => ours(v, v, c - 1, c + 1)),
+          r1: nearest(bottom + 1, b.r1, (v) => ours(v, v, c - 1, c + 1)),
+          c0: nearest(left - 1, b.c0, (v) => ours(r - 1, r + 1, v, v)),
+          c1: nearest(right + 1, b.c1, (v) => ours(r - 1, r + 1, v, v)),
+        };
+        const same = rects.find((o) => Math.max(Math.abs(o.rect.r0 - rect.r0), Math.abs(o.rect.r1 - rect.r1), Math.abs(o.rect.c0 - rect.c0), Math.abs(o.rect.c1 - rect.c1)) <= 2);
+        if (same) same.texts.push(t);
+        else rects.push({ rect, texts: [t] });
       }
     }
     const area = w * h * cell * cell;
     const frame = w >= cols * 0.75 || h >= rows * 0.75 || framedArea >= area * 0.08 || (framed >= 3 && framedArea >= area * 0.03);
-    if (frame) for (const k of cells) if (thin(k)) mask[k] = 0;
+    if (frame) for (const k of cells) if (thin(k)) [mask[k], ruled[k]] = [0, 1];
+    // Boxes standing apart (joined by an arrow at most), never a table's cells, which share their rules.
+    const apart = (p: Bounds, q: Bounds) => p.c0 > q.c1 + mm(2) || q.c0 > p.c1 + mm(2) || p.r0 > q.r1 + mm(2) || q.r0 > p.r1 + mm(2);
+    if (frame && rects.every((p) => rects.every((q) => p === q || apart(p.rect, q.rect)))) for (const r of rects) boxes.push({ part: id, ...r });
   }
 
   // 3. Drawings among what is left.
@@ -605,7 +711,9 @@ export function findScanFigures(result: OcrResult, map: InkMap, scale: number): 
   });
   const [slackX, slackY] = [map.width * 0.05, map.height * 0.05];
   const found: PxBox[] = [];
-  for (const cells of partsOf(mask, cols, rows).parts) {
+  const left = partsOf(mask, cols, rows);
+  for (const chart of flowCharts(boxes, ruled, strokes, map, mm, (hull.x1 - hull.x0) / cell)) found.push(withLabels(chart, texts, mm(6) * cell, tilt));
+  for (const cells of left.parts) {
     const b = boundsOf(cells, cols);
     const w = b.c1 - b.c0 + 1;
     const h = b.r1 - b.r0 + 1;
@@ -629,7 +737,18 @@ export function findScanFigures(result: OcrResult, map: InkMap, scale: number): 
     // Much text on it: a table or a text box its strokes did not frame.
     const textArea = sure.filter((t) => within(box, (t.x0 + t.x1) / 2, (t.y0 + t.y1) / 2)).reduce((sum, t) => sum + (t.x1 - t.x0) * (t.y1 - t.y0) * 0.7, 0);
     if (textArea > (box.x1 - box.x0) * (box.y1 - box.y0) * 0.2) continue;
-    found.push(withLabels(box, texts, mm(3) * cell));
+    found.push(withLabels(box, texts, mm(3) * cell, tilt));
+  }
+
+  // A ruled box whose text a drawing took (its legend) joins it whole.
+  for (const f of found) {
+    for (const { rect, texts: inBox } of boxes) {
+      const [x0, y0, x1, y1] = [rect.c0 * cell, rect.r0 * cell, (rect.c1 + 1) * cell, (rect.r1 + 1) * cell];
+      const edges = { x0: f.x, y0: f.y, x1: f.x + f.w, y1: f.y + f.h };
+      if ((x1 - x0) * (y1 - y0) > f.w * f.h * 0.5 || !inBox.every((t) => within(edges, (t.x0 + t.x1) / 2, (t.y0 + t.y1) / 2))) continue;
+      [f.x, f.y] = [Math.min(f.x, x0), Math.min(f.y, y0)];
+      [f.w, f.h] = [Math.max(edges.x1, x1) - f.x, Math.max(edges.y1, y1) - f.y];
+    }
   }
 
   // 4. Overlapping drawings are one.
@@ -651,20 +770,96 @@ export function findScanFigures(result: OcrResult, map: InkMap, scale: number): 
 }
 
 /**
+ * A figure's crop: its region `b` (image px) and a margin of up to `pad` px. Each side's
+ * margin stops short of what is not the figure's: another line's text (an option letter's
+ * full stop beside it, a caption above), a speck, a rule along that side. A stroke crossing
+ * the edge (an axis name the region cut short) keeps the margin it needs.
+ */
+function cropOf(map: InkMap, b: Edges, texts: readonly TextBox[], pad: number, ruleCells: number, fx: number, fy: number, width: number, height: number): PxBox {
+  const { cell, cols, rows, ink } = map;
+  const inMap = { x0: b.x0 * fx, y0: b.y0 * fy, x1: b.x1 * fx, y1: b.y1 * fy };
+  const [c0, c1] = [Math.floor(inMap.x0 / cell), Math.ceil(inMap.x1 / cell) - 1];
+  const [r0, r1] = [Math.floor(inMap.y0 / cell), Math.ceil(inMap.y1 / cell) - 1];
+  const on = (r: number, c: number) => r >= 0 && c >= 0 && r < rows && c < cols && ink[r * cols + c] === 1;
+  const others = texts.filter((t) => t.score >= MIN_SCORE && !within(inMap, (t.x0 + t.x1) / 2, (t.y0 + t.y1) / 2));
+  const theirs = (r: number, c: number) => others.some((t) => within(t, (c + 0.5) * cell, (r + 0.5) * cell));
+  // A speck: four cells of ink or fewer on their own, off the figure.
+  const speck = (r: number, c: number) => {
+    const seen = new Set([r * cols + c]);
+    const todo = [r * cols + c];
+    while (todo.length && seen.size <= 4) {
+      const k = todo.pop()!;
+      const [kr, kc] = [Math.floor(k / cols), k % cols];
+      if (kr >= r0 && kr <= r1 && kc >= c0 && kc <= c1) return false;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const j = (kr + dr) * cols + kc + dc;
+          if (!on(kr + dr, kc + dc) || seen.has(j)) continue;
+          seen.add(j);
+          todo.push(j);
+        }
+      }
+    }
+    return seen.size <= 4;
+  };
+  // A rule, or a dotted line, running along the side.
+  const rule = (r: number, c: number, level: boolean) => {
+    const [dr, dc] = level ? [0, 1] : [1, 0];
+    let span = 1;
+    for (const step of [-1, 1]) {
+      for (let k = 1, gap = 0; gap <= BRIDGE && span < ruleCells; k++) {
+        if (on(r + dr * k * step, c + dc * k * step)) [gap, span] = [0, span + gap + 1];
+        else gap++;
+      }
+    }
+    return span >= ruleCells;
+  };
+  const keep = (reach: number, from: number, to: number, at: (line: number, k: number) => [number, number], level: boolean) => {
+    let limit = reach;
+    let need = 0;
+    for (let line = from; line <= to; line++) {
+      let run = on(...at(line, 0));
+      for (let k = 1; k <= reach; k++) {
+        const [r, c] = at(line, k);
+        if (!on(r, c)) {
+          run = false;
+          continue;
+        }
+        if (theirs(r, c) || (!run && (speck(r, c) || rule(r, c, level)))) {
+          limit = Math.min(limit, k - 1);
+          break;
+        }
+        if (run && !rule(r, c, level)) need = Math.max(need, k);
+      }
+    }
+    return Math.max(limit, need);
+  };
+  const [across, down] = [Math.ceil((pad * fx) / cell), Math.ceil((pad * fy) / cell)];
+  const left = keep(across, r0 - down, r1 + down, (r, k) => [r, c0 - k], false);
+  const right = keep(across, r0 - down, r1 + down, (r, k) => [r, c1 + k], false);
+  const top = keep(down, c0 - across, c1 + across, (c, k) => [r0 - k, c], true);
+  const bottom = keep(down, c0 - across, c1 + across, (c, k) => [r1 + k, c], true);
+  const x = Math.max(0, b.x0 - Math.min(pad, (left * cell) / fx));
+  const y = Math.max(0, b.y0 - Math.min(pad, (top * cell) / fy));
+  return { x, y, w: Math.min(width, b.x1 + Math.min(pad, (right * cell) / fx)) - x, h: Math.min(height, b.y1 + Math.min(pad, (bottom * cell) / fy)) - y };
+}
+
+/**
  * A page's drawings as the layout will place them: found on its ink, then grown and merged
  * as a PDF's figures are (`findFigures`). `crop`: each one's region of the page image, with
- * a small margin, inside the image.
+ * a small margin clear of other ink, inside the image.
  */
 export function scanFigures(result: OcrResult, map: InkMap, scale: number): { found: PxBox[]; figures: Array<{ box: PdfBox; crop: PxBox }> } {
   const found = findScanFigures(result, map, scale);
   if (!found.length) return { found, figures: [] };
   const page = ocrPage(result, scale, found);
   const pad = 4 * scale;
+  const [fx, fy] = [map.width / result.width, map.height / result.height];
+  const texts = textBoxes(result, fx, fy);
+  const ruleCells = Math.ceil((6 * 72 * scale * fx) / 25.4 / map.cell);
   const figures = findFigures(page).figures.map((box) => {
-    const x = Math.max(0, box.x * scale - pad);
-    const y = Math.max(0, (page.height - box.y - box.h) * scale - pad);
-    const crop = { x, y, w: Math.min(result.width, (box.x + box.w) * scale + pad) - x, h: Math.min(result.height, (page.height - box.y) * scale + pad) - y };
-    return { box, crop };
+    const edges = { x0: box.x * scale, y0: (page.height - box.y - box.h) * scale, x1: (box.x + box.w) * scale, y1: (page.height - box.y) * scale };
+    return { box, crop: cropOf(map, edges, texts, pad, ruleCells, fx, fy, result.width, result.height) };
   });
   return { found, figures };
 }
