@@ -5,6 +5,9 @@
  * figure check shows a slot. Pictures are only noted here; `readDocx` loads them.
  */
 import { foldTabs, indLeftOf, readRunProps, tabStopsOf, type Numbering, type RunProps, type Styles } from './docxNumbering';
+import { labelLevel, loneOptionLabel, parseLabel } from './labels';
+import { labelZone } from './normalize';
+import { pairByCell } from './pictureOptions';
 import type { RawLine, RawRun } from './readPlain';
 import type { ImageRef } from './types';
 import { child, elements, find, onOff, textOf, val, type XmlElement } from './xml';
@@ -520,10 +523,24 @@ export class BodyReader {
       this.flushPool(pool, out);
       return;
     }
+    const grid = rows.map((tr) =>
+      cellsOf(tr).map((tc) => {
+        const pictures: RawLine[] = [];
+        // A break inside a cell joins with a space, as in the HTML paste.
+        const runs = this.cell(tc, pictures).map((r) => ({ ...r, text: r.text.replace(/\n/g, ' ') }));
+        return { runs, pictures };
+      }),
+    );
+    const options = pictureOptionCells(grid);
+    if (options) {
+      // Option letters with their pictures: each letter, then its picture (`pairByCell`).
+      for (const { row, col, pictures } of options) out.push({ runs: grid[row][col].runs }, ...pictures);
+      return;
+    }
     const after: RawLine[] = [];
-    for (const tr of rows) {
-      // A break inside a cell joins with a space, as in the HTML paste.
-      const cells: RawRun[][] = cellsOf(tr).map((tc) => this.cell(tc, after).map((r) => ({ ...r, text: r.text.replace(/\n/g, ' ') })));
+    for (const row of grid) {
+      after.push(...row.flatMap((c) => c.pictures));
+      const cells = row.map((c) => c.runs);
       if (!cells.some((c) => c.some((r) => r.text.trim()))) continue;
       const joined: RawRun[] = [];
       cells.forEach((c, k) => joined.push(...(k ? [{ text: '\t' }] : []), ...c));
@@ -567,6 +584,20 @@ function rowsOf(el: XmlElement): XmlElement[] {
   if (el.name === 'w:sdt') return elements(child(el, 'w:sdtContent') ?? el).flatMap(rowsOf);
   if (el.name === 'w:customXml' || el.name === 'w:ins' || el.name === 'mc:AlternateContent') return (el.name === 'mc:AlternateContent' ? branch(el) : elements(el)).flatMap(rowsOf);
   return [];
+}
+
+/** A table of picture options ("A." over each graph): each lettered cell with its pictures, or null. */
+function pictureOptionCells(grid: ReadonlyArray<ReadonlyArray<{ runs: RawRun[]; pictures: RawLine[] }>>) {
+  return pairByCell(
+    grid.map((row) =>
+      row.map(({ runs, pictures }) => {
+        const text = runs.map((r) => r.text).join('').trim();
+        const label = text ? parseLabel(labelZone(`${text} `)) : null;
+        const option = label && labelLevel(label.family) === 'option' ? { value: label.value, family: label.family, lone: !!loneOptionLabel(labelZone(text)) } : undefined;
+        return { text, ...(option ? { option } : {}), pictures: pictures.filter((p) => p.image) };
+      }),
+    ),
+  );
 }
 
 function cellsOf(tr: XmlElement): XmlElement[] {
