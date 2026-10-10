@@ -25,8 +25,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Import leftovers merged (2026-10-10):** bare "B" option + labelled table rows (S6 P1 Q42, P2 Q10), word-space options
   (Q11), 題庫-only lands on the first added, answer lines break like Word (2019 P2 24/24/24; Paper 2 body ends at the
   frame), scan diagrams come in as pictures. Picture options pair by place (DSE2021 Q36,
-  .docx tables too); scheme rows round a figure follow it (S6 Q5). Left: tables don't split across sheets in the
-  preview (Word does); a faint dot at scan figure crops' top-left; 2021 Q23 flow chart stays text.
+  .docx tables too); scheme rows round a figure follow it (S6 Q5). Crop edges trimmed; boxed flow charts become one
+  picture. Left: tables don't split across sheets in the preview (Word does); text inside a figure's box stays in the crop.
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
@@ -71,7 +71,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified (2026-10-09, `develop` after the OCR merges)
 
-- `npm test` 5459, `cargo test` 68, typecheck + build (bundle check) green, lint 40, samples 6.
+- `npm test` 5465, `cargo test` 68, typecheck + build (bundle check) green, lint 40, samples 6.
 
 ## Log
 
