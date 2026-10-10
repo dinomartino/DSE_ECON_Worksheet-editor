@@ -9,7 +9,9 @@ import { groupPictures, readPaperFile, readPictureFiles, type FileOutcome } from
 import { ProblemStep, ScanStep } from './ImportDialog';
 import { IMPORT_MESSAGES } from './messages';
 import { problemText } from './problemText';
-import { recognisePages, type ScanPage, type ScanProgress, type ScanReader } from './scanImport';
+import { GRAPH, graphPage } from '@/import/fixtures/scanRaster';
+import type { PxBox } from '@/import/ocrLayout';
+import { recognisePages, type PageRaster, type ScanPage, type ScanProgress, type ScanReader, type ScanResult } from './scanImport';
 
 // Invented pages only (`src/import/fixtures/ocrPages.ts`): the repo is public.
 
@@ -100,6 +102,43 @@ describe('reading scanned pages', () => {
     expect(outcome).toMatchObject({ kind: 'ok', ocr: true, pages: 2 });
     const answers = await readPaperFile('S5 quiz marking scheme.pdf', scannedPdf(1), { scan: reader(schemePages()).scan });
     expect(examineFile('f1', 'S5 quiz marking scheme.pdf', answers).guess.role).toBe('answers');
+  });
+
+  it('crops a page’s drawings while the page is open, and places them where they stood', async () => {
+    const page = graphPage();
+    const crops: PxBox[] = [];
+    let closed = 0;
+    const raster = async (): Promise<PageRaster> => ({
+      width: page.width,
+      height: page.height,
+      rgba: page.rgba,
+      crop: async (box) => (crops.push(box), new Blob(['png'], { type: 'image/png' })),
+      close: () => closed++,
+    });
+    const prepareImage = async () => ({ src: 'data:image/png;base64,graph', widthPx: 300, heightPx: 220 });
+    const result = await recognisePages(pagesOf(1), fakeOcrEngine({ pages: [page.result] }), { prepareImage, raster });
+    expect(result.kind).toBe('ok');
+    const { read } = result as Extract<ScanResult, { kind: 'ok' }>;
+    expect(read.lines.filter((l) => l.image?.src === 'data:image/png;base64,graph')).toHaveLength(1);
+    expect(read.lines.some((l) => l.text.includes('Quantity'))).toBe(false);
+    expect(crops).toHaveLength(1);
+    expect(crops[0].x).toBeLessThan(GRAPH.x0);
+    expect(closed).toBe(1);
+    // Without a way to store pictures, the page is never opened and its labels stay text.
+    let opened = 0;
+    const plain = await recognisePages(pagesOf(1), fakeOcrEngine({ pages: [page.result] }), { raster: async () => (opened++, undefined) });
+    expect(opened).toBe(0);
+    expect((plain as Extract<ScanResult, { kind: 'ok' }>).read.lines.some((l) => l.text.includes('Quantity'))).toBe(true);
+  });
+
+  it('a page whose pixels will not open keeps its text, and the paper still reads', async () => {
+    const page = graphPage();
+    const result = await recognisePages(pagesOf(1), fakeOcrEngine({ pages: [page.result] }), {
+      prepareImage: async () => ({ src: 'x' }),
+      raster: () => Promise.reject(new Error('no canvas')),
+    });
+    expect(result.kind).toBe('ok');
+    expect((result as Extract<ScanResult, { kind: 'ok' }>).read.lines.some((l) => l.image)).toBe(false);
   });
 
   it('a picture this app cannot open is said so', async () => {

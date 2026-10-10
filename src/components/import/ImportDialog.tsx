@@ -177,6 +177,7 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
           engine: () => (engine ??= readyOcrEngine()),
           signal: controller.signal,
           onProgress: (p: ScanProgress) => live && setScanning({ ...p, file: k }),
+          prepareImage,
         };
         const outcome: FileOutcome = await (file.pictures
           ? readPictureFiles(file.pictures, scan)

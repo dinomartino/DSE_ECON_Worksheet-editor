@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ContentBlock, McqQuestion, Question, StructuredQuestion } from '@/model/types';
 import { listQuestionTypes } from '@/registry';
 import { analyseLines, buildImport, pictureHome, previewFigure, readPaste, type Analysis, type OutBlock, type Pin } from '.';
+import { isCaption } from './figures';
 
 /** Invented papers; pictures are made-up data URLs, never real exam figures. */
 const PNG = (tag: string) => `data:image/png;base64,iVBORw0KGgo${tag}`;
@@ -75,6 +76,11 @@ describe('image pins', () => {
     const without = analyseLines(read, { pins: pins.slice(1) });
     expect(JSON.stringify(without.outline)).not.toContain('fig');
   });
+});
+
+describe('isCaption', () => {
+  it.each(['Figure 1', 'Fig. 2: rice market', 'Table 3', '圖一', '圖 1：該小型開放經濟的農產品市場', '資料A'])('%s names a picture', (text) => expect(isCaption(text)).toBe(true));
+  it.each(['Price ($)', 'Quantity', 'S', 'Figure 1 shows the market for rice?', '價格'])('%s does not', (text) => expect(isCaption(text)).toBe(false));
 });
 
 describe('figure slots', () => {

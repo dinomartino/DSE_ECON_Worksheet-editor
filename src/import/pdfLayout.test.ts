@@ -209,4 +209,11 @@ describe('findFigures', () => {
     const { figures } = findFigures(page([at('1. Text', 42, 700)], { graphics: [{ kind: 'image', box: { x: 0, y: 0, w: 595, h: 842 } }] }));
     expect(figures).toEqual([]);
   });
+
+  it('never grows a picture whose region is already measured (a scan’s drawing)', () => {
+    const box = { x: 100, y: 400, w: 200, h: 150 };
+    const caption = [at('Figure 1', 170, 556)];
+    expect(findFigures(page(caption, { graphics: [{ kind: 'image', box }] })).figures[0].h).toBeGreaterThan(150);
+    expect(findFigures(page(caption, { graphics: [{ kind: 'image', box, placed: true }] })).figures).toEqual([box]);
+  });
 });

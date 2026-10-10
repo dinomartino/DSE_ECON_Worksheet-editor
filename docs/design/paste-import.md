@@ -767,7 +767,20 @@ parts 16/16 (was 13 + 1 extra), merged-column lines 0 (was 3), Paper 1 MC 10/10 
 English structured 3/3 questions 5/6 parts, Chinese structured 4/4 questions 7/7 parts (was 3/4,
 4/7).
 
-**Weak cases:** diagrams on a scan come in as stray short lines (no picture regions are found on
-a scan); a page scanned sideways is not turned; handwriting is not read (the printed answer under
-a red correction is).
+**Figures** (`findScanFigures`, no layout model): while a page's raster is open, its ink
+(half-millimetre cells, dark against the paper nearby) loses the confidently read text and the
+thin rules that frame text on four sides or cross most of the page; a joined patch left is a
+drawing when ≥ 10 × 10 mm in the text area, not one line, not a barcode, light on text, with
+40 mm of slanted/curved or solid ink spread across it, or an L of axes. Short labels round it
+join it (never a question label, caption, sentence or marked line). The boxes go to `layoutPdf`
+as `placed` images (never regrown), so `findFigures` drops the labels and places the crop as a
+PDF's; each crop is stored at once. Real scans (this Mac, PP-OCRv6 boxes, ~60 ms a page):
+2019 P2 10 of 10 (three small portraits only in part; plus a blank answer graph), 2021 P1 13 of
+14, 2025 中文 P2 5 of 6, mock scheme 4 of 4; no false positives (barcodes, key grid, tables,
+answer lines, frames, dark borders); key 45 and question/part counts unchanged. Misses: a boxed
+flow chart (its text outweighs it), a portrait split by thin lines; a pie's faint white slice is
+cut off.
+
+**Weak cases:** a page scanned sideways is not turned; handwriting is not read (the printed
+answer under a red correction is).
 
