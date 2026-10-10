@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { planChrome } from '@/import/chromePlan';
 import type { McqQuestion, Question, StructuredQuestion } from '@/model/types';
-import { MOCK, answersDocx, paperDocx } from '../../../scripts/demo/mockPaper.mjs';
+import { MOCK, answersDocx, fullMarks, paperDocx } from '../../../scripts/demo/mockPaper.mjs';
 import { readPaperFile, importedMarks, importLanguageMode } from './fileImport';
 import { NO_LINKS, answerSource, answerSummary, examineFile, linkedAnswers, paperRead, paperReview, paperState } from './importBatch';
 import { checkPlaces } from './pasteSession';
@@ -48,7 +48,7 @@ describe('the import film’s mock paper', () => {
     expect(summary).toMatchObject({ mc: MOCK.mcqs.length, mcSet: MOCK.mcqs.length, rows: [] });
     expect(summary.schemes).toBe(MOCK.written.reduce((n, q) => n + q.parts.length, 0));
     expect(source!.sheet.unknown).toEqual([]);
-    expect(importedMarks(result.batch)).toBe(MOCK.fullMarks);
+    expect(importedMarks(result.batch)).toBe(fullMarks());
   });
 
   it('reads the header, footer and title block with nothing left to retype', async () => {

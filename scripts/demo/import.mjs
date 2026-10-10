@@ -261,7 +261,7 @@ export function importStoryboard(ctx) {
         const sheet = await written.evaluate((el) => [...document.querySelectorAll('#print-root .paper')].indexOf(el.closest('.paper')));
         if (sheet < 0) throw new Error('the written question is on no page');
         // The rail shows the first pages only: scroll it (visibly) to the page, then click it.
-        const thumb = d.page.getByRole('button', { name: `Page ${sheet + 1}`, exact: true });
+        const thumb = d.page.getByRole('button', { name: new RegExp(`^Page ${sheet + 1}(, current)?$`) });
         await d.hover(d.page.getByRole('button', { name: /^Page 1\b/ }).first());
         for (let i = 0; i < 40; i++) {
           const b = await thumb.boundingBox();

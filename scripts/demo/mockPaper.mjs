@@ -12,7 +12,6 @@ export const MOCK = {
   school: 'Harbourside College',
   title: 'S5 Economics Uniform Test 1 (2026-27)',
   footer: '© 2026 Economics Department',
-  fullMarks: 30,
   time: '40 minutes',
 
   partA: {
@@ -31,6 +30,8 @@ export const MOCK = {
     ['A firm produces 200 units at a total cost of $5,000. Its total fixed cost is $1,000. What is its average variable cost?', [], ['$5', '$20', '$25', '$30'], 'B'],
     ['Which of the following describes a sole proprietorship?', [], ['Its owner enjoys limited liability.', 'It must publish its accounts every year.', 'Its owner bears unlimited liability.', 'It can raise funds by issuing shares to the public.'], 'C'],
     ['A unit tax is imposed on a good whose demand is perfectly inelastic. Which of the following is correct?', ['Consumers bear the whole tax.', 'The quantity transacted is unchanged.', 'The government collects no tax revenue.'], ['(1) and (2) only', '(1) and (3) only', '(2) and (3) only', '(1), (2) and (3)'], 'A'],
+    ['Which of the following is a positive statement?', [], ['The government should lower the salaries tax.', 'The unemployment rate in Hong Kong rose last quarter.', 'Bus fares are too high for the elderly.', 'More public housing ought to be built.'], 'B'],
+    ['The supply of durians increases and the demand for durians falls at the same time. Which of the following must be true?', [], ['The equilibrium price rises.', 'The equilibrium price falls.', 'The equilibrium quantity rises.', 'The equilibrium quantity falls.'], 'B'],
   ],
 
   partB: {
@@ -98,6 +99,9 @@ export const MOCK = {
     },
   ],
 };
+
+/** Full marks as printed in the title block: 1 per MC (the importer gives each MC 1 mark) plus the written parts. */
+export const fullMarks = (m = MOCK) => m.mcqs.length + m.written.reduce((n, q) => n + q.parts.reduce((k, p) => k + p[1], 0), 0);
 
 // ---- OOXML ----
 
@@ -200,7 +204,7 @@ export function paperDocx(m = MOCK) {
   const out = [];
   // The title block.
   out.push(para(run(m.title, { b: true, sz: 14 }), '<w:jc w:val="center"/>'));
-  out.push(para(run(`Full marks: ${m.fullMarks} marks\tTime allowed: ${m.time}`, { b: true }), tabs(RIGHT)));
+  out.push(para(run(`Full marks: ${fullMarks(m)} marks\tTime allowed: ${m.time}`, { b: true }), tabs(RIGHT)));
   out.push(blank());
 
   // Part A.
@@ -251,12 +255,11 @@ export function answersDocx(m = MOCK) {
   out.push(para(run('Part B', { b: true, u: true })));
   m.written.forEach((q, n) => {
     out.push(blank());
-    q.parts.forEach(([, marks, points], k) => {
+    q.parts.forEach(([, , points], k) => {
       const label = `${n + 1}(${String.fromCharCode(97 + k)})`;
       points.forEach(([text, mark], j) => {
         out.push(para(run(`${j === 0 ? label : ''}\t${text} (${mark})`), ind(851, 851)));
       });
-      void marks;
     });
   });
   const sectPr = '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr>';
