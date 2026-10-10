@@ -105,8 +105,10 @@ export interface FurnitureBoxes {
  * from these same numbers.
  *
  * On a Question-Answer Book the frame **is** the writing area, so this is the amount the
- * paginator has to give back before deciding what fits. Zero when the margin already
- * clears the frame, which is the ordinary worksheet with no furniture at all.
+ * paginator has to give back before deciding what fits, and the `.docx` gives it back
+ * too (`bodyMargins`): a column only the preview shrank let Word fit a line more per
+ * sheet and start questions sheets earlier. Zero when the margin already clears the
+ * frame, which is the ordinary worksheet with no furniture at all.
  *
  * Returned as a number rather than folded into `furnitureBoxes` because the paginator
  * asks a different question from the renderer: not "where is the frame" but "how much
@@ -114,6 +116,11 @@ export interface FurnitureBoxes {
  */
 export function frameBottomIntrusion(margins: PageMargins): number {
   return Math.max(0, FURNITURE_GEOMETRY.frameBottom - margins.bottom);
+}
+
+/** The body section's margins in the `.docx`: on a framed page the column ends at the frame. */
+export function bodyMargins(margins: PageMargins, furniture: PageFurniture | undefined): PageMargins {
+  return furniture?.frame ? { ...margins, bottom: margins.bottom + frameBottomIntrusion(margins) } : margins;
 }
 
 /**

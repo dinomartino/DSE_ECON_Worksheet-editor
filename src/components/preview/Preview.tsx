@@ -219,6 +219,7 @@ import {
   type PackItem,
   type PageComposition,
 } from "./pagination";
+import { pageNodes } from "./pageNodes";
 import { PAGE_AI_ITEM, pageAiScope } from "@/components/translate/translateMenu";
 import { collectTexts, slotsForTarget } from "@/model/textWalk";
 import { openAi } from "@/assist/menuStore";
@@ -4070,8 +4071,9 @@ function ProvisionalItem({ id, children }: { id: string; children: React.ReactNo
   );
 }
 
+// As the sheets draw and break them: a question's answer space one node per line (§ `pageNodes`).
 const itemBodyNodes = (item: RenderedItem) =>
-  item.type === "question" ? item.question.nodes : item.layout.nodes;
+  pageNodes(item.type === "question" ? item.question.nodes : item.layout.nodes);
 const itemBodyId = (item: RenderedItem) =>
   item.type === "question" ? item.question.questionId : item.layout.elementId;
 
@@ -6572,13 +6574,8 @@ export function Preview({
         breakAfter:
           isManualBreak || fillsPage
             ? undefined
-            : breakAfterNodes(
-                item.type === 'question' ? item.question.nodes : item.layout.nodes,
-              ),
-        keepsWithNext:
-          !isManualBreak && !fillsPage && keepsWithNext(
-            item.type === 'question' ? item.question.nodes : item.layout.nodes,
-          ),
+            : breakAfterNodes(itemBodyNodes(item)),
+        keepsWithNext: !isManualBreak && !fillsPage && keepsWithNext(itemBodyNodes(item)),
         node: wrap(bodyFor()),
         slice: (range) => wrap(bodyFor(range)),
       });
@@ -6648,10 +6645,11 @@ export function Preview({
    * The QAB frame closes above the bottom margin, so on a framed page it — not the
    * margin — is where the writing area ends (§ `frameBottomIntrusion`). Taken off only
    * when the frame is actually drawn, so an ordinary worksheet keeps exactly the column
-   * it had and repaginates not at all.
+   * it had and repaginates not at all. Only what a footer overrunning the margin has not
+   * already taken: the `.docx` ends the column at whichever is higher (§ `bodyMargins`).
    */
   const framePx = worksheet.pageFurniture?.frame
-    ? twipsToMm(frameBottomIntrusion(setup.margins)) * MM_TO_PX
+    ? twipsToMm(frameBottomIntrusion({ ...setup.margins, bottom: setup.margins.bottom + overflow.footer })) * MM_TO_PX
     : 0;
 
   const contentHeightPx = Math.floor(

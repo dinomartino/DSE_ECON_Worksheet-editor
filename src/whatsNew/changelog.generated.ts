@@ -103,6 +103,12 @@ a version heading is edited afterwards.
   顯示另一組對齊箭咀，每種對齊各有一個位置。按鈕提示亦有說明。 -->
 
 ### Fixed
+- **A Paper 2 booklet shows as many pages as it prints.** Answer lines now carry on to the
+  next page on screen, as they do in Word, instead of moving a whole question to a new page.
+  An imported 2019 Paper 2 showed 31 pages but printed 24; it now shows 24. In a Paper 2 mock
+  the last dotted line of a full page also stays inside the page frame in Word.
+  <!-- zh: **Paper 2 答題簿在畫面上的頁數與列印相同。** 答題線現時會如 Word 一樣延續到下一頁，而非把整條題目移到新一頁。
+  匯入的 2019 年 Paper 2 以往顯示 31 頁但列印出來只有 24 頁，現時顯示 24 頁。在 Paper 2 Mock 中，Word 檔案裏整頁的最後一條虛線亦會留在頁框之內。 -->
 - **Table cells line up on the page as they print.** A cell's text sits where the table
   tools' alignment buttons put it, on the page, in the PDF, in Word and when copied. A cell
   centred with the formatting bar in an older version used to show centred on the page but

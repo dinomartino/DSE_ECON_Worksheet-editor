@@ -19,7 +19,7 @@ import {
   createSpacerElement,
 } from '@/model/flow';
 import { applyResizeBlock } from '@/model/edits';
-import { createQabFurniture } from '@/model/pageFurniture';
+import { createQabFurniture, FURNITURE_GEOMETRY, frameBottomIntrusion } from '@/model/pageFurniture';
 import {
   DEFAULT_CELL_PADDING,
   patchCell,
@@ -1780,6 +1780,17 @@ describe('margin presets and custom margins export verbatim', () => {
     expect(document).toContain(
       `<w:pgMar w:top="1440" w:right="850" w:bottom="1440" w:left="850"`,
     );
+  });
+
+  it('ends a framed booklet’s body column at the frame, as the preview packs it', async () => {
+    const worksheet = createWorksheetFrom({ documentType: 'lqMock', title: 'Booklet', seedSample: false });
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, { language: 'en', version: 'student' }));
+    const document = await zip.file('word/document.xml')!.async('string');
+    const bottoms = [...document.matchAll(/<w:pgMar [^>]*w:bottom="(\d+)"/g)].map((match) => Number(match[1]));
+    const { bottom } = worksheet.pageSetup!.margins;
+    // The cover keeps the stored margin; the body gives back the frame's band.
+    expect(bottoms).toEqual([bottom, bottom + frameBottomIntrusion(worksheet.pageSetup!.margins)]);
+    expect(bottoms[1]).toBe(FURNITURE_GEOMETRY.frameBottom);
   });
 
   it('applies a band field’s own formatting in the exported header', async () => {

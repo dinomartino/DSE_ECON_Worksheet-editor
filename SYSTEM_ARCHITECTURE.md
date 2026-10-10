@@ -1358,10 +1358,10 @@ the Word style all differ.
 dotted lines directly after the part/sub-part; the flow-level `answerSpace` element
 remains the shape for whole-sheet runs. Absent prints nothing.
 
-**A QAB question starts at a page top, by explicit break** — the preview keeps items
-whole while Word splits a too-tall question, so the reference's own convention (every
-question opens a fresh page) is what keeps the backends agreeing
-(`scripts/lq-fixtures.test.ts`).
+**The LQ fixture starts each question at a page top, by explicit break** — the
+reference's own convention (`scripts/lq-fixtures.test.ts`). Without breaks the backends
+still agree: the space breaks between lines on screen as in Word (§ An item breaks
+where Word breaks it).
 
 ### A graph answer space is blank axes, one image, whole lines
 
@@ -1432,6 +1432,9 @@ header** (the reference's 21 headers exist only to vary incidental apparatus).
   Chinese notes on.
 - The same sentence prints a third time, horizontal, below the frame's bottom edge, in
   the same running header.
+- **The frame is the writing area in both backends**: the paginator gives back the band
+  where the frame closes above the bottom margin (`frameBottomIntrusion`), and the
+  `.docx` body section raises its bottom margin by the same amount (`bodyMargins`).
 - **Wording is authorable with a neutral default** ("Do not write in this margin.") —
   the reference's own sentence is rubric. The phrase blocklist pins it.
 
@@ -1619,6 +1622,10 @@ page 1).
 - **An oversized atom is cut anyway** (a source frame taller than a page): a frame in two
   halves is visible and fixable, content off the paper is not.
 - **A fill answer space is never split** — its height is the paginator's own output.
+- **A question's answer space breaks between lines**: Word writes one paragraph per
+  dotted line, none kept with the next, so the sheets draw it one node per line
+  (`pageNodes`). A flow element's space stays one node (resize handle, own split).
+  Tables in a question are still atomic on screen while Word breaks between rows.
 - `pagination.test.ts` pins each rule.
 
 ### A drop target receives the run, not the grabbed id

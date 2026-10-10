@@ -22,6 +22,7 @@ import { worksheetMarks } from '@/model/marks';
 import { versionHeaderText } from '@/model/versions';
 import { bandPrints, TEACHER_HEADER_JOIN, TEACHER_HEADER_MARK, teacherMarkPlacement } from '@/model/headerMarks';
 import { furnitureHeaderXml } from './furniture';
+import { bodyMargins } from '@/model/pageFurniture';
 import { plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { DiagramNode, RenderNode } from '@/render/ir';
@@ -591,7 +592,7 @@ function buildParts(
     documentXml: buildDocumentXml(chunks.join(''), {
       pageWidth,
       pageHeight,
-      margins: setup.margins,
+      margins: bodyMargins(setup.margins, worksheet.pageFurniture),
       landscape: setup.orientation === 'landscape',
       hasHeader,
       hasFooter,
