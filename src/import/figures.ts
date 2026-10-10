@@ -33,6 +33,9 @@ function captionKind(text: string): Kind | undefined {
   return undefined;
 }
 
+/** A figure's, table's or source's caption ("Figure 1", 圖一, 資料A): it names a picture, never part of one. */
+export const isCaption = (text: string): boolean => captionKind(text.trim()) !== undefined;
+
 /**
  * Lines whose caption or reference has no picture. A caption counts as answered by a
  * picture (or, for a table or source, any content) right before or after it; a

@@ -54,7 +54,7 @@ export function groupPictures<T extends { name: string; read: () => Promise<Arra
 async function readScan(pages: AsyncIterable<ScanPage>, scan: ScanReader | undefined, count: { pages?: number; pictures?: number }): Promise<FileOutcome> {
   const engine = await scan?.engine().catch(() => undefined);
   if (!engine) return { kind: 'problem', problem: 'scan', ...count };
-  const result: ScanResult = await recognisePages(pages, engine, { signal: scan?.signal, onProgress: scan?.onProgress });
+  const result: ScanResult = await recognisePages(pages, engine, { signal: scan?.signal, onProgress: scan?.onProgress, prepareImage: scan?.prepareImage, raster: scan?.raster });
   if (result.kind === 'stopped') return { kind: 'problem', problem: 'stopped', ...count };
   if (result.kind === 'undecodable') return { kind: 'problem', problem: count.pictures ? 'picture' : 'unreadable', ...count };
   if (result.kind === 'failed') return { kind: 'problem', problem: 'ocrFailed', ...count };

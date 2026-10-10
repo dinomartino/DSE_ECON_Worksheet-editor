@@ -2,8 +2,21 @@ import { describe, expect, it } from 'vitest';
 import type { OcrResult } from '@/platform/ocr';
 import { keyCells, readAnswerSheet } from './answerSheet';
 import { DPI, KEY, mcPaperPages, schemePages, zhStructuredPages } from './fixtures/ocrPages';
+import { GRAPH, SCAN_SCALE, ScanPage, answerLinesPage, barcodePage, darkBorderPage, graphPage, keyGridPage } from './fixtures/scanRaster';
 import { analyseLines } from './index';
-import { OCR_TOLERANCE, imageScale, ocrPage, readOcrPages, scaleAt, splitGluedLabel } from './ocrLayout';
+import {
+  OCR_TOLERANCE,
+  findScanFigures,
+  imageScale,
+  inkCell,
+  inkMap,
+  ocrPage,
+  readOcrPages,
+  scaleAt,
+  scanFigures,
+  splitGluedLabel,
+  type ScanFigures,
+} from './ocrLayout';
 import { pasteKind } from './scan';
 import type { InlineRun } from '@/model/types';
 
@@ -182,5 +195,83 @@ describe('a scan’s title', () => {
   it('is kept when it reads as one', () => {
     expect(titleOf([line('S6 Mock Examination Economics', 500, 300, 42)])).toBe('S6 Mock Examination Economics');
     expect(titleOf([line('經濟', 700, 300, 42)])).toBe('經濟');
+  });
+});
+
+describe('drawings on a scanned page', () => {
+  const ink = (p: ScanPage) => inkMap(p.rgba, p.width, p.height, inkCell(SCAN_SCALE));
+  const drawings = (p: ScanPage) => findScanFigures(p.result, ink(p), SCAN_SCALE);
+
+  it('finds a graph with its axis names and curve labels, not its caption or the prose round it', () => {
+    const [graph, ...rest] = drawings(graphPage());
+    expect(rest).toEqual([]);
+    expect(graph.x).toBeLessThanOrEqual(GRAPH.x0);
+    expect(graph.y).toBeLessThanOrEqual(GRAPH.y0);
+    expect(graph.x + graph.w).toBeGreaterThanOrEqual(GRAPH.x1);
+    expect(graph.y + graph.h).toBeGreaterThanOrEqual(GRAPH.y1);
+    // "Figure 1" (250–280 px) stays above it, "(a) Explain…" (990 px) below it.
+    expect(graph.y).toBeGreaterThan(285);
+    expect(graph.y + graph.h).toBeLessThan(990);
+  });
+
+  it('places the crop in its question and takes the labels out of the text', () => {
+    const p = graphPage();
+    const { found, figures } = scanFigures(p.result, ink(p), SCAN_SCALE);
+    expect(figures).toHaveLength(1);
+    const pictures: ScanFigures = { found, crops: figures.map((f) => ({ box: f.box, image: { src: 'data:image/png;base64,graph' } })) };
+    const r = readOcrPages([p.result], [SCAN_SCALE], [pictures]);
+    const texts = r.lines.map((l) => l.text.trim());
+    expect(texts).not.toContain('S');
+    expect(texts).not.toContain('Quantity');
+    expect(texts.some((t) => t.includes('Price ($)'))).toBe(false);
+    expect(texts).toContain('Figure 1');
+    const [q] = analyseLines(r).outline.questions;
+    expect(JSON.stringify(q)).toContain('data:image/png;base64,graph');
+    expect(q.parts).toHaveLength(2);
+    // The crop: the figure's region with a small margin, inside the page.
+    const { crop } = figures[0];
+    expect(crop.x).toBeLessThan(GRAPH.x0);
+    expect(crop.x + crop.w).toBeGreaterThan(GRAPH.x1);
+    expect(crop.x + crop.w).toBeLessThanOrEqual(p.width);
+  });
+
+  it('without a crop the drawing is a slot to fill, and its labels still leave the text', () => {
+    const p = graphPage();
+    const r = readOcrPages([p.result], [SCAN_SCALE], [{ found: findScanFigures(p.result, ink(p), SCAN_SCALE), crops: [] }]);
+    expect(r.lines.some((l) => l.image)).toBe(true);
+    expect(r.lines.map((l) => l.text.trim())).not.toContain('D');
+    // Read with no drawings found (the web, a test), the labels are text as before.
+    expect(readOcrPages([p.result], [SCAN_SCALE]).lines.map((l) => l.text.trim())).toContain('D');
+  });
+
+  it('never takes a key grid, even with a correction scribbled in a cell', () => {
+    expect(drawings(keyGridPage())).toEqual([]);
+  });
+
+  it('never takes dotted answer lines or the page frame', () => {
+    expect(drawings(answerLinesPage())).toEqual([]);
+  });
+
+  it('never takes a scan’s dark border', () => {
+    expect(drawings(darkBorderPage())).toEqual([]);
+  });
+
+  it('never takes a barcode', () => {
+    expect(drawings(barcodePage())).toEqual([]);
+  });
+
+  it('takes a photo standing in a ruled box of text, not the box', () => {
+    const page = new ScanPage()
+      .frame(200, 300, 1200, 700)
+      .text('In 2018, a restaurant chain sold a bucket priced in bitcoins on its website.', 230, 330)
+      .text('The bucket could only be bought online and was delivered to the home.', 230, 380)
+      .rect(600, 450, 380, 520, 30)
+      .rect(680, 520, 220, 200, 230)
+      .text('0.00112', 700, 800, 0.9)
+      .text('In the above case, bitcoin performed as a ______.', 200, 1100);
+    const [photo, ...rest] = drawings(page);
+    expect(rest).toEqual([]);
+    expect(photo.x).toBeGreaterThan(560);
+    expect(photo.x + photo.w).toBeLessThan(1020);
   });
 });

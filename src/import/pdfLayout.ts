@@ -41,6 +41,8 @@ export interface PdfGraphic {
   box: PdfBox;
   /** A path with curves or slanted segments (graph lines), not only boxes. */
   curved?: boolean;
+  /** A picture whose region is already measured, labels and all (a scan's drawing): never grown. */
+  placed?: boolean;
 }
 
 export interface PdfPage {
@@ -136,6 +138,7 @@ export function findFigures(page: PdfPage): { figures: PdfBox[]; rules: PdfBox[]
   for (let k = 0; k < drawn.length; k++) groups.set(find(k), [...(groups.get(find(k)) ?? []), drawn[k]]);
 
   const figures: PdfBox[] = [];
+  const placed: boolean[] = [];
   for (const group of groups.values()) {
     if (!group.some(isDrawing)) continue;
     const box = group.map((g) => g.box).reduce(union);
@@ -145,6 +148,7 @@ export function findFigures(page: PdfPage): { figures: PdfBox[]; rules: PdfBox[]
     // Text covering much of it: a table or a text box with a border, not a picture.
     if (inside.reduce((sum, it) => sum + it.w * it.size, 0) > box.w * box.h * 0.2) continue;
     figures.push(box);
+    placed.push(group.every((g) => g.placed));
   }
   // Grow each figure by the axes beside it, then once by its short labels ("P", "Quantity",
   // "0"), so a crop shows them and they stay out of the text. Nothing that starts with a
@@ -154,6 +158,7 @@ export function findFigures(page: PdfPage): { figures: PdfBox[]; rules: PdfBox[]
     return t && t.length <= 24 && !it.rotated && !parseLabel(labelZone(t));
   });
   for (let k = 0; k < figures.length; k++) {
+    if (placed[k]) continue;
     for (let grown = true; grown; ) {
       grown = false;
       for (const r of rules) {
