@@ -161,6 +161,9 @@ export const DETECTORS: readonly Detector[] = [
   function table(line) {
     return line.cells && !line.labelInfo ? { role: 'table', weight: 0.8 } : null;
   },
+  function labelledTableRow(line, ctx) {
+    return isLabelledTableRow(line, ctx) ? { role: 'table', weight: 0.9 } : null;
+  },
   function flattenedRow(line, ctx) {
     if (ctx.lineMode !== 'visual' || line.labelInfo || line.cells) return null;
     return /(?:^|\s)[\d$%.,\u00A0 ]*\d[%]?\s+[$]?\d[\d,.\u00A0 ]*%?$/.test(line.text) && line.text.length < 90 ? { role: 'table', weight: 0.5 } : null;
@@ -180,6 +183,34 @@ export const DETECTORS: readonly Detector[] = [
     return { role: 'stem', weight: 0.4 };
   },
 ];
+
+const filledCells = (line: SourceLine) => (line.cells ?? []).filter((c) => c.some((r) => r.text.trim()));
+
+/**
+ * "(a) on the first $150,000 ⇥ 46%": a part-shaped label on a table row is the row's
+ * content, not a part, when the row has cells after its label and no marks, and either the
+ * table has an unlabelled row (a header) or the same labels start again later in the
+ * question (its real parts).
+ */
+export function isLabelledTableRow(line: SourceLine, ctx: Pick<DetectContext, 'lines' | 'levelOf'>): boolean {
+  const info = line.labelInfo;
+  if (!info || line.clump || line.trailingMarks !== undefined || filledCells(line).length < 2) return false;
+  if (!['part', 'subpart'].includes(ctx.levelOf(info.family))) return false;
+  if (filledCells(line).some((c) => marksOnly(c.map((r) => r.text).join('')))) return false;
+  const { lines } = ctx;
+  let from = line.i;
+  let to = line.i;
+  while (from > 0 && lines[from - 1].cells) from--;
+  while (to + 1 < lines.length && lines[to + 1].cells) to++;
+  for (let k = from; k <= to; k++) if (!lines[k].labelInfo && filledCells(lines[k]).length >= 2) return true;
+  for (let k = to + 1; k < lines.length; k++) {
+    const next = lines[k].labelInfo;
+    if (!next) continue;
+    if (ctx.levelOf(next.family) === 'question') return false;
+    if (next.family === info.family && next.value <= info.value) return true;
+  }
+  return false;
+}
 
 /** Whether a line reads as an instruction ("Write your name…"), for rejecting instruction lists. */
 export function isInstruction(line: SourceLine): boolean {

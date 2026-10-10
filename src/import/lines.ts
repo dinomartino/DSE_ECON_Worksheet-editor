@@ -5,7 +5,7 @@
  */
 import { normalizeRuns, sliceRichText } from '@/model/text';
 import type { InlineRun } from '@/model/types';
-import { labelLevel, parseLabel, trailingMarks, type ParsedLabel } from './labels';
+import { bareOptionLetter, labelLevel, parseLabel, trailingMarks, type ParsedLabel } from './labels';
 import { fold, labelZone } from './normalize';
 import type { RawLine, RawRun } from './readPlain';
 import type { Family, SourceLine } from './types';
@@ -263,5 +263,49 @@ export function toSourceLines(raw: readonly RawLine[]): SourceLine[] {
       }
     }
   }
-  return out.map((line, i) => ({ ...line, i }));
+  return labelBareOptions(out).map((line, i) => ({ ...line, i }));
+}
+
+// ---- an option label that lost its dot ----
+
+const optionLabel = (line: SourceLine | undefined) => (line?.labelInfo && labelLevel(line.labelInfo.family) === 'option' ? line.labelInfo : undefined);
+
+/**
+ * "A. …", "B (1) and (4) only", "C. …", "D. …": the bare letter is an option when the
+ * lines around it run A, B, C, D with it in its place, and at least three siblings carry
+ * a label (blank lines between them allowed). A capital letter in prose has no such run.
+ */
+function labelBareOptions(lines: SourceLine[]): SourceLine[] {
+  const filled = (k: number) => !lines[k].blank;
+  return lines.map((line, k) => {
+    if (line.labelInfo || line.clump || line.cells || line.blank || line.tabOnly || line.image) return line;
+    const whole = plainOf(line.runs);
+    const bare = bareOptionLetter(whole);
+    if (!bare) return line;
+    const siblings: Array<{ family: Family; value: number }> = [];
+    for (const step of [-1, 1]) {
+      let want = bare.value + step;
+      for (let j = k + step; j >= 0 && j < lines.length; j += step) {
+        if (!filled(j)) continue;
+        const info = optionLabel(lines[j]);
+        if (!info || info.value !== want) break;
+        siblings.push(info);
+        want += step;
+      }
+    }
+    const family = siblings[0]?.family;
+    const first = Math.min(bare.value, ...siblings.map((s) => s.value));
+    if (siblings.length < 3 || first !== 1 || siblings.some((s) => s.family !== family)) return line;
+    const body = trimRuns(sliceRichText(line.runs, bare.length, whole.length));
+    const letter = whole[0];
+    return {
+      ...line,
+      label: letter,
+      labelRuns: [{ text: `${letter} ` }],
+      labelInfo: { family: family!, value: bare.value },
+      labelSource: 'text' as const,
+      runs: body,
+      text: plainOf(body).trim(),
+    };
+  });
 }

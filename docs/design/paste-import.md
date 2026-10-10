@@ -265,7 +265,7 @@ line and a question index; the dialog words them. Types: `src/import/types.ts`.
 | `src/import/scan.ts` · `src/import/build.ts` | empty/OCR verdict; outline → `QuestionBuild[]` + `lead` |
 | `src/import/figures.ts` | figure slots (lost pictures; captions and references with none) and image pins, placed after the walk |
 
-**Scorecard** (`src/import/scorecard.test.ts`, 19 synthetic fixtures in `src/import/fixtures/`):
+**Scorecard** (`src/import/scorecard.test.ts`, 20 synthetic fixtures in `src/import/fixtures/`):
 every Word plain/HTML and PDF-style fixture 100% split and detail; the two OCR fixtures are
 read as `scan` and score 89–95%. Floors: Word 95%, PDF 85%, OCR 50% (per fixture). The fixtures
 were written alongside the engine, so the local run on the real survey pastes is the honest
@@ -295,6 +295,18 @@ flags); OCR excerpts 86% and 100% split. Re-solving a 60-question paste takes ab
 option letters (the question becomes written text, flagged); an instructions list numbered
 like the questions with no heading after it; a structured question whose part letters were
 lost by OCR.
+
+**Two structural rules (2026-10-10):**
+
+- **A bare option letter** ("B (1) and (4) only") is option B only inside a run A, B, C, D whose
+  other labels (three or more, one family) sit on the lines around it (`labelBareOptions`,
+  `src/import/lines.ts`). A PDF row of option segments with one bare letter splits like any option
+  row (`optionRowWithBareLetter`, `src/import/pdfLayout.ts`). Prose that opens with a capital has no run.
+  Not read: a bare letter inside one pasted line ("A. x B y C. z"), where no gap shows it.
+- **A labelled table row** ("(a) on the first $150,000 ⇥ 46%") is a table row, not a part, when
+  the label is part-level, cells follow it, it has no marks, and its table has an unlabelled row or
+  the same labels start again later in the question (`isLabelledTableRow`). The label stays in the
+  row: its own cell after a TAB, else in the first cell.
 
 ### The dialog, as built (2026-10-08)
 

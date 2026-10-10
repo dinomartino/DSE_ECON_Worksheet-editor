@@ -8,6 +8,7 @@ import { inlineAnswer, isShared, keyPairs, sharedSpan } from './detectors';
 import type { RunVerdict } from './levels';
 import type { Family, Flag, FlagKind, OutBlock, OutPart, OutQuestion, OutStimulus, OutSubPart, OutText, Outline, Role, SourceLine } from './types';
 import type { InlineRun } from '@/model/types';
+import { normalizeRuns } from '@/model/text';
 
 type Paragraph = Extract<OutBlock, { kind: 'paragraph' }>;
 type SourcePanel = Extract<OutBlock, { kind: 'source' }>;
@@ -175,12 +176,13 @@ class Walker {
       this.addParagraph(line, line.runs, { alone: true });
       return;
     }
+    const row = rowCells(line, line.cells);
     const last = this.lastTable;
     if (last && last.ctr === ctr && ctr[ctr.length - 1] === last.block) {
-      last.block.rows.push(line.cells);
+      last.block.rows.push(row);
       last.block.lines.push(line.i);
     } else {
-      const block = { kind: 'table' as const, lines: [line.i], rows: [line.cells] };
+      const block = { kind: 'table' as const, lines: [line.i], rows: [row] };
       ctr.push(block);
       this.lastTable = { block, ctr };
     }
@@ -778,6 +780,16 @@ class Walker {
     }
     return { items, extra };
   }
+}
+
+/** A table row's cells, a row label kept: its own cell when a TAB followed it, else in the first. */
+function rowCells(line: SourceLine, cells: InlineRun[][]): InlineRun[][] {
+  const label = line.labelInfo && line.label && line.labelRuns ? normalizeRuns(line.labelRuns.map((r) => ({ ...r, text: r.text.trimEnd() })).filter((r) => r.text)) : [];
+  if (!label.length) return cells;
+  const own = line.labelSource === 'list' || line.raw.slice(line.raw.indexOf(line.label!) + line.label!.length).startsWith('\t');
+  if (own) return [label, ...cells];
+  const [first = [], ...rest] = cells;
+  return [normalizeRuns([...label, { text: ' ' }, ...first]), ...rest];
 }
 
 function cellsAsText(cells: readonly InlineRun[][]): InlineRun[] {
