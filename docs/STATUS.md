@@ -24,8 +24,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   Windows CI green (links, real-model tests). Unverified: Intel Mac, macOS 12–13.2, signed build, native open sheet.
 - **Import leftovers merged (2026-10-10):** bare "B" option + labelled table rows (S6 P1 Q42, P2 Q10), word-space options
   (Q11), 題庫-only lands on the first added, answer lines break like Word (2019 P2 24/24/24; Paper 2 body ends at the
-  frame), scan diagrams come in as pictures. In flight: `fix/import-picture-options` (2×2 picture MC on scans, DSE2021
-  Q36; scheme Q5 points on the wrong part). Left: tables don't split across sheets in the preview (Word does).
+  frame), scan diagrams come in as pictures. Picture options pair by place (DSE2021 Q36,
+  .docx tables too); scheme rows round a figure follow it (S6 Q5). Left: tables don't split across sheets in the
+  preview (Word does); a faint dot at scan figure crops' top-left; 2021 Q23 flow chart stays text.
 - `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
 
 ## Where we are
@@ -70,8 +71,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified (2026-10-09, `develop` after the OCR merges)
 
-- `npm test` 5403, `cargo test` 68, typecheck + build (bundle check) green, lint 40, samples 6.
+- `npm test` 5459, `cargo test` 68, typecheck + build (bundle check) green, lint 40, samples 6.
 
 ## Log
 
-- **2026-10-08/09** — Found-folder offer; import + paper language (15 branches); Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR. 13 branches.
+- **2026-10-08/09** — Found-folder offer; import + paper language (15 branches); Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR; import leftovers. 19 branches.
