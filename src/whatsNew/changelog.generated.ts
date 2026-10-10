@@ -14,6 +14,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.8.0 — 2026-10-10
+
 ### Added
 - **Import a paper from Word or PDF.** On the home screen, choose Import from Word, PDF or picture… (or
   drop a .docx or .pdf file there). Econ Studio reads the file, works out which lines are
