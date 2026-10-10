@@ -16,6 +16,8 @@ export interface BankReturn {
   focusKey?: string;
   /** The question on screen in tag as you go (its group's root id). */
   tagRoot?: string;
+  /** Roots tag as you go lists first, in this order: the questions an import just added. */
+  tagFirst?: string[];
 }
 
 interface BankReturnStore {
@@ -58,6 +60,25 @@ export const useKeptTarget = create<KeptTargetStore>((set) => ({
 export function tagIndexOf(roots: readonly string[], tagRoot: string | undefined): number {
   const at = tagRoot === undefined ? -1 : roots.indexOf(tagRoot);
   return at < 0 ? 0 : at;
+}
+
+/**
+ * Where tag as you go lands: on `tagRoot` once the list holds it. A question just saved
+ * may not be indexed yet, so while it is missing this waits (`undefined`) until the index
+ * has caught up, then starts at the top.
+ */
+export function tagLanding(roots: readonly string[], tagRoot: string, caughtUp: boolean): number | undefined {
+  const at = roots.indexOf(tagRoot);
+  if (at >= 0) return at;
+  return caughtUp ? 0 : undefined;
+}
+
+/** `groups` with the roots in `first` ahead of the rest, in `first`'s order; the rest keep theirs. */
+export function firstThese<T extends { rootId: string }>(groups: readonly T[], first: readonly string[] | undefined): readonly T[] {
+  if (!first || first.length === 0) return groups;
+  const rank = new Map(first.map((root, k) => [root, k]));
+  const lead = groups.filter((group) => rank.has(group.rootId)).sort((a, b) => (rank.get(a.rootId) ?? 0) - (rank.get(b.rootId) ?? 0));
+  return lead.length === 0 ? groups : [...lead, ...groups.filter((group) => !rank.has(group.rootId))];
 }
 
 /**

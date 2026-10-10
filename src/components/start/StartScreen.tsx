@@ -406,12 +406,15 @@ export function StartScreen({
     }
   };
 
-  /** 題庫 only: the bank opens on its Untagged questions (tag as you go), at the first one added. */
-  const showAdded = (questionIds: string[]) => {
+  /**
+   * 題庫 only: the bank opens on its Untagged questions (tag as you go), at the first one
+   * added, with the ones added listed first in the file's order (`roots`, never empty).
+   */
+  const showAdded = (roots: string[]) => {
     useBankReturn.getState().set({
       level: { kind: 'untagged' },
       filters: DEFAULT_FILTERS,
-      ...(questionIds[0] ? { tagRoot: questionIds[0] } : {}),
+      ...(roots[0] ? { tagRoot: roots[0], tagFirst: roots } : {}),
     });
     void refresh();
     showView('bank');

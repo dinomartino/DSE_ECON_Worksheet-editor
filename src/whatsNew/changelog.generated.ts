@@ -166,6 +166,12 @@ a version heading is edited afterwards.
   <!-- zh: **標題區頁碼和頁首、頁尾的間距與 Word 檔案一致。** 標題區內的頁碼在頁面和 PDF 上會顯示實際頁碼（連封面計算），
   不再顯示「#」。在 PDF 中複製或搜尋文字時，不會再找到編輯按鈕留下的「+」。頁首有較長的一行需要換行時，每一頁的題目都會
   像 Word 一樣向下移；較大字號的頁首或標題行在 Word 中亦不會再被切去頂部。 -->
+- **Adding a file to 題庫 opens on the questions you just added.** After an import saved as
+  題庫 only, tag as you go now starts on the first question added, and the others from the
+  file follow in their order before any other untagged question. It used to open on whichever
+  untagged question happened to come first.
+  <!-- zh: **把檔案加入題庫後，會打開剛加入的題目。** 匯入時選擇「只加入題庫」後，邊看邊標記會由第一條加入的題目開始，
+  檔案中其餘題目按原有次序排在其他未標記題目之前。以往會打開任何一條剛好排在最前的未標記題目。 -->
 
 ## 0.7.0 — 2026-10-08
 

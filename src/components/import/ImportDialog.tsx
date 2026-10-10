@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { analyseLines, hasChrome, type ChromeLeftover, type FileRole, type ImageRef, type PageChrome } from '@/import';
 import { planChrome } from '@/import/chromePlan';
 import { imageBlockFromFile } from '@/export/imageImport';
-import { addToBank, bankChoices, nextBankName, type BankChoice } from '@/library/bankDocs';
+import { addToBank, addedRoots, bankChoices, nextBankName, type BankChoice } from '@/library/bankDocs';
 import type { DocumentType } from '@/model/newWorksheet';
 import type { LanguageMode, Question, Worksheet } from '@/model/types';
 import { paperLanguage, paperSide } from '@/settings/paperLanguage';
@@ -93,8 +93,8 @@ export interface ImportDialogProps {
   onOpenDocument: (worksheet: Worksheet, language?: LanguageMode) => void;
   /** New papers were saved (file them where the teacher is). */
   onCreated: (ids: string[]) => void;
-  /** Questions were added to a bank: show them there. */
-  onAddedToBank: (bankId: string, questionIds: string[]) => void;
+  /** Questions were added to a bank: show them there (`roots`: those added, in the files' order). */
+  onAddedToBank: (bankId: string, roots: string[]) => void;
 }
 
 const NEW_BANK = '';
@@ -318,7 +318,6 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
     addToBank(questions, to, { openDocId: '' })
       .then(({ bank, copied, already }) => {
         const bankName = worksheetTitle(bank);
-        const skipped = new Set(already.map((q) => q.id));
         const meta = copied === 0 ? m.bankHasAll : [m.bankUntagged, ...(already.length > 0 ? [m.skippedDuplicates(already.length)] : [])].join(' · ');
         notify({
           tone: copied === 0 ? 'info' : 'success',
@@ -327,7 +326,7 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
           ...(copied > 0 && hasLead ? { details: [m.stimulusNotInBank] } : {}),
         });
         onClose();
-        if (copied > 0) onAddedToBank(bank.id, questions.filter((q) => !skipped.has(q.id)).map((q) => q.id));
+        if (copied > 0) onAddedToBank(bank.id, addedRoots(questions, already));
       })
       .catch(() => {
         setBusy(false);
