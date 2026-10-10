@@ -170,13 +170,15 @@ a version heading is edited afterwards.
   untagged question happened to come first.
   <!-- zh: **把檔案加入題庫後，會打開剛加入的題目。** 匯入時選擇「只加入題庫」後，邊看邊標記會由第一條加入的題目開始，
   檔案中其餘題目按原有次序排在其他未標記題目之前。以往會打開任何一條剛好排在最前的未標記題目。 -->
-- **Importing a paper reads two more layouts correctly.** An MC whose option letter was printed
-  without its dot ("B (1) and (4) only" between "A." and "C.") now comes in as an MC with four
-  options and its answer from the key, not as a written question. A table in a source whose rows
-  are labelled (a), (b), (c) now stays a table, and the question's real parts after it stay its
-  parts.
-  <!-- zh: **匯入試卷時，多兩種排版能正確讀取。** 選項字母印漏了句點的 MC（例如在「A.」和「C.」之間的「B (1) and (4) only」），
-  現在會匯入為有四個選項的 MC，並按答案表取得答案，不會再變成文字題。資料中以 (a)、(b)、(c) 標示各行的表格會保持為表格，
+- **Importing a paper reads three more layouts correctly.** An MC whose option letter was
+  printed without its dot ("B (1) and (4) only" between "A." and "C.") now comes in as an MC
+  with four options and its answer from the key, not as a written question. Two options printed
+  only a space apart ("C. (1) and (3) only D. (1), (2) and (3)") now come in as two options. A
+  table in a source whose rows are labelled (a), (b), (c) now stays a table, and the question's
+  real parts after it stay its parts.
+  <!-- zh: **匯入試卷時，多三種排版能正確讀取。** 選項字母印漏了句點的 MC（例如在「A.」和「C.」之間的「B (1) and (4) only」），
+  現在會匯入為有四個選項的 MC，並按答案表取得答案，不會再變成文字題。兩個選項之間只隔一個空格（例如
+  「C. (1) and (3) only D. (1), (2) and (3)」）時，現在亦會分開為兩個選項。資料中以 (a)、(b)、(c) 標示各行的表格會保持為表格，
   其後題目真正的分題亦會保持為分題。 -->
 
 ## 0.7.0 — 2026-10-08

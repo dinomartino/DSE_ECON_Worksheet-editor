@@ -239,7 +239,7 @@ function toLines(piece: Piece, base: Omit<SourceLine, 'i' | 'runs' | 'text' | 'r
 /** Every raw line to one or more source lines, numbered in order. */
 export function toSourceLines(raw: readonly RawLine[]): SourceLine[] {
   const out: SourceLine[] = [];
-  for (const line of raw) {
+  for (const [k, line] of raw.entries()) {
     const base = {
       ...(line.pageBreak ? { pageBreak: true } : {}),
       ...(line.page !== undefined ? { page: line.page, x: line.x, y: line.y } : {}),
@@ -253,9 +253,18 @@ export function toSourceLines(raw: readonly RawLine[]): SourceLine[] {
     const listLabel = line.listLabel && parseLabel(labelZone(`${line.listLabel} `)) ? line.listLabel : undefined;
     const runs: RawRun[] = line.listLabel && !listLabel ? [{ text: `${line.listLabel} ` }, ...line.runs] : line.runs;
     const pieces = listLabel && !/\t/.test(plainOf(runs)) ? [{ runs, depth, listLabel }] : splitItems({ runs, depth, listLabel });
-    for (const piece of pieces) {
+    const next = raw[k + 1];
+    for (let p = 0; p < pieces.length; p++) {
+      const piece = pieces[p];
       const before = out.length;
       toLines(piece, base, out);
+      const rest = out.length === before + 1 ? embeddedOption(piece, out, next) : null;
+      if (rest) {
+        out.length = before;
+        pieces.splice(p, 1, ...rest);
+        p--;
+        continue;
+      }
       // A table row the reader saw as cells keeps them (empty ones too) unless it split into items.
       if (line.cells && pieces.length === 1 && out.length === before + 1 && !out[before].labelInfo) {
         const cells = line.cells.map((c) => trimRuns(clean(c)));
@@ -264,6 +273,48 @@ export function toSourceLines(raw: readonly RawLine[]): SourceLine[] {
     }
   }
   return labelBareOptions(out).map((line, i) => ({ ...line, i }));
+}
+
+// ---- an option label a word space from the one before ----
+
+const OPTION_TOKEN: Partial<Record<Family, (letter: string) => RegExp>> = {
+  'A.': (l) => new RegExp(`(?<=[\\t ])${l}[.．](?=[\\t ])`),
+  'A)': (l) => new RegExp(`(?<=[\\t ])${l}\\)(?=[\\t ])`),
+  '(A)': (l) => new RegExp(`(?<=[\\t ])\\(${l}\\)(?=[\\t ])`),
+};
+
+/**
+ * "C. (1) and (3) only D. (1), (2) and (3)": the next option set only a word space after
+ * this one's text. Split at the next letter in this line's style when the run starts at A
+ * (the options just above lead up to this one, or this is A and the next line is C) and
+ * nothing below already carries that letter. "U.S. A …" or "Plan A. B …" never fits.
+ */
+function embeddedOption(piece: Piece, out: readonly SourceLine[], next: RawLine | undefined): Piece[] | null {
+  const line = out[out.length - 1];
+  const info = line.labelInfo;
+  const token = info && OPTION_TOKEN[info.family];
+  if (!info || !token || line.cells || labelLevel(info.family) !== 'option') return null;
+  const nextLabel = next && !next.image ? parseLabel(labelZone(plainOf(next.runs).trimStart())) : null;
+  const nextValue = nextLabel?.family === info.family ? nextLabel.value : undefined;
+  if (nextValue === info.value + 1) return null;
+  let want = info.value - 1;
+  for (let j = out.length - 2; j >= 0 && want >= 1; j--) {
+    if (out[j].blank) continue;
+    if (out[j].labelInfo?.family !== info.family || out[j].labelInfo?.value !== want) break;
+    want--;
+  }
+  if (info.value === 1 ? nextValue !== 3 : want !== 0) return null;
+  const text = plainOf(piece.runs);
+  const lead = text.length - text.trimStart().length;
+  const m = token(String.fromCharCode(65 + info.value)).exec(fold(text).slice(lead + 1));
+  if (!m) return null;
+  const at = lead + 1 + m.index;
+  if (!text.slice(lead, at).trim() || !text.slice(at + m[0].length).trim()) return null;
+  const sub = (from: number, to: number) => sliceRichText(piece.runs, from, to) as RawRun[];
+  return [
+    { runs: sub(0, at), depth: piece.depth, ...(piece.listLabel ? { listLabel: piece.listLabel } : {}) },
+    { runs: sub(at, text.length), depth: piece.depth },
+  ];
 }
 
 // ---- an option label that lost its dot ----
