@@ -332,4 +332,14 @@ export const FIXTURES: ExpectedFixture[] = [
       { stem: 'A café raises the price', kind: 'structured', parts: [{ text: 'Calculate the percentage', marks: 1 }, { text: 'Explain one reason', marks: 3 }] },
     ],
   },
+  {
+    // Option B printed without its dot; a source table whose rows are labelled (a)–(c).
+    file: '20-word-plain-table-rows.txt',
+    category: 'word',
+    kind: 'ok',
+    questions: [
+      { stem: 'Which of the following statements about Firm X', kind: 'mc', statements: 2, options: ['(1) only', '(2) only', '(1) and (2)', 'neither (1) nor (2)'] },
+      { stem: 'Study Source A', kind: 'structured', parts: [{ text: 'Is the salaries tax', marks: 3 }, { text: 'Give one reason', marks: 2 }] },
+    ],
+  },
 ];

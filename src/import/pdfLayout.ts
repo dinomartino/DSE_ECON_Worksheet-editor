@@ -10,7 +10,7 @@
  * Coordinates are PDF points, y up from the page's bottom; `y` is a baseline.
  */
 import { normalizeRuns } from '@/model/text';
-import { labelLevel, marksOnly, parseLabel, trailingMarks } from './labels';
+import { bareOptionLetter, labelLevel, marksOnly, parseLabel, trailingMarks } from './labels';
 import { labelZone, repeatKey, tidyText } from './normalize';
 import type { RawLine, RawRun } from './readPlain';
 import type { PageChrome } from './pageChrome';
@@ -91,6 +91,27 @@ export function isLabelText(text: string): boolean {
   const t = text.trim();
   const label = t && parseLabel(labelZone(`${t} `));
   return !!label && label.text.trim().length >= t.length;
+}
+
+/**
+ * A row of options set apart where one lost its dot ("A. …   B …   C. …   D. …"): three or
+ * more segments, the others option labels of one family, the bare letter in its place in the run.
+ * Split like any option row; `lines.ts` gives the letter its label from the run.
+ */
+function optionRowWithBareLetter(texts: readonly string[]): boolean {
+  let family: string | undefined;
+  let bare = 0;
+  const values = texts.map((t) => {
+    const label = parseLabel(labelZone(t));
+    if (label && label.length < t.length && labelLevel(label.family) === 'option') {
+      if (family && family !== label.family) return NaN;
+      family = label.family;
+      return label.value;
+    }
+    bare++;
+    return bareOptionLetter(t)?.value ?? NaN;
+  });
+  return bare === 1 && texts.length >= 3 && !!family && values.every((v, k) => k === 0 || v === values[k - 1] + 1);
 }
 
 const contains = (box: PdfBox, x: number, y: number, pad = 0) =>
@@ -573,7 +594,7 @@ function lineOf(row: Row, region: Region, rules: readonly PdfBox[], splits: Read
     const label = parseLabel(labelZone(first.str.trimStart()));
     return label && label.length < first.str.length ? first.x + (first.w * label.length) / first.str.length : seg.x;
   };
-  if (segs.length >= 2 && segs.every((s) => labelled(s))) {
+  if (segs.length >= 2 && (segs.every((s) => labelled(s)) || optionRowWithBareLetter(segs.map((s) => plain(s.runs).trimStart())))) {
     return segs.map((seg, k) => ({
       ...base,
       kind: 'text' as const,

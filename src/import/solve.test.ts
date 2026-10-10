@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { McqQuestion, StructuredQuestion } from '@/model/types';
+import type { OutBlock } from './types';
 import { analyseLines, analysePaste, buildImport, readPaste } from '.';
 import { materialise } from './fixtures/score';
 
@@ -59,6 +60,72 @@ describe('solver', () => {
     const read = readPaste({ plain: '1.\tWhich?\nA.\ta\nB.\tb\nC.\tc\nD.\td' });
     const result = analyseLines(read, { pins: [{ kind: 'answer', line: 3, index: 2 }, { kind: 'language', line: 0, side: 'zh' }] });
     expect(result.outline.questions[0]).toMatchObject({ answer: { index: 2, from: 'pin' }, side: 'zh' });
+  });
+});
+
+describe('bare option letters and labelled table rows', () => {
+  const tables = (blocks: readonly OutBlock[]): string[][][] =>
+    blocks.flatMap((b) => (b.kind === 'table' ? [b.rows.map((row) => row.map((c) => c.map((r) => r.text).join('')))] : b.kind === 'source' ? tables(b.blocks) : []));
+
+  it('reads an MC whose option B lost its dot, and takes its answer from a bare-letter key', () => {
+    const plain = ['41.\tWhich is a free good?', 'A.\tair', 'B.\tbooks', 'C.\tland', 'D.\tfood', '42.\tWhich of the above are correct?', 'A. (1) and (3) only', 'B (1) and (4) only', 'C. (2) and (3) only', 'D. (2) and (4) only', 'Answers', '41 A\t42 B'].join('\n');
+    const [, q] = analysePaste({ plain }).outline.questions;
+    expect(q).toMatchObject({ kind: 'mc', answer: { index: 1, from: 'key' } });
+    expect(q.options.map((o) => o.runs.map((r) => r.text).join(''))).toEqual(['(1) and (3) only', '(1) and (4) only', '(2) and (3) only', '(2) and (4) only']);
+  });
+
+  it('keeps a capital letter that opens prose as text', () => {
+    const plain = ['1.\tRead the passage.', 'A firm raises its price.', 'B cannot follow.', '2.\tWhy?'].join('\n');
+    const result = analysePaste({ plain });
+    expect(result.outline.questions).toHaveLength(2);
+    expect(result.outline.questions[0]).toMatchObject({ kind: 'written', options: [] });
+  });
+
+  it('reads (a)–(d) rows of a source table as rows, and the parts after it as parts', () => {
+    const plain = [
+      '10.\tRead the sources.',
+      'Source B: The tax rates are shown below:',
+      'Taxable value\tRate',
+      '(a) on the first $150,000\t46%',
+      '(b) on the next $150,000\t86%',
+      '(c) on the remainder\t132%',
+      '(a)\tRefer to Source B. Is the tax progressive?\t(3 marks)',
+      '(b)\tExplain one effect of the tax.\t(2 marks)',
+    ].join('\n');
+    const [q] = analysePaste({ plain }).outline.questions;
+    expect(q.parts.map((p) => [p.label, p.marks])).toEqual([
+      ['(a)', 3],
+      ['(b)', 2],
+    ]);
+    expect(tables(q.stem)).toEqual([
+      [
+        ['Taxable value', 'Rate'],
+        ['(a) on the first $150,000', '46%'],
+        ['(b) on the next $150,000', '86%'],
+        ['(c) on the remainder', '132%'],
+      ],
+    ]);
+  });
+
+  it('reads labelled rows with no header as rows when the labels start again as parts', () => {
+    const plain = ['3.\tStudy the data.', '(a)\tFirm A\t50', '(b)\tFirm B\t20', '(a)\tCompare the firms.\t(2 marks)'].join('\n');
+    const [q] = analysePaste({ plain }).outline.questions;
+    expect(q.parts).toHaveLength(1);
+    expect(tables(q.stem)).toEqual([
+      [
+        ['(a)', 'Firm A', '50'],
+        ['(b)', 'Firm B', '20'],
+      ],
+    ]);
+  });
+
+  it('keeps parts as parts: after a plain table, set out with TABs, or with marks in a column', () => {
+    const afterTable = analysePaste({ plain: ['1.\tStudy the table.', 'Year\t2024\t2025', 'GDP\t100\t110', '(a)\tCalculate the growth rate.\t(2 marks)', '(b)\tExplain one cause.\t(2 marks)'].join('\n') });
+    expect(afterTable.outline.questions[0].parts.map((p) => p.label)).toEqual(['(a)', '(b)']);
+    const tabbed = analysePaste({ plain: ['1.\tDefine each term.', '(a)\tOpportunity cost\tUse an example.', '(b)\tScarcity\tUse an example.'].join('\n') });
+    expect(tabbed.outline.questions[0].parts).toHaveLength(2);
+    const marksColumn = analysePaste({ plain: ['1.\tAnswer both.', 'Part\tQuestion\tMarks', '(a)\tExplain demand.\t2 marks', '(b)\tExplain supply.\t3 marks'].join('\n') });
+    expect(marksColumn.outline.questions[0].parts).toHaveLength(2);
   });
 });
 

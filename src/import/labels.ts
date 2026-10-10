@@ -65,6 +65,16 @@ export function parseLabel(zone: string): ParsedLabel | null {
   return null;
 }
 
+/**
+ * A capital letter standing alone before text ("B (1) and (4) only"): an option label that
+ * lost its dot. Prose starts this way too ("A firm…"), so only dotted siblings around it
+ * can make it a label (`lines.ts`, `pdfLayout.ts`).
+ */
+export function bareOptionLetter(text: string): { value: number; length: number } | null {
+  const m = /^([A-H])[ \t ]+(?=\S)/.exec(text);
+  return m ? { value: letterValue(m[1]), length: m[0].length } : null;
+}
+
 /** The level a family takes when nothing else is known. */
 export function labelLevel(family: Family): Level {
   switch (family) {

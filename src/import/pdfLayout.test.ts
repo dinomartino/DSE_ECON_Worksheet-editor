@@ -34,6 +34,17 @@ describe('layoutPdf', () => {
     expect(new Set(lines.slice(1).map((l) => l.marginDepth)).size).toBe(1);
   });
 
+  it('splits an option row whose B lost its dot, and reads the bare letter as option B', () => {
+    const row = (texts: string[]) => texts.map((t, k) => at(t, 62 + k * 130, 676));
+    const stem = [at('42.', 42, 700), at('Which of the above are correct?', 66, 700)];
+    const result = analyseLines(read([page([...stem, ...row(['A. (1) and (3) only', 'B (1) and (4) only', 'C. (2) and (3) only', 'D. (2) and (4) only'])])]));
+    expect(result.outline.questions[0]).toMatchObject({ kind: 'mc' });
+    expect(result.outline.questions[0].options.map((o) => o.runs.map((r) => r.text).join(''))).toEqual(['(1) and (3) only', '(1) and (4) only', '(2) and (3) only', '(2) and (4) only']);
+    // A bare letter out of its place, or a row of prose, stays one line.
+    expect(raws([page(row(['A. (1) only', 'C (2) only', 'D. (3) only']))])).toEqual(['A. (1) only C (2) only D. (3) only']);
+    expect(raws([page(row(['A. rises', 'B falls']))])).toEqual(['A. rises B falls']);
+  });
+
   it('joins wrapped lines into paragraphs, a hyphenated break closed up', () => {
     const wide = 'The government of a small open economy has decided to raise the tax on environ-';
     expect(

@@ -164,6 +164,14 @@ a version heading is edited afterwards.
   <!-- zh: **標題區頁碼和頁首、頁尾的間距與 Word 檔案一致。** 標題區內的頁碼在頁面和 PDF 上會顯示實際頁碼（連封面計算），
   不再顯示「#」。在 PDF 中複製或搜尋文字時，不會再找到編輯按鈕留下的「+」。頁首有較長的一行需要換行時，每一頁的題目都會
   像 Word 一樣向下移；較大字號的頁首或標題行在 Word 中亦不會再被切去頂部。 -->
+- **Importing a paper reads two more layouts correctly.** An MC whose option letter was printed
+  without its dot ("B (1) and (4) only" between "A." and "C.") now comes in as an MC with four
+  options and its answer from the key, not as a written question. A table in a source whose rows
+  are labelled (a), (b), (c) now stays a table, and the question's real parts after it stay its
+  parts.
+  <!-- zh: **匯入試卷時，多兩種排版能正確讀取。** 選項字母印漏了句點的 MC（例如在「A.」和「C.」之間的「B (1) and (4) only」），
+  現在會匯入為有四個選項的 MC，並按答案表取得答案，不會再變成文字題。資料中以 (a)、(b)、(c) 標示各行的表格會保持為表格，
+  其後題目真正的分題亦會保持為分題。 -->
 
 ## 0.7.0 — 2026-10-08
 

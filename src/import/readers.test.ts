@@ -58,6 +58,25 @@ describe('plain reader', () => {
     expect(clump[1].clump).toEqual({ family: 'A.', values: [1, 2, 3, 4] });
   });
 
+  it('reads an option letter that lost its dot only where its dotted siblings run around it', () => {
+    const labels = (plain: string) => lines(plain).map((l) => [l.label, l.labelInfo?.value, l.text]);
+    expect(labels('A. (1) and (3) only\nB (1) and (4) only\n\nC. (2) and (3) only\nD. (2) and (4) only')).toEqual([
+      ['A.', 1, '(1) and (3) only'],
+      ['B', 2, '(1) and (4) only'],
+      [undefined, undefined, ''],
+      ['C.', 3, '(2) and (3) only'],
+      ['D.', 4, '(2) and (4) only'],
+    ]);
+    expect(lines('A (1) only\nB. (2) only\nC. (3) only\nD. (4) only')[0]).toMatchObject({ label: 'A', labelInfo: { family: 'A.', value: 1 } });
+    expect(lines('A) rises\nB) falls\nC) unchanged\nD uncertain')[3]).toMatchObject({ labelInfo: { family: 'A)', value: 4 }, text: 'uncertain' });
+    // Prose that opens with a capital letter: no run, a broken run, or too few siblings.
+    expect(lines('A firm raises its price.\nIts revenue falls.')[0].labelInfo).toBeUndefined();
+    expect(lines('A. x\nB y\nD. z')[1].labelInfo).toBeUndefined();
+    expect(lines('A. x\nB y\nC. z')[1].labelInfo).toBeUndefined();
+    expect(lines('B. x\nC y\nD. z\nE. w')[1].labelInfo).toBeUndefined();
+    expect(lines('A. Firm B raises its price\nB. x\nC. y\nD. z').map((l) => l.text)).toEqual(['Firm B raises its price', 'x', 'y', 'z']);
+  });
+
   it('gives "1.⇥(a)⇥text" a line per level', () => {
     expect(lines('3.\t(a)\tDefine cost.\t(2 marks)').map((l) => [l.label, l.text, l.trailingMarks])).toEqual([
       ['3.', '', undefined],

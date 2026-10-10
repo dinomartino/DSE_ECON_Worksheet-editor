@@ -333,6 +333,27 @@ describe('docx reader: runs and paragraphs', () => {
   });
 });
 
+describe('docx reader: labelled table rows', () => {
+  it('keeps a source table’s (a)–(c) rows as rows, the label in its own cell, and the parts after it as parts', async () => {
+    const rows = [
+      ['', 'Taxable value', 'Rate'],
+      ['(a)', 'on the first $150,000', '46%'],
+      ['(b)', 'on the next $150,000', '86%'],
+      ['(c)', 'on the remainder', '132%'],
+    ];
+    const { analysis } = await analyse({
+      body: [para('10.\tRead Source B.'), tbl(rows.map((row) => row.map((c) => para(c)))), para('(a)\tIs the tax progressive?\t(3 marks)'), para('(b)\tExplain one effect.\t(2 marks)')].join(''),
+    });
+    const [q] = analysis.outline.questions;
+    expect(q.parts.map((p) => [p.label, p.marks])).toEqual([
+      ['(a)', 3],
+      ['(b)', 2],
+    ]);
+    const table = q.stem.find((b) => b.kind === 'table');
+    expect(table?.kind === 'table' && table.rows.map((row) => row.map((c) => c.map((r) => r.text).join('')))).toEqual(rows);
+  });
+});
+
 describe('docx reader: the file', () => {
   it('takes the title from the core properties, then a title style, then the running header', async () => {
     expect((await readDocx(await makeDocx({ title: 'Mock Paper 1', body: para('x') }))).title).toBe('Mock Paper 1');
