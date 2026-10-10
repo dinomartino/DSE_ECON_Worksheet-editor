@@ -5,9 +5,8 @@
 // recording of the built app, framed by the virtual camera (§ camera.mjs), subtitled
 // (§ subtitles.mjs), with numbered stills and the exported .docx.
 //
-// The paper is the user's own (gitignored `real_life_reference/`, never copied into the
-// repo): `--papers=<dir>` or DEMO_IMPORT_DIR, by default that folder in the main checkout.
-// Nothing here quotes it; the film reads what it checks off the page and the saved file.
+// The paper is invented (§ mockPaper.mjs), written as two Word files into the run's temp
+// folder each time: the film needs no file from outside the repo.
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,26 +15,7 @@ import { CONTEXT, CURSOR_SCRIPT, makeDriver } from './flow.mjs';
 import { filmSteps } from './record.mjs';
 import { withSubtitles } from './subtitles.mjs';
 import { withCamera } from './camera.mjs';
-
-/** The paper and its answers file, picked together. */
-export const PAPER_FILES = { paper: 'DBS_Assessment1.docx', answers: 'DBS_Assessment1_ANS.docx' };
-
-/**
- * Where the paper is: `--papers=<dir>`, else DEMO_IMPORT_DIR, else `real_life_reference/`
- * in the main checkout (from a worktree too: git's common dir is the main checkout's).
- */
-export function papersDir(root, flag) {
-  if (flag) return path.resolve(flag);
-  if (process.env.DEMO_IMPORT_DIR) return path.resolve(process.env.DEMO_IMPORT_DIR);
-  let main = root;
-  try {
-    const common = execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: root, encoding: 'utf8' }).trim();
-    main = path.dirname(common);
-  } catch {
-    // Not a git checkout: the folder beside the scripts.
-  }
-  return path.join(main, 'real_life_reference');
-}
+import { MOCK, writeMockPaper } from './mockPaper.mjs';
 
 /** The pointer hidden for a still, and the rendered export shown full screen. */
 const PAGE_SCRIPT = `
@@ -130,7 +110,7 @@ export function importStoryboard(ctx) {
     },
     {
       name: 'Pick the files',
-      caption: `Clicks it and picks the paper and its answers file together (${PAPER_FILES.paper} and ${PAPER_FILES.answers}). **Papers and answers** marks one as Questions, one as Answers, and links them under **Answers from**.`,
+      caption: `Clicks it and picks the paper and its answers file together (${MOCK.files.paper} and ${MOCK.files.answers}). **Papers and answers** marks one as Questions, one as Answers, and links them under **Answers from**.`,
       async run(d) {
         await d.say('Pick the paper and its answers file\ntogether, from Word');
         await d.wait(400);
@@ -144,8 +124,8 @@ export function importStoryboard(ctx) {
         const linked = dialog(d.page).getByRole('combobox');
         await linked.first().waitFor({ timeout: 20_000 });
         const answersFrom = await linked.first().evaluate((s) => s.options[s.selectedIndex]?.text ?? '');
-        if (answersFrom !== PAPER_FILES.answers) {
-          throw new Error(`"Answers from" reads "${answersFrom}", not ${PAPER_FILES.answers}: the film says they link on their own`);
+        if (answersFrom !== MOCK.files.answers) {
+          throw new Error(`"Answers from" reads "${answersFrom}", not ${MOCK.files.answers}: the film says they link on their own`);
         }
         await d.wait(600);
         const fileRows = dialog(d.page).locator('[data-file]');
@@ -342,16 +322,9 @@ export function importStoryboard(ctx) {
  * and keep the exported file. Returns the film, the stills (PNG paths), the export and
  * notes.
  */
-export async function recordImport({ browser, url, root, tmpDir, outDir, papers, log }) {
-  const dir = papersDir(root, papers);
-  const files = { paper: path.join(dir, PAPER_FILES.paper), answers: path.join(dir, PAPER_FILES.answers) };
-  const missing = Object.values(files).filter((f) => !fs.existsSync(f));
-  if (missing.length) {
-    throw new Error(`import: the paper to import is missing:\n  ${missing.join('\n  ')}\n` +
-      'Point --papers=<dir> (or DEMO_IMPORT_DIR) at the folder holding ' +
-      `${PAPER_FILES.paper} and ${PAPER_FILES.answers}.`);
-  }
-  log(`import: from ${dir}`);
+export async function recordImport({ browser, url, root, tmpDir, outDir, log }) {
+  const files = await writeMockPaper(path.join(tmpDir, 'papers'));
+  log(`import: ${MOCK.files.paper} and ${MOCK.files.answers} (invented)`);
 
   const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
   const context = await browser.newContext({ ...CONTEXT, deviceScaleFactor: 2, acceptDownloads: true });
