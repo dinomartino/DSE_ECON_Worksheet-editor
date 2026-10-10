@@ -20,7 +20,7 @@ import {
 import { isReadOnlyRegistry, registerPatterns, renameRegisteredPattern, unregisterPattern, usePatternRegistry } from '@/library/usePatterns';
 import { holdsPatterns } from '@/model/patterns';
 import type { BankGroup, BankRow } from '@/library/types';
-import { useBank } from '@/library/useBank';
+import { bankRowsNow, useBank } from '@/library/useBank';
 import { escapeClears } from '@/components/bank/escapeClears';
 import { rowExcerpt } from '@/components/bank/bankText';
 import { topicOf } from '@/model/topics';
@@ -45,7 +45,7 @@ import type { BankVerbId } from './bankAiScopes';
 import { BankAiBar, BankAiNote } from './BankAiBar';
 import { BankAiMenu } from './BankAiMenu';
 import { addPicksToOpenDocument, nothingAddedText, splitAlreadyInPaper } from './addToOpen';
-import { afterOpen, revealQuestion, tagIndexOf, useBankReturn, useKeptTarget } from './bankReturn';
+import { afterOpen, firstThese, revealQuestion, tagLanding, useBankReturn, useKeptTarget } from './bankReturn';
 import { LIST_CLEARED_NOTICE, listClearedNotice, useBankCart } from './bankCart';
 import { SELECTION_TRAY_MESSAGES } from './SelectionTray.messages';
 import { useNotices } from '@/components/ui/NoticeLayer';
@@ -127,6 +127,8 @@ import {
 } from '@/library/tagWrites';
 
 const NONE: ReadonlySet<string> = new Set();
+/** How long landing on a just-imported question waits for the index at most. */
+const LANDING_WAIT_MS = 5_000;
 
 type Picker = { mode: 'edit'; row: BankRow } | { mode: 'bulk'; topicMode: BulkTopicMode } | { mode: 'tag'; rows: BankRow[] };
 
@@ -228,6 +230,12 @@ export function QuestionBankScreen({
   // Tag as you go: where in the untagged list, what is ticked, and what was saved this visit
   // (gone from the list at once, before the index catches up).
   const [tagIndex, setTagIndex] = useState(0);
+  // Back from a worksheet, or in from an import: the question to land on (`tagRoot`), and
+  // the questions listed first (`tagFirst`, an import's in the file's order) for this visit.
+  const [landing, setLanding] = useState(back?.level.kind === 'untagged' ? back.tagRoot : undefined);
+  const [tagFirst] = useState(back?.level.kind === 'untagged' ? back.tagFirst : undefined);
+  // The index has taken in every save so far (`bankRowsNow`): a question still missing is gone.
+  const [caughtUp, setCaughtUp] = useState(false);
   // Each pick on the question on screen is an edit (`partTopics.ts`), replayed on every copy
   // when it is saved; `at` is where the keys tag now (the whole question, or one part).
   const [chosenFor, setChosenFor] = useState<TagPicks>(NO_PICKS);
@@ -252,6 +260,7 @@ export function QuestionBankScreen({
 
   const setLevel = useCallback((next: BankLevel) => {
     setLevelState(next);
+    setLanding(undefined);
     writeLevel(next);
     setFocusKey(undefined);
     // A 題型 filter belongs to the topic it was set in.
@@ -335,13 +344,14 @@ export function QuestionBankScreen({
   const untagged = useMemo(
     () =>
       level.kind === 'untagged'
-        ? groupRows(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'untagged' })).filter((group) => !tagged.has(group.rootId))
+        ? firstThese(groupRows(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'untagged' })).filter((group) => !tagged.has(group.rootId)), tagFirst)
         : [],
-    [rows, tagged, level.kind],
+    [rows, tagged, level.kind, tagFirst],
   );
   const tagPosition = Math.min(tagIndex, Math.max(0, untagged.length - 1));
   const restoredAt = restoring ? untagged.findIndex((group) => group.rootId === restoring.group.rootId) : -1;
-  const tagGroup = restoring ? (restoredAt >= 0 ? untagged[restoredAt] : restoring.group) : untagged[tagPosition];
+  // None while landing: the keys must not tag a question that is about to be replaced.
+  const tagGroup = landing !== undefined ? undefined : restoring ? (restoredAt >= 0 ? untagged[restoredAt] : restoring.group) : untagged[tagPosition];
   const tagRow = tagGroup?.rows[0];
   // The question's own words, through the EDB glossary (loaded once tagging starts).
   const glossary = useGlossary(level.kind === 'untagged');
@@ -504,17 +514,30 @@ export function QuestionBankScreen({
       const keep = { targetId: targetChoiceOf(target), lookedAt: row.docId };
       onOpenDocument(row.docId, () => {
         useKeptTarget.getState().keep(keep);
-        afterOpen(row.questionId, { level, filters, focusKey: level.kind === 'review' ? rowKey(row) : undefined, tagRoot: level.kind === 'untagged' ? tagRoot : undefined });
+        afterOpen(row.questionId, { level, filters, focusKey: level.kind === 'review' ? rowKey(row) : undefined, ...(level.kind === 'untagged' ? { tagRoot, tagFirst } : {}) });
       });
     });
 
-  // Back from a worksheet in tag as you go: land on the question left, once the list is read.
-  const tagRestore = useRef(back?.level.kind === 'untagged' ? back.tagRoot : undefined);
+  // Land on that question once the list holds it. One an import just saved may not be
+  // indexed yet (the stored rows come first), so wait for the index to catch up before
+  // giving up on it; a list read before then would land on some other question.
+  const landingAtStart = useRef(landing !== undefined);
   useEffect(() => {
-    if (tagRestore.current === undefined || untagged.length === 0) return;
-    setTagIndex(tagIndexOf(untagged.map((group) => group.rootId), tagRestore.current));
-    tagRestore.current = undefined;
-  }, [untagged]);
+    if (!landingAtStart.current) return;
+    let live = true;
+    const done = () => live && setCaughtUp(true);
+    const stop = setTimeout(done, LANDING_WAIT_MS);
+    void bankRowsNow().then(done, done);
+    return () => {
+      live = false;
+      clearTimeout(stop);
+    };
+  }, []);
+  const landAt = landing === undefined ? undefined : tagLanding(untagged.map((group) => group.rootId), landing, caughtUp);
+  if (landAt !== undefined) {
+    setTagIndex(landAt);
+    setLanding(undefined);
+  }
 
   /* ✦ AI: Fill missing 中文 / English and Check terms, over the shown copies. */
   const skippedReport = (skipped: CopySkip[], saved: number) => {
@@ -972,7 +995,10 @@ export function QuestionBankScreen({
         />
       )}
 
-      {level.kind === 'untagged' && (
+      {/* Waiting to land: nothing yet, rather than a question that is about to be replaced. */}
+      {level.kind === 'untagged' && landing !== undefined && <div className="min-h-0 flex-1 bg-[var(--chrome-sunken)]" />}
+
+      {level.kind === 'untagged' && landing === undefined && (
         <TagAsYouGo
           row={tagRow}
           position={restoring && restoredAt < 0 ? 0 : restoring ? restoredAt : tagPosition}

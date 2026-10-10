@@ -332,7 +332,10 @@ every question is in the other language (`startLanguage`).
   fit (written questions on Paper 1, MC on an LQ paper) says so and still saves. **題庫 only**:
   `addToBank` into a chosen or new bank, questions as originals; any the bank already says
   the same (`contentKey`) is skipped and counted; a shared stimulus lead stays out. Then 題庫
-  opens on its Untagged questions (tag as you go). Nothing is written before Save.
+  opens on its Untagged questions (tag as you go) at the first one added, the added ones listed
+  first in the files' order (`src/components/bank/page/bankReturn.ts:firstThese`), once the index
+  holds them (`:tagLanding`). Nothing added (all duplicates): the notice says so and 題庫 does not
+  open. Nothing is written before Save.
 - Not built: layout profiles.
 
 ### Figures, as built (2026-10-08)

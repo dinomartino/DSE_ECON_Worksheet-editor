@@ -140,6 +140,12 @@ export async function addToBank(questions: Question[], to: BankTarget = {}, io: 
   return { bank: next, copied: fresh.length, already };
 }
 
+/** The roots of the questions `addToBank` added (all of `questions` but `already`), in their order. */
+export function addedRoots(questions: readonly Question[], already: readonly Question[]): string[] {
+  const skipped = new Set(already.map((q) => q.id));
+  return questions.filter((q) => !skipped.has(q.id)).map(rootIdOf);
+}
+
 
 /**
  * What a bank holds of this question: no version of it (`none`), one saying exactly what
