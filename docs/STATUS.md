@@ -9,7 +9,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **Unreleased, on `develop` (2026-10-11):** one bank (import + Copy to bank never ask; `oneBank`, root goes back to
   the bank holding it); Move to Trash offers to keep a paper's questions found nowhere else (`TrashDialog.tsx`,
-  `keepInBank`). Browser-checked, en/light only, not in Tauri. Open: merge old banks? warn on trashing a bank?
+  `keepInBank`); trashing a bank warns (count, en+zh). Old banks never merged. Browser-checked, not in Tauri.
 - **Shipped in 0.8.0, none tried in the Tauri window before release:** table "Same height/width" over a
   swept range (`distributeRows`/`distributeColumns`); editor shell no longer overscrolls (probes `h-0`); import
   brings header/footer/title block (`src/import/chromePlan.ts`, `paste-import.md` § 12; unreproducible bits listed
