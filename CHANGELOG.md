@@ -17,9 +17,12 @@ a version heading is edited afterwards.
   Trash and some of its questions are saved nowhere else, Econ Studio asks whether to keep them
   in 題庫 (the default) or move them to the Trash with the worksheet. Kept questions keep their
   topics, pictures and graphs, and restoring the worksheet later does not list them twice.
+  Moving a bank to the Trash tells you how many of its questions are saved nowhere else, as
+  they leave 題庫 until you restore it.
   <!-- zh: **刪除工作紙時可把題目保留在題庫。** 把工作紙移至垃圾桶時，如果其中有題目沒有儲存在其他地方，
   Econ Studio 會問你要把題目保留在題庫（預設），還是連同工作紙移至垃圾桶。保留的題目會保留課題、圖片和圖表；
-  之後還原工作紙，題庫亦不會重複列出這些題目。 -->
+  之後還原工作紙，題庫亦不會重複列出這些題目。把題庫移至垃圾桶時，會告訴你有多少條題目沒有儲存在其他地方；
+  還原之前，這些題目不會在題庫出現。 -->
 
 ### Changed
 - **One question bank.** Import and Copy to bank no longer ask which bank to use or for a bank

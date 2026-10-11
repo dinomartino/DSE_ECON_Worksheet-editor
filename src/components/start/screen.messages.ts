@@ -104,6 +104,14 @@ export const START_SCREEN_MESSAGES = defineMessages({
     zh: (n: number) => `這份工作紙有 ${n} 條題目沒有儲存在其他地方。`,
   },
   keepChoice: { en: 'Its questions', zh: '題目' },
+  // A bank's questions saved nowhere else: a warning only, nothing to choose.
+  bankOnlyHere: {
+    en: (n: number) =>
+      n === 1
+        ? '1 question in this bank is not saved anywhere else. It will leave the 題庫 until you restore it.'
+        : `${n} questions in this bank are not saved anywhere else. They will leave the 題庫 until you restore it.`,
+    zh: (n: number) => `這個題庫有 ${n} 條題目沒有儲存在其他地方。還原之前，${n === 1 ? '這條題目' : '這些題目'}不會在題庫出現。`,
+  },
   keepInBank: {
     en: (n: number) => (n === 1 ? 'Keep the question in the 題庫' : `Keep its ${n} questions in the 題庫`),
     zh: (n: number) => `把 ${n} 條題目保留在題庫`,

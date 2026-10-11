@@ -43,9 +43,10 @@ export async function trashKeeping(
 }
 
 /**
- * Move to Trash?, and when the worksheet holds questions saved nowhere else (`leaving`,
- * `questionsLeavingBank`), a choice to keep them in the 題庫. `leaving` undefined: still
- * being worked out, so the move waits for it.
+ * Move to Trash?, and when the document holds questions saved nowhere else (`leaving`,
+ * `questionsLeavingBank`): for a worksheet, a choice to keep them in the 題庫; for a bank,
+ * a warning that they leave it. `leaving` undefined: still being worked out, so the move
+ * waits for it.
  */
 export function TrashDialog({
   summary,
@@ -65,7 +66,9 @@ export function TrashDialog({
   onConfirm: () => void;
 }) {
   const t = useMessages(START_SCREEN_MESSAGES);
-  const asks = leaving !== undefined && leaving > 0;
+  const bank = summary.kind === 'bank';
+  const asks = !bank && leaving !== undefined && leaving > 0;
+  const warns = bank && leaving !== undefined && leaving > 0;
   return (
     <Dialog
       title={t.trashTitle(summary.title)}
@@ -84,6 +87,7 @@ export function TrashDialog({
     >
       <div className="space-y-3 px-5 py-5 text-[13px] leading-relaxed">
         <p className="text-ink-subtle">{t.trashBody(days)}</p>
+        {warns && <p className="animate-fade-in text-ink">{t.bankOnlyHere(leaving)}</p>}
         {asks && (
           <div className="animate-fade-in">
             <p className="text-ink">{t.onlyHere(leaving)}</p>

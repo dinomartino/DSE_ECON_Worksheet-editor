@@ -5,8 +5,8 @@ import { contentKey } from './contentKey';
 import type { BankRow } from './types';
 
 /**
- * What the 題庫 loses when a paper goes to Trash: its questions that no other document
- * keeps (§ docs/design/question-library.md). A question is kept elsewhere when another
+ * What the 題庫 loses when a paper or a bank goes to Trash: its questions that no other
+ * document keeps (§ docs/design/question-library.md). A question is kept elsewhere when another
  * live, indexed document holds one saying exactly the same (`contentKey`, any root): an
  * edited version elsewhere does not keep this paper's words, so this one still counts.
  */
@@ -39,8 +39,8 @@ export function questionsOnlyIn(paper: Worksheet, others: Iterable<Worksheet>): 
 }
 
 /**
- * The questions moving `paperId` to Trash would take out of the 題庫; none for a bank, a
- * hidden or newer-build document, or one that cannot be read. Holders are read from the
+ * The questions moving `paperId` (a paper or a bank) to Trash would take out of the 題庫;
+ * none for a hidden or newer-build document, or one that cannot be read. Holders are read from the
  * store (listed, so never a trashed one). `rows` (the bank index) narrows that to the
  * documents it says hold one of the paper's questions; each is still loaded and checked,
  * so a stale row can only make a question count, never hide one.
@@ -51,7 +51,7 @@ export async function questionsLeavingBank(
   rows?: readonly BankRow[],
 ): Promise<Question[]> {
   const paper = await store.load(paperId).catch(() => undefined);
-  if (!paper || paper.kind !== undefined || !feedsBank(paper) || paper.questions.length === 0) return [];
+  if (!paper || !feedsBank(paper) || paper.questions.length === 0) return [];
   const live = new Set((await store.list()).map((summary) => summary.id));
   let candidates = [...live];
   if (rows) {

@@ -71,18 +71,36 @@ describe('questionsLeavingBank: read from the store', () => {
     expect(ids(await questionsLeavingBank('paper', store))).toEqual([a.id, b.id]);
   });
 
-  it('asks nothing of a bank, a hidden paper or a newer build’s paper', async () => {
+  it('asks nothing of a hidden document or a newer build’s', async () => {
     await store.save(docWith([a], { id: 'bank', kind: 'bank' }));
     await store.save(docWith([a], { id: 'hidden', bankHidden: true }));
+    await store.save(docWith([a], { id: 'hidden-bank', kind: 'bank', bankHidden: true }));
     await store.save(docWith([a], { id: 'newer', schemaVersion: CURRENT_SCHEMA_VERSION + 1 }));
     await store.save(docWith([a], { id: 'plain' }));
     expect(ids(await questionsLeavingBank('plain', store))).toEqual([]);
     await store.trash('bank');
     expect(ids(await questionsLeavingBank('plain', store))).toEqual([a.id]);
     expect(await questionsLeavingBank('newer', store)).toEqual([]);
-    expect(await questionsLeavingBank('bank', store)).toEqual([]);
     expect(await questionsLeavingBank('hidden', store)).toEqual([]);
+    expect(await questionsLeavingBank('hidden-bank', store)).toEqual([]);
     expect(await questionsLeavingBank('missing', store)).toEqual([]);
+  });
+
+  it('counts a bank’s questions no paper or other bank holds; the bank itself is no holder', async () => {
+    const c = choiceQuestion('Economies of scale');
+    const bank = docWith([a, b, c], { id: 'bank', kind: 'bank' });
+    await store.save(bank);
+    expect(ids(await questionsLeavingBank('bank', store))).toEqual([a.id, b.id, c.id]);
+    await store.save(docWith([copyQuestion(a, 'bank')], { id: 'paper' }));
+    await store.save(docWith([copyQuestion(b, 'bank')], { id: 'other-bank', kind: 'bank' }));
+    expect(ids(await questionsLeavingBank('bank', store))).toEqual([c.id]);
+    expect(ids(await questionsLeavingBank('bank', store, [...rowsOf(bank), ...rowsOf((await store.load('paper'))!)]))).toEqual([b.id, c.id]);
+  });
+
+  it('counts nothing for a bank whose questions all live elsewhere', async () => {
+    await store.save(docWith([a, b], { id: 'bank', kind: 'bank' }));
+    await store.save(docWith([copyQuestion(a, 'bank'), copyQuestion(b, 'bank')], { id: 'paper' }));
+    expect(await questionsLeavingBank('bank', store)).toEqual([]);
   });
 
   it('narrows to the documents the index names, and still checks each one', async () => {
