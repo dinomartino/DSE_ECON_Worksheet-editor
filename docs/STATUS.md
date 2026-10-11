@@ -7,6 +7,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
+- **Unreleased, on `develop` (2026-10-11):** one bank (import + Copy to bank never ask; `oneBank`, root goes back to
+  the bank holding it); Move to Trash offers to keep a paper's questions found nowhere else (`TrashDialog.tsx`,
+  `keepInBank`). Browser-checked, en/light only, not in Tauri. Open: merge old banks? warn on trashing a bank?
 - **Shipped in 0.8.0, none tried in the Tauri window before release:** table "Same height/width" over a
   swept range (`distributeRows`/`distributeColumns`); editor shell no longer overscrolls (probes `h-0`); import
   brings header/footer/title block (`src/import/chromePlan.ts`, `paste-import.md` § 12; unreproducible bits listed
@@ -31,11 +34,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Where we are
 
-- **Cross-device sync (F9), shipped in 0.7.0** (`src/sync/`, `sync-engine.md`, `library-folder.md`), visible
-  before any real run (user's call).
+- **Sync (F9), shipped in 0.7.0** (`src/sync/`, `sync-engine.md`), visible before any real run (user's call).
 - **v0.8.0 released 2026-10-10** (published, `latest`, all assets + signatures checked): import from Word/PDF/picture with
   OCR, header/footer/title import, table distribute, band rows match Word, cell align. Vercel deploy not checked.
-- **v0.7.0 (2026-10-08):** Storage location sync, floating notices. **v0.6.0 (2026-10-04):** 題庫, Marking scheme, 中文 interface, rename.
 
 ## Before release (only the user can do these)
 
@@ -75,6 +76,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-11** — Import demo story (invented paper, `feature/demo-import*`); film-v2 pushed; IDEAS order refreshed.
+- **2026-10-11** — Import demo story; film-v2 pushed; IDEAS refreshed; bank authoring decided; one bank; keep questions on Trash.
 - **2026-10-08/09** — Found-folder offer; import + paper language (15 branches); Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR; import leftovers. 19 branches. 0.8.0 released 2026-10-10.
-- **Open question (2026-10-10):** hide Import's "Which question bank" picker when there are 0–1 bank files (user asked why it exists; proposal not yet approved).
