@@ -1,6 +1,6 @@
 # Write a question from the bank — design proposal
 
-Status: proposal (not scheduled), 2026-09-30, written against `develop` at `ba349fa`. Not built. Extends
+Status: proposal (not scheduled), 2026-09-30; questions decided 2026-10-11 (end of file), written against `develop` at `ba349fa`. Not built. Extends
 `docs/design/question-library.md` (read it first: a bank is a `Worksheet` with
 `kind: 'bank'`, the identity contract, the tag grammar, newest-wins tags).
 
@@ -30,9 +30,8 @@ paper. No new storage, no new format.
 - **Which bank:** the one the teacher chose last (a per-viewer `localStorage` key, outside
   the `econ-worksheet:` prefix, like the dashboard's grid/list key); else the most recently
   saved bank; else a new one. A stale or trashed id falls back silently.
-- **No bank yet:** the entry asks for its name, prefilled from
-  `src/library/bankDocs.ts:nextBankName`, required (as a new worksheet and Copy to bank do),
-  then `createBank`.
+- **No bank yet:** quietly `createBank` with the default name, no prompt (the user,
+  2026-10-11: the 題庫 already shows every bank as one, so the teacher never picks a bank).
 - **Never a hidden bank** (`bankHidden`: not indexed, so the question would vanish) and
   **never a newer-build bank** (opens read-only; say so and offer another).
 - **Appended at the end of the bank's flow.** Order in a bank means nothing to the teacher;
@@ -336,7 +335,10 @@ is built before load), the registry, the IR, the exporters, storage, migrations.
 
 ## Risks and open questions
 
-**For the user (phrased for a teacher):**
+**Decided by the user, 2026-10-11:** 1 separate question; 2 no prompt, one quiet bank
+("why can't we just have one single huge question bank?"); 3 not in the first version.
+
+**As asked (phrased for a teacher):**
 
 1. **New question from this:** a separate question, or another version of the same one? A
    separate question gets its own topics and history. A version shares topics, and a class
