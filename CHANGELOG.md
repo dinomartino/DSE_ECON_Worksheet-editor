@@ -12,6 +12,12 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Changed
+- **Import: when you have one question bank or none, Save as no longer asks which bank to use.**
+  The questions go to your one bank, or to a new one, and the message after saving names it.
+  The choice still appears when you have two banks or more.
+  <!-- zh: **匯入：如只有一個題庫或未有題庫，「儲存為」不再問要加入哪個題庫。** 題目會加入你唯一的題庫，或一個新題庫，儲存後的訊息會顯示題庫名稱。如有兩個或以上題庫，仍會讓你選擇。 -->
+
 ## 0.8.0 — 2026-10-10
 
 ### Added

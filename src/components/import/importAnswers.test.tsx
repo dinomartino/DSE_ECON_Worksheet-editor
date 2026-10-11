@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { makeDocx, para } from '@/import/fixtures/docx';
 import { bufferOf, makePdf, type PdfText } from '@/import/fixtures/pdfWriter';
-import { addToBank } from '@/library/bankDocs';
+import { addToBank, nextBankName } from '@/library/bankDocs';
 import { createWorksheet } from '@/model/factories';
 import type { McqQuestion, Question, StructuredQuestion, Worksheet } from '@/model/types';
 import type { WorksheetStore } from '@/storage';
@@ -34,6 +34,7 @@ import { IMPORT_MESSAGES } from './messages';
 import { materialize, previewBase, previewItems } from './previewDoc';
 import { ReviewLines } from './ReviewLines';
 import { ReviewStep, answerRowText, undoFix } from './ReviewStep';
+import { SaveAsStep } from './SaveAsStep';
 import { SaveManyStep } from './SaveManyStep';
 
 // Invented papers and answer files only: the repo is public.
@@ -338,10 +339,16 @@ describe('Save as for several papers', () => {
     ]);
     const map = new Map<string, Worksheet>();
     const store = { load: async (id: string) => map.get(id), save: async (w: Worksheet) => void map.set(w.id, structuredClone(w)) } as unknown as WorksheetStore;
-    const questions = papersOf(files, NO_LINKS).flatMap((p) => paperReview(paperRead(p), paperState('auto')).batch.builds.map(materialize)) as Question[];
-    const { bank, copied } = await addToBank(questions, { name: 'Imported' }, { store, openDocId: '' });
+    const [first, second] = papersOf(files, NO_LINKS).map((p) => paperReview(paperRead(p), paperState('auto')).batch.builds.map(materialize) as Question[]);
+    // No bank yet, so no picker: a new one under the next free name, as the dialog does.
+    const { bank, copied } = await addToBank([...first, ...second], { name: nextBankName([]) }, { store, openDocId: '' });
     expect(copied).toBe(7);
     expect(map.get(bank.id)!.questions).toHaveLength(7);
+    expect(map.get(bank.id)!.name).toBe(nextBankName([]));
+    // One bank, so no picker: the dialog's default target is that bank, by id.
+    const again = await addToBank(first, bank.id, { store, openDocId: '' });
+    expect(again.bank.id).toBe(bank.id);
+    expect(map.size).toBe(1);
   });
 
   it('shows a row per paper with its suggested type, or the bank choice', () => {
@@ -359,7 +366,52 @@ describe('Save as for several papers', () => {
     const bank = renderToStaticMarkup(
       <SaveManyStep text={en} papers={papers} bankOnly onBankOnly={() => {}} onName={() => {}} onType={() => {}} banks={[]} bankTarget="" newBankName="Bank 1" onBankTarget={() => {}} onSubmit={() => {}} />,
     );
-    expect(bank).toContain('New bank: Bank 1');
     expect(bank).toContain('7 questions');
+  });
+
+  // With no bank or one, there is nothing to choose: the questions go to a new bank or that one.
+  const BANKS = [
+    { id: 'b1', name: 'S5 bank', detail: '12 questions' },
+    { id: 'b2', name: 'S6 bank', detail: '8 questions' },
+  ];
+  const PICKER = 'aria-label="Which question bank"';
+
+  it('asks which bank for 題庫 only when there are two banks or more', () => {
+    const papers = [{ id: 'f0', fileName: 'S5 Test 1.docx', name: 'S5 Test 1', type: 'classroom' as const, suggested: 'classroom' as const, questions: 5, answered: 4 }];
+    const many = (banks: typeof BANKS) =>
+      renderToStaticMarkup(
+        <SaveManyStep text={en} papers={papers} bankOnly onBankOnly={() => {}} onName={() => {}} onType={() => {}} banks={banks} bankTarget={banks[0]?.id ?? ''} newBankName="Bank 1" onBankTarget={() => {}} onSubmit={() => {}} />,
+      );
+    const one = (banks: typeof BANKS) =>
+      renderToStaticMarkup(
+        <SaveAsStep
+          text={en}
+          destination="bank"
+          suggested="classroom"
+          onDestination={() => {}}
+          name="S5 Test 1"
+          onName={() => {}}
+          banks={banks}
+          bankTarget={banks[0]?.id ?? ''}
+          newBankName="Bank 1"
+          onBankTarget={() => {}}
+          questions={5}
+          mc={3}
+          language="en"
+          onSubmit={() => {}}
+        />,
+      );
+    for (const render of [many, one]) {
+      for (const banks of [[], BANKS.slice(0, 1)]) {
+        const html = render(banks);
+        expect(html).not.toContain(PICKER);
+        expect(html).not.toContain('New bank: Bank 1');
+        // 題庫 takes no name: the empty slot does not fall through to the Name field.
+        expect(html).not.toContain('aria-label="Name"');
+      }
+      const two = render(BANKS);
+      expect(two).toContain(PICKER);
+      expect(two).toMatch(/<option value="b1" selected="">S5 bank<\/option><option value="b2">S6 bank<\/option><option value="">New bank: Bank 1<\/option>/);
+    }
   });
 });
