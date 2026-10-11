@@ -20,6 +20,9 @@ type Text = Messages<typeof IMPORT_MESSAGES>;
 
 const NEW_BANK = '';
 
+/** Ask which bank only when there is a choice: with none or one, it is already made. */
+export const asksWhichBank = (banks: readonly BankChoice[]) => banks.length > 1;
+
 /**
  * Save as: the four kinds of paper as the New worksheet gallery draws them, and 題庫 only.
  * A paper takes a name (from the file); 題庫 takes a bank. A type that does not suit the
@@ -146,21 +149,23 @@ export function SaveAsStep({
         ) : null}
 
         {destination === 'bank' ? (
-          <Field label={m.bankTarget}>
-            <select
-              aria-label={m.bankTarget}
-              value={bankTarget}
-              onChange={(event) => onBankTarget(event.target.value)}
-              className="h-9 w-full max-w-[360px] cursor-pointer truncate rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft hover:border-line-strong focus:border-accent focus:ring-2 focus:ring-accent/25"
-            >
-              {banks.map((bank) => (
-                <option key={bank.id} value={bank.id}>
-                  {bank.name}
-                </option>
-              ))}
-              <option value={NEW_BANK}>{m.newBank(newBankName)}</option>
-            </select>
-          </Field>
+          asksWhichBank(banks) && (
+            <Field label={m.bankTarget}>
+              <select
+                aria-label={m.bankTarget}
+                value={bankTarget}
+                onChange={(event) => onBankTarget(event.target.value)}
+                className="h-9 w-full max-w-[360px] cursor-pointer truncate rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft hover:border-line-strong focus:border-accent focus:ring-2 focus:ring-accent/25"
+              >
+                {banks.map((bank) => (
+                  <option key={bank.id} value={bank.id}>
+                    {bank.name}
+                  </option>
+                ))}
+                <option value={NEW_BANK}>{m.newBank(newBankName)}</option>
+              </select>
+            </Field>
+          )
         ) : (
           <Field label={m.name} hint={m.nameHint}>
             <input

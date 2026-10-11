@@ -9,6 +9,7 @@ import type { Messages } from '@/i18n/catalogue';
 import { useUiLanguage } from '@/i18n/language';
 import type { ChromeLeftover } from '@/import';
 import { ChromeLeftovers } from './ChromeReview';
+import { asksWhichBank } from './SaveAsStep';
 import type { IMPORT_MESSAGES } from './messages';
 
 /**
@@ -90,16 +91,18 @@ export function SaveManyStep({
         {bankOnly ? (
           <>
             <p className="text-[12px] leading-snug text-ink-muted">{m.bankOnlyHint}</p>
-            <Field label={m.bankTarget}>
-              <select aria-label={m.bankTarget} value={bankTarget} onChange={(event) => onBankTarget(event.target.value)} className={`${FIELD} max-w-[360px] cursor-pointer`}>
-                {banks.map((bank) => (
-                  <option key={bank.id} value={bank.id}>
-                    {bank.name}
-                  </option>
-                ))}
-                <option value={NEW_BANK}>{m.newBank(newBankName)}</option>
-              </select>
-            </Field>
+            {asksWhichBank(banks) && (
+              <Field label={m.bankTarget}>
+                <select aria-label={m.bankTarget} value={bankTarget} onChange={(event) => onBankTarget(event.target.value)} className={`${FIELD} max-w-[360px] cursor-pointer`}>
+                  {banks.map((bank) => (
+                    <option key={bank.id} value={bank.id}>
+                      {bank.name}
+                    </option>
+                  ))}
+                  <option value={NEW_BANK}>{m.newBank(newBankName)}</option>
+                </select>
+              </Field>
+            )}
             <p className="text-[12.5px] text-ink">{m.questionCount(total)}</p>
           </>
         ) : (
