@@ -8,10 +8,12 @@ import { questionTagSlots } from '@/model/tagSlots';
 import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
 import { contentKey as contentKeyOf } from './contentKey';
 import {
-  bankChoices,
+  addToOneBank,
   bankCopyDiffers,
   bankHolds,
+  copyBankOf,
   copyToBank,
+  copyToOneBank,
   createBank,
   keepInBank,
   nextBankName,
@@ -237,19 +239,6 @@ describe('naming banks', () => {
     expect(nextBankName(['Macro MCQ'])).toBe('Question bank');
     expect(nextBankName(['question bank ', 'Question bank 2'])).toBe('Question bank 3');
   });
-
-  it('lists banks by name, and tells two alike apart', () => {
-    const choices = bankChoices([
-      { id: 'a', title: 'Question bank', updatedAt: '2026-09-29T10:00:00.000Z', questionCount: 12 },
-      { id: 'b', title: 'Question bank', updatedAt: '2026-09-30T10:00:00.000Z', questionCount: 1 },
-      { id: 'c', title: 'Macro MCQ', updatedAt: '2026-09-30T10:00:00.000Z' },
-    ]);
-    expect(choices).toEqual([
-      { id: 'a', name: 'Question bank', detail: '12 questions · saved 29 Sep 2026' },
-      { id: 'b', name: 'Question bank', detail: '1 question · saved 30 Sep 2026' },
-      { id: 'c', name: 'Macro MCQ', detail: '' },
-    ]);
-  });
 });
 
 describe('keepInBank: a paper’s questions kept before it goes to Trash', () => {
@@ -343,6 +332,112 @@ describe('the one bank', () => {
     it('names a new bank apart from the hidden ones', async () => {
       await store.save(bank('c', '2026-09-03T00:00:00.000Z', { bankHidden: true, name: 'Question bank' }));
       expect(await oneBank({ store, openDocId: '' })).toEqual({ name: 'Question bank 2' });
+    });
+  });
+});
+
+describe('import: 題庫 only goes to the one bank', () => {
+  let store: LocalStorageWorksheetStore;
+  const bank = (id: string, updatedAt: string): Worksheet => ({ ...docWith([], { id, kind: 'bank', updatedAt }) }) as Worksheet;
+  const banks = async () => (await store.list()).filter((s) => s.kind === 'bank').map((s) => s.id).sort();
+  beforeEach(() => {
+    installLocalStorage();
+    store = new LocalStorageWorksheetStore();
+  });
+
+  it('with no bank, makes one quietly', async () => {
+    const { bank: made, copied } = await addToOneBank([choiceQuestion('A'), choiceQuestion('B')], { store, openDocId: '' });
+    expect(copied).toBe(2);
+    expect(await banks()).toEqual([made.id]);
+    expect((await store.load(made.id))?.name).toBe('Question bank');
+  });
+
+  it('with one bank, adds to it and makes no other', async () => {
+    await store.save(bank('only', '2026-09-01T00:00:00.000Z'));
+    const { bank: into } = await addToOneBank([choiceQuestion('A')], { store, openDocId: '' });
+    expect(into.id).toBe('only');
+    expect(await banks()).toEqual(['only']);
+    expect((await store.load('only'))?.questions).toHaveLength(1);
+  });
+
+  it('with three banks, adds to the most recent and leaves the others alone', async () => {
+    await store.save(bank('a', '2026-09-01T00:00:00.000Z'));
+    await store.save(bank('b', '2026-09-03T00:00:00.000Z'));
+    await store.save(bank('c', '2026-09-02T00:00:00.000Z'));
+    const { bank: into } = await addToOneBank([choiceQuestion('A')], { store, openDocId: '' });
+    expect(into.id).toBe('b');
+    expect(await banks()).toEqual(['a', 'b', 'c']);
+    expect((await store.load('a'))?.questions).toHaveLength(0);
+    expect((await store.load('c'))?.questions).toHaveLength(0);
+  });
+});
+
+describe('Copy to bank: no picker, the root follows its bank', () => {
+  const bank = (id: string, updatedAt: string, questions: Question[] = [], extra: Partial<Worksheet> = {}): Worksheet =>
+    ({ ...docWith(questions, { id, kind: 'bank', updatedAt, ...extra }) }) as Worksheet;
+
+  it('copyBankOf: a bank holding the root wins over a more recent one', () => {
+    const q = choiceQuestion('Stem');
+    const holder = bank('holder', '2026-09-01T00:00:00.000Z', [copyQuestion(q, 'paper')]);
+    const recent = bank('recent', '2026-10-01T00:00:00.000Z');
+    expect(copyBankOf(rootIdOf(q), [recent, holder])?.id).toBe('holder');
+    // Two hold it: the more recent of those.
+    const later = bank('later', '2026-09-15T00:00:00.000Z', [copyQuestion(q, 'paper')]);
+    expect(copyBankOf(rootIdOf(q), [holder, recent, later])?.id).toBe('later');
+    // Held only by a bank this build may not write: the one bank.
+    const hidden = bank('hidden', '2026-09-01T00:00:00.000Z', [copyQuestion(q, 'paper')], { bankHidden: true });
+    expect(copyBankOf(rootIdOf(q), [hidden, recent])?.id).toBe('recent');
+    expect(copyBankOf(rootIdOf(q), [])).toBeUndefined();
+  });
+
+  describe('copyToOneBank', () => {
+    let store: LocalStorageWorksheetStore;
+    const io = () => ({ store, openDocId: 'paper' });
+    const bankIds = async () => (await store.list()).filter((s) => s.kind === 'bank').map((s) => s.id);
+    beforeEach(() => {
+      installLocalStorage();
+      store = new LocalStorageWorksheetStore();
+    });
+
+    it('with no bank, makes one and copies, asking nothing', async () => {
+      const q = choiceQuestion('Stem');
+      const out = await copyToOneBank(q, 'paper', io());
+      expect(out.kind).toBe('copied');
+      expect(await bankIds()).toEqual([out.bank.id]);
+      expect((await store.load(out.bank.id))?.questions.map(rootIdOf)).toEqual([q.id]);
+    });
+
+    it('with several banks, copies into the most recent', async () => {
+      await store.save(bank('a', '2026-09-01T00:00:00.000Z'));
+      await store.save(bank('b', '2026-09-03T00:00:00.000Z'));
+      await store.save(bank('c', '2026-09-02T00:00:00.000Z'));
+      const out = await copyToOneBank(choiceQuestion('Stem'), 'paper', io());
+      expect(out).toMatchObject({ kind: 'copied', bank: { id: 'b' } });
+      expect((await store.load('a'))?.questions).toHaveLength(0);
+      expect((await bankIds()).sort()).toEqual(['a', 'b', 'c']);
+    });
+
+    it('a question whose root an older bank holds goes there, not into the one bank', async () => {
+      const original = choiceQuestion('Stem');
+      await store.save(bank('older', '2026-09-01T00:00:00.000Z', [copyQuestion(original, 'x'), choiceQuestion('Other')]));
+      await store.save(bank('recent', '2026-10-01T00:00:00.000Z'));
+      // Same content: already there, nothing written.
+      expect(await copyToOneBank(original, 'paper', io())).toMatchObject({ kind: 'already', bank: { id: 'older' } });
+      // Edited here: another version, the teacher chooses; still nothing written.
+      const edited = edit(original, 'Stem, edited');
+      expect(await copyToOneBank(edited, 'paper', io())).toMatchObject({ kind: 'differs', bank: { id: 'older' } });
+      expect((await store.load('older'))?.questions).toHaveLength(2);
+      expect((await store.load('recent'))?.questions).toHaveLength(0);
+    });
+
+    it('weighs the open bank: a question in it is already there, and it is never written', async () => {
+      const q = choiceQuestion('Stem');
+      const open = bank('open', '2026-10-05T00:00:00.000Z', [q]);
+      await store.save(open);
+      await store.save(bank('other', '2026-09-01T00:00:00.000Z'));
+      const out = await copyToOneBank(q, 'open', { store, openDocId: 'open' }, open);
+      expect(out).toMatchObject({ kind: 'already', bank: { id: 'open' } });
+      expect((await store.load('other'))?.questions).toHaveLength(0);
     });
   });
 });

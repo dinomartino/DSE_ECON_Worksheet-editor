@@ -1,6 +1,5 @@
 'use client';
 
-import type { BankChoice } from '@/library/bankDocs';
 import type { DocumentType } from '@/model/newWorksheet';
 import { Field } from '@/components/ui/Dialog';
 import { Segmented } from '@/components/ui';
@@ -9,12 +8,12 @@ import type { Messages } from '@/i18n/catalogue';
 import { useUiLanguage } from '@/i18n/language';
 import type { ChromeLeftover } from '@/import';
 import { ChromeLeftovers } from './ChromeReview';
-import { asksWhichBank } from './SaveAsStep';
 import type { IMPORT_MESSAGES } from './messages';
 
 /**
  * Save as for several papers: each becomes a new paper of its own type (the suggestion
- * first) under a name from its file; or all go to 題庫. Nothing is written before Save.
+ * first) under a name from its file; or all go to 題庫 (the one bank, `oneBank`).
+ * Nothing is written before Save.
  */
 
 type Text = Messages<typeof IMPORT_MESSAGES>;
@@ -33,7 +32,6 @@ export interface PaperToSave {
   notOnCover?: ChromeLeftover[];
 }
 
-const NEW_BANK = '';
 const FIELD =
   'h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink outline-none transition-colors duration-150 ease-out-soft hover:border-line-strong focus:border-accent focus:ring-2 focus:ring-accent/25';
 
@@ -44,10 +42,6 @@ export function SaveManyStep({
   onBankOnly,
   onName,
   onType,
-  banks,
-  bankTarget,
-  newBankName,
-  onBankTarget,
   onSubmit,
   end,
 }: {
@@ -57,10 +51,6 @@ export function SaveManyStep({
   onBankOnly: (next: boolean) => void;
   onName: (id: string, name: string) => void;
   onType: (id: string, type: DocumentType) => void;
-  banks: readonly BankChoice[];
-  bankTarget: string;
-  newBankName: string;
-  onBankTarget: (id: string) => void;
   onSubmit: () => void;
   /** Last in the scroller: the dialog's notice spacer. */
   end?: React.ReactNode;
@@ -91,18 +81,6 @@ export function SaveManyStep({
         {bankOnly ? (
           <>
             <p className="text-[12px] leading-snug text-ink-muted">{m.bankOnlyHint}</p>
-            {asksWhichBank(banks) && (
-              <Field label={m.bankTarget}>
-                <select aria-label={m.bankTarget} value={bankTarget} onChange={(event) => onBankTarget(event.target.value)} className={`${FIELD} max-w-[360px] cursor-pointer`}>
-                  {banks.map((bank) => (
-                    <option key={bank.id} value={bank.id}>
-                      {bank.name}
-                    </option>
-                  ))}
-                  <option value={NEW_BANK}>{m.newBank(newBankName)}</option>
-                </select>
-              </Field>
-            )}
             <p className="text-[12.5px] text-ink">{m.questionCount(total)}</p>
           </>
         ) : (

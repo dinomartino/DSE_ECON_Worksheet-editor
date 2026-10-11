@@ -386,13 +386,11 @@ export const IMPORT_MESSAGES = defineMessages({
   bankOnly: { en: '題庫 only', zh: '只加入題庫' },
   suggested: { en: 'Suggested', zh: '建議' },
   bankOnlyHint: {
-    en: 'The questions go into a question bank, ready for any paper. No new paper is made.',
+    en: 'The questions go into your question bank, ready for any paper. No new paper is made.',
     zh: '題目只會加入題庫，日後可用於任何試卷，不會建立新試卷。',
   },
   name: { en: 'Name', zh: '名稱' },
   nameHint: { en: 'From the file. You can change it later.', zh: '取自檔案，日後可以更改。' },
-  bankTarget: { en: 'Which question bank', zh: '加入哪個題庫' },
-  newBank: { en: (name: string) => `New bank: ${name}`, zh: (name: string) => `新題庫：${name}` },
   summary: { en: 'What is saved', zh: '儲存內容' },
   mixCount: {
     en: (mc: number, written: number) => `${mc} MC, ${written} written`,

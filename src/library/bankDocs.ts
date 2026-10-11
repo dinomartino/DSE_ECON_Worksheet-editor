@@ -4,7 +4,7 @@ import { copyQuestion, freshIdsKeepingParts, rootIdOf } from '@/model/lineage';
 import { stateFor, tagStateOf, withTagState } from '@/model/tagSlots';
 import { bi } from '@/model/text';
 import type { Question, Worksheet } from '@/model/types';
-import { worksheetStore, type WorksheetStore, type WorksheetSummary } from '@/storage';
+import { worksheetStore, type WorksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { contentKey } from './contentKey';
 import { tagTime } from './sharedTags';
@@ -160,23 +160,80 @@ export function oneBankOf(banks: readonly Worksheet[]): Worksheet | undefined {
   return best;
 }
 
-/**
- * Where a write goes when the teacher is not asked which bank: `oneBankOf` the saved banks
- * (never the open document), else a new bank named by `nextBankName`, made quietly by the
- * first write that adds something. A bank that cannot be read is passed over.
- */
-export async function oneBank(io: BankIO = {}): Promise<BankTarget> {
+/** The saved banks (never the open document; one that cannot be read is passed over), and every bank's name. */
+async function savedBanks(io: BankIO): Promise<{ banks: Worksheet[]; names: string[] }> {
   const store = io.store ?? worksheetStore;
   const open = openId(io);
   const summaries = (await store.list()).filter((summary) => summary.kind === 'bank');
-  const loaded: Worksheet[] = [];
+  const banks: Worksheet[] = [];
   for (const summary of summaries) {
     if (summary.id === open) continue;
     const doc = await store.load(summary.id).catch(() => undefined);
-    if (doc) loaded.push(doc);
+    if (doc) banks.push(doc);
   }
-  const bank = oneBankOf(loaded);
-  return bank ? bank.id : { name: nextBankName(summaries.map((summary) => summary.title)) };
+  return { banks, names: summaries.map((summary) => summary.title) };
+}
+
+/**
+ * Where a write goes when the teacher is not asked which bank: `oneBankOf` the saved banks
+ * (never the open document), else a new bank named by `nextBankName`, made quietly by the
+ * first write that adds something.
+ */
+export async function oneBank(io: BankIO = {}): Promise<BankTarget> {
+  const { banks, names } = await savedBanks(io);
+  const bank = oneBankOf(banks);
+  return bank ? bank.id : { name: nextBankName(names) };
+}
+
+/** New questions (an import) added to the one bank: `addToBank` at `oneBank`. */
+export async function addToOneBank(questions: Question[], io: BankIO = {}): Promise<CopyToBankResult> {
+  return addToBank(questions, await oneBank(io), io);
+}
+
+/**
+ * Copy to bank's bank for a question whose root is `rootId`: of `banks`, a writable one
+ * already holding a version of that root (the most recent of them), so one root never
+ * gets a copy in a second bank; else the one bank (`oneBankOf`), or none.
+ */
+export function copyBankOf(rootId: string, banks: readonly Worksheet[]): Worksheet | undefined {
+  const holding = banks.filter((bank) => bank.questions.some((q) => rootIdOf(q) === rootId));
+  return oneBankOf(holding) ?? oneBankOf(banks);
+}
+
+/**
+ * Where Copy to bank sends `question`: `copyBankOf` the saved banks (`bank`, loaded), else
+ * a new bank's name. `openBank`, a bank the editor has open, is weighed too: it holds the
+ * question, so when chosen it reads as already there (it is never written here).
+ */
+export async function copyBankFor(
+  question: Question,
+  io: BankIO = {},
+  openBank?: Worksheet,
+): Promise<{ to: BankTarget; bank?: Worksheet }> {
+  const { banks, names } = await savedBanks(io);
+  const bank = copyBankOf(rootIdOf(question), openBank?.kind === 'bank' ? [...banks, openBank] : banks);
+  return bank ? { to: bank.id, bank } : { to: { name: nextBankName(names) } };
+}
+
+/** What Copy to bank did: `differs` wrote nothing (the teacher picks Update bank copy or Treat as a new question). */
+export type CopyOutcome = { kind: 'copied' | 'already' | 'differs'; bank: Worksheet };
+
+/**
+ * Copy to bank, never asking which bank: to `copyBankFor`'s. A bank holding this exact
+ * content has it `already`; one holding only another version `differs`; else a copy is
+ * added (`copyToBank`), making the bank when there is none. At most one save.
+ */
+export async function copyToOneBank(
+  question: Question,
+  fromDocId: string,
+  io: BankIO = {},
+  openBank?: Worksheet,
+): Promise<CopyOutcome> {
+  const { to, bank } = await copyBankFor(question, io, openBank);
+  const holds = bank ? bankHolds(question, bank) : 'none';
+  if (bank && holds !== 'none') return { kind: holds === 'same' ? 'already' : 'differs', bank };
+  const done = await copyToBank([question], fromDocId, to, io);
+  return { kind: done.copied > 0 ? 'copied' : 'already', bank: done.bank };
 }
 
 /** The bank `to` names, loaded, or a new one. Never the open document. */
@@ -241,33 +298,6 @@ export function nextBankName(existing: readonly string[]): string {
     const name = `${BANK_NAME.en} ${n}`;
     if (!taken.has(name.toLowerCase())) return name;
   }
-}
-
-export interface BankChoice {
-  id: string;
-  name: string;
-  /** "12 questions"; a name two banks share also gets the date it was last saved. */
-  detail: string;
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** "29 Sep 2026", the same in every browser (ICU's en-GB says "Sept" in some). */
-const day = (when: number) => {
-  const date = new Date(when);
-  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-};
-
-/** The banks a picker lists, by name, with enough beside each to tell two alike apart. */
-export function bankChoices(banks: readonly Pick<WorksheetSummary, 'id' | 'title' | 'updatedAt' | 'questionCount'>[]): BankChoice[] {
-  const named = new Map<string, number>();
-  for (const bank of banks) named.set(bank.title.trim().toLowerCase(), (named.get(bank.title.trim().toLowerCase()) ?? 0) + 1);
-  return banks.map((bank) => {
-    const count = bank.questionCount;
-    const parts = count === undefined ? [] : [`${count} ${count === 1 ? 'question' : 'questions'}`];
-    const when = Date.parse(bank.updatedAt);
-    if ((named.get(bank.title.trim().toLowerCase()) ?? 0) > 1 && !Number.isNaN(when)) parts.push(`saved ${day(when)}`);
-    return { id: bank.id, name: bank.title, detail: parts.join(' · ') };
-  });
 }
 
 /**

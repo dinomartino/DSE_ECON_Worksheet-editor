@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { analyseLines, hasChrome, type ChromeLeftover, type FileRole, type ImageRef, type PageChrome } from '@/import';
 import { planChrome } from '@/import/chromePlan';
 import { imageBlockFromFile } from '@/export/imageImport';
-import { addToBank, addedRoots, bankChoices, nextBankName, type BankChoice } from '@/library/bankDocs';
+import { addToOneBank, addedRoots } from '@/library/bankDocs';
 import type { DocumentType } from '@/model/newWorksheet';
 import type { LanguageMode, Question, Worksheet } from '@/model/types';
 import { paperLanguage, paperSide } from '@/settings/paperLanguage';
@@ -70,7 +70,8 @@ export { flagText } from './ReviewStep';
  * read, papers linked to their answers when there are several (or one holds only answers),
  * each paper reviewed with its answers applied, then saved. A fix is a `Pin` and re-solves
  * at once. Save as makes new papers (one `insertQuestionBatch` each) or adds to 題庫
- * (`addToBank`, duplicates skipped). Nothing is written before Save.
+ * (`addToOneBank`: the one bank, never asked; duplicates skipped). Nothing is written
+ * before Save.
  */
 
 type Text = Messages<typeof IMPORT_MESSAGES>;
@@ -96,8 +97,6 @@ export interface ImportDialogProps {
   /** Questions were added to a bank: show them there (`roots`: those added, in the files' order). */
   onAddedToBank: (bankId: string, roots: string[]) => void;
 }
-
-const NEW_BANK = '';
 
 /** The app's downsizer for the readers: a picture this browser cannot draw stays a slot. */
 async function prepareImage(blob: Blob): Promise<ImageRef | null> {
@@ -150,8 +149,6 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
   const [links, setLinks] = useState<Links>(NO_LINKS);
   const [at, setAt] = useState(0);
   const [states, setStates] = useState<Record<string, PaperState>>({});
-  const [banks, setBanks] = useState<BankChoice[]>([]);
-  const [bankTarget, setBankTarget] = useState(NEW_BANK);
   const [busy, setBusy] = useState(false);
   // Save as: one paper (the gallery) or several (a row each), or 題庫 only.
   const [destination, setDestination] = useState<Destination>();
@@ -198,23 +195,6 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
     };
     // Once per batch: the dialog is replaced for other files.
   }, [files]);
-
-  // The banks 題庫 only can write.
-  useEffect(() => {
-    let live = true;
-    void worksheetStore
-      .list()
-      .then((rows) => {
-        if (!live) return;
-        const choices = bankChoices(rows.filter((row) => row.kind === 'bank'));
-        setBanks(choices);
-        setBankTarget(choices[0]?.id ?? NEW_BANK);
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, []);
 
   const batchFiles = useMemo(() => (step === 'reading' ? [] : read.filter((f): f is BatchFile => Boolean(f))), [read, step]);
   const answers = useMemo(() => linkedAnswers(batchFiles, links), [batchFiles, links]);
@@ -314,9 +294,8 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
   });
 
   const finishBank = (questions: Question[], hasLead: boolean) => {
-    const to = bankTarget === NEW_BANK ? { name: nextBankName(banks.map((b) => b.name)) } : bankTarget;
     setBusy(true);
-    addToBank(questions, to, { openDocId: '' })
+    addToOneBank(questions, { openDocId: '' })
       .then(({ bank, copied, already }) => {
         const bankName = worksheetTitle(bank);
         const meta = copied === 0 ? m.bankHasAll : [m.bankUntagged, ...(already.length > 0 ? [m.skippedDuplicates(already.length)] : [])].join(' · ');
@@ -558,10 +537,6 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
             onBankOnly={setBankOnly}
             onName={(id, name) => setNames((n) => ({ ...n, [id]: name }))}
             onType={(id, type) => setTypes((t) => ({ ...t, [id]: type }))}
-            banks={banks}
-            bankTarget={bankTarget}
-            newBankName={nextBankName(banks.map((b) => b.name))}
-            onBankTarget={setBankTarget}
             onSubmit={save}
             end={<NoticeInsetSpacer />}
           />
@@ -573,10 +548,6 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
             onDestination={setDestination}
             name={toSave[0]?.name ?? ''}
             onName={(name) => paper && setNames((n) => ({ ...n, [paper.id]: name }))}
-            banks={banks}
-            bankTarget={bankTarget}
-            newBankName={nextBankName(banks.map((b) => b.name))}
-            onBankTarget={setBankTarget}
             questions={toSave[0]?.questions ?? 0}
             mc={all[0]?.result.analysis.outline.questions.filter((q) => q.kind === 'mc').length ?? 0}
             language={all[0] ? importLanguageMode(all[0].result.analysis, paperLanguage()) : 'en'}
