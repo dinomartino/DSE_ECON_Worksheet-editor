@@ -13,20 +13,21 @@ load-bearing output, saved documents always reopen.
 ## Where we stand
 
 No HK tool does bilingual on-page authoring of DSE-format papers with native `.docx`;
-international builders treat Word as a lossy export. Released through 0.6.0: the export
+international builders treat Word as a lossy export. Released through 0.8.0: the export
 dialog (answer keys, versions, other apps), paper checks and targets, marking schemes and
 their layouts, diagram areas, templates and Graphs, file management, ✦ AI translation, the
-中文 interface, and the question bank 題庫. What remains open: getting existing material in
-(D), what happens after the paper is sat (G), and AI authoring (E1/E3/E4 built but paused).
+中文 interface, the question bank 題庫, library-folder sync, and import from Word, PDF or
+picture with on-device OCR. What remains open: reusing the bank while writing a paper (C9,
+C10), what happens after the paper is sat (G), and AI authoring (E1/E3/E4 built but paused).
 
 ## Recommended order
 
-1. **Now** — D1/D2 import from Word or PDF built (unreleased, `docs/design/paste-import.md`);
-   next: OCR for scanned PDFs via ✦ AI (BYOK), layout profiles. Not urgent (user, 2026-10-08): make classes + sat-on findable
-   (the greyed 題庫 Class filter should open Setup at the field).
-2. **Next** — item analysis (G1), which also completes C4's facility; C9–C10 and C11's
-   remaining filters.
-3. **Later** — `.docx` import (D2), unpausing E1/E3/E4 after live evals, data charts
+1. **Now** — C9 Add from bank inside the editor (import now fills banks), then C10. Not
+   urgent (user, 2026-10-08): make classes + sat-on findable (the greyed 題庫 Class filter
+   should open Setup at the field).
+2. **Next** — item analysis (G1), which also completes C4's facility; C11's remaining
+   filters; bank authoring (`docs/design/bank-authoring.md`, 3 questions for the user).
+3. **Later** — import layout profiles (D), unpausing E1/E3/E4 after live evals, data charts
    (B3b), answer frames and the examiner grid (B6, B7), dashboard extras (F).
 
 ## A. Export and paper checks
@@ -110,8 +111,8 @@ second tab holding the same paper.
 
 ## D. Getting existing material in
 
-- **D1/D2 Import from Word or PDF**: built, file-only (user rejected a paste-text importer).
-  Open: scanned PDFs (✦ AI vision, BYOK), layout profiles remembered per paper series.
+- **Import** shipped in 0.8.0 (file-only; on-device OCR for scans). Open: layout profiles
+  remembered per paper series; tables split across sheets in the preview.
 
 ## E. AI — bring your own key, one ✦ AI door, results insert directly
 

@@ -27,7 +27,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   frame), scan diagrams come in as pictures. Picture options pair by place (DSE2021 Q36,
   .docx tables too); scheme rows round a figure follow it (S6 Q5). Crop edges trimmed; boxed flow charts become one
   picture. Left: tables don't split across sheets in the preview (Word does); text inside a figure's box stays in the crop.
-- `feature/film-v2` (144 commits, worktree `.claude/worktrees/film-v2`) is **only on this Mac**, not on GitHub.
+- `feature/film-v2` (worktree `.claude/worktrees/film-v2`) is on GitHub since 2026-10-11, not merged. **Next build: C9 Add from bank inside the editor** (`docs/IDEAS.md` § Recommended order); design not started.
 
 ## Where we are
 
@@ -75,5 +75,6 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-10-11** — Import demo story (invented paper, `feature/demo-import*`); film-v2 pushed; IDEAS order refreshed.
 - **2026-10-08/09** — Found-folder offer; import + paper language (15 branches); Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR; import leftovers. 19 branches. 0.8.0 released 2026-10-10.
 - **Open question (2026-10-10):** hide Import's "Which question bank" picker when there are 0–1 bank files (user asked why it exists; proposal not yet approved).
