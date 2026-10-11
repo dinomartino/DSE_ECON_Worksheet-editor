@@ -1,4 +1,5 @@
 import { createWorksheet } from '@/model/factories';
+import { isNewerThanBuild } from '@/model/migrations';
 import { copyQuestion, freshIdsKeepingParts, rootIdOf } from '@/model/lineage';
 import { stateFor, tagStateOf, withTagState } from '@/model/tagSlots';
 import { bi } from '@/model/text';
@@ -87,16 +88,95 @@ export async function copyToBank(
       fresh.push(question);
     }
   }
-  if (fresh.length === 0) return { bank, copied: 0, already };
-  const copies = fresh.map((q) => copyQuestion(q, fromDocId));
+  return appendToBank(bank, fresh.map((q) => copyQuestion(q, fromDocId)), already, store);
+}
+
+/** `questions` split by whether the bank (or an earlier one of them) already says what each says (`contentKey`). */
+function newByContent(questions: readonly Question[], bank: Worksheet): { fresh: Question[]; already: Question[] } {
+  const held = new Set(bank.questions.map(contentKey));
+  const fresh: Question[] = [];
+  const already: Question[] = [];
+  for (const question of questions) {
+    const key = contentKey(question);
+    if (held.has(key)) already.push(question);
+    else {
+      held.add(key);
+      fresh.push(question);
+    }
+  }
+  return { fresh, already };
+}
+
+/** `added` at the end of the bank, in one save; nothing added saves nothing. */
+async function appendToBank(bank: Worksheet, added: Question[], already: Question[], store: WorksheetStore): Promise<CopyToBankResult> {
+  if (added.length === 0) return { bank, copied: 0, already };
   const next: Worksheet = {
     ...bank,
-    questions: [...bank.questions, ...copies],
-    flow: [...bank.flow, ...copies.map((q) => ({ type: 'question' as const, id: q.id }))],
+    questions: [...bank.questions, ...added],
+    flow: [...bank.flow, ...added.map((q) => ({ type: 'question' as const, id: q.id }))],
     updatedAt: new Date().toISOString(),
   };
   await store.save(next);
-  return { bank: next, copied: copies.length, already };
+  return { bank: next, copied: added.length, already };
+}
+
+/**
+ * A paper's questions kept in the bank before the paper goes to Trash (the start screen's
+ * delete). Each is copied as `copyToBank` copies (`copyQuestion`: fresh ids, its `rootId`,
+ * a lineage naming `fromDocId`; tags, pictures and diagrams travel inside the question),
+ * unless the bank already says what it says (`contentKey`, any root): returned in
+ * `already`. Unlike `copyToBank`, a question whose root the bank holds in another version
+ * is still copied: the bank's version is never replaced, and the two group as one question
+ * with two versions, as they did while the paper was live. One save.
+ */
+export async function keepInBank(questions: Question[], fromDocId: string, to: BankTarget = {}, io: BankIO = {}): Promise<CopyToBankResult> {
+  const store = io.store ?? worksheetStore;
+  const bank = await bankFor(to, io);
+  const { fresh, already } = newByContent(questions, bank);
+  return appendToBank(bank, fresh.map((q) => copyQuestion(q, fromDocId)), already, store);
+}
+
+/** A bank this build may write into without asking: a bank, not hidden from the 題庫, not a newer build's. */
+export function writableBank(doc: Worksheet): boolean {
+  return doc.kind === 'bank' && !doc.bankHidden && !isNewerThanBuild(doc);
+}
+
+/**
+ * The one bank (the teacher never picks or names one): of `banks`, the most recently saved
+ * that `writableBank` allows, or none. Ties go to the first given.
+ */
+export function oneBankOf(banks: readonly Worksheet[]): Worksheet | undefined {
+  let best: Worksheet | undefined;
+  let bestAt = -Infinity;
+  for (const bank of banks) {
+    if (!writableBank(bank)) continue;
+    const at = Date.parse(bank.updatedAt);
+    const when = Number.isNaN(at) ? -Infinity : at;
+    if (!best || when > bestAt) {
+      best = bank;
+      bestAt = when;
+    }
+  }
+  return best;
+}
+
+/**
+ * Where a write goes when the teacher is not asked which bank: `oneBankOf` the saved banks
+ * (never the open document), else a new bank named by `nextBankName`, made quietly by the
+ * first write that adds something. A bank that cannot be read is passed over.
+ */
+export async function oneBank(io: BankIO = {}): Promise<BankTarget> {
+  const store = io.store ?? worksheetStore;
+  const open = openId(io);
+  const summaries = (await store.list()).filter((summary) => summary.kind === 'bank');
+  const loaded: Worksheet[] = [];
+  for (const summary of summaries) {
+    if (summary.id === open) continue;
+    const doc = await store.load(summary.id).catch(() => undefined);
+    if (doc) loaded.push(doc);
+  }
+  const bank = oneBankOf(loaded);
+  return bank ? bank.id : { name: nextBankName(summaries.map((summary) => summary.title)) };
 }
 
 /** The bank `to` names, loaded, or a new one. Never the open document. */
@@ -118,26 +198,8 @@ async function bankFor(to: BankTarget, io: BankIO): Promise<Worksheet> {
 export async function addToBank(questions: Question[], to: BankTarget = {}, io: BankIO = {}): Promise<CopyToBankResult> {
   const store = io.store ?? worksheetStore;
   const bank = await bankFor(to, io);
-  const held = new Set(bank.questions.map(contentKey));
-  const fresh: Question[] = [];
-  const already: Question[] = [];
-  for (const question of questions) {
-    const key = contentKey(question);
-    if (held.has(key)) already.push(question);
-    else {
-      held.add(key);
-      fresh.push(question);
-    }
-  }
-  if (fresh.length === 0) return { bank, copied: 0, already };
-  const next: Worksheet = {
-    ...bank,
-    questions: [...bank.questions, ...fresh],
-    flow: [...bank.flow, ...fresh.map((q) => ({ type: 'question' as const, id: q.id }))],
-    updatedAt: new Date().toISOString(),
-  };
-  await store.save(next);
-  return { bank: next, copied: fresh.length, already };
+  const { fresh, already } = newByContent(questions, bank);
+  return appendToBank(bank, fresh, already, store);
 }
 
 /** The roots of the questions `addToBank` added (all of `questions` but `already`), in their order. */

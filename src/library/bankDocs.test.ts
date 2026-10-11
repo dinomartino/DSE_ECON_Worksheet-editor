@@ -1,12 +1,25 @@
-import { describe, expect, it } from 'vitest';
-import type { WorksheetStore } from '@/storage';
-import { copyQuestion } from '@/model/lineage';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { LocalStorageWorksheetStore, type WorksheetStore } from '@/storage';
+import { CURRENT_SCHEMA_VERSION } from '@/model/migrations';
+import { copyQuestion, rootIdOf } from '@/model/lineage';
 import { bi } from '@/model/text';
-import { createParagraphBlock } from '@/model/factories';
+import { createImageBlock, createParagraphBlock } from '@/model/factories';
 import { questionTagSlots } from '@/model/tagSlots';
 import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
 import { contentKey as contentKeyOf } from './contentKey';
-import { bankChoices, bankCopyDiffers, bankHolds, copyToBank, createBank, nextBankName, updateBankCopy } from './bankDocs';
+import {
+  bankChoices,
+  bankCopyDiffers,
+  bankHolds,
+  copyToBank,
+  createBank,
+  keepInBank,
+  nextBankName,
+  oneBank,
+  oneBankOf,
+  updateBankCopy,
+} from './bankDocs';
+import { installLocalStorage } from './bankTestKit';
 import { choiceQuestion, docWith, partedQuestion } from './testKit';
 
 /** An in-memory store: only the calls bankDocs makes. */
@@ -236,5 +249,100 @@ describe('naming banks', () => {
       { id: 'b', name: 'Question bank', detail: '1 question · saved 30 Sep 2026' },
       { id: 'c', name: 'Macro MCQ', detail: '' },
     ]);
+  });
+});
+
+describe('keepInBank: a paper’s questions kept before it goes to Trash', () => {
+  it('copies each with its root, topics and pictures, and leaves the paper alone', async () => {
+    const q = { ...choiceQuestion('Stem', '題幹', ['A.scarcity']), tagsAt: '2026-10-01T00:00:00.000Z' } as Question;
+    q.blocks = [...q.blocks, createImageBlock('data:image/png;base64,AAAA', 120, 80)];
+    const paper = docWith([q], { id: 'paper' });
+    const before = structuredClone(paper);
+    const bank = { ...docWith([]), kind: 'bank' as const };
+    const { store, map } = memoryStore(paper, bank);
+    const { copied, already } = await keepInBank([q], 'paper', bank.id, { store, openDocId: '' });
+    expect([copied, already]).toEqual([1, []]);
+    const kept = map.get(bank.id)!.questions[0];
+    expect(kept.id).not.toBe(q.id);
+    expect(kept.lineage).toMatchObject({ rootId: q.id, fromDocId: 'paper' });
+    expect(kept.tags).toEqual(['A.scarcity']);
+    expect(kept.tagsAt).toBe(q.tagsAt);
+    expect(kept.blocks.at(-1)).toMatchObject({ kind: 'image', src: 'data:image/png;base64,AAAA' });
+    expect(contentKeyOf(kept)).toBe(contentKeyOf(q));
+    expect(map.get('paper')).toEqual(before);
+  });
+
+  it('adds the paper’s version beside an older one of the same question, never over it', async () => {
+    const original = choiceQuestion('First wording');
+    const bankCopy = copyQuestion(original, 'p0');
+    const bank = { ...docWith([bankCopy]), kind: 'bank' as const };
+    const edited = edit(copyQuestion(original, bank.id), 'Second wording');
+    const { store, map } = memoryStore(bank);
+    const { copied } = await keepInBank([edited], 'paper', bank.id, { store, openDocId: '' });
+    expect(copied).toBe(1);
+    const saved = map.get(bank.id)!;
+    expect(saved.questions[0]).toEqual(bankCopy);
+    expect(saved.questions.map(rootIdOf)).toEqual([original.id, original.id]);
+    expect(contentKeyOf(saved.questions[1])).toBe(contentKeyOf(edited));
+  });
+
+  it('skips what the bank already says, and saves nothing then', async () => {
+    const q = choiceQuestion('Stem');
+    const bank = { ...docWith([copyQuestion(q, 'x')]), kind: 'bank' as const };
+    const { store, saves } = memoryStore(bank);
+    expect(await keepInBank([q], 'paper', bank.id, { store, openDocId: '' })).toMatchObject({ copied: 0, already: [q] });
+    expect(saves).toEqual([]);
+  });
+
+  it('makes the bank when there is none', async () => {
+    const { store, map } = memoryStore();
+    const { bank } = await keepInBank([choiceQuestion('Stem')], 'paper', { name: 'Question bank' }, { store, openDocId: '' });
+    expect(map.get(bank.id)).toMatchObject({ kind: 'bank', name: 'Question bank' });
+  });
+});
+
+describe('the one bank', () => {
+  const bank = (id: string, updatedAt: string, extra: Partial<Worksheet> = {}): Worksheet =>
+    ({ ...docWith([], { id, kind: 'bank', updatedAt, ...extra }) }) as Worksheet;
+
+  it('is the most recently saved bank this build may write', () => {
+    const older = bank('older', '2026-09-01T00:00:00.000Z');
+    const newer = bank('newer', '2026-10-01T00:00:00.000Z');
+    expect(oneBankOf([older, newer])?.id).toBe('newer');
+    const hidden = bank('hidden', '2026-10-05T00:00:00.000Z', { bankHidden: true });
+    const future = bank('future', '2026-10-06T00:00:00.000Z', { schemaVersion: CURRENT_SCHEMA_VERSION + 1 });
+    const paper = docWith([], { id: 'paper', updatedAt: '2026-10-07T00:00:00.000Z' });
+    expect(oneBankOf([older, hidden, future, paper, newer])?.id).toBe('newer');
+    expect(oneBankOf([hidden, paper])).toBeUndefined();
+  });
+
+  describe('read from the store', () => {
+    let store: LocalStorageWorksheetStore;
+    beforeEach(() => {
+      installLocalStorage();
+      store = new LocalStorageWorksheetStore();
+    });
+
+    it('names a new one when there is no bank, without saving anything', async () => {
+      await store.save(docWith([], { id: 'paper' }));
+      expect(await oneBank({ store, openDocId: '' })).toEqual({ name: 'Question bank' });
+      expect((await store.list()).map((s) => s.id)).toEqual(['paper']);
+    });
+
+    it('picks the most recent of several, never a trashed, hidden or open one', async () => {
+      await store.save(bank('a', '2026-09-01T00:00:00.000Z'));
+      await store.save(bank('b', '2026-09-02T00:00:00.000Z'));
+      await store.save(bank('c', '2026-09-03T00:00:00.000Z', { bankHidden: true }));
+      await store.save(bank('d', '2026-09-04T00:00:00.000Z'));
+      expect(await oneBank({ store, openDocId: '' })).toBe('d');
+      await store.trash('d');
+      expect(await oneBank({ store, openDocId: '' })).toBe('b');
+      expect(await oneBank({ store, openDocId: 'b' })).toBe('a');
+    });
+
+    it('names a new bank apart from the hidden ones', async () => {
+      await store.save(bank('c', '2026-09-03T00:00:00.000Z', { bankHidden: true, name: 'Question bank' }));
+      expect(await oneBank({ store, openDocId: '' })).toEqual({ name: 'Question bank 2' });
+    });
   });
 });

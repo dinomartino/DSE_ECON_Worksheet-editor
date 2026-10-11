@@ -57,11 +57,13 @@ import { useBank } from '@/library/useBank';
 import { reloadPatterns } from '@/library/usePatterns';
 import { RenameDialog, renameWorksheet } from './RenameDialog';
 import { TrashList } from './TrashList';
+import { KeepFailedError, TrashDialog, trashKeeping, type KeepChoice } from './TrashDialog';
+import { questionsLeavingBank } from '@/library/leavingBank';
 import { readLastKind } from './startKinds';
 import { WelcomeDesk } from './WelcomeDesk';
 import { newId } from '@/model/factories';
 import type { DocumentType } from '@/model/newWorksheet';
-import type { LanguageMode, Worksheet } from '@/model/types';
+import type { LanguageMode, Question, Worksheet } from '@/model/types';
 import {
   downloadWorksheetFile,
   duplicateWorksheet,
@@ -148,6 +150,9 @@ export function StartScreen({
   const [renaming, setRenaming] = useState<WorksheetSummary | undefined>();
   const [renameError, setRenameError] = useState<string | undefined>();
   const [confirmingDelete, setConfirmingDelete] = useState<WorksheetSummary | undefined>();
+  // Its questions saved nowhere else (undefined while worked out), and what to do with them.
+  const [leaving, setLeaving] = useState<{ id: string; questions: Question[] }>();
+  const [keepChoice, setKeepChoice] = useState<KeepChoice>('keep');
   const [trashRows, setTrashRows] = useState<TrashedSummary[]>([]);
   const [showingTrash, setShowingTrash] = useState(false);
   const [confirmingPurge, setConfirmingPurge] = useState<TrashedSummary | undefined>();
@@ -195,7 +200,7 @@ export function StartScreen({
   // it; ← Home comes back. Session state: the app always opens on the documents.
   // Back from a worksheet opened from a bank question: straight into the bank.
   const [view, setView] = useState<'home' | 'bank' | 'graphs'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
-  const { groups: bankGroups } = useBank();
+  const { groups: bankGroups, rows: bankRows, status: bankStatus } = useBank();
   const graphTotal = useGraphCount(`${view}:${lastResult}`);
   const closeFeedback = useCallback(() => setFeedback(false), []);
   // First launch, or everything deleted: the desk welcomes instead of listing. Never
@@ -420,12 +425,25 @@ export function StartScreen({
     showView('bank');
   };
 
-  const moveToTrash = async (summary: WorksheetSummary) => {
+  /** Move to Trash?: opens at once, then works out which of its questions only it holds. */
+  const askToTrash = (summary: WorksheetSummary) => {
+    setConfirmingDelete(summary);
+    setLeaving(undefined);
+    setKeepChoice('keep');
+    // Once ready, the index narrows which documents are read; until then, every one is.
+    const rows = bankStatus.state === 'ready' ? bankRows : undefined;
+    const found = summary.kind === 'bank' ? Promise.resolve([]) : questionsLeavingBank(summary.id, worksheetStore, rows).catch(() => []);
+    void found.then((questions) => setLeaving({ id: summary.id, questions }));
+  };
+
+  /** `keep`: questions the 題庫 keeps first; a failed keep leaves the worksheet where it is. */
+  const moveToTrash = async (summary: WorksheetSummary, keep: readonly Question[]) => {
     setError(undefined);
     try {
-      await worksheetStore.trash(summary.id);
-    } catch {
-      setError(t.trashFailed);
+      const kept = await trashKeeping(worksheetStore, summary.id, keep);
+      if (kept > 0) setNotice({ message: t.trashedKept(kept) });
+    } catch (cause) {
+      setError(cause instanceof KeepFailedError ? t.keepFailed : t.trashFailed);
     }
     await refresh();
   };
@@ -713,7 +731,7 @@ export function StartScreen({
           })()
       : undefined,
     move: setMoving,
-    remove: setConfirmingDelete,
+    remove: askToTrash,
   };
 
   return (
@@ -1136,32 +1154,20 @@ export function StartScreen({
       )}
 
       {confirmingDelete && (
-        <Dialog
-          title={t.trashTitle(confirmingDelete.title)}
-          width={420}
+        <TrashDialog
+          summary={confirmingDelete}
+          days={TRASH_RETENTION_DAYS}
+          leaving={leaving?.id === confirmingDelete.id ? leaving.questions.length : undefined}
+          choice={keepChoice}
+          onChoice={setKeepChoice}
           onClose={() => setConfirmingDelete(undefined)}
-          footer={
-            <>
-              <Button variant="subtle" onClick={() => setConfirmingDelete(undefined)}>
-                {t.cancel}
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  const summary = confirmingDelete;
-                  setConfirmingDelete(undefined);
-                  void moveToTrash(summary);
-                }}
-              >
-                {t.moveToTrash}
-              </Button>
-            </>
-          }
-        >
-          <p className="px-5 py-5 text-[13px] leading-relaxed text-ink-subtle">
-            {t.trashBody(TRASH_RETENTION_DAYS)}
-          </p>
-        </Dialog>
+          onConfirm={() => {
+            const summary = confirmingDelete;
+            const keep = keepChoice === 'keep' && leaving?.id === summary.id ? leaving.questions : [];
+            setConfirmingDelete(undefined);
+            void moveToTrash(summary, keep);
+          }}
+        />
       )}
 
       {confirmingPurge && (
