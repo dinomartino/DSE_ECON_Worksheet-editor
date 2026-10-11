@@ -98,7 +98,7 @@ export function TrashDialog({
   );
 }
 
-/** One option, as the Copy to bank picker draws its banks (`BankActions.tsx:BankOption`). */
+/** One radio option of the keep choice. */
 function ChoiceRow({ name, checked, label, onPick }: { name: string; checked: boolean; label: string; onPick: () => void }) {
   return (
     <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-ink hover:bg-surface-hover">

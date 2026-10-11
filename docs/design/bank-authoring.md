@@ -27,9 +27,8 @@ bank page too." Today a question can only be written inside a paper, then copied
 **In a bank document** — the only kind of document that holds questions without being a
 paper. No new storage, no new format.
 
-- **Which bank:** the one the teacher chose last (a per-viewer `localStorage` key, outside
-  the `econ-worksheet:` prefix, like the dashboard's grid/list key); else the most recently
-  saved bank; else a new one. A stale or trashed id falls back silently.
+- **Which bank:** the one bank, `src/library/bankDocs.ts:oneBank` (the most recently saved
+  writable bank; else a new one). Import and Copy to bank use it too; nothing asks.
 - **No bank yet:** quietly `createBank` with the default name, no prompt (the user,
   2026-10-11: the 題庫 already shows every bank as one, so the teacher never picks a bank).
 - **Never a hidden bank** (`bankHidden`: not indexed, so the question would vanish) and
@@ -152,7 +151,7 @@ pre-fill; the plain New question in the bar still works there with none).
 New question 新題目
   Type     (•) Multiple choice   ( ) Structured      <- listQuestionTypes(), displayName
   Topic    C · Price elasticity of supply 供給價格彈性 <- read-only here; edited in the sheet
-  Save in  [ Question bank            v ]            <- banks by name (bankChoices), + New bank…
+  (saved in the one bank, `oneBank`: never asked, never named)
                                   [Cancel] [Write it]
 ```
 

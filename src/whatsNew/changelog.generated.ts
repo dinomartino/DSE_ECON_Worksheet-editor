@@ -24,10 +24,10 @@ a version heading is edited afterwards.
   之後還原工作紙，題庫亦不會重複列出這些題目。 -->
 
 ### Changed
-- **Import: when you have one question bank or none, Save as no longer asks which bank to use.**
-  The questions go to your one bank, or to a new one, and the message after saving names it.
-  The choice still appears when you have two banks or more.
-  <!-- zh: **匯入：如只有一個題庫或未有題庫，「儲存為」不再問要加入哪個題庫。** 題目會加入你唯一的題庫，或一個新題庫，儲存後的訊息會顯示題庫名稱。如有兩個或以上題庫，仍會讓你選擇。 -->
+- **One question bank.** Import and Copy to bank no longer ask which bank to use or for a bank
+  name. Questions go to your question bank, and everything already in other banks still shows
+  in 題庫.
+  <!-- zh: **只有一個題庫。** 匯入和「複製到題庫」不再問要用哪個題庫，也不用為題庫命名。題目會加入你的題庫，其他題庫裡已有的題目仍會在題庫中顯示。 -->
 
 ## 0.8.0 — 2026-10-10
 

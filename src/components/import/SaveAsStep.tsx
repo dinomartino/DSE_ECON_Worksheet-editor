@@ -1,6 +1,5 @@
 'use client';
 
-import type { BankChoice } from '@/library/bankDocs';
 import type { DocumentType } from '@/model/newWorksheet';
 import type { LanguageMode } from '@/model/types';
 import { Field } from '@/components/ui/Dialog';
@@ -18,15 +17,10 @@ export type Destination = DocumentType | 'bank';
 
 type Text = Messages<typeof IMPORT_MESSAGES>;
 
-const NEW_BANK = '';
-
-/** Ask which bank only when there is a choice: with none or one, it is already made. */
-export const asksWhichBank = (banks: readonly BankChoice[]) => banks.length > 1;
-
 /**
  * Save as: the four kinds of paper as the New worksheet gallery draws them, and 題庫 only.
- * A paper takes a name (from the file); 題庫 takes a bank. A type that does not suit the
- * questions says so, and still saves.
+ * A paper takes a name (from the file); 題庫 asks nothing (it goes to the one bank,
+ * `oneBank`). A type that does not suit the questions says so, and still saves.
  */
 export function SaveAsStep({
   text: m,
@@ -35,10 +29,6 @@ export function SaveAsStep({
   onDestination,
   name,
   onName,
-  banks,
-  bankTarget,
-  newBankName,
-  onBankTarget,
   questions,
   mc,
   language,
@@ -52,10 +42,6 @@ export function SaveAsStep({
   onDestination: (next: Destination) => void;
   name: string;
   onName: (next: string) => void;
-  banks: readonly BankChoice[];
-  bankTarget: string;
-  newBankName: string;
-  onBankTarget: (id: string) => void;
   questions: number;
   mc: number;
   language: LanguageMode;
@@ -148,25 +134,7 @@ export function SaveAsStep({
           </div>
         ) : null}
 
-        {destination === 'bank' ? (
-          asksWhichBank(banks) && (
-            <Field label={m.bankTarget}>
-              <select
-                aria-label={m.bankTarget}
-                value={bankTarget}
-                onChange={(event) => onBankTarget(event.target.value)}
-                className="h-9 w-full max-w-[360px] cursor-pointer truncate rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft hover:border-line-strong focus:border-accent focus:ring-2 focus:ring-accent/25"
-              >
-                {banks.map((bank) => (
-                  <option key={bank.id} value={bank.id}>
-                    {bank.name}
-                  </option>
-                ))}
-                <option value={NEW_BANK}>{m.newBank(newBankName)}</option>
-              </select>
-            </Field>
-          )
-        ) : (
+        {destination !== 'bank' && (
           <Field label={m.name} hint={m.nameHint}>
             <input
               type="text"
