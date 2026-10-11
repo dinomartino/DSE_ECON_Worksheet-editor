@@ -432,7 +432,7 @@ export function StartScreen({
     setKeepChoice('keep');
     // Once ready, the index narrows which documents are read; until then, every one is.
     const rows = bankStatus.state === 'ready' ? bankRows : undefined;
-    const found = summary.kind === 'bank' ? Promise.resolve([]) : questionsLeavingBank(summary.id, worksheetStore, rows).catch(() => []);
+    const found = questionsLeavingBank(summary.id, worksheetStore, rows).catch(() => []);
     void found.then((questions) => setLeaving({ id: summary.id, questions }));
   };
 
@@ -1163,7 +1163,8 @@ export function StartScreen({
           onClose={() => setConfirmingDelete(undefined)}
           onConfirm={() => {
             const summary = confirmingDelete;
-            const keep = keepChoice === 'keep' && leaving?.id === summary.id ? leaving.questions : [];
+            // A bank's questions are only warned about, never kept elsewhere.
+            const keep = summary.kind !== 'bank' && keepChoice === 'keep' && leaving?.id === summary.id ? leaving.questions : [];
             setConfirmingDelete(undefined);
             void moveToTrash(summary, keep);
           }}

@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { copyQuestion } from '@/model/lineage';
 import type { Worksheet } from '@/model/types';
 import { LocalStorageWorksheetStore } from '@/storage';
+import type { WorksheetSummary } from '@/storage/types';
 import { installLocalStorage } from '@/library/bankTestKit';
 import { groupRows } from '@/library/group';
 import { rowsOf } from '@/library/indexer';
@@ -16,9 +17,10 @@ import { choiceQuestion, docWith } from '@/library/testKit';
 import { KeepFailedError, TrashDialog, trashKeeping, type KeepChoice } from './TrashDialog';
 
 const summary = { id: 'paper', title: 'Unit 3 quiz', updatedAt: '2026-10-01T00:00:00.000Z' };
-const dialog = (leaving: number | undefined, choice: KeepChoice = 'keep') =>
+const bankSummary = { id: 'bank', title: '題庫', updatedAt: '2026-10-01T00:00:00.000Z', kind: 'bank' as const };
+const dialog = (leaving: number | undefined, choice: KeepChoice = 'keep', of: WorksheetSummary = summary) =>
   renderToStaticMarkup(
-    <TrashDialog summary={summary} days={30} leaving={leaving} choice={choice} onChoice={() => {}} onClose={() => {}} onConfirm={() => {}} />,
+    <TrashDialog summary={of} days={30} leaving={leaving} choice={choice} onChoice={() => {}} onClose={() => {}} onConfirm={() => {}} />,
   );
 const radios = (markup: string) => [...markup.matchAll(/<input type="radio"[^>]*>/g)].map((m) => m[0]);
 
@@ -32,6 +34,7 @@ describe('the Move to Trash dialog', () => {
     expect(keep).toMatch(/checked/);
     expect(trash).not.toMatch(/checked/);
     expect(markup).toContain('role="radiogroup"');
+    expect(markup).not.toContain('in this bank');
   });
 
   it('is today’s dialog when nothing would leave the 題庫', () => {
@@ -51,6 +54,35 @@ describe('the Move to Trash dialog', () => {
     expect(markup).toContain('1 question in this worksheet is not saved anywhere else.');
     expect(markup).toContain('Keep the question in the 題庫');
     expect(markup).toContain('Move it to Trash with the worksheet');
+  });
+});
+
+describe('the Move to Trash dialog for a bank', () => {
+  it('warns how many questions leave the 題庫, with nothing to choose', () => {
+    const markup = dialog(12, 'keep', bankSummary);
+    expect(markup).toContain('12 questions in this bank are not saved anywhere else. They will leave the 題庫 until you restore it.');
+    expect(radios(markup)).toEqual([]);
+    expect(markup).not.toContain('role="radiogroup"');
+    expect(markup).not.toContain('Keep');
+    expect(markup).toMatch(/<button[^>]*>Move to Trash/);
+    expect(markup).not.toMatch(/<button[^>]* disabled=""[^>]*>Move to Trash/);
+  });
+
+  it('says one question in the singular', () => {
+    expect(dialog(1, 'keep', bankSummary)).toContain(
+      '1 question in this bank is not saved anywhere else. It will leave the 題庫 until you restore it.',
+    );
+  });
+
+  it('is today’s dialog when every question lives elsewhere', () => {
+    const markup = dialog(0, 'keep', bankSummary);
+    expect(markup).not.toContain('not saved anywhere else');
+    expect(radios(markup)).toEqual([]);
+    expect(markup).toContain('You can restore it from the Trash for 30 days.');
+  });
+
+  it('waits to move while it counts', () => {
+    expect(dialog(undefined, 'keep', bankSummary)).toMatch(/<button[^>]* disabled=""[^>]*>Move to Trash/);
   });
 });
 
