@@ -98,6 +98,26 @@ export const START_SCREEN_MESSAGES = defineMessages({
     zh: (days: number) => `你可在 ${days} 日內從垃圾桶還原。之後會被永久刪除。`,
   },
   moveToTrash: { en: 'Move to Trash', zh: '移至垃圾桶' },
+  // A worksheet whose questions are nowhere else: keep them in the 題庫, or let them go.
+  onlyHere: {
+    en: (n: number) => (n === 1 ? '1 question in this worksheet is not saved anywhere else.' : `${n} questions in this worksheet are not saved anywhere else.`),
+    zh: (n: number) => `這份工作紙有 ${n} 條題目沒有儲存在其他地方。`,
+  },
+  keepChoice: { en: 'Its questions', zh: '題目' },
+  keepInBank: {
+    en: (n: number) => (n === 1 ? 'Keep the question in the 題庫' : `Keep its ${n} questions in the 題庫`),
+    zh: (n: number) => `把 ${n} 條題目保留在題庫`,
+  },
+  trashWithIt: { en: 'Move it to Trash with the worksheet', zh: '連同工作紙移至垃圾桶' },
+  trashWithThem: { en: 'Move them to Trash with the worksheet', zh: '連同工作紙移至垃圾桶' },
+  trashedKept: {
+    en: (n: number) => `Moved to Trash. ${n === 1 ? '1 question' : `${n} questions`} kept in the 題庫.`,
+    zh: (n: number) => `已移至垃圾桶。${n} 條題目已保留在題庫。`,
+  },
+  keepFailed: {
+    en: 'Could not keep its questions in the 題庫, so the worksheet is still here.',
+    zh: '無法把題目保留在題庫，所以工作紙仍在這裏。',
+  },
   purgeTitle: { en: (title: string) => `Delete “${title}” forever?`, zh: (title: string) => `永久刪除「${title}」？` },
   purgeBody: {
     en: (desktop: boolean) => `It is stored ${desktop ? 'on this computer' : 'in this browser'} only, so this cannot be undone.`,

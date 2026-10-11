@@ -14,6 +14,15 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Deleting a worksheet can keep its questions in 題庫.** When you move a worksheet to the
+  Trash and some of its questions are saved nowhere else, Econ Studio asks whether to keep them
+  in 題庫 (the default) or move them to the Trash with the worksheet. Kept questions keep their
+  topics, pictures and graphs, and restoring the worksheet later does not list them twice.
+  <!-- zh: **刪除工作紙時可把題目保留在題庫。** 把工作紙移至垃圾桶時，如果其中有題目沒有儲存在其他地方，
+  Econ Studio 會問你要把題目保留在題庫（預設），還是連同工作紙移至垃圾桶。保留的題目會保留課題、圖片和圖表；
+  之後還原工作紙，題庫亦不會重複列出這些題目。 -->
+
 ## 0.8.0 — 2026-10-10
 
 ### Added
