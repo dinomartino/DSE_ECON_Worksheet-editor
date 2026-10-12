@@ -30,7 +30,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   frame), scan diagrams come in as pictures. Picture options pair by place (DSE2021 Q36,
   .docx tables too); scheme rows round a figure follow it (S6 Q5). Crop edges trimmed; boxed flow charts become one
   picture. Left: tables don't split across sheets in the preview (Word does); text inside a figure's box stays in the crop.
-- `feature/film-v2` (worktree `.claude/worktrees/film-v2`) is on GitHub since 2026-10-11, not merged. **Next build: C9 Add from bank inside the editor** (`docs/IDEAS.md` § Recommended order); design not started.
+- `feature/film-v2` (worktree `.claude/worktrees/film-v2`) is on GitHub since 2026-10-11, not merged. **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked, not to start early.
 
 ## Where we are
 

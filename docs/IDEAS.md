@@ -22,10 +22,10 @@ C10), what happens after the paper is sat (G), and AI authoring (E1/E3/E4 built 
 
 ## Recommended order
 
-1. **Now** — C9 Add from bank inside the editor (import now fills banks), then E7 Write one
-   like this (the user's next AI feature), then C10. Not
-   urgent (user, 2026-10-08): make classes + sat-on findable (the greyed 題庫 Class filter
-   should open Setup at the field).
+1. **Now (user, 2026-10-12)** — refine the UX of existing features; no new features yet.
+   **Parked until the user returns to them:** C9 Add from bank inside the editor, E7 Write one
+   like this and recipes (`docs/design/ai-pattern-questions.md`), C10. Not urgent (user,
+   2026-10-08): make classes + sat-on findable (the greyed 題庫 Class filter should open Setup).
 2. **Next** — item analysis (G1), which also completes C4's facility; C11's remaining
    filters; bank authoring (`docs/design/bank-authoring.md`, 3 questions for the user).
 3. **Later** — import layout profiles (D), unpausing E1/E3/E4 after live evals, data charts
