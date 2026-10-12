@@ -129,7 +129,8 @@ without one (`src/ai/providers.ts`). Never embed a key; never send student scrip
   run on every save.
 - **E7 Write one like this** (M, stage 1): ✦ a new question from a selected one's *pattern*
   (topic, type, marks, command words, stimulus), read locally; no past-paper text ever reaches
-  the model; local near-copy check. Design `docs/design/ai-pattern-questions.md`, 3 questions.
+  the model; local near-copy check; MC traps. Later: recipes (the ComfyUI idea, form first).
+  Design `docs/design/ai-pattern-questions.md`, 6 questions.
 - **E5 Differentiated copy** (M), **E6 data-response builder** with diagrams from a preset
   vocabulary, never raw model coordinates (L).
 

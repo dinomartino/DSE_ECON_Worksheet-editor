@@ -1,10 +1,13 @@
 # Write a question like this one — design proposal
 
 Status: proposal, 2026-10-12, against `develop` at `fecd5ed4`. Not built; queued after C9.
-Copyright background: `docs/research/2026-09-question-bank.md` (HKEAA licence). Not legal
+Copyright background: `docs/research/2026-09-question-bank.md` (HKEAA licence). The recipe
+builder (§ Recipes) comes from `docs/research/2026-10-node-question-builder.md`. Not legal
 advice; confirm with HKEAA or a lawyer before release.
 
-The ask (the user): "recreate a question based on a past paper reference, by AI."
+The ask (the user): "recreate a question based on a past paper reference, by AI"; then, after
+ComfyUI: connect the teacher's idea, pasted data, a 題庫 reference, the skill and topic, and
+for MC the trap behind each wrong option, into one question.
 
 ## The rule that shapes everything
 
@@ -93,17 +96,55 @@ Without knowing which questions are HKEAA's, nothing can be warned or kept patte
   and stays silent.
 - Later, separately: print the licence's particulars line on copied HKEAA questions.
 
+## Recipes: the ComfyUI idea, form first
+
+ComfyUI builds an image from a graph of typed nodes, saved as a workflow file; a reference
+steers the result through a separate input (LoRA, IPAdapter, ControlNet) without being
+copied. The same split fits questions: the reference gives structure, the teacher gives
+content. Research: `docs/research/2026-10-node-question-builder.md`.
+
+- **A recipe** is a typed, versioned spec for one question. Inputs: Idea (the teacher's
+  words), Data (a pasted table), Reference (a 題庫 question; output type `pattern` only, so
+  no wiring can send its text), Topic and skill, Command and marks, Trap (one per wrong
+  option), Stimulus (none, text, table, or a Graph preset), Language. Output: MC or
+  structured, or Add to 題庫.
+- **Form, not canvas, for teachers.** Every node tool studied added a form view over its
+  graph for non-experts (ComfyUI App mode, Figma Weave, Krea, Dify, Opal); no teacher tool
+  uses a canvas. ✦ **Write from a recipe…** opens a dialog with the recipe's fields; the
+  graph is the data model. A React Flow canvas (MIT; never ComfyUI code, which is GPL-3.0)
+  only if teachers ask.
+- **One AI call per run**: the recipe compiles into one structured-output call (stem, key,
+  each wrong option with its trap and why). Cheaper, and the options stay coherent.
+- **Traps.** For MC, three rows, one per wrong option: a misconception for the topic from a
+  curated bilingual list, "Let the AI choose", or "My own…". Prompts name the misconception
+  before the option and give the model the key and reasoning (DiVERT 2024; both measurably
+  improve wrong options). Combination items ("(1) and (2) only"): the model writes the
+  statements and their truth; the four options and the key are computed locally.
+- **Regenerate one part, like ComfyUI's cache.** After insert (no review gate), ✦ **Rewrite
+  this wrong answer** keeps its trap, ✦ **Use a different trap** swaps it, ✦ **Rewrite
+  statement** recomputes the combination options. One commit, one Undo each.
+- **Item lint** (local) after every run: the key is the longest option, uneven option
+  lengths, duplicate options, "all/none of the above", an unbolded negative stem, answer
+  letters unbalanced across the paper. About half of AI-written items have such flaws.
+- **Recipe files**: JSON with `recipeVersion` from day one and the documents' compatibility
+  promise; data only, no keys; a Reference saves its pattern, never text. Shared through the
+  library folder. Not embedded in the exported `.docx`: it goes to students and traps give
+  the answers away.
+- E7 Write one like this is the simplest built-in recipe; E3 is Data → MC; E1 and E4 are
+  later nodes, all still behind `PAUSED_VERBS`.
+
 ## Stages
 
-1. **Pattern + write + near-copy check**, ✦ Write one like this on a selected question (editor
-   and 題庫). Pattern-only for every question. Behind `PAUSED_VERBS` until live evals pass
-   (`npm run eval:…` with a fixed set of invented reference questions; no HKEAA text in the
-   repo).
+1. **Pattern + write + near-copy check + item lint**, ✦ Write one like this on a selected
+   question (editor and 題庫), with a Traps field for MC and the per-option ✦ verbs.
+   Pattern-only for every question. Behind `PAUSED_VERBS` until live evals pass (a fixed set
+   of invented reference questions and traps, scored on: each wrong option shows its trap,
+   exactly one key, no longest-option cue, near-copy rate; no HKEAA text in the repo).
 2. **HKEAA marking** at import, the Edit panel switch, the ✦ Translate/Fill warning.
-3. **Sub-topic patterns** in the 題庫 (story 3): group the patterns of a sub-topic's
-   questions, most common first. Still derived from the teacher's own questions; nothing
-   shipped.
-4. Optional, only if wanted: a shipped pattern list written by hand, citations only.
+3. **Recipes**: the model, the form, 3 built-in recipes (MC with three traps, Combination
+   MC, Data-response with parts), and the misconception list.
+4. **Sub-topic patterns** in the 題庫 (story 3), and recipe files saved and shared.
+5. Canvas, only on demand.
 
 ## Questions for the user
 
@@ -115,10 +156,18 @@ Without knowing which questions are HKEAA's, nothing can be warned or kept patte
 3. **Answers:** should it also write the answer / marking scheme? Recommended: **yes for MC
    (the key), yes for structured** once E1 (answers) is unpaused; until then the question
    only.
+4. **Form or canvas:** is the form with a trap picker enough, or will teachers wire nodes?
+   Recommended: **form first**.
+5. **The misconception list:** who writes it, how many per topic (both languages, paper-side)?
+   Recommended: **AI drafts from topic names, you review**, about 5 per sub-topic.
+6. **Where a trap is kept after insert:** this session only, or a teacher-only note on each
+   option (new optional field, printed in the Teacher version as "why it is wrong")?
+   Recommended: **session only first**.
 
 ## Risks
 
-- Quality: a pattern carries less than the original; evals decide, as for E1/E3/E4.
+- Quality: a pattern carries less than the original; evals decide, as for E1/E3/E4. AI wrong
+  options are usually valid but often not real misconceptions (Feng 2024), hence the trap list.
 - A memorised past question can still come back without a citation; the near-copy check only
   sees what the 題庫 holds. If the teacher never imported that paper, it cannot catch it.
 - Command-word lists miss phrasings; unknown commands fall back to the question's type alone.
