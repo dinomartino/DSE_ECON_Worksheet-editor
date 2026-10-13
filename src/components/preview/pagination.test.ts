@@ -11,6 +11,13 @@ import {
   resolveFillCounts,
   type PackItem,
 } from './pagination';
+import { pageNodes } from './pageNodes';
+import { breakAfterNodes } from './Preview';
+import { createWorksheet } from '@/model/factories';
+import { rt } from '@/model/text';
+import type { McqQuestion, Worksheet } from '@/model/types';
+import type { RenderNode } from '@/render/ir';
+import { renderWorksheet } from '@/render/worksheet';
 
 /**
  * The page-break rules, tested without a DOM.
@@ -255,6 +262,62 @@ describe('breaking an item that no sheet can hold', () => {
     expect(composed[0].flowIds).toEqual(['q1']);
     expect(composed[1].flowIds).toEqual([]);
     expect(composed[1].structuralOnly).toBe(true);
+  });
+});
+
+describe('a classroom MC never parts from its options (GitHub issue #1)', () => {
+  const mcq: McqQuestion = {
+    id: 'mc',
+    type: 'mcq',
+    blocks: [{ id: 'mc-b', kind: 'paragraph', text: { en: rt('Which is a public good?'), zh: [] } }],
+    options: ['A lighthouse', 'A sandwich', 'A taxi ride', 'A cinema seat'].map((text, index) => ({
+      id: `mc-o${index}`,
+      text: { en: rt(text), zh: [] },
+    })),
+    answerIndex: 0,
+    marks: 1,
+  };
+  const classroom = {
+    ...createWorksheet(),
+    questions: [mcq],
+    layout: [],
+    flow: [{ type: 'question' as const, id: 'mc' }],
+  } as Worksheet;
+  const nodes = pageNodes(
+    renderWorksheet(classroom, { language: 'en', version: 'student' }).questions[0].nodes,
+  );
+
+  /** The item as Preview joins it to the probe: each node `each` px tall. */
+  const measured = (key: string, of: RenderNode[], each: number) => {
+    const tops = of.map((_, index) => (index + 1) * each);
+    const breakPoints = breakAfterNodes(of).map((index) => ({ index, height: tops[index] }));
+    const looseBreakPoints = tops.slice(0, -1).map((height, index) => ({ index, height }));
+    return { block: item(key, { breakPoints, looseBreakPoints }), height: tops[tops.length - 1] };
+  };
+
+  it('offers no break between the stem and the options on a classroom worksheet', () => {
+    expect(nodes.length).toBeGreaterThan(1);
+    expect(breakAfterNodes(nodes)).toEqual([]);
+  });
+
+  it('moves the whole question to the next sheet when it would straddle the page', () => {
+    // 60px in all; the sheet has room for the stem and its blank line, not every option.
+    const each = 60 / nodes.length;
+    const q = measured('mc', nodes, each);
+    const heights = new Map([
+      ['above', PAGE - each * 2.5],
+      ['mc', q.height],
+    ]);
+    const { pages, fragments } = packPages([item('above'), q.block], heights, PAGE);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['above'], ['mc']]);
+    expect(fragments.size).toBe(0);
+  });
+
+  it('is still cut where the sheet ends when it is taller than a sheet', () => {
+    const q = measured('mc', nodes, PAGE / 2 + 10);
+    const heights = new Map([['mc', q.height]]);
+    const { pages } = packPages([q.block], heights, PAGE);
+    expect(pages.length).toBeGreaterThan(1);
   });
 });
 

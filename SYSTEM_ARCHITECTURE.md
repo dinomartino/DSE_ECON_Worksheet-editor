@@ -1538,8 +1538,13 @@ Measured off DSE 2021 P1, spelled as blank lines on the same fixed 12pt grid:
   but the last takes `keepNext`, text/columns rows take `keepLines` — the preview's
   paginator never splits an item, so without the chain the .docx broke pages inside a
   question the screen had pushed whole. The last node stays free (the chain must not
-  run through the boundary gap), and `keepWhole` is part of the render cache key.
-- **Only on a Paper 1**, decided by `documentShape()` — a classroom worksheet keeps
+  run through the boundary gap), and `keepWhole` is part of the render cache key, as is
+  `shape` (the list indents follow it, and an MC's `keepWhole` no longer does).
+- **Every MC is kept whole on every paper**: the definition's `keepWhole` asks the walker
+  for the same chain outside Paper 1 (a stem without its options cannot be answered).
+  Structured questions keep it only on Paper 1: they run long, and their answer space
+  breaks between lines. Stimulus groups keep it only on Paper 1.
+- **The wide gap only on a Paper 1**, decided by `documentShape()` — a classroom worksheet keeps
   the one-line rhythm; widening would silently re-paginate existing documents. Derived,
   never stored.
 - **A wide gap still counts what is already there** (`endsInBlankLine` reports one
@@ -1608,8 +1613,9 @@ page 1).
 - **Overflowing, an item fills the sheet up to the last boundary that fits**, its head
   paying its boundary gap. With no boundary that fits it moves **whole**, and a chain
   taller than a page is then cut at the last node that fits (`looseBreakPoints`), as Word
-  cuts it. A Paper 1 question is one chain (`keepQuestionWhole`), so it moves whole and
-  is cut only when taller than a sheet; before, it hung off the paper.
+  cuts it. A Paper 1 question is one chain (`keepQuestionWhole`), and so is an MC on any
+  paper (`keepWhole` on its type definition), so it moves whole and is cut only when taller
+  than a sheet; before, it hung off the paper (Paper 1) or left its options behind (GitHub #1).
 - **What keeps with the next item moves with it** (`keepsWithNext`, `pullGluedTail`): a
   heading, or a question's last part, which `keepNext` holds against the next stem. Not
   when that would empty the sheet or the chain would not fit the next one.

@@ -44,6 +44,14 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
    * MCQs, so the type states it and the walker only asks.
    */
   examGapLines?: number;
+  /**
+   * Keep each question of this type on one sheet in every document shape, in Word and so
+   * in the preview (`render/worksheet.ts:keepQuestionWhole`). Absent: kept whole only on a
+   * Paper 1. Set it where a question is short and reads as one piece (an MC's stem and
+   * options); a type whose answer space breaks between lines leaves it off. A chain taller
+   * than a sheet is still cut where the sheet ends.
+   */
+  keepWhole?: boolean;
   /** The type's editor panel. */
   EditorPanel: ComponentType<EditorPanelProps<Q>>;
   /**

@@ -607,6 +607,8 @@ export const mcqType: QuestionTypeDefinition<McqQuestion> = {
   create: createMcqQuestion,
   render,
   examGapLines: MCQ_EXAM_GAP_LINES,
+  // A stem without its options cannot be answered: every MC stays on one sheet, on any paper.
+  keepWhole: true,
   EditorPanel: McqEditorPanel,
   mapTexts,
   mapAnswers,

@@ -432,15 +432,35 @@ describe('a gap counts what is already there', () => {
         expect(nodes[0].kind).toBe('text');
       });
 
-      it('leaves a classroom worksheet free to split, byte-identically', () => {
+      it('keeps an MC whole on a classroom worksheet too, its stem never parted from its options', () => {
+        // GitHub issue #1: after a reorder, a classroom MC's options fell onto the next page.
         const rendered = renderWorksheet(twoQuestions(createWorksheet()), {
           language: 'en',
           version: 'student',
         });
         for (const question of rendered.questions) {
-          for (const node of question.nodes) {
-            expect('keepLines' in node && node.keepLines).toBeFalsy();
-          }
+          const nodes = question.nodes;
+          nodes.slice(0, -1).forEach((node, index) => {
+            expect(node, `node ${index} must keep with the next`).toMatchObject({ keepNext: true });
+          });
+          expect(nodes[nodes.length - 1]).not.toMatchObject({ keepNext: true });
+        }
+      });
+
+      it('leaves a classroom structured question free to split, as before', () => {
+        // Long, and its answer space breaks between lines: only the exam paper holds it.
+        const structured: StructuredQuestion = {
+          id: 'q2',
+          type: 'structured',
+          blocks: [{ id: 'sb', kind: 'paragraph', text: bi('Stem', '') }],
+          parts: [{ id: 'sp', blocks: [{ id: 'spb', kind: 'paragraph', text: bi('a', '') }], marks: 2 }],
+        };
+        const rendered = renderWorksheet(twoQuestions(createWorksheet(), [mcq('q1'), structured]), {
+          language: 'en',
+          version: 'student',
+        });
+        for (const node of rendered.questions[1].nodes) {
+          expect('keepLines' in node && node.keepLines).toBeFalsy();
         }
       });
     });
