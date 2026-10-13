@@ -833,7 +833,7 @@ describe('page breaks (§7.6, §11.7)', () => {
     expect(document).toContain('<w:keepNext/>');
   });
 
-  it('spells keep-together over a Paper 1 question, and not over a classroom one', () => {
+  it('spells keep-together over a Paper 1 question, and over a classroom MC only', () => {
     // The preview's paginator never splits an item, so the exam paper tells Word the
     // same thing (§ keepQuestionWhole): keepNext chained through the question, with
     // keepLines on its rows, in CT_PPr's own order.
@@ -842,9 +842,15 @@ describe('page breaks (§7.6, §11.7)', () => {
       /<w:keepNext\/><w:keepLines\/>/,
     );
 
-    // A classroom worksheet stays free to split — and byte-identical to before.
-    const classroom = buildAcceptanceWorksheet();
-    expect(buildDocxParts(classroom, STUDENT_BI).documentXml).not.toContain('<w:keepLines/>');
+    // A classroom MC is held to one page too (GitHub issue #1); its structured
+    // questions stay free to split.
+    const classroom = buildDocxParts(buildAcceptanceWorksheet(), STUDENT_BI).documentXml;
+    const paragraphWith = (text: string) =>
+      classroom.split('</w:p>').find((paragraph) => paragraph.includes(text)) ?? '';
+    expect(paragraphWith('What happens when demand falls?')).toMatch(
+      /<w:keepNext\/><w:keepLines\/>/,
+    );
+    expect(paragraphWith('Define equilibrium price.')).not.toContain('<w:keepLines/>');
   });
 });
 

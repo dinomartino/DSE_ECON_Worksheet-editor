@@ -205,6 +205,8 @@ const questionRenderCache = new WeakMap<
     stream: string;
     gap: number;
     keepWhole: boolean;
+    /** Picks the list indent scheme; `keepWhole` no longer implies it (an MC keeps whole on any shape). */
+    shape: DocumentShape;
     /** `seed:version` of the paper version this was rendered as; '' when off. */
     variant: string;
     nodes: RenderNode[];
@@ -527,9 +529,11 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     const wanted = boundaryGapLines(shape, previous, question, worksheet.examGapLines);
     const gap = atTrueTop ? 0 : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0));
 
-    // On the exam paper a question is kept whole, in Word and so in the preview, which
-    // reads the same keep chain (§ keepQuestionWhole).
-    const keepWhole = shape === 'paper1';
+    // On the exam paper a question is kept whole, and on any paper one whose type asks
+    // for it (an MC), in Word and so in the preview, which reads the same keep chain
+    // (§ keepQuestionWhole).
+    const definition = requireQuestionType(question);
+    const keepWhole = shape === 'paper1' || definition.keepWhole === true;
 
     // The leading gap is part of the cached array, so an unchanged question hands back
     // one stable identity for the preview to memoise on (see `questionRenderCache`).
@@ -542,11 +546,11 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
       cached.stream === questionStream &&
       cached.gap === gap &&
       cached.keepWhole === keepWhole &&
+      cached.shape === shape &&
       cached.variant === variantKey
     ) {
       separated = cached.nodes;
     } else {
-      const definition = requireQuestionType(question);
       const printed =
         version === undefined
           ? question
@@ -557,8 +561,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
           questionNumber: number,
           questionId: question.id,
           questionStream,
-          // Follows the shape exactly as `keepWhole` does, so the existing cache key
-          // already tells a scheme change apart.
+          // `shape` is in the cache key, so a scheme change re-renders.
           indents: listIndentScheme(shape),
         })
         // Student output must contain no teacher content anywhere (§11.8).
@@ -574,6 +577,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         stream: questionStream,
         gap,
         keepWhole,
+        shape,
         variant: variantKey,
         nodes: separated,
       });
@@ -710,8 +714,9 @@ interface StimulusRender {
 /**
  * Word's keep-together, spelled over one question's nodes: every node but the last
  * keeps with the next, and a text or columns row keeps its own lines. The exam paper
- * keeps each question on one sheet; the preview's paginator reads the same chain, so
- * both move it whole (§ An item breaks where Word breaks it). The last node stays free,
+ * keeps each question on one sheet, and every paper keeps a type that asks for it
+ * (`keepWhole` on its definition: an MC); the preview's paginator reads the same chain,
+ * so both move it whole (§ An item breaks where Word breaks it). The last node stays free,
  * or the chain would run through the boundary gap and glue every question to the next.
  */
 function keepQuestionWhole(nodes: RenderNode[]): RenderNode[] {

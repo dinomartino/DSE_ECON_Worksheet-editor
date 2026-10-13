@@ -30,6 +30,13 @@ a version heading is edited afterwards.
   in 題庫.
   <!-- zh: **只有一個題庫。** 匯入和「複製到題庫」不再問要用哪個題庫，也不用為題庫命名。題目會加入你的題庫，其他題庫裡已有的題目仍會在題庫中顯示。 -->
 
+### Fixed
+- **A multiple-choice question always stays on one page.** On any worksheet, an MC question that
+  would not fit at the bottom of a page now moves to the next page whole, so its options are never
+  separated from the question, on screen or in Word. A question taller than a whole page still
+  breaks where the page ends.
+  <!-- zh: **多項選擇題一定印在同一頁。** 在任何工作紙上，如果 MC 題在頁底放不下，整條題目會移到下一頁，選項不會再與題目分開，畫面和 Word 都一樣。比一整頁還長的題目，仍會在頁尾斷開。 -->
+
 ## 0.8.0 — 2026-10-10
 
 ### Added
