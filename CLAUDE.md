@@ -61,8 +61,8 @@ The full policy — collapsing migrations, their size budget, files from a newer
 
 ## Verifying work
 
-- `npm test` — ~3300 tests, ~10s. `npm run typecheck`, `npm run lint` (41 pre-existing
-  problems: 3 errors in `Preview.tsx` and `InlineEditable.tsx`, 38 warnings spread
+- `npm test` — ~3300 tests, ~10s. `npm run typecheck`, `npm run lint` (40 pre-existing
+  problems: 3 errors in `Preview.tsx` and `InlineEditable.tsx`, 37 warnings spread
   across other files; `lint-baseline.json` in the `jev` skill lists them).
 - `node .claude/skills/jev/bin/verify-plan.mjs` lists which of the checks below a diff
   needs. Tests and typecheck always run; when unsure it says required.
