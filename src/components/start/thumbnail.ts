@@ -187,17 +187,9 @@ function bodyHtml(worksheet: Worksheet, mode: OutputMode): string {
     cursor = at + fragment.length;
   }
   pieces.push(whole.slice(cursor));
-  let body = pieces.join('');
+  const body = pieces.join('');
   const cut = body.indexOf(PAGE_BREAK);
-  if (cut >= 0) body = body.slice(0, cut);
-  /*
-   * The clipboard prefixes every paragraph with its paste font at 12pt; the page prints
-   * at the document's body size (11pt, the QAB's 10pt). The prefix is rebuilt here from
-   * the same fonts, so a change to its spelling fails `thumbnail.test.ts`, not silently.
-   */
-  const pasted = `${fontFamily(worksheet.fonts)}font-size:12pt;`;
-  const printed = `${fontFamily(worksheet.fonts)}font-size:${worksheet.baseFontSize ?? 11}pt;`;
-  return body.split(pasted).join(printed);
+  return cut >= 0 ? body.slice(0, cut) : body;
 }
 
 /* The cover's regions are text, instruction rows and blank lines — a small emitter over

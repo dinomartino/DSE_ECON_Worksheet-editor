@@ -135,7 +135,7 @@ Invariants:
 
 ## export (other)
 
-- `src/export/clipboard.ts:worksheetClipboardHtml` · `:copyForWord` — the third backend
+- `src/export/clipboard.ts:questionClipboardHtml` · `:copyForWord` — the third backend: one question to Word (Outline ⋯); `:worksheetClipboardHtml` feeds the start-screen thumbnail
 - `src/export/diagramImage.ts:renderDiagramImages` — PNG pre-pass; one image per diagram
 - `src/export/diagramImage.ts:renderNodeDiagramImages` — the same pre-pass over a stand-alone IR (the answer key)
 - `src/export/imageImport.ts:prepareImageForStorage` · `:planImageImport` — downscale on paste

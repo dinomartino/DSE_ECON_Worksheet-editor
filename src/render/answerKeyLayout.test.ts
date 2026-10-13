@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import { buildAnswerKeyDocxParts, exportAnswerKeyDocxBuffer, exportDocxBuffer } from '@/export/docx';
-import { answerKeyClipboardHtml, worksheetClipboardHtml } from '@/export/clipboard';
+import { worksheetClipboardHtml } from '@/export/clipboard';
 import { createAnswerDiagram, createMcqQuestion, createWorksheet } from '@/model/factories';
 import { bi, plain } from '@/model/text';
 import type { AnswerKeyLayout, BiText, LanguageMode, McqQuestion, OutputMode, Worksheet } from '@/model/types';
@@ -288,13 +288,6 @@ describe('the layout is the key’s alone', () => {
     for (const leak of ['Supply decreases', 'Answers are for reference only', 'Marks', '評卷參考', 'Notation']) {
       expect(xml).not.toContain(leak);
     }
-  });
-
-  it('the clipboard copy of the key follows the layout', () => {
-    const worksheet = withLayout(paper(2), { preset: 'hkeaa' });
-    const html = answerKeyClipboardHtml(worksheet, 'en');
-    expect(html).toContain('Question No.');
-    expect(html).toContain(`padding-right:${marksColumnWidth('en') / 20}pt`);
   });
 });
 

@@ -4,7 +4,6 @@ import { contentWidth, DEFAULT_PAGE_SETUP, pageSetupOf, twipsToPt } from '@/mode
 import { answerGraphBox } from '@/render/answerGraph';
 import type {
   BiText,
-  FontPair,
   LanguageMode,
   OutputMode,
   TextFormat,
@@ -22,7 +21,6 @@ import {
   type TextNode,
 } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
-import { renderAnswerKey } from '@/render/answerKey';
 import type { DiagramImageMap } from './diagramImage';
 
 /**
@@ -505,18 +503,19 @@ function columnsHtml(
   return `<p${node.band ? ' data-band' : ''} style="${css}">${pieces.join('') || '&nbsp;'}</p>`;
 }
 
-function fontCss(fonts: FontPair): string {
-  return `font-family:${cssFontFamilies(fonts, "'", ',')},serif;font-size:12pt;`;
+/** The paste font, at the document's body size (11pt, the QAB's 10pt), as on the page. */
+function fontCss(worksheet: Worksheet): string {
+  return `font-family:${cssFontFamilies(worksheet.fonts, "'", ',')},serif;font-size:${worksheet.baseFontSize ?? 11}pt;`;
 }
 
-/** HTML for the whole worksheet, ready to paste into Word. */
+/** The whole worksheet as clipboard HTML: the start screen's thumbnail lays it out. */
 export function worksheetClipboardHtml(
   worksheet: Worksheet,
   mode: OutputMode,
   diagramImages: DiagramImageMap = new Map(),
 ): string {
   const rendered = renderWorksheet(worksheet, mode);
-  const css = fontCss(worksheet.fonts);
+  const css = fontCss(worksheet);
   const parts: string[] = [];
   const textWidth = contentWidth(pageSetupOf(worksheet));
   const html = (node: RenderNode) => nodeHtml(node, mode.language, css, diagramImages, textWidth);
@@ -565,7 +564,7 @@ export function questionClipboardHtml(
   printedNumber?: number,
 ): string {
   const nodes = questionClipboardNodes(worksheet, questionId, mode, diagramImages, printedNumber);
-  return wrapHtml(nodes.map((node) => node.html).join(''), fontCss(worksheet.fonts));
+  return wrapHtml(nodes.map((node) => node.html).join(''), fontCss(worksheet));
 }
 
 /** One top-level IR node of a question as clipboard HTML, and the id it names (`nodeTarget`). */
@@ -588,7 +587,7 @@ export function questionClipboardNodes(
   printedNumber?: number,
 ): ClipboardNodeHtml[] {
   const rendered = renderWorksheet(worksheet, mode);
-  const css = fontCss(worksheet.fonts);
+  const css = fontCss(worksheet);
   const match = rendered.questions.find((entry) => entry.questionId === questionId);
   if (!match) return [];
   const nodes = printedNumber === undefined ? match.nodes : match.nodes.map((node) => withQuestionNumber(node, printedNumber));
@@ -667,7 +666,6 @@ function wrapHtml(body: string, css: string): string {
   );
 }
 
-/** Plain-text fallback flavour. */
 /** One node as plain-text lines, pushed onto `lines`. */
 function pushPlain(lines: string[], node: RenderNode, language: LanguageMode): void {
   if (node.kind === 'text') {
@@ -731,33 +729,10 @@ function pushPlain(lines: string[], node: RenderNode, language: LanguageMode): v
   }
 }
 
-/**
- * The answer key (`render/answerKey.ts`) as clipboard HTML: the Marking scheme view's
- * Copy for Word. The nodes the `.docx` key is built from; no page furniture, as ever.
- */
-export function answerKeyClipboardHtml(
-  worksheet: Worksheet,
-  language: LanguageMode,
-  diagramImages: DiagramImageMap = new Map(),
-): string {
-  const css = fontCss(worksheet.fonts);
-  const width = contentWidth(pageSetupOf(worksheet));
-  const body = renderAnswerKey(worksheet, language)
-    .map((node) => nodeHtml(node, language, css, diagramImages, width))
-    .join('');
-  return wrapHtml(body, css);
-}
-
 /** One node's clipboard HTML. Exposed for the tests that prove edit targets are inert. */
 export { nodeHtml as clipboardNodeHtml };
 
-/** The answer key's plain-text flavour. */
-export function answerKeyPlainText(worksheet: Worksheet, language: LanguageMode): string {
-  const lines: string[] = [];
-  for (const node of renderAnswerKey(worksheet, language)) pushPlain(lines, node, language);
-  return lines.join('\n');
-}
-
+/** The worksheet as plain text: the thumbnail counts its scripts to pick a language. */
 export function worksheetPlainText(worksheet: Worksheet, mode: OutputMode): string {
   const rendered = renderWorksheet(worksheet, mode);
   const lines: string[] = [];

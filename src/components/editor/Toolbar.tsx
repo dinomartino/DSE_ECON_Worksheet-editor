@@ -1,15 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  answerKeyClipboardHtml,
-  answerKeyPlainText,
-  copyForWord,
-  worksheetClipboardHtml,
-  worksheetPlainText,
-} from '@/export/clipboard';
-import { renderDiagramImages, renderNodeDiagramImages } from '@/export/diagramImage';
-import { renderAnswerKey } from '@/render/answerKey';
 import type { LanguageMode, OutputMode, VersionMode } from '@/model/types';
 import { useWorksheetStore, type DocumentView } from '@/store/worksheetStore';
 import { downloadWorksheetFile } from '@/storage';
@@ -113,7 +104,6 @@ export function Toolbar({
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
   const readOnly = useWorksheetStore((s) => s.readOnly);
 
-  const [busy, setBusy] = useState<string | undefined>();
   const notices = useNotices();
   const [confirmingClear, setConfirmingClear] = useState(false);
   // Clear detaches a storage folder (`clearSavedLibrary`); the confirm says so.
@@ -196,38 +186,6 @@ export function Toolbar({
   const handleExported = (message: string, path?: string) => {
     setError(undefined);
     flash(message, revealAction(path));
-  };
-
-  const handleCopy = async () => {
-    setBusy('copy');
-    setError(undefined);
-    try {
-      // What is on the page is what is copied: the paper, or in the Marking scheme view
-      // its key. Diagrams are rasterized first so each pastes into Word as one image.
-      if (documentView === 'answerKey') {
-        const images = await renderNodeDiagramImages(
-          renderAnswerKey(worksheet, mode.language),
-          worksheet.fonts,
-          mode.language,
-        );
-        await copyForWord(
-          answerKeyClipboardHtml(worksheet, mode.language, images),
-          answerKeyPlainText(worksheet, mode.language),
-        );
-        flash(m.copied);
-        return;
-      }
-      const diagramImages = await renderDiagramImages(worksheet, mode);
-      await copyForWord(
-        worksheetClipboardHtml(worksheet, mode, diagramImages),
-        worksheetPlainText(worksheet, mode),
-      );
-      flash(m.copied);
-    } catch {
-      setError(m.copyFailed);
-    } finally {
-      setBusy(undefined);
-    }
   };
 
   /**
@@ -427,23 +385,19 @@ export function Toolbar({
         <Menu
           label={m.menu}
           items={[
-            { label: busy === 'copy' ? m.copying : m.copyForWord, onSelect: () => void handleCopy() },
-            // The group after Copy for Word opens on a rule, whichever item leads it.
-            ...[
-              ...(readOnly ? [] : [{ label: m.saveNow, onSelect: () => void save() }]),
-              ...(isDesktop()
-                ? [
-                    {
-                      label: m.checkUpdates,
-                      hint: appVersion ? `v${appVersion}` : undefined,
-                      onSelect: () => void handleCheckUpdates(),
-                    },
-                  ]
-                : []),
-              ...settingsItems,
-              { label: m.whatsNew, onSelect: () => setWhatsNew(true) },
-              { label: m.sendFeedback, onSelect: () => setFeedback(true) },
-            ].map((item, i) => (i === 0 ? { ...item, separated: true } : item)),
+            ...(readOnly ? [] : [{ label: m.saveNow, onSelect: () => void save() }]),
+            ...(isDesktop()
+              ? [
+                  {
+                    label: m.checkUpdates,
+                    hint: appVersion ? `v${appVersion}` : undefined,
+                    onSelect: () => void handleCheckUpdates(),
+                  },
+                ]
+              : []),
+            ...settingsItems,
+            { label: m.whatsNew, onSelect: () => setWhatsNew(true) },
+            { label: m.sendFeedback, onSelect: () => setFeedback(true) },
             {
               label: m.clearSaved,
               onSelect: () => setConfirmingClear(true),
