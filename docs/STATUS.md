@@ -36,9 +36,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **Sync (F9), shipped in 0.7.0** (`src/sync/`, `sync-engine.md`), visible before any real run (user's call).
 - **v0.8.1 released 2026-10-14** (published, `latest`, 9 assets + sigs checked; issue #1 closed): text size 10/11/12, MC keeps whole,
-  toolbar Copy for Word removed, one bank, keep questions on Trash. Not tried in Tauri or Word before release.
-- **v0.8.0 released 2026-10-10** (published, `latest`, all assets + signatures checked): import from Word/PDF/picture with
-  OCR, header/footer/title import, table distribute, band rows match Word, cell align. Vercel deploy not checked.
+  toolbar Copy for Word removed, one bank, keep questions on Trash. Not tried in Tauri or Word. Vercel deploy not checked (0.8.0: import w/ OCR).
 
 ## Before release (only the user can do these)
 
