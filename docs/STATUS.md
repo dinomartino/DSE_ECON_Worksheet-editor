@@ -76,5 +76,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-14** — MC keeps whole on every paper (#1; `feature/mc-keep-whole`, unmerged, not tried in Word/Tauri). **2026-10-11/12** — Import demo story; film-v2 pushed; bank authoring decided; one bank; keep questions on Trash; bank trash warning; design `ai-pattern-questions.md` (E7, after C9).
+- **2026-10-14** — GitHub #1, merged to develop: MC keeps whole on every paper (`keepWhole` on the type def); Document setup text size 10/11/12 pt (11 = absent, defaults unchanged, 12pt stays on the 240 line; checked in real Word). Not tried in Tauri; clipboard still pastes 12pt regardless (`fontCss`). **2026-10-11/12** — Import demo story; film-v2 pushed; bank authoring decided; one bank; keep questions on Trash; bank trash warning; design `ai-pattern-questions.md` (E7, after C9).
 - **2026-10-08/09** — Found-folder offer; import + paper language (15 branches); Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR; import leftovers. 19 branches. 0.8.0 released 2026-10-10.
