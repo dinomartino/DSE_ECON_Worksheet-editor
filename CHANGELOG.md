@@ -13,6 +13,11 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Choose the text size: 10, 11 or 12 pt.** In Setup, under Worksheet, pick the size of a
+  paper's questions, options and answers. The page, the Word file and the PDF all follow it,
+  and the lines stay evenly spaced. New worksheets still start at 11 pt and mock papers at 10 pt.
+  <!-- zh: **可選擇文字大小：10、11 或 12 pt。** 在「頁面設定」的「工作紙」中，可選擇題目、選項及答案的文字大小。
+  頁面、Word 檔案及 PDF 都會跟隨，行距保持一致。新工作紙仍以 11 pt 開始，Mock 試卷以 10 pt 開始。 -->
 - **Deleting a worksheet can keep its questions in 題庫.** When you move a worksheet to the
   Trash and some of its questions are saved nowhere else, Econ Studio asks whether to keep them
   in 題庫 (the default) or move them to the Trash with the worksheet. Kept questions keep their

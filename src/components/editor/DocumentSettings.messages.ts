@@ -45,6 +45,13 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
     en: 'Applied to Latin and Chinese text separately in the export.',
     zh: '匯出時，英文與中文文字分別套用。',
   },
+  textSize: { en: 'Text size', zh: '文字大小' },
+  textSizeHint: {
+    en: 'For questions, options and answers. The title, headings and cover keep their own sizes, and the line spacing stays the same.',
+    zh: '用於題目、選項及答案。標題、分部標題及封面保留各自的大小，行距不變。',
+  },
+  textSizeOption: { en: (pt: number) => `${pt} pt`, zh: (pt: number) => `${pt} pt` },
+  textSizeDefault: { en: (pt: number) => `${pt} pt (standard)`, zh: (pt: number) => `${pt} pt（標準）` },
   custom: { en: 'Custom', zh: '自訂' },
   customEllipsis: { en: 'Custom…', zh: '自訂…' },
 

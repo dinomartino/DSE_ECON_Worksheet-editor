@@ -11,6 +11,7 @@ import {
   HEADER_FOOTER_PRESETS,
 } from '@/model/bands';
 import { FONT_PRESETS } from '@/model/factories';
+import { BODY_TEXT_SIZES, bodyTextSizeOf, DEFAULT_BODY_TEXT_SIZE, withBodyTextSize } from '@/model/fonts';
 import {
   bandsHeight,
   bandsOverflow,
@@ -207,6 +208,8 @@ function DocumentTab() {
         />
       </Field>
 
+      <TextSizeField />
+
       <VersionsField />
 
       <TargetField />
@@ -219,6 +222,35 @@ function DocumentTab() {
           (§"the preview is the editor"). This list edited headings by index while the
           page showed them in place, giving two ways to change one thing. */}
     </div>
+  );
+}
+
+/**
+ * The document's body size (`Worksheet.baseFontSize`): 10, 11 or 12pt, one undo step.
+ * A size outside the three (none is made today) is shown as its own choice rather than
+ * leaving the control with nothing selected.
+ */
+function TextSizeField() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
+  const size = useWorksheetStore((s) => bodyTextSizeOf(s.worksheet));
+  const commit = useWorksheetStore((s) => s.commit);
+  const sizes: number[] = [...BODY_TEXT_SIZES];
+  if (!sizes.includes(size)) sizes.push(size);
+  sizes.sort((a, b) => a - b);
+
+  return (
+    <Field label={m.textSize} hint={m.textSizeHint}>
+      <Segmented<string>
+        label={m.textSize}
+        value={String(size)}
+        onChange={(value) => commit((draft) => withBodyTextSize(draft, Number(value)))}
+        options={sizes.map((pt) => ({
+          value: String(pt),
+          label: m.textSizeOption(pt),
+          title: pt === DEFAULT_BODY_TEXT_SIZE ? m.textSizeDefault(pt) : m.textSizeOption(pt),
+        }))}
+      />
+    </Field>
   );
 }
 
