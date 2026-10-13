@@ -1325,14 +1325,21 @@ Everything here is opt-in data, so a document using none of it exports byte-iden
 ### The booklet is a 10pt document
 
 `Worksheet.baseFontSize` (points, absent = 11, in `KNOWN_KEYS`); `lqMock` and `paper1`
-both seed 10 — the two papers of one mock read at one size. A
+both seed 10 — the two papers of one mock read at one size. The teacher picks 10, 11 or
+12 in Document setup (`withBodyTextSize`, one commit); 11 is stored as absence, so a
+document set back to 11 exports as if never touched. A
 **document** property, not per-element formatting (seeding `TextFormat` per element
 would revert on the first typed question). Three consumers: `buildStylesXml` scales
 docDefaults/`Normal`/body-sized styles (display styles keep their sizes); the preview
 sets the same size on `.paper` sheets *and the pagination probe*; `renderCover` prints
 "INSTRUCTIONS" at it. **The fixed 12pt line does not shrink** — `exactLineFor` clamps
-everything ≤11pt to 240, and the preview's `formatStyle` mirrors the clamp. Cover lines
-that must not follow the body size store their own 11pt.
+everything ≤11pt to 240, and the preview's `formatStyle` mirrors the clamp. A 12pt
+body stays on 240 too: the body styles state the fixed line, not `exactLineFor(base)`.
+Set solid, descenders meet the next line's CJK tops, but nothing clips (rendered in Word
+and LibreOffice); a 262-twip line would change every page count and answer-space fill.
+Only an element that stores `fontSize: 12` (the cover's "INSTRUCTIONS" label at a 12pt
+base) takes the scaled line. Cover lines that must not follow the body size store their
+own 11pt.
 
 ### The dotted answer line is a different primitive
 

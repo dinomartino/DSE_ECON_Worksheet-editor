@@ -858,7 +858,8 @@ export interface Worksheet {
   flow: FlowItem[];
   fonts: FontPair;
   /**
-   * The document's body text size, in points; absent means 11. A *document*
+   * The document's body text size, in points; absent means 11 (Document setup offers
+   * 10, 11 or 12, storing 11 as absence: `withBodyTextSize`). A *document*
    * property, not a style override — the QAB's whole body is 10pt, and per-element
    * seeding would revert on the first typed question. The fixed 12pt line is
    * untouched.

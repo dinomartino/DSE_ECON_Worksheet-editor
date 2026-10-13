@@ -1,4 +1,4 @@
-import type { FontPair } from './types';
+import type { FontPair, Worksheet } from './types';
 
 /**
  * Browser stand-ins for an East-Asian face a Mac does not ship under its Word name.
@@ -27,4 +27,31 @@ export function cssFontFamilies(fonts: FontPair, quote = "'", sep = ', '): strin
   return [fonts.latin, ...eastAsiaFamilies(fonts.eastAsia)]
     .map((name) => `${quote}${name}${quote}`)
     .join(sep);
+}
+
+/**
+ * The body sizes a teacher can pick (Document setup), in points. 11 is the default and
+ * is stored as absence, so choosing it hands back a document whose export is the same
+ * as one that never had the field (§ `Worksheet.baseFontSize`).
+ */
+export const BODY_TEXT_SIZES = [10, 11, 12] as const;
+
+/** What `baseFontSize` means when absent; the exporter's `DEFAULT_BASE_FONT_SIZE_PT`. */
+export const DEFAULT_BODY_TEXT_SIZE = 11;
+
+/** The document's body size in points, absent read as 11. */
+export function bodyTextSizeOf(worksheet: Pick<Worksheet, 'baseFontSize'>): number {
+  return worksheet.baseFontSize ?? DEFAULT_BODY_TEXT_SIZE;
+}
+
+/**
+ * The document set at `size`: 11 removes the field, anything else stores it. The same
+ * object when nothing changes, so `commit` records no undo step for a no-op.
+ */
+export function withBodyTextSize(worksheet: Worksheet, size: number): Worksheet {
+  const stored = size === DEFAULT_BODY_TEXT_SIZE ? undefined : size;
+  if (worksheet.baseFontSize === stored) return worksheet;
+  const next: Worksheet = { ...worksheet, baseFontSize: stored };
+  if (stored === undefined) delete next.baseFontSize;
+  return next;
 }
