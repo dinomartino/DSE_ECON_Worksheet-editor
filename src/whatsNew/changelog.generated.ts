@@ -14,6 +14,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.8.1 — 2026-10-14
+
 ### Added
 - **Choose the text size: 10, 11 or 12 pt.** In Setup, under Worksheet, pick the size of a
   paper's questions, options and answers. The page, the Word file and the PDF all follow it,
