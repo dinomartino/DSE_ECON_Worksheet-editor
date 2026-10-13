@@ -41,7 +41,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Before release (only the user can do these)
 
 - Sync's first real run (`sync-engine.md` § First real run), then the Stage 0 provider probe on two computers.
-- Paste into Word: a copied worksheet (tabbed MC options, label lists, header rows, page-number field).
+- Paste into Word: a copied question (tabbed MC options, label lists, header rows), at the document's text size.
 - Windows: 0.6.0 shipped without the rename hook test (`RELEASING.md`), user's call; check one install;
   Keychain prompt in a built app; 標楷體 export in Word.
 - A real AI key: Save & test, Fill, Re-translate, `npm run eval:translate` (model ids in
@@ -76,5 +76,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-14** — GitHub #1, merged to develop: MC keeps whole on every paper (`keepWhole` on the type def); Document setup text size 10/11/12 pt (11 = absent, defaults unchanged, 12pt stays on the 240 line; checked in real Word). Not tried in Tauri; clipboard still pastes 12pt regardless (`fontCss`). **2026-10-11/12** — Import demo story; film-v2 pushed; bank authoring decided; one bank; keep questions on Trash; bank trash warning; design `ai-pattern-questions.md` (E7, after C9).
+- **2026-10-14** — GitHub #1, merged to develop: MC keeps whole on every paper (`keepWhole` on the type def); Document setup text size 10/11/12 pt (11 = absent, defaults unchanged, 12pt stays on the 240 line; checked in real Word). Not tried in Tauri. **2026-10-11/12** — Import demo story; film-v2 pushed; bank authoring decided; one bank; keep questions on Trash; bank trash warning; design `ai-pattern-questions.md` (E7, after C9).
 - **2026-10-08/09** — Found-folder offer; import + paper language (15 branches); Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR; import leftovers. 19 branches. 0.8.0 released 2026-10-10.

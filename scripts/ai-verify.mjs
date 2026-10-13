@@ -442,7 +442,7 @@ async function entryChecks(engine, browser) {
 
   await check(engine, '⋯ menu and Outline offer no Translate', async () => {
     await page.getByRole('button', { name: 'File and export options' }).click();
-    await page.getByRole('menuitem', { name: 'Copy for Word' }).waitFor();
+    await page.getByRole('menuitem', { name: /^Send feedback/ }).waitFor();
     const toolbar = await page.getByRole('menuitem', { name: /Translat|Check terms/ }).count();
     await shot(page, 'entry-06-more-menu');
     await page.keyboard.press('Escape');

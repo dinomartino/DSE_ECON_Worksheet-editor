@@ -36,6 +36,11 @@ a version heading is edited afterwards.
   name. Questions go to your question bank, and everything already in other banks still shows
   in 題庫.
   <!-- zh: **只有一個題庫。** 匯入和「複製到題庫」不再問要用哪個題庫，也不用為題庫命名。題目會加入你的題庫，其他題庫裡已有的題目仍會在題庫中顯示。 -->
+- **Copy for Word has left the ⋯ menu.** To take the whole paper to Word, use Export → Word,
+  which keeps the header, footer, page breaks and page setup. One question can still be copied
+  from its ⋯ menu in the outline, and it now pastes at the paper's text size.
+  <!-- zh: **⋯ 選單已移除「複製到 Word」。** 如要把整份試卷帶到 Word，請使用「匯出 → Word」，
+  頁首、頁尾、分頁及頁面設定都會保留。單一題目仍可在大綱中該題的 ⋯ 選單複製，貼上時會跟隨試卷的文字大小。 -->
 
 ### Fixed
 - **A multiple-choice question always stays on one page.** On any worksheet, an MC question that

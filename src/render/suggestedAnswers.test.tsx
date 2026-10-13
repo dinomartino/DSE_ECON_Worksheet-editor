@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { buildAnswerKeyDocxParts } from '@/export/docx';
 import { answerKeyFileName } from '@/export/docx/fileNames';
-import { answerKeyClipboardHtml, answerKeyPlainText } from '@/export/clipboard';
 import { ANSWER_KEY_FIXED, type AnswerKeySetting } from '@/model/answerKeyLayout';
 import { bi, plain } from '@/model/text';
 import type { AnswerKeyLayout, LanguageMode, McKeyLayout, Worksheet } from '@/model/types';
@@ -143,7 +142,7 @@ describe('Suggested answers never carries marker-only text', () => {
     expect(irText(renderAnswerKey(withLayout(plainPaper, { preset: 'hkeaa' }), 'en'))).toMatch(/\d@/);
   });
 
-  it('in the IR and the clipboard, for every allowed switch combination', () => {
+  it('in the IR, for every allowed switch combination', () => {
     const layouts = combinations();
     expect(layouts.length).toBe((1 << OPEN.length) * MC_LAYOUTS.length);
     for (const worksheet of [plainPaper, versioned]) {
@@ -153,8 +152,6 @@ describe('Suggested answers never carries marker-only text', () => {
           const where = () => `${JSON.stringify(layout)} ${language}${worksheet.versions ? ' versions' : ''}`;
           const reasons = layout.showRationales === true;
           expectClean(irText(renderAnswerKey(document, language)), reasons, () => `IR ${where()}`);
-          expectClean(decode(answerKeyClipboardHtml(document, language)), reasons, () => `clipboard HTML ${where()}`);
-          expectClean(answerKeyPlainText(document, language), reasons, () => `clipboard text ${where()}`);
         }
       }
     }

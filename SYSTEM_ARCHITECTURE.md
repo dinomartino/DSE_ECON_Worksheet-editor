@@ -891,8 +891,9 @@ Word doesn't flag direct formatting; deliberately **not** a `NodeStyle`.
 
 ### Clipboard (`src/export/clipboard.ts`)
 
-Same IR; writes `text/html` + `text/plain` via `ClipboardItem`. Numbering becomes
-literal text. Carries **no page setup, headers, or cover** — pasting must not impose
+Same IR; writes `text/html` + `text/plain` via `ClipboardItem`. One question at a time
+(the Outline ⋯ menu); the whole paper goes to Word as `.docx`. The paste font is the
+document's text size (`baseFontSize ?? 11`). Numbering becomes literal text. Carries **no page setup, headers, or cover** — pasting must not impose
 this document's furniture; the cover cannot be expressed in clipboard HTML at all (the
 `.docx` is the fidelity path). A test pins the exclusion.
 
@@ -1867,8 +1868,7 @@ type needs only a definition.
   nodes `renderAnswerKey` gives the `.docx` (a test pins it), plus each node's question for
   click-to-select (an MC table's cells name their own, `TableNodeCell.questionId`, inert in
   export) — cut into keep-together runs (`keepNext`) and packed by the paper's
-  paginator under the key's page rules, inside `#print-root`, so PDF and Copy for Word
-  follow the view. No paper chrome (rails, drag, bands, add buttons). Export opens on
+  paginator under the key's page rules, inside `#print-root`, so PDF follows the view. No paper chrome (rails, drag, bands, add buttons). Export opens on
   Answer key from it.
 - **The key's layout is stored with the paper, as deltas** (`Worksheet.answerKeyLayout`,
   `model/answerKeyLayout.ts`). One optional field: `preset` (absent = Classic) plus only

@@ -43,8 +43,6 @@ export const TOOLBAR_MESSAGES = defineMessages({
   exportButton: { en: 'Export…', zh: '匯出…' },
   exportTitle: { en: 'Word, PDF or the worksheet file', zh: 'Word、PDF 或工作紙檔案' },
   menu: { en: 'File and export options', zh: '檔案及匯出選項' },
-  copying: { en: 'Copying…', zh: '複製中…' },
-  copyForWord: { en: 'Copy for Word', zh: '複製到 Word' },
   saveNow: { en: 'Save now', zh: '立即儲存' },
   checkUpdates: { en: 'Check for updates', zh: '檢查更新' },
   whatsNew: { en: 'What’s new…', zh: '最新功能…' },
@@ -66,11 +64,6 @@ export const TOOLBAR_MESSAGES = defineMessages({
   savedCopy: { en: 'Saved a copy', zh: '已儲存副本' },
   downloadedCopy: { en: 'Downloaded a copy', zh: '已下載副本' },
   downloadFailed: { en: 'Download failed.', zh: '下載失敗。' },
-  copied: { en: 'Copied. Paste into Word', zh: '已複製，可貼上到 Word' },
-  copyFailed: {
-    en: 'Copy failed. The browser blocked clipboard access.',
-    zh: '複製失敗：瀏覽器封鎖了剪貼簿存取。',
-  },
   exportedPdf: { en: 'Exported .pdf', zh: '已匯出 .pdf' },
   pdfFallback: {
     en: (reason: string) =>

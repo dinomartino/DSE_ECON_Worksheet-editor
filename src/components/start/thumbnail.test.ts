@@ -29,11 +29,10 @@ describe('thumbnailHtml', () => {
     expect(html).not.toContain('Demand shifts left.');
   });
 
-  it('prints at the document body size, not the clipboard paste size', async () => {
+  it('prints at the document body size', async () => {
     const worksheet = buildAcceptanceWorksheet();
     const html = await thumbnailHtml(worksheet);
     const family = `font-family:'${worksheet.fonts.latin}','${worksheet.fonts.eastAsia}',serif;`;
-    // If the clipboard respells its prefix, this fails rather than printing at 12pt.
     expect(html).not.toContain(`${family}font-size:12pt;`);
     expect(html).toContain(`${family}font-size:11pt;`);
 

@@ -68,6 +68,18 @@ describe('Copy for Word (§7.7, §11.12)', () => {
     expect(html).not.toContain('Which is a public good?');
   });
 
+  it('pastes a question at the document text size, 11pt unless it sets one', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const id = worksheet.questions[0].id;
+    const standard = questionClipboardHtml(worksheet, id, STUDENT_BI);
+    expect(standard).toContain(',serif;font-size:11pt;');
+    expect(standard).not.toContain(',serif;font-size:12pt;');
+    worksheet.baseFontSize = 10;
+    const qab = questionClipboardHtml(worksheet, id, STUDENT_BI);
+    expect(qab).toContain(',serif;font-size:10pt;');
+    expect(qab).not.toContain(',serif;font-size:11pt;');
+  });
+
   it('escapes HTML metacharacters in content', () => {
     const worksheet = buildAcceptanceWorksheet();
     const block = worksheet.questions[0].blocks[0];

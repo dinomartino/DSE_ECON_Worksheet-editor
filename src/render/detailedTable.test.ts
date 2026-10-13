@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { buildAnswerKeyDocxParts } from '@/export/docx';
-import { answerKeyClipboardHtml } from '@/export/clipboard';
 import { createAnswerDiagram, createMcqQuestion } from '@/model/factories';
 import { bi, plain } from '@/model/text';
 import type { AnswerKeyLayout, LanguageMode, StructuredQuestion, Worksheet } from '@/model/types';
@@ -160,11 +159,5 @@ describe('the key’s tables in the .docx and on the clipboard', () => {
     expect(xml).toMatch(/<w:tblHeader\/><\/w:trPr><w:tc><w:tcPr>(?:(?!<\/w:tc>).)*<w:keepNext\/>/);
     // Rows are never split across pages.
     expect(xml).toContain('<w:cantSplit/>');
-  });
-
-  it('the clipboard puts heading rows in a thead and tops the cells', () => {
-    const html = answerKeyClipboardHtml(worksheet, 'en');
-    expect(html).toContain('<thead>');
-    expect(html).toContain('vertical-align:top');
   });
 });

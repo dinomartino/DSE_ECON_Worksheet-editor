@@ -88,15 +88,12 @@ export function questionPreviewHtml(
     ids && ids.size > 0
       ? markedBody(questionClipboardNodes(single, questionId, mode, images, number), ids)
       : bodyOf(questionClipboardHtml(single, questionId, mode, images, number));
-  // The clipboard writes its paste size (12pt); the page prints at the document's body size.
-  const family = `font-family:${cssFontFamilies(worksheet.fonts, "'", ',')},serif;`;
-  const printed = `${family}font-size:${worksheet.baseFontSize ?? 11}pt;`;
-  const html = body.split(`${family}font-size:12pt;`).join(printed);
+  const printed = `font-family:${cssFontFamilies(worksheet.fonts, "'", ',')},serif;font-size:${worksheet.baseFontSize ?? 11}pt;`;
   const widthPx = contentWidth(pageSetupOf(single)) / 15;
   return {
     widthPx,
     html:
       `<style>${PREVIEW_CSS}</style>` +
-      `<div class="sheet" lang="${language === 'zh' ? 'zh-HK' : 'en'}" style="width:${widthPx}px;${printed}">${html}</div>`,
+      `<div class="sheet" lang="${language === 'zh' ? 'zh-HK' : 'en'}" style="width:${widthPx}px;${printed}">${body}</div>`,
   };
 }

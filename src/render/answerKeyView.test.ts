@@ -7,12 +7,7 @@ import { describe, expect, it } from 'vitest';
 import v1Corpus from '@/test/corpus/v1-published.json';
 import { buildAnswerKeyDocxParts, buildDocxParts } from '@/export/docx';
 import { renderNodeXml, type BodyContext } from '@/export/docx/body';
-import {
-  answerKeyClipboardHtml,
-  answerKeyPlainText,
-  clipboardNodeHtml,
-  worksheetClipboardHtml,
-} from '@/export/clipboard';
+import { clipboardNodeHtml, worksheetClipboardHtml } from '@/export/clipboard';
 import { applyEditTarget, editTargetKey, targetQuestionId, textOfTarget } from '@/model/edits';
 import { createMcqQuestion, newId } from '@/model/factories';
 import { migrate } from '@/model/migrations';
@@ -184,7 +179,7 @@ describe('scheme text edit targets', () => {
     // One source of truth: the Teacher version and the key both print the new wording.
     const teacher = teacherNodes(next, 'en').map((node) => (node.kind === 'text' ? plain(node.text.en) : ''));
     expect(teacher.some((line) => line.startsWith('Supply falls'))).toBe(true);
-    expect(answerKeyPlainText(next, 'en')).toContain('Supply falls');
+    expect(JSON.stringify(renderAnswerKey(next, 'en'))).toContain('Supply falls');
   });
 
   it('the same point edited from the Teacher version writes the same field', () => {
@@ -283,13 +278,5 @@ describe('edit targets are inert in export', () => {
         }
       }
     }
-  });
-
-  it('copies the key for Word from the same nodes', () => {
-    const worksheet = fixture();
-    const html = answerKeyClipboardHtml(worksheet, 'en');
-    expect(html).toContain('Supply decreases');
-    expect(html).toContain('Supply shifts left.');
-    expect(html).not.toContain('data-');
   });
 });
