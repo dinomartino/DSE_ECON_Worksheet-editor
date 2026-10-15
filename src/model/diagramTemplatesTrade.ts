@@ -14,6 +14,7 @@ import {
   derived,
   eq,
   finish,
+  frontier,
   lab,
   label,
   markAt,
@@ -395,14 +396,6 @@ function ppfLinearTrade(): Diagram {
   );
 }
 
-/** A concave frontier: a quarter-ellipse through (0, b) and (a, 0). */
-function frontier(a: number, b: number): Pair[] {
-  return [90, 75, 60, 45, 30, 15, 0].map((deg) => {
-    const t = (deg * Math.PI) / 180;
-    return [a * Math.cos(t), b * Math.sin(t)];
-  });
-}
-
 /**
  * Concave PPF with trade: the CPF is the tangent at production B, so it follows B along
  * the frontier; the TOT guide is parallel to it; consumption C stays on the CPF.
@@ -516,7 +509,7 @@ function lorenz(): Diagram {
       curves: [equality, before, after],
       labels: [
         // Above-left of the diagonal it names; the key below it, left of the diagonal.
-        label(0.74, 0.84, bi('Line of equality', '絕對平等線'), { align: 'right' }),
+        label(0.72, 0.86, bi('Line of equality', '絕對平等線'), { align: 'right' }),
         label(0.03, 0.64, bi('A: before tax\nB: after tax', 'A：稅前\nB：稅後'), { align: 'left' }),
       ],
     }),

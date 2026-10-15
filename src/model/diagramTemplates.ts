@@ -7,9 +7,12 @@ import {
   curve,
   eq,
   finish,
+  frontier,
   newId,
+  pin,
   point,
   sub,
+  sym,
   upright,
   type DiagramTemplate,
   type DiagramTemplateGroup,
@@ -81,18 +84,14 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     build: () => {
       const ad = curve([[0.1, 0.78], [0.82, 0.18]], bi('AD', 'AD'));
       const sras = curve([[0.1, 0.18], [0.82, 0.78]], bi('SRAS', 'SRAS'));
-      // The vertical LRAS, labelled at the top; E₀ where all three meet.
+      // The vertical LRAS, labelled at the top; E₀ where all three meet. LRAS marks
+      // full-employment output, so its tick is Yf, as in every other LRAS template.
       const lras = upright(0.46, bi('LRAS', 'LRAS'), 0.94);
       return finish(
         axes(AXIS.realOutput, AXIS.priceLevel, {
+          x: { title: AXIS.realOutput, ticks: [{ id: newId(), at: 0.46, label: sub('Y', 'f') }] },
           curves: [ad, sras, lras],
-          points: [
-            point(0.46, 0.48, undefined, {
-              dropTo: ['x'],
-              xTickLabel: sub('Y', '1'),
-              anchor: { cross: [ad.id, sras.id] },
-            }),
-          ],
+          points: [point(0.46, 0.48, undefined, { anchor: { cross: [ad.id, sras.id] } })],
         }),
       );
     },
@@ -103,8 +102,8 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     name: bi('Money market', '貨幣市場'),
     hint: bi('Vertical money supply against a downward money demand.', '垂直貨幣供應與向下傾斜的貨幣需求。'),
     build: () => {
-      const ms = upright(0.44, sub('MS', '0'), 0.9);
-      const md = curve([[0.06, 0.74], [0.9, 0.24]], sub('MD', '0'));
+      const ms = upright(0.44, sym('Ms'), 0.9);
+      const md = curve([[0.06, 0.74], [0.9, 0.24]], sym('Md'));
       return finish(
         axes(AXIS.money, AXIS.interest, {
           curves: [ms, md],
@@ -133,7 +132,8 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     name: bi('Tax schedule', '稅項圖'),
     hint: bi('A single line against income, for progressive / proportional questions.', '單一線對應收入，用於累進／比例稅題目。'),
     build: () =>
-      axes(bi('Taxable income ($)', '應課稅收入 ($)'), bi('Tax rate (%)', '稅率（%）'), {
+      // Two lines: on one, the title runs into the axis arrowhead.
+      axes(bi('Taxable\nincome ($)', '應課稅收入 ($)'), bi('Tax rate (%)', '稅率（%）'), {
         curves: [curve([[0.0, 0.1], [0.86, 0.86]])],
       }),
   },
@@ -172,19 +172,20 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     group: 'electives',
     name: bi('Production possibility curve', '生產可能曲線'),
     hint: bi('A concave PPC with a point on, inside and outside it.', '凹向原點的 PPC，附曲線上、內、外的點。'),
-    build: () =>
-      axes(bi('Good X', '物品X'), bi('Good Y', '物品Y'), {
-        curves: [
-          curve([[0.06, 0.9], [0.34, 0.82], [0.62, 0.62], [0.82, 0.12]], undefined, {
-            shape: 'curved',
-          }),
-        ],
-        points: [
-          point(0.34, 0.82, bi('A', 'A'), { labelSide: 'upRight' }),
-          point(0.3, 0.4, bi('B', 'B')),
-          point(0.78, 0.72, bi('C', 'C')),
-        ],
-      }),
+    // Meets both axes, as the marking schemes draw it; A slides along it.
+    build: () => {
+      const ppc = curve(frontier(0.8, 0.86), undefined, { shape: 'curved' });
+      return finish(
+        axes(bi('Good X', '物品X'), bi('Good Y', '物品Y'), {
+          curves: [ppc],
+          points: [
+            pin({ on: ppc.id, x: { x: 0.38, y: 0 } }, [ppc], bi('A', 'A'), { labelSide: 'upRight' }),
+            point(0.3, 0.4, bi('B', 'B')),
+            point(0.74, 0.72, bi('C', 'C')),
+          ],
+        }),
+      );
+    },
   },
   {
     id: 'flow',

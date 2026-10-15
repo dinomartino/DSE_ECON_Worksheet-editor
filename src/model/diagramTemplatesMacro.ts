@@ -148,7 +148,7 @@ function gapNarrows(): Diagram {
   const full = 0.74;
   const l = lras(full);
   // AD₀ is named at its top, so its name stays clear of the gap arrows below.
-  const ad0 = curve([[0.04, 0.7], [0.6, 0.176]], sub('AD', '0'), { labelAt: 'start', labelOffset: { x: 0.07, y: 0.03 } });
+  const ad0 = curve([[0.04, 0.7], [0.6, 0.176]], sub('AD', '0'), { labelAt: 'start', labelOffset: { x: 0.13, y: 0.03 } });
   const ad1 = shiftOf(ad0, 0.18, 0, sub('AD', '1'));
   const sras = curve([[0.08, 0.2], [0.52, 0.74]], sym('SRAS'));
   const e0 = eq(ad0, sras, '0', Y);
@@ -212,17 +212,18 @@ function shockRecovery(): Diagram {
   const s1 = shiftOf(s0, -0.25, 0, sub('SRAS', '1'));
   const e0 = eq(ad, s0, '0', { p: 'P', q: '' });
   const e1 = eq(ad, s1, '1', Y);
-  // Both arrows below the equilibria, where the two SRAS lines run clear of labels.
-  const hi = 0.36;
-  const lo = 0.24;
+  // Arrow 1 low, where both SRAS lines are left of Y₁'s drop (higher, it crosses it);
+  // arrow 2 high, right of LRAS, where the two lines run clear of everything else.
+  const lo = 0.28;
+  const hi = 0.7;
   return finish(
     macro({
       x: { title: AXIS.realOutput, ticks: [yf(full)] },
       curves: [ad, s0, s1, l],
       points: [e0, e1],
       arrows: [
-        shiftArrow(s0, s1, [xAt(s0, hi) - 0.02, hi], [xAt(s1, hi) + 0.02, hi], { label: sym('1'), labelOffset: { x: 0.03, y: 0 } }),
-        arrow([xAt(s1, lo) + 0.02, lo], [xAt(s0, lo) - 0.02, lo], { label: sym('2') }),
+        shiftArrow(s0, s1, [xAt(s0, lo) - 0.02, lo], [xAt(s1, lo) + 0.02, lo], { label: sym('1'), labelOffset: { x: 0.03, y: 0 } }),
+        arrow([xAt(s1, hi) + 0.02, hi], [xAt(s0, hi) - 0.02, hi], { label: sym('2'), labelOffset: { x: 0.025, y: 0 } }),
       ],
     }),
   );

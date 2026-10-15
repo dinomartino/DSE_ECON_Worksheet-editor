@@ -136,6 +136,8 @@ function fixedSupply(): Diagram {
 
 const MB_D = () => curve([[0.08, 0.9], [0.84, 0.14]], bi('D = MB', 'D = MB'));
 const MC_S = () => curve([[0.06, 0.1], [0.7, 0.86]], bi('S = MC', 'S = MC'));
+/** MB_D starting lower on the same line: the efficiency note's bilingual second line clears it. */
+const noteD = () => curve([[0.13, 0.85], [0.84, 0.14]], bi('D = MB', 'D = MB'));
 const plainD = () => curve([[0.08, 0.9], [0.84, 0.14]], sym('D'));
 const plainS = () => curve([[0.06, 0.1], [0.7, 0.86]], sym('S'));
 
@@ -270,9 +272,9 @@ function ineffectiveCeiling(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s, pc],
       points: [eq(d, s, 'e')],
-      // Below Pc, right of S, where nothing else is drawn.
+      // Just below Pc, right of S: bilingual, its four lines still end above D.
       labels: [
-        label(0.62, 0.6, labBi(['ineffective:\nP', ['c'], ' above P', ['e']], ['無效：\nP', ['c'], ' 高於 P', ['e']]), {
+        label(0.63, 0.64, labBi(['ineffective:\nP', ['c'], ' above P', ['e']], ['無效：\nP', ['c'], ' 高於 P', ['e']]), {
           align: 'left',
         }),
       ],
@@ -311,7 +313,13 @@ function fixedPriceRevenue(): Diagram {
       points: [eq(d, s, 'e'), qs, qd],
       spans: [span(at(qs), at(qd), 'bracket', { offset: -0.05, label: bi('shortage', '短缺'), labelOffset: { x: 0.13, y: 0 } })],
     }),
-    (r) => shade(r, 'controlRevenue', { demand: d.id, supply: s.id, control: { curve: pc.id } }, { labelOffset: { x: -0.034, y: 0.105 } }),
+    // On a leader, between Qs's and Qe's drops under the bracket: above S inside the
+    // rectangle there is no room for 總收入, nor for TR stacked over it.
+    (r) =>
+      shade(r, 'controlRevenue', { demand: d.id, supply: s.id, control: { curve: pc.id } }, {
+        labelPlacement: 'leader',
+        labelOffset: { x: 0.22, y: -0.03 },
+      }),
   );
 }
 
@@ -364,8 +372,9 @@ function labourImport(): Diagram {
   const localPts: Pair[] = [[0.06, 0.12], [0.06 + (0.62 * 0.44) / 0.72, 0.74]];
   const d = curve([[0.1, 0.92], [0.64, 0.16]], sym('D'));
   const local = curve(localPts, bi('S (local)', 'S（本地）'));
+  // 0.35 apart: bilingual, S (local)'s name stacks a second line that a closer S′ crosses.
   // S′ named right of its line, below its end: beside S (local)'s name the Chinese touches.
-  const both = placeLabel(shiftOf(local, 0.24, 0, bi('S′ (local\n+ imported)', 'S′（本地\n＋輸入）')), 0.72, 0.6);
+  const both = placeLabel(shiftOf(local, 0.35, 0, bi('S′ (local\n+ imported)', 'S′（本地\n＋輸入）')), 0.75, 0.6);
   const e0 = eq(d, local, '0', { p: 'W' });
   const e1 = eq(d, both, '1', { p: 'W' });
   // Local employment after importation is read off S (local) at the new wage.
@@ -378,7 +387,7 @@ function labourImport(): Diagram {
     axes(AXIS.labour, AXIS.wage, {
       curves: [d, local, both],
       points: [e0, e1, localJobs],
-      arrows: [shiftArrow(local, both, [xOn(localPts, y) + 0.03, y], [xOn(localPts, y) + 0.21, y])],
+      arrows: [shiftArrow(local, both, [xOn(localPts, y) + 0.03, y], [xOn(localPts, y) + 0.32, y])],
       // Local employment falls, Q₀ → Q₂ read off S (local). No W arrow: the clearance
       // is sized from an estimate that runs short for a wide "W", so its head met W₁.
       spans: axisArrows(e0, localJobs, ['x']),
@@ -495,7 +504,8 @@ function quotaDemandIncrease(): Diagram {
   // Shifted far enough that the Qe₀ and Qe₁ ticks stand apart.
   const d1 = shiftOf(d0, 0.2, 0, sub('D', '1'));
   const s = curve(S, bi('S = MC', 'S = MC'));
-  const sq = quotaCurve(S, 0.24, bi('S (quota)', 'S（配額）'));
+  // Named beside its top, right of the line: above it, a bilingual second line sat on it.
+  const sq = { ...quotaCurve(S, 0.24, bi('S (quota)', 'S（配額）')), labelOffset: { x: 0.02, y: -0.02 } };
   const e0 = eq(d0, sq, '0', { q: 'Q' });
   const e1 = eq(d1, sq, '1', { q: '' });
   const f0 = pin(cross(d0, s), [d0, s], undefined, { dot: false, dropTo: ['x'], xTickLabel: sub('Q', 'e0') });
@@ -521,7 +531,8 @@ function quotaDemandIncrease(): Diagram {
           fill: 'hatch',
           pattern: 'horizontal',
           label: bi('increase\nin DWL', '效率損失\n增加'),
-          labelOffset: { x: 0.34, y: 0.02 },
+          // Right of S = MC, where D₁ falls away: bilingual, four lines clear it.
+          labelOffset: { x: 0.46, y: 0.03 },
           labelPlacement: 'leader',
         },
       ],
@@ -559,7 +570,7 @@ function perUnit(kind: 'tax' | 'subsidy'): Diagram {
       points: [e0, e1, kept],
       spans: [wedge, ...axisArrows(e0, e1)],
       labels: tax
-        ? [label(0.68, 0.53, bi("a: buyers' burden\nb: sellers' burden", 'a：買方稅負\nb：賣方稅負'), { align: 'left' })]
+        ? [label(0.68, 0.57, bi("a: buyers' burden\nb: sellers' burden", 'a：買方稅負\nb：賣方稅負'), { align: 'left' })]
         : [],
     }),
     (r) =>
@@ -577,12 +588,13 @@ function perUnit(kind: 'tax' | 'subsidy'): Diagram {
 
 /** A subsidy overproduces: at Q₁, MC (on S₀) is above MB (on D); the DWL between. */
 function subsidyEfficiency(): Diagram {
-  const d = MB_D();
+  const d = noteD();
   const s0 = curve([[0.06, 0.34], [0.58, 0.9]], lab('S', ['0'], ' = MC'));
   const s1 = shiftOf(s0, 0, -0.26, sub('S', 's'));
   const e0 = eq(d, s0, '0');
   const e1 = eq(d, s1, '1', { p: '' }, { label: sym('MB'), labelSide: 'right' });
-  const mc = pin({ on: s0.id, x: at(e1) }, [s0, e1], sym('MC'), { labelSide: 'right' });
+  // Left of the point, so DWL can take the space right of it, under S₀.
+  const mc = pin({ on: s0.id, x: at(e1) }, [s0, e1], sym('MC'), { labelSide: 'left' });
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s0, s1],
@@ -591,13 +603,18 @@ function subsidyEfficiency(): Diagram {
       spans: [span({ on: s0.id, x: { x: 0.2, y: 0 } }, { on: s1.id, x: { x: 0.2, y: 0 } }, 'arrow', { label: sym('s') })],
       labels: [label(0.1, 0.97, labBi(['at Q', ['1'], ': MC > MB'], ['在 Q', ['1'], '：MC > MB']), { align: 'left' })],
     }),
-    (r) => shade(r, 'subsidyDwl', { demand: d.id, supply: s0.id, shifted: s1.id }),
+    // Right of MC, under S₀ and above Sₛ's name, in every language alike.
+    (r) =>
+      shade(r, 'subsidyDwl', { demand: d.id, supply: s0.id, shifted: s1.id }, {
+        labelPlacement: 'leader',
+        labelOffset: { x: 0.23, y: 0.13 },
+      }),
   );
 }
 
 /** A tax underproduces: at Q₁, MB (on D) is above MC (on S₀); the DWL between. */
 function taxEfficiency(): Diagram {
-  const d = MB_D();
+  const d = noteD();
   const s0 = curve([[0.06, 0.08], [0.6, 0.62]], lab('S', ['0'], ' = MC'));
   const s1 = shiftOf(s0, 0, 0.24, sub('S', '1'));
   const e0 = eq(d, s0, '0');
@@ -616,7 +633,7 @@ function taxEfficiency(): Diagram {
     (r) =>
       shade(r, 'deadweightLoss', { demand: d.id, supply: s0.id, shifted: s1.id }, {
         labelPlacement: 'leader',
-        labelOffset: { x: 0.2, y: -0.3 },
+        labelOffset: { x: 0.23, y: -0.34 },
       }),
   );
 }
@@ -652,7 +669,12 @@ function taxNetRevenue(): Diagram {
         },
       ],
     }),
-    (r) => shade(r, 'taxRevenue', { demand: d.id, supply: s0.id, shifted: s1.id }, { labelPlacement: 'leader' }),
+    // Above the strip, left of D: placed, so a bilingual pair cannot drift onto E₀.
+    (r) =>
+      shade(r, 'taxRevenue', { demand: d.id, supply: s0.id, shifted: s1.id }, {
+        labelPlacement: 'leader',
+        labelOffset: { x: -0.085, y: 0.24 },
+      }),
   );
 }
 
