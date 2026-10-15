@@ -12,6 +12,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.8.2 — 2026-10-16
+
 ### Added
 - **Justify MC options.** Click any option of a multiple-choice question and press Justify
   to line its options up with both margins; press it again to undo. All four options of the
