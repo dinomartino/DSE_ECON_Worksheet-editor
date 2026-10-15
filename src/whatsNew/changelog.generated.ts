@@ -15,12 +15,13 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
-- **Justify MC options.** Click any option of a multiple-choice question and use the
-  alignment buttons to justify its options, or align them left, centre or right. All four
-  options of the question change together, and the page, the Word file and the PDF match.
-  It applies when the options are listed one per line.
-  <!-- zh: **MC 選項可左右對齊。** 點選 MC 題的任何一個選項，再用對齊按鈕把選項左右對齊，或靠左、置中、靠右對齊。
-  同一題的所有選項會一起改變，頁面、Word 檔案及 PDF 都一致。選項逐行排列時適用。 -->
+- **Justify MC options.** Click any option of a multiple-choice question and press Justify
+  to line its options up with both margins; press it again to undo. All four options of the
+  question change together, and the page, the Word file and the PDF match. It applies when
+  the options are listed one per line. When the whole paper is justified, the same button
+  turns it off for that question's options.
+  <!-- zh: **MC 選項可左右對齊。** 點選 MC 題的任何一個選項，再按「左右對齊」，選項便貼齊左右兩邊；再按一次即取消。
+  同一題的所有選項會一起改變，頁面、Word 檔案及 PDF 都一致。選項逐行排列時適用。整份試卷已左右對齊時，同一按鈕可為該題選項取消對齊。 -->
 - **Justify the whole paper at once.** Turn on Justify text in Document setup, beside the
   text size, and every question, option, statement and passage lines up with both margins.
   Titles, headings, tables and the cover stay as they are, and any line you aligned yourself
@@ -28,6 +29,13 @@ a version heading is edited afterwards.
   type there is justified too.
   <!-- zh: **一次把整份試卷左右對齊。** 在「頁面設定」的文字大小旁開啟「文字左右對齊」，所有題目、選項、陳述及段落文字都會貼齊左右兩邊。
   標題、分部標題、表格及封面維持不變，你自行設定對齊的文字會保留原有對齊。在 Word 中，對齊設定存於試卷的樣式內，所以在 Word 新輸入的文字同樣左右對齊。 -->
+
+- **Add a screenshot to your feedback.** In Send feedback, paste a screenshot, drop an image
+  or choose one. When you open GitHub or your email, the screenshot is on your clipboard and
+  the message shows where to paste it. Nothing is attached unless you add it, and on GitHub
+  the screenshot is public.
+  <!-- zh: **意見回饋可附上截圖。** 在「意見回饋」中貼上截圖、拖放圖片或選擇圖片。開啟 GitHub 或電郵時，截圖已在剪貼簿內，
+  訊息會註明貼上的位置。除非你自行加入，否則不會附上任何東西；在 GitHub 上，截圖會公開。 -->
 
 ### Fixed
 - **Long MC options no longer break their row in Word.** When options set to Inline or

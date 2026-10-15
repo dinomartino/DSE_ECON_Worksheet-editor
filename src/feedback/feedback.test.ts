@@ -9,6 +9,7 @@ import {
   githubIssueUrl,
   MAILTO_URL_LIMIT,
   mailtoUrl,
+  screenshotLine,
   TRUNCATION_NOTE,
   type FeedbackInput,
 } from './feedback';
@@ -155,5 +156,32 @@ describe('mailtoUrl', () => {
     const { url, truncated } = mailtoUrl(buildReport(input({ message: 'long '.repeat(2000) })));
     expect(truncated).toBe(true);
     expect(url.length).toBeLessThanOrEqual(MAILTO_URL_LIMIT);
+  });
+});
+
+describe('the screenshot line', () => {
+  it("says where to paste it, with the teacher's own chord, in both bodies", () => {
+    const report = buildReport(input({ screenshotPaste: '⌘V' }));
+    expect(report.body).toContain('**Screenshot:** (click on this line and press ⌘V)');
+    expect(report.text).toContain(screenshotLine('⌘V'));
+    // Right under the message, before the details.
+    expect(report.body.indexOf('Screenshot')).toBeLessThan(report.body.indexOf('**Details**'));
+    expect(buildReport(input({ screenshotPaste: 'Ctrl+V' })).text).toContain('press Ctrl+V');
+  });
+
+  it('is absent without a screenshot', () => {
+    const report = buildReport(input());
+    expect(report.body).not.toContain('Screenshot');
+    expect(report.text).not.toContain('Screenshot');
+  });
+
+  it('survives a message cut to fit the link', () => {
+    const report = buildReport(input({ message: '市場失靈'.repeat(2000), screenshotPaste: 'Ctrl+V' }));
+    const github = githubIssueUrl(report);
+    expect(github.truncated).toBe(true);
+    expect(params(github.url).get('body')).toContain('**Screenshot:** (click on this line and press Ctrl+V)');
+    const mail = mailtoUrl(report);
+    expect(mail.truncated).toBe(true);
+    expect(decodeURIComponent(mail.url.split('&body=')[1])).toContain(screenshotLine('Ctrl+V'));
   });
 });

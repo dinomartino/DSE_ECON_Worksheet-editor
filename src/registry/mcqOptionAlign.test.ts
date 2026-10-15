@@ -3,7 +3,14 @@ import JSZip from 'jszip';
 import { exportDocxBuffer } from '@/export/docx';
 import { questionClipboardHtml } from '@/export/clipboard';
 import { createMcqQuestion, createWorksheet } from '@/model/factories';
-import { applyFormatTarget, formatOfTarget, isAlignOnly, isFormattable } from '@/model/edits';
+import {
+  applyFormatTarget,
+  formatOfTarget,
+  isAlignOnly,
+  isFormattable,
+  nextOptionAlign,
+  optionPrintsJustified,
+} from '@/model/edits';
 import { migrate, serializeWorksheet } from '@/model/migrations';
 import { bi } from '@/model/text';
 import type { McqOptionLayout, McqQuestion, OutputMode, TextAlign, Worksheet } from '@/model/types';
@@ -15,7 +22,8 @@ import { mcqType } from './mcq';
 /**
  * GitHub #2: MC options justify (靠齊) like the stem. One setting on the question,
  * `optionAlign`, printed on every stacked option line in all three backends; a tab-stop
- * row (inline, columns2) ignores it and keeps it.
+ * row (inline, columns2) ignores it and keeps it. The bar offers Justify alone: centre
+ * and right may move a list letter in Word.
  */
 
 const STUDENT_EN: OutputMode = { language: 'en', version: 'student' };
@@ -90,10 +98,65 @@ describe('MC option alignment: the model', () => {
     expect(applyFormatTarget(worksheet, optionTarget(question), { bold: true, fontSize: 14 })).toBe(worksheet);
   });
 
+  it('stores only justify or left', () => {
+    const { worksheet, question } = paper();
+    expect(applyFormatTarget(worksheet, optionTarget(question), { align: 'center' })).toBe(worksheet);
+    expect(applyFormatTarget(worksheet, optionTarget(question), { align: 'right' })).toBe(worksheet);
+    const left = applyFormatTarget(worksheet, optionTarget(question), { align: 'left' });
+    expect((left.questions[0] as McqQuestion).optionAlign).toBe('left');
+  });
+
+  it('still renders a stored centre or right rather than failing', () => {
+    for (const align of ['center', 'right'] as const) {
+      for (const node of optionNodes(paper({ align }).worksheet)) {
+        expect(node.kind === 'text' && node.format).toEqual({ align });
+      }
+    }
+  });
+
   it('follows its question through a version shuffle', () => {
     const { question } = paper({ align: 'justify' });
     const shuffled = mcqType.variant!({ ...question }, { seed: 7, version: 1 }).question;
     expect(shuffled.optionAlign).toBe('justify');
+  });
+});
+
+describe('MC option alignment: the Justify toggle', () => {
+  // [stored, document justifies, prints justified, a press stores]
+  const TABLE: Array<[TextAlign | undefined, boolean, boolean, TextAlign | undefined]> = [
+    [undefined, false, false, 'justify'],
+    ['justify', false, true, undefined],
+    ['left', false, false, 'justify'],
+    ['center', false, false, 'justify'],
+    [undefined, true, true, 'left'],
+    ['left', true, false, undefined],
+    ['justify', true, true, 'left'],
+    ['right', true, false, undefined],
+  ];
+
+  it.each(TABLE)('stored %s, document justifies %s: pressed %s, a press stores %s', (stored, doc, pressed, next) => {
+    expect(optionPrintsJustified(stored, doc)).toBe(pressed);
+    expect(nextOptionAlign(stored, doc)).toBe(next);
+    // A press always flips what prints.
+    expect(optionPrintsJustified(next, doc)).toBe(!pressed);
+  });
+
+  it('opts an option out of a justified document, left in the IR and the .docx', async () => {
+    const { worksheet, question } = paper();
+    const justified = { ...worksheet, justifyText: true } as Worksheet;
+    const optedOut = applyFormatTarget(justified, optionTarget(question), {
+      align: nextOptionAlign(undefined, true),
+    });
+    expect((optedOut.questions[0] as McqQuestion).optionAlign).toBe('left');
+    for (const node of optionNodes(optedOut)) {
+      expect(node.kind === 'text' && node.format).toEqual({ align: 'left' });
+    }
+    for (const props of optionParagraphProps(await documentXml(optedOut))) {
+      expect(props).toContain('<w:jc w:val="left"/>');
+    }
+    for (const props of optionParagraphProps(await documentXml(justified))) {
+      expect(props).not.toContain('<w:jc');
+    }
   });
 });
 

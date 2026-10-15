@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { TextAlign, TextFormat } from '@/model/types';
+import { nextOptionAlign, optionPrintsJustified } from '@/model/edits';
 import { useMessages } from '@/i18n/language';
 import type { TextKey } from '@/i18n/catalogue';
 import { FORMAT_TOOLBAR_MESSAGES } from './messages';
@@ -89,9 +90,15 @@ interface Props {
   alignable?: boolean;
   /**
    * The target's only format is alignment (`isAlignOnly`: an MC option's is its
-   * question's): size, weight and colour would have nowhere to go, so they are hidden.
+   * question's): size, weight and colour would have nowhere to go, so they are hidden,
+   * and of the alignments only Justify is offered, as one toggle (`nextOptionAlign`).
    */
   alignOnly?: boolean;
+  /**
+   * The document's "Justify text" (`Worksheet.justifyText`), read for an `alignOnly`
+   * target: with it on, Justify shows pressed while nothing is stored.
+   */
+  documentJustifies?: boolean;
   /** Dismiss the bar, clearing the page selection. */
   onClose?: () => void;
   /** Structural actions offered alongside formatting. */
@@ -189,6 +196,7 @@ export function FormatToolbar({
   onReset,
   alignable = true,
   alignOnly = false,
+  documentJustifies = false,
   onClose,
   onDelete,
   onMove,
@@ -406,9 +414,22 @@ export function FormatToolbar({
         </button>
       )}
 
-      {alignable && (
+      {alignable && alignOnly && (
+        <button
+          type="button"
+          aria-label={m.justifyOptions}
+          aria-pressed={optionPrintsJustified(format?.align, documentJustifies)}
+          title={m.justifyOptions}
+          className={`${BTN} ${optionPrintsJustified(format?.align, documentJustifies) ? ACTIVE : IDLE}`}
+          onClick={() => onChange({ align: nextOptionAlign(format?.align, documentJustifies) })}
+        >
+          ≡
+        </button>
+      )}
+
+      {alignable && !alignOnly && (
         <>
-          {!alignOnly && <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />}
+          <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
           {ALIGNMENTS.map((option) => (
             <button
               key={option.value}
@@ -503,7 +524,8 @@ export function FormatToolbar({
         </button>
       )}
 
-      {hasOverrides && (
+      {/* Not for an align-only target: its one toggle already clears what it stored. */}
+      {hasOverrides && !alignOnly && (
         <button
           type="button"
           aria-label={m.clearFormatting}

@@ -144,6 +144,8 @@ export const STANDARD_TRANSLATIONS: Readonly<Record<string, string>> = {
   'Answer space': '答題空間',
   'Double-click': '按兩下',
   'Tick (a checkbox)': '剔選',
+  Screenshot: '截圖',
+  Clipboard: '剪貼簿',
 };
 
 /**
