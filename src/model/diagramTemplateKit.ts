@@ -344,6 +344,14 @@ export function xOn([[x0, y0], [x1, y1]]: Pair[], y: number): number {
   return x0 + ((y - y0) * (x1 - x0)) / (y1 - y0);
 }
 
+/** A concave frontier: a quarter-ellipse through (0, b) and (a, 0), meeting both axes. */
+export function frontier(a: number, b: number): Pair[] {
+  return [90, 75, 60, 45, 30, 15, 0].map((deg) => {
+    const t = (deg * Math.PI) / 180;
+    return [a * Math.cos(t), b * Math.sin(t)];
+  });
+}
+
 /** A horizontal price line whose name sits on the y-axis, as a tick would; drags by its number. */
 export function priceLine(y: number, name: BiText, right = 0.9): DiagramCurve {
   return derived({ kind: 'level', y, from: 0, to: right }, [], name, { labelAt: 'start', weight: 0.8 });
