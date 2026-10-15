@@ -7,9 +7,12 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **Shipped in 0.8.1 (was Unreleased 2026-10-11):** one bank (import + Copy to bank never ask; `oneBank`, root goes back to
-  the bank holding it); Move to Trash offers to keep a paper's questions found nowhere else (`TrashDialog.tsx`,
-  `keepInBank`); trashing a bank warns (count, en+zh). Old banks never merged. Browser-checked, not in Tauri.
+- **Unreleased on develop (2026-10-15), GitHub #2 + diagram skill check:** MC options justify (`optionAlign`, format bar on an
+  option); Document setup "Justify text" (`justifyText`, body styles `jc both`, `doNotExpandShiftReturn`); MC rows that don't
+  fit fall back inline → 2 columns → grid at render time (`printedOptionLayout`, `src/render/textWidth.ts`, calibrated in Word;
+  bilingual side-by-side rows always grid); diagram templates checked against `../dse-econ-graph-skills` (labels, bilingual
+  collisions, Ms/Md, PPC meets axes, AD-AS Y_f). Checked in real Word on this Mac, not in Tauri. Word packs justified lines
+  tighter than the preview (no setting found to stop it). #2 has a reply; tell the teacher when released.
 - **Shipped in 0.8.0, none tried in the Tauri window before release:** table "Same height/width" over a
   swept range (`distributeRows`/`distributeColumns`); editor shell no longer overscrolls (probes `h-0`); import
   brings header/footer/title block (`src/import/chromePlan.ts`, `paste-import.md` § 12; unreproducible bits listed
@@ -25,11 +28,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   models fetched by `build.rs`, SHA-pinned), scans + pictures read page by page (`src/import/ocrLayout.ts`,
   `paste-import.md` § 13). DMG +33 MB. Proven end to end in the release `.app` on real scans + photos.
   Windows CI green (links, real-model tests). Unverified: Intel Mac, macOS 12–13.2, signed build, native open sheet.
-- **Import leftovers, shipped in 0.8.0:** bare "B" option + labelled table rows (S6 P1 Q42, P2 Q10), word-space options
-  (Q11), 題庫-only lands on the first added, answer lines break like Word (2019 P2 24/24/24; Paper 2 body ends at the
-  frame), scan diagrams come in as pictures. Picture options pair by place (DSE2021 Q36,
-  .docx tables too); scheme rows round a figure follow it (S6 Q5). Crop edges trimmed; boxed flow charts become one
-  picture. Left: tables don't split across sheets in the preview (Word does); text inside a figure's box stays in the crop.
 - `feature/film-v2` (worktree `.claude/worktrees/film-v2`) is on GitHub since 2026-10-11, not merged. **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked, not to start early.
 
 ## Where we are
@@ -53,6 +51,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
+- #2 follow-ups: MC options offer only Justify?; price floor DWL + externality templates; AI answer-key diagrams (batch) to IDEAS; ask the teacher for a screenshot; diagram wording (DWL/DL in zh, 過剩, tax burden terms).
 - Paid service (`docs/research/2026-09-paid-product/`): what first; the in-app "use a VPN" Gemini
   wording breaks Google's terms. Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key.
@@ -60,6 +59,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Open threads and known gaps
 
+- Import: tables don't split across sheets in the preview (Word does); text inside a figure's box stays in the crop.
 - **Old releases:** v0.4/0.5 can still export a schema-2 file (student copy shows answers) and
   "Duplicate as editable copy" it; v0.2–0.3 have no read-only guard. They also don't draw revenue
   areas or model answer diagrams (no leak).
@@ -70,11 +70,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   Trash) pauses sync. Windows code passes CI but never ran on a real PC or provider.
 - Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
-## Last verified (2026-10-09, `develop` after the OCR merges)
+## Last verified (2026-10-15, `develop` after the #2 merges)
 
-- `npm test` 5465, `cargo test` 68, typecheck + build (bundle check) green, lint 40, samples 6.
+- `npm test` 5554, typecheck green, lint 40. Build and `cargo test` not rerun.
 
 ## Log
 
+- **2026-10-15** — GitHub #2 (MC justify, Justify text, MC row overflow → grid); diagram template audit + polish vs the DSE graph skill; Buy Me a Coffee `FUNDING.yml` (needs Settings → Sponsorships ticked; shows once on main). 5 branches.
 - **2026-10-14** — GitHub #1, merged to develop: MC keeps whole on every paper (`keepWhole` on the type def); Document setup text size 10/11/12 pt (11 = absent, defaults unchanged, 12pt stays on the 240 line; checked in real Word). Not tried in Tauri. **2026-10-11/12** — Import demo story; film-v2 pushed; bank authoring decided; one bank; keep questions on Trash; bank trash warning; design `ai-pattern-questions.md` (E7, after C9).
-- **2026-10-08/09** — Found-folder offer; import + paper language (15 branches); Table distribute; overscroll; import header/footer/title; band rows match Word; table bar; cell align; OCR; import leftovers. 19 branches. 0.8.0 released 2026-10-10.
