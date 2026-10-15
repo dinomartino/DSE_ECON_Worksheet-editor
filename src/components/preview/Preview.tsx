@@ -2692,17 +2692,33 @@ export function NodeView({
     // borderless layout table, drawn as a flex row. The children are ordinary nodes
     // rendered through this same view, so the lettered line stays editable and a
     // figure keeps its resize handles; only the grid frame is new.
+    // A text grid flows its cells `perRow` to a row from its indent, a gap clear after
+    // every column but the last: the .docx's table, cell for cell.
+    const grid = node.textGrid;
+    const perRow = grid ? grid.perRow : Math.max(1, node.cells.length);
+    const rows: RenderNode[][][] = [];
+    for (let start = 0; start < node.cells.length; start += perRow) {
+      rows.push(node.cells.slice(start, start + perRow));
+    }
     return (
-      <div>
-        <div className="flex items-start">
-          {node.cells.map((cell, index) => (
-            <div key={index} className="min-w-0 flex-1">
-              {cell.map((child, childIndex) => (
-                <NodeView key={childIndex} node={child} language={language} ctx={ctx} />
-              ))}
-            </div>
-          ))}
-        </div>
+      <div style={grid ? { marginLeft: `${grid.indent / 20}pt` } : undefined}>
+        {rows.map((row, rowIndex) => (
+          <div key={rowIndex} className="flex items-start">
+            {row.map((cell, index) => (
+              <div
+                key={index}
+                className="min-w-0 flex-1"
+                style={
+                  grid && index < perRow - 1 ? { paddingRight: `${grid.gap / 20}pt` } : undefined
+                }
+              >
+                {cell.map((child, childIndex) => (
+                  <NodeView key={childIndex} node={child} language={language} ctx={ctx} />
+                ))}
+              </div>
+            ))}
+          </div>
+        ))}
         {/* The structural blank line Word requires after every table — `optionRowXml`
             emits an empty 12pt paragraph after the grid. A real block, not a margin,
             because the paginator measures boxes (§ tables' own trailing spacer). */}

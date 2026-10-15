@@ -6,9 +6,11 @@ import { mapSame, patch, type TextWalker } from '@/model/textSlots';
 import type { BiText, LanguageMode, McqOption, McqOptionLayout, McqQuestion } from '@/model/types';
 import { shuffledOrder } from '@/model/versions';
 import {
+  DEFAULT_PAGE_METRICS,
   pushGap,
   renderContentBlocks,
   type ColumnsNode,
+  type PageMetrics,
   type RenderContext,
   type RenderNode,
   type TextNode,
@@ -25,6 +27,7 @@ import type {
 } from './types';
 import type { AnswerKeyEntry } from '@/render/answerKey';
 import { paragraphLines } from '@/render/answerKeySections';
+import { lineWidthTwips, splitRunLines } from '@/render/textWidth';
 
 /**
  * MCQ rendering (§8): stem blocks -> statements (if any) -> options A-D,
@@ -69,13 +72,13 @@ function displayWidth(text: string): number {
 }
 
 /**
- * The layout an MCQ renders with.
+ * The layout an MCQ is set to: what the panel shows.
  *
  * An explicit `optionLayout` always wins. With none, options **stack** — the layout
  * every existing document was authored against, and the one §7.2 numbering applies to.
  * `suggestOptionLayout` is the auto part: the editor calls it when a question is created
- * or edited and writes the result, so a document's appearance is always something it
- * states rather than something re-derived (and re-derivable differently) at render time.
+ * or edited and writes the result, so a document's chosen layout is always something it
+ * states. What prints can still differ when the text cannot fit (`printedOptionLayout`).
  */
 export function resolveOptionLayout(question: McqQuestion): McqOptionLayout {
   // Options carrying blocks can stack or sit two per row — never inline.
@@ -98,7 +101,8 @@ export function resolveOptionLayout(question: McqQuestion): McqOptionLayout {
  *
  * Short options ("(1) and (2) only") read well side by side and save the vertical space
  * a 19-question paper needs; full sentences do not. Returned as a suggestion for the
- * editor to store, never applied implicitly at render time.
+ * editor to store, never applied at render time. (A row that cannot hold its text is a
+ * different matter, decided from the page: `printedOptionLayout`.)
  */
 export function suggestOptionLayout(
   question: McqQuestion,
@@ -125,6 +129,80 @@ export function suggestOptionLayout(
   if (longest <= INLINE_MAX) return 'inline';
   if (longest <= COLUMNS2_MAX) return 'columns2';
   return 'stacked';
+}
+
+/** What prints: the set layout, or `grid` (`OptionRowNode.textGrid`) once a row can't hold its text. */
+export type PrintedOptionLayout = McqOptionLayout | 'grid';
+
+/** Room kept clear before the next tab stop, twips; also the grid's column gap. */
+const OPTION_COLUMN_GAP = 240;
+
+/** Estimates are inflated by this, so a borderline row falls back rather than breaking. */
+const FIT_SAFETY = 1.03;
+
+/** The lines one option prints in `language`: one per side shown, split at hard breaks. */
+function printedLines(text: BiText, language: LanguageMode) {
+  const shown = (runs: BiText['en']) => runs.some((run) => run.text.trim().length > 0);
+  const sides =
+    language === 'bilingual'
+      ? [text.en, text.zh].filter(shown)
+      : [language === 'en' ? text.en : text.zh];
+  return (sides.length > 0 ? sides : [[]]).flatMap(splitRunLines);
+}
+
+/**
+ * Whether every option sits on one line in its tab-stop slot, as `columnsNodeXml` places
+ * it: a cell must end `OPTION_COLUMN_GAP` short of the next stop, the last in a row at the
+ * margin. A second line (bilingual, or a hard break) breaks any row with a neighbour:
+ * Word starts it back at the indent, ahead of the next option's tab.
+ */
+function optionRowsFit(
+  question: McqQuestion,
+  perRow: number,
+  language: LanguageMode,
+  page: PageMetrics,
+): boolean {
+  const width = Math.max(720, page.textWidth - OPTION_INDENT);
+  const count = question.options.length;
+  return question.options.every((option, index) => {
+    const slot = index % perRow;
+    const inRow = Math.min(perRow, count - (index - slot));
+    const lines = printedLines(option.text, language);
+    if (inRow > 1 && lines.length > 1) return false;
+    const start = OPTION_INDENT + (slot / perRow) * width;
+    const end =
+      slot < inRow - 1
+        ? OPTION_INDENT + ((slot + 1) / perRow) * width - OPTION_COLUMN_GAP
+        : page.textWidth;
+    const marker = lineWidthTwips([{ text: `${optionLabel(index)} ` }], page.fontSize, page.latinFont);
+    return lines.every(
+      (line) =>
+        start + (marker + lineWidthTwips(line, page.fontSize, page.latinFont)) * FIT_SAFETY <= end,
+    );
+  });
+}
+
+/**
+ * The layout an MCQ prints with, on this page in this language.
+ *
+ * The set layout, unless its rows cannot hold the text: inline falls back to 2 columns,
+ * and 2 columns to `grid`, a table where each option wraps in its own cell under its own
+ * text. Decided here, so the IR carries it to every backend; the stored layout is never
+ * rewritten (shorten the text and the row comes back). Figure options are left alone.
+ */
+export function printedOptionLayout(
+  question: McqQuestion,
+  language: LanguageMode,
+  page: PageMetrics = DEFAULT_PAGE_METRICS,
+): PrintedOptionLayout {
+  const layout = resolveOptionLayout(question);
+  if (layout === 'stacked' || question.options.some((option) => (option.blocks?.length ?? 0) > 0)) {
+    return layout;
+  }
+  if (layout === 'inline' && optionRowsFit(question, Math.max(1, question.options.length), language, page)) {
+    return 'inline';
+  }
+  return optionRowsFit(question, 2, language, page) ? 'columns2' : 'grid';
 }
 
 function render(question: McqQuestion, context: RenderContext): RenderNode[] {
@@ -214,10 +292,41 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
   // separates the question from its options, and a second would double the gap.
   if (statements.length > 0) pushGap(nodes);
 
-  const layout = resolveOptionLayout(question);
+  const layout = printedOptionLayout(question, context.mode.language, context.page);
   const anyOptionBlocks = question.options.some((option) => (option.blocks?.length ?? 0) > 0);
 
-  if (layout === 'columns2' && anyOptionBlocks) {
+  if (layout === 'grid') {
+    // Options too long for their row: two per row in one borderless table, each option
+    // wrapping inside its own cell. The letter hangs in the stacked option's gutter, so
+    // a wrapped line returns under the option's text (§ ColumnsNode.hanging).
+    const hang = context.indents.option.hanging;
+    const cells: RenderNode[][] = question.options.map((option, index) => [
+      {
+        kind: 'columns',
+        style: 'MCQ Option',
+        // A grid row keeps with the next: the rows are one table and must not part.
+        keepNext: true,
+        cells: [
+          { text: { en: [], zh: [] }, at: 0, marker: optionLabel(index) },
+          {
+            text: option.text,
+            at: 0,
+            edit: { kind: 'mcqOption', questionId: question.id, optionId: option.id },
+          },
+        ],
+        indent: hang,
+        hanging: hang,
+      },
+    ]);
+    // An odd last row squares off, so a lone option keeps its half-column.
+    if (cells.length % 2 === 1) cells.push([]);
+    nodes.push({
+      kind: 'optionRow',
+      cells,
+      textGrid: { perRow: 2, indent: OPTION_INDENT, gap: OPTION_COLUMN_GAP },
+      keepNext: context.mode.version === 'teacher',
+    });
+  } else if (layout === 'columns2' && anyOptionBlocks) {
     // Figure options two per row — the reference's 2×2 grid, each letter above its own
     // graph. Tab stops cannot hold a picture per cell, so this is a real grid
     // (§ `OptionRowNode`): each cell is the option's own nodes, the lettered line then

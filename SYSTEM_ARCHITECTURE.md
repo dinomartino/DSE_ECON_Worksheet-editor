@@ -282,9 +282,15 @@ stacked options keep native `w:num`.
   where Word returns each wrapped line. The preview gives the marker cell exactly the
   gutter as a fixed width.
 - `labelList.hanging` supersedes `valueAt`.
+- **An MC row that can't hold its options falls back at render time** (`printedOptionLayout`,
+  from `PageMetrics`: text width, body size, Latin face): inline → 2 columns → a text grid
+  (`OptionRowNode.textGrid`, one indented table, each option hung in its own cell). Too long,
+  a second line (bilingual, `\n`) or a hard break in a shared row all count: Word wraps or
+  tabs them past the next option. The stored `optionLayout` is never rewritten. Measured by
+  Times/Arial advances plus 3%, 240tw clear of the next stop, so a borderline row falls back.
 - **An MC option aligns with its question** (`McqQuestion.optionAlign`, `isAlignOnly`):
-  only stacked option paragraphs carry it. A row has no line to align, so the format bar
-  withholds it there (`printsAsParagraph`) and the stored value waits for stacking.
+  only stacked option paragraphs carry it. A row or grid cell has no line to align, so the
+  format bar withholds it there (`printsAsParagraph`) and the stored value waits for stacking.
 - **Justified text sets `w:doNotExpandShiftReturn`** (`buildSettingsXml`, only then): a
   bilingual paragraph's English line ends in `w:br`, which Word stretches and CSS does not.
 - **"Justify text" is a document setting stamped on the IR** (`Worksheet.justifyText`,
