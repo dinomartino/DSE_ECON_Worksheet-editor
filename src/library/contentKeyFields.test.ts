@@ -33,6 +33,7 @@ const QUESTION_FIELDS: Record<AnyQuestionKey, 'content' | 'metadata'> = {
   answerIndex: 'content',
   explanation: 'content',
   optionLayout: 'content',
+  optionAlign: 'content',
   provenance: 'content',
   parts: 'content',
   answerSpace: 'content',

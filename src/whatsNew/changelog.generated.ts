@@ -14,6 +14,21 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Justify MC options.** Click any option of a multiple-choice question and use the
+  alignment buttons to justify its options, or align them left, centre or right. All four
+  options of the question change together, and the page, the Word file and the PDF match.
+  It applies when the options are listed one per line.
+  <!-- zh: **MC 選項可左右對齊。** 點選 MC 題的任何一個選項，再用對齊按鈕把選項左右對齊，或靠左、置中、靠右對齊。
+  同一題的所有選項會一起改變，頁面、Word 檔案及 PDF 都一致。選項逐行排列時適用。 -->
+
+### Fixed
+- **Justified text in a bilingual worksheet no longer stretches the English line in Word.**
+  The English half of a justified paragraph now ends as it does on the page, instead of being
+  spread across the whole line before the Chinese.
+  <!-- zh: **雙語工作紙中左右對齊的文字，在 Word 不再把英文行拉闊。** 左右對齊段落的英文部分現在與頁面一樣結束，
+  不會在中文之前被拉滿整行。 -->
+
 ## 0.8.1 — 2026-10-14
 
 ### Added

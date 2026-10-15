@@ -81,6 +81,11 @@ interface Props {
    * `TextFormat.align` in the .docx. Hiding the group leaves any stored align alone.
    */
   alignable?: boolean;
+  /**
+   * The target's only format is alignment (`isAlignOnly`: an MC option's is its
+   * question's): size, weight and colour would have nowhere to go, so they are hidden.
+   */
+  alignOnly?: boolean;
   /** Dismiss the bar, clearing the page selection. */
   onClose?: () => void;
   /** Structural actions offered alongside formatting. */
@@ -176,6 +181,7 @@ export function FormatToolbar({
   onInsertBlank,
   onReset,
   alignable = true,
+  alignOnly = false,
   onClose,
   onDelete,
   onMove,
@@ -273,61 +279,65 @@ export function FormatToolbar({
           `Default` is offered as a distinct choice rather than as the resting label, so
           clearing an override back to the style is something the teacher can actually
           ask for. */}
-      <select
-        aria-label={m.fontSize}
-        title={m.fontSize}
-        className="h-7 cursor-pointer rounded bg-[#33302c] min-w-9 px-1 [field-sizing:content] text-xs text-[#f1eee9] outline-none transition-[background-color] duration-150 ease-out-soft hover:bg-[#3d3a35] focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
-        value={format?.fontSize ?? inheritedPt ?? ''}
-        onChange={(event) =>
-          onChange({ fontSize: event.target.value ? Number(event.target.value) : undefined })
-        }
-      >
-        <option value="">
-          {format?.fontSize === undefined && inheritedPt === undefined ? m.size : m.sizeDefault}
-        </option>
-        {/* The steps, plus the inherited size merged in when it is not already one of
-            them — a style at 15pt has to be selectable to be *displayed* as selected,
-            and inserting it in order keeps the list scannable rather than leading with
-            an odd value. */}
-        {sizeOptions.map((size) => (
-          <option key={size} value={size}>
-            {size}
-          </option>
-        ))}
-      </select>
+      {!alignOnly && (
+        <>
+          <select
+            aria-label={m.fontSize}
+            title={m.fontSize}
+            className="h-7 cursor-pointer rounded bg-[#33302c] min-w-9 px-1 [field-sizing:content] text-xs text-[#f1eee9] outline-none transition-[background-color] duration-150 ease-out-soft hover:bg-[#3d3a35] focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
+            value={format?.fontSize ?? inheritedPt ?? ''}
+            onChange={(event) =>
+              onChange({ fontSize: event.target.value ? Number(event.target.value) : undefined })
+            }
+          >
+            <option value="">
+              {format?.fontSize === undefined && inheritedPt === undefined ? m.size : m.sizeDefault}
+            </option>
+            {/* The steps, plus the inherited size merged in when it is not already one of
+                them — a style at 15pt has to be selectable to be *displayed* as selected,
+                and inserting it in order keeps the list scannable rather than leading with
+                an odd value. */}
+            {sizeOptions.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
 
-      <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
+          <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
 
-      <button
-        type="button"
-        aria-label={m.bold}
-        aria-pressed={Boolean(format?.bold)}
-        title={m.bold}
-        className={`${BTN} ${format?.bold ? ACTIVE : IDLE} font-bold`}
-        onClick={() => toggle('bold')}
-      >
-        B
-      </button>
-      <button
-        type="button"
-        aria-label={m.italic}
-        aria-pressed={Boolean(format?.italic)}
-        title={m.italic}
-        className={`${BTN} ${format?.italic ? ACTIVE : IDLE} italic`}
-        onClick={() => toggle('italic')}
-      >
-        I
-      </button>
-      <button
-        type="button"
-        aria-label={m.underline}
-        aria-pressed={Boolean(format?.underline)}
-        title={m.underline}
-        className={`${BTN} ${format?.underline ? ACTIVE : IDLE} underline`}
-        onClick={() => toggle('underline')}
-      >
-        U
-      </button>
+          <button
+            type="button"
+            aria-label={m.bold}
+            aria-pressed={Boolean(format?.bold)}
+            title={m.bold}
+            className={`${BTN} ${format?.bold ? ACTIVE : IDLE} font-bold`}
+            onClick={() => toggle('bold')}
+          >
+            B
+          </button>
+          <button
+            type="button"
+            aria-label={m.italic}
+            aria-pressed={Boolean(format?.italic)}
+            title={m.italic}
+            className={`${BTN} ${format?.italic ? ACTIVE : IDLE} italic`}
+            onClick={() => toggle('italic')}
+          >
+            I
+          </button>
+          <button
+            type="button"
+            aria-label={m.underline}
+            aria-pressed={Boolean(format?.underline)}
+            title={m.underline}
+            className={`${BTN} ${format?.underline ? ACTIVE : IDLE} underline`}
+            onClick={() => toggle('underline')}
+          >
+            U
+          </button>
+        </>
+      )}
 
       {/* Subscript and superscript, offered only for a character selection — "S₁" and
           "P₁+t" are the naming convention of the whole subject, and typing the storage
@@ -380,7 +390,7 @@ export function FormatToolbar({
 
       {alignable && (
         <>
-          <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
+          {!alignOnly && <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />}
           {ALIGNMENTS.map((option) => (
             <button
               key={option.value}
@@ -399,41 +409,45 @@ export function FormatToolbar({
         </>
       )}
 
-      <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
+      {!alignOnly && (
+        <>
+          <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
 
-      <div className="relative">
-        <button
-          type="button"
-          aria-label={m.textColour}
-          aria-expanded={colorOpen}
-          title={m.textColour}
-          className={`${BTN} ${IDLE}`}
-          onClick={() => setColorOpen((open) => !open)}
-        >
-          <span
-            className="h-3.5 w-3.5 rounded-sm border border-[#6b665c]"
-            style={{ background: format?.color ? `#${format.color}` : '#e2e8f0' }}
-          />
-        </button>
-        {colorOpen && (
-          <div className="absolute left-0 top-8 flex origin-top-left animate-pop-in gap-1 rounded-md border border-[#454138] bg-[#211f1d] p-1.5 shadow-xl">
-            {COLORS.map((option) => (
-              <button
-                key={option.label}
-                type="button"
-                aria-label={m[option.label]}
-                title={m[option.label]}
-                className="h-5 w-5 rounded-sm border border-[#57534a] transition-[transform,scale] duration-150 ease-out-soft hover:scale-110 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
-                style={{ background: option.swatch }}
-                onClick={() => {
-                  onChange({ color: option.value });
-                  setColorOpen(false);
-                }}
+          <div className="relative">
+            <button
+              type="button"
+              aria-label={m.textColour}
+              aria-expanded={colorOpen}
+              title={m.textColour}
+              className={`${BTN} ${IDLE}`}
+              onClick={() => setColorOpen((open) => !open)}
+            >
+              <span
+                className="h-3.5 w-3.5 rounded-sm border border-[#6b665c]"
+                style={{ background: format?.color ? `#${format.color}` : '#e2e8f0' }}
               />
-            ))}
+            </button>
+            {colorOpen && (
+              <div className="absolute left-0 top-8 flex origin-top-left animate-pop-in gap-1 rounded-md border border-[#454138] bg-[#211f1d] p-1.5 shadow-xl">
+                {COLORS.map((option) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    aria-label={m[option.label]}
+                    title={m[option.label]}
+                    className="h-5 w-5 rounded-sm border border-[#57534a] transition-[transform,scale] duration-150 ease-out-soft hover:scale-110 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
+                    style={{ background: option.swatch }}
+                    onClick={() => {
+                      onChange({ color: option.value });
+                      setColorOpen(false);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {(onMove || onDuplicate || onDelete) && (
         <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
