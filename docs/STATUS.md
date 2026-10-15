@@ -10,7 +10,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Unreleased on develop (2026-10-15), GitHub #2 + diagram skill check:** MC options justify (`optionAlign`, format bar on an
   option); Document setup "Justify text" (`justifyText`, body styles `jc both`, `doNotExpandShiftReturn`); MC rows that don't
   fit fall back inline → 2 columns → grid at render time (`printedOptionLayout`, `src/render/textWidth.ts`, calibrated in Word;
-  bilingual side-by-side rows always grid); diagram templates checked against `../dse-econ-graph-skills` (labels, bilingual
+  bilingual side-by-side rows always grid); options offer Justify only; feedback takes a screenshot (clipboard, `src/feedback/screenshot.ts`, Tauri untested); diagram templates checked against `../dse-econ-graph-skills` (labels, bilingual
   collisions, Ms/Md, PPC meets axes, AD-AS Y_f). Checked in real Word on this Mac, not in Tauri. Word packs justified lines
   tighter than the preview (no setting found to stop it). #2 has a reply; tell the teacher when released.
 - **Shipped in 0.8.0, none tried in the Tauri window before release:** table "Same height/width" over a
@@ -51,7 +51,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
-- #2 follow-ups: MC options offer only Justify?; price floor DWL + externality templates; ask the teacher for a screenshot; diagram wording (DWL/DL in zh, 過剩, tax burden terms).
+- #2 follow-ups: price floor DWL + externality templates; diagram wording (DWL/DL in zh, 過剩, tax burden terms). Table review vs Word (artifact B72rG1UNUN81XbZ9Qozujc): Phase 1–3, and one-click-type / Enter-newline in cells change written rules.
 - Paid service (`docs/research/2026-09-paid-product/`): what first; the in-app "use a VPN" Gemini
   wording breaks Google's terms. Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key.
@@ -72,7 +72,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified (2026-10-15, `develop` after the #2 merges)
 
-- `npm test` 5554, typecheck green, lint 40. Build and `cargo test` not rerun.
+- `npm test` 5584, typecheck green, lint 40. Build and `cargo test` not rerun.
 
 ## Log
 
