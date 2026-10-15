@@ -38,6 +38,7 @@ import {
   findFigureBlock,
   findTableBlock,
   insideSourceBody,
+  isAlignOnly,
   isAnswerDiagram,
   isFormattable,
   sourceCountAround,
@@ -113,7 +114,7 @@ import {
   bandCellPageText,
   trailLabel,
 } from "@/render/ir";
-import { renderWorksheet, type RenderedItem } from "@/render/worksheet";
+import { renderWorksheet, type RenderedItem, type RenderedQuestion } from "@/render/worksheet";
 import { listQuestionTypes, requireQuestionType } from "@/registry";
 import {
   computeNumbering,
@@ -3951,6 +3952,18 @@ export function sameTarget(a: EditTarget, b: EditTarget): boolean {
   return true;
 }
 
+/**
+ * Whether `target` prints as a paragraph of its own somewhere in the questions, rather
+ * than as one slot of a tab-stop row (`ColumnsNode`) where alignment means nothing.
+ */
+function printsAsParagraph(questions: RenderedQuestion[], target: EditTarget): boolean {
+  return questions.some((question) =>
+    question.nodes.some(
+      (node) => node.kind === "text" && node.edit !== undefined && sameTarget(node.edit, target),
+    ),
+  );
+}
+
 export function isBlankAreaClick(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return !target.closest(BLANK_CLICK_EXEMPT);
@@ -5446,6 +5459,26 @@ export function Preview({
       end: textSelection.end,
     };
   }, [textSelection, selectedElement]);
+
+  /*
+   * The format bar for the selection, if it gets one. An align-only target (an MC
+   * option) has nothing else to offer, so it gets no bar where it cannot be aligned;
+   * its character ranges stay unformatted, since its one format is element-wide.
+   */
+  const formatBar = useMemo(() => {
+    if (!selectedElement || !isFormattable(selectedElement.target)) return undefined;
+    const target = selectedElement.target;
+    if (!isAlignOnly(target)) {
+      // A cell's alignment is the context bar's T⇤ T↔ T⇥ (`CellAlign`); a second set of
+      // arrows here would mean "text" right above ▦ arrows meaning "table".
+      return { alignOnly: false, alignable: target.kind !== "tableCell", range: runRange, caret: runCaret };
+    }
+    if (!printsAsParagraph(rendered.questions, target)) return undefined;
+    return { alignOnly: true, alignable: true, range: undefined, caret: undefined };
+  }, [selectedElement, rendered, runRange, runCaret]);
+
+  const barRange = formatBar?.range;
+  const barCaret = formatBar?.caret;
 
   const isEmpty = rendered.questions.length === 0;
 
@@ -7399,11 +7432,10 @@ export function Preview({
         detail={dragLabel?.detail}
       />
 
-      {/* Only formattable targets get a toolbar; a table cell or MCQ option has no
-          paragraph of its own to carry direct formatting. */}
+      {/* Only formattable targets get a toolbar (`formatBar`). */}
       {onFormat &&
         selectedElement &&
-        isFormattable(selectedElement.target) && (
+        formatBar && (
           <ToolbarDock
             containerRef={containerRef}
             selectionKey={selectedElement}
@@ -7413,14 +7445,13 @@ export function Preview({
              * means two different things and the teacher cannot tell which they will get.
              */
             subject={
-              runRange
+              barRange
                 ? m.selectedText(m[TARGET_NAME[selectedElement.target.kind]])
                 : m[TARGET_NAME[selectedElement.target.kind]]
             }
             onClose={() => setSelectedElement(undefined)}
-            /* A cell's alignment is the context bar's T⇤ T↔ T⇥ (`CellAlign`); a second
-               set of arrows here would mean "text" right above ▦ arrows meaning "table". */
-            alignable={selectedElement.target.kind !== "tableCell"}
+            alignable={formatBar.alignable}
+            alignOnly={formatBar.alignOnly}
             /*
              * Report the *selection's* own formatting when a range is live, so the bar
              * shows what those characters actually carry — reporting the element's
@@ -7436,12 +7467,12 @@ export function Preview({
              * un-bolding the selection instead of bolding it, while the size dropdown
              * reported the element's size rather than the selection's.
              */
-            format={runRange ? runRange.common : formatOf?.(selectedElement.target)}
-            vertAlign={runRange?.vertAlign}
+            format={barRange ? barRange.common : formatOf?.(selectedElement.target)}
+            vertAlign={barRange?.vertAlign}
             /* Offered only with characters selected: raising or lowering needs a range
                to act on, and there is no sensible element-wide meaning for it. */
             onVertAlign={
-              runRange && onFormatRuns
+              barRange && onFormatRuns
                 ? (value) => {
                     // Same hold-open dance as `onChange`: the click has already blurred
                     // the field, and without the flag its blur handler would commit and
@@ -7449,9 +7480,9 @@ export function Preview({
                     setFormatting(true);
                     onFormatRuns(
                       selectedElement.target,
-                      runRange.side,
-                      runRange.start,
-                      runRange.end,
+                      barRange.side,
+                      barRange.start,
+                      barRange.end,
                       { vertAlign: value },
                     );
                     window.setTimeout(() => setFormatting(false), 0);
@@ -7464,21 +7495,21 @@ export function Preview({
                what it covers, exactly as typing does. Same hold-open dance — the click
                has already blurred the field. */
             onInsertBlank={
-              runCaret && onInsertBlank
+              barCaret && onInsertBlank
                 ? () => {
                     setFormatting(true);
                     onInsertBlank(
                       selectedElement.target,
-                      runCaret.side,
-                      runCaret.start,
-                      runCaret.end,
+                      barCaret.side,
+                      barCaret.start,
+                      barCaret.end,
                     );
                     window.setTimeout(() => setFormatting(false), 0);
                   }
                 : undefined
             }
             onChange={(patch) => {
-              if (runRange && onFormatRuns) {
+              if (barRange && onFormatRuns) {
                 /*
                  * Hold the editor open across the commit. The click already blurred the
                  * textarea; without this flag its blur handler would commit and close,
@@ -7488,9 +7519,9 @@ export function Preview({
                 setFormatting(true);
                 onFormatRuns(
                   selectedElement.target,
-                  runRange.side,
-                  runRange.start,
-                  runRange.end,
+                  barRange.side,
+                  barRange.start,
+                  barRange.end,
                   patch,
                 );
                 window.setTimeout(() => setFormatting(false), 0);
@@ -7557,9 +7588,7 @@ export function Preview({
           worksheet={worksheet}
           figureBlockId={selectedBlockId}
           onOpenBlock={onOpenBlock}
-          belowFormatBar={Boolean(
-            selectedElement && isFormattable(selectedElement.target),
-          )}
+          belowFormatBar={Boolean(formatBar)}
         />
       )}
     </div>

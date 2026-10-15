@@ -404,6 +404,12 @@ export interface McqQuestion extends QuestionBase {
   explanation?: BiText;
   /** Omitted means auto: chosen from how long the options are. */
   optionLayout?: McqOptionLayout;
+  /**
+   * Alignment of every option line, set from the format bar on any option. On the
+   * question so a version's shuffle cannot split it. Applies only when the options
+   * stack: a tab-stop row ignores it (and keeps it). Absent = the style's own.
+   */
+  optionAlign?: TextAlign;
   /** Teacher-only source / adaptation note, e.g. "Modelled on DSE 2023 Q1". Absent = none. */
   provenance?: BiText;
 }

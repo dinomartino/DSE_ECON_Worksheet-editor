@@ -14,6 +14,7 @@ import type {
   Question,
   RunFormatPatch,
   TableBlock,
+  TextAlign,
   TextFormat,
   Worksheet,
 } from './types';
@@ -993,8 +994,19 @@ export function isFormattable(target: EditTarget): boolean {
      * anywhere else, because an HKDSE table has no header row to carry emphasis —
      * per-cell formatting is *the* mechanism a distribution table's headings use (§tables).
      */
-    target.kind === 'tableCell'
+    target.kind === 'tableCell' ||
+    // Alignment only (`isAlignOnly`): the question's `optionAlign`, shared by its options.
+    target.kind === 'mcqOption'
   );
+}
+
+/**
+ * Targets whose one format is alignment, stored on their owner rather than per element:
+ * an MC option aligns with its siblings (`McqQuestion.optionAlign`). The bar offers them
+ * the alignment group alone, and only where they print as a paragraph of their own.
+ */
+export function isAlignOnly(target: EditTarget): boolean {
+  return target.kind === 'mcqOption';
 }
 
 /**
@@ -1047,6 +1059,17 @@ export function applyFormatTarget(
       return mapLayoutElement(worksheet, target, (element) =>
         isTextLayoutElement(element) ? { ...element, format: merge(element.format) } : element,
       );
+
+    case 'mcqOption': {
+      // Only `align` has a home here; every other key is ignored (`isAlignOnly`).
+      if (!('align' in patch)) return worksheet;
+      return mapQuestionById(worksheet, target.questionId, (question) => {
+        if (!('options' in question)) return question;
+        const { optionAlign: _previous, ...rest } = question as Question & { optionAlign?: TextAlign };
+        void _previous;
+        return (patch.align ? { ...rest, optionAlign: patch.align } : rest) as Question;
+      });
+    }
 
     case 'coverLine':
       return worksheet.cover
@@ -1134,6 +1157,11 @@ export function formatOfTarget(
     case 'layoutText': {
       const element = worksheet.layout.find((entry) => entry.id === target.elementId);
       return element && isTextLayoutElement(element) ? element.format : undefined;
+    }
+    case 'mcqOption': {
+      const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+      const align = (question as { optionAlign?: TextAlign } | undefined)?.optionAlign;
+      return align ? { align } : undefined;
     }
     case 'coverLine':
       return worksheet.cover

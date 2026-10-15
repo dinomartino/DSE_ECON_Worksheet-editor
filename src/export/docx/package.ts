@@ -149,7 +149,16 @@ export function buildDocumentRelsXml(assets: ImageAsset[], hf: HeaderFooterParts
   );
 }
 
-export function buildSettingsXml(): string {
+/** Full justification, as `formatParagraphProps` writes it. */
+const JUSTIFIED = '<w:jc w:val="both"/>';
+
+/**
+ * `justified`: some paragraph is justified. A bilingual paragraph ends its English line
+ * in a `w:br`, and Word stretches such a line across the column where the page (CSS)
+ * leaves it ragged; `w:doNotExpandShiftReturn` makes Word agree. Written only then, so
+ * a document with no justified text keeps its settings part byte for byte.
+ */
+export function buildSettingsXml(options: { justified?: boolean } = {}): string {
   return (
     XML_DECL +
     '<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
@@ -171,6 +180,8 @@ export function buildSettingsXml(): string {
     // Kerning/spacing rules that make mixed Latin + CJK text lay out correctly.
     '<w:characterSpacingControl w:val="compressPunctuation"/>' +
     '<w:compat>' +
+    // CT_Compat: the legacy switches precede every `w:compatSetting`.
+    (options.justified ? '<w:doNotExpandShiftReturn/>' : '') +
     '<w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/>' +
     '</w:compat>' +
     '</w:settings>'
@@ -447,7 +458,9 @@ function buildZip(parts: PackageParts): JSZip {
   word.file('document.xml', parts.documentXml);
   word.file('styles.xml', parts.stylesXml);
   word.file('numbering.xml', parts.numberingXml);
-  word.file('settings.xml', buildSettingsXml());
+  const justified = [parts.documentXml, ...headerFooterFiles(parts.headerFooter).map((file) => file.xml)]
+    .some((xml) => xml.includes(JUSTIFIED));
+  word.file('settings.xml', buildSettingsXml({ justified }));
   word.file('fontTable.xml', parts.fontTableXml);
   for (const file of headerFooterFiles(parts.headerFooter)) {
     word.file(file.name, file.xml);

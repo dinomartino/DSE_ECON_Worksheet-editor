@@ -271,6 +271,9 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
         keepNext:
           blocks.length > 0 || !last || context.mode.version === 'teacher',
         text: option.text,
+        // The question's one alignment, on every option line; only stacked options
+        // carry it (a tab-stop row has no line of its own to align).
+        ...(question.optionAlign ? { format: { align: question.optionAlign } } : {}),
         edit: { kind: 'mcqOption', questionId: question.id, optionId: option.id },
         listRef: {
           stream: `option:${context.questionId}`,

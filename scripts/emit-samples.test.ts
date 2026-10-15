@@ -42,6 +42,22 @@ it('emits sample documents', async () => {
   }
 });
 
+it('emits a paper whose MC options are justified', async () => {
+  const dir = `${OUT}/option-justify`;
+  mkdirSync(dir, { recursive: true });
+  const worksheet = buildAcceptanceWorksheet();
+  worksheet.questions = worksheet.questions.map((question) =>
+    question.type === 'mcq' ? { ...question, optionAlign: 'justify' as const } : question,
+  );
+  for (const version of ['student', 'teacher'] as const) {
+    const mode: OutputMode = { language: 'bilingual', version };
+    const bytes = await exportDocxBuffer(worksheet, mode);
+    const path = `${dir}/${docxFileName(worksheet, mode)}`;
+    writeFileSync(path, bytes);
+    console.log(`${bytes.length} bytes -> ${path}`);
+  }
+});
+
 it('emits a paper with versions A–C, and its answer key', async () => {
   mkdirSync(OUT, { recursive: true });
   const worksheet = { ...buildAcceptanceWorksheet(), versions: { count: 3, seed: 2026 } };

@@ -282,6 +282,11 @@ stacked options keep native `w:num`.
   where Word returns each wrapped line. The preview gives the marker cell exactly the
   gutter as a fixed width.
 - `labelList.hanging` supersedes `valueAt`.
+- **An MC option aligns with its question** (`McqQuestion.optionAlign`, `isAlignOnly`):
+  only stacked option paragraphs carry it. A row has no line to align, so the format bar
+  withholds it there (`printsAsParagraph`) and the stored value waits for stacking.
+- **Justified text sets `w:doNotExpandShiftReturn`** (`buildSettingsXml`, only then): a
+  bilingual paragraph's English line ends in `w:br`, which Word stretches and CSS does not.
 
 ### An enlarged line box follows its font size
 
