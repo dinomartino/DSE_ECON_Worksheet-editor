@@ -2,6 +2,8 @@
 
 Worksheets, papers and notes for HKDSE Economics teachers.
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-dseconmentor-FFDD00?logo=buymeacoffee&logoColor=000)](https://buymeacoffee.com/dseconmentor)
+
 Build printable Economics worksheets, quizzes and assessments at HKDSE level in English
 and Traditional Chinese (Hong Kong usage), and export a **native Microsoft Word `.docx`**
 that stays fully editable in Word — live numbering, real styles, real tables, per-script
