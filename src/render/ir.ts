@@ -1,6 +1,8 @@
 import type { Diagram } from '@/model/diagram';
 import { hasAnswerLayer } from '@/model/diagramAnswers';
 import type { ListIndentScheme } from '@/model/numbering';
+import { contentWidth, DEFAULT_PAGE_SETUP, pageSetupOf } from '@/model/page';
+import { bodyTextSizeOf, DEFAULT_BODY_TEXT_SIZE } from '@/model/fonts';
 import type {
   BandFieldSide,
   BiText,
@@ -18,6 +20,7 @@ import type {
   TableBlock,
   TableBorders,
   TextFormat,
+  Worksheet,
 } from '@/model/types';
 import { isBiTextEmpty, plain, trailingBlankLines } from '@/model/text';
 import { defaultFramed } from '@/model/edits';
@@ -369,6 +372,13 @@ export interface OptionRowNode {
   kind: 'optionRow';
   /** One entry per option in the row. An empty cell squares off an odd last row. */
   cells: RenderNode[][];
+  /**
+   * Present on a text grid: options too long for their tab-stop row (§ `printedOptionLayout`).
+   * The cells flow `perRow` to a row, all rows in one table indented `indent` twips, `gap`
+   * twips kept clear after every column but the last. Its trailing blank is a spent line
+   * (`endsInBlankLine`). Absent on a figure grid, which is one row and spends nothing.
+   */
+  textGrid?: { perRow: number; indent: number; gap: number };
   keepNext?: boolean;
   teacherOnly?: boolean;
 }
@@ -612,7 +622,39 @@ export interface RenderContext {
    * constants directly, so one document renders on one scheme throughout.
    */
   indents: ListIndentScheme;
+  /** The text column a question prints in; absent reads as `DEFAULT_PAGE_METRICS`. */
+  page?: PageMetrics;
 }
+
+/**
+ * What a question type may know of the page: enough to tell whether a line of text fits
+ * its slot, so every backend inherits one decision from the IR.
+ */
+export interface PageMetrics {
+  /** Text column width, twips (`contentWidth`). */
+  textWidth: number;
+  /** Body text size, points (`bodyTextSizeOf`). */
+  fontSize: number;
+  /** The document's Latin face (`Worksheet.fonts.latin`). */
+  latinFont: string;
+}
+
+/** The page a document's questions print on. */
+export function pageMetricsOf(worksheet: Worksheet): PageMetrics {
+  return {
+    textWidth: contentWidth(pageSetupOf(worksheet)),
+    fontSize: bodyTextSizeOf(worksheet),
+    latinFont: worksheet.fonts.latin,
+  };
+}
+
+/** A4 portrait at the default margins, 11pt Times New Roman. */
+export const DEFAULT_PAGE_METRICS: PageMetrics = {
+  textWidth: contentWidth(DEFAULT_PAGE_SETUP),
+  fontSize: DEFAULT_BODY_TEXT_SIZE,
+  // `DEFAULT_FONTS.latin`, restated: `model/factories` pulls in the diagram renderer.
+  latinFont: 'Times New Roman',
+};
 
 /**
  * A `trail` as one line of text, for all three backends. Bilingual mode joins the two
@@ -845,6 +887,8 @@ export function endsInBlankLine(nodes: RenderNode[]): boolean {
   const last = nodes[nodes.length - 1];
   if (!last) return false;
   if (last.kind === 'spacer') return true;
+  // A text grid's trailing paragraph is a blank line like any spacer (§ `OptionRowNode`).
+  if (last.kind === 'optionRow') return last.textGrid !== undefined;
   // A text node ending in a hard break leaves an empty final line, which is the same
   // spent line a spacer would have contributed.
   if (last.kind === 'text') {

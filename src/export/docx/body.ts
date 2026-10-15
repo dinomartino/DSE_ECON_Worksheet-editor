@@ -974,12 +974,17 @@ function figureRowXml(node: FigureRowNode, context: BodyContext): string {
  * whatever their figures' heights, which is the reference grid's own shape.
  */
 function optionRowXml(node: OptionRowNode, context: BodyContext): string {
-  const count = Math.max(1, node.cells.length);
-  const base = Math.floor(context.contentWidth / count);
+  // A text grid flows its cells `perRow` to a row, indented; a figure grid is one row.
+  const grid = node.textGrid;
+  const indent = grid?.indent ?? 0;
+  const tableWidth = context.contentWidth - indent;
+  const count = Math.max(1, grid ? grid.perRow : node.cells.length);
+  const base = Math.floor(tableWidth / count);
   // The last cell takes the rounding remainder — the same rule table columns follow.
-  const widths = node.cells.map((_, index) =>
-    index === count - 1 ? context.contentWidth - base * (count - 1) : base,
+  const columnWidths = Array.from({ length: count }, (_, index) =>
+    index === count - 1 ? tableWidth - base * (count - 1) : base,
   );
+  const widths = node.cells.map((_, index) => columnWidths[index % count]);
 
   const noBorder = (side: string) =>
     `<w:${side} w:val="none" w:sz="0" w:space="0" w:color="auto"/>`;
@@ -1006,18 +1011,27 @@ function optionRowXml(node: OptionRowNode, context: BodyContext): string {
         inner.endsWith('</w:tbl>') || inner === ''
           ? inner + paragraph({ styleId: STYLE_IDS.Body, runs: '' })
           : inner;
+      // A text grid keeps its gap clear after every column but the last.
+      const gap =
+        grid && index % count < count - 1
+          ? `<w:tcMar><w:right w:w="${grid.gap}" w:type="dxa"/></w:tcMar>`
+          : '';
       return (
-        `<w:tc><w:tcPr><w:tcW w:w="${widths[index]}" w:type="dxa"/></w:tcPr>` +
+        `<w:tc><w:tcPr><w:tcW w:w="${widths[index]}" w:type="dxa"/>${gap}</w:tcPr>` +
         content +
         '</w:tc>'
       );
-    })
-    .join('');
+    });
+  const rows: string[] = [];
+  for (let start = 0; start < cells.length; start += count) {
+    rows.push(`<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells.slice(start, start + count).join('')}</w:tr>`);
+  }
 
   const table =
     '<w:tbl><w:tblPr>' +
     '<w:tblStyle w:val="TableNormal"/>' +
-    `<w:tblW w:w="${context.contentWidth}" w:type="dxa"/>` +
+    `<w:tblW w:w="${tableWidth}" w:type="dxa"/>` +
+    (indent ? `<w:tblInd w:w="${indent}" w:type="dxa"/>` : '') +
     '<w:tblLayout w:type="fixed"/>' +
     // Zero cell margins and `none` on all six borders: invisible geometry, exactly as
     // `figureRowXml` spells it (an unstated border inherits from the table style).
@@ -1030,8 +1044,8 @@ function optionRowXml(node: OptionRowNode, context: BodyContext): string {
     ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(noBorder).join('') +
     '</w:tblBorders>' +
     '</w:tblPr>' +
-    `<w:tblGrid>${widths.map((width) => `<w:gridCol w:w="${width}"/>`).join('')}</w:tblGrid>` +
-    `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells}</w:tr>` +
+    `<w:tblGrid>${columnWidths.map((width) => `<w:gridCol w:w="${width}"/>`).join('')}</w:tblGrid>` +
+    rows.join('') +
     '</w:tbl>';
 
   // A table must be followed by a paragraph (Word's rule; also where keep-next rides).

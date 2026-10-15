@@ -9,6 +9,7 @@ import type { BiText, ContentBlock, McqOptionLayout, McqQuestion } from '@/model
 import {
   keepsOptionOrder,
   optionStaysPut,
+  printedOptionLayout,
   printedOptionOrder,
   resolveOptionLayout,
   suggestOptionLayout,
@@ -17,6 +18,7 @@ import { activeVersion, versionCount, versionLetter, versionSeed } from '@/model
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { documentShape } from '@/model/documentShape';
+import { pageMetricsOf } from '@/render/ir';
 import { Button, GroupHeader, IconButton, NumberField, Segmented, SelectField } from '@/components/ui';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { useMessages } from '@/i18n/language';
@@ -36,6 +38,11 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
   const statements = question.statements ?? [];
   const language = useWorksheetStore((s) => s.mode.language);
   const suggested = suggestOptionLayout(question, language);
+  // What the page prints, when the set layout can't hold the text (a string, so the
+  // selector re-renders only when the answer changes).
+  const printedLayout = useWorksheetStore((s) =>
+    printedOptionLayout(question, s.mode.language, pageMetricsOf(s.worksheet)),
+  );
   // Which paper this question sits in, for the exam-only gap control below. Derived
   // per render — cheap, and a stored copy would go stale when a cover is added.
   const shape = useWorksheetStore((s) => documentShape(s.worksheet));
@@ -242,6 +249,11 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           )}
         </div>
 
+        {printedLayout !== resolveOptionLayout(question) && (
+          <p className="pb-1 text-[11px] text-ink-muted">
+            {printedLayout === 'grid' ? m.printsAsGrid : m.printsAsColumns2}
+          </p>
+        )}
         {fixedOrder && (
           <p className="pb-1 text-[11px] text-ink-muted">
             {m.fixedOrder}

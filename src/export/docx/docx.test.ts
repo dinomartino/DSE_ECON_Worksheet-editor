@@ -38,6 +38,7 @@ import type { LayoutElement, OutputMode, TableBlock, Worksheet } from '@/model/t
 
 const STUDENT_BI: OutputMode = { language: 'bilingual', version: 'student' };
 const TEACHER_BI: OutputMode = { language: 'bilingual', version: 'teacher' };
+const STUDENT_EN: OutputMode = { language: 'en', version: 'student' };
 
 async function unzip(mode: OutputMode) {
   const worksheet = buildAcceptanceWorksheet();
@@ -1166,7 +1167,8 @@ describe('MCQ option layout (inline / columns)', () => {
   });
 
   it('emits two rows of two for the 2-column layout', async () => {
-    const document = await open(withLayout('columns2'));
+    // English: a bilingual option prints two lines, which no tab-stop row can hold.
+    const document = await open(withLayout('columns2'), STUDENT_EN);
     // A and C start their rows, so only B and D follow a tab.
     const rows = document.match(/<w:tabs><w:tab w:val="left"[^>]*\/><\/w:tabs>/g) ?? [];
     expect(rows.length).toBe(2);
@@ -1190,8 +1192,8 @@ describe('MCQ option layout (inline / columns)', () => {
     const stops = (xml: string) =>
       [...xml.matchAll(/<w:tab w:val="left" w:pos="(\d+)"\/>/g)].map((m) => Number(m[1]));
 
-    const narrowStops = stops(await open(narrow));
-    const wideStops = stops(await open(wide));
+    const narrowStops = stops(await open(narrow, STUDENT_EN));
+    const wideStops = stops(await open(wide, STUDENT_EN));
     expect(narrowStops.length).toBeGreaterThan(0);
     // A wider text column pushes every stop further right.
     expect(Math.max(...wideStops)).toBeGreaterThan(Math.max(...narrowStops));

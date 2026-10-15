@@ -82,6 +82,8 @@ Invariants:
 `summary?` (short count label + `minutesPerItem`, for the paper summary) · `qualityView?` (anchors for the AI quality check) · `paperKinds?` (the papers it normally belongs on; advisory, `src/library/paperTypes.ts:paperTypeIds`).
 
 - `src/registry/index.ts:listQuestionTypes` · `:requireQuestionType`
+- `src/registry/mcq.ts:printedOptionLayout` — the set layout, or the next one that holds the text
+  (inline → 2 columns → grid), measured by `src/render/textWidth.ts:lineWidthTwips`
 - `src/registry/mcq.ts:mcqType` · `:resolveOptionLayout` · `:optionRationales` — teacher-only notes:
   `McqOption.rationale` (travels with its option through a shuffle) and `McqQuestion.provenance`
   ("Source:", `src/model/text.ts:provenanceLabel`); teacher version + answer key only

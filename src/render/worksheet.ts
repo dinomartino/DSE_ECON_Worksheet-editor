@@ -36,6 +36,7 @@ import {
   withLeadingGap,
   type CoverRenderNode,
   type NodeStyle,
+  pageMetricsOf,
   type RenderNode,
 } from './ir';
 import {
@@ -212,6 +213,8 @@ const questionRenderCache = new WeakMap<
     variant: string;
     /** `Worksheet.justifyText`, which stamps the body paragraphs. */
     justify: boolean;
+    /** The page metrics, as one string: a question type may lay out by them. */
+    page: string;
     nodes: RenderNode[];
   }
 >();
@@ -417,6 +420,10 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   // masthead, title or instructions (§ `withJustifiedBody`).
   const justify = worksheet.justifyText === true;
 
+  // The text column and body size, for a question type that lays out by width.
+  const page = pageMetricsOf(worksheet);
+  const pageKey = `${page.textWidth}:${page.fontSize}:${page.latinFont}`;
+
   // A restarting section opens a new Word list stream (native `w:num`), keyed on the
   // section element's id — a dragged marker keeps its identity.
   let questionStream = 'question:0';
@@ -556,7 +563,8 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
       cached.keepWhole === keepWhole &&
       cached.shape === shape &&
       cached.variant === variantKey &&
-      cached.justify === justify
+      cached.justify === justify &&
+      cached.page === pageKey
     ) {
       separated = cached.nodes;
     } else {
@@ -572,6 +580,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
           questionStream,
           // `shape` is in the cache key, so a scheme change re-renders.
           indents: listIndentScheme(shape),
+          page,
         })
         // Student output must contain no teacher content anywhere (§11.8).
         .filter((node) => includeNode(node, mode));
@@ -590,6 +599,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         shape,
         variant: variantKey,
         justify,
+        page: pageKey,
         nodes: separated,
       });
     }

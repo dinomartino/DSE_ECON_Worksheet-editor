@@ -34,7 +34,8 @@ function paper(): Worksheet {
     ...createMcqQuestion(),
     blocks: [createParagraphBlock(bi('Short options follow:', '短選項：'))],
     optionLayout: 'inline',
-    options: ['1', '2', '3', '4'].map((value, index) => ({ id: `in-${index}`, text: bi(value, value) })),
+    // One line each: a bilingual option's two lines would make the row a grid.
+    options: ['1', '2', '3', '4'].map((value, index) => ({ id: `in-${index}`, text: bi(value, '') })),
   };
   // A stem the teacher centred keeps its centre.
   const centred: McqQuestion = {

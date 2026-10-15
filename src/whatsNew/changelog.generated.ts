@@ -30,6 +30,14 @@ a version heading is edited afterwards.
   標題、分部標題、表格及封面維持不變，你自行設定對齊的文字會保留原有對齊。在 Word 中，對齊設定存於試卷的樣式內，所以在 Word 新輸入的文字同樣左右對齊。 -->
 
 ### Fixed
+- **Long MC options no longer break their row in Word.** When options set to Inline or
+  2 columns are too long for their place on the line, they move to 2 columns, or to a grid
+  where each option wraps inside its own cell, under its own text. A bilingual option, with its
+  English and Chinese on two lines, gets its own cell too. The page, the Word file and the PDF
+  match, the Option layout setting keeps your choice, and options that already fit print as before.
+  <!-- zh: **較長的 MC 選項在 Word 不再弄亂整行。** 選項設為「橫列」或「兩欄」但太長、排不進該行的位置時，會改為兩欄，
+  或改為方格排列，每個選項在自己的格內換行，續行對齊選項文字。雙語選項的英文和中文分兩行，同樣各佔一格。
+  頁面、Word 檔案及 PDF 一致，「選項排列」保留你的選擇，原本已排得下的選項列印不變。 -->
 - **Justified text in a bilingual worksheet no longer stretches the English line in Word.**
   The English half of a justified paragraph now ends as it does on the page, instead of being
   spread across the whole line before the Chinese.

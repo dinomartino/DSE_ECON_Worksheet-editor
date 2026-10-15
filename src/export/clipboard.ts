@@ -342,18 +342,29 @@ function nodeHtml(
     // A row of figure-bearing MCQ options: a borderless equal-cell table, top aligned
     // so the letters sit level — the same shape the .docx builds, and the only HTML
     // Word pastes side by side.
-    const share = `${100 / Math.max(1, node.cells.length)}%`;
-    const cells = node.cells
-      .map(
-        (cell) =>
-          `<td style="border:none;vertical-align:top;padding:0;width:${share}">` +
-          cell.map((child) => nodeHtml(child, language, fontCss, diagramImages)).join('') +
-          '</td>',
-      )
-      .join('');
+    // A text grid flows `perRow` cells to a row from its indent (§ `OptionRowNode.textGrid`).
+    const grid = node.textGrid;
+    const perRow = grid ? grid.perRow : Math.max(1, node.cells.length);
+    const share = `${100 / perRow}%`;
+    const cells = node.cells.map((cell, index) => {
+      const gap = grid && index % perRow < perRow - 1 ? `padding-right:${grid.gap / 20}pt;` : '';
+      return (
+        `<td style="border:none;vertical-align:top;padding:0;${gap}width:${share}">` +
+        cell.map((child) => nodeHtml(child, language, fontCss, diagramImages)).join('') +
+        '</td>'
+      );
+    });
+    const rows: string[] = [];
+    for (let start = 0; start < cells.length; start += perRow) {
+      rows.push(`<tr>${cells.slice(start, start + perRow).join('')}</tr>`);
+    }
+    // Indented, a grid is stated in points: the text column less its indent.
+    const box = grid
+      ? `margin-left:${grid.indent / 20}pt;width:${(textWidthTwips - grid.indent) / 20}pt`
+      : 'width:100%';
     return (
-      '<table style="border-collapse:collapse;border:none;width:100%">' +
-      `<tr>${cells}</tr></table>`
+      `<table style="border-collapse:collapse;border:none;${box}">` +
+      `${rows.join('')}</table>`
     );
   }
 

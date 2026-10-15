@@ -39,6 +39,14 @@ export const MCQ_PANEL_MESSAGES = defineMessages({
       `這些選項較適合${suggested === 'stacked' ? '直列' : suggested === 'inline' ? '橫列' : '兩欄'}排列`,
   },
   fit: { en: 'Fit to content', zh: '配合內容' },
+  printsAsColumns2: {
+    en: 'Too long for one line, so these options print in 2 columns.',
+    zh: '選項太長，排不進同一行，所以改為兩欄列印。',
+  },
+  printsAsGrid: {
+    en: 'Too long for their columns, so each option wraps in its own cell.',
+    zh: '選項太長，排不進欄內，所以每個選項在自己的格內換行。',
+  },
   fixedOrder: {
     en: 'A combination question keeps its option order in every version.',
     zh: '組合題在每個版本都保持選項次序。',
