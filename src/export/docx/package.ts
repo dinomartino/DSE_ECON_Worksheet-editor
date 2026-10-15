@@ -458,7 +458,8 @@ function buildZip(parts: PackageParts): JSZip {
   word.file('document.xml', parts.documentXml);
   word.file('styles.xml', parts.stylesXml);
   word.file('numbering.xml', parts.numberingXml);
-  const justified = [parts.documentXml, ...headerFooterFiles(parts.headerFooter).map((file) => file.xml)]
+  // styles.xml too: a justified document (`justifyText`) justifies through its styles.
+  const justified = [parts.documentXml, parts.stylesXml, ...headerFooterFiles(parts.headerFooter).map((file) => file.xml)]
     .some((xml) => xml.includes(JUSTIFIED));
   word.file('settings.xml', buildSettingsXml({ justified }));
   word.file('fontTable.xml', parts.fontTableXml);

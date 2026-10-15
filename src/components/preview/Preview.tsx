@@ -4194,7 +4194,7 @@ function ToolbarDock({
   containerRef,
   selectionKey,
   ...toolbar
-}: Omit<React.ComponentProps<typeof FormatToolbar>, "dock" | "inheritedPt"> & {
+}: Omit<React.ComponentProps<typeof FormatToolbar>, "dock" | "inheritedPt" | "inheritedAlign"> & {
   containerRef: React.RefObject<HTMLDivElement | null>;
   /** Re-measure when the selection moves; the parent only mounts this while one is live. */
   selectionKey: unknown;
@@ -4203,6 +4203,9 @@ function ToolbarDock({
     { left: number; width: number; top: number } | undefined
   >();
   const [selectionPt, setSelectionPt] = useState<number | undefined>();
+  const [selectionJustified, setSelectionJustified] = useState(false);
+  // Re-measured when the stored alignment changes: unpressing it reveals the document's.
+  const storedAlign = toolbar.format?.align;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -4223,6 +4226,8 @@ function ToolbarDock({
       const box = selected?.closest("p, td, th, span") ?? selected;
       const px = box ? Number.parseFloat(getComputedStyle(box).fontSize) : NaN;
       setSelectionPt(Number.isFinite(px) ? Math.round(px * 0.75) : undefined);
+      // Justified on the page but not stored: the document's "Justify text".
+      setSelectionJustified(box ? getComputedStyle(box).textAlign === "justify" : false);
     };
     // After the click's re-render has committed, so the sheet is laid out.
     const frame = requestAnimationFrame(measure);
@@ -4237,10 +4242,17 @@ function ToolbarDock({
       window.removeEventListener("resize", measure);
       observer.disconnect();
     };
-  }, [selectionKey, containerRef]);
+  }, [selectionKey, containerRef, storedAlign]);
 
   if (!dockRect) return null;
-  return <FormatToolbar dock={dockRect} inheritedPt={selectionPt} {...toolbar} />;
+  return (
+    <FormatToolbar
+      dock={dockRect}
+      inheritedPt={selectionPt}
+      inheritedAlign={selectionJustified && storedAlign === undefined ? "justify" : undefined}
+      {...toolbar}
+    />
+  );
 }
 
 interface Props {

@@ -518,6 +518,7 @@ describe('schema versioning and document round-trip (§6, §11.11)', () => {
       classes: ['5A', '5B'],
       satOn: '2025-11-03',
       bankHidden: true,
+      justifyText: true,
     };
     const missing = Object.keys(populated).filter((key) => !KNOWN_KEYS.has(key));
     expect(missing).toEqual([]);

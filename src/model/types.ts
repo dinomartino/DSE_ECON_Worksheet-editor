@@ -872,6 +872,12 @@ export interface Worksheet {
    */
   baseFontSize?: number;
   /**
+   * Print the body text justified (Document setup): stems, paragraphs, statements, part
+   * text and stacked options. An element's own `align` (or `optionAlign`) wins. Absent =
+   * off, stored only as `true` (`withJustifyText`). Applied at render (`withJustifiedBody`).
+   */
+  justifyText?: boolean;
+  /**
    * Blank lines between two same-type questions on an exam paper, overriding the
    * question type's own `examGapLines` (the MCQ paper's measured 3). Absent means the
    * type's default; floored at 1. Read only where the wide gap applies (§

@@ -49,6 +49,12 @@ interface Props {
    * instead of an empty placeholder.
    */
   inheritedPt?: number;
+  /**
+   * The alignment the selection prints with and does not store: the document's "Justify
+   * text" (`Worksheet.justifyText`), measured off the page as `inheritedPt` is. Shown
+   * pressed; pressing it again stores `left`, the one way to opt a line out.
+   */
+  inheritedAlign?: TextAlign;
   format: TextFormat | undefined;
   onChange: (patch: TextFormat) => void;
   /**
@@ -174,6 +180,7 @@ export function FormatToolbar({
   dock,
   subject,
   inheritedPt,
+  inheritedAlign,
   format,
   onChange,
   onVertAlign,
@@ -216,6 +223,17 @@ export function FormatToolbar({
     onChange({ [key]: format?.[key] ? undefined : true });
 
   const hasOverrides = Boolean(format && Object.keys(format).length > 0);
+
+  // What prints: the stored alignment, else the document's.
+  const shownAlign = format?.align ?? inheritedAlign;
+  const pressAlign = (value: TextAlign) => {
+    if (format?.align !== undefined) {
+      onChange({ align: format.align === value ? undefined : value });
+    } else {
+      // Nothing stored: unpressing the document's alignment has to store the opposite.
+      onChange({ align: inheritedAlign === value ? 'left' : value });
+    }
+  };
 
   // The offered steps with the current inherited size folded in, in order.
   const sizeOptions =
@@ -396,12 +414,10 @@ export function FormatToolbar({
               key={option.value}
               type="button"
               aria-label={m[option.label]}
-              aria-pressed={format?.align === option.value}
+              aria-pressed={shownAlign === option.value}
               title={m[option.label]}
-              className={`${BTN} ${format?.align === option.value ? ACTIVE : IDLE}`}
-              onClick={() =>
-                onChange({ align: format?.align === option.value ? undefined : option.value })
-              }
+              className={`${BTN} ${shownAlign === option.value ? ACTIVE : IDLE}`}
+              onClick={() => pressAlign(option.value)}
             >
               {option.glyph}
             </button>

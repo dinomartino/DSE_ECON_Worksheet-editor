@@ -55,3 +55,15 @@ export function withBodyTextSize(worksheet: Worksheet, size: number): Worksheet 
   if (stored === undefined) delete next.baseFontSize;
   return next;
 }
+
+/**
+ * The document with body text justified or not (`Worksheet.justifyText`): off removes
+ * the field, so a document switched back exports as one that never had it. The same
+ * object when nothing changes, so `commit` records no undo step for a no-op.
+ */
+export function withJustifyText(worksheet: Worksheet, on: boolean): Worksheet {
+  if (Boolean(worksheet.justifyText) === on) return worksheet;
+  const next: Worksheet = { ...worksheet, justifyText: true };
+  if (!on) delete next.justifyText;
+  return next;
+}
