@@ -67,6 +67,11 @@ export function lab(...parts: Array<string | [string]>): BiText {
   return same(parts.map((part) => (typeof part === 'string' ? { text: part } : { text: part[0], vertAlign: 'subscript' as const })));
 }
 
+/** `lab` with its own Chinese: a note with words around the symbols, "at Q₁" / "在 Q₁". */
+export function labBi(en: Array<string | [string]>, zh: Array<string | [string]>): BiText {
+  return { en: lab(...en).en, zh: lab(...zh).zh };
+}
+
 /** A bilingual word with a subscript: "shortage₀" / "短缺₀". */
 export function subBi(en: string, zh: string, suffix: string): BiText {
   const tail: InlineRun = { text: suffix, vertAlign: 'subscript' };
