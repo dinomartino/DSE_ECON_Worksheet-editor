@@ -287,6 +287,11 @@ stacked options keep native `w:num`.
   withholds it there (`printsAsParagraph`) and the stored value waits for stacking.
 - **Justified text sets `w:doNotExpandShiftReturn`** (`buildSettingsXml`, only then): a
   bilingual paragraph's English line ends in `w:br`, which Word stretches and CSS does not.
+- **"Justify text" is a document setting stamped on the IR** (`Worksheet.justifyText`,
+  `withJustifiedBody`): body paragraphs with no `align` of their own get `justify`, so every
+  backend agrees. The .docx moves it onto the body styles (`justifiedStyleIds`) and states
+  only what differs (`againstStyle`): a row or grid option gets `left`. `Body` is shared
+  with cells, rows and the cover, so its prose keeps a direct `w:jc`.
 
 ### An enlarged line box follows its font size
 

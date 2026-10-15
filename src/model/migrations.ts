@@ -73,6 +73,7 @@ export const KNOWN_KEYS = new Set([
   'flow',
   'fonts',
   'baseFontSize',
+  'justifyText',
   'examGapLines',
   'bands',
   'cover',

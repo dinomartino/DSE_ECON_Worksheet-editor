@@ -66,7 +66,7 @@ import {
   type SectionOptions,
 } from './package';
 import { formatRunOptions, lineBreak, rFonts, richTextRuns, run, runProperties } from './runs';
-import { buildStylesXml, DEFAULT_BASE_FONT_SIZE_PT, exactLineFor, FIXED_LINE_TWIPS, STYLE_IDS, withBodyStyleVariant } from './styles';
+import { buildStylesXml, DEFAULT_BASE_FONT_SIZE_PT, exactLineFor, FIXED_LINE_TWIPS, justifiedStyleIds, STYLE_IDS, withBodyStyleVariant } from './styles';
 
 /**
  * .docx export orchestration (§7). Consumes the neutral render IR, so it does not
@@ -354,6 +354,8 @@ function buildParts(
     imageRelId: (src) => bySrc.get(src),
     diagramSrc: (blockId) => diagramImages.get(blockId),
     nextDrawingId: () => (drawingId += 1),
+    // Justified through the named styles, so Word's own paragraphs in them follow.
+    ...(worksheet.justifyText ? { justifiedStyles: justifiedStyleIds() } : {}),
   };
 
   const chunks: string[] = [];
@@ -613,6 +615,7 @@ function buildParts(
       // The document's own body size (the QAB is 10pt); absent keeps the 11pt default
       // and a byte-identical styles.xml (§ `Worksheet.baseFontSize`).
       baseFontSize: worksheet.baseFontSize,
+      justifyText: worksheet.justifyText,
     }),
     numberingXml: buildNumberingXml(streams, fonts, listIndentScheme(documentShape(worksheet))),
     headerFooter,

@@ -79,6 +79,26 @@ export interface BodyContext {
   diagramSrc?: (blockId: string) => string | undefined;
   /** Allocates the unique docPr id every drawing needs. */
   nextDrawingId: () => number;
+  /**
+   * The style ids styles.xml justifies (`justifiedStyleIds`, a `justifyText` document).
+   * A paragraph in one leaves its justification to the style and states any other.
+   */
+  justifiedStyles?: ReadonlySet<string>;
+}
+
+/**
+ * A paragraph's format against a justified style: `justify` is the style's own, so it
+ * is dropped; no alignment at all means the IR left this paragraph unjustified (a
+ * figure grid's option), so it is stated as `left`. Unchanged for every other style.
+ */
+function againstStyle(format: TextFormat | undefined, styleId: string, context: BodyContext): TextFormat | undefined {
+  if (!context.justifiedStyles?.has(styleId)) return format;
+  if (format?.align === 'justify') {
+    const { align: _style, ...rest } = format;
+    void _style;
+    return Object.keys(rest).length > 0 ? rest : undefined;
+  }
+  return format?.align ? format : { ...format, align: 'left' };
 }
 
 /**
@@ -300,7 +320,9 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
       : '') +
     (node.rule
       ? '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="808080"/></w:pBdr>'
-      : '');
+      : '') +
+    // A tab-stop row is never justified: in a justified style it says so (§ `againstStyle`).
+    (context.justifiedStyles?.has(STYLE_IDS[node.style]) ? '<w:jc w:val="left"/>' : '');
 
   return `<w:p><w:pPr>${props}</w:pPr>${runs}</w:p>`;
 }
@@ -377,7 +399,7 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
     indentRight: node.marksColumn,
     tabRight: labelled && !firstLine,
     tabRightAt: context.contentWidth,
-    format: node.format,
+    format: againstStyle(node.format, styleId, context),
   });
 }
 

@@ -131,6 +131,7 @@ Invariants:
 - Fixed 12pt line, no paragraph spacing; separation costs a blank line — §One fixed line.
 - Side-by-side layout exports as tab stops, never a table — §One row, many uses.
 - `baseFontSize` scales body styles; the 12pt line never shrinks — §The booklet is a 10pt document.
+- `justifyText` justifies through the body styles, never `Body` — §One row, many uses.
 - An LQ style is emitted only when the rendered IR uses one — §The dotted answer line.
 
 ## export (other)

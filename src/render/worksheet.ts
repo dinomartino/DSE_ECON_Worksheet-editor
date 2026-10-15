@@ -29,6 +29,7 @@ import {
   endsInBlankLine,
   includeNode,
   withAnswerLayers,
+  withJustifiedBody,
   isWritingRoom,
   pushGap,
   renderContentBlocks,
@@ -209,6 +210,8 @@ const questionRenderCache = new WeakMap<
     shape: DocumentShape;
     /** `seed:version` of the paper version this was rendered as; '' when off. */
     variant: string;
+    /** `Worksheet.justifyText`, which stamps the body paragraphs. */
+    justify: boolean;
     nodes: RenderNode[];
   }
 >();
@@ -410,6 +413,10 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   const labelInHeader = anyVersionLabel !== undefined && versionInPageOneHeader(worksheet, mode);
   const versionLabel = labelInHeader ? undefined : anyVersionLabel;
 
+  // The document's "Justify text": body paragraphs of every flow item, never the cover,
+  // masthead, title or instructions (§ `withJustifiedBody`).
+  const justify = worksheet.justifyText === true;
+
   // A restarting section opens a new Word list stream (native `w:num`), keyed on the
   // section element's id — a dragged marker keeps its identity.
   let questionStream = 'question:0';
@@ -503,7 +510,8 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         numbering.questions.length,
         stimulus,
       );
-      const nodes = withAnswerLayers(laid, mode);
+      const shown = withAnswerLayers(laid, mode);
+      const nodes = justify ? withJustifiedBody(shown) : shown;
       previousNodes = nodes;
       previous = { layout: item.element };
       return {
@@ -547,7 +555,8 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
       cached.gap === gap &&
       cached.keepWhole === keepWhole &&
       cached.shape === shape &&
-      cached.variant === variantKey
+      cached.variant === variantKey &&
+      cached.justify === justify
     ) {
       separated = cached.nodes;
     } else {
@@ -567,7 +576,8 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         // Student output must contain no teacher content anywhere (§11.8).
         .filter((node) => includeNode(node, mode));
       const shown = withAnswerLayers(rendered, mode);
-      const nodes = keepWhole ? keepQuestionWhole(shown) : shown;
+      const kept = keepWhole ? keepQuestionWhole(shown) : shown;
+      const nodes = justify ? withJustifiedBody(kept) : kept;
       // The boundary rides on the first paragraph, not on spacers above it, so it dies
       // at a page top in both backends (§ `withLeadingGap`).
       separated = withLeadingGap(nodes, gap);
@@ -579,6 +589,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         keepWhole,
         shape,
         variant: variantKey,
+        justify,
         nodes: separated,
       });
     }

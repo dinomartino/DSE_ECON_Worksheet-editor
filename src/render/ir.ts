@@ -737,6 +737,46 @@ export function withAnswerLayers(nodes: RenderNode[], mode: OutputMode): RenderN
 }
 
 /**
+ * The body text a document's "Justify text" setting justifies (`Worksheet.justifyText`):
+ * stems, statements, stacked options, parts, sub-parts and free prose. Titles, headings,
+ * captions, marks, answers and schemes keep their own alignment.
+ */
+export const JUSTIFIED_BODY_STYLES: ReadonlySet<NodeStyle> = new Set<NodeStyle>([
+  'Question Stem',
+  'Statement',
+  'MCQ Option',
+  'Sub-question',
+  'Sub-sub-question',
+  'Body',
+]);
+
+/**
+ * A flow item's nodes with its body paragraphs justified: every `TextNode` in a
+ * `JUSTIFIED_BODY_STYLES` style without an `align` of its own, inside source panels
+ * too. Tab-stop rows, grids, tables and figures are left alone. Stamped on the IR so
+ * every backend agrees; the .docx moves it back onto the named styles (`justifiedStyleIds`).
+ * The same array back when nothing changes.
+ */
+export function withJustifiedBody(nodes: RenderNode[]): RenderNode[] {
+  let changed = false;
+  const justified = nodes.map((node): RenderNode => {
+    if (node.kind === 'text') {
+      if (!JUSTIFIED_BODY_STYLES.has(node.style) || node.format?.align) return node;
+      changed = true;
+      return { ...node, format: { ...node.format, align: 'justify' } };
+    }
+    if (node.kind === 'source') {
+      const inner = withJustifiedBody(node.nodes);
+      if (inner === node.nodes) return node;
+      changed = true;
+      return { ...node, nodes: inner };
+    }
+    return node;
+  });
+  return changed ? justified : nodes;
+}
+
+/**
  * One blank body line, the separator every gap on the page goes through. A real node,
  * not a style property — on the fixed 12pt line a spent line is the only way to open
  * air. Carries no `elementId`: it belongs to the question, not to a `spacer` element.

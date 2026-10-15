@@ -52,6 +52,11 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   },
   textSizeOption: { en: (pt: number) => `${pt} pt`, zh: (pt: number) => `${pt} pt` },
   textSizeDefault: { en: (pt: number) => `${pt} pt (standard)`, zh: (pt: number) => `${pt} pt（標準）` },
+  justifyText: { en: 'Justify text', zh: '文字左右對齊' },
+  justifyTextHint: {
+    en: 'Questions, options and passages line up with both margins. The title, headings, tables and cover stay as they are, and text you align yourself keeps its own alignment.',
+    zh: '題目、選項及段落文字貼齊左右兩邊。標題、分部標題、表格及封面維持不變，你自行設定對齊的文字會保留原有對齊。',
+  },
   custom: { en: 'Custom', zh: '自訂' },
   customEllipsis: { en: 'Custom…', zh: '自訂…' },
 

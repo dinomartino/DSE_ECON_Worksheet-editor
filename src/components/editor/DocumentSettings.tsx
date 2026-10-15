@@ -11,7 +11,7 @@ import {
   HEADER_FOOTER_PRESETS,
 } from '@/model/bands';
 import { FONT_PRESETS } from '@/model/factories';
-import { BODY_TEXT_SIZES, bodyTextSizeOf, DEFAULT_BODY_TEXT_SIZE, withBodyTextSize } from '@/model/fonts';
+import { BODY_TEXT_SIZES, bodyTextSizeOf, DEFAULT_BODY_TEXT_SIZE, withBodyTextSize, withJustifyText } from '@/model/fonts';
 import {
   bandsHeight,
   bandsOverflow,
@@ -250,7 +250,21 @@ function TextSizeField() {
           title: pt === DEFAULT_BODY_TEXT_SIZE ? m.textSizeDefault(pt) : m.textSizeOption(pt),
         }))}
       />
+      <JustifyTextField />
     </Field>
+  );
+}
+
+/** `Worksheet.justifyText`, beside the size it shares the body text with; one undo step. */
+function JustifyTextField() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
+  const on = useWorksheetStore((s) => s.worksheet.justifyText === true);
+  const commit = useWorksheetStore((s) => s.commit);
+  return (
+    <div className="space-y-0.5 pt-1.5">
+      <CheckField label={m.justifyText} checked={on} onChange={(next) => commit((draft) => withJustifyText(draft, next))} />
+      <p className="pl-6 text-[11px] text-ink-muted">{m.justifyTextHint}</p>
+    </div>
   );
 }
 

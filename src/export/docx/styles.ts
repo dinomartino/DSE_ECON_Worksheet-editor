@@ -1,5 +1,5 @@
 import type { FontPair } from '@/model/types';
-import type { NodeStyle } from '@/render/ir';
+import { JUSTIFIED_BODY_STYLES, type NodeStyle } from '@/render/ir';
 import { DEFAULT_CELL_PADDING } from '@/model/table';
 import { rFonts } from './runs';
 import { XML_DECL } from './xml';
@@ -41,7 +41,7 @@ interface StyleSpec {
   hanging?: number;
   spaceBefore?: number;
   spaceAfter?: number;
-  align?: 'left' | 'center' | 'right';
+  align?: 'left' | 'center' | 'right' | 'both';
   keepNext?: boolean;
   keepLines?: boolean;
   outlineLevel?: number;
@@ -221,6 +221,13 @@ const styleSpecs = (baseSize: number): StyleSpec[] => [
   },
 ];
 
+/** The specs with the body styles justified when `on`; the same specs when not. */
+function justifiedSpecs(specs: StyleSpec[], on: boolean | undefined): StyleSpec[] {
+  if (!on) return specs;
+  const ids = justifiedStyleIds();
+  return specs.map((spec) => (ids.has(spec.id) ? { ...spec, align: 'both' } : spec));
+}
+
 function paragraphProperties(spec: StyleSpec): string {
   const parts: string[] = [];
   if (spec.keepNext) parts.push('<w:keepNext/>');
@@ -299,6 +306,18 @@ export function bodySizedStyleIds(): string[] {
   return styleSpecs(probe).filter((spec) => spec.size === probe).map((spec) => spec.id);
 }
 
+/**
+ * The paragraph styles a justified document (`Worksheet.justifyText`) justifies in
+ * styles.xml, so a paragraph typed in Word in one of them justifies too. `Body` is not
+ * one: it also sets cover lines, masthead and label-list rows, table cells and spacers,
+ * so its prose carries a direct `w:jc` instead (`withJustifiedBody`).
+ */
+export function justifiedStyleIds(): ReadonlySet<string> {
+  return new Set(
+    [...JUSTIFIED_BODY_STYLES].filter((style) => style !== 'Body').map((style) => STYLE_IDS[style]),
+  );
+}
+
 const PSTYLE = /<w:pStyle w:val="([^"]+)"\/>/g;
 
 /** Point a part's paragraphs at its own body size's twins (`styleVariantId`). */
@@ -311,7 +330,13 @@ export function withBodyStyleVariant(xml: string, baseFontSize: number): string 
 
 export function buildStylesXml(
   fonts: FontPair,
-  options: { answerSpace?: boolean; baseFontSize?: number; variantBaseSizes?: number[] } = {},
+  options: {
+    answerSpace?: boolean;
+    baseFontSize?: number;
+    variantBaseSizes?: number[];
+    /** `Worksheet.justifyText`: the body styles carry `w:jc both` (`justifiedStyleIds`). */
+    justifyText?: boolean;
+  } = {},
 ): string {
   /*
    * The document's own body size, in half-points. Absent stays 11pt, so every
@@ -372,7 +397,7 @@ export function buildStylesXml(
     normal +
     defaultParagraphFont +
     tableNormal +
-    styleSpecs(baseSize).map((spec) => styleXml(spec, fonts)).join('') +
+    justifiedSpecs(styleSpecs(baseSize), options.justifyText).map((spec) => styleXml(spec, fonts)).join('') +
     // Conditional, so a document without an answer space keeps its styles.xml
     // byte-identical to every build before the style existed.
     (options.answerSpace ? styleXml(lqAnswerLineSpec(baseSize), fonts) : '') +
