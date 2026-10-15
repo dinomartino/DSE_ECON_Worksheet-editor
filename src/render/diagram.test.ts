@@ -102,7 +102,7 @@ describe('diagram SVG rendering', () => {
     expect(svg).toContain('LRAS');
     expect(svg).toContain('SRAS');
     expect(svg).toContain('Price level');
-    expect(svg).toContain('Output level');
+    expect(svg).toContain('Real output');
   });
 
   it('draws every arrowhead as a triangle, never an id-referenced <marker>', () => {

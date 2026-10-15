@@ -62,7 +62,7 @@ function adShift(): Diagram {
     macro({
       curves: [ad0, ad1, sras],
       points: [e0, e1],
-      arrows: [shiftArrow(ad0, ad1, [0.2, 0.72], [0.36, 0.72])],
+      arrows: [shiftArrow(ad0, ad1, [0.19, 0.72], [0.35, 0.72])],
       spans: axisArrows(e0, e1),
     }),
   );
@@ -73,7 +73,7 @@ function srasShift(): Diagram {
   const base: Pair[] = [[0.24, 0.14], [0.86, 0.8]];
   const s0 = curve(base, sub('SRAS', '0'));
   // SRAS₁'s name sits left of its end, so the two names never meet at the top.
-  const s1 = shiftOf(s0, -0.2, 0, sub('SRAS', '1'), { labelOffset: { x: -0.19, y: -0.01 } });
+  const s1 = shiftOf(s0, -0.2, 0, sub('SRAS', '1'), { labelOffset: { x: -0.22, y: -0.01 } });
   const e0 = eq(ad, s0, '0', Y);
   const e1 = eq(ad, s1, '1', Y);
   const y = 0.6;
@@ -92,14 +92,15 @@ function adSrasLeft(): Diagram {
   const ad0 = curve([[0.2, 0.84], [0.9, 0.2]], sub('AD', '0'));
   const ad1 = shiftOf(ad0, -0.16, 0, sub('AD', '1'));
   const s0 = curve([[0.3, 0.14], [0.9, 0.78]], sub('SRAS', '0'));
-  const s1 = shiftOf(s0, -0.16, 0, sub('SRAS', '1'), { labelOffset: { x: -0.19, y: -0.01 } });
-  const e0 = eq(ad0, s0, '0', Y);
+  const s1 = shiftOf(s0, -0.16, 0, sub('SRAS', '1'), { labelOffset: { x: -0.22, y: -0.01 } });
+  // Y ticks only: the price level is indeterminate, so neither equilibrium names a P.
+  const e0 = eq(ad0, s0, '0', { p: '', q: 'Y' });
   const e1 = eq(ad1, s1, '1', { p: '', q: 'Y' });
   return finish(
     macro({
       curves: [ad0, ad1, s0, s1],
       points: [e0, e1],
-      arrows: [shiftArrow(ad0, ad1, [0.34, 0.72], [0.2, 0.72]), shiftArrow(s0, s1, [0.84, 0.66], [0.69, 0.66])],
+      arrows: [shiftArrow(ad0, ad1, [0.33, 0.72], [0.17, 0.72]), shiftArrow(s0, s1, [0.78, 0.66], [0.63, 0.66])],
       spans: axisArrows(e0, e1, ['x']),
       labels: [label(0.04, 0.95, bi('Y falls; P may rise or fall', 'Y 下降；P 可升可跌'), { align: 'left' })],
     }),
@@ -159,7 +160,7 @@ function gapNarrows(): Diagram {
       x: { title: AXIS.realOutput, ticks: [yf(full)] },
       curves: [ad0, ad1, sras, l],
       points: [e0, e1],
-      arrows: [shiftArrow(ad0, ad1, [0.16, 0.66], [0.32, 0.66])],
+      arrows: [shiftArrow(ad0, ad1, [0.1, 0.66], [0.25, 0.66])],
       spans: [
         span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.12, label: subBi('gap', '缺口', '0') }),
         span(at(e1), yf0, 'doubleArrow', { along: 'x', label: subBi('gap', '缺口', '1') }),
@@ -205,9 +206,10 @@ function shockRecovery(): Diagram {
   const target = onCurve(ad, full);
   const k = 0.9722;
   // SRAS₀ through AD ∩ LRAS, so E₀ is the long-run equilibrium; SRAS₁ is it shifted
-  // left, its name moved left of its end so the two never meet.
+  // left, named at its end as SRAS₀ is (left of its end, the name would sit on LRAS);
+  // shifted far enough that the name ends clear of SRAS₀'s line.
   const s0 = curve(through(target, k, 0.12, 0.8), sub('SRAS', '0'));
-  const s1 = shiftOf(s0, -0.2, 0, sub('SRAS', '1'), { labelOffset: { x: -0.19, y: -0.01 } });
+  const s1 = shiftOf(s0, -0.25, 0, sub('SRAS', '1'));
   const e0 = eq(ad, s0, '0', { p: 'P', q: '' });
   const e1 = eq(ad, s1, '1', Y);
   // Both arrows below the equilibria, where the two SRAS lines run clear of labels.
@@ -239,7 +241,7 @@ function adShiftAtCapacity(): Diagram {
       x: { title: AXIS.realOutput, ticks: [yf(full)] },
       curves: [ad0, ad1, l],
       points: [e0, e1],
-      arrows: [shiftArrow(ad0, ad1, [0.17, 0.72], [0.32, 0.72])],
+      arrows: [shiftArrow(ad0, ad1, [0.16, 0.72], [0.31, 0.72])],
       spans: axisArrows(e0, e1, ['y']),
     }),
   );
@@ -285,7 +287,8 @@ function moneySupplyShift(): Diagram {
 }
 
 function moneyDemandShift(): Diagram {
-  const base: Pair[] = [[0.06, 0.68], [0.8, 0.1]];
+  // Ends above the axis, so Md₁'s name clears the axis title.
+  const base: Pair[] = [[0.06, 0.68], [0.7, 0.18]];
   const ms = upright(0.5, sym('Ms'), 0.9);
   const md0 = curve(base, sub('Md', '0'));
   const md1 = shiftOf(md0, 0.2, 0, sub('Md', '1'));

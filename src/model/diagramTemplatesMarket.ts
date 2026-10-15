@@ -14,8 +14,10 @@ import {
   eq,
   finish,
   lab,
+  labBi,
   label,
   newId,
+  placeLabel,
   pin,
   priceLine,
   reading,
@@ -182,11 +184,13 @@ function shortageChange(): Diagram {
         qd0,
         qd1,
       ],
-      arrows: [shiftArrow(d0, d1, [0.2, 0.74], [0.34, 0.74])],
+      // Centred between D₀ and D₁, so it touches neither.
+      arrows: [shiftArrow(d0, d1, [0.15, 0.74], [0.28, 0.74])],
+      // Both under the quantity axis, shortage₁ outside shortage₀: under Pc, left of S,
+      // there is no room for the word "shortage₀" without touching S or the y-axis.
       spans: [
-        // shortage₀'s name sits left of S, clear of shortage₁ below it.
-        span(at(qs), at(qd0), 'bracket', { offset: -0.05, label: subBi('shortage', '短缺', '0'), labelOffset: { x: -0.23, y: 0.02 } }),
-        span(at(qs), at(qd1), 'bracket', { along: 'x', label: subBi('shortage', '短缺', '1') }),
+        span(at(qs), at(qd0), 'bracket', { along: 'x', label: subBi('shortage', '短缺', '0') }),
+        span(at(qs), at(qd1), 'bracket', { along: 'x', offset: 0.12, label: subBi('shortage', '短缺', '1') }),
       ],
     }),
   );
@@ -210,7 +214,8 @@ function ceilingLowered(): Diagram {
           fill: 'hatch',
           pattern: 'horizontal',
           label: bi('increase\nin DWL', '效率損失\n增加'),
-          labelOffset: { x: -0.14, y: 0.24 },
+          // Above D, right of the band: left of it the words met D or the y-axis.
+          labelOffset: { x: 0.09, y: 0.33 },
           labelPlacement: 'leader',
         }),
       ],
@@ -265,7 +270,12 @@ function ineffectiveCeiling(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s, pc],
       points: [eq(d, s, 'e')],
-      labels: [label(0.72, 0.82, lab('ineffective:\nP', ['c'], ' above P', ['e']), { align: 'left' })],
+      // Below Pc, right of S, where nothing else is drawn.
+      labels: [
+        label(0.62, 0.6, labBi(['ineffective:\nP', ['c'], ' above P', ['e']], ['無效：\nP', ['c'], ' 高於 P', ['e']]), {
+          align: 'left',
+        }),
+      ],
     }),
   );
 }
@@ -301,7 +311,7 @@ function fixedPriceRevenue(): Diagram {
       points: [eq(d, s, 'e'), qs, qd],
       spans: [span(at(qs), at(qd), 'bracket', { offset: -0.05, label: bi('shortage', '短缺'), labelOffset: { x: 0.13, y: 0 } })],
     }),
-    (r) => shade(r, 'controlRevenue', { demand: d.id, supply: s.id, control: { curve: pc.id } }, { labelOffset: { x: 0.04, y: -0.08 } }),
+    (r) => shade(r, 'controlRevenue', { demand: d.id, supply: s.id, control: { curve: pc.id } }, { labelOffset: { x: -0.034, y: 0.105 } }),
   );
 }
 
@@ -354,7 +364,8 @@ function labourImport(): Diagram {
   const localPts: Pair[] = [[0.06, 0.12], [0.06 + (0.62 * 0.44) / 0.72, 0.74]];
   const d = curve([[0.1, 0.92], [0.64, 0.16]], sym('D'));
   const local = curve(localPts, bi('S (local)', 'S（本地）'));
-  const both = shiftOf(local, 0.24, 0, bi('S′ (local\n+ imported)', 'S′（本地\n＋輸入）'));
+  // S′ named right of its line, below its end: beside S (local)'s name the Chinese touches.
+  const both = placeLabel(shiftOf(local, 0.24, 0, bi('S′ (local\n+ imported)', 'S′（本地\n＋輸入）')), 0.72, 0.6);
   const e0 = eq(d, local, '0', { p: 'W' });
   const e1 = eq(d, both, '1', { p: 'W' });
   // Local employment after importation is read off S (local) at the new wage.
@@ -368,6 +379,9 @@ function labourImport(): Diagram {
       curves: [d, local, both],
       points: [e0, e1, localJobs],
       arrows: [shiftArrow(local, both, [xOn(localPts, y) + 0.03, y], [xOn(localPts, y) + 0.21, y])],
+      // Local employment falls, Q₀ → Q₂ read off S (local). No W arrow: the clearance
+      // is sized from an estimate that runs short for a wide "W", so its head met W₁.
+      spans: axisArrows(e0, localJobs, ['x']),
     }),
   );
 }
@@ -476,8 +490,10 @@ function quotaEnlarged(): Diagram {
 
 /** A demand rise under a fixed quota: Q stays at the quota, the efficient Q rises, DWL grows. */
 function quotaDemandIncrease(): Diagram {
-  const d0 = curve([[0.06, 0.78], [0.64, 0.14]], sub('D', '0'));
-  const d1 = shiftOf(d0, 0.16, 0, sub('D', '1'));
+  // From near the axis, so D₁ (shifted 0.2) still reaches the quota at 0.24.
+  const d0 = curve([[0.02, 0.824], [0.64, 0.14]], sub('D', '0'));
+  // Shifted far enough that the Qe₀ and Qe₁ ticks stand apart.
+  const d1 = shiftOf(d0, 0.2, 0, sub('D', '1'));
   const s = curve(S, bi('S = MC', 'S = MC'));
   const sq = quotaCurve(S, 0.24, bi('S (quota)', 'S（配額）'));
   const e0 = eq(d0, sq, '0', { q: 'Q' });
@@ -488,7 +504,7 @@ function quotaDemandIncrease(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d0, d1, s, sq],
       points: [e0, e1, f0, f1],
-      arrows: [shiftArrow(d0, d1, [0.6, 0.2], [0.73, 0.2])],
+      arrows: [shiftArrow(d0, d1, [0.62, 0.2], [0.75, 0.2])],
       spans: axisArrows(e0, e1, ['y']),
       areas: [
         band([{ curve: d0.id }, { curve: s.id }], at(e0), at(f0), {
@@ -505,7 +521,7 @@ function quotaDemandIncrease(): Diagram {
           fill: 'hatch',
           pattern: 'horizontal',
           label: bi('increase\nin DWL', '效率損失\n增加'),
-          labelOffset: { x: 0.29, y: 0.02 },
+          labelOffset: { x: 0.34, y: 0.02 },
           labelPlacement: 'leader',
         },
       ],
@@ -572,8 +588,8 @@ function subsidyEfficiency(): Diagram {
       curves: [d, s0, s1],
       points: [e0, e1, mc],
       // The subsidy wedge S₀ → Sₛ, so it follows a drag of either.
-      spans: [span({ on: s0.id, x: { x: 0.2, y: 0 } }, { on: s1.id, x: { x: 0.2, y: 0 } }, 'arrow')],
-      labels: [label(0.1, 0.97, lab('at Q', ['1'], ': MC > MB'), { align: 'left' })],
+      spans: [span({ on: s0.id, x: { x: 0.2, y: 0 } }, { on: s1.id, x: { x: 0.2, y: 0 } }, 'arrow', { label: sym('s') })],
+      labels: [label(0.1, 0.97, labBi(['at Q', ['1'], ': MC > MB'], ['在 Q', ['1'], '：MC > MB']), { align: 'left' })],
     }),
     (r) => shade(r, 'subsidyDwl', { demand: d.id, supply: s0.id, shifted: s1.id }),
   );
@@ -586,14 +602,15 @@ function taxEfficiency(): Diagram {
   const s1 = shiftOf(s0, 0, 0.24, sub('S', '1'));
   const e0 = eq(d, s0, '0');
   const e1 = eq(d, s1, '1', { p: '' }, { label: sym('MB'), labelSide: 'right' });
-  const mc = pin({ on: s0.id, x: at(e1) }, [s0, e1], sym('MC'), { labelSide: 'right' });
+  // Left of the point: on the right it would meet Q₀'s drop-line.
+  const mc = pin({ on: s0.id, x: at(e1) }, [s0, e1], sym('MC'), { labelSide: 'left' });
   const x = { x: 0.2, y: 0 };
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s0, s1],
       points: [e0, e1, mc],
       spans: [span({ on: s0.id, x }, { on: s1.id, x }, 'arrow', { label: sym('t') })],
-      labels: [label(0.1, 0.97, lab('at Q', ['1'], ': MB > MC'), { align: 'left' })],
+      labels: [label(0.1, 0.97, labBi(['at Q', ['1'], ': MB > MC'], ['在 Q', ['1'], '：MB > MC']), { align: 'left' })],
     }),
     // Below D, right of the triangle: clear of the S₀ = MC name above it.
     (r) =>

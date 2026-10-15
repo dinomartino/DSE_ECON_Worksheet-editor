@@ -26,6 +26,15 @@ a version heading is edited afterwards.
   spread across the whole line before the Chinese.
   <!-- zh: **雙語工作紙中左右對齊的文字，在 Word 不再把英文行拉闊。** 左右對齊段落的英文部分現在與頁面一樣結束，
   不會在中文之前被拉滿整行。 -->
+- **Tidier diagram templates.** In newly inserted diagrams, labels no longer touch lines or
+  each other, and shift arrows sit between the two curves they join. The AD-AS template's
+  axis reads Real output, AD and SRAS shifting left together labels only Y, the notes on the
+  ineffective ceiling, tax and subsidy diagrams appear in Chinese on a Chinese paper, and
+  labour importation marks the fall in local employment. Diagrams already in your worksheets
+  are unchanged.
+  <!-- zh: **圖表範本更整齊。** 新插入的圖表中，標籤不再碰到線條或其他標籤，移動箭嘴位於所連接的兩條曲線之間。
+  AD-AS 範本的橫軸改為「實質產出」；AD 及 SRAS 同時左移的範本只標示 Y；無效價格上限、稅項及津貼圖上的註解在中文試卷中以中文顯示；
+  輸入勞工圖會標示本地就業下降。工作紙內已有的圖表不受影響。 -->
 
 ## 0.8.1 — 2026-10-14
 

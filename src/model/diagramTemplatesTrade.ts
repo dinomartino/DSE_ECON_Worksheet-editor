@@ -52,7 +52,7 @@ function fixedExportPrice(): Diagram {
     axes(bi('Quantity\nof exports', '出口量'), bi('Price (Yen)', '價格（日圓）'), {
       curves: [p, d0, d1],
       points: [e0, e1],
-      arrows: [shiftArrow(d0, d1, [0.13, 0.74], [0.31, 0.74])],
+      arrows: [shiftArrow(d0, d1, [0.17, 0.74], [0.35, 0.74])],
       spans: axisArrows(e0, e1, ['x']),
       areas: [{ ...revenueArea('revenueGain', { before: at(e0), after: at(e1) }, newId())!, label: sym('+') }],
     }),
@@ -70,7 +70,8 @@ function substituteRevenue(): Diagram {
     axes(bi('Quantity\nof imports', '進口量'), bi('Price (HK$)', '價格（港元）'), {
       curves: [d1, d2, s],
       points: [e1, e2],
-      arrows: [shiftArrow(d1, d2, [0.66, 0.36], [0.48, 0.36])],
+      // High up, between D₂ and D₁ where nothing else is drawn.
+      arrows: [shiftArrow(d1, d2, [0.25, 0.7], [0.11, 0.7])],
       spans: axisArrows(e1, e2),
       areas: [{ ...revenueArea('revenueLoss', { before: at(e1), after: at(e2) }, newId())!, labelPlacement: 'leader' }],
     }),
@@ -177,7 +178,7 @@ function importQuotaDemand(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [s, pw, withQuota, d0, d1, p1],
       points: [e0, e1],
-      arrows: [shiftArrow(d0, d1, [0.2, 0.72], [0.34, 0.72])],
+      arrows: [shiftArrow(d0, d1, [0.15, 0.72], [0.28, 0.72])],
     }),
     (r) => shade(r, 'quotaRent', { demand: d1.id, supply: s.id, world: { curve: pw.id }, raised: { curve: p1.id } }),
   );
@@ -188,9 +189,9 @@ function importQuotaIncrease(): Diagram {
   const s1 = curve([[0.06, 0.14], [0.22, 0.4], [0.44, 0.4], [0.66, 0.82]], sub('S', '1'));
   const s2 = shiftOf(s1, 0.18, 0, sub('S', '2'));
   return finish(
-    axes(bi('Quantity of Good X', '物品X的數量'), AXIS.price, {
+    axes(bi('Quantity\nof Good X', '物品X的數量'), AXIS.price, {
       curves: [curve([[0.06, 0.9], [0.86, 0.26]], sym('D')), s1, s2],
-      arrows: [shiftArrow(s1, s2, [0.5, 0.6], [0.66, 0.6])],
+      arrows: [shiftArrow(s1, s2, [0.555, 0.6], [0.715, 0.6])],
     }),
   );
 }
@@ -253,7 +254,9 @@ function monopolyRisingMc(): Diagram {
  * it on its rising arm, so Qm, Pm and Qc, Pc are anchored crossings as with a straight MC.
  */
 function monopolyUShapedMc(): Diagram {
-  const { d, mr } = demandAndMr(0.9, 0.9, 0.1);
+  const { d, mr: base } = demandAndMr(0.9, 0.9, 0.1);
+  // Qc's drop lands beside MR's foot here: the name moves right, clear of it.
+  const mr = { ...base, labelOffset: { x: 0.045, y: 0.08 } };
   const mc = curve([[0.06, 0.52], [0.18, 0.3], [0.3, 0.26], [0.48, 0.38], [0.74, 0.8]], sym('MC'), { shape: 'curved' });
   const pm = monopolyPoint(d, mr, mc, 'm');
   const pc = eq(d, mc, 'c');
@@ -296,7 +299,7 @@ function monopolySameOutput(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, mr, mc0, mc1],
       points: [pm],
-      arrows: [shiftArrow(mc0, mc1, [0.72, 0.8], [0.72, 0.66])],
+      arrows: [shiftArrow(mc0, mc1, [0.72, 0.76], [0.72, 0.62])],
       areas: [
         {
           id: newId(),
@@ -440,9 +443,11 @@ function ppfConcaveTrade(): Diagram {
  * parallel at the one TOT. For the countries side by side, insert the template twice.
  */
 function ppfTwoCountries(): Diagram {
-  const ppfA = placeLabel(curve([[0, 0.4], [0.8, 0]], sub('PPF', 'A')), 0.2, 0.22);
-  const ppfB = placeLabel(curve([[0, 0.9], [0.45, 0]], sub('PPF', 'B')), 0.36, 0.3);
-  const cpfA = placeLabel(curve([[0, 0.8], [0.8, 0]], sub('CPF', 'A')), 0.36, 0.475);
+  // Each name in a gap beside its own line: PPF_A above it by the axis, PPF_B left of
+  // its foot, CPF_A under it right of PPF_B; between the lines they would touch.
+  const ppfA = placeLabel(curve([[0, 0.4], [0.8, 0]], sub('PPF', 'A')), 0.03, 0.44);
+  const ppfB = placeLabel(curve([[0, 0.9], [0.45, 0]], sub('PPF', 'B')), 0.22, 0.12);
+  const cpfA = placeLabel(curve([[0, 0.8], [0.8, 0]], sub('CPF', 'A')), 0.31, 0.315);
   const pa = pin({ on: ppfA.id, y: 0 }, [ppfA], lab('A′'), { labelSide: 'down' });
   const pb = pin({ on: ppfB.id, x: { x: 0, y: 0 } }, [ppfB], lab('B′'), { labelSide: 'upRight' });
   const cpfB = placeLabel(derived({ kind: 'parallel', to: cpfA.id, through: at(pb) }, [cpfA, pb], sub('CPF', 'B')), 0.56, 0.44);
@@ -476,8 +481,9 @@ function ppfGrowthTrade(): Diagram {
     0.38,
   );
   const guide = curve([[0.6, 0.7], [0.75, 0.505]], sym('TOT'), { stroke: 'dashed', weight: 0.8 });
-  const b0 = pin({ on: ppf0.id, y: 0 }, [ppf0], sub('B', '0'), { labelSide: 'upRight' });
-  const b1 = pin({ on: ppf1.id, y: 0 }, [ppf1], sub('B', '1'), { labelSide: 'upRight' });
+  // Under the axis: above-right of B₀, PPF₁ runs through the name.
+  const b0 = pin({ on: ppf0.id, y: 0 }, [ppf0], sub('B', '0'), { labelSide: 'down' });
+  const b1 = pin({ on: ppf1.id, y: 0 }, [ppf1], sub('B', '1'), { labelSide: 'down' });
   const cpf = (b: DiagramPointMark, n: string, x: number, y: number) =>
     placeLabel(derived({ kind: 'parallel', to: guide.id, through: at(b) }, [guide, b], sub('CPF', n)), x, y);
   return finish(
@@ -527,7 +533,8 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     hint: bi('Price in HK$ rises along D: gain (+) and loss (−) rectangles.', '以港元計價格沿 D 上升：收入增加 (+) 及減少 (−)。'),
     build: () =>
       alongDemand([[0.06, 0.72], [0.9, 0.3]], 0.4, 0.54, {
-        x: bi('Quantity of imports', '進口量'),
+        // Two lines: on one, the title runs into the axis arrowhead.
+        x: bi('Quantity\nof imports', '進口量'),
         y: bi('Price (HK$)', '價格（港元）'),
       }),
   },

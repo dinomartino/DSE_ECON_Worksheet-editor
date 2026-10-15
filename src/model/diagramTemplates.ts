@@ -84,7 +84,7 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
       // The vertical LRAS, labelled at the top; E₀ where all three meet.
       const lras = upright(0.46, bi('LRAS', 'LRAS'), 0.94);
       return finish(
-        axes(bi('Output level', '產出水平'), AXIS.priceLevel, {
+        axes(AXIS.realOutput, AXIS.priceLevel, {
           curves: [ad, sras, lras],
           points: [
             point(0.46, 0.48, undefined, {
