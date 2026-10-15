@@ -19,6 +19,7 @@ export const FORMAT_TOOLBAR_MESSAGES = defineMessages({
   alignCentre: { en: 'Align centre', zh: '置中對齊' },
   alignRight: { en: 'Align right', zh: '靠右對齊' },
   justify: { en: 'Justify', zh: '左右對齊' },
+  justifyOptions: { en: "Justify this question's options", zh: '此題選項左右對齊' },
   textColour: { en: 'Text colour', zh: '文字顏色' },
   colourDefault: { en: 'Default colour', zh: '預設顏色' },
   red: { en: 'Red', zh: '紅色' },

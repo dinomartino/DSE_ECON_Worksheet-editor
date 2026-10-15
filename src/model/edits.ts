@@ -1010,6 +1010,35 @@ export function isAlignOnly(target: EditTarget): boolean {
 }
 
 /**
+ * The alignments an MC option may store: Justify on a plain document, Left to opt out of
+ * a justified one. Centre and right are not offered, since Word may move a list letter
+ * that the preview keeps in its gutter.
+ */
+export type OptionAlign = Extract<TextAlign, 'justify' | 'left'>;
+
+/**
+ * Whether options storing `stored` print justified. A stored centre or right (never
+ * written any more, still rendered) prints as itself, so it is not justified.
+ */
+export function optionPrintsJustified(stored: TextAlign | undefined, documentJustifies: boolean): boolean {
+  return stored === undefined ? documentJustifies : stored === 'justify';
+}
+
+/**
+ * What one press of the option bar's Justify stores: the opposite of what prints,
+ * written as the least that makes it print so. A plain document toggles absent ↔
+ * justify; a justified one (`Worksheet.justifyText`) toggles absent ↔ left.
+ */
+export function nextOptionAlign(
+  stored: TextAlign | undefined,
+  documentJustifies: boolean,
+): OptionAlign | undefined {
+  const justify = !optionPrintsJustified(stored, documentJustifies);
+  if (justify) return documentJustifies ? undefined : 'justify';
+  return documentJustifies ? 'left' : undefined;
+}
+
+/**
  * Merge `patch` into the formatting of the element named by `target`.
  *
  * Merging rather than replacing lets the toolbar send one property at a time, and
@@ -1061,8 +1090,10 @@ export function applyFormatTarget(
       );
 
     case 'mcqOption': {
-      // Only `align` has a home here; every other key is ignored (`isAlignOnly`).
+      // Only `align` has a home here, and only justify or left (`OptionAlign`); every
+      // other key or value is ignored (`isAlignOnly`).
       if (!('align' in patch)) return worksheet;
+      if (patch.align !== undefined && patch.align !== 'justify' && patch.align !== 'left') return worksheet;
       return mapQuestionById(worksheet, target.questionId, (question) => {
         if (!('options' in question)) return question;
         const { optionAlign: _previous, ...rest } = question as Question & { optionAlign?: TextAlign };

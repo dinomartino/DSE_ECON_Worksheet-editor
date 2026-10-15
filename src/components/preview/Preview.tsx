@@ -7480,6 +7480,7 @@ export function Preview({
             onClose={() => setSelectedElement(undefined)}
             alignable={formatBar.alignable}
             alignOnly={formatBar.alignOnly}
+            documentJustifies={worksheet.justifyText === true}
             /*
              * Report the *selection's* own formatting when a range is live, so the bar
              * shows what those characters actually carry — reporting the element's

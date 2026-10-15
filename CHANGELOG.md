@@ -13,12 +13,13 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
-- **Justify MC options.** Click any option of a multiple-choice question and use the
-  alignment buttons to justify its options, or align them left, centre or right. All four
-  options of the question change together, and the page, the Word file and the PDF match.
-  It applies when the options are listed one per line.
-  <!-- zh: **MC 選項可左右對齊。** 點選 MC 題的任何一個選項，再用對齊按鈕把選項左右對齊，或靠左、置中、靠右對齊。
-  同一題的所有選項會一起改變，頁面、Word 檔案及 PDF 都一致。選項逐行排列時適用。 -->
+- **Justify MC options.** Click any option of a multiple-choice question and press Justify
+  to line its options up with both margins; press it again to undo. All four options of the
+  question change together, and the page, the Word file and the PDF match. It applies when
+  the options are listed one per line. When the whole paper is justified, the same button
+  turns it off for that question's options.
+  <!-- zh: **MC 選項可左右對齊。** 點選 MC 題的任何一個選項，再按「左右對齊」，選項便貼齊左右兩邊；再按一次即取消。
+  同一題的所有選項會一起改變，頁面、Word 檔案及 PDF 都一致。選項逐行排列時適用。整份試卷已左右對齊時，同一按鈕可為該題選項取消對齊。 -->
 - **Justify the whole paper at once.** Turn on Justify text in Document setup, beside the
   text size, and every question, option, statement and passage lines up with both margins.
   Titles, headings, tables and the cover stay as they are, and any line you aligned yourself

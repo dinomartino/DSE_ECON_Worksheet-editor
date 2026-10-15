@@ -291,6 +291,9 @@ stacked options keep native `w:num`.
 - **An MC option aligns with its question** (`McqQuestion.optionAlign`, `isAlignOnly`):
   only stacked option paragraphs carry it. A row or grid cell has no line to align, so the
   format bar withholds it there (`printsAsParagraph`) and the stored value waits for stacking.
+  The bar offers Justify alone (`nextOptionAlign`): centre or right could move the list
+  letter in Word. It stores `justify`, or `left` to opt out of "Justify text"; anything else
+  stored still renders.
 - **Justified text sets `w:doNotExpandShiftReturn`** (`buildSettingsXml`, only then): a
   bilingual paragraph's English line ends in `w:br`, which Word stretches and CSS does not.
 - **"Justify text" is a document setting stamped on the IR** (`Worksheet.justifyText`,
