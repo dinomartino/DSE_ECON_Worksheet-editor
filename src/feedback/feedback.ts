@@ -48,6 +48,11 @@ export interface FeedbackInput {
   kind: FeedbackKind;
   message: string;
   email?: string;
+  /**
+   * A screenshot rides the clipboard (`screenshot.ts`): the paste chord the report names
+   * on the line where it goes, e.g. "⌘V". Absent = no screenshot.
+   */
+  screenshotPaste?: string;
   details: FeedbackDetails;
 }
 
@@ -128,10 +133,16 @@ function titleFor(kind: FeedbackKind, message: string): string {
   return `[${KIND_LABEL[kind]}] ${summary || 'Feedback'}`;
 }
 
+/** Where the teacher pastes the screenshot: its own line, kept when the message is cut. */
+export function screenshotLine(chord: string): string {
+  return `Screenshot: (click on this line and press ${chord})`;
+}
+
 function markdownBody(input: FeedbackInput, message: string): string {
   const email = input.email?.trim();
   return [
     message,
+    ...(input.screenshotPaste ? ['', `**${screenshotLine(input.screenshotPaste).replace(':', ':**')}`] : []),
     ...(email ? ['', `**Reply to:** ${email}`] : []),
     '',
     '---',
@@ -144,6 +155,7 @@ function plainText(input: FeedbackInput, message: string): string {
   const email = input.email?.trim();
   return [
     `${KIND_LABEL[input.kind]}: ${message}`,
+    ...(input.screenshotPaste ? ['', screenshotLine(input.screenshotPaste)] : []),
     ...(email ? ['', `Reply to: ${email}`] : []),
     '',
     '---',

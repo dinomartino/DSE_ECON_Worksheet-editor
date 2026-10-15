@@ -30,6 +30,13 @@ a version heading is edited afterwards.
   <!-- zh: **一次把整份試卷左右對齊。** 在「頁面設定」的文字大小旁開啟「文字左右對齊」，所有題目、選項、陳述及段落文字都會貼齊左右兩邊。
   標題、分部標題、表格及封面維持不變，你自行設定對齊的文字會保留原有對齊。在 Word 中，對齊設定存於試卷的樣式內，所以在 Word 新輸入的文字同樣左右對齊。 -->
 
+- **Add a screenshot to your feedback.** In Send feedback, paste a screenshot, drop an image
+  or choose one. When you open GitHub or your email, the screenshot is on your clipboard and
+  the message shows where to paste it. Nothing is attached unless you add it, and on GitHub
+  the screenshot is public.
+  <!-- zh: **意見回饋可附上截圖。** 在「意見回饋」中貼上截圖、拖放圖片或選擇圖片。開啟 GitHub 或電郵時，截圖已在剪貼簿內，
+  訊息會註明貼上的位置。除非你自行加入，否則不會附上任何東西；在 GitHub 上，截圖會公開。 -->
+
 ### Fixed
 - **Long MC options no longer break their row in Word.** When options set to Inline or
   2 columns are too long for their place on the line, they move to 2 columns, or to a grid

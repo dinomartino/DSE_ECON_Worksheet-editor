@@ -231,6 +231,7 @@ export function StartScreen({
   const { ref: asideRef, edges: asideEdges } = useScrollEdges<HTMLElement>();
   const rejectTimer = useRef<number | undefined>(undefined);
   const handleDropRef = useRef<(files: Dropped[]) => Promise<void>>(async () => undefined);
+  const feedbackOpenRef = useRef(false);
 
   // Desktop: files from Finder/Explorer arrive as the shell's native drag event, never as
   // HTML5 `drop` (§Desktop shell, `dragDropEnabled`). Only while this screen is up — the
@@ -238,6 +239,8 @@ export function StartScreen({
   useEffect(() => {
     if (!isDesktop()) return;
     return subscribeToFileDrops((event) => {
+      // Send feedback takes a dropped screenshot itself.
+      if (feedbackOpenRef.current) return;
       if (event.type === 'drop') {
         void handleDropRef.current(
           event.paths.map((path) => ({ name: fileNameOf(path), read: () => readDroppedFile(path) })),
@@ -666,6 +669,7 @@ export function StartScreen({
   // The effect below subscribes once; it reaches this render's handler through the ref.
   useEffect(() => {
     handleDropRef.current = handleDrop;
+    feedbackOpenRef.current = feedback;
   });
 
   const showFolder = (failure: string, locate: () => Promise<string | undefined>) => () =>
