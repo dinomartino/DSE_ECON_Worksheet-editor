@@ -133,6 +133,10 @@ without one (`src/ai/providers.ts`). Never embed a key; never send student scrip
   Design `docs/design/ai-pattern-questions.md`, 6 questions.
 - **E5 Differentiated copy** (M), **E6 data-response builder** with diagrams from a preset
   vocabulary, never raw model coordinates (L).
+- **E8 Answer-key diagrams, batch** (M): ✦ reads every "with the aid of a diagram" part and
+  its marking scheme, picks a template and fills shifts, elasticity, shading and labels;
+  inserted as ordinary editable diagrams, reviewed after. One diagram alone saves little over
+  the picker; the batch is the point. Economics rules from `../dse-econ-graph-skills/SKILL.md`.
 
 ## F. File management
 
