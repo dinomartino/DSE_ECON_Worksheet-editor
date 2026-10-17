@@ -7,7 +7,7 @@ Evidence is in [`research/2026-09-competitive/`](./research/2026-09-competitive/
 when it ships (`CHANGELOG.md` is the record of what shipped).
 
 Sizes: **S** ≈ a session, **M** ≈ a few, **L** ≈ an initiative. Every idea must respect
-the constraints in `CLAUDE.md`: static web + desktop, no server, `.docx` is the
+the constraints in `AGENTS.md`: static web + desktop, no server, `.docx` is the
 load-bearing output, saved documents always reopen.
 
 ## Where we stand

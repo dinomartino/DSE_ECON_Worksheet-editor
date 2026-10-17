@@ -9,7 +9,7 @@
       "action": "block",
       "globs": ["src/test/corpus/**"],
       "onlyExisting": true,
-      "text": "src/test/corpus/ holds frozen evidence written by a released build. Never edit or regenerate it; migrate the data instead, and give a new schema version a new corpus file beside it (CLAUDE.md, Backward compatibility)."
+      "text": "src/test/corpus/ holds frozen evidence written by a released build. Never edit or regenerate it; migrate the data instead, and give a new schema version a new corpus file beside it (AGENTS.md, Backward compatibility)."
     },
     {
       "id": "tauri-static-import",
@@ -87,7 +87,7 @@
           "false": "The property holds something the teacher chooses or types: marks for one part or sub-part, where numbering starts, how many versions to print, a flag that chooses whether to show a total, or any property that is not a computed number, label or total."
         }
       },
-      "text": "Numbering and marks are derived, never stored (CLAUDE.md). Compute it (src/model/numbering.ts, src/model/marks.ts) instead of adding a stored field."
+      "text": "Numbering and marks are derived, never stored (AGENTS.md). Compute it (src/model/numbering.ts, src/model/marks.ts) instead of adding a stored field."
     },
     {
       "id": "print-hide",

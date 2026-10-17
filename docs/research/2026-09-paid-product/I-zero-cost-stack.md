@@ -286,7 +286,7 @@ prefers to keep everything in Google.
   encrypted, because it holds teacher data.
 - **Local-first protects the teachers:** documents stay local, and cloud sync is only a
   copy. A free-tier outage then costs convenience, never a worksheet. This matches the
-  backward-compatibility rule in CLAUDE.md.
+  backward-compatibility rule in AGENTS.md.
 - **Daily caps fail loudly:** a Worker over 100k/day returns 1027 (fail closed) or bypasses.
   Fail closed on `/api/*`, and show "AI busy, try later" in the app.
 - **Personal liability:** Vertex has no Google-side hard cap, so the ledger and daily ceiling

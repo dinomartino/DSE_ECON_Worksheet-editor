@@ -163,7 +163,7 @@ directly.
   [Supabase PKCE docs](https://supabase.com/docs/guides/auth/sessions/pkce-flow)).
 - **Repo rule**: `@tauri-apps/plugin-deep-link` and the keychain commands must be loaded with
   dynamic `import()` inside `src/platform/` or `src/desktop/`, behind `isDesktop()`
-  (CLAUDE.md, `tauriImports.test.ts`).
+  (AGENTS.md, `tauriImports.test.ts`).
 
 ### Token storage
 - Store the **refresh token only** in the OS keychain (Rust `keyring` crate: macOS Keychain /
@@ -192,7 +192,7 @@ directly.
 ### Offline behaviour (the most important rule)
 - Signed-in state is **a label on the app, never a lock on local work**. Open, edit, export,
   print and BYOK translation all work signed-out, offline and with an expired session. This
-  matches the "a document must always reopen" promise in CLAUDE.md. **Signing out, or account
+  matches the "a document must always reopen" promise in AGENTS.md. **Signing out, or account
   deletion, never touches local documents**, and neither may change the local storage keys or
   the document schema.
 - supabase-js has a history of **removing the stored session when a refresh fails offline**

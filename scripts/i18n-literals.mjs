@@ -234,7 +234,7 @@ export function growthMessage(grown) {
     );
   });
   return [
-    'New English-only interface text. Every new interface string ships in English and Hong Kong Chinese (CLAUDE.md).',
+    'New English-only interface text. Every new interface string ships in English and Hong Kong Chinese (AGENTS.md).',
     ...parts,
     `Fix: put the text in the area's messages.ts with en + zh and read it through useMessages (${RECIPE}).`,
     'Printed text (paper, .docx, PDF, document defaults) stays English: if this is one, or a brand name, add `// i18n-ignore: <reason>` (or `{/* i18n-ignore: <reason> */}`) on its line.',

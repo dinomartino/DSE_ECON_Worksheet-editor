@@ -3,7 +3,7 @@
 Just want to try a build without releasing? See [`docs/DESKTOP-PREVIEW.md`](./docs/DESKTOP-PREVIEW.md).
 
 The web app deploys from `main` on Vercel and needs nothing here — which is why work
-happens on `develop` and reaches `main` only at release time (see CLAUDE.md). This file is about the
+happens on `develop` and reaches `main` only at release time (see AGENTS.md). This file is about the
 macOS and Windows builds, which ship from a git tag through GitHub Releases and update
 themselves from the same release.
 
