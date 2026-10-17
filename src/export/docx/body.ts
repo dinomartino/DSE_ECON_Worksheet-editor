@@ -616,14 +616,19 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
           // A cell covered by a horizontal merge is absorbed by its gridSpan and
           // emits nothing; a cell covered vertically must still emit a `vMerge`
           // continuation cell or Word's grid geometry breaks.
-          const coveredVertically =
-            cell.covered && isCoveredVertically(node, rowIndex, cellIndex);
+          const mergedFrom = cell.covered
+            ? verticalMergeSource(node, rowIndex, cellIndex)
+            : undefined;
+          const coveredVertically = mergedFrom !== undefined;
           if (cell.covered && !coveredVertically) return '';
+          // A continuation spans the columns its merge does: a 2×2 merge continues as
+          // one two-column cell, or Word's grid comes out one column short on that row.
+          const colSpan = mergedFrom ? mergedFrom.colSpan : cell.colSpan;
 
           const props: string[] = [
-            `<w:tcW w:w="${spanWidth(cellIndex, cell.colSpan)}" w:type="dxa"/>`,
+            `<w:tcW w:w="${spanWidth(cellIndex, colSpan)}" w:type="dxa"/>`,
           ];
-          if (cell.colSpan > 1) props.push(`<w:gridSpan w:val="${cell.colSpan}"/>`);
+          if (colSpan > 1) props.push(`<w:gridSpan w:val="${colSpan}"/>`);
           if (coveredVertically) props.push('<w:vMerge/>');
           else if (cell.rowSpan > 1) props.push('<w:vMerge w:val="restart"/>');
           /*
@@ -715,14 +720,22 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
   return above ? `${caption}${table}${spacer}` : `${table}${caption}${spacer}`;
 }
 
-/** Is this covered cell covered from above (vertical merge) rather than from the left? */
-function isCoveredVertically(node: TableNode, rowIndex: number, cellIndex: number): boolean {
+/**
+ * The cell a covered cell continues when it is covered from above (a vertical merge),
+ * or undefined when it is covered from the left and emits nothing.
+ */
+function verticalMergeSource(
+  node: TableNode,
+  rowIndex: number,
+  cellIndex: number,
+): TableNode['rows'][number][number] | undefined {
   for (let r = rowIndex - 1; r >= 0; r -= 1) {
     const candidate = node.rows[r]?.[cellIndex];
     if (!candidate) continue;
-    if (!candidate.covered) return candidate.rowSpan > 1 && r + candidate.rowSpan > rowIndex;
+    if (candidate.covered) continue;
+    return candidate.rowSpan > 1 && r + candidate.rowSpan > rowIndex ? candidate : undefined;
   }
-  return false;
+  return undefined;
 }
 
 /** One `w:drawing` placed "inline with text" (§7.5), for an already-related image. */

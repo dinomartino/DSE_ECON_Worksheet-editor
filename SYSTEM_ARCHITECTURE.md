@@ -855,7 +855,22 @@ anchor; a click collapses the range.
   `elementFromPoint`, clamped to the starting table.
 - **The page marquee exempts `[data-table-cell]`**; the "inside an open editor" guard
   tests **`isContentEditable`, not `role="textbox"`** (idle spans carry the role too).
-- **Merge and the cell image step aside over a range** rather than acting on the anchor.
+- **Merge over a range is Word's Merge Cells** (`mergeRange`): the top-left cell spans
+  the rectangle, every other cell is `covered`, and **its text joins the merged cell, one
+  under the other** (`stackCellTexts`, a `\n` per cell, empty cells add nothing). A
+  covered cell is emptied as it gives its text up, so Split cannot print a line twice;
+  Split (`unmerge`) uncovers the whole rectangle. Merge →/↓ on one cell are the same verb
+  over two cells. The cell image steps aside over a range.
+- **The range formats as one** (`formatCells`, `commonCellFormat`): its own format bar
+  (`Preview.tsx:cellRange`) sets `TableCell.format` on every caught cell in one commit;
+  ⌘B ⌘I ⌘U toggle on unless the whole range already has it. No alignment there (T⇤ T↔ T⇥).
+- **Clipboard** (`model/tableClipboard.ts`, pure strings, no `DOMParser`): ⌘C over a range
+  writes an HTML table (merges kept) and tabbed text; a pasted table — Word/web HTML
+  `<table>`, else tabbed text with a tab in it — fills cells from the caret's cell (or the
+  range's top-left) and grows rows/columns at the end (`fillCells`, one language side).
+  Typing in a cell, the field takes it (`RichTextEditable.onPasteGrid`); otherwise a
+  document `paste` listener. Plain lines without a tab stay text in one cell.
+- **Right-click inside a range keeps the range** and offers Merge cells.
 - **A press off any cell drops the selection**, in the same preview-wide `onMouseDown`,
   *after* the `button` exemption — the resize grips and insert chips are buttons acting
   on the active cell. The selection lives in the store, so no local reset reaches it:
@@ -874,7 +889,9 @@ anchor; a click collapses the range.
 wins over `TextFormat.align` in every backend (absent = left, as Word prints it); a
 `ColumnsNode` cell's tab stop wins the same way. `model/table.ts` rules: **ragged rows are real**
 (`insertColumn` pads short rows first); **a covered cell is neither merge target nor
-source**; **one row and one column are the floor**.
+source**; **one row and one column are the floor**. A covered cell below a merge's first
+row exports as a `vMerge` continuation **spanning its merge's columns**
+(`body.ts:verticalMergeSource`), or a 2×2 merge leaves Word's row a column short.
 
 ### Editing a table: structure in the panel, content on the page
 
@@ -901,6 +918,10 @@ Word's division: insert/delete, align, merge, padding in the panel; typing on th
 - **No resize grip runs through a merged cell** (`TableColumnResizer.merges`): a
   boundary inside one is drawn in segments around it.
 - **Inserting a table picks its size first** (`ui/TableSizePicker.tsx`, opens downward).
+- **Exact sizes in cm** (`BlockEditor.tsx:TableSizeSection`): Column width keeps the
+  other columns and resizes the table, cut to the room on the page
+  (`setColumnWidthTwips`); Row height is a floor like a dragged one, empty = natural.
+  Both act on the grid columns/rows of the active cell or the range.
 
 ### Answer lines are a style, not direct formatting
 
@@ -2211,7 +2232,7 @@ and the way into the drawing canvas for a selected figure.
 - **Verbs act through `replaceBlock` by id** — the canvases' route — so the bar needs
   no owner and works on nested tables (a figure row's, a source body's) unchanged.
 - Range rules carry over: align acts on the whole sweep and reads pressed only when it
-  agrees; merge steps aside over a range. A pie gets no Draw button (no canvas opens).
+  agrees; over a range Merge cells replaces Merge →/↓. A pie gets no Draw button (no canvas opens).
 
 ### The page's right-click menu (`preview/PageContextMenu.tsx`)
 

@@ -61,6 +61,7 @@ the whole schema, one file.
 - `src/render/diagram.ts:areaLabelLayout` · `:AREA_PALETTE` · `:areaLabelSeedOffset` — area colour and the inside/leader label rule; pixel geometry in `src/render/diagramLeader.ts:placeOutside` · `:leaderLine`
 - `src/render/diagram.ts:areaFillMarkup` · `:hatchLines` · `:hatchDots` — shade, or the six hatch patterns as clipped segments/dots; the inspector's swatches draw with it
 - `src/model/table.ts:insertRow` · `:resolveCellPadding` · `:resolveColumnWidths`
+- `src/model/table.ts:mergeRange` · `:stackCellTexts` · `:formatCells` · `:setColumnWidthTwips` — Word's Merge Cells (texts kept), range formatting, exact widths; `src/model/tableClipboard.ts:gridFromClipboard` · `:fillCells` · `:rangeToClipboard` — tables pasted in, ranges copied out
 - `src/model/factories.ts:createWorksheet` · `src/model/newWorksheet.ts:createWorksheetFrom`
 - `src/model/factories.ts:createAnswerDiagram` · `src/model/edits.ts:isAnswerDiagram` — a leaf's model answer diagram (`answerDiagram`), found and patched by block id like a stem figure
 - `src/model/diagramAnswers.ts:answerLayer` · `:markNewAsAnswers` · `:answeredDiagrams` — the answer layer (`answer: true` on a diagram element): what the student version drops (dependents included); `src/render/ir.ts:withAnswerLayers` sets `DiagramNode.answers` in the teacher version, `diagramSvg`'s `answers` draws it in `src/render/diagram.ts:ANSWER_INK`

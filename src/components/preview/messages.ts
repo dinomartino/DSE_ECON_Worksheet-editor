@@ -63,6 +63,7 @@ export const PREVIEW_MESSAGES = defineMessages({
   targetLabelRow: { en: 'Label row', zh: '標籤列' },
   targetCoverLine: { en: 'Cover line', zh: '封面文字行' },
   targetCoverField: { en: 'Cover field', zh: '封面欄位' },
+  cellsSelected: { en: (n: number) => `Table · ${n} cells`, zh: (n: number) => `表格 · ${n} 格` },
   selectedText: { en: (target: string) => `${target} · selected text`, zh: (target: string) => `${target} · 已選文字` },
 
   // The drag chip.
@@ -138,6 +139,7 @@ export const PREVIEW_MESSAGES = defineMessages({
   deleteColumn: { en: 'Delete column', zh: '刪除欄' },
   cell: { en: 'Cell', zh: '儲存格' },
   splitCell: { en: 'Split merged cell', zh: '取消合併儲存格' },
+  mergeCells: { en: 'Merge cells', zh: '合併儲存格' },
   mergeRight: { en: 'Merge with cell to the right', zh: '與右方儲存格合併' },
   mergeBelow: { en: 'Merge with cell below', zh: '與下方儲存格合併' },
   editDrawing: { en: 'Edit drawing', zh: '編輯繪圖' },

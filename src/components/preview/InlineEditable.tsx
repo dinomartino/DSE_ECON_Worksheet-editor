@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { plain } from '@/model/text';
 import type { BiText, RichText } from '@/model/types';
 import { RichTextEditable } from './RichTextEditable';
+import type { TextGrid } from '@/model/tableClipboard';
 import { useMessages } from '@/i18n/language';
 import { PREVIEW_HANDLE_MESSAGES } from './messages';
 
@@ -98,6 +99,8 @@ interface Props {
    */
   cell?: {
     onArrowOut?: (direction: ArrowDirection) => boolean;
+    /** A table pasted into the cell fills the cells from here on (phase 2). */
+    onPasteGrid?: (grid: TextGrid, side: 'en' | 'zh') => boolean;
   };
   /**
    * While **empty**, stretch to the width of the container instead of shrinking to the
@@ -302,6 +305,7 @@ export function InlineEditable({
          * undo entry per keystroke.
          */
         onChange={(next) => (onFlush ?? onCommit)({ ...value, [side]: next })}
+        onPasteGrid={cell?.onPasteGrid ? (grid) => cell.onPasteGrid!(grid, side) : undefined}
         autoFocus
         // The caret opens where the click landed, which is what the I-beam promised.
         caretPoint={caretPointRef.current}

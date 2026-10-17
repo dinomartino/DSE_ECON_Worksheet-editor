@@ -7,12 +7,14 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **2026-10-17: Tables vs Word phase 1 is done but UNCOMMITTED on develop** (one-click typing,
-  Enter = new line, Tab in last cell adds a row, arrows leave at text edge, right-click
-  Table… with size grid, Select/Delete table, toolbar group names, 3 fixes; CHANGELOG
-  written). Green: 5591 tests, typecheck, lint at baseline 40, `npm run samples`. Checked in
-  headless Chromium; keys typed <50 ms after Tab are dropped (next cell opens a frame late).
-  Not tried in Word or Tauri. Next: commit, then phase 2–3 of the review.
+- **2026-10-17: Tables vs Word phase 2 done on `feature/tables-phase2`** (merged to develop):
+  Merge cells over any range (texts kept, 2×2 exports right), range format bar + ⌘B/I/U,
+  paste Word/Excel tables into cells (grows the table), ⌘C copies a range as a table,
+  exact column width / row height (cm) in the sidebar. Phase 1 committed earlier (cb6b730).
+  Green: 5629 tests, typecheck, lint at baseline 40, `npm run samples`; checked in headless
+  Chromium and a 2×2 merge `.docx` through LibreOffice. Not tried in real Word, Excel's own
+  clipboard, or Tauri. Next: phase 3 — the user's call per item (vertical align cheap;
+  header-row repeat and shading go against "an HKDSE table is uniform").
 - **v0.8.2 released 2026-10-16, develop clean, Unreleased empty.** #2 closed with notice
   (details in Where we are). Word packs justified lines tighter than the preview.
 - **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked. `feature/film-v2` (worktree `.claude/worktrees/film-v2`) on GitHub since 2026-10-11, not merged.
@@ -53,7 +55,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
-- #2 follow-ups: price floor DWL + externality templates; diagram wording (DWL/DL in zh, 過剩, tax burden terms). Table review vs Word (artifact B72rG1UNUN81XbZ9Qozujc): Phase 1–3, and one-click-type / Enter-newline in cells change written rules.
+- #2 follow-ups: price floor DWL + externality templates; diagram wording (DWL/DL in zh, 過剩, tax burden terms). Table review vs Word (`docs/Tables vs Word.md`): phases 1–2 done; Phase 3 items each need a yes.
 - Paid service (`docs/research/2026-09-paid-product/`): what first; in-app "use a VPN" Gemini
   wording breaks Google's terms — Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key. Bank authoring
@@ -78,6 +80,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   (macOS aarch64 + x64, Windows). Draft had all 9 assets + `latest.json`, then published.
 
 ## Log
+
+- **2026-10-17** — Tables vs Word phases 1 and 2 (one-click typing, Enter newline, range merge/format/clipboard, exact sizes).
 
 - **2026-10-16** — Released 0.8.2 (closes #2, notice posted). `main` merged back; Unreleased empty.
 

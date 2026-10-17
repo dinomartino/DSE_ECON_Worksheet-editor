@@ -86,14 +86,22 @@ import {
 } from "@/model/pageFurniture";
 import {
   cellsInRange,
+  commonCellFormat,
   columnCountOf,
   defaultTableIndent,
+  formatCells,
   isMerged,
   locateCell,
   mergeDown,
   mergeRight,
   unmerge,
 } from "@/model/table";
+import {
+  fillCells,
+  gridFromClipboard,
+  rangeToClipboard,
+  type TextGrid,
+} from "@/model/tableClipboard";
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramNodeSvg } from "@/render/diagramPage";
@@ -189,7 +197,7 @@ export interface BandEditingHandlers {
     onClear: () => void;
   };
 }
-import { ContextDock } from "./ContextBar";
+import { ContextDock, mergeSweep } from "./ContextBar";
 import { DOCK_INSET_PX, FormatToolbar } from "./FormatToolbar";
 import {
   PageContextMenu,
@@ -346,6 +354,7 @@ function richNodes(
   cellNav?: {
     onTab: (backwards: boolean) => boolean;
     onArrowOut: (direction: ArrowDirection) => boolean;
+    onPasteGrid?: (grid: TextGrid, side: "en" | "zh") => boolean;
   },
   /**
    * Render empty sides with a **short** prompt (a table cell cannot absorb a
@@ -396,7 +405,11 @@ function richNodes(
         fillWidth={compactPlaceholder || fillWidth}
         quietPlaceholder={quietPrompt && !compactPlaceholder}
         onTab={cellNav?.onTab}
-        cell={cellNav ? { onArrowOut: cellNav.onArrowOut } : undefined}
+        cell={
+          cellNav
+            ? { onArrowOut: cellNav.onArrowOut, onPasteGrid: cellNav.onPasteGrid }
+            : undefined
+        }
       >
         {rendered}
       </InlineEditable>
@@ -1777,6 +1790,21 @@ function TableNodeView({
   };
 
   /**
+   * A table pasted while typing in a cell: Word's overwrite-cells paste, from this cell
+   * on, the table growing to fit (`fillCells`). Not in a key's tables, which have no grid
+   * of their own to grow.
+   */
+  const pasteGrid = (cellId: string, pasted: TextGrid, side: "en" | "zh"): boolean => {
+    if (!grid) return false;
+    const store = useWorksheetStore.getState();
+    const block = findTableBlock(store.worksheet, node.blockId);
+    const at = block ? locateCell(block, cellId) : undefined;
+    if (!block || !at) return false;
+    store.replaceBlock(block.id, fillCells(block, at.rowIndex, at.cellIndex, pasted, side));
+    return true;
+  };
+
+  /**
    * An arrow key leaving a cell's text: the next cell left/right in reading order, or
    * the cell above/below in the same grid column. A merged cell is entered through
    * whichever grid slot it covers; the caret lands at the end it was approached from.
@@ -2042,6 +2070,8 @@ function TableNodeView({
                     <td
                       key={cellIndex}
                       data-table-cell={address?.cellId}
+                      // Caught by the sweep: what the range's format bar measures its size off.
+                      data-in-range={rangeEdge ? "true" : undefined}
                       // An answer key's MC cell names its question (`TableNodeCell.questionId`).
                       data-question-id={cell.questionId}
                       colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
@@ -2052,8 +2082,10 @@ function TableNodeView({
                               event.preventDefault();
                               event.stopPropagation();
                               // The menu's verbs act on the clicked cell, so it becomes
-                              // the active one — what a right-click means in Word.
-                              ctx.onActivateCell?.(address);
+                              // the active one — what a right-click means in Word. Inside
+                              // a swept range the range stays, as in Word: its menu
+                              // offers Merge cells over it.
+                              if (!rangeEdge) ctx.onActivateCell?.(address);
                               ctx.contextMenu!(
                                 {
                                   kind: "cell",
@@ -2192,6 +2224,8 @@ function TableNodeView({
                                   onTab: (backwards) => moveCell(address.cellId, backwards),
                                   onArrowOut: (direction) =>
                                     arrowOut(address.cellId, direction),
+                                  onPasteGrid: (grid, side) =>
+                                    pasteGrid(address.cellId, grid, side),
                                 }
                               : undefined,
                             // A cell's box is as narrow as its column, so the prompt has to
@@ -4372,7 +4406,9 @@ function ToolbarDock({
       setDockRect({ left: paper.left, width: paper.width, top: view.top + DOCK_INSET_PX });
 
       // The selected text's own paragraph carries the size; the editable span inherits it.
-      const selected = container.querySelector<HTMLElement>('[data-selected="true"]');
+      const selected =
+        container.querySelector<HTMLElement>('[data-selected="true"]') ??
+        container.querySelector<HTMLElement>('#print-root td[data-in-range="true"]');
       const box = selected?.closest("p, td, th, span") ?? selected;
       const px = box ? Number.parseFloat(getComputedStyle(box).fontSize) : NaN;
       setSelectionPt(Number.isFinite(px) ? Math.round(px * 0.75) : undefined);
@@ -5782,9 +5818,25 @@ export function Preview({
             ],
           });
         }
+        // Right-clicked inside a swept range: Merge cells acts on the whole range.
+        const sweep = store.cellSelection;
+        const range =
+          sweep?.blockId === table.id
+            ? cellsInRange(
+                table.rows.map((row) => row.cells),
+                sweep.anchorId,
+                sweep.focusId,
+                (_, r, c) => table.rows[r]?.cells[c]?.id,
+              )
+            : [];
+        const inRange =
+          range.length > 1 &&
+          range.some((rect) => table.rows[rect.rowIndex]?.cells[rect.cellIndex]?.id === cell.id);
         groups.push({
           label: m.cell,
-          items: isMerged(cell)
+          items: inRange
+            ? [{ label: m.mergeCells, onSelect: () => mergeSweep(table, range) }]
+            : isMerged(cell)
             ? [
                 {
                   label: m.splitCell,
@@ -6321,6 +6373,113 @@ export function Preview({
   }, [worksheet, activeCell, cellSelection]);
 
   /*
+   * A swept range of two or more cells, for the range's own format bar: B / I / U, size
+   * and colour act on every caught cell in one commit, as selecting a row and pressing
+   * ⌘B does in Word. Through `cellsInRange` like everything else that reads the sweep.
+   */
+  const cellRange = useMemo(() => {
+    if (!cellSelection) return undefined;
+    const block = findTableBlock(worksheet, cellSelection.blockId);
+    if (!block) return undefined;
+    const range = cellsInRange(
+      block.rows.map((row) => row.cells),
+      cellSelection.anchorId,
+      cellSelection.focusId,
+      (_, rowIndex, cellIndex) => block.rows[rowIndex]?.cells[cellIndex]?.id,
+    );
+    if (range.length < 2) return undefined;
+    const cells = range.map((rect) => block.rows[rect.rowIndex].cells[rect.cellIndex]);
+    return { block, range, format: commonCellFormat(cells) };
+  }, [worksheet, cellSelection]);
+
+  const formatCellRange = useCallback(
+    (patch: TextFormat) => {
+      if (!cellRange) return;
+      useWorksheetStore
+        .getState()
+        .replaceBlock(cellRange.block.id, formatCells(cellRange.block, cellRange.range, patch));
+    },
+    [cellRange],
+  );
+
+  // ⌘B ⌘I ⌘U over a swept range: on for all unless the whole range already has it.
+  useEffect(() => {
+    if (!cellRange || !onFormat) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+      const key = ({ b: "bold", i: "italic", u: "underline" } as const)[
+        event.key.toLowerCase() as "b" | "i" | "u"
+      ];
+      if (!key) return;
+      if (isModalLayerOpen()) return;
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLInputElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      formatCellRange({ [key]: cellRange.format[key] ? undefined : true });
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [cellRange, formatCellRange, onFormat]);
+
+  /*
+   * The clipboard over selected cells that are not being typed in: ⌘C copies a swept
+   * range as a table (HTML for Word, tabbed text for Excel), and a table pasted lands in
+   * the cells from the range's top-left — or the active cell's — on, growing the table
+   * as needed. Typing in a cell pastes through its own field (`onPasteGrid`).
+   */
+  useEffect(() => {
+    if (!onFormat || !activeCell) return;
+    const typing = () => {
+      const active = document.activeElement;
+      return (
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLInputElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      );
+    };
+    const onCopy = (event: ClipboardEvent) => {
+      if (!cellRange || typing() || isModalLayerOpen() || !event.clipboardData) return;
+      const { html, text } = rangeToClipboard(cellRange.block, cellRange.range, language);
+      event.preventDefault();
+      event.clipboardData.setData("text/html", html);
+      event.clipboardData.setData("text/plain", text);
+    };
+    const onPaste = (event: ClipboardEvent) => {
+      if (typing() || isModalLayerOpen() || !event.clipboardData) return;
+      const block = findTableBlock(useWorksheetStore.getState().worksheet, activeCell.blockId);
+      if (!block) return;
+      const html = event.clipboardData.getData("text/html");
+      const text = event.clipboardData.getData("text/plain");
+      const grid = gridFromClipboard({ html, text }) ?? (text ? [[text]] : undefined);
+      if (!grid) return;
+      const top = cellRange?.range.reduce((best, rect) =>
+        rect.r0 < best.r0 || (rect.r0 === best.r0 && rect.c0 < best.c0) ? rect : best,
+      );
+      const at = top ?? locateCell(block, activeCell.cellId);
+      if (!at) return;
+      event.preventDefault();
+      useWorksheetStore
+        .getState()
+        .replaceBlock(
+          block.id,
+          fillCells(block, at.rowIndex, at.cellIndex, grid, language === "zh" ? "zh" : "en"),
+        );
+    };
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("paste", onPaste);
+    return () => {
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("paste", onPaste);
+    };
+  }, [onFormat, activeCell, cellRange, language]);
+
+  /*
    * Delete / Backspace on a table cell clears *that cell's contents* — the unit
    * `describeDelete` already names for `tableCell` — rather than the question holding
    * the table. Over a swept range every cell in it is cleared, matching what the page
@@ -6432,7 +6591,8 @@ export function Preview({
       }
 
       if (meta && event.key.toLowerCase() === "v") {
-        if (clip.length === 0) return;
+        // A selected table cell takes the system clipboard's paste (§ cell paste).
+        if (clip.length === 0 || useWorksheetStore.getState().activeCell) return;
         event.preventDefault();
         onBulkDuplicate?.(clip);
         return;
@@ -7629,8 +7789,33 @@ export function Preview({
         detail={dragLabel?.detail}
       />
 
+      {/* A swept range of cells formats as one (§ `cellRange`); its bar wins over a
+          single field's, since the range is the selection while it is live. */}
+      {onFormat && cellRange && (
+        <ToolbarDock
+          containerRef={containerRef}
+          selectionKey={cellSelection}
+          subject={m.cellsSelected(cellRange.range.length)}
+          alignable={false}
+          format={cellRange.format}
+          onChange={formatCellRange}
+          onReset={() =>
+            formatCellRange({
+              fontSize: undefined,
+              bold: undefined,
+              italic: undefined,
+              underline: undefined,
+              color: undefined,
+              fonts: undefined,
+            })
+          }
+          onClose={() => useWorksheetStore.getState().setCellSelection(undefined)}
+        />
+      )}
+
       {/* Only formattable targets get a toolbar (`formatBar`). */}
       {onFormat &&
+        !cellRange &&
         selectedElement &&
         formatBar && (
           <ToolbarDock
@@ -7786,7 +7971,7 @@ export function Preview({
           worksheet={worksheet}
           figureBlockId={selectedBlockId}
           onOpenBlock={onOpenBlock}
-          belowFormatBar={Boolean(formatBar)}
+          belowFormatBar={Boolean(cellRange || (selectedElement && formatBar))}
         />
       )}
     </div>

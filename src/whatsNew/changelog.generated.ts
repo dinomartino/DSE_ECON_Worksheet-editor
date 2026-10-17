@@ -28,8 +28,30 @@ a version heading is edited afterwards.
   在儲存格上按右鍵，亦可選「選取表格」及「刪除表格」。 -->
 - **The table toolbar names its groups:** Cell text, Table position and Lines.
   <!-- zh: **表格工具列為各組按鈕加上名稱：**儲存格文字、表格位置及框線。 -->
+- **Merge any block of cells.** Drag across cells — two across, three down, 2×2 — and
+  press Merge cells on the table toolbar or in the right-click menu. Nothing is lost: the
+  text of every cell is kept, one line under the other, as in Word.
+  <!-- zh: **合併任何範圍的儲存格。** 拖曳選取儲存格（橫向兩格、直向三格或 2×2 皆可），再按表格工具列或右鍵選單中的「合併儲存格」。
+  所有內容都會保留：每格的文字會逐行排列在合併後的儲存格內，與 Word 相同。 -->
+- **Format a whole row at once.** Select cells by dragging and use the format bar, or
+  press ⌘B, ⌘I or ⌘U: bold, italic, underline, size and colour apply to every selected
+  cell.
+  <!-- zh: **一次為整列設定格式。** 拖曳選取儲存格後使用格式列，或按 ⌘B、⌘I、⌘U：粗體、斜體、底線、字級及顏色會套用到每個所選儲存格。 -->
+- **Paste a table from Word or Excel into the cells.** Click a cell and paste: the copied
+  table fills the cells from there, and the table grows rows and columns if it needs
+  more. Copying selected cells (⌘C) puts them on the clipboard as a table, ready for Word
+  or Excel.
+  <!-- zh: **把 Word 或 Excel 的表格貼到儲存格內。** 按一下儲存格再貼上：複製的表格會由該格開始填入，如有需要，表格會自動增加列和欄。
+  選取儲存格後按 ⌘C，會以表格形式複製，可直接貼到 Word 或 Excel。 -->
+- **Exact column width and row height.** With a cell selected, type a width or height in
+  centimetres in the sidebar. Changing one column's width leaves the other columns as
+  they are; clear the row height to let the row fit its text again.
+  <!-- zh: **精確設定欄寬及列高。** 選取儲存格後，在側欄以厘米輸入欄寬或列高。更改一欄的寬度不會影響其他欄；清除列高，列便會回復按文字自動調整。 -->
 
 ### Fixed
+- Merging cells no longer hides the text of the cells merged in, and a merge across two
+  rows and two columns now opens in Word with every row the right width.
+  <!-- zh: 合併儲存格時，被合併的儲存格文字不再被隱藏；橫跨兩列兩欄的合併在 Word 中打開時，每一列的寬度亦正確。 -->
 - Clicking the question text just above a table could delete a table column. The delete
   buttons now appear only while you point at the table itself.
   <!-- zh: 點選表格正上方的題目文字時，有機會誤刪表格的一欄。現在只有指向表格本身時，才會出現刪除按鈕。 -->

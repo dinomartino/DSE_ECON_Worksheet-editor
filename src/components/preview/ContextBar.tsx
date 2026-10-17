@@ -8,6 +8,7 @@ import {
   isMerged,
   locateCell,
   mergeDown,
+  mergeRange,
   mergeRight,
   patchCell,
   patchCells,
@@ -129,6 +130,23 @@ function measureRowTwips(blockId: string, rowIndices: number[]): number[] {
   });
 }
 
+/**
+ * Merge a swept range and leave the caret's cell on the merged cell — the sweep's
+ * other cells are covered now, so a selection still naming them would highlight
+ * nothing. Shared by the bar and the page's right-click menu.
+ */
+export function mergeSweep(block: TableBlock, range: Parameters<typeof mergeRange>[1]) {
+  const next = mergeRange(block, range);
+  if (next === block) return;
+  const top = range.reduce((best, rect) =>
+    rect.r0 < best.r0 || (rect.r0 === best.r0 && rect.c0 < best.c0) ? rect : best,
+  );
+  const store = useWorksheetStore.getState();
+  store.replaceBlock(block.id, next);
+  const cellId = next.rows[top.rowIndex]?.cells[top.cellIndex]?.id;
+  store.setActiveCell(cellId ? { blockId: block.id, cellId } : undefined);
+}
+
 function TableRow({ block }: { block: TableBlock }) {
   const m = useMessages(CONTEXT_BAR_MESSAGES);
   const activeCell = useWorksheetStore((s) => s.activeCell);
@@ -239,34 +257,34 @@ function TableRow({ block }: { block: TableBlock }) {
             </>
           )}
 
-          {/* Merge keeps a single subject; over a sweep it would silently act on the
-              anchor alone, which is not what the highlight says — so it steps aside. */}
-          {!multi && (
+          {/* Over a sweep, Word's Merge Cells: the whole rectangle into its top-left
+              cell, every text kept. On one cell, the neighbour merges or Split. */}
+          <span className={DIVIDER} aria-hidden />
+          {multi ? (
+            <BarButton label={m.mergeCellsTitle} onClick={() => mergeSweep(block, range)}>
+              {m.mergeCells}
+            </BarButton>
+          ) : isMerged(cell) ? (
+            <BarButton
+              label={m.splitCell}
+              onClick={() => apply(unmerge(block, at.rowIndex, at.cellIndex))}
+            >
+              {m.split}
+            </BarButton>
+          ) : (
             <>
-              <span className={DIVIDER} aria-hidden />
-              {isMerged(cell) ? (
-                <BarButton
-                  label={m.splitCell}
-                  onClick={() => apply(unmerge(block, at.rowIndex, at.cellIndex))}
-                >
-                  {m.split}
-                </BarButton>
-              ) : (
-                <>
-                  <BarButton
-                    label={m.mergeRightTitle}
-                    onClick={() => apply(mergeRight(block, at.rowIndex, at.cellIndex))}
-                  >
-                    {m.mergeRight}
-                  </BarButton>
-                  <BarButton
-                    label={m.mergeDownTitle}
-                    onClick={() => apply(mergeDown(block, at.rowIndex, at.cellIndex))}
-                  >
-                    {m.mergeDown}
-                  </BarButton>
-                </>
-              )}
+              <BarButton
+                label={m.mergeRightTitle}
+                onClick={() => apply(mergeRight(block, at.rowIndex, at.cellIndex))}
+              >
+                {m.mergeRight}
+              </BarButton>
+              <BarButton
+                label={m.mergeDownTitle}
+                onClick={() => apply(mergeDown(block, at.rowIndex, at.cellIndex))}
+              >
+                {m.mergeDown}
+              </BarButton>
             </>
           )}
 

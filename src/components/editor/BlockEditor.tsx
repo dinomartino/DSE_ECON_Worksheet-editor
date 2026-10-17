@@ -12,8 +12,10 @@ import {
   nextSourceLetter,
 } from '@/model/factories';
 import {
+  cellRects,
   cellsInRange,
   columnCountOf,
+  columnWidthsTwips,
   defaultTableIndent,
   isDegenerate,
   locateCell,
@@ -21,11 +23,21 @@ import {
   paddingAt,
   patchCell,
   resolveCellPadding,
+  rangeGridSpan,
   restoreColumn,
+  setColumnWidthTwips,
   setPadding,
+  setRowHeight,
   type PaddingScope,
 } from '@/model/table';
-import { contentWidth, pageSetupOf, ptToTwips, twipsToPt } from '@/model/page';
+import {
+  cmToTwips,
+  contentWidth,
+  pageSetupOf,
+  ptToTwips,
+  twipsToCm,
+  twipsToPt,
+} from '@/model/page';
 import { graphBlockCopy } from '@/model/graph';
 import { TABLE_TEMPLATES, buildTableFromTemplate } from '@/model/tableTemplates';
 import { bi, emptyBiText, isBiTextEmpty, plain } from '@/model/text';
@@ -579,6 +591,8 @@ function TableBlockEditor({
         </div>
       )}
 
+      {at && <TableSizeSection block={block} at={at} range={range} onChange={apply} />}
+
       <TablePaddingSection block={block} at={at} onChange={apply} />
 
       {cell && at ? (
@@ -676,6 +690,123 @@ function PtField({
         }}
       />
       <span className="text-ink-subtle">pt</span>
+    </label>
+  );
+}
+
+/**
+ * Exact column width and row height, in centimetres — Word's Table Properties numbers,
+ * for when a drag cannot hit "3 cm" (Tables vs Word, phase 2).
+ *
+ * They act on the grid columns and rows the selection covers: the active cell's, or a
+ * swept range's. A column width keeps the other columns as they are and resizes the
+ * table (`setColumnWidthTwips`); a row height is a floor, as a dragged one is, and an
+ * empty box returns the row to its natural height. Values that disagree across the
+ * selection show an empty box.
+ */
+function TableSizeSection({
+  block,
+  at,
+  range,
+  onChange,
+}: {
+  block: TableBlock;
+  at: { rowIndex: number; cellIndex: number };
+  range: ReturnType<typeof cellsInRange>;
+  onChange: (block: TableBlock) => void;
+}) {
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
+  const content = useWorksheetStore((s) => contentWidth(pageSetupOf(s.worksheet)));
+  const rects =
+    range.length > 1
+      ? range
+      : cellRects(block.rows.map((row) => row.cells)).filter(
+          (rect) => rect.rowIndex === at.rowIndex && rect.cellIndex === at.cellIndex,
+        );
+  const span = rangeGridSpan(rects);
+  if (span.columns.length === 0) return null;
+
+  const widths = columnWidthsTwips(block, content);
+  const shownWidths = span.columns.map((c) => widths[c]);
+  const width = shownWidths.every((w) => Math.abs(w - shownWidths[0]) < cmToTwips(0.01))
+    ? shownWidths[0]
+    : undefined;
+  const heights = span.rows.map((r) => block.rows[r]?.minHeight);
+  const height = heights.every((h) => h === heights[0]) ? heights[0] : undefined;
+  const mixedHeights = !heights.every((h) => h === heights[0]);
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-2">
+      <CmSizeField
+        label={m.columnWidth}
+        twips={width}
+        placeholder={width === undefined ? '—' : ''}
+        onChange={(twips) => {
+          if (twips === undefined) return;
+          onChange(setColumnWidthTwips(block, span.columns, twips, content));
+        }}
+      />
+      <CmSizeField
+        label={m.rowHeight}
+        twips={height}
+        placeholder={mixedHeights ? '—' : m.auto}
+        onChange={(twips) =>
+          onChange(span.rows.reduce((next, r) => setRowHeight(next, r, twips), block))
+        }
+      />
+    </div>
+  );
+}
+
+/**
+ * A length typed in centimetres, stored in twips; empty means "none". A local draft
+ * committed on blur or Enter, as `PtField` is and for the same reasons.
+ */
+function CmSizeField({
+  label,
+  twips,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  twips: number | undefined;
+  placeholder: string;
+  onChange: (twips: number | undefined) => void;
+}) {
+  const asText = (value: number | undefined) =>
+    value === undefined ? '' : twipsToCm(value).toFixed(2).replace(/\.?0+$/, '');
+  const [draft, setDraft] = useState<string | undefined>();
+
+  const commit = (raw: string) => {
+    setDraft(undefined);
+    if (raw.trim() === '') {
+      if (twips !== undefined) onChange(undefined);
+      return;
+    }
+    const parsed = Number.parseFloat(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    if (asText(twips) === asText(cmToTwips(parsed))) return;
+    onChange(cmToTwips(Math.min(30, parsed)));
+  };
+
+  return (
+    <label className="inline-flex shrink-0 items-center gap-1.5 text-xs text-ink-muted">
+      {label}
+      <input
+        type="number"
+        inputMode="decimal"
+        step={0.1}
+        min={0}
+        value={draft ?? asText(twips)}
+        placeholder={placeholder}
+        className="h-8 w-16 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={(event) => commit(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') commit((event.target as HTMLInputElement).value);
+        }}
+      />
+      <span className="text-ink-subtle">cm</span>
     </label>
   );
 }

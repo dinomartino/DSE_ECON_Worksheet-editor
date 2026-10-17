@@ -1,6 +1,15 @@
 import { createTableCell, createTableRow } from './factories';
 import { QUESTION_LIST_INDENTS } from './numbering';
-import type { CellPadding, TableAlign, TableBlock, TableCell } from './types';
+import { emptyBiText, isRichTextEmpty, normalizeRuns } from './text';
+import type {
+  BiText,
+  CellPadding,
+  RichText,
+  TableAlign,
+  TableBlock,
+  TableCell,
+  TextFormat,
+} from './types';
 
 /**
  * Table structure verbs, as pure functions — two surfaces (sidebar panel, on-page
@@ -173,67 +182,127 @@ export function patchCell(
 }
 
 /**
- * Merge a cell with its right-hand neighbour by growing `colSpan`.
+ * The texts of several cells, one under the other — what Word keeps when cells merge.
  *
- * The absorbed neighbour is flagged `covered` rather than deleted, which is what the
- * exporter's `gridSpan`/`vMerge` logic expects: Word needs the grid to stay rectangular,
- * so a covered cell still occupies a slot even when it emits nothing.
+ * Per language, the non-empty sides joined by a hard break (`\n`, the cell's own line
+ * break), so the merged cell stays one paragraph like every cell. An empty cell adds no
+ * blank line: merging a heading over two blank cells gives the heading, not the heading
+ * and two empty lines.
+ */
+export function stackCellTexts(texts: ReadonlyArray<BiText>): BiText {
+  const side = (pick: (text: BiText) => RichText): RichText => {
+    const parts = texts.map(pick).filter((runs) => !isRichTextEmpty(runs));
+    return normalizeRuns(
+      parts.flatMap((runs, index) => (index === 0 ? runs : [{ text: '\n' }, ...runs])),
+    );
+  };
+  return { en: side((text) => text.en), zh: side((text) => text.zh) };
+}
+
+/**
+ * Merge every cell of a swept range into its top-left cell — Word's Merge Cells.
+ *
+ * The range is `cellsInRange`'s, so it is already a rectangle grown over any merge it
+ * touched. The top-left cell spans the whole rectangle; every other cell is flagged
+ * `covered` (kept in its slot, which the exporter's `gridSpan`/`vMerge` logic needs)
+ * and **hands its text to the merged cell**, one under the other — the old one-neighbour
+ * merge hid it instead, so "2024" and "2025" merged showed "2024" and the rest was gone
+ * from the page while still sitting in the file. A covered cell is emptied as it gives
+ * its text up, so splitting the merge again cannot print a line twice.
+ *
+ * A cell holds one picture; the merged cell keeps its own, else the first one the range
+ * holds. Returns the block unchanged for fewer than two cells, or a range whose top-left
+ * slot no printing cell starts in (a ragged row with nothing there).
+ */
+export function mergeRange(block: TableBlock, range: ReadonlyArray<CellRect>): TableBlock {
+  if (range.length < 2) return block;
+  const r0 = Math.min(...range.map((rect) => rect.r0));
+  const c0 = Math.min(...range.map((rect) => rect.c0));
+  const r1 = Math.max(...range.map((rect) => rect.r1));
+  const c1 = Math.max(...range.map((rect) => rect.c1));
+  const source = range.find((rect) => rect.r0 === r0 && rect.c0 === c0);
+  if (!source) return block;
+
+  // Reading order — row by row, left to right — is the order the texts stack in.
+  const ordered = [...range].sort((a, b) => a.r0 - b.r0 || a.c0 - b.c0);
+  const cellAt = (rect: CellRect) => block.rows[rect.rowIndex]?.cells[rect.cellIndex];
+  const cells = ordered.map(cellAt).filter((cell): cell is TableCell => Boolean(cell));
+  const text = stackCellTexts(cells.map((cell) => cell.text));
+  const image = cellAt(source)?.image ?? cells.find((cell) => cell.image)?.image;
+  const absorbed = new Set(
+    range
+      .filter((rect) => rect !== source)
+      .map((rect) => `${rect.rowIndex}:${rect.cellIndex}`),
+  );
+
+  return {
+    ...block,
+    rows: block.rows.map((row, r) => ({
+      ...row,
+      cells: row.cells.map((cell, c) => {
+        if (r === source.rowIndex && c === source.cellIndex) {
+          const merged: TableCell = {
+            ...cell,
+            text,
+            colSpan: c1 - c0 + 1,
+            rowSpan: r1 - r0 + 1,
+          };
+          if (image) merged.image = image;
+          return merged;
+        }
+        if (!absorbed.has(`${r}:${c}`)) return cell;
+        const emptied: TableCell = { ...cell, text: emptyBiText(), covered: true };
+        delete emptied.colSpan;
+        delete emptied.rowSpan;
+        delete emptied.image;
+        return emptied;
+      }),
+    })),
+  };
+}
+
+/** The range one cell and a neighbour make, grown over merges like a sweep. */
+function pairRange(
+  block: TableBlock,
+  rowIndex: number,
+  cellIndex: number,
+  neighbour: TableCell | undefined,
+): CellRect[] {
+  const source = block.rows[rowIndex]?.cells[cellIndex];
+  if (!source || source.covered || !neighbour || neighbour.covered) return [];
+  return cellsInRange(
+    block.rows.map((row) => row.cells),
+    source.id,
+    neighbour.id,
+    (_, r, c) => block.rows[r]?.cells[c]?.id,
+  );
+}
+
+/**
+ * Merge a cell with its right-hand neighbour — `mergeRange` over the two, so the
+ * neighbour's text joins the cell's and a cell already spanning rows takes the whole
+ * neighbouring column with it rather than leaving a stair-step.
  */
 export function mergeRight(block: TableBlock, rowIndex: number, cellIndex: number): TableBlock {
-  const source = block.rows[rowIndex]?.cells[cellIndex];
-  const neighbour = block.rows[rowIndex]?.cells[cellIndex + 1];
   // A covered cell is not a merge *source* either: it prints nothing, so growing its
   // span would silently consume the cell beyond it into something invisible.
-  if (!source || source.covered || !neighbour || neighbour.covered) return block;
-  return {
-    ...block,
-    rows: block.rows.map((row, r) =>
-      r !== rowIndex
-        ? row
-        : {
-            ...row,
-            cells: row.cells.map((cell, c) => {
-              if (c === cellIndex) {
-                return { ...cell, colSpan: (cell.colSpan ?? 1) + (neighbour.colSpan ?? 1) };
-              }
-              if (c === cellIndex + 1) return { ...cell, covered: true };
-              return cell;
-            }),
-          },
-    ),
-  };
+  const source = block.rows[rowIndex]?.cells[cellIndex];
+  const neighbour = block.rows[rowIndex]?.cells[cellIndex + (source?.colSpan ?? 1)];
+  return mergeRange(block, pairRange(block, rowIndex, cellIndex, neighbour));
 }
 
-/** Merge a cell with the one below it by growing `rowSpan`. */
+/** Merge a cell with the one below it — `mergeRange` over the two. */
 export function mergeDown(block: TableBlock, rowIndex: number, cellIndex: number): TableBlock {
   const source = block.rows[rowIndex]?.cells[cellIndex];
-  const below = block.rows[rowIndex + 1]?.cells[cellIndex];
-  if (!source || source.covered || !below || below.covered) return block;
-  return {
-    ...block,
-    rows: block.rows.map((row, r) => {
-      if (r === rowIndex) {
-        return {
-          ...row,
-          cells: row.cells.map((cell, c) =>
-            c === cellIndex
-              ? { ...cell, rowSpan: (cell.rowSpan ?? 1) + (below.rowSpan ?? 1) }
-              : cell,
-          ),
-        };
-      }
-      if (r === rowIndex + 1) {
-        return {
-          ...row,
-          cells: row.cells.map((cell, c) => (c === cellIndex ? { ...cell, covered: true } : cell)),
-        };
-      }
-      return row;
-    }),
-  };
+  const below = block.rows[rowIndex + (source?.rowSpan ?? 1)]?.cells[cellIndex];
+  return mergeRange(block, pairRange(block, rowIndex, cellIndex, below));
 }
 
-/** Undo a merge: reset the spans and reveal whatever the cell was covering. */
+/**
+ * Undo a merge: reset the spans and reveal every cell the merge covered — the whole
+ * rectangle, so a 2×2 merge splits back into four. The text stays in the first cell,
+ * as Word leaves it.
+ */
 export function unmerge(block: TableBlock, rowIndex: number, cellIndex: number): TableBlock {
   const cell = block.rows[rowIndex]?.cells[cellIndex];
   if (!cell) return block;
@@ -245,9 +314,12 @@ export function unmerge(block: TableBlock, rowIndex: number, cellIndex: number):
       ...row,
       cells: row.cells.map((c, ci) => {
         if (r === rowIndex && ci === cellIndex) return { ...c, colSpan: 1, rowSpan: 1 };
-        const withinCols = r === rowIndex && ci > cellIndex && ci < cellIndex + colSpan;
-        const withinRows = ci === cellIndex && r > rowIndex && r < rowIndex + rowSpan;
-        if (withinCols || withinRows) return { ...c, covered: false };
+        const within =
+          r >= rowIndex &&
+          r < rowIndex + rowSpan &&
+          ci >= cellIndex &&
+          ci < cellIndex + colSpan;
+        if (within) return { ...c, covered: false };
         return c;
       }),
     })),
@@ -427,6 +499,55 @@ export function patchCells(
     (current, position) => patchCell(current, position.rowIndex, position.cellIndex, patch),
     block,
   );
+}
+
+/**
+ * Format every cell in a range at once — Word's "select the row, ⌘B". The patch layers
+ * onto each cell's own `format` the way the format bar's element patch does: a key set
+ * to `undefined` clears back to inherited, and a cell left with no override drops the
+ * object, so bolding and un-bolding a row leaves the file as it was.
+ */
+export function formatCells(
+  block: TableBlock,
+  positions: ReadonlyArray<{ rowIndex: number; cellIndex: number }>,
+  patch: TextFormat,
+): TableBlock {
+  const caught = new Set(positions.map((p) => `${p.rowIndex}:${p.cellIndex}`));
+  return {
+    ...block,
+    rows: block.rows.map((row, r) => ({
+      ...row,
+      cells: row.cells.map((cell, c) => {
+        if (!caught.has(`${r}:${c}`)) return cell;
+        const next: TextFormat = { ...cell.format, ...patch };
+        for (const key of Object.keys(next) as Array<keyof TextFormat>) {
+          if (next[key] === undefined) delete next[key];
+        }
+        if (Object.keys(next).length > 0) return { ...cell, format: next };
+        const bare: TableCell = { ...cell };
+        delete bare.format;
+        return bare;
+      }),
+    })),
+  };
+}
+
+/**
+ * The format a range of cells shares: a key appears only when every cell agrees on it,
+ * so the bar shows B pressed only when the whole range is bold — Word's mixed-selection
+ * rule, the same one the cell-align buttons follow.
+ */
+export function commonCellFormat(cells: ReadonlyArray<TableCell>): TextFormat {
+  if (cells.length === 0) return {};
+  const [first, ...rest] = cells;
+  const common: TextFormat = {};
+  for (const key of Object.keys(first.format ?? {}) as Array<keyof TextFormat>) {
+    const value = first.format?.[key];
+    if (rest.every((cell) => JSON.stringify(cell.format?.[key]) === JSON.stringify(value))) {
+      (common as Record<string, unknown>)[key] = value;
+    }
+  }
+  return common;
 }
 
 /* ------------------------------------------------------------------ padding */
@@ -811,6 +932,55 @@ export function resizeTableEdge(
     // centre rather than storing an indent Word would then ignore. Without this the drag
     // appeared to do nothing on a centred table: the value changed and nothing moved.
     align: undefined,
+  };
+}
+
+/**
+ * Each grid column's printed width in twips, for a table in a column `contentWidthTwips`
+ * wide — what the sidebar's Column width box shows.
+ */
+export function columnWidthsTwips(block: TableBlock, contentWidthTwips: number): number[] {
+  const { width } = resolveTableBox(block);
+  return resolveColumnWidths(block, spannedColumnCount(block)).map(
+    (fraction) => fraction * width * contentWidthTwips,
+  );
+}
+
+/**
+ * Give grid columns an exact width — Word's Table Properties ▸ Column ▸ Preferred width.
+ *
+ * As in Word, **the other columns keep their widths and the table grows or shrinks**,
+ * rather than the neighbour giving way as a border drag does: typing 3 cm into a column
+ * should not quietly change the one beside it. The table cannot grow past the page, so a
+ * width that will not fit is cut to the room left (never below the drag's minimum).
+ * Returns the block itself when nothing changes.
+ */
+export function setColumnWidthTwips(
+  block: TableBlock,
+  gridColumns: ReadonlyArray<number>,
+  twips: number,
+  contentWidthTwips: number,
+): TableBlock {
+  if (!(contentWidthTwips > 0) || !Number.isFinite(twips)) return block;
+  const widths = columnWidthsTwips(block, contentWidthTwips);
+  const columns = [...new Set(gridColumns)].filter((c) => c >= 0 && c < widths.length);
+  if (columns.length === 0) return block;
+
+  const min = MIN_COLUMN_FRACTION * contentWidthTwips;
+  const { indent, align } = resolveTableBox(block);
+  const room = (align === 'left' ? 1 - indent : 1) * contentWidthTwips;
+  const others = widths.reduce((sum, w, c) => (columns.includes(c) ? sum : sum + w), 0);
+  const fit = Math.max(min, Math.min(twips, (room - others) / columns.length));
+  const next = widths.map((w, c) => (columns.includes(c) ? fit : w));
+  if (next.every((w, c) => Math.abs(w - widths[c]) < 1)) return block;
+
+  const total = next.reduce((sum, w) => sum + w, 0);
+  const width = Math.min(1, total / contentWidthTwips);
+  return {
+    ...block,
+    columnWidths: next.map((w) => w / total),
+    // Full width (from the indent on) stays unstored, as an untouched table's is.
+    width: width >= (align === 'left' ? 1 - indent : 1) - 1e-6 ? undefined : width,
   };
 }
 

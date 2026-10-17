@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { replaceRichTextRange, richTextLength } from '@/model/text';
+import { gridFromClipboard, type TextGrid } from '@/model/tableClipboard';
 import type { RichText, RunFormat } from '@/model/types';
 import {
   offsetAtPoint,
@@ -53,6 +54,12 @@ interface Props {
   onSelectionChange?: (range: { start: number; end: number } | undefined) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLSpanElement>) => void;
   onBlur?: (event: React.FocusEvent<HTMLSpanElement>) => void;
+  /**
+   * A table on the clipboard (Word's HTML table, Excel's tabbed cells), offered before
+   * the plain-text paste. Returning true means it was taken — a table cell fills the
+   * cells from here on rather than typing the whole table into itself.
+   */
+  onPasteGrid?: (grid: TextGrid) => boolean;
 }
 
 /**
@@ -89,6 +96,7 @@ export function RichTextEditable({
   onSelectionChange,
   onKeyDown,
   onBlur,
+  onPasteGrid,
 }: Props) {
   const hostRef = useRef<HTMLSpanElement>(null);
   const paintedRef = useRef<RichText | undefined>(undefined);
@@ -249,6 +257,10 @@ export function RichTextEditable({
         // the formatting at the caret instead.
         event.preventDefault();
         const text = event.clipboardData.getData('text/plain');
+        if (onPasteGrid) {
+          const grid = gridFromClipboard({ html: event.clipboardData.getData('text/html'), text });
+          if (grid && onPasteGrid(grid)) return;
+        }
         if (!text) return;
         const host = hostRef.current;
         const at = host ? selectionOffsets(host) : undefined;

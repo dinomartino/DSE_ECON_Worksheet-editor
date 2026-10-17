@@ -15,6 +15,11 @@ export const CONTEXT_BAR_MESSAGES = defineMessages({
   alignCellRight: { en: 'Align cell text right', zh: '儲存格文字靠右對齊' },
   splitCell: { en: 'Split merged cell', zh: '分割已合併的儲存格' },
   split: { en: 'Split', zh: '分割' },
+  mergeCellsTitle: {
+    en: 'Merge the selected cells into one, keeping all their text',
+    zh: '把所選的儲存格合併為一格，保留所有文字',
+  },
+  mergeCells: { en: 'Merge cells', zh: '合併儲存格' },
   mergeRightTitle: { en: 'Merge with the cell to the right', zh: '與右方的儲存格合併' },
   mergeRight: { en: 'Merge →', zh: '合併 →' },
   mergeDownTitle: { en: 'Merge with the cell below', zh: '與下方的儲存格合併' },
