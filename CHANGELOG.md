@@ -12,6 +12,31 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Changed
+- **Tables type like Word.** One click in a cell puts the cursor there, so you can start
+  typing straight away. Enter starts a new line inside the cell; Escape or clicking away
+  finishes. Tab in the last cell adds a new row, and the arrow keys move to the next cell
+  when the cursor reaches the edge of the text.
+  <!-- zh: **表格輸入方式與 Word 一樣。** 在儲存格按一下，游標便會出現，可即時輸入。Enter 在儲存格內換行；按 Esc 或點選別處即完成。
+  在最後一格按 Tab 會加入新的一列；游標到達文字邊緣時，方向鍵會移到相鄰的儲存格。 -->
+- **Insert a table of any size from the right-click menu.** Right-click on the page, choose
+  Table… and pick the size on the grid; it is inserted where you clicked. Right-clicking a
+  cell also offers Select table and Delete table.
+  <!-- zh: **在右鍵選單插入任何大小的表格。** 在頁面上按右鍵，選「表格…」，再在方格上選擇大小，表格便會插入在你按右鍵的位置。
+  在儲存格上按右鍵，亦可選「選取表格」及「刪除表格」。 -->
+- **The table toolbar names its groups:** Cell text, Table position and Lines.
+  <!-- zh: **表格工具列為各組按鈕加上名稱：**儲存格文字、表格位置及框線。 -->
+
+### Fixed
+- Clicking the question text just above a table could delete a table column. The delete
+  buttons now appear only while you point at the table itself.
+  <!-- zh: 點選表格正上方的題目文字時，有機會誤刪表格的一欄。現在只有指向表格本身時，才會出現刪除按鈕。 -->
+- The table size menu in the sidebar no longer opens cut off at the panel's edge.
+  <!-- zh: 側欄的表格大小選單打開時，不再被面板邊緣遮住。 -->
+- A merged cell no longer has a column or row resize handle running through its middle,
+  so clicking the centre of a merged heading selects the cell.
+  <!-- zh: 合併後的儲存格中間不再有調整欄寬或列高的把手，按一下合併標題的中間便會選取該儲存格。 -->
+
 ## 0.8.2 — 2026-10-16
 
 ### Added

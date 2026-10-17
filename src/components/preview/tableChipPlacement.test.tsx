@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRef } from 'react';
-import { TableGridControls } from './TableGridControls';
+import { COLUMN_DELETE_TOP, TableGridControls } from './TableGridControls';
 
 /**
  * No table chip may sit where a cell gesture lands.
@@ -13,9 +13,9 @@ import { TableGridControls } from './TableGridControls';
  * the teacher lost a column of their table by trying to type in it. The model really
  * changed: a 2×2 became 2×1, and Escape did not bring it back.
  *
- * The row controls already had the answer — the row delete sits at `left: -33`, a lane
- * beyond its inserts at `-16`, out in the margin and clear of every cell. The column
- * delete now mirrors it, above the table.
+ * The row delete sits at `left: -33`, a lane beyond its inserts at `-16`, out in the
+ * margin and clear of every cell. The column delete sits on the table's top edge,
+ * between its inserts (see below for why not a lane above).
  *
  * Rendered rather than grepped, because the bug was a *number*: the chip's own
  * offsets are what has to stay outside the table box, and only rendering resolves them.
@@ -65,24 +65,31 @@ describe('table chips stay out of the cells', () => {
     }
   });
 
-  it('gives the column delete its own lane, clear of the insert chips', () => {
-    // Read from source: the column chips need pointer state that server rendering has
-    // no way to produce, and these two numbers are the whole invariant.
+  /*
+   * The column delete's second home, 25px above the table, was over the question
+   * text's last line — the hover zone reaches 40px up, so the ✕ showed while the
+   * pointer was on the stem, and double-clicking a word there deleted a column
+   * (docs/Tables vs Word.md). It now straddles the top edge between the inserts,
+   * inside the blank line every table takes before it, and shows only while the
+   * pointer is on the table itself.
+   */
+  it('keeps the column delete on the table edge, never over the text above', () => {
     const source = readSource();
-    const insertTop = /aria-label=\{m\.insertColumnBefore[\s\S]*?top: px\((-?\d+)\)/.exec(source);
-    const deleteTop = /aria-label=\{m\.deleteColumnN[\s\S]*?top: px\((-?\d+)\)/.exec(source);
-
-    expect(insertTop, 'the insert-column chip moved or was renamed').not.toBeNull();
+    const deleteTop = /aria-label=\{m\.deleteColumnN[\s\S]*?top: px\(([A-Z_]+|-?\d+)\)/.exec(source);
     expect(deleteTop, 'the delete-column chip moved or was renamed').not.toBeNull();
+    const top = Number(
+      deleteTop![1] === 'COLUMN_DELETE_TOP' ? COLUMN_DELETE_TOP : deleteTop![1],
+    );
+    // 14px tall: from `top` to `top + 14`. Above the blank line (12pt = 16px) is the
+    // stem; more than a few px into the table is a cell's text.
+    expect(top, 'the delete-column chip reaches past the blank line, onto the stem').toBeGreaterThanOrEqual(-14);
+    expect(top + 14, 'the delete-column chip is inside row 1, over a cell').toBeLessThanOrEqual(4);
+  });
 
-    const insert = Number(insertTop![1]);
-    const del = Number(deleteTop![1]);
-
-    expect(del, 'the delete-column chip is inside row 1, over a cell').toBeLessThan(0);
-    expect(
-      del,
-      'the delete-column chip shares the insert lane — they would overlap',
-    ).toBeLessThan(insert);
+  it('shows the delete chips only while the pointer is on the table', () => {
+    const source = readSource();
+    expect(source).toMatch(/columnCount > 1 && onTable && \(/);
+    expect(source).toMatch(/rowCount > 1 && onTable && \(/);
   });
 });
 

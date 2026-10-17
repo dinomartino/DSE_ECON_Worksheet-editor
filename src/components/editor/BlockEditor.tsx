@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { defaultFramed, editTargetKey } from '@/model/edits';
 import { imageBlockFromFile, prepareImageForStorage } from '@/export/imageImport';
 import {
@@ -353,6 +353,46 @@ function TableInsertButton({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [open]);
 
+  /*
+   * Kept inside the panel that holds it. `right-0` alone ran a flyout opened from a
+   * button near the panel's left edge out past that edge, where the scroller clipped
+   * its first columns and the caption (docs/Tables vs Word.md). Measured against the
+   * nearest clipping ancestor and nudged back in, again whenever the grid grows.
+   */
+  const flyoutRef = useRef<HTMLDivElement>(null);
+  const [nudge, setNudge] = useState(0);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const flyout = flyoutRef.current;
+    if (!flyout) return;
+    const clipOf = (node: HTMLElement | null): HTMLElement | null => {
+      for (let at = node?.parentElement ?? null; at; at = at.parentElement) {
+        const { overflowX } = getComputedStyle(at);
+        if (overflowX !== 'visible') return at;
+      }
+      return null;
+    };
+    const measure = () => {
+      const clip = clipOf(flyout)?.getBoundingClientRect() ?? {
+        left: 0,
+        right: window.innerWidth,
+      };
+      setNudge((current) => {
+        // The box as placed without a nudge: the style shifts it right by `current`.
+        const box = flyout.getBoundingClientRect();
+        const left = box.left - current;
+        const right = box.right - current;
+        if (left < clip.left + 4) return clip.left + 4 - left;
+        if (right > clip.right - 4) return Math.max(clip.left + 4 - left, clip.right - 4 - right);
+        return 0;
+      });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(flyout);
+    return () => observer.disconnect();
+  }, [open]);
+
   return (
     <div ref={rootRef} className="relative">
       <Button
@@ -361,7 +401,10 @@ function TableInsertButton({
         aria-label={m.addTable}
         aria-expanded={open}
         aria-haspopup="grid"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          setNudge(0);
+          setOpen((current) => !current);
+        }}
       >
         {m.table}
       </Button>
@@ -376,7 +419,11 @@ function TableInsertButton({
          * panel below, and `right-0` keeps the wider sizes from running off the 380px
          * column into the page.
          */
-        <div className="absolute right-0 top-full z-40 mt-1 min-w-[9.5rem] origin-top-right animate-pop-in rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl">
+        <div
+          ref={flyoutRef}
+          className="absolute right-0 top-full z-40 mt-1 min-w-[9.5rem] origin-top-right animate-pop-in rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl"
+          style={nudge ? { right: -nudge } : undefined}
+        >
           {/*
             The named shapes come **first**, above the size grid.
 

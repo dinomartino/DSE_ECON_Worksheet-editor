@@ -7,6 +7,12 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
+- **2026-10-17: Tables vs Word phase 1 is done but UNCOMMITTED on develop** (one-click typing,
+  Enter = new line, Tab in last cell adds a row, arrows leave at text edge, right-click
+  Table… with size grid, Select/Delete table, toolbar group names, 3 fixes; CHANGELOG
+  written). Green: 5591 tests, typecheck, lint at baseline 40, `npm run samples`. Checked in
+  headless Chromium; keys typed <50 ms after Tab are dropped (next cell opens a frame late).
+  Not tried in Word or Tauri. Next: commit, then phase 2–3 of the review.
 - **v0.8.2 released 2026-10-16, develop clean, Unreleased empty.** #2 closed with notice
   (details in Where we are). Word packs justified lines tighter than the preview.
 - **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked. `feature/film-v2` (worktree `.claude/worktrees/film-v2`) on GitHub since 2026-10-11, not merged.

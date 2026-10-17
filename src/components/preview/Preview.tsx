@@ -197,7 +197,12 @@ import {
   type PageMenuItem,
   type PageMenuPayload,
 } from "./PageContextMenu";
-import { InlineEditable, type TextSelection } from "./InlineEditable";
+import {
+  InlineEditable,
+  OPEN_FIELD_EVENT,
+  type ArrowDirection,
+  type TextSelection,
+} from "./InlineEditable";
 import { ResizableBlock } from "./ResizableBlock";
 import { ResizableRows } from "./ResizableRows";
 import { MIN_ANSWER_LINES, MIN_SPACER_PT } from "@/model/flow";
@@ -333,8 +338,15 @@ function richNodes(
   language: LanguageMode,
   edit?: EditTarget,
   ctx?: EditContext,
-  /** Tab handler, supplied only by table cells so a table walks like Word's. */
-  onTab?: (backwards: boolean) => boolean,
+  /**
+   * Supplied only by table cells, so a table walks and types like Word's: Tab between
+   * cells, arrows out at the text's edge, one click to type, Enter a new line
+   * (`InlineEditable.cell`).
+   */
+  cellNav?: {
+    onTab: (backwards: boolean) => boolean;
+    onArrowOut: (direction: ArrowDirection) => boolean;
+  },
   /**
    * Render empty sides with a **short** prompt (a table cell cannot absorb a
    * sentence — the long prompt wrapped and changed the measured row height). The
@@ -383,7 +395,8 @@ function richNodes(
         keepEditing={ctx.keepEditing}
         fillWidth={compactPlaceholder || fillWidth}
         quietPlaceholder={quietPrompt && !compactPlaceholder}
-        onTab={onTab}
+        onTab={cellNav?.onTab}
+        cell={cellNav ? { onArrowOut: cellNav.onArrowOut } : undefined}
       >
         {rendered}
       </InlineEditable>
@@ -1589,6 +1602,49 @@ function SizedRows({
 }
 
 /**
+ * The cell above or below `fromCellId` in the same grid column, for an arrow key
+ * leaving a cell (§ `TableNodeView.arrowOut`). The IR keeps covered slots in place, so
+ * a slot under a merge is resolved to the cell whose span covers it; a merged cell
+ * starts from its own first column and steps past its own rows.
+ */
+export function cellInDirection(
+  rows: TableNode["rows"],
+  fromCellId: string,
+  direction: "up" | "down",
+): { blockId: string; cellId: string } | undefined {
+  const idOf = (rowIndex: number, cellIndex: number) => {
+    const edit = rows[rowIndex]?.[cellIndex]?.edit;
+    return edit?.kind === "tableCell" ? edit : undefined;
+  };
+  let fromRow = -1;
+  let fromColumn = -1;
+  rows.forEach((row, rowIndex) =>
+    row.forEach((cell, cellIndex) => {
+      if (!cell.covered && idOf(rowIndex, cellIndex)?.cellId === fromCellId) {
+        fromRow = rowIndex;
+        fromColumn = cellIndex;
+      }
+    }),
+  );
+  if (fromRow < 0) return undefined;
+  const span = rows[fromRow][fromColumn].rowSpan;
+  const rowIndex = direction === "up" ? fromRow - 1 : fromRow + Math.max(1, span);
+  if (rowIndex < 0 || rowIndex >= rows.length) return undefined;
+  // The uncovered cell whose span reaches this slot: up the column, then left.
+  for (let r = rowIndex; r >= 0; r -= 1) {
+    for (let c = fromColumn; c >= 0; c -= 1) {
+      const cell = rows[r]?.[c];
+      if (!cell || cell.covered) continue;
+      if (r + cell.rowSpan > rowIndex && c + cell.colSpan > fromColumn) {
+        const found = idOf(r, c);
+        return found && found.cellId !== fromCellId ? found : undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * A table on the page. Three things must match the exporter exactly (the paginator
  * measures these boxes): `table-layout: fixed` with a `colgroup` (Word is
  * fixed-layout; browser auto-layout sizes from content); padding in points from the
@@ -1667,28 +1723,77 @@ function TableNodeView({
     .map((cell) => cell.edit as { blockId: string; cellId: string });
 
   /**
+   * Open a cell's field with the caret at its start or end, once it is on the page.
+   *
+   * The fields are contenteditables created on demand, so there is no persistent
+   * element to `.focus()`: the idle span is asked to open (`OPEN_FIELD_EVENT`). It
+   * waits a frame for the outgoing field to unmount — without it the event lands on a
+   * node React is replacing — and keeps waiting a few more for a cell that does not
+   * exist yet (a row Tab has just added, which may paginate onto the next sheet).
+   * Scoped to `#print-root`: the pagination probe holds a second copy of every cell.
+   */
+  const openCell = (cellId: string, at: "start" | "end") => {
+    let frames = 0;
+    const attempt = () => {
+      const field = document.querySelector<HTMLElement>(
+        `#print-root [data-table-cell="${CSS.escape(cellId)}"] [role="textbox"]`,
+      );
+      if (field) {
+        field.dispatchEvent(new CustomEvent(OPEN_FIELD_EVENT, { detail: { at } }));
+        return;
+      }
+      if (++frames < 12) requestAnimationFrame(attempt);
+    };
+    requestAnimationFrame(attempt);
+  };
+
+  /**
    * Move to the neighbouring cell, or report that there is none.
    *
-   * Focus is moved by *asking the next cell's field to open*, which the page does by
-   * clicking it — the fields are contenteditables created on demand, so there is no
-   * persistent element to `.focus()`. `requestAnimationFrame` waits for the outgoing
-   * field to unmount first; without it the click lands on a node React is replacing.
+   * **Tab in the last cell adds a row** and moves into it, as Word does — only in the
+   * piece that holds the table's last row (`continues` is false), so a table split
+   * across sheets grows at its real end.
    */
   const moveCell = (fromCellId: string, backwards: boolean): boolean => {
     const at = tabOrder.findIndex((cell) => cell.cellId === fromCellId);
     const next = at < 0 ? undefined : tabOrder[at + (backwards ? -1 : 1)];
-    if (!next) return false;
+    if (!next) {
+      if (backwards || at < 0 || at !== tabOrder.length - 1 || continues || !grid) {
+        return false;
+      }
+      const block = findTableBlock(useWorksheetStore.getState().worksheet, node.blockId);
+      if (!block) return false;
+      grid.onInsertRow(node.blockId, block.rows.length);
+      const grown = findTableBlock(useWorksheetStore.getState().worksheet, node.blockId);
+      const first = grown?.rows[grown.rows.length - 1]?.cells[0];
+      if (!first) return false;
+      ctx?.onActivateCell?.({ blockId: node.blockId, cellId: first.id });
+      openCell(first.id, "start");
+      return true;
+    }
     ctx?.onActivateCell?.(next);
-    requestAnimationFrame(() => {
-      const cellNode = document.querySelector<HTMLElement>(
-        `[data-table-cell="${CSS.escape(next.cellId)}"] [role="textbox"]`,
-      );
-      // A double-click is what opens a field on the page, so that is what a Tab has to
-      // reproduce; focusing the idle span alone would only select it.
-      cellNode?.dispatchEvent(
-        new MouseEvent("dblclick", { bubbles: true, cancelable: true }),
-      );
-    });
+    openCell(next.cellId, "end");
+    return true;
+  };
+
+  /**
+   * An arrow key leaving a cell's text: the next cell left/right in reading order, or
+   * the cell above/below in the same grid column. A merged cell is entered through
+   * whichever grid slot it covers; the caret lands at the end it was approached from.
+   */
+  const arrowOut = (fromCellId: string, direction: ArrowDirection): boolean => {
+    if (direction === "left" || direction === "right") {
+      const at = tabOrder.findIndex((cell) => cell.cellId === fromCellId);
+      const next = at < 0 ? undefined : tabOrder[at + (direction === "left" ? -1 : 1)];
+      if (!next) return false;
+      ctx?.onActivateCell?.(next);
+      openCell(next.cellId, direction === "left" ? "end" : "start");
+      return true;
+    }
+    const target = cellInDirection(node.rows, fromCellId, direction);
+    if (!target) return false;
+    ctx?.onActivateCell?.(target);
+    openCell(target.cellId, direction === "up" ? "end" : "start");
     return true;
   };
 
@@ -2054,6 +2159,24 @@ function TableNodeView({
                       onClickCapture={() => {
                         if (address) ctx?.onActivateCell?.(address);
                       }}
+                      /*
+                       * A click on the cell's padding — beside or under short text —
+                       * opens its field too: one click in a cell types there, wherever
+                       * in the cell it landed (§ `InlineEditable.cell`). A click on the
+                       * words never reaches here (the field stops it), nor does a
+                       * sweep's tail click, which lands on the row or the table.
+                       */
+                      onClick={(event) => {
+                        if (!address || !ctx) return;
+                        const target = event.target as HTMLElement;
+                        if (target.closest('[role="textbox"]')) return;
+                        target
+                          .closest("td")
+                          ?.querySelector<HTMLElement>('[role="textbox"]:not([contenteditable])')
+                          ?.dispatchEvent(
+                            new CustomEvent(OPEN_FIELD_EVENT, { detail: { at: "end" } }),
+                          );
+                      }}
                     >
                       {cell.segments && ctx
                         ? // Several fields in one cell (the answer key's tables), each
@@ -2065,7 +2188,11 @@ function TableNodeView({
                             cell.edit,
                             ctx,
                             address
-                              ? (backwards) => moveCell(address.cellId, backwards)
+                              ? {
+                                  onTab: (backwards) => moveCell(address.cellId, backwards),
+                                  onArrowOut: (direction) =>
+                                    arrowOut(address.cellId, direction),
+                                }
                               : undefined,
                             // A cell's box is as narrow as its column, so the prompt has to
                             // fit one (§`compactPlaceholder`).
@@ -2114,6 +2241,13 @@ function TableNodeView({
             }
             onResizeEdge={(side, delta) => resize.onResizeEdge(node.blockId, side, delta)}
             onResizeRow={(index, twips) => resize.onResizeRow(node.blockId, index, twips)}
+            merges={node.rows.flatMap((row, r) =>
+              row.flatMap((cell, c) =>
+                !cell.covered && (cell.colSpan > 1 || cell.rowSpan > 1)
+                  ? [{ r0: r, c0: c, r1: r + cell.rowSpan, c1: c + cell.colSpan }]
+                  : [],
+              ),
+            )}
           />
         )}
 
@@ -5671,6 +5805,39 @@ export function Preview({
                 },
               ],
         });
+        /*
+         * The whole table: Word's Select ▸ Table and Delete ▸ Table. Select sweeps
+         * first cell to last (the range the bar's bulk verbs act on); Delete is the
+         * figure's block delete, one undo.
+         */
+        const cells = table.rows.flatMap((row) => row.cells);
+        const first = cells[0];
+        const last = table.rows[table.rows.length - 1]?.cells.at(-1);
+        const tableItems: PageMenuItem[] = [
+            ...(first && last && first !== last
+              ? [
+                  {
+                    label: m.selectTable,
+                    onSelect: () =>
+                      store.setCellSelection({
+                        blockId: table.id,
+                        anchorId: first.id,
+                        focusId: last.id,
+                      }),
+                  },
+                ]
+              : []),
+            ...(onDelete
+              ? [
+                  {
+                    label: m.deleteTable,
+                    danger: true,
+                    onSelect: () => onDelete({ kind: "blockText", blockId: table.id }),
+                  },
+                ]
+              : []),
+        ];
+        if (tableItems.length > 0) groups.push({ label: m.tableGroup, items: tableItems });
       }
     }
 
@@ -5720,12 +5887,14 @@ export function Preview({
               store.insertBlockAfter(insertAfterId, createParagraphBlock(emptyBiText())),
           },
           {
-            // A quick 3 × 3 at the stem's own indent; the sidebar strip keeps the
-            // size grid and the named templates for everything this does not fit.
-            label: m.table33,
-            onSelect: () =>
+            // Word's size grid, in the menu's place, then a table of that size at the
+            // stem's own indent, where the menu was opened. The sidebar strip keeps
+            // the named templates.
+            label: m.tableSized,
+            onSelect: () => {},
+            pickTableSize: (rows, columns) =>
               store.insertBlockAfter(insertAfterId, {
-                ...createTableBlock(3, 3),
+                ...createTableBlock(rows, columns),
                 indent: defaultTableIndent(contentWidth(pageSetupOf(worksheet))),
               }),
           },

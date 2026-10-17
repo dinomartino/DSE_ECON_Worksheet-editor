@@ -48,6 +48,8 @@ interface Props {
    * editing has no point to honour.
    */
   caretPoint?: { x: number; y: number };
+  /** Without a point: open with the caret at the text's start or end (default end). */
+  caretAt?: 'start' | 'end';
   onSelectionChange?: (range: { start: number; end: number } | undefined) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLSpanElement>) => void;
   onBlur?: (event: React.FocusEvent<HTMLSpanElement>) => void;
@@ -83,6 +85,7 @@ export function RichTextEditable({
   ariaLabel,
   autoFocus = false,
   caretPoint,
+  caretAt,
   onSelectionChange,
   onKeyDown,
   onBlur,
@@ -92,6 +95,7 @@ export function RichTextEditable({
   // Read once, on entry. In a ref so it cannot re-run the paint effect and move the
   // caret out from under someone mid-edit.
   const caretPointRef = useRef(caretPoint);
+  const caretAtRef = useRef(caretAt);
   /** The last selection handed upward, so an unchanged one is not republished. */
   const publishedRef = useRef<{ start: number; end: number } | undefined>(undefined);
 
@@ -127,7 +131,10 @@ export function RichTextEditable({
         const aimed = caretPointRef.current
           ? offsetAtPoint(host, caretPointRef.current)
           : undefined;
-        setSelectionOffsets(host, aimed ?? richTextLength(runs));
+        setSelectionOffsets(
+          host,
+          aimed ?? (caretAtRef.current === 'start' ? 0 : richTextLength(runs)),
+        );
       }
     } else if (caret) {
       setSelectionOffsets(host, caret.start, caret.end);

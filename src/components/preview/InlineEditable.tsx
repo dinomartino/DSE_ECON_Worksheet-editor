@@ -84,6 +84,22 @@ interface Props {
    */
   onTab?: (backwards: boolean) => boolean;
   /**
+   * A table cell behaves as a Word cell does (docs/Tables vs Word.md, phase 1):
+   *
+   * - **one click puts the caret in it** — the two-step engagement made a teacher's
+   *   first typing in a cell go nowhere (it was selected, not open);
+   * - **Enter starts a new line** inside the cell (one paragraph, a hard break, as
+   *   Shift+Enter always did); Escape or clicking away finishes;
+   * - an **arrow key at the text's edge** moves to the neighbouring cell
+   *   (`onArrowOut` returns false where there is none, and the caret stays).
+   *
+   * Only table cells pass this. Every other field keeps "click selects, click again
+   * edits" and "Enter commits".
+   */
+  cell?: {
+    onArrowOut?: (direction: ArrowDirection) => boolean;
+  };
+  /**
    * While **empty**, stretch to the width of the container instead of shrinking to the
    * prompt.
    *
@@ -133,6 +149,7 @@ export function InlineEditable({
   floating = false,
   promptTitle,
   onTab,
+  cell,
 }: Props) {
   const m = useMessages(PREVIEW_HANDLE_MESSAGES);
   // A floating prompt has no line end to stretch from (§ `floating`).
@@ -208,10 +225,36 @@ export function InlineEditable({
    * Undefined for the keyboard route, which has no point to honour.
    */
   const caretPointRef = useRef<{ x: number; y: number } | undefined>(undefined);
-  const beginEditing = (point?: { x: number; y: number }) => {
+  /** Where a keyboard route asked the caret to open: the text's start or its end. */
+  const [caretAt, setCaretAt] = useState<'start' | 'end' | undefined>(undefined);
+  const beginEditing = (point?: { x: number; y: number }, at?: 'start' | 'end') => {
     caretPointRef.current = point;
+    setCaretAt(at);
     setEditing(true);
   };
+
+  /*
+   * A cell is opened from outside — by Tab, an arrow key leaving its neighbour, or a
+   * click on the cell's padding — with a DOM event on the idle span (§ `OPEN_FIELD_EVENT`).
+   * The fields are created on demand, so there is no element to `.focus()`; the event
+   * also says which end of the text the caret belongs at, which a synthetic click
+   * cannot.
+   */
+  const openRef = useRef<(at: 'start' | 'end') => void>(() => {});
+  useEffect(() => {
+    openRef.current = (at) => {
+      onSelect?.();
+      beginEditing(undefined, at);
+    };
+  });
+  useEffect(() => {
+    const span = spanRef.current;
+    if (!span || editing) return;
+    const onOpen = (event: Event) =>
+      openRef.current((event as CustomEvent<{ at?: 'start' | 'end' }>).detail?.at ?? 'end');
+    span.addEventListener(OPEN_FIELD_EVENT, onOpen);
+    return () => span.removeEventListener(OPEN_FIELD_EVENT, onOpen);
+  }, [editing]);
 
   /** End editing and return the element to a neutral state. */
   const stopEditing = () => {
@@ -262,6 +305,7 @@ export function InlineEditable({
         autoFocus
         // The caret opens where the click landed, which is what the I-beam promised.
         caretPoint={caretPointRef.current}
+        caretAt={caretAt}
         lang={side === 'zh' ? 'zh-HK' : 'en'}
         ariaLabel={side === 'zh' ? m.editZhText : m.editEnText}
         /*
@@ -350,9 +394,26 @@ export function InlineEditable({
           // Enter commits — a worksheet field is a line, not a document. Shift+Enter
           // falls through to the browser, which inserts the `<br>` that `readRuns` turns
           // back into the `\n` the model stores for a hard break.
-          if (event.key === 'Enter' && !event.shiftKey) {
+          //
+          // A table cell is the exception (§ `cell`): Enter is Word's new line there,
+          // the same hard break Shift+Enter makes — asked of the browser explicitly,
+          // because a bare Enter in a contenteditable inserts a `<div>`, not a `<br>`.
+          // `nativeEvent.isComposing`: Enter confirming an IME candidate is not a break.
+          if (event.key === 'Enter' && cell && !event.nativeEvent.isComposing) {
+            event.preventDefault();
+            document.execCommand('insertLineBreak');
+          } else if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
             stopEditing();
+          }
+          if (cell?.onArrowOut && isArrow(event.key) && !hasModifier(event)) {
+            const direction = ARROWS[event.key];
+            if (caretAtEdge(event.currentTarget, direction) && cell.onArrowOut(direction)) {
+              event.preventDefault();
+              stopEditing();
+              event.stopPropagation();
+              return;
+            }
           }
           if (event.key === 'Escape') {
             event.preventDefault();
@@ -516,8 +577,13 @@ export function InlineEditable({
         // Selecting the question is the parent's job; selection/editing is ours.
         event.stopPropagation();
         // First click selects, second begins editing — so Delete has an unambiguous
-        // target, and a stray click never opens a field over the text.
-        if (selected) beginEditing({ x: event.clientX, y: event.clientY });
+        // target, and a stray click never opens a field over the text. A table cell
+        // opens on the first click, as Word's does (§ `cell`); a range's Delete is
+        // the sweep's, and a cell's own Delete is the Backspace inside it.
+        if (cell) {
+          onSelect?.();
+          beginEditing({ x: event.clientX, y: event.clientY });
+        } else if (selected) beginEditing({ x: event.clientX, y: event.clientY });
         else onSelect?.();
       }}
       onDoubleClick={(event) => {
@@ -538,4 +604,62 @@ export function InlineEditable({
       </span>
     </>
   );
+}
+
+/**
+ * The DOM event that opens an idle field from outside (`detail.at`: `'start'` or
+ * `'end'`, where the caret lands). Dispatched on the field's `role="textbox"` span.
+ */
+export const OPEN_FIELD_EVENT = 'econ-open-field';
+
+export type ArrowDirection = 'left' | 'right' | 'up' | 'down';
+
+const ARROWS: Record<string, ArrowDirection> = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+};
+
+function isArrow(key: string): key is keyof typeof ARROWS {
+  return key in ARROWS;
+}
+
+function hasModifier(event: React.KeyboardEvent): boolean {
+  return event.shiftKey || event.altKey || event.metaKey || event.ctrlKey;
+}
+
+/**
+ * Is the caret where an arrow key in `direction` would leave the text?
+ *
+ * Left/right: a collapsed caret at offset 0 / at the end. Up/down: a collapsed caret
+ * on the first / last line, judged by its rectangle against the field's own — a
+ * wrapped cell moves line by line first, as Word's does. A range never leaves: the
+ * arrow collapses it.
+ */
+export function caretAtEdge(host: HTMLElement, direction: ArrowDirection): boolean {
+  const selection = host.ownerDocument.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+  const range = selection.getRangeAt(0);
+  if (!host.contains(range.startContainer)) return false;
+
+  const before = host.ownerDocument.createRange();
+  before.selectNodeContents(host);
+  before.setEnd(range.startContainer, range.startOffset);
+  const offset = before.toString().length;
+  const length = (host.textContent ?? '').length;
+  if (direction === 'left') return offset === 0;
+  if (direction === 'right') return offset >= length;
+
+  if (length === 0) return true;
+  const caret = range.getClientRects()[0] ?? range.getBoundingClientRect();
+  const box = host.getBoundingClientRect();
+  // No geometry (an empty line's caret has no rect in some engines): the ends decide.
+  if (!caret || (caret.height === 0 && caret.top === 0)) {
+    return direction === 'up' ? offset === 0 : offset >= length;
+  }
+  const line = caret.height || 1;
+  return direction === 'up'
+    ? caret.top - box.top < line * 0.75
+    : box.bottom - caret.bottom < line * 0.75;
 }

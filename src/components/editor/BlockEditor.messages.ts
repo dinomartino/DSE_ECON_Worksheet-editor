@@ -38,8 +38,8 @@ export const BLOCK_EDITOR_MESSAGES = defineMessages({
   },
   addColumn: { en: 'Add a column', zh: '加入一欄' },
   clickCell: {
-    en: 'Click a cell in the table on the page to type in it. Align, merge and rules appear in the toolbar above the page; rows and columns are added with the + chips on the table itself.',
-    zh: '在頁面上按一下表格的儲存格即可輸入文字。對齊、合併和線條選項會顯示在頁面上方的工具列；列和欄則用表格上的 + 按鈕加入。',
+    en: 'Click a cell on the page and type. Enter starts a new line, Tab goes to the next cell (in the last cell it adds a row), Escape finishes. Text, position and lines are in the toolbar above the page; right-click a cell for rows, columns, merge and Delete table.',
+    zh: '在頁面上按一下儲存格即可輸入。Enter 換行，Tab 跳到下一格（在最後一格會加入新的一列），Esc 完成。文字、位置和框線選項在頁面上方的工具列；在儲存格上按右鍵可加入或刪除列和欄、合併及刪除表格。',
   },
   edgeTop: { en: 'Top', zh: '上' },
   edgeBottom: { en: 'Bottom', zh: '下' },

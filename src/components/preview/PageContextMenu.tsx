@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useModalLayer } from '@/components/ui/modalLayer';
+import { TableSizePicker } from '@/components/ui/TableSizePicker';
 
 /**
  * The page's right-click menu — the Word reflex gesture (§ the paper owns the words,
@@ -33,6 +34,11 @@ export interface PageMenuItem {
   /** Why a disabled item is disabled. */
   title?: string;
   onSelect: () => void;
+  /**
+   * Choose a size first: the item opens Word's grid (`TableSizePicker`) in the menu's
+   * place, and the pick — not the item click — is the verb. `onSelect` is unused then.
+   */
+  pickTableSize?: (rows: number, columns: number) => void;
 }
 
 export interface PageMenuGroup {
@@ -54,6 +60,8 @@ export function PageContextMenu({
   const m = useMessages(PREVIEW_MESSAGES);
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(at);
+  /** The item whose size grid is showing in place of the groups, if any. */
+  const [picking, setPicking] = useState<PageMenuItem | undefined>();
 
   // Clamp into the viewport after the first paint has measured the menu — a
   // right-click near the bottom edge must open upward-ish, not off the screen.
@@ -64,7 +72,8 @@ export function PageContextMenu({
       x: Math.max(8, Math.min(at.x, window.innerWidth - box.width - 8)),
       y: Math.max(8, Math.min(at.y, window.innerHeight - box.height - 8)),
     });
-  }, [at]);
+    // Re-clamped when the grid replaces the groups: it is taller than most menus.
+  }, [at, picking]);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -107,7 +116,15 @@ export function PageContextMenu({
       // A second right-click on the menu itself must not open the browser's own.
       onContextMenu={(event) => event.preventDefault()}
     >
-      {groups.map((group, groupIndex) => (
+      {picking?.pickTableSize ? (
+        <TableSizePicker
+          onDismiss={onClose}
+          onPick={(rows, columns) => {
+            onClose();
+            picking.pickTableSize?.(rows, columns);
+          }}
+        />
+      ) : groups.map((group, groupIndex) => (
         <div key={groupIndex}>
           {groupIndex > 0 && <div className="my-1 h-px bg-line" />}
           {group.label && (
@@ -128,6 +145,10 @@ export function PageContextMenu({
                   : 'text-ink hover:bg-surface-hover'
               }`}
               onClick={() => {
+                if (item.pickTableSize) {
+                  setPicking(item);
+                  return;
+                }
                 onClose();
                 item.onSelect();
               }}

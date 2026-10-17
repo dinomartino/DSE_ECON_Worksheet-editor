@@ -888,8 +888,18 @@ Word's division: insert/delete, align, merge, padding in the panel; typing on th
   stops propagation); the active cell takes a ring, not a tint; a stale anchor falls
   back to whole-table actions; missing per-cell controls are explained, not greyed out.
 - **Tab walks the table** (`InlineEditable.onTab`): commit and close before the next
-  opens; order from the **IR, not the DOM**; covered cells skipped; false at the end
-  lets Tab fall through.
+  opens; order from the **IR, not the DOM**; covered cells skipped. **Tab in the last
+  cell adds a row** (only in the piece holding the table's last row) and opens its first
+  cell; Shift+Tab at the start falls through.
+- **Arrows leave a cell at the text's edge** (`InlineEditable.caretAtEdge`): left/right
+  in Tab order, up/down by grid column (`Preview.tsx:cellInDirection`, merges resolved).
+  Cells are opened from outside by `OPEN_FIELD_EVENT` on the idle span, which carries
+  the caret end — a synthetic double-click cannot.
+- **Delete chips show only while the pointer is on the table** (`TableGridControls`
+  `onTable`); the column ✕ straddles the top edge between its inserts. A ✕ in a lane
+  above the table sat on the stem's last line.
+- **No resize grip runs through a merged cell** (`TableColumnResizer.merges`): a
+  boundary inside one is drawn in segments around it.
 - **Inserting a table picks its size first** (`ui/TableSizePicker.tsx`, opens downward).
 
 ### Answer lines are a style, not direct formatting
@@ -2331,6 +2341,13 @@ click again / double-click → edit in place · Enter commits · Esc cancels
 hover in a gap             → insert caret + "+" → adds there
 hover                      → margin drag grip → reorder
 ```
+
+**A table cell is the exception** (`InlineEditable.cell`, decided 2026-10-17 from
+`docs/Tables vs Word.md`): one click opens it with the caret where it landed, a click
+on its padding opens it too, **Enter is a new line** (the hard break Shift+Enter makes;
+the cell stays one Word paragraph), Escape or clicking away finishes. The two-step rule
+dropped a teacher's first typing in every table. A cell's Delete is Backspace inside it;
+a swept range keeps the page-level Delete.
 
 - **The format toolbar docks along the top of the page column**, `fixed` in viewport
   coordinates (inside the preview's `scale()` it would shrink), `left`/`width` from the

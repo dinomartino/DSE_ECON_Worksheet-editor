@@ -56,6 +56,35 @@ interface Props {
   onPreviewWidths: (widths: number[] | undefined) => void;
   onPreviewBox: (box: { width: number; indent: number } | undefined) => void;
   onPreviewRow: (row: { index: number; twips: number } | undefined) => void;
+  /**
+   * The table's merged cells as grid rectangles (`r1`/`c1` exclusive). No grip is drawn
+   * through one: a boundary inside a merged cell is not an edge there, and a grip down
+   * the middle of a merged header grabbed the column border when the teacher clicked
+   * the cell to type (docs/Tables vs Word.md).
+   */
+  merges?: MergeRect[];
+}
+
+export interface MergeRect {
+  r0: number;
+  c0: number;
+  r1: number;
+  c1: number;
+}
+
+/** Runs of consecutive indices in `[0, count)` that `blocked` does not claim. */
+function openRuns(count: number, blocked: (index: number) => boolean): [number, number][] {
+  const runs: [number, number][] = [];
+  let start = -1;
+  for (let i = 0; i <= count; i += 1) {
+    const open = i < count && !blocked(i);
+    if (open && start < 0) start = i;
+    if (!open && start >= 0) {
+      runs.push([start, i - 1]);
+      start = -1;
+    }
+  }
+  return runs;
 }
 
 export function TableColumnResizer({
@@ -70,6 +99,7 @@ export function TableColumnResizer({
   onPreviewWidths,
   onPreviewBox,
   onPreviewRow,
+  merges = [],
 }: Props) {
   const m = useMessages(PREVIEW_HANDLE_MESSAGES);
   const gesture = useRef<{
@@ -328,13 +358,30 @@ export function TableColumnResizer({
 
   return (
     <>
-      {columnOffsets.map((offset, index) => (
+      {columnOffsets.flatMap((offset, index) => {
+        // Rows where this boundary runs through a merged cell carry no grip.
+        const through = merges.filter((r) => r.c0 <= index && index < r.c1 - 1);
+        const runs: ([number, number] | undefined)[] =
+          through.length === 0
+            ? [undefined]
+            : rowBottoms.length === rowCount
+              ? openRuns(rowCount, (row) => through.some((r) => r.r0 <= row && row < r.r1))
+              : [];
+        return runs.map((run) => (
         <button
-          key={`col-${index}`}
+          key={`col-${index}-${run ? run[0] : 'all'}`}
           {...handleProps({ kind: 'column', index })}
           aria-label={m.resizeColumn(index + 1)}
           style={{
             left: `${offset * 100}%`,
+            // A segment between merged cells spans only its own rows.
+            ...(run
+              ? {
+                  top: run[0] === 0 ? 0 : rowBottoms[run[0] - 1],
+                  height:
+                    rowBottoms[run[1]] - (run[0] === 0 ? 0 : rowBottoms[run[0] - 1]),
+                }
+              : {}),
             // Inverse-scaled so the grip keeps a constant on-screen size at any zoom, the
             // same trick the diagram canvas and the other two resizers use.
             width: 9 / (scale || 1),
@@ -342,11 +389,12 @@ export function TableColumnResizer({
             cursor: 'col-resize',
             touchAction: 'none',
           }}
-          className={`absolute top-0 bottom-0 z-10 cursor-col-resize transition-[background-color] duration-150 ease-out-soft ${live} ${tint(
+          className={`absolute ${run ? '' : 'top-0 bottom-0'} z-10 cursor-col-resize transition-[background-color] duration-150 ease-out-soft ${live} ${tint(
             { kind: 'column', index },
           )}`}
         />
-      ))}
+        ));
+      })}
 
       {(['left', 'right'] as const).map((side) => (
         <button
@@ -370,9 +418,27 @@ export function TableColumnResizer({
         // Only boundaries that have been measured; before first layout there is nowhere
         // to put a handle, and one at `top: 0` would sit across the first row's text.
         .filter((index) => rowBottoms[index] !== undefined)
-        .map((index) => (
+        .flatMap((index) => {
+          // Columns where this boundary runs through a merged cell carry no grip.
+          const through = merges.filter((r) => r.r0 <= index && index < r.r1 - 1);
+          const columnCount = widths.length;
+          const runs: ([number, number] | undefined)[] =
+            through.length === 0
+              ? [undefined]
+              : openRuns(columnCount, (column) =>
+                  through.some((r) => r.c0 <= column && column < r.c1),
+                );
+          const edge = (column: number) =>
+            column <= 0 ? 0 : column >= columnCount ? 1 : columnOffsets[column - 1];
+          const inset = GRIP / (scale || 1);
+          return runs.map((run) => {
+            const start = run ? edge(run[0]) : 0;
+            const end = run ? edge(run[1] + 1) : 1;
+            const insetLeft = start === 0 ? inset : 0;
+            const insetRight = end === 1 ? inset : 0;
+            return (
           <button
-            key={`row-${index}`}
+            key={`row-${index}-${run ? run[0] : 'all'}`}
             {...handleProps({ kind: 'row', index })}
             aria-label={m.resizeRow(index + 1)}
             style={{
@@ -380,8 +446,8 @@ export function TableColumnResizer({
               // ones at the table's edges. They overlap otherwise, and the row grip —
               // rendered last — wins the z-order tie and swallows every press meant for
               // an outer edge, which is exactly the drag that then appears to do nothing.
-              left: GRIP / (scale || 1),
-              right: GRIP / (scale || 1),
+              left: `calc(${start * 100}% + ${insetLeft}px)`,
+              width: `calc(${(end - start) * 100}% - ${insetLeft + insetRight}px)`,
               top: rowBottoms[index],
               // Narrower than the column grips: a row grip spans the whole table, so
               // every pixel of it lies over a cell. 7px still comfortably exceeds the
@@ -395,7 +461,9 @@ export function TableColumnResizer({
               { kind: 'row', index },
             )}`}
           />
-        ))}
+            );
+          });
+        })}
     </>
   );
 }

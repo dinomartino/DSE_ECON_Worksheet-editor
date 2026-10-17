@@ -57,6 +57,8 @@ import { CONTEXT_BAR_MESSAGES } from './ContextBar.messages';
 
 const LABEL = 'mr-1 pl-1 text-[10px] font-semibold uppercase tracking-wide text-[#a39d94]';
 const DIVIDER = 'mx-0.5 h-5 w-px bg-[#3d3a35]';
+/** A group's name, before its buttons: quieter than the bar's own label. */
+const GROUP = 'ml-1 mr-0.5 text-[10px] font-medium text-[#8a847a]';
 
 function BarButton({
   label,
@@ -178,6 +180,8 @@ function TableRow({ block }: { block: TableBlock }) {
 
       {cell && at && (
         <>
+          <span className={DIVIDER} aria-hidden />
+          <span className={GROUP}>{m.groupCellText}</span>
           {(['left', 'center', 'right'] as const).map((align) => {
             // Over a sweep the buttons act on every caught cell in one commit, and
             // read pressed only when the whole range agrees — Word's mixed-selection
@@ -270,6 +274,7 @@ function TableRow({ block }: { block: TableBlock }) {
         </>
       )}
 
+      <span className={GROUP}>{m.groupTablePosition}</span>
       {(['left', 'center', 'right'] as TableAlign[]).map((align) => (
         <BarButton
           key={align}
@@ -284,6 +289,7 @@ function TableRow({ block }: { block: TableBlock }) {
       ))}
 
       <span className={DIVIDER} aria-hidden />
+      <span className={GROUP}>{m.groupLines}</span>
 
       {(
         [

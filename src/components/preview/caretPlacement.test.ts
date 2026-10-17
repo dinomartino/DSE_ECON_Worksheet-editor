@@ -42,7 +42,10 @@ describe('the caret opens where the click landed', () => {
   it('falls back to the end of the text when there is no point', () => {
     // The keyboard route into editing has no click to honour, and a browser may support
     // neither API. Both keep the behaviour every route had before.
-    expect(editable).toContain('aimed ?? richTextLength(runs)');
+    // A cell opened from a neighbour by an arrow key asks for its start instead.
+    expect(editable).toMatch(
+      /aimed \?\? \(caretAtRef\.current === 'start' \? 0 : richTextLength\(runs\)\)/,
+    );
   });
 
   it('reads the point once, on entry', () => {

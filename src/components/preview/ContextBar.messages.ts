@@ -5,6 +5,10 @@ export const CONTEXT_BAR_MESSAGES = defineMessages({
   tableTools: { en: 'Table tools', zh: '表格工具' },
   figureTools: { en: 'Figure tools', zh: '圖形工具' },
   table: { en: 'Table', zh: '表格' },
+  // Group names, so the bar reads at a glance (Word names every group on its ribbon).
+  groupCellText: { en: 'Cell text', zh: '儲存格文字' },
+  groupTablePosition: { en: 'Table position', zh: '表格位置' },
+  groupLines: { en: 'Lines', zh: '框線' },
   cellCount: { en: (n: number) => ` · ${n} cells`, zh: (n: number) => ` · ${n} 格` },
   alignCellLeft: { en: 'Align cell text left', zh: '儲存格文字靠左對齊' },
   alignCellCenter: { en: 'Center cell text', zh: '儲存格文字置中' },

@@ -25,6 +25,11 @@ interface Props {
   onRemoveColumn: (index: number) => void;
 }
 
+/** The column ✕'s top, in page px from the table's top edge: straddling it. */
+export const COLUMN_DELETE_TOP = -10;
+/** The row ✕'s lane, in page px left of the table. */
+const ROW_LANE_PX = 33;
+
 export function TableGridControls({
   columnOffsets,
   columnCount,
@@ -41,6 +46,14 @@ export function TableGridControls({
   const [rows, setRows] = useState<{ top: number; bottom: number }[]>([]);
   /** Which row and column the pointer is in, or -1. */
   const [at, setAt] = useState<{ row: number; column: number }>({ row: -1, column: -1 });
+  /*
+   * Whether the pointer is on the table itself (its chip lanes included), not merely
+   * near it. The insert chips may show from the margins; **the delete chips only from
+   * here**. The hover zone reaches 40px above the table, over the end of the question
+   * text, and a column ✕ shown from there sat on the stem's last line: double-clicking
+   * a word in it deleted a column (docs/Tables vs Word.md, item 3).
+   */
+  const [onTable, setOnTable] = useState(false);
 
   useLayoutEffect(() => {
     const table = tableRef.current;
@@ -74,8 +87,17 @@ export function TableGridControls({
       const withinY = event.clientY >= rect.top - 40 && event.clientY <= rect.bottom + 12;
       if (!withinX || !withinY) {
         setAt({ row: -1, column: -1 });
+        setOnTable(false);
         return;
       }
+      // The column ✕ straddles the top edge (`COLUMN_DELETE_TOP`), the row ✕ sits in
+      // the left lane: both are reachable without leaving this box.
+      setOnTable(
+        event.clientX >= rect.left - ROW_LANE_PX * (scale || 1) &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top + COLUMN_DELETE_TOP * (scale || 1) &&
+          event.clientY <= rect.bottom,
+      );
 
       const x = (event.clientX - rect.left) / (rect.width || 1);
       let column = 0;
@@ -90,7 +112,10 @@ export function TableGridControls({
         column: Math.min(column, columnCount - 1),
       });
     };
-    const onLeave = () => setAt({ row: -1, column: -1 });
+    const onLeave = () => {
+      setAt({ row: -1, column: -1 });
+      setOnTable(false);
+    };
 
     // On the document, so the pointer is still tracked while it is out in the margin
     // reaching for a button — the same hit-path problem the hover pad solves for CSS.
@@ -171,7 +196,7 @@ export function TableGridControls({
           </button>
           {/* Hidden at one column: `removeColumn` keeps a floor, and a button that does
               nothing is worse than one that is absent. */}
-          {columnCount > 1 && (
+          {columnCount > 1 && onTable && (
             <button
               type="button"
               data-print-hide
@@ -182,18 +207,17 @@ export function TableGridControls({
                 ...chipStyle(14),
                 left: `${((columnStart + columnEnd) / 2) * 100}%`,
                 /*
-                 * A second lane *above* the table, outside every cell — mirroring the
-                 * row delete, which sits at `left: -33` beyond its inserts at `-16`.
+                 * On the table's top edge, in the inserts' lane, between them — inside
+                 * the blank line every table takes before it, never on the stem.
                  *
-                 * This used to sit inside row 1 (`top: 9`), centred on the column, on
-                 * the argument that there was no second lane up here. There is, and the
-                 * old placement destroyed data: it landed dead centre of a first-row
-                 * cell, so the *second* click of the double-click that opens that cell
-                 * for editing hit "Delete this column" instead — the teacher lost a
-                 * column of their table by trying to type in it. Chrome may never
-                 * occupy a spot a content gesture has to reach.
+                 * Twice moved. Inside row 1 (`top: 9`) it sat dead centre of a cell,
+                 * and the second click of the double-click that opened the cell hit it.
+                 * A lane 25px above the table then put it on the question text's last
+                 * line. Chrome may never occupy a spot a content gesture has to reach:
+                 * here it covers only the cell's top padding edge, and it shows only
+                 * while the pointer is on the table (`onTable`).
                  */
-                top: px(-25),
+                top: px(COLUMN_DELETE_TOP),
                 marginLeft: px(-7),
               }}
               onClick={(event) => {
@@ -238,7 +262,7 @@ export function TableGridControls({
           >
             <span aria-hidden>+</span>
           </button>
-          {rowCount > 1 && (
+          {rowCount > 1 && onTable && (
             <button
               type="button"
               data-print-hide
@@ -248,7 +272,7 @@ export function TableGridControls({
               style={{
                 ...chipStyle(14),
                 top: (here.top + here.bottom) / 2,
-                left: px(-33),
+                left: px(-ROW_LANE_PX),
                 marginTop: px(-7),
               }}
               onClick={(event) => {
