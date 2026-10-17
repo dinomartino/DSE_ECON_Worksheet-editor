@@ -54,6 +54,15 @@ export const BLOCK_EDITOR_MESSAGES = defineMessages({
   },
   columnWidth: { en: 'Column width', zh: '欄寬' },
   rowHeight: { en: 'Row height', zh: '列高' },
+  repeatHeading: { en: 'Repeat the top row on each page', zh: '在每頁重複頂行' },
+  repeatHeadingRows: {
+    en: (n: number) => `Repeat rows 1–${n} on each page`,
+    zh: (n: number) => `在每頁重複第 1–${n} 列`,
+  },
+  repeatHeadingHint: {
+    en: 'When the table runs onto another page. Right-click a lower row to repeat more.',
+    zh: '表格延續到下一頁時適用。在較下方的列按右鍵可重複更多列。',
+  },
   auto: { en: 'Auto', zh: '自動' },
   padding: { en: 'Padding', zh: '內距' },
   paddingApplies: { en: 'Padding applies to', zh: '內距套用於' },

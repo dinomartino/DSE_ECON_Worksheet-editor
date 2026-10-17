@@ -14,6 +14,21 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Long tables run onto the next page, and the heading row can repeat.** A table too
+  long for the page now continues on the next one between rows, as it does in Word,
+  instead of jumping whole to the next page. Tick "Repeat the top row on each page" in the
+  sidebar (or right-click a lower row to repeat several) and the heading prints again at
+  the top of each page the table runs onto, on screen and in Word.
+  <!-- zh: **長表格可延續到下一頁，標題列可在每頁重複。** 表格太長時，現在會在列與列之間延續到下一頁，與 Word 相同，不再整個移到下一頁。
+  在側欄勾選「在每頁重複頂行」（或在較下方的列按右鍵以重複多列），表格延續到的每一頁頂部都會再印出標題列，屏幕上及 Word 檔案皆然。 -->
+- **Put cell text at the top, middle or bottom.** Three new buttons in the table toolbar's
+  Cell text group set where the text sits in a tall cell, for one cell or a selection.
+  <!-- zh: **儲存格文字可置頂、置中或置底。** 表格工具列「儲存格文字」組新增三個按鈕，可為一格或所選範圍設定文字在高儲存格內的位置。 -->
+- **Grey cell shading.** Pick a light, medium or darker grey from Shading on the table
+  toolbar to pick out a row or a cell; it prints and exports to Word.
+  <!-- zh: **灰色網底。** 在表格工具列的「網底」選擇淺灰、中灰或深灰，突出某一列或某一格；列印及匯出 Word 時都會保留。 -->
+
 ### Changed
 - **Tables type like Word.** One click in a cell puts the cursor there, so you can start
   typing straight away. Enter starts a new line inside the cell; Escape or clicking away
@@ -47,7 +62,6 @@ a version heading is edited afterwards.
   centimetres in the sidebar. Changing one column's width leaves the other columns as
   they are; clear the row height to let the row fit its text again.
   <!-- zh: **精確設定欄寬及列高。** 選取儲存格後，在側欄以厘米輸入欄寬或列高。更改一欄的寬度不會影響其他欄；清除列高，列便會回復按文字自動調整。 -->
-
 ### Fixed
 - Merging cells no longer hides the text of the cells merged in, and a merge across two
   rows and two columns now opens in Word with every row the right width.

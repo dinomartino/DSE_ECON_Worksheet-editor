@@ -7,14 +7,15 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **2026-10-17: Tables vs Word phase 2 done on `feature/tables-phase2`** (merged to develop):
-  Merge cells over any range (texts kept, 2×2 exports right), range format bar + ⌘B/I/U,
-  paste Word/Excel tables into cells (grows the table), ⌘C copies a range as a table,
-  exact column width / row height (cm) in the sidebar. Phase 1 committed earlier (cb6b730).
-  Green: 5629 tests, typecheck, lint at baseline 40, `npm run samples`; checked in headless
-  Chromium and a 2×2 merge `.docx` through LibreOffice. Not tried in real Word, Excel's own
-  clipboard, or Tauri. Next: phase 3 — the user's call per item (vertical align cheap;
-  header-row repeat and shading go against "an HKDSE table is uniform").
+- **2026-10-17: Tables vs Word phases 1–3 all done on `develop`** (user gave the go for all of
+  phase 3). Phase 3: `headerRows` repeats the top rows on each page (`w:tblHeader`; sidebar
+  checkbox + right-click "Repeat rows 1–n"), cell `vAlign` top/bottom, grey `shading` (3 greys).
+  **The preview now breaks tables between rows** like Word (`pageNodes:tablePieces`, joined back
+  per sheet by `bodyEntries`, heading redrawn and charged via `PackItem.leadAt`). Green: 5632
+  tests, typecheck, lint 40, samples, lq-verify + cover-verify (run on Linux with a temp shim).
+  Checked in headless Chromium and a 60-row `.docx` through LibreOffice (heading repeats, shaded).
+  Not tried in real Word or Tauri. Known gap: a table in a keep chain (classroom MC) stays whole
+  on screen but Word can still break its rows.
 - **v0.8.2 released 2026-10-16, develop clean, Unreleased empty.** #2 closed with notice
   (details in Where we are). Word packs justified lines tighter than the preview.
 - **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked. `feature/film-v2` (worktree `.claude/worktrees/film-v2`) on GitHub since 2026-10-11, not merged.
@@ -55,7 +56,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
-- #2 follow-ups: price floor DWL + externality templates; diagram wording (DWL/DL in zh, 過剩, tax burden terms). Table review vs Word (`docs/Tables vs Word.md`): phases 1–2 done; Phase 3 items each need a yes.
+- #2 follow-ups: price floor DWL + externality templates; diagram wording (DWL/DL in zh, 過剩, tax burden terms). Table review vs Word (`docs/Tables vs Word.md`): all phases done.
 - Paid service (`docs/research/2026-09-paid-product/`): what first; in-app "use a VPN" Gemini
   wording breaks Google's terms — Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key. Bank authoring
@@ -63,7 +64,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Open threads and known gaps
 
-- Import: tables don't split across sheets in the preview (Word does); text inside a figure's box stays in the crop.
+- Import: text inside a figure's box stays in the crop. (Tables now split across sheets in the preview.)
 - **Old releases:** v0.4/0.5 can still export a schema-2 file (student copy shows answers) and
   "Duplicate as editable copy" it; v0.2–0.3 have no read-only guard; none draws revenue areas
   or model answer diagrams (no leak).
@@ -81,10 +82,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-17** — Tables vs Word phases 1 and 2 (one-click typing, Enter newline, range merge/format/clipboard, exact sizes).
-
+- **2026-10-17** — Tables vs Word phases 1–3 (one-click typing, Enter newline, range merge/format/clipboard, exact sizes, heading repeat + preview table splitting, vAlign, shading).
 - **2026-10-16** — Released 0.8.2 (closes #2, notice posted). `main` merged back; Unreleased empty.
 
 - **2026-10-15** — GitHub #2 (MC justify, Justify text, overflow → grid); diagram template audit + polish; Buy Me a Coffee `FUNDING.yml`. 5 branches.
-- **2026-10-14** — GitHub #1 to develop: MC keeps whole (`keepWhole`); text size 10/11/12 pt (checked in real Word, not in Tauri).
-  **2026-10-11/12** — Import demo story; film-v2 pushed; bank authoring decided; one bank; keep questions on Trash + warning; `ai-pattern-questions.md` (E7, after C9).

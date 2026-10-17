@@ -680,3 +680,37 @@ describe('the measurement probe', () => {
     expect(probe).toMatch(/className="paper[\s"]/);
   });
 });
+
+describe('a table piece that opens a sheet', () => {
+  /** Ten 15px rows; every row boundary is a legal break (`pageNodes`). */
+  const rowsTall = (leadAt?: Map<number, number>) => {
+    const tops = Array.from({ length: 10 }, (_, index) => (index + 1) * 15);
+    const points = tops.slice(0, -1).map((height, index) => ({ index, height }));
+    return item('q', { breakPoints: points, looseBreakPoints: points, ...(leadAt ? { leadAt } : {}) });
+  };
+  const sheets = (block: PackItem) => {
+    const { pages, fragments } = packPages([block], new Map([['q', 150]]), PAGE);
+    // A tail's `to` runs "to the end"; read it as the last row.
+    return pages.map((_, page) => {
+      const piece = fragments.get(`${page}:0`);
+      return piece && [piece.from, Math.min(piece.to, 9)];
+    });
+  };
+
+  it('fits as many rows as the sheet holds', () => {
+    expect(sheets(rowsTall())).toEqual([
+      [0, 5],
+      [6, 9],
+    ]);
+  });
+
+  it('pays for the heading rows it repeats there', () => {
+    // A 50px heading on any continuation: rows 6–9 (60px) + 50 overflow, so one moves on.
+    const heading = new Map(Array.from({ length: 10 }, (_, index) => [index, 50] as const));
+    expect(sheets(rowsTall(heading))).toEqual([
+      [0, 5],
+      [6, 8],
+      [9, 9],
+    ]);
+  });
+});

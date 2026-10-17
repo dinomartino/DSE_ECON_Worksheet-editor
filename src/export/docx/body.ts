@@ -570,9 +570,9 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
 
   const rows = node.rows
     .map((row, rowIndex) => {
-      // No shading or bold: an HKDSE table is uniform, plain-ruled cells throughout
-      // (§tables). Emphasis is per-cell formatting like any other text; only the answer
-      // key's own tables name heading rows (`headerRows`).
+      // No shading or bold of its own: an HKDSE table is uniform, plain-ruled cells
+      // (§tables). Emphasis and fills are per-cell, set by the teacher; a heading row
+      // (`headerRows`) only repeats.
       const minHeight = node.rowHeights[rowIndex];
       /*
        * `w:trHeight` measures the row **without** its cell margins: Word lays the row
@@ -652,6 +652,11 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
             const diagonal = cell.diagonal ? border('tr2bl') : '';
             props.push('<w:tcBorders>' + edges + diagonal + '</w:tcBorders>');
           }
+          // A grey fill (`TableCell.shading`): `w:shd` follows `w:tcBorders` and precedes
+          // `w:tcMar` in the `CT_TcPr` sequence. A covered continuation takes its merge's
+          // fill, or Word paints the merged block's lower half white.
+          const shading = mergedFrom ? mergedFrom.shading : cell.shading;
+          if (shading) props.push(`<w:shd w:val="clear" w:color="auto" w:fill="${shading}"/>`);
           props.push(cellMargins(cell.padding));
           props.push(`<w:vAlign w:val="${cell.vAlign ?? 'center'}"/>`);
 

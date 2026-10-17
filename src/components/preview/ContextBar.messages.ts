@@ -13,6 +13,15 @@ export const CONTEXT_BAR_MESSAGES = defineMessages({
   alignCellLeft: { en: 'Align cell text left', zh: '儲存格文字靠左對齊' },
   alignCellCenter: { en: 'Center cell text', zh: '儲存格文字置中' },
   alignCellRight: { en: 'Align cell text right', zh: '儲存格文字靠右對齊' },
+  vAlignCellTop: { en: 'Put cell text at the top', zh: '儲存格文字置頂' },
+  vAlignCellCenter: { en: 'Put cell text in the middle', zh: '儲存格文字垂直置中' },
+  vAlignCellBottom: { en: 'Put cell text at the bottom', zh: '儲存格文字置底' },
+  groupShading: { en: 'Shading', zh: '網底' },
+  shadeNone: { en: 'No shading', zh: '無網底' },
+  shadeGrey: {
+    en: (percent: number) => `Grey shading, ${percent}%`,
+    zh: (percent: number) => `灰色網底 ${percent}%`,
+  },
   splitCell: { en: 'Split merged cell', zh: '分割已合併的儲存格' },
   split: { en: 'Split', zh: '分割' },
   mergeCellsTitle: {

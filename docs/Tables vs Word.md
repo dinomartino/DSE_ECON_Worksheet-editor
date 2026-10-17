@@ -161,6 +161,8 @@ Word's right-click menu in a cell.
 
 ## Plan
 
+**Status, 17 Oct 2026: all three phases done** (phase 1 `cb6b730`, phase 2 `3cfae29`, phase 3 after it, on `develop`). Phase 3 was taken whole on the user's say-so, each item kept optional and unstyled by default: heading rows only repeat, shading is grey only.
+
 Three phases. Phase 1 removes almost all of the first-hour confusion and doesn't change how documents are saved. Phases 2 and 3 add what Word users expect next. Every step keeps old worksheets opening and exporting as before.
 
 ### Phase 1 · Make the basics behave like Word
@@ -196,8 +198,12 @@ Adds optional fields to saved files · your call each
 1. Vertical alignment in a cell: top, centre, bottom.S–M
 2. Repeat the heading row on each page, with long tables splitting across pages in the app as Word already does.M–L
 
+   Done as "repeat only": `headerRows` writes `w:tblHeader`; the rows print as typed. A table inside a keep chain (a classroom MC) still moves whole on screen.
+
    The design notes say "Tables have no header row: no HKDSE table has grey or bold header treatment". Repeating the row without styling it would be a different feature.
 3. Cell shading.S–M
+
+   Done as three greys (5 %, 15 %, 25 %): a paper prints black and white.
 
    The export code says "no shading: an HKDSE table is uniform". Only if teachers ask.
 

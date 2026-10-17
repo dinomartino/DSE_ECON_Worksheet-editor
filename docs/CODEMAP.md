@@ -62,6 +62,7 @@ the whole schema, one file.
 - `src/render/diagram.ts:areaFillMarkup` · `:hatchLines` · `:hatchDots` — shade, or the six hatch patterns as clipped segments/dots; the inspector's swatches draw with it
 - `src/model/table.ts:insertRow` · `:resolveCellPadding` · `:resolveColumnWidths`
 - `src/model/table.ts:mergeRange` · `:stackCellTexts` · `:formatCells` · `:setColumnWidthTwips` — Word's Merge Cells (texts kept), range formatting, exact widths; `src/model/tableClipboard.ts:gridFromClipboard` · `:fillCells` · `:rangeToClipboard` — tables pasted in, ranges copied out
+- `src/model/table.ts:withHeaderRows` · `:styleCells` · `:CELL_SHADES` — heading rows that repeat on each page, vertical alignment and grey shading (Tables vs Word, phase 3)
 - `src/model/factories.ts:createWorksheet` · `src/model/newWorksheet.ts:createWorksheetFrom`
 - `src/model/factories.ts:createAnswerDiagram` · `src/model/edits.ts:isAnswerDiagram` — a leaf's model answer diagram (`answerDiagram`), found and patched by block id like a stem figure
 - `src/model/diagramAnswers.ts:answerLayer` · `:markNewAsAnswers` · `:answeredDiagrams` — the answer layer (`answer: true` on a diagram element): what the student version drops (dependents included); `src/render/ir.ts:withAnswerLayers` sets `DiagramNode.answers` in the teacher version, `diagramSvg`'s `answers` draws it in `src/render/diagram.ts:ANSWER_INK`
@@ -388,7 +389,7 @@ Invariants:
 - `src/components/preview/Preview.tsx:Preview` — IR → DOM, paginated into sheets
 - `src/components/preview/AnswerKeyPreview.tsx:AnswerKeyPreview` — the Marking scheme view: the key's IR on the same paginator, no paper chrome; shown when the store's `documentView` is `answerKey`
 - `src/components/preview/pagination.ts:packPages` · `:composePages` · `:resolveFillCounts`
-- `src/components/preview/pageNodes.ts:pageNodes` — a question's answer space one node per line, so a sheet breaks between lines as Word does
+- `src/components/preview/pageNodes.ts:pageNodes` — a question's answer space one node per line and a table one node per run of rows (`tablePieces`), so a sheet breaks where Word does; `bodyEntries` joins the pieces a sheet holds back into one table
 - `src/components/preview/InlineEditable.tsx` · `src/components/preview/RichTextEditable.tsx` — click-to-edit
 - `src/components/preview/BandEditor.tsx:BandEditor` · `:bandFieldStyle`
 - `src/components/preview/bandRow.tsx:BandRowFrame` · `:layoutBandRow` · `:bandTabPlan` — every band row on the page (editor, idle header, IR masthead) is its Word tab-stop paragraph: inline zones, tab spacers sized as Word resolves them

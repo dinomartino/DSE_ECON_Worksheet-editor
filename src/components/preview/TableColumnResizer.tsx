@@ -63,6 +63,8 @@ interface Props {
    * the cell to type (docs/Tables vs Word.md).
    */
   merges?: MergeRect[];
+  /** The first row's number in the whole table, for a run of a longer table's rows. */
+  rowNumberOffset?: number;
 }
 
 export interface MergeRect {
@@ -100,6 +102,7 @@ export function TableColumnResizer({
   onPreviewBox,
   onPreviewRow,
   merges = [],
+  rowNumberOffset = 0,
 }: Props) {
   const m = useMessages(PREVIEW_HANDLE_MESSAGES);
   const gesture = useRef<{
@@ -440,7 +443,7 @@ export function TableColumnResizer({
           <button
             key={`row-${index}-${run ? run[0] : 'all'}`}
             {...handleProps({ kind: 'row', index })}
-            aria-label={m.resizeRow(index + 1)}
+            aria-label={m.resizeRow(index + 1 + rowNumberOffset)}
             style={{
               // Inset from both ends, so a horizontal grip never crosses the vertical
               // ones at the table's edges. They overlap otherwise, and the row grip —

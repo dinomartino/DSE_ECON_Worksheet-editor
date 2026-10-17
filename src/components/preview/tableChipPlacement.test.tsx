@@ -89,7 +89,7 @@ describe('table chips stay out of the cells', () => {
   it('shows the delete chips only while the pointer is on the table', () => {
     const source = readSource();
     expect(source).toMatch(/columnCount > 1 && onTable && \(/);
-    expect(source).toMatch(/rowCount > 1 && onTable && \(/);
+    expect(source).toMatch(/tableRowCount > 1 && onTable && \(/);
   });
 });
 

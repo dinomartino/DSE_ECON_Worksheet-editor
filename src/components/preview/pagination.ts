@@ -62,6 +62,13 @@ export interface PackItem {
    */
   leadKey?: string;
   /**
+   * The same charge for an item whose continuation may open at several places: what a
+   * piece starting at node `from` gains when it opens a sheet — a table's row piece draws
+   * the table's heading rows again (`TableNode.headerRows`). Keyed by node index; absent
+   * entries cost nothing.
+   */
+  leadAt?: Map<number, number>;
+  /**
    * The item's last node keeps with the next one (`keepNext`): a heading, or a part whose
    * line Word holds against the next question's stem. Word moves that tail along when the
    * next item's first chain does not fit (§ `pullGluedTail`).
@@ -269,9 +276,12 @@ export function packPages<T extends PackItem>(
         ? Math.max(0, measured - (leadGaps?.get(item.key) ?? 0))
         : measured;
 
-    // Leading a sheet, a continued table draws its heading again (§ `leadKey`).
+    // Leading a sheet, a continued table draws its heading again (§ `leadKey`, `leadAt`).
     if (item.leadKey && pages[pages.length - 1].length === 0) {
       used += heights.get(item.leadKey) ?? 0;
+    }
+    if (piece && item.leadAt && pages[pages.length - 1].length === 0) {
+      used += item.leadAt.get(piece.from) ?? 0;
     }
 
     /*
@@ -379,7 +389,8 @@ function pullGluedTail<T extends PackItem>(
     const boundary = inside[inside.length - 1];
     if (boundary) {
       const tail: Fragment = { from: boundary.index + 1, to, continued: true };
-      if (pieceHeight(prev, tail, heights, leadGaps) > left) return [];
+      const heading = prev.leadAt?.get(tail.from) ?? 0;
+      if (pieceHeight(prev, tail, heights, leadGaps) + heading > left) return [];
       split = { position, head: { from, to: boundary.index, continued: placed?.continued ?? false } };
       moved.unshift({ item: prev, piece: tail });
       break;

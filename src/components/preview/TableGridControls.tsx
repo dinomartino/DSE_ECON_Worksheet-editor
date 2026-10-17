@@ -17,6 +17,13 @@ interface Props {
   columnOffsets: number[];
   columnCount: number;
   rowCount: number;
+  /**
+   * For a run of a longer table's rows (one sheet's piece): the first row's number in
+   * the whole table, and the whole table's row count. Labels name the table's rows, and
+   * a one-row piece of a long table can still delete its row.
+   */
+  rowNumberOffset?: number;
+  tableRowCount?: number;
   scale: number;
   tableRef: React.RefObject<HTMLTableElement | null>;
   onInsertRow: (index: number) => void;
@@ -34,6 +41,8 @@ export function TableGridControls({
   columnOffsets,
   columnCount,
   rowCount,
+  rowNumberOffset = 0,
+  tableRowCount = rowCount,
   scale,
   tableRef,
   onInsertRow,
@@ -237,7 +246,7 @@ export function TableGridControls({
           <button
             type="button"
             data-print-hide
-            aria-label={m.insertRowAboveN(row + 1)}
+            aria-label={m.insertRowAboveN(row + 1 + rowNumberOffset)}
             title={m.insertRowAbove}
             className={chip()}
             style={{ ...chipStyle(16), top: here.top, left: px(-16), marginTop: px(-8) }}
@@ -251,7 +260,7 @@ export function TableGridControls({
           <button
             type="button"
             data-print-hide
-            aria-label={m.insertRowBelowN(row + 1)}
+            aria-label={m.insertRowBelowN(row + 1 + rowNumberOffset)}
             title={m.insertRowBelow}
             className={chip()}
             style={{ ...chipStyle(16), top: here.bottom, left: px(-16), marginTop: px(-8) }}
@@ -262,11 +271,11 @@ export function TableGridControls({
           >
             <span aria-hidden>+</span>
           </button>
-          {rowCount > 1 && onTable && (
+          {tableRowCount > 1 && onTable && (
             <button
               type="button"
               data-print-hide
-              aria-label={m.deleteRowN(row + 1)}
+              aria-label={m.deleteRowN(row + 1 + rowNumberOffset)}
               title={m.deleteRow}
               className={chip(true)}
               style={{

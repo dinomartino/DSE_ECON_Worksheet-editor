@@ -53,6 +53,18 @@ export interface BiText {
 export type CellAlign = 'left' | 'center' | 'right';
 
 /**
+ * Where a cell's text sits vertically — `w:vAlign`. Centred is the unstored default (what
+ * every table printed before this existed), so only the other two are written.
+ */
+export type CellVAlign = 'top' | 'bottom';
+
+/**
+ * The fills a cell may take, as `w:shd w:fill` hex. Greys only: a paper prints in black
+ * and white, and a grey a photocopier keeps is the one shading a past paper ever shows.
+ */
+export type CellShade = 'F2F2F2' | 'D9D9D9' | 'BFBFBF';
+
+/**
  * Where a whole table sits in the content column — `w:jc` on `w:tblPr`.
  * Distinct from `CellAlign`, which places text inside one cell.
  */
@@ -112,6 +124,13 @@ export interface TableCell {
   colSpan?: number;
   rowSpan?: number;
   align?: CellAlign;
+  /** Vertical placement of the text; undefined means centred, as before it existed. */
+  vAlign?: CellVAlign;
+  /**
+   * A grey fill behind the cell (`w:shd`). Optional by design: an HKDSE table is uniform,
+   * and this is for the worksheet that wants one row picked out, not a styling system.
+   */
+  shading?: CellShade;
   /** True when this cell is covered by a merge from above/left and must not render. */
   covered?: boolean;
   /**
@@ -212,6 +231,12 @@ export interface TableBlock {
    * `indent`; dragging the left edge returns `align` to `left`.
    */
   align?: TableAlign;
+  /**
+   * The first this-many rows are a heading that repeats at the top of every page the
+   * table runs onto (`w:tblHeader`, Word's "Repeat as header row"). Undefined means none.
+   * Repeating only — the rows print exactly as typed, with no styling of their own.
+   */
+  headerRows?: number;
 }
 
 export interface ImageBlock {

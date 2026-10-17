@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  CELL_SHADES,
   cellsInRange,
   distributeColumns,
   distributeRows,
@@ -15,10 +16,13 @@ import {
   rangeGridSpan,
   resolveTableAlign,
   setTableAlign,
+  styleCells,
   unmerge,
 } from '@/model/table';
 import { findFigureBlock, findTableBlock } from '@/model/edits';
 import type {
+  CellShade,
+  CellVAlign,
   DiagramBlock,
   ImageBlock,
   TableAlign,
@@ -109,6 +113,49 @@ function TableGlyph() {
 }
 
 /**
+ * A cell with its text lines at the top, middle or bottom — Word's own pictures for
+ * vertical alignment, drawn because no character reads as one at 12 px.
+ */
+function VAlignGlyph({ at }: { at: 'top' | 'center' | 'bottom' }) {
+  const y = at === 'top' ? 3.5 : at === 'center' ? 5.5 : 7.5;
+  return (
+    <svg
+      aria-hidden
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      className="shrink-0"
+    >
+      <rect x="1.5" y="1.5" width="9" height="9" rx="1" />
+      <path d={`M3.5 ${y}h5M3.5 ${y + 1.5}h5`} />
+    </svg>
+  );
+}
+
+/** A grey swatch, or a crossed empty one for "none". */
+function ShadeSwatch({ shade }: { shade?: CellShade }) {
+  return (
+    <span
+      aria-hidden
+      className="relative inline-block h-3 w-3 shrink-0 rounded-[2px] border border-[#8a847a]"
+      style={{ backgroundColor: shade ? `#${shade}` : 'transparent' }}
+    >
+      {!shade && (
+        <svg width="10" height="10" viewBox="0 0 10 10" className="absolute inset-0">
+          <path d="M1 9L9 1" stroke="#c0574b" strokeWidth="1" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
+/** How dark each shade is, as Word names its greys ("White, Background 1, Darker 5%"…). */
+const SHADE_PERCENT: Record<CellShade, number> = { F2F2F2: 5, D9D9D9: 15, BFBFBF: 25 };
+
+/**
  * Each row's **rendered** height in twips, read from the page — what Distribute Rows
  * evens out, since content can make a row taller than its stored floor. Scoped to
  * `#print-root` (the paginator's probe holds a second copy); the scale is the table's
@@ -116,17 +163,23 @@ function TableGlyph() {
  * uses. A row the page does not show measures NaN and the verb falls back to its floor.
  */
 function measureRowTwips(blockId: string, rowIndices: number[]): number[] {
-  const table = document.querySelector<HTMLTableElement>(
-    `#print-root table[data-table-block="${CSS.escape(blockId)}"]`,
+  // A long table prints in pieces, one per sheet, each knowing its first row's index
+  // (`data-row-offset`); a continuation's repeated heading is a copy and is skipped.
+  const tables = Array.from(
+    document.querySelectorAll<HTMLTableElement>(
+      `#print-root table[data-table-block="${CSS.escape(blockId)}"]:not([data-heading-copy])`,
+    ),
   );
-  if (!table) return rowIndices.map(() => Number.NaN);
-  const scale =
-    table.offsetWidth > 0 ? table.getBoundingClientRect().width / table.offsetWidth : 1;
   return rowIndices.map((index) => {
-    const row = table.rows[index];
-    if (!row) return Number.NaN;
-    const px = row.getBoundingClientRect().height / (scale || 1);
-    return ptToTwips((px * 72) / 96);
+    for (const table of tables) {
+      const row = table.rows[index - Number(table.dataset.rowOffset ?? 0)];
+      if (!row) continue;
+      const scale =
+        table.offsetWidth > 0 ? table.getBoundingClientRect().width / table.offsetWidth : 1;
+      const px = row.getBoundingClientRect().height / (scale || 1);
+      return ptToTwips((px * 72) / 96);
+    }
+    return Number.NaN;
   });
 }
 
@@ -221,6 +274,50 @@ function TableRow({ block }: { block: TableBlock }) {
               >
                 {/* "T" for the text in the cell; a table glyph marks the buttons that move the table. */}
                 {align === 'left' ? 'T⇤' : align === 'center' ? 'T↔' : 'T⇥'}
+              </BarButton>
+            );
+          })}
+
+          {/* Vertical placement, Word's Align Top / Center / Bottom. Centred is the
+              unstored default, so choosing it clears the field. */}
+          {(['top', 'center', 'bottom'] as const).map((vAlign) => {
+            const subject = multi ? rangeCells : [cell];
+            const pressed = subject.every((c) => (c.vAlign ?? 'center') === vAlign);
+            const stored: CellVAlign | undefined = vAlign === 'center' ? undefined : vAlign;
+            const label =
+              vAlign === 'top'
+                ? m.vAlignCellTop
+                : vAlign === 'center'
+                  ? m.vAlignCellCenter
+                  : m.vAlignCellBottom;
+            return (
+              <BarButton
+                key={vAlign}
+                label={label}
+                pressed={pressed}
+                onClick={() =>
+                  apply(styleCells(block, multi ? range : [at], { vAlign: stored }))
+                }
+              >
+                <VAlignGlyph at={vAlign} />
+              </BarButton>
+            );
+          })}
+
+          <span className={DIVIDER} aria-hidden />
+          <span className={GROUP}>{m.groupShading}</span>
+          {([undefined, ...CELL_SHADES] as Array<CellShade | undefined>).map((shade) => {
+            const subject = multi ? rangeCells : [cell];
+            return (
+              <BarButton
+                key={shade ?? 'none'}
+                label={shade ? m.shadeGrey(SHADE_PERCENT[shade]) : m.shadeNone}
+                pressed={subject.every((c) => c.shading === shade)}
+                onClick={() =>
+                  apply(styleCells(block, multi ? range : [at], { shading: shade }))
+                }
+              >
+                <ShadeSwatch shade={shade} />
               </BarButton>
             );
           })}

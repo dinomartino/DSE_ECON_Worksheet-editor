@@ -4,6 +4,8 @@ import { emptyBiText, isRichTextEmpty, normalizeRuns } from './text';
 import type {
   BiText,
   CellPadding,
+  CellShade,
+  CellVAlign,
   RichText,
   TableAlign,
   TableBlock,
@@ -13,7 +15,8 @@ import type {
 
 /**
  * Table structure verbs, as pure functions — two surfaces (sidebar panel, on-page
- * controls) perform the same edits. No "header row" concept (no HKDSE table has one;
+ * controls) perform the same edits. A heading row only *repeats* on each page
+ * (`headerRows`); it has no styling of its own (no HKDSE table has a styled header row;
  * emphasis is per-cell formatting). **Ragged rows are real**: merges leave rows with
  * different cell counts, so nothing may assume `rows[0].cells.length` is the width —
  * functions that add cells pad to the widest row.
@@ -97,7 +100,10 @@ export function insertRow(block: TableBlock, index: number): TableBlock {
   const at = Math.max(0, Math.min(index, base.rows.length));
   const rows = [...base.rows];
   rows.splice(at, 0, createTableRow(columnCountOf(base)));
-  return { ...base, rows };
+  // A row added inside the heading joins it, as in Word: the heading is "the first n
+  // rows", and the rows that were the heading stay the heading.
+  const heading = base.headerRows ?? 0;
+  return at < heading ? { ...base, rows, headerRows: heading + 1 } : { ...base, rows };
 }
 
 /**
@@ -141,7 +147,60 @@ export function insertColumn(block: TableBlock, index: number): TableBlock {
  */
 export function removeRow(block: TableBlock, index: number): TableBlock {
   if (block.rows.length <= 1) return block;
-  return { ...block, rows: block.rows.filter((_, i) => i !== index) };
+  const rows = block.rows.filter((_, i) => i !== index);
+  const heading = block.headerRows ?? 0;
+  return index < heading ? withHeaderRows({ ...block, rows }, heading - 1) : { ...block, rows };
+}
+
+/**
+ * Set how many top rows repeat as the heading on each page (`TableBlock.headerRows`).
+ * Clamped to the table; zero is written as nothing, so turning it off leaves the file
+ * as it was.
+ */
+export function withHeaderRows(block: TableBlock, count: number): TableBlock {
+  const clamped = Math.max(0, Math.min(Math.floor(count), block.rows.length));
+  if (clamped === (block.headerRows ?? 0)) return block;
+  if (clamped > 0) return { ...block, headerRows: clamped };
+  const bare: TableBlock = { ...block };
+  delete bare.headerRows;
+  return bare;
+}
+
+/** The grey fills a cell may take, lightest first (`CellShade`). */
+export const CELL_SHADES: readonly CellShade[] = ['F2F2F2', 'D9D9D9', 'BFBFBF'];
+
+/**
+ * Set a cell's vertical placement or shading over several cells in one commit. A key set
+ * to `undefined` is removed rather than stored, so centring a cell again or clearing its
+ * fill leaves the file as it was.
+ */
+export function styleCells(
+  block: TableBlock,
+  positions: ReadonlyArray<{ rowIndex: number; cellIndex: number }>,
+  patch: { vAlign?: CellVAlign | undefined; shading?: CellShade | undefined },
+): TableBlock {
+  const keys = Object.keys(patch) as Array<keyof typeof patch>;
+  const unchanged = positions.every(({ rowIndex, cellIndex }) => {
+    const cell = block.rows[rowIndex]?.cells[cellIndex];
+    return !cell || keys.every((key) => cell[key] === patch[key]);
+  });
+  // Nothing to change hands the block back, so the caller commits no empty undo step.
+  if (unchanged) return block;
+  const caught = new Set(positions.map((p) => `${p.rowIndex}:${p.cellIndex}`));
+  return {
+    ...block,
+    rows: block.rows.map((row, r) => ({
+      ...row,
+      cells: row.cells.map((cell, c) => {
+        if (!caught.has(`${r}:${c}`)) return cell;
+        const next: TableCell = { ...cell, ...patch };
+        for (const key of keys) {
+          if (next[key] === undefined) delete next[key];
+        }
+        return next;
+      }),
+    })),
+  };
 }
 
 /** Remove a column, keeping at least one. */

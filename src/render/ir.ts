@@ -8,6 +8,8 @@ import type {
   BiText,
   CaptionPlacement,
   CellAlign,
+  CellShade,
+  CellVAlign,
   CellImage,
   CellPadding,
   ContentBlock,
@@ -233,8 +235,10 @@ export interface TableNodeCell {
   format?: TextFormat;
   /** A picture printed under the cell's text; see `TableCell.image`. */
   image?: CellImage;
-  /** `top` sets the text at the cell's top (`w:vAlign top`); absent = centred, as ever. */
-  vAlign?: 'top';
+  /** Where the text sits vertically (`w:vAlign`); absent = centred, as ever. */
+  vAlign?: CellVAlign;
+  /** A grey fill behind the cell (`w:shd w:fill`), as hex without `#`; absent = none. */
+  shading?: CellShade;
   edit?: EditTarget;
   /**
    * A cell joining several authored fields with derived wording, as `TextNode.segments`
@@ -291,6 +295,22 @@ export interface TableNode {
    * where these allow, as Word does; absent = the preview keeps the table whole.
    */
   rowKeepNext?: boolean[];
+  /**
+   * Preview only: this node is one run of rows cut from a longer table (`pageNodes`), so
+   * the paginator can break between rows where Word does. Never built for export — the
+   * `.docx` and clipboard always see whole tables.
+   */
+  piece?: TablePiece;
+}
+
+/** Where a preview table piece sits in the table it was cut from (`TableNode.piece`). */
+export interface TablePiece {
+  /** The whole table; every piece of one table shares this identity. */
+  source: TableNode;
+  /** Index in `source.rows` of the piece's first row. */
+  rowOffset: number;
+  first: boolean;
+  last: boolean;
 }
 
 export interface ImageNode {
@@ -1093,6 +1113,11 @@ function tableNodeFor(block: TableBlock, options: BlockNodeOptions): TableNode |
     keepNext: options.keepNext,
     teacherOnly: options.teacherOnly,
     captionEdit: { kind: 'blockCaption', blockId: block.id },
+    // Clamped, so a heading count left over from deleted rows never names rows that
+    // are not there.
+    ...(Math.min(block.headerRows ?? 0, block.rows.length) > 0
+      ? { headerRows: Math.min(block.headerRows ?? 0, block.rows.length) }
+      : {}),
     rows: block.rows.map((row, rowIndex) =>
       row.cells.map((cell, cellIndex) => ({
         text: cell.text,
@@ -1109,6 +1134,9 @@ function tableNodeFor(block: TableBlock, options: BlockNodeOptions): TableNode |
             : undefined,
         // Unstored unless ruled, so a table without one stays byte-identical.
         ...(cell.diagonal ? { diagonal: true } : {}),
+        // Each unstored unless set, so an untouched table stays byte-identical.
+        ...(cell.vAlign ? { vAlign: cell.vAlign } : {}),
+        ...(cell.shading ? { shading: cell.shading } : {}),
         format: cell.format,
         image: cell.image,
         edit: { kind: 'tableCell', blockId: block.id, cellId: cell.id },

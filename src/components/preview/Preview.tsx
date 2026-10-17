@@ -95,6 +95,7 @@ import {
   mergeDown,
   mergeRight,
   unmerge,
+  withHeaderRows,
 } from "@/model/table";
 import {
   fillCells,
@@ -233,7 +234,7 @@ import {
   type PackItem,
   type PageComposition,
 } from "./pagination";
-import { pageNodes } from "./pageNodes";
+import { bodyEntries, joinedRows, pageNodes } from "./pageNodes";
 import { PAGE_AI_ITEM, pageAiScope } from "@/components/translate/translateMenu";
 import { collectTexts, slotsForTarget } from "@/model/textWalk";
 import { openAi } from "@/assist/menuStore";
@@ -1670,6 +1671,10 @@ function TableNodeView({
   ctx,
   continues,
   joinsAbove,
+  rowOffset = 0,
+  pieceRows,
+  headingCopy,
+  totalRows,
 }: {
   node: TableNode;
   language: LanguageMode;
@@ -1678,6 +1683,17 @@ function TableNodeView({
   continues?: boolean;
   /** Its first row goes on from a piece above (see `NodeView.tableJoinsAbove`). */
   joinsAbove?: boolean;
+  /**
+   * The index in the whole table of this view's first row, when it draws a run of rows
+   * (`pageNodes`). Row verbs — resize, insert, delete — address the whole table by it.
+   */
+  rowOffset?: number;
+  /** Rows per piece this view joins (see `NodeView.tablePieceRows`). */
+  pieceRows?: number[];
+  /** A repeated heading (see `NodeView.tableHeadingCopy`). */
+  headingCopy?: boolean;
+  /** The whole table's row count, when this view draws a run of it. */
+  totalRows?: number;
 }) {
   /*
    * Widths being dragged towards, or undefined when no gesture is running.
@@ -1957,7 +1973,10 @@ function TableNodeView({
      * margins sit outside the measured box — so the page showed ~6pt where the paper
      * printed 12, unequal above and below (guarded in tableGeometry.test.ts).
      */
-    <div>
+    <div
+      data-table-pieces={pieceRows && pieceRows.length > 1 ? pieceRows.join(",") : undefined}
+      data-heading-rows={pieceRows && rowOffset === 0 ? node.headerRows : undefined}
+    >
       {/* Above the table, and outside the `relative` wrapper below: the caption is
           document text, not part of the box the column handles measure themselves
           against. */}
@@ -2009,12 +2028,16 @@ function TableNodeView({
         <table
           ref={tableRef}
           data-table-block={node.blockId}
+          data-row-offset={rowOffset}
+          data-heading-copy={headingCopy || undefined}
           onPointerDown={beginCellSweep}
           className={`w-full table-fixed border-collapse ${
             // The frame of a boxed stimulus, on the table rather than its edge cells so
             // it stays one unbroken rectangle however the rows are merged.
             node.borders === "box" ? "border border-slate-500" : ""
           }`}
+          // A boxed piece under its repeated heading: the heading's frame closes above.
+          style={joinsAbove && node.borders === "box" ? { borderTop: "none" } : undefined}
         >
           <colgroup>
             {widths.map((fraction, index) => (
@@ -2098,8 +2121,8 @@ function TableNodeView({
                           : undefined
                       }
                       /*
-                       * Uniform, plain-ruled cells — no header shading or bold, which no
-                       * HKDSE table has (§tables). Literal hex is the token rule, since
+                       * Uniform, plain-ruled cells — no header shading or bold of the
+                       * table's own, which no HKDSE table has (§tables); a fill is per cell. Literal hex is the token rule, since
                        * this is drawn on the paper and must not follow the app theme.
                        *
                        * An inset ring marks the active cell, not a tint: the selected
@@ -2117,7 +2140,7 @@ function TableNodeView({
                         node.borders === "box" || cell.edges
                           ? ""
                           : "border border-slate-500"
-                      } ${cell.vAlign === "top" ? "align-top" : "align-middle"} ${cell.questionId ? "cursor-pointer" : ""} ${isActive ? "ring-2 ring-inset ring-[#0d77c9]" : ""} ${
+                      } ${cell.vAlign === "top" ? "align-top" : cell.vAlign === "bottom" ? "align-bottom" : "align-middle"} ${cell.questionId ? "cursor-pointer" : ""} ${isActive ? "ring-2 ring-inset ring-[#0d77c9]" : ""} ${
                         rangeEdge ? "bg-[#0d77c9]/[0.12]" : ""
                       }`}
                       style={{
@@ -2141,6 +2164,9 @@ function TableNodeView({
                           : {}),
                         // The piece above already rules this edge (`joinsAbove`).
                         ...(joinsAbove && rowIndex === 0 ? { borderTop: "none" } : {}),
+                        // A teacher's grey fill (`TableCell.shading`), as `w:shd` paints it.
+                        // The range tint wins while a sweep is live, so the selection shows.
+                        ...(cell.shading && !rangeEdge ? { backgroundColor: `#${cell.shading}` } : {}),
                         /*
                          * The "does not apply" slash (§`TableCell.diagonal`). A painted
                          * gradient rather than a child element, so it reserves no space
@@ -2274,7 +2300,10 @@ function TableNodeView({
               resize.onResizeColumn(node.blockId, index, delta, node.columnCount)
             }
             onResizeEdge={(side, delta) => resize.onResizeEdge(node.blockId, side, delta)}
-            onResizeRow={(index, twips) => resize.onResizeRow(node.blockId, index, twips)}
+            onResizeRow={(index, twips) =>
+              resize.onResizeRow(node.blockId, index + rowOffset, twips)
+            }
+            rowNumberOffset={rowOffset}
             merges={node.rows.flatMap((row, r) =>
               row.flatMap((cell, c) =>
                 !cell.covered && (cell.colSpan > 1 || cell.rowSpan > 1)
@@ -2318,10 +2347,12 @@ function TableNodeView({
               columnOffsets={columnOffsets}
               columnCount={node.columnCount}
               rowCount={node.rows.length}
+              rowNumberOffset={rowOffset}
+              tableRowCount={totalRows}
               scale={grid.scale}
               tableRef={tableRef}
-              onInsertRow={(index) => grid.onInsertRow(node.blockId, index)}
-              onRemoveRow={(index) => grid.onRemoveRow(node.blockId, index)}
+              onInsertRow={(index) => grid.onInsertRow(node.blockId, index + rowOffset)}
+              onRemoveRow={(index) => grid.onRemoveRow(node.blockId, index + rowOffset)}
               onInsertColumn={(index) => grid.onInsertColumn(node.blockId, index)}
               onRemoveColumn={(index) => grid.onRemoveColumn(node.blockId, index)}
             />
@@ -2606,10 +2637,22 @@ export function NodeView({
   ctx,
   tableContinues,
   tableJoinsAbove,
+  tableRowOffset,
+  tablePieceRows,
+  tableHeadingCopy,
+  tableRowCount,
 }: {
   node: RenderNode;
   language: LanguageMode;
   ctx?: EditContext;
+  /** A table drawn from row pieces: the first row's index in the whole table. */
+  tableRowOffset?: number;
+  /** Rows per joined piece, for the probe to measure each (`bodyEntries`). */
+  tablePieceRows?: number[];
+  /** A continuation's repeated heading rows: a picture of rows edited elsewhere. */
+  tableHeadingCopy?: boolean;
+  /** The whole table's row count, for a view of some of its rows. */
+  tableRowCount?: number;
   /**
    * A table drawn in pieces (`TableNode.rowKeepNext`) whose rows go on below: no
    * caption or closing blank line yet, which belong to its last piece only.
@@ -2629,6 +2672,10 @@ export function NodeView({
         ctx={ctx}
         continues={tableContinues}
         joinsAbove={tableJoinsAbove}
+        rowOffset={tableRowOffset}
+        pieceRows={tablePieceRows}
+        headingCopy={tableHeadingCopy}
+        totalRows={tableRowCount}
       />
     );
   }
@@ -3915,6 +3962,12 @@ export function keepsWithNext(nodes: RenderNode[]): boolean {
 const NO_HEIGHTS: Map<string, number> = new Map();
 const NO_NODE_HEIGHTS: Map<string, number[]> = new Map();
 
+/**
+ * Where the probe files an item's repeated-heading heights, one per node (0 = none),
+ * beside its node bottoms in the same map so one comparison covers both.
+ */
+const headingLeadsKey = (key: string) => `${key}\u0000heading`;
+
 export function usePagination(
   blocks: FlowBlock[],
   contentHeightPx: number,
@@ -4024,12 +4077,42 @@ export function usePagination(
           : child.querySelector('[data-question-id],[data-layout-id]');
         if (item) {
           const top = item.getBoundingClientRect().top;
-          nodeTops.set(
-            key,
-            Array.from(item.children).map((node) =>
-              Math.max(0, node.getBoundingClientRect().bottom - top),
-            ),
-          );
+          const below = (element: Element) =>
+            Math.max(0, element.getBoundingClientRect().bottom - top);
+          const tops: number[] = [];
+          const leads: number[] = [];
+          for (const node of Array.from(item.children) as HTMLElement[]) {
+            /*
+             * A table drawn from several row pieces is one element for several nodes
+             * (`bodyEntries`): each piece ends at its last row's bottom, the last at the
+             * element's own (its caption and closing blank line). A piece after the first
+             * that opens a sheet draws the heading rows again, measured here as they print.
+             */
+            const counts = node.dataset.tablePieces?.split(",").map(Number);
+            const table = counts
+              ? node.querySelector<HTMLTableElement>("table[data-table-block]")
+              : null;
+            if (!counts || !table) {
+              tops.push(below(node));
+              leads.push(0);
+              continue;
+            }
+            const heading = Number(node.dataset.headingRows ?? 0);
+            const headingPx =
+              heading > 0 && table.rows[heading - 1] && table.rows[0]
+                ? table.rows[heading - 1].getBoundingClientRect().bottom -
+                  table.rows[0].getBoundingClientRect().top
+                : 0;
+            let row = 0;
+            counts.forEach((count, index) => {
+              row += count;
+              const last = index === counts.length - 1;
+              tops.push(last || !table.rows[row - 1] ? below(node) : below(table.rows[row - 1]));
+              leads.push(index > 0 ? headingPx : 0);
+            });
+          }
+          nodeTops.set(key, tops);
+          if (leads.some((lead) => lead > 0)) nodeTops.set(headingLeadsKey(key), leads);
         }
       }
       // Bail out rather than re-render on an identical measurement.
@@ -4083,9 +4166,17 @@ export function usePagination(
           .map((index) => ({ index, height: tops[index] }));
         // Every node boundary, for a keep chain longer than a sheet (§ `looseBreakPoints`).
         const looseBreakPoints = tops.slice(0, -1).map((height, index) => ({ index, height }));
-        return breakPoints.length > 0
-          ? { ...block, breakPoints, looseBreakPoints }
-          : { ...block, looseBreakPoints };
+        // A table piece opening a sheet draws its heading again (§ `PackItem.leadAt`).
+        const leads = nodeHeights.get(headingLeadsKey(block.key));
+        const leadAt = leads
+          ? new Map(leads.flatMap((px, index) => (px > 0 ? [[index, px] as const] : [])))
+          : undefined;
+        return {
+          ...block,
+          ...(breakPoints.length > 0 ? { breakPoints } : {}),
+          looseBreakPoints,
+          ...(leadAt && leadAt.size > 0 ? { leadAt } : {}),
+        };
       }),
     [blocks, nodeHeights],
   );
@@ -4274,6 +4365,47 @@ const itemBodyNodes = (item: RenderedItem) =>
 const itemBodyId = (item: RenderedItem) =>
   item.type === "question" ? item.question.questionId : item.layout.elementId;
 
+/**
+ * An item body's nodes as views: one per node, except a table's row pieces that land on
+ * one sheet, which draw as a single table (`bodyEntries`). A piece continued from the
+ * sheet before draws the table's heading rows again on top (Word's `w:tblHeader`) — a
+ * read-only copy, since the rows themselves are edited where they first print.
+ */
+function bodyViews(
+  nodes: Array<{ node: RenderNode; index: number }>,
+  language: LanguageMode,
+  ctx: EditContext | undefined,
+): React.ReactNode[] {
+  return bodyEntries(nodes).flatMap((entry) => {
+    if (entry.kind === "node") {
+      return [<NodeView key={entry.index} node={entry.node} language={language} ctx={ctx} />];
+    }
+    const heading = entry.continued ? Math.min(entry.source.headerRows ?? 0, entry.rowOffset) : 0;
+    return [
+      heading > 0 && (
+        <NodeView
+          key={`heading-${entry.index}`}
+          node={{ ...joinedRows(entry.source, 0, heading - 1), caption: undefined }}
+          language={language}
+          tableContinues
+          tableHeadingCopy
+        />
+      ),
+      <NodeView
+        key={entry.index}
+        node={entry.node}
+        language={language}
+        ctx={ctx}
+        tableContinues={entry.continues}
+        tableJoinsAbove={heading > 0}
+        tableRowOffset={entry.rowOffset}
+        tablePieceRows={entry.pieceRows}
+        tableRowCount={entry.source.rows.length}
+      />,
+    ];
+  });
+}
+
 const ItemBody = memo(
   function ItemBody({ item, language, ctx: pageCtx, selected, onSelect, range }: ItemBodyProps) {
     const questionId = item.type === "question" ? item.question.questionId : undefined;
@@ -4310,9 +4442,7 @@ const ItemBody = memo(
             selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
           }`}
         >
-          {nodes.map(({ node, index }) => (
-            <NodeView key={index} node={node} language={language} ctx={ctx} />
-          ))}
+          {bodyViews(nodes, language, ctx)}
         </div>
       );
     }
@@ -4341,9 +4471,7 @@ const ItemBody = memo(
           selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
         }`}
       >
-        {nodes.map(({ node, index }) => (
-          <NodeView key={index} node={node} language={language} ctx={ctx} />
-        ))}
+        {bodyViews(nodes, language, ctx)}
       </div>
     );
   },
@@ -5865,7 +5993,21 @@ export function Preview({
         const cells = table.rows.flatMap((row) => row.cells);
         const first = cells[0];
         const last = table.rows[table.rows.length - 1]?.cells.at(-1);
+        // Word's "Repeat as header row": the heading is the top rows down to the one
+        // clicked; clicking inside the heading shortens it to the rows above.
+        const heading = table.headerRows ?? 0;
         const tableItems: PageMenuItem[] = [
+            at.rowIndex < heading
+              ? {
+                  label: m.stopRepeatHeading,
+                  onSelect: () =>
+                    store.replaceBlock(table.id, withHeaderRows(table, at.rowIndex)),
+                }
+              : {
+                  label: m.repeatHeading(at.rowIndex + 1),
+                  onSelect: () =>
+                    store.replaceBlock(table.id, withHeaderRows(table, at.rowIndex + 1)),
+                },
             ...(first && last && first !== last
               ? [
                   {

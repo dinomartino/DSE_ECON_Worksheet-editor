@@ -147,6 +147,11 @@ export const PREVIEW_MESSAGES = defineMessages({
   tableGroup: { en: 'Table', zh: '表格' },
   selectTable: { en: 'Select table', zh: '選取表格' },
   deleteTable: { en: 'Delete table', zh: '刪除表格' },
+  repeatHeading: {
+    en: (n: number) => (n === 1 ? 'Repeat row 1 on each page' : `Repeat rows 1–${n} on each page`),
+    zh: (n: number) => (n === 1 ? '在每頁重複第 1 列' : `在每頁重複第 1–${n} 列`),
+  },
+  stopRepeatHeading: { en: 'Stop repeating heading rows', zh: '停止重複標題列' },
   insertBelowTable: { en: 'Insert below the table', zh: '在表格下方插入' },
   insertBelow: { en: 'Insert below', zh: '在下方插入' },
   paragraph: { en: 'Paragraph', zh: '段落' },

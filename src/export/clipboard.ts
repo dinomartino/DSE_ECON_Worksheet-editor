@@ -169,8 +169,8 @@ function nodeHtml(
         const cells = row
           .map((cell) => {
             if (cell.covered) return '';
-            // Every cell is a plain `td`: uniform borders, no shading or bold, which is
-            // what an HKDSE table looks like (§tables). A `th` would also re-introduce
+            // Every cell is a plain `td`: uniform borders, no shading or bold of the
+            // table's own, which is what an HKDSE table looks like (§tables). A `th` would also re-introduce
             // the browser's own bold-and-centred default on paste.
             //
             // Padding comes from the IR already resolved, so a row's or column's setting
@@ -203,6 +203,8 @@ function nodeHtml(
                 ? 'background-image:linear-gradient(to bottom right,transparent calc(50% - 0.5px),' +
                   '#000 calc(50% - 0.5px),#000 calc(50% + 0.5px),transparent calc(50% + 0.5px));'
                 : '') +
+              // A teacher's grey fill (`TableCell.shading`), as `w:shd` writes it.
+              (cell.shading ? `background-color:#${cell.shading};` : '') +
               // `CellAlign` wins over a stored `format.align`, as `cellParagraph` writes it.
               `text-align:${cell.align};${cell.vAlign ? `vertical-align:${cell.vAlign};` : ''}` +
               formatCss(cell.format && { ...cell.format, align: undefined });

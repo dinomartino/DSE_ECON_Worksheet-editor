@@ -28,6 +28,7 @@ import {
   setColumnWidthTwips,
   setPadding,
   setRowHeight,
+  withHeaderRows,
   type PaddingScope,
 } from '@/model/table';
 import {
@@ -594,6 +595,23 @@ function TableBlockEditor({
       {at && <TableSizeSection block={block} at={at} range={range} onChange={apply} />}
 
       <TablePaddingSection block={block} at={at} onChange={apply} />
+
+      {/* Word's "Repeat as header row": the heading prints again on each page a long
+          table runs onto. More rows than the top one are set from the page's right-click. */}
+      <label
+        className="flex cursor-pointer items-start gap-2 border-t border-line pt-2 text-xs text-ink"
+        title={m.repeatHeadingHint}
+      >
+        <input
+          type="checkbox"
+          checked={(block.headerRows ?? 0) > 0}
+          onChange={(event) => apply(withHeaderRows(block, event.target.checked ? 1 : 0))}
+          className="mt-px h-4 w-4 shrink-0 cursor-pointer rounded border-line accent-[var(--accent)]"
+        />
+        <span>
+          {(block.headerRows ?? 0) > 1 ? m.repeatHeadingRows(block.headerRows!) : m.repeatHeading}
+        </span>
+      </label>
 
       {cell && at ? (
         /* Merge, align and rules moved to the contextual toolbar over the page

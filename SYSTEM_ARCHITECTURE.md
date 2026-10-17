@@ -685,12 +685,28 @@ that wraps or ends in a break.
 `BAND_ROW_TWIPS` (`model/page.ts`) duplicates the 240tw (`model/` may not depend on
 `export/`); a test asserts agreement.
 
-### Tables have no header row (`src/model/table.ts`)
+### Tables have no styled header row (`src/model/table.ts`)
 
 `headerRowCount` was removed — no HKDSE table has grey/bold header treatment, and a
 distribution table's headings run across the top *and* down the left. Emphasis is
-per-cell formatting. Regression tests assert `not.toContain('<w:tblHeader/>')` and
-`not.toContain('EFEFEF')`.
+per-cell formatting. Regression tests assert an untouched table has no `<w:tblHeader/>`
+and no `EFEFEF`.
+
+Three optional settings came back as the teacher's choice (Tables vs Word, phase 3), none
+of them styling anything by default:
+
+- **`TableBlock.headerRows`** only *repeats* the top rows on each page (`w:tblHeader`;
+  the preview redraws them on a continuation sheet). The rows print exactly as typed.
+  Kept in step by `insertRow`/`removeRow` (a row added inside the heading joins it);
+  zero is unstored (`withHeaderRows`). A different field from the removed one, so an old
+  file's stray `headerRowCount` still means nothing.
+- **`TableCell.vAlign`** `top`/`bottom` (`w:vAlign`); centred stays the unstored default.
+- **`TableCell.shading`** — greys only (`CELL_SHADES`, `w:shd w:fill`), because a paper
+  prints black and white. A vertical merge's continuation repeats its source's fill, or
+  Word paints the lower half white. `w:shd` sits between `w:tcBorders` and `w:tcMar`.
+
+All three are nested in the table, so older builds open such a file and print it plain
+(centred, unshaded, heading not repeated) — no schema bump.
 
 ### A part can carry unnumbered text above it
 
@@ -1689,7 +1705,17 @@ page 1).
 - **A question's answer space breaks between lines**: Word writes one paragraph per
   dotted line, none kept with the next, so the sheets draw it one node per line
   (`pageNodes`). A flow element's space stays one node (resize handle, own split).
-  Tables in a question are still atomic on screen while Word breaks between rows.
+- **A table breaks between rows**, as Word does (every row `cantSplit`, no row kept with
+  the next): `tablePieces` cuts it into one node per run of rows, a run never ending
+  inside a vertical merge, the heading rows (`headerRows`) and `rowKeepNext` rows keeping
+  with the row below, and every row kept together when the table itself sits in a keep
+  chain (a classroom MC). Pieces landing on one sheet draw as **one** table
+  (`bodyEntries`), so selection, resize and the grid chips span them; row verbs address the
+  whole table through `rowOffset`. The probe is one element per joined table, so it marks
+  `data-table-pieces` and the measure reads each piece's bottom off its last `tr`. A piece
+  opening a sheet draws the heading rows again as a read-only copy, and the packer charges
+  their measured height through `PackItem.leadAt` (keyed by the piece's node index).
+  Preview only — the `.docx` and clipboard always get whole tables.
 - `pagination.test.ts` pins each rule.
 
 ### A drop target receives the run, not the grabbed id
