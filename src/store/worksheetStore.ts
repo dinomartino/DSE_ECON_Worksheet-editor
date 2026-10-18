@@ -18,6 +18,8 @@ import {
   applyEditTarget,
   applyFormatTarget,
   applyInsertBlank,
+  applyInsertTab,
+  applyTabPreset,
   applyRunFormatTarget,
   applyResizeBlock,
   insertBlockAfter,
@@ -92,6 +94,7 @@ import type {
   Worksheet,
 } from '@/model/types';
 import type { EditTarget, SchemeAddress } from '@/render/ir';
+import type { TabPreset } from '@/model/tabStops';
 import { listQuestionTypes } from '@/registry';
 import { worksheetStore } from '@/storage';
 import { applyAnswerWrites } from '@/answers/apply';
@@ -282,6 +285,8 @@ interface WorksheetState {
    * changes the *text*.
    */
   insertBlank: (target: EditTarget, side: 'en' | 'zh', start: number, end: number) => void;
+  insertTab: (target: EditTarget, side: 'en' | 'zh', start: number, end: number) => void;
+  applyTabPreset: (target: EditTarget, preset: TabPreset, width: number) => void;
   resizeBlock: (blockId: string, widthPx: number) => void;
   /**
    * Extend a sizeable layout element — answer lines by count, a spacer by points.
@@ -1096,6 +1101,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) => applyRunFormatTarget(draft, target, side, start, end, patch)),
   insertBlank: (target, side, start, end) =>
     get().commit((draft) => applyInsertBlank(draft, target, side, start, end)),
+  insertTab: (target, side, start, end) =>
+    get().commit((draft) => applyInsertTab(draft, target, side, start, end)),
+  applyTabPreset: (target, preset, width) =>
+    get().commit((draft) => applyTabPreset(draft, target, preset, width)),
   resizeBlock: (blockId, widthPx) =>
     get().commit((draft) => applyResizeBlock(draft, blockId, widthPx)),
   resizeLayoutElement: (elementId, value) =>

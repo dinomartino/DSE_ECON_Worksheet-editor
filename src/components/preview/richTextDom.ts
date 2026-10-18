@@ -1,6 +1,7 @@
 import { normalizeRuns, runLines } from '@/model/text';
 import { cssFontFamilies } from '@/model/fonts';
 import type { InlineRun, RichText, RunFormat } from '@/model/types';
+import { TAB_ATTR } from './tabLayout';
 
 /**
  * The bridge between a `RichText` and the contenteditable: runs render as themselves
@@ -85,7 +86,10 @@ export function runToNode(run: InlineRun, index: number): HTMLElement {
   const fragment = document.createDocumentFragment();
   runLines(run.text).forEach((line, lineIndex) => {
     if (lineIndex > 0) fragment.appendChild(document.createElement('br'));
-    if (line) fragment.appendChild(document.createTextNode(line));
+    line.split('\t').forEach((piece, pieceIndex) => {
+      if (pieceIndex > 0) fragment.appendChild(tabNode());
+      if (piece) fragment.appendChild(document.createTextNode(piece));
+    });
   });
 
   let content: Node = fragment;
@@ -97,6 +101,24 @@ export function runToNode(run: InlineRun, index: number): HTMLElement {
 
   holder.appendChild(content);
   return holder;
+}
+
+/**
+ * A typed tab while editing: the `\t` itself in a `[data-tab]` span that `layoutTabs`
+ * sizes, as on the idle page. Not editable, so the caret steps over it as one character
+ * and typing never lands inside the gap; its text still reads back as the tab.
+ */
+function tabNode(): HTMLElement {
+  const tab = document.createElement('span');
+  tab.setAttribute(TAB_ATTR, '');
+  tab.contentEditable = 'false';
+  tab.textContent = '\t';
+  return tab;
+}
+
+/** The tab span a node sits in, if any. */
+function tabOf(node: Node): HTMLElement | null {
+  return (node.parentElement?.closest(`[${TAB_ATTR}]`) as HTMLElement | null) ?? null;
 }
 
 /**
@@ -328,6 +350,17 @@ function locate(host: HTMLElement, target: number): { node: Node; offset: number
       continue;
     }
     const length = (node.nodeValue ?? '').length;
+    const tab = tabOf(node);
+    if (tab) {
+      // Never inside a tab: the caret goes beside it, in its parent.
+      const parent = tab.parentNode!;
+      const index = Array.prototype.indexOf.call(parent.childNodes, tab) as number;
+      if (target <= seen) return { node: parent, offset: index };
+      seen += length;
+      last = { node: parent, offset: index + 1 };
+      if (target <= seen) return last;
+      continue;
+    }
     if (target <= seen + length) return { node, offset: Math.max(0, target - seen) };
     seen += length;
     last = { node, offset: length };

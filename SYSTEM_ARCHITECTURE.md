@@ -172,6 +172,33 @@ A row with a field over 11pt gets that field's exact line (`exactLineFor`, `band
 in every band paragraph the `.docx` writes, as `bandFieldStyle` draws it; the 12pt box
 clipped it in Word.
 
+### Typed tabs and tab stops (`src/model/tabStops.ts`)
+
+A tab a teacher types is `\t` inside a run, and `TextFormat.tabStops` (twips, `left` /
+`center` / `right` / `decimal`, optional `dot` / `hyphen` / `underscore` leader) are the
+paragraph's own stops. One rule set for every backend (docs/Tabs vs Word.md):
+
+- **Measured from the text column**, not the indent: the page margin, or a cell's text
+  edge (a source panel is a one-cell table in Word). An indented stem still tabs to
+  margin + 0.5 in. The page marks these columns `[data-tab-origin]`.
+- **First custom stop past the tab, then the 720-twip default grid** (`w:defaultTabStop`).
+  Word starts the grid only after the last custom stop, so in a paragraph carrying marks
+  (whose right stop at the margin `textNodeXml` writes) a typed tab goes to the margin;
+  the page mirrors that (`[data-tab-marks]`) rather than disagreeing.
+- **No stop left, or right/centred text that no longer fits**: the tab moves to the next
+  line and resolves again (`data-wrap`, a CSS line break, so no DOM text).
+- `.docx`: `<w:tab/>` in its own run with the run's properties (an underlined tab rules
+  its gap) and one `<w:tabs>` per paragraph (`tabsElement`, a layout stop winning its
+  position). Clipboard: `mso-tab-count` spans and `tab-stops`. Page: a `[data-tab]` span
+  whose `padding-right` `layoutTabs` sets (right, so a carried tab's gap is on its new
+  line); the same span while editing, not editable, so the caret steps over it.
+- **Tab types a tab** only in a `[data-tab-host]` paragraph (`TextNodeView`). A table's
+  Tab walks its cells (the format bar's *Insert tab* types one there); an MC option or a
+  band field is already a tab-stop paragraph, so Tab still moves on. Esc then Tab leaves.
+
+`tabStops` is nested and additive: an older build keeps it and prints every word on the
+default grid, so it stays at schema 1 (§ Schema evolution).
+
 ### A field is authored wording around a derived value
 
 Every `BandField` is **authored text · derived value · authored text**;
@@ -3309,7 +3336,7 @@ intact but unreachable.
   anywhere); `answerKeyLayout`; a section's `answerCount`; a part-less question's own
   non-blank `answer` or `scheme` (the essay); an `importQuota` derived curve (v0.5 throws
   editing around an unknown derive kind). The 1→2 step is identity. Graphs follow the
-  same rule. A section's `targetMarks` alone, and bank and organising metadata (topics,
+  same rule. A section's `targetMarks` alone, a paragraph's `tabStops` (an older build prints the words on the default grid), and bank and organising metadata (topics,
   題型, `tagsAt`, lineage, part roots, `kind`, `classes`, `satOn`, `bankHidden`), stay at
   1: v0.5.0 keeps them and prints the same. v0.4–0.5 open a v2 file read-only (export stays possible there);
   v0.2–0.3 have no guard and open it editable, keeping the fields and the mark.

@@ -91,6 +91,25 @@ export interface TextFormat {
   spaceAfter?: number;
   /** Override the worksheet font pair for this element only. */
   fonts?: FontPair;
+  /**
+   * Word's custom tab stops (`w:tabs`), left to right. A typed tab (`\t` in a run) goes
+   * to the first stop past it, then to the 0.5 in default grid (`model/tabStops.ts`).
+   * Nested and additive: an older build keeps the stops and prints every word, only
+   * on the default grid, so this does not raise `writtenSchemaVersion`.
+   */
+  tabStops?: TabStop[];
+}
+
+export type TabStopAlign = 'left' | 'center' | 'right' | 'decimal';
+
+/** What fills the gap before the stop: Word's `dot`, `hyphen` and `underscore` leaders. */
+export type TabLeader = 'dot' | 'hyphen' | 'underscore';
+
+export interface TabStop {
+  /** Twips from the text column's left edge (the page margin, or a cell's text edge). */
+  pos: number;
+  align: TabStopAlign;
+  leader?: TabLeader;
 }
 
 export interface ParagraphBlock {

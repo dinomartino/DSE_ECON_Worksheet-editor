@@ -15,6 +15,19 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Tab works like Word.** In a paragraph, a question stem or a text element, Tab now types
+  a tab instead of jumping out of the text, and the words after it line up on Word's
+  0.5 in stops, on the page and in the Word file alike. Copy and paste into Word keeps the
+  tabs too. In a table, Tab still moves to the next cell; use **→|** on the format bar to
+  type one there. Press Esc, then Tab, to leave a field from the keyboard.
+  <!-- zh: **Tab 鍵與 Word 一樣。** 在段落、題幹或文字元素中按 Tab 會插入定位字元，不再跳出文字；其後的文字會對齊 Word 每 0.5 吋的定位點，頁面與 Word 檔案一致，複製貼上到 Word 亦會保留。表格中按 Tab 仍移到下一格，可用格式列上的 **→|** 插入定位字元。用鍵盤離開欄位：先按 Esc，再按 Tab。 -->
+- **Ruler and tab stops.** Press **└┘** on the format bar to show a ruler over the
+  paragraph: click it to add a left, centre, right or decimal stop, drag a stop to move it,
+  drag it off to remove it. **Tab stops…** sets exact positions in cm and a dotted, dashed
+  or line leader, and offers three quick layouts: text to the right margin (for
+  "(3 marks)" or a source line), an answer line to the margin, and a Name / Class / No.
+  line. Stops export to Word as real tab stops you can still adjust there.
+  <!-- zh: **尺規及定位點。** 按格式列上的 **└┘** 顯示段落的尺規：按一下加入靠左、置中、靠右或小數點定位點，拖曳可移動，拖離尺規即可移除。**定位點…** 可用 cm 設定準確位置及點線、虛線或底線前置字元，並提供三個快速版面：文字靠右邊界（用於「(3 marks)」或出處）、答題線至邊界，以及姓名／班別／學號行。定位點會以真正的定位點匯出到 Word，可在 Word 內再調整。 -->
 - **Two new diagram templates.** *Price floor: deadweight loss* (under Price controls)
   draws a floor above equilibrium with the quantity sold read off D, the surplus, and the
   DWL. *Negative externality: overproduction* (under Tax & subsidy) draws MSC above MPC

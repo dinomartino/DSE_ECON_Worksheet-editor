@@ -460,6 +460,29 @@ body {
   content: '\200b';
 }
 
+/* A typed tab (`tabLayout.ts`). The character itself takes no width; the layout pass
+   sets `padding-right` to Word's gap. `pre-wrap` keeps the character and lets the line
+   break after it. A leader, or an underlined tab (Word rules an underlined tab's gap),
+   draws along the gap's bottom edge. Printed: this is the paper, not chrome. */
+[data-tab] {
+  white-space: pre-wrap;
+  tab-size: 0;
+  -moz-tab-size: 0;
+}
+[data-tab][data-wrap]::before {
+  content: '\A';
+}
+[data-tab][data-leader='dot'] {
+  border-bottom: 1.5px dotted currentColor;
+}
+[data-tab][data-leader='hyphen'] {
+  border-bottom: 1px dashed currentColor;
+}
+[data-tab][data-leader='underscore'],
+u [data-tab] {
+  border-bottom: 1px solid currentColor;
+}
+
 /* One sheet, three regions to edit — body, header, footer — following Word.
    The region not being edited recedes and goes inert until it is double-clicked, which
    is what keeps a click meant for the first question out of the header row above it and

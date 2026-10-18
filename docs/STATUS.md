@@ -7,14 +7,16 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **v0.8.3 released 2026-10-18: Tables vs Word phases 1–3** (published, `latest`, 9 assets + sigs;
-  develop = main, Unreleased empty). `headerRows` (`w:tblHeader`), `vAlign`, 3-grey `shading`; the
-  preview breaks tables between rows (`pageNodes:tablePieces`, `bodyEntries`, `PackItem.leadAt`).
-  Not tried in real Word or Tauri. Known gap: a table in a keep chain (classroom MC) stays whole on
-  screen but Word can still break its rows. Word packs justified lines tighter than the preview.
+- **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Table gaps: a table in a keep
+  chain stays whole on screen but Word can break its rows; Word packs justified lines tighter.
 - **#2 follow-ups done 2026-10-18 (Unreleased):** `price-floor-dwl` (skill 25) and
   `externality-overproduction` (skill 09) templates; every template's DL → DWL. User kept
   效率損失 and 過剩 (not 無謂損失 / 超額供應) and 買方/賣方稅負. Positive externality not built (not asked).
+- **Tabs vs Word, phases 1–3 built 2026-10-18 (Unreleased, `docs/Tabs vs Word.md`):** Tab types a
+  tab in text paragraphs, a Word-rule page layout (`tabLayout.ts`), `<w:tab/>`/`<w:tabs>`/clipboard,
+  ruler + Tab stops panel + quick layouts (`TabRuler.tsx`). No schema bump (`tabStops` stays at 1).
+  Page vs LibreOffice within 0.3 pt. Not tried in real Word or Tauri. Follow-ups: zh default 480,
+  import keeping typed tabs, marks-paragraph carried-tab gap.
 - **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked. `feature/film-v2` (worktree `.claude/worktrees/film-v2`) on GitHub since 2026-10-11, not merged.
 - **Shipped in 0.8.0, none tried in the Tauri window before release:** table Same height/width
   (`distributeRows`/`distributeColumns`); no editor overscroll; import brings header/footer/title
@@ -23,25 +25,18 @@ off the bottom.** It is the first thing a fresh session reads — then
   **Unverified in Word:** clipboard paste, a tab past the last stop, masthead rule/colour.
 - **Found-folder offer, shipped in 0.8.0** (`library_found`, `src/sync/foundFolder.ts`): faked shell
   only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
-- **0.8.0:** file-only **Import from Word or PDF** → review → Save as (`src/import/`,
-  `docs/design/paste-import.md`); UI/Paper language settings; multi-file + "Answers from".
-  **OCR** (PP-OCRv6, Rust/ORT, DMG +33 MB) proven in the release `.app` on scans + photos.
-  Unverified: Intel Mac, macOS 12–13.2, signed build, native open sheet.
+- **0.8.0 Import/OCR** unverified: Intel Mac, macOS 12–13.2, signed build, native open sheet.
 
 ## Where we are
 
 - **v0.8.3 released 2026-10-18**: tables like Word (one-click typing, merge/format/copy/paste a range, exact sizes, heading rows repeat, preview splits tables, vAlign, shading). Release workflow green; not tried in Tauri or real Word; Vercel not checked.
 - **Sync (F9), shipped in 0.7.0** (`src/sync/`, `sync-engine.md`), visible before any real run (user's call).
-- **v0.8.2 released 2026-10-16** (published, `latest`, 9 assets + sigs; closes #2):
-  MC options justify (`optionAlign`), whole-paper Justify text (`justifyText`), long MC options fall
-  back inline → 2 col → grid (`printedOptionLayout`, `textWidth.ts`), bilingual justify fix, feedback
-  screenshot (Tauri untested), tidier diagram templates (vs DSE graph skill). Green before tagging and
-  on all 3 Release builds. Checked in real Word, not in Tauri. Vercel not checked.
 
 ## Before release (only the user can do these)
 
 - Sync's first real run (`sync-engine.md` § First real run), then the Stage 0 provider probe on two computers.
-- Paste into Word: a copied question (tabbed MC options, label lists, header rows), at the document's text size.
+- Paste into Word: a copied question (tabbed MC options, label lists, header rows), at the document's text size;
+  typed tabs and tab stops (leaders as `dotted`/`dashed`/`lined`), and a `.docx` with `<w:tabs>` opened in Word.
 - Windows: 0.6.0 shipped without the rename hook test (`RELEASING.md`), user's call; check one install;
   Keychain prompt in a built app; 標楷體 export in Word.
 - A real AI key: Save & test, Fill, Re-translate, `npm run eval:translate` (model ids in
@@ -72,14 +67,13 @@ off the bottom.** It is the first thing a fresh session reads — then
   Windows code passes CI but never ran on a real PC or provider.
 - Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
-## Last verified (2026-10-18, release commit)
+## Last verified (2026-10-18, tabs commit on develop)
 
-- `npm test` 5632, typecheck green, `release-notes.mjs` exit 0. Release workflow green
-  (macOS aarch64 + x64, Windows). Draft had all 9 assets + `latest.json`, then published.
+- `npm test` 5658, typecheck green, lint at baseline (40). Samples byte-identical bar the
+  random MC versions; `cover-verify` green; `lq-verify` fails only the pitch check, as base does
+  on Linux (no CJK font).
 
 ## Log
 
+- **2026-10-18** — Tabs vs Word phases 1–3: Tab key, ruler, tab stops, quick layouts; checked against LibreOffice and `real_life_reference/`.
 - **2026-10-18** — #2 follow-ups: floor DWL + negative externality templates, DL → DWL.
-- **2026-10-18** — Released 0.8.3. `main` merged back; Unreleased empty.
-- **2026-10-17** — Tables vs Word phases 1–3 (one-click typing, Enter newline, range merge/format/clipboard, exact sizes, heading repeat + preview table splitting, vAlign, shading).
-- **2026-10-16** — Released 0.8.2 (closes #2, notice posted). `main` merged back; Unreleased empty.

@@ -81,7 +81,8 @@ interface Props {
    * `true` means the move was handled; `false` lets Tab do its normal thing, which is
    * what should happen at the end of a table rather than trapping focus in it.
    *
-   * Only tables pass this. Everywhere else Tab stays the browser's own focus move.
+   * Only tables pass this. In a text paragraph Tab types a tab (`tabInserts`); anywhere
+   * else it stays the browser's own focus move.
    */
   onTab?: (backwards: boolean) => boolean;
   /**
@@ -306,6 +307,8 @@ export function InlineEditable({
          */
         onChange={(next) => (onFlush ?? onCommit)({ ...value, [side]: next })}
         onPasteGrid={cell?.onPasteGrid ? (grid) => cell.onPasteGrid!(grid, side) : undefined}
+        // Tab types a tab in a text paragraph; a table's Tab walks its cells instead.
+        tabInserts={onTab ? undefined : (host) => host.closest('[data-tab-host]') !== null}
         autoFocus
         // The caret opens where the click landed, which is what the I-beam promised.
         caretPoint={caretPointRef.current}

@@ -166,6 +166,9 @@ import {
   StructuredIcon,
 } from "@/components/ui/icons";
 import { BandEditor, BandTrailText, SheetPageContext, bandFieldStyle, withPageNumber, type BandTrail } from "./BandEditor";
+import { hasTab, TAB_ATTR, tabColumn, useTabLayout } from "./tabLayout";
+import type { RulerGeometry } from "./TabRuler";
+import type { TabPreset } from "@/model/tabStops";
 import { BAND_FIELD_SEPARATOR, BAND_ZONE_CLASS, BandRowFrame, headerZonesPrinting } from "./bandRow";
 
 /**
@@ -287,19 +290,40 @@ const LQ_LINE_ADVANCE_PX = LQ_LINE_PITCH_PX + LQ_LINE_SPACE_BEFORE_PX;
 /** How much one drag step changes a spacer. Points are too fine to drag one at a time. */
 const SPACER_STEP_PT = 6;
 
+/**
+ * A line's text with each typed tab as its own `[data-tab]` span, which `layoutTabs`
+ * sizes to Word's gap. Without one the text is returned as it is, so a document with no
+ * tabs renders the very DOM it always did.
+ */
+function tabbedLine(line: string): React.ReactNode {
+  if (!line.includes("\t")) return line;
+  return line.split("\t").map((piece, index) => (
+    <Fragment key={index}>
+      {index > 0 && <span {...{ [TAB_ATTR]: "" }}>{"\t"}</span>}
+      {piece}
+    </Fragment>
+  ));
+}
+
+/** The runs of one side, with their tabs laid out (`useTabLayout`). */
+function TabScope({ children }: { children: React.ReactNode }) {
+  const ref = useTabLayout<HTMLSpanElement>();
+  return <span ref={ref}>{children}</span>;
+}
+
 function runSpans(runs: BiText["en"], key: string) {
-  return runs.map((runItem, index) => {
+  const spans = runs.map((runItem, index) => {
     // A hard line break (Shift+Enter, stored as `\n`) becomes a real <br/>. Rendered
     // as raw text it would collapse to a space, exactly as it does in Word and in the
     // clipboard HTML — the page has to agree with what exports.
     const lines = runLines(runItem.text);
     let content: React.ReactNode =
       lines.length === 1
-        ? runItem.text
+        ? tabbedLine(runItem.text)
         : lines.map((line, lineIndex) => (
             <Fragment key={lineIndex}>
               {lineIndex > 0 && <br />}
-              {line}
+              {tabbedLine(line)}
             </Fragment>
           ));
     if (runItem.bold) content = <strong>{content}</strong>;
@@ -332,6 +356,7 @@ function runSpans(runs: BiText["en"], key: string) {
       </span>
     );
   });
+  return hasTab(runs) ? [<TabScope key={`${key}-tabs`}>{spans}</TabScope>] : spans;
 }
 
 /**
@@ -1109,6 +1134,17 @@ function TextNodeView({
       // rather than on the presence of `spaceBefore`: spacing a teacher authored is
       // theirs to keep, and must survive at the top of a page.
       data-gap-carrier={node.boundaryGap ? "" : undefined}
+      // Tab types a tab here (`RichTextEditable.tabInserts`), and its tabs go to these
+      // stops (`layoutTabs`). Only a text paragraph: an MC option or a band field is
+      // already laid out with tab stops of its own, so Tab keeps moving on there.
+      data-tab-host=""
+      data-tab-stops={node.format?.tabStops?.length ? JSON.stringify(node.format.tabStops) : undefined}
+      // The marks ride a right stop at the margin in the .docx (`textNodeXml`), and Word
+      // starts its default stops only after the last custom one: a typed tab here goes
+      // to that stop, so the page lays it out the same way.
+      data-tab-marks={
+        (node.marks !== undefined || trailText) && node.marksColumn === undefined ? "" : undefined
+      }
       // The page-side half of the panel-row link: a sidebar row naming this target
       // scrolls here (§ `scrollPageTo`). The panel's own controls carry the same key
       // as `data-edit-target`; a distinct attribute so neither query doubles.
@@ -2093,6 +2129,8 @@ function TableNodeView({
                     <td
                       key={cellIndex}
                       data-table-cell={address?.cellId}
+                      // A cell's tabs measure from its own text edge, to its own stops.
+                      data-tab-stops={cell.format?.tabStops?.length ? JSON.stringify(cell.format.tabStops) : undefined}
                       // Caught by the sweep: what the range's format bar measures its size off.
                       data-in-range={rangeEdge ? "true" : undefined}
                       // An answer key's MC cell names its question (`TableNodeCell.questionId`).
@@ -2849,6 +2887,8 @@ export function NodeView({
     return (
       <div
         data-block-id={node.blockId}
+        // The .docx frame is a one-cell table, so its text tabs from the cell's edge.
+        data-tab-origin=""
         style={{
           border: node.framed ? "1px solid #000" : undefined,
           // Literal hex and points: this is on the paper, not chrome.
@@ -4506,7 +4546,7 @@ function ToolbarDock({
   containerRef,
   selectionKey,
   ...toolbar
-}: Omit<React.ComponentProps<typeof FormatToolbar>, "dock" | "inheritedPt" | "inheritedAlign"> & {
+}: Omit<React.ComponentProps<typeof FormatToolbar>, "dock" | "inheritedPt" | "inheritedAlign" | "tabRuler"> & {
   containerRef: React.RefObject<HTMLDivElement | null>;
   /** Re-measure when the selection moves; the parent only mounts this while one is live. */
   selectionKey: unknown;
@@ -4516,6 +4556,7 @@ function ToolbarDock({
   >();
   const [selectionPt, setSelectionPt] = useState<number | undefined>();
   const [selectionJustified, setSelectionJustified] = useState(false);
+  const [ruler, setRuler] = useState<RulerGeometry | undefined>();
   // Re-measured when the stored alignment changes: unpressing it reveals the document's.
   const storedAlign = toolbar.format?.align;
 
@@ -4542,6 +4583,19 @@ function ToolbarDock({
       setSelectionPt(Number.isFinite(px) ? Math.round(px * 0.75) : undefined);
       // Justified on the page but not stored: the document's "Justify text".
       setSelectionJustified(box ? getComputedStyle(box).textAlign === "justify" : false);
+      // The ruler spans the text column the selection's tabs measure from (`layoutTabs`):
+      // the margins, or the cell. Only where a tab prints as one.
+      const host = selected?.closest<HTMLElement>("[data-tab-host], td[data-table-cell]");
+      const column = host ? tabColumn(host) : undefined;
+      setRuler((previous) =>
+        column &&
+        previous?.left === column.left &&
+        previous.width === column.width &&
+        previous.pxPerTwip === column.pxPerTwip &&
+        previous.widthTwips === column.widthTwips
+          ? previous
+          : column,
+      );
     };
     // After the click's re-render has committed, so the sheet is laid out.
     const frame = requestAnimationFrame(measure);
@@ -4564,6 +4618,7 @@ function ToolbarDock({
       dock={dockRect}
       inheritedPt={selectionPt}
       inheritedAlign={selectionJustified && storedAlign === undefined ? "justify" : undefined}
+      tabRuler={ruler}
       {...toolbar}
     />
   );
@@ -4737,6 +4792,10 @@ interface Props {
     start: number,
     end: number,
   ) => void;
+  /** Type a tab at a caret: the format bar's button, for a cell whose Tab key moves on. */
+  onInsertTab?: (target: EditTarget, side: "en" | "zh", start: number, end: number) => void;
+  /** Give an element a ready-made tab layout (`model/tabStops.ts:tabPresetStops`). */
+  onTabPreset?: (target: EditTarget, preset: TabPreset, widthTwips: number) => void;
   /**
    * Move `id` to `targetId`'s position in the document flow. Omit to disable page drag.
    * `position` says which side of the target to land on.
@@ -4971,6 +5030,8 @@ export function Preview({
   textOf,
   onFormatRuns,
   onInsertBlank,
+  onInsertTab,
+  onTabPreset,
   onResizeBlock,
   onResizeRows,
   onResizeAnswerGraph,
@@ -5077,6 +5138,8 @@ export function Preview({
   // in. This is the ceiling on a resize: a picture wider than the column is clipped in
   // the preview and rescaled by Word, so the size the teacher dragged to would not be
   // the size that prints. Derived from the page setup, so a margin change moves it.
+  /** The same column in twips, which a ruler stop at the margin is placed at. */
+  const columnTwips = dimensions.width - setup.margins.left - setup.margins.right;
   const contentWidthPx = Math.round(
     (pageWidthMm - twipsToMm(setup.margins.left) - twipsToMm(setup.margins.right)) *
       MM_TO_PX,
@@ -7517,6 +7580,9 @@ export function Preview({
         // buttons too, so this also keeps a press on them from dropping the very cell
         // they act on.
         if (target.closest("button, a, input, textarea, select")) return;
+        // The docked bars are chrome over the page: a press on the ruler's track or a
+        // bar's padding is not a sweep, and must not drop the selection the bar acts on.
+        if (target.closest('[role="toolbar"]')) return;
         // Anywhere else means the teacher has left the cell. The cell selection lives
         // in the store, so no local reset reached it: it stayed ringed, and the sidebar
         // stayed on the table panel, however far away the next click landed. Done here
@@ -7608,6 +7674,9 @@ export function Preview({
           <div data-page-index={-1} data-cover-page className="relative">
             <div
               className="paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]"
+              // Typed tabs measure from the margin, which is this box's content edge.
+              data-tab-origin=""
+              data-tab-width={columnTwips}
               style={pageStyleFor(0)}
               lang={language === "zh" ? "zh-HK" : "en"}
               onClick={(event) => {
@@ -7639,6 +7708,9 @@ export function Preview({
               // `relative` so the header and footer can be placed in the margin rather
               // than stacked in the text column (§ `bandBoxStyle`).
               className="paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]"
+              // Typed tabs measure from the margin, which is this box's content edge.
+              data-tab-origin=""
+              data-tab-width={columnTwips}
               style={pageStyleFor(pageIndex)}
               lang={language === "zh" ? "zh-HK" : "en"}
               // Clicking the page background drops the selection, so Delete stops
@@ -7843,6 +7915,9 @@ export function Preview({
       <div
         aria-hidden
         data-print-hide
+        // The probe is the text column itself: tabs measure from its left edge.
+        data-tab-origin=""
+        data-tab-width={columnTwips}
         data-measure-probe
         className="paper pointer-events-none invisible absolute -z-10 h-0 overflow-hidden"
         style={{
@@ -8029,6 +8104,38 @@ export function Preview({
                       barCaret.start,
                       barCaret.end,
                     );
+                    window.setTimeout(() => setFormatting(false), 0);
+                  }
+                : undefined
+            }
+            /* A tab, typed at the caret: how a table cell, whose Tab key walks to the
+               next cell, gets one. Same hold-open dance as the blank. */
+            onInsertTab={
+              barCaret && onInsertTab
+                ? () => {
+                    setFormatting(true);
+                    onInsertTab(selectedElement.target, barCaret.side, barCaret.start, barCaret.end);
+                    window.setTimeout(() => setFormatting(false), 0);
+                  }
+                : undefined
+            }
+            /* Stops belong to the paragraph, so they are the element's even with words
+               selected: never through `onFormatRuns`. */
+            tabStops={formatOf?.(selectedElement.target)?.tabStops}
+            onTabStops={
+              formatBar.alignOnly
+                ? undefined
+                : (tabStops) => {
+                    setFormatting(true);
+                    onFormat(selectedElement.target, { tabStops });
+                    window.setTimeout(() => setFormatting(false), 0);
+                  }
+            }
+            onTabPreset={
+              onTabPreset
+                ? (preset, width) => {
+                    setFormatting(true);
+                    onTabPreset(selectedElement.target, preset, width);
                     window.setTimeout(() => setFormatting(false), 0);
                   }
                 : undefined

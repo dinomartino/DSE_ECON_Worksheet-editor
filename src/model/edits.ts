@@ -32,7 +32,8 @@ import { diagramSize } from '@/render/diagram';
 import { applyBandFieldSide, bandFieldSideText } from './bandSegments';
 import { schemeTextAt, withSchemeText, type SchemeTextSlot } from './markScheme';
 import type { MarkScheme } from './markSchemeTypes';
-import { applyRunFormat, insertBlank, isBiTextEmpty } from './text';
+import { applyRunFormat, insertBlank, isBiTextEmpty, replaceRichTextRange } from './text';
+import { endsWithTab, tabPresetStops, tabPresetText, type TabPreset } from './tabStops';
 
 type SchemeTarget = Extract<
   EditTarget,
@@ -1424,6 +1425,50 @@ export function applyInsertBlank(
     ...current,
     [side]: insertBlank(current[side], start, end),
   });
+}
+
+/**
+ * Type a tab at the caret, for the field where the Tab key cannot: a table cell, where
+ * Tab walks to the next cell as in Word. The tab inherits the run left of it, so an
+ * underlined blank stays underlined across it.
+ */
+export function applyInsertTab(
+  worksheet: Worksheet,
+  target: EditTarget,
+  side: 'en' | 'zh',
+  start: number,
+  end: number,
+): Worksheet {
+  const current = textOfTarget(worksheet, target);
+  if (!current) return worksheet;
+  return applyEditTarget(worksheet, target, {
+    ...current,
+    [side]: replaceRichTextRange(current[side], start, end, '\t'),
+  });
+}
+
+/**
+ * Give an element one of the preset tab layouts (`tabPresetStops`), `width` twips being
+ * its text column. An empty field also gets the preset's wording, and an answer line a
+ * closing tab on each side that has text, so the line has a tab to draw.
+ */
+export function applyTabPreset(
+  worksheet: Worksheet,
+  target: EditTarget,
+  preset: TabPreset,
+  width: number,
+): Worksheet {
+  const formatted = applyFormatTarget(worksheet, target, { tabStops: tabPresetStops(preset, width) });
+  const current = textOfTarget(formatted, target);
+  const wording = tabPresetText(preset);
+  if (!current || !wording) return formatted;
+  if (isBiTextEmpty(current)) return applyEditTarget(formatted, target, wording);
+  if (preset !== 'answerLine') return formatted;
+  const close = (side: 'en' | 'zh') =>
+    current[side].length > 0 && !endsWithTab(current, side)
+      ? replaceRichTextRange(current[side], Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, '\t')
+      : current[side];
+  return applyEditTarget(formatted, target, { en: close('en'), zh: close('zh') });
 }
 
 /**

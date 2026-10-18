@@ -393,6 +393,8 @@ Invariants:
 - `src/components/preview/InlineEditable.tsx` · `src/components/preview/RichTextEditable.tsx` — click-to-edit
 - `src/components/preview/BandEditor.tsx:BandEditor` · `:bandFieldStyle`
 - `src/components/preview/bandRow.tsx:BandRowFrame` · `:layoutBandRow` · `:bandTabPlan` — every band row on the page (editor, idle header, IR masthead) is its Word tab-stop paragraph: inline zones, tab spacers sized as Word resolves them
+- `src/components/preview/tabLayout.ts:layoutTabs` · `:useTabLayout` · `:tabColumn` — typed tabs (`\t` in a run) as `[data-tab]` gaps sized as Word resolves them, from `[data-tab-origin]` (sheet, probe, source panel, cell); the rules are `src/model/tabStops.ts:nextTabStop` · `:tabGap`
+- `src/components/preview/TabRuler.tsx:TabRuler` — the ruler and Tab stops panel under the format bar (`TextFormat.tabStops`, quick layouts `src/model/tabStops.ts:tabPresetStops`)
 - `src/components/preview/ContextBar.tsx` · `src/components/preview/PageContextMenu.tsx`
 
 Invariants:

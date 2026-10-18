@@ -6,9 +6,11 @@ import type {
   BiText,
   LanguageMode,
   OutputMode,
+  TabLeader,
   TextFormat,
   Worksheet,
 } from '@/model/types';
+import { cleanTabStops } from '@/model/tabStops';
 import {
   bandCellHasPageNumber,
   bandCellPieces,
@@ -48,7 +50,9 @@ export function richHtml(text: BiText | undefined, language: LanguageMode): stri
         // A hard line break (Shift+Enter, stored as `\n`) has to become a real `<br/>`:
         // a literal newline is whitespace in HTML and would paste as a space.
         // Escaped first, so the tag inserted here is the only markup in the output.
-        let html = runLines(escapeHtml(runItem.text)).join('<br/>');
+        // A tab as Word's HTML spells one (`TAB_HTML`); left raw, the paste collapses it
+        // to a space.
+        let html = runLines(escapeHtml(runItem.text)).join('<br/>').replace(/\t/g, TAB_HTML);
         if (runItem.vertAlign === 'superscript') return `<sup>${html}</sup>`;
         if (runItem.vertAlign === 'subscript') return `<sub>${html}</sub>`;
         if (runItem.bold) html = `<b>${html}</b>`;
@@ -108,6 +112,9 @@ function textNodeLabel(node: TextNode, language: LanguageMode): string {
   return node.trail ? trailLabel(node.trail, language) : '';
 }
 
+/** Word's HTML names for a tab leader, as its own copied HTML writes them. */
+const CSS_LEADER: Record<TabLeader, string> = { dot: 'dotted', hyphen: 'dashed', underscore: 'lined' };
+
 /** Per-element overrides as inline CSS, mirroring the docx direct formatting. */
 export function formatCss(format: TextFormat | undefined): string {
   if (!format) return '';
@@ -122,6 +129,14 @@ export function formatCss(format: TextFormat | undefined): string {
   if (format.spaceBefore !== undefined) parts.push(`margin-top:${format.spaceBefore}pt;`);
   if (format.spaceAfter !== undefined) parts.push(`margin-bottom:${format.spaceAfter}pt;`);
   if (format.fonts) parts.push(`font-family:${cssFontFamilies(format.fonts, "'", ',')},serif;`);
+  const stops = cleanTabStops(format.tabStops);
+  if (stops.length) {
+    parts.push(
+      `tab-stops:${stops
+        .map((stop) => [stop.align === 'left' ? '' : stop.align, stop.leader ? CSS_LEADER[stop.leader] : '', `${twipsToPt(stop.pos)}pt`].filter(Boolean).join(' '))
+        .join(' ')};`,
+    );
+  }
   return parts.join('');
 }
 

@@ -79,6 +79,8 @@ export function EditorApp({
   const formatTarget = useWorksheetStore((s) => s.formatTarget);
   const formatRuns = useWorksheetStore((s) => s.formatRuns);
   const insertBlank = useWorksheetStore((s) => s.insertBlank);
+  const insertTab = useWorksheetStore((s) => s.insertTab);
+  const applyTabPreset = useWorksheetStore((s) => s.applyTabPreset);
   const resizeBlock = useWorksheetStore((s) => s.resizeBlock);
   const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
   const resizeAnswerGraph = useWorksheetStore((s) => s.resizeAnswerGraph);
@@ -565,6 +567,8 @@ export function EditorApp({
                 onFormat={formatTarget}
                 onFormatRuns={handleFormatRuns}
                 onInsertBlank={insertBlank}
+                onInsertTab={insertTab}
+                onTabPreset={applyTabPreset}
                 formatOf={formatOf}
                 textOf={textOf}
                 onResizeBlock={resizeBlock}

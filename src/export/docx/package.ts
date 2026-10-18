@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import type { FontPair } from '@/model/types';
 import { XML_DECL } from './xml';
+import { DEFAULT_TAB_STOP_TWIPS } from '@/model/tabStops';
 
 /**
  * OPC package plumbing: content types, relationships, header/footer, settings.
@@ -163,7 +164,7 @@ export function buildSettingsXml(options: { justified?: boolean } = {}): string 
     XML_DECL +
     '<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
     '<w:zoom w:percent="100"/>' +
-    '<w:defaultTabStop w:val="720"/>' +
+    `<w:defaultTabStop w:val="${DEFAULT_TAB_STOP_TWIPS}"/>` +
     /*
      * Open in print layout.
      *

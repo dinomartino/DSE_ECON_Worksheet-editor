@@ -71,8 +71,21 @@ export function run(text: string, fonts: FontPair, options: RunOptions = {}): st
   if (!clean) return '';
 
   const properties = runProperties(fonts, options);
+  /*
+   * A typed tab is Word's own `<w:tab/>` in a run of its own, carrying the run's
+   * properties so an underlined tab rules its gap (a fill-in "Name: ____"). A raw tab
+   * inside `w:t` does print in LibreOffice, but the element is the spec's form, and the
+   * one every reader is sure to treat as a tab.
+   */
   const one = (piece: string) =>
-    `<w:r>${properties}<w:t xml:space="preserve">${escapeXml(piece)}</w:t></w:r>`;
+    piece
+      .split('\t')
+      .map(
+        (text, index) =>
+          (index > 0 ? `<w:r>${properties}<w:tab/></w:r>` : '') +
+          (text ? `<w:r>${properties}<w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>` : ''),
+      )
+      .join('');
 
   const lines = runLines(clean);
   if (lines.length === 1) return one(clean);

@@ -495,6 +495,7 @@ export function AnswerKeyPreview({
           <div key={pageIndex} data-page-index={pageIndex} className="relative">
             <div
               className="paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]"
+              data-tab-origin=""
               style={pageStyle}
               lang={language === "zh" ? "zh-HK" : "en"}
               onClick={(event) => {
@@ -577,6 +578,8 @@ export function AnswerKeyPreview({
       <div
         aria-hidden
         data-print-hide
+        // Typed tabs measure from the text column's edge (`tabLayout.ts`).
+        data-tab-origin=""
         data-measure-probe
         className="paper pointer-events-none invisible absolute -z-10 h-0 overflow-hidden"
         style={{

@@ -12,6 +12,7 @@ import {
   selectionOffsets,
   setSelectionOffsets,
 } from './richTextDom';
+import { layoutTabs } from './tabLayout';
 
 /**
  * A contenteditable that edits `RichText` **as what it looks like**, never the marker
@@ -60,6 +61,13 @@ interface Props {
    * cells from here on rather than typing the whole table into itself.
    */
   onPasteGrid?: (grid: TextGrid) => boolean;
+  /**
+   * Tab types a tab, as in Word, rather than moving focus on — for a field where a tab
+   * prints as one (`[data-tab-host]` on the page). Shift+Tab then does nothing, and
+   * Escape still closes the field, so the keyboard is never trapped. Decided against
+   * the host, since the field only knows where it sits once it is in the page.
+   */
+  tabInserts?: (host: HTMLElement) => boolean;
 }
 
 /**
@@ -97,6 +105,7 @@ export function RichTextEditable({
   onKeyDown,
   onBlur,
   onPasteGrid,
+  tabInserts,
 }: Props) {
   const hostRef = useRef<HTMLSpanElement>(null);
   const paintedRef = useRef<RichText | undefined>(undefined);
@@ -122,6 +131,7 @@ export function RichTextEditable({
     const caret = entering ? undefined : selectionOffsets(host);
     host.replaceChildren(...runs.map(runToNode));
     paintedRef.current = runs;
+    layoutTabs(host);
 
     if (entering) {
       if (autoFocus) {
@@ -232,6 +242,8 @@ export function RichTextEditable({
       onInput={() => {
         sync();
         publish();
+        // The text before a tab just changed width, so the gap after it did too.
+        if (hostRef.current) layoutTabs(hostRef.current);
       }}
       onBeforeInput={(event) => {
         /*
@@ -273,7 +285,25 @@ export function RichTextEditable({
         sync();
         onBlur?.(event);
       }}
-      onKeyDown={onKeyDown}
+      onKeyDown={(event) => {
+        const host = hostRef.current;
+        if (
+          event.key === 'Tab' &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          host &&
+          tabInserts?.(host)
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.shiftKey) return;
+          const at = selectionOffsets(host);
+          if (at) writeRange(at.start, at.end, '\t');
+          return;
+        }
+        onKeyDown?.(event);
+      }}
     />
   );
 }

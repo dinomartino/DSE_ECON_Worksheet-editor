@@ -4,8 +4,10 @@ import type {
   FontPair,
   LanguageMode,
   TableAlign,
+  TabStop,
   TextFormat,
 } from '@/model/types';
+import { cleanTabStops } from '@/model/tabStops';
 import type {
   AnswerGraphNode,
   ColumnsNode,
@@ -107,6 +109,23 @@ function againstStyle(format: TextFormat | undefined, styleId: string, context: 
  * Only the fields the teacher set are emitted, so everything else keeps coming from
  * the named style — a style change still reaches every element that never overrode it.
  */
+/**
+ * A paragraph's `w:tabs`: the teacher's stops (`TextFormat.tabStops`) plus any the layout
+ * adds (the marks' right stop). One element, since Word reads only the first; a layout
+ * stop wins its position. Positions are already from the margin, as Word measures them.
+ */
+export function tabsElement(format: TextFormat | undefined, layout: readonly TabStop[] = []): string {
+  const own = cleanTabStops(format?.tabStops).filter((stop) => !layout.some((fixed) => fixed.pos === stop.pos));
+  const stops = [...own, ...layout].sort((a, b) => a.pos - b.pos);
+  if (stops.length === 0) return '';
+  return `<w:tabs>${stops
+    .map(
+      (stop) =>
+        `<w:tab w:val="${stop.align}"${stop.leader ? ` w:leader="${stop.leader}"` : ''} w:pos="${Math.round(stop.pos)}"/>`,
+    )
+    .join('')}</w:tabs>`;
+}
+
 export function formatParagraphProps(format: TextFormat | undefined): string {
   if (!format) return '';
   const parts: string[] = [];
@@ -176,11 +195,12 @@ function paragraph(options: {
 
   // A right-aligned tab stop at the content edge puts "(4 marks)" in the
   // conventional right-hand position without a second paragraph (§3.5).
-  if (options.tabRight) {
-    props.push(
-      `<w:tabs><w:tab w:val="right" w:pos="${options.tabRightAt ?? CONTENT_WIDTH_TWIPS}"/></w:tabs>`,
-    );
-  }
+  props.push(
+    tabsElement(
+      options.format,
+      options.tabRight ? [{ pos: options.tabRightAt ?? CONTENT_WIDTH_TWIPS, align: 'right' }] : [],
+    ),
+  );
 
   props.push(formatParagraphProps(options.format));
 
@@ -454,6 +474,7 @@ function cellParagraph(cellText: string, align: string, format?: TextFormat, kee
     // A row that keeps with the next (`TableNode.rowKeepNext`): Word keeps the row on the
     // next row's page when every paragraph in it keeps with the next.
     (keepNext ? '<w:keepNext/>' : '') +
+    tabsElement(format) +
     `<w:jc w:val="${align}"/>` +
     formatParagraphProps(format ? { ...format, align: undefined } : undefined) +
     '</w:pPr>' +

@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import type { TextAlign, TextFormat } from '@/model/types';
+import type { TabStop, TextAlign, TextFormat } from '@/model/types';
+import type { TabPreset } from '@/model/tabStops';
+import { TabRuler, type RulerGeometry } from './TabRuler';
 import { nextOptionAlign, optionPrintsJustified } from '@/model/edits';
 import { useMessages } from '@/i18n/language';
 import type { TextKey } from '@/i18n/catalogue';
@@ -81,6 +83,20 @@ interface Props {
    * nowhere to put it, and the bar hides the control rather than offering a dead one.
    */
   onInsertBlank?: () => void;
+  /**
+   * Type a tab at the caret. The Tab key already does this in a paragraph; the button is
+   * for a table cell, where Tab walks to the next cell as in Word. Absent with no caret.
+   */
+  onInsertTab?: () => void;
+  /**
+   * The ruler for a target whose tabs print as tabs (a text paragraph, a table cell):
+   * where its text column is on screen. With `onTabStops`, the bar offers the ruler.
+   */
+  tabRuler?: RulerGeometry;
+  /** The target's own stops, whatever characters are selected: stops are per paragraph. */
+  tabStops?: TabStop[];
+  onTabStops?: (stops: TabStop[] | undefined) => void;
+  onTabPreset?: (preset: TabPreset, widthTwips: number) => void;
   onReset: () => void;
   /**
    * False when something else owns the target's alignment: a table cell's is its
@@ -175,6 +191,16 @@ export function DockShield({ gapPx }: { gapPx: number }) {
   );
 }
 
+const RULER_KEY = 'econgen.rulerOpen';
+
+function readRulerOpen(): boolean {
+  try {
+    return window.localStorage.getItem(RULER_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 /** The docked bars' entrance: dropping in from the top edge they dock to. */
 export const TOOLBAR_ENTER = 'animate-pop-in origin-top';
 export const TOOLBAR_ACTIVE = 'bg-[#0d77c9] text-white hover:bg-[#2b8ad3]';
@@ -193,6 +219,11 @@ export function FormatToolbar({
   onVertAlign,
   vertAlign,
   onInsertBlank,
+  onInsertTab,
+  tabRuler,
+  tabStops,
+  onTabStops,
+  onTabPreset,
   onReset,
   alignable = true,
   alignOnly = false,
@@ -205,6 +236,19 @@ export function FormatToolbar({
   const m = useMessages(FORMAT_TOOLBAR_MESSAGES);
   const ref = useRef<HTMLDivElement>(null);
   const [colorOpen, setColorOpen] = useState(false);
+  // Word's View ▸ Ruler: once shown, it stays shown for every paragraph, across sessions.
+  const [rulerOpen, setRulerOpen] = useState(readRulerOpen);
+  const toggleRuler = () =>
+    setRulerOpen((open) => {
+      try {
+        window.localStorage.setItem(RULER_KEY, open ? '0' : '1');
+      } catch {
+        // Private mode: the ruler just will not be remembered.
+      }
+      return !open;
+    });
+  const hasRuler = Boolean(tabRuler && onTabStops && !alignOnly);
+  const [tabPanelOpen, setTabPanelOpen] = useState(false);
 
   useEffect(() => {
     if (!colorOpen) return;
@@ -414,6 +458,41 @@ export function FormatToolbar({
         </button>
       )}
 
+      {onInsertTab && tabRuler && (
+        <button
+          type="button"
+          aria-label={m.insertTab}
+          title={m.insertTabTitle}
+          className={`${BTN} ${IDLE}`}
+          onClick={onInsertTab}
+        >
+          <span aria-hidden>→|</span>
+        </button>
+      )}
+
+      {hasRuler && (
+        <button
+          type="button"
+          aria-label={m.tabStops}
+          aria-pressed={rulerOpen}
+          title={m.tabStopsTitle}
+          className={`${BTN} ${rulerOpen ? ACTIVE : IDLE}`}
+          onClick={toggleRuler}
+        >
+          <span aria-hidden className="font-mono">└┘</span>
+        </button>
+      )}
+      {hasRuler && rulerOpen && (
+        <button
+          type="button"
+          aria-expanded={tabPanelOpen}
+          className={`${BTN} ${tabPanelOpen ? ACTIVE : IDLE}`}
+          onClick={() => setTabPanelOpen((open) => !open)}
+        >
+          {m.tabStopsDialog}
+        </button>
+      )}
+
       {alignable && alignOnly && (
         <button
           type="button"
@@ -547,6 +626,17 @@ export function FormatToolbar({
         >
           🗑
         </button>
+      )}
+
+      {hasRuler && rulerOpen && (
+        <TabRuler
+          geometry={tabRuler!}
+          stops={tabStops}
+          onStops={onTabStops!}
+          onPreset={(preset, width) => onTabPreset?.(preset, width)}
+          panelOpen={tabPanelOpen}
+          onPanelOpen={setTabPanelOpen}
+        />
       )}
 
       {onClose && (
