@@ -12,6 +12,19 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Two new diagram templates.** *Price floor: deadweight loss* (under Price controls)
+  draws a floor above equilibrium with the quantity sold read off D, the surplus, and the
+  DWL. *Negative externality: overproduction* (under Tax & subsidy) draws MSC above MPC
+  with D = MPB = MSB, the market output Qm, the efficient output Q* and the DWL between.
+  <!-- zh: **兩個新的圖表範本。** 「價格下限：效率損失」（在價格管制內）畫出高於均衡的下限、由需求決定的成交量、過剩及效率損失。
+  「負面界外影響：生產過剩」（在稅項與津貼內）畫出高於 MPC 的 MSC、D = MPB = MSB、市場產量 Qm、有效率產量 Q* 及其間的效率損失。 -->
+
+### Changed
+- **Deadweight loss is labelled DWL in every diagram template.** The monopoly templates
+  that said DL now say DWL, as the rest do. Diagrams already in your papers are unchanged.
+  <!-- zh: **所有圖表範本的效率損失一律標示為 DWL。** 原本標示 DL 的壟斷範本現改為 DWL，與其他範本一致。已放在試卷中的圖表不受影響。 -->
+
 ## 0.8.3 — 2026-10-18
 
 ### Added

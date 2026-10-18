@@ -230,7 +230,7 @@ function monopoly(lumpSum = false): Diagram {
     }),
     (r) =>
       shade(r, 'monopolyDwl', { demand: d.id, mr: mr.id, mc: mc.id }, {
-        label: lumpSum ? lab('DL', ['0'], ' = DL', ['1']) : sym('DWL'),
+        label: lumpSum ? lab('DWL', ['0'], ' = DWL', ['1']) : sym('DWL'),
       }),
   );
 }
@@ -288,8 +288,8 @@ function monopolyMcRises(): Diagram {
 }
 
 /**
- * MC falls but the firm keeps Q and P (DSE2016): DL₀ between D and MC₀, and the
- * increase in DL — the band between MC₀ and MC₁ (capped by D) from Qm on.
+ * MC falls but the firm keeps Q and P (DSE2016): DWL₀ between D and MC₀, and the
+ * increase in DWL — the band between MC₀ and MC₁ (capped by D) from Qm on.
  */
 function monopolySameOutput(): Diagram {
   const { d, mr } = demandAndMr(0.9, 0.9, 0.1);
@@ -307,12 +307,12 @@ function monopolySameOutput(): Diagram {
           band: { edges: [{ curve: mc0.id }, { curve: mc1.id }], from: cross(mr, mc0), to: cross(d, mc1), cap: { curve: d.id } },
           fill: 'hatch',
           pattern: 'horizontal',
-          label: bi('increase in DL', '效率損失增加'),
+          label: bi('increase in DWL', '效率損失增加'),
           labelPlacement: 'leader',
         },
       ],
     }),
-    (r) => shade(r, 'monopolyDwl', { demand: d.id, mr: mr.id, mc: mc0.id }, { label: sub('DL', '0'), labelPlacement: 'leader' }),
+    (r) => shade(r, 'monopolyDwl', { demand: d.id, mr: mr.id, mc: mc0.id }, { label: sub('DWL', '0'), labelPlacement: 'leader', labelOffset: { x: 0.2, y: 0.2 } }),
   );
 }
 
@@ -612,14 +612,14 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     id: 'monopoly-same-output',
     group: 'electives',
     name: bi('Monopoly: MC falls, same P and Q', '壟斷：MC 下降但價量不變'),
-    hint: bi('MC₀ → MC₁ with Qm and Pm kept: DL₀ and the increase in DL.', 'MC₀ → MC₁ 而 Qm、Pm 不變：DL₀ 及效率損失的增加。'),
+    hint: bi('MC₀ → MC₁ with Qm and Pm kept: DWL₀ and the increase in DWL.', 'MC₀ → MC₁ 而 Qm、Pm 不變：DWL₀ 及效率損失的增加。'),
     build: monopolySameOutput,
   },
   {
     id: 'monopoly-lump-sum',
     group: 'electives',
     name: bi('Monopoly: lump-sum tax', '壟斷：定額稅'),
-    hint: bi('MC and MR unchanged: Qt = Qm, Pt = Pm, DL₀ = DL₁.', 'MC 及 MR 不變：Qt = Qm，Pt = Pm，DL₀ = DL₁。'),
+    hint: bi('MC and MR unchanged: Qt = Qm, Pt = Pm, DWL₀ = DWL₁.', 'MC 及 MR 不變：Qt = Qm，Pt = Pm，DWL₀ = DWL₁。'),
     build: () => monopoly(true),
   },
   {

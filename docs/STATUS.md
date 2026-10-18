@@ -12,9 +12,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   preview breaks tables between rows (`pageNodes:tablePieces`, `bodyEntries`, `PackItem.leadAt`).
   Not tried in real Word or Tauri. Known gap: a table in a keep chain (classroom MC) stays whole on
   screen but Word can still break its rows. Word packs justified lines tighter than the preview.
-- **#2 follow-ups laid out for the user 2026-10-18, awaiting answers:** price-floor DWL template
-  (skill 25) + negative externality (skill 09; positive too?); wording — DWL zh 效率損失 vs
-  無謂損失, symbol DWL vs DL (monopoly templates mix them), 過剩 vs 超額供應, keep 買方/賣方稅負.
+- **#2 follow-ups done 2026-10-18 (Unreleased):** `price-floor-dwl` (skill 25) and
+  `externality-overproduction` (skill 09) templates; every template's DL → DWL. User kept
+  效率損失 and 過剩 (not 無謂損失 / 超額供應) and 買方/賣方稅負. Positive externality not built (not asked).
 - **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked. `feature/film-v2` (worktree `.claude/worktrees/film-v2`) on GitHub since 2026-10-11, not merged.
 - **Shipped in 0.8.0, none tried in the Tauri window before release:** table Same height/width
   (`distributeRows`/`distributeColumns`); no editor overscroll; import brings header/footer/title
@@ -53,7 +53,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
-- #2 follow-ups: price floor DWL + externality templates; diagram wording (DWL/DL in zh, 過剩, tax burden terms). Table review vs Word (`docs/Tables vs Word.md`): all phases done.
+- Table review vs Word (`docs/Tables vs Word.md`): all phases done.
 - Paid service (`docs/research/2026-09-paid-product/`): what first; in-app "use a VPN" Gemini
   wording breaks Google's terms — Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key. Bank authoring
@@ -79,6 +79,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-10-18** — #2 follow-ups: floor DWL + negative externality templates, DL → DWL.
 - **2026-10-18** — Released 0.8.3. `main` merged back; Unreleased empty.
 - **2026-10-17** — Tables vs Word phases 1–3 (one-click typing, Enter newline, range merge/format/clipboard, exact sizes, heading repeat + preview table splitting, vAlign, shading).
 - **2026-10-16** — Released 0.8.2 (closes #2, notice posted). `main` merged back; Unreleased empty.

@@ -167,6 +167,30 @@ function ceiling(withDwl: boolean): Diagram {
   );
 }
 
+/**
+ * A price floor above Pe (skill 25; DSE2019 Q11(b), DSE2014 Q3): the quantity sold is
+ * read off D, the surplus between D and S at Pf, and the DWL from Qt to Qe.
+ */
+function floorDwl(): Diagram {
+  const d = MB_D();
+  const s = MC_S();
+  const pf = priceLine(0.72, sub('P', 'f'));
+  const qt = reading(d, pf, sub('Q', 't'));
+  const qs = reading(s, pf, sub('Q', 's'));
+  return finish(
+    axes(AXIS.quantity, AXIS.price, {
+      curves: [d, s, pf],
+      points: [eq(d, s, 'e', { p: 'P', q: 'Q' }), qt, qs],
+      spans: [span(at(qt), at(qs), 'bracket', { offset: 0.04, label: bi('surplus', '過剩') })],
+    }),
+    (r) =>
+      shade(r, 'controlDwl', { demand: d.id, supply: s.id, control: { curve: pf.id } }, {
+        label: sym('DWL'),
+        labelPlacement: 'leader',
+      }),
+  );
+}
+
 /** A demand rise under a ceiling: the shortage before and after, bracketed and compared. */
 function shortageChange(): Diagram {
   const d0 = curve([[0.08, 0.8], [0.6, 0.21]], sub('D', '0'));
@@ -639,6 +663,33 @@ function taxEfficiency(): Diagram {
 }
 
 /**
+ * Negative externality in production (skill 09): MSC above MPC, D = MPB = MSB. The
+ * market produces Qm (D = MPC), more than the efficient Q* (D = MSC); the DWL is the
+ * triangle between MSC and D from Q* to Qm.
+ */
+function externalityOverproduction(): Diagram {
+  const d = curve([[0.06, 0.86], [0.8, 0.2]], bi('D = MPB = MSB', 'D = MPB = MSB'));
+  const mpc = curve([[0.06, 0.06], [0.8, 0.6]], sym('MPC'));
+  const msc = shiftOf(mpc, 0, 0.28, sym('MSC'));
+  const em = eq(d, mpc, 'm');
+  const es = eq(d, msc, '', {}, { xTickLabel: sym('Q*'), yTickLabel: sym('P*') });
+  return finish(
+    axes(AXIS.quantity, bi('Price / cost', '價格／成本'), {
+      curves: [d, mpc, msc],
+      points: [em, es],
+      areas: [
+        band([{ curve: msc.id }, { curve: d.id }], at(es), at(em), {
+          fill: 'hatch',
+          pattern: 'cross',
+          label: bi('DWL', '效率損失'),
+          labelPlacement: 'leader',
+        }),
+      ],
+    }),
+  );
+}
+
+/**
  * Market value under a tax: buyers pay P₁ × Q₁; sellers keep (P₁ − t) × Q₁, read at the
  * sellers' price on S₀ under E₁, and the rest is tax revenue. Both follow a drag.
  */
@@ -820,6 +871,13 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     build: minimumWageBill,
   },
   {
+    id: 'price-floor-dwl',
+    group: 'controls',
+    name: bi('Price floor: deadweight loss', '價格下限：效率損失'),
+    hint: bi('Pf above Pe: Qt read off D, the surplus, and the DWL from Qt to Qe.', '高於均衡價格的下限：成交量 Qt 由需求決定，過剩，及由 Qt 至 Qe 的效率損失。'),
+    build: floorDwl,
+  },
+  {
     id: 'domestic-quota',
     group: 'controls',
     name: bi('Quota', '配額'),
@@ -881,5 +939,12 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     name: bi('Tax: revenue net of tax', '稅項：扣除稅款後的收入'),
     hint: bi('Sellers keep (P₁ − t) × Q₁; the tax revenue above it.', '賣方收入為 (P₁ − t) × Q₁；其上為稅收。'),
     build: taxNetRevenue,
+  },
+  {
+    id: 'externality-overproduction',
+    group: 'taxSubsidy',
+    name: bi('Negative externality: overproduction', '負面界外影響：生產過剩'),
+    hint: bi('MSC above MPC: market Qm > efficient Q*, the DWL between.', 'MSC 高於 MPC：市場產量 Qm > 有效率產量 Q*，其間為效率損失。'),
+    build: externalityOverproduction,
   },
 ];
