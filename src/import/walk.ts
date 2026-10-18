@@ -115,12 +115,12 @@ class Walker {
     const clump = line.clump
       ? [{ text: `${line.clump.values.map((v) => (line.clump!.family === '(n)' ? `(${v})` : `${String.fromCharCode(64 + v)}.`)).join(' ')} ` }]
       : [];
-    const body = line.cells ? cellsAsText(line.cells) : line.runs;
+    const body = line.cells ? cellsAsText(line) : line.runs;
     return [...clump, ...(line.labelRuns ?? []), ...body].filter((r) => r.text);
   }
 
   private textOf(line: SourceLine): OutText {
-    return { lines: [line.i], runs: line.cells ? cellsAsText(line.cells) : [...line.runs], ...(line.emphasis ? { emphasis: line.emphasis } : {}) };
+    return { lines: [line.i], runs: line.cells ? cellsAsText(line) : [...line.runs], ...(line.emphasis ? { emphasis: line.emphasis } : {}) };
   }
 
   // ---- containers ----
@@ -629,7 +629,7 @@ class Walker {
 
   private loose(line: SourceLine) {
     const join = this.input.join.has(line.i);
-    const runs = join || line.labelInfo ? this.full(line) : line.cells ? cellsAsText(line.cells) : line.runs;
+    const runs = join || line.labelInfo ? this.full(line) : line.cells ? cellsAsText(line) : line.runs;
     if (this.q && this.q.events.length && !this.part) {
       this.own(line.i);
       this.q.events.push({ kind: 'loose', text: { lines: [line.i], runs, ...(line.emphasis ? { emphasis: line.emphasis } : {}) }, line: line.i, join });
@@ -792,9 +792,11 @@ function rowCells(line: SourceLine, cells: InlineRun[][]): InlineRun[][] {
   return [normalizeRuns([...label, { text: ' ' }, ...first]), ...rest];
 }
 
-function cellsAsText(cells: readonly InlineRun[][]): InlineRun[] {
+function cellsAsText(line: SourceLine): InlineRun[] {
+  // Tabs the teacher typed stay tabs: the page lays them out as Word does.
+  if (line.tabbed) return [...line.runs];
   const out: InlineRun[] = [];
-  cells.forEach((cell, k) => {
+  line.cells!.forEach((cell, k) => {
     if (k) out.push({ text: ' ' });
     out.push(...cell);
   });

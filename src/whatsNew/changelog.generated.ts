@@ -39,6 +39,11 @@ a version heading is edited afterwards.
 - **Deadweight loss is labelled DWL in every diagram template.** The monopoly templates
   that said DL now say DWL, as the rest do. Diagrams already in your papers are unchanged.
   <!-- zh: **所有圖表範本的效率損失一律標示為 DWL。** 原本標示 DL 的壟斷範本現改為 DWL，與其他範本一致。已放在試卷中的圖表不受影響。 -->
+- **Import keeps the tabs you typed.** A line from Word or a paste that uses Tab to line
+  up text ("Name: → Class:", an answer with "→ (1)") now comes in with its tabs, instead
+  of the gaps turning into single spaces or the line becoming a one-row table. Rows of
+  tabbed lines still come in as a table, and option letters and labels are read as before.
+  <!-- zh: **匯入會保留你輸入的定位字元。** 從 Word 或貼上的內容中，用 Tab 對齊文字的一行（例如「姓名： → 班別：」、答案後的「→ (1)」）現會連同定位字元一併匯入，不再變成單一空格或只有一列的表格。連續幾行以 Tab 分隔的內容仍會匯入為表格，選項字母和標籤的辨識亦與以往相同。 -->
 
 ### Fixed
 - **Importing a PDF no longer hides a caption or sentence inside a graph's picture.** Text

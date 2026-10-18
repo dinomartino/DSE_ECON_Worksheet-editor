@@ -172,6 +172,21 @@ describe('builder', () => {
     expect(q.options[1].text.en[0].bold).toBeUndefined();
   });
 
+  it('keeps tabs typed in body text, and still reads tabs as structure', () => {
+    // A lone tabbed line is text; rows of them are a table (the next test's neighbour).
+    const plain = ['1.\tExplain why.', 'Name:\tClass:\tNo.:', 'Then answer:', 'Yes,\t(1)', '(a)\tState the law.\t(2 marks)', '2.\tWhich is right?', 'A.\tone\tB.\ttwo', 'C.\tthree\tD.\tfour'].join('\n');
+    const [q, mc] = materialise(buildImport(analysePaste({ plain }))) as [StructuredQuestion, McqQuestion];
+    expect(q.blocks.map((b) => b.kind === 'paragraph' && b.text.en.map((r) => r.text).join(''))).toEqual(['Explain why.', 'Name:\tClass:\tNo.:', 'Then answer:', 'Yes,\t(1)']);
+    expect(q.parts[0]).toMatchObject({ marks: 2, blocks: [{ text: { en: [{ text: 'State the law.' }] } }] });
+    expect(mc.options.map((o) => o.text.en[0].text)).toEqual(['one', 'two', 'three', 'four']);
+  });
+
+  it('flattens a table the reader saw (not typed tabs) with spaces, as before', () => {
+    const read = readPaste({ html: '<p>1.\tWhy?</p><table><tr><td>Year</td><td>Price</td></tr></table>' });
+    const line = read.lines.find((l) => l.cells);
+    expect(line?.tabbed).toBeUndefined();
+  });
+
   it('puts Chinese text on the zh side and a leading shared stem in the lead', () => {
     const plain = ['Study the table and answer Questions 1 and 2.', 'Year\tPrice', '2025\t$40', '1.\t下列哪項是公共財品？', 'A.\t燈塔', 'B.\t書本', 'C.\t病床', 'D.\t單位', '2.\tWhy?', 'A.\ta', 'B.\tb', 'C.\tc', 'D.\td'].join('\n');
     const batch = buildImport(analysePaste({ plain }));
