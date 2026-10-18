@@ -109,6 +109,17 @@ import type { AnswerApplyReport, AnswerWrite } from '@/answers/types';
 /** How many steps of history to keep. Beyond this the oldest are dropped. */
 const HISTORY_LIMIT = 100;
 
+/**
+ * Typing on one field is one undo step, not one per keystroke.
+ *
+ * A field commits on every input (§ `onFlush` in `InlineEditable`), so without this ⌘Z
+ * took back a single character. A keystroke joins the run before it when it edits the
+ * same target, nothing else has touched the document since (`after` is still the live
+ * worksheet — any other commit, an undo or a load replaces it), and the pause is short.
+ */
+const TYPING_PAUSE_MS = 1000;
+let typingRun: { key: string; at: number; after: Worksheet } | undefined;
+
 interface WorksheetState {
   worksheet: Worksheet;
   mode: OutputMode;
@@ -187,7 +198,8 @@ interface WorksheetState {
   future: Worksheet[];
 
   // --- History ---------------------------------------------------------------
-  commit: (recipe: (draft: Worksheet) => Worksheet) => void;
+  /** `typing` names the field being typed in; consecutive keystrokes there share one undo. */
+  commit: (recipe: (draft: Worksheet) => Worksheet, typing?: string) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
@@ -768,14 +780,23 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   // --- History ---------------------------------------------------------------
   // The single write path. A recipe returning the worksheet unchanged commits
   // nothing, so a no-op drag costs no undo entry.
-  commit: (recipe) =>
+  commit: (recipe, typing) =>
     set((state) => {
       if (state.readOnly) return state;
       const next = recipe(state.worksheet);
       if (next === state.worksheet) return state;
+      const now = Date.now();
+      const continues =
+        typing !== undefined &&
+        typingRun?.key === typing &&
+        typingRun.after === state.worksheet &&
+        now - typingRun.at < TYPING_PAUSE_MS &&
+        state.past.length > 0;
+      const worksheet = { ...next, updatedAt: new Date(now).toISOString() };
+      typingRun = typing === undefined ? undefined : { key: typing, at: now, after: worksheet };
       return {
-        worksheet: { ...next, updatedAt: new Date().toISOString() },
-        past: [...state.past, state.worksheet].slice(-HISTORY_LIMIT),
+        worksheet,
+        past: continues ? state.past : [...state.past, state.worksheet].slice(-HISTORY_LIMIT),
         // A new edit invalidates the redo branch, the way every editor behaves.
         future: [],
         dirty: true,
@@ -1091,7 +1112,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     }),
 
   // --- In-place editing on the page ------------------------------------------
-  applyEdit: (target, next) => get().commit((draft) => applyEditTarget(draft, target, next)),
+  applyEdit: (target, next) =>
+    get().commit((draft) => applyEditTarget(draft, target, next), JSON.stringify(target)),
   deleteTarget: (target) => get().commit((draft) => applyDeleteTarget(draft, target)),
   clearCells: (blockId, cellIds) =>
     get().commit((draft) => applyClearCells(draft, blockId, cellIds)),

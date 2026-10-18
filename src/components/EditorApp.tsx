@@ -30,7 +30,7 @@ import { holdBankDocument } from '@/library/useBank';
 import { BankReviewBar } from '@/components/bank/BankReviewBar';
 import { useBankSession } from '@/components/bank/bankSession';
 import { BankDragLayer, isBankDragActive, useBankDrag } from '@/components/bank/bankDrag';
-import { undoChord } from '@/components/ui/undoChord';
+import { isUndoRedoKey, undoChord } from '@/components/ui/undoChord';
 import { provisionalWorksheet } from '@/components/bank/dropSlot';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { PAGE_RAIL_MESSAGES } from '@/components/editor/shell.messages';
@@ -446,7 +446,7 @@ export function EditorApp({
       if (isBankDragActive()) return;
       // While typing, ⌘Z belongs to the text field — it should take back a character,
       // not roll the whole document to its previous commit. Document-level undo
-      // applies only when focus is outside an input.
+      // applies only when focus is outside an input (a field on the page aside — below).
       const active = document.activeElement;
       if (
         active instanceof HTMLTextAreaElement ||
@@ -459,8 +459,33 @@ export function EditorApp({
       if (action === 'redo') redo();
       else undo();
     };
+    /*
+     * A field open on the page is the exception: there ⌘Z is the document's undo too.
+     *
+     * The field commits every keystroke and repaints from the store, so the browser's
+     * own text undo had nothing reliable to take back (in the desktop shell it often did
+     * nothing at all), and a teacher had to click away before ⌘Z would work. Typing is
+     * grouped into one step per run (`TYPING_PAUSE_MS` in the store), so this takes back
+     * what was typed, and the field stays open. Capture phase, because the open field
+     * stops its keys from bubbling to the page.
+     */
+    const onFieldKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing || !isUndoRedoKey(event)) return;
+      const active = document.activeElement;
+      if (!(active instanceof HTMLElement && active.isContentEditable)) return;
+      if (!active.closest('#print-root')) return;
+      if (isBankDragActive()) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (undoChord(event) === 'undo') undo();
+      else redo();
+    };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onFieldKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onFieldKeyDown, true);
+    };
   }, [undo, redo]);
 
   return (

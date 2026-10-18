@@ -76,5 +76,4 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-10-18** — Known-gap sweep: table keep chain, tab wrap + margin inset, import tabs, PDF captions, sync gaps.
-- **2026-10-18** — Tabs vs Word phases 1–3; #2 follow-ups (floor DWL, negative externality).
+- **2026-10-18** — ⌘Z while typing on the page: document undo, typing grouped per run (`TYPING_PAUSE_MS`), caret follows the change. Chrome-checked; not tried in Tauri/Safari.

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { replaceRichTextRange, richTextLength } from '@/model/text';
+import { changeEnd, replaceRichTextRange, richTextLength } from '@/model/text';
 import { gridFromClipboard, type TextGrid } from '@/model/tableClipboard';
 import type { RichText, RunFormat } from '@/model/types';
 import {
@@ -155,7 +155,11 @@ export function RichTextEditable({
         );
       }
     } else if (caret) {
-      setSelectionOffsets(host, caret.start, caret.end);
+      // Text changed from outside (an undo, a redo): the caret follows the change, as a
+      // word processor's does, rather than staying at an offset that now means other text.
+      const moved = changeEnd(painted, runs);
+      if (moved === undefined) setSelectionOffsets(host, caret.start, caret.end);
+      else setSelectionOffsets(host, moved);
     }
     // `autoFocus` is read only on entry; re-running for it would steal focus mid-edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps

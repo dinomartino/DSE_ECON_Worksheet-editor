@@ -44,6 +44,10 @@ a version heading is edited afterwards.
   <!-- zh: **匯入會保留你輸入的定位字元。** 從 Word 或貼上的內容中，用 Tab 對齊文字的一行（例如「姓名： → 班別：」、答案後的「→ (1)」）現會連同定位字元一併匯入，不再變成單一空格或只有一列的表格。連續幾行以 Tab 分隔的內容仍會匯入為表格，選項字母和標籤的辨識亦與以往相同。 -->
 
 ### Fixed
+- **⌘Z works while you type.** Undo used to wait until you clicked away from the text,
+  then took back one letter per press. Now ⌘Z (Ctrl+Z) in the text you are typing undoes
+  what you just typed in one step, keeps the text open, and ⇧⌘Z (Ctrl+Y) redoes it.
+  <!-- zh: **輸入時可用 ⌘Z 還原。** 以往要先點擊文字以外的地方才能還原，而且每按一次只還原一個字。現在輸入時按 ⌘Z（Ctrl+Z）會一次還原剛輸入的內容，文字仍保持可編輯；按 ⇧⌘Z（Ctrl+Y）重做。 -->
 - **Importing a PDF no longer hides a caption or sentence inside a graph's picture.** Text
   right beside a graph, such as "Figure 1", "Study the graph below." or "(2 marks)", now
   comes in as text you can edit, instead of being cropped into the picture and lost from

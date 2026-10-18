@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { questionMarks } from '@/model/marks';
 import {
   createAnswerLinesElement,
@@ -107,6 +107,54 @@ describe('undo/redo (§10, §11.13)', () => {
     expect(store().worksheet).toBe(snapshot);
     store().redo();
     expect(store().worksheet).toBe(snapshot);
+  });
+
+  describe('typing on one field', () => {
+    afterEach(() => vi.useRealTimers());
+    const stemOf = () => {
+      const question = store().worksheet.questions.find((q) => q.type === 'structured') as StructuredQuestion;
+      return { kind: 'blockText', blockId: question.blocks[0].id } as const;
+    };
+    const typed = (target: ReturnType<typeof stemOf>) => plain(textOfTarget(store().worksheet, target)?.en);
+    const type = (target: ReturnType<typeof stemOf>, text: string) =>
+      store().applyEdit(target, bi(text, '題幹'));
+
+    it('is one undo step per run of keystrokes, not one per character', () => {
+      vi.useFakeTimers();
+      const target = stemOf();
+      const before = typed(target);
+      type(target, 'a');
+      vi.advanceTimersByTime(200);
+      type(target, 'ab');
+      vi.advanceTimersByTime(200);
+      type(target, 'abc');
+      store().undo();
+      expect(typed(target)).toBe(before);
+      store().redo();
+      expect(typed(target)).toBe('abc');
+    });
+
+    it('starts a new step after a pause, another field or another edit', () => {
+      vi.useFakeTimers();
+      const target = stemOf();
+      const before = typed(target);
+      type(target, 'one');
+      vi.advanceTimersByTime(1500);
+      type(target, 'one two');
+      store().undo();
+      expect(typed(target)).toBe('one');
+
+      type(target, 'one 3');
+      store().updateWorksheet({ title: bi('T', '題') });
+      type(target, 'one 34');
+      store().undo();
+      expect(typed(target)).toBe('one 3');
+      store().undo();
+      store().undo();
+      expect(typed(target)).toBe('one');
+      store().undo();
+      expect(typed(target)).toBe(before);
+    });
   });
 
   it('treats loading a document as a fresh history, not an undoable edit', () => {

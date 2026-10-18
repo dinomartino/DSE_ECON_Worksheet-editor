@@ -256,6 +256,28 @@ export function richTextLength(runs: RichText | undefined): number {
 }
 
 /**
+ * Where the text stopped changing, as an offset into `after`: past the last character
+ * that differs from `before`, or `undefined` when the text is the same (only formatting
+ * moved). An undo puts the caret here, after what it restored or where it removed.
+ */
+export function changeEnd(before: RichText | undefined, after: RichText | undefined): number | undefined {
+  const a = plain(before);
+  const b = plain(after);
+  if (a === b) return undefined;
+  let prefix = 0;
+  while (prefix < a.length && prefix < b.length && a[prefix] === b[prefix]) prefix++;
+  let suffix = 0;
+  while (
+    suffix < a.length - prefix &&
+    suffix < b.length - prefix &&
+    a[a.length - 1 - suffix] === b[b.length - 1 - suffix]
+  ) {
+    suffix++;
+  }
+  return b.length - suffix;
+}
+
+/**
  * Do two runs carry identical formatting? Used to merge neighbours back together.
  *
  * Compared field by field over the union of both key sets, so a run with an explicit
