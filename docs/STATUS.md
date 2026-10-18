@@ -7,17 +7,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **2026-10-17: Tables vs Word phases 1–3 all done on `develop`** (user gave the go for all of
-  phase 3). Phase 3: `headerRows` repeats the top rows on each page (`w:tblHeader`; sidebar
-  checkbox + right-click "Repeat rows 1–n"), cell `vAlign` top/bottom, grey `shading` (3 greys).
-  **The preview now breaks tables between rows** like Word (`pageNodes:tablePieces`, joined back
-  per sheet by `bodyEntries`, heading redrawn and charged via `PackItem.leadAt`). Green: 5632
-  tests, typecheck, lint 40, samples, lq-verify + cover-verify (run on Linux with a temp shim).
-  Checked in headless Chromium and a 60-row `.docx` through LibreOffice (heading repeats, shaded).
-  Not tried in real Word or Tauri. Known gap: a table in a keep chain (classroom MC) stays whole
-  on screen but Word can still break its rows.
-- **v0.8.3 released 2026-10-18** (tables phases 1–3; published, `latest`, 9 assets + sigs).
-  develop = main, Unreleased empty. Word packs justified lines tighter than the preview.
+- **v0.8.3 released 2026-10-18: Tables vs Word phases 1–3** (published, `latest`, 9 assets + sigs;
+  develop = main, Unreleased empty). `headerRows` (`w:tblHeader`), `vAlign`, 3-grey `shading`; the
+  preview breaks tables between rows (`pageNodes:tablePieces`, `bodyEntries`, `PackItem.leadAt`).
+  Not tried in real Word or Tauri. Known gap: a table in a keep chain (classroom MC) stays whole on
+  screen but Word can still break its rows. Word packs justified lines tighter than the preview.
 - **#2 follow-ups laid out for the user 2026-10-18, awaiting answers:** price-floor DWL template
   (skill 25) + negative externality (skill 09; positive too?); wording — DWL zh 效率損失 vs
   無謂損失, symbol DWL vs DL (monopoly templates mix them), 過剩 vs 超額供應, keep 買方/賣方稅負.
@@ -29,7 +23,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   **Unverified in Word:** clipboard paste, a tab past the last stop, masthead rule/colour.
 - **Found-folder offer, shipped in 0.8.0** (`library_found`, `src/sync/foundFolder.ts`): faked shell
   only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
-- **Shipped in 0.8.0:** file-only **Import from Word or PDF** → review → Save as (`src/import/`,
+- **0.8.0:** file-only **Import from Word or PDF** → review → Save as (`src/import/`,
   `docs/design/paste-import.md`); UI/Paper language settings; multi-file + "Answers from".
   **OCR** (PP-OCRv6, Rust/ORT, DMG +33 MB) proven in the release `.app` on scans + photos.
   Unverified: Intel Mac, macOS 12–13.2, signed build, native open sheet.
@@ -43,7 +37,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   back inline → 2 col → grid (`printedOptionLayout`, `textWidth.ts`), bilingual justify fix, feedback
   screenshot (Tauri untested), tidier diagram templates (vs DSE graph skill). Green before tagging and
   on all 3 Release builds. Checked in real Word, not in Tauri. Vercel not checked.
-- **v0.8.1 released 2026-10-14** (published, `latest`; closes #1): text size 10/11/12, MC keeps whole, toolbar Copy for Word removed, one bank, keep questions on Trash. Not tried in Tauri or Word; Vercel not checked.
 
 ## Before release (only the user can do these)
 
@@ -89,5 +82,3 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **2026-10-18** — Released 0.8.3. `main` merged back; Unreleased empty.
 - **2026-10-17** — Tables vs Word phases 1–3 (one-click typing, Enter newline, range merge/format/clipboard, exact sizes, heading repeat + preview table splitting, vAlign, shading).
 - **2026-10-16** — Released 0.8.2 (closes #2, notice posted). `main` merged back; Unreleased empty.
-
-- **2026-10-15** — GitHub #2 (MC justify, Justify text, overflow → grid); diagram template audit + polish; Buy Me a Coffee `FUNDING.yml`. 5 branches.
