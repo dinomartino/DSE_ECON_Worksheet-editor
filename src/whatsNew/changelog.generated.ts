@@ -14,6 +14,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.8.3 — 2026-10-18
+
 ### Added
 - **Long tables run onto the next page, and the heading row can repeat.** A table too
   long for the page now continues on the next one between rows, as it does in Word,
