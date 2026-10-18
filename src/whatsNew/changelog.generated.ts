@@ -40,6 +40,20 @@ a version heading is edited afterwards.
   that said DL now say DWL, as the rest do. Diagrams already in your papers are unchanged.
   <!-- zh: **所有圖表範本的效率損失一律標示為 DWL。** 原本標示 DL 的壟斷範本現改為 DWL，與其他範本一致。已放在試卷中的圖表不受影響。 -->
 
+### Fixed
+- **Opening a paper no longer waits for sync to finish.** With a synced folder, a paper
+  opened while sync was busy waited for the whole library; now sync pauses after the paper
+  it is on and carries on once yours is open.
+  <!-- zh: **開啟試卷不再要等同步完成。** 使用同步資料夾時，若同步正在進行，開啟試卷要等整個資料庫同步完；現在同步會在處理中的那份試卷後暫停，待你的試卷開啟後再繼續。 -->
+- **One copy, not two, when two computers meet the same cloud conflict.** If an older
+  version of Econ Studio on your other computer resolved the same clash at the same moment,
+  you could get the "(from another computer)" paper twice. Now you get it once.
+  <!-- zh: **兩部電腦遇上同一個雲端衝突時，只會有一份副本。** 若另一部電腦上較舊版本的 Econ Studio 同時處理同一衝突，以往可能出現兩份「來自另一部電腦」的試卷；現在只會有一份。 -->
+- **A library emptied on this computer refills from your synced folder.** If the papers on
+  this computer were wiped (and none can be found), sync now brings every paper back from
+  the folder, Trash included, instead of stopping with "Can't reach the storage folder".
+  <!-- zh: **本機資料庫被清空後，會從同步資料夾重新載入。** 若本機的試卷被清除（且一份都找不到），同步現在會從資料夾取回所有試卷（包括垃圾桶），不再停在「無法連接儲存資料夾」。 -->
+
 ## 0.8.3 — 2026-10-18
 
 ### Added

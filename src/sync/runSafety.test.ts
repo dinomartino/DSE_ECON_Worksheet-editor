@@ -3,7 +3,8 @@ import { bi } from '@/model/text';
 import { folderConnect } from './folderTestKit';
 import { documentKey } from './keys';
 import { MemoryCloud } from './memorySource';
-import { plainNamer } from './names';
+import { plainNamer, providerCopyTitle } from './names';
+import { sameProviderCopy } from './plan';
 import { runSync } from './run';
 import { computer, edit, library, memoryConnect, paper, settle, titles, type Computer, type Connect } from './testKit';
 import type { CopyNamer, SyncSource, SyncStore } from './types';
@@ -141,9 +142,55 @@ describe.each(SOURCES)('%s source', (_source, connect) => {
     expect((await library(b)).filter((row) => row.includes('來自另一部電腦'))).toHaveLength(1);
     expect(await library(a)).toEqual(await library(b));
   });
+
+  it('a provider copy resolved at the same moment by an older build and this one is one copy', async () => {
+    const cloud = new MemoryCloud();
+    const a = computer(cloud, 'A', undefined, connect);
+    const b = computer(cloud, 'B', undefined, connect);
+    const doc = paper('Base');
+    await a.store.save(doc);
+    await settle(cloud, a, b);
+    cloud.delayed = true;
+    await edit(a, doc.id, 'FromA');
+    await edit(b, doc.id, 'FromB');
+    await a.sync();
+    await b.sync();
+    cloud.deliver();
+    // A runs an older build that names the copy in English only. Both resolve the
+    // provider's file before either's copy arrives: the cloud gets the copy twice.
+    const older: CopyNamer = { ...plainNamer('A'), providerCopy: (name) => `${name} (from another computer)` };
+    await runAs(a, connect, cloud, a.store, older);
+    await b.sync();
+    cloud.deliver();
+    cloud.delayed = false;
+    for (let round = 0; round < 4; round += 1) {
+      await runAs(a, connect, cloud, a.store, older);
+      await b.sync();
+    }
+    expect(await titles(a)).toEqual({ live: ['FromA', 'FromB'], trash: [] });
+    expect(await library(a)).toEqual(await library(b));
+    expect((await library(b)).filter((row) => row.includes('from another computer'))).toHaveLength(1);
+  });
 });
 
 describe('the provider copy name', () => {
+  it('reads back the title from any build\'s name, and nothing else', () => {
+    expect(providerCopyTitle(plainNamer('A').providerCopy('Mock'))).toBe('Mock');
+    expect(providerCopyTitle('Mock (from another computer)')).toBe('Mock');
+    expect(providerCopyTitle('Mock（來自另一部電腦）')).toBe('Mock');
+    expect(providerCopyTitle('Mock (from Mac, 5 Oct 14:32)')).toBeUndefined();
+    expect(providerCopyTitle(undefined)).toBeUndefined();
+  });
+
+  it('one copy under two builds\' names is the same copy; a teacher\'s rename is not', () => {
+    const copy = paper('Mock', { name: 'Mock (from another computer)' });
+    expect(sameProviderCopy(copy, { ...copy, name: 'Mock（來自另一部電腦）' })).toBe(true);
+    expect(sameProviderCopy(copy, { ...copy, name: 'Mock (from another computer / 來自另一部電腦)' })).toBe(true);
+    expect(sameProviderCopy(copy, { ...copy, name: 'Other (from another computer)' })).toBe(false);
+    expect(sameProviderCopy(copy, { ...copy, name: 'Mock, final' })).toBe(false);
+    expect(sameProviderCopy(copy, { ...copy, name: 'Mock（來自另一部電腦）', updatedAt: '2030-01-01T00:00:00.000Z' })).toBe(false);
+  });
+
   it('is one bilingual name, the same on every computer', () => {
     expect(plainNamer('A').providerCopy('Mock')).toBe(plainNamer('B').providerCopy('Mock'));
     expect(plainNamer('A').providerCopy('Mock')).toBe('Mock (from another computer / 來自另一部電腦)');

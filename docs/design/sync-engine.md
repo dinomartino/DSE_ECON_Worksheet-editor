@@ -90,7 +90,11 @@ with the same content.
   its own document under an id derived from (inner id, hash), so both computers make one copy.
   A newer build's stray is held, never re-id'd. Its name is one bilingual name on every computer:
   "… (from another computer / 來自另一部電腦)"; a copy already at the derived key that differs only
-  in `name` (an older build named it) is adopted, not kept twice.
+  in `name` (an older build named it) is adopted, not kept twice. Two computers resolving one
+  stray at once, under two builds' names (`sameProviderCopy`: both names an automatic one of the
+  same title, by `providerCopyTitle`), still make one copy: a new stray that is its own
+  document's file but for that name is dropped (executor, before `providerCopy`), and a copy
+  here with no base meeting the other's is downloaded, not kept both. A teacher's name never matches.
 
 ## The executor (`src/sync/run.ts`)
 
@@ -105,10 +109,14 @@ with the same content.
   else (a save not from sync landed) re-plans it: both kept. `adopt` carries what the step
   planned against (`expect`); the store re-checks it with none of its own writes between.
 - **Absent here is confirmed by id** (`load`, `loadTrashed`) before a download or a remote purge:
-  a listing can miss a document still stored. A listing that fails, or lists nothing while the
-  base had live documents (the mirror of `remoteWasEmpty`), stops the run: `unavailable`,
-  reason `local-unreadable`.
+  a listing can miss a document still stored. A listing that fails stops the run: `unavailable`,
+  reason `local-unreadable`. One that lists nothing while the base had live documents (the mirror
+  of `remoteWasEmpty`) stops it too, unless every base id is cleanly absent by id (no load finds
+  it, none throws): a library really emptied. Then the base is dropped and the run is a first
+  sync (`localWasEmpty`): everything comes back, Trash too, nothing is purged.
 - One bad document never stops the run; `unavailable` stops it (status `unavailable`).
+- **`shouldStop`**, asked after the reads and between documents, ends the run there
+  (`interrupted`): as safe as any stop after a step. The scheduler asks it while suspended or stopping.
 - A source suddenly empty while the base had live documents drops the base and refills the
   mirror from this computer (`remoteWasEmpty`), never reads as "trash everything". Cost: a purge
   of every document on the other computer before this one synced comes back.
@@ -128,7 +136,7 @@ with the same content.
 - Autosave and Save now leave the document dirty when it changed during the write.
 - **Opening** (`EditorHost.openDocument`): the editor counts as open before the swap. The start
   screen's read and open, and the open's saves, run with sync held (`whileSyncPaused`, the
-  scheduler's `suspend`; a run in flight finishes first). The incoming save is skipped for a
+  scheduler's `suspend`; a run in flight stops at its next document, `interrupted`). The incoming save is skipped for a
   document stored as it is, or stored and since replaced in the editor (by sync, or an edit).
 
 ## The scheduler (`src/sync/scheduler.ts`, `src/sync/librarySync.ts`)
@@ -162,9 +170,11 @@ with the same content.
   `econ-worksheet:` key another tab's `storage` event names.
 
 Known gaps (closed 2026-10-08: a save landing between the engine's re-read and its `adopt`, by
-`expect`; a provider copy named two ways). Left: an older build and this one resolving the same
-provider copy at the same moment, neither yet seeing the other's copy, still make a second copy.
-Opening from the start screen waits out a run in flight.
+`expect`; a provider copy named two ways). Closed 2026-10-18: opening waited out a whole run (now one document);
+one provider copy resolved at once by an older build and this one (one copy, from this build's
+side). Left: an older build alone still makes its own conflict copy when this build's copy
+reaches it first under another name (it cannot be changed); this build then syncs that copy as a
+document.
 
 ## The local hash cache (`src/sync/hashCache.ts`)
 

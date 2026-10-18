@@ -2,9 +2,9 @@ import type { Worksheet } from '@/model/types';
 import type { AdoptExpect } from '@/storage/types';
 import { contentOf, contentOfText, type Content } from './content';
 import { documentKey } from './keys';
-import { planDocument, planSync, type Copy, type HoldReason, type KeyRevision, type PlanContext, type Seen, type SyncAction } from './plan';
+import { planDocument, planSync, sameProviderCopy, type Copy, type HoldReason, type KeyRevision, type PlanContext, type Seen, type SyncAction } from './plan';
 import { readLocal, readLocalDoc, readRemote, readRemoteDoc } from './snapshot';
-import type { BaseStore, CopyNamer, HashCache, Place, SyncSource, SyncStore } from './types';
+import type { BaseEntry, BaseStore, CopyNamer, HashCache, Place, SyncSource, SyncStore } from './types';
 
 /**
  * The executor: one run = list both sides, plan, apply. Every remote write is a
@@ -25,6 +25,17 @@ export interface SyncReport {
    * trashed. The interface may say so.
    */
   remoteWasEmpty: boolean;
+  /**
+   * The mirror: this library held nothing although the base had live documents, and none
+   * of them loaded by id either. The base was dropped and every document came back from
+   * the source. (Not even that confirmed: the run stops, `LOCAL_UNREADABLE`.)
+   */
+  localWasEmpty?: true;
+  /**
+   * Stopped between two documents because `shouldStop` asked (a document opening). What it
+   * did is recorded; the rest is the next run's, which finds it as any other change.
+   */
+  interrupted?: true;
   counts: Record<Count, number>;
   /** Copies made because both sides changed: the "Needs attention" list. */
   conflicts: { id: string; copyId: string; name: string }[];
@@ -65,6 +76,12 @@ export interface RunOptions {
    * one leaves the base as it was, so the edit's save meets that version as a conflict.
    */
   isBusy?: (id: string) => boolean;
+  /**
+   * Asked between documents: true ends the run there (`interrupted`). Safe at any such
+   * point, as a run stopped after any single step is (the base records only what both
+   * sides agree on), so a teacher opening a paper waits for one document, not the library.
+   */
+  shouldStop?: () => boolean;
 }
 
 class SourceUnavailable extends Error {
@@ -102,16 +119,28 @@ export const LOCAL_UNREADABLE = 'local-unreadable';
 export async function runSync(options: RunOptions): Promise<SyncReport> {
   const { store, source, base } = options;
   const report = emptyReport();
+  const stop = options.shouldStop ?? (() => false);
   const listing = await source.list();
   if (listing.status === 'unavailable') return unavailable(report, listing.reason);
   const baseEntries = await base.load();
   const hadLive = [...baseEntries.values()].some((entry) => entry.place === 'live');
   const local = await readLocal(store, options.hashCache).catch(() => undefined);
   // The mirror of `remoteWasEmpty`: no document here at all, though the base had live ones,
-  // is a library that did not list, never everything to download over or purge.
-  if (!local || (hadLive && local.size === 0)) return unavailable(report, LOCAL_UNREADABLE);
+  // is a library that did not list, never everything to download over or purge — unless
+  // every one of them, asked for by id, is cleanly absent. Then the library really was
+  // emptied (a folder wiped by hand): the base goes and this run is a first sync, so every
+  // document comes back from the source, Trash too (never read as deleted forever).
+  if (!local) return unavailable(report, LOCAL_UNREADABLE);
+  if (hadLive && local.size === 0) {
+    if (!(await confirmedEmpty(store, baseEntries))) return unavailable(report, LOCAL_UNREADABLE);
+    for (const id of baseEntries.keys()) await base.remove(id);
+    baseEntries.clear();
+    report.localWasEmpty = true;
+  }
+  if (stop()) return { ...report, interrupted: true };
   const remote = await readRemote(source, listing.entries, baseEntries);
   if ('status' in remote) return unavailable(report, remote.reason);
+  if (stop()) return { ...report, interrupted: true };
 
   if (hadLive && remote.docs.size === 0 && remote.strays.length === 0) {
     for (const id of baseEntries.keys()) await base.remove(id);
@@ -122,6 +151,7 @@ export async function runSync(options: RunOptions): Promise<SyncReport> {
   const ctx: PlanContext = { namer: options.namer, now: (options.now ?? (() => new Date()))() };
   const executor = new Executor(options, ctx, report);
   for (const action of planSync(local, remote, baseEntries, ctx)) {
+    if (stop()) return { ...report, interrupted: true };
     try {
       await executor.apply(action, 1);
     } catch (error) {
@@ -130,6 +160,18 @@ export async function runSync(options: RunOptions): Promise<SyncReport> {
     }
   }
   return report;
+}
+
+/** Every document the base knows is absent here by id too: no load finds it, and none fails. */
+async function confirmedEmpty(store: SyncStore, base: Map<string, BaseEntry>): Promise<boolean> {
+  for (const id of base.keys()) {
+    try {
+      if ((await store.load(id)) !== undefined || (await store.loadTrashed(id)) !== undefined) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
 }
 
 const unavailable = (report: SyncReport, reason?: string): SyncReport => ({
@@ -158,6 +200,10 @@ class Executor {
   async apply(action: SyncAction, attempt: number): Promise<void> {
     // Planned from a cached hash: load it whole and plan again. Not a retry.
     if (action.kind === 'needsLocal') return this.apply(await this.replan(action.id), attempt);
+    // The same copy another build already made and named its way: one copy, no second.
+    if (action.kind === 'providerCopy' && (await this.copyOfOwnFile(action.from))) {
+      return this.apply({ kind: 'dropDuplicate', from: action.from }, attempt);
+    }
     try {
       if (action.kind !== 'hold' && 'id' in action && this.busy(action.id)) throw new Busy();
       await this.step(action);
@@ -279,6 +325,27 @@ class Executor {
       case 'dropDuplicate':
         return this.removeIfUnchanged(action.from);
     }
+  }
+
+  /**
+   * The stray is its own document's file but for an automatic provider-copy name: two
+   * computers made one copy at once and the provider kept both writes (`sameProviderCopy`).
+   */
+  private async copyOfOwnFile(from: KeyRevision): Promise<boolean> {
+    const read = await this.options.source.read(from.key);
+    if (read.status === 'unavailable') throw new SourceUnavailable(read.reason);
+    // Changed since it was planned: copied as planned, and the changed file is left for the next run.
+    if (read.status !== 'ok' || read.revision !== from.revision) return false;
+    let stray: Worksheet;
+    try {
+      stray = contentOfText(read.text).worksheet;
+    } catch {
+      return false;
+    }
+    const own = await readRemoteDoc(this.options.source, stray.id);
+    if ('status' in own) throw new SourceUnavailable(own.reason);
+    const file = own.live ?? own.trash;
+    return !!file?.content && file.content !== 'unreadable' && sameProviderCopy(file.content.worksheet, stray);
   }
 
   /** The local document as planned, or Stale: the teacher saved, trashed or restored since. */

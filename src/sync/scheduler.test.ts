@@ -12,7 +12,7 @@ import { plainNamer } from './names';
 import type { SyncReport } from './run';
 import { createScheduler, DEFAULT_TIMING, type Scheduler } from './scheduler';
 import { computer, paper, settle } from './testKit';
-import type { SyncSource } from './types';
+import type { SyncSource, SyncStore } from './types';
 
 /** The scheduler over fake timers: when runs happen, never what they do (`run.test.ts`). */
 
@@ -275,6 +275,48 @@ describe('the sync scheduler', () => {
     await store.save(paper('Late'));
     await advance(rescanMs * 2);
     expect(reports).toHaveLength(1);
+  });
+
+  it('suspend stops a run in flight at its next document, and the run after finishes the rest', async () => {
+    const cloud = new MemoryCloud();
+    const a = computer(cloud, 'A');
+    for (let i = 0; i < 5; i += 1) await a.store.save(paper(`P${i}`));
+    await a.sync();
+    const s = setup({ cloud });
+    let opened: Promise<number> | undefined;
+    // A teacher opens a paper just as the first download lands.
+    const store: SyncStore = {
+      list: (o) => s.store.list(o),
+      listTrash: (o) => s.store.listTrash(o),
+      load: (id) => s.store.load(id),
+      loadTrashed: (id) => s.store.loadTrashed(id),
+      trash: (id) => s.store.trash(id),
+      restore: (id) => s.store.restore(id),
+      adopt: async (worksheet, expect) => {
+        const adopted = await s.store.adopt(worksheet, expect);
+        opened ??= scheduler.suspend(async () => (await s.store.list()).length);
+        return adopted;
+      },
+    };
+    const scheduler = createScheduler({
+      source: s.source,
+      store,
+      base: s.base,
+      namer: plainNamer('B'),
+      env: { visible: () => true, onShown: () => () => {}, onStoreChange: s.feed.subscribe },
+      onReport: (report) => s.reports.push(report),
+    });
+    running = scheduler;
+    scheduler.start();
+    await flush();
+    expect(await opened).toBe(1);
+    expect(s.reports[0]).toMatchObject({ status: 'ok', interrupted: true, counts: { downloaded: 1 } });
+    expect(scheduler.status().lastSyncedAt).toBeUndefined();
+    await advance(soonMs);
+    expect(s.reports[1].interrupted).toBeUndefined();
+    expect(s.reports[1].counts.downloaded).toBe(4);
+    expect(await s.store.list()).toHaveLength(5);
+    expect(scheduler.status().lastSyncedAt).toBeDefined();
   });
 
   it('passes isBusy through: unsaved edits are held', async () => {

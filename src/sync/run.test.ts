@@ -6,7 +6,8 @@ import { stringifyWorksheet } from "@/storage/document";
 import { documentKey } from "./keys";
 import { folderConnect } from "./folderTestKit";
 import { MemoryCloud } from "./memorySource";
-import { LOCAL_UNREADABLE } from "./run";
+import { plainNamer } from "./names";
+import { LOCAL_UNREADABLE, runSync } from "./run";
 import {
   computer,
   edit,
@@ -454,14 +455,35 @@ describe.each(SOURCES)("%s source", (_source, connect) => {
       expect(await library(a)).toEqual([`live ${doc.id} One`]);
     });
 
-    it("a library empty here stops the run (a listing that failed): nothing is deleted there", async () => {
+    it("a library that lists nothing while its documents still load stops the run: nothing is deleted there", async () => {
       const { cloud, a, b } = pair();
       await a.store.save(paper("Two"));
       await settle(cloud, a, b);
-      b.storage.clear();
-      expect(await b.sync()).toMatchObject({ status: "unavailable", reason: LOCAL_UNREADABLE });
+      const blind = runSync({
+        store: { ...b.store, list: async () => [], listTrash: async () => [], load: (id) => b.store.load(id), loadTrashed: (id) => b.store.loadTrashed(id), adopt: (w, e) => b.store.adopt(w, e), trash: (id) => b.store.trash(id), restore: (id) => b.store.restore(id) },
+        source: connect(cloud, "B"),
+        base: b.base,
+        namer: plainNamer("B"),
+      });
+      expect(await blind).toMatchObject({ status: "unavailable", reason: LOCAL_UNREADABLE });
       await settle(cloud, a, b);
       expect(await titles(a)).toEqual({ live: ["Two"], trash: [] });
+      expect(await titles(b)).toEqual({ live: ["Two"], trash: [] });
+    });
+
+    it("a library emptied for real (nothing loads by id either) is filled again from the mirror", async () => {
+      const { cloud, a, b } = pair();
+      await a.store.save(paper("Two"));
+      await a.store.save(paper("Binned"));
+      await settle(cloud, a, b);
+      const binned = (await a.store.list()).find((row) => row.title === "Binned")!;
+      await a.store.trash(binned.id);
+      await settle(cloud, a, b);
+      b.storage.clear();
+      expect(await b.sync()).toMatchObject({ status: "ok", localWasEmpty: true, counts: { downloaded: 2, purgedRemote: 0 } });
+      await settle(cloud, a, b);
+      expect(await titles(b)).toEqual({ live: ["Two"], trash: ["Binned"] });
+      expect(await titles(a)).toEqual({ live: ["Two"], trash: ["Binned"] });
     });
 
     it("a document lost here is brought back from the mirror, not deleted there", async () => {

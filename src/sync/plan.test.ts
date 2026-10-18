@@ -157,6 +157,14 @@ describe('no base: first sync, or a second computer joining', () => {
     const reformatted = contentOf(v1.worksheet); // the same document, compared after stringify
     expect(shape(plan(local('live', v1), remote(file('live', 'r1', reformatted)), undefined))).toBe('link live');
   });
+
+  it('takes the remote name for one provider copy two builds named differently, and keeps a rename', () => {
+    const mine = version('copied', { name: 'copied (from another computer / 來自另一部電腦)' });
+    const older = contentOf({ ...mine.worksheet, name: 'copied（來自另一部電腦）' });
+    const renamed = contentOf({ ...mine.worksheet, name: 'copied, final' });
+    expect(shape(plan(local('live', mine), remote(file('live', 'r1', older)), undefined))).toBe('download live');
+    expect(shape(plan(local('live', mine), remote(file('live', 'r1', renamed)), undefined))).toBe('conflict copy:live id:live');
+  });
 });
 
 describe('keep both', () => {
