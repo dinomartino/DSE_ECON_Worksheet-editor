@@ -478,7 +478,8 @@ readPdf(bytes: ArrayBuffer, options?: { prepareImage?: (blob: Blob) => Promise<I
   that reached the margin) joins the one above. So a PDF is read in `paragraph` mode and the walk
   never joins twice. Bold and italic come from font names. A drawn rule in a gap is `______`.
 - **Figures** (`findFigures`): images, and path clusters with a curve, a slant or an untexted fill.
-  Table borders, shaded cells and frames are not figures. A figure takes its axes and short labels.
+  Table borders, shaded cells and frames are not figures. A figure takes its axes and short labels,
+  judged with the items they run on with: never a question label, a caption, a sentence or a marked line.
   Each becomes an image line with `src: ''`: a slot, flagged `imageLost`. With `prepareImage` in a
   browser, the page is rendered at 2× and the region cropped to PNG. A file with no text at all is
   one picture per page, which reads as `scan`.
