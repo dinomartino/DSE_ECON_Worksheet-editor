@@ -17,22 +17,15 @@ off the bottom.** It is the first thing a fresh session reads — then
   interrupts a run between documents, the twin provider copy from an older build is merged, a
   truly emptied library refills (Trash too); picture `pPr` in schema order; `scripts/soffice.mjs`
   falls back to `soffice` on PATH. None tried in real Word, Tauri or a real provider.
-- **#2 follow-ups done 2026-10-18 (Unreleased):** `price-floor-dwl` (skill 25) and
-  `externality-overproduction` (skill 09) templates; every template's DL → DWL. User kept
-  效率損失 and 過剩 (not 無謂損失 / 超額供應) and 買方/賣方稅負. Positive externality not built (not asked).
+- **#2 follow-ups (Unreleased):** floor DWL + negative externality templates, DL → DWL. User kept
+  效率損失, 過剩, 買方/賣方稅負. Positive externality not built (not asked).
 - **Tabs vs Word, phases 1–3 built 2026-10-18 (Unreleased, `docs/Tabs vs Word.md`):** Tab types a
   tab in text paragraphs, a Word-rule page layout (`tabLayout.ts`), `<w:tab/>`/`<w:tabs>`/clipboard,
-  ruler + Tab stops panel + quick layouts (`TabRuler.tsx`). No schema bump (`tabStops` stays at 1).
-  Page vs LibreOffice within 0.3 pt. Not tried in real Word or Tauri. Follow-ups: zh default 480,
-  import keeping typed tabs, marks-paragraph carried-tab gap.
+  ruler + Tab stops panel + quick layouts (`TabRuler.tsx`). No schema bump. Not tried in real Word
+  or Tauri. zh default 480 left as is (the one zh-HK reference file uses 720).
 - **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked. `feature/film-v2` (worktree `.claude/worktrees/film-v2`) on GitHub since 2026-10-11, not merged.
-- **Shipped in 0.8.0, none tried in the Tauri window before release:** table Same height/width
-  (`distributeRows`/`distributeColumns`); no editor overscroll; import brings header/footer/title
-  block (§ 12, unreproducible bits listed with Copy); band rows as Word tab stops, masthead
-  numbers as fields, clipboard ColumnsNode as tab stops (within 1pt of LibreOffice).
-  **Unverified in Word:** clipboard paste, a tab past the last stop, masthead rule/colour.
-- **Found-folder offer, shipped in 0.8.0** (`library_found`, `src/sync/foundFolder.ts`): faked shell
-  only; run `desktop:dev` with a synced library (picker location, "done" flag across a restart).
+- **0.8.0, untried in Tauri:** table Same height/width, import header/footer, band rows as tab stops;
+  found-folder offer (`src/sync/foundFolder.ts`, faked shell only). Unverified in Word: clipboard paste.
 - **0.8.0 Import/OCR** unverified: Intel Mac, macOS 12–13.2, signed build, native open sheet.
 
 ## Where we are
@@ -84,5 +77,4 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Log
 
 - **2026-10-18** — Known-gap sweep: table keep chain, tab wrap + margin inset, import tabs, PDF captions, sync gaps.
-- **2026-10-18** — Tabs vs Word phases 1–3: Tab key, ruler, tab stops, quick layouts; checked against LibreOffice and `real_life_reference/`.
-- **2026-10-18** — #2 follow-ups: floor DWL + negative externality templates, DL → DWL.
+- **2026-10-18** — Tabs vs Word phases 1–3; #2 follow-ups (floor DWL, negative externality).
