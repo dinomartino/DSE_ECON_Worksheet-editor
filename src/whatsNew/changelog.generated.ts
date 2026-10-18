@@ -63,6 +63,12 @@ a version heading is edited afterwards.
   lower than Word.
   <!-- zh: **與「(3 marks)」同一段的定位文字與 Word 排法一致。** 以定位字元推到右邊界的文字留在原行，只有分數移到下一行；若只放得下一部分，該部分留在原行，其餘換行。以往頁面可能把定位字元或最後一個字排得比 Word 低一行。 -->
 
+### Fixed
+- **A table in an MC question no longer splits across pages in Word.** The page always
+  kept such a question whole, table included, but Word could break the table between
+  rows. The Word file now keeps it together too.
+  <!-- zh: **MC 題中的表格在 Word 不再跨頁分開。** 頁面一向把這類題目連同表格保持在同一頁，但 Word 可能在表格行與行之間分頁。現在 Word 檔案亦會保持完整。 -->
+
 ## 0.8.3 — 2026-10-18
 
 ### Added

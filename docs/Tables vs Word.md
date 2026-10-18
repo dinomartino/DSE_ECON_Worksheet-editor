@@ -198,7 +198,7 @@ Adds optional fields to saved files · your call each
 1. Vertical alignment in a cell: top, centre, bottom.S–M
 2. Repeat the heading row on each page, with long tables splitting across pages in the app as Word already does.M–L
 
-   Done as "repeat only": `headerRows` writes `w:tblHeader`; the rows print as typed. A table inside a keep chain (a classroom MC) still moves whole on screen.
+   Done as "repeat only": `headerRows` writes `w:tblHeader`; the rows print as typed. A table inside a keep chain (a classroom MC) moves whole on screen, and since 18 Oct the `.docx` keeps it whole too: every row's paragraphs carry `w:keepNext` when the table does (`src/export/docx/body.ts:tableNodeXml`, test `src/export/docx/tableKeepChain.test.ts`). Checked in LibreOffice 7.4: a 12-row MC table straddling a page break now moves to the next page with its stem instead of splitting.
 
    The design notes say "Tables have no header row: no HKDSE table has grey or bold header treatment". Repeating the row without styling it would be a different feature.
 3. Cell shading.S–M

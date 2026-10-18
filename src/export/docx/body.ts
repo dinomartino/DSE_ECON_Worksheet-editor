@@ -630,7 +630,11 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
         // A heading row repeats on every page the table runs onto (`TableNode.headerRows`).
         (rowIndex < (node.headerRows ?? 0) ? '<w:tblHeader/>' : '') +
         '</w:trPr>';
-      const keepRow = node.rowKeepNext?.[rowIndex] ?? false;
+      // A table inside a keep chain (a classroom MC is kept whole) keeps every row with
+      // the next, the last one with the paragraph after the table, as the preview keeps
+      // its pieces together (`tablePieces`). Without it Word broke such a table between
+      // rows that the page showed whole.
+      const keepRow = Boolean(node.keepNext) || (node.rowKeepNext?.[rowIndex] ?? false);
 
       const cells = row
         .map((cell, cellIndex) => {
@@ -702,6 +706,8 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
                     heightPx: cell.image.heightPx,
                     altText: cell.image.altText,
                     align: 'center',
+                    // Every paragraph of a kept row keeps, the picture's included.
+                    keepNext: keepRow,
                   },
                   context,
                 )
