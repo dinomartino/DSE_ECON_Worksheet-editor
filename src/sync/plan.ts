@@ -3,6 +3,7 @@ import type { Worksheet } from '@/model/types';
 import { worksheetTitle } from '@/storage/document';
 import { contentOf, type Content } from './content';
 import { derivedId } from './hash';
+import { providerCopyTitle } from './names';
 import type { LocalContent, LocalDoc, RemoteDoc, RemoteFile, RemoteSnapshot } from './snapshot';
 import type { BaseEntry, CopyNamer, Place } from './types';
 
@@ -93,6 +94,19 @@ function remoteDelta(file: RemoteFile | undefined, base: BaseEntry): Delta {
 const remoteSchema = (file: RemoteFile, base: BaseEntry | undefined) =>
   file.content && file.content !== 'unreadable' ? file.content.schemaVersion : (base?.schemaVersion ?? 0);
 
+/**
+ * One provider copy named by two builds: the same document but for its name, and both names
+ * the automatic provider-copy name of one title (today's, or an older build's per-language
+ * one). Two computers that meet one provider conflict at once each make it; kept twice, it
+ * would sync as two documents. A name a teacher chose never matches, so no rename is dropped.
+ */
+export function sameProviderCopy(a: Worksheet, b: Worksheet): boolean {
+  if (a.name === b.name) return false;
+  const title = providerCopyTitle(a.name);
+  if (title === undefined || title !== providerCopyTitle(b.name)) return false;
+  return contentOf({ ...a, name: b.name }).hash === contentOf(b).hash;
+}
+
 function named(worksheet: Worksheet, id: string, name: string, place: Place): Copy {
   return { ...contentOf({ ...worksheet, id, name }), id, place };
 }
@@ -170,7 +184,11 @@ export function planDocument(
     if (!file) return local ? upload() : { kind: 'nothing', id };
     if (!local) return download(file);
     const theirs = file.content as Content; // no base: always read
-    return theirs.hash === local.hash ? agree(file) : conflict(file);
+    if (theirs.hash === local.hash) return agree(file);
+    // This computer's copy of a provider conflict, and the other's under another build's
+    // name: one copy, the remote's name (a whole local version is needed to tell).
+    if (local.worksheet && sameProviderCopy(local.worksheet, theirs.worksheet)) return download(file);
+    return conflict(file);
   }
 
   const ld = localDelta(local, place, base);

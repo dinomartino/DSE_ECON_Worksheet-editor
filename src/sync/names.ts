@@ -11,7 +11,17 @@ import type { CopyNamer } from './types';
  */
 export const providerCopyName = (title: string) => `${title} (from another computer / 來自另一部電腦)`;
 
-const MONTHS =['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** Today's name, then the per-language ones builds before 2026-10-08 gave the same copy. */
+const PROVIDER_COPY_SUFFIXES = [' (from another computer / 來自另一部電腦)', ' (from another computer)', '（來自另一部電腦）'];
+
+/** The title a provider-copy name was made from, by any build; undefined for any other name. */
+export function providerCopyTitle(name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  const suffix = PROVIDER_COPY_SUFFIXES.find((end) => name.endsWith(end));
+  return suffix === undefined ? undefined : name.slice(0, -suffix.length);
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const two = (n: number) => String(n).padStart(2, '0');
 
 export function plainNamer(computer: string): CopyNamer {

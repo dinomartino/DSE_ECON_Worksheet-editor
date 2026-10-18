@@ -91,9 +91,9 @@ export interface Scheduler {
   trigger(): void;
   status(): SyncStatus;
   subscribe(listener: (status: SyncStatus) => void): () => void;
-  /** Waits out a run in flight, holds new ones while `work` runs, then runs once. */
+  /** Stops a run in flight at its next document, holds new ones while `work` runs, then runs once. */
   suspend<T>(work: () => Promise<T>): Promise<T>;
-  /** Unsubscribes, waits out a run in flight, flushes the base, closes the source. */
+  /** Unsubscribes, stops a run in flight at its next document, flushes the base, closes the source. */
   stop(): Promise<void>;
 }
 
@@ -243,6 +243,8 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
           namer: options.namer,
           ...(options.hashCache ? { hashCache: options.hashCache } : {}),
           ...(options.isBusy ? { isBusy: options.isBusy } : {}),
+          // An open (`suspend`) or `stop` waits for one document, not the whole run.
+          shouldStop: () => suspended > 0 || stopped,
         });
       } finally {
         await base.flush?.().catch(() => undefined);
@@ -274,7 +276,9 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
       return;
     }
     failures = 0;
-    setStatus({ state: 'idle', lastReport: report, lastSyncedAt: now });
+    // Cut short: not a finished run, so the last one's time stands; `suspend` runs again after.
+    if (report.interrupted) setStatus({ ...status, state: 'idle', lastReport: report });
+    else setStatus({ state: 'idle', lastReport: report, lastSyncedAt: now });
   }
 
   function afterRun() {
