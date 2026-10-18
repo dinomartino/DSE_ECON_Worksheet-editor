@@ -873,11 +873,11 @@ function pictureXml(
   const imageParagraph =
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
-    // A picture is placed by `w:jc` on its own paragraph — there is no alignment
-    // property on the drawing itself. Centre is the default rather than `left` because
-    // every figure in the reference papers is centred; `align` only records a teacher
-    // who chose otherwise, so untouched documents keep exporting exactly as before.
-    `<w:jc w:val="${node.align ?? 'center'}"/>` +
+    // CT_PPr is a sequence: keepNext, then spacing, then jc.
+    // A picture keeps with what follows when something follows it that belongs to it —
+    // a caption printed *below*. With the caption above, the picture is the last thing
+    // in the group and only `keepNext` from the caller applies.
+    (node.keepNext || (node.caption && !above) ? '<w:keepNext/>' : '') +
     // The picture's line must be allowed to grow to the picture.
     //
     // Every other paragraph carries the document's fixed 12pt line
@@ -895,10 +895,11 @@ function pictureXml(
     // rhythm around the figure is unaffected: separation is a blank line either side
     // (§one fixed line, no paragraph spacing), never spacing on this paragraph.
     '<w:spacing w:line="240" w:lineRule="auto"/>' +
-    // A picture keeps with what follows when something follows it that belongs to it —
-    // a caption printed *below*. With the caption above, the picture is the last thing
-    // in the group and only `keepNext` from the caller applies.
-    (node.keepNext || (node.caption && !above) ? '<w:keepNext/>' : '') +
+    // A picture is placed by `w:jc` on its own paragraph — there is no alignment
+    // property on the drawing itself. Centre is the default rather than `left` because
+    // every figure in the reference papers is centred; `align` only records a teacher
+    // who chose otherwise, so untouched documents keep exporting exactly as before.
+    `<w:jc w:val="${node.align ?? 'center'}"/>` +
     '</w:pPr>' +
     `<w:r>${drawing}</w:r>` +
     '</w:p>';

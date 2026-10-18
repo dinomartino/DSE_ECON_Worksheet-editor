@@ -51,8 +51,6 @@ a version heading is edited afterwards.
   comes in as text you can edit, instead of being cropped into the picture and lost from
   the question. Axis names and labels on the graph still stay with the picture.
   <!-- zh: **匯入 PDF 時，圖表旁的標題或句子不再被收進圖片。** 緊貼圖表的文字，例如「Figure 1」、「Study the graph below.」或「(2 marks)」，現在會以可編輯的文字匯入，不再被裁進圖片而從題目中消失。坐標軸名稱及圖上標示仍會留在圖片內。 -->
-
-### Fixed
 - **The page uses the full width between the margins.** Questions and text elements sat
   3 pt inside each margin on the page, so text set to the right margin stopped short of
   it and lines could wrap a little earlier than in Word. The Word file is unchanged.
@@ -62,14 +60,10 @@ a version heading is edited afterwards.
   stays and the rest wraps. Before, the page could push the tab, or the last word, a line
   lower than Word.
   <!-- zh: **與「(3 marks)」同一段的定位文字與 Word 排法一致。** 以定位字元推到右邊界的文字留在原行，只有分數移到下一行；若只放得下一部分，該部分留在原行，其餘換行。以往頁面可能把定位字元或最後一個字排得比 Word 低一行。 -->
-
-### Fixed
 - **A table in an MC question no longer splits across pages in Word.** The page always
   kept such a question whole, table included, but Word could break the table between
   rows. The Word file now keeps it together too.
   <!-- zh: **MC 題中的表格在 Word 不再跨頁分開。** 頁面一向把這類題目連同表格保持在同一頁，但 Word 可能在表格行與行之間分頁。現在 Word 檔案亦會保持完整。 -->
-
-### Fixed
 - **Opening a paper no longer waits for sync to finish.** With a synced folder, a paper
   opened while sync was busy waited for the whole library; now sync pauses after the paper
   it is on and carries on once yours is open.
@@ -82,6 +76,11 @@ a version heading is edited afterwards.
   this computer were wiped (and none can be found), sync now brings every paper back from
   the folder, Trash included, instead of stopping with "Can't reach the storage folder".
   <!-- zh: **本機資料庫被清空後，會從同步資料夾重新載入。** 若本機的試卷被清除（且一份都找不到），同步現在會從資料夾取回所有試卷（包括垃圾桶），不再停在「無法連接儲存資料夾」。 -->
+
+- **Pictures in the Word file are written in the order Word's format expects.** Nothing
+  changes on the page; stricter readers of \`.docx\` files no longer see the picture's
+  settings out of order.
+  <!-- zh: **Word 檔案中的圖片設定改按 Word 格式規定的次序寫入。** 版面不變；較嚴格的 \`.docx\` 讀取程式不會再看到次序錯亂的圖片設定。 -->
 
 ## 0.8.3 — 2026-10-18
 

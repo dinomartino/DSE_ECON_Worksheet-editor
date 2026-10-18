@@ -822,6 +822,21 @@ describe('tables and images (§7.5, §11.5, §11.6)', () => {
     expect(pictureParagraph).toContain('<w:spacing w:line="240" w:lineRule="auto"/>');
     expect(pictureParagraph).not.toContain('w:lineRule="exact"');
   });
+
+  // CT_PPr is a sequence. Word has opened the old order (jc, spacing, keepNext), but a
+  // validating reader need not; the picture paragraph now writes the schema's order.
+  it("writes a picture paragraph's properties in the schema's order", async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+    const pictures = [...document.matchAll(/<w:pPr>((?:(?!<\/w:pPr>).)*)<\/w:pPr><w:r><w:drawing>/g)];
+    expect(pictures.length).toBeGreaterThan(0);
+    const schema = ['pStyle', 'keepNext', 'spacing', 'jc'];
+    for (const [, props] of pictures) {
+      const names = [...props.matchAll(/<w:(\w+)[ />]/g)].map((m) => m[1]);
+      expect(names.every((name) => schema.includes(name))).toBe(true);
+      expect(names).toEqual([...names].sort((a, b) => schema.indexOf(a) - schema.indexOf(b)));
+    }
+  });
 });
 
 describe('page breaks (§7.6, §11.7)', () => {

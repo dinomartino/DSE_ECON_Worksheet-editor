@@ -12,7 +12,9 @@ import { pathToFileURL } from 'node:url';
  * holds the system's CJK faces; it is created on first use and reused after.
  */
 
-export const SOFFICE = '/Applications/LibreOffice.app/Contents/MacOS/soffice';
+const MAC_SOFFICE = '/Applications/LibreOffice.app/Contents/MacOS/soffice';
+/** The macOS app when installed, else `soffice` on PATH (Linux, CI). */
+export const SOFFICE = existsSync(MAC_SOFFICE) ? MAC_SOFFICE : 'soffice';
 
 /** Where the profile lives unless `--lo-profile=<dir>` says otherwise. */
 export const DEFAULT_LO_PROFILE = join(tmpdir(), 'econ-lo-profile');

@@ -7,8 +7,16 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Table gaps: a table in a keep
-  chain stays whole on screen but Word can break its rows; Word packs justified lines tighter.
+- **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Word packs justified
+  lines tighter than the page (Word's own spacing, not fixable here).
+- **Known-gap sweep 2026-10-18 (Unreleased, merged on develop):** MC table kept whole in the
+  `.docx` (every row `keepNext`, LibreOffice-checked); tabbed "(n marks)" paragraphs wrap as
+  LibreOffice (`carriesTab`) and the page text column now sits exactly on the margins (`-mx-1`,
+  changes on-page wrapping of every document); import keeps typed tabs (`tabbed` lines, scorecard
+  unchanged, stops not imported); vector-PDF captions beside a graph stay text; sync: opening
+  interrupts a run between documents, the twin provider copy from an older build is merged, a
+  truly emptied library refills (Trash too); picture `pPr` in schema order; `scripts/soffice.mjs`
+  falls back to `soffice` on PATH. None tried in real Word, Tauri or a real provider.
 - **#2 follow-ups done 2026-10-18 (Unreleased):** `price-floor-dwl` (skill 25) and
   `externality-overproduction` (skill 09) templates; every template's DL → DWL. User kept
   效率損失 and 過剩 (not 無謂損失 / 超額供應) and 買方/賣方稅負. Positive externality not built (not asked).
@@ -56,24 +64,25 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Open threads and known gaps
 
-- Import: text inside a figure's box stays in the crop. (Tables now split across sheets in the preview.)
+- Import: a legend written as a sentence beside a PDF graph now comes in as text; tab stops are not
+  imported. A left/centre stop exactly at the margin differs from LibreOffice (Word unknown).
 - **Old releases:** v0.4/0.5 can still export a schema-2 file (student copy shows answers) and
   "Duplicate as editable copy" it; v0.2–0.3 have no read-only guard; none draws revenue areas
   or model answer diagrams (no leak).
 - **Never checked:** a real import of our exports into the four other apps; the desktop feedback
   opener; real Word/PMingLiU (LibreOffice + a Ming face agree); the desktop `pack.json` in Tauri.
-- Sync: an older and a newer build resolving one provider copy at once can still make a second;
-  opening a paper waits out a run in flight; a library with no document at all pauses sync.
+- Sync: an older build that receives this build's copy first can still make its own extra copy.
   Windows code passes CI but never ran on a real PC or provider.
 - Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
-## Last verified (2026-10-18, tabs commit on develop)
+## Last verified (2026-10-18, gap sweep on develop)
 
-- `npm test` 5658, typecheck green, lint at baseline (40). Samples byte-identical bar the
-  random MC versions; `cover-verify` green; `lq-verify` fails only the pitch check, as base does
-  on Linux (no CJK font).
+- `npm test` 5680, typecheck green, lint at baseline (40); `cover-verify` green; `lq-verify` fails
+  only the pitch check, as base does on Linux (no CJK font). On Linux the harnesses need Chrome at
+  `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
 
 ## Log
 
+- **2026-10-18** — Known-gap sweep: table keep chain, tab wrap + margin inset, import tabs, PDF captions, sync gaps.
 - **2026-10-18** — Tabs vs Word phases 1–3: Tab key, ruler, tab stops, quick layouts; checked against LibreOffice and `real_life_reference/`.
 - **2026-10-18** — #2 follow-ups: floor DWL + negative externality templates, DL → DWL.
