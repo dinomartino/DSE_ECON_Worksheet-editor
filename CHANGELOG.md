@@ -38,6 +38,13 @@ a version heading is edited afterwards.
   that said DL now say DWL, as the rest do. Diagrams already in your papers are unchanged.
   <!-- zh: **所有圖表範本的效率損失一律標示為 DWL。** 原本標示 DL 的壟斷範本現改為 DWL，與其他範本一致。已放在試卷中的圖表不受影響。 -->
 
+### Fixed
+- **Importing a PDF no longer hides a caption or sentence inside a graph's picture.** Text
+  right beside a graph, such as "Figure 1", "Study the graph below." or "(2 marks)", now
+  comes in as text you can edit, instead of being cropped into the picture and lost from
+  the question. Axis names and labels on the graph still stay with the picture.
+  <!-- zh: **匯入 PDF 時，圖表旁的標題或句子不再被收進圖片。** 緊貼圖表的文字，例如「Figure 1」、「Study the graph below.」或「(2 marks)」，現在會以可編輯的文字匯入，不再被裁進圖片而從題目中消失。坐標軸名稱及圖上標示仍會留在圖片內。 -->
+
 ## 0.8.3 — 2026-10-18
 
 ### Added

@@ -213,9 +213,27 @@ describe('findFigures', () => {
 
   it('never grows a picture whose region is already measured (a scan’s drawing)', () => {
     const box = { x: 100, y: 400, w: 200, h: 150 };
-    const caption = [at('Figure 1', 170, 556)];
-    expect(findFigures(page(caption, { graphics: [{ kind: 'image', box }] })).figures[0].h).toBeGreaterThan(150);
-    expect(findFigures(page(caption, { graphics: [{ kind: 'image', box, placed: true }] })).figures).toEqual([box]);
+    const label = [at('Quantity', 170, 556)];
+    expect(findFigures(page(label, { graphics: [{ kind: 'image', box }] })).figures[0].h).toBeGreaterThan(150);
+    expect(findFigures(page(label, { graphics: [{ kind: 'image', box, placed: true }] })).figures).toEqual([box]);
+  });
+
+  it('leaves a caption, a sentence and a marked line beside a picture out of its crop', () => {
+    const box = { x: 100, y: 400, w: 200, h: 150 };
+    const graphics = [{ kind: 'image' as const, box }];
+    for (const text of [[at('Figure 1', 170, 556)], [at('Study the graph.', 150, 556)], [at('(2 marks)', 200, 392)]]) {
+      expect(findFigures(page(text, { graphics })).figures).toEqual([box]);
+    }
+    // A sentence split into pdf.js pieces is judged whole.
+    expect(findFigures(page([at('Study the graph ', 120, 556), at('below.', 210, 556)], { graphics })).figures).toEqual([box]);
+    // Axis names still join it.
+    expect(findFigures(page([at('Price ($)', 60, 540), at('0', 92, 392)], { graphics })).figures[0].x).toBeLessThan(100);
+  });
+
+  it('keeps that text in the page’s text, not lost to the picture', () => {
+    const box = { x: 100, y: 400, w: 200, h: 150 };
+    const lines = raws([page([at('1. Study the graph below.', 42, 700), at('Figure 1', 170, 556), at('Explain the shift.', 42, 380)], { graphics: [{ kind: 'image', box }] })]);
+    expect(lines).toContain('Figure 1');
   });
 });
 

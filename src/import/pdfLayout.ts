@@ -14,6 +14,7 @@ import { bareOptionLetter, labelLevel, loneOptionLabel, marksOnly, parseLabel, t
 import { labelZone, repeatKey, tidyText } from './normalize';
 import type { RawLine, RawRun } from './readPlain';
 import type { PageChrome } from './pageChrome';
+import { isCaption } from './figures';
 import { pdfChrome } from './pdfChrome';
 import { pairByPlace } from './pictureOptions';
 import type { Family } from './types';
@@ -132,6 +133,23 @@ const union = (a: PdfBox, b: PdfBox): PdfBox => {
 
 // ---- figures and rules ----
 
+/** Ends like a sentence or carries a mark ("(2 marks)"): text, never a label on a drawing. */
+const NOT_A_LABEL = /[.?？!！。；;]$|[(（]\s*\d{1,2}\s*(?:marks?|分)\s*[)）]$/i;
+
+/** Each row's non-blank items, split where a gap wider than a type size and a half falls. */
+function textRuns(items: readonly PdfItem[]): PdfItem[][] {
+  return rowsOf(items.filter((it) => it.str.trim())).flatMap((row) => {
+    const runs: PdfItem[][] = [];
+    for (const it of row.items) {
+      const run = runs[runs.length - 1];
+      const last = run?.[run.length - 1];
+      if (last && it.x - right(last) <= Math.max(it.size, last.size) * 1.5) run.push(it);
+      else runs.push([it]);
+    }
+    return runs;
+  });
+}
+
 /**
  * Picture regions: images, and clusters of paths with a drawing in them (a curve or slant,
  * or a filled shape with no text on it). Rules alone are table borders and answer lines;
@@ -174,12 +192,13 @@ export function findFigures(page: PdfPage): { figures: PdfBox[]; rules: PdfBox[]
     placed.push(group.every((g) => g.placed));
   }
   // Grow each figure by the axes beside it, then once by its short labels ("P", "Quantity",
-  // "0"), so a crop shows them and they stay out of the text. Nothing that starts with a
-  // label ("A. …") is taken, and labels never chain.
-  const labels = page.items.filter((it) => {
-    const t = it.str.trim();
-    return t && t.length <= 24 && !it.rotated && !parseLabel(labelZone(t));
-  });
+  // "0"), so a crop shows them and they stay out of the text. A label is judged with the
+  // items it runs on with: never one that starts with a label ("A. …"), a caption
+  // ("Figure 1"), a sentence ("Study the graph below.") or a marked line. Labels never chain.
+  const labels = textRuns(page.items).filter((run) => {
+    const t = run.map((it) => it.str).join('').trim();
+    return t.length <= 24 && !run.some((it) => it.rotated) && !parseLabel(labelZone(t)) && !isCaption(t) && !NOT_A_LABEL.test(t);
+  }).flat();
   for (let k = 0; k < figures.length; k++) {
     if (placed[k]) continue;
     for (let grown = true; grown; ) {
