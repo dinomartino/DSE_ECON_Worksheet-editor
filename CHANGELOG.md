@@ -50,6 +50,17 @@ a version heading is edited afterwards.
   the question. Axis names and labels on the graph still stay with the picture.
   <!-- zh: **匯入 PDF 時，圖表旁的標題或句子不再被收進圖片。** 緊貼圖表的文字，例如「Figure 1」、「Study the graph below.」或「(2 marks)」，現在會以可編輯的文字匯入，不再被裁進圖片而從題目中消失。坐標軸名稱及圖上標示仍會留在圖片內。 -->
 
+### Fixed
+- **The page uses the full width between the margins.** Questions and text elements sat
+  3 pt inside each margin on the page, so text set to the right margin stopped short of
+  it and lines could wrap a little earlier than in Word. The Word file is unchanged.
+  <!-- zh: **頁面使用左右邊界之間的全部闊度。** 題目及文字元素在頁面上原本離每邊邊界 3 pt，令靠右邊界的文字未能貼齊邊界，文字亦可能比 Word 稍早換行。Word 檔案不變。 -->
+- **Tabbed text next to "(3 marks)" lines up as in Word.** Text a tab sends to the right
+  margin stays on its line and only the marks move down; when part of it fits, that part
+  stays and the rest wraps. Before, the page could push the tab, or the last word, a line
+  lower than Word.
+  <!-- zh: **與「(3 marks)」同一段的定位文字與 Word 排法一致。** 以定位字元推到右邊界的文字留在原行，只有分數移到下一行；若只放得下一部分，該部分留在原行，其餘換行。以往頁面可能把定位字元或最後一個字排得比 Word 低一行。 -->
+
 ## 0.8.3 — 2026-10-18
 
 ### Added

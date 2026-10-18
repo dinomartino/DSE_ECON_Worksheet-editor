@@ -185,8 +185,13 @@ paragraph's own stops. One rule set for every backend (docs/Tabs vs Word.md):
   Word starts the grid only after the last custom stop, so in a paragraph carrying marks
   (whose right stop at the margin `textNodeXml` writes) a typed tab goes to the margin;
   the page mirrors that (`[data-tab-marks]`) rather than disagreeing.
-- **No stop left, or right/centred text that no longer fits**: the tab moves to the next
-  line and resolves again (`data-wrap`, a CSS line break, so no DOM text).
+- **No stop left, or right/centred text whose first word no longer fits** (`carriesTab`):
+  the tab moves to the next line and resolves again (`data-wrap`, a CSS line break, so no
+  DOM text). Text that partly fits stays; the rest wraps. The text is the run up to the
+  next tab, never the marks trail; after a tab the trail opens with `<wbr>`, so the marks
+  move down alone, as behind their own tab in Word.
+- **The page column is the margin**: a question's or element's hover box is `-mx-1 px-1`,
+  so its padding reaches into the margin and the text is not inset.
 - `.docx`: `<w:tab/>` in its own run with the run's properties (an underlined tab rules
   its gap) and one `<w:tabs>` per paragraph (`tabsElement`, a layout stop winning its
   position). Clipboard: `mso-tab-count` spans and `tab-stops`. Page: a `[data-tab]` span

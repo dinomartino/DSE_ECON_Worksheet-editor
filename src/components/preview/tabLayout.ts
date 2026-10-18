@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import {
+  carriesTab,
   cleanTabStops,
   DEFAULT_TAB_STOP_TWIPS,
   nextTabStop,
@@ -102,7 +103,7 @@ function stopsFor(scope: HTMLElement, origin: HTMLElement, columnEnd: number): P
 /**
  * The text after `tab`, up to the next tab: where it ends on the tab's line (`line`, the
  * tab's last fragment), where its first full stop starts (for a decimal stop), and how
- * wide it is in all (whether it can fit on the line at all). Words only, as
+ * wide its first word is (whether any of it can share the tab's line). Words only, as
  * `layoutBandRow` measures: Word aligns on the text, not on a space left hanging where
  * the line wrapped.
  */
@@ -111,7 +112,7 @@ function portionAfter(
   tab: HTMLElement,
   next: HTMLElement | undefined,
   line: DOMRect,
-): { end?: number; decimal?: number; total: number } {
+): { end?: number; decimal?: number; first: number } {
   const middle = (line.top + line.bottom) / 2;
   const onLine = (rect: DOMRect) => rect.width > 0 && rect.top - 1 <= middle && middle <= rect.bottom + 1;
   const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
@@ -119,19 +120,18 @@ function portionAfter(
   let end: number | undefined;
   let decimal: number | undefined;
   let first: number | undefined;
-  let last: number | undefined;
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     if (!(tab.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) continue;
     if (tab.contains(node)) continue;
     if (next && (next.contains(node) || next.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
-    if (node.parentElement?.closest('button, [data-print-hide]')) continue;
+    // The marks are not part of it: Word sets them behind a tab of their own.
+    if (node.parentElement?.closest('button, [data-print-hide], [data-marks-trail]')) continue;
     for (const word of (node.textContent ?? '').matchAll(/\S+/g)) {
       range.setStart(node, word.index);
       range.setEnd(node, word.index + word[0].length);
       const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0);
+      first ??= rects[0]?.width;
       for (const rect of rects) {
-        first ??= rect.left;
-        last = rect.right;
         if (onLine(rect)) end = Math.max(end ?? rect.right, rect.right);
       }
       const dot = word[0].indexOf('.');
@@ -143,9 +143,7 @@ function portionAfter(
       }
     }
   }
-  // Across lines the words' own span undercounts; it is only asked "does it fit".
-  const total = first !== undefined && last !== undefined ? Math.abs(last - first) : 0;
-  return { end, decimal, total };
+  return { end, decimal, first: first ?? 0 };
 }
 
 /** Size every tab in `scope`, left to right, since each moves the text after it. */
@@ -182,16 +180,13 @@ export function layoutTabs(scope: HTMLElement): void {
       const measured = stop.align === 'left' ? undefined : portionAfter(scope, tab, tabs[index + 1], at);
       const portion = measured?.end !== undefined ? (measured.end - at.right) / scale : 0;
       const toDecimal = measured?.decimal !== undefined ? (measured.decimal - at.right) / scale : portion;
-      const total = (measured?.total ?? 0) / scale;
-      return { x, stop, portion, toDecimal, total };
+      const first = (measured?.first ?? 0) / scale;
+      return { x, stop, portion, toDecimal, first };
     };
     let resolved = resolve();
-    // No stop left on the line, or a right/centred portion that no longer fits on it:
-    // Word carries the tab to the next line and resolves it again from there. A
-    // generated line break (CSS, so no DOM text) does the carrying.
-    const stuck =
-      !resolved.stop || (resolved.stop.align !== 'left' && resolved.x + (resolved.total ?? 0) > lineEnd + 1);
-    if (stuck && resolved.x > lineStart + 1) {
+    // Word carries the tab to the next line and resolves it again from there
+    // (`carriesTab`); a generated line break (CSS, so no DOM text) does the carrying.
+    if (carriesTab(resolved.x, resolved.stop, resolved.first ?? 0, lineEnd + 1) && resolved.x > lineStart + 1) {
       tab.dataset.wrap = '';
       resolved = resolve();
     }

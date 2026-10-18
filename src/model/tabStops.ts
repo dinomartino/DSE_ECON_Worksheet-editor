@@ -78,6 +78,19 @@ export function nextTabStop(
 }
 
 /**
+ * Does a tab at `x` move to the next line? When no stop is left on the line (`stop`
+ * undefined), or the stop is right, centred or decimal and the first word after the tab
+ * (`firstWord` wide) no longer fits before the line's end. A portion that only partly
+ * fits stays: the words that fit align to the stop and the rest wraps from the margin,
+ * as `layoutBandRow` and LibreOffice do. The text after the tab is the text up to the
+ * next tab, never "(3 marks)", which sits behind a tab of its own.
+ */
+export function carriesTab(x: number, stop: PlacedStop | undefined, firstWord: number, lineEnd: number): boolean {
+  if (!stop) return true;
+  return stop.align !== 'left' && x + firstWord > lineEnd;
+}
+
+/**
  * The gap a tab at `x` leaves before the text after it.
  *
  * `portion` is the width of that text on this line, up to the next tab; `toDecimal` the
