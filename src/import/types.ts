@@ -77,6 +77,11 @@ export interface SourceLine {
   labelSource?: 'text' | 'list';
   depth: number;
   cells?: InlineRun[][];
+  /**
+   * `cells` were cut at tabs typed in the text (not a table the reader saw), and `runs`
+   * keep those tabs: a line that is not read as a table keeps them as typed.
+   */
+  tabbed?: boolean;
   tabOnly?: boolean;
   blank?: boolean;
   trailingMarks?: number;

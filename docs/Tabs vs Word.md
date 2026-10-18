@@ -17,7 +17,7 @@ Tested by hand in the app (develop, headless Chromium), and the `.docx` checked 
 **Decisions that differ from the proposal below:**
 - **No schema bump.** `tabStops` is nested and additive. An older build keeps it and prints every word, only on the default grid, so under `writtenSchemaVersion`'s rule it stays at 1 and 0.8.x users are not locked to read-only.
 - **The default stays 720 twips**, so the page and the file always agree and untouched documents export byte for byte. The Chinese-template default is 480 (see the references below), recorded as a follow-up.
-- **Import is unchanged.** It still reads tabs as structure (cells, options) and turns a lone tab into a space (`src/import/lines.ts`). Keeping typed tabs there is a separate change to a scored pipeline.
+- **Import keeps typed tabs** (18 Oct, after phase 3). Tabs still mark structure (options, labels, rows of tabbed lines as a table), but a lone tabbed line is text with its tabs, and any cells line read as text keeps them (`docs/design/paste-import.md`, the "Typed tabs" rule). Scorecard unchanged; of the five real files only `DBS_Assessment1_ANS.docx` changes (answers' `→(1)` keep the tab; one one-row table became its line). Tab stops are not imported.
 
 **Verified:** the same fixture laid out by the page and by LibreOffice 7.4 from our `.docx` agrees within 0.3 pt for every stop kind (left with underscore leader, decimal, centre, right with dot leader, default grid, a carried tab, cells measured from their own edge). Every page word sits a uniform 2.9 pt right of LibreOffice's, tabbed or not: that is an existing inset, not this change. Samples are byte-identical except the six whose MC versions shuffle at random on every run, base included. `cover-verify` passes. `lq-verify` fails only the dotted-pitch check, which fails the same way on the unchanged build in this environment (no CJK font).
 
@@ -74,7 +74,7 @@ There is no ruler and no Tabs dialog, so a teacher cannot right-align "(3 marks)
 
 ### Import flattens tabs to spaces
 
-Hides the problem
+Fixed 18 Oct (typed tabs kept; stops not imported)
 
 Word's tabs come in as `\t` (`readDocx.ts:280`, `docxBody.ts:380`). They are used as structure hints (option letters, label lists, answer lines) and then mostly turned into spaces (`src/import/lines.ts:231`, `docxChrome.ts:453`), because the page could not show them. Once tabs render, the tabs a teacher typed in Word could be kept.
 

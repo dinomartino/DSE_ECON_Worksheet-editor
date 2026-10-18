@@ -71,6 +71,7 @@ interface SourceLine {
   labelSource?: 'text' | 'list';   // typed, or from list numbering (mso-list, <ol>, numPr)
   depth: number;           // indent level from leading TABs, margins, list level or x-position
   cells?: InlineRun[][];   // a table row
+  tabbed?: boolean;        // cells cut at typed TABs; runs keep the TABs
   tabOnly?: boolean;       // an answer line in Word
   trailingMarks?: number;  // "(3 marks)", "[3]", "（3分）" split off the end
   page?: number; x?: number; y?: number;  // PDF readers only
@@ -310,6 +311,12 @@ lost by OCR.
   the label is part-level, cells follow it, it has no marks, and its table has an unlabelled row or
   the same labels start again later in the question (`isLabelledTableRow`). The label stays in the
   row: its own cell after a TAB, else in the first cell.
+- **Typed tabs** ("Name:⇥Class:⇥No.:", "Yes,⇥(1)") stay tabs. A lone line cut at TABs (`tabbed`), with
+  no cells on the lines either side, is text, not a one-row table (`table` in `detectors.ts`), and
+  any cells line read as text keeps its tabs (`cellsAsText`, `walk.ts`). Rows of tabbed lines, and
+  a table the reader saw (HTML, `.docx`, PDF columns), stay tables; a flattened reader table joins
+  its cells with spaces. Tab stops (`w:tabs`) are not carried: their positions belong to the
+  source's margins or cell, and the commonest one (a right stop for marks) is read as marks.
 
 ### The dialog, as built (2026-10-08)
 

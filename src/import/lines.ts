@@ -211,7 +211,8 @@ function toLines(piece: Piece, base: Omit<SourceLine, 'i' | 'runs' | 'text' | 'r
     body = trimRuns(normalizeRuns(body.map((r) => ({ ...r, text: r.text.replace(/^\s*\*\s*|\s*\*\s*$/g, '') }))));
   }
 
-  // Table cells: TABs inside the body, or wide space gaps from a layout copy.
+  // Table cells: TABs inside the body, or wide space gaps from a layout copy. The body keeps
+  // its tabs, for a line that turns out not to be a table (`tabbed`).
   const cellText = plainOf(body);
   const tabCells = cellText.split('\t');
   const gapCells = cellText.split(/ {3,}/);
@@ -226,9 +227,10 @@ function toLines(piece: Piece, base: Omit<SourceLine, 'i' | 'runs' | 'text' | 'r
     }
     cells.push(trimRuns(sliceRichText(body, from, cellText.length)));
     while (cells.length && !plainOf(cells[cells.length - 1]).trim()) cells.pop();
-    if (cells.filter((c) => plainOf(c).trim()).length >= 2) line.cells = cells;
-  } else if (cellText.includes('\t')) {
-    body = trimRuns(normalizeRuns(body.map((r) => ({ ...r, text: r.text.replace(/\t+/g, ' ') }))));
+    if (cells.filter((c) => plainOf(c).trim()).length >= 2) {
+      line.cells = cells;
+      if (cutAt === '\t') line.tabbed = true;
+    }
   }
 
   line.runs = body;
@@ -268,7 +270,10 @@ export function toSourceLines(raw: readonly RawLine[]): SourceLine[] {
       // A table row the reader saw as cells keeps them (empty ones too) unless it split into items.
       if (line.cells && pieces.length === 1 && out.length === before + 1 && !out[before].labelInfo) {
         const cells = line.cells.map((c) => trimRuns(clean(c)));
-        if (cells.filter((c) => plainOf(c).trim()).length >= 2) out[before].cells = cells;
+        if (cells.filter((c) => plainOf(c).trim()).length >= 2) {
+          out[before].cells = cells;
+          delete out[before].tabbed;
+        }
       }
     }
   }

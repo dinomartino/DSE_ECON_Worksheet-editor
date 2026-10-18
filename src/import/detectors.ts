@@ -158,8 +158,12 @@ export const DETECTORS: readonly Detector[] = [
     // A lone "1. B" could be a question whose text is a letter: two pairs, or the label, decide it.
     return pairs.length >= 2 || line.labelInfo ? { role: 'answerKey', weight: 0.92 } : null;
   },
-  function table(line) {
-    return line.cells && !line.labelInfo ? { role: 'table', weight: 0.8 } : null;
+  function table(line, ctx) {
+    if (!line.cells || line.labelInfo) return null;
+    // One line of typed tabs ("Name:⇥Class:⇥No.:") is text the page lays out as Word does;
+    // rows of them, or a table the reader saw, are a table.
+    if (line.tabbed && !ctx.lines[line.i - 1]?.cells && !ctx.lines[line.i + 1]?.cells) return null;
+    return { role: 'table', weight: 0.8 };
   },
   function labelledTableRow(line, ctx) {
     return isLabelledTableRow(line, ctx) ? { role: 'table', weight: 0.9 } : null;
