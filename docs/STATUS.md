@@ -16,8 +16,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   Checked in headless Chromium and a 60-row `.docx` through LibreOffice (heading repeats, shaded).
   Not tried in real Word or Tauri. Known gap: a table in a keep chain (classroom MC) stays whole
   on screen but Word can still break its rows.
-- **v0.8.2 released 2026-10-16, develop clean, Unreleased empty.** #2 closed with notice
-  (details in Where we are). Word packs justified lines tighter than the preview.
+- **v0.8.3 released 2026-10-18** (tables phases 1–3; published, `latest`, 9 assets + sigs).
+  develop = main, Unreleased empty. Word packs justified lines tighter than the preview.
+- **#2 follow-ups laid out for the user 2026-10-18, awaiting answers:** price-floor DWL template
+  (skill 25) + negative externality (skill 09; positive too?); wording — DWL zh 效率損失 vs
+  無謂損失, symbol DWL vs DL (monopoly templates mix them), 過剩 vs 超額供應, keep 買方/賣方稅負.
 - **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked. `feature/film-v2` (worktree `.claude/worktrees/film-v2`) on GitHub since 2026-10-11, not merged.
 - **Shipped in 0.8.0, none tried in the Tauri window before release:** table Same height/width
   (`distributeRows`/`distributeColumns`); no editor overscroll; import brings header/footer/title
@@ -33,6 +36,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Where we are
 
+- **v0.8.3 released 2026-10-18**: tables like Word (one-click typing, merge/format/copy/paste a range, exact sizes, heading rows repeat, preview splits tables, vAlign, shading). Release workflow green; not tried in Tauri or real Word; Vercel not checked.
 - **Sync (F9), shipped in 0.7.0** (`src/sync/`, `sync-engine.md`), visible before any real run (user's call).
 - **v0.8.2 released 2026-10-16** (published, `latest`, 9 assets + sigs; closes #2):
   MC options justify (`optionAlign`), whole-paper Justify text (`justifyText`), long MC options fall
@@ -75,13 +79,14 @@ off the bottom.** It is the first thing a fresh session reads — then
   Windows code passes CI but never ran on a real PC or provider.
 - Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
-## Last verified (2026-10-16, release commit)
+## Last verified (2026-10-18, release commit)
 
-- `npm test` 5584, typecheck green, `release-notes.mjs` exit 0. Release workflow green
+- `npm test` 5632, typecheck green, `release-notes.mjs` exit 0. Release workflow green
   (macOS aarch64 + x64, Windows). Draft had all 9 assets + `latest.json`, then published.
 
 ## Log
 
+- **2026-10-18** — Released 0.8.3. `main` merged back; Unreleased empty.
 - **2026-10-17** — Tables vs Word phases 1–3 (one-click typing, Enter newline, range merge/format/clipboard, exact sizes, heading repeat + preview table splitting, vAlign, shading).
 - **2026-10-16** — Released 0.8.2 (closes #2, notice posted). `main` merged back; Unreleased empty.
 
