@@ -111,6 +111,21 @@ describe('the page', () => {
     expect(html).toContain('<span>Plain</span>');
   });
 
+  it('lets the marks move down alone after a tab, as they sit behind a tab of their own in Word', () => {
+    const marked = { ...node, format: undefined, marks: 3 } as TextNode;
+    expect(renderToStaticMarkup(<NodeView node={marked} language="en" />)).toContain('<wbr/>');
+    // Without a typed tab the label still wraps with the last word, as it always did.
+    const plainMarks = { ...marked, text: bi('Plain', '') } as TextNode;
+    expect(renderToStaticMarkup(<NodeView node={plainMarks} language="en" />)).not.toContain('<wbr/>');
+  });
+
+  it('keeps every question and element at the margin, its hover box reaching into it', () => {
+    // A padded box without the matching negative margin set the text 4px in from the
+    // margin: a stop at the margin ended its text short, and every line wrapped narrower.
+    const preview = readFileSync('src/components/preview/Preview.tsx', 'utf8');
+    expect(preview.match(/relative -mx-1 cursor-pointer rounded-\[3px\] px-1 /g)).toHaveLength(2);
+  });
+
   it('measures from the margin: every sheet and probe is a tab origin', () => {
     const preview = readFileSync('src/components/preview/Preview.tsx', 'utf8');
     // Two sheets (cover, body), the measuring probe, and a source panel (a cell in Word).

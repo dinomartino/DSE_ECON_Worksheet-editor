@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  carriesTab,
   cleanTabStops,
   DEFAULT_TAB_STOP_TWIPS,
   movedTabStop,
@@ -60,6 +61,27 @@ describe('tabGap', () => {
 
   it('never draws the text back over what precedes the tab', () => {
     expect(tabGap(100, { pos: 150, align: 'right' }, 80)).toBe(0);
+  });
+});
+
+describe('carriesTab', () => {
+  const margin = { pos: 9000, align: 'right' } as const;
+
+  it('carries a tab with no stop left on the line', () => {
+    expect(carriesTab(8990, undefined, 20, 9000)).toBe(true);
+  });
+
+  it('keeps a right tab whose text only partly fits: the rest wraps, as in LibreOffice', () => {
+    // "…traded in\tthe market." — "the" fits before the margin, "market." wraps.
+    expect(carriesTab(8600, margin, 300, 9000)).toBe(false);
+  });
+
+  it('carries a right tab when not even its first word fits', () => {
+    expect(carriesTab(8900, margin, 300, 9000)).toBe(true);
+  });
+
+  it('never carries a left tab that has a stop', () => {
+    expect(carriesTab(8900, { pos: 9000, align: 'left' }, 300, 9000)).toBe(false);
   });
 });
 

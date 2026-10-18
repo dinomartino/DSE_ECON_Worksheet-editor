@@ -22,9 +22,12 @@ Tested by hand in the app (develop, headless Chromium), and the `.docx` checked 
 **Verified:** the same fixture laid out by the page and by LibreOffice 7.4 from our `.docx` agrees within 0.3 pt for every stop kind (left with underscore leader, decimal, centre, right with dot leader, default grid, a carried tab, cells measured from their own edge). Every page word sits a uniform 2.9 pt right of LibreOffice's, tabbed or not: that is an existing inset, not this change. Samples are byte-identical except the six whose MC versions shuffle at random on every run, base included. `cover-verify` passes. `lq-verify` fails only the dotted-pitch check, which fails the same way on the unchanged build in this environment (no CJK font).
 
 **Known gaps:**
-- In a paragraph carrying "(n marks)" that has typed tabs and no stops of its own, Word sends the first tab to the marks' right stop. The page now does too, but after a carried tab the last word drops one line more on the page than in Word.
-- A layout element's text is inset ~3 px on the page, so a stop at the margin ends its text a few px short there.
 - Not yet opened in real Word or the Tauri window.
+- A left or centred stop exactly at the margin: LibreOffice carries a left one's text two lines down and lets a centred one run past the margin; the page keeps both inside the line. Real Word unchecked; no reference file uses either.
+
+**Closed 18 Oct (fix/tab-gaps), checked against LibreOffice 7.4 line by line on seven marks-bearing paragraphs:**
+- *A tabbed paragraph with marks dropped a line more than Word.* Three causes: the right-aligned portion was measured with the "(3 marks)" trail in it; a portion that only partly fitted carried the tab down (LibreOffice and `layoutBandRow` keep the words that fit and wrap the rest; `carriesTab`); and the marks' hidden twin is glued to the last word, so "traded." went down with it. In a paragraph whose anchor line holds a tab the trail now starts with `<wbr>`, so only the marks move down, as behind Word's own tab. (Without a tab the twin still takes the last word with it; Word keeps that word up, the line count agrees.)
+- *Text inset ~3 px.* Every question and layout element sat in a `px-1` hover box, 4 CSS px inside each margin: the page column was 8 px narrower than Word's, the "uniform 2.9 pt right" noted above, and a stop at the margin ended its text short. The box now takes `-mx-1` too, reaching into the margin, so the text column is the margin. `cover-verify` unchanged, `lq-verify` the same within 0.03.
 
 **Real references** (`real_life_reference/`, 5 Word files): right stops at the margin for marks are by far the most common use (572 in the HKEAA 2019 Paper 2, `→(1)` throughout the DBS answers). Left stops serve hanging (a)/(b) and label rows. No file uses a leader. Default tab stop: 720 in the zh-HK-language file, 480 in the three zh-TW-template files, 2300 in HKEAA's.
 

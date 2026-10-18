@@ -40,6 +40,17 @@ a version heading is edited afterwards.
   that said DL now say DWL, as the rest do. Diagrams already in your papers are unchanged.
   <!-- zh: **所有圖表範本的效率損失一律標示為 DWL。** 原本標示 DL 的壟斷範本現改為 DWL，與其他範本一致。已放在試卷中的圖表不受影響。 -->
 
+### Fixed
+- **The page uses the full width between the margins.** Questions and text elements sat
+  3 pt inside each margin on the page, so text set to the right margin stopped short of
+  it and lines could wrap a little earlier than in Word. The Word file is unchanged.
+  <!-- zh: **頁面使用左右邊界之間的全部闊度。** 題目及文字元素在頁面上原本離每邊邊界 3 pt，令靠右邊界的文字未能貼齊邊界，文字亦可能比 Word 稍早換行。Word 檔案不變。 -->
+- **Tabbed text next to "(3 marks)" lines up as in Word.** Text a tab sends to the right
+  margin stays on its line and only the marks move down; when part of it fits, that part
+  stays and the rest wraps. Before, the page could push the tab, or the last word, a line
+  lower than Word.
+  <!-- zh: **與「(3 marks)」同一段的定位文字與 Word 排法一致。** 以定位字元推到右邊界的文字留在原行，只有分數移到下一行；若只放得下一部分，該部分留在原行，其餘換行。以往頁面可能把定位字元或最後一個字排得比 Word 低一行。 -->
+
 ## 0.8.3 — 2026-10-18
 
 ### Added

@@ -654,10 +654,17 @@ function MarksTrail({
   label,
   blankLines,
   column = false,
+  tabbed = false,
 }: {
   /** "(4 marks)", or a scheme's `trail` (§ `TextNode.trail`) — the same placement. */
   label: string;
   blankLines: number;
+  /**
+   * The line it anchors to holds a typed tab. Word sets the label behind a tab of its
+   * own, and a tab is a place the line may break: text the typed tab pushed to the
+   * margin stays there and only the label moves down (§ `layoutTabs`).
+   */
+  tabbed?: boolean;
   /**
    * The paragraph keeps a Marks column clear (`TextNode.marksColumn`, its right padding):
    * the label sits in that column on the paragraph's *first* line (HKEAA), so no line
@@ -730,6 +737,7 @@ function MarksTrail({
         wrapping the (unbreakable \u2014 \u00a7 `marksText`) label at the same width.
       */}
       {needsOwnLine && <br aria-hidden />}
+      {tabbed && !column && <wbr />}
       {/*
         The reserve can only ride at the very end of the inline flow: the text is owned by
         a contenteditable (`InlineEditable`), and injecting a sibling inside it would put
@@ -1228,6 +1236,7 @@ function TextNodeView({
           // renders only one side counts that side's breaks.
           blankLines={trailingBlankLines(marksAnchorRuns(node.text, language))}
           column={node.marksColumn !== undefined}
+          tabbed={hasTab(marksAnchorRuns(node.text, language))}
         />
       )}
     </p>
@@ -4478,7 +4487,7 @@ const ItemBody = memo(
           data-layout-id={item.layout.elementId}
           onClick={onSelect}
           aria-current={selected}
-          className={`relative cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] duration-150 ease-out-soft ${
+          className={`relative -mx-1 cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] duration-150 ease-out-soft ${
             selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
           }`}
         >
@@ -4507,7 +4516,7 @@ const ItemBody = memo(
             : undefined
         }
         aria-current={selected}
-        className={`relative cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] duration-150 ease-out-soft ${
+        className={`relative -mx-1 cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] duration-150 ease-out-soft ${
           selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
         }`}
       >
