@@ -38,6 +38,12 @@ a version heading is edited afterwards.
   that said DL now say DWL, as the rest do. Diagrams already in your papers are unchanged.
   <!-- zh: **所有圖表範本的效率損失一律標示為 DWL。** 原本標示 DL 的壟斷範本現改為 DWL，與其他範本一致。已放在試卷中的圖表不受影響。 -->
 
+### Fixed
+- **A table in an MC question no longer splits across pages in Word.** The page always
+  kept such a question whole, table included, but Word could break the table between
+  rows. The Word file now keeps it together too.
+  <!-- zh: **MC 題中的表格在 Word 不再跨頁分開。** 頁面一向把這類題目連同表格保持在同一頁，但 Word 可能在表格行與行之間分頁。現在 Word 檔案亦會保持完整。 -->
+
 ## 0.8.3 — 2026-10-18
 
 ### Added
