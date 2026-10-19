@@ -2198,6 +2198,22 @@ toolbar mark. It is chrome, never IR: nothing reaches the `.docx`, clipboard or 
 
 - **A grid of first pages, or a list.** Search, kind (by `hasCover`) and order narrow the
   index in `start/dashboard.ts:visibleSummaries`; none of it is stored with a document.
+- **Search reads names and question text.** A name matches as typed (substring); question
+  text matches through the 題庫's own rows and `searchRows` (`start/dashboard.ts:questionHits`,
+  the start screen's `useBank` rows), never a second index, so the dashboard and the bank
+  cannot disagree. A card found by its questions, whose name does not explain it, names
+  the first matching question and a snippet: from the stem's excerpt as printed, else the
+  matching line of `searchText` only when it has no Latin letters (lower-casing lost
+  English case), else the stem's opening words unmarked. Before the bank index is read,
+  and for a `bankHidden` document (no rows), only names match.
+- **Each paper card shows its total marks** (`start/dashboard.ts:cardMarks`) from the
+  index row's `totalMarks`, which `summarize` derives with `worksheetMarks` at every save
+  (the cover's figure: best n of an "answer any n" section). A bank, a 0 and a row
+  without the field (written by an earlier build; filled at that document's next save,
+  never on read, so listing still rewrites nothing) show none. **No page count**: pages
+  exist only after the preview measures the DOM, differ by edition (Student/Teacher,
+  English/中文), and saves that never render (sync, bank writes, import) would leave a
+  stale figure, so there is no honest number to store.
   The grid/list choice is a per-viewer `localStorage` key outside the `econ-worksheet:`
   prefix, which `clear()` treats as documents.
 - **Each thing sits with what it acts on.** The sidebar starts work (one New worksheet
@@ -3159,8 +3175,9 @@ in-flight values stay local; the store is called on pointer-up.
 - **Autosave** debounced 1.2s. File download/upload as `.worksheet.json`, images
   base64.
 - **The index is what the file list reads**, never the documents. `WorksheetSummary`
-  carries optional `questionCount`/`hasCover`; entries are validated **per row** — one
-  malformed summary must not empty the list.
+  carries optional `questionCount`/`hasCover`/`totalMarks` (all derived at save, a cache
+  of the document); entries are validated **per row** — one malformed summary must not
+  empty the list, and one malformed field shows nothing rather than a wrong figure.
 - **A row without `indexRev` ≥ 2 does not prove "paper"**: v0.5.0 writes no `kind`, even
   for a bank. `list()` reads such a row's kind from its document once and writes it back
   (`kindRepairs` in `summaries.ts`); a document that will not load keeps its row as is.

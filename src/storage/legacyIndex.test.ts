@@ -19,7 +19,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import bankIndexCorpus from '@/test/corpus/bank-v0.6.0-index.json';
 import { LocalStorageWorksheetStore } from '.';
 import { usableSummaries } from './summaries';
-import { DEFAULT_QUERY, visibleSummaries } from '@/components/start/dashboard';
+import { cardMarks, DEFAULT_QUERY, visibleSummaries } from '@/components/start/dashboard';
+import { worksheetMarks } from '@/model/marks';
 
 const INDEX_KEY = 'econ-worksheet-index';
 const PREFIX = 'econ-worksheet:';
@@ -399,5 +400,45 @@ describe('the index v0.6.0 wrote, beside its paper and bank', () => {
     expect(raw.map((row) => row.id)).toEqual(['bank-v060-paper', 'bank-v060-bank']);
     expect(raw[0]).toMatchObject(ROWS.find((row) => row.id === 'bank-v060-paper')!);
     expect(raw[1]).toEqual(ROWS.find((row) => row.id === 'bank-v060-bank'));
+  });
+});
+
+/**
+ * F4: rows now record `totalMarks`, derived at save. Every row written before has none;
+ * it is read as "not known" (no figure on the card) and is never backfilled on read, so
+ * listing still rewrites nothing. The next save of that document records it.
+ */
+describe('an index row written before totalMarks', () => {
+  const ROWS = bankIndexCorpus['econ-worksheet-index'];
+
+  beforeEach(() => {
+    storage.setItem(INDEX_KEY, JSON.stringify(ROWS));
+    for (const name of ['paper', 'bank']) {
+      const raw = readFileSync(`src/test/corpus/bank-v0.6.0-${name}.json`, 'utf8');
+      storage.setItem(PREFIX + `bank-v060-${name}`, raw.trimEnd());
+    }
+  });
+
+  it('lists with no marks shown, and gets them on its next save', async () => {
+    const listed = await store().list();
+    expect(listed.map(cardMarks)).toEqual([undefined, undefined]);
+
+    const paper = (await store().load('bank-v060-paper'))!;
+    await store().save(paper);
+    const saved = (await store().list()).find((row) => row.id === 'bank-v060-paper')!;
+    expect(saved.totalMarks).toBe(worksheetMarks(paper));
+    expect(cardMarks(saved)).toBe(worksheetMarks(paper) || undefined);
+    // The bank beside it is untouched, and a bank never shows a paper total.
+    expect((await store().list()).find((row) => row.id === 'bank-v060-bank')).not.toHaveProperty('totalMarks');
+  });
+
+  it('a row with an unreadable totalMarks is still listed, with no figure', async () => {
+    storage.setItem(
+      INDEX_KEY,
+      JSON.stringify([{ ...LEGACY_ENTRY, totalMarks: 'lots' }, { ...LEGACY_ENTRY, id: 'other', totalMarks: -3 }]),
+    );
+    const listed = await store().list();
+    expect(listed.map((row) => row.id).sort()).toEqual(['legacy-doc', 'other']);
+    expect(listed.map(cardMarks)).toEqual([undefined, undefined]);
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { IconButton, Segmented } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { FolderIcon, PlusIcon, SheetIcon, TrashIcon } from '@/components/ui/icons';
@@ -14,13 +14,16 @@ import {
   type WorksheetSummary,
 } from '@/storage';
 import { resolveMessages } from '@/i18n/catalogue';
-import { uiLanguage, useMessages } from '@/i18n/language';
+import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
+import type { BankRow } from '@/library/types';
 import { PageThumbnail } from './PageThumbnail';
 import { DASHBOARD_MESSAGES } from './screen.messages';
 import {
+  cardMarks,
   DEFAULT_QUERY,
   documentCount,
   isFiltered,
+  questionHits,
   readDashboardView,
   relativeTime,
   scopedSummaries,
@@ -29,6 +32,7 @@ import {
   type DashboardQuery,
   type DashboardView,
   type KindFilter,
+  type QuestionHit,
   type SortOrder,
 } from './dashboard';
 import { dropTargetValue, type DropTarget } from './dashboardDrag';
@@ -77,6 +81,7 @@ export function FileDashboard({
   folderActions,
   settings,
   welcome,
+  questionRows,
 }: {
   summaries: WorksheetSummary[];
   loaded: boolean;
@@ -96,6 +101,8 @@ export function FileDashboard({
   settings?: ReactNode;
   /** Shown in place of the list while nothing is saved (the start screen's `WelcomeDesk`). */
   welcome?: ReactNode;
+  /** The 題庫 index's rows (`useBank`), so search also finds words inside questions. */
+  questionRows?: readonly BankRow[];
 }) {
   const m = useMessages(DASHBOARD_MESSAGES);
   const [query, setQuery] = useState<DashboardQuery>(DEFAULT_QUERY);
@@ -110,7 +117,18 @@ export function FileDashboard({
     [folders, openFolder],
   );
   const inScope = useMemo(() => scopedSummaries(summaries, scope), [summaries, scope]);
-  const shown = useMemo(() => visibleSummaries(summaries, query, scope), [summaries, query, scope]);
+  // Question text is searched a beat behind the typing, so a long archive never lags a key.
+  const lang = useUiLanguage();
+  const deferredSearch = useDeferredValue(query.search);
+  const hits = useMemo(() => questionHits(questionRows, deferredSearch, lang), [questionRows, deferredSearch, lang]);
+  const shown = useMemo(
+    () => visibleSummaries(summaries, query, scope, hits),
+    [summaries, query, scope, hits],
+  );
+  // A card says where its match is only when its name does not already say so.
+  const needle = query.search.trim().toLocaleLowerCase();
+  const hitFor = (summary: WorksheetSummary) =>
+    needle && !summary.title.toLocaleLowerCase().includes(needle) ? hits.get(summary.id) : undefined;
   const showFolders = !!folders && !!folderActions && loaded && summaries.length > 0;
   // In All documents a card says which folder it is in; inside a folder that is noise.
   const folderLabel = (summary: WorksheetSummary) =>
@@ -198,7 +216,7 @@ export function FileDashboard({
                 <input
                   type="search"
                   value={query.search}
-                  placeholder={m.searchByName}
+                  placeholder={m.searchPlaceholder}
                   onChange={(event) => setQuery((q) => ({ ...q, search: event.target.value }))}
                   onKeyDown={(event) => {
                     if (event.key === 'Escape' && query.search) {
@@ -284,6 +302,7 @@ export function FileDashboard({
                   summary={summary}
                   actions={actions}
                   folder={folderLabel(summary)}
+                  hit={hitFor(summary)}
                   drag={dragProps(summary)}
                   dragging={drag.draggingId === summary.id}
                   enter={intro ? index : undefined}
@@ -298,6 +317,7 @@ export function FileDashboard({
                   summary={summary}
                   actions={actions}
                   folder={folderLabel(summary)}
+                  hit={hitFor(summary)}
                   drag={dragProps(summary)}
                   dragging={drag.draggingId === summary.id}
                   enter={intro ? index : undefined}
@@ -506,6 +526,7 @@ function menuItems(summary: WorksheetSummary, actions: DocumentActions): MenuIte
  */
 function KindAndCount({ summary }: { summary: WorksheetSummary }) {
   const m = useMessages(DASHBOARD_MESSAGES);
+  const marks = cardMarks(summary);
   if (summary.kind === 'bank') {
     return (
       <>
@@ -520,7 +541,31 @@ function KindAndCount({ summary }: { summary: WorksheetSummary }) {
         {summary.hasCover ? m.mockPaper : m.worksheet}
       </span>
       {summary.questionCount !== undefined && <> · {m.questions(summary.questionCount)}</>}
+      {marks !== undefined && <> · {m.marks(marks)}</>}
     </>
+  );
+}
+
+/**
+ * "Q4 · …the price **elasticity** of demand…" — which question a search found, under a
+ * card whose name does not explain the match. The matched words carry weight, not colour.
+ */
+function HitLine({ hit, className }: { hit: QuestionHit; className: string }) {
+  const m = useMessages(DASHBOARD_MESSAGES);
+  const where = hit.number !== undefined ? m.foundIn(hit.number) : m.foundInQuestion;
+  const { snippet } = hit;
+  return (
+    <span className={className}>
+      <span className="font-medium text-ink-muted">{where}</span>
+      {snippet && (
+        <>
+          {' · '}
+          {snippet.before}
+          {snippet.hit && <mark className="bg-transparent font-semibold text-ink">{snippet.hit}</mark>}
+          {snippet.after}
+        </>
+      )}
+    </span>
   );
 }
 
@@ -536,6 +581,7 @@ function DocumentCard({
   summary,
   actions,
   folder,
+  hit,
   drag,
   dragging,
   enter,
@@ -544,6 +590,8 @@ function DocumentCard({
   actions: DocumentActions;
   /** The folder it is filed in, shown in All documents only. */
   folder?: string;
+  /** The question a search found in it, when its name does not explain the match. */
+  hit?: QuestionHit;
   /** Pointer handlers that drag it onto a folder; absent when there are no folders. */
   drag?: SourceProps;
   dragging?: boolean;
@@ -553,6 +601,7 @@ function DocumentCard({
   const m = useMessages(DASHBOARD_MESSAGES);
   const rise = entrance(enter);
   const isBank = summary.kind === 'bank';
+  const marks = cardMarks(summary);
   return (
     <li
       className={`group relative min-w-0 transition-opacity duration-150 ease-out-soft ${dragging ? 'opacity-40' : ''} ${rise.className}`}
@@ -599,12 +648,27 @@ function DocumentCard({
               {folder}
             </span>
           )}
-          <span className="mt-0.5 block truncate text-[11px] tabular-nums leading-tight text-ink-subtle">
-            {!isBank &&
-              summary.questionCount !== undefined &&
-              `${m.questions(summary.questionCount)} · `}
-            {relativeTime(summary.updatedAt)}
-          </span>
+          {/* With marks the count takes its own line and the date the next: "12 questions ·
+              48 marks · 3 days ago" clips at card width, and so does the kind beside marks. */}
+          {marks !== undefined ? (
+            <>
+              <span className="mt-0.5 block truncate text-[11px] tabular-nums leading-tight text-ink-subtle">
+                {summary.questionCount !== undefined && `${m.questions(summary.questionCount)} · `}
+                {m.marks(marks)}
+              </span>
+              <span className="mt-0.5 block truncate text-[11px] tabular-nums leading-tight text-ink-subtle">
+                {relativeTime(summary.updatedAt)}
+              </span>
+            </>
+          ) : (
+            <span className="mt-0.5 block truncate text-[11px] tabular-nums leading-tight text-ink-subtle">
+              {!isBank &&
+                summary.questionCount !== undefined &&
+                `${m.questions(summary.questionCount)} · `}
+              {relativeTime(summary.updatedAt)}
+            </span>
+          )}
+          {hit && <HitLine hit={hit} className="mt-1 line-clamp-2 text-[11px] leading-snug text-ink-subtle" />}
         </span>
       </button>
       <div className="absolute bottom-0 right-0">
@@ -623,6 +687,7 @@ function SavedRow({
   summary,
   actions,
   folder,
+  hit,
   drag,
   dragging,
   enter,
@@ -630,6 +695,7 @@ function SavedRow({
   summary: WorksheetSummary;
   actions: DocumentActions;
   folder?: string;
+  hit?: QuestionHit;
   drag?: SourceProps;
   dragging?: boolean;
   enter?: number;
@@ -658,6 +724,7 @@ function SavedRow({
             <KindAndCount summary={summary} />
             {folder && <FolderTag name={folder} />}
           </span>
+          {hit && <HitLine hit={hit} className="mt-1 block truncate text-[11px] leading-tight text-ink-subtle" />}
         </span>
         <span className="shrink-0 pl-3 text-[11px] tabular-nums text-ink-muted">
           {relativeTime(summary.updatedAt)}

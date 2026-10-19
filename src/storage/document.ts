@@ -1,5 +1,6 @@
 import { dedupeIds } from '@/model/dedupeIds';
 import { CURRENT_SCHEMA_VERSION, isNewerThanBuild, migrate, serializeWorksheet } from '@/model/migrations';
+import { worksheetMarks } from '@/model/marks';
 import { documentName } from '@/model/text';
 import type { Worksheet } from '@/model/types';
 import { sha256 } from '@/sync/hash';
@@ -84,11 +85,26 @@ export function summarize(worksheet: Worksheet): WorksheetSummary {
     updatedAt: worksheet.updatedAt,
     questionCount: worksheet.questions.length,
     hasCover: Boolean(worksheet.cover),
+    ...totalMarksOf(worksheet),
     // Only written when set (a bank, or a later build's kind, passed through untouched).
     ...(typeof worksheet.kind === 'string' ? { kind: worksheet.kind } : {}),
     // Says the absent kind above means "a paper" (§ INDEX_ROW_REV).
     indexRev: INDEX_ROW_REV,
   };
+}
+
+/**
+ * The row's `totalMarks`: the derivation the cover and running header print, never a
+ * count of its own. A document it cannot total (a shape this build half-knows) gets no
+ * figure rather than a failed save — the row matters more than the number on it.
+ */
+function totalMarksOf(worksheet: Worksheet): Pick<WorksheetSummary, 'totalMarks'> {
+  try {
+    const totalMarks = worksheetMarks(worksheet);
+    return Number.isFinite(totalMarks) ? { totalMarks } : {};
+  } catch {
+    return {};
+  }
 }
 
 /**

@@ -940,6 +940,7 @@ export function StartScreen({
             onFolderChange={enterFolder}
             folderActions={folderActions}
             settings={<SettingsButton separated className="hidden lg:flex" />}
+            questionRows={bankRows}
             welcome={
               <WelcomeDesk
                 onCreate={setCreating}

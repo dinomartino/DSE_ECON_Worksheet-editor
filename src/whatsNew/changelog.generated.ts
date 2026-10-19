@@ -40,6 +40,16 @@ a version heading is edited afterwards.
   a class, then the one used longest ago), oldest first, or most marks first. The sort stays
   when you clear the filters, and the list's count names it.
   <!-- zh: **找出有圖表的題目，並為題庫清單排序。** 題庫的「篩選」新增「圖表」：只顯示有圖表或圖片的題目，或只顯示沒有的。新的「排序」可把清單按最新的先（與以往一樣）、最少用的先（考過的班別卷最少，再按最久未用）、最舊的先或分數最高的先排列。清除篩選時排序會保留，清單的題數旁亦會註明。 -->
+- **Total marks on each paper in your list.** Every worksheet and mock paper on the start
+  screen now says what it is worth ("12 questions · 48 marks"), counted the way the cover
+  counts it, so an "answer any ONE" section adds only one question. A paper last saved by
+  an earlier version shows its total after your next change to it.
+  <!-- zh: **工作紙清單顯示總分。** 開始畫面上每份工作紙及 Mock 試卷都會顯示總分（例如「12 條題目 · 48 分」），計法與封面相同，「任答一題」的部分只計一題。最後以舊版本儲存的試卷，在你下次修改後便會顯示總分。 -->
+- **Search finds words inside your questions.** The search box on the start screen now
+  looks through the questions of every saved paper as well as the names, in English and
+  中文. A paper found by its questions shows which one matched and the words around it
+  ("Q4 · …price **elasticity** of demand…").
+  <!-- zh: **搜尋可找到題目內的字詞。** 開始畫面的搜尋框除了名稱，亦會搜尋每份已儲存試卷的題目，中英文皆可。因題目而找到的試卷會顯示是哪一題及相關字句（例如「第 4 題 · …需求價格**彈性**…」）。 -->
 
 ### Changed
 - **Deadweight loss is labelled DWL in every diagram template.** The monopoly templates
