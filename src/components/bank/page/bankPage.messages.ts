@@ -46,6 +46,12 @@ export const BANK_PAGE_MESSAGES = defineMessages({
   sameStudents: { en: (detail: string) => `Same students: ${detail}`, zh: (detail: string) => `同一批學生：${detail}` },
   missingZh: { en: 'Missing 中文', zh: '缺少中文' },
   missingEn: { en: 'Missing English', zh: '缺少英文' },
+  withDiagram: { en: 'Has a diagram', zh: '有圖表' },
+  withoutDiagram: { en: 'No diagram', zh: '沒有圖表' },
+  sortNewest: { en: 'Newest first', zh: '最新的先' },
+  sortLeastUsed: { en: 'Least used first', zh: '最少用的先' },
+  sortOldest: { en: 'Oldest first', zh: '最舊的先' },
+  sortMarks: { en: 'Most marks first', zh: '分數最高的先' },
   quoted: { en: (text: string) => `“${text}”`, zh: (text: string) => `「${text}」` },
   filterUntagged: { en: 'untagged', zh: '未標記課題' },
   filterNotUsed: {

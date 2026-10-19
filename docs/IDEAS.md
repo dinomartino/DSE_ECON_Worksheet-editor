@@ -26,8 +26,8 @@ C10), what happens after the paper is sat (G), and AI authoring (E1/E3/E4 built 
    **Parked until the user returns to them:** C9 Add from bank inside the editor, E7 Write one
    like this and recipes (`docs/design/ai-pattern-questions.md`), C10. Not urgent (user,
    2026-10-08): make classes + sat-on findable (the greyed 題庫 Class filter should open Setup).
-2. **Next** — item analysis (G1), which also completes C4's facility; C11's remaining
-   filters; bank authoring (`docs/design/bank-authoring.md`, 3 questions for the user).
+2. **Next** — item analysis (G1), which also completes C4's facility; bank
+   authoring (`docs/design/bank-authoring.md`, 3 questions for the user).
 3. **Later** — import layout profiles (D), unpausing E1/E3/E4 after live evals, data charts
    (B3b), answer frames and the examiner grid (B6, B7), dashboard extras (F).
 
@@ -66,8 +66,6 @@ rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
   proposal: `docs/design/bank-authoring.md` (user asked 2026-09-30; for a future session).
 
 **Finding and judging**:
-- **C11 The free filters** (S): names and search by paper shipped; still to add: filter
-  has-diagram, missing 中文/English; sort by least used, oldest, marks. The data is indexed.
 - **C12 Derived item facts** (S–M): per leaf, command word → skill band (Know /
   Apply-Analyse / Evaluate, EN and 中文 lexicon); per question, stimulus kind (data,
   diagram, extract). Filter on them. Registry hook, no type branching; no schema change.

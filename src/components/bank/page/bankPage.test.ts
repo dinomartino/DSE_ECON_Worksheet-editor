@@ -22,8 +22,12 @@ import {
   isThin,
   mixLabel,
   sinceDate,
+  sortGroups,
+  sortLabel,
   traySummary,
+  useCount,
 } from './bankPage';
+import { groupRows } from '@/library/group';
 
 const choice = createMcqQuestion().type;
 const parts = createStructuredQuestion().type;
@@ -281,5 +285,87 @@ describe('the missing-language filter', () => {
     const filters = { ...DEFAULT_FILTERS, missing: 'zh' as const };
     expect(activeFilters(filters)).toEqual([{ key: 'missing', label: 'Missing 中文' }]);
     expect(clearFilter(filters, 'missing').missing).toBeUndefined();
+  });
+});
+
+describe('the diagram filter', () => {
+  const rows = [row({ rootId: 'g', hasDiagram: true }), row({ rootId: 'p' }), row({ rootId: 'h', hasDiagram: true })];
+  const ids = (list: { rootId: string }[]) => list.map((r) => r.rootId);
+
+  it('keeps questions with a diagram, or only those without', () => {
+    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, diagram: 'with' }))).toEqual(['g', 'h']);
+    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, diagram: 'without' }))).toEqual(['p']);
+    expect(ids(filterRows(rows, DEFAULT_FILTERS))).toEqual(['g', 'p', 'h']);
+  });
+
+  it('is named, and clears, like any other filter; in 中文 too', () => {
+    const filters = { ...DEFAULT_FILTERS, diagram: 'with' as const };
+    expect(activeFilters(filters)).toEqual([{ key: 'diagram', label: 'Has a diagram' }]);
+    expect(activeFilters({ ...DEFAULT_FILTERS, diagram: 'without' }, 'zh-HK')).toEqual([{ key: 'diagram', label: '沒有圖表' }]);
+    expect(clearFilter(filters, 'diagram').diagram).toBeUndefined();
+  });
+});
+
+describe('sortGroups: the list order', () => {
+  // Uses are papers naming classes, dated by `usedOn`; a draft names none.
+  const use = (rootId: string, docId: string, usedOn: string, extra: Parameters<typeof row>[0] = {}) =>
+    row({ rootId, docId, usedOn, classes: ['5A'], ...extra });
+  const rows = [
+    use('twice', 'p1', '2026-03-01', { marks: 2 }),
+    use('twice', 'p2', '2025-10-01', { marks: 2 }),
+    use('once', 'p3', '2024-01-10', { marks: 8 }),
+    use('draft', 'p4', '2026-05-01', { classes: undefined, marks: 4 }),
+    use('bankOnly', 'b1', '2023-06-01', { docKind: 'bank', classes: undefined, marks: 1 }),
+  ];
+  const groups = groupRows(rows);
+  const roots = (list: { rootId: string }[]) => list.map((g) => g.rootId);
+
+  it('newest first is the default, and leaves the order alone', () => {
+    expect(roots(groups)).toEqual(['draft', 'twice', 'once', 'bankOnly']);
+    expect(roots(sortGroups(groups, undefined))).toEqual(roots(groups));
+    expect(roots(sortGroups(groups, 'newest'))).toEqual(roots(groups));
+  });
+
+  it('least used: fewest real uses first (drafts and banks are not uses), then the longest unused', () => {
+    expect(roots(sortGroups(groups, 'leastUsed'))).toEqual(['draft', 'bankOnly', 'once', 'twice']);
+    expect(useCount(groups.find((g) => g.rootId === 'twice')!)).toBe(2);
+    expect(useCount(groups.find((g) => g.rootId === 'draft')!)).toBe(0);
+  });
+
+  it('oldest: by the first appearance of any copy', () => {
+    expect(roots(sortGroups(groups, 'oldest'))).toEqual(['bankOnly', 'once', 'twice', 'draft']);
+  });
+
+  it('marks: most first, ties in the default order', () => {
+    expect(roots(sortGroups(groups, 'marks'))).toEqual(['once', 'draft', 'twice', 'bankOnly']);
+  });
+
+  it('reads uses and dates from every copy, not only the ones a filter left', () => {
+    // "twice" was sat in 2025 and 2026; a filter hides the 2025 paper's copy.
+    const all = [
+      use('twice', 'p1', '2026-03-01'),
+      use('twice', 'p2', '2025-10-01', { docTitle: 'Hidden' }),
+      use('once', 'p3', '2026-01-10'),
+    ];
+    const full = new Map(groupRows(all).map((g) => [g.rootId, g]));
+    const shown = groupRows(all.filter((r) => r.docId !== 'p2'));
+    // Alone, the shown copy looks used once and first seen in 2026.
+    expect(roots(sortGroups(shown, 'leastUsed'))).toEqual(['once', 'twice']);
+    expect(roots(sortGroups(shown, 'oldest'))).toEqual(['once', 'twice']);
+    expect(roots(sortGroups(shown, 'leastUsed', full))).toEqual(['once', 'twice']);
+    expect(roots(sortGroups(shown, 'oldest', full))).toEqual(['twice', 'once']);
+    // Equal uses: the one used longest ago leads; across every copy "twice" was used twice.
+    const once2 = [...all, use('once', 'p4', '2024-01-01')];
+    const full2 = new Map(groupRows(once2).map((g) => [g.rootId, g]));
+    const shown2 = groupRows(once2.filter((r) => r.docId !== 'p2'));
+    expect(roots(sortGroups(shown2, 'leastUsed'))).toEqual(['twice', 'once']);
+    expect(roots(sortGroups(shown2, 'leastUsed', full2))).toEqual(['once', 'twice']);
+  });
+
+  it('is never counted as a filter, and names itself in both languages', () => {
+    expect(activeFilters({ ...DEFAULT_FILTERS, sort: 'leastUsed' })).toEqual([]);
+    expect(clearFilter({ ...DEFAULT_FILTERS, sort: 'marks' }, 'sort').sort).toBeUndefined();
+    expect(sortLabel('leastUsed')).toBe('Least used first');
+    expect(sortLabel('marks', 'zh-HK')).toBe('分數最高的先');
   });
 });

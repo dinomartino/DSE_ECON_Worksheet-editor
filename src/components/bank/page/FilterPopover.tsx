@@ -14,13 +14,17 @@ import {
   activeFilters,
   classChoiceText,
   DEFAULT_FILTERS,
+  diagramLabel,
   MARKS_BANDS,
   marksBandLabel,
   missingLabel,
   SINCE_CHOICES,
   sinceLabel,
+  SORT_CHOICES,
+  sortLabel,
   typeName,
   type BankFilters,
+  type BankSort,
   type ClassChoice,
   type MarksBand,
   type Since,
@@ -32,7 +36,8 @@ import { topicName } from './topicText';
 
 /**
  * Every narrowing filter behind one "Filter" button: type, 題型, marks, not used with a
- * class (and since when), a missing language, source. The button names what is on. While open the popover owns the
+ * class (and since when), a missing language, a diagram, source; then the list's sort,
+ * below a rule, which the button never counts. The button names what is on. While open the popover owns the
  * keyboard (`useModalLayer`), so Esc closes it rather than leaving the level.
  */
 export function FilterPopover({
@@ -216,6 +221,17 @@ function Panel({
           ]}
         />
       </Field>
+      <Field label={m.diagram}>
+        <Select
+          value={filters.diagram ?? ''}
+          onChange={(value) => set('diagram', value === 'with' || value === 'without' ? value : undefined)}
+          options={[
+            { value: '', label: m.anyDiagram },
+            { value: 'with', label: diagramLabel('with', lang) },
+            { value: 'without', label: diagramLabel('without', lang) },
+          ]}
+        />
+      </Field>
       <Field label={m.source}>
         <Select
           value={filters.source}
@@ -227,11 +243,21 @@ function Panel({
           ]}
         />
       </Field>
+      <div className="border-t border-line pt-3">
+        <Field label={m.sort}>
+          <Select
+            value={filters.sort ?? 'newest'}
+            onChange={(value) => set('sort', value === 'newest' ? undefined : (value as BankSort))}
+            options={SORT_CHOICES.map((choice) => ({ value: choice.value, label: sortLabel(choice.value, lang) }))}
+          />
+        </Field>
+      </div>
       <div className="flex items-center justify-between border-t border-line pt-2.5">
         <button
           type="button"
           disabled={!narrowed}
-          onClick={() => onChange({ ...DEFAULT_FILTERS, text: filters.text, topic: filters.topic })}
+          // The sort is not a filter: clearing keeps it.
+          onClick={() => onChange({ ...DEFAULT_FILTERS, text: filters.text, topic: filters.topic, sort: filters.sort })}
           className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:text-ink-subtle disabled:no-underline"
         >
           {m.clear}

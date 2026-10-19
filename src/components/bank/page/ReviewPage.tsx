@@ -42,6 +42,8 @@ export interface ReviewState {
   aiTones?: ReadonlyMap<string, BankItemTone>;
   /** The questions the "Adding to" paper already holds, by `rootId` (`rootsInPaper`). */
   inTarget?: ReadonlyMap<string, { number?: number }>;
+  /** The Filter's sort when not the default ("Least used first"), named after the count. */
+  sortedBy?: string;
 }
 
 /** The ✦ review of the question on the stage: its note above the paper, its marks on it. */
@@ -193,6 +195,7 @@ function Rail({
             (pickedHere === picked.size
               ? `${m.listPre}${picked.size}${m.listPost}`
               : `${m.listPreOf}${pickedHere}${m.listOf}${picked.size}${m.listPost}`)}
+          {state.sortedBy && <span data-rail-sort title={state.sortedBy}>{` · ${state.sortedBy}`}</span>}
         </span>
         <button
           type="button"
