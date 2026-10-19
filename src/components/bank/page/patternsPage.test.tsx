@@ -37,6 +37,8 @@ const page = (ui: UiLanguage, rows: ReturnType<typeof row>[], registry: PatternR
   render(
     ui,
     <PatternsPage
+      rows={rows}
+      language="en"
       items={listPatterns(rows, registry)}
       tallies={subTopicTallies(rows)}
       progress={sortProgress(rows)}
@@ -50,6 +52,8 @@ const page = (ui: UiLanguage, rows: ReturnType<typeof row>[], registry: PatternR
       onDelete={noop}
       onShow={noop}
       onSort={noop}
+      onSortInto={noop}
+      onUnsort={noop}
       onStartNew={noop}
     />,
   );
@@ -72,27 +76,44 @@ describe('the 題型 map, nothing named yet', () => {
     expect(out).not.toContain('data-patterns-summary');
   });
 
-  it('with questions: where the library stands, then topic cards, most to sort first, one primary', () => {
+  it('with questions: the first 題型 is made here, in three steps, on the topic with most to sort', () => {
     const rows = [...unsorted, row({ rootId: 'f', typeId: MCQ, tags: ['D.structure'] })];
     const out = page('en', rows);
     expect(out).toContain('4 questions · none sorted yet');
-    expect(out).toContain('Pick a topic to start');
+    expect(out).toContain('data-first-pattern');
+    expect(out).toContain('Pick a topic');
+    expect(out).toContain('Click questions that are alike');
+    expect(out).toContain('Name them');
+    // Topic cards select in place, most to sort first; the first is chosen.
     expect(out.indexOf('data-pattern-start="C"')).toBeLessThan(out.indexOf('data-pattern-start="D"'));
+    expect(out).toMatch(/aria-pressed="true"[^>]*data-pattern-start="C"/);
     expect(out).toContain('3 to sort · 2 sub-topics');
-    expect(out).toContain('Sort C →');
-    expect(out.match(/bg-cta text-on-cta/g)).toHaveLength(1);
-    // The example shows the three shapes of a name, not a list to adopt, and is not greyed.
+    // C's sub-topics to choose between; the one with most to sort shows its questions.
+    expect(out).toContain('data-first-subtopic="C.ped"');
+    expect(out).toContain('data-first-subtopic="C.intervention"');
+    expect(out).toContain('data-board-card="a"');
+    expect(out).toContain('data-board-card="b"');
+    expect(out).not.toContain('data-board-card="c"');
+    // The whole board stays one link away.
+    expect(out).toContain('Sort all of C on the board →');
+    // Nothing selected: Create waits, and says why.
+    expect(out).toContain('Click at least one question above first.');
+    expect(out).toMatch(/<button[^>]*type="submit"[^>]*disabled=""/);
+    // The preview is this sub-topic, with the three shapes of a name, not a list to adopt.
+    expect(out).toContain('data-patterns-example');
+    expect(out).toContain('Your 題型');
     expect(out).toContain('計算需求價格彈性');
     expect(out).toContain('Elastic demand → a price rise cuts TR');
-    expect(out).not.toContain('border-dashed');
-    // The 40-option sub-topic form is gone: naming happens on the board.
+    // The 40-option sub-topic form is gone.
     expect(out).not.toContain('<select');
   });
 
   it('reads in 中文, topic names too, with 題目類型 never 題型 for MCQ / LQ', () => {
     const out = page('zh-HK', unsorted);
     expect(out).toContain('把題目分成不同題型');
-    expect(out).toContain('選一個課題開始');
+    expect(out).toContain('選一個課題');
+    expect(out).toContain('按選相似的題目');
+    expect(out).toContain('建立題型');
     expect(out).toContain('市場與價格');
     expect(out).not.toContain('Market and Price');
     expect(out).not.toContain('MCQ 題型');
@@ -130,7 +151,7 @@ describe('the 題型 map, in use', () => {
     expect(out).toContain('data-patterns-other');
     expect(out).not.toContain('data-pattern-topic="D.structure"');
     expect(out).toContain('data-patterns-keep-going');
-    expect(out).not.toContain('Pick a topic to start');
+    expect(out).not.toContain('data-first-pattern');
   });
 });
 

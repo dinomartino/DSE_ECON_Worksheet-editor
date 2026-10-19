@@ -411,3 +411,28 @@ remembered level gains `{ kind: 'sort', topic }`; an older build reads it as the
   (`question-types-ux/v3-*.png`). **Not checked:** Tauri, Safari, narrow windows, a
   library over 100 questions, a question with parts on the board (it is sorted whole).
 - **Not built:** item 5 (order by shape, "n more look similar"), item 7 (Parts ▸).
+
+## 9. The first 題型 made on the map (2026-10-19)
+
+The user's call: the empty map read as instructions plus a link away; the first 題型
+should be made on the map itself. `src/components/bank/page/FirstPattern.tsx` replaces the
+empty map's topic cards and static example (nothing named yet, questions with sub-topics):
+
+1. **Pick a topic.** The topic cards (and the "Other topics" line) select in place
+   (`aria-pressed`); the one with most to sort is chosen at first.
+2. **Click questions that are alike.** That topic's sub-topics with questions to sort as
+   chips (the busiest chosen), its unsorted questions as the board's cards
+   (`PatternSortBoard.tsx:SortCard`), six then "Show n more". Shift-click selects a run.
+   "Sort all of C on the board →" keeps the whole board one link away.
+3. **Name them.** An inline name field and Create 題型; under it, why Create is grey, or
+   "Press Enter to file these n questions under it".
+
+Beside the steps (below them on a narrow window) the preview is the chosen sub-topic as
+the map will draw it: the name as typed (or "Your 題型"), the selected questions' type
+badges and count, what stays unsorted, and the three name shapes as one line of text.
+Create writes exactly what the board writes (`onSortInto`). The map then has a 題型, so it
+turns into the in-use layout with a status line on top (`PatternsPage.tsx:Made`): the name
+and count, Undo (`onUnsort`, which also drops the names it registered), and "Keep sorting
+C →". It is a plain status line, not a banner (§ Notices; `src/store/notices.test.ts`).
+No storage change. Screenshots: `question-types-ux/v4-*.png`. **Checked:** Chrome, demo
+seed, en 1440 and 760, 中文 1440, create and Undo. **Not checked:** Tauri, Safari, dark.

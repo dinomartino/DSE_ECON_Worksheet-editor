@@ -15,6 +15,11 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Make your first 題型 right on the 題型 map.** With no 題型 yet, the map is no longer
+  just an explanation: click a topic, click the questions that are alike, type a name and
+  press Create. A preview beside the steps shows the sub-topic as the map will draw it, and
+  fills in as you choose. Changed your mind? Undo is one click.
+  <!-- zh: **直接在題型一覽建立第一個題型。** 未有題型時，題型一覽不再只是說明：按選一個課題，按選相似的題目，輸入名稱再按「建立題型」。步驟旁的預覽會顯示該子課題建立後在一覽中的樣子，並隨你的選擇即時更新。改變主意？按一下「復原」便可。 -->
 - **Sort your questions into 題型 on one board.** The 題型 map now opens on your own
   topics: pick one (it suggests where most questions still need a 題型), tick the questions
   that are alike, type a name and press Enter. That makes the 題型 and files them in one go.

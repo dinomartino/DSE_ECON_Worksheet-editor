@@ -12,12 +12,17 @@ import {
   type SortProgress,
   type SubTopicTally,
 } from '@/library/patterns';
+import type { BankRow } from '@/library/types';
 import { cleanPatternName, matchPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
 import { TOPICS, type Topic } from '@/model/topics';
+import type { LanguageMode } from '@/model/types';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { listQuestionTypes } from '@/registry';
 import { escapeClears } from '../escapeClears';
 import { typeName } from './bankPage';
+import { FirstPattern } from './FirstPattern';
+import { FIRST_PATTERN_MESSAGES } from './FirstPattern.messages';
+import type { SortRequest, UnsortRequest } from './PatternSortBoard';
 import { PATTERNS_PAGE_MESSAGES } from './PatternsPage.messages';
 import { chromeTopicName } from './topicText';
 
@@ -40,14 +45,16 @@ function useTopicName(): (code: string) => string {
 /**
  * The 題型 map (question patterns). One layout whatever is sorted, so naming the first
  * 題型 never turns the page into another (`docs/design/question-types-empty-state.md`):
- * a heading with where the library stands, then, with nothing named yet, the topics to
- * start sorting and an example of a sorted sub-topic (chrome, from the catalogue: we ship
- * no list); once some 題型 exist, the topics to keep going on, a box per sub-topic with
+ * a heading with where the library stands, then, with nothing named yet, the first 題型
+ * made in place (`FirstPattern`: pick a topic, click questions alike, name them, beside a
+ * live preview; we ship no list), and a line saying it worked; once some 題型 exist, the topics to keep going on, a box per sub-topic with
  * 題型 (one list, type badges), and every other topic on one line. Sorting happens on the
- * sort board (`onSort`, a coarse topic). Rename, merge and delete rewrite every copy of
+ * sort board (`onSort`, a coarse topic), or for the first one, here. Rename, merge and delete rewrite every copy of
  * every question that uses the 題型 (the caller does the writing).
  */
 export function PatternsPage({
+  rows,
+  language,
   items,
   tallies,
   progress,
@@ -62,8 +69,14 @@ export function PatternsPage({
   onDelete,
   onShow,
   onSort,
+  onSortInto,
+  onUnsort,
   onStartNew,
 }: {
+  /** The bank's rows: the first-run steps show the questions to sort. */
+  rows: readonly BankRow[];
+  /** The language questions are shown in. */
+  language: LanguageMode;
   /** Every 題型 (`listPatterns`), unscoped. */
   items: PatternItem[];
   /** Each sub-topic's questions and how many lack a 題型 (`subTopicTallies`). */
@@ -86,10 +99,16 @@ export function PatternsPage({
   onShow: (item: PatternItem) => void;
   /** Open the sort board for a coarse topic. */
   onSort: (topic: string) => void;
+  /** File questions under a 題型, as the sort board does (the first one is made here). */
+  onSortInto: (request: SortRequest) => void;
+  onUnsort: (request: UnsortRequest) => void;
   onStartNew: () => void;
 }) {
   const m = useMessages(PATTERNS_PAGE_MESSAGES);
   const [confirm, setConfirm] = useState<Confirm>();
+  // The 題型 just made from the first-run steps, until undone or dismissed.
+  const [made, setMade] = useState<UnsortRequest & { name: string }>();
+  const [runs, setRuns] = useState(0);
   const [showEmpty, setShowEmpty] = useState(false);
   const types = listQuestionTypes().map((type) => type.id);
   const subTopics = useMemo(
@@ -151,9 +170,39 @@ export function PatternsPage({
             <p className="max-w-[560px] text-[13px] leading-relaxed text-ink-muted">{m.noSubTopic}</p>
             <Example />
           </div>
-        ) : items.length === 0 ? (
-          <Start progress={progress} tallies={tallies} onSort={onSort} />
+        ) : items.length === 0 && !made ? (
+          <FirstPattern
+            key={runs}
+            rows={rows}
+            progress={progress}
+            tallies={tallies}
+            language={language}
+            busy={busy}
+            onSort={onSort}
+            onSortInto={(request) => {
+              onSortInto(request);
+              setMade({
+                topic: request.topic,
+                roots: request.roots,
+                name: request.name,
+                created: request.typeIds.map((typeId) => ({ topic: request.topic, typeId, name: request.name })),
+              });
+            }}
+          />
         ) : (
+          <>
+          {made && (
+            <Made
+              made={made}
+              busy={busy}
+              onUndo={() => {
+                onUnsort(made);
+                setMade(undefined);
+                setRuns((n) => n + 1);
+              }}
+              onSort={() => onSort(letterOf(made.topic))}
+            />
+          )}
           <InUse
             scoped={scoped}
             subTopics={subTopics}
@@ -164,6 +213,7 @@ export function PatternsPage({
             onScope={onScope}
             box={box}
           />
+          </>
         )}
       </div>
 
@@ -239,52 +289,24 @@ interface BoxProps {
   onSort: (topic: string) => void;
 }
 
-/** How many of a coarse topic's sub-topics hold questions to sort. */
-const subTopicsToSort = (tallies: ReadonlyMap<string, SubTopicTally>, topic: string) =>
-  [...tallies.values()].filter((tally) => tally.without > 0 && letterOf(tally.topic) === topic).length;
-
-/** Nothing named yet: the topics to start on (the first one the page's primary action), then the example. */
-function Start({ progress, tallies, onSort }: { progress: SortProgress; tallies: ReadonlyMap<string, SubTopicTally>; onSort: (topic: string) => void }) {
-  const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  const name = useTopicName();
-  const starts = topicsToSort(progress);
-  const rest = progress.topics.filter((entry) => entry.notSorted > 0 && !starts.includes(entry));
+/**
+ * The first 題型 made: what it holds, where to go on, and a way to take it back. A status
+ * line as the sort board's, not a banner (SYSTEM_ARCHITECTURE.md § Notices); it lasts
+ * while the map is open.
+ */
+function Made({ made, busy, onUndo, onSort }: { made: UnsortRequest & { name: string }; busy: boolean; onUndo: () => void; onSort: () => void }) {
+  const m = useMessages(FIRST_PATTERN_MESSAGES);
   return (
-    <>
-      <section aria-label={m.pickTopic} className="grid gap-2.5" data-patterns-starts>
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-[13.5px] font-semibold text-ink">{m.pickTopic}</h3>
-          <span className="text-[11.5px] text-ink-subtle">{m.mostFirst}</span>
-        </div>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {starts.map((entry, i) => (
-            <li
-              key={entry.topic}
-              className="flex flex-col gap-3 rounded-[12px] border border-line bg-surface-raised px-4 pb-3.5 pt-3"
-              data-pattern-start={entry.topic}
-            >
-              <p className="flex items-baseline gap-2 text-ink">
-                <span className="font-display text-[20px] leading-none">{entry.topic}</span>
-                <span className="min-w-0 text-[13.5px] font-semibold">{name(entry.topic)}</span>
-              </p>
-              <p className="-mt-1.5 text-[12px] tabular-nums text-ink-subtle">
-                {m.topicCount(entry.notSorted, subTopicsToSort(tallies, entry.topic))}
-              </p>
-              <Button
-                className="self-start"
-                variant={i === 0 ? 'primary' : 'default'}
-                aria-label={m.sortTopicLabel(name(entry.topic))}
-                onClick={() => onSort(entry.topic)}
-              >
-                {m.sortTopic(entry.topic)}
-              </Button>
-            </li>
-          ))}
-        </ul>
-        {rest.length > 0 && <OtherTopics topics={rest.map((entry) => [entry.topic, entry.notSorted])} onSort={onSort} />}
-      </section>
-      <Example />
-    </>
+    <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-ink" data-patterns-made>
+      <span aria-hidden className="text-accent-ink">✓</span>
+      <span>{m.made(made.name, made.roots.length)}</span>
+      <button type="button" disabled={busy} onClick={onUndo} className={LINK}>
+        {m.undo}
+      </button>
+      <button type="button" onClick={onSort} className={`font-medium ${LINK}`}>
+        {m.keepSorting(letterOf(made.topic))}
+      </button>
+    </p>
   );
 }
 

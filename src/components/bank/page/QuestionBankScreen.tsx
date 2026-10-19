@@ -1060,6 +1060,8 @@ export function QuestionBankScreen({
 
       {level.kind === 'patterns' && (
         <PatternsPage
+          rows={rows}
+          language={language}
           items={patternItems}
           tallies={patternTallies}
           progress={sorting}
@@ -1074,6 +1076,8 @@ export function QuestionBankScreen({
           onDelete={deletePattern}
           onShow={showPattern}
           onSort={(code) => setLevel({ kind: 'sort', topic: code })}
+          onSortInto={sortIntoPattern}
+          onUnsort={unsortPattern}
           onStartNew={onStartNew}
         />
       )}

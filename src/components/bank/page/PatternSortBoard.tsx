@@ -321,7 +321,7 @@ export function PatternSortBoard({
                   <ul className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
                     {section.cards.map((row) => (
                       <li key={row.rootId}>
-                        <Card
+                        <SortCard
                           row={row}
                           language={language}
                           selected={active && selection!.roots.includes(row.rootId)}
@@ -374,7 +374,7 @@ export function PatternSortBoard({
 }
 
 /** One question to sort: what it is (type, marks, a diagram), and enough of its stem to recognise it. */
-function Card({
+export function SortCard({
   row,
   language,
   selected,
