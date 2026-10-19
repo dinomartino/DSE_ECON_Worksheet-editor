@@ -207,3 +207,72 @@ export const thenEdit =
   (first: TagEdit, second: TagEdit): TagEdit =>
   (tags) =>
     second(first(tags));
+
+/** Whether the row carries the named 題型 under the sub-topic, whatever its type. */
+export function rowHasPatternName(row: Pick<BankRow, 'tags'>, topic: string, name: string): boolean {
+  return rowPatterns(row, topic).some((own) => samePatternName(own, name));
+}
+
+/**
+ * One sub-topic's questions (distinct `rootId` tagged with it) and how many of them carry
+ * no 題型 under it, per type too: what the 題型 map lists as still to sort.
+ */
+export interface SubTopicTally {
+  topic: string;
+  questions: number;
+  without: number;
+  /** Questions without a 題型 here, by type id. */
+  withoutByType: Record<string, number>;
+}
+
+/** Every known sub-topic some question is tagged with → its tally. */
+export function subTopicTallies(rows: readonly Pick<BankRow, 'rootId' | 'typeId' | 'tags'>[]): Map<string, SubTopicTally> {
+  const seen = new Map<string, Set<string>>();
+  const out = new Map<string, SubTopicTally>();
+  for (const row of rows) {
+    for (const code of new Set(row.tags)) {
+      if (!holdsPatterns(code)) continue;
+      const roots = seen.get(code) ?? new Set<string>();
+      if (roots.has(row.rootId)) continue;
+      roots.add(row.rootId);
+      seen.set(code, roots);
+      const tally = out.get(code) ?? { topic: code, questions: 0, without: 0, withoutByType: {} };
+      tally.questions += 1;
+      if (rowPatterns(row, code).length === 0) {
+        tally.without += 1;
+        tally.withoutByType[row.typeId] = (tally.withoutByType[row.typeId] ?? 0) + 1;
+      }
+      out.set(code, tally);
+    }
+  }
+  return out;
+}
+
+/** Where to start sorting: the sub-topics with the most questions without a 題型, then guide order. */
+export function startingSubTopics(tallies: ReadonlyMap<string, SubTopicTally>, count = 3): SubTopicTally[] {
+  return [...tallies.values()]
+    .filter((tally) => tally.without > 0)
+    .sort((a, b) => b.without - a.without || (GUIDE_ORDER.get(a.topic) ?? 0) - (GUIDE_ORDER.get(b.topic) ?? 0))
+    .slice(0, count);
+}
+
+/** The type most of a sub-topic's unsorted questions are: what a new 題型 there starts as. */
+export function likelyType(tally: SubTopicTally | undefined, types: readonly string[]): string | undefined {
+  if (!tally) return types[0];
+  return [...types].sort((a, b) => (tally.withoutByType[b] ?? 0) - (tally.withoutByType[a] ?? 0))[0];
+}
+
+/**
+ * One sub-topic's 題型 as the map lists them: one list, MCQ and LQ together, by name and
+ * then type, so a name set in both reads as two neighbouring lines.
+ */
+export function subTopicList(items: readonly PatternItem[], topic: string): PatternItem[] {
+  const types = listQuestionTypes().map((type) => type.id);
+  return items
+    .filter((item) => item.topic === topic)
+    .sort(
+      (a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }) ||
+        types.indexOf(a.typeId) - types.indexOf(b.typeId),
+    );
+}

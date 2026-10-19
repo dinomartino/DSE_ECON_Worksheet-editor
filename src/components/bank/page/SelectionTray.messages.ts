@@ -5,7 +5,7 @@ export const SELECTION_TRAY_MESSAGES = defineMessages({
   yourList: { en: 'Your list', zh: '我的清單' },
   orderHint: { en: ' · prints in this order · drag, or Alt+↑ ↓, to move', zh: ' · 按此順序列印 · 拖曳或按 Alt+↑ ↓ 移動' },
   sortedTitle: { en: 'Already in this order', zh: '已是此順序' },
-  sortTitle: { en: 'Keep each type in its order', zh: '各類型按順序排列' },
+  sortTitle: { en: 'Keep each question type in its order', zh: '各題目類型按順序排列' },
   listLabel: { en: 'Picked questions, in print order', zh: '已選題目（按列印順序）' },
   untitled: { en: 'Untitled question', zh: '未命名題目' },
   handleLabel: {

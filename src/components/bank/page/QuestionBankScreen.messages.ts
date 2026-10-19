@@ -50,8 +50,8 @@ export const BANK_SCREEN_MESSAGES = defineMessages({
   },
   bulkModes: { en: 'How to set topics', zh: '設定課題的方式' },
   bulkPatternNote: {
-    en: 'To set a 題型, select questions of one type (MCQ or LQ) only. You can still clear one.',
-    zh: '如要設定題型，請只選取同一類型（MCQ 或 LQ）的題目。你仍可清除題型。',
+    en: 'To set a 題型, select questions of one question type (MCQ or LQ) only. You can still clear one.',
+    zh: '如要設定題型，請只選取同一題目類型（MCQ 或 LQ）的題目。你仍可清除題型。',
   },
 
   // Edit topics and tag as you go
@@ -98,14 +98,19 @@ export const BANK_SCREEN_MESSAGES = defineMessages({
   untagged: { en: 'Untagged', zh: '未標記' },
   leftBefore: { en: '', zh: '尚餘 ' },
   leftAfter: { en: ' left', zh: ' 條' },
-  patternsTitle: { en: '題型 Patterns', zh: '題型' },
+  bankBack: { en: 'Question bank', zh: '題庫' },
+  patternsTitle: { en: '題型 map', zh: '題型一覽' },
+  patternsButton: { en: '題型', zh: '題型' },
   searchResults: { en: 'Search results', zh: '搜尋結果' },
   allQuestionsTitle: { en: 'All questions', zh: '全部題目' },
   tagHint: { en: 'Tag a question, the next one appears', zh: '標記一條題目，下一條便會出現' },
   searchLabel: { en: 'Search questions', zh: '搜尋題目' },
   searchIn: { en: (topic: string) => `Search in ${topic}`, zh: (topic: string) => spaced`在${topic}中搜尋` },
   searchAll: { en: 'Search every question 搜尋全部題目', zh: '搜尋全部題目' },
-  patternsButtonTitle: { en: 'Define, rename, merge or delete your 題型', zh: '定義、重新命名、合併或刪除你的題型' },
+  patternsButtonTitle: {
+    en: 'Your 題型 (question patterns): the kinds of question you set in each sub-topic',
+    zh: '你的題型：你在每個子課題下設定的題目種類',
+  },
   reading: {
     en: (done: number, total: number) => `Reading your worksheets · ${done} of ${total}`,
     zh: (done: number, total: number) => `正在讀取你的工作紙 · ${done} / ${total}`,

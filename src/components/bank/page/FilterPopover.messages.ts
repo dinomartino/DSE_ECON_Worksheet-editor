@@ -7,7 +7,7 @@ export const FILTER_MESSAGES = defineMessages({
   filterWith: { en: (what: string) => `Filter · ${what}`, zh: (what: string) => `篩選 · ${what}` },
   panel: { en: 'Filter questions', zh: '篩選題目' },
   type: { en: 'Type', zh: '題目類型' },
-  anyType: { en: 'Any type', zh: '所有類型' },
+  anyType: { en: 'Any type', zh: '所有題目類型' },
   pattern: { en: '題型', zh: '題型' },
   noPatternTitle: { en: 'No question here has a 題型 yet', zh: '這裏的題目都未有題型' },
   noPatternYet: { en: 'No 題型 yet', zh: '尚未有題型' },

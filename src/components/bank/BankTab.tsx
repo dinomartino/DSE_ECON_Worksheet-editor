@@ -18,6 +18,7 @@ import {
   paperClasses,
   paperRoots,
   rowKey,
+  tabPatternChoices,
   versionRows,
   visibleGroups,
   type FilterKey,
@@ -159,6 +160,13 @@ export function BankTab() {
   const visible = useMemo(() => visibleGroups(rows, filters, ctx), [rows, filters, ctx]);
   const roots = useMemo(() => paperRoots(worksheet), [worksheet]);
   const documents = useMemo(() => fromDocuments(rows, ctx.openDocId), [rows, ctx.openDocId]);
+  // The 題型 select: only under a sub-topic some question outside this paper has 題型 in.
+  const patternChoices = useMemo(
+    () => tabPatternChoices(rows, filters.topic, filters.typeId, ctx.openDocId),
+    [rows, filters.topic, filters.typeId, ctx.openDocId],
+  );
+  const showPatterns = patternChoices.length > 0 || Boolean(filters.pattern);
+  const showPattern = (topic: string, name: string) => update({ topic, pattern: name });
   const hasBanks = documents.some((doc) => doc.kind === 'bank');
   // Rows name their paper as the From list does: two called "Quiz" read apart.
   const docLabels = useMemo(() => new Map(documents.map((doc) => [doc.docId, doc.title])), [documents]);
@@ -262,6 +270,8 @@ export function BankTab() {
         return topicHeading(filters.topic, topicNames);
       case 'typeId':
         return typeLabel(filters.typeId);
+      case 'pattern':
+        return m.filterPattern(filters.pattern);
       case 'marks':
         return MARK_BANDS.some((band) => band.value === filters.marks) ? markBandLabel(filters.marks, ui) : m.filterMarks;
       case 'notUsedWithClass':
@@ -325,6 +335,7 @@ export function BankTab() {
                 usedWithClass={usedWith(group, paperRefs)}
                 versions={group.versions}
                 partsFor={partsFor(row)}
+                onPattern={showPattern}
                 onVersions={() => setExpanded((open) => (open === group.rootId ? undefined : group.rootId))}
                 onSelect={inPaper ? () => useWorksheetStore.getState().select(inPaper.questionId) : undefined}
                 drag={inPaper ? undefined : dragFor(row)}
@@ -341,6 +352,7 @@ export function BankTab() {
                       docLabel={docLabels.get(version.docId)}
                       differs={versionDiff(version, row, language, ui)}
                       partsFor={partsFor(version)}
+                      onPattern={showPattern}
                       drag={dragFor(version)}
                       dragging={draggingKey === rowKey(version)}
                       {...keyboardFor(version)}
@@ -407,7 +419,7 @@ export function BankTab() {
             </svg>
           </label>
           <div className="flex gap-1.5">
-            <MiniSelect label={m.topic} value={filters.topic} onChange={(topic) => update({ topic })} className="flex-[1.6]">
+            <MiniSelect label={m.topic} value={filters.topic} onChange={(topic) => update({ topic, pattern: '' })} className="flex-[1.6]">
               <TopicOptions />
             </MiniSelect>
             <MiniSelect label={m.type} value={filters.typeId} onChange={(typeId) => update({ typeId })} className="flex-1">
@@ -426,6 +438,19 @@ export function BankTab() {
               ))}
             </MiniSelect>
           </div>
+          {showPatterns && (
+            <MiniSelect label={m.pattern} value={filters.pattern} onChange={(pattern) => update({ pattern })} className="w-full">
+              <option value="">{m.anyPattern}</option>
+              {filters.pattern && !patternChoices.some((choice) => choice.name === filters.pattern) && (
+                <option value={filters.pattern}>{filters.pattern}</option>
+              )}
+              {patternChoices.map((choice) => (
+                <option key={choice.name} value={choice.name}>
+                  {filters.typeId ? choice.name : m.patternWithTypes(choice.name, choice.typeIds.map(typeLabel).join('/'))}
+                </option>
+              ))}
+            </MiniSelect>
+          )}
           <div className="flex gap-1.5">
             {classLabel && (
               <MiniSelect

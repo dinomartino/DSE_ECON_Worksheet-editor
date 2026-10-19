@@ -2,11 +2,13 @@ import { cleanClasses, dateOfUse } from '@/model/classes';
 import { flowItemLabel } from '@/model/flow';
 import { rootIdOf } from '@/model/lineage';
 import { computeNumbering } from '@/model/numbering';
+import { holdsPatterns, samePatternName } from '@/model/patterns';
 import { topicHeading } from '@/model/topics';
 import { distinctDocLabels } from './docLabels';
 import type { Worksheet } from '@/model/types';
 import { classRefs, type ClassRef } from './cohort';
 import { groupRows } from './group';
+import { listPatterns, rowHasPatternName } from './patterns';
 import { searchRows } from './search';
 import type { BankGroup, BankQuery, BankRow } from './types';
 
@@ -39,9 +41,17 @@ export interface TabFilters {
   /** Only honoured when the paper names classes. */
   notUsedWithClass: boolean;
   from: FromFilter;
+  /**
+   * One 題型 by name under `topic` (a sub-topic); '' = any. Any type carrying the name
+   * matches, unless `typeId` narrows it. Ignored when `topic` holds no 題型.
+   */
+  pattern: string;
 }
 
-export const NO_FILTERS: TabFilters = { text: '', topic: '', typeId: '', marks: 'any', notUsedWithClass: false, from: 'all' };
+export const NO_FILTERS: TabFilters = { text: '', topic: '', typeId: '', marks: 'any', notUsedWithClass: false, from: 'all', pattern: '' };
+
+/** The 題型 filter in force: a name under a sub-topic, else none. */
+const patternFilter = (filters: TabFilters) => (filters.pattern && holdsPatterns(filters.topic) ? filters.pattern : '');
 
 /** What the open paper contributes: its id (left out of the bank) and its classes. */
 export interface TabContext {
@@ -91,6 +101,7 @@ export function visibleGroups(rows: readonly BankRow[], filters: TabFilters, ctx
   const admitted = new Set(
     searchRows(base, tabQuery(filters, ctx))
       .filter((row) => filters.from !== 'banks' || row.docKind === 'bank')
+      .filter((row) => !patternFilter(filters) || rowHasPatternName(row, filters.topic, filters.pattern))
       .map(rowKey),
   );
   return groupRows(base).flatMap((group) => {
@@ -143,17 +154,18 @@ export function fromDocuments(rows: readonly BankRow[], openDocId: string): Arra
     .map(({ row }) => ({ docId: row.docId, title: labels.get(row.docId) ?? row.docTitle, kind: row.docKind }));
 }
 
-export type FilterKey = 'text' | 'topic' | 'typeId' | 'marks' | 'notUsedWithClass' | 'from';
+export type FilterKey = 'text' | 'topic' | 'typeId' | 'marks' | 'notUsedWithClass' | 'from' | 'pattern';
 
-/** Each filter's "off" value. */
+/** Each filter's "off" value. A 題型 belongs to its sub-topic: clearing the topic clears it too. */
 export function clearFilter(filters: TabFilters, key: FilterKey): TabFilters {
-  return { ...filters, [key]: NO_FILTERS[key] };
+  return { ...filters, [key]: NO_FILTERS[key], ...(key === 'topic' ? { pattern: '' } : {}) };
 }
 
 export function activeFilters(filters: TabFilters, ctx: TabContext): FilterKey[] {
   const keys: FilterKey[] = [];
   if (filters.notUsedWithClass && (ctx.classes?.length ?? 0) > 0) keys.push('notUsedWithClass');
   if (filters.from !== 'all') keys.push('from');
+  if (patternFilter(filters)) keys.push('pattern');
   if (filters.marks !== 'any') keys.push('marks');
   if (filters.typeId) keys.push('typeId');
   if (filters.topic) keys.push('topic');
@@ -172,4 +184,30 @@ export function blockingFilter(rows: readonly BankRow[], filters: TabFilters, ct
 /** A topic as the tab names it: "C · Price elasticity of demand" (`topicHeading`). */
 export function topicName(code: string): string {
   return topicHeading(code);
+}
+
+/**
+ * The 題型 the tab's 題型 select offers for a sub-topic: the names questions outside the
+ * open paper carry there (of `typeId` when set), each with the types that use it. Empty
+ * for a coarse topic or none.
+ */
+export function tabPatternChoices(
+  rows: readonly BankRow[],
+  topic: string,
+  typeId: string,
+  openDocId: string,
+): Array<{ name: string; typeIds: string[]; count: number }> {
+  if (!holdsPatterns(topic)) return [];
+  const items = listPatterns(bankRowsBesides(rows, openDocId), { patterns: [] }, { topic, ...(typeId ? { typeId } : {}) }).filter(
+    (item) => item.topic === topic && item.count > 0,
+  );
+  const out: Array<{ name: string; typeIds: string[]; count: number }> = [];
+  for (const item of items) {
+    const same = out.find((choice) => samePatternName(choice.name, item.name));
+    if (same) {
+      same.typeIds.push(item.typeId);
+      same.count += item.count;
+    } else out.push({ name: item.name, typeIds: [item.typeId], count: item.count });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
 }

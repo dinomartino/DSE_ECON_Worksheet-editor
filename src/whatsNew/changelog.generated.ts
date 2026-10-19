@@ -56,6 +56,17 @@ a version heading is edited afterwards.
   中文. A paper found by its questions shows which one matched and the words around it
   ("Q4 · …price **elasticity** of demand…").
   <!-- zh: **搜尋可找到題目內的字詞。** 開始畫面的搜尋框除了名稱，亦會搜尋每份已儲存試卷的題目，中英文皆可。因題目而找到的試卷會顯示是哪一題及相關字句（例如「第 4 題 · …需求價格**彈性**…」）。 -->
+- **The 題型 map shows you how to start.** The Question bank's **題型** page (now called
+  the 題型 map) explains what a 題型 is, shows a greyed example of a finished sub-topic,
+  and lists the sub-topics where you have the most questions, each with **Review these**
+  and **+ New 題型 here**, so you never pick from the full list of sub-topics. Once you
+  have 題型, each sub-topic shows one list with an MCQ or LQ badge on every line, how many
+  of its questions still have none, and ⋯ for Rename, Merge and Delete.
+  <!-- zh: **題型一覽教你如何開始。** 題庫的「題型」頁（現稱題型一覽）會解釋甚麼是題型，展示一個完成後的子課題示例（灰色），並列出你題目最多的子課題，每個都有「查看這些題目」和「+ 在此新增題型」，毋須再從所有子課題中挑選。有了題型後，每個子課題只顯示一個清單，每行標示 MCQ 或 LQ，並顯示尚有多少題目未有題型；重新命名、合併及刪除收在「⋯」內。 -->
+- **Find questions by 題型 in the editor.** In the 題庫 tab, choose a sub-topic and a
+  **題型** list appears under the filters; each question also shows its 題型, and clicking
+  it shows only the questions of that 題型.
+  <!-- zh: **在編輯器內按題型找題目。** 在「題庫」分頁選擇子課題後，篩選下方會出現「題型」清單；每條題目亦會顯示其題型，按一下即只顯示該題型的題目。 -->
 
 ### Changed
 - **Deadweight loss is labelled DWL in every diagram template.** The monopoly templates
@@ -66,6 +77,14 @@ a version heading is edited afterwards.
   of the gaps turning into single spaces or the line becoming a one-row table. Rows of
   tabbed lines still come in as a table, and option letters and labels are read as before.
   <!-- zh: **匯入會保留你輸入的定位字元。** 從 Word 或貼上的內容中，用 Tab 對齊文字的一行（例如「姓名： → 班別：」、答案後的「→ (1)」）現會連同定位字元一併匯入，不再變成單一空格或只有一列的表格。連續幾行以 Tab 分隔的內容仍會匯入為表格，選項字母和標籤的辨識亦與以往相同。 -->
+- **Every 題型 is a link.** A 題型 named on a question, a 題型 heading in the question
+  list, and the "N 題型" on a topic card now take you straight to those questions or to the
+  題型 map.
+  <!-- zh: **每個題型都是連結。** 題目資料中的題型、題目清單中的題型標題，以及課題卡上的「N 個題型」，現在一按便會帶你到該些題目或題型一覽。 -->
+- **題型 means one thing.** In the 中文 interface, MCQ and LQ are now called 題目類型
+  (question type) everywhere, so 題型 always means your own kinds of question within a
+  sub-topic. In English the word stays 題型, explained as "question pattern".
+  <!-- zh: **「題型」只有一個意思。** 中文介面現時一律把 MCQ 和 LQ 稱為「題目類型」，因此「題型」只指你在子課題下自訂的題目種類。英文介面仍用「題型」一詞，並註明為 question pattern。 -->
 
 ### Fixed
 - **⌘Z works while you type.** Undo used to wait until you clicked away from the text,
@@ -107,6 +126,13 @@ a version heading is edited afterwards.
   changes on the page; stricter readers of \`.docx\` files no longer see the picture's
   settings out of order.
   <!-- zh: **Word 檔案中的圖片設定改按 Word 格式規定的次序寫入。** 版面不變；較嚴格的 \`.docx\` 讀取程式不會再看到次序錯亂的圖片設定。 -->
+- **A half-typed 題型 no longer stays behind.** Typing part of a name in a question's
+  題型 box and pressing Enter, then cancelling the dialog, used to keep that fragment as a
+  new 題型. Now a new 題型 is kept only when you save.
+  <!-- zh: **未打完的題型名稱不會再被保留。** 以往在題目的題型欄輸入部分名稱並按 Enter，即使之後取消對話框，該片段仍會成為新題型；現在只有儲存時才會保留新題型。 -->
+- **Topic cards count the same 題型 as the 題型 map.** A card used to leave out 題型 no
+  question uses yet, so it could say "4 題型" while the map listed 5 under that topic.
+  <!-- zh: **課題卡與題型一覽的題型數目一致。** 以往課題卡不計尚未有題目使用的題型，可能顯示「4 個題型」，而題型一覽在同一課題下列出 5 個。 -->
 
 ## 0.8.3 — 2026-10-18
 

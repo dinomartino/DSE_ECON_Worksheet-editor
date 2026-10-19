@@ -45,6 +45,10 @@ export const REVIEW_PAGE_MESSAGES = defineMessages({
   add: { en: 'Add', zh: '新增' },
   edit: { en: 'Edit', zh: '編輯' },
   pattern: { en: '題型', zh: '題型' },
+  patternLink: {
+    en: (name: string) => `Show only the questions filed under 題型 “${name}”`,
+    zh: (name: string) => `只顯示歸入題型「${name}」的題目`,
+  },
   livesIn: { en: 'Lives in', zh: '所在位置' },
   bankSuffix: { en: ' · bank', zh: ' · 題庫' },
   usedIn: { en: 'Used in', zh: '使用於' },

@@ -12,6 +12,8 @@ import {
   removePatternEdit,
   renamePatternEdit,
   rowPattern,
+  rowPatterns,
+  subTopicTallies,
   setPatternsEdit,
   thenEdit,
   type PatternId,
@@ -305,11 +307,11 @@ export function QuestionBankScreen({
   const classes = useMemo(() => classChoices(rows), [rows]);
   const classUsage = useMemo(() => latestClassUsage(rows, lang), [rows, lang]);
   const patternItems = useMemo(() => listPatterns(rows, registry), [rows, registry]);
-  /** Each coarse topic's 題型 in use, for its card. */
+  const patternTallies = useMemo(() => subTopicTallies(rows), [rows]);
+  /** Each coarse topic's 題型, for its card: every one the 題型 map lists there, used or not, so the two agree. */
   const patternsByTopic = useMemo(() => {
     const map = new Map<string, PatternItem[]>();
     for (const item of patternItems) {
-      if (item.count === 0) continue;
       const coarse = topicOf(item.topic)?.parent ?? item.topic;
       map.set(coarse, [...(map.get(coarse) ?? []), item]);
     }
@@ -649,9 +651,15 @@ export function QuestionBankScreen({
     if (list.length === 0) onNotice(m.patternDeleted(item.name));
     else void writeTopics(list, removePatternEdit(item.topic, item.name), patternDone(m.patternDeleted(item.name)));
   };
-  const showPattern = (item: PatternItem) => {
+  const showPattern = (item: PatternId) => {
     setLevel({ kind: 'review', topic: item.topic });
     setFilters((current) => ({ ...current, text: '', pattern: { topic: item.topic, typeId: item.typeId, name: item.name } }));
+  };
+  /** A sub-topic's questions, landing on the first one with no 題型 there. */
+  const reviewSubTopic = (code: string) => {
+    setLevel({ kind: 'review', topic: code });
+    const first = rows.find((row) => row.tags.includes(code) && rowPatterns(row, code).length === 0);
+    if (first) setFocusKey(rowKey(first));
   };
   const toggleChosen = (code: string) => {
     if (!tagDraft) return;
@@ -871,7 +879,7 @@ export function QuestionBankScreen({
           onClick={level.kind === 'topics' ? goHome : goUp}
           className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[13px] text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-sunken hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          ← {level.kind === 'topics' ? m.home : m.topicsBack}
+          ← {level.kind === 'topics' ? m.home : level.kind === 'patterns' ? m.bankBack : m.topicsBack}
         </button>
         {crumb}
         <span className="flex-1" />
@@ -921,7 +929,7 @@ export function QuestionBankScreen({
             title={m.patternsButtonTitle}
             className="shrink-0 cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink-muted transition-colors duration-150 ease-out-soft hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            {m.patternsTitle}
+            {m.patternsButton}
           </button>
         )}
         {level.kind === 'topics' && (
@@ -948,6 +956,7 @@ export function QuestionBankScreen({
             <TopicCards
               coverage={cover}
               patterns={patternsByTopic}
+              onPatterns={(code) => setLevel({ kind: 'patterns', topic: code })}
               classUsage={classUsage}
               onTopic={(code) => setLevel({ kind: 'review', topic: code })}
               onUntagged={() => {
@@ -995,6 +1004,7 @@ export function QuestionBankScreen({
           onLanguage={setLanguage}
           onVersion={setVersion}
           onEditTopics={(row) => setPicker({ mode: 'edit', row })}
+          onPattern={showPattern}
           onOpen={openRow}
         />
       )}
@@ -1033,6 +1043,8 @@ export function QuestionBankScreen({
       {level.kind === 'patterns' && (
         <PatternsPage
           items={patternItems}
+          tallies={patternTallies}
+          hasQuestions={rows.length > 0}
           scope={level.topic}
           busy={busy}
           readOnly={isReadOnlyRegistry(registry)}
@@ -1042,6 +1054,8 @@ export function QuestionBankScreen({
           onMerge={mergePattern}
           onDelete={deletePattern}
           onShow={showPattern}
+          onReview={reviewSubTopic}
+          onStartNew={onStartNew}
         />
       )}
       <BankAiBar run={bankAi} left={level.kind === 'review' ? (railHidden ? 52 : 300) : 0} />
