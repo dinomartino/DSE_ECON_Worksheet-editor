@@ -9,16 +9,15 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Word packs justified
   lines tighter than the page (Word's own spacing, not fixable here).
-- **2026-10-19 (Unreleased, all merged on develop, not pushed):** `.docx` has no keep flags
+- **2026-10-19 (Unreleased, merged on develop):** `.docx` has no keep flags
   (no black ¶ squares, user's call) — hard page breaks where the preview breaks (`pageBreaks.ts`,
   `measurePageStarts.tsx`; samples now run in headless Chrome); B7 examiner marks grid on the
   cover (bilingual 45-question Paper 1 overflows, no cover-height warning); F4 marks on cards (no
   page count; old entries fill on next edit); F5 dashboard searches question text; C11 Diagram
   filter + Sort; 題型 first release (map, links, 題目類型 wording, editor 題庫 tab filter). None
-  tried in real Word or Tauri. 題型 next: Sort mode, Fill by 題型 (`docs/design/question-types-ux.md`).
-- **Known-gap sweep 2026-10-18 (Unreleased):** tabbed "(n marks)" wrap as LibreOffice (`carriesTab`),
-  text column on the margins (`-mx-1`); import keeps typed tabs; PDF captions stay text; sync gap
-  fixes; `scripts/soffice.mjs` falls back to PATH. Not tried in real Word, Tauri or a provider.
+  tried in real Word or Tauri. 題型 next: Fill by 題型 (`docs/design/question-types-ux.md` item 6).
+- **Known-gap sweep 2026-10-18 (Unreleased):** tab wrap as LibreOffice, import keeps typed tabs,
+  sync gap fixes. Not tried in real Word, Tauri or a provider.
 - **Tabs vs Word, phases 1–3 built 2026-10-18 (Unreleased, `docs/Tabs vs Word.md`):** Tab types a
   tab in text paragraphs, a Word-rule page layout (`tabLayout.ts`), `<w:tab/>`/`<w:tabs>`/clipboard,
   ruler + Tab stops panel + quick layouts (`TabRuler.tsx`). No schema bump. Not tried in real Word
@@ -78,4 +77,5 @@ off the bottom.** It is the first thing a fresh session reads — then
   `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
 
 ## Log
-
+- **2026-10-19** — 題型 empty state: research (no suggestion boxes), then the sort board and the map without the cliff.
+- **2026-10-19** — F4/F5, C11, B7, 題型 v1 (after research), `.docx` page breaks instead of keep flags; merged on develop.
