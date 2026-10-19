@@ -56,6 +56,13 @@ function questionNodes(worksheet: Worksheet, id: string) {
   return pageNodes(item?.type === 'question' ? item.question.nodes : []);
 }
 
+/** A QAB booklet whose cover carries the examiner's marks grid (§ `examinerGridXml`). */
+function examinerGridBooklet(): Worksheet {
+  const worksheet = createWorksheetFrom({ documentType: 'lqMock', seedSample: true });
+  worksheet.cover!.examinerGrid = true;
+  return worksheet;
+}
+
 describe('no keep flags anywhere in the file', () => {
   const documents: Array<[string, Worksheet]> = [
     ['classroom', buildAcceptanceWorksheet()],
@@ -63,6 +70,7 @@ describe('no keep flags anywhere in the file', () => {
     ['LQ booklet', createWorksheetFrom({ documentType: 'lqMock', seedSample: true })],
     ['LQ worksheet', createWorksheetFrom({ documentType: 'lqWorksheet', seedSample: true })],
     ['mark scheme', buildMarkSchemeWorksheet()],
+    ['examiner grid', examinerGridBooklet()],
   ];
   const modes: OutputMode[] = [
     { language: 'bilingual', version: 'student' },
