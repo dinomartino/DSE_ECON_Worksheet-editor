@@ -9,7 +9,10 @@ export const BANK_TAB_MESSAGES = defineMessages({
   searchBank: { en: 'Search the bank', zh: '搜尋題庫' },
   searchPlaceholder: { en: 'Search 搜尋 · both languages', zh: '搜尋 · 中英文皆可' },
   topic: { en: 'Topic', zh: '課題' },
-  type: { en: 'Type', zh: '類型' },
+  type: { en: 'Question type', zh: '題目類型' },
+  pattern: { en: '題型 (question pattern)', zh: '題型' },
+  anyPattern: { en: 'Any 題型', zh: '任何題型' },
+  patternWithTypes: { en: (name: string, types: string) => `${name} · ${types}`, zh: (name: string, types: string) => `${name} · ${types}` },
   marks: { en: 'Marks', zh: '分數' },
   classLabel: { en: 'Class', zh: '班別' },
   from: { en: 'From', zh: '來源' },
@@ -52,6 +55,7 @@ export const BANK_TAB_MESSAGES = defineMessages({
   filterFrom: { en: (title: string) => `from ${title}`, zh: (title: string) => spaced`來自${title}` },
   filterOneWorksheet: { en: 'one worksheet', zh: '一份工作紙' },
   filterMarks: { en: 'marks', zh: '分數' },
+  filterPattern: { en: (name: string) => `題型 “${name}”`, zh: (name: string) => `題型「${name}」` },
   showMore: { en: (n: number) => `Show ${n} more`, zh: (n: number) => `再顯示 ${n} 條` },
   skipped: {
     en: (n: number) =>
@@ -72,7 +76,7 @@ export const BANK_TAB_MESSAGES = defineMessages({
   },
   fill: { en: 'Fill', zh: '填入' },
   howMany: { en: 'How many', zh: '數量' },
-  fillType: { en: 'Fill type', zh: '填入類型' },
+  fillType: { en: 'Fill question type', zh: '填入的題目類型' },
   fillQuestions: { en: 'questions', zh: '題目' },
   fillFrom: { en: 'from', zh: '來自' },
   fillTopic: { en: 'Fill topic', zh: '填入課題' },
@@ -104,6 +108,7 @@ export const BANK_TAB_MESSAGES = defineMessages({
   typeNounLong: { en: (label: string) => `${label.toLowerCase()} questions`, zh: (label: string) => `${label} 題目` },
   emptyIn: { en: (t: string) => `in ${t}`, zh: (t: string) => `課題：${t}` },
   emptyWorth: { en: (b: string) => `worth ${b}`, zh: (b: string) => `分數：${b}` },
+  emptyPattern: { en: (name: string) => `filed under 題型 “${name}”`, zh: (name: string) => `題型：${name}` },
   emptyMatching: { en: (t: string) => `matching “${t}”`, zh: (t: string) => `包含「${t}」` },
   emptyNotUsed: { en: (c: string) => `not used with ${c}`, zh: (c: string) => `未用於 ${c}` },
   emptyBanks: { en: 'in your banks', zh: '來源：題庫文件' },
@@ -126,6 +131,11 @@ export const BANK_ROW_MESSAGES = defineMessages({
   dragOnto: { en: 'Drag onto the page', zh: '拖到頁面上' },
   diagram: { en: '◩ diagram', zh: '◩ 圖表' },
   inPaper: { en: 'In this paper', zh: '已在此工作紙' },
+  pattern: { en: '題型', zh: '題型' },
+  patternFilter: {
+    en: (name: string) => `Show only the questions filed under 題型 “${name}”`,
+    zh: (name: string) => `只顯示歸入題型「${name}」的題目`,
+  },
   versions: { en: (n: number) => `${n} versions`, zh: (n: number) => `${n} 個版本` },
   partsTest: {
     en: (parts: string, count: number, topic: string) => `${parts} ${count === 1 ? 'tests' : 'test'} ${topic}`,

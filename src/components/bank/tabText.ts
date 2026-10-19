@@ -3,6 +3,7 @@ import { MARK_BANDS, type TabFilters } from '@/library/tabFilters';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
+import { holdsPatterns } from '@/model/patterns';
 import { topicHeading, topicNamesFor } from '@/model/topics';
 import type { UiLanguage } from '@/settings/language';
 import { paperLanguage } from '@/settings/paperLanguage';
@@ -40,6 +41,7 @@ export function emptySentence(
   const m = resolveMessages(BANK_TAB_MESSAGES, lang);
   const parts: string[] = [];
   if (filters.topic) parts.push(m.emptyIn(topicHeading(filters.topic, topicNamesFor(view))));
+  if (filters.pattern && holdsPatterns(filters.topic)) parts.push(m.emptyPattern(filters.pattern));
   const band = MARK_BANDS.find((entry) => entry.value === filters.marks);
   if (band?.range) parts.push(m.emptyWorth(markBandLabel(band.value, lang)));
   if (filters.text.trim()) parts.push(m.emptyMatching(filters.text.trim()));

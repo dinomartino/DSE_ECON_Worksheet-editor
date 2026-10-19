@@ -69,7 +69,7 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   by the code grammar (§ Tag grammar), and a newer `format` makes the registry read-only.
 - **Created while tagging** (the Edit panel's Topic row, the bank's topic dialog for
   Edit, Set topic when every pick is one type, and tag as you go's full list) or on the
-  **題型 Patterns** level (`PatternsPage.tsx`), which also renames, merges and deletes:
+  **題型 map** level (`PatternsPage.tsx`, "題型一覽"), which also renames, merges and deletes:
   every copy is rewritten through `writeTags`; hidden, trashed and newer-build documents
   keep the old name (newer-build ones are named in the notice).
 - **The picker never makes a near-duplicate by accident** (`src/components/bank/patternOptions.ts`).
@@ -78,8 +78,12 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   existing one, so Enter picks it; ↑/↓ reach the others and "New 題型"; a close name
   (it is a prefix of what was typed, or a letter or two off) is named on the New row. The
   manage page's New 題型 form applies the same rule. Identity in the registry is unchanged.
-- **Creating is an explicit act**: the picker registers a new name at once, so it outlives
-  a cancelled dialog. Every entry point uses the same picker, so they all behave alike.
+- **A new name is kept by the act that applies it** (changed 2026-10-19, `docs/design/question-types-ux.md`):
+  the picker registers nothing. In a dialog the name is kept only by saving, as the
+  question's tag, so a fragment typed, Entered and then Cancelled leaves no 題型 behind.
+  The editor's Topic row applies a pick at once, so it registers the new name then (the
+  next question offers it before this one is saved). The map's own New forms register.
+  Every entry point uses the same picker, so the lists behave alike.
 - **Bulk Set topic can clear**: Add and Replace offer "No 題型" (a mix of MCQ and LQ can
   only clear, and only where a pick has one); Remove can keep a ticked sub-topic and take
   only its 題型. Setting one still needs every pick to be one type.
@@ -88,7 +92,10 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   files, stays until dismissed.
 - **Bank uses: group and filter only.** The review rail splits a sub-topic by 題型, "No
   題型" last; the Filter has a 題型 field scoped to the topic on screen; topic cards count
-  the 題型 in use. Fill and coverage are unchanged. Never printed.
+  the 題型 the map lists there (used or not, so the two agree) and link to it; every 題型
+  name on the review page is a link to its questions; the editor's 題庫 tab has a 題型
+  select under a sub-topic and names each row's 題型 (2026-10-19). Fill and coverage are
+  unchanged. Never printed.
 
 ### Tag grammar (reserved before release, 2026-09-30)
 

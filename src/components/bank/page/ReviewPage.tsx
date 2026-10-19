@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Button, Segmented } from '@/components/ui';
 import { marksLabel, SourceText, sourceLabel, tagTitle, typeLabel, sittingLabel, usedLabel } from '@/components/bank/BankRow';
 import { rowExcerpt, versionDiff } from '@/components/bank/bankText';
@@ -8,6 +8,7 @@ import { refsOf, usedWith as usedWithTargets } from '@/library/history';
 import { anySameStudents } from '@/library/cohort';
 import type { BankItemTone, BankMark } from '@/assist/bankRun';
 import type { BankGroup, BankRow } from '@/library/types';
+import type { PatternId } from '@/library/patterns';
 import { isNewerThanBuild } from '@/model/migrations';
 import { isPatternTag } from '@/model/patterns';
 import { useMessages } from '@/i18n/language';
@@ -86,6 +87,7 @@ export function ReviewPage({
   onLanguage,
   onVersion,
   onEditTopics,
+  onPattern,
   onOpen,
   stageAi,
   targetPicker,
@@ -108,10 +110,13 @@ export function ReviewPage({
   onVersion: (version: VersionMode) => void;
   /** Offered only once the owning document has loaded and this build may write it. */
   onEditTopics?: (row: BankRow) => void;
+  /** A 題型 named in the rail or the facts: show only its questions. */
+  onPattern?: (pattern: PatternId) => void;
   onOpen: (row: BankRow) => void;
 }) {
   const { order, focused, railHidden } = state;
   return (
+    <PatternLink.Provider value={onPattern}>
     <div
       className={`grid min-h-0 flex-1 ${railHidden ? 'grid-cols-[52px_minmax(0,1fr)]' : 'grid-cols-[300px_minmax(0,1fr)]'}`}
     >
@@ -140,8 +145,15 @@ export function ReviewPage({
         />
       )}
     </div>
+    </PatternLink.Provider>
   );
 }
+
+/** Where a 題型 named on this page leads (the review filtered to it); absent: plain text. */
+const PatternLink = createContext<((pattern: PatternId) => void) | undefined>(undefined);
+
+const PATTERN_LINK =
+  'cursor-pointer text-left underline-offset-2 hover:text-accent-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
 
 /* ------------------------------------------------------------------------------------ */
 /* The rail                                                                             */
@@ -241,15 +253,23 @@ function SectionHeading({ section, sticky = true }: { section: RailSection; stic
   );
 }
 
-/** A 題型's heading inside a section (or "No 題型"). */
+/** A 題型's heading inside a section (or "No 題型"): a 題型 is a link to only its questions. */
 function PartHeading({ part }: { part: RailPart }) {
+  const m = useMessages(REVIEW_PAGE_MESSAGES);
+  const onPattern = useContext(PatternLink);
+  const pattern = part.pattern;
   return (
     <h4
-      className={`flex justify-between gap-2 px-3.5 pb-0.5 pt-1.5 text-[11.5px] ${part.pattern ? 'font-medium text-ink-muted' : 'text-ink-subtle'}`}
-      title={part.pattern ? `${part.label} · ${part.kind} 題型` : undefined}
+      className={`flex justify-between gap-2 px-3.5 pb-0.5 pt-1.5 text-[11.5px] ${pattern ? 'font-medium text-ink-muted' : 'text-ink-subtle'}`}
     >
       <span className="min-w-0 truncate">
-        {part.label}
+        {pattern && onPattern ? (
+          <button type="button" onClick={() => onPattern(pattern)} title={m.patternLink(part.label)} className={PATTERN_LINK}>
+            {part.label}
+          </button>
+        ) : (
+          part.label
+        )}
         {part.kind && <span className="ml-1.5 text-[10.5px] font-normal text-ink-subtle">{part.kind}</span>}
       </span>
       <span className="shrink-0 tabular-nums text-ink-subtle">{part.entries.length}</span>
@@ -574,6 +594,7 @@ function Stage({
 }) {
   const { order, index, language, version, usedWith, picked } = state;
   const m = useMessages(REVIEW_PAGE_MESSAGES);
+  const onPattern = useContext(PatternLink);
   const inList = picked.has(row.rootId);
   const { worksheet, failed } = useOwningDocument(row);
   const topicTags = row.tags.filter((tag) => !isPatternTag(tag));
@@ -706,7 +727,17 @@ function Stage({
                   {patterns.map((ref, i) => (
                     <span key={`${ref.topic} ${ref.name}`} title={`${topicName(ref.topic, language, 'wide')} · ${ref.name}`}>
                       {i > 0 && ' · '}
-                      {ref.name}
+                      {onPattern ? (
+                        <button
+                          type="button"
+                          onClick={() => onPattern({ topic: ref.topic, typeId: row.typeId, name: ref.name })}
+                          className={`font-medium text-accent-ink ${PATTERN_LINK}`}
+                        >
+                          {ref.name}
+                        </button>
+                      ) : (
+                        ref.name
+                      )}
                     </span>
                   ))}
                 </dd>

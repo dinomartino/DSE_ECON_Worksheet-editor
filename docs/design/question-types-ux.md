@@ -1,7 +1,8 @@
 # 題型 (question patterns): UX research and redesign proposal
 
-Status: proposal, 2026-10-19, written against `develop` at `45851ffd`. Not built, and no
-app code changed. The user asked: "I want to improve the 題型 page, or even the whole
+Status: proposal, 2026-10-19, written against `develop` at `45851ffd`. **First release
+(items 1, 2, 3, 5) built the same day on `feature/question-types-v1`; see § 8.** The rest is
+not built. The user asked: "I want to improve the 題型 page, or even the whole
 functionality. If I start from scratch, I don't really know how to use it." Screenshots
 are in `docs/design/question-types-ux/`. They were taken from the dev build at 1440×900 in
 three states: an empty library, the website demo library (37 questions, no 題型), and that
@@ -470,6 +471,10 @@ then 7–10. Items 12–13 wait for C25 and E7, which are parked.
 
 ## 6. Open questions for the user
 
+**Answered 2026-10-19:** (1) keep 題型, say 題目類型 for MCQ/LQ, gloss "question pattern";
+(2) no starter set; (3) one list per sub-topic with MCQ/LQ badges, identity unchanged; (4)
+the example is derived (most recently used question), no new stored field.
+
 1. **The word.** Keep 「題型」 for the teacher's pattern, and say 題目類型 for MCQ/LQ
    everywhere? Or rename it (e.g. 考法, 出題模式) to give up the format sense?
    **Recommended: keep 題型** (it is your word, and the tutor sense is real), fix the
@@ -499,3 +504,39 @@ then 7–10. Items 12–13 wait for C25 and E7, which are parked.
     It was not committed.
 - **Not checked:** the desktop shell, dark mode, narrow windows, and the bulk Set topic
   dialog's 題型 branch.
+
+## 8. What shipped (first release, 2026-10-19)
+
+No storage change: no document field, no registry field, no `format` bump.
+
+- **Item 1, the word.** 中文 strings that meant MCQ/LQ now say 題目類型
+  (`AddRail.messages.ts:eachOwnSection`, the 題庫 tab's Type select and Fill type, the
+  Filter's Any type, the tray's sort, the bulk Set topic note). The page is **題型 map /
+  題型一覽**, the header button **題型**; English glosses it "question pattern" (intro,
+  the 題庫 tab's 題型 select, the header button's tooltip). `題型` and `題目類型` are in
+  `docs/design/ui-language.md` and `src/i18n/terms.ts`.
+- **Item 2, links.** The review page's 題型 fact and the rail's 題型 headings filter the
+  review to that 題型; a topic card's "N 題型 →" opens the map scoped to the topic (a
+  button beside the card's, never inside it); map names and counts open their questions;
+  a 題庫 tab row's 題型 sets the tab's 題型 filter.
+- **Item 3, the map.** First run: intro, greyed example (catalogue text, `EXAMPLE_TOPIC`),
+  "Start where you have the most questions" (`src/library/patterns.ts:startingSubTopics`,
+  top 3 by questions without a 題型), each with Review these (the review of that
+  sub-topic, landing on a question without one) and + New 題型 here; "Or name one for any
+  sub-topic: New 題型" opens the old form, whose grey Add now says why. An empty library
+  gets the intro, the example and Start a classroom worksheet, no form. In use: a summary
+  ("4 題型 in use · 1 not used yet"), per topic a box per sub-topic that has 題型 (one list,
+  type badges, count link, ⋯ for Rename / Merge / Delete, "No 題型 · n  Review these →",
+  + New 題型 here with Name then Question type), and one compact list of the sub-topics
+  still to sort; "Show sub-topics with no questions" adds the empty ones.
+- **Item 5, the editor 題庫 tab.** A 題型 select appears under a chosen sub-topic when
+  questions outside the paper carry 題型 there (`src/library/tabFilters.ts:tabPatternChoices`;
+  a name matches any type unless Type narrows it); rows name their 題型 apart from the
+  topics ("題型 PED and total revenue"). Fill still ignores 題型 (item 6).
+- **Fixes.** The picker no longer registers a typed name (`PatternPicker.tsx:commitPatternOption`):
+  a dialog keeps it only by saving, the editor's Topic row (which applies at once)
+  registers it then. Cards count every 題型 the map lists under the topic, used or not.
+- **Not built:** Sort mode (4), Fill by 題型 (6), the Unused chip and "to sort" counts on
+  cards (part of 7), the review-page strip and tray "Set 題型…" (8), coverage (9), the
+  drawer and its derived example (10); 11–14. The proposal's "Sort them →" became
+  "Review these →" until Sort mode exists.

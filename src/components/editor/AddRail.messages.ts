@@ -14,7 +14,7 @@ export const ADD_RAIL_MESSAGES = defineMessages({
   insertsAfterPost: { en: '', zh: ' 之後' },
   insertsInPre: { en: 'Inserts in ', zh: '插入於 ' },
   insertsInPost: { en: '', zh: ' 內' },
-  eachOwnSection: { en: 'Each type goes to its own section', zh: '每種題型會放入各自的部分' },
+  eachOwnSection: { en: 'Each type goes to its own section', zh: '每種題目類型會放入各自的部分' },
   insertsAtEnd: { en: 'Inserts at the end', zh: '插入於最後' },
   inSection: { en: (name: string) => `in ${name}`, zh: (name: string) => `放入 ${name}` },
   atEnd: { en: 'at the end', zh: '放在最後' },

@@ -21,6 +21,7 @@ export const SPLIT_FILL = ['bg-accent', 'bg-split-2', 'bg-split-2/50'];
 export function TopicCards({
   coverage,
   patterns,
+  onPatterns,
   classUsage,
   onTopic,
   onUntagged,
@@ -28,8 +29,10 @@ export function TopicCards({
   onClassGap,
 }: {
   coverage: Coverage;
-  /** Each coarse topic's 題型 in use: counted on its card, listed in its tooltip. */
+  /** Each coarse topic's 題型 (as the 題型 map lists them): counted on its card, named in its tooltip. */
   patterns?: ReadonlyMap<string, PatternItem[]>;
+  /** The card's "N 題型" link: the 題型 map, scoped to the topic. */
+  onPatterns?: (code: string) => void;
   classUsage?: ClassUsage;
   onTopic: (code: string) => void;
   onUntagged: () => void;
@@ -80,12 +83,13 @@ export function TopicCards({
           const splitTitle = split.map((part) => `${part.count} ${typeName(part.typeId)}`).join(w.sep);
           const own = patterns?.get(bar.code) ?? [];
           const patternTitle = own.map((item) => `${topicName(item.topic, view)} · ${item.name} · ${typeName(item.typeId)} ×${item.count}`).join('\n');
+          const patternLink = own.length > 0 && onPatterns;
           return (
-            <li key={bar.code} className="flex">
+            <li key={bar.code} className="relative flex">
               <button
                 type="button"
                 onClick={() => onTopic(bar.code)}
-                className="group flex w-full cursor-pointer flex-col gap-2 rounded-[10px] border border-line bg-surface-raised px-4 pb-3 pt-3.5 text-left shadow-[0_1px_0_var(--line)] transition-colors duration-150 ease-out-soft hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className={`group flex w-full cursor-pointer flex-col gap-2 rounded-[10px] border border-line bg-surface-raised px-4 pt-3.5 text-left ${patternLink ? 'pb-9' : 'pb-3'} shadow-[0_1px_0_var(--line)] transition-colors duration-150 ease-out-soft hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
               >
                 <span className="flex items-baseline gap-2.5">
                   <span className="font-display min-w-[34px] shrink-0 text-[26px] leading-none text-ink">{bar.code}</span>
@@ -102,7 +106,7 @@ export function TopicCards({
                 </span>
                 <span className="mt-auto text-[13px] font-semibold tabular-nums text-ink">
                   {bar.total} <span className="font-normal text-ink-subtle">{bar.total === 1 ? m.cardQuestion : m.cardQuestions}</span>
-                  {own.length > 0 && (
+                  {own.length > 0 && !onPatterns && (
                     <span className="font-normal text-ink-subtle" title={patternTitle} data-card-patterns>
                       {m.cardPatterns(own.length)}
                     </span>
@@ -137,6 +141,18 @@ export function TopicCards({
                   <span className="text-[12px] tabular-nums text-warn-ink">{m.thin(bar.total)}</span>
                 )}
               </button>
+              {/* Beside the card's button, never inside it: a link of its own to the 題型 map. */}
+              {patternLink && (
+                <button
+                  type="button"
+                  onClick={() => onPatterns(bar.code)}
+                  title={patternTitle}
+                  data-card-patterns
+                  className="absolute bottom-2.5 left-4 cursor-pointer rounded text-[12px] tabular-nums text-accent-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  {m.cardPatternsLink(own.length)}
+                </button>
+              )}
             </li>
           );
         })}

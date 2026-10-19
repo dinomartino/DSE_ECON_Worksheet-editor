@@ -29,6 +29,7 @@ export const TOPIC_CARDS_MESSAGES = defineMessages({
   cardQuestion: { en: 'question', zh: '條題目' },
   cardQuestions: { en: 'questions', zh: '條題目' },
   cardPatterns: { en: (n: number) => ` · ${n} 題型`, zh: (n: number) => ` · ${n} 個題型` },
+  cardPatternsLink: { en: (n: number) => `${n} 題型 →`, zh: (n: number) => `${n} 個題型 →` },
   noQuestions: { en: 'No questions', zh: '沒有題目' },
   thin: { en: (n: number) => `Only ${n}. Worth adding more`, zh: (n: number) => `只有 ${n} 條，建議多加一些` },
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { isPatternTag, tagText } from '@/model/patterns';
+import { isPatternTag, parsePatternTag, tagText } from '@/model/patterns';
 import { topicDisplay, topicHeading, topicNamesFor } from '@/model/topics';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { BankRow as BankRowData, BankUse } from '@/library/types';
@@ -57,6 +57,8 @@ export interface BankRowProps {
   activateHint?: string;
   /** A list with one Tab stop passes -1 to every row but its current one. Default 0. */
   tabIndex?: 0 | -1;
+  /** A 題型 name in the meta line is a link: show the questions filed under it. Absent: plain text. */
+  onPattern?: (topic: string, name: string) => void;
 }
 
 export function BankRow({
@@ -78,12 +80,15 @@ export function BankRow({
   onActivate,
   activateHint,
   tabIndex = 0,
+  onPattern,
 }: BankRowProps) {
   const ui = uiLanguage();
   const m = resolveMessages(BANK_ROW_MESSAGES, ui);
   const excerpt = rowExcerpt(row, language);
   const missing = missingLanguageLabel(row, language, ui);
-  const tags = row.tags.map((tag) => tagText(tag, topicNamesFor(language))).join(' · ');
+  // Topics on the tag line; each 題型 apart, named as one ("題型 PED and total revenue").
+  const tags = row.tags.filter((tag) => !isPatternTag(tag)).map((tag) => tagText(tag, topicNamesFor(language))).join(' · ');
+  const patterns = row.tags.flatMap((tag) => parsePatternTag(tag) ?? []);
   const excerptText = (
     <span className="line-clamp-2 text-xs leading-snug text-ink" title={excerpt}>
       {excerpt || <span className="text-ink-subtle">{m.untitled}</span>}
@@ -156,6 +161,23 @@ export function BankRow({
               {tags}
             </span>
           )}
+          {patterns.map((ref) => (
+            <span key={`${ref.topic}::${ref.name}`} className="min-w-0 max-w-full truncate text-ink-muted" data-row-pattern={ref.name}>
+              {m.pattern}{' '}
+              {onPattern ? (
+                <button
+                  type="button"
+                  onClick={() => onPattern(ref.topic, ref.name)}
+                  title={m.patternFilter(ref.name)}
+                  className="cursor-pointer underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  {ref.name}
+                </button>
+              ) : (
+                ref.name
+              )}
+            </span>
+          ))}
           {row.hasDiagram && <span>{m.diagram}</span>}
           {differs && (
             <span className="min-w-0 max-w-full truncate text-ink-muted" title={differs}>

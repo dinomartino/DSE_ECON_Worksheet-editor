@@ -7,7 +7,7 @@ import { Button, GroupHeader, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import { patternNames } from '@/library/patterns';
 import { useBank } from '@/library/useBank';
-import { usePatternRegistry } from '@/library/usePatterns';
+import { registerPatterns, usePatternRegistry } from '@/library/usePatterns';
 import { freeTagIssue, holdsPatterns, isPatternTag, parsePatternTag, patternsIn, tagText, withPattern, type FreeTagIssue } from '@/model/patterns';
 import { isTopicCode, stringTags, TOPICS, topicDisplay, topicHeading, topicNamesFor, topicOf, type Topic } from '@/model/topics';
 import { useViewLanguage } from '@/settings/paperLanguage';
@@ -251,7 +251,6 @@ export function TopicRow({
     const next = current.filter((tag) => tag !== code && parsePatternTag(tag)?.topic !== code);
     onChange(next.length > 0 ? next : undefined);
   };
-  // A new name is registered by the picker as it is made.
   const setPattern = (code: string, name: string | undefined) => {
     const next = withPattern(current, code, name);
     if (next !== current) onChange(next.length > 0 ? next : undefined);
@@ -310,10 +309,14 @@ export function TopicRow({
                     <PatternPicker
                       topic={tag}
                       kind={typeLabel(typeId)}
-                      typeId={typeId}
                       names={patternNames(rows, registry, tag, typeId)}
                       value={patternsIn(current, tag)[0]}
-                      onChange={(name) => setPattern(tag, name ?? undefined)}
+                      onChange={(name, created) => {
+                        setPattern(tag, name ?? undefined);
+                        // Applied at once (no dialog to cancel): a new name joins the list now,
+                        // so the next question offers it before this one is saved.
+                        if (name && created) void registerPatterns([{ topic: tag, typeId, name }]);
+                      }}
                     />
                   </div>
                 )}

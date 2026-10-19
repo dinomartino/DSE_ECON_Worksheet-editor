@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
-import { isReadOnlyRegistry, registerPatterns, usePatternRegistry } from '@/library/usePatterns';
+import { isReadOnlyRegistry, usePatternRegistry } from '@/library/usePatterns';
 import { samePatternName } from '@/model/patterns';
 import { useMessages } from '@/i18n/language';
 import { topicDisplay, topicNamesFor } from '@/model/topics';
@@ -18,33 +18,25 @@ import { patternOptions, stepActive, type PatternOption } from './patternOptions
  * highlighted before "New 題型"). Never printed. Used by the editor's Topic row and the
  * bank's topic dialog, so both pick the same way.
  *
- * Creating a 題型 is an explicit act, so a new name is registered at once, even when the
- * dialog around the picker is then cancelled.
+ * Picking a new name registers nothing: the caller decides when it is kept. A dialog
+ * keeps it only by saving (the name then rides on the question's tag), so a fragment typed
+ * and Entered, then Cancelled, leaves no 題型 behind. The editor's Topic row, whose picks
+ * apply at once, registers it then (`created`).
  *
  * `value`: a name, `undefined` (none, or in bulk: leave as it is) or `null` (bulk only:
  * clear it, offered when `clearable`). With `canSet` false (questions of two types) the
  * picker can only clear.
  */
-/**
- * What picking an option means: its name (`null` for "No 題型") and whether it is new. A
- * new one is registered now, not when the surrounding dialog saves.
- */
-export function commitPatternOption(
-  option: PatternOption,
-  topic: string,
-  typeId: string | undefined,
-  register: typeof registerPatterns = registerPatterns,
-): [name: string | null, created: boolean] {
+/** What picking an option means: its name (`null` for "No 題型") and whether it is new. Registers nothing. */
+export function commitPatternOption(option: PatternOption): [name: string | null, created: boolean] {
   if (option.kind === 'clear') return [null, false];
   if (option.kind === 'name') return [option.name, false];
-  if (typeId) void register([{ topic, typeId, name: option.name }]);
   return [option.name, true];
 }
 
 export function PatternPicker({
   topic,
   kind,
-  typeId,
   names,
   value,
   clearable = false,
@@ -55,15 +47,13 @@ export function PatternPicker({
   topic: string;
   /** "MCQ" or "LQ": whose list this is. */
   kind: string;
-  /** The question type a new name is registered for; absent when `canSet` is false. */
-  typeId?: string;
   /** The 題型 offered (`patternNames`). */
   names: readonly string[];
   value: string | null | undefined;
   /** Offer "No 題型": clear it on every question in hand. */
   clearable?: boolean;
   canSet?: boolean;
-  /** `created`: the name is new to the list (already registered here). */
+  /** `created`: the name is new to the list (not registered: the caller's call). */
   onChange: (name: string | null | undefined, created: boolean) => void;
 }) {
   const m = useMessages(PATTERN_PICKER_MESSAGES);
@@ -92,7 +82,7 @@ export function PatternPicker({
   };
   const choose = (option: PatternOption) => {
     close();
-    const [name, created] = commitPatternOption(option, topic, typeId);
+    const [name, created] = commitPatternOption(option);
     onChange(name, created);
   };
 

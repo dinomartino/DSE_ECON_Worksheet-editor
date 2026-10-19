@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { patternOptions, stepActive, type PatternOption } from './patternOptions';
 import { commitPatternOption } from './PatternPicker';
 
@@ -53,19 +53,9 @@ describe('the 題型 picker list', () => {
 });
 
 describe('picking in the 題型 picker', () => {
-  it('registers a new name at once, before any dialog saves or is cancelled', () => {
-    const register = vi.fn(() => Promise.resolve({ patterns: [] }));
-    expect(commitPatternOption({ kind: 'new', name: 'Explain factors', close: [] }, 'C.ped', 'mcq', register)).toEqual([
-      'Explain factors',
-      true,
-    ]);
-    expect(register).toHaveBeenCalledWith([{ topic: 'C.ped', typeId: 'mcq', name: 'Explain factors' }]);
-  });
-
-  it('registers nothing for an existing name or No 題型', () => {
-    const register = vi.fn(() => Promise.resolve({ patterns: [] }));
-    expect(commitPatternOption({ kind: 'name', name: 'Graph' }, 'C.ped', 'mcq', register)).toEqual(['Graph', false]);
-    expect(commitPatternOption({ kind: 'clear' }, 'C.ped', undefined, register)).toEqual([null, false]);
-    expect(register).not.toHaveBeenCalled();
+  it('names a new 題型 as new and registers nothing: a fragment typed, Entered, then Cancelled leaves no 題型', () => {
+    expect(commitPatternOption({ kind: 'new', name: 'Explain factors', close: [] })).toEqual(['Explain factors', true]);
+    expect(commitPatternOption({ kind: 'name', name: 'Graph' })).toEqual(['Graph', false]);
+    expect(commitPatternOption({ kind: 'clear' })).toEqual([null, false]);
   });
 });

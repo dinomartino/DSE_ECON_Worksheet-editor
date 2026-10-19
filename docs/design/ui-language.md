@@ -64,6 +64,7 @@ Example: "Paper 1 mock · MCQ" → "Paper 1 Mock · MCQ"; "Download PNG" → "�
 | Diagram / Graph | 圖表 | Curve | 曲線 |
 | Point | 點 | Label (on a diagram) | 標示 |
 | Tag | 標籤 | Topic | 課題 |
+| 題型 (question pattern: a teacher's kind of question in a sub-topic) | 題型 | Question type (MCQ / LQ) | 題目類型 |
 | Class | 班別 | Arrow | 箭頭 |
 | Shade | 陰影 | Crop / Zoom / Snap | 裁剪 / 縮放 / 吸附 |
 | Title / Name | 標題 / 名稱 | Alt text | 替代文字 |

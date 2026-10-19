@@ -139,9 +139,10 @@ Words this repository uses in its own way. One line each, with where the thing l
   `run.text` is a real line break. `src/model/types.ts:InlineRun`
 - **BiText** — `{ en, zh }`, the bilingual pair every authored string is. `src/model/text.ts`
 - **Pattern (題型)** — a teacher-defined kind of question inside one sub-topic, for one
-  question type (MCQ and LQ lists are separate); stored on the question as the tag
-  `C.ped::<name>`, never printed. Not "question type", which is the registry's MCQ vs
-  structured. `src/model/patterns.ts:parsePatternTag` · `src/storage/patterns.ts:PatternRegistry`
+  question type (MCQ and LQ are separate 題型, shown in one list with a type badge);
+  stored on the question as the tag `C.ped::<name>`, never printed. The English UI keeps
+  the word 題型, glossed "question pattern". Not "question type" (題目類型), which is the
+  registry's MCQ vs structured: the 中文 UI never says 題型 for that. `src/model/patterns.ts:parsePatternTag` · `src/storage/patterns.ts:PatternRegistry`
 - **Settings** vs **Setup** — *Settings* is the app's: this browser or computer, every
   worksheet, never saved in one (`src/settings/sections.ts`). *Setup* is the document's own
   dialog (`src/components/editor/DocumentSettings.tsx`, titled "Document setup"), opened by

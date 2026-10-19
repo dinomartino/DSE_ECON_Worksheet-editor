@@ -162,7 +162,6 @@ export function TopicPickerDialog<M extends string = never>({
         <PatternPicker
           topic={child.code}
           kind={patterns.kind}
-          typeId={patterns.typeId}
           names={canSet ? patterns.names(child.code) : []}
           value={chosenPatterns[child.code]}
           clearable={patterns.clearable}
@@ -266,7 +265,6 @@ export function PartTopicPickerDialog({
         <PatternPicker
           topic={child.code}
           kind={patterns.kind}
-          typeId={patterns.typeId}
           names={patterns.names(child.code)}
           value={name}
           onChange={(next) => apply(patternEditAt(draft, at, child.code, next ?? undefined))}

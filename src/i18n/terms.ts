@@ -49,6 +49,9 @@ export const STANDARD_TRANSLATIONS: Readonly<Record<string, string>> = {
   Worksheet: '工作紙',
   'New worksheet': '新增工作紙',
   'Question bank': '題庫',
+  // 題型 is the teacher's pattern within a sub-topic, never MCQ / LQ (docs/design/question-types-ux.md).
+  '題型 (question pattern)': '題型',
+  'Question type': '題目類型',
   Graphs: '圖表庫',
   'Library (start screen)': '資源庫',
   Template: '範本',
