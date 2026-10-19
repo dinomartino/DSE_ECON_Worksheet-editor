@@ -2,11 +2,18 @@ import { defineMessages } from '@/i18n/catalogue';
 
 const questions = (n: number) => `${n} ${n === 1 ? 'question' : 'questions'}`;
 
-/** The 題型 map (question patterns): first run, the per-sub-topic lists, and their actions. */
+/** The 題型 map (question patterns): where to start sorting, the per-sub-topic lists, and their actions. */
 export const PATTERNS_PAGE_MESSAGES = defineMessages({
+  heading: { en: 'Sort your questions into 題型', zh: '把題目分成不同題型' },
   intro: {
-    en: 'A 題型 (question pattern) is a kind of question you set within one sub-topic, like a revision book’s sections: “Calculate PED”, “PED and total revenue”, “Explain the change in TR with a diagram”. Group your questions by them, then find the kind you need in a click, here, in the review list and in the editor’s 題庫 tab. Never printed.',
-    zh: '題型是你在一個子課題下設定的題目種類，就像溫習書的分類：「計算 PED」、「PED 與總收益」、「以圖解釋 TR 的變動」。把題目按題型分組後，在這裏、題目清單或編輯器的「題庫」分頁，一按便找到所需的題目。題型不會被列印。',
+    en: 'Group the questions you set into kinds, like a revision book’s sections. Then find the kind you need in a click, here, in the review list and in the editor’s 題庫 tab. Never printed.',
+    zh: '像溫習書的分類一樣，把你出的題目分成不同題型。之後在這裏、題目清單或編輯器的「題庫」分頁，一按便找到所需的題目。題型不會被列印。',
+  },
+  status: {
+    en: (n: number, sorted: number, patterns: number) =>
+      sorted === 0 && patterns === 0 ? `${questions(n)} · none sorted yet` : `${questions(n)} · ${sorted} sorted · ${patterns} 題型`,
+    zh: (n: number, sorted: number, patterns: number) =>
+      sorted === 0 && patterns === 0 ? `${n} 條題目 · 尚未分類` : `${n} 條題目 · 已分類 ${sorted} 條 · ${patterns} 個題型`,
   },
   readOnly: {
     en: 'This 題型 list was saved by a newer version of Econ Studio, so changes to the list cannot be saved here. They last until you close the app. Update Econ Studio to change it.',
@@ -17,44 +24,45 @@ export const PATTERNS_PAGE_MESSAGES = defineMessages({
   allSubTopics: { en: (code: string) => `${code} · all sub-topics`, zh: (code: string) => `${code} · 所有子課題` },
   showEmpty: { en: 'Show sub-topics with no questions', zh: '顯示沒有題目的子課題' },
 
-  // First run
-  example: { en: 'What it looks like', zh: '效果示例' },
-  exampleNote: { en: 'Example only', zh: '僅為示例' },
-  example1: { en: 'Calculate PED from price and quantity', zh: '由價格和數量計算 PED' },
-  example2: { en: 'PED and total revenue', zh: 'PED 與總收益' },
-  example3: { en: 'Explain the change in TR with a diagram', zh: '以圖解釋 TR 的變動' },
+  // No 題型 yet
+  pickTopic: { en: 'Pick a topic to start', zh: '選一個課題開始' },
+  mostFirst: { en: 'Most questions to sort first', zh: '待分類題目最多的排先' },
+  topicCount: {
+    en: (n: number, subTopics: number) => `${n} to sort · ${subTopics} ${subTopics === 1 ? 'sub-topic' : 'sub-topics'}`,
+    zh: (n: number, subTopics: number) => `${n} 條待分類 · ${subTopics} 個子課題`,
+  },
+  sortTopic: { en: (code: string) => `Sort ${code} →`, zh: (code: string) => `分類 ${code} →` },
+  sortTopicLabel: { en: (name: string) => `Sort ${name}`, zh: (name: string) => `分類「${name}」` },
+  otherTopics: { en: 'Other topics:', zh: '其他課題：' },
+  example: { en: 'What a sorted sub-topic looks like', zh: '分類後的樣子' },
+  exampleNote: { en: 'Example', zh: '示例' },
+  // Three ways teachers name a 題型, in the language they are often written in (user,
+  // 2026-10-19): a command and a concept, two concepts, a cause and its effect.
+  example1: { en: '計算需求價格彈性', zh: '計算需求價格彈性' },
+  example2: { en: 'Per unit tax & elasticity', zh: 'Per unit tax & elasticity' },
+  example3: { en: 'Elastic demand → a price rise cuts TR', zh: 'Elastic demand → a price rise cuts TR' },
   emptyLibrary: {
-    en: 'Your 題型 map fills as you write questions. Once a worksheet has questions with topics, come back to group them.',
-    zh: '你寫題目後，題型一覽便會逐步建立。當工作紙有已標記課題的題目，再回來把它們分組。',
+    en: 'Your 題型 map fills as you write questions. Once a worksheet has questions with topics, come back to sort them.',
+    zh: '你寫題目後，題型一覽便會逐步建立。當工作紙有已標記課題的題目，再回來把它們分類。',
   },
   startClassroom: { en: 'Start a classroom worksheet', zh: '開始新增課堂工作紙' },
-  startHere: { en: 'Start where you have the most questions', zh: '從題目最多的子課題開始' },
-  startHint: {
-    en: 'Open the questions, then give each one a 題型 with Edit beside its Topics. Or name the 題型 here first.',
-    zh: '打開題目，在「課題」旁按「編輯」為每條題目設定題型；或先在這裏為題型命名。',
-  },
   noSubTopic: {
     en: 'None of your questions has a sub-topic yet. A 題型 sits under a sub-topic, so tag your questions with one first.',
     zh: '你的題目都未有子課題。題型屬於子課題，請先為題目標記子課題。',
   },
-  nameAny: { en: 'Or name one for any sub-topic:', zh: '或為任何子課題命名題型：' },
 
   // In use
-  summary: {
-    en: (inUse: number, unused: number) => `${inUse} 題型 in use${unused ? ` · ${unused} not used yet` : ''}`,
-    zh: (inUse: number, unused: number) => `${inUse} 個題型使用中${unused ? ` · ${unused} 個尚未使用` : ''}`,
-  },
+  keepGoing: { en: 'Keep going', zh: '繼續分類' },
+  notSortedIn: { en: (n: number) => `${n} not sorted`, zh: (n: number) => `${n} 條未分類` },
+  stillToSort: { en: 'Not sorted yet:', zh: '尚未分類：' },
   boxCounts: {
-    en: (n: number, without: number) => `${questions(n)}${without ? ` · ${without} without a 題型` : ''}`,
-    zh: (n: number, without: number) => `${n} 條題目${without ? ` · ${without} 條未有題型` : ''}`,
+    en: (n: number, without: number) => `${questions(n)}${without ? ` · ${without} not sorted` : ''}`,
+    zh: (n: number, without: number) => `${n} 條題目${without ? ` · ${without} 條未分類` : ''}`,
   },
-  noPatternLine: { en: 'No 題型', zh: '未有題型' },
-  noPatternYet: { en: 'No 題型 yet', zh: '尚未有題型' },
-  reviewThese: { en: 'Review these →', zh: '查看這些題目 →' },
-  reviewTheseTitle: {
-    en: 'Open these questions, then set each one’s 題型 with Edit beside its Topics',
-    zh: '打開這些題目，再在「課題」旁按「編輯」設定題型',
-  },
+  noPatternLine: { en: 'Not sorted', zh: '未分類' },
+  sortThese: { en: 'Sort these →', zh: '分類這些題目 →' },
+  noQuestionsYet: { en: 'No questions yet', zh: '尚未有題目' },
+  sortInto: { en: 'Sort into it →', zh: '把題目分類到這裏 →' },
   noneIn: {
     en: (where: string) => `No 題型 or questions ${where ? `in ${where} ` : ''}yet.`,
     zh: (where: string) => `${where ? `「${where}」` : ''}尚未有題型或題目。`,
@@ -82,7 +90,6 @@ export const PATTERNS_PAGE_MESSAGES = defineMessages({
   deleteButton: { en: 'Delete 題型', zh: '刪除題型' },
 
   typeName: { en: 'Type a name.', zh: '請輸入名稱。' },
-  chooseSubTopicFirst: { en: 'Choose a sub-topic first.', zh: '請先選擇子課題。' },
   clash: {
     en: (name: string) => `“${name}” is already here. Use Merge to combine them.`,
     zh: (name: string) => `「${name}」已存在。請用「合併」將它們合併。`,
@@ -99,7 +106,6 @@ export const PATTERNS_PAGE_MESSAGES = defineMessages({
     zh: (n: number) => `${n} 條題目 →`,
   },
   questionCount: { en: (n: number) => questions(n), zh: (n: number) => `${n} 條題目` },
-  notUsed: { en: 'Not used yet', zh: '尚未使用' },
   rename: { en: 'Rename', zh: '重新命名' },
   delete: { en: 'Delete', zh: '刪除' },
   actionsFor: { en: (name: string) => `Rename, merge or delete ${name}`, zh: (name: string) => `重新命名、合併或刪除「${name}」` },
@@ -107,8 +113,6 @@ export const PATTERNS_PAGE_MESSAGES = defineMessages({
   newPattern: { en: 'New 題型', zh: '新增題型' },
   newHere: { en: '+ New 題型 here', zh: '+ 在此新增題型' },
   newIn: { en: (where: string) => `New 題型 in ${where}`, zh: (where: string) => `在「${where}」新增題型` },
-  subTopic: { en: 'Sub-topic', zh: '子課題' },
-  chooseSubTopic: { en: 'Choose a sub-topic', zh: '選擇子課題' },
   questionType: { en: 'Question type', zh: '題目類型' },
   nameLabel: { en: '題型 name', zh: '題型名稱' },
   namePlaceholder: { en: 'e.g. Calculate PED from a change in TR', zh: '例如：由 TR 的變動計算 PED' },

@@ -1,7 +1,8 @@
 # 題型 map with no 題型: research and redesign proposal
 
 Status: proposal, 2026-10-19, against `develop` at `051ee837` (after the first 題型 release,
-`question-types-ux.md` § 8). Not built. The user asked: "improve the UI of the 題型 panel
+`question-types-ux.md` § 8). **Items 1–4 and 6 built the same day on
+`feature/question-types-empty-state`; see § 8.** The user asked: "improve the UI of the 題型 panel
 even when the user has no pattern in; do a deep research on how we should design that
 page." Screenshots are in `docs/design/question-types-ux/` with the prefix `v2-`.
 
@@ -375,3 +376,38 @@ page; mixed-language example names; the extend offer later, after 1–3).
 - **Web research:** 2026-10-19. The sources are linked inline. Activation numbers from
   vendor blogs were rejected for lack of method.
 - **Not checked:** desktop shell, narrow windows, a library with more than 100 questions.
+
+## 8. What shipped (2026-10-19)
+
+No storage change: no document field, no registry field, no index field. The bank's
+remembered level gains `{ kind: 'sort', topic }`; an older build reads it as the topics
+(`parseLevel` falls back).
+
+- **Item 1, no cliff.** The map has one layout (`PatternsPage.tsx`). The heading says where
+  the library stands (`src/library/patterns.ts:sortProgress`: questions with a sub-topic,
+  those with a 題型 in every one, 題型 named). With some 題型: "Keep going" (the three
+  topics with most to sort, `:topicsToSort`), a box per sub-topic with 題型, that topic's
+  other sub-topics on one line with "Sort C →", every other topic on one "Other topics"
+  line. A name with no questions says "Sort into it →", not grey "Not used yet".
+- **Item 2, the sort board** (`PatternSortBoard.tsx`, bank level `sort`). One coarse
+  topic, a section per sub-topic with questions (`:sortSections`), unsorted questions as
+  cards (type, marks, Diagram, the stem in the view language). Click selects, Shift-click a
+  run; a selection stays in one sub-topic (a click in another starts a new one). The tray
+  names it (Enter): the 題型 is registered under each selected type and every copy takes
+  it where it holds the sub-topic (`:sortIntoEdit`, whole-question). A typed name that
+  exists becomes "Add to “…”". 題型 are numbered buckets (`:sortBuckets`, MCQ and LQ of a
+  name are one); 1–9 sorts into one, N names, Z or ⌘Z undoes (`:unsortEdit`, and the
+  names that sort created leave the registry), Esc clears the selection, then goes up to
+  the map. A done topic offers "Next: B →".
+- **Item 3, the empty map.** Topic cards, the first one primary; the example card is not
+  greyed and shows three name shapes, in mixed languages (計算需求價格彈性, Per unit tax &
+  elasticity, Elastic demand → a price rise cuts TR). The 40-option "New 題型" form is gone.
+- **Item 4, fixes.** The 題型 header button needs a question in the library and always
+  opens the whole map; the review crumb shows the topic letter, not `C.ped`; "Review these"
+  is gone from the map (its sorting is the board's).
+- **Item 6.** Topic names on the map and the board follow the interface language
+  (`src/components/bank/page/topicText.ts:chromeTopicName`).
+- **Checked:** Chrome on the website demo seed, 1440×900, en and 中文, light and dark
+  (`question-types-ux/v3-*.png`). **Not checked:** Tauri, Safari, narrow windows, a
+  library over 100 questions, a question with parts on the board (it is sorted whole).
+- **Not built:** item 5 (order by shape, "n more look similar"), item 7 (Parts ▸).

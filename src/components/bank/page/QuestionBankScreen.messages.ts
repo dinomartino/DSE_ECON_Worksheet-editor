@@ -100,6 +100,8 @@ export const BANK_SCREEN_MESSAGES = defineMessages({
   leftAfter: { en: ' left', zh: ' 條' },
   bankBack: { en: 'Question bank', zh: '題庫' },
   patternsTitle: { en: '題型 map', zh: '題型一覽' },
+  patternsBack: { en: '題型 map', zh: '題型一覽' },
+  sortTitle: { en: (code: string, name: string) => `Sort ${code} · ${name}`, zh: (code: string, name: string) => `分類 ${code} · ${name}` },
   patternsButton: { en: '題型', zh: '題型' },
   searchResults: { en: 'Search results', zh: '搜尋結果' },
   allQuestionsTitle: { en: 'All questions', zh: '全部題目' },

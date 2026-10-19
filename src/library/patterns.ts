@@ -276,3 +276,135 @@ export function subTopicList(items: readonly PatternItem[], topic: string): Patt
         types.indexOf(a.typeId) - types.indexOf(b.typeId),
     );
 }
+
+/**
+ * Sort into a 題型: the sub-topic's 題型 becomes `name` on every list that holds the
+ * sub-topic, and only there, so a part about another sub-topic gets no stray 題型 tag.
+ * Given to a write as a whole-question edit (`wholeQuestion`), it reaches each part.
+ */
+export const sortIntoEdit =
+  (topic: string, name: string): TagEdit =>
+  (tags) =>
+    tags.includes(topic) ? withPattern(tags, topic, name) : [...tags];
+
+/** Take a sort back: the sub-topic's 題型 cleared wherever it sits. */
+export const unsortEdit = (topic: string): TagEdit => (tags) => withPattern(tags, topic, undefined);
+
+/**
+ * One coarse topic's place in the sorting: its distinct questions under any of its
+ * sub-topics, and how many of them still lack a 題型 under one of those.
+ */
+export interface TopicProgress {
+  /** A coarse topic code. */
+  topic: string;
+  questions: number;
+  notSorted: number;
+}
+
+/** The whole map's progress: questions with a sub-topic, those with a 題型 in every one. */
+export interface SortProgress {
+  questions: number;
+  sorted: number;
+  /** Per coarse topic with questions, guide order. */
+  topics: TopicProgress[];
+}
+
+/** Where every question with a sub-topic stands; a question counts once (`rootId`). */
+export function sortProgress(rows: readonly Pick<BankRow, 'rootId' | 'tags'>[]): SortProgress {
+  const seen = new Set<string>();
+  const perTopic = new Map<string, { questions: Set<string>; notSorted: Set<string> }>();
+  let sorted = 0;
+  for (const row of rows) {
+    if (seen.has(row.rootId)) continue;
+    const subs = [...new Set(row.tags.filter(holdsPatterns))];
+    if (subs.length === 0) continue;
+    seen.add(row.rootId);
+    let all = true;
+    for (const code of subs) {
+      const parent = topicOf(code)?.parent;
+      if (!parent) continue;
+      const entry = perTopic.get(parent) ?? { questions: new Set<string>(), notSorted: new Set<string>() };
+      entry.questions.add(row.rootId);
+      if (rowPatterns(row, code).length === 0) {
+        entry.notSorted.add(row.rootId);
+        all = false;
+      }
+      perTopic.set(parent, entry);
+    }
+    if (all) sorted += 1;
+  }
+  const topics = TOPICS.filter((topic) => perTopic.has(topic.code)).map((topic) => {
+    const entry = perTopic.get(topic.code)!;
+    return { topic: topic.code, questions: entry.questions.size, notSorted: entry.notSorted.size };
+  });
+  return { questions: seen.size, sorted, topics };
+}
+
+/** Where to start: the coarse topics with the most questions to sort, then guide order. */
+export function topicsToSort(progress: SortProgress, count = 3): TopicProgress[] {
+  return progress.topics
+    .filter((entry) => entry.notSorted > 0)
+    .sort((a, b) => b.notSorted - a.notSorted || (GUIDE_ORDER.get(a.topic) ?? 0) - (GUIDE_ORDER.get(b.topic) ?? 0))
+    .slice(0, count);
+}
+
+/** One sub-topic on the sort board: its questions still to sort, one row per question. */
+export interface SortSection {
+  topic: string;
+  /** One row per question (its first copy), by type, then marks, then text. */
+  notSorted: BankRow[];
+  /** Questions with a 題型 here. */
+  sorted: number;
+}
+
+/** The sort board for a coarse topic: each sub-topic with questions, guide order. */
+export function sortSections(rows: readonly BankRow[], topic: string): SortSection[] {
+  const parent = TOPICS.find((entry) => entry.code === topic);
+  if (!parent) return [];
+  const types = listQuestionTypes().map((type) => type.id);
+  const typeRank = (id: string) => (types.includes(id) ? types.indexOf(id) : types.length);
+  const out: SortSection[] = [];
+  for (const child of parent.children) {
+    const seen = new Set<string>();
+    const notSorted: BankRow[] = [];
+    let sorted = 0;
+    for (const row of rows) {
+      if (!row.tags.includes(child.code) || seen.has(row.rootId)) continue;
+      seen.add(row.rootId);
+      if (rowPatterns(row, child.code).length > 0) sorted += 1;
+      else notSorted.push(row);
+    }
+    if (seen.size === 0) continue;
+    notSorted.sort(
+      (a, b) =>
+        typeRank(a.typeId) - typeRank(b.typeId) ||
+        a.marks - b.marks ||
+        (a.excerpt.en || a.excerpt.zh).localeCompare(b.excerpt.en || b.excerpt.zh),
+    );
+    out.push({ topic: child.code, notSorted, sorted });
+  }
+  return out;
+}
+
+/**
+ * A sub-topic's 題型 as the board's buckets: one per name (MCQ and LQ lines of the same
+ * name are one bucket, since the tag never held the type), list order, with their counts.
+ */
+export interface SortBucket {
+  name: string;
+  /** The types it is listed under, registry order. */
+  typeIds: string[];
+  count: number;
+}
+
+export function sortBuckets(items: readonly PatternItem[], topic: string): SortBucket[] {
+  const out: SortBucket[] = [];
+  for (const item of subTopicList(items, topic)) {
+    const same = out.find((bucket) => samePatternName(bucket.name, item.name));
+    if (same) {
+      if (!same.typeIds.includes(item.typeId)) same.typeIds.push(item.typeId);
+      same.count += item.count;
+    } else out.push({ name: item.name, typeIds: [item.typeId], count: item.count });
+  }
+  return out;
+}
