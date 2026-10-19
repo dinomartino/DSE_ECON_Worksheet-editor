@@ -43,6 +43,7 @@ the whole schema, one file.
 - `src/model/bands.ts:createBand` · `src/model/bandSegments.ts:bandFieldSegments` — masthead rows
 - `src/model/text.ts:BiText` helpers — `:rt` · `:plain` · `:normalizeRuns` · `:applyRunFormat`
 - `src/model/page.ts:pageSetupOf` · `:headerFooterOffsets` · `src/model/pageFurniture.ts:furnitureBoxes`
+- `src/model/cover.ts:examinerGridBands` · `:COVER_GRID` · `:EXAMINER_GRID_WORDING` — the cover's opt-in "For examiner's use" grid (`src/model/coverTypes.ts:CoverPage` `examinerGrid`, a switch; numbers and marks derived), laid out as `src/render/ir.ts:CoverGridRender` and drawn by `src/export/docx/body.ts:examinerGridXml` and `src/components/preview/Preview.tsx:ExaminerGridView`
 - `src/model/cover.ts:createCoverPage` · `src/model/documentShape.ts:documentShape` · `:paperKind` (the shape refined by content: dotted answer space → LQ worksheet)
 - `src/model/versions.ts:activeVersion` · `:shuffledOrder` · `:versionHeaderText` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored; the letter rides the running header as a last row (`src/model/page.ts:versionRowStandsAlone`); the Teacher version's marker joins the same header (`src/model/headerMarks.ts:teacherMarkPlacement`), both on page 1 per `:derivedMarksOnPageOne`
 - `src/model/markScheme.ts:schemeMax` · `:groupMax` · `:schemeMismatch` — HKEAA marking-scheme totals, derived; types in `src/model/markSchemeTypes.ts:MarkScheme`

@@ -67,6 +67,97 @@ export const COVER_PANEL = {
 } as const;
 
 /**
+ * The "For examiner's use" grid's geometry, in twips — one definition for both
+ * backends, as `COVER_PANEL` is (§ `CoverPage.examinerGrid`).
+ *
+ * The grid is **horizontal bands**: a label column ("Question No." / "Full marks" /
+ * "Marks") and then one narrow column per question, the Total last. A band holds as
+ * many questions as the column is wide, so a long paper wraps into more bands rather
+ * than shrinking its boxes — a box a marker cannot write a "12" in is no box.
+ */
+export const COVER_GRID = {
+  /** The label column, wide enough for "Question No." at `fontSize`. */
+  labelWidth: 1200,
+  /**
+   * One question's column: a two-digit number and a written score, a little wider than
+   * a candidate box (290). 320 is what puts a 45-question Paper 1 in two bands on A4 —
+   * three ran the one-column cover into its foot block.
+   */
+  cellWidth: 320,
+  /** The Total's column: a three-digit paper total. */
+  totalWidth: 720,
+  /** Left and right cell margin (`w:tcMar`), tight so the narrow cells keep their room. */
+  cellMargin: 40,
+  /** Floor of a printed row per line of text it carries (bilingual labels carry two). */
+  lineRowHeight: 300,
+  /** Floor of the marker's row: the candidate boxes' own height (`COVER_PANEL.boxHeight`). */
+  boxHeight: 504,
+  /** Every word and number in the grid. */
+  fontSize: 9,
+  /**
+   * The panel column's left padding in the preview (12pt), which the `.docx` column does
+   * not have; packing leaves it free so a band fits both.
+   */
+  previewGutter: 240,
+} as const;
+
+/**
+ * The printed wording of the grid — this project's own, in both languages, picked by
+ * the document's language like every other printed cover word. Printed text, so it is
+ * not an interface catalogue entry.
+ */
+export const EXAMINER_GRID_WORDING = {
+  heading: bi('For examiner’s use only', '閱卷員專用'),
+  question: bi('Question No.', '題號'),
+  full: bi('Full marks', '滿分'),
+  score: bi('Marks', '得分'),
+  total: bi('Total', '總分'),
+} as const;
+
+/**
+ * How many questions each band of the grid holds, in order; the last band also holds
+ * the Total. `available` is the width the grid may use, in twips.
+ *
+ * The fewest bands that fit, then balanced — 16 questions in an A4 panel print
+ * 5 + 4 + 4 + 3, not 5 + 5 + 5 + 1 — with the last band never left holding the
+ * Total alone while a question could keep it company.
+ */
+export function examinerGridBands(questions: number, available: number): number[] {
+  const room = available - COVER_GRID.labelWidth;
+  const perBand = Math.max(1, Math.floor(room / COVER_GRID.cellWidth));
+  const perLast = Math.max(0, Math.floor((room - COVER_GRID.totalWidth) / COVER_GRID.cellWidth));
+  if (questions <= perLast) return [questions];
+
+  const bands = perLast === 0
+    ? 1 + Math.ceil(questions / perBand)
+    : 1 + Math.ceil((questions - perLast) / perBand);
+  const last = perLast === 0
+    ? 0
+    : Math.min(perLast, Math.max(questions - perBand * (bands - 1), Math.ceil(questions / bands)));
+  // The rest spread evenly over the other bands, the larger ones first.
+  const rest = questions - last;
+  const others = bands - 1;
+  const sizes = Array.from({ length: others }, (_, index) =>
+    Math.floor(rest / others) + (index < rest % others ? 1 : 0),
+  );
+  return [...sizes, last];
+}
+
+/**
+ * The width the grid may use, in twips: under the candidate boxes in the panel, or the
+ * whole text column on a cover with no panel (where it follows the instructions).
+ */
+export function examinerGridWidth(
+  printedColumns: { left: number; gap: number; right: number },
+  textWidth: number,
+  inPanel: boolean,
+): number {
+  return inPanel
+    ? printedColumns.right - COVER_PANEL.indent - COVER_GRID.previewGutter
+    : textWidth;
+}
+
+/**
  * Whether the right column has anything to print.
  *
  * Drives the column rule and, on export, whether the section is two columns at all: a

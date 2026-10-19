@@ -31,7 +31,7 @@ import { TableGridControls } from "./TableGridControls";
 import { sheetStackMargin } from "./sheetStack";
 import { zonesOf, type ZoneName } from "@/model/bands";
 import { bandFieldPrintText, mirrorBilingualEdit } from "@/model/bandSegments";
-import { COVER_PANEL } from "@/model/cover";
+import { COVER_GRID, COVER_PANEL } from "@/model/cover";
 import {
   describeDelete,
   editTargetKey,
@@ -113,6 +113,7 @@ import {
 } from "./AnswerGraphView";
 import {
   BLANK_LINE_PT,
+  type CoverGridRender,
   type CoverRenderNode,
   type EditTarget,
   type NodeStyle,
@@ -2584,6 +2585,9 @@ function CoverSheet({
             .docx's blank paragraph. */}
         {region(cover.head, "head")}
         {instructionsRegion()}
+        {cover.examinerGrid?.placement === "main" && (
+          <ExaminerGridView grid={cover.examinerGrid} language={language} ctx={ctx} />
+        )}
       </div>
 
       {/*
@@ -2648,7 +2652,13 @@ function CoverSheet({
           {(cover.panel.fieldLabel || cover.panel.boxes > 0) && (
             <div
               className="flex items-stretch"
-              style={{ marginLeft: `${COVER_PANEL.indent / 1440}in` }}
+              style={{
+                marginLeft: `${COVER_PANEL.indent / 1440}in`,
+                // The blank line the .docx writes after the boxes' table, shown only
+                // when something follows it (the examiner's grid).
+                marginBottom:
+                  cover.examinerGrid?.placement === "panel" ? `${BLANK_LINE_PT}pt` : undefined,
+              }}
             >
               {cover.panel.fieldLabel && (
                 <div
@@ -2672,8 +2682,73 @@ function CoverSheet({
               ))}
             </div>
           )}
+          {cover.examinerGrid?.placement === "panel" && (
+            <ExaminerGridView grid={cover.examinerGrid} language={language} ctx={ctx} />
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The cover's "For examiner's use" grid (§ `CoverGridRender`), drawn as the `.docx`
+ * draws it: a ruled table per band at the IR's twip widths (as inches), cells padded
+ * by `COVER_GRID.cellMargin`, rows at their floor heights, a blank line after each
+ * band but where `trailingBlank` says otherwise. Its numbers are derived, so nothing in it is editable.
+ */
+function ExaminerGridView({
+  grid,
+  language,
+  ctx,
+}: {
+  grid: CoverGridRender;
+  language: LanguageMode;
+  ctx?: EditContext;
+}) {
+  const inches = (twips: number) => `${twips / 1440}in`;
+  return (
+    <div data-cover-region="examinerGrid">
+      {grid.heading.map((node, index) => (
+        <NodeView key={index} node={node} language={language} ctx={ctx} />
+      ))}
+      {grid.bands.map((band, bandIndex) => (
+        <table
+          key={bandIndex}
+          className="border-collapse"
+          style={{
+            tableLayout: "fixed",
+            width: inches(band.columns.reduce((sum, value) => sum + value, 0)),
+            marginLeft: inches(grid.indent),
+            // The blank paragraph the .docx writes after a band (§ `trailingBlank`).
+            marginBottom:
+              grid.trailingBlank || bandIndex < grid.bands.length - 1 ? `${BLANK_LINE_PT}pt` : undefined,
+          }}
+        >
+          <colgroup>
+            {band.columns.map((width, index) => (
+              <col key={index} style={{ width: inches(width) }} />
+            ))}
+          </colgroup>
+          <tbody>
+            {band.rows.map((row, rowIndex) => (
+              <tr key={rowIndex} style={{ height: inches(row.height) }}>
+                {row.cells.map((cell, cellIndex) => (
+                  <td
+                    key={cellIndex}
+                    className="border-[0.5pt] border-solid border-[#000] align-middle"
+                    style={{
+                      padding: `0 ${inches(COVER_GRID.cellMargin)}`,
+                    }}
+                  >
+                    <NodeView node={cell} language={language} ctx={ctx} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ))}
     </div>
   );
 }

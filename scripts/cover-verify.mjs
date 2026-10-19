@@ -21,9 +21,13 @@ const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.me
  *
  *   node scripts/cover-verify.mjs [--out=/tmp/cover-verify] [--url=http://localhost:3000]
  *                                 [--skip-fixtures] [--language=en|zh|bilingual]
- *                                 [--lo-profile=<dir>]
+ *                                 [--lo-profile=<dir>] [--examiner-grid=short|long]
  *
  *   `--out` (default $COVER_DIR, else the path shown) also receives the fixtures.
+ *
+ * `--examiner-grid` turns on the cover's marks grid with a short or long paper behind it;
+ * the body then runs past one sheet, so the sheet count is checked as the .docx and the
+ * print PDF agreeing rather than against a fixed 2.
  *
  * `--lo-profile` is the LibreOffice profile holding the system CJK fonts (scripts/soffice.mjs).
  *
@@ -49,6 +53,11 @@ if (!LANGUAGE_BUTTON) {
   process.exit(1);
 }
 const LO_PROFILE = ensureLoProfile(opt('lo-profile', DEFAULT_LO_PROFILE));
+const GRID = opt('examiner-grid', undefined);
+if (GRID !== undefined && GRID !== 'short' && GRID !== 'long') {
+  console.error(`unknown --examiner-grid=${GRID}`);
+  process.exit(1);
+}
 
 const PAPERS = [
   { name: 'p1', reference: 'real_life_reference/DSE2021_Paper 1.pdf' },
@@ -93,7 +102,7 @@ if (!args.includes('--skip-fixtures')) {
     ['vitest', 'run', 'scripts/cover-fixtures.test.ts'],
     'emit fixtures',
     false,
-    { ...process.env, COVER_DIR: OUT, COVER_LANGUAGE: LANGUAGE },
+    { ...process.env, COVER_DIR: OUT, COVER_LANGUAGE: LANGUAGE, ...(GRID ? { COVER_EXAMINER_GRID: GRID } : {}) },
   );
 }
 
@@ -113,6 +122,7 @@ if (!args.includes('--skip-fixtures')) {
  */
 const EXPECTED_PAGES = 2;
 const pageFailures = [];
+const docxPages = {};
 
 for (const { name } of PAPERS) {
   const docx = `${OUT}/cover-${name}.docx`;
@@ -120,7 +130,10 @@ for (const { name } of PAPERS) {
 
   const info = run('pdfinfo', [`${OUT}/cover-${name}.pdf`], `pdfinfo ${name}`, true);
   const pages = Number(/^Pages:\s*(\d+)$/m.exec(info ?? '')?.[1]);
-  if (Number.isFinite(pages)) {
+  if (Number.isFinite(pages) && GRID) {
+    docxPages[name] = pages;
+    console.log(`${name}: ${pages} page(s) in the .docx; checked against the print PDF below`);
+  } else if (Number.isFinite(pages)) {
     const ok = pages === EXPECTED_PAGES;
     console.log(`${ok ? '✓' : '✗'} ${name}: ${pages} page(s), expected ${EXPECTED_PAGES}`);
     if (!ok) {
@@ -237,6 +250,13 @@ try {
       printBackground: true,
       preferCSSPageSize: true,
     });
+    if (GRID && docxPages[name] !== undefined) {
+      const printInfo = run('pdfinfo', [`${OUT}/cover-${name}-print.pdf`], `pdfinfo print ${name}`, true);
+      const printPages = Number(/^Pages:\s*(\d+)$/m.exec(printInfo ?? '')?.[1]);
+      const ok = printPages === docxPages[name];
+      console.log(`${ok ? '✓' : '✗'} ${name}: print PDF ${printPages} page(s), .docx ${docxPages[name]}`);
+      if (!ok) pageFailures.push(`${name}: print PDF ${printPages} pages, .docx ${docxPages[name]}`);
+    }
     run('pdftoppm', ['-r', '90', '-png', '-f', '1', '-l', '1', `${OUT}/cover-${name}-print.pdf`, `${OUT}/${name}-print`], `pdftoppm print ${name}`);
     collectPage(`${OUT}/${name}-print`, `${OUT}/${name}-print.png`);
     await context.close();

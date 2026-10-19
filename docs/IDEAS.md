@@ -29,7 +29,7 @@ C10), what happens after the paper is sat (G), and AI authoring (E1/E3/E4 built 
 2. **Next** — item analysis (G1), which also completes C4's facility; bank
    authoring (`docs/design/bank-authoring.md`, 3 questions for the user).
 3. **Later** — import layout profiles (D), unpausing E1/E3/E4 after live evals, data charts
-   (B3b), answer frames and the examiner grid (B6, B7), dashboard extras (F).
+   (B3b), answer frames (B6), dashboard extras (F).
 
 ## A. Export and paper checks
 
@@ -42,8 +42,6 @@ None open: the loose ends listed here were fixed on `develop` 2026-10-03 (see CH
   `src/model/diagram.ts`, drawing in `src/render/diagram.ts:diagramSvg`. *Aristo e-Graph.*
 - **B6 Fill-in-blank answer frames** (S–M): blanks for students, answers for teachers.
   *Econ Excelsior "LQ答題框架", PickMyQuiz.*
-- **B7 "For examiner's use" marks grid on the cover** (S–M), from derived marks, as a
-  real table. *LaTeX `\gradetable`, OCR covers.*
 
 ## C. Question library
 

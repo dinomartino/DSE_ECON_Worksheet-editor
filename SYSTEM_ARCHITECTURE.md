@@ -295,6 +295,26 @@ panel right, a rule between) — a shape no stack of full-width bands can make, 
   identity, paper name) and Times (timing, instructions). So `CoverPage.fonts` is a
   default any line's own `format.fonts` overrides.
 - Operative words in instructions are bolded **per run** ("Answer **ALL** questions").
+- **The "For examiner's use" grid stores only a switch** (`CoverPage.examinerGrid`,
+  opt-in in Setup → Cover). Numbers and full marks come from `computeNumbering` and
+  `questionMarks`, the Total from `worksheetMarks` (an "answer any n" section counts its
+  best n), on every render. Labels are fixed printed wording in both languages
+  (`EXAMINER_GRID_WORDING`), not catalogue strings, and carry no edit target.
+- **The grid is horizontal bands, packed in the IR** (`examinerGridBands`): a label
+  column, one 320tw column per question, the Total last; as many as the column holds,
+  then balanced across more bands (45 MCQs on A4: 23 + 22). `CoverGridRender` carries
+  twip widths and row floors (`COVER_GRID`), so both backends only draw: a ruled
+  `w:tbl` per band with `atLeast` rows and a blank paragraph between bands, a `<table>`
+  in inches with a 12pt margin in the preview. **The last band takes no blank**: the
+  cover's section-break paragraph follows it — one more line tipped a bilingual Paper 1
+  cover onto a second sheet. Under the candidate boxes when the cover has a panel
+  (indented like them, packed leaving the preview's 12pt gutter), after the
+  instructions otherwise. Nothing measures height: a long enough paper (or a page with
+  wide margins) can still outgrow the cover; `cover-verify.mjs --examiner-grid=long`
+  checks the sheet count.
+- **Absent, nothing changes**: a cover without the switch exports byte-identically. It is
+  a nested optional field — no `KNOWN_KEYS` entry (the cover passes through whole), no
+  bump: an older build keeps the key and prints no grid, which loses nothing typed.
 - **A booklet's cover states what to answer and the margin rule** in its instruction
   list (a candidate must not have to page to the back for them); an MCQ cover carries
   neither.

@@ -1,10 +1,10 @@
-import { COVER_PANEL } from '@/model/cover';
+import { COVER_GRID, COVER_PANEL } from '@/model/cover';
 import { cssFontFamilies } from '@/model/fonts';
 import { contentWidth, pageDimensions, pageSetupOf } from '@/model/page';
 import { answerGraphBox, answerGraphSvgDataUrl } from '@/render/answerGraph';
 import type { FontPair, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import { diagramSvgDataUrl } from '@/render/diagram';
-import type { CoverRenderNode, RenderNode } from '@/render/ir';
+import type { CoverGridRender, CoverRenderNode, RenderNode } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
 import {
   escapeHtml,
@@ -232,6 +232,38 @@ function coverNodeHtml(node: RenderNode, language: LanguageMode): string {
 
 const inches = (twips: number) => `${twips / 1440}in`;
 
+/** The examiner's grid, mirroring `ExaminerGridView` in `Preview.tsx`. */
+function examinerGridHtml(grid: CoverGridRender, language: LanguageMode): string {
+  const heading = grid.heading.map((node) => coverNodeHtml(node, language)).join('');
+  const bands = grid.bands
+    .map((band, bandIndex) => {
+      const width = band.columns.reduce((sum, value) => sum + value, 0);
+      const cols = band.columns.map((value) => `<col style="width:${inches(value)}">`).join('');
+      const rows = band.rows
+        .map(
+          (row) =>
+            `<tr style="height:${inches(row.height)}">` +
+            row.cells
+              .map(
+                (cell) =>
+                  `<td style="border:0.5pt solid #000;vertical-align:middle;` +
+                  `padding:0 ${inches(COVER_GRID.cellMargin)}">${coverNodeHtml(cell, language)}</td>`,
+              )
+              .join('') +
+            '</tr>',
+        )
+        .join('');
+      return (
+        `<table style="border-collapse:collapse;table-layout:fixed;width:${inches(width)};` +
+        `margin-left:${inches(grid.indent)}` +
+        `${grid.trailingBlank || bandIndex < grid.bands.length - 1 ? ';margin-bottom:12pt' : ''}"><colgroup>${cols}</colgroup>` +
+        `<tbody>${rows}</tbody></table>`
+      );
+    })
+    .join('');
+  return heading + bands;
+}
+
 /** The cover sheet, mirroring `CoverSheet` in `Preview.tsx` without its edit chrome. */
 function coverHtml(cover: CoverRenderNode, language: LanguageMode, page: ThumbnailPage): string {
   const { left, gap, right } = cover.columns;
@@ -255,7 +287,8 @@ function coverHtml(cover: CoverRenderNode, language: LanguageMode, page: Thumbna
   const leftColumn =
     `<div style="position:relative;min-width:0;width:${cover.panel.present ? pct(left) : '100%'};` +
     `${cover.corner.length > 0 ? 'padding-top:1.5in;' : ''}">` +
-    `${corner}${region(cover.head)}${region(cover.instructions)}</div>`;
+    `${corner}${region(cover.head)}${region(cover.instructions)}` +
+    `${cover.examinerGrid?.placement === 'main' ? examinerGridHtml(cover.examinerGrid, language) : ''}</div>`;
 
   const foot =
     cover.foot.length > 0 || cover.footNote
@@ -286,14 +319,17 @@ function coverHtml(cover: CoverRenderNode, language: LanguageMode, page: Thumbna
         `<span style="border:1px solid #000;width:${inches(COVER_PANEL.boxWidth)};` +
         `height:${inches(COVER_PANEL.boxHeight)};margin-left:${index ? '-1px' : '0'}"></span>`,
     ).join('');
+    const examiner =
+      cover.examinerGrid?.placement === 'panel' ? examinerGridHtml(cover.examinerGrid, language) : '';
     const grid =
       label || boxes
-        ? `<div style="display:flex;align-items:stretch;margin-left:${inches(COVER_PANEL.indent)}">` +
+        ? `<div style="display:flex;align-items:stretch;margin-left:${inches(COVER_PANEL.indent)}` +
+          `${examiner ? ';margin-bottom:12pt' : ''}">` +
           `${label}${boxes}</div>`
         : '';
     panel =
       `<div style="min-width:0;padding-left:16px;width:${pct(right)};border-left:1.5pt solid #000">` +
-      `${note}${grid}</div>`;
+      `${note}${grid}${examiner}</div>`;
   }
 
   return `<div style="display:flex;gap:${pct(gap)}">${leftColumn}${foot}${panel}</div>`;
