@@ -24,6 +24,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   tab in text paragraphs, a Word-rule page layout (`tabLayout.ts`), `<w:tab/>`/`<w:tabs>`/clipboard,
   ruler + Tab stops panel + quick layouts (`TabRuler.tsx`). No schema bump. Not tried in real Word
   or Tauri. zh default 480 left as is (the one zh-HK reference file uses 720).
+- **題型 empty state researched 2026-10-19** (`docs/design/question-types-empty-state.md`, branch
+  `research/question-types-empty-state`): sort board per topic, no cliff after the first name; 4 open questions for the user.
 - **Now: new features** (user, 2026-10-19). C9, C10, E7 parked. `feature/film-v2` on GitHub since 2026-10-04, not merged.
 - **0.8.0, untried in Tauri:** table Same height/width, import header/footer, band rows as tab stops;
   found-folder offer (`src/sync/foundFolder.ts`, faked shell). Import/OCR untried: Intel Mac, macOS 12–13.2.
@@ -76,5 +78,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-10-19** — 題型 empty-state research: audit, outside research, suggestion prototype (no suggestion boxes).
 - **2026-10-19** — F4/F5, C11, B7, 題型 v1 (after research), `.docx` page breaks instead of keep flags; merged on develop.
-- **2026-10-18** — ⌘Z while typing on the page: document undo, typing grouped per run (`TYPING_PAUSE_MS`), caret follows the change. Chrome-checked; not tried in Tauri/Safari.
