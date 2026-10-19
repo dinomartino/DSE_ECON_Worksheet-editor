@@ -7,8 +7,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Word packs justified
-  lines tighter than the page (Word's own spacing, not fixable here).
+- **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Word packs justified lines tighter (not fixable).
 - **2026-10-19 (Unreleased, merged on develop):** `.docx` has no keep flags
   (no black ¶ squares, user's call) — hard page breaks where the preview breaks (`pageBreaks.ts`,
   `measurePageStarts.tsx`; samples now run in headless Chrome); B7 examiner marks grid on the
@@ -16,16 +15,15 @@ off the bottom.** It is the first thing a fresh session reads — then
   page count; old entries fill on next edit); F5 dashboard searches question text; C11 Diagram
   filter + Sort; 題型 first release (map, links, 題目類型 wording, editor 題庫 tab filter). None
   tried in real Word or Tauri. 題型 next: Fill by 題型 (`docs/design/question-types-ux.md` item 6).
-- **Known-gap sweep 2026-10-18 (Unreleased):** tab wrap as LibreOffice, import keeps typed tabs,
-  sync gap fixes. Not tried in real Word, Tauri or a provider.
-- **Tabs vs Word, phases 1–3 built 2026-10-18 (Unreleased, `docs/Tabs vs Word.md`):** Tab types a
-  tab in text paragraphs, a Word-rule page layout (`tabLayout.ts`), `<w:tab/>`/`<w:tabs>`/clipboard,
-  ruler + Tab stops panel + quick layouts (`TabRuler.tsx`). No schema bump. Not tried in real Word
-  or Tauri. zh default 480 left as is (the one zh-HK reference file uses 720).
-- **題型 sort board built 2026-10-19 (Unreleased, merged on develop):** the map has one layout
-  (no cliff after the first name), an empty map with topic cards, the sort board (select + name,
-  1–9, Z undo), 中文 topic names on the map. Not built: items 5 and 7 of
-  `docs/design/question-types-empty-state.md`. Chrome-checked; not tried in Tauri.
+- **Known-gap sweep 2026-10-18 (Unreleased):** tab wrap, import keeps tabs, sync fixes. Untried in Word/Tauri.
+- **Tabs vs Word 1–3, 2026-10-18 (Unreleased, `docs/Tabs vs Word.md`):** tab types, Word-rule layout,
+  `<w:tab/>`/`<w:tabs>`, ruler + Tab stops panel. No schema bump. Not tried in Word or Tauri.
+- **題型 sort board 2026-10-19 (Unreleased, on develop):** one-layout map, sort board, 中文 topic names.
+  Not built: items 5, 7 of `question-types-empty-state.md`. Not tried in Tauri.
+- **First 題型 on the map, 2026-10-19 (Unreleased, merged on develop):** the empty 題型 map is
+  three clickable steps (pick a topic, click questions alike, name them) beside a live preview,
+  then a status line with Undo (`FirstPattern.tsx`, `question-types-empty-state.md` § 9).
+  Chrome-checked; not tried in Tauri or dark.
 - **Now: new features** (user, 2026-10-19). C9, C10, E7 parked. `feature/film-v2` on GitHub since 2026-10-04, not merged.
 - **0.8.0, untried in Tauri:** table Same height/width, import header/footer, band rows as tab stops;
   found-folder offer (`src/sync/foundFolder.ts`, faked shell). Import/OCR untried: Intel Mac, macOS 12–13.2.
@@ -72,10 +70,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified (2026-10-19, develop after the five merges)
 
-- `npm test` 5759, build + bundle check green, samples 27/27 with 0 keep flags, typecheck green, lint at baseline (40); `cover-verify` green; `lq-verify` fails
+- `npm test` 5770, build + bundle check green, samples 27/27 with 0 keep flags, typecheck green, lint at baseline (40); `cover-verify` green; `lq-verify` fails
   only the pitch check, as base does on Linux (no CJK font). On Linux the harnesses need Chrome at
   `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
 
 ## Log
+- **2026-10-19** — the first 題型 is made on the 題型 map itself (user's ask).
 - **2026-10-19** — 題型 empty state: research (no suggestion boxes), then the sort board and the map without the cliff.
 - **2026-10-19** — F4/F5, C11, B7, 題型 v1 (after research), `.docx` page breaks instead of keep flags; merged on develop.

@@ -25,12 +25,6 @@ export const PATTERNS_PAGE_MESSAGES = defineMessages({
   showEmpty: { en: 'Show sub-topics with no questions', zh: '顯示沒有題目的子課題' },
 
   // No 題型 yet
-  pickTopic: { en: 'Pick a topic to start', zh: '選一個課題開始' },
-  mostFirst: { en: 'Most questions to sort first', zh: '待分類題目最多的排先' },
-  topicCount: {
-    en: (n: number, subTopics: number) => `${n} to sort · ${subTopics} ${subTopics === 1 ? 'sub-topic' : 'sub-topics'}`,
-    zh: (n: number, subTopics: number) => `${n} 條待分類 · ${subTopics} 個子課題`,
-  },
   sortTopic: { en: (code: string) => `Sort ${code} →`, zh: (code: string) => `分類 ${code} →` },
   sortTopicLabel: { en: (name: string) => `Sort ${name}`, zh: (name: string) => `分類「${name}」` },
   otherTopics: { en: 'Other topics:', zh: '其他課題：' },
