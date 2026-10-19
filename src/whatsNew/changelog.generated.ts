@@ -34,6 +34,12 @@ a version heading is edited afterwards.
   with D = MPB = MSB, the market output Qm, the efficient output Q* and the DWL between.
   <!-- zh: **兩個新的圖表範本。** 「價格下限：效率損失」（在價格管制內）畫出高於均衡的下限、由需求決定的成交量、過剩及效率損失。
   「負面界外影響：生產過剩」（在稅項與津貼內）畫出高於 MPC 的 MSC、D = MPB = MSB、市場產量 Qm、有效率產量 Q* 及其間的效率損失。 -->
+- **Find questions with a diagram, and sort the 題庫 list.** Filter in the Question bank
+  now has **Diagram**: only questions with a diagram or picture, or only those without. Its
+  new **Sort** puts the list newest first (as before), least used first (fewest papers sat by
+  a class, then the one used longest ago), oldest first, or most marks first. The sort stays
+  when you clear the filters, and the list's count names it.
+  <!-- zh: **找出有圖表的題目，並為題庫清單排序。** 題庫的「篩選」新增「圖表」：只顯示有圖表或圖片的題目，或只顯示沒有的。新的「排序」可把清單按最新的先（與以往一樣）、最少用的先（考過的班別卷最少，再按最久未用）、最舊的先或分數最高的先排列。清除篩選時排序會保留，清單的題數旁亦會註明。 -->
 
 ### Changed
 - **Deadweight loss is labelled DWL in every diagram template.** The monopoly templates
@@ -46,6 +52,10 @@ a version heading is edited afterwards.
   <!-- zh: **匯入會保留你輸入的定位字元。** 從 Word 或貼上的內容中，用 Tab 對齊文字的一行（例如「姓名： → 班別：」、答案後的「→ (1)」）現會連同定位字元一併匯入，不再變成單一空格或只有一列的表格。連續幾行以 Tab 分隔的內容仍會匯入為表格，選項字母和標籤的辨識亦與以往相同。 -->
 
 ### Fixed
+- **⌘Z works while you type.** Undo used to wait until you clicked away from the text,
+  then took back one letter per press. Now ⌘Z (Ctrl+Z) in the text you are typing undoes
+  what you just typed in one step, keeps the text open, and ⇧⌘Z (Ctrl+Y) redoes it.
+  <!-- zh: **輸入時可用 ⌘Z 還原。** 以往要先點擊文字以外的地方才能還原，而且每按一次只還原一個字。現在輸入時按 ⌘Z（Ctrl+Z）會一次還原剛輸入的內容，文字仍保持可編輯；按 ⇧⌘Z（Ctrl+Y）重做。 -->
 - **Importing a PDF no longer hides a caption or sentence inside a graph's picture.** Text
   right beside a graph, such as "Figure 1", "Study the graph below." or "(2 marks)", now
   comes in as text you can edit, instead of being cropped into the picture and lost from

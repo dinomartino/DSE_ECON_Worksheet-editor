@@ -32,6 +32,12 @@ a version heading is edited afterwards.
   with D = MPB = MSB, the market output Qm, the efficient output Q* and the DWL between.
   <!-- zh: **兩個新的圖表範本。** 「價格下限：效率損失」（在價格管制內）畫出高於均衡的下限、由需求決定的成交量、過剩及效率損失。
   「負面界外影響：生產過剩」（在稅項與津貼內）畫出高於 MPC 的 MSC、D = MPB = MSB、市場產量 Qm、有效率產量 Q* 及其間的效率損失。 -->
+- **Find questions with a diagram, and sort the 題庫 list.** Filter in the Question bank
+  now has **Diagram**: only questions with a diagram or picture, or only those without. Its
+  new **Sort** puts the list newest first (as before), least used first (fewest papers sat by
+  a class, then the one used longest ago), oldest first, or most marks first. The sort stays
+  when you clear the filters, and the list's count names it.
+  <!-- zh: **找出有圖表的題目，並為題庫清單排序。** 題庫的「篩選」新增「圖表」：只顯示有圖表或圖片的題目，或只顯示沒有的。新的「排序」可把清單按最新的先（與以往一樣）、最少用的先（考過的班別卷最少，再按最久未用）、最舊的先或分數最高的先排列。清除篩選時排序會保留，清單的題數旁亦會註明。 -->
 
 ### Changed
 - **Deadweight loss is labelled DWL in every diagram template.** The monopoly templates

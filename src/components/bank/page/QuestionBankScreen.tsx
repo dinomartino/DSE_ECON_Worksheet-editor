@@ -61,6 +61,8 @@ import {
   paperTargets,
   resolveTarget,
   rootsInPaper,
+  sortGroups,
+  sortLabel,
   rowKey,
   targetChoiceOf,
   traySummary,
@@ -333,8 +335,9 @@ export function QuestionBankScreen({
       filters.missing && aiTones.size > 0
         ? filterRows(rows, { ...filters, topic, missing: undefined }, undefined, { teacherText }).filter((row) => aiTones.has(row.rootId) && !admitted.includes(row))
         : [];
-    return railSections(groupRows([...admitted, ...kept]), topic, lang, language);
-  }, [rows, filters, topic, level.kind, teacherText, aiTones, lang, language]);
+    // Sorted before the headings: each heading keeps the order; uses and dates read every copy.
+    return railSections(sortGroups(groupRows([...admitted, ...kept]), filters.sort, fullGroups), topic, lang, language);
+  }, [rows, filters, topic, level.kind, teacherText, aiTones, lang, language, fullGroups]);
   const order = useMemo(() => railOrder(sections), [sections]);
   const candidate = focusKey ? byKey.get(focusKey) : undefined;
   const candidateAt = entryIndex(order, candidate?.rootId, focusEntry);
@@ -976,6 +979,7 @@ export function QuestionBankScreen({
             docLabels,
             aiTones,
             inTarget,
+            ...(filters.sort && filters.sort !== 'newest' ? { sortedBy: sortLabel(filters.sort, lang) } : {}),
           }}
           targetPicker={<TargetPicker target={target} papers={targetPapers} labels={docLabels} onChoose={chooseTarget} />}
           stageAi={stageAi}

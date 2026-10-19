@@ -158,9 +158,83 @@ export interface BankFilters {
   pattern?: PatternId;
   /** Only questions some printed text of which lacks this language ("Missing 中文"). */
   missing?: BankLang;
+  /** Only questions with a diagram or picture anywhere (`BankRow.hasDiagram`), or only those without. */
+  diagram?: DiagramFilter;
+  /**
+   * The list's order within each heading; absent = newest first. Not a narrowing filter:
+   * never counted on the Filter button, and Clear filters keeps it.
+   */
+  sort?: BankSort;
 }
 
+export type DiagramFilter = 'with' | 'without';
+
+/** How the review list is ordered: newest use first (the default), fewest uses, oldest, most marks. */
+export type BankSort = 'newest' | 'leastUsed' | 'oldest' | 'marks';
+
 export const DEFAULT_FILTERS: BankFilters = { text: '', topic: 'all', marks: 'any', since: 'ever', source: 'all' };
+
+export const SORT_CHOICES: { value: BankSort; label: TextKey<typeof M> }[] = [
+  { value: 'newest', label: 'sortNewest' }, // i18n-ignore: catalogue key
+  { value: 'leastUsed', label: 'sortLeastUsed' }, // i18n-ignore: catalogue key
+  { value: 'oldest', label: 'sortOldest' }, // i18n-ignore: catalogue key
+  { value: 'marks', label: 'sortMarks' }, // i18n-ignore: catalogue key
+];
+
+/** A sort's words in the interface language ("Least used first"). */
+export function sortLabel(sort: BankSort, lang: UiLanguage = uiLanguage()): string {
+  const choice = SORT_CHOICES.find((entry) => entry.value === sort) ?? SORT_CHOICES[0];
+  return words(lang)[choice.label];
+}
+
+/** "Has a diagram" / "No diagram": the filter's words. */
+export const diagramLabel = (diagram: DiagramFilter, lang: UiLanguage = uiLanguage()): string =>
+  diagram === 'with' ? words(lang).withDiagram : words(lang).withoutDiagram;
+
+/** Real uses of a question: papers holding a copy that name the classes that sat them. Drafts never count. */
+export function useCount(group: Pick<BankGroup, 'usedIn'>): number {
+  return group.usedIn.filter((use) => (use.classes?.length ?? 0) > 0).length;
+}
+
+/** The earliest use date of any copy (`usedOn`: sat, else made): when the question first appeared. */
+function firstSeen(group: Pick<BankGroup, 'rows'>): string {
+  let first = '';
+  for (const row of group.rows) if (first === '' || row.usedOn < first) first = row.usedOn;
+  return first;
+}
+
+/** The latest real use's date, '' when never used. */
+function lastUsedOn(group: Pick<BankGroup, 'usedIn'>): string {
+  return group.usedIn.find((use) => (use.classes?.length ?? 0) > 0)?.usedOn ?? '';
+}
+
+/**
+ * Groups in the chosen order, ties kept in their incoming order (`groupRows`: newest
+ * first), so every sort is deterministic. Uses and dates are read from `full` (each
+ * question's every copy, unfiltered) when given: a filter that hides a paper's copy
+ * must not make the question look unused or newer.
+ *
+ * - `leastUsed`: fewest real uses first; among equals, the one used longest ago first.
+ * - `oldest`: the question's first appearance (any copy's use date), oldest first.
+ * - `marks`: most marks first (the shown copy's total).
+ */
+export function sortGroups<G extends BankGroup>(
+  groups: readonly G[],
+  sort: BankSort | undefined,
+  full?: ReadonlyMap<string, BankGroup>,
+): G[] {
+  if (!sort || sort === 'newest') return [...groups];
+  const whole = (group: G): BankGroup => full?.get(group.rootId) ?? group;
+  const keyed = groups.map((group, at) => ({ group, at, all: whole(group) }));
+  const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  const compare: (a: (typeof keyed)[number], b: (typeof keyed)[number]) => number =
+    sort === 'leastUsed'
+      ? (a, b) => useCount(a.all) - useCount(b.all) || byText(lastUsedOn(a.all), lastUsedOn(b.all))
+      : sort === 'oldest'
+        ? (a, b) => byText(firstSeen(a.all), firstSeen(b.all))
+        : (a, b) => (b.group.rows[0]?.marks ?? 0) - (a.group.rows[0]?.marks ?? 0);
+  return keyed.sort((a, b) => compare(a, b) || a.at - b.at).map((entry) => entry.group);
+}
 
 export const MARKS_BANDS: { value: MarksBand; label: TextKey<typeof M>; min?: number; max?: number }[] = [
   { value: 'any', label: 'marksAny' }, // i18n-ignore: catalogue key
@@ -273,7 +347,7 @@ export function missingSides(row: Pick<BankRow, 'missing' | 'missingTeacher'>, t
 
 /**
  * The rows the page's filters admit. Text, topic, type and marks go through `searchRows`;
- * untagged, source, missing language and "not used with <class> since…" are this page's own.
+ * untagged, source, missing language, diagram and "not used with <class> since…" are this page's own.
  */
 export function filterRows(
   rows: readonly BankRow[],
@@ -305,6 +379,7 @@ export function filterRows(
       (filters.source === 'all' || row.docKind === filters.source) &&
       (!filters.pattern || rowHasPattern(row, filters.pattern)) &&
       (!filters.missing || missingSides(row, opts.teacherText ?? false).includes(filters.missing)) &&
+      (!filters.diagram || row.hasDiagram === (filters.diagram === 'with')) &&
       (!used || !used.has(row.rootId)),
   );
 }
@@ -333,6 +408,7 @@ export function activeFilters(filters: BankFilters, lang: UiLanguage = uiLanguag
   if (filters.source !== 'all') active.push({ key: 'source', label: filters.source === 'bank' ? m.fromBanks : m.fromWorksheets });
   if (filters.pattern) active.push({ key: 'pattern', label: m.filterPattern(filters.pattern.name) });
   if (filters.missing) active.push({ key: 'missing', label: missingLabel(filters.missing, lang) });
+  if (filters.diagram) active.push({ key: 'diagram', label: diagramLabel(filters.diagram, lang) });
   return active;
 }
 
@@ -342,6 +418,8 @@ export function clearFilter(filters: BankFilters, key: keyof BankFilters): BankF
   if (key === 'typeId') return { ...filters, typeId: undefined };
   if (key === 'pattern') return { ...filters, pattern: undefined };
   if (key === 'missing') return { ...filters, missing: undefined };
+  if (key === 'diagram') return { ...filters, diagram: undefined };
+  if (key === 'sort') return { ...filters, sort: undefined };
   return { ...filters, [key]: DEFAULT_FILTERS[key] };
 }
 
