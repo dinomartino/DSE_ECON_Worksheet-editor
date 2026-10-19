@@ -349,6 +349,9 @@ a mode *inside* the board, used for long topics, rather than its own screen.
 
 ## 6. Open questions for the user
 
+**Answered 2026-10-19: all four as recommended** (by topic; 中文 sub-topic names on this
+page; mixed-language example names; the extend offer later, after 1–3).
+
 1. **Sort by topic (C) or by sub-topic (C · PED)?** **Recommended: by topic.** A
    sub-topic usually has 1–3 questions, too few to group, and the board still keeps each
    sub-topic's cards in its own section.
