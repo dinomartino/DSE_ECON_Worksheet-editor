@@ -168,10 +168,16 @@ export interface TextNode {
    * the same right tab at the content edge. Absent = the text runs the full width.
    */
   marksColumn?: number;
-  /** Keep with the following paragraph so a question is not split (§7.6). */
+  /**
+   * Keep with the following node so a question is not split: the preview's paginator
+   * offers no break after it (`breakAfterNodes`). The `.docx` writes no `w:keepNext` —
+   * it breaks its pages where the preview does (§ `joinWithPageBreaks`).
+   */
   keepNext?: boolean;
-  /** Keep this paragraph's own lines on one page (`w:keepLines`) — the docx half of
-   *  keeping an exam question whole; the preview's paginator never splits an item. */
+  /**
+   * Keep this paragraph's own lines on one page. Read by no backend since the `.docx`
+   * stopped writing `w:keepLines` (2026-10-19); the preview never breaks inside a node.
+   */
   keepLines?: boolean;
   /** Teacher-version-only content; stripped entirely from student output (§11.8). */
   teacherOnly?: boolean;
@@ -499,7 +505,7 @@ export interface ColumnsNode {
   /** `spaceBefore` here is a boundary gap, not authored spacing. See `TextNode`. */
   boundaryGap?: boolean;
   keepNext?: boolean;
-  /** Keep the row's wrapped lines on one page (`w:keepLines`). See `TextNode`. */
+  /** Keep the row's wrapped lines on one page. Read by no backend; see `TextNode`. */
   keepLines?: boolean;
   teacherOnly?: boolean;
 }

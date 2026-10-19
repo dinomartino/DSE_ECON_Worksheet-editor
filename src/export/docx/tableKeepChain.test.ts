@@ -9,9 +9,9 @@ import type { OutputMode, Question, Worksheet } from '@/model/types';
 
 /**
  * A table inside a keep chain (a classroom MC is kept whole). The preview keeps its rows
- * together (`tablePieces`), so the `.docx` must too: every row's paragraphs keep with the
- * next, the last row with the paragraph after the table. Before, Word could break such a
- * table between rows that the page showed whole.
+ * together (`tablePieces`) and moves the item whole; the `.docx` follows with a page break
+ * before the item (§ `joinWithPageBreaks`), never with `w:keepNext` on the rows, which Word
+ * marks with a black square beside every paragraph.
  */
 
 const MODE: OutputMode = { language: 'en', version: 'student' };
@@ -55,12 +55,15 @@ function testContext(): BodyContext {
 }
 
 describe('a table in a keep chain', () => {
-  it('keeps every row with the next in the .docx, as the preview keeps its pieces', () => {
+  it('keeps its pieces together in the preview, and writes no keep flag on the rows', () => {
     const node = tableNode(true);
     const xml = renderNodeXml(node, testContext());
     const table = xml.match(/<w:tbl>[\s\S]*?<\/w:tbl>/)![0];
-    expect(rowsKept(table)).toEqual([true, true, true]);
-    // The preview agrees: every piece keeps with what follows.
+    expect(rowsKept(table)).toEqual([false, false, false]);
+    expect(xml).not.toContain('<w:keepNext/>');
+    // Every row still may not split across a page: a row property, no black square.
+    expect(table.match(/<w:cantSplit\/>/g)).toHaveLength(3);
+    // The preview keeps every piece with what follows.
     expect(tablePieces(node).every((piece) => piece.keepNext)).toBe(true);
   });
 
@@ -71,8 +74,8 @@ describe('a table in a keep chain', () => {
     expect(tablePieces(node).some((piece) => !piece.keepNext)).toBe(true);
   });
 
-  it('keeps an MC stem table whole in the exported file', async () => {
+  it('writes an MC stem table with no keep flags in the exported file', async () => {
     const table = await tableXml(withTable(createMcqQuestion()));
-    expect(rowsKept(table).every(Boolean)).toBe(true);
+    expect(rowsKept(table).some(Boolean)).toBe(false);
   });
 });

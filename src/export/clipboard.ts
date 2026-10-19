@@ -34,6 +34,16 @@ import type { DiagramImageMap } from './diagramImage';
  * accepts that, with the .docx remaining the fidelity gold standard.
  */
 
+/** Where a page break element stood, for the start screen's card to cut its first page at. */
+export const CLIPBOARD_PAGE_BREAK = '<!--page-break-->';
+
+/**
+ * A teacher's own page break, as Word writes one in its HTML: Word pastes it as an
+ * ordinary page break character (Ctrl+Enter's), not a paragraph's "Page break before",
+ * which Word marks with a black square.
+ */
+export const CLIPBOARD_MANUAL_BREAK = "<br clear=all style='page-break-before:always'>";
+
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -313,7 +323,10 @@ function nodeHtml(
   }
 
   if (node.kind === 'pageBreak') {
-    return '<p style="page-break-before:always"></p>';
+    // A copy has no pages of its own, so only the break a teacher put there travels, as
+    // a page break character. A paragraph's `page-break-before` arrived in Word as
+    // "Page break before", marked with a black square (§ `joinWithPageBreaks`).
+    return CLIPBOARD_PAGE_BREAK + CLIPBOARD_MANUAL_BREAK;
   }
 
   if (node.kind === 'image' || node.kind === 'diagram') {

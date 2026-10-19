@@ -42,7 +42,7 @@ export interface PackItem {
   fillsPage?: boolean;
   /**
    * Where this item is allowed to break, as node indices into its own IR array, and how
-   * tall it is up to each one (§ *An item breaks where Word breaks it*).
+   * tall it is up to each one (§ *An item breaks where its keep chain allows*).
    *
    * Absent means atomic — the item packs whole. Present, consulted only when the item
    * does not fit the room left on its sheet.
@@ -572,6 +572,42 @@ export function composePages<T extends PackItem>({
       breakId,
     };
   });
+}
+
+/**
+ * Where a sheet begins, in the IR: item `key`'s node `node` (an index into the nodes the
+ * sheets draw, `pageNodes`; 0 is the whole item). The `.docx` puts a page break there
+ * (§ `joinWithPageBreaks`), so Word's pages start where the preview's sheets do.
+ */
+export interface PageStart {
+  key: string;
+  node: number;
+}
+
+/**
+ * Where an answer key's sheet begins: node `node` of its IR, or row `row` of that node
+ * when the key breaks a table between rows (`keyUnits`).
+ */
+export interface KeyPageStart {
+  node: number;
+  row?: number;
+}
+
+/**
+ * The sheets the `.docx` must open itself: every one but the first, except those a manual
+ * page break opened (its own `w:br` is already in the file) and an empty one.
+ */
+export function pageStarts<T extends PackItem>({
+  pages,
+  openedBy,
+  fragments,
+}: PackedPages<T>): PageStart[] {
+  const starts: PageStart[] = [];
+  pages.forEach((page, index) => {
+    if (index === 0 || openedBy[index] !== undefined || page.length === 0) return;
+    starts.push({ key: page[0].key, node: fragments.get(placementKey(index, 0))?.from ?? 0 });
+  });
+  return starts;
 }
 
 /**

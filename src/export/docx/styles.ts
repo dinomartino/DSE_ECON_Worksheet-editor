@@ -42,8 +42,6 @@ interface StyleSpec {
   spaceBefore?: number;
   spaceAfter?: number;
   align?: 'left' | 'center' | 'right' | 'both';
-  keepNext?: boolean;
-  keepLines?: boolean;
   outlineLevel?: number;
   /** Exact line height in twips, for a paragraph whose height is the point of it. */
   exactLine?: number;
@@ -190,21 +188,21 @@ const lqAnswerLineSpec = (baseSize: number): StyleSpec => ({
  * `exactLine` — see `titleLine` below.
  */
 const styleSpecs = (baseSize: number): StyleSpec[] => [
-  { id: 'WorksheetTitle', name: 'Worksheet Title', size: 32, bold: true, align: 'center', spaceBefore: 0, spaceAfter: 0, exactLine: exactLineFor(16), keepNext: true, keepLines: true, outlineLevel: 0 },
-  { id: 'Instructions', name: 'Instructions', size: baseSize, italic: true, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'SectionHeading', name: 'Section Heading', size: 28, bold: true, spaceBefore: 0, spaceAfter: 0, exactLine: exactLineFor(14), keepNext: true, keepLines: true, outlineLevel: 1 },
-  { id: 'QuestionStem', name: 'Question Stem', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'Statement', name: 'Statement', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'MCQOption', name: 'MCQ Option', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'Subquestion', name: 'Sub-question', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'Subsubquestion', name: 'Sub-sub-question', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'Marks', name: 'Marks', size: baseSize, align: 'right', spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'TableCaption', name: 'Table Caption', size: 20, italic: true, align: 'center', spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'ImageCaption', name: 'Image Caption', size: 20, italic: true, align: 'center', spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'WorksheetTitle', name: 'Worksheet Title', size: 32, bold: true, align: 'center', spaceBefore: 0, spaceAfter: 0, exactLine: exactLineFor(16), outlineLevel: 0 },
+  { id: 'Instructions', name: 'Instructions', size: baseSize, italic: true, spaceBefore: 0, spaceAfter: 0 },
+  { id: 'SectionHeading', name: 'Section Heading', size: 28, bold: true, spaceBefore: 0, spaceAfter: 0, exactLine: exactLineFor(14), outlineLevel: 1 },
+  { id: 'QuestionStem', name: 'Question Stem', size: baseSize, spaceBefore: 0, spaceAfter: 0 },
+  { id: 'Statement', name: 'Statement', size: baseSize, spaceBefore: 0, spaceAfter: 0 },
+  { id: 'MCQOption', name: 'MCQ Option', size: baseSize, spaceBefore: 0, spaceAfter: 0 },
+  { id: 'Subquestion', name: 'Sub-question', size: baseSize, spaceBefore: 0, spaceAfter: 0 },
+  { id: 'Subsubquestion', name: 'Sub-sub-question', size: baseSize, spaceBefore: 0, spaceAfter: 0 },
+  { id: 'Marks', name: 'Marks', size: baseSize, align: 'right', spaceBefore: 0, spaceAfter: 0 },
+  { id: 'TableCaption', name: 'Table Caption', size: 20, italic: true, align: 'center', spaceBefore: 0, spaceAfter: 0 },
+  { id: 'ImageCaption', name: 'Image Caption', size: 20, italic: true, align: 'center', spaceBefore: 0, spaceAfter: 0 },
   // Teacher-version styles are visually distinct (§5.4) but still fully restylable.
-  { id: 'Answer', name: 'Answer', size: baseSize, bold: true, color: 'C00000', spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'MarkingScheme', name: 'Marking Scheme', size: baseSize, color: '1F4E79', indentLeft: 360, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'BodyTextCustom', name: 'Worksheet Body', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Answer', name: 'Answer', size: baseSize, bold: true, color: 'C00000', spaceBefore: 0, spaceAfter: 0 },
+  { id: 'MarkingScheme', name: 'Marking Scheme', size: baseSize, color: '1F4E79', indentLeft: 360, spaceBefore: 0, spaceAfter: 0 },
+  { id: 'BodyTextCustom', name: 'Worksheet Body', size: baseSize, spaceBefore: 0, spaceAfter: 0 },
   // A ruled writing line. The border and the 24pt height live here rather than as
   // direct formatting on each paragraph: Word flags a directly-formatted paragraph
   // with a marker in the left margin, and forty of them made the block look like
@@ -230,8 +228,9 @@ function justifiedSpecs(specs: StyleSpec[], on: boolean | undefined): StyleSpec[
 
 function paragraphProperties(spec: StyleSpec): string {
   const parts: string[] = [];
-  if (spec.keepNext) parts.push('<w:keepNext/>');
-  if (spec.keepLines) parts.push('<w:keepLines/>');
+  // No style keeps with the next or keeps its lines together: Word marks every such
+  // paragraph with a black square, and the export writes its page breaks out instead
+  // (§ `joinWithPageBreaks`).
   // Every paragraph style states its own line metrics rather than inheriting them from
   // `Normal`. Word merges `w:spacing` as one element, not attribute by attribute, so a
   // style that set only `w:before`/`w:after` would be relying on inheritance filling in

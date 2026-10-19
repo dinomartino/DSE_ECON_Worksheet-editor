@@ -169,13 +169,15 @@ export function buildSettingsXml(options: { justified?: boolean } = {}): string 
      * Open in print layout.
      *
      * Whether *formatting marks* are drawn is a Word application preference, not a
-     * document one — there is no document-level flag that reliably turns them off — so
-     * the small black square beside every `w:keepNext` paragraph is controlled by the
-     * reader's own ¶ toggle. It is a formatting mark rather than content: it cannot be
-     * selected or deleted, and it never prints. `w:keepNext` therefore stays exactly
-     * where it is, because it is what stops Word splitting a question across a page
-     * break (§7.6) — removing it to hide a display-only mark would trade a cosmetic
-     * annoyance for a real layout defect.
+     * document one — there is no document-level flag that turns them off. With ¶ on,
+     * Word draws a small black square beside every paragraph that keeps with the next,
+     * keeps its lines together or breaks the page before it, and when every paragraph
+     * of a paper wore one the file read as foreign next to a hand-made one. So the file
+     * carries **none** of those three, in a style or on a paragraph (the user's call,
+     * 2026-10-19): the pages break where the preview's paginator breaks them, as the
+     * plain page break Ctrl+Enter types (`pageBreaks.ts`, § `joinWithPageBreaks`), and
+     * widow/orphan control stays Word's default. Table rows keep `w:cantSplit`, a row
+     * property Word marks with nothing.
      */
     '<w:view w:val="print"/>' +
     // Kerning/spacing rules that make mixed Latin + CJK text lay out correctly.

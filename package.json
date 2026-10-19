@@ -23,7 +23,7 @@
     "test": "vitest run src",
     "test:watch": "vitest src",
     "typecheck": "tsc --noEmit",
-    "samples": "vitest run scripts/emit-samples.test.ts",
+    "samples": "node scripts/emit-samples.mjs",
     "eval:translate": "vitest run --config vitest.eval.config.ts",
     "demo": "node scripts/demo.mjs",
     "demo:diagrams": "node scripts/demo.mjs --story=diagrams",

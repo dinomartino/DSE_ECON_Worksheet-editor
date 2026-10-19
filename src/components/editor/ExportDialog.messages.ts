@@ -11,6 +11,10 @@ export const EXPORT_MESSAGES = defineMessages({
   done: { en: 'Done', zh: '完成' },
   skip: { en: 'Skip', zh: '略過' },
   failed: { en: 'Export failed.', zh: '匯出失敗。' },
+  notMeasured: {
+    en: 'The pages could not be measured for the Word file, so the export was stopped. Try again.',
+    zh: '未能為 Word 檔案量度頁面，所以已停止匯出。請再試一次。',
+  },
 
   // Footer actions
   downloadKey: { en: 'Download answer key', zh: '下載評卷參考' },

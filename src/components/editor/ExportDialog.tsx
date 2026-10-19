@@ -108,6 +108,9 @@ async function planFiles(
     return [{ kind: 'apps', name: built.fileName, build: () => appBlob(built) }];
   }
   const docx = () => import('@/export/docx');
+  // The pages are measured on a hidden copy of the preview as each file builds, so the
+  // `.docx` breaks its pages where the preview does (§ `joinWithPageBreaks`).
+  const pages = () => import('@/components/preview/measurePageStarts');
   const files: PlannedFile[] = [];
   for (const kind of exportKinds(choice.what)) {
     if (kind === 'paper') {
@@ -116,7 +119,11 @@ async function planFiles(
         files.push({
           kind,
           name: docxFileName(worksheet, mode),
-          build: async () => (await docx()).exportDocx(worksheet, mode),
+          build: async () => {
+            const [{ exportDocx }, { measurePaperPageStarts }] = await Promise.all([docx(), pages()]);
+            const pageStarts = await measured(() => measurePaperPageStarts(worksheet, mode));
+            return exportDocx(worksheet, mode, { pageStarts });
+          },
           ...(variant ? { variant } : {}),
         });
       }
@@ -131,12 +138,27 @@ async function planFiles(
       files.push({
         kind,
         name: answerKeyFileName(worksheet, choice.language, others),
-        build: async () => (await docx()).exportAnswerKeyDocx(worksheet, choice.language, others),
+        build: async () => {
+          const [{ exportAnswerKeyDocx }, { measureAnswerKeyPageStarts }] = await Promise.all([docx(), pages()]);
+          const pageStarts = await measured(() =>
+            measureAnswerKeyPageStarts([worksheet, ...others], choice.language),
+          );
+          return exportAnswerKeyDocx(worksheet, choice.language, others, pageStarts);
+        },
         ...(note ? { note, leftOut: skipped.length } : {}),
       });
     }
   }
   return files;
+}
+
+/** A measurement that failed stops the export, saying so; no page breaks are guessed. */
+async function measured<T>(measure: () => Promise<T>): Promise<T> {
+  try {
+    return await measure();
+  } catch {
+    throw new Error(resolveMessages(EXPORT_MESSAGES, uiLanguage()).notMeasured);
+  }
 }
 
 /** CSV as UTF-8 text; the `.xlsx` writer (JSZip) loads on click, like the `.docx` one. */

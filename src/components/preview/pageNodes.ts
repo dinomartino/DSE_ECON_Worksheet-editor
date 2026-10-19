@@ -34,6 +34,18 @@ export function pageNodes(nodes: RenderNode[]): RenderNode[] {
 
 const CACHE = new WeakMap<RenderNode[], RenderNode[]>();
 
+/**
+ * How many of `pageNodes`' nodes one IR node becomes, and whether a page may be started
+ * between them by a page break of the `.docx`'s own (`joinWithPageBreaks`): between the lines
+ * of an answer space it may — each line is its own paragraph — but not between two row
+ * pieces of a table, where Word breaks the rows itself.
+ */
+export function pagePieces(node: RenderNode): { count: number; breakable: boolean } {
+  if (splits(node)) return { count: node.lines, breakable: true };
+  if (node.kind === 'table') return { count: tablePieces(node).length, breakable: false };
+  return { count: 1, breakable: true };
+}
+
 function splits(node: RenderNode): node is Extract<RenderNode, { kind: 'answerSpace' }> {
   return node.kind === 'answerSpace' && !node.elementId && !node.fill && node.lines > 1;
 }

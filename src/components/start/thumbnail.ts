@@ -7,6 +7,7 @@ import { diagramSvgDataUrl } from '@/render/diagram';
 import type { CoverGridRender, CoverRenderNode, RenderNode } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
 import {
+  CLIPBOARD_PAGE_BREAK,
   escapeHtml,
   formatCss,
   questionClipboardHtml,
@@ -120,7 +121,6 @@ const THUMBNAIL_CSS =
   // reads as the dotted answer line it stands for.
   '.page p[style*="dotted"]{border-bottom:1px solid #a6a6a6 !important}';
 
-const PAGE_BREAK = '<p style="page-break-before:always"></p>';
 
 function fontFamily(fonts: FontPair): string {
   return `font-family:${cssFontFamilies(fonts, "'", ',')},serif;`;
@@ -188,7 +188,7 @@ function bodyHtml(worksheet: Worksheet, mode: OutputMode): string {
   }
   pieces.push(whole.slice(cursor));
   const body = pieces.join('');
-  const cut = body.indexOf(PAGE_BREAK);
+  const cut = body.indexOf(CLIPBOARD_PAGE_BREAK);
   return cut >= 0 ? body.slice(0, cut) : body;
 }
 

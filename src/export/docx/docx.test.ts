@@ -839,34 +839,19 @@ describe('tables and images (§7.5, §11.5, §11.6)', () => {
   });
 });
 
-describe('page breaks (§7.6, §11.7)', () => {
-  it('keeps question paragraphs together', async () => {
-    const { read } = await unzip(STUDENT_BI);
-    const styles = await read('word/styles.xml');
-    const document = await read('word/document.xml');
-
-    expect(styles).toContain('<w:keepLines/>');
-    expect(document).toContain('<w:keepNext/>');
-  });
-
-  it('spells keep-together over a Paper 1 question, and over a classroom MC only', () => {
-    // The preview's paginator never splits an item, so the exam paper tells Word the
-    // same thing (§ keepQuestionWhole): keepNext chained through the question, with
-    // keepLines on its rows, in CT_PPr's own order.
-    const paper = createWorksheetFrom({ documentType: 'paper1', seedSample: true });
-    expect(buildDocxParts(paper, STUDENT_BI).documentXml).toMatch(
-      /<w:keepNext\/><w:keepLines\/>/,
-    );
-
-    // A classroom MC is held to one page too (GitHub issue #1); its structured
-    // questions stay free to split.
-    const classroom = buildDocxParts(buildAcceptanceWorksheet(), STUDENT_BI).documentXml;
-    const paragraphWith = (text: string) =>
-      classroom.split('</w:p>').find((paragraph) => paragraph.includes(text)) ?? '';
-    expect(paragraphWith('What happens when demand falls?')).toMatch(
-      /<w:keepNext\/><w:keepLines\/>/,
-    );
-    expect(paragraphWith('Define equilibrium price.')).not.toContain('<w:keepLines/>');
+describe('page breaks (§ joinWithPageBreaks)', () => {
+  it('carries no keep flag in the styles or the body: the pages break as the preview breaks them', async () => {
+    // Word draws a black square beside every keepNext / keepLines / pageBreakBefore
+    // paragraph; a Paper 1 question and a classroom MC used to chain them throughout.
+    for (const worksheet of [
+      buildAcceptanceWorksheet(),
+      createWorksheetFrom({ documentType: 'paper1', seedSample: true }),
+    ]) {
+      const parts = buildDocxParts(worksheet, STUDENT_BI);
+      for (const xml of [parts.documentXml, parts.stylesXml]) {
+        expect(xml).not.toMatch(/<w:keepNext|<w:keepLines|<w:pageBreakBefore/);
+      }
+    }
   });
 });
 
@@ -1552,7 +1537,7 @@ describe('per-element formatting overrides', () => {
      * the same heading at the true top of the page still emits the bare form.
      */
     expect(document).toContain(
-      '<w:pPr><w:pStyle w:val="SectionHeading"/><w:keepNext/>' +
+      '<w:pPr><w:pStyle w:val="SectionHeading"/>' +
         `<w:spacing w:before="${BLANK_LINE_PT * 20}" w:line="240" w:lineRule="exact"/></w:pPr>`,
     );
 
@@ -1562,7 +1547,7 @@ describe('per-element formatting overrides', () => {
       title: { en: [], zh: [] },
       instructions: { en: [], zh: [] },
     });
-    expect(atTop).toContain('<w:pPr><w:pStyle w:val="SectionHeading"/><w:keepNext/></w:pPr>');
+    expect(atTop).toContain('<w:pPr><w:pStyle w:val="SectionHeading"/></w:pPr>');
   });
 });
 

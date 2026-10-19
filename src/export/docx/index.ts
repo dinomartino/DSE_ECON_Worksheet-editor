@@ -44,6 +44,8 @@ import {
 } from '../diagramImage';
 import { coverFooterBodyXml, coverXml, renderNodeXml, type BodyContext } from './body';
 import { assignNumIds, buildNumberingXml } from './numbering';
+import type { KeyPageStart, PageStart } from '@/components/preview/pagination';
+import { itemUnits, joinWithPageBreaks, keyBodyXml, pageStartId, type BodyUnit } from './pageBreaks';
 import {
   buildCorePropsXml,
   buildCoverFooterXml,
@@ -334,6 +336,8 @@ function buildParts(
   worksheet: Worksheet,
   mode: OutputMode,
   diagramImages: DiagramImageMap = new Map(),
+  /** Where the preview's sheets begin (§ `joinWithPageBreaks`); absent, Word paginates alone. */
+  pageStarts: PageStart[] = [],
 ): PackageParts {
   const rendered = renderWorksheet(worksheet, mode);
   const streams = collectListStreams(rendered);
@@ -392,33 +396,41 @@ function buildParts(
   //
   // A worksheet with a masthead prints its bands instead of the bare title: the title is
   // one of the fields inside them, so emitting both would print it twice.
+  //
+  // The body is a list of units named as the preview's paginator names what it packs
+  // (`PackItem.key`, node index), so each sheet's start can be found and broken at.
+  const units: BodyUnit[] = [];
+  const whole = (key: string, xml: () => string) =>
+    units.push({ id: pageStartId(key, 0), render: xml, breakable: true });
   if (rendered.bands.length > 0) {
-    for (const band of rendered.bands) chunks.push(renderNodeXml(band, context));
+    whole('masthead', () => rendered.bands.map((band) => renderNodeXml(band, context)).join(''));
   } else if (rendered.title) {
-    chunks.push(renderNodeXml(rendered.title, context));
+    const title = rendered.title;
+    whole('masthead', () => renderNodeXml(title, context));
   }
-  if (rendered.versionLabel) chunks.push(renderNodeXml(rendered.versionLabel, context));
+  const { versionLabel, instructions } = rendered;
+  if (versionLabel) whole('version-label', () => renderNodeXml(versionLabel, context));
 
   if (mode.version === 'teacher') {
-    chunks.push(
-      `<w:p><w:pPr><w:pStyle w:val="${STYLE_IDS.Answer}"/><w:jc w:val="center"/></w:pPr>` +
+    whole(
+      'teacher-banner',
+      () =>
+        `<w:p><w:pPr><w:pStyle w:val="${STYLE_IDS.Answer}"/><w:jc w:val="center"/></w:pPr>` +
         run('Teacher Version / 教師版', fonts, {}) +
         '</w:p>',
     );
   }
 
-  if (rendered.instructions) {
-    chunks.push(renderNodeXml(rendered.instructions, context));
-  }
+  if (instructions) whole('instructions', () => renderNodeXml(instructions, context));
 
   // Walk the interleaved flow so layout elements — section headings among them — land
   // where the teacher put them.
   for (const item of rendered.items) {
+    const key = item.type === 'question' ? item.question.questionId : item.layout.elementId;
     const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
-    for (const node of nodes) {
-      chunks.push(renderNodeXml(node, context));
-    }
+    units.push(...itemUnits(key, nodes, context));
   }
+  chunks.push(joinWithPageBreaks(units, new Set(pageStarts.map((start) => pageStartId(start.key, start.node)))));
 
   const titleText = plain(mode.language === 'zh' ? worksheet.title.zh : worksheet.title.en) ||
     plain(worksheet.title.en) ||
@@ -630,12 +642,21 @@ function buildParts(
   };
 }
 
-export async function exportDocx(worksheet: Worksheet, mode: OutputMode): Promise<Blob> {
+/** What the export dialog measured on the preview for this file (§ `joinWithPageBreaks`). */
+export interface DocxPagination {
+  pageStarts?: PageStart[];
+}
+
+export async function exportDocx(
+  worksheet: Worksheet,
+  mode: OutputMode,
+  pagination: DocxPagination = {},
+): Promise<Blob> {
   // Diagrams are rasterized first so the rest of the pipeline stays synchronous and
   // sees a diagram as just another embedded picture.
   const diagramImages = await renderDiagramImages(worksheet, mode);
   assertEveryDiagramRasterized(worksheet, mode, diagramImages);
-  return zipPackage(buildParts(worksheet, mode, diagramImages));
+  return zipPackage(buildParts(worksheet, mode, diagramImages, pagination.pageStarts));
 }
 
 /**
@@ -682,8 +703,9 @@ export async function exportDocxBuffer(
   worksheet: Worksheet,
   mode: OutputMode,
   diagramImages?: DiagramImageMap,
+  pagination: DocxPagination = {},
 ): Promise<Uint8Array> {
-  return zipPackageBuffer(buildParts(worksheet, mode, diagramImages));
+  return zipPackageBuffer(buildParts(worksheet, mode, diagramImages, pagination.pageStarts));
 }
 
 /** Exposed for tests that assert on the raw XML parts. */
@@ -702,8 +724,12 @@ function buildAnswerKeyParts(
   language: LanguageMode,
   others: Worksheet[] = [],
   diagramImages: DiagramImageMap = new Map(),
+  /** Per document, where the key's sheets begin (§ `joinWithPageBreaks`). */
+  pageStarts: KeyPageStart[][] = [],
 ): PackageParts {
-  if (others.length > 0) return buildCombinedAnswerKeyParts([worksheet, ...others], language, diagramImages);
+  if (others.length > 0) {
+    return buildCombinedAnswerKeyParts([worksheet, ...others], language, diagramImages, pageStarts);
+  }
   const fonts = worksheet.fonts;
   const setup = pageSetupOf(worksheet);
   const { width: pageWidth, height: pageHeight } = pageDimensions(setup);
@@ -722,7 +748,7 @@ function buildAnswerKeyParts(
     diagramSrc: (blockId) => diagramImages.get(blockId),
     nextDrawingId: () => (drawingId += 1),
   };
-  const body = nodes.map((node) => renderNodeXml(node, context)).join('');
+  const body = keyBodyXml(nodes, context, pageStarts[0]);
 
   const pageNumber: HeaderFooterLayout = {
     rows: [{ left: '', center: fieldRuns('PAGE', runProperties(fonts, {}), '1'), right: '' }],
@@ -775,6 +801,7 @@ function buildCombinedAnswerKeyParts(
   worksheets: Worksheet[],
   language: LanguageMode,
   diagramImages: DiagramImageMap,
+  pageStarts: KeyPageStart[][],
 ): PackageParts {
   const [first] = worksheets;
   const fonts = first.fonts;
@@ -798,7 +825,7 @@ function buildCombinedAnswerKeyParts(
         diagramSrc: (blockId) => diagramImages.get(blockId),
         nextDrawingId: () => (drawingId += 1),
       };
-      let xml = nodes.map((node) => renderNodeXml(node, context)).join('');
+      let xml = keyBodyXml(nodes, context, pageStarts[index]);
       const size = worksheet.baseFontSize ?? DEFAULT_BASE_FONT_SIZE_PT;
       if (size !== baseSize) {
         variants.add(size);
@@ -862,6 +889,8 @@ export async function exportAnswerKeyDocx(
   worksheet: Worksheet,
   language: LanguageMode,
   others: Worksheet[] = [],
+  /** Per document, the sheets its key's preview starts (§ `joinWithPageBreaks`). */
+  pageStarts: KeyPageStart[][] = [],
 ): Promise<Blob> {
   // Model answer diagrams rasterise first, as the paper's diagrams do; a missing one
   // stops the export rather than dropping the figure.
@@ -873,7 +902,7 @@ export async function exportAnswerKeyDocx(
     for (const [key, src] of await renderNodeDiagramImages(nodes, all[index].fonts, language)) diagramImages.set(key, src);
   }
   assertDiagramsRasterized(collectDiagramNodesIn(parts.flat()), diagramImages);
-  return zipPackage(buildAnswerKeyParts(worksheet, language, others, diagramImages));
+  return zipPackage(buildAnswerKeyParts(worksheet, language, others, diagramImages, pageStarts));
 }
 
 /** Node-friendly variant used by the export tests; takes its diagram map as an argument. */
@@ -882,8 +911,9 @@ export async function exportAnswerKeyDocxBuffer(
   language: LanguageMode,
   others: Worksheet[] = [],
   diagramImages?: DiagramImageMap,
+  pageStarts: KeyPageStart[][] = [],
 ): Promise<Uint8Array> {
-  return zipPackageBuffer(buildAnswerKeyParts(worksheet, language, others, diagramImages));
+  return zipPackageBuffer(buildAnswerKeyParts(worksheet, language, others, diagramImages, pageStarts));
 }
 
 export { buildAnswerKeyParts as buildAnswerKeyDocxParts };
