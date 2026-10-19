@@ -104,6 +104,20 @@ export interface CoverPage {
   footNote?: BiText;
 
   /**
+   * Print the "For examiner's use" marks grid: each question's number and full marks
+   * over an empty box for the marker's score, then a Total — the box on HKEAA and OCR
+   * covers. Opt-in; absent or false prints nothing.
+   *
+   * **Only the switch is stored.** The numbers and marks are derived from the
+   * questions on every render (§ numbering and marks are derived), so the grid can
+   * never disagree with the paper behind it, and the printed labels are this
+   * project's own fixed wording in the document's language (`EXAMINER_GRID_WORDING`).
+   * It sits under the candidate boxes in the panel, or after the instructions on a
+   * cover with no panel (§ `examinerGridBands`).
+   */
+  examinerGrid?: boolean;
+
+  /**
    * The face the cover's *unstyled* lines take.
    *
    * A cover is typographically its own thing, but the two reference papers differ in how

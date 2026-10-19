@@ -13,6 +13,12 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **"For examiner's use" marks grid on the cover.** Tick **Marks grid for the examiner** in
+  Setup → Cover to print a box like the one on HKEAA papers: each question's number and
+  full marks, an empty box for the score, and the Total. It updates itself as you add,
+  remove or re-mark questions, wraps onto more rows for a long paper, and prints in the
+  paper's language — on the page, in the PDF and in the Word file alike.
+  <!-- zh: **封面「閱卷員專用」評分表。** 在「頁面設定 → 封面」剔選「閱卷員評分表」，即可印出與文憑試試卷相似的評分表：列出每題題號及滿分，附空白方格填分及總分。增刪題目或修改分數時會自動更新，題目多時會分成多行，並按試卷語言列印；頁面、PDF 及 Word 檔案一致。 -->
 - **Tab works like Word.** In a paragraph, a question stem or a text element, Tab now types
   a tab instead of jumping out of the text, and the words after it line up on Word's
   0.5 in stops, on the page and in the Word file alike. Copy and paste into Word keeps the

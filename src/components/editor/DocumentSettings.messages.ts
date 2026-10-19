@@ -296,6 +296,11 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
     en: 'Boxes beside the panel label. 0 draws none; with an empty note that removes the panel and the cover prints one wide column.',
     zh: '考生欄標籤旁的方格。0 表示不畫；若備註留空，會移除考生欄，封面改為單一寬欄。',
   },
+  examinerGrid: { en: 'Marks grid for the examiner', zh: '閱卷員評分表' },
+  examinerGridHint: {
+    en: 'Each question’s number and full marks, with a box for the score and a Total. It follows your questions and sits under the candidate boxes, or below the instructions.',
+    zh: '列出每題題號及滿分，附填分方格及總分。會跟隨題目自動更新，印在考生方格下方或作答指示之後。',
+  },
 
   // Title section
   titleSection: { en: 'Title (page 1 only)', zh: '標題（只限第 1 頁）' },

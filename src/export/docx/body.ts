@@ -11,6 +11,7 @@ import { cleanTabStops } from '@/model/tabStops';
 import type {
   AnswerGraphNode,
   ColumnsNode,
+  CoverGridRender,
   CoverPanelRender,
   CoverRenderNode,
   DiagramNode,
@@ -48,7 +49,7 @@ import {
   trailLabel,
 } from '@/render/ir';
 import { answerGraphBox, answerGraphLineTwips } from '@/render/answerGraph';
-import { COVER_PANEL } from '@/model/cover';
+import { COVER_GRID, COVER_PANEL } from '@/model/cover';
 import { attrs, escapeXml } from './xml';
 
 /**
@@ -1355,6 +1356,7 @@ export function coverXml(
   region(cover.head);
 
   region(cover.instructions);
+  if (cover.examinerGrid?.placement === 'main') chunks.push(examinerGridXml(cover.examinerGrid, context));
 
   // ---- right column ------------------------------------------------------
   if (cover.panel.present) {
@@ -1370,6 +1372,9 @@ export function coverXml(
     }
     if (cover.panel.fieldLabel || cover.panel.boxes > 0) {
       chunks.push(panelBoxesXml(cover.panel, context));
+    }
+    if (cover.examinerGrid?.placement === 'panel') {
+      chunks.push(examinerGridXml(cover.examinerGrid, context));
     }
   }
 
@@ -1527,6 +1532,61 @@ function panelBoxesXml(panel: CoverPanelRender, context: BodyContext): string {
   );
 }
 
+/**
+ * The "For examiner's use" grid (§ `CoverGridRender`): its heading, then one ruled
+ * table per band at the IR's own twip widths, each followed by the blank paragraph Word
+ * requires after a table — which is also the air between two bands — except where the
+ * IR says the last band needs none (`CoverGridRender.trailingBlank`).
+ *
+ * A real table for the reason the candidate boxes are one: the boxes are cells with
+ * borders. Rows are `atLeast`, never `exact`, so a label that needs more room grows
+ * the row rather than being clipped.
+ */
+function examinerGridXml(grid: CoverGridRender, context: BodyContext): string {
+  const heading = grid.heading.map((node) => renderNodeXml(node, context)).join('');
+  const margin = COVER_GRID.cellMargin;
+  const bands = grid.bands.map((band, bandIndex) => {
+    const width = band.columns.reduce((sum, value) => sum + value, 0);
+    const rows = band.rows
+      .map(
+        (row) =>
+          `<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="${row.height}" w:hRule="atLeast"/></w:trPr>` +
+          row.cells
+            .map(
+              (cell, index) =>
+                `<w:tc><w:tcPr><w:tcW w:w="${band.columns[index]}" w:type="dxa"/>` +
+                '<w:vAlign w:val="center"/></w:tcPr>' +
+                renderNodeXml(cell, context) +
+                '</w:tc>',
+            )
+            .join('') +
+          '</w:tr>',
+      )
+      .join('');
+    return (
+      '<w:tbl><w:tblPr>' +
+      `<w:tblW w:w="${width}" w:type="dxa"/>` +
+      (grid.indent > 0 ? `<w:tblInd w:w="${grid.indent}" w:type="dxa"/>` : '') +
+      '<w:tblBorders>' +
+      ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']
+        .map((edge) => `<w:${edge} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`)
+        .join('') +
+      '</w:tblBorders>' +
+      '<w:tblLayout w:type="fixed"/>' +
+      '<w:tblCellMar>' +
+      `<w:left w:w="${margin}" w:type="dxa"/><w:right w:w="${margin}" w:type="dxa"/>` +
+      '</w:tblCellMar>' +
+      '</w:tblPr>' +
+      '<w:tblGrid>' +
+      band.columns.map((value) => `<w:gridCol w:w="${value}"/>`).join('') +
+      '</w:tblGrid>' +
+      rows +
+      '</w:tbl>' +
+      (grid.trailingBlank || bandIndex < grid.bands.length - 1 ? blankParagraph(context) : '')
+    );
+  });
+  return heading + bands.join('');
+}
 
 /**
  * Blank lines reserving room for the floated corner block.

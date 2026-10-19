@@ -15,6 +15,12 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **"For examiner's use" marks grid on the cover.** Tick **Marks grid for the examiner** in
+  Setup → Cover to print a box like the one on HKEAA papers: each question's number and
+  full marks, an empty box for the score, and the Total. It updates itself as you add,
+  remove or re-mark questions, wraps onto more rows for a long paper, and prints in the
+  paper's language — on the page, in the PDF and in the Word file alike.
+  <!-- zh: **封面「閱卷員專用」評分表。** 在「頁面設定 → 封面」剔選「閱卷員評分表」，即可印出與文憑試試卷相似的評分表：列出每題題號及滿分，附空白方格填分及總分。增刪題目或修改分數時會自動更新，題目多時會分成多行，並按試卷語言列印；頁面、PDF 及 Word 檔案一致。 -->
 - **Tab works like Word.** In a paragraph, a question stem or a text element, Tab now types
   a tab instead of jumping out of the text, and the words after it line up on Word's
   0.5 in stops, on the page and in the Word file alike. Copy and paste into Word keeps the
@@ -46,6 +52,10 @@ a version heading is edited afterwards.
   <!-- zh: **匯入會保留你輸入的定位字元。** 從 Word 或貼上的內容中，用 Tab 對齊文字的一行（例如「姓名： → 班別：」、答案後的「→ (1)」）現會連同定位字元一併匯入，不再變成單一空格或只有一列的表格。連續幾行以 Tab 分隔的內容仍會匯入為表格，選項字母和標籤的辨識亦與以往相同。 -->
 
 ### Fixed
+- **⌘Z works while you type.** Undo used to wait until you clicked away from the text,
+  then took back one letter per press. Now ⌘Z (Ctrl+Z) in the text you are typing undoes
+  what you just typed in one step, keeps the text open, and ⇧⌘Z (Ctrl+Y) redoes it.
+  <!-- zh: **輸入時可用 ⌘Z 還原。** 以往要先點擊文字以外的地方才能還原，而且每按一次只還原一個字。現在輸入時按 ⌘Z（Ctrl+Z）會一次還原剛輸入的內容，文字仍保持可編輯；按 ⇧⌘Z（Ctrl+Y）重做。 -->
 - **Importing a PDF no longer hides a caption or sentence inside a graph's picture.** Text
   right beside a graph, such as "Figure 1", "Study the graph below." or "(2 marks)", now
   comes in as text you can edit, instead of being cropped into the picture and lost from

@@ -7,7 +7,7 @@ import {
   DEFAULT_STIMULUS_WORDING,
   resolveFlow,
 } from '@/model/flow';
-import { sectionMarksById, worksheetMarks } from '@/model/marks';
+import { questionMarks, sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering, listIndentScheme } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
 import { activeVersion, versionLetter, versionSeed } from '@/model/versions';
@@ -16,6 +16,7 @@ import type {
   Band,
   BandField,
   BiText,
+  FontPair,
   LanguageMode,
   LayoutElement,
   OutputMode,
@@ -34,8 +35,10 @@ import {
   pushGap,
   renderContentBlocks,
   withLeadingGap,
+  type CoverGridRender,
   type CoverRenderNode,
   type NodeStyle,
+  type TextNode,
   pageMetricsOf,
   type RenderNode,
 } from './ir';
@@ -46,6 +49,11 @@ import {
   coverLinePrintsOnce,
   coverLines,
   coverPanelWidth,
+  COVER_GRID,
+  COVER_PANEL,
+  EXAMINER_GRID_WORDING,
+  examinerGridBands,
+  examinerGridWidth,
   fitCoverColumns,
 } from '@/model/cover';
 import { contentWidth, pageSetupOf } from '@/model/page';
@@ -231,6 +239,8 @@ function renderCover(
   /** The page's text width in twips; the columns never exceed it. */
   textWidth: number,
   baseFontSize?: number,
+  /** The derived marks the examiner's grid prints; only read when the cover asks for it. */
+  marks?: CoverMarks,
 ): CoverRenderNode {
   // The cover's own font reaches every line, merged *under* the line's own format.
   const withFonts = (format: CoverLine['format']) =>
@@ -319,10 +329,11 @@ function renderCover(
   });
 
   const panelPresent = coverHasPanel(cover);
+  const columns = fitCoverColumns(coverColumns(cover), textWidth, coverPanelWidth(cover));
 
   return {
     kind: 'cover',
-    columns: fitCoverColumns(coverColumns(cover), textWidth, coverPanelWidth(cover)),
+    columns,
     corner: withGaps(coverLines(cover, 'corner')),
     cornerRule: cover.cornerRule ?? false,
     head: withGaps(coverLines(cover, 'head')),
@@ -361,6 +372,114 @@ function renderCover(
             edit: { kind: 'coverField', field: 'footNote' },
           } satisfies RenderNode,
         }),
+    ...(cover.examinerGrid && marks
+      ? {
+          examinerGrid: renderExaminerGrid(
+            marks,
+            language,
+            examinerGridWidth(columns, textWidth, panelPresent),
+            panelPresent,
+            cover.fonts,
+          ),
+        }
+      : {}),
+  };
+}
+
+/** What the examiner's grid totals: each question's derived number and marks, and the paper's. */
+interface CoverMarks {
+  questions: Array<{ number: number; marks: number }>;
+  total: number;
+}
+
+/**
+ * The "For examiner's use" grid (§ `CoverPage.examinerGrid`): one bordered band per
+ * `examinerGridBands` chunk, three rows each — numbers, full marks, empty boxes — with
+ * the Total closing the last band. Every number is derived; nothing here is editable.
+ */
+function renderExaminerGrid(
+  marks: CoverMarks,
+  language: LanguageMode,
+  available: number,
+  inPanel: boolean,
+  fonts: FontPair | undefined,
+): CoverGridRender {
+  const format = { ...(fonts ? { fonts } : {}), fontSize: COVER_GRID.fontSize };
+  const cell = (text: BiText, align: 'left' | 'center' = 'center', bold = false): TextNode => ({
+    kind: 'text',
+    style: 'Body',
+    text,
+    format: { ...format, align, ...(bold ? { bold: true } : {}) },
+  });
+  // A number reads the same in both languages, so bilingual prints it once (as the
+  // instruction numbers do); a label stacks both sides like every other cover line.
+  const number = (value: number) =>
+    cell(
+      language === 'bilingual'
+        ? { en: [{ text: String(value) }], zh: [] }
+        : bi(String(value), String(value)),
+    );
+  const box = () => cell({ en: [], zh: [] });
+  const labelRow = COVER_GRID.lineRowHeight * (language === 'bilingual' ? 2 : 1);
+
+  const bands: CoverGridRender['bands'] = [];
+  let at = 0;
+  const sizes = examinerGridBands(marks.questions.length, available);
+  sizes.forEach((size, index) => {
+    const chunk = marks.questions.slice(at, at + size);
+    at += size;
+    const last = index === sizes.length - 1;
+    bands.push({
+      columns: [
+        COVER_GRID.labelWidth,
+        ...chunk.map(() => COVER_GRID.cellWidth),
+        ...(last ? [COVER_GRID.totalWidth] : []),
+      ],
+      rows: [
+        {
+          height: labelRow,
+          cells: [
+            cell(EXAMINER_GRID_WORDING.question, 'left'),
+            ...chunk.map((entry) => number(entry.number)),
+            ...(last ? [cell(EXAMINER_GRID_WORDING.total, 'center', true)] : []),
+          ],
+        },
+        {
+          height: labelRow,
+          cells: [
+            cell(EXAMINER_GRID_WORDING.full, 'left'),
+            ...chunk.map((entry) => number(entry.marks)),
+            ...(last ? [number(marks.total)] : []),
+          ],
+        },
+        {
+          height: Math.max(COVER_GRID.boxHeight, labelRow),
+          cells: [
+            cell(EXAMINER_GRID_WORDING.score, 'left'),
+            ...chunk.map(box),
+            ...(last ? [box()] : []),
+          ],
+        },
+      ],
+    });
+  });
+
+  return {
+    placement: inPanel ? 'panel' : 'main',
+    // In the panel the candidate boxes already end on a blank line; after the
+    // instructions the grid needs its own.
+    heading: [
+      ...(inPanel ? [] : [blankLine()]),
+      {
+        ...cell(EXAMINER_GRID_WORDING.heading, 'left', true),
+        keepNext: true,
+        // Lined up with the bands under it, as the panel's tables are indented.
+        ...(inPanel ? { indent: COVER_PANEL.indent } : {}),
+      },
+    ],
+    indent: inPanel ? COVER_PANEL.indent : 0,
+    trailingBlank: inPanel,
+    bands,
   };
 }
 
@@ -384,6 +503,17 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         mode.language,
         contentWidth(pageSetupOf(worksheet)),
         worksheet.baseFontSize,
+        worksheet.cover.examinerGrid
+          ? {
+              // The numbers a candidate sees, from the one numbering plan; the total is
+              // the paper's own, so an "answer any ONE" section counts once.
+              questions: numbering.questions.map((entry) => ({
+                number: entry.number,
+                marks: questionMarks(entry.question),
+              })),
+              total,
+            }
+          : undefined,
       )
     : undefined;
 

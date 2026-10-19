@@ -1429,6 +1429,18 @@ function CoverOptions() {
           }}
         />
       </Field>
+
+      {/* Opt-in, and only the switch is stored: the grid's numbers come from the
+          questions on every render (§ `CoverPage.examinerGrid`). Off removes the key
+          rather than storing `false`, so a cover that never used it saves unchanged. */}
+      <div className="space-y-0.5">
+        <CheckField
+          label={m.examinerGrid}
+          checked={cover.examinerGrid === true}
+          onChange={(next) => updateCover({ examinerGrid: next ? true : undefined })}
+        />
+        <p className="pl-6 text-[11px] text-ink-muted">{m.examinerGridHint}</p>
+      </div>
     </div>
   );
 }

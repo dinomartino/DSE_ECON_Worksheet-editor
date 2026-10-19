@@ -594,6 +594,42 @@ export interface CoverRenderNode {
   foot: RenderNode[];
   /** Boxed note at the bottom-right (the reference's P1 carries one). */
   footNote?: RenderNode;
+  /** The "For examiner's use" marks grid, when the cover asks for it. */
+  examinerGrid?: CoverGridRender;
+}
+
+/**
+ * The "For examiner's use" grid (§ `CoverPage.examinerGrid`), resolved to twips so the
+ * backends only draw it: a bordered table per band, a blank line after each (the
+ * paragraph Word requires after a table) but where `trailingBlank` says otherwise. Its numbers are derived, so no
+ * cell carries an edit target.
+ */
+export interface CoverGridRender {
+  /**
+   * `panel`: under the candidate boxes in the right column. `main`: after the
+   * instructions, on a cover with no panel. Decided here so the backends agree.
+   */
+  placement: 'panel' | 'main';
+  /** What prints above the bands: a blank line where the region needs one, then the heading. */
+  heading: RenderNode[];
+  /** The table's indent into its column, in twips. */
+  indent: number;
+  /**
+   * Whether the last band is followed by a blank line too. After the instructions it is
+   * not: the cover's section-break paragraph follows the table there, and the extra
+   * line tipped a bilingual Paper 1 cover onto a second sheet. In the panel it is:
+   * without it LibreOffice pushed a table that ends a two-column section onto the
+   * next page, though the column had room.
+   */
+  trailingBlank: boolean;
+  bands: CoverGridBand[];
+}
+
+export interface CoverGridBand {
+  /** Column widths in twips, the label column first. */
+  columns: number[];
+  /** Question numbers, full marks, the marker's boxes — each cell a text node (empty for a box). */
+  rows: Array<{ height: number; cells: TextNode[] }>;
 }
 
 export interface CoverPanelRender {
