@@ -165,8 +165,6 @@ function paragraph(options: {
   runs: string;
   numId?: number;
   level?: number;
-  keepNext?: boolean;
-  keepLines?: boolean;
   indent?: number;
   /** A right indent (`TextNode.marksColumn`); the right tab stays at the content edge. */
   indentRight?: number;
@@ -176,9 +174,8 @@ function paragraph(options: {
 }): string {
   const props: string[] = [`<w:pStyle w:val="${options.styleId}"/>`];
 
-  // CT_PPr is a sequence: keepNext then keepLines, both before numbering.
-  if (options.keepNext) props.push('<w:keepNext/>');
-  if (options.keepLines) props.push('<w:keepLines/>');
+  // No `w:keepNext` / `w:keepLines` anywhere in the file: the pages break where the
+  // preview breaks them, as plain page breaks (§ `joinWithPageBreaks`).
 
   if (options.numId !== undefined) {
     props.push(
@@ -320,8 +317,6 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
   const bandLine = exactLineFor(sizes.length > 0 ? Math.max(...sizes) : undefined);
   const props =
     `<w:pStyle w:val="${STYLE_IDS[node.style]}"/>` +
-    (node.keepNext ? '<w:keepNext/>' : '') +
-    (node.keepLines ? '<w:keepLines/>' : '') +
     // The boundary gap, when this row leads its item (§ `withLeadingGap`). The fixed
     // line is restated with it for the reason `formatParagraphProps` restates it:
     // direct formatting replaces the style's `w:spacing` element wholesale, so a bare
@@ -409,8 +404,6 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
     runs,
     numId,
     level: node.listRef?.level,
-    keepNext: node.keepNext,
-    keepLines: node.keepLines,
     indent: node.indent,
     /*
      * The Marks column: the text stops short of it while the marks' right tab stays at
@@ -458,7 +451,7 @@ function marksColumnLabelXml(label: string, styleId: string, column: number, con
   );
 }
 
-function cellParagraph(cellText: string, align: string, format?: TextFormat, keepNext?: boolean): string {
+function cellParagraph(cellText: string, align: string, format?: TextFormat): string {
   // No `w:spacing` override: the cell paragraph takes the Body style's fixed 12pt line
   // and zero padding like every other paragraph, so a table's rows sit on the same
   // rhythm as the text around it. The breathing room a cell needs is horizontal and
@@ -472,9 +465,6 @@ function cellParagraph(cellText: string, align: string, format?: TextFormat, kee
   return (
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
-    // A row that keeps with the next (`TableNode.rowKeepNext`): Word keeps the row on the
-    // next row's page when every paragraph in it keeps with the next.
-    (keepNext ? '<w:keepNext/>' : '') +
     tabsElement(format) +
     `<w:jc w:val="${align}"/>` +
     formatParagraphProps(format ? { ...format, align: undefined } : undefined) +
@@ -631,11 +621,8 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
         // A heading row repeats on every page the table runs onto (`TableNode.headerRows`).
         (rowIndex < (node.headerRows ?? 0) ? '<w:tblHeader/>' : '') +
         '</w:trPr>';
-      // A table inside a keep chain (a classroom MC is kept whole) keeps every row with
-      // the next, the last one with the paragraph after the table, as the preview keeps
-      // its pieces together (`tablePieces`). Without it Word broke such a table between
-      // rows that the page showed whole.
-      const keepRow = Boolean(node.keepNext) || (node.rowKeepNext?.[rowIndex] ?? false);
+      // A row the preview keeps with the next (`rowKeepNext`, a table in a keep chain)
+      // carries no `w:keepNext`: the page breaks are written out (§ `joinWithPageBreaks`).
 
       const cells = row
         .map((cell, cellIndex) => {
@@ -707,8 +694,6 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
                     heightPx: cell.image.heightPx,
                     altText: cell.image.altText,
                     align: 'center',
-                    // Every paragraph of a kept row keeps, the picture's included.
-                    keepNext: keepRow,
                   },
                   context,
                 )
@@ -716,7 +701,7 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
 
           return (
             `<w:tc><w:tcPr>${props.join('')}</w:tcPr>` +
-            cellParagraph(runs, cell.align, cell.format, keepRow) +
+            cellParagraph(runs, cell.align, cell.format) +
             picture +
             '</w:tc>'
           );
@@ -733,20 +718,15 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
     ? paragraph({
         styleId: STYLE_IDS['Table Caption'],
         runs: biTextRuns(node.caption, context.fonts, context.language),
-        // Above the table it must keep with the table below it, or the page can break
-        // between a heading and the rows it names.
-        keepNext: above ? true : node.keepNext,
       })
     : '';
 
-  // A table must be followed by a paragraph; Word requires it and it also gives the
-  // table somewhere to attach keep-with-next behaviour. This stays *after* the table
-  // whichever side the caption takes — it is a structural requirement of the format,
-  // not part of the caption group.
+  // A table must be followed by a paragraph; Word requires it. This stays *after* the
+  // table whichever side the caption takes — it is a structural requirement of the
+  // format, not part of the caption group.
   const spacer = paragraph({
     styleId: STYLE_IDS.Body,
     runs: '',
-    keepNext: node.keepNext,
   });
 
   const table = `<w:tbl>${tblPr}${grid}${rows}</w:tbl>`;
@@ -859,7 +839,6 @@ function pictureXml(
     altText: BiText;
     caption?: BiText;
     captionPlacement?: CaptionPlacement;
-    keepNext?: boolean;
     align?: TableAlign;
   },
   context: BodyContext,
@@ -874,11 +853,7 @@ function pictureXml(
   const imageParagraph =
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
-    // CT_PPr is a sequence: keepNext, then spacing, then jc.
-    // A picture keeps with what follows when something follows it that belongs to it —
-    // a caption printed *below*. With the caption above, the picture is the last thing
-    // in the group and only `keepNext` from the caller applies.
-    (node.keepNext || (node.caption && !above) ? '<w:keepNext/>' : '') +
+    // CT_PPr is a sequence: spacing, then jc.
     // The picture's line must be allowed to grow to the picture.
     //
     // Every other paragraph carries the document's fixed 12pt line
@@ -909,10 +884,6 @@ function pictureXml(
     ? paragraph({
         styleId: STYLE_IDS['Image Caption'],
         runs: biTextRuns(node.caption, context.fonts, context.language),
-        // A caption above must keep with the picture under it, or Word will happily
-        // break the page between a heading and the figure it names — which is exactly
-        // the orphan the placement was chosen to avoid.
-        keepNext: above ? true : node.keepNext,
       })
     : '';
 
@@ -956,15 +927,14 @@ function figureRowXml(node: FigureRowNode, context: BodyContext): string {
       width: tableTwips / CONTENT_WIDTH_TWIPS,
       indent: 0,
       align: 'left',
-      keepNext: undefined,
     },
     context,
   );
 
   const figure =
     node.figure.kind === 'diagram'
-      ? diagramNodeXml({ ...node.figure, keepNext: undefined }, context)
-      : pictureXml({ ...node.figure, keepNext: undefined }, context);
+      ? diagramNodeXml(node.figure, context)
+      : pictureXml(node.figure, context);
   // A cell must end in a paragraph; an empty figure (a diagram with no raster) still
   // needs one or the whole file reports as damaged.
   const figureCellContent =
@@ -1010,7 +980,7 @@ function figureRowXml(node: FigureRowNode, context: BodyContext): string {
     '</w:tbl>';
 
   // A table must be followed by a paragraph (Word's rule; also where keep-next rides).
-  return table + paragraph({ styleId: STYLE_IDS.Body, runs: '', keepNext: node.keepNext });
+  return table + paragraph({ styleId: STYLE_IDS.Body, runs: '' });
 }
 
 /**
@@ -1096,7 +1066,7 @@ function optionRowXml(node: OptionRowNode, context: BodyContext): string {
     '</w:tbl>';
 
   // A table must be followed by a paragraph (Word's rule; also where keep-next rides).
-  return table + paragraph({ styleId: STYLE_IDS.Body, runs: '', keepNext: node.keepNext });
+  return table + paragraph({ styleId: STYLE_IDS.Body, runs: '' });
 }
 
 /**
@@ -1178,7 +1148,7 @@ function sourceXml(node: SourceNode, context: BodyContext): string {
     '</w:tc></w:tr>' +
     '</w:tbl>';
 
-  return table + paragraph({ styleId: STYLE_IDS.Body, runs: '', keepNext: node.keepNext });
+  return table + paragraph({ styleId: STYLE_IDS.Body, runs: '' });
 }
 
 /**
@@ -1235,9 +1205,6 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
       return (
         '<w:p><w:pPr>' +
         `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
-        // A gap inside a keep-together chain (stem → gap → table) must carry the flag
-        // itself, or it is exactly where Word breaks the chain around it.
-        (node.keepNext ? '<w:keepNext/>' : '') +
         `<w:spacing w:line="${Math.max(1, Math.round(node.heightPt * 20))}" w:lineRule="exact"/>` +
         '</w:pPr></w:p>'
       );

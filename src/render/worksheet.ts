@@ -867,7 +867,7 @@ interface StimulusRender {
  * keeps with the next, and a text or columns row keeps its own lines. The exam paper
  * keeps each question on one sheet, and every paper keeps a type that asks for it
  * (`keepWhole` on its definition: an MC); the preview's paginator reads the same chain,
- * so both move it whole (§ An item breaks where Word breaks it). The last node stays free,
+ * so both move it whole (§ An item breaks where its keep chain allows). The last node stays free,
  * or the chain would run through the boundary gap and glue every question to the next.
  */
 function keepQuestionWhole(nodes: RenderNode[]): RenderNode[] {

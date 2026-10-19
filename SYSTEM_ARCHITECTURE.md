@@ -1003,7 +1003,9 @@ Word doesn't flag direct formatting; deliberately **not** a `NodeStyle`.
 `captionPlacement` on table/image/diagram blocks; `below` default and unstored.
 
 - **Resolved once, in the IR.**
-- **A caption above must `keepNext`**; below, the picture keeps with the caption.
+- **A caption above must `keepNext`** in the IR (the preview never breaks after it);
+  below, the picture keeps with the caption. The `.docx` writes no keep flags (§ *The
+  `.docx` breaks its pages where the preview does*).
 - Optional and absent by default; the placement control appears only with a caption.
 - The table's trailing spacer paragraph stays after the table either way.
 
@@ -1660,11 +1662,12 @@ Measured off DSE 2021 P1, spelled as blank lines on the same fixed 12pt grid:
   preview mounts `GapAdjuster` on it — a pill in the *right* margin (centre belongs to
   the insert `+`, left margin to the reorder grips), one commit on release writing
   `gapBefore`. The exact value lives in the question panel's "Space above".
-- **A Paper 1 question is kept whole in Word too** (`keepQuestionWhole`): every node
-  but the last takes `keepNext`, text/columns rows take `keepLines` — the preview's
-  paginator never splits an item, so without the chain the .docx broke pages inside a
-  question the screen had pushed whole. The last node stays free (the chain must not
-  run through the boundary gap), and `keepWhole` is part of the render cache key, as is
+- **A Paper 1 question is kept whole** (`keepQuestionWhole`): every node but the last
+  takes `keepNext` (text/columns rows also `keepLines`, which no backend reads now), so
+  the preview moves the question whole, and the `.docx` follows with a page break before
+  it (§ *The `.docx` breaks its pages where the preview does*; it used to chain
+  `w:keepNext` through the question). The last node stays free (the chain must not run
+  through the boundary gap), and `keepWhole` is part of the render cache key, as is
   `shape` (the list indents follow it, and an MC's `keepWhole` no longer does).
 - **Every MC is kept whole on every paper**: the definition's `keepWhole` asks the walker
   for the same chain outside Paper 1 (a stem without its options cannot be answered).
@@ -1724,17 +1727,17 @@ Measuring lives in the component; the deciding half is pure in
 
 `movePage` is one `moveRunInFlow` — a page is just a run of ids.
 
-### An item breaks where Word breaks it
+### An item breaks where its keep chain allows
 
-Word knows keep chains, not questions: it breaks after any paragraph without `keepNext`,
-and moves a chain whole only when the chain does not fit the room left. The preview
-packs the same way, so a question whose stem fits under the previous one starts on that
-sheet in both backends (it used to move whole to the next sheet while Word started it on
-page 1).
+The IR knows keep chains, not questions: a sheet may end after any node without
+`keepNext`, and a chain moves whole only when it does not fit the room left — the rule
+Word applied when the `.docx` still carried the chain. A question whose stem fits under
+the previous one starts on that sheet (it used to move whole to the next sheet while Word
+started it on page 1). The `.docx` now follows the preview's sheets with page breaks of
+its own (next section).
 
 - **The break candidates come from `keepNext`**, not from the measured boxes:
-  `breakAfterNodes` (`Preview.tsx`) offers any node whose `keepNext` is falsy. That is the
-  chain Word reads, so both backends break in the same place.
+  `breakAfterNodes` (`Preview.tsx`) offers any node whose `keepNext` is falsy.
   A source panel's nodes keep to each other, so a break is never offered inside a frame.
 - **Overflowing, an item fills the sheet up to the last boundary that fits**, its head
   paying its boundary gap. With no boundary that fits it moves **whole**, and a chain
@@ -1769,6 +1772,48 @@ page 1).
   their measured height through `PackItem.leadAt` (keyed by the piece's node index).
   Preview only — the `.docx` and clipboard always get whole tables.
 - `pagination.test.ts` pins each rule.
+
+### The `.docx` breaks its pages where the preview does (`export/docx/pageBreaks.ts`)
+
+**No `w:keepNext`, `w:keepLines` or `w:pageBreakBefore` anywhere in the file**, in a style
+or on a paragraph (the user's call, 2026-10-19). With ¶ on, Word draws a black square
+beside every paragraph carrying one; every paragraph of our papers did, and the file read
+as foreign beside a hand-made paper. Instead the file breaks where the preview's sheets
+break, with the page break Ctrl+Enter types. Widow/orphan control stays Word's default.
+
+- **The starts are measured at export** (`components/preview/measurePageStarts.tsx`):
+  the Export dialog mounts a hidden, inert `Preview` in the file's own mode (language,
+  copy, version, Include) — or an `AnswerKeyPreview` per document of a key, a combined
+  key's under its part title and shared Marks head — and reads `onPageStarts` once every
+  block is measured and fresh, quiet for 400 ms, fonts and pictures in. A measurement that
+  never settles stops the export with a message: no guessed fallback. `npm run samples`
+  exports through the real dialog in Chrome (`scripts/emit-samples.mjs`) for the same
+  reason. A builder given no starts (node tests) writes no breaks: Word paginates alone.
+- **A start is an item key and a `pageNodes` index** (`pageStarts`). A sheet a manual
+  page break opened has none (its `w:br` is already in the file); one starting inside a
+  table writes none (Word breaks between the rows itself, every row `cantSplit` — a row
+  property, no square).
+- **The break ends the last paragraph of the sheet before** (`joinWithPageBreaks`), a
+  run before its `</w:p>`; after a table, a 1pt collapsed paragraph. Never a paragraph of
+  its own or the head of the next one: either costs a line, which on a full sheet spills
+  over with the break and leaves a blank page. LibreOffice opens the next page with no
+  blank line (checked on every sample); Word 2013+ keeps the ¶ on the break's line —
+  unverified in Word.
+- **The opening item loses its boundary gap** (`withoutBoundaryGap`), as the preview's
+  sheet drops it; Word keeps `w:before` after a hard break.
+- **The risk is a Word page longer than the preview's**: Word then breaks by itself and
+  the hard break after leaves a near-empty page. Measured in LibreOffice on the samples
+  (2026-10-19, EN, 中文 and bilingual): page counts and every page start equal, each
+  page's last line within +1.5pt of the print preview's, so no slack is taken. Word,
+  PMingLiU and a fill answer space exported in a mode the editor is not showing (its
+  stored count) are unverified.
+- **A measuring copy draws what prints**: a picture at its stored size (the base style's
+  `height: auto` took the file's ratio), an empty table cell one line tall (Word's empty
+  paragraph) — the editing page gets both from its edit chrome.
+- **The clipboard has no pages**: no keep flags and no page break (a page break element
+  leaves only an HTML comment, `CLIPBOARD_PAGE_BREAK`, where the start screen's card cuts
+  its first page).
+- `export/docx/pageBreaks.test.ts` pins each rule.
 
 ### A drop target receives the run, not the grabbed id
 
@@ -2034,8 +2079,9 @@ type needs only a definition.
   question (a point a row, Guidance spelling out any N / first N / n marks each / max / OR,
   per-cell edges so a part reads as one cell), levels and EC in a Level | Descriptor | Marks
   table after it, a model diagram ending the table and printing full width before it goes
-  on. `TableNode.headerRows` → `w:tblHeader` / `thead`; `rowKeepNext` → `w:keepNext` on the
-  row's paragraphs (every row `cantSplit`). The preview packs such a table row by row
+  on. `TableNode.headerRows` → `w:tblHeader` / `thead`; `rowKeepNext` holds rows together in
+  the preview only (every row `cantSplit`; the `.docx` writes the preview's breaks, never
+  `w:keepNext`). The preview packs such a table row by row
   (`keyUnits`), a piece joining the one above without a second rule, and a piece opening a
   sheet redraws the heading rows, charged by the packer through `PackItem.leadKey`.
 - **The Marks column is a right indent, not a table** (`TextNode.marksColumn`): the text

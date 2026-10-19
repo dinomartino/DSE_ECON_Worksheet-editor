@@ -34,6 +34,9 @@ import type { DiagramImageMap } from './diagramImage';
  * accepts that, with the .docx remaining the fidelity gold standard.
  */
 
+/** Where a page break element stood: a comment, so a paste prints nothing for it. */
+export const CLIPBOARD_PAGE_BREAK = '<!--page-break-->';
+
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -313,7 +316,11 @@ function nodeHtml(
   }
 
   if (node.kind === 'pageBreak') {
-    return '<p style="page-break-before:always"></p>';
+    // A copy has no pages: what it is pasted into breaks its own. `page-break-before`
+    // also arrived in Word as "Page break before", one of the paragraph properties Word
+    // marks with a black square (§ `joinWithPageBreaks`). Only a comment stays, which no
+    // paste shows, for the start screen's card to cut its first page at.
+    return CLIPBOARD_PAGE_BREAK;
   }
 
   if (node.kind === 'image' || node.kind === 'diagram') {

@@ -151,12 +151,13 @@ describe('Detailed table: MC with reasons', () => {
 describe('the key’s tables in the .docx and on the clipboard', () => {
   const worksheet = detailed(buildMarkSchemeWorksheet());
 
-  it('heading rows repeat (`w:tblHeader`), rows keep with the next where the IR says, cells top-aligned', () => {
+  it('heading rows repeat (`w:tblHeader`), cells top-aligned, no row keeps with the next', () => {
     const xml = buildAnswerKeyDocxParts(worksheet, 'en').documentXml;
     expect(xml.match(/<w:tblHeader\/>/g)?.length).toBeGreaterThanOrEqual(2);
     expect(xml).toContain('<w:vAlign w:val="top"/>');
-    // A heading row's cells keep with the row under them.
-    expect(xml).toMatch(/<w:tblHeader\/><\/w:trPr><w:tc><w:tcPr>(?:(?!<\/w:tc>).)*<w:keepNext\/>/);
+    // `rowKeepNext` holds rows together in the preview only: the `.docx` writes the
+    // preview's page breaks instead of `w:keepNext` (§ `joinWithPageBreaks`).
+    expect(xml).not.toContain('<w:keepNext/>');
     // Rows are never split across pages.
     expect(xml).toContain('<w:cantSplit/>');
   });

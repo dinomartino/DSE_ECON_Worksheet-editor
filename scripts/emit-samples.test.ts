@@ -1,21 +1,20 @@
 /**
- * Not a unit test: writes real .docx files to scratch so they can be opened in
- * Word by hand. Run with `npx vitest run scripts/emit-samples.test.ts`.
+ * Not a unit test: plans the sample .docx files that `npm run samples`
+ * (`scripts/emit-samples.mjs`) then exports through the app's own Export dialog in a
+ * real browser, so each file breaks its pages where the preview does (§ `joinWithPageBreaks`)
+ * — the sheets are measured, and only a browser can measure them.
+ *
+ * Writes each document as `<OUT>/.plan/<n>.worksheet.json` and the files to make from it
+ * as `<OUT>/.plan/plan.json`. Run alone: `npx vitest run scripts/emit-samples.test.ts`.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { expect, it } from 'vitest';
-import {
-  answerKeyFileName,
-  docxFileName,
-  exportAnswerKeyDocxBuffer,
-  exportDocxBuffer,
-} from '@/export/docx';
+import { afterAll, expect, it } from 'vitest';
+import { answerKeyFileName, docxFileName } from '@/export/docx';
 import { createAnswerDiagram, createParagraphBlock, createWorksheet } from '@/model/factories';
 import { bi } from '@/model/text';
-import { answerGraphNode } from '@/render/answerGraph';
-import { buildAcceptanceWorksheet, TINY_PNG } from '@/test/fixtures';
+import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
-import type { OutputMode, StructuredQuestion } from '@/model/types';
+import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
 import { presetFor } from '@/ai/providers';
 import { loadGlossary } from '@/glossary/load';
 import { applyTranslationBatch } from '@/model/translationApply';
@@ -24,6 +23,54 @@ import { runTranslation, writesFor } from '@/translate/run';
 import { oneSided, referenceClient } from '@/translate/testKit';
 
 const OUT = process.env.SAMPLE_DIR ?? '/tmp/econ-samples';
+const PLAN = `${OUT}/.plan`;
+
+/** One file to export: the document (by its plan file), what, and where it goes. */
+interface PlannedSample {
+  doc: string;
+  title: string;
+  out: string;
+  what: 'paper' | 'answerKey';
+  language: LanguageMode;
+  version?: OutputMode['version'];
+  variant?: string;
+}
+
+const planned: PlannedSample[] = [];
+const docs = new Map<Worksheet, { doc: string; title: string }>();
+
+/** The document's plan file, written once; its own id and a title the start screen can find. */
+function docOf(worksheet: Worksheet): { doc: string; title: string } {
+  const known = docs.get(worksheet);
+  if (known) return known;
+  const n = docs.size + 1;
+  const entry = { doc: `${n}.worksheet.json`, title: `Sample ${n}` };
+  mkdirSync(PLAN, { recursive: true });
+  writeFileSync(`${PLAN}/${entry.doc}`, JSON.stringify({ ...worksheet, id: `sample-${n}` }));
+  docs.set(worksheet, entry);
+  return entry;
+}
+
+function planPaper(worksheet: Worksheet, mode: OutputMode, out: string): void {
+  planned.push({
+    ...docOf(worksheet),
+    out,
+    what: 'paper',
+    language: mode.language,
+    version: mode.version,
+    ...(mode.variant ? { variant: mode.variant } : {}),
+  });
+}
+
+function planKey(worksheet: Worksheet, language: LanguageMode, out: string): void {
+  planned.push({ ...docOf(worksheet), out, what: 'answerKey', language });
+}
+
+afterAll(() => {
+  mkdirSync(PLAN, { recursive: true });
+  writeFileSync(`${PLAN}/plan.json`, JSON.stringify(planned, null, 2));
+  console.log(`${planned.length} files planned -> ${PLAN}/plan.json`);
+});
 
 it('emits sample documents', async () => {
   mkdirSync(OUT, { recursive: true });
@@ -35,10 +82,7 @@ it('emits sample documents', async () => {
     { language: 'zh', version: 'teacher' },
   ];
   for (const mode of modes) {
-    const bytes = await exportDocxBuffer(worksheet, mode);
-    const path = `${OUT}/${docxFileName(worksheet, mode)}`;
-    writeFileSync(path, bytes);
-    console.log(`${bytes.length} bytes -> ${path}`);
+    planPaper(worksheet, mode, `${OUT}/${docxFileName(worksheet, mode)}`);
   }
 });
 
@@ -51,10 +95,7 @@ it('emits a paper whose MC options are justified', async () => {
   );
   for (const version of ['student', 'teacher'] as const) {
     const mode: OutputMode = { language: 'bilingual', version };
-    const bytes = await exportDocxBuffer(worksheet, mode);
-    const path = `${dir}/${docxFileName(worksheet, mode)}`;
-    writeFileSync(path, bytes);
-    console.log(`${bytes.length} bytes -> ${path}`);
+    planPaper(worksheet, mode, `${dir}/${docxFileName(worksheet, mode)}`);
   }
 });
 
@@ -64,10 +105,7 @@ it('emits a paper whose body text is justified (Document setup)', async () => {
   const worksheet = { ...buildAcceptanceWorksheet(), justifyText: true };
   for (const version of ['student', 'teacher'] as const) {
     const mode: OutputMode = { language: 'bilingual', version };
-    const bytes = await exportDocxBuffer(worksheet, mode);
-    const path = `${dir}/${docxFileName(worksheet, mode)}`;
-    writeFileSync(path, bytes);
-    console.log(`${bytes.length} bytes -> ${path}`);
+    planPaper(worksheet, mode, `${dir}/${docxFileName(worksheet, mode)}`);
   }
 });
 
@@ -77,17 +115,11 @@ it('emits a paper with versions A–C, and its answer key', async () => {
   for (const variant of ['A', 'B', 'C']) {
     for (const version of ['student', 'teacher'] as const) {
       const mode: OutputMode = { language: 'en', version, variant };
-      const bytes = await exportDocxBuffer(worksheet, mode);
-      const path = `${OUT}/${docxFileName(worksheet, mode)}`;
-      writeFileSync(path, bytes);
-      console.log(`${bytes.length} bytes -> ${path}`);
+      planPaper(worksheet, mode, `${OUT}/${docxFileName(worksheet, mode)}`);
     }
   }
   for (const language of ['en', 'bilingual'] as const) {
-    const bytes = await exportAnswerKeyDocxBuffer(worksheet, language);
-    const path = `${OUT}/${answerKeyFileName(worksheet, language)}`;
-    writeFileSync(path, bytes);
-    console.log(`${bytes.length} bytes -> ${path}`);
+    planKey(worksheet, language, `${OUT}/${answerKeyFileName(worksheet, language)}`);
   }
 });
 
@@ -101,15 +133,9 @@ it('emits a structured paper with an HKEAA marking scheme, and its answer key', 
     { language: 'en', version: 'student' },
   ];
   for (const mode of modes) {
-    const bytes = await exportDocxBuffer(worksheet, mode);
-    const path = `${OUT}/mark-scheme-${mode.language}-${mode.version}.docx`;
-    writeFileSync(path, bytes);
-    console.log(`${bytes.length} bytes -> ${path}`);
+    planPaper(worksheet, mode, `${OUT}/mark-scheme-${mode.language}-${mode.version}.docx`);
   }
-  const bytes = await exportAnswerKeyDocxBuffer(worksheet, 'bilingual');
-  const path = `${OUT}/mark-scheme-answer-key.docx`;
-  writeFileSync(path, bytes);
-  console.log(`${bytes.length} bytes -> ${path}`);
+  planKey(worksheet, 'bilingual', `${OUT}/mark-scheme-answer-key.docx`);
 });
 
 it('emits an essay with its own answer and marking scheme, and its answer key', async () => {
@@ -137,15 +163,9 @@ it('emits an essay with its own answer and marking scheme, and its answer key', 
   worksheet.questions = [question];
   worksheet.flow = [{ type: 'question', id: question.id }];
   for (const version of ['teacher', 'student'] as const) {
-    const bytes = await exportDocxBuffer(worksheet, { language: 'bilingual', version });
-    const path = `${OUT}/essay-${version}.docx`;
-    writeFileSync(path, bytes);
-    console.log(`${bytes.length} bytes -> ${path}`);
+    planPaper(worksheet, { language: 'bilingual', version }, `${OUT}/essay-${version}.docx`);
   }
-  const bytes = await exportAnswerKeyDocxBuffer(worksheet, 'bilingual');
-  const path = `${OUT}/essay-answer-key.docx`;
-  writeFileSync(path, bytes);
-  console.log(`${bytes.length} bytes -> ${path}`);
+  planKey(worksheet, 'bilingual', `${OUT}/essay-answer-key.docx`);
 });
 
 it('emits a long question with a model answer diagram, and its answer key', async () => {
@@ -177,22 +197,11 @@ it('emits a long question with a model answer diagram, and its answer key', asyn
   worksheet.flow = [{ type: 'question', id: question.id }];
   // The worksheet itself, so a browser harness can open the same document.
   writeFileSync(`${OUT}/answer-diagram.worksheet.json`, JSON.stringify(worksheet));
-  // Node has no canvas to rasterise with, so a stand-in PNG takes the diagram's slot;
-  // the browser's Export rasterises the real figure into the same place.
-  const images = new Map([
-    ['sample-answer-diagram', TINY_PNG],
-    [answerGraphNode(question.parts[0]!.answerGraph!).key, TINY_PNG],
-  ]);
+  // The browser's Export rasterises the real figure and the blank axes.
   for (const version of ['teacher', 'student'] as const) {
-    const bytes = await exportDocxBuffer(worksheet, { language: 'bilingual', version }, images);
-    const path = `${OUT}/answer-diagram-${version}.docx`;
-    writeFileSync(path, bytes);
-    console.log(`${bytes.length} bytes -> ${path}`);
+    planPaper(worksheet, { language: 'bilingual', version }, `${OUT}/answer-diagram-${version}.docx`);
   }
-  const bytes = await exportAnswerKeyDocxBuffer(worksheet, 'bilingual', [], images);
-  const path = `${OUT}/answer-diagram-answer-key.docx`;
-  writeFileSync(path, bytes);
-  console.log(`${bytes.length} bytes -> ${path}`);
+  planKey(worksheet, 'bilingual', `${OUT}/answer-diagram-answer-key.docx`);
 });
 
 it('emits an English-only paper filled by the translation pipeline', async () => {
@@ -218,9 +227,6 @@ it('emits an English-only paper filled by the translation pipeline', async () =>
   expect(report.applied).toBeGreaterThan(0);
   expect(report.skipped).toEqual([]);
   for (const language of ['zh', 'bilingual'] as const) {
-    const bytes = await exportDocxBuffer(worksheet, { language, version: 'teacher' });
-    const path = `${OUT}/translated-${language}.docx`;
-    writeFileSync(path, bytes);
-    console.log(`${bytes.length} bytes -> ${path}`);
+    planPaper(worksheet, { language, version: 'teacher' }, `${OUT}/translated-${language}.docx`);
   }
 });

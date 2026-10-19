@@ -131,6 +131,7 @@ Invariants:
 - `src/export/docx/numbering.ts:buildNumberingXml` · `:assignNumIds`
 - `src/export/docx/runs.ts:richTextRuns` · `:marksRuns` · `src/export/docx/xml.ts:escapeXml`
 - `src/export/docx/package.ts:buildDocumentRelsXml` · `:buildHeaderXml` · `src/export/docx/furniture.ts:furnitureHeaderXml`
+- `src/export/docx/pageBreaks.ts:joinWithPageBreaks` · `:itemUnits` · `:keyBodyXml` — page breaks at the preview's sheet starts, measured by `src/components/preview/measurePageStarts.tsx:measurePaperPageStarts` · `:measureAnswerKeyPageStarts` (`src/components/preview/pagination.ts:pageStarts`)
 
 Invariants:
 - Fixed 12pt line, no paragraph spacing; separation costs a blank line — §One fixed line.
@@ -138,6 +139,7 @@ Invariants:
 - `baseFontSize` scales body styles; the 12pt line never shrinks — §The booklet is a 10pt document.
 - `justifyText` justifies through the body styles, never `Body` — §One row, many uses.
 - An LQ style is emitted only when the rendered IR uses one — §The dotted answer line.
+- No `w:keepNext` / `w:keepLines` / `w:pageBreakBefore` in any part; pages break where the preview's do — §The `.docx` breaks its pages where the preview does.
 
 ## export (other)
 
@@ -559,7 +561,7 @@ Invariants:
 - `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`, `--port=` / `--url=`)
 - `scripts/demo.mjs` — website video + screenshots into `demo-media/` (`npm run demo`); steps in `scripts/demo/record.mjs:STORYBOARD`
 - `scripts/demo/diagrams.mjs:diagramStoryboard` — the diagram film (`npm run demo:diagrams`): one recording, numbered stills and the exported `.docx` into `demo-media/diagrams/`; seed from `scripts/demo/diagrams-seed.test.ts`
-- `scripts/emit-samples.test.ts` — real `.docx` files (`npm run samples`)
+- `scripts/emit-samples.mjs` — real `.docx` files (`npm run samples`), exported through the app's Export dialog in Chrome so the pages break where the preview does; `scripts/emit-samples.test.ts` plans the documents
 - `scripts/template-gallery.mjs` — every diagram template screenshotted (en / zh / bilingual) into a folder; `--app` also seeds them into the running app and shoots the sheets and the picker
 - `scripts/relation-drag.mjs` — drags one curve or point per retrofitted template on the real canvas, before/after shots, and the Shade menu on the tax diagram
 - `scripts/cover-verify.mjs` · `scripts/lq-verify.mjs` — the three backends agree

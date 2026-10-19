@@ -18,7 +18,7 @@ import type { EditTarget, RenderNode, TableNode } from "@/render/ir";
 import { IconButton } from "@/components/ui";
 import { MinusIcon, PlusIcon } from "@/components/ui/icons";
 import { useMessages } from "@/i18n/language";
-import { placementKey } from "./pagination";
+import { placementKey, type KeyPageStart } from "./pagination";
 import { sheetStackMargin } from "./sheetStack";
 import {
   HeaderFooterBand,
@@ -269,9 +269,21 @@ export function AnswerKeyPreview({
   selectedQuestionId,
   onSelectQuestion,
   onEdit,
+  title,
+  runningHead: sharedHead,
+  measureOnly,
+  onPageStarts,
 }: {
   worksheet: Worksheet;
   language: LanguageMode;
+  /** The key's title, when it is one part of a combined key (`answerKeyPartTitle`). */
+  title?: BiText;
+  /** The Marks head every sheet carries, when a combined key's part shares it. */
+  runningHead?: string;
+  /** A hidden copy that only paginates (`measurePageStarts`): no `#print-root`, no zoom. */
+  measureOnly?: boolean;
+  /** Where each sheet after the first begins, once measured (§ `joinWithPageBreaks`). */
+  onPageStarts?: (starts: KeyPageStart[]) => void;
   selectedQuestionId?: string;
   /** Select a question for the sidebar, or clear the selection. */
   onSelectQuestion?: (questionId?: string) => void;
@@ -286,7 +298,7 @@ export function AnswerKeyPreview({
   // The key's own lines (title, subtitle) take their edit targets here, on the page's
   // copy only: the export's nodes stay exactly as `renderAnswerKey` gives them.
   const { nodes, runs, empty, runningHead } = useMemo(() => {
-    const view = answerKeyView(worksheet, language);
+    const view = answerKeyView(worksheet, language, title ? { title } : {});
     const shown = view.nodes.map((node, index) => {
       const field = view.fields.find((entry) => entry.index === index);
       return field && node.kind === "text" ? { ...node, edit: field.edit } : node;
@@ -296,12 +308,13 @@ export function AnswerKeyPreview({
     return {
       nodes: shown,
       empty: view.owners.every((owner) => owner === undefined),
-      runningHead: answerKeyRunningHead(view.nodes, language),
+      runningHead: sharedHead ?? answerKeyRunningHead(view.nodes, language),
       runs: runsOf(units.map((unit) => unit.keepNext)).map(({ from, to }) => {
         const held = units.slice(from, to + 1);
         const first = held[0];
         return {
           key: `key-${first.index}${first.row !== undefined ? `r${first.row}` : ""}`,
+          start: { node: first.index, ...(first.row !== undefined ? { row: first.row } : {}) } as KeyPageStart,
           // One measured heading per table, however many runs repeat it.
           headKey: `head-${first.index}`,
           ...runNodes(shown, held),
@@ -309,7 +322,7 @@ export function AnswerKeyPreview({
         };
       }),
     };
-  }, [worksheet, language]);
+  }, [worksheet, language, title, sharedHead]);
 
   const [selectedElement, setSelectedElement] = useState<
     { target: EditTarget; side: "en" | "zh" } | undefined
@@ -394,11 +407,25 @@ export function AnswerKeyPreview({
     ).values(),
   ];
 
-  const { pages, fragments, probeRef } = usePagination(blocks, contentHeightPx, [
+  const { pages, fragments, probeRef, heights, isFresh } = usePagination(blocks, contentHeightPx, [
     nodes,
     language,
     contentHeightPx,
   ]);
+
+  // Where the sheets begin, for the `.docx`'s page breaks, from a settled measurement only.
+  const startOf = new Map(runs.map((run) => [run.key, run.start]));
+  const starts = pages.slice(1).flatMap((page) => {
+    const start = page[0] && startOf.get(page[0].key);
+    return start ? [start] : [];
+  });
+  const startsReady = blocks.every((block) => heights.has(block.key)) && isFresh();
+  const startsKey = starts.map((start) => `${start.node}r${start.row ?? ""}`).join("|");
+  useEffect(() => {
+    if (startsReady) onPageStarts?.(starts);
+    // Keyed on the flattened starts: `starts` is a fresh array every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startsKey, startsReady, onPageStarts]);
 
   // Fit the true-size sheet to the column, times the reader's zoom (as the paper does).
   const [fitScale, setFitScale] = useState(1);
@@ -450,7 +477,7 @@ export function AnswerKeyPreview({
         if ((event.target as Element).closest?.("[data-question-id]")) selfSelected.current = true;
       }}
     >
-      <div className="pointer-events-none fixed bottom-4 right-[416px] z-30">
+      {!measureOnly && <div className="pointer-events-none fixed bottom-4 right-[416px] z-30">
         <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-line bg-surface-raised p-1 shadow-md">
           <IconButton
             label={m.zoomOut}
@@ -475,11 +502,11 @@ export function AnswerKeyPreview({
             <PlusIcon size={14} />
           </IconButton>
         </div>
-      </div>
+      </div>}
 
       {selectedQuestionId && <style>{selectedCellRule(selectedQuestionId)}</style>}
       <div
-        id="print-root"
+        id={measureOnly ? undefined : "print-root"}
         data-answer-key
         aria-label={km.sheets}
         className="flex flex-col items-center gap-6"

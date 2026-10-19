@@ -230,6 +230,7 @@ import {
   marqueeBounds,
   marqueeCatches,
   packPages,
+  pageStarts as pageStartsOf,
   placementKey,
   resolveFillCounts,
   // Aliased: `Fragment` is React's own name in a .tsx file, and the paginator's piece of
@@ -237,6 +238,7 @@ import {
   type Fragment as ItemFragment,
   type PackItem,
   type PageComposition,
+  type PageStart,
 } from "./pagination";
 import { bodyEntries, joinedRows, pageNodes } from "./pageNodes";
 import { PAGE_AI_ITEM, pageAiScope } from "@/components/translate/translateMenu";
@@ -358,6 +360,14 @@ function runSpans(runs: BiText["en"], key: string) {
     );
   });
   return hasTab(runs) ? [<TabScope key={`${key}-tabs`}>{spans}</TabScope>] : spans;
+}
+
+/** Whether `text` prints nothing in `language`, as `biTextRuns` trims it for the `.docx`. */
+function printsNothing(text: BiText | undefined, language: LanguageMode): boolean {
+  if (!text) return true;
+  const en = plain(text.en).trim().length === 0;
+  const zh = plain(text.zh).trim().length === 0;
+  return language === "en" ? en : language === "zh" ? zh : en && zh;
 }
 
 /**
@@ -2306,6 +2316,13 @@ function TableNodeView({
                             // fit one (§`compactPlaceholder`).
                             true,
                           )}
+                      {/* An empty cell holds a line, as Word's empty paragraph in it does.
+                          Editing, the field's prompt holds it; without one (a read-only or
+                          measuring copy) the row collapsed to its padding, and the page
+                          measured the table a line a row short of the export. */}
+                      {!ctx && !cell.covered && printsNothing(cell.text, language) && (
+                        <span aria-hidden>{"\u200B"}</span>
+                      )}
                       {/* A picture inside the cell, under its words — the boxed
                           stimulus that frames an extract and a photograph together. */}
                       {cell.image && (
@@ -3087,6 +3104,11 @@ export function NodeView({
               alt={plain(node.altText.en) || plain(node.altText.zh) || ""}
               width={node.widthPx}
               height={node.heightPx}
+              // At its stored size, as the `.docx` places it: the base style's
+              // `height: auto` would take the file's own ratio instead, and a page with
+              // no editing (a read-only or measuring copy) would paginate a picture the
+              // export draws at another height. Editing, `ResizableBlock` sizes it.
+              style={{ width: node.widthPx, height: node.heightPx }}
               className="inline-block"
             />
           </SizedBlock>
@@ -4429,7 +4451,7 @@ interface ItemBodyProps {
   onSelect: (event: React.MouseEvent) => void;
   /**
    * The slice of the item's nodes this copy renders, when it was split across sheets
-   * (§ *An item breaks where Word breaks it*). Absent renders all of
+   * (§ *An item breaks where its keep chain allows*). Absent renders all of
    * them, which is every item in a document with nothing too tall in it.
    */
   range?: { from: number; to: number };
@@ -4941,6 +4963,11 @@ interface Props {
    * page-scoped queries and the print still see the one real stack; no zoom control.
    */
   measureOnly?: boolean;
+  /**
+   * Where each sheet after the first begins, once every block is measured: what the
+   * `.docx` puts its page breaks at (`measurePageStarts`, § `joinWithPageBreaks`).
+   */
+  onPageStarts?: (starts: PageStart[]) => void;
 }
 
 /**
@@ -5144,6 +5171,7 @@ export function Preview({
   onDragItemChange,
   provisionalId,
   measureOnly,
+  onPageStarts,
 }: Props) {
   /*
    * The one document walk, memoised on its only two inputs.
@@ -5583,11 +5611,15 @@ export function Preview({
         : undefined;
 
   useEffect(() => {
+    // A hidden measuring copy has no selection of its own to publish.
+    if (measureOnly) return;
     useWorksheetStore.getState().setSelectedTargetKey(selectedTargetKey);
-  }, [selectedTargetKey]);
+  }, [selectedTargetKey, measureOnly]);
 
   // A block selection asked for from outside the page (`blockSelectRequest`), taken once.
   useEffect(() => {
+    // A request is for the page the teacher sees, never a hidden measuring copy.
+    if (measureOnly) return;
     const take = (blockId: string | undefined) => {
       if (!blockId) return;
       useWorksheetStore.getState().requestBlockSelection(undefined);
@@ -5598,7 +5630,7 @@ export function Preview({
     return useWorksheetStore.subscribe((state, previous) => {
       if (state.blockSelectRequest !== previous.blockSelectRequest) take(state.blockSelectRequest);
     });
-  }, [setSelectedBlockId]);
+  }, [setSelectedBlockId, measureOnly]);
 
   /*
    * How much taller this element could get before running past its page. Measured off
@@ -7565,6 +7597,17 @@ export function Preview({
     // twice. `composition` itself is intentionally not a dependency — see above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compositionKey, onPagesChange]);
+
+  // Where the sheets begin, for the `.docx`'s page breaks: only from a settled, current
+  // measurement, so a cold mount's everything-on-sheet-1 is never reported.
+  const starts = useMemo(() => pageStartsOf({ pages, openedBy, fragments }), [pages, openedBy, fragments]);
+  const startsReady = measurementsSettled && isFresh();
+  const startsKey = starts.map((start) => `${start.key}:${start.node}`).join("|");
+  useEffect(() => {
+    if (startsReady) onPageStarts?.(starts);
+    // Keyed on the flattened starts, as the composition is above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startsKey, startsReady, onPageStarts]);
 
   /*
    * The header and footer live in the margin, not in the text column.
