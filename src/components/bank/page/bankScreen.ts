@@ -29,18 +29,24 @@ const words = (lang: UiLanguage) => resolveMessages(M, lang);
 /**
  * All topics (the landing page), one topic or every question as a review page (`search`
  * when it was opened by typing in the bar), the untagged questions one at a time, or the
- * 題型 manage page (scoped to a topic when opened from one).
+ * 題型 manage page (scoped to a topic when opened from one), or its sort board.
  */
 export type BankLevel =
   | { kind: 'topics' }
   | { kind: 'review'; topic: TopicPick; search?: boolean }
   | { kind: 'untagged' }
-  | { kind: 'patterns'; topic?: string };
+  | { kind: 'patterns'; topic?: string }
+  /** The 題型 sort board for a coarse topic (`PatternSortBoard`). */
+  | { kind: 'sort'; topic: string };
 
 export const TOPICS_LEVEL: BankLevel = { kind: 'topics' };
 
-/** Esc and "← Topics": a review, the tagging mode or the 題型 page goes back to the topics; the topics go home. */
+/**
+ * Esc and "← Topics": a review, the tagging mode or the 題型 page goes back to the topics;
+ * the sort board to the 題型 page; the topics go home.
+ */
 export function levelUp(level: BankLevel): BankLevel | 'home' {
+  if (level.kind === 'sort') return { kind: 'patterns' };
   return level.kind === 'topics' ? 'home' : TOPICS_LEVEL;
 }
 
@@ -68,6 +74,9 @@ export function parseLevel(raw: string | null | undefined): BankLevel {
     if (value.kind === 'patterns') {
       return typeof value.topic === 'string' && topicOf(value.topic) ? { kind: 'patterns', topic: value.topic } : { kind: 'patterns' };
     }
+    if (value.kind === 'sort' && typeof value.topic === 'string' && topicOf(value.topic) && !topicOf(value.topic)?.parent) {
+      return { kind: 'sort', topic: value.topic };
+    }
     if (value.kind === 'review' && typeof value.topic === 'string') {
       if (value.topic === 'all' || topicOf(value.topic)) return { kind: 'review', topic: value.topic };
     }
@@ -80,6 +89,7 @@ export function parseLevel(raw: string | null | undefined): BankLevel {
 export function serializeLevel(level: BankLevel): string {
   if (level.kind === 'review') return level.search ? JSON.stringify(TOPICS_LEVEL) : JSON.stringify({ kind: 'review', topic: level.topic });
   if (level.kind === 'patterns') return JSON.stringify(level.topic ? { kind: 'patterns', topic: level.topic } : { kind: 'patterns' });
+  if (level.kind === 'sort') return JSON.stringify({ kind: 'sort', topic: level.topic });
   return JSON.stringify({ kind: level.kind });
 }
 

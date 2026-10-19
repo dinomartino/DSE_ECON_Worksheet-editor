@@ -13,6 +13,13 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Sort your questions into 題型 on one board.** The 題型 map now opens on your own
+  topics: pick one (it suggests where most questions still need a 題型), tick the questions
+  that are alike, type a name and press Enter. That makes the 題型 and files them in one go.
+  After that, press 1–9 to send more questions into a 題型, and Z to undo. The map stays
+  calm as you go: topics you have started get a box per sub-topic, the rest sit on one
+  line. Sub-topic names on the map follow the interface language.
+  <!-- zh: **在同一頁把題目分成不同題型。** 題型一覽現在會從你自己的課題開始：選一個課題（會建議待分類題目最多的課題），剔選相似的題目，輸入名稱再按 Enter，便會同時建立題型並把題目歸入其中。之後可按 1–9 把更多題目分類到該題型，按 Z 復原。分類期間一覽保持簡潔：已開始的課題按子課題分格顯示，其餘課題列在同一行。一覽上的子課題名稱會跟隨介面語言。 -->
 - **"For examiner's use" marks grid on the cover.** Tick **Marks grid for the examiner** in
   Setup → Cover to print a box like the one on HKEAA papers: each question's number and
   full marks, an empty box for the score, and the Total. It updates itself as you add,

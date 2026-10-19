@@ -12,9 +12,12 @@ import {
   removePatternEdit,
   renamePatternEdit,
   rowPattern,
-  rowPatterns,
+  sortIntoEdit,
+  sortProgress,
   subTopicTallies,
   setPatternsEdit,
+  topicsToSort,
+  unsortEdit,
   thenEdit,
   type PatternId,
   type PatternItem,
@@ -114,8 +117,9 @@ import {
 } from './partTopics';
 import { stateOfRow } from '@/library/sharedTags';
 import { PatternsPage } from './PatternsPage';
+import { PatternSortBoard, type SortRequest, type UnsortRequest } from './PatternSortBoard';
 import { BANK_SCREEN_MESSAGES } from './QuestionBankScreen.messages';
-import { topicName, topicTitle } from './topicText';
+import { chromeTopicName, topicName, topicTitle } from './topicText';
 import {
   bulkTopicEdit,
   copyWrites,
@@ -123,6 +127,7 @@ import {
   removeTopics,
   replaceTopics,
   thenState,
+  wholeQuestion,
   writeTags,
   type BulkTopicMode,
   type StateEdit,
@@ -308,6 +313,7 @@ export function QuestionBankScreen({
   const classUsage = useMemo(() => latestClassUsage(rows, lang), [rows, lang]);
   const patternItems = useMemo(() => listPatterns(rows, registry), [rows, registry]);
   const patternTallies = useMemo(() => subTopicTallies(rows), [rows]);
+  const sorting = useMemo(() => sortProgress(rows), [rows]);
   /** Each coarse topic's 題型, for its card: every one the 題型 map lists there, used or not, so the two agree. */
   const patternsByTopic = useMemo(() => {
     const map = new Map<string, PatternItem[]>();
@@ -655,11 +661,20 @@ export function QuestionBankScreen({
     setLevel({ kind: 'review', topic: item.topic });
     setFilters((current) => ({ ...current, text: '', pattern: { topic: item.topic, typeId: item.typeId, name: item.name } }));
   };
-  /** A sub-topic's questions, landing on the first one with no 題型 there. */
-  const reviewSubTopic = (code: string) => {
-    setLevel({ kind: 'review', topic: code });
-    const first = rows.find((row) => row.tags.includes(code) && rowPatterns(row, code).length === 0);
-    if (first) setFocusKey(rowKey(first));
+  /**
+   * The sort board: the 題型 is registered under each of the questions' types, then every
+   * copy of each question takes it where it holds the sub-topic (`sortIntoEdit`). Undo
+   * clears it again (they had none: only unsorted questions are on the board) and drops
+   * the names that sort created.
+   */
+  const sortIntoPattern = (request: SortRequest) => {
+    void registerPatterns(request.typeIds.map((typeId) => ({ topic: request.topic, typeId, name: request.name })));
+    void writeTopics(copyWrites(rows, request.roots), wholeQuestion(sortIntoEdit(request.topic, request.name)));
+  };
+  const unsortPattern = (request: UnsortRequest) => {
+    void writeTopics(copyWrites(rows, request.roots), everywhere(unsortEdit(request.topic))).then(() =>
+      Promise.all(request.created.map((pattern) => unregisterPattern(pattern))),
+    );
   };
   const toggleChosen = (code: string) => {
     if (!tagDraft) return;
@@ -735,7 +750,7 @@ export function QuestionBankScreen({
       return;
     }
     if (typing) return;
-    if (event.key === '/' && level.kind !== 'untagged' && level.kind !== 'patterns') {
+    if (event.key === '/' && level.kind !== 'untagged' && level.kind !== 'patterns' && level.kind !== 'sort') {
       event.preventDefault();
       searchRef.current?.focus();
       return;
@@ -834,12 +849,15 @@ export function QuestionBankScreen({
       );
     }
     if (level.kind === 'patterns') return <h1 className="text-[13.5px] font-semibold text-ink">{m.patternsTitle}</h1>;
+    if (level.kind === 'sort') {
+      return <h1 className="text-[13.5px] font-semibold text-ink">{m.sortTitle(level.topic, chromeTopicName(level.topic, lang))}</h1>;
+    }
     const found = level.topic === 'all' ? undefined : topicOf(level.topic);
     return (
       <h1 className="min-w-0 truncate text-[13.5px] text-ink-muted">
         {found ? (
           <>
-            <b className="font-semibold text-ink">{found.code}</b> {topicName(found.code, language, 'wide')}
+            <b className="font-semibold text-ink">{found.parent ?? found.code}</b> {topicName(found.code, language, 'wide')}
           </>
         ) : (
           <b className="font-semibold text-ink">{level.search ? m.searchResults : m.allQuestionsTitle}</b>
@@ -879,13 +897,13 @@ export function QuestionBankScreen({
           onClick={level.kind === 'topics' ? goHome : goUp}
           className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[13px] text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-sunken hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          ← {level.kind === 'topics' ? m.home : level.kind === 'patterns' ? m.bankBack : m.topicsBack}
+          ← {level.kind === 'topics' ? m.home : level.kind === 'patterns' ? m.bankBack : level.kind === 'sort' ? m.patternsBack : m.topicsBack}
         </button>
         {crumb}
         <span className="flex-1" />
         {level.kind === 'untagged' ? (
           <span className="text-[12px] text-ink-subtle">{m.tagHint}</span>
-        ) : level.kind === 'patterns' ? null : (
+        ) : level.kind === 'patterns' || level.kind === 'sort' ? null : (
           <label className="relative w-[min(340px,32vw)] min-w-[200px]">
             <span className="sr-only">{m.searchLabel}</span>
             <input
@@ -922,10 +940,10 @@ export function QuestionBankScreen({
             onRun={runAi}
           />
         )}
-        {(level.kind === 'topics' || level.kind === 'review') && (
+        {(level.kind === 'topics' || level.kind === 'review') && rows.length > 0 && (
           <button
             type="button"
-            onClick={() => setLevel({ kind: 'patterns', topic: level.kind === 'review' && topicOf(level.topic) ? level.topic : undefined })}
+            onClick={() => setLevel({ kind: 'patterns' })}
             title={m.patternsButtonTitle}
             className="shrink-0 cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink-muted transition-colors duration-150 ease-out-soft hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
@@ -1044,6 +1062,7 @@ export function QuestionBankScreen({
         <PatternsPage
           items={patternItems}
           tallies={patternTallies}
+          progress={sorting}
           hasQuestions={rows.length > 0}
           scope={level.topic}
           busy={busy}
@@ -1054,14 +1073,30 @@ export function QuestionBankScreen({
           onMerge={mergePattern}
           onDelete={deletePattern}
           onShow={showPattern}
-          onReview={reviewSubTopic}
+          onSort={(code) => setLevel({ kind: 'sort', topic: code })}
           onStartNew={onStartNew}
+        />
+      )}
+
+      {level.kind === 'sort' && (
+        <PatternSortBoard
+          key={level.topic}
+          topic={level.topic}
+          rows={rows}
+          items={patternItems}
+          language={language}
+          busy={busy}
+          nextTopic={topicsToSort(sorting, 9).find((entry) => entry.topic !== level.topic)?.topic}
+          onSortInto={sortIntoPattern}
+          onUnsort={unsortPattern}
+          onNext={(code) => setLevel({ kind: 'sort', topic: code })}
+          onDone={() => setLevel({ kind: 'patterns' })}
         />
       )}
       <BankAiBar run={bankAi} left={level.kind === 'review' ? (railHidden ? 52 : 300) : 0} />
       </div>
 
-      {pickedRows.length > 0 && level.kind !== 'untagged' && level.kind !== 'patterns' && (
+      {pickedRows.length > 0 && level.kind !== 'untagged' && level.kind !== 'patterns' && level.kind !== 'sort' && (
         <SelectionTray
           rows={pickedRows}
           target={target}

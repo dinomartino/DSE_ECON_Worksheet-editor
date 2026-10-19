@@ -3,16 +3,23 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
-import { likelyType, startingSubTopics, subTopicList, type PatternId, type PatternItem, type SubTopicTally } from '@/library/patterns';
+import {
+  likelyType,
+  subTopicList,
+  topicsToSort,
+  type PatternId,
+  type PatternItem,
+  type SortProgress,
+  type SubTopicTally,
+} from '@/library/patterns';
 import { cleanPatternName, matchPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
-import { TOPICS, topicNamesFor, type Topic } from '@/model/topics';
-import { useMessages } from '@/i18n/language';
-import { useViewLanguage } from '@/settings/paperLanguage';
+import { TOPICS, type Topic } from '@/model/topics';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { listQuestionTypes } from '@/registry';
 import { escapeClears } from '../escapeClears';
 import { typeName } from './bankPage';
 import { PATTERNS_PAGE_MESSAGES } from './PatternsPage.messages';
-import { topicName } from './topicText';
+import { chromeTopicName } from './topicText';
 
 type Confirm = { kind: 'merge'; item: PatternItem; into: PatternItem } | { kind: 'delete'; item: PatternItem };
 
@@ -21,17 +28,29 @@ const SELECT =
 const LINK =
   'cursor-pointer text-accent-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
 
+/** A sub-topic's coarse letter: "C" for C.ped. */
+const letterOf = (code: string) => (code.includes('.') ? code.slice(0, code.indexOf('.')) : code);
+
+/** Topic names here follow the interface (`chromeTopicName`): the page holds no paper. */
+function useTopicName(): (code: string) => string {
+  const ui = useUiLanguage();
+  return (code) => chromeTopicName(code, ui);
+}
+
 /**
- * The 題型 map (question patterns): every sub-topic with questions or 題型, each with one
- * list (MCQ and LQ together, a type badge on each line), how many of its questions have
- * none yet, and "+ New 題型 here", so a sub-topic is never chosen from the full list. On
- * first run, an intro, a greyed example (chrome, from the catalogue: we ship no list) and
- * the sub-topics with the most questions to start on. Rename, merge and delete rewrite
- * every copy of every question that uses the 題型 (the caller does the writing).
+ * The 題型 map (question patterns). One layout whatever is sorted, so naming the first
+ * 題型 never turns the page into another (`docs/design/question-types-empty-state.md`):
+ * a heading with where the library stands, then, with nothing named yet, the topics to
+ * start sorting and an example of a sorted sub-topic (chrome, from the catalogue: we ship
+ * no list); once some 題型 exist, the topics to keep going on, a box per sub-topic with
+ * 題型 (one list, type badges), and every other topic on one line. Sorting happens on the
+ * sort board (`onSort`, a coarse topic). Rename, merge and delete rewrite every copy of
+ * every question that uses the 題型 (the caller does the writing).
  */
 export function PatternsPage({
   items,
   tallies,
+  progress,
   hasQuestions,
   scope,
   busy,
@@ -42,13 +61,15 @@ export function PatternsPage({
   onMerge,
   onDelete,
   onShow,
-  onReview,
+  onSort,
   onStartNew,
 }: {
   /** Every 題型 (`listPatterns`), unscoped. */
   items: PatternItem[];
   /** Each sub-topic's questions and how many lack a 題型 (`subTopicTallies`). */
   tallies: ReadonlyMap<string, SubTopicTally>;
+  /** Where the sorting stands, per coarse topic (`sortProgress`). */
+  progress: SortProgress;
   /** The library holds any question at all. */
   hasQuestions: boolean;
   /** A coarse or fine topic code; undefined = all. */
@@ -63,8 +84,8 @@ export function PatternsPage({
   onDelete: (item: PatternItem) => void;
   /** Review the questions filed under it. */
   onShow: (item: PatternItem) => void;
-  /** Review a sub-topic's questions, starting at one without a 題型. */
-  onReview: (topic: string) => void;
+  /** Open the sort board for a coarse topic. */
+  onSort: (topic: string) => void;
   onStartNew: () => void;
 }) {
   const m = useMessages(PATTERNS_PAGE_MESSAGES);
@@ -79,7 +100,7 @@ export function PatternsPage({
     [scope],
   );
   const scoped = items.filter((item) => subTopics.some((child) => child.code === item.topic));
-  const firstRun = items.length === 0;
+  const named = new Set(items.map((item) => `${item.topic}\n${item.name.toLowerCase()}`)).size;
   const box = {
     items,
     tallies,
@@ -88,7 +109,7 @@ export function PatternsPage({
     onCreate,
     onRename,
     onShow,
-    onReview,
+    onSort,
     onMerge: (item: PatternItem, into: PatternItem) => setConfirm({ kind: 'merge', item, into }),
     onDelete: (item: PatternItem) => setConfirm({ kind: 'delete', item }),
   };
@@ -101,23 +122,43 @@ export function PatternsPage({
             {m.readOnly}
           </p>
         )}
-        <p className="max-w-[720px] text-[13px] leading-relaxed text-ink-muted" data-patterns-intro>
-          {m.intro}
-        </p>
+        <header className="grid max-w-[760px] gap-1.5">
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <h2 className="font-display text-[22px] font-normal leading-tight text-ink">{m.heading}</h2>
+            {progress.questions > 0 && (
+              <p className="text-[12.5px] tabular-nums text-ink-subtle" data-patterns-summary>
+                {m.status(progress.questions, progress.sorted, named)}
+              </p>
+            )}
+          </div>
+          <p className="text-[13px] leading-relaxed text-ink-muted" data-patterns-intro>
+            {m.intro}
+          </p>
+        </header>
 
-        {firstRun ? (
-          <FirstRun
-            hasQuestions={hasQuestions}
-            tallies={tallies}
-            subTopics={TOPICS.flatMap((topic) => topic.children)}
-            box={box}
-            onStartNew={onStartNew}
-          />
+        {!hasQuestions ? (
+          <div className="grid gap-5" data-patterns-empty-library>
+            <div>
+              <p className="max-w-[560px] text-[13px] leading-relaxed text-ink-muted">{m.emptyLibrary}</p>
+              <Button className="mt-2.5" variant="primary" onClick={onStartNew}>
+                {m.startClassroom}
+              </Button>
+            </div>
+            <Example />
+          </div>
+        ) : progress.questions === 0 ? (
+          <div className="grid gap-5">
+            <p className="max-w-[560px] text-[13px] leading-relaxed text-ink-muted">{m.noSubTopic}</p>
+            <Example />
+          </div>
+        ) : items.length === 0 ? (
+          <Start progress={progress} tallies={tallies} onSort={onSort} />
         ) : (
           <InUse
             scoped={scoped}
             subTopics={subTopics}
             scope={scope}
+            progress={progress}
             showEmpty={showEmpty}
             onShowEmpty={setShowEmpty}
             onScope={onScope}
@@ -195,116 +236,134 @@ interface BoxProps {
   onMerge: (item: PatternItem, into: PatternItem) => void;
   onDelete: (item: PatternItem) => void;
   onShow: (item: PatternItem) => void;
-  onReview: (topic: string) => void;
+  onSort: (topic: string) => void;
 }
 
-/** No 題型 yet: what one is, what a filled map looks like, and where to start. */
-function FirstRun({
-  hasQuestions,
-  tallies,
-  subTopics,
-  box,
-  onStartNew,
-}: {
-  hasQuestions: boolean;
-  tallies: ReadonlyMap<string, SubTopicTally>;
-  subTopics: Topic[];
-  box: BoxProps;
-  onStartNew: () => void;
-}) {
+/** How many of a coarse topic's sub-topics hold questions to sort. */
+const subTopicsToSort = (tallies: ReadonlyMap<string, SubTopicTally>, topic: string) =>
+  [...tallies.values()].filter((tally) => tally.without > 0 && letterOf(tally.topic) === topic).length;
+
+/** Nothing named yet: the topics to start on (the first one the page's primary action), then the example. */
+function Start({ progress, tallies, onSort }: { progress: SortProgress; tallies: ReadonlyMap<string, SubTopicTally>; onSort: (topic: string) => void }) {
   const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  const starts = startingSubTopics(tallies);
-  const [naming, setNaming] = useState(false);
+  const name = useTopicName();
+  const starts = topicsToSort(progress);
+  const rest = progress.topics.filter((entry) => entry.notSorted > 0 && !starts.includes(entry));
   return (
     <>
-      <Example />
-      {!hasQuestions ? (
-        <div data-patterns-empty-library>
-          <p className="max-w-[560px] text-[13px] leading-relaxed text-ink-muted">{m.emptyLibrary}</p>
-          <button type="button" onClick={onStartNew} className={`mt-2 text-[12.5px] font-medium ${LINK}`}>
-            {m.startClassroom}
-          </button>
+      <section aria-label={m.pickTopic} className="grid gap-2.5" data-patterns-starts>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="text-[13.5px] font-semibold text-ink">{m.pickTopic}</h3>
+          <span className="text-[11.5px] text-ink-subtle">{m.mostFirst}</span>
         </div>
-      ) : (
-        <>
-          {starts.length > 0 ? (
-            <section aria-label={m.startHere} className="grid gap-2" data-patterns-starts>
-              <h2 className="text-[13.5px] font-semibold text-ink">{m.startHere}</h2>
-              <p className="-mt-1 max-w-[720px] text-[12.5px] text-ink-subtle">{m.startHint}</p>
-              <ToSortList topics={starts.map((tally) => tally.topic)} {...box} />
-            </section>
-          ) : (
-            <p className="max-w-[560px] text-[13px] leading-relaxed text-ink-muted">{m.noSubTopic}</p>
-          )}
-          <div>
-            {naming ? (
-              <NewPattern subTopics={subTopics} {...box} onCancel={() => setNaming(false)} />
-            ) : (
-              <p className="text-[12.5px] text-ink-subtle">
-                {m.nameAny}{' '}
-                <button type="button" onClick={() => setNaming(true)} className={`font-medium ${LINK}`}>
-                  {m.newPattern}
-                </button>
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {starts.map((entry, i) => (
+            <li
+              key={entry.topic}
+              className="flex flex-col gap-3 rounded-[12px] border border-line bg-surface-raised px-4 pb-3.5 pt-3"
+              data-pattern-start={entry.topic}
+            >
+              <p className="flex items-baseline gap-2 text-ink">
+                <span className="font-display text-[20px] leading-none">{entry.topic}</span>
+                <span className="min-w-0 text-[13.5px] font-semibold">{name(entry.topic)}</span>
               </p>
-            )}
-          </div>
-        </>
-      )}
+              <p className="-mt-1.5 text-[12px] tabular-nums text-ink-subtle">
+                {m.topicCount(entry.notSorted, subTopicsToSort(tallies, entry.topic))}
+              </p>
+              <Button
+                className="self-start"
+                variant={i === 0 ? 'primary' : 'default'}
+                aria-label={m.sortTopicLabel(name(entry.topic))}
+                onClick={() => onSort(entry.topic)}
+              >
+                {m.sortTopic(entry.topic)}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        {rest.length > 0 && <OtherTopics topics={rest.map((entry) => [entry.topic, entry.notSorted])} onSort={onSort} />}
+      </section>
+      <Example />
     </>
+  );
+}
+
+/** Topics on one line, each a link to its sort board: "Other topics: A 2 · B 3". */
+function OtherTopics({ topics, onSort }: { topics: [string, number][]; onSort: (topic: string) => void }) {
+  const m = useMessages(PATTERNS_PAGE_MESSAGES);
+  const name = useTopicName();
+  return (
+    <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12.5px] text-ink-subtle" data-patterns-other>
+      <span>{m.otherTopics}</span>
+      {topics.map(([topic, n]) => (
+        <button key={topic} type="button" onClick={() => onSort(topic)} title={m.sortTopicLabel(name(topic))} className={LINK}>
+          <span className="font-medium">{topic}</span> <span className="tabular-nums">{n}</span>
+        </button>
+      ))}
+    </p>
   );
 }
 
 /** The sub-topic the example shows: price elasticity of demand, the one every teacher sets. */
 const EXAMPLE_TOPIC = 'C.ped';
 
-/** The greyed sample of a filled sub-topic: chrome, never data. */
+/**
+ * A sorted sub-topic, as an illustration: chrome, never data, and drawn as a card rather
+ * than greyed (a greyed card reads as disabled). Its names show how teachers shape them.
+ */
 function Example() {
   const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  const view = useViewLanguage();
+  const name = useTopicName();
   // The registry's first two types (MCQ, LQ), named as every badge names them.
   const [first, second = first] = listQuestionTypes().map((type) => typeName(type.id));
-  const lines: [string, string, number][] = [
-    [m.example1, first, 4],
-    [m.example2, first, 3],
-    [m.example2, second, 1],
-    [m.example3, second, 2],
+  const lines: [string, string[], string][] = [
+    [m.example1, [first], '4'],
+    [m.example2, [first, second], '3 · 1'],
+    [m.example3, [second], '2'],
   ];
   return (
     <figure
       aria-label={m.example}
       data-patterns-example
-      className="max-w-[560px] select-none rounded-[10px] border border-dashed border-line-strong bg-surface-sunken/60 px-4 pb-3 pt-2.5 text-ink-subtle"
+      className="max-w-[560px] select-none rounded-[12px] border border-line bg-surface-raised px-4 pb-3 pt-2.5"
     >
-      <figcaption className="mb-1.5 flex items-baseline justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.08em]">
+      <figcaption className="mb-1.5 flex items-baseline justify-between gap-2 text-[11.5px] font-semibold text-ink-muted">
         <span>{m.example}</span>
-        <span className="font-normal normal-case tracking-normal">{m.exampleNote}</span>
+        <span className="rounded bg-surface-sunken px-1.5 py-px text-[10.5px] font-medium text-ink-subtle">{m.exampleNote}</span>
       </figcaption>
-      <p className="text-[12.5px] text-ink-muted">
-        <span className="tabular-nums">{EXAMPLE_TOPIC.slice(0, EXAMPLE_TOPIC.indexOf('.'))}</span> ·{' '}
-        <span className="font-medium">{topicName(EXAMPLE_TOPIC, view)}</span>
+      <p className="text-[12.5px] text-ink">
+        <span className="tabular-nums text-ink-subtle">{letterOf(EXAMPLE_TOPIC)}</span> ·{' '}
+        <span className="font-medium">{name(EXAMPLE_TOPIC)}</span>
       </p>
-      <ul className="mt-1 text-[12px]">
-        {lines.map(([name, type, count]) => (
-          <li key={`${name} ${type}`} className="flex items-center gap-2 border-b border-line/60 py-1 last:border-b-0">
-            <span className="min-w-0 flex-1 truncate">{name}</span>
-            <TypeBadge>{type}</TypeBadge>
-            <span className="w-[86px] shrink-0 text-right tabular-nums">{m.questionCount(count)}</span>
+      <ul className="mt-1 text-[12.5px] text-ink">
+        {lines.map(([label, badges, count]) => (
+          <li key={label} className="flex items-center gap-2 border-b border-line/60 py-1.5 last:border-b-0">
+            <span className="min-w-0 flex-1 truncate">{label}</span>
+            {badges.map((badge) => (
+              <TypeBadge key={badge}>{badge}</TypeBadge>
+            ))}
+            <span className="w-[48px] shrink-0 text-right tabular-nums text-ink-muted">{count}</span>
           </li>
         ))}
-        <li className="flex items-center gap-2 py-1">
-          <span className="min-w-0 flex-1 italic">{m.noPatternLine}</span>
-          <span className="w-[86px] shrink-0 text-right tabular-nums">5</span>
+        <li className="flex items-center gap-2 py-1.5 text-ink-subtle">
+          <span className="min-w-0 flex-1">{m.noPatternLine}</span>
+          <span className="w-[48px] shrink-0 text-right tabular-nums">5</span>
         </li>
       </ul>
     </figure>
   );
 }
 
-/** 題型 in use: per topic, a box per sub-topic. */
+/**
+ * Some 題型 named: the topics to keep going on, then per topic with 題型 a box per
+ * sub-topic that has some, and that topic's other sub-topics on one line. Topics with
+ * none share one line at the end: never a row per sub-topic.
+ */
 function InUse({
   scoped,
   subTopics,
   scope,
+  progress,
   showEmpty,
   onShowEmpty,
   onScope,
@@ -313,173 +372,138 @@ function InUse({
   scoped: PatternItem[];
   subTopics: Topic[];
   scope: string | undefined;
+  progress: SortProgress;
   showEmpty: boolean;
   onShowEmpty: (show: boolean) => void;
   onScope: (topic: string | undefined) => void;
   box: BoxProps;
 }) {
   const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  const view = useViewLanguage();
-  const inUse = scoped.filter((item) => item.count > 0).length;
-  const listed = subTopics.filter(
-    (child) => showEmpty || scoped.some((item) => item.topic === child.code) || (box.tallies.get(child.code)?.questions ?? 0) > 0,
+  const name = useTopicName();
+  const withPatterns = (code: string) => scoped.some((item) => item.topic === code);
+  const hasQuestions = (code: string) => (box.tallies.get(code)?.questions ?? 0) > 0;
+  const parents = TOPICS.filter((parent) =>
+    subTopics.some((child) => child.parent === parent.code && (withPatterns(child.code) || (showEmpty && !hasQuestions(child.code)))),
   );
-  const parents = TOPICS.filter((parent) => listed.some((child) => child.parent === parent.code));
+  const keepGoing = topicsToSort(progress);
+  const others = progress.topics.filter(
+    (entry) =>
+      entry.notSorted > 0 &&
+      !parents.some((parent) => parent.code === entry.topic) &&
+      !keepGoing.includes(entry) &&
+      (!scope || letterOf(scope) === entry.topic),
+  );
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line pb-3">
-        <p className="text-[13px] tabular-nums text-ink" data-patterns-summary>
-          {m.summary(inUse, scoped.length - inUse)}
-        </p>
-        <div className="flex flex-wrap items-center gap-4">
-          <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-subtle">
-            <input
-              type="checkbox"
-              checked={showEmpty}
-              onChange={(event) => onShowEmpty(event.target.checked)}
-              className="h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
-            />
-            {m.showEmpty}
-          </label>
-          <label className="flex items-center gap-2 text-[12px] text-ink-subtle">
-            {m.show}
-            <select value={scope ?? ''} onChange={(event) => onScope(event.target.value || undefined)} className={`${SELECT} max-w-[280px]`}>
-              <option value="">{m.allTopics}</option>
-              {TOPICS.map((topic) => (
-                <optgroup key={topic.code} label={`${topic.code} · ${topicName(topic.code, view)}`}>
-                  <option value={topic.code}>{m.allSubTopics(topic.code)}</option>
-                  {topic.children.map((child) => (
-                    <option key={child.code} value={child.code}>
-                      {topicName(child.code, view)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-        </div>
+      {keepGoing.length > 0 && (
+        <section aria-label={m.keepGoing} className="grid gap-2" data-patterns-keep-going>
+          <h3 className="text-[13.5px] font-semibold text-ink">{m.keepGoing}</h3>
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {keepGoing.map((entry, i) => (
+              <li key={entry.topic} className="flex items-center gap-3 rounded-[10px] border border-line bg-surface-raised px-3.5 py-2.5">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12.5px] text-ink">
+                    <span className="font-medium">{entry.topic}</span> {name(entry.topic)}
+                  </span>
+                  <span className="block text-[11.5px] tabular-nums text-ink-subtle">{m.notSortedIn(entry.notSorted)}</span>
+                </span>
+                <Button size="sm" variant={i === 0 ? 'primary' : 'default'} aria-label={m.sortTopicLabel(name(entry.topic))} onClick={() => box.onSort(entry.topic)}>
+                  {m.sortTopic(entry.topic)}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <div className="flex flex-wrap items-center justify-end gap-4 border-b border-line pb-3">
+        <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-subtle">
+          <input
+            type="checkbox"
+            checked={showEmpty}
+            onChange={(event) => onShowEmpty(event.target.checked)}
+            className="h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
+          />
+          {m.showEmpty}
+        </label>
+        <label className="flex items-center gap-2 text-[12px] text-ink-subtle">
+          {m.show}
+          <select value={scope ?? ''} onChange={(event) => onScope(event.target.value || undefined)} className={`${SELECT} max-w-[280px]`}>
+            <option value="">{m.allTopics}</option>
+            {TOPICS.map((topic) => (
+              <optgroup key={topic.code} label={`${topic.code} · ${name(topic.code)}`}>
+                <option value={topic.code}>{m.allSubTopics(topic.code)}</option>
+                {topic.children.map((child) => (
+                  <option key={child.code} value={child.code}>
+                    {name(child.code)}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
       </div>
-      {listed.length === 0 ? (
-        <p className="text-[13px] text-ink-muted">{m.noneIn(scope ? topicName(scope, view) : '')}</p>
-      ) : (
-        parents.map((parent) => (
-          <section key={parent.code} aria-label={`${parent.code} ${topicName(parent.code, view)}`} className="grid gap-2.5">
-            <h2 className="flex items-baseline gap-2 text-[14px] text-ink">
+      {parents.length === 0 && others.length === 0 && (
+        <p className="text-[13px] text-ink-muted">{m.noneIn(scope ? name(scope) : '')}</p>
+      )}
+      {parents.map((parent) => {
+        const children = subTopics.filter((child) => child.parent === parent.code);
+        const boxes = children.filter((child) => withPatterns(child.code) || (showEmpty && !hasQuestions(child.code)));
+        const toSort = children.filter((child) => !withPatterns(child.code) && (box.tallies.get(child.code)?.without ?? 0) > 0);
+        return (
+          <section key={parent.code} aria-label={`${parent.code} ${name(parent.code)}`} className="grid gap-2.5">
+            <h3 className="flex items-baseline gap-2 text-[14px] text-ink">
               <span className="font-display text-[18px] leading-none">{parent.code}</span>
-              <span className="font-semibold">{topicName(parent.code, view)}</span>
-            </h2>
-            {/* Sub-topics with 題型 get a box each; the rest, still to sort, share one compact list. */}
-            {listed.some((child) => child.parent === parent.code && scoped.some((item) => item.topic === child.code)) && (
+              <span className="font-semibold">{name(parent.code)}</span>
+            </h3>
+            {boxes.length > 0 && (
               <div className="grid items-start gap-3 lg:grid-cols-2">
-                {listed
-                  .filter((child) => child.parent === parent.code && scoped.some((item) => item.topic === child.code))
-                  .map((child) => (
-                    <SubTopicBox key={child.code} topic={child.code} {...box} />
-                  ))}
+                {boxes.map((child) => (
+                  <SubTopicBox key={child.code} topic={child.code} {...box} />
+                ))}
               </div>
             )}
-            <ToSortList
-              topics={listed
-                .filter((child) => child.parent === parent.code && !scoped.some((item) => item.topic === child.code))
-                .map((child) => child.code)}
-              {...box}
-            />
+            {toSort.length > 0 && (
+              <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12.5px] text-ink-subtle" data-patterns-to-sort={parent.code}>
+                <span>{m.stillToSort}</span>
+                {toSort.map((child) => (
+                  <span key={child.code} className="text-ink-muted" data-pattern-topic={child.code}>
+                    {name(child.code)} <span className="tabular-nums text-ink-subtle">{box.tallies.get(child.code)?.without}</span>
+                  </span>
+                ))}
+                <button type="button" onClick={() => box.onSort(parent.code)} aria-label={m.sortTopicLabel(name(parent.code))} className={`font-medium ${LINK}`}>
+                  {m.sortTopic(parent.code)}
+                </button>
+              </p>
+            )}
           </section>
-        ))
-      )}
+        );
+      })}
+      {others.length > 0 && <OtherTopics topics={others.map((entry) => [entry.topic, entry.notSorted])} onSort={box.onSort} />}
     </>
   );
 }
 
-/** Sub-topics with no 題型 yet, a line each: how many questions, Review these, + New 題型 here. */
-function ToSortList({ topics, ...box }: BoxProps & { topics: string[] }) {
+/** One sub-topic: its 題型 (one list, type badges), the questions not sorted, and "+ New 題型 here". */
+function SubTopicBox({ topic, items, tallies, types, busy, onCreate, onRename, onMerge, onDelete, onShow, onSort }: BoxProps & { topic: string }) {
   const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  if (topics.length === 0) return null;
-  return (
-    <ul aria-label={m.noPatternYet} className="max-w-[760px] rounded-[10px] border border-line bg-surface-raised px-4 py-1" data-patterns-to-sort>
-      {topics.map((topic) => (
-        <ToSortLine key={topic} topic={topic} {...box} />
-      ))}
-    </ul>
-  );
-}
-
-function ToSortLine({ topic, tallies, types, busy, onCreate, onReview }: BoxProps & { topic: string }) {
-  const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  const view = useViewLanguage();
-  const [adding, setAdding] = useState(false);
-  const tally = tallies.get(topic);
-  return (
-    <li className="border-b border-line/60 py-1.5 last:border-b-0" data-pattern-topic={topic}>
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[12.5px]">
-        <span className="min-w-0 flex-1 truncate text-ink">
-          <span className="mr-1.5 tabular-nums text-ink-subtle">{topic.slice(0, topic.indexOf('.'))}</span>
-          <span className="font-medium">{topicName(topic, view)}</span>
-        </span>
-        <span className="shrink-0 text-[11.5px] tabular-nums text-ink-subtle">{m.questionCount(tally?.questions ?? 0)}</span>
-        {(tally?.without ?? 0) > 0 && (
-          <button type="button" onClick={() => onReview(topic)} title={m.reviewTheseTitle} className={`shrink-0 text-[12px] ${LINK}`} data-pattern-none>
-            {m.reviewThese}
-          </button>
-        )}
-        {!adding && (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            aria-label={m.newIn(topicName(topic, view))}
-            className={`shrink-0 text-[12px] ${LINK}`}
-          >
-            {m.newHere}
-          </button>
-        )}
-      </div>
-      {adding && (
-        <NewHere
-          topic={topic}
-          types={types}
-          defaultType={likelyType(tally, types) ?? types[0]}
-          siblings={[]}
-          busy={busy}
-          onCreate={(pattern) => {
-            onCreate(pattern);
-            setAdding(false);
-          }}
-          onCancel={() => setAdding(false)}
-        />
-      )}
-    </li>
-  );
-}
-
-/** One sub-topic: its 題型 (one list, type badges), the questions without one, and "+ New 題型 here". */
-function SubTopicBox({ topic, items, tallies, types, busy, onCreate, onRename, onMerge, onDelete, onShow, onReview }: BoxProps & { topic: string }) {
-  const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  const view = useViewLanguage();
+  const name = useTopicName();
   const [adding, setAdding] = useState(false);
   const list = subTopicList(items, topic);
   const tally = tallies.get(topic);
   const without = tally?.without ?? 0;
-  const parent = TOPICS.find((entry) => entry.children.some((child) => child.code === topic));
-  const child = parent?.children.find((entry) => entry.code === topic);
   return (
     <section
-      aria-label={topicName(topic, view)}
+      aria-label={name(topic)}
       className="rounded-[10px] border border-line bg-surface-raised px-4 pb-2.5 pt-3"
       data-pattern-topic={topic}
     >
-      <h3 className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-[13px] text-ink">
+      <h4 className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-[13px] text-ink">
         <span className="flex min-w-0 items-baseline gap-x-2">
-          <span className="tabular-nums text-ink-subtle">{parent?.code}</span>
-          {child && topicNamesFor(view, 'wide') === 'both' ? (
-            <span className="min-w-0">
-              <span className="font-semibold">{child.en}</span> <span className="text-ink-subtle">{child.zh}</span>
-            </span>
-          ) : (
-            <span className="min-w-0 font-semibold">{topicName(topic, view)}</span>
-          )}
+          <span className="tabular-nums text-ink-subtle">{letterOf(topic)}</span>
+          <span className="min-w-0 font-semibold">{name(topic)}</span>
         </span>
         {tally && <span className="text-[11.5px] tabular-nums text-ink-subtle">{m.boxCounts(tally.questions, without)}</span>}
-      </h3>
+      </h4>
       <ul className="mt-1.5">
         {list.map((item) => (
           <PatternLine
@@ -491,14 +515,15 @@ function SubTopicBox({ topic, items, tallies, types, busy, onCreate, onRename, o
             onMerge={(into) => onMerge(item, into)}
             onDelete={() => onDelete(item)}
             onShow={() => onShow(item)}
+            onSort={(tally?.questions ?? 0) > 0 ? () => onSort(letterOf(topic)) : undefined}
           />
         ))}
         {without > 0 && (
           <li className="flex items-center gap-2 py-1.5 text-[12.5px]">
-            <span className="min-w-0 flex-1 italic text-ink-subtle">{m.noPatternLine}</span>
+            <span className="min-w-0 flex-1 text-ink-subtle">{m.noPatternLine}</span>
             <span className="shrink-0 tabular-nums text-ink-subtle">{without}</span>
-            <button type="button" onClick={() => onReview(topic)} title={m.reviewTheseTitle} className={`w-[118px] shrink-0 text-right text-[12px] ${LINK}`} data-pattern-none>
-              {m.reviewThese}
+            <button type="button" onClick={() => onSort(letterOf(topic))} className={`w-[118px] shrink-0 text-right text-[12px] ${LINK}`} data-pattern-none>
+              {m.sortThese}
             </button>
           </li>
         )}
@@ -520,7 +545,7 @@ function SubTopicBox({ topic, items, tallies, types, busy, onCreate, onRename, o
         <button
           type="button"
           onClick={() => setAdding(true)}
-          aria-label={m.newIn(topicName(topic, view))}
+          aria-label={m.newIn(name(topic))}
           className={`mt-1 rounded px-0.5 text-[12px] ${LINK}`}
         >
           {m.newHere}
@@ -546,6 +571,7 @@ function PatternLine({
   onMerge,
   onDelete,
   onShow,
+  onSort,
 }: {
   item: PatternItem;
   /** The other 題型 of the same sub-topic and type: what it can merge into. */
@@ -555,6 +581,8 @@ function PatternLine({
   onMerge: (into: PatternItem) => void;
   onDelete: () => void;
   onShow: () => void;
+  /** Open the sort board to file questions under it; absent when the sub-topic has none. */
+  onSort?: () => void;
 }) {
   const m = useMessages(PATTERNS_PAGE_MESSAGES);
   const [mode, setMode] = useState<'view' | 'actions' | 'rename' | 'merge'>('view');
@@ -677,8 +705,12 @@ function PatternLine({
             <button type="button" onClick={onShow} title={m.reviewTitle} className={`w-[92px] shrink-0 text-right tabular-nums ${LINK}`}>
               {m.questionsLink(item.count)}
             </button>
+          ) : onSort ? (
+            <button type="button" onClick={onSort} title={m.noQuestionsYet} className={`shrink-0 text-right text-[12px] ${LINK}`}>
+              {m.sortInto}
+            </button>
           ) : (
-            <span className="w-[92px] shrink-0 text-right text-ink-subtle">{m.notUsed}</span>
+            <span className="w-[92px] shrink-0 text-right text-ink-subtle">{m.noQuestionsYet}</span>
           )}
           <button
             type="button"
@@ -798,87 +830,6 @@ function NewHere({
         {m.cancel}
       </Button>
       <FormNote why={!clean ? m.typeName : undefined} exists={exists} close={close} />
-    </form>
-  );
-}
-
-/** Define a 題型 for any sub-topic, before any question uses it (first run only). */
-function NewPattern({
-  subTopics,
-  types,
-  items,
-  busy,
-  onCreate,
-  onCancel,
-}: {
-  subTopics: Topic[];
-  types: string[];
-  items: PatternItem[];
-  busy: boolean;
-  onCreate: (pattern: PatternId) => void;
-  onCancel: () => void;
-}) {
-  const m = useMessages(PATTERNS_PAGE_MESSAGES);
-  const view = useViewLanguage();
-  const [topic, setTopic] = useState('');
-  const [typeId, setTypeId] = useState(types[0] ?? '');
-  const [name, setName] = useState('');
-  const { clean, exists, close } = nameCheck(name, items.filter((item) => item.topic === topic), typeId);
-  const why = !topic ? m.chooseSubTopicFirst : !clean ? m.typeName : undefined;
-  return (
-    <form
-      aria-label={m.newPattern}
-      className="flex max-w-[960px] flex-wrap items-center gap-2 rounded-[10px] border border-dashed border-line-strong px-3.5 py-2.5 text-[12px] text-ink-subtle"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!clean || exists || !topic) return;
-        onCreate({ topic, typeId, name: clean });
-        setName('');
-      }}
-    >
-      <span className="font-medium text-ink">{m.newPattern}</span>
-      <select value={topic} aria-label={m.subTopic} onChange={(event) => setTopic(event.target.value)} className={`${SELECT} w-[220px]`}>
-        <option value="" disabled>
-          {m.chooseSubTopic}
-        </option>
-        {TOPICS.map((parent) => (
-          <optgroup key={parent.code} label={`${parent.code} · ${topicName(parent.code, view)}`}>
-            {subTopics
-              .filter((child) => child.parent === parent.code)
-              .map((child) => (
-                <option key={child.code} value={child.code}>
-                  {topicName(child.code, view)}
-                </option>
-              ))}
-          </optgroup>
-        ))}
-      </select>
-      <input
-        value={name}
-        maxLength={PATTERN_NAME_MAX}
-        aria-label={m.nameLabel}
-        placeholder={m.namePlaceholder}
-        onChange={(event) => setName(event.target.value)}
-        onKeyDown={(event) => void escapeClears(event, name, () => setName(''))}
-        className="h-8 min-w-[220px] flex-1 rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
-      />
-      <label className="flex items-center gap-1.5">
-        {m.questionType}
-        <select value={typeId} onChange={(event) => setTypeId(event.target.value)} className={SELECT}>
-          {types.map((id) => (
-            <option key={id} value={id}>
-              {typeName(id)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <Button size="sm" type="submit" variant="primary" disabled={busy || !clean || !topic || Boolean(exists)}>
-        {m.add}
-      </Button>
-      <Button size="sm" variant="subtle" onClick={onCancel}>
-        {m.cancel}
-      </Button>
-      <FormNote why={why} exists={exists} close={close} />
     </form>
   );
 }

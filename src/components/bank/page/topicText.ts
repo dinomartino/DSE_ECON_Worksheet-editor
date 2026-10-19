@@ -1,4 +1,5 @@
 import { topicDisplay, topicHeading, topicNamesFor } from '@/model/topics';
+import type { UiLanguage } from '@/settings/language';
 import type { LanguageMode } from '@/model/types';
 import { paperLanguage } from '@/settings/paperLanguage';
 
@@ -21,4 +22,13 @@ export function topicTitle(code: string, language: LanguageMode = paperLanguage(
 /** The name of a tag; a free tag as stored. */
 export function tagName(tag: string, language: LanguageMode = paperLanguage()): string {
   return topicName(tag, language);
+}
+
+/**
+ * The one exception to "topic names are paper words": the 題型 map and its sort board are
+ * chrome only (no paper on screen), so their topic names follow the interface language
+ * (user, 2026-10-19, `docs/design/question-types-empty-state.md` § 6).
+ */
+export function chromeTopicName(code: string, ui: UiLanguage): string {
+  return topicDisplay(code, ui === 'zh-HK' ? 'zh' : 'en');
 }

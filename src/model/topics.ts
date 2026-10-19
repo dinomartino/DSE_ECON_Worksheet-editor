@@ -199,7 +199,8 @@ export type TopicNames = TopicLang | 'both';
 
 /**
  * **Topic names are paper words**: they follow the language the questions are shown in,
- * never the interface. Both languages show both where there is `room`, else English, the
+ * never the interface (one exception, pages with no paper on them: the 題型 map and its
+ * sort board, `chromeTopicName`). Both languages show both where there is `room`, else English, the
  * side a bilingual paper leads with.
  */
 export function topicNamesFor(language: LanguageMode, room: 'tight' | 'wide' = 'tight'): TopicNames {
