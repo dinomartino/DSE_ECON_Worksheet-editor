@@ -9,24 +9,24 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Word packs justified
   lines tighter than the page (Word's own spacing, not fixable here).
-- **Known-gap sweep 2026-10-18 (Unreleased, merged on develop):** MC table kept whole in the
-  `.docx` (every row `keepNext`, LibreOffice-checked); tabbed "(n marks)" paragraphs wrap as
-  LibreOffice (`carriesTab`) and the page text column now sits exactly on the margins (`-mx-1`,
-  changes on-page wrapping of every document); import keeps typed tabs (`tabbed` lines, scorecard
-  unchanged, stops not imported); vector-PDF captions beside a graph stay text; sync: opening
-  interrupts a run between documents, the twin provider copy from an older build is merged, a
-  truly emptied library refills (Trash too); picture `pPr` in schema order; `scripts/soffice.mjs`
-  falls back to `soffice` on PATH. None tried in real Word, Tauri or a real provider.
-- **#2 follow-ups (Unreleased):** floor DWL + negative externality templates, DL → DWL. User kept
-  效率損失, 過剩, 買方/賣方稅負. Positive externality not built (not asked).
+- **2026-10-19 (Unreleased, all merged on develop, not pushed):** `.docx` has no keep flags
+  (no black ¶ squares, user's call) — hard page breaks where the preview breaks (`pageBreaks.ts`,
+  `measurePageStarts.tsx`; samples now run in headless Chrome); B7 examiner marks grid on the
+  cover (bilingual 45-question Paper 1 overflows, no cover-height warning); F4 marks on cards (no
+  page count; old entries fill on next edit); F5 dashboard searches question text; C11 Diagram
+  filter + Sort; 題型 first release (map, links, 題目類型 wording, editor 題庫 tab filter). None
+  tried in real Word or Tauri. 題型 next: Sort mode, Fill by 題型 (`docs/design/question-types-ux.md`).
+- **Known-gap sweep 2026-10-18 (Unreleased):** tabbed "(n marks)" wrap as LibreOffice (`carriesTab`),
+  text column on the margins (`-mx-1`); import keeps typed tabs; PDF captions stay text; sync gap
+  fixes; `scripts/soffice.mjs` falls back to PATH. Not tried in real Word, Tauri or a provider.
+- **#2 follow-ups (Unreleased):** floor DWL + negative externality templates, DL → DWL.
 - **Tabs vs Word, phases 1–3 built 2026-10-18 (Unreleased, `docs/Tabs vs Word.md`):** Tab types a
   tab in text paragraphs, a Word-rule page layout (`tabLayout.ts`), `<w:tab/>`/`<w:tabs>`/clipboard,
   ruler + Tab stops panel + quick layouts (`TabRuler.tsx`). No schema bump. Not tried in real Word
   or Tauri. zh default 480 left as is (the one zh-HK reference file uses 720).
-- **Now: UX refinement of existing features** (user, 2026-10-12). C9, E7 and recipes parked. `feature/film-v2` (worktree `.claude/worktrees/film-v2`) on GitHub since 2026-10-11, not merged.
+- **Now: new features** (user, 2026-10-19). C9, C10, E7 parked. `feature/film-v2` on GitHub since 2026-10-04, not merged.
 - **0.8.0, untried in Tauri:** table Same height/width, import header/footer, band rows as tab stops;
-  found-folder offer (`src/sync/foundFolder.ts`, faked shell only). Unverified in Word: clipboard paste.
-- **0.8.0 Import/OCR** unverified: Intel Mac, macOS 12–13.2, signed build, native open sheet.
+  found-folder offer (`src/sync/foundFolder.ts`, faked shell). Import/OCR untried: Intel Mac, macOS 12–13.2.
 
 ## Where we are
 
@@ -68,13 +68,13 @@ off the bottom.** It is the first thing a fresh session reads — then
   Windows code passes CI but never ran on a real PC or provider.
 - Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
-## Last verified (2026-10-18, gap sweep on develop)
+## Last verified (2026-10-19, develop after the five merges)
 
-- `npm test` 5680, typecheck green, lint at baseline (40); `cover-verify` green; `lq-verify` fails
+- `npm test` 5759, build + bundle check green, samples 27/27 with 0 keep flags, typecheck green, lint at baseline (40); `cover-verify` green; `lq-verify` fails
   only the pitch check, as base does on Linux (no CJK font). On Linux the harnesses need Chrome at
   `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
 
 ## Log
 
-- **2026-10-19** — 題型 UX research + redesign proposal (`docs/design/question-types-ux.md`, screenshots, 4 questions for the user), branch `research/question-types-ux`, no code.
+- **2026-10-19** — F4/F5, C11, B7, 題型 v1 (after research), `.docx` page breaks instead of keep flags; merged on develop.
 - **2026-10-18** — ⌘Z while typing on the page: document undo, typing grouped per run (`TYPING_PAUSE_MS`), caret follows the change. Chrome-checked; not tried in Tauri/Safari.
