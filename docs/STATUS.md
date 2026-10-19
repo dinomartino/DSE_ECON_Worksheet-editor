@@ -76,4 +76,5 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-10-19** — 題型 UX research + redesign proposal (`docs/design/question-types-ux.md`, screenshots, 4 questions for the user), branch `research/question-types-ux`, no code.
 - **2026-10-18** — ⌘Z while typing on the page: document undo, typing grouped per run (`TYPING_PAUSE_MS`), caret follows the change. Chrome-checked; not tried in Tauri/Safari.

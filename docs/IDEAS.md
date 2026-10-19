@@ -51,7 +51,8 @@ Design: `docs/design/question-library.md` (a bank is a Worksheet; the index is d
 rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
 `docs/research/2026-09-question-bank.md`. C1, C2, C4's usage history, C5–C8 and C24 shipped in 0.6.0.
 - **題型 in Fill and coverage** (S–M): spread picks across 題型, show missing 題型 of a
-  tested sub-topic (user chose group + filter only for now).
+  tested sub-topic (user chose group + filter only for now). Whole 題型 UX redesign
+  (first run, Sort mode, editor tab, word clash with MCQ/LQ): `docs/design/question-types-ux.md`, 4 questions.
 
 **The build flow** — every mature bank starts from the paper or shows the target:
 - **C9 Add from bank inside the editor** (M): the review page opens as a drawer with the
