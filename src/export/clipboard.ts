@@ -34,8 +34,15 @@ import type { DiagramImageMap } from './diagramImage';
  * accepts that, with the .docx remaining the fidelity gold standard.
  */
 
-/** Where a page break element stood: a comment, so a paste prints nothing for it. */
+/** Where a page break element stood, for the start screen's card to cut its first page at. */
 export const CLIPBOARD_PAGE_BREAK = '<!--page-break-->';
+
+/**
+ * A teacher's own page break, as Word writes one in its HTML: Word pastes it as an
+ * ordinary page break character (Ctrl+Enter's), not a paragraph's "Page break before",
+ * which Word marks with a black square.
+ */
+export const CLIPBOARD_MANUAL_BREAK = "<br clear=all style='page-break-before:always'>";
 
 export function escapeHtml(value: string): string {
   return value
@@ -316,11 +323,10 @@ function nodeHtml(
   }
 
   if (node.kind === 'pageBreak') {
-    // A copy has no pages: what it is pasted into breaks its own. `page-break-before`
-    // also arrived in Word as "Page break before", one of the paragraph properties Word
-    // marks with a black square (§ `joinWithPageBreaks`). Only a comment stays, which no
-    // paste shows, for the start screen's card to cut its first page at.
-    return CLIPBOARD_PAGE_BREAK;
+    // A copy has no pages of its own, so only the break a teacher put there travels, as
+    // a page break character. A paragraph's `page-break-before` arrived in Word as
+    // "Page break before", marked with a black square (§ `joinWithPageBreaks`).
+    return CLIPBOARD_PAGE_BREAK + CLIPBOARD_MANUAL_BREAK;
   }
 
   if (node.kind === 'image' || node.kind === 'diagram') {

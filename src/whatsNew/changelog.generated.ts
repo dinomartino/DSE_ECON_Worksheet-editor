@@ -89,8 +89,9 @@ a version heading is edited afterwards.
   formatting marks (¶) on, Word marked each paragraph because the file asked Word to keep
   it with the next one or keep its lines together. The file now asks for neither: the
   pages break exactly where the app's preview breaks them, with ordinary page breaks, the
-  kind Ctrl+Enter makes. Copy for Word pastes without page breaks.
-  <!-- zh: **Word 檔案不再在每段旁顯示小黑方塊。** 開啟格式標記（¶）時，Word 以往會標示每一段，因為檔案要求 Word 把段落與下段同頁或保持整段同頁。現在檔案不再作這些要求：分頁位置與程式預覽完全相同，使用一般分頁符號，即按 Ctrl+Enter 所插入的那種。複製到 Word 貼上時不會帶有分頁符號。 -->
+  kind Ctrl+Enter makes. Copy for Word brings a New page you added as the same kind of
+  page break.
+  <!-- zh: **Word 檔案不再在每段旁顯示小黑方塊。** 開啟格式標記（¶）時，Word 以往會標示每一段，因為檔案要求 Word 把段落與下段同頁或保持整段同頁。現在檔案不再作這些要求：分頁位置與程式預覽完全相同，使用一般分頁符號，即按 Ctrl+Enter 所插入的那種。「複製到 Word」時，你加入的「新頁」亦會以同一種分頁符號貼上。 -->
 
 ### Fixed
 - **⌘Z works while you type.** Undo used to wait until you clicked away from the text,

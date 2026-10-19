@@ -1810,9 +1810,11 @@ break, with the page break Ctrl+Enter types. Widow/orphan control stays Word's d
 - **A measuring copy draws what prints**: a picture at its stored size (the base style's
   `height: auto` took the file's ratio), an empty table cell one line tall (Word's empty
   paragraph) — the editing page gets both from its edit chrome.
-- **The clipboard has no pages**: no keep flags and no page break (a page break element
-  leaves only an HTML comment, `CLIPBOARD_PAGE_BREAK`, where the start screen's card cuts
-  its first page).
+- **The clipboard has no pages**: no keep flags and none of the preview's breaks. A
+  teacher's own page break element travels as Word's HTML manual break
+  (`CLIPBOARD_MANUAL_BREAK`, `<br clear=all style='page-break-before:always'>`), which Word
+  pastes as a break character, never as a paragraph's "Page break before"; an HTML comment
+  before it (`CLIPBOARD_PAGE_BREAK`) is where the start screen's card cuts its first page.
 - `export/docx/pageBreaks.test.ts` pins each rule.
 
 ### A drop target receives the run, not the grabbed id

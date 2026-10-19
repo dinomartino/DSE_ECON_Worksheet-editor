@@ -7,7 +7,7 @@ import {
   exportDocxBuffer,
 } from '.';
 import { joinWithPageBreaks, PAGE_BREAK_RUN, type BodyUnit } from './pageBreaks';
-import { worksheetClipboardHtml } from '@/export/clipboard';
+import { CLIPBOARD_MANUAL_BREAK, CLIPBOARD_PAGE_BREAK, worksheetClipboardHtml } from '@/export/clipboard';
 import { packPages, pageStarts, type PackItem, type PageStart } from '@/components/preview/pagination';
 import { pageNodes } from '@/components/preview/pageNodes';
 import { breakAfterNodes, keepsWithNext } from '@/components/preview/Preview';
@@ -109,14 +109,22 @@ describe('no keep flags anywhere in the file', () => {
     expect(xml).not.toMatch(KEEP_FLAG);
   });
 
-  it('nor on the clipboard, which has no pages and so no page breaks either', () => {
+  it('nor on the clipboard: only a teacher’s own page break travels, as a break character', () => {
     const worksheet = buildAcceptanceWorksheet();
     const broken = withFlow(worksheet, [...worksheet.questions.slice(0, 1), createPageBreakElement(), ...worksheet.questions.slice(1)]);
     for (const language of ['en', 'zh', 'bilingual'] as const) {
-      // The page break element leaves only a comment, for the start screen's card.
-      const html = worksheetClipboardHtml(broken, { language, version: 'teacher' }).replace(/<!--[\s\S]*?-->/g, '');
-      expect(html).not.toMatch(/page-break|break-before|break-after|keep-with-next|keep-together|mso-pagination/i);
+      const html = worksheetClipboardHtml(broken, { language, version: 'teacher' });
+      // Word's own HTML for a manual break, once, beside the comment the start screen's
+      // card cuts its first page at.
+      expect(html.split(CLIPBOARD_MANUAL_BREAK)).toHaveLength(2);
+      expect(html).toContain(CLIPBOARD_PAGE_BREAK + CLIPBOARD_MANUAL_BREAK);
+      // No paragraph-level page break or keep style anywhere else.
+      const rest = html.replace(CLIPBOARD_MANUAL_BREAK, '').replace(/<!--[\s\S]*?-->/g, '');
+      expect(rest).not.toMatch(/page-break|break-before|break-after|keep-with-next|keep-together|mso-pagination/i);
+      expect(html).not.toMatch(/<p[^>]*page-break/i);
     }
+    // Without a page break element, nothing of the kind at all.
+    expect(worksheetClipboardHtml(buildAcceptanceWorksheet(), EN)).not.toMatch(/page-break/i);
   });
 });
 
