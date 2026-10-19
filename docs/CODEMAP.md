@@ -271,6 +271,7 @@ Invariants:
 - `src/components/start/WelcomeDesk.tsx:WelcomeDesk` — the desk while nothing is saved: welcome, the four papers sketched as cards opening the same form, open a file / restore a backup
 - `src/components/start/startKinds.ts:START_KINDS` — the one list of the four kinds; `src/components/start/PaperSketch.tsx:PaperSketch` draws each, for the welcome cards and the form's gallery
 - `src/components/start/dashboard.ts:visibleSummaries` · `:scopedSummaries` — folder scope, then filter and sort, pure
+- `src/components/start/dashboard.ts:questionHits` · `:snippetOf` — search inside questions over the 題庫 rows (`src/library/search.ts:searchRows`), with the matching question and a snippet; `:cardMarks` — a card's total marks from the row's `totalMarks` (`src/storage/document.ts:summarize`)
 - `src/components/start/dashboardDrag.ts:stepDrag` · `:parseDropTarget` — document→folder drag state machine, pure
 - `src/components/start/useDocumentDrag.tsx:useDocumentDrag` — pointer-event drag: capture, ghost, one `drop` on release
 - `src/components/start/fileDrop.ts:planDrop` · `:overlayFor` · `:importSummary` — files dropped on the start screen (web `File`s, desktop paths): one opens/restores (a Word or PDF file opens Import), several import, pure

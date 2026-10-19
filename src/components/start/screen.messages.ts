@@ -169,7 +169,7 @@ export const DASHBOARD_MESSAGES = defineMessages({
   trashN: { en: (n: number) => `Trash (${n})`, zh: (n: number) => `垃圾桶（${n}）` },
   backupMenu: { en: 'Back up, restore and folders', zh: '備份、還原及資料夾' },
   searchDocs: { en: 'Search saved documents', zh: '搜尋已儲存的工作紙' },
-  searchByName: { en: 'Search by name', zh: '按名稱搜尋' },
+  searchPlaceholder: { en: 'Search names and text', zh: '搜尋名稱及題目' },
   kindOfDocument: { en: 'Kind of document', zh: '工作紙類別' },
   all: { en: 'All', zh: '全部' },
   worksheets: { en: 'Worksheets', zh: '工作紙' },
@@ -217,6 +217,10 @@ export const DASHBOARD_MESSAGES = defineMessages({
   mockPaper: { en: 'Mock exam paper', zh: 'Mock 試卷' },
   worksheet: { en: 'Worksheet', zh: '工作紙' },
   questions: { en: (n: number) => (n === 1 ? '1 question' : `${n} questions`), zh: (n: number) => `${n} 條題目` },
+  marks: { en: (n: number) => `${n} ${n === 1 ? 'mark' : 'marks'}`, zh: (n: number) => `${n} 分` },
+  // Why a card matched a search: the question it was found in, then a few of its words.
+  foundIn: { en: (n: number) => `Q${n}`, zh: (n: number) => `第 ${n} 題` },
+  foundInQuestion: { en: 'In a question', zh: '題目內' },
   openTitle: { en: (title: string) => `Open ${title}`, zh: (title: string) => `開啟「${title}」` },
   actionsFor: { en: (title: string) => `Actions for ${title}`, zh: (title: string) => `「${title}」的操作` },
   // dashboard.ts

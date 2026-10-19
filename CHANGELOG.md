@@ -32,6 +32,16 @@ a version heading is edited afterwards.
   with D = MPB = MSB, the market output Qm, the efficient output Q* and the DWL between.
   <!-- zh: **兩個新的圖表範本。** 「價格下限：效率損失」（在價格管制內）畫出高於均衡的下限、由需求決定的成交量、過剩及效率損失。
   「負面界外影響：生產過剩」（在稅項與津貼內）畫出高於 MPC 的 MSC、D = MPB = MSB、市場產量 Qm、有效率產量 Q* 及其間的效率損失。 -->
+- **Total marks on each paper in your list.** Every worksheet and mock paper on the start
+  screen now says what it is worth ("12 questions · 48 marks"), counted the way the cover
+  counts it, so an "answer any ONE" section adds only one question. A paper last saved by
+  an earlier version shows its total after your next change to it.
+  <!-- zh: **工作紙清單顯示總分。** 開始畫面上每份工作紙及 Mock 試卷都會顯示總分（例如「12 條題目 · 48 分」），計法與封面相同，「任答一題」的部分只計一題。最後以舊版本儲存的試卷，在你下次修改後便會顯示總分。 -->
+- **Search finds words inside your questions.** The search box on the start screen now
+  looks through the questions of every saved paper as well as the names, in English and
+  中文. A paper found by its questions shows which one matched and the words around it
+  ("Q4 · …price **elasticity** of demand…").
+  <!-- zh: **搜尋可找到題目內的字詞。** 開始畫面的搜尋框除了名稱，亦會搜尋每份已儲存試卷的題目，中英文皆可。因題目而找到的試卷會顯示是哪一題及相關字句（例如「第 4 題 · …需求價格**彈性**…」）。 -->
 
 ### Changed
 - **Deadweight loss is labelled DWL in every diagram template.** The monopoly templates

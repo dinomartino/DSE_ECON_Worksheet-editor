@@ -25,6 +25,14 @@ export interface WorksheetSummary {
   questionCount?: number;
   hasCover?: boolean;
   /**
+   * The paper's total marks as `worksheetMarks` derives it (only the best n of an "answer
+   * any n" section), recorded at save beside `questionCount` for the same reason. A cache,
+   * never a source of truth: the document's own marks are, and every save rewrites it.
+   * Absent on a row an earlier build wrote (shown as nothing until that document is next
+   * saved) or when the derivation failed; read it through `cardMarks` (dashboard.ts).
+   */
+  totalMarks?: number;
+  /**
    * `Worksheet.kind` as stored: 'bank' for a question bank, or a later build's kind passed
    * through. Absent = a paper; read it as `=== 'bank'`.
    */

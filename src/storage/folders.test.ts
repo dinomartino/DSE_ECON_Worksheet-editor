@@ -215,7 +215,7 @@ describe('the web store', () => {
     // The index row carries no filing: nothing to lose on an older build's rewrite.
     // (`indexRev` is lost on one, by design: § INDEX_ROW_REV.)
     expect(Object.keys(JSON.parse(storage.getItem(INDEX_KEY)!)[0]).sort()).toEqual(
-      ['hasCover', 'id', 'indexRev', 'questionCount', 'title', 'updatedAt'].sort(),
+      ['hasCover', 'id', 'indexRev', 'questionCount', 'title', 'totalMarks', 'updatedAt'].sort(),
     );
     expect(folderOf(await store().readFolders(), 'a')?.name).toBe('Mocks');
   });

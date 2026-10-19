@@ -143,10 +143,6 @@ without one (`src/ai/providers.ts`). Never embed a key; never send student scrip
 - **F3 Tags, stars and filter chips on the dashboard** (S–M); extend
   `src/components/start/dashboard.ts:visibleSummaries`. Folders lack nesting,
   multi-select move and touch drag.
-- **F4 Total marks and page count on each card**, derived (S); the index stores only
-  question count and cover.
-- **F5 Full-text search from the dashboard** (S): the 題庫 searches question text; the
-  dashboard still matches titles only.
 - **F6 Local version snapshots** (M) — on export and before import; watch the quota.
 - **F7 Collections** (M): several documents exported as one `.docx`; today only the
   answer key can combine documents.
