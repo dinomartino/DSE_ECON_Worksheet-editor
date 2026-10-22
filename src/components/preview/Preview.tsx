@@ -8178,6 +8178,7 @@ export function Preview({
             onClose={() => setSelectedElement(undefined)}
             alignable={formatBar.alignable}
             alignOnly={formatBar.alignOnly}
+            alignOnlyFor={selectedElement.target.kind === "mcqStatement" ? "statements" : "options"}
             documentJustifies={worksheet.justifyText === true}
             /*
              * Report the *selection's* own formatting when a range is live, so the bar

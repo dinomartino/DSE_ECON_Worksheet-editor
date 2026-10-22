@@ -7,6 +7,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
+- **GitHub #3, 2026-10-22 (branch `fix/description-justify`, not merged/pushed):** the (1)(2)(3) statements of a combination MC justify like options: `McqQuestion.statementAlign`, the format bar's Justify on a statement (`mcqStatement` is align-only), IR/docx/clipboard via the node's `format.align`. Test: `registry/mcqStatementAlign.test.ts`. Chrome-checked (EN+中); not tried in Word or Tauri. Issue not answered.
 - **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Word packs justified lines tighter (not fixable).
 - **2026-10-19 (Unreleased, merged on develop):** `.docx` has no keep flags
   (no black ¶ squares, user's call) — hard page breaks where the preview breaks (`pageBreaks.ts`,

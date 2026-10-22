@@ -15,6 +15,11 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Justify the (1)(2)(3) statements of a combination MC question.** Click any statement and
+  press Justify, just as for the options (A–D). It applies to all of that question's
+  statements, in the preview, the printed PDF, the copied question and the Word file. Left
+  opts a statement out of a justified paper.
+  <!-- zh: **組合 MC 題的 (1)(2)(3) 陳述可左右對齊。** 按選任何一項陳述，再按「左右對齊」，做法與選項（A–D）一樣。該題所有陳述同時生效，預覽、列印 PDF、複製題目及 Word 檔都一致。在已開啟左右對齊的試卷中，選「靠左」可讓陳述不左右對齊。 -->
 - **Make your first 題型 right on the 題型 map.** With no 題型 yet, the map is no longer
   just an explanation: click a topic, click the questions that are alike, type a name and
   press Create. A preview beside the steps shows the sub-topic as the map will draw it, and

@@ -278,6 +278,7 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
       style: 'Statement',
       text: statement,
       keepNext: true,
+      ...(question.statementAlign ? { format: { align: question.statementAlign } } : {}),
       edit: { kind: 'mcqStatement', questionId: question.id, index },
       listRef: {
         stream: `statement:${context.questionId}`,

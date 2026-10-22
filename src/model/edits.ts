@@ -996,18 +996,21 @@ export function isFormattable(target: EditTarget): boolean {
      * per-cell formatting is *the* mechanism a distribution table's headings use (§tables).
      */
     target.kind === 'tableCell' ||
-    // Alignment only (`isAlignOnly`): the question's `optionAlign`, shared by its options.
-    target.kind === 'mcqOption'
+    // Alignment only (`isAlignOnly`): the question's `optionAlign` / `statementAlign`,
+    // shared by its options / statements.
+    target.kind === 'mcqOption' ||
+    target.kind === 'mcqStatement'
   );
 }
 
 /**
  * Targets whose one format is alignment, stored on their owner rather than per element:
- * an MC option aligns with its siblings (`McqQuestion.optionAlign`). The bar offers them
+ * an MC option aligns with its siblings (`McqQuestion.optionAlign`), a statement with its
+ * own (`McqQuestion.statementAlign`). The bar offers them
  * the alignment group alone, and only where they print as a paragraph of their own.
  */
 export function isAlignOnly(target: EditTarget): boolean {
-  return target.kind === 'mcqOption';
+  return target.kind === 'mcqOption' || target.kind === 'mcqStatement';
 }
 
 /**
@@ -1090,16 +1093,19 @@ export function applyFormatTarget(
         isTextLayoutElement(element) ? { ...element, format: merge(element.format) } : element,
       );
 
-    case 'mcqOption': {
+    case 'mcqOption':
+    case 'mcqStatement': {
       // Only `align` has a home here, and only justify or left (`OptionAlign`); every
       // other key or value is ignored (`isAlignOnly`).
       if (!('align' in patch)) return worksheet;
       if (patch.align !== undefined && patch.align !== 'justify' && patch.align !== 'left') return worksheet;
+      const key = target.kind === 'mcqOption' ? 'optionAlign' : 'statementAlign';
+      const hasItems = target.kind === 'mcqOption' ? 'options' : 'statements';
       return mapQuestionById(worksheet, target.questionId, (question) => {
-        if (!('options' in question)) return question;
-        const { optionAlign: _previous, ...rest } = question as Question & { optionAlign?: TextAlign };
+        if (!(hasItems in question)) return question;
+        const { [key]: _previous, ...rest } = question as Question & Partial<Record<typeof key, TextAlign>>;
         void _previous;
-        return (patch.align ? { ...rest, optionAlign: patch.align } : rest) as Question;
+        return (patch.align ? { ...rest, [key]: patch.align } : rest) as Question;
       });
     }
 
@@ -1190,9 +1196,12 @@ export function formatOfTarget(
       const element = worksheet.layout.find((entry) => entry.id === target.elementId);
       return element && isTextLayoutElement(element) ? element.format : undefined;
     }
-    case 'mcqOption': {
+    case 'mcqOption':
+    case 'mcqStatement': {
       const question = worksheet.questions.find((entry) => entry.id === target.questionId);
-      const align = (question as { optionAlign?: TextAlign } | undefined)?.optionAlign;
+      const align = (question as { optionAlign?: TextAlign; statementAlign?: TextAlign } | undefined)?.[
+        target.kind === 'mcqOption' ? 'optionAlign' : 'statementAlign'
+      ];
       return align ? { align } : undefined;
     }
     case 'coverLine':
