@@ -12,6 +12,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.8.4 — 2026-10-22
+
 ### Added
 - **Justify the (1)(2)(3) statements of a combination MC question.** Click any statement and
   press Justify, just as for the options (A–D). It applies to all of that question's
