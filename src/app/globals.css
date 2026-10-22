@@ -379,6 +379,12 @@ body {
      where the print clips. */
   font-size: 11pt;
   line-height: 12pt;
+
+  /* A long unbroken string (a URL, a run of letters) wraps at the text column, as Word
+     breaks it, instead of running past the page edge. Ordinary text still breaks only at
+     spaces, so justified lines look the same. Inherited by the preview, the page
+     thumbnails and the measuring probe alike. */
+  overflow-wrap: break-word;
 }
 
 /* Paragraph margins are the exporter's `w:before`/`w:after`, and those are zero. Any

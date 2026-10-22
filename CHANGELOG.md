@@ -109,6 +109,11 @@ a version heading is edited afterwards.
   <!-- zh: **Word 檔案不再在每段旁顯示小黑方塊。** 開啟格式標記（¶）時，Word 以往會標示每一段，因為檔案要求 Word 把段落與下段同頁或保持整段同頁。現在檔案不再作這些要求：分頁位置與程式預覽完全相同，使用一般分頁符號，即按 Ctrl+Enter 所插入的那種。「複製到 Word」時，你加入的「新頁」亦會以同一種分頁符號貼上。 -->
 
 ### Fixed
+- **A long unbroken word no longer runs off the page.** A string with no spaces (a web
+  address, a run of letters) in a statement, option, stem or any other text now wraps at the
+  text column in the editor, the preview and the page thumbnails, as it already did in the
+  Word file.
+  <!-- zh: **沒有空格的長字串不再超出頁面。** 陳述、選項、題幹及其他文字中沒有空格的長字串（例如網址）現在會在文字欄邊界換行，編輯畫面、預覽及頁面縮圖都與 Word 檔案一致。 -->
 - **⌘Z works while you type.** Undo used to wait until you clicked away from the text,
   then took back one letter per press. Now ⌘Z (Ctrl+Z) in the text you are typing undoes
   what you just typed in one step, keeps the text open, and ⇧⌘Z (Ctrl+Y) redoes it.
