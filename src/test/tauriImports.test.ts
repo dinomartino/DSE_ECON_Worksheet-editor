@@ -26,6 +26,8 @@ function sourceFiles(dir: string): string[] {
 
 /** Every Tauri import in one file that breaks the rule, as `file:line kind`. */
 function tauriViolations(file: string, text: string): string[] {
+  // Parsing every file in src/ is what made this slow; a file that never names Tauri can't break the rule.
+  if (!text.includes('@tauri-apps/')) return [];
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const dynamicAllowed = DYNAMIC_ALLOWED.some((pattern) => pattern.test(file));
   const found: string[] = [];
@@ -75,7 +77,8 @@ describe('no static @tauri-apps import reaches the web bundle', () => {
       tauriViolations(relative(SRC, path).split(sep).join('/'), readFileSync(path, 'utf8')),
     );
     expect(violations).toEqual([]);
-  });
+    // Walks and reads all of src/: generous headroom for loaded CI runners.
+  }, 30_000);
 
   it('actually detects what it forbids (so an empty result means something)', () => {
     const probe = [
