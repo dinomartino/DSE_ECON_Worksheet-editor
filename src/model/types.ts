@@ -454,6 +454,11 @@ export interface McqQuestion extends QuestionBase {
    * stack: a tab-stop row ignores it (and keeps it). Absent = the style's own.
    */
   optionAlign?: TextAlign;
+  /**
+   * The same for the (1)(2)(3) statements: one alignment for all of them, set from the
+   * format bar on any statement. Absent = the style's own (or the document's Justify text).
+   */
+  statementAlign?: TextAlign;
   /** Teacher-only source / adaptation note, e.g. "Modelled on DSE 2023 Q1". Absent = none. */
   provenance?: BiText;
 }

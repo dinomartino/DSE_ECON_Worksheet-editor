@@ -110,6 +110,8 @@ interface Props {
    * and of the alignments only Justify is offered, as one toggle (`nextOptionAlign`).
    */
   alignOnly?: boolean;
+  /** What an `alignOnly` Justify aligns: the question's options (default) or its statements. */
+  alignOnlyFor?: 'options' | 'statements';
   /**
    * The document's "Justify text" (`Worksheet.justifyText`), read for an `alignOnly`
    * target: with it on, Justify shows pressed while nothing is stored.
@@ -227,6 +229,7 @@ export function FormatToolbar({
   onReset,
   alignable = true,
   alignOnly = false,
+  alignOnlyFor = 'options',
   documentJustifies = false,
   onClose,
   onDelete,
@@ -496,9 +499,9 @@ export function FormatToolbar({
       {alignable && alignOnly && (
         <button
           type="button"
-          aria-label={m.justifyOptions}
+          aria-label={alignOnlyFor === 'statements' ? m.justifyStatements : m.justifyOptions}
           aria-pressed={optionPrintsJustified(format?.align, documentJustifies)}
-          title={m.justifyOptions}
+          title={alignOnlyFor === 'statements' ? m.justifyStatements : m.justifyOptions}
           className={`${BTN} ${optionPrintsJustified(format?.align, documentJustifies) ? ACTIVE : IDLE}`}
           onClick={() => onChange({ align: nextOptionAlign(format?.align, documentJustifies) })}
         >
