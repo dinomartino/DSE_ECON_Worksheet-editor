@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Dialog, DialogTabs, Field } from '@/components/ui/Dialog';
 import { Button, CheckField, GroupHeader, NumberField, Segmented, SelectField } from '@/components/ui';
+import { useNotices } from '@/components/ui/NoticeLayer';
 import {
   assessmentTitleBlock,
   createFillInField,
@@ -30,6 +31,7 @@ import {
 import { isQabDocument } from '@/model/pageFurniture';
 import { documentShape } from '@/model/documentShape';
 import { listQuestionTypes, requireQuestionType } from '@/registry';
+import { OPTION_LAYOUT_CHOICES, optionLayoutTally, type OptionLayoutChoice } from '@/registry/mcqLayouts';
 import { bi, emptyBiText, plain } from '@/model/text';
 import { academicYear, type CoverPaperStyle } from '@/model/cover';
 import {
@@ -51,6 +53,7 @@ import { BiTextField } from './BiTextField';
 import { CloseIcon } from '@/components/ui/icons';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { DOCUMENT_SETTINGS_MESSAGES, MARGIN_PRESET_KEYS } from './DocumentSettings.messages';
+import { applyOptionLayout } from './optionLayoutAction';
 import type { Messages as MessagesOf } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
 
@@ -210,6 +213,8 @@ function DocumentTab() {
 
       <TextSizeField />
 
+      <OptionLayoutField />
+
       <VersionsField />
 
       <TargetField />
@@ -265,6 +270,49 @@ function JustifyTextField() {
       <CheckField label={m.justifyText} checked={on} onChange={(next) => commit((draft) => withJustifyText(draft, next))} />
       <p className="pl-6 text-[11px] text-ink-muted">{m.justifyTextHint}</p>
     </div>
+  );
+}
+
+/**
+ * Option layout for every MC question at once. Four actions rather than a setting: each
+ * question keeps its own layout (the one its panel sets), so nothing here can show as
+ * selected, and the line above the buttons says how the paper stands now. Each action is
+ * one undo step and says how many questions it changed (`applyOptionLayout`). Absent on a
+ * paper with no MC question.
+ */
+function OptionLayoutField() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
+  const notices = useNotices();
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const readOnly = useWorksheetStore((s) => s.readOnly);
+  const tally = useMemo(() => optionLayoutTally(worksheet), [worksheet]);
+  if (tally.total === 0) return null;
+
+  const labels: Record<OptionLayoutChoice, { label: string; title: string }> = {
+    fit: { label: m.optionLayoutFit, title: m.optionLayoutFitTitle },
+    stacked: { label: m.optionLayoutStacked, title: m.optionLayoutStackedTitle },
+    inline: { label: m.optionLayoutInline, title: m.optionLayoutInlineTitle },
+    columns2: { label: m.optionLayoutColumns2, title: m.optionLayoutColumns2Title },
+  };
+  return (
+    <Field label={m.optionLayoutAll} hint={m.optionLayoutAllHint}>
+      <p className="text-[12px] text-ink-muted" aria-live="polite">
+        {m.optionLayoutNow(tally.stacked, tally.inline, tally.columns2)}
+      </p>
+      <div role="group" aria-label={m.optionLayoutAll} className="flex flex-wrap gap-1.5">
+        {OPTION_LAYOUT_CHOICES.map((choice) => (
+          <Button
+            key={choice}
+            size="sm"
+            disabled={readOnly}
+            title={labels[choice].title}
+            onClick={() => applyOptionLayout(choice, m, notices.notify)}
+          >
+            {labels[choice].label}
+          </Button>
+        ))}
+      </div>
+    </Field>
   );
 }
 

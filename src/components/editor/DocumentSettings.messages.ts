@@ -60,6 +60,64 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   custom: { en: 'Custom', zh: '自訂' },
   customEllipsis: { en: 'Custom…', zh: '自訂…' },
 
+  // Option layout for all MC questions (the four buttons act on every MC question at once)
+  optionLayoutAll: { en: 'Option layout for all MC questions', zh: '全部 MC 題的選項排列' },
+  optionLayoutAllHint: {
+    en: 'Sets every MC question at once, replacing layouts you chose one by one. Undo puts them back, and you can still change a single question in its own panel. Options too long for a row still print in 2 columns, and figure options never go in a row.',
+    zh: '一次設定全部 MC 題，會取代你逐題選擇的排列，按復原即可還原，你仍可在個別題目的面板修改。選項太長排不進一行時，仍會以兩欄列印；圖形選項不會橫列。',
+  },
+  optionLayoutFit: { en: 'Fit each question', zh: '配合各題內容' },
+  optionLayoutFitTitle: {
+    en: 'Give each question the layout that suits how long its options are',
+    zh: '按選項的長短，為每題採用合適的排列',
+  },
+  optionLayoutStacked: { en: 'All stacked', zh: '全部直列' },
+  optionLayoutStackedTitle: { en: 'One option per line in every MC question', zh: '全部 MC 題每行一個選項' },
+  optionLayoutInline: { en: 'All in a row', zh: '全部橫列' },
+  optionLayoutInlineTitle: {
+    en: 'All the options on one line in every MC question',
+    zh: '全部 MC 題的選項排在同一行',
+  },
+  optionLayoutColumns2: { en: 'All 2 columns', zh: '全部兩欄' },
+  optionLayoutColumns2Title: { en: 'Two options per line in every MC question', zh: '全部 MC 題每行兩個選項' },
+  optionLayoutNow: {
+    en: (stacked: number, inline: number, columns2: number) =>
+      `Now: ${[
+        stacked > 0 && `${stacked} stacked`,
+        inline > 0 && `${inline} in a row`,
+        columns2 > 0 && `${columns2} in 2 columns`,
+      ]
+        .filter(Boolean)
+        .join(' · ')}`,
+    zh: (stacked: number, inline: number, columns2: number) =>
+      `目前：${[
+        stacked > 0 && `${stacked} 題直列`,
+        inline > 0 && `${inline} 題橫列`,
+        columns2 > 0 && `${columns2} 題兩欄`,
+      ]
+        .filter(Boolean)
+        .join(' · ')}`,
+  },
+  optionLayoutChanged: {
+    en: (changes: number, total: number) =>
+      `Changed ${changes} of ${total} MC ${total === 1 ? 'question' : 'questions'}.`,
+    zh: (changes: number, total: number) => `已更改 ${changes} 題（共 ${total} 題 MC）。`,
+  },
+  optionLayoutNothing: {
+    en: 'Nothing to change: every MC question already has this layout.',
+    zh: '沒有需要更改：每題 MC 都已是這個排列。',
+  },
+  optionLayoutNothingFit: {
+    en: 'Nothing to change: every MC question already has the layout that fits its options.',
+    zh: '沒有需要更改：每題 MC 都已採用配合選項內容的排列。',
+  },
+  optionLayoutFiguresStay: {
+    en: (count: number) =>
+      `Left as they are: ${count} figure ${count === 1 ? 'question' : 'questions'}, which can’t go in a row.`,
+    zh: (count: number) => `維持不變：${count} 題圖形選項題，圖形選項不能橫列。`,
+  },
+  optionLayoutUndo: { en: 'Undo', zh: '復原' },
+
   // Versions
   versions: { en: 'Versions', zh: '版本' },
   versionsHint: {
