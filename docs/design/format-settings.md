@@ -1,9 +1,10 @@
 # Formatting settings like Justify — design proposal
 
-Status: proposal (not scheduled), 2026-10-23, written against `develop` at `d8194642`. Not built;
-no code changed. Task k-0178. Evidence: the four GitHub issues, `CHANGELOG.md`, the Justify
-commits, a code survey (by reading; nothing was run in a browser, Word or Tauri) and a
-measurement pass over `real_life_reference/`.
+Status: proposal (not scheduled), 2026-10-23, written against `develop` at `d8194642` (it has
+since gained the GitHub #4 fix, `bbb0494e`; nothing here depends on it). Not built; no code
+changed. Task k-0178. Evidence: the four GitHub issues, `CHANGELOG.md`, the Justify commits, a
+code survey (by reading; nothing was run in a browser, Word or Tauri) and a measurement pass
+over `real_life_reference/`.
 
 The ask (the user, 2026-10-23, from a voice message): *"I want to work in the econ editor app.
 What new function can we add? Based on the past 3 issues … I remember we fixed the justified
@@ -51,7 +52,7 @@ desktop app; the #4 screenshots show "2627 S4 T1 UT", 20 MC questions).
 | 1 | 10-10 | Text size 10 is too small, make it 11/12 "to match a DSE page"; a one-click question font size; an MC question split across pages should move whole to the next page | closed 10-13 | 0.8.1: Setup → Worksheet → **Text size** 10 / 11 / 12 pt (Mock default stays 10); an MC question always stays on one page |
 | 2 | 10-14 | Justify the MC options, not only the stem | closed 10-15 | 0.8.2: **Justify** on any option (`optionAlign`), and **Justify text** for the whole paper in Setup |
 | 3 | 10-20 | Justify the (1)(2)(3) statements too | closed 10-22 | 0.8.4: **Justify** on any statement (`statementAlign`) |
-| 4 | 10-23 | Cannot reorder MC: nothing can be placed after Q5 "even with plenty of room on the page"; Q6 can only go before Q5 | **open** | Not a setting; being fixed on `fix/issue-4-mc-reorder` by another session (§ 7) |
+| 4 | 10-23 | Cannot reorder MC: nothing can be placed after Q5 "even with plenty of room on the page"; Q6 can only go before Q5 | open (fixed on `develop`, unreleased) | Not a setting: a reorder bug, fixed by another session in `523ad87b` (§ 7) |
 
 The pattern is the point. Every ask is a small, concrete control over how the printed page
 *looks* (size, alignment, where a question breaks); the teacher wants it **on the page they are
@@ -260,8 +261,8 @@ element does; and, if wanted, a paper-wide **Start every question on a new page*
 Because the `.docx` follows the preview's measured breaks, there is no Word code at all, and the
 rule that the file never carries `w:keepNext` is untouched. A question taller than a sheet still
 cannot be kept (the chain is cut, as today); the hint says so. No MC opt-out is proposed: no real
-paper splits an MC question. GitHub #4's half-empty page 2 is what keep-whole costs; it is not a
-reason to relax it.
+paper splits an MC question. (GitHub #4's half-empty page 2 was a manual New page break, not
+keep-whole: § 7.)
 
 ### 4.4 Justify: what is left
 
@@ -396,15 +397,18 @@ Word exactness) and the only support is one ratio at one text size.
 
 ## 7. GitHub #4 is not a setting
 
-The only open issue. Another session started `fix/issue-4-mc-reorder` on 2026-10-23, so nothing
-was changed here. What the screenshots show: the 內容 outline lists Q5 alone under 第 2 頁 and Q6–Q8
-under 第 3 頁, and the page view shows page 2 holding Q5 and Q6 with most of the sheet blank and Q7
-starting page 3. What I read in `src/components/editor/Outline.tsx` (not run, and the fix session
-may find otherwise): a drop on a question row always inserts *before* that row
-(`reorderFlowItem` defaults to `'before'`), a drop on a page tab goes to the start of that page, and
-a row cannot be dropped on itself. So landing *after* a question means dropping on the one below
-it, and nothing can be dropped after the last question of a page or of the paper, which could
-explain "Q6 can only go before Q5". It needs the reporter's file to confirm.
+It was the only open issue, and a bug. Another session fixed it while this proposal was being
+written (`523ad87b`, merged on `develop` as `bbb0494e`; unreleased, and the issue is not yet
+answered, `docs/STATUS.md`), so nothing was changed here. What the screenshots show: the 內容
+outline lists Q5 alone under 第 2 頁 and Q6–Q8 under 第 3 頁, and the page view shows page 2
+holding Q5 and Q6 with most of the sheet blank and Q7 starting page 3, which is a paper whose
+pages end in a manual New page break. Per that commit: a layout element is filed under the
+question before it (`resolveFlow`), the outline's Move up/down reordered `questions` only, so the
+break travelled with its question, and outline rows took every drop *before* themselves, so
+nothing could follow the last question of a page. Move up/down now goes through the resolved flow
+and rows drop on the half the pointer is over. A read of `src/components/editor/Outline.tsx` made
+before that commit found the drop half of this and missed the break half, which is why the
+half-empty page is not evidence about keep-whole (§ 4.3).
 
 ## 8. Verifying a build
 
