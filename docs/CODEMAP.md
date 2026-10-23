@@ -111,6 +111,19 @@ Invariants:
 `:pushGap` · `:BLANK_LINE_PT`.
 
 - `src/render/worksheet.ts:renderWorksheet` — the one walker; `:collectListStreams`
+- `src/render/questionGap.ts:boundaryGapLines` · `:stimulusGapLines` · `:gapNumberApplies` · `:defaultGapLines` · `:gapAboveStatus` — the air
+  between two questions, one rule on every paper shape: straight under a question of the same type the width is the
+  question's own `gapBefore`, then Setup's `Worksheet.examGapLines`, then (a Paper 1 only) the type's measured
+  `examGapLines`; one line anywhere else, so a paper nobody set a number on prints as before. `render/ir.ts:withLeadingGap`
+  puts it on the question's first paragraph (it dies at a sheet top), so the page, thumbnails, `.docx` and clipboard follow
+  with no code of their own. The controls: `src/components/editor/BetweenQuestionsField.tsx:BetweenQuestionsField` (Setup →
+  Page) and `src/components/editor/SpaceAboveField.tsx:SpaceAboveField` (both question panels; says why when its number
+  cannot be used); the drag handle on the page reads `RenderedQuestion.adjustableGap`. No new field. Tests:
+  `src/render/questionGap.test.ts` (the rule, with the 0.8.4 rule frozen beside it), `src/render/questionGapSurfaces.test.tsx`
+  (every surface), `src/components/editor/SpaceAboveField.test.tsx`, `src/components/editor/BetweenQuestionsField.test.tsx`,
+  `src/components/editor/spaceAbovePanels.test.tsx`, `src/store/questionGapActions.test.ts`; fixtures
+  `src/test/questionGapFixture.ts:buildQuestionGapPaper` and `test-fixtures/manual/question-gap-mix.json`; browser proof
+  `scripts/question-gap-verify.mjs`
 - `src/render/answerKey.ts:renderAnswerKey` — the separate answer key; entries come from the `answerKey` hook
 - `src/render/answerKey.ts:answerKeyView` — the same nodes plus each node's question and the key's own fields (title, subtitle), for the Marking scheme view
 - `src/render/answerKey.ts:collectAnswerKey` → `:ANSWER_KEY_STYLES` → `:renderStandardKey` — the key's data gathered once, laid out by its preset's style; `src/render/answerKeySections.ts:MC_KEY_RENDERERS` · `:LQ_KEY_RENDERERS` are the per-section layouts (grid / HKEAA table / list / reasons table; compact / Marks column / Detailed table / Suggested answers' answers-only)

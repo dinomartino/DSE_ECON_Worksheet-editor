@@ -85,8 +85,9 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Fill answer space** — an `answerSpace` whose `lines` is the paginator's *output*, not
   the author's input; it absorbs the sheet's slack and ends the sheet.
   `src/components/preview/pagination.ts:resolveFillCounts`
-- **Boundary gap** — the blank line the walker inserts between two items; `examGapLines`
-  widens it for a paper. `src/render/ir.ts:pushGap`
+- **Boundary gap** — the blank line(s) between two items; straight under a question of the
+  same type a teacher's number (`gapBefore`, `Worksheet.examGapLines`) widens it, on every
+  paper shape. `src/render/questionGap.ts:boundaryGapLines` · `src/render/ir.ts:withLeadingGap`
 - **Cover** — a mock exam's front page: two unequal columns of regions, never seen by the
   paginator. `src/model/cover.ts`
 - **Furniture** — per-page frame and margin notes, drawn as one running header of anchored

@@ -1655,18 +1655,23 @@ Measured off DSE 2021 P1, spelled as blank lines on the same fixed 12pt grid:
 | everything else | 1 |
 
 - **The number lives on the question type** (`examGapLines` on
-  `QuestionTypeDefinition`); `boundaryGapLines` (`render/worksheet.ts`) only decides
+  `QuestionTypeDefinition`); `boundaryGapLines` (`render/questionGap.ts`) only decides
   when to honour it — the walker may not name a concrete type (`registry.test.ts`
-  greps).
+  greps). The walker and the panels that offer the numbers read the same module, so the
+  page and the control cannot disagree.
 - **The number can be overridden, nearest statement first**: a question's own
   `gapBefore` beats the document's `Worksheet.examGapLines` (optional, in `KNOWN_KEYS`;
-  Setup → Page) beats the type's default. All read only where the wide gap applies,
-  floored at 1; absent keeps tracking the layer beneath.
-- **The gap drags where it is**: `RenderedQuestion.adjustableGap` marks the adjustable
-  boundary (present exactly where `boundaryGapLines` reads a stored number); the
+  Setup → Page → Between questions) beats the type's default. Floored at 1; absent keeps
+  tracking the layer beneath. **Both controls are offered on every paper shape**
+  (`BetweenQuestionsField`, `SpaceAboveField` in both question panels): a classroom
+  worksheet, an LQ worksheet, a booklet and a Paper 1, for MC and structured questions
+  alike (`docs/design/format-settings.md` § 9.2).
+- **The gap drags where it is**: `RenderedQuestion.adjustableGap` marks the boundary a
+  stored number sets (present exactly where `gapNumberApplies`, on any shape); the
   preview mounts `GapAdjuster` on it — a pill in the *right* margin (centre belongs to
   the insert `+`, left margin to the reorder grips), one commit on release writing
-  `gapBefore`. The exact value lives in the question panel's "Space above".
+  `gapBefore`. The exact value lives in the question panel's "Space above", which says
+  why when a number is set that the page cannot use (`gapAboveStatus`).
 - **A Paper 1 question is kept whole** (`keepQuestionWhole`): every node but the last
   takes `keepNext` (text/columns rows also `keepLines`, which no backend reads now), so
   the preview moves the question whole, and the `.docx` follows with a page break before
@@ -1678,9 +1683,24 @@ Measured off DSE 2021 P1, spelled as blank lines on the same fixed 12pt grid:
   for the same chain outside Paper 1 (a stem without its options cannot be answered).
   Structured questions keep it only on Paper 1: they run long, and their answer space
   breaks between lines. Stimulus groups keep it only on Paper 1.
-- **The wide gap only on a Paper 1**, decided by `documentShape()` — a classroom worksheet keeps
-  the one-line rhythm; widening would silently re-paginate existing documents. Derived,
-  never stored.
+- **What stays the exam paper's is the default, not the control.** The type's measured
+  number (an MC's 3) is asked on a Paper 1 only (`typeGapLines`, decided by
+  `documentShape()`); every other shape defaults to one line, so a saved paper that carries
+  no number prints exactly as it did — widening the default would silently re-paginate
+  documents teachers already have. `questionGap.test.ts` freezes the 0.8.4 rule beside the
+  new one and compares every shape against every neighbour, and the frozen corpora render
+  unchanged. Derived, never stored.
+- **A number is read straight under a question of the same type, and nowhere else**
+  (`gapNumberApplies`), on every shape: never the first item, never across a heading, note,
+  source or page break, never under a question of another kind. The two-line stand-off
+  under a lead-in or a source (`QUESTION_COUNT_GAP_LINES`) is the reference paper's own
+  measured rhythm and stays Paper 1's. A source's lead-in after a question takes the
+  document's number on every shape (`stimulusGapLines`), as on a Paper 1, since it opens a
+  new question group.
+- **A leftover number counts.** A paper that stopped being a Paper 1 (its cover removed), or
+  a question copied in from one, still carries the `examGapLines` / `gapBefore` it was
+  given. With the controls on every shape that number is now honoured, and the panel's
+  Space above shows it; the papers saved by the app that never set one are untouched.
 - **A wide gap still counts what is already there** (`endsInBlankLine` reports one
   spent line).
 - **The first item of the page is never widened** — neither the true top of page 1
