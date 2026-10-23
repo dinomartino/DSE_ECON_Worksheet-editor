@@ -119,6 +119,11 @@ derive them at render time, which is what makes reordering and undo/redo trivial
   (unlisted ids append).
 - **An insert is a move and must write both lists.** `applyOrder()` is the one rule for
   splitting an ordered flow back into the two lists; `insertIntoFlow` goes through it.
+- **A move reorders the resolved flow, never `questions` alone.** A layout element is
+  filed under the question before it, so a move that rewrites only the array drags that
+  question's page break (or heading) along with it. `moveQuestion` did, and a page ended
+  by a break could take nothing after its last question (GitHub #4,
+  `store/reorderAcrossPageBreak.test.ts`).
 
 ### A section is a marker, not a container
 
@@ -1836,7 +1841,8 @@ break to the tab heading of the run it opened. **A group is a result, not a prom
 (they re-cut per measurement) and **a section can begin mid-sheet** — groups are the
 top level, a section heading is a row inside one. Tabs open by default; unplaced items
 fall into a trailing unnumbered group; dropping on a tab lands at the head of that
-page.
+page. **A row takes a drop on the half the pointer is over** (`dropEdge`), as the page
+does: the lower half of a page's last row is the only target for the end of that page.
 
 ---
 

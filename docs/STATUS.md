@@ -7,9 +7,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
+- **GitHub #4, 2026-10-23 (merged on develop, issue not answered):** nothing could follow the last question of a page ended by a break: the outline's ↑/↓ (`moveQuestion`) reordered `questions` only, so the break filed under that question travelled with it; outline rows only took drops *before*. Now `moveQuestion` moves through the flow and rows drop on the pointer's half (`dropEdge`). Test: `store/reorderAcrossPageBreak.test.ts`. Chrome-checked (↑, drags, `.docx`); not tried on iPad touch or Tauri.
 - **Long unbroken text wraps, 2026-10-22 (develop):** `.paper { overflow-wrap: break-word }` in `globals.css`; the page (and thumbnails, which render `.paper`) let a no-space string run past the edge since long before `statementAlign` (not caused by it). `.docx` untouched. Guard: `src/test/paperWrap.test.ts` (CSS only; layout checked in Chrome).
 - **GitHub #3, 2026-10-22 (branch `fix/description-justify`, not merged/pushed):** the (1)(2)(3) statements of a combination MC justify like options: `McqQuestion.statementAlign`, the format bar's Justify on a statement (`mcqStatement` is align-only), IR/docx/clipboard via the node's `format.align`. Test: `registry/mcqStatementAlign.test.ts`. Chrome-checked (EN+中); not tried in Word or Tauri. Issue not answered.
-- **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Word packs justified lines tighter (not fixable).
 - **2026-10-19 (Unreleased, merged on develop):** `.docx` has no keep flags
   (no black ¶ squares, user's call) — hard page breaks where the preview breaks (`pageBreaks.ts`,
   `measurePageStarts.tsx`; samples now run in headless Chrome); B7 examiner marks grid on the
@@ -17,7 +17,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   page count; old entries fill on next edit); F5 dashboard searches question text; C11 Diagram
   filter + Sort; 題型 first release (map, links, 題目類型 wording, editor 題庫 tab filter). None
   tried in real Word or Tauri. 題型 next: Fill by 題型 (`docs/design/question-types-ux.md` item 6).
-- **Known-gap sweep 2026-10-18 (Unreleased):** tab wrap, import keeps tabs, sync fixes. Untried in Word/Tauri.
 - **Tabs vs Word 1–3, 2026-10-18 (Unreleased, `docs/Tabs vs Word.md`):** tab types, Word-rule layout,
   `<w:tab/>`/`<w:tabs>`, ruler + Tab stops panel. No schema bump. Not tried in Word or Tauri.
 - **題型 sort board 2026-10-19 (Unreleased, on develop):** one-layout map, sort board, 中文 topic names.
@@ -77,6 +76,5 @@ off the bottom.** It is the first thing a fresh session reads — then
   `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
 
 ## Log
+- **2026-10-23** — GitHub #4: questions can follow the last one on a page (outline ↑/↓ and row drops); merged on develop.
 - **2026-10-19** — the first 題型 is made on the 題型 map itself (user's ask).
-- **2026-10-19** — 題型 empty state: research (no suggestion boxes), then the sort board and the map without the cliff.
-- **2026-10-19** — F4/F5, C11, B7, 題型 v1 (after research), `.docx` page breaks instead of keep flags; merged on develop.

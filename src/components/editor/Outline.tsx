@@ -4,7 +4,7 @@ import { tagText } from '@/model/patterns';
 import { stringTags, topicNamesFor } from '@/model/topics';
 import { useViewLanguage } from '@/settings/paperLanguage';
 import { tagTitle, typeLabel } from '@/components/bank/BankRow';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { copyForWord, questionClipboardHtml } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
 import {
@@ -81,6 +81,24 @@ function typeBadge(question: Question): string {
 /* `LAYOUT_NAME` comes from `model/flow` — the rail, this outline and the add rail's
    destination label all name the same nine kinds, and separate copies would drift. */
 
+type DropEdge = 'before' | 'after';
+
+/**
+ * Which side of a row a drag lands on: the half the pointer is over, as on the page.
+ * Rows used to take every drop *before* themselves, so the slot after a page's last
+ * item — before the break that ends it — could not be reached (GitHub #4).
+ */
+export function dropEdge(event: DragEvent<HTMLElement>): DropEdge {
+  const bounds = event.currentTarget.getBoundingClientRect();
+  return event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+}
+
+/** The accent line on the edge a drop will land on. */
+const DROP_LINE: Record<DropEdge, string> = {
+  before: 'before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded before:bg-accent',
+  after: 'before:absolute before:inset-x-1 before:-bottom-px before:h-0.5 before:rounded before:bg-accent',
+};
+
 /** The row's selection bar. Always mounted so it grows in rather than popping. */
 function SelectionBar({ on }: { on: boolean }) {
   return (
@@ -113,7 +131,7 @@ function LayoutRow({ element }: { element: LayoutElement }) {
   // the question rows do, so clicking an element on the page lights its row here too.
   const isSelected = useWorksheetStore((s) => s.selectedElementId === element.id);
 
-  const [isOver, setIsOver] = useState(false);
+  const [isOver, setIsOver] = useState<DropEdge>();
   const rowRef = useRef<HTMLLIElement>(null);
 
   // Selection arrives from the preview, so keep the matching row on screen.
@@ -179,26 +197,22 @@ function LayoutRow({ element }: { element: LayoutElement }) {
       }}
       onDragEnd={() => {
         setDragId(undefined);
-        setIsOver(false);
+        setIsOver(undefined);
       }}
       onDragOver={(event) => {
         event.preventDefault();
-        if (dragId && dragId !== element.id) setIsOver(true);
+        if (dragId && dragId !== element.id) setIsOver(dropEdge(event));
       }}
-      onDragLeave={() => setIsOver(false)}
+      onDragLeave={() => setIsOver(undefined)}
       onDrop={(event) => {
         event.preventDefault();
-        if (dragId && dragId !== element.id) reorderFlowItem(dragId, element.id);
+        if (dragId && dragId !== element.id) reorderFlowItem(dragId, element.id, dropEdge(event));
         setDragId(undefined);
-        setIsOver(false);
+        setIsOver(undefined);
       }}
       className={`group relative flex items-center gap-1.5 rounded-lg py-1.5 pl-1 pr-1.5 transition-colors duration-150 ease-out-soft ${
         isSelected ? 'bg-surface-hover' : 'hover:bg-surface-hover'
-      } ${
-        isOver
-          ? 'before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded before:bg-accent'
-          : ''
-      } ${dragId === element.id ? 'opacity-40' : ''} ${
+      } ${isOver ? DROP_LINE[isOver] : ''} ${dragId === element.id ? 'opacity-40' : ''} ${
         // A section names the run beneath it, so it is weighted to read as a divider in
         // the list rather than as one more item in it.
         isSection ? 'mt-1 border-t border-line bg-surface-sunken/50 pt-2 first:mt-0 first:border-t-0' : ''
@@ -282,7 +296,7 @@ function QuestionRow({
   const dragId = useWorksheetStore((s) => s.dragQuestionId);
   const setDragId = useWorksheetStore((s) => s.setDragQuestionId);
 
-  const [isOver, setIsOver] = useState(false);
+  const [isOver, setIsOver] = useState<DropEdge>();
   const rowRef = useRef<HTMLLIElement>(null);
 
   // Selection can arrive from the preview, so keep the matching row on screen.
@@ -350,27 +364,27 @@ function QuestionRow({
       }}
       onDragEnd={() => {
         setDragId(undefined);
-        setIsOver(false);
+        setIsOver(undefined);
       }}
       onDragOver={(event) => {
         event.preventDefault();
-        if (dragId && dragId !== question.id) setIsOver(true);
+        if (dragId && dragId !== question.id) setIsOver(dropEdge(event));
       }}
-      onDragLeave={() => setIsOver(false)}
+      onDragLeave={() => setIsOver(undefined)}
       onDrop={(event) => {
         event.preventDefault();
         // One route for every case. With a single document flow there is no "across"
         // to handle: landing next to this row is the whole move, and which section the
         // item ends up in follows from which heading it lands after.
         if (dragId && dragId !== question.id) {
-          reorderFlowItem(dragId, question.id);
+          reorderFlowItem(dragId, question.id, dropEdge(event));
         }
         setDragId(undefined);
-        setIsOver(false);
+        setIsOver(undefined);
       }}
       className={`group relative flex items-center gap-1.5 rounded-md py-2 pl-1.5 pr-1.5 transition-colors duration-150 ease-out-soft ${
         isSelected ? 'bg-surface-hover' : 'hover:bg-surface-hover'
-      } ${isOver ? 'before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded before:bg-accent' : ''} ${
+      } ${isOver ? DROP_LINE[isOver] : ''} ${
         dragId === question.id ? 'opacity-40' : ''
       }`}
     >
