@@ -34,6 +34,13 @@ a version heading is edited afterwards.
   its first page there. A question copied into another worksheet leaves its Start on a new page
   behind.
   <!-- zh: **讓題目保持在同一頁，或由新頁開始。** 按一下題目，在其面板剔選「此題由新頁開始」，該題便會從頁面頂部開始：緊接其上的標題，以及標題下的說明，會一併移到新頁，頁面不會以孤立的標題開首。結構題還可以剔選「此題保持在同一頁」：如果頁面餘下的空位不夠，整題會移到下一頁，而不是跨頁分開（高於一頁的題目仍會分頁）。MC 題一向保持在同一頁，Paper 1 的每一題亦然。在你剔選之前，工作紙完全不變。頁面、縮圖、頁面列表及 Word 檔都在同一位置分頁，開始畫面的卡片亦會在該處結束第一頁。複製到另一份工作紙的題目，不會帶走「由新頁開始」。 -->
+- **Justify the text in a table cell.** Click a cell, or drag across several, and in the Table
+  tools bar above the page press T≡ (Justify cell text), beside T⇤ T↔ T⇥. A sentence that wraps
+  inside the cell then lines up with both of its edges, so a column of explanations can be
+  justified in one click; a cell with one short line looks as it did. The page, the thumbnails,
+  the Word file and a copied table all follow. Nothing changes in a worksheet until you press it,
+  and Justify text in Document setup still leaves tables as they are.
+  <!-- zh: **表格儲存格內的文字可左右對齊。** 按一下儲存格（或拖曳選取多格），在頁面上方「表格工具」列按「T≡」（儲存格文字左右對齊），位於 T⇤ T↔ T⇥ 旁。在儲存格內換行的句子，各行會貼齊儲存格的左右兩邊，一欄解釋文字一按即可左右對齊；只有一短行的儲存格看來與以往相同。頁面、縮圖、Word 檔及複製出來的表格都一致。在你按下之前，工作紙完全不變；「頁面設定」的「文字左右對齊」仍不會改動表格。 -->
 
 ## 0.8.5 — 2026-10-23
 

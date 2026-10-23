@@ -21,7 +21,7 @@ const shape = (name: string) =>
     .join('');
 
 describe('manual test documents', () => {
-  it('lists the six files', () => {
+  it('lists the seven files', () => {
     expect(readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()).toEqual([
       'issue-4-many-breaks.json',
       'issue-4-repro.json',
@@ -29,6 +29,7 @@ describe('manual test documents', () => {
       'option-layout-mix.json',
       'page-flow-mix.json',
       'question-gap-mix.json',
+      'table-justify-mix.json',
     ]);
   });
 
@@ -83,7 +84,21 @@ describe('manual test documents', () => {
     expect(flow.join('')).toBe('SQQQSQQQ');
   });
 
-  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix', 'page-flow-mix', 'question-gap-mix'])('%s exports a .docx', async (name) => {
+  it('table-justify-mix: three tables whose cells hold sentences, every cell as saved before Justify', () => {
+    const w = load('table-justify-mix');
+    expect(w.questions.map((q) => q.type)).toEqual(['structured', 'structured', 'mcq']);
+    const tables = w.questions.flatMap((q) => q.blocks ?? []).filter((block) => block.kind === 'table');
+    expect(tables).toHaveLength(4);
+    // Nothing is justified yet: a cell is flush left, centred or flush right, as ever.
+    const aligns = tables.flatMap((table) => table.rows.flatMap((row) => row.cells.map((cell) => cell.align)));
+    expect(aligns).not.toContain('justify');
+    expect(new Set(aligns)).toEqual(new Set([undefined, 'center', 'right']));
+    // The description column holds sentences long enough to wrap in its cell.
+    expect(tables[0].rows[1].cells[1].text.en[0].text.length).toBeGreaterThan(120);
+    expect(shape('table-justify-mix')).toBe('QQ|Q'); // two pages, so the page rail draws its thumbnails
+  });
+
+  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix', 'page-flow-mix', 'question-gap-mix', 'table-justify-mix'])('%s exports a .docx', async (name) => {
     const bytes = await exportDocxBuffer(load(name), { language: 'bilingual', version: 'student' });
     expect(bytes.length).toBeGreaterThan(2000);
   });

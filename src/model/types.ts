@@ -50,7 +50,7 @@ export interface BiText {
   zh: RichText;
 }
 
-export type CellAlign = 'left' | 'center' | 'right';
+export type CellAlign = 'left' | 'center' | 'right' | 'justify';
 
 /**
  * Where a cell's text sits vertically — `w:vAlign`. Centred is the unstored default (what

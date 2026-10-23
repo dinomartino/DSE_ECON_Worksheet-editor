@@ -141,3 +141,23 @@ Files dropped on the window (this is the path that changed: it is now the page's
 
 The same drags with a real mouse in Chrome: `node scripts/drag-verify.mjs`. If any of 1–3 still
 does nothing in the app, say which one and what you saw.
+
+## `table-justify-mix.json` — Justify in table cells (k-0178 #4)
+
+Three questions whose tables hold sentences, over two pages (a New page after Q2). Q1: a policy table, a
+bold centred heading row, then a short term beside a three-line description. Q2: a table of numbers
+(flush right) and a table whose top cell spans both columns. Q3 (page 2): an MC whose table holds a
+sentence in each language. Nothing is justified: every cell is flush left, centred or flush right.
+
+1. Click a description in Q1's table. In the Table tools bar, Cell text group, press **T≡** (Justify cell
+   text): the lines reach both edges of the cell (the last line stays flush left). T⇤ puts it back.
+2. Drag down the description column to sweep the three cells, press T≡ once, then Undo once: all three
+   change and unchange together. The page-rail thumbnails draw the same.
+3. Press T≡ on a number cell or "Price ($)": nothing moves (one line).
+4. Setup → Worksheet → **Justify text**: the stems justify, the tables stay as they are (but for cells
+   you justified).
+5. EN+中: the English sentence before the line break stays ragged; the 中文 line sits under it.
+6. Export → Word. `npm run samples` writes `table-justify/…`; open `table-justify-default-en.docx`
+   beside `table-justify-policies-en.docx` in Word.
+
+`scripts/table-justify-verify.mjs` does 1–5 with a real mouse in Chrome, in English and 中文.

@@ -17,6 +17,7 @@ import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { buildOptionLayoutPaper } from '@/test/optionLayoutFixture';
 import { buildPageFlowBooklet, buildPageFlowPaper, buildPageFlowPaper1 } from '@/test/pageFlowFixture';
 import { buildQuestionGapBooklet, buildQuestionGapOwnNumbers, buildQuestionGapPaper } from '@/test/questionGapFixture';
+import { buildTableJustifyPaper } from '@/test/tableJustifyFixture';
 import { OPTION_LAYOUT_CHOICES, withOptionLayouts } from '@/registry/mcqLayouts';
 import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
 import { presetFor } from '@/ai/providers';
@@ -144,6 +145,20 @@ it('emits papers with a question kept on one page or started on a new one (the q
   planPaper(buildPageFlowBooklet(), en, `${dir}/page-flow-booklet-en.docx`);
   planPaper(buildPageFlowPaper1(), en, `${dir}/page-flow-paper1-en.docx`);
   planPaper(buildPageFlowPaper({ keep: [2], start: [3] }), { language: 'bilingual', version: 'teacher' }, `${dir}/page-flow-bilingual-teacher.docx`);
+});
+
+it('emits papers with the text of table cells justified (Table tools → T≡)', async () => {
+  const dir = `${OUT}/table-justify`;
+  mkdirSync(dir, { recursive: true });
+  const en: OutputMode = { language: 'en', version: 'student' };
+  // The control: nothing pressed, every cell flush left, centred or flush right, as any paper saved before.
+  planPaper(buildTableJustifyPaper(), en, `${dir}/table-justify-default-en.docx`);
+  planPaper(buildTableJustifyPaper({ policies: true }), en, `${dir}/table-justify-policies-en.docx`);
+  const all = { policies: true, spanning: true, mcq: true };
+  planPaper(buildTableJustifyPaper(all), en, `${dir}/table-justify-all-en.docx`);
+  // "Justify text" justifies the stems and parts; the tables stay as they are, but for the cells chosen.
+  planPaper(buildTableJustifyPaper({ policies: true }, { justifyText: true }), en, `${dir}/table-justify-paper-switch-en.docx`);
+  planPaper(buildTableJustifyPaper(all), { language: 'bilingual', version: 'teacher' }, `${dir}/table-justify-bilingual-teacher.docx`);
 });
 
 it('emits a paper whose body text is justified (Document setup)', async () => {

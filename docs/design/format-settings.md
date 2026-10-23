@@ -2,8 +2,8 @@
 
 Status: **approved 2026-10-23** (the user took every recommendation in § 6); building one setting
 at a time. Option layout (§ 4.1) is built (§ 9.1), space between questions (§ 4.2) is built (§ 9.2) and
-keep-together / new page (§ 4.3) is built on `feature/keep-together` (§ 9.3); what is left waits for the
-user's word. Written against `develop` at `d8194642` (it has since gained the
+keep-together / new page (§ 4.3) is built (§ 9.3) and Justify in table cells (§ 4.4, row 4) is built on
+`feature/table-justify` (§ 9.4); what is left waits for the user's word. Written against `develop` at `d8194642` (it has since gained the
 GitHub #4 fix, `bbb0494e`; nothing here depends on it). Task k-0178. Evidence: the four GitHub
 issues, `CHANGELOG.md`, the Justify commits, a code survey (by reading; nothing was run in a
 browser, Word or Tauri) and a measurement pass over `real_life_reference/`.
@@ -31,7 +31,7 @@ between-question gaps if it is a Paper 1 mock.
 | 1 | **Option layout everywhere**: apply to all MC questions in one click; later a control on the page | paper (bulk) + question | S–M | Real papers stack text options (44 of 45). School papers choose per question: mock ≈20 stacked / 4 two-by-two / ≈21 one-row, DBS 17 / 0 / 2. Today only the sidebar panel, one question at a time | **Build first** |
 | 2 | **Space between questions on every paper** | paper + question | M | Gap before a question: real Paper 1 35–84 pt, mock 25 pt, DBS 36 pt. Today it exists only on a Paper 1 mock | **Built** (§ 9.2) |
 | 3 | **Keep a question together / start it on a new page** | question (+ paper default) | S–M | Real Paper 2 starts 12 of 14 (2019) and 9 of 11 (2025) questions on a fresh page; the mock splits Q10 and its source over three pages. Today only MC is kept whole | **Built** (§ 9.3) |
-| 4 | Justify: what is left (table cells; a whole question at once) | block / question | S–M | 28 of 238 table paragraphs in the 2019 paper are justified; the paper switch skips tables | Later |
+| 4 | Justify: what is left (table cells; a whole question at once) | block / question | S–M | 28 of 238 table paragraphs in the 2019 paper are justified; the paper switch skips tables | **Table cells built** (§ 9.4); a whole question waits |
 | 5 | Line spacing | paper | L | Every reference is ≈ single (line pitch ÷ text size 1.09–1.2). Only Text size 12 (1.00) is tighter than any of them | Decide the 12 pt case; no general setting |
 | 6 | Answer lines: length, style, default count | leaf / paper | M–L | Always dotted and full width; counts follow page fill (1.4–4.8 lines per mark) | Later, at most "lines per mark" |
 | 7 | Indent of the (1)(2)(3) statements | paper | M | The Paper 1 preset already matches the real paper (label +0.85 cm, text +1.70 cm) | Skip |
@@ -274,6 +274,8 @@ keep-whole: § 7.)
 
 ### 4.4 Justify: what is left
 
+**Table cells built 2026-10-23: § 9.4** (T≡ in the Table tools bar; the paper-wide switch still skips tables, § 6 decision 8). What follows is the proposal as it was written; a question-level `partsAlign` is still not built.
+
 Per-paragraph Justify covers stems, parts, sub-parts and text elements; per-question Justify covers
 options and statements; **Justify text** stamps stems, statements, options, parts, sub-parts and
 body text, inside source panels too (`withJustifiedBody`), and skips rows, grids, tables, titles,
@@ -412,6 +414,23 @@ Each item shows the question as it was asked, then what it fixes.
    every build:** each build's report names the files to open.
 7. **Wording.** The draft 中文 labels in § 4 (they follow `docs/design/ui-language.md`).
    **Decided: as written.**
+8. **Does "Justify text" reach table cells? Decided 2026-10-23 (k-0188): no; a cell is justified one by one or by range.**
+   Evidence: (a) the 2019 Paper 2 `.docx` (read-only census, tables parsed from `word/document.xml`,
+   styles resolved): its body is justified where it is long (73 of 78 body paragraphs of 60+ characters), but only
+   18 of 224 table-cell paragraphs are (77 centred, 129 left); of the 17 cell paragraphs of 35+ characters, 5 are
+   justified, 5 centred, 7 left, and the longest prose cells (154 to 892 characters, the quoted
+   sources) are flush left; 13 of the 16 justified text cells hold one line, where justifying changes nothing
+   visible. DBS: body 0 of 131 justified, 5 of 63 cell paragraphs, all one line. (The doc's earlier "28 of 238"
+   counted slightly more paragraphs; the proportions agree.) (b) The product has told teachers since 0.8.2 that
+   Justify text leaves tables alone (Setup hint, changelog); reaching them would re-typeset every saved
+   paper that has the switch on and a wrapping cell, against "a saved paper prints as before". (c) Narrow cells
+   justify badly (wide gaps), and numbers and headings are single lines or centred, so a switch would
+   mostly do nothing and sometimes harm. If a teacher asks for it: a separate "Justify table text" switch
+   (new `Worksheet` field, `KNOWN_KEYS`, stamped in `tableNodeFor`), off by default. Not built.
+9. **Where the control lives. Decided while building:** the Table tools bar's Cell text group (T≡ after T⇤ T↔ T⇥),
+   not the format bar. The cell's alignment is one four-way choice stored in `CellAlign`, the format bar
+   hides its align group for a cell on purpose (`SYSTEM_ARCHITECTURE.md` § The contextual toolbar row), and
+   the Table tools bar already acts on a swept range, so a whole column is one click.
 
 ## 7. GitHub #4 is not a setting
 
@@ -622,6 +641,45 @@ New page element after it). **Not tried in real Word, on an iPad, or in the desk
 page 2, white space at the foot of page 1), `page-flow-new-page-q4-en.docx` (Section B and Question 4 begin page 3),
 `page-flow-keep-and-new-page-en.docx` (four pages), `page-flow-booklet-en.docx` and `page-flow-paper1-en.docx` (Question 10
 begins page 3 after the cover); no black ¶ squares, no blank pages.
+
+### 9.4 Justify in table cells (built 2026-10-23, `feature/table-justify`, k-0188)
+
+**What a teacher sees.** Click a table cell (or drag across several) and, in the Table tools bar, the Cell text group has a
+fourth button, **T≡** Justify cell text 儲存格文字左右對齊, after T⇤ T↔ T⇥. A sentence that wraps in the cell then reaches both
+edges (the last line stays flush left; a one-line cell does not move). The four are one choice: T⇤ puts it back. Over a swept
+range it acts on every cell in one undo step and reads pressed only when all agree. The page, the page rail, the print PDF,
+the `.docx`, Copy for Word, the start card and the bank preview follow. Nothing changes until it is pressed.
+
+**How.** `CellAlign` gains `'justify'` (`src/model/types.ts`); no new field, no schema change, no `KNOWN_KEYS` (a cell's fields
+are nested), and `schemaVersion` stays 1. The page (`textAlign: cell.align`) and Copy for Word (`text-align:${cell.align}`) already
+wrote the value; the one code change in a backend is `cellParagraph` in `src/export/docx/body.ts`, which wrote the value into
+`w:jc` raw and now spells it `both` through `jcValue` (shared with `formatParagraphProps`). The `.docx` sets
+`w:doNotExpandShiftReturn` by finding `<w:jc w:val="both"/>`, so a bilingual cell's English line stays ragged in Word as on the page.
+The bar: `CELL_ALIGNS` in `ContextBar.tsx`, `alignCellJustify` in `ContextBar.messages.ts`.
+
+**Decided while building:** see § 6 decisions 8 (Justify text does not reach tables) and 9 (where the control lives). Also:
+- **A stale `format.align: 'justify'` on a cell (the format bar could store one before 0.8.3) still aligns nothing.** Reading it
+  would have re-typeset saved papers; the cell's own `CellAlign` is the only thing read (tested).
+- **Word import does not carry cell alignment at all** (found; unchanged): an imported table's cells are all flush left.
+- **Older builds.** A build before this one that opens a paper with a justified cell prints it justified on the page but writes
+  `w:jc w:val="justify"`, which is not a value of `w:jc`, into its `.docx`. How real Word treats that is **untried**. The schema mark
+  cannot help (it only guards v0.4/0.5; 0.6–0.8.5 read v2 as their own), and a separate field would have let such a
+  build print the cell flush left instead; the approved design was a `CellAlign` value, so it was kept. Teachers on mixed
+  versions are the only ones exposed.
+
+**Verified.** `src/components/preview/cellJustify.test.tsx` (20 tests: the value round-trips and a saved paper is schema 1; set,
+replaced and swept; the IR; page, Word (`both`, exactly one `w:jc` changed, never `justify`), Copy for Word, the card; the bar's
+four buttons in English and 中文, pressed states over a sweep; "Justify text" leaves cells alone; a stale `format.align` stays
+inert). Mutation-checked: writing the value raw into `w:jc`, and dropping the button, each fail 4 tests.
+`scripts/table-justify-verify.mjs` drives the real app in Chrome in English and 中文 on
+`test-fixtures/manual/table-justify-mix.json`: real clicks on T≡, the right edge of every line measured (ragged before, flush after),
+a real drag sweeping a column, one undo for three cells, a one-line cell not moving, a spanning cell, an MC's table, the English line
+of a bilingual cell staying ragged, Setup's Justify text leaving tables alone, a reload, the start card, and the `.docx` the Export
+dialog writes. **Saved papers do not move:** the 44 existing samples exported through the real Export dialog on `origin/develop` and on this build compare equal part by part, 38 byte-identical apart from the file's own timestamp and 6 (versions B and C, and the answer keys) differing only by the version shuffle's random content, which the base build also does against itself, with the same XML structure. `npm run samples` writes five `table-justify/` files; LibreOffice renders them as the page does (ragged default,
+flush justified descriptions). **Not tried in real Word, on an iPad, or in the desktop app.** In Word open
+`table-justify/table-justify-default-en.docx` (the control), then `table-justify-policies-en.docx` (the three description cells
+justified), `table-justify-all-en.docx`, `table-justify-paper-switch-en.docx` (Justify text on: stems justified, tables as
+they were except the chosen cells) and `table-justify-bilingual-teacher.docx` (the English line before each break stays ragged).
 
 ## Appendix A — real-paper measurements
 

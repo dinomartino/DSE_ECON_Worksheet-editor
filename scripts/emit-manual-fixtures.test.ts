@@ -232,6 +232,122 @@ function pageFlowMix(): Worksheet {
   ]);
 }
 
+/**
+ * Justify in table cells (k-0178 #4): a classroom worksheet whose tables hold sentences, so a cell
+ * wraps and a justified one reads differently from a flush-left one. Q1: a policy table, a bold
+ * centred heading row and then a short term beside a three-line description. Q2: a table of
+ * numbers (one line a cell, the right-hand column flush right) and a table whose top cell spans
+ * both columns. Q3: an MC whose table holds a sentence in each language, for bilingual mode, on a
+ * second page (a New page after Q2, so the page rail has two thumbnails to draw).
+ * Nothing is justified: every cell prints as in any paper saved before this feature.
+ */
+function tableJustifyMix(): Worksheet {
+  const grid = (rows: Array<Array<[string, string]>>, widths?: number[]) => {
+    const table = createTableBlock(rows.length, rows[0].length);
+    rows.forEach((row, r) => row.forEach(([en, zh], c) => { table.rows[r].cells[c].text = bi(en, zh); }));
+    if (widths) table.columnWidths = widths;
+    return table;
+  };
+
+  const policies = grid(
+    [
+      [['Policy', '政策'], ['How it works', '運作方式']],
+      [
+        ['Minimum wage', '最低工資'],
+        ['The government sets a legal lowest wage that employers may pay. If it is set above the equilibrium wage, the quantity of labour supplied exceeds the quantity demanded and unemployment results.',
+          '政府訂定僱主可支付的法定最低工資。若最低工資高於均衡工資，勞工供應量會超過需求量，引致失業。'],
+      ],
+      [
+        ['Price ceiling', '價格上限'],
+        ['The government sets a legal highest price that sellers may charge. If it is set below the equilibrium price, the quantity demanded exceeds the quantity supplied and a shortage results.',
+          '政府訂定賣方可收取的法定最高價格。若價格上限低於均衡價格，需求量會超過供應量，引致短缺。'],
+      ],
+      [
+        ['Subsidy to producers', '生產者補貼'],
+        ['The government pays producers a sum for each unit sold. This lowers their cost of production, shifts the supply curve to the right, lowers the price and raises the quantity traded.',
+          '政府就每單位售出的貨品向生產者付款。這降低生產成本，令供應曲線右移，價格下降，成交量上升。'],
+      ],
+    ],
+    [0.28, 0.72],
+  );
+  policies.headerRows = 1;
+  for (const cell of policies.rows[0].cells) {
+    cell.align = 'center';
+    cell.format = { bold: true };
+  }
+
+  const one = createStructuredQuestion();
+  one.blocks = [createParagraphBlock(bi('Study the table about three government policies and answer the questions that follow.', '細閱下表所列的三項政府政策，並回答以下問題。')), policies];
+  const onePart = createPart();
+  onePart.blocks = [createParagraphBlock(bi('Using the table, explain why a price ceiling can lead to a shortage.', '根據上表，解釋為何價格上限會引致短缺。'))];
+  onePart.marks = 3;
+  one.parts = [onePart];
+
+  const numbers = grid(
+    [
+      [['Year', '年份'], ['Price ($)', '價格（元）'], ['Quantity', '數量']],
+      [['2024', '2024'], ['10', '10'], ['500', '500']],
+      [['2025', '2025'], ['12', '12'], ['450', '450']],
+    ],
+  );
+  for (const row of numbers.rows.slice(1)) for (const cell of row.cells.slice(1)) cell.align = 'right';
+
+  const spanning = grid(
+    [
+      [
+        ['A rise in the price of a good changes the quantity demanded of that good along its demand curve, but a change in income shifts the whole curve.',
+          '貨品價格上升，會令該貨品的需求量沿需求曲線變動；而收入改變，則會令整條曲線移位。'],
+        ['', ''],
+      ],
+      [
+        ['Movement along the curve', '沿曲線移動'],
+        ['Shift of the curve', '曲線移位'],
+      ],
+    ],
+    [0.5, 0.5],
+  );
+  spanning.rows[0].cells[0].colSpan = 2;
+  spanning.rows[0].cells[1].covered = true;
+
+  const two = createStructuredQuestion();
+  two.blocks = [createParagraphBlock(bi('Refer to the two tables below.', '參照以下兩個表格。')), numbers, spanning];
+  const twoPart = createPart();
+  twoPart.blocks = [createParagraphBlock(bi('Calculate the total revenue in 2025.', '計算2025年的總收益。'))];
+  twoPart.marks = 2;
+  two.parts = [twoPart];
+
+  const quote = grid(
+    [
+      [
+        ['A subsidy lowers the cost of production, so the supply curve of the good shifts to the right and its equilibrium price falls.',
+          '補貼降低生產成本，因此該貨品的供應曲線右移，均衡價格下降。'],
+      ],
+      [
+        ['The tax raises the cost of production, so the supply curve shifts to the left and the equilibrium price rises.',
+          '稅項提高生產成本，因此供應曲線左移，均衡價格上升。'],
+      ],
+    ],
+  );
+  const three = createMcqQuestion();
+  three.blocks = [createParagraphBlock(bi('Which of the following is correct about the two policies in the table?', '就表中的兩項政策，以下哪項正確？')), quote];
+  three.options = [
+    ['Both policies raise the equilibrium price', '兩項政策均令均衡價格上升'],
+    ['Only the subsidy lowers the equilibrium price', '只有補貼令均衡價格下降'],
+    ['Only the tax lowers the equilibrium price', '只有稅項令均衡價格下降'],
+    ['Neither policy changes the equilibrium price', '兩項政策均不改變均衡價格'],
+  ].map(([en, zh]) => ({ id: newId(), text: bi(en, zh) }));
+  three.answerIndex = 1;
+
+  return paper('Table justify mix', '表格兩端對齊', [
+    createSectionElement(bi('Section A: Structured Questions', '甲部：結構題')),
+    one,
+    two,
+    brk(),
+    createSectionElement(bi('Section B: Multiple Choice', '乙部：多項選擇題')),
+    three,
+  ]);
+}
+
 it('emits the manual test documents', () => {
   if (!process.env.EMIT_MANUAL_FIXTURES) return;
   mkdirSync(OUT, { recursive: true });
@@ -242,6 +358,7 @@ it('emits the manual test documents', () => {
     ['option-layout-mix', optionLayoutMix()],
     ['question-gap-mix', questionGapMix()],
     ['page-flow-mix', pageFlowMix()],
+    ['table-justify-mix', tableJustifyMix()],
   ];
   for (const [name, w] of files) writeFileSync(`${OUT}/${name}.json`, `${stable(stringifyWorksheet(w), 'm-')}\n`);
 });
