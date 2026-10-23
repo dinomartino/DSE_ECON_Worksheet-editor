@@ -25,6 +25,7 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { requireQuestionType } from '@/registry';
+import { isKeptWhole, sheetOpeners, startsEveryQuestion } from './pageFlow';
 import { boundaryGapLines, gapNumberApplies, stimulusGapLines } from './questionGap';
 import {
   blankLine,
@@ -81,12 +82,29 @@ export interface RenderedQuestion {
    * on it; both exports ignore it (the first node already carries the gap as `spaceBefore`).
    */
   adjustableGap?: number;
+  /**
+   * The question asked to be kept on one page (`keepOnOnePage`) and nothing else already
+   * keeps it whole (§ `isKeptWhole`): the paginator offers no break inside it, so it moves to
+   * the next sheet whole when it does not fit the room left, and is cut only where it is
+   * taller than a sheet. Absent for every other question, which is every question of a paper
+   * nobody set it on.
+   */
+  keptTogether?: boolean;
+  /** This item opens a new sheet unless one already begins here (§ `startsPage` on the layout). */
+  startsPage?: boolean;
 }
 
 /** A non-question design element in the document flow. */
 export interface RenderedLayout {
   elementId: string;
   nodes: RenderNode[];
+  /**
+   * A sheet opens here because a question below asked to start a new page and this heading or
+   * source lead-in travels with it (§ `sheetOpeners`). The paginator opens the sheet, so the
+   * `.docx` takes its page break from the preview's measured sheets; Copy for Word writes the
+   * break itself. Absent on every item of a paper nobody set it on.
+   */
+  startsPage?: boolean;
 }
 
 /**
@@ -589,6 +607,11 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     (item) => !(mode.omitAnswerSpace && item.type === 'layout' && isWritingRoom(item.element)),
   );
 
+  // The items a question's "Start on a new page" opens a sheet at: itself, or the heading or
+  // source lead-in that travels with it. Read off the flow that prints, so a writing room
+  // omitted from a student copy does not stand between a break and its question.
+  const openers = sheetOpeners(resolved, startsEveryQuestion(worksheet));
+
   // Each stimulus's derived question range ("Questions 8 and 9"), from the numbering
   // plan — never stored, so inserting or reordering questions renumbers the sentence.
   // The look-ahead stops at the next stimulus: the questions past it are that one's.
@@ -625,7 +648,8 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         const wanted = stimulusGapLines(shape, previous, worksheet.examGapLines);
         stimulus = {
           range: questionRangeText(stimulusRanges.get(item.element.id) ?? []),
-          gapLines: atTrueTop
+          // Nothing is spaced above what opens a sheet: the air would only die at its top.
+          gapLines: atTrueTop || openers.has(index)
             ? 0
             : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0)),
           // Kept whole as an exam question is, in Word and so in the preview, which
@@ -640,8 +664,9 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
           : 0,
         // A heading's leading gap is skipped at the true top of the page, and also when
         // the previous item already spent a line — otherwise a note ending in a trailing
-        // hard break would sit two lines above the next heading.
-        (index === 0 && !somethingAboveFlow) || endsInBlankLine(previousNodes),
+        // hard break would sit two lines above the next heading. And when it opens a sheet
+        // a question below asked for (`startOnNewPage`): the air above it would die there.
+        (index === 0 && !somethingAboveFlow) || endsInBlankLine(previousNodes) || openers.has(index),
         // Taken from the numbering plan, not `worksheet.questions.length`: the plan is
         // what the printed numbers come from, so the lead-in's "There are 45 questions"
         // counts exactly the questions a candidate can see and number through.
@@ -659,6 +684,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
           // Derived, so a part header's "(19 marks)" tracks the questions inside its
           // own section (§3.5).
           nodes,
+          ...(openers.has(index) ? { startsPage: true } : {}),
         },
       };
     }
@@ -673,13 +699,19 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     // (§ a gap counts what is already there).
     const atTrueTop = index === 0 && !somethingAboveFlow;
     const wanted = boundaryGapLines(shape, previous, question, worksheet.examGapLines);
-    const gap = atTrueTop ? 0 : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0));
+    // A question that opens a sheet because it asked to (`startOnNewPage`) has no air above
+    // it: it leads the page in every backend, so the gap is not stamped at all rather than
+    // dropped later by each (the page sheds it, the `.docx` sheds it given measured starts,
+    // and Copy for Word, which has no pages, would keep it).
+    const opensSheet = openers.has(index);
+    const gap = atTrueTop || opensSheet ? 0 : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0));
 
     // On the exam paper a question is kept whole, and on any paper one whose type asks
     // for it (an MC), in Word and so in the preview, which reads the same keep chain
-    // (§ keepQuestionWhole).
+    // (§ keepQuestionWhole). A teacher can ask it of the rest (`keepOnOnePage`), which is
+    // not spelled in the nodes but told to the paginator (`keptTogether`, below).
     const definition = requireQuestionType(question);
-    const keepWhole = shape === 'paper1' || definition.keepWhole === true;
+    const keepWhole = isKeptWhole(shape, definition);
 
     // The leading gap is part of the cached array, so an unchanged question hands back
     // one stable identity for the preview to memoise on (see `questionRenderCache`).
@@ -736,14 +768,21 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     }
     // Whether a stored number sets this boundary: the same test `boundaryGapLines`
     // applies before it reads one, on every paper shape.
-    const adjustableGap = gapNumberApplies(previous, question) ? wanted : undefined;
+    const adjustableGap = gapNumberApplies(previous, question) && !opensSheet ? wanted : undefined;
 
     previousNodes = separated;
     previous = { question };
 
     return {
       type: 'question',
-      question: { questionId: question.id, number, nodes: separated, adjustableGap },
+      question: {
+        questionId: question.id,
+        number,
+        nodes: separated,
+        adjustableGap,
+        ...(question.keepOnOnePage === true && !keepWhole ? { keptTogether: true } : {}),
+        ...(opensSheet ? { startsPage: true } : {}),
+      },
     };
   });
 

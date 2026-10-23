@@ -74,6 +74,7 @@ export const KNOWN_KEYS = new Set([
   'fonts',
   'baseFontSize',
   'justifyText',
+  'startEveryQuestionOnNewPage',
   'examGapLines',
   'bands',
   'cover',

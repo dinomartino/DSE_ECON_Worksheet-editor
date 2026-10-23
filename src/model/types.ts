@@ -50,7 +50,7 @@ export interface BiText {
   zh: RichText;
 }
 
-export type CellAlign = 'left' | 'center' | 'right';
+export type CellAlign = 'left' | 'center' | 'right' | 'justify';
 
 /**
  * Where a cell's text sits vertically — `w:vAlign`. Centred is the unstored default (what
@@ -389,6 +389,24 @@ export interface QuestionBase {
    * or under an unlike neighbour.
    */
   gapBefore?: number;
+  /**
+   * Keep this question on one page: when it does not fit what is left of a page it moves
+   * to the next one whole, instead of starting where it is and running over. Stored as
+   * `true` or absent, never `false`. Only a question that is not already kept whole needs
+   * it — an MC always is, and so is every question of a Paper 1 — so the editor offers it
+   * on the rest (§ `render/pageFlow.ts`). One taller than a page is still split where the
+   * page ends. Placement, not content: `contentKey` ignores it.
+   */
+  keepOnOnePage?: boolean;
+  /**
+   * Start this question on a new page. The page that holds the question above ends there,
+   * and the heading, lead-in or source above it travels with it (with any rubric under the
+   * heading), so a page never begins under a stranded heading. Stored as `true` or absent.
+   * Nothing happens where a page already begins (the first question, or straight under a
+   * New page break). Placement, not content: `contentKey` ignores it, and a copy taken into
+   * another document leaves it behind (`copyQuestion`).
+   */
+  startOnNewPage?: boolean;
   /** Machine identity across copies (`model/lineage.ts`); never printed. Absent = an original. */
   lineage?: QuestionLineage;
   /**
@@ -934,6 +952,16 @@ export interface Worksheet {
    * off, stored only as `true` (`withJustifyText`). Applied at render (`withJustifiedBody`).
    */
   justifyText?: boolean;
+  /**
+   * Start every question on a new page (Document setup → Page), for the papers whose questions
+   * each want a page of their own (a long-question paper). Stored as `true` or absent, never
+   * `false`; off by default, so a saved paper does not move. It asks of each question what its
+   * own "Start on a new page" does (§ `render/pageFlow.ts`: the heading, lead-in or source above
+   * travels with it; the first question and one under a New page element open nothing), and a
+   * question's own boxes still work beside it. Ignored on a Paper 1, where forty-five MC
+   * questions on forty-five pages is never what the switch means.
+   */
+  startEveryQuestionOnNewPage?: boolean;
   /**
    * Blank lines between two same-type questions (Setup → Between questions), on every
    * paper shape, overriding the shape's default: the question type's own `examGapLines`

@@ -1,15 +1,19 @@
 import { questionIdOwners } from '@/model/lineage';
 import type { Question } from '@/model/types';
 
-/** Fields that say where a copy sits or came from, not what it says. */
-export const IGNORED = ['lineage', 'tags', 'tagsAt', 'gapBefore'] as const;
+/**
+ * Fields that say where a copy sits or came from, not what it says: its place on the paper (the
+ * gap above it, the page it starts or is kept on) is the paper's business, not the question's.
+ */
+export const IGNORED = ['lineage', 'tags', 'tagsAt', 'gapBefore', 'keepOnOnePage', 'startOnNewPage'] as const;
 
 /** The same, on every part and sub-part (`questionIdOwners`' `part` owners): its topics and its identity across copies. */
 export const IGNORED_PART = ['tags', 'rootId'] as const;
 
 /**
  * A fingerprint of what a question says: every id `questionIdOwners` finds is blanked and
- * the `IGNORED` metadata (`lineage`, `tags`, `tagsAt`, `gapBefore`) dropped, with each
+ * the `IGNORED` metadata (`lineage`, `tags`, `tagsAt`, `gapBefore`, `keepOnOnePage`,
+ * `startOnNewPage`) dropped, with each
  * part's `IGNORED_PART` (`tags`, `rootId`), so `copyQuestion` copies are equal and any text
  * edit is not. Keys are sorted, so field order never matters.
  */

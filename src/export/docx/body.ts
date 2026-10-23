@@ -1,10 +1,12 @@
 import type {
   BiText,
   CaptionPlacement,
+  CellAlign,
   FontPair,
   LanguageMode,
   TableAlign,
   TabStop,
+  TextAlign,
   TextFormat,
 } from '@/model/types';
 import { cleanTabStops } from '@/model/tabStops';
@@ -127,6 +129,15 @@ export function tabsElement(format: TextFormat | undefined, layout: readonly Tab
     .join('')}</w:tabs>`;
 }
 
+/**
+ * A text alignment as `w:jc` spells it. OOXML calls the two ends "left"/"right" in the
+ * compatibility vocabulary Word still writes, and full justification "both": "justify" is
+ * not one of its values.
+ */
+function jcValue(align: TextAlign): string {
+  return align === 'justify' ? 'both' : align;
+}
+
 export function formatParagraphProps(format: TextFormat | undefined): string {
   if (!format) return '';
   const parts: string[] = [];
@@ -151,12 +162,7 @@ export function formatParagraphProps(format: TextFormat | undefined): string {
       })}/>`,
     );
   }
-  if (format.align) {
-    // OOXML calls the two ends "left"/"right" in the compatibility vocabulary Word
-    // still writes, and full justification "both".
-    const value = format.align === 'justify' ? 'both' : format.align;
-    parts.push(`<w:jc w:val="${value}"/>`);
-  }
+  if (format.align) parts.push(`<w:jc w:val="${jcValue(format.align)}"/>`);
   return parts.join('');
 }
 
@@ -451,7 +457,7 @@ function marksColumnLabelXml(label: string, styleId: string, column: number, con
   );
 }
 
-function cellParagraph(cellText: string, align: string, format?: TextFormat): string {
+function cellParagraph(cellText: string, align: CellAlign, format?: TextFormat): string {
   // No `w:spacing` override: the cell paragraph takes the Body style's fixed 12pt line
   // and zero padding like every other paragraph, so a table's rows sit on the same
   // rhythm as the text around it. The breathing room a cell needs is horizontal and
@@ -466,7 +472,7 @@ function cellParagraph(cellText: string, align: string, format?: TextFormat): st
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
     tabsElement(format) +
-    `<w:jc w:val="${align}"/>` +
+    `<w:jc w:val="${jcValue(align)}"/>` +
     formatParagraphProps(format ? { ...format, align: undefined } : undefined) +
     '</w:pPr>' +
     cellText +

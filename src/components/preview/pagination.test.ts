@@ -7,6 +7,7 @@ import {
   marqueeBounds,
   marqueeCatches,
   packPages,
+  pageStarts,
   placementKey,
   resolveFillCounts,
   type PackItem,
@@ -712,5 +713,146 @@ describe('a table piece that opens a sheet', () => {
       [6, 8],
       [9, 9],
     ]);
+  });
+});
+
+describe('a question that starts a new page (startOnNewPage)', () => {
+  const at = (key: string, height: number, extra: Partial<PackItem> = {}) => ({ item: item(key, extra), height });
+  const run = (entries: { item: PackItem; height: number }[]) =>
+    packPages(
+      entries.map((e) => e.item),
+      new Map(entries.map((e) => [e.item.key, e.height])),
+      PAGE,
+    );
+  const keys = (entries: { item: PackItem; height: number }[]) =>
+    run(entries).pages.map((page) => page.map((b) => b.key));
+
+  it('closes the sheet it finds half full and opens the next with itself on it', () => {
+    expect(keys([at('q1', 20), at('q2', 20, { startsSheet: true }), at('q3', 20)])).toEqual([['q1'], ['q2', 'q3']]);
+  });
+
+  it('is content, unlike a manual break: it takes its room on the sheet it opens', () => {
+    const { pages } = run([at('q1', 20), at('q2', 70, { startsSheet: true }), at('q3', 40)]);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2'], ['q3']]);
+  });
+
+  it('owns no break: the sheet it opens is nobody’s, so the .docx writes its page start', () => {
+    const packed = run([at('q1', 20), at('q2', 20, { startsSheet: true })]);
+    expect(packed.openedBy).toEqual([undefined, undefined]);
+    expect(composePages(packed).map((page) => page.flowIds)).toEqual([['q1'], ['q2']]);
+    expect(pageStarts(packed)).toEqual([{ key: 'q2', node: 0 }]);
+  });
+
+  it('opens nothing at the very top: the first sheet is already the one it asks for', () => {
+    expect(keys([at('q1', 20, { startsSheet: true }), at('q2', 20)])).toEqual([['q1', 'q2']]);
+  });
+
+  it('opens nothing on a sheet a manual break has just opened: no blank page between', () => {
+    const packed = run([at('q1', 20), { item: brk('b1'), height: 0 }, at('q2', 20, { startsSheet: true })]);
+    expect(packed.pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2']]);
+    expect(packed.openedBy).toEqual([undefined, 'b1']);
+  });
+
+  it('opens one sheet, not two, where the page was full anyway', () => {
+    expect(keys([at('q1', 100), at('q2', 20, { startsSheet: true })])).toEqual([['q1'], ['q2']]);
+    expect(keys([at('q1', 60), at('q2', 60, { startsSheet: true })])).toEqual([['q1'], ['q2']]);
+  });
+
+  it('gives each of two in a row its own sheet', () => {
+    expect(keys([at('q1', 20), at('q2', 20, { startsSheet: true }), at('q3', 20, { startsSheet: true })])).toEqual([
+      ['q1'],
+      ['q2'],
+      ['q3'],
+    ]);
+  });
+
+  it('opens at the heading that travels with a question, and brings the question with it', () => {
+    expect(
+      keys([at('q1', 20), at('h', 10, { startsSheet: true, keepsWithNext: true }), at('q2', 20)]),
+    ).toEqual([['q1'], ['h', 'q2']]);
+  });
+
+  it('does not pull the question above along, though its last part is held against the next stem', () => {
+    // A request for a new page is a break, not a squeeze: q1's tail stays with q1.
+    const q1 = at('q1', 70, { keepsWithNext: true, breakPoints: [{ index: 1, height: 50 }] });
+    const { pages, fragments } = run([q1, at('q2', 20, { startsSheet: true })]);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2']]);
+    expect(fragments.size).toBe(0);
+  });
+
+  it('does not split the sheet above to fill it: the item above is as it would be on its own', () => {
+    const tall = at('q1', 140, { breakPoints: [{ index: 0, height: 100 }] });
+    const { pages } = run([tall, at('q2', 20, { startsSheet: true })]);
+    // q1 is cut where its sheet ends, as ever; q2 then starts its own sheet after the tail.
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q1'], ['q2']]);
+  });
+
+  it('never opens a continuation: a tall item that asked is opened once, at its head', () => {
+    const tall = at('q1', 140, { startsSheet: true, breakPoints: [{ index: 0, height: 100 }] });
+    const { pages } = run([at('q0', 20), tall, at('q2', 20)]);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q0'], ['q1'], ['q1', 'q2']]);
+  });
+
+  it('changes nothing for items that did not ask', () => {
+    const entries = [at('q1', 20), at('h', 10, { keepsWithNext: true }), at('q2', 50), at('q3', 60)];
+    expect(run(entries).pages).toEqual(
+      packPages(
+        entries.map((e) => ({ ...e.item, startsSheet: undefined })),
+        new Map(entries.map((e) => [e.item.key, e.height])),
+        PAGE,
+      ).pages,
+    );
+  });
+
+  it('sheds its boundary gap on the sheet it opens, as any item leading a sheet does', () => {
+    // 100px sheet: q2 is 70 with a 10px gap that dies at a sheet top. Leading the sheet it asked
+    // for it is charged 60, so q3 (40) fits beside it; charged the gap it would not.
+    const entries = [at('q1', 40), at('q2', 70, { startsSheet: true }), at('q3', 40)];
+    const sized = new Map(entries.map((e) => [e.item.key, e.height]));
+    const keysWith = (gaps?: Map<string, number>) =>
+      packPages(entries.map((e) => e.item), sized, PAGE, gaps).pages.map((page) => page.map((b) => b.key));
+    expect(keysWith(new Map([['q2', 10]]))).toEqual([['q1'], ['q2', 'q3']]);
+    expect(keysWith()).toEqual([['q1'], ['q2'], ['q3']]);
+  });
+});
+
+describe('a question kept on one page (keepOnOnePage)', () => {
+  // The preview hands the packer no legal boundary inside the question (`breakAfter: []`) but
+  // still measures every node boundary, for the case of one taller than a sheet.
+  const nodesEach = (count: number, each: number) =>
+    Array.from({ length: count }, (_, index) => ({ index, height: (index + 1) * each })).slice(0, -1);
+  const split = (key: string, count: number, each: number) =>
+    item(key, { breakPoints: nodesEach(count, each), looseBreakPoints: nodesEach(count, each) });
+  const kept = (key: string, count: number, each: number) =>
+    item(key, { looseBreakPoints: nodesEach(count, each) });
+  const sheets = (items: PackItem[], heights: Record<string, number>) =>
+    packPages(items, new Map(Object.entries(heights)), PAGE).pages.map((page) => page.map((b) => b.key));
+
+  it('splits at the last boundary that fits when nothing asks (the control)', () => {
+    expect(sheets([item('q1'), split('q2', 4, 20)], { q1: 50, q2: 80 })).toEqual([['q1', 'q2'], ['q2']]);
+  });
+
+  it('moves whole to the next sheet instead when it asks and does not fit', () => {
+    expect(sheets([item('q1'), kept('q2', 4, 20)], { q1: 50, q2: 80 })).toEqual([['q1'], ['q2']]);
+  });
+
+  it('stays where it is when it fits', () => {
+    expect(sheets([item('q1'), kept('q2', 4, 20)], { q1: 20, q2: 80 })).toEqual([['q1', 'q2']]);
+  });
+
+  it('is still cut where the sheet ends when it is taller than a sheet', () => {
+    const { pages, fragments } = packPages([kept('q2', 6, 25)], new Map([['q2', 150]]), PAGE);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q2'], ['q2']]);
+    expect(fragments.get(placementKey(0, 0))).toMatchObject({ from: 0, continued: false });
+    expect(fragments.get(placementKey(1, 0))).toMatchObject({ continued: true });
+  });
+
+  it('starts a long one on a fresh sheet before cutting it', () => {
+    expect(sheets([item('q1'), kept('q2', 6, 25)], { q1: 50, q2: 150 })).toEqual([['q1'], ['q2'], ['q2']]);
+  });
+
+  it('takes a heading above it along, as for any item that moves', () => {
+    const h = item('h', { keepsWithNext: true });
+    expect(sheets([item('q1'), h, kept('q2', 4, 20)], { q1: 40, h: 10, q2: 80 })).toEqual([['q1'], ['h', 'q2']]);
   });
 });

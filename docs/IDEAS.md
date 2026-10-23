@@ -168,8 +168,10 @@ without one (`src/ai/providers.ts`). Never embed a key; never send student scrip
 - **Formatting settings like Justify** (approved 2026-10-23; built one at a time, each on its own branch):
   ranked against the real papers in `docs/design/format-settings.md`. 1) option layout for all MC in one
   click (Setup) shipped in 0.8.5; 2) between-question space on every paper shape is built (Setup → Page and
-  a question's Space above, unreleased); next, only on the user's word: 3) keep a question together / start
-  on a new page. Line spacing waits for the reporter's answer about 12 pt; answer-line style, indent and
+  a question's Space above, unreleased); 3) keep a question on one page / start it on a new page is built
+  (a question's panel, unreleased). 4) the paper-wide "start every question on
+  a new page" is built (Setup → Page, unreleased, k-0189). Line spacing is closed: the user said 12 pt
+  stays, nothing to build (2026-10-23); answer-line style, indent and
   numbering style are judged not worth a switch.
 - **Presentation mode** (M): one question at a time, reveal the scheme. *Kuta.*
 - **Large-print / dyslexia output profile** (M): `baseFontSize` scales text but the 12pt

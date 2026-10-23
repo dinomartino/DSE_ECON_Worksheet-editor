@@ -1,0 +1,756 @@
+{
+  "schemaVersion": 1,
+  "id": "m-001",
+  "title": {
+    "en": [
+      {
+        "text": "Table justify mix"
+      }
+    ],
+    "zh": [
+      {
+        "text": "表格兩端對齊"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "m-002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "m-003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "m-004",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-005",
+          "text": {
+            "en": [
+              {
+                "text": "Study the table about three government policies and answer the questions that follow."
+              }
+            ],
+            "zh": [
+              {
+                "text": "細閱下表所列的三項政府政策，並回答以下問題。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "table",
+          "id": "m-006",
+          "rows": [
+            {
+              "id": "m-007",
+              "cells": [
+                {
+                  "id": "m-008",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Policy"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "政策"
+                      }
+                    ]
+                  },
+                  "align": "center",
+                  "format": {
+                    "bold": true
+                  }
+                },
+                {
+                  "id": "m-009",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "How it works"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "運作方式"
+                      }
+                    ]
+                  },
+                  "align": "center",
+                  "format": {
+                    "bold": true
+                  }
+                }
+              ]
+            },
+            {
+              "id": "m-010",
+              "cells": [
+                {
+                  "id": "m-011",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Minimum wage"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "最低工資"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-012",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "The government sets a legal lowest wage that employers may pay. If it is set above the equilibrium wage, the quantity of labour supplied exceeds the quantity demanded and unemployment results."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "政府訂定僱主可支付的法定最低工資。若最低工資高於均衡工資，勞工供應量會超過需求量，引致失業。"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "m-013",
+              "cells": [
+                {
+                  "id": "m-014",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Price ceiling"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格上限"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-015",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "The government sets a legal highest price that sellers may charge. If it is set below the equilibrium price, the quantity demanded exceeds the quantity supplied and a shortage results."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "政府訂定賣方可收取的法定最高價格。若價格上限低於均衡價格，需求量會超過供應量，引致短缺。"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "m-016",
+              "cells": [
+                {
+                  "id": "m-017",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Subsidy to producers"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "生產者補貼"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-018",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "The government pays producers a sum for each unit sold. This lowers their cost of production, shifts the supply curve to the right, lowers the price and raises the quantity traded."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "政府就每單位售出的貨品向生產者付款。這降低生產成本，令供應曲線右移，價格下降，成交量上升。"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "columnWidths": [
+            0.28,
+            0.72
+          ],
+          "headerRows": 1
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-019",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-020",
+              "text": {
+                "en": [
+                  {
+                    "text": "Using the table, explain why a price ceiling can lead to a shortage."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "根據上表，解釋為何價格上限會引致短缺。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3
+        }
+      ]
+    },
+    {
+      "id": "m-021",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-022",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the two tables below."
+              }
+            ],
+            "zh": [
+              {
+                "text": "參照以下兩個表格。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "table",
+          "id": "m-023",
+          "rows": [
+            {
+              "id": "m-024",
+              "cells": [
+                {
+                  "id": "m-025",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Year"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "年份"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-026",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Price ($)"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格（元）"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-027",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "數量"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "m-028",
+              "cells": [
+                {
+                  "id": "m-029",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "2024"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "2024"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-030",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "10"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "10"
+                      }
+                    ]
+                  },
+                  "align": "right"
+                },
+                {
+                  "id": "m-031",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "500"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "500"
+                      }
+                    ]
+                  },
+                  "align": "right"
+                }
+              ]
+            },
+            {
+              "id": "m-032",
+              "cells": [
+                {
+                  "id": "m-033",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "2025"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "2025"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-034",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "12"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "12"
+                      }
+                    ]
+                  },
+                  "align": "right"
+                },
+                {
+                  "id": "m-035",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "450"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "450"
+                      }
+                    ]
+                  },
+                  "align": "right"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "table",
+          "id": "m-036",
+          "rows": [
+            {
+              "id": "m-037",
+              "cells": [
+                {
+                  "id": "m-038",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "A rise in the price of a good changes the quantity demanded of that good along its demand curve, but a change in income shifts the whole curve."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "貨品價格上升，會令該貨品的需求量沿需求曲線變動；而收入改變，則會令整條曲線移位。"
+                      }
+                    ]
+                  },
+                  "colSpan": 2
+                },
+                {
+                  "id": "m-039",
+                  "text": {
+                    "en": [],
+                    "zh": []
+                  },
+                  "covered": true
+                }
+              ]
+            },
+            {
+              "id": "m-040",
+              "cells": [
+                {
+                  "id": "m-041",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Movement along the curve"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "沿曲線移動"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-042",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Shift of the curve"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "曲線移位"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "columnWidths": [
+            0.5,
+            0.5
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-043",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-044",
+              "text": {
+                "en": [
+                  {
+                    "text": "Calculate the total revenue in 2025."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "計算2025年的總收益。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2
+        }
+      ]
+    },
+    {
+      "id": "m-045",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-046",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is correct about the two policies in the table?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "就表中的兩項政策，以下哪項正確？"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "table",
+          "id": "m-047",
+          "rows": [
+            {
+              "id": "m-048",
+              "cells": [
+                {
+                  "id": "m-049",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "A subsidy lowers the cost of production, so the supply curve of the good shifts to the right and its equilibrium price falls."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "補貼降低生產成本，因此該貨品的供應曲線右移，均衡價格下降。"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "m-050",
+              "cells": [
+                {
+                  "id": "m-051",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "The tax raises the cost of production, so the supply curve shifts to the left and the equilibrium price rises."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "稅項提高生產成本，因此供應曲線左移，均衡價格上升。"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-052",
+          "text": {
+            "en": [
+              {
+                "text": "Both policies raise the equilibrium price"
+              }
+            ],
+            "zh": [
+              {
+                "text": "兩項政策均令均衡價格上升"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-053",
+          "text": {
+            "en": [
+              {
+                "text": "Only the subsidy lowers the equilibrium price"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有補貼令均衡價格下降"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-054",
+          "text": {
+            "en": [
+              {
+                "text": "Only the tax lowers the equilibrium price"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有稅項令均衡價格下降"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-055",
+          "text": {
+            "en": [
+              {
+                "text": "Neither policy changes the equilibrium price"
+              }
+            ],
+            "zh": [
+              {
+                "text": "兩項政策均不改變均衡價格"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "m-056",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：結構題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "pageBreak",
+      "id": "m-057"
+    },
+    {
+      "kind": "section",
+      "id": "m-058",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "m-056"
+    },
+    {
+      "type": "question",
+      "id": "m-004"
+    },
+    {
+      "type": "question",
+      "id": "m-021"
+    },
+    {
+      "type": "layout",
+      "id": "m-057"
+    },
+    {
+      "type": "layout",
+      "id": "m-058"
+    },
+    {
+      "type": "question",
+      "id": "m-045"
+    }
+  ],
+  "createdAt": "2026-10-23T12:36:41.518Z",
+  "updatedAt": "2026-10-23T12:36:41.518Z",
+  "name": "Table justify mix"
+}

@@ -27,6 +27,42 @@ a version heading is edited afterwards.
   thumbnails, the Word file and a copied question all follow, and a gap is never left at the top
   of a page.
   <!-- zh: **在任何工作紙上選擇題目之間的空位。** 在「頁面設定」的「頁面」，「題目之間」現在適用於所有類型的試卷，不再只限 Paper 1 Mock：可選 1 至 6 行空白，凡是緊接在同類型題目（兩條 MC 題，或兩條結構題）下方的題目，空位便會改變。個別題目可以有自己的空位：在其面板的「上方空位」設定（結構題現在也有），或在頁面上拖曳旁邊的小把手；如果數字無法生效（例如在標題下方），面板會說明原因。你現有的工作紙或試題簿，在你選擇數字之前，列印效果與以往完全相同。頁面、縮圖、Word 檔及複製出來的題目都一致，而空位不會出現在頁面頂部。 -->
+- **Keep a question on one page, or start it on a new page.** Click a question and, in its panel,
+  tick Start on a new page to begin it at the top of a page: the heading right above it, and any
+  note under that heading, go with it, so a page never begins under a stranded heading. On a
+  structured question you can also tick Keep this question on one page: if it does not fit what is
+  left of a page, the whole question moves to the next page instead of running over (one taller
+  than a page is still split). MC questions are always kept on one page, and so is every question
+  of a Paper 1. Nothing changes in a worksheet until you tick one. The page, the thumbnails, the
+  page list and the Word file all break where the editor does, and the start screen's card ends
+  its first page there. A question copied into another worksheet leaves its Start on a new page
+  behind.
+  <!-- zh: **讓題目保持在同一頁，或由新頁開始。** 按一下題目，在其面板剔選「此題由新頁開始」，該題便會從頁面頂部開始：緊接其上的標題，以及標題下的說明，會一併移到新頁，頁面不會以孤立的標題開首。結構題還可以剔選「此題保持在同一頁」：如果頁面餘下的空位不夠，整題會移到下一頁，而不是跨頁分開（高於一頁的題目仍會分頁）。MC 題一向保持在同一頁，Paper 1 的每一題亦然。在你剔選之前，工作紙完全不變。頁面、縮圖、頁面列表及 Word 檔都在同一位置分頁，開始畫面的卡片亦會在該處結束第一頁。複製到另一份工作紙的題目，不會帶走「由新頁開始」。 -->
+- **Start every question on a new page.** In Document setup, on the Page tab, tick Start every
+  question on a new page for a long-question paper whose questions each want a page of their own.
+  Every question after the first then begins a page, and the heading, lead-in or source right above
+  it goes with it, as with a question's own Start on a new page; the first question, and one right
+  under a New page, stay where they are. A question's own boxes (Keep this question on one page,
+  Start on a new page, Space above) still work beside it. It is off in every paper you already
+  have, so none of them moves, and it is not offered on a Paper 1. The page, the thumbnails, the
+  Word file and a copied question all follow, and the start screen's card ends its first page there.
+  <!-- zh: **每題由新頁開始。** 在「頁面設定」的「頁面」剔選「每題由新頁開始」，適合每題都想佔一頁的長題目試卷。第一題之後的每一題都會由新頁開始，緊接其上的標題、引言或資料會一併移到新頁（與個別題目的「此題由新頁開始」相同）；第一題，以及緊接「新頁面」的題目維持原位。題目自己的選項（「此題保持在同一頁」、「此題由新頁開始」、「上方空位」）仍然有效。你現有的試卷一律關閉，所以不會有任何移動；Paper 1 不提供此選項。頁面、縮圖、Word 檔及複製出來的題目都一致，開始畫面的卡片亦會在該處結束第一頁。 -->
+- **Start every question on a new page.** In Document setup, on the Page tab, tick Start every
+  question on a new page for a long-question paper whose questions each want a page of their own.
+  Every question after the first then begins a page, and the heading, lead-in or source right above
+  it goes with it, as with a question's own Start on a new page; the first question, and one right
+  under a New page, stay where they are. A question's own boxes (Keep this question on one page,
+  Start on a new page, Space above) still work beside it. It is off in every paper you already
+  have, so none of them moves, and it is not offered on a Paper 1. The page, the thumbnails, the
+  Word file and a copied question all follow, and the start screen's card ends its first page there.
+  <!-- zh: **每題由新頁開始。** 在「頁面設定」的「頁面」剔選「每題由新頁開始」，適合每題都想佔一頁的長題目試卷。第一題之後的每一題都會由新頁開始，緊接其上的標題、引言或資料會一併移到新頁（與個別題目的「此題由新頁開始」相同）；第一題，以及緊接「新頁面」的題目維持原位。題目自己的選項（「此題保持在同一頁」、「此題由新頁開始」、「上方空位」）仍然有效。你現有的試卷一律關閉，所以不會有任何移動；Paper 1 不提供此選項。頁面、縮圖、Word 檔及複製出來的題目都一致，開始畫面的卡片亦會在該處結束第一頁。 -->
+- **Justify the text in a table cell.** Click a cell, or drag across several, and in the Table
+  tools bar above the page press T≡ (Justify cell text), beside T⇤ T↔ T⇥. A sentence that wraps
+  inside the cell then lines up with both of its edges, so a column of explanations can be
+  justified in one click; a cell with one short line looks as it did. The page, the thumbnails,
+  the Word file and a copied table all follow. Nothing changes in a worksheet until you press it,
+  and Justify text in Document setup still leaves tables as they are.
+  <!-- zh: **表格儲存格內的文字可左右對齊。** 按一下儲存格（或拖曳選取多格），在頁面上方「表格工具」列按「T≡」（儲存格文字左右對齊），位於 T⇤ T↔ T⇥ 旁。在儲存格內換行的句子，各行會貼齊儲存格的左右兩邊，一欄解釋文字一按即可左右對齊；只有一短行的儲存格看來與以往相同。頁面、縮圖、Word 檔及複製出來的表格都一致。在你按下之前，工作紙完全不變；「頁面設定」的「文字左右對齊」仍不會改動表格。 -->
 
 ## 0.8.5 — 2026-10-23
 

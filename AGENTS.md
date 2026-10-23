@@ -76,7 +76,7 @@ The full policy — collapsing migrations, their size budget, files from a newer
   (preview, `.docx`, print PDF) still agree.
 - **Desktop work is verified in the shell**: `npm run desktop:dev` runs it, `npm run
   desktop:build` produces installers. To hand the user an unreleased `.dmg`, follow
-  `DESKTOP-PREVIEW.md` (copy-paste steps, no tag, no `main`). The web build must stay green
+  `docs/DESKTOP-PREVIEW.md` (copy-paste steps, no tag, no `main`). The web build must stay green
   too. A static `@tauri-apps/*` import fails `npm test` (`src/test/tauriImports.test.ts`),
   `npm run lint`, and `npm run build` (`postbuild`: `scripts/check-web-bundle.mjs`).
 - **Every feature or fix adds a line under Unreleased in `CHANGELOG.md`**, in the same
@@ -91,8 +91,14 @@ The full policy — collapsing migrations, their size budget, files from a newer
 **Every push to `main` deploys the web app to teachers** (Vercel production). So:
 
 - **All work — yours and any sub-agent's — happens on `develop`**, or on a short
-  feature branch cut from it and merged back. Start a session with
-  `git switch develop && git pull`. Never commit or push to `main` directly.
+  feature branch cut from it and merged back. Never commit or push to `main` directly.
+- **Never switch branches in the main checkout.** Parallel sessions share it, so one
+  session's switch or commit lands on another's branch. Each session works in its own
+  worktree cut from `origin/develop`: `git fetch && git worktree add -b <branch>
+  .claude/worktrees/<name> origin/develop`, then `ln -s ../../../node_modules` there and
+  run its dev server on a free port (3000 serves the main checkout). Merge back from it
+  too: `git fetch && git switch --detach origin/develop && git merge <branch> && git push
+  origin HEAD:develop`. Releases too, from a worktree on `origin/main` (`RELEASING.md`).
 - **Agents push `develop` themselves** once tests pass (no force); the user does not want
   to be asked to. Pushing `main` stays only on the user's word (see the release bullet below).
   Pushing `develop` is safe: CI runs, nothing reaches teachers.
@@ -104,8 +110,8 @@ The full policy — collapsing migrations, their size budget, files from a newer
   must not be touched.
 - **Releasing is the user's call, and their word is the sign-off.** Only when they say
   so, but then do the whole sequence without further confirmation: merge `develop` into
-  `main`, tag on `main` (`npm version …`, `git push --follow-tags`), wait for the Release
-  workflow, check the draft's assets, and publish it. See `RELEASING.md`.
+  `main`, tag on `main` (`npm version …`, `git push --follow-tags origin HEAD:main`), wait
+  for the Release workflow, check the draft's assets, and publish it. See `RELEASING.md`.
 - An urgent fix for teachers: branch from `main`, merge to `main`, then merge `main`
   back into `develop` so the two do not drift.
 

@@ -15,7 +15,9 @@ import { bi } from '@/model/text';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { buildOptionLayoutPaper } from '@/test/optionLayoutFixture';
+import { buildPageFlowBooklet, buildPageFlowPaper, buildPageFlowPaper1 } from '@/test/pageFlowFixture';
 import { buildQuestionGapBooklet, buildQuestionGapOwnNumbers, buildQuestionGapPaper } from '@/test/questionGapFixture';
+import { buildTableJustifyPaper } from '@/test/tableJustifyFixture';
 import { OPTION_LAYOUT_CHOICES, withOptionLayouts } from '@/registry/mcqLayouts';
 import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
 import { presetFor } from '@/ai/providers';
@@ -129,6 +131,49 @@ it('emits papers with the space between questions set (Document setup → Betwee
   planPaper(buildQuestionGapOwnNumbers(), en, `${dir}/gap-own-numbers-en.docx`);
   planPaper(buildQuestionGapBooklet(3), en, `${dir}/gap-booklet-3-lines-en.docx`);
   planPaper(buildQuestionGapPaper(3), { language: 'bilingual', version: 'teacher' }, `${dir}/gap-3-lines-bilingual-teacher.docx`);
+});
+
+it('emits papers with a question kept on one page or started on a new one (the question panel)', async () => {
+  const dir = `${OUT}/page-flow`;
+  mkdirSync(dir, { recursive: true });
+  const en: OutputMode = { language: 'en', version: 'student' };
+  // The control: nothing asked, so page 1 ends inside Q3 and page 2 inside Q5, as any paper saved before.
+  planPaper(buildPageFlowPaper(), en, `${dir}/page-flow-default-en.docx`);
+  planPaper(buildPageFlowPaper({ keep: [2] }), en, `${dir}/page-flow-keep-q3-en.docx`);
+  planPaper(buildPageFlowPaper({ start: [3] }), en, `${dir}/page-flow-new-page-q4-en.docx`);
+  planPaper(buildPageFlowPaper({ keep: [2], start: [3, 5] }), en, `${dir}/page-flow-keep-and-new-page-en.docx`);
+  planPaper(buildPageFlowBooklet(), en, `${dir}/page-flow-booklet-en.docx`);
+  planPaper(buildPageFlowPaper1(), en, `${dir}/page-flow-paper1-en.docx`);
+  planPaper(buildPageFlowPaper({ keep: [2], start: [3] }), { language: 'bilingual', version: 'teacher' }, `${dir}/page-flow-bilingual-teacher.docx`);
+});
+
+it('emits papers that start every question on a new page (Document setup → Page)', async () => {
+  const dir = `${OUT}/start-every-question`;
+  mkdirSync(dir, { recursive: true });
+  const en: OutputMode = { language: 'en', version: 'student' };
+  const every = { startEveryQuestionOnNewPage: true } as const;
+  // The control is page-flow/page-flow-default-en.docx: off, page 1 ends inside Q3 and page 2 inside Q5.
+  planPaper({ ...buildPageFlowPaper(), ...every }, en, `${dir}/start-every-en.docx`);
+  // The per-question boxes still work beside it: Q3 kept on one page, and Q4 asking for itself.
+  planPaper({ ...buildPageFlowPaper({ keep: [2], start: [3] }), ...every }, en, `${dir}/start-every-with-question-boxes-en.docx`);
+  planPaper({ ...buildPageFlowBooklet(), ...every }, en, `${dir}/start-every-booklet-en.docx`);
+  // Not offered on a Paper 1, and ignored there if stored: this file equals page-flow/page-flow-paper1-en.docx.
+  planPaper({ ...buildPageFlowPaper1(), ...every }, en, `${dir}/start-every-paper1-ignored-en.docx`);
+  planPaper({ ...buildPageFlowPaper(), ...every }, { language: 'bilingual', version: 'teacher' }, `${dir}/start-every-bilingual-teacher.docx`);
+});
+
+it('emits papers with the text of table cells justified (Table tools → T≡)', async () => {
+  const dir = `${OUT}/table-justify`;
+  mkdirSync(dir, { recursive: true });
+  const en: OutputMode = { language: 'en', version: 'student' };
+  // The control: nothing pressed, every cell flush left, centred or flush right, as any paper saved before.
+  planPaper(buildTableJustifyPaper(), en, `${dir}/table-justify-default-en.docx`);
+  planPaper(buildTableJustifyPaper({ policies: true }), en, `${dir}/table-justify-policies-en.docx`);
+  const all = { policies: true, spanning: true, mcq: true };
+  planPaper(buildTableJustifyPaper(all), en, `${dir}/table-justify-all-en.docx`);
+  // "Justify text" justifies the stems and parts; the tables stay as they are, but for the cells chosen.
+  planPaper(buildTableJustifyPaper({ policies: true }, { justifyText: true }), en, `${dir}/table-justify-paper-switch-en.docx`);
+  planPaper(buildTableJustifyPaper(all), { language: 'bilingual', version: 'teacher' }, `${dir}/table-justify-bilingual-teacher.docx`);
 });
 
 it('emits a paper whose body text is justified (Document setup)', async () => {

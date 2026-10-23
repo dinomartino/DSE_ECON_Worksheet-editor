@@ -87,6 +87,33 @@ ends inside it, so one gap meets a page break.
 
 `scripts/question-gap-verify.mjs` does 1–3 with a real mouse in Chrome, in English and 中文.
 
+## `page-flow-mix.json` — Keep a question together, or start it on a new page (k-0178 #3)
+
+A classroom worksheet: five structured questions in two sections (a heading above Q1 and one above
+Q4), then an MC. Nothing is set, so it prints as any paper saved before the page choices existed:
+**three sheets, with Q3 cut across pages 1–2 and Q5 across pages 2–3.** (Q numbers below are the
+printed ones for the first section; Section B restarts at 1, so Q4–Q6 print as 1–3.)
+
+1. Click **Q3**. Its panel (under the stem, below Space above) has **Start on a new page** and **Keep
+   this question on one page**, both unticked, and a line saying what keeping does.
+2. Tick **Keep this question on one page**. Q3 moves whole to page 2 and the foot of page 1 is left
+   empty; the thumbnail strip and the Content list agree. One ⌘Z (or Undo) puts the cut back.
+3. Click **Q4** (the one under Section B) and tick **Start on a new page**. Section B's heading and Q4
+   begin a new sheet together; the heading is not left at the foot of page 2.
+4. Click the **MC** at the end: its panel has **Start on a new page** but no Keep choice (an MC is
+   always kept whole). Tick it: a fourth sheet opens at the MC.
+5. Click **Q1** and tick Start on a new page: nothing moves, and a line says it is the first question
+   and already opens the paper. (A title page is made with a New page element.)
+6. Click **Q5**, set **Space above** to 4 lines, then tick Start on a new page: the page shows no space
+   above it, and the line under Space above says so.
+7. Back on the start screen, the document's card ends its first page where a question starts a page.
+8. Settings → Language → 繁體中文: both choices, their hint and the notes read in Chinese.
+9. Export → Word and open the file in Word: its pages break where the editor's do, with no black ¶
+   squares (the file carries no keep flags), the heading with its question, and no blank page.
+   `npm run samples` writes similar papers as `page-flow/…`.
+
+`scripts/page-flow-verify.mjs` does 1–7 and the `.docx` with a real mouse in Chrome, in English and 中文.
+
 ## The desktop app: dragging and dropped files (k-0182)
 
 Run `npm run desktop:dev` (it starts the web server itself). Before the fix every drag in the
@@ -114,3 +141,23 @@ Files dropped on the window (this is the path that changed: it is now the page's
 
 The same drags with a real mouse in Chrome: `node scripts/drag-verify.mjs`. If any of 1–3 still
 does nothing in the app, say which one and what you saw.
+
+## `table-justify-mix.json` — Justify in table cells (k-0178 #4)
+
+Three questions whose tables hold sentences, over two pages (a New page after Q2). Q1: a policy table, a
+bold centred heading row, then a short term beside a three-line description. Q2: a table of numbers
+(flush right) and a table whose top cell spans both columns. Q3 (page 2): an MC whose table holds a
+sentence in each language. Nothing is justified: every cell is flush left, centred or flush right.
+
+1. Click a description in Q1's table. In the Table tools bar, Cell text group, press **T≡** (Justify cell
+   text): the lines reach both edges of the cell (the last line stays flush left). T⇤ puts it back.
+2. Drag down the description column to sweep the three cells, press T≡ once, then Undo once: all three
+   change and unchange together. The page-rail thumbnails draw the same.
+3. Press T≡ on a number cell or "Price ($)": nothing moves (one line).
+4. Setup → Worksheet → **Justify text**: the stems justify, the tables stay as they are (but for cells
+   you justified).
+5. EN+中: the English sentence before the line break stays ragged; the 中文 line sits under it.
+6. Export → Word. `npm run samples` writes `table-justify/…`; open `table-justify-default-en.docx`
+   beside `table-justify-policies-en.docx` in Word.
+
+`scripts/table-justify-verify.mjs` does 1–5 with a real mouse in Chrome, in English and 中文.

@@ -205,6 +205,11 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
     en: 'Blank lines between two questions of the same kind (two MC questions, or two structured questions). Anything else between them keeps the usual spacing. One question can override this with Space above in its own panel, or by dragging its gap on the page.',
     zh: '同類型的兩題（兩條 MC 題，或兩條結構題）之間的空白行數；中間隔了其他內容時維持一般間距。個別題目可在其面板的「上方空位」，或在頁面上拖曳間距來覆寫。',
   },
+  startEveryQuestion: { en: 'Start every question on a new page', zh: '每題由新頁開始' },
+  startEveryQuestionHint: {
+    en: 'Each question begins a page, with the heading, lead-in or source above it. The first question, and one right under a New page, stay where they are. A question can still be kept on one page from its own panel.',
+    zh: '每一題都由新頁開始，其上方的標題、引言或資料會一併移到新頁。第一題，以及緊接「新頁面」的題目維持原位。個別題目仍可在其面板設定保持在同一頁。',
+  },
   gapDefault: {
     en: (lines: number) => `Default: ${lines} lines (the reference paper)`,
     zh: (lines: number) => `預設：${lines} 行（參考試卷）`,

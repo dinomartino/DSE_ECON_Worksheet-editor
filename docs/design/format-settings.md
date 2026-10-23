@@ -1,8 +1,11 @@
 # Formatting settings like Justify — design proposal
 
 Status: **approved 2026-10-23** (the user took every recommendation in § 6); building one setting
-at a time. Option layout (§ 4.1) is built (§ 9.1) and space between questions (§ 4.2) is built on
-`feature/question-gap-all` (§ 9.2); keep-together waits for the user's word. Written against `develop` at `d8194642` (it has since gained the
+at a time. Option layout (§ 4.1) is built (§ 9.1), space between questions (§ 4.2) is built (§ 9.2) and
+keep-together / new page (§ 4.3) is built (§ 9.3) and Justify in table cells (§ 4.4, row 4) is built on
+`feature/table-justify` (§ 9.4). **2026-10-23: the user checked the samples of #2, #3 and table Justify and said all good,
+including decisions 8 and 9 (§ 6).** The paper-wide "Start every question on a new page" (k-0189) is built (§ 9.5);
+what is left waits for the user's word. Written against `develop` at `d8194642` (it has since gained the
 GitHub #4 fix, `bbb0494e`; nothing here depends on it). Task k-0178. Evidence: the four GitHub
 issues, `CHANGELOG.md`, the Justify commits, a code survey (by reading; nothing was run in a
 browser, Word or Tauri) and a measurement pass over `real_life_reference/`.
@@ -29,9 +32,9 @@ between-question gaps if it is a Paper 1 mock.
 |---|---|---|---|---|---|
 | 1 | **Option layout everywhere**: apply to all MC questions in one click; later a control on the page | paper (bulk) + question | S–M | Real papers stack text options (44 of 45). School papers choose per question: mock ≈20 stacked / 4 two-by-two / ≈21 one-row, DBS 17 / 0 / 2. Today only the sidebar panel, one question at a time | **Build first** |
 | 2 | **Space between questions on every paper** | paper + question | M | Gap before a question: real Paper 1 35–84 pt, mock 25 pt, DBS 36 pt. Today it exists only on a Paper 1 mock | **Built** (§ 9.2) |
-| 3 | **Keep a question together / start it on a new page** | question (+ paper default) | S–M | Real Paper 2 starts 12 of 14 (2019) and 9 of 11 (2025) questions on a fresh page; the mock splits Q10 and its source over three pages. Today only MC is kept whole | **Build third** |
-| 4 | Justify: what is left (table cells; a whole question at once) | block / question | S–M | 28 of 238 table paragraphs in the 2019 paper are justified; the paper switch skips tables | Later |
-| 5 | Line spacing | paper | L | Every reference is ≈ single (line pitch ÷ text size 1.09–1.2). Only Text size 12 (1.00) is tighter than any of them | Decide the 12 pt case; no general setting |
+| 3 | **Keep a question together / start it on a new page** | question (+ paper default) | S–M | Real Paper 2 starts 12 of 14 (2019) and 9 of 11 (2025) questions on a fresh page; the mock splits Q10 and its source over three pages. Today only MC is kept whole | **Built** (§ 9.3) |
+| 4 | Justify: what is left (table cells; a whole question at once) | block / question | S–M | 28 of 238 table paragraphs in the 2019 paper are justified; the paper switch skips tables | **Table cells built** (§ 9.4); a whole question waits |
+| 5 | Line spacing | paper | L | Every reference is ≈ single (line pitch ÷ text size 1.09–1.2). Only Text size 12 (1.00) is tighter than any of them | **Decided 2026-10-23: no change, 12 pt stays** (§ 6 decision 5) |
 | 6 | Answer lines: length, style, default count | leaf / paper | M–L | Always dotted and full width; counts follow page fill (1.4–4.8 lines per mark) | Later, at most "lines per mark" |
 | 7 | Indent of the (1)(2)(3) statements | paper | M | The Paper 1 preset already matches the real paper (label +0.85 cm, text +1.70 cm) | Skip |
 | 8 | Font size per block | block | S–M | Real papers are 10 pt throughout; Text size already answered #1 | Skip |
@@ -245,6 +248,10 @@ on the format bar if a teacher asks (Appendix B has the one trap).
 
 ### 4.3 Keep a question together, or start it on a new page
 
+**Built 2026-10-23: § 9.3**, with two differences from this proposal (both are in § 9.3): neither
+choice is built as the `pageBreak` node or a keep chain in the IR, but as a mark the paginator acts on.
+What follows is the proposal as it was approved.
+
 **Today.** An MC question is always kept whole (`keepWhole` on the MC type in `src/registry/mcq.ts`;
 a Paper 1 mock keeps every question whole). A structured question on a classroom worksheet or
 booklet splits wherever the packer finds a break (`keepQuestionWhole` in `src/render/worksheet.ts`
@@ -268,6 +275,8 @@ paper splits an MC question. (GitHub #4's half-empty page 2 was a manual New pag
 keep-whole: § 7.)
 
 ### 4.4 Justify: what is left
+
+**Table cells built 2026-10-23: § 9.4** (T≡ in the Table tools bar; the paper-wide switch still skips tables, § 6 decision 8). What follows is the proposal as it was written; a question-level `partsAlign` is still not built.
 
 Per-paragraph Justify covers stems, parts, sub-parts and text elements; per-question Justify covers
 options and statements; **Justify text** stamps stems, statements, options, parts, sub-parts and
@@ -398,15 +407,35 @@ Each item shows the question as it was asked, then what it fixes.
    one line on classroom and booklet shapes so saved papers do not move? **Decided: yes.** Build 2.
 4. **Keep together.** Per question first, off by default? Add the paper-wide "start every question
    on a new page" for LQ papers now, or wait? **Decided: per question first, off by default; the
-   paper-wide switch waits.** Build 3.
+   paper-wide switch waits.** Build 3. **Then built as k-0189, on the user's word (2026-10-23): § 9.5.**
 5. **Line spacing.** Hold until the reporter says whether 12 pt feels tight? **Decided: hold.**
-   Nothing is built until the reporter answers. Still open if it does feel tight: a 13 pt line at
-   12 pt (saved 12 pt papers re-paginate) or a paper-wide setting?
+   **Closed 2026-10-23, on the user's word: no change, 12 pt stays; nothing to build.** Neither a 13 pt line at
+   12 pt nor a paper-wide setting is wanted, so no saved paper re-paginates.
 6. **Word.** Someone has to open one `.docx` from `npm run samples` in real Word after each build;
    an agent cannot, and `docs/STATUS.md` lists the recent builds as untried there. **Open, after
    every build:** each build's report names the files to open.
 7. **Wording.** The draft 中文 labels in § 4 (they follow `docs/design/ui-language.md`).
    **Decided: as written.**
+8. **Does "Justify text" reach table cells? Decided 2026-10-23 (k-0188): no; a cell is justified one by one or by range.**
+   Evidence: (a) the 2019 Paper 2 `.docx` (read-only census, tables parsed from `word/document.xml`,
+   styles resolved): its body is justified where it is long (73 of 78 body paragraphs of 60+ characters), but only
+   18 of 224 table-cell paragraphs are (77 centred, 129 left); of the 17 cell paragraphs of 35+ characters, 5 are
+   justified, 5 centred, 7 left, and the longest prose cells (154 to 892 characters, the quoted
+   sources) are flush left; 13 of the 16 justified text cells hold one line, where justifying changes nothing
+   visible. DBS: body 0 of 131 justified, 5 of 63 cell paragraphs, all one line. (The doc's earlier "28 of 238"
+   counted slightly more paragraphs; the proportions agree.) (b) The product has told teachers since 0.8.2 that
+   Justify text leaves tables alone (Setup hint, changelog); reaching them would re-typeset every saved
+   paper that has the switch on and a wrapping cell, against "a saved paper prints as before". (c) Narrow cells
+   justify badly (wide gaps), and numbers and headings are single lines or centred, so a switch would
+   mostly do nothing and sometimes harm. If a teacher asks for it: a separate "Justify table text" switch
+   (new `Worksheet` field, `KNOWN_KEYS`, stamped in `tableNodeFor`), off by default. Not built.
+9. **Where the control lives. Decided while building:** the Table tools bar's Cell text group (T≡ after T⇤ T↔ T⇥),
+   not the format bar. The cell's alignment is one four-way choice stored in `CellAlign`, the format bar
+   hides its align group for a cell on purpose (`SYSTEM_ARCHITECTURE.md` § The contextual toolbar row), and
+   the Table tools bar already acts on a swept range, so a whole column is one click.
+
+**Confirmed by the user, 2026-10-23, after opening the samples of #2 (space between questions), #3 (keep together / new page)
+and table Justify: all good, including decisions 8 and 9 above** (T≡ stays in the Table tools bar; "Justify text" skips tables).
 
 ## 7. GitHub #4 is not a setting
 
@@ -553,6 +582,140 @@ In Word, open `question-gap/gap-3-lines-en.docx` (beside `gap-default-1-line-en.
 between MC questions 2–10 and between the two structured questions that follow; one line above Q11 (an MC is
 above it) and Q13 (a note is above it); no white space at the top of page 2; in the booklet, three lines
 between the three questions and nothing stranded at the top of a page.
+
+### 9.3 Keep a question together, or start it on a new page (built 2026-10-23, `feature/keep-together`)
+
+**What a teacher sees.** In the sidebar panel of a question, under Space above: **Start on a new page** 此題由新頁開始 on
+every kind of question (MC and structured), and **Keep this question on one page** 此題保持在同一頁 on a structured question
+(with a line saying what it does and that one taller than a page is still split). An MC is always kept whole and so is every
+question of a Paper 1, so the MC panel has no Keep choice and a structured question on a Paper 1 says "A Paper 1 keeps every
+question on one page." Ticking Start on a new page begins the question at the top of a page: the page above ends there, and the
+heading, lead-in or source directly above it travels with it (so a page never begins under a stranded heading). Ticking Keep
+moves the question whole to the next page when it does not fit what is left. The page, the page rail, the Content list, the
+`.docx` and the start screen's card all follow. Nothing changes in a paper until a box is ticked.
+
+**How.** Two optional question fields, `keepOnOnePage` and `startOnNewPage` (`true` or absent, never `false`), no schema
+change (question fields are not in `KNOWN_KEYS`), `contentKey` metadata (ticking one never makes a new version of a bank question).
+`src/render/pageFlow.ts` holds the rules (`sheetStart`, `sheetOpeners`, `startsPageStatus`, `isKeptWhole`), `PageFlowFields.tsx`
+the control, `flowFlags.ts` the glue to the paginator. The walker stamps `startsPage` (on the item that opens the sheet) and
+`keptTogether` on the IR; `PackItem.startsSheet` opens a sheet at an item that holds something above it, and `breakAfter: []`
+leaves a kept question no legal boundary (its node boundaries are still measured, so one taller than a sheet is cut where the
+sheet ends, as before).
+
+**Decided while building** (what the proposal left open, or got differently):
+- **A mark, not the `pageBreak` node.** The proposal had Start on a new page emit the same `pageBreak` node the New page element
+  does. A break node inside a question's nodes is invisible to the paginator (a manual break is its own zero-height flow item), and
+  a synthetic break item would carry an id the page rail, the Content list and drag/drop cannot address (Remove page break would
+  do nothing). Marked instead, the sheet it opens is nobody's break, so the `.docx`'s own measured page start does the work, at the
+  end of the paragraph before (no spent line, no blank page) with the item's gap dropped: no Word code at all.
+- **Keep is a mark too, not a keep chain.** `keepQuestionWhole` chains the nodes, but not across an answer space, which is one node
+  per line (`pageNodes`) that breaks anywhere; a structured question with answer lines would only have been kept in pieces.
+- **What travels with the question:** the heading, lead-in (a Paper 1's "There are 45 questions…") or source above it, and a
+  rubric between a heading and its question; a closing line such as "END OF SECTION A" stays on the page it ends. A request for a
+  page is a break, not a squeeze: the question above is not pulled along, though its last part is held against the next stem.
+- **The first question never opens a sheet,** and one straight under a New page element does not open a second; the panel says so
+  under the box. The masthead above the first question is not a reason to push it to page 2 (a title page is a New page element).
+- **No air above what opens a sheet,** by construction: the walker stamps no gap on it (it would die at the sheet top; Copy for
+  Word, with no pages, would have kept it), hides the drag handle, and Space above says "This question starts a new page, so no
+  space is left above it" if a number is set.
+- **The ask to start a page stays behind when a question is copied into another document** (`copyQuestion`: bank, "add to
+  bank", insert from the bank); the ask to be kept on one page, about the question's own size, travels. A leftover `gapBefore`
+  travels as before.
+- **Copy for Word:** the per-question copy carries no break. The whole-paper clipboard HTML is used in the product only by the start
+  screen's card, which now ends its first page at the break; both are tested.
+- **The paper-wide "start every question on a new page" waits** (§ 6 decision 4).
+
+**Verified.** Unit tests for the rules and the IR marks (`pageFlow.test.ts`), the paginator (`pagination.test.ts`: opens a sheet,
+never a blank one, never twice, never a continuation, brings the heading, does not pull the question above; kept moves whole and
+is still cut when taller than a sheet), every surface (`pageFlowSurfaces.test.tsx`: the packer's starts into the `.docx` with the
+break at the end of the paragraph before and no gap, Copy for Word, the card, the bank preview; three languages; a classroom MC
+paper, a structured one and a booklet), the control, both panels, the store and `copyQuestion`. Mutation-checked: 15 mutants killed
+by the unit tests and two more by the Chrome harness (the preview's wiring); one mutant is equivalent (the `!piece` guard in the
+packer is redundant with the queue order). `scripts/page-flow-verify.mjs` drives the real app in Chrome in English and 中文 on
+`test-fixtures/manual/page-flow-mix.json`: both checkboxes (real clicks), the sheets the preview packs, the page rail's cards,
+the heading going with its question, the notes, Undo and Redo, the start screen's card, a reload, and the `.docx` the Export dialog
+writes. **Saved papers do not move**, three ways: 14 papers (the four frozen corpora, the acceptance paper, the hand-testing papers
+and the wizard's four shapes; 6 modes each, 84 renderings) hash the same before and after; nine saved papers (the corpora and the
+hand-testing papers) pack the same sheets in real Chrome on the old and the new build; and the 37 existing samples exported through
+the real Export dialog on both builds compare equal part by part, 31 byte-identical apart from the file's own timestamp and 6
+(versions B and C, and the answer keys) differing only by the version shuffle's random ids, which the old build also does against
+itself. `npm run samples` writes seven `page-flow/` files, rendered by LibreOffice: its pages match the editor's. **Found, not
+fixed:** the page rail shows no card for a sheet that holds only the tail of a split question (the old build does the same with a
+New page element after it). **Not tried in real Word, on an iPad, or in the desktop app.** In Word, open
+`page-flow/page-flow-default-en.docx` (the control: Q3 cut across pages 1–2), then `page-flow-keep-q3-en.docx` (Q3 whole on
+page 2, white space at the foot of page 1), `page-flow-new-page-q4-en.docx` (Section B and Question 4 begin page 3),
+`page-flow-keep-and-new-page-en.docx` (four pages), `page-flow-booklet-en.docx` and `page-flow-paper1-en.docx` (Question 10
+begins page 3 after the cover); no black ¶ squares, no blank pages.
+
+### 9.4 Justify in table cells (built 2026-10-23, `feature/table-justify`, k-0188)
+
+**What a teacher sees.** Click a table cell (or drag across several) and, in the Table tools bar, the Cell text group has a
+fourth button, **T≡** Justify cell text 儲存格文字左右對齊, after T⇤ T↔ T⇥. A sentence that wraps in the cell then reaches both
+edges (the last line stays flush left; a one-line cell does not move). The four are one choice: T⇤ puts it back. Over a swept
+range it acts on every cell in one undo step and reads pressed only when all agree. The page, the page rail, the print PDF,
+the `.docx`, Copy for Word, the start card and the bank preview follow. Nothing changes until it is pressed.
+
+**How.** `CellAlign` gains `'justify'` (`src/model/types.ts`); no new field, no schema change, no `KNOWN_KEYS` (a cell's fields
+are nested), and `schemaVersion` stays 1. The page (`textAlign: cell.align`) and Copy for Word (`text-align:${cell.align}`) already
+wrote the value; the one code change in a backend is `cellParagraph` in `src/export/docx/body.ts`, which wrote the value into
+`w:jc` raw and now spells it `both` through `jcValue` (shared with `formatParagraphProps`). The `.docx` sets
+`w:doNotExpandShiftReturn` by finding `<w:jc w:val="both"/>`, so a bilingual cell's English line stays ragged in Word as on the page.
+The bar: `CELL_ALIGNS` in `ContextBar.tsx`, `alignCellJustify` in `ContextBar.messages.ts`.
+
+**Decided while building:** see § 6 decisions 8 (Justify text does not reach tables) and 9 (where the control lives). Also:
+- **A stale `format.align: 'justify'` on a cell (the format bar could store one before 0.8.3) still aligns nothing.** Reading it
+  would have re-typeset saved papers; the cell's own `CellAlign` is the only thing read (tested).
+- **Word import does not carry cell alignment at all** (found; unchanged): an imported table's cells are all flush left.
+- **Older builds.** A build before this one that opens a paper with a justified cell prints it justified on the page but writes
+  `w:jc w:val="justify"`, which is not a value of `w:jc`, into its `.docx`. How real Word treats that is **untried**. The schema mark
+  cannot help (it only guards v0.4/0.5; 0.6–0.8.5 read v2 as their own), and a separate field would have let such a
+  build print the cell flush left instead; the approved design was a `CellAlign` value, so it was kept. Teachers on mixed
+  versions are the only ones exposed.
+
+**Verified.** `src/components/preview/cellJustify.test.tsx` (20 tests: the value round-trips and a saved paper is schema 1; set,
+replaced and swept; the IR; page, Word (`both`, exactly one `w:jc` changed, never `justify`), Copy for Word, the card; the bar's
+four buttons in English and 中文, pressed states over a sweep; "Justify text" leaves cells alone; a stale `format.align` stays
+inert). Mutation-checked: writing the value raw into `w:jc`, and dropping the button, each fail 4 tests.
+`scripts/table-justify-verify.mjs` drives the real app in Chrome in English and 中文 on
+`test-fixtures/manual/table-justify-mix.json`: real clicks on T≡, the right edge of every line measured (ragged before, flush after),
+a real drag sweeping a column, one undo for three cells, a one-line cell not moving, a spanning cell, an MC's table, the English line
+of a bilingual cell staying ragged, Setup's Justify text leaving tables alone, a reload, the start card, and the `.docx` the Export
+dialog writes. **Saved papers do not move:** the 44 existing samples exported through the real Export dialog on `origin/develop` and on this build compare equal part by part, 38 byte-identical apart from the file's own timestamp and 6 (versions B and C, and the answer keys) differing only by the version shuffle's random content, which the base build also does against itself, with the same XML structure. `npm run samples` writes five `table-justify/` files; LibreOffice renders them as the page does (ragged default,
+flush justified descriptions). **Not tried in real Word, on an iPad, or in the desktop app.** In Word open
+`table-justify/table-justify-default-en.docx` (the control), then `table-justify-policies-en.docx` (the three description cells
+justified), `table-justify-all-en.docx`, `table-justify-paper-switch-en.docx` (Justify text on: stems justified, tables as
+they were except the chosen cells) and `table-justify-bilingual-teacher.docx` (the English line before each break stays ragged).
+
+
+### 9.5 Start every question on a new page (built 2026-10-23, `feature/start-every-question-new-page`, k-0189)
+
+**What a teacher sees.** Document setup → Page, under Between questions: a box **Start every question on a new page** 每題由新頁開始
+with a hint. Ticked, every question after the first begins a page, and the heading, lead-in or source directly above it goes
+with it, exactly as a question's own **Start on a new page** does (§ 9.3). The first question and one straight under a New page
+stay where they are. It is off in every saved paper, so none moves. It is not offered on a Paper 1 (forty-five MC on forty-five
+pages is never meant), and a stored `true` is ignored there. Every question's own boxes (Keep this question on one page, Start on
+a new page, Space above) still work beside it. The page, the rail, the `.docx`, Copy for Word and the start card follow.
+
+**How.** One optional `Worksheet` field, `startEveryQuestionOnNewPage` (`true` or absent), in `KNOWN_KEYS`; no schema change.
+Nothing new in the walker or the paginator: `sheetOpeners(flow, every)` in `src/render/pageFlow.ts` counts every question as having
+asked, so `sheetStart` (heading travels, first / after-break open nothing), the walker's `startsPage` marks, `PackItem.startsSheet`
+and the `.docx`'s measured page starts all do the work already built for #3. `startsEveryQuestion(worksheet)` is the one test
+(off on a Paper 1), `withStartEveryQuestionOnNewPage` the one edit (off removes the field), `StartEveryQuestionField.tsx` the control;
+`gapAboveStatus` says "starts a page" for Space above under it. A question copied into another paper is unaffected (the switch is the
+paper's, not the question's).
+
+**Verified.** `startEveryQuestion.test.ts` (opens at every question but the first, off and stored false do nothing, heading / lead-in /
+source go along, New page break and first question open nothing, classroom / LQ / booklet / MC, Paper 1 ignores it, the boxes beside it,
+no air above a sheet opener, no key on a paper that has it off), `StartEveryQuestionField.test.tsx` (EN + 中), the model test that
+`KNOWN_KEYS` covers the type, the frozen-corpus guards. `scripts/start-every-verify.mjs` (Chrome, EN + 中, real clicks): off on a saved
+paper, hint, ticking gives six sheets with Section B's heading on its question's sheet, rail, Undo/Redo one step, the question boxes
+beside it, `.docx` with five hard breaks (none a paragraph of its own, no keep flags), reload, start card, off again restores three
+sheets. `npm run samples` writes five `start-every-question/` files; LibreOffice: 6 / 6 / 4 / 6 / 4 pages, and the Paper 1 file's
+`document.xml` is byte-identical to `page-flow/page-flow-paper1-en.docx`. **Not tried in real Word, on an iPad or in the desktop app.**
+In Word open `page-flow/page-flow-default-en.docx` (the control, three pages), `start-every-question/start-every-en.docx` (six pages,
+one question each, Section B's heading with Question 4), `start-every-with-question-boxes-en.docx` (the same, with Q3 kept and Q4 asking
+for itself) and `start-every-booklet-en.docx`; no black ¶ squares, no blank pages. **Not built:** "except these" opt-outs, or the switch
+for an MC-only paper.
 
 ## Appendix A — real-paper measurements
 

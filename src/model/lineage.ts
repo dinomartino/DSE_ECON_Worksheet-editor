@@ -123,6 +123,11 @@ export function freshIdsKeepingParts<Q extends Question>(question: Q): Q {
  *
  * Parts keep their identity (`freshIdsKeepingParts`), so copies agree on "part (b)"
  * however either is later reordered.
+ *
+ * A question's ask to start a new page (`startOnNewPage`) stays behind: where it falls in a paper
+ * is that paper's business, and a bank question that arrived with it would break a page in every
+ * paper it was dropped into. Its ask to be kept on one page (`keepOnOnePage`) is about the
+ * question's own size and travels.
  */
 export function copyQuestion<Q extends Question>(question: Q, fromDocId?: string): Q {
   const lineage = question.lineage;
@@ -130,6 +135,7 @@ export function copyQuestion<Q extends Question>(question: Q, fromDocId?: string
   delete (kept as Partial<QuestionLineage>).fromDocId;
   delete (kept as Partial<QuestionLineage>).copiedAt;
   const copy = freshIdsKeepingParts(question);
+  delete (copy as Partial<Question>).startOnNewPage;
   return {
     ...copy,
     lineage: {

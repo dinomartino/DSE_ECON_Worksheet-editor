@@ -959,7 +959,8 @@ anchor; a click collapses the range.
 ### A cell formats like any other text
 
 `tableCell` is in `isFormattable`; per-run formatting via `textOfTarget`. `CellAlign`
-wins over `TextFormat.align` in every backend (absent = left, as Word prints it); a
+wins over `TextFormat.align` in every backend (absent = left, as Word prints it; `justify` is `w:jc both`,
+and "Justify text" never reaches a cell); a
 `ColumnsNode` cell's tab stop wins the same way. `model/table.ts` rules: **ragged rows are real**
 (`insertColumn` pads short rows first); **a covered cell is neither merge target nor
 source**; **one row and one column are the floor**. A covered cell below a merge's first
@@ -1798,6 +1799,38 @@ its own (next section).
   Preview only — the `.docx` and clipboard always get whole tables.
 - `pagination.test.ts` pins each rule.
 
+### A question can ask the page: be kept on one, or start a new one (`render/pageFlow.ts`)
+
+Two optional flags on the question, `keepOnOnePage` and `startOnNewPage` (`true` or absent; no schema
+change; `contentKey` metadata), are the teacher's, set in the question panel (`PageFlowFields`). Neither
+is a keep chain in the IR nor a break element in the flow: the walker marks the item and the paginator
+acts on the mark, so the backends cannot disagree and the `.docx` needs no code (it breaks where the
+measured sheets do, with the break at the end of the paragraph before).
+
+- **Start on a new page** is `PackItem.startsSheet`: a sheet opens at the item unless it already leads
+  one. Never an empty sheet, and not twice where the page was full anyway, so asking never makes a blank
+  page. The item is content, placed on the sheet it opens; unlike a manual break it owns no `breakId`, so
+  `pageStarts` lists it. The sheet opens at the *run* the question belongs to (`sheetStart`): a heading,
+  a lead-in or a source above it, and a rubric under the heading, travel with it, and a closing line such
+  as "END OF SECTION A" stays on the page it ends. It is a break, not a squeeze: nothing above is pulled
+  along (`pullGluedTail` is not used). The first question never opens a sheet (the masthead is not a
+  reason to push it to page 2; a title page is a New page element), nor does one straight under a New
+  page element; the panel says so (`startsPageStatus`).
+- **No air above what opens a sheet**: the walker stamps no boundary gap on it, so Copy for Word, which
+  has no pages, agrees with the sheet that drops the gap, and the drag handle is not offered.
+- **Keep on one page** is told to the paginator as `RenderedQuestion.keptTogether`: no legal boundary
+  inside the question (`breakAfter: []`), while every node boundary is still measured, so one taller than
+  a sheet is cut where the sheet ends, as before. Only for a question nothing keeps whole already
+  (`isKeptWhole`: a Paper 1's questions, an MC). The IR chain (`keepQuestionWhole`) is not used: it stops
+  at an answer space, which is one node per line (`pageNodes`) and breaks anywhere.
+- **Copy for Word** writes the break ahead of the item that opens the sheet (the whole-paper copy is the
+  start screen's card, which ends its first page there); a question copied alone carries none. A question
+  copied into another document leaves `startOnNewPage` behind (`copyQuestion`); `keepOnOnePage`, about
+  its own size, travels.
+- **Known, not fixed:** the page rail shows no card for a sheet that holds only the tail of a split
+  question (`composePages` gives a split item to the page it starts on); a manual New page element does
+  the same, and a question kept on one page removes most such sheets.
+
 ### The `.docx` breaks its pages where the preview does (`export/docx/pageBreaks.ts`)
 
 **No `w:keepNext`, `w:keepLines` or `w:pageBreakBefore` anywhere in the file**, in a style
@@ -2392,7 +2425,7 @@ and the way into the drawing canvas for a selected figure.
 - **One verb, one place**: rows/columns stay on the page's grid chips, padding, the
   cell picture and captions in the sidebar, and the panel's own copies of the bar's
   verbs were removed with it.
-- **Cell text alignment lives only here** (T⇤ T↔ T⇥, `CellAlign`): the format bar
+- **Cell text alignment lives only here** (T⇤ T↔ T⇥ T≡, `CellAlign`: left, center, right, justify): the format bar
   hides its align group for a cell (`alignable`); a stored `TextFormat.align` is kept but
   aligns nothing. Table moves carry a drawn table glyph, so no arrow means two things.
 - **Docks at the format bar's measured height** (`useFormatBarStep`): a narrow column

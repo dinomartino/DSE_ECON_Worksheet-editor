@@ -21,6 +21,7 @@ import {
 } from '@/model/table';
 import { findFigureBlock, findTableBlock } from '@/model/edits';
 import type {
+  CellAlign,
   CellShade,
   CellVAlign,
   DiagramBlock,
@@ -43,6 +44,7 @@ import {
   useFormatBarStep,
 } from './FormatToolbar';
 import { useMessages } from '@/i18n/language';
+import type { TextKey } from '@/i18n/catalogue';
 import { CONTEXT_BAR_MESSAGES } from './ContextBar.messages';
 
 /**
@@ -152,6 +154,16 @@ function ShadeSwatch({ shade }: { shade?: CellShade }) {
   );
 }
 
+/** A cell's text alignments, in the bar's order. The "T" is the text in the cell; a table glyph marks the buttons that move the table. */
+const CELL_ALIGNS: readonly CellAlign[] = ['left', 'center', 'right', 'justify'];
+const CELL_ALIGN_GLYPH: Record<CellAlign, string> = { left: 'T⇤', center: 'T↔', right: 'T⇥', justify: 'T≡' };
+const CELL_ALIGN_LABEL = {
+  left: 'alignCellLeft',
+  center: 'alignCellCenter',
+  right: 'alignCellRight',
+  justify: 'alignCellJustify',
+} as const satisfies Record<CellAlign, TextKey<typeof CONTEXT_BAR_MESSAGES>>;
+
 /** How dark each shade is, as Word names its greys ("White, Background 1, Darker 5%"…). */
 const SHADE_PERCENT: Record<CellShade, number> = { F2F2F2: 5, D9D9D9: 15, BFBFBF: 25 };
 
@@ -200,7 +212,8 @@ export function mergeSweep(block: TableBlock, range: Parameters<typeof mergeRang
   store.setActiveCell(cellId ? { blockId: block.id, cellId } : undefined);
 }
 
-function TableRow({ block }: { block: TableBlock }) {
+/** The table's row of the bar; exported so a test can draw it. */
+export function TableRow({ block }: { block: TableBlock }) {
   const m = useMessages(CONTEXT_BAR_MESSAGES);
   const activeCell = useWorksheetStore((s) => s.activeCell);
   const cellSelection = useWorksheetStore((s) => s.cellSelection);
@@ -253,7 +266,7 @@ function TableRow({ block }: { block: TableBlock }) {
         <>
           <span className={DIVIDER} aria-hidden />
           <span className={GROUP}>{m.groupCellText}</span>
-          {(['left', 'center', 'right'] as const).map((align) => {
+          {CELL_ALIGNS.map((align) => {
             // Over a sweep the buttons act on every caught cell in one commit, and
             // read pressed only when the whole range agrees — Word's mixed-selection
             // rule, the same one the panel followed.
@@ -262,7 +275,7 @@ function TableRow({ block }: { block: TableBlock }) {
             return (
               <BarButton
                 key={align}
-                label={align === 'left' ? m.alignCellLeft : align === 'center' ? m.alignCellCenter : m.alignCellRight}
+                label={m[CELL_ALIGN_LABEL[align]]}
                 pressed={pressed}
                 onClick={() =>
                   apply(
@@ -272,8 +285,7 @@ function TableRow({ block }: { block: TableBlock }) {
                   )
                 }
               >
-                {/* "T" for the text in the cell; a table glyph marks the buttons that move the table. */}
-                {align === 'left' ? 'T⇤' : align === 'center' ? 'T↔' : 'T⇥'}
+                {CELL_ALIGN_GLYPH[align]}
               </BarButton>
             );
           })}
