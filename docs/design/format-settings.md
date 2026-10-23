@@ -537,13 +537,22 @@ frozen corpora; `questionGapSurfaces.test.tsx` draws three lines on the page, th
 the `.docx` for a classroom MC paper, a classroom structured paper and a booklet, in three languages, and
 checks the sheet-top case; the field, the Setup row, both panels and the store actions have their own tests.
 Mutation-checked: re-adding the fence, dropping the same-type check and re-fencing the lead-in each fail
-tests. Before the change 22 saved-paper fixtures (6 modes each, 936 items) were hashed and hashed again after:
-no node or gap differs. `scripts/question-gap-verify.mjs` drives the real app in Chrome in English and 中文
-on `test-fixtures/manual/question-gap-mix.json`: the Setup row, the panel field, the notes, a real pointer
-drag of the handle, ⌘Z, the page rail, the gap shedding at a page break, and the `.docx` the Export dialog
-writes (63 checks). `npm run samples` writes five `question-gap/` files (§ below); the existing 32 were
-exported on the old and the new build and compare equal. **Not tried in real Word, on an iPad, or in the
-desktop app.**
+tests. **Saved papers do not move**, three ways: 22 fixtures (the frozen corpora, the hand-testing papers, the
+real 2021 Paper 1, the wizard's four shapes; 6 modes each, 936 items) hashed before and after, no node or gap
+differs (only the non-printing `adjustableGap` gains a value where a number can now apply); the 32 existing
+samples exported through the real Export dialog on the old and the new build compare equal part by part, 26
+byte-identical and 6 (versions B and C, and the answer keys) differing only by the shuffle's random ids, which
+the old build also does against itself, with the same XML structure; and every frozen corpus paper renders
+with one line between questions. `scripts/question-gap-verify.mjs` drives the real app in Chrome in English
+and 中文 on `test-fixtures/manual/question-gap-mix.json`: the Setup row, the panel field, the notes, a real
+pointer drag of the handle, ⌘Z, the page rail, the gap shedding at a page break, and the `.docx` the Export
+dialog writes (62 checks). `npm run samples` writes five `question-gap/` files and the four English ones were
+rendered by LibreOffice and match the page. **Not tried in real Word, on an iPad, or in the desktop app.**
+In Word, open `question-gap/gap-3-lines-en.docx` (beside `gap-default-1-line-en.docx`, the control) and
+`gap-booklet-3-lines-en.docx`; `gap-own-numbers-en.docx` shows per-question numbers. Look for three lines
+between MC questions 2–10 and between the two structured questions that follow; one line above Q11 (an MC is
+above it) and Q13 (a note is above it); no white space at the top of page 2; in the booklet, three lines
+between the three questions and nothing stranded at the top of a page.
 
 ## Appendix A — real-paper measurements
 
