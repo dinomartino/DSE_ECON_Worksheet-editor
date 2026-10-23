@@ -377,8 +377,9 @@ interface WorksheetState {
   // --- Page setup, masthead bands, header/footer ------------------------------
   setPageSetup: (patch: Partial<PageSetup>) => void;
   /**
-   * The exam paper's between-question gap in blank lines; `undefined` returns to the
-   * question type's own default (§ `Worksheet.examGapLines`).
+   * The between-question gap in blank lines, on any paper shape; `undefined` returns to
+   * the shape's default (§ `Worksheet.examGapLines`): the type's own number on a Paper 1,
+   * one line elsewhere.
    */
   setExamGapLines: (lines: number | undefined) => void;
   /** Put a mock-exam cover at the front of the document. One commit, one undo press. */

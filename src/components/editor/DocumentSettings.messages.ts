@@ -202,12 +202,17 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   marginPreset4: { en: 'Wide (2.54 / 5.08 cm)', zh: '寬（2.54 / 5.08 cm）' },
   betweenQuestions: { en: 'Between questions', zh: '題目之間' },
   betweenQuestionsHint: {
-    en: 'Blank lines separating one question from the next. A single question can override this in its own panel, or by dragging its gap on the page.',
-    zh: '分隔題目的空白行數。個別題目可在其面板中，或在頁面上拖曳間距來覆寫。',
+    en: 'Blank lines between two questions of the same kind (two MC questions, or two structured questions). Anything else between them keeps the usual spacing. One question can override this with Space above in its own panel, or by dragging its gap on the page.',
+    zh: '同類型的兩題（兩條 MC 題，或兩條結構題）之間的空白行數；中間隔了其他內容時維持一般間距。個別題目可在其面板的「上方空位」，或在頁面上拖曳間距來覆寫。',
   },
   gapDefault: {
     en: (lines: number) => `Default: ${lines} lines (the reference paper)`,
     zh: (lines: number) => `預設：${lines} 行（參考試卷）`,
+  },
+  // Off the MCQ paper the default is one line, the rhythm every saved paper already has.
+  gapDefaultOrdinary: {
+    en: (lines: number) => (lines === 1 ? 'Default: 1 line' : `Default: ${lines} lines`),
+    zh: (lines: number) => `預設：${lines} 行`,
   },
   gapLines: {
     en: (lines: number) => (lines === 1 ? '1 line' : `${lines} lines`),

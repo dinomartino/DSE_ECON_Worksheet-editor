@@ -25,6 +25,7 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { requireQuestionType } from '@/registry';
+import { boundaryGapLines, gapNumberApplies, stimulusGapLines } from './questionGap';
 import {
   blankLine,
   endsInBlankLine,
@@ -75,9 +76,9 @@ export interface RenderedQuestion {
   nodes: RenderNode[];
   /**
    * The width this question's leading boundary is aiming at, in blank lines — present
-   * only where the boundary is the exam paper's adjustable one (§ `boundaryGapLines`:
-   * Paper 1, after a same-type question). The preview offers its drag handle on it;
-   * both exports ignore it (the first node already carries the gap as `spaceBefore`).
+   * only where a stored number can set it (§ `gapNumberApplies`: straight under a
+   * question of the same type, on any paper shape). The preview offers its drag handle
+   * on it; both exports ignore it (the first node already carries the gap as `spaceBefore`).
    */
   adjustableGap?: number;
 }
@@ -733,10 +734,9 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         nodes: separated,
       });
     }
-    // Whether this boundary is the adjustable exam-paper one: same test
-    // `boundaryGapLines` applies before it reads any stored number.
-    const adjustableGap =
-      shape === 'paper1' && previous?.question?.type === question.type ? wanted : undefined;
+    // Whether a stored number sets this boundary: the same test `boundaryGapLines`
+    // applies before it reads one, on every paper shape.
+    const adjustableGap = gapNumberApplies(previous, question) ? wanted : undefined;
 
     previousNodes = separated;
     previous = { question };
@@ -779,64 +779,6 @@ function renderVersionLabel(letter: string, mode: OutputMode): RenderNode {
  * question is kept whole.
  */
 const ITEM_GAP_LINES = 1;
-
-/** The ordinary boundary: one line of air, the same gap a question's own parts get. */
-const DEFAULT_GAP_LINES = 1;
-
-/**
- * Blank lines under the MCQ paper's lead-in, before question 1. Measured off the
- * reference: rubric stands off by more than a neighbour, less than a whole question.
- */
-const QUESTION_COUNT_GAP_LINES = 2;
-
-/**
- * The width of the boundary between two consecutive flow items, in blank lines.
- * Wider only on an exam paper (§ documentShape), only between two questions of the
- * same type (`examGapLines` on the type definition states the number; this function
- * only decides when to honour it — the walker may not name a concrete type id), and
- * never on the first item of the page.
- */
-function boundaryGapLines(
-  shape: DocumentShape,
-  previous: { question?: Question; layout?: LayoutElement } | undefined,
-  next: Question,
-  /** The document's own choice (§ `Worksheet.examGapLines`); absent = the type's. */
-  override?: number,
-): number {
-  if (shape !== 'paper1' || !previous) return DEFAULT_GAP_LINES;
-
-  if (previous.layout) {
-    // A stimulus stands off from the questions it introduces the way the lead-in
-    // stands off from question 1: nearer than a stranger, further than a line of text.
-    return previous.layout.kind === 'questionCount' || previous.layout.kind === 'stimulus'
-      ? QUESTION_COUNT_GAP_LINES
-      : DEFAULT_GAP_LINES;
-  }
-
-  if (previous.question?.type !== next.type) return DEFAULT_GAP_LINES;
-  // Nearest statement wins: this question's own gap, then the document's, then the
-  // type's measured default.
-  const wide = next.gapBefore ?? override ?? requireQuestionType(next).examGapLines;
-  return wide !== undefined && wide > DEFAULT_GAP_LINES ? wide : DEFAULT_GAP_LINES;
-}
-
-/**
- * The blank lines above a stimulus, mirroring `boundaryGapLines` for an element that
- * is not a question: on the exam paper, after a question, it takes the same wide
- * boundary the next question would — the stimulus opens a new question group, and on
- * the one-line default it read as a caption of the question above it. The width comes
- * from the previous question's own type (the walker may not name a concrete type),
- * overridden by the document's `examGapLines` exactly as a question boundary is.
- */
-function stimulusGapLines(
-  shape: DocumentShape,
-  previous: { question?: Question; layout?: LayoutElement } | undefined,
-  override?: number,
-): number {
-  if (shape !== 'paper1' || !previous?.question) return DEFAULT_GAP_LINES;
-  const wide = override ?? requireQuestionType(previous.question).examGapLines;
-  return wide !== undefined && wide > DEFAULT_GAP_LINES ? wide : DEFAULT_GAP_LINES;
-}
 
 /**
  * The printed form of a stimulus's derived question range. With no questions after

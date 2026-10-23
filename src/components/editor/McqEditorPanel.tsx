@@ -17,14 +17,14 @@ import {
 import { activeVersion, versionCount, versionLetter, versionSeed } from '@/model/versions';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { documentShape } from '@/model/documentShape';
 import { pageMetricsOf } from '@/render/ir';
-import { Button, GroupHeader, IconButton, NumberField, Segmented, SelectField } from '@/components/ui';
+import { Button, GroupHeader, IconButton, NumberField, Segmented } from '@/components/ui';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { useMessages } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { biExcerpt, ExcerptRow } from './panelRows';
+import { SpaceAboveField } from './SpaceAboveField';
 import { MCQ_PANEL_MESSAGES } from './McqEditorPanel.messages';
 
 /**
@@ -43,10 +43,6 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
   const printedLayout = useWorksheetStore((s) =>
     printedOptionLayout(question, s.mode.language, pageMetricsOf(s.worksheet)),
   );
-  // Which paper this question sits in, for the exam-only gap control below. Derived
-  // per render — cheap, and a stored copy would go stale when a cover is added.
-  const shape = useWorksheetStore((s) => documentShape(s.worksheet));
-  const paperGap = useWorksheetStore((s) => s.worksheet.examGapLines);
   // Pins matter only once the paper has shuffled versions (Setup → Versions).
   const versioned = useWorksheetStore((s) => versionCount(s.worksheet) > 1);
   const fixedOrder = versioned && keepsOptionOrder(question);
@@ -187,24 +183,8 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             onChange={(marks) => onChange({ marks })}
           />
         </div>
-        {/* The exam paper's between-question gap, for this one boundary
-            (§ `Question.gapBefore`). Only on a Paper 1 — the wide boundary exists
-            nowhere else, and offering it on a worksheet would promise air the renderer
-            never gives. Ignored on question 1, which has no boundary above it. */}
-        {shape === 'paper1' && (
-          <SelectField<number>
-            label={m.spaceAbove}
-            value={question.gapBefore ?? 0}
-            options={[
-              { value: 0, label: m.paperDefault(paperGap ?? 3) },
-              ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lines) => ({
-                value: lines,
-                label: m.lines(lines),
-              })),
-            ]}
-            onChange={(lines) => onChange({ gapBefore: lines === 0 ? undefined : lines })}
-          />
-        )}
+        {/* This question's own gap above it (§ `Question.gapBefore`), on any paper shape. */}
+        <SpaceAboveField question={question} onChange={onChange} />
       </section>
 
       <section className="space-y-1">

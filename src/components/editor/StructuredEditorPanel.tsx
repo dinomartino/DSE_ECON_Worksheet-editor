@@ -25,6 +25,7 @@ import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { excerptOfBlocks, MiniNumber, scrollPageTo } from './panelRows';
 import { MarkSchemeEditor } from './MarkSchemeEditor';
+import { SpaceAboveField } from './SpaceAboveField';
 import type { MarkScheme } from '@/model/markSchemeTypes';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
@@ -249,6 +250,11 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
         blocks={question.blocks}
         onChange={(blocks) => onChange({ blocks })}
       />
+
+      {/* This question's own gap above it (§ `Question.gapBefore`), on any paper shape. */}
+      <section className="border-t border-line pt-3">
+        <SpaceAboveField question={question} onChange={onChange} />
+      </section>
 
       {/*
        * With no parts the question is the leaf, so it takes the two fields a part would

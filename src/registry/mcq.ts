@@ -708,9 +708,10 @@ function variant(question: McqQuestion, context: VariantContext): QuestionVarian
  * stronger break than the boundary inside one. At one line the two read alike and the
  * options of Q7 crowd the stem of Q8.
  *
- * Applies **only on a Paper 1**, and only between two MCQs: `renderWorksheet` asks for it
- * on no other shape, so a classroom worksheet holding MCQs keeps the one-line rhythm it
- * has always printed.
+ * As the *default* it applies **only on a Paper 1**, and only between two MCQs:
+ * `renderWorksheet` asks for it on no other shape, so a classroom worksheet holding MCQs
+ * keeps the one-line rhythm it has always printed. A teacher's own number is the
+ * exception, and is read on every shape (`render/questionGap.ts`).
  */
 const MCQ_EXAM_GAP_LINES = 3;
 
