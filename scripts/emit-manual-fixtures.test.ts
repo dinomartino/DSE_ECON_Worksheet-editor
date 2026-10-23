@@ -15,6 +15,7 @@ import { createPageBreakElement, createSectionElement, createTextElement } from 
 import { stringifyWorksheet } from '@/storage/document';
 import { bi } from '@/model/text';
 import { TINY_PNG, withFlow } from '@/test/fixtures';
+import { buildOptionLayoutPaper } from '@/test/optionLayoutFixture';
 import type { LayoutElement, McqQuestion, Question, Worksheet } from '@/model/types';
 
 const OUT = 'test-fixtures/manual';
@@ -117,6 +118,23 @@ function mixed(): Worksheet {
   ]);
 }
 
+/**
+ * Four MC questions whose options ask for different layouts, two already set by hand, and a New
+ * page after the second so the thumbnail strip has two pages to show (k-0178).
+ */
+function optionLayoutMix(): Worksheet {
+  const { worksheet, short, mid } = buildOptionLayoutPaper('diagram');
+  worksheet.name = 'Option layout mix';
+  worksheet.questions = worksheet.questions.map((q) =>
+    q.id === short.id ? { ...q, optionLayout: 'columns2' as const } : q.id === mid.id ? { ...q, optionLayout: 'inline' as const } : q,
+  );
+  const newPage = createPageBreakElement();
+  const after = worksheet.flow.findIndex((item) => item.id === mid.id) + 1;
+  worksheet.layout = [...worksheet.layout, newPage];
+  worksheet.flow = [...worksheet.flow.slice(0, after), { type: 'layout', id: newPage.id }, ...worksheet.flow.slice(after)];
+  return worksheet;
+}
+
 it('emits the manual test documents', () => {
   if (!process.env.EMIT_MANUAL_FIXTURES) return;
   mkdirSync(OUT, { recursive: true });
@@ -124,6 +142,7 @@ it('emits the manual test documents', () => {
     ['issue-4-repro', repro()],
     ['issue-4-many-breaks', manyBreaks()],
     ['mixed-for-anonymiser', mixed()],
+    ['option-layout-mix', optionLayoutMix()],
   ];
   for (const [name, w] of files) writeFileSync(`${OUT}/${name}.json`, `${stable(stringifyWorksheet(w), 'm-')}\n`);
 });

@@ -1,7 +1,8 @@
 # Formatting settings like Justify — design proposal
 
 Status: **approved 2026-10-23** (the user took every recommendation in § 6); building one setting
-at a time, option layout first. Written against `develop` at `d8194642` (it has since gained the
+at a time. Option layout (§ 4.1) is built on `feature/option-layout-all` (§ 9); the other two wait
+for the user's word. Written against `develop` at `d8194642` (it has since gained the
 GitHub #4 fix, `bbb0494e`; nothing here depends on it). Task k-0178. Evidence: the four GitHub
 issues, `CHANGELOG.md`, the Justify commits, a code survey (by reading; nothing was run in a
 browser, Word or Tauri) and a measurement pass over `real_life_reference/`.
@@ -430,6 +431,61 @@ field is classified in `src/library/contentKeyFields.test.ts`; a new `Worksheet`
 `KNOWN_KEYS` and `src/model/model.test.ts`. `src/model/backwardCompat.test.ts` must stay green
 without touching `src/test/corpus/v1-published.json`.
 
+## 9. Build log
+
+### 9.1 Option layout for all MC questions (built 2026-10-23, `feature/option-layout-all`)
+
+**What a teacher sees.** Document setup → Worksheet tab, under Text size and Justify text: *Option
+layout for all MC questions* 全部 MC 題的選項排列, a line saying how the paper stands ("Now: 2
+stacked · 1 in a row · 1 in two columns"), and four buttons: Fit each question 配合各題內容, All
+stacked 全部直列, All in a row 全部橫列, All 2 columns 全部兩欄. A click changes every MC question in
+one history step and raises a notice, "Changed 3 of 4 MC questions.", with an Undo that undoes only
+that click (a later edit, or ⌘Z, retires it; it fades after ten seconds, ⌘Z stays). Nothing to
+change says so and records no history. The block is absent on a paper with no MC question and its
+buttons are off on a read-only paper.
+
+**How.** No new field: each choice writes the question's own `optionLayout`, the one its panel
+writes, so the page, the thumbnails, the `.docx` and Copy for Word follow through the IR with no
+code of their own (`src/registry/mcqLayouts.ts`; the block `OptionLayoutField.tsx`; the click
+`optionLayoutAction.ts`). No schema change, no `KNOWN_KEYS`, no cache or `ctxStamp`. The stale
+comments on `optionLayout` (Appendix B) are corrected.
+
+**Decided while building** (what the proposal left open):
+- **Stacked is stored as nothing**, like Text size 11. Putting a paper back to "all stacked" hands
+  back questions identical to ones never touched, `contentKey` included (absent and `stacked` hash
+  differently). A question already stacked is not "changed": a `stacked` its panel wrote stays, and
+  is not counted.
+- **A figure question is skipped by All in a row**, not given an `inline` that would reappear on
+  the day its figures are removed; the notice says "Left as they are: 1 figure question". All 2
+  columns and Fit each question do take it (a 2×2 grid of figures).
+- **The count is what changed in the stored layouts**, so a question set in a row whose options are
+  too long (it prints in 2 columns anyway) counts when it becomes "2 columns", though the page does
+  not move. The panel's own note says why a question prints differently from its setting.
+- **The count comes after the click, not before.** The proposal said the hint would say how many
+  change; four buttons would need four counts, and the line "Now: …" plus the notice and its Undo
+  say the same thing at the moment it matters.
+- **Fit each question measures in the language the page is showing**, as the panel's Fit button
+  does; bilingual takes the wider side. A teacher who fits in 中文 and prints English gets rows the
+  English may not fit; the print falls back (below), and the panel says so.
+- **All in a row is a request, not a promise.** Options too long for one line still print in 2
+  columns and then in a grid (`printedOptionLayout`), and a bilingual paper prints a row as a grid
+  (two languages cannot share one tab-stop line). The stored value stays `inline`. The hint says
+  "still print in 2 columns"; the panel's note is exact per question.
+- **A bulk change is a content edit for `contentKey`**, as the per-question control already is
+  (`optionLayout` is classified `content` in `src/library/contentKeyFields.test.ts`), so the bank
+  sees every changed MC question as edited.
+
+**Verified.** Unit tests for the rules, all five surfaces (bulk = by hand; page, card, bank
+preview, `.docx` tab stops and tables, clipboard) and the click on the real store
+(`src/registry/mcqLayouts.test.ts`, `mcqLayoutsSurfaces.test.tsx`,
+`src/components/editor/optionLayoutAction.test.ts`, `OptionLayoutField.test.tsx`,
+`mcqPanelOptionLayout.test.tsx`). `scripts/option-layout-verify.mjs` drives the real dialog in
+Chrome in English and 中文 on `test-fixtures/manual/option-layout-mix.json`: the four buttons,
+the line, the notice and Undo, ⌘Z and Redo, what the page and the page rail draw, and a second
+click saying there is nothing to change. The five `option-layout/` samples from `npm run samples`
+were rendered by LibreOffice and match the page. **Not tried in real Word, on an iPad, or in the
+desktop app.**
+
 ## Appendix A — real-paper measurements
 
 Measured by a read-only pass; scratch files were not kept. `NOT CHECKED`: other years' MC papers;
@@ -486,6 +542,9 @@ Not fixed here (no code changes in this task); for whoever builds or triages nex
   `resolveOptionLayout` in `src/registry/mcq.ts` ("the editor calls it when a question is created
   … and writes the result") are stale: absent means stacked, and only the MC panel's Fit button
   calls `suggestOptionLayout`.
+- The MC panel's Fit to content hover names a layout by its stored id in English: "These options fit
+  better as columns2" (`fitTitle` in `src/components/editor/McqEditorPanel.messages.ts`; the 中文
+  is fine). Left alone in § 9.1.
 - **Suspected bug:** `isFormattable` lists `sourceLabel` and `sourceFootnote`, so the format bar
   appears for them, but `applyFormatTarget` has no case for either (`default: return worksheet`),
   so an element-wide format (Justify, size) does nothing; selected characters still work. Read

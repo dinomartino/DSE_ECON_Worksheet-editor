@@ -87,6 +87,15 @@ Invariants:
 - `src/registry/index.ts:listQuestionTypes` · `:requireQuestionType`
 - `src/registry/mcq.ts:printedOptionLayout` — the set layout, or the next one that holds the text
   (inline → 2 columns → grid), measured by `src/render/textWidth.ts:lineWidthTwips`
+- `src/registry/mcqLayouts.ts:withOptionLayouts` · `:planOptionLayouts` · `:optionLayoutTally` — Setup →
+  Option layout for all MC questions: every MC question's own `optionLayout` (stacked stored as absence;
+  figure options never go in a row; Fit each question = `suggestOptionLayout` per question, in the on-screen
+  language), so the page, thumbnails, `.docx` and clipboard follow through the IR with no code of their own.
+  The Setup block is `src/components/editor/OptionLayoutField.tsx:OptionLayoutField`; its click is
+  `src/components/editor/optionLayoutAction.ts:applyOptionLayout` (one `commit`, a count, an Undo bound to that
+  commit). Tests: `src/registry/mcqLayouts.test.ts`, `src/registry/mcqLayoutsSurfaces.test.tsx` (every surface,
+  bulk = by hand), `src/components/editor/optionLayoutAction.test.ts`; fixture `src/test/optionLayoutFixture.ts:buildOptionLayoutPaper`;
+  browser proof `scripts/option-layout-verify.mjs`
 - `src/registry/mcq.ts:mcqType` · `:resolveOptionLayout` · `:optionRationales` — teacher-only notes:
   `McqOption.rationale` (travels with its option through a shuffle) and `McqQuestion.provenance`
   ("Source:", `src/model/text.ts:provenanceLabel`); teacher version + answer key only

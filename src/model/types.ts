@@ -434,8 +434,11 @@ export interface McqOption {
 }
 
 /**
- * How the four options are arranged. `undefined` means "decide from the option text"
- * — real papers mix short inline runs and stacked sentences.
+ * How the four options are arranged. `undefined` means stacked, the layout every document
+ * was authored against; nothing decides it from the option text at render time. Real papers
+ * mix short inline runs and stacked sentences, so the MC panel's Fit to content button and
+ * Setup's Fit each question write the layout that suits the text
+ * (`registry/mcq.ts:suggestOptionLayout`).
  */
 export type McqOptionLayout = 'stacked' | 'inline' | 'columns2';
 
@@ -446,7 +449,10 @@ export interface McqQuestion extends QuestionBase {
   options: McqOption[];
   answerIndex: number;
   explanation?: BiText;
-  /** Omitted means auto: chosen from how long the options are. */
+  /**
+   * Omitted means stacked. Set per question in its panel, or for every MC question at once in
+   * Setup (`registry/mcqLayouts.ts`, which stores stacked as absence).
+   */
   optionLayout?: McqOptionLayout;
   /**
    * Alignment of every option line, set from the format bar on any option. On the

@@ -85,7 +85,7 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
       `Now: ${[
         stacked > 0 && `${stacked} stacked`,
         inline > 0 && `${inline} in a row`,
-        columns2 > 0 && `${columns2} in 2 columns`,
+        columns2 > 0 && `${columns2} in two columns`,
       ]
         .filter(Boolean)
         .join(' · ')}`,

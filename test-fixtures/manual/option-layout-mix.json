@@ -1,0 +1,1341 @@
+{
+  "schemaVersion": 1,
+  "id": "m-001",
+  "title": {
+    "en": [
+      {
+        "text": "Option layout"
+      }
+    ],
+    "zh": [
+      {
+        "text": "選項排列"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "m-002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "m-003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "m-004",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-005",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following will shift the demand curve for tablet computers to the right?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項會令平板電腦的需求曲線向右移？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-006",
+          "text": {
+            "en": [
+              {
+                "text": "(1) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (1)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-007",
+          "text": {
+            "en": [
+              {
+                "text": "(2) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (2)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-008",
+          "text": {
+            "en": [
+              {
+                "text": "(1) and (2) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (1) 和 (2)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-009",
+          "text": {
+            "en": [
+              {
+                "text": "(1), (2) and (3)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "(1)、(2) 和 (3)"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1,
+      "optionLayout": "columns2"
+    },
+    {
+      "id": "m-010",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-011",
+          "text": {
+            "en": [
+              {
+                "text": "Income rises. For a normal good, what happens to the equilibrium price and quantity?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "收入上升。對於正常物品，均衡價格和數量會有甚麼變化？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-012",
+          "text": {
+            "en": [
+              {
+                "text": "Price rises, quantity rises"
+              }
+            ],
+            "zh": [
+              {
+                "text": "價格上升，數量上升"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-013",
+          "text": {
+            "en": [
+              {
+                "text": "Price rises, quantity falls"
+              }
+            ],
+            "zh": [
+              {
+                "text": "價格上升，數量下降"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-014",
+          "text": {
+            "en": [
+              {
+                "text": "Price falls, quantity rises"
+              }
+            ],
+            "zh": [
+              {
+                "text": "價格下降，數量上升"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-015",
+          "text": {
+            "en": [
+              {
+                "text": "Price falls, quantity falls"
+              }
+            ],
+            "zh": [
+              {
+                "text": "價格下降，數量下降"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1,
+      "optionLayout": "inline"
+    },
+    {
+      "id": "m-016",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-017",
+          "text": {
+            "en": [
+              {
+                "text": "A price ceiling is set below the equilibrium price. Why does a shortage result?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "價格上限定於均衡價格以下。為甚麼會出現短缺？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-018",
+          "text": {
+            "en": [
+              {
+                "text": "The quantity demanded rises while the quantity supplied falls"
+              }
+            ],
+            "zh": [
+              {
+                "text": "需求量上升，而供應量下降"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-019",
+          "text": {
+            "en": [
+              {
+                "text": "Producers are not allowed to charge more than the legal price"
+              }
+            ],
+            "zh": [
+              {
+                "text": "生產者不得以高於法定價格出售"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-020",
+          "text": {
+            "en": [
+              {
+                "text": "The government removes the tax on the good completely"
+              }
+            ],
+            "zh": [
+              {
+                "text": "政府完全取消該貨品的稅項"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-021",
+          "text": {
+            "en": [
+              {
+                "text": "The government pays a subsidy to the producers of the good"
+              }
+            ],
+            "zh": [
+              {
+                "text": "政府向該貨品的生產者發放津貼"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-022",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-023",
+          "text": {
+            "en": [
+              {
+                "text": "Which diagram shows the effect of an increase in the number of sellers?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "哪個圖表顯示賣方數目增加的影響？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-024",
+          "text": {
+            "en": [],
+            "zh": []
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "m-025",
+              "diagram": {
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "數量"
+                      }
+                    ]
+                  }
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Price"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "m-026",
+                    "points": [
+                      {
+                        "x": 0.08,
+                        "y": 0.88
+                      },
+                      {
+                        "x": 0.86,
+                        "y": 0.12
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "m-027",
+                    "points": [
+                      {
+                        "x": 0.08,
+                        "y": 0.12
+                      },
+                      {
+                        "x": 0.86,
+                        "y": 0.88
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "S"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "S"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "m-028",
+                    "at": {
+                      "x": 0.47000000000000003,
+                      "y": 0.5
+                    },
+                    "labelSide": "right",
+                    "dot": true,
+                    "dropTo": [
+                      "x",
+                      "y"
+                    ],
+                    "xTickLabel": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "yTickLabel": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "anchor": {
+                      "cross": [
+                        "m-026",
+                        "m-027"
+                      ]
+                    }
+                  }
+                ],
+                "labels": [],
+                "arrows": [],
+                "showOrigin": true,
+                "templateId": "supply-demand"
+              },
+              "widthPx": 200,
+              "heightPx": 185,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Supply and demand"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "供應與需求"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "m-029",
+          "text": {
+            "en": [],
+            "zh": []
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "m-030",
+              "diagram": {
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "數量"
+                      }
+                    ]
+                  }
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Price"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "m-031",
+                    "points": [
+                      {
+                        "x": 0.06,
+                        "y": 0.9
+                      },
+                      {
+                        "x": 0.74,
+                        "y": 0.2
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "m-032",
+                    "points": [
+                      {
+                        "x": 0.24,
+                        "y": 0.9
+                      },
+                      {
+                        "x": 0.9199999999999999,
+                        "y": 0.20000000000000007
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "labelAt": "end",
+                    "derive": {
+                      "kind": "shift",
+                      "of": "m-031",
+                      "by": {
+                        "x": 0.18,
+                        "y": 0
+                      }
+                    }
+                  },
+                  {
+                    "id": "m-033",
+                    "points": [
+                      {
+                        "x": 0.06,
+                        "y": 0.1
+                      },
+                      {
+                        "x": 0.7,
+                        "y": 0.86
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "S"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "S"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "m-034",
+                    "at": {
+                      "x": 0.4208623548922055,
+                      "y": 0.5285240464344942
+                    },
+                    "labelSide": "right",
+                    "dot": true,
+                    "dropTo": [
+                      "x",
+                      "y"
+                    ],
+                    "xTickLabel": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "yTickLabel": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "anchor": {
+                      "cross": [
+                        "m-031",
+                        "m-033"
+                      ]
+                    }
+                  },
+                  {
+                    "id": "m-035",
+                    "at": {
+                      "x": 0.5044444444444444,
+                      "y": 0.6277777777777779
+                    },
+                    "labelSide": "right",
+                    "dot": true,
+                    "dropTo": [
+                      "x",
+                      "y"
+                    ],
+                    "xTickLabel": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "yTickLabel": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "anchor": {
+                      "cross": [
+                        "m-032",
+                        "m-033"
+                      ]
+                    }
+                  }
+                ],
+                "labels": [],
+                "arrows": [
+                  {
+                    "id": "m-036",
+                    "from": {
+                      "x": 0.184143,
+                      "y": 0.8
+                    },
+                    "to": {
+                      "x": 0.310143,
+                      "y": 0.8
+                    },
+                    "follows": "m-032",
+                    "followOffset": {
+                      "x": -0.072857,
+                      "y": 0.075
+                    }
+                  }
+                ],
+                "showOrigin": true,
+                "spans": [
+                  {
+                    "id": "m-037",
+                    "from": {
+                      "point": "m-034"
+                    },
+                    "to": {
+                      "point": "m-035"
+                    },
+                    "style": "arrow",
+                    "along": "y"
+                  },
+                  {
+                    "id": "m-038",
+                    "from": {
+                      "point": "m-034"
+                    },
+                    "to": {
+                      "point": "m-035"
+                    },
+                    "style": "arrow",
+                    "along": "x"
+                  }
+                ],
+                "templateId": "demand-shift"
+              },
+              "widthPx": 200,
+              "heightPx": 185,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Demand shift"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "需求變動"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "m-039",
+          "text": {
+            "en": [],
+            "zh": []
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "m-040",
+              "diagram": {
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Real output"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "實質產出"
+                      }
+                    ]
+                  },
+                  "ticks": [
+                    {
+                      "id": "m-041",
+                      "at": 0.46,
+                      "label": {
+                        "en": [
+                          {
+                            "text": "Y"
+                          },
+                          {
+                            "text": "f",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "Y"
+                          },
+                          {
+                            "text": "f",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Price level"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "物價水平"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "m-042",
+                    "points": [
+                      {
+                        "x": 0.1,
+                        "y": 0.78
+                      },
+                      {
+                        "x": 0.82,
+                        "y": 0.18
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "AD"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "AD"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "m-043",
+                    "points": [
+                      {
+                        "x": 0.1,
+                        "y": 0.18
+                      },
+                      {
+                        "x": 0.82,
+                        "y": 0.78
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "SRAS"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "SRAS"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "m-044",
+                    "points": [
+                      {
+                        "x": 0.46,
+                        "y": 0
+                      },
+                      {
+                        "x": 0.46,
+                        "y": 0.94
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "LRAS"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "LRAS"
+                        }
+                      ]
+                    },
+                    "labelAt": "end",
+                    "derive": {
+                      "kind": "vertical",
+                      "x": 0.46,
+                      "from": 0,
+                      "to": 0.94
+                    }
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "m-045",
+                    "at": {
+                      "x": 0.45999999999999996,
+                      "y": 0.48
+                    },
+                    "labelSide": "right",
+                    "dot": true,
+                    "anchor": {
+                      "cross": [
+                        "m-042",
+                        "m-043"
+                      ]
+                    }
+                  }
+                ],
+                "labels": [],
+                "arrows": [],
+                "showOrigin": true,
+                "templateId": "ad-as"
+              },
+              "widthPx": 200,
+              "heightPx": 185,
+              "altText": {
+                "en": [
+                  {
+                    "text": "AD–AS with LRAS"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "AD–AS 及 LRAS"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "m-046",
+          "text": {
+            "en": [],
+            "zh": []
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "m-047",
+              "diagram": {
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Good X"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "物品X"
+                      }
+                    ]
+                  }
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Good Y"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "物品Y"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "m-048",
+                    "points": [
+                      {
+                        "x": 4.898587196589413e-17,
+                        "y": 0.86
+                      },
+                      {
+                        "x": 0.2070552360820166,
+                        "y": 0.8306962106085988
+                      },
+                      {
+                        "x": 0.40000000000000013,
+                        "y": 0.7447818472546172
+                      },
+                      {
+                        "x": 0.5656854249492381,
+                        "y": 0.6081118318204308
+                      },
+                      {
+                        "x": 0.692820323027551,
+                        "y": 0.42999999999999994
+                      },
+                      {
+                        "x": 0.7727406610312547,
+                        "y": 0.22258437878816784
+                      },
+                      {
+                        "x": 0.8,
+                        "y": 0
+                      }
+                    ],
+                    "shape": "curved",
+                    "labelAt": "end"
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "m-049",
+                    "at": {
+                      "x": 0.38,
+                      "y": 0.7568193185549449
+                    },
+                    "label": {
+                      "en": [
+                        {
+                          "text": "A"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "A"
+                        }
+                      ]
+                    },
+                    "labelSide": "upRight",
+                    "dot": true,
+                    "anchor": {
+                      "on": "m-048",
+                      "x": {
+                        "x": 0.38,
+                        "y": 0
+                      }
+                    }
+                  },
+                  {
+                    "id": "m-050",
+                    "at": {
+                      "x": 0.3,
+                      "y": 0.4
+                    },
+                    "label": {
+                      "en": [
+                        {
+                          "text": "B"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "B"
+                        }
+                      ]
+                    },
+                    "labelSide": "right",
+                    "dot": true
+                  },
+                  {
+                    "id": "m-051",
+                    "at": {
+                      "x": 0.74,
+                      "y": 0.72
+                    },
+                    "label": {
+                      "en": [
+                        {
+                          "text": "C"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "C"
+                        }
+                      ]
+                    },
+                    "labelSide": "right",
+                    "dot": true
+                  }
+                ],
+                "labels": [],
+                "arrows": [],
+                "showOrigin": true,
+                "templateId": "ppc"
+              },
+              "widthPx": 200,
+              "heightPx": 185,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Production possibility curve"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "生產可能曲線"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-052",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-053",
+          "text": {
+            "en": [
+              {
+                "text": "Explain how a price ceiling affects the market for rice."
+              }
+            ],
+            "zh": [
+              {
+                "text": "解釋價格上限如何影響白米市場。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-054",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-055",
+              "text": {
+                "en": [],
+                "zh": []
+              }
+            }
+          ],
+          "marks": 4
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "m-056",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "m-057",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構性問題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "pageBreak",
+      "id": "m-058"
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "m-056"
+    },
+    {
+      "type": "layout",
+      "id": "m-057"
+    },
+    {
+      "type": "question",
+      "id": "m-004"
+    },
+    {
+      "type": "question",
+      "id": "m-010"
+    },
+    {
+      "type": "layout",
+      "id": "m-058"
+    },
+    {
+      "type": "question",
+      "id": "m-016"
+    },
+    {
+      "type": "question",
+      "id": "m-022"
+    },
+    {
+      "type": "question",
+      "id": "m-052"
+    }
+  ],
+  "createdAt": "2026-10-23T06:31:10.471Z",
+  "updatedAt": "2026-10-23T06:31:10.471Z",
+  "name": "Option layout mix"
+}
