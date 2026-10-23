@@ -3,7 +3,9 @@
 Status: **approved 2026-10-23** (the user took every recommendation in § 6); building one setting
 at a time. Option layout (§ 4.1) is built (§ 9.1), space between questions (§ 4.2) is built (§ 9.2) and
 keep-together / new page (§ 4.3) is built (§ 9.3) and Justify in table cells (§ 4.4, row 4) is built on
-`feature/table-justify` (§ 9.4); what is left waits for the user's word. Written against `develop` at `d8194642` (it has since gained the
+`feature/table-justify` (§ 9.4). **2026-10-23: the user checked the samples of #2, #3 and table Justify and said all good,
+including decisions 8 and 9 (§ 6).** The paper-wide "Start every question on a new page" (k-0189) is built (§ 9.5);
+what is left waits for the user's word. Written against `develop` at `d8194642` (it has since gained the
 GitHub #4 fix, `bbb0494e`; nothing here depends on it). Task k-0178. Evidence: the four GitHub
 issues, `CHANGELOG.md`, the Justify commits, a code survey (by reading; nothing was run in a
 browser, Word or Tauri) and a measurement pass over `real_life_reference/`.
@@ -405,7 +407,7 @@ Each item shows the question as it was asked, then what it fixes.
    one line on classroom and booklet shapes so saved papers do not move? **Decided: yes.** Build 2.
 4. **Keep together.** Per question first, off by default? Add the paper-wide "start every question
    on a new page" for LQ papers now, or wait? **Decided: per question first, off by default; the
-   paper-wide switch waits.** Build 3.
+   paper-wide switch waits.** Build 3. **Then built as k-0189, on the user's word (2026-10-23): § 9.5.**
 5. **Line spacing.** Hold until the reporter says whether 12 pt feels tight? **Decided: hold.**
    Nothing is built until the reporter answers. Still open if it does feel tight: a 13 pt line at
    12 pt (saved 12 pt papers re-paginate) or a paper-wide setting?
@@ -431,6 +433,9 @@ Each item shows the question as it was asked, then what it fixes.
    not the format bar. The cell's alignment is one four-way choice stored in `CellAlign`, the format bar
    hides its align group for a cell on purpose (`SYSTEM_ARCHITECTURE.md` § The contextual toolbar row), and
    the Table tools bar already acts on a swept range, so a whole column is one click.
+
+**Confirmed by the user, 2026-10-23, after opening the samples of #2 (space between questions), #3 (keep together / new page)
+and table Justify: all good, including decisions 8 and 9 above** (T≡ stays in the Table tools bar; "Justify text" skips tables).
 
 ## 7. GitHub #4 is not a setting
 
@@ -680,6 +685,37 @@ flush justified descriptions). **Not tried in real Word, on an iPad, or in the d
 `table-justify/table-justify-default-en.docx` (the control), then `table-justify-policies-en.docx` (the three description cells
 justified), `table-justify-all-en.docx`, `table-justify-paper-switch-en.docx` (Justify text on: stems justified, tables as
 they were except the chosen cells) and `table-justify-bilingual-teacher.docx` (the English line before each break stays ragged).
+
+
+### 9.5 Start every question on a new page (built 2026-10-23, `feature/start-every-question-new-page`, k-0189)
+
+**What a teacher sees.** Document setup → Page, under Between questions: a box **Start every question on a new page** 每題由新頁開始
+with a hint. Ticked, every question after the first begins a page, and the heading, lead-in or source directly above it goes
+with it, exactly as a question's own **Start on a new page** does (§ 9.3). The first question and one straight under a New page
+stay where they are. It is off in every saved paper, so none moves. It is not offered on a Paper 1 (forty-five MC on forty-five
+pages is never meant), and a stored `true` is ignored there. Every question's own boxes (Keep this question on one page, Start on
+a new page, Space above) still work beside it. The page, the rail, the `.docx`, Copy for Word and the start card follow.
+
+**How.** One optional `Worksheet` field, `startEveryQuestionOnNewPage` (`true` or absent), in `KNOWN_KEYS`; no schema change.
+Nothing new in the walker or the paginator: `sheetOpeners(flow, every)` in `src/render/pageFlow.ts` counts every question as having
+asked, so `sheetStart` (heading travels, first / after-break open nothing), the walker's `startsPage` marks, `PackItem.startsSheet`
+and the `.docx`'s measured page starts all do the work already built for #3. `startsEveryQuestion(worksheet)` is the one test
+(off on a Paper 1), `withStartEveryQuestionOnNewPage` the one edit (off removes the field), `StartEveryQuestionField.tsx` the control;
+`gapAboveStatus` says "starts a page" for Space above under it. A question copied into another paper is unaffected (the switch is the
+paper's, not the question's).
+
+**Verified.** `startEveryQuestion.test.ts` (opens at every question but the first, off and stored false do nothing, heading / lead-in /
+source go along, New page break and first question open nothing, classroom / LQ / booklet / MC, Paper 1 ignores it, the boxes beside it,
+no air above a sheet opener, no key on a paper that has it off), `StartEveryQuestionField.test.tsx` (EN + 中), the model test that
+`KNOWN_KEYS` covers the type, the frozen-corpus guards. `scripts/start-every-verify.mjs` (Chrome, EN + 中, real clicks): off on a saved
+paper, hint, ticking gives six sheets with Section B's heading on its question's sheet, rail, Undo/Redo one step, the question boxes
+beside it, `.docx` with five hard breaks (none a paragraph of its own, no keep flags), reload, start card, off again restores three
+sheets. `npm run samples` writes five `start-every-question/` files; LibreOffice: 6 / 6 / 4 / 6 / 4 pages, and the Paper 1 file's
+`document.xml` is byte-identical to `page-flow/page-flow-paper1-en.docx`. **Not tried in real Word, on an iPad or in the desktop app.**
+In Word open `page-flow/page-flow-default-en.docx` (the control, three pages), `start-every-question/start-every-en.docx` (six pages,
+one question each, Section B's heading with Question 4), `start-every-with-question-boxes-en.docx` (the same, with Q3 kept and Q4 asking
+for itself) and `start-every-booklet-en.docx`; no black ¶ squares, no blank pages. **Not built:** "except these" opt-outs, or the switch
+for an MC-only paper.
 
 ## Appendix A — real-paper measurements
 

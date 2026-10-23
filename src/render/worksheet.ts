@@ -25,7 +25,7 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { requireQuestionType } from '@/registry';
-import { isKeptWhole, sheetOpeners } from './pageFlow';
+import { isKeptWhole, sheetOpeners, startsEveryQuestion } from './pageFlow';
 import { boundaryGapLines, gapNumberApplies, stimulusGapLines } from './questionGap';
 import {
   blankLine,
@@ -610,7 +610,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   // The items a question's "Start on a new page" opens a sheet at: itself, or the heading or
   // source lead-in that travels with it. Read off the flow that prints, so a writing room
   // omitted from a student copy does not stand between a break and its question.
-  const openers = sheetOpeners(resolved);
+  const openers = sheetOpeners(resolved, startsEveryQuestion(worksheet));
 
   // Each stimulus's derived question range ("Questions 8 and 9"), from the numbering
   // plan — never stored, so inserting or reordering questions renumbers the sentence.

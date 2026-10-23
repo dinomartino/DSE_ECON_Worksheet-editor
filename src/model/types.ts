@@ -953,6 +953,16 @@ export interface Worksheet {
    */
   justifyText?: boolean;
   /**
+   * Start every question on a new page (Document setup → Page), for the papers whose questions
+   * each want a page of their own (a long-question paper). Stored as `true` or absent, never
+   * `false`; off by default, so a saved paper does not move. It asks of each question what its
+   * own "Start on a new page" does (§ `render/pageFlow.ts`: the heading, lead-in or source above
+   * travels with it; the first question and one under a New page element open nothing), and a
+   * question's own boxes still work beside it. Ignored on a Paper 1, where forty-five MC
+   * questions on forty-five pages is never what the switch means.
+   */
+  startEveryQuestionOnNewPage?: boolean;
+  /**
    * Blank lines between two same-type questions (Setup → Between questions), on every
    * paper shape, overriding the shape's default: the question type's own `examGapLines`
    * on a Paper 1 (the MCQ paper's measured 3), one line elsewhere. Absent means that

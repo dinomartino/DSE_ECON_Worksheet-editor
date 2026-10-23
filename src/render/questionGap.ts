@@ -2,6 +2,7 @@ import type { DocumentShape } from '@/model/documentShape';
 import { resolveFlow } from '@/model/flow';
 import type { LayoutElement, Question, Worksheet } from '@/model/types';
 import { requireQuestionType } from '@/registry';
+import { startsEveryQuestion } from './pageFlow';
 
 /**
  * The air between questions: how many blank lines of the fixed 12pt grid separate one
@@ -123,8 +124,8 @@ export function stimulusGapLines(
  * - `first`: nothing above it to be separated from.
  * - `afterElement`: a heading, source, text or page break stands above it.
  * - `unlikeAbove`: the question above is another kind.
- * - `startsPage`: it would apply, but the question starts a new page (`startOnNewPage`), and
- *   nothing is spaced above what leads a page.
+ * - `startsPage`: it would apply, but the question starts a new page (`startOnNewPage`, or the paper's
+ *   `startEveryQuestionOnNewPage`), and nothing is spaced above what leads a page.
  *
  * Read off the same flow the walker reads, so the sentence a panel prints is the page's.
  */
@@ -142,5 +143,5 @@ export function gapAboveStatus(worksheet: Worksheet, questionId: string): GapAbo
   if (!gapNumberApplies({ question: above.question }, item.question)) return 'unlikeAbove';
   // Straight under a like question, so a sheet opens at this one itself, never at a heading
   // above it (`sheetStart`): the walker stamps no gap on what opens a sheet.
-  return item.question.startOnNewPage === true ? 'startsPage' : 'applies';
+  return item.question.startOnNewPage === true || startsEveryQuestion(worksheet) ? 'startsPage' : 'applies';
 }

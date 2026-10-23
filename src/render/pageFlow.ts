@@ -1,4 +1,4 @@
-import type { DocumentShape } from '@/model/documentShape';
+import { documentShape, type DocumentShape } from '@/model/documentShape';
 import { resolveFlow, type ResolvedItem } from '@/model/flow';
 import type { LayoutElement, Worksheet } from '@/model/types';
 
@@ -94,13 +94,36 @@ export function sheetStart(flow: readonly ResolvedItem[], index: number): SheetS
 }
 
 /**
+ * Whether the paper asks every question to start a new page (`startEveryQuestionOnNewPage`).
+ * Not on a Paper 1, whatever is stored: the switch is not offered there, and a document that
+ * stops being a Paper 1 gets its answer back.
+ */
+export function startsEveryQuestion(worksheet: Worksheet): boolean {
+  return worksheet.startEveryQuestionOnNewPage === true && documentShape(worksheet) !== 'paper1';
+}
+
+/**
+ * The document with "Start every question on a new page" on or off: off removes the field, so a
+ * paper switched back is the paper it was. The same object when nothing changes, so `commit`
+ * records no undo step for a no-op.
+ */
+export function withStartEveryQuestionOnNewPage(worksheet: Worksheet, on: boolean): Worksheet {
+  if ((worksheet.startEveryQuestionOnNewPage === true) === on) return worksheet;
+  const next: Worksheet = { ...worksheet, startEveryQuestionOnNewPage: true };
+  if (!on) delete next.startEveryQuestionOnNewPage;
+  return next;
+}
+
+/**
  * The flow items that must open a sheet because a question that asked to start a page is theirs
  * (itself, or the heading it travels with). The walker stamps `startsPage` on exactly these.
+ * `every` is the paper-wide switch (`startsEveryQuestion`): then every question asks, and the
+ * same rules (heading travels, the first and one under a New page open nothing) apply to each.
  */
-export function sheetOpeners(flow: readonly ResolvedItem[]): Set<number> {
+export function sheetOpeners(flow: readonly ResolvedItem[], every = false): Set<number> {
   const openers = new Set<number>();
   flow.forEach((item, index) => {
-    if (item.type !== 'question' || item.question.startOnNewPage !== true) return;
+    if (item.type !== 'question' || !(every || item.question.startOnNewPage === true)) return;
     const start = sheetStart(flow, index);
     if (start.status === 'applies') openers.add(start.opener);
   });

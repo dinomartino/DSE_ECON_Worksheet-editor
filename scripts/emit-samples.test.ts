@@ -147,6 +147,21 @@ it('emits papers with a question kept on one page or started on a new one (the q
   planPaper(buildPageFlowPaper({ keep: [2], start: [3] }), { language: 'bilingual', version: 'teacher' }, `${dir}/page-flow-bilingual-teacher.docx`);
 });
 
+it('emits papers that start every question on a new page (Document setup → Page)', async () => {
+  const dir = `${OUT}/start-every-question`;
+  mkdirSync(dir, { recursive: true });
+  const en: OutputMode = { language: 'en', version: 'student' };
+  const every = { startEveryQuestionOnNewPage: true } as const;
+  // The control is page-flow/page-flow-default-en.docx: off, page 1 ends inside Q3 and page 2 inside Q5.
+  planPaper({ ...buildPageFlowPaper(), ...every }, en, `${dir}/start-every-en.docx`);
+  // The per-question boxes still work beside it: Q3 kept on one page, and Q4 asking for itself.
+  planPaper({ ...buildPageFlowPaper({ keep: [2], start: [3] }), ...every }, en, `${dir}/start-every-with-question-boxes-en.docx`);
+  planPaper({ ...buildPageFlowBooklet(), ...every }, en, `${dir}/start-every-booklet-en.docx`);
+  // Not offered on a Paper 1, and ignored there if stored: this file equals page-flow/page-flow-paper1-en.docx.
+  planPaper({ ...buildPageFlowPaper1(), ...every }, en, `${dir}/start-every-paper1-ignored-en.docx`);
+  planPaper({ ...buildPageFlowPaper(), ...every }, { language: 'bilingual', version: 'teacher' }, `${dir}/start-every-bilingual-teacher.docx`);
+});
+
 it('emits papers with the text of table cells justified (Table tools → T≡)', async () => {
   const dir = `${OUT}/table-justify`;
   mkdirSync(dir, { recursive: true });
