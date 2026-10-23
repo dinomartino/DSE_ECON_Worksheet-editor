@@ -1,0 +1,820 @@
+{
+  "schemaVersion": 1,
+  "id": "m-001",
+  "title": {
+    "en": [
+      {
+        "text": "Sample Secondary School Mock Exam 2025-26"
+      }
+    ],
+    "zh": [
+      {
+        "text": "樣本中學模擬考試 2025-26"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "m-002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "m-003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "m-004",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-005",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "以下哪項會令茶的需求曲線右移？（第1題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-006",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-007",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-008",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-009",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-010",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-011",
+          "text": {
+            "en": [
+              {
+                "text": "A fall in the price of a substitute will cause (Q2)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-012",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-013",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-014",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-015",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-016",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-017",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following statements about inflation are correct?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下關於通脹的陳述哪些正確？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-018",
+          "text": {
+            "en": [
+              {
+                "text": "(1) and (2) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有(1)和(2)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-019",
+          "text": {
+            "en": [
+              {
+                "text": "(1) and (3) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有(1)和(3)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-020",
+          "text": {
+            "en": [
+              {
+                "text": "(2) and (3) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有(2)和(3)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-021",
+          "text": {
+            "en": [
+              {
+                "text": "(1), (2) and (3)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "(1)、(2)和(3)"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1,
+      "statements": [
+        {
+          "en": [
+            {
+              "text": "Inflation reduces the purchasing power of money."
+            }
+          ],
+          "zh": [
+            {
+              "text": "通脹降低貨幣的購買力。"
+            }
+          ]
+        },
+        {
+          "en": [
+            {
+              "text": "Inflation always benefits borrowers."
+            }
+          ],
+          "zh": [
+            {
+              "text": "通脹必定令借款人得益。"
+            }
+          ]
+        },
+        {
+          "en": [
+            {
+              "text": "Inflation is a sustained rise in the general price level."
+            }
+          ],
+          "zh": [
+            {
+              "text": "通脹是整體物價水平持續上升。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-022",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-023",
+          "text": {
+            "en": [
+              {
+                "text": "Mr. Chan Tai Man, an economics teacher at Sample Secondary School, explains that firms respond to higher costs. Mr. Chan Tai Man, an economics teacher at Sample Secondary School, explains that firms respond to higher costs. Mr. Chan Tai Man, an economics teacher at Sample Secondary School, explains that firms respond to higher costs. Mr. Chan Tai Man, an economics teacher at Sample Secondary School, explains that firms respond to higher costs. Mr. Chan Tai Man, an economics teacher at Sample Secondary School, explains that firms respond to higher costs. Mr. Chan Tai Man, an economics teacher at Sample Secondary School, explains that firms respond to higher costs. "
+              }
+            ],
+            "zh": [
+              {
+                "text": "陳大文老師在樣本中學教授經濟，他解釋廠商如何回應成本上升。陳大文老師在樣本中學教授經濟，他解釋廠商如何回應成本上升。陳大文老師在樣本中學教授經濟，他解釋廠商如何回應成本上升。陳大文老師在樣本中學教授經濟，他解釋廠商如何回應成本上升。陳大文老師在樣本中學教授經濟，他解釋廠商如何回應成本上升。陳大文老師在樣本中學教授經濟，他解釋廠商如何回應成本上升。"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-024",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-025",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-026",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-027",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-028",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-029",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the table. The price elasticity of demand is"
+              }
+            ],
+            "zh": [
+              {
+                "text": "參照下表，需求價格彈性為"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "table",
+          "id": "m-030",
+          "rows": [
+            {
+              "id": "m-031",
+              "cells": [
+                {
+                  "id": "m-032",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Year"
+                      }
+                    ],
+                    "zh": []
+                  }
+                },
+                {
+                  "id": "m-033",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Price ($)"
+                      }
+                    ],
+                    "zh": []
+                  }
+                },
+                {
+                  "id": "m-034",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": []
+                  }
+                }
+              ]
+            },
+            {
+              "id": "m-035",
+              "cells": [
+                {
+                  "id": "m-036",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "2024"
+                      }
+                    ],
+                    "zh": []
+                  }
+                },
+                {
+                  "id": "m-037",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "10"
+                      }
+                    ],
+                    "zh": []
+                  }
+                },
+                {
+                  "id": "m-038",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "500"
+                      }
+                    ],
+                    "zh": []
+                  }
+                }
+              ]
+            },
+            {
+              "id": "m-039",
+              "cells": [
+                {
+                  "id": "m-040",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "2025"
+                      }
+                    ],
+                    "zh": []
+                  }
+                },
+                {
+                  "id": "m-041",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "12"
+                      }
+                    ],
+                    "zh": []
+                  }
+                },
+                {
+                  "id": "m-042",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "450"
+                      }
+                    ],
+                    "zh": []
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-043",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-044",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-045",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-046",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 3
+    },
+    {
+      "id": "m-047",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-048",
+          "text": {
+            "en": [
+              {
+                "text": "In Figure 1, the new equilibrium is at"
+              }
+            ],
+            "zh": [
+              {
+                "text": "圖一中，新的均衡點在"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "image",
+          "id": "m-049",
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "widthPx": 240,
+          "heightPx": 120,
+          "naturalWidthPx": 240,
+          "naturalHeightPx": 120,
+          "altText": {
+            "en": [
+              {
+                "text": "Placeholder for a supply and demand graph"
+              }
+            ],
+            "zh": [
+              {
+                "text": "供求圖表位置"
+              }
+            ]
+          },
+          "caption": {
+            "en": [
+              {
+                "text": "Figure 1 (placeholder)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "圖一（佔位）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-050",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-051",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-052",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-053",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-054",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-055",
+          "text": {
+            "en": [
+              {
+                "text": "Contact Ms. Wong Siu Ming (wong.sm@example.org, 2345 6789) of Sample Secondary School, 12 Example Road, Kowloon. Contact Ms. Wong Siu Ming (wong.sm@example.org, 2345 6789) of Sample Secondary School, 12 Example Road, Kowloon. Contact Ms. Wong Siu Ming (wong.sm@example.org, 2345 6789) of Sample Secondary School, 12 Example Road, Kowloon. Contact Ms. Wong Siu Ming (wong.sm@example.org, 2345 6789) of Sample Secondary School, 12 Example Road, Kowloon. Contact Ms. Wong Siu Ming (wong.sm@example.org, 2345 6789) of Sample Secondary School, 12 Example Road, Kowloon. Contact Ms. Wong Siu Ming (wong.sm@example.org, 2345 6789) of Sample Secondary School, 12 Example Road, Kowloon. "
+              }
+            ],
+            "zh": [
+              {
+                "text": "請聯絡樣本中學黃小明老師（wong.sm@example.org，電話 2345 6789）。請聯絡樣本中學黃小明老師（wong.sm@example.org，電話 2345 6789）。請聯絡樣本中學黃小明老師（wong.sm@example.org，電話 2345 6789）。請聯絡樣本中學黃小明老師（wong.sm@example.org，電話 2345 6789）。請聯絡樣本中學黃小明老師（wong.sm@example.org，電話 2345 6789）。請聯絡樣本中學黃小明老師（wong.sm@example.org，電話 2345 6789）。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-056",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-057",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain one cause of the change in price."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋價格轉變的一個原因。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "m-058",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "pageBreak",
+      "id": "m-059"
+    },
+    {
+      "kind": "section",
+      "id": "m-060",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "m-058"
+    },
+    {
+      "type": "question",
+      "id": "m-004"
+    },
+    {
+      "type": "question",
+      "id": "m-010"
+    },
+    {
+      "type": "question",
+      "id": "m-016"
+    },
+    {
+      "type": "question",
+      "id": "m-022"
+    },
+    {
+      "type": "question",
+      "id": "m-028"
+    },
+    {
+      "type": "question",
+      "id": "m-047"
+    },
+    {
+      "type": "layout",
+      "id": "m-059"
+    },
+    {
+      "type": "layout",
+      "id": "m-060"
+    },
+    {
+      "type": "question",
+      "id": "m-054"
+    }
+  ],
+  "createdAt": "2026-10-23T05:17:48.990Z",
+  "updatedAt": "2026-10-23T05:17:48.990Z",
+  "name": "Sample Secondary School Mock Exam 2025-26"
+}
