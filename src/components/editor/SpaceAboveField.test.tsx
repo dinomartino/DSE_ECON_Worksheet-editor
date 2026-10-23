@@ -160,6 +160,14 @@ describe('the note under the control', () => {
     );
   });
 
+  it('says why a number on a question that starts a new page cannot be used', () => {
+    const b = mcq('b', { gapBefore: 4, startOnNewPage: true });
+    expect(note(draw(paper('classroom', [mcq('a'), b]), b))).toBe(
+      'This question starts a new page, so no space is left above it.',
+    );
+    expect(note(draw(paper('classroom', [mcq('a'), b]), b, 'zh-HK'))).toBe('這題由新頁開始，上方不留空位。');
+  });
+
   it('is said in 中文 too', () => {
     const b = mcq('b', { gapBefore: 4 });
     expect(note(draw(paper('classroom', [structured('s'), b]), b, 'zh-HK'))).toBe(

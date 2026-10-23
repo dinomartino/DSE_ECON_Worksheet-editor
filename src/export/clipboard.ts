@@ -585,8 +585,12 @@ export function worksheetClipboardHtml(
   if (rendered.instructions) parts.push(html(rendered.instructions));
 
   for (const item of rendered.items) {
-    const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
-    for (const node of nodes) parts.push(html(node));
+    const placed = item.type === 'question' ? item.question : item.layout;
+    // A question that asked to start a new page (`startOnNewPage`) carries the same break a
+    // New page element does. A copy has no pages of its own to measure, so the break is
+    // written here, ahead of the item that opens the sheet (the heading that travels with it).
+    if (placed.startsPage) parts.push(CLIPBOARD_PAGE_BREAK + CLIPBOARD_MANUAL_BREAK);
+    for (const node of placed.nodes) parts.push(html(node));
   }
 
   return wrapHtml(parts.join(''), css);

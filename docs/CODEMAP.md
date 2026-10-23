@@ -124,6 +124,20 @@ Invariants:
   `src/components/editor/spaceAbovePanels.test.tsx`, `src/store/questionGapActions.test.ts`; fixtures
   `src/test/questionGapFixture.ts:buildQuestionGapPaper` and `test-fixtures/manual/question-gap-mix.json`; browser proof
   `scripts/question-gap-verify.mjs`
+- `src/render/pageFlow.ts:sheetStart` · `:sheetOpeners` · `:startsPageStatus` · `:isKeptWhole` — what a question asks of its page:
+  `QuestionBase.startOnNewPage` (a sheet opens at the question, or at the heading, lead-in or source that opens the run of
+  elements above it, with a rubric under the heading; never for the first question or straight under a New page element) and
+  `keepOnOnePage` (a structured question the paginator offers no break inside; an MC and a Paper 1's questions are kept whole
+  already, `isKeptWhole`). The walker stamps `RenderedQuestion.startsPage` · `:keptTogether` · `RenderedLayout.startsPage` and
+  leaves no gap above what opens a sheet; `src/components/preview/flowFlags.ts:startsSheetOf` · `:keptTogetherOf` hand them
+  to the paginator (`pagination.ts:PackItem` `startsSheet`, `breakAfter: []`). The `.docx` has no code of its own (it breaks where
+  the measured sheets do); Copy for Word writes the break (`export/clipboard.ts:worksheetClipboardHtml`); `model/lineage.ts:copyQuestion`
+  leaves `startOnNewPage` behind. The controls: `src/components/editor/PageFlowFields.tsx:PageFlowFields` (both question
+  panels, under Space above). Both fields are `contentKey` metadata. Tests: `src/render/pageFlow.test.ts` (the rules, the
+  marks), `src/render/pageFlowSurfaces.test.tsx` (paginator, `.docx`, Copy for Word, the card), `src/components/preview/pagination.test.ts`,
+  `src/components/editor/PageFlowFields.test.tsx` · `pageFlowPanels.test.tsx`, `src/store/pageFlowActions.test.ts`; fixtures
+  `src/test/pageFlowFixture.ts:buildPageFlowPaper` and `test-fixtures/manual/page-flow-mix.json`; browser proof
+  `scripts/page-flow-verify.mjs`
 - `src/render/answerKey.ts:renderAnswerKey` — the separate answer key; entries come from the `answerKey` hook
 - `src/render/answerKey.ts:answerKeyView` — the same nodes plus each node's question and the key's own fields (title, subtitle), for the Marking scheme view
 - `src/render/answerKey.ts:collectAnswerKey` → `:ANSWER_KEY_STYLES` → `:renderStandardKey` — the key's data gathered once, laid out by its preset's style; `src/render/answerKeySections.ts:MC_KEY_RENDERERS` · `:LQ_KEY_RENDERERS` are the per-section layouts (grid / HKEAA table / list / reasons table; compact / Marks column / Detailed table / Suggested answers' answers-only)
@@ -416,7 +430,7 @@ Invariants:
 
 - `src/components/preview/Preview.tsx:Preview` — IR → DOM, paginated into sheets
 - `src/components/preview/AnswerKeyPreview.tsx:AnswerKeyPreview` — the Marking scheme view: the key's IR on the same paginator, no paper chrome; shown when the store's `documentView` is `answerKey`
-- `src/components/preview/pagination.ts:packPages` · `:composePages` · `:resolveFillCounts`
+- `src/components/preview/pagination.ts:packPages` · `:composePages` · `:resolveFillCounts` — `PackItem.startsSheet` opens a sheet at a question that asked to start a page (§ `render/pageFlow.ts`)
 - `src/components/preview/pageNodes.ts:pageNodes` — a question's answer space one node per line and a table one node per run of rows (`tablePieces`), so a sheet breaks where Word does; `bodyEntries` joins the pieces a sheet holds back into one table
 - `src/components/preview/InlineEditable.tsx` · `src/components/preview/RichTextEditable.tsx` — click-to-edit
 - `src/components/preview/BandEditor.tsx:BandEditor` · `:bandFieldStyle`

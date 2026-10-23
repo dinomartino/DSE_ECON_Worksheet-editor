@@ -173,6 +173,65 @@ function questionGapMix(): Worksheet {
   ]);
 }
 
+/**
+ * Keep a question together, or start it on a new page (k-0178 #3): a classroom worksheet of
+ * structured questions, long enough that page 1 ends inside Q3 (so, left alone, Q3 is cut across two
+ * pages), with a section heading above Q4 (so a new page for Q4 takes its heading along) and an MC
+ * at the end. Nothing is set: it prints as any paper saved before this feature does.
+ */
+function pageFlowMix(): Worksheet {
+  const part = (en: string, zh: string, marks: number, lines: number) => {
+    const p = createPart();
+    p.blocks = [createParagraphBlock(bi(en, zh))];
+    p.marks = marks;
+    p.answerSpace = lines;
+    return p;
+  };
+  const question = (n: number, topic: [string, string], lines: number, parts: Array<[string, string, number]>) => {
+    const q = createStructuredQuestion();
+    q.blocks = [createParagraphBlock(bi(`Question ${n}: ${topic[0]}`, `第 ${n} 題：${topic[1]}`))];
+    q.parts = parts.map(([en, zh, marks]) => part(en, zh, marks, lines));
+    return q;
+  };
+  const demand: [string, string] = ['The market for private tuition in Hong Kong has grown for ten years.', '香港私人補習市場在過去十年持續增長。'];
+  const one = question(1, demand, 2, [
+    ['State two factors that may have increased the demand for private tuition, and explain one of them.', '指出可能令私人補習需求增加的兩個因素，並解釋其中一個。', 4],
+    ['Explain, with the aid of a diagram, how the equilibrium price and quantity of tuition change.', '借助圖表，解釋補習的均衡價格和數量如何改變。', 5],
+  ]);
+  const two = question(2, ['A tutoring centre raises its fee by 10% and its revenue falls.', '一間補習社將收費提高10%，但收益下降。'], 3, [
+    ['What can be said about the price elasticity of demand for the centre’s lessons? Give a reason.', '就該補習社課堂的需求價格彈性可作何推論？試給出理由。', 3],
+    ['Explain why a fall in total revenue does not always mean a fall in profit.', '解釋為何總收益下降不一定令利潤下降。', 4],
+  ]);
+  const three = question(3, ['The government considers a subsidy for low-income families to buy tuition.', '政府考慮資助低收入家庭購買補習服務。'], 5, [
+    ['Explain, with the aid of a diagram, the effect of the subsidy on the market for tuition.', '借助圖表，解釋資助對補習市場的影響。', 5],
+    ['Who bears more of the benefit of the subsidy, the buyers or the sellers? Explain your answer.', '買家和賣家，誰得益較多？解釋你的答案。', 4],
+    ['Give one reason why the subsidy may be criticised on the ground of efficiency.', '就效率而言，給出該資助可能受到批評的一個理由。', 3],
+  ]);
+  const four = question(4, ['Rents of tutoring centres in Mong Kok rise sharply.', '旺角補習社的租金大幅上升。'], 3, [
+    ['State the effect of the rise in rent on the supply of tuition in the short run.', '指出租金上升在短期內對補習供應的影響。', 2],
+    ['Explain why the effect may differ in the long run.', '解釋為何長期的影響可能不同。', 3],
+  ]);
+  const five = question(5, ['A new online platform lowers the cost of tuition.', '一個新的網上平台令補習成本下降。'], 3, [
+    ['Explain the effect on the market for face-to-face tuition.', '解釋對面授補習市場的影響。', 3],
+    ['Name one possible external cost of the growth of tuition and explain it.', '指出補習增長可能帶來的一項外部成本並解釋。', 3],
+  ]);
+  const finalMc = createMcqQuestion();
+  finalMc.blocks = [createParagraphBlock(bi('Which of the following is a likely effect of a subsidy to buyers of tuition?', '以下哪項最可能是對補習買家提供資助的影響？'))];
+  finalMc.options = [
+    ['The equilibrium price rises', '均衡價格上升'],
+    ['The equilibrium price falls', '均衡價格下降'],
+    ['The supply curve shifts left', '供應曲線左移'],
+    ['The demand curve shifts left', '需求曲線左移'],
+  ].map(([en, zh]) => ({ id: newId(), text: bi(en, zh) }));
+  finalMc.answerIndex = 0;
+  return paper('Page flow mix', '題目分頁', [
+    createSectionElement(bi('Section A: Structured Questions', '甲部：結構題')),
+    one, two, three,
+    createSectionElement(bi('Section B: Further Questions', '乙部：延伸題')),
+    four, five, finalMc,
+  ]);
+}
+
 it('emits the manual test documents', () => {
   if (!process.env.EMIT_MANUAL_FIXTURES) return;
   mkdirSync(OUT, { recursive: true });
@@ -182,6 +241,7 @@ it('emits the manual test documents', () => {
     ['mixed-for-anonymiser', mixed()],
     ['option-layout-mix', optionLayoutMix()],
     ['question-gap-mix', questionGapMix()],
+    ['page-flow-mix', pageFlowMix()],
   ];
   for (const [name, w] of files) writeFileSync(`${OUT}/${name}.json`, `${stable(stringifyWorksheet(w), 'm-')}\n`);
 });

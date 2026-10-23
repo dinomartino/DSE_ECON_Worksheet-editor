@@ -87,6 +87,33 @@ ends inside it, so one gap meets a page break.
 
 `scripts/question-gap-verify.mjs` does 1–3 with a real mouse in Chrome, in English and 中文.
 
+## `page-flow-mix.json` — Keep a question together, or start it on a new page (k-0178 #3)
+
+A classroom worksheet: five structured questions in two sections (a heading above Q1 and one above
+Q4), then an MC. Nothing is set, so it prints as any paper saved before the page choices existed:
+**three sheets, with Q3 cut across pages 1–2 and Q5 across pages 2–3.** (Q numbers below are the
+printed ones for the first section; Section B restarts at 1, so Q4–Q6 print as 1–3.)
+
+1. Click **Q3**. Its panel (under the stem, below Space above) has **Start on a new page** and **Keep
+   this question on one page**, both unticked, and a line saying what keeping does.
+2. Tick **Keep this question on one page**. Q3 moves whole to page 2 and the foot of page 1 is left
+   empty; the thumbnail strip and the Content list agree. One ⌘Z (or Undo) puts the cut back.
+3. Click **Q4** (the one under Section B) and tick **Start on a new page**. Section B's heading and Q4
+   begin a new sheet together; the heading is not left at the foot of page 2.
+4. Click the **MC** at the end: its panel has **Start on a new page** but no Keep choice (an MC is
+   always kept whole). Tick it: a fourth sheet opens at the MC.
+5. Click **Q1** and tick Start on a new page: nothing moves, and a line says it is the first question
+   and already opens the paper. (A title page is made with a New page element.)
+6. Click **Q5**, set **Space above** to 4 lines, then tick Start on a new page: the page shows no space
+   above it, and the line under Space above says so.
+7. Back on the start screen, the document's card ends its first page where a question starts a page.
+8. Settings → Language → 繁體中文: both choices, their hint and the notes read in Chinese.
+9. Export → Word and open the file in Word: its pages break where the editor's do, with no black ¶
+   squares (the file carries no keep flags), the heading with its question, and no blank page.
+   `npm run samples` writes similar papers as `page-flow/…`.
+
+`scripts/page-flow-verify.mjs` does 1–7 and the `.docx` with a real mouse in Chrome, in English and 中文.
+
 ## The desktop app: dragging and dropped files (k-0182)
 
 Run `npm run desktop:dev` (it starts the web server itself). Before the fix every drag in the

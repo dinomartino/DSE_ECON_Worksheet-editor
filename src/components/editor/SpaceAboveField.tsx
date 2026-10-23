@@ -71,6 +71,8 @@ function noteFor(status: GapAboveStatus, m: Messages<typeof SPACE_ABOVE_MESSAGES
       return m.noteAfterElement;
     case 'unlikeAbove':
       return m.noteUnlikeAbove;
+    case 'startsPage':
+      return m.noteStartsPage;
     case 'applies':
       return undefined;
   }

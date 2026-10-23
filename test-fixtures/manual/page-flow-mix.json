@@ -1,0 +1,602 @@
+{
+  "schemaVersion": 1,
+  "id": "m-001",
+  "title": {
+    "en": [
+      {
+        "text": "Page flow mix"
+      }
+    ],
+    "zh": [
+      {
+        "text": "題目分頁"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "m-002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "m-003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "m-004",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-005",
+          "text": {
+            "en": [
+              {
+                "text": "Question 1: The market for private tuition in Hong Kong has grown for ten years."
+              }
+            ],
+            "zh": [
+              {
+                "text": "第 1 題：香港私人補習市場在過去十年持續增長。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-006",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-007",
+              "text": {
+                "en": [
+                  {
+                    "text": "State two factors that may have increased the demand for private tuition, and explain one of them."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "指出可能令私人補習需求增加的兩個因素，並解釋其中一個。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "answerSpace": 2
+        },
+        {
+          "id": "m-008",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-009",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain, with the aid of a diagram, how the equilibrium price and quantity of tuition change."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "借助圖表，解釋補習的均衡價格和數量如何改變。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 5,
+          "answerSpace": 2
+        }
+      ]
+    },
+    {
+      "id": "m-010",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-011",
+          "text": {
+            "en": [
+              {
+                "text": "Question 2: A tutoring centre raises its fee by 10% and its revenue falls."
+              }
+            ],
+            "zh": [
+              {
+                "text": "第 2 題：一間補習社將收費提高10%，但收益下降。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-012",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-013",
+              "text": {
+                "en": [
+                  {
+                    "text": "What can be said about the price elasticity of demand for the centre’s lessons? Give a reason."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "就該補習社課堂的需求價格彈性可作何推論？試給出理由。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3,
+          "answerSpace": 3
+        },
+        {
+          "id": "m-014",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-015",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain why a fall in total revenue does not always mean a fall in profit."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋為何總收益下降不一定令利潤下降。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "answerSpace": 3
+        }
+      ]
+    },
+    {
+      "id": "m-016",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-017",
+          "text": {
+            "en": [
+              {
+                "text": "Question 3: The government considers a subsidy for low-income families to buy tuition."
+              }
+            ],
+            "zh": [
+              {
+                "text": "第 3 題：政府考慮資助低收入家庭購買補習服務。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-018",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-019",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain, with the aid of a diagram, the effect of the subsidy on the market for tuition."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "借助圖表，解釋資助對補習市場的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 5,
+          "answerSpace": 5
+        },
+        {
+          "id": "m-020",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-021",
+              "text": {
+                "en": [
+                  {
+                    "text": "Who bears more of the benefit of the subsidy, the buyers or the sellers? Explain your answer."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "買家和賣家，誰得益較多？解釋你的答案。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "answerSpace": 5
+        },
+        {
+          "id": "m-022",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-023",
+              "text": {
+                "en": [
+                  {
+                    "text": "Give one reason why the subsidy may be criticised on the ground of efficiency."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "就效率而言，給出該資助可能受到批評的一個理由。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3,
+          "answerSpace": 5
+        }
+      ]
+    },
+    {
+      "id": "m-024",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-025",
+          "text": {
+            "en": [
+              {
+                "text": "Question 4: Rents of tutoring centres in Mong Kok rise sharply."
+              }
+            ],
+            "zh": [
+              {
+                "text": "第 4 題：旺角補習社的租金大幅上升。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-026",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-027",
+              "text": {
+                "en": [
+                  {
+                    "text": "State the effect of the rise in rent on the supply of tuition in the short run."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "指出租金上升在短期內對補習供應的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2,
+          "answerSpace": 3
+        },
+        {
+          "id": "m-028",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-029",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain why the effect may differ in the long run."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋為何長期的影響可能不同。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3,
+          "answerSpace": 3
+        }
+      ]
+    },
+    {
+      "id": "m-030",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-031",
+          "text": {
+            "en": [
+              {
+                "text": "Question 5: A new online platform lowers the cost of tuition."
+              }
+            ],
+            "zh": [
+              {
+                "text": "第 5 題：一個新的網上平台令補習成本下降。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-032",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-033",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain the effect on the market for face-to-face tuition."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋對面授補習市場的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3,
+          "answerSpace": 3
+        },
+        {
+          "id": "m-034",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-035",
+              "text": {
+                "en": [
+                  {
+                    "text": "Name one possible external cost of the growth of tuition and explain it."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "指出補習增長可能帶來的一項外部成本並解釋。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3,
+          "answerSpace": 3
+        }
+      ]
+    },
+    {
+      "id": "m-036",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-037",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is a likely effect of a subsidy to buyers of tuition?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項最可能是對補習買家提供資助的影響？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-038",
+          "text": {
+            "en": [
+              {
+                "text": "The equilibrium price rises"
+              }
+            ],
+            "zh": [
+              {
+                "text": "均衡價格上升"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-039",
+          "text": {
+            "en": [
+              {
+                "text": "The equilibrium price falls"
+              }
+            ],
+            "zh": [
+              {
+                "text": "均衡價格下降"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-040",
+          "text": {
+            "en": [
+              {
+                "text": "The supply curve shifts left"
+              }
+            ],
+            "zh": [
+              {
+                "text": "供應曲線左移"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-041",
+          "text": {
+            "en": [
+              {
+                "text": "The demand curve shifts left"
+              }
+            ],
+            "zh": [
+              {
+                "text": "需求曲線左移"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "m-042",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：結構題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "m-043",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Further Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：延伸題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "m-042"
+    },
+    {
+      "type": "question",
+      "id": "m-004"
+    },
+    {
+      "type": "question",
+      "id": "m-010"
+    },
+    {
+      "type": "question",
+      "id": "m-016"
+    },
+    {
+      "type": "layout",
+      "id": "m-043"
+    },
+    {
+      "type": "question",
+      "id": "m-024"
+    },
+    {
+      "type": "question",
+      "id": "m-030"
+    },
+    {
+      "type": "question",
+      "id": "m-036"
+    }
+  ],
+  "createdAt": "2026-10-23T11:34:54.097Z",
+  "updatedAt": "2026-10-23T11:34:54.097Z",
+  "name": "Page flow mix"
+}

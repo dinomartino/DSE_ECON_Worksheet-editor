@@ -389,6 +389,20 @@ describe('what the controls say', () => {
     expect(gapAboveStatus(w, 'e')).toBe('afterElement');
   });
 
+  it('says a like question that starts a new page has no air above it, whatever number it holds', () => {
+    // The walker stamps no gap on what opens a sheet (`startOnNewPage`), so a number stored on it
+    // would be a choice that quietly does nothing; the panel says so.
+    const asks = <Q extends Question>(question: Q): Q => ({ ...question, startOnNewPage: true });
+    const w = paper(createWorksheet(), [mcq('a'), asks(mcq('b')), mcq('c')]);
+    expect(gapAboveStatus(w, 'b')).toBe('startsPage');
+    expect(gapAboveStatus(w, 'c')).toBe('applies');
+    // Where another reason already applies, that one is the more useful thing to say.
+    const first = paper(createWorksheet(), [asks(mcq('a')), mcq('b')]);
+    expect(gapAboveStatus(first, 'a')).toBe('first');
+    const unlike = paper(createWorksheet(), [mcq('a'), asks(structured('s'))]);
+    expect(gapAboveStatus(unlike, 's')).toBe('unlikeAbove');
+  });
+
   it('follows a reorder', () => {
     const w = paper(createWorksheet(), [mcq('a'), structured('c'), mcq('b')]);
     expect(gapAboveStatus(w, 'b')).toBe('unlikeAbove');

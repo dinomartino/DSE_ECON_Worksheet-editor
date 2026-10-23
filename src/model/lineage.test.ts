@@ -103,6 +103,22 @@ describe('copyQuestion', () => {
     const odd = { ...richMcq(), lineage: { rootId: 42 } } as unknown as ReturnType<typeof richMcq>;
     expect(copyQuestion(odd).lineage!.rootId).toBe(odd.id);
   });
+
+  it('leaves behind the ask to start a new page, which is the source paper’s, and keeps the ask to stay whole', () => {
+    // A bank question that carried a page break would break a page in every paper it was dropped into.
+    const placed = { ...richStructured(), startOnNewPage: true, keepOnOnePage: true };
+    const copy = copyQuestion(placed, 'doc-a');
+    expect(copy).not.toHaveProperty('startOnNewPage');
+    expect(copy.keepOnOnePage).toBe(true);
+    // The source is untouched, and a question that never asked has no key added.
+    expect(placed.startOnNewPage).toBe(true);
+    expect(copyQuestion(richMcq())).not.toHaveProperty('startOnNewPage');
+  });
+
+  it('keeps the ask to start a new page on an in-document duplicate, which is a copy beside it', () => {
+    const placed = { ...richStructured(), startOnNewPage: true };
+    expect(freshIds(placed).startOnNewPage).toBe(true);
+  });
 });
 
 describe('part roots', () => {

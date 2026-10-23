@@ -21,12 +21,13 @@ const shape = (name: string) =>
     .join('');
 
 describe('manual test documents', () => {
-  it('lists the five files', () => {
+  it('lists the six files', () => {
     expect(readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()).toEqual([
       'issue-4-many-breaks.json',
       'issue-4-repro.json',
       'mixed-for-anonymiser.json',
       'option-layout-mix.json',
+      'page-flow-mix.json',
       'question-gap-mix.json',
     ]);
   });
@@ -71,7 +72,18 @@ describe('manual test documents', () => {
     expect(flow.slice(-5)).toEqual(['mcq', 'structured', 'structured', 'text', 'structured']);
   });
 
-  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix', 'question-gap-mix'])('%s exports a .docx', async (name) => {
+  it('page-flow-mix: five structured questions in two sections and an MC, nothing asked of the page yet', () => {
+    const w = load('page-flow-mix');
+    expect(documentShape(w)).toBe('classroom');
+    expect(w.questions.map((q) => q.type)).toEqual([...Array(5).fill('structured'), 'mcq']);
+    // Nothing set: it prints as every paper saved before the page choices existed.
+    expect(w.questions.some((q) => q.startOnNewPage !== undefined || q.keepOnOnePage !== undefined)).toBe(false);
+    const flow = resolveFlow(w).map((i) => (i.type === 'question' ? 'Q' : i.element.kind === 'section' ? 'S' : '?'));
+    // A heading above Q1 and one above Q4: the second goes with Q4 when it starts a page.
+    expect(flow.join('')).toBe('SQQQSQQQ');
+  });
+
+  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix', 'page-flow-mix', 'question-gap-mix'])('%s exports a .docx', async (name) => {
     const bytes = await exportDocxBuffer(load(name), { language: 'bilingual', version: 'student' });
     expect(bytes.length).toBeGreaterThan(2000);
   });
