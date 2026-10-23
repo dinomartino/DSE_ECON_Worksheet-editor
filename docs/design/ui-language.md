@@ -74,6 +74,7 @@ Example: "Paper 1 mock · MCQ" → "Paper 1 Mock · MCQ"; "Download PNG" → "�
 | Answer space | 答題空間 | Double-click | 按兩下 |
 | Tick (a checkbox) | 剔選 | Setup | 頁面設定 |
 | Send feedback | 意見回饋 | What's new | 最新功能 |
+| Buy me a coffee | 請我喝杯咖啡 | | |
 | Open a file… | 開啟檔案… | Folder (desktop) | 資料夾 |
 
 A term not listed: use the wording a Hong Kong secondary teacher sees in Microsoft Office

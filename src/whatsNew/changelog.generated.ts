@@ -15,6 +15,8 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **A quiet “Buy me a coffee” link on the start screen.** If Econ Studio saves you time, the links at the bottom of the left column now include a way to say thanks. It is a plain link that opens in your browser only when you click it; nothing is loaded or tracked, and it never appears while you edit.
+  <!-- zh: 開始畫面左下角的連結多了「請我喝杯咖啡」：如果 Econ Studio 幫你省下時間，可以由此表達謝意。它只是一個普通連結，點擊後才會在瀏覽器開啟，不會載入或追蹤任何東西，編輯時也不會出現。 -->
 - **Choose the space between questions on any worksheet.** In Document setup, on the Page tab,
   Between questions now works on every kind of paper, not only a Paper 1 mock: pick 1 to 6 blank
   lines and the gap changes wherever a question stands straight under another of the same kind

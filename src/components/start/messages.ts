@@ -37,4 +37,5 @@ export const START_PANEL_MESSAGES = defineMessages({
   backUpNow: { en: 'Back up now', zh: '立即備份' },
   whatsNew: { en: 'What’s new', zh: '最新功能' },
   sendFeedback: { en: 'Send feedback', zh: '意見回饋' },
+  buyMeCoffee: { en: 'Buy me a coffee', zh: '請我喝杯咖啡' },
 });

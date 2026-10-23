@@ -6,6 +6,7 @@ import {
   chooseSaveTarget,
   exportsFolder,
   isDesktop,
+  openExternal,
   openFolder,
   pickFile,
   pickFiles,
@@ -13,6 +14,7 @@ import {
   revealLabel,
   ZIP_FILTERS,
 } from '@/platform';
+import { SUPPORT_URL } from '@/platform/links';
 import { Dialog } from '@/components/ui/Dialog';
 import { useNotices } from '@/components/ui/NoticeLayer';
 import { useNoticeStore } from '@/store/notices';
@@ -877,6 +879,9 @@ export function StartScreen({
           )}
           <TextLink onClick={() => setWhatsNew(true)}>{m.whatsNew}</TextLink>
           <TextLink onClick={() => setFeedback(true)}>{m.sendFeedback}</TextLink>
+          <TextLink onClick={() => void openExternal(SUPPORT_URL).catch(() => undefined)}>
+            {m.buyMeCoffee}
+          </TextLink>
         </div>
       </footer>
       </div>
