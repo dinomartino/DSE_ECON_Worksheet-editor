@@ -436,6 +436,7 @@ export function Toolbar({
           onClose={closeFeedback}
           language={mode.language}
           document={describeDocument(worksheet)}
+          worksheet={worksheet}
         />
       )}
 

@@ -8,8 +8,9 @@ import { useDialogNotices } from '@/components/ui/NoticeLayer';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import type { NoticeInput } from '@/store/notices';
-import { isDesktop, openExternal, readDroppedFile, subscribeToFileDrops } from '@/platform';
-import type { LanguageMode } from '@/model/types';
+import { isDesktop, openExternal, revealFile } from '@/platform';
+import type { LanguageMode, OutputMode, Worksheet } from '@/model/types';
+import { makeAnonymisedCopy, saveAnonymisedCopy, type AnonymisedCopy } from '@/feedback/anonymisedCopy';
 import {
   buildReport,
   describeSystem,
@@ -32,6 +33,7 @@ import {
   screenshotType,
   type Screenshot,
 } from '@/feedback/screenshot';
+import { AnonymisedCopyPreview } from './AnonymisedCopyPreview';
 import { FEEDBACK_MESSAGES } from './messages';
 import { ScreenshotField } from './ScreenshotField';
 
@@ -45,6 +47,8 @@ type Sent = {
   screenshot?: 'copied' | 'failed';
   /** The paste chord the notice names ("⌘V"). */
   chord?: string;
+  /** The anonymised copy's file name, to drag in after the page opens. */
+  anonymisedCopy?: string;
 };
 
 /**
@@ -58,11 +62,12 @@ export function sentNotice(
   again: { copyScreenshot?: () => void; copyText?: () => void } = {},
 ): NoticeInput {
   const chord = sent.chord ?? 'Ctrl+V';
+  const copy = sent.anonymisedCopy ? m.sentAnon(sent.anonymisedCopy) : '';
   if (sent.screenshot === 'copied') {
     return {
       id: 'feedback-sent',
       tone: 'success',
-      body: `${sent.via === 'github' ? m.sentGithubShot(chord) : m.sentMailShot(chord)}${sent.truncated ? m.truncatedShot : ''}`,
+      body: `${sent.via === 'github' ? m.sentGithubShot(chord) : m.sentMailShot(chord)}${copy}${sent.truncated ? m.truncatedShot : ''}`,
       actions: [
         ...(sent.truncated && again.copyText
           ? [{ label: m.copyFullText, run: again.copyText, primary: true, keepOpen: true }]
@@ -74,7 +79,7 @@ export function sentNotice(
   return {
     id: 'feedback-sent',
     tone: sent.truncated || sent.screenshot === 'failed' ? 'warning' : 'success',
-    body: `${sent.via === 'github' ? m.sentGithub : m.sentMail}${sent.truncated ? m.truncated : ''}${
+    body: `${sent.via === 'github' ? m.sentGithub : m.sentMail}${copy}${sent.truncated ? m.truncated : ''}${
       sent.screenshot === 'failed' ? m.screenshotCopyFailed : ''
     }`,
   };
@@ -82,17 +87,21 @@ export function sentNotice(
 
 /**
  * Send a bug, idea or review: a prefilled GitHub issue, an email, or the clipboard.
- * `document` comes from `describeDocument` — a count, never the content.
+ * `document` comes from `describeDocument` — a count, never the content. `worksheet`, the
+ * open document, only offers an anonymised copy (`anonymise.ts`), previewed before it is
+ * saved; the report then names the file for the teacher to drag in.
  * Pass a stable `onClose`: `Dialog` re-focuses its panel when it changes.
  */
 export function FeedbackDialog({
   onClose,
   language,
   document,
+  worksheet,
 }: {
   onClose: () => void;
   language?: LanguageMode;
   document: string;
+  worksheet?: Worksheet;
 }) {
   const m = useMessages(FEEDBACK_MESSAGES);
   const placeholder: Record<FeedbackKind, string> = { bug: m.placeholderBug, idea: m.placeholderIdea, other: m.placeholderOther };
@@ -132,9 +141,59 @@ export function FeedbackDialog({
   // The thumbnail's object URL lives as long as the image does.
   useEffect(() => () => releaseScreenshot(screenshot), [screenshot]);
 
+  // The anonymised copy: `anonCopy` while its preview is open, `attached` once it is saved.
+  const [anonCopy, setAnonCopy] = useState<AnonymisedCopy | undefined>();
+  const [attached, setAttached] = useState<string | undefined>();
+  // Desktop: where it was saved, so the file is a click from being dragged in.
+  const [attachedPath, setAttachedPath] = useState<string | undefined>();
+  const [preparing, setPreparing] = useState(false);
+  const closePreview = useCallback(() => setAnonCopy(undefined), []);
+  const previewMode = useMemo<OutputMode>(() => ({ language: language ?? 'en', version: 'teacher' }), [language]);
+
   const empty = message.trim() === '';
   const report = () =>
-    buildReport({ kind, message, email, details, ...(screenshot ? { screenshotPaste: chord } : {}) });
+    buildReport({
+      kind,
+      message,
+      email,
+      details,
+      ...(screenshot ? { screenshotPaste: chord } : {}),
+      ...(attached ? { anonymisedCopy: attached } : {}),
+    });
+
+  /** Make the copy (on this device, once) and open its preview. Nothing is saved yet. */
+  const prepareCopy = () => {
+    if (!worksheet) return;
+    setError(undefined);
+    setPreparing(true);
+    // A frame first, so "Preparing…" shows before a document with large pictures is scrambled.
+    setTimeout(() => {
+      try {
+        setAnonCopy(makeAnonymisedCopy(worksheet));
+      } catch {
+        setError(m.anonFailed);
+      } finally {
+        setPreparing(false);
+      }
+    }, 30);
+  };
+
+  /** Save exactly the previewed text. A cancelled save sheet keeps the preview open. */
+  const saveCopy = async () => {
+    if (!anonCopy) return;
+    try {
+      const saved = await saveAnonymisedCopy(anonCopy);
+      if (!saved) return;
+      const name = saved.name ?? anonCopy.fileName;
+      setAttached(name);
+      setAttachedPath(saved.path);
+      // The report dialog comes back with the file named in its row; a notice raised here
+      // would close with the preview.
+      setAnonCopy(undefined);
+    } catch {
+      setError(m.anonSaveFailed);
+    }
+  };
 
   /** Take the teacher's image: checked, then decoded and kept as PNG. */
   const attach = useCallback(
@@ -176,31 +235,6 @@ export function FeedbackDialog({
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
   }, [attach]);
-
-  // Desktop: a file dropped from Finder or Explorer arrives as the shell's own event, never
-  // as an HTML5 drop (`subscribeToFileDrops`). The start screen stands aside meanwhile.
-  useEffect(() => {
-    if (!isDesktop()) return;
-    return subscribeToFileDrops((event) => {
-      if (event.type === 'enter') setDragging(true);
-      else if (event.type === 'leave') setDragging(false);
-      else if (event.type === 'drop') {
-        setDragging(false);
-        const path = event.paths[0];
-        if (!path) return;
-        const name = path.split(/[\\/]/).pop() ?? path;
-        const type = screenshotType({ name });
-        if (!type) {
-          notices.notify({ id: 'feedback-error', tone: 'error', body: m.screenshotNotImage });
-          return;
-        }
-        void readDroppedFile(path).then(
-          (bytes) => attach(Object.assign(new Blob([bytes as BlobPart], { type }), { name })),
-          () => notices.notify({ id: 'feedback-error', tone: 'error', body: m.screenshotTooLarge }),
-        );
-      }
-    });
-  }, [attach, m, notices]);
 
   const copy = async (text: string): Promise<boolean> => {
     try {
@@ -254,6 +288,7 @@ export function FeedbackDialog({
           truncated: link.truncated,
           chord,
           ...(shot ? { screenshot: copied ? 'copied' : 'failed' } : {}),
+          ...(attached ? { anonymisedCopy: attached } : {}),
         };
         setSent(outcome);
         notices.notify(
@@ -285,7 +320,9 @@ export function FeedbackDialog({
     }
   };
 
-  // A file dragged over the dialog (web): the dialog takes it, the page under it never sees it.
+  // A file dragged over the dialog: the dialog takes it, the page under it never sees it.
+  // The desktop app too: its native drag handler is off (k-0182), so a file from Finder or
+  // Explorer arrives as this same HTML5 drop; one dropped elsewhere meets `fileDropGuard`.
   const dragProps = {
     onDragOver: (event: React.DragEvent) => {
       if (!event.dataTransfer.types.includes('Files')) return;
@@ -307,6 +344,19 @@ export function FeedbackDialog({
       if (file) void attach(file);
     },
   };
+
+  if (anonCopy) {
+    return (
+      <AnonymisedCopyPreview
+        m={m}
+        copy={anonCopy}
+        mode={previewMode}
+        noticeScope={notices.scope}
+        onSave={saveCopy}
+        onCancel={closePreview}
+      />
+    );
+  }
 
   return (
     <Dialog
@@ -377,6 +427,41 @@ export function FeedbackDialog({
           onCopy={() => copyShot()}
           onRemove={() => setScreenshot(undefined)}
         />
+
+        {worksheet && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-ink">
+              {m.anonCopy} <span className="font-normal text-ink-muted">{m.anonOptional}</span>
+            </span>
+            {attached ? (
+              <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-3 py-2">
+                <span className="min-w-0 flex-1 text-[12px] leading-relaxed text-ink-muted">{m.anonSaved(attached)}</span>
+                {attachedPath && (
+                  <Button size="sm" onClick={() => void revealFile(attachedPath).catch(() => undefined)}>
+                    {m.anonShowFile}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  aria-label={m.anonLeaveOutLabel}
+                  title={m.anonLeaveOutLabel}
+                  onClick={() => setAttached(undefined)}
+                >
+                  {m.anonLeaveOut}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-line-strong bg-surface-sunken px-3 py-2">
+                <span className="text-[13px] text-ink-muted">{preparing ? m.anonPreparing : m.anonZone}</span>
+                <Button size="sm" disabled={preparing} onClick={prepareCopy}>
+                  {m.anonAttach}
+                </Button>
+              </div>
+            )}
+            <p className="text-[11px] leading-relaxed text-ink-subtle">{m.anonHint}</p>
+          </div>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[13px] font-medium text-ink">

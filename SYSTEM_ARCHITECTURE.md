@@ -3464,6 +3464,28 @@ intact but unreachable.
   CSS backends spell the pair through `cssFontFamilies` (`src/model/fonts.ts`), which may
   append browser stand-ins after the East-Asian face; they never reach the `.docx`.
 
+### The anonymised copy (`src/feedback/anonymise.ts`)
+
+Send feedback can attach a copy of the open document with its content replaced (k-0180),
+so a layout bug can be reproduced without the teacher's wording ever leaving the device.
+
+- **Deny by default.** Every string is scrambled unless its key is in `KEPT_KEYS` (ids and
+  references, enums, colours, font names). A new field is never leaked, only scrambled; the
+  type census in `anonymise.test.ts` reads `types.ts` and fails until it is classified, and
+  an enum left out of `KEPT_KEYS` fails it too (it would scramble into a value no build reads).
+- **Same layout.** A character becomes a random one of its kind and width class (letters by
+  Times width, digits, a common Chinese character); spaces, punctuation and typed markers
+  stay. A text whose two sides read the same stays so (bilingual prints it once). Pictures
+  become noise PNGs of the same pixel size and about the same bytes. The copy's render IR
+  and `.docx` equal the original's with text replaced by its length.
+- **Random per copy, never in place.** The CSPRNG, and a word or number that comes out as
+  it went in is drawn again.
+- **The preview is the file.** The copy is serialised once (`makeAnonymisedCopy`); the
+  preview renders that text parsed back, and Save writes that text. The preview is the
+  measure-only `Preview` under `.paper-view [data-sheet-stack]`, which shares the print
+  preview's CSS rules, mounted after the dialog's entrance: the paginator measures in
+  screen pixels, and a panel still scaling in would pack the sheets loose for good.
+
 ---
 
 ## Deployment
@@ -3594,8 +3616,8 @@ and shown as not allowed; a drag a component already took, and any drag without 
 `start/fileDrop.ts:planDrop`, with the web's overlay), the feedback dialog takes a screenshot, and
 the import review takes its own. The editor takes none and ignores one, as on the web.
 `listenForFileDrops`, `subscribeToFileDrops` and `readDroppedFile` in `platform/index.ts` are what the
-shell's native events fed; the feedback dialog still subscribes, to events that no longer come, and
-goes with them. The test above fails on any other subscriber. Every Tauri unlisten still goes through
+shell's native events fed; nothing subscribes any more (the feedback dialog stopped, k-0180), so they
+can go. The test above fails on any subscriber. Every Tauri unlisten still goes through
 `unlistenSafely` (also the library watchers'): a listener's page half registers by an eval that can land
 after `listen` resolves, and an unlisten before then rejects and leaves it live, so it retries briefly
 and never rejects.

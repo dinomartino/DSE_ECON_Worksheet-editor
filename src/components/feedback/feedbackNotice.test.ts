@@ -51,4 +51,13 @@ describe('Feedback: the sent notice', () => {
     expect(notice.body).toBe(`${m.sentMail}${m.truncated}`);
     expect(autoHides(notice)).toBe(false);
   });
+
+  it('an anonymised copy: the notice says to drag the saved file in too', () => {
+    const name = 'report-2026-10-23.worksheet.json';
+    const plain = sentNotice({ via: 'github', truncated: false, anonymisedCopy: name }, m);
+    expect(plain.body).toBe(`${m.sentGithub}${m.sentAnon(name)}`);
+    const shot = sentNotice({ via: 'mail', truncated: false, screenshot: 'copied', chord: '⌘V', anonymisedCopy: name }, m);
+    expect(shot.body).toContain(name);
+    expect(sentNotice({ via: 'github', truncated: false }, m).body).not.toContain('.worksheet.json');
+  });
 });

@@ -49,10 +49,9 @@ function sourceFiles(dir: string): string[] {
 }
 
 describe('file drops in the page', () => {
-  // The helpers themselves live in `platform/`. The feedback dialog still subscribes, to
-  // events the shell no longer sends; its own `drop` handler does the work. Remove its
-  // subscription, and this entry, together with `listenForFileDrops`.
-  const MAY_LISTEN = [/^platform\//, /^components\/feedback\/FeedbackDialog\.tsx$/];
+  // The helpers themselves live in `platform/` (no callers left: removable). The feedback
+  // dialog takes its screenshot from its own `drop` handler, like the start screen.
+  const MAY_LISTEN = [/^platform\//];
 
   it('are taken from the HTML5 drop event, never from the shell’s native drag events', () => {
     const offenders = sourceFiles(SRC)

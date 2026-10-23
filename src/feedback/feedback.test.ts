@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import {
+  anonymisedCopyLine,
   buildReport,
   describeDocument,
   describeSystem,
@@ -183,5 +184,47 @@ describe('the screenshot line', () => {
     const mail = mailtoUrl(report);
     expect(mail.truncated).toBe(true);
     expect(decodeURIComponent(mail.url.split('&body=')[1])).toContain(screenshotLine('Ctrl+V'));
+  });
+});
+
+describe('the anonymised copy line', () => {
+  const name = 'report-2026-10-23.worksheet.json';
+
+  it('names the file to drag in, says it is anonymised, in both bodies', () => {
+    const report = buildReport(input({ anonymisedCopy: name, screenshotPaste: '⌘V' }));
+    expect(report.body).toContain(`**Anonymised copy:** ${name} (drag the file onto this line;`);
+    expect(report.text).toContain(anonymisedCopyLine(name));
+    expect(anonymisedCopyLine(name)).toMatch(/every word and picture in it was replaced/);
+    // After the screenshot line, before the details.
+    expect(report.body.indexOf('Screenshot')).toBeLessThan(report.body.indexOf('Anonymised copy'));
+    expect(report.body.indexOf('Anonymised copy')).toBeLessThan(report.body.indexOf('**Details**'));
+  });
+
+  it('is absent without a copy', () => {
+    const report = buildReport(input());
+    expect(report.body).not.toContain('Anonymised');
+    expect(report.text).not.toContain('Anonymised');
+  });
+
+  it('rides the GitHub and mail links, whole, even when the message is cut', () => {
+    const short = githubIssueUrl(buildReport(input({ anonymisedCopy: name })));
+    expect(short.truncated).toBe(false);
+    expect(params(short.url).get('body')).toContain(`**Anonymised copy:** ${name}`);
+    expect(params(short.url).get('labels')).toBe('bug');
+
+    const report = buildReport(input({ message: '市場失靈'.repeat(2000), anonymisedCopy: name }));
+    const github = githubIssueUrl(report);
+    expect(github.truncated).toBe(true);
+    expect(github.url.length).toBeLessThanOrEqual(GITHUB_URL_LIMIT);
+    expect(params(github.url).get('body')).toContain(`**Anonymised copy:** ${name}`);
+    const mail = mailtoUrl(report);
+    expect(mail.url.length).toBeLessThanOrEqual(MAILTO_URL_LIMIT);
+    expect(decodeURIComponent(mail.url.split('&body=')[1])).toContain(anonymisedCopyLine(name));
+  });
+
+  it('never carries the document: the line is the file name and fixed words only', () => {
+    const report = buildReport(input({ anonymisedCopy: name }));
+    const line = report.body.split('\n').find((row) => row.includes('Anonymised copy'));
+    expect(line).toBe(`**${anonymisedCopyLine(name).replace(':', ':**')}`);
   });
 });
