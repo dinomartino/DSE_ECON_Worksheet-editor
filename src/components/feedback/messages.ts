@@ -4,8 +4,8 @@ import { defineMessages } from '@/i18n/catalogue';
 export const FEEDBACK_MESSAGES = defineMessages({
   title: { en: 'Send feedback', zh: '意見回饋' },
   description: {
-    en: 'A bug, an idea or a review. Your worksheet itself is never attached.',
-    zh: '回報問題、提出構想或給予評價。工作紙本身絕不會一併傳送。',
+    en: 'A bug, an idea or a review. Your worksheet itself is never sent; you may attach an anonymised copy.',
+    zh: '回報問題、提出構想或給予評價。工作紙本身絕不會傳送；你可選擇附上匿名副本。',
   },
   kind: { en: 'Kind', zh: '類別' },
   kindOfFeedback: { en: 'Kind of feedback', zh: '回饋類別' },
@@ -111,4 +111,43 @@ export const FEEDBACK_MESSAGES = defineMessages({
     zh: (chord: string) => `截圖已複製，請按 ${chord} 貼上。`,
   },
   copyText: { en: 'Copy text', zh: '複製文字' },
+  // The anonymised copy (k-0180): made and previewed on this device, saved only on Save.
+  anonCopy: { en: 'Anonymised copy', zh: '匿名副本' },
+  anonOptional: { en: '(optional)', zh: '（選填）' },
+  anonHint: {
+    en: 'A copy of this worksheet with every word, number and picture replaced by random ones, so we can test the same layout without seeing your content. You check every page before anything is saved.',
+    zh: '這份工作紙的副本，所有文字、數字和圖片都會換成隨機內容，讓我們可以用相同版面測試，而看不到你的內容。儲存前你可以先逐頁檢查。',
+  },
+  anonZone: { en: 'Replace every word and picture, then check it', zh: '替換所有文字和圖片，然後檢查' },
+  anonAttach: { en: 'Attach an anonymised copy…', zh: '附上匿名副本…' },
+  anonPreparing: { en: 'Preparing the copy…', zh: '正在準備副本…' },
+  anonFailed: { en: 'The anonymised copy could not be made.', zh: '無法製作匿名副本。' },
+  anonSaveFailed: { en: 'The anonymised copy could not be saved.', zh: '無法儲存匿名副本。' },
+  anonSaved: {
+    en: (name: string) => `Saved as ${name}. Drag the file into the GitHub issue or email once it opens.`,
+    zh: (name: string) => `已儲存為 ${name}。開啟 GitHub 問題記錄或電郵後，請把檔案拖放進去。`,
+  },
+  anonShowFile: { en: 'Show file', zh: '顯示檔案' },
+  anonLeaveOut: { en: 'Leave out', zh: '不附上' },
+  anonLeaveOutLabel: { en: 'Leave the anonymised copy out of the report', zh: '報告不附上匿名副本' },
+  sentAnon: {
+    en: (name: string) => ` Drag ${name} into it as well.`,
+    zh: (name: string) => `另請把 ${name} 拖放進去。`,
+  },
+  previewTitle: { en: 'Check the anonymised copy', zh: '檢查匿名副本' },
+  previewKeeps: {
+    en: 'Kept: the layout, the length of every text and the size of every picture. Not kept: any of your wording, numbers or pictures; each is replaced with random ones.',
+    zh: '保留：版面、每段文字的長度和每張圖片的尺寸。不保留：你的任何文字、數字或圖片，全部換成隨機內容。',
+  },
+  previewFile: {
+    en: (name: string, size: string) => `${name}, ${size}`,
+    zh: (name: string, size: string) => `${name}，${size}`,
+  },
+  previewTooLarge: {
+    en: 'Over 25 MB: GitHub will not take it, so send it by email with a file link.',
+    zh: '超過 25 MB，GitHub 不會接受，請以電郵附上檔案連結。',
+  },
+  previewLaying: { en: 'Laying out the pages…', zh: '正在排版…' },
+  saveCopy: { en: 'Save this copy', zh: '儲存此副本' },
+  cancel: { en: 'Cancel', zh: '取消' },
 });

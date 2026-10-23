@@ -629,17 +629,20 @@ u [data-tab] {
  * `@media print` and `body.print-preview`, and the only thing the button does is add
  * the class.
  *
+ * `.paper-view [data-sheet-stack]` takes the same rules: a read-only page in a dialog (the
+ * anonymised copy's preview, `AnonymisedCopyPreview.tsx`), printed as it will print.
+ *
  * Consequently a control added later needs `data-print-hide` exactly once and it is
  * correct in both — which is the same reason the print path uses a hide-everything
  * default rather than a blocklist.
  */
-.print-preview #print-root [data-print-hide],
-.print-preview #print-root .paper-page-number,
-.print-preview #print-root [data-screen-only] {
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) [data-print-hide],
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) .paper-page-number,
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) [data-screen-only] {
   display: none !important;
 }
 
-.print-preview #print-root [data-print-only] {
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) [data-print-only] {
   display: inline !important;
 }
 
@@ -652,41 +655,41 @@ u [data-tab] {
  * a double-click on the page was landing in the sidebar and selecting its text. The
  * root absorbs the gesture instead, which is what "the page is a picture" should mean.
  */
-.print-preview #print-root {
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) {
   cursor: default !important;
   user-select: none !important;
 }
 
-.print-preview #print-root * {
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) * {
   cursor: default !important;
   user-select: none !important;
   pointer-events: none !important;
 }
 
-.print-preview #print-root [data-question-id],
-.print-preview #print-root [role="textbox"] {
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) [data-question-id],
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) [role="textbox"] {
   background: none !important;
   box-shadow: none !important;
   outline: none !important;
   text-decoration: none !important;
 }
 
-.print-preview #print-root [data-question-id]::before {
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) [data-question-id]::before {
   display: none !important;
 }
 
 /* Dimming is region-focus chrome; on paper every region prints alike. */
-.print-preview .paper-region-idle {
+:is(.print-preview, .paper-view) .paper-region-idle {
   opacity: 1 !important;
   filter: none !important;
 }
 
-.print-preview .paper-region-wake {
+:is(.print-preview, .paper-view) .paper-region-wake {
   display: none !important;
 }
 
 /* An author's prompt is not the question. Keeps its box so nothing reflows. */
-.print-preview #print-root [data-empty-placeholder] {
+:is(.print-preview #print-root, .paper-view [data-sheet-stack]) [data-empty-placeholder] {
   visibility: hidden !important;
 }
 

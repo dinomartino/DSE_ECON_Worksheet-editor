@@ -1,7 +1,8 @@
 /**
  * In-app feedback: a report built entirely in the browser, handed to GitHub, a mail
  * client or the clipboard. No server and no token — anything in the bundle is public.
- * The report carries the app's context, never the document's content.
+ * The report carries the app's context, never the document's content. An anonymised copy
+ * (`anonymise.ts`) is a file the teacher saved and drags in; the report only names it.
  */
 import type { LanguageMode, Worksheet } from '@/model/types';
 
@@ -53,6 +54,11 @@ export interface FeedbackInput {
    * on the line where it goes, e.g. "⌘V". Absent = no screenshot.
    */
   screenshotPaste?: string;
+  /**
+   * The file name of an anonymised copy the teacher saved (`anonymise.ts`), to drag into
+   * the issue or email. Absent = none.
+   */
+  anonymisedCopy?: string;
   details: FeedbackDetails;
 }
 
@@ -138,11 +144,20 @@ export function screenshotLine(chord: string): string {
   return `Screenshot: (click on this line and press ${chord})`;
 }
 
+/**
+ * Where the anonymised copy goes: its own line, kept when the message is cut. The file is
+ * a document with every word and picture replaced; the line says so, for whoever reads it.
+ */
+export function anonymisedCopyLine(fileName: string): string {
+  return `Anonymised copy: ${fileName} (drag the file onto this line; every word and picture in it was replaced on the teacher's device)`;
+}
+
 function markdownBody(input: FeedbackInput, message: string): string {
   const email = input.email?.trim();
   return [
     message,
     ...(input.screenshotPaste ? ['', `**${screenshotLine(input.screenshotPaste).replace(':', ':**')}`] : []),
+    ...(input.anonymisedCopy ? ['', `**${anonymisedCopyLine(input.anonymisedCopy).replace(':', ':**')}`] : []),
     ...(email ? ['', `**Reply to:** ${email}`] : []),
     '',
     '---',
@@ -156,6 +171,7 @@ function plainText(input: FeedbackInput, message: string): string {
   return [
     `${KIND_LABEL[input.kind]}: ${message}`,
     ...(input.screenshotPaste ? ['', screenshotLine(input.screenshotPaste)] : []),
+    ...(input.anonymisedCopy ? ['', anonymisedCopyLine(input.anonymisedCopy)] : []),
     ...(email ? ['', `Reply to: ${email}`] : []),
     '',
     '---',
