@@ -15,6 +15,7 @@ import { bi } from '@/model/text';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { buildOptionLayoutPaper } from '@/test/optionLayoutFixture';
+import { buildQuestionGapBooklet, buildQuestionGapOwnNumbers, buildQuestionGapPaper } from '@/test/questionGapFixture';
 import { OPTION_LAYOUT_CHOICES, withOptionLayouts } from '@/registry/mcqLayouts';
 import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
 import { presetFor } from '@/ai/providers';
@@ -116,6 +117,18 @@ it('emits papers whose MC option layout was set for every question at once (Docu
   // Two languages cannot share one tab-stop line, so a row in a bilingual paper prints as a grid.
   const bilingual = withOptionLayouts(base, 'inline', 'bilingual');
   planPaper(bilingual, { language: 'bilingual', version: 'teacher' }, `${dir}/option-layout-inline-bilingual.docx`);
+});
+
+it('emits papers with the space between questions set (Document setup → Between questions)', async () => {
+  const dir = `${OUT}/question-gap`;
+  mkdirSync(dir, { recursive: true });
+  const en: OutputMode = { language: 'en', version: 'student' };
+  // The control: nothing set, one line between questions, exactly as every paper saved before.
+  planPaper({ ...buildQuestionGapPaper() }, en, `${dir}/gap-default-1-line-en.docx`);
+  planPaper(buildQuestionGapPaper(3), en, `${dir}/gap-3-lines-en.docx`);
+  planPaper(buildQuestionGapOwnNumbers(), en, `${dir}/gap-own-numbers-en.docx`);
+  planPaper(buildQuestionGapBooklet(3), en, `${dir}/gap-booklet-3-lines-en.docx`);
+  planPaper(buildQuestionGapPaper(3), { language: 'bilingual', version: 'teacher' }, `${dir}/gap-3-lines-bilingual-teacher.docx`);
 });
 
 it('emits a paper whose body text is justified (Document setup)', async () => {

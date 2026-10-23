@@ -12,15 +12,6 @@ export const MCQ_PANEL_MESSAGES = defineMessages({
   isCorrect: { en: 'This is the correct answer', zh: '這是正確答案' },
   markCorrect: { en: 'Mark as the correct answer', zh: '標示為正確答案' },
   marks: { en: 'Marks', zh: '分' },
-  spaceAbove: { en: 'Space above', zh: '上方空位' },
-  paperDefault: {
-    en: (lines: number) => `Paper default (${lines} lines)`,
-    zh: (lines: number) => `試卷預設（${lines} 行）`,
-  },
-  lines: {
-    en: (n: number) => (n === 1 ? '1 line' : `${n} lines`),
-    zh: (n: number) => `${n} 行`,
-  },
   options: { en: 'Options', zh: '選項' },
   optionLayout: { en: 'Option layout', zh: '選項排列' },
   stacked: { en: 'Stacked', zh: '直列' },

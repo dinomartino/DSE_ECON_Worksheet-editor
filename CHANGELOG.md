@@ -12,6 +12,18 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Choose the space between questions on any worksheet.** In Document setup, on the Page tab,
+  Between questions now works on every kind of paper, not only a Paper 1 mock: pick 1 to 6 blank
+  lines and the gap changes wherever a question stands straight under another of the same kind
+  (two MC questions, or two structured questions). One question can have its own gap: Space above
+  in its panel (structured questions have it now too), or drag the small handle beside it on the
+  page; the panel says why when a number cannot be used, for example under a heading. A worksheet
+  or booklet you already have prints exactly as before until you choose a number. The page, the
+  thumbnails, the Word file and a copied question all follow, and a gap is never left at the top
+  of a page.
+  <!-- zh: **在任何工作紙上選擇題目之間的空位。** 在「頁面設定」的「頁面」，「題目之間」現在適用於所有類型的試卷，不再只限 Paper 1 Mock：可選 1 至 6 行空白，凡是緊接在同類型題目（兩條 MC 題，或兩條結構題）下方的題目，空位便會改變。個別題目可以有自己的空位：在其面板的「上方空位」設定（結構題現在也有），或在頁面上拖曳旁邊的小把手；如果數字無法生效（例如在標題下方），面板會說明原因。你現有的工作紙或試題簿，在你選擇數字之前，列印效果與以往完全相同。頁面、縮圖、Word 檔及複製出來的題目都一致，而空位不會出現在頁面頂部。 -->
+
 ## 0.8.5 — 2026-10-23
 
 ### Added

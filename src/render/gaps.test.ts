@@ -330,10 +330,13 @@ describe('a gap counts what is already there', () => {
       expect(leadingGap({ ...twoQuestions(paper1()), examGapLines: 1 } as Worksheet)).toBe(1);
     });
 
-    it('ignores the override off the exam paper, where the wide boundary does not exist', () => {
+    it('honours the override on a classroom worksheet too: the number is the teacher’s on every shape', () => {
+      // Setup → Between questions is offered on every paper shape (`questionGap.test.ts`
+      // pins the rest). What stays the exam paper's is the *default*, so a worksheet nobody
+      // set a number on still prints one line.
       expect(
         leadingGap({ ...twoQuestions(createWorksheet()), examGapLines: 5 } as Worksheet),
-      ).toBe(1);
+      ).toBe(5);
     });
 
     it('lets one question state its own gap, over both the paper and the type', () => {
@@ -349,13 +352,13 @@ describe('a gap counts what is already there', () => {
       expect(perQuestion(2, 6)).toBe(2);
     });
 
-    it('ignores a question’s own gap off the exam paper too', () => {
+    it('honours a question’s own gap on a classroom worksheet too', () => {
       expect(
         leadingGap(twoQuestions(createWorksheet(), [mcq('q1'), { ...mcq('q2'), gapBefore: 5 }])),
-      ).toBe(1);
+      ).toBe(5);
     });
 
-    it('reports the adjustable boundary to the preview, and only there', () => {
+    it('reports the adjustable boundary to the preview, and only there: straight under a like question', () => {
       // `adjustableGap` is what the on-page drag handle mounts on: present exactly
       // where `boundaryGapLines` would read a stored number.
       const rendered = renderWorksheet(twoQuestions(paper1()), {
@@ -365,11 +368,13 @@ describe('a gap counts what is already there', () => {
       expect(rendered.questions[0].adjustableGap).toBeUndefined(); // nothing above it
       expect(rendered.questions[1].adjustableGap).toBe(3);
 
+      // The same boundary on a classroom worksheet is adjustable too, at the one-line default.
       const classroom = renderWorksheet(twoQuestions(createWorksheet()), {
         language: 'en',
         version: 'student',
       });
-      expect(classroom.questions[1].adjustableGap).toBeUndefined();
+      expect(classroom.questions[0].adjustableGap).toBeUndefined();
+      expect(classroom.questions[1].adjustableGap).toBe(1);
     });
 
     it('does not widen a boundary against an unlike question', () => {

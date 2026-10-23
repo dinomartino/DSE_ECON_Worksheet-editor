@@ -36,7 +36,9 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
    *
    * Absent means the ordinary boundary, which is what every worksheet uses. It is asked
    * only on a paper whose shape is the reference's (§ `model/documentShape.ts`) — a
-   * classroom worksheet keeps the one-line rhythm whatever its questions are.
+   * classroom worksheet keeps the one-line rhythm whatever its questions are, until a
+   * teacher chooses a number of their own (Setup → Between questions, a question's Space
+   * above), which is read on every shape (`render/questionGap.ts`).
    *
    * It lives on the definition rather than in the walker because the walker may not
    * branch on a concrete type id (`registry.test.ts` greps it, along with numbering,

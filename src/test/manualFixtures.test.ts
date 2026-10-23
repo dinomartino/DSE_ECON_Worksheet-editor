@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { exportDocxBuffer } from '@/export/docx';
+import { documentShape } from '@/model/documentShape';
 import { resolveFlow } from '@/model/flow';
 import { optionLayoutTally } from '@/registry/mcqLayouts';
 import { parseWorksheet } from '@/storage/document';
@@ -20,12 +21,13 @@ const shape = (name: string) =>
     .join('');
 
 describe('manual test documents', () => {
-  it('lists the four files', () => {
+  it('lists the five files', () => {
     expect(readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()).toEqual([
       'issue-4-many-breaks.json',
       'issue-4-repro.json',
       'mixed-for-anonymiser.json',
       'option-layout-mix.json',
+      'question-gap-mix.json',
     ]);
   });
 
@@ -55,7 +57,21 @@ describe('manual test documents', () => {
     expect(figures.type === 'mcq' && figures.options.every((option) => option.blocks?.[0]?.kind === 'diagram')).toBe(true);
   });
 
-  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix'])('%s exports a .docx', async (name) => {
+  it('question-gap-mix: a classroom worksheet of ten MC then three structured questions, no number set', () => {
+    const w = load('question-gap-mix');
+    expect(documentShape(w)).toBe('classroom');
+    expect(w.questions.map((q) => q.type)).toEqual([...Array(10).fill('mcq'), ...Array(3).fill('structured')]);
+    // Nothing chosen yet: the paper prints one line between questions, as every saved paper does.
+    expect(w.examGapLines).toBeUndefined();
+    expect(w.questions.some((q) => q.gapBefore !== undefined)).toBe(false);
+    expect(shape('question-gap-mix')).toBe('Q'.repeat(13));
+    // What stands above each structured question: an MC (another kind), a like question, a note.
+    const flow = resolveFlow(w).map((i) => (i.type === 'question' ? i.question.type : i.element.kind));
+    expect(flow[0]).toBe('section');
+    expect(flow.slice(-5)).toEqual(['mcq', 'structured', 'structured', 'text', 'structured']);
+  });
+
+  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix', 'question-gap-mix'])('%s exports a .docx', async (name) => {
     const bytes = await exportDocxBuffer(load(name), { language: 'bilingual', version: 'student' });
     expect(bytes.length).toBeGreaterThan(2000);
   });

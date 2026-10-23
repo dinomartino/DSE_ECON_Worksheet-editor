@@ -1,8 +1,8 @@
 # Formatting settings like Justify — design proposal
 
 Status: **approved 2026-10-23** (the user took every recommendation in § 6); building one setting
-at a time. Option layout (§ 4.1) is built on `feature/option-layout-all` (§ 9); the other two wait
-for the user's word. Written against `develop` at `d8194642` (it has since gained the
+at a time. Option layout (§ 4.1) is built (§ 9.1) and space between questions (§ 4.2) is built on
+`feature/question-gap-all` (§ 9.2); keep-together waits for the user's word. Written against `develop` at `d8194642` (it has since gained the
 GitHub #4 fix, `bbb0494e`; nothing here depends on it). Task k-0178. Evidence: the four GitHub
 issues, `CHANGELOG.md`, the Justify commits, a code survey (by reading; nothing was run in a
 browser, Word or Tauri) and a measurement pass over `real_life_reference/`.
@@ -28,7 +28,7 @@ between-question gaps if it is a Paper 1 mock.
 | # | Setting | Scope | Effort | Evidence | Verdict |
 |---|---|---|---|---|---|
 | 1 | **Option layout everywhere**: apply to all MC questions in one click; later a control on the page | paper (bulk) + question | S–M | Real papers stack text options (44 of 45). School papers choose per question: mock ≈20 stacked / 4 two-by-two / ≈21 one-row, DBS 17 / 0 / 2. Today only the sidebar panel, one question at a time | **Build first** |
-| 2 | **Space between questions on every paper** | paper + question | M | Gap before a question: real Paper 1 35–84 pt, mock 25 pt, DBS 36 pt. Today it exists only on a Paper 1 mock | **Build second** |
+| 2 | **Space between questions on every paper** | paper + question | M | Gap before a question: real Paper 1 35–84 pt, mock 25 pt, DBS 36 pt. Today it exists only on a Paper 1 mock | **Built** (§ 9.2) |
 | 3 | **Keep a question together / start it on a new page** | question (+ paper default) | S–M | Real Paper 2 starts 12 of 14 (2019) and 9 of 11 (2025) questions on a fresh page; the mock splits Q10 and its source over three pages. Today only MC is kept whole | **Build third** |
 | 4 | Justify: what is left (table cells; a whole question at once) | block / question | S–M | 28 of 238 table paragraphs in the 2019 paper are justified; the paper switch skips tables | Later |
 | 5 | Line spacing | paper | L | Every reference is ≈ single (line pitch ÷ text size 1.09–1.2). Only Text size 12 (1.00) is tighter than any of them | Decide the 12 pt case; no general setting |
@@ -214,6 +214,8 @@ Draft labels (to confirm against `docs/design/ui-language.md`): 全部 MC 題的
 · 全部直列 · 全部橫列 · 全部兩欄.
 
 ### 4.2 Space between questions on every paper
+
+**Built 2026-10-23: § 9.2.** What follows is the proposal as it was approved.
 
 **Today.** Two controls exist and both are Paper 1 only. `Worksheet.examGapLines` (Setup → Page →
 **Between questions** 題目之間: Default (3) or 1–6 blank lines) and `QuestionBase.gapBefore` (the MC
@@ -485,6 +487,72 @@ the line, the notice and Undo, ⌘Z and Redo, what the page and the page rail dr
 click saying there is nothing to change. The five `option-layout/` samples from `npm run samples`
 were rendered by LibreOffice and match the page. **Not tried in real Word, on an iPad, or in the
 desktop app.**
+
+### 9.2 Space between questions on every paper shape (built 2026-10-23, `feature/question-gap-all`)
+
+**What a teacher sees.** Document setup → Page tab → *Between questions* 題目之間 is on every paper:
+a classroom worksheet, an LQ worksheet, a booklet and a Paper 1. "Default: 1 line" (預設：1 行) off the
+exam paper, "Default: 3 lines (the reference paper)" on it, then 1 to 6 lines. In a question's panel,
+*Space above* 上方空位 (the paper default, then 1 to 9 lines) is now there for MC and structured questions
+alike, under the stem on a structured one. The small handle in the page's right margin drags the same
+number. A number counts straight under a question of the same type; when the teacher sets one it cannot
+use (the first item, a heading or note above, a question of another kind above) a line under the control
+says so. The page, the thumbnails, the `.docx` and Copy for Word follow through the IR.
+
+**How.** No new field, no schema change, nothing in `KNOWN_KEYS`: the rule that was fenced to a Paper 1
+is lifted, and the two numbers (`Worksheet.examGapLines`, `QuestionBase.gapBefore`) were already stored,
+cached (`gap` is in `questionRenderCache`'s key) and carried by the IR (`withLeadingGap`). The functions
+moved out of `render/worksheet.ts` into `src/render/questionGap.ts` so the walker and the controls read
+one source (`boundaryGapLines`, `stimulusGapLines`, `gapNumberApplies`, `defaultGapLines`,
+`gapAboveStatus`); the controls are `BetweenQuestionsField.tsx` and `SpaceAboveField.tsx`. What stays the
+exam paper's is the *default* (`typeGapLines`: the type's measured number on a Paper 1 only), so a paper
+nobody set a number on prints as it did.
+
+**Decided while building** (what the proposal left open):
+- **The lead-in above a source takes the document's number on every shape**, as it does on a Paper 1
+  (`stimulusGapLines`): it opens a new question group, and with Between questions at 4 it would read as a
+  caption of the question above it. Only the *document's* number reaches it; a question's own `gapBefore`
+  belongs to questions, and the two-line stand-off under a lead-in stays the reference paper's.
+- **A mixed worksheet skips the boundaries between kinds.** Decision 3 said "same-type rule as Paper 1", so
+  an MC under a structured question (or the reverse) keeps one line whatever Setup says. The Setup hint and
+  the panel's note say so; if a teacher would rather it apply to any two questions, it is one line in
+  `gapNumberApplies`.
+- **Setup offers 1–6, a question 1–9**, as the Paper 1 control always did; the drag handle stops at 9.
+- **"Paper default" is stored as absence**, never a 0 or the default's current value
+  (`spaceAbovePatch`), so a question keeps following Setup and the shape.
+- **The gap always rides on the question's numbered paragraph**, even when the stem opens with a table or a
+  figure, so it dies at a sheet top like any other. (I had expected a spacer fallback there; the number is
+  its own paragraph ahead of every stem block.)
+- **A leftover number counts.** A paper that stopped being a Paper 1 (cover removed), or a question copied
+  in from one, still carries its `examGapLines` / `gapBefore`; with the controls everywhere it is now
+  honoured and visible. None of the frozen corpora or fixtures carries one off a Paper 1 (the real 2021
+  Paper 1 does, and is unchanged), so no paper the app saved without setting one moves.
+- **The structured panel's field sits under the stem**, in its own ruled row, as the MC panel's sits under
+  its stem; both are one component (`SpaceAboveField`).
+
+**Verified.** `src/render/questionGap.test.ts` freezes the 0.8.4 rule beside the new one and compares every
+shape against every neighbour (a paper with no number must equal it; a Paper 1 must equal it with any number;
+off a Paper 1 a number is read only straight under a like question), plus the rule shape by shape and the
+frozen corpora; `questionGapSurfaces.test.tsx` draws three lines on the page, the card, both clipboards and
+the `.docx` for a classroom MC paper, a classroom structured paper and a booklet, in three languages, and
+checks the sheet-top case; the field, the Setup row, both panels and the store actions have their own tests.
+Mutation-checked: re-adding the fence, dropping the same-type check and re-fencing the lead-in each fail
+tests. **Saved papers do not move**, three ways: 22 fixtures (the frozen corpora, the hand-testing papers, the
+real 2021 Paper 1, the wizard's four shapes; 6 modes each, 936 items) hashed before and after, no node or gap
+differs (only the non-printing `adjustableGap` gains a value where a number can now apply); the 32 existing
+samples exported through the real Export dialog on the old and the new build compare equal part by part, 26
+byte-identical and 6 (versions B and C, and the answer keys) differing only by the shuffle's random ids, which
+the old build also does against itself, with the same XML structure; and every frozen corpus paper renders
+with one line between questions. `scripts/question-gap-verify.mjs` drives the real app in Chrome in English
+and 中文 on `test-fixtures/manual/question-gap-mix.json`: the Setup row, the panel field, the notes, a real
+pointer drag of the handle, ⌘Z, the page rail, the gap shedding at a page break, and the `.docx` the Export
+dialog writes (62 checks). `npm run samples` writes five `question-gap/` files and the four English ones were
+rendered by LibreOffice and match the page. **Not tried in real Word, on an iPad, or in the desktop app.**
+In Word, open `question-gap/gap-3-lines-en.docx` (beside `gap-default-1-line-en.docx`, the control) and
+`gap-booklet-3-lines-en.docx`; `gap-own-numbers-en.docx` shows per-question numbers. Look for three lines
+between MC questions 2–10 and between the two structured questions that follow; one line above Q11 (an MC is
+above it) and Q13 (a note is above it); no white space at the top of page 2; in the booklet, three lines
+between the three questions and nothing stranded at the top of a page.
 
 ## Appendix A — real-paper measurements
 

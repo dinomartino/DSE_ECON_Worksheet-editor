@@ -64,6 +64,29 @@ the notice (how many questions changed, and Undo):
 
 `scripts/option-layout-verify.mjs` does 1–4 with a real mouse in Chrome, in English and 中文.
 
+## `question-gap-mix.json` — Space between questions on every paper shape (k-0178 #2)
+
+A classroom worksheet with ten MC questions and three structured ones: Q11 straight under an MC
+(another kind), Q12 under Q11 (a like pair), Q13 under a text note. Nothing is set, so every boundary
+is one blank line, as in any paper saved before this feature. The MC run is long enough that page 1
+ends inside it, so one gap meets a page break.
+
+1. Open Setup (頁面設定), the Page tab, **Between questions**. It reads "Default: 1 line". Choose
+   **3 lines**: the page, the thumbnails and the Word export now leave three lines between two MC
+   questions (Q2–Q10) and between Q11 and Q12. Not above Q11 (an MC is above it, another kind), not
+   above Q13 (a note is above it), and not above the question that opens page 2: a gap does not
+   survive a page break. The hint says it counts only under a question of the same kind.
+2. Click a question. Its panel has **Space above** (MC and structured alike). Choose 5 lines: that one
+   boundary widens. Choose Paper default: it follows Setup again. On Q1 (under the heading), Q11 or
+   Q13 choose a number: the panel says why it cannot be used. Back to Paper default and the note goes.
+3. Rest the pointer on a question: a small pill appears in the right margin. Drag it down two lines:
+   the boundary widens by two and the panel shows the new number. One ⌘Z takes it back.
+4. Settings → Language → 繁體中文: the Setup row, the panel field and its note read in Chinese.
+5. Export → Word and open the file in Word: the same gaps, and none at the top of a page. `npm run
+   samples` writes similar papers as `question-gap/…`.
+
+`scripts/question-gap-verify.mjs` does 1–3 with a real mouse in Chrome, in English and 中文.
+
 ## The desktop app: dragging and dropped files (k-0182)
 
 Run `npm run desktop:dev` (it starts the web server itself). Before the fix every drag in the

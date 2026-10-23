@@ -29,7 +29,7 @@ import {
 } from '@/model/page';
 import { isQabDocument } from '@/model/pageFurniture';
 import { documentShape } from '@/model/documentShape';
-import { listQuestionTypes, requireQuestionType } from '@/registry';
+import { listQuestionTypes } from '@/registry';
 import { bi, emptyBiText, plain } from '@/model/text';
 import { academicYear, type CoverPaperStyle } from '@/model/cover';
 import {
@@ -51,6 +51,7 @@ import { BiTextField } from './BiTextField';
 import { CloseIcon } from '@/components/ui/icons';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { DOCUMENT_SETTINGS_MESSAGES, MARGIN_PRESET_KEYS } from './DocumentSettings.messages';
+import { BetweenQuestionsField } from './BetweenQuestionsField';
 import { OptionLayoutField } from './OptionLayoutField';
 import type { Messages as MessagesOf } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
@@ -515,7 +516,6 @@ function PageTab() {
   const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setPageSetup = useWorksheetStore((s) => s.setPageSetup);
-  const setExamGapLines = useWorksheetStore((s) => s.setExamGapLines);
   const setup = pageSetupOf(worksheet);
   const shape = documentShape(worksheet);
 
@@ -632,38 +632,7 @@ function PageTab() {
         </>
       )}
 
-      {/* The exam paper's between-question air, in blank lines on the fixed 12pt grid.
-          The default is the question type's own measured number (§ `examGapLines`), so
-          "Default" is stored as absence and keeps tracking it; a chosen number is the
-          document's own (§ `Worksheet.examGapLines`). Offered only on the MCQ paper —
-          the wide boundary exists nowhere else (§ `boundaryGapLines`). */}
-      {shape === 'paper1' && (
-        <Field
-          label={m.betweenQuestions}
-          hint={m.betweenQuestionsHint}
-        >
-          <SelectField<number>
-            value={worksheet.examGapLines ?? 0}
-            options={[
-              {
-                value: 0,
-                label: m.gapDefault(
-                  // Read off the paper's own questions rather than naming a type:
-                  // whatever kind this paper holds states its own measured gap.
-                  (worksheet.questions[0]
-                    ? requireQuestionType(worksheet.questions[0]).examGapLines
-                    : undefined) ?? 3,
-                ),
-              },
-              ...[1, 2, 3, 4, 5, 6].map((lines) => ({
-                value: lines,
-                label: m.gapLines(lines),
-              })),
-            ]}
-            onChange={(lines) => setExamGapLines(lines === 0 ? undefined : lines)}
-          />
-        </Field>
-      )}
+      <BetweenQuestionsField />
     </div>
   );
 }

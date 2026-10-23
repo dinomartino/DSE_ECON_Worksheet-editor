@@ -3549,7 +3549,7 @@ const CHEVRON_MIN_HEIGHT_PX = 34;
 const GAP_LINE_PX = BLANK_LINE_PT * PT_TO_PX;
 
 /**
- * Drag-to-adjust for the exam paper's between-question gap (§ `Question.gapBefore`).
+ * Drag-to-adjust for the between-question gap, on any paper shape (§ `Question.gapBefore`).
  *
  * Mounted over the question's leading blank lines. The pill sits in the **right
  * margin**: the centre of the boundary belongs to the insert caret's `+`, and the left
@@ -7253,7 +7253,7 @@ export function Preview({
             }}
           >
             {/*
-             * The exam paper's between-question gap drags where it is (§ GapAdjuster).
+             * The between-question gap drags where it is, on any paper shape (§ GapAdjuster).
              * Offered only in edit mode, like the insert affordance — print preview
              * must show exactly what prints.
              */}
