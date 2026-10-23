@@ -1,10 +1,10 @@
 # Formatting settings like Justify — design proposal
 
-Status: proposal (not scheduled), 2026-10-23, written against `develop` at `d8194642` (it has
-since gained the GitHub #4 fix, `bbb0494e`; nothing here depends on it). Not built; no code
-changed. Task k-0178. Evidence: the four GitHub issues, `CHANGELOG.md`, the Justify commits, a
-code survey (by reading; nothing was run in a browser, Word or Tauri) and a measurement pass
-over `real_life_reference/`.
+Status: **approved 2026-10-23** (the user took every recommendation in § 6); building one setting
+at a time, option layout first. Written against `develop` at `d8194642` (it has since gained the
+GitHub #4 fix, `bbb0494e`; nothing here depends on it). Task k-0178. Evidence: the four GitHub
+issues, `CHANGELOG.md`, the Justify commits, a code survey (by reading; nothing was run in a
+browser, Word or Tauri) and a measurement pass over `real_life_reference/`.
 
 The ask (the user, 2026-10-23, from a voice message): *"I want to work in the econ editor app.
 What new function can we add? Based on the past 3 issues … I remember we fixed the justified
@@ -379,21 +379,31 @@ of the engine already exists, the risk to saved papers and Word fidelity, and ef
 **Why not line spacing first:** it is the largest job (about twelve sites, five pinned test files,
 Word exactness) and the only support is one ratio at one text size.
 
-## 6. Decisions for the user
+## 6. Decisions
 
-1. **Order.** Build 1 → 2 → 3, each on its own branch? (Recommended: yes.)
+**Answered by the user, 2026-10-23: "go with the recommendation"** (every recommendation below).
+Each item shows the question as it was asked, then what it fixes.
+
+1. **Order.** Build 1 → 2 → 3, each on its own branch? **Decided: yes.** One `feature/` branch
+   cut from `develop` per setting, one session each, merged to `develop` and pushed once its tests,
+   build and samples pass, then stop and report. Never `main`, a release or a tag.
 2. **Option layout.** The bulk action overwrites layouts a teacher already chose, with a count and
-   one undo. Include **Fit each question**? (Recommended: yes, both.) The on-page control (§ 4.1 b)
-   in the same round, or later? (Recommended: later.)
+   one undo. Include **Fit each question**? The on-page control (§ 4.1 b) in the same round, or
+   later? **Decided: overwrite, with the count and one undo; include Fit each question; the
+   on-page control later.** Build 1.
 3. **Between questions.** Open it on every shape, same-type rule as Paper 1, whole lines 1–6, default
-   one line on classroom and booklet shapes so saved papers do not move? (Recommended: yes.)
+   one line on classroom and booklet shapes so saved papers do not move? **Decided: yes.** Build 2.
 4. **Keep together.** Per question first, off by default? Add the paper-wide "start every question
-   on a new page" for LQ papers now, or wait? (Recommended: per question first.)
-5. **Line spacing.** Hold until the reporter says whether 12 pt feels tight? If it does: a 13 pt line
-   at 12 pt (saved 12 pt papers re-paginate) or a paper-wide setting?
+   on a new page" for LQ papers now, or wait? **Decided: per question first, off by default; the
+   paper-wide switch waits.** Build 3.
+5. **Line spacing.** Hold until the reporter says whether 12 pt feels tight? **Decided: hold.**
+   Nothing is built until the reporter answers. Still open if it does feel tight: a 13 pt line at
+   12 pt (saved 12 pt papers re-paginate) or a paper-wide setting?
 6. **Word.** Someone has to open one `.docx` from `npm run samples` in real Word after each build;
-   an agent cannot, and `docs/STATUS.md` lists the recent builds as untried there.
-7. **Wording.** Confirm the draft 中文 labels in § 4 (they follow `docs/design/ui-language.md`).
+   an agent cannot, and `docs/STATUS.md` lists the recent builds as untried there. **Open, after
+   every build:** each build's report names the files to open.
+7. **Wording.** The draft 中文 labels in § 4 (they follow `docs/design/ui-language.md`).
+   **Decided: as written.**
 
 ## 7. GitHub #4 is not a setting
 
