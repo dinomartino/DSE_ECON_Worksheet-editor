@@ -34,7 +34,7 @@ between-question gaps if it is a Paper 1 mock.
 | 2 | **Space between questions on every paper** | paper + question | M | Gap before a question: real Paper 1 35–84 pt, mock 25 pt, DBS 36 pt. Today it exists only on a Paper 1 mock | **Built** (§ 9.2) |
 | 3 | **Keep a question together / start it on a new page** | question (+ paper default) | S–M | Real Paper 2 starts 12 of 14 (2019) and 9 of 11 (2025) questions on a fresh page; the mock splits Q10 and its source over three pages. Today only MC is kept whole | **Built** (§ 9.3) |
 | 4 | Justify: what is left (table cells; a whole question at once) | block / question | S–M | 28 of 238 table paragraphs in the 2019 paper are justified; the paper switch skips tables | **Table cells built** (§ 9.4); a whole question waits |
-| 5 | Line spacing | paper | L | Every reference is ≈ single (line pitch ÷ text size 1.09–1.2). Only Text size 12 (1.00) is tighter than any of them | Decide the 12 pt case; no general setting |
+| 5 | Line spacing | paper | L | Every reference is ≈ single (line pitch ÷ text size 1.09–1.2). Only Text size 12 (1.00) is tighter than any of them | **Decided 2026-10-23: no change, 12 pt stays** (§ 6 decision 5) |
 | 6 | Answer lines: length, style, default count | leaf / paper | M–L | Always dotted and full width; counts follow page fill (1.4–4.8 lines per mark) | Later, at most "lines per mark" |
 | 7 | Indent of the (1)(2)(3) statements | paper | M | The Paper 1 preset already matches the real paper (label +0.85 cm, text +1.70 cm) | Skip |
 | 8 | Font size per block | block | S–M | Real papers are 10 pt throughout; Text size already answered #1 | Skip |
@@ -409,8 +409,8 @@ Each item shows the question as it was asked, then what it fixes.
    on a new page" for LQ papers now, or wait? **Decided: per question first, off by default; the
    paper-wide switch waits.** Build 3. **Then built as k-0189, on the user's word (2026-10-23): § 9.5.**
 5. **Line spacing.** Hold until the reporter says whether 12 pt feels tight? **Decided: hold.**
-   Nothing is built until the reporter answers. Still open if it does feel tight: a 13 pt line at
-   12 pt (saved 12 pt papers re-paginate) or a paper-wide setting?
+   **Closed 2026-10-23, on the user's word: no change, 12 pt stays; nothing to build.** Neither a 13 pt line at
+   12 pt nor a paper-wide setting is wanted, so no saved paper re-paginates.
 6. **Word.** Someone has to open one `.docx` from `npm run samples` in real Word after each build;
    an agent cannot, and `docs/STATUS.md` lists the recent builds as untried there. **Open, after
    every build:** each build's report names the files to open.
