@@ -1,8 +1,9 @@
 # Formatting settings like Justify — design proposal
 
 Status: **approved 2026-10-23** (the user took every recommendation in § 6); building one setting
-at a time. Option layout (§ 4.1) is built (§ 9.1) and space between questions (§ 4.2) is built on
-`feature/question-gap-all` (§ 9.2); keep-together waits for the user's word. Written against `develop` at `d8194642` (it has since gained the
+at a time. Option layout (§ 4.1) is built (§ 9.1), space between questions (§ 4.2) is built (§ 9.2) and
+keep-together / new page (§ 4.3) is built on `feature/keep-together` (§ 9.3); what is left waits for the
+user's word. Written against `develop` at `d8194642` (it has since gained the
 GitHub #4 fix, `bbb0494e`; nothing here depends on it). Task k-0178. Evidence: the four GitHub
 issues, `CHANGELOG.md`, the Justify commits, a code survey (by reading; nothing was run in a
 browser, Word or Tauri) and a measurement pass over `real_life_reference/`.
@@ -29,7 +30,7 @@ between-question gaps if it is a Paper 1 mock.
 |---|---|---|---|---|---|
 | 1 | **Option layout everywhere**: apply to all MC questions in one click; later a control on the page | paper (bulk) + question | S–M | Real papers stack text options (44 of 45). School papers choose per question: mock ≈20 stacked / 4 two-by-two / ≈21 one-row, DBS 17 / 0 / 2. Today only the sidebar panel, one question at a time | **Build first** |
 | 2 | **Space between questions on every paper** | paper + question | M | Gap before a question: real Paper 1 35–84 pt, mock 25 pt, DBS 36 pt. Today it exists only on a Paper 1 mock | **Built** (§ 9.2) |
-| 3 | **Keep a question together / start it on a new page** | question (+ paper default) | S–M | Real Paper 2 starts 12 of 14 (2019) and 9 of 11 (2025) questions on a fresh page; the mock splits Q10 and its source over three pages. Today only MC is kept whole | **Build third** |
+| 3 | **Keep a question together / start it on a new page** | question (+ paper default) | S–M | Real Paper 2 starts 12 of 14 (2019) and 9 of 11 (2025) questions on a fresh page; the mock splits Q10 and its source over three pages. Today only MC is kept whole | **Built** (§ 9.3) |
 | 4 | Justify: what is left (table cells; a whole question at once) | block / question | S–M | 28 of 238 table paragraphs in the 2019 paper are justified; the paper switch skips tables | Later |
 | 5 | Line spacing | paper | L | Every reference is ≈ single (line pitch ÷ text size 1.09–1.2). Only Text size 12 (1.00) is tighter than any of them | Decide the 12 pt case; no general setting |
 | 6 | Answer lines: length, style, default count | leaf / paper | M–L | Always dotted and full width; counts follow page fill (1.4–4.8 lines per mark) | Later, at most "lines per mark" |
@@ -244,6 +245,10 @@ option is one blank line in all three papers), so it is not proposed; it would b
 on the format bar if a teacher asks (Appendix B has the one trap).
 
 ### 4.3 Keep a question together, or start it on a new page
+
+**Built 2026-10-23: § 9.3**, with two differences from this proposal (both are in § 9.3): neither
+choice is built as the `pageBreak` node or a keep chain in the IR, but as a mark the paginator acts on.
+What follows is the proposal as it was approved.
 
 **Today.** An MC question is always kept whole (`keepWhole` on the MC type in `src/registry/mcq.ts`;
 a Paper 1 mock keeps every question whole). A structured question on a classroom worksheet or
@@ -553,6 +558,70 @@ In Word, open `question-gap/gap-3-lines-en.docx` (beside `gap-default-1-line-en.
 between MC questions 2–10 and between the two structured questions that follow; one line above Q11 (an MC is
 above it) and Q13 (a note is above it); no white space at the top of page 2; in the booklet, three lines
 between the three questions and nothing stranded at the top of a page.
+
+### 9.3 Keep a question together, or start it on a new page (built 2026-10-23, `feature/keep-together`)
+
+**What a teacher sees.** In the sidebar panel of a question, under Space above: **Start on a new page** 此題由新頁開始 on
+every kind of question (MC and structured), and **Keep this question on one page** 此題保持在同一頁 on a structured question
+(with a line saying what it does and that one taller than a page is still split). An MC is always kept whole and so is every
+question of a Paper 1, so the MC panel has no Keep choice and a structured question on a Paper 1 says "A Paper 1 keeps every
+question on one page." Ticking Start on a new page begins the question at the top of a page: the page above ends there, and the
+heading, lead-in or source directly above it travels with it (so a page never begins under a stranded heading). Ticking Keep
+moves the question whole to the next page when it does not fit what is left. The page, the page rail, the Content list, the
+`.docx` and the start screen's card all follow. Nothing changes in a paper until a box is ticked.
+
+**How.** Two optional question fields, `keepOnOnePage` and `startOnNewPage` (`true` or absent, never `false`), no schema
+change (question fields are not in `KNOWN_KEYS`), `contentKey` metadata (ticking one never makes a new version of a bank question).
+`src/render/pageFlow.ts` holds the rules (`sheetStart`, `sheetOpeners`, `startsPageStatus`, `isKeptWhole`), `PageFlowFields.tsx`
+the control, `flowFlags.ts` the glue to the paginator. The walker stamps `startsPage` (on the item that opens the sheet) and
+`keptTogether` on the IR; `PackItem.startsSheet` opens a sheet at an item that holds something above it, and `breakAfter: []`
+leaves a kept question no legal boundary (its node boundaries are still measured, so one taller than a sheet is cut where the
+sheet ends, as before).
+
+**Decided while building** (what the proposal left open, or got differently):
+- **A mark, not the `pageBreak` node.** The proposal had Start on a new page emit the same `pageBreak` node the New page element
+  does. A break node inside a question's nodes is invisible to the paginator (a manual break is its own zero-height flow item), and
+  a synthetic break item would carry an id the page rail, the Content list and drag/drop cannot address (Remove page break would
+  do nothing). Marked instead, the sheet it opens is nobody's break, so the `.docx`'s own measured page start does the work, at the
+  end of the paragraph before (no spent line, no blank page) with the item's gap dropped: no Word code at all.
+- **Keep is a mark too, not a keep chain.** `keepQuestionWhole` chains the nodes, but not across an answer space, which is one node
+  per line (`pageNodes`) that breaks anywhere; a structured question with answer lines would only have been kept in pieces.
+- **What travels with the question:** the heading, lead-in (a Paper 1's "There are 45 questions…") or source above it, and a
+  rubric between a heading and its question; a closing line such as "END OF SECTION A" stays on the page it ends. A request for a
+  page is a break, not a squeeze: the question above is not pulled along, though its last part is held against the next stem.
+- **The first question never opens a sheet,** and one straight under a New page element does not open a second; the panel says so
+  under the box. The masthead above the first question is not a reason to push it to page 2 (a title page is a New page element).
+- **No air above what opens a sheet,** by construction: the walker stamps no gap on it (it would die at the sheet top; Copy for
+  Word, with no pages, would have kept it), hides the drag handle, and Space above says "This question starts a new page, so no
+  space is left above it" if a number is set.
+- **The ask to start a page stays behind when a question is copied into another document** (`copyQuestion`: bank, "add to
+  bank", insert from the bank); the ask to be kept on one page, about the question's own size, travels. A leftover `gapBefore`
+  travels as before.
+- **Copy for Word:** the per-question copy carries no break. The whole-paper clipboard HTML is used in the product only by the start
+  screen's card, which now ends its first page at the break; both are tested.
+- **The paper-wide "start every question on a new page" waits** (§ 6 decision 4).
+
+**Verified.** Unit tests for the rules and the IR marks (`pageFlow.test.ts`), the paginator (`pagination.test.ts`: opens a sheet,
+never a blank one, never twice, never a continuation, brings the heading, does not pull the question above; kept moves whole and
+is still cut when taller than a sheet), every surface (`pageFlowSurfaces.test.tsx`: the packer's starts into the `.docx` with the
+break at the end of the paragraph before and no gap, Copy for Word, the card, the bank preview; three languages; a classroom MC
+paper, a structured one and a booklet), the control, both panels, the store and `copyQuestion`. Mutation-checked: 15 mutants killed
+by the unit tests and two more by the Chrome harness (the preview's wiring); one mutant is equivalent (the `!piece` guard in the
+packer is redundant with the queue order). `scripts/page-flow-verify.mjs` drives the real app in Chrome in English and 中文 on
+`test-fixtures/manual/page-flow-mix.json`: both checkboxes (real clicks), the sheets the preview packs, the page rail's cards,
+the heading going with its question, the notes, Undo and Redo, the start screen's card, a reload, and the `.docx` the Export dialog
+writes. **Saved papers do not move**, three ways: 14 papers (the four frozen corpora, the acceptance paper, the hand-testing papers
+and the wizard's four shapes; 6 modes each, 84 renderings) hash the same before and after; nine saved papers (the corpora and the
+hand-testing papers) pack the same sheets in real Chrome on the old and the new build; and the 37 existing samples exported through
+the real Export dialog on both builds compare equal part by part, 31 byte-identical apart from the file's own timestamp and 6
+(versions B and C, and the answer keys) differing only by the version shuffle's random ids, which the old build also does against
+itself. `npm run samples` writes seven `page-flow/` files, rendered by LibreOffice: its pages match the editor's. **Found, not
+fixed:** the page rail shows no card for a sheet that holds only the tail of a split question (the old build does the same with a
+New page element after it). **Not tried in real Word, on an iPad, or in the desktop app.** In Word, open
+`page-flow/page-flow-default-en.docx` (the control: Q3 cut across pages 1–2), then `page-flow-keep-q3-en.docx` (Q3 whole on
+page 2, white space at the foot of page 1), `page-flow-new-page-q4-en.docx` (Section B and Question 4 begin page 3),
+`page-flow-keep-and-new-page-en.docx` (four pages), `page-flow-booklet-en.docx` and `page-flow-paper1-en.docx` (Question 10
+begins page 3 after the cover); no black ¶ squares, no blank pages.
 
 ## Appendix A — real-paper measurements
 
