@@ -15,6 +15,7 @@ import { bi } from '@/model/text';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { buildOptionLayoutPaper } from '@/test/optionLayoutFixture';
+import { buildPageFlowBooklet, buildPageFlowPaper, buildPageFlowPaper1 } from '@/test/pageFlowFixture';
 import { buildQuestionGapBooklet, buildQuestionGapOwnNumbers, buildQuestionGapPaper } from '@/test/questionGapFixture';
 import { OPTION_LAYOUT_CHOICES, withOptionLayouts } from '@/registry/mcqLayouts';
 import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
@@ -129,6 +130,20 @@ it('emits papers with the space between questions set (Document setup → Betwee
   planPaper(buildQuestionGapOwnNumbers(), en, `${dir}/gap-own-numbers-en.docx`);
   planPaper(buildQuestionGapBooklet(3), en, `${dir}/gap-booklet-3-lines-en.docx`);
   planPaper(buildQuestionGapPaper(3), { language: 'bilingual', version: 'teacher' }, `${dir}/gap-3-lines-bilingual-teacher.docx`);
+});
+
+it('emits papers with a question kept on one page or started on a new one (the question panel)', async () => {
+  const dir = `${OUT}/page-flow`;
+  mkdirSync(dir, { recursive: true });
+  const en: OutputMode = { language: 'en', version: 'student' };
+  // The control: nothing asked, so page 1 ends inside Q3 and page 2 inside Q5, as any paper saved before.
+  planPaper(buildPageFlowPaper(), en, `${dir}/page-flow-default-en.docx`);
+  planPaper(buildPageFlowPaper({ keep: [2] }), en, `${dir}/page-flow-keep-q3-en.docx`);
+  planPaper(buildPageFlowPaper({ start: [3] }), en, `${dir}/page-flow-new-page-q4-en.docx`);
+  planPaper(buildPageFlowPaper({ keep: [2], start: [3, 5] }), en, `${dir}/page-flow-keep-and-new-page-en.docx`);
+  planPaper(buildPageFlowBooklet(), en, `${dir}/page-flow-booklet-en.docx`);
+  planPaper(buildPageFlowPaper1(), en, `${dir}/page-flow-paper1-en.docx`);
+  planPaper(buildPageFlowPaper({ keep: [2], start: [3] }), { language: 'bilingual', version: 'teacher' }, `${dir}/page-flow-bilingual-teacher.docx`);
 });
 
 it('emits a paper whose body text is justified (Document setup)', async () => {
