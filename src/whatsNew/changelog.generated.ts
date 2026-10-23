@@ -14,6 +14,16 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Fixed
+- **Put questions after the last question on a page.** When a page ended with a New page,
+  Move up and Move down in the Content list carried that New page along with the question
+  before it. So nothing could go after the last question on the page, and moving the next
+  question up jumped it in front of that question. Each press now moves a question one
+  place, onto the end of the page before when it crosses a New page. Dragging a question
+  onto the lower half of another row puts it after that row (the upper half still puts it
+  before), so the end of a page is a place you can drop.
+  <!-- zh: **可把題目放在頁面最後一題之後。** 若頁面以「新頁面」結束，在「內容」列表按「上移」或「下移」時，該「新頁面」會跟着它前面的題目一起移動，所以頁面最後一題之後放不到任何題目，把下一題上移又會跳到那一題前面。現在每按一次只移一格；越過「新頁面」時，題目會移到上一頁的末尾。把題目拖到另一列的下半部會放在該列之後（上半部仍放在之前），因此可以直接拖到頁面末尾。 -->
+
 ## 0.8.4 — 2026-10-22
 
 ### Added

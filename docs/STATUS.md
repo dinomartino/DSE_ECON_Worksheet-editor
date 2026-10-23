@@ -7,7 +7,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **Formatting settings like Justify, 2026-10-23 (proposal only; branch docs/format-settings-proposal, pushed, not merged):** `docs/design/format-settings.md` ranks nine candidates against the Justify template and the real papers. Recommends 1) option layout for all MC in one click (S–M), 2) between-question space on every paper shape (M), 3) keep a question together / start it on a new page (S–M); not line spacing (every reference is ≈ single; only Text size 12 is tighter). Seven decisions for the user in its § 6. Nothing built. GitHub #4 (MC reorder, open) is a bug, being fixed on `fix/issue-4-mc-reorder`.
+- **GitHub #4, 2026-10-23 (merged on develop, issue not answered):** nothing could follow the last question of a page ended by a break: the outline's ↑/↓ (`moveQuestion`) reordered `questions` only, so the break filed under that question travelled with it; outline rows only took drops *before*. Now `moveQuestion` moves through the flow and rows drop on the pointer's half (`dropEdge`). Test: `store/reorderAcrossPageBreak.test.ts`. Chrome-checked (↑, drags, `.docx`); not tried on iPad touch or Tauri.
+- **Formatting settings like Justify, 2026-10-23 (proposal only; branch docs/format-settings-proposal, pushed, not merged):** `docs/design/format-settings.md` ranks nine candidates against the Justify template and the real papers. Recommends 1) option layout for all MC in one click (S–M), 2) between-question space on every paper shape (M), 3) keep a question together / start it on a new page (S–M); not line spacing (every reference is ≈ single; only Text size 12 is tighter). Seven decisions for the user in its § 6. Nothing built. GitHub #4 (MC reorder) was a bug, not a setting: fixed on develop (bullet above), unreleased.
 - **v0.8.4 released 2026-10-22** (GitHub #3 answered): the (1)(2)(3) statements of a combination MC justify like options (`McqQuestion.statementAlign`; test `registry/mcqStatementAlign.test.ts`), and `.paper { overflow-wrap: break-word }` in `globals.css` stops a no-space string running past the page edge (guard `src/test/paperWrap.test.ts`). Chrome-checked (EN+中); not tried in Word or Tauri. Word packs justified lines tighter (not fixable).
 - **2026-10-19 (Unreleased, merged on develop):** `.docx` has no keep flags
   (no black ¶ squares, user's call) — hard page breaks where the preview breaks (`pageBreaks.ts`,
@@ -16,7 +17,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   page count; old entries fill on next edit); F5 dashboard searches question text; C11 Diagram
   filter + Sort; 題型 first release (map, links, 題目類型 wording, editor 題庫 tab filter). None
   tried in real Word or Tauri. 題型 next: Fill by 題型 (`docs/design/question-types-ux.md` item 6).
-- **Known-gap sweep 2026-10-18 (Unreleased):** tab wrap, import keeps tabs, sync fixes. Untried in Word/Tauri.
 - **Tabs vs Word 1–3, 2026-10-18 (Unreleased, `docs/Tabs vs Word.md`):** tab types, Word-rule layout,
   `<w:tab/>`/`<w:tabs>`, ruler + Tab stops panel. No schema bump. Not tried in Word or Tauri.
 - **題型 sort board 2026-10-19 (Unreleased, on develop):** one-layout map, sort board, 中文 topic names.
@@ -76,6 +76,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
 
 ## Log
+- **2026-10-23** — GitHub #4: questions can follow the last one on a page (outline ↑/↓ and row drops); merged on develop.
 - **2026-10-23** — formatting-settings proposal (k-0178, the user's ask "settings similar to justify"): research only.
 - **2026-10-19** — the first 題型 is made on the 題型 map itself (user's ask).
-- **2026-10-19** — 題型 empty state: research (no suggestion boxes), then the sort board and the map without the cliff.
