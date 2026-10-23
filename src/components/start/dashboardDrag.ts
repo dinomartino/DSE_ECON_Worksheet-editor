@@ -1,10 +1,11 @@
 /**
  * Dragging a saved document onto a folder — the gesture's pure half.
  *
- * Pointer events, not HTML5 drag-and-drop: the desktop shell's webview keeps
- * `dragDropEnabled` on (so a file dragged from Finder/Explorer reaches the app), and
- * with it on the webview never delivers `dragover`/`drop` to the page. The component
- * feeds pointer events in and resolves the target under the pointer; this decides.
+ * Pointer events, not HTML5 drag-and-drop. Written when the desktop shell's native
+ * drag-drop handler (`dragDropEnabled`, now off) swallowed every `dragover`/`drop`; kept
+ * because a press that never travels is still a click, there is no drag image to hide,
+ * and it behaves the same under a finger. The component feeds pointer events in and
+ * resolves the target under the pointer; this decides.
  */
 
 /** Travel before a press becomes a drag, so a click (and its jitter) still opens. */

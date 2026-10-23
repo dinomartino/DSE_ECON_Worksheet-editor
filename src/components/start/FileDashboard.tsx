@@ -134,7 +134,7 @@ export function FileDashboard({
   const folderLabel = (summary: WorksheetSummary) =>
     folders && !openFolder ? folderOf(folders, summary.id)?.name : undefined;
 
-  // Pointer events, not HTML5 drag-and-drop — the desktop webview never delivers `drop`.
+  // Pointer events, not HTML5 drag-and-drop (`dashboardDrag.ts`).
   const drag = useDocumentDrag(showFolders ? folderActions?.drop : undefined);
   const dragProps = (summary: WorksheetSummary) => drag.sourceProps(summary.id, summary.title);
 

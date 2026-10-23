@@ -9,10 +9,8 @@ import {
   openFolder,
   pickFile,
   pickFiles,
-  readDroppedFile,
   revealFile,
   revealLabel,
-  subscribeToFileDrops,
   ZIP_FILTERS,
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
@@ -36,9 +34,7 @@ import { restoreNotice } from './restoreNotice';
 import {
   DROP_REJECTED_MS,
   droppedKind,
-  fileNameOf,
   importSummary,
-  overlayFor,
   PAPER_ACCEPT,
   PICTURE_EXTENSIONS,
   planDrop,
@@ -230,27 +226,6 @@ export function StartScreen({
   const backupInput = useRef<HTMLInputElement>(null);
   const { ref: asideRef, edges: asideEdges } = useScrollEdges<HTMLElement>();
   const rejectTimer = useRef<number | undefined>(undefined);
-  const handleDropRef = useRef<(files: Dropped[]) => Promise<void>>(async () => undefined);
-  const feedbackOpenRef = useRef(false);
-
-  // Desktop: files from Finder/Explorer arrive as the shell's native drag event, never as
-  // HTML5 `drop` (§Desktop shell, `dragDropEnabled`). Only while this screen is up — the
-  // editor ignores a dropped file, as it does on the web.
-  useEffect(() => {
-    if (!isDesktop()) return;
-    return subscribeToFileDrops((event) => {
-      // Send feedback takes a dropped screenshot itself.
-      if (feedbackOpenRef.current) return;
-      if (event.type === 'drop') {
-        void handleDropRef.current(
-          event.paths.map((path) => ({ name: fileNameOf(path), read: () => readDroppedFile(path) })),
-        );
-        return;
-      }
-      if (event.type === 'enter') window.clearTimeout(rejectTimer.current);
-      setDropOverlay((current) => overlayFor(event, current));
-    });
-  }, []);
 
   // One after the other, not in parallel: `listTrash` purges expired documents and
   // may write, and the two lists must describe the same moment.
@@ -560,8 +535,9 @@ export function StartScreen({
   };
 
   /**
-   * One drop, from the page (web) or the shell (desktop): a single `.json` opens, a single
-   * `.zip` restores, several are imported into saved documents without opening any.
+   * One drop: a single `.json` opens, a single `.zip` restores, several are imported into
+   * saved documents without opening any. The page's own `drop` event, in the browser and in
+   * the desktop shell alike (its native drag handler is off, `dragDropEnabled`).
    */
   const handleDrop = async (files: Dropped[]) => {
     const plan = planDrop(files, (file) => droppedKind(file.name, file.type));
@@ -666,12 +642,6 @@ export function StartScreen({
     }
   };
 
-  // The effect below subscribes once; it reaches this render's handler through the ref.
-  useEffect(() => {
-    handleDropRef.current = handleDrop;
-    feedbackOpenRef.current = feedback;
-  });
-
   const showFolder = (failure: string, locate: () => Promise<string | undefined>) => () =>
     void (async () => {
       try {
@@ -744,9 +714,9 @@ export function StartScreen({
       onDragOver={(event) => {
         // A .json worksheet dropped anywhere on this screen opens it. The whole surface
         // is the target rather than a marked-out zone: this screen has nothing else a
-        // drop could mean, and a small rectangle is a thing to aim at for no reason.
-        // Web only: the desktop webview delivers no HTML5 file drags (the effect above).
-        if (!event.dataTransfer.types.includes('Files')) return;
+        // drop could mean, and a small rectangle is a thing to aim at for no reason. Not
+        // while Send feedback is open: it takes a dropped screenshot itself.
+        if (feedback || !event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
         if (dropOverlay !== 'hint') {
           window.clearTimeout(rejectTimer.current);
@@ -760,7 +730,7 @@ export function StartScreen({
         setDropOverlay(undefined);
       }}
       onDrop={(event) => {
-        if (!event.dataTransfer.types.includes('Files')) return;
+        if (feedback || !event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
         setDropOverlay(undefined);
         void handleDrop(
