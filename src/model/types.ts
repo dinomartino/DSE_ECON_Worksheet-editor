@@ -389,6 +389,24 @@ export interface QuestionBase {
    * or under an unlike neighbour.
    */
   gapBefore?: number;
+  /**
+   * Keep this question on one page: when it does not fit what is left of a page it moves
+   * to the next one whole, instead of starting where it is and running over. Stored as
+   * `true` or absent, never `false`. Only a question that is not already kept whole needs
+   * it — an MC always is, and so is every question of a Paper 1 — so the editor offers it
+   * on the rest (§ `render/pageFlow.ts`). One taller than a page is still split where the
+   * page ends. Placement, not content: `contentKey` ignores it.
+   */
+  keepOnOnePage?: boolean;
+  /**
+   * Start this question on a new page. The page that holds the question above ends there,
+   * and the heading, lead-in or source above it travels with it (with any rubric under the
+   * heading), so a page never begins under a stranded heading. Stored as `true` or absent.
+   * Nothing happens where a page already begins (the first question, or straight under a
+   * New page break). Placement, not content: `contentKey` ignores it, and a copy taken into
+   * another document leaves it behind (`copyQuestion`).
+   */
+  startOnNewPage?: boolean;
   /** Machine identity across copies (`model/lineage.ts`); never printed. Absent = an original. */
   lineage?: QuestionLineage;
   /**

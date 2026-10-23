@@ -25,6 +25,7 @@ import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { excerptOfBlocks, MiniNumber, scrollPageTo } from './panelRows';
 import { MarkSchemeEditor } from './MarkSchemeEditor';
+import { PageFlowFields } from './PageFlowFields';
 import { SpaceAboveField } from './SpaceAboveField';
 import type { MarkScheme } from '@/model/markSchemeTypes';
 import type { Messages } from '@/i18n/catalogue';
@@ -252,8 +253,10 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
       />
 
       {/* This question's own gap above it (§ `Question.gapBefore`), on any paper shape. */}
-      <section className="border-t border-line pt-3">
+      <section className="space-y-3 border-t border-line pt-3">
         <SpaceAboveField question={question} onChange={onChange} />
+        {/* Where it sits on the page: start a new one, or stay on one (§ `render/pageFlow.ts`). */}
+        <PageFlowFields question={question} onChange={onChange} />
       </section>
 
       {/*

@@ -26,6 +26,17 @@ export interface PackItem {
    */
   breakId?: string;
   /**
+   * Opens a new sheet at this item unless it already leads one (`startOnNewPage`, § `sheetOpeners`).
+   *
+   * Unlike `forceBreak` the item is content, not a positioning instruction: it is placed on the
+   * sheet it opens, and nobody's break owns that sheet (`openedBy` stays unset, `breakId` absent), so
+   * the `.docx` writes the page start itself, at the end of the paragraph before, and drops the
+   * item's boundary gap there as it does for any sheet the paginator opened. Idempotent: a sheet
+   * that is empty, or that a manual break has just opened, is not opened again, so asking never
+   * makes a blank page. Never applied to a continuation (`piece`); the head already opened it.
+   */
+  startsSheet?: boolean;
+  /**
    * True for items whose `key` is not a flow id — the masthead, the teacher banner, the
    * instructions, a section heading. Marked at construction rather than inferred from
    * the key, because a prefix test (`heading-…`) would be one id collision away from
@@ -202,6 +213,9 @@ export function packPages<T extends PackItem>(
      */
     const openedAlready = openedBy[openedBy.length - 1] !== undefined;
     const mustBreak = item.forceBreak && (current.length > 0 || openedAlready);
+    // Asked to start a sheet, and this one holds something: close it. An empty sheet (the very
+    // top, or one a break just opened) already is what was asked for.
+    const opensSheet = item.startsSheet === true && !piece && current.length > 0;
     // A fill item overflows only when its sheet is genuinely full — its measured
     // height is the count it resolved to *last* time, not a claim on this sheet.
     const overflows =
@@ -214,7 +228,7 @@ export function packPages<T extends PackItem>(
      * the item's first chain does not fit does it move to a fresh sheet **whole**, where
      * the rule below splits it again if it is taller than a sheet.
      */
-    if (overflows && !mustBreak && !item.forceBreak && !item.fillsPage) {
+    if (overflows && !opensSheet && !mustBreak && !item.forceBreak && !item.fillsPage) {
       // The head is not leading this sheet, so it pays its boundary gap, which the node
       // heights are measured from below (§ `leadGaps`).
       const room = contentHeightPx - used - (piece ? 0 : (leadGaps?.get(item.key) ?? 0));
@@ -236,7 +250,7 @@ export function packPages<T extends PackItem>(
      * a keep chain whole — a heading never strands at a sheet's foot, and a question's
      * last part travels with the next stem it is held against.
      */
-    if (overflows && !mustBreak && !item.forceBreak && !item.fillsPage && !glued) {
+    if (overflows && !opensSheet && !mustBreak && !item.forceBreak && !item.fillsPage && !glued) {
       const pulled = pullGluedTail(
         pages[pages.length - 1],
         pages.length - 1,
@@ -256,7 +270,7 @@ export function packPages<T extends PackItem>(
       }
     }
 
-    if (mustBreak || overflows) {
+    if (mustBreak || overflows || opensSheet) {
       pages.push([]);
       openedBy.push(mustBreak ? item.breakId : undefined);
       used = 0;

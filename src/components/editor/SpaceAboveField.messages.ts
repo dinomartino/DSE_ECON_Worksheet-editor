@@ -24,4 +24,8 @@ export const SPACE_ABOVE_MESSAGES = defineMessages({
     en: 'Only counts straight under a question of the same kind. The question above is a different kind, so it keeps the usual spacing.',
     zh: '只在同類型題目的正下方生效。上一題是另一種類型，所以維持一般間距。',
   },
+  noteStartsPage: {
+    en: 'This question starts a new page, so no space is left above it.',
+    zh: '這題由新頁開始，上方不留空位。',
+  },
 });

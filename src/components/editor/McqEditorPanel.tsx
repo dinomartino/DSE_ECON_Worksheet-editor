@@ -24,6 +24,7 @@ import { useMessages } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { biExcerpt, ExcerptRow } from './panelRows';
+import { PageFlowFields } from './PageFlowFields';
 import { SpaceAboveField } from './SpaceAboveField';
 import { MCQ_PANEL_MESSAGES } from './McqEditorPanel.messages';
 
@@ -185,6 +186,8 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
         </div>
         {/* This question's own gap above it (§ `Question.gapBefore`), on any paper shape. */}
         <SpaceAboveField question={question} onChange={onChange} />
+        {/* Where it sits on the page: an MC is always kept whole, so only the new-page ask. */}
+        <PageFlowFields question={question} onChange={onChange} />
       </section>
 
       <section className="space-y-1">

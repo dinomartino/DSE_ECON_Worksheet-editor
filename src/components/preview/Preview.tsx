@@ -240,6 +240,7 @@ import {
   type PageComposition,
   type PageStart,
 } from "./pagination";
+import { keptTogetherOf, startsSheetOf } from "./flowFlags";
 import { bodyEntries, joinedRows, pageNodes } from "./pageNodes";
 import { PAGE_AI_ITEM, pageAiScope } from "@/components/translate/translateMenu";
 import { collectTexts, slotsForTarget } from "@/model/textWalk";
@@ -7274,10 +7275,20 @@ export function Preview({
           </DraggableItem>
         );
 
+      // The teacher's "Start on a new page" (§ `sheetOpeners`): this item opens a sheet. It is
+      // content, so unlike a manual break it is placed on the sheet it opens and owns no
+      // `breakId`, and the `.docx` takes the page start from the measured sheets.
+      const startsSheet = startsSheetOf(item);
+      // "Keep this question on one page" (§ `keptTogether`): no legal boundary inside it, so it
+      // moves whole and is cut only where it is taller than a sheet (the empty list still
+      // measures `looseBreakPoints` for that cut).
+      const keptTogether = keptTogetherOf(item);
+
       blocks.push({
         key: id,
         forceBreak: isManualBreak,
         breakId: isManualBreak ? id : undefined,
+        ...(startsSheet ? { startsSheet: true } : {}),
         fillsPage,
         // A manual break and a fill answer space are positioning instructions, not prose:
         // neither has interior boundaries worth breaking at, and a fill is never split
@@ -7285,7 +7296,9 @@ export function Preview({
         breakAfter:
           isManualBreak || fillsPage
             ? undefined
-            : breakAfterNodes(itemBodyNodes(item)),
+            : keptTogether
+              ? []
+              : breakAfterNodes(itemBodyNodes(item)),
         keepsWithNext: !isManualBreak && !fillsPage && keepsWithNext(itemBodyNodes(item)),
         node: wrap(bodyFor()),
         slice: (range) => wrap(bodyFor(range)),

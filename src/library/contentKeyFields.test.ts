@@ -25,6 +25,8 @@ const QUESTION_FIELDS: Record<AnyQuestionKey, 'content' | 'metadata'> = {
   blocks: 'content',
   marks: 'content',
   gapBefore: 'metadata',
+  keepOnOnePage: 'metadata',
+  startOnNewPage: 'metadata',
   lineage: 'metadata',
   tags: 'metadata',
   tagsAt: 'metadata',
