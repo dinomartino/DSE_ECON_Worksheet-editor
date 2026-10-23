@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PageComposition } from '@/components/preview/pagination';
-import { groupByPage } from './Outline';
+import { dropEdge, groupByPage } from './Outline';
 
 /**
  * Cutting a section's flow into the sheets it landed on.
@@ -87,5 +87,22 @@ describe('grouping the outline by page', () => {
       [2, ['q2']],
       [1, ['q3']],
     ]);
+  });
+});
+
+describe('dropping on an outline row (GitHub #4)', () => {
+  // A row 30px tall at y = 100. Every drop used to land before the row, so the slot
+  // after a page's last question — before the break that ends it — had no target.
+  const over = (clientY: number) =>
+    dropEdge({
+      clientY,
+      currentTarget: { getBoundingClientRect: () => ({ top: 100, height: 30 }) },
+    } as unknown as Parameters<typeof dropEdge>[0]);
+
+  it('lands before the row from its upper half and after it from its lower half', () => {
+    expect(over(101)).toBe('before');
+    expect(over(114)).toBe('before');
+    expect(over(116)).toBe('after');
+    expect(over(129)).toBe('after');
   });
 });

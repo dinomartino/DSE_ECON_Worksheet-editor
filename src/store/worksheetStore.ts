@@ -254,7 +254,7 @@ interface WorksheetState {
   updateQuestion: (questionId: string, patch: Partial<Question>) => void;
   removeQuestion: (questionId: string) => void;
   duplicateQuestion: (questionId: string) => void;
-  /** Nudge a question by `delta` places in the document order. */
+  /** Nudge a question by `delta` places in the flow (a page break or heading is a place). */
   moveQuestion: (questionId: string, delta: number) => void;
   /** Drag-reorder: put `questionId` immediately before `targetId`. */
   reorderQuestion: (questionId: string, targetId: string) => void;
@@ -989,16 +989,18 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       });
     }),
 
+  // Through the resolved flow, never `questions` alone: a layout element is filed under
+  // the question before it, so reordering only the array carried a page break along
+  // with that question — nothing could follow it on its page (GitHub #4).
   moveQuestion: (questionId, delta) =>
     get().commit((draft) => {
-      const index = draft.questions.findIndex((question) => question.id === questionId);
-      if (index < 0) return draft;
+      const entries = flowOf(draft);
+      const index = entries.findIndex((entry) => entry.id === questionId);
       const to = index + delta;
-      if (to < 0 || to >= draft.questions.length) return draft;
-      const questions = [...draft.questions];
-      const [moved] = questions.splice(index, 1);
-      questions.splice(to, 0, moved);
-      return { ...draft, questions };
+      if (index < 0 || delta === 0 || to < 0 || to >= entries.length) return draft;
+      const [moved] = entries.splice(index, 1);
+      entries.splice(to, 0, moved);
+      return applyFlowMove(draft, applyOrder(draft, entries));
     }),
 
   // Drag-reorder one question: rewrites `questions` (the authority on order). A no-op
