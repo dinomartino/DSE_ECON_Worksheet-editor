@@ -12,6 +12,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.8.5 — 2026-10-23
+
 ### Added
 - **Send us an anonymised copy of your worksheet with a bug report.** In Send feedback,
   Attach an anonymised copy makes a copy on your computer in which every word, number and
