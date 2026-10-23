@@ -76,6 +76,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
 
 ## Log
+- **2026-10-23** — hand-testing documents in `test-fixtures/manual/` (GitHub #4 repro, many breaks, mixed for the anonymiser); `scripts/emit-manual-fixtures.test.ts` writes them, `src/test/manualFixtures.test.ts` opens them.
 - **2026-10-23** — GitHub #4: questions can follow the last one on a page (outline ↑/↓ and row drops); merged on develop.
 - **2026-10-23** — formatting-settings proposal (k-0178, the user's ask "settings similar to justify"): research only.
 - **2026-10-19** — the first 題型 is made on the 題型 map itself (user's ask).
