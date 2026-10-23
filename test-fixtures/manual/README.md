@@ -3,7 +3,8 @@
 Open each file with the start screen's open-file button (the same path as any saved paper). They are ordinary saved documents; all names, schools, emails and
 numbers in them are invented. Regenerate with
 `EMIT_MANUAL_FIXTURES=1 npx vitest run scripts/emit-manual-fixtures.test.ts`
-(`src/test/manualFixtures.test.ts` proves they still open and export).
+(`src/test/manualFixtures.test.ts` proves they still open and export). Regenerating rewrites each
+file's timestamps; commit only the file you changed.
 
 ## `issue-4-repro.json` — GitHub #4, the teacher's paper
 
@@ -36,6 +37,32 @@ table, an MC with an image placeholder, and a structured question. The title, on
 structured question contain an invented school, teacher names, an email, a phone number and an
 address — the things the anonymiser should find. Use it to try the anonymiser, and to check the
 document opens, previews and exports to `.docx` at all.
+
+## `option-layout-mix.json` — Option layout for all MC questions (k-0178)
+
+Four MC questions whose options suit different layouts, then a structured question, over two pages
+(a New page after Q2). Q1 (short options) is already set to 2 columns and Q2 (mid-length) to a row,
+by hand; Q3 (full sentences) and Q4 (four diagrams) are stacked.
+
+Open Setup (頁面設定), the Worksheet tab, **Option layout for all MC questions**. It reads "Now: 2
+stacked · 1 in a row · 1 in two columns". After each click look at the page, the thumbnail strip and
+the notice (how many questions changed, and Undo):
+
+1. **Fit each question.** Q1 becomes one row, Q2 stays in 2 columns, Q3 stays stacked, Q4 becomes a
+   2×2 grid of diagrams; "Changed 3 of 4 MC questions." Undo (or ⌘Z) puts all four back in one step.
+2. **All in a row**, from the start. Q1 becomes a row. Q2's options do not fit on one line, so it
+   still prints in 2 columns (select Q2: its panel says why); Q3's print in a grid, each option wrapping
+   in its own cell. Q4 stays stacked, since a picture cannot sit in a row, and the notice says it left
+   one figure question.
+3. **All 2 columns**, then **All stacked**: every question changes. A second **All stacked** says
+   there is nothing to change.
+4. Change one question in its own panel afterwards: only that question changes. Press Undo on an old
+   notice after another edit: it is gone (⌘Z still works).
+5. Settings → Language → 繁體中文: the block and the notice read in Chinese.
+6. Export → Word, and open the file in Word. `npm run samples` writes the same papers, one per
+   choice, as `option-layout/…`.
+
+`scripts/option-layout-verify.mjs` does 1–4 with a real mouse in Chrome, in English and 中文.
 
 ## The desktop app: dragging and dropped files (k-0182)
 

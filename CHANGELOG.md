@@ -20,6 +20,14 @@ a version heading is edited afterwards.
   Save this copy keeps exactly what you saw, as `report-<date>.worksheet.json`, and the
   report tells you to drag that file into the GitHub issue or email.
   <!-- zh: **回報問題時可附上工作紙的匿名副本。** 在「意見回饋」按「附上匿名副本」，會在你的電腦上製作一份副本，所有文字、數字和圖片都換成長度和尺寸相同的隨機內容，讓我們可以用相同版面測試，而看不到你的內容。儲存前你可以逐頁檢查；按「儲存此副本」會原樣儲存你看到的內容（`report-<日期>.worksheet.json`），報告會提示你把檔案拖放到 GitHub 問題記錄或電郵內。 -->
+- **Set the option layout of every MC question at once.** In Document setup, under the text
+  size, choose Fit each question, All stacked, All in a row or All 2 columns, and the options
+  of every MC question change together, with the number changed and an Undo. Fit each question
+  gives each question the layout that suits how long its options are, as the Fit to content
+  button in the question's own panel does. It replaces layouts you chose one by one (you can
+  still change a single question afterwards), and questions whose options are figures never go
+  in a row. The page, the thumbnails, the Word file and a copied question all follow.
+  <!-- zh: **一次設定全部 MC 題的選項排列。** 在「頁面設定」的文字大小下方，選擇「配合各題內容」、「全部直列」、「全部橫列」或「全部兩欄」，所有 MC 題的選項排列便會一起改變，並顯示更改了多少題及「復原」按鈕。「配合各題內容」會按各題選項的長短，為每題採用合適的排列，與題目面板內的「配合內容」按鈕一樣。這會取代你逐題選擇的排列（之後仍可個別修改），而選項是圖形的題目不會橫列。頁面、縮圖、Word 檔及複製出來的題目都一致。 -->
 
 ### Fixed
 - **Dragging works in the desktop app.** Dragging a question in the Content list, dragging a

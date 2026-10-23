@@ -51,6 +51,7 @@ import { BiTextField } from './BiTextField';
 import { CloseIcon } from '@/components/ui/icons';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { DOCUMENT_SETTINGS_MESSAGES, MARGIN_PRESET_KEYS } from './DocumentSettings.messages';
+import { OptionLayoutField } from './OptionLayoutField';
 import type { Messages as MessagesOf } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
 
@@ -209,6 +210,8 @@ function DocumentTab() {
       </Field>
 
       <TextSizeField />
+
+      <OptionLayoutField />
 
       <VersionsField />
 

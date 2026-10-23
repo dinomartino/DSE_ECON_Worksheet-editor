@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { exportDocxBuffer } from '@/export/docx';
 import { resolveFlow } from '@/model/flow';
+import { optionLayoutTally } from '@/registry/mcqLayouts';
 import { parseWorksheet } from '@/storage/document';
 import { useWorksheetStore } from '@/store/worksheetStore';
 
@@ -19,11 +20,12 @@ const shape = (name: string) =>
     .join('');
 
 describe('manual test documents', () => {
-  it('lists the three files', () => {
+  it('lists the four files', () => {
     expect(readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()).toEqual([
       'issue-4-many-breaks.json',
       'issue-4-repro.json',
       'mixed-for-anonymiser.json',
+      'option-layout-mix.json',
     ]);
   });
 
@@ -44,7 +46,16 @@ describe('manual test documents', () => {
     expect(json).toContain('"kind":"image"');
   });
 
-  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser'])('%s exports a .docx', async (name) => {
+  it('option-layout-mix: four MC questions, two already set by hand, one with figure options', () => {
+    const w = load('option-layout-mix');
+    expect(w.questions.map((q) => q.type)).toEqual(['mcq', 'mcq', 'mcq', 'mcq', 'structured']);
+    expect(shape('option-layout-mix')).toBe('QQ|QQQ'); // two pages, so the thumbnail strip shows
+    expect(optionLayoutTally(w)).toEqual({ total: 4, stacked: 2, inline: 1, columns2: 1 });
+    const figures = w.questions[3];
+    expect(figures.type === 'mcq' && figures.options.every((option) => option.blocks?.[0]?.kind === 'diagram')).toBe(true);
+  });
+
+  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix'])('%s exports a .docx', async (name) => {
     const bytes = await exportDocxBuffer(load(name), { language: 'bilingual', version: 'student' });
     expect(bytes.length).toBeGreaterThan(2000);
   });

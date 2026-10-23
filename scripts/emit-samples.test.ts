@@ -14,6 +14,8 @@ import { createAnswerDiagram, createParagraphBlock, createWorksheet } from '@/mo
 import { bi } from '@/model/text';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
+import { buildOptionLayoutPaper } from '@/test/optionLayoutFixture';
+import { OPTION_LAYOUT_CHOICES, withOptionLayouts } from '@/registry/mcqLayouts';
 import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
 import { presetFor } from '@/ai/providers';
 import { loadGlossary } from '@/glossary/load';
@@ -97,6 +99,23 @@ it('emits a paper whose MC options are justified', async () => {
     const mode: OutputMode = { language: 'bilingual', version };
     planPaper(worksheet, mode, `${dir}/${docxFileName(worksheet, mode)}`);
   }
+});
+
+it('emits papers whose MC option layout was set for every question at once (Document setup)', async () => {
+  const dir = `${OUT}/option-layout`;
+  mkdirSync(dir, { recursive: true });
+  // Short options, mid-length options, full sentences and four diagrams, then a structured
+  // question: each choice leaves a different mix, and "All in a row" shows every fallback.
+  const base = buildOptionLayoutPaper('diagram').worksheet;
+  for (const choice of OPTION_LAYOUT_CHOICES) {
+    const worksheet = withOptionLayouts(base, choice, 'en');
+    // Stacked leaves the untouched paper itself; the plan file wants a document of its own.
+    const paper = worksheet === base ? { ...base } : worksheet;
+    planPaper(paper, { language: 'en', version: 'student' }, `${dir}/option-layout-${choice}-en.docx`);
+  }
+  // Two languages cannot share one tab-stop line, so a row in a bilingual paper prints as a grid.
+  const bilingual = withOptionLayouts(base, 'inline', 'bilingual');
+  planPaper(bilingual, { language: 'bilingual', version: 'teacher' }, `${dir}/option-layout-inline-bilingual.docx`);
 });
 
 it('emits a paper whose body text is justified (Document setup)', async () => {

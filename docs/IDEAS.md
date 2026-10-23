@@ -165,6 +165,11 @@ without one (`src/ai/providers.ts`). Never embed a key; never send student scrip
 
 ## Other
 
+- **Formatting settings like Justify** (approved 2026-10-23; built one at a time, each on its own branch):
+  ranked against the real papers in `docs/design/format-settings.md`. 1) option layout for all MC in one
+  click is built (Setup, unreleased); next, only on the user's word: 2) between-question space on every
+  paper shape, 3) keep a question together / start on a new page. Line spacing waits for the reporter's
+  answer about 12 pt; answer-line style, indent and numbering style are judged not worth a switch.
 - **Presentation mode** (M): one question at a time, reveal the scheme. *Kuta.*
 - **Large-print / dyslexia output profile** (M): `baseFontSize` scales text but the 12pt
   line is fixed, so it must be a separate profile that scales the line too. *Twinkl,

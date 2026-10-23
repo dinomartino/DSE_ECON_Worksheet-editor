@@ -76,9 +76,9 @@ function displayWidth(text: string): number {
  *
  * An explicit `optionLayout` always wins. With none, options **stack** — the layout
  * every existing document was authored against, and the one §7.2 numbering applies to.
- * `suggestOptionLayout` is the auto part: the editor calls it when a question is created
- * or edited and writes the result, so a document's chosen layout is always something it
- * states. What prints can still differ when the text cannot fit (`printedOptionLayout`).
+ * `suggestOptionLayout` only suggests: the MC panel's Fit to content button and Setup's Fit
+ * each question (`mcqLayouts.ts`) write its answer, so a question stays stacked until a
+ * teacher asks. What prints can still differ when the text cannot fit (`printedOptionLayout`).
  */
 export function resolveOptionLayout(question: McqQuestion): McqOptionLayout {
   // Options carrying blocks can stack or sit two per row — never inline.
