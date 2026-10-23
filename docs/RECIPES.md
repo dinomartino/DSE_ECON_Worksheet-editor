@@ -445,13 +445,15 @@ Guard: `scripts/release-notes.test.ts` (run by hand).
 
 Only when the user asks. Work lives on `develop`; `main` is what teachers get.
 
-0. On `develop`, all green → `git switch main && git pull && git merge --ff-only develop`
-   (or merge a `develop` → `main` pull request). `git push` deploys the web app.
+0. `develop` all green → in your own worktree (never the main checkout): `git fetch &&
+   git worktree add --detach .claude/worktrees/release-vX.Y.Z origin/main`, then `git merge
+   --ff-only origin/develop` (or merge a `develop` → `main` pull request). `git push
+   origin HEAD:main` deploys the web app.
 1. Close the changelog (above). `npm run typecheck && npm test` — green before tagging.
 2. `npm version patch|minor|major` — runs `scripts/sync-version.mjs`, which writes the
    version into `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` and stages them.
-3. `git push --follow-tags` — the `v*` tag runs `.github/workflows/release.yml`, three
-   builds into one **draft** release.
+3. `git push --follow-tags origin HEAD:main` — the `v*` tag runs
+   `.github/workflows/release.yml`, three builds into one **draft** release.
 4. Check the draft has both `.dmg`s, the `.app.tar.gz` + `.sig` pair per arch, the
    `-setup.exe` + `.sig`, and `latest.json`. A missing `.sig` means the signing secrets
    were absent and installed apps will not update — fix and re-run, do not publish.
@@ -459,5 +461,6 @@ Only when the user asks. Work lives on `develop`; `main` is what teachers get.
    /tmp/notes.md && gh release edit vX.Y.Z --draft=false --latest --notes-file /tmp/notes.md`.
    A `-beta.N` tag publishes as a prerelease and never reaches a stable install.
 
-Rollback is a new, higher version containing the revert. Afterwards `git switch develop &&
-git merge main` so the version bump reaches `develop`. Full detail: `RELEASING.md`.
+Rollback is a new, higher version containing the revert. Afterwards `git switch --detach
+origin/develop && git merge origin/main && git push origin HEAD:develop` (after a `git
+fetch`) so the version bump reaches `develop`. Full detail: `RELEASING.md`.

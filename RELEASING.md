@@ -53,15 +53,19 @@ maintainer.
 ## Cutting a release
 
 Day-to-day work lives on `develop`; `main` is what teachers get, and every push to it
-deploys the web app. A release starts by bringing `develop` into `main`:
+deploys the web app. Never switch branches in the shared main checkout (`AGENTS.md`):
+release from your own worktree on `main`, and start by bringing `develop` into it:
 
 ```bash
-git switch main && git pull
-git merge --ff-only develop          # or merge a develop → main pull request
+git fetch && git worktree add --detach .claude/worktrees/release-vX.Y.Z origin/main
+cd .claude/worktrees/release-vX.Y.Z && ln -s ../../../node_modules
+git merge --ff-only origin/develop   # or merge a develop → main pull request
 ```
 
-Then tag on `main` as below, and afterwards `git switch develop && git merge main` so
-the version bump reaches `develop`.
+Then tag as below; `HEAD` is detached, so every push names its target
+(`git push --follow-tags origin HEAD:main`). Afterwards bring the version bump into
+`develop`: `git fetch && git switch --detach origin/develop && git merge origin/main &&
+git push origin HEAD:develop`.
 
 `package.json` is the single source of truth for the version. `npm version` runs
 `scripts/sync-version.mjs`, which writes the same version into
@@ -78,7 +82,7 @@ that version has no section or **Unreleased** still has entries.
 ```bash
 npm run typecheck && npm test        # green before tagging
 npm version patch                    # or: minor | major
-git push --follow-tags
+git push --follow-tags origin HEAD:main
 ```
 
 The tag triggers `.github/workflows/release.yml`: three builds (macOS arm64, macOS x64,
@@ -97,7 +101,7 @@ already the sign-off on the version.
 
 ```bash
 npm version prerelease --preid beta  # → v1.3.0-beta.1
-git push --follow-tags
+git push --follow-tags origin HEAD:main
 ```
 
 A hyphenated tag is published as a *prerelease*. The updater endpoint is
@@ -161,7 +165,7 @@ So a rollback is a **new, higher version** containing the revert:
 
 ```bash
 git revert <bad commit>
-npm version patch && git push --follow-tags
+npm version patch && git push --follow-tags origin HEAD:main   # in the release worktree
 ```
 
 Also unpublish (or delete) the bad release so `latest.json` stops pointing at it, and
