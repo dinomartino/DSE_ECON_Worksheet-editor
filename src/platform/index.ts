@@ -451,8 +451,8 @@ export type FileDragEvent =
  * **Silent since the window's `dragDropEnabled` went off** (k-0182, `tauri.conf.json`): the
  * shell then emits no `DragDrop` events, and a dropped file reaches the page as an
  * ordinary HTML5 `drop`, which the start screen, the feedback dialog and the import review
- * all handle themselves. Only the feedback dialog still subscribes, to nothing; remove
- * both together. A no-op on the web. These are `onDragDropEvent`'s four events, heard one
+ * all handle themselves. Nothing calls this any more (the feedback dialog stopped in k-0180);
+ * remove it with `subscribeToFileDrops`. A no-op on the web. These are `onDragDropEvent`'s four events, heard one
  * by one: its unlisten drops their promises.
  */
 export async function listenForFileDrops(
