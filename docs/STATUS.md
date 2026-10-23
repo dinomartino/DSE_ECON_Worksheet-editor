@@ -7,9 +7,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
-- **Long unbroken text wraps, 2026-10-22 (develop):** `.paper { overflow-wrap: break-word }` in `globals.css`; the page (and thumbnails, which render `.paper`) let a no-space string run past the edge since long before `statementAlign` (not caused by it). `.docx` untouched. Guard: `src/test/paperWrap.test.ts` (CSS only; layout checked in Chrome).
-- **GitHub #3, 2026-10-22 (branch `fix/description-justify`, not merged/pushed):** the (1)(2)(3) statements of a combination MC justify like options: `McqQuestion.statementAlign`, the format bar's Justify on a statement (`mcqStatement` is align-only), IR/docx/clipboard via the node's `format.align`. Test: `registry/mcqStatementAlign.test.ts`. Chrome-checked (EN+中); not tried in Word or Tauri. Issue not answered.
-- **v0.8.3 released 2026-10-18** (develop = main before the tabs work). Word packs justified lines tighter (not fixable).
+- **Formatting settings like Justify, 2026-10-23 (proposal only; branch docs/format-settings-proposal, pushed, not merged):** `docs/design/format-settings.md` ranks nine candidates against the Justify template and the real papers. Recommends 1) option layout for all MC in one click (S–M), 2) between-question space on every paper shape (M), 3) keep a question together / start it on a new page (S–M); not line spacing (every reference is ≈ single; only Text size 12 is tighter). Seven decisions for the user in its § 6. Nothing built. GitHub #4 (MC reorder, open) is a bug, being fixed on `fix/issue-4-mc-reorder`.
+- **v0.8.4 released 2026-10-22** (GitHub #3 answered): the (1)(2)(3) statements of a combination MC justify like options (`McqQuestion.statementAlign`; test `registry/mcqStatementAlign.test.ts`), and `.paper { overflow-wrap: break-word }` in `globals.css` stops a no-space string running past the page edge (guard `src/test/paperWrap.test.ts`). Chrome-checked (EN+中); not tried in Word or Tauri. Word packs justified lines tighter (not fixable).
 - **2026-10-19 (Unreleased, merged on develop):** `.docx` has no keep flags
   (no black ¶ squares, user's call) — hard page breaks where the preview breaks (`pageBreaks.ts`,
   `measurePageStarts.tsx`; samples now run in headless Chrome); B7 examiner marks grid on the
@@ -77,6 +76,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
 
 ## Log
+- **2026-10-23** — formatting-settings proposal (k-0178, the user's ask "settings similar to justify"): research only.
 - **2026-10-19** — the first 題型 is made on the 題型 map itself (user's ask).
 - **2026-10-19** — 題型 empty state: research (no suggestion boxes), then the sort board and the map without the cliff.
-- **2026-10-19** — F4/F5, C11, B7, 題型 v1 (after research), `.docx` page breaks instead of keep flags; merged on develop.

@@ -165,6 +165,10 @@ without one (`src/ai/providers.ts`). Never embed a key; never send student scrip
 
 ## Other
 
+- **Formatting settings like Justify** (proposal, 2026-10-23, waiting on the user's call): ranked against
+  the real papers in `docs/design/format-settings.md`. First three (S–M each): option layout for all MC in
+  one click, between-question space on every paper shape, keep a question together / start on a new page.
+  Line spacing, answer-line style, indent and numbering style are judged not worth a switch.
 - **Presentation mode** (M): one question at a time, reveal the scheme. *Kuta.*
 - **Large-print / dyslexia output profile** (M): `baseFontSize` scales text but the 12pt
   line is fixed, so it must be a separate profile that scales the line too. *Twinkl,
