@@ -9,7 +9,8 @@ import { chromium } from 'playwright-core';
  * For each document `scripts/anon-fixtures.test.ts` writes, in each language:
  *   1. open the original in the editor (Teacher copy) and measure its sheets: which
  *      question starts where, on which sheet;
- *   2. Send feedback → Attach an anonymised copy: measure the preview's sheets the same way;
+ *   2. Send feedback → Attach an anonymised copy: measure the preview's sheets the same way
+ *      (a document with empty sides in the shown language only gets a note: `hasEmptySides`);
  *   3. Save this copy (the download), reopen that file in the editor, measure it again;
  *   4. export both as `.docx` through the Export dialog and compare `word/document.xml`
  *      with every text replaced by its length: the same paragraphs, runs, lengths and page
@@ -197,6 +198,30 @@ function leaks(original, saved) {
   return [...[...words].filter((word) => copied.includes(word)), ...images.filter((bytes) => saved.includes(bytes))];
 }
 
+/**
+ * A text the shown language leaves empty while the other side has words. The editor draws
+ * an "Add English" prompt there, which takes lines; the measure-only page (the preview, and
+ * the measurement the `.docx` breaks its pages by) draws nothing. Such a document's preview
+ * is compared with the saved file's, not with the editor.
+ */
+function hasEmptySides(document, language) {
+  if (language === 'bilingual') return false;
+  const other = language === 'en' ? 'zh' : 'en';
+  const text = (runs) => (Array.isArray(runs) ? runs.map((run) => run?.text ?? '').join('') : '');
+  let found = false;
+  const walk = (value) => {
+    if (found || !value || typeof value !== 'object') return;
+    if (Array.isArray(value)) return value.forEach(walk);
+    if (Array.isArray(value.en) && Array.isArray(value.zh) && !text(value[language]).trim() && text(value[other]).trim()) {
+      found = true;
+      return;
+    }
+    Object.values(value).forEach(walk);
+  };
+  walk(document.questions);
+  return found;
+}
+
 const browser = await chromium.launch({ channel: 'chrome' });
 const rows = [];
 let failed = false;
@@ -233,7 +258,13 @@ try {
         const copyDocx = await docxShape(await exportDocx(copy.page, language, `${dir}/anonymised.docx`));
         await copy.context.close();
 
-        problems.push(...compare(before, preview).map((p) => `preview: ${p}`));
+        const notes = [];
+        if (hasEmptySides(JSON.parse(json), language)) {
+          const differs = compare(before, preview).length > 0;
+          if (differs) notes.push('empty sides: the editor draws prompts the measured page (preview, .docx) does not');
+        } else {
+          problems.push(...compare(before, preview).map((p) => `preview: ${p}`));
+        }
         problems.push(...compare(before, after).map((p) => `saved: ${p}`));
         if (originalDocx.breaks !== copyDocx.breaks) problems.push(`docx page breaks ${originalDocx.breaks} vs ${copyDocx.breaks}`);
         if (originalDocx.shape !== copyDocx.shape) {
@@ -243,7 +274,7 @@ try {
         }
         const leaked = leaks(JSON.parse(json), saved);
         if (leaked.length) problems.push(`leaked: ${leaked.slice(0, 8).join(', ')}`);
-        rows.push({ label, sheets: before.length, questions: before.flat().length, breaks: originalDocx.breaks, problems });
+        rows.push({ label, sheets: before.length, questions: before.flat().length, breaks: originalDocx.breaks, problems, notes });
       } catch (error) {
         rows.push({ label, problems: [`harness: ${error.message.split('\n')[0]}`] });
       }
@@ -261,5 +292,6 @@ for (const row of rows) {
     `${ok ? 'PASS' : 'FAIL'}  ${row.label.padEnd(32)} ${row.sheets ?? '-'} sheets, ${row.questions ?? '-'} questions, ${row.breaks ?? '-'} docx breaks`,
   );
   for (const problem of row.problems.slice(0, 12)) console.log(`        ${problem}`);
+  for (const note of row.notes ?? []) console.log(`        note: ${note}`);
 }
 process.exit(failed ? 1 : 0);

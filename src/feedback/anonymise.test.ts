@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
@@ -85,6 +86,8 @@ const DOCUMENTS: Array<[string, () => Worksheet]> = [
   ['kitchen sink', buildTranslateFixture],
   ['LQ mock', () => createWorksheetFrom({ documentType: 'lqMock', title: 'Mock', coverDetails: { school: "St. Mary's College", examName: 'MOCK' } })],
   ['pictures', pictureDocument],
+  // Hand-testing document: invented school, teacher names, email, phone and address.
+  ['mixed hand-testing document', () => parseWorksheet(readFileSync('test-fixtures/manual/mixed-for-anonymiser.json', 'utf8'))],
 ];
 
 const anonymise = (worksheet: Worksheet, seed = 7) => anonymiseWorksheet(worksheet, { random: seededRandom(seed), now: NOW });
@@ -364,6 +367,14 @@ describe('anonymiseWorksheet', () => {
     expect(pattern).not.toContain('Calculate');
     expect(free).not.toContain('Chan');
     expect(free).toHaveLength('mock 2026 Mr Chan'.length);
+  });
+
+  it('the hand-testing document: its invented school, names, email, phone and address are gone', () => {
+    const original = parseWorksheet(readFileSync('test-fixtures/manual/mixed-for-anonymiser.json', 'utf8'));
+    const file = stringifyWorksheet(anonymise(original));
+    const personal = ['wong.sm@example.org', '2345 6789', 'Wong Siu Ming', 'Sample Secondary School', 'Example Road', 'Kowloon', '黃小明', '樣本中學'];
+    for (const found of personal) expect(JSON.stringify(original)).toContain(found);
+    for (const found of personal) expect(file).not.toContain(found);
   });
 
   it("a newer build's unknown fields are scrambled too, never passed through as written", () => {

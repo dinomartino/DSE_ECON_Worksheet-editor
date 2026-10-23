@@ -3,7 +3,8 @@
  * prove an anonymised copy (`src/feedback/anonymise.ts`) lays out as its original does.
  *
  * The committed reference documents (the frozen corpora, the acceptance, mark scheme and
- * kitchen-sink fixtures, the LQ mock preset), plus any `.worksheet.json` under the
+ * kitchen-sink fixtures, the LQ mock preset, a picture document, the hand-testing
+ * `test-fixtures/manual/mixed-for-anonymiser.json`), plus any `.worksheet.json` under the
  * gitignored `real_life_reference/` (a real teacher's paper, when this machine has one).
  *
  *   ANON_DIR=/tmp/anon-verify [ANON_REFERENCE=<folder>] npx vitest run scripts/anon-fixtures.test.ts
@@ -57,6 +58,7 @@ it('emits the anonymiser verification documents', () => {
     ['kitchen-sink', buildTranslateFixture()],
     ['lq-mock', createWorksheetFrom({ documentType: 'lqMock', title: 'LQ mock' })],
     ['pictures', pictureDocument()],
+    ['mixed-manual', migrate(JSON.parse(readFileSync('test-fixtures/manual/mixed-for-anonymiser.json', 'utf8')))],
   ];
   if (existsSync(REFERENCE)) {
     for (const file of readdirSync(REFERENCE).filter((name) => name.endsWith('.worksheet.json'))) {

@@ -1,0 +1,1814 @@
+{
+  "schemaVersion": 1,
+  "id": "m-001",
+  "title": {
+    "en": [
+      {
+        "text": "Issue 4 repro"
+      }
+    ],
+    "zh": [
+      {
+        "text": "問題四重現"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "m-002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "m-003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "m-004",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-005",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "以下哪項會令茶的需求曲線右移？（第1題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-006",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-007",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-008",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-009",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-010",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-011",
+          "text": {
+            "en": [
+              {
+                "text": "A fall in the price of a substitute will cause (Q2)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-012",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-013",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-014",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-015",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-016",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-017",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "今晚温習的機會成本是（第3題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-018",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-019",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-020",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-021",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-022",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-023",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is a public good? (Q4)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-024",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-025",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-026",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-027",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 3
+    },
+    {
+      "id": "m-028",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-029",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "當以下情況出現，需求價格彈性較大：（第5題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-030",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-031",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-032",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-033",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-034",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-035",
+          "text": {
+            "en": [
+              {
+                "text": "A minimum wage above the market wage leads to (Q6)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-036",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-037",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-038",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-039",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-040",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-041",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "以下哪項會令茶的需求曲線右移？（第7題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-042",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-043",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-044",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-045",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-046",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-047",
+          "text": {
+            "en": [
+              {
+                "text": "A fall in the price of a substitute will cause (Q8)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-048",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-049",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-050",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-051",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 3
+    },
+    {
+      "id": "m-052",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-053",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "今晚温習的機會成本是（第9題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-054",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-055",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-056",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-057",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-058",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-059",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is a public good? (Q10)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-060",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-061",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-062",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-063",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-064",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-065",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "當以下情況出現，需求價格彈性較大：（第11題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-066",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-067",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-068",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-069",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-070",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-071",
+          "text": {
+            "en": [
+              {
+                "text": "A minimum wage above the market wage leads to (Q12)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-072",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-073",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-074",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-075",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 3
+    },
+    {
+      "id": "m-076",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-077",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "以下哪項會令茶的需求曲線右移？（第13題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-078",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-079",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-080",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-081",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-082",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-083",
+          "text": {
+            "en": [
+              {
+                "text": "A fall in the price of a substitute will cause (Q14)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-084",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-085",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-086",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-087",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-088",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-089",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "今晚温習的機會成本是（第15題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-090",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-091",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-092",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-093",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-094",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-095",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is a public good? (Q16)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-096",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-097",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-098",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-099",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 3
+    },
+    {
+      "id": "m-100",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-101",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "當以下情況出現，需求價格彈性較大：（第17題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-102",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-103",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-104",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-105",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-106",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-107",
+          "text": {
+            "en": [
+              {
+                "text": "A minimum wage above the market wage leads to (Q18)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-108",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-109",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-110",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-111",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-112",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-113",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "以下哪項會令茶的需求曲線右移？（第19題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-114",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-115",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-116",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-117",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-118",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-119",
+          "text": {
+            "en": [
+              {
+                "text": "A fall in the price of a substitute will cause (Q20)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-120",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-121",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-122",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-123",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 3
+    },
+    {
+      "id": "m-124",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-125",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "今晚温習的機會成本是（第21題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-126",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-127",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-128",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-129",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-130",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-131",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is a public good? (Q22)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-132",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-133",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-134",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-135",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-136",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-137",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "當以下情況出現，需求價格彈性較大：（第23題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-138",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-139",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-140",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-141",
+          "text": {
+            "en": [],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-142",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-143",
+          "text": {
+            "en": [
+              {
+                "text": "A minimum wage above the market wage leads to (Q24)"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-144",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-145",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-146",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-147",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 3
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "m-148",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "text",
+      "id": "m-149",
+      "text": {
+        "en": [
+          {
+            "text": "There are 24 questions in this test."
+          }
+        ],
+        "zh": [
+          {
+            "text": "本測驗共有24題。"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "pageBreak",
+      "id": "m-150"
+    },
+    {
+      "kind": "pageBreak",
+      "id": "m-151"
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "m-148"
+    },
+    {
+      "type": "layout",
+      "id": "m-149"
+    },
+    {
+      "type": "question",
+      "id": "m-004"
+    },
+    {
+      "type": "question",
+      "id": "m-010"
+    },
+    {
+      "type": "question",
+      "id": "m-016"
+    },
+    {
+      "type": "question",
+      "id": "m-022"
+    },
+    {
+      "type": "layout",
+      "id": "m-150"
+    },
+    {
+      "type": "question",
+      "id": "m-028"
+    },
+    {
+      "type": "layout",
+      "id": "m-151"
+    },
+    {
+      "type": "question",
+      "id": "m-034"
+    },
+    {
+      "type": "question",
+      "id": "m-040"
+    },
+    {
+      "type": "question",
+      "id": "m-046"
+    },
+    {
+      "type": "question",
+      "id": "m-052"
+    },
+    {
+      "type": "question",
+      "id": "m-058"
+    },
+    {
+      "type": "question",
+      "id": "m-064"
+    },
+    {
+      "type": "question",
+      "id": "m-070"
+    },
+    {
+      "type": "question",
+      "id": "m-076"
+    },
+    {
+      "type": "question",
+      "id": "m-082"
+    },
+    {
+      "type": "question",
+      "id": "m-088"
+    },
+    {
+      "type": "question",
+      "id": "m-094"
+    },
+    {
+      "type": "question",
+      "id": "m-100"
+    },
+    {
+      "type": "question",
+      "id": "m-106"
+    },
+    {
+      "type": "question",
+      "id": "m-112"
+    },
+    {
+      "type": "question",
+      "id": "m-118"
+    },
+    {
+      "type": "question",
+      "id": "m-124"
+    },
+    {
+      "type": "question",
+      "id": "m-130"
+    },
+    {
+      "type": "question",
+      "id": "m-136"
+    },
+    {
+      "type": "question",
+      "id": "m-142"
+    }
+  ],
+  "createdAt": "2026-10-23T05:17:48.988Z",
+  "updatedAt": "2026-10-23T05:17:48.988Z",
+  "name": "Issue 4 repro"
+}
