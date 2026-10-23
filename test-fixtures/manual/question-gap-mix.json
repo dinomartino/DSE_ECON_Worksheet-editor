@@ -1,0 +1,1234 @@
+{
+  "schemaVersion": 1,
+  "id": "m-001",
+  "title": {
+    "en": [
+      {
+        "text": "Question gap mix"
+      }
+    ],
+    "zh": [
+      {
+        "text": "題目間距"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "m-002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "m-003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "m-004",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-005",
+          "text": {
+            "en": [
+              {
+                "text": "Which change shifts the demand curve for tea to the right? (Q1)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項會令茶的需求曲線右移？（第1題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-006",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-007",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-008",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-009",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-010",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-011",
+          "text": {
+            "en": [
+              {
+                "text": "A fall in the price of a substitute will cause (Q2)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "代替品價格下跌會導致（第2題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-012",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-013",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-014",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-015",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-016",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-017",
+          "text": {
+            "en": [
+              {
+                "text": "The opportunity cost of studying tonight is (Q3)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "今晚温習的機會成本是（第3題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-018",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-019",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-020",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-021",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-022",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-023",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is a public good? (Q4)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項屬公共物品？（第4題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-024",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-025",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-026",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-027",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 3
+    },
+    {
+      "id": "m-028",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-029",
+          "text": {
+            "en": [
+              {
+                "text": "Price elasticity of demand is high when (Q5)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "當以下情況出現，需求價格彈性較大：（第5題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-030",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-031",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-032",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-033",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-034",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-035",
+          "text": {
+            "en": [
+              {
+                "text": "A minimum wage above the market wage leads to (Q6)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "高於市場工資的最低工資會引致（第6題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-036",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-037",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-038",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-039",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-040",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-041",
+          "text": {
+            "en": [
+              {
+                "text": "Which change shifts the demand curve for tea to the right? (Q7)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項會令茶的需求曲線右移？（第7題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-042",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-043",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-044",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-045",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-046",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-047",
+          "text": {
+            "en": [
+              {
+                "text": "A fall in the price of a substitute will cause (Q8)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "代替品價格下跌會導致（第8題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-048",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-049",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-050",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-051",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 3
+    },
+    {
+      "id": "m-052",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-053",
+          "text": {
+            "en": [
+              {
+                "text": "The opportunity cost of studying tonight is (Q9)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "今晚温習的機會成本是（第9題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-054",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-055",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-056",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-057",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-058",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-059",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is a public good? (Q10)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項屬公共物品？（第10題）"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-060",
+          "text": {
+            "en": [
+              {
+                "text": "Option A0"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項A0"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-061",
+          "text": {
+            "en": [
+              {
+                "text": "Option B1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項B1"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-062",
+          "text": {
+            "en": [
+              {
+                "text": "Option C2"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項C2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-063",
+          "text": {
+            "en": [
+              {
+                "text": "Option D3"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項D3"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-064",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-065",
+          "text": {
+            "en": [
+              {
+                "text": "Structured question 1: a monopolist raises its price."
+              }
+            ],
+            "zh": [
+              {
+                "text": "結構題 1：一間壟斷廠商提高售價。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-066",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-067",
+              "text": {
+                "en": [
+                  {
+                    "text": "State one reason why demand is price inelastic."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "指出需求缺乏價格彈性的一個原因。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2
+        },
+        {
+          "id": "m-068",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-069",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain the effect on total revenue."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋對總收益的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3
+        }
+      ]
+    },
+    {
+      "id": "m-070",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-071",
+          "text": {
+            "en": [
+              {
+                "text": "Structured question 2: a monopolist raises its price."
+              }
+            ],
+            "zh": [
+              {
+                "text": "結構題 2：一間壟斷廠商提高售價。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-072",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-073",
+              "text": {
+                "en": [
+                  {
+                    "text": "State one reason why demand is price inelastic."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "指出需求缺乏價格彈性的一個原因。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2
+        },
+        {
+          "id": "m-074",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-075",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain the effect on total revenue."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋對總收益的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3
+        }
+      ]
+    },
+    {
+      "id": "m-076",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-077",
+          "text": {
+            "en": [
+              {
+                "text": "Structured question 3: a monopolist raises its price."
+              }
+            ],
+            "zh": [
+              {
+                "text": "結構題 3：一間壟斷廠商提高售價。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-078",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-079",
+              "text": {
+                "en": [
+                  {
+                    "text": "State one reason why demand is price inelastic."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "指出需求缺乏價格彈性的一個原因。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2
+        },
+        {
+          "id": "m-080",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-081",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain the effect on total revenue."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋對總收益的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "m-082",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "text",
+      "id": "m-083",
+      "text": {
+        "en": [
+          {
+            "text": "Answer all parts of Question 13."
+          }
+        ],
+        "zh": [
+          {
+            "text": "請回答第13題的所有分題。"
+          }
+        ]
+      }
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "m-082"
+    },
+    {
+      "type": "question",
+      "id": "m-004"
+    },
+    {
+      "type": "question",
+      "id": "m-010"
+    },
+    {
+      "type": "question",
+      "id": "m-016"
+    },
+    {
+      "type": "question",
+      "id": "m-022"
+    },
+    {
+      "type": "question",
+      "id": "m-028"
+    },
+    {
+      "type": "question",
+      "id": "m-034"
+    },
+    {
+      "type": "question",
+      "id": "m-040"
+    },
+    {
+      "type": "question",
+      "id": "m-046"
+    },
+    {
+      "type": "question",
+      "id": "m-052"
+    },
+    {
+      "type": "question",
+      "id": "m-058"
+    },
+    {
+      "type": "question",
+      "id": "m-064"
+    },
+    {
+      "type": "question",
+      "id": "m-070"
+    },
+    {
+      "type": "layout",
+      "id": "m-083"
+    },
+    {
+      "type": "question",
+      "id": "m-076"
+    }
+  ],
+  "createdAt": "2026-10-23T07:37:06.540Z",
+  "updatedAt": "2026-10-23T07:37:06.540Z",
+  "name": "Question gap mix"
+}

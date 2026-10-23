@@ -135,6 +135,44 @@ function optionLayoutMix(): Worksheet {
   return worksheet;
 }
 
+/**
+ * Space between questions on every paper shape (k-0178 #2): a classroom worksheet, which keeps one
+ * blank line between questions until a teacher asks for more. Ten MC questions (long enough that
+ * a page ends inside the run, so a gap meets a page break), then three structured questions: the
+ * first straight under an MC (another kind), the second under the first (a like pair), the third
+ * under a text note. Every stem is in both languages.
+ */
+function questionGapMix(): Worksheet {
+  const gapMc = (n: number): McqQuestion => {
+    const [en, zh] = STEMS[n % STEMS.length];
+    const q = createMcqQuestion();
+    q.blocks = [createParagraphBlock(bi(`${en} (Q${n + 1})`, `${zh}（第${n + 1}題）`))];
+    q.options = ['A', 'B', 'C', 'D'].map((l, i) => ({ id: newId(), text: bi(`Option ${l}${i}`, `選項${l}${i}`) }));
+    q.answerIndex = n % 4;
+    return q;
+  };
+  const gapLong = (n: number) => {
+    const q = createStructuredQuestion();
+    q.blocks = [createParagraphBlock(bi(`Structured question ${n}: a monopolist raises its price.`, `結構題 ${n}：一間壟斷廠商提高售價。`))];
+    const a = createPart();
+    a.blocks = [createParagraphBlock(bi('State one reason why demand is price inelastic.', '指出需求缺乏價格彈性的一個原因。'))];
+    a.marks = 2;
+    const b = createPart();
+    b.blocks = [createParagraphBlock(bi('Explain the effect on total revenue.', '解釋對總收益的影響。'))];
+    b.marks = 3;
+    q.parts = [a, b];
+    return q;
+  };
+  return paper('Question gap mix', '題目間距', [
+    section(),
+    ...Array.from({ length: 10 }, (_, i) => gapMc(i)),
+    gapLong(1),
+    gapLong(2),
+    createTextElement(bi('Answer all parts of Question 13.', '請回答第13題的所有分題。')),
+    gapLong(3),
+  ]);
+}
+
 it('emits the manual test documents', () => {
   if (!process.env.EMIT_MANUAL_FIXTURES) return;
   mkdirSync(OUT, { recursive: true });
@@ -143,6 +181,7 @@ it('emits the manual test documents', () => {
     ['issue-4-many-breaks', manyBreaks()],
     ['mixed-for-anonymiser', mixed()],
     ['option-layout-mix', optionLayoutMix()],
+    ['question-gap-mix', questionGapMix()],
   ];
   for (const [name, w] of files) writeFileSync(`${OUT}/${name}.json`, `${stable(stringifyWorksheet(w), 'm-')}\n`);
 });
