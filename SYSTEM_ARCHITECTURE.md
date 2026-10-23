@@ -3616,8 +3616,8 @@ and shown as not allowed; a drag a component already took, and any drag without 
 `start/fileDrop.ts:planDrop`, with the web's overlay), the feedback dialog takes a screenshot, and
 the import review takes its own. The editor takes none and ignores one, as on the web.
 `listenForFileDrops`, `subscribeToFileDrops` and `readDroppedFile` in `platform/index.ts` are what the
-shell's native events fed; the feedback dialog still subscribes, to events that no longer come, and
-goes with them. The test above fails on any other subscriber. Every Tauri unlisten still goes through
+shell's native events fed; nothing subscribes any more (the feedback dialog stopped, k-0180), so they
+can go. The test above fails on any subscriber. Every Tauri unlisten still goes through
 `unlistenSafely` (also the library watchers'): a listener's page half registers by an eval that can land
 after `listen` resolves, and an unlisten before then rejects and leaves it live, so it retries briefly
 and never rejects.

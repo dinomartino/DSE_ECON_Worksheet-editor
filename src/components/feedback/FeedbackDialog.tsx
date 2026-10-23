@@ -8,7 +8,7 @@ import { useDialogNotices } from '@/components/ui/NoticeLayer';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import type { NoticeInput } from '@/store/notices';
-import { isDesktop, openExternal, readDroppedFile, revealFile, subscribeToFileDrops } from '@/platform';
+import { isDesktop, openExternal, revealFile } from '@/platform';
 import type { LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import { makeAnonymisedCopy, saveAnonymisedCopy, type AnonymisedCopy } from '@/feedback/anonymisedCopy';
 import {
@@ -236,31 +236,6 @@ export function FeedbackDialog({
     return () => window.removeEventListener('paste', onPaste);
   }, [attach]);
 
-  // Desktop: a file dropped from Finder or Explorer arrives as the shell's own event, never
-  // as an HTML5 drop (`subscribeToFileDrops`). The start screen stands aside meanwhile.
-  useEffect(() => {
-    if (!isDesktop()) return;
-    return subscribeToFileDrops((event) => {
-      if (event.type === 'enter') setDragging(true);
-      else if (event.type === 'leave') setDragging(false);
-      else if (event.type === 'drop') {
-        setDragging(false);
-        const path = event.paths[0];
-        if (!path) return;
-        const name = path.split(/[\\/]/).pop() ?? path;
-        const type = screenshotType({ name });
-        if (!type) {
-          notices.notify({ id: 'feedback-error', tone: 'error', body: m.screenshotNotImage });
-          return;
-        }
-        void readDroppedFile(path).then(
-          (bytes) => attach(Object.assign(new Blob([bytes as BlobPart], { type }), { name })),
-          () => notices.notify({ id: 'feedback-error', tone: 'error', body: m.screenshotTooLarge }),
-        );
-      }
-    });
-  }, [attach, m, notices]);
-
   const copy = async (text: string): Promise<boolean> => {
     try {
       await navigator.clipboard.writeText(text);
@@ -345,7 +320,9 @@ export function FeedbackDialog({
     }
   };
 
-  // A file dragged over the dialog (web): the dialog takes it, the page under it never sees it.
+  // A file dragged over the dialog: the dialog takes it, the page under it never sees it.
+  // The desktop app too: its native drag handler is off (k-0182), so a file from Finder or
+  // Explorer arrives as this same HTML5 drop; one dropped elsewhere meets `fileDropGuard`.
   const dragProps = {
     onDragOver: (event: React.DragEvent) => {
       if (!event.dataTransfer.types.includes('Files')) return;
