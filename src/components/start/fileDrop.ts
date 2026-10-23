@@ -1,14 +1,13 @@
 /**
  * Files dropped on the start screen — the decision's pure half.
  *
- * Two sources feed it: the browser's HTML5 `drop` (`File`s) and, on desktop, Tauri's
- * native `DragDrop` event (paths — the webview delivers no HTML5 file drops there). Both
- * go through `planDrop`, so a drop means the same thing on either platform.
+ * The page's HTML5 `drop` (`File`s) feeds it, in the browser and in the desktop shell
+ * alike: the shell's native drag-drop handler is off (`dragDropEnabled`), so a file from
+ * Finder or Explorer reaches the page as any browser delivers it.
  */
 
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
-import type { FileDragEvent } from '@/platform';
 import type { UiLanguage } from '@/settings/language';
 import { START_SCREEN_MESSAGES } from './screen.messages';
 
@@ -41,12 +40,6 @@ export function droppedKind(name: string, type = ''): DropKind | undefined {
   if (lower.endsWith('.json') || type === 'application/json') return 'worksheet';
   if (/\.(docx?|pdf|png|jpe?g|heic|heif)$/.test(lower) || PAPER_TYPES.has(type)) return 'paper';
   return undefined;
-}
-
-/** The last segment of a native path, on either separator. */
-export function fileNameOf(path: string): string {
-  const parts = path.split(/[\\/]/);
-  return parts[parts.length - 1] || path;
 }
 
 /**
@@ -120,21 +113,3 @@ export function importSummary(counts: ImportCounts, lang: UiLanguage = uiLanguag
 
 /** What the overlay shows: nothing, the hint, or the rejection. */
 export type DropOverlay = 'hint' | 'rejected' | undefined;
-
-/**
- * The overlay a native drag event leaves up. `enter` carries the paths, so an unusable
- * drag says so before it lands; `over` keeps what `enter` decided.
- */
-export function overlayFor(event: FileDragEvent, current: DropOverlay): DropOverlay {
-  switch (event.type) {
-    case 'enter':
-      return planDrop(event.paths, (path) => droppedKind(fileNameOf(path))).kind === 'reject'
-        ? 'rejected'
-        : 'hint';
-    case 'over':
-      return current ?? 'hint';
-    case 'leave':
-    case 'drop':
-      return undefined;
-  }
-}

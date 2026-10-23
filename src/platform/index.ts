@@ -445,15 +445,15 @@ export type FileDragEvent =
   | { type: 'leave' };
 
 /**
- * Listen for files dragged onto the window from Finder/Explorer. Returns the unlisten,
- * which never rejects (`unlistenSafely`).
+ * Listen for the shell's native file-drag events (Finder/Explorer onto the window). Returns
+ * the unlisten, which never rejects (`unlistenSafely`).
  *
- * Desktop only: with `dragDropEnabled` on, the webview never sees HTML5 file drops;
- * they arrive as Tauri's `DragDrop` events instead. The fs plugin adds each dropped path
- * to its runtime scope before the event reaches the page — the same route as a path
- * picked in the open sheet — so `readDroppedFile` needs no wider fs grant. A no-op on
- * the web, where the page's own `drop` handler sees the files. These are
- * `onDragDropEvent`'s four events, heard one by one: its unlisten drops their promises.
+ * **Silent since the window's `dragDropEnabled` went off** (k-0182, `tauri.conf.json`): the
+ * shell then emits no `DragDrop` events, and a dropped file reaches the page as an
+ * ordinary HTML5 `drop`, which the start screen, the feedback dialog and the import review
+ * all handle themselves. Only the feedback dialog still subscribes, to nothing; remove
+ * both together. A no-op on the web. These are `onDragDropEvent`'s four events, heard one
+ * by one: its unlisten drops their promises.
  */
 export async function listenForFileDrops(
   handler: (event: FileDragEvent) => void,

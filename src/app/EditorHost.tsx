@@ -10,6 +10,7 @@ import { useBankReturn, useKeptTarget } from '@/components/bank/page/bankReturn'
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { isDesktop } from '@/platform';
+import { guardStrayFileDrops } from '@/platform/fileDropGuard';
 import { NewerDocumentError, stringifyWorksheet, worksheetStore, type WorksheetStore } from '@/storage';
 import { setSyncPause, whileSyncPaused } from '@/sync/syncPause';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -154,6 +155,10 @@ export function EditorHost() {
   useEffect(() => {
     editorOpen.current = chosen;
   }, [chosen]);
+
+  // A file dropped where nothing takes it must not navigate the window to the file; the
+  // desktop shell no longer swallows it (`platform/fileDropGuard.ts`).
+  useEffect(() => guardStrayFileDrops(), []);
 
   // Library folder sync: desktop only, and only once a folder is chosen (`librarySync.ts`).
   useEffect(() => {

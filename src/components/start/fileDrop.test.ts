@@ -1,17 +1,11 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  droppedKind,
-  fileNameOf,
-  importSummary,
-  overlayFor,
-  planDrop,
-  type ImportCounts,
-} from './fileDrop';
+import { droppedKind, importSummary, planDrop, type ImportCounts } from './fileDrop';
 import { entryFailure, worksheetEntry } from '@/storage/backup';
 
-const byPath = (p: string) => droppedKind(fileNameOf(p));
+/** `planDrop` is generic over what a drop holds; these tests hand it path strings. */
+const byPath = (p: string) => droppedKind(p.split(/[\\/]/).pop() ?? p);
 
 describe('droppedKind', () => {
   it('takes .json and .worksheet.json as worksheets, .zip as a backup', () => {
@@ -46,14 +40,6 @@ describe('droppedKind', () => {
   it('trusts the browser MIME type when the name has no extension', () => {
     expect(droppedKind('download', 'application/json')).toBe('worksheet');
     expect(droppedKind('download', 'application/x-zip-compressed')).toBe('backup');
-  });
-});
-
-describe('fileNameOf', () => {
-  it('reads both separators', () => {
-    expect(fileNameOf('/Users/t/Documents/Econ Worksheets/Unit 3.json')).toBe('Unit 3.json');
-    expect(fileNameOf('C:\\Users\\t\\Desktop\\Unit 3.worksheet.json')).toBe('Unit 3.worksheet.json');
-    expect(fileNameOf('bare.json')).toBe('bare.json');
   });
 });
 
@@ -113,22 +99,6 @@ describe('importSummary', () => {
   it('capitalises whatever comes first', () => {
     expect(importSummary({ ...none, skipped: 2 })).toBe('Skipped 2 already here');
     expect(importSummary(none)).toBe('Nothing to import.');
-  });
-});
-
-describe('overlayFor (desktop native drag)', () => {
-  it('shows the hint for usable files and the rejection for anything else, from enter', () => {
-    expect(overlayFor({ type: 'enter', paths: ['/a/1.json'] }, undefined)).toBe('hint');
-    expect(overlayFor({ type: 'enter', paths: ['/a/p.docx'] }, undefined)).toBe('hint');
-    expect(overlayFor({ type: 'enter', paths: ['/a/p.png'] }, undefined)).toBe('hint');
-    expect(overlayFor({ type: 'enter', paths: ['/a/p.gif'] }, undefined)).toBe('rejected');
-  });
-
-  it('keeps the decision while hovering and clears on leave or drop', () => {
-    expect(overlayFor({ type: 'over' }, 'rejected')).toBe('rejected');
-    expect(overlayFor({ type: 'over' }, undefined)).toBe('hint');
-    expect(overlayFor({ type: 'leave' }, 'hint')).toBeUndefined();
-    expect(overlayFor({ type: 'drop', paths: ['/a/1.json'] }, 'hint')).toBeUndefined();
   });
 });
 

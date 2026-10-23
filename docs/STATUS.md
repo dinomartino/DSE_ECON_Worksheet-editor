@@ -7,6 +7,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
+- **Desktop drags, 2026-10-23 (k-0182, merged on develop, not released):** in the Tauri app the outline, page-grip and thumbnail drags did nothing (↑/↓ worked) because the window's `dragDropEnabled` was on: `tauri-runtime-wry` answers every native drag, so wry's macOS view and WebView2 never gave the page `dragover`/`drop`. Now off in `src-tauri/tauri.conf.json` (guard: `src/test/desktopDragDrop.test.ts`); a dropped file is the page's own `drop` (start screen, feedback, import review) and `src/platform/fileDropGuard.ts` stops a stray file navigating the webview. Real-mouse checks in Chrome, dev and the production export: `scripts/drag-verify.mjs`. **Not tried in the Tauri app or on Windows** (checklist: `test-fixtures/manual/README.md`). `FeedbackDialog` still subscribes to the native events, to nothing (efix's file): remove with `listenForFileDrops`. Dragging a thumbnail of a page that no manual break opens merges its questions into the page before (as in Chrome before; untouched).
 - **GitHub #4, 2026-10-23 (merged on develop, issue not answered):** nothing could follow the last question of a page ended by a break: the outline's ↑/↓ (`moveQuestion`) reordered `questions` only, so the break filed under that question travelled with it; outline rows only took drops *before*. Now `moveQuestion` moves through the flow and rows drop on the pointer's half (`dropEdge`). Test: `store/reorderAcrossPageBreak.test.ts`. Chrome-checked (↑, drags, `.docx`); not tried on iPad touch or Tauri.
 - **Long unbroken text wraps, 2026-10-22 (develop):** `.paper { overflow-wrap: break-word }` in `globals.css`; the page (and thumbnails, which render `.paper`) let a no-space string run past the edge since long before `statementAlign` (not caused by it). `.docx` untouched. Guard: `src/test/paperWrap.test.ts` (CSS only; layout checked in Chrome).
 - **GitHub #3, 2026-10-22 (branch `fix/description-justify`, not merged/pushed):** the (1)(2)(3) statements of a combination MC justify like options: `McqQuestion.statementAlign`, the format bar's Justify on a statement (`mcqStatement` is align-only), IR/docx/clipboard via the node's `format.align`. Test: `registry/mcqStatementAlign.test.ts`. Chrome-checked (EN+中); not tried in Word or Tauri. Issue not answered.
@@ -69,13 +70,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   Windows code passes CI but never ran on a real PC or provider.
 - Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
-## Last verified (2026-10-19, develop after the five merges)
+## Last verified (2026-10-23, develop with the desktop-drag fix)
 
-- `npm test` 5770, build + bundle check green, samples 27/27 with 0 keep flags, typecheck green, lint at baseline (40); `cover-verify` green; `lq-verify` fails
-  only the pitch check, as base does on Linux (no CJK font). On Linux the harnesses need Chrome at
-  `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
+- `npm test` 5805, build + bundle check, typecheck green, lint at baseline (40); `drag-verify` green on dev and the production export. Last run 2026-10-19: samples 27/27 with 0 keep flags, `cover-verify` green, `lq-verify` fails only the pitch check on Linux (no CJK font). Linux harnesses need Chrome at `/opt/google/chrome/chrome`.
 
 ## Log
+- **2026-10-23** — desktop drags (k-0182): the native drag-drop handler is off, so outline, page and thumbnail drags work in the app; file drops are the page's own `drop`; merged on develop.
 - **2026-10-23** — hand-testing documents in `test-fixtures/manual/` (GitHub #4 repro, many breaks, mixed for the anonymiser); `scripts/emit-manual-fixtures.test.ts` writes them, `src/test/manualFixtures.test.ts` opens them.
 - **2026-10-23** — GitHub #4: questions can follow the last one on a page (outline ↑/↓ and row drops); merged on develop.
-- **2026-10-19** — the first 題型 is made on the 題型 map itself (user's ask).

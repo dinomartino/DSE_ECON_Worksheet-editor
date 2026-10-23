@@ -13,6 +13,12 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Fixed
+- **Dragging works in the desktop app.** Dragging a question in the Content list, dragging a
+  question on the page, and dragging a page thumbnail did nothing in the desktop app (the Move up
+  and Move down buttons worked, and in a browser they always did). All three work now. Dropping a
+  worksheet, a backup, or a Word, PDF or picture file on the start screen works as before, and a
+  file dropped anywhere else now does nothing, instead of replacing the app with that file.
+  <!-- zh: **桌面版可以拖曳了。** 在桌面版中，在「內容」列表拖曳題目、在頁面上拖曳題目，以及拖曳頁面縮圖，以往都沒有反應（「上移」及「下移」按鈕則正常，在瀏覽器中亦一直正常），現在三種拖曳都可以使用。把工作紙、備份檔，或 Word、PDF、圖片檔拖到開始畫面的做法不變；拖到其他地方的檔案現在不會有任何動作，不會再取代整個程式畫面而開啟。 -->
 - **Put questions after the last question on a page.** When a page ended with a New page,
   Move up and Move down in the Content list carried that New page along with the question
   before it. So nothing could go after the last question on the page, and moving the next

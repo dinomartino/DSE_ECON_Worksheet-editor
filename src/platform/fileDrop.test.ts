@@ -122,10 +122,12 @@ describe('listenForFileDrops', () => {
     fake.unlistenFailures = Infinity;
     const unhandled = await unhandledDuring(async () => {
       (await listenForFileDrops(() => undefined))();
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // The whole retry chain (10 + 20 + 40 + 80 + 160 ms of waiting), however late a busy
+      // machine runs it. A fixed wait ended the test with retries still pending, and they
+      // then counted into the next test's unlisten calls.
+      await vi.waitFor(() => expect([...fake.unlistenCalls.values()]).toEqual([6, 6, 6, 6]), { timeout: 5000 });
     });
     expect(unhandled).toEqual([]);
-    expect([...fake.unlistenCalls.values()]).toEqual([6, 6, 6, 6]);
   });
 });
 

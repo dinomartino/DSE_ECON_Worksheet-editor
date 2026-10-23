@@ -31,11 +31,11 @@ import { pickSlot, type SlotBox, type SlotGeometry } from './dropSlot';
  * undo/redo stand down until then (`isBankDragActive`): the page is showing a document
  * the store does not hold.
  *
- * Pointer events, captured once the press becomes a drag (as `useDocumentDrag`): the
- * desktop webview never delivers HTML5 `dragover`. The pointer's position lives in the
- * session below and is read once per frame; this store changes only when the drag
- * starts, ends, its question is read, or the slot changes, so the page re-paginates per
- * slot, never per pointer frame.
+ * Pointer events, captured once the press becomes a drag (as `useDocumentDrag`), not HTML5
+ * drag-and-drop: the ghost question is drawn into the page itself. The pointer's position
+ * lives in the session below and is read once per frame; this store changes only when the
+ * drag starts, ends, its question is read, or the slot changes, so the page re-paginates
+ * per slot, never per pointer frame.
  */
 
 export interface BankDragState {

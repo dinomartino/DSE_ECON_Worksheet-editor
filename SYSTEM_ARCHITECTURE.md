@@ -2308,14 +2308,15 @@ toolbar mark. It is chrome, never IR: nothing reaches the `.docx`, clipboard or 
   documents (out of any folder). Deleting a folder with documents asks, then returns them to root; an empty one
   goes at once. Duplicating keeps the folder; a document started while a folder is open
   is filed there. The open folder is a per-viewer `localStorage` key like the view.
-- **In-page drags use pointer events, never HTML5 drag-and-drop.** Tauri's
-  `dragDropEnabled` (on by default, and needed for file drops) makes the desktop webview
-  swallow `dragover`/`drop`, so a `draggable` source works in Chrome and does nothing in
-  the app. The document→folder drag (`start/dashboardDrag.ts`, `start/useDocumentDrag.tsx`)
-  starts after 5px of travel so a click still opens, captures the pointer only then (from
-  the press, the release would retarget the click), finds the target by
-  `elementFromPoint` → `[data-folder-drop]`, and calls `drop` once on release; Escape,
-  blur or a release elsewhere cancel. Presses on ⋯ and inputs never start one.
+- **The document→folder drag uses pointer events; the editor's drags are HTML5.** The shell's
+  native drag-drop handler is off (`dragDropEnabled`, § `dragDropEnabled` is off), so the
+  webview delivers `dragover`/`drop` to the page as a browser does. This drag
+  (`start/dashboardDrag.ts`, `start/useDocumentDrag.tsx`) was written as pointer events while
+  the handler was on and swallowed every HTML5 drag, and keeps them: it starts after 5px of
+  travel so a click still opens, captures the pointer only then (from the press, the release
+  would retarget the click), finds the target by `elementFromPoint` → `[data-folder-drop]`, and
+  calls `drop` once on release; Escape, blur or a release elsewhere cancel. Presses on ⋯ and
+  inputs never start one.
 - **A thumbnail is derived, never stored** (`start/thumbnail.ts`). It reads the IR through
   the clipboard backend plus a small cover emitter, in a shadow root, scaled from true
   page size; loaded lazily (IntersectionObserver), two at a time, cached in memory by
@@ -3575,27 +3576,29 @@ release body and English What's new read exactly as the English alone would.
 **The start screen renders only after hydration** (`EditorHost`): it reads the platform
 and `localStorage` while rendering, which the web-built prerender cannot match.
 
-**`dragDropEnabled` stays on (the default).** Wry then answers every native drag itself
-(`tauri-runtime-wry` returns `true` from its handler), so WebKit/WebView2 deliver no
-HTML5 drag events — neither in-page drags nor files from Finder/Explorer, which arrive
-only as Tauri's `DragDrop` event. In-page drags therefore use pointer events (§The file
-dashboard). Turning it off would lose the native event (real paths, the fs scope grant
-below) and put file drops back on HTML5, to be re-verified on WebKit and WebView2.
+**`dragDropEnabled` is off** (`src-tauri/tauri.conf.json`, k-0182; `src/test/desktopDragDrop.test.ts`
+keeps it off). On, which is Tauri's default, `tauri-runtime-wry` answers every native drag itself
+(its handler returns `true` for files and in-page drags alike), and wry's macOS web view then never
+passes the drag on to WebKit (`wkwebview/drag_drop.rs`: `false` means "invoke the OS default"), nor
+does WebView2 on Windows. No `dragenter`, `dragover` or `drop` reached the page, so the Content
+outline, the grip on the page and the page thumbnails did nothing in the app (seen in 0.8.4 and in
+`npm run desktop:dev`) while working in a browser. Off, wry's handler is `|_| false`, WebKit and WebView2 behave as in a
+browser, and a file from Finder or Explorer arrives as an ordinary HTML5 `drop` with `File`s. What
+it costs: the shell's native event, with real paths and the fs-scope grant it carried (nothing needed
+either), and a stray file now navigates the webview to it unless the page cancels the drop.
+`platform/fileDropGuard.ts` does, once, on `window` (`EditorHost`): a file nobody took is cancelled
+and shown as not allowed; a drag a component already took, and any drag without files, are left alone.
 
-**File drops on desktop** (`listenForFileDrops` in `platform/index.ts`) are subscribed
-only while the start screen is mounted — the editor handles no file drop on either
-platform, so the desktop editor ignores one. `enter`/`over`
-show the same overlay as the web (`enter` has the paths, so an unusable drag says so
-before it lands), `drop` builds the same `Dropped` list the web `drop` does and goes
-through one `handleDrop` → `start/fileDrop.ts:planDrop`. **No fs grant or Rust command
-was added:** `tauri-plugin-fs` adds every dropped path to its runtime scope on
-`WindowEvent::DragDrop` (as the dialog plugin does for a picked path), and the capability
-already allows `read_file`/`stat` commands, so `readDroppedFile` reads it; it refuses a
-non-file or anything over 20 MB unread.
-The screen subscribes through `subscribeToFileDrops`, whose cleanup also stops a listen
-still in flight. Every unlisten goes through `unlistenSafely`: Tauri registers a listener's
-page half by an eval that can land after `listen` resolves, and an unlisten before then
-rejects and leaves it live, so it retries briefly and never rejects.
+**File drops on desktop** are the page's own `drop` event, as on the web. The start screen takes a
+`.json`, `.zip`, Word, PDF or picture file anywhere on it (`handleDrop` →
+`start/fileDrop.ts:planDrop`, with the web's overlay), the feedback dialog takes a screenshot, and
+the import review takes its own. The editor takes none and ignores one, as on the web.
+`listenForFileDrops`, `subscribeToFileDrops` and `readDroppedFile` in `platform/index.ts` are what the
+shell's native events fed; the feedback dialog still subscribes, to events that no longer come, and
+goes with them. The test above fails on any other subscriber. Every Tauri unlisten still goes through
+`unlistenSafely` (also the library watchers'): a listener's page half registers by an eval that can land
+after `listen` resolves, and an unlisten before then rejects and leaves it live, so it retries briefly
+and never rejects.
 
 **Printing.** Export → PDF writes the file through the app's one command,
 `print_to_pdf(path, widthPt, heightPt, landscape, pages)` (`src-tauri/src/pdf/`, declared
