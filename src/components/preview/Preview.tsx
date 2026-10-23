@@ -7770,6 +7770,7 @@ export function Preview({
       */}
       <div
         id={measureOnly ? undefined : "print-root"}
+        data-sheet-stack
         ref={sheetsRef}
         className="flex flex-col items-center gap-6"
         style={{

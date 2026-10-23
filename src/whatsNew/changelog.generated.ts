@@ -14,6 +14,15 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Send us an anonymised copy of your worksheet with a bug report.** In Send feedback,
+  Attach an anonymised copy makes a copy on your computer in which every word, number and
+  picture is replaced by random ones of the same length and size, so we can test the same
+  layout without seeing your content. You check it page by page before anything is saved;
+  Save this copy keeps exactly what you saw, as \`report-<date>.worksheet.json\`, and the
+  report tells you to drag that file into the GitHub issue or email.
+  <!-- zh: **回報問題時可附上工作紙的匿名副本。** 在「意見回饋」按「附上匿名副本」，會在你的電腦上製作一份副本，所有文字、數字和圖片都換成長度和尺寸相同的隨機內容，讓我們可以用相同版面測試，而看不到你的內容。儲存前你可以逐頁檢查；按「儲存此副本」會原樣儲存你看到的內容（\`report-<日期>.worksheet.json\`），報告會提示你把檔案拖放到 GitHub 問題記錄或電郵內。 -->
+
 ### Fixed
 - **Put questions after the last question on a page.** When a page ended with a New page,
   Move up and Move down in the Content list carried that New page along with the question

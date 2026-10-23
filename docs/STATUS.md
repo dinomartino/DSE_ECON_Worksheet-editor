@@ -7,9 +7,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Next session starts here
 
+- **Anonymised copy in Send feedback, 2026-10-23 (k-0180, merged on develop):** Attach an anonymised copy scrambles the open document on the device (`src/feedback/anonymise.ts`, deny by default: only `KEPT_KEYS` strings survive; pictures → noise PNGs of the same pixel size), previews it page by page (`AnonymisedCopyPreview.tsx`), saves exactly that text as `report-<date>.worksheet.json`; the issue body names the file to drag in. Tests `src/feedback/anonymise.test.ts`; Chrome harness `node scripts/anon-verify.mjs` (8 docs incl. the gitignored 2021 paper × EN/EN+中, all pass: same sheets in editor, preview and saved file, same `.docx`). Not tried in Tauri (Show file → `revealFile`) or on iPad touch.
 - **GitHub #4, 2026-10-23 (merged on develop, issue not answered):** nothing could follow the last question of a page ended by a break: the outline's ↑/↓ (`moveQuestion`) reordered `questions` only, so the break filed under that question travelled with it; outline rows only took drops *before*. Now `moveQuestion` moves through the flow and rows drop on the pointer's half (`dropEdge`). Test: `store/reorderAcrossPageBreak.test.ts`. Chrome-checked (↑, drags, `.docx`); not tried on iPad touch or Tauri.
 - **Long unbroken text wraps, 2026-10-22 (develop):** `.paper { overflow-wrap: break-word }` in `globals.css`; the page (and thumbnails, which render `.paper`) let a no-space string run past the edge since long before `statementAlign` (not caused by it). `.docx` untouched. Guard: `src/test/paperWrap.test.ts` (CSS only; layout checked in Chrome).
-- **GitHub #3, 2026-10-22 (branch `fix/description-justify`, not merged/pushed):** the (1)(2)(3) statements of a combination MC justify like options: `McqQuestion.statementAlign`, the format bar's Justify on a statement (`mcqStatement` is align-only), IR/docx/clipboard via the node's `format.align`. Test: `registry/mcqStatementAlign.test.ts`. Chrome-checked (EN+中); not tried in Word or Tauri. Issue not answered.
 - **2026-10-19 (Unreleased, merged on develop):** `.docx` has no keep flags
   (no black ¶ squares, user's call) — hard page breaks where the preview breaks (`pageBreaks.ts`,
   `measurePageStarts.tsx`; samples now run in headless Chrome); B7 examiner marks grid on the
@@ -76,5 +76,5 @@ off the bottom.** It is the first thing a fresh session reads — then
   `/opt/google/chrome/chrome` (Playwright's `channel: 'chrome'`).
 
 ## Log
+- **2026-10-23** — anonymised copy for bug reports (k-0180): scramble, preview, save; merged on develop.
 - **2026-10-23** — GitHub #4: questions can follow the last one on a page (outline ↑/↓ and row drops); merged on develop.
-- **2026-10-19** — the first 題型 is made on the 題型 map itself (user's ask).

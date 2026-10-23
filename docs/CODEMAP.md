@@ -383,6 +383,7 @@ Invariants:
 - `src/components/editor/DiagramTemplatePicker.tsx:DiagramTemplateCards` · `:DiagramTemplatePopover` — the grouped, searchable template grid (insert and re-base)
 - `src/components/editor/DiagramAreaControls.tsx:ShadeMenu` · `:AreaInspector` · `:ShiftCurveControls` — the canvas's area and shift controls
 - `src/components/feedback/FeedbackDialog.tsx:FeedbackDialog` (⋯ menu, start screen) · `src/feedback/feedback.ts:buildReport` · `:githubIssueUrl` · `:mailtoUrl` — prefilled issue / mail / clipboard; no server, no token, never the document. An optional screenshot rides the clipboard as PNG (`src/feedback/screenshot.ts:clipboardPlan`), pasted by the teacher
+- `src/feedback/anonymise.ts:anonymiseWorksheet` — the anonymised copy (k-0180): on the device, every string scrambled unless its key is in `:KEPT_KEYS` (ids, enums, colours, fonts), letters by width class (`:scrambleText`), pictures as noise PNGs of the same pixel size (`:noiseImage`), `report-<date>`; `src/feedback/anonymisedCopy.ts:makeAnonymisedCopy` · `:saveAnonymisedCopy` serialise once and save that text; `src/components/feedback/AnonymisedCopyPreview.tsx:AnonymisedCopyPreview` shows it (measure-only `Preview` under `.paper-view`, mounted after the dialog's entrance). Guards: `src/feedback/anonymise.test.ts` (no leak, same shape/IR/.docx, type census); `scripts/anon-verify.mjs` (Chrome: same sheets in editor, preview and saved file)
 
 Invariants:
 - The sidebar shows one thing, and never mirrors printed text — §The sidebar is an inspector.
