@@ -71,12 +71,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   Windows code passes CI but never ran on a real PC or provider.
 - Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
-## Last verified (2026-10-23, `feature/option-layout-all` before its merge)
+## Last verified (2026-10-23, `develop` with option layout and the anonymised copy)
 
-- `npm test` 5898, build + bundle check, typecheck green, lint at baseline (40); `npm run samples` 32/32 (student files: no answers, 0 keep flags); `scripts/option-layout-verify.mjs` 40/40 in EN + 中; `drag-verify` green on the last merge. `cover-verify` green and `lq-verify` failing only the pitch check on Linux (no CJK font) were last run 2026-10-19. Linux harnesses need Chrome at `/opt/google/chrome/chrome`.
+- `npm test` 5965, build + bundle check, typecheck green, lint at baseline (40); `npm run samples` 32/32 (student files: no answers, 0 keep flags); `scripts/option-layout-verify.mjs` 40/40 (EN + 中) and `drag-verify` 14/14 in Chrome. `cover-verify` green and `lq-verify` failing only the pitch check on Linux (no CJK font) were last run 2026-10-19. Linux harnesses need Chrome at `/opt/google/chrome/chrome`.
 
 ## Log
-- **2026-10-23** — anonymised copy for bug reports (k-0180): scramble, preview, save; merged on develop.
-- **2026-10-23** — desktop drags (k-0182): the native drag-drop handler is off, so outline, page and thumbnail drags work in the app; file drops are the page's own `drop`; merged on develop.
-- **2026-10-23** — GitHub #4: questions can follow the last one on a page (outline ↑/↓ and row drops); merged on develop.
-- **2026-10-23** — option layout for all MC questions (k-0178 #1, from the formatting-settings proposal the user approved); merged on develop.
+- **2026-10-23** — merged on develop: option layout for all MC questions (k-0178 #1), the anonymised copy for bug reports (k-0180), desktop drags (k-0182: the native drag-drop handler is off, file drops are the page's own `drop`) and GitHub #4 (questions can follow the last one on a page).
