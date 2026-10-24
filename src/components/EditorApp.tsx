@@ -12,8 +12,7 @@ import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { NewerVersionNotice } from '@/components/editor/NewerVersionNotice';
 import { AiHost } from '@/components/ai/AiHost';
-import { IconButton } from '@/components/ui';
-import { ChevronRightIcon, CloseIcon } from '@/components/ui/icons';
+import { ChevronRightIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
 import { FlowCanvas } from '@/components/editor/FlowCanvas';
@@ -32,9 +31,9 @@ import { useBankSession } from '@/components/bank/bankSession';
 import { BankDragLayer, isBankDragActive, useBankDrag } from '@/components/bank/bankDrag';
 import { holdsTextUndo, isUndoRedoKey, undoChord } from '@/components/ui/undoChord';
 import { provisionalWorksheet } from '@/components/bank/dropSlot';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
 import { PAGE_RAIL_MESSAGES } from '@/components/editor/shell.messages';
-import { EDITOR_APP_MESSAGES } from './EditorApp.messages';
+import { EditHint } from './EditHint';
 
 /** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
 const openBank = () => useBankSession.getState().openBank();
@@ -699,33 +698,3 @@ function useEditHint(hidden: boolean) {
   return { shown: !dismissed && !hidden, dismiss: () => setDismissed(true) };
 }
 
-/**
- * Width kept clear at the overlay's right for the zoom control (`Preview`), which floats
- * there; `bottom-[13px]` puts the pill on its centre line. The pill centres while it
- * fits, else sits left of the zoom.
- */
-const ZOOM_LANE = 'minmax(136px,1fr)';
-
-function EditHint({ onDismiss }: { onDismiss: () => void }) {
-  const m = useMessages(EDITOR_APP_MESSAGES);
-  const bilingual = useUiLanguage() === 'en';
-  return (
-    <div
-      data-print-hide
-      className="pointer-events-none absolute inset-x-0 bottom-[13px] z-30 grid items-center px-4"
-      style={{ gridTemplateColumns: `minmax(0,1fr) auto ${ZOOM_LANE}` }}
-    >
-      <div className="pointer-events-auto col-start-2 flex min-w-0 animate-slide-up-in items-center gap-2 rounded-lg border border-line bg-surface-raised py-1.5 pl-3.5 pr-1.5 text-[12px] text-ink-muted shadow-md">
-        {/* One phrase per language, each unbreakable: at most two lines even beside an
-            open page rail at 1024 wide (a 228px pill), one line where there is room. */}
-        <span className="flex flex-wrap gap-x-2">
-          <span className="whitespace-nowrap">{m.hint}</span>
-          {bilingual && <span className="whitespace-nowrap text-ink-subtle">按頁面文字即可編輯</span>}
-        </span>
-        <IconButton label={m.dismissHint} onClick={onDismiss}>
-          <CloseIcon size={14} />
-        </IconButton>
-      </div>
-    </div>
-  );
-}

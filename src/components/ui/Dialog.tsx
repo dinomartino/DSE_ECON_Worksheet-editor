@@ -299,11 +299,14 @@ function ScrollPane({ className, children }: { className: string; children: Reac
 }
 
 /**
- * Vertical tab list for a dialog's sections.
+ * Tab list for a dialog's sections.
  *
  * Vertical rather than along the top because the labels are words ("Header & footer")
  * rather than icons, and a horizontal strip of five word-tabs either wraps or truncates
- * at this width.
+ * at this width. Below `34rem` of dialog (an iPhone, or an iPad in a third of Split View)
+ * a 184px rail would leave the settings a column of two-word lines, so there the tabs run
+ * as one strip across the top (labels only, scrolling sideways if they must) and the
+ * settings take the full width. A container query on the dialog, not the window.
  */
 export function DialogTabs<T extends string>({
   tabs,
@@ -317,54 +320,62 @@ export function DialogTabs<T extends string>({
   children: ReactNode;
 }) {
   const m = useMessages(UI_MESSAGES);
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+  // In the strip the open tab can start out of view (Settings opened at a later section).
+  useEffect(() => {
+    activeRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [value]);
   return (
-    <div className="flex min-h-0 flex-1">
-      {/* `self-stretch` rather than height-by-content: with a fixed-height dialog the
-          rail must run the full side, or a short tab leaves its background floating
-          above bare surface and the nav stops reading as a rail. */}
-      <nav
-        aria-label={m.settingsSections}
-        className="w-[184px] shrink-0 self-stretch space-y-0.5 overflow-y-auto border-r border-line bg-surface-sunken p-2"
-      >
-        {/* An index, not a strip of icon chips: text rows with the accent bar naming
-            the open section — the same affordance as the start screen's rows. Icons
-            are accepted for compatibility but not drawn; four word-labels do not need
-            picture support. */}
-        {tabs.map((tab) => {
-          const active = tab.id === value;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => onChange(tab.id)}
-              className={`relative flex w-full cursor-pointer items-center rounded-md py-2 pl-3.5 pr-2.5 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                active ? 'text-ink' : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
-              }`}
-            >
-              <span
-                aria-hidden
-                className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent transition-[opacity,scale] duration-200 ease-out-soft ${
-                  active ? 'scale-y-100 opacity-100' : 'scale-y-50 opacity-0'
+    <div data-dialog-tabs className="@container flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col @min-[34rem]:flex-row">
+        {/* `self-stretch` rather than height-by-content: with a fixed-height dialog the
+            rail must run the full side, or a short tab leaves its background floating
+            above bare surface and the nav stops reading as a rail. */}
+        <nav
+          aria-label={m.settingsSections}
+          className="flex shrink-0 gap-0.5 overflow-x-auto border-b border-line bg-surface-sunken px-2 py-1 @min-[34rem]:block @min-[34rem]:w-[184px] @min-[34rem]:space-y-0.5 @min-[34rem]:self-stretch @min-[34rem]:overflow-x-visible @min-[34rem]:overflow-y-auto @min-[34rem]:border-b-0 @min-[34rem]:border-r @min-[34rem]:p-2"
+        >
+          {/* An index, not a strip of icon chips: text rows with the accent bar naming
+              the open section — the same affordance as the start screen's rows. Icons
+              are accepted for compatibility but not drawn; four word-labels do not need
+              picture support. In the top strip the bar runs under the label. */}
+          {tabs.map((tab) => {
+            const active = tab.id === value;
+            return (
+              <button
+                key={tab.id}
+                ref={active ? activeRef : undefined}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onChange(tab.id)}
+                className={`relative flex shrink-0 cursor-pointer items-center rounded-md px-2.5 py-2 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent @min-[34rem]:w-full @min-[34rem]:pl-3.5 ${
+                  active ? 'text-ink' : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
                 }`}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium">{tab.label}</span>
-                {tab.hint && (
-                  <span className="block truncate text-[10px] text-ink-subtle">{tab.hint}</span>
-                )}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
-      <ScrollPane className="min-w-0 p-5">
-        {/* Keyed by tab so the new pane fades in rather than snapping. */}
-        <div key={value} className="animate-fade-in">
-          {children}
-        </div>
-      </ScrollPane>
+              >
+                <span
+                  aria-hidden
+                  className={`absolute inset-x-2.5 bottom-0 h-0.5 rounded-full bg-accent transition-[opacity,scale] duration-200 ease-out-soft @min-[34rem]:inset-x-auto @min-[34rem]:inset-y-1.5 @min-[34rem]:left-0 @min-[34rem]:h-auto @min-[34rem]:w-0.5 ${
+                    active ? 'scale-100 opacity-100' : 'scale-x-50 opacity-0 @min-[34rem]:scale-x-100 @min-[34rem]:scale-y-50'
+                  }`}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block whitespace-nowrap text-[13px] font-medium @min-[34rem]:truncate">{tab.label}</span>
+                  {tab.hint && (
+                    <span className="hidden truncate text-[10px] text-ink-subtle @min-[34rem]:block">{tab.hint}</span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+        <ScrollPane className="min-w-0 p-4 @min-[34rem]:p-5">
+          {/* Keyed by tab so the new pane fades in rather than snapping. */}
+          <div key={value} className="animate-fade-in">
+            {children}
+          </div>
+        </ScrollPane>
+      </div>
     </div>
   );
 }

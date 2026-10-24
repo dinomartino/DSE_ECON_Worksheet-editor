@@ -59,6 +59,12 @@ a version heading is edited afterwards.
   <!-- zh: **開始畫面多了一個低調的「請我喝杯咖啡」連結。** 如果 Econ Studio 幫你省下時間，可以透過開始畫面底部的連結表達謝意。它只是一個普通連結，點擊後才會在瀏覽器開啟，不會載入或追蹤任何東西，編輯時也不會出現。 -->
 
 ### Fixed
+- **The edit hint and the zoom no longer overlap on an iPad, and Document setup fits an iPhone.**
+  On an iPad held upright, the "Double-click text to edit" note now sits just above the zoom
+  buttons instead of on top of them. On an iPhone (or an iPad app in a third of Split View),
+  Document setup and Settings show their tabs in a row along the top, so the settings below use
+  the full width of the screen instead of a narrow column. Nothing changes on a Mac.
+  <!-- zh: **iPad 上的編輯提示不再與縮放按鈕重疊，iPhone 亦可完整顯示「頁面設定」。** 直向使用 iPad 時，「按兩下文字即可編輯」的提示現在位於縮放按鈕上方，不再蓋住它。在 iPhone（或在 iPad 分割畫面佔三分之一時），「頁面設定」及「設定」的分頁改為在頂部排成一行，下方的設定可使用整個畫面寬度，不再擠在窄欄內。Mac 上一切不變。 -->
 - **⌘Z works right after you tick a box.** Ticking a box such as Start on a new page, then
   pressing ⌘Z (Ctrl+Z on Windows), did nothing until you clicked somewhere else. It now takes
   the tick back, and ⌘⇧Z puts it back again, as with any other change.
