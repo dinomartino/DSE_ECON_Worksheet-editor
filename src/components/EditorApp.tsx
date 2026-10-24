@@ -30,7 +30,7 @@ import { holdBankDocument } from '@/library/useBank';
 import { BankReviewBar } from '@/components/bank/BankReviewBar';
 import { useBankSession } from '@/components/bank/bankSession';
 import { BankDragLayer, isBankDragActive, useBankDrag } from '@/components/bank/bankDrag';
-import { isUndoRedoKey, undoChord } from '@/components/ui/undoChord';
+import { holdsTextUndo, isUndoRedoKey, undoChord } from '@/components/ui/undoChord';
 import { provisionalWorksheet } from '@/components/bank/dropSlot';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { PAGE_RAIL_MESSAGES } from '@/components/editor/shell.messages';
@@ -446,15 +446,9 @@ export function EditorApp({
       if (isBankDragActive()) return;
       // While typing, ⌘Z belongs to the text field — it should take back a character,
       // not roll the whole document to its previous commit. Document-level undo
-      // applies only when focus is outside an input (a field on the page aside — below).
-      const active = document.activeElement;
-      if (
-        active instanceof HTMLTextAreaElement ||
-        active instanceof HTMLInputElement ||
-        (active instanceof HTMLElement && active.isContentEditable)
-      ) {
-        return;
-      }
+      // applies only when focus is outside a text field (a field on the page aside — below);
+      // a focused checkbox or radio has no text to take back, so the document's undo runs.
+      if (holdsTextUndo(document.activeElement)) return;
       event.preventDefault();
       if (action === 'redo') redo();
       else undo();

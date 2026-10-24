@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { gestureKey, isUndoRedoKey, undoChord } from './undoChord';
+import { gestureKey, holdsTextUndo, isUndoRedoKey, undoChord } from './undoChord';
 
 const key = (k: string, mods: Partial<Record<'metaKey' | 'ctrlKey' | 'shiftKey', boolean>> = {}) => ({
   key: k,
@@ -59,4 +59,31 @@ describe('a page resize drag owns the keyboard', () => {
       expect(src).toContain("window.addEventListener('keydown', onKeyDown, true)");
     },
   );
+});
+
+describe('where ⌘Z belongs', () => {
+  const input = (type: string) => ({ tagName: 'INPUT', type, isContentEditable: false });
+
+  it('a text field keeps it, to take back a character', () => {
+    for (const type of ['text', 'number', 'search', 'email', 'url', 'tel', 'password']) {
+      expect(holdsTextUndo(input(type)), type).toBe(true);
+    }
+    expect(holdsTextUndo({ tagName: 'TEXTAREA', isContentEditable: false })).toBe(true);
+    expect(holdsTextUndo({ tagName: 'DIV', isContentEditable: true })).toBe(true);
+  });
+
+  // Ticking "Start on a new page" leaves focus on the box; ⌘Z then did nothing at all.
+  it('a box, radio, slider or button leaves it to the document', () => {
+    for (const type of ['checkbox', 'radio', 'range', 'button', 'color', 'file']) {
+      expect(holdsTextUndo(input(type)), type).toBe(false);
+    }
+    expect(holdsTextUndo({ tagName: 'SELECT', isContentEditable: false })).toBe(false);
+    expect(holdsTextUndo({ tagName: 'BUTTON', isContentEditable: false })).toBe(false);
+    expect(holdsTextUndo(null)).toBe(false);
+  });
+
+  it('the editor’s undo keys ask it, not “any input”', () => {
+    const src = readFileSync('src/components/EditorApp.tsx', 'utf8');
+    expect(src).toContain('if (holdsTextUndo(document.activeElement)) return;');
+  });
 });
