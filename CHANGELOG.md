@@ -45,15 +45,6 @@ a version heading is edited afterwards.
   have, so none of them moves, and it is not offered on a Paper 1. The page, the thumbnails, the
   Word file and a copied question all follow, and the start screen's card ends its first page there.
   <!-- zh: **每題由新頁開始。** 在「頁面設定」的「頁面」剔選「每題由新頁開始」，適合每題都想佔一頁的長題目試卷。第一題之後的每一題都會由新頁開始，緊接其上的標題、引言或資料會一併移到新頁（與個別題目的「此題由新頁開始」相同）；第一題，以及緊接「新頁面」的題目維持原位。題目自己的選項（「此題保持在同一頁」、「此題由新頁開始」、「上方空位」）仍然有效。你現有的試卷一律關閉，所以不會有任何移動；Paper 1 不提供此選項。頁面、縮圖、Word 檔及複製出來的題目都一致，開始畫面的卡片亦會在該處結束第一頁。 -->
-- **Start every question on a new page.** In Document setup, on the Page tab, tick Start every
-  question on a new page for a long-question paper whose questions each want a page of their own.
-  Every question after the first then begins a page, and the heading, lead-in or source right above
-  it goes with it, as with a question's own Start on a new page; the first question, and one right
-  under a New page, stay where they are. A question's own boxes (Keep this question on one page,
-  Start on a new page, Space above) still work beside it. It is off in every paper you already
-  have, so none of them moves, and it is not offered on a Paper 1. The page, the thumbnails, the
-  Word file and a copied question all follow, and the start screen's card ends its first page there.
-  <!-- zh: **每題由新頁開始。** 在「頁面設定」的「頁面」剔選「每題由新頁開始」，適合每題都想佔一頁的長題目試卷。第一題之後的每一題都會由新頁開始，緊接其上的標題、引言或資料會一併移到新頁（與個別題目的「此題由新頁開始」相同）；第一題，以及緊接「新頁面」的題目維持原位。題目自己的選項（「此題保持在同一頁」、「此題由新頁開始」、「上方空位」）仍然有效。你現有的試卷一律關閉，所以不會有任何移動；Paper 1 不提供此選項。頁面、縮圖、Word 檔及複製出來的題目都一致，開始畫面的卡片亦會在該處結束第一頁。 -->
 - **Justify the text in a table cell.** Click a cell, or drag across several, and in the Table
   tools bar above the page press T≡ (Justify cell text), beside T⇤ T↔ T⇥. A sentence that wraps
   inside the cell then lines up with both of its edges, so a column of explanations can be
