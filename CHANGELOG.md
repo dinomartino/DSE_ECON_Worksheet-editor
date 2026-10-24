@@ -13,8 +13,6 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
-- **A quiet “Buy me a coffee” link on the start screen.** If Econ Studio saves you time, the links at the bottom of the left column now include a way to say thanks. It is a plain link that opens in your browser only when you click it; nothing is loaded or tracked, and it never appears while you edit.
-  <!-- zh: 開始畫面左下角的連結多了「請我喝杯咖啡」：如果 Econ Studio 幫你省下時間，可以由此表達謝意。它只是一個普通連結，點擊後才會在瀏覽器開啟，不會載入或追蹤任何東西，編輯時也不會出現。 -->
 - **Choose the space between questions on any worksheet.** In Document setup, on the Page tab,
   Between questions now works on every kind of paper, not only a Paper 1 mock: pick 1 to 6 blank
   lines and the gap changes wherever a question stands straight under another of the same kind
@@ -54,6 +52,11 @@ a version heading is edited afterwards.
   the Word file and a copied table all follow. Nothing changes in a worksheet until you press it,
   and Justify text in Document setup still leaves tables as they are.
   <!-- zh: **表格儲存格內的文字可左右對齊。** 按一下儲存格（或拖曳選取多格），在頁面上方「表格工具」列按「T≡」（儲存格文字左右對齊），位於 T⇤ T↔ T⇥ 旁。在儲存格內換行的句子，各行會貼齊儲存格的左右兩邊，一欄解釋文字一按即可左右對齊；只有一短行的儲存格看來與以往相同。頁面、縮圖、Word 檔及複製出來的表格都一致。在你按下之前，工作紙完全不變；「頁面設定」的「文字左右對齊」仍不會改動表格。 -->
+- **A quiet “Buy me a coffee” link on the start screen.** If Econ Studio saves you time, the links
+  at the bottom of the start screen now include a way to say thanks. It is a plain link that opens in
+  your browser only when you click it; nothing is loaded or tracked, and it never appears while you
+  edit.
+  <!-- zh: **開始畫面多了一個低調的「請我喝杯咖啡」連結。** 如果 Econ Studio 幫你省下時間，可以透過開始畫面底部的連結表達謝意。它只是一個普通連結，點擊後才會在瀏覽器開啟，不會載入或追蹤任何東西，編輯時也不會出現。 -->
 
 ### Fixed
 - **⌘Z works right after you tick a box.** Ticking a box such as Start on a new page, then

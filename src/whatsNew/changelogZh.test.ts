@@ -57,4 +57,12 @@ describe('the CHANGELOG’s 繁體中文', () => {
     );
     expect(found).toEqual([]);
   });
+
+  // What's new sets the bold lead apart; a 中文 line without one reads as one run-on paragraph.
+  it('leads with a bold line wherever the English does', () => {
+    const plain = entries
+      .filter(({ text }) => text.zh !== undefined && /^\*\*/.test(text.en) && !/^\*\*/.test(text.zh))
+      .map(({ where }) => `${where}: its <!-- zh: … --> needs a **bold lead** like the English.`);
+    expect(plain).toEqual([]);
+  });
 });
