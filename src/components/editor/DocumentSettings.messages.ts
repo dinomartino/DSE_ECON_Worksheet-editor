@@ -205,6 +205,12 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
     en: 'Blank lines between two questions of the same kind (two MC questions, or two structured questions). Anything else between them keeps the usual spacing. One question can override this with Space above in its own panel, or by dragging its gap on the page.',
     zh: '同類型的兩題（兩條 MC 題，或兩條結構題）之間的空白行數；中間隔了其他內容時維持一般間距。個別題目可在其面板的「上方空位」，或在頁面上拖曳間距來覆寫。',
   },
+  // Under Between questions while the switch below is on: no question then stands straight under
+  // another, so the number changes nothing until the switch is cleared.
+  betweenQuestionsIdle: {
+    en: 'Start every question on a new page is on, so no question sits right under another and this has no effect.',
+    zh: '已開啟「每題由新頁開始」，題目不會緊接上一題，所以此設定暫時不起作用。',
+  },
   startEveryQuestion: { en: 'Start every question on a new page', zh: '每題由新頁開始' },
   startEveryQuestionHint: {
     en: 'Each question begins a page, with the heading, lead-in or source above it. The first question, and one right under a New page, stay where they are. A question can still be kept on one page from its own panel.',

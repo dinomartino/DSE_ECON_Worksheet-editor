@@ -5,7 +5,7 @@ import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import { documentShape } from '@/model/documentShape';
 import type { Question } from '@/model/types';
-import { startsPageStatus, type StartsPageStatus } from '@/render/pageFlow';
+import { startsEveryQuestion, startsPageStatus, type StartsPageStatus } from '@/render/pageFlow';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { PAGE_FLOW_MESSAGES } from './PageFlowFields.messages';
@@ -31,7 +31,9 @@ export function pageFlowPatch(field: keyof PageFlowPatch, on: boolean): PageFlow
  * An MC is always kept whole, and so is every question of a Paper 1, so the second choice is
  * not offered there (the Paper 1 says why; an MC says nothing, as nothing was ever optional).
  * When a tick cannot change the page (the first question, or a New page break straight above)
- * a line under it says why.
+ * a line under it says why. With Setup's "Start every question on a new page" on, a question it
+ * opens a page for says so whether or not its own box is ticked: an empty box beside a question
+ * that does start a page would read as "it does not".
  */
 export function PageFlowFields({
   question,
@@ -43,9 +45,15 @@ export function PageFlowFields({
   const m = useMessages(PAGE_FLOW_MESSAGES);
   const shape = useWorksheetStore((s) => documentShape(s.worksheet));
   const status = useWorksheetStore((s) => startsPageStatus(s.worksheet, question.id));
+  const every = useWorksheetStore((s) => startsEveryQuestion(s.worksheet));
   const typeKeepsWhole = requireQuestionType(question).keepWhole === true;
 
-  const note = question.startOnNewPage === true ? startNote(status, m) : undefined;
+  const note =
+    every && status === 'applies'
+      ? m.startEvery
+      : question.startOnNewPage === true
+        ? startNote(status, m)
+        : undefined;
   return (
     <div className="space-y-2">
       <div className="space-y-1">

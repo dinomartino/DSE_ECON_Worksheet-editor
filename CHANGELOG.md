@@ -44,7 +44,9 @@ a version heading is edited afterwards.
   Start on a new page, Space above) still work beside it. It is off in every paper you already
   have, so none of them moves, and it is not offered on a Paper 1. The page, the thumbnails, the
   Word file and a copied question all follow, and the start screen's card ends its first page there.
-  <!-- zh: **每題由新頁開始。** 在「頁面設定」的「頁面」剔選「每題由新頁開始」，適合每題都想佔一頁的長題目試卷。第一題之後的每一題都會由新頁開始，緊接其上的標題、引言或資料會一併移到新頁（與個別題目的「此題由新頁開始」相同）；第一題，以及緊接「新頁面」的題目維持原位。題目自己的選項（「此題保持在同一頁」、「此題由新頁開始」、「上方空位」）仍然有效。你現有的試卷一律關閉，所以不會有任何移動；Paper 1 不提供此選項。頁面、縮圖、Word 檔及複製出來的題目都一致，開始畫面的卡片亦會在該處結束第一頁。 -->
+  While it is ticked, each question's panel says it already starts a page, and Between questions
+  says it has nothing to space.
+  <!-- zh: **每題由新頁開始。** 在「頁面設定」的「頁面」剔選「每題由新頁開始」，適合每題都想佔一頁的長題目試卷。第一題之後的每一題都會由新頁開始，緊接其上的標題、引言或資料會一併移到新頁（與個別題目的「此題由新頁開始」相同）；第一題，以及緊接「新頁面」的題目維持原位。題目自己的選項（「此題保持在同一頁」、「此題由新頁開始」、「上方空位」）仍然有效。你現有的試卷一律關閉，所以不會有任何移動；Paper 1 不提供此選項。頁面、縮圖、Word 檔及複製出來的題目都一致，開始畫面的卡片亦會在該處結束第一頁。剔選後，每題的面板會說明該題已由新頁開始，「題目之間」亦會說明暫時不起作用。 -->
 - **Justify the text in a table cell.** Click a cell, or drag across several, and in the Table
   tools bar above the page press T≡ (Justify cell text), beside T⇤ T↔ T⇥. A sentence that wraps
   inside the cell then lines up with both of its edges, so a column of explanations can be

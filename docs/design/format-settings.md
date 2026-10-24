@@ -703,7 +703,9 @@ Nothing new in the walker or the paginator: `sheetOpeners(flow, every)` in `src/
 asked, so `sheetStart` (heading travels, first / after-break open nothing), the walker's `startsPage` marks, `PackItem.startsSheet`
 and the `.docx`'s measured page starts all do the work already built for #3. `startsEveryQuestion(worksheet)` is the one test
 (off on a Paper 1), `withStartEveryQuestionOnNewPage` the one edit (off removes the field), `StartEveryQuestionField.tsx` the control;
-`gapAboveStatus` says "starts a page" for Space above under it. A question copied into another paper is unaffected (the switch is the
+`gapAboveStatus` says "starts a page" for Space above under it. A question the switch opens a page for says so under its own
+Start on a new page box, ticked or not (`PageFlowFields`, 2026-10-24: an empty box read as "it does not"), and Between questions
+says it has nothing to space while the switch is on (`BetweenQuestionsField`; every like boundary then opens a sheet). A question copied into another paper is unaffected (the switch is the
 paper's, not the question's).
 
 **Verified.** `startEveryQuestion.test.ts` (opens at every question but the first, off and stored false do nothing, heading / lead-in /

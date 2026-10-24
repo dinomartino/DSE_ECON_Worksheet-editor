@@ -140,6 +140,40 @@ describe('when asking to start a new page changes nothing', () => {
   });
 });
 
+describe('with Setup’s Start every question on a new page on', () => {
+  const note = (markup: string) => /data-testid="start-on-new-page-note"[^>]*>([^<]*)</.exec(markup)?.[1];
+  const every = (items: Array<Question | LayoutElement>) => ({ ...paper('classroom', items), startEveryQuestionOnNewPage: true });
+  const SAYS = 'Document setup starts every question on a new page, so this one does already.';
+
+  // An empty box beside a question that does start a page read as "it does not".
+  it('says the question already starts a page, ticked or not', () => {
+    const b = structured('b');
+    const c = structured('c', { startOnNewPage: true });
+    expect(note(draw(every([structured('a'), b, c]), b))).toBe(SAYS);
+    expect(note(draw(every([structured('a'), b, c]), c))).toBe(SAYS);
+    expect(boxes(draw(every([structured('a'), b]), b))[0]).toEqual(['Start on a new page', false]);
+  });
+
+  it('keeps its own notes where the switch opens nothing: the first question, one under a New page', () => {
+    const a = structured('a');
+    const b = structured('b');
+    expect(note(draw(every([a, structured('x')]), a))).toBeUndefined();
+    expect(note(draw(every([structured('x'), pageBreak, b]), b))).toBeUndefined();
+    const ticked = structured('a', { startOnNewPage: true });
+    expect(note(draw(every([ticked, structured('x')]), ticked))).toBe('This is the first question, so it already opens the paper.');
+  });
+
+  it('says nothing on a Paper 1, which ignores the switch', () => {
+    const b = structured('b');
+    expect(note(draw({ ...paper('paper1', [structured('a'), b]), startEveryQuestionOnNewPage: true }, b))).toBeUndefined();
+  });
+
+  it('reads in 繁體中文', () => {
+    const b = structured('b');
+    expect(note(draw(every([structured('a'), b]), b, 'zh-HK'))).toBe('「頁面設定」已設定每題由新頁開始，這題本來就由新頁開始。');
+  });
+});
+
 describe('in Chinese', () => {
   it('reads in 繁體中文 everywhere', () => {
     const b = structured('b', { startOnNewPage: true });

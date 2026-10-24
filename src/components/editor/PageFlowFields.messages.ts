@@ -13,6 +13,11 @@ export const PAGE_FLOW_MESSAGES = defineMessages({
     en: 'A New page break sits right above, so this question already starts a page.',
     zh: '上方已有「新頁面」，這題本來就由新頁開始。',
   },
+  // The paper-wide switch is on, so the box (ticked or not) is not what starts this page.
+  startEvery: {
+    en: 'Document setup starts every question on a new page, so this one does already.',
+    zh: '「頁面設定」已設定每題由新頁開始，這題本來就由新頁開始。',
+  },
   keepOnOnePage: { en: 'Keep this question on one page', zh: '此題保持在同一頁' },
   keepHint: {
     en: 'If it does not fit what is left of a page, the whole question moves to the next page. One taller than a page is still split.',

@@ -4,6 +4,7 @@ import { SelectField } from '@/components/ui';
 import { Field } from '@/components/ui/Dialog';
 import { useMessages } from '@/i18n/language';
 import { documentShape } from '@/model/documentShape';
+import { startsEveryQuestion } from '@/render/pageFlow';
 import { DEFAULT_GAP_LINES, defaultGapLines } from '@/render/questionGap';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { DOCUMENT_SETTINGS_MESSAGES } from './DocumentSettings.messages';
@@ -21,13 +22,16 @@ const PAPER_GAP_CHOICES = [1, 2, 3, 4, 5, 6];
  * "Default" is stored as absence and keeps tracking the shape's own number — the MCQ paper's
  * measured three, a single line anywhere else, so a saved paper does not move — and a chosen
  * number is the document's own (`Worksheet.examGapLines`). It counts straight under a question
- * of the same kind (§ `boundaryGapLines`), which the hint says.
+ * of the same kind (§ `boundaryGapLines`), which the hint says. While "Start every question on
+ * a new page" is on, every such question opens a sheet and gets no gap, so a line says the
+ * number is idle rather than leaving a choice that quietly does nothing.
  */
 export function BetweenQuestionsField() {
   const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setExamGapLines = useWorksheetStore((s) => s.setExamGapLines);
   const shape = documentShape(worksheet);
+  const idle = startsEveryQuestion(worksheet);
 
   // What "Default" means for this paper: read off its first question (a Paper 1 holds one
   // kind), or the MCQ paper's measured three while it is still empty; a single line elsewhere.
@@ -51,6 +55,11 @@ export function BetweenQuestionsField() {
         ]}
         onChange={(lines) => setExamGapLines(lines === 0 ? undefined : lines)}
       />
+      {idle && (
+        <p className="text-[11px] leading-relaxed text-ink-subtle" data-testid="between-questions-idle">
+          {m.betweenQuestionsIdle}
+        </p>
+      )}
     </Field>
   );
 }

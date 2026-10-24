@@ -93,4 +93,17 @@ describe('Between questions in Setup', () => {
     expect(options(markup).slice(0, 3)).toEqual(['預設：1 行', '1 行', '2 行']);
     expect(options(draw(paper('paper1', true), 'zh-HK'))[0]).toBe('預設：3 行（參考試卷）');
   });
+
+  // Every question then opens a sheet, and what opens a sheet gets no gap: the number is idle.
+  it('says it has no effect while Start every question on a new page is on, but not on a Paper 1', () => {
+    const idle = (markup: string) => /data-testid="between-questions-idle"[^>]*>([^<]*)</.exec(markup)?.[1];
+    expect(idle(draw(paper('classroom', true)))).toBeUndefined();
+    expect(idle(draw(paper('classroom', true, { startEveryQuestionOnNewPage: true })))).toBe(
+      'Start every question on a new page is on, so no question sits right under another and this has no effect.',
+    );
+    expect(idle(draw(paper('lqMock', true, { startEveryQuestionOnNewPage: true }), 'zh-HK'))).toBe(
+      '已開啟「每題由新頁開始」，題目不會緊接上一題，所以此設定暫時不起作用。',
+    );
+    expect(idle(draw(paper('paper1', true, { startEveryQuestionOnNewPage: true })))).toBeUndefined();
+  });
 });
