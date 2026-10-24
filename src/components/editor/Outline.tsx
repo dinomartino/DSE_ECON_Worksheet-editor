@@ -482,7 +482,11 @@ function PageGroupHeader({
 
   const count = group.items.length;
   const label =
-    group.pageNumber === undefined ? m.notPlaced : m.page(group.pageNumber);
+    group.pageNumber === undefined
+      ? m.notPlaced
+      : group.lastPageNumber
+        ? m.pages(group.pageNumber, group.lastPageNumber)
+        : m.page(group.pageNumber);
 
   // Dropping onto the tab lands the item at the head of the page. With no items to
   // aim at, the break itself is the anchor — the same rule the blank sheet follows.
@@ -612,6 +616,13 @@ function dragLabelFor(
 interface PageGroup {
   /** 1-based page number, or undefined for items not yet measured onto a sheet. */
   pageNumber?: number;
+  /**
+   * The last sheet this group's content runs onto, when its last item is cut across
+   * sheets that hold nothing else (a long question's tail, before a New page or a
+   * question that starts one). Those sheets have no item of their own to group, so
+   * without this the outline went from Page 1 to Page 3.
+   */
+  lastPageNumber?: number;
   /** The page break that opened this sheet, if one did — what makes it deletable. */
   breakId?: string;
   items: ReturnType<typeof resolveFlow>;
@@ -643,6 +654,20 @@ export function groupByPage(
       groups.push(current);
     }
     current.items.push(item);
+  }
+
+  // A sheet that holds only the tail of the item before it — no content id, no break —
+  // belongs to the group that item ends, which then names the sheets it spans. Only
+  // the group holding the sheet's last item: a page number can head two groups.
+  for (const group of groups) {
+    if (group.pageNumber === undefined) continue;
+    const sheet = pages[group.pageNumber - 1];
+    const lastId = group.items[group.items.length - 1]?.id;
+    if (!sheet || !lastId || sheet.flowIds[sheet.flowIds.length - 1] !== lastId) continue;
+    let next = group.pageNumber;
+    // `flowIds` is empty only on such a sheet: one a break opened lists its break.
+    while (pages[next]?.flowIds.length === 0) next += 1;
+    if (next > group.pageNumber) group.lastPageNumber = next;
   }
 
   // A page the teacher added but has not filled has no items at all, so nothing above

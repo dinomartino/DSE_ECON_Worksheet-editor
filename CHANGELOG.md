@@ -62,6 +62,13 @@ a version heading is edited afterwards.
   and Justify text in Document setup still leaves tables as they are.
   <!-- zh: **表格儲存格內的文字可左右對齊。** 按一下儲存格（或拖曳選取多格），在頁面上方「表格工具」列按「T≡」（儲存格文字左右對齊），位於 T⇤ T↔ T⇥ 旁。在儲存格內換行的句子，各行會貼齊儲存格的左右兩邊，一欄解釋文字一按即可左右對齊；只有一短行的儲存格看來與以往相同。頁面、縮圖、Word 檔及複製出來的表格都一致。在你按下之前，工作紙完全不變；「頁面設定」的「文字左右對齊」仍不會改動表格。 -->
 
+### Fixed
+- **The Content list counts every page.** When a long question ran onto a page of its own (because
+  the next question starts a new page), that page was missing from the Content list, which jumped
+  from Page 1 to Page 3. The question's group now says Pages 1–2, so the numbers match the page
+  and the thumbnails.
+  <!-- zh: **「內容」列表不再漏掉頁面。** 當一條長題目延續到只有它的一頁（因為下一題由新頁開始），該頁不會出現在「內容」列表，由第 1 頁直接跳到第 3 頁。現在該題所屬的組別會顯示「第 1–2 頁」，與頁面及縮圖的頁碼一致。 -->
+
 ## 0.8.5 — 2026-10-23
 
 ### Added

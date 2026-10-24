@@ -639,9 +639,11 @@ and the wizard's four shapes; 6 modes each, 84 renderings) hash the same before 
 hand-testing papers) pack the same sheets in real Chrome on the old and the new build; and the 37 existing samples exported through
 the real Export dialog on both builds compare equal part by part, 31 byte-identical apart from the file's own timestamp and 6
 (versions B and C, and the answer keys) differing only by the version shuffle's random ids, which the old build also does against
-itself. `npm run samples` writes seven `page-flow/` files, rendered by LibreOffice: its pages match the editor's. **Found, not
-fixed:** the page rail shows no card for a sheet that holds only the tail of a split question (the old build does the same with a
-New page element after it). **Not tried in real Word, on an iPad, or in the desktop app.** In Word, open
+itself. `npm run samples` writes seven `page-flow/` files, rendered by LibreOffice: its pages match the editor's. **Found:** a sheet
+that holds only the tail of a split question had no group in the Content list (Page 1, then Page 3; the old build does the same with
+a New page element after it). This first said "the page rail"; the rail does show its card (inert: nothing on it to drag or
+delete). **Fixed 2026-10-24 (`fix/rail-tail-sheet`):** the group its question ends now reads Pages 1–2 (`groupByPage`,
+`lastPageNumber`; `src/components/editor/outline.test.ts`). **Not tried in real Word, on an iPad, or in the desktop app.** In Word, open
 `page-flow/page-flow-default-en.docx` (the control: Q3 cut across pages 1–2), then `page-flow-keep-q3-en.docx` (Q3 whole on
 page 2, white space at the foot of page 1), `page-flow-new-page-q4-en.docx` (Section B and Question 4 begin page 3),
 `page-flow-keep-and-new-page-en.docx` (four pages), `page-flow-booklet-en.docx` and `page-flow-paper1-en.docx` (Question 10

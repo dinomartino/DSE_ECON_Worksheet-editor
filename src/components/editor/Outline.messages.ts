@@ -40,6 +40,10 @@ export const OUTLINE_MESSAGES = defineMessages({
 
   notPlaced: { en: 'Not yet placed', zh: '尚未排入頁面' },
   page: { en: (n: number) => `Page ${n}`, zh: (n: number) => `第 ${n} 頁` },
+  pages: {
+    en: (first: number, last: number) => `Pages ${first}–${last}`,
+    zh: (first: number, last: number) => `第 ${first}–${last} 頁`,
+  },
   emptyGroup: { en: 'empty', zh: '空' },
   items: { en: (n: number) => `${n} item${n === 1 ? '' : 's'}`, zh: (n: number) => `${n} 個項目` },
   removeBreak: { en: 'Remove page break', zh: '移除分頁' },

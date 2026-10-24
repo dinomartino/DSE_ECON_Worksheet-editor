@@ -75,6 +75,56 @@ describe('grouping the outline by page', () => {
     expect(shape(groups)).toEqual([[undefined, ['q1', 'q2']]]);
   });
 
+  it('names the sheets a cut question runs onto when they hold nothing else', () => {
+    // q2 starts on page 1 and its tail fills page 2, then q3 starts page 3 (a New page,
+    // or Start on a new page). Page 2 has no item of its own, so it used to vanish from
+    // the outline: Page 1, then Page 3.
+    const groups = groupByPage(
+      [item('q1'), item('q2'), item('q3')],
+      [page(0, ['q1', 'q2']), page(1, []), page(2, ['q3'], 'b1')],
+    );
+    expect(shape(groups)).toEqual([
+      [1, ['q1', 'q2']],
+      [3, ['q3']],
+    ]);
+    expect(groups.map((group) => group.lastPageNumber)).toEqual([2, undefined]);
+  });
+
+  it('runs to the last sheet, including a tail at the very end of the paper', () => {
+    const groups = groupByPage([item('q1'), item('q2')], [page(0, ['q1']), page(1, ['q2']), page(2, []), page(3, [])]);
+    expect(groups.map((group) => [group.pageNumber, group.lastPageNumber])).toEqual([
+      [1, undefined],
+      [2, 4],
+    ]);
+  });
+
+  it('leaves a sheet that shares a tail with new items, or an added empty page, alone', () => {
+    // A tail followed by q3 on page 2: page 2 is q3's group, the number is not repeated.
+    const shared = groupByPage([item('q1'), item('q2'), item('q3')], [page(0, ['q1', 'q2']), page(1, ['q3'])]);
+    expect(shared.map((group) => [group.pageNumber, group.lastPageNumber])).toEqual([
+      [1, undefined],
+      [2, undefined],
+    ]);
+    // An empty sheet a break opened is the teacher's own page, never part of a range.
+    const added = groupByPage([item('q1')], [page(0, ['q1']), page(1, [], 'b1')]);
+    expect(added.map((group) => [group.pageNumber, group.lastPageNumber])).toEqual([
+      [1, undefined],
+      [2, undefined],
+    ]);
+  });
+
+  it('gives the range to the group that ends the sheet when a page number heads two', () => {
+    const groups = groupByPage(
+      [item('q1'), item('q2'), item('q3')],
+      [page(0, ['q1', 'q3']), page(1, []), page(2, ['q2'], 'b1')],
+    );
+    expect(groups.map((group) => [group.pageNumber, group.lastPageNumber])).toEqual([
+      [1, undefined],
+      [3, undefined],
+      [1, 2],
+    ]);
+  });
+
   it('starts a new group when a section resumes on a page it already used', () => {
     // Pages are not unique per section: a section can start mid-sheet, so the same
     // number legitimately appears twice. The number labels a group, never keys it.
