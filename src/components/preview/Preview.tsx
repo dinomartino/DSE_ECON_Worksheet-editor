@@ -4971,6 +4971,8 @@ interface Props {
   onAddQuestion?: (typeId: string) => void;
   /** Open the 題庫 tab from the empty page (a third button beside the question types). */
   onOpenBank?: () => void;
+  /** Open a filled sample paper from the empty page, as a new document (k-0201). */
+  onOpenSample?: () => void;
   /**
    * How the flow ended up divided across sheets, published after each repagination.
    *
@@ -5013,7 +5015,15 @@ interface Props {
  * An empty document is the best possible moment to offer the first action, so the
  * buttons are simply *here*, doing what the sentence used to describe.
  */
-function EmptyState({ onAddQuestion, onOpenBank }: { onAddQuestion: (typeId: string) => void; onOpenBank?: () => void }) {
+function EmptyState({
+  onAddQuestion,
+  onOpenBank,
+  onOpenSample,
+}: {
+  onAddQuestion: (typeId: string) => void;
+  onOpenBank?: () => void;
+  onOpenSample?: () => void;
+}) {
   const m = useMessages(PREVIEW_MESSAGES);
   const zh = useUiLanguage() === "zh-HK";
   return (
@@ -5053,6 +5063,17 @@ function EmptyState({ onAddQuestion, onOpenBank }: { onAddQuestion: (typeId: str
           </button>
         )}
       </div>
+      {/* A finished paper to look at first, opened beside this one (k-0201). */}
+      {onOpenSample && (
+        <button
+          type="button"
+          data-open-sample
+          onClick={onOpenSample}
+          className="mt-4 cursor-pointer text-[12.5px] text-[#6f6a66] underline decoration-[#ddd8d2] underline-offset-4 transition-colors duration-150 ease-out-soft hover:text-[#4a4643] hover:decoration-current"
+        >
+          {m.openSample}
+        </button>
+      )}
     </div>
   );
 }
@@ -5201,6 +5222,7 @@ export function Preview({
   footerEditing,
   onAddQuestion,
   onOpenBank,
+  onOpenSample,
   onPagesChange,
   onDragItemChange,
   provisionalId,
@@ -7401,7 +7423,7 @@ export function Preview({
     blocks.push({
       key: "empty-state",
       structural: true,
-      node: <EmptyState onAddQuestion={onAddQuestion} onOpenBank={onOpenBank} />,
+      node: <EmptyState onAddQuestion={onAddQuestion} onOpenBank={onOpenBank} onOpenSample={onOpenSample} />,
     });
   }
 

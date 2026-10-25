@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui';
-import { ArchiveIcon, FolderIcon, FolderOpenIcon } from '@/components/ui/icons';
+import { ArchiveIcon, FolderIcon, FolderOpenIcon, SparkleIcon } from '@/components/ui/icons';
 import type { DocumentType } from '@/model/newWorksheet';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { PaperSketch } from './PaperSketch';
@@ -18,12 +18,15 @@ import { kindText, START_KINDS } from './startKinds';
  */
 export function WelcomeDesk({
   onCreate,
+  onOpenSample,
   onOpenFile,
   onRestore,
   restoring = false,
   onOtherComputer,
 }: {
   onCreate: (type: DocumentType) => void;
+  /** A filled sample paper to look at first (k-0201). */
+  onOpenSample?: () => void;
   onOpenFile: () => void;
   onRestore: () => void;
   restoring?: boolean;
@@ -91,6 +94,17 @@ export function WelcomeDesk({
           );
         })}
       </ul>
+
+      {/* Before choosing: a finished paper to look at and change (k-0201). */}
+      {onOpenSample && (
+        <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="mr-1 text-[12px] text-ink-muted">{m.newHere}</span>
+          <Button variant="default" size="sm" data-open-sample onClick={onOpenSample}>
+            <SparkleIcon size={14} />
+            {m.openSample}
+          </Button>
+        </div>
+      )}
 
       {/* Existing work: a file from another machine, or a whole backup. */}
       <div className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-4">

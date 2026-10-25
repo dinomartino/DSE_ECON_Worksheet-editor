@@ -258,6 +258,8 @@ export const WELCOME_MESSAGES = defineMessages({
     zh: '選擇你想列印的試卷類型。下一步為它命名，其餘設定都會使用預設值。',
   },
   haveWorksheets: { en: 'Already have worksheets?', zh: '已有工作紙？' },
+  newHere: { en: 'New here? See a finished one first.', zh: '初次使用？先看看完成的例子。' },
+  openSample: { en: 'Open a sample paper', zh: '開啟示例試卷' },
   openFile: { en: 'Open a file…', zh: '開啟檔案…' },
   restoring: { en: 'Restoring…', zh: '還原中…' },
   restoreBackup: { en: 'Restore a backup…', zh: '還原備份…' },

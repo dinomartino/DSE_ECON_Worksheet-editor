@@ -19,6 +19,8 @@ import { chromium } from 'playwright-core';
  *  - command: ⌘K / Ctrl+K (and the top bar's 🔍) opens the command search, also with a text open;
  *    "font" opens Setup at Fonts, "page break" adds a New page, "table" opens the Insert menu's
  *    size grid, "print" opens Export on PDF, in both languages; Esc closes it;
+ *  - sample: "Open a sample paper" on an empty start screen, in the start panel and on an empty
+ *    paper opens a new, filled, bilingual Classroom worksheet, hidden from the 題庫;
  *
  *   node scripts/word-like-verify.mjs [--part=save] [--out=/tmp/word-like-verify] [--url=http://localhost:3000]
  *
@@ -456,6 +458,96 @@ async function verifyCommands(ui, size) {
   }
 }
 
+const SAMPLE_WORDS = {
+  en: { open: 'Open a sample paper', name: 'Sample paper: Demand and supply', title: 'Demand and Supply' },
+  'zh-HK': { open: '開啟示例試卷', name: '示例試卷：需求與供應', title: '需求與供應' },
+};
+
+async function verifySample(ui, size) {
+  const tag = `${ui === 'en' ? 'en' : 'zh'}·${size}`;
+  const w = SAMPLE_WORDS[ui];
+  const sampleIn = async (page) =>
+    page.evaluate(() => {
+      const index = JSON.parse(window.localStorage.getItem('econ-worksheet-index') ?? '[]');
+      return index.map((row) => {
+        const doc = JSON.parse(window.localStorage.getItem(`econ-worksheet:${row.id}`) ?? 'null');
+        return { name: doc?.name, questions: doc?.questions.length, bankHidden: doc?.bankHidden };
+      });
+    });
+
+  // 1. An empty desk: the welcome offers it.
+  {
+    const context = await browser.newContext({ viewport: SIZES[size], hasTouch: size !== 'mac' });
+    await context.addInitScript(([version, language]) => {
+      if (!window.localStorage.getItem('econ-worksheet-last-seen-version')) {
+        window.localStorage.setItem('econ-worksheet-last-seen-version', version);
+        window.localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: language, paper: 'bilingual' }));
+      }
+    }, [APP_VERSION, ui]);
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    try {
+      await page.goto(URL_BASE, { waitUntil: 'networkidle' });
+      const buttons = page.locator('[data-open-sample]');
+      check(`[${tag}] an empty start screen offers "${w.open}" (welcome and panel)`, (await buttons.count()) >= 1, String(await buttons.count()));
+      await page.screenshot({ path: `${OUT}/sample-start-${tag}.png` });
+      await buttons.first().click();
+      await page.waitForSelector('#print-root .paper', { timeout: 30_000 });
+      await page.waitForTimeout(2000);
+      const pageText = await page.locator('#print-root').innerText();
+      check(`[${tag}] it opens the sample: title, bubble tea, the face-mask table`, pageText.includes(w.title) && /bubble tea|珍珠奶茶/.test(pageText) && pageText.includes('600'), pageText.slice(0, 120));
+      const docs = await sampleIn(page);
+      check(`[${tag}] … saved as "${w.name}", 4 questions, hidden from the 題庫`, docs.length === 1 && docs[0].name === w.name && docs[0].questions === 4 && docs[0].bankHidden === true, JSON.stringify(docs));
+      await page.screenshot({ path: `${OUT}/sample-paper-${tag}.png`, fullPage: false });
+      // The Marking scheme view has its answers.
+      await page.getByRole('radio', { name: ui === 'en' ? 'Marking scheme' : '評卷參考' }).first().click().catch(async () => {
+        await page.getByText(ui === 'en' ? 'Marking scheme' : '評卷參考', { exact: true }).first().click();
+      });
+      await page.waitForTimeout(1500);
+      const keyText = await page.locator('#print-root').innerText();
+      check(`[${tag}] its Marking scheme view has the answers`, /\$40|200 (boxes|盒)/.test(keyText), keyText.slice(0, 160));
+      await page.screenshot({ path: `${OUT}/sample-key-${tag}.png` });
+      check(`[${tag}] no page errors (start)`, errors.length === 0, errors.join(' | '));
+    } finally {
+      await context.close();
+    }
+  }
+
+  // 2. An empty paper: its empty state offers it too, opening the sample as another document.
+  {
+    const empty = { ...document_, id: 'empty-paper', name: 'Empty paper', questions: [], layout: [], flow: [] };
+    const context = await browser.newContext({ viewport: SIZES[size], hasTouch: size !== 'mac' });
+    await context.addInitScript(([version, language, body]) => {
+      if (!window.localStorage.getItem('econ-worksheet:empty-paper')) {
+        window.localStorage.setItem('econ-worksheet-last-seen-version', version);
+        window.localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: language, paper: 'en' }));
+        window.localStorage.setItem('econ-worksheet-index', JSON.stringify([{ id: 'empty-paper', title: 'Empty paper', updatedAt: '2026-10-25T00:00:00.000Z' }]));
+        window.localStorage.setItem('econ-worksheet:empty-paper', body);
+      }
+    }, [APP_VERSION, ui, JSON.stringify(empty)]);
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    try {
+      await page.goto(URL_BASE, { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: /Empty paper/ }).first().click();
+      await page.waitForSelector('#print-root .paper', { timeout: 30_000 });
+      await page.waitForTimeout(1200);
+      const offer = page.locator('#print-root [data-open-sample]');
+      check(`[${tag}] an empty paper offers "${w.open}"`, (await offer.count()) === 1);
+      await page.screenshot({ path: `${OUT}/sample-empty-state-${tag}.png` });
+      await offer.click({ force: size === 'iphone' });
+      await page.waitForTimeout(2500);
+      const docs = await sampleIn(page);
+      check(`[${tag}] … which opens the sample beside it`, docs.some((d) => d.name === w.name && d.questions === 4) && docs.some((d) => d.name === 'Empty paper'), JSON.stringify(docs));
+      check(`[${tag}] no page errors (empty paper)`, errors.length === 0, errors.join(' | '));
+    } finally {
+      await context.close();
+    }
+  }
+}
+
 try {
   for (const ui of ['en', 'zh-HK']) {
     for (const size of Object.keys(SIZES)) {
@@ -464,6 +556,7 @@ try {
       if (wants('insert')) await verifyInsert(ui, size);
       if (wants('paste') && size !== 'iphone') await verifyPaste(ui, size);
       if (wants('command')) await verifyCommands(ui, size);
+      if (wants('sample')) await verifySample(ui, size);
     }
   }
 } finally {

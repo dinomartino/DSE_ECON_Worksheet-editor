@@ -76,6 +76,12 @@ a version heading is edited afterwards.
   Enter does it: "fonts" opens Setup with Fonts outlined, "page break" adds a new page, "print"
   opens Export on PDF. The toolbar stays as it is.
   <!-- zh: **用 ⌘K 搜尋任何指令。** 按 ⌘K（Windows 為 Ctrl+K），或在 iPad 上按頂列的放大鏡，然後以英文或中文輸入你想做的事，例如「table」、「fonts」、「page break」、「print」、「字型」、「分頁」。所有插入項目、頁面設定、匯出方式及檢視都會列出，按 Enter 即可執行：「字型」會開啟頁面設定並標示字型，「分頁」會加入新頁面，「列印」會開啟匯出並選取 PDF。工具列維持不變。 -->
+- **Open a sample paper.** New to Econ Studio? On the start screen, or on an empty worksheet,
+  choose Open a sample paper: a short, finished Classroom worksheet on demand and supply opens,
+  in English and 中文, with three MC questions, a structured question with a table and a diagram,
+  marks, and the answers and marking scheme in the Marking scheme view. It is yours to change,
+  print or delete, and its questions stay out of your 題庫.
+  <!-- zh: **開啟示例試卷。** 初次使用 Econ Studio？在開始畫面或空白工作紙上選擇「開啟示例試卷」，便會開啟一份已完成的「需求與供應」課堂工作紙，中英對照，包括三條 MC 題、一條附有表格和圖表的結構題、分數，以及在「評卷參考」中的答案和評分要點。你可以隨意修改、列印或刪除，其題目不會加入你的題庫。 -->
 
 ### Changed
 - **Typing works as in Word: one click, and Enter starts a new paragraph.** Click anywhere in a

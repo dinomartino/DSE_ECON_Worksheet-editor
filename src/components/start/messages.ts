@@ -8,6 +8,8 @@ export const START_PANEL_MESSAGES = defineMessages({
   importPaper: { en: 'Import from Word, PDF or picture…', zh: '從 Word、PDF 或圖片匯入…' },
   openFile: { en: 'Open a file…', zh: '開啟檔案…' },
   openFileHint: { en: '.json or backup .zip', zh: '.json 或備份 .zip' },
+  openSample: { en: 'Open a sample paper', zh: '開啟示例試卷' },
+  openSampleHint: { en: 'demand and supply, filled in', zh: '需求與供應，已填好' },
   library: { en: 'Library', zh: '資源庫' },
   bank: { en: 'Question bank 題庫', zh: '題庫' },
   bankCount: {

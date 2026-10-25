@@ -129,6 +129,7 @@ export const PREVIEW_MESSAGES = defineMessages({
     zh: '加入第一條題目，或從左邊的側欄選取。',
   },
   fromBank: { en: 'From 題庫…', zh: '從題庫…' },
+  openSample: { en: 'Open a sample paper', zh: '開啟示例試卷' },
   dropHere: { en: 'Drop here to place on this page', zh: '放到此頁' },
   newPage: { en: 'New page', zh: '新頁' },
   newPageHint: { en: 'Drag a question here, or add one below · 新頁', zh: '把題目拖到這裏，或在下方新增' },

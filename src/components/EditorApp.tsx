@@ -31,11 +31,13 @@ import { useBankSession } from '@/components/bank/bankSession';
 import { BankDragLayer, isBankDragActive, useBankDrag } from '@/components/bank/bankDrag';
 import { holdsTextUndo, isSaveChord, isUndoRedoKey, undoChord } from '@/components/ui/undoChord';
 import { provisionalWorksheet } from '@/components/bank/dropSlot';
-import { useMessages } from '@/i18n/language';
+import { uiLanguage, useMessages } from '@/i18n/language';
 import { PAGE_RAIL_MESSAGES } from '@/components/editor/shell.messages';
 import { EditHint } from './EditHint';
 import { PasteOfferBar } from '@/components/editor/PasteOfferBar';
 import { CommandPalette } from '@/components/editor/CommandPalette';
+import { createSamplePaper } from '@/model/samplePaper';
+import { sideOf } from '@/i18n/catalogue';
 import { useEditorRequests, type SetupTab } from '@/components/editor/editorRequests';
 
 /** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
@@ -161,6 +163,16 @@ export function EditorApp({
    * the other.
    */
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // The empty page's "Open a sample paper" (k-0201): stable, like `openBank`, so the memoised
+  // page does not re-render for it; the latest `onOpenDocument` is read when it is clicked.
+  const openDocumentRef = useRef(onOpenDocument);
+  useEffect(() => {
+    openDocumentRef.current = onOpenDocument;
+  }, [onOpenDocument]);
+  const openSample = useCallback(
+    () => openDocumentRef.current(createSamplePaper(sideOf(uiLanguage()))),
+    [],
+  );
   // ⌘K's Setup entries open it at a tab and a setting (`requestSetup`).
   const [settingsAt, setSettingsAt] = useState<{ tab: SetupTab; field?: string } | undefined>();
   useEffect(
@@ -646,6 +658,7 @@ export function EditorApp({
                 footerEditing={footerEditing}
                 onAddQuestion={handleAddFirstQuestion}
                 onOpenBank={openBank}
+                onOpenSample={openSample}
                 // `setPages` is referentially stable, which the preview's publish effect
                 // depends on — a fresh closure each render would re-notify forever.
                 onPagesChange={setPages}

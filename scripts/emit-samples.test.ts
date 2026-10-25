@@ -18,6 +18,7 @@ import { buildOptionLayoutPaper } from '@/test/optionLayoutFixture';
 import { buildPageFlowBooklet, buildPageFlowPaper, buildPageFlowPaper1 } from '@/test/pageFlowFixture';
 import { buildQuestionGapBooklet, buildQuestionGapOwnNumbers, buildQuestionGapPaper } from '@/test/questionGapFixture';
 import { buildTableJustifyPaper } from '@/test/tableJustifyFixture';
+import { createSamplePaper } from '@/model/samplePaper';
 import { OPTION_LAYOUT_CHOICES, withOptionLayouts } from '@/registry/mcqLayouts';
 import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
 import { presetFor } from '@/ai/providers';
@@ -160,6 +161,16 @@ it('emits papers that start every question on a new page (Document setup → Pag
   // Not offered on a Paper 1, and ignored there if stored: this file equals page-flow/page-flow-paper1-en.docx.
   planPaper({ ...buildPageFlowPaper1(), ...every }, en, `${dir}/start-every-paper1-ignored-en.docx`);
   planPaper({ ...buildPageFlowPaper(), ...every }, { language: 'bilingual', version: 'teacher' }, `${dir}/start-every-bilingual-teacher.docx`);
+});
+
+it('emits the sample paper (Open a sample paper, k-0201): the user checks its content before release', async () => {
+  const dir = `${OUT}/sample-paper`;
+  mkdirSync(dir, { recursive: true });
+  const paper = createSamplePaper();
+  planPaper(paper, { language: 'en', version: 'student' }, `${dir}/sample-paper-en-student.docx`);
+  planPaper(paper, { language: 'zh', version: 'student' }, `${dir}/sample-paper-zh-student.docx`);
+  planPaper(paper, { language: 'bilingual', version: 'teacher' }, `${dir}/sample-paper-bilingual-teacher.docx`);
+  planKey(paper, 'bilingual', `${dir}/sample-paper-bilingual-answer-key.docx`);
 });
 
 it('emits papers with the text of table cells justified (Table tools → T≡)', async () => {

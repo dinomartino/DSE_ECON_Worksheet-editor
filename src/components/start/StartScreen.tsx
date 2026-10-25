@@ -21,7 +21,10 @@ import { useNoticeStore } from '@/store/notices';
 import { AppMark } from '@/components/ui/AppMark';
 import { ScrollEdgeHints } from '@/components/ui/ScrollEdgeHints';
 import { useScrollEdges } from '@/components/ui/scrollEdges';
-import { ArchiveIcon, BankIcon, DiagramIcon, FolderIcon, FolderOpenIcon, ImportIcon, PlusIcon, SheetIcon } from '@/components/ui/icons';
+import { ArchiveIcon, BankIcon, DiagramIcon, FolderIcon, FolderOpenIcon, ImportIcon, PlusIcon, SheetIcon, SparkleIcon } from '@/components/ui/icons';
+import { createSamplePaper } from '@/model/samplePaper';
+import { paperLanguage } from '@/settings/paperLanguage';
+import { sideOf } from '@/i18n/catalogue';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
@@ -157,6 +160,8 @@ export function StartScreen({
   const [confirmingEmpty, setConfirmingEmpty] = useState(false);
   // Results and failures go to the app's notice stack, never into the screen's flow.
   const notices = useNotices();
+  // "Open a sample paper": a fresh, filled copy each time, opened as a new document (k-0201).
+  const openSample = () => onOpen(createSamplePaper(sideOf(uiLanguage())), paperLanguage());
   // The graph count re-reads after each result (a restore may have brought graphs).
   const [lastResult, setLastResult] = useState('');
   const setNotice = useCallback(
@@ -826,6 +831,7 @@ export function StartScreen({
           onCreate={() => setCreating(readLastKind())}
           onImport={() => void choosePaper()}
           onOpenFile={() => void importFile()}
+          onOpenSample={openSample}
         />
 
         {/* What is already written, as ways *in*: each its own screen, like a document,
@@ -919,6 +925,7 @@ export function StartScreen({
             welcome={
               <WelcomeDesk
                 onCreate={setCreating}
+                onOpenSample={openSample}
                 onOpenFile={() => void importFile()}
                 onRestore={() => void pickBackup()}
                 restoring={busy === 'restore'}
@@ -1223,11 +1230,14 @@ export function StartNewSection({
   onCreate,
   onImport,
   onOpenFile,
+  onOpenSample,
 }: {
   empty: boolean;
   onCreate: () => void;
   onImport: () => void;
   onOpenFile: () => void;
+  /** A filled sample paper, opened as a new document (k-0201). */
+  onOpenSample?: () => void;
 }) {
   const m = useMessages(START_PANEL_MESSAGES);
   return (
@@ -1254,6 +1264,23 @@ export function StartNewSection({
             {m.openFile}
           </span>
           <span className="ml-auto truncate text-[11px] text-ink-subtle">{m.openFileHint}</span>
+        </button>
+      )}
+      {onOpenSample && (
+        // As quiet as Open a file…: a way to look before writing, not a third way to start.
+        <button
+          type="button"
+          data-open-sample
+          onClick={onOpenSample}
+          className="group mt-1 flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken active:bg-surface-hover active:duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+        >
+          <span className="text-ink-subtle transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
+            <SparkleIcon size={15} />
+          </span>
+          <span className="text-[13px] font-medium text-ink transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
+            {m.openSample}
+          </span>
+          <span className="ml-auto truncate text-[11px] text-ink-subtle">{m.openSampleHint}</span>
         </button>
       )}
     </section>
