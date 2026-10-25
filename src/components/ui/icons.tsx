@@ -514,3 +514,13 @@ export const LAYOUT_ICON = {
   questionCount: QuestionCountIcon,
   stimulus: StimulusIcon,
 } as const;
+
+/** ⌘K's command search (k-0201). */
+export function SearchIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m20 20-4.4-4.4" />
+    </Svg>
+  );
+}

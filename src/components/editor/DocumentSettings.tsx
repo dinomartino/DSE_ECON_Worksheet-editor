@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogTabs, Field } from '@/components/ui/Dialog';
 import { Button, CheckField, GroupHeader, NumberField, Segmented, SelectField } from '@/components/ui';
 import {
@@ -1538,13 +1538,33 @@ function TitleSection() {
 
 export function DocumentSettings({
   initialTab = 'document',
+  focusField,
   onClose,
 }: {
   initialTab?: Tab;
+  /**
+   * A setting's label, as shown (⌘K's "Fonts", k-0201): the dialog opens with it scrolled into
+   * view and outlined for a moment, so the teacher sees where it lives.
+   */
+  focusField?: string;
   onClose: () => void;
 }) {
   const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const [tab, setTab] = useState<Tab>(initialTab);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!focusField || !panel) return;
+    const label = Array.from(panel.querySelectorAll<HTMLElement>('span, label, h3, legend')).find(
+      (node) => node.childElementCount === 0 && node.textContent?.trim() === focusField,
+    );
+    if (!label) return;
+    const field = label.closest<HTMLElement>('label, .space-y-1\\.5') ?? label;
+    field.scrollIntoView?.({ block: 'center' });
+    field.setAttribute('data-setting-found', '');
+    const timer = setTimeout(() => field.removeAttribute('data-setting-found'), 1800);
+    return () => clearTimeout(timer);
+  }, [focusField]);
 
   return (
     <Dialog
@@ -1570,7 +1590,7 @@ export function DocumentSettings({
         ]}
       >
         {/* Keyed by tab so the incoming panel fades in rather than cutting. */}
-        <div key={tab} className="animate-fade-in">
+        <div key={tab} ref={panelRef} className="animate-fade-in">
           {tab === 'document' && <DocumentTab />}
           {tab === 'cover' && <CoverTab onClose={onClose} />}
           {tab === 'page' && <PageTab />}

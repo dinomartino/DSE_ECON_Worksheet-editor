@@ -16,6 +16,9 @@ import { chromium } from 'playwright-core';
  *    drops fonts, sizes and colours; pasted MC questions bring the "Make these into questions"
  *    bar, which takes the text back and adds the questions in one undo; a pasted picture goes
  *    into the selected question (real ⌘V / Ctrl+V on the system clipboard; MacBook and iPad);
+ *  - command: ⌘K / Ctrl+K (and the top bar's 🔍) opens the command search, also with a text open;
+ *    "font" opens Setup at Fonts, "page break" adds a New page, "table" opens the Insert menu's
+ *    size grid, "print" opens Export on PDF, in both languages; Esc closes it;
  *
  *   node scripts/word-like-verify.mjs [--part=save] [--out=/tmp/word-like-verify] [--url=http://localhost:3000]
  *
@@ -372,6 +375,87 @@ async function verifyPastePicture(ui, size) {
   }
 }
 
+const COMMAND_WORDS = {
+  en: { search: 'Search commands', fonts: 'Fonts', font: 'font', pageBreak: 'page break', table: 'table', print: 'print' },
+  'zh-HK': { search: '搜尋指令', fonts: '字型', font: '字型', pageBreak: '分頁', table: '表格', print: '列印' },
+};
+
+async function verifyCommands(ui, size) {
+  const tag = `${ui === 'en' ? 'en' : 'zh'}·${size}`;
+  const w = COMMAND_WORDS[ui];
+  const { context, page, errors } = await openFixture(ui, size);
+  const doc = () => page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)), `econ-worksheet:${document_.id}`);
+  const palette = page.locator('[data-command-palette]');
+  const box = page.getByRole('combobox', { name: w.search });
+  const ask = async (words) => {
+    await page.getByRole('button', { name: new RegExp(`^${w.search}`) }).click();
+    await box.fill(words);
+    await page.waitForTimeout(150);
+    return page.locator('[data-command-palette] [role="option"]').first().getAttribute('data-command');
+  };
+  try {
+    // The key opens it, with nothing open and with a text open; pressed again or Esc, it closes.
+    await page.keyboard.press('ControlOrMeta+k');
+    check(`[${tag}] ⌘K opens the command search`, (await palette.count()) === 1);
+    await page.keyboard.press('Escape');
+    check(`[${tag}] … and Esc closes it`, (await palette.count()) === 0);
+    const stem = page.locator(`#print-root [data-field-key="blockText:${STEM_ID}"][data-field-side="en"]`).first();
+    const stemBox = await stem.boundingBox();
+    const stemShows = await page.evaluate(([x, y]) => Boolean(document.elementFromPoint(x, y)?.closest('#print-root')), [stemBox.x + 4, stemBox.y + stemBox.height / 2]);
+    if (stemShows) {
+      await page.mouse.click(stemBox.x + 4, stemBox.y + stemBox.height / 2);
+      await page.keyboard.press('Control+k');
+      check(`[${tag}] Ctrl+K opens it with a text open`, (await palette.count()) === 1);
+      await page.keyboard.press('Control+k');
+      check(`[${tag}] … and pressed again closes it`, (await palette.count()) === 0);
+      await page.keyboard.press('Escape');
+    }
+
+    // The 🔍: "font" → Setup, at Fonts, outlined.
+    let first = await ask(w.font);
+    check(`[${tag}] "${w.font}" finds Setup › Fonts first`, first === 'setup:fonts', String(first));
+    await page.screenshot({ path: `${OUT}/command-font-${tag}.png` });
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(600);
+    const found = await page.locator('[data-setting-found]').innerText().catch(() => '');
+    check(`[${tag}] Enter opens Setup with Fonts outlined`, found.includes(w.fonts), found.slice(0, 80));
+    await page.screenshot({ path: `${OUT}/command-setup-${tag}.png` });
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+
+    // "page break" → a New page.
+    const breaksBefore = ((await doc()).layout ?? []).filter((e) => e.kind === 'pageBreak').length;
+    first = await ask(w.pageBreak);
+    check(`[${tag}] "${w.pageBreak}" finds New page first`, first === 'insert:pageBreak', String(first));
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(1600);
+    const breaksAfter = ((await doc()).layout ?? []).filter((e) => e.kind === 'pageBreak').length;
+    check(`[${tag}] … and Enter adds one`, breaksAfter === breaksBefore + 1, `${breaksBefore} → ${breaksAfter}`);
+
+    // "table" → the Insert menu's size grid.
+    first = await ask(w.table);
+    check(`[${tag}] "${w.table}" finds Table… first`, first === 'insert:table', String(first));
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(400);
+    check(`[${tag}] … and Enter opens the Insert menu's size grid`, (await page.getByRole('grid').count()) === 1);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+
+    // "print" → Export, on PDF.
+    first = await ask(w.print);
+    check(`[${tag}] "${w.print}" finds the PDF export first`, first === 'export:exportPdf', String(first));
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(600);
+    const pdfChosen = await page.locator('[role="dialog"]').getByRole('radio', { name: /PDF/ }).first().isChecked().catch(() => undefined);
+    const pdfPressed = await page.locator('[role="dialog"] [aria-pressed="true"], [role="dialog"] [aria-checked="true"], [role="dialog"] [aria-selected="true"]').allInnerTexts();
+    check(`[${tag}] … and Enter opens Export on PDF`, pdfChosen === true || pdfPressed.some((t) => /PDF/.test(t)), JSON.stringify(pdfPressed));
+    await page.screenshot({ path: `${OUT}/command-export-${tag}.png` });
+    check(`[${tag}] no page errors`, errors.length === 0, errors.join(' | '));
+  } finally {
+    await context.close();
+  }
+}
+
 try {
   for (const ui of ['en', 'zh-HK']) {
     for (const size of Object.keys(SIZES)) {
@@ -379,6 +463,7 @@ try {
       if (wants('save')) await verifySave(ui, size);
       if (wants('insert')) await verifyInsert(ui, size);
       if (wants('paste') && size !== 'iphone') await verifyPaste(ui, size);
+      if (wants('command')) await verifyCommands(ui, size);
     }
   }
 } finally {

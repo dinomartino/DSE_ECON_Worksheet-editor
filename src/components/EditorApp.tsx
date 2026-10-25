@@ -35,6 +35,8 @@ import { useMessages } from '@/i18n/language';
 import { PAGE_RAIL_MESSAGES } from '@/components/editor/shell.messages';
 import { EditHint } from './EditHint';
 import { PasteOfferBar } from '@/components/editor/PasteOfferBar';
+import { CommandPalette } from '@/components/editor/CommandPalette';
+import { useEditorRequests, type SetupTab } from '@/components/editor/editorRequests';
 
 /** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
 const openBank = () => useBankSession.getState().openBank();
@@ -159,6 +161,17 @@ export function EditorApp({
    * the other.
    */
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // ⌘K's Setup entries open it at a tab and a setting (`requestSetup`).
+  const [settingsAt, setSettingsAt] = useState<{ tab: SetupTab; field?: string } | undefined>();
+  useEffect(
+    () =>
+      useEditorRequests.subscribe((state, previous) => {
+        if (!state.setup || state.setup === previous.setup) return;
+        setSettingsAt({ tab: state.setup.tab, field: state.setup.field });
+        setSettingsOpen(true);
+      }),
+    [],
+  );
   // The items being dragged on the page, mirrored here so the rail can receive them.
   // A run, because a drag begun inside a multi-selection carries all of it.
   const [draggingItemIds, setDraggingItemIds] = useState<string[] | undefined>();
@@ -647,7 +660,21 @@ export function EditorApp({
         {!readOnly && <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} />}
       </div>
 
-      {settingsOpen && <DocumentSettings onClose={() => setSettingsOpen(false)} />}
+      {/* ⌘K, and the top bar's 🔍: find any command by name (k-0201). */}
+      <CommandPalette />
+
+      {settingsOpen && (
+        <DocumentSettings
+          // Keyed, so a second ⌘K request for another tab opens there.
+          key={settingsAt ? `${settingsAt.tab}:${settingsAt.field ?? ''}` : 'setup'}
+          initialTab={settingsAt?.tab}
+          focusField={settingsAt?.field}
+          onClose={() => {
+            setSettingsOpen(false);
+            setSettingsAt(undefined);
+          }}
+        />
+      )}
 
       {/* The AI door: menu, run bar and ⌘J / Ctrl+J. */}
       <AiHost />

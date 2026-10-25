@@ -890,3 +890,10 @@ u [data-tab] {
     outline-offset: 3px;
   }
 }
+
+/* ⌘K opened Setup at this setting (k-0201, `DocumentSettings.focusField`): outlined a moment. */
+[data-setting-found] {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 6px;
+}

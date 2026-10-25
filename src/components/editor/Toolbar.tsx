@@ -6,7 +6,7 @@ import { useWorksheetStore, type DocumentView } from '@/store/worksheetStore';
 import { downloadWorksheetFile } from '@/storage';
 import { isDesktop, revealFile, revealLabel } from '@/platform';
 import { Button, IconButton, Segmented } from '@/components/ui';
-import { ChevronRightIcon, DownloadIcon, PageSetupIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
+import { ChevronRightIcon, DownloadIcon, PageSetupIcon, RedoIcon, SearchIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
@@ -34,6 +34,10 @@ import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages } from '@/i18n/language';
 import { TOOLBAR_MESSAGES } from './Toolbar.messages';
 import { useShortcutLabel } from '@/components/ui/useShortcutLabel';
+import { useEditorRequests } from './editorRequests';
+import { openCommandPalette } from './CommandPalette';
+import { COMMAND_PALETTE_MESSAGES } from './CommandPalette.messages';
+import type { ExportFormat, ExportWhat } from './exportSession';
 
 /**
  * `[mark] Econ Studio › name`: one button home to the start screen, the editor's only route
@@ -101,6 +105,8 @@ export function Toolbar({
   const future = useWorksheetStore((s) => s.future);
   const save = useWorksheetStore((s) => s.save);
   const saveKey = useShortcutLabel('S');
+  const paletteKey = useShortcutLabel('K');
+  const pm = useMessages(COMMAND_PALETTE_MESSAGES);
   const select = useWorksheetStore((s) => s.select);
   const printPreview = useWorksheetStore((s) => s.printPreview);
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
@@ -111,12 +117,31 @@ export function Toolbar({
   // Clear detaches a storage folder (`clearSavedLibrary`); the confirm says so.
   const syncFolder = useSyncFolderChosen();
   const [exporting, setExporting] = useState(false);
+  // Where ⌘K's Export entries open the dialog (`requestExport`); the toolbar's own button
+  // opens on .docx.
+  const [exportAt, setExportAt] = useState<{ format: ExportFormat; what?: ExportWhat } | undefined>();
   // Stable, so the dialog does not re-focus its panel on every store update.
-  const closeExport = useCallback(() => setExporting(false), []);
+  const closeExport = useCallback(() => {
+    setExporting(false);
+    setExportAt(undefined);
+  }, []);
   const [feedback, setFeedback] = useState(false);
   const closeFeedback = useCallback(() => setFeedback(false), []);
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
+  // ⌘K asks for these dialogs (`editorRequests`); subscribed, so a request is an event.
+  useEffect(
+    () =>
+      useEditorRequests.subscribe((state, previous) => {
+        if (state.export && state.export !== previous.export) {
+          setExportAt({ format: state.export.format, what: state.export.what });
+          setExporting(true);
+        }
+        if (state.whatsNew !== previous.whatsNew) setWhatsNew(true);
+        if (state.feedback !== previous.feedback) setFeedback(true);
+      }),
+    [],
+  );
 
   /** A result, in the app's notice stack; one with a reveal (a convenience) fades later. */
   const flash = (message: string, action?: NoticeAction, tone: NoticeTone = 'success') =>
@@ -374,6 +399,11 @@ export function Toolbar({
         </span>
 
         {/* Every AI tool behind one door (⌘J); the untranslated count rides on it. */}
+        {/* ⌘K's command search, for a touch screen with no keyboard (k-0201). */}
+        <IconButton label={`${pm.open} (${paletteKey})`} size="md" onClick={openCommandPalette}>
+          <SearchIcon size={16} />
+        </IconButton>
+
         <AiButton />
 
         {/* One Export action, the bar's only filled button: .docx to keep editing, PDF to
@@ -415,8 +445,9 @@ export function Toolbar({
         <ExportDialog
           worksheet={worksheet}
           mode={mode}
+          initialFormat={exportAt?.format}
           // Export follows the view: from the Marking scheme it opens on the answer key.
-          initialWhat={documentView === 'answerKey' ? 'answerKey' : 'paper'}
+          initialWhat={exportAt?.what ?? (documentView === 'answerKey' ? 'answerKey' : 'paper')}
           onClose={closeExport}
           onExported={handleExported}
           onPrint={handlePrint}

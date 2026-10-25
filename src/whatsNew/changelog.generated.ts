@@ -70,6 +70,12 @@ a version heading is edited afterwards.
 - **Paste a picture onto the page.** Copy a picture or take a screenshot, then press ⌘V (Ctrl+V):
   it goes into the question you have selected, or under the text you are typing in.
   <!-- zh: **把圖片貼到頁面上。** 複製圖片或截取屏幕畫面後按 ⌘V（Ctrl+V）：圖片會加到你所選的題目，或你正在輸入的文字下方。 -->
+- **Find any command with ⌘K.** Press ⌘K (Ctrl+K on Windows), or tap the magnifier in the top bar
+  on an iPad, and type what you want in English or 中文: "table", "fonts", "page break", "print",
+  "字型", "分頁". Every insert, every Setup setting, every export and the views are listed, and
+  Enter does it: "fonts" opens Setup with Fonts outlined, "page break" adds a new page, "print"
+  opens Export on PDF. The toolbar stays as it is.
+  <!-- zh: **用 ⌘K 搜尋任何指令。** 按 ⌘K（Windows 為 Ctrl+K），或在 iPad 上按頂列的放大鏡，然後以英文或中文輸入你想做的事，例如「table」、「fonts」、「page break」、「print」、「字型」、「分頁」。所有插入項目、頁面設定、匯出方式及檢視都會列出，按 Enter 即可執行：「字型」會開啟頁面設定並標示字型，「分頁」會加入新頁面，「列印」會開啟匯出並選取 PDF。工具列維持不變。 -->
 
 ### Changed
 - **Typing works as in Word: one click, and Enter starts a new paragraph.** Click anywhere in a
