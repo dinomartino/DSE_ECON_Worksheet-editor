@@ -13,6 +13,7 @@ import {
   setSelectionOffsets,
 } from './richTextDom';
 import { layoutTabs } from './tabLayout';
+import { takeHeldKeystrokes } from './heldKeystrokes';
 
 /**
  * A contenteditable that edits `RichText` **as what it looks like**, never the marker
@@ -50,8 +51,16 @@ interface Props {
    * editing has no point to honour.
    */
   caretPoint?: { x: number; y: number };
-  /** Without a point: open with the caret at the text's start or end (default end). */
-  caretAt?: 'start' | 'end';
+  /**
+   * Where a drag that opened the field began: the field opens with the characters between
+   * it and `caretPoint` selected, as a drag across text in Word selects them.
+   */
+  caretAnchorPoint?: { x: number; y: number };
+  /**
+   * Without a point: open with the caret at the text's start or end (default end), or at a
+   * plain-text offset (where two paragraphs were joined).
+   */
+  caretAt?: 'start' | 'end' | number;
   onSelectionChange?: (range: { start: number; end: number } | undefined) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLSpanElement>) => void;
   onBlur?: (event: React.FocusEvent<HTMLSpanElement>) => void;
@@ -100,6 +109,7 @@ export function RichTextEditable({
   ariaLabel,
   autoFocus = false,
   caretPoint,
+  caretAnchorPoint,
   caretAt,
   onSelectionChange,
   onKeyDown,
@@ -112,6 +122,7 @@ export function RichTextEditable({
   // Read once, on entry. In a ref so it cannot re-run the paint effect and move the
   // caret out from under someone mid-edit.
   const caretPointRef = useRef(caretPoint);
+  const caretAnchorRef = useRef(caretAnchorPoint);
   const caretAtRef = useRef(caretAt);
   /** The last selection handed upward, so an unchanged one is not republished. */
   const publishedRef = useRef<{ start: number; end: number } | undefined>(undefined);
@@ -119,6 +130,23 @@ export function RichTextEditable({
   // Stable reference, so the paint effect does not fire on every render — which would
   // move the caret on every keystroke.
   const runs = useMemo(() => value ?? [], [value]);
+
+  /**
+   * Write a range edit the browser must not perform itself, and restore the caret.
+   *
+   * For insertions whose formatting the surrounding DOM does not imply: a pending
+   * format, or a paste that must arrive as plain text. `paintedRef` is deliberately
+   * left stale so the new runs are painted.
+   */
+  const writeRange = (start: number, end: number, insert: string) => {
+    onChange(replaceRichTextRange(runs, start, end, insert, pendingFormat));
+    onPendingConsumed?.();
+    const at = start + insert.length;
+    queueMicrotask(() => {
+      const host = hostRef.current;
+      if (host) setSelectionOffsets(host, at);
+    });
+  };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -149,10 +177,22 @@ export function RichTextEditable({
         const aimed = caretPointRef.current
           ? offsetAtPoint(host, caretPointRef.current)
           : undefined;
-        setSelectionOffsets(
-          host,
-          aimed ?? (caretAtRef.current === 'start' ? 0 : richTextLength(runs)),
-        );
+        const anchor = caretAnchorRef.current ? offsetAtPoint(host, caretAnchorRef.current) : undefined;
+        const length = richTextLength(runs);
+        const at = caretAtRef.current;
+        const caret = aimed ?? (at === 'start' ? 0 : typeof at === 'number' ? Math.min(Math.max(at, 0), length) : length);
+        if (anchor !== undefined && aimed !== undefined && anchor !== aimed) {
+          setSelectionOffsets(host, Math.min(anchor, aimed), Math.max(anchor, aimed));
+        } else {
+          setSelectionOffsets(host, caret);
+        }
+        // Letters typed while the field was on its way are typed here, at the caret
+        // (§ `heldKeystrokes`): Enter, Tab or a key on a selected field never drops one.
+        const typed = takeHeldKeystrokes();
+        if (typed) {
+          const range = selectionOffsets(host) ?? { start: caret, end: caret };
+          writeRange(range.start, range.end, typed);
+        }
       }
     } else if (caret) {
       // Text changed from outside (an undo, a redo): the caret follows the change, as a
@@ -208,22 +248,6 @@ export function RichTextEditable({
     onChange(next);
   };
 
-  /**
-   * Write a range edit the browser must not perform itself, and restore the caret.
-   *
-   * For insertions whose formatting the surrounding DOM does not imply: a pending
-   * format, or a paste that must arrive as plain text. `paintedRef` is deliberately
-   * left stale so the new runs are painted.
-   */
-  const writeRange = (start: number, end: number, insert: string) => {
-    onChange(replaceRichTextRange(runs, start, end, insert, pendingFormat));
-    onPendingConsumed?.();
-    const at = start + insert.length;
-    queueMicrotask(() => {
-      const host = hostRef.current;
-      if (host) setSelectionOffsets(host, at);
-    });
-  };
 
   return (
     <span

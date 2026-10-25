@@ -7,12 +7,15 @@ import { RichTextEditable } from './RichTextEditable';
 import type { TextGrid } from '@/model/tableClipboard';
 import { useMessages } from '@/i18n/language';
 import { PREVIEW_HANDLE_MESSAGES } from './messages';
+import { selectionOffsets } from './richTextDom';
+import { holdKeystrokes, takeHeldKeystrokes, typesCharacter } from './heldKeystrokes';
 
 /**
  * One directly-editable run of text on the page: the field takes the exact place of
- * the rendered span (no layout shift). Two levels of engagement — click selects (and
- * makes Delete safe), click again edits. One language at a time; patch, never
- * replace. The field renders the runs as themselves, never the marker string —
+ * the rendered span (no layout shift). One click puts the caret where it landed, as in
+ * Word (k-0200); a field can still be *selected* without being open (from the sidebar,
+ * or a header field's first click), and then any typed letter opens it and is kept.
+ * One language at a time; patch, never replace. The field renders the runs as themselves, never the marker string —
  * offsets are plain-text offsets, attributes read back losslessly, no second copy to
  * drift.
  */
@@ -104,6 +107,31 @@ interface Props {
     onPasteGrid?: (grid: TextGrid, side: 'en' | 'zh') => boolean;
   };
   /**
+   * Keep the old two-step engagement: the first click selects, the second types. Only a
+   * header or footer field asks for it — its chip is dragged between zones, and Word too
+   * makes the header a separate place to enter. Every other field types on one click.
+   */
+  twoStep?: boolean;
+  /**
+   * Word's Enter, for a field that is one of several (k-0200): a paragraph splits at the
+   * caret, an option moves to the next option. Called with the caret's range in the open
+   * field, it returns the move to make, which runs once this field has closed (and opens
+   * the next one); `undefined`, or no handler, finishes as Enter always did. Shift+Enter
+   * is a line break inside the field either way.
+   */
+  onEnter?: (range: { start: number; end: number }) => (() => void) | undefined;
+  /**
+   * Word's Backspace at a paragraph's start and Delete at its end: join it to the paragraph
+   * before or after. Returns the join to run once this field has closed, or `undefined`
+   * where there is nothing to join (the key then does what it always did).
+   */
+  onJoin?: (direction: 'backward' | 'forward') => (() => void) | undefined;
+  /**
+   * A stable name for this field on the page (`data-field-key`), so a handler can open it
+   * by the target it edits once it renders (`openFieldWhenReady`).
+   */
+  fieldKey?: string;
+  /**
    * While **empty**, stretch to the width of the container instead of shrinking to the
    * prompt.
    *
@@ -154,6 +182,10 @@ export function InlineEditable({
   promptTitle,
   onTab,
   cell,
+  twoStep = false,
+  onEnter,
+  onJoin,
+  fieldKey,
 }: Props) {
   const m = useMessages(PREVIEW_HANDLE_MESSAGES);
   // A floating prompt has no line end to stretch from (§ `floating`).
@@ -229,10 +261,19 @@ export function InlineEditable({
    * Undefined for the keyboard route, which has no point to honour.
    */
   const caretPointRef = useRef<{ x: number; y: number } | undefined>(undefined);
-  /** Where a keyboard route asked the caret to open: the text's start or its end. */
-  const [caretAt, setCaretAt] = useState<'start' | 'end' | undefined>(undefined);
-  const beginEditing = (point?: { x: number; y: number }, at?: 'start' | 'end') => {
+  /** Where a drag that opened the field began, so the dragged-over words open selected. */
+  const [caretAnchor, setCaretAnchor] = useState<{ x: number; y: number } | undefined>(undefined);
+  /** The press of the click that may open the field (§ `caretAnchorRef`). */
+  const pressRef = useRef<{ x: number; y: number } | undefined>(undefined);
+  /** Where a keyboard route asked the caret to open: the start, the end, or an offset. */
+  const [caretAt, setCaretAt] = useState<'start' | 'end' | number | undefined>(undefined);
+  const beginEditing = (
+    point?: { x: number; y: number },
+    at?: 'start' | 'end' | number,
+    anchor?: { x: number; y: number },
+  ) => {
     caretPointRef.current = point;
+    setCaretAnchor(anchor);
     setCaretAt(at);
     setEditing(true);
   };
@@ -244,7 +285,7 @@ export function InlineEditable({
    * also says which end of the text the caret belongs at, which a synthetic click
    * cannot.
    */
-  const openRef = useRef<(at: 'start' | 'end') => void>(() => {});
+  const openRef = useRef<(at: 'start' | 'end' | number) => void>(() => {});
   useEffect(() => {
     openRef.current = (at) => {
       onSelect?.();
@@ -255,7 +296,7 @@ export function InlineEditable({
     const span = spanRef.current;
     if (!span || editing) return;
     const onOpen = (event: Event) =>
-      openRef.current((event as CustomEvent<{ at?: 'start' | 'end' }>).detail?.at ?? 'end');
+      openRef.current((event as CustomEvent<{ at?: 'start' | 'end' | number }>).detail?.at ?? 'end');
     span.addEventListener(OPEN_FIELD_EVENT, onOpen);
     return () => span.removeEventListener(OPEN_FIELD_EVENT, onOpen);
   }, [editing]);
@@ -312,6 +353,7 @@ export function InlineEditable({
         autoFocus
         // The caret opens where the click landed, which is what the I-beam promised.
         caretPoint={caretPointRef.current}
+        caretAnchorPoint={caretAnchor}
         caretAt={caretAt}
         lang={side === 'zh' ? 'zh-HK' : 'en'}
         ariaLabel={side === 'zh' ? m.editZhText : m.editEnText}
@@ -398,20 +440,50 @@ export function InlineEditable({
           stopEditing();
         }}
         onKeyDown={(event) => {
-          // Enter commits — a worksheet field is a line, not a document. Shift+Enter
-          // falls through to the browser, which inserts the `<br>` that `readRuns` turns
-          // back into the `\n` the model stores for a hard break.
+          // Enter is Word's (k-0200): a paragraph splits at the caret and an option moves
+          // to the next one (`onEnter`); a field that is one line (a heading, a marks box)
+          // finishes. Shift+Enter falls through to the browser, which inserts the `<br>`
+          // that `readRuns` turns back into the `\n` the model stores for a hard break.
           //
           // A table cell is the exception (§ `cell`): Enter is Word's new line there,
           // the same hard break Shift+Enter makes — asked of the browser explicitly,
           // because a bare Enter in a contenteditable inserts a `<div>`, not a `<br>`.
           // `nativeEvent.isComposing`: Enter confirming an IME candidate is not a break.
-          if (event.key === 'Enter' && cell && !event.nativeEvent.isComposing) {
+          if (event.key === 'Enter' && event.nativeEvent.isComposing) {
+            // The IME's own Enter: leave it to the browser.
+          } else if (event.key === 'Enter' && cell) {
             event.preventDefault();
             document.execCommand('insertLineBreak');
           } else if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
+            const range = selectionOffsets(event.currentTarget);
+            const move = range && onEnter?.(range);
+            // Closed first, as Tab does below, so this field's text is in the store and its
+            // editor gone before the next one opens; the keys typed meanwhile are held.
             stopEditing();
+            if (move) {
+              holdKeystrokes();
+              move();
+            }
+          }
+          if (
+            (event.key === 'Backspace' || event.key === 'Delete') &&
+            onJoin &&
+            !hasModifier(event) &&
+            !event.nativeEvent.isComposing
+          ) {
+            const direction = event.key === 'Backspace' ? 'left' : 'right';
+            const join = caretAtEdge(event.currentTarget, direction)
+              ? onJoin(direction === 'left' ? 'backward' : 'forward')
+              : undefined;
+            if (join) {
+              event.preventDefault();
+              stopEditing();
+              holdKeystrokes();
+              join();
+              event.stopPropagation();
+              return;
+            }
           }
           if (cell?.onArrowOut && isArrow(event.key) && !hasModifier(event)) {
             const direction = ARROWS[event.key];
@@ -439,7 +511,9 @@ export function InlineEditable({
            */
           if (event.key === 'Tab' && onTab) {
             stopEditing();
+            holdKeystrokes();
             if (onTab(event.shiftKey)) event.preventDefault();
+            else takeHeldKeystrokes();
           }
           // Let the page's own shortcuts through rather than swallowing them, but
           // never let Delete/Backspace reach the page handler while typing.
@@ -505,6 +579,8 @@ export function InlineEditable({
       tabIndex={0}
       aria-label={side === 'zh' ? m.editChinese : m.editEnglish}
       data-selected={selected ? 'true' : undefined}
+      data-field-key={fieldKey}
+      data-field-side={side}
       // Marks the prompt shown in place of an empty field. It is authoring guidance,
       // not content, so the print stylesheet hides it — otherwise "Double-click to add
       // English" would appear on the printed worksheet as if it were the question.
@@ -580,18 +656,24 @@ export function InlineEditable({
         /* The empty field's own resting tint — a selected cell paints its own. */
         fillWidth && isEmpty && !selected ? 'bg-[#f7faff]' : ''
       } ${className}`}
+      onMouseDown={(event) => {
+        pressRef.current = { x: event.clientX, y: event.clientY };
+      }}
       onClick={(event) => {
         // Selecting the question is the parent's job; selection/editing is ours.
         event.stopPropagation();
-        // First click selects, second begins editing — so Delete has an unambiguous
-        // target, and a stray click never opens a field over the text. A table cell
-        // opens on the first click, as Word's does (§ `cell`); a range's Delete is
-        // the sweep's, and a cell's own Delete is the Backspace inside it.
-        if (cell) {
+        const point = { x: event.clientX, y: event.clientY };
+        // A press that travelled is a drag across the words: they open selected.
+        const press = pressRef.current;
+        pressRef.current = undefined;
+        const anchor = press && Math.hypot(press.x - point.x, press.y - point.y) > 4 ? press : undefined;
+        // One click types, as in Word and as table cells always did (k-0200): the caret
+        // lands where the click did. Selecting a whole question is its number, its grip
+        // or its margin. A header or footer field keeps click-to-select (§ `twoStep`).
+        if (!twoStep || selected) {
           onSelect?.();
-          beginEditing({ x: event.clientX, y: event.clientY });
-        } else if (selected) beginEditing({ x: event.clientX, y: event.clientY });
-        else onSelect?.();
+          beginEditing(point, undefined, anchor);
+        } else onSelect?.();
       }}
       onDoubleClick={(event) => {
         event.stopPropagation();
@@ -602,6 +684,13 @@ export function InlineEditable({
           event.preventDefault();
           event.stopPropagation();
           beginEditing();
+        } else if (typesCharacter(event.nativeEvent)) {
+          // A letter typed on a selected field opens it and is typed there, at the end —
+          // never dropped (k-0200, § `heldKeystrokes`).
+          event.preventDefault();
+          event.stopPropagation();
+          holdKeystrokes(event.key);
+          beginEditing(undefined, 'end');
         }
         // Delete/Backspace deliberately bubble to the page handler, which owns
         // removal so that it can pick the right unit for the target.
@@ -618,6 +707,36 @@ export function InlineEditable({
  * `'end'`, where the caret lands). Dispatched on the field's `role="textbox"` span.
  */
 export const OPEN_FIELD_EVENT = 'econ-open-field';
+
+/**
+ * Open the field named `fieldKey` (its `data-field-key`, an `editTargetKey`) on `side` once
+ * it is on the page, the caret at `at`: the paragraph Enter just made, the next option, the
+ * paragraph a join landed in, waiting a few frames for one the store has only just created
+ * (and laid out on a sheet). Scoped to `#print-root`, as `openCell` is:
+ * the pagination probe holds a second copy of every field. The keys typed meanwhile are held
+ * (`holdKeystrokes`) and typed into it.
+ */
+export function openFieldWhenReady(fieldKey: string, side: 'en' | 'zh', at: 'start' | 'end' | number): void {
+  let frames = 0;
+  const attempt = () => {
+    const field = document.querySelector<HTMLElement>(
+      `#print-root [data-field-key="${CSS.escape(fieldKey)}"][data-field-side="${side}"]`,
+    );
+    if (field) {
+      field.dispatchEvent(new CustomEvent(OPEN_FIELD_EVENT, { detail: { at } }));
+      return true;
+    }
+    if (++frames < 12) requestAnimationFrame(attempt);
+    return false;
+  };
+  /*
+   * At once when the field is already on the page (the next option; a paragraph the caller
+   * rendered with `flushSync`): React flushes a key's updates and effects before the next key,
+   * so the editor has focus before another letter arrives and Enter typed straight on works.
+   * Otherwise frame by frame, the keys held meanwhile (`holdKeystrokes`).
+   */
+  attempt();
+}
 
 export type ArrowDirection = 'left' | 'right' | 'up' | 'down';
 

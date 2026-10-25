@@ -161,3 +161,17 @@ sentence in each language. Nothing is justified: every cell is flush left, centr
    beside `table-justify-policies-en.docx` in Word.
 
 `scripts/table-justify-verify.mjs` does 1–5 with a real mouse in Chrome, in English and 中文.
+
+## `word-typing-mix.json` — typing like Word (k-0200)
+
+A structured question (a stem, a small table under it, parts (a) and (b)) and an MC question
+whose options C and D are empty. Checked in Chrome by `node scripts/word-typing-verify.mjs`.
+
+1. Click once in the middle of the stem and type: the letters appear where you clicked (one
+   click, no second click, no letter lost).
+2. Press Enter in the middle of the stem: the rest of the sentence becomes a new paragraph and
+   the caret is at its start; type straight on. Backspace there joins the two again.
+3. ⌘Z (Ctrl+Z) takes the new paragraph back in one step; ⇧⌘Z puts it back.
+4. Click option A, press Enter: the caret moves to option B; Enter in D finishes. Esc finishes
+   anywhere.
+5. Export → Word: the split stem is two paragraphs, the number on the first.

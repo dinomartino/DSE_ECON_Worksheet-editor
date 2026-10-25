@@ -31,7 +31,7 @@ export function EditHint({ onDismiss }: { onDismiss: () => void }) {
               is room; above the zoom, always one phrase per line. */}
           <span className="flex flex-col @min-[30rem]:flex-row @min-[30rem]:flex-wrap @min-[30rem]:gap-x-2">
             <span className="whitespace-nowrap">{m.hint}</span>
-            {bilingual && <span className="whitespace-nowrap text-ink-subtle">按頁面文字即可編輯</span>}
+            {bilingual && <span className="whitespace-nowrap text-ink-subtle">{EDITOR_APP_MESSAGES.hint.zh}</span>}
           </span>
           <IconButton label={m.dismissHint} onClick={onDismiss}>
             <CloseIcon size={14} />

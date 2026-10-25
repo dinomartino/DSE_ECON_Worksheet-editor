@@ -43,9 +43,8 @@ describe('the caret opens where the click landed', () => {
     // The keyboard route into editing has no click to honour, and a browser may support
     // neither API. Both keep the behaviour every route had before.
     // A cell opened from a neighbour by an arrow key asks for its start instead.
-    expect(editable).toMatch(
-      /aimed \?\? \(caretAtRef\.current === 'start' \? 0 : richTextLength\(runs\)\)/,
-    );
+    // A join asks for the offset where the two paragraphs met (k-0200).
+    expect(editable).toMatch(/const caret = aimed \?\? \(at === 'start' \? 0 : typeof at === 'number' \?[^:]+: length\)/);
   });
 
   it('reads the point once, on entry', () => {

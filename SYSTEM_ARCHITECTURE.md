@@ -2560,18 +2560,34 @@ drop put an item in the identical position). `data-print-hide`.
 ### Direct manipulation on the page
 
 ```
-click once                 → select · Delete works · format toolbar appears
-click again / double-click → edit in place · Enter commits · Esc cancels
+click once on text         → caret where it landed · a drag selects words · format toolbar
+click a number / margin    → select the question · Delete, ⌘C, ⌘X act on it
+Enter                      → new paragraph (question text) · next option (MC) · finish (one-line field)
+Backspace at start / Delete at end → join with the paragraph before / after
+Esc or clicking away       → finish
 hover in a gap             → insert caret + "+" → adds there
 hover                      → margin drag grip → reorder
 ```
 
-**A table cell is the exception** (`InlineEditable.cell`, decided 2026-10-17 from
-`docs/Tables vs Word.md`): one click opens it with the caret where it landed, a click
-on its padding opens it too, **Enter is a new line** (the hard break Shift+Enter makes;
-the cell stays one Word paragraph), Escape or clicking away finishes. The two-step rule
-dropped a teacher's first typing in every table. A cell's Delete is Backspace inside it;
-a swept range keeps the page-level Delete.
+**One click types, as in Word** (k-0200, the user 2026-10-25, `docs/research/word-like-ux-2026-10-24.md`
+G1/G2). Table cells did first (2026-10-17, `docs/Tables vs Word.md`); every field does now
+(`InlineEditable`), except a header or footer field (`twoStep`: its chip drags between
+zones, and the band is entered by double-click, as Word's header is).
+- **No keystroke is dropped.** A letter typed on a field that is selected but not open
+  opens it and is typed there; the letters typed while the next field opens (after
+  Enter, Tab, a join) are held on the window (`heldKeystrokes.ts`, capture phase, 1.5 s
+  at most) and typed at its caret on open (`RichTextEditable`). The split and the join
+  render with `flushSync` so the field usually opens before the next key.
+- **Enter** (`InlineEditable.onEnter`, `Preview` `fieldEnter`): a paragraph block splits at
+  the caret (`model/paragraphs.ts` `splitParagraph`: the new block takes the format; the
+  side not typed in stays with the first), an option or statement hands over to the next
+  (the last finishes), every other field finishes. Shift+Enter is a line break (`\n`)
+  everywhere; a cell's Enter is that line break. IME Enter is left alone.
+- **Backspace at a paragraph's start / Delete at its end** joins it to an adjacent
+  paragraph block in the same list (`joinParagraph`; the other language joined with a
+  line break). Each split or join is one commit, one undo step. Nothing changes a saved
+  paper until the key is pressed: these are the blocks Add Text already makes.
+- A cell's Delete is Backspace inside it; a swept range keeps the page-level Delete.
 
 - **The format toolbar docks along the top of the page column**, `fixed` in viewport
   coordinates (inside the preview's `scale()` it would shrink), `left`/`width` from the
@@ -2600,8 +2616,8 @@ a swept range keeps the page-level Delete.
   other side alone, so its short prompt is `absolute` at its static position after the
   text, `data-print-hide`, skipped by the marks measure. Editing opens its line. Sides
   are keyed so the editor survives the move into the flow. `floatingPrompt.test.tsx`.
-- **Two-step engagement makes keyboard delete safe**: Delete acts on a deliberate
-  selection, ignored while focus is in a field; `⌘Z` scoped the same way.
+- **Keyboard delete stays safe**: Delete acts on a deliberate selection (a question, a
+  picture, a header field), ignored while focus is in a field; `⌘Z` scoped the same way.
 - **Only one layer owns the keyboard** (`ui/modalLayer.ts`): every keydown listener is
   on `window`, so all fire. Overlays call `useModalLayer()`; page handlers ask
   `isModalLayerOpen()`. A module-level counter, synchronous inside the event.

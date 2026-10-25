@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "id": "m-001",
+  "title": {
+    "en": [
+      {
+        "text": "Word typing mix"
+      }
+    ],
+    "zh": [
+      {
+        "text": "像 Word 一樣輸入"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "m-002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "m-003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "m-004",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-005",
+          "text": {
+            "en": [
+              {
+                "text": "The government sets a maximum price for rice below the equilibrium price."
+              }
+            ],
+            "zh": [
+              {
+                "text": "政府為白米設定低於均衡價格的最高價格。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "table",
+          "id": "m-006",
+          "rows": [
+            {
+              "id": "m-007",
+              "cells": [
+                {
+                  "id": "m-008",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Good"
+                      }
+                    ],
+                    "zh": []
+                  }
+                },
+                {
+                  "id": "m-009",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Price"
+                      }
+                    ],
+                    "zh": []
+                  }
+                }
+              ]
+            },
+            {
+              "id": "m-010",
+              "cells": [
+                {
+                  "id": "m-011",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Rice"
+                      }
+                    ],
+                    "zh": []
+                  }
+                },
+                {
+                  "id": "m-012",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "$12"
+                      }
+                    ],
+                    "zh": []
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-013",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-014",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain why a shortage results."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋為何會出現短缺。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4
+        },
+        {
+          "id": "m-015",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-016",
+              "text": {
+                "en": [
+                  {
+                    "text": "Suggest one policy to reduce it."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "建議一項可減少短缺的政策。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4
+        }
+      ]
+    },
+    {
+      "id": "m-017",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-018",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is a public good?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項屬公共物品？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-019",
+          "text": {
+            "en": [
+              {
+                "text": "street lighting"
+              }
+            ],
+            "zh": [
+              {
+                "text": "街燈"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-020",
+          "text": {
+            "en": [
+              {
+                "text": "bus rides"
+              }
+            ],
+            "zh": [
+              {
+                "text": "巴士車程"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-021",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "m-022",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 0
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "m-023",
+      "text": {
+        "en": [
+          {
+            "text": "Section A"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "m-023"
+    },
+    {
+      "type": "question",
+      "id": "m-004"
+    },
+    {
+      "type": "question",
+      "id": "m-017"
+    }
+  ],
+  "createdAt": "2026-10-25T09:44:45.402Z",
+  "updatedAt": "2026-10-25T09:44:45.402Z",
+  "name": "Word typing mix"
+}

@@ -348,6 +348,41 @@ function tableJustifyMix(): Worksheet {
   ]);
 }
 
+/**
+ * k-0200, typing like Word: a structured question (a stem, a table under it, two parts) and an MC
+ * question with options A–D, in English and 中文, for one-click typing, Enter and Backspace
+ * between paragraphs and Enter between options (`scripts/word-typing-verify.mjs`).
+ */
+function wordTypingMix(): Worksheet {
+  const structured = createStructuredQuestion();
+  const table = createTableBlock(2, 2);
+  const cells = [['Good', 'Price'], ['Rice', '$12']];
+  table.rows.forEach((row, r) => row.cells.forEach((cell, c) => { cell.text = bi(cells[r][c], ''); }));
+  structured.blocks = [
+    createParagraphBlock(bi('The government sets a maximum price for rice below the equilibrium price.', '政府為白米設定低於均衡價格的最高價格。')),
+    table,
+  ];
+  const a = createPart();
+  a.blocks = [createParagraphBlock(bi('Explain why a shortage results.', '解釋為何會出現短缺。'))];
+  const b = createPart();
+  b.blocks = [createParagraphBlock(bi('Suggest one policy to reduce it.', '建議一項可減少短缺的政策。'))];
+  structured.parts = [a, b];
+  const mcq = createMcqQuestion();
+  mcq.blocks = [createParagraphBlock(bi('Which of the following is a public good?', '以下哪項屬公共物品？'))];
+  mcq.options = [
+    ['street lighting', '街燈'],
+    ['bus rides', '巴士車程'],
+    ['', ''],
+    ['', ''],
+  ].map(([en, zh]) => ({ id: newId(), text: bi(en, zh) }));
+  mcq.answerIndex = 0;
+  return paper('Word typing mix', '像 Word 一樣輸入', [
+    createSectionElement(bi('Section A', '甲部')),
+    structured,
+    mcq,
+  ]);
+}
+
 it('emits the manual test documents', () => {
   if (!process.env.EMIT_MANUAL_FIXTURES) return;
   mkdirSync(OUT, { recursive: true });
@@ -359,6 +394,9 @@ it('emits the manual test documents', () => {
     ['question-gap-mix', questionGapMix()],
     ['page-flow-mix', pageFlowMix()],
     ['table-justify-mix', tableJustifyMix()],
+    ['word-typing-mix', wordTypingMix()],
   ];
-  for (const [name, w] of files) writeFileSync(`${OUT}/${name}.json`, `${stable(stringifyWorksheet(w), 'm-')}\n`);
+  // EMIT_ONLY=<name> writes one file, leaving the others' timestamps alone.
+  const only = process.env.EMIT_ONLY;
+  for (const [name, w] of files.filter(([name]) => !only || name === only)) writeFileSync(`${OUT}/${name}.json`, `${stable(stringifyWorksheet(w), 'm-')}\n`);
 });

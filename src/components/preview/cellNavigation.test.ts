@@ -65,8 +65,8 @@ describe('cellInDirection', () => {
 describe('a table cell types like Word', () => {
   const source = readFileSync('src/components/preview/InlineEditable.tsx', 'utf8');
 
-  it('opens on the first click', () => {
-    expect(source).toMatch(/if \(cell\) \{\s*onSelect\?\.\(\);\s*beginEditing\(/);
+  it('opens on the first click, as every field but a header field now does (k-0200)', () => {
+    expect(source).toMatch(/if \(!twoStep \|\| selected\) \{\s*onSelect\?\.\(\);\s*beginEditing\(/);
   });
 
   it('makes Enter a line break inside the cell, not a commit', () => {

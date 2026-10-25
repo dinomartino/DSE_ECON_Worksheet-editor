@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   BAND_ROW_TWIPS,
   bandsHeight,
@@ -50,6 +51,7 @@ import {
   createParagraphBlock,
   createSourceBlock,
   createTableBlock,
+  newId,
   nextSourceLetter,
 } from "@/model/factories";
 import { imageBlockFromFile } from "@/export/imageImport";
@@ -69,6 +71,7 @@ import type {
   HeaderFooter,
   CaptionPlacement,
   LanguageMode,
+  McqQuestion,
   OutputMode,
   PageFurniture,
   PageSetup,
@@ -105,6 +108,7 @@ import {
 } from "@/model/tableClipboard";
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
+import { joinParagraph, splitParagraph } from "@/model/paragraphs";
 import { diagramNodeSvg } from "@/render/diagramPage";
 import {
   AnswerGraphOnPage,
@@ -213,6 +217,7 @@ import {
 import {
   InlineEditable,
   OPEN_FIELD_EVENT,
+  openFieldWhenReady,
   type ArrowDirection,
   type TextSelection,
 } from "./InlineEditable";
@@ -448,6 +453,10 @@ function richNodes(
             ? { onArrowOut: cellNav.onArrowOut, onPasteGrid: cellNav.onPasteGrid }
             : undefined
         }
+        // Word's Enter and Backspace between paragraphs and options (k-0200, § `onEnter`).
+        fieldKey={editTargetKey(edit)}
+        onEnter={ctx.onFieldEnter && !cellNav ? (range) => ctx.onFieldEnter!(edit, sideKey, range) : undefined}
+        onJoin={ctx.onFieldJoin && !cellNav ? (direction) => ctx.onFieldJoin!(edit, sideKey, direction) : undefined}
       >
         {rendered}
       </InlineEditable>
@@ -894,6 +903,22 @@ export interface EditContext {
    */
   onEditKeepingSelection: EditHandler;
   onSelectElement: (target: EditTarget, side: "en" | "zh") => void;
+  /**
+   * Word's Enter in an open field (k-0200): the move to make once the field closes (a
+   * paragraph splits, an option hands over to the next), or `undefined` where Enter
+   * finishes the field. Absent on read-only and key-only paths.
+   */
+  onFieldEnter?: (
+    target: EditTarget,
+    side: "en" | "zh",
+    range: { start: number; end: number },
+  ) => (() => void) | undefined;
+  /** Word's Backspace at a paragraph's start / Delete at its end: join it to its neighbour. */
+  onFieldJoin?: (
+    target: EditTarget,
+    side: "en" | "zh",
+    direction: "backward" | "forward",
+  ) => (() => void) | undefined;
   onClearSelection: () => void;
   isSelected: (target: EditTarget, side: "en" | "zh") => boolean;
   /**
@@ -6352,6 +6377,62 @@ export function Preview({
     return true;
   };
 
+  /*
+   * Word's Enter between paragraphs and options (k-0200). Each is one commit, so ⌘Z takes
+   * the new paragraph back in one step; the typing on either side keeps its own steps.
+   */
+  const fieldEnter = (
+    target: EditTarget,
+    side: "en" | "zh",
+    range: { start: number; end: number },
+  ): (() => void) | undefined => {
+    const store = useWorksheetStore.getState();
+    if (store.readOnly) return undefined;
+    if (target.kind === "blockText") {
+      return () => {
+        const id = newId();
+        // Rendered now, so the new paragraph's field is on the page to open before the next key.
+        flushSync(() => store.commit((draft) => splitParagraph(draft, target.blockId, side, range.start, range.end, id)));
+        openFieldWhenReady(editTargetKey({ kind: "blockText", blockId: id }), side, "start");
+      };
+    }
+    if (target.kind === "mcqOption" || target.kind === "mcqStatement") {
+      const question = store.worksheet.questions.find((q) => q.id === target.questionId) as
+        | McqQuestion
+        | undefined;
+      if (!question) return undefined;
+      const next: EditTarget | undefined =
+        target.kind === "mcqOption"
+          ? (() => {
+              const at = question.options.findIndex((option) => option.id === target.optionId);
+              const option = at < 0 ? undefined : question.options[at + 1];
+              return option ? { kind: "mcqOption", questionId: question.id, optionId: option.id } : undefined;
+            })()
+          : target.index + 1 < (question.statements?.length ?? 0)
+            ? { kind: "mcqStatement", questionId: question.id, index: target.index + 1 }
+            : undefined;
+      // The last option (or statement) finishes, as Enter always did.
+      if (!next) return undefined;
+      return () => openFieldWhenReady(editTargetKey(next), side, "end");
+    }
+    return undefined;
+  };
+
+  const fieldJoin = (
+    target: EditTarget,
+    side: "en" | "zh",
+    direction: "backward" | "forward",
+  ): (() => void) | undefined => {
+    const store = useWorksheetStore.getState();
+    if (store.readOnly || target.kind !== "blockText") return undefined;
+    const joined = joinParagraph(store.worksheet, target.blockId, side, direction);
+    if (!joined) return undefined;
+    return () => {
+      flushSync(() => store.commit((draft) => joinParagraph(draft, target.blockId, side, direction)?.worksheet ?? draft));
+      openFieldWhenReady(editTargetKey({ kind: "blockText", blockId: joined.blockId }), side, joined.caret);
+    };
+  };
+
   // A cover line printed once edits both of its identical sides (§ `coverLinePrintsOnce`).
   const mirrored = (target: EditTarget, next: BiText) => {
     if (target.kind !== "coverLine") return next;
@@ -6374,6 +6455,8 @@ export function Preview({
           setSelectedBlockId(undefined);
           selectOwnerOf(target);
         },
+        onFieldEnter: (target, side, range) => fieldEnter(target, side, range),
+        onFieldJoin: (target, side, direction) => fieldJoin(target, side, direction),
         onClearSelection: () => setSelectedElement(undefined),
         isSelected: (target, side) =>
           selectedElement?.side === side && sameTarget(selectedElement.target, target),

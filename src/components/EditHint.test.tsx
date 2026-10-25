@@ -40,13 +40,13 @@ describe('the edit hint', () => {
   it('never breaks a phrase, and keeps its width where the column is narrower than it', () => {
     const markup = draw();
     expect(markup).toMatch(/data-edit-hint="true" class="[^"]*\bshrink-0\b/);
-    expect(markup).toContain('<span class="whitespace-nowrap">Double-click text to edit</span>');
-    expect(markup).toContain('<span class="whitespace-nowrap text-ink-subtle">按頁面文字即可編輯</span>');
+    expect(markup).toContain('<span class="whitespace-nowrap">Click any text to type</span>');
+    expect(markup).toContain('<span class="whitespace-nowrap text-ink-subtle">按一下文字即可輸入</span>');
   });
 
   it('in 中文 says it once', () => {
     const markup = draw('zh-HK');
-    expect(markup).toContain('<span class="whitespace-nowrap">按兩下文字即可編輯</span>');
-    expect(markup).not.toContain('按頁面文字即可編輯');
+    expect(markup).toContain('<span class="whitespace-nowrap">按一下文字即可輸入</span>');
+    expect(markup.split('按一下文字即可輸入')).toHaveLength(2);
   });
 });

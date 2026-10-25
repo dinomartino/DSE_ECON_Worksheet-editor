@@ -30,6 +30,7 @@ describe('manual test documents', () => {
       'page-flow-mix.json',
       'question-gap-mix.json',
       'table-justify-mix.json',
+      'word-typing-mix.json',
     ]);
   });
 
@@ -98,7 +99,7 @@ describe('manual test documents', () => {
     expect(shape('table-justify-mix')).toBe('QQ|Q'); // two pages, so the page rail draws its thumbnails
   });
 
-  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix', 'page-flow-mix', 'question-gap-mix', 'table-justify-mix'])('%s exports a .docx', async (name) => {
+  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix', 'page-flow-mix', 'question-gap-mix', 'table-justify-mix', 'word-typing-mix'])('%s exports a .docx', async (name) => {
     const bytes = await exportDocxBuffer(load(name), { language: 'bilingual', version: 'student' });
     expect(bytes.length).toBeGreaterThan(2000);
   });

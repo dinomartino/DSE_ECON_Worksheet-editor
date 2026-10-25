@@ -52,21 +52,34 @@ a version heading is edited afterwards.
   inside the cell then lines up with both of its edges, so a column of explanations can be
   justified in one click; a cell with one short line looks as it did. The page, the thumbnails,
   the Word file and a copied table all follow. Nothing changes in a worksheet until you press it,
-  and Justify text in Document setup still leaves tables as they are.
-  <!-- zh: **表格儲存格內的文字可左右對齊。** 按一下儲存格（或拖曳選取多格），在頁面上方「表格工具」列按「T≡」（儲存格文字左右對齊），位於 T⇤ T↔ T⇥ 旁。在儲存格內換行的句子，各行會貼齊儲存格的左右兩邊，一欄解釋文字一按即可左右對齊；只有一短行的儲存格看來與以往相同。頁面、縮圖、Word 檔及複製出來的表格都一致。在你按下之前，工作紙完全不變；「頁面設定」的「文字左右對齊」仍不會改動表格。 -->
+  and Justify text in Document setup still leaves tables as they are. An older version of the app
+  shows such a cell flush left, and its Word file still opens.
+  <!-- zh: **表格儲存格內的文字可左右對齊。** 按一下儲存格（或拖曳選取多格），在頁面上方「表格工具」列按「T≡」（儲存格文字左右對齊），位於 T⇤ T↔ T⇥ 旁。在儲存格內換行的句子，各行會貼齊儲存格的左右兩邊，一欄解釋文字一按即可左右對齊；只有一短行的儲存格看來與以往相同。頁面、縮圖、Word 檔及複製出來的表格都一致。在你按下之前，工作紙完全不變；「頁面設定」的「文字左右對齊」仍不會改動表格。舊版程式會把這類儲存格顯示為靠左，其 Word 檔仍可正常開啟。 -->
 - **A quiet “Buy me a coffee” link on the start screen.** If Econ Studio saves you time, the links
   at the bottom of the start screen now include a way to say thanks. It is a plain link that opens in
   your browser only when you click it; nothing is loaded or tracked, and it never appears while you
   edit.
   <!-- zh: **開始畫面多了一個低調的「請我喝杯咖啡」連結。** 如果 Econ Studio 幫你省下時間，可以透過開始畫面底部的連結表達謝意。它只是一個普通連結，點擊後才會在瀏覽器開啟，不會載入或追蹤任何東西，編輯時也不會出現。 -->
 
+### Changed
+- **Typing works as in Word: one click, and Enter starts a new paragraph.** Click anywhere in a
+  question's text, a part or an option and type: the cursor goes where you clicked, with no second
+  click, and drag across words to select them. Letters you type straight away are never lost. In a
+  question's text, Enter starts a new paragraph where the cursor is, and Backspace at the start of a
+  paragraph joins it to the one before. In an MC question, Enter moves to the next option, and in the
+  last option it finishes. Shift+Enter still starts a new line in the same paragraph, Esc or a click
+  elsewhere finishes, and ⌘Z (Ctrl+Z on Windows) takes a new paragraph back in one step. To select a
+  whole question, click its number or the space beside it. The header and footer still open with a
+  double-click.
+  <!-- zh: **輸入方式與 Word 一樣：按一下即可輸入，Enter 會開始新段落。** 在題目文字、分題或選項的任何位置按一下即可輸入：游標會出現在你按下的位置，毋須再按第二下；拖曳經過文字即可選取。即使你立即開始輸入，也不會漏掉任何字。在題目文字中按 Enter，會在游標位置開始新段落；在段落開頭按 Backspace，則會把它併回上一段。在 MC 題中按 Enter 會移到下一個選項，在最後一個選項按 Enter 則完成輸入。Shift+Enter 仍會在同一段落內換行；按 Esc 或按其他地方即完成輸入；⌘Z（Windows 為 Ctrl+Z）一步即可取消新段落。要選取整條題目，請按題號或旁邊的空位。頁首及頁尾仍需按兩下才可編輯。 -->
+
 ### Fixed
 - **The edit hint and the zoom no longer overlap on an iPad, and Document setup fits an iPhone.**
-  On an iPad held upright, the "Double-click text to edit" note now sits just above the zoom
+  On an iPad held upright, the editing tip now sits just above the zoom
   buttons instead of on top of them. On an iPhone (or an iPad app in a third of Split View),
   Document setup and Settings show their tabs in a row along the top, so the settings below use
   the full width of the screen instead of a narrow column. Nothing changes on a Mac.
-  <!-- zh: **iPad 上的編輯提示不再與縮放按鈕重疊，iPhone 亦可完整顯示「頁面設定」。** 直向使用 iPad 時，「按兩下文字即可編輯」的提示現在位於縮放按鈕上方，不再蓋住它。在 iPhone（或在 iPad 分割畫面佔三分之一時），「頁面設定」及「設定」的分頁改為在頂部排成一行，下方的設定可使用整個畫面寬度，不再擠在窄欄內。Mac 上一切不變。 -->
+  <!-- zh: **iPad 上的編輯提示不再與縮放按鈕重疊，iPhone 亦可完整顯示「頁面設定」。** 直向使用 iPad 時，編輯提示現在位於縮放按鈕上方，不再蓋住它。在 iPhone（或在 iPad 分割畫面佔三分之一時），「頁面設定」及「設定」的分頁改為在頂部排成一行，下方的設定可使用整個畫面寬度，不再擠在窄欄內。Mac 上一切不變。 -->
 - **⌘Z works right after you tick a box.** Ticking a box such as Start on a new page, then
   pressing ⌘Z (Ctrl+Z on Windows), did nothing until you clicked somewhere else. It now takes
   the tick back, and ⌘⇧Z puts it back again, as with any other change.

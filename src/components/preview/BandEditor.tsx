@@ -444,6 +444,9 @@ export function BandEditor({
                             : undefined
                         }
                         onDeselect={selection?.onClear}
+                        // A header field's chip is dragged between zones: its first click
+                        // selects, its second types (§ `InlineEditable.twoStep`).
+                        twoStep
                       >
                         {plain(language === 'zh' ? segment.text.zh : segment.text.en)}
                       </InlineEditable>
