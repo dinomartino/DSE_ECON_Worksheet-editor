@@ -23,18 +23,24 @@ export interface SaveStatusView {
   visible: boolean;
 }
 
+/** How long "Saved" stays as a word after ⌘S or Save now. */
+export const SAVED_BY_HAND_MS = 2000;
+
 /** The toolbar's save status, as a pure function of the store. */
 export function saveStatusView({
   readOnly,
   dirty,
   stalled,
   lastSavedAt,
+  savedByHand = false,
   lang = uiLanguage(),
 }: {
   readOnly: boolean;
   dirty: boolean;
   stalled: boolean;
   lastSavedAt?: string;
+  /** The teacher just asked for a save (⌘S, Save now) and it landed: say so in words. */
+  savedByHand?: boolean;
   lang?: UiLanguage;
 }): SaveStatusView {
   const m = resolveMessages(SAVE_STATUS_MESSAGES, lang);
@@ -56,7 +62,7 @@ export function saveStatusView({
   const time = lastSavedAt
     ? new Date(lastSavedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : '';
-  return { state: 'saved', word: m.saved, detail: m.savedDetail(time), visible: false };
+  return { state: 'saved', word: m.saved, detail: m.savedDetail(time), visible: savedByHand };
 }
 
 const DOT: Record<SaveState, string> = {
@@ -69,7 +75,8 @@ const DOT: Record<SaveState, string> = {
 /**
  * A dot for the routine cycle (Saving, then Saved), with the words in its tooltip and for
  * screen readers. The bar's width goes to the document name instead. A word appears only
- * when something is off: read-only, or edits that autosave has not written.
+ * when something is off (read-only, or edits that autosave has not written), and for a
+ * moment after a save the teacher asked for, so ⌘S answers the way it does in Word.
  */
 export function SaveStatus() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
@@ -87,8 +94,19 @@ export function SaveStatus() {
   }, [worksheet, dirty, readOnly]);
   const stalled = stalledOn === worksheet;
 
+  // "Saved" in words for a moment after ⌘S or Save now; an edit ends it at once (dirty).
+  const savedByHandAt = useWorksheetStore((s) => s.savedByHandAt);
+  const [spentFor, setSpentFor] = useState<number | undefined>();
+  useEffect(() => {
+    if (savedByHandAt === undefined) return;
+    const left = Math.max(0, SAVED_BY_HAND_MS - (Date.now() - savedByHandAt));
+    const timer = setTimeout(() => setSpentFor(savedByHandAt), left);
+    return () => clearTimeout(timer);
+  }, [savedByHandAt]);
+  const savedByHand = savedByHandAt !== undefined && spentFor !== savedByHandAt;
+
   const lang = useUiLanguage();
-  const view = saveStatusView({ readOnly, dirty, stalled, lastSavedAt, lang });
+  const view = saveStatusView({ readOnly, dirty, stalled, lastSavedAt, savedByHand, lang });
   return (
     <span
       data-print-hide

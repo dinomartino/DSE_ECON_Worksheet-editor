@@ -38,3 +38,15 @@ describe('saveStatusView', () => {
     }
   });
 });
+
+describe('Saved after ⌘S or Save now', () => {
+  it('a save the teacher asked for says "Saved" in words', () => {
+    expect(view({ savedByHand: true })).toMatchObject({ state: 'saved', word: 'Saved', visible: true });
+    expect(view({ savedByHand: true, lang: 'zh-HK' })).toMatchObject({ word: '已儲存', visible: true });
+  });
+
+  it('never claims "Saved" over edits still waiting, or over read-only', () => {
+    expect(view({ savedByHand: true, dirty: true })).toMatchObject({ state: 'saving', visible: false });
+    expect(view({ savedByHand: true, readOnly: true }).state).toBe('readOnly');
+  });
+});

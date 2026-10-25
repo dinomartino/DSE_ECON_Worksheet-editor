@@ -41,3 +41,12 @@ export function gestureKey(event: Keys): 'cancel' | 'swallow' | null {
   if (event.key === 'Escape') return 'cancel';
   return isUndoRedoKey(event) ? 'swallow' : null;
 }
+
+/**
+ * ⌘S / Ctrl+S: Word's Save. The editor takes it from the browser, whose "Save page as…"
+ * would save the app's HTML, never the paper. Not with Shift or Alt (Word's Save As and
+ * the system's own chords).
+ */
+export function isSaveChord(event: Keys & Pick<KeyboardEvent, 'altKey'>): boolean {
+  return (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 's';
+}

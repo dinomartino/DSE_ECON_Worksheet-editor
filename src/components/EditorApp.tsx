@@ -29,7 +29,7 @@ import { holdBankDocument } from '@/library/useBank';
 import { BankReviewBar } from '@/components/bank/BankReviewBar';
 import { useBankSession } from '@/components/bank/bankSession';
 import { BankDragLayer, isBankDragActive, useBankDrag } from '@/components/bank/bankDrag';
-import { holdsTextUndo, isUndoRedoKey, undoChord } from '@/components/ui/undoChord';
+import { holdsTextUndo, isSaveChord, isUndoRedoKey, undoChord } from '@/components/ui/undoChord';
 import { provisionalWorksheet } from '@/components/bank/dropSlot';
 import { useMessages } from '@/i18n/language';
 import { PAGE_RAIL_MESSAGES } from '@/components/editor/shell.messages';
@@ -71,6 +71,7 @@ export function EditorApp({
   const undo = useWorksheetStore((s) => s.undo);
   const redo = useWorksheetStore((s) => s.redo);
   const markSaved = useWorksheetStore((s) => s.markSaved);
+  const save = useWorksheetStore((s) => s.save);
   const applyEdit = useWorksheetStore((s) => s.applyEdit);
   const deleteTarget = useWorksheetStore((s) => s.deleteTarget);
   const clearCells = useWorksheetStore((s) => s.clearCells);
@@ -435,6 +436,24 @@ export function EditorApp({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [printPreview, setPrintPreview]);
+
+  /*
+   * ⌘S / Ctrl+S is Save now, as in Word: the save status says "Saved". Never the browser's
+   * "Save page as…", read-only or not. Capture phase, because an open field on the page
+   * stops its keys from bubbling; the field commits every keystroke, so what is in it is
+   * already in the store.
+   */
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing || !isSaveChord(event)) return;
+      event.preventDefault();
+      if (event.repeat) return;
+      // A failed write leaves the paper dirty, and the status says "Not saved yet".
+      save().catch(() => {});
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [save]);
 
   // Undo/redo shortcuts (§11.13).
   useEffect(() => {

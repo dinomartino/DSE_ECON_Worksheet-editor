@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { gestureKey, holdsTextUndo, isUndoRedoKey, undoChord } from './undoChord';
+import { gestureKey, holdsTextUndo, isSaveChord, isUndoRedoKey, undoChord } from './undoChord';
 
 const key = (k: string, mods: Partial<Record<'metaKey' | 'ctrlKey' | 'shiftKey', boolean>> = {}) => ({
   key: k,
@@ -85,5 +85,23 @@ describe('where ⌘Z belongs', () => {
   it('the editor’s undo keys ask it, not “any input”', () => {
     const src = readFileSync('src/components/EditorApp.tsx', 'utf8');
     expect(src).toContain('if (holdsTextUndo(document.activeElement)) return;');
+  });
+});
+
+describe('save key', () => {
+  const save = (k: string, mods: Partial<Record<'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey', boolean>> = {}) =>
+    isSaveChord({ ...key(k), altKey: false, ...mods });
+
+  it('⌘S and Ctrl+S are Save, whatever the caps lock', () => {
+    expect(save('s', { metaKey: true })).toBe(true);
+    expect(save('s', { ctrlKey: true })).toBe(true);
+    expect(save('S', { metaKey: true })).toBe(true);
+  });
+
+  it('a bare S is typing, and Shift or Alt make it another chord', () => {
+    expect(save('s')).toBe(false);
+    expect(save('S', { metaKey: true, shiftKey: true })).toBe(false);
+    expect(save('s', { ctrlKey: true, altKey: true })).toBe(false);
+    expect(save('d', { metaKey: true })).toBe(false);
   });
 });

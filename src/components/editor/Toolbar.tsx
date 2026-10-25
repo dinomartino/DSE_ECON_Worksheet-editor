@@ -33,6 +33,7 @@ import { AiButton } from '@/components/ai/AiButton';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages } from '@/i18n/language';
 import { TOOLBAR_MESSAGES } from './Toolbar.messages';
+import { useShortcutLabel } from '@/components/ui/useShortcutLabel';
 
 /**
  * `[mark] Econ Studio › name`: one button home to the start screen, the editor's only route
@@ -99,6 +100,7 @@ export function Toolbar({
   const past = useWorksheetStore((s) => s.past);
   const future = useWorksheetStore((s) => s.future);
   const save = useWorksheetStore((s) => s.save);
+  const saveKey = useShortcutLabel('S');
   const select = useWorksheetStore((s) => s.select);
   const printPreview = useWorksheetStore((s) => s.printPreview);
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
@@ -385,7 +387,7 @@ export function Toolbar({
         <Menu
           label={m.menu}
           items={[
-            ...(readOnly ? [] : [{ label: m.saveNow, onSelect: () => void save() }]),
+            ...(readOnly ? [] : [{ label: m.saveNow, hint: saveKey, onSelect: () => void save().catch(() => {}) }]),
             ...(isDesktop()
               ? [
                   {

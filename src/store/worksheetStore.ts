@@ -144,6 +144,12 @@ interface WorksheetState {
    */
   readOnly: boolean;
   lastSavedAt?: string;
+  /**
+   * When a save the teacher asked for (⌘S, ⋯ → Save now) last landed, as `Date.now()`. The
+   * save status shows the word "Saved" for a moment after it changes, the answer Word
+   * users expect from ⌘S; autosave stays a quiet dot. Editor state, never stored.
+   */
+  savedByHandAt?: number;
   selectedQuestionId?: string;
   /**
    * The layout element selected on the page, mirrored from the preview's own local
@@ -888,7 +894,9 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     const worksheet = get().worksheet;
     await worksheetStore.save(worksheet);
     // An edit made during the write is not saved yet: it stays dirty.
-    if (get().worksheet === worksheet) get().markSaved();
+    if (get().worksheet !== worksheet) return;
+    get().markSaved();
+    set({ savedByHandAt: Date.now() });
   },
 
   // A view change, not an edit: bypasses `commit`, so no history entry and no dirty.

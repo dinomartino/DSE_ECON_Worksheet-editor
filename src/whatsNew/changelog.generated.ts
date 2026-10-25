@@ -72,6 +72,11 @@ a version heading is edited afterwards.
   whole question, click its number or the space beside it. The header and footer still open with a
   double-click.
   <!-- zh: **輸入方式與 Word 一樣：按一下即可輸入，Enter 會開始新段落。** 在題目文字、分題或選項的任何位置按一下即可輸入：游標會出現在你按下的位置，毋須再按第二下；拖曳經過文字即可選取。即使你立即開始輸入，也不會漏掉任何字。在題目文字中按 Enter，會在游標位置開始新段落；在段落開頭按 Backspace，則會把它併回上一段。在 MC 題中按 Enter 會移到下一個選項，在最後一個選項按 Enter 則完成輸入。Shift+Enter 仍會在同一段落內換行；按 Esc 或按其他地方即完成輸入；⌘Z（Windows 為 Ctrl+Z）一步即可取消新段落。要選取整條題目，請按題號或旁邊的空位。頁首及頁尾仍需按兩下才可編輯。 -->
+- **⌘S saves, as in Word.** Your work still saves by itself, but ⌘S (Ctrl+S on Windows) now saves
+  at once, even while you are typing, and the top bar says Saved for a moment. It no longer opens
+  the browser's "Save page as…" box, which saved the app's web page rather than your worksheet.
+  Save now in the ⋯ menu shows the key.
+  <!-- zh: **⌘S 即可儲存，與 Word 一樣。** 你的工作仍會自動儲存，但現在按 ⌘S（Windows 為 Ctrl+S）會立即儲存，即使正在輸入亦可，頂列會短暫顯示「已儲存」。它不再開啟瀏覽器的「另存網頁」視窗（那只會儲存程式的網頁，而不是你的工作紙）。⋯ 選單中的「立即儲存」亦會顯示這個快捷鍵。 -->
 
 ### Fixed
 - **The edit hint and the zoom no longer overlap on an iPad, and Document setup fits an iPhone.**
