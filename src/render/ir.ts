@@ -182,6 +182,13 @@ export interface TextNode {
   keepLines?: boolean;
   /** Teacher-version-only content; stripped entirely from student output (§11.8). */
   teacherOnly?: boolean;
+  /**
+   * A line that exists only to be typed in: an empty mark point, so the point Enter just
+   * made has a place for the caret (k-0200). Emitted only for an editing page
+   * (`OutputMode.editing`, `answerKeyView`'s `editing`), which draws it `data-print-hide`;
+   * no export ever receives one, so nothing prints it.
+   */
+  editOnly?: true;
   /** Extra left indent in twips beyond the style default (used for non-list nesting). */
   indent?: number;
   /** Where this text lives in the model, so the preview can edit it in place. */

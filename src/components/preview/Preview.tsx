@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import {
   BAND_ROW_TWIPS,
   bandsHeight,
@@ -51,7 +50,6 @@ import {
   createParagraphBlock,
   createSourceBlock,
   createTableBlock,
-  newId,
   nextSourceLetter,
 } from "@/model/factories";
 import { imageBlockFromFile } from "@/export/imageImport";
@@ -71,7 +69,6 @@ import type {
   HeaderFooter,
   CaptionPlacement,
   LanguageMode,
-  McqQuestion,
   OutputMode,
   PageFurniture,
   PageSetup,
@@ -109,7 +106,7 @@ import {
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { offerPastedQuestions, pastePicture } from "@/components/editor/pasteActions";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
-import { joinParagraph, splitParagraph } from "@/model/paragraphs";
+import { enterBreaksLine, fieldEnter, fieldJoin } from "./fieldEnter";
 import { diagramNodeSvg } from "@/render/diagramPage";
 import {
   AnswerGraphOnPage,
@@ -218,7 +215,6 @@ import {
 import {
   InlineEditable,
   OPEN_FIELD_EVENT,
-  openFieldWhenReady,
   type ArrowDirection,
   type TextSelection,
 } from "./InlineEditable";
@@ -458,6 +454,7 @@ function richNodes(
         fieldKey={editTargetKey(edit)}
         onEnter={ctx.onFieldEnter && !cellNav ? (range) => ctx.onFieldEnter!(edit, sideKey, range) : undefined}
         onJoin={ctx.onFieldJoin && !cellNav ? (direction) => ctx.onFieldJoin!(edit, sideKey, direction) : undefined}
+        enterBreaksLine={Boolean(ctx.onFieldEnter) && !cellNav && (ctx.enterBreaksLine ?? enterBreaksLine)(edit)}
         // A paste that reads as questions is offered as questions; a picture is inserted (k-0201).
         onPasted={
           cellNav
@@ -919,6 +916,11 @@ export interface EditContext {
     side: "en" | "zh",
     range: { start: number; end: number },
   ) => (() => void) | undefined;
+  /**
+   * Whether Enter is a line break in `target` (`InlineEditable.enterBreaksLine`); absent
+   * reads `fieldEnter.ts:enterBreaksLine`. A view that lays a field out its own way says so.
+   */
+  enterBreaksLine?: (target: EditTarget) => boolean;
   /** Word's Backspace at a paragraph's start / Delete at its end: join it to its neighbour. */
   onFieldJoin?: (
     target: EditTarget,
@@ -1200,6 +1202,8 @@ function TextNodeView({
       // scrolls here (§ `scrollPageTo`). The panel's own controls carry the same key
       // as `data-edit-target`; a distinct attribute so neither query doubles.
       data-page-target={node.edit ? editTargetKey(node.edit) : undefined}
+      // A line only made to be typed in (an empty mark point) never reaches paper.
+      data-print-hide={node.editOnly ? "" : undefined}
       // The Word reflex: right-click offers this paragraph's own verbs. Only where an
       // edit target names it — derived text (marks totals, numbers) bubbles to the
       // question's box and gets the question's menu (§ `ItemBody`).
@@ -5237,7 +5241,11 @@ export function Preview({
    * re-rendered the entire worksheet on each pointer frame. The output depends on
    * nothing else, so it only has to be rebuilt when the document or the mode changes.
    */
-  const rendered = useMemo(() => renderWorksheet(worksheet, mode), [worksheet, mode]);
+  // The page being typed on also draws the lines only made to be typed in (an empty mark
+  // point, `TextNode.editOnly`); a measuring copy, print preview or a read-only file does not.
+  const typing = useWorksheetStore((s) => !s.printPreview && !s.readOnly) && Boolean(onEdit) && !measureOnly;
+  const renderMode = useMemo(() => (typing ? { ...mode, editing: true } : mode), [mode, typing]);
+  const rendered = useMemo(() => renderWorksheet(worksheet, renderMode), [worksheet, renderMode]);
   const { language } = mode;
   // Which of the four papers this is (derived, § documentShape) and the list geometry
   // that follows from it — the exam paper renders on its own scheme.
@@ -6403,62 +6411,6 @@ export function Preview({
     if (groups.length === 0) return false;
     setPageMenu({ groups, at });
     return true;
-  };
-
-  /*
-   * Word's Enter between paragraphs and options (k-0200). Each is one commit, so ⌘Z takes
-   * the new paragraph back in one step; the typing on either side keeps its own steps.
-   */
-  const fieldEnter = (
-    target: EditTarget,
-    side: "en" | "zh",
-    range: { start: number; end: number },
-  ): (() => void) | undefined => {
-    const store = useWorksheetStore.getState();
-    if (store.readOnly) return undefined;
-    if (target.kind === "blockText") {
-      return () => {
-        const id = newId();
-        // Rendered now, so the new paragraph's field is on the page to open before the next key.
-        flushSync(() => store.commit((draft) => splitParagraph(draft, target.blockId, side, range.start, range.end, id)));
-        openFieldWhenReady(editTargetKey({ kind: "blockText", blockId: id }), side, "start");
-      };
-    }
-    if (target.kind === "mcqOption" || target.kind === "mcqStatement") {
-      const question = store.worksheet.questions.find((q) => q.id === target.questionId) as
-        | McqQuestion
-        | undefined;
-      if (!question) return undefined;
-      const next: EditTarget | undefined =
-        target.kind === "mcqOption"
-          ? (() => {
-              const at = question.options.findIndex((option) => option.id === target.optionId);
-              const option = at < 0 ? undefined : question.options[at + 1];
-              return option ? { kind: "mcqOption", questionId: question.id, optionId: option.id } : undefined;
-            })()
-          : target.index + 1 < (question.statements?.length ?? 0)
-            ? { kind: "mcqStatement", questionId: question.id, index: target.index + 1 }
-            : undefined;
-      // The last option (or statement) finishes, as Enter always did.
-      if (!next) return undefined;
-      return () => openFieldWhenReady(editTargetKey(next), side, "end");
-    }
-    return undefined;
-  };
-
-  const fieldJoin = (
-    target: EditTarget,
-    side: "en" | "zh",
-    direction: "backward" | "forward",
-  ): (() => void) | undefined => {
-    const store = useWorksheetStore.getState();
-    if (store.readOnly || target.kind !== "blockText") return undefined;
-    const joined = joinParagraph(store.worksheet, target.blockId, side, direction);
-    if (!joined) return undefined;
-    return () => {
-      flushSync(() => store.commit((draft) => joinParagraph(draft, target.blockId, side, direction)?.worksheet ?? draft));
-      openFieldWhenReady(editTargetKey({ kind: "blockText", blockId: joined.blockId }), side, joined.caret);
-    };
   };
 
   // A cover line printed once edits both of its identical sides (§ `coverLinePrintsOnce`).

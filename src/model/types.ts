@@ -1053,6 +1053,11 @@ export interface OutputMode {
   omitAnswerSpace?: boolean;
   /** The paper version letter ("A", "B"…) when `Worksheet.versions` is on; absent = A. */
   variant?: string;
+  /**
+   * Page-only, never stored or exported: the page being typed on, which also draws the
+   * lines that exist only to be typed in (`TextNode.editOnly`, an empty mark point).
+   */
+  editing?: boolean;
 }
 
 /** `count` 1–4 (`MAX_VERSIONS`); `seed` picks every version's option order. */

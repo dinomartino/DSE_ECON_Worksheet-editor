@@ -94,7 +94,7 @@ export function joinParagraph(
 }
 
 /** Two texts as one, a line break between them when both have words. */
-function joinApart(a: RichText | undefined, b: RichText | undefined): RichText {
+export function joinApart(a: RichText | undefined, b: RichText | undefined): RichText {
   const head = a ?? [];
   const tail = b ?? [];
   if (richTextLength(head) === 0) return tail;

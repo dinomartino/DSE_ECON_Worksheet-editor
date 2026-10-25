@@ -94,6 +94,14 @@ a version heading is edited afterwards.
   whole question, click its number or the space beside it. The header and footer still open with a
   double-click.
   <!-- zh: **輸入方式與 Word 一樣：按一下即可輸入，Enter 會開始新段落。** 在題目文字、分題或選項的任何位置按一下即可輸入：游標會出現在你按下的位置，毋須再按第二下；拖曳經過文字即可選取。即使你立即開始輸入，也不會漏掉任何字。在題目文字中按 Enter，會在游標位置開始新段落；在段落開頭按 Backspace，則會把它併回上一段。在 MC 題中按 Enter 會移到下一個選項，在最後一個選項按 Enter 則完成輸入。Shift+Enter 仍會在同一段落內換行；按 Esc 或按其他地方即完成輸入；⌘Z（Windows 為 Ctrl+Z）一步即可取消新段落。要選取整條題目，請按題號或旁邊的空位。頁首及頁尾仍需按兩下才可編輯。 -->
+- **The Marking scheme types the same way.** In the Marking scheme view (and in the Teacher
+  version), Enter in a marking point starts a new point after it with the same mark, so you can
+  type a scheme line by line, each with its own (1); Enter on an empty point ends the list.
+  Backspace at the start of a point joins it to the one before. Enter in an answer, a level or an
+  explanation starts a new line in it. Shift+Enter is a new line, Esc finishes, and ⌘Z takes a new
+  point back in one step. In the Suggested answers and Detailed table styles, Enter in a point starts
+  a new line in it.
+  <!-- zh: **評卷參考的輸入方式也一樣。** 在「評卷參考」檢視（及教師版）中，在評分要點按 Enter 會在其後開始新要點，分數相同，讓你逐行輸入評分參考，每點各有 (1)；在空白要點按 Enter 即結束列表。在要點開頭按 Backspace 會把它併回上一點。在答案、等級描述或解釋中按 Enter，會在其中換行。Shift+Enter 換行，按 Esc 完成輸入，⌘Z 一步即可取消新要點。在「參考答案」及「詳細表格」樣式中，在要點按 Enter 會在要點內換行。 -->
 - **⌘S saves, as in Word.** Your work still saves by itself, but ⌘S (Ctrl+S on Windows) now saves
   at once, even while you are typing, and the top bar says Saved for a moment. It no longer opens
   the browser's "Save page as…" box, which saved the app's web page rather than your worksheet.
@@ -121,6 +129,10 @@ a version heading is edited afterwards.
   <!-- zh: **中英對照試卷的每部分只顯示一次分數。** 值 2 分的部分現在只顯示「(2 marks)」，不再顯示「(2 marks) （2分）」，試卷、答案、編輯器及複製到 Word 時都一樣。英文和中文試卷不變。 -->
 
 ### Fixed
+- **A new line typed at the end of a table cell or an answer no longer adds a blank line.** When
+  you pressed Enter (or Shift+Enter) at the very end of the text and kept typing, an empty line was
+  saved after your words and printed in Word. It is gone once you finish typing.
+  <!-- zh: **在表格儲存格或答案末尾換行，不再多出空行。** 以往在文字最末按 Enter（或 Shift+Enter）再繼續輸入，文字後面會多儲存一個空行，並在 Word 中印出。現在完成輸入後不會再有這個空行。 -->
 - **Empty text on the page no longer says "Double-click".** Since one click types, an empty
   question, part or option now reads Click to add English (or Click to add 中文). Double-click is
   still what opens the header or footer, and a diagram's drawing canvas.

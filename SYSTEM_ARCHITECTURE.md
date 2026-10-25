@@ -577,8 +577,8 @@ RenderNode = TextNode | ColumnsNode | TableNode | ImageNode | DiagramNode
            | AnswerLinesNode | AnswerSpaceNode | AnswerGraphNode
 
 TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, level, marker}
-          marks? · trail? · keepNext? · teacherOnly? · indent? · format? · edit?: EditTarget
-          boundaryGap?
+          marks? · trail? · keepNext? · teacherOnly? · editOnly? · indent? · format?
+          edit?: EditTarget · boundaryGap?
 ```
 
 `EditTarget` is a discriminated union keyed by **id**: `worksheetTitle`,
@@ -593,6 +593,12 @@ TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, lev
 - **`trail` is a marks label with other wording** ("(1)", "max: 4", "2@"): same right
   tab / `MarksTrail` / float as `marks`, text from `trailLabel()` so the three backends
   agree; `marks` wins when both are set.
+- **`editOnly` is the one node no backend prints** (k-0200): an empty mark point, drawn
+  so the point Enter just made has a place for the caret. Only an editing render emits
+  it — `OutputMode.editing` (set by the paper's `Preview` while it can be typed on) and
+  `answerKeyView`'s `editing` (the Marking scheme view) — and the page draws it
+  `data-print-hide`. Exports, the measuring copy and print preview render without the
+  flag, so their IR, and the `.docx`, are what they always were.
 
 `listRef.stream` connects IR to `.docx`: each distinct stream becomes one `w:num`.
 

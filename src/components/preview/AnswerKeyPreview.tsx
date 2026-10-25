@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { resolveAnswerKeyLayout } from "@/model/answerKeyLayout";
 import { cssFontFamilies } from "@/model/fonts";
 import { targetQuestionId } from "@/model/edits";
 import {
@@ -31,6 +32,7 @@ import {
   type FlowBlock,
 } from "./Preview";
 import { PREVIEW_MESSAGES } from "./messages";
+import { enterBreaksLine, fieldEnter, fieldJoin } from "./fieldEnter";
 import { ANSWER_KEY_PREVIEW_MESSAGES } from "./AnswerKeyPreview.messages";
 
 /**
@@ -297,8 +299,13 @@ export function AnswerKeyPreview({
   // The key and its keep-together runs, rebuilt only when the document or language does.
   // The key's own lines (title, subtitle) take their edit targets here, on the page's
   // copy only: the export's nodes stay exactly as `renderAnswerKey` gives them.
+  // Typed on, the key also draws an empty mark point, so the one Enter made takes the caret:
+  // in the layouts that print a scheme a line per point (`renderMarkScheme`).
+  const typing = Boolean(onEdit) && !measureOnly;
+  const lqLayout = resolveAnswerKeyLayout(worksheet.answerKeyLayout).lqLayout;
+  const pointsAreLines = lqLayout === "compact" || lqLayout === "marksColumn";
   const { nodes, runs, empty, runningHead } = useMemo(() => {
-    const view = answerKeyView(worksheet, language, title ? { title } : {});
+    const view = answerKeyView(worksheet, language, { ...(title ? { title } : {}), ...(typing ? { editing: true } : {}) });
     const shown = view.nodes.map((node, index) => {
       const field = view.fields.find((entry) => entry.index === index);
       return field && node.kind === "text" ? { ...node, edit: field.edit } : node;
@@ -322,7 +329,7 @@ export function AnswerKeyPreview({
         };
       }),
     };
-  }, [worksheet, language, title, sharedHead]);
+  }, [worksheet, language, title, sharedHead, typing]);
 
   const [selectedElement, setSelectedElement] = useState<
     { target: EditTarget; side: "en" | "zh" } | undefined
@@ -347,6 +354,13 @@ export function AnswerKeyPreview({
           setSelectedElement({ target, side });
           selectOwner(target);
         },
+        // Enter and Backspace as on the paper (k-0200, § `fieldEnter`). Where the layout
+        // draws the points its own way (Suggested answers' bullets, the Detailed table) an
+        // empty point has no line to type in, so Enter in a point is a new line in it there.
+        onFieldEnter: fieldEnter,
+        onFieldJoin: (target, side, direction) =>
+          target.kind === "schemePoint" && !pointsAreLines ? undefined : fieldJoin(target, side, direction),
+        enterBreaksLine: (target) => (target.kind === "schemePoint" ? !pointsAreLines : enterBreaksLine(target)),
         onClearSelection: () => setSelectedElement(undefined),
         isSelected: (target, side) =>
           selectedElement?.side === side && sameTarget(selectedElement.target, target),

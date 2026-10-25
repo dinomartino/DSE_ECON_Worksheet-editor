@@ -66,6 +66,8 @@ export interface KeySectionContext {
   own: Own;
   /** The next figure number in this key (HKEAA's "Figure n"); derived per render, never stored. */
   nextFigure?: () => number;
+  /** The Marking scheme view being typed on: empty points get a line (§ `TextNode.editOnly`). */
+  editing?: boolean;
 }
 
 /**
@@ -596,6 +598,7 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
     schemeNodes: renderMarkScheme(row.scheme, {
       indent: row.depth === 1 ? partText : subPartText,
       ...(row.schemeAt ? { at: row.schemeAt } : {}),
+      ...(context.editing ? { editing: true } : {}),
     }),
   }));
   /** A line's own total: "(n marks)" at the line end, or "(n)" in an unclaimed column. */

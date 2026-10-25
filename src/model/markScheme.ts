@@ -1,5 +1,6 @@
 import { newId } from './factories';
-import { bi, emptyBiText, isBiTextEmpty } from './text';
+import { joinApart } from './paragraphs';
+import { bi, emptyBiText, isBiTextEmpty, normalizeRuns, richTextLength, sliceRichText } from './text';
 import type { BiText } from './types';
 import type {
   MarkEc,
@@ -236,6 +237,123 @@ export function withSchemeText(scheme: MarkScheme, slot: SchemeTextSlot, text: B
   const routes = schemeRoutes(scheme).map((route) => ({
     ...route,
     groups: routeGroups(route).map((group) => ({ ...group, points: groupPoints(group).map(write) })),
+  }));
+  return found ? { ...scheme, routes } : scheme;
+}
+
+/**
+ * Word's Enter in a mark point (k-0200): the point splits at `[start, end)` of `side`, as a
+ * paragraph does (`model/paragraphs.ts`). The selected characters go and the words after
+ * them become a new point `newId` straight after it, in the same group, so it is marked by
+ * the same rule (`n@`, "any N", `max`).
+ *
+ * The new point carries the old one's own mark, as Word carries a line's format into the
+ * next — a teacher typing a scheme line by line gets "(1)" on each — so the derived total
+ * can rise, which the panel's mismatch note reports. The `/` alternatives stay with the
+ * first point; the side not being typed stays with it too, and the new point asks for its
+ * own. The same object when the point is not found.
+ */
+export function splitMarkPoint(
+  scheme: MarkScheme,
+  pointId: string,
+  side: 'en' | 'zh',
+  start: number,
+  end: number,
+  newId: string,
+): MarkScheme {
+  let found = false;
+  const routes = schemeRoutes(scheme).map((route) => ({
+    ...route,
+    groups: routeGroups(route).map((group) => {
+      const points = groupPoints(group);
+      const index = points.findIndex((point) => point.id === pointId);
+      if (index === -1) return group;
+      found = true;
+      const point = points[index];
+      const runs = point.text[side] ?? [];
+      const length = richTextLength(runs);
+      const from = Math.max(0, Math.min(start, end, length));
+      const to = Math.min(length, Math.max(start, end));
+      const after = sliceRichText(runs, to, length);
+      const first: MarkPoint = { ...point, text: { ...point.text, [side]: sliceRichText(runs, 0, from) } };
+      const second: MarkPoint = {
+        id: newId,
+        text: side === 'en' ? { en: after, zh: [] } : { en: [], zh: after },
+        ...(point.marks !== undefined ? { marks: point.marks } : {}),
+      };
+      return { ...group, points: [...points.slice(0, index), first, second, ...points.slice(index + 1)] };
+    }),
+  }));
+  return found ? { ...scheme, routes } : scheme;
+}
+
+/** The point a join lands in, and where in its `side` the caret goes. */
+export interface MarkPointJoin {
+  scheme: MarkScheme;
+  pointId: string;
+  caret: number;
+}
+
+/**
+ * Word's Backspace at a point's start (`backward`, into the point before) and Delete at its
+ * end (`forward`, pulling the next one in): two points of one group become one. The joined
+ * point keeps the first point's mark — so a split joined straight back is the scheme it
+ * was — and both points' `/` alternatives; the side not being typed keeps both texts, a
+ * line break apart, as a paragraph join does. `undefined` at a group's edge: points marked
+ * by different rules are never merged by a keystroke.
+ */
+export function joinMarkPoint(
+  scheme: MarkScheme,
+  pointId: string,
+  side: 'en' | 'zh',
+  direction: 'backward' | 'forward',
+): MarkPointJoin | undefined {
+  let result: MarkPointJoin | undefined;
+  const routes = schemeRoutes(scheme).map((route) => ({
+    ...route,
+    groups: routeGroups(route).map((group) => {
+      const points = groupPoints(group);
+      const index = points.findIndex((point) => point.id === pointId);
+      if (index === -1) return group;
+      const at = direction === 'backward' ? index - 1 : index;
+      const head = points[at];
+      const tail = points[at + 1];
+      if (!head || !tail) return group;
+      const other = side === 'en' ? 'zh' : 'en';
+      const alternatives = [...(head.alternatives ?? []), ...(tail.alternatives ?? [])];
+      const joined: MarkPoint = {
+        ...head,
+        text: {
+          ...head.text,
+          [side]: normalizeRuns([...(head.text[side] ?? []), ...(tail.text[side] ?? [])]),
+          [other]: joinApart(head.text[other], tail.text[other]),
+        },
+        ...(alternatives.length > 0 ? { alternatives } : {}),
+      };
+      result = { scheme, pointId: head.id, caret: richTextLength(head.text[side]) };
+      return { ...group, points: [...points.slice(0, at), joined, ...points.slice(at + 2)] };
+    }),
+  }));
+  return result ? { ...result, scheme: { ...scheme, routes } } : undefined;
+}
+
+/**
+ * Word's Enter on an empty list item ends the list: Enter on an empty mark point removes it,
+ * so a second Enter leaves no stray "(1)" adding to the total. Only a point with no words on
+ * either side and no `/` alternatives goes, and never a group's last point (the group would
+ * go with it); otherwise the same object.
+ */
+export function withoutEmptyMarkPoint(scheme: MarkScheme, pointId: string): MarkScheme {
+  let found = false;
+  const routes = schemeRoutes(scheme).map((route) => ({
+    ...route,
+    groups: routeGroups(route).map((group) => {
+      const points = groupPoints(group);
+      const point = points.find((entry) => entry.id === pointId);
+      if (!point || points.length < 2 || !isBiTextEmpty(point.text) || (point.alternatives ?? []).length > 0) return group;
+      found = true;
+      return { ...group, points: points.filter((entry) => entry !== point) };
+    }),
   }));
   return found ? { ...scheme, routes } : scheme;
 }

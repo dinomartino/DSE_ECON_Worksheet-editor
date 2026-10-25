@@ -71,7 +71,7 @@ describe('a table cell types like Word', () => {
 
   it('makes Enter a line break inside the cell, not a commit', () => {
     expect(source).toMatch(
-      /event\.key === 'Enter' && cell[\s\S]*?execCommand\('insertLineBreak'\)/,
+      /event\.key === 'Enter' && \(cell \|\| enterBreaksLine\)[\s\S]*?execCommand\('insertLineBreak'\)/,
     );
   });
 });

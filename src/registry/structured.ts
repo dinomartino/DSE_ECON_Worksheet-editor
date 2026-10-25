@@ -153,6 +153,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         indent: context.indents.stemText,
         teacherOnly: true,
         at: { questionId: question.id },
+        editing: context.mode.editing,
       }),
     );
   }
@@ -270,6 +271,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         indent: context.indents.partText,
         teacherOnly: true,
         at: { questionId: question.id, partId: part.id },
+        editing: context.mode.editing,
       });
     if (!hasSubParts) {
       pushAnswerDiagram(nodes, part.answerDiagram);
@@ -346,6 +348,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           indent: context.indents.subPartText,
           teacherOnly: true,
           at: { questionId: question.id, partId: part.id, subPartId: subPart.id },
+          editing: context.mode.editing,
         }),
       );
 

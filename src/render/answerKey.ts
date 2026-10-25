@@ -252,6 +252,8 @@ export interface KeyStyleContext {
   layout: ResolvedAnswerKeyLayout;
   /** The printed title, already resolved (override, part title or derived). */
   title: BiText;
+  /** The Marking scheme view being typed on (§ `MarkSchemeRenderOptions.editing`); never for an export. */
+  editing?: boolean;
 }
 
 /**
@@ -282,7 +284,7 @@ export interface StandardKeyOptions {
  */
 export function renderStandardKey(
   data: AnswerKeyData,
-  { language, layout, title }: KeyStyleContext,
+  { language, layout, title, editing }: KeyStyleContext,
   options: StandardKeyOptions = {},
 ): AnswerKeyView {
   const nodes: RenderNode[] = [{ kind: 'text', style: 'Worksheet Title', text: title, keepNext: true }];
@@ -293,7 +295,13 @@ export function renderStandardKey(
     for (let index = from; index < nodes.length; index += 1) owners[index] = questionId;
   };
   let figures = 0;
-  const context: KeySectionContext = { language, layout, own, nextFigure: () => (figures += 1) };
+  const context: KeySectionContext = {
+    language,
+    layout,
+    own,
+    nextFigure: () => (figures += 1),
+    ...(editing ? { editing } : {}),
+  };
   // The MC sections may read their own settings (Suggested answers' MC wording switch).
   const mc: KeySectionContext = options.mcLayout ? { ...context, layout: options.mcLayout } : context;
   renderFrontMatter(nodes, context);
@@ -522,13 +530,15 @@ export function answerKeyPartTitle(worksheet: Worksheet): BiText {
 export function answerKeyView(
   worksheet: Worksheet,
   language: LanguageMode,
-  options: { title?: BiText } = {},
+  /** `editing`: the Marking scheme view being typed on, never an export (§ `TextNode.editOnly`). */
+  options: { title?: BiText; editing?: boolean } = {},
 ): AnswerKeyView {
   const layout = resolveAnswerKeyLayout(worksheet.answerKeyLayout);
   return ANSWER_KEY_STYLES[layout.preset].render(collectAnswerKey(worksheet), {
     language,
     layout,
     title: options.title ?? answerKeyTitle(worksheet),
+    ...(options.editing ? { editing: true } : {}),
   });
 }
 

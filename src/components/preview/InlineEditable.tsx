@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { plain } from '@/model/text';
+import { plain, richTextLength, sliceRichText } from '@/model/text';
 import type { BiText, RichText } from '@/model/types';
 import { RichTextEditable } from './RichTextEditable';
 import type { TextGrid } from '@/model/tableClipboard';
 import { useMessages } from '@/i18n/language';
 import { PREVIEW_HANDLE_MESSAGES } from './messages';
-import { selectionOffsets } from './richTextDom';
+import { readRuns, selectionOffsets } from './richTextDom';
 import { holdKeystrokes, takeHeldKeystrokes, typesCharacter } from './heldKeystrokes';
 
 /**
@@ -98,8 +98,8 @@ interface Props {
    * - an **arrow key at the text's edge** moves to the neighbouring cell
    *   (`onArrowOut` returns false where there is none, and the caret stays).
    *
-   * Only table cells pass this. Every other field keeps "click selects, click again
-   * edits" and "Enter commits".
+   * Only table cells pass this. Since k-0200 every field types on one click, and Enter is
+   * Word's in each (`onEnter`, `onJoin`, `enterBreaksLine`); the arrows stay the cell's.
    */
   cell?: {
     onArrowOut?: (direction: ArrowDirection) => boolean;
@@ -126,6 +126,13 @@ interface Props {
    * where there is nothing to join (the key then does what it always did).
    */
   onJoin?: (direction: 'backward' | 'forward') => (() => void) | undefined;
+  /**
+   * Enter starts a new line inside the field, as in a table cell (§ `cell`) and as
+   * Shift+Enter always did: for one text that runs to lines, such as an answer or a level
+   * descriptor, where Word's Enter is a new line rather than "done" (k-0200,
+   * `preview/fieldEnter.ts:enterBreaksLine`). Escape or clicking away finishes.
+   */
+  enterBreaksLine?: boolean;
   /**
    * A stable name for this field on the page (`data-field-key`), so a handler can open it
    * by the target it edits once it renders (`openFieldWhenReady`).
@@ -189,6 +196,7 @@ export function InlineEditable({
   twoStep = false,
   onEnter,
   onJoin,
+  enterBreaksLine = false,
   fieldKey,
   onPasted,
   onPastePicture,
@@ -271,6 +279,13 @@ export function InlineEditable({
   const [caretAnchor, setCaretAnchor] = useState<{ x: number; y: number } | undefined>(undefined);
   /** The press of the click that may open the field (§ `caretAnchorRef`). */
   const pressRef = useRef<{ x: number; y: number } | undefined>(undefined);
+  /**
+   * A line break went in at the very end of the text while this field was open. In a
+   * `pre-wrap` field Chrome then writes two `\n` — the break and a placeholder that gives
+   * the caret its new line — and typing on leaves the placeholder at the end, where the
+   * model would keep it as a blank line Word prints. Dropped once, as the field closes.
+   */
+  const breakAtEndRef = useRef(false);
   /** Where a keyboard route asked the caret to open: the start, the end, or an offset. */
   const [caretAt, setCaretAt] = useState<'start' | 'end' | number | undefined>(undefined);
   const beginEditing = (
@@ -309,6 +324,11 @@ export function InlineEditable({
 
   /** End editing and return the element to a neutral state. */
   const stopEditing = () => {
+    if (breakAtEndRef.current) {
+      breakAtEndRef.current = false;
+      const runs = value[side] ?? [];
+      if (plain(runs).endsWith('\n')) onCommit({ ...value, [side]: sliceRichText(runs, 0, richTextLength(runs) - 1) });
+    }
     setEditing(false);
     onSelectionChange?.(undefined);
     onDeselect?.();
@@ -453,13 +473,19 @@ export function InlineEditable({
           // finishes. Shift+Enter falls through to the browser, which inserts the `<br>`
           // that `readRuns` turns back into the `\n` the model stores for a hard break.
           //
-          // A table cell is the exception (§ `cell`): Enter is Word's new line there,
+          // A table cell is the exception (§ `cell`), and so is a field of one text that runs
+          // to lines (`enterBreaksLine`): Enter is Word's new line there,
           // the same hard break Shift+Enter makes — asked of the browser explicitly,
           // because a bare Enter in a contenteditable inserts a `<div>`, not a `<br>`.
           // `nativeEvent.isComposing`: Enter confirming an IME candidate is not a break.
+          const breaks = event.key === 'Enter' && !event.nativeEvent.isComposing && (event.shiftKey || cell || enterBreaksLine);
+          if (breaks) {
+            const range = selectionOffsets(event.currentTarget);
+            if (range && range.end >= richTextLength(readRuns(event.currentTarget))) breakAtEndRef.current = true;
+          }
           if (event.key === 'Enter' && event.nativeEvent.isComposing) {
             // The IME's own Enter: leave it to the browser.
-          } else if (event.key === 'Enter' && cell) {
+          } else if (event.key === 'Enter' && (cell || enterBreaksLine)) {
             event.preventDefault();
             document.execCommand('insertLineBreak');
           } else if (event.key === 'Enter' && !event.shiftKey) {

@@ -30,7 +30,14 @@ import type { EditTarget, SchemeAddress } from '@/render/ir';
  */
 import { diagramSize } from '@/render/diagram';
 import { applyBandFieldSide, bandFieldSideText } from './bandSegments';
-import { schemeTextAt, withSchemeText, type SchemeTextSlot } from './markScheme';
+import {
+  joinMarkPoint,
+  schemeTextAt,
+  splitMarkPoint,
+  withSchemeText,
+  withoutEmptyMarkPoint,
+  type SchemeTextSlot,
+} from './markScheme';
 import type { MarkScheme } from './markSchemeTypes';
 import { applyRunFormat, insertBlank, isBiTextEmpty, replaceRichTextRange } from './text';
 import { endsWithTab, tabPresetStops, tabPresetText, type TabPreset } from './tabStops';
@@ -58,7 +65,7 @@ function schemeSlot(target: SchemeTarget): SchemeTextSlot {
 type SchemeLeaf = { id: string; scheme?: MarkScheme; subParts?: SchemeLeaf[] };
 
 /** The scheme of the leaf a scheme target addresses. */
-function targetScheme(worksheet: Worksheet, target: SchemeTarget): MarkScheme | undefined {
+function targetScheme(worksheet: Worksheet, target: SchemeAddress): MarkScheme | undefined {
   const question = worksheet.questions.find((entry) => entry.id === target.questionId);
   if (target.partId === undefined) return (question as { scheme?: MarkScheme } | undefined)?.scheme;
   const part = (question as { parts?: SchemeLeaf[] } | undefined)?.parts?.find(
@@ -73,27 +80,71 @@ function targetScheme(worksheet: Worksheet, target: SchemeTarget): MarkScheme | 
 
 /** Write one piece of a leaf's scheme text; unchanged when the address no longer resolves. */
 function applySchemeText(worksheet: Worksheet, target: SchemeTarget, text: BiText): Worksheet {
-  const scheme = targetScheme(worksheet, target);
+  return applyScheme(worksheet, target, (scheme) => withSchemeText(scheme, schemeSlot(target), text));
+}
+
+/**
+ * Rewrite the scheme of the leaf `owner` addresses with `recipe`; unchanged when the address
+ * no longer resolves or `recipe` returns the scheme it was given.
+ */
+function applyScheme(
+  worksheet: Worksheet,
+  owner: SchemeAddress,
+  recipe: (scheme: MarkScheme) => MarkScheme,
+): Worksheet {
+  const scheme = targetScheme(worksheet, owner);
   if (!scheme) return worksheet;
-  const next = withSchemeText(scheme, schemeSlot(target), text);
+  const next = recipe(scheme);
   if (next === scheme) return worksheet;
   const write = (leaf: SchemeLeaf): SchemeLeaf => ({ ...leaf, scheme: next });
-  return mapQuestionById(worksheet, target.questionId, (question) => {
-    if (target.partId === undefined) return { ...question, scheme: next } as Question;
+  return mapQuestionById(worksheet, owner.questionId, (question) => {
+    if (owner.partId === undefined) return { ...question, scheme: next } as Question;
     const parts = (question as { parts?: SchemeLeaf[] }).parts;
     if (!parts) return question;
     return {
       ...question,
       parts: parts.map((part) => {
-        if (part.id !== target.partId) return part;
-        if (target.subPartId === undefined) return write(part);
+        if (part.id !== owner.partId) return part;
+        if (owner.subPartId === undefined) return write(part);
         return {
           ...part,
-          subParts: part.subParts?.map((sub) => (sub.id === target.subPartId ? write(sub) : sub)),
+          subParts: part.subParts?.map((sub) => (sub.id === owner.subPartId ? write(sub) : sub)),
         };
       }),
     } as Question;
   });
+}
+
+type SchemePointTarget = Extract<EditTarget, { kind: 'schemePoint' }>;
+
+/** Word's Enter in a mark point on the page (§ `splitMarkPoint`): one new point after it. */
+export function splitSchemePoint(
+  worksheet: Worksheet,
+  target: SchemePointTarget,
+  side: 'en' | 'zh',
+  start: number,
+  end: number,
+  newId: string,
+): Worksheet {
+  return applyScheme(worksheet, target, (scheme) => splitMarkPoint(scheme, target.pointId, side, start, end, newId));
+}
+
+/** Word's Enter on an empty mark point ends the list (§ `withoutEmptyMarkPoint`). */
+export function dropEmptySchemePoint(worksheet: Worksheet, target: SchemePointTarget): Worksheet {
+  return applyScheme(worksheet, target, (scheme) => withoutEmptyMarkPoint(scheme, target.pointId));
+}
+
+/** Word's Backspace / Delete at a mark point's edge (§ `joinMarkPoint`); `undefined` where there is none to join. */
+export function joinSchemePoint(
+  worksheet: Worksheet,
+  target: SchemePointTarget,
+  side: 'en' | 'zh',
+  direction: 'backward' | 'forward',
+): { worksheet: Worksheet; pointId: string; caret: number } | undefined {
+  const scheme = targetScheme(worksheet, target);
+  const joined = scheme && joinMarkPoint(scheme, target.pointId, side, direction);
+  if (!joined) return undefined;
+  return { worksheet: applyScheme(worksheet, target, () => joined.scheme), pointId: joined.pointId, caret: joined.caret };
 }
 
 /** A leaf that may carry a graph answer space. Read structurally (§ registry). */

@@ -54,6 +54,12 @@ export interface MarkSchemeRenderOptions {
   teacherOnly?: boolean;
   /** The leaf owning the scheme; set, its authored text is editable on the page. */
   at?: SchemeAddress;
+  /**
+   * The page being typed on: an empty point in a printed group is drawn too, as an
+   * `editOnly` line, so the point Enter just made can take the caret (k-0200). Never
+   * set for an export, so nothing prints it.
+   */
+  editing?: boolean;
 }
 
 const ALTERNATIVE_SEPARATOR = ' / ';
@@ -179,8 +185,10 @@ export function renderMarkScheme(
   routes.forEach((route, routeIndex) => {
     if (routeIndex > 0) line(MARK_SCHEME_WORDING.or, { format: { bold: true }, keepNext: true });
     routeGroups(route).forEach((group: MarkGroup) => {
-      const points = groupPoints(group).filter(hasWording);
-      if (points.length === 0) return;
+      const all = groupPoints(group);
+      if (!all.some(hasWording)) return;
+      // On an editing page an empty point keeps its line, to be typed in (`editOnly`).
+      const points = all.filter((point) => hasWording(point) || (options.editing && at));
       const take = positive(group.take) ? group.take : undefined;
       const each = positive(group.each) ? group.each : undefined;
       if (take !== undefined || each !== undefined) {
@@ -197,6 +205,7 @@ export function renderMarkScheme(
         // contradict it, so only an unallocated group prints marks per point.
         const marks = each === undefined && typeof point.marks === 'number' ? point.marks : undefined;
         line(withAlternatives(point), {
+          ...(hasWording(point) ? {} : { editOnly: true as const }),
           ...(marks !== undefined ? { trail: MARK_SCHEME_WORDING.mark(marks) } : {}),
           ...(at
             ? (point.alternatives ?? []).length > 0
