@@ -590,7 +590,7 @@ export function InlineEditable({
       data-field-key={fieldKey}
       data-field-side={side}
       // Marks the prompt shown in place of an empty field. It is authoring guidance,
-      // not content, so the print stylesheet hides it — otherwise "Double-click to add
+      // not content, so the print stylesheet hides it — otherwise "Click to add
       // English" would appear on the printed worksheet as if it were the question.
       data-empty-placeholder={isEmpty ? 'true' : undefined}
       // Chrome, not content: removed from the printed sheet rather than merely made

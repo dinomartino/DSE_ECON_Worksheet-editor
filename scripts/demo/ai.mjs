@@ -126,11 +126,11 @@ export function aiStoryboard(seed) {
   return [
     {
       name: 'Missing 中文',
-      caption: `A bilingual worksheet (EN+中) with the 中文 of ${seed.untranslated} texts missing ("Double-click to add 中文"); the **✦ AI** button's badge reads ${seed.untranslated}.`,
+      caption: `A bilingual worksheet (EN+中) with the 中文 of ${seed.untranslated} texts missing ("Click to add 中文"); the **✦ AI** button's badge reads ${seed.untranslated}.`,
       async run(d) {
         await d.wait(400); // the poster frame stays clean
         await d.say('Some 中文 still missing?');
-        await d.hover(d.page.locator('#print-root').getByText('Double-click to add 中文').first(), { at: 0.5 });
+        await d.hover(d.page.locator('#print-root').getByText('Click to add 中文').first(), { at: 0.5 });
         await frame(d, [question(d.page, 0)], { name: 'question 1', pad: 40, lines: 1 });
         await d.wait(1300);
         await d.focus(null);

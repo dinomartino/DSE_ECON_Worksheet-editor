@@ -40,7 +40,7 @@ describe('a bilingual field with one side empty', () => {
     expect(prompt).toContain('data-print-hide="true"');
     expect(prompt).toMatch(/class="absolute /);
     expect(prompt).toContain('Add 中文');
-    expect(prompt).toContain('title="Double-click to add 中文"');
+    expect(prompt).toContain('title="Click to add 中文"');
     expect(html.indexOf('Supply and demand')).toBeLessThan(html.indexOf('Add 中文'));
   });
 
@@ -55,7 +55,7 @@ describe('a bilingual field with one side empty', () => {
     const html = render(t('', ''));
     expect(html).not.toContain('<br');
     expect(floating(html)).toHaveLength(1);
-    expect(html).toContain('Double-click to add English');
+    expect(html).toContain('Click to add English');
   });
 
   it('stacks both sides with a break when both have text, with no prompt', () => {
@@ -66,7 +66,7 @@ describe('a bilingual field with one side empty', () => {
 
   it('never floats in a single-language mode or on a read-only page', () => {
     expect(floating(render(t('Supply', ''), 'zh'))).toHaveLength(0);
-    expect(render(t('Supply', ''), 'zh')).toContain('Double-click to add 中文');
+    expect(render(t('Supply', ''), 'zh')).toContain('Click to add 中文');
     expect(floating(render(t('', '供求'), 'en'))).toHaveLength(0);
     const readOnly = render(t('Supply', ''), 'bilingual', false);
     expect(readOnly).not.toContain('Add 中文');

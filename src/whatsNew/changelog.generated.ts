@@ -121,6 +121,10 @@ a version heading is edited afterwards.
   <!-- zh: **中英對照試卷的每部分只顯示一次分數。** 值 2 分的部分現在只顯示「(2 marks)」，不再顯示「(2 marks) （2分）」，試卷、答案、編輯器及複製到 Word 時都一樣。英文和中文試卷不變。 -->
 
 ### Fixed
+- **Empty text on the page no longer says "Double-click".** Since one click types, an empty
+  question, part or option now reads Click to add English (or Click to add 中文). Double-click is
+  still what opens the header or footer, and a diagram's drawing canvas.
+  <!-- zh: **頁面上空白的文字不再顯示「按兩下」。** 由於按一下即可輸入，空白的題目、分題或選項現在顯示「按一下以加入英文」（或「按一下以加入中文」）。頁首、頁尾及圖表的繪圖畫布仍需按兩下開啟。 -->
 - **The edit hint and the zoom no longer overlap on an iPad, and Document setup fits an iPhone.**
   On an iPad held upright, the editing tip now sits just above the zoom
   buttons instead of on top of them. On an iPhone (or an iPad app in a third of Split View),

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
  *
  * The chain of failures this pins, each of which shipped:
  *
- * 1. The long prompt ("Double-click to add English") wrapped to four lines in a figure
+ * 1. The long prompt ("Click to add English") wrapped to four lines in a figure
  *    column and pushed the row to nearly double its printed height — and the paginator
  *    measures these boxes, so the preview and Word disagreed about the height of any
  *    table holding an empty cell.

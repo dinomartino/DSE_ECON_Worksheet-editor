@@ -93,9 +93,9 @@ export const PREVIEW_MESSAGES = defineMessages({
   item: { en: 'Item', zh: '項目' },
 
   // Empty fields (never printed).
-  addEnglishLong: { en: 'Double-click to add English', zh: '按兩下以加入英文' },
+  addEnglishLong: { en: 'Click to add English', zh: '按一下以加入英文' },
   addEnglishShort: { en: 'Add English', zh: '加入英文' },
-  addChineseLong: { en: 'Double-click to add 中文', zh: '按兩下以加入中文' },
+  addChineseLong: { en: 'Click to add 中文', zh: '按一下以加入中文' },
   addChineseShort: { en: 'Add 中文', zh: '加入中文' },
 
   // Hover chrome.
@@ -229,7 +229,7 @@ export const PREVIEW_HANDLE_MESSAGES = defineMessages({
   resizeRow: { en: (n: number) => `Drag to resize row ${n}`, zh: (n: number) => `拖曳以調整第 ${n} 列的高度` },
   editChinese: { en: 'Edit 中文 text', zh: '編輯中文文字' },
   editEnglish: { en: 'Edit English text', zh: '編輯英文文字' },
-  addText: { en: 'Double-click to add text', zh: '按兩下以加入文字' },
+  addText: { en: 'Click to type', zh: '按一下即可輸入' },
 });
 
 /** The hover chips around a table. */
