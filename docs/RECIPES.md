@@ -331,7 +331,7 @@ sits at 56.7 pt in `pdftotext -bbox`), and every footer must sit at its page's b
 
 ```bash
 npm run dev &                                   # the harness drives the real app
-node scripts/shot.mjs /tmp/shot.png --seed      # add --dark for the dark scheme
+node scripts/shot.mjs /tmp/shot.png --seed      # add --dark for the dark scheme, --zh for 中文
 npm run samples                                 # real .docx into /tmp/econ-samples (Chrome, Export dialog)
 node scripts/cover-verify.mjs                   # cover: preview vs .docx vs print PDF
 node scripts/lq-verify.mjs                      # the QAB booklet, same three ways
