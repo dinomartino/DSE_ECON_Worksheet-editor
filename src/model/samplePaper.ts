@@ -19,7 +19,7 @@ import type {
  * can open, change and delete, so the first minutes start from a real paper rather than a
  * blank page. Demand and supply, DSE-style, bilingual: three MC (one a (1)(2)(3)
  * combination), one structured question with a table, a printed diagram to draw on and a
- * model answer diagram, marks, answers and a marking scheme.
+ * model answer diagram, marks, the MC answers and a marking scheme of mark points.
  *
  * Original wording, written for this app: not a past paper, nor adapted from one. **The user
  * checks the content before release** (STATUS → What to check). It is hidden from the 題庫
@@ -77,12 +77,13 @@ function maskTable(): TableBlock {
 }
 
 function structured(): StructuredQuestion {
-  const part = (blocks: ContentBlock[], marks: number, answerSpace: number, answer: BiText, points: MarkScheme, extra: Partial<QuestionPart> = {}): QuestionPart => ({
+  // The key gives each part its mark points only: a model answer as well would state the
+  // same facts twice, once as prose and again point by point.
+  const part = (blocks: ContentBlock[], marks: number, answerSpace: number, points: MarkScheme, extra: Partial<QuestionPart> = {}): QuestionPart => ({
     id: newId(),
     blocks,
     marks,
     answerSpace,
-    answer,
     scheme: points,
     ...extra,
   });
@@ -101,7 +102,6 @@ function structured(): StructuredQuestion {
         [paragraph('State the equilibrium price and the equilibrium quantity of face masks.', '寫出口罩的均衡價格及均衡數量。')],
         2,
         3,
-        t('Equilibrium price = $40 per box; equilibrium quantity = 400 boxes.', '均衡價格 = 每盒 $40；均衡數量 = 400 盒。'),
         scheme([
           ['Equilibrium price: $40 per box', '均衡價格：每盒 $40', 1],
           ['Equilibrium quantity: 400 boxes', '均衡數量：400 盒', 1],
@@ -116,10 +116,6 @@ function structured(): StructuredQuestion {
         ],
         2,
         4,
-        t(
-          'At $30, quantity demanded = 500 boxes and quantity supplied = 300 boxes. Shortage = 500 − 300 = 200 boxes.',
-          '在每盒 $30 時，需求量 = 500 盒，供應量 = 300 盒。短缺 = 500 − 300 = 200 盒。',
-        ),
         scheme([
           ['Quantity demanded 500 boxes and quantity supplied 300 boxes at $30', '在 $30 時需求量為 500 盒、供應量為 300 盒', 1],
           ['Shortage = 500 − 300 = 200 boxes', '短缺 = 500 − 300 = 200 盒', 1],
@@ -139,10 +135,6 @@ function structured(): StructuredQuestion {
         ],
         4,
         6,
-        t(
-          'Demand increases: the demand curve shifts rightward from D_{0} to D_{1}. At the original price, quantity demanded exceeds quantity supplied, so there is a shortage and the price is bid up. The equilibrium price rises and the equilibrium quantity rises.',
-          '需求增加：需求曲線由 D_{0} 向右移至 D_{1}。在原有價格下，需求量大於供應量，出現短缺，價格被推高。均衡價格上升，均衡數量亦上升。',
-        ),
         scheme([
           ['Diagram: the demand curve shifts rightward (D_{0} to D_{1})', '圖表：需求曲線向右移（D_{0} 至 D_{1}）', 1],
           ['Diagram: the new equilibrium price and quantity are marked', '圖表：標示新的均衡價格及均衡數量', 1],

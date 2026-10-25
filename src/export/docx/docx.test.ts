@@ -947,7 +947,8 @@ describe('marks and file naming (§3.5, §7.1)', () => {
 
     // The interior space is a no-break space (§ `marksText`), so the label cannot tear.
     expect(document).toContain('(3\u00a0marks)');
-    expect(document).toContain('（3分）');
+    // Bilingual shows the label once, in English (§ `marksRuns`, k-0201).
+    expect(document).not.toContain('（3分）');
     // Part (b) has sub-parts 2+2+3 = 7; question total 3 + 7 + 5 = 15. The fixture's
     // first structured question opts in to the total via `showTotalMarks`.
     expect(document).toContain('(Total: 15 marks)');

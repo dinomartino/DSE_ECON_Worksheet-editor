@@ -657,12 +657,10 @@ const STYLE_CLASS: Record<string, string> = {
   Body: "",
 };
 
+/** Shown once in bilingual mode, in English (§ `marksRuns` in the .docx exporter). */
 function marksLabel(marks: number, language: LanguageMode): string {
   const en = `(${marks} ${marks === 1 ? "mark" : "marks"})`;
-  const zh = `（${marks}分）`;
-  if (language === "en") return en;
-  if (language === "zh") return zh;
-  return `${en} ${zh}`;
+  return language === "zh" ? `（${marks}分）` : en;
 }
 
 /**

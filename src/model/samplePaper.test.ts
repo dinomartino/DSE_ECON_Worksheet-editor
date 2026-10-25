@@ -20,14 +20,15 @@ describe('the sample paper (k-0201)', () => {
     expect(flow).toEqual(['section', 'mcq', 'mcq', 'mcq', 'section', 'structured']);
   });
 
-  it('has a table and a printed diagram, a model answer diagram, marks, answers and a scheme', () => {
+  it('has a table and a printed diagram, a model answer diagram, marks and a scheme of mark points', () => {
     const lq = paper.questions[3] as StructuredQuestion;
     expect(lq.blocks.some((block) => block.kind === 'table')).toBe(true);
     expect(lq.parts.some((part) => part.blocks.some((block) => block.kind === 'diagram'))).toBe(true);
     expect(lq.parts.some((part) => part.answerDiagram?.kind === 'diagram')).toBe(true);
     for (const part of lq.parts) {
       expect(part.marks).toBeGreaterThan(0);
-      expect(isBiTextEmpty(part.answer)).toBe(false);
+      // Mark points only: a model answer beside them repeated the same facts.
+      expect(part.answer).toBeUndefined();
       const points = part.scheme!.routes[0].groups[0].points;
       // The scheme's points add up to the part's marks.
       expect(points.reduce((sum, point) => sum + (point.marks ?? 0), 0)).toBe(part.marks);

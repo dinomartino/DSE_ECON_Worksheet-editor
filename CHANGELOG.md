@@ -77,9 +77,9 @@ a version heading is edited afterwards.
 - **Open a sample paper.** New to Econ Studio? On the start screen, or on an empty worksheet,
   choose Open a sample paper: a short, finished Classroom worksheet on demand and supply opens,
   in English and 中文, with three MC questions, a structured question with a table and a diagram,
-  marks, and the answers and marking scheme in the Marking scheme view. It is yours to change,
+  marks, and the MC answers and the mark points in the Marking scheme view. It is yours to change,
   print or delete, and its questions stay out of your 題庫.
-  <!-- zh: **開啟示例試卷。** 初次使用 Econ Studio？在開始畫面或空白工作紙上選擇「開啟示例試卷」，便會開啟一份已完成的「需求與供應」課堂工作紙，中英對照，包括三條 MC 題、一條附有表格和圖表的結構題、分數，以及在「評卷參考」中的答案和評分要點。你可以隨意修改、列印或刪除，其題目不會加入你的題庫。 -->
+  <!-- zh: **開啟示例試卷。** 初次使用 Econ Studio？在開始畫面或空白工作紙上選擇「開啟示例試卷」，便會開啟一份已完成的「需求與供應」課堂工作紙，中英對照，包括三條 MC 題、一條附有表格和圖表的結構題、分數，以及在「評卷參考」中的 MC 答案和評分要點。你可以隨意修改、列印或刪除，其題目不會加入你的題庫。 -->
 
 ### Changed
 - **Typing works as in Word: one click, and Enter starts a new paragraph.** Click anywhere in a
@@ -113,6 +113,10 @@ a version heading is edited afterwards.
   fill are now one entry: click it and choose Ruled lines, Dotted lines (as in a Question-Answer
   Book) or Dotted to page end. The lines themselves are unchanged.
   <!-- zh: **「插入」選單只有一項「答題線…」。** 「答題線」、「答題空間」及「答題空間・填滿」合併為一項：按下後選擇「橫線」、「點線」（試題答題簿的點線）或「點線至頁尾」。答題線本身沒有改變。 -->
+- **A bilingual paper shows each part's marks once.** A part worth 2 marks now reads "(2 marks)"
+  instead of "(2 marks) （2分）", on the paper, in its answer key, in the editor and when you copy
+  it into Word. English and 中文 papers are unchanged.
+  <!-- zh: **中英對照試卷的每部分只顯示一次分數。** 值 2 分的部分現在只顯示「(2 marks)」，不再顯示「(2 marks) （2分）」，試卷、答案、編輯器及複製到 Word 時都一樣。英文和中文試卷不變。 -->
 
 ### Fixed
 - **The edit hint and the zoom no longer overlap on an iPad, and Document setup fits an iPhone.**

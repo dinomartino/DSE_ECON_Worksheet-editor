@@ -181,12 +181,13 @@ export function marksText(marks: number): BiText {
   };
 }
 
-/** In bilingual mode the marks label shares one line rather than stacking. */
+/**
+ * A bilingual paper shows the marks **once**, in English: "(2 marks)", not
+ * "(2 marks) （2分）". The number is the same on both sides, so the second label only
+ * repeated it on every part (the user, k-0201). English because a bilingual paper leads
+ * in English; the preview and the clipboard follow the same rule.
+ */
 export function marksRuns(marks: number, fonts: FontPair, language: LanguageMode): string {
   const text = marksText(marks);
-  if (language === 'en') return richTextRuns(text.en, fonts, {});
-  if (language === 'zh') return richTextRuns(text.zh, fonts, {});
-  // The joiner is a no-break space too, or the bilingual label can part between its
-  // English and Chinese halves at the same edge the English label used to tear at.
-  return richTextRuns([...text.en, { text: '\u00a0' }, ...text.zh], fonts, {});
+  return richTextRuns(language === 'zh' ? text.zh : text.en, fonts, {});
 }

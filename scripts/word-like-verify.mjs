@@ -20,7 +20,8 @@ import { chromium } from 'playwright-core';
  *    "font" opens Setup at Fonts, "page break" adds a New page, "table" opens the Insert menu's
  *    size grid, "print" opens Export on PDF, in both languages; Esc closes it;
  *  - sample: "Open a sample paper" on an empty start screen, in the start panel and on an empty
- *    paper opens a new, filled, bilingual Classroom worksheet, hidden from the 題庫;
+ *    paper opens a new, filled, bilingual Classroom worksheet, hidden from the 題庫, each part's
+ *    marks shown once ("(2 marks)", not "(2 marks) （2分）");
  *
  *   node scripts/word-like-verify.mjs [--part=save] [--out=/tmp/word-like-verify] [--url=http://localhost:3000]
  *
@@ -497,6 +498,8 @@ async function verifySample(ui, size) {
       await page.waitForTimeout(2000);
       const pageText = await page.locator('#print-root').innerText();
       check(`[${tag}] it opens the sample: title, bubble tea, the face-mask table`, pageText.includes(w.title) && /bubble tea|珍珠奶茶/.test(pageText) && pageText.includes('600'), pageText.slice(0, 120));
+      // A bilingual paper shows each part's marks once, in English (k-0201 follow-up).
+      check(`[${tag}] marks shown once: "(2 marks)", no "（2分）" or "（4分）"`, /\(2 marks\)/.test(pageText) && /\(4 marks\)/.test(pageText) && !/（[24]分）/.test(pageText), (pageText.match(/\([^)]*marks?\)\s*（?\d*分?）?/g) ?? []).join(' | '));
       const docs = await sampleIn(page);
       check(`[${tag}] … saved as "${w.name}", 4 questions, hidden from the 題庫`, docs.length === 1 && docs[0].name === w.name && docs[0].questions === 4 && docs[0].bankHidden === true, JSON.stringify(docs));
       await page.screenshot({ path: `${OUT}/sample-paper-${tag}.png`, fullPage: false });
@@ -507,6 +510,7 @@ async function verifySample(ui, size) {
       await page.waitForTimeout(1500);
       const keyText = await page.locator('#print-root').innerText();
       check(`[${tag}] its Marking scheme view has the answers`, /\$40|200 (boxes|盒)/.test(keyText), keyText.slice(0, 160));
+      check(`[${tag}] … marks once there too, and mark points without a repeated model answer`, /\(2 marks\)/.test(keyText) && !/（[24]分）/.test(keyText) && !keyText.includes('Equilibrium price = $40'), keyText.slice(0, 160));
       await page.screenshot({ path: `${OUT}/sample-key-${tag}.png` });
       check(`[${tag}] no page errors (start)`, errors.length === 0, errors.join(' | '));
     } finally {
