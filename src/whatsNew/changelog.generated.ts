@@ -59,7 +59,7 @@ a version heading is edited afterwards.
   at the bottom of the start screen now include a way to say thanks. It is a plain link that opens in
   your browser only when you click it; nothing is loaded or tracked, and it never appears while you
   edit.
-  <!-- zh: **開始畫面多了一個低調的「請我喝杯咖啡」連結。** 如果 Econ Studio 幫你省下時間，可以透過開始畫面底部的連結表達謝意。它只是一個普通連結，點擊後才會在瀏覽器開啟，不會載入或追蹤任何東西，編輯時也不會出現。 -->
+  <!-- zh: **開始畫面多了一個低調的「支持 Econ Studio」連結。** 如果 Econ Studio 幫你省下時間，可以透過開始畫面底部的連結表達謝意。它只是一個普通連結，點擊後才會在瀏覽器開啟，不會載入或追蹤任何東西，編輯時也不會出現。 -->
 - **Paste questions from Word and make them into questions.** Copy questions from a Word file
   or a web page and paste them into a question's text: when they look like questions (numbered,
   with options A–D or parts (a), (b)), a bar at the foot of the page says how many and offers Make
