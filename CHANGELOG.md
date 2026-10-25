@@ -12,6 +12,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.8.6 — 2026-10-26
+
 ### Added
 - **Choose the space between questions on any worksheet.** In Document setup, on the Page tab,
   Between questions now works on every kind of paper, not only a Paper 1 mock: pick 1 to 6 blank
