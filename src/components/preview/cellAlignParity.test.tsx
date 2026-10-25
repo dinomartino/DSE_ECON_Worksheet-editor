@@ -5,6 +5,7 @@ import { exportDocxBuffer } from '@/export/docx';
 import { clipboardNodeHtml } from '@/export/clipboard';
 import { createMcqQuestion, createTableBlock, createWorksheet } from '@/model/factories';
 import { renderContentBlocks, type RenderNode } from '@/render/ir';
+import { cellAlignPatch } from '@/model/table';
 import type { CellAlign, McqQuestion, TableBlock, TextFormat, Worksheet } from '@/model/types';
 import { NodeView } from './Preview';
 
@@ -25,7 +26,7 @@ function table(cellAlign?: CellAlign): TableBlock {
     ...block.rows[0].cells[1],
     text: { en: [{ text: 'Set' }], zh: [] },
     format,
-    ...(cellAlign ? { align: cellAlign } : {}),
+    ...(cellAlign ? cellAlignPatch(cellAlign) : {}),
   };
   return block;
 }

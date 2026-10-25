@@ -50,8 +50,9 @@ a version heading is edited afterwards.
   inside the cell then lines up with both of its edges, so a column of explanations can be
   justified in one click; a cell with one short line looks as it did. The page, the thumbnails,
   the Word file and a copied table all follow. Nothing changes in a worksheet until you press it,
-  and Justify text in Document setup still leaves tables as they are.
-  <!-- zh: **表格儲存格內的文字可左右對齊。** 按一下儲存格（或拖曳選取多格），在頁面上方「表格工具」列按「T≡」（儲存格文字左右對齊），位於 T⇤ T↔ T⇥ 旁。在儲存格內換行的句子，各行會貼齊儲存格的左右兩邊，一欄解釋文字一按即可左右對齊；只有一短行的儲存格看來與以往相同。頁面、縮圖、Word 檔及複製出來的表格都一致。在你按下之前，工作紙完全不變；「頁面設定」的「文字左右對齊」仍不會改動表格。 -->
+  and Justify text in Document setup still leaves tables as they are. An older version of the app
+  shows such a cell flush left, and its Word file still opens.
+  <!-- zh: **表格儲存格內的文字可左右對齊。** 按一下儲存格（或拖曳選取多格），在頁面上方「表格工具」列按「T≡」（儲存格文字左右對齊），位於 T⇤ T↔ T⇥ 旁。在儲存格內換行的句子，各行會貼齊儲存格的左右兩邊，一欄解釋文字一按即可左右對齊；只有一短行的儲存格看來與以往相同。頁面、縮圖、Word 檔及複製出來的表格都一致。在你按下之前，工作紙完全不變；「頁面設定」的「文字左右對齊」仍不會改動表格。舊版程式會把這類儲存格顯示為靠左，其 Word 檔仍可正常開啟。 -->
 - **A quiet “Buy me a coffee” link on the start screen.** If Econ Studio saves you time, the links
   at the bottom of the start screen now include a way to say thanks. It is a plain link that opens in
   your browser only when you click it; nothing is loaded or tracked, and it never appears while you

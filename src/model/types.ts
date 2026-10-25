@@ -50,7 +50,16 @@ export interface BiText {
   zh: RichText;
 }
 
+/**
+ * Where a cell's text sits across the cell, as the page, the `.docx` and the T⇤ T↔ T⇥ T≡
+ * buttons read it. A cell *stores* only the first three in `align`; justify is its own flag
+ * (`TableCell.justify`), so a build from before it (≤ 0.8.5) reads a justified cell as flush
+ * left and never writes `justify` into a `w:jc` (`cellAlignOf`, `cellAlignPatch`).
+ */
 export type CellAlign = 'left' | 'center' | 'right' | 'justify';
+
+/** The alignments a cell stores in `align`: every `CellAlign` an older build can print. */
+export type StoredCellAlign = Exclude<CellAlign, 'justify'>;
 
 /**
  * Where a cell's text sits vertically — `w:vAlign`. Centred is the unstored default (what
@@ -142,7 +151,14 @@ export interface TableCell {
   image?: CellImage;
   colSpan?: number;
   rowSpan?: number;
-  align?: CellAlign;
+  /** Absent reads as left. Never `justify`: that is `justify` below. */
+  align?: StoredCellAlign;
+  /**
+   * The cell's text is justified (`w:jc both`); `align` is then absent. Its own flag, not an
+   * `align` value, so 0.8.5 and older, which write `align` straight into `w:jc`, ignore it,
+   * print the cell flush left and keep their `.docx` valid. `true` or absent.
+   */
+  justify?: true;
   /** Vertical placement of the text; undefined means centred, as before it existed. */
   vAlign?: CellVAlign;
   /**

@@ -12,6 +12,8 @@ import {
   mergeRange,
   mergeRight,
   patchCell,
+  cellAlignOf,
+  cellAlignPatch,
   patchCells,
   rangeGridSpan,
   resolveTableAlign,
@@ -271,7 +273,7 @@ export function TableRow({ block }: { block: TableBlock }) {
             // read pressed only when the whole range agrees — Word's mixed-selection
             // rule, the same one the panel followed.
             const subject = multi ? rangeCells : [cell];
-            const pressed = subject.every((c) => (c.align ?? 'left') === align);
+            const pressed = subject.every((c) => cellAlignOf(c) === align);
             return (
               <BarButton
                 key={align}
@@ -280,8 +282,8 @@ export function TableRow({ block }: { block: TableBlock }) {
                 onClick={() =>
                   apply(
                     multi
-                      ? patchCells(block, range, { align })
-                      : patchCell(block, at.rowIndex, at.cellIndex, { align }),
+                      ? patchCells(block, range, cellAlignPatch(align))
+                      : patchCell(block, at.rowIndex, at.cellIndex, cellAlignPatch(align)),
                   )
                 }
               >

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { parseWorksheet } from '@/storage/document';
-import type { CellAlign, McqQuestion, Question, StructuredQuestion, TableBlock, Worksheet } from '@/model/types';
+import { cellAlignPatch } from '@/model/table';
+import type { McqQuestion, Question, StructuredQuestion, TableBlock, Worksheet } from '@/model/types';
 
 /**
  * The papers behind the `table-justify/` samples (`npm run samples`): what a teacher sees when the text
@@ -32,7 +33,7 @@ function justified(question: Question, index: number, pick: (table: TableBlock) 
       ...block,
       rows: block.rows.map((row, r) => ({
         ...row,
-        cells: row.cells.map((cell, c) => (chosen.has(`${r}:${c}`) ? { ...cell, align: 'justify' as CellAlign } : cell)),
+        cells: row.cells.map((cell, c) => (chosen.has(`${r}:${c}`) ? { ...cell, ...cellAlignPatch('justify') } : cell)),
       })),
     };
   });

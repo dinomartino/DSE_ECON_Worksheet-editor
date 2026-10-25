@@ -8,7 +8,7 @@ import { exportDocxBuffer } from '@/export/docx';
 import { UiLanguageOverride } from '@/i18n/language';
 import { createMcqQuestion, createTableBlock, createWorksheet } from '@/model/factories';
 import { migrate, serializeWorksheet } from '@/model/migrations';
-import { patchCell, patchCells } from '@/model/table';
+import { cellAlignOf, cellAlignPatch, patchCell, patchCells } from '@/model/table';
 import { bi } from '@/model/text';
 import type { CellAlign, McqQuestion, OutputMode, TableBlock, TextFormat, Worksheet } from '@/model/types';
 import type { TableNode } from '@/render/ir';
@@ -42,8 +42,8 @@ function table(sentence?: CellAlign, term?: CellAlign): TableBlock {
     ['價格上限', LONG_ZH],
   ];
   block.rows.forEach((row, r) => row.cells.forEach((cell, c) => { cell.text = bi(texts[r][c], zh[r][c]); }));
-  if (sentence) block.rows[1].cells[1].align = sentence;
-  if (term) block.rows[1].cells[0].align = term;
+  if (sentence) Object.assign(block.rows[1].cells[1], cellAlignPatch(sentence));
+  if (term) Object.assign(block.rows[1].cells[0], cellAlignPatch(term));
   return block;
 }
 
@@ -78,12 +78,14 @@ describe('cell justify: the model', () => {
     const { worksheet } = paper(table('justify'));
     const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(worksheet))));
     const cells = (reloaded.questions[0] as McqQuestion).blocks![0] as TableBlock;
-    expect(cells.rows[1].cells[1].align).toBe('justify');
+    expect(cellAlignOf(cells.rows[1].cells[1])).toBe('justify');
     expect(reloaded.__unknown).toBeUndefined();
 
     const plain = migrate(JSON.parse(JSON.stringify(serializeWorksheet(paper().worksheet))));
     const old = (plain.questions[0] as McqQuestion).blocks![0] as TableBlock;
-    expect(old.rows.flatMap((row) => row.cells.map((cell) => 'align' in cell))).toEqual([false, false, false, false]);
+    expect(old.rows.flatMap((row) => row.cells.map((cell) => 'align' in cell || 'justify' in cell))).toEqual([
+      false, false, false, false,
+    ]);
   });
 
   it('adds no schema version: a saved paper with a justified cell is still schema 1', () => {
@@ -91,22 +93,52 @@ describe('cell justify: the model', () => {
     expect(saved.schemaVersion).toBe(1);
   });
 
+  it('is stored as its own flag, never as an align a 0.8.5 build would write into w:jc', () => {
+    // 0.8.5 and older write a cell's `align` straight into `<w:jc w:val>`, where "justify" is not
+    // a value Word accepts. So the saved cell holds `justify: true` and no `align` at all: an older
+    // build ignores the flag and prints the cell flush left, its `.docx` valid.
+    const saved = JSON.parse(JSON.stringify(serializeWorksheet(paper(table('justify', 'center')).worksheet)));
+    const [term, sentence] = saved.questions[0].blocks[0].rows[1].cells;
+    expect(sentence.justify).toBe(true);
+    expect('align' in sentence).toBe(false);
+    expect(term.align).toBe('center');
+    expect('justify' in term).toBe(false);
+    expect(JSON.stringify(saved)).not.toContain(':"justify"');
+  });
+
+  it('reads a develop build\'s align: "justify" as the flag (it never shipped)', () => {
+    const saved = JSON.parse(JSON.stringify(serializeWorksheet(paper().worksheet)));
+    saved.questions[0].blocks[0].rows[1].cells[1].align = 'justify';
+    const reloaded = migrate(saved);
+    const cell = ((reloaded.questions[0] as McqQuestion).blocks![0] as TableBlock).rows[1].cells[1];
+    expect(cell).toMatchObject({ justify: true });
+    expect('align' in cell).toBe(false);
+    expect(cellAlignOf(cell)).toBe('justify');
+    // The input is left alone, and a paper with nothing to fold comes back as it went in.
+    expect(saved.questions[0].blocks[0].rows[1].cells[1].align).toBe('justify');
+  });
+
   it('is set and replaced like the other three alignments, one cell or a swept range', () => {
     const block = table();
-    const justified = patchCell(block, 1, 1, { align: 'justify' });
-    expect(justified.rows[1].cells[1].align).toBe('justify');
-    expect(justified.rows[1].cells[0].align).toBeUndefined();
+    const justified = patchCell(block, 1, 1, cellAlignPatch('justify'));
+    expect(cellAlignOf(justified.rows[1].cells[1])).toBe('justify');
+    expect(cellAlignOf(justified.rows[1].cells[0])).toBe('left');
     // Another alignment replaces it: the four are one choice.
-    expect(patchCell(justified, 1, 1, { align: 'left' }).rows[1].cells[1].align).toBe('left');
-    expect(patchCell(justified, 1, 1, { align: 'center' }).rows[1].cells[1].align).toBe('center');
+    expect(cellAlignOf(patchCell(justified, 1, 1, cellAlignPatch('left')).rows[1].cells[1])).toBe('left');
+    const centred = patchCell(justified, 1, 1, cellAlignPatch('center')).rows[1].cells[1];
+    expect(cellAlignOf(centred)).toBe('center');
+    expect(JSON.parse(JSON.stringify(centred)).justify).toBeUndefined();
+    // Justifying a centred cell drops the centre, so an older build shows it flush left.
+    expect(JSON.parse(JSON.stringify(patchCell(block, 1, 1, cellAlignPatch('center')))).rows[1].cells[1].align).toBe('center');
+    expect('align' in JSON.parse(JSON.stringify(patchCell(patchCell(block, 1, 1, cellAlignPatch('center')), 1, 1, cellAlignPatch('justify')).rows[1].cells[1]))).toBe(false);
 
     const range = [
       { rowIndex: 1, cellIndex: 0 },
       { rowIndex: 1, cellIndex: 1 },
     ];
-    const swept = patchCells(block, range, { align: 'justify' });
-    expect(swept.rows[1].cells.map((cell) => cell.align)).toEqual(['justify', 'justify']);
-    expect(swept.rows[0].cells.map((cell) => cell.align)).toEqual([undefined, undefined]);
+    const swept = patchCells(block, range, cellAlignPatch('justify'));
+    expect(swept.rows[1].cells.map(cellAlignOf)).toEqual(['justify', 'justify']);
+    expect(swept.rows[0].cells.map(cellAlignOf)).toEqual(['left', 'left']);
   });
 });
 

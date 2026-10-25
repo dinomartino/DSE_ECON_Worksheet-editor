@@ -1,5 +1,6 @@
 import { foldLegacyClassTag } from './classes';
 import { normalizeAnswerKeyLayout } from './answerKeyLayout';
+import { foldLegacyCellJustify } from './legacyCellJustify';
 import type { Worksheet } from './types';
 
 /**
@@ -123,6 +124,7 @@ export function migrate(input: unknown): Worksheet {
   // no released document holds them, so no version bump (which would make every released
   // build open new documents read-only).
   doc = foldLegacyClassTag(doc);
+  doc = foldLegacyCellJustify(doc);
 
   // Re-collect unknown fields (a newer doc may carry keys this build never sees).
   const unknown: Record<string, unknown> = { ...((doc.__unknown as Record<string, unknown>) ?? {}) };

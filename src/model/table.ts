@@ -3,6 +3,7 @@ import { QUESTION_LIST_INDENTS } from './numbering';
 import { emptyBiText, isRichTextEmpty, normalizeRuns } from './text';
 import type {
   BiText,
+  CellAlign,
   CellPadding,
   CellShade,
   CellVAlign,
@@ -168,6 +169,20 @@ export function withHeaderRows(block: TableBlock, count: number): TableBlock {
 
 /** The grey fills a cell may take, lightest first (`CellShade`). */
 export const CELL_SHADES: readonly CellShade[] = ['F2F2F2', 'D9D9D9', 'BFBFBF'];
+
+/** A cell's alignment as the page and the `.docx` read it (`TableCell.justify`). */
+export function cellAlignOf(cell: Pick<TableCell, 'align' | 'justify'>): CellAlign {
+  return cell.justify ? 'justify' : (cell.align ?? 'left');
+}
+
+/**
+ * The patch that gives a cell `align`. Justify is stored as its own flag with `align` absent,
+ * so an older build prints the cell flush left (`TableCell.justify`); any other choice clears
+ * the flag. Both keys are always named, so it overwrites whichever the cell held.
+ */
+export function cellAlignPatch(align: CellAlign): Pick<TableCell, 'align' | 'justify'> {
+  return align === 'justify' ? { align: undefined, justify: true } : { align, justify: undefined };
+}
 
 /**
  * Set a cell's vertical placement or shading over several cells in one commit. A key set

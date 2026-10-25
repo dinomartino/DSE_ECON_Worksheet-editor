@@ -657,7 +657,9 @@ edges (the last line stays flush left; a one-line cell does not move). The four 
 range it acts on every cell in one undo step and reads pressed only when all agree. The page, the page rail, the print PDF,
 the `.docx`, Copy for Word, the start card and the bank preview follow. Nothing changes until it is pressed.
 
-**How.** `CellAlign` gains `'justify'` (`src/model/types.ts`); no new field, no schema change, no `KNOWN_KEYS` (a cell's fields
+**How.** `CellAlign` gains `'justify'` (`src/model/types.ts`) as the value the page, the `.docx` and the bar read, but a cell
+*stores* it as its own flag, `TableCell.justify: true` with `align` absent (k-0200, before 0.8.6 shipped; see Older builds below).
+`cellAlignOf` reads a cell, `cellAlignPatch` sets one (`src/model/table.ts`). No schema change, no `KNOWN_KEYS` (a cell's fields
 are nested), and `schemaVersion` stays 1. The page (`textAlign: cell.align`) and Copy for Word (`text-align:${cell.align}`) already
 wrote the value; the one code change in a backend is `cellParagraph` in `src/export/docx/body.ts`, which wrote the value into
 `w:jc` raw and now spells it `both` through `jcValue` (shared with `formatParagraphProps`). The `.docx` sets
@@ -668,11 +670,13 @@ The bar: `CELL_ALIGNS` in `ContextBar.tsx`, `alignCellJustify` in `ContextBar.me
 - **A stale `format.align: 'justify'` on a cell (the format bar could store one before 0.8.3) still aligns nothing.** Reading it
   would have re-typeset saved papers; the cell's own `CellAlign` is the only thing read (tested).
 - **Word import does not carry cell alignment at all** (found; unchanged): an imported table's cells are all flush left.
-- **Older builds.** A build before this one that opens a paper with a justified cell prints it justified on the page but writes
-  `w:jc w:val="justify"`, which is not a value of `w:jc`, into its `.docx`. How real Word treats that is **untried**. The schema mark
-  cannot help (it only guards v0.4/0.5; 0.6–0.8.5 read v2 as their own), and a separate field would have let such a
-  build print the cell flush left instead; the approved design was a `CellAlign` value, so it was kept. Teachers on mixed
-  versions are the only ones exposed.
+- **Older builds (k-0200, the user's call).** 0.8.5 and older write a cell's `align` straight into `w:jc`, where `justify` is not
+  a value Word accepts. So justify is not an `align` value in the file: it is `justify: true` with no `align`, and such a build
+  prints the cell flush left (the last line of a justified cell) and writes a valid `.docx`; it keeps the flag when it saves,
+  so the paper is justified again in a newer build. Checked against the 0.8.5 tag: opening, re-saving and exporting the
+  `table-justify/` paper keeps all six flags and writes no `justify`. Develop builds before k-0200 saved `align: 'justify'`; it
+  never shipped, so `foldLegacyCellJustify` (`src/model/legacyCellJustify.ts`, run by `migrate`) reads it as the flag. Left: a
+  teacher who re-aligns such a cell in 0.8.5 (T⇤ T↔ T⇥) keeps the flag, so a newer build shows it justified again.
 
 **Verified.** `src/components/preview/cellJustify.test.tsx` (20 tests: the value round-trips and a saved paper is schema 1; set,
 replaced and swept; the IR; page, Word (`both`, exactly one `w:jc` changed, never `justify`), Copy for Word, the card; the bar's

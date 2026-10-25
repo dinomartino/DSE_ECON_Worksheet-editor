@@ -2425,7 +2425,8 @@ and the way into the drawing canvas for a selected figure.
 - **One verb, one place**: rows/columns stay on the page's grid chips, padding, the
   cell picture and captions in the sidebar, and the panel's own copies of the bar's
   verbs were removed with it.
-- **Cell text alignment lives only here** (T⇤ T↔ T⇥ T≡, `CellAlign`: left, center, right, justify): the format bar
+- **Cell text alignment lives only here** (T⇤ T↔ T⇥ T≡, `CellAlign`: left, center, right, justify; justify is stored as
+  `TableCell.justify`, never `align`, so 0.8.5 and older print it flush left, `cellAlignOf`): the format bar
   hides its align group for a cell (`alignable`); a stored `TextFormat.align` is kept but
   aligns nothing. Table moves carry a drawn table glyph, so no arrow means two things.
 - **Docks at the format bar's measured height** (`useFormatBarStep`): a narrow column

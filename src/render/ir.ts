@@ -27,6 +27,7 @@ import type {
 import { isBiTextEmpty, plain, trailingBlankLines } from '@/model/text';
 import { defaultFramed } from '@/model/edits';
 import {
+  cellAlignOf,
   resolveCellEdges,
   resolveCellPadding,
   resolveColumnWidths,
@@ -1165,7 +1166,7 @@ function tableNodeFor(block: TableBlock, options: BlockNodeOptions): TableNode |
         text: cell.text,
         colSpan: cell.colSpan ?? 1,
         rowSpan: cell.rowSpan ?? 1,
-        align: cell.align ?? 'left',
+        align: cellAlignOf(cell),
         covered: Boolean(cell.covered),
         padding: resolveCellPadding(block, rowIndex, cellIndex),
         // Only the T-account rules by position; `all` and `box` are uniform and say
