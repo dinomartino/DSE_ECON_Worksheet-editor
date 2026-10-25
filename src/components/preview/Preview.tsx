@@ -107,6 +107,7 @@ import {
   type TextGrid,
 } from "@/model/tableClipboard";
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
+import { offerPastedQuestions, pastePicture } from "@/components/editor/pasteActions";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { joinParagraph, splitParagraph } from "@/model/paragraphs";
 import { diagramNodeSvg } from "@/render/diagramPage";
@@ -457,6 +458,13 @@ function richNodes(
         fieldKey={editTargetKey(edit)}
         onEnter={ctx.onFieldEnter && !cellNav ? (range) => ctx.onFieldEnter!(edit, sideKey, range) : undefined}
         onJoin={ctx.onFieldJoin && !cellNav ? (direction) => ctx.onFieldJoin!(edit, sideKey, direction) : undefined}
+        // A paste that reads as questions is offered as questions; a picture is inserted (k-0201).
+        onPasted={
+          cellNav
+            ? undefined
+            : ({ html, text, before, side }) => offerPastedQuestions({ html, text }, { target: edit, side, before })
+        }
+        onPastePicture={(file) => void pastePicture(file, edit)}
       >
         {rendered}
       </InlineEditable>

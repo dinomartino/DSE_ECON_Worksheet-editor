@@ -463,7 +463,19 @@ interface WorksheetState {
    * one layout element, inserted together at the anchor as one commit — one undo.
    * Refused when read-only or when `worksheetId` is no longer the open document.
    */
-  insertQuestionBatch: (items: readonly QuestionBuild[], opts: { worksheetId: string; lead?: LayoutElement }) => QuestionBatchReport;
+  insertQuestionBatch: (
+    items: readonly QuestionBuild[],
+    opts: {
+      worksheetId: string;
+      lead?: LayoutElement;
+      /** Land after this flow item rather than the insertion anchor. */
+      afterId?: string;
+      /** Run first, in the same commit (a paste taking its text back, k-0201). */
+      prepare?: (draft: Worksheet) => Worksheet;
+      /** Run last, in the same commit (the emptied question the paste went into goes). */
+      finish?: (draft: Worksheet) => Worksheet;
+    },
+  ) => QuestionBatchReport;
   /**
    * Copies of questions from the bank (`copyQuestion`: fresh ids, lineage to `fromDocId`),
    * in order after `afterId` (default: the insertion anchor, as `addQuestion`). One commit,
@@ -1574,7 +1586,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     }),
 
   // Each item after the last, starting at the anchor (or ahead of "END OF PAPER").
-  insertQuestionBatch: (items, { worksheetId, lead }) => {
+  insertQuestionBatch: (items, { worksheetId, lead, afterId, prepare, finish }) => {
     const state = get();
     if (state.readOnly) return { ok: false, refused: 'readOnly' };
     if (state.worksheet.id !== worksheetId) return { ok: false, refused: 'otherDocument' };
@@ -1587,8 +1599,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     });
     if (!built.length) return { ok: false, refused: 'nothing' };
     state.commit((draft) => {
-      let next = draft;
-      let after = state.insertAnchorId;
+      let next = prepare ? prepare(draft) : draft;
+      let after = afterId ?? state.insertAnchorId;
       // Unanchored, the lead goes where its first question would and the questions stay
       // with it. Without a lead, each question may take its type's own section.
       const routed = after === undefined && !lead;
@@ -1600,7 +1612,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         next = insertIntoFlow(next, { type: 'question', id: question.id }, after, { questions: [...next.questions, question] }, { routed });
         after = question.id;
       }
-      return next;
+      return finish ? finish(next) : next;
     });
     set({ insertAnchorId: built[built.length - 1].id });
     return { ok: true, questionIds: built.map((q) => q.id), ...(lead ? { leadId: lead.id } : {}), committed: get().worksheet };

@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { changeEnd, replaceRichTextRange, richTextLength } from '@/model/text';
+import { changeEnd, replaceRichTextRange, replaceRichTextRangeWithRuns, richTextLength } from '@/model/text';
+import { pastedRuns } from '@/import/pasteRuns';
+import { clipboardPicture } from '@/components/editor/pasteActions';
 import { gridFromClipboard, type TextGrid } from '@/model/tableClipboard';
 import type { RichText, RunFormat } from '@/model/types';
 import {
@@ -71,6 +73,13 @@ interface Props {
    */
   onPasteGrid?: (grid: TextGrid) => boolean;
   /**
+   * After a paste has typed its words in (k-0201): the clipboard and the text before it, so
+   * the page can offer "Make these into questions" and take the words back.
+   */
+  onPasted?: (paste: { html: string; text: string; before: RichText }) => void;
+  /** A picture on the clipboard, with no text: the host inserts it (k-0201). */
+  onPastePicture?: (file: File) => void;
+  /**
    * Tab types a tab, as in Word, rather than moving focus on — for a field where a tab
    * prints as one (`[data-tab-host]` on the page). Shift+Tab then does nothing, and
    * Escape still closes the field, so the keyboard is never trapped. Decided against
@@ -115,6 +124,8 @@ export function RichTextEditable({
   onKeyDown,
   onBlur,
   onPasteGrid,
+  onPasted,
+  onPastePicture,
   tabInserts,
 }: Props) {
   const hostRef = useRef<HTMLSpanElement>(null);
@@ -142,6 +153,17 @@ export function RichTextEditable({
     onChange(replaceRichTextRange(runs, start, end, insert, pendingFormat));
     onPendingConsumed?.();
     const at = start + insert.length;
+    queueMicrotask(() => {
+      const host = hostRef.current;
+      if (host) setSelectionOffsets(host, at);
+    });
+  };
+
+  /** As `writeRange`, for pasted runs that bring their own bold, italic and underline. */
+  const writeRuns = (start: number, end: number, inserted: RichText) => {
+    onChange(replaceRichTextRangeWithRuns(runs, start, end, inserted, pendingFormat));
+    onPendingConsumed?.();
+    const at = start + richTextLength(inserted);
     queueMicrotask(() => {
       const host = hostRef.current;
       if (host) setSelectionOffsets(host, at);
@@ -292,20 +314,32 @@ export function RichTextEditable({
         writeRange(at.start, at.end, data);
       }}
       onPaste={(event) => {
-        // Plain text only. Foreign HTML carries a web page's fonts and colours onto the
-        // sheet, and arrives as tags with no run attributes to read back; the text takes
-        // the formatting at the caret instead.
+        /*
+         * Word's "Merge Formatting" (k-0201): the words keep their bold, italic, underline,
+         * sub/superscript and tabs, and take the font, size and colour at the caret. Never
+         * the browser's own paste, which would put a web page's tags and styles in the field
+         * with no run attributes to read back (`pastedRuns` reads them instead).
+         */
         event.preventDefault();
         const text = event.clipboardData.getData('text/plain');
+        const html = event.clipboardData.getData('text/html');
         if (onPasteGrid) {
-          const grid = gridFromClipboard({ html: event.clipboardData.getData('text/html'), text });
+          const grid = gridFromClipboard({ html, text });
           if (grid && onPasteGrid(grid)) return;
         }
-        if (!text) return;
+        const pasted = pastedRuns({ html, text });
+        if (pasted.length === 0) {
+          // A screenshot or a copied picture, with no words.
+          const picture = clipboardPicture(event.clipboardData);
+          if (picture) onPastePicture?.(picture);
+          return;
+        }
         const host = hostRef.current;
         const at = host ? selectionOffsets(host) : undefined;
         if (!at) return;
-        writeRange(at.start, at.end, text);
+        const before = runs;
+        writeRuns(at.start, at.end, pasted);
+        onPasted?.({ html, text, before });
       }}
       onKeyUp={publish}
       onMouseUp={publish}

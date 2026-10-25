@@ -131,6 +131,10 @@ interface Props {
    * by the target it edits once it renders (`openFieldWhenReady`).
    */
   fieldKey?: string;
+  /** After a paste typed its words in (`RichTextEditable.onPasted`), with this field's side. */
+  onPasted?: (paste: { html: string; text: string; before: RichText; side: 'en' | 'zh' }) => void;
+  /** A picture pasted into this field (`RichTextEditable.onPastePicture`). */
+  onPastePicture?: (file: File) => void;
   /**
    * While **empty**, stretch to the width of the container instead of shrinking to the
    * prompt.
@@ -186,6 +190,8 @@ export function InlineEditable({
   onEnter,
   onJoin,
   fieldKey,
+  onPasted,
+  onPastePicture,
 }: Props) {
   const m = useMessages(PREVIEW_HANDLE_MESSAGES);
   // A floating prompt has no line end to stretch from (§ `floating`).
@@ -348,6 +354,8 @@ export function InlineEditable({
          */
         onChange={(next) => (onFlush ?? onCommit)({ ...value, [side]: next })}
         onPasteGrid={cell?.onPasteGrid ? (grid) => cell.onPasteGrid!(grid, side) : undefined}
+        onPasted={onPasted ? (paste) => onPasted({ ...paste, side }) : undefined}
+        onPastePicture={onPastePicture}
         // Tab types a tab in a text paragraph; a table's Tab walks its cells instead.
         tabInserts={onTab ? undefined : (host) => host.closest('[data-tab-host]') !== null}
         autoFocus

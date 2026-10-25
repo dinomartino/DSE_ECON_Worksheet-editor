@@ -34,6 +34,7 @@ import { provisionalWorksheet } from '@/components/bank/dropSlot';
 import { useMessages } from '@/i18n/language';
 import { PAGE_RAIL_MESSAGES } from '@/components/editor/shell.messages';
 import { EditHint } from './EditHint';
+import { PasteOfferBar } from '@/components/editor/PasteOfferBar';
 
 /** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
 const openBank = () => useBankSession.getState().openBank();
@@ -640,6 +641,7 @@ export function EditorApp({
             )}
           </main>
           {hint.shown && <EditHint onDismiss={hint.dismiss} />}
+          {!readOnly && <PasteOfferBar />}
         </div>
         {/* The sidebar is an inspector for editing; read-only has nothing to inspect with. */}
         {!readOnly && <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} />}

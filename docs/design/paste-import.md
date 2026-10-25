@@ -4,16 +4,17 @@ Status: **proposal** (2026-10-08), written against `develop` @ c886017. Phase 0 
 built (§ 10): the engine (`feature/paste-import-core`) and the review dialog (`feature/paste-import-ui`).
 Phase 2's `.docx` reader and phase 3's `.pdf` reader are built (§ 10). Answers kept in
 another file are built, engine and UI (§ 11).
-**The way in is file-only** (user decision, 2026-10-08: "if a teacher can copy the text, they
-can paste it into a worksheet themselves"): Import from Word, PDF or picture… on the home screen, or a
-file dropped there (§ 6, § 10). The clipboard readers stay in the engine, tested, unused by the app.
+**Files and the page's paste** (user decision, 2026-10-25, k-0201, reversing 2026-10-08's
+file-only call): Import from Word, PDF or picture… on the home screen, or a file dropped there
+(§ 6, § 10); and a paste on the page that reads as questions offers "Make these into questions",
+which runs the clipboard readers through the same engine with no review screen (§ 14).
 Open questions for the user are in § 9.
 
 ## 0. The answer in one paragraph
 
 Every teacher's paper is laid out differently, so the importer must not be a fixed grammar.
 It **infers the layout from the file itself**. A reader turns a `.docx` or `.pdf` file (the
-engine also reads a Word or PDF paste, which the app no longer offers) into one list of lines
+engine also reads a Word or PDF paste, which the page's paste offer uses, § 14) into one list of lines
 with features. Many small detectors
 each suggest a **role** for each line (question, option, part, marks…). A **sequence solver**
 then picks the reading in which the numbering is most consistent: which label style runs
@@ -197,7 +198,7 @@ back through the same pipeline and review.
 
 ## 6. Entry points
 
-File-only (2026-10-08). The home screen is the one way in:
+Two ways in (file-only from 2026-10-08 to 2026-10-25; the page's paste since k-0201, § 14):
 
 - **Import from Word, PDF or picture… / 從 Word、PDF 或圖片匯入…**, a secondary button under New worksheet
   (empty desk or not). It opens the system file chooser (`.docx`, `.pdf`, and `.doc` so an old
@@ -205,8 +206,9 @@ File-only (2026-10-08). The home screen is the one way in:
 - **Dropped `.docx` or `.pdf` files** on the home screen (web drop or the desktop shell's native
   drop) open the same dialog, one or several (`planDrop` → `papers`). A paper dropped together
   with worksheets or backups is left out.
-- There is no import from inside a paper and no text paste box: the add rail's Paste
-  questions… and 題庫's header button were removed before release.
+- **A paste on the page** that reads as questions: the "Make these into questions" bar (§ 14).
+  There is still no text paste box: the add rail's Paste questions… and 題庫's header button
+  were removed before release, and are not back.
 
 ## 7. Tests
 
@@ -822,3 +824,41 @@ went to 4b (all one band) and, once its graph was a picture, to 6b (they joined 
 **Weak cases:** a page scanned sideways is not turned; handwriting is not read (the printed
 answer under a red correction is).
 
+## 14. The page's paste (as built, 2026-10-25, k-0201)
+
+The user's call on the research's D6 (`docs/research/word-like-ux-2026-10-24.md` M4): keep
+Word's formatting on paste, and let a paste become questions. This reverses § 6's file-only way in
+for one route: a paste on the page. The review screen stays file-only.
+
+**Pasting into a text** (`RichTextEditable` → `src/import/pasteRuns.ts:pastedRuns`, then
+`src/model/text.ts:replaceRichTextRangeWithRuns`): the clipboard's `text/html` is read by the
+engine's own `readHtml` (a tokenizer, never inserted into the page) and kept to bold, italic,
+underline, sub/superscript and tabs. Fonts, sizes, colours and highlight are dropped, and the words
+take the formatting at the caret (Word's Merge Formatting, its default for other programs since
+version 2405). A list number Word draws comes in as `1.⇥`, a table row as tabbed cells, one line per
+paragraph; the plain text wins when the HTML carries less than 60 % of its ink (`readPaste`'s rule).
+A table cell keeps its own grid paste first. A picture with no words goes in below the text's block
+(`pasteActions.ts:pastePicture`).
+
+**Make these into questions** (`src/components/editor/pasteActions.ts`, `PasteOfferBar.tsx`):
+after a paste, `pastedQuestions` runs `readPaste` → `analyseLines` → `buildImport`. It offers when
+two or more questions carry a label, or one does with options or parts; prose, a single sentence or
+an unnumbered list is left as typed. The bar ("This looks like 4 questions · Make these into
+questions · ✕") sits over the foot of the page and goes with the next edit to that text (as Word's
+Paste Options button does) or ✕ (keep as text). Accepting is one commit
+(`insertQuestionBatch` with `afterId`, `prepare`, `finish`): the pasted words are taken back, the
+questions land after the question the paste went into (or its layout element), and a question that
+held nothing but the paste (a new, empty one) gives its place to them. One undo brings the paste
+back as text. No review screen: what the engine cannot split is fixed on the page, or by Import from
+Word with the file.
+
+**With no text open** (`PasteOfferBar`'s document `paste` listener): a picture goes into the selected
+question (`insertBlockAtAnchor`: else a new question where the Insert menu says); words that read as
+questions bring the same bar, and accepting only inserts. A table cell's paste and the page's own
+question clip (⌘C on selected questions) keep theirs.
+
+**Not done:** pictures inside Word's HTML (they are `file://` links the browser cannot read, § 2.5);
+answers, marking points and the layout profile (the dialog's); a paste in the sidebar's fields
+(formatting kept, no offer). Proof: `src/import/pasteRuns.test.ts`,
+`src/components/editor/pasteActions.test.ts`, `scripts/word-like-verify.mjs --part=paste` (real
+⌘V / Ctrl+V on Chrome's clipboard, EN + 中, MacBook and iPad sizes).

@@ -12,6 +12,10 @@ import { chromium } from 'playwright-core';
  *  - insert: the rail's second menu is Insert (插入), Table… and Picture… lead it and land in the
  *    selected question, "Answer lines…" is one entry with ruled, dotted and to-the-end choices,
  *    and a question's panel says "Question text" (題幹 in 中文);
+ *  - paste: Word's HTML pasted into a text keeps bold, italic, underline and sub/superscript and
+ *    drops fonts, sizes and colours; pasted MC questions bring the "Make these into questions"
+ *    bar, which takes the text back and adds the questions in one undo; a pasted picture goes
+ *    into the selected question (real ⌘V / Ctrl+V on the system clipboard; MacBook and iPad);
  *
  *   node scripts/word-like-verify.mjs [--part=save] [--out=/tmp/word-like-verify] [--url=http://localhost:3000]
  *
@@ -95,7 +99,11 @@ const browser = await chromium.launch({ channel: 'chrome', ...(chromePath ? { ex
 
 /** A fresh context with the fixture saved and the interface in `ui`, opened in the editor. */
 async function openFixture(ui, size) {
-  const context = await browser.newContext({ viewport: SIZES[size], hasTouch: size !== 'mac' });
+  const context = await browser.newContext({
+    viewport: SIZES[size],
+    hasTouch: size !== 'mac',
+    permissions: ['clipboard-read', 'clipboard-write'],
+  });
   await context.addInitScript(
     ([version, language, indexJson, key, body]) => {
       if (!window.localStorage.getItem(key)) {
@@ -196,7 +204,7 @@ async function verifyInsert(ui, size) {
     check(`[${tag}] the rail's second menu is "${w.insert}"`, (await rail.count()) === 1, String(await rail.count()));
 
     // Select Q2: its row in the Content list (the page is covered by the sidebar on an iPhone).
-    const q2Row = page.getByRole('button').filter({ hasText: 'Which of the following' }).first();
+    const q2Row = page.locator('button:not([aria-label])').filter({ hasText: 'Which of the following' }).first();
     await q2Row.click();
     await page.waitForTimeout(300);
 
@@ -263,12 +271,114 @@ async function verifyInsert(ui, size) {
   }
 }
 
+const MC_TEXT = readFileSync(new URL('../src/import/fixtures/01-word-plain-mc.txt', import.meta.url), 'utf8');
+const WORD_HTML =
+  '<html><body><!--StartFragment--><p class=MsoNormal><span style="font-family:Arial;font-size:20pt;color:#C00000">' +
+  'when </span><b><span style="font-family:Arial">demand</span></b><span> rises to </span><i>Q</i><sub>1</sub>' +
+  '<span> at P</span><sup>2</sup></p><!--EndFragment--></body></html>';
+const PASTE_WORDS = {
+  en: { found: /looks like \d+ questions/, make: 'Make these into questions' },
+  'zh-HK': { found: /看來是 \d+ 條題目/, make: '轉為題目' },
+};
+
+async function toClipboard(page, items) {
+  await page.evaluate(async (entries) => {
+    const parts = {};
+    for (const [type, data, base64] of entries) {
+      parts[type] = base64
+        ? new Blob([Uint8Array.from(atob(data), (c) => c.charCodeAt(0))], { type })
+        : new Blob([data], { type });
+    }
+    await navigator.clipboard.write([new ClipboardItem(parts)]);
+  }, items);
+}
+
+async function verifyPaste(ui, size) {
+  const tag = `${ui === 'en' ? 'en' : 'zh'}·${size}`;
+  const w = PASTE_WORDS[ui];
+  const { context, page, errors } = await openFixture(ui, size);
+  const doc = () => page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)), `econ-worksheet:${document_.id}`);
+  const settle = (ms = 1600) => page.waitForTimeout(ms);
+  try {
+    const stem = page.locator(`#print-root [data-field-key="blockText:${STEM_ID}"][data-field-side="en"]`).first();
+    const clickEnd = async () => {
+      const box = await stem.boundingBox();
+      await page.mouse.click(box.x + 4, box.y + box.height / 2);
+      await page.keyboard.press('End');
+    };
+
+    // 1. Word's HTML into a text: emphasis kept, fonts/sizes/colours dropped.
+    await clickEnd();
+    await toClipboard(page, [['text/html', WORD_HTML], ['text/plain', 'when demand rises to Q1 at P2']]);
+    await page.keyboard.press('ControlOrMeta+v');
+    await page.keyboard.press('Escape');
+    await settle();
+    const runs = (await doc()).questions[0].blocks[0].text.en;
+    const find = (word) => runs.find((run) => run.text.includes(word));
+    check(`[${tag}] pasted bold stays bold`, find('demand')?.bold === true, JSON.stringify(runs));
+    check(`[${tag}] pasted italic and sub/superscript stay`, find('Q')?.italic === true && runs.some((r) => r.text === '1' && r.vertAlign === 'subscript') && runs.some((r) => r.text === '2' && r.vertAlign === 'superscript'), JSON.stringify(runs));
+    check(`[${tag}] no pasted font, size or colour reaches a run`, runs.every((run) => !run.fonts && !run.fontSize && !run.color), JSON.stringify(runs));
+
+    // 2. MC questions pasted into a text: the bar, then questions in one undo step.
+    const before = await doc();
+    await clickEnd();
+    await toClipboard(page, [['text/plain', MC_TEXT]]);
+    await page.keyboard.press('ControlOrMeta+v');
+    await settle(800);
+    const bar = page.locator('[data-paste-offer]');
+    const said = (await bar.count()) ? await bar.innerText() : '';
+    check(`[${tag}] pasted questions bring the bar`, w.found.test(said), said);
+    await page.screenshot({ path: `${OUT}/paste-offer-${tag}.png` });
+    await bar.getByRole('button', { name: w.make }).click();
+    await settle();
+    const after = await doc();
+    const made = after.questions.length - before.questions.length;
+    check(`[${tag}] "${w.make}" adds the questions`, made >= 3 && after.questions.slice(1, 1 + made).every((q) => q.type === 'mcq'), String(made));
+    check(`[${tag}] … and takes the pasted text back`, JSON.stringify(after.questions[0].blocks) === JSON.stringify(before.questions[0].blocks), JSON.stringify(after.questions[0].blocks[0].text.en).slice(0, 160));
+    check(`[${tag}] … and the bar goes`, (await bar.count()) === 0);
+    await page.screenshot({ path: `${OUT}/paste-made-${tag}.png` });
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('ControlOrMeta+z');
+    await settle();
+    check(`[${tag}] one undo takes the questions back`, (await doc()).questions.length === before.questions.length, String((await doc()).questions.length));
+
+    check(`[${tag}] no page errors`, errors.length === 0, errors.join(' | '));
+  } finally {
+    await context.close();
+  }
+  await verifyPastePicture(ui, size);
+}
+
+async function verifyPastePicture(ui, size) {
+  const tag = `${ui === 'en' ? 'en' : 'zh'}·${size}`;
+  const { context, page, errors } = await openFixture(ui, size);
+  const doc = () => page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)), `econ-worksheet:${document_.id}`);
+  const settle = (ms = 1600) => page.waitForTimeout(ms);
+  try {
+    // 3. A picture pasted with Q2 selected (its row in the Content list) goes into Q2.
+    const q2Row = page.locator('button:not([aria-label])').filter({ hasText: 'Which of the following' }).first();
+    await q2Row.click();
+    await settle(300);
+    const png = readFileSync(PICTURE).toString('base64');
+    await toClipboard(page, [['image/png', png, true]]);
+    const blocksBefore = (await doc()).questions[1].blocks.length;
+    await page.keyboard.press('ControlOrMeta+v');
+    await settle(2000);
+    const q2 = (await doc()).questions[1].blocks;
+    check(`[${tag}] a pasted picture goes into the selected question`, q2.length === blocksBefore + 1 && q2.at(-1).kind === 'image', JSON.stringify(q2.map((b) => b.kind)));
+    check(`[${tag}] no page errors`, errors.length === 0, errors.join(' | '));
+  } finally {
+    await context.close();
+  }
+}
+
 try {
   for (const ui of ['en', 'zh-HK']) {
     for (const size of Object.keys(SIZES)) {
       console.log(`\n— ${ui} · ${size}`);
       if (wants('save')) await verifySave(ui, size);
       if (wants('insert')) await verifyInsert(ui, size);
+      if (wants('paste') && size !== 'iphone') await verifyPaste(ui, size);
     }
   }
 } finally {

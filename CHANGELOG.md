@@ -58,6 +58,16 @@ a version heading is edited afterwards.
   your browser only when you click it; nothing is loaded or tracked, and it never appears while you
   edit.
   <!-- zh: **開始畫面多了一個低調的「請我喝杯咖啡」連結。** 如果 Econ Studio 幫你省下時間，可以透過開始畫面底部的連結表達謝意。它只是一個普通連結，點擊後才會在瀏覽器開啟，不會載入或追蹤任何東西，編輯時也不會出現。 -->
+- **Paste questions from Word and make them into questions.** Copy questions from a Word file
+  or a web page and paste them into a question's text: when they look like questions (numbered,
+  with options A–D or parts (a), (b)), a bar at the foot of the page says how many and offers Make
+  these into questions. Click it and the pasted text becomes real questions after the one you
+  pasted into, with their options, parts and marks, using the same reading as Import from Word; one
+  ⌘Z (Ctrl+Z) turns them back into the pasted text. Click ✕, or keep typing, to keep it as text.
+  <!-- zh: **從 Word 貼上題目，並轉為真正的題目。** 從 Word 檔或網頁複製題目，貼到題目文字中：如果內容看來是題目（有編號、有選項 A–D 或分題 (a)、(b)），頁面底部會顯示有多少條題目，並提供「轉為題目」。按下後，貼上的文字會變成真正的題目，放在你貼上的那題之後，連同選項、分題和分數，讀法與「從 Word 匯入」相同；按一次 ⌘Z（Ctrl+Z）即可變回貼上的文字。按 ✕ 或繼續輸入，則保留為文字。 -->
+- **Paste a picture onto the page.** Copy a picture or take a screenshot, then press ⌘V (Ctrl+V):
+  it goes into the question you have selected, or under the text you are typing in.
+  <!-- zh: **把圖片貼到頁面上。** 複製圖片或截取屏幕畫面後按 ⌘V（Ctrl+V）：圖片會加到你所選的題目，或你正在輸入的文字下方。 -->
 
 ### Changed
 - **Typing works as in Word: one click, and Enter starts a new paragraph.** Click anywhere in a
@@ -75,6 +85,10 @@ a version heading is edited afterwards.
   the browser's "Save page as…" box, which saved the app's web page rather than your worksheet.
   Save now in the ⋯ menu shows the key.
   <!-- zh: **⌘S 即可儲存，與 Word 一樣。** 你的工作仍會自動儲存，但現在按 ⌘S（Windows 為 Ctrl+S）會立即儲存，即使正在輸入亦可，頂列會短暫顯示「已儲存」。它不再開啟瀏覽器的「另存網頁」視窗（那只會儲存程式的網頁，而不是你的工作紙）。⋯ 選單中的「立即儲存」亦會顯示這個快捷鍵。 -->
+- **Pasted text keeps its bold, italic and underline.** Text pasted from Word or a web page now
+  keeps bold, italic, underline, subscript, superscript and tabs, as Word does. Its font, size and
+  colour are left behind, so it matches the text around it.
+  <!-- zh: **貼上的文字會保留粗體、斜體和底線。** 從 Word 或網頁貼上的文字，現在會保留粗體、斜體、底線、下標、上標及 Tab，與 Word 相同；字型、字號和顏色則不會帶過來，所以與周圍的文字一致。 -->
 - **The Element menu is now called Insert, and Table and Picture are at its top.** In the left
   strip, Element is now Insert, as in Word. Its first two entries are Table… (pick the size on the
   grid) and Picture… (choose a file): each goes at the end of the question you have selected, and

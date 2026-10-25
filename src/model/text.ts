@@ -431,6 +431,37 @@ export function replaceRichTextRange(
 }
 
 /**
+ * Paste runs over `[start, end)`, Word's "Merge Formatting" (k-0201): each pasted run takes
+ * the formatting at the caret (as typing would, `replaceRichTextRange`), and keeps its own
+ * bold, italic, underline and sub/superscript on top. A pasted font, size or colour never
+ * arrives; the caller hands in runs already stripped to those four.
+ */
+export function replaceRichTextRangeWithRuns(
+  runs: RichText | undefined,
+  start: number,
+  end: number,
+  inserted: RichText,
+  fallback?: RunFormat,
+): RichText {
+  const text = inserted.map((run) => run.text).join('');
+  // The plain insert places the text with the caret's formatting; the pasted emphasis is
+  // then laid over its span, run by run.
+  let out = replaceRichTextRange(runs, start, end, text, fallback);
+  let at = Math.max(0, Math.min(start, end, richTextLength(runs)));
+  for (const run of inserted) {
+    const patch: RunFormatPatch = {
+      ...(run.bold ? { bold: true } : {}),
+      ...(run.italic ? { italic: true } : {}),
+      ...(run.underline ? { underline: true } : {}),
+      ...(run.vertAlign ? { vertAlign: run.vertAlign } : {}),
+    };
+    if (Object.keys(patch).length > 0) out = applyRunFormat(out, at, at + run.text.length, patch);
+    at += run.text.length;
+  }
+  return out;
+}
+
+/**
  * The characters a fill-in blank is made of.
  *
  * Spaces carrying `underline`, not underscores: Word rules a blank the same way, so the
