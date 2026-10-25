@@ -7,7 +7,7 @@ export const STRUCTURED_PANEL_MESSAGES = defineMessages({
   addDiagram: { en: 'Add model diagram', zh: '加入參考圖表' },
   showOnPage: { en: 'Show on the page', zh: '在頁面上顯示' },
   typeOnPage: { en: 'type on the page', zh: '直接在頁面上輸入' },
-  stem: { en: 'Stem', zh: '題幹' },
+  stem: { en: 'Question text', zh: '題幹' },
   typedOnPage: { en: 'typed on the page', zh: '直接在頁面上輸入' },
   marks: { en: 'Marks', zh: '分' },
   answerLines: { en: 'Answer lines', zh: '答題線' },

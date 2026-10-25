@@ -188,7 +188,7 @@ export const IMPORT_MESSAGES = defineMessages({
     en: 'Option letters were apart from their text, so they were paired in order.',
     zh: '選項字母與文字分開，已按次序配對。',
   },
-  flagTextAfterOptions: { en: 'Text after the options moved into the stem.', zh: '選項之後的文字已移到題幹。' },
+  flagTextAfterOptions: { en: 'Text after the options moved into the question text.', zh: '選項之後的文字已移到題幹。' },
   flagSharedStemFolded: {
     en: 'A shared stimulus here is kept as the first text of this question.',
     zh: '此處的共用資料保留為這條題目的開首文字。',

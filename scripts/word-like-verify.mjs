@@ -9,6 +9,9 @@ import { chromium } from 'playwright-core';
  *
  *  - save: ⌘S and Ctrl+S save at once (before autosave would), the bar says "Saved" for a moment,
  *    and the browser's own "Save page as…" never runs, with a text open on the page or not;
+ *  - insert: the rail's second menu is Insert (插入), Table… and Picture… lead it and land in the
+ *    selected question, "Answer lines…" is one entry with ruled, dotted and to-the-end choices,
+ *    and a question's panel says "Question text" (題幹 in 中文);
  *
  *   node scripts/word-like-verify.mjs [--part=save] [--out=/tmp/word-like-verify] [--url=http://localhost:3000]
  *
@@ -57,9 +60,30 @@ const check = (name, ok, detail = '') => {
 };
 
 const WORDS = {
-  en: { saved: 'Saved' },
-  'zh-HK': { saved: '已儲存' },
+  en: {
+    saved: 'Saved',
+    insert: 'Insert',
+    rail: /^Insert\s*插入$/,
+    table: 'Table…',
+    picture: 'Picture…',
+    answerLines: 'Answer lines…',
+    choices: ['Ruled lines', 'Dotted lines', 'Dotted to page end'],
+    questionText: 'Question text',
+    into: 'into Q2',
+  },
+  'zh-HK': {
+    saved: '已儲存',
+    insert: '插入',
+    rail: /^插入\s*表格・圖片$/,
+    table: '表格…',
+    picture: '圖片…',
+    answerLines: '答題線…',
+    choices: ['橫線', '點線', '點線至頁尾'],
+    questionText: '題幹',
+    into: '加入 Q2',
+  },
 };
+const PICTURE = new URL('../src-tauri/icons/64x64.png', import.meta.url).pathname;
 const SIZES = {
   mac: { width: 1512, height: 950 },
   ipad: { width: 820, height: 1180 },
@@ -159,11 +183,92 @@ async function verifySave(ui, size) {
   }
 }
 
+async function verifyInsert(ui, size) {
+  const tag = `${ui === 'en' ? 'en' : 'zh'}·${size}`;
+  const w = WORDS[ui];
+  const { context, page, errors } = await openFixture(ui, size);
+  try {
+    const q2Blocks = () =>
+      page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)).questions[1].blocks.map((b) => b.kind), `econ-worksheet:${document_.id}`);
+    const layoutKinds = () =>
+      page.evaluate((key) => (JSON.parse(window.localStorage.getItem(key)).layout ?? []).map((e) => e.kind), `econ-worksheet:${document_.id}`);
+    const rail = page.getByRole('button', { name: w.rail });
+    check(`[${tag}] the rail's second menu is "${w.insert}"`, (await rail.count()) === 1, String(await rail.count()));
+
+    // Select Q2: its row in the Content list (the page is covered by the sidebar on an iPhone).
+    const q2Row = page.getByRole('button').filter({ hasText: 'Which of the following' }).first();
+    await q2Row.click();
+    await page.waitForTimeout(300);
+
+    await rail.click();
+    const items = page.getByRole('menuitem');
+    const names = await items.allInnerTexts();
+    check(`[${tag}] Table… and Picture… lead the menu`, names[0]?.startsWith(w.table) && names[1]?.startsWith(w.picture), JSON.stringify(names.slice(0, 3)));
+    check(`[${tag}] … and say they go ${w.into}`, names[0]?.includes(w.into) && names[1]?.includes(w.into), JSON.stringify(names.slice(0, 2)));
+    const lines = names.filter((n) => n.startsWith(w.answerLines));
+    const oldLines = names.filter((n) => /Answer space|答題空間/.test(n));
+    check(`[${tag}] one "${w.answerLines}" entry, no separate answer-space rows`, lines.length === 1 && oldLines.length === 0, JSON.stringify(names));
+    await page.screenshot({ path: `${OUT}/insert-menu-${tag}.png` });
+
+    // Table…: Word's grid, then a 2 × 3 table at the end of Q2's text.
+    const before = await q2Blocks();
+    await items.filter({ hasText: w.table }).click();
+    const grid = page.locator('[role="grid"], [data-table-size-grid]').first();
+    const cells = page.locator('[data-table-size-cell], [role="gridcell"]');
+    if ((await cells.count()) > 0) {
+      await page.screenshot({ path: `${OUT}/insert-table-grid-${tag}.png` });
+      await cells.nth(5 + 2).hover(); // row 2, column 3 of a 5-wide grid
+      await cells.nth(5 + 2).click();
+    } else {
+      check(`[${tag}] the table grid opens`, false, String(await grid.count()));
+    }
+    await page.waitForTimeout(1600);
+    const afterTable = await q2Blocks();
+    check(`[${tag}] Table… adds a table at the end of Q2's text`, afterTable.length === before.length + 1 && afterTable.at(-1) === 'table', JSON.stringify(afterTable));
+
+    // Picture…: the file chooser, then a picture in Q2.
+    await rail.click();
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('menuitem').filter({ hasText: w.picture }).click();
+    await (await chooser).setFiles(PICTURE);
+    await page.waitForTimeout(1800);
+    const afterPicture = await q2Blocks();
+    check(`[${tag}] Picture… adds the chosen picture to Q2`, afterPicture.length === afterTable.length + 1 && afterPicture.at(-1) === 'image', JSON.stringify(afterPicture));
+
+    // Answer lines…: three choices; Ruled lines adds ruled lines.
+    await rail.click();
+    await page.getByRole('menuitem').filter({ hasText: w.answerLines }).click();
+    const choiceNames = await page.getByRole('menuitem').allInnerTexts();
+    check(`[${tag}] "${w.answerLines}" offers ${w.choices.join(' · ')}`, w.choices.every((c) => choiceNames.some((n) => n.startsWith(c))), JSON.stringify(choiceNames));
+    await page.screenshot({ path: `${OUT}/insert-answer-lines-${tag}.png` });
+    const kindsBefore = await layoutKinds();
+    await page.getByRole('menuitem').filter({ hasText: new RegExp(`^${w.choices[0]}`) }).click();
+    await page.waitForTimeout(1600);
+    const kindsAfter = await layoutKinds();
+    check(`[${tag}] ${w.choices[0]} adds ruled lines`, kindsAfter.filter((k) => k === 'answerLines').length === kindsBefore.filter((k) => k === 'answerLines').length + 1, JSON.stringify(kindsAfter));
+
+    // A question's panel: "Question text", not "Stem".
+    await q2Row.click();
+    await page.waitForTimeout(400);
+    const editTab = page.getByRole('tab', { name: ui === 'en' ? 'Edit' : '編輯' });
+    if (await editTab.count()) await editTab.first().click();
+    await page.waitForTimeout(400);
+    const panel = await page.locator('aside, [role="tabpanel"]').allInnerTexts();
+    const joined = panel.join('\n');
+    check(`[${tag}] the question's panel says "${w.questionText}"`, joined.includes(w.questionText) && !/\bStem\b/.test(joined), joined.slice(0, 200));
+    await page.screenshot({ path: `${OUT}/insert-panel-${tag}.png` });
+    check(`[${tag}] no page errors`, errors.length === 0, errors.join(' | '));
+  } finally {
+    await context.close();
+  }
+}
+
 try {
   for (const ui of ['en', 'zh-HK']) {
     for (const size of Object.keys(SIZES)) {
       console.log(`\n— ${ui} · ${size}`);
       if (wants('save')) await verifySave(ui, size);
+      if (wants('insert')) await verifyInsert(ui, size);
     }
   }
 } finally {

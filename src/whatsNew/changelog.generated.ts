@@ -77,6 +77,18 @@ a version heading is edited afterwards.
   the browser's "Save page as…" box, which saved the app's web page rather than your worksheet.
   Save now in the ⋯ menu shows the key.
   <!-- zh: **⌘S 即可儲存，與 Word 一樣。** 你的工作仍會自動儲存，但現在按 ⌘S（Windows 為 Ctrl+S）會立即儲存，即使正在輸入亦可，頂列會短暫顯示「已儲存」。它不再開啟瀏覽器的「另存網頁」視窗（那只會儲存程式的網頁，而不是你的工作紙）。⋯ 選單中的「立即儲存」亦會顯示這個快捷鍵。 -->
+- **The Element menu is now called Insert, and Table and Picture are at its top.** In the left
+  strip, Element is now Insert, as in Word. Its first two entries are Table… (pick the size on the
+  grid) and Picture… (choose a file): each goes at the end of the question you have selected, and
+  the menu says which ("into Q3"); with no question selected, it starts a new question holding it.
+  <!-- zh: **「版面」選單改名為「插入」，表格和圖片排在最前。** 左側工具列的「版面」現在叫「插入」，與 Word 相同。首兩項是「表格…」（在方格上選擇大小）和「圖片…」（選擇檔案）：兩者都會加到你所選題目的最後，選單會註明位置（例如「加入 Q3」）；沒有選取題目時，會開一條新題目放置它。 -->
+- **"Stem" is now "Question text".** A question's panel, the Marking scheme layout and the import
+  notes call a question's own wording its question text. In 中文 it is still 題幹.
+  <!-- zh: **英文介面的「Stem」改稱「Question text」。** 題目面板、評卷參考的版面設定及匯入提示，都改用這個說法。中文介面仍稱「題幹」。 -->
+- **One "Answer lines…" entry in the Insert menu.** Answer lines, Answer space and Answer space ·
+  fill are now one entry: click it and choose Ruled lines, Dotted lines (as in a Question-Answer
+  Book) or Dotted to page end. The lines themselves are unchanged.
+  <!-- zh: **「插入」選單只有一項「答題線…」。** 「答題線」、「答題空間」及「答題空間・填滿」合併為一項：按下後選擇「橫線」、「點線」（試題答題簿的點線）或「點線至頁尾」。答題線本身沒有改變。 -->
 
 ### Fixed
 - **The edit hint and the zoom no longer overlap on an iPad, and Document setup fits an iPhone.**

@@ -594,6 +594,15 @@ crowd the iPad. Revisit only if teachers still cannot find things after those.
 9. **Priority against the format-settings track** (`docs/design/format-settings.md`): do Q1–Q8
    before the next setting?
 
+**Decided 2026-10-25 (the user, k-0201): go with the recommendations.** 1 and 2 were built in
+k-0200. In order, each its own commit on `develop`: Q2 ⌘S (Save now, never the browser's Save
+page); M6/Q6 words (Element → Insert 插入 with Table and Picture first, Stem → "question text"
+with 題幹 kept, one "Answer lines…"); M4 paste (keeps B/I/U, sub/superscript and tabs; pictures
+insert; "Make these into questions" through the import engine, reversing the file-only call in
+`docs/design/paste-import.md`); M5 ⌘K command search with a 🔍 for iPad, toolbar layout kept (5);
+M3 an original bilingual sample paper on demand and supply, hidden from the 題庫, the content
+checked by the user before release (4). Teacher sessions (8) stay with the user.
+
 ---
 
 ## Appendix — evidence notes

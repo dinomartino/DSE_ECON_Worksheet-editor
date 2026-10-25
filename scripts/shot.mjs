@@ -45,15 +45,16 @@ if (seed) {
   const hint = page.getByRole('button', { name: 'Dismiss hint' });
   if (await hint.count()) await hint.click();
 
-  const add = async (group, item) => {
+  const add = async (group, item, choice) => {
     await page.getByRole('button', { name: new RegExp(`^${group}`) }).click();
     await page.getByRole('menuitem', { name: item }).first().click();
+    if (choice) await page.getByRole('menuitem', { name: choice }).first().click();
     await page.waitForTimeout(250);
   };
   await add('Question', /Multiple Choice/);
   await add('Question', /Multiple Choice/);
   await add('Question', /Structured/);
-  await add('Element', /Answer lines/);
+  await add('Insert', /Answer lines/, /Ruled lines/);
 }
 
 await page.waitForTimeout(1200);

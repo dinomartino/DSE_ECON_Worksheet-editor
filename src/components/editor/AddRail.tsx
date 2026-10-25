@@ -17,6 +17,12 @@ import {
   flowItemLabel,
 } from '@/model/flow';
 import { documentShape, offersLayoutKind } from '@/model/documentShape';
+import { createTableBlock } from '@/model/factories';
+import { insertHostFor } from '@/model/insertHost';
+import { contentWidth, pageSetupOf } from '@/model/page';
+import { defaultTableIndent } from '@/model/table';
+import { imageBlockFromFile } from '@/export/imageImport';
+import { TableSizePicker } from '@/components/ui/TableSizePicker';
 import { computeNumbering } from '@/model/numbering';
 import { bi, plain } from '@/model/text';
 import type { LayoutElement } from '@/model/types';
@@ -27,6 +33,7 @@ import {
   AnswerLinesIcon,
   AnswerSpaceIcon,
   DividerIcon,
+  ImageIcon,
   HeadingIcon,
   LabelListIcon,
   ListIcon,
@@ -39,6 +46,7 @@ import {
   SpacerIcon,
   StimulusIcon,
   StructuredIcon,
+  TableIcon,
   TextIcon,
 } from '@/components/ui/icons';
 import { useMessages, useUiLanguage } from '@/i18n/language';
@@ -53,6 +61,8 @@ import { ADD_RAIL_MESSAGES } from './AddRail.messages';
 
 type Group = 'questions' | 'layout';
 
+const PICTURE_INPUT = 'add-rail-picture-input';
+
 /** One insertable thing. `build` is deferred so nothing is constructed until clicked. */
 interface Entry {
   id: string;
@@ -60,7 +70,11 @@ interface Entry {
   hint: string;
   icon: React.ReactNode;
   /** `afterId` is the item to land behind, or undefined to append. */
-  run: (afterId?: string) => void;
+  run?: (afterId?: string) => void;
+  /** Word's size grid opens in the flyout's place; the table lands at the size picked. */
+  pickTable?: (rows: number, columns: number, afterId?: string) => void;
+  /** Kinds to choose between, listed under the entry once it is clicked ("Answer lines…"). */
+  choices?: Entry[];
 }
 
 export function AddRail() {
@@ -70,8 +84,17 @@ export function AddRail() {
   const insertAnchorId = useWorksheetStore((s) => s.insertAnchorId);
   const addQuestion = useWorksheetStore((s) => s.addQuestion);
   const addLayoutElement = useWorksheetStore((s) => s.addLayoutElement);
+  const insertBlockAtAnchor = useWorksheetStore((s) => s.insertBlockAtAnchor);
 
-  const [open, setOpen] = useState<Group | undefined>();
+  const [open, setOpenState] = useState<Group | undefined>();
+  // Inside the Insert flyout: the entry whose choices are showing, and the table grid.
+  const [expanded, setExpanded] = useState<string | undefined>();
+  const [pickingTable, setPickingTable] = useState<Entry | undefined>();
+  const setOpen = (group: Group | undefined) => {
+    setOpenState(group);
+    setExpanded(undefined);
+    setPickingTable(undefined);
+  };
   const rootRef = useRef<HTMLDivElement>(null);
 
   /*
@@ -132,7 +155,11 @@ export function AddRail() {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(undefined);
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(undefined);
+      if (event.key === 'Escape') {
+        setOpenState(undefined);
+        setExpanded(undefined);
+        setPickingTable(undefined);
+      }
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -182,7 +209,39 @@ export function AddRail() {
     run: () => useBankSession.getState().openBank(),
   });
 
+  /*
+   * Table and Picture, first, as on Word's Insert tab (k-0201). They go inside the question
+   * or shared stimulus the rail points at, or become a new question where the header says;
+   * the hint names which, since "Inserts after Q3" would not say the table goes *into* Q3.
+   */
+  const host = insertHostFor(worksheet, afterId);
+  const hostHint = host ? m.intoHost(labelFor(host.id) ?? '') : m.newQuestionHost;
   const layoutEntries: Entry[] = [
+    {
+      id: 'table',
+      label: m.table,
+      hint: hostHint,
+      icon: <TableIcon size={18} />,
+      pickTable: (rows, columns, afterId) =>
+        insertBlockAtAnchor(
+          { ...createTableBlock(rows, columns), indent: defaultTableIndent(contentWidth(pageSetupOf(worksheet))) },
+          afterId,
+        ),
+    },
+    {
+      id: 'picture',
+      label: m.picture,
+      hint: hostHint,
+      icon: <ImageIcon size={18} />,
+      // The file chooser; the anchor is read at the click, not the pick, and rides on the input.
+      run: (afterId) => {
+        const input = document.getElementById(PICTURE_INPUT) as HTMLInputElement | null;
+        if (!input) return;
+        if (afterId) input.dataset.insertAfter = afterId;
+        else delete input.dataset.insertAfter;
+        input.click();
+      },
+    },
     {
       id: 'section',
       label: m.section,
@@ -239,25 +298,34 @@ export function AddRail() {
       run: (afterId) => addLayoutElement(createLabelListElement(), afterId),
     },
     {
-      id: 'answerLines',
+      // One entry for the three kinds of writing lines, chosen under it (k-0201).
+      id: 'answerLinesAll',
       label: m.answerLines,
       hint: m.answerLinesHint,
       icon: layoutIcons.answerLines,
-      run: (afterId) => addLayoutElement(createAnswerLinesElement(), afterId),
-    },
-    {
-      id: 'answerSpace',
-      label: m.answerSpace,
-      hint: m.answerSpaceHint,
-      icon: layoutIcons.answerSpace,
-      run: (afterId) => addLayoutElement(createAnswerSpaceElement(), afterId),
-    },
-    {
-      id: 'answerSpaceFill',
-      label: m.answerSpaceFill,
-      hint: m.answerSpaceFillHint,
-      icon: layoutIcons.answerSpace,
-      run: (afterId) => addLayoutElement(createAnswerSpaceElement(8, true), afterId),
+      choices: [
+        {
+          id: 'answerLines',
+          label: m.ruledLines,
+          hint: m.ruledLinesHint,
+          icon: layoutIcons.answerLines,
+          run: (afterId) => addLayoutElement(createAnswerLinesElement(), afterId),
+        },
+        {
+          id: 'answerSpace',
+          label: m.dottedLines,
+          hint: m.dottedLinesHint,
+          icon: layoutIcons.answerSpace,
+          run: (afterId) => addLayoutElement(createAnswerSpaceElement(), afterId),
+        },
+        {
+          id: 'answerSpaceFill',
+          label: m.dottedToEnd,
+          hint: m.dottedToEndHint,
+          icon: layoutIcons.answerSpace,
+          run: (afterId) => addLayoutElement(createAnswerSpaceElement(8, true), afterId),
+        },
+      ],
     },
     {
       id: 'spacer',
@@ -297,10 +365,18 @@ export function AddRail() {
    * page break, blank space — are untouched.
    */
   const shape = documentShape(worksheet);
-  const offeredLayout = layoutEntries.filter((entry) => {
+  const offered = (entry: Entry) => {
+    // Table and Picture go in a question, which every paper has.
+    if (entry.id === 'table' || entry.id === 'picture') return true;
     // The two fill variants are the same element kind under different starting values.
     const kind = (entry.id === 'answerSpaceFill' ? 'answerSpace' : entry.id) as LayoutElement['kind'];
     return offersLayoutKind(shape, kind);
+  };
+  // "Answer lines…" offers the kinds this paper takes, and is withheld when it takes none.
+  const offeredLayout = layoutEntries.flatMap((entry) => {
+    if (!entry.choices) return offered(entry) ? [entry] : [];
+    const choices = entry.choices.filter(offered);
+    return choices.length > 0 ? [{ ...entry, choices }] : [];
   });
 
   const groups: Array<{
@@ -373,7 +449,7 @@ export function AddRail() {
           key={active.id}
           role="menu"
           aria-label={active.title}
-          className="absolute left-[76px] top-2 w-[260px] origin-top-left animate-pop-in rounded-2xl border border-line bg-surface-raised p-2 shadow-2xl"
+          className="absolute left-[76px] top-2 max-h-[calc(100%-1rem)] w-[260px] origin-top-left animate-pop-in overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface-raised p-2 shadow-2xl"
         >
           {/* The destination, stated before the click rather than discovered after it.
               Two lines: what is being added, then where it goes — the second is the one
@@ -397,28 +473,91 @@ export function AddRail() {
               m.insertsAtEnd
             )}
           </p>
-          {active.entries.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                entry.run(afterId);
-                setOpen(undefined);
-              }}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-            >
-              <span className="shrink-0 text-ink-subtle">{entry.icon}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium text-ink">
-                  {entry.label}
-                </span>
-                {entry.hint && <span className="block truncate text-[11px] text-ink-subtle">{entry.hint}</span>}
-              </span>
-            </button>
-          ))}
+          {pickingTable ? (
+            <div className="px-1 pb-1">
+              <button
+                type="button"
+                onClick={() => setPickingTable(undefined)}
+                className="mb-1 cursor-pointer rounded-md px-1.5 py-1 text-[11px] text-ink-muted hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                ‹ {m.back}
+              </button>
+              <TableSizePicker
+                onDismiss={() => setOpen(undefined)}
+                onPick={(rows, columns) => {
+                  pickingTable.pickTable?.(rows, columns, afterId);
+                  setOpen(undefined);
+                }}
+              />
+            </div>
+          ) : (
+            active.entries.map((entry) => (
+              <div key={entry.id}>
+                <EntryButton
+                  entry={entry}
+                  expanded={entry.choices ? expanded === entry.id : undefined}
+                  onClick={() => {
+                    if (entry.choices) setExpanded(expanded === entry.id ? undefined : entry.id);
+                    else if (entry.pickTable) setPickingTable(entry);
+                    else {
+                      entry.run?.(afterId);
+                      setOpen(undefined);
+                    }
+                  }}
+                />
+                {entry.choices && expanded === entry.id && (
+                  <div className="ml-5 border-l border-line pl-1">
+                    {entry.choices.map((choice) => (
+                      <EntryButton
+                        key={choice.id}
+                        entry={choice}
+                        onClick={() => {
+                          choice.run?.(afterId);
+                          setOpen(undefined);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       )}
+      <input
+        id={PICTURE_INPUT}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        className="hidden"
+        data-print-hide
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          // Cleared straight away so the same file can be picked again.
+          event.target.value = '';
+          if (!file) return;
+          const at = event.target.dataset.insertAfter;
+          void imageBlockFromFile(file).then((block) => insertBlockAtAnchor(block, at));
+        }}
+      />
     </div>
+  );
+}
+
+function EntryButton({ entry, expanded, onClick }: { entry: Entry; expanded?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      aria-expanded={expanded}
+      aria-haspopup={entry.pickTable ? 'dialog' : entry.choices ? 'menu' : undefined}
+      onClick={onClick}
+      className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+    >
+      <span className="shrink-0 text-ink-subtle">{entry.icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-medium text-ink">{entry.label}</span>
+        {entry.hint && <span className="block truncate text-[11px] text-ink-subtle">{entry.hint}</span>}
+      </span>
+    </button>
   );
 }

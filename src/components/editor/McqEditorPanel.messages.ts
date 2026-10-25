@@ -1,7 +1,7 @@
 import { defineMessages } from '@/i18n/catalogue';
 
 export const MCQ_PANEL_MESSAGES = defineMessages({
-  stem: { en: 'Stem', zh: '題幹' },
+  stem: { en: 'Question text', zh: '題幹' },
   typedOnPage: { en: 'typed on the page', zh: '直接在頁面上輸入' },
   correctAnswer: { en: 'Correct answer', zh: '正確答案' },
   answer: { en: 'Answer', zh: '答案' },

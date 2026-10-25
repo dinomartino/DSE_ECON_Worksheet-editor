@@ -93,7 +93,7 @@ export const STANDARD_TRANSLATIONS: Readonly<Record<string, string>> = {
   Page: '頁',
   Question: '題目',
   'Part (of a question)': '分題',
-  Stem: '題幹',
+  'Question text': '題幹',
   Marks: '分',
   Answer: '答案',
   'Answer key': '評卷參考',

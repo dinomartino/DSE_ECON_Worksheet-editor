@@ -24,7 +24,7 @@ describe('the Layout tab', () => {
     expect(markup).toContain('Classic');
     expect(markup).toContain('HKEAA style');
     expect(markup).toMatch(/aria-checked="true"[^>]*>[\s\S]*?Classic/);
-    for (const word of ['Grid', 'Table', 'List', 'Marks column', 'Question stems', 'The whole paper', 'Reset to preset']) {
+    for (const word of ['Grid', 'Table', 'List', 'Marks column', 'Question text', 'The whole paper', 'Reset to preset']) {
       expect(markup).toContain(word);
     }
     // Nothing changed from the preset: reset is off.
@@ -52,7 +52,7 @@ describe('the Layout tab', () => {
     useWorksheetStore.getState().replaceWorksheet({ ...createWorksheet(), answerKeyLayout: { preset: 'suggested' } });
     const markup = renderToStaticMarkup(<AnswerKeyLayoutPanel />);
     for (const word of ['Classic', 'HKEAA style', 'Suggested answers', 'Detailed table']) expect(markup).toContain(word);
-    for (const word of ['MC question wording', 'Marks for each part', 'Marking points as answer points', 'Question stems']) {
+    for (const word of ['MC question wording', 'Marks for each part', 'Marking points as answer points', 'Question text']) {
       expect(markup).toContain(word);
     }
     for (const word of ['Notation legend', 'Note for markers', 'Source notes', 'Long questions', 'Marks column']) {

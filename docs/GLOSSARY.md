@@ -30,7 +30,7 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Marking scheme** — HKEAA notation on a part, sub-part or essay (`/` alternatives, `n@`,
   `max: N`, OR routes, levels, EC) with derived totals; teacher-only.
   `src/model/markSchemeTypes.ts:MarkScheme` · `src/model/markScheme.ts`
-- **Stem** — a question's own text, above its parts. `STEM_TEXT_INDENT` in `src/model/numbering.ts`
+- **Stem** — a question's own text, above its parts. The interface says "Question text" (題幹 in 中文) since k-0201; the code keeps `stem`. `STEM_TEXT_INDENT` in `src/model/numbering.ts`
 - **Part / sub-part** — `(a)` and `(i)`; marks may be absent, shared, or per sub-part.
   `src/model/marks.ts`
 - **QAB** — Question-Answer Book: the long-question booklet, a 10pt document with dotted
@@ -80,6 +80,11 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Answer layer** — elements of an axes diagram flagged `answer: true` (Draw answer on the
   canvas): red in the teacher version and answer key, absent with their dependents from the
   student version. `src/model/diagramAnswers.ts:answerLayer`
+- **Insert menu** — the rail's second menu, called Element / 版面 before k-0201: Table… and
+  Picture… first (into the anchored question or stimulus, else a new question:
+  `src/model/insertHost.ts:insertHostFor`), then the layout elements, with one "Answer lines…"
+  choosing ruled (`answerLines`), dotted (`answerSpace`) or to page end (fill answer space).
+  `src/components/editor/AddRail.tsx:AddRail`
 - **Answer space** — the QAB's dotted lines (dotted underline over a tab, 22.1pt pitch).
   `src/render/ir.ts:AnswerSpaceNode`
 - **Fill answer space** — an `answerSpace` whose `lines` is the paginator's *output*, not

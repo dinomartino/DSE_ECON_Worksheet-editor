@@ -58,6 +58,7 @@ import { withAnswerKeyLayout } from '@/model/answerKeyLayout';
 import type { ApplyReport, TranslationWrite } from '@/model/textSlots';
 import { applyTranslationBatch } from '@/model/translationApply';
 import { documentShape } from '@/model/documentShape';
+import { appendBlockToHost, insertHostFor, newHostQuestionType } from '@/model/insertHost';
 import { sectionSpans } from '@/model/sectionFit';
 import {
   addCoverLine,
@@ -357,6 +358,12 @@ interface WorksheetState {
   replaceBlock: (blockId: string, next: ContentBlock) => void;
   /** Insert a new block directly after an existing one — the page's insert route. */
   insertBlockAfter: (afterId: string, block: ContentBlock) => void;
+  /**
+   * Insert → Table / Picture: `block` at the end of the question or shared stimulus the rail
+   * is pointed at, or in a new question placed where the rail says (`insertHostFor`). One undo
+   * step either way; the host is selected.
+   */
+  insertBlockAtAnchor: (block: ContentBlock, afterId?: string) => void;
   /**
    * Move one table column boundary. Its own action so a drag handle need not resolve
    * the block and rebuild it at the call site.
@@ -1276,6 +1283,26 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) => replaceBlockById(draft, blockId, next)),
   insertBlockAfter: (afterId, block) =>
     get().commit((draft) => insertBlockAfter(draft, afterId, block)),
+  insertBlockAtAnchor: (block, afterId) => {
+    const anchor = afterId ?? get().insertAnchorId;
+    const host = insertHostFor(get().worksheet, anchor);
+    if (host) {
+      get().commit((draft) => appendBlockToHost(draft, host, block));
+      if (host.kind === 'question') set({ selectedQuestionId: host.id, insertAnchorId: host.id });
+      return;
+    }
+    const typeId = newHostQuestionType(documentShape(get().worksheet) === 'paper1');
+    const definition = listQuestionTypes().find((type) => type.id === typeId);
+    if (!definition) return;
+    const created = definition.create();
+    const question = { ...created, blocks: [...created.blocks, block] } as Question;
+    get().commit((draft) =>
+      insertIntoFlow(draft, { type: 'question', id: question.id }, anchor, {
+        questions: [...draft.questions, question],
+      }),
+    );
+    set({ selectedQuestionId: question.id, insertAnchorId: question.id });
+  },
   resizeTableColumn: (blockId, index, delta, columnCount) =>
     get().commit((draft) =>
       mapTableBlock(draft, blockId, (block) => resizeColumn(block, index, delta, columnCount)),
