@@ -88,7 +88,7 @@ The full policy — collapsing migrations, their size budget, files from a newer
 
 ## Branches: work on `develop`, `main` ships
 
-**Every push to `main` deploys the web app to teachers** (Vercel production). So:
+**`main` is what ships**: a release is cut from it (the desktop builds on GitHub Releases). So:
 
 - **All work — yours and any sub-agent's — happens on `develop`**, or on a short
   feature branch cut from it and merged back. Never commit or push to `main` directly.
@@ -102,12 +102,10 @@ The full policy — collapsing migrations, their size budget, files from a newer
 - **Agents push `develop` themselves** once tests pass (no force); the user does not want
   to be asked to. Pushing `main` stays only on the user's word (see the release bullet below).
   Pushing `develop` is safe: CI runs, nothing reaches teachers.
-- **No Vercel previews** (the user, 2026-10-22: the editor is run locally, `git pull` then
-  `npm run dev`). Nothing in the repo or on GitHub shows a Vercel integration (no deployments
-  or Vercel statuses, even on `main`), so it is configured in Vercel's own dashboard if at
-  all. Turning previews off for non-`main` branches is the user's call there (Project →
-  Settings → Git, or an Ignored Build Step); there is no `vercel.json`, and `main`'s deploy
-  must not be touched.
+- **Never deploy the editor to Vercel** (the user, 2026-10-26: "PLEASE NEVER DEPLOY TO
+  VERCEL"). Agents never deploy it there, never run the `vercel` CLI for it, never add a
+  `vercel.json` or a Vercel integration, and never try to check a Vercel deploy. The user
+  runs the editor locally (`git pull`, then `npm run dev`).
 - **Releasing is the user's call, and their word is the sign-off.** Only when they say
   so, but then do the whole sequence without further confirmation: merge `develop` into
   `main`, tag on `main` (`npm version …`, `git push --follow-tags origin HEAD:main`), wait

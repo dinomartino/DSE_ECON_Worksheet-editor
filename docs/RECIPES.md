@@ -447,8 +447,9 @@ Only when the user asks. Work lives on `develop`; `main` is what teachers get.
 
 0. `develop` all green → in your own worktree (never the main checkout): `git fetch &&
    git worktree add --detach .claude/worktrees/release-vX.Y.Z origin/main`, then `git merge
-   --ff-only origin/develop` (or merge a `develop` → `main` pull request). `git push
-   origin HEAD:main` deploys the web app.
+   --ff-only origin/develop` (or merge a `develop` → `main` pull request). A release is
+   the desktop builds on GitHub Releases; nothing deploys the web app (never to Vercel,
+   AGENTS.md).
 1. Close the changelog (above). `npm run typecheck && npm test` — green before tagging.
 2. `npm version patch|minor|major` — runs `scripts/sync-version.mjs`, which writes the
    version into `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` and stages them.

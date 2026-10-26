@@ -292,8 +292,8 @@ key and sends nothing.
 
 ## Deployment
 
-Deploys to Vercel (or any static host) as-is. `npm run build` produces a fully
-prerendered static route:
+`npm run build` produces a fully prerendered static route (the desktop app wraps the
+same `out/`; releases ship as desktop builds on GitHub Releases, see `RELEASING.md`):
 
 - no API routes, no database, no server runtime;
 - the `.docx` is generated in the browser (`JSZip` + `atob`), so export works on a

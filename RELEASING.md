@@ -2,10 +2,10 @@
 
 Just want to try a build without releasing? See [`docs/DESKTOP-PREVIEW.md`](./docs/DESKTOP-PREVIEW.md).
 
-The web app deploys from `main` on Vercel and needs nothing here — which is why work
-happens on `develop` and reaches `main` only at release time (see AGENTS.md). This file is about the
-macOS and Windows builds, which ship from a git tag through GitHub Releases and update
-themselves from the same release.
+A release is the macOS and Windows builds, which ship from a git tag through GitHub
+Releases and update themselves from the same release. Work happens on `develop` and reaches
+`main` only at release time (see AGENTS.md). Nothing here deploys the web app, and agents
+never deploy the editor to Vercel or check a Vercel deploy (AGENTS.md).
 
 ## One-time setup
 
@@ -52,8 +52,8 @@ maintainer.
 
 ## Cutting a release
 
-Day-to-day work lives on `develop`; `main` is what teachers get, and every push to it
-deploys the web app. Never switch branches in the shared main checkout (`AGENTS.md`):
+Day-to-day work lives on `develop`; `main` is what teachers get, and releases are
+tagged on it. Never switch branches in the shared main checkout (`AGENTS.md`):
 release from your own worktree on `main`, and start by bringing `develop` into it:
 
 ```bash

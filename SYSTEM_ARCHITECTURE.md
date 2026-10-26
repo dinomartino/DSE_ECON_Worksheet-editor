@@ -3567,7 +3567,7 @@ so a layout bug can be reproduced without the teacher's wording ever leaving the
 ## Deployment
 
 ```
-Vercel (or any static host): Next.js build → fully prerendered. No API routes, DB, or server runtime.
+Web:      Next.js build → fully prerendered static `out/` (never deployed to Vercel, AGENTS.md). No API routes, DB, or server runtime.
 Desktop:  the same `out/` wrapped by Tauri 2 → signed .dmg (macOS arm64 + x64) and .exe (Windows x64).
 Browser:  .docx via JSZip client-side · localStorage autosave · file up/download · PDF via window.print() · optional AI translation: `fetch` from `src/ai/http.ts` straight to the teacher's chosen provider
 ```
