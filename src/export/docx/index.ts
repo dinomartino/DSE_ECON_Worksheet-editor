@@ -22,6 +22,9 @@ import { worksheetMarks } from '@/model/marks';
 import { versionHeaderText } from '@/model/versions';
 import { bandPrints, TEACHER_HEADER_JOIN, TEACHER_HEADER_MARK, teacherMarkPlacement } from '@/model/headerMarks';
 import { furnitureHeaderXml } from './furniture';
+import { watermarkHeaderXml, watermarkRunXml, withLeadingRun } from './watermark';
+import { bakeWatermarkImage } from '@/export/watermarkImage';
+import { coverWatermark, docxWatermarkPlan, watermarkOf } from '@/model/watermark';
 import { bodyMargins } from '@/model/pageFurniture';
 import { plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
@@ -118,6 +121,8 @@ function collectImages(
   worksheet: Worksheet,
   mode: OutputMode,
   diagramImages: DiagramImageMap,
+  /** Pictures outside the items: the watermark's, when a page prints it. */
+  extra: string[] = [],
 ): {
   assets: ImageAsset[];
   bySrc: Map<string, string>;
@@ -138,6 +143,7 @@ function collectImages(
       item.type === 'question' ? item.question.nodes : item.layout.nodes,
     ),
     diagramImages,
+    extra,
   );
 }
 
@@ -148,6 +154,8 @@ function collectImages(
 function collectNodeImages(
   nodes: RenderNode[],
   diagramImages: DiagramImageMap,
+  /** Added after the nodes' own, so a document without them numbers its pictures as before. */
+  extra: string[] = [],
 ): {
   assets: ImageAsset[];
   bySrc: Map<string, string>;
@@ -210,6 +218,7 @@ function collectNodeImages(
   };
 
   nodes.forEach(visit);
+  extra.forEach(add);
 
   return { assets, bySrc };
 }
@@ -338,11 +347,26 @@ function buildParts(
   diagramImages: DiagramImageMap = new Map(),
   /** Where the preview's sheets begin (§ `joinWithPageBreaks`); absent, Word paginates alone. */
   pageStarts: PageStart[] = [],
+  /** Where each sheet carrying the watermark begins, when the sheets differ (§ `docxWatermarkPlan`). */
+  watermarkHeads: PageStart[] = [],
+  /** The watermark's picture with its strength drawn in (`bakeWatermarkImage`); absent, the original. */
+  bakedWatermark?: string,
 ): PackageParts {
   const rendered = renderWorksheet(worksheet, mode);
   const streams = collectListStreams(rendered);
   const numIds = assignNumIds(streams);
-  const { assets, bySrc } = collectImages(worksheet, mode, diagramImages);
+  // The watermark (k-0242): in the running header when every body sheet has it, else at
+  // the measured heads of those that do; the cover carries its own.
+  const watermark = watermarkOf(worksheet);
+  const watermarkPlan = docxWatermarkPlan(worksheet);
+  const coverMarked = Boolean(rendered.cover) && coverWatermark(watermark);
+  const watermarkUsed = Boolean(watermark) && (watermarkPlan !== 'none' || coverMarked);
+  const { assets, bySrc } = collectImages(
+    worksheet,
+    mode,
+    diagramImages,
+    watermark && watermarkUsed ? [bakedWatermark ?? watermark.src] : [],
+  );
   const fonts = worksheet.fonts;
 
   const setup = pageSetupOf(worksheet);
@@ -350,6 +374,11 @@ function buildParts(
   const textWidth = contentWidth(setup);
 
   let drawingId = 1;
+  const watermarkRelId = watermark && watermarkUsed ? bySrc.get(bakedWatermark ?? watermark.src) : undefined;
+  const watermarkRun = () =>
+    watermark && watermarkRelId
+      ? watermarkRunXml(watermarkRelId, watermark, setup, (drawingId += 1), Boolean(bakedWatermark))
+      : '';
   const context: BodyContext = {
     fonts,
     language: mode.language,
@@ -373,21 +402,20 @@ function buildParts(
    * *is* one, and emitting both left a blank sheet between the cover and question 1.
    */
   if (rendered.cover) {
-    chunks.push(
-      coverXml(
-        rendered.cover,
-        context,
-        pageGeometryXml({
-          pageWidth,
-          pageHeight,
-          margins: setup.margins,
-          landscape: setup.orientation === 'landscape',
-        }),
-        rendered.cover.foot.length > 0 || rendered.cover.footNote
-          ? `<w:footerReference w:type="default" r:id="${REL_FOOTER_COVER}"/>`
-          : '',
-      ),
+    const cover = coverXml(
+      rendered.cover,
+      context,
+      pageGeometryXml({
+        pageWidth,
+        pageHeight,
+        margins: setup.margins,
+        landscape: setup.orientation === 'landscape',
+      }),
+      rendered.cover.foot.length > 0 || rendered.cover.footNote
+        ? `<w:footerReference w:type="default" r:id="${REL_FOOTER_COVER}"/>`
+        : '',
     );
+    chunks.push((coverMarked && withLeadingRun(cover, watermarkRun())) || cover);
   }
 
   // Routed through the shared node renderer rather than hand-built here, so
@@ -430,7 +458,18 @@ function buildParts(
     const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
     units.push(...itemUnits(key, nodes, context));
   }
-  chunks.push(joinWithPageBreaks(units, new Set(pageStarts.map((start) => pageStartId(start.key, start.node)))));
+  chunks.push(
+    joinWithPageBreaks(
+      units,
+      new Set(pageStarts.map((start) => pageStartId(start.key, start.node))),
+      watermarkPlan === 'some' && watermarkRelId
+        ? {
+            at: new Set(watermarkHeads.map((head) => pageStartId(head.key, head.node))),
+            apply: (xml) => withLeadingRun(xml, watermarkRun()) ?? xml,
+          }
+        : undefined,
+    ),
+  );
 
   const titleText = plain(mode.language === 'zh' ? worksheet.title.zh : worksheet.title.en) ||
     plain(worksheet.title.en) ||
@@ -491,14 +530,11 @@ function buildParts(
 
   // The page furniture rides in the running header (§ `furnitureHeaderXml`), so its
   // presence alone forces a header part even when no band would print.
-  const furnitureXml = furnitureHeaderXml(
-    worksheet.pageFurniture,
-    pageWidth,
-    pageHeight,
-    setup.margins,
-    fonts,
-    mode.language,
-  );
+  // The watermark of a paper whose every page has it joins the furniture there, as Word's
+  // own watermark rides in the header: on every page however Word paginates.
+  const furnitureXml =
+    furnitureHeaderXml(worksheet.pageFurniture, pageWidth, pageHeight, setup.margins, fonts, mode.language) +
+    (watermarkPlan === 'every' && watermarkRelId ? watermarkHeaderXml(watermarkRun()) : '');
 
   const hasHeader =
     isHeaderFooterActive(header) ||
@@ -645,6 +681,8 @@ function buildParts(
 /** What the export dialog measured on the preview for this file (§ `joinWithPageBreaks`). */
 export interface DocxPagination {
   pageStarts?: PageStart[];
+  /** Where each sheet carrying the watermark begins (§ `measurePaperPagination`). */
+  watermarkHeads?: PageStart[];
 }
 
 export async function exportDocx(
@@ -656,7 +694,10 @@ export async function exportDocx(
   // sees a diagram as just another embedded picture.
   const diagramImages = await renderDiagramImages(worksheet, mode);
   assertEveryDiagramRasterized(worksheet, mode, diagramImages);
-  return zipPackage(buildParts(worksheet, mode, diagramImages, pagination.pageStarts));
+  const bakedWatermark = await bakeWatermarkImage(worksheet);
+  return zipPackage(
+    buildParts(worksheet, mode, diagramImages, pagination.pageStarts, pagination.watermarkHeads, bakedWatermark),
+  );
 }
 
 /**
@@ -705,7 +746,7 @@ export async function exportDocxBuffer(
   diagramImages?: DiagramImageMap,
   pagination: DocxPagination = {},
 ): Promise<Uint8Array> {
-  return zipPackageBuffer(buildParts(worksheet, mode, diagramImages, pagination.pageStarts));
+  return zipPackageBuffer(buildParts(worksheet, mode, diagramImages, pagination.pageStarts, pagination.watermarkHeads));
 }
 
 /** Exposed for tests that assert on the raw XML parts. */

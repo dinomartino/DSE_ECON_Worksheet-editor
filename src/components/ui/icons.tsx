@@ -524,3 +524,14 @@ export function SearchIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/** A page with a stamp behind its lines: the watermark (k-0242). */
+export function WatermarkIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 2.5h8.5L19 7v14.5H6z" />
+      <path d="M14.5 2.5V7H19" />
+      <circle cx="12.5" cy="13.5" r="3.6" strokeDasharray="2 1.6" />
+    </Svg>
+  );
+}

@@ -12,6 +12,18 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Put your school's watermark behind a paper with one click.** Save a school logo (PNG, JPG or
+  SVG) or a line of text such as SAMPLE once, in Settings → Watermarks; save several and name
+  each, for example one per school you teach at. On any paper, the Watermark button in the top
+  bar puts the one you used last faintly behind every page, and the arrow beside it picks
+  another. Each page has a small switch above its corner to leave the watermark off that page
+  (or put it on just that one), and the cover has its own. Strength and size are in Document
+  setup, on the Page tab. The watermark shows on screen, in print and PDF, and in the Word file.
+  A paper keeps its own copy, so it prints the same on another computer, and changing your saved
+  list never changes a paper you have made.
+  <!-- zh: **一按即可在試卷背後加上學校浮水印。** 在「設定 → 浮水印」儲存一次學校標誌（PNG、JPG 或 SVG）或一行文字（例如「樣本」）；可儲存多個並分別命名，例如你任教的每間學校各一個。在任何試卷上，按頂部工具列的「浮水印」按鈕，便會把你上次使用的浮水印以淡色放在每頁背後；旁邊的箭咀可選擇另一個。每頁角落上方有一個小開關，可在該頁關閉浮水印（或只在該頁開啟），封面亦有自己的開關。深淺及大小在「頁面設定」的「頁面」設定。浮水印會在屏幕、列印、PDF 及 Word 檔中顯示。每份試卷保留自己的副本，所以在另一部電腦上列印效果相同，而更改已儲存的清單亦不會改變你已完成的試卷。 -->
+
 ## 0.8.6 — 2026-10-26
 
 ### Added

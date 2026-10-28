@@ -53,6 +53,7 @@ import { useMessages, useUiLanguage } from '@/i18n/language';
 import { DOCUMENT_SETTINGS_MESSAGES, MARGIN_PRESET_KEYS } from './DocumentSettings.messages';
 import { BetweenQuestionsField } from './BetweenQuestionsField';
 import { StartEveryQuestionField } from './StartEveryQuestionField';
+import { WatermarkField } from '@/components/watermark/WatermarkField';
 import { OptionLayoutField } from './OptionLayoutField';
 import type { Messages as MessagesOf } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
@@ -635,6 +636,7 @@ function PageTab() {
 
       <BetweenQuestionsField />
       {shape !== 'paper1' && <StartEveryQuestionField />}
+      <WatermarkField />
     </div>
   );
 }

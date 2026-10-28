@@ -3,4 +3,5 @@ import './ai';
 import './terms';
 import './appearance';
 import './language';
+import './watermarks';
 import './storage';

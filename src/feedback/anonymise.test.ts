@@ -505,9 +505,9 @@ describe('the census of string fields', () => {
 
   it('keeps no free-text field it has not reviewed', () => {
     const keptFree = [...declared].filter(([key, kinds]) => kinds.has('free') && KEPT_KEYS.has(key)).map(([key]) => key);
-    // Ids and references to ids, colours as hex, font names, a diagram template's id.
+    // Ids and references to ids, colours as hex, font names, a diagram template's id, a watermark's library entry.
     expect(keptFree.sort()).toEqual(
-      ['color', 'cross', 'curve', 'eastAsia', 'follows', 'from', 'fromDocId', 'id', 'latin', 'of', 'on', 'point', 'rootId', 'templateId', 'to'].sort(),
+      ['color', 'cross', 'curve', 'eastAsia', 'follows', 'from', 'fromDocId', 'id', 'latin', 'libraryId', 'of', 'on', 'point', 'rootId', 'templateId', 'to'].sort(),
     );
   });
 });

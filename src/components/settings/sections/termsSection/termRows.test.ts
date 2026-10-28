@@ -35,7 +35,7 @@ describe('Translation terms rows', async () => {
 
   it('registers after AI, before Appearance, and loads its pane on demand', async () => {
     await import('../index');
-    expect(settingsSections({ desktop: false }).map((s) => s.id)).toEqual(['ai', 'terms', 'appearance', 'language']);
+    expect(settingsSections({ desktop: false }).map((s) => s.id)).toEqual(['ai', 'terms', 'appearance', 'language', 'watermarks']);
     const section = settingsSections({ desktop: true })[1];
     expect(section).toMatchObject({ label: { en: 'Translation terms', zh: '翻譯用語' } });
     expect(typeof (await section.load()).default).toBe('function');

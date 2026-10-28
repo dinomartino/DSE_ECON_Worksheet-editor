@@ -917,6 +917,42 @@ export interface PageFurniture {
   marginNote?: BiText;
 }
 
+/**
+ * A faint picture behind the paper's pages: a school logo, or a line of text drawn as a
+ * picture (k-0242). Rules and geometry in `model/watermark.ts`.
+ *
+ * The paper keeps its **own copy** of the picture, not a pointer into the app's library
+ * (`settings/watermarks.ts`): the file prints the same on another computer, after a sync,
+ * and after the library entry is renamed or deleted. `libraryId` only says which entry it
+ * came from, so the menu can tick it.
+ */
+export interface Watermark {
+  /** The paper's own switch: every page carries it unless the page says otherwise. */
+  on: boolean;
+  /** The picture, a PNG or JPEG `data:` URL (a text watermark is rasterised to PNG). */
+  src: string;
+  /** The picture's pixel size, for its shape. */
+  widthPx: number;
+  heightPx: number;
+  /** What the teacher called it in the library ("St Mary's logo"). Never printed. */
+  name?: string;
+  /** The library entry this copy came from. */
+  libraryId?: string;
+  /** 0.05–1; absent = `WATERMARK_DEFAULT_OPACITY`. */
+  opacity?: number;
+  /** Width as a share of the text column, 0.2–1; absent = `WATERMARK_DEFAULT_SIZE`. */
+  size?: number;
+  /**
+   * A page's own choice, overriding `on`, keyed by a flow id on that page (or
+   * `WATERMARK_FIRST_PAGE` for a first page with no flow item). Pages are derived, so the
+   * choice rides on the content and follows it to whatever sheet it lands on
+   * (§ `sheetWatermarks`).
+   */
+  pages?: Record<string, boolean>;
+  /** The cover sheet's own choice; absent follows `on`. */
+  cover?: boolean;
+}
+
 export interface Worksheet {
   schemaVersion: number;
   id: string;
@@ -998,6 +1034,8 @@ export interface Worksheet {
    * Absent draws nothing.
    */
   pageFurniture?: PageFurniture;
+  /** A watermark behind the pages (k-0242). Absent draws nothing. */
+  watermark?: Watermark;
   /** Paper, orientation and margins. Optional for documents saved before v3. */
   pageSetup?: PageSetup;
   header?: HeaderFooter;

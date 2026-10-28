@@ -57,11 +57,21 @@ export const pageStartId = (key: string, node: number) => `${key}:${node}`;
  * The units in order, each page start's break added to the end of the paragraph that
  * closes the page before it.
  */
-export function joinWithPageBreaks(units: BodyUnit[], starts: ReadonlySet<string>): string {
+export function joinWithPageBreaks(
+  units: BodyUnit[],
+  starts: ReadonlySet<string>,
+  /**
+   * Units that open a sheet carrying the watermark (§ `docxWatermarkPlan` `some`), and the
+   * edit that anchors the picture in their XML. A unit that writes nothing (a table's later
+   * piece, which Word breaks itself) gets none: its sheet goes without in the `.docx`.
+   */
+  mark?: { at: ReadonlySet<string>; apply: (xml: string) => string },
+): string {
   const out: string[] = [];
   for (const unit of units) {
     const leads = unit.breakable && starts.has(unit.id) && addPageBreak(out);
-    out.push(unit.render(leads));
+    const xml = unit.render(leads);
+    out.push(mark && xml && mark.at.has(unit.id) ? mark.apply(xml) : xml);
   }
   return out.join('');
 }

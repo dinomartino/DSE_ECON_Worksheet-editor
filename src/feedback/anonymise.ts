@@ -358,7 +358,7 @@ export function noiseImage(src: string, holder: Sized, random: Random): string {
  */
 export const KEPT_KEYS: ReadonlySet<string> = new Set([
   // Ids and references to them.
-  'id', 'rootId', 'fromDocId', 'follows', 'from', 'to', 'of', 'on', 'point', 'curve', 'cross', 'templateId',
+  'id', 'rootId', 'fromDocId', 'follows', 'from', 'to', 'of', 'on', 'point', 'curve', 'cross', 'templateId', 'libraryId',
   // Kinds and enums.
   'kind', 'type', 'align', 'along', 'borders', 'captionPlacement', 'change', 'density', 'dropTo', 'fill',
   'instructionMarker', 'labelAt', 'labelPlacement', 'labelSide', 'leader', 'lqLayout', 'mcLayout',

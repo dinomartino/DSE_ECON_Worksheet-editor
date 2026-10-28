@@ -24,9 +24,25 @@ const QUIET_MS = 400;
 const LIMIT_MS = 15_000;
 
 /** A sheet's breaks for this paper in this mode. */
-export function measurePaperPageStarts(worksheet: Worksheet, mode: OutputMode): Promise<PageStart[]> {
-  return measure<PageStart[]>((report) => (
-    <Preview worksheet={worksheet} mode={mode} measureOnly onPageStarts={report} />
+export async function measurePaperPageStarts(worksheet: Worksheet, mode: OutputMode): Promise<PageStart[]> {
+  return (await measurePaperPagination(worksheet, mode)).pageStarts;
+}
+
+/**
+ * The breaks, and where each sheet that carries the watermark begins (§ `sheetWatermarks`):
+ * the `.docx` anchors the picture there when the paper's sheets differ.
+ */
+export function measurePaperPagination(
+  worksheet: Worksheet,
+  mode: OutputMode,
+): Promise<{ pageStarts: PageStart[]; watermarkHeads: PageStart[] }> {
+  return measure((report) => (
+    <Preview
+      worksheet={worksheet}
+      mode={mode}
+      measureOnly
+      onPageStarts={(pageStarts, watermarkHeads = []) => report({ pageStarts, watermarkHeads })}
+    />
   ));
 }
 

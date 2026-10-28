@@ -1903,6 +1903,46 @@ fall into a trailing unnumbered group; dropping on a tab lands at the head of th
 page. **A row takes a drop on the half the pointer is over** (`dropEdge`), as the page
 does: the lower half of a page's last row is the only target for the end of that page.
 
+### A watermark is the paper's copy, and a page's choice rides on its content (`model/watermark.ts`)
+
+`Worksheet.watermark` (k-0242, in `KNOWN_KEYS`, no schema bump: an older build keeps it in
+`__unknown` and prints the paper without it) is a faint picture centred on every page,
+behind the text. A text watermark is drawn into a PNG when it is saved, so every backend
+handles one kind of thing.
+
+- **The paper holds its own copy of the picture**, not a pointer into the saved list
+  (`settings/watermarks.ts`, app settings, never in a document or a backup). A file prints
+  the same on another computer and after a sync; renaming or deleting a saved watermark
+  never changes a paper. `libraryId` only lets the menu tick the entry it came from.
+- **A page's choice is stored against content, not a page number**: `pages` maps a flow id
+  to on/off, and a sheet takes the first choice among the items that *start* on it
+  (`composePages`' `flowIds`, the opening break first), else the paper's `on`. Page 3 of the
+  student copy is not page 3 of the teacher copy, and the next edit moves every boundary; an
+  item's choice follows it to whatever sheet it lands on. A first page with no flow item of
+  its own uses `WATERMARK_FIRST_PAGE`; a sheet holding only the tail of a cut item has no
+  key and follows the sheet before it (its switch is disabled and says so). Clicking a
+  page's switch clears every choice on that sheet and stores one under its first key, only
+  when it differs from the paper. The cover has its own `cover`.
+- **One geometry** (`watermarkBox`, twips, centred on the page, `size` × the text column,
+  never over 80% of the text height) for the preview layer and the `.docx`.
+- **The preview** draws it per sheet as `WatermarkLayer`: not `data-print-hide` (it prints),
+  `-z-10` under an `isolate` sheet, so it sits above the paper's white and under every line.
+  The per-page switch is editing chrome above the sheet's corner (`data-print-hide`).
+- **The `.docx`** (`docxWatermarkPlan`): when no live page choice differs from `on`, one
+  anchored picture (`behindDoc`, `relativeFrom="page"`, `a:alphaModFix` for the strength, as
+  Word's own Picture Transparency) rides in the running header beside the furniture, so
+  every page has it however Word paginates; a header part holding a picture gets its own
+  `header*.xml.rels` (`buildPartImageRelsXml`). When pages differ, the export measures where
+  each sheet carrying it begins (`measurePaperPagination` → `watermarkHeads`) and anchors the
+  picture in that unit's first paragraph (`withLeadingRun`, `layoutInCell="0"` for a sheet
+  opening in a table cell). A sheet that begins part-way through a table (Word breaks it
+  itself) has no unit of its own, so it goes without in that case, as does a blank page
+  only a page break made. The cover's section has no header, so its picture always rides
+  in its first paragraph. Copy for Word carries no watermark, and neither does the marking
+  scheme (its own preview and `.docx`) in this first cut.
+- An untouched paper, or one whose watermark is off with no page on, exports the same parts
+  as before the feature (`export/docx/watermark.test.ts`).
+
 ---
 
 ## Page setup, headers and footers (`src/model/page.ts`)

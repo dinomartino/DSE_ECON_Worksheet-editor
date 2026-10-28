@@ -150,6 +150,28 @@ export function buildDocumentRelsXml(assets: ImageAsset[], hf: HeaderFooterParts
   );
 }
 
+/**
+ * The image relationships a header or footer part refers to, under the same ids and media
+ * files as the document's own; `undefined` when it refers to none (no rels part written,
+ * so a package without a header picture is unchanged).
+ */
+export function buildPartImageRelsXml(xml: string, assets: ImageAsset[]): string | undefined {
+  const used = new Set([...xml.matchAll(/r:embed="([^"]+)"/g)].map((match) => match[1]));
+  const images = assets.filter((asset) => used.has(asset.relId));
+  if (images.length === 0) return undefined;
+  return (
+    XML_DECL +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    images
+      .map(
+        (asset) =>
+          `<Relationship Id="${asset.relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${asset.fileName}"/>`,
+      )
+      .join('') +
+    '</Relationships>'
+  );
+}
+
 /** Full justification, as `formatParagraphProps` writes it. */
 const JUSTIFIED = '<w:jc w:val="both"/>';
 
@@ -468,6 +490,10 @@ function buildZip(parts: PackageParts): JSZip {
   word.file('fontTable.xml', parts.fontTableXml);
   for (const file of headerFooterFiles(parts.headerFooter)) {
     word.file(file.name, file.xml);
+    // A header holding a picture (the watermark, k-0242) needs relationships of its own:
+    // `r:embed` resolves against the part it sits in, not the document.
+    const rels = buildPartImageRelsXml(file.xml, parts.assets);
+    if (rels) word.folder('_rels')!.file(`${file.name}.rels`, rels);
   }
   word
     .folder('_rels')!

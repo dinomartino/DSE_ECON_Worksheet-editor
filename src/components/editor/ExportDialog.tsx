@@ -120,9 +120,8 @@ async function planFiles(
           kind,
           name: docxFileName(worksheet, mode),
           build: async () => {
-            const [{ exportDocx }, { measurePaperPageStarts }] = await Promise.all([docx(), pages()]);
-            const pageStarts = await measured(() => measurePaperPageStarts(worksheet, mode));
-            return exportDocx(worksheet, mode, { pageStarts });
+            const [{ exportDocx }, { measurePaperPagination }] = await Promise.all([docx(), pages()]);
+            return exportDocx(worksheet, mode, await measured(() => measurePaperPagination(worksheet, mode)));
           },
           ...(variant ? { variant } : {}),
         });

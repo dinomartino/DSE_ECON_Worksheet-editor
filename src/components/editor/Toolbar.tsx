@@ -6,6 +6,7 @@ import { useWorksheetStore, type DocumentView } from '@/store/worksheetStore';
 import { downloadWorksheetFile } from '@/storage';
 import { isDesktop, revealFile, revealLabel } from '@/platform';
 import { Button, IconButton, Segmented } from '@/components/ui';
+import { WatermarkButton } from '@/components/watermark/WatermarkButton';
 import { ChevronRightIcon, DownloadIcon, PageSetupIcon, RedoIcon, SearchIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
@@ -384,6 +385,9 @@ export function Toolbar({
           <PageSetupIcon size={15} />
           <span className="hidden xl:inline">{m.setup}</span>
         </Button>
+
+        {/* The watermark: one click on or off, the arrow picks another saved one (k-0242). */}
+        <WatermarkButton disabled={readOnly} />
 
         {/* Status sits with the document, not with the actions. */}
         <span className="ml-auto flex shrink-0 items-center gap-2 text-[11px] text-ink-muted">

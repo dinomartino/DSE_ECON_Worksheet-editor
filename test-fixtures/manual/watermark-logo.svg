@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <!-- A made-up school crest for the watermark checks (k-0242): no real school's mark. -->
+  <path d="M120 12 L216 48 V120 C216 176 172 214 120 230 C68 214 24 176 24 120 V48 Z" fill="none" stroke="#1d3a6e" stroke-width="12"/>
+  <path d="M120 52 L180 76 V122 C180 158 154 184 120 196 C86 184 60 158 60 122 V76 Z" fill="#1d3a6e"/>
+  <text x="120" y="146" text-anchor="middle" font-family="Georgia, serif" font-size="64" font-weight="bold" fill="#ffffff">ES</text>
+</svg>

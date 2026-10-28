@@ -7,7 +7,7 @@ import { AppSettingsDialog } from '../AppSettingsDialog';
 describe('the Language section', () => {
   it('registers after Appearance with an Effect, and its pane offers English and 繁體中文', async () => {
     await import('./index');
-    expect(settingsSections({ desktop: false }).map((s) => s.id)).toEqual(['ai', 'terms', 'appearance', 'language']);
+    expect(settingsSections({ desktop: false }).map((s) => s.id)).toEqual(['ai', 'terms', 'appearance', 'language', 'watermarks']);
     const language = settingsSections({ desktop: false })[3];
     expect(language).toMatchObject({ label: { en: 'Language 語言', zh: '語言' } });
     expect(typeof language.Effect).toBe('function');

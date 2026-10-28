@@ -248,6 +248,8 @@ import { PAGE_AI_ITEM, pageAiScope } from "@/components/translate/translateMenu"
 import { collectTexts, slotsForTarget } from "@/model/textWalk";
 import { openAi } from "@/assist/menuStore";
 import { scopeFromSelection } from "@/assist/scope";
+import { coverWatermark, sheetWatermarks, watermarkOf, withCoverWatermark, withSheetWatermark } from "@/model/watermark";
+import { SheetWatermarkToggle, WatermarkLayer } from "./WatermarkLayer";
 
 // Re-exported so the page rail keeps importing the type from the component that
 // publishes it, rather than having to know pagination is factored out.
@@ -5005,7 +5007,7 @@ interface Props {
    * Where each sheet after the first begins, once every block is measured: what the
    * `.docx` puts its page breaks at (`measurePageStarts`, § `joinWithPageBreaks`).
    */
-  onPageStarts?: (starts: PageStart[]) => void;
+  onPageStarts?: (starts: PageStart[], watermarkHeads?: PageStart[]) => void;
 }
 
 /**
@@ -7678,9 +7680,25 @@ export function Preview({
   // measurement, so a cold mount's everything-on-sheet-1 is never reported.
   const starts = useMemo(() => pageStartsOf({ pages, openedBy, fragments }), [pages, openedBy, fragments]);
   const startsReady = measurementsSettled && isFresh();
-  const startsKey = starts.map((start) => `${start.key}:${start.node}`).join("|");
+
+  // Which sheets carry the watermark (§ `sheetWatermarks`), and, for a `.docx` whose sheets
+  // differ, where each one that does begins: the picture is anchored in its first paragraph.
+  const watermark = watermarkOf(worksheet);
+  const sheetMarks = useMemo(() => sheetWatermarks(watermark, composition), [watermark, composition]);
+  const watermarkHeads = useMemo(
+    () =>
+      pages.flatMap((page, index) =>
+        sheetMarks[index] && page.length > 0
+          ? [{ key: page[0].key, node: fragments.get(placementKey(index, 0))?.from ?? 0 }]
+          : [],
+      ),
+    [pages, sheetMarks, fragments],
+  );
+  const startsKey = [...starts, { key: "#wm", node: 0 }, ...watermarkHeads]
+    .map((start) => `${start.key}:${start.node}`)
+    .join("|");
   useEffect(() => {
-    if (startsReady) onPageStarts?.(starts);
+    if (startsReady) onPageStarts?.(starts, watermarkHeads);
     // Keyed on the flattened starts, as the composition is above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startsKey, startsReady, onPageStarts]);
@@ -7713,6 +7731,15 @@ export function Preview({
    * sheet (preview "3" beside docx "4" on the same physical sheet).
    */
   const pageNumberOffset = rendered.cover ? 1 : 0;
+
+  // The watermark's per-page switches: editing chrome, on a page being edited only.
+  const watermarkSwitches = Boolean(watermark) && typing;
+  const setWatermark = useWorksheetStore((s) => s.updateWorksheet);
+  const toggleSheetWatermark = (pageIndex: number) => {
+    if (!watermark) return;
+    const next = withSheetWatermark(watermark, composition[pageIndex] ?? { flowIds: [] }, pageIndex, !sheetMarks[pageIndex]);
+    if (next) setWatermark({ watermark: next });
+  };
 
   const pageStyleFor = (pageIndex: number): React.CSSProperties => {
     const over = pageIndex === 0 ? firstPageOverflow : overflow;
@@ -7876,8 +7903,19 @@ export function Preview({
         */}
         {rendered.cover && (
           <div data-page-index={-1} data-cover-page className="relative">
+            {watermarkSwitches && watermark && (
+              <SheetWatermarkToggle
+                cover
+                on={coverWatermark(watermark)}
+                onToggle={() =>
+                  setWatermark({ watermark: withCoverWatermark(watermark, !coverWatermark(watermark)) })
+                }
+              />
+            )}
             <div
-              className="paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]"
+              className={`paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]${
+                watermark && coverWatermark(watermark) ? " isolate" : ""
+              }`}
               // Typed tabs measure from the margin, which is this box's content edge.
               data-tab-origin=""
               data-tab-width={columnTwips}
@@ -7890,6 +7928,7 @@ export function Preview({
                 if (isBlankAreaClick(event.target)) clearPageSelection();
               }}
             >
+              {watermark && coverWatermark(watermark) && <WatermarkLayer mark={watermark} setup={setup} />}
               <div className="flex-1">
                 <CoverSheet
                   cover={rendered.cover}
@@ -7907,11 +7946,21 @@ export function Preview({
           // scroll target rather than its first block, so a click lands on the top of
           // the paper including its header, which is where "page 3" visually begins.
           <div key={pageIndex} data-page-index={pageIndex} className="relative">
+            {watermarkSwitches && (
+              <SheetWatermarkToggle
+                on={sheetMarks[pageIndex] ?? false}
+                disabled={pageIndex > 0 && (composition[pageIndex]?.flowIds.length ?? 0) === 0}
+                onToggle={() => toggleSheetWatermark(pageIndex)}
+              />
+            )}
             <div
               ref={pageIndex === 0 ? bandsRef : undefined}
               // `relative` so the header and footer can be placed in the margin rather
-              // than stacked in the text column (§ `bandBoxStyle`).
-              className="paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]"
+              // than stacked in the text column (§ `bandBoxStyle`). `isolate` keeps a
+              // watermark behind the page's lines and above its white (§ `WatermarkLayer`).
+              className={`paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]${
+                watermark && sheetMarks[pageIndex] ? " isolate" : ""
+              }`}
               // Typed tabs measure from the margin, which is this box's content edge.
               data-tab-origin=""
               data-tab-width={columnTwips}
@@ -7937,6 +7986,7 @@ export function Preview({
                 if (isBlankAreaClick(event.target)) clearPageSelection();
               }}
             >
+              {watermark && sheetMarks[pageIndex] && <WatermarkLayer mark={watermark} setup={setup} />}
               {worksheet.pageFurniture && (
                 <PageFurnitureLayer
                   furniture={worksheet.pageFurniture}

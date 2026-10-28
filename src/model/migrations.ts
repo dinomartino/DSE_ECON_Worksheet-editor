@@ -80,6 +80,7 @@ export const KNOWN_KEYS = new Set([
   'bands',
   'cover',
   'pageFurniture',
+  'watermark',
   'pageSetup',
   'header',
   'footer',
