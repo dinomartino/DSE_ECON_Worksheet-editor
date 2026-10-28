@@ -25,7 +25,7 @@ export const WATERMARK_DEFAULT_OPACITY = 0.15;
 /** Most of the text column: a logo that reads as a watermark, not as a figure. */
 export const WATERMARK_DEFAULT_SIZE = 0.6;
 export const WATERMARK_OPACITY_RANGE = { min: 0.05, max: 1 } as const;
-export const WATERMARK_SIZE_RANGE = { min: 0.2, max: 1 } as const;
+export const WATERMARK_SIZE_RANGE = { min: 0.2, max: 1.4 } as const;
 /** The tallest a watermark may be, as a share of the page's text height. */
 const MAX_HEIGHT_SHARE = 0.8;
 
@@ -63,6 +63,12 @@ export function watermarkSize(mark: Watermark): number {
   return finite(mark.size) ? clamp(mark.size, WATERMARK_SIZE_RANGE) : WATERMARK_DEFAULT_SIZE;
 }
 
+/** Where the picture's centre sits, as a share of the page; absent = the page's centre. */
+export function watermarkCenter(mark: Watermark): { x: number; y: number } {
+  const share = (value: unknown) => (finite(value) ? clamp(value, { min: 0, max: 1 }) : 0.5);
+  return { x: share(mark.centerX), y: share(mark.centerY) };
+}
+
 /** The picture's box on the page, in twips from the page's top-left corner. */
 export function watermarkBox(
   mark: Watermark,
@@ -70,19 +76,58 @@ export function watermarkBox(
 ): { left: number; top: number; width: number; height: number } {
   const page = pageDimensions(setup);
   const textHeight = Math.max(720, page.height - setup.margins.top - setup.margins.bottom);
-  let width = contentWidth(setup) * watermarkSize(mark);
+  let width = Math.min(contentWidth(setup) * watermarkSize(mark), page.width);
   let height = (width * mark.heightPx) / mark.widthPx;
   const tallest = textHeight * MAX_HEIGHT_SHARE;
   if (height > tallest) {
     width = (width * tallest) / height;
     height = tallest;
   }
+  // Centred unless dragged; a dragged one is kept whole on the page, so it always prints.
+  const center = watermarkCenter(mark);
+  const left = clamp(center.x * page.width - width / 2, { min: 0, max: page.width - width });
+  const top = clamp(center.y * page.height - height / 2, { min: 0, max: page.height - height });
   return {
-    left: Math.round((page.width - width) / 2),
-    top: Math.round((page.height - height) / 2),
+    left: Math.round(left),
+    top: Math.round(top),
     width: Math.round(width),
     height: Math.round(height),
   };
+}
+
+/**
+ * The watermark placed where a drag left its box (twips, as `watermarkBox` gives it): its
+ * centre as a share of the page, its width as a share of the text column.
+ */
+export function withWatermarkPlacement(
+  mark: Watermark,
+  setup: PageSetup,
+  box: { left: number; top: number; width: number },
+): Watermark {
+  const page = pageDimensions(setup);
+  const size = clamp(box.width / contentWidth(setup), WATERMARK_SIZE_RANGE);
+  const placed = { ...mark, size };
+  const placedBox = watermarkBox(placed, setup);
+  const round = (value: number) => Math.round(value * 10000) / 10000;
+  return {
+    ...placed,
+    centerX: round(clamp((box.left + placedBox.width / 2) / page.width, { min: 0, max: 1 })),
+    centerY: round(clamp((box.top + placedBox.height / 2) / page.height, { min: 0, max: 1 })),
+  };
+}
+
+/** The watermark back at the page's centre, at the default size (Setup's Reset to default). */
+export function withDefaultPlacement(mark: Watermark): Watermark {
+  const rest = { ...mark };
+  delete rest.centerX;
+  delete rest.centerY;
+  delete rest.size;
+  return rest;
+}
+
+/** Whether the teacher moved or resized it. */
+export function hasCustomPlacement(mark: Watermark): boolean {
+  return mark.centerX !== undefined || mark.centerY !== undefined || mark.size !== undefined;
 }
 
 /** What a sheet is made of, as the paginator names it (`PageComposition`). */

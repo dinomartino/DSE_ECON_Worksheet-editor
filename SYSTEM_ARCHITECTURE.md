@@ -1923,8 +1923,21 @@ handles one kind of thing.
   key and follows the sheet before it (its switch is disabled and says so). Clicking a
   page's switch clears every choice on that sheet and stores one under its first key, only
   when it differs from the paper. The cover has its own `cover`.
-- **One geometry** (`watermarkBox`, twips, centred on the page, `size` × the text column,
-  never over 80% of the text height) for the preview layer and the `.docx`.
+- **One geometry** (`watermarkBox`, twips: centred on the page unless dragged, `size` × the
+  text column, never wider than the page or taller than 80% of the text height, and always
+  kept whole on the page) for the preview layer and the `.docx`. A drag stores `centerX` /
+  `centerY` (the centre as a share of the page, so it survives a paper size or orientation
+  change) and `size` (`withWatermarkPlacement`); one placement serves every page that has
+  it. Setup's Reset to default removes all three (`withDefaultPlacement`).
+- **Move or resize** (`WatermarkAdjuster`, user u-vo9f): a dashed frame with four corner
+  handles over the picture on every watermarked sheet, `data-print-hide`, above the content
+  (`z-30`) only while adjusting, so it never competes with typing. Pointer events (mouse,
+  trackpad and touch are one path), `touch-action: none` on the frame and handles only so a
+  finger elsewhere still scrolls; pointer deltas are converted with the sheet's measured
+  width (the zoom scales the stack). Every move draws live through a draft held in
+  `Preview`; the release commits once (one undo step). A corner resizes from the opposite
+  corner, keeping the picture's shape; arrow keys move it, + / − resize it, Esc, Enter, Done
+  or a press elsewhere on the sheet finish.
 - **The preview** draws it per sheet as `WatermarkLayer`: not `data-print-hide` (it prints),
   `-z-10` under an `isolate` sheet, so it sits above the paper's white and under every line.
   The per-page switch is editing chrome above the sheet's corner (`data-print-hide`).

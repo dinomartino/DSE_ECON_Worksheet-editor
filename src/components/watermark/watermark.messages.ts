@@ -20,8 +20,8 @@ export const WATERMARK_MESSAGES = defineMessages({
   // Setup → Page.
   heading: { en: 'Watermark', zh: '浮水印' },
   fieldHint: {
-    en: 'A faint picture behind every page: on screen, in print, PDF and Word. To leave it off one page, use the switch beside that page.',
-    zh: '每頁背後的淡色圖片：屏幕、列印、PDF 及 Word 都會顯示。如某頁不需要，可用該頁旁邊的開關關閉。',
+    en: 'A faint picture behind every page: on screen, in print, PDF and Word. To leave it off one page, use the switch above that page.',
+    zh: '每頁背後的淡色圖片：屏幕、列印、PDF 及 Word 都會顯示。如某頁不需要，可用該頁上方的開關關閉。',
   },
   printOnPages: { en: 'Print it on every page', zh: '在每頁列印' },
   pagesDiffer: {
@@ -30,6 +30,15 @@ export const WATERMARK_MESSAGES = defineMessages({
   },
   resetPages: { en: 'Same on every page', zh: '每頁相同' },
   faintness: { en: 'Strength', zh: '深淺' },
+  resetPlacement: { en: 'Reset to default', zh: '重設為預設' },
+  resetPlacementTitle: {
+    en: 'Put it back in the middle of the page, at the default size',
+    zh: '放回頁面中央，並回復預設大小',
+  },
+  placementHint: {
+    en: 'To move it or change its size on the page, use Move or resize above a page.',
+    zh: '如要在頁面上移動浮水印或調整大小，請按頁面上方的「移動或調整大小」。',
+  },
   size: { en: 'Size', zh: '大小' },
   emptyLibrary: {
     en: 'No saved watermarks yet. Add a school logo or a line of text once and use it on any paper.',

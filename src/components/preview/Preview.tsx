@@ -75,6 +75,7 @@ import type {
   RunFormat,
   TableAlign,
   TextFormat,
+  Watermark,
   Worksheet,
 } from "@/model/types";
 import {
@@ -249,7 +250,7 @@ import { collectTexts, slotsForTarget } from "@/model/textWalk";
 import { openAi } from "@/assist/menuStore";
 import { scopeFromSelection } from "@/assist/scope";
 import { coverWatermark, sheetWatermarks, watermarkOf, withCoverWatermark, withSheetWatermark } from "@/model/watermark";
-import { SheetWatermarkToggle, WatermarkLayer } from "./WatermarkLayer";
+import { SheetWatermarkToggle, WatermarkAdjuster, WatermarkLayer } from "./WatermarkLayer";
 
 // Re-exported so the page rail keeps importing the type from the component that
 // publishes it, rather than having to know pagination is factored out.
@@ -7683,8 +7684,8 @@ export function Preview({
 
   // Which sheets carry the watermark (§ `sheetWatermarks`), and, for a `.docx` whose sheets
   // differ, where each one that does begins: the picture is anchored in its first paragraph.
-  const watermark = watermarkOf(worksheet);
-  const sheetMarks = useMemo(() => sheetWatermarks(watermark, composition), [watermark, composition]);
+  const storedWatermark = watermarkOf(worksheet);
+  const sheetMarks = useMemo(() => sheetWatermarks(storedWatermark, composition), [storedWatermark, composition]);
   const watermarkHeads = useMemo(
     () =>
       pages.flatMap((page, index) =>
@@ -7732,9 +7733,32 @@ export function Preview({
    */
   const pageNumberOffset = rendered.cover ? 1 : 0;
 
-  // The watermark's per-page switches: editing chrome, on a page being edited only.
+  // The watermark's per-page switches and Move or resize: editing chrome, on a page being
+  // edited only. While a drag is under way `watermarkDraft` is what every sheet draws, and
+  // the release commits it (one undo step, § `WatermarkAdjuster`).
+  const [watermarkDraft, setWatermarkDraft] = useState<Watermark | undefined>();
+  const [adjustingWatermarkState, setAdjustingWatermark] = useState(false);
+  const watermark = storedWatermark ? (watermarkDraft ?? storedWatermark) : undefined;
   const watermarkSwitches = Boolean(watermark) && typing;
+  const adjustingWatermark = adjustingWatermarkState && watermarkSwitches && Boolean(watermark?.on || sheetMarks.some(Boolean));
   const setWatermark = useWorksheetStore((s) => s.updateWorksheet);
+  const commitWatermark = (next: Watermark) => {
+    setWatermarkDraft(undefined);
+    setWatermark({ watermark: next });
+  };
+  const watermarkAdjuster = (on: boolean) =>
+    adjustingWatermark && on && watermark ? (
+      <WatermarkAdjuster
+        mark={watermark}
+        setup={setup}
+        onDraft={setWatermarkDraft}
+        onCommit={commitWatermark}
+        onDone={() => {
+          setWatermarkDraft(undefined);
+          setAdjustingWatermark(false);
+        }}
+      />
+    ) : null;
   const toggleSheetWatermark = (pageIndex: number) => {
     if (!watermark) return;
     const next = withSheetWatermark(watermark, composition[pageIndex] ?? { flowIds: [] }, pageIndex, !sheetMarks[pageIndex]);
@@ -7907,6 +7931,8 @@ export function Preview({
               <SheetWatermarkToggle
                 cover
                 on={coverWatermark(watermark)}
+                adjusting={adjustingWatermark}
+                onAdjust={setAdjustingWatermark}
                 onToggle={() =>
                   setWatermark({ watermark: withCoverWatermark(watermark, !coverWatermark(watermark)) })
                 }
@@ -7929,6 +7955,7 @@ export function Preview({
               }}
             >
               {watermark && coverWatermark(watermark) && <WatermarkLayer mark={watermark} setup={setup} />}
+              {watermark && watermarkAdjuster(coverWatermark(watermark))}
               <div className="flex-1">
                 <CoverSheet
                   cover={rendered.cover}
@@ -7949,6 +7976,8 @@ export function Preview({
             {watermarkSwitches && (
               <SheetWatermarkToggle
                 on={sheetMarks[pageIndex] ?? false}
+                adjusting={adjustingWatermark}
+                onAdjust={setAdjustingWatermark}
                 disabled={pageIndex > 0 && (composition[pageIndex]?.flowIds.length ?? 0) === 0}
                 onToggle={() => toggleSheetWatermark(pageIndex)}
               />
@@ -7987,6 +8016,7 @@ export function Preview({
               }}
             >
               {watermark && sheetMarks[pageIndex] && <WatermarkLayer mark={watermark} setup={setup} />}
+              {watermarkAdjuster(Boolean(sheetMarks[pageIndex]))}
               {worksheet.pageFurniture && (
                 <PageFurnitureLayer
                   furniture={worksheet.pageFurniture}

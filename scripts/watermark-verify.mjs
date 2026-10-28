@@ -249,23 +249,24 @@ try {
     await page.emulateMedia({ media: 'screen' });
     check(`[${tag}] in print the two pictures show and no switch does`, printed.pictures === 2 && printed.switches === 0, JSON.stringify(printed));
 
+    const exportDocx = async (name) => {
+      await page.getByRole('button', { name: w.exportButton }).first().click();
+      const exporter = page.getByRole('dialog');
+      await exporter.getByText('.docx', { exact: true }).click();
+      await exporter.getByRole('radiogroup', { name: 'Language' }).getByTitle('English only', { exact: true }).click();
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 60_000 }),
+        exporter.getByRole('button', { name: /^Export \.docx/ }).click(),
+      ]);
+      await download.saveAs(`${OUT}/${name}.docx`);
+      const zip = await JSZip.loadAsync(readFileSync(await download.path()));
+      await exporter.waitFor({ state: 'detached', timeout: 10_000 }).catch(() => page.keyboard.press('Escape'));
+      return zip;
+    };
+    const count = (xml) => (xml.match(/name="Watermark \d+"\/><wp:cNvGraphicFramePr>/g) ?? []).length;
+
     // H. The .docx (English).
     if (ui === 'en') {
-      const exportDocx = async (name) => {
-        await page.getByRole('button', { name: w.exportButton }).first().click();
-        const exporter = page.getByRole('dialog');
-        await exporter.getByText('.docx', { exact: true }).click();
-        await exporter.getByRole('radiogroup', { name: 'Language' }).getByTitle('English only', { exact: true }).click();
-        const [download] = await Promise.all([
-          page.waitForEvent('download', { timeout: 60_000 }),
-          exporter.getByRole('button', { name: /^Export \.docx/ }).click(),
-        ]);
-        await download.saveAs(`${OUT}/${name}.docx`);
-        const zip = await JSZip.loadAsync(readFileSync(await download.path()));
-        await exporter.waitFor({ state: 'detached', timeout: 10_000 }).catch(() => page.keyboard.press('Escape'));
-        return zip;
-      };
-      const count = (xml) => (xml.match(/name="Watermark \d+"\/><wp:cNvGraphicFramePr>/g) ?? []).length;
       const zip = await exportDocx('watermark-page2-off-en');
       const xml = await zip.file('word/document.xml').async('string');
       const header = (await zip.file('word/header1.xml')?.async('string')) ?? '';
@@ -287,11 +288,116 @@ try {
       await settle();
     }
 
+
+    // K. Move and resize on the page: mouse, touch and keys; one undo step per drag; print and Word follow.
+    const boxes = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll('#print-root .paper')].map((sheet) => {
+          const img = sheet.querySelector('[data-watermark] img');
+          if (!img) return null;
+          const mm = (v) => Math.round(parseFloat(v) * 100) / 100;
+          return { left: mm(img.style.left), top: mm(img.style.top), width: mm(img.style.width), height: mm(img.style.height) };
+        }),
+      );
+    const start = (await boxes())[0];
+    await page.locator('[data-page-index="0"] [data-watermark-adjust]').click();
+    await page.waitForTimeout(300);
+    const adjusters = await page.locator('#print-root [data-watermark-adjuster]').count();
+    check(`[${tag}] Move or resize puts a frame on each page that has the watermark`, adjusters === 2, String(adjusters));
+    const frame = page.locator('[data-page-index="0"] [data-watermark-frame]');
+    await frame.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${OUT}/${tag}-adjusting.png` });
+    const drag = async (locator, dx, dy) => {
+      await locator.scrollIntoViewIfNeeded();
+      const b = await locator.boundingBox();
+      const x = b.x + b.width / 2;
+      const y = b.y + b.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      for (let i = 1; i <= 8; i += 1) await page.mouse.move(x + (dx * i) / 8, y + (dy * i) / 8);
+      await page.mouse.up();
+      await page.waitForTimeout(400);
+    };
+    await drag(frame, -120, 160);
+    const moved = await boxes();
+    check(`[${tag}] dragging the frame with the mouse moves it left and down`, moved[0].left < start.left - 20 && moved[0].top > start.top + 25 && moved[0].width === start.width, JSON.stringify({ start, now: moved[0] }));
+    check(`[${tag}] … on every watermarked page alike`, same(moved[0], moved[2]));
+    await drag(page.locator('[data-page-index="0"] [data-watermark-corner="se"]'), 60, 60);
+    const grown = (await boxes())[0];
+    check(`[${tag}] dragging a corner resizes it, keeping its shape and its top-left corner`, grown.width > moved[0].width + 10 && Math.abs(grown.width / grown.height - start.width / start.height) < 0.01 && Math.abs(grown.left - moved[0].left) < 0.2 && Math.abs(grown.top - moved[0].top) < 0.2, JSON.stringify(grown));
+    await page.getByRole('button', { name: w.undo }).first().click();
+    await settle();
+    check(`[${tag}] Undo takes back the resize alone`, same((await boxes())[0], moved[0]), JSON.stringify((await boxes())[0]));
+    await page.getByRole('button', { name: w.redo }).first().click();
+    await settle();
+
+    // Touch, as on an iPad: Chrome's touch emulation turns these into touch pointer events.
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+    const tb = await frame.boundingBox();
+    const tx = tb.x + tb.width / 2;
+    const ty = tb.y + tb.height / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: tx, y: ty }] });
+    for (let i = 1; i <= 8; i += 1) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: tx + 10 * i, y: ty - 6 * i }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForTimeout(500);
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+    const touched = (await boxes())[0];
+    check(`[${tag}] a finger drag moves it too (right and up)`, touched.left > grown.left + 10 && touched.top < grown.top - 6 && touched.width === grown.width, JSON.stringify({ grown, touched }));
+
+    await frame.focus();
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(300);
+    const keyed = (await boxes())[0];
+    check(`[${tag}] ← moves it a step with the keyboard`, keyed.left < touched.left - 1, JSON.stringify(keyed));
+
+    await page.emulateMedia({ media: 'print' });
+    const printedFrames = await page.evaluate(() => [...document.querySelectorAll('#print-root [data-watermark-adjuster]')].filter((e) => e.getBoundingClientRect().width > 0).length);
+    await page.emulateMedia({ media: 'screen' });
+    check(`[${tag}] the frame and handles never print`, printedFrames === 0, String(printedFrames));
+    await page.screenshot({ path: `${OUT}/${tag}-moved.png` });
+    await page.locator('[data-page-index="0"] [data-watermark-adjust="done"]').click();
+    await page.waitForTimeout(300);
+    check(`[${tag}] Done takes the frames away`, (await page.locator('#print-root [data-watermark-adjuster]').count()) === 0);
+    const placed = (await boxes())[0];
+
+    if (ui === 'en') {
+      const zip = await exportDocx('watermark-moved-en');
+      const xml = await zip.file('word/document.xml').async('string');
+      const pos = (axis) => Number(new RegExp(`<wp:position${axis} relativeFrom="page"><wp:posOffset>(\\d+)<`).exec(xml)?.[1] ?? NaN) / 635;
+      const extent = /<wp:extent cx="(\d+)" cy="(\d+)"\/><wp:effectExtent l="0" t="0" r="0" b="0"\/><wp:wrapNone\/><wp:docPr id="\d+" name="Watermark/.exec(xml);
+      const twips = (mm) => (mm * 1440) / 25.4;
+      const near = (a, b) => Math.abs(a - b) < 6;
+      check(
+        `[en] the .docx places it where the page draws it (left, top, width)`,
+        near(pos('H'), twips(placed.left)) && near(pos('V'), twips(placed.top)) && extent && near(Number(extent[1]) / 635, twips(placed.width)),
+        JSON.stringify({ docx: [pos('H'), pos('V'), extent && Number(extent[1]) / 635], page: [twips(placed.left), twips(placed.top), twips(placed.width)] }),
+      );
+    }
+
     // I. Saved with the paper; the library survives a reload.
     await page.waitForTimeout(1500);
     await page.reload({ waitUntil: 'networkidle' });
     await openPaper();
     check(`[${tag}] after a reload: on, off, on`, same(await onOff(), [true, false, true]), JSON.stringify(await onOff()));
+    check(`[${tag}] … and where it was moved to, at its new size`, same((await boxes())[0], placed), JSON.stringify((await boxes())[0]));
+
+    // L. Setup → Page → Reset to default.
+    await page.getByRole('button', { name: w.setup }).first().click();
+    const resetDialog = page.getByRole('dialog');
+    await resetDialog.waitFor();
+    await resetDialog.getByRole('tab', { name: w.tabPage }).click();
+    const reset = resetDialog.getByTestId('watermark-reset');
+    await reset.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${OUT}/${tag}-setup-reset.png` });
+    await reset.click();
+    await page.waitForTimeout(300);
+    check(`[${tag}] … Reset to default is offered once it was moved, and hides once used`, (await resetDialog.getByTestId('watermark-reset').count()) === 0);
+    await page.keyboard.press('Escape');
+    await resetDialog.waitFor({ state: 'detached' });
+    await settle();
+    const back = (await boxes())[0];
+    check(`[${tag}] Reset to default puts it back in the middle at the default size`, Math.abs(back.left - start.left) < 0.2 && Math.abs(back.top - start.top) < 0.2 && Math.abs(back.width - start.width) < 0.2, JSON.stringify({ start, back }));
 
     // J. A new paper: one click, no importing again.
     await page.getByRole('link', { name: w.home }).or(page.getByRole('button', { name: w.home })).first().click();

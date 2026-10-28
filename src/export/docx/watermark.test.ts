@@ -4,7 +4,8 @@ import v1Corpus from '@/test/corpus/v1-published.json';
 import { migrate } from '@/model/migrations';
 import { createCoverPage } from '@/model/cover';
 import type { OutputMode, Watermark, Worksheet } from '@/model/types';
-import { WATERMARK_FIRST_PAGE } from '@/model/watermark';
+import { WATERMARK_FIRST_PAGE, watermarkBox } from '@/model/watermark';
+import { pageSetupOf } from '@/model/page';
 import { buildPageFlowPaper } from '@/test/pageFlowFixture';
 import { buildDocxParts, exportDocxBuffer } from './index';
 import { pageStartId } from './pageBreaks';
@@ -76,6 +77,15 @@ describe('the .docx', () => {
     expect(parts.headerFooter.header).not.toContain('alphaModFix');
     expect(parts.assets).toHaveLength(1);
     expect(anchors(parts.headerFooter.header!)).toHaveLength(1);
+  });
+
+  it('a moved and resized watermark is placed where the page draws it', () => {
+    const moved = mark({ centerX: 0.25, centerY: 0.3, size: 0.8 });
+    const header = buildDocxParts({ ...paper, watermark: moved }, MODE).headerFooter.header!;
+    const box = watermarkBox(moved, pageSetupOf(paper));
+    expect(header).toContain(`<wp:positionH relativeFrom="page"><wp:posOffset>${box.left * 635}</wp:posOffset>`);
+    expect(header).toContain(`<wp:positionV relativeFrom="page"><wp:posOffset>${box.top * 635}</wp:posOffset>`);
+    expect(header).toContain(`<wp:extent cx="${box.width * 635}" cy="${box.height * 635}"/>`);
   });
 
   it('a page turned off: the picture is anchored at each other sheet’s head, not in the header', () => {

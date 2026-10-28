@@ -17,7 +17,11 @@ import {
   watermarkOf,
   watermarkOpacity,
   watermarkSize,
+  hasCustomPlacement,
+  watermarkCenter,
   withCoverWatermark,
+  withDefaultPlacement,
+  withWatermarkPlacement,
   withPaperWatermark,
   withSheetWatermark,
   withWatermarkPicture,
@@ -65,6 +69,46 @@ describe('reading a watermark off a document', () => {
     const textHeight = page.height - DEFAULT_PAGE_SETUP.margins.top - DEFAULT_PAGE_SETUP.margins.bottom;
     expect(tall.height).toBeLessThanOrEqual(Math.ceil(textHeight * 0.8));
     expect(tall.width / tall.height).toBeCloseTo(0.01, 3);
+  });
+});
+
+describe('moving and resizing it on the page', () => {
+  const page = pageDimensions(DEFAULT_PAGE_SETUP);
+
+  it('sits where its centre was dragged, as a share of the page', () => {
+    const box = watermarkBox(mark({ centerX: 0.3, centerY: 0.25 }), DEFAULT_PAGE_SETUP);
+    expect(box.left + box.width / 2).toBeCloseTo(page.width * 0.3, -1);
+    expect(box.top + box.height / 2).toBeCloseTo(page.height * 0.25, -1);
+    expect(watermarkCenter(mark())).toEqual({ x: 0.5, y: 0.5 });
+  });
+
+  it('is kept whole on the page, however far it was dragged', () => {
+    const corner = watermarkBox(mark({ centerX: 0, centerY: 1 }), DEFAULT_PAGE_SETUP);
+    expect(corner.left).toBe(0);
+    expect(corner.top + corner.height).toBe(page.height);
+    const wild = watermarkBox(mark({ centerX: 9, centerY: -3, size: 99 }), DEFAULT_PAGE_SETUP);
+    expect(wild.left + wild.width).toBeLessThanOrEqual(page.width);
+    expect(wild.top).toBe(0);
+  });
+
+  it('stores a dragged box as centre and size, and draws it back where it was let go', () => {
+    const start = watermarkBox(mark(), DEFAULT_PAGE_SETUP);
+    const dropped = { left: start.left - 1200, top: start.top + 2000, width: start.width * 1.2 };
+    const placed = withWatermarkPlacement(mark(), DEFAULT_PAGE_SETUP, dropped);
+    expect(hasCustomPlacement(placed)).toBe(true);
+    const again = watermarkBox(placed, DEFAULT_PAGE_SETUP);
+    expect(Math.abs(again.left - dropped.left)).toBeLessThanOrEqual(2);
+    expect(Math.abs(again.top - dropped.top)).toBeLessThanOrEqual(2);
+    expect(Math.abs(again.width - dropped.width)).toBeLessThanOrEqual(2);
+    expect(again.width / again.height).toBeCloseTo(2, 2);
+  });
+
+  it('Reset to default puts it back in the middle at the default size, keeping the rest', () => {
+    const moved = mark({ centerX: 0.2, centerY: 0.8, size: 1.1, opacity: 0.3, pages: { q: false } });
+    const reset = withDefaultPlacement(moved);
+    expect(reset).toEqual(mark({ opacity: 0.3, pages: { q: false } }));
+    expect(hasCustomPlacement(reset)).toBe(false);
+    expect(watermarkBox(reset, DEFAULT_PAGE_SETUP)).toEqual(watermarkBox(mark(), DEFAULT_PAGE_SETUP));
   });
 });
 
@@ -199,7 +243,16 @@ describe('old papers, and saving a watermark', () => {
   it('a watermark survives save and reload (it is in KNOWN_KEYS)', () => {
     const saved: Worksheet = {
       ...buildPageFlowPaper(),
-      watermark: mark({ opacity: 0.2, size: 0.7, pages: { x: false }, cover: false, name: 'Logo', libraryId: 'wm-1' }),
+      watermark: mark({
+        opacity: 0.2,
+        size: 0.7,
+        centerX: 0.3,
+        centerY: 0.6,
+        pages: { x: false },
+        cover: false,
+        name: 'Logo',
+        libraryId: 'wm-1',
+      }),
     };
     const reloaded = parseWorksheet(stringifyWorksheet(saved));
     expect(reloaded.watermark).toEqual(saved.watermark);

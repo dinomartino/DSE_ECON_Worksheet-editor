@@ -9,6 +9,8 @@ import {
   watermarkOf,
   watermarkOpacity,
   watermarkSize,
+  hasCustomPlacement,
+  withDefaultPlacement,
   withPaperWatermark,
   withWatermarkPicture,
   type Watermark,
@@ -111,6 +113,20 @@ export function WatermarkField() {
             step={0.05}
             onCommit={(size) => set({ ...mark, size })}
           />
+          <div className="flex items-center gap-3 pl-[76px] text-[11px] text-ink-muted">
+            <span>{m.placementHint}</span>
+            {hasCustomPlacement(mark) && (
+              <button
+                type="button"
+                data-testid="watermark-reset"
+                title={m.resetPlacementTitle}
+                onClick={() => set(withDefaultPlacement(mark))}
+                className="shrink-0 cursor-pointer font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                {m.resetPlacement}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </section>

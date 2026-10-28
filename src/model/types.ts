@@ -940,8 +940,18 @@ export interface Watermark {
   libraryId?: string;
   /** 0.05–1; absent = `WATERMARK_DEFAULT_OPACITY`. */
   opacity?: number;
-  /** Width as a share of the text column, 0.2–1; absent = `WATERMARK_DEFAULT_SIZE`. */
+  /**
+   * Width as a share of the text column, 0.2–1.4; absent = `WATERMARK_DEFAULT_SIZE`. Set by
+   * Setup's Size slider or by dragging a corner on the page.
+   */
   size?: number;
+  /**
+   * Where the teacher dragged it: its centre as a share of the page's width and height
+   * (0–1), so it stays put across a paper size or orientation change. Absent = the page's
+   * centre; `watermarkBox` keeps the whole picture on the page.
+   */
+  centerX?: number;
+  centerY?: number;
   /**
    * A page's own choice, overriding `on`, keyed by a flow id on that page (or
    * `WATERMARK_FIRST_PAGE` for a first page with no flow item). Pages are derived, so the
