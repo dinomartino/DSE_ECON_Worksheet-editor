@@ -134,7 +134,13 @@ export function itemUnits(key: string, nodes: RenderNode[], context: BodyContext
  * An answer key's body, a page break before each node its sheets start at. A sheet
  * starting inside a table (`row` past the first) is Word's to break, between its rows.
  */
-export function keyBodyXml(nodes: RenderNode[], context: BodyContext, starts: KeyPageStart[] = []): string {
+export function keyBodyXml(
+  nodes: RenderNode[],
+  context: BodyContext,
+  starts: KeyPageStart[] = [],
+  /** The sheets carrying the watermark, where it is anchored in the body (§ `joinWithPageBreaks`). */
+  mark?: { heads: KeyPageStart[]; apply: (xml: string) => string },
+): string {
   const ids = new Set(starts.filter((start) => !start.row).map((start) => pageStartId('key', start.node)));
   return joinWithPageBreaks(
     nodes.map((node, index) => ({
@@ -143,5 +149,11 @@ export function keyBodyXml(nodes: RenderNode[], context: BodyContext, starts: Ke
       breakable: true,
     })),
     ids,
+    mark
+      ? {
+          at: new Set(mark.heads.filter((head) => !head.row).map((head) => pageStartId('key', head.node))),
+          apply: mark.apply,
+        }
+      : undefined,
   );
 }

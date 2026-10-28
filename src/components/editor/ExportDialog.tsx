@@ -138,11 +138,11 @@ async function planFiles(
         kind,
         name: answerKeyFileName(worksheet, choice.language, others),
         build: async () => {
-          const [{ exportAnswerKeyDocx }, { measureAnswerKeyPageStarts }] = await Promise.all([docx(), pages()]);
-          const pageStarts = await measured(() =>
-            measureAnswerKeyPageStarts([worksheet, ...others], choice.language),
+          const [{ exportAnswerKeyDocx }, { measureAnswerKeyPagination }] = await Promise.all([docx(), pages()]);
+          const { pageStarts, watermarkHeads } = await measured(() =>
+            measureAnswerKeyPagination([worksheet, ...others], choice.language),
           );
-          return exportAnswerKeyDocx(worksheet, choice.language, others, pageStarts);
+          return exportAnswerKeyDocx(worksheet, choice.language, others, pageStarts, watermarkHeads);
         },
         ...(note ? { note, leftOut: skipped.length } : {}),
       });

@@ -31,3 +31,29 @@ export function PageCountProbe({
     </div>
   );
 }
+
+/**
+ * How the paper's flow lands on sheets in `mode`, from the same hidden copy: the marking
+ * scheme reads it to give each of its pages the watermark state its questions have on the
+ * paper (§ `keySheetWatermarks`). Mount only while the paper's pages differ.
+ */
+export function PaperSheetsProbe({
+  worksheet,
+  mode,
+  onSheets,
+}: {
+  worksheet: Worksheet;
+  mode: OutputMode;
+  onSheets: (pages: PageComposition[]) => void;
+}) {
+  return (
+    <div
+      aria-hidden
+      inert
+      data-print-hide
+      className="pointer-events-none invisible fixed left-[-100000px] top-0 h-0 w-[1200px] overflow-hidden"
+    >
+      <Preview worksheet={worksheet} mode={mode} onPagesChange={onSheets} measureOnly />
+    </div>
+  );
+}

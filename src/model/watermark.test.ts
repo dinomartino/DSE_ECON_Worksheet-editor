@@ -18,6 +18,8 @@ import {
   watermarkOpacity,
   watermarkSize,
   hasCustomPlacement,
+  keySheetWatermarks,
+  questionWatermarks,
   watermarkCenter,
   withCoverWatermark,
   withDefaultPlacement,
@@ -211,6 +213,29 @@ describe('turning one page, the cover or the paper on and off', () => {
       name: 'A',
       libraryId: 'a',
     });
+  });
+});
+
+describe('the marking scheme follows the paper', () => {
+  const paperSheets = [{ flowIds: ['h1', 'q1', 'q2'] }, { flowIds: ['h2', 'q3'] }, { flowIds: ['q4'] }];
+
+  it('gives each question the state of the paper sheet it starts on', () => {
+    const state = questionWatermarks(mark({ pages: { h2: false } }), paperSheets);
+    expect(['q1', 'q2', 'q3', 'q4'].map(state)).toEqual([true, true, false, true]);
+    // Unmeasured: a question's own choice, else the switch.
+    const loose = questionWatermarks(mark({ pages: { q3: false, h2: false } }));
+    expect(['q1', 'q3'].map(loose)).toEqual([true, false]);
+    expect(questionWatermarks(undefined)('q1')).toBe(false);
+  });
+
+  it('a key sheet takes its first question’s state; one with none, the sheet before’s', () => {
+    const owners = [[undefined, 'q1', 'q2'], ['q2', 'q3'], [undefined], ['q4']];
+    expect(keySheetWatermarks(mark({ pages: { h2: false } }), owners, paperSheets)).toEqual([true, true, true, true]);
+    expect(keySheetWatermarks(mark({ pages: { h1: false } }), owners, paperSheets)).toEqual([false, false, false, true]);
+    // The key's title page follows the paper's first page.
+    expect(keySheetWatermarks(mark({ pages: { [WATERMARK_FIRST_PAGE]: false } }), [[undefined], ['q3']], paperSheets)).toEqual([false, true]);
+    expect(keySheetWatermarks(mark({ on: false }), owners, paperSheets)).toEqual([false, false, false, false]);
+    expect(keySheetWatermarks(undefined, owners)).toEqual([false, false, false, false]);
   });
 });
 

@@ -268,3 +268,55 @@ export function withWatermarkPicture(previous: Watermark | undefined, picture: W
     libraryId: picture.id,
   };
 }
+
+/**
+ * Each question's state on the paper: that of the sheet it starts on (`sheetWatermarks`).
+ * Without the paper's sheets (not measured yet, a node test) a question takes the choice
+ * stored under its own id, else the paper's switch.
+ */
+export function questionWatermarks(
+  mark: Watermark | undefined,
+  paperSheets?: readonly SheetItems[],
+): (questionId: string) => boolean {
+  if (!mark) return () => false;
+  const onSheet = new Map<string, boolean>();
+  if (paperSheets) {
+    const states = sheetWatermarks(mark, paperSheets);
+    paperSheets.forEach((sheet, index) => {
+      for (const id of sheet.flowIds) onSheet.set(id, states[index]);
+    });
+  }
+  return (questionId) => {
+    const measured = onSheet.get(questionId);
+    if (measured !== undefined) return measured;
+    const own = mark.pages?.[questionId];
+    return typeof own === 'boolean' ? own : mark.on;
+  };
+}
+
+/**
+ * Whether each sheet of the marking scheme carries the watermark (k-0242, user u-hggh):
+ * the key follows the paper. A key sheet takes the state of the first question it holds
+ * any of (its answers, its scheme), as that question has it on the paper; a sheet holding
+ * no question's lines (the title, a version map) takes the sheet before's, and the first
+ * sheet the paper's first page's. `owners`: per key sheet, the questions on it in order.
+ */
+export function keySheetWatermarks(
+  mark: Watermark | undefined,
+  owners: readonly (readonly (string | undefined)[])[],
+  paperSheets?: readonly SheetItems[],
+): boolean[] {
+  if (!mark) return owners.map(() => false);
+  const question = questionWatermarks(mark, paperSheets);
+  const firstPage = paperSheets?.length
+    ? sheetWatermarks(mark, paperSheets)[0]
+    : typeof mark.pages?.[WATERMARK_FIRST_PAGE] === 'boolean'
+      ? mark.pages[WATERMARK_FIRST_PAGE]
+      : mark.on;
+  const out: boolean[] = [];
+  owners.forEach((onSheet, index) => {
+    const first = onSheet.find((id): id is string => id !== undefined);
+    out.push(first !== undefined ? question(first) : index > 0 ? out[index - 1] : firstPage);
+  });
+  return out;
+}

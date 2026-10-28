@@ -4,7 +4,8 @@ import { createRoot } from "react-dom/client";
 import type { LanguageMode, OutputMode, Worksheet } from "@/model/types";
 import { answerKeyPartTitle, answerKeyParts, answerKeyRunningHead } from "@/render/answerKey";
 import { AnswerKeyPreview } from "./AnswerKeyPreview";
-import type { KeyPageStart, PageStart } from "./pagination";
+import type { KeyPageStart, PageComposition, PageStart } from "./pagination";
+import { docxWatermarkPlan } from "@/model/watermark";
 import { Preview } from "./Preview";
 
 /**
@@ -29,19 +30,20 @@ export async function measurePaperPageStarts(worksheet: Worksheet, mode: OutputM
 }
 
 /**
- * The breaks, and where each sheet that carries the watermark begins (§ `sheetWatermarks`):
- * the `.docx` anchors the picture there when the paper's sheets differ.
+ * The breaks, where each sheet that carries the watermark begins (§ `sheetWatermarks`; the
+ * `.docx` anchors the picture there when the paper's sheets differ), and the sheets
+ * themselves (the marking scheme's watermark follows them, § `keySheetWatermarks`).
  */
 export function measurePaperPagination(
   worksheet: Worksheet,
   mode: OutputMode,
-): Promise<{ pageStarts: PageStart[]; watermarkHeads: PageStart[] }> {
+): Promise<{ pageStarts: PageStart[]; watermarkHeads: PageStart[]; sheets: PageComposition[] }> {
   return measure((report) => (
     <Preview
       worksheet={worksheet}
       mode={mode}
       measureOnly
-      onPageStarts={(pageStarts, watermarkHeads = []) => report({ pageStarts, watermarkHeads })}
+      onPageStarts={(pageStarts, watermarkHeads = [], sheets = []) => report({ pageStarts, watermarkHeads, sheets })}
     />
   ));
 }
@@ -55,25 +57,43 @@ export async function measureAnswerKeyPageStarts(
   worksheets: Worksheet[],
   language: LanguageMode,
 ): Promise<KeyPageStart[][]> {
+  return (await measureAnswerKeyPagination(worksheets, language)).pageStarts;
+}
+
+/**
+ * The key's breaks, and per document where each key sheet carrying the watermark begins.
+ * When a paper's pages differ (`docxWatermarkPlan` "some"), its own sheets are measured
+ * first (student copy, the key's language), since the key follows them.
+ */
+export async function measureAnswerKeyPagination(
+  worksheets: Worksheet[],
+  language: LanguageMode,
+): Promise<{ pageStarts: KeyPageStart[][]; watermarkHeads: KeyPageStart[][] }> {
   const combined = worksheets.length > 1;
   const head = combined ? answerKeyRunningHead(answerKeyParts(worksheets, language).flat(), language) : undefined;
-  const out: KeyPageStart[][] = [];
+  const pageStarts: KeyPageStart[][] = [];
+  const watermarkHeads: KeyPageStart[][] = [];
   for (const worksheet of worksheets) {
     const title = combined ? answerKeyPartTitle(worksheet) : undefined;
-    out.push(
-      await measure<KeyPageStart[]>((report) => (
-        <AnswerKeyPreview
-          worksheet={worksheet}
-          language={language}
-          title={title}
-          runningHead={head}
-          measureOnly
-          onPageStarts={report}
-        />
-      )),
-    );
+    const paperSheets =
+      docxWatermarkPlan(worksheet) === 'some'
+        ? (await measurePaperPagination(worksheet, { language, version: 'student' })).sheets
+        : undefined;
+    const measured = await measure<{ starts: KeyPageStart[]; heads: KeyPageStart[] }>((report) => (
+      <AnswerKeyPreview
+        worksheet={worksheet}
+        language={language}
+        title={title}
+        runningHead={head}
+        measureOnly
+        paperSheets={paperSheets}
+        onPageStarts={(starts, heads = []) => report({ starts, heads })}
+      />
+    ));
+    pageStarts.push(measured.starts);
+    watermarkHeads.push(measured.heads);
   }
-  return out;
+  return { pageStarts, watermarkHeads };
 }
 
 function measure<T>(element: (report: (value: T) => void) => React.ReactElement): Promise<T> {

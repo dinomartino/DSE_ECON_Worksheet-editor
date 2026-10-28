@@ -1951,8 +1951,19 @@ handles one kind of thing.
   opening in a table cell). A sheet that begins part-way through a table (Word breaks it
   itself) has no unit of its own, so it goes without in that case, as does a blank page
   only a page break made. The cover's section has no header, so its picture always rides
-  in its first paragraph. Copy for Word carries no watermark, and neither does the marking
-  scheme (its own preview and `.docx`) in this first cut.
+  in its first paragraph. Copy for Word carries no watermark.
+- **The marking scheme follows the paper** (user u-hggh; `keySheetWatermarks`): same picture,
+  strength, position and size, and no switches of its own. A key sheet takes the state its
+  first question has on the paper, i.e. that of the paper sheet the question starts on
+  (`questionWatermarks`); a sheet with no question's lines (title, version map) takes the
+  sheet before's, the first the paper's first page's. The paper's sheets come from a hidden
+  measuring copy (`PaperSheetsProbe` in the Marking scheme view, `measurePaperPagination`'s
+  `sheets` at export), mounted only when the paper's pages differ; unmeasured, a question
+  takes the choice under its own id, else the switch. The key's `.docx` follows the paper's
+  plan: one picture in its header when every page has it, else at the measured key sheet
+  heads (`measureAnswerKeyPagination`, a head inside a table has no unit and is skipped). A
+  combined key anchors each part's own paper's picture at that part's sheets (one header
+  serves every section, so none rides there).
 - An untouched paper, or one whose watermark is off with no page on, exports the same parts
   as before the feature (`export/docx/watermark.test.ts`).
 

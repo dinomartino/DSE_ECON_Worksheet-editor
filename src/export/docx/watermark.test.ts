@@ -7,7 +7,7 @@ import type { OutputMode, Watermark, Worksheet } from '@/model/types';
 import { WATERMARK_FIRST_PAGE, watermarkBox } from '@/model/watermark';
 import { pageSetupOf } from '@/model/page';
 import { buildPageFlowPaper } from '@/test/pageFlowFixture';
-import { buildDocxParts, exportDocxBuffer } from './index';
+import { buildAnswerKeyDocxParts, buildDocxParts, exportAnswerKeyDocxBuffer, exportDocxBuffer } from './index';
 import { pageStartId } from './pageBreaks';
 import { withLeadingRun } from './watermark';
 
@@ -131,5 +131,47 @@ describe('the .docx', () => {
     const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, MODE));
     expect(await zip.file('word/document.xml')!.async('string')).not.toContain('Watermark');
     expect(Object.keys(zip.files).filter((name) => /header\d\.xml\.rels$/.test(name))).toEqual([]);
+  });
+});
+
+describe('the marking scheme’s .docx', () => {
+  const paper = buildPageFlowPaper();
+  const [, q2] = paper.questions.map((question) => question.id);
+
+  it('every page of the paper has it: one picture in the key’s header, with its relationships', async () => {
+    const worksheet: Worksheet = { ...paper, watermark: mark({ centerX: 0.3, size: 0.9 }) };
+    const parts = buildAnswerKeyDocxParts(worksheet, 'en');
+    expect(anchors(parts.headerFooter.header ?? '')).toHaveLength(1);
+    expect(anchors(parts.documentXml)).toHaveLength(0);
+    const box = watermarkBox(worksheet.watermark!, pageSetupOf(paper));
+    expect(parts.headerFooter.header).toContain(`<wp:posOffset>${box.left * 635}</wp:posOffset>`);
+    const zip = await JSZip.loadAsync(await exportAnswerKeyDocxBuffer(worksheet, 'en'));
+    expect(await zip.file('word/_rels/header1.xml.rels')!.async('string')).toContain('media/image');
+  });
+
+  it('pages differ: the picture is anchored at the measured key sheets that have it', () => {
+    const worksheet: Worksheet = { ...paper, watermark: mark({ pages: { [q2]: false } }) };
+    const parts = buildAnswerKeyDocxParts(worksheet, 'en', [], new Map(), [], [[{ node: 0 }, { node: 3, row: 2 }]]);
+    expect(anchors(parts.headerFooter.header ?? '')).toHaveLength(0);
+    // The head inside a table (row 2) is Word's to break: only the first is anchored.
+    expect(anchors(parts.documentXml)).toHaveLength(1);
+  });
+
+  it('a paper without one, or with it off, writes the key as before', () => {
+    const plain = buildAnswerKeyDocxParts(paper, 'en');
+    const off = buildAnswerKeyDocxParts({ ...paper, watermark: mark({ on: false }) }, 'en');
+    expect(off.documentXml).toBe(plain.documentXml);
+    expect(off.headerFooter).toEqual(plain.headerFooter);
+    expect(plain.documentXml + (plain.headerFooter.header ?? '')).not.toContain('Watermark');
+  });
+
+  it('a combined key: each part carries its own paper’s, at its own sheets', () => {
+    const marked: Worksheet = { ...paper, watermark: mark() };
+    const other = buildPageFlowPaper();
+    const parts = buildAnswerKeyDocxParts(other, 'en', [marked], new Map(), [], [[], [{ node: 0 }]]);
+    expect(anchors(parts.documentXml)).toHaveLength(1);
+    expect(parts.headerFooter.header ?? '').not.toContain('Watermark');
+    const sectionBreak = parts.documentXml.indexOf('<w:sectPr');
+    expect(parts.documentXml.indexOf('name="Watermark')).toBeGreaterThan(sectionBreak);
   });
 });

@@ -1,5 +1,7 @@
 "use client";
 
+import { keySheetWatermarks, watermarkOf, type SheetItems } from "@/model/watermark";
+import { WatermarkLayer } from "./WatermarkLayer";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { resolveAnswerKeyLayout } from "@/model/answerKeyLayout";
 import { cssFontFamilies } from "@/model/fonts";
@@ -275,6 +277,7 @@ export function AnswerKeyPreview({
   runningHead: sharedHead,
   measureOnly,
   onPageStarts,
+  paperSheets,
 }: {
   worksheet: Worksheet;
   language: LanguageMode;
@@ -284,8 +287,17 @@ export function AnswerKeyPreview({
   runningHead?: string;
   /** A hidden copy that only paginates (`measurePageStarts`): no `#print-root`, no zoom. */
   measureOnly?: boolean;
-  /** Where each sheet after the first begins, once measured (§ `joinWithPageBreaks`). */
-  onPageStarts?: (starts: KeyPageStart[]) => void;
+  /**
+   * Where each sheet after the first begins, once measured (§ `joinWithPageBreaks`), and
+   * where each sheet carrying the watermark begins (§ `keySheetWatermarks`).
+   */
+  onPageStarts?: (starts: KeyPageStart[], watermarkHeads?: KeyPageStart[]) => void;
+  /**
+   * The paper's sheets, as its preview packs them: the key's pages take the watermark state
+   * each question has on the paper (§ `keySheetWatermarks`). Absent, each question takes the
+   * choice stored under its own id, else the paper's switch.
+   */
+  paperSheets?: readonly SheetItems[];
   selectedQuestionId?: string;
   /** Select a question for the sidebar, or clear the selection. */
   onSelectQuestion?: (questionId?: string) => void;
@@ -434,9 +446,25 @@ export function AnswerKeyPreview({
     return start ? [start] : [];
   });
   const startsReady = blocks.every((block) => heights.has(block.key)) && isFresh();
-  const startsKey = starts.map((start) => `${start.node}r${start.row ?? ""}`).join("|");
+
+  // The paper's watermark, on the key's sheets as on the paper's (k-0242, user u-hggh).
+  const watermark = watermarkOf(worksheet);
+  const ownerOf = new Map(runs.map((run) => [run.key, run.owner]));
+  const keyMarks = keySheetWatermarks(
+    watermark,
+    pages.map((page) => page.map((block) => ownerOf.get(block.key))),
+    paperSheets,
+  );
+  // A sheet that opens part-way through a table is Word's to break: no unit to anchor in.
+  const watermarkHeads = pages.flatMap((page, index) => {
+    const start = keyMarks[index] && page[0] ? startOf.get(page[0].key) : undefined;
+    return start && !start.row ? [start] : [];
+  });
+  const startsKey = [...starts, { node: -1 }, ...watermarkHeads]
+    .map((start) => `${start.node}r${start.row ?? ""}`)
+    .join("|");
   useEffect(() => {
-    if (startsReady) onPageStarts?.(starts);
+    if (startsReady) onPageStarts?.(starts, watermarkHeads);
     // Keyed on the flattened starts: `starts` is a fresh array every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startsKey, startsReady, onPageStarts]);
@@ -535,7 +563,9 @@ export function AnswerKeyPreview({
         {pages.map((pageBlocks, pageIndex) => (
           <div key={pageIndex} data-page-index={pageIndex} className="relative">
             <div
-              className="paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]"
+              className={`paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]${
+                watermark && keyMarks[pageIndex] ? " isolate" : ""
+              }`}
               data-tab-origin=""
               style={pageStyle}
               lang={language === "zh" ? "zh-HK" : "en"}
@@ -545,6 +575,7 @@ export function AnswerKeyPreview({
                 onSelectQuestion?.(undefined);
               }}
             >
+              {watermark && keyMarks[pageIndex] && <WatermarkLayer mark={watermark} setup={setup} />}
               <div className="min-h-0 flex-1">
                 {pageBlocks.map((block, blockIndex) => {
                   const piece = fragments.get(placementKey(pageIndex, blockIndex));

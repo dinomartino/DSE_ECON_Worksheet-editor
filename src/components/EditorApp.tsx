@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Preview, type PageComposition } from '@/components/preview/Preview';
 import { AnswerKeyPreview } from '@/components/preview/AnswerKeyPreview';
+import { PaperSheetsProbe } from '@/components/preview/PageCountProbe';
+import { docxWatermarkPlan } from '@/model/watermark';
 import { dropRunAnchor } from '@/components/preview/pagination';
 import { AddRail } from '@/components/editor/AddRail';
 import { PageRail } from '@/components/editor/PageRail';
@@ -19,7 +21,7 @@ import { FlowCanvas } from '@/components/editor/FlowCanvas';
 import { ForumCanvas } from '@/components/editor/ForumCanvas';
 import { findDiagramBlock, formatOfTarget, targetQuestionId, textOfTarget } from '@/model/edits';
 import { toRunPatch } from '@/model/text';
-import type { BandFieldSide, BiText, TextFormat, Worksheet } from '@/model/types';
+import type { BandFieldSide, BiText, OutputMode, TextFormat, Worksheet } from '@/model/types';
 import type { EditTarget } from '@/render/ir';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { onDocumentSavedElsewhere, worksheetStore } from '@/storage';
@@ -133,6 +135,11 @@ export function EditorApp({
   // How the flow landed on sheets, as reported by the paginator. Pages exist nowhere
   // in the model — they are measured — so the rail can only be told, never derive it.
   const [pages, setPages] = useState<PageComposition[]>([]);
+  // The marking scheme's watermark reads the paper's sheets (student copy, the key's
+  // language) only when the paper's pages differ (§ `keySheetWatermarks`).
+  const keyPaperProbe = keyView && docxWatermarkPlan(worksheet) === 'some';
+  const keyPaperMode = useMemo<OutputMode>(() => ({ language: mode.language, version: 'student' }), [mode.language]);
+  const [keyPaperSheets, setKeyPaperSheets] = useState<PageComposition[] | undefined>();
   // The cover is a sheet of its own, outside `pages` — the rail counts it all the same.
   const coverSheet = hasCoverSheet(worksheet, mode);
   /** Whether the page rail (left-side page thumbnails) is expanded. */
@@ -606,13 +613,24 @@ export function EditorApp({
             style={{ paddingBottom: bankReviewing ? 144 : 64 }}
           >
             {keyView ? (
+              <>
+              {/* The key's watermark follows the paper's pages when they differ (k-0242). */}
+              {keyPaperProbe && (
+                <PaperSheetsProbe
+                  worksheet={worksheet}
+                  mode={keyPaperMode}
+                  onSheets={setKeyPaperSheets}
+                />
+              )}
               <AnswerKeyPreview
                 worksheet={worksheet}
                 language={mode.language}
+                paperSheets={keyPaperProbe ? keyPaperSheets : undefined}
                 selectedQuestionId={selectedQuestionId}
                 onSelectQuestion={select}
                 onEdit={readOnly || printPreview ? undefined : handleEdit}
               />
+              </>
             ) : (
               <PreviewWithBankDrop
                 worksheet={worksheet}

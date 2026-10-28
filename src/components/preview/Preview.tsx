@@ -5008,7 +5008,7 @@ interface Props {
    * Where each sheet after the first begins, once every block is measured: what the
    * `.docx` puts its page breaks at (`measurePageStarts`, § `joinWithPageBreaks`).
    */
-  onPageStarts?: (starts: PageStart[], watermarkHeads?: PageStart[]) => void;
+  onPageStarts?: (starts: PageStart[], watermarkHeads?: PageStart[], sheets?: PageComposition[]) => void;
 }
 
 /**
@@ -7697,9 +7697,9 @@ export function Preview({
   );
   const startsKey = [...starts, { key: "#wm", node: 0 }, ...watermarkHeads]
     .map((start) => `${start.key}:${start.node}`)
-    .join("|");
+    .join("|") + `#${compositionKey}`;
   useEffect(() => {
-    if (startsReady) onPageStarts?.(starts, watermarkHeads);
+    if (startsReady) onPageStarts?.(starts, watermarkHeads, composition);
     // Keyed on the flattened starts, as the composition is above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startsKey, startsReady, onPageStarts]);

@@ -79,6 +79,8 @@ const WORDS = {
     undo: /^Undo/,
     redo: /^Redo/,
     home: /Econ Studio/,
+    markingScheme: 'Marking scheme',
+    student: 'Student',
     newWorksheet: 'New worksheet',
     classroom: /^Classroom worksheet/,
     docName: 'Name',
@@ -104,6 +106,8 @@ const WORDS = {
     undo: /^復原/,
     redo: /^重做/,
     home: /Econ Studio/,
+    markingScheme: '評卷參考',
+    student: '學生版',
     newWorksheet: '新增工作紙',
     classroom: /^課堂工作紙/,
     docName: '名稱',
@@ -381,6 +385,71 @@ try {
     await openPaper();
     check(`[${tag}] after a reload: on, off, on`, same(await onOff(), [true, false, true]), JSON.stringify(await onOff()));
     check(`[${tag}] … and where it was moved to, at its new size`, same((await boxes())[0], placed), JSON.stringify((await boxes())[0]));
+
+    // M. The marking scheme follows the paper: its sheets take the state their questions have on the
+    // paper (page 2, Section B's Q4 and Q5, is off), at the paper's moved position and size.
+    await page.getByRole('radio', { name: w.markingScheme, exact: true }).first().click();
+    await page.waitForSelector('#print-root[data-answer-key] .paper', { timeout: 15_000 });
+    await page.waitForTimeout(2500);
+    const [, , , Q4, Q5] = document_.questions.map((q) => q.id);
+    const keySheets = await page.evaluate(() =>
+      [...document.querySelectorAll('#print-root[data-answer-key] .paper')].map((sheet) => {
+        const img = sheet.querySelector('[data-watermark] img');
+        const mm = (v) => Math.round(parseFloat(v) * 100) / 100;
+        return {
+          owner: sheet.querySelector('[data-question-id]')?.getAttribute('data-question-id') ?? null,
+          box: img ? { left: mm(img.style.left), top: mm(img.style.top), width: mm(img.style.width), height: mm(img.style.height) } : null,
+        };
+      }),
+    );
+    let previous = true;
+    const expected = keySheets.map((sheet) => (previous = sheet.owner ? ![Q4, Q5].includes(sheet.owner) : previous));
+    check(`[${tag}] the marking scheme's pages follow the paper's (${keySheets.length} pages)`, keySheets.length > 0 && same(keySheets.map((sheet) => Boolean(sheet.box)), expected), JSON.stringify({ keySheets: keySheets.map((k) => [k.owner, Boolean(k.box)]), expected }));
+    check(`[${tag}] … at the paper's position and size`, keySheets.filter((sheet) => sheet.box).every((sheet) => same(sheet.box, placed)), JSON.stringify(keySheets.map((sheet) => sheet.box)));
+    check(`[${tag}] … and no switches or frames on the key`, (await page.locator('#print-root [data-watermark-toggle], #print-root [data-watermark-adjuster]').count()) === 0);
+    await page.locator('#print-root[data-answer-key] .paper [data-watermark]').first().scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${OUT}/${tag}-marking-scheme.png` });
+    if (ui === 'en') {
+      await page.getByRole('button', { name: w.exportButton }).first().click();
+      const exporter = page.getByRole('dialog');
+      await exporter.getByText('.docx', { exact: true }).click();
+      await exporter.getByRole('radiogroup', { name: 'What to export' }).getByText('Answer key', { exact: true }).click();
+      await exporter.getByRole('radiogroup', { name: 'Language' }).getByTitle('English only', { exact: true }).click();
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 60_000 }),
+        exporter.getByRole('button', { name: /^Export / }).click(),
+      ]);
+      await download.saveAs(`${OUT}/watermark-marking-scheme-en.docx`);
+      const zip = await JSZip.loadAsync(readFileSync(await download.path()));
+      await exporter.waitFor({ state: 'detached', timeout: 10_000 }).catch(() => page.keyboard.press('Escape'));
+      const xml = await zip.file('word/document.xml').async('string');
+      const header = (await zip.file('word/header1.xml')?.async('string')) ?? '';
+      const marked = expected.filter(Boolean).length;
+      check(`[en] the marking scheme's .docx anchors the picture on its pages that have it, none in the header`, count(xml) >= 1 && count(xml) <= marked && count(header) === 0, `${count(xml)} of ${marked} / header ${count(header)}`);
+      check(`[en] … behind the text, faint, at the paper's position`, xml.includes('behindDoc="1"') && !xml.includes('alphaModFix') && xml.includes(`<wp:posOffset>${Math.round((placed.left * 1440) / 25.4) * 635}`) || Math.abs(Number(/<wp:positionH relativeFrom="page"><wp:posOffset>(\d+)</.exec(xml)?.[1]) / 635 - (placed.left * 1440) / 25.4) < 6, /<wp:positionH relativeFrom="page"><wp:posOffset>(\d+)</.exec(xml)?.[1]);
+    }
+    await page.getByRole('radio', { name: w.student, exact: true }).first().click();
+    await page.waitForSelector('#print-root .paper [data-watermark]', { timeout: 15_000 });
+    await settle();
+    // Page 1 off on the paper (Q1–Q3 start there): the key's page with Q1 goes without too.
+    await page.locator('[data-page-index="0"] [data-watermark-toggle]').click();
+    await settle();
+    await page.getByRole('radio', { name: w.markingScheme, exact: true }).first().click();
+    await page.waitForSelector('#print-root[data-answer-key] .paper', { timeout: 15_000 });
+    await page.waitForTimeout(2500);
+    const keyOff = await page.evaluate(() =>
+      [...document.querySelectorAll('#print-root[data-answer-key] .paper')].map((sheet) => [
+        sheet.querySelector('[data-question-id]')?.getAttribute('data-question-id') ?? null,
+        Boolean(sheet.querySelector('[data-watermark]')),
+      ]),
+    );
+    const [Q1] = document_.questions.map((q) => q.id);
+    check(`[${tag}] … and when the paper's page 1 goes without, so does the key's page holding Q1`, keyOff.length > 0 && keyOff.every(([owner, on]) => (owner === Q1 ? !on : true)) && keyOff.some(([owner]) => owner === Q1), JSON.stringify(keyOff));
+    await page.getByRole('radio', { name: w.student, exact: true }).first().click();
+    await page.waitForSelector('#print-root .paper', { timeout: 15_000 });
+    await settle();
+    await page.locator('[data-page-index="0"] [data-watermark-toggle]').click();
+    await settle();
 
     // L. Setup → Page → Reset to default.
     await page.getByRole('button', { name: w.setup }).first().click();

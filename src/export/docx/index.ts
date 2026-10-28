@@ -767,9 +767,20 @@ function buildAnswerKeyParts(
   diagramImages: DiagramImageMap = new Map(),
   /** Per document, where the key's sheets begin (§ `joinWithPageBreaks`). */
   pageStarts: KeyPageStart[][] = [],
+  /** Per document, where each key sheet carrying the watermark begins (§ `keySheetWatermarks`). */
+  watermarkHeads: KeyPageStart[][] = [],
+  /** Per document, its watermark with the strength drawn in (`bakeWatermarkImage`). */
+  bakedWatermarks: (string | undefined)[] = [],
 ): PackageParts {
   if (others.length > 0) {
-    return buildCombinedAnswerKeyParts([worksheet, ...others], language, diagramImages, pageStarts);
+    return buildCombinedAnswerKeyParts(
+      [worksheet, ...others],
+      language,
+      diagramImages,
+      pageStarts,
+      watermarkHeads,
+      bakedWatermarks,
+    );
   }
   const fonts = worksheet.fonts;
   const setup = pageSetupOf(worksheet);
@@ -777,9 +788,19 @@ function buildAnswerKeyParts(
   const textWidth = contentWidth(setup);
 
   const nodes = renderAnswerKey(worksheet, language);
-  const { assets, bySrc } = collectNodeImages(nodes, diagramImages);
+  // The paper's watermark follows onto the key (k-0242): in the running header when every
+  // page of the paper has it, else at each measured key sheet that does.
+  const watermark = watermarkOf(worksheet);
+  const watermarkPlan = docxWatermarkPlan(worksheet);
+  const watermarkSrc = watermark && watermarkPlan !== 'none' ? (bakedWatermarks[0] ?? watermark.src) : undefined;
+  const { assets, bySrc } = collectNodeImages(nodes, diagramImages, watermarkSrc ? [watermarkSrc] : []);
 
   let drawingId = 1;
+  const watermarkRelId = watermarkSrc ? bySrc.get(watermarkSrc) : undefined;
+  const watermarkRun = () =>
+    watermark && watermarkRelId
+      ? watermarkRunXml(watermarkRelId, watermark, setup, (drawingId += 1), Boolean(bakedWatermarks[0]))
+      : '';
   const context: BodyContext = {
     fonts,
     language,
@@ -789,7 +810,15 @@ function buildAnswerKeyParts(
     diagramSrc: (blockId) => diagramImages.get(blockId),
     nextDrawingId: () => (drawingId += 1),
   };
-  const body = keyBodyXml(nodes, context, pageStarts[0]);
+  const body = keyBodyXml(
+    nodes,
+    context,
+    pageStarts[0],
+    watermarkPlan === 'some' && watermarkRelId
+      ? { heads: watermarkHeads[0] ?? [], apply: (xml) => withLeadingRun(xml, watermarkRun()) ?? xml }
+      : undefined,
+  );
+  const watermarkHeader = watermarkPlan === 'every' && watermarkRelId ? watermarkHeaderXml(watermarkRun()) : '';
 
   const pageNumber: HeaderFooterLayout = {
     rows: [{ left: '', center: fieldRuns('PAGE', runProperties(fonts, {}), '1'), right: '' }],
@@ -814,7 +843,7 @@ function buildAnswerKeyParts(
       pageHeight,
       margins: setup.margins,
       landscape: setup.orientation === 'landscape',
-      hasHeader: marksHead !== undefined,
+      hasHeader: marksHead !== undefined || Boolean(watermarkHeader),
       hasFooter: true,
       differentFirstPage: false,
       edgeOffsets: headerFooterOffsets(setup.margins, marksHead ? BAND_ROW_TWIPS : 0, BAND_ROW_TWIPS),
@@ -822,7 +851,11 @@ function buildAnswerKeyParts(
     stylesXml: buildStylesXml(fonts, { baseFontSize: worksheet.baseFontSize }),
     numberingXml: buildNumberingXml([], fonts, listIndentScheme(documentShape(worksheet))),
     headerFooter: {
-      ...(marksHead ? { header: buildHeaderXml(marksHead) } : {}),
+      ...(marksHead
+        ? { header: buildHeaderXml(marksHead, watermarkHeader) }
+        : watermarkHeader
+          ? { header: buildEmptyHeaderXml('hdr', watermarkHeader) }
+          : {}),
       footer: buildFooterXml(pageNumber),
     },
     fontTableXml: buildFontTableXml(fonts),
@@ -843,12 +876,26 @@ function buildCombinedAnswerKeyParts(
   language: LanguageMode,
   diagramImages: DiagramImageMap,
   pageStarts: KeyPageStart[][],
+  watermarkHeads: KeyPageStart[][] = [],
+  bakedWatermarks: (string | undefined)[] = [],
 ): PackageParts {
   const [first] = worksheets;
   const fonts = first.fonts;
   const baseSize = first.baseFontSize ?? DEFAULT_BASE_FONT_SIZE_PT;
   const parts = answerKeyParts(worksheets, language);
-  const { assets, bySrc } = collectNodeImages(parts.flat(), diagramImages);
+  // Each part carries its own paper's watermark, anchored at its measured sheets (one header
+  // serves every section, so it cannot hold one paper's picture); unmeasured, its first.
+  const marks = worksheets.map((worksheet, index) => {
+    const mark = watermarkOf(worksheet);
+    return mark && docxWatermarkPlan(worksheet) !== 'none'
+      ? { mark, src: bakedWatermarks[index] ?? mark.src, baked: Boolean(bakedWatermarks[index]) }
+      : undefined;
+  });
+  const { assets, bySrc } = collectNodeImages(
+    parts.flat(),
+    diagramImages,
+    marks.flatMap((entry) => (entry ? [entry.src] : [])),
+  );
   const head = answerKeyRunningHead(parts.flat(), language);
 
   let drawingId = 1;
@@ -866,7 +913,20 @@ function buildCombinedAnswerKeyParts(
         diagramSrc: (blockId) => diagramImages.get(blockId),
         nextDrawingId: () => (drawingId += 1),
       };
-      let xml = keyBodyXml(nodes, context, pageStarts[index]);
+      const part = marks[index];
+      const relId = part && bySrc.get(part.src);
+      let xml = keyBodyXml(
+        nodes,
+        context,
+        pageStarts[index],
+        part && relId
+          ? {
+              heads: watermarkHeads[index] ?? [{ node: 0 }],
+              apply: (body) =>
+                withLeadingRun(body, watermarkRunXml(relId, part.mark, setup, (drawingId += 1), part.baked)) ?? body,
+            }
+          : undefined,
+      );
       const size = worksheet.baseFontSize ?? DEFAULT_BASE_FONT_SIZE_PT;
       if (size !== baseSize) {
         variants.add(size);
@@ -932,6 +992,8 @@ export async function exportAnswerKeyDocx(
   others: Worksheet[] = [],
   /** Per document, the sheets its key's preview starts (§ `joinWithPageBreaks`). */
   pageStarts: KeyPageStart[][] = [],
+  /** Per document, the key sheets carrying the watermark (`measureAnswerKeyPagination`). */
+  watermarkHeads: KeyPageStart[][] = [],
 ): Promise<Blob> {
   // Model answer diagrams rasterise first, as the paper's diagrams do; a missing one
   // stops the export rather than dropping the figure.
@@ -943,7 +1005,8 @@ export async function exportAnswerKeyDocx(
     for (const [key, src] of await renderNodeDiagramImages(nodes, all[index].fonts, language)) diagramImages.set(key, src);
   }
   assertDiagramsRasterized(collectDiagramNodesIn(parts.flat()), diagramImages);
-  return zipPackage(buildAnswerKeyParts(worksheet, language, others, diagramImages, pageStarts));
+  const baked = await Promise.all(all.map((document) => bakeWatermarkImage(document)));
+  return zipPackage(buildAnswerKeyParts(worksheet, language, others, diagramImages, pageStarts, watermarkHeads, baked));
 }
 
 /** Node-friendly variant used by the export tests; takes its diagram map as an argument. */
@@ -953,8 +1016,9 @@ export async function exportAnswerKeyDocxBuffer(
   others: Worksheet[] = [],
   diagramImages?: DiagramImageMap,
   pageStarts: KeyPageStart[][] = [],
+  watermarkHeads: KeyPageStart[][] = [],
 ): Promise<Uint8Array> {
-  return zipPackageBuffer(buildAnswerKeyParts(worksheet, language, others, diagramImages, pageStarts));
+  return zipPackageBuffer(buildAnswerKeyParts(worksheet, language, others, diagramImages, pageStarts, watermarkHeads));
 }
 
 export { buildAnswerKeyParts as buildAnswerKeyDocxParts };
