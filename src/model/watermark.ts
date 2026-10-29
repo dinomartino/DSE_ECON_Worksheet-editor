@@ -125,6 +125,24 @@ export function withDefaultPlacement(mark: Watermark): Watermark {
   return rest;
 }
 
+/**
+ * The watermark back at the page's centre, both ways, at the size the teacher set (Setup's
+ * and the page's Center). Stored as "no centre", the same as a watermark never moved, so
+ * the preview, print, PDF and `.docx` all read the one rule (`watermarkBox`).
+ */
+export function withCenteredPlacement(mark: Watermark): Watermark {
+  const rest = { ...mark };
+  delete rest.centerX;
+  delete rest.centerY;
+  return rest;
+}
+
+/** Whether the picture sits off the page's centre (so Center has something to do). */
+export function isOffCenter(mark: Watermark): boolean {
+  const center = watermarkCenter(mark);
+  return Math.abs(center.x - 0.5) > 1e-6 || Math.abs(center.y - 0.5) > 1e-6;
+}
+
 /** Whether the teacher moved or resized it. */
 export function hasCustomPlacement(mark: Watermark): boolean {
   return mark.centerX !== undefined || mark.centerY !== undefined || mark.size !== undefined;

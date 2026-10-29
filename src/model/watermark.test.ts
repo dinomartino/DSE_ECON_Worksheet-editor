@@ -23,6 +23,8 @@ import {
   watermarkCenter,
   withCoverWatermark,
   withDefaultPlacement,
+  withCenteredPlacement,
+  isOffCenter,
   withWatermarkPlacement,
   withPaperWatermark,
   withSheetWatermark,
@@ -111,6 +113,29 @@ describe('moving and resizing it on the page', () => {
     expect(reset).toEqual(mark({ opacity: 0.3, pages: { q: false } }));
     expect(hasCustomPlacement(reset)).toBe(false);
     expect(watermarkBox(reset, DEFAULT_PAGE_SETUP)).toEqual(watermarkBox(mark(), DEFAULT_PAGE_SETUP));
+  });
+});
+
+describe('Center', () => {
+  it('puts a moved and resized watermark in the middle, keeping its size and the rest', () => {
+    const moved = mark({ centerX: 0.2, centerY: 0.8, size: 1.1, opacity: 0.3, pages: { q: false } });
+    expect(isOffCenter(moved)).toBe(true);
+    const centred = withCenteredPlacement(moved);
+    expect(centred).toEqual(mark({ size: 1.1, opacity: 0.3, pages: { q: false } }));
+    expect(isOffCenter(centred)).toBe(false);
+    const box = watermarkBox(centred, DEFAULT_PAGE_SETUP);
+    const page = pageDimensions(DEFAULT_PAGE_SETUP);
+    expect(Math.abs(box.left + box.width / 2 - page.width / 2)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.top + box.height / 2 - page.height / 2)).toBeLessThanOrEqual(1);
+    expect(box.width).toBe(watermarkBox(moved, DEFAULT_PAGE_SETUP).width);
+  });
+
+  it('centres one that was only moved sideways, and offers nothing for one already central', () => {
+    expect(isOffCenter(mark({ centerX: 0.3 }))).toBe(true);
+    expect(isOffCenter(mark({ centerY: 0.9 }))).toBe(true);
+    expect(isOffCenter(mark({ centerX: 0.5, centerY: 0.5, size: 0.9 }))).toBe(false);
+    expect(isOffCenter(mark())).toBe(false);
+    expect(withCenteredPlacement(mark({ centerX: 0.3 }))).toEqual(mark());
   });
 });
 

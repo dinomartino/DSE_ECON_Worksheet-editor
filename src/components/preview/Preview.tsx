@@ -249,7 +249,7 @@ import { PAGE_AI_ITEM, pageAiScope } from "@/components/translate/translateMenu"
 import { collectTexts, slotsForTarget } from "@/model/textWalk";
 import { openAi } from "@/assist/menuStore";
 import { scopeFromSelection } from "@/assist/scope";
-import { coverWatermark, sheetWatermarks, watermarkOf, withCoverWatermark, withSheetWatermark } from "@/model/watermark";
+import { coverWatermark, sheetWatermarks, watermarkOf, withCoverWatermark, withSheetWatermark, withCenteredPlacement } from "@/model/watermark";
 import { SheetWatermarkToggle, WatermarkAdjuster, WatermarkLayer } from "./WatermarkLayer";
 
 // Re-exported so the page rail keeps importing the type from the component that
@@ -7759,6 +7759,10 @@ export function Preview({
         }}
       />
     ) : null;
+  const centerWatermark = () => {
+    if (!watermark) return;
+    commitWatermark(withCenteredPlacement(watermark));
+  };
   const toggleSheetWatermark = (pageIndex: number) => {
     if (!watermark) return;
     const next = withSheetWatermark(watermark, composition[pageIndex] ?? { flowIds: [] }, pageIndex, !sheetMarks[pageIndex]);
@@ -7933,6 +7937,7 @@ export function Preview({
                 on={coverWatermark(watermark)}
                 adjusting={adjustingWatermark}
                 onAdjust={setAdjustingWatermark}
+                onCenter={centerWatermark}
                 onToggle={() =>
                   setWatermark({ watermark: withCoverWatermark(watermark, !coverWatermark(watermark)) })
                 }
@@ -7978,6 +7983,7 @@ export function Preview({
                 on={sheetMarks[pageIndex] ?? false}
                 adjusting={adjustingWatermark}
                 onAdjust={setAdjustingWatermark}
+                onCenter={centerWatermark}
                 disabled={pageIndex > 0 && (composition[pageIndex]?.flowIds.length ?? 0) === 0}
                 onToggle={() => toggleSheetWatermark(pageIndex)}
               />

@@ -451,6 +451,51 @@ try {
     await page.locator('[data-page-index="0"] [data-watermark-toggle]').click();
     await settle();
 
+    // L0. Center: from the page (beside Done) and from Setup; keeps the size, centres on the page.
+    {
+      const pageBox = await page.evaluate(() => {
+        const sheet = document.querySelector('#print-root .paper');
+        const r = sheet.getBoundingClientRect();
+        const i = sheet.querySelector('[data-watermark] img').getBoundingClientRect();
+        return { dx: (i.left + i.width / 2 - (r.left + r.width / 2)) / r.width, dy: (i.top + i.height / 2 - (r.top + r.height / 2)) / r.height };
+      });
+      check(`[${tag}] before Center the watermark sits off the page's middle`, Math.abs(pageBox.dx) > 0.02 || Math.abs(pageBox.dy) > 0.02, JSON.stringify(pageBox));
+    }
+    const beforeCenter = (await boxes())[0];
+    await page.locator('[data-page-index="0"] [data-watermark-adjust]').click();
+    await page.waitForTimeout(300);
+    const centerChip = page.locator('[data-page-index="0"] [data-watermark-center]');
+    check(`[${tag}] Center shows beside Done while adjusting`, (await centerChip.count()) === 1);
+    await centerChip.click();
+    await settle();
+    const centred = await page.evaluate(() =>
+      [...document.querySelectorAll('#print-root .paper')].map((sheet) => {
+        const img = sheet.querySelector('[data-watermark] img');
+        if (!img) return null;
+        const r = sheet.getBoundingClientRect();
+        const i = img.getBoundingClientRect();
+        return { dx: (i.left + i.width / 2 - (r.left + r.width / 2)) / r.width, dy: (i.top + i.height / 2 - (r.top + r.height / 2)) / r.height, width: i.width / r.width };
+      }),
+    );
+    check(`[${tag}] Center puts it in the middle of every watermarked page`, centred.filter(Boolean).length === 2 && centred.filter(Boolean).every((c) => Math.abs(c.dx) < 0.002 && Math.abs(c.dy) < 0.002), JSON.stringify(centred));
+    check(`[${tag}] … at the size the teacher set`, Math.abs((await boxes())[0].width - beforeCenter.width) < 0.2, JSON.stringify({ beforeCenter, now: (await boxes())[0] }));
+    if (ui === 'en') {
+      const zip = await exportDocx('watermark-centered-en');
+      const xml = await zip.file('word/document.xml').async('string');
+      const at = (axis) => Number(new RegExp(`<wp:position${axis} relativeFrom="page"><wp:posOffset>(\\d+)<`).exec(xml)?.[1] ?? NaN) / 635;
+      const extent = /<wp:extent cx="(\d+)" cy="(\d+)"/.exec(xml);
+      const pg = /<w:pgSz w:w="(\d+)" w:h="(\d+)"/.exec(xml);
+      check(
+        `[en] the .docx centres it on the page too, at the same size`,
+        Boolean(extent && pg) && Math.abs(at('H') + Number(extent[1]) / 1270 - Number(pg[1]) / 2) < 8 && Math.abs(at('V') + Number(extent[2]) / 1270 - Number(pg[2]) / 2) < 8,
+        JSON.stringify({ h: at('H'), v: at('V'), extent: extent?.slice(1), pg: pg?.slice(1) }),
+      );
+    }
+    await page.getByRole('button', { name: w.undo }).first().click();
+    await settle();
+    const undone = (await boxes())[0];
+    check(`[${tag}] Undo takes Center back in one step`, Math.abs(undone.left - beforeCenter.left) < 0.2 && Math.abs(undone.top - beforeCenter.top) < 0.2, JSON.stringify({ beforeCenter, undone }));
+
     // L. Setup → Page → Reset to default.
     await page.getByRole('button', { name: w.setup }).first().click();
     const resetDialog = page.getByRole('dialog');
@@ -459,6 +504,11 @@ try {
     const reset = resetDialog.getByTestId('watermark-reset');
     await reset.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${OUT}/${tag}-setup-reset.png` });
+    const setupCenter = resetDialog.getByTestId('watermark-center');
+    check(`[${tag}] Setup offers Center while it is off the middle`, (await setupCenter.count()) === 1);
+    await setupCenter.click();
+    await page.waitForTimeout(300);
+    check(`[${tag}] … and hides it once it is centred (Reset to default stays: the size is custom)`, (await resetDialog.getByTestId('watermark-center').count()) === 0 && (await resetDialog.getByTestId('watermark-reset').count()) === 1);
     await reset.click();
     await page.waitForTimeout(300);
     check(`[${tag}] … Reset to default is offered once it was moved, and hides once used`, (await resetDialog.getByTestId('watermark-reset').count()) === 0);

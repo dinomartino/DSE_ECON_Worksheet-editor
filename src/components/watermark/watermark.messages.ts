@@ -35,6 +35,11 @@ export const WATERMARK_MESSAGES = defineMessages({
     en: 'Put it back in the middle of the page, at the default size',
     zh: '放回頁面中央，並回復預設大小',
   },
+  centerPlacement: { en: 'Center', zh: '置中' },
+  centerPlacementTitle: {
+    en: 'Put it in the middle of the page, keeping its size',
+    zh: '放到頁面正中央，保持原來大小',
+  },
   placementHint: {
     en: 'To move it or change its size on the page, use Move or resize above a page.',
     zh: '如要在頁面上移動浮水印或調整大小，請按頁面上方的「移動或調整大小」。',

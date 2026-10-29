@@ -10,6 +10,8 @@ import {
   watermarkOpacity,
   watermarkSize,
   hasCustomPlacement,
+  isOffCenter,
+  withCenteredPlacement,
   withDefaultPlacement,
   withPaperWatermark,
   withWatermarkPicture,
@@ -115,6 +117,17 @@ export function WatermarkField() {
           />
           <div className="flex items-center gap-3 pl-[76px] text-[11px] text-ink-muted">
             <span>{m.placementHint}</span>
+            {isOffCenter(mark) && (
+              <button
+                type="button"
+                data-testid="watermark-center"
+                title={m.centerPlacementTitle}
+                onClick={() => set(withCenteredPlacement(mark))}
+                className="shrink-0 cursor-pointer font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                {m.centerPlacement}
+              </button>
+            )}
             {hasCustomPlacement(mark) && (
               <button
                 type="button"

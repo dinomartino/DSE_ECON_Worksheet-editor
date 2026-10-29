@@ -59,6 +59,7 @@ export function SheetWatermarkToggle({
   onToggle,
   adjusting = false,
   onAdjust,
+  onCenter,
 }: {
   on: boolean;
   cover?: boolean;
@@ -67,6 +68,8 @@ export function SheetWatermarkToggle({
   adjusting?: boolean;
   /** Start (true) or finish (false) moving and resizing; absent, no button. */
   onAdjust?: (adjusting: boolean) => void;
+  /** While adjusting: centre the watermark on the page, keeping its size; absent, no button. */
+  onCenter?: () => void;
 }) {
   const m = useMessages(WATERMARK_PAGE_MESSAGES);
   const label = disabled ? m.follows : cover ? (on ? m.coverOff : m.coverOn) : on ? m.turnOff : m.turnOn;
@@ -74,6 +77,20 @@ export function SheetWatermarkToggle({
     "flex h-[18px] cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[10.5px] leading-none font-medium transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-60";
   return (
     <span data-print-hide className="absolute bottom-full right-0 z-10 mb-[3px] flex items-center gap-1">
+      {adjusting && onCenter && on && (
+        <button
+          type="button"
+          data-watermark-center
+          title={m.centerTitle}
+          onClick={(event) => {
+            event.stopPropagation();
+            onCenter();
+          }}
+          className={`${chip} border-line bg-surface-raised text-ink-muted hover:text-ink`}
+        >
+          {m.center}
+        </button>
+      )}
       {onAdjust && on && (
         <button
           type="button"
