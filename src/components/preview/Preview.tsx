@@ -1181,6 +1181,16 @@ function TextNodeView({
         ? trailLabel(node.trail, language)
         : "";
   const trailingBreakFiller = !trailText && trailingBlankLines(tailRuns) > 0;
+  /*
+   * A text that prints nothing in this language still prints a paragraph in Word — the
+   * "1." or "A." line of a 中文-only stem in an English copy — and the marker is drawn
+   * out of flow, so without a filler the paragraph collapsed to nothing here. Editing, the
+   * field's "Add English" prompt holds that line; a measuring copy (the `.docx` breaks,
+   * the anonymised copy's preview) or a field-less paragraph has no prompt, and measured a
+   * line short of both the editor and the export (k-0263). A zero-width space, as an empty
+   * table cell has: it holds the line and prints nothing.
+   */
+  const emptyLineFiller = !trailText && !(ctx && node.edit) && printsNothing(node.text, language);
 
   return (
     <p
@@ -1277,6 +1287,7 @@ function TextNodeView({
             node.edit?.kind === "sourceLabel" || node.edit?.kind === "sourceFootnote",
             QUIET_PROMPT_STYLES.has(node.style),
           )}
+      {emptyLineFiller && <span aria-hidden>{"\u200B"}</span>}
       {trailingBreakFiller && <br aria-hidden />}
       {trailText && (
         <MarksTrail

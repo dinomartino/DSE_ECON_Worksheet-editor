@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
  *   1. open the original in the editor (Teacher copy) and measure its sheets: which
  *      question starts where, on which sheet;
  *   2. Send feedback → Attach an anonymised copy: measure the preview's sheets the same way
- *      (a document with empty sides in the shown language only gets a note: `hasEmptySides`);
+ *      (a text empty in the shown language included: its line is held on both, k-0263);
  *   3. Save this copy (the download), reopen that file in the editor, measure it again;
  *   4. export both as `.docx` through the Export dialog and compare `word/document.xml`
  *      with every text replaced by its length: the same paragraphs, runs, lengths and page
@@ -198,30 +198,6 @@ function leaks(original, saved) {
   return [...[...words].filter((word) => copied.includes(word)), ...images.filter((bytes) => saved.includes(bytes))];
 }
 
-/**
- * A text the shown language leaves empty while the other side has words. The editor draws
- * an "Add English" prompt there, which takes lines; the measure-only page (the preview, and
- * the measurement the `.docx` breaks its pages by) draws nothing. Such a document's preview
- * is compared with the saved file's, not with the editor.
- */
-function hasEmptySides(document, language) {
-  if (language === 'bilingual') return false;
-  const other = language === 'en' ? 'zh' : 'en';
-  const text = (runs) => (Array.isArray(runs) ? runs.map((run) => run?.text ?? '').join('') : '');
-  let found = false;
-  const walk = (value) => {
-    if (found || !value || typeof value !== 'object') return;
-    if (Array.isArray(value)) return value.forEach(walk);
-    if (Array.isArray(value.en) && Array.isArray(value.zh) && !text(value[language]).trim() && text(value[other]).trim()) {
-      found = true;
-      return;
-    }
-    Object.values(value).forEach(walk);
-  };
-  walk(document.questions);
-  return found;
-}
-
 const browser = await chromium.launch({ channel: 'chrome' });
 const rows = [];
 let failed = false;
@@ -259,12 +235,9 @@ try {
         await copy.context.close();
 
         const notes = [];
-        if (hasEmptySides(JSON.parse(json), language)) {
-          const differs = compare(before, preview).length > 0;
-          if (differs) notes.push('empty sides: the editor draws prompts the measured page (preview, .docx) does not');
-        } else {
-          problems.push(...compare(before, preview).map((p) => `preview: ${p}`));
-        }
+        // A text empty in the shown language holds its line on the measured page too (k-0263),
+        // so every document's preview must match the editor, empty sides or not.
+        problems.push(...compare(before, preview).map((p) => `preview: ${p}`));
         problems.push(...compare(before, after).map((p) => `saved: ${p}`));
         if (originalDocx.breaks !== copyDocx.breaks) problems.push(`docx page breaks ${originalDocx.breaks} vs ${copyDocx.breaks}`);
         if (originalDocx.shape !== copyDocx.shape) {

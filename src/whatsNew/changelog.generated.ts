@@ -40,6 +40,13 @@ a version heading is edited afterwards.
   lost or turned into Latin letters.
   <!-- zh: **用輸入法輸入中文時，不會再跳到下一欄。** 使用拼音、倉頡或注音時，按 Enter 確認所選的字，現在只會確認該字：不會再開新段落、跳到下一個選項、開新的評分要點或關閉輸入框；在瀏覽器及 Mac 桌面版都是如此。按 Esc 關閉候選字列表時，不會再關閉輸入框（或對話框）；按 Enter 後立即輸入的字，亦不會再遺失或變成英文字母。 -->
 
+- **The Word file breaks its pages where the editor does, even with text missing in one
+  language.** In an English copy of a paper where a question or option has only 中文 (or the
+  other way round), Word still prints its number or letter on a line of its own, as the editor
+  shows it; the page breaks in the Word file, and in the anonymised copy you attach to feedback,
+  now count that line too, so a question no longer lands on a different page in Word.
+  <!-- zh: **即使某題只有一種語言，Word 檔的分頁亦與編輯器一致。** 在英文版試卷中，如果某題或某選項只有中文（或相反），Word 仍會為其題號或字母印出一行，與編輯器所顯示的相同；Word 檔以及附在意見回饋中的匿名副本，現在分頁時亦計算這一行，題目在 Word 中不會再落在另一頁。 -->
+
 ## 0.8.6 — 2026-10-26
 
 ### Added
