@@ -437,74 +437,6 @@ export async function pickFiles(
   return Promise.all(paths.map(async (path) => ({ name: await basename(path), path, read: () => readFile(path) })));
 }
 
-/** A native file drag over the window, as the start screen needs it (positions dropped). */
-export type FileDragEvent =
-  | { type: 'enter'; paths: string[] }
-  | { type: 'over' }
-  | { type: 'drop'; paths: string[] }
-  | { type: 'leave' };
-
-/**
- * Listen for the shell's native file-drag events (Finder/Explorer onto the window). Returns
- * the unlisten, which never rejects (`unlistenSafely`).
- *
- * **Silent since the window's `dragDropEnabled` went off** (k-0182, `tauri.conf.json`): the
- * shell then emits no `DragDrop` events, and a dropped file reaches the page as an
- * ordinary HTML5 `drop`, which the start screen, the feedback dialog and the import review
- * all handle themselves. Nothing calls this any more (the feedback dialog stopped in k-0180);
- * remove it with `subscribeToFileDrops`. A no-op on the web. These are `onDragDropEvent`'s four events, heard one
- * by one: its unlisten drops their promises.
- */
-export async function listenForFileDrops(
-  handler: (event: FileDragEvent) => void,
-): Promise<() => void> {
-  if (!isDesktop()) return () => undefined;
-  const { getCurrentWebview } = await import('@tauri-apps/api/webview');
-  const webview = getCurrentWebview();
-  const on = (event: string, toDrag: (paths: string[]) => FileDragEvent) =>
-    webview.listen<{ paths?: string[] } | null>(event, ({ payload }) =>
-      handler(toDrag(payload?.paths ?? [])),
-    );
-  const listening = await Promise.allSettled([
-    on('tauri://drag-enter', (paths) => ({ type: 'enter', paths })),
-    on('tauri://drag-over', () => ({ type: 'over' })),
-    on('tauri://drag-drop', (paths) => ({ type: 'drop', paths })),
-    on('tauri://drag-leave', () => ({ type: 'leave' })),
-  ]);
-  const unlistens = listening.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
-  const stop = () => unlistens.forEach((unlisten) => unlistenSafely(unlisten));
-  const failed = listening.find((r) => r.status === 'rejected');
-  if (failed) {
-    stop();
-    throw failed.reason;
-  }
-  return stop;
-}
-
-/**
- * `listenForFileDrops` for a React effect: a synchronous cleanup that also stops a listen
- * still in flight (StrictMode unmounts before it resolves) — once, and the handler goes
- * quiet the moment it runs.
- */
-export function subscribeToFileDrops(handler: (event: FileDragEvent) => void): () => void {
-  let stopped = false;
-  let stop: (() => void) | undefined;
-  void listenForFileDrops((event) => {
-    if (!stopped) handler(event);
-  }).then(
-    (unlisten) => {
-      if (stopped) unlisten();
-      else stop = unlisten;
-    },
-    () => undefined,
-  );
-  return () => {
-    if (stopped) return;
-    stopped = true;
-    stop?.();
-  };
-}
-
 const UNLISTEN_RETRY_MS = [10, 20, 40, 80, 160];
 
 /**
@@ -522,22 +454,6 @@ export function unlistenSafely(unlisten: () => unknown, attempt = 0): void {
   } catch {
     retry();
   }
-}
-
-/** Larger than any worksheet or backup; a drop past it is refused unread. */
-export const DROPPED_FILE_MAX_BYTES = 20 * 1024 * 1024;
-
-/**
- * Read a file the teacher dropped on the window (desktop). Throws when it is not a
- * file, is over `DROPPED_FILE_MAX_BYTES`, or cannot be read.
- */
-export async function readDroppedFile(path: string): Promise<Uint8Array> {
-  if (!isDesktop()) throw new Error('Dropped paths exist only in the desktop app.');
-  const { readFile, stat } = await import('@tauri-apps/plugin-fs');
-  const info = await stat(path);
-  if (!info.isFile) throw new Error('not a file');
-  if (info.size > DROPPED_FILE_MAX_BYTES) throw new Error('too large to be a worksheet');
-  return readFile(path);
 }
 
 /**

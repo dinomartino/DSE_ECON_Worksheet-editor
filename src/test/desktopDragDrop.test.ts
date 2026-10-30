@@ -49,14 +49,12 @@ function sourceFiles(dir: string): string[] {
 }
 
 describe('file drops in the page', () => {
-  // The helpers themselves live in `platform/` (no callers left: removable). The feedback
-  // dialog takes its screenshot from its own `drop` handler, like the start screen.
-  const MAY_LISTEN = [/^platform\//];
-
+  // The native helpers (`listenForFileDrops` and co.) were removed in k-0263; nothing may
+  // bring them back. The feedback dialog takes its screenshot from its own `drop` handler,
+  // like the start screen.
   it('are taken from the HTML5 drop event, never from the shell’s native drag events', () => {
     const offenders = sourceFiles(SRC)
       .map((file) => relative(SRC, file).split(sep).join('/'))
-      .filter((file) => !MAY_LISTEN.some((pattern) => pattern.test(file)))
       .filter((file) => /\b(subscribeToFileDrops|listenForFileDrops)\b|tauri:\/\/drag-/.test(readFileSync(join(SRC, file), 'utf8')));
     expect(offenders).toEqual([]);
   });
