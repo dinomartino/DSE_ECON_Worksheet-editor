@@ -57,6 +57,7 @@ import { WatermarkField } from '@/components/watermark/WatermarkField';
 import { OptionLayoutField } from './OptionLayoutField';
 import type { Messages as MessagesOf } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * Everything decided once per document, in one dialog.
@@ -414,6 +415,7 @@ function BankField() {
               placeholder={stored.length === 0 ? m.classesExample : m.addClass}
               onChange={(event) => commit(event.target.value, false)}
               onKeyDown={(event) => {
+                if (isImeKeydown(event.nativeEvent)) return;
                 if (event.key === 'Enter') {
                   event.preventDefault();
                   commit(draft, true);

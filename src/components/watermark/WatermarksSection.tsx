@@ -14,6 +14,7 @@ import {
 import { useWatermarkLibrary, type AddResult } from './useWatermarkLibrary';
 import { WatermarkThumb } from './WatermarkThumb';
 import { WATERMARK_MESSAGES } from './watermark.messages';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * Settings → Watermarks (k-0242): the saved list. Add a picture (PNG, JPG, SVG) or a line of
@@ -140,6 +141,7 @@ function LibraryCard({
           onChange={(event) => setName(event.target.value)}
           onBlur={commit}
           onKeyDown={(event) => {
+            if (isImeKeydown(event.nativeEvent)) return;
             if (event.key === 'Enter') (event.target as HTMLInputElement).blur();
             if (event.key === 'Escape') setName(entry.name);
           }}

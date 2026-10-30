@@ -29,6 +29,15 @@ a version heading is edited afterwards.
   list never changes a paper you have made.
   <!-- zh: **一按即可在試卷背後加上學校浮水印。** 在「設定 → 浮水印」儲存一次學校標誌（PNG、JPG 或 SVG）或一行文字（例如「樣本」）；可儲存多個並分別命名，例如你任教的每間學校各一個。在任何試卷上，按頂部工具列的「浮水印」按鈕，便會把你上次使用的浮水印以淡色放在每頁背後；旁邊的箭咀可選擇另一個。每頁角落上方有一個小開關，可在該頁關閉浮水印（或只在該頁開啟），封面亦有自己的開關。按頁面上方的「移動或調整大小」，即可把浮水印拖到頁面任何位置，或拖曳角落放大縮小（滑鼠、觸控板或手指皆可）；所有頁面都會跟隨，「置中」（在頁面上方「完成」旁，及「頁面設定」的「頁面」中）可把它放到頁面正中央並保持你設定的大小；「重設為預設」則同時回復預設大小。深淺及大小亦在該處設定。評卷參考亦會在相同位置顯示同一浮水印，凡其題目在試卷上有浮水印的頁面都會顯示。浮水印會在屏幕、列印、PDF 及 Word 檔中顯示。每份試卷保留自己的副本，所以在另一部電腦上列印效果相同，而更改已儲存的清單亦不會改變你已完成的試卷。 -->
 
+### Fixed
+- **Typing Chinese with an input method no longer jumps to the next field.** With Pinyin, Cangjie
+  or Zhuyin, the Enter that confirms the characters you picked now only confirms them: it no
+  longer starts a new paragraph, moves to the next option, starts a new mark point or closes the
+  box, in the browser and in the desktop app on a Mac. Escape that closes the candidate list no
+  longer closes the box (or a dialog), and characters typed straight after Enter are no longer
+  lost or turned into Latin letters.
+  <!-- zh: **用輸入法輸入中文時，不會再跳到下一欄。** 使用拼音、倉頡或注音時，按 Enter 確認所選的字，現在只會確認該字：不會再開新段落、跳到下一個選項、開新的評分要點或關閉輸入框；在瀏覽器及 Mac 桌面版都是如此。按 Esc 關閉候選字列表時，不會再關閉輸入框（或對話框）；按 Enter 後立即輸入的字，亦不會再遺失或變成英文字母。 -->
+
 ## 0.8.6 — 2026-10-26
 
 ### Added

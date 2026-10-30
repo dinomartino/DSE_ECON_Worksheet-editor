@@ -10,16 +10,21 @@
  *
  * Only printable characters and Backspace over what is held; a key with ⌘ or Ctrl goes on
  * as usual. The hold lets go by itself after `HOLD_MS`, so a field that never opens cannot
- * swallow the keyboard.
+ * swallow the keyboard. A key an input method owns (`ui/ime.ts`: a Chinese IME composing, or
+ * the Enter that confirms its candidate) is never held: holding it would cancel the
+ * composition and keep its Latin letters instead of the characters (k-0263).
  */
+import { isImeKeydown } from '@/components/ui/ime';
 
 const HOLD_MS = 1500;
 
 let held: { text: string; release: () => void } | undefined;
 
 /** A key that types a character, as opposed to a shortcut or a navigation key. */
-export function typesCharacter(event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'isComposing'>): boolean {
-  return event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.isComposing;
+export function typesCharacter(
+  event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'isComposing'> & { keyCode?: number },
+): boolean {
+  return event.key.length === 1 && !event.ctrlKey && !event.metaKey && !isImeKeydown(event);
 }
 
 /** Start holding typed characters for the field about to open; `first` is the key that opened it. */
@@ -27,7 +32,7 @@ export function holdKeystrokes(first = ''): void {
   held?.release();
   if (typeof window === 'undefined') return;
   const onKey = (event: KeyboardEvent) => {
-    if (!held) return;
+    if (!held || isImeKeydown(event)) return;
     if (typesCharacter(event)) {
       held.text += event.key;
     } else if (event.key === 'Backspace' && held.text.length > 0) {

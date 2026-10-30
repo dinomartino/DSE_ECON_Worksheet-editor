@@ -16,6 +16,7 @@ import { reasonText } from '@/sync/syncNotices';
 import { useSyncView, type AttentionItem, type SyncView } from '@/sync/syncView';
 import { STORAGE_MESSAGES } from './messages';
 import { refusalText } from './refusal';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * Settings → Storage location 儲存位置 (desktop only; `library-folder.md` § 1). No folder: what
@@ -70,6 +71,7 @@ function ComputerName({ m }: { m: M }) {
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
+          if (isImeKeydown(event.nativeEvent)) return;
           if (event.key === 'Enter') commit();
         }}
         className={INPUT}

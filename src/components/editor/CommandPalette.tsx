@@ -12,6 +12,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { COMMAND_PALETTE_MESSAGES } from './CommandPalette.messages';
 import { buildCommands, type Command } from './commands';
 import { searchCommands } from './commandSearch';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * ⌘K / Ctrl+K, and the 🔍 in the top bar for a touch screen (k-0201): one box that finds every
@@ -121,7 +122,7 @@ function PaletteBox({ onClose }: { onClose: () => void }) {
               setActive(0);
             }}
             onKeyDown={(event) => {
-              if (event.nativeEvent.isComposing) return;
+              if (isImeKeydown(event.nativeEvent)) return;
               if (event.key === 'ArrowDown') {
                 event.preventDefault();
                 setActive((current + 1) % Math.max(1, results.length));

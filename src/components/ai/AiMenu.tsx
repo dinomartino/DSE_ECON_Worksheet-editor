@@ -18,6 +18,7 @@ import { countLabel, highlighted, menuGroups, stepFor, stepHighlight, type MenuG
 import { AI_UI_MESSAGES } from './messages';
 import { ProviderFooter } from './ProviderFooter';
 import { SetupCard } from './SetupCard';
+import { isImeKeydown } from '@/components/ui/ime';
 
 export const AI_MENU_WIDTH = 360;
 /** Opened by ⌘J (no anchor): centred, just under the toolbar. */
@@ -146,6 +147,7 @@ export function AiMenuPopover({ open }: { open: AiMenuOpen }) {
               setActive(undefined);
             }}
             onKeyDown={(event) => {
+              if (isImeKeydown(event.nativeEvent)) return;
               if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
                 setActive(stepHighlight(groups, current, event.key === 'ArrowDown' ? 1 : -1));

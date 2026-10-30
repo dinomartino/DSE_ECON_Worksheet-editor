@@ -10,6 +10,7 @@ import { topicDisplay, topicNamesFor } from '@/model/topics';
 import { useViewLanguage } from '@/settings/paperLanguage';
 import { PATTERN_PICKER_MESSAGES } from './messages';
 import { patternOptions, stepActive, type PatternOption } from './patternOptions';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * One sub-topic's 題型 (Pattern) for a question: the chosen name, or "+ Add 題型". Opening
@@ -151,6 +152,7 @@ export function PatternPicker({
           setMoved(undefined);
         }}
         onKeyDown={(event) => {
+          if (isImeKeydown(event.nativeEvent)) return;
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
             event.stopPropagation();

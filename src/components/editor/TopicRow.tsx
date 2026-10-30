@@ -15,6 +15,7 @@ import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
 import { TOPIC_ROW_MESSAGES } from './TopicRow.messages';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /** Does the topic match a typed query — by code, English or 中文? */
 function matches(topic: Topic, query: string): boolean {
@@ -162,6 +163,7 @@ export function TopicPicker({
           setRefused(false);
         }}
         onKeyDown={(event) => {
+          if (isImeKeydown(event.nativeEvent)) return;
           if (event.key === 'Enter') {
             event.preventDefault();
             enter();

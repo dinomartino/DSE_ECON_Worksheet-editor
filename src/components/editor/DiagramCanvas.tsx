@@ -81,6 +81,7 @@ import {
   spanOptions,
   type SpanAlong,
 } from './DiagramRelationControls';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * The drawing surface: an overlay on the same live SVG the exporter uses (no second
@@ -1808,6 +1809,7 @@ function TextEditor({
         // focus it owns the keyboard, and Escape must abandon the edit rather than reach
         // past it to clear the selection or close the whole canvas.
         event.stopPropagation();
+        if (isImeKeydown(event.nativeEvent)) return;
         if (event.key === 'Enter') {
           event.preventDefault();
           commit();

@@ -8,7 +8,7 @@ import { holdingKeystrokes, holdKeystrokes, takeHeldKeystrokes, typesCharacter }
  * In Chrome: `scripts/word-typing-verify.mjs` types at full speed across Enter.
  */
 
-type Key = { key: string; ctrlKey?: boolean; metaKey?: boolean; isComposing?: boolean };
+type Key = { key: string; ctrlKey?: boolean; metaKey?: boolean; isComposing?: boolean; keyCode?: number };
 
 /** A window stand-in: the node test environment has none. */
 let target: EventTarget;
@@ -84,5 +84,27 @@ describe('held keystrokes', () => {
     expect(typesCharacter({ key: 'Enter', ctrlKey: false, metaKey: false, isComposing: false })).toBe(false);
     expect(typesCharacter({ key: 'a', ctrlKey: false, metaKey: true, isComposing: false })).toBe(false);
     expect(typesCharacter({ key: 'a', ctrlKey: false, metaKey: false, isComposing: true })).toBe(false);
+  });
+});
+
+describe('held keystrokes and a Chinese IME (k-0263)', () => {
+  it('never holds a key the IME owns, so the composition keeps its characters', () => {
+    holdKeystrokes();
+    press({ key: 'a' });
+    // Chrome while composing, WebKit's 229 with isComposing false, Chrome's "Process" key.
+    for (const init of [
+      { key: 'n', isComposing: true, keyCode: 229 },
+      { key: 'i', keyCode: 229 },
+      { key: 'Process', keyCode: 229 },
+      { key: 'Enter', keyCode: 229 },
+      { key: 'Backspace', isComposing: true, keyCode: 229 },
+    ]) {
+      expect(press(init).defaultPrevented).toBe(false);
+    }
+    expect(takeHeldKeystrokes()).toBe('a');
+  });
+
+  it('a 229 key is not a typed character', () => {
+    expect(typesCharacter({ key: 'n', ctrlKey: false, metaKey: false, isComposing: false, keyCode: 229 })).toBe(false);
   });
 });

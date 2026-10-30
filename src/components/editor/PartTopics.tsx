@@ -15,6 +15,7 @@ import { useMessages, useUiLanguage } from '@/i18n/language';
 import { PART_TOPICS_MESSAGES } from './TopicRow.messages';
 import { freeTagMessage, TopicPicker, TopicRow } from './TopicRow';
 import { partTopicLines, questionFreeTags, topicMode, topicsWithPatterns, type TopicFocus } from './partTopicView';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * The Edit panel's Topic row on a question tagged per part (§ part-tags.md F1). The page's
@@ -413,6 +414,7 @@ function FreeTagsLine({ tags, onEdit }: { tags: string[]; onEdit: (edit: StateEd
             if (!text.trim()) setTyping(false);
           }}
           onKeyDown={(event) => {
+            if (isImeKeydown(event.nativeEvent)) return;
             if (event.key === 'Enter') {
               event.preventDefault();
               add();

@@ -19,6 +19,7 @@ import { BiTextField } from './BiTextField';
 import { useMessages } from '@/i18n/language';
 import { FieldScopeContext } from './fieldScope';
 import { DIAGRAM_COMMON_MESSAGES, FLOW_CANVAS_MESSAGES } from './diagramEditing.messages';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * The flow chart's editor: direct manipulation on the chart itself.
@@ -830,6 +831,7 @@ function FlowTextEditor({
         onBlur={commit}
         onKeyDown={(event) => {
           event.stopPropagation();
+          if (isImeKeydown(event.nativeEvent)) return;
           if (event.key === 'Enter') {
             event.preventDefault();
             commit();

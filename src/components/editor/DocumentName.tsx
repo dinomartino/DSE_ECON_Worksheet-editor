@@ -5,6 +5,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { worksheetTitle } from '@/storage';
 import { useMessages } from '@/i18n/language';
 import { SIDEBAR_MESSAGES } from './shell.messages';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * What a typed name does to the stored name — the whole decision, as a pure function.
@@ -88,6 +89,7 @@ export function DocumentName() {
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
+          if (isImeKeydown(event.nativeEvent)) return;
           if (event.key === 'Enter') {
             event.preventDefault();
             commit();

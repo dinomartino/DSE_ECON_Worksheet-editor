@@ -9,6 +9,7 @@ import { useMessages } from '@/i18n/language';
 import { PREVIEW_HANDLE_MESSAGES } from './messages';
 import { readRuns, selectionOffsets } from './richTextDom';
 import { holdKeystrokes, takeHeldKeystrokes, typesCharacter } from './heldKeystrokes';
+import { isImeKeydown } from '@/components/ui/ime';
 
 /**
  * One directly-editable run of text on the page: the field takes the exact place of
@@ -468,6 +469,13 @@ export function InlineEditable({
           stopEditing();
         }}
         onKeyDown={(event) => {
+          // A key the input method owns (k-0263, `ui/ime.ts`): Enter confirming a Chinese
+          // candidate, Escape or an arrow working its list, Backspace inside the composition.
+          // The browser's alone, in Chrome's order and in WebKit's (Safari, the desktop app).
+          if (isImeKeydown(event.nativeEvent)) {
+            event.stopPropagation();
+            return;
+          }
           // Enter is Word's (k-0200): a paragraph splits at the caret and an option moves
           // to the next one (`onEnter`); a field that is one line (a heading, a marks box)
           // finishes. Shift+Enter falls through to the browser, which inserts the `<br>`
@@ -477,15 +485,12 @@ export function InlineEditable({
           // to lines (`enterBreaksLine`): Enter is Word's new line there,
           // the same hard break Shift+Enter makes — asked of the browser explicitly,
           // because a bare Enter in a contenteditable inserts a `<div>`, not a `<br>`.
-          // `nativeEvent.isComposing`: Enter confirming an IME candidate is not a break.
-          const breaks = event.key === 'Enter' && !event.nativeEvent.isComposing && (event.shiftKey || cell || enterBreaksLine);
+          const breaks = event.key === 'Enter' && (event.shiftKey || cell || enterBreaksLine);
           if (breaks) {
             const range = selectionOffsets(event.currentTarget);
             if (range && range.end >= richTextLength(readRuns(event.currentTarget))) breakAtEndRef.current = true;
           }
-          if (event.key === 'Enter' && event.nativeEvent.isComposing) {
-            // The IME's own Enter: leave it to the browser.
-          } else if (event.key === 'Enter' && (cell || enterBreaksLine)) {
+          if (event.key === 'Enter' && (cell || enterBreaksLine)) {
             event.preventDefault();
             document.execCommand('insertLineBreak');
           } else if (event.key === 'Enter' && !event.shiftKey) {
@@ -503,8 +508,7 @@ export function InlineEditable({
           if (
             (event.key === 'Backspace' || event.key === 'Delete') &&
             onJoin &&
-            !hasModifier(event) &&
-            !event.nativeEvent.isComposing
+            !hasModifier(event)
           ) {
             const direction = event.key === 'Backspace' ? 'left' : 'right';
             const join = caretAtEdge(event.currentTarget, direction)
@@ -714,6 +718,7 @@ export function InlineEditable({
         beginEditing({ x: event.clientX, y: event.clientY });
       }}
       onKeyDown={(event) => {
+        if (isImeKeydown(event.nativeEvent)) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           event.stopPropagation();

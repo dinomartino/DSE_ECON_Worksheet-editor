@@ -10,6 +10,7 @@ import { useMessages } from '@/i18n/language';
 import { UI_MESSAGES } from './messages';
 import { NoticeScopeContext, NoticeStack } from './NoticeLayer';
 import { dismissScope } from '@/store/notices';
+import { isImeKeydown } from './ime';
 
 /**
  * A centred modal dialog.
@@ -87,7 +88,8 @@ export function Dialog({
   // that would undo a field's `autoFocus`.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      // Escape that cancels a Chinese IME candidate in one of its fields is not "close".
+      if (event.key === 'Escape' && !isImeKeydown(event)) {
         event.stopPropagation();
         onClose();
       }
