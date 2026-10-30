@@ -2650,9 +2650,19 @@ zones, and the band is entered by double-click, as Word's header is).
   render with `flushSync` so the field usually opens before the next key.
 - **Enter** (`InlineEditable.onEnter`, `Preview` `fieldEnter`): a paragraph block splits at
   the caret (`model/paragraphs.ts` `splitParagraph`: the new block takes the format; the
-  side not typed in stays with the first), an option or statement hands over to the next
-  (the last finishes), every other field finishes. Shift+Enter is a line break (`\n`)
-  everywhere; a cell's Enter is that line break. IME Enter is left alone.
+  side not typed in stays with the first), an option or statement hands over to the next,
+  every other field finishes. On the **last option** Enter starts the next one (E, F) up to
+  the paper's limit (A–D on a Paper 1, A–F elsewhere), and on an empty option it added takes
+  it back and finishes (`model/mcqOptionEnter.ts`, k-0263: never one of the first four, the
+  key, or an option with words on either side, a picture or a note); the last statement
+  finishes. Shift+Enter is a line break (`\n`) everywhere; a cell's Enter is that line break.
+- **A key an input method owns is the browser's** (k-0263, `components/ui/ime.ts:isImeKeydown`):
+  `isComposing`, keyCode 229, `Process`, an open composition, or within 40 ms of
+  `compositionend`. Chrome sends the Enter that confirms a candidate composing, before
+  `compositionend`; WebKit (Safari, the macOS app) after it, with `isComposing` false and
+  229. Such a key splits, moves, joins and finishes nothing (on the page and in the sidebar's
+  Enter-to-commit inputs), a dialog's Escape ignores it, and the held keystrokes never take
+  one (holding it cancels the composition and keeps the Latin letters).
 - **Backspace at a paragraph's start / Delete at its end** joins it to an adjacent
   paragraph block in the same list (`joinParagraph`; the other language joined with a
   line break). Each split or join is one commit, one undo step. Nothing changes a saved

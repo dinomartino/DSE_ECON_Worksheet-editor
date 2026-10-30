@@ -1,11 +1,13 @@
 import { flushSync } from "react-dom";
 import { dropEmptySchemePoint, editTargetKey, joinSchemePoint, splitSchemePoint, textOfTarget } from "@/model/edits";
 import { newId } from "@/model/factories";
+import { addOptionAfterLast, lastOptionEnter, removeEmptyLastOption } from "@/model/mcqOptionEnter";
 import { joinParagraph, splitParagraph } from "@/model/paragraphs";
 import { richTextLength } from "@/model/text";
 import type { McqQuestion } from "@/model/types";
 import type { EditTarget } from "@/render/ir";
 import { useWorksheetStore } from "@/store/worksheetStore";
+import { takeHeldKeystrokes } from "./heldKeystrokes";
 import { openFieldWhenReady } from "./InlineEditable";
 
 /**
@@ -16,7 +18,9 @@ import { openFieldWhenReady } from "./InlineEditable";
  * - a **mark point** splits into a new point after it with the same mark (§
  *   `splitMarkPoint`), and joins the same way within its group; Enter on an empty point
  *   removes it and finishes, as Enter on an empty list item ends a list in Word;
- * - an **option or statement** hands over to the next (the last finishes);
+ * - an **option or statement** hands over to the next; on the last option Enter starts the
+ *   next option up to the paper's limit, and on an empty one it added takes it back and
+ *   finishes (`model/mcqOptionEnter.ts`); the last statement finishes;
  * - a field of **one text that may run to lines** — an answer, a level or EC descriptor, an
  *   MC explanation or rationale, a `/` alternative — takes a line break (`enterBreaksLine`);
  * - anything else (a heading, a title, a marks box) finishes.
@@ -87,9 +91,27 @@ export function fieldEnter(
         : target.index + 1 < (question.statements?.length ?? 0)
           ? { kind: "mcqStatement", questionId: question.id, index: target.index + 1 }
           : undefined;
-    // The last option (or statement) finishes, as Enter always did.
-    if (!next) return undefined;
-    return () => openFieldWhenReady(editTargetKey(next), side, "end");
+    if (next) return () => openFieldWhenReady(editTargetKey(next), side, "end");
+    // The last option starts the next one (E, F…) or takes back an empty one it added, as
+    // at the end of a list in Word (k-0263, `model/mcqOptionEnter.ts`); else it finishes, as
+    // the last statement does. Read from the store: every keystroke is in it already.
+    if (target.kind !== "mcqOption") return undefined;
+    const enter = lastOptionEnter(store.worksheet, question.id, target.optionId, side);
+    if (enter === "add") {
+      return () => {
+        const id = newId();
+        flushSync(() => store.commit((draft) => addOptionAfterLast(draft, question.id, id)));
+        openFieldWhenReady(editTargetKey({ kind: "mcqOption", questionId: question.id, optionId: id }), side, "start");
+      };
+    }
+    if (enter === "remove") {
+      return () => {
+        store.commit((draft) => removeEmptyLastOption(draft, question.id, target.optionId, side));
+        // No field opens after this Enter: the keys typed next are the page's again.
+        takeHeldKeystrokes();
+      };
+    }
+    return undefined;
   }
   return undefined;
 }

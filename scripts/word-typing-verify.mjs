@@ -12,7 +12,8 @@ import { chromium } from 'playwright-core';
  *  - Enter in a question's text starts a new paragraph at the caret, and the words typed straight
  *    after Enter land in it; Backspace at its start joins it back; Delete at a paragraph's end too;
  *  - Undo takes the new paragraph back in one step and Redo returns it;
- *  - Enter in an option goes to the next option (typing straight on), Enter in the last finishes,
+ *  - Enter in an option goes to the next option (typing straight on); Enter in the last (D) starts
+ *    option E (k-0263), Enter on an empty new option takes it away and finishes, one Undo each;
  *    Esc finishes; Shift+Enter is still a line break;
  *  - a table cell still opens on one click and Enter is a new line inside it;
  *  - what was typed is still there after a reload (saved), and the edit hint says "Click any text".
@@ -174,6 +175,44 @@ try {
         [selector, word, offsetInWord],
       );
 
+    /*
+     * A Chinese IME, through Chrome's own input pipeline (DevTools `Input.imeSetComposition` /
+     * `insertText`): a real composition, so `compositionstart`/`end` and `isComposing` are
+     * Chrome's. The confirming Enter is sent in each engine's order (k-0263): Chrome's keydown
+     * arrives composing (229) before the commit; WebKit's (Safari, the macOS app) after it, with
+     * isComposing false and keyCode 229. `imeLog` records what the page saw, to prove the order.
+     */
+    const cdp = await context.newCDPSession(page);
+    await page.evaluate(() => {
+      window.__imeLog = [];
+      for (const type of ['compositionstart', 'compositionend']) window.addEventListener(type, () => window.__imeLog.push(type), true);
+      window.addEventListener('keydown', (e) => window.__imeLog.push(`keydown:${e.key}:${e.keyCode}:${e.isComposing}`), true);
+    });
+    const imeLog = () => page.evaluate(() => window.__imeLog.splice(0));
+    const rawKey = async (key, keyCode) => {
+      await cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code: key === 'Enter' ? 'Enter' : `Key${key.toUpperCase()}`, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode });
+      await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key === 'Enter' ? 'Enter' : `Key${key.toUpperCase()}`, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode });
+    };
+    const compose = (text) => cdp.send('Input.imeSetComposition', { text, selectionStart: text.length, selectionEnd: text.length });
+    /** Pinyin `typed`, confirmed as `chars` by Enter, in `order`. */
+    const imeEnter = async (order, typed, chars) => {
+      await imeLog();
+      await compose(typed);
+      if (order === 'chrome') {
+        await rawKey('Enter', 229);
+        await cdp.send('Input.insertText', { text: chars });
+      } else {
+        await cdp.send('Input.insertText', { text: chars });
+        await rawKey('Enter', 229);
+      }
+      await settle(300);
+      const log = (await imeLog()).filter((entry) => entry.startsWith('composition') || entry.startsWith('keydown:Enter'));
+      const want = order === 'chrome'
+        ? ['compositionstart', 'keydown:Enter:229:true', 'compositionend']
+        : ['compositionstart', 'compositionend', 'keydown:Enter:229:false'];
+      return same(log, want) ? undefined : log;
+    };
+
     let at;
     let editor;
     if (ONLY !== 'scheme') {
@@ -304,14 +343,47 @@ try {
       await settle(600);
       editor = await openEditor();
       check(`[${tag}] … on into the empty options C and D`, editor?.text === 'defence', JSON.stringify(editor));
+      // Enter on a last option with words starts option E, typing straight on (k-0263, like Word's
+      // list); Enter on the empty F it then makes takes F away and finishes; one Undo brings it back.
+      /** Each option's English, in order: the open editor's text, '' for an empty prompt. */
+      const optionTexts = () =>
+        page.evaluate(() =>
+          [...document.querySelectorAll('#print-root [data-page-target^="mcqOption:"]')].map((row) => {
+            const editing = row.querySelector('[contenteditable="true"]');
+            if (editing) return editing.textContent;
+            const field = row.querySelector('[data-field-side="en"]');
+            return field?.hasAttribute('data-empty-placeholder') ? '' : (field?.textContent ?? '');
+          }),
+        );
       await page.keyboard.press('Enter');
-      await settle();
-      check(`[${tag}] Enter in the last option finishes`, (await openEditor()) === undefined, JSON.stringify(await openEditor()));
-      const options = await page.evaluate(
-        (ids) => ids.map((id) => document.querySelector(`#print-root [data-field-key="mcqOption:${id}"][data-field-side="en"]`)?.textContent),
-        OPTION_IDS,
+      await page.keyboard.type('water', { delay: 0 });
+      await settle(600);
+      editor = await openEditor();
+      check(
+        `[${tag}] Enter in the last option (D) starts option E, and the letters typed straight after land there`,
+        editor?.text === 'water' && same(await optionTexts(), ['street lighting', 'bus rides only', 'parks', 'defence', 'water']),
+        `${JSON.stringify(editor)} ${JSON.stringify(await optionTexts())}`,
       );
-      check(`[${tag}] the four options hold what was typed`, same(options, ['street lighting', 'bus rides only', 'parks', 'defence']), JSON.stringify(options));
+      const letterE = await page.evaluate(() => /(^|\s)E[.)]?\s/.test(document.querySelector('#print-root').innerText));
+      check(`[${tag}] … and it prints as E`, letterE, '');
+      await page.keyboard.press('Enter');
+      await settle(400);
+      const withF = await optionTexts();
+      await page.keyboard.press('Enter');
+      await settle(400);
+      check(
+        `[${tag}] Enter on the empty new option F takes it away and finishes`,
+        withF.length === 6 && (await openEditor()) === undefined && (await optionTexts()).length === 5,
+        `${JSON.stringify(withF)} ${JSON.stringify(await optionTexts())} ${JSON.stringify(await openEditor())}`,
+      );
+      await page.getByRole('button', { name: w.undo }).first().click();
+      await settle();
+      check(`[${tag}] … one Undo brings the empty F back`, (await optionTexts()).length === 6, JSON.stringify(await optionTexts()));
+      await page.getByRole('button', { name: w.redo }).first().click();
+      await settle();
+      const options = await optionTexts();
+      check(`[${tag}] the five options hold what was typed`, same(options, ['street lighting', 'bus rides only', 'parks', 'defence', 'water']), JSON.stringify(options));
+      await page.screenshot({ path: `${OUT}/${tag}-option-e.png` });
 
       // Esc finishes.
       at = await pointIn(option(0), 'street', 2);
@@ -319,6 +391,86 @@ try {
       await page.keyboard.press('Escape');
       await settle();
       check(`[${tag}] Esc finishes`, (await openEditor()) === undefined, JSON.stringify(await openEditor()));
+
+      // I. A Chinese IME (k-0263): the Enter that confirms a candidate only confirms it, in
+      // Chrome's order and in WebKit's; a real Enter straight after still works.
+      const stemBefore = await stemTexts();
+      at = await pointIn(stem, 'rice', 3);
+      await page.mouse.click(at.x + 4, at.y);
+      await page.keyboard.press('End');
+      for (const [order, typed, chars] of [['chrome', 'zhong', '中'], ['webkit', 'guo', '國']]) {
+        const wrongOrder = await imeEnter(order, typed, chars);
+        check(`[${tag}] IME (${order} order): the events arrive as that engine sends them`, !wrongOrder, JSON.stringify(wrongOrder));
+        editor = await openEditor();
+        check(
+          `[${tag}] … Enter confirming 「${chars}」 in question text does not split the paragraph, and the field stays open`,
+          (await stemTexts()).length === stemBefore.length && editor?.text.includes(chars),
+          `${JSON.stringify(await stemTexts())} ${JSON.stringify(editor)}`,
+        );
+      }
+      await page.keyboard.press('Escape');
+      await settle();
+      check(`[${tag}] … the paragraph keeps both characters once finished`, (await stemTexts()).some((t) => t.includes('中國')), JSON.stringify(await stemTexts()));
+
+      // Options: confirming in A stays in A; in the last (E) adds no F; a real Enter then moves on.
+      at = await pointIn(option(0), 'lighting', 7);
+      await page.mouse.click(at.x + 3, at.y);
+      await page.keyboard.press('End');
+      for (const [order, typed, chars] of [['chrome', 'deng', '燈'], ['webkit', 'guang', '光']]) {
+        await imeEnter(order, typed, chars);
+        editor = await openEditor();
+        check(`[${tag}] IME (${order}) in option A: Enter confirming 「${chars}」 stays in A`, editor?.text === `street lighting${order === 'chrome' ? '燈' : '燈光'}`, JSON.stringify(editor));
+      }
+      await page.keyboard.press('Enter');
+      await settle(600);
+      editor = await openEditor();
+      check(`[${tag}] … and a real Enter straight after moves to B`, editor?.text === 'bus rides only', JSON.stringify(editor));
+      await page.keyboard.press('Escape');
+      await settle();
+      const fiveOptions = (await optionTexts()).length;
+      at = await pointIn(option(0), 'street', 2);
+      const lastOption = await page.evaluate(() => [...document.querySelectorAll('#print-root [data-page-target^="mcqOption:"]')].at(-1).getAttribute('data-page-target'));
+      at = await pointIn(fieldSelector(lastOption), 'water', 4);
+      await page.mouse.click(at.x + 3, at.y);
+      await page.keyboard.press('End');
+      for (const [order, typed, chars] of [['chrome', 'shui', '水'], ['webkit', 'shui', '水']]) {
+        await imeEnter(order, typed, chars);
+        check(
+          `[${tag}] IME (${order}) in the last option: Enter confirming 「${chars}」 adds no option and stays open`,
+          (await optionTexts()).length === fiveOptions && (await openEditor())?.text.startsWith('water水'),
+          `${JSON.stringify(await optionTexts())} ${JSON.stringify(await openEditor())}`,
+        );
+      }
+      // Escape that closes the candidate list (Chrome sends it composing) does not finish.
+      await compose('he');
+      await cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 229 });
+      await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+      await compose('');
+      await settle();
+      check(`[${tag}] IME: Escape closing the candidate list leaves the field open`, (await openEditor()) !== undefined, JSON.stringify(await openEditor()));
+      await page.keyboard.press('Escape');
+      await settle();
+
+      // Held keystrokes take no IME key: a composing key (WebKit's 229) right after a real Enter is
+      // not turned into a Latin letter in the next option, and the characters composed there arrive.
+      at = await pointIn(option(0), 'street', 2);
+      await page.mouse.click(at.x, at.y);
+      // Enter, and in the same instant WebKit's first composing key (keyCode 229, isComposing
+      // false), before B's field has opened: the hold is listening, and must let it be.
+      await page.evaluate(() => {
+        document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true, cancelable: true }));
+        (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'n', code: 'KeyN', keyCode: 229, bubbles: true, cancelable: true }));
+      });
+      await settle(600);
+      await page.keyboard.press('End');
+      await compose('ni');
+      await cdp.send('Input.insertText', { text: '你' });
+      await settle(300);
+      editor = await openEditor();
+      check(`[${tag}] IME after Enter: no Latin letter is held, and the composed 「你」 lands in B`, editor?.text === 'bus rides only你', JSON.stringify(editor));
+      await page.keyboard.press('Escape');
+      await settle();
+      await page.screenshot({ path: `${OUT}/${tag}-ime.png` });
 
       // H. A table cell is as it was: one click types, Enter a new line inside it.
       const cell = await page.evaluate(() => {
@@ -504,6 +656,24 @@ try {
     await settle();
     await page.getByText(w.classic, { exact: true }).first().click();
     await settle(1000);
+
+    // A Chinese IME in a mark point (k-0263): confirming a candidate does not split the point.
+    if (ONLY !== 'main') {
+      const pointsBefore = await pointTexts();
+      at = await pointIn(point('wt-p1'), 'rises', 2);
+      await page.mouse.click(at.x, at.y);
+      await page.keyboard.press('End');
+      for (const [order, typed, chars] of [['chrome', 'zeng', '增'], ['webkit', 'jia', '加']]) {
+        await imeEnter(order, typed, chars);
+        check(
+          `[${tag}] IME (${order}) in a mark point: Enter confirming 「${chars}」 starts no new point`,
+          (await pointTexts()).length === pointsBefore.length && (await openEditor())?.text.includes(chars),
+          `${JSON.stringify(await pointTexts())} ${JSON.stringify(await openEditor())}`,
+        );
+      }
+      await page.keyboard.press('Escape');
+      await settle();
+    }
 
     // The bilingual key, for the eye: each English line with its Chinese, the new point in English.
     await page.getByText('EN+中', { exact: true }).first().click();

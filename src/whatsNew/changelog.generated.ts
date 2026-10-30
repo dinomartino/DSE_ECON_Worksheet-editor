@@ -31,6 +31,12 @@ a version heading is edited afterwards.
   list never changes a paper you have made.
   <!-- zh: **一按即可在試卷背後加上學校浮水印。** 在「設定 → 浮水印」儲存一次學校標誌（PNG、JPG 或 SVG）或一行文字（例如「樣本」）；可儲存多個並分別命名，例如你任教的每間學校各一個。在任何試卷上，按頂部工具列的「浮水印」按鈕，便會把你上次使用的浮水印以淡色放在每頁背後；旁邊的箭咀可選擇另一個。每頁角落上方有一個小開關，可在該頁關閉浮水印（或只在該頁開啟），封面亦有自己的開關。按頁面上方的「移動或調整大小」，即可把浮水印拖到頁面任何位置，或拖曳角落放大縮小（滑鼠、觸控板或手指皆可）；所有頁面都會跟隨，「置中」（在頁面上方「完成」旁，及「頁面設定」的「頁面」中）可把它放到頁面正中央並保持你設定的大小；「重設為預設」則同時回復預設大小。深淺及大小亦在該處設定。評卷參考亦會在相同位置顯示同一浮水印，凡其題目在試卷上有浮水印的頁面都會顯示。浮水印會在屏幕、列印、PDF 及 Word 檔中顯示。每份試卷保留自己的副本，所以在另一部電腦上列印效果相同，而更改已儲存的清單亦不會改變你已完成的試卷。 -->
 
+- **Press Enter on the last option to add another, as in Word.** Typing in option D and pressing
+  Enter now starts option E (then F), ready to type; pressing Enter on the new empty option takes
+  it away again and finishes. One Undo takes either back. The answer you ticked stays where it
+  is. On a Paper 1 the options stay A to D, as in the DSE, so Enter on D still finishes there.
+  <!-- zh: **在最後一個選項按 Enter 即可再加一個選項，與 Word 相同。** 在選項 D 輸入後按 Enter，現在會開始選項 E（之後是 F），可直接輸入；在新增的空白選項上再按 Enter，便會把它移除並完成輸入。按一次「復原」即可取消任何一項。已選的答案保持不變。在 Paper 1 中，選項維持 A 至 D，與 DSE 相同，所以在 D 按 Enter 仍然是完成輸入。 -->
+
 ### Fixed
 - **Typing Chinese with an input method no longer jumps to the next field.** With Pinyin, Cangjie
   or Zhuyin, the Enter that confirms the characters you picked now only confirms them: it no
