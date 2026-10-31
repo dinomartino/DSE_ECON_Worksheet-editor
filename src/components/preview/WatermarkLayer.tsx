@@ -101,7 +101,7 @@ export function SheetWatermarkToggle({
             onAdjust(!adjusting);
           }}
           className={`${chip} ${
-            adjusting ? "border-accent bg-accent text-white" : "border-line bg-surface-raised text-ink-muted hover:text-ink"
+            adjusting ? "border-accent bg-accent text-on-accent" : "border-line bg-surface-raised text-ink-muted hover:text-ink"
           }`}
         >
           {adjusting ? m.done : m.adjust}

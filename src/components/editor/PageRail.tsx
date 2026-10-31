@@ -445,7 +445,7 @@ function ConfirmDelete({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex animate-scrim-in items-center justify-center bg-black/30 p-6"
+      className="fixed inset-0 z-50 flex animate-scrim-in items-center justify-center bg-scrim-strong p-6"
       onClick={onCancel}
     >
       <div
@@ -480,7 +480,7 @@ function ConfirmDelete({
             ref={confirmRef}
             type="button"
             onClick={onConfirm}
-            className="cursor-pointer rounded-lg bg-danger px-3 py-1.5 text-[13px] font-semibold text-white transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger active:scale-[0.97]"
+            className="cursor-pointer rounded-lg bg-danger px-3 py-1.5 text-[13px] font-semibold text-on-danger transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger active:scale-[0.97]"
           >
             {m.deleteButton}
           </button>

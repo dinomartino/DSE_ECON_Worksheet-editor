@@ -1,0 +1,140 @@
+/*
+ * Poster — a risograph print: butter paper stock, one black ink drawn as hard outlines,
+ * a cobalt second colour and a highlighter yellow, on a mustard desk. Depth is a hard
+ * ink offset with no blur, as if each panel were cut out and laid on the one below;
+ * corners are square. Bold, but quiet where the work happens: the panels stay pale and
+ * the colour lives on the desk, the accent and the HUD. Contract: `light.css`.
+ */
+:root[data-theme="poster"],
+:root [data-theme="poster"] {
+  /* Panel set — pale butter stock, never white (white belongs to the sheet). Lines
+     are drawn in ink: `line` a softened ink that still reads as an outline, `line-strong`
+     the ink itself. */
+  --panel-surface: oklch(97.6% 0.022 95);
+  --panel-raised: oklch(98.8% 0.014 95);
+  --panel-sunken: oklch(94.8% 0.034 94);
+  --panel-hover: oklch(92.4% 0.05 94);
+  --panel-ink: oklch(20% 0.014 65);
+  --panel-ink-muted: oklch(38% 0.016 65);
+  --panel-ink-subtle: oklch(46% 0.016 65);
+  --panel-line: oklch(40% 0.018 68);
+  --panel-line-strong: oklch(20% 0.014 65);
+  --panel-accent-soft: oklch(92.5% 0.04 262);
+  --panel-accent-ink: oklch(42% 0.2 264);
+  --panel-danger-soft: oklch(94.5% 0.035 32);
+  --panel-danger-ink: oklch(46% 0.18 30);
+  --panel-warn-soft: oklch(93.5% 0.075 92);
+  --panel-warn-ink: oklch(44% 0.1 68);
+  --panel-ok: oklch(44% 0.11 158);
+  --panel-ok-soft: oklch(94.5% 0.04 158);
+  --panel-ok-line: oklch(62% 0.11 158);
+
+  /* Chrome set — the frame: a deeper butter, the same ink. Its muted and subtle inks
+     sit darker than the panels' so they still hold 4.5:1 straight on the mustard desk. */
+  --chrome-surface: oklch(94% 0.045 93);
+  --chrome-raised: oklch(97% 0.03 94);
+  --chrome-sunken: oklch(91.2% 0.058 92);
+  --chrome-hover: oklch(89.5% 0.068 92);
+  --chrome-ink: oklch(20% 0.014 65);
+  --chrome-ink-muted: oklch(33% 0.016 65);
+  --chrome-ink-subtle: oklch(39% 0.018 65);
+  --chrome-line: oklch(38% 0.02 68);
+  --chrome-line-strong: oklch(20% 0.014 65);
+  --chrome-accent-soft: oklch(90% 0.05 262);
+  --chrome-accent-ink: oklch(40% 0.2 264);
+  --chrome-danger-soft: oklch(92.5% 0.045 32);
+  --chrome-danger-ink: oklch(44% 0.18 30);
+  --chrome-warn-soft: oklch(91% 0.09 90);
+  --chrome-warn-ink: oklch(41% 0.1 66);
+  --chrome-ok: oklch(41% 0.11 158);
+  --chrome-ok-soft: oklch(92.5% 0.05 158);
+  --chrome-ok-line: oklch(58% 0.11 158);
+
+  /* The desk is the poster's flat colour field: a mustard, saturated but low enough in
+     chroma to sit under hours of work. The white sheet is outlined and dropped on it
+     with a hard ink offset, so it is unmistakably the page. */
+  --desk: oklch(83% 0.105 86);
+  --sheet-shadow:
+    0 0 0 1.5px oklch(20% 0.014 65),
+    7px 7px 0 1.5px oklch(20% 0.014 65);
+
+  /* One saturated second colour, cobalt — the riso blue against the yellow stock. */
+  --accent: oklch(47% 0.21 264);
+  --accent-hover: oklch(41% 0.2 264);
+  --on-accent: #ffffff;
+  --split-2: color-mix(in oklab, var(--accent) 40%, transparent);
+
+  /* The one filled action: solid ink, with a butter label. */
+  --cta: oklch(20% 0.014 65);
+  --cta-hover: oklch(31% 0.016 65);
+  --on-cta: oklch(97.6% 0.022 95);
+
+  /* Vermilion, the riso red. */
+  --danger: oklch(53% 0.2 30);
+  --on-danger: #ffffff;
+
+  /* Scrims are ink, not grey. */
+  --scrim: color-mix(in oklab, oklch(20% 0.014 65) 50%, transparent);
+  --scrim-soft: color-mix(in oklab, oklch(20% 0.014 65) 22%, transparent);
+  --scrim-strong: color-mix(in oklab, oklch(20% 0.014 65) 34%, transparent);
+
+  /* The HUD: a slab of ink over the sheet, butter type, highlighter-yellow for what is
+     on (bold, the current alignment) and for focus. */
+  --hud: #171411;
+  --hud-raised: #2a2621;
+  --hud-hover: #353029;
+  --hud-divider: #3d3830;
+  --hud-line: #4b453b;
+  --hud-swatch: #645c4f;
+  --hud-swatch-strong: #7c7362;
+  --hud-ink: #f3ead0;
+  --hud-ink-strong: #fff8e1;
+  --hud-ink-soft: #e4d9bb;
+  --hud-ink-muted: #bfb498;
+  --hud-ink-subtle: #a69c82;
+  --hud-active: #ffd426;
+  --hud-active-hover: #ffe066;
+  --on-hud-active: #171411;
+  --hud-focus: #ffd426;
+  --hud-danger: #c2341f;
+  --on-hud-danger: #ffffff;
+  /* The tab ruler: butter stock, ink ticks, cobalt stops. */
+  --ruler: #fbf3d6;
+  --ruler-ink: #3a342b;
+  --ruler-tick: #6b6352;
+  --ruler-tick-soft: #a99f87;
+  --ruler-mark: #2848c8;
+
+  /* Type. The interface keeps the legible system grotesque; the display face is a
+     geometric poster sans (Futura on Apple devices, Avenir Next or Century Gothic
+     elsewhere). Both fall back to the system's Traditional Chinese sans for 中文. */
+  --dim-opacity: 0.8;
+
+  --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial,
+    "PingFang HK", "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --display-font: Futura, "Futura PT", "Avenir Next", "Century Gothic", "Helvetica Neue", Arial,
+    "PingFang HK", "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei", sans-serif;
+
+  /* Shape: cut paper. Square, with just enough rounding that a corner is not sharp. */
+  --radius: 0.125rem;
+  --radius-xs: 0.0625rem;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.125rem;
+  --radius-lg: 0.1875rem;
+  --radius-xl: 0.25rem;
+  --radius-2xl: 0.3125rem;
+  --radius-3xl: 0.375rem;
+  --radius-4xl: 0.5rem;
+
+  /* Depth: hard ink offsets, no blur, growing with the layer. The smallest steps stay
+     flat so dense controls do not each cast a block. */
+  --elev-2xs: 0 0 #0000;
+  --elev-xs: 1px 1px 0 0 oklch(20% 0.014 65);
+  --elev: 2px 2px 0 0 oklch(20% 0.014 65);
+  --elev-sm: 2px 2px 0 0 oklch(20% 0.014 65);
+  --elev-md: 3px 3px 0 0 oklch(20% 0.014 65);
+  --elev-lg: 4px 4px 0 0 oklch(20% 0.014 65);
+  --elev-xl: 5px 5px 0 0 oklch(20% 0.014 65);
+  --elev-2xl: 7px 7px 0 0 oklch(20% 0.014 65);
+}

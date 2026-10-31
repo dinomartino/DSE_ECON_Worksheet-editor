@@ -37,6 +37,14 @@ a version heading is edited afterwards.
   is. On a Paper 1 the options stay A to D, as in the DSE, so Enter on D still finishes there.
   <!-- zh: **在最後一個選項按 Enter 即可再加一個選項，與 Word 相同。** 在選項 D 輸入後按 Enter，現在會開始選項 E（之後是 F），可直接輸入；在新增的空白選項上再按 Enter，便會把它移除並完成輸入。按一次「復原」即可取消任何一項。已選的答案保持不變。在 Paper 1 中，選項維持 A 至 D，與 DSE 相同，所以在 D 按 Enter 仍然是完成輸入。 -->
 
+- **Choose how the editor looks: seven themes.** Settings → Appearance now offers Classic (the
+  look you know), Dark, Midnight, High contrast, Sepia, Bright and Poster, each with a small
+  preview. A theme changes the colours, corners and shadows of the toolbars, panels, dialogs and
+  the desk around the page. Your worksheets never change: the page, print, PDF and Word file look
+  exactly the same in every theme. System (the default) still follows your computer between
+  Classic and Dark. High contrast is made for bright classrooms, projectors and low vision.
+  <!-- zh: **自選編輯器外觀：七款主題。** 「設定 → 外觀」現提供經典（你熟悉的外觀）、深色、午夜、高對比、書卷、明亮及海報，每款都有小預覽。主題會改變工具列、面板、對話框及頁面周圍桌面的顏色、圓角和陰影。你的工作紙永不改變：頁面、列印、PDF 及 Word 檔在每款主題下都完全相同。「跟隨系統」（預設）仍會按電腦設定在經典與深色之間切換。高對比適合光線充足的課室、投影機及視力較弱的用家。 -->
+
 ### Fixed
 - **Typing Chinese with an input method no longer jumps to the next field.** With Pinyin, Cangjie
   or Zhuyin, the Enter that confirms the characters you picked now only confirms them: it no

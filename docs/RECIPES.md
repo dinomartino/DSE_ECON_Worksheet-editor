@@ -229,6 +229,26 @@ denied at runtime, not at build. JS calls it with `invoke` from `@tauri-apps/api
 scratch crate that `#[path]`-includes the module (`cargo check --target
 x86_64-pc-windows-msvc` on the whole app fails in `ring`'s C build on macOS).
 
+## Add an interface theme
+
+A theme restyles the chrome only (bars, panels, dialogs, the desk); the paper, print, PDF and
+`.docx` never change.
+
+1. `src/app/themes/<id>.css`: copy `light.css` (the contract) and change values only. One block,
+   selector `:root[data-theme="<id>"],\n:root [data-theme="<id>"]`, exactly Classic's variables,
+   no `url(` / `@import` / `.paper`; system font stacks only. Its `--sheet-shadow` may reach at
+   most 20px above the sheet (sheets sit 24px apart).
+2. `@import "./themes/<id>.css" screen;` in `src/app/globals.css` (screen only: print stays Classic).
+3. `{ id, scheme }` in `src/settings/appearance.ts:THEMES` (append; ids are stored, never reuse
+   one), name + note in `src/components/settings/sections/appearanceSection/messages.ts`.
+4. `node scripts/theme-contrast.mjs --theme=<id>` must pass (text 4.5:1, edges 3:1, both zones);
+   `npx vitest run src/app/themes`; look at it: `node scripts/shot.mjs /tmp/t.png --seed --theme=<id>`.
+5. `node scripts/theme-verify.mjs --themes=light,<id> --part=paper,gallery`: sheets, `.docx` and
+   print equal Classic's; no label falls under AA that Classic draws legibly.
+
+A new chrome colour is a token in every theme file (light first), mapped in `globals.css`'s
+`@theme inline`; never a literal in a component.
+
 ## Add a Settings section
 
 App Settings (this browser or computer) — never the document, which is **Setup**.
@@ -331,7 +351,7 @@ sits at 56.7 pt in `pdftotext -bbox`), and every footer must sit at its page's b
 
 ```bash
 npm run dev &                                   # the harness drives the real app
-node scripts/shot.mjs /tmp/shot.png --seed      # add --dark for the dark scheme, --zh for 中文
+node scripts/shot.mjs /tmp/shot.png --seed      # --theme=<id> for a theme, --dark for the OS scheme, --zh for 中文
 npm run samples                                 # real .docx into /tmp/econ-samples (Chrome, Export dialog)
 node scripts/cover-verify.mjs                   # cover: preview vs .docx vs print PDF
 node scripts/lq-verify.mjs                      # the QAB booklet, same three ways

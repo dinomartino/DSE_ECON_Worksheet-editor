@@ -1,0 +1,147 @@
+/*
+ * Classic — the default theme, and the shape every theme file copies.
+ *
+ * A theme is one block of primitives under `:root[data-theme="<id>"], :root [data-theme="<id>"]`
+ * (the second form lets the Appearance picker preview a theme inside any subtree). It sets
+ * exactly the variables this file sets, no more and no fewer (`src/app/themes/themes.test.ts`);
+ * the semantic names components use (`--surface`, `--ink`, …) are derived from these in
+ * `tokens.css`. The paper is never themed: it keeps its own literal colours, and `.paper`
+ * resets the radius and elevation scales to the values below.
+ *
+ * Classic is also `:root`, so a build or a stored value that names no theme looks as it
+ * always did. Studied from arena.ai: one warm-cream tone in two depths, a cyan-blue accent.
+ */
+:root,
+[data-theme="light"] {
+  /* Panel set — the lit working surfaces. Cream, not white: the paper keeps pure
+     white to itself, so even the lightest panel sits visibly behind the sheet. */
+  --panel-surface: oklch(98.8% 0.006 85);
+  --panel-raised: oklch(99.3% 0.004 85);
+  --panel-sunken: oklch(96% 0.012 85);
+  --panel-hover: oklch(93.5% 0.014 85);
+  --panel-ink: oklch(27% 0.012 75);
+  --panel-ink-muted: oklch(47% 0.014 75);
+  --panel-ink-subtle: oklch(60% 0.012 75);
+  --panel-line: oklch(90% 0.012 85);
+  --panel-line-strong: oklch(81% 0.014 85);
+  --panel-accent-soft: oklch(94% 0.035 245);
+  --panel-accent-ink: oklch(44% 0.15 245);
+  --panel-danger-soft: #fef2f2;
+  --panel-danger-ink: #b91c1c;
+  --panel-warn-soft: #fdf5e6;
+  --panel-warn-ink: #91610b;
+  --panel-ok: #047857;
+  --panel-ok-soft: #ecfdf5;
+  --panel-ok-line: #a7f3d0;
+
+  /* Chrome set — the frame around the paper: the same grey family one step deeper,
+     so bars and rails read as structure without ever fighting the panels. Text on
+     it is the same dark ink; `ink-muted` stays ≥ 4.5:1 on `--chrome-surface`. */
+  --chrome-surface: oklch(94.5% 0.014 85);
+  --chrome-raised: oklch(97.5% 0.01 85);
+  --chrome-sunken: oklch(91.5% 0.014 85);
+  --chrome-hover: oklch(91% 0.015 85);
+  --chrome-ink: oklch(27% 0.012 75);
+  --chrome-ink-muted: oklch(45% 0.014 75);
+  --chrome-ink-subtle: oklch(58% 0.012 75);
+  --chrome-line: oklch(87% 0.013 85);
+  --chrome-line-strong: oklch(78% 0.014 85);
+  --chrome-accent-soft: oklch(92% 0.045 245);
+  --chrome-accent-ink: oklch(44% 0.15 245);
+  --chrome-danger-soft: #fdeeee;
+  --chrome-danger-ink: #b91c1c;
+  --chrome-warn-soft: #fbf2e0;
+  --chrome-warn-ink: #91610b;
+  --chrome-ok: #047857;
+  --chrome-ok-soft: #e6f9f1;
+  --chrome-ok-line: #a7f3d0;
+
+  /* The desk is the deepest step of the same grey — clearly under the sheet, never
+     a different world. The white paper stays the brightest object on screen. */
+  --desk: oklch(85% 0.016 85);
+  /* The sheet's lift off the desk: soft and layered, a sheet rather than a card. */
+  --sheet-shadow:
+    0 1px 2px rgb(0 0 0 / 0.07),
+    0 8px 24px -6px rgb(0 0 0 / 0.13),
+    0 24px 48px -12px rgb(0 0 0 / 0.11);
+
+  /* One accent, cyan-leaning blue (studied from arena.ai's link colour): legible on
+     cream panels and unmistakably different from the paper's own black ink. */
+  --accent: oklch(55% 0.17 245);
+  --accent-hover: oklch(50% 0.17 245);
+  --on-accent: #ffffff;
+  /* The second question type in split bars (bank cards, coverage bar). */
+  --split-2: color-mix(in oklab, var(--accent) 40%, transparent);
+
+  /* The one filled action button: the darkest object in the chrome. */
+  --cta: oklch(27% 0.012 75);
+  --cta-hover: oklch(35% 0.014 75);
+  --on-cta: oklch(98.8% 0.006 85);
+
+  --danger: #dc2626;
+  --on-danger: #ffffff;
+
+  /* Behind a dialog, behind ⌘K, behind a confirm over the page rail. */
+  --scrim: color-mix(in oklab, #0f1115 45%, transparent);
+  --scrim-soft: color-mix(in oklab, #000000 20%, transparent);
+  --scrim-strong: color-mix(in oklab, #000000 30%, transparent);
+
+  /* The HUD: bars that float over the page (format bar, table/diagram context bar, the
+     tab stops panel). Graphite in every scheme, so it reads as a tool held over the paper. */
+  --hud: #211f1d;
+  --hud-raised: #33302c;
+  --hud-hover: #3d3a35;
+  --hud-divider: #3d3a35;
+  --hud-line: #454138;
+  --hud-swatch: #57534a;
+  --hud-swatch-strong: #6b665c;
+  --hud-ink: #e6e2db;
+  --hud-ink-strong: #f1eee9;
+  --hud-ink-soft: #d6d1c9;
+  --hud-ink-muted: #a39d94;
+  --hud-ink-subtle: #8a847a;
+  --hud-active: #0d77c9;
+  --hud-active-hover: #2b8ad3;
+  --on-hud-active: #ffffff;
+  --hud-focus: #5ba8dd;
+  --hud-danger: #b4241f;
+  --on-hud-danger: #ffffff;
+  /* The tab ruler strip under the format bar. */
+  --ruler: #f4f1ea;
+  --ruler-ink: #57534a;
+  --ruler-tick: #8a847a;
+  --ruler-tick-soft: #b5aea2;
+  --ruler-mark: #0d77c9;
+
+  /* A tab with nothing to show yet (the Sidebar's Edit with no question picked) is dimmed by
+     this much; ink-muted at this opacity must still clear 4.5:1 (theme-contrast.mjs). */
+  --dim-opacity: 0.6;
+
+  /* Type. The interface is the system grotesque (Tailwind's preflight fallback, which is
+     what has always rendered: Geist was never loaded); the display serif is Newsreader,
+     mounted in layout.tsx, for at most one screen-level heading. Never on the paper. */
+  --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --display-font: var(--font-display-serif), ui-serif, Georgia, serif;
+
+  /* Shape: Tailwind's radius scale (`rounded` is `--radius`). */
+  --radius: 0.25rem;
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+
+  /* Depth: Tailwind's shadow scale (`shadow` is `--elev`). */
+  --elev-2xs: 0 1px rgb(0 0 0 / 0.05);
+  --elev-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --elev: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --elev-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --elev-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --elev-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --elev-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --elev-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}

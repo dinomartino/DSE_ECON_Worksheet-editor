@@ -210,7 +210,7 @@ export function GraphLibrary({
               <button
                 type="button"
                 onClick={() => void remove(deleting)}
-                className="inline-flex h-[34px] cursor-pointer items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-[background-color,filter,scale] duration-150 ease-out-soft hover:brightness-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                className="inline-flex h-[34px] cursor-pointer items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-on-danger shadow-sm transition-[background-color,filter,scale] duration-150 ease-out-soft hover:brightness-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
                 {m.delete}
               </button>

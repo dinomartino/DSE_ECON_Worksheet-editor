@@ -94,7 +94,7 @@ function PaletteBox({ onClose }: { onClose: () => void }) {
     <div
       data-print-hide
       data-command-palette
-      className="fixed inset-0 z-[80] flex items-start justify-center bg-black/20 px-3 pt-[12vh] animate-fade-in"
+      className="fixed inset-0 z-[80] flex items-start justify-center bg-scrim-soft px-3 pt-[12vh] animate-fade-in"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

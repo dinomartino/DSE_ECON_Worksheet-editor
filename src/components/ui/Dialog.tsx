@@ -108,7 +108,7 @@ export function Dialog({
           to outlive its owner — and a closing overlay must not keep the modal layer or
           swallow the next click. */}
       <div
-        className="absolute inset-0 animate-scrim-in bg-[#0f1115]/45 backdrop-blur-[2px]"
+        className="absolute inset-0 animate-scrim-in bg-scrim backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
       />

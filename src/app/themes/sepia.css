@@ -1,0 +1,143 @@
+/*
+ * Sepia — the low-glare paper theme, for long evenings of marking. Parchment and linen
+ * in two depths, sepia-brown ink, a soft tan desk under the white sheet, and one deep
+ * teal accent (the colour of old bookbinding cloth) that still reads as "touch me".
+ * Shadows are warm brown rather than grey, corners a touch softer than Classic's, and
+ * the HUD a deep walnut with cream text. Contract: `light.css`.
+ */
+:root[data-theme="sepia"],
+:root [data-theme="sepia"] {
+  /* Panel set — parchment, clearly tinted (never white), so the sheet is the only
+     white object on screen. Inks are sepia browns; even `ink-subtle` holds ≥ 4.5:1
+     on the darkest panel step. */
+  --panel-surface: oklch(95.6% 0.024 82);
+  --panel-raised: oklch(96.8% 0.019 84);
+  --panel-sunken: oklch(93% 0.03 80);
+  --panel-hover: oklch(91% 0.034 78);
+  --panel-ink: oklch(28% 0.035 55);
+  --panel-ink-muted: oklch(40% 0.04 58);
+  --panel-ink-subtle: oklch(46% 0.036 60);
+  --panel-line: oklch(88% 0.032 78);
+  --panel-line-strong: oklch(59% 0.045 70);
+  --panel-accent-soft: oklch(92% 0.026 195);
+  --panel-accent-ink: oklch(41% 0.075 205);
+  --panel-danger-soft: oklch(93% 0.032 40);
+  --panel-danger-ink: oklch(45% 0.13 33);
+  --panel-warn-soft: oklch(92.5% 0.05 85);
+  --panel-warn-ink: oklch(45% 0.09 68);
+  --panel-ok: oklch(44% 0.08 150);
+  --panel-ok-soft: oklch(92.5% 0.035 140);
+  --panel-ok-line: oklch(80% 0.06 145);
+
+  /* Chrome set — linen, one step deeper and a little browner: toolbar, rails, the
+     start screen. The inks darken with it so `ink-subtle` still clears the desk. */
+  --chrome-surface: oklch(91.5% 0.032 78);
+  --chrome-raised: oklch(94% 0.026 80);
+  --chrome-sunken: oklch(88.5% 0.036 76);
+  --chrome-hover: oklch(88% 0.038 75);
+  --chrome-ink: oklch(26% 0.035 55);
+  --chrome-ink-muted: oklch(37% 0.04 58);
+  --chrome-ink-subtle: oklch(42% 0.036 60);
+  --chrome-line: oklch(84% 0.036 75);
+  --chrome-line-strong: oklch(55.5% 0.045 68);
+  --chrome-accent-soft: oklch(88.5% 0.03 195);
+  --chrome-accent-ink: oklch(39% 0.075 205);
+  --chrome-danger-soft: oklch(89.5% 0.04 40);
+  --chrome-danger-ink: oklch(43% 0.13 33);
+  --chrome-warn-soft: oklch(89% 0.06 84);
+  --chrome-warn-ink: oklch(42% 0.09 66);
+  --chrome-ok: oklch(41% 0.08 150);
+  --chrome-ok-soft: oklch(89.5% 0.045 140);
+  --chrome-ok-line: oklch(76% 0.065 145);
+
+  /* The desk: soft tan, the deepest step of the same ramp, so the white sheet sits on
+     it like a page on a reading table. */
+  --desk: oklch(84% 0.042 72);
+  /* A sheet lifted off warm wood: brown-tinted, layered, a little deeper than Classic's
+     so the page still leaps forward from a tinted desk. */
+  --sheet-shadow:
+    0 0 0 1px rgb(92 60 30 / 0.06),
+    0 1px 2px rgb(70 42 18 / 0.1),
+    0 8px 22px -6px rgb(70 42 18 / 0.18),
+    0 26px 50px -14px rgb(70 42 18 / 0.16);
+
+  /* One accent, deep bookcloth teal: cool against all the warm browns, so it is the
+     one thing that reads as interactive, and unlike the paper's black ink. */
+  --accent: oklch(48% 0.085 200);
+  --accent-hover: oklch(43% 0.085 202);
+  --on-accent: #ffffff;
+  --split-2: color-mix(in oklab, var(--accent) 40%, transparent);
+
+  /* The one filled action button: dark walnut, the darkest object in the chrome. */
+  --cta: oklch(30% 0.04 52);
+  --cta-hover: oklch(37% 0.045 54);
+  --on-cta: oklch(96.5% 0.02 84);
+
+  /* Danger: brick terracotta, earthier than Classic's alarm red. */
+  --danger: oklch(50% 0.15 32);
+  --on-danger: #ffffff;
+
+  /* Scrims tinted toward umber, so a dialog dims the room rather than greys it. */
+  --scrim: color-mix(in oklab, #2a1a0e 45%, transparent);
+  --scrim-soft: color-mix(in oklab, #2a1a0e 20%, transparent);
+  --scrim-strong: color-mix(in oklab, #2a1a0e 32%, transparent);
+
+  /* The HUD: deep walnut with cream text — a leather tool held over the page, distinct
+     from both the parchment chrome and the white sheet. Active is the accent's teal. */
+  --hud: #2d2119;
+  --hud-raised: #3d2e23;
+  --hud-hover: #47372a;
+  --hud-divider: #4a392c;
+  --hud-line: #554233;
+  --hud-swatch: #6a5544;
+  --hud-swatch-strong: #826b57;
+  --hud-ink: #ecdfcb;
+  --hud-ink-strong: #f6eedf;
+  --hud-ink-soft: #dccdb6;
+  --hud-ink-muted: #b8a68d;
+  --hud-ink-subtle: #a9977f;
+  --hud-active: #1f6f75;
+  --hud-active-hover: #22767d;
+  --on-hud-active: #ffffff;
+  --hud-focus: #6cbcc0;
+  --hud-danger: #a83a24;
+  --on-hud-danger: #ffffff;
+  /* The tab ruler strip: a parchment strip with sepia marks. */
+  --ruler: #f3e9d6;
+  --ruler-ink: #5a4532;
+  --ruler-tick: #8c735c;
+  --ruler-tick-soft: #c2ae93;
+  --ruler-mark: #1f6f75;
+
+  /* Type. The interface stays the system sans (it falls back to the system's CJK face
+     for 中文); the screen-level heading is a bookish old-style serif — Iowan Old Style
+     on Mac and iPad, then Palatino, then the loaded Newsreader — with a Song/Ming CJK
+     serif behind it so a Chinese heading keeps the same book voice. Never on the paper. */
+  --dim-opacity: 0.8;
+
+  --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --display-font: "Iowan Old Style", "Palatino Linotype", Palatino, var(--font-display-serif), Georgia,
+    "Songti TC", "Noto Serif TC", "Noto Serif CJK TC", ui-serif, serif;
+
+  /* Shape: gentle — every step a little rounder than Classic's, like a worn book edge. */
+  --radius: 0.3125rem;
+  --radius-xs: 0.1875rem;
+  --radius-sm: 0.3125rem;
+  --radius-md: 0.4375rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.625rem;
+  --radius-4xl: 2.125rem;
+
+  /* Depth: Classic's scale in warm umber instead of black, slightly softer and wider. */
+  --elev-2xs: 0 1px rgb(70 42 18 / 0.06);
+  --elev-xs: 0 1px 2px 0 rgb(70 42 18 / 0.07);
+  --elev: 0 1px 3px 0 rgb(70 42 18 / 0.11), 0 1px 2px -1px rgb(70 42 18 / 0.09);
+  --elev-sm: 0 1px 3px 0 rgb(70 42 18 / 0.11), 0 1px 2px -1px rgb(70 42 18 / 0.09);
+  --elev-md: 0 4px 8px -2px rgb(70 42 18 / 0.12), 0 2px 4px -2px rgb(70 42 18 / 0.09);
+  --elev-lg: 0 12px 18px -4px rgb(70 42 18 / 0.13), 0 4px 7px -4px rgb(70 42 18 / 0.1);
+  --elev-xl: 0 22px 30px -6px rgb(70 42 18 / 0.15), 0 8px 12px -6px rgb(70 42 18 / 0.1);
+  --elev-2xl: 0 28px 54px -12px rgb(70 42 18 / 0.3);
+}

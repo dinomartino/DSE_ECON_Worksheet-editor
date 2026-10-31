@@ -1,0 +1,129 @@
+/*
+ * Dark — deep warm grey, the reference's olive-warm dark rather than blue-black. Both
+ * primitive sets drop into one dark ramp together: never a dark frame against a light
+ * panel. Contract: `light.css`.
+ */
+:root[data-theme="dark"],
+:root [data-theme="dark"] {
+  /* Panels go deep warm grey (the reference's olive-warm dark, not blue-black);
+     the frame drops nearly to black beneath them. */
+  --panel-surface: oklch(23% 0.008 100);
+  --panel-raised: oklch(27% 0.009 100);
+  --panel-sunken: oklch(20% 0.007 100);
+  --panel-hover: oklch(30% 0.01 100);
+  --panel-ink: oklch(93% 0.006 95);
+  --panel-ink-muted: oklch(74% 0.01 95);
+  --panel-ink-subtle: oklch(60% 0.01 95);
+  --panel-line: oklch(31% 0.008 100);
+  --panel-line-strong: oklch(40% 0.008 100);
+  --panel-accent-soft: oklch(30% 0.07 245);
+  --panel-accent-ink: oklch(80% 0.09 245);
+  --panel-danger-soft: oklch(28% 0.06 20);
+  --panel-danger-ink: oklch(80% 0.11 20);
+  --panel-warn-soft: oklch(29% 0.05 85);
+  --panel-warn-ink: oklch(84% 0.11 90);
+  --panel-ok: oklch(76% 0.11 165);
+  --panel-ok-soft: oklch(27% 0.05 165);
+  --panel-ok-line: oklch(38% 0.07 165);
+
+  --chrome-surface: oklch(19% 0.008 100);
+  --chrome-raised: oklch(24% 0.009 100);
+  --chrome-sunken: oklch(16% 0.006 100);
+  --chrome-hover: oklch(26% 0.009 100);
+  /* The chrome ink and status tints must drop with their surfaces — left at their
+     light-scheme values they are dark-on-dark, and every zone-dark label vanishes. */
+  --chrome-ink: oklch(93% 0.006 95);
+  --chrome-ink-muted: oklch(74% 0.01 95);
+  --chrome-ink-subtle: oklch(60% 0.01 95);
+  --chrome-line: oklch(28% 0.008 100);
+  --chrome-line-strong: oklch(37% 0.008 100);
+  --chrome-accent-soft: oklch(30% 0.07 245);
+  --chrome-accent-ink: oklch(80% 0.09 245);
+  --chrome-danger-soft: oklch(28% 0.06 20);
+  --chrome-danger-ink: oklch(80% 0.11 20);
+  --chrome-warn-soft: oklch(29% 0.05 85);
+  --chrome-warn-ink: oklch(84% 0.11 90);
+  --chrome-ok: oklch(76% 0.11 165);
+  --chrome-ok-soft: oklch(27% 0.05 165);
+  --chrome-ok-line: oklch(38% 0.07 165);
+
+  --desk: oklch(15% 0.006 100);
+
+  --accent: oklch(65% 0.15 245);
+  --accent-hover: oklch(70% 0.13 245);
+  --on-accent: oklch(15% 0.01 100);
+  --split-2: oklch(72% 0.06 245);
+
+  /* The CTA inverts with the scheme: light fill, dark label. */
+  --cta: oklch(92% 0.008 95);
+  --cta-hover: oklch(96% 0.008 95);
+  --on-cta: oklch(20% 0.008 100);
+
+  --danger: #f87171;
+
+  --sheet-shadow:
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 8px 32px -6px rgb(0 0 0 / 0.6);
+  --on-danger: #ffffff;
+
+  --scrim: color-mix(in oklab, #0f1115 45%, transparent);
+  --scrim-soft: color-mix(in oklab, #000000 20%, transparent);
+  --scrim-strong: color-mix(in oklab, #000000 30%, transparent);
+
+  /* The HUD: bars that float over the page (format bar, table/diagram context bar, the
+     tab stops panel). Graphite in every scheme, so it reads as a tool held over the paper. */
+  --hud: #211f1d;
+  --hud-raised: #33302c;
+  --hud-hover: #3d3a35;
+  --hud-divider: #3d3a35;
+  --hud-line: #454138;
+  --hud-swatch: #57534a;
+  --hud-swatch-strong: #6b665c;
+  --hud-ink: #e6e2db;
+  --hud-ink-strong: #f1eee9;
+  --hud-ink-soft: #d6d1c9;
+  --hud-ink-muted: #a39d94;
+  --hud-ink-subtle: #8a847a;
+  --hud-active: #0d77c9;
+  --hud-active-hover: #2b8ad3;
+  --on-hud-active: #ffffff;
+  --hud-focus: #5ba8dd;
+  --hud-danger: #b4241f;
+  --on-hud-danger: #ffffff;
+  /* The tab ruler strip under the format bar. */
+  --ruler: #f4f1ea;
+  --ruler-ink: #57534a;
+  --ruler-tick: #8a847a;
+  --ruler-tick-soft: #b5aea2;
+  --ruler-mark: #0d77c9;
+
+  --dim-opacity: 0.6;
+
+  /* Type. The interface is the system grotesque (Tailwind's preflight fallback, which is
+     what has always rendered: Geist was never loaded); the display serif is Newsreader,
+     mounted in layout.tsx, for at most one screen-level heading. Never on the paper. */
+  --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --display-font: var(--font-display-serif), ui-serif, Georgia, serif;
+
+  /* Shape: Tailwind's radius scale (`rounded` is `--radius`). */
+  --radius: 0.25rem;
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+
+  /* Depth: Tailwind's shadow scale (`shadow` is `--elev`). */
+  --elev-2xs: 0 1px rgb(0 0 0 / 0.05);
+  --elev-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --elev: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --elev-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --elev-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --elev-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --elev-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --elev-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}

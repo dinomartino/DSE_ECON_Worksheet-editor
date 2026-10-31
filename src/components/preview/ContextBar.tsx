@@ -64,10 +64,10 @@ import { CONTEXT_BAR_MESSAGES } from './ContextBar.messages';
  * source body's) for free.
  */
 
-const LABEL = 'mr-1 pl-1 text-[10px] font-semibold uppercase tracking-wide text-[#a39d94]';
-const DIVIDER = 'mx-0.5 h-5 w-px bg-[#3d3a35]';
+const LABEL = 'mr-1 pl-1 text-[10px] font-semibold uppercase tracking-wide text-hud-ink-muted';
+const DIVIDER = 'mx-0.5 h-5 w-px bg-hud-divider';
 /** A group's name, before its buttons: quieter than the bar's own label. */
-const GROUP = 'ml-1 mr-0.5 text-[10px] font-medium text-[#8a847a]';
+const GROUP = 'ml-1 mr-0.5 text-[10px] font-medium text-hud-ink-subtle';
 
 function BarButton({
   label,
@@ -144,7 +144,7 @@ function ShadeSwatch({ shade }: { shade?: CellShade }) {
   return (
     <span
       aria-hidden
-      className="relative inline-block h-3 w-3 shrink-0 rounded-[2px] border border-[#8a847a]"
+      className="relative inline-block h-3 w-3 shrink-0 rounded-[2px] border border-hud-ink-subtle"
       style={{ backgroundColor: shade ? `#${shade}` : 'transparent' }}
     >
       {!shade && (
@@ -554,7 +554,7 @@ export function ContextDock({
     <div
       role="toolbar"
       aria-label={table ? m.tableTools : m.figureTools}
-      className={`fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-[#454138] bg-[#211f1d]/95 px-1.5 py-1 shadow-xl backdrop-blur ${TOOLBAR_ENTER}`}
+      className={`fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-hud-line bg-hud/95 px-1.5 py-1 shadow-xl backdrop-blur ${TOOLBAR_ENTER}`}
       style={{
         left: dock.left,
         width: dock.width,

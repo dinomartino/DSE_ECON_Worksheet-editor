@@ -15,10 +15,10 @@ export const SECTION_MESSAGES = defineMessages({
     zh: '教育局詞彙表為部分用語列出多於一種譯法。選擇你慣用的一種，或加入你自己的譯法。',
   },
   appearanceLabel:{ en: 'Appearance', zh: '外觀' },
-  appearanceHint: { en: 'Light, dark or system', zh: '淺色、深色或跟隨系統' },
+  appearanceHint: { en: 'Theme: Classic, Dark and more', zh: '主題：經典、深色及更多' },
   appearanceDescription: {
-    en: 'The colour scheme around the page. Worksheets always print black on white.',
-    zh: '頁面周圍的配色。工作紙一律以白底黑字列印。',
+    en: 'The theme of the editor around the page: colours, corners and shadows. Worksheets always print black on white.',
+    zh: '頁面周圍編輯器的主題：顏色、圓角和陰影。工作紙一律以白底黑字列印。',
   },
   languageLabel: { en: 'Language 語言', zh: '語言' },
   languageHint: { en: 'UI and paper language', zh: '介面及試卷語言' },

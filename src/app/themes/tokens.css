@@ -1,0 +1,127 @@
+/*
+ * Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design/icons/design.md · designed-as-app
+ * theme: studied-DNA (source: url https://arena.ai/) · studied: yes
+ * paper oklch(98.8% 0.006 85) warm cream · accent oklch(55% 0.17 245) cyan-blue ≤5%
+ * display: light editorial serif (Newsreader, for Martina Plantijn's role) · body: system grotesque · mono: system
+ * axes: paper-band light / display roman-serif / accent cool blue 245°
+ * pre-emit critique: P4 H5 E4 S5 R5 V4
+ *
+ * One tone, two depths. The first cut framed light panels in dark graphite, and the
+ * eye paid for every glance between them; the user asked for a single colour tone.
+ * The tone itself is warm cream (studied from arena.ai) rather than the earlier cool
+ * grey — a warm chrome makes the white sheet read cooler and brighter by contrast.
+ * So both primitive sets live in the same light warm-cream ramp: `--panel-*` (the
+ * working surfaces) and `--chrome-*` (the frame: toolbar, rails, desk — the same
+ * tone, one step deeper). `.zone-dark` maps a subtree onto the frame set,
+ * `.zone-light` back onto the panels; components keep saying `bg-surface` /
+ * `text-ink` and never name a zone's colours. In the dark scheme both sets drop
+ * into one dark ramp together — never dark frame against light panel.
+ */
+/* The semantic layer. Components say `bg-surface`, `text-ink`; these name which primitive
+   (a theme file's `--panel-*` / `--chrome-*`) each one reads. Declared on every themed
+   element, not only `:root`, so a nested `[data-theme]` (the picker's previews) resolves
+   its own theme's colours rather than inheriting the page's. */
+:root,
+[data-theme] {
+  --background: var(--panel-surface);
+  --foreground: var(--panel-ink);
+
+  --surface: var(--panel-surface);
+  --surface-raised: var(--panel-raised);
+  --surface-sunken: var(--panel-sunken);
+  --surface-hover: var(--panel-hover);
+
+  --ink: var(--panel-ink);
+  --ink-muted: var(--panel-ink-muted);
+  --ink-subtle: var(--panel-ink-subtle);
+
+  --line: var(--panel-line);
+  --line-strong: var(--panel-line-strong);
+
+  --accent-soft: var(--panel-accent-soft);
+  --accent-ink: var(--panel-accent-ink);
+
+  --danger-soft: var(--panel-danger-soft);
+  --danger-ink: var(--panel-danger-ink);
+  --warn-soft: var(--panel-warn-soft);
+  --warn-ink: var(--panel-warn-ink);
+  --ok: var(--panel-ok);
+  --ok-soft: var(--panel-ok-soft);
+  --ok-line: var(--panel-ok-line);
+}
+
+/* The frame: toolbar, rails, desk, start screen — one step deeper, same tone. */
+.zone-dark {
+  --surface: var(--chrome-surface);
+  --surface-raised: var(--chrome-raised);
+  --surface-sunken: var(--chrome-sunken);
+  --surface-hover: var(--chrome-hover);
+
+  --ink: var(--chrome-ink);
+  --ink-muted: var(--chrome-ink-muted);
+  --ink-subtle: var(--chrome-ink-subtle);
+
+  --line: var(--chrome-line);
+  --line-strong: var(--chrome-line-strong);
+
+  --accent-soft: var(--chrome-accent-soft);
+  --accent-ink: var(--chrome-accent-ink);
+
+  --danger-soft: var(--chrome-danger-soft);
+  --danger-ink: var(--chrome-danger-ink);
+  --warn-soft: var(--chrome-warn-soft);
+  --warn-ink: var(--chrome-warn-ink);
+  --ok: var(--chrome-ok);
+  --ok-soft: var(--chrome-ok-soft);
+  --ok-line: var(--chrome-ok-line);
+}
+
+/* A lit panel inside a frame zone (dialogs, cards on the start screen's desk). */
+.zone-light {
+  --surface: var(--panel-surface);
+  --surface-raised: var(--panel-raised);
+  --surface-sunken: var(--panel-sunken);
+  --surface-hover: var(--panel-hover);
+
+  --ink: var(--panel-ink);
+  --ink-muted: var(--panel-ink-muted);
+  --ink-subtle: var(--panel-ink-subtle);
+
+  --line: var(--panel-line);
+  --line-strong: var(--panel-line-strong);
+
+  --accent-soft: var(--panel-accent-soft);
+  --accent-ink: var(--panel-accent-ink);
+
+  --danger-soft: var(--panel-danger-soft);
+  --danger-ink: var(--panel-danger-ink);
+  --warn-soft: var(--panel-warn-soft);
+  --warn-ink: var(--panel-warn-ink);
+  --ok: var(--panel-ok);
+  --ok-soft: var(--panel-ok-soft);
+  --ok-line: var(--panel-ok-line);
+}
+
+
+/* The paper is never themed. Its colours are literal already; the radius and depth
+   scales a theme may reshape go back to Classic's values on the sheet, the measuring
+   probe and every thumbnail (`themes.test.ts` keeps this in step with light.css). */
+.paper {
+  --radius: 0.25rem;
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+  --elev-2xs: 0 1px rgb(0 0 0 / 0.05);
+  --elev-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --elev: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --elev-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --elev-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --elev-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --elev-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --elev-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}

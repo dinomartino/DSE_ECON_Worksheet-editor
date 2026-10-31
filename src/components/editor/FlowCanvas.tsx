@@ -561,7 +561,7 @@ export function FlowCanvas({
               'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
               'disabled:pointer-events-none disabled:opacity-35 ' +
               (confirmClear
-                ? 'border-danger bg-danger text-white hover:brightness-110'
+                ? 'border-danger bg-danger text-on-danger hover:brightness-110'
                 : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
             }
           >

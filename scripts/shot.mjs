@@ -8,9 +8,10 @@ import { chromium } from 'playwright-core';
  * a real browser and can seed it with a worksheet first, because an *empty* document
  * hides exactly the crowding this is meant to catch.
  *
- *   node scripts/shot.mjs <out.png> [--seed] [--dark] [--zh] [--url=http://localhost:3000 | --port=3106]
+ *   node scripts/shot.mjs <out.png> [--seed] [--dark] [--theme=<id>] [--zh] [--url=http://localhost:3000 | --port=3106]
  *
- * `--zh` runs the interface in 繁體中文; the seed then clicks the 中文 names.
+ * `--zh` runs the interface in 繁體中文; the seed then clicks the 中文 names. `--theme=<id>` picks an
+ * interface theme (Settings → Appearance; ids in `src/settings/appearance.ts`), `--dark` the OS scheme.
  */
 
 const args = process.argv.slice(2);
@@ -18,6 +19,7 @@ const OUT = args.find((a) => !a.startsWith('--')) ?? 'shot.png';
 const seed = args.includes('--seed');
 const dark = args.includes('--dark');
 const zh = args.includes('--zh');
+const theme = args.find((a) => a.startsWith('--theme='))?.slice(8);
 /**
  * What the seed clicks, as each catalogue words it (start/, EditorApp, AddRail, registry).
  * Anchored: an entry's name includes its hint, and 答題線's hint mentions 橫線.
@@ -45,6 +47,11 @@ page.on('console', (m) => {
   if (m.type() === 'error') console.log('CONSOLE ERR:', m.text());
 });
 page.on('pageerror', (e) => console.log('PAGE ERR:', e.message));
+if (theme) {
+  await page.addInitScript((id) => {
+    window.localStorage.setItem('econgen.settings.appearance', JSON.stringify({ v: 1, theme: id }));
+  }, theme);
+}
 if (zh) {
   await page.addInitScript(() => {
     window.localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: 'zh-HK', paper: 'en' }));

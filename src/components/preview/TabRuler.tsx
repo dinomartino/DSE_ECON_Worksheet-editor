@@ -58,7 +58,7 @@ const DRAG_OFF_PX = 18;
 const cm = (twips: number) => (twips / TWIPS_PER_CM).toFixed(2).replace(/\.?0+$/, '');
 
 const FIELD =
-  'h-6 rounded bg-[#33302c] px-1 text-xs text-[#f1eee9] outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]';
+  'h-6 rounded bg-hud-raised px-1 text-xs text-hud-ink-strong outline-none focus-visible:ring-2 focus-visible:ring-hud-focus';
 
 export function TabRuler({ geometry, stops: stored, onStops, onPreset, panelOpen, onPanelOpen }: Props) {
   const m = useMessages(TAB_RULER_MESSAGES);
@@ -114,7 +114,7 @@ export function TabRuler({ geometry, stops: stored, onStops, onPreset, panelOpen
 
       {rowLeft !== undefined && (
         <div
-          className="absolute top-0.5 h-6 cursor-copy select-none rounded-sm bg-[#f4f1ea] text-[#57534a]"
+          className="absolute top-0.5 h-6 cursor-copy select-none rounded-sm bg-ruler text-ruler-ink"
           style={{ left: geometry.left - rowLeft, width: geometry.width }}
           title={m.rulerHint}
           onClick={(event) => {
@@ -129,7 +129,7 @@ export function TabRuler({ geometry, stops: stored, onStops, onPreset, panelOpen
               key={quarter}
               data-ruler-tick=""
               aria-hidden
-              className="absolute top-0 bg-[#8a847a]"
+              className="absolute top-0 bg-ruler-tick"
               style={{
                 left: x((quarter * TWIPS_PER_CM) / 4),
                 width: 1,
@@ -154,7 +154,7 @@ export function TabRuler({ geometry, stops: stored, onStops, onPreset, panelOpen
             <span
               key={`d${pos}`}
               aria-hidden
-              className="pointer-events-none absolute bottom-0 h-1 bg-[#b5aea2]"
+              className="pointer-events-none absolute bottom-0 h-1 bg-ruler-tick-soft"
               style={{ left: x(pos), width: 1 }}
             />
           ))}
@@ -167,7 +167,7 @@ export function TabRuler({ geometry, stops: stored, onStops, onPreset, panelOpen
                 type="button"
                 aria-label={m.stopAt(alignName(stop.align), cm(stop.pos))}
                 title={`${m.stopAt(alignName(stop.align), cm(stop.pos))}${stop.leader ? ` · ${m[stop.leader]}` : ''}`}
-                className={`absolute bottom-0 flex h-4 w-4 -translate-x-1/2 cursor-ew-resize items-end justify-center font-mono text-[13px] font-bold leading-none text-[#0d77c9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd] ${
+                className={`absolute bottom-0 flex h-4 w-4 -translate-x-1/2 cursor-ew-resize items-end justify-center font-mono text-[13px] font-bold leading-none text-ruler-mark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hud-focus ${
                   dragging && drag.off ? 'opacity-30' : ''
                 }`}
                 style={{ left: x(at) }}
@@ -280,14 +280,14 @@ function TabStopsPanel({
     <div
       role="dialog"
       aria-label={m.dialog}
-      className="absolute right-0 top-8 z-10 w-[340px] origin-top-right animate-pop-in rounded-md border border-[#454138] bg-[#211f1d] p-2 text-xs text-[#e6e2db] shadow-xl"
+      className="absolute right-0 top-8 z-10 w-[340px] origin-top-right animate-pop-in rounded-md border border-hud-line bg-hud p-2 text-xs text-hud-ink shadow-xl"
     >
-      <div className="mb-1 flex items-center gap-1 text-[11px] text-[#a39d94]">
+      <div className="mb-1 flex items-center gap-1 text-[11px] text-hud-ink-muted">
         <span className="w-[72px]">{m.position}</span>
         <span className="w-[76px]">{m.alignment}</span>
         <span>{m.leader}</span>
       </div>
-      {stops.length === 0 && <p className="mb-1 text-[#a39d94]">{m.noStops}</p>}
+      {stops.length === 0 && <p className="mb-1 text-hud-ink-muted">{m.noStops}</p>}
       {stops.map((stop) => (
         <div key={stop.pos} className="mb-1 flex items-center gap-1">
           <input
@@ -319,7 +319,7 @@ function TabStopsPanel({
           </button>
         </div>
       ))}
-      <div className="mb-1 flex items-center gap-1 border-t border-[#3d3a35] pt-1">
+      <div className="mb-1 flex items-center gap-1 border-t border-hud-divider pt-1">
         <input
           aria-label={m.position}
           placeholder="cm"
@@ -337,7 +337,7 @@ function TabStopsPanel({
           {m.set}
         </button>
       </div>
-      <div className="mb-2 flex items-center justify-between text-[11px] text-[#a39d94]">
+      <div className="mb-2 flex items-center justify-between text-[11px] text-hud-ink-muted">
         <span>{m.defaultStops(cm(DEFAULT_TAB_STOP_TWIPS))}</span>
         {stops.length > 0 && (
           <button type="button" className={`${TOOLBAR_BTN} ${TOOLBAR_IDLE}`} onClick={() => onStops([])}>
@@ -345,18 +345,18 @@ function TabStopsPanel({
           </button>
         )}
       </div>
-      <div className="border-t border-[#3d3a35] pt-1">
-        <div className="mb-1 text-[11px] text-[#a39d94]">{m.presets}</div>
+      <div className="border-t border-hud-divider pt-1">
+        <div className="mb-1 text-[11px] text-hud-ink-muted">{m.presets}</div>
         {TAB_PRESETS.map((preset) => (
           <button
             key={preset}
             type="button"
             title={m[`${preset}Hint`]}
-            className="mb-0.5 flex w-full flex-col items-start rounded px-1.5 py-1 text-left transition-[background-color] duration-150 ease-out-soft hover:bg-[#3d3a35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
+            className="mb-0.5 flex w-full flex-col items-start rounded px-1.5 py-1 text-left transition-[background-color] duration-150 ease-out-soft hover:bg-hud-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hud-focus"
             onClick={() => onPreset(preset)}
           >
             <span className="font-medium">{m[preset]}</span>
-            <span className="text-[11px] text-[#a39d94]">{m[`${preset}Hint`]}</span>
+            <span className="text-[11px] text-hud-ink-muted">{m[`${preset}Hint`]}</span>
           </button>
         ))}
       </div>

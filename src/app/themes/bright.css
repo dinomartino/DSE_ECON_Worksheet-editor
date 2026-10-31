@@ -1,0 +1,136 @@
+/*
+ * Bright — crisp, cool and energetic: the opposite of Classic's warm cream. Cool,
+ * faintly blue-tinted greys with near-white panels, slate ink and one vivid indigo-violet
+ * accent (275°, well clear of Classic's 245° cyan-blue) that also fills the CTA. Rounder
+ * shapes and airy, cool-tinted shadows make it a system, not a recolour. The white sheet
+ * keeps its place by sitting on a clearly greyer cool desk with a crisp blue-grey edge
+ * in its shadow. Contract: `light.css`.
+ */
+:root[data-theme="bright"],
+:root [data-theme="bright"] {
+  /* Panel set — near-white with a breath of blue, so the pure-white paper still reads
+     as the brightest thing; raised panels (dialogs, popovers) go fully white. */
+  --panel-surface: oklch(98.9% 0.004 260);
+  --panel-raised: oklch(100% 0 0);
+  --panel-sunken: oklch(96.6% 0.008 265);
+  --panel-hover: oklch(94.6% 0.013 268);
+  --panel-ink: oklch(25% 0.03 265);
+  --panel-ink-muted: oklch(44% 0.03 265);
+  --panel-ink-subtle: oklch(50% 0.03 265);
+  --panel-line: oklch(91.5% 0.01 265);
+  --panel-line-strong: oklch(62% 0.025 265);
+  --panel-accent-soft: oklch(95% 0.03 280);
+  --panel-accent-ink: oklch(46% 0.21 278);
+  --panel-danger-soft: oklch(96.5% 0.02 15);
+  --panel-danger-ink: oklch(49% 0.19 22);
+  --panel-warn-soft: oklch(96.5% 0.035 85);
+  --panel-warn-ink: oklch(48% 0.11 65);
+  --panel-ok: oklch(49% 0.11 165);
+  --panel-ok-soft: oklch(96.5% 0.03 165);
+  --panel-ok-line: oklch(86% 0.08 165);
+
+  /* Chrome set — the frame: the same cool grey one step deeper. Ink stays slate;
+     muted and subtle keep ≥ 4.5:1 down to `--chrome-hover` and the desk. */
+  --chrome-surface: oklch(96.4% 0.008 265);
+  --chrome-raised: oklch(98.6% 0.005 265);
+  --chrome-sunken: oklch(93.8% 0.011 265);
+  --chrome-hover: oklch(92.6% 0.014 268);
+  --chrome-ink: oklch(25% 0.03 265);
+  --chrome-ink-muted: oklch(42% 0.03 265);
+  --chrome-ink-subtle: oklch(46% 0.03 265);
+  --chrome-line: oklch(89.5% 0.012 265);
+  --chrome-line-strong: oklch(60% 0.025 265);
+  --chrome-accent-soft: oklch(92.5% 0.045 280);
+  --chrome-accent-ink: oklch(44% 0.21 278);
+  --chrome-danger-soft: oklch(95% 0.025 15);
+  --chrome-danger-ink: oklch(47% 0.19 22);
+  --chrome-warn-soft: oklch(95% 0.04 85);
+  --chrome-warn-ink: oklch(46% 0.11 65);
+  --chrome-ok: oklch(47% 0.11 165);
+  --chrome-ok-soft: oklch(95% 0.035 165);
+  --chrome-ok-line: oklch(85% 0.08 165);
+
+  /* The desk: a cool light grey well under the panels, so even next to white panels
+     the white sheet is unmistakably the page. */
+  --desk: oklch(88.5% 0.016 265);
+  /* A crisp 1px blue-grey outline plus a soft, cool lift: the edge does the work a
+     dark desk does in other themes. */
+  --sheet-shadow:
+    0 0 0 1px rgb(40 52 96 / 0.07),
+    0 1px 2px rgb(30 40 90 / 0.08),
+    0 10px 28px -8px rgb(30 40 90 / 0.16),
+    0 28px 56px -16px rgb(30 40 90 / 0.14);
+
+  /* One vivid accent, indigo-violet. */
+  --accent: oklch(52% 0.23 277);
+  --accent-hover: oklch(46% 0.22 277);
+  --on-accent: #ffffff;
+  --split-2: color-mix(in oklab, var(--accent) 40%, transparent);
+
+  /* The CTA is the accent itself: one vivid filled button. */
+  --cta: oklch(52% 0.23 277);
+  --cta-hover: oklch(46% 0.22 277);
+  --on-cta: #ffffff;
+
+  --danger: oklch(55% 0.21 25);
+  --on-danger: #ffffff;
+
+  /* Scrims lean cool (deep slate-indigo rather than neutral black). */
+  --scrim: color-mix(in oklab, #121633 42%, transparent);
+  --scrim-soft: color-mix(in oklab, #121633 18%, transparent);
+  --scrim-strong: color-mix(in oklab, #121633 30%, transparent);
+
+  /* The HUD: a deep slate-indigo bar held over the white page, violet when active. */
+  --hud: oklch(26% 0.045 272);
+  --hud-raised: oklch(33% 0.05 272);
+  --hud-hover: oklch(36% 0.055 272);
+  --hud-divider: oklch(37% 0.05 272);
+  --hud-line: oklch(40% 0.05 272);
+  --hud-swatch: oklch(46% 0.045 272);
+  --hud-swatch-strong: oklch(56% 0.045 272);
+  --hud-ink: oklch(92% 0.012 270);
+  --hud-ink-strong: oklch(97% 0.008 270);
+  --hud-ink-soft: oklch(87% 0.016 270);
+  --hud-ink-muted: oklch(76% 0.025 270);
+  --hud-ink-subtle: oklch(70% 0.03 270);
+  --hud-active: oklch(54% 0.22 280);
+  --hud-active-hover: oklch(50% 0.22 280);
+  --on-hud-active: #ffffff;
+  --hud-focus: oklch(76% 0.13 285);
+  --hud-danger: oklch(52% 0.19 25);
+  --on-hud-danger: #ffffff;
+  /* The tab ruler strip: cool near-white, slate figures, violet stops. */
+  --ruler: oklch(96.8% 0.008 265);
+  --ruler-ink: oklch(42% 0.03 265);
+  --ruler-tick: oklch(58% 0.03 265);
+  --ruler-tick-soft: oklch(78% 0.02 265);
+  --ruler-mark: oklch(52% 0.23 277);
+
+  /* Type: Classic's system grotesque, which falls back to the system CJK fonts. */
+  --dim-opacity: 0.85;
+
+  --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --display-font: var(--font-display-serif), ui-serif, Georgia, serif;
+
+  /* Shape: friendlier, about one step rounder than Classic across the scale. */
+  --radius: 0.375rem;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+  --radius-4xl: 2.25rem;
+
+  /* Depth: soft, airy and cool-tinted; wider blur, lower opacity. */
+  --elev-2xs: 0 1px rgb(30 40 90 / 0.05);
+  --elev-xs: 0 1px 2px 0 rgb(30 40 90 / 0.06);
+  --elev: 0 1px 3px 0 rgb(30 40 90 / 0.08), 0 2px 6px -2px rgb(30 40 90 / 0.08);
+  --elev-sm: 0 1px 3px 0 rgb(30 40 90 / 0.08), 0 2px 6px -2px rgb(30 40 90 / 0.08);
+  --elev-md: 0 6px 14px -4px rgb(30 40 90 / 0.1), 0 2px 5px -2px rgb(30 40 90 / 0.07);
+  --elev-lg: 0 14px 28px -8px rgb(30 40 90 / 0.13), 0 4px 10px -4px rgb(30 40 90 / 0.07);
+  --elev-xl: 0 24px 44px -12px rgb(30 40 90 / 0.17), 0 8px 16px -8px rgb(30 40 90 / 0.08);
+  --elev-2xl: 0 32px 64px -16px rgb(30 40 90 / 0.28);
+}

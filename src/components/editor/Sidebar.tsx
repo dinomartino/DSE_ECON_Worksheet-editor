@@ -130,7 +130,7 @@ export function Sidebar({
               onClick={() => setTab(entry.id)}
               className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1 px-3 py-2.5 text-[13px] font-medium transition-[color,opacity] duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 active ? 'text-ink' : 'text-ink-muted hover:text-ink'
-              } ${dim && !active ? 'opacity-60' : ''}`}
+              } ${dim && !active ? 'opacity-(--dim-opacity)' : ''}`}
             >
               <span className="truncate">{entry.label}</span>
               {entry.count !== undefined && (

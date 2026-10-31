@@ -1,0 +1,143 @@
+/*
+ * Midnight — the second dark theme: cool ink-blue (hue ~262) where Dark is warm olive
+ * grey. A deep navy desk lets the white sheet glow; the frame sits a step above it and
+ * the panels a few steps lighter again, all one tone. One luminous cyan marks focus,
+ * links and selection; every filled button (CTA, accent, danger) is a light fill with a
+ * dark navy label, so the system reads as lit objects on a night desk. Shape is a touch
+ * rounder and depth deeper and softer than Classic. Contract: `light.css`.
+ */
+:root[data-theme="midnight"],
+:root [data-theme="midnight"] {
+  /* Panel set — the working surfaces: navy, a few steps lighter than the frame. Never
+     light: the white paper stays the only bright plane on screen. */
+  --panel-surface: oklch(24% 0.032 262);
+  --panel-raised: oklch(27.5% 0.034 262);
+  --panel-sunken: oklch(21% 0.03 262);
+  --panel-hover: oklch(30.5% 0.036 262);
+  --panel-ink: oklch(95% 0.01 250);
+  --panel-ink-muted: oklch(80% 0.025 255);
+  --panel-ink-subtle: oklch(72% 0.03 257);
+  --panel-line: oklch(33% 0.034 262);
+  --panel-line-strong: oklch(56% 0.035 260);
+  --panel-accent-soft: oklch(32% 0.065 236);
+  --panel-accent-ink: oklch(86% 0.1 218);
+  --panel-danger-soft: oklch(29% 0.07 18);
+  --panel-danger-ink: oklch(82% 0.1 18);
+  --panel-warn-soft: oklch(30% 0.05 78);
+  --panel-warn-ink: oklch(87% 0.11 85);
+  --panel-ok: oklch(81% 0.12 165);
+  --panel-ok-soft: oklch(29% 0.05 170);
+  --panel-ok-line: oklch(44% 0.08 168);
+
+  /* Chrome set — the frame: toolbar, rails, start screen. The same navy one step
+     deeper than the panels and one step above the desk. */
+  --chrome-surface: oklch(19.5% 0.032 263);
+  --chrome-raised: oklch(23.5% 0.034 263);
+  --chrome-sunken: oklch(17% 0.03 263);
+  --chrome-hover: oklch(26% 0.036 263);
+  --chrome-ink: oklch(95% 0.01 250);
+  --chrome-ink-muted: oklch(79% 0.025 255);
+  --chrome-ink-subtle: oklch(70% 0.03 257);
+  --chrome-line: oklch(28.5% 0.034 263);
+  --chrome-line-strong: oklch(53% 0.035 260);
+  --chrome-accent-soft: oklch(29% 0.065 236);
+  --chrome-accent-ink: oklch(86% 0.1 218);
+  --chrome-danger-soft: oklch(27% 0.07 18);
+  --chrome-danger-ink: oklch(82% 0.1 18);
+  --chrome-warn-soft: oklch(28% 0.05 78);
+  --chrome-warn-ink: oklch(87% 0.11 85);
+  --chrome-ok: oklch(81% 0.12 165);
+  --chrome-ok-soft: oklch(27% 0.05 170);
+  --chrome-ok-line: oklch(42% 0.08 168);
+
+  /* The desk: deep ink-blue, the darkest plane, so the white sheet glows on it. */
+  --desk: oklch(14.5% 0.03 264);
+  /* A dark lift plus a faint cool halo: on a near-black desk a shadow alone vanishes,
+     so the sheet is set off by a rim and a soft glow instead. */
+  --sheet-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    0 2px 4px rgb(0 2 10 / 0.5),
+    0 22px 48px -14px rgb(0 2 10 / 0.7),
+    0 24px 72px -36px rgb(130 170 255 / 0.2);
+
+  /* One luminous accent: a soft electric cyan, unmistakable on navy and far from the
+     paper's black ink. Filled, it takes a dark navy label. */
+  --accent: oklch(79% 0.125 220);
+  --accent-hover: oklch(85% 0.105 218);
+  --on-accent: oklch(19% 0.035 263);
+  --split-2: color-mix(in oklab, var(--accent) 45%, transparent);
+
+  /* The CTA inverts: an ice-white fill with a navy label, the brightest control. */
+  --cta: oklch(94% 0.022 240);
+  --cta-hover: oklch(98% 0.012 240);
+  --on-cta: oklch(20% 0.035 263);
+
+  /* A light coral, legible as `text-danger` on navy; filled, it takes the navy label
+     like every other filled button here. */
+  --danger: oklch(71% 0.16 22);
+  --on-danger: oklch(19% 0.035 263);
+
+  /* Deeper, bluer veils: a 45% scrim barely dims a page that is already dark. */
+  --scrim: color-mix(in oklab, #03050c 62%, transparent);
+  --scrim-soft: color-mix(in oklab, #03050c 35%, transparent);
+  --scrim-strong: color-mix(in oklab, #03050c 50%, transparent);
+
+  /* The HUD: a navy glass bar over the white sheet, a step lighter than the frame and
+     ringed with a visible blue-grey edge; its active state is the cyan accent. */
+  --hud: oklch(23% 0.038 263);
+  --hud-raised: oklch(30% 0.042 262);
+  --hud-hover: oklch(33% 0.044 262);
+  --hud-divider: oklch(37% 0.04 262);
+  --hud-line: oklch(46% 0.045 260);
+  --hud-swatch: oklch(50% 0.04 260);
+  --hud-swatch-strong: oklch(62% 0.04 258);
+  --hud-ink: oklch(92% 0.015 250);
+  --hud-ink-strong: oklch(97% 0.008 250);
+  --hud-ink-soft: oklch(86% 0.02 252);
+  --hud-ink-muted: oklch(76% 0.028 255);
+  --hud-ink-subtle: oklch(70% 0.03 257);
+  --hud-active: oklch(79% 0.125 220);
+  --hud-active-hover: oklch(85% 0.105 218);
+  --on-hud-active: oklch(19% 0.035 263);
+  --hud-focus: oklch(82% 0.12 220);
+  --hud-danger: oklch(71% 0.16 22);
+  --on-hud-danger: oklch(19% 0.035 263);
+  /* The tab ruler strip: pale ice on the white sheet, navy marks, a deeper blue stop. */
+  --ruler: oklch(95.5% 0.012 250);
+  --ruler-ink: oklch(40% 0.035 262);
+  --ruler-tick: oklch(56% 0.035 260);
+  --ruler-tick-soft: oklch(76% 0.025 255);
+  --ruler-mark: oklch(53% 0.14 238);
+
+  /* Type: Classic's system grotesque (it falls back to the system CJK face for 中文)
+     and the Newsreader display serif. */
+  --dim-opacity: 0.7;
+
+  --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --display-font: var(--font-display-serif), ui-serif, Georgia, serif;
+
+  /* Shape: a step rounder than Classic, for a calmer night-time feel. */
+  --radius: 0.375rem;
+  --radius-xs: 0.1875rem;
+  --radius-sm: 0.3125rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.75rem;
+  --radius-4xl: 2.25rem;
+
+  /* Depth: deeper and softer than Classic. A navy-black shadow needs more weight to
+     show on a dark ground; the larger steps add a hairline ring so floating panels
+     keep an edge against surfaces of their own tone. `xl` is the HUD's shadow over the
+     white sheet, so it stays tight there rather than smudging the page. */
+  --elev-2xs: 0 1px rgb(0 2 10 / 0.25);
+  --elev-xs: 0 1px 2px 0 rgb(0 2 10 / 0.3);
+  --elev: 0 1px 3px 0 rgb(0 2 10 / 0.4), 0 1px 2px -1px rgb(0 2 10 / 0.4);
+  --elev-sm: 0 1px 3px 0 rgb(0 2 10 / 0.4), 0 1px 2px -1px rgb(0 2 10 / 0.4);
+  --elev-md: 0 6px 12px -2px rgb(0 2 10 / 0.4), 0 2px 5px -2px rgb(0 2 10 / 0.35);
+  --elev-lg: 0 0 0 1px rgb(0 2 10 / 0.25), 0 12px 24px -8px rgb(0 2 10 / 0.45), 0 4px 8px -4px rgb(0 2 10 / 0.35);
+  --elev-xl: 0 0 0 1px rgb(0 2 10 / 0.25), 0 18px 36px -14px rgb(0 2 10 / 0.5), 0 6px 12px -6px rgb(0 2 10 / 0.35);
+  --elev-2xl: 0 0 0 1px rgb(0 2 10 / 0.3), 0 32px 72px -16px rgb(0 2 10 / 0.75);
+}

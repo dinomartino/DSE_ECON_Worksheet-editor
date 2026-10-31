@@ -1,0 +1,145 @@
+/*
+ * High contrast — the accessible theme, for low vision, glare, projectors and bright
+ * classrooms. Contract: `light.css`.
+ *
+ * A system of hard edges, not soft depth: white panels and a near-white frame, black
+ * ink, every edge a visible grey line (≥ 3:1) and every input edge black; a mid-grey desk
+ * so the white sheet and the white panels both stand out with a crisp outline. Shadows
+ * are flat offsets and outlines, never blur; corners are tight. Three signals, never
+ * mixed: deep blue is selection and links, black is the one action (CTA) and the HUD,
+ * yellow is what is active on the HUD. Text aims at 7:1 (WCAG AAA) wherever the pair
+ * allows; ink-muted and ink-subtle stay dark, the hierarchy comes from size and weight.
+ */
+:root[data-theme="contrast"],
+:root [data-theme="contrast"] {
+  /* Panel set — pure white working surfaces; the sheet is told apart by its outline and
+     the desk around it, not by a cream tint. Hover is a clear step, still 7:1 for every ink. */
+  --panel-surface: #ffffff;
+  --panel-raised: #ffffff;
+  --panel-sunken: #f0f0f0;
+  --panel-hover: #e3e3e3;
+  --panel-ink: #000000;
+  --panel-ink-muted: #333333;
+  --panel-ink-subtle: #474747;
+  /* Every divider and card edge ≥ 3:1 on white; input edges are ink. */
+  --panel-line: #808080;
+  --panel-line-strong: #1a1a1a;
+  --panel-accent-soft: #d6e4ff;
+  --panel-accent-ink: #003a9e;
+  --panel-danger-soft: #ffe0e0;
+  --panel-danger-ink: #8f0000;
+  --panel-warn-soft: #fff0c2;
+  --panel-warn-ink: #6b4000;
+  --panel-ok: #00552a;
+  --panel-ok-soft: #dcf5e3;
+  --panel-ok-line: #2e7d4a;
+
+  /* Chrome set — the frame one light step down, so bars read as structure. Its muted and
+     subtle inks also sit straight on the mid-grey desk (page numbers, start-screen hints),
+     so they stay nearly black. */
+  --chrome-surface: #f0f0f0;
+  --chrome-raised: #ffffff;
+  --chrome-sunken: #e3e3e3;
+  --chrome-hover: #d6d6d6;
+  --chrome-ink: #000000;
+  --chrome-ink-muted: #0f0f0f;
+  --chrome-ink-subtle: #1a1a1a;
+  --chrome-line: #757575;
+  --chrome-line-strong: #1a1a1a;
+  --chrome-accent-soft: #cddcff;
+  --chrome-accent-ink: #003a9e;
+  --chrome-danger-soft: #ffd9d9;
+  --chrome-danger-ink: #8f0000;
+  --chrome-warn-soft: #ffebb0;
+  --chrome-warn-ink: #6b4000;
+  --chrome-ok: #00552a;
+  --chrome-ok-soft: #d2f0db;
+  --chrome-ok-line: #2e7d4a;
+
+  /* A true mid grey: dark enough that white sheet and white panels jump off it, light
+     enough that black text on it still clears 7:1. */
+  --desk: #a6a6a6;
+  /* A hard outline and a flat offset: the sheet's edge is a line, not a haze. */
+  --sheet-shadow:
+    0 0 0 1px #000000,
+    0 4px 0 0 rgb(0 0 0 / 0.28);
+
+  /* Deep, saturated blue: 8:1 on white, still 3:1 against the desk. */
+  --accent: #0040c0;
+  --accent-hover: #00309a;
+  --on-accent: #ffffff;
+  --split-2: color-mix(in oklab, var(--accent) 45%, transparent);
+
+  /* The one filled action: solid black, white label. */
+  --cta: #000000;
+  --cta-hover: #2e2e2e;
+  --on-cta: #ffffff;
+
+  --danger: #b00000;
+  --on-danger: #ffffff;
+
+  /* Heavier scrims, so a dialog never competes with what is behind it. */
+  --scrim: color-mix(in oklab, #000000 55%, transparent);
+  --scrim-soft: color-mix(in oklab, #000000 30%, transparent);
+  --scrim-strong: color-mix(in oklab, #000000 40%, transparent);
+
+  /* The HUD: pure black with white text, over the white sheet the strongest edge on
+     screen. Active is signal yellow with black text; focus is cyan, so "selected" and
+     "focused" never look alike. */
+  --hud: #000000;
+  --hud-raised: #1f1f1f;
+  --hud-hover: #333333;
+  --hud-divider: #5c5c5c;
+  --hud-line: #707070;
+  --hud-swatch: #8c8c8c;
+  --hud-swatch-strong: #c2c2c2;
+  --hud-ink: #ffffff;
+  --hud-ink-strong: #ffffff;
+  --hud-ink-soft: #f0f0f0;
+  --hud-ink-muted: #d6d6d6;
+  --hud-ink-subtle: #bdbdbd;
+  --hud-active: #ffd60a;
+  --hud-active-hover: #ffe45c;
+  --on-hud-active: #000000;
+  --hud-focus: #00d8ff;
+  --hud-danger: #b30000;
+  --on-hud-danger: #ffffff;
+  /* The tab ruler strip: white with black figures and dark ticks. */
+  --ruler: #ffffff;
+  --ruler-ink: #000000;
+  --ruler-tick: #4d4d4d;
+  --ruler-tick-soft: #808080;
+  --ruler-mark: #0040c0;
+
+  /* Type. Classic's system grotesque for the interface. The display role takes the same
+     grotesque rather than the light serif: thin hairlines are the first thing low vision
+     loses. System stacks only, nothing loaded. */
+  --dim-opacity: 0.7;
+
+  --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --display-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+
+  /* Shape: tight corners, half of Classic's, so edges read as edges. */
+  --radius: 0.125rem;
+  --radius-xs: 0.0625rem;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.1875rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.375rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.75rem;
+  --radius-4xl: 1rem;
+
+  /* Depth: flat offsets, no blur. Floating layers (menus, popovers, dialogs: `shadow-xl`,
+     `shadow-2xl`) add a black outline outside their own border, so an overlay is never
+     mistaken for the panel under it. */
+  --elev-2xs: 0 1px 0 0 rgb(0 0 0 / 0.2);
+  --elev-xs: 0 1px 0 0 rgb(0 0 0 / 0.25);
+  --elev: 0 1px 0 0 rgb(0 0 0 / 0.3);
+  --elev-sm: 0 1px 0 0 rgb(0 0 0 / 0.3);
+  --elev-md: 0 2px 0 0 rgb(0 0 0 / 0.3);
+  --elev-lg: 0 3px 0 0 rgb(0 0 0 / 0.3);
+  --elev-xl: 0 0 0 1px #000000, 0 4px 0 0 rgb(0 0 0 / 0.3);
+  --elev-2xl: 0 0 0 1px #000000, 0 6px 0 0 rgb(0 0 0 / 0.3);
+}

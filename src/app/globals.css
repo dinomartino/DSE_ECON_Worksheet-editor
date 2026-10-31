@@ -1,7 +1,20 @@
 @import "tailwindcss";
+/* The theme layer (Settings → Appearance): the semantic names, then one file of
+   primitives per theme. Classic (`light.css`) is also `:root`, the default. Every other
+   theme loads for `screen` only, so print always resolves Classic's tokens: whatever the
+   theme, a printed page is the same down to the sliver of body at its edge. A new theme is
+   one file here (`screen`), one import, and one entry in `src/settings/appearance.ts`. */
+@import "./themes/tokens.css";
+@import "./themes/light.css";
+@import "./themes/dark.css" screen;
+@import "./themes/midnight.css" screen;
+@import "./themes/contrast.css" screen;
+@import "./themes/sepia.css" screen;
+@import "./themes/bright.css" screen;
+@import "./themes/poster.css" screen;
 
-/* `dark:` follows the chosen scheme, not the OS. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* `dark:` follows the chosen theme's scheme (`<html data-scheme>`), not the OS. */
+@custom-variant dark (&:where([data-scheme="dark"], [data-scheme="dark"] *));
 
 /*
  * Design tokens.
@@ -16,9 +29,24 @@
  *     blue-grey `slate` default so the white page reads as the brightest, coolest
  *     thing on screen — the same trick Canva and Figma use to make the artboard pop.
  *
- * Semantic names, not raw hex, so a component never hard-codes a colour and dark mode
- * is one override rather than a `dark:` twin on every element.
+ * Semantic names, not raw hex, so a component never hard-codes a colour and a theme
+ * is one set of primitives (`themes/`) rather than a `dark:` twin on every element.
  */
+
+/* Shape and depth as variables, so a theme can reshape them (`themes/light.css` holds the
+   values). Not inline: utilities read `var(--radius-*)` / `var(--elev-*)` at the element,
+   which is what lets `.paper` put the sheet back on Classic's scales. */
+@theme {
+  --radius: 0.25rem;
+  --shadow: var(--elev);
+  --shadow-2xs: var(--elev-2xs);
+  --shadow-xs: var(--elev-xs);
+  --shadow-sm: var(--elev-sm);
+  --shadow-md: var(--elev-md);
+  --shadow-lg: var(--elev-lg);
+  --shadow-xl: var(--elev-xl);
+  --shadow-2xl: var(--elev-2xl);
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -63,12 +91,43 @@
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
   --color-ok-line: var(--ok-line);
+  --color-on-danger: var(--on-danger);
+
+  /* Behind dialogs (`scrim`), ⌘K (`scrim-soft`), a confirm over the page rail (`scrim-strong`). */
+  --color-scrim: var(--scrim);
+  --color-scrim-soft: var(--scrim-soft);
+  --color-scrim-strong: var(--scrim-strong);
+
+  /* The HUD: bars floating over the page, and the tab ruler under the format bar. */
+  --color-hud: var(--hud);
+  --color-hud-raised: var(--hud-raised);
+  --color-hud-hover: var(--hud-hover);
+  --color-hud-divider: var(--hud-divider);
+  --color-hud-line: var(--hud-line);
+  --color-hud-swatch: var(--hud-swatch);
+  --color-hud-swatch-strong: var(--hud-swatch-strong);
+  --color-hud-ink: var(--hud-ink);
+  --color-hud-ink-strong: var(--hud-ink-strong);
+  --color-hud-ink-soft: var(--hud-ink-soft);
+  --color-hud-ink-muted: var(--hud-ink-muted);
+  --color-hud-ink-subtle: var(--hud-ink-subtle);
+  --color-hud-active: var(--hud-active);
+  --color-hud-active-hover: var(--hud-active-hover);
+  --color-on-hud-active: var(--on-hud-active);
+  --color-hud-focus: var(--hud-focus);
+  --color-hud-danger: var(--hud-danger);
+  --color-on-hud-danger: var(--on-hud-danger);
+  --color-ruler: var(--ruler);
+  --color-ruler-ink: var(--ruler-ink);
+  --color-ruler-tick: var(--ruler-tick);
+  --color-ruler-tick-soft: var(--ruler-tick-soft);
+  --color-ruler-mark: var(--ruler-mark);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   /* The chrome's single display voice: a light editorial serif (Newsreader, mounted
      in layout.tsx), used for at most one screen-level heading. Never on the paper. */
-  --font-display: var(--font-display-serif), ui-serif, Georgia, serif;
+  --font-display: var(--display-font);
 
   /* Motion, 120-220ms. Keyframes state only a `from` frame, so the element's own style
      is the end state. Fill is `backwards`, not `both`: a held transform computes to a
@@ -123,234 +182,17 @@
   }
 }
 
-/*
- * Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design/icons/design.md · designed-as-app
- * theme: studied-DNA (source: url https://arena.ai/) · studied: yes
- * paper oklch(98.8% 0.006 85) warm cream · accent oklch(55% 0.17 245) cyan-blue ≤5%
- * display: light editorial serif (Newsreader, for Martina Plantijn's role) · body: system grotesque · mono: system
- * axes: paper-band light / display roman-serif / accent cool blue 245°
- * pre-emit critique: P4 H5 E4 S5 R5 V4
- *
- * One tone, two depths. The first cut framed light panels in dark graphite, and the
- * eye paid for every glance between them; the user asked for a single colour tone.
- * The tone itself is warm cream (studied from arena.ai) rather than the earlier cool
- * grey — a warm chrome makes the white sheet read cooler and brighter by contrast.
- * So both primitive sets live in the same light warm-cream ramp: `--panel-*` (the
- * working surfaces) and `--chrome-*` (the frame: toolbar, rails, desk — the same
- * tone, one step deeper). `.zone-dark` maps a subtree onto the frame set,
- * `.zone-light` back onto the panels; components keep saying `bg-surface` /
- * `text-ink` and never name a zone's colours. In the dark scheme both sets drop
- * into one dark ramp together — never dark frame against light panel.
- */
-:root {
-  /* Panel set — the lit working surfaces. Cream, not white: the paper keeps pure
-     white to itself, so even the lightest panel sits visibly behind the sheet. */
-  --panel-surface: oklch(98.8% 0.006 85);
-  --panel-raised: oklch(99.3% 0.004 85);
-  --panel-sunken: oklch(96% 0.012 85);
-  --panel-hover: oklch(93.5% 0.014 85);
-  --panel-ink: oklch(27% 0.012 75);
-  --panel-ink-muted: oklch(47% 0.014 75);
-  --panel-ink-subtle: oklch(60% 0.012 75);
-  --panel-line: oklch(90% 0.012 85);
-  --panel-line-strong: oklch(81% 0.014 85);
-  --panel-accent-soft: oklch(94% 0.035 245);
-  --panel-accent-ink: oklch(44% 0.15 245);
-  --panel-danger-soft: #fef2f2;
-  --panel-danger-ink: #b91c1c;
-  --panel-warn-soft: #fdf5e6;
-  --panel-warn-ink: #91610b;
-  --panel-ok: #047857;
-  --panel-ok-soft: #ecfdf5;
-  --panel-ok-line: #a7f3d0;
-
-  /* Chrome set — the frame around the paper: the same grey family one step deeper,
-     so bars and rails read as structure without ever fighting the panels. Text on
-     it is the same dark ink; `ink-muted` stays ≥ 4.5:1 on `--chrome-surface`. */
-  --chrome-surface: oklch(94.5% 0.014 85);
-  --chrome-raised: oklch(97.5% 0.01 85);
-  --chrome-sunken: oklch(91.5% 0.014 85);
-  --chrome-hover: oklch(91% 0.015 85);
-  --chrome-ink: oklch(27% 0.012 75);
-  --chrome-ink-muted: oklch(45% 0.014 75);
-  --chrome-ink-subtle: oklch(58% 0.012 75);
-  --chrome-line: oklch(87% 0.013 85);
-  --chrome-line-strong: oklch(78% 0.014 85);
-  --chrome-accent-soft: oklch(92% 0.045 245);
-  --chrome-accent-ink: oklch(44% 0.15 245);
-  --chrome-danger-soft: #fdeeee;
-  --chrome-danger-ink: #b91c1c;
-  --chrome-warn-soft: #fbf2e0;
-  --chrome-warn-ink: #91610b;
-  --chrome-ok: #047857;
-  --chrome-ok-soft: #e6f9f1;
-  --chrome-ok-line: #a7f3d0;
-
-  --background: var(--panel-surface);
-  --foreground: var(--panel-ink);
-
-  /* The desk is the deepest step of the same grey — clearly under the sheet, never
-     a different world. The white paper stays the brightest object on screen. */
-  --desk: oklch(85% 0.016 85);
-
-  --surface: var(--panel-surface);
-  --surface-raised: var(--panel-raised);
-  --surface-sunken: var(--panel-sunken);
-  --surface-hover: var(--panel-hover);
-
-  --ink: var(--panel-ink);
-  --ink-muted: var(--panel-ink-muted);
-  --ink-subtle: var(--panel-ink-subtle);
-
-  --line: var(--panel-line);
-  --line-strong: var(--panel-line-strong);
-
-  /* One accent, cyan-leaning blue (studied from arena.ai's link colour): legible on
-     cream panels and unmistakably different from the paper's own black ink. */
-  --accent: oklch(55% 0.17 245);
-  --accent-hover: oklch(50% 0.17 245);
-  --accent-soft: var(--panel-accent-soft);
-  --accent-ink: var(--panel-accent-ink);
-  --on-accent: #ffffff;
-  /* The second question type in split bars (bank cards, coverage bar). */
-  --split-2: color-mix(in oklab, var(--accent) 40%, transparent);
-
-  --cta: oklch(27% 0.012 75);
-  --cta-hover: oklch(35% 0.014 75);
-  --on-cta: oklch(98.8% 0.006 85);
-
-  --danger: #dc2626;
-  --danger-soft: var(--panel-danger-soft);
-  --danger-ink: var(--panel-danger-ink);
-  --warn-soft: var(--panel-warn-soft);
-  --warn-ink: var(--panel-warn-ink);
-  --ok: var(--panel-ok);
-  --ok-soft: var(--panel-ok-soft);
-  --ok-line: var(--panel-ok-line);
-}
-
-/* The frame: toolbar, rails, desk, start screen — one step deeper, same tone. */
-.zone-dark {
-  --surface: var(--chrome-surface);
-  --surface-raised: var(--chrome-raised);
-  --surface-sunken: var(--chrome-sunken);
-  --surface-hover: var(--chrome-hover);
-
-  --ink: var(--chrome-ink);
-  --ink-muted: var(--chrome-ink-muted);
-  --ink-subtle: var(--chrome-ink-subtle);
-
-  --line: var(--chrome-line);
-  --line-strong: var(--chrome-line-strong);
-
-  --accent-soft: var(--chrome-accent-soft);
-  --accent-ink: var(--chrome-accent-ink);
-
-  --danger-soft: var(--chrome-danger-soft);
-  --danger-ink: var(--chrome-danger-ink);
-  --warn-soft: var(--chrome-warn-soft);
-  --warn-ink: var(--chrome-warn-ink);
-  --ok: var(--chrome-ok);
-  --ok-soft: var(--chrome-ok-soft);
-  --ok-line: var(--chrome-ok-line);
-}
-
-/* A lit panel inside a frame zone (dialogs, cards on the start screen's desk). */
-.zone-light {
-  --surface: var(--panel-surface);
-  --surface-raised: var(--panel-raised);
-  --surface-sunken: var(--panel-sunken);
-  --surface-hover: var(--panel-hover);
-
-  --ink: var(--panel-ink);
-  --ink-muted: var(--panel-ink-muted);
-  --ink-subtle: var(--panel-ink-subtle);
-
-  --line: var(--panel-line);
-  --line-strong: var(--panel-line-strong);
-
-  --accent-soft: var(--panel-accent-soft);
-  --accent-ink: var(--panel-accent-ink);
-
-  --danger-soft: var(--panel-danger-soft);
-  --danger-ink: var(--panel-danger-ink);
-  --warn-soft: var(--panel-warn-soft);
-  --warn-ink: var(--panel-warn-ink);
-  --ok: var(--panel-ok);
-  --ok-soft: var(--panel-ok-soft);
-  --ok-line: var(--panel-ok-line);
-}
-
-/* The dark scheme. Keyed on the resolved `data-theme` (Settings → Appearance; the boot
-   script in layout.tsx sets it before first paint), never on the OS query directly. */
-:root[data-theme="dark"] {
-  /* Panels go deep warm grey (the reference's olive-warm dark, not blue-black);
-     the frame drops nearly to black beneath them. */
-  --panel-surface: oklch(23% 0.008 100);
-  --panel-raised: oklch(27% 0.009 100);
-  --panel-sunken: oklch(20% 0.007 100);
-  --panel-hover: oklch(30% 0.01 100);
-  --panel-ink: oklch(93% 0.006 95);
-  --panel-ink-muted: oklch(74% 0.01 95);
-  --panel-ink-subtle: oklch(60% 0.01 95);
-  --panel-line: oklch(31% 0.008 100);
-  --panel-line-strong: oklch(40% 0.008 100);
-  --panel-accent-soft: oklch(30% 0.07 245);
-  --panel-accent-ink: oklch(80% 0.09 245);
-  --panel-danger-soft: oklch(28% 0.06 20);
-  --panel-danger-ink: oklch(80% 0.11 20);
-  --panel-warn-soft: oklch(29% 0.05 85);
-  --panel-warn-ink: oklch(84% 0.11 90);
-  --panel-ok: oklch(76% 0.11 165);
-  --panel-ok-soft: oklch(27% 0.05 165);
-  --panel-ok-line: oklch(38% 0.07 165);
-
-  --chrome-surface: oklch(19% 0.008 100);
-  --chrome-raised: oklch(24% 0.009 100);
-  --chrome-sunken: oklch(16% 0.006 100);
-  --chrome-hover: oklch(26% 0.009 100);
-  /* The chrome ink and status tints must drop with their surfaces — left at their
-     light-scheme values they are dark-on-dark, and every zone-dark label vanishes. */
-  --chrome-ink: oklch(93% 0.006 95);
-  --chrome-ink-muted: oklch(74% 0.01 95);
-  --chrome-ink-subtle: oklch(60% 0.01 95);
-  --chrome-line: oklch(28% 0.008 100);
-  --chrome-line-strong: oklch(37% 0.008 100);
-  --chrome-accent-soft: oklch(30% 0.07 245);
-  --chrome-accent-ink: oklch(80% 0.09 245);
-  --chrome-danger-soft: oklch(28% 0.06 20);
-  --chrome-danger-ink: oklch(80% 0.11 20);
-  --chrome-warn-soft: oklch(29% 0.05 85);
-  --chrome-warn-ink: oklch(84% 0.11 90);
-  --chrome-ok: oklch(76% 0.11 165);
-  --chrome-ok-soft: oklch(27% 0.05 165);
-  --chrome-ok-line: oklch(38% 0.07 165);
-
-  --desk: oklch(15% 0.006 100);
-
-  --accent: oklch(65% 0.15 245);
-  --accent-hover: oklch(70% 0.13 245);
-  --on-accent: oklch(15% 0.01 100);
-  --split-2: oklch(72% 0.06 245);
-
-  /* The CTA inverts with the scheme: light fill, dark label. */
-  --cta: oklch(92% 0.008 95);
-  --cta-hover: oklch(96% 0.008 95);
-  --on-cta: oklch(20% 0.008 100);
-
-  --danger: #f87171;
-}
 
 /* Native ticks and radios draw in the scheme's colours (left light, they glare on the dark
    panels); the accent fills a ticked one. Never on the paper, which stays light. */
-:root[data-theme="dark"] input:is([type="checkbox"], [type="radio"]):not(.paper *) {
+:root[data-scheme="dark"] input:is([type="checkbox"], [type="radio"]):not(.paper *) {
   color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: var(--ui-font);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -578,16 +420,7 @@ u [data-tab] {
 /* A soft, layered shadow reads as a sheet lifted off a desk. A single flat shadow
    reads as a card in a form, which is the impression we're trying to lose. */
 .paper-shadow {
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.07),
-    0 8px 24px -6px rgb(0 0 0 / 0.13),
-    0 24px 48px -12px rgb(0 0 0 / 0.11);
-}
-
-:root[data-theme="dark"] .paper-shadow {
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.5),
-    0 8px 32px -6px rgb(0 0 0 / 0.6);
+  box-shadow: var(--sheet-shadow);
 }
 
 /* Custom scrollbars — the default macOS/Windows bars are the loudest thing in a

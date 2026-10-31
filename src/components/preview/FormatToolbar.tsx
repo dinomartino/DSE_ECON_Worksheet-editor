@@ -132,7 +132,7 @@ interface Props {
 export const TOOLBAR_BTN =
   'flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium ' +
   'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
-  'hover:bg-[#3d3a35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]';
+  'hover:bg-hud-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hud-focus';
 
 /** How far below the page column's top edge the docked bars sit. */
 export const DOCK_INSET_PX = 8;
@@ -205,8 +205,8 @@ function readRulerOpen(): boolean {
 
 /** The docked bars' entrance: dropping in from the top edge they dock to. */
 export const TOOLBAR_ENTER = 'animate-pop-in origin-top';
-export const TOOLBAR_ACTIVE = 'bg-[#0d77c9] text-white hover:bg-[#2b8ad3]';
-export const TOOLBAR_IDLE = 'text-[#e6e2db]';
+export const TOOLBAR_ACTIVE = 'bg-hud-active text-on-hud-active hover:bg-hud-active-hover';
+export const TOOLBAR_IDLE = 'text-hud-ink';
 const BTN = TOOLBAR_BTN;
 const ACTIVE = TOOLBAR_ACTIVE;
 const IDLE = TOOLBAR_IDLE;
@@ -304,7 +304,7 @@ export function FormatToolbar({
       // Docked across the top of the page column. `flex-wrap` matters: the column is
       // narrow at small window widths, and a single non-wrapping row would push the
       // delete button out of reach rather than folding onto a second line.
-      className={`fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-[#454138] bg-[#211f1d]/95 px-1.5 py-1 shadow-xl backdrop-blur ${TOOLBAR_ENTER}`}
+      className={`fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-hud-line bg-hud/95 px-1.5 py-1 shadow-xl backdrop-blur ${TOOLBAR_ENTER}`}
       style={{
         left: dock.left,
         width: dock.width,
@@ -337,7 +337,7 @@ export function FormatToolbar({
         // Names the target, since the bar no longer sits beside it. `mr-auto` pushes
         // every control to the right edge, keeping them in one place as the label's
         // width changes with the selection.
-        <span className="mr-1 max-w-[30%] truncate pl-1 text-[11px] font-medium text-[#a39d94]">
+        <span className="mr-1 max-w-[30%] truncate pl-1 text-[11px] font-medium text-hud-ink-muted">
           {subject}
         </span>
       )}
@@ -357,7 +357,7 @@ export function FormatToolbar({
           <select
             aria-label={m.fontSize}
             title={m.fontSize}
-            className="h-7 cursor-pointer rounded bg-[#33302c] min-w-9 px-1 [field-sizing:content] text-xs text-[#f1eee9] outline-none transition-[background-color] duration-150 ease-out-soft hover:bg-[#3d3a35] focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
+            className="h-7 cursor-pointer rounded bg-hud-raised min-w-9 px-1 [field-sizing:content] text-xs text-hud-ink-strong outline-none transition-[background-color] duration-150 ease-out-soft hover:bg-hud-hover focus-visible:ring-2 focus-visible:ring-hud-focus"
             value={format?.fontSize ?? inheritedPt ?? ''}
             onChange={(event) =>
               onChange({ fontSize: event.target.value ? Number(event.target.value) : undefined })
@@ -377,7 +377,7 @@ export function FormatToolbar({
             ))}
           </select>
 
-          <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
+          <span className="mx-0.5 h-5 w-px bg-hud-divider" aria-hidden />
 
           <button
             type="button"
@@ -511,7 +511,7 @@ export function FormatToolbar({
 
       {alignable && !alignOnly && (
         <>
-          <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
+          <span className="mx-0.5 h-5 w-px bg-hud-divider" aria-hidden />
           {ALIGNMENTS.map((option) => (
             <button
               key={option.value}
@@ -530,7 +530,7 @@ export function FormatToolbar({
 
       {!alignOnly && (
         <>
-          <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
+          <span className="mx-0.5 h-5 w-px bg-hud-divider" aria-hidden />
 
           <div className="relative">
             <button
@@ -542,19 +542,19 @@ export function FormatToolbar({
               onClick={() => setColorOpen((open) => !open)}
             >
               <span
-                className="h-3.5 w-3.5 rounded-sm border border-[#6b665c]"
+                className="h-3.5 w-3.5 rounded-sm border border-hud-swatch-strong"
                 style={{ background: format?.color ? `#${format.color}` : '#e2e8f0' }}
               />
             </button>
             {colorOpen && (
-              <div className="absolute left-0 top-8 flex origin-top-left animate-pop-in gap-1 rounded-md border border-[#454138] bg-[#211f1d] p-1.5 shadow-xl">
+              <div className="absolute left-0 top-8 flex origin-top-left animate-pop-in gap-1 rounded-md border border-hud-line bg-hud p-1.5 shadow-xl">
                 {COLORS.map((option) => (
                   <button
                     key={option.label}
                     type="button"
                     aria-label={m[option.label]}
                     title={m[option.label]}
-                    className="h-5 w-5 rounded-sm border border-[#57534a] transition-[transform,scale] duration-150 ease-out-soft hover:scale-110 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
+                    className="h-5 w-5 rounded-sm border border-hud-swatch transition-[transform,scale] duration-150 ease-out-soft hover:scale-110 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hud-focus"
                     style={{ background: option.swatch }}
                     onClick={() => {
                       onChange({ color: option.value });
@@ -569,7 +569,7 @@ export function FormatToolbar({
       )}
 
       {(onMove || onDuplicate || onDelete) && (
-        <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
+        <span className="mx-0.5 h-5 w-px bg-hud-divider" aria-hidden />
       )}
 
       {onMove && (
@@ -624,7 +624,7 @@ export function FormatToolbar({
           type="button"
           aria-label={m.deleteElement}
           title={m.deleteElement}
-          className={`${BTN} text-[#d6d1c9] hover:bg-[#b4241f] hover:text-white`}
+          className={`${BTN} text-hud-ink-soft hover:bg-hud-danger hover:text-on-hud-danger`}
           onClick={onDelete}
         >
           🗑
