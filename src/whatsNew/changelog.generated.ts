@@ -14,6 +14,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.8.7 — 2026-11-01
+
 ### Added
 - **Put your school's watermark behind a paper with one click.** Save a school logo (PNG, JPG or
   SVG) or a line of text such as SAMPLE once, in Settings → Watermarks; save several and name
