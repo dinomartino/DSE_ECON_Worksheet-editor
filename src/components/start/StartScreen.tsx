@@ -32,7 +32,11 @@ import { WhatsNewDialog, WhatsNewOnLaunch } from '@/components/whatsNew/WhatsNew
 import { describeDocument } from '@/feedback/feedback';
 import { uiLanguage, useMessages } from '@/i18n/language';
 import { FileDashboard, type DocumentActions, type FolderActions, type SetActions } from './FileDashboard';
-import { AddPapersDialog, AddToSetDialog, MakeSetDialog, RenameSetDialog } from './SetDialogs';
+import { AddPapersDialog, AddToSetDialog, MakeSetDialog } from './SetDialogs';
+import { SetDetailsDialog } from './SetDetailsDialog';
+import { SET_DETAILS_MESSAGES } from './SetDetailsDialog.messages';
+import { withSetName } from '@/model/paperSet';
+import { withDetails } from '@/model/setDetails';
 import { SET_MESSAGES } from './sets.messages';
 import { readDashboardFolder, writeDashboardFolder } from './dashboard';
 import { START_PANEL_MESSAGES } from './messages';
@@ -88,7 +92,7 @@ import {
   addToSet,
   leaveSet,
   makeSet,
-  renameSet,
+  changeSetMembers,
   setGroups,
   summarySet,
   type Folder,
@@ -211,9 +215,11 @@ export function StartScreen({
   // The open paper-set dialog (k-0299), if any.
   const [setDialog, setSetDialog] = useState<
     | { kind: 'make' | 'add'; summary: WorksheetSummary }
-    | { kind: 'addPapers' | 'rename'; group: SetGroup }
+    | { kind: 'addPapers'; group: SetGroup }
+    | { kind: 'details'; group: SetGroup; papers: Worksheet[] }
     | undefined
   >();
+  const dm = useMessages(SET_DETAILS_MESSAGES);
   const sm = useMessages(SET_MESSAGES);
   const nf = useMessages(NEW_FORM_MESSAGES);
   // The New worksheet form will make a mock set (k-0311): its button says so.
@@ -337,7 +343,7 @@ export function StartScreen({
   };
 
   /** Write a set change to every paper it names, then say what could not be written. */
-  const changeSets = async (change: Promise<SetChangeResult>) => {
+  const changeSets = async (change: Promise<SetChangeResult>): Promise<number> => {
     setError(undefined);
     let failed = 0;
     try {
@@ -347,10 +353,22 @@ export function StartScreen({
     }
     await refresh();
     if (failed > 0) setError(sm.changeFailed(failed));
+    return failed;
   };
 
   const setActions: SetActions = {
-    rename: (group) => setSetDialog({ kind: 'rename', group }),
+    details: (group) =>
+      void (async () => {
+        // Every member read first: the dialog compares them (where they disagree).
+        const papers = await Promise.all(group.members.map((row) => worksheetStore.load(row.id).catch(() => undefined)));
+        const loaded = papers.filter((paper): paper is Worksheet => !!paper);
+        if (loaded.length === 0) {
+          setError(sm.detailsRead);
+          return;
+        }
+        if (loaded.length < papers.length) setError(sm.detailsRead);
+        setSetDialog({ kind: 'details', group, papers: loaded });
+      })(),
     addPapers: (group) => setSetDialog({ kind: 'addPapers', group }),
     ungroup: (group) => void changeSets(leaveSet(worksheetStore, group.members.map((row) => row.id))),
   };
@@ -1192,14 +1210,23 @@ export function StartScreen({
           }}
         />
       )}
-      {setDialog?.kind === 'rename' && (
-        <RenameSetDialog
-          group={setDialog.group}
+      {setDialog?.kind === 'details' && (
+        <SetDetailsDialog
+          name={setDialog.group.name}
+          papers={setDialog.papers}
           onClose={() => setSetDialog(undefined)}
-          onDone={(name) => {
-            const group = setDialog.group;
+          onApply={(name, patch) => {
+            const { group, papers } = setDialog;
             setSetDialog(undefined);
-            void changeSets(renameSet(worksheetStore, group, name));
+            void changeSets(
+              changeSetMembers(
+                worksheetStore,
+                papers.map((paper) => paper.id),
+                (paper) => withSetName(withDetails(paper, patch), group.id, name),
+              ),
+            ).then((failed) => {
+              if (failed === 0) setNotice({ message: dm.applied(papers.length) });
+            });
           }}
         />
       )}

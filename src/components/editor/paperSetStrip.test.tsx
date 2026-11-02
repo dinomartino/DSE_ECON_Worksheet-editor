@@ -87,3 +87,14 @@ describe('Export ticks the set’s other papers', () => {
     expect(keyDocumentChoices(others, '').map((row) => row.id)).toEqual(['unit', 'p1', 'other']);
   });
 });
+
+describe('Set details from the strip (k-0299 step B)', () => {
+  it('offers Set details…, and says Details differ when the papers disagree', () => {
+    const shown = stripPapers(paper2(), ROWS)!;
+    const plainBar = renderToStaticMarkup(<PaperSetBar {...shown} onOpen={() => {}} onDetails={() => {}} />);
+    expect(plainBar).toContain('Set details…');
+    const drifting = renderToStaticMarkup(<PaperSetBar {...shown} onOpen={() => {}} onDetails={() => {}} drifting />);
+    expect(drifting).toContain('Details differ');
+    expect(renderToStaticMarkup(<PaperSetBar {...shown} onOpen={() => {}} />)).not.toContain('data-set-details-open');
+  });
+});

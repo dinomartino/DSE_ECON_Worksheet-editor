@@ -66,7 +66,8 @@ export interface DocumentActions {
 
 /** A set frame's own ⋯ menu (k-0299). The screen owns the dialogs and the doing. */
 export interface SetActions {
-  rename: (group: SetGroup) => void;
+  /** Set details… (k-0299 step B): its name and the details kept in step across its papers. */
+  details: (group: SetGroup) => void;
   addPapers: (group: SetGroup) => void;
   ungroup: (group: SetGroup) => void;
 }
@@ -876,7 +877,7 @@ function SetHeading({
         <Menu
           label={sm.setActions(name)}
           items={[
-            { label: sm.renameSet, onSelect: () => actions.rename(group) },
+            { label: sm.setDetails, onSelect: () => actions.details(group) },
             { label: sm.addPapers, onSelect: () => actions.addPapers(group) },
             { label: sm.ungroup, onSelect: () => actions.ungroup(group), separated: true },
           ]}

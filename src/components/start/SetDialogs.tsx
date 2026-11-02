@@ -10,8 +10,8 @@ import { canJoinASet, compareMembers, summaryRole, type SetGroup, type Worksheet
 import { SET_MESSAGES } from './sets.messages';
 
 /**
- * The start screen's paper-set dialogs (k-0299): Make a set…, Add to set…, Add papers… and
- * Rename set…. Each only asks; the screen writes every member (`storage/paperSets.ts`).
+ * The start screen's paper-set dialogs (k-0299): Make a set…, Add to set… and Add papers…
+ * (Set details…, with the set's name, is `SetDetailsDialog`). Each only asks; the screen writes every member (`storage/paperSets.ts`).
  * Everything is a button or a box: no step needs a drag (MacBook trackpad, iPad touch).
  */
 
@@ -265,59 +265,6 @@ export function AddPapersDialog({
           <p className="text-[12.5px] leading-relaxed text-ink-muted">{sm.noOtherPapers}</p>
         )}
       </div>
-    </Dialog>
-  );
-}
-
-/** Rename a set: every member takes the name. */
-export function RenameSetDialog({
-  group,
-  onClose,
-  onDone,
-}: {
-  group: SetGroup;
-  onClose: () => void;
-  onDone: (name: string) => void;
-}) {
-  const sm = useMessages(SET_MESSAGES);
-  const [name, setName] = useState(group.name);
-  const trimmed = name.trim();
-  const formId = 'rename-set-form';
-  return (
-    <Dialog
-      title={sm.renameSetTitle}
-      description={sm.renameSetDescription}
-      width={420}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="subtle" onClick={onClose}>
-            {sm.cancel}
-          </Button>
-          <Button variant="primary" type="submit" form={formId} disabled={!trimmed}>
-            {sm.rename}
-          </Button>
-        </>
-      }
-    >
-      <form
-        id={formId}
-        className="px-5 py-5"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (trimmed) onDone(trimmed);
-        }}
-      >
-        <input
-          type="text"
-          value={name}
-          autoFocus
-          aria-label={sm.setName}
-          placeholder={sm.setNamePlaceholder}
-          onChange={(event) => setName(event.target.value)}
-          className={INPUT}
-        />
-      </form>
     </Dialog>
   );
 }

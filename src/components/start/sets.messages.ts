@@ -22,7 +22,7 @@ export const SET_MESSAGES = defineMessages({
   makeSet: { en: 'Make a set…', zh: '建立套卷…' },
   addToSet: { en: 'Add to set…', zh: '加入套卷…' },
   leaveSet: { en: 'Remove from set', zh: '移出套卷' },
-  renameSet: { en: 'Rename set…', zh: '重新命名套卷…' },
+  setDetails: { en: 'Set details…', zh: '套卷資料…' },
   addPapers: { en: 'Add papers…', zh: '加入試卷…' },
   ungroup: { en: 'Ungroup', zh: '解散套卷' },
   setActions: { en: (name: string) => `Actions for the set ${name}`, zh: (name: string) => `套卷「${name}」的操作` },
@@ -53,12 +53,6 @@ export const SET_MESSAGES = defineMessages({
     zh: '未屬於任何套卷的試卷。每份試卷只可屬於一個套卷。',
   },
   add: { en: 'Add', zh: '加入' },
-  renameSetTitle: { en: 'Rename set', zh: '重新命名套卷' },
-  renameSetDescription: {
-    en: 'Every paper in the set takes the new name. The printed papers do not change.',
-    zh: '套卷內每份試卷都會用新名稱。印出的試卷內容不變。',
-  },
-  rename: { en: 'Rename', zh: '重新命名' },
   cancel: { en: 'Cancel', zh: '取消' },
   // Results.
   changeFailed: {
@@ -68,6 +62,10 @@ export const SET_MESSAGES = defineMessages({
   blankNotSaved: {
     en: 'The blank paper of the mock set could not be saved. Your paper is open; make the other one from New worksheet.',
     zh: '無法儲存 Mock 套卷的空白試卷。你的試卷已開啟；可從「新增工作紙」建立另一份。',
+  },
+  detailsRead: {
+    en: 'Could not read every paper of the set.',
+    zh: '無法讀取套卷內的所有試卷。',
   },
   copyLeftSet: {
     en: (name: string) => `Copy saved. It is not in the set “${name}”: a set holds each paper once.`,

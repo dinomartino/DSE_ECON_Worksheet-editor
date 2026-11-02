@@ -27,7 +27,7 @@ const W = zh
       paper1: /^Paper 1 Mock · MCQ/, paper2: /^Paper 2 Mock · 答題簿/, classroom: /^課堂工作紙/,
       actionsFor: (t) => `「${t}」的操作`, makeSet: '建立套卷…', make: '建立套卷', leaveSet: '移出套卷', setName: '套卷名稱',
       duplicate: '建立副本', copySuffix: '（副本）', set: '套卷', export: /^匯出/, alsoInclude: '一併包含', answerKey: /評卷參考/, word: 'Word',
-      renameSet: '重新命名套卷…', rename: '重新命名', ungroup: '解散套卷', setActions: (n) => `套卷「${n}」的操作`, dismissHint: '關閉提示',
+      renameSet: '套卷資料…', rename: '套用至每份試卷', ungroup: '解散套卷', setActions: (n) => `套卷「${n}」的操作`, dismissHint: '關閉提示',
       thisSet: '同一套卷', open: (t) => `開啟「${t}」`,
     }
   : {
@@ -35,7 +35,7 @@ const W = zh
       paper1: /^Paper 1 mock · MCQ/, paper2: /^Paper 2 mock · booklet/, classroom: /^Classroom worksheet/,
       actionsFor: (t) => `Actions for ${t}`, makeSet: 'Make a set…', make: 'Make set', leaveSet: 'Remove from set', setName: 'Set name',
       duplicate: 'Duplicate', copySuffix: ' (copy)', set: 'Set', export: /^Export/, alsoInclude: 'Also include', answerKey: /Answer key/, word: 'Word',
-      renameSet: 'Rename set…', rename: 'Rename', ungroup: 'Ungroup', setActions: (n) => `Actions for the set ${n}`, dismissHint: 'Dismiss hint',
+      renameSet: 'Set details…', rename: 'Apply to every paper', ungroup: 'Ungroup', setActions: (n) => `Actions for the set ${n}`, dismissHint: 'Dismiss hint',
       thisSet: 'This set', open: (t) => `Open ${t}`,
     };
 
@@ -167,7 +167,7 @@ await shot('after-duplicate');
 // 8. Rename the set, then ungroup it.
 await page.getByRole('button', { name: W.setActions(SET), exact: true }).click();
 await menuItem(W.renameSet).click();
-await page.getByRole('dialog').getByRole('textbox').fill('S6 Mock 2026-27 (Feb)');
+await page.getByRole('dialog').getByRole('textbox').first().fill('S6 Mock 2026-27 (Feb)');
 await page.getByRole('dialog').getByRole('button', { name: W.rename, exact: true }).click();
 await page.getByText('S6 Mock 2026-27 (Feb)').first().waitFor();
 check(true, 'the set is renamed');

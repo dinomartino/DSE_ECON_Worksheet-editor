@@ -215,6 +215,8 @@ Invariants:
 - `src/model/paperSet.ts:paperSetOf` · `:setRoleOf` · `src/storage/paperSets.ts:setGroups` · `:changeSetMembers` — paper sets
   (k-0299): stored in each member, grouped from index rows; `src/components/start/dashboard.ts:dashboardEntries` frames them,
   `src/components/editor/PaperSetStrip.tsx:PaperSetStrip` lists them in the editor, `src/components/editor/exportSession.ts:setKeyPicks` ticks them
+- `src/model/setDetails.ts:sharedLines` · `:withDetails` · `:detailDrift` — step B: school / examination (`CoverLine.sharedAs`), date sat, classes,
+  copied into each paper; `src/components/start/SetDetailsDialog.tsx:SetDetailsDialog` (start screen ⋯ and the editor strip)
 - `src/model/mockSet.ts:createMockSet` — New worksheet's Mock set (k-0311): the chosen paper + a blank partner, linked;
   `src/components/start/NewWorksheetForm.tsx:NewWorksheetForm` asks Just this paper / Mock set on Paper 1 and Paper 2
 - `src/storage/summaries.ts:rowFacts` · `:kindRepairs` — what a row records beyond counts (kind, set, exam paper); rows below `INDEX_ROW_REV` 3 are repaired from their documents once

@@ -193,11 +193,13 @@ const line = (
   zh = '',
   format?: TextFormat,
   gapAfter?: number,
+  sharedAs?: CoverLine['sharedAs'],
 ): CoverLine => ({
   id: newId(),
   text: bi(en, zh),
   ...(format ? { format } : {}),
   ...(gapAfter ? { gapAfter } : {}),
+  ...(sharedAs ? { sharedAs } : {}),
 });
 
 /**
@@ -497,8 +499,9 @@ export function createCoverPage(options: CoverOptions): CoverPage {
      * document's own base — 10pt on a QAB, which is where the reference sets them.
      */
     headLines: [
-      line(school, schoolZh, { ...headFormat, ...sans, fontSize: 11 }, 1),
-      line(examName, examNameZh, { ...headFormat, ...sans, fontSize: 11 }, 2),
+      // Tagged as a set's shared details (`CoverLine.sharedAs`, k-0299 step B).
+      line(school, schoolZh, { ...headFormat, ...sans, fontSize: 11 }, 1, 'school'),
+      line(examName, examNameZh, { ...headFormat, ...sans, fontSize: 11 }, 2, 'exam'),
       // The line a candidate identifies the paper by — sans on both papers.
       line(paperName, paperNameZh, { ...headFormat, ...sans, fontSize: 14, bold: true }),
       line(paperKind, paperKindZh, { ...headFormat, ...sans, fontSize: 14, bold: true }, 1),
@@ -526,7 +529,7 @@ export function createCoverPage(options: CoverOptions): CoverPage {
 
     // The reference's foot line is 12pt bold (its `footer1.xml`, `sz=24` + `w:b`).
     // The same school name as the head line, so both sides follow it.
-    footLines: [line(school, schoolZh, { ...sans, bold: true, fontSize: 12 })],
+    footLines: [line(school, schoolZh, { ...sans, bold: true, fontSize: 12 }, undefined, 'school')],
 
     // The reference's Paper 1 boxes a note bottom-right; the write-in paper has none.
     // This project's own words, as everywhere (§ the copyright constraint).

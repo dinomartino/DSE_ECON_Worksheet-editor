@@ -45,6 +45,7 @@ export { TRASH_RETENTION_DAYS, trashAge } from './trash';
 export {
   addToSet,
   canJoinASet,
+  changeSetMembers,
   compareMembers,
   leaveSet,
   makeSet,

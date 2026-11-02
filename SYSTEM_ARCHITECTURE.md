@@ -3412,6 +3412,13 @@ in-flight values stay local; the store is called on pointer-up.
   repair reads such a row's document once (`rowFacts`). The set itself lives **in each
   member** (`Worksheet.paperSet`), never in the index, a folder or a set file: the index
   copy is a cache, and a set is "the papers carrying this id", so nothing can dangle.
+- **A set's shared details are copied, never referenced** (step B, `model/setDetails.ts`):
+  the school and examination line are each paper's own cover text, tagged
+  `CoverLine.sharedAs`; date sat and classes its own `satOn`/`classes`. Set details writes
+  them to every member (one save each; the open paper through the editor, one undo step).
+  No token is resolved at render, so an older build prints what was last written. An
+  untagged (older) cover's lines are found only when they say what they are (the head line
+  the foot repeats, an exam-worded line); otherwise nothing is written there.
 - **A rename writes `worksheet.name`** (loads and re-saves), never `title` — see § *What
   a document is called is not what it prints*. It stays a field on the document because
   the index is derived from it, so patching the entry alone is undone by the next

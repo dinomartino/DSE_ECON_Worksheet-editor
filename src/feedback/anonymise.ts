@@ -362,7 +362,7 @@ export const KEPT_KEYS: ReadonlySet<string> = new Set([
   // Kinds and enums.
   'kind', 'type', 'align', 'along', 'borders', 'captionPlacement', 'change', 'density', 'dropTo', 'fill',
   'instructionMarker', 'labelAt', 'labelPlacement', 'labelSide', 'leader', 'lqLayout', 'mcLayout',
-  'optionAlign', 'optionLayout', 'orientation', 'paper', 'pattern', 'preset', 'shading', 'shape', 'slot',
+  'optionAlign', 'optionLayout', 'orientation', 'paper', 'pattern', 'preset', 'shading', 'shape', 'sharedAs', 'slot',
   'statementAlign', 'stroke', 'style', 'tableSide', 'titlePlacement', 'vAlign', 'vertAlign', 'width',
   // Formatting.
   'color', 'latin', 'eastAsia',

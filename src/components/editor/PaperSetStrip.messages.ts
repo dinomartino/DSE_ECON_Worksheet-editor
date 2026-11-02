@@ -17,4 +17,8 @@ export const PAPER_SET_STRIP_MESSAGES = defineMessages({
     zh: '暫時只有這份試卷。可在開始畫面加入其他試卷。',
   },
   couldNotOpen: { en: 'Could not open that paper.', zh: '無法開啟該試卷。' },
+  detailsFailed: {
+    en: (n: number) => `${n === 1 ? '1 other paper' : `${n} other papers`} could not be changed (saved by a newer version, or not readable).`,
+    zh: (n: number) => `有 ${n} 份其他試卷無法更改（由較新版本儲存，或無法讀取）。`,
+  },
 });

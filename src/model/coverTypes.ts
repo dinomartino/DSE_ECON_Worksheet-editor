@@ -43,6 +43,15 @@ export interface CoverLine {
    * costs a line (§ one fixed line, no paragraph spacing).
    */
   gapAfter?: number;
+  /**
+   * This line holds one of a paper set's shared details (k-0299 step B): the school's name or
+   * the examination line, kept in step across the set's papers by the Set details dialog
+   * (`model/setDetails.ts`). A tag on the line, not a token: the text is still the line's own,
+   * so every backend and every older build prints exactly what was last written. A new cover
+   * tags its school (head and foot) and examination lines; an older one is found by
+   * `sharedLines` and tagged when a detail is first applied. Never printed.
+   */
+  sharedAs?: 'school' | 'exam';
 }
 
 /** A named region of the cover; what the editor addresses and what a click reports. */
