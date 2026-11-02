@@ -53,6 +53,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
+- Paper sets (k-0299, 2026-11-02, research only, branch `research/paper-sets`): `docs/research/2026-11-02-paper-sets.md`. Today no link between papers is stored (folder = filing, not synced; combined key = export-time ticks). Recommends Option 2, a `paperSet {id, name, role}` in each paper, in steps A link / B shared details / C whole-set export; 7 decisions in § 7. Build nothing until the user picks.
 - Themes (2026-10-31): Classic and Dark already miss WCAG AA (subtle text 2.7–4.0:1, input edges 1.7:1, the dimmed Edit tab 2.7:1; `node scripts/theme-contrast.mjs`): fixing changes the default look. Theme names/notes; whether System should pick High contrast under the OS's Increase contrast; on-page editing hints (Click to add, block handles) stay paper-blue in every theme.
 - Paid service (`docs/research/2026-09-paid-product/`): what first; in-app "use a VPN" Gemini
   wording breaks Google's terms — Gemini privacy line may be dropped.
@@ -77,6 +78,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 - themes: `npm test` 6529 + theme tests, typecheck green, lint at baseline (40), `npm run build` green; `theme-contrast.mjs` 5/5 new themes pass; `theme-verify.mjs` paper + baseline + gallery + showcase pass (raster noise ≤ 6 px at ±1 level, reported).
 
 ## Log
+- **2026-11-02** — research (k-0299): paper sets, options and recommendation; on `research/paper-sets`, not merged.
 - **2026-11-01** — v0.8.7 released: watermark, Enter on the last option / IME fixes (k-0263), interface themes.
 - **2026-10-31** — on develop (unreleased): seven interface themes in Settings → Appearance; the paper, print, PDF and Word file identical in all.
 - **2026-10-30** — on develop (unreleased, k-0263): Enter on the last option adds E/F; Chinese IME Enter only confirms; `.docx` breaks match the editor with empty sides; dead file-drop helpers removed.
