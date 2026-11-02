@@ -278,6 +278,7 @@ export function AnswerKeyPreview({
   measureOnly,
   onPageStarts,
   paperSheets,
+  part,
 }: {
   worksheet: Worksheet;
   language: LanguageMode;
@@ -287,6 +288,12 @@ export function AnswerKeyPreview({
   runningHead?: string;
   /** A hidden copy that only paginates (`measurePageStarts`): no `#print-root`, no zoom. */
   measureOnly?: boolean;
+  /**
+   * One part of the whole set's key on screen (`SetKeyPreview`, k-0299 step C): no
+   * `#print-root`, zoom or fit of its own (the set's stack has them), its pages numbered on
+   * from the parts before it, as the combined `.docx` numbers them; `onSheets` says how many.
+   */
+  part?: { firstPage: number; pageCount?: number; onSheets: (count: number) => void };
   /**
    * Where each sheet after the first begins, once measured (§ `joinWithPageBreaks`), and
    * where each sheet carrying the watermark begins (§ `keySheetWatermarks`).
@@ -304,7 +311,6 @@ export function AnswerKeyPreview({
   /** Commit an in-place edit. Omit to render read-only (print preview, a newer file). */
   onEdit?: (target: EditTarget, next: BiText) => void;
 }) {
-  const m = useMessages(PREVIEW_MESSAGES);
   const km = useMessages(ANSWER_KEY_PREVIEW_MESSAGES);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -469,6 +475,11 @@ export function AnswerKeyPreview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startsKey, startsReady, onPageStarts]);
 
+  const onSheets = part?.onSheets;
+  useEffect(() => {
+    onSheets?.(pages.length);
+  }, [onSheets, pages.length]);
+
   // Fit the true-size sheet to the column, times the reader's zoom (as the paper does).
   const [fitScale, setFitScale] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -519,46 +530,26 @@ export function AnswerKeyPreview({
         if ((event.target as Element).closest?.("[data-question-id]")) selfSelected.current = true;
       }}
     >
-      {!measureOnly && <div className="pointer-events-none fixed bottom-4 right-[416px] z-30">
-        <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-line bg-surface-raised p-1 shadow-md">
-          <IconButton
-            label={m.zoomOut}
-            onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 10) / 10))}
-            disabled={zoom <= 0.5}
-          >
-            <MinusIcon size={14} />
-          </IconButton>
-          <button
-            type="button"
-            onClick={() => setZoom(1)}
-            title={m.zoomReset}
-            className="min-w-[3.25rem] cursor-pointer rounded-md px-1 text-center text-[11px] font-semibold tabular-nums text-ink-muted transition-[color,scale] duration-150 ease-out-soft hover:text-ink active:scale-[0.97]"
-          >
-            {Math.round(scale * 100)}%
-          </button>
-          <IconButton
-            label={m.zoomIn}
-            onClick={() => setZoom((z) => Math.min(2, Math.round((z + 0.1) * 10) / 10))}
-            disabled={zoom >= 2}
-          >
-            <PlusIcon size={14} />
-          </IconButton>
-        </div>
-      </div>}
+      {!measureOnly && !part && <SheetZoom zoom={zoom} scale={scale} onZoom={setZoom} />}
 
       {selectedQuestionId && <style>{selectedCellRule(selectedQuestionId)}</style>}
       <div
-        id={measureOnly ? undefined : "print-root"}
-        data-answer-key
-        aria-label={km.sheets}
+        id={measureOnly || part ? undefined : "print-root"}
+        data-answer-key={part ? undefined : ""}
+        data-key-part={part ? worksheet.id : undefined}
+        aria-label={part ? undefined : km.sheets}
         className="flex flex-col items-center gap-6"
-        style={{
-          width: `${pageWidthMm}mm`,
-          marginLeft: `calc(max(0px, (100% - ${scale * pageWidthMm}mm) / 2) - ${((1 - scale) * pageWidthMm) / 2}mm)`,
-          transform: scale === 1 ? undefined : `scale(${scale})`,
-          transformOrigin: "top center",
-          marginBottom: sheetStackMargin(scale, pageHeightMm, pages.length),
-        }}
+        style={
+          part
+            ? { width: `${pageWidthMm}mm` }
+            : {
+                width: `${pageWidthMm}mm`,
+                marginLeft: `calc(max(0px, (100% - ${scale * pageWidthMm}mm) / 2) - ${((1 - scale) * pageWidthMm) / 2}mm)`,
+                transform: scale === 1 ? undefined : `scale(${scale})`,
+                transformOrigin: "top center",
+                marginBottom: sheetStackMargin(scale, pageHeightMm, pages.length),
+              }
+        }
       >
         {pages.map((pageBlocks, pageIndex) => (
           <div key={pageIndex} data-page-index={pageIndex} className="relative">
@@ -629,8 +620,8 @@ export function AnswerKeyPreview({
                   value={KEY_FOOTER}
                   language={language}
                   edge="footer"
-                  pageNumber={pageIndex + 1}
-                  pageCount={pages.length}
+                  pageNumber={pageIndex + (part?.firstPage ?? 1)}
+                  pageCount={part?.pageCount ?? pages.length}
                   totalMarks={0}
                 />
               </div>
@@ -639,7 +630,7 @@ export function AnswerKeyPreview({
               data-print-hide
               className="paper-page-number pointer-events-none absolute -bottom-5 right-0 text-[10px] font-medium tabular-nums text-ink-subtle"
             >
-              {pageIndex + 1} / {pages.length}
+              {pageIndex + (part?.firstPage ?? 1)} / {part?.pageCount ?? pages.length}
             </span>
           </div>
         ))}
@@ -670,6 +661,48 @@ export function AnswerKeyPreview({
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** The key's zoom, bottom right: −, the scale (a click resets it), +. Shared with `SetKeyPreview`. */
+export function SheetZoom({
+  zoom,
+  scale,
+  onZoom,
+}: {
+  zoom: number;
+  scale: number;
+  onZoom: (update: (zoom: number) => number) => void;
+}) {
+  const m = useMessages(PREVIEW_MESSAGES);
+  const setZoom = onZoom;
+  return (
+    <div className="pointer-events-none fixed bottom-4 right-[416px] z-30">
+      <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-line bg-surface-raised p-1 shadow-md">
+        <IconButton
+          label={m.zoomOut}
+          onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 10) / 10))}
+          disabled={zoom <= 0.5}
+        >
+          <MinusIcon size={14} />
+        </IconButton>
+        <button
+          type="button"
+          onClick={() => setZoom(() => 1)}
+          title={m.zoomReset}
+          className="min-w-[3.25rem] cursor-pointer rounded-md px-1 text-center text-[11px] font-semibold tabular-nums text-ink-muted transition-[color,scale] duration-150 ease-out-soft hover:text-ink active:scale-[0.97]"
+        >
+          {Math.round(scale * 100)}%
+        </button>
+        <IconButton
+          label={m.zoomIn}
+          onClick={() => setZoom((z) => Math.min(2, Math.round((z + 0.1) * 10) / 10))}
+          disabled={zoom >= 2}
+        >
+          <PlusIcon size={14} />
+        </IconButton>
       </div>
     </div>
   );

@@ -23,6 +23,10 @@ import {
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { whileSyncPaused } from '@/sync/syncPause';
 import { PAPER_SET_STRIP_MESSAGES } from './PaperSetStrip.messages';
+import { useSetMembers } from './setMembers';
+
+const NO_ROWS: WorksheetSummary[] = [];
+const NO_PAPERS: Worksheet[] = [];
 
 /** One paper in the strip. */
 export interface StripPaper {
@@ -82,20 +86,27 @@ export function PaperSetStrip({ onOpenDocument }: { onOpenDocument: (worksheet: 
   const m = useMessages(PAPER_SET_STRIP_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setId = paperSetOf(worksheet)?.id;
-  const [rows, setRows] = useState<WorksheetSummary[]>([]);
+  // Shared with the Whole set views (`setMembers.ts`): read here, once.
+  const rows = useSetMembers((s) => (s.setId === setId ? s.rows : NO_ROWS));
+  const storeRows = useSetMembers((s) => s.setRows);
+  const storePartners = useSetMembers((s) => s.setPartners);
+  const partners = useSetMembers((s) => (s.setId === setId ? s.partners : NO_PAPERS));
   const notices = useNotices();
 
   // The index, read when the set changes and again when another document is written (a
   // partner renamed, trashed, or brought in by sync). The open paper's own autosaves are not
   // a reason to re-read: the strip takes that paper from the editor.
   useEffect(() => {
-    if (!setId) return;
+    if (!setId) {
+      storeRows(undefined, []);
+      return;
+    }
     let live = true;
     const read = () =>
       void worksheetStore
         .list()
         .then((list) => {
-          if (live) setRows(list);
+          if (live) storeRows(setId, list);
         })
         .catch(() => undefined);
     read();
@@ -106,13 +117,12 @@ export function PaperSetStrip({ onOpenDocument }: { onOpenDocument: (worksheet: 
       live = false;
       stop();
     };
-  }, [setId]);
+  }, [setId, storeRows]);
 
   const shown = useMemo(() => stripPapers(worksheet, rows), [worksheet, rows]);
 
   // The other papers themselves, for Set details and its drift check (step B): read when the
   // list of members or any of their rows changes, never on the open paper's own keystrokes.
-  const [partners, setPartners] = useState<Worksheet[]>([]);
   const partnerKey = (shown?.papers ?? [])
     .filter((paper) => !paper.current)
     .map((paper) => `${paper.id}@${rows.find((row) => row.id === paper.id)?.updatedAt ?? ''}`)
@@ -121,12 +131,12 @@ export function PaperSetStrip({ onOpenDocument }: { onOpenDocument: (worksheet: 
     let live = true;
     const ids = partnerKey ? partnerKey.split(',').map((key) => key.split('@')[0]) : [];
     void Promise.all(ids.map((id) => worksheetStore.load(id).catch(() => undefined))).then((docs) => {
-      if (live) setPartners(docs.filter((doc): doc is Worksheet => !!doc));
+      if (live) storePartners(setId, docs.filter((doc): doc is Worksheet => !!doc));
     });
     return () => {
       live = false;
     };
-  }, [partnerKey]);
+  }, [partnerKey, setId, storePartners]);
   const members = useMemo(() => [worksheet, ...partners], [worksheet, partners]);
   const drifting = useMemo(() => partners.length > 0 && detailDrift(members).length > 0, [members, partners]);
   const [detailsOpen, setDetailsOpen] = useState(false);

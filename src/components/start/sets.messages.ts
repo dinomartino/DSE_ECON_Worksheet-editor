@@ -24,6 +24,7 @@ export const SET_MESSAGES = defineMessages({
   leaveSet: { en: 'Remove from set', zh: '移出套卷' },
   setDetails: { en: 'Set details…', zh: '套卷資料…' },
   addPapers: { en: 'Add papers…', zh: '加入試卷…' },
+  duplicateSet: { en: 'Duplicate set…', zh: '複製套卷…' },
   ungroup: { en: 'Ungroup', zh: '解散套卷' },
   setActions: { en: (name: string) => `Actions for the set ${name}`, zh: (name: string) => `套卷「${name}」的操作` },
   // Dialogs.
@@ -66,6 +67,34 @@ export const SET_MESSAGES = defineMessages({
   detailsRead: {
     en: 'Could not read every paper of the set.',
     zh: '無法讀取套卷內的所有試卷。',
+  },
+  // Duplicate set (step C).
+  duplicateTitle: { en: (name: string) => `Duplicate “${name}”`, zh: (name: string) => `複製「${name}」` },
+  duplicateDescription: {
+    en: (n: number) => `Copies ${n === 1 ? 'its paper' : `all ${n} papers`} into a new set, for the next sitting. The set you copy stays as it is.`,
+    zh: (n: number) => `將 ${n} 份試卷全部複製到新套卷，供下次考試使用。原有套卷保持不變。`,
+  },
+  newSetName: { en: 'New set name', zh: '新套卷名稱' },
+  bumpYear: {
+    en: (from: string, to: string) => `Change ${from} to ${to}`,
+    zh: (from: string, to: string) => `將 ${from} 改為 ${to}`,
+  },
+  bumpYearHint: {
+    en: 'Every year in the papers’ names, titles and covers moves on by one. Questions are left as they are.',
+    zh: '試卷名稱、標題和封面上的年份全部加一年。題目內容不變。',
+  },
+  duplicateNote: {
+    en: 'The copies leave out the date sat and the classes; set them in Set details….',
+    zh: '副本不會保留考試日期和班別，可在「套卷資料…」中設定。',
+  },
+  duplicate: { en: 'Duplicate set', zh: '複製套卷' },
+  duplicated: {
+    en: (name: string, n: number) => `Made “${name}”: ${n === 1 ? '1 paper' : `${n} papers`}.`,
+    zh: (name: string, n: number) => `已建立「${name}」，共 ${n} 份試卷。`,
+  },
+  duplicateFailed: {
+    en: (n: number) => `${n === 1 ? '1 paper' : `${n} papers`} could not be copied (not readable, or saved by a newer version).`,
+    zh: (n: number) => `有 ${n} 份試卷無法複製（無法讀取，或由較新版本儲存）。`,
   },
   copyLeftSet: {
     en: (name: string) => `Copy saved. It is not in the set “${name}”: a set holds each paper once.`,

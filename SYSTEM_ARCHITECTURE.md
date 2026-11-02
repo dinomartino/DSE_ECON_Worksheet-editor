@@ -2108,7 +2108,21 @@ ancestor of `#print-root` and forces them `position: static`, so the page stays
 `#print-root`'s containing block (a positioned wrapper on screen cut the sheets to the
 editor column).
 The `.docx` answer key may take other saved documents' keys into the same file ("Also
-include", § the answer key); its PDF and the question paper are this document's alone.
+include", § the answer key, folded away since k-0299 step C); its PDF and the question
+paper are this document's alone.
+
+**A document that is not open (Export → Whole set, k-0299 step C).** The page holds one
+document, so to print another one the page shows it instead for the length of one print:
+`editor/printJob.tsx` puts a `PrintJob` (a paper in a mode, or the set's `SetKeyPreview`)
+in place of the editor's sheets, read-only, waits for *its* `#print-root` to settle, prints
+it (desktop: `savePdf` to a free path in the chosen folder, one after another; web: one
+`window.print()` per click, from the dialog's list) and gives the page back on resolve or
+`afterprint`. Nothing is edited, saved or put in the undo history, and the editor's own
+mode is untouched. There is still one `#print-root`: the job replaces the editor's sheets
+rather than sitting beside them. The whole set's key on screen is one `#print-root` holding
+a stack per paper (`AnswerKeyPreview` `part`: no id, transform or zoom of its own; pages
+numbered on), and print CSS zeroes each part's gap. A browser can write no PDF bytes, so
+the web's Whole set as a single file is Word only (`.zip`).
 
 ### Both band paths must agree
 

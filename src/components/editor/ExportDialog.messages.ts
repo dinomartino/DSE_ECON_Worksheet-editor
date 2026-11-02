@@ -60,6 +60,55 @@ export const EXPORT_MESSAGES = defineMessages({
   key: { en: 'Answer key', zh: '評卷參考' },
   both: { en: 'Both', zh: '兩者' },
   apps: { en: 'Other apps', zh: '其他應用程式' },
+  // Whole set (k-0299 step C).
+  wholeSet: { en: 'Whole set', zh: '整套試卷' },
+  wholeSetTitle: {
+    en: (name: string) => `Every paper of “${name}” and the set’s marking scheme`,
+    zh: (name: string) => `「${name}」的所有試卷和整套評卷參考`,
+  },
+  hintSetZip: {
+    en: (n: number) => `One .zip of ${n} Word files: each paper, then the whole set’s marking scheme.`,
+    zh: (n: number) => `一個 .zip，內有 ${n} 個 Word 檔案：每份試卷，以及整套試卷的評卷參考。`,
+  },
+  hintSetFolder: {
+    en: (n: number) => `${n} Word files in a folder you choose: each paper, then the whole set’s marking scheme.`,
+    zh: (n: number) => `${n} 個 Word 檔案，儲存在你選擇的資料夾：每份試卷，以及整套試卷的評卷參考。`,
+  },
+  hintSetPdfDesktop: {
+    en: (n: number) => `${n} PDFs in a folder you choose, one per paper and one for the marking scheme. The page shows each in turn as it is saved.`,
+    zh: (n: number) => `${n} 個 PDF 儲存在你選擇的資料夾：每份試卷一個，評卷參考一個。儲存時頁面會逐一顯示。`,
+  },
+  hintSetPdfWeb: {
+    en: 'A browser makes one PDF per print: print each below and choose Save as PDF. For every file in one go, use .docx (a .zip) or the desktop app.',
+    zh: '瀏覽器每次列印只會產生一個 PDF：請逐一按下方的「列印」，並選擇「另存為 PDF」。如要一次過取得所有檔案，請用 .docx（.zip）或桌面版。',
+  },
+  setFiles: { en: 'Files in the set', zh: '套卷檔案' },
+  setKeyLabel: { en: 'Marking scheme · whole set', zh: '評卷參考 · 整套試卷' },
+  printOne: { en: 'Print', zh: '列印' },
+  printAgain: { en: 'Print again', zh: '再列印' },
+  setBlankLeftOut: {
+    en: (names: string) => `Left out, no questions yet: ${names}.`,
+    zh: (names: string) => `未有題目，不包括：${names}。`,
+  },
+  setPdfNoFolder: {
+    en: 'Could not open a folder to save into. Try again, or export the set as .docx.',
+    zh: '無法開啟資料夾以儲存檔案。請再試，或以 .docx 匯出套卷。',
+  },
+  saveSetPdfs: { en: (n: number) => `Save ${n} PDFs`, zh: (n: number) => `儲存 ${n} 個 PDF` },
+  exportZip: { en: 'Export .zip', zh: '匯出 .zip' },
+  exportedSet: { en: 'Exported the set as a .zip', zh: '已將套卷匯出為 .zip' },
+  savedSetPdfs: {
+    en: (n: number) => `Saved ${n} PDFs`,
+    zh: (n: number) => `已儲存 ${n} 個 PDF`,
+  },
+  setPdfStopped: {
+    en: (done: number, total: number, why: string) => `Saved ${done} of ${total} PDFs, then stopped: ${why}`,
+    zh: (done: number, total: number, why: string) => `已儲存 ${total} 個中的 ${done} 個 PDF，之後停止：${why}`,
+  },
+  shuffledSet: {
+    en: 'Whole set writes each paper’s first version.',
+    zh: '整套試卷會匯出每份試卷的第一個版本。',
+  },
   appsTitle: { en: 'Answer-key CSV, Kahoot or Blooket', zh: '答案 CSV、Kahoot 或 Blooket' },
   notPdf: { en: 'Not as PDF: export it as .docx', zh: 'PDF 不適用，請以 .docx 匯出' },
   hintPdf: {

@@ -16,7 +16,11 @@ export const KEY_DOCUMENTS_MESSAGES = defineMessages({
   },
   order: { en: 'Order in the file', zh: '在檔案中的次序' },
   thisDocument: { en: '(this document)', zh: '（本文件）' },
-  inThisSet: { en: 'This set', zh: '同一套卷' },
+  open: { en: 'Add other documents’ answer keys to this file…', zh: '在此檔案加入其他文件的評卷參考…' },
+  wholeSetInstead: {
+    en: 'For this set’s marking scheme, choose What → Whole set.',
+    zh: '如要整套試卷的評卷參考，請在「內容」選「整套試卷」。',
+  },
   moveUp: { en: (title: string) => `Move ${title} up`, zh: (title: string) => `將 ${title} 上移` },
   moveDown: { en: (title: string) => `Move ${title} down`, zh: (title: string) => `將 ${title} 下移` },
   leaveOut: { en: (title: string) => `Leave out ${title}`, zh: (title: string) => `不包含 ${title}` },

@@ -7,6 +7,7 @@ export const PLATFORM_MESSAGES = defineMessages({
   worksheetBackup: { en: 'Worksheet backup', zh: '工作紙備份' },
   excelWorkbook: { en: 'Excel workbook', zh: 'Excel 活頁簿' },
   pdfDocument: { en: 'PDF document', zh: 'PDF 文件' },
+  zipArchive: { en: 'ZIP archive', zh: 'ZIP 壓縮檔' },
   pngImage: { en: 'PNG image', zh: 'PNG 圖像' },
   chooseExportFolder: { en: 'Choose a folder for the exported files', zh: '選擇存放匯出檔案的資料夾' },
   showInFolder: { en: 'Show in folder', zh: '在資料夾中顯示' },

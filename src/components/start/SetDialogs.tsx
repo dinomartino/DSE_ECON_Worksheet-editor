@@ -1,17 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui';
+import { Button, CheckField } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { SetIcon } from '@/components/ui/icons';
-import { useMessages } from '@/i18n/language';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import { duplicateSetName, setYearTexts, yearChange } from '@/model/duplicateSet';
 import { looksLikeSameExam, suggestedSetName } from '@/model/paperSet';
+import type { Worksheet } from '@/model/types';
 import { canJoinASet, compareMembers, summaryRole, type SetGroup, type WorksheetSummary } from '@/storage';
 import { SET_MESSAGES } from './sets.messages';
 
 /**
- * The start screen's paper-set dialogs (k-0299): Make a set…, Add to set… and Add papers…
- * (Set details…, with the set's name, is `SetDetailsDialog`). Each only asks; the screen writes every member (`storage/paperSets.ts`).
+ * The start screen's paper-set dialogs (k-0299): Make a set…, Add to set…, Add papers… and
+ * Duplicate set… (Set details…, with the set's name, is `SetDetailsDialog`). Each only asks; the screen writes every member (`storage/paperSets.ts`).
  * Everything is a button or a box: no step needs a drag (MacBook trackpad, iPad touch).
  */
 
@@ -265,6 +267,78 @@ export function AddPapersDialog({
           <p className="text-[12.5px] leading-relaxed text-ink-muted">{sm.noOtherPapers}</p>
         )}
       </div>
+    </Dialog>
+  );
+}
+
+/**
+ * Duplicate set… (k-0299 step C): a new name, and, when a year is written anywhere in the
+ * set, whether to move it on ("2026-27 → 2027-28") in every name, title and cover. The
+ * screen copies every paper (`duplicateSetPapers`).
+ */
+export function DuplicateSetDialog({
+  name: setName,
+  papers,
+  onClose,
+  onDone,
+}: {
+  name: string;
+  /** Every member, in set order. */
+  papers: readonly Worksheet[];
+  onClose: () => void;
+  onDone: (name: string, bumpYear: boolean) => void;
+}) {
+  const sm = useMessages(SET_MESSAGES);
+  const lang = useUiLanguage();
+  const year = yearChange(setYearTexts(setName, papers));
+  const [bumpYear, setBumpYear] = useState(year !== undefined);
+  const [name, setName_] = useState(() => duplicateSetName(setName, lang));
+  const trimmed = name.trim();
+  const formId = 'duplicate-set-form';
+  return (
+    <Dialog
+      title={sm.duplicateTitle(setName.trim() || sm.untitledSet)}
+      description={sm.duplicateDescription(papers.length)}
+      width={460}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="subtle" onClick={onClose}>
+            {sm.cancel}
+          </Button>
+          <Button variant="primary" type="submit" form={formId} disabled={!trimmed}>
+            {sm.duplicate}
+          </Button>
+        </>
+      }
+    >
+      <form
+        id={formId}
+        data-duplicate-set
+        className="space-y-4 px-5 py-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (trimmed) onDone(trimmed, Boolean(year) && bumpYear);
+        }}
+      >
+        <Field label={sm.newSetName}>
+          <input
+            type="text"
+            value={name}
+            autoFocus
+            aria-label={sm.newSetName}
+            onChange={(event) => setName_(event.target.value)}
+            className={INPUT}
+          />
+        </Field>
+        {year && (
+          <div className="space-y-1">
+            <CheckField label={sm.bumpYear(year.from, year.to)} checked={bumpYear} onChange={setBumpYear} />
+            <p className="pl-6 text-[11.5px] leading-snug text-ink-subtle">{sm.bumpYearHint}</p>
+          </div>
+        )}
+        <p className="text-[11.5px] leading-snug text-ink-subtle">{sm.duplicateNote}</p>
+      </form>
     </Dialog>
   );
 }

@@ -69,6 +69,8 @@ export interface SetActions {
   /** Set details… (k-0299 step B): its name and the details kept in step across its papers. */
   details: (group: SetGroup) => void;
   addPapers: (group: SetGroup) => void;
+  /** Duplicate set… (step C): every paper copied into a new set. */
+  duplicate: (group: SetGroup) => void;
   ungroup: (group: SetGroup) => void;
 }
 
@@ -879,6 +881,7 @@ function SetHeading({
           items={[
             { label: sm.setDetails, onSelect: () => actions.details(group) },
             { label: sm.addPapers, onSelect: () => actions.addPapers(group) },
+            { label: sm.duplicateSet, onSelect: () => actions.duplicate(group) },
             { label: sm.ungroup, onSelect: () => actions.ungroup(group), separated: true },
           ]}
         />

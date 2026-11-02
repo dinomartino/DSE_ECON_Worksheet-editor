@@ -8,7 +8,6 @@ import { createWorksheetFrom } from '@/model/newWorksheet';
 import { withPaperSet } from '@/model/paperSet';
 import type { Worksheet } from '@/model/types';
 import type { WorksheetSummary } from '@/storage';
-import { setKeyPicks } from './exportSession';
 import { keyDocumentChoices } from './KeyDocumentsField';
 import { PaperSetBar, stripPapers } from './PaperSetStrip';
 
@@ -75,15 +74,9 @@ describe('a new mock set’s blank paper in the strip (k-0311)', () => {
   });
 });
 
-describe('Export ticks the set’s other papers', () => {
-  it('Paper 1 from Paper 2, never another set’s paper or this one', () => {
-    expect(setKeyPicks(paper2(), ROWS)).toEqual([{ id: 'p1', title: 'S6 Mock Paper 1' }]);
-    expect(setKeyPicks(createWorksheetFrom({ documentType: 'paper1' }), ROWS)).toEqual([]);
-  });
-
-  it('lists the set’s papers first in Also include, then newest first', () => {
+describe('Also include, folded away (step C)', () => {
+  it('lists saved documents newest first; the set is no longer ticked or marked', () => {
     const others = ROWS.filter((row) => row.id !== 'p2');
-    expect(keyDocumentChoices(others, '', new Set(['p1'])).map((row) => row.id)).toEqual(['p1', 'unit', 'other']);
     expect(keyDocumentChoices(others, '').map((row) => row.id)).toEqual(['unit', 'p1', 'other']);
   });
 });

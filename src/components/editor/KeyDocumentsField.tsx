@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { WorksheetSummary } from '@/storage';
 import { IconButton } from '@/components/ui';
 import { Field } from '@/components/ui/Dialog';
-import { ChevronDownIcon, ChevronUpIcon, CloseIcon, SetIcon } from '@/components/ui/icons';
+import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from '@/components/ui/icons';
 import { movePick, type KeyDocumentPick } from './exportSession';
 import { useMessages } from '@/i18n/language';
 import { KEY_DOCUMENTS_MESSAGES } from './KeyDocumentsField.messages';
@@ -12,19 +12,10 @@ import { KEY_DOCUMENTS_MESSAGES } from './KeyDocumentsField.messages';
 /** More saved documents than this, and the list gets a search box. */
 export const KEY_DOCUMENTS_SEARCH_FROM = 6;
 
-/**
- * The saved documents a combined key may add: this paper's set first (k-0299), then newest
- * first, matching `search` by name.
- */
-export function keyDocumentChoices(
-  documents: WorksheetSummary[],
-  search: string,
-  inSet: ReadonlySet<string> = new Set(),
-): WorksheetSummary[] {
+/** The saved documents a combined key may add, newest first, matching `search` by name. */
+export function keyDocumentChoices(documents: WorksheetSummary[], search: string): WorksheetSummary[] {
   const needle = search.trim().toLowerCase();
-  const sorted = [...documents].sort(
-    (a, b) => Number(inSet.has(b.id)) - Number(inSet.has(a.id)) || (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''),
-  );
+  const sorted = [...documents].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
   return needle ? sorted.filter((doc) => doc.title.toLowerCase().includes(needle)) : sorted;
 }
 
@@ -36,28 +27,48 @@ const shortDate = (iso: string) => {
 };
 
 /**
- * "Also include": other saved documents whose answer keys join this one's in one file —
- * Paper 2's marking scheme exported from Paper 1. Ticked order is file order; the order
- * list moves them. Export-time only: nothing here is stored on either document.
+ * "Also include": other saved documents whose answer keys join this one's in one file.
+ * Ticked order is file order; the order list moves them. Export-time only: nothing here is
+ * stored on either document.
+ *
+ * Kept, folded away, after Export → Whole set took over a set's marking scheme (k-0299 step
+ * C, the user u-c17j): a set holds exam papers only, so this is still the one way to put the
+ * keys of classroom worksheets, or of papers in no set, into one file. Closed until asked
+ * for; nothing is ticked for the teacher any more.
  */
 export function KeyDocumentsField({
   documents,
-  inSet,
   picked,
   onChange,
   currentTitle,
+  inASet = false,
 }: {
   /** Saved documents other than this one. */
   documents: WorksheetSummary[];
-  /** The ones in this paper's set: listed first and marked. */
-  inSet?: ReadonlySet<string>;
   picked: KeyDocumentPick[];
   onChange: (picked: KeyDocumentPick[]) => void;
   currentTitle: string;
+  /** This paper is in a set: the hint points at Whole set for the set's own key. */
+  inASet?: boolean;
 }) {
   const m = useMessages(KEY_DOCUMENTS_MESSAGES);
   const [search, setSearch] = useState('');
-  const choices = keyDocumentChoices(documents, search, inSet);
+  const [open, setOpen] = useState(picked.length > 0);
+  const choices = keyDocumentChoices(documents, search);
+  if (!open) {
+    return (
+      <div data-key-documents-closed>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="cursor-pointer text-[12px] font-medium text-ink-muted underline decoration-current/30 underline-offset-4 transition-colors duration-150 ease-out-soft hover:text-ink hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          {m.open}
+        </button>
+        {inASet && <p className="pt-1 text-[11.5px] leading-snug text-ink-subtle">{m.wholeSetInstead}</p>}
+      </div>
+    );
+  }
   const position = (id: string) => picked.findIndex((pick) => pick.id === id);
 
   const toggle = (doc: WorksheetSummary, on: boolean) =>
@@ -68,10 +79,7 @@ export function KeyDocumentsField({
     );
 
   return (
-    <Field
-      label={m.label}
-      hint={m.hint}
-    >
+    <Field label={m.label} hint={inASet ? `${m.hint} ${m.wholeSetInstead}` : m.hint}>
       {documents.length > KEY_DOCUMENTS_SEARCH_FROM && (
         <label className="block">
           <span className="sr-only">{m.searchLabel}</span>
@@ -108,12 +116,6 @@ export function KeyDocumentsField({
                 <span className="min-w-0 flex-1 truncate" title={doc.title}>
                   {doc.title}
                 </span>
-                {inSet?.has(doc.id) && (
-                  <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-ink-muted">
-                    <SetIcon size={12} />
-                    {m.inThisSet}
-                  </span>
-                )}
                 <span className="shrink-0 tabular-nums text-[11px] text-ink-subtle">
                   {shortDate(doc.updatedAt)}
                 </span>

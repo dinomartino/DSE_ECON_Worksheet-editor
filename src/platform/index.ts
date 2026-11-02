@@ -43,6 +43,7 @@ export const ZIP_FILTERS = filter(() => platformMessages().worksheetBackup, 'zip
 export const CSV_FILTERS: SaveFilter[] = [{ name: 'CSV', extensions: ['csv'] }];
 export const XLSX_FILTERS = filter(() => platformMessages().excelWorkbook, 'xlsx');
 export const PDF_FILTERS = filter(() => platformMessages().pdfDocument, 'pdf');
+export const SET_ZIP_FILTERS = filter(() => platformMessages().zipArchive, 'zip');
 export const PNG_FILTERS = filter(() => platformMessages().pngImage, 'png');
 
 /**
@@ -159,6 +160,11 @@ export interface FolderTarget {
   name?: string;
   path?: string;
   write(fileName: string, data: Blob | Uint8Array | string): Promise<SavedTo>;
+  /**
+   * Desktop only: a free path in the folder for a file something else writes (a PDF the
+   * shell prints straight to disk). Like `write`, never a name already there.
+   */
+  pathFor?(fileName: string): Promise<string>;
 }
 
 /** Will a save ask where (a save sheet or Save As), so that it can be cancelled? */
@@ -296,6 +302,7 @@ export async function chooseFolderTarget(): Promise<FolderTarget | 'cancelled' |
   const { exists } = await import('@tauri-apps/plugin-fs');
   return {
     path: folder,
+    pathFor: async (fileName) => join(folder, await freeName(fileName, async (candidate) => exists(await join(folder, candidate)))),
     write: async (fileName, data) => {
       const name = await freeName(fileName, async (candidate) => exists(await join(folder, candidate)));
       const path = await join(folder, name);

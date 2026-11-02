@@ -14,6 +14,9 @@ import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { NewerVersionNotice } from '@/components/editor/NewerVersionNotice';
 import { PaperSetStrip } from '@/components/editor/PaperSetStrip';
+import { KeyScopeSwitch, useWholeSetKey } from '@/components/editor/KeyScopeSwitch';
+import { PrintJobView, usePrintJob } from '@/components/editor/printJob';
+import { SetKeyPreview } from '@/components/preview/SetKeyPreview';
 import { AiHost } from '@/components/ai/AiHost';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
@@ -68,6 +71,10 @@ export function EditorApp({
   const printPreview = useWorksheetStore((s) => s.printPreview);
   // The Marking scheme view: the page shows the answer key (`AnswerKeyPreview`).
   const keyView = useWorksheetStore((s) => s.documentView === 'answerKey');
+  // The Marking scheme view's Whole set (k-0299 step C), and a document printed for
+  // Export → Whole set, shown in the page's place for one print (`printJob.tsx`).
+  const wholeSetKey = useWholeSetKey();
+  const printJob = usePrintJob((s) => s.job);
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
   // The 題庫 review bar floats over the page's foot; room below the last sheet lets its
   // last lines scroll clear of it.
@@ -614,8 +621,16 @@ export function EditorApp({
             className="zone-dark scroll-slim min-h-0 flex-1 overflow-auto bg-desk px-6 pt-14"
             style={{ paddingBottom: bankReviewing ? 144 : 64 }}
           >
-            {keyView ? (
+            {printJob ? (
+              <PrintJobView job={printJob} />
+            ) : keyView && wholeSetKey ? (
               <>
+                <KeyScopeSwitch />
+                <SetKeyPreview worksheets={wholeSetKey.papers} language={mode.language} />
+              </>
+            ) : keyView ? (
+              <>
+              <KeyScopeSwitch />
               {/* The key's watermark follows the paper's pages when they differ (k-0242). */}
               {keyPaperProbe && (
                 <PaperSheetsProbe

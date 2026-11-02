@@ -12,11 +12,16 @@ import {
   DOCX_FILTERS,
   isDesktop,
   PDF_FILTERS,
+  SET_ZIP_FILTERS,
   XLSX_FILTERS,
 } from '@/platform';
 import { downloadWorksheetFile, worksheetStore, worksheetTitle, type WorksheetSummary } from '@/storage';
+import type { FolderTarget } from '@/platform';
 import { buildAppExport, type AppExport, type AppFormat } from '@/export/csv/answerKeyCsv';
-import { answerKeyFileName, docxFileName } from '@/export/docx/fileNames';
+import { answerKeyFileName, docxFileName, setKeyFileName, setZipFileName } from '@/export/docx/fileNames';
+import { setRoleOf } from '@/model/paperSet';
+import type { PrintJob } from './printJob';
+import { browserJobDeps, printJobPdf } from './printJob';
 import { Button, CheckField, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { useDialogNotices } from '@/components/ui/NoticeLayer';
@@ -36,8 +41,8 @@ import {
   pdfDestination,
   pdfVariant,
   planned,
-  setKeyPicks,
   skippedNote,
+  uniqueNames,
   withPlace,
   type ExportChoice,
   type ExportFile,
@@ -90,6 +95,25 @@ export interface ExportDialogProps {
   documents?: WorksheetSummary[];
   /** Read one saved document, read-only; the store's `load` when absent. */
   loadDocument?: (id: string) => Promise<Worksheet | undefined>;
+  /**
+   * The open paper's set, when it has two papers with questions (k-0299 step C): offers
+   * What → Whole set. Papers in set order, the open one as the editor holds it.
+   */
+  wholeSet?: WholeSet;
+  /**
+   * Desktop, Whole set as PDF: print each job straight into `folder`, after the dialog has
+   * closed (the page shows each document in turn while it prints).
+   */
+  onPrintSet?: (jobs: Array<{ job: PrintJob; fileName: string }>, folder: FolderTarget) => void;
+}
+
+/** The set Export → Whole set writes. */
+export interface WholeSet {
+  name: string;
+  /** In set order; blank ones (no questions) are not here. */
+  papers: Worksheet[];
+  /** Left out: no questions yet. */
+  blank: Worksheet[];
 }
 
 const loadSaved = (id: string) => worksheetStore.load(id);
@@ -152,6 +176,54 @@ async function planFiles(
   return files;
 }
 
+/**
+ * Export → Whole set as Word (k-0299 step C): each paper's question paper, then the whole
+ * set's marking scheme (`renderCombinedAnswerKey`, set order). Every paper in the dialog's
+ * language and copy, its first version; one file each, named apart.
+ */
+function planSetFiles(set: WholeSet, choice: ExportChoice): PlannedFile[] {
+  const docx = () => import('@/export/docx');
+  const pages = () => import('@/components/preview/measurePageStarts');
+  const mode = paperMode(choice);
+  const names = uniqueNames([
+    ...set.papers.map((paper) => docxFileName(paper, mode)),
+    setKeyFileName(set.name, set.papers, choice.language),
+  ]);
+  const files: PlannedFile[] = set.papers.map((paper, index) => ({
+    kind: 'paper',
+    name: names[index],
+    build: async () => {
+      const [{ exportDocx }, { measurePaperPagination }] = await Promise.all([docx(), pages()]);
+      return exportDocx(paper, mode, await measured(() => measurePaperPagination(paper, mode)));
+    },
+  }));
+  const [first, ...rest] = set.papers;
+  files.push({
+    kind: 'answerKey',
+    name: names[names.length - 1],
+    build: async () => {
+      const [{ exportAnswerKeyDocx }, { measureAnswerKeyPagination }] = await Promise.all([docx(), pages()]);
+      const { pageStarts, watermarkHeads } = await measured(() => measureAnswerKeyPagination(set.papers, choice.language));
+      return exportAnswerKeyDocx(first, choice.language, rest, pageStarts, watermarkHeads);
+    },
+  });
+  return files;
+}
+
+/** The web's Whole set: the files in one `.zip`, built after its Save As has been asked. */
+function zippedSet(set: WholeSet, choice: ExportChoice, files: PlannedFile[]): PlannedFile {
+  return {
+    kind: 'set',
+    name: setZipFileName(set.name, { language: choice.language, version: choice.version }),
+    build: async () => {
+      const { default: JSZip } = await import('jszip');
+      const zip = new JSZip();
+      for (const file of files) zip.file(file.name, await file.build());
+      return zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
+    },
+  };
+}
+
 /** A measurement that failed stops the export, saying so; no page breaks are guessed. */
 async function measured<T>(measure: () => Promise<T>): Promise<T> {
   try {
@@ -169,7 +241,13 @@ async function appBlob(built: AppExport): Promise<Blob> {
 }
 
 const filtersFor = (name: string) =>
-  name.endsWith('.csv') ? CSV_FILTERS : name.endsWith('.xlsx') ? XLSX_FILTERS : DOCX_FILTERS;
+  name.endsWith('.csv')
+    ? CSV_FILTERS
+    : name.endsWith('.xlsx')
+      ? XLSX_FILTERS
+      : name.endsWith('.zip')
+        ? SET_ZIP_FILTERS
+        : DOCX_FILTERS;
 
 /** Where export files go: the platform's pickers, read at click time. */
 const exportSaver = (): ExportSaver => ({
@@ -248,15 +326,69 @@ function report(
   const message = withPlace(
     saved.length > 1
       ? m.exportedFiles(saved.length)
-      : saved[0].file.kind === 'answerKey'
-        ? m.exportedKey
-        : saved[0].file.kind === 'apps'
-          ? m.exportedExt(saved[0].file.name.split('.').pop() ?? '')
-          : m.exportedDocx,
+      : saved[0].file.kind === 'set'
+        ? m.exportedSet
+        : saved[0].file.kind === 'answerKey'
+          ? m.exportedKey
+          : saved[0].file.kind === 'apps'
+            ? m.exportedExt(saved[0].file.name.split('.').pop() ?? '')
+            : m.exportedDocx,
     saved,
     folder,
   );
   onExported(leftOut > 0 ? m.leftOut(message, leftOut) : message, saved[saved.length - 1].path);
+}
+
+/**
+ * What Export → Whole set writes, one line per file, in order. On the web as PDF, each line
+ * is its own Print: a browser prints one document per click and asks where each goes.
+ */
+function SetFileList({
+  set,
+  names,
+  labels,
+  printing,
+}: {
+  set: WholeSet;
+  names: string[];
+  labels: string[];
+  printing?: { printed: ReadonlySet<number>; busy: boolean; onPrint: (index: number) => void };
+}) {
+  const m = useMessages(EXPORT_MESSAGES);
+  const nextToPrint = printing ? names.findIndex((_, index) => !printing.printed.has(index)) : -1;
+  return (
+    <div className="space-y-1.5 pt-2">
+      <ol aria-label={m.setFiles} data-set-files className="divide-y divide-line rounded-lg border border-line bg-surface text-xs">
+        {names.map((name, index) => (
+          <li key={name} className="flex min-h-9 items-center gap-2 px-2.5 py-1.5">
+            <span className="w-4 shrink-0 text-right tabular-nums text-ink-muted">{index + 1}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-ink" title={labels[index]}>
+                {labels[index]}
+              </span>
+              <span className="block truncate text-[11px] text-ink-subtle" title={name}>
+                {name}
+              </span>
+            </span>
+            {printing && (
+              <Button
+                // The next one to print is the filled button; the rest stay quiet.
+                variant={index === nextToPrint ? 'primary' : 'default'}
+                onClick={() => printing.onPrint(index)}
+                disabled={printing.busy}
+              >
+                <PdfIcon size={14} />
+                {printing.printed.has(index) ? m.printAgain : m.printOne}
+              </Button>
+            )}
+          </li>
+        ))}
+      </ol>
+      {set.blank.length > 0 && (
+        <p className="text-[11.5px] leading-snug text-ink-subtle">{m.setBlankLeftOut(set.blank.map(worksheetTitle).join(', '))}</p>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -274,6 +406,8 @@ export function ExportDialog({
   initialWhat = 'paper',
   documents: givenDocuments,
   loadDocument = loadSaved,
+  wholeSet,
+  onPrintSet,
 }: ExportDialogProps) {
   const m = useMessages(EXPORT_MESSAGES);
   const [format, setFormat] = useState<ExportFormat>(initialFormat);
@@ -282,10 +416,17 @@ export function ExportDialog({
   const downloadsOnly = !canChooseLocation();
   const formats = formatOptions(desktop, m);
   const apps = appOptions(m);
-  const [chosenWhat, setWhat] = useState<ExportWhat>(initialWhat);
+  const [chosenWhat, setWhat] = useState<ExportWhat>(initialWhat === 'set' && !wholeSet ? 'paper' : initialWhat);
   // PDF prints the sheets on the page: the question paper, or the answer key (the
-  // Marking scheme view). The other choices are kept for when the format goes back.
-  const what: ExportWhat = format === 'pdf' && chosenWhat !== 'answerKey' ? 'paper' : chosenWhat;
+  // Marking scheme view), or every paper of the set in turn. The other choices are kept
+  // for when the format goes back.
+  const what: ExportWhat =
+    chosenWhat === 'set' && !wholeSet
+      ? 'paper'
+      : format === 'pdf' && chosenWhat !== 'answerKey' && chosenWhat !== 'set'
+        ? 'paper'
+        : chosenWhat;
+  const setOnly = what === 'set';
   const pdf = format === 'pdf';
   const json = format === 'json';
   // The paper's own options, greyed when no question paper is written (inside a greyed
@@ -309,7 +450,7 @@ export function ExportDialog({
     letters.length === 0 ? undefined : letters.includes(variantChoice) ? [variantChoice] : letters;
   // A print is one version: "All" falls back to the one the editor shows.
   const printVariant = pdfVariant(letters, variantChoice, mode.variant);
-  const fileCount = exportFileCount({ what, variants });
+  const fileCount = setOnly && wholeSet ? wholeSet.papers.length + 1 : exportFileCount({ what, variants });
   // The edition the check describes; an Include box with nothing to leave out changes nothing.
   const checkChoice: ExportCheckChoice = {
     mode: {
@@ -322,7 +463,7 @@ export function ExportDialog({
       }),
       ...(printVariant && printVariant !== letters[0] ? { variant: printVariant } : {}),
     },
-    paper: !json && what !== 'answerKey' && what !== 'apps',
+    paper: !json && what !== 'answerKey' && what !== 'apps' && !setOnly,
   };
   // "Also include": other saved documents' keys in the same file. The index, read on open.
   const [storedDocuments, setStoredDocuments] = useState<WorksheetSummary[]>();
@@ -345,17 +486,9 @@ export function ExportDialog({
     () => (givenDocuments ?? storedDocuments ?? []).filter((doc) => doc.id !== worksheet.id),
     [givenDocuments, storedDocuments, worksheet.id],
   );
+  // Folded away (k-0299 step C): a set's marking scheme is Whole set's now; this stays for
+  // keys of documents in no set. Nothing comes ticked.
   const [alsoInclude, setAlsoInclude] = useState<KeyDocumentPick[]>([]);
-  // A paper in a set (k-0299): its partners come ticked, once, as soon as the list is read.
-  // Anything the teacher then unticks stays unticked for this dialog.
-  const setPicks = useMemo(() => setKeyPicks(worksheet, otherDocuments), [worksheet, otherDocuments]);
-  const pretickedSet = useRef(false);
-  useEffect(() => {
-    if (pretickedSet.current || setPicks.length === 0) return;
-    pretickedSet.current = true;
-    setAlsoInclude((picked) => (picked.length > 0 ? picked : setPicks));
-  }, [setPicks]);
-  const setIds = useMemo(() => new Set(setPicks.map((pick) => pick.id)), [setPicks]);
   const combinable =
     format === 'docx' && (what === 'answerKey' || what === 'both') && otherDocuments.length > 0;
   const [busy, setBusy] = useState(false);
@@ -453,6 +586,70 @@ export function ExportDialog({
     onPrint?.(printMode, destination.file, view);
   };
 
+  // Whole set as PDF (k-0299 step C). Each paper, then the set's marking scheme, printed as
+  // the page shows it for the length of one print (`printJob.tsx`).
+  const setJobs = (): Array<{ job: PrintJob; fileName: string }> => {
+    if (!wholeSet) return [];
+    const paperPrint: OutputMode = paperMode({ what: 'paper', language, version, includeCover, includeAnswerSpace });
+    const names = uniqueNames([
+      ...wholeSet.papers.map((paper) => docxFileName(paper, paperPrint)),
+      setKeyFileName(wholeSet.name, wholeSet.papers, language),
+    ]).map((name) => name.replace(/\.docx$/, '.pdf'));
+    return [
+      ...wholeSet.papers.map((paper, index) => ({
+        job: { kind: 'paper' as const, worksheet: paper, mode: paperPrint, label: paperLabel(paper) },
+        fileName: names[index],
+      })),
+      {
+        job: { kind: 'setKey' as const, worksheets: wholeSet.papers, language, label: m.setKeyLabel },
+        fileName: names[names.length - 1],
+      },
+    ];
+  };
+  const paperLabel = (paper: Worksheet) => {
+    const role = setRoleOf(paper);
+    const title = worksheetTitle(paper);
+    return role === 'paper1' ? `Paper 1 · ${title}` : role === 'paper2' ? `Paper 2 · ${title}` : title; // i18n-ignore: Paper 1 / Paper 2 stay English
+  };
+  // The web prints one at a time, each from its own click: which have gone.
+  const [setPrinted, setSetPrinted] = useState<ReadonlySet<number>>(new Set());
+  const [setPrinting, setSetPrinting] = useState(false);
+  const webSetPdf = pdf && setOnly && !desktop;
+  const printOne = async (index: number) => {
+    const entry = setJobs()[index];
+    if (!entry) return;
+    setError(undefined);
+    setSetPrinting(true);
+    try {
+      await printJobPdf(entry.job, browserJobDeps());
+      setSetPrinted((done) => new Set([...done, index]));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : m.failed);
+    } finally {
+      setSetPrinting(false);
+    }
+  };
+  // Desktop: one folder, asked for first; the files are printed once the dialog has gone.
+  const handleSetPdf = async () => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      const folder = await chooseFolderTarget();
+      if (folder === 'cancelled') return;
+      if (folder === 'unavailable' || !folder.pathFor || !onPrintSet) {
+        setError(m.setPdfNoFolder);
+        return;
+      }
+      const jobs = setJobs();
+      callbacks.current.onClose();
+      onPrintSet(jobs, folder);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : m.failed);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // The document file: nothing to choose, one save. A cancelled sheet keeps the dialog.
   const handleJson = async () => {
     setBusy(true);
@@ -470,8 +667,13 @@ export function ExportDialog({
   };
 
   const handleExport = () =>
-    void run(() =>
-      planFiles(
+    void run(async () => {
+      if (setOnly && wholeSet) {
+        const files = planSetFiles(wholeSet, { what, language, version, includeCover, includeAnswerSpace });
+        // Desktop: a folder; the web: one .zip (the user, u-c17j).
+        return desktop ? files : [zippedSet(wholeSet, { what, language, version }, files)];
+      }
+      return planFiles(
         worksheet,
         {
           what,
@@ -484,8 +686,8 @@ export function ExportDialog({
           ...(combinable && alsoInclude.length > 0 ? { alsoInclude } : {}),
         },
         loadDocument,
-      ),
-    );
+      );
+    });
 
   // A fresh click, and the file is already built: nothing stands between it and the download.
   const handleNext = () => {
@@ -506,9 +708,11 @@ export function ExportDialog({
       onClose={close}
       footer={
         <>
-          <Button variant={leftOut ? 'primary' : 'subtle'} onClick={leftOut ? onClose : close}>
-            {leftOut ? m.done : waiting ? m.skip : m.cancel}
-          </Button>
+          {!webSetPdf && (
+            <Button variant={leftOut ? 'primary' : 'subtle'} onClick={leftOut ? onClose : close}>
+              {leftOut ? m.done : waiting ? m.skip : m.cancel}
+            </Button>
+          )}
           {leftOut ? null : next ? (
             <Button variant="primary" onClick={handleNext} disabled={busy}>
               <DownloadIcon size={15} />
@@ -517,6 +721,15 @@ export function ExportDialog({
                 : next.variant
                   ? m.downloadVersion(next.variant)
                   : m.downloadPaper}
+            </Button>
+          ) : webSetPdf ? (
+            <Button variant="primary" onClick={onClose}>
+              {m.done}
+            </Button>
+          ) : pdf && setOnly ? (
+            <Button variant="primary" onClick={() => void handleSetPdf()} disabled={!onPrintSet || busy}>
+              <PdfIcon size={15} />
+              {m.saveSetPdfs(fileCount)}
             </Button>
           ) : pdf ? (
             <Button variant="primary" onClick={() => void handlePrint()} disabled={!onPrint || busy}>
@@ -535,7 +748,9 @@ export function ExportDialog({
                 ? m.exporting
                 : appExport
                   ? m.exportExt(appExport.fileName.split('.').pop() ?? '')
-                  : fileCount > 1
+                  : setOnly && !desktop
+                    ? m.exportZip
+                    : fileCount > 1
                     ? m.exportFiles(fileCount)
                     : m.exportDocx}
             </Button>
@@ -544,7 +759,8 @@ export function ExportDialog({
       }
     >
       <div className="space-y-5 px-5 py-5">
-        {!leftOut && (typeof checks === 'function' ? checks(checkChoice) : checks)}
+        {/* The check reads the open paper alone; Whole set writes every paper. */}
+        {!leftOut && !setOnly && (typeof checks === 'function' ? checks(checkChoice) : checks)}
 
         {leftOut ? (
           <p role="status" className="animate-fade-in rounded-lg bg-warn-soft px-2.5 py-2 text-[13px] leading-relaxed text-warn-ink">
@@ -576,7 +792,15 @@ export function ExportDialog({
               <Field
                 label={m.what}
                 hint={
-                  pdf
+                  setOnly && wholeSet
+                    ? pdf
+                      ? desktop
+                        ? m.hintSetPdfDesktop(fileCount)
+                        : m.hintSetPdfWeb
+                      : desktop
+                        ? m.hintSetFolder(fileCount)
+                        : m.hintSetZip(fileCount)
+                    : pdf
                     ? what === 'answerKey'
                       ? m.hintPdfKey
                       : m.hintPdf
@@ -608,17 +832,26 @@ export function ExportDialog({
                         ? { ...option, disabled: true, title: m.notPdf }
                         : option,
                     ),
+                    ...(wholeSet ? [{ value: 'set' as const, label: m.wholeSet, title: m.wholeSetTitle(wholeSet.name) }] : []),
                   ]}
                 />
+                {setOnly && wholeSet && (
+                  <SetFileList
+                    set={wholeSet}
+                    names={setJobs().map((entry) => (pdf ? entry.fileName : entry.fileName.replace(/\.pdf$/, '.docx')))}
+                    labels={setJobs().map((entry) => entry.job.label)}
+                    printing={webSetPdf ? { printed: setPrinted, busy: setPrinting, onPrint: (index) => void printOne(index) } : undefined}
+                  />
+                )}
               </Field>
 
               {combinable && (
                 <KeyDocumentsField
                   documents={otherDocuments}
-                  inSet={setIds}
                   picked={alsoInclude}
                   onChange={setAlsoInclude}
                   currentTitle={worksheetTitle(worksheet)}
+                  inASet={Boolean(wholeSet)}
                 />
               )}
 
@@ -686,10 +919,13 @@ export function ExportDialog({
                   />
                 </Field>
                 {letters.length > 0 && (
-                  <div className="mt-5">
+                  <div
+                    inert={setOnly}
+                    className={`mt-5 transition-opacity duration-200 ease-out-soft ${setOnly ? 'opacity-40' : ''}`}
+                  >
                     <Field
                       label={m.shuffled}
-                      hint={pdf ? m.shuffledPdf : m.shuffledFiles}
+                      hint={setOnly ? m.shuffledSet : pdf ? m.shuffledPdf : m.shuffledFiles}
                     >
                       <Segmented
                         label={m.shuffled}

@@ -7,8 +7,6 @@ import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
 import { EXPORT_MESSAGES } from './ExportDialog.messages';
-import { paperSetOf } from '@/model/paperSet';
-import { compareMembers, summarySet, type WorksheetSummary } from '@/storage';
 
 /**
  * What the Export dialog writes, and how the files reach disk. Pure, so the delivery
@@ -34,8 +32,11 @@ export function pdfVariant(
   return shown && letters.includes(shown) ? shown : letters[0];
 }
 
-/** `apps`: one file for another app — a bubble-sheet key or a quiz set (`AppFormat`). */
-export type ExportWhat = 'paper' | 'answerKey' | 'both' | 'apps';
+/**
+ * `apps`: one file for another app — a bubble-sheet key or a quiz set (`AppFormat`).
+ * `set`: the whole paper set (k-0299 step C), each paper and the set's marking scheme.
+ */
+export type ExportWhat = 'paper' | 'answerKey' | 'both' | 'apps' | 'set';
 
 export interface ExportChoice {
   what: ExportWhat;
@@ -96,17 +97,20 @@ export function skippedNote(skipped: KeyDocumentPick[], lang: UiLanguage = uiLan
 }
 
 /**
- * The other papers of this paper's set (k-0299), in set order (Paper 1, Paper 2): what "Also
- * include" ticks when the dialog opens, so the marking scheme of the whole exam is one click.
- * None when the paper is in no set. Still only export-time ticks, never stored.
+ * File names made distinct for one folder or `.zip`, in order: a second "Mock (Student)
+ * (EN).docx" becomes "Mock (Student) (EN) (2).docx", as a folder export names it.
  */
-export function setKeyPicks(worksheet: Pick<Worksheet, 'id' | 'paperSet'>, documents: readonly WorksheetSummary[]): KeyDocumentPick[] {
-  const set = paperSetOf(worksheet);
-  if (!set) return [];
-  return documents
-    .filter((doc) => doc.id !== worksheet.id && summarySet(doc)?.id === set.id)
-    .sort(compareMembers)
-    .map((doc) => ({ id: doc.id, title: doc.title }));
+export function uniqueNames(names: readonly string[]): string[] {
+  const taken = new Set<string>();
+  return names.map((name) => {
+    const dot = name.lastIndexOf('.');
+    const stem = dot > 0 ? name.slice(0, dot) : name;
+    const extension = dot > 0 ? name.slice(dot) : '';
+    let candidate = name;
+    for (let copy = 2; taken.has(candidate.toLowerCase()); copy += 1) candidate = `${stem} (${copy})${extension}`;
+    taken.add(candidate.toLowerCase());
+    return candidate;
+  });
 }
 
 /** Move one entry of an ordered pick list up (-1) or down (+1); out of range is a no-op. */
@@ -142,7 +146,8 @@ export function omittableParts(
   };
 }
 
-export type ExportKind = 'paper' | 'answerKey' | 'apps';
+/** `set`: Export → Whole set's `.zip` on the web, one file holding them all. */
+export type ExportKind = 'paper' | 'answerKey' | 'apps' | 'set';
 
 export interface ExportFile {
   kind: ExportKind;
@@ -159,6 +164,8 @@ export interface ExportFile {
 /** The documents a choice produces, in delivery order. */
 export function exportKinds(what: ExportWhat): ExportKind[] {
   if (what === 'both') return ['paper', 'answerKey'];
+  // The set's files are planned apart (`planSetFiles`), from the set's papers.
+  if (what === 'set') return [];
   return [what];
 }
 

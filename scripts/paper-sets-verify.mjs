@@ -26,7 +26,7 @@ const W = zh
       newWorksheet: '新增工作紙', name: '名稱', create: /建立工作紙/, school: '學校', home: 'Econ Studio 主頁',
       paper1: /^Paper 1 Mock · MCQ/, paper2: /^Paper 2 Mock · 答題簿/, classroom: /^課堂工作紙/,
       actionsFor: (t) => `「${t}」的操作`, makeSet: '建立套卷…', make: '建立套卷', leaveSet: '移出套卷', setName: '套卷名稱',
-      duplicate: '建立副本', copySuffix: '（副本）', set: '套卷', export: /^匯出/, alsoInclude: '一併包含', answerKey: /評卷參考/, word: 'Word',
+      duplicate: '建立副本', copySuffix: '（副本）', set: '套卷', export: /^匯出/, alsoInclude: '一併包含', alsoOpen: '在此檔案加入其他文件的評卷參考…', wholeSet: '整套試卷', answerKey: /評卷參考/, word: 'Word',
       renameSet: '套卷資料…', rename: '套用至每份試卷', ungroup: '解散套卷', setActions: (n) => `套卷「${n}」的操作`, dismissHint: '關閉提示',
       thisSet: '同一套卷', open: (t) => `開啟「${t}」`,
     }
@@ -34,7 +34,7 @@ const W = zh
       newWorksheet: 'New worksheet', name: 'Name', create: /Create worksheet/, school: 'School', home: 'Econ Studio home',
       paper1: /^Paper 1 mock · MCQ/, paper2: /^Paper 2 mock · booklet/, classroom: /^Classroom worksheet/,
       actionsFor: (t) => `Actions for ${t}`, makeSet: 'Make a set…', make: 'Make set', leaveSet: 'Remove from set', setName: 'Set name',
-      duplicate: 'Duplicate', copySuffix: ' (copy)', set: 'Set', export: /^Export/, alsoInclude: 'Also include', answerKey: /Answer key/, word: 'Word',
+      duplicate: 'Duplicate', copySuffix: ' (copy)', set: 'Set', export: /^Export/, alsoInclude: 'Also include', alsoOpen: 'Add other documents’ answer keys to this file…', wholeSet: 'Whole set', answerKey: /Answer key/, word: 'Word',
       renameSet: 'Set details…', rename: 'Apply to every paper', ungroup: 'Ungroup', setActions: (n) => `Actions for the set ${n}`, dismissHint: 'Dismiss hint',
       thisSet: 'This set', open: (t) => `Open ${t}`,
     };
@@ -139,18 +139,16 @@ await page.emulateMedia({ media: 'print' });
 check(!(await strip.isVisible()), 'the strip is not printed');
 await page.emulateMedia({ media: 'screen' });
 
-// 6. Export → Answer key → Word: Also include has Paper 1 ticked.
+// 6. Export → Answer key → Word: Also include is folded away, nothing ticked; the set's
+//    marking scheme is What → Whole set now (step C, scripts/whole-set-verify.mjs).
 await page.getByRole('button', { name: W.export }).first().click();
 const exp = page.getByRole('dialog');
 await exp.getByRole('radio', { name: W.answerKey }).first().click();
 const wordRadio = exp.getByRole('radio', { name: W.word });
 if (await wordRadio.count()) await wordRadio.first().click();
-await exp.getByText(W.alsoInclude, { exact: true }).waitFor({ timeout: 10_000 });
-const p1Pick = exp.getByRole('checkbox', { name: new RegExp(P1) });
-check(await p1Pick.isChecked(), 'Export pre-ticks Paper 1 in Also include');
-check((await exp.getByText(W.thisSet).count()) > 0, 'Also include marks the set’s paper');
-const s5Pick = exp.getByRole('checkbox', { name: /S5 Final Paper 1/ });
-check(!(await s5Pick.isChecked()), 'an unrelated paper stays unticked');
+await exp.getByRole('button', { name: W.alsoOpen }).waitFor({ timeout: 10_000 });
+check((await exp.locator('[data-key-documents-closed]').count()) === 1, 'Also include is folded away, nothing ticked');
+check((await exp.getByRole('radio', { name: W.wholeSet }).count()) === 1, 'Export offers Whole set');
 await shot('export-also-include');
 await page.keyboard.press('Escape');
 await home();

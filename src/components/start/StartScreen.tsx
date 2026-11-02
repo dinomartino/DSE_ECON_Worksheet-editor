@@ -32,10 +32,12 @@ import { WhatsNewDialog, WhatsNewOnLaunch } from '@/components/whatsNew/WhatsNew
 import { describeDocument } from '@/feedback/feedback';
 import { uiLanguage, useMessages } from '@/i18n/language';
 import { FileDashboard, type DocumentActions, type FolderActions, type SetActions } from './FileDashboard';
-import { AddPapersDialog, AddToSetDialog, MakeSetDialog } from './SetDialogs';
+import { AddPapersDialog, AddToSetDialog, DuplicateSetDialog, MakeSetDialog } from './SetDialogs';
 import { SetDetailsDialog } from './SetDetailsDialog';
 import { SET_DETAILS_MESSAGES } from './SetDetailsDialog.messages';
 import { withSetName } from '@/model/paperSet';
+import { duplicateSetPapers } from '@/model/duplicateSet';
+import { isNewerThanBuild } from '@/model/migrations';
 import { withDetails } from '@/model/setDetails';
 import { SET_MESSAGES } from './sets.messages';
 import { readDashboardFolder, writeDashboardFolder } from './dashboard';
@@ -97,6 +99,7 @@ import {
   summarySet,
   type Folder,
   type FolderState,
+  compareMembers,
   type SetChangeResult,
   type SetGroup,
   type TrashedSummary,
@@ -216,7 +219,7 @@ export function StartScreen({
   const [setDialog, setSetDialog] = useState<
     | { kind: 'make' | 'add'; summary: WorksheetSummary }
     | { kind: 'addPapers'; group: SetGroup }
-    | { kind: 'details'; group: SetGroup; papers: Worksheet[] }
+    | { kind: 'details' | 'duplicate'; group: SetGroup; papers: Worksheet[] }
     | undefined
   >();
   const dm = useMessages(SET_DETAILS_MESSAGES);
@@ -342,6 +345,40 @@ export function StartScreen({
     if (set) setNotice({ message: sm.copyLeftSet(set.name.trim() || sm.untitledSet) });
   };
 
+  /**
+   * Duplicate set (step C): every paper copied into a new set, saved (not opened), each copy
+   * filed beside its original. A paper a newer version saved is not copied (this build would
+   * downgrade it); it is counted with the ones that could not be written.
+   */
+  const duplicateSet = async (papers: Worksheet[], name: string, bumpYear: boolean) => {
+    setError(undefined);
+    const copyable = papers.filter((paper) => !isNewerThanBuild(paper));
+    const copies = duplicateSetPapers(copyable, {
+      set: { id: newId(), name },
+      bumpYear,
+      lang: uiLanguage(),
+      newId,
+    });
+    let failed = papers.length - copyable.length;
+    const saved: Array<{ from: string; to: string }> = [];
+    await whileSyncPaused(async () => {
+      for (const [index, copy] of copies.entries()) {
+        try {
+          await worksheetStore.save(copy);
+          saved.push({ from: copyable[index].id, to: copy.id });
+        } catch {
+          failed += 1;
+        }
+      }
+    });
+    if (saved.length > 0) {
+      await refile((state) => saved.reduce((next, { from, to }) => copyAssignment(next, from, to), state));
+    }
+    await refresh();
+    if (failed > 0) setError(sm.duplicateFailed(failed));
+    if (saved.length > 0) setNotice({ message: sm.duplicated(name, saved.length) });
+  };
+
   /** Write a set change to every paper it names, then say what could not be written. */
   const changeSets = async (change: Promise<SetChangeResult>): Promise<number> => {
     setError(undefined);
@@ -370,6 +407,19 @@ export function StartScreen({
         setSetDialog({ kind: 'details', group, papers: loaded });
       })(),
     addPapers: (group) => setSetDialog({ kind: 'addPapers', group }),
+    duplicate: (group) =>
+      void (async () => {
+        // In set order, so the copies list as the originals do.
+        const rows = [...group.members].sort(compareMembers);
+        const papers = await Promise.all(rows.map((row) => worksheetStore.load(row.id).catch(() => undefined)));
+        const loaded = papers.filter((paper): paper is Worksheet => !!paper);
+        if (loaded.length === 0) {
+          setError(sm.detailsRead);
+          return;
+        }
+        if (loaded.length < papers.length) setError(sm.detailsRead);
+        setSetDialog({ kind: 'duplicate', group, papers: loaded });
+      })(),
     ungroup: (group) => void changeSets(leaveSet(worksheetStore, group.members.map((row) => row.id))),
   };
 
@@ -1207,6 +1257,18 @@ export function StartScreen({
             const group = setDialog.group;
             setSetDialog(undefined);
             void changeSets(makeSet(worksheetStore, ids, group.name, group.id));
+          }}
+        />
+      )}
+      {setDialog?.kind === 'duplicate' && (
+        <DuplicateSetDialog
+          name={setDialog.group.name}
+          papers={setDialog.papers}
+          onClose={() => setSetDialog(undefined)}
+          onDone={(name, bumpYear) => {
+            const { papers } = setDialog;
+            setSetDialog(undefined);
+            void duplicateSet(papers, name, bumpYear);
           }}
         />
       )}

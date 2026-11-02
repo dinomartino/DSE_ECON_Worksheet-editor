@@ -19,12 +19,10 @@ a version heading is edited afterwards.
   has Make a set…: name the set (it suggests one from the paper's name) and tick the other papers
   that sit the same exam; the matching Paper 2 comes ticked. The papers then show together in one
   frame, Paper 1 before Paper 2, each still its own file in its own folder. Inside a paper, a
-  thin bar under the toolbar names the set and opens the other paper in one click. Export →
-  Answer key → Word ticks the set's other papers under Also include, so the whole marking
-  scheme is one file. The link is saved in each paper, so it travels with sync, backups and
+  thin bar under the toolbar names the set and opens the other paper in one click. The link is saved in each paper, so it travels with sync, backups and
   \`.json\` files. Add to set…, Remove from set, and the set's own ⋯ (Set details…, Add papers…,
   Ungroup) change it. A duplicated paper leaves the set, so a set never holds two Paper 1s.
-  <!-- zh: **將同一次考試的 Paper 1 和 Paper 2 連成套卷。** 在開始畫面，Mock 試卷的 ⋯ 選單有「建立套卷…」：為套卷命名（會按試卷名稱建議），再剔選同一考試的其他試卷，相配的 Paper 2 已預先剔選。之後兩份試卷會放在同一個框內，Paper 1 在前、Paper 2 在後，每份仍是獨立檔案，資料夾不變。打開試卷時，工具列下方的細列會顯示套卷名稱，按一下即可開啟另一份試卷。匯出 → 評卷參考 → Word 時，「一併包含」會預先剔選套卷內的其他試卷，整份評卷參考一個檔案完成。連結儲存在每份試卷內，同步、備份和 .json 檔案都會保留。可用「加入套卷…」、「移出套卷」及套卷本身的 ⋯（重新命名套卷…、加入試卷…、解散套卷）更改。建立副本的試卷會移出套卷，套卷內不會有兩份 Paper 1。 -->
+  <!-- zh: **將同一次考試的 Paper 1 和 Paper 2 連成套卷。** 在開始畫面，Mock 試卷的 ⋯ 選單有「建立套卷…」：為套卷命名（會按試卷名稱建議），再剔選同一考試的其他試卷，相配的 Paper 2 已預先剔選。之後兩份試卷會放在同一個框內，Paper 1 在前、Paper 2 在後，每份仍是獨立檔案，資料夾不變。打開試卷時，工具列下方的細列會顯示套卷名稱，按一下即可開啟另一份試卷。連結儲存在每份試卷內，同步、備份和 .json 檔案都會保留。可用「加入套卷…」、「移出套卷」及套卷本身的 ⋯（重新命名套卷…、加入試卷…、解散套卷）更改。建立副本的試卷會移出套卷，套卷內不會有兩份 Paper 1。 -->
 - **Start a whole mock in one go.** In New worksheet, after you pick Paper 1 or Paper 2, choose
   Mock set (Paper 1 + Paper 2) instead of Just this paper: the paper you picked opens, and a blank
   other paper is made beside it with the same school and examination, already linked as a set.
@@ -39,6 +37,18 @@ a version heading is edited afterwards.
   NAME, say) it lists what each paper says and offers Use "…" on every paper, and the bar above
   the paper says Details differ until they match. Rename set… is now part of Set details….
   <!-- zh: **令套卷內每份試卷的學校、考試、日期和班別保持一致。** 在開始畫面套卷的 ⋯，或已開啟試卷上方細列的「套卷資料…」，會顯示套卷名稱、封面上的學校及考試一行（英文及中文）、考試日期和班別。「套用至每份試卷」會把你更改的內容寫入每份試卷的封面和設定；考試時間及各試卷自己的名稱則不變。各試卷資料不一致時（例如 Paper 2 仍顯示 SCHOOL NAME），會列出每份試卷的內容，並提供「每份試卷都用『…』」，細列也會顯示「資料不一致」直至一致為止。「重新命名套卷…」已併入「套卷資料…」。 -->
+- **Export, view and copy a whole set.** Export → What → Whole set writes every paper of the set
+  and one marking scheme for the whole set (Paper 1's key, then Paper 2's, numbered on). As
+  Word it is one .zip in a browser, or the files in a folder you choose in the desktop app. As
+  PDF the desktop app saves every PDF straight into one folder; a browser can only print one
+  document at a time, so the dialog lists each paper and the marking scheme with its own Print
+  button. In the Marking scheme view, This paper / Whole set shows the set's marking scheme on
+  screen. A set's ⋯ on the start screen has Duplicate set…: it copies every paper into a new set
+  for next year and offers to change the year (2026-27 → 2027-28) in the names, titles and
+  covers, leaving the questions alone. Answer key's Also include list is now folded behind "Add
+  other documents' answer keys to this file…", for putting the keys of papers that aren't in a
+  set into one file; nothing comes ticked.
+  <!-- zh: **匯出、檢視和複製整套試卷。** 匯出 → 內容 → 整套試卷會匯出套卷內每份試卷，以及整套試卷的一份評卷參考（先 Paper 1，後 Paper 2，頁碼連續）。以 Word 匯出時，瀏覽器會得到一個 .zip，桌面版則把檔案存入你選擇的資料夾。以 PDF 匯出時，桌面版會把所有 PDF 直接存入同一資料夾；瀏覽器每次只能列印一份文件，所以視窗會逐一列出每份試卷和評卷參考，各有「列印」按鈕。在評卷參考檢視中，可用「這份試卷／整套試卷」在畫面上查看整套評卷參考。開始畫面套卷的 ⋯ 有「複製套卷…」：把所有試卷複製到新套卷供下一年使用，並可把名稱、標題和封面上的年份改為下一年（2026-27 → 2027-28），題目內容不變。評卷參考的「一併包含」清單已收起在「在此檔案加入其他文件的評卷參考…」之下，用來把不屬於套卷的文件的評卷參考放在同一檔案；不會再預先剔選。 -->
 
 ### Fixed
 - **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer

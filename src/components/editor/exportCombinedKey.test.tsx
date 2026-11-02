@@ -5,7 +5,7 @@ import { createMcqQuestion, createWorksheet } from '@/model/factories';
 import type { Worksheet } from '@/model/types';
 import { parseWorksheet, type WorksheetSummary } from '@/storage';
 import { ExportDialog } from './ExportDialog';
-import { KEY_DOCUMENTS_SEARCH_FROM, keyDocumentChoices } from './KeyDocumentsField';
+import { KEY_DOCUMENTS_SEARCH_FROM, KeyDocumentsField, keyDocumentChoices } from './KeyDocumentsField';
 import { loadKeyDocuments, movePick, skippedNote, type ExportWhat, type ExportFormat } from './exportSession';
 
 const summary = (id: string, title: string, updatedAt = '2026-09-01T00:00:00Z'): WorksheetSummary => ({
@@ -82,28 +82,42 @@ describe('ExportDialog "Also include"', () => {
       />,
     );
 
-  it('offers the other saved documents when the answer key is exported', () => {
+  const OPEN = 'Add other documents’ answer keys to this file…';
+
+  it('is folded away when the answer key is exported: a link, nothing ticked (k-0299 step C)', () => {
     for (const what of ['answerKey', 'both'] as const) {
       const markup = render(what);
-      expect(markup).toContain('Also include');
-      expect(markup).toContain('Mock P2');
-      expect(markup).toContain('Unit quiz');
-      // This document is not offered to itself.
-      expect(markup).not.toMatch(/<span[^>]*title="Mock P1"/);
-      expect(markup.indexOf('Also include')).toBeLessThan(markup.indexOf('Language'));
+      expect(markup).toContain(OPEN);
+      expect(markup).not.toContain('Mock P2');
+      expect(markup.indexOf(OPEN)).toBeLessThan(markup.indexOf('Language'));
     }
   });
 
+  it('opened, offers the other saved documents, never this one', () => {
+    const others = documents.filter((doc) => doc.id !== current.id);
+    const markup = renderToStaticMarkup(
+      <KeyDocumentsField documents={others} picked={[{ id: 'p2', title: 'Mock P2' }]} onChange={() => {}} currentTitle="Mock P1" />,
+    );
+    expect(markup).toContain('Also include');
+    expect(markup).toContain('Mock P2');
+    expect(markup).toContain('Unit quiz');
+    expect(markup).not.toMatch(/<span[^>]*title="Mock P1"/);
+  });
+
   it('is absent for the paper alone, other apps, PDF, or with nothing else saved', () => {
-    expect(render('paper')).not.toContain('Also include');
-    expect(render('apps')).not.toContain('Also include');
-    expect(render('answerKey', 'pdf')).not.toContain('Also include');
-    expect(render('answerKey', 'docx', [documents[0]])).not.toContain('Also include');
+    expect(render('paper')).not.toContain(OPEN);
+    expect(render('apps')).not.toContain(OPEN);
+    expect(render('answerKey', 'pdf')).not.toContain(OPEN);
+    expect(render('answerKey', 'docx', [documents[0]])).not.toContain(OPEN);
   });
 
   it('adds a search box only once the list is long', () => {
-    expect(render('answerKey')).not.toContain('type="search"');
+    const field = (list: WorksheetSummary[]) =>
+      renderToStaticMarkup(
+        <KeyDocumentsField documents={list} picked={[{ id: list[0].id, title: list[0].title }]} onChange={() => {}} currentTitle="Mock P1" />,
+      );
+    expect(field(documents.slice(1))).not.toContain('type="search"');
     const many = Array.from({ length: KEY_DOCUMENTS_SEARCH_FROM + 1 }, (_, i) => summary(`d${i}`, `Doc ${i}`));
-    expect(render('answerKey', 'docx', many)).toContain('type="search"');
+    expect(field(many)).toContain('type="search"');
   });
 });

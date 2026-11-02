@@ -82,7 +82,7 @@ describe('the set frame on the grid', () => {
       summaries={ROWS}
       loaded
       actions={ACTIONS}
-      setActions={{ details: noop, addPapers: noop, ungroup: noop }}
+      setActions={{ details: noop, addPapers: noop, duplicate: noop, ungroup: noop }}
     />,
   );
 

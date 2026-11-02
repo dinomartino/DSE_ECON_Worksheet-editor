@@ -122,6 +122,12 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Set details / drift** — a set's shared school, examination line, date sat and classes,
   copied into each paper (cover lines tagged `sharedAs`); drift = two papers disagreeing,
   never a stored set value. `src/model/setDetails.ts`
+- **Whole set** — Export → What → Whole set (each paper + one marking scheme for the set, a
+  `.zip` on the web, a folder on desktop; PDFs one print each on the web) and the Marking
+  scheme view's This paper / Whole set (`keyScope`, view state only). Blank members are left
+  out. `src/components/editor/setMembers.ts:setPapersInOrder`
+- **Print job** — a document that is not open, shown in the page's place for one print.
+  `src/components/editor/printJob.tsx:PrintJob`
 - **Platform adapter** — `src/platform/index.ts`: the only place that may reach Tauri, always
   through a dynamic import behind `isDesktop()`.
 - **`data-print-hide`** — the attribute that keeps on-page chrome out of the print PDF.

@@ -14,6 +14,10 @@ import { AppMark } from '@/components/ui/AppMark';
 import { DocumentName } from './DocumentName';
 import { ExportDialog } from './ExportDialog';
 import { browserPrintDeps, printWorksheetPdf } from './printPdf';
+import { browserJobDeps, printJobPdf, usePrintJob, type PrintJob } from './printJob';
+import { EXPORT_MESSAGES } from './ExportDialog.messages';
+import { isWholeSet, useSetMembers, useSetPapers } from './setMembers';
+import type { FolderTarget } from '@/platform';
 import { useUpdateStore } from '@/desktop/updateStore';
 import { ExportPaperCheck } from './ExportPaperCheck';
 import { PaperSummaryBar } from './PaperSummaryBar';
@@ -112,6 +116,9 @@ export function Toolbar({
   const printPreview = useWorksheetStore((s) => s.printPreview);
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
   const readOnly = useWorksheetStore((s) => s.readOnly);
+  // The open paper's set, for Export → Whole set (k-0299 step C).
+  const setPapers = useSetPapers();
+  const em = useMessages(EXPORT_MESSAGES);
 
   const notices = useNotices();
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -234,6 +241,8 @@ export function Toolbar({
     // PDF prints what the page shows, so the page first shows what was asked for: the
     // paper, or its key. It stays, like the language and version a print switches to.
     setDocumentView(view);
+    // The key asked for is this paper's, not the Whole set's (k-0299 step C).
+    if (view === 'answerKey') useSetMembers.getState().setKeyScope('paper');
     const deps = browserPrintDeps(setMode, () => select(undefined));
     printWorksheetPdf(worksheet, printMode, deps, file)
       .then((outcome) => {
@@ -246,6 +255,34 @@ export function Toolbar({
       .catch((cause: unknown) =>
         setError(m.printFailed(cause instanceof Error ? cause.message : String(cause))),
       );
+  };
+
+  /**
+   * Export → Whole set as PDF, desktop (k-0299 step C): each paper, then the set's marking
+   * scheme, printed straight into the folder the dialog asked for, one after another. The
+   * page shows each in turn and is given back at the end; a failure stops the run and says
+   * how far it got.
+   */
+  const handlePrintSet = (jobs: Array<{ job: PrintJob; fileName: string }>, folder: FolderTarget) => {
+    setError(undefined);
+    select(undefined);
+    void (async () => {
+      let done = 0;
+      let last: string | undefined;
+      try {
+        for (const { job, fileName } of jobs) {
+          const path = await folder.pathFor!(fileName);
+          const outcome = await printJobPdf(job, browserJobDeps(), path);
+          if (!('saved' in outcome)) throw new Error(outcome.fallback ?? m.printFailed(''));
+          last = outcome.saved;
+          done += 1;
+        }
+        flash(em.savedSetPdfs(done), last ? revealAction(last) : undefined);
+      } catch (cause) {
+        usePrintJob.getState().setJob(undefined);
+        setError(em.setPdfStopped(done, jobs.length, cause instanceof Error ? cause.message : String(cause)));
+      }
+    })();
   };
 
   /**
@@ -455,6 +492,8 @@ export function Toolbar({
           onClose={closeExport}
           onExported={handleExported}
           onPrint={handlePrint}
+          wholeSet={isWholeSet(setPapers) ? setPapers : undefined}
+          onPrintSet={handlePrintSet}
           checks={(choice) => (
             <ExportPaperCheck
               worksheet={worksheet}

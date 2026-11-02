@@ -66,3 +66,22 @@ export function answerKeyFileName(
       : names.join(' + ');
   return `${joined} (${answerKeyKind([worksheet, ...others], language)}) (${LANGUAGE_TAG[language]}).docx`;
 }
+
+/** A set's name as a file name: what Windows and macOS refuse, made a dash. */
+function setStem(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Set';
+}
+
+/**
+ * The whole set's marking scheme (k-0299 step C): `<set> (Answer key) (EN).docx`, named
+ * after the set rather than its papers, so it sorts beside them in the set's folder or .zip.
+ */
+export function setKeyFileName(setName: string, worksheets: Worksheet[], language: LanguageMode): string {
+  return `${setStem(setName)} (${answerKeyKind(worksheets, language)}) (${LANGUAGE_TAG[language]}).docx`;
+}
+
+/** Export → Whole set on the web: one `.zip`, `<set> (Student) (EN).zip`. */
+export function setZipFileName(setName: string, mode: Pick<OutputMode, 'language' | 'version'>): string {
+  const version = mode.version === 'teacher' ? 'Teacher' : 'Student';
+  return `${setStem(setName)} (${version}) (${LANGUAGE_TAG[mode.language]}).zip`;
+}
