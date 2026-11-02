@@ -90,6 +90,7 @@ export const KNOWN_KEYS = new Set([
   'classes',
   'satOn',
   'bankHidden',
+  'paperSet',
   'answerKeyLayout',
   'createdAt',
   'updatedAt',

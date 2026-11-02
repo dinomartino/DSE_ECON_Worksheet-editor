@@ -345,6 +345,19 @@ Unrelated small gaps found on the walk, which can be fixed anytime:
 7. **Whole-set export**: a `.zip` of `.docx` (web) / a folder (desktop) first, with one PDF per
    paper. Is a single joined PDF needed?
 
+### Decided (the user, 2026-11-02, u-4sd6)
+
+"Go for option 2 and all follow with suggestion, exam paper only, label as Set, … export as a
+ZIP or directly a folder with all the PDF inside." So: Option 2 in steps; a set holds **exam
+papers only** (Paper 1, Paper 2 booklet; never a classroom or LQ worksheet); one word, **Set /
+套卷**; a duplicated paper **leaves** the set; **one set per paper**; whole-set export is a `.zip`
+or a plain folder of PDFs, no single joined PDF (step C). Still open: which shared details
+step B keeps in step (asked).
+
+**Step A built** (`feature/paper-sets-a`): `paperSet { id, name }` with no stored role (Paper
+1/2 is derived, `setRoleOf`); index rows carry `set` + `paper` at `INDEX_ROW_REV` 3. Proof:
+`scripts/paper-sets-verify.mjs` (EN + 中).
+
 ## 8. Evidence
 
 - Walk scripts (Playwright, Chrome, 1440×900, EN + zh-HK): kept out of the repo. Screenshots are

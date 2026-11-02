@@ -31,7 +31,9 @@ import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog, WhatsNewOnLaunch } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
 import { uiLanguage, useMessages } from '@/i18n/language';
-import { FileDashboard, type DocumentActions, type FolderActions } from './FileDashboard';
+import { FileDashboard, type DocumentActions, type FolderActions, type SetActions } from './FileDashboard';
+import { AddPapersDialog, AddToSetDialog, MakeSetDialog, RenameSetDialog } from './SetDialogs';
+import { SET_MESSAGES } from './sets.messages';
 import { readDashboardFolder, writeDashboardFolder } from './dashboard';
 import { START_PANEL_MESSAGES } from './messages';
 import { START_SCREEN_MESSAGES } from './screen.messages';
@@ -83,8 +85,16 @@ import {
   folderOf,
   sortedFolders,
   updateFolders,
+  addToSet,
+  leaveSet,
+  makeSet,
+  renameSet,
+  setGroups,
+  summarySet,
   type Folder,
   type FolderState,
+  type SetChangeResult,
+  type SetGroup,
   type TrashedSummary,
   type WorksheetSummary,
 } from '@/storage';
@@ -198,6 +208,13 @@ export function StartScreen({
   const [folderId, setFolderId] = useState<string | undefined>(readDashboardFolder);
   const [naming, setNaming] = useState<Naming | undefined>();
   const [moving, setMoving] = useState<WorksheetSummary | undefined>();
+  // The open paper-set dialog (k-0299), if any.
+  const [setDialog, setSetDialog] = useState<
+    | { kind: 'make' | 'add'; summary: WorksheetSummary }
+    | { kind: 'addPapers' | 'rename'; group: SetGroup }
+    | undefined
+  >();
+  const sm = useMessages(SET_MESSAGES);
   const [deletingFolder, setDeletingFolder] = useState<Folder | undefined>();
   // The Question bank replaces this screen's view the way opening a document replaces
   // it; ← Home comes back. Session state: the app always opens on the documents.
@@ -306,11 +323,33 @@ export function StartScreen({
     // Saved, not opened. Duplicating is a filing action — the teacher is looking at a
     // list and making a copy to work on *later*; opening it would take the screen away
     // from the list they are still using.
-    const copy = duplicateWorksheet(worksheet, newId());
+    const copy = duplicateWorksheet(worksheet, newId(), uiLanguage());
     await worksheetStore.save(copy);
     // The copy sits beside its original, folder included.
     await refile((state) => copyAssignment(state, summary.id, copy.id));
     await refresh();
+    // It does not join the original's set (k-0299): said, since the copy lands outside the frame.
+    const set = summarySet(summary);
+    if (set) setNotice({ message: sm.copyLeftSet(set.name.trim() || sm.untitledSet) });
+  };
+
+  /** Write a set change to every paper it names, then say what could not be written. */
+  const changeSets = async (change: Promise<SetChangeResult>) => {
+    setError(undefined);
+    let failed = 0;
+    try {
+      failed = (await whileSyncPaused(() => change)).failed.length;
+    } catch {
+      failed = 1;
+    }
+    await refresh();
+    if (failed > 0) setError(sm.changeFailed(failed));
+  };
+
+  const setActions: SetActions = {
+    rename: (group) => setSetDialog({ kind: 'rename', group }),
+    addPapers: (group) => setSetDialog({ kind: 'addPapers', group }),
+    ungroup: (group) => void changeSets(leaveSet(worksheetStore, group.members.map((row) => row.id))),
   };
 
   /** Every folder change reads what is stored now, changes it, writes it back. */
@@ -713,6 +752,9 @@ export function StartScreen({
       : undefined,
     move: setMoving,
     remove: askToTrash,
+    makeSet: (summary) => setSetDialog({ kind: 'make', summary }),
+    addToSet: (summary) => setSetDialog({ kind: 'add', summary }),
+    leaveSet: (summary) => void changeSets(leaveSet(worksheetStore, [summary.id])),
   };
 
   return (
@@ -920,6 +962,7 @@ export function StartScreen({
             folderId={folderId}
             onFolderChange={enterFolder}
             folderActions={folderActions}
+            setActions={setActions}
             settings={<SettingsButton separated className="hidden lg:flex" />}
             questionRows={bankRows}
             welcome={
@@ -1085,6 +1128,53 @@ export function StartScreen({
             const request = naming;
             setNaming(undefined);
             void nameFolder(request, name);
+          }}
+        />
+      )}
+
+      {setDialog?.kind === 'make' && (
+        <MakeSetDialog
+          summary={setDialog.summary}
+          summaries={summaries}
+          onClose={() => setSetDialog(undefined)}
+          onDone={(name, ids) => {
+            setSetDialog(undefined);
+            void changeSets(makeSet(worksheetStore, ids, name));
+          }}
+        />
+      )}
+      {setDialog?.kind === 'add' && (
+        <AddToSetDialog
+          summary={setDialog.summary}
+          groups={[...setGroups(summaries).values()]}
+          onClose={() => setSetDialog(undefined)}
+          onDone={(group) => {
+            const docId = setDialog.summary.id;
+            setSetDialog(undefined);
+            void changeSets(addToSet(worksheetStore, docId, group));
+          }}
+        />
+      )}
+      {setDialog?.kind === 'addPapers' && (
+        <AddPapersDialog
+          group={setDialog.group}
+          summaries={summaries}
+          onClose={() => setSetDialog(undefined)}
+          onDone={(ids) => {
+            const group = setDialog.group;
+            setSetDialog(undefined);
+            void changeSets(makeSet(worksheetStore, ids, group.name, group.id));
+          }}
+        />
+      )}
+      {setDialog?.kind === 'rename' && (
+        <RenameSetDialog
+          group={setDialog.group}
+          onClose={() => setSetDialog(undefined)}
+          onDone={(name) => {
+            const group = setDialog.group;
+            setSetDialog(undefined);
+            void changeSets(renameSet(worksheetStore, group, name));
           }}
         />
       )}

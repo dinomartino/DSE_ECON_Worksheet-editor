@@ -228,9 +228,9 @@ describe('FileWorksheetStore', () => {
 
     const raw = JSON.parse(files.get(INDEX)!);
     expect(raw).toEqual([
-      { ...v050('bank', bank.updatedAt), kind: 'bank', indexRev: 2 },
+      { ...v050('bank', bank.updatedAt), kind: 'bank', indexRev: 3 },
       { title: 'No id' },
-      { ...v050('a', '2024-01-01T00:00:00.000Z'), indexRev: 2 },
+      { ...v050('a', '2024-01-01T00:00:00.000Z'), indexRev: 3 },
       v050('gone', '2023-01-01T00:00:00.000Z'),
     ]);
     // Once: the row now says so itself, so the document is not asked again.

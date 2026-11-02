@@ -1,4 +1,5 @@
 import type { Worksheet } from '@/model/types';
+import { paperSetOf, setRoleOf } from '@/model/paperSet';
 import type { WorksheetSummary } from './types';
 
 /**
@@ -37,40 +38,78 @@ export function withSummaryFirst(
 }
 
 /**
- * The revision of the row `summarize` writes. At 2 a row records `kind`, so one without
- * it is a paper. A row below 2 (written or rebuilt by v0.5.0 or earlier) lacks `kind`
- * even for a bank: its missing kind is not evidence, so `kindRepairs` reads the document.
+ * The revision of the row `summarize` writes, and what a row at it can be trusted for:
+ *  - 2: it records `kind`, so one without it is a paper. A row below 2 (written or rebuilt by
+ *    v0.5.0 or earlier) lacks `kind` even for a bank.
+ *  - 3: it also records `set` and `paper` (paper sets, k-0299), so one without them is in no
+ *    set / no exam paper. A row below 3 (any build before sets, including one that just
+ *    re-saved a member) may lack them for a paper that has them.
+ * A missing fact on a row below the revision is not evidence, so `kindRepairs` reads the
+ * document, once, and writes what it holds.
  */
-export const INDEX_ROW_REV = 2;
+export const INDEX_ROW_REV = 3;
 
-/** Whether this row's missing `kind` can be trusted (§ INDEX_ROW_REV). */
-function recordsKind(entry: WorksheetSummary): boolean {
+/** What a row records about its document beyond the counts: kind, set and exam paper. */
+export type RowFacts = Pick<WorksheetSummary, 'kind' | 'set' | 'paper'>;
+
+/**
+ * The facts `summarize` writes and a repair restores, from the document. Each only when set:
+ * a bank (or a later build's kind, passed through), a valid set, a Paper 1 or 2.
+ */
+export function rowFacts(worksheet: Worksheet): RowFacts {
+  const set = paperSetOf(worksheet);
+  // A shape this build half-knows reads as no exam paper rather than a failed save or repair.
+  let paper: RowFacts['paper'];
+  try {
+    paper = setRoleOf(worksheet);
+  } catch {
+    paper = undefined;
+  }
+  return {
+    ...(typeof worksheet.kind === 'string' ? { kind: worksheet.kind } : {}),
+    ...(set ? { set: { id: set.id, name: set.name } } : {}),
+    ...(paper ? { paper } : {}),
+  };
+}
+
+/** Whether this row's missing facts can be trusted (§ INDEX_ROW_REV). */
+function recordsFacts(entry: WorksheetSummary): boolean {
   return typeof entry.indexRev === 'number' && entry.indexRev >= INDEX_ROW_REV;
 }
 
-/** `row` with its kind as the document has it, marked as recording kind. */
-function withKind(row: WorksheetSummary, kind: unknown): WorksheetSummary {
+/** `row` with its facts as the document has them, marked as recording them. */
+function withFacts(row: WorksheetSummary, facts: RowFacts): WorksheetSummary {
   const next: WorksheetSummary = { ...row, indexRev: INDEX_ROW_REV };
-  if (typeof kind === 'string') next.kind = kind;
-  else delete next.kind;
-  return next;
+  delete next.kind;
+  delete next.set;
+  delete next.paper;
+  return { ...next, ...facts };
 }
 
 /**
- * The rows written before `kind` was, repaired from their documents, by id. A document
+ * The rows written before their facts were, repaired from their documents, by id. A document
  * that is missing or will not load is skipped: its row stays as it was, still listed.
  */
 export async function kindRepairs(
   rows: readonly WorksheetSummary[],
-  load: (id: string) => Promise<Pick<Worksheet, 'kind'> | undefined>,
+  load: (id: string) => Promise<Worksheet | undefined>,
 ): Promise<Map<string, WorksheetSummary>> {
   const repairs = new Map<string, WorksheetSummary>();
   for (const row of rows) {
-    if (recordsKind(row)) continue;
+    if (recordsFacts(row)) continue;
     const doc = await load(row.id).catch(() => undefined);
-    if (doc) repairs.set(row.id, withKind(row, doc.kind));
+    if (doc) repairs.set(row.id, withFacts(row, rowFacts(doc)));
   }
   return repairs;
+}
+
+/** A row's own facts, only those it holds. */
+function factsOf(row: WorksheetSummary): RowFacts {
+  return {
+    ...(row.kind !== undefined ? { kind: row.kind } : {}),
+    ...(row.set !== undefined ? { set: row.set } : {}),
+    ...(row.paper !== undefined ? { paper: row.paper } : {}),
+  };
 }
 
 /**
@@ -84,7 +123,7 @@ export function withKindRepairs(parsed: unknown, repairs: ReadonlyMap<string, Wo
     if (!entry || typeof entry !== 'object') return entry;
     const row = entry as WorksheetSummary;
     const repair = typeof row.id === 'string' ? repairs.get(row.id) : undefined;
-    if (!repair || recordsKind(row) || row.updatedAt !== repair.updatedAt) return entry;
-    return withKind(row, repair.kind);
+    if (!repair || recordsFacts(row) || row.updatedAt !== repair.updatedAt) return entry;
+    return withFacts(row, factsOf(repair));
   });
 }

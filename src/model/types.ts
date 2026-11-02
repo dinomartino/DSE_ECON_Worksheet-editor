@@ -918,6 +918,18 @@ export interface PageFurniture {
 }
 
 /**
+ * A paper's membership of a set (`Worksheet.paperSet`, k-0299). Every member holds its own
+ * copy; the newest member's name wins on display (`model/paperSet.ts`). Keys a later build
+ * adds here are kept by every writer (`{ ...set, name }`), as `__unknown` keeps top-level ones.
+ */
+export interface PaperSet {
+  /** Shared by every paper in the set. */
+  id: string;
+  /** "S6 Mock 2026-27": what the dashboard frame and the editor strip call the set. */
+  name: string;
+}
+
+/**
  * A faint picture behind the paper's pages: a school logo, or a line of text drawn as a
  * picture (k-0242). Rules and geometry in `model/watermark.ts`.
  *
@@ -1071,6 +1083,13 @@ export interface Worksheet {
   satOn?: string;
   /** Keep this document's questions out of the question bank. Absent = indexed. */
   bankHidden?: boolean;
+  /**
+   * The set this exam paper sits in (k-0299): the papers of one mock, test or quiz, e.g.
+   * Paper 1 and Paper 2. No set file exists: a set is the papers carrying the same `id`, so
+   * the link travels with the paper (sync, `.json`, backups, older builds keep it). Absent =
+   * in no set. Read it through `paperSetOf` (`model/paperSet.ts`); never printed.
+   */
+  paperSet?: PaperSet;
   /**
    * How the answer key (the Marking scheme view, `render/answerKey.ts`) is laid out:
    * a preset plus the teacher's changes to it (`model/answerKeyLayout.ts`). Presentation

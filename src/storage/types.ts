@@ -38,6 +38,17 @@ export interface WorksheetSummary {
    */
   kind?: 'bank' | (string & {});
   /**
+   * The paper's set (`Worksheet.paperSet`, k-0299) as the document stores it: written from
+   * row revision 3. Read it through `summarySet` (`storage/paperSets.ts`): the index is
+   * validated per row, and an older build passes the field through untouched.
+   */
+  set?: { id: string; name: string };
+  /**
+   * Which exam paper this is (`setRoleOf`): only Paper 1s and Paper 2s may join a set.
+   * Absent = not an exam paper (or a row before revision 3, repaired on the next list).
+   */
+  paper?: 'paper1' | 'paper2' | (string & {});
+  /**
    * The row's revision (§ INDEX_ROW_REV in summaries.ts). Absent on a row v0.5.0 or
    * earlier wrote: that row's missing `kind` is read from the document, once.
    */

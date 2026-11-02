@@ -3,14 +3,18 @@
 import { useDeferredValue, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { IconButton, Segmented } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
-import { FolderIcon, PlusIcon, SheetIcon, TrashIcon } from '@/components/ui/icons';
+import { FolderIcon, PlusIcon, SetIcon, SheetIcon, TrashIcon } from '@/components/ui/icons';
 import { isDesktop, revealLabel } from '@/platform';
 import {
+  canJoinASet,
   folderCounts,
   folderOf,
   sortedFolders,
+  summaryRole,
+  summarySet,
   type Folder,
   type FolderState,
+  type SetGroup,
   type WorksheetSummary,
 } from '@/storage';
 import { resolveMessages } from '@/i18n/catalogue';
@@ -18,8 +22,10 @@ import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
 import type { BankRow } from '@/library/types';
 import { PageThumbnail } from './PageThumbnail';
 import { DASHBOARD_MESSAGES } from './screen.messages';
+import { SET_MESSAGES } from './sets.messages';
 import {
   cardMarks,
+  dashboardEntries,
   DEFAULT_QUERY,
   documentCount,
   isFiltered,
@@ -29,6 +35,7 @@ import {
   scopedSummaries,
   visibleSummaries,
   writeDashboardView,
+  type DashboardEntry,
   type DashboardQuery,
   type DashboardView,
   type KindFilter,
@@ -49,6 +56,19 @@ export interface DocumentActions {
   /** File it into a folder (or back to none), through a picker. */
   move?: (summary: WorksheetSummary) => void;
   remove: (summary: WorksheetSummary) => void;
+  /** Paper sets (k-0299): offered on an exam paper in no set. */
+  makeSet?: (summary: WorksheetSummary) => void;
+  /** Offered beside Make a set… once any set exists. */
+  addToSet?: (summary: WorksheetSummary) => void;
+  /** Offered on a paper in a set. */
+  leaveSet?: (summary: WorksheetSummary) => void;
+}
+
+/** A set frame's own ⋯ menu (k-0299). The screen owns the dialogs and the doing. */
+export interface SetActions {
+  rename: (group: SetGroup) => void;
+  addPapers: (group: SetGroup) => void;
+  ungroup: (group: SetGroup) => void;
 }
 
 /** The folder list's own actions. The screen owns the dialogs and the doing. */
@@ -82,6 +102,7 @@ export function FileDashboard({
   settings,
   welcome,
   questionRows,
+  setActions,
 }: {
   summaries: WorksheetSummary[];
   loaded: boolean;
@@ -103,6 +124,8 @@ export function FileDashboard({
   welcome?: ReactNode;
   /** The 題庫 index's rows (`useBank`), so search also finds words inside questions. */
   questionRows?: readonly BankRow[];
+  /** A set frame's menu; absent shows sets without one. */
+  setActions?: SetActions;
 }) {
   const m = useMessages(DASHBOARD_MESSAGES);
   const [query, setQuery] = useState<DashboardQuery>(DEFAULT_QUERY);
@@ -125,6 +148,9 @@ export function FileDashboard({
     () => visibleSummaries(summaries, query, scope, hits),
     [summaries, query, scope, hits],
   );
+  // Paper sets are framed as one unit (k-0299, `dashboardEntries`).
+  const entries = useMemo(() => dashboardEntries(shown, inScope, summaries), [shown, inScope, summaries]);
+  const setsExist = useMemo(() => summaries.some((row) => summarySet(row) !== undefined), [summaries]);
   // A card says where its match is only when its name does not already say so.
   const needle = query.search.trim().toLocaleLowerCase();
   const hitFor = (summary: WorksheetSummary) =>
@@ -295,34 +321,56 @@ export function FileDashboard({
             // Fixed-width tracks: one card is the same size as one of many, at any width.
             // 168px keeps three across at 1024 and beside the folders at 1280. On a phone
             // the cards share the width two across instead.
-            <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(136px,1fr))] gap-x-4 gap-y-8 sm:grid-cols-[repeat(auto-fill,168px)]">
-              {shown.map((summary, index) => (
-                <DocumentCard
-                  key={summary.id}
-                  summary={summary}
-                  actions={actions}
-                  folder={folderLabel(summary)}
-                  hit={hitFor(summary)}
-                  drag={dragProps(summary)}
-                  dragging={drag.draggingId === summary.id}
-                  enter={intro ? index : undefined}
-                />
-              ))}
+            <ul className={GRID}>
+              {withPositions(entries).map(({ entry, first }) => {
+                const card = (summary: WorksheetSummary, index: number, inSet: boolean) => (
+                  <DocumentCard
+                    key={summary.id}
+                    summary={summary}
+                    actions={actions}
+                    setsExist={setsExist}
+                    inSet={inSet}
+                    folder={folderLabel(summary)}
+                    hit={hitFor(summary)}
+                    drag={dragProps(summary)}
+                    dragging={drag.draggingId === summary.id}
+                    enter={intro ? index : undefined}
+                  />
+                );
+                if (entry.kind === 'doc') return card(entry.summary, first, false);
+                return (
+                  <SetFrame key={`set:${entry.group.id}`} entry={entry} actions={setActions} enter={intro ? first : undefined}>
+                    <ul className={GRID_IN_SET}>
+                      {entry.members.map((summary, index) => card(summary, first + index, true))}
+                    </ul>
+                  </SetFrame>
+                );
+              })}
             </ul>
           ) : (
             <ul className="zone-light mt-5 overflow-hidden rounded-xl border border-line bg-surface">
-              {shown.map((summary, index) => (
-                <SavedRow
-                  key={summary.id}
-                  summary={summary}
-                  actions={actions}
-                  folder={folderLabel(summary)}
-                  hit={hitFor(summary)}
-                  drag={dragProps(summary)}
-                  dragging={drag.draggingId === summary.id}
-                  enter={intro ? index : undefined}
-                />
-              ))}
+              {withPositions(entries).map(({ entry, first }) => {
+                const row = (summary: WorksheetSummary, index: number, inSet: boolean) => (
+                  <SavedRow
+                    key={summary.id}
+                    summary={summary}
+                    actions={actions}
+                    setsExist={setsExist}
+                    inSet={inSet}
+                    folder={folderLabel(summary)}
+                    hit={hitFor(summary)}
+                    drag={dragProps(summary)}
+                    dragging={drag.draggingId === summary.id}
+                    enter={intro ? index : undefined}
+                  />
+                );
+                if (entry.kind === 'doc') return row(entry.summary, first, false);
+                return (
+                  <SetRows key={`set:${entry.group.id}`} entry={entry} actions={setActions} enter={intro ? first : undefined}>
+                    {entry.members.map((summary, index) => row(summary, first + index, true))}
+                  </SetRows>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -360,7 +408,7 @@ function FolderNav({
   const list = sortedFolders(folders);
   const m = useMessages(DASHBOARD_MESSAGES);
   return (
-    <nav aria-label={m.folders} className="shrink-0 xl:w-44">
+    <nav aria-label={m.folders} className="shrink-0 xl:w-52">
       {/* As a row of chips (below `xl`) the + stays by its label, not across the pane. */}
       <div className="flex items-center gap-1 pb-1 pl-2 xl:justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
@@ -456,7 +504,11 @@ function FolderRow({
         >
           {folder ? <FolderIcon size={15} /> : <SheetIcon size={15} />}
         </span>
-        <span className="min-w-0 flex-1 truncate">{name}</span>
+        {/* Two lines before it clips: at one line a 中文 name ("中六 Mock 2026-27") lost its
+            year, the part that tells this term's folder from last term's. Full name in the tooltip. */}
+        <span className="line-clamp-2 min-w-0 flex-1 break-words leading-snug" title={name}>
+          {name}
+        </span>
         <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle">{count}</span>
       </button>
       {menu && (
@@ -490,8 +542,9 @@ function entrance(index: number | undefined): { className: string; style?: CSSPr
 }
 
 /** The overflow menu both views share, so a card and a row can never offer different things. */
-function menuItems(summary: WorksheetSummary, actions: DocumentActions): MenuItem[] {
+function menuItems(summary: WorksheetSummary, actions: DocumentActions, setsExist: boolean): MenuItem[] {
   const m = resolveMessages(DASHBOARD_MESSAGES, uiLanguage());
+  const sm = resolveMessages(SET_MESSAGES, uiLanguage());
   const items: MenuItem[] = [
     { label: m.open, onSelect: () => actions.open(summary) },
     { label: m.renameEllipsis, onSelect: () => actions.rename(summary) },
@@ -505,6 +558,14 @@ function menuItems(summary: WorksheetSummary, actions: DocumentActions): MenuIte
   if (actions.move) {
     const move = actions.move;
     items.push({ label: m.moveToFolder, onSelect: () => move(summary) });
+  }
+  // Sets after folders: filing first, then which exam it belongs to (k-0299).
+  const { makeSet, addToSet, leaveSet } = actions;
+  if (summarySet(summary)) {
+    if (leaveSet) items.push({ label: sm.leaveSet, onSelect: () => leaveSet(summary) });
+  } else if (canJoinASet(summary)) {
+    if (makeSet) items.push({ label: sm.makeSet, onSelect: () => makeSet(summary) });
+    if (addToSet && setsExist) items.push({ label: sm.addToSet, onSelect: () => addToSet(summary) });
   }
   if (actions.reveal) {
     const reveal = actions.reveal;
@@ -524,8 +585,9 @@ function menuItems(summary: WorksheetSummary, actions: DocumentActions): MenuIte
  * Carried by weight and ink, never the accent — blue in this system means
  * link/focus/selection, and a label that cannot be clicked must not wear it.
  */
-function KindAndCount({ summary }: { summary: WorksheetSummary }) {
+function KindAndCount({ summary, inSet }: { summary: WorksheetSummary; inSet?: boolean }) {
   const m = useMessages(DASHBOARD_MESSAGES);
+  const role = useRoleLabel(summary, inSet);
   const marks = cardMarks(summary);
   if (summary.kind === 'bank') {
     return (
@@ -538,7 +600,7 @@ function KindAndCount({ summary }: { summary: WorksheetSummary }) {
   return (
     <>
       <span className={summary.hasCover ? 'font-semibold text-ink-muted' : 'text-ink-subtle'}>
-        {summary.hasCover ? m.mockPaper : m.worksheet}
+        {role ?? (summary.hasCover ? m.mockPaper : m.worksheet)}
       </span>
       {summary.questionCount !== undefined && <> · {m.questions(summary.questionCount)}</>}
       {marks !== undefined && <> · {m.marks(marks)}</>}
@@ -580,6 +642,8 @@ function HitLine({ hit, className }: { hit: QuestionHit; className: string }) {
 function DocumentCard({
   summary,
   actions,
+  setsExist = false,
+  inSet = false,
   folder,
   hit,
   drag,
@@ -588,6 +652,10 @@ function DocumentCard({
 }: {
   summary: WorksheetSummary;
   actions: DocumentActions;
+  /** Whether any set exists, so the menu offers Add to set…. */
+  setsExist?: boolean;
+  /** Shown inside its set's frame: the kind line names the paper (Paper 1, Paper 2). */
+  inSet?: boolean;
   /** The folder it is filed in, shown in All documents only. */
   folder?: string;
   /** The question a search found in it, when its name does not explain the match. */
@@ -602,6 +670,7 @@ function DocumentCard({
   const rise = entrance(enter);
   const isBank = summary.kind === 'bank';
   const marks = cardMarks(summary);
+  const role = useRoleLabel(summary, inSet);
   return (
     <li
       className={`group relative min-w-0 transition-opacity duration-150 ease-out-soft ${dragging ? 'opacity-40' : ''} ${rise.className}`}
@@ -637,7 +706,7 @@ function DocumentCard({
               `${m.questionBank}${summary.questionCount !== undefined ? ` · ${m.questions(summary.questionCount)}` : ''}`
             ) : (
               <span className={summary.hasCover ? 'font-semibold text-ink-muted' : undefined}>
-                {summary.hasCover ? m.mockPaper : m.worksheet}
+                {role ?? (summary.hasCover ? m.mockPaper : m.worksheet)}
               </span>
             )}
           </span>
@@ -672,7 +741,7 @@ function DocumentCard({
         </span>
       </button>
       <div className="absolute bottom-0 right-0">
-        <Menu label={m.actionsFor(summary.title)} items={menuItems(summary, actions)} />
+        <Menu label={m.actionsFor(summary.title)} items={menuItems(summary, actions, setsExist)} />
       </div>
     </li>
   );
@@ -686,6 +755,8 @@ function DocumentCard({
 function SavedRow({
   summary,
   actions,
+  setsExist = false,
+  inSet = false,
   folder,
   hit,
   drag,
@@ -694,6 +765,9 @@ function SavedRow({
 }: {
   summary: WorksheetSummary;
   actions: DocumentActions;
+  setsExist?: boolean;
+  /** Listed under its set's header: indented, and its kind names the paper. */
+  inSet?: boolean;
   folder?: string;
   hit?: QuestionHit;
   drag?: SourceProps;
@@ -704,7 +778,7 @@ function SavedRow({
   const rise = entrance(enter);
   return (
     <li
-      className={`group relative flex items-center gap-3 border-b border-line pr-1.5 last:border-b-0 transition-[background-color,opacity] duration-150 ease-out-soft hover:bg-surface-hover ${dragging ? 'opacity-40' : ''} ${rise.className}`}
+      className={`group relative flex items-center gap-3 border-b border-line pr-1.5 last:border-b-0 transition-[background-color,opacity] duration-150 ease-out-soft hover:bg-surface-hover ${inSet ? 'pl-5' : ''} ${dragging ? 'opacity-40' : ''} ${rise.className}`}
       style={rise.style}
       {...drag}
     >
@@ -721,7 +795,7 @@ function SavedRow({
             {summary.title}
           </span>
           <span className="mt-1 block truncate text-[11px] leading-tight text-ink-subtle">
-            <KindAndCount summary={summary} />
+            <KindAndCount summary={summary} inSet={inSet} />
             {folder && <FolderTag name={folder} />}
           </span>
           {hit && <HitLine hit={hit} className="mt-1 block truncate text-[11px] leading-tight text-ink-subtle" />}
@@ -730,7 +804,127 @@ function SavedRow({
           {relativeTime(summary.updatedAt)}
         </span>
       </button>
-      <Menu label={m.actionsFor(summary.title)} items={menuItems(summary, actions)} />
+      <Menu label={m.actionsFor(summary.title)} items={menuItems(summary, actions, setsExist)} />
+    </li>
+  );
+}
+
+/** The grid's tracks, shared by the desk and a set's frame so a card is one size everywhere. */
+const GRID =
+  'mt-6 grid grid-cols-[repeat(auto-fill,minmax(136px,1fr))] gap-x-4 gap-y-8 sm:grid-cols-[repeat(auto-fill,168px)]';
+const GRID_IN_SET =
+  'grid grid-cols-[repeat(auto-fill,minmax(136px,1fr))] gap-x-4 gap-y-6 sm:grid-cols-[repeat(auto-fill,168px)]';
+
+/** Each entry with the entrance index of its first card, so a frame's cards stagger in turn. */
+function withPositions(entries: DashboardEntry[]): { entry: DashboardEntry; first: number }[] {
+  let next = 0;
+  return entries.map((entry) => {
+    const first = next;
+    next += entry.kind === 'doc' ? 1 : Math.max(1, entry.members.length);
+    return { entry, first };
+  });
+}
+
+/** "Paper 1" / "Paper 2" for a card inside its set's frame; `undefined` elsewhere. */
+function useRoleLabel(summary: WorksheetSummary, inSet: boolean | undefined): string | undefined {
+  const sm = useMessages(SET_MESSAGES);
+  if (!inSet) return undefined;
+  const role = summaryRole(summary);
+  return role === 'paper1' ? sm.paper1 : role === 'paper2' ? sm.paper2 : sm.examPaper;
+}
+
+/** The set frame's heading: name, "Set · 2 papers", members in other folders, and its ⋯. */
+function SetHeading({
+  entry,
+  actions,
+  compact = false,
+}: {
+  entry: Extract<DashboardEntry, { kind: 'set' }>;
+  actions?: SetActions;
+  /** The list view's header row: one line, the list's own type sizes. */
+  compact?: boolean;
+}) {
+  const sm = useMessages(SET_MESSAGES);
+  const { group } = entry;
+  const name = group.name.trim() || sm.untitledSet;
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="shrink-0 text-ink-muted">
+        <SetIcon size={compact ? 18 : 16} />
+      </span>
+      <span className="min-w-0 flex-1 truncate">
+        <span className={`font-semibold text-ink ${compact ? 'text-[13.5px]' : 'text-[13px]'}`}>{name}</span>
+        <span className="text-[11px] text-ink-subtle">
+          {' · '}
+          <span className="font-semibold text-ink-muted">{sm.set}</span>
+          {' · '}
+          {sm.papers(group.members.length)}
+          {entry.elsewhere > 0 && <> · {sm.elsewhere(entry.elsewhere)}</>}
+        </span>
+      </span>
+      {actions && (
+        <Menu
+          label={sm.setActions(name)}
+          items={[
+            { label: sm.renameSet, onSelect: () => actions.rename(group) },
+            { label: sm.addPapers, onSelect: () => actions.addPapers(group) },
+            { label: sm.ungroup, onSelect: () => actions.ungroup(group), separated: true },
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * A paper set on the grid (k-0299): one frame across the row, its papers inside in set order.
+ * The cards stay ordinary cards (open, rename, move to folder, drag); the frame only says they
+ * are sat together. Framed with a hairline and a faint fill, never the accent: it is a
+ * grouping, not a selection.
+ */
+function SetFrame({
+  entry,
+  actions,
+  enter,
+  children,
+}: {
+  entry: Extract<DashboardEntry, { kind: 'set' }>;
+  actions?: SetActions;
+  enter?: number;
+  children: ReactNode;
+}) {
+  const rise = entrance(enter);
+  return (
+    <li
+      data-paper-set={entry.group.id}
+      className={`col-span-full min-w-0 rounded-xl border border-line bg-surface-hover/40 px-3 pb-4 pt-2.5 ${rise.className}`}
+      style={rise.style}
+    >
+      <SetHeading entry={entry} actions={actions} />
+      <div className="mt-3">{children}</div>
+    </li>
+  );
+}
+
+/** A paper set in the list view: a header row, then its papers indented under it. */
+function SetRows({
+  entry,
+  actions,
+  enter,
+  children,
+}: {
+  entry: Extract<DashboardEntry, { kind: 'set' }>;
+  actions?: SetActions;
+  enter?: number;
+  children: ReactNode;
+}) {
+  const rise = entrance(enter);
+  return (
+    <li data-paper-set={entry.group.id} className={`border-b border-line last:border-b-0 ${rise.className}`} style={rise.style}>
+      <div className="bg-surface-hover/40 py-2 pl-4 pr-1.5">
+        <SetHeading entry={entry} actions={actions} compact />
+      </div>
+      <ul>{children}</ul>
     </li>
   );
 }

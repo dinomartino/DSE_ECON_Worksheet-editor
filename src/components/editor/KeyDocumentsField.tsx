@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { WorksheetSummary } from '@/storage';
 import { IconButton } from '@/components/ui';
 import { Field } from '@/components/ui/Dialog';
-import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from '@/components/ui/icons';
+import { ChevronDownIcon, ChevronUpIcon, CloseIcon, SetIcon } from '@/components/ui/icons';
 import { movePick, type KeyDocumentPick } from './exportSession';
 import { useMessages } from '@/i18n/language';
 import { KEY_DOCUMENTS_MESSAGES } from './KeyDocumentsField.messages';
@@ -12,10 +12,19 @@ import { KEY_DOCUMENTS_MESSAGES } from './KeyDocumentsField.messages';
 /** More saved documents than this, and the list gets a search box. */
 export const KEY_DOCUMENTS_SEARCH_FROM = 6;
 
-/** The saved documents a combined key may add: newest first, matching `search` by name. */
-export function keyDocumentChoices(documents: WorksheetSummary[], search: string): WorksheetSummary[] {
+/**
+ * The saved documents a combined key may add: this paper's set first (k-0299), then newest
+ * first, matching `search` by name.
+ */
+export function keyDocumentChoices(
+  documents: WorksheetSummary[],
+  search: string,
+  inSet: ReadonlySet<string> = new Set(),
+): WorksheetSummary[] {
   const needle = search.trim().toLowerCase();
-  const sorted = [...documents].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
+  const sorted = [...documents].sort(
+    (a, b) => Number(inSet.has(b.id)) - Number(inSet.has(a.id)) || (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''),
+  );
   return needle ? sorted.filter((doc) => doc.title.toLowerCase().includes(needle)) : sorted;
 }
 
@@ -33,19 +42,22 @@ const shortDate = (iso: string) => {
  */
 export function KeyDocumentsField({
   documents,
+  inSet,
   picked,
   onChange,
   currentTitle,
 }: {
   /** Saved documents other than this one. */
   documents: WorksheetSummary[];
+  /** The ones in this paper's set: listed first and marked. */
+  inSet?: ReadonlySet<string>;
   picked: KeyDocumentPick[];
   onChange: (picked: KeyDocumentPick[]) => void;
   currentTitle: string;
 }) {
   const m = useMessages(KEY_DOCUMENTS_MESSAGES);
   const [search, setSearch] = useState('');
-  const choices = keyDocumentChoices(documents, search);
+  const choices = keyDocumentChoices(documents, search, inSet);
   const position = (id: string) => picked.findIndex((pick) => pick.id === id);
 
   const toggle = (doc: WorksheetSummary, on: boolean) =>
@@ -96,6 +108,12 @@ export function KeyDocumentsField({
                 <span className="min-w-0 flex-1 truncate" title={doc.title}>
                   {doc.title}
                 </span>
+                {inSet?.has(doc.id) && (
+                  <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-ink-muted">
+                    <SetIcon size={12} />
+                    {m.inThisSet}
+                  </span>
+                )}
                 <span className="shrink-0 tabular-nums text-[11px] text-ink-subtle">
                   {shortDate(doc.updatedAt)}
                 </span>

@@ -3406,6 +3406,12 @@ in-flight values stay local; the store is called on pointer-up.
 - **A row without `indexRev` ≥ 2 does not prove "paper"**: v0.5.0 writes no `kind`, even
   for a bank. `list()` reads such a row's kind from its document once and writes it back
   (`kindRepairs` in `summaries.ts`); a document that will not load keeps its row as is.
+- **A row without `indexRev` ≥ 3 does not prove "in no set"** (paper sets, k-0299): rows
+  record `set` and `paper` (Paper 1 / Paper 2, from `setRoleOf`) from revision 3, and every
+  older build — including 0.8.7 re-saving a member — writes revision 2 without them. The same
+  repair reads such a row's document once (`rowFacts`). The set itself lives **in each
+  member** (`Worksheet.paperSet`), never in the index, a folder or a set file: the index
+  copy is a cache, and a set is "the papers carrying this id", so nothing can dangle.
 - **A rename writes `worksheet.name`** (loads and re-saves), never `title` — see § *What
   a document is called is not what it prints*. It stays a field on the document because
   the index is derived from it, so patching the entry alone is undone by the next

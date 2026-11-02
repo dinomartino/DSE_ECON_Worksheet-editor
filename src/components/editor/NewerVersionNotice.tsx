@@ -9,7 +9,7 @@ import { editableCopy, updateFolders, worksheetStore } from '@/storage';
 import { copyAssignment } from '@/storage/folders';
 import { newId } from '@/model/factories';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { useMessages } from '@/i18n/language';
+import { uiLanguage, useMessages } from '@/i18n/language';
 import { UPDATE_MESSAGES } from './shell.messages';
 
 /**
@@ -105,7 +105,7 @@ export function NewerVersionNotice({
   const duplicate = async () => {
     setBusy(true);
     try {
-      const copy = editableCopy(worksheet, newId());
+      const copy = editableCopy(worksheet, newId(), uiLanguage());
       await worksheetStore.save(copy);
       // The copy sits beside its original, folder included — as a start-screen duplicate does.
       await updateFolders(worksheetStore, (state) => copyAssignment(state, worksheet.id, copy.id)).catch(

@@ -3,9 +3,10 @@ import { CURRENT_SCHEMA_VERSION, isNewerThanBuild, migrate, serializeWorksheet }
 import { worksheetMarks } from '@/model/marks';
 import { documentName } from '@/model/text';
 import type { Worksheet } from '@/model/types';
+import type { UiLanguage } from '@/settings/language';
 import { sha256 } from '@/sync/hash';
 import type { AdoptExpect, WorksheetSummary } from './types';
-import { INDEX_ROW_REV } from './summaries';
+import { INDEX_ROW_REV, rowFacts } from './summaries';
 
 /** Reading, writing and naming a document — the parts no store implementation owns. */
 
@@ -86,9 +87,9 @@ export function summarize(worksheet: Worksheet): WorksheetSummary {
     questionCount: worksheet.questions.length,
     hasCover: Boolean(worksheet.cover),
     ...totalMarksOf(worksheet),
-    // Only written when set (a bank, or a later build's kind, passed through untouched).
-    ...(typeof worksheet.kind === 'string' ? { kind: worksheet.kind } : {}),
-    // Says the absent kind above means "a paper" (§ INDEX_ROW_REV).
+    // Kind, set and exam paper, each only when set (§ rowFacts).
+    ...rowFacts(worksheet),
+    // Says an absent fact above means "none" (§ INDEX_ROW_REV).
     indexRev: INDEX_ROW_REV,
   };
 }
@@ -118,24 +119,32 @@ function totalMarksOf(worksheet: Worksheet): Pick<WorksheetSummary, 'totalMarks'
  *
  * `createdAt` is reset because the copy is new; `updatedAt` is what the list sorts on,
  * so a fresh one puts the copy where the teacher is looking for it. Who sat the original
- * (`classes`, `satOn`) is not copied: nobody has sat the copy yet.
+ * (`classes`, `satOn`) is not copied: nobody has sat the copy yet. Nor is its set
+ * (`paperSet`, k-0299): a copy of Paper 1 in the set would make two Paper 1s of one exam, so
+ * it leaves the set (the user's call); a whole set is copied as a set, never paper by paper.
+ *
+ * The list name's suffix is in the interface language (`lang`): "(copy)", "（副本）". The
+ * printed title keeps each side's own: " (copy)" on an English title, and "（副本）" on a 中文
+ * one only when there is no English title to name it in the list.
  */
-export function duplicateWorksheet(worksheet: Worksheet, id: string): Worksheet {
+export function duplicateWorksheet(worksheet: Worksheet, id: string, lang: UiLanguage = 'en'): Worksheet {
   const now = new Date().toISOString();
+  const hasEnglish = worksheet.title.en.length > 0;
   const copy: Worksheet = {
     ...worksheet,
     id,
     title: {
-      en: worksheet.title.en.length > 0 ? appendCopy(worksheet.title.en) : worksheet.title.en,
-      zh: worksheet.title.zh,
+      en: hasEnglish ? appendCopy(worksheet.title.en, ' (copy)') : worksheet.title.en,
+      zh: !hasEnglish && worksheet.title.zh.length > 0 ? appendCopy(worksheet.title.zh, '（副本）') : worksheet.title.zh,
     },
     // Named apart in the file list, which shows `name` before the printed title.
-    ...(worksheet.name ? { name: `${worksheet.name} (copy)` } : {}),
+    ...(worksheet.name ? { name: `${worksheet.name}${lang === 'zh-HK' ? '（副本）' : ' (copy)'}` } : {}),
     createdAt: now,
     updatedAt: now,
   };
   delete copy.classes;
   delete copy.satOn;
+  delete copy.paperSet;
   return copy;
 }
 
@@ -147,9 +156,9 @@ export function duplicateWorksheet(worksheet: Worksheet, id: string): Worksheet 
  * spliced back into a document labelled with the older version, a newer build would
  * migrate them a second time. The original, and everything in it, is never touched.
  */
-export function editableCopy(worksheet: Worksheet, id: string): Worksheet {
+export function editableCopy(worksheet: Worksheet, id: string, lang: UiLanguage = 'en'): Worksheet {
   const copy: Worksheet = {
-    ...duplicateWorksheet(worksheet, id),
+    ...duplicateWorksheet(worksheet, id, lang),
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
   delete copy.__unknown;
@@ -162,8 +171,8 @@ export function editableCopy(worksheet: Worksheet, id: string): Worksheet {
  * Appending a bare run would leave " (copy)" unformatted beside a bolded title, which
  * prints as a visibly different suffix on the page rather than as part of the name.
  */
-function appendCopy(runs: Worksheet['title']['en']): Worksheet['title']['en'] {
+function appendCopy(runs: Worksheet['title']['en'], suffix: string): Worksheet['title']['en'] {
   const last = runs.at(-1);
   if (!last) return runs;
-  return [...runs.slice(0, -1), { ...last, text: `${last.text} (copy)` }];
+  return [...runs.slice(0, -1), { ...last, text: `${last.text}${suffix}` }];
 }

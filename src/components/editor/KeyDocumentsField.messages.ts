@@ -16,6 +16,7 @@ export const KEY_DOCUMENTS_MESSAGES = defineMessages({
   },
   order: { en: 'Order in the file', zh: '在檔案中的次序' },
   thisDocument: { en: '(this document)', zh: '（本文件）' },
+  inThisSet: { en: 'This set', zh: '同一套卷' },
   moveUp: { en: (title: string) => `Move ${title} up`, zh: (title: string) => `將 ${title} 上移` },
   moveDown: { en: (title: string) => `Move ${title} down`, zh: (title: string) => `將 ${title} 下移` },
   leaveOut: { en: (title: string) => `Leave out ${title}`, zh: (title: string) => `不包含 ${title}` },

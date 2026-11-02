@@ -3,7 +3,16 @@ import { uiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
 import { searchRows } from '@/library/search';
 import type { BankRow } from '@/library/types';
-import { folderOf, trashAge, type FolderState, type WorksheetSummary } from '@/storage';
+import {
+  compareMembers,
+  folderOf,
+  setGroups,
+  summarySet,
+  trashAge,
+  type FolderState,
+  type SetGroup,
+  type WorksheetSummary,
+} from '@/storage';
 import { DASHBOARD_MESSAGES } from './screen.messages';
 
 /**
@@ -61,6 +70,42 @@ export function visibleSummaries(
     );
   }
   return shown;
+}
+
+/**
+ * What the list shows, in order: a document on its own, or a paper set's frame (k-0299).
+ *
+ * A set is shown as one unit: where the first of its members would stand (the newest under
+ * Recent, the first by name under A–Z), with every member in scope inside it in set order
+ * (Paper 1, Paper 2), even one the search or kind did not match — a set half-shown reads as a
+ * set with a paper missing. Members filed in another folder are counted, not shown
+ * (`elsewhere`): a folder still lists only what is in it.
+ */
+export type DashboardEntry =
+  | { kind: 'doc'; summary: WorksheetSummary }
+  | { kind: 'set'; group: SetGroup; members: WorksheetSummary[]; elsewhere: number };
+
+export function dashboardEntries(
+  shown: readonly WorksheetSummary[],
+  inScope: readonly WorksheetSummary[],
+  all: readonly WorksheetSummary[],
+): DashboardEntry[] {
+  const groups = setGroups(all);
+  const done = new Set<string>();
+  const entries: DashboardEntry[] = [];
+  for (const summary of shown) {
+    const set = summarySet(summary);
+    const group = set && groups.get(set.id);
+    if (!set || !group) {
+      entries.push({ kind: 'doc', summary });
+      continue;
+    }
+    if (done.has(set.id)) continue;
+    done.add(set.id);
+    const members = inScope.filter((row) => summarySet(row)?.id === set.id).sort(compareMembers);
+    entries.push({ kind: 'set', group, members, elsewhere: group.members.length - members.length });
+  }
+  return entries;
 }
 
 /** Why a card matched a search: its first matching question, and a few words from it. */

@@ -212,6 +212,17 @@ export function FolderIcon(props: IconProps) {
   );
 }
 
+/** A paper set (k-0299): two papers side by side, bracketed as one. */
+export function SetIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="5.5" width="7" height="9.5" rx="1" />
+      <rect x="13" y="5.5" width="7" height="9.5" rx="1" />
+      <path d="M4 18.5h16" />
+    </Svg>
+  );
+}
+
 /** Every document into one archive. */
 export function ArchiveIcon(props: IconProps) {
   return (

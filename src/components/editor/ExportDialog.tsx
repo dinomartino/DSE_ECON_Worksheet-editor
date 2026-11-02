@@ -36,6 +36,7 @@ import {
   pdfDestination,
   pdfVariant,
   planned,
+  setKeyPicks,
   skippedNote,
   withPlace,
   type ExportChoice,
@@ -345,6 +346,16 @@ export function ExportDialog({
     [givenDocuments, storedDocuments, worksheet.id],
   );
   const [alsoInclude, setAlsoInclude] = useState<KeyDocumentPick[]>([]);
+  // A paper in a set (k-0299): its partners come ticked, once, as soon as the list is read.
+  // Anything the teacher then unticks stays unticked for this dialog.
+  const setPicks = useMemo(() => setKeyPicks(worksheet, otherDocuments), [worksheet, otherDocuments]);
+  const pretickedSet = useRef(false);
+  useEffect(() => {
+    if (pretickedSet.current || setPicks.length === 0) return;
+    pretickedSet.current = true;
+    setAlsoInclude((picked) => (picked.length > 0 ? picked : setPicks));
+  }, [setPicks]);
+  const setIds = useMemo(() => new Set(setPicks.map((pick) => pick.id)), [setPicks]);
   const combinable =
     format === 'docx' && (what === 'answerKey' || what === 'both') && otherDocuments.length > 0;
   const [busy, setBusy] = useState(false);
@@ -604,6 +615,7 @@ export function ExportDialog({
               {combinable && (
                 <KeyDocumentsField
                   documents={otherDocuments}
+                  inSet={setIds}
                   picked={alsoInclude}
                   onChange={setAlsoInclude}
                   currentTitle={worksheetTitle(worksheet)}

@@ -14,6 +14,28 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+### Added
+- **Link Paper 1 and Paper 2 of one exam as a set.** On the start screen, a mock paper's ⋯ menu
+  has Make a set…: name the set (it suggests one from the paper's name) and tick the other papers
+  that sit the same exam; the matching Paper 2 comes ticked. The papers then show together in one
+  frame, Paper 1 before Paper 2, each still its own file in its own folder. Inside a paper, a
+  thin bar under the toolbar names the set and opens the other paper in one click. Export →
+  Answer key → Word ticks the set's other papers under Also include, so the whole marking
+  scheme is one file. The link is saved in each paper, so it travels with sync, backups and
+  \`.json\` files. Add to set…, Remove from set, and the set's own ⋯ (Rename set…, Add papers…,
+  Ungroup) change it. A duplicated paper leaves the set, so a set never holds two Paper 1s.
+  <!-- zh: **將同一次考試的 Paper 1 和 Paper 2 連成套卷。** 在開始畫面，Mock 試卷的 ⋯ 選單有「建立套卷…」：為套卷命名（會按試卷名稱建議），再剔選同一考試的其他試卷，相配的 Paper 2 已預先剔選。之後兩份試卷會放在同一個框內，Paper 1 在前、Paper 2 在後，每份仍是獨立檔案，資料夾不變。打開試卷時，工具列下方的細列會顯示套卷名稱，按一下即可開啟另一份試卷。匯出 → 評卷參考 → Word 時，「一併包含」會預先剔選套卷內的其他試卷，整份評卷參考一個檔案完成。連結儲存在每份試卷內，同步、備份和 .json 檔案都會保留。可用「加入套卷…」、「移出套卷」及套卷本身的 ⋯（重新命名套卷…、加入試卷…、解散套卷）更改。建立副本的試卷會移出套卷，套卷內不會有兩份 Paper 1。 -->
+
+### Fixed
+- **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer
+  says SCHOOL NAME after Paper 1 said your school.
+  <!-- zh: **新試卷會沿用上次輸入的學校名稱**，Paper 2 的封面不會在 Paper 1 已填好學校後仍顯示 SCHOOL NAME。 -->
+- **A duplicated document is named "（副本）" in the 中文 interface**, not "(copy)".
+  <!-- zh: **在中文介面建立的副本會以「（副本）」命名**，而不是「(copy)」。 -->
+- **Long folder names show in full in the folder list**, on two lines if needed, instead of
+  being cut off (for example "中六 Mock 202…").
+  <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
+
 ## 0.8.7 — 2026-11-01
 
 ### Added

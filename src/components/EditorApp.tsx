@@ -13,6 +13,7 @@ import { Sidebar } from '@/components/editor/Sidebar';
 import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { NewerVersionNotice } from '@/components/editor/NewerVersionNotice';
+import { PaperSetStrip } from '@/components/editor/PaperSetStrip';
 import { AiHost } from '@/components/ai/AiHost';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
@@ -542,6 +543,7 @@ export function EditorApp({
         onClearAll={onClearAll}
         bodySheets={pages.length}
       />
+      <PaperSetStrip onOpenDocument={onOpenDocument} />
       {readOnly && <NewerVersionNotice onOpenDocument={onOpenDocument} />}
       {/* Three columns: the add rail (how content gets on the page), the page itself
           (where it is edited), and the sidebar (structure and off-page fields). The

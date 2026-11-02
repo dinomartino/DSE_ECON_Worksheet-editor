@@ -298,9 +298,9 @@ describe('a bank whose index row v0.5.0 wrote', () => {
     await store().list();
     const raw = JSON.parse(storage.getItem(INDEX_KEY)!) as Record<string, unknown>[];
     expect(raw).toHaveLength(4);
-    expect(raw[0]).toEqual({ ...V050_BANK_ROW, kind: 'bank', indexRev: 2 });
+    expect(raw[0]).toEqual({ ...V050_BANK_ROW, kind: 'bank', indexRev: 3 });
     expect(raw[1]).toEqual({ id: 'broken' });
-    expect(raw[2]).toEqual({ ...LEGACY_ENTRY, indexRev: 2 });
+    expect(raw[2]).toEqual({ ...LEGACY_ENTRY, indexRev: 3 });
     // Its document is not there to ask: the row stays as it was, still listed.
     expect(raw[3]).toEqual({ ...LEGACY_ENTRY, id: 'gone' });
 
@@ -317,7 +317,7 @@ describe('a bank whose index row v0.5.0 wrote', () => {
   });
 
   it('a row written by this build is trusted, and a later build’s kind comes through', async () => {
-    storage.setItem(INDEX_KEY, JSON.stringify([{ ...LEGACY_ENTRY, indexRev: 2 }, { ...V050_BANK_ROW, id: 'notes-1' }]));
+    storage.setItem(INDEX_KEY, JSON.stringify([{ ...LEGACY_ENTRY, indexRev: 3 }, { ...V050_BANK_ROW, id: 'notes-1' }]));
     storage.setItem(PREFIX + 'legacy-doc', JSON.stringify({ ...LEGACY_DOC, kind: 'bank' }));
     storage.setItem(PREFIX + 'notes-1', JSON.stringify({ ...LEGACY_DOC, id: 'notes-1', kind: 'notes' }));
     const listed = await store().list();
@@ -329,7 +329,7 @@ describe('a bank whose index row v0.5.0 wrote', () => {
     const bank = (await store().load('bank-1'))!;
     await store().save({ ...bank, updatedAt: '2026-10-01T00:00:00.000Z' });
     const raw = JSON.parse(storage.getItem(INDEX_KEY)!) as Record<string, unknown>[];
-    expect(raw[0]).toMatchObject({ id: 'bank-1', kind: 'bank', indexRev: 2 });
+    expect(raw[0]).toMatchObject({ id: 'bank-1', kind: 'bank', indexRev: 3 });
   });
 });
 
@@ -371,15 +371,20 @@ describe('the index v0.6.0 wrote, beside its paper and bank', () => {
     }
   });
 
-  it('lists every row with every field it was written with, and rewrites nothing', async () => {
+  it('lists every row with every field it was written with, revised once for sets', async () => {
     expect(ROWS).toHaveLength(2);
     expect(usableSummaries(ROWS)).toHaveLength(2);
     const listed = await store().list();
-    expect(listed).toEqual(ROWS);
+    // indexRev 2 says the rows record kind, not sets (k-0299): each is read from its document
+    // once and revised to 3. Neither is an exam paper or in a set, so nothing else is added.
+    expect(listed).toEqual(ROWS.map((row) => ({ ...row, indexRev: 3 })));
     expect(listed.find((row) => row.id === 'bank-v060-bank')?.kind).toBe('bank');
     expect(listed.find((row) => row.id === 'bank-v060-paper')).not.toHaveProperty('kind');
-    // indexRev 2 says the rows record kind: no repair is read or written back.
-    expect(storage.getItem(INDEX_KEY)).toBe(RAW_INDEX);
+    const revised = storage.getItem(INDEX_KEY);
+    expect(JSON.parse(revised!)).toEqual(ROWS.map((row) => ({ ...row, indexRev: 3 })));
+    // Revised once: the next list rewrites nothing.
+    await store().list();
+    expect(storage.getItem(INDEX_KEY)).toBe(revised);
     expect(visibleSummaries(listed, { ...DEFAULT_QUERY, kind: 'worksheet' }).map((row) => row.id)).toEqual([
       'bank-v060-paper',
     ]);
@@ -398,8 +403,10 @@ describe('the index v0.6.0 wrote, beside its paper and bank', () => {
     await store().save(paper);
     const raw = JSON.parse(storage.getItem(INDEX_KEY)!) as Record<string, unknown>[];
     expect(raw.map((row) => row.id)).toEqual(['bank-v060-paper', 'bank-v060-bank']);
-    expect(raw[0]).toMatchObject(ROWS.find((row) => row.id === 'bank-v060-paper')!);
-    expect(raw[1]).toEqual(ROWS.find((row) => row.id === 'bank-v060-bank'));
+    // The saved row is this build's: every field it had, at revision 3.
+    expect(raw[0]).toMatchObject({ ...ROWS.find((row) => row.id === 'bank-v060-paper')!, indexRev: 3 });
+    // The other row is as written, revised to 3 by the list the save makes (nothing added).
+    expect(raw[1]).toEqual({ ...ROWS.find((row) => row.id === 'bank-v060-bank'), indexRev: 3 });
   });
 });
 

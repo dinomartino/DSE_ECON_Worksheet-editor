@@ -87,3 +87,31 @@ export function writeLastKind(type: DocumentType): void {
     // Private mode or blocked storage: the button just starts on Classroom.
   }
 }
+
+/**
+ * The school name the last exam paper was made with, so Paper 2 starts with the school Paper 1
+ * was given (k-0299: the form asked again and the cover kept "SCHOOL NAME"). Per viewer, like
+ * the type; outside the `econ-worksheet:` prefix. Only the form reads it, as a starting value.
+ */
+const LAST_SCHOOL_KEY = 'econgen.lastSchool';
+const SCHOOL_MAX = 200;
+
+export function readLastSchool(): string {
+  try {
+    const stored = window.localStorage.getItem(LAST_SCHOOL_KEY);
+    return typeof stored === 'string' ? stored.slice(0, SCHOOL_MAX) : '';
+  } catch {
+    return '';
+  }
+}
+
+/** Remembered as typed; an emptied box forgets it, so a teacher can clear it on purpose. */
+export function writeLastSchool(school: string): void {
+  try {
+    const trimmed = school.trim().slice(0, SCHOOL_MAX);
+    if (trimmed) window.localStorage.setItem(LAST_SCHOOL_KEY, trimmed);
+    else window.localStorage.removeItem(LAST_SCHOOL_KEY);
+  } catch {
+    // Private mode or blocked storage: the box just starts empty.
+  }
+}

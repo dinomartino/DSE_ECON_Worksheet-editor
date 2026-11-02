@@ -115,6 +115,10 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Folder** — a dashboard label a document is filed under; metadata in its own key/file,
   never in the index or the document. A missing or stale one means "at root".
   `src/storage/folders.ts:FolderState`
+- **Set / 套卷 (paper set)** — the exam papers sat as one exam (Paper 1 + Paper 2 of a mock).
+  Not a file: each member stores `paperSet { id, name }`, and a set is the papers sharing the
+  id. Exam papers only, one set per paper, a duplicate leaves it. Not a folder (filing).
+  `src/model/paperSet.ts` · `src/storage/paperSets.ts:setGroups`
 - **Platform adapter** — `src/platform/index.ts`: the only place that may reach Tauri, always
   through a dynamic import behind `isDesktop()`.
 - **`data-print-hide`** — the attribute that keeps on-page chrome out of the print PDF.

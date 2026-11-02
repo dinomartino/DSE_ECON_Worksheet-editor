@@ -7,6 +7,8 @@ import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
 import { EXPORT_MESSAGES } from './ExportDialog.messages';
+import { paperSetOf } from '@/model/paperSet';
+import { compareMembers, summarySet, type WorksheetSummary } from '@/storage';
 
 /**
  * What the Export dialog writes, and how the files reach disk. Pure, so the delivery
@@ -91,6 +93,20 @@ export function skippedNote(skipped: KeyDocumentPick[], lang: UiLanguage = uiLan
   const m = resolveMessages(EXPORT_MESSAGES, lang);
   const names = skipped.map((pick) => m.quoted(pick.title)).join(m.listSeparator);
   return skipped.length === 1 ? m.skippedOne(names) : m.skippedMany(names);
+}
+
+/**
+ * The other papers of this paper's set (k-0299), in set order (Paper 1, Paper 2): what "Also
+ * include" ticks when the dialog opens, so the marking scheme of the whole exam is one click.
+ * None when the paper is in no set. Still only export-time ticks, never stored.
+ */
+export function setKeyPicks(worksheet: Pick<Worksheet, 'id' | 'paperSet'>, documents: readonly WorksheetSummary[]): KeyDocumentPick[] {
+  const set = paperSetOf(worksheet);
+  if (!set) return [];
+  return documents
+    .filter((doc) => doc.id !== worksheet.id && summarySet(doc)?.id === set.id)
+    .sort(compareMembers)
+    .map((doc) => ({ id: doc.id, title: doc.title }));
 }
 
 /** Move one entry of an ordered pick list up (-1) or down (+1); out of range is a no-op. */

@@ -43,6 +43,19 @@ export {
 } from './folders';
 export { TRASH_RETENTION_DAYS, trashAge } from './trash';
 export {
+  addToSet,
+  canJoinASet,
+  compareMembers,
+  leaveSet,
+  makeSet,
+  renameSet,
+  setGroups,
+  summaryRole,
+  summarySet,
+  type SetChangeResult,
+  type SetGroup,
+} from './paperSets';
+export {
   duplicateWorksheet,
   editableCopy,
   NewerDocumentError,

@@ -212,6 +212,10 @@ Invariants:
 - `src/storage/trash.ts:usableTrash` · `:settleTrash` — Trash rows (a separate list, 30-day lazy purge)
 - `src/storage/folders.ts:usableFolders` · `:folderOf` · `:updateFolders` · `:mergeBackupFolders` — dashboard folders
   (metadata, a separate key/file; every failure reads as "at root")
+- `src/model/paperSet.ts:paperSetOf` · `:setRoleOf` · `src/storage/paperSets.ts:setGroups` · `:changeSetMembers` — paper sets
+  (k-0299): stored in each member, grouped from index rows; `src/components/start/dashboard.ts:dashboardEntries` frames them,
+  `src/components/editor/PaperSetStrip.tsx:PaperSetStrip` lists them in the editor, `src/components/editor/exportSession.ts:setKeyPicks` ticks them
+- `src/storage/summaries.ts:rowFacts` · `:kindRepairs` — what a row records beyond counts (kind, set, exam paper); rows below `INDEX_ROW_REV` 3 are repaired from their documents once
 - `src/storage/backup.ts:buildBackup` · `:readBackup` · `:restoreBackup` — one-zip backup; restore never overwrites
 - `src/storage/document.ts:parseWorksheet` · `:summarize` · `src/storage/download.ts:triggerDownload`
 - `src/storage/document.ts:NewerDocumentError` · `:editableCopy` — `save()` refuses to overwrite a newer build's document; the copy is downgraded, under a new id
@@ -224,6 +228,8 @@ Invariants:
   `econ-worksheet:`), `worksheets/trash/` on desktop — §Persistence.
 - Folders are never a field on an index row (an older build's rewrite drops it): key
   `econ-worksheet-folders`, `worksheets/folders.json`; in a backup, inside `manifest.json` — §Persistence.
+- A paper set is the opposite: a field **in each document** (`paperSet`), so it syncs and survives `.json` and older
+  builds; its index fields `set`/`paper` are a cache an older build may drop, repaired from the document — §Persistence.
 
 ## sync — one engine for every storage source (desktop: Settings → Storage location chooses the folder)
 

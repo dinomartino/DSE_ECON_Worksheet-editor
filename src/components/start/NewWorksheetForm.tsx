@@ -19,7 +19,7 @@ import { paperLanguage } from '@/settings/paperLanguage';
 import { PaperSketch } from './PaperSketch';
 import { DOCUMENT_SETTINGS_MESSAGES, MARGIN_PRESET_KEYS } from '@/components/editor/DocumentSettings.messages';
 import { NEW_FORM_MESSAGES } from './screen.messages';
-import { kindText, START_KINDS, writeLastKind } from './startKinds';
+import { kindText, readLastSchool, START_KINDS, writeLastKind, writeLastSchool } from './startKinds';
 
 /**
  * The once-per-document decisions, asked before the first question exists.
@@ -116,7 +116,8 @@ export function NewWorksheetForm({
   // Only shown once the type carries a cover: they are that cover's own fields, and
   // boxes for a document that will have no cover is a form asking about something that
   // does not exist.
-  const [school, setSchool] = useState('');
+  // The school the last exam paper was made with (`readLastSchool`): the same on Paper 2.
+  const [school, setSchool] = useState(readLastSchool);
   const [examName, setExamName] = useState('');
 
   const submit = () => {
@@ -139,6 +140,7 @@ export function NewWorksheetForm({
       ...(HAS_COVER[documentType] ? { coverDetails: { school, examName } } : {}),
     };
     writeLastKind(documentType);
+    if (HAS_COVER[documentType]) writeLastSchool(school);
     onCreate(createWorksheetFrom(options), language);
   };
 
