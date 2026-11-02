@@ -588,6 +588,7 @@ function menuItems(summary: WorksheetSummary, actions: DocumentActions, setsExis
 function KindAndCount({ summary, inSet }: { summary: WorksheetSummary; inSet?: boolean }) {
   const m = useMessages(DASHBOARD_MESSAGES);
   const role = useRoleLabel(summary, inSet);
+  const sm = useMessages(SET_MESSAGES);
   const marks = cardMarks(summary);
   if (summary.kind === 'bank') {
     return (
@@ -602,7 +603,11 @@ function KindAndCount({ summary, inSet }: { summary: WorksheetSummary; inSet?: b
       <span className={summary.hasCover ? 'font-semibold text-ink-muted' : 'text-ink-subtle'}>
         {role ?? (summary.hasCover ? m.mockPaper : m.worksheet)}
       </span>
-      {summary.questionCount !== undefined && <> · {m.questions(summary.questionCount)}</>}
+      {inSet && summary.questionCount === 0 ? (
+        <> · <span className="font-medium text-ink-muted">{sm.blankPaper}</span></>
+      ) : (
+        summary.questionCount !== undefined && <> · {m.questions(summary.questionCount)}</>
+      )}
       {marks !== undefined && <> · {m.marks(marks)}</>}
     </>
   );
@@ -671,6 +676,7 @@ function DocumentCard({
   const isBank = summary.kind === 'bank';
   const marks = cardMarks(summary);
   const role = useRoleLabel(summary, inSet);
+  const sm = useMessages(SET_MESSAGES);
   return (
     <li
       className={`group relative min-w-0 transition-opacity duration-150 ease-out-soft ${dragging ? 'opacity-40' : ''} ${rise.className}`}
@@ -731,9 +737,13 @@ function DocumentCard({
             </>
           ) : (
             <span className="mt-0.5 block truncate text-[11px] tabular-nums leading-tight text-ink-subtle">
-              {!isBank &&
-                summary.questionCount !== undefined &&
-                `${m.questions(summary.questionCount)} · `}
+              {/* A set's paper with nothing in it yet (a new mock set's placeholder, k-0311)
+                  says so in words, not as "0 questions". */}
+              {inSet && summary.questionCount === 0 ? (
+                <span data-blank-paper className="font-medium text-ink-muted">{`${sm.blankPaper} · `}</span>
+              ) : (
+                !isBank && summary.questionCount !== undefined && `${m.questions(summary.questionCount)} · `
+              )}
               {relativeTime(summary.updatedAt)}
             </span>
           )}

@@ -31,8 +31,8 @@ describe('the strip lists the set’s papers', () => {
     const shown = stripPapers(paper2(), ROWS)!;
     expect(shown.name).toBe('S6 Mock 2026-27');
     expect(shown.papers).toEqual([
-      { id: 'p1', title: 'S6 Mock Paper 1', role: 'paper1', current: false },
-      { id: 'p2', title: 'S6 Mock Paper 2', role: 'paper2', current: true },
+      { id: 'p1', title: 'S6 Mock Paper 1', role: 'paper1', current: false, blank: false },
+      { id: 'p2', title: 'S6 Mock Paper 2', role: 'paper2', current: true, blank: false },
     ]);
   });
 
@@ -61,6 +61,17 @@ describe('the strip lists the set’s papers', () => {
     const twins = stripPapers(paper2(), [...ROWS, { id: 'p2c', title: 'S6 Mock Paper 2 old', updatedAt: at(0), paper: 'paper2', set: MOCK }])!;
     const markup = renderToStaticMarkup(<PaperSetBar {...twins} onOpen={() => {}} />);
     expect(markup).toContain('S6 Mock Paper 2 old');
+  });
+});
+
+describe('a new mock set’s blank paper in the strip (k-0311)', () => {
+  it('is marked blank, and its button says so', () => {
+    const rows = ROWS.map((row) => (row.id === 'p1' ? { ...row, questionCount: 0 } : row));
+    const shown = stripPapers(paper2(), rows)!;
+    expect(shown.papers.find((p) => p.id === 'p1')!.blank).toBe(true);
+    const markup = renderToStaticMarkup(<PaperSetBar {...shown} onOpen={() => {}} />);
+    expect(markup).toContain('aria-label="Open S6 Mock Paper 1 (blank, not started)"');
+    expect(markup).toContain('>blank</span>');
   });
 });
 

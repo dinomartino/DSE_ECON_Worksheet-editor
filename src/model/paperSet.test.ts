@@ -93,3 +93,16 @@ describe('paper sets: names', () => {
     expect(looksLikeSameExam('S6 Mock Paper 1', 'S5 Final Paper 2')).toBe(false);
   });
 });
+
+describe('a new mock set’s blank partner', () => {
+  it('swaps the paper number in the name, either way', async () => {
+    const { partnerPaperName, partnerRole } = await import('./paperSet');
+    expect(partnerPaperName('S6 Mock Paper 1 2026-27', 'paper1')).toBe('S6 Mock Paper 2 2026-27');
+    expect(partnerPaperName('S6 Mock Paper 2 2026-27', 'paper2')).toBe('S6 Mock Paper 1 2026-27');
+    expect(partnerPaperName('Mock P.1', 'paper1')).toBe('Mock P.2');
+    expect(partnerPaperName('中六模擬試 卷一', 'paper1')).toBe('中六模擬試 卷二');
+    expect(partnerPaperName('S6 Mock 2026-27', 'paper1')).toBe('S6 Mock 2026-27 – Paper 2');
+    expect(partnerPaperName('S6 Mock 2026-27', 'paper2')).toBe('S6 Mock 2026-27 – Paper 1');
+    expect(partnerRole('paper1')).toBe('paper2');
+  });
+});

@@ -25,6 +25,12 @@ a version heading is edited afterwards.
   \`.json\` files. Add to set…, Remove from set, and the set's own ⋯ (Rename set…, Add papers…,
   Ungroup) change it. A duplicated paper leaves the set, so a set never holds two Paper 1s.
   <!-- zh: **將同一次考試的 Paper 1 和 Paper 2 連成套卷。** 在開始畫面，Mock 試卷的 ⋯ 選單有「建立套卷…」：為套卷命名（會按試卷名稱建議），再剔選同一考試的其他試卷，相配的 Paper 2 已預先剔選。之後兩份試卷會放在同一個框內，Paper 1 在前、Paper 2 在後，每份仍是獨立檔案，資料夾不變。打開試卷時，工具列下方的細列會顯示套卷名稱，按一下即可開啟另一份試卷。匯出 → 評卷參考 → Word 時，「一併包含」會預先剔選套卷內的其他試卷，整份評卷參考一個檔案完成。連結儲存在每份試卷內，同步、備份和 .json 檔案都會保留。可用「加入套卷…」、「移出套卷」及套卷本身的 ⋯（重新命名套卷…、加入試卷…、解散套卷）更改。建立副本的試卷會移出套卷，套卷內不會有兩份 Paper 1。 -->
+- **Start a whole mock in one go.** In New worksheet, after you pick Paper 1 or Paper 2, choose
+  Mock set (Paper 1 + Paper 2) instead of Just this paper: the paper you picked opens, and a blank
+  other paper is made beside it with the same school and examination, already linked as a set.
+  It says "Blank, not started" on the start screen and "blank" in the bar above the paper until
+  you add a question. Just this paper stays the default.
+  <!-- zh: **一次過開始整套 Mock 試卷。** 在「新增工作紙」選了 Paper 1 或 Paper 2 後，可選「Mock 套卷（Paper 1 + Paper 2）」而不是「只建立這份試卷」：你選的試卷會開啟，旁邊同時建立一份空白的另一份試卷，學校和考試名稱相同，並已連成套卷。在加入題目前，開始畫面會顯示「空白，未開始」，試卷上方的細列會顯示「空白」。預設仍是「只建立這份試卷」。 -->
 
 ### Fixed
 - **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer

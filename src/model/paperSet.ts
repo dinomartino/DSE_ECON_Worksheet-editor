@@ -96,3 +96,26 @@ export function looksLikeSameExam(a: string, b: string): boolean {
   const key = (name: string) => suggestedSetName(name).toLocaleLowerCase();
   return a.trim() !== b.trim() && key(a) !== '' && key(a) === key(b);
 }
+
+/** The other exam paper of a mock set: a Paper 1 pairs with a Paper 2 booklet, and back. */
+export function partnerRole(role: SetRole): SetRole {
+  return role === 'paper1' ? 'paper2' : 'paper1';
+}
+
+/**
+ * The name of the blank partner a new mock set makes (k-0311): the chosen paper's name with
+ * its paper number swapped ("S6 Mock Paper 1 2026-27" → "S6 Mock Paper 2 2026-27", "P.1" →
+ * "P.2", "卷一" → "卷二"), else the name with " – Paper 2" after it. Renamed like any paper.
+ */
+export function partnerPaperName(name: string, role: SetRole): string {
+  const to = partnerRole(role) === 'paper1' ? { digit: '1', han: '一' } : { digit: '2', han: '二' };
+  let swapped = false;
+  const out = name.replace(PAPER_NUMBER, (match) => {
+    swapped = true;
+    return match.replace(/[12]/u, to.digit).replace(/[一二]/u, to.han);
+  });
+  if (swapped && out !== name) return out;
+  const base = name.trim();
+  const label = partnerRole(role) === 'paper1' ? 'Paper 1' : 'Paper 2';
+  return base ? `${base} – ${label}` : label;
+}

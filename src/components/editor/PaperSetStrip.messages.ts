@@ -8,6 +8,8 @@ export const PAPER_SET_STRIP_MESSAGES = defineMessages({
   paper1: { en: 'Paper 1', zh: 'Paper 1' },
   paper2: { en: 'Paper 2', zh: 'Paper 2' },
   examPaper: { en: 'Exam paper', zh: '試卷' },
+  blank: { en: 'blank', zh: '空白' },
+  openBlank: { en: (title: string) => `Open ${title} (blank, not started)`, zh: (title: string) => `開啟「${title}」（空白，未開始）` },
   open: { en: (title: string) => `Open ${title}`, zh: (title: string) => `開啟「${title}」` },
   thisPaper: { en: (title: string) => `${title} (open now)`, zh: (title: string) => `${title}（正在編輯）` },
   onlyThis: {

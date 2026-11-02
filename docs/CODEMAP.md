@@ -215,6 +215,8 @@ Invariants:
 - `src/model/paperSet.ts:paperSetOf` · `:setRoleOf` · `src/storage/paperSets.ts:setGroups` · `:changeSetMembers` — paper sets
   (k-0299): stored in each member, grouped from index rows; `src/components/start/dashboard.ts:dashboardEntries` frames them,
   `src/components/editor/PaperSetStrip.tsx:PaperSetStrip` lists them in the editor, `src/components/editor/exportSession.ts:setKeyPicks` ticks them
+- `src/model/mockSet.ts:createMockSet` — New worksheet's Mock set (k-0311): the chosen paper + a blank partner, linked;
+  `src/components/start/NewWorksheetForm.tsx:NewWorksheetForm` asks Just this paper / Mock set on Paper 1 and Paper 2
 - `src/storage/summaries.ts:rowFacts` · `:kindRepairs` — what a row records beyond counts (kind, set, exam paper); rows below `INDEX_ROW_REV` 3 are repaired from their documents once
 - `src/storage/backup.ts:buildBackup` · `:readBackup` · `:restoreBackup` — one-zip backup; restore never overwrites
 - `src/storage/document.ts:parseWorksheet` · `:summarize` · `src/storage/download.ts:triggerDownload`

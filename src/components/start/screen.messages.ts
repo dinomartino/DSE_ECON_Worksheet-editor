@@ -289,6 +289,31 @@ export const RENAME_MESSAGES = defineMessages({
 });
 
 export const NEW_FORM_MESSAGES = defineMessages({
+  // A mock set from the form (k-0311): the chosen paper plus a blank one of the other kind.
+  make: { en: 'Make', zh: '建立' },
+  makeHint: {
+    en: 'A mock set links Paper 1 and Paper 2 of one exam. You can also link two papers you already have, from a paper’s ⋯ menu on the start screen.',
+    zh: 'Mock 套卷把同一次考試的 Paper 1 和 Paper 2 連在一起。已有的兩份試卷，也可在開始畫面試卷的 ⋯ 選單連結。',
+  },
+  justThisPaper: { en: 'Just this paper', zh: '只建立這份試卷' },
+  justThisPaperHint: {
+    en: (paper: string) => `Only the ${paper}.`,
+    zh: (paper: string) => `只建立 ${paper}。`,
+  },
+  mockSet: { en: 'Mock set (Paper 1 + Paper 2)', zh: 'Mock 套卷（Paper 1 + Paper 2）' },
+  mockSetHint: {
+    en: (other: string) => `Also makes a blank ${other}, linked to this one as a set.`,
+    zh: (other: string) => `同時建立一份空白的 ${other}，與這份連成套卷。`,
+  },
+  mockSetMakes: {
+    en: (chosen: string, blank: string, set: string) =>
+      `Makes “${chosen}” (opens now) and a blank “${blank}”, in the set “${set}”.`,
+    zh: (chosen: string, blank: string, set: string) =>
+      `會建立「${chosen}」（立即開啟）及空白的「${blank}」，屬於套卷「${set}」。`,
+  },
+  paper1: { en: 'Paper 1', zh: 'Paper 1' },
+  paper2: { en: 'Paper 2', zh: 'Paper 2' },
+  createSet: { en: 'Create mock set', zh: '建立 Mock 套卷' },
   nameRequired: { en: 'Give it a name first.', zh: '請先為它命名。' },
   name: { en: 'Name', zh: '名稱' },
   nameHint: {

@@ -158,3 +158,27 @@ describe('the new-paper form remembers the school', () => {
     expect(readLastSchool()).toBe('');
   });
 });
+
+describe('a new mock set (k-0311)', () => {
+  it('a set’s paper with no question says Blank on its card', () => {
+    const rows = ROWS.map((r) => (r.id === 'p2' ? { ...r, questionCount: 0 } : r));
+    const markup = renderToStaticMarkup(<FileDashboard summaries={rows} loaded actions={ACTIONS} />);
+    expect(markup.match(/data-blank-paper/g)).toHaveLength(1);
+    expect(markup).toContain('Blank, not started');
+  });
+
+  it('the New worksheet form offers Just this paper / Mock set on Paper 1 and Paper 2 only', async () => {
+    const { NewWorksheetForm } = await import('./NewWorksheetForm');
+    for (const type of ['paper1', 'lqMock'] as const) {
+      const markup = renderToStaticMarkup(<NewWorksheetForm initialType={type} onCreate={noop} />);
+      expect(markup).toContain('Just this paper');
+      expect(markup).toContain('Mock set (Paper 1 + Paper 2)');
+      // Just this paper is the default.
+      expect(markup).toMatch(/aria-checked="true"[^>]*data-make="paper"/);
+      expect(markup).not.toContain('data-mock-set-preview');
+    }
+    for (const type of ['classroom', 'lqWorksheet'] as const) {
+      expect(renderToStaticMarkup(<NewWorksheetForm initialType={type} onCreate={noop} />)).not.toContain('data-make=');
+    }
+  });
+});

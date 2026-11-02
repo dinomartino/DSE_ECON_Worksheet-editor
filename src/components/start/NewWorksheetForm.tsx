@@ -10,6 +10,8 @@ import {
   type NewWorksheetOptions,
 } from '@/model/newWorksheet';
 import { academicYear } from '@/model/cover';
+import { createMockSet } from '@/model/mockSet';
+import { partnerPaperName, suggestedSetName } from '@/model/paperSet';
 import { MARGIN_PRESETS } from '@/model/page';
 import type { LanguageMode, PageMargins, PaperSize, Worksheet } from '@/model/types';
 import { resolveMessages } from '@/i18n/catalogue';
@@ -93,13 +95,23 @@ export const ASKS_SECTIONS: Record<DocumentType, boolean> = {
   lqMock: false,
 };
 
+/** What an exam paper's Make choice builds (k-0311): the paper alone, or a mock set. */
+export type MakeChoice = 'paper' | 'set';
+
 export function NewWorksheetForm({
   /** Preselected document type: the card pressed, or the last type created. */
   initialType,
   onCreate,
+  onMakeChange,
 }: {
   initialType?: DocumentType;
-  onCreate: (worksheet: Worksheet, language: LanguageMode) => void;
+  /**
+   * The document to open. A mock set also hands over `blank`, the other paper, already in
+   * the same set: the caller saves it beside the one it opens.
+   */
+  onCreate: (worksheet: Worksheet, language: LanguageMode, blank?: Worksheet) => void;
+  /** Whether the form will make a mock set, so the dialog's button can say so. */
+  onMakeChange?: (choice: MakeChoice) => void;
 }) {
   const m = useMessages(NEW_FORM_MESSAGES);
   const marginNames = useMessages(DOCUMENT_SETTINGS_MESSAGES);
@@ -119,6 +131,19 @@ export function NewWorksheetForm({
   // The school the last exam paper was made with (`readLastSchool`): the same on Paper 2.
   const [school, setSchool] = useState(readLastSchool);
   const [examName, setExamName] = useState('');
+  // Paper 1 or Paper 2 only: the paper alone (the default), or a mock set with a blank partner.
+  const [make, setMake] = useState<MakeChoice>('paper');
+  const isExam = documentType === 'paper1' || documentType === 'lqMock';
+  const makesSet = isExam && make === 'set';
+  const chooseMake = (next: MakeChoice) => {
+    setMake(next);
+    onMakeChange?.(next);
+  };
+  const chooseType = (next: DocumentType) => {
+    setDocumentType(next);
+    const exam = next === 'paper1' || next === 'lqMock';
+    onMakeChange?.(exam ? make : 'paper');
+  };
 
   const submit = () => {
     const filingName = newWorksheetName(name);
@@ -141,6 +166,11 @@ export function NewWorksheetForm({
     };
     writeLastKind(documentType);
     if (HAS_COVER[documentType]) writeLastSchool(school);
+    if (makesSet && (documentType === 'paper1' || documentType === 'lqMock')) {
+      const { chosen, blank } = createMockSet({ ...options, documentType, name: filingName });
+      onCreate(chosen, language, blank);
+      return;
+    }
     onCreate(createWorksheetFrom(options), language);
   };
 
@@ -193,7 +223,7 @@ export function NewWorksheetForm({
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                onClick={() => setDocumentType(kind.type)}
+                onClick={() => chooseType(kind.type)}
                 className="group flex min-w-0 cursor-pointer flex-col text-left focus-visible:outline-none"
               >
                 {/* Selected crossfades: border and fill ease, and the ring is a layer that
@@ -258,6 +288,15 @@ export function NewWorksheetForm({
             placeholder={`S.6 MOCK EXAM ${academicYear().short}`}
           />
         </div>
+      )}
+
+      {isExam && (
+        <MakeField
+          documentType={documentType}
+          value={make}
+          onChange={chooseMake}
+          name={newWorksheetName(name) ?? namePlaceholder(documentType, undefined, lang)}
+        />
       )}
 
       {ASKS_SECTIONS[documentType] ? (
@@ -344,6 +383,76 @@ export function NewWorksheetForm({
         </Field>
       </div>
     </form>
+  );
+}
+
+/**
+ * Paper 1 or Paper 2: make the paper alone, or a mock set (k-0311). Two big choices rather
+ * than a checkbox, so "Mock set" is something a teacher sees before creating, not a step
+ * found later on the start screen. While a set is chosen it says what will be made, by name.
+ * Stacked on a phone, side by side from `sm`.
+ */
+function MakeField({
+  documentType,
+  value,
+  onChange,
+  name,
+}: {
+  documentType: 'paper1' | 'lqMock';
+  value: MakeChoice;
+  onChange: (next: MakeChoice) => void;
+  /** The name typed, or the placeholder: what the preview line calls the papers. */
+  name: string;
+}) {
+  const m = useMessages(NEW_FORM_MESSAGES);
+  const role = documentType === 'paper1' ? 'paper1' : 'paper2';
+  const own = role === 'paper1' ? m.paper1 : m.paper2;
+  const other = role === 'paper1' ? m.paper2 : m.paper1;
+  const options: { value: MakeChoice; title: string; hint: string }[] = [
+    { value: 'paper', title: m.justThisPaper, hint: m.justThisPaperHint(own) },
+    { value: 'set', title: m.mockSet, hint: m.mockSetHint(other) },
+  ];
+  return (
+    <Field label={m.make} hint={m.makeHint}>
+      <div role="radiogroup" aria-label={m.make} className="grid animate-fade-in gap-2 sm:grid-cols-2">
+        {options.map((option) => {
+          const selected = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              data-make={option.value}
+              onClick={() => onChange(option.value)}
+              className={`flex min-w-0 cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                selected ? 'border-accent bg-accent/5' : 'border-line bg-surface hover:bg-surface-hover'
+              }`}
+            >
+              <span
+                aria-hidden
+                className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-150 ease-out-soft ${
+                  selected ? 'border-accent' : 'border-line-strong'
+                }`}
+              >
+                <span className={`h-2 w-2 rounded-full bg-accent transition-opacity duration-150 ${selected ? 'opacity-100' : 'opacity-0'}`} />
+              </span>
+              <span className="min-w-0">
+                <span className={`block text-[12.5px] font-medium leading-snug ${selected ? 'text-accent-ink' : 'text-ink'}`}>
+                  {option.title}
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{option.hint}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {value === 'set' && (
+        <p data-mock-set-preview className="animate-fade-in text-[11px] leading-snug text-ink-muted">
+          {m.mockSetMakes(name, partnerPaperName(name, role), suggestedSetName(name))}
+        </p>
+      )}
+    </Field>
   );
 }
 

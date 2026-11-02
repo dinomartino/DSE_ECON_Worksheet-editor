@@ -25,6 +25,8 @@ export interface StripPaper {
   title: string;
   role?: SetRole;
   current: boolean;
+  /** No question in it yet: a new mock set's placeholder, waiting to be filled in (k-0311). */
+  blank: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ export function stripPapers(
     title: worksheetTitle(worksheet),
     updatedAt: worksheet.updatedAt,
     ...(setRoleOf(worksheet) ? { paper: setRoleOf(worksheet) } : {}),
+    questionCount: worksheet.questions.length,
   };
   let name = set.name;
   let newest = worksheet.updatedAt ?? '';
@@ -58,6 +61,7 @@ export function stripPapers(
     title: row.title,
     ...(summaryRole(row) ? { role: summaryRole(row) } : {}),
     current: row.id === worksheet.id,
+    blank: row.questionCount === 0,
   }));
   return { name, papers };
 }
@@ -169,13 +173,18 @@ export function PaperSetBar({
                 ) : (
                   <button
                     type="button"
-                    title={m.open(paper.title)}
-                    aria-label={m.open(paper.title)}
+                    title={paper.blank ? m.openBlank(paper.title) : m.open(paper.title)}
+                    aria-label={paper.blank ? m.openBlank(paper.title) : m.open(paper.title)}
                     onClick={() => onOpen(paper.id)}
                     className="inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-md px-2 text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     {label}
                     {withTitle && <span className="max-w-[14rem] truncate">{paper.title}</span>}
+                    {paper.blank && (
+                      <span className="rounded border border-dashed border-line-strong px-1 text-[10.5px] leading-[14px] text-ink-subtle">
+                        {m.blank}
+                      </span>
+                    )}
                   </button>
                 )}
               </li>

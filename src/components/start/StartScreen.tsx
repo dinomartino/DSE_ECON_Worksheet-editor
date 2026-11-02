@@ -36,7 +36,7 @@ import { AddPapersDialog, AddToSetDialog, MakeSetDialog, RenameSetDialog } from 
 import { SET_MESSAGES } from './sets.messages';
 import { readDashboardFolder, writeDashboardFolder } from './dashboard';
 import { START_PANEL_MESSAGES } from './messages';
-import { START_SCREEN_MESSAGES } from './screen.messages';
+import { NEW_FORM_MESSAGES, START_SCREEN_MESSAGES } from './screen.messages';
 import { restoreNotice } from './restoreNotice';
 import {
   DROP_REJECTED_MS,
@@ -215,6 +215,9 @@ export function StartScreen({
     | undefined
   >();
   const sm = useMessages(SET_MESSAGES);
+  const nf = useMessages(NEW_FORM_MESSAGES);
+  // The New worksheet form will make a mock set (k-0311): its button says so.
+  const [creatingSet, setCreatingSet] = useState(false);
   const [deletingFolder, setDeletingFolder] = useState<Folder | undefined>();
   // The Question bank replaces this screen's view the way opening a document replaces
   // it; ← Home comes back. Session state: the app always opens on the documents.
@@ -1059,19 +1062,28 @@ export function StartScreen({
           title={t.newTitle}
           description={t.newDescription}
           width={640}
-          onClose={() => setCreating(undefined)}
+          onClose={() => {
+            setCreating(undefined);
+            setCreatingSet(false);
+          }}
           // Pinned outside the scrolling body, so Create stays reachable at any window
           // height. In the body it scrolled with the fields and was sliced by the panel
           // edge on a laptop screen.
           footer={
             <>
-              <Button variant="subtle" onClick={() => setCreating(undefined)}>
+              <Button
+                variant="subtle"
+                onClick={() => {
+                  setCreating(undefined);
+                  setCreatingSet(false);
+                }}
+              >
                 {t.cancel}
               </Button>
               {/* `form=` submits the form in the dialog's body across the DOM boundary,
                   so this button and Enter in any field take the identical path. */}
               <Button variant="primary" type="submit" form={NEW_WORKSHEET_FORM_ID}>
-                {t.createWorksheet}
+                {creatingSet ? nf.createSet : t.createWorksheet}
               </Button>
             </>
           }
@@ -1082,18 +1094,31 @@ export function StartScreen({
           <div className="px-5 py-5">
             <NewWorksheetForm
               initialType={creating}
-              onCreate={(worksheet, language) => {
+              onMakeChange={(choice) => setCreatingSet(choice === 'set')}
+              onCreate={(worksheet, language, blank) => {
                 setCreating(undefined);
-                // Started inside a folder, it is filed there. Written before the document
-                // itself: an assignment naming nothing yet is harmless, and it is in
-                // place by the time the host saves the document.
+                setCreatingSet(false);
+                // Started inside a folder, it is filed there (a mock set's blank paper too).
+                // Written before the document itself: an assignment naming nothing yet is
+                // harmless, and it is in place by the time the host saves the document.
                 const target = folderId && folders.folders.some((f) => f.id === folderId);
+                const ids = blank ? [worksheet.id, blank.id] : [worksheet.id];
                 if (target) {
-                  void updateFolders(worksheetStore, (state) =>
-                    moveToFolder(state, [worksheet.id], folderId),
-                  ).catch(() => undefined);
+                  void updateFolders(worksheetStore, (state) => moveToFolder(state, ids, folderId)).catch(
+                    () => undefined,
+                  );
                 }
-                onOpen(worksheet, language);
+                if (!blank) {
+                  onOpen(worksheet, language);
+                  return;
+                }
+                // A mock set (k-0311): the blank paper is saved first, so the editor's set
+                // strip lists it the moment the chosen paper opens. Opened even if that save
+                // fails: the teacher's own paper must not wait on its placeholder.
+                void worksheetStore
+                  .save(blank)
+                  .catch(() => setError(sm.blankNotSaved))
+                  .finally(() => onOpen(worksheet, language));
               }}
             />
           </div>

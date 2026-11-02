@@ -16,6 +16,7 @@ export const SET_MESSAGES = defineMessages({
     zh: (n: number) => `另有 ${n} 份在其他資料夾`,
   },
   untitledSet: { en: 'Untitled set', zh: '未命名套卷' },
+  blankPaper: { en: 'Blank, not started', zh: '空白，未開始' },
   inSet: { en: (name: string) => `In the set “${name}”`, zh: (name: string) => `屬於套卷「${name}」` },
   // Menus.
   makeSet: { en: 'Make a set…', zh: '建立套卷…' },
@@ -63,6 +64,10 @@ export const SET_MESSAGES = defineMessages({
   changeFailed: {
     en: (n: number) => `${n === 1 ? '1 paper' : `${n} papers`} could not be changed (saved by a newer version, or not readable).`,
     zh: (n: number) => `有 ${n} 份試卷無法更改（由較新版本儲存，或無法讀取）。`,
+  },
+  blankNotSaved: {
+    en: 'The blank paper of the mock set could not be saved. Your paper is open; make the other one from New worksheet.',
+    zh: '無法儲存 Mock 套卷的空白試卷。你的試卷已開啟；可從「新增工作紙」建立另一份。',
   },
   copyLeftSet: {
     en: (name: string) => `Copy saved. It is not in the set “${name}”: a set holds each paper once.`,
