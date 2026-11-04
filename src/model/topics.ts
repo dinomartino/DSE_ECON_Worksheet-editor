@@ -50,7 +50,7 @@ const DATA: Row[] = [
     ['price-functions', 'Functions of prices', '價格的功能'],
     ['ped', 'Price elasticity of demand', '需求價格彈性'],
     ['pes', 'Price elasticity of supply', '供應價格彈性'],
-    ['intervention', 'Market intervention', '市場干預'],
+    ['intervention', 'Market intervention', '政府干預'],
   ]],
   ['D', 'Competition and Market Structure', '競爭與市場結構', [
     ['structure', 'Perfect and imperfect competition', '完全競爭和不完全競爭'],

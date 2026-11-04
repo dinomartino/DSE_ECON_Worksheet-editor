@@ -128,7 +128,7 @@ function gap(kind: 'deflationary' | 'inflationary'): Diagram {
   const full = deflation ? 0.72 : 0.3;
   const l = lras(full);
   const e0 = eq(ad, sras, '0', Y);
-  const text = deflation ? bi('deflationary\ngap', '通縮缺口') : bi('inflationary\ngap', '通脹缺口');
+  const text = deflation ? bi('deflationary\ngap', '通縮差距') : bi('inflationary\ngap', '通脹差距');
   const onLras: DiagramAnchorRef = { on: l.id, y: 0 };
   return finish(
     macro({
@@ -162,8 +162,8 @@ function gapNarrows(): Diagram {
       points: [e0, e1],
       arrows: [shiftArrow(ad0, ad1, [0.1, 0.66], [0.25, 0.66])],
       spans: [
-        span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.12, label: subBi('gap', '缺口', '0') }),
-        span(at(e1), yf0, 'doubleArrow', { along: 'x', label: subBi('gap', '缺口', '1') }),
+        span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.12, label: subBi('gap', '差距', '0') }),
+        span(at(e1), yf0, 'doubleArrow', { along: 'x', label: subBi('gap', '差距', '1') }),
       ],
     }),
   );
@@ -356,35 +356,35 @@ export const MACRO_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'deflationary-gap',
     group: 'macro',
-    name: bi('Deflationary gap', '通縮缺口'),
-    hint: bi('Equilibrium left of LRAS at Yf; the gap marked on the axis.', '均衡點在 Yf 的 LRAS 左方，缺口標於軸上。'),
+    name: bi('Deflationary gap', '通縮差距'),
+    hint: bi('Equilibrium left of LRAS at Yf; the gap marked on the axis.', '均衡點在 Yf 的 LRAS 左方，差距標於軸上。'),
     build: () => gap('deflationary'),
   },
   {
     id: 'inflationary-gap',
     group: 'macro',
-    name: bi('Inflationary gap', '通脹缺口'),
-    hint: bi('Equilibrium right of LRAS at Yf; the gap marked on the axis.', '均衡點在 Yf 的 LRAS 右方，缺口標於軸上。'),
+    name: bi('Inflationary gap', '通脹差距'),
+    hint: bi('Equilibrium right of LRAS at Yf; the gap marked on the axis.', '均衡點在 Yf 的 LRAS 右方，差距標於軸上。'),
     build: () => gap('inflationary'),
   },
   {
     id: 'gap-narrows',
     group: 'macro',
-    name: bi('Gap narrows: gap₀ and gap₁', '缺口收窄：缺口₀ 及缺口₁'),
-    hint: bi('AD₀ → AD₁ toward Yf: the new gap is visibly narrower.', 'AD₀ → AD₁ 趨向 Yf：新缺口明顯較窄。'),
+    name: bi('Gap narrows: gap₀ and gap₁', '差距收窄：差距₀ 及差距₁'),
+    hint: bi('AD₀ → AD₁ toward Yf: the new gap is visibly narrower.', 'AD₀ → AD₁ 趨向 Yf：新差距明顯較窄。'),
     build: gapNarrows,
   },
   {
     id: 'self-adjustment',
     group: 'macro',
     name: bi('Long-run self-adjustment', '長期自我調節'),
-    hint: bi('SRAS shifts right to close the gap; AD does not move.', 'SRAS 右移收窄缺口；AD 不變。'),
+    hint: bi('SRAS shifts right to close the gap; AD does not move.', 'SRAS 右移收窄差距；AD 不變。'),
     build: () => selfAdjust('deflationary'),
   },
   {
     id: 'self-adjustment-inflationary',
     group: 'macro',
-    name: bi('Self-adjustment: inflationary gap', '自我調節：通脹缺口'),
+    name: bi('Self-adjustment: inflationary gap', '自我調節：通脹差距'),
     hint: bi('SRAS shifts left back to Yf; P rises, AD does not move.', 'SRAS 左移回到 Yf；價格上升，AD 不變。'),
     build: () => selfAdjust('inflationary'),
   },

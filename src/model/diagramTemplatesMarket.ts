@@ -943,7 +943,7 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'externality-overproduction',
     group: 'taxSubsidy',
-    name: bi('Negative externality: overproduction', '負面界外影響：生產過剩'),
+    name: bi('Negative externality: overproduction', '負面界外效應：生產過剩'),
     hint: bi('MSC above MPC: market Qm > efficient Q*, the DWL between.', 'MSC 高於 MPC：市場產量 Qm > 有效率產量 Q*，其間為效率損失。'),
     build: externalityOverproduction,
   },

@@ -614,8 +614,8 @@ const MODEL_TEXT_ZH: Readonly<Record<string, string>> = {
   'Supply with subsidy': '有津貼的供應',
   'Domestic supply': '本地供應',
   'Price with quota': '有配額的價格',
-  'Labour demand': '勞工需求',
-  'Labour supply': '勞工供應',
+  'Labour demand': '勞力需求',
+  'Labour supply': '勞力供應',
   'Wage line': '工資線',
   'Demand (AR)': '需求（AR）',
   // Colours

@@ -83,7 +83,7 @@ describe('withSharedTags', () => {
     const rows = withSharedTags([...rowsOf(docWith([original])), ...rowsOf(docWith([copy]))]);
     expect(rows[1].tags).toEqual(['C.intervention']);
     expect(searchRows(rows, { text: 'market intervention' })).toHaveLength(2);
-    expect(searchRows(rows, { text: '市場干預' })).toHaveLength(2);
+    expect(searchRows(rows, { text: '政府干預' })).toHaveLength(2);
     expect(searchRows(rows, { topic: 'C' })).toHaveLength(2);
   });
 

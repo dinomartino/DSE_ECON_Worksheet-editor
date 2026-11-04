@@ -60,6 +60,10 @@ a version heading is edited afterwards.
   being cut off (for example "中六 Mock 202…").
   <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
 
+### Changed
+- **Chinese wording follows the Education Bureau's 2025 supplement.** The inflationary and deflationary gap templates now say 差距 (通脹差距, 通縮差距), the labour curves say 勞力需求 and 勞力供應, the topic "Market intervention" is 政府干預, and the externality template says 界外效應. Nothing in your saved worksheets changes.
+  <!-- zh: **中文用詞對齊教育局 2025 年補充文件。** 通脹和通縮缺口範本改稱「差距」（通脹差距、通縮差距），勞動市場曲線改稱「勞力需求」和「勞力供應」，課題「市場干預」改為「政府干預」，外部效應範本改稱「界外效應」。已儲存的工作紙不受影響。 -->
+
 ## 0.8.7 — 2026-11-01
 
 ### Added
@@ -329,7 +333,7 @@ a version heading is edited afterwards.
   DWL. *Negative externality: overproduction* (under Tax & subsidy) draws MSC above MPC
   with D = MPB = MSB, the market output Qm, the efficient output Q* and the DWL between.
   <!-- zh: **兩個新的圖表範本。** 「價格下限：效率損失」（在價格管制內）畫出高於均衡的下限、由需求決定的成交量、過剩及效率損失。
-  「負面界外影響：生產過剩」（在稅項與津貼內）畫出高於 MPC 的 MSC、D = MPB = MSB、市場產量 Qm、有效率產量 Q* 及其間的效率損失。 -->
+  「負面界外效應：生產過剩」（在稅項與津貼內）畫出高於 MPC 的 MSC、D = MPB = MSB、市場產量 Qm、有效率產量 Q* 及其間的效率損失。 -->
 - **Find questions with a diagram, and sort the 題庫 list.** Filter in the Question bank
   now has **Diagram**: only questions with a diagram or picture, or only those without. Its
   new **Sort** puts the list newest first (as before), least used first (fewest papers sat by
@@ -979,7 +983,7 @@ a version heading is edited afterwards.
   draw in and meet at the equilibrium, then the mark settles into its place on the start
   screen. Click or press any key to skip it. It plays once per session and respects
   Reduce motion.
-  <!-- zh: **Econ Studio 啟動時有一段標誌短動畫**：座標軸、需求線和供給線逐一畫出，相交於均衡點，
+  <!-- zh: **Econ Studio 啟動時有一段標誌短動畫**：座標軸、需求線和供應線逐一畫出，相交於均衡點，
   然後標誌就位於開始畫面。按一下或按任何鍵可略過。每次使用只播放一次，並會遵從
   「減少動態效果」設定。 -->
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
@@ -1090,7 +1094,7 @@ a version heading is edited afterwards.
   filters by one, and counts them on the topic cards. The 題型 Patterns page lists them
   all and renames, merges or deletes one in every worksheet at once. They come with your
   backup and never print.
-  <!-- zh: **在題庫自訂題型。** 在子課題內，按你設定的題目種類歸類題目，例如「由總收益變化
+  <!-- zh: **在題庫自訂題型。** 在子課題內，按你設定的題目種類歸類題目，例如「由總收入變化
   計算 PED」。設定題目課題時（在題庫或編輯面板），可揀選現有題型或輸入新名稱；MCQ 和 LQ
   各有獨立清單。輸入部分名稱後按 Enter 會選用現有題型（用方向鍵選其他項目，或選
   「新增」），與現有名稱相近的會提示，即使你取消對話框，新題型也會保留。「設定課題…」
@@ -1718,11 +1722,11 @@ a version heading is edited afterwards.
   it to the bottom-left corner of the diagram.
   <!-- zh: **方向鍵會把選取的點、標示或線段端點移動一小步。** 以往會把它移到圖表的左下角。 -->
 - **Stacked gap arrows no longer crowd in English and 中文.** In "Gap narrows", the label
-  gap₁ / 缺口₁ takes two lines, and the gap₀ arrow under it used to run through the second.
+  gap₁ / 差距₁ takes two lines, and the gap₀ arrow under it used to run through the second.
   An arrow stacked under another now moves down by each extra line, on screen, in the PDF
   and in Word.
-  <!-- zh: **中英並列時，上下排列的缺口箭嘴不再擠在一起。** 在「缺口收窄」中，gap₁ / 缺口₁ 標示
-  佔兩行，其下的缺口₀ 箭嘴以往會穿過第二行。現在排在另一箭嘴下方的箭嘴，會按每多出的一行向下
+  <!-- zh: **中英並列時，上下排列的差距箭嘴不再擠在一起。** 在「差距收窄」中，gap₁ / 差距₁ 標示
+  佔兩行，其下的差距₀ 箭嘴以往會穿過第二行。現在排在另一箭嘴下方的箭嘴，會按每多出的一行向下
   移，在屏幕、PDF 和 Word 中都一樣。 -->
 - **Shade a tax on a flat demand curve.** A horizontal line named D (perfectly elastic
   demand) now counts as demand in the Shade menu, so tax revenue, the sellers' burden and
@@ -1832,7 +1836,7 @@ a version heading is edited afterwards.
   and the CPF stays tangent to the PPF. Shade ▾ now adds areas on a template without
   asking which curve is which.
   <!-- zh: **圖表範本跟隨你的拖曳**：移動一條曲線，均衡點、虛線垂線、P 和 Q 箭頭、短缺和進
-  口括號、稅楔、產出缺口和陰影區域都會一同移動；D₁ 或 S + t 保持其平移幅度，MR 維
+  口括號、稅楔、產出差距和陰影區域都會一同移動；D₁ 或 S + t 保持其平移幅度，MR 維
   持 D 的兩倍斜度，CPF 保持與 PPF 相切。在範本上按陰影 ▾ 加入區域時，不再追
   問哪條是哪條曲線。 -->
 - **22 more diagram templates**, one for each scheme item that had none: the MCQ
@@ -1844,8 +1848,8 @@ a version heading is edited afterwards.
   under an import quota with quota rent, monopoly with rising MC, MC rising, a lump-sum
   tax, "same P and Q after MC falls", and two countries' PPFs on one figure.
   <!-- zh: **再多 22 個圖表範本**，補上評卷參考中尚未有範本的每一項：MCQ 雙重平移格、平
-  移前後的短缺、下調的價格上限、價格上限下的消費者剩餘變化、無效的價格上限、固定價格下的收
-  益、最低工資總額、配額 G / L 與配額下的需求上升、補貼過度生產（MC > MB）、
+  移前後的短缺、下調的價格上限、價格上限下的消費者盈餘變化、無效的價格上限、固定價格下的收
+  益、最低工資總額、配額 G / L 與配額下的需求上升、津貼過度生產（MC > MB）、
   MC 上升時的 TSS 損失、AD 與 SRAS 同時左移、AD 處於全部產能、gap₀ 與 gap
   ₁、通脹的自我調整、替代品匯率個案、進口配額下需求上升與配額租金、MC 上升的壟斷、MC 上
   升、一次性總額稅、「MC 下降後 P 和 Q 不變」，以及兩個國家的 PPF 並列於同一
@@ -1858,9 +1862,9 @@ a version heading is edited afterwards.
   curves when you drag them. The menu is grouped, asks which curve is which when it
   cannot tell, and "Between two edges…" shades any region between two curves or levels.
   <!-- zh: **評卷參考提到的每種福利區域，在陰影 ▾ 一按即得**：買家和賣家的負擔、徵稅下的消費
-  者剩餘損失、補貼的消費者和生產者利益、稅項、補貼、價格管制、關稅或壟斷的 DWL、TSS 損
-  失、固定價格下的收益或工資總額、價格上限下的消費者剩餘增減、關稅收入、生產者剩餘增加、消
-  費者剩餘損失和配額租金。各區域紋理互不相同，附有雙語標示，拖曳曲線時會跟隨移動。選單已分
+  者盈餘損失、津貼的消費者和生產者利益、稅項、津貼、價格管制、關稅或壟斷的 DWL、TSS 損
+  失、固定價格下的收益或工資總額、價格上限下的消費者盈餘增減、關稅收入、生產者盈餘增加、消
+  費者盈餘損失和配額租金。各區域紋理互不相同，附有雙語標示，拖曳曲線時會跟隨移動。選單已分
   組，分不清哪條是哪條曲線時會詢問；「兩邊之間…」可為兩條曲線或水平之間的任何區域加上陰影。
    -->
 - **Marking scheme in HKEAA notation** on structured question parts: marking points with
@@ -1879,19 +1883,19 @@ a version heading is edited afterwards.
 - **Shaded areas on diagrams**: consumer surplus, producer surplus, deadweight loss and
   tax revenue presets, plus a free shape; grey shade or hatch, draggable label. Areas
   follow the curves they are built on.
-  <!-- zh: **圖表上的陰影區域**：消費者剩餘、生產者剩餘、無謂損失和稅收的預設區域，另有自由形狀；
+  <!-- zh: **圖表上的陰影區域**：消費者盈餘、生產者盈餘、效率損失和稅收的預設區域，另有自由形狀；
   可選灰色陰影或紋理，標示可拖曳。區域跟隨其所依據的曲線。 -->
 - **Hatch patterns for shaded areas**, so areas still tell apart on a black-and-white
   photocopy: diagonal, reverse diagonal, cross-hatch, horizontal, vertical or dots, at
   normal or dense spacing. New CS, PS, DWL and tax revenue areas each start in their own
   pattern; areas you already drew keep their look.
   <!-- zh: **陰影區域的紋理圖案**，黑白影印後仍分辨得出各區域：斜線、反斜線、交叉線、橫線、直線
-  或點，疏密各有普通和密集。新增的消費者剩餘、生產者剩餘、無謂損失和稅收區域各自採用不同圖
+  或點，疏密各有普通和密集。新增的消費者盈餘、生產者盈餘、效率損失和稅收區域各自採用不同圖
   案；已畫好的區域外觀不變。 -->
 - **Revenue areas on diagrams**: total revenue (P × Q) at an equilibrium, and the revenue
   gain and loss between E₀ and E₁ after a shift — even when the gain or loss is an
   L-shape. Pick which points they measure; they follow the points when you drag them.
-  <!-- zh: **圖表上的收益區域**：均衡點的總收益（P × Q），以及平移後 E₀ 與 E₁ 之間
+  <!-- zh: **圖表上的收益區域**：均衡點的總收入（P × Q），以及平移後 E₀ 與 E₁ 之間
   的收益增減，即使增減呈 L 形也可。自選量度哪些點；拖曳點時，區域隨之移動。 -->
 - **Shift a curve**: shift D or S left/right/up/down by a percentage to get D₁ (or S₁),
   the shift arrow and the new equilibrium E₁ with guide lines and P₁/Q₁ labels.
@@ -1946,8 +1950,8 @@ a version heading is edited afterwards.
   exchange-rate revenue, tariff, import quota; monopoly (MC constant, MC = 0, MC falls)
   and PPF trade. Each ships the after-state — both curves, both equilibria, the arrows.
   <!-- zh: **評卷參考要求的每個圖表都有範本**，按課題分組，附搜尋框：供求平移（一條或兩條曲線）、
-  彈性和無彈性的收益方格、固定供應、輸入勞工、剩餘；價格上限、最低工資、配額和無謂損失；從
-  量稅和補貼的負擔、Lorenz 曲線；AD-AS 平移、產出缺口、自我調整、LRAS 增
+  彈性和無彈性的收益方格、固定供應、輸入勞工、剩餘；價格上限、最低工資、配額和效率損失；從
+  量稅和津貼的負擔、Lorenz 曲線；AD-AS 平移、產出差距、自我調整、LRAS 增
   長；貨幣供應和需求平移；匯率收益、關稅、進口配額；壟斷（MC 不變、MC = 0、MC 下
   降）及 PPF 貿易。每個範本都附有變動後的狀態：兩條曲線、兩個均衡點和箭頭。 -->
 
@@ -1963,8 +1967,8 @@ a version heading is edited afterwards.
   names.
   <!-- zh: **圖表上的 P 和 Q 變動箭頭，畫法與評卷參考一致**：位於座標軸外，在 Q₀ Q₁ 標
   示之下、P₀ P₁ 之左，刻度標示亦緊貼座標軸。座標軸上的括號和間距也在該處；拖曳可將它
-  移遠或移回。S₀ 與 S₁ 之間的稅項 t 和補貼 s 一律是指向 S₁ 的箭頭：稅項向
-  上，補貼向下；將 S₁ 拖過 S₀ 時會掉轉方向。均衡點不再自動附帶 E₀ / E₁ 名
+  移遠或移回。S₀ 與 S₁ 之間的稅項 t 和津貼 s 一律是指向 S₁ 的箭頭：稅項向
+  上，津貼向下；將 S₁ 拖過 S₀ 時會掉轉方向。均衡點不再自動附帶 E₀ / E₁ 名
   稱，與評卷參考的一般畫法相同；選取點後按 **Label E₀**（會建議下一個空號）即
   可加上，標示會置於點的右側，避開曲線。已有的圖表保留原有名稱。 -->
 - **Desktop: Export → PDF saves a file directly, no print sheet.** Choose where in the
@@ -1984,8 +1988,8 @@ a version heading is edited afterwards.
 - **The inflationary and deflationary gap templates mark the gap just above the output
   axis**, between Y₀ and Yf, with its name above the arrow. It still follows AD, SRAS
   and LRAS when you drag them.
-  <!-- zh: **通脹缺口和緊縮缺口範本把缺口標在產出軸之上**，位於 Y₀ 與 Yf 之間，名稱在箭
-  頭上方。拖曳 AD、SRAS 和 LRAS 時，缺口仍會跟隨。 -->
+  <!-- zh: **通脹差距和通縮差距範本把差距標在產出軸之上**，位於 Y₀ 與 Yf 之間，名稱在箭
+  頭上方。拖曳 AD、SRAS 和 LRAS 時，差距仍會跟隨。 -->
 ### Fixed
 - **Shift a copy in an English-only worksheet named the copy S₅₀** (and its ticks P₅₀
   and Q₅₀). It is now S₁, with P₁ and Q₁.
