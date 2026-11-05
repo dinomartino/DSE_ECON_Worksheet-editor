@@ -1,12 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useAiRun, type ReviewOutcome } from '@/assist/runStore';
+import { hasItems, useAiRun, type ReviewOutcome } from '@/assist/runStore';
 import type { ReviewItem, ReviewTone } from '@/assist/types';
 import { scrollPageTo } from '@/components/editor/panelRows';
 import { useMessages } from '@/i18n/language';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { BarButton, ErrorBody, RunningBody, Sparkle } from './barParts';
+import { COVERAGE_MESSAGES } from './coverageReport.messages';
+import { CoverageReportDialog } from './CoverageReportDialog';
 import { ItemCard } from './ItemCard';
 import { AI_UI_MESSAGES } from './messages';
 import { markTones, pageTextFor, useMarkClicks, usePageMarks } from './pageMarks';
@@ -52,7 +54,9 @@ export function AiBar() {
   }, [worksheet.id]);
 
   const review = phase.kind === 'review' ? phase : null;
-  const items = review && review.outcome.kind !== 'nothing' ? review.outcome.items : NO_ITEMS;
+  // A report opens by itself when its run ends; Close keeps the bar, so it can be reopened.
+  const [reportClosedFor, setReportClosedFor] = useState<number | null>(null);
+  const items = review && hasItems(review.outcome) ? review.outcome.items : NO_ITEMS;
   const current = review ? items[review.index] : undefined;
   const cardOpen = review !== null && cardFor === review.runId;
   const setCardOpen = useCallback((on: boolean) => {
@@ -74,7 +78,7 @@ export function AiBar() {
     (index: number) => {
       const run = useAiRun.getState();
       run.goTo(index);
-      const now = run.phase.kind === 'review' && run.phase.outcome.kind !== 'nothing' ? run.phase.outcome.items : [];
+      const now = run.phase.kind === 'review' && hasItems(run.phase.outcome) ? run.phase.outcome.items : [];
       setCardOpen(true);
       reveal(now[index]);
     },
@@ -84,7 +88,7 @@ export function AiBar() {
   const walk = useCallback(
     (step: 1 | -1) => {
       const now = useAiRun.getState().phase;
-      if (now.kind !== 'review' || now.outcome.kind === 'nothing' || now.outcome.items.length === 0) return;
+      if (now.kind !== 'review' || !hasItems(now.outcome) || now.outcome.items.length === 0) return;
       const count = now.outcome.items.length;
       open(cardOpen ? (now.index + step + count) % count : now.index);
     },
@@ -108,6 +112,9 @@ export function AiBar() {
 
   return (
     <>
+      {review?.outcome.kind === 'report' && reportClosedFor !== review.runId && (
+        <CoverageReportDialog report={review.outcome.report} rebuild={review.outcome.rebuild} onClose={() => setReportClosedFor(review.runId)} />
+      )}
       {cardOpen && current && (
         <ItemCard
           item={current}
@@ -139,6 +146,7 @@ export function AiBar() {
               undoLive={review.outcome.kind === 'inserted' && worksheet !== null && !!review.outcome.undo?.live()}
               onChip={(tone) => open(items.findIndex((item) => item.tone === tone))}
               onWalk={walk}
+              onReport={() => setReportClosedFor(null)}
             />
           )}
         </div>
@@ -154,6 +162,7 @@ function ReviewBody({
   undoLive,
   onChip,
   onWalk,
+  onReport,
 }: {
   outcome: ReviewOutcome;
   items: readonly ReviewItem[];
@@ -161,15 +170,19 @@ function ReviewBody({
   undoLive: boolean;
   onChip(tone: ReviewTone): void;
   onWalk(step: 1 | -1): void;
+  onReport(): void;
 }) {
   const m = useMessages(AI_UI_MESSAGES);
+  const c = useMessages(COVERAGE_MESSAGES);
   const run = useAiRun.getState();
   const tones = (['look', 'failed', 'finding'] as const).flatMap((tone) => {
     const n = items.filter((item) => item.tone === tone && !item.resolved).length;
     return n > 0 ? [{ tone, n }] : [];
   });
   let actions: ReactNode = null;
-  if (outcome.kind === 'inserted') {
+  if (outcome.kind === 'report') {
+    actions = <BarButton primary onClick={onReport}>{c.openReport}</BarButton>;
+  } else if (outcome.kind === 'inserted') {
     actions = undoLive && <BarButton onClick={run.undoAll}>{m.undoAll}</BarButton>;
   } else if (outcome.kind === 'findings' && outcome.applyAll) {
     const applyAll = outcome.applyAll;
@@ -210,7 +223,7 @@ function ReviewBody({
       )}
       {actions}
       {outcome.kind !== 'nothing' && (
-        <BarButton primary={!(outcome.kind === 'findings' && outcome.applyAll)} onClick={run.dismiss}>
+        <BarButton primary={!(outcome.kind === 'findings' && outcome.applyAll) && outcome.kind !== 'report'} onClick={run.dismiss}>
           {m.done}
         </BarButton>
       )}

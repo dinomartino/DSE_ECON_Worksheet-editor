@@ -15,6 +15,16 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **See how much of the syllabus a paper covers.** ✦ AI → Check syllabus coverage sends the
+  paper's questions (or the ones you selected) to the AI provider you chose in Settings → AI, the
+  same one Chinese translation uses, and shows a report: how many of the 2025 guide's key points
+  the paper tests, by count and by suggested lesson hours, then each topic and key point with its
+  marks split into Know, Apply / analyse and Evaluate, its share of the paper and of lesson time,
+  the questions that test it, and the key points nothing tests. The Elective Part counts when the
+  paper has its questions. Open By question to see what the AI said each part tests. These are AI
+  estimates: nothing is saved to the paper, and the working files are deleted when the report is
+  ready.
+  <!-- zh: **查看試卷覆蓋多少課程。** ✦ AI →「檢查課程覆蓋」會把試卷的題目（或你選取的題目）傳送到你在「設定 → AI」選擇的 AI 服務（與中文翻譯相同），然後顯示報告：試卷考核了 2025 年指引中多少個學習要點，按數目及按建議課時計算；再列出每個課題及學習要點的分數（分為知識、應用及分析、評鑑）、佔試卷及課時的比例、考核它的題目，以及沒有題目考核的學習要點。試卷有選修部分的題目時會一併計算。打開「按題目」可看到 AI 認為每部分考核甚麼。這些是 AI 的估算：不會儲存任何內容到試卷，報告完成後暫存檔案會被刪除。 -->
 - **Link Paper 1 and Paper 2 of one exam as a set.** On the start screen, a mock paper's ⋯ menu
   has Make a set…: name the set (it suggests one from the paper's name) and tick the other papers
   that sit the same exam; the matching Paper 2 comes ticked. The papers then show together in one

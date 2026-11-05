@@ -16,7 +16,8 @@ import { pathToFileURL } from 'node:url';
  * A system prompt naming "questions-from-source" (E3) gets canned, valid questions instead.
  * A request whose system prompt is the answer writer's (E1) gets a valid canned answer,
  * a scheme of 1-mark points totalling the marks, and a rationale per asked option.
- * A quality-check request (E4) gets canned findings instead (`qualityReply`).
+ * A quality-check request (E4) gets canned findings instead (`qualityReply`); a syllabus
+ * coverage request (k-0317) gets canned codes by keyword (`coverageReply`).
  * Base-URL prefixes: `/region/v1` answers Gemini's FAILED_PRECONDITION location error,
  * `/401/v1` rejects the key, `/slow/v1` answers after 4 s (Stop and the scrim question). `GET /__count` and `POST /__reset` expose the request count.
  *
@@ -207,7 +208,41 @@ export function qualityReply(payload) {
   return completion(JSON.stringify({ items }));
 }
 
+/** The syllabus coverage check (k-0317), recognised by `src/coverage/promptText.ts`'s marker. */
+const COVERAGE_MARKER = 'HKDSE Economics syllabus tagger';
+
+/** Words in a question → a code, first match wins; nothing matched → the scarcity point, low confidence. */
+const COVERAGE_RULES = [
+  [/elastic|revenue|彈性/i, 'C.ped#revenue', 'apply'],
+  [/demand|需求/i, 'C.individual-demand#factors', 'apply'],
+  [/supply|供應|供給/i, 'C.individual-supply#factors', 'apply'],
+  [/production|factor|生產/i, 'B.factors#natural', 'know'],
+  [/gdp|national income|國民收入/i, 'F.national-income#gdp', 'apply'],
+  [/inflation|price level|物價/i, 'I.inflation#definitions', 'apply'],
+  [/money|bank|貨幣|銀行/i, 'H.money#functions', 'know'],
+  [/trade|export|import|貿易/i, 'J.trade#advantage', 'apply'],
+  [/government|tax|政府|稅/i, 'C.intervention#tax-subsidy', 'evaluate'],
+  [/monopol|壟斷/i, 'EL1.pricing#simple-monopoly', 'apply'],
+];
+
+export function coverageReply(payload) {
+  const items = [];
+  for (const question of payload?.questions ?? []) {
+    const words = (question.entries ?? []).map((e) => e.text ?? '').join(' ');
+    for (const unit of question.units ?? []) {
+      const rule = COVERAGE_RULES.find(([pattern]) => pattern.test(words));
+      const [, code, band] = rule ?? [null, 'A.scarcity#scarcity', 'know'];
+      items.push({ key: unit.key, code, weight: 'main', band, conf: rule ? 'high' : 'low', why: 'Canned by the mock provider.', outside: '' });
+      if (rule && unit.marks >= 4) {
+        items.push({ key: unit.key, code: 'A.scarcity#choice-cost', weight: 'also', band, conf: 'medium', why: 'Canned second point.', outside: '' });
+      }
+    }
+  }
+  return completion(JSON.stringify({ items }));
+}
+
 export function reply(body) {
+  if (systemOf(body).includes(COVERAGE_MARKER)) return coverageReply(payloadOf(body));
   if (systemOf(body).includes(ANSWERS_MARKER)) return answersReply(payloadOf(body));
   if (systemOf(body).includes(QUALITY_MARKER)) return qualityReply(payloadOf(body));
   if (systemOf(body).includes('questions-from-source')) return sourceReply(body);

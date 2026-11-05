@@ -8,7 +8,12 @@ import { verbById } from './registry';
 import { scopeFromSelection, scopeLabel } from './scope';
 import type { VerbContext, VerbOutcome } from './types';
 
-export type ReviewOutcome = Extract<VerbOutcome, { kind: 'inserted' | 'findings' | 'nothing' }>;
+export type ReviewOutcome = Extract<VerbOutcome, { kind: 'inserted' | 'findings' | 'nothing' | 'report' }>;
+type ItemOutcome = Extract<ReviewOutcome, { kind: 'inserted' | 'findings' }>;
+
+/** An outcome with review cards (a report and "nothing" have none). */
+export const hasItems = (outcome: ReviewOutcome): outcome is ItemOutcome =>
+  outcome.kind === 'inserted' || outcome.kind === 'findings';
 
 export type AiRunPhase =
   | { kind: 'idle' }
@@ -72,7 +77,7 @@ function applyView(outcome: Extract<VerbOutcome, { kind: 'inserted' }>): void {
 let retrying: VerbContext | null = null;
 
 const itemCount = (phase: AiRunPhase): number =>
-  phase.kind === 'review' && phase.outcome.kind !== 'nothing' ? phase.outcome.items.length : 0;
+  phase.kind === 'review' && hasItems(phase.outcome) ? phase.outcome.items.length : 0;
 
 export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>((set, get) => ({
   phase: { kind: 'idle' },
@@ -135,12 +140,12 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
 
   act: (index) => {
     const phase = get().phase;
-    if (phase.kind !== 'review' || phase.outcome.kind === 'nothing') return;
+    if (phase.kind !== 'review' || !hasItems(phase.outcome)) return;
     const item = phase.outcome.items[index];
     if (!item?.action || item.resolved) return;
     if (item.action.run() === false) return;
     const now = get().phase;
-    if (now.kind !== 'review' || now.runId !== phase.runId || now.outcome.kind === 'nothing') return;
+    if (now.kind !== 'review' || now.runId !== phase.runId || !hasItems(now.outcome)) return;
     const items = now.outcome.items.map((it, i) => (i === index ? { ...it, resolved: true as const } : it));
     let outcome: ReviewOutcome = { ...now.outcome, items };
     if (outcome.kind === 'findings' && outcome.refresh) {
