@@ -51,6 +51,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   wording breaks Google's terms — Gemini privacy line may be dropped.
 - Versions: a shared rationale note repeats in each version's block of the key. Bank authoring
   proposal (`docs/design/bank-authoring.md`, 3 questions).
+- Syllabus coverage check (k-0317, step 1 done, nothing built; branch docs/syllabus-analysis, not merged): 9 questions for the user in `docs/research/2026-11-syllabus-analysis.md` § 11 (which numbers count, scope, HKEAA rule, gold labels, provider).
 
 ## Open threads and known gaps
 
@@ -70,6 +71,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 - paper sets A: `npm test` all green, typecheck, lint at baseline (40), `npm run build` green; `paper-sets-verify.mjs` 23/23 EN + 中; 58/58 samples; cover-verify (no reference PDF here).
 
 ## Log
+- **2026-11-04** — docs only, on branch docs/syllabus-analysis (k-0317, not merged): syllabus analysis + AI tagging design for a coverage check, `docs/research/2026-11-syllabus-analysis.md`, draft data `docs/research/syllabus-2025.json`. No code.
 - **2026-11-02** — on develop (unreleased, k-0311): New worksheet → Mock set makes Paper 1 + a blank Paper 2, linked.
 - **2026-11-02** — on develop (unreleased, k-0299 step A): paper sets (Make a set, set frame, editor strip, Export pre-ticks, duplicate leaves); （副本） suffix, folder names, school remembered. Research doc merged with it.
 - **2026-11-01** — v0.8.7 released: watermark, Enter on the last option / IME fixes (k-0263), interface themes.

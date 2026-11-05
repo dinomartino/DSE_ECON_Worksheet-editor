@@ -1,0 +1,1956 @@
+{
+  "meta": {
+    "title": "HKDSE Economics syllabus, 2025 edition: machine-readable draft",
+    "status": "DRAFT for review (k-0317 step 1). Research only: no code reads this file yet.",
+    "generated": "2026-11-04",
+    "edition": "2025",
+    "effectiveFrom": "S4 in 2025/26 (first examined in the 2028 HKDSE)",
+    "analysis": "docs/research/2026-11-syllabus-analysis.md",
+    "levels": {
+      "topic": "The guide's Topic: A-J (Compulsory Part). The Elective Part has no letter in the guide; topics.ts calls its two parts EL1 and EL2.",
+      "keyPoint": "One entry of the guide's Key Points column that heads a block (compulsory), or one entry of the Topic column in an Elective Part table. The code is the topics.ts fine code, e.g. C.ped.",
+      "point": "The guide's own (i), (ii)... item inside a key point. A key point with no numerals has one implicit point (slug \"whole\"), or one point per top-level bullet (J.bop). Code = <key point code>#<slug>, e.g. C.ped#arc. Slugs are mine (frozen once adopted), the label is the guide's numbering.",
+      "detail": "A bullet inside a point, name only (informational; not a code)."
+    },
+    "codeGrammarNote": "Point codes use \"#\", which the tag grammar in src/model/topics.ts (TOPIC_CODE_PATTERN) does not allow: they are not topic codes and must never be stored in Question.tags. See the analysis, section 10.4 (where the result is stored).",
+    "pageRefs": "Printed page numbers, not PDF page numbers. Guide: printed = PDF page - 6 (from Chapter 1 on). Both Supplementary Documents: printed = PDF page - 1. A range is [first, last].",
+    "skillsVocabulary": {
+      "recall": "state / define / describe / recognise the meaning",
+      "examples": "give, identify or classify with examples",
+      "explain": "explain or analyse a relationship, reason or effect",
+      "calculate": "numerical work (the Supplement says calculate, numerically or schedule)",
+      "diagram": "a diagram, graph or schedule is expected",
+      "data": "interpret given numerical or graphical data",
+      "evaluate": "discuss, judge or make an informed (normative) judgement"
+    },
+    "skillsNote": "Flags are my reading of the verbs in the Supplementary Document's \"Elaboration\" column, kept conservative: a flag is set only where the text names the skill. They need a teacher's review.",
+    "verification": "Every EN name (guide + EN supplement) and 中文 name (Chinese supplement) was checked to occur verbatim, in document order, at the start of a line of the PDF text. Printed typos and wording differences between guide and supplement are listed in the analysis, section 1.3.",
+    "counts": {
+      "topics": 12,
+      "compulsoryTopics": 10,
+      "electiveParts": 2,
+      "keyPoints": 53,
+      "compulsoryKeyPoints": 49,
+      "electiveKeyPoints": 4,
+      "points": 130,
+      "compulsoryPoints": 119,
+      "electivePoints": 11,
+      "implicitPoints": 10,
+      "details": 81
+    }
+  },
+  "sources": [
+    {
+      "id": "guide",
+      "title": "Economics Curriculum and Assessment Guide (Secondary 4-6), with updates in 2025 (CDC-HKEAA)",
+      "file": "Inbox/2026-11-04-Econ_C&A_Guide_E_with_updates_in_2025.pdf",
+      "pdfPages": 98,
+      "syllabusTables": "printed pp. 9-22 (section 2.2.1 Compulsory Part, 2.2.2 Elective Part)",
+      "timeTable": "printed p. 23",
+      "examDesign": "printed p. 61 (section 5.5.2)"
+    },
+    {
+      "id": "suppEn",
+      "title": "Supplementary Document (with updates in 2025), English",
+      "file": "Inbox/2026-11-04-Econ_supplementary_doc_Eng_with_updates_in_2025.pdf",
+      "pdfPages": 50,
+      "syllabusTables": "printed pp. 2-48",
+      "examDesign": "printed p. 49"
+    },
+    {
+      "id": "suppZh",
+      "title": "經濟課程及評估指引（中四至中六）補充文件（2025年更新版）",
+      "file": "Inbox/2026-11-04-Econ_supplementary_doc_Chi_with_updates_in_2025.pdf",
+      "pdfPages": 41,
+      "syllabusTables": "printed pp. 2-39",
+      "examDesign": "printed p. 40"
+    }
+  ],
+  "assessment": {
+    "effectiveFrom": "2028 HKDSE",
+    "source": {
+      "guide": 61,
+      "suppEn": 49,
+      "suppZh": 40
+    },
+    "papers": [
+      {
+        "id": "P1",
+        "name": "Paper 1",
+        "format": "multiple-choice questions",
+        "weightPct": 30,
+        "duration": "1 hour",
+        "syllabusScope": "not stated in the guide"
+      },
+      {
+        "id": "P2",
+        "name": "Paper 2",
+        "format": "conventional paper",
+        "duration": "2 hours 30 minutes",
+        "sections": [
+          {
+            "id": "A",
+            "kind": "short questions",
+            "syllabusScope": "Compulsory Part",
+            "weightPct": 26,
+            "allCompulsory": true
+          },
+          {
+            "id": "B",
+            "kind": "structured / essay-type / data response questions",
+            "syllabusScope": "Compulsory Part",
+            "weightPct": 33,
+            "allCompulsory": true
+          },
+          {
+            "id": "C",
+            "kind": "structured / essay-type questions",
+            "syllabusScope": "Elective Part",
+            "weightPct": 11,
+            "choice": "answer the questions from one of the two Elective Parts"
+          }
+        ]
+      }
+    ],
+    "totalPct": 100,
+    "notStated": ["number of questions", "raw marks per paper or section", "the syllabus scope of Paper 1", "any weighting by topic"],
+    "note": "Good performance on the Compulsory Part questions can earn Level 5 (the level actually reachable depends on that year's candidates). Whether or not a student answers the Elective Part, the same score gives the same grade."
+  },
+  "timeAllocation": {
+    "source": {
+      "guide": 23
+    },
+    "unit": "suggested lesson hours",
+    "compulsory": {
+      "A": 12,
+      "B": 30,
+      "C": 32,
+      "D": 8,
+      "E": 18,
+      "F": 12,
+      "G": 16,
+      "H": 18,
+      "I": 30,
+      "J": 18
+    },
+    "compulsorySum": 194,
+    "electiveEither": 24,
+    "subTotal": 218,
+    "enquiryAndIntegrationActivities": 32,
+    "total": 250,
+    "electiveShareOfCurriculumTime": "around 10% (guide p. 7)"
+  },
+  "teachingSequences": [
+    {
+      "id": "seq1",
+      "source": "Appendix 1, printed p. 75",
+      "for": "classes of students with diverse abilities and aptitudes",
+      "S4": ["A", "B", "D", "F", "G"],
+      "S5": ["C", "H", "I", "E"],
+      "S6": ["J", "EL1|EL2"]
+    },
+    {
+      "id": "seq2",
+      "source": "Appendix 2, printed p. 76",
+      "for": "classes of students with better academic foundation",
+      "S4": ["A", "B (Firms and Production I)", "C", "F", "G"],
+      "S5": ["H", "I", "D", "E", "B (Firms and Production II)"],
+      "S6": ["J", "EL1|EL2"]
+    }
+  ],
+  "topicsTsMapping": {
+    "file": "src/model/topics.ts",
+    "comparedAgainst": "worktree cut from origin/develop a48d4bc9",
+    "coarse": {
+      "guide": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "EL1", "EL2"],
+      "topicsTs": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "EL1", "EL2"],
+      "missingInTopicsTs": [],
+      "extraInTopicsTs": []
+    },
+    "fine": {
+      "guideKeyPoints": 53,
+      "topicsTsFine": 53,
+      "missingInTopicsTs": [],
+      "extraInTopicsTs": []
+    },
+    "nameDifferences": [
+      {
+        "code": "A.basic-problems",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Three basic economic problems",
+        "printed": "The three basic economic problems"
+      },
+      {
+        "code": "A.circular-flow",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Circular flow",
+        "printed": "Circular flow of economic activities"
+      },
+      {
+        "code": "B.production-types",
+        "field": "en",
+        "kind": "reworded",
+        "topicsTs": "Types and stages of production",
+        "printed": "Types/stages of production"
+      },
+      {
+        "code": "B.goods",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Types of goods and services",
+        "printed": "Types of goods and services produced"
+      },
+      {
+        "code": "B.costs",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Production and costs",
+        "printed": "Production and costs in the short run and long run"
+      },
+      {
+        "code": "B.objectives",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Objectives of firms",
+        "printed": "The objectives of firms"
+      },
+      {
+        "code": "C.law-of-demand",
+        "field": "en",
+        "kind": "case only",
+        "topicsTs": "Law of demand",
+        "printed": "Law of Demand"
+      },
+      {
+        "code": "C.equilibrium",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Demand, supply and price",
+        "printed": "Interaction between demand, supply and price"
+      },
+      {
+        "code": "D.structure",
+        "field": "en",
+        "kind": "reworded",
+        "topicsTs": "Perfect and imperfect competition",
+        "printed": "Perfect competition and imperfect competition (monopolistic competition, oligopoly and monopoly)"
+      },
+      {
+        "code": "D.structure",
+        "field": "zh",
+        "kind": "shortened",
+        "topicsTs": "完全競爭和不完全競爭",
+        "printed": "完全競爭和不完全競爭(壟斷性競爭、寡頭壟斷和壟斷)"
+      },
+      {
+        "code": "F.price-level",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "General price level",
+        "printed": "General price level as measured by Consumer Price Index and implicit price deflator of GDP"
+      },
+      {
+        "code": "F.price-level",
+        "field": "zh",
+        "kind": "shortened",
+        "topicsTs": "一般物價水平",
+        "printed": "以消費物價指數和本地生產總值內含平減物價指數量度一般物價水平"
+      },
+      {
+        "code": "F.unemployment",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Unemployment and underemployment rates",
+        "printed": "Unemployment and underemployment rates as measured in terms of the percentage of unemployed and underemployed persons in the labour force"
+      },
+      {
+        "code": "F.unemployment",
+        "field": "zh",
+        "kind": "shortened",
+        "topicsTs": "失業率及就業不足率",
+        "printed": "以失業及就業不足人士在勞動人口中所佔的百分比量度失業率及就業不足率"
+      },
+      {
+        "code": "F.hk-trends",
+        "field": "en",
+        "kind": "reworded",
+        "topicsTs": "Recent Hong Kong trends",
+        "printed": "Recent trends of national income, general price level and unemployment in Hong Kong"
+      },
+      {
+        "code": "F.hk-trends",
+        "field": "zh",
+        "kind": "reworded",
+        "topicsTs": "香港近期趨勢",
+        "printed": "香港近期國民收入、一般物價水平和失業的趨勢"
+      },
+      {
+        "code": "G.ad",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Aggregate demand",
+        "printed": "Aggregate demand (AD)"
+      },
+      {
+        "code": "G.as",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Aggregate supply",
+        "printed": "Aggregate supply (AS)"
+      },
+      {
+        "code": "G.equilibrium",
+        "field": "en",
+        "kind": "reworded",
+        "topicsTs": "Determination of output and price level",
+        "printed": "The determination of level of output and price"
+      },
+      {
+        "code": "H.banks",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Banks",
+        "printed": "Banks: functions and services"
+      },
+      {
+        "code": "H.interest",
+        "field": "en",
+        "kind": "reworded",
+        "topicsTs": "Interest-rate determination",
+        "printed": "Determination of interest rate in the money market"
+      },
+      {
+        "code": "I.cycles",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Business cycles",
+        "printed": "Business cycles: a description of the short run fluctuations in real GDP around the long run trend"
+      },
+      {
+        "code": "I.cycles",
+        "field": "zh",
+        "kind": "shortened",
+        "topicsTs": "經濟周期",
+        "printed": "經濟周期：描述實質本地生產總值圍繞長期趨勢作周而復始的短期波動"
+      },
+      {
+        "code": "J.bop",
+        "field": "en",
+        "kind": "shortened",
+        "topicsTs": "Balance of payments",
+        "printed": "Brief introduction to the balance of payments account"
+      },
+      {
+        "code": "J.bop",
+        "field": "zh",
+        "kind": "shortened",
+        "topicsTs": "國際收支平衡表",
+        "printed": "國際收支平衡表簡介"
+      },
+      {
+        "code": "EL1.pricing",
+        "field": "en",
+        "kind": "case only",
+        "topicsTs": "Monopoly pricing",
+        "printed": "Monopoly Pricing"
+      },
+      {
+        "code": "EL1.competition-policy",
+        "field": "en",
+        "kind": "case only",
+        "topicsTs": "Anti-competitive behaviours and competition policy",
+        "printed": "Anti-competitive Behaviours and Competition Policy"
+      },
+      {
+        "code": "EL2.trade-theory",
+        "field": "en",
+        "kind": "case only",
+        "topicsTs": "Extension of trade theory",
+        "printed": "Extension of Trade Theory"
+      },
+      {
+        "code": "EL2.growth",
+        "field": "en",
+        "kind": "case only",
+        "topicsTs": "Economic growth and development",
+        "printed": "Economic Growth and Development"
+      }
+    ]
+  },
+  "topics": [
+    {
+      "code": "A",
+      "part": "compulsory",
+      "en": "Basic Economic Concepts",
+      "zh": "基本經濟概念",
+      "hours": 12,
+      "pages": {
+        "guide": [9, 9],
+        "suppEn": [2, 5],
+        "suppZh": [2, 5]
+      },
+      "topicsTs": {
+        "en": "Basic Economic Concepts",
+        "zh": "基本經濟概念",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "A.social-science",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "Economics as a social science",
+          "zh": "經濟學作為一門社會科學",
+          "pages": {
+            "guide": [9, 9],
+            "suppEn": [2, 2],
+            "suppZh": [2, 2]
+          },
+          "topicsTs": {
+            "en": "Economics as a social science",
+            "zh": "經濟學作為一門社會科學",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["the methodology (scientific method) of economics"],
+          "updates": [],
+          "points": [
+            {"code": "A.social-science#whole", "slug": "whole", "label": null, "en": "Economics as a social science", "zh": "經濟學作為一門社會科學", "implicit": true, "details": [], "skills": ["recall", "examples"], "pages": {"guide": 9, "suppEn": 2, "suppZh": 2}}
+          ]
+        },
+        {
+          "code": "A.scarcity",
+          "seq": 2,
+          "guideColumn": "Key Points",
+          "en": "Scarcity, choice and opportunity cost",
+          "zh": "稀少性，選擇和機會成本",
+          "pages": {
+            "guide": [9, 9],
+            "suppEn": [2, 3],
+            "suppZh": [2, 3]
+          },
+          "topicsTs": {
+            "en": "Scarcity, choice and opportunity cost",
+            "zh": "稀少性，選擇和機會成本",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["present-value calculation"],
+          "updates": [],
+          "points": [
+            {"code": "A.scarcity#scarcity", "slug": "scarcity", "label": "(i)", "en": "The source of economic problems: scarcity", "zh": "經濟問題的根源：稀少性", "details": [{"en": "Unlimited wants and limited resources", "zh": "無窮慾望和有限資源"}, {"en": "Free and economic goods", "zh": "免費物品和經濟物品"}], "skills": ["recall", "explain", "examples"], "pages": {"guide": 9, "suppEn": 2, "suppZh": 2}},
+            {"code": "A.scarcity#choice-cost", "slug": "choice-cost", "label": "(ii)", "en": "Choice and opportunity cost", "zh": "選擇和機會成本", "details": [{"en": "Economic decisions involving choices among alternatives", "zh": "經濟決定──涉及在不同的選擇中作出抉擇"}, {"en": "Concept of cost in economics", "zh": "經濟學上有關成本的概念"}, {"en": "Interest as the cost of earlier availability of resources", "zh": "利息作為提早獲取資源的代價"}], "skills": ["recall", "explain", "calculate", "examples"], "pages": {"guide": 9, "suppEn": 2, "suppZh": 2}}
+          ]
+        },
+        {
+          "code": "A.basic-problems",
+          "seq": 3,
+          "guideColumn": "Key Points",
+          "en": "The three basic economic problems",
+          "zh": "三個基本經濟問題",
+          "pages": {
+            "guide": [9, 9],
+            "suppEn": [3, 4],
+            "suppZh": [3, 4]
+          },
+          "topicsTs": {
+            "en": "Three basic economic problems",
+            "zh": "三個基本經濟問題",
+            "enKind": "shortened",
+            "zhKind": "same"
+          },
+          "notRequired": ["theories on types of economic systems (illustration by examples only)"],
+          "updates": [],
+          "points": [
+            {"code": "A.basic-problems#three-questions", "slug": "three-questions", "label": "(i)", "en": "What to produce? How to produce? For whom to produce?", "zh": "生產甚麼？怎樣生產？為誰生產？", "details": [], "skills": ["recall", "examples"], "pages": {"guide": 9, "suppEn": 3, "suppZh": 3}},
+            {"code": "A.basic-problems#how-society", "slug": "how-society", "label": "(ii)", "en": "How society tackles the basic economic problems", "zh": "社會怎樣處理三個基本經濟問題", "details": [{"en": "By society's customs and traditions", "zh": "根據社會風俗和慣例"}, {"en": "By government decisions", "zh": "由政府決定"}, {"en": "By the market mechanism", "zh": "利用市場機制"}], "skills": ["examples"], "pages": {"guide": 9, "suppEn": 4, "suppZh": 4}},
+            {"code": "A.basic-problems#property-rights", "slug": "property-rights", "label": "(iii)", "en": "Private property rights and its importance in a market economy", "zh": "私有產權及其在市場經濟中的重要性", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 9, "suppEn": 4, "suppZh": 4}}
+          ]
+        },
+        {
+          "code": "A.specialization",
+          "seq": 4,
+          "guideColumn": "Key Points",
+          "en": "Specialization and exchange",
+          "zh": "專門化及交易",
+          "pages": {
+            "guide": [9, 9],
+            "suppEn": [4, 5],
+            "suppZh": [4, 4]
+          },
+          "topicsTs": {
+            "en": "Specialization and exchange",
+            "zh": "專門化及交易",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "A.specialization#whole", "slug": "whole", "label": null, "en": "Specialization and exchange", "zh": "專門化及交易", "implicit": true, "details": [{"en": "Exchange as a condition for specialization", "zh": "交易作為專門化的條件"}], "skills": ["explain"], "pages": {"guide": 9, "suppEn": 4, "suppZh": 4}}
+          ]
+        },
+        {
+          "code": "A.circular-flow",
+          "seq": 5,
+          "guideColumn": "Key Points",
+          "en": "Circular flow of economic activities",
+          "zh": "經濟活動的循環流程",
+          "pages": {
+            "guide": [9, 9],
+            "suppEn": [5, 5],
+            "suppZh": [4, 5]
+          },
+          "topicsTs": {
+            "en": "Circular flow",
+            "zh": "經濟活動的循環流程",
+            "enKind": "shortened",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "A.circular-flow#households-firms", "slug": "households-firms", "label": "(i)", "en": "Consumption of households and production of firms", "zh": "住戶的消費與廠商的生產", "details": [], "skills": ["explain", "diagram"], "pages": {"guide": 9, "suppEn": 5, "suppZh": 4}},
+            {"code": "A.circular-flow#production-income-expenditure", "slug": "production-income-expenditure", "label": "(ii)", "en": "The relationship among production, income and expenditure", "zh": "生產、收入和支出的關係", "details": [], "skills": ["explain", "diagram"], "pages": {"guide": 9, "suppEn": 5, "suppZh": 5}}
+          ]
+        },
+        {
+          "code": "A.positive-normative",
+          "seq": 6,
+          "guideColumn": "Key Points",
+          "en": "Positive and normative statements",
+          "zh": "實證性和規範性的陳述",
+          "pages": {
+            "guide": [9, 9],
+            "suppEn": [5, 5],
+            "suppZh": [5, 5]
+          },
+          "topicsTs": {
+            "en": "Positive and normative statements",
+            "zh": "實證性和規範性的陳述",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "A.positive-normative#whole", "slug": "whole", "label": null, "en": "Positive and normative statements", "zh": "實證性和規範性的陳述", "implicit": true, "details": [{"en": "Distinction between positive statements and normative statements", "zh": "實證性的陳述和規範性的陳述的分別"}], "skills": ["recall", "examples", "evaluate"], "pages": {"guide": 9, "suppEn": 5, "suppZh": 5}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "B",
+      "part": "compulsory",
+      "en": "Firms and Production",
+      "zh": "廠商與生產",
+      "hours": 30,
+      "pages": {
+        "guide": [10, 12],
+        "suppEn": [5, 12],
+        "suppZh": [5, 11]
+      },
+      "topicsTs": {
+        "en": "Firms and Production",
+        "zh": "廠商與生產",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "B.ownership",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "Ownership of firms",
+          "zh": "廠商的所有權",
+          "pages": {
+            "guide": [10, 10],
+            "suppEn": [5, 7],
+            "suppZh": [5, 6]
+          },
+          "topicsTs": {
+            "en": "Ownership of firms",
+            "zh": "廠商的所有權",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["classification of partnership", "classification of shares and bonds", "documents for setting up a business"],
+          "updates": [],
+          "points": [
+            {"code": "B.ownership#forms", "slug": "forms", "label": "(i)", "en": "Forms of ownership", "zh": "所有權的形式", "details": [{"en": "Public ownership", "zh": "公有制"}, {"en": "Private ownership: sole proprietorship, partnership and limited company", "zh": "私有制：獨資、合夥及有限公司"}], "skills": ["recall", "examples", "evaluate"], "pages": {"guide": 10, "suppEn": 6, "suppZh": 5}},
+            {"code": "B.ownership#liability", "slug": "liability", "label": "(ii)", "en": "Limited and unlimited liability", "zh": "有限責任與無限責任", "details": [], "skills": ["recall"], "pages": {"guide": 10, "suppEn": 6, "suppZh": 6}},
+            {"code": "B.ownership#shares-bonds", "slug": "shares-bonds", "label": "(iii)", "en": "Shares and bonds as sources of capital", "zh": "股票和債券作為資本來源", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 10, "suppEn": 7, "suppZh": 6}}
+          ]
+        },
+        {
+          "code": "B.production-types",
+          "seq": 2,
+          "guideColumn": "Key Points",
+          "en": "Types/stages of production",
+          "zh": "生產的種類/階段",
+          "pages": {
+            "guide": [10, 10],
+            "suppEn": [7, 7],
+            "suppZh": [6, 6]
+          },
+          "topicsTs": {
+            "en": "Types and stages of production",
+            "zh": "生產的種類/階段",
+            "enKind": "reworded",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "B.production-types#whole", "slug": "whole", "label": null, "en": "Types/stages of production", "zh": "生產的種類/階段", "implicit": true, "details": [{"en": "Primary, secondary and tertiary production and their inter-relationship", "zh": "初級、二級和三級生產及其相互關係"}], "skills": ["recall", "examples"], "pages": {"guide": 10, "suppEn": 7, "suppZh": 6}}
+          ]
+        },
+        {
+          "code": "B.goods",
+          "seq": 3,
+          "guideColumn": "Key Points",
+          "en": "Types of goods and services produced",
+          "zh": "物品和服務的種類",
+          "pages": {
+            "guide": [10, 10],
+            "suppEn": [7, 7],
+            "suppZh": [7, 7]
+          },
+          "topicsTs": {
+            "en": "Types of goods and services",
+            "zh": "物品和服務的種類",
+            "enKind": "shortened",
+            "zhKind": "same"
+          },
+          "notRequired": ["modelling of public goods", "impure public goods"],
+          "updates": [],
+          "points": [
+            {"code": "B.goods#producer-consumer", "slug": "producer-consumer", "label": "(i)", "en": "Producer and consumer goods", "zh": "生產者物品和消費品", "details": [], "skills": ["recall", "examples"], "pages": {"guide": 10, "suppEn": 7, "suppZh": 7}},
+            {"code": "B.goods#private-public", "slug": "private-public", "label": "(ii)", "en": "Private and public goods", "zh": "私用品及共用品", "details": [], "skills": ["recall", "examples"], "pages": {"guide": 10, "suppEn": 7, "suppZh": 7}}
+          ]
+        },
+        {
+          "code": "B.division-of-labour",
+          "seq": 4,
+          "guideColumn": "Key Points",
+          "en": "Division of labour",
+          "zh": "分工",
+          "pages": {
+            "guide": [10, 10],
+            "suppEn": [8, 8],
+            "suppZh": [7, 7]
+          },
+          "topicsTs": {
+            "en": "Division of labour",
+            "zh": "分工",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "B.division-of-labour#types", "slug": "types", "label": "(i)", "en": "Types: simple, complex and regional", "zh": "種類：簡單、複雜和區域分工", "details": [], "skills": ["recall", "examples"], "pages": {"guide": 10, "suppEn": 8, "suppZh": 7}},
+            {"code": "B.division-of-labour#pros-cons", "slug": "pros-cons", "label": "(ii)", "en": "Advantages and disadvantages", "zh": "利與弊", "details": [], "skills": ["explain"], "pages": {"guide": 10, "suppEn": 8, "suppZh": 7}},
+            {"code": "B.division-of-labour#limitations", "slug": "limitations", "label": "(iii)", "en": "Limitations", "zh": "限制", "details": [], "skills": ["recall"], "pages": {"guide": 10, "suppEn": 8, "suppZh": 7}}
+          ]
+        },
+        {
+          "code": "B.factors",
+          "seq": 5,
+          "guideColumn": "Key Points",
+          "en": "Factors of production",
+          "zh": "生產要素",
+          "pages": {
+            "guide": [11, 11],
+            "suppEn": [8, 9],
+            "suppZh": [8, 8]
+          },
+          "topicsTs": {
+            "en": "Factors of production",
+            "zh": "生產要素",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "B.factors#human", "slug": "human", "label": "(i)", "en": "Human resources", "zh": "人力資源", "details": [{"en": "Labour: supply, productivity, mobility and different methods of wage payments", "zh": "勞力：供應、生產力、流動性及各種工資制度"}, {"en": "Entrepreneurship: risk-bearing and decision-making", "zh": "企業家職能：風險承擔和決策"}], "skills": ["recall", "explain", "calculate"], "pages": {"guide": 11, "suppEn": 8, "suppZh": 8}},
+            {"code": "B.factors#natural", "slug": "natural", "label": "(ii)", "en": "Natural resources", "zh": "天然資源", "details": [{"en": "Land: supply", "zh": "土地：供應"}], "skills": ["recall"], "pages": {"guide": 11, "suppEn": 9, "suppZh": 8}},
+            {"code": "B.factors#man-made", "slug": "man-made", "label": "(iii)", "en": "Man-made resources", "zh": "人造資源", "details": [{"en": "Capital: accumulation and depreciation", "zh": "資本：累積和折舊"}], "skills": ["recall", "explain"], "pages": {"guide": 11, "suppEn": 9, "suppZh": 8}},
+            {"code": "B.factors#hk-features", "slug": "hk-features", "label": "(iv)", "en": "The features of (i) to (iii) in Hong Kong", "zh": "(i) 至 (iii) 項在香港的特色", "details": [], "skills": ["recall"], "pages": {"guide": 11, "suppEn": 9, "suppZh": 8}}
+          ]
+        },
+        {
+          "code": "B.costs",
+          "seq": 6,
+          "guideColumn": "Key Points",
+          "en": "Production and costs in the short run and long run",
+          "zh": "短期和長期生產及生產成本",
+          "pages": {
+            "guide": [11, 11],
+            "suppEn": [9, 11],
+            "suppZh": [9, 10]
+          },
+          "topicsTs": {
+            "en": "Production and costs",
+            "zh": "短期和長期生產及生產成本",
+            "enKind": "shortened",
+            "zhKind": "same"
+          },
+          "notRequired": ["general relationship between total, marginal and average cost curves", "relationship between short-run and long-run cost curves", "link between diminishing returns and the U-shaped marginal cost curve", "further classification of internal / external economies of scale", "methods of integration such as takeover and merger"],
+          "updates": [],
+          "points": [
+            {"code": "B.costs#short-long-run", "slug": "short-long-run", "label": "(i)", "en": "Definition of short run and long run", "zh": "以固定和可變生產要素定義「短期」和「長期」生產", "details": [{"en": "In terms of fixed and variable factors of production", "zh": null}], "skills": ["recall", "examples"], "pages": {"guide": 11, "suppEn": 9, "suppZh": 9}},
+            {"code": "B.costs#diminishing-returns", "slug": "diminishing-returns", "label": "(ii)", "en": "Law of diminishing marginal returns", "zh": "邊際回報遞減定律", "details": [{"en": "Illustration by total product, average product and marginal product schedules only", "zh": "只須用總產量表、平均產量表和邊際產量表說明"}], "skills": ["recall", "calculate"], "pages": {"guide": 11, "suppEn": 9, "suppZh": 9}},
+            {"code": "B.costs#costs", "slug": "costs", "label": "(iii)", "en": "Cost of production", "zh": "生產成本", "details": [{"en": "Fixed and variable costs", "zh": "固定成本和可變成本"}, {"en": "Total, marginal and average cost of production", "zh": "總生產成本、邊際生產成本及平均生產成本"}], "skills": ["recall", "examples", "calculate"], "pages": {"guide": 11, "suppEn": 10, "suppZh": 9}},
+            {"code": "B.costs#scale", "slug": "scale", "label": "(iv)", "en": "Economies and diseconomies of scale", "zh": "規模經濟和規模負經濟", "details": [{"en": "Internal economies and diseconomies of scale", "zh": "內部規模經濟及內部規模負經濟"}, {"en": "External economies and diseconomies of scale", "zh": "外部規模經濟及外部規模負經濟"}], "skills": ["recall", "explain", "diagram"], "pages": {"guide": 11, "suppEn": 10, "suppZh": 10}},
+            {"code": "B.costs#integration", "slug": "integration", "label": "(v)", "en": "Expansion and integration of firms", "zh": "廠商的擴張與結合", "details": [{"en": "Types: vertical, horizontal, lateral and conglomerate", "zh": "種類：縱向、橫向、側向和集團結合"}, {"en": "Motives", "zh": "動機"}], "skills": ["recall", "examples", "explain"], "pages": {"guide": 11, "suppEn": 11, "suppZh": 10}}
+          ]
+        },
+        {
+          "code": "B.objectives",
+          "seq": 7,
+          "guideColumn": "Key Points",
+          "en": "The objectives of firms",
+          "zh": "廠商目標",
+          "pages": {
+            "guide": [12, 12],
+            "suppEn": [11, 12],
+            "suppZh": [11, 11]
+          },
+          "topicsTs": {
+            "en": "Objectives of firms",
+            "zh": "廠商目標",
+            "enKind": "shortened",
+            "zhKind": "same"
+          },
+          "notRequired": ["long-run supply", "shut-down point and break-even point", "graphical relationship between MC, AC, AVC and the supply curve", "a monopolist has no supply curve"],
+          "updates": [],
+          "points": [
+            {"code": "B.objectives#profit-max", "slug": "profit-max", "label": "(i)", "en": "Profit maximization with given prices and marginal cost schedule", "zh": "利潤極大化的目標：在已知價格和邊際成本表的情況下，將利潤極大化", "details": [{"en": "Meaning of profit as the difference between total revenue and total cost", "zh": "利潤作為總收入及總成本的差額"}, {"en": "Profit maximizing choice of output for individual firms with given prices and marginal cost schedule", "zh": "個別廠商以已知價格及邊際成本表決定利潤極大化的產量"}, {"en": "The marginal cost schedule as the supply schedule of individual firms", "zh": "邊際成本表作為個別廠商的供應表"}], "skills": ["explain", "calculate"], "pages": {"guide": 12, "suppEn": 11, "suppZh": 11}},
+            {"code": "B.objectives#other-objectives", "slug": "other-objectives", "label": "(ii)", "en": "Other objectives: market share, provision of non-profit making services, corporate social responsibility, etc", "zh": "其他目標：市場佔有率、提供非牟利的服務、公司的社會責任等", "details": [], "skills": ["examples"], "pages": {"guide": 12, "suppEn": 12, "suppZh": 11}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "C",
+      "part": "compulsory",
+      "en": "Market and Price",
+      "zh": "市場與價格",
+      "hours": 32,
+      "pages": {
+        "guide": [12, 14],
+        "suppEn": [12, 19],
+        "suppZh": [11, 16]
+      },
+      "topicsTs": {
+        "en": "Market and Price",
+        "zh": "市場與價格",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "C.law-of-demand",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "Law of Demand",
+          "zh": "需求定律",
+          "pages": {
+            "guide": [12, 12],
+            "suppEn": [12, 12],
+            "suppZh": [11, 11]
+          },
+          "topicsTs": {
+            "en": "Law of demand",
+            "zh": "需求定律",
+            "enKind": "case only",
+            "zhKind": "same"
+          },
+          "notRequired": ["the term \"Alchian's Generalisation\""],
+          "updates": [],
+          "points": [
+            {"code": "C.law-of-demand#whole", "slug": "whole", "label": null, "en": "Law of Demand", "zh": "需求定律", "implicit": true, "details": [], "skills": ["recall", "explain"], "pages": {"guide": 12, "suppEn": 12, "suppZh": 11}}
+          ]
+        },
+        {
+          "code": "C.individual-demand",
+          "seq": 2,
+          "guideColumn": "Key Points",
+          "en": "Individual demand",
+          "zh": "個別需求",
+          "pages": {
+            "guide": [12, 12],
+            "suppEn": [13, 13],
+            "suppZh": [12, 12]
+          },
+          "topicsTs": {
+            "en": "Individual demand",
+            "zh": "個別需求",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["Giffen goods"],
+          "updates": [],
+          "points": [
+            {"code": "C.individual-demand#factors", "slug": "factors", "label": "(i)", "en": "Factors affecting individual demand", "zh": "影響個別需求的因素", "details": [], "skills": ["explain"], "pages": {"guide": 12, "suppEn": 13, "suppZh": 12}},
+            {"code": "C.individual-demand#related-goods", "slug": "related-goods", "label": "(ii)", "en": "Complements and substitutes, superior and inferior goods", "zh": "輔助品和代替品、優等物品和劣等物品", "details": [], "skills": ["recall"], "pages": {"guide": 12, "suppEn": 13, "suppZh": 12}},
+            {"code": "C.individual-demand#schedule-cp", "slug": "schedule-cp", "label": "(iii)", "en": "Individual demand schedule and importance of the ceteris paribus assumption", "zh": "個別需求表和其他因素不變的假設的重要性", "details": [], "skills": ["explain"], "pages": {"guide": 12, "suppEn": 13, "suppZh": 12}},
+            {"code": "C.individual-demand#qd-vs-demand", "slug": "qd-vs-demand", "label": "(iv)", "en": "Difference between change in quantity demanded and change in demand", "zh": "需求量改變和需求改變的分別", "details": [], "skills": ["explain"], "pages": {"guide": 12, "suppEn": 13, "suppZh": 12}}
+          ]
+        },
+        {
+          "code": "C.market-demand",
+          "seq": 3,
+          "guideColumn": "Key Points",
+          "en": "Market demand",
+          "zh": "市場需求",
+          "pages": {
+            "guide": [12, 12],
+            "suppEn": [13, 14],
+            "suppZh": [12, 12]
+          },
+          "topicsTs": {
+            "en": "Market demand",
+            "zh": "市場需求",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "C.market-demand#summation", "slug": "summation", "label": "(i)", "en": "Horizontal summation of individual demand curves", "zh": "個別需求曲線的橫向總和", "details": [], "skills": ["recall", "calculate", "diagram"], "pages": {"guide": 12, "suppEn": 13, "suppZh": 12}},
+            {"code": "C.market-demand#factors", "slug": "factors", "label": "(ii)", "en": "Factors affecting market demand", "zh": "影響市場需求的因素", "details": [], "skills": ["explain"], "pages": {"guide": 12, "suppEn": 14, "suppZh": 12}}
+          ]
+        },
+        {
+          "code": "C.individual-supply",
+          "seq": 4,
+          "guideColumn": "Key Points",
+          "en": "Individual supply",
+          "zh": "個別供應",
+          "pages": {
+            "guide": [12, 12],
+            "suppEn": [14, 14],
+            "suppZh": [12, 13]
+          },
+          "topicsTs": {
+            "en": "Individual supply",
+            "zh": "個別供應",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "C.individual-supply#factors", "slug": "factors", "label": "(i)", "en": "Factors affecting individual supply", "zh": "影響個別供應的因素", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 12, "suppEn": 14, "suppZh": 12}},
+            {"code": "C.individual-supply#schedule-cp", "slug": "schedule-cp", "label": "(ii)", "en": "Individual supply schedule and importance of the ceteris paribus assumption", "zh": "個別供應表和其他因素不變的假設的重要性", "details": [], "skills": ["explain"], "pages": {"guide": 12, "suppEn": 14, "suppZh": 13}},
+            {"code": "C.individual-supply#qs-vs-supply", "slug": "qs-vs-supply", "label": "(iii)", "en": "Difference between change in quantity supplied and change in supply", "zh": "供應量改變和供應改變的分別", "details": [], "skills": ["explain"], "pages": {"guide": 12, "suppEn": 14, "suppZh": 13}}
+          ]
+        },
+        {
+          "code": "C.market-supply",
+          "seq": 5,
+          "guideColumn": "Key Points",
+          "en": "Market supply",
+          "zh": "市場供應",
+          "pages": {
+            "guide": [13, 13],
+            "suppEn": [14, 15],
+            "suppZh": [13, 13]
+          },
+          "topicsTs": {
+            "en": "Market supply",
+            "zh": "市場供應",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "C.market-supply#summation", "slug": "summation", "label": "(i)", "en": "Horizontal summation of individual supply curves", "zh": "個別供應曲線的橫向總和", "details": [], "skills": ["calculate", "diagram"], "pages": {"guide": 13, "suppEn": 15, "suppZh": 13}},
+            {"code": "C.market-supply#factors", "slug": "factors", "label": "(ii)", "en": "Factors affecting market supply", "zh": "影響市場供應的因素", "details": [], "skills": ["explain"], "pages": {"guide": 13, "suppEn": 15, "suppZh": 13}}
+          ]
+        },
+        {
+          "code": "C.equilibrium",
+          "seq": 6,
+          "guideColumn": "Key Points",
+          "en": "Interaction between demand, supply and price",
+          "zh": "需求、供應和價格的相互作用",
+          "pages": {
+            "guide": [13, 13],
+            "suppEn": [15, 15],
+            "suppZh": [13, 13]
+          },
+          "topicsTs": {
+            "en": "Demand, supply and price",
+            "zh": "需求、供應和價格的相互作用",
+            "enKind": "shortened",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "C.equilibrium#definition", "slug": "definition", "label": "(i)", "en": "Definition of equilibrium: no tendency to change", "zh": "均衡的定義：並無作出改變的傾向", "details": [], "skills": ["recall"], "pages": {"guide": 13, "suppEn": 15, "suppZh": 13}},
+            {"code": "C.equilibrium#price-quantity", "slug": "price-quantity", "label": "(ii)", "en": "Equilibrium price and quantity", "zh": "均衡價格及數量", "details": [], "skills": ["calculate", "diagram"], "pages": {"guide": 13, "suppEn": 15, "suppZh": 13}},
+            {"code": "C.equilibrium#shifts", "slug": "shifts", "label": "(iii)", "en": "Effects of change in demand and/or change in supply on equilibrium price and quantity", "zh": "需求改變和/或供應改變對均衡價格及數量的影響", "details": [], "skills": ["explain", "diagram"], "pages": {"guide": 13, "suppEn": 15, "suppZh": 13}}
+          ]
+        },
+        {
+          "code": "C.surplus",
+          "seq": 7,
+          "guideColumn": "Key Points",
+          "en": "Consumer and producer surplus",
+          "zh": "消費者盈餘及生產者盈餘",
+          "pages": {
+            "guide": [13, 13],
+            "suppEn": [15, 16],
+            "suppZh": [13, 14]
+          },
+          "topicsTs": {
+            "en": "Consumer and producer surplus",
+            "zh": "消費者盈餘及生產者盈餘",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["utility, marginal rate of substitution and indifference curves", "methods of extracting consumer surplus", "the term \"marginal use value\""],
+          "updates": [],
+          "points": [
+            {"code": "C.surplus#consumer", "slug": "consumer", "label": "(i)", "en": "Marginal benefit to consumers, willingness to pay, consumer surplus, demand curve and their relationship", "zh": "消費者邊際利益、願意付出的代價、消費者盈餘、需求曲線及其關係", "details": [], "skills": ["recall", "diagram"], "pages": {"guide": 13, "suppEn": 15, "suppZh": 13}},
+            {"code": "C.surplus#producer", "slug": "producer", "label": "(ii)", "en": "Marginal cost of firms, minimum supply-price, producer surplus, supply curve and their relationship", "zh": "廠商邊際成本、最低供應價格、生產者盈餘、供應曲線及其關係", "details": [], "skills": ["recall", "diagram"], "pages": {"guide": 13, "suppEn": 16, "suppZh": 14}},
+            {"code": "C.surplus#diagram", "slug": "diagram", "label": "(iii)", "en": "Illustrate consumer surplus and producer surplus in a demand-supply diagram", "zh": "以需求供應圖說明消費者盈餘及生產者盈餘", "details": [], "skills": ["diagram"], "pages": {"guide": 13, "suppEn": 16, "suppZh": 14}}
+          ]
+        },
+        {
+          "code": "C.price-functions",
+          "seq": 8,
+          "guideColumn": "Key Points",
+          "en": "Functions of prices",
+          "zh": "價格的功能",
+          "pages": {
+            "guide": [13, 13],
+            "suppEn": [16, 17],
+            "suppZh": [14, 14]
+          },
+          "topicsTs": {
+            "en": "Functions of prices",
+            "zh": "價格的功能",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["graphical analysis"],
+          "updates": [],
+          "points": [
+            {"code": "C.price-functions#rationing", "slug": "rationing", "label": "(i)", "en": "Rationing function: existing supplies are distributed to users with highest value", "zh": "配給功能：現存供應分配予願意付最高價值的用家", "details": [], "skills": ["explain"], "pages": {"guide": 13, "suppEn": 16, "suppZh": 14}},
+            {"code": "C.price-functions#allocative", "slug": "allocative", "label": "(ii)", "en": "Allocative function:", "zh": "分配功能：", "details": [{"en": "Demand is derived from marginal benefit, and supply is derived from marginal cost; the interaction between demand and supply then determines price and resources allocation", "zh": "從邊際利益得出需求，從邊際成本得出供應，兩者的相互作用決定價格及資源配置"}, {"en": "Changes in relative prices and resource deployment", "zh": "相對價格的轉變與資源調配"}], "skills": ["explain"], "pages": {"guide": 13, "suppEn": 17, "suppZh": 14}}
+          ]
+        },
+        {
+          "code": "C.ped",
+          "seq": 9,
+          "guideColumn": "Key Points",
+          "en": "Price elasticity of demand",
+          "zh": "需求價格彈性",
+          "pages": {
+            "guide": [13, 13],
+            "suppEn": [17, 18],
+            "suppZh": [15, 15]
+          },
+          "topicsTs": {
+            "en": "Price elasticity of demand",
+            "zh": "需求價格彈性",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["point elasticity, cross elasticity and income elasticity", "the second law of demand"],
+          "updates": [],
+          "points": [
+            {"code": "C.ped#arc", "slug": "arc", "label": "(i)", "en": "Arc elasticity", "zh": "弧彈性", "details": [], "skills": ["calculate"], "pages": {"guide": 13, "suppEn": 17, "suppZh": 15}},
+            {"code": "C.ped#revenue", "slug": "revenue", "label": "(ii)", "en": "Relationship between price elasticity and total revenue", "zh": "價格彈性和總收入的關係", "details": [], "skills": ["explain"], "pages": {"guide": 13, "suppEn": 18, "suppZh": 15}},
+            {"code": "C.ped#factors", "slug": "factors", "label": "(iii)", "en": "Factors affecting price elasticity of demand", "zh": "影響需求價格彈性的因素", "details": [], "skills": ["explain"], "pages": {"guide": 13, "suppEn": 18, "suppZh": 15}}
+          ]
+        },
+        {
+          "code": "C.pes",
+          "seq": 10,
+          "guideColumn": "Key Points",
+          "en": "Price elasticity of supply",
+          "zh": "供應價格彈性",
+          "pages": {
+            "guide": [14, 14],
+            "suppEn": [18, 18],
+            "suppZh": [15, 15]
+          },
+          "topicsTs": {
+            "en": "Price elasticity of supply",
+            "zh": "供應價格彈性",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["point elasticity and cross elasticity"],
+          "updates": [],
+          "points": [
+            {"code": "C.pes#arc", "slug": "arc", "label": "(i)", "en": "Arc elasticity", "zh": "弧彈性", "details": [], "skills": ["calculate"], "pages": {"guide": 14, "suppEn": 18, "suppZh": 15}},
+            {"code": "C.pes#factors", "slug": "factors", "label": "(ii)", "en": "Factors affecting price elasticity of supply", "zh": "影響供應價格彈性的因素", "details": [], "skills": ["explain"], "pages": {"guide": 14, "suppEn": 18, "suppZh": 15}}
+          ]
+        },
+        {
+          "code": "C.intervention",
+          "seq": 11,
+          "guideColumn": "Key Points",
+          "en": "Market intervention",
+          "zh": "市場干預",
+          "pages": {
+            "guide": [14, 14],
+            "suppEn": [18, 19],
+            "suppZh": [15, 16]
+          },
+          "topicsTs": {
+            "en": "Market intervention",
+            "zh": "市場干預",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "C.intervention#price", "slug": "price", "label": "(i)", "en": "Price intervention: price ceiling and price floor", "zh": "價格干預：價格上限和價格下限", "details": [], "skills": ["recall", "explain", "diagram"], "pages": {"guide": 14, "suppEn": 18, "suppZh": 15}},
+            {"code": "C.intervention#quota", "slug": "quota", "label": "(ii)", "en": "Quantity intervention: quota", "zh": "數量干預：配額", "details": [{"en": "Illustration of quota by a kinked supply curve", "zh": "以折曲供應曲線說明"}], "skills": ["recall", "explain", "diagram"], "pages": {"guide": 14, "suppEn": 19, "suppZh": 16}},
+            {"code": "C.intervention#tax-subsidy", "slug": "tax-subsidy", "label": "(iii)", "en": "Unit tax and unit subsidy", "zh": "從量稅和從量津貼", "details": [{"en": "Determination of the share of the tax burden/subsidy between producers and consumers", "zh": "決定生產者和消費者在稅項負擔/津貼中各佔的比重"}], "skills": ["calculate", "explain", "diagram"], "pages": {"guide": 14, "suppEn": 19, "suppZh": 16}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "D",
+      "part": "compulsory",
+      "en": "Competition and Market Structure",
+      "zh": "競爭與市場結構",
+      "hours": 8,
+      "pages": {
+        "guide": [14, 14],
+        "suppEn": [19, 20],
+        "suppZh": [17, 17]
+      },
+      "topicsTs": {
+        "en": "Competition and Market Structure",
+        "zh": "競爭與市場結構",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "D.structure",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "Perfect competition and imperfect competition (monopolistic competition, oligopoly and monopoly)",
+          "zh": "完全競爭和不完全競爭(壟斷性競爭、寡頭壟斷和壟斷)",
+          "pages": {
+            "guide": [14, 14],
+            "suppEn": [19, 20],
+            "suppZh": [17, 17]
+          },
+          "topicsTs": {
+            "en": "Perfect and imperfect competition",
+            "zh": "完全競爭和不完全競爭",
+            "enKind": "reworded",
+            "zhKind": "shortened"
+          },
+          "notRequired": ["general analysis with marginal revenue and marginal cost curves"],
+          "updates": [],
+          "points": [
+            {"code": "D.structure#market", "slug": "market", "label": "(i)", "en": "Definition of market", "zh": "市場的定義", "details": [], "skills": ["recall"], "pages": {"guide": 14, "suppEn": 20, "suppZh": 17}},
+            {"code": "D.structure#features", "slug": "features", "label": "(ii)", "en": "General features", "zh": "一般特徵", "details": [{"en": "Number of sellers", "zh": "賣家數目"}, {"en": "Number of buyers", "zh": "買家數目"}, {"en": "Nature of product", "zh": "產品性質"}, {"en": "Ease of entry", "zh": "進入市場的容易程度"}, {"en": "Availability of information", "zh": "資訊掌握程度"}, {"en": "Price taker/price searcher", "zh": "受價者/尋價者"}], "skills": ["recall", "examples"], "pages": {"guide": 14, "suppEn": 20, "suppZh": 17}},
+            {"code": "D.structure#monopoly-power", "slug": "monopoly-power", "label": "(iii)", "en": "Sources of monopoly power", "zh": "獲得壟斷能力的原因", "details": [], "skills": ["explain"], "pages": {"guide": 14, "suppEn": 20, "suppZh": 17}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "E",
+      "part": "compulsory",
+      "en": "Efficiency, Equity and the Role of Government",
+      "zh": "效率、公平和政府的角色",
+      "hours": 18,
+      "pages": {
+        "guide": [15, 15],
+        "suppEn": [21, 24],
+        "suppZh": [17, 20]
+      },
+      "topicsTs": {
+        "en": "Efficiency, Equity and the Role of Government",
+        "zh": "效率、公平和政府的角色",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "E.efficiency",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "Efficiency",
+          "zh": "效率",
+          "pages": {
+            "guide": [15, 15],
+            "suppEn": [21, 21],
+            "suppZh": [17, 18]
+          },
+          "topicsTs": {
+            "en": "Efficiency",
+            "zh": "效率",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["the term \"Pareto condition\"", "the claim that it is always efficient when all constraints are considered", "the Coase theorem", "graphical analysis of divergence beyond consumer / producer surplus diagrams"],
+          "updates": [],
+          "points": [
+            {"code": "E.efficiency#conditions", "slug": "conditions", "label": "(i)", "en": "Conditions for efficiency: Maximization of total social surplus; marginal benefit equals marginal cost", "zh": "達至效率的條件：總社會盈餘極大化；邊際利益等於邊際成本", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 15, "suppEn": 21, "suppZh": 17}},
+            {"code": "E.efficiency#deviations", "slug": "deviations", "label": "(ii)", "en": "Deviations from efficiency:", "zh": "偏離效率:", "details": [{"en": "Price ceiling, price floor, tax, subsidy and quota", "zh": "價格上限、價格下限、稅項、津貼及配額"}, {"en": "Deadweight loss", "zh": "淨損失"}], "skills": ["recall", "explain", "diagram"], "pages": {"guide": 15, "suppEn": 21, "suppZh": 18}},
+            {"code": "E.efficiency#externalities", "slug": "externalities", "label": "(iii)", "en": "Divergence between private and social costs (benefits): market versus government solutions, illustrated by examples ONLY", "zh": "私人代價(利益)和社會代價(利益)的分歧：只須用例子說明市場與政府的解決辦法", "details": [], "skills": ["examples", "explain"], "pages": {"guide": 15, "suppEn": 21, "suppZh": 18}}
+          ]
+        },
+        {
+          "code": "E.equity",
+          "seq": 2,
+          "guideColumn": "Key Points",
+          "en": "Equity",
+          "zh": "公平",
+          "pages": {
+            "guide": [15, 15],
+            "suppEn": [22, 23],
+            "suppZh": [19, 19]
+          },
+          "topicsTs": {
+            "en": "Equity",
+            "zh": "公平",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["philosophical exploration of equity", "efficiency of public goods", "efficiency implications of monopoly (Compulsory Part)", "construction of the Lorenz curve and Gini coefficient", "detailed labour-market analysis such as marginal revenue product"],
+          "updates": [],
+          "points": [
+            {"code": "E.equity#efficiency-equity", "slug": "efficiency-equity", "label": "(i)", "en": "Efficiency and equity in a market economy", "zh": "市場經濟中的效率與公平", "details": [], "skills": ["explain"], "pages": {"guide": 15, "suppEn": 22, "suppZh": 19}},
+            {"code": "E.equity#measuring", "slug": "measuring", "label": "(ii)", "en": "Measuring income inequality: income distribution, Lorenz curve and Gini coefficient", "zh": "量度收入不均：收入分配、洛倫茨曲線及堅尼系數", "details": [], "skills": ["explain", "data"], "pages": {"guide": 15, "suppEn": 22, "suppZh": 19}},
+            {"code": "E.equity#sources", "slug": "sources", "label": "(iii)", "en": "Sources of income inequality: human capital (e.g. skill differentials), discrimination and unequal ownership of capital, etc", "zh": "收入不均的緣由：人力資本(例如技術差異)，歧視及資本擁有權不平均等", "details": [], "skills": ["explain"], "pages": {"guide": 15, "suppEn": 23, "suppZh": 19}}
+          ]
+        },
+        {
+          "code": "E.policy",
+          "seq": 3,
+          "guideColumn": "Key Points",
+          "en": "Policy concerns",
+          "zh": "政策的考慮",
+          "pages": {
+            "guide": [15, 15],
+            "suppEn": [23, 24],
+            "suppZh": [20, 20]
+          },
+          "topicsTs": {
+            "en": "Policy concerns",
+            "zh": "政策的考慮",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["theoretical discussion of the equity-efficiency trade-off"],
+          "updates": [],
+          "points": [
+            {"code": "E.policy#aims", "slug": "aims", "label": "(i)", "en": "Equalizing income or equalizing opportunities", "zh": "收入均等化或機會均等化", "details": [], "skills": ["explain", "evaluate"], "pages": {"guide": 15, "suppEn": 23, "suppZh": 20}},
+            {"code": "E.policy#disincentives", "slug": "disincentives", "label": "(ii)", "en": "Disincentive effects of taxes and transfers", "zh": "稅項及轉移的抑制作用", "details": [], "skills": ["explain"], "pages": {"guide": 15, "suppEn": 23, "suppZh": 20}},
+            {"code": "E.policy#trade-off", "slug": "trade-off", "label": "(iii)", "en": "Trade-off between equity and efficiency", "zh": "公平與效率之間的取捨", "details": [], "skills": ["explain", "evaluate"], "pages": {"guide": 15, "suppEn": 24, "suppZh": 20}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "F",
+      "part": "compulsory",
+      "en": "Measurement of Economic Performance",
+      "zh": "經濟表現的量度",
+      "hours": 12,
+      "pages": {
+        "guide": [16, 16],
+        "suppEn": [24, 27],
+        "suppZh": [20, 24]
+      },
+      "topicsTs": {
+        "en": "Measurement of Economic Performance",
+        "zh": "經濟表現的量度",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "F.national-income",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "National income",
+          "zh": "國民收入",
+          "pages": {
+            "guide": [16, 16],
+            "suppEn": [24, 26],
+            "suppZh": [20, 23]
+          },
+          "topicsTs": {
+            "en": "National income",
+            "zh": "國民收入",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["components of GDP under the income approach", "the identity S - I = NX", "other GDP measures such as NDP", "other GNI measures (constant prices, factor cost, NNI)", "the Human Development Index (Compulsory Part)", "how the Census and Statistics Department compiles chain volume measures"],
+          "updates": [
+            {
+              "year": null,
+              "text": "Note: Census and Statistics Department compiles real GDP by chain volume measures; teachers are advised to introduce the concept.",
+              "where": "supp EN p.25 / ZH p.22"
+            },
+            {
+              "year": null,
+              "text": "Note: the Department's term \"net external primary income flows\" for net income from abroad; teachers are advised to introduce it.",
+              "where": "supp EN p.26 / ZH p.22"
+            }
+          ],
+          "points": [
+            {"code": "F.national-income#general-term", "slug": "general-term", "label": "(i)", "en": "National income as a general term for aggregates like Gross Domestic Product (GDP) and Gross National Income (GNI)", "zh": "國民收入是本地生產總值和本地居民總收入等總量的統稱", "details": [], "skills": ["recall"], "pages": {"guide": 16, "suppEn": 24, "suppZh": 20}},
+            {"code": "F.national-income#gdp", "slug": "gdp", "label": "(ii)", "en": "Gross Domestic Product (GDP)", "zh": "本地生產總值(GDP)", "details": [{"en": "The three approaches to measure GDP: production approach (value-added approach), income approach, expenditure approach", "zh": "從三個層面計算本地生產總值：生產面(增加價值面)、收入面、支出面"}, {"en": "Nominal and real GDP", "zh": "名義本地生產總值及實質本地生產總值"}, {"en": "GDP at factor cost", "zh": "以要素成本計算的本地生產總值"}, {"en": "per capita GDP; growth rate of GDP", "zh": "按人口平均計算的本地生產總值；本地生產總值的增長率"}], "skills": ["recall", "explain", "calculate", "data"], "pages": {"guide": 16, "suppEn": 24, "suppZh": 21}},
+            {"code": "F.national-income#gni", "slug": "gni", "label": "(iii)", "en": "GNI as GDP plus net income from abroad", "zh": "本地居民總收入為本地生產總值及從外國所賺取淨收益的總和", "details": [], "skills": ["recall", "examples", "calculate"], "pages": {"guide": 16, "suppEn": 26, "suppZh": 22}},
+            {"code": "F.national-income#uses-limits", "slug": "uses-limits", "label": "(iv)", "en": "Uses and limitations of national income statistics as an indicator of economic welfare and for international comparison", "zh": "以國民收入統計數字作為經濟福利指標和作國際比較時的運用和限制", "details": [], "skills": ["explain", "evaluate"], "pages": {"guide": 16, "suppEn": 26, "suppZh": 23}}
+          ]
+        },
+        {
+          "code": "F.price-level",
+          "seq": 2,
+          "guideColumn": "Key Points",
+          "en": "General price level as measured by Consumer Price Index and implicit price deflator of GDP",
+          "zh": "以消費物價指數和本地生產總值內含平減物價指數量度一般物價水平",
+          "pages": {
+            "guide": [16, 16],
+            "suppEn": [26, 26],
+            "suppZh": [23, 23]
+          },
+          "topicsTs": {
+            "en": "General price level",
+            "zh": "一般物價水平",
+            "enKind": "shortened",
+            "zhKind": "shortened"
+          },
+          "notRequired": ["construction of the CPI and the implicit price deflator of GDP"],
+          "updates": [],
+          "points": [
+            {"code": "F.price-level#whole", "slug": "whole", "label": null, "en": "General price level as measured by Consumer Price Index and implicit price deflator of GDP", "zh": "以消費物價指數和本地生產總值內含平減物價指數量度一般物價水平", "implicit": true, "details": [], "skills": ["calculate", "explain"], "pages": {"guide": 16, "suppEn": 26, "suppZh": 23}}
+          ]
+        },
+        {
+          "code": "F.unemployment",
+          "seq": 3,
+          "guideColumn": "Key Points",
+          "en": "Unemployment and underemployment rates as measured in terms of the percentage of unemployed and underemployed persons in the labour force",
+          "zh": "以失業及就業不足人士在勞動人口中所佔的百分比量度失業率及就業不足率",
+          "pages": {
+            "guide": [16, 16],
+            "suppEn": [27, 27],
+            "suppZh": [23, 23]
+          },
+          "topicsTs": {
+            "en": "Unemployment and underemployment rates",
+            "zh": "失業率及就業不足率",
+            "enKind": "shortened",
+            "zhKind": "shortened"
+          },
+          "notRequired": ["the technical definitions used to compile the statistics"],
+          "updates": [],
+          "points": [
+            {"code": "F.unemployment#whole", "slug": "whole", "label": null, "en": "Unemployment and underemployment rates as measured in terms of the percentage of unemployed and underemployed persons in the labour force", "zh": "以失業及就業不足人士在勞動人口中所佔的百分比量度失業率及就業不足率", "implicit": true, "details": [], "skills": ["recall", "calculate"], "pages": {"guide": 16, "suppEn": 27, "suppZh": 23}}
+          ]
+        },
+        {
+          "code": "F.hk-trends",
+          "seq": 4,
+          "guideColumn": "Key Points",
+          "en": "Recent trends of national income, general price level and unemployment in Hong Kong",
+          "zh": "香港近期國民收入、一般物價水平和失業的趨勢",
+          "pages": {
+            "guide": [16, 16],
+            "suppEn": [27, 27],
+            "suppZh": [24, 24]
+          },
+          "topicsTs": {
+            "en": "Recent Hong Kong trends",
+            "zh": "香港近期趨勢",
+            "enKind": "reworded",
+            "zhKind": "reworded"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "F.hk-trends#whole", "slug": "whole", "label": null, "en": "Recent trends of national income, general price level and unemployment in Hong Kong", "zh": "香港近期國民收入、一般物價水平和失業的趨勢", "implicit": true, "details": [], "skills": ["data"], "pages": {"guide": 16, "suppEn": 27, "suppZh": 24}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "G",
+      "part": "compulsory",
+      "en": "National Income Determination and Price Level",
+      "zh": "國民收入決定及價格水平",
+      "hours": 16,
+      "pages": {
+        "guide": [17, 17],
+        "suppEn": [27, 31],
+        "suppZh": [24, 26]
+      },
+      "topicsTs": {
+        "en": "National Income Determination and Price Level",
+        "zh": "國民收入決定及價格水平",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "G.ad",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "Aggregate demand (AD)",
+          "zh": "總需求",
+          "pages": {
+            "guide": [17, 17],
+            "suppEn": [27, 28],
+            "suppZh": [24, 24]
+          },
+          "topicsTs": {
+            "en": "Aggregate demand",
+            "zh": "總需求",
+            "enKind": "shortened",
+            "zhKind": "same"
+          },
+          "notRequired": ["derivation of the AD curve", "the magnitude of an AD shift", "factors affecting the slope of the AD curve", "mathematical functions of consumption, investment and net export"],
+          "updates": [],
+          "points": [
+            {"code": "G.ad#slope", "slug": "slope", "label": "(i)", "en": "Reasons for a downward sloping AD curve", "zh": "總需求曲線向右下傾斜的原因", "details": [], "skills": ["explain", "diagram"], "pages": {"guide": 17, "suppEn": 27, "suppZh": 24}},
+            {"code": "G.ad#determinants", "slug": "determinants", "label": "(ii)", "en": "Determinants of aggregate demand:", "zh": "決定總需求的因素：", "details": [{"en": "Private consumption expenditure, which in turn depends on disposable income, the desire to save, wealth (value of assets), interest rate, etc", "zh": "私人消費支出(受可支配收入、儲蓄意慾、財富(資產價值)、利率等影響)"}, {"en": "Investment expenditure, which in turn depends on business prospect, interest rate, etc", "zh": "投資支出(受營商前景、利率等影響)"}, {"en": "Government expenditure", "zh": "政府支出"}, {"en": "Net export, which in turn depends on the economic conditions of trading partners, exchange rate, etc", "zh": "出口淨值(受貿易夥伴之經濟狀況、匯率等影響)"}], "skills": ["explain", "diagram"], "pages": {"guide": 17, "suppEn": 28, "suppZh": 24}}
+          ]
+        },
+        {
+          "code": "G.as",
+          "seq": 2,
+          "guideColumn": "Key Points",
+          "en": "Aggregate supply (AS)",
+          "zh": "總供應",
+          "pages": {
+            "guide": [17, 17],
+            "suppEn": [29, 29],
+            "suppZh": [25, 25]
+          },
+          "topicsTs": {
+            "en": "Aggregate supply",
+            "zh": "總供應",
+            "enKind": "shortened",
+            "zhKind": "same"
+          },
+          "notRequired": ["explanation by the Phillips curve", "the magnitude of an AS shift", "any explanation of an upward-sloping SRAS other than imperfect adjustment of input and output prices"],
+          "updates": [],
+          "points": [
+            {"code": "G.as#sras", "slug": "sras", "label": "(i)", "en": "Reason for an upward sloping short run AS curve", "zh": "短期總供應曲線向右上傾斜的原因", "details": [], "skills": ["explain"], "pages": {"guide": 17, "suppEn": 29, "suppZh": 25}},
+            {"code": "G.as#lras", "slug": "lras", "label": "(ii)", "en": "Reasons for a vertical long run AS curve", "zh": "長期總供應曲線垂直的原因", "details": [], "skills": ["explain"], "pages": {"guide": 17, "suppEn": 29, "suppZh": 25}},
+            {"code": "G.as#factors", "slug": "factors", "label": "(iii)", "en": "Factors affecting short run and long run AS", "zh": "影響短期及長期總供應的因素", "details": [], "skills": ["explain", "diagram"], "pages": {"guide": 17, "suppEn": 29, "suppZh": 25}}
+          ]
+        },
+        {
+          "code": "G.equilibrium",
+          "seq": 3,
+          "guideColumn": "Key Points",
+          "en": "The determination of level of output and price",
+          "zh": "產出和價格水平的決定",
+          "pages": {
+            "guide": [17, 17],
+            "suppEn": [30, 31],
+            "suppZh": [25, 26]
+          },
+          "topicsTs": {
+            "en": "Determination of output and price level",
+            "zh": "產出和價格水平的決定",
+            "enKind": "reworded",
+            "zhKind": "same"
+          },
+          "notRequired": ["the Quantity Theory of Money in this topic", "describing the adjustment process between equilibria", "an endogenous interest rate (it is treated as exogenous)"],
+          "updates": [],
+          "points": [
+            {"code": "G.equilibrium#equilibrium", "slug": "equilibrium", "label": "(i)", "en": "Determination of the equilibrium level of output and price level in the AS-AD model", "zh": "運用總供應─總需求模型以決定均衡產出及價格水平", "details": [], "skills": ["diagram", "explain"], "pages": {"guide": 17, "suppEn": 30, "suppZh": 25}},
+            {"code": "G.equilibrium#changes", "slug": "changes", "label": "(ii)", "en": "Changes in the equilibrium level of output and price level caused by change(s) in the AD and/or AS", "zh": "總需求及/或總供應的轉變如何改變均衡產出及價格水平", "details": [], "skills": ["diagram", "explain"], "pages": {"guide": 17, "suppEn": 30, "suppZh": 26}},
+            {"code": "G.equilibrium#employment-output", "slug": "employment-output", "label": "(iii)", "en": "Relationship between employment and output level", "zh": "就業與產出之關係", "details": [], "skills": ["explain"], "pages": {"guide": 17, "suppEn": 31, "suppZh": 26}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "H",
+      "part": "compulsory",
+      "en": "Money and Banking",
+      "zh": "貨幣與銀行",
+      "hours": 18,
+      "pages": {
+        "guide": [17, 18],
+        "suppEn": [31, 34],
+        "suppZh": [26, 29]
+      },
+      "topicsTs": {
+        "en": "Money and Banking",
+        "zh": "貨幣與銀行",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "H.money",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "Money",
+          "zh": "貨幣",
+          "pages": {
+            "guide": [17, 17],
+            "suppEn": [31, 31],
+            "suppZh": [26, 26]
+          },
+          "topicsTs": {
+            "en": "Money",
+            "zh": "貨幣",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "H.money#definition", "slug": "definition", "label": "(i)", "en": "Definition of money", "zh": "貨幣的定義", "details": [], "skills": ["recall"], "pages": {"guide": 17, "suppEn": 31, "suppZh": 26}},
+            {"code": "H.money#functions", "slug": "functions", "label": "(ii)", "en": "Nature and functions of money", "zh": "貨幣的性質及功能", "details": [], "skills": ["recall"], "pages": {"guide": 17, "suppEn": 31, "suppZh": 26}}
+          ]
+        },
+        {
+          "code": "H.banks",
+          "seq": 2,
+          "guideColumn": "Key Points",
+          "en": "Banks: functions and services",
+          "zh": "銀行的功能和服務",
+          "pages": {
+            "guide": [18, 18],
+            "suppEn": [31, 32],
+            "suppZh": [27, 27]
+          },
+          "topicsTs": {
+            "en": "Banks",
+            "zh": "銀行的功能和服務",
+            "enKind": "shortened",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [
+            {
+              "year": 2023,
+              "text": "Note: in 2023 the HKMA proposed merging deposit-taking companies into the restricted licence banks (two tiers, five-year transition); teachers may introduce it, but the curriculum and assessment stay unchanged until the new framework is fully implemented.",
+              "where": "supp EN p.32 / ZH p.27"
+            }
+          ],
+          "points": [
+            {"code": "H.banks#commercial-central", "slug": "commercial-central", "label": "(i)", "en": "Commercial banks and central bank", "zh": "商業銀行和中央銀行", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 18, "suppEn": 31, "suppZh": 27}},
+            {"code": "H.banks#hk-tiers", "slug": "hk-tiers", "label": "(ii)", "en": "Licensed banks, restricted licence banks and deposit-taking companies in Hong Kong", "zh": "香港的持牌銀行、有限制牌照銀行和接受存款公司", "details": [], "skills": ["recall"], "pages": {"guide": 18, "suppEn": 32, "suppZh": 27}},
+            {"code": "H.banks#hk-central-banking", "slug": "hk-central-banking", "label": "(iii)", "en": "How central banking functions are performed in Hong Kong", "zh": "中央銀行的功能在香港如何運作", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 18, "suppEn": 32, "suppZh": 27}}
+          ]
+        },
+        {
+          "code": "H.money-supply",
+          "seq": 3,
+          "guideColumn": "Key Points",
+          "en": "Money supply",
+          "zh": "貨幣供應",
+          "pages": {
+            "guide": [18, 18],
+            "suppEn": [32, 32],
+            "suppZh": [27, 28]
+          },
+          "topicsTs": {
+            "en": "Money supply",
+            "zh": "貨幣供應",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["manipulating the cash-deposit ratio in credit-creation calculations"],
+          "updates": [],
+          "points": [
+            {"code": "H.money-supply#definitions", "slug": "definitions", "label": "(i)", "en": "Definitions of money supply in Hong Kong", "zh": "香港貨幣供應的定義", "details": [], "skills": ["recall"], "pages": {"guide": 18, "suppEn": 32, "suppZh": 27}},
+            {"code": "H.money-supply#credit-creation", "slug": "credit-creation", "label": "(ii)", "en": "Credit creation/contraction and the banking multiplier", "zh": "信貸創造/收縮和銀行乘數", "details": [], "skills": ["recall", "explain", "calculate"], "pages": {"guide": 18, "suppEn": 32, "suppZh": 28}}
+          ]
+        },
+        {
+          "code": "H.money-demand",
+          "seq": 4,
+          "guideColumn": "Key Points",
+          "en": "Money demand",
+          "zh": "貨幣需求",
+          "pages": {
+            "guide": [18, 18],
+            "suppEn": [33, 33],
+            "suppZh": [28, 28]
+          },
+          "topicsTs": {
+            "en": "Money demand",
+            "zh": "貨幣需求",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "H.money-demand#motives", "slug": "motives", "label": "(i)", "en": "Meaning of transactions demand for money and asset demand for money", "zh": "交易性貨幣需求和資產性貨幣需求的意思", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 18, "suppEn": 33, "suppZh": 28}},
+            {"code": "H.money-demand#interest-income", "slug": "interest-income", "label": "(ii)", "en": "Money demand as a function of nominal interest rate and income", "zh": "名義利率和收入對貨幣需求的影響", "details": [], "skills": ["explain"], "pages": {"guide": 18, "suppEn": 33, "suppZh": 28}}
+          ]
+        },
+        {
+          "code": "H.interest",
+          "seq": 5,
+          "guideColumn": "Key Points",
+          "en": "Determination of interest rate in the money market",
+          "zh": "貨幣市場中利率的決定",
+          "pages": {
+            "guide": [18, 18],
+            "suppEn": [34, 34],
+            "suppZh": [29, 29]
+          },
+          "topicsTs": {
+            "en": "Interest-rate determination",
+            "zh": "貨幣市場中利率的決定",
+            "enKind": "reworded",
+            "zhKind": "same"
+          },
+          "notRequired": ["alternative models of interest-rate determination such as loanable funds"],
+          "updates": [],
+          "points": [
+            {"code": "H.interest#whole", "slug": "whole", "label": null, "en": "Determination of interest rate in the money market", "zh": "貨幣市場中利率的決定", "implicit": true, "details": [{"en": "Interaction of money supply and money demand", "zh": "貨幣供應和貨幣需求的相互作用"}], "skills": ["explain"], "pages": {"guide": 18, "suppEn": 34, "suppZh": 29}}
+          ]
+        },
+        {
+          "code": "H.financial-centre",
+          "seq": 6,
+          "guideColumn": "Key Points",
+          "en": "Hong Kong as a financial centre",
+          "zh": "香港作為金融中心",
+          "pages": {
+            "guide": [18, 18],
+            "suppEn": [34, 34],
+            "suppZh": [29, 29]
+          },
+          "topicsTs": {
+            "en": "Hong Kong as a financial centre",
+            "zh": "香港作為金融中心",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "H.financial-centre#factors", "slug": "factors", "label": "(i)", "en": "Factors contributing to its development as a financial centre", "zh": "促成香港發展成為金融中心的因素", "details": [], "skills": ["explain"], "pages": {"guide": 18, "suppEn": 34, "suppZh": 29}},
+            {"code": "H.financial-centre#effects", "slug": "effects", "label": "(ii)", "en": "Effects on the Hong Kong economy", "zh": "對香港經濟的影響", "details": [], "skills": ["explain"], "pages": {"guide": 18, "suppEn": 34, "suppZh": 29}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "I",
+      "part": "compulsory",
+      "en": "Macroeconomic Problems and Policies",
+      "zh": "宏觀經濟問題和政策",
+      "hours": 30,
+      "pages": {
+        "guide": [18, 19],
+        "suppEn": [34, 38],
+        "suppZh": [29, 33]
+      },
+      "topicsTs": {
+        "en": "Macroeconomic Problems and Policies",
+        "zh": "宏觀經濟問題和政策",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "I.cycles",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "Business cycles: a description of the short run fluctuations in real GDP around the long run trend",
+          "zh": "經濟周期：描述實質本地生產總值圍繞長期趨勢作周而復始的短期波動",
+          "pages": {
+            "guide": [18, 18],
+            "suppEn": [34, 34],
+            "suppZh": [29, 29]
+          },
+          "topicsTs": {
+            "en": "Business cycles",
+            "zh": "經濟周期",
+            "enKind": "shortened",
+            "zhKind": "shortened"
+          },
+          "notRequired": ["theories of business cycles"],
+          "updates": [],
+          "points": [
+            {"code": "I.cycles#whole", "slug": "whole", "label": null, "en": "Business cycles: a description of the short run fluctuations in real GDP around the long run trend", "zh": "經濟周期：描述實質本地生產總值圍繞長期趨勢作周而復始的短期波動", "implicit": true, "details": [], "skills": ["recall"], "pages": {"guide": 18, "suppEn": 34, "suppZh": 29}}
+          ]
+        },
+        {
+          "code": "I.inflation",
+          "seq": 2,
+          "guideColumn": "Key Points",
+          "en": "Inflation and deflation",
+          "zh": "通貨膨脹和通貨緊縮",
+          "pages": {
+            "guide": [18, 18],
+            "suppEn": [34, 35],
+            "suppZh": [29, 30]
+          },
+          "topicsTs": {
+            "en": "Inflation and deflation",
+            "zh": "通貨膨脹和通貨緊縮",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["a non-constant velocity of circulation (it is assumed constant)"],
+          "updates": [],
+          "points": [
+            {"code": "I.inflation#definitions", "slug": "definitions", "label": "(i)", "en": "Definitions of inflation and deflation", "zh": "通貨膨脹和通貨緊縮的定義", "details": [], "skills": ["recall"], "pages": {"guide": 18, "suppEn": 35, "suppZh": 29}},
+            {"code": "I.inflation#real-interest", "slug": "real-interest", "label": "(ii)", "en": "Relationship between nominal and real interest rates", "zh": "名義利率和實質利率的關係", "details": [], "skills": ["calculate"], "pages": {"guide": 18, "suppEn": 35, "suppZh": 29}},
+            {"code": "I.inflation#redistribution", "slug": "redistribution", "label": "(iii)", "en": "Redistributive effects", "zh": "再分配效應", "details": [], "skills": ["explain", "examples"], "pages": {"guide": 18, "suppEn": 35, "suppZh": 30}},
+            {"code": "I.inflation#quantity-theory", "slug": "quantity-theory", "label": "(iv)", "en": "Inflation and Quantity Theory of Money", "zh": "通貨膨脹及貨幣數量論", "details": [], "skills": ["explain", "calculate"], "pages": {"guide": 18, "suppEn": 35, "suppZh": 30}}
+          ]
+        },
+        {
+          "code": "I.unemployment",
+          "seq": 3,
+          "guideColumn": "Key Points",
+          "en": "Unemployment",
+          "zh": "失業",
+          "pages": {
+            "guide": [19, 19],
+            "suppEn": [35, 36],
+            "suppZh": [30, 31]
+          },
+          "topicsTs": {
+            "en": "Unemployment",
+            "zh": "失業",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["the Phillips curve", "models or theories of unemployment such as search theory"],
+          "updates": [],
+          "points": [
+            {"code": "I.unemployment#meaning", "slug": "meaning", "label": "(i)", "en": "Meaning of unemployment", "zh": "失業的意思", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 19, "suppEn": 35, "suppZh": 30}},
+            {"code": "I.unemployment#underemployment", "slug": "underemployment", "label": "(ii)", "en": "Meaning of underemployment", "zh": "就業不足的意思", "details": [], "skills": ["recall"], "pages": {"guide": 19, "suppEn": 36, "suppZh": 30}},
+            {"code": "I.unemployment#cost", "slug": "cost", "label": "(iii)", "en": "Cost of unemployment", "zh": "失業的代價", "details": [], "skills": ["explain"], "pages": {"guide": 19, "suppEn": 36, "suppZh": 31}}
+          ]
+        },
+        {
+          "code": "I.fiscal",
+          "seq": 4,
+          "guideColumn": "Key Points",
+          "en": "Fiscal policy",
+          "zh": "財政政策",
+          "pages": {
+            "guide": [19, 19],
+            "suppEn": [36, 37],
+            "suppZh": [31, 32]
+          },
+          "topicsTs": {
+            "en": "Fiscal policy",
+            "zh": "財政政策",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "I.fiscal#meaning", "slug": "meaning", "label": "(i)", "en": "Meaning of fiscal policy", "zh": "財政政策的意思", "details": [{"en": "Definition of budget; surplus budget, deficit budget and balanced budget", "zh": "預算的定義；盈餘預算、赤字預算和平衡預算"}, {"en": "Taxation > Principles", "zh": "徵稅 > 原則"}, {"en": "Taxation > Classification of taxes > Direct and indirect taxes", "zh": "徵稅 > 稅項的分類 > 直接稅和間接稅"}, {"en": "Taxation > Classification of taxes > Progressive, proportional and regressive taxes", "zh": "徵稅 > 稅項的分類 > 累進稅、比例稅和累退稅"}, {"en": "Public expenditure: classification by function", "zh": "公共開支：按功能分類"}], "skills": ["recall", "examples", "explain"], "pages": {"guide": 19, "suppEn": 36, "suppZh": 31}},
+            {"code": "I.fiscal#effects", "slug": "effects", "label": "(ii)", "en": "Effect of fiscal policy on the level of output and price", "zh": "財政政策對產出及價格水平的影響", "details": [], "skills": ["explain", "diagram"], "pages": {"guide": 19, "suppEn": 37, "suppZh": 32}}
+          ]
+        },
+        {
+          "code": "I.monetary",
+          "seq": 5,
+          "guideColumn": "Key Points",
+          "en": "Monetary policy",
+          "zh": "貨幣政策",
+          "pages": {
+            "guide": [19, 19],
+            "suppEn": [38, 38],
+            "suppZh": [32, 33]
+          },
+          "topicsTs": {
+            "en": "Monetary policy",
+            "zh": "貨幣政策",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": [],
+          "updates": [],
+          "points": [
+            {"code": "I.monetary#meaning", "slug": "meaning", "label": "(i)", "en": "Meaning of monetary policy", "zh": "貨幣政策的意思", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 19, "suppEn": 38, "suppZh": 32}},
+            {"code": "I.monetary#effects", "slug": "effects", "label": "(ii)", "en": "Effect of monetary policy on the level of output and price", "zh": "貨幣政策對產出及價格水平的影響", "details": [], "skills": ["explain", "diagram"], "pages": {"guide": 19, "suppEn": 38, "suppZh": 33}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "J",
+      "part": "compulsory",
+      "en": "International Trade and Finance",
+      "zh": "國際貿易和金融",
+      "hours": 18,
+      "pages": {
+        "guide": [20, 20],
+        "suppEn": [38, 41],
+        "suppZh": [33, 35]
+      },
+      "topicsTs": {
+        "en": "International Trade and Finance",
+        "zh": "國際貿易和金融",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "J.trade",
+          "seq": 1,
+          "guideColumn": "Key Points",
+          "en": "Free trade and trade barriers",
+          "zh": "自由貿易及貿易障礙",
+          "pages": {
+            "guide": [20, 20],
+            "suppEn": [38, 40],
+            "suppZh": [33, 34]
+          },
+          "topicsTs": {
+            "en": "Free trade and trade barriers",
+            "zh": "自由貿易及貿易障礙",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["illustrating comparative advantage with the production possibilities frontier (Compulsory Part)", "effects of tariff and quota on consumer surplus, producer surplus, total social surplus and deadweight loss"],
+          "updates": [],
+          "points": [
+            {"code": "J.trade#advantage", "slug": "advantage", "label": "(i)", "en": "Absolute advantage, comparative advantage and gains from trade", "zh": "絕對優勢、比較優勢和貿易獲益", "details": [], "skills": ["recall", "explain", "calculate"], "pages": {"guide": 20, "suppEn": 38, "suppZh": 33}},
+            {"code": "J.trade#hk-pattern", "slug": "hk-pattern", "label": "(ii)", "en": "Using the pattern of trade in Hong Kong to illustrate the principle of comparative advantage", "zh": "以香港的貿易模式來說明比較優勢原理", "details": [], "skills": ["explain", "data"], "pages": {"guide": 20, "suppEn": 39, "suppZh": 33}},
+            {"code": "J.trade#hk-importance", "slug": "hk-importance", "label": "(iii)", "en": "Importance of trade to Hong Kong's economy", "zh": "貿易對香港經濟的重要性", "details": [], "skills": ["explain", "data"], "pages": {"guide": 20, "suppEn": 39, "suppZh": 33}},
+            {"code": "J.trade#barriers", "slug": "barriers", "label": "(iv)", "en": "Trade barriers", "zh": "貿易障礙", "details": [{"en": "Types", "zh": "種類"}, {"en": "Effects of tariff and quota on price and output for a small open economy", "zh": "對一小型開放的經濟，關稅及配額對價格及產出的影響"}, {"en": "Trade barriers faced by Hong Kong", "zh": "香港面對的貿易障礙"}], "skills": ["recall", "explain"], "pages": {"guide": 20, "suppEn": 39, "suppZh": 33}},
+            {"code": "J.trade#hk-response", "slug": "hk-response", "label": "(v)", "en": "Hong Kong's attempts to overcome trade barriers", "zh": "香港嘗試克服貿易障礙的辦法", "details": [{"en": "Trade promotion", "zh": "貿易推廣"}, {"en": "Role of the HKSAR Government", "zh": "香港特別行政區政府的角色"}, {"en": "Role of international economic institutions (e.g. World Trade Organisation)", "zh": "國際經濟機構的角色(例如：世界貿易組織)"}], "skills": ["recall"], "pages": {"guide": 20, "suppEn": 39, "suppZh": 34}}
+          ]
+        },
+        {
+          "code": "J.bop",
+          "seq": 2,
+          "guideColumn": "Key Points",
+          "en": "Brief introduction to the balance of payments account",
+          "zh": "國際收支平衡表簡介",
+          "pages": {
+            "guide": [20, 20],
+            "suppEn": [40, 40],
+            "suppZh": [34, 35]
+          },
+          "topicsTs": {
+            "en": "Balance of payments",
+            "zh": "國際收支平衡表",
+            "enKind": "shortened",
+            "zhKind": "shortened"
+          },
+          "notRequired": ["sub-classification of the current-account components", "sub-classification of the capital and financial accounts", "telling whether a transaction hits the capital or the financial account"],
+          "updates": [
+            {
+              "year": null,
+              "text": "Note: trade balance means visible trade balance in the curriculum, though the Census and Statistics Department no longer publishes it; the Department uses the change-of-ownership principle for the current account (teachers advised to introduce it).",
+              "where": "supp EN p.40 / ZH p.34"
+            },
+            {
+              "year": 2023,
+              "text": "Note: the Census and Statistics Department announced the separation of the capital and financial accounts in 2023.",
+              "where": "supp EN p.41 / ZH p.35"
+            }
+          ],
+          "points": [
+            {"code": "J.bop#current-account", "slug": "current-account", "label": "•1", "en": "Current account", "zh": "經常賬戶", "details": [{"en": "Main components of the current account: goods, services, income and current transfers", "zh": "經常賬戶的主要組成部分：貨物、服務、收益和經常轉移"}], "skills": ["recall", "explain"], "pages": {"guide": 20, "suppEn": 40, "suppZh": 34}},
+            {"code": "J.bop#capital-financial", "slug": "capital-financial", "label": "•2", "en": "Capital account and financial account", "zh": "資本賬戶及金融賬戶", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 20, "suppEn": 40, "suppZh": 35}}
+          ]
+        },
+        {
+          "code": "J.exchange-rate",
+          "seq": 3,
+          "guideColumn": "Key Points",
+          "en": "Exchange rate",
+          "zh": "匯率",
+          "pages": {
+            "guide": [20, 20],
+            "suppEn": [41, 41],
+            "suppZh": [35, 35]
+          },
+          "topicsTs": {
+            "en": "Exchange rate",
+            "zh": "匯率",
+            "enKind": "same",
+            "zhKind": "same"
+          },
+          "notRequired": ["graphical analysis of exchange rates", "the mechanism that maintains the linked rate"],
+          "updates": [],
+          "points": [
+            {"code": "J.exchange-rate#meaning", "slug": "meaning", "label": "(i)", "en": "Meaning of exchange rate", "zh": "匯率的意思", "details": [], "skills": ["recall"], "pages": {"guide": 20, "suppEn": 41, "suppZh": 35}},
+            {"code": "J.exchange-rate#price-effects", "slug": "price-effects", "label": "(ii)", "en": "Effect of a change in the exchange rate on import price and export price", "zh": "匯率的改變對進口價格和出口價格的影響", "details": [], "skills": ["explain", "calculate"], "pages": {"guide": 20, "suppEn": 41, "suppZh": 35}},
+            {"code": "J.exchange-rate#linked-rate", "slug": "linked-rate", "label": "(iii)", "en": "Brief introduction to the linked exchange rate system in Hong Kong", "zh": "香港聯繫匯率制度簡介", "details": [], "skills": ["recall"], "pages": {"guide": 20, "suppEn": 41, "suppZh": 35}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "EL1",
+      "part": "elective",
+      "guideLabel": {
+        "en": "Elective Part 1",
+        "zh": "選修單元(一)"
+      },
+      "en": "Monopoly Pricing, Anti-competitive Behaviours and Competition Policy",
+      "zh": "壟斷定價、反競爭行為及競爭政策",
+      "hours": 24,
+      "pages": {
+        "guide": [21, 21],
+        "suppEn": [43, 45],
+        "suppZh": [36, 37]
+      },
+      "topicsTs": {
+        "en": "Monopoly Pricing, Anti-competitive Behaviours and Competition Policy",
+        "zh": "壟斷定價、反競爭行為及競爭政策",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "EL1.pricing",
+          "seq": 1,
+          "guideColumn": "Topic",
+          "en": "Monopoly Pricing",
+          "zh": "壟斷定價",
+          "pages": {
+            "guide": [21, 21],
+            "suppEn": [43, 44],
+            "suppZh": [36, 36]
+          },
+          "topicsTs": {
+            "en": "Monopoly pricing",
+            "zh": "壟斷定價",
+            "enKind": "case only",
+            "zhKind": "same"
+          },
+          "notRequired": ["price and output determination under price discrimination", "how monopoly profit changes when curves shift", "efficiency implications of price discrimination"],
+          "updates": [],
+          "points": [
+            {"code": "EL1.pricing#simple-monopoly", "slug": "simple-monopoly", "label": "(i)", "en": "Simple monopoly pricing", "zh": "簡單壟斷定價", "details": [{"en": "Determination of price, output and monopoly profit", "zh": "價格、產量及壟斷利潤的決定"}, {"en": "Efficiency implications", "zh": "效率含意"}, {"en": "Circumstances under which monopoly may be beneficial to society", "zh": "在一些情況下，壟斷可能為社會帶來益處"}], "skills": ["recall", "explain", "calculate", "diagram"], "pages": {"guide": 21, "suppEn": 43, "suppZh": 36}},
+            {"code": "EL1.pricing#price-discrimination", "slug": "price-discrimination", "label": "(ii)", "en": "Price discrimination", "zh": "價格分歧", "details": [{"en": "Meaning of price discrimination", "zh": "價格分歧的意思"}, {"en": "Conditions for price discrimination", "zh": "價格分歧的條件"}], "skills": ["recall", "examples"], "pages": {"guide": 21, "suppEn": 43, "suppZh": 36}}
+          ]
+        },
+        {
+          "code": "EL1.competition-policy",
+          "seq": 2,
+          "guideColumn": "Topic",
+          "en": "Anti-competitive Behaviours and Competition Policy",
+          "zh": "反競爭行為及競爭政策",
+          "pages": {
+            "guide": [21, 21],
+            "suppEn": [44, 45],
+            "suppZh": [37, 37]
+          },
+          "topicsTs": {
+            "en": "Anti-competitive behaviours and competition policy",
+            "zh": "反競爭行為及競爭政策",
+            "enKind": "case only",
+            "zhKind": "same"
+          },
+          "notRequired": ["graphical analysis of anti-competitive practices"],
+          "updates": [],
+          "points": [
+            {"code": "EL1.competition-policy#forms", "slug": "forms", "label": "(i)", "en": "Major forms of anti-competitive practices", "zh": "反競爭行為的主要形式", "details": [{"en": "Horizontal agreements among competitors: agreements to restrict prices and output", "zh": "競爭者之間的橫向協議：限制價格和產量的協議"}, {"en": "Vertical agreements between buyers and sellers", "zh": "買家與賣家之間的縱向協議"}, {"en": "Mergers: horizontal mergers, vertical mergers and potential competition mergers", "zh": "合併：橫向合併，縱向合併及潛在競爭者的合併"}], "skills": ["recall", "examples"], "pages": {"guide": 21, "suppEn": 44, "suppZh": 37}},
+            {"code": "EL1.competition-policy#impact", "slug": "impact", "label": "(ii)", "en": "The impact of anti-competitive practices", "zh": "反競爭行為的影響", "details": [], "skills": ["explain"], "pages": {"guide": 21, "suppEn": 45, "suppZh": 37}},
+            {"code": "EL1.competition-policy#ordinance", "slug": "ordinance", "label": "(iii)", "en": "The Competition Ordinance in Hong Kong", "zh": "香港的競爭條例", "details": [{"en": "The objectives of the Competition Ordinance in Hong Kong", "zh": null}, {"en": "The first conduct rule covering agreements, concerted practices and decisions that prevent, restrict or distort competition", "zh": null}, {"en": "The second conduct rule covering abuse of market power", "zh": null}, {"en": "Exclusions and exemptions", "zh": null}], "skills": ["recall"], "pages": {"guide": 21, "suppEn": 45, "suppZh": 37}}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "EL2",
+      "part": "elective",
+      "guideLabel": {
+        "en": "Elective Part 2",
+        "zh": "選修單元(二)"
+      },
+      "en": "Extension of Trade Theory, Economic Growth and Development",
+      "zh": "貿易理論之延伸、經濟增長及發展",
+      "hours": 24,
+      "pages": {
+        "guide": [22, 22],
+        "suppEn": [46, 48],
+        "suppZh": [38, 39]
+      },
+      "topicsTs": {
+        "en": "Extension of Trade Theory, Economic Growth and Development",
+        "zh": "貿易理論之延伸、經濟增長及發展",
+        "enKind": "same",
+        "zhKind": "same"
+      },
+      "keyPoints": [
+        {
+          "code": "EL2.trade-theory",
+          "seq": 1,
+          "guideColumn": "Topic",
+          "en": "Extension of Trade Theory",
+          "zh": "貿易理論之延伸",
+          "pages": {
+            "guide": [22, 22],
+            "suppEn": [46, 46],
+            "suppZh": [38, 38]
+          },
+          "topicsTs": {
+            "en": "Extension of trade theory",
+            "zh": "貿易理論之延伸",
+            "enKind": "case only",
+            "zhKind": "same"
+          },
+          "notRequired": ["indifference curves", "determining the consumption point by indifference curves"],
+          "updates": [],
+          "points": [
+            {"code": "EL2.trade-theory#ppf", "slug": "ppf", "label": "(i)", "en": "Illustration of comparative costs and gains from trade with the aid of production possibilities frontier", "zh": "以生產可能曲線輔助說明比較成本和貿易獲益", "details": [], "skills": ["explain", "calculate", "diagram"], "pages": {"guide": 22, "suppEn": 46, "suppZh": 38}},
+            {"code": "EL2.trade-theory#globalization", "slug": "globalization", "label": "(ii)", "en": "Comparative advantage and its relation to globalization", "zh": "比較優勢及其與全球化之關係", "details": [], "skills": ["recall", "explain"], "pages": {"guide": 22, "suppEn": 46, "suppZh": 38}}
+          ]
+        },
+        {
+          "code": "EL2.growth",
+          "seq": 2,
+          "guideColumn": "Topic",
+          "en": "Economic Growth and Development",
+          "zh": "經濟增長及發展",
+          "pages": {
+            "guide": [22, 22],
+            "suppEn": [46, 48],
+            "suppZh": [38, 39]
+          },
+          "topicsTs": {
+            "en": "Economic growth and development",
+            "zh": "經濟增長及發展",
+            "enKind": "case only",
+            "zhKind": "same"
+          },
+          "notRequired": ["the aggregate production function", "theories and models of economic growth"],
+          "updates": [],
+          "points": [
+            {"code": "EL2.growth#measurement", "slug": "measurement", "label": "(i)", "en": "Measurement of economic growth and development", "zh": "經濟增長及發展之量度", "details": [{"en": "Changes in real GDP", "zh": "實質本地生產總值的轉變"}, {"en": "Changes in per capita real GDP", "zh": "按人口平均計算的實質本地生產總值的轉變"}, {"en": "Changes in Human Development Index", "zh": "人類發展指數的轉變"}], "skills": ["recall", "data"], "pages": {"guide": 22, "suppEn": 46, "suppZh": 38}},
+            {"code": "EL2.growth#factors", "slug": "factors", "label": "(ii)", "en": "Factors affecting growth of an economy", "zh": "影響經濟增長的因素", "details": [{"en": "Inputs: physical capital, human capital, natural resources, technological change", "zh": "投入：實物資本、人力資本、天然資源、技術改變"}, {"en": "Policies: saving and investment, foreign direct investment, trade, education, population, property rights, research and development", "zh": "政策：儲蓄及投資、外來直接投資、貿易、教育、人口、產權、研究及發展"}], "skills": ["explain", "data"], "pages": {"guide": 22, "suppEn": 47, "suppZh": 38}},
+            {"code": "EL2.growth#desirability-costs", "slug": "desirability-costs", "label": "(iii)", "en": "The desirability and costs of economic growth", "zh": "經濟增長的好處和代價", "details": [{"en": "Trade-off between current and future consumption", "zh": "當時消費與未來消費之間的取捨"}, {"en": "Growth, living standard and income distribution", "zh": "增長、生活水平及收入分佈"}, {"en": "Resources exhaustion, pollution and sustainable development", "zh": "資源耗竭、污染及可持續發展"}], "skills": ["explain", "evaluate", "data"], "pages": {"guide": 22, "suppEn": 48, "suppZh": 39}},
+            {"code": "EL2.growth#comparison", "slug": "comparison", "label": "(iv)", "en": "International/regional comparison", "zh": "國際/地區比較", "details": [], "skills": ["data", "recall"], "pages": {"guide": 22, "suppEn": 48, "suppZh": 39}}
+          ]
+        }
+      ]
+    }
+  ]
+}
