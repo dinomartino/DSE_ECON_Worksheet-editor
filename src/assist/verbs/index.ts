@@ -7,3 +7,4 @@ import './checkTerms';
 import './fromSource';
 import './quality';
 import './writeAnswers';
+import './coverage';

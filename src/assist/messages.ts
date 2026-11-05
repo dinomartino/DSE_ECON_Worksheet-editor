@@ -127,6 +127,27 @@ export const ASSIST_MESSAGES = defineMessages({
     zh: (to: string) => `這是教科書的寫法；EDB 以 ${to} 為首選。`,
   },
 
+  // Check syllabus coverage (k-0317)
+  coverageLabel: { en: 'Check syllabus coverage', zh: '檢查課程覆蓋' },
+  sendsCoverage: {
+    en: (n: number, provider: string) =>
+      `Sends ${n} ${n === 1 ? 'question' : 'questions'} to ${provider} with your key, then shows a report. Changes nothing.`,
+    zh: (n: number, provider: string) => `會連同你的 API key 把 ${n} 條題目傳送到 ${provider}，然後顯示報告。不會更改任何內容。`,
+  },
+  analysingQuestions: {
+    en: (n: number) => `Matching ${n} ${n === 1 ? 'question' : 'questions'} to the syllabus`,
+    zh: (n: number) => `正在把 ${n} 條題目對照課程`,
+  },
+  coverageHead: {
+    en: (hit: number, of: number, pct: string) => `Syllabus coverage: ${hit} of ${of} key points (${pct})`,
+    zh: (hit: number, of: number, pct: string) => `課程覆蓋：${of} 個重點中的 ${hit} 個（${pct}）`,
+  },
+  coverageNotAnalysed: {
+    en: (n: number) => `${n} ${n === 1 ? 'question' : 'questions'} not analysed`,
+    zh: (n: number) => `${n} 條題目未能分析`,
+  },
+  coverageNothing: { en: 'No question could be matched to the syllabus', zh: '沒有題目能對照課程' },
+
   // Check question quality
   qualityLabel: { en: 'Check question quality', zh: '檢查題目質素' },
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the same signature as en

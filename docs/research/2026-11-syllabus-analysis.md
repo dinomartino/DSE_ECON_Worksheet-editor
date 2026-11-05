@@ -1,5 +1,8 @@
 # Syllabus analysis for a "syllabus coverage check"
 
+**Decided 2026-11-05 (the user's answers to § 11, u-4zuy): v1 is § 10.11, which overrides § 10.4 (no stored field),
+§ 10.6 (HKEAA questions are sent, for now) and § 10.9 (no eval yet) where they differ.**
+
 Status: research, 2026-11-04 (task k-0317, step 1; the user's uploads u-j7v4, and their addition u-d8lf that
 the check must be built on the editor's AI framework, which is § 10). **Docs only: no app code.** Branch
 docs/syllabus-analysis. Companion file: [`syllabus-2025.json`](./syllabus-2025.json), a draft data file that no
@@ -739,9 +742,41 @@ stimulus (the output schema and the validator limit the damage; it is the teache
 a syllabus edition change needs a new data file and a code map, not an edit; the flags in the data file are my reading;
 the licence is not settled; provider privacy differs.
 
+### 10.11 What v1 builds (the user's answers, 2026-11-05)
+
+The user answered § 11 (u-4zuy). v1 is a **one-off report**, not tagging: nothing is written to the paper.
+
+- **The verb:** `check.syllabus`, "Check syllabus coverage" / 「檢查課程覆蓋」, scope = the whole paper or the selected
+  questions. Every question with words goes to the AI, **HKEAA-sourced ones included** (answer 5: the licence question
+  is set aside for now; § 10.6's guard is not built). Not paused (answer 6: the user tests it and will tag gold items
+  later; no eval, no gate in v1).
+- **Provider and model:** the same Settings → AI choice as Chinese translation (answer 7): `createRunDeps`, no new
+  setting.
+- **Per question, one structured result** (answer 8): for each *marked unit* (§ 10.2) up to three picks of a key point or
+  point code, main/also, band, confidence and a one-line reason, plus an optional `outside` string (what the guide says is
+  NOT required, empty when none). Requests chunk several questions as `check.quality` does; each question's validated
+  result is written to **its own temporary file** as soon as its chunk returns.
+- **Temporary files:** desktop: `$APPDATA/scratch/coverage/<run>/q<n>.json` (the shell's existing `$APPDATA/**` grant);
+  web: the browser's origin-private file system (OPFS) when it can write files, else memory. When every question is done
+  (or the run stops), the report is built **from those files** and the run's folder is deleted, in a `finally`, so errors
+  and Stop clean up too. A run's folder left by a crash or a closed tab is swept by the next run (folders older than an
+  hour). `src/platform/scratch.ts`.
+- **No new stored field and no tag writes** (answer 8): § 10.4's `pointTags` and the review cards are not built. The
+  report lives in memory until the bar is dismissed.
+- **The report** (answers 1–4, the recommendations): the C13 grid, topic → key point, columns Know / Apply–Analyse /
+  Evaluate marks, total marks, % of the paper, the topic's share of lesson hours; untested key points listed as gaps.
+  Headline: key-point breadth **by count** (*n* of 49 + the elective's) and **by lesson hours** (a topic's hours spread
+  over its key points by their point counts), points by count as detail, marks by AI confidence, and what was not
+  analysed. The Elective Part counts only when the AI found elective marks, for one part (the one with more marks; a
+  switch picks the other).
+- **Out-of-syllabus** (answer 9, undecided): carried in each temporary file as `outside`, **not shown** in v1.
+- **Not in v1:** tags or `pointTags`, review cards, scope presets (C10), the eval (§ 10.9), the HKEAA guard (§ 10.6).
+
 ## 11. Open questions for you
 
-Each has a recommendation; none blocks stage 0.
+Each has a recommendation; none blocks stage 0. **Answered 2026-11-05 (u-4zuy): 1–4 as recommended; 5 send every
+question for now; 6 no gold labels now, the user tests and tags later; 7 the user picks, as for Chinese translation;
+8 no stored field, per-question temporary files deleted after the report; 9 undecided, left out. See § 10.11.**
 
 1. **Which numbers count?** Recommended: headline = key-point breadth and marks in scope, points as detail, until the eval
    shows the AI is reliable at point level. (§ 8.2, § 10.8)

@@ -1,4 +1,5 @@
 import type { AiErrorInfo } from '@/ai/types';
+import type { CoverageReport, ElectiveChoice } from '@/coverage/report';
 import type { OutputMode, Worksheet } from '@/model/types';
 import type { TranslateScope } from '@/translate/types';
 
@@ -95,4 +96,7 @@ export type VerbOutcome =
   /** Nothing written, things to look at (Check terms, Quality check). */
   | { kind: 'findings'; summary: string; items: ReviewItem[]; applyAll?: { label: string; run(): void }; refresh?(): FindingsRefresh }
   | { kind: 'nothing'; summary: string }
+  /** Nothing written: a report to read (Check syllabus coverage). `rebuild` re-reads it with
+   *  another Elective Part counted, from the run's results held in memory. */
+  | { kind: 'report'; summary: string; report: CoverageReport; rebuild(choice: ElectiveChoice): CoverageReport }
   | { kind: 'error'; error: AiErrorInfo };
