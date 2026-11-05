@@ -40,7 +40,7 @@ syllabus actually is, what the exam weighs, what can honestly be measured, and h
 
 ### 1.1 What was read
 
-| Id | File (under `Inbox/`) | PDF pages | Printed page = PDF page − | What it is |
+| Id | File (under `/home/workspace/DSE_Mentor/edb-sources.local/`, moved from `Inbox/` in k-0341) | PDF pages | Printed page = PDF page − | What it is |
 |---|---|--:|--:|---|
 | `guide` | `2026-11-04-Econ_C&A_Guide_E_with_updates_in_2025.pdf` | 98 | 6 | The C&A Guide (CDC and HKEAA), first issued 2007, updated 2014, 2015 and 2025 (effective from S4 in 2025/26) |
 | `suppEn` | `2026-11-04-Econ_supplementary_doc_Eng_with_updates_in_2025.pdf` | 50 | 1 | Supplementary Document: the guide's tables plus an "Elaboration of the curriculum contents" column, and the exam page |
