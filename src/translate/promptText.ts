@@ -38,13 +38,13 @@ SYMBOLS AND NUMBERS
 9. Keep every number. Arabic numerals for data, years, percentages, labels and durations (圖1, 表2, 資料A, 60分鐘, 1小時30分鐘); Chinese numerals for counting words in instructions (兩個原因, 一項因素, 選答兩題). Thousands are separated by a space (3 000). Keep "$" before the number ($85, 每小時$40); HK$ and US$ follow rule 12.
 
 HONG KONG STYLE
-10. Hong Kong characters and forms: 什麼 (not 甚麼), 周期, 線, 着, 住戶. Never use Simplified Chinese.
+10. Hong Kong characters and forms: 甚麼 (not 什麼), 周期, 線, 著 (not 着), 住戶. Never use Simplified Chinese.
 11. Full-width punctuation in Chinese text: ，。：；？！、「」『』（）. Half-width ( ) only around a pure symbol, unit or abbreviation: 價格 ($), 本地生產總值 (GDP). Never type a space between a Chinese character and a Latin letter or digit: 資料A, 圖1, 廠商A, 2025年.
 12. Hong Kong forms for letters, currency, diagram names and paper furniture: {CONVENTIONS}. Country X → X國. Other letters follow the noun with no space: 資料A, 廠商A, 物品X, 方案I. END OF PAPER → 試卷完.
 13. Command words, as HKEAA writes them:
     Explain … → 解釋… | Explain your answer. → 試加解釋。 | Explain whether … → 解釋…是否…
     State … → 寫出… | State whether … → 指出…是否…
-    Give / List TWO … → 舉出 / 列出<b>兩個</b>… | Give TWO reasons why … → 舉出<b>兩個</b>原因，解釋為什麼…
+    Give / List TWO … → 舉出 / 列出<b>兩個</b>… | Give TWO reasons why … → 舉出<b>兩個</b>原因，解釋為甚麼…
     Define X. → 寫出X的定義。 | Calculate … → 計算… | Show your working. → 列示你的計算。
     Describe … → 描述… | Discuss … → 討論… | Justify … → 論證… | Do you agree? Explain. → 你同意嗎？試加解釋。
     Refer to Figure 1. → 參考圖1。 | Study the following information. → 閱讀以下資料。 | The table below shows … → 下表顯示…
@@ -120,7 +120,7 @@ export const FEWSHOT_TO_ZH: { user: PromptPayload; model: Array<{ key: string; t
   model: [
     { key: 't1', text: '政府向含糖飲品徵收從量稅。' },
     { key: 't2', text: '以圖1輔助，解釋該稅項所造成的效率損失。' },
-    { key: 't3', text: '舉出<b>兩個</b>原因，解釋為什麼消費者盈餘會減少。' },
+    { key: 't3', text: '舉出<b>兩個</b>原因，解釋為甚麼消費者盈餘會減少。' },
     { key: 't4', text: '寫出完全競爭的<b>一項</b>特徵。' },
     { key: 't5', text: '價格由P<sub>0</sub>上升至P<sub>1</sub>，因此需求量減少<blank/>單位。<br/>列示你的計算。' },
     { key: 't6', text: '價格 ($)' },
@@ -143,7 +143,7 @@ export const FEWSHOT_TO_EN: { user: PromptPayload; model: Array<{ key: string; t
         where: 'Question 2',
         context: [],
         items: [
-          { key: 't1', kind: 'part', text: '舉出<b>兩個</b>原因，解釋為什麼效率損失會增加。' },
+          { key: 't1', kind: 'part', text: '舉出<b>兩個</b>原因，解釋為甚麼效率損失會增加。' },
           { key: 't2', kind: 'part', text: '以圖1輔助，解釋甲國在哪種物品上具有比較優勢。' },
           { key: 't3', kind: 'axisTitle', text: '數量（單位）' },
           { key: 't4', kind: 'option', text: '只有(1)及(3)' },

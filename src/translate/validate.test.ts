@@ -26,7 +26,7 @@ const codes = (...args: Parameters<typeof check>) => check(...args).map((i) => `
 describe('validateItem', () => {
   it('passes a good translation with no issue', () => {
     expect(check([{ text: 'Give ' }, { text: 'TWO', bold: true }, { text: ' reasons why consumer surplus falls.' }],
-      '舉出<b>兩個</b>原因，解釋為什麼消費者盈餘會減少。')).toEqual([]);
+      '舉出<b>兩個</b>原因，解釋為甚麼消費者盈餘會減少。')).toEqual([]);
   });
 
   it('fails decode errors, empty and untranslated output', () => {

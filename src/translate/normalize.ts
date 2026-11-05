@@ -87,7 +87,7 @@ export function normalizeZh(runs: RichText): Normalized {
     set(match.index! + match[0].length - 1, '」');
   }
 
-  for (const [from, to] of [['甚麼', '什麼'], ['住户', '住戶']]) {
+  for (const [from, to] of [['什麼', '甚麼'], ['着', '著'], ['住户', '住戶']]) {
     for (const match of text().matchAll(new RegExp(from, 'g'))) [...to].forEach((ch, k) => set(match.index! + k, ch));
   }
 

@@ -84,7 +84,7 @@ export function buildMarkSchemeWorksheet(): Worksheet {
             points: [
               point('To raise tax revenue', '增加稅收'),
               point('To reduce consumption of a harmful good', '減少有害物品的消費'),
-              point('To internalise the external cost of smoking', '將吸煙的外部成本內部化'),
+              point('To internalise the external cost of smoking', '將吸煙的界外成本內部化'),
               point('Any other relevant point', '其他合理答案'),
             ],
           },
@@ -103,7 +103,7 @@ export function buildMarkSchemeWorksheet(): Worksheet {
             id: newId(),
             points: [
               point('Demand for cigarettes is price-inelastic', '香煙的需求缺乏價格彈性'),
-              point('Deadweight loss vs. the external cost corrected', '無謂損失與所糾正的外部成本'),
+              point('Deadweight loss vs. the external cost corrected', '無謂損失與所糾正的界外成本'),
             ],
           },
         ],

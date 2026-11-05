@@ -61,6 +61,11 @@ a version heading is edited afterwards.
 ### Changed
 - **Chinese wording follows the Education Bureau's 2025 supplement.** The inflationary and deflationary gap templates now say 差距 (通脹差距, 通縮差距), the labour curves say 勞力需求 and 勞力供應, the topic "Market intervention" is 政府干預, and the externality template says 界外效應. Nothing in your saved worksheets changes.
   <!-- zh: **中文用詞對齊教育局 2025 年補充文件。** 通脹和通縮缺口範本改稱「差距」（通脹差距、通縮差距），勞動市場曲線改稱「勞力需求」和「勞力供應」，課題「市場干預」改為「政府干預」，外部效應範本改稱「界外效應」。已儲存的工作紙不受影響。 -->
+- **Translation and term checks accept 價格水平.** Check terms and the translator no longer
+  mark 價格水平 as wrong: both 價格水平 and 物價水平 pass for "price level" (the Education Bureau
+  writes both), and you can pick one as your wording in Settings. The translator now writes 甚麼
+  and 著 (not 什麼 and 着), and 界外效益 passes for "external benefit" beside 界外利益.
+  <!-- zh: **翻譯和用詞檢查接受「價格水平」。** 「檢查用詞」和翻譯不再把「價格水平」標為錯誤：「price level」寫成「價格水平」或「物價水平」都可以（教育局兩者都有用），你亦可在設定中選定其中一個。翻譯現在會寫「甚麼」和「著」（不再是「什麼」和「着」），「external benefit」除了「界外利益」，寫成「界外效益」亦可。 -->
 
 ## 0.8.7 — 2026-11-01
 

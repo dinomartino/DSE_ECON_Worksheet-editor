@@ -146,10 +146,10 @@ describe('checkEnToZh states (§D.7)', () => {
   });
 
   it('gives each repeated wrong form its own check and fix', () => {
-    const checks = g.checkEnToZh('The price level rose twice. The price level fell.', '價格水平上升兩次。價格水平下跌。');
+    const checks = g.checkEnToZh('Total revenue rose twice. Total revenue fell.', '總收益上升兩次。總收益下跌。');
     expect(checks.map((c) => [c.state, c.fix?.start, c.fix?.to])).toEqual([
-      ['missing', 0, '物價水平'],
-      ['missing', 9, '物價水平'],
+      ['missing', 0, '總收入'],
+      ['missing', 8, '總收入'],
     ]);
   });
 
@@ -174,9 +174,13 @@ describe('checkEnToZh states (§D.7)', () => {
     expect(only('A public good', '公共財政').found).toBeUndefined();
   });
 
+  it('accepts 價格水平 and 物價水平 alike for price level (user decision, k-0336)', () => {
+    for (const zh of ['價格水平上升', '物價水平上升']) expect(only('The price level rises.', zh)).toMatchObject({ state: 'ok', severity: 'none' });
+  });
+
   it('reports a wrong form split by a line break or a blank, but offers no fix', () => {
-    for (const zh of ['價格\n水平', '價格 水平']) {
-      const c = only('price level', zh);
+    for (const zh of ['總收\n益', '總收 益']) {
+      const c = only('total revenue', zh);
       expect(c).toMatchObject({ state: 'missing', severity: 'warn', found: { rank: 0 } });
       expect(c.fix).toBeUndefined();
     }

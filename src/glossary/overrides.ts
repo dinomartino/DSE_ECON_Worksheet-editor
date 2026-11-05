@@ -21,6 +21,11 @@ export const PREFERRED_OVERRIDES: PreferredOverrides = {
 
 /** Values no general rule parses right (glossary research §1). */
 export const ZH_OVERRIDES: Readonly<Record<string, GlossarySense[]>> = {
+  // EDB writes 價格水平 8× (the 課題 G title) and 物價水平 2×; the glossary lists 物價水平 only.
+  // Both are fine in running text (user decision, 2026-11-05, k-0336): equal variants.
+  'price level': [{ ranks: [['物價水平', '價格水平']] }],
+  // 界外利益；外部效益 in the data; the user writes 界外效益 (2026-11-05, k-0336), beside 界外成本.
+  'external benefit': [{ ranks: [['界外利益', '界外效益'], ['外部效益']] }],
   // 企業 (管制) 俘虜；企業 (管制) 傀儡 — an optional infix, not a qualifier.
   'industry capture': [{ ranks: [['企業管制俘虜', '企業俘虜'], ['企業管制傀儡', '企業傀儡']] }],
   // The full-width brackets are part of the registered names.

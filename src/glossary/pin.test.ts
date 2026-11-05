@@ -10,7 +10,7 @@ const lines = (texts: string[], direction: 'toZh' | 'toEn', opts?: { denyHints?:
 describe('pin, EN → ZH', () => {
   it('pins the preferred rendering only, with equal variants', () => {
     expect(lines(['The price level and the deadweight loss; terms of trade.'], 'toZh')).toEqual([
-      'price level → 物價水平',
+      'price level → 物價水平 / 價格水平',
       'deadweight loss → 效率損失',
       'terms of trade → 貿易價格比率 / 貿易比率',
     ]);
@@ -37,8 +37,8 @@ describe('pin, EN → ZH', () => {
   });
 
   it('adds at most two (not …) hints, and only when asked', () => {
-    expect(lines(['price level'], 'toZh')).toEqual(['price level → 物價水平']);
-    expect(lines(['price level'], 'toZh', { denyHints: true })).toEqual(['price level → 物價水平 (not 價格水平)']);
+    expect(lines(['total revenue'], 'toZh')).toEqual(['total revenue → 總收入']);
+    expect(lines(['total revenue'], 'toZh', { denyHints: true })).toEqual(['total revenue → 總收入 (not 總收益)']);
     expect(lines(['tax incidence'], 'toZh', { denyHints: true })).toEqual(['tax incidence → 稅收承擔 (not 稅項歸宿, 稅收歸宿)']);
     expect(lines(['elastic demand'], 'toZh', { denyHints: true })[0]).not.toContain('缺乏彈性');
   });

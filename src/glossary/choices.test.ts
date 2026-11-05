@@ -21,6 +21,7 @@ const runs = (text: string) => [{ text }] as RichText;
  * Every pin, check and fix over the whole glossary: each entry's first form against each of
  * its renderings both ways, and every deny form. The digest was taken from the base commit
  * (e737806), before preferences existed: with none, nothing a teacher sees may change.
+ * Re-taken once the data itself changed (k-0336): 價格水平 joined 物價水平, 界外效益 joined 界外利益.
  */
 function digest(g: Glossary): string {
   const parts: string[] = [];
@@ -45,7 +46,7 @@ function digest(g: Glossary): string {
   }
   return createHash('sha256').update(parts.join('\n')).digest('hex');
 }
-const BEFORE_PREFERENCES = '05422bc51578847b7b7869c3d765a840196afc95b1275c52c95a6fee01de1a98';
+const BEFORE_PREFERENCES = '196edeac806eac1f49ea8eeab05ed13cc2780179438eb956f097c7748fe01d93';
 
 describe('no preferences: the glossary is exactly what it was', () => {
   it('pins, checks and fixes match the base commit', () => {
@@ -74,8 +75,8 @@ describe('the choosable terms', () => {
   const g = createGlossary(data);
   const byKey = new Map(g.choosable.map((t) => [t.en, t]));
 
-  it('are the 343 entries with alternatives inside a sense, plus the GDP family across its senses', () => {
-    expect(g.choosable).toHaveLength(347);
+  it('are the 344 entries with alternatives inside a sense, plus the GDP family across its senses', () => {
+    expect(g.choosable).toHaveLength(348);
     const family = g.choosable.filter((t) => t.groups.some((gr) => gr.sense === undefined)).map((t) => t.en);
     expect(family.sort()).toEqual([
       'Gross Domestic Income (GDI)',
@@ -220,8 +221,8 @@ describe('counts', () => {
     expect({ parents, pairs, derived }).toMatchInlineSnapshot(`
       {
         "derived": 63,
-        "pairs": 144,
-        "parents": 37,
+        "pairs": 146,
+        "parents": 38,
       }
     `);
   });

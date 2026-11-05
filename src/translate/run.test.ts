@@ -74,17 +74,17 @@ describe('runTranslation', () => {
   it('sends a missing multi-word term to the repair pass with the right fix note', async () => {
     const plan = planOf([{ jobs: [{ key: 't1', source: 'Explain why market failure occurs.' }, { key: 't2', source: 'Explain.' }] }]);
     const client = scriptedClient([
-      reply([['t1', '解釋為什麼會出現市場問題。'], ['t2', '解釋。']]),
-      reply([['t1', '解釋為什麼會出現市場失效。']]),
+      reply([['t1', '解釋為甚麼會出現市場問題。'], ['t2', '解釋。']]),
+      reply([['t1', '解釋為甚麼會出現市場失效。']]),
     ]);
     const outcome = await run(plan, depsFor(client));
     const repair = payloadOf(client.requests[1]);
     expect(repair.task).toBe('repair');
     expect(repair.groups[0].items).toEqual([expect.objectContaining({
-      key: 't1', previous: '解釋為什麼會出現市場問題。', fix: ['Use “市場失效” for “market failure”.'],
+      key: 't1', previous: '解釋為甚麼會出現市場問題。', fix: ['Use “市場失效” for “market failure”.'],
     })]);
     expect(client.requests[1].system).toContain('changes only what the fix notes ask');
-    expect(outcome.results.get('t1')).toMatchObject({ status: 'ready', passes: 2, runs: [{ text: '解釋為什麼會出現市場失效。' }] });
+    expect(outcome.results.get('t1')).toMatchObject({ status: 'ready', passes: 2, runs: [{ text: '解釋為甚麼會出現市場失效。' }] });
     expect(outcome.results.get('t2')).toMatchObject({ status: 'ready', passes: 1 });
   });
 
@@ -103,9 +103,9 @@ describe('runTranslation', () => {
   it('keeps the better of the two passes', async () => {
     const plan = planOf([{ jobs: [{ key: 't1', source: 'Explain why market failure occurs.' }] }]);
     // Pass 2 fixes the term but loses a full stop into a derived label: pass 1 stays.
-    const client = scriptedClient([reply([['t1', '解釋為什麼會出現市場問題。']]), reply([['t1', '(a)解釋為什麼會出現市場失效。']])]);
+    const client = scriptedClient([reply([['t1', '解釋為甚麼會出現市場問題。']]), reply([['t1', '(a)解釋為甚麼會出現市場失效。']])]);
     const result = (await run(plan, depsFor(client))).results.get('t1')!;
-    expect(result).toMatchObject({ status: 'flagged', passes: 2, runs: [{ text: '解釋為什麼會出現市場問題。' }] });
+    expect(result).toMatchObject({ status: 'flagged', passes: 2, runs: [{ text: '解釋為甚麼會出現市場問題。' }] });
     expect(result.terms.map((t) => t.state)).toEqual(['missing']);
   });
 
@@ -242,7 +242,7 @@ describe('the result', () => {
 
   it('runs without a glossary: no pins, chips or auto-fix', async () => {
     const plan = planOf([{ jobs: [{ key: 't1', source: 'Explain why market failure occurs.' }] }]);
-    const client = scriptedClient([reply([['t1', '解釋為什麼會出現市場失靈。']])]);
+    const client = scriptedClient([reply([['t1', '解釋為甚麼會出現市場失靈。']])]);
     const outcome = await run(plan, depsFor(client, false));
     expect(payloadOf(client.requests[0]).glossary).toEqual([]);
     expect(outcome.results.get('t1')).toMatchObject({ status: 'ready', terms: [], fixes: [] });

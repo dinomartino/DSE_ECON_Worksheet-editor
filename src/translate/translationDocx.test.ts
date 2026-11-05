@@ -117,7 +117,7 @@ const DOCUMENTS: Array<[string, () => Worksheet]> = [
 
 /**
  * The original's own Chinese as a reference reply comes back: through the decoder and the
- * Hong Kong clean-up (甚麼 → 什麼, no typed space beside CJK). Computed per original slot,
+ * Hong Kong clean-up (什麼 → 甚麼, 着 → 著, no typed space beside CJK). Computed per original slot,
  * so text applied to the wrong slot still shows.
  */
 function asPipelineReturns(zh: RichText, kind: TextSlot['kind']): RichText {

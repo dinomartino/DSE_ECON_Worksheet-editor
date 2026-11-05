@@ -43,7 +43,7 @@ describe('Translation terms rows', async () => {
 
   it('has a row for every one of the 1350 EDB entries', () => {
     expect(terms).toHaveLength(1350);
-    expect(filterCounts(terms, EMPTY_PREFERENCES)).toEqual({ choices: 347, all: 1350, mine: 0 });
+    expect(filterCounts(terms, EMPTY_PREFERENCES)).toEqual({ choices: 348, all: 1350, mine: 0 });
   });
 
   it('picks a listed rendering; picking the sole default clears the row', () => {
@@ -121,7 +121,7 @@ describe('Translation terms rows', async () => {
     const choices = visibleTerms(terms, EMPTY_PREFERENCES, 'choices', '');
     expect(choices.common.slice(0, 4).every((t) => t.groups[0].sense === undefined)).toBe(true);
     expect(choices.common).toHaveLength(10);
-    expect(choices.common.length + choices.rest.length).toBe(347);
+    expect(choices.common.length + choices.rest.length).toBe(348);
     // A search under "With choices" reaches every entry: capital has one rendering.
     expect(visibleTerms(terms, EMPTY_PREFERENCES, 'choices', 'capital').rest.map((t) => t.en)).toContain('capital');
     const custom = customRow('t', { en: 'carbon tax', forms: ['CO2 tax'], abbreviation: 'CT', zh: ['碳稅'] });

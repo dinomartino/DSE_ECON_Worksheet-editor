@@ -84,25 +84,25 @@ describe('termFixWrites with the real glossary', () => {
   it('applies one fix per offending occurrence, right to left', async () => {
     const real = await loadGlossary();
     const rows = termRowsFromSlots([
-      slot('The price level rises and the price level falls.', [{ text: '價格水平', bold: true }, { text: '上升，價格水平下降。' }]),
-      slot('Total revenue and the price level.', '總收益與價格水平。'),
+      slot('Market failure grows and market failure shrinks.', [{ text: '市場失靈', bold: true }, { text: '擴大，市場失靈收窄。' }]),
+      slot('Total revenue and the market failure.', '總收益與市場失靈。'),
     ], real, paper);
     expect(rows.map((r) => r.checks.length)).toEqual([2, 2]);
     expect(termFixWrites(rows, tickAll(rows)).map((w) => w.next)).toEqual([
-      [{ text: '物價水平', bold: true }, { text: '上升，物價水平下降。' }],
-      [{ text: '總收入與物價水平。' }],
+      [{ text: '市場失效', bold: true }, { text: '擴大，市場失效收窄。' }],
+      [{ text: '總收入與市場失效。' }],
     ]);
   });
 
   it('tolerates a deny check with no fix (a break or space inside the wrong form)', async () => {
     const real = await loadGlossary();
     const rows = termRowsFromSlots([
-      slot('The price level rises.', '價格\n水平上升。'),
-      slot('The price level rises; total revenue falls.', '價格 水平上升；總收益下降。'),
+      slot('Market failure grows.', '市場\n失靈擴大。'),
+      slot('Market failure grows; total revenue falls.', '市場 失靈擴大；總收益下降。'),
     ], real, paper);
     expect(rows[0].checks.map((c) => [c.severity, c.fix])).toEqual([['warn', undefined]]);
     const writes = termFixWrites(rows, tickAll(rows));
-    expect(writes.map((w) => [w.path, w.next])).toEqual([[rows[1].path, [{ text: '價格 水平上升；總收入下降。' }]]]);
+    expect(writes.map((w) => [w.path, w.next])).toEqual([[rows[1].path, [{ text: '市場 失靈擴大；總收入下降。' }]]]);
   });
 
   it('gives every corpus fix a snapshot of the text it was checked against', async () => {

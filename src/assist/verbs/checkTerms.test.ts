@@ -32,9 +32,9 @@ async function check(worksheet: Worksheet): Promise<Extract<VerbOutcome, { kind:
 }
 
 /** One entry's old form twice, and one it cannot fix (a space inside it) beside a fixable one. */
-const priceLevelPaper = () => paperOf([
-  ['The price level rises and the price level falls.', '價格水平上升，價格水平下降。'],
-  ['The price level rises; total revenue falls.', '價格 水平上升；總收益下降。'],
+const marketFailurePaper = () => paperOf([
+  ['Market failure grows and market failure shrinks.', '市場失靈擴大，市場失靈收窄。'],
+  ['Market failure grows; total revenue falls.', '市場 失靈擴大；總收益下降。'],
 ]);
 
 beforeEach(() => useAppDialogs.setState({ notice: null }));
@@ -69,7 +69,7 @@ describe('Check terms', () => {
     resetVerbsForTest();
     resetAiRunForTest();
     registerVerb(checkTermsVerb());
-    load(priceLevelPaper());
+    load(marketFailurePaper());
     useWorksheetStore.getState().setMode({ language: 'bilingual', version: 'student' });
     await useAiRun.getState().startVerb('check.terms');
     const before = useAiRun.getState().phase;
@@ -95,7 +95,7 @@ describe('Check terms', () => {
     resetVerbsForTest();
     resetAiRunForTest();
     registerVerb(checkTermsVerb());
-    load(priceLevelPaper());
+    load(marketFailurePaper());
     await useAiRun.getState().startVerb('check.terms');
     const phase = useAiRun.getState().phase;
     if (phase.kind !== 'review' || phase.outcome.kind !== 'findings') throw new Error(phase.kind);
@@ -110,7 +110,7 @@ describe('Check terms', () => {
   });
 
   it('Replace N applies the safe fixes in one commit, flashes an Undo that restores the paper', async () => {
-    const outcome = await check(priceLevelPaper());
+    const outcome = await check(marketFailurePaper());
     const before = JSON.stringify(store().worksheet);
     expect(outcome.items).toHaveLength(4);
     expect(outcome.items.every((i) => i.tone === 'finding' && i.notes.length > 0)).toBe(true);
@@ -121,7 +121,7 @@ describe('Check terms', () => {
     const notice = useAppDialogs.getState().notice!;
     expect(notice.message).toBe('Replaced 3 terms');
     const paths = [...new Set(outcome.items.map((i) => i.id.split('#')[0]))];
-    expect(paths.map((p) => zhOf().get(p))).toEqual([[{ text: '物價水平上升，物價水平下降。' }], [{ text: '價格 水平上升；總收入下降。' }]]);
+    expect(paths.map((p) => zhOf().get(p))).toEqual([[{ text: '市場失效擴大，市場失效收窄。' }], [{ text: '市場 失靈擴大；總收入下降。' }]]);
     notice.action!.run();
     expect(JSON.stringify(store().worksheet)).toBe(before);
   });
@@ -145,7 +145,7 @@ describe('Check terms', () => {
   });
 
   it('a text edited since the check is not replaced: no commit, and it says so', async () => {
-    const outcome = await check(priceLevelPaper());
+    const outcome = await check(marketFailurePaper());
     useWorksheetStore.setState({
       worksheet: mapWorksheetTexts(store().worksheet, (slot) => ({ ...slot.text, zh: [{ text: '老師自己寫的。' }] })),
     });

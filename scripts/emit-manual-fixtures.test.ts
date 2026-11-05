@@ -213,7 +213,7 @@ function pageFlowMix(): Worksheet {
   ]);
   const five = question(5, ['A new online platform lowers the cost of tuition.', '一個新的網上平台令補習成本下降。'], 3, [
     ['Explain the effect on the market for face-to-face tuition.', '解釋對面授補習市場的影響。', 3],
-    ['Name one possible external cost of the growth of tuition and explain it.', '指出補習增長可能帶來的一項外部成本並解釋。', 3],
+    ['Name one possible external cost of the growth of tuition and explain it.', '指出補習增長可能帶來的一項界外成本並解釋。', 3],
   ]);
   const finalMc = createMcqQuestion();
   finalMc.blocks = [createParagraphBlock(bi('Which of the following is a likely effect of a subsidy to buyers of tuition?', '以下哪項最可能是對補習買家提供資助的影響？'))];

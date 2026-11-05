@@ -155,7 +155,7 @@ function numberNotes(texts: BiDraft[], ctx: CheckContext): string[] {
   return stray.size ? [`Number not in the source: ${[...stray].join(', ')}`] : [];
 }
 
-/** "EDB: 物價水平 (not 價格水平)" for warn-level term findings. */
+/** "EDB: 總收入 (not 總收益)" for warn-level term findings. */
 function termNote(check: TermCheck): string {
   // The teacher's own choice or term is never labelled EDB.
   const source = check.chosen || check.custom ? 'Yours' : 'EDB';

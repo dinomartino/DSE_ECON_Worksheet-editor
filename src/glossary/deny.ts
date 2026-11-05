@@ -23,7 +23,6 @@ export interface DenyRow {
 }
 
 export const DENY: readonly DenyRow[] = [
-  { en: 'price level', forms: ['價格水平'], kind: 'wrong', evidence: 'app seed; HKEAA Sample P2' },
   { en: 'total revenue', forms: ['總收益'], kind: 'wrong', evidence: 'app seed; HKEAA MS' },
   { en: 'elastic demand', forms: ['富彈性需求', '富有彈性需求'], kind: 'wrong', evidence: 'app seed' },
   {

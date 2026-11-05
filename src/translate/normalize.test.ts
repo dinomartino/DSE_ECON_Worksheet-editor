@@ -9,7 +9,7 @@ const en = (text: string) => plain(normalizeEn([{ text }]).runs);
 describe('normalizeZh', () => {
   it('widens punctuation next to Chinese, not between digits', () => {
     expect(zh('價格上升,需求量下降.')).toBe('價格上升，需求量下降。');
-    expect(zh('為什麼?')).toBe('為什麼？');
+    expect(zh('為甚麼?')).toBe('為甚麼？');
     expect(zh('資料A: 參考以下資料')).toBe('資料A：參考以下資料');
     expect(zh('增加1.5百萬')).toBe('增加1.5百萬');
     expect(zh('3,000')).toBe('3,000');
@@ -23,7 +23,8 @@ describe('normalizeZh', () => {
 
   it('quotes Chinese with 「」 and fixes HK forms', () => {
     expect(zh('老師說"價格會上升"')).toBe('老師說「價格會上升」');
-    expect(zh('甚麼是住户?')).toBe('什麼是住戶？');
+    expect(zh('什麼是住户?')).toBe('甚麼是住戶？');
+    expect(zh('沿着需求曲線')).toBe('沿著需求曲線');
   });
 
   it('removes a typed space between CJK and Latin or digits, and keeps it around =', () => {

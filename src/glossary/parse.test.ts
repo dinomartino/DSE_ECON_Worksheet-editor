@@ -38,8 +38,8 @@ describe('parseGlossary', () => {
     const variants = entries.flatMap((e) => e.senses.flatMap((s) => s.ranks.flat()));
     expect(entries).toHaveLength(1350);
     expect(entries.reduce((n, e) => n + e.senses.length, 0)).toBe(1408);
-    expect(variants).toHaveLength(1798);
-    expect(new Set(variants.map((v) => foldZh(v).folded)).size).toBe(1728);
+    expect(variants).toHaveLength(1800);
+    expect(new Set(variants.map((v) => foldZh(v).folded)).size).toBe(1730);
     expect(entries.filter((e) => e.senses.length > 1)).toHaveLength(51);
     // 22 values hold two '；', but benefit and foreclosure spread them over two senses.
     expect(entries.filter((e) => e.senses.some((s) => s.ranks.length === 3))).toHaveLength(20);
