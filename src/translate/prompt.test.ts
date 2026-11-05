@@ -12,7 +12,7 @@ import { evaluateItem, finalize } from './run';
 import type { Chunk, Direction, TranslationJob } from './types';
 import { decodeWire, encodeRuns } from './wire';
 
-const RENDERED_SHA = '530c9a67097256ec4f4c43186451081cfbbf45eca08365256330a672cd6f9b56';
+const RENDERED_SHA = '42c7bcc2aae927a1224729fd7a0a0dc3c62c184bd92c2baf36a6e137f575b1d0';
 
 function rendered(): string {
   return [
@@ -24,7 +24,7 @@ function rendered(): string {
 describe('prompt', () => {
   it('is pinned: a change needs a new PROMPT_VERSION and an eval run', () => {
     const sha = createHash('sha256').update(rendered()).digest('hex');
-    expect(PROMPT_VERSION).toBe('e2.4');
+    expect(PROMPT_VERSION).toBe('e2.5');
     expect(sha, 'prompt changed: bump PROMPT_VERSION and re-run npm run eval:translate').toBe(RENDERED_SHA);
   });
 

@@ -888,7 +888,7 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     id: 'quota-revenue',
     group: 'controls',
     name: bi('Quota: total expenditure', '配額：總開支'),
-    hint: bi('G (higher P on the quota) against L (units cut): L > G if D is elastic.', 'G（配額內的較高價格）對 L（減少的單位）：需求富彈性則 L > G。'),
+    hint: bi('G (higher P on the quota) against L (units cut): L > G if D is elastic.', 'G（配額內的較高價格）對 L（減少的單位）：若屬彈性需求，L > G。'),
     build: quotaRevenue,
   },
   {

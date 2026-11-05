@@ -1,7 +1,8 @@
 /**
  * Known wrong or non-HK renderings of glossary terms, fixed deterministically. Data only;
  * every row cites where the form was seen. A row fires only when its entry is in the
- * English source, so HK's normal 需求缺乏彈性 for "demand is inelastic" is never flagged.
+ * English source, so a past paper's 需求缺乏彈性 for "demand is inelastic" is never flagged
+ * (new text writes 低彈性需求, user decision u-15vm; quoted HKEAA text is never changed).
  *
  * Invariants (`deny.test.ts`): every `fix` is a variant of its entry; no form is a variant
  * of its own entry; a form that is another entry's variant must be `reversal`; an entry

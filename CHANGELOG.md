@@ -66,6 +66,11 @@ a version heading is edited afterwards.
   writes both), and you can pick one as your wording in Settings. The translator now writes 甚麼
   and 著 (not 什麼 and 着), and 界外效益 passes for "external benefit" beside 界外利益.
   <!-- zh: **翻譯和用詞檢查接受「價格水平」。** 「檢查用詞」和翻譯不再把「價格水平」標為錯誤：「price level」寫成「價格水平」或「物價水平」都可以（教育局兩者都有用），你亦可在設定中選定其中一個。翻譯現在會寫「甚麼」和「著」（不再是「什麼」和「着」），「external benefit」除了「界外利益」，寫成「界外效益」亦可。 -->
+- **Elasticity wording follows the EDB glossary.** The translator writes 彈性需求, 高彈性需求 and
+  低彈性需求 (彈性供應, 低彈性供應), never 富彈性 or 缺乏彈性; the sample question in a new paper and
+  the import-quota template's hint say the same. Text you quote from past papers is never
+  changed, and saved worksheets stay as they are.
+  <!-- zh: **彈性用詞跟從教育局詞彙表。** 翻譯會寫「彈性需求」、「高彈性需求」和「低彈性需求」（「彈性供應」、「低彈性供應」），不再寫「富彈性」或「缺乏彈性」；新試卷的範例題目和進口配額範本的提示亦一樣。你引用的歷屆試題文字不會被更改，已儲存的工作紙亦不受影響。 -->
 
 ## 0.8.7 — 2026-11-01
 

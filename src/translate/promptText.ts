@@ -25,7 +25,7 @@ ${INPUT_OUTPUT}
 
 TERMINOLOGY
 1. Each glossary line is "english → 中文" from the Education Bureau's Economics glossary. Use that Chinese exactly. Renderings joined by " / " are equally correct. "(1) … (2) …" are different meanings: choose the one that fits. "[only if economic sense]" lines apply only when the English word is used as an economics term. "(not …)" names a wrong rendering to avoid.
-2. For a term not in the glossary, use the standard HKDSE Economics term. Use one rendering for a term everywhere in the input.
+2. For a term not in the glossary, use the standard HKDSE Economics term. Use one rendering for a term everywhere in the input. Elasticity takes the glossary nouns even where the English uses an adjective: demand is elastic → 屬彈性需求 (highly or relatively elastic → 高彈性需求), inelastic → 屬低彈性需求, perfectly inelastic → 完全無彈性; supply likewise (彈性供應, 低彈性供應). Never 富彈性 or 缺乏彈性.
 
 ${MARKERS}
 5. English words in CAPITALS for emphasis (ONE, TWO, THREE, NOT, ALL, BEST, BOTH, ONLY, EACH, EXCEPT) become bold Chinese, even when not marked bold: "State ONE feature" → "寫出…的<b>一項</b>特徵"; "<b>TWO</b> reasons" → "<b>兩個</b>原因". Abbreviations (GDP, AD) are not emphasis.
@@ -67,7 +67,7 @@ ${INPUT_OUTPUT}
 
 TERMINOLOGY
 1. Glossary lines are "中文 → english" from the Education Bureau's Economics glossary; use that English. Lines ending "choose by context" list meanings; pick the one that fits.
-2. For a term not in the glossary, use the standard HKDSE Economics term. Use one rendering for a term everywhere in the input.
+2. For a term not in the glossary, use the standard HKDSE Economics term. Use one rendering for a term everywhere in the input. Elasticity takes the glossary nouns even where the English uses an adjective: demand is elastic → 屬彈性需求 (highly or relatively elastic → 高彈性需求), inelastic → 屬低彈性需求, perfectly inelastic → 完全無彈性; supply likewise (彈性供應, 低彈性供應). Never 富彈性 or 缺乏彈性.
 
 ${MARKERS}
 5. Bold Chinese counting words and negations (<b>兩個</b>, <b>一項</b>, <b>不</b>, <b>均須</b>, <b>無須</b>, <b>最佳</b>) become English CAPITALS inside the same markers: <b>TWO</b>, <b>ONE</b>, <b>NOT</b>, <b>ALL</b>, <b>BEST</b>.

@@ -327,9 +327,9 @@ function sampleMcqQuestion(): McqQuestion {
       },
     ],
     options: [
-      { id: newId(), text: bi('Demand for its bread is elastic.', '其麵包的需求富有彈性。') },
-      { id: newId(), text: bi('Demand for its bread is inelastic.', '其麵包的需求缺乏彈性。') },
-      { id: newId(), text: bi('Demand for its bread is unitary elastic.', '其麵包的需求彈性等於一。') },
+      { id: newId(), text: bi('Demand for its bread is elastic.', '其麵包屬彈性需求。') },
+      { id: newId(), text: bi('Demand for its bread is inelastic.', '其麵包屬低彈性需求。') },
+      { id: newId(), text: bi('Demand for its bread is unitary elastic.', '其麵包屬單一彈性需求。') },
       { id: newId(), text: bi('The supply of its bread has fallen.', '其麵包的供應下跌。') },
     ],
     answerIndex: 0,
