@@ -1,7 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { withRowTags } from '@/library/sharedTags';
 import type { BankRow } from '@/library/types';
-import type { Question } from '@/model/types';
+import type { LayoutElement, Question } from '@/model/types';
 import { worksheetStore, type WorksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { resolveMessages } from '@/i18n/catalogue';
@@ -139,7 +139,16 @@ export async function insertFromBank(
 /** The synchronous half of `insertFromBank`: one commit of what `loadBankCopies` read. */
 export function commitBankCopies(
   { openId, found, missing }: LoadedCopies,
-  { summary = reviewSummary, at }: { summary?: (count: number) => string; at?: number } = {},
+  {
+    summary = reviewSummary,
+    at,
+    leads,
+  }: {
+    summary?: (count: number) => string;
+    at?: number;
+    /** Per found question, a layout element to print before its copy (the Past paper bank's stimuli). */
+    leads?: readonly (LayoutElement | undefined)[];
+  } = {},
 ): InsertReport {
   const store = useWorksheetStore.getState();
   if (store.worksheet.id !== openId) return { inserted: [], missing, refused: 'otherDocument' };
@@ -154,7 +163,7 @@ export function commitBankCopies(
   const note = outsidePaperNote(store.worksheet, found.map((entry) => entry.question.type)) ?? (extend ? previous.note : undefined);
   const inserted = store.insertQuestionCopies(
     found.map((entry) => entry.question),
-    { fromDocId: found.map((entry) => entry.docId), ...(at !== undefined ? { at } : {}) },
+    { fromDocId: found.map((entry) => entry.docId), ...(at !== undefined ? { at } : {}), ...(leads ? { leads } : {}) },
   );
   if (!inserted.length) return { inserted, missing };
   const committed = useWorksheetStore.getState().worksheet;

@@ -1,14 +1,16 @@
 /**
  * The privacy copy promises the app sends nothing except an AI request the teacher asked
  * for. So in shipped code under `src/`, every network primitive appears only in
- * `src/ai/http.ts` (§ AI translation, glossary and app Settings).
+ * `src/ai/http.ts` (§ AI translation, glossary and app Settings), and in
+ * `src/pastpapers/net.ts`, which only *reads* the public Past paper bank (a GET with no
+ * credentials and no body, k-0443): nothing of the teacher's leaves through it.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = join(__dirname, '..');
-const ALLOWED = new Set(['ai/http.ts']);
+const ALLOWED = new Set(['ai/http.ts', 'pastpapers/net.ts']);
 const NETWORK = [/\bfetch\s*\(/, /\bXMLHttpRequest\b/, /\bsendBeacon\b/, /\bnew\s+WebSocket\b/, /\bnew\s+EventSource\b/];
 
 function shipped(dir: string): string[] {
@@ -31,5 +33,14 @@ describe('network calls', () => {
 
   it('really are in src/ai/http.ts, so the scan sees them', () => {
     expect(readFileSync(join(SRC, 'ai', 'http.ts'), 'utf8')).toMatch(NETWORK[0]);
+  });
+
+  it('the Past paper bank only reads: one GET, no credentials, no body', () => {
+    const text = readFileSync(join(SRC, 'pastpapers', 'net.ts'), 'utf8');
+    expect(text.match(/\bfetch\s*\(/g)).toHaveLength(1);
+    expect(text).toMatch(/method: 'GET'/);
+    expect(text).toMatch(/credentials: 'omit'/);
+    expect(text).not.toMatch(/\bbody\s*:/);
+    expect(text).not.toMatch(/headers\s*:/);
   });
 });

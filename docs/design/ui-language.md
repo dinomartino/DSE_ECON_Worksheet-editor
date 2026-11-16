@@ -42,6 +42,8 @@ Example: "Paper 1 mock · MCQ" → "Paper 1 Mock · MCQ"; "Download PNG" → "�
 |---|---|---|---|
 | Worksheet | 工作紙 | New worksheet | 新增工作紙 |
 | Question bank | 題庫 | Graphs | 圖表庫 |
+| Past paper bank | 歷屆試題庫 | Past papers (its short name) | 歷屆試題 |
+| My bank (the teacher's own, beside it) | 我的題庫 | Read-only | 唯讀 |
 | Library (start screen) | 資源庫 | Template | 範本 |
 | Settings | 設定 | Appearance | 外觀 |
 | Language | 語言 | Export | 匯出 |

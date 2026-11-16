@@ -5,3 +5,4 @@ import './appearance';
 import './language';
 import './watermarks';
 import './storage';
+import './pastPapers';

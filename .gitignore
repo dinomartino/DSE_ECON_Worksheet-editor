@@ -62,3 +62,4 @@ skills-lock.json
 /scripts/film/node_modules/
 /scripts/film/score/.venv/
 __pycache__/
+/public/pastpaper-bank

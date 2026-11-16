@@ -1,0 +1,160 @@
+import { defineMessages } from '@/i18n/catalogue';
+
+/**
+ * The Past paper bank 歷屆試題庫 (k-0443): its screen (start screen → Library), its side of
+ * the editor's 題庫 tab, and its Settings section. HKCEE, HKALE and HKDSE stay English in
+ * 中文 too, as exam names do in the rest of the app.
+ */
+export const PAST_PAPER_MESSAGES = defineMessages({
+  title: { en: 'Past paper bank 歷屆試題庫', zh: '歷屆試題庫' },
+  titleShort: { en: 'Past papers', zh: '歷屆試題' },
+  home: { en: 'Home', zh: '主頁' },
+  readOnly: { en: 'Read-only', zh: '唯讀' },
+  readOnlyTitle: {
+    en: 'Nothing you do here changes this bank. Questions you take are copies in your own worksheet or bank.',
+    zh: '你在這裏的操作不會改動此題庫。你取用的題目會成為你自己工作紙或題庫中的副本。',
+  },
+  hint: {
+    en: 'HKCEE, HKALE and HKDSE MC questions with answers, by topic. Read-only.',
+    zh: 'HKCEE、HKALE 及 HKDSE 的 MC 題目連答案，按課題排列。唯讀。',
+  },
+  count: { en: (n: number) => `${n.toLocaleString('en')} questions`, zh: (n: number) => `${n.toLocaleString('en')} 題` },
+  topics: { en: 'Topics', zh: '課題' },
+  topicCount: { en: (n: number) => `${n}`, zh: (n: number) => `${n}` },
+  searchLabel: { en: 'Search the past paper bank', zh: '搜尋歷屆試題庫' },
+  searchIn: { en: (topic: string) => `Search ${topic}…`, zh: (topic: string) => `在「${topic}」中搜尋…` },
+  searchOpened: { en: 'Search the opened topics…', zh: '在已開啟的課題中搜尋…' },
+  searchHint: {
+    en: 'Words in either language, or a source such as “DSE2016” or “2016 P1”.',
+    zh: '中英文字詞皆可，或輸入出處，例如「DSE2016」或「2016 P1」。',
+  },
+  scopeTopic: { en: 'This topic', zh: '此課題' },
+  scopeAll: { en: 'Every topic', zh: '所有課題' },
+  scopeLabel: { en: 'Search in', zh: '搜尋範圍' },
+  loadingAll: { en: (done: number, total: number) => `Downloading topics… ${done} of ${total}`, zh: (done: number, total: number) => `正在下載課題… ${done} / ${total}` },
+  loadAllNote: {
+    en: (mb: string) => `Searching every topic downloads the whole bank once (about ${mb} MB). It is kept on this computer.`,
+    zh: (mb: string) => `搜尋所有課題會下載整個題庫一次（約 ${mb} MB），並保存在此電腦上。`,
+  },
+  loadAll: { en: 'Download and search', zh: '下載並搜尋' },
+  exam: { en: 'Exam', zh: '考試' },
+  allExams: { en: 'All', zh: '全部' },
+  years: { en: 'Years', zh: '年份' },
+  yearFrom: { en: 'From year', zh: '由' },
+  yearTo: { en: 'To year', zh: '至' },
+  anyYear: { en: 'Any', zh: '不限' },
+  showAnswers: { en: 'Show answers', zh: '顯示答案' },
+  paperLanguage: { en: 'Paper language', zh: '試卷語言' },
+  answer: { en: (letter: string) => `Answer ${letter}`, zh: (letter: string) => `答案 ${letter}` },
+  shared: { en: 'Shared passage: goes in with this question', zh: '共用資料：會與此題一併加入' },
+  shown: { en: (shown: number, total: number) => (shown === total ? `${total} questions` : `${shown} of ${total} questions`), zh: (shown: number, total: number) => (shown === total ? `${total} 題` : `${total} 題中的 ${shown} 題`) },
+  noneMatch: { en: 'No question matches. Clear the search or a filter.', zh: '沒有相符的題目。請清除搜尋或篩選。' },
+  clearFilters: { en: 'Clear filters', zh: '清除篩選' },
+  pickTitle: { en: (source: string) => `Pick ${source}`, zh: (source: string) => `選取 ${source}` },
+  picked: { en: (n: number) => (n === 1 ? '1 picked' : `${n} picked`), zh: (n: number) => `已選 ${n} 題` },
+  clear: { en: 'Clear', zh: '清除' },
+  addTo: { en: 'Add to', zh: '加到' },
+  newWorksheet: { en: 'New worksheet', zh: '新工作紙' },
+  newPaper1: { en: 'New Paper 1', zh: '新 Paper 1' },
+  recentPapers: { en: 'Your papers', zh: '你的試卷' },
+  add: { en: 'Add', zh: '加入' },
+  copyToBank: { en: 'Copy to my question bank', zh: '複製到我的題庫' },
+  copied: {
+    en: (n: number, already: number) =>
+      `${n === 1 ? '1 question' : `${n} questions`} copied to your question bank${already ? `; ${already} already there` : ''}.`,
+    zh: (n: number, already: number) => `已複製 ${n} 題到你的題庫${already ? `；${already} 題已在題庫中` : ''}。`,
+  },
+  copiedNone: {
+    en: (already: number) => (already === 1 ? 'That question is already in your question bank.' : `All ${already} are already in your question bank.`),
+    zh: (already: number) => (already === 1 ? '此題已在你的題庫中。' : `這 ${already} 題已全在你的題庫中。`),
+  },
+  copiedNoStimulus: {
+    en: (n: number) => ` ${n === 1 ? '1 of them shares' : `${n} of them share`} a passage with another question; your bank keeps the question only, so add those to a worksheet from here to keep the passage.`,
+    zh: (n: number) => ` 其中 ${n} 題與其他題目共用資料；你的題庫只保存題目本身，如要保留資料，請從這裏把這些題目加到工作紙。`,
+  },
+  added: {
+    en: (n: number, skipped: number) => `${n === 1 ? '1 past paper question' : `${n} past paper questions`} added${skipped ? `; ${skipped} already in this paper` : ''}`,
+    zh: (n: number, skipped: number) => `已加入 ${n} 題歷屆試題${skipped ? `；${skipped} 題已在此試卷中` : ''}`,
+  },
+  nothingAdded: {
+    en: (n: number) => (n === 1 ? 'That question is already in this paper.' : `All ${n} are already in this paper.`),
+    zh: (n: number) => (n === 1 ? '此題已在此試卷中。' : `這 ${n} 題已全在此試卷中。`),
+  },
+  readOnlyPaper: { en: 'This paper is read-only, so nothing was added.', zh: '此試卷為唯讀，因此沒有加入任何題目。' },
+  newName: { en: 'Past paper questions', zh: '歷屆試題' },
+  // States of the bank.
+  loading: { en: 'Loading the list of topics…', zh: '正在載入課題清單…' },
+  loadingTopic: { en: 'Downloading this topic…', zh: '正在下載此課題…' },
+  off: {
+    en: 'The past paper bank is switched off on this computer.',
+    zh: '此電腦已關閉歷屆試題庫。',
+  },
+  turnOn: { en: 'Settings…', zh: '設定…' },
+  disabled: {
+    en: 'The past paper bank is not available at the moment. Your worksheets and the questions you took from it are not affected.',
+    zh: '歷屆試題庫暫時無法使用。你的工作紙及你已取用的題目不受影響。',
+  },
+  error: {
+    en: (reason: string) =>
+      reason === 'offline'
+        ? 'The past paper bank can’t be reached. Check the connection and try again; topics you opened before still work offline.'
+        : reason === 'notFound'
+          ? 'The past paper bank was not found at its address. Settings → Past paper bank shows where it is read from.'
+          : 'The past paper bank could not be read. Try again later.',
+    zh: (reason: string) =>
+      reason === 'offline'
+        ? '無法連接歷屆試題庫。請檢查網絡後再試；你以前開啟過的課題可離線使用。'
+        : reason === 'notFound'
+          ? '在其地址找不到歷屆試題庫。可在「設定 → 歷屆試題庫」查看讀取來源。'
+          : '無法讀取歷屆試題庫，請稍後再試。',
+  },
+  topicError: { en: 'This topic could not be downloaded.', zh: '無法下載此課題。' },
+  retry: { en: 'Try again', zh: '再試' },
+  offline: { en: 'Offline: showing the copy kept on this computer.', zh: '離線：正在顯示保存在此電腦上的版本。' },
+  skipped: {
+    en: (n: number) => `${n === 1 ? '1 question needs' : `${n} questions need`} a newer version of Econ Studio and ${n === 1 ? 'is' : 'are'} not shown.`,
+    zh: (n: number) => `${n} 題需要較新版本的 Econ Studio，因此未有顯示。`,
+  },
+  // The editor's 題庫 tab: which bank it shows.
+  bankSwitch: { en: 'Which question bank', zh: '選擇題庫' },
+  myBank: { en: 'My bank', zh: '我的題庫' },
+  tabTopic: { en: 'Topic', zh: '課題' },
+  insert: { en: 'Insert', zh: '插入' },
+  insertTitle: { en: 'Insert a copy into this paper after the selected item', zh: '在選取項目後插入副本' },
+  inPaper: { en: 'In this paper', zh: '已在此試卷' },
+  tabHint: { en: 'Read-only. Insert puts a copy in your paper.', zh: '唯讀。「插入」會把副本放進你的試卷。' },
+});
+
+/** Settings → Past paper bank. */
+export const PAST_PAPER_SETTINGS_MESSAGES = defineMessages({
+  label: { en: 'Past paper bank', zh: '歷屆試題庫' },
+  hint: { en: 'On, off, or another source', zh: '開啟、關閉或其他來源' },
+  description: {
+    en: 'The built-in bank of past paper MC questions. It is read-only and downloaded when you open it; it is never one of your documents.',
+    zh: '內置的歷屆 MC 試題庫。它是唯讀的，在你開啟時才下載；它不會成為你的文件。',
+  },
+  source: { en: 'Source', zh: '來源' },
+  builtIn: { en: 'Built-in', zh: '內置' },
+  builtInNote: { en: (host: string) => `Read from ${host}.`, zh: (host: string) => `從 ${host} 讀取。` },
+  off: { en: 'Off', zh: '關閉' },
+  offNote: {
+    en: 'Hides the past paper bank on this computer. Questions you already took stay in your worksheets.',
+    zh: '在此電腦上隱藏歷屆試題庫。你已取用的題目會保留在你的工作紙中。',
+  },
+  custom: { en: 'Another address', zh: '其他地址' },
+  customNote: {
+    en: 'A folder holding manifest.json and topics/, on https, on this computer (http://localhost…), or a path on this app (/pastpaper-bank/).',
+    zh: '存放 manifest.json 及 topics/ 的資料夾：https 地址、此電腦上的地址（http://localhost…），或此程式內的路徑（/pastpaper-bank/）。',
+  },
+  address: { en: 'Address', zh: '地址' },
+  invalid: { en: 'Not an address this can read from.', zh: '無法從此地址讀取。' },
+  sent: {
+    en: 'Opening the bank downloads its files from the source. Nothing of yours is sent.',
+    zh: '開啟題庫時會從來源下載其檔案。你的任何資料都不會傳送出去。',
+  },
+  kept: { en: 'Kept on this computer', zh: '保存在此電腦上' },
+  keptSize: { en: (mb: string, files: number) => `${mb} MB in ${files} files`, zh: (mb: string, files: number) => `${files} 個檔案，共 ${mb} MB` },
+  keptNone: { en: 'Nothing downloaded yet.', zh: '尚未下載任何檔案。' },
+  clearKept: { en: 'Remove downloads', zh: '移除已下載檔案' },
+  cleared: { en: 'Removed. Topics download again when opened.', zh: '已移除。再開啟課題時會重新下載。' },
+});
