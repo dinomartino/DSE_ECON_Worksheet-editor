@@ -419,6 +419,26 @@ Invariants:
 - The 題庫 tab is sticky: while open, a page selection moves the insert anchor instead of switching to Edit (`src/components/editor/Sidebar.tsx:Sidebar`).
 - A drag from the tab re-paginates per *slot*, never per pointer frame; while a provisional question is drawn, the page writes nothing it measures back (split, trim, fill), and those writes also wait for a fresh measurement (`usePagination`'s `isFresh`).
 
+## pastpapers — the Past paper bank 歷屆試題庫 (read-only, downloaded, never a document)
+
+Design: `docs/design/pastpaper-bank.md` (k-0443; plan k-0441 § 15). A second bank beside the
+teacher's 題庫, never mixed into it: static files (`manifest.json` + `topics/<id>.json`, each
+an editor `kind: 'bank'` document) read from one address, on demand.
+
+- `src/pastpapers/config.ts:BUILT_IN_SOURCE` · `:PAST_PAPER_SETTINGS` · `:sourceUrl` · `:sourceAddress` · `:fileUrl` — the switches: the constant (empty = feature gone), Settings → Past paper bank (Built-in / Off / another address, `econgen.settings.pastPapers`), and the data's own `"enabled": false`
+- `src/pastpapers/net.ts:fetchText` — the one GET (no credentials, no body); with `src/ai/http.ts` the only network files (`src/test/networkCalls.test.ts`)
+- `src/pastpapers/cache.ts:createIdbCache` — IndexedDB `econ-pastpaper-bank`, keyed `<base>|<file>`, never the documents' storage or a backup; `:createMemoryCache` for tests
+- `src/pastpapers/bank.ts:loadManifest` · `:loadTopic` · `:createPastPaperBank` · `:usePastPaperBank` — list fresh (kept copy offline; `enabled: false` prunes), a topic from cache while its `sha256` matches, else downloaded (kept only when it matches)
+- `src/pastpapers/pack.ts:parseManifest` · `:parseTopic` · `:sourceOf` · `:matchItem` · `:liftStimulusLead` — tolerant readers: a topic goes through `src/model/migrations.ts:migrate`, unknown question types are left out and counted; a stimulus's paper lead sentence becomes its `prefix`/`suffix` only when it names exactly the questions after it
+- `src/pastpapers/copy.ts:planCopies` · `:stimulusCopy` · `src/pastpapers/actions.ts:insertIntoOpen` · `:copyIntoMyBank` · `:emptyPaperFor` — the only ways out, all copies (`lineage.rootId` kept); a stimulus goes in once before its questions with the `span` they fill, through `src/store/worksheetStore.ts` `insertQuestionCopies`'s `leads` (one commit, one ⌘Z, the 題庫 review bar)
+- UI: `src/components/pastpapers/PastPaperScreen.tsx:PastPaperScreen` (start screen view `pastpapers`, Library row in `src/components/start/StartScreen.tsx`) · `src/components/pastpapers/BankTabSwitch.tsx:BankTabSwitch` (top of the editor's 題庫 tab: My bank / Past papers) · `src/components/pastpapers/PastPaperTab.tsx:PastPaperTab` · `src/components/pastpapers/PastPaperSheet.tsx:PastPaperSheet` (a card's paper, drawn near the viewport; `src/components/pastpapers/pastPaperPreview.ts:pastPaperPreviewHtml`, Student version through the clipboard reader) · `src/components/pastpapers/usePastPaperBrowse.ts:usePastPaperBrowse` · Settings `src/components/settings/sections/pastPapersSection/PastPapersSection.tsx`
+- Proof: `src/pastpapers/pastpapers.test.ts` (synthetic data only: the bank's questions never enter this repo); `scripts/pastpaper-verify.mjs` against a local export in `public/pastpaper-bank/` (gitignored)
+
+Invariants:
+- Nothing writes the bank; its topic documents never reach `worksheetStore` or storage. Copies are the teacher's.
+- No bank data in this repo, ever (it is public; the data has its own repo).
+- No change to the stored document shape: a copy is an ordinary question (and stimulus).
+
 ## components/editor — the chrome around the page
 
 - `src/components/EditorApp.tsx:EditorApp` — the shell, autosave, export actions

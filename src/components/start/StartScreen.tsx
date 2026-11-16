@@ -60,6 +60,11 @@ import { DEFAULT_FILTERS } from '@/components/bank/page/bankPage';
 import { LazyImportDialog } from '@/components/import/ImportHost';
 import type { ImportFile } from '@/components/import/ImportDialog';
 import { QuestionBankScreen } from '@/components/bank/page/QuestionBankScreen';
+import { PastPaperScreen } from '@/components/pastpapers/PastPaperScreen';
+import { PAST_PAPER_MESSAGES } from '@/components/pastpapers/messages';
+import { PAST_PAPER_SETTINGS, sourceUrl } from '@/pastpapers/config';
+import { usePastPaperBank } from '@/pastpapers/bank';
+import { useSettings } from '@/settings/store';
 import { GraphsScreen, useGraphCount } from '@/components/graphs/GraphsScreen';
 import { placeGraphInOpenDocument } from '@/components/graphs/placeGraph';
 import { useBank } from '@/library/useBank';
@@ -231,9 +236,13 @@ export function StartScreen({
   // The Question bank replaces this screen's view the way opening a document replaces
   // it; ← Home comes back. Session state: the app always opens on the documents.
   // Back from a worksheet opened from a bank question: straight into the bank.
-  const [view, setView] = useState<'home' | 'bank' | 'graphs'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
+  const [view, setView] = useState<'home' | 'bank' | 'pastpapers' | 'graphs'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
   const { groups: bankGroups, rows: bankRows, status: bankStatus } = useBank();
   const graphTotal = useGraphCount(`${view}:${lastResult}`);
+  const pm = useMessages(PAST_PAPER_MESSAGES);
+  const [pastPaperSettings] = useSettings(PAST_PAPER_SETTINGS);
+  const pastPapersOn = sourceUrl(pastPaperSettings) !== undefined;
+  const pastPaperTotal = usePastPaperBank((state) => state.manifest?.questions);
   const closeFeedback = useCallback(() => setFeedback(false), []);
   // First launch, or everything deleted: the desk welcomes instead of listing. Never
   // while storage is still being read, so a returning teacher sees no flash of it.
@@ -246,7 +255,7 @@ export function StartScreen({
     const current = useNoticeStore.getState().notices.find((n) => n.id === START_RESULT);
     if (current && !current.details?.length) notices.dismiss(START_RESULT);
   }, [notices]);
-  const showView = (next: 'home' | 'bank' | 'graphs') => {
+  const showView = (next: 'home' | 'bank' | 'pastpapers' | 'graphs') => {
     clearPassingNotice();
     setView(next);
   };
@@ -879,6 +888,24 @@ export function StartScreen({
             }
           />
         </div>
+      ) : view === 'pastpapers' && pastPapersOn ? (
+        <div className="min-h-0 min-w-0 flex-1">
+          <PastPaperScreen
+            summaries={summaries}
+            settings={<SettingsButton separated />}
+            onHome={() => showView('home')}
+            onOpenDocument={(id, then) => void openSaved(id, then)}
+            onOpenWorksheet={(worksheet, language) => onOpen(worksheet, language)}
+            onNotice={(message) => {
+              setError(undefined);
+              setNotice({ message });
+            }}
+            onError={(message) => {
+              setNotice(undefined);
+              setError(message);
+            }}
+          />
+        </div>
       ) : view === 'bank' ? (
         <div className="min-h-0 min-w-0 flex-1">
           <QuestionBankScreen
@@ -964,6 +991,17 @@ export function StartScreen({
               }
               onClick={() => showView('bank')}
             />
+            {/* The Past paper bank (k-0443): a bank of its own, read-only, never mixed into
+                the teacher's 題庫. Hidden when switched off here or absent from this build. */}
+            {pastPapersOn && (
+              <StartRow
+                icon={<PastPaperIcon />}
+                title={pm.title}
+                trailing={pastPaperTotal ? pm.count(pastPaperTotal) : undefined}
+                hint={pm.hint}
+                onClick={() => showView('pastpapers')}
+              />
+            )}
             <StartRow
               icon={<DiagramIcon size={16} />}
               title={m.graphs}
@@ -1709,4 +1747,15 @@ function isZip(file: File): boolean {
 async function restoreTerms(csv: string): Promise<number> {
   const { restoreTermsCsv } = await import('@/components/settings/sections/termsSection/termsBackup');
   return restoreTermsCsv(csv);
+}
+
+/** The Past paper bank's mark: a stack of exam papers, the top one dated. */
+function PastPaperIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round">
+      <path d="M4.5 2.5h6l2 2v8.5h-8z" />
+      <path d="M3 4.5v10h7.5" />
+      <path d="M6.5 6.5h4M6.5 8.5h4M6.5 10.5h2.5" strokeLinecap="round" />
+    </svg>
+  );
 }

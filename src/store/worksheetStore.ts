@@ -482,11 +482,18 @@ interface WorksheetState {
    * one undo; the anchor moves to the last copy. Returns the new ids ([] when read-only).
    * `fromDocId` as a list gives each question its own source (a Fill across documents).
    * `at` (a gap of the resolved flow, as a 題庫 drag drops) places the first copy there
-   * instead, and wins over `afterId`.
+   * instead, and wins over `afterId`. `leads` (the Past paper bank, k-0443) puts a layout
+   * element (a shared stimulus, already given fresh ids) directly before a copy, in the
+   * same commit; a lead whose question is left out (unknown type) is left out too.
    */
   insertQuestionCopies: (
     questions: readonly Question[],
-    opts?: { fromDocId?: string | readonly (string | undefined)[]; afterId?: string; at?: number },
+    opts?: {
+      fromDocId?: string | readonly (string | undefined)[];
+      afterId?: string;
+      at?: number;
+      leads?: readonly (LayoutElement | undefined)[];
+    },
   ) => string[];
   /**
    * The AI answer writer's fills (`src/answers/`): one commit, one undo; a leaf edited
@@ -1618,26 +1625,40 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     return { ok: true, questionIds: built.map((q) => q.id), ...(lead ? { leadId: lead.id } : {}), committed: get().worksheet };
   },
 
-  insertQuestionCopies: (questions, { fromDocId, afterId, at } = {}) => {
+  insertQuestionCopies: (questions, { fromDocId, afterId, at, leads } = {}) => {
     const state = get();
     if (state.readOnly) return [];
     const known = new Set(listQuestionTypes().map((type) => type.id));
     const sourceOf = (index: number) => (typeof fromDocId === 'string' || fromDocId === undefined ? fromDocId : fromDocId[index]);
-    const copies = questions.flatMap((question, index) =>
-      known.has(question.type) ? [copyQuestion(question, sourceOf(index))] : [],
+    const planned = questions.flatMap((question, index) =>
+      known.has(question.type) ? [{ copy: copyQuestion(question, sourceOf(index)), lead: leads?.[index] }] : [],
     );
+    const copies = planned.map((entry) => entry.copy);
     if (!copies.length) return [];
     state.commit((draft) => {
       let next = draft;
       let after = afterId ?? state.insertAnchorId;
       // Nowhere chosen (no anchor, no drop): each copy may take its type's own section.
       const routed = after === undefined && at === undefined;
-      for (const [index, copy] of copies.entries()) {
+      for (const [index, { copy, lead }] of planned.entries()) {
+        if (lead && !(index === 0 && at !== undefined)) {
+          // The lead takes the place the copy would have taken (its type's section when
+          // routed), and the copy follows it directly.
+          next = insertIntoFlow(next, { type: 'layout', id: lead.id }, after, { layout: [...next.layout, lead] }, { routed, typeId: copy.type });
+          after = lead.id;
+        }
         // The same derivation the drag's provisional page used, so the drop lands where it showed.
         next =
           index === 0 && at !== undefined
             ? { ...next, ...insertQuestionAt(next, copy, at) }
-            : insertIntoFlow(next, { type: 'question', id: copy.id }, after, { questions: [...next.questions, copy] }, { routed });
+            : insertIntoFlow(next, { type: 'question', id: copy.id }, after, { questions: [...next.questions, copy] }, { routed: routed && !lead });
+        if (index === 0 && at !== undefined && lead) {
+          // Dropped at a gap: the lead goes straight in front of the copy that landed there.
+          const position = (next.flow ?? []).findIndex((item) => item.id === copy.id);
+          const flow = [...next.flow];
+          flow.splice(position, 0, { type: 'layout', id: lead.id });
+          next = { ...next, layout: [...next.layout, lead], flow };
+        }
         after = copy.id;
       }
       return next;

@@ -15,6 +15,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Past paper bank 歷屆試題庫.** A second, separate question bank on the start screen, beside
+  your own Question bank: HKCEE, HKALE and HKDSE multiple-choice questions with their official
+  answers, by topic, in English and 中文. Browse a topic, search by words or a source ("DSE2016"),
+  filter by exam and years, tick questions, then add them to a new worksheet, a new Paper 1, one of
+  your papers, or copy them into your own Question bank. In the editor, the 題庫 tab has a switch at
+  its top: My bank or Past papers, with Insert on each question. A shared passage goes in with its
+  questions and is renumbered by your paper. It is read-only and downloaded only when you open it
+  (kept on this computer, never counted as your documents); Settings → Past paper bank turns it off.
+  <!-- zh: **歷屆試題庫。** 開始畫面新增一個獨立題庫，與你自己的題庫分開：HKCEE、HKALE 及 HKDSE 的 MC 題目連官方答案，按課題排列，中英對照。可瀏覽課題、按字詞或出處（例如「DSE2016」）搜尋、按考試及年份篩選，剔選題目後加到新工作紙、新 Paper 1、你的試卷，或複製到你自己的題庫。在編輯器中，「題庫」分頁頂部可切換「我的題庫」或「歷屆試題」，每題都有「插入」。共用資料會與其題目一併加入，並按你的試卷重新編號。此題庫為唯讀，只在你開啟時下載（保存在此電腦上，不計作你的文件）；可在「設定 → 歷屆試題庫」關閉。 -->
 - **A Chinese version of a picture.** Select a picture and use + Chinese picture to give it a
   second image (the same diagram with Chinese labels). Chinese output (preview, Word, copy)
   prints that one; English and bilingual output keep the original. Replace or remove it any time.

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { computeNumbering } from '@/model/numbering';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { BankTab } from '@/components/bank/BankTab';
+import { BankTabSwitch } from '@/components/pastpapers/BankTabSwitch';
 import { useBankSession } from '@/components/bank/bankSession';
 import { Inspector } from './Inspector';
 import { AnswerKeyLayoutPanel } from './AnswerKeyLayoutPanel';
@@ -163,7 +164,7 @@ export function Sidebar({
           ) : tab === 'layout' ? (
             <AnswerKeyLayoutPanel />
           ) : tab === 'bank' ? (
-            <BankTab />
+            <BankTabSwitch mine={<BankTab />} />
           ) : (
             <Inspector numbering={numbering} onShowContent={() => setTab('content')} />
           )}
