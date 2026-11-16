@@ -1,0 +1,994 @@
+{
+  "schemaVersion": 1,
+  "id": "v1-mcq-corpus",
+  "title": {
+    "en": [
+      {
+        "text": "MC corpus"
+      }
+    ],
+    "zh": [
+      {
+        "text": "多項選擇題語料"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [],
+    "zh": []
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1296,
+      "right": 1296,
+      "bottom": 1440,
+      "left": 1296
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "mc002",
+        "zones": {
+          "left": [
+            {
+              "kind": "pageNumber",
+              "id": "mc003",
+              "pattern": "plain",
+              "prefix": {
+                "en": [
+                  {
+                    "text": "2026-27-ECON 1–"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "2026-27-ECON 1–"
+                  }
+                ]
+              },
+              "format": {
+                "fontSize": 9
+              }
+            }
+          ],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "mc004",
+              "pattern": "plain",
+              "format": {
+                "fontSize": 9
+              }
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "mc005",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "mc006",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following statements about a price ceiling are correct?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下有關價格上限的陳述，哪些正確？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "mc007",
+          "text": {
+            "en": [
+              {
+                "text": "(1) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有(1)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mc008",
+          "text": {
+            "en": [
+              {
+                "text": "(1) and (2) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有(1)和(2)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mc009",
+          "text": {
+            "en": [
+              {
+                "text": "(2) and (3) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有(2)和(3)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mc010",
+          "text": {
+            "en": [
+              {
+                "text": "(1), (2) and (3)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "(1)、(2)和(3)"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1,
+      "statements": [
+        {
+          "en": [
+            {
+              "text": "It may cause a shortage."
+            }
+          ],
+          "zh": [
+            {
+              "text": "可能引致短缺。"
+            }
+          ]
+        },
+        {
+          "en": [
+            {
+              "text": "It must be set below the equilibrium price to bind."
+            }
+          ],
+          "zh": [
+            {
+              "text": "必須定於均衡價格以下才有效。"
+            }
+          ]
+        },
+        {
+          "en": [
+            {
+              "text": "It raises the equilibrium price."
+            }
+          ],
+          "zh": [
+            {
+              "text": "提高均衡價格。"
+            }
+          ]
+        }
+      ],
+      "explanation": {
+        "en": [
+          {
+            "text": "(3) is wrong: a binding ceiling holds price below equilibrium."
+          }
+        ],
+        "zh": [
+          {
+            "text": "(3)錯誤：有效的價格上限令價格低於均衡價格。"
+          }
+        ]
+      },
+      "tags": [
+        "C.ped",
+        "price ceiling"
+      ],
+      "tagsAt": "2026-11-01T00:00:00.000Z",
+      "provenance": {
+        "en": [
+          {
+            "text": "Modelled on DSE 2022 Paper 1"
+          }
+        ],
+        "zh": [
+          {
+            "text": "仿照 2022 年文憑試卷一"
+          }
+        ]
+      },
+      "lineage": {
+        "rootId": "taGFZmaV40",
+        "fromDocId": "doc-source"
+      }
+    },
+    {
+      "id": "mc011",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "mc012",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the table and the diagram. What happens to total revenue?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "參閱表格及圖。總收益會怎樣？"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "table",
+          "id": "mc013",
+          "rows": [
+            {
+              "id": "mc014",
+              "cells": [
+                {
+                  "id": "mc015",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "R1C1"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "行1列1"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "mc016",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "R1C2"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "行1列2"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "mc017",
+              "cells": [
+                {
+                  "id": "mc018",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "R2C1"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "行2列1"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "mc019",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "R2C2"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "行2列2"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "image",
+          "id": "mc020",
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "widthPx": 20,
+          "heightPx": 10,
+          "naturalWidthPx": 20,
+          "naturalHeightPx": 10,
+          "altText": {
+            "en": [
+              {
+                "text": "Demand and supply of tea"
+              }
+            ],
+            "zh": [
+              {
+                "text": "茶葉的需求與供應"
+              }
+            ]
+          },
+          "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+          "caption": {
+            "en": [
+              {
+                "text": "Market for tea"
+              }
+            ],
+            "zh": [
+              {
+                "text": "茶葉市場"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "mc021",
+          "text": {
+            "en": [
+              {
+                "text": "Rises"
+              }
+            ],
+            "zh": [
+              {
+                "text": "上升"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mc022",
+          "text": {
+            "en": [
+              {
+                "text": "Falls"
+              }
+            ],
+            "zh": [
+              {
+                "text": "下降"
+              }
+            ]
+          },
+          "blocks": [
+            {
+              "kind": "image",
+              "id": "mc023",
+              "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+              "widthPx": 10,
+              "heightPx": 10,
+              "naturalWidthPx": 10,
+              "naturalHeightPx": 10,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Option picture"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "選項圖片"
+                  }
+                ]
+              }
+            }
+          ],
+          "rationale": {
+            "en": [
+              {
+                "text": "Wrong diagram."
+              }
+            ],
+            "zh": [
+              {
+                "text": "圖不對。"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mc024",
+          "text": {
+            "en": [
+              {
+                "text": "Unchanged"
+              }
+            ],
+            "zh": [
+              {
+                "text": "不變"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mc025",
+          "text": {
+            "en": [
+              {
+                "text": "Cannot tell"
+              }
+            ],
+            "zh": [
+              {
+                "text": "無法判斷"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "mc026",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "mc027",
+          "text": {
+            "en": [
+              {
+                "text": "What is the opportunity cost?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "機會成本是甚麼？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "mc028",
+          "text": {
+            "en": [
+              {
+                "text": "A"
+              }
+            ],
+            "zh": [
+              {
+                "text": "A"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mc029",
+          "text": {
+            "en": [
+              {
+                "text": "B"
+              }
+            ],
+            "zh": [
+              {
+                "text": "B"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mc030",
+          "text": {
+            "en": [
+              {
+                "text": "C"
+              }
+            ],
+            "zh": [
+              {
+                "text": "C"
+              }
+            ]
+          }
+        },
+        {
+          "id": "mc031",
+          "text": {
+            "en": [
+              {
+                "text": "D"
+              }
+            ],
+            "zh": [
+              {
+                "text": "D"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 3
+    }
+  ],
+  "layout": [
+    {
+      "kind": "stimulus",
+      "id": "mc032",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "mc033",
+          "text": {
+            "en": [
+              {
+                "text": "Study the following passage and answer Questions 2 and 3."
+              }
+            ],
+            "zh": [
+              {
+                "text": "細閱以下文字，回答第 2 及 3 題。"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "flow": [
+    {
+      "type": "question",
+      "id": "mc005"
+    },
+    {
+      "type": "layout",
+      "id": "mc032"
+    },
+    {
+      "type": "question",
+      "id": "mc011"
+    },
+    {
+      "type": "question",
+      "id": "mc026"
+    }
+  ],
+  "createdAt": "2026-11-16T00:00:00.000Z",
+  "updatedAt": "2026-11-16T00:00:00.000Z",
+  "baseFontSize": 10,
+  "cover": {
+    "cornerLines": [
+      {
+        "id": "mc034",
+        "text": {
+          "en": [
+            {
+              "text": "2026-27"
+            }
+          ],
+          "zh": [
+            {
+              "text": "2026-27"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "bold": true,
+          "fontSize": 11
+        }
+      },
+      {
+        "id": "mc035",
+        "text": {
+          "en": [
+            {
+              "text": "ECON"
+            }
+          ],
+          "zh": [
+            {
+              "text": "經濟"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "bold": true,
+          "fontSize": 11
+        }
+      },
+      {
+        "id": "mc036",
+        "text": {
+          "en": [
+            {
+              "text": "PAPER 1"
+            }
+          ],
+          "zh": [
+            {
+              "text": "卷一"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 10.5,
+          "spaceBefore": 5.75
+        },
+        "gapAfter": 1
+      }
+    ],
+    "cornerRule": true,
+    "headLines": [
+      {
+        "id": "mc037",
+        "text": {
+          "en": [
+            {
+              "text": "SCHOOL NAME"
+            }
+          ],
+          "zh": [
+            {
+              "text": "學校名稱"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 11
+        },
+        "gapAfter": 1,
+        "sharedAs": "school"
+      },
+      {
+        "id": "mc038",
+        "text": {
+          "en": [
+            {
+              "text": "S.6 MOCK EXAMINATION 2026 – 2027"
+            }
+          ],
+          "zh": [
+            {
+              "text": "2026 – 2027 年度中六模擬考試"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 11
+        },
+        "gapAfter": 2,
+        "sharedAs": "exam"
+      },
+      {
+        "id": "mc039",
+        "text": {
+          "en": [
+            {
+              "text": "ECONOMICS   PAPER 1"
+            }
+          ],
+          "zh": [
+            {
+              "text": "經濟  試卷一"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 14,
+          "bold": true
+        }
+      },
+      {
+        "id": "mc040",
+        "text": {
+          "en": [
+            {
+              "text": "Multiple-choice Questions"
+            }
+          ],
+          "zh": [
+            {
+              "text": "多項選擇題"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 14,
+          "bold": true
+        },
+        "gapAfter": 1
+      },
+      {
+        "id": "mc041",
+        "text": {
+          "en": [
+            {
+              "text": "8:30 am – 9:30 am (1 hour)"
+            }
+          ],
+          "zh": [
+            {
+              "text": "一小時完卷\n（上午八時三十分至九時三十分）"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Times New Roman",
+            "eastAsia": "PMingLiU"
+          }
+        }
+      },
+      {
+        "id": "mc042",
+        "text": {
+          "en": [
+            {
+              "text": "This paper must be answered in English"
+            }
+          ],
+          "zh": [
+            {
+              "text": "本試卷必須用中文作答"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Times New Roman",
+            "eastAsia": "PMingLiU"
+          }
+        },
+        "gapAfter": 6
+      }
+    ],
+    "instructionsHeading": {
+      "en": [
+        {
+          "text": "INSTRUCTIONS"
+        }
+      ],
+      "zh": [
+        {
+          "text": "考生須知"
+        }
+      ]
+    },
+    "instructionMarker": "dot",
+    "instructions": [
+      {
+        "id": "mc043",
+        "text": {
+          "en": [
+            {
+              "text": "Write your name, class and class number in the spaces provided on this cover."
+            }
+          ],
+          "zh": [
+            {
+              "text": "在封面指定位置填寫姓名、班別及班號。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "mc044",
+        "text": {
+          "en": [
+            {
+              "text": "Do not open this question paper until you are told to do so."
+            }
+          ],
+          "zh": [
+            {
+              "text": "未獲監考員指示前，不得翻閱試卷。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "mc045",
+        "text": {
+          "en": [
+            {
+              "text": "All questions carry equal marks. Answer "
+            },
+            {
+              "text": "ALL",
+              "bold": true
+            },
+            {
+              "text": " questions."
+            }
+          ],
+          "zh": [
+            {
+              "text": "各題分數相同，全部題目均須作答。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "mc046",
+        "text": {
+          "en": [
+            {
+              "text": "Mark your answers on the answer sheet provided, using an HB pencil so that a wrong mark can be erased cleanly."
+            }
+          ],
+          "zh": [
+            {
+              "text": "請用 HB 鉛筆在答題紙上作答，以便修改時能完全擦去。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "mc047",
+        "text": {
+          "en": [
+            {
+              "text": "Mark only "
+            },
+            {
+              "text": "ONE",
+              "bold": true
+            },
+            {
+              "text": " answer for each question. A question with more than one answer marked scores no mark."
+            }
+          ],
+          "zh": [
+            {
+              "text": "每題只可選一個答案；選多於一個答案者，該題不獲分數。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "mc048",
+        "text": {
+          "en": [
+            {
+              "text": "No marks are deducted for a wrong answer."
+            }
+          ],
+          "zh": [
+            {
+              "text": "答錯不會扣分。"
+            }
+          ]
+        }
+      }
+    ],
+    "panelBoxes": 0,
+    "footLines": [
+      {
+        "id": "mc049",
+        "text": {
+          "en": [
+            {
+              "text": "SCHOOL NAME"
+            }
+          ],
+          "zh": [
+            {
+              "text": "學校名稱"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "bold": true,
+          "fontSize": 12
+        },
+        "sharedAs": "school"
+      }
+    ],
+    "footNote": {
+      "en": [
+        {
+          "text": "Keep this question paper on your desk until the end of the examination."
+        }
+      ],
+      "zh": [
+        {
+          "text": "請將試卷放在桌上，直至考試結束。"
+        }
+      ]
+    },
+    "fonts": {
+      "latin": "Times New Roman",
+      "eastAsia": "PMingLiU"
+    },
+    "columns": {
+      "left": 5328,
+      "gap": 144,
+      "right": 3845
+    }
+  }
+}

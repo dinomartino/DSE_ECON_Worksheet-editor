@@ -1037,6 +1037,9 @@ a band's `data-zone` spans, other cells' `--w`/`--x` custom properties.
 
 ### An inserted picture is reduced to what the paper can print (`src/export/imageImport.ts`)
 
+**Chinese picture (`ImageBlock.srcZh`, optional, k-0441).** A second `data:` URL printed instead of `src` when the output language is Chinese; English and bilingual keep `src`; size and alt text are shared. Decided once, at the top of `renderWorksheet` (`render/worksheet.ts:withChinesePictures`, structure-sharing, a no-op without the field), so preview, `.docx` and clipboard cannot disagree. It sits inside a block, so it needs no `KNOWN_KEYS` entry (that set is top-level only); no schema bump, no migration. Only `ImageBlock` has it (not `CellImage`). The frozen `src/test/corpus/v1-mcq.json` includes it.
+
+
 `ImageBlock.src`/`CellImage.src` are `data:` URLs, base64 in the document's own JSON —
 what makes a downloaded `.worksheet.json` self-contained, and the whole cost: base64
 adds a third again and localStorage is ~5MB **across every document**. So a file is

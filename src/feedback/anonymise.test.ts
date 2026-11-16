@@ -26,6 +26,7 @@ import {
   dataUrlBytes,
   DROPPED_KEYS,
   IMAGE_KEY,
+  IMAGE_KEYS,
   imagePixelSize,
   KEPT_KEYS,
   noisePng,
@@ -270,7 +271,7 @@ describe('anonymiseWorksheet', () => {
     const file = stringifyWorksheet(anonymise(original));
     // What a person wrote: every string but ids, enums, colours, fonts, pictures and times.
     const written = (worksheet: unknown) =>
-      strings(worksheet).filter(([key]) => !KEPT_KEYS.has(key) && key !== IMAGE_KEY && !TIMESTAMP_KEYS.has(key));
+      strings(worksheet).filter(([key]) => !KEPT_KEYS.has(key) && !IMAGE_KEYS.has(key) && !TIMESTAMP_KEYS.has(key));
     const wording = written(original);
     const copied = written(JSON.parse(file)).map(([, text]) => text).join('\n');
     expect(wording.length).toBeGreaterThan(0);
@@ -498,7 +499,7 @@ describe('the census of string fields', () => {
   });
 
   it('classifies every free-text field', () => {
-    const classified = new Set([...KEPT_KEYS, ...SCRAMBLED_KEYS, ...TIMESTAMP_KEYS, ...DROPPED_KEYS, IMAGE_KEY]);
+    const classified = new Set([...KEPT_KEYS, ...SCRAMBLED_KEYS, ...TIMESTAMP_KEYS, ...DROPPED_KEYS, ...IMAGE_KEYS]);
     const unknown = [...declared.keys()].filter((key) => !classified.has(key));
     expect(unknown, 'add each to a list in anonymise.ts (scrambled is the safe choice)').toEqual([]);
   });

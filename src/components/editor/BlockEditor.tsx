@@ -1049,6 +1049,12 @@ function ImageBlockEditor({
     block.naturalWidthPx && block.naturalHeightPx
       ? block.naturalHeightPx / block.naturalWidthPx
       : block.heightPx / block.widthPx;
+  const zhInput = useRef<HTMLInputElement>(null);
+  const readZh = async (file: File) => {
+    // The same reduction every other picture takes (§ `prepareImageForStorage`).
+    const prepared = await prepareImageForStorage(file);
+    onChange({ ...block, srcZh: prepared.src });
+  };
 
   return (
     <div className="space-y-2">
@@ -1073,6 +1079,46 @@ function ImageBlockEditor({
           />
           <div className="text-[10px] text-ink-subtle">{m.height(block.heightPx)}</div>
         </div>
+      </div>
+      <div className="space-y-1" title={m.chinesePictureHint}>
+        <div className="flex items-center gap-1">
+          <span className="shrink-0 text-[11px] text-ink-subtle">{m.chinesePicture}</span>
+          {block.srcZh ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={block.srcZh} alt="" className="max-h-10 rounded border border-line object-contain" />
+              <Button size="sm" variant="subtle" onClick={() => zhInput.current?.click()}>
+                {m.replaceChinesePicture}
+              </Button>
+              <IconButton
+                label={m.removeChinesePicture}
+                variant="danger"
+                onClick={() => {
+                  const rest: ImageBlock = { ...block };
+                  delete rest.srcZh;
+                  onChange(rest);
+                }}
+              >
+                <span aria-hidden>✕</span>
+              </IconButton>
+            </>
+          ) : (
+            <Button size="sm" variant="subtle" onClick={() => zhInput.current?.click()}>
+              {m.addChinesePicture}
+            </Button>
+          )}
+        </div>
+        <input
+          ref={zhInput}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void readZh(file);
+            event.target.value = '';
+          }}
+        />
       </div>
       <FigureAlignField
         value={block.align}

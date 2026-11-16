@@ -83,6 +83,14 @@ export const BLOCK_EDITOR_MESSAGES = defineMessages({
   picture: { en: 'Picture', zh: '圖片' },
   width: { en: 'Width', zh: '寬度' },
   removePictureFromCell: { en: 'Remove picture from cell', zh: '移除儲存格內的圖片' },
+  chinesePicture: { en: 'Chinese picture', zh: '中文圖片' },
+  chinesePictureHint: {
+    en: 'Used instead of this picture in Chinese output.',
+    zh: '輸出中文版時，會用這張取代上面的圖片。',
+  },
+  addChinesePicture: { en: '+ Chinese picture', zh: '+ 中文圖片' },
+  replaceChinesePicture: { en: 'Replace', zh: '更換' },
+  removeChinesePicture: { en: 'Remove Chinese picture', zh: '移除中文圖片' },
   addPicture: { en: '+ Picture', zh: '+ 圖片' },
   pictureAlt: { en: 'Picture alt text', zh: '圖片替代文字' },
   height: {
