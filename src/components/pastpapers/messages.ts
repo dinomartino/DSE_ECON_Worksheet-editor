@@ -37,6 +37,32 @@ export const PAST_PAPER_MESSAGES = defineMessages({
     zh: (mb: string) => `搜尋所有課題會下載整個題庫一次（約 ${mb} MB），並保存在此電腦上。`,
   },
   loadAll: { en: 'Download and search', zh: '下載並搜尋' },
+  searchEvery: { en: 'Search every topic…', zh: '在所有課題中搜尋…' },
+  paper: { en: 'Paper', zh: '試卷' },
+  allPapers: { en: 'All papers', zh: '所有試卷' },
+  paperOption: { en: (label: string, n: number) => `${label} (${n})`, zh: (label: string, n: number) => `${label}（${n} 題）` },
+  paperHeading: { en: (label: string) => `${label}, in question order`, zh: (label: string) => `${label}（按題號排列）` },
+  inTopic: { en: (topic: string) => `in ${topic}`, zh: (topic: string) => `屬「${topic}」` },
+  pictures: { en: (n: number) => (n === 1 ? 'with a picture' : `with ${n} pictures`), zh: (n: number) => `附 ${n} 幅圖` },
+  showsSoon: { en: 'Downloading its topic to show it…', zh: '正在下載所屬課題以顯示此題…' },
+  notInTopic: {
+    en: 'Not in its topic file, or it needs a newer version of Econ Studio.',
+    zh: '所屬課題檔案中沒有此題，或需要較新版本的 Econ Studio。',
+  },
+  indexNote: {
+    en: 'Every topic is searched; a question downloads its topic when you scroll to it.',
+    zh: '已搜尋所有課題；捲動到某題時才會下載它所屬的課題。',
+  },
+  storageWarn: {
+    en: (pct: number, mb: string) =>
+      `Your browser’s storage for documents would be ${pct}% full (${mb} MB of about 5 MB). Pictures take the most room. The desktop app has no such limit.`,
+    zh: (pct: number, mb: string) => `你瀏覽器的文件儲存空間將會用了 ${pct}%（約 5 MB 中的 ${mb} MB）。圖片最佔空間。桌面版沒有此限制。`,
+  },
+  storageFull: {
+    en: (mb: string) =>
+      `These would not fit: your browser keeps about 5 MB for all your documents and ${mb} MB is used. Pick fewer questions, move old documents to Trash and empty it, or use the desktop app.`,
+    zh: (mb: string) => `放不下：你的瀏覽器只為所有文件保留約 5 MB，現已用了 ${mb} MB。請少選幾題、把舊文件移到垃圾桶並清空，或改用桌面版。`,
+  },
   exam: { en: 'Exam', zh: '考試' },
   allExams: { en: 'All', zh: '全部' },
   years: { en: 'Years', zh: '年份' },
@@ -68,9 +94,9 @@ export const PAST_PAPER_MESSAGES = defineMessages({
     en: (already: number) => (already === 1 ? 'That question is already in your question bank.' : `All ${already} are already in your question bank.`),
     zh: (already: number) => (already === 1 ? '此題已在你的題庫中。' : `這 ${already} 題已全在你的題庫中。`),
   },
-  copiedNoStimulus: {
-    en: (n: number) => ` ${n === 1 ? '1 of them shares' : `${n} of them share`} a passage with another question; your bank keeps the question only, so add those to a worksheet from here to keep the passage.`,
-    zh: (n: number) => ` 其中 ${n} 題與其他題目共用資料；你的題庫只保存題目本身，如要保留資料，請從這裏把這些題目加到工作紙。`,
+  copiedWithStimulus: {
+    en: (n: number) => ` ${n === 1 ? 'Its shared passage went' : `${n} shared passages went`} with ${n === 1 ? 'it' : 'them'}, and come along when you insert those questions.`,
+    zh: (n: number) => ` 共用資料（${n} 份）亦一併複製，插入這些題目時會一同加入。`,
   },
   added: {
     en: (n: number, skipped: number) => `${n === 1 ? '1 past paper question' : `${n} past paper questions`} added${skipped ? `; ${skipped} already in this paper` : ''}`,

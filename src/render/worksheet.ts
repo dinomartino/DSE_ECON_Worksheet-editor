@@ -509,7 +509,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
 }
 
 /**
- * Chinese output prints an image block's `srcZh` in place of its `src`; English and
+ * Chinese output prints an image block's (or a table cell picture's) `srcZh` in place of its `src`; English and
  * bilingual keep `src`. Structure-sharing: a document with no `srcZh` (or any other
  * language) is returned as the same object, so nothing changes for it.
  */
@@ -532,7 +532,9 @@ export function withChinesePictures(worksheet: Worksheet, language: LanguageMode
         if (next !== item) (out ??= { ...record })[key] = next;
       }
       const base = out ?? record;
-      if (base.kind === 'image' && typeof base.srcZh === 'string' && base.srcZh !== '') {
+      // An image block, or a picture in a table cell (`CellImage`, which has no `kind`).
+      const picture = base.kind === 'image' || (base.kind === undefined && typeof base.src === 'string');
+      if (picture && typeof base.srcZh === 'string' && base.srcZh !== '') {
         const { srcZh, ...rest } = base;
         return { ...rest, src: srcZh };
       }

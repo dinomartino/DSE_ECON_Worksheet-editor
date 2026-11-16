@@ -1,7 +1,8 @@
 import { rowsOf } from '@/library/indexer';
+import { stimuliServing } from '@/library/stimuli';
 import { migrate } from '@/model/migrations';
 import { plain } from '@/model/text';
-import type { BiText, LayoutElement, Question, Worksheet } from '@/model/types';
+import type { BiText, LayoutElement, McqQuestion, Question, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
 
 /**
@@ -42,7 +43,29 @@ export interface Manifest {
   topics: TopicEntry[];
   /** Total questions, as the manifest says, else the topics' sum. */
   questions: number;
+  /**
+   * The search index (`search` in the list, k-0444): one row per question of every topic, so
+   * a search across the bank needs no topic downloaded. Absent in an older export, or one
+   * of a later index version: the screen then offers to download every topic instead.
+   */
+  search?: SearchRow[];
 }
+
+/** One question in the search index. */
+export interface SearchRow {
+  topicId: string;
+  source: SourceInfo;
+  /** Plain words of the question in reading order (its shared passage first), as exported. */
+  en: string;
+  zh: string;
+  /** Pictures in the question and its passage (0 when the export says none). */
+  pictures: number;
+  /** Lower-cased: both languages, the source line in both languages and the tag. */
+  searchText: string;
+}
+
+/** The index versions this reader understands; a later one is ignored, not misread. */
+export const SEARCH_VERSION = 1;
 
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const str = (x: unknown) => (typeof x === 'string' ? x : undefined);
@@ -76,13 +99,68 @@ export function parseManifest(raw: unknown): Manifest | { error: 'format' } {
   });
   topics.sort((a, b) => a.order - b.order);
   const sum = topics.reduce((total, t) => total + (t.questions ?? 0), 0);
+  const search = parseSearch(raw.search, topics);
   return {
     enabled: raw.enabled !== false,
     version: num(raw.version) ?? 1,
     topics,
     questions: num(raw.questions) ?? sum,
+    ...(search ? { search } : {}),
   };
 }
+
+/**
+ * The list's `search` block, tolerant like the rest: a row naming no listed topic or no
+ * source tag is dropped, a second row of one tag keeps the first, missing words read as
+ * none. Rows come out in the list's topic order, each topic's in the order given.
+ */
+export function parseSearch(raw: unknown, topics: readonly TopicEntry[]): SearchRow[] | undefined {
+  if (!isObject(raw) || !Array.isArray(raw.questions)) return undefined;
+  const version = num(raw.version) ?? 1;
+  if (version > SEARCH_VERSION) return undefined;
+  const order = new Map(topics.map((t, i) => [t.id, i]));
+  const seen = new Set<string>();
+  const rows: SearchRow[] = [];
+  for (const entry of raw.questions) {
+    if (!isObject(entry)) continue;
+    const topicId = str(entry.topic);
+    const tag = str(entry.source)?.trim();
+    if (!topicId || !order.has(topicId) || !tag || seen.has(tag)) continue;
+    const source = sourceOf({ tags: [tag] });
+    if (source.exam === 'other') continue;
+    seen.add(tag);
+    const en = (str(entry.en) ?? '').replace(/\s+/g, ' ').trim();
+    const zh = (str(entry.zh) ?? '').replace(/\s+/g, ' ').trim();
+    const pictures = Math.max(0, Math.floor(num(entry.pictures) ?? 0));
+    const label = sourceLabel(source);
+    rows.push({ topicId, source, en, zh, pictures, searchText: [en, zh, label.en, label.zh, tag].join(' ').toLowerCase() });
+  }
+  rows.sort((a, b) => order.get(a.topicId)! - order.get(b.topicId)!);
+  return rows;
+}
+
+const PAPER_EN = { HKCEE: 'HKCEE', HKALE: 'HKALE', HKDSE: 'HKDSE', other: '' } as const;
+const PAPER_ZH = { HKCEE: '香港中學會考', HKALE: '香港高級程度會考', HKDSE: '香港中學文憑考試', other: '' } as const;
+const ZH_NUMERALS = ['', '一', '二', '三', '四', '五'];
+
+/**
+ * The paper a source names, as the export's own source lines spell it ("HKDSE 2016 Paper 1",
+ * "香港中學文憑考試 2016 卷一"); with `number`, the question too ("… Q34", "… 第 34 題").
+ * Printed text of the data, not interface wording.
+ */
+export function sourceLabel(source: SourceInfo, withNumber = true): { en: string; zh: string } {
+  if (source.exam === 'other') return { en: source.tag, zh: source.tag };
+  const when = source.special === 'SP' ? 'Sample Paper' : source.special === 'PP' ? 'Practice Paper' : String(source.year ?? '');
+  const whenZh = source.special === 'SP' ? '樣本試卷' : source.special === 'PP' ? '練習卷' : String(source.year ?? '');
+  const paper = source.paper ?? 1;
+  const en = `${PAPER_EN[source.exam]} ${when} Paper ${paper}`;
+  const zh = `${PAPER_ZH[source.exam]} ${whenZh} 卷${ZH_NUMERALS[paper] ?? paper}`;
+  if (!withNumber || source.number === undefined) return { en, zh };
+  return { en: `${en} Q${source.number}`, zh: `${zh} 第 ${source.number} 題` };
+}
+
+/** The paper a source tag belongs to: `DSE2016/P1` of `DSE2016/P1/Q34`; '' without a tag. */
+export const paperKey = (source: SourceInfo) => source.tag.replace(/\/Q\d+$/, '');
 
 /** Where a question comes from, read off its source tag (`CE2011/P2/Q8`). */
 export interface SourceInfo {
@@ -161,7 +239,9 @@ export function parseTopic(raw: unknown, entry: TopicEntry): TopicData | undefin
     return undefined;
   }
   if (!Array.isArray(doc.questions)) return undefined;
-  const known = doc.questions.filter((q) => q && typeof q.type === 'string' && getQuestionType(q.type));
+  const known = doc.questions
+    .filter((q) => q && typeof q.type === 'string' && getQuestionType(q.type))
+    .map(withPictureGrid);
   const skipped = doc.questions.length - known.length;
   doc = { ...doc, kind: 'bank', questions: known, bankHidden: undefined };
   doc = { ...doc, flow: (doc.flow ?? []).filter((item) => item.type !== 'question' || known.some((q) => q.id === item.id)) };
@@ -185,21 +265,7 @@ export function parseTopic(raw: unknown, entry: TopicEntry): TopicData | undefin
   if (lifted.size > 0) doc = { ...doc, layout: doc.layout.map((element) => lifted.get(element.id) ?? element) };
 
   // Each stimulus serves the questions after it, up to its span (default 2) or the next stimulus.
-  const stimulusOf = new Map<string, Extract<LayoutElement, { kind: 'stimulus' }>>();
-  const layoutById = new Map((doc.layout ?? []).map((element) => [element.id, element]));
-  let open: { element: Extract<LayoutElement, { kind: 'stimulus' }>; left: number } | undefined;
-  for (const item of doc.flow) {
-    if (item.type === 'layout') {
-      const element = layoutById.get(item.id);
-      if (element?.kind === 'stimulus') open = { element, left: Math.max(1, element.span ?? 2) };
-      continue;
-    }
-    if (item.type !== 'question') continue;
-    if (open && open.left > 0) {
-      stimulusOf.set(item.id, open.element);
-      open.left -= 1;
-    }
-  }
+  const stimulusOf = stimuliServing(doc);
 
   let rows: ReturnType<typeof rowsOf> = [];
   try {
@@ -231,6 +297,22 @@ export function parseTopic(raw: unknown, entry: TopicEntry): TopicData | undefin
   return { entry, doc, items, skipped };
 }
 
+/**
+ * A question whose four options are pictures (or tables) prints them two by two, each letter
+ * above its own figure (the MC panel's "2 per row", `optionLayout: 'columns2'`), as the
+ * papers do. The export says so itself (docs/design/pastpaper-bank.md); one that does not
+ * gets it here, in memory, so an older export prints right too. A layout the export set is
+ * kept.
+ */
+export function withPictureGrid(question: Question): Question {
+  if (question.type !== 'mcq') return question;
+  const mcq = question as McqQuestion;
+  if (mcq.optionLayout !== undefined || !Array.isArray(mcq.options) || mcq.options.length < 2) return question;
+  const figure = (option: McqQuestion['options'][number]) =>
+    (option.blocks ?? []).some((block) => block.kind === 'image' || block.kind === 'diagram' || block.kind === 'table');
+  return mcq.options.every(figure) ? ({ ...mcq, optionLayout: 'columns2' } as Question) : question;
+}
+
 /** The filters a teacher sets on the bank: words, exam, years. All optional. */
 export interface PastPaperQuery {
   words?: string;
@@ -238,24 +320,59 @@ export interface PastPaperQuery {
   /** Inclusive; a sample or practice paper counts as its exam's first year (2012 for HKDSE). */
   from?: number;
   to?: number;
+  /** One paper only (`paperKey`, `DSE2016/P1`). */
+  paper?: string;
 }
 
 const yearOf = (source: SourceInfo) => source.year ?? (source.exam === 'HKDSE' ? 2012 : undefined);
 
-/** Every word must appear (in either language, the source line or the tag). */
-export function matchItem(item: PastPaperItem, query: PastPaperQuery): boolean {
+/**
+ * Every word must appear (in either language, the source line or the tag). Works on a
+ * loaded question and on a search-index row alike: both carry a source and a search text.
+ */
+export function matchItem(item: Pick<PastPaperItem, 'source' | 'searchText'>, query: PastPaperQuery): boolean {
   if (query.exams && query.exams.length > 0 && !query.exams.includes(item.source.exam)) return false;
   const year = yearOf(item.source);
   if (query.from !== undefined && (year === undefined || year < query.from)) return false;
   if (query.to !== undefined && (year === undefined || year > query.to)) return false;
+  if (query.paper !== undefined && paperKey(item.source) !== query.paper) return false;
   const words = (query.words ?? '').toLowerCase().split(/\s+/).filter(Boolean);
   return words.every((word) => item.searchText.includes(word));
 }
 
-/** The years the loaded items span, for the year filter. */
-export function yearSpan(items: readonly PastPaperItem[]): { from: number; to: number } | undefined {
+/** The years some questions span, for the year filter. */
+export function yearSpan(items: readonly Pick<PastPaperItem, 'source'>[]): { from: number; to: number } | undefined {
   const years = items.map((item) => yearOf(item.source)).filter((y): y is number => y !== undefined);
   return years.length ? { from: Math.min(...years), to: Math.max(...years) } : undefined;
+}
+
+export interface PaperChoice {
+  /** `DSE2016/P1` (`paperKey`). */
+  key: string;
+  source: SourceInfo;
+  /** Questions of it in the bank. */
+  questions: number;
+}
+
+const EXAM_ORDER = { HKCEE: 0, HKALE: 1, HKDSE: 2, other: 3 } as const;
+
+/** The papers some questions come from, for the paper filter: by exam, then year (sample and practice papers first), then paper. */
+export function papersOf(items: readonly Pick<PastPaperItem, 'source'>[]): PaperChoice[] {
+  const byKey = new Map<string, PaperChoice>();
+  for (const { source } of items) {
+    const key = paperKey(source);
+    if (!key) continue;
+    const known = byKey.get(key);
+    if (known) known.questions += 1;
+    else byKey.set(key, { key, source, questions: 1 });
+  }
+  const when = (s: SourceInfo) => (s.special === 'SP' ? 0 : s.special === 'PP' ? 1 : s.year ?? 0);
+  return [...byKey.values()].sort(
+    (a, b) =>
+      EXAM_ORDER[a.source.exam] - EXAM_ORDER[b.source.exam] ||
+      when(a.source) - when(b.source) ||
+      (a.source.paper ?? 0) - (b.source.paper ?? 0),
+  );
 }
 
 type StimulusElement = Extract<LayoutElement, { kind: 'stimulus' }>;

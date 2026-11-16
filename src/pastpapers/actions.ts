@@ -4,7 +4,7 @@ import { rootIdOf } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import type { WorksheetStore } from '@/storage';
+import { worksheetStore, type WorksheetStore } from '@/storage';
 import { planCopies } from './copy';
 import type { PastPaperItem } from './pack';
 
@@ -56,30 +56,36 @@ export interface BankCopyOutcome {
   copied: number;
   /** Already in the teacher's bank (any version of the same question). */
   already: number;
-  /** Copied questions whose shared stimulus stays behind (a bank holds questions only). */
-  withoutStimulus: number;
+  /** Shared passages kept in the bank in front of the copies they serve. */
+  stimuli: number;
 }
 
 /**
  * Copy to my question bank: into the teacher's one bank (`oneBank`, made when there is
- * none), each question once, never twice (`copyToBank` by `rootId`). One save per topic.
+ * none), each question once, never twice (`copyToBank` by `rootId`). A shared passage goes
+ * in front of the copies it serves, with the span they fill, so inserting them from the
+ * 題庫 brings it along (`library/stimuli.ts`). One save per topic.
  */
 export async function copyIntoMyBank(items: readonly PastPaperItem[], io: { store?: WorksheetStore } = {}): Promise<BankCopyOutcome> {
-  const plan = planCopies(items);
+  let to: BankTarget = await oneBank(io);
+  // What the bank already holds is left out before planning, so a passage's span counts only the copies made.
+  const existing = typeof to === 'string' ? await (io.store ?? worksheetStore).load(to).catch(() => undefined) : undefined;
+  const held = new Set(existing?.questions.map(rootIdOf) ?? []);
+  const alreadyCount = new Set(items.map((item) => rootIdOf(item.question)).filter((root) => held.has(root))).size;
+  const plan = planCopies(items, held);
   const byDoc = new Map<string, number[]>();
   plan.fromDocIds.forEach((docId, index) => byDoc.set(docId, [...(byDoc.get(docId) ?? []), index]));
-  let to: BankTarget = await oneBank(io);
   let copied = 0;
-  let already = 0;
-  const alreadyRoots = new Set<string>();
+  let already = alreadyCount;
+  let stimuli = 0;
   for (const [docId, indexes] of byDoc) {
-    const result = await copyToBank(indexes.map((i) => plan.questions[i]), docId, to, io);
+    const leads = indexes.map((i) => plan.leads[i]);
+    const result = await copyToBank(indexes.map((i) => plan.questions[i]), docId, to, io, leads);
     copied += result.copied;
     already += result.already.length;
-    for (const question of result.already) alreadyRoots.add(rootIdOf(question));
+    if (result.copied > 0) stimuli += leads.filter((lead, k) => lead && !result.already.includes(plan.questions[indexes[k]])).length;
     // A bank made by the first write is the one the next writes go to (one that saved nothing was never made).
     if (result.copied > 0) to = result.bank.id;
   }
-  const withoutStimulus = items.filter((item) => item.stimulus && !alreadyRoots.has(rootIdOf(item.question))).length;
-  return { copied, already, withoutStimulus: Math.min(withoutStimulus, copied) };
+  return { copied, already, stimuli };
 }

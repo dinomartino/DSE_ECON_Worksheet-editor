@@ -215,9 +215,12 @@ export type CaptionPlacement = 'above' | 'below';
  *  - `box` — one frame, nothing ruled inside (a boxed stimulus).
  *  - `headerRule` — the T-account: frame, one rule under the top row, one down the
  *    middle (a bank's balance sheet). Neither `all` nor `box` can reach it.
+ *  - `none` — no rules at all: a grid that only places things, as a paper sets four
+ *    numbered diagrams (1) to (4) two by two, each label above its picture (k-0444).
+ *    Additive: a build before it draws such a table fully ruled, and keeps the value.
  * A mode earns its place by being a shape the syllabus draws the same way every year.
  */
-export type TableBorders = 'all' | 'box' | 'headerRule';
+export type TableBorders = 'all' | 'box' | 'headerRule' | 'none';
 
 /**
  * A picture inside a table cell. Its own type rather than `ImageBlock`: no caption,
@@ -226,6 +229,11 @@ export type TableBorders = 'all' | 'box' | 'headerRule';
 export interface CellImage {
   /** data: URL or app-managed asset id. Never a remote URL. */
   src: string;
+  /**
+   * Optional picture for Chinese output, as `ImageBlock.srcZh` (k-0444): printed in place
+   * of `src` in Chinese only. Nested in a block, so no `KNOWN_KEYS` entry; additive.
+   */
+  srcZh?: string;
   widthPx: number;
   heightPx: number;
   altText: BiText;

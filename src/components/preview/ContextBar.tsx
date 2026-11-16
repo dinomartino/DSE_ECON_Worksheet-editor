@@ -425,6 +425,7 @@ export function TableRow({ block }: { block: TableBlock }) {
           ['all', m.grid, m.gridTitle],
           ['box', m.box, m.boxTitle],
           ['headerRule', m.tAccount, m.tAccountTitle],
+          ['none', m.noLines, m.noLinesTitle],
         ] as Array<[TableBorders, string, string]>
       ).map(([value, word, title]) => (
         <BarButton

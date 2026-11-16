@@ -1,5 +1,6 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { withRowTags } from '@/library/sharedTags';
+import { planStimulusCopies, stimuliServing, type Stimulus } from '@/library/stimuli';
 import type { BankRow } from '@/library/types';
 import type { LayoutElement, Question } from '@/model/types';
 import { worksheetStore, type WorksheetStore } from '@/storage';
@@ -81,8 +82,11 @@ export interface InsertReport {
 export interface LoadedCopies {
   /** The open document when the read began; a commit into another is refused. */
   openId: string;
-  /** Each found question with the topic tags its row shows, the newest copy's (`withRowTags`). */
-  found: Array<{ question: Question; docId: string }>;
+  /**
+   * Each found question with the topic tags its row shows, the newest copy's (`withRowTags`),
+   * and the shared stimulus serving it in its document, which goes in with it.
+   */
+  found: Array<{ question: Question; docId: string; stimulus?: Stimulus; order?: number }>;
   /** Rows whose question was not found in its document (edited or deleted since the scan). */
   missing: BankRow[];
 }
@@ -93,13 +97,26 @@ export async function loadBankCopies(
   source: Pick<WorksheetStore, 'load'> = worksheetStore,
 ): Promise<LoadedCopies> {
   const openId = useWorksheetStore.getState().worksheet.id;
-  const docs = new Map<string, Promise<Map<string, Question> | undefined>>();
+  interface Read {
+    questions: Map<string, Question>;
+    stimuli: Map<string, Stimulus>;
+    order: Map<string, number>;
+  }
+  const docs = new Map<string, Promise<Read | undefined>>();
   const questionsOf = (docId: string) => {
     let pending = docs.get(docId);
     if (!pending) {
       pending = source
         .load(docId)
-        .then((doc) => (doc ? new Map(doc.questions.map((q) => [q.id, q])) : undefined))
+        .then((doc): Read | undefined =>
+          doc
+            ? {
+                questions: new Map(doc.questions.map((q) => [q.id, q])),
+                stimuli: stimuliServing(doc),
+                order: new Map(doc.flow.map((item, index) => [item.id, index])),
+              }
+            : undefined,
+        )
         .catch(() => undefined);
       docs.set(docId, pending);
     }
@@ -109,9 +126,16 @@ export async function loadBankCopies(
   const found: LoadedCopies['found'] = [];
   const missing: BankRow[] = [];
   for (const row of rows) {
-    const question = (await questionsOf(row.docId))?.get(row.questionId);
+    const read = await questionsOf(row.docId);
+    const question = read?.questions.get(row.questionId);
+    const stimulus = read?.stimuli.get(row.questionId);
     // The copy starts with every topic the bank shows for the question (`withRowTags`).
-    if (question) found.push({ question: withRowTags(question, row), docId: row.docId });
+    if (question)
+      found.push({
+        question: withRowTags(question, row),
+        docId: row.docId,
+        ...(stimulus ? { stimulus, order: read?.order.get(row.questionId) } : {}),
+      });
     else missing.push(row);
   }
   return { openId, found, missing };
@@ -138,7 +162,7 @@ export async function insertFromBank(
 
 /** The synchronous half of `insertFromBank`: one commit of what `loadBankCopies` read. */
 export function commitBankCopies(
-  { openId, found, missing }: LoadedCopies,
+  { openId, found: given, missing }: LoadedCopies,
   {
     summary = reviewSummary,
     at,
@@ -150,10 +174,18 @@ export function commitBankCopies(
     leads?: readonly (LayoutElement | undefined)[];
   } = {},
 ): InsertReport {
+  let found = given;
   const store = useWorksheetStore.getState();
   if (store.worksheet.id !== openId) return { inserted: [], missing, refused: 'otherDocument' };
   if (store.readOnly) return { inserted: [], missing, refused: 'readOnly' };
   if (!found.length) return { inserted: [], missing };
+  // A question that shares a passage in its document brings the passage, once per group
+  // (`library/stimuli.ts`); callers that planned their own (`leads`) are taken as they are.
+  if (!leads && found.some((entry) => entry.stimulus)) {
+    const plan = planStimulusCopies(found, new Set(), { keepRepeats: true });
+    found = plan.entries;
+    leads = plan.leads;
+  }
 
   // Read before the commit: `live()` compares against the document as it is right now.
   const previous = useBankSession.getState().review;

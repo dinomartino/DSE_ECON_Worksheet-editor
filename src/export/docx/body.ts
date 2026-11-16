@@ -547,6 +547,8 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
    * inner rules out too.
    */
   const perCellBorders = node.borders === 'headerRule';
+  // A placing grid (`none`, k-0444) draws nothing, spelled out on all six for the same reason.
+  const noRules = node.borders === 'none';
 
   const tblPr =
     '<w:tblPr>' +
@@ -576,11 +578,11 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
      * table byte-identical.
      */
     ['top', 'left', 'bottom', 'right']
-      .map((side) => (perCellBorders ? noBorder(side) : border(side)))
+      .map((side) => (perCellBorders || noRules ? noBorder(side) : border(side)))
       .join('') +
     ['insideH', 'insideV']
       .map((side) =>
-        node.borders === 'box' || perCellBorders ? noBorder(side) : border(side),
+        node.borders === 'box' || perCellBorders || noRules ? noBorder(side) : border(side),
       )
       .join('') +
     '</w:tblBorders>' +

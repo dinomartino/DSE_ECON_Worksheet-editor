@@ -7,6 +7,7 @@ import type { Question, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { contentKey } from './contentKey';
+import type { Stimulus } from './stimuli';
 import { tagTime } from './sharedTags';
 
 /**
@@ -74,21 +75,30 @@ export async function copyToBank(
   fromDocId: string,
   to: BankTarget = {},
   io: BankIO = {},
+  /**
+   * Per question, a shared stimulus (fresh ids, its span set) to keep in the bank right
+   * before its copy, so the passage comes along when the question is inserted from the
+   * bank (`library/stimuli.ts`; the Past paper bank's Copy to my question bank). A lead
+   * whose question the bank already holds is not written.
+   */
+  leads?: readonly (Stimulus | undefined)[],
 ): Promise<CopyToBankResult> {
   const store = io.store ?? worksheetStore;
   const bank = await bankFor(to, io);
   const held = new Set(bank.questions.map(rootIdOf));
   const fresh: Question[] = [];
+  const freshLeads: (Stimulus | undefined)[] = [];
   const already: Question[] = [];
-  for (const question of questions) {
+  questions.forEach((question, index) => {
     const root = rootIdOf(question);
     if (held.has(root)) already.push(question);
     else {
       held.add(root);
       fresh.push(question);
+      freshLeads.push(leads?.[index]);
     }
-  }
-  return appendToBank(bank, fresh.map((q) => copyQuestion(q, fromDocId)), already, store);
+  });
+  return appendToBank(bank, fresh.map((q) => copyQuestion(q, fromDocId)), already, store, freshLeads);
 }
 
 /** `questions` split by whether the bank (or an earlier one of them) already says what each says (`contentKey`). */
@@ -108,12 +118,27 @@ function newByContent(questions: readonly Question[], bank: Worksheet): { fresh:
 }
 
 /** `added` at the end of the bank, in one save; nothing added saves nothing. */
-async function appendToBank(bank: Worksheet, added: Question[], already: Question[], store: WorksheetStore): Promise<CopyToBankResult> {
+async function appendToBank(
+  bank: Worksheet,
+  added: Question[],
+  already: Question[],
+  store: WorksheetStore,
+  leads: readonly (Stimulus | undefined)[] = [],
+): Promise<CopyToBankResult> {
   if (added.length === 0) return { bank, copied: 0, already };
+  const stimuli = leads.filter((lead): lead is Stimulus => lead !== undefined);
   const next: Worksheet = {
     ...bank,
     questions: [...bank.questions, ...added],
-    flow: [...bank.flow, ...added.map((q) => ({ type: 'question' as const, id: q.id }))],
+    ...(stimuli.length > 0 ? { layout: [...(bank.layout ?? []), ...stimuli] } : {}),
+    flow: [
+      ...bank.flow,
+      ...added.flatMap((q, index) => {
+        const lead = leads[index];
+        const item = { type: 'question' as const, id: q.id };
+        return lead ? [{ type: 'layout' as const, id: lead.id }, item] : [item];
+      }),
+    ],
     updatedAt: new Date().toISOString(),
   };
   await store.save(next);

@@ -24,6 +24,21 @@ a version heading is edited afterwards.
   questions and is renumbered by your paper. It is read-only and downloaded only when you open it
   (kept on this computer, never counted as your documents); Settings → Past paper bank turns it off.
   <!-- zh: **歷屆試題庫。** 開始畫面新增一個獨立題庫，與你自己的題庫分開：HKCEE、HKALE 及 HKDSE 的 MC 題目連官方答案，按課題排列，中英對照。可瀏覽課題、按字詞或出處（例如「DSE2016」）搜尋、按考試及年份篩選，剔選題目後加到新工作紙、新 Paper 1、你的試卷，或複製到你自己的題庫。在編輯器中，「題庫」分頁頂部可切換「我的題庫」或「歷屆試題」，每題都有「插入」。共用資料會與其題目一併加入，並按你的試卷重新編號。此題庫為唯讀，只在你開啟時下載（保存在此電腦上，不計作你的文件）；可在「設定 → 歷屆試題庫」關閉。 -->
+- **Past paper bank: search every topic, pick one paper, and diagram options two by two.** Search
+  “Every topic” now answers at once without downloading the bank: each question's topic downloads
+  only when you scroll to it. The new Paper filter shows one past paper (“HKDSE 2016 Paper 1”) from
+  every topic, in question order. Questions whose four options are diagrams print as on the paper,
+  A and B side by side, then C and D, each letter right above its diagram, the whole question on one
+  page, in the editor, the PDF and Word, with the Chinese diagrams in 中文. Copy to my question bank
+  now keeps a shared passage with its questions, and inserting such a question from your 題庫 brings
+  its passage along. A table can now have no lines at all (No lines), to set out four numbered
+  diagrams two by two.
+  <!-- zh: **歷屆試題庫：搜尋所有課題、選取單一試卷，以及兩行兩列的圖表選項。** 「所有課題」搜尋現在即時顯示結果，不必下載整個題庫：捲動到某題時才下載它所屬的課題。新的「試卷」篩選可顯示單一份試卷（例如「HKDSE 2016 Paper 1」）在所有課題中的題目，按題號排列。四個選項都是圖表的題目會照原卷排列：A 與 B 並排，C 與 D 在下，每個字母都在其圖表正上方，整題保持在同一頁，編輯器、PDF 及 Word 皆然，中文版用中文圖表。「複製到我的題庫」現在會連同共用資料一併複製，從你的題庫插入這類題目時，資料亦會一同加入。表格現在可設為「無框線」，用來兩行兩列排列四幅編號圖表。 -->
+- **A warning before the browser's storage fills up.** In the web version, all your documents share
+  about 5 MB of the browser's storage, and pictures take the most room. The toolbar now says “Storage
+  nearly full” once it is 80% used, and the Past paper bank tells you how full your picks would make
+  it, refusing ones that would not fit. The desktop app has no such limit.
+  <!-- zh: **瀏覽器儲存空間將滿前會提示。** 網頁版中，你所有文件共用瀏覽器約 5 MB 的儲存空間，圖片最佔空間。用量達 80% 時，工具列會顯示「儲存空間將滿」；歷屆試題庫亦會告訴你所選題目會令空間用到多少，放不下時不會加入。桌面版沒有此限制。 -->
 - **A Chinese version of a picture.** Select a picture and use + Chinese picture to give it a
   second image (the same diagram with Chinese labels). Chinese output (preview, Word, copy)
   prints that one; English and bilingual output keep the original. Replace or remove it any time.
