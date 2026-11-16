@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useUiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
+import { megabytes, NEARLY_FULL, webStorageUse, type StorageUse } from '@/storage/webQuota';
 import { SAVE_STATUS_MESSAGES } from './shell.messages';
 
 /** Still dirty this long after the last edit: autosave (1.2s debounce) should have landed. */
 export const STALLED_AFTER_MS = 6000;
 
-export type SaveState = 'saved' | 'saving' | 'stalled' | 'readOnly';
+export type SaveState = 'saved' | 'saving' | 'stalled' | 'readOnly' | 'nearlyFull';
 
 export interface SaveStatusView {
   state: SaveState;
@@ -33,6 +34,7 @@ export function saveStatusView({
   stalled,
   lastSavedAt,
   savedByHand = false,
+  storage,
   lang = uiLanguage(),
 }: {
   readOnly: boolean;
@@ -41,6 +43,8 @@ export function saveStatusView({
   lastSavedAt?: string;
   /** The teacher just asked for a save (⌘S, Save now) and it landed: say so in words. */
   savedByHand?: boolean;
+  /** The web build's document storage after the last save (`storage/webQuota.ts`); undefined on desktop. */
+  storage?: StorageUse;
   lang?: UiLanguage;
 }): SaveStatusView {
   const m = resolveMessages(SAVE_STATUS_MESSAGES, lang);
@@ -59,6 +63,14 @@ export function saveStatusView({
       visible: true,
     };
   if (dirty) return { state: 'saving', word: m.saving, detail: m.savingDetail, visible: false };
+  // Saved, but the browser's ~5 MB is nearly spent: the next saves may not fit (k-0444).
+  if (storage && storage.ratio >= NEARLY_FULL)
+    return {
+      state: 'nearlyFull',
+      word: m.nearlyFull,
+      detail: m.nearlyFullDetail(megabytes(storage.used), Math.min(100, Math.round(storage.ratio * 100))),
+      visible: true,
+    };
   const time = lastSavedAt
     ? new Date(lastSavedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : '';
@@ -70,6 +82,7 @@ const DOT: Record<SaveState, string> = {
   saving: 'bg-ink-subtle motion-safe:animate-pulse',
   stalled: 'bg-warn-ink',
   readOnly: 'bg-ink-subtle',
+  nearlyFull: 'bg-warn-ink',
 };
 
 /**
@@ -105,14 +118,18 @@ export function SaveStatus() {
   }, [savedByHandAt]);
   const savedByHand = savedByHandAt !== undefined && spentFor !== savedByHandAt;
 
+  // Measured after each save, not each render: reading the whole store is the cost.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const storage = useMemo(() => webStorageUse(), [lastSavedAt]);
+
   const lang = useUiLanguage();
-  const view = saveStatusView({ readOnly, dirty, stalled, lastSavedAt, savedByHand, lang });
+  const view = saveStatusView({ readOnly, dirty, stalled, lastSavedAt, savedByHand, storage, lang });
   return (
     <span
       data-print-hide
       data-save-state={view.state}
       title={view.detail}
-      className={`flex h-6 shrink-0 items-center gap-1.5 px-1 ${view.state === 'stalled' ? 'text-warn-ink' : ''}`}
+      className={`flex h-6 shrink-0 items-center gap-1.5 px-1 ${view.state === 'stalled' || view.state === 'nearlyFull' ? 'text-warn-ink' : ''}`}
     >
       <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${DOT[view.state]}`} />
       <span className={view.visible ? undefined : 'sr-only'}>{view.word}</span>

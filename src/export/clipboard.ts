@@ -214,7 +214,7 @@ function nodeHtml(
                   `border-right:${edges.right ? '1px solid #000' : 'none'};`
                 : // A boxed stimulus rules its frame only; the frame itself is on the
                   // `<table>` below, so the cells inside carry no rule of their own.
-                  node.borders === 'box'
+                  node.borders === 'box' || node.borders === 'none'
                   ? 'border:none;'
                   : 'border:1px solid #000;') +
               `padding:${twipsToPt(pad.top)}pt ${twipsToPt(pad.right)}pt ` +

@@ -14,6 +14,13 @@ export const SAVE_STATUS_MESSAGES = defineMessages({
   },
   saving: { en: 'Saving', zh: '儲存中' },
   savingDetail: { en: 'Saving your changes', zh: '正在儲存修改' },
+  nearlyFull: { en: 'Storage nearly full', zh: '儲存空間將滿' },
+  nearlyFullDetail: {
+    en: (mb: string, pct: number) =>
+      `Saved. This browser keeps about 5 MB for all your documents and ${mb} MB is used (${pct}%). Pictures take the most room: remove ones you no longer need, empty Trash, or use the desktop app, which has no such limit`,
+    zh: (mb: string, pct: number) =>
+      `已儲存。此瀏覽器只為你所有文件保留約 5 MB，現已用了 ${mb} MB（${pct}%）。圖片最佔空間：請刪除不再需要的圖片、清空垃圾桶，或改用沒有此限制的桌面版`,
+  },
   saved: { en: 'Saved', zh: '已儲存' },
   savedDetail: {
     en: (time: string) => `All changes saved${time ? ` at ${time}` : ''}`,

@@ -307,8 +307,13 @@ describe('into the open paper and into my bank', () => {
     const items = parseTopic(topicFile().doc, ENTRY)!.items;
     const other = parseTopic({ ...topicFile().doc, id: 'kp-bank-other' }, { ...ENTRY, id: 'other' })!.items;
     const first = await copyIntoMyBank([items[0], items[1]], { store });
-    expect(first).toEqual({ copied: 2, already: 0, withoutStimulus: 1 });
+    expect(first).toEqual({ copied: 2, already: 0, stimuli: 1 });
     expect(map.size).toBe(1);
+    // The passage is kept right before the one question of its pair that came along, span 1.
+    const bank = [...map.values()][0];
+    const kept = bank.layout.find((e) => e.kind === 'stimulus') as Stimulus;
+    expect(kept.span).toBe(1);
+    expect(bank.flow.map((f) => f.id).indexOf(kept.id)).toBe(bank.flow.map((f) => f.id).indexOf(bank.questions[1].id) - 1);
     const second = await copyIntoMyBank([other[0], items[2]], { store });
     expect(second).toMatchObject({ copied: 1, already: 1 });
     expect(map.size).toBe(1);

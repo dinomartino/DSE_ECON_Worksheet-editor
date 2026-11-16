@@ -1,7 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useMessages } from '@/i18n/language';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import { sourceLabel, type PaperChoice } from '@/pastpapers/pack';
 import type { LanguageMode } from '@/model/types';
 import { useAppDialogs } from '@/store/appDialogs';
 import { PAST_PAPER_MESSAGES } from './messages';
@@ -141,5 +142,42 @@ export function SearchGlyph() {
       <circle cx="7" cy="7" r="4.5" />
       <path d="m10.5 10.5 3 3" strokeLinecap="round" />
     </svg>
+  );
+}
+
+/** One paper of the bank (`DSE2016/P1`), every topic, in its question order (k-0444). */
+export function PaperSelect({
+  filters,
+  papers,
+  onChange,
+}: {
+  filters: BrowseFilters;
+  papers: readonly PaperChoice[];
+  onChange: (next: BrowseFilters) => void;
+}) {
+  const m = useMessages(PAST_PAPER_MESSAGES);
+  const ui = useUiLanguage();
+  if (papers.length === 0) return null;
+  const name = (paper: PaperChoice) => {
+    const label = sourceLabel(paper.source, false);
+    return ui === 'zh-HK' ? label.zh : label.en;
+  };
+  return (
+    <label className="flex items-center gap-1.5 text-[12px] text-ink-muted">
+      <span>{m.paper}</span>
+      <select
+        value={filters.paper ?? ''}
+        onChange={(e) => onChange({ ...filters, paper: e.target.value === '' ? undefined : e.target.value })}
+        className="h-7 max-w-[220px] rounded-md border border-line bg-surface px-1.5 text-[12px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        data-pastpaper-paper
+      >
+        <option value="">{m.allPapers}</option>
+        {papers.map((paper) => (
+          <option key={paper.key} value={paper.key}>
+            {m.paperOption(name(paper), paper.questions)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

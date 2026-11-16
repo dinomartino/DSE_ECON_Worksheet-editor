@@ -44,6 +44,8 @@ Example: "Paper 1 mock · MCQ" → "Paper 1 Mock · MCQ"; "Download PNG" → "�
 | Question bank | 題庫 | Graphs | 圖表庫 |
 | Past paper bank | 歷屆試題庫 | Past papers (its short name) | 歷屆試題 |
 | My bank (the teacher's own, beside it) | 我的題庫 | Read-only | 唯讀 |
+| Paper (one past paper, the bank's filter) | 試卷 | Storage nearly full | 儲存空間將滿 |
+| No lines (a table's borders) | 無框線 | Every topic | 所有課題 |
 | Library (start screen) | 資源庫 | Template | 範本 |
 | Settings | 設定 | Appearance | 外觀 |
 | Language | 語言 | Export | 匯出 |

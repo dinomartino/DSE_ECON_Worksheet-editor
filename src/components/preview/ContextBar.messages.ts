@@ -56,6 +56,11 @@ export const CONTEXT_BAR_MESSAGES = defineMessages({
     en: 'Frame, a rule under the top row and one down the middle',
     zh: '外框、頂行下方一條線，以及中間一條直線',
   },
+  noLines: { en: 'No lines', zh: '無框線' },
+  noLinesTitle: {
+    en: 'No lines at all: the table only places things, such as four diagrams two by two',
+    zh: '完全不畫線：表格只用作排位，例如兩行兩列排列四幅圖',
+  },
   diagram: { en: 'Diagram', zh: '圖表' },
   image: { en: 'Image', zh: '圖片' },
   positionLeft: { en: 'Position figure left', zh: '圖形靠左' },

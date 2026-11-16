@@ -11,7 +11,10 @@ import { paperLanguage } from '@/settings/paperLanguage';
 import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { rootIdOf } from '@/model/lineage';
 import { PAST_PAPER_MESSAGES } from './messages';
-import { BankStateNote, ExamChips, LanguageToggle, SearchGlyph, YearSelects } from './PastPaperControls';
+import { BankStateNote, ExamChips, LanguageToggle, PaperSelect, SearchGlyph, YearSelects } from './PastPaperControls';
+import { PastPaperIndexCard } from './PastPaperIndexCard';
+import { megabytes, NEARLY_FULL, webStorageUse } from '@/storage/webQuota';
+import { sourceLabel } from '@/pastpapers/pack';
 import { PastPaperSheet } from './PastPaperSheet';
 import { answerLetter } from './pastPaperPreview';
 import { NO_FILTERS, pickKey, usePastPaperBrowse, type Pick } from './usePastPaperBrowse';
@@ -43,7 +46,7 @@ export function PastPaperScreen({
   const m = useMessages(PAST_PAPER_MESSAGES);
   const lang = useUiLanguage();
   const browse = usePastPaperBrowse();
-  const { bank, topics, topic, topicState, filters, setFilters, items } = browse;
+  const { bank, topics, topic, topicState, filters, setFilters, entries } = browse;
   const [language, setLanguage] = useState<LanguageMode>(() => (paperLanguage() === 'zh' ? 'zh' : 'en'));
   const [answers, setAnswers] = useState(true);
   const [picks, setPicks] = useState<Pick[]>([]);
@@ -52,7 +55,7 @@ export function PastPaperScreen({
   const [loadingAll, setLoadingAll] = useState<{ done: number; total: number } | undefined>();
 
   const itemOf = useMemo(() => new Map(browse.allLoaded.map((item) => [pickKey({ topicId: item.topicId, questionId: item.question.id }), item])), [browse.allLoaded]);
-  const pickedItems = picks.flatMap((pick) => itemOf.get(pickKey(pick)) ?? []);
+  const pickedItems = useMemo(() => picks.flatMap((pick) => itemOf.get(pickKey(pick)) ?? []), [picks, itemOf]);
   const pickedKeys = new Set(picks.map(pickKey));
   const toggle = (item: PastPaperItem) => {
     const key = pickKey({ topicId: item.topicId, questionId: item.question.id });
@@ -106,7 +109,7 @@ export function PastPaperScreen({
     try {
       const done = await copyIntoMyBank(pickedItems);
       if (done.copied === 0) onNotice(m.copiedNone(done.already));
-      else onNotice(m.copied(done.copied, done.already) + (done.withoutStimulus ? m.copiedNoStimulus(done.withoutStimulus) : ''));
+      else onNotice(m.copied(done.copied, done.already) + (done.stimuli ? m.copiedWithStimulus(done.stimuli) : ''));
       setPicks([]);
     } catch (error) {
       onError(error instanceof Error ? error.message : String(error));
@@ -116,8 +119,22 @@ export function PastPaperScreen({
   };
 
   const totalBytes = bank.manifest?.topics.reduce((n, t) => n + (t.bytes ?? 0), 0) ?? 0;
-  const searchingAll = filters.everywhere && filters.words.trim() !== '';
+  const searchingAll = browse.acrossBank;
   const allLoaded = browse.loadedCount >= topics.length && topics.length > 0;
+  const topicName = (id: string) => {
+    const entry = topics.find((t) => t.id === id);
+    return entry ? (lang === 'zh-HK' ? entry.title.zh : entry.title.en) : id;
+  };
+  const paperChoice = filters.paper !== undefined ? browse.papers.find((p) => p.key === filters.paper) : undefined;
+  const paperName = paperChoice ? (lang === 'zh-HK' ? sourceLabel(paperChoice.source, false).zh : sourceLabel(paperChoice.source, false).en) : '';
+
+  // The web build's ~5 MB: what the picks would add, judged before they go in (k-0444).
+  const adding = useMemo(
+    () => pickedItems.reduce((n, item) => n + JSON.stringify(item.question).length + (item.stimulus ? JSON.stringify(item.stimulus).length : 0), 0),
+    [pickedItems],
+  );
+  const storage = useMemo(() => (adding > 0 ? webStorageUse(adding) : undefined), [adding]);
+  const wontFit = storage !== undefined && storage.ratio > 1;
 
   return (
     <div className="zone-light flex h-full min-h-0 flex-col bg-surface text-ink" data-pastpaper-screen>
@@ -142,7 +159,15 @@ export function PastPaperScreen({
               type="search"
               value={filters.words}
               title={m.searchHint}
-              placeholder={filters.everywhere ? m.searchOpened : topic ? m.searchIn(lang === 'zh-HK' ? topic.title.zh : topic.title.en) : m.searchLabel}
+              placeholder={
+                filters.everywhere
+                  ? browse.indexed
+                    ? m.searchEvery
+                    : m.searchOpened
+                  : topic
+                    ? m.searchIn(lang === 'zh-HK' ? topic.title.zh : topic.title.en)
+                    : m.searchLabel
+              }
               onChange={(event) => setFilters({ ...filters, words: event.target.value })}
               onKeyDown={(event) => void escapeClears(event, filters.words, () => setFilters({ ...filters, words: '' }))}
               className="h-8 w-full rounded-lg border border-transparent bg-surface-sunken pl-8 pr-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:bg-surface focus:ring-2 focus:ring-accent/25"
@@ -168,7 +193,7 @@ export function PastPaperScreen({
                       aria-current={active ? 'true' : undefined}
                       onClick={() => {
                         browse.setTopic(entry.id);
-                        if (filters.everywhere) setFilters({ ...filters, everywhere: false });
+                        if (filters.everywhere || filters.paper !== undefined) setFilters({ ...filters, everywhere: false, paper: undefined });
                       }}
                       className={`flex w-full cursor-pointer items-baseline gap-2 px-5 py-1.5 text-left text-[12.5px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                         active ? 'bg-accent-soft font-medium text-ink' : 'text-ink-muted hover:bg-surface-sunken hover:text-ink'
@@ -186,10 +211,10 @@ export function PastPaperScreen({
           <main className="flex min-w-0 flex-1 flex-col">
             <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-6 py-2.5">
               <h2 className="text-[15px] font-semibold text-ink">
-                {searchingAll ? m.scopeAll : topic ? (lang === 'zh-HK' ? topic.title.zh : topic.title.en) : ''}
+                {paperChoice ? m.paperHeading(paperName) : searchingAll ? m.scopeAll : topic ? (lang === 'zh-HK' ? topic.title.zh : topic.title.en) : ''}
               </h2>
               <span className="text-[12px] tabular-nums text-ink-subtle" role="status">
-                {m.shown(items.length, browse.pool.length)}
+                {m.shown(entries.length, browse.poolSize)}
               </span>
               <span className="flex-1" />
               {filters.words.trim() !== '' && (
@@ -212,6 +237,7 @@ export function PastPaperScreen({
               )}
               <ExamChips filters={filters} onChange={setFilters} />
               <YearSelects filters={filters} years={browse.years} onChange={setFilters} />
+              <PaperSelect filters={filters} papers={browse.papers} onChange={setFilters} />
               <LanguageToggle value={language} onChange={setLanguage} />
               <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted">
                 <input type="checkbox" checked={answers} onChange={(e) => setAnswers(e.target.checked)} className="accent-[var(--color-accent)]" />
@@ -221,7 +247,8 @@ export function PastPaperScreen({
 
             <div className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-desk px-6 py-5">
               <div className="mx-auto flex max-w-[860px] flex-col gap-4">
-                {searchingAll && !allLoaded && (
+                {searchingAll && browse.indexed && <p className="text-[12px] text-ink-subtle">{m.indexNote}</p>}
+                {searchingAll && !browse.indexed && !allLoaded && (
                   <div className="rounded-lg border border-line bg-surface px-4 py-3 text-[12.5px] text-ink-muted">
                     {loadingAll ? (
                       <span role="status">{m.loadingAll(loadingAll.done, loadingAll.total)}</span>
@@ -255,15 +282,17 @@ export function PastPaperScreen({
                 {!searchingAll && topicState?.state === 'ready' && topicState.data.skipped > 0 && (
                   <p className="text-[12px] text-ink-subtle">{m.skipped(topicState.data.skipped)}</p>
                 )}
-                {browse.pool.length > 0 && items.length === 0 && (
+                {browse.poolSize > 0 && entries.length === 0 && (
                   <div className="text-[13px] text-ink-muted">
                     <p>{m.noneMatch}</p>
-                    <button type="button" className="mt-2 cursor-pointer text-accent hover:underline" onClick={() => setFilters({ ...NO_FILTERS, everywhere: filters.everywhere })}>
+                    <button type="button" className="mt-2 cursor-pointer text-accent hover:underline" onClick={() => setFilters({ ...NO_FILTERS, everywhere: filters.everywhere, paper: filters.paper })}>
                       {m.clearFilters}
                     </button>
                   </div>
                 )}
-                {items.map((item) => {
+                {entries.map((entry) => {
+                  const item = entry.item;
+                  if (!item) return <PastPaperIndexCard key={entry.key} entry={entry} topicName={topicName(entry.topicId)} language={language} />;
                   const doc = browse.docOf.get(item.topicId);
                   if (!doc) return null;
                   const key = pickKey({ topicId: item.topicId, questionId: item.question.id });
@@ -279,6 +308,7 @@ export function PastPaperScreen({
                         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
                           <input type="checkbox" checked={picked} onChange={() => toggle(item)} aria-label={m.pickTitle(source)} className="h-4 w-4 accent-[var(--color-accent)]" />
                           <span className="truncate text-[12.5px] font-medium text-ink">{source}</span>
+                          {searchingAll && <span className="truncate text-[11.5px] text-ink-subtle">{m.inTopic(topicName(item.topicId))}</span>}
                         </label>
                         {item.stimulus && <span className="shrink-0 text-[11.5px] text-ink-subtle">{m.shared}</span>}
                         {answers && letter && (
@@ -300,10 +330,15 @@ export function PastPaperScreen({
                 <button type="button" onClick={() => setPicks([])} className="cursor-pointer text-[12.5px] text-ink-muted hover:text-ink hover:underline">
                   {m.clear}
                 </button>
+                {storage && storage.ratio >= NEARLY_FULL && (
+                  <span className="min-w-0 max-w-[460px] text-[12px] text-warn-ink" role="status" data-pastpaper-storage>
+                    {wontFit ? m.storageFull(megabytes(storage.used - adding)) : m.storageWarn(Math.round(storage.ratio * 100), megabytes(storage.used))}
+                  </span>
+                )}
                 <span className="flex-1" />
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || wontFit}
                   onClick={() => void copyPicks()}
                   className="cursor-pointer rounded-lg border border-line bg-surface px-3 py-1.5 text-[12.5px] text-ink hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
                 >
@@ -331,7 +366,7 @@ export function PastPaperScreen({
                 </label>
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || wontFit}
                   onClick={() => void addPicks()}
                   className="cursor-pointer rounded-lg bg-cta px-3.5 py-1.5 text-[12.5px] font-medium text-on-cta hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
                 >

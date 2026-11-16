@@ -2245,7 +2245,7 @@ function TableNodeView({
                         // <table>, so the cells inside carry no rule of their own. A
                         // T-account rules per cell and draws its edges below, so it
                         // takes no uniform border either.
-                        node.borders === "box" || cell.edges
+                        node.borders === "box" || node.borders === "none" || cell.edges
                           ? ""
                           : "border border-slate-500"
                       } ${cell.vAlign === "top" ? "align-top" : cell.vAlign === "bottom" ? "align-bottom" : "align-middle"} ${cell.questionId ? "cursor-pointer" : ""} ${isActive ? "ring-2 ring-inset ring-[#0d77c9]" : ""} ${
