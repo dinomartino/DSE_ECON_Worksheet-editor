@@ -503,6 +503,47 @@ function renderExaminerGrid(
 }
 
 export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): RenderedWorksheet {
+  // The one place the picture for the language is decided: preview, `.docx` and
+  // clipboard all render from this, so they cannot pick different pictures.
+  return renderResolved(withChinesePictures(worksheet, mode.language), mode);
+}
+
+/**
+ * Chinese output prints an image block's `srcZh` in place of its `src`; English and
+ * bilingual keep `src`. Structure-sharing: a document with no `srcZh` (or any other
+ * language) is returned as the same object, so nothing changes for it.
+ */
+export function withChinesePictures(worksheet: Worksheet, language: LanguageMode): Worksheet {
+  if (language !== 'zh') return worksheet;
+  const swap = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+      let out: unknown[] | undefined;
+      value.forEach((item, i) => {
+        const next = swap(item);
+        if (next !== item) (out ??= value.slice())[i] = next;
+      });
+      return out ?? value;
+    }
+    if (value && typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      let out: Record<string, unknown> | undefined;
+      for (const [key, item] of Object.entries(record)) {
+        const next = swap(item);
+        if (next !== item) (out ??= { ...record })[key] = next;
+      }
+      const base = out ?? record;
+      if (base.kind === 'image' && typeof base.srcZh === 'string' && base.srcZh !== '') {
+        const { srcZh, ...rest } = base;
+        return { ...rest, src: srcZh };
+      }
+      return base;
+    }
+    return value;
+  };
+  return swap(worksheet) as Worksheet;
+}
+
+function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorksheet {
   const numbering = computeNumbering(worksheet);
 
   // Derived once and passed down, so a band's "Full marks" can never disagree with the

@@ -279,6 +279,13 @@ export interface ImageBlock {
   id: string;
   /** data: URL or app-managed asset id. Never a remote URL. */
   src: string;
+  /**
+   * Optional second picture for Chinese output: the same diagram with Chinese labels.
+   * Printed in place of `src` when the output language is Chinese (never in English or
+   * bilingual output); it takes the block's size and alt text. Absent = `src` serves both.
+   * Nested in a block, so it needs no `KNOWN_KEYS` entry; no schema bump (additive).
+   */
+  srcZh?: string;
   widthPx: number;
   heightPx: number;
   /** Intrinsic size, used to keep the aspect ratio locked while resizing. */

@@ -376,6 +376,8 @@ export const DROPPED_KEYS: ReadonlySet<string> = new Set(['classes', 'satOn']);
 
 /** Pictures: a `data:` URL (or an asset id), replaced by noise of the same pixel size. */
 export const IMAGE_KEY = 'src';
+/** Every key that holds a picture: `src`, and a picture's optional Chinese source `srcZh`. */
+export const IMAGE_KEYS: ReadonlySet<string> = new Set([IMAGE_KEY, 'srcZh']);
 
 /**
  * String fields scrambled on purpose (the rest are scrambled by default): the run text
@@ -455,7 +457,7 @@ export function anonymiseWorksheet(worksheet: Worksheet, options: AnonymiseOptio
 
   const walk = (value: unknown, key: string | undefined, holder: object | undefined): unknown => {
     if (typeof value === 'string') {
-      if (key === IMAGE_KEY) return noiseImage(value, (holder ?? {}) as Sized, random);
+      if (key !== undefined && IMAGE_KEYS.has(key)) return noiseImage(value, (holder ?? {}) as Sized, random);
       if (key !== undefined && TIMESTAMP_KEYS.has(key)) return stamp;
       if (key !== undefined && KEPT_KEYS.has(key)) return value;
       if (key === 'tags') return scrambleTag(value, random);

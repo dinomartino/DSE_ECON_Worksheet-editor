@@ -15,6 +15,10 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **A Chinese version of a picture.** Select a picture and use + Chinese picture to give it a
+  second image (the same diagram with Chinese labels). Chinese output (preview, Word, copy)
+  prints that one; English and bilingual output keep the original. Replace or remove it any time.
+  <!-- zh: **圖片可另加中文版。** 圖片可另加「中文圖片」（同一幅圖、標籤改用中文）。選取圖片後按「+ 中文圖片」即可；輸出中文版（預覽、Word、複製）時會使用這張，英文及雙語版則維持原圖。可隨時更換或移除。 -->
 - **See how much of the syllabus a paper covers.** ✦ AI → Check syllabus coverage sends the
   paper's questions (or the ones you selected) to the AI provider you chose in Settings → AI, the
   same one Chinese translation uses, and shows a report: how many of the 2025 guide's key points
