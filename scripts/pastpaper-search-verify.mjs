@@ -79,11 +79,11 @@ const settle = (page, ms = 1200) => page.waitForTimeout(ms);
 
 async function englishWalk() {
   const page = await openBank(false);
-  const topics = await screen(page).locator('nav li').count();
+  const topics = manifest.topics.length;
 
   // A. Search every topic: answered by the index, only shown topics downloaded.
   const word = 'nominal income';
-  await page.getByRole('searchbox').fill(word);
+  await page.getByRole('searchbox').first().fill(word);
   await page.getByRole('radio', { name: 'Every topic' }).click();
   await settle(page, 2500);
   const expected = index.filter((r) => `${r.en} ${r.zh} ${r.source}`.toLowerCase().includes('nominal') && `${r.en} ${r.zh}`.toLowerCase().includes('income')).length;
@@ -94,7 +94,7 @@ async function englishWalk() {
   await page.screenshot({ path: `${OUT}/01-search-every-topic-en.png` });
 
   // B. The paper filter: one paper, every topic, question order.
-  await page.getByRole('searchbox').fill('');
+  await page.getByRole('searchbox').first().fill('');
   await page.locator('[data-pastpaper-paper]').selectOption('DSE2016/P1');
   await settle(page, 3000);
   const labels = await screen(page).locator('article').evaluateAll((cards) =>
@@ -129,7 +129,7 @@ async function englishWalk() {
   // D. Pick it and two more diagram questions → New Paper 1; the editor draws the grid; Export .docx.
   await page.locator('[data-pastpaper-paper]').selectOption('');
   for (const tag of ['DSE2016/P1/Q34', 'DSE2019/P1/Q38', 'DSE2017/P1/Q40', 'DSE2024/P1/Q29']) {
-    await page.getByRole('searchbox').fill(tag);
+    await page.getByRole('searchbox').first().fill(tag);
     await page.getByRole('radio', { name: 'Every topic' }).click().catch(() => {});
     await settle(page, 2500);
     await screen(page).locator('article').first().locator('input[type="checkbox"]').check().catch(() => {});

@@ -119,6 +119,13 @@ What it reads:
 1. `manifest.json`: `topics[]` with `id` and `file` (relative, inside the source). Optional:
    `title {en, zh}`, `syllabusOrder`, `questions`, `bytes`, `sha256` (hex of the file's UTF-8
    bytes), `enabled`, `questions` total, optional `format: "question-bank-pack"` (the published bank names none).
+   **`syllabus`** (k-0446): per topic, the editor's topic codes it covers (`["C.ped", "C.pes"]`,
+   `["G"]`; `src/model/topics.ts`), the same codes the export already stamps on the topic's
+   questions. The picker groups topics under the part of the first code it knows (A to J,
+   EL1/EL2; names from `model/topics.ts`, never from the bank), inside a part in the list's
+   order; topics without a known code go last under "Other topics"; a list where no topic
+   names one is listed flat, as before (`src/pastpapers/groups.ts`). **Requested change:**
+   the exporter writes it from the same table it tags questions with.
 2. Each topic file opens in the editor's loader (`migrate`) as a document.
 3. Per question: a tag `CE2011/P2/Q8` (`(CE|AL|DSE)(year|SP|PP)/P<n>/Q<n>`) for the filters and
    the printed number; `provenance {en, zh}` for the source line; a stable `lineage.rootId`.

@@ -5,7 +5,9 @@ import { escapeClears } from '@/components/bank/escapeClears';
 import { useMessages } from '@/i18n/language';
 import { rootIdOf } from '@/model/lineage';
 import { insertIntoOpen } from '@/pastpapers/actions';
-import { packName } from '@/pastpapers/pack';
+import { groupTopics } from '@/pastpapers/groups';
+import { packName, type TopicEntry } from '@/pastpapers/pack';
+import { topicHeading, topicNamesFor } from '@/model/topics';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { PAST_PAPER_MESSAGES } from './messages';
 import { BankStateNote, ExamChips, SearchGlyph } from './PastPaperControls';
@@ -29,6 +31,14 @@ export function PastPaperTab() {
   // Topic names and sources are paper words: the document's language, not the interface's.
   // A bilingual paper lists both names, as the sidebar's own topic rows do (`wide`).
   const name = (t: { title: { en: string; zh: string } }, room: 'tight' | 'wide' = 'tight') => packName(t.title, language, room);
+  // Under their syllabus part, as on the screen (k-0446); flat for a list that names none.
+  const groups = useMemo(() => groupTopics(topics), [topics]);
+  const option = (t: TopicEntry) => (
+    <option key={t.id} value={t.id}>
+      {name(t, 'wide')}
+      {t.questions !== undefined ? ` (${t.questions})` : ''}
+    </option>
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pastpaper-tab>
@@ -42,12 +52,13 @@ export function PastPaperTab() {
                 onChange={(event) => browse.setTopic(event.target.value)}
                 className="h-8 w-full rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                {topics.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {name(t, 'wide')}
-                    {t.questions !== undefined ? ` (${t.questions})` : ''}
-                  </option>
-                ))}
+                {groups
+                  ? groups.map((group) => (
+                      <optgroup key={group.code || 'other'} label={group.part ? topicHeading(group.code, topicNamesFor(language, 'wide')) : m.otherTopics}>
+                        {group.topics.map(option)}
+                      </optgroup>
+                    ))
+                  : topics.map(option)}
               </select>
             </label>
           <label className="relative block">
