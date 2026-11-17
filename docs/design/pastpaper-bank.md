@@ -20,6 +20,11 @@ teacher's documents and never counts as one; questions taken from it are ordinar
   paper of every topic, in question order: "HKDSE 2016 Paper 1"), the paper language
   (EN / 中文), and a tray of picks: Add to → New
   worksheet / New Paper 1 / one of your papers, or Copy to my question bank.
+- **Names are paper words** (user u-cs6l): topic names, paper names, question sources and the
+  search cards follow the question language (the screen's EN / 中文; the open document's mode in
+  the 題庫 tab, both names for a bilingual paper's topic list), never the interface language,
+  as curriculum names do (SYSTEM_ARCHITECTURE § Curriculum names are paper-side). One helper,
+  `src/pastpapers/pack.ts:packName`. Proof: `scripts/pastpaper-language-verify.mjs`.
 - **Editor → 題庫 tab**: a switch at its top, *My bank* / *Past papers*. Past papers lists a
   topic's questions with Insert (after the insert anchor; one ⌘Z; the review bar) and
   marks those already in the paper. The switch is not drawn when the bank is off.

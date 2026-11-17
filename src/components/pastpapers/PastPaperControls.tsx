@@ -1,8 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useMessages, useUiLanguage } from '@/i18n/language';
-import { sourceLabel, type PaperChoice } from '@/pastpapers/pack';
+import { useMessages } from '@/i18n/language';
+import { packName, sourceLabel, type PaperChoice } from '@/pastpapers/pack';
 import type { LanguageMode } from '@/model/types';
 import { useAppDialogs } from '@/store/appDialogs';
 import { PAST_PAPER_MESSAGES } from './messages';
@@ -149,19 +149,18 @@ export function SearchGlyph() {
 export function PaperSelect({
   filters,
   papers,
+  language,
   onChange,
 }: {
   filters: BrowseFilters;
   papers: readonly PaperChoice[];
+  /** The language the questions are shown in: paper names are paper words. */
+  language: LanguageMode;
   onChange: (next: BrowseFilters) => void;
 }) {
   const m = useMessages(PAST_PAPER_MESSAGES);
-  const ui = useUiLanguage();
   if (papers.length === 0) return null;
-  const name = (paper: PaperChoice) => {
-    const label = sourceLabel(paper.source, false);
-    return ui === 'zh-HK' ? label.zh : label.en;
-  };
+  const name = (paper: PaperChoice) => packName(sourceLabel(paper.source, false), language);
   return (
     <label className="flex items-center gap-1.5 text-[12px] text-ink-muted">
       <span>{m.paper}</span>

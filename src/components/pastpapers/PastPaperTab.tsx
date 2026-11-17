@@ -2,9 +2,10 @@
 
 import { useMemo } from 'react';
 import { escapeClears } from '@/components/bank/escapeClears';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
 import { rootIdOf } from '@/model/lineage';
 import { insertIntoOpen } from '@/pastpapers/actions';
+import { packName } from '@/pastpapers/pack';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { PAST_PAPER_MESSAGES } from './messages';
 import { BankStateNote, ExamChips, SearchGlyph } from './PastPaperControls';
@@ -19,14 +20,15 @@ import { usePastPaperBrowse } from './usePastPaperBrowse';
  */
 export function PastPaperTab() {
   const m = useMessages(PAST_PAPER_MESSAGES);
-  const ui = useUiLanguage();
   const browse = usePastPaperBrowse();
   const { topics, topic, topicState, filters, setFilters, items } = browse;
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const language = useWorksheetStore((s) => s.mode.language);
   const readOnly = useWorksheetStore((s) => s.readOnly);
   const held = useMemo(() => new Set(worksheet.questions.map(rootIdOf)), [worksheet.questions]);
-  const name = (t: { title: { en: string; zh: string } }) => (ui === 'zh-HK' ? t.title.zh : t.title.en);
+  // Topic names and sources are paper words: the document's language, not the interface's.
+  // A bilingual paper lists both names, as the sidebar's own topic rows do (`wide`).
+  const name = (t: { title: { en: string; zh: string } }, room: 'tight' | 'wide' = 'tight') => packName(t.title, language, room);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pastpaper-tab>
@@ -42,7 +44,7 @@ export function PastPaperTab() {
               >
                 {topics.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {name(t)}
+                    {name(t, 'wide')}
                     {t.questions !== undefined ? ` (${t.questions})` : ''}
                   </option>
                 ))}
@@ -82,7 +84,7 @@ export function PastPaperTab() {
               if (!doc) return null;
               const inPaper = held.has(rootIdOf(item.question));
               const letter = answerLetter(item);
-              const source = ui === 'zh-HK' ? item.provenance.zh : item.provenance.en;
+              const source = packName(item.provenance, language);
               return (
                 <article key={item.question.id} className="rounded-lg border border-line bg-surface p-2">
                   <div className="mb-1.5 flex items-center gap-2 px-1">

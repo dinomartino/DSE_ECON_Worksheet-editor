@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
 import type { LanguageMode } from '@/model/types';
 import { usePastPaperBank } from '@/pastpapers/bank';
-import { sourceLabel } from '@/pastpapers/pack';
+import { packName, sourceLabel } from '@/pastpapers/pack';
 import { PAST_PAPER_MESSAGES } from './messages';
 import type { BrowseEntry } from './usePastPaperBrowse';
 
@@ -27,7 +27,6 @@ export function PastPaperIndexCard({
   language: LanguageMode;
 }) {
   const m = useMessages(PAST_PAPER_MESSAGES);
-  const ui = useUiLanguage();
   const ref = useRef<HTMLElement>(null);
   const state = usePastPaperBank((s) => s.topics[entry.topicId]);
   const row = entry.row;
@@ -50,15 +49,16 @@ export function PastPaperIndexCard({
   }, [entry.topicId]);
 
   if (!row) return null;
-  const label = sourceLabel(row.source);
-  const words = (language === 'zh' ? row.zh || row.en : row.en || row.zh).slice(0, EXCERPT);
-  const cut = (language === 'zh' ? row.zh || row.en : row.en || row.zh).length > EXCERPT;
+  const label = packName(sourceLabel(row.source), language);
+  const text = packName(row, language);
+  const words = text.slice(0, EXCERPT);
+  const cut = text.length > EXCERPT;
 
   return (
     <article ref={ref} className="rounded-xl border border-line bg-surface p-3" data-pastpaper-index-card>
       <div className="mb-2 flex items-center gap-2.5 px-1">
-        <input type="checkbox" disabled aria-label={m.pickTitle(ui === 'zh-HK' ? label.zh : label.en)} className="h-4 w-4" />
-        <span className="truncate text-[12.5px] font-medium text-ink">{ui === 'zh-HK' ? label.zh : label.en}</span>
+        <input type="checkbox" disabled aria-label={m.pickTitle(label)} className="h-4 w-4" />
+        <span className="truncate text-[12.5px] font-medium text-ink">{label}</span>
         <span className="truncate text-[11.5px] text-ink-subtle">{m.inTopic(topicName)}</span>
         <span className="flex-1" />
         {row.pictures > 0 && <span className="shrink-0 text-[11.5px] text-ink-subtle">{m.pictures(row.pictures)}</span>}
