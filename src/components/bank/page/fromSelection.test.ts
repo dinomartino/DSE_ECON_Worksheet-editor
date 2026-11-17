@@ -108,8 +108,8 @@ describe('questionPreviewHtml', () => {
   it('keeps the number the question has in its paper, not 1', () => {
     const doc = docWith([choiceQuestion('First'), choiceQuestion('Second'), choiceQuestion('Third question here')]);
     const preview = questionPreviewHtml(doc, doc.questions[2].id, 'en')!;
-    expect(preview.html).toContain('>3.&nbsp;Third question here');
-    expect(preview.html).not.toContain('>1.&nbsp;');
+    expect(preview.html).toContain(">3.<span style='mso-tab-count:1'>&#9;</span></span>Third question here");
+    expect(preview.html).not.toContain('>1.<span');
   });
 
   it('marks the parts asked for, and only on the preview: the clipboard never carries it', () => {
