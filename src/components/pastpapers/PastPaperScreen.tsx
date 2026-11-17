@@ -137,7 +137,7 @@ export function PastPaperScreen({
 
   return (
     <div className="zone-light flex h-full min-h-0 flex-col bg-surface text-ink" data-pastpaper-screen>
-      <header className="flex h-12 shrink-0 items-center gap-3.5 whitespace-nowrap border-b border-line bg-surface px-4">
+      <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3.5 gap-y-2 whitespace-nowrap border-b border-line bg-surface px-4 py-2 md:h-12 md:flex-nowrap md:py-0">
         <button
           type="button"
           onClick={onHome}
@@ -177,9 +177,10 @@ export function PastPaperScreen({
         {settings}
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      {/* A phone-width window stacks the topics over the questions (u-zhww asked for a phone look). */}
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <BankStateNote browse={browse}>
-          <nav aria-label={m.topics} className="scroll-slim flex w-[260px] shrink-0 flex-col overflow-y-auto border-r border-line py-3">
+          <nav aria-label={m.topics} className="scroll-slim flex max-h-[26vh] w-full shrink-0 flex-col overflow-y-auto border-b border-line py-3 md:max-h-none md:w-[260px] md:border-b-0 md:border-r">
             <h2 className="px-5 pb-2 text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">{m.topics}</h2>
             <ul>
               {topics.map((entry) => {
@@ -207,7 +208,7 @@ export function PastPaperScreen({
             </ul>
           </nav>
 
-          <main className="flex min-w-0 flex-1 flex-col">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-6 py-2.5">
               <h2 className="text-[15px] font-semibold text-ink">
                 {paperChoice ? m.paperHeading(paperName) : searchingAll ? m.scopeAll : topic ? packName(topic.title, language) : ''}

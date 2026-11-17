@@ -95,6 +95,14 @@ a version heading is edited afterwards.
   <!-- zh: **匯出、檢視和複製整套試卷。** 匯出 → 內容 → 整套試卷會匯出套卷內每份試卷，以及整套試卷的一份評卷參考（先 Paper 1，後 Paper 2，頁碼連續）。以 Word 匯出時，瀏覽器會得到一個 .zip，桌面版則把檔案存入你選擇的資料夾。以 PDF 匯出時，桌面版會把所有 PDF 直接存入同一資料夾；瀏覽器每次只能列印一份文件，所以視窗會逐一列出每份試卷和評卷參考，各有「列印」按鈕。在評卷參考檢視中，可用「這份試卷／整套試卷」在畫面上查看整套評卷參考。開始畫面套卷的 ⋯ 有「複製套卷…」：把所有試卷複製到新套卷供下一年使用，並可把名稱、標題和封面上的年份改為下一年（2026-27 → 2027-28），題目內容不變。評卷參考的「一併包含」清單已收起在「在此檔案加入其他文件的評卷參考…」之下，用來把不屬於套卷的文件的評卷參考放在同一檔案；不會再預先剔選。 -->
 
 ### Fixed
+- **Past paper tables sized to their words.** A table from the Past paper bank no longer spans the
+  whole page: each column is as wide as its words, the table only as wide as its columns and
+  centred under the question, with figures and short headings centred, as on the exam paper. A
+  wide table still uses the full width. It carries over into your paper, your Question bank and
+  Word, and a table you resize keeps your width. A table you already have can do the same with the
+  table bar's new **Fit to content**; **Full width** stretches it back. The Past paper bank also
+  fits a phone-width window now.
+  <!-- zh: **歷屆試題的表格按內容調整闊度。** 歷屆試題庫的表格不再橫跨整頁：每欄按文字調整闊度，表格只用所需闊度並置於題目下方中間，數字及簡短標題置中，與試卷一樣；較闊的表格仍可用全寬。加入你的試卷、題庫及 Word 後亦保持一樣；你自行調整過的闊度會保留。已有的表格可用表格工具列新增的「配合內容」得到同樣效果，「全寬」則可還原。歷屆試題庫在手機闊度的視窗亦可正常使用。 -->
 - **Question previews line up as on the paper.** In the Past paper bank, your Question bank's
   preview and Copy for Word, a long question's wrapped lines now start under its first word, not
   under its number, as in the editor and in Word; (1) (2) (3) statements and the A–D options hang

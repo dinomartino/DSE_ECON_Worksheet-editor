@@ -2,8 +2,10 @@ import { rowsOf } from '@/library/indexer';
 import { stimuliServing } from '@/library/stimuli';
 import { migrate } from '@/model/migrations';
 import { plain } from '@/model/text';
-import type { BiText, LanguageMode, LayoutElement, McqQuestion, Question, Worksheet } from '@/model/types';
+import type { BiText, ContentBlock, LanguageMode, LayoutElement, McqQuestion, Question, TableBlock, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
+import { fitTableToContent, tableFitPlace, type TableFitPlace } from '@/model/tableFit';
+import { DEFAULT_PAGE_METRICS, pageMetricsOf, type PageMetrics } from '@/render/ir';
 
 /**
  * Reading the Past paper bank's files (k-0443). The question bank pack is written by another
@@ -260,13 +262,24 @@ export function parseTopic(raw: unknown, entry: TopicEntry): TopicData | undefin
   const known = doc.questions
     .filter((q) => q && typeof q.type === 'string' && getQuestionType(q.type))
     .map(withPictureGrid);
+  // Sized for the narrower of the bank's page and a new paper's, as widths are shares of the
+  // column: a table that fits there fits in any paper a teacher copies it into.
+  const page = pageMetricsOf(doc);
+  const metrics = { ...page, textWidth: Math.min(page.textWidth, DEFAULT_PAGE_METRICS.textWidth) };
+  const fitted = known.map((question) => withFittedTables(question, metrics));
   const skipped = doc.questions.length - known.length;
-  doc = { ...doc, kind: 'bank', questions: known, bankHidden: undefined };
+  doc = {
+    ...doc,
+    kind: 'bank',
+    questions: fitted,
+    bankHidden: undefined,
+    layout: (doc.layout ?? []).map((element) => (element.kind === 'stimulus' ? withFittedStimulus(element, metrics) : element)),
+  };
   doc = { ...doc, flow: (doc.flow ?? []).filter((item) => item.type !== 'question' || known.some((q) => q.id === item.id)) };
 
   // A stimulus whose first paragraph names the questions after it by their paper numbers
   // has that sentence lifted into its own wording (`liftStimulusLead`), in memory only.
-  const questionById = new Map(known.map((q) => [q.id, q]));
+  const questionById = new Map(fitted.map((q) => [q.id, q]));
   const lifted = new Map<string, LayoutElement>();
   doc.flow.forEach((item, index) => {
     const element = item.type === 'layout' ? (doc.layout ?? []).find((e) => e.id === item.id) : undefined;
@@ -292,7 +305,7 @@ export function parseTopic(raw: unknown, entry: TopicEntry): TopicData | undefin
     rows = [];
   }
   const rowOf = new Map(rows.map((row) => [row.questionId, row]));
-  const items: PastPaperItem[] = known.map((question) => {
+  const items: PastPaperItem[] = fitted.map((question) => {
     const row = rowOf.get(question.id);
     const source = sourceOf(question);
     const provenance = sideText((question as { provenance?: BiText }).provenance);
@@ -313,6 +326,49 @@ export function parseTopic(raw: unknown, entry: TopicEntry): TopicData | undefin
     };
   });
   return { entry, doc, items, skipped };
+}
+
+/** Where a table sits, for sizing it: the text column, or half of it in a two-by-two option grid. */
+const inColumn = (metrics: PageMetrics): TableFitPlace => tableFitPlace([], '', metrics);
+const inOptionCell = (metrics: PageMetrics): TableFitPlace => tableFitPlace([{ type: 'mcq', optionLayout: 'columns2', options: [{ blocks: [{ id: 'x' }] }] }], 'x', metrics);
+
+const fitBlocks = <B extends { kind: string }>(blocks: B[], place: TableFitPlace): B[] => {
+  let changed = false;
+  const out = blocks.map((block) => {
+    if (block.kind !== 'table') return block;
+    const next = fitTableToContent(block as unknown as TableBlock, place) as unknown as B;
+    changed ||= next !== block;
+    return next;
+  });
+  return changed ? out : blocks;
+};
+
+/**
+ * The bank's tables sized to their words (`model/tableFit.ts`, user u-zhww): the export
+ * leaves every table without a width, which the editor reads as the whole text column. Done
+ * here, in memory, so the card, the copy a teacher takes and its `.docx` all carry the same
+ * stored width; a table that has one (the export's, or a teacher's resize) is kept.
+ */
+export function withFittedTables(question: Question, metrics: PageMetrics): Question {
+  const q = question as Question & { blocks?: ContentBlock[]; options?: McqQuestion['options'] };
+  const blocks = Array.isArray(q.blocks) ? fitBlocks(q.blocks, inColumn(metrics)) : q.blocks;
+  const grid = question.type === 'mcq' && (question as McqQuestion).optionLayout === 'columns2';
+  const options = Array.isArray(q.options)
+    ? q.options.map((option) => {
+        if (!option.blocks?.length) return option;
+        const fitted = fitBlocks(option.blocks, grid ? inOptionCell(metrics) : { ...inColumn(metrics), centre: false });
+        return fitted === option.blocks ? option : { ...option, blocks: fitted };
+      })
+    : q.options;
+  const optionsChanged = Array.isArray(q.options) && options!.some((option, i) => option !== q.options![i]);
+  if (blocks === q.blocks && !optionsChanged) return question;
+  return { ...q, ...(blocks ? { blocks } : {}), ...(optionsChanged ? { options } : {}) } as Question;
+}
+
+/** A passage's tables, sized as a stem's. */
+function withFittedStimulus(element: Extract<LayoutElement, { kind: 'stimulus' }>, metrics: PageMetrics): LayoutElement {
+  const blocks = fitBlocks(element.blocks, inColumn(metrics));
+  return blocks === element.blocks ? element : { ...element, blocks };
 }
 
 /**

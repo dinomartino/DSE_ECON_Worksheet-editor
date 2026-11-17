@@ -25,6 +25,14 @@ teacher's documents and never counts as one; questions taken from it are ordinar
   the 題庫 tab, both names for a bilingual paper's topic list), never the interface language,
   as curriculum names do (SYSTEM_ARCHITECTURE § Curriculum names are paper-side). One helper,
   `src/pastpapers/pack.ts:packName`. Proof: `scripts/pastpaper-language-verify.mjs`.
+- **Tables sized to their words** (user u-zhww): the export leaves every table without a width,
+  which the editor reads as the whole column. The loader (`src/pastpapers/pack.ts:withFittedTables`,
+  through `src/model/tableFit.ts:fitTableToContent`) stores a width from the words (both
+  languages, typed tabs to the 0.5 in grid), centres a narrower stem or passage table, keeps an
+  option's table in its half of a two-by-two grid (≤ 0.9), centres figures and a short heading
+  row, and sizes for the narrower of the bank's page and a new paper's. A stored width (export or
+  teacher) is kept. The table bar's Fit to content / Full width reuse it
+  (`src/model/tableFit.ts:refitTable`).
 - **Editor → 題庫 tab**: a switch at its top, *My bank* / *Past papers*. Past papers lists a
   topic's questions with Insert (after the insert anchor; one ⌘Z; the review bar) and
   marks those already in the paper. The switch is not drawn when the bank is off.
