@@ -34,6 +34,8 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { refitTable, tableFitPlace } from '@/model/tableFit';
+import { pageMetricsOf } from '@/render/ir';
 import { ptToTwips } from '@/model/page';
 import {
   DOCK_GAP_PX,
@@ -416,6 +418,28 @@ export function TableRow({ block }: { block: TableBlock }) {
           {align === 'left' ? '⇤' : align === 'center' ? '↔' : '⇥'}
         </BarButton>
       ))}
+
+      <span className={DIVIDER} aria-hidden />
+      <span className={GROUP}>{m.groupTableWidth}</span>
+      {/* Sized to its words (`model/tableFit.ts`), or back across the column; a picture grid has no words to size by. */}
+      {!block.rows.some((row) => row.cells.some((c) => c.image)) && (
+        <BarButton
+          label={m.fitTableTitle}
+          onClick={() => {
+            const worksheet = useWorksheetStore.getState().worksheet;
+            apply(refitTable(block, tableFitPlace(worksheet.questions, block.id, pageMetricsOf(worksheet))));
+          }}
+        >
+          {m.fitTable}
+        </BarButton>
+      )}
+      <BarButton
+        label={m.fullWidthTableTitle}
+        pressed={block.width === undefined}
+        onClick={() => apply(block.width === undefined && !block.align && !block.indent ? block : { ...block, width: undefined, align: undefined, indent: undefined })}
+      >
+        {m.fullWidthTable}
+      </BarButton>
 
       <span className={DIVIDER} aria-hidden />
       <span className={GROUP}>{m.groupLines}</span>
