@@ -25,10 +25,10 @@ describe('the syllabus data module', () => {
     const known = new Set(TOPICS.flatMap((t) => [t.code, ...t.children.map((s) => s.code)]));
     for (const topic of SYLLABUS.topics) {
       expect(known.has(topic.code)).toBe(true);
-      for (const kp of topic.keyPoints) {
-        expect(known.has(kp.code), kp.code).toBe(true);
-        for (const p of kp.points) {
-          expect(p.code.startsWith(`${kp.code}#`)).toBe(true);
+      for (const keyPoint of topic.keyPoints) {
+        expect(known.has(keyPoint.code), keyPoint.code).toBe(true);
+        for (const p of keyPoint.points) {
+          expect(p.code.startsWith(`${keyPoint.code}#`)).toBe(true);
           expect(isTopicCode(p.code)).toBe(false);
         }
       }
@@ -42,7 +42,7 @@ describe('the syllabus data module', () => {
     expect(lookupCode('C')).toBeUndefined();
     expect(lookupCode('nope')).toBeUndefined();
     for (const topic of SYLLABUS.topics) {
-      const sum = topic.keyPoints.reduce((n, kp) => n + keyPointHours(topic, kp), 0);
+      const sum = topic.keyPoints.reduce((n, keyPoint) => n + keyPointHours(topic, keyPoint), 0);
       expect(sum).toBeCloseTo(topic.hours, 9);
     }
   });

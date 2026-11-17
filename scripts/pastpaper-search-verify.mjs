@@ -157,7 +157,7 @@ async function englishWalk() {
     const xml = await zip.file('word/document.xml').async('string');
     const media = Object.keys(zip.files).filter((f) => f.startsWith('word/media/'));
     check(media.length >= 16, `[${language}] the .docx carries the diagrams (${media.length} pictures)`);
-    check(!/kp-|kp:/.test(xml), `[${language}] no bank ids leak into the .docx`);
+    check(!/\bpp[-:][A-Za-z0-9]/.test(xml), `[${language}] no bank ids leak into the .docx`);
     await exporter.waitFor({ state: 'detached', timeout: 10_000 }).catch(() => page.keyboard.press('Escape'));
     await settle(page, 800);
   }

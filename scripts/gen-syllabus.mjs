@@ -26,12 +26,12 @@ export function buildSyllabusData(json) {
       en: topic.en,
       zh: topic.zh,
       hours: topic.hours,
-      keyPoints: topic.keyPoints.map((kp) => ({
-        code: kp.code,
-        en: kp.en,
-        zh: kp.zh,
-        notRequired: kp.notRequired,
-        points: kp.points.map((p) => ({ code: p.code, en: p.en, zh: p.zh })),
+      keyPoints: topic.keyPoints.map((keyPoint) => ({
+        code: keyPoint.code,
+        en: keyPoint.en,
+        zh: keyPoint.zh,
+        notRequired: keyPoint.notRequired,
+        points: keyPoint.points.map((p) => ({ code: p.code, en: p.en, zh: p.zh })),
       })),
     })),
   };

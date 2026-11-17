@@ -1,13 +1,13 @@
-# Group F: KP S5/S6 round papers (ENG), DSE 2019 Paper 2, DSE2026 MC addendum. What must be drawn
+# Group F: REF S5/S6 round papers (ENG), DSE 2019 Paper 2, DSE2026 MC addendum. What must be drawn
 
 Files read in full (13):
-- KP__S5__R1__LQ (S5-R1 LQ), KP__S5__R1__MC (S5-R1 MCQ), KP__S5__R2__LQ, KP__S5__R2__MC, KP__S5__R3__LQ, KP__S5__R3__MC, KP__S5__R4__MC,
-- KP__S6__R1__LQ, KP__S6__R1__MC, KP__S6__R2__LQ, KP__S6__R2__MC,
+- REF__S5__R1__LQ (S5-R1 LQ), REF__S5__R1__MC (S5-R1 MCQ), REF__S5__R2__LQ, REF__S5__R2__MC, REF__S5__R3__LQ, REF__S5__R3__MC, REF__S5__R4__MC,
+- REF__S6__R1__LQ, REF__S6__R1__MC, REF__S6__R2__LQ, REF__S6__R2__MC,
 - BT__2019_Question_Paper_2 (DSE 2019 Paper 2, question paper only, **no marking scheme**), BT__DSE2026_MC_addendum (MCQ, diagrams are `[diagram]` placeholders with no image files).
 
 I opened every marking-scheme image in S5-R1 LQ (i_img009–021), S6-R2 LQ (i_img010–019) and S6-R1 LQ (i_img003–004), plus all 18 figures in S5-R1 MCQ. Question figures were opened where they were needed.
 
-Not processed (older duplicates, confirmed with `ls`): 36 files named `BT__KP_edu__*`, covering the S4-R1/R2/R3/R4, S5-R1 and S6-R1 LQ/MCQ (ENG and CHIN blank) and L6–L9 MCQ. Examples: `BT__KP_edu__S5-R1_LQ_ENG`, `BT__KP_edu__lq_eng_finalized__S6-R1_LQ_ENG`, `BT__KP_edu__output__S5-R1_MCQ_ENG_MCQ_ENG`, and others.
+Not processed (older duplicates, confirmed with `ls`): 36 files named `BT__REF_edu__*`, covering the S4-R1/R2/R3/R4, S5-R1 and S6-R1 LQ/MCQ (ENG and CHIN blank) and L6–L9 MCQ. Examples: `BT__REF_edu__S5-R1_LQ_ENG`, `BT__REF_edu__lq_eng_finalized__S6-R1_LQ_ENG`, `BT__REF_edu__output__S5-R1_MCQ_ENG_MCQ_ENG`, and others.
 
 Short file names used below: **S5R1-LQ**, **S5R1-MC**, **S6R1-LQ**, **S6R1-MC**, **S6R2-LQ**, **P2-2019** (BT__2019_Question_Paper_2), **MC26add** (BT__DSE2026_MC_addendum).
 

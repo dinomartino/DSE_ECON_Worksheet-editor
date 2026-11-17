@@ -4,7 +4,7 @@
  * Run once, deliberately (it refuses without the variable):
  *   EMIT_V1_MCQ_CORPUS=1 npx vitest run scripts/emit-v1-mcq-corpus.test.ts
  *
- * Outside stores (DSE Mentor's app bank, the KP_ECON question bank) keep questions in
+ * Outside stores (DSE Mentor's app bank, the past-paper question bank) keep questions in
  * this editor's MC type and rely on "a saved file always opens". This file proves it for
  * MC questions: statements, options, a picture option, a table and a picture in the stem,
  * answer, explanation, tags, provenance, lineage, a shared stimulus, and a picture with a

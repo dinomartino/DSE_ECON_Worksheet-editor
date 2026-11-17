@@ -1,11 +1,11 @@
 # Group E: S4 round papers (ENG) and DBS quizzes: what the diagrams must show
 
 Short file names used below:
-- R3-LQ = KP__S4__R3__LQ__S4-R3_LQ_ENG.docx.txt
-- R4-LQ = KP__S4__R4__LQ__S4-R4_LQ_ENG.docx.txt
-- R3-MC = KP__S4__R3__MC__S4-R3_MCQ_ENG.docx.txt
-- R4-MC = KP__S4__R4__MC__S4-R4_MCQ_ENG.docx.txt
-- DBS2 / DBS2-ANS = KP__Quiz__DBS_Assessment2(.docx / _ANS.docx).txt
+- R3-LQ = REF__S4__R3__LQ__S4-R3_LQ_ENG.docx.txt
+- R4-LQ = REF__S4__R4__LQ__S4-R4_LQ_ENG.docx.txt
+- R3-MC = REF__S4__R3__MC__S4-R3_MCQ_ENG.docx.txt
+- R4-MC = REF__S4__R4__MC__S4-R4_MCQ_ENG.docx.txt
+- DBS2 / DBS2-ANS = REF__Quiz__DBS_Assessment2(.docx / _ANS.docx).txt
 
 Duplication note: the whole "Shortage & Surplus" section of R4-LQ (DSE2025/P2/Q11(b)(i) through CE2006/P1/Q9) is an exact copy of the same section in R3-LQ, including the marking-scheme images (the image files have identical MD5 hashes: R4 i_img005–028 = R3 i_img028–051). Each of those questions is listed once under S4-R3 LQ with "files: R3-LQ, R4-LQ". The S4-R4 LQ section below contains only the questions that are new in R4 (the Elasticity section).
 
@@ -546,10 +546,10 @@ Only questions whose graph tests a shift, a movement along a curve or a new equi
 
 ---
 
-## DBS Assessment 2 (KP quiz, Part B)  — files: DBS2, DBS2-ANS
-The Part A MCQs contain tables only and no graphs. All five Part B questions are KP-written. Numbering follows the answer key: Q1–Q3, Q4a, Q4b, Q5.
+## DBS Assessment 2 (REF quiz, Part B)  — files: DBS2, DBS2-ANS
+The Part A MCQs contain tables only and no graphs. All five Part B questions are REF-written. Numbering follows the answer key: Q1–Q3, Q4a, Q4b, Q5.
 
-### KP Q1  (6 marks) — files: DBS2, DBS2-ANS
+### REF Q1  (6 marks) — files: DBS2, DBS2-ANS
 - Q: The catering industry cuts hiring and the government tightens labour importation. With a diagram, explain when the catering wage would fall.
 - Diagram type: labour market, two shifts
 - Must draw:
@@ -558,7 +558,7 @@ The Part A MCQs contain tables only and no graphs. All five Part B questions are
   - the D shift is larger than the S shift, so the wage falls
 - Notes: The 3 verbal points carry 1 mark each (D↓, S↓, if the fall in D > the fall in S the wage falls). The three diagram points are listed without mark values; the total implies about 3 marks.
 
-### KP Q2  (7 marks) — files: DBS2, DBS2-ANS
+### REF Q2  (7 marks) — files: DBS2, DBS2-ANS
 - Q: The import quota is increased. With a diagram, explain when the total import value would rise.
 - Diagram type: import-quota market with kinked supply
 - Must draw:
@@ -567,7 +567,7 @@ The Part A MCQs contain tables only and no graphs. All five Part B questions are
   - gain area > loss area (TR rectangles), i.e. elastic demand
 - Notes: 3 diagram marks and 4 verbal (S↑; P↓ and Q↑; % fall in P < % rise in Qd; elastic demand).
 
-### KP Q3  (7 marks) — files: DBS2, DBS2-ANS
+### REF Q3  (7 marks) — files: DBS2, DBS2-ANS
 - Q: A per-unit subsidy on private vet services. With a diagram, explain the condition under which pet owners get a smaller share of the subsidy than the clinics. The question text in the docx is garbled ("under what conditions than the private veterinary clinics"); the intended wording is inferred from the scheme.
 - Diagram type: per-unit subsidy incidence
 - Must draw:
@@ -578,7 +578,7 @@ The Part A MCQs contain tables only and no graphs. All five Part B questions are
   - CB < PB, which requires demand more elastic than supply (Ed > Es; a flatter D, steeper S (inferred))
 - Notes: 5 diagram marks and 2 verbal.
 
-### KP Q4(a)  (3 marks) — files: DBS2, DBS2-ANS
+### REF Q4(a)  (3 marks) — files: DBS2, DBS2-ANS
 - Q: The CHT has serious peak-hour congestion. Draw an S&D diagram in Figure 2.
 - Diagram type: S&D with a fixed toll below equilibrium (Figure 2 is given)
 - Must draw:
@@ -587,7 +587,7 @@ The Part A MCQs contain tables only and no graphs. All five Part B questions are
   - (inferred) a vertical S for tunnel capacity, as in DSE2020/P2/Q11(b)
 - Notes: 2 diagram marks and 1 verbal.
 
-### KP Q4(b)  (7 marks) — files: DBS2, DBS2-ANS
+### REF Q4(b)  (7 marks) — files: DBS2, DBS2-ANS
 - Q: The WHC toll is lowered and the CHT toll raised, and CHT congestion falls. Explain with an S&D diagram.
 - Diagram type: S&D with a fixed price below equilibrium
 - Must draw:
@@ -597,7 +597,7 @@ The Part A MCQs contain tables only and no graphs. All five Part B questions are
   - a smaller shortage than before
 - Notes: 4 diagram marks and 3 verbal. This is the same pattern as CE2006/P1/Q9(a)(ii) and CE2005/P1/Q9(b)(i).
 
-### KP Q5  (6 marks) — files: DBS2, DBS2-ANS
+### REF Q5  (6 marks) — files: DBS2, DBS2-ANS
 - Q: An effective price ceiling on leather handbags, followed by a preference shift away from leather. How does the deadweight loss change? Use a diagram.
 - Diagram type: price ceiling with DWL (MB = D, MC = S)
 - Must draw:
@@ -644,7 +644,7 @@ The Part A MCQs contain tables only and no graphs. All five Part B questions are
 - A vertical S for a fixed licence count. A downward shift of S for a per-unit subsidy.
 - When P and Q both rose (e.g. DSE2017 MTR), draw a D shift and do NOT infer inelasticity.
 
-### Subsidy, quota and price-control extensions (KP quiz)
+### Subsidy, quota and price-control extensions (REF quiz)
 - Per-unit subsidy: S shifts down by the subsidy; label the new P and Q; label the CB area (the Pold→Pnew strip) and the PB area (the strip above Pold up to the supply price); make their relative size match Ed against Es.
 - Quota: a kinked S that shifts right when the quota is enlarged; new P and Q; gain against loss rectangles.
 - Price ceiling and DWL: the ceiling line below Pe; the DWL triangle between MB (D) and MC (S) from Qs to the efficient Q; after D shifts left, a visibly smaller triangle.

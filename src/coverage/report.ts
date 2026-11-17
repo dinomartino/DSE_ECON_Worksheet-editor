@@ -91,7 +91,7 @@ export interface CoverageReport {
 const where = (number: string, label: string) => `${number}${label.replace(/\s+/g, '')}`;
 
 export function buildReport(results: QuestionResult[], sent: number, choice: ElectiveChoice = 'auto'): CoverageReport {
-  const kpMarks = new Map<string, { marks: number; bands: ByBand; hit: boolean; where: string[] }>();
+  const keyPointMarks = new Map<string, { marks: number; bands: ByBand; hit: boolean; where: string[] }>();
   const pointMarks = new Map<string, number>();
   const topicMarks = new Map<string, number>();
   const bands = noBands();
@@ -115,17 +115,17 @@ export function buildReport(results: QuestionResult[], sent: number, choice: Ele
         continue;
       }
       const weight = picks.reduce((n, p) => n + p.w, 0);
-      const seenKp = new Set<string>();
+      const seenKeyPoint = new Set<string>();
       for (const pick of picks) {
         const hit = lookupCode(pick.code)!;
         const share = (unit.marks * pick.w) / weight;
-        const kp = kpMarks.get(hit.keyPoint.code) ?? { marks: 0, bands: noBands(), hit: false, where: [] };
-        kp.marks += share;
-        kp.bands[pick.band] += share;
-        kp.hit = true;
-        if (!seenKp.has(hit.keyPoint.code)) kp.where.push(where(result.number, unit.label));
-        seenKp.add(hit.keyPoint.code);
-        kpMarks.set(hit.keyPoint.code, kp);
+        const keyPoint = keyPointMarks.get(hit.keyPoint.code) ?? { marks: 0, bands: noBands(), hit: false, where: [] };
+        keyPoint.marks += share;
+        keyPoint.bands[pick.band] += share;
+        keyPoint.hit = true;
+        if (!seenKeyPoint.has(hit.keyPoint.code)) keyPoint.where.push(where(result.number, unit.label));
+        seenKeyPoint.add(hit.keyPoint.code);
+        keyPointMarks.set(hit.keyPoint.code, keyPoint);
         if (hit.point) pointMarks.set(hit.point.code, (pointMarks.get(hit.point.code) ?? 0) + share);
         topicMarks.set(hit.topic.code, (topicMarks.get(hit.topic.code) ?? 0) + share);
         bands[pick.band] += share;
@@ -135,7 +135,7 @@ export function buildReport(results: QuestionResult[], sent: number, choice: Ele
   }
 
   const electiveMarks = (code: ElectiveCode) =>
-    SYLLABUS.topics.find((t) => t.code === code)!.keyPoints.some((kp) => kpMarks.get(kp.code)?.hit) ? (topicMarks.get(code) ?? 0) : -1;
+    SYLLABUS.topics.find((t) => t.code === code)!.keyPoints.some((keyPoint) => keyPointMarks.get(keyPoint.code)?.hit) ? (topicMarks.get(code) ?? 0) : -1;
   const found = (['EL1', 'EL2'] as const).filter((code) => electiveMarks(code) >= 0);
   const counted: ElectiveCode | null =
     found.length === 0 ? null
@@ -152,24 +152,24 @@ export function buildReport(results: QuestionResult[], sent: number, choice: Ele
     const shown = inScope(topic) || found.includes(topic.code as ElectiveCode);
     if (!shown) continue;
     const counts = inScope(topic);
-    const keyPoints = topic.keyPoints.map((kp): KeyPointRow => {
-      const got = kpMarks.get(kp.code);
-      const hours = keyPointHours(topic, kp);
-      const points = kp.points.filter((p) => pointMarks.has(p.code)).map((p) => ({ code: p.code, en: p.en, zh: p.zh, marks: pointMarks.get(p.code)! }));
+    const keyPoints = topic.keyPoints.map((keyPoint): KeyPointRow => {
+      const got = keyPointMarks.get(keyPoint.code);
+      const hours = keyPointHours(topic, keyPoint);
+      const points = keyPoint.points.filter((p) => pointMarks.has(p.code)).map((p) => ({ code: p.code, en: p.en, zh: p.zh, marks: pointMarks.get(p.code)! }));
       if (counts) {
         breadth.keyPoints.of += 1;
-        breadth.points.of += kp.points.length;
+        breadth.points.of += keyPoint.points.length;
         breadth.points.hit += points.length;
         if (got?.hit) {
           breadth.keyPoints.hit += 1;
           breadth.hours.hit += hours;
         }
       }
-      return { code: kp.code, en: kp.en, zh: kp.zh, hours, marks: got?.marks ?? 0, bands: got?.bands ?? noBands(), hit: !!got?.hit, points, where: got?.where ?? [] };
+      return { code: keyPoint.code, en: keyPoint.en, zh: keyPoint.zh, hours, marks: got?.marks ?? 0, bands: got?.bands ?? noBands(), hit: !!got?.hit, points, where: got?.where ?? [] };
     });
     const marks = topicMarks.get(topic.code) ?? 0;
     const topicBands = noBands();
-    for (const kp of keyPoints) for (const band of BANDS) topicBands[band] += kp.bands[band];
+    for (const keyPoint of keyPoints) for (const band of BANDS) topicBands[band] += keyPoint.bands[band];
     topics.push({
       code: topic.code,
       en: topic.en,

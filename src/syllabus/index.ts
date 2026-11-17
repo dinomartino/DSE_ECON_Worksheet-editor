@@ -33,6 +33,6 @@ export const isElective = (topic: SyllabusTopic): boolean => topic.part === 'ele
  * how many points each holds (the guide gives hours per topic only, p. 23).
  */
 export function keyPointHours(topic: SyllabusTopic, keyPoint: SyllabusKeyPoint): number {
-  const points = topic.keyPoints.reduce((n, kp) => n + kp.points.length, 0);
+  const points = topic.keyPoints.reduce((n, each) => n + each.points.length, 0);
   return points === 0 ? 0 : (topic.hours * keyPoint.points.length) / points;
 }

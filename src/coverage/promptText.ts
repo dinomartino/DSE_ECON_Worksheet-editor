@@ -13,10 +13,10 @@ export function syllabusList(): string {
   for (const topic of SYLLABUS.topics) {
     const part = topic.part === 'elective' ? ` (Elective Part ${topic.code.slice(2)}, optional)` : '';
     lines.push(`# ${topic.code} ${topic.en}${part}`);
-    for (const kp of topic.keyPoints) {
-      lines.push(`${kp.code}  ${kp.en}`);
-      for (const p of kp.points) if (p.en !== kp.en) lines.push(`${p.code}  ${kp.en} · ${p.en}`);
-      else lines.push(`${p.code}  ${kp.en} (the whole key point)`);
+    for (const keyPoint of topic.keyPoints) {
+      lines.push(`${keyPoint.code}  ${keyPoint.en}`);
+      for (const p of keyPoint.points) if (p.en !== keyPoint.en) lines.push(`${p.code}  ${keyPoint.en} · ${p.en}`);
+      else lines.push(`${p.code}  ${keyPoint.en} (the whole key point)`);
     }
   }
   return lines.join('\n');
@@ -26,8 +26,8 @@ export function syllabusList(): string {
 export function excludedList(): string {
   return SYLLABUS.topics
     .flatMap((topic) => topic.keyPoints)
-    .filter((kp) => kp.notRequired.length > 0)
-    .map((kp) => `${kp.code}: ${kp.notRequired.join('; ')}`)
+    .filter((keyPoint) => keyPoint.notRequired.length > 0)
+    .map((keyPoint) => `${keyPoint.code}: ${keyPoint.notRequired.join('; ')}`)
     .join('\n');
 }
 

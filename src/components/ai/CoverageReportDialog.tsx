@@ -82,7 +82,7 @@ export function CoverageReportDialog({
               {report.topics.map((topic) => (
                 <Fragment key={topic.code}>
                   <TopicLine topic={topic} name={name(topic)} />
-                  {topic.keyPoints.map((kp) => <KeyPointLine key={kp.code} kp={kp} name={name(kp)} pointNames={kp.points.map(name)} muted={!topic.counted} />)}
+                  {topic.keyPoints.map((keyPoint) => <KeyPointLine key={keyPoint.code} keyPoint={keyPoint} name={name(keyPoint)} pointNames={keyPoint.points.map(name)} muted={!topic.counted} />)}
                 </Fragment>
               ))}
             </tbody>
@@ -142,7 +142,7 @@ function Tile({ label, sub, value, detail }: { label: string; sub?: string; valu
 
 function TopicLine({ topic, name }: { topic: TopicRow; name: string }) {
   const m = useMessages(COVERAGE_MESSAGES);
-  const hit = topic.keyPoints.filter((kp) => kp.hit).length;
+  const hit = topic.keyPoints.filter((keyPoint) => keyPoint.hit).length;
   return (
     <tr className={`border-t border-line bg-surface-sunken/60 font-medium ${topic.counted ? '' : 'text-ink-subtle'}`}>
       <td className="px-3 py-1.5">
@@ -161,10 +161,10 @@ function TopicLine({ topic, name }: { topic: TopicRow; name: string }) {
   );
 }
 
-function KeyPointLine({ kp, name, pointNames, muted }: { kp: KeyPointRow; name: string; pointNames: string[]; muted: boolean }) {
+function KeyPointLine({ keyPoint, name, pointNames, muted }: { keyPoint: KeyPointRow; name: string; pointNames: string[]; muted: boolean }) {
   const m = useMessages(COVERAGE_MESSAGES);
-  const dim = muted || !kp.hit;
-  const where = kp.hit ? kp.where.map((w) => m.questionWhere(w)).join(m.listJoin) : m.notTested;
+  const dim = muted || !keyPoint.hit;
+  const where = keyPoint.hit ? keyPoint.where.map((w) => m.questionWhere(w)).join(m.listJoin) : m.notTested;
   return (
     <tr className={`border-t border-line/60 align-top ${dim ? 'text-ink-subtle' : ''}`}>
       <td className="py-1 pl-8 pr-3">
@@ -172,8 +172,8 @@ function KeyPointLine({ kp, name, pointNames, muted }: { kp: KeyPointRow; name: 
         {pointNames.length > 0 && <div className="text-[11px] text-ink-subtle">{m.pointsLine(pointNames.join(m.pointsJoin))}</div>}
         <div className="text-[11px] lg:hidden">{where}</div>
       </td>
-      {BANDS.map((band) => <td key={band} className="hidden px-2 py-1 text-right tabular-nums md:table-cell">{cell(kp.bands[band])}</td>)}
-      <td className="px-2 py-1 text-right tabular-nums">{cell(kp.marks)}</td>
+      {BANDS.map((band) => <td key={band} className="hidden px-2 py-1 text-right tabular-nums md:table-cell">{cell(keyPoint.bands[band])}</td>)}
+      <td className="px-2 py-1 text-right tabular-nums">{cell(keyPoint.marks)}</td>
       <td />
       <td className="hidden sm:table-cell" />
       <td className="hidden px-3 py-1 text-[11.5px] lg:table-cell">{where}</td>

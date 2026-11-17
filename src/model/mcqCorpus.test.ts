@@ -2,7 +2,7 @@
  * Frozen MC-question corpus (`src/test/corpus/v1-mcq.json`) and the optional Chinese
  * picture (`ImageBlock.srcZh`).
  *
- * Outside stores (DSE Mentor's app bank, the KP_ECON question bank) keep questions in this
+ * Outside stores (DSE Mentor's app bank, the past-paper question bank) keep questions in this
  * editor's MC type and rely on "a saved file always opens". The corpus is written once by
  * `scripts/emit-v1-mcq-corpus.test.ts`. RULE: never regenerate it to make a test pass; a
  * failure here means a saved MC question just broke, so fix the code, not the file.

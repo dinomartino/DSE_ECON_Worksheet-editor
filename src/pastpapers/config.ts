@@ -17,8 +17,8 @@ import type { FieldValidator, SettingsSchema } from '@/settings/types';
 
 /**
  * The public data repo, served raw (GitHub sends `Access-Control-Allow-Origin: *`).
- * **Not created yet** (the user's go is pending, k-0441 decision 1): until it exists the
- * built-in source answers "not found", which the screen words as "can't be reached".
+ * Live since 2026-11-17 (user u-qbmp): `dinomartino/dse-econ-question-bank`, branch `main`.
+ * If it is ever unreachable the screen says the bank can't be reached.
  */
 export const BUILT_IN_SOURCE = 'https://raw.githubusercontent.com/dinomartino/dse-econ-question-bank/main/';
 

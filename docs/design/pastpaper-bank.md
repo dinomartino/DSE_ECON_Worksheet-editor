@@ -1,7 +1,7 @@
 # Past paper bank 歷屆試題庫 (k-0443, k-0444)
 
 Status: step B (k-0443) and step C (k-0444) built, 2026-11-16, on `develop` (not released). Plan: k-0441 `PLAN.md` § 15
-(kp-econ-bank session), approved by the user with the data in a separate public repo,
+(the past-paper bank's own session), approved by the user with the data in a separate public repo,
 questions and official answers only (u-58jj). The user then asked for it to be **a bank of
 its own, not mixed into the 題庫** (u-xpin).
 
@@ -47,12 +47,14 @@ topic). Read on demand: the list when the bank is opened, a topic when it is ope
   only on localhost; or a path on the app's origin). Remove downloads is there too.
 - The desktop app needs no permission for it: the webview's own fetch, as the AI requests
   (CSP null; no Tauri plugin). The download is a GET with no credentials and no body.
-- **The public data repo does not exist yet** (the user's go is pending). Until then the
-  built-in source answers "not found" and the screen says the bank can't be reached.
+- **The public data repo is live** (2026-11-17, u-qbmp):
+  `https://raw.githubusercontent.com/dinomartino/dse-econ-question-bank/main/` (`BUILT_IN_SOURCE`).
+  Its manifest names no format; question ids start `pp-`, root ids `pp:`. This repo is public
+  too: the exporter's private names never appear here (u-qbmp).
 
 ## Copies
 
-Every way out copies (`copyQuestion`): fresh ids, `lineage.rootId` kept (`kp:CE2011/P2/Q8`),
+Every way out copies (`copyQuestion`): fresh ids, `lineage.rootId` kept (`pp:CE2011/P2/Q8`),
 so "Already in this paper" and the teacher's bank see two copies as one question. A shared
 stimulus goes in once, in front of its questions, with `span` = how many came along; its
 range is derived by the paper, as every stimulus's is (`src/library/stimuli.ts`).
@@ -108,7 +110,7 @@ What it reads:
 
 1. `manifest.json`: `topics[]` with `id` and `file` (relative, inside the source). Optional:
    `title {en, zh}`, `syllabusOrder`, `questions`, `bytes`, `sha256` (hex of the file's UTF-8
-   bytes), `enabled`, `questions` total, `format: "kp-editor-pack"`.
+   bytes), `enabled`, `questions` total, optional `format: "question-bank-pack"` (the published bank names none).
 2. Each topic file opens in the editor's loader (`migrate`) as a document.
 3. Per question: a tag `CE2011/P2/Q8` (`(CE|AL|DSE)(year|SP|PP)/P<n>/Q<n>`) for the filters and
    the printed number; `provenance {en, zh}` for the source line; a stable `lineage.rootId`.
@@ -118,7 +120,7 @@ What it reads:
    loader lifts it (`src/pastpapers/pack.ts:liftStimulusLead`) only when both languages name
    exactly the questions that follow (23 of the trial export's 26 stimuli); the other 3 print
    their sentence as exported, beside the editor's.
-5. **Questions whose options are pictures** (kp-bank's `picture-options`): export them as
+5. **Questions whose options are pictures** (the bank's `picture-options`): export them as
    `type: "mcq"`, as the trial export already does, plus `"optionLayout": "columns2"`
    (add it to the exporter's allowed keys). Per variant:
    - **Four pictures A to D**: each option `{ id, text, blocks: [image] }`; `text` is the
