@@ -9,8 +9,8 @@ import type { FieldValidator, SettingsSchema } from '@/settings/types';
  * address. Two switches turn it off:
  *  - `BUILT_IN_SOURCE` below: the address every install uses. Empty = the feature is gone
  *    for every build made from here (no Library row, no tab, no download).
- *  - the data itself: `"enabled": false` in its `manifest.json` turns it off for every user
- *    at their next opening of the bank, with no release.
+ *  - the data itself: `"enabled": false` in its `latest.json` (k-0447) or `manifest.json` turns
+ *    it off for every user at their next opening of the bank, with no release.
  * And per computer, Settings → Past paper bank: Built-in, Off, or another address
  * (`PAST_PAPER_SETTINGS`), which is how a local export is tried before anything is public.
  */
@@ -19,8 +19,49 @@ import type { FieldValidator, SettingsSchema } from '@/settings/types';
  * The public data repo, served raw (GitHub sends `Access-Control-Allow-Origin: *`).
  * Live since 2026-11-17 (user u-qbmp): `dinomartino/dse-econ-question-bank`, branch `main`.
  * If it is ever unreachable the screen says the bank can't be reached.
+ *
+ * Since k-0447 this address is the bank's *name* (what its downloads are kept under) and where
+ * its tiny `latest.json` is read; the list and topics come from the commit `latest.json` names,
+ * on jsDelivr first (`pinnedSource`). A repo without `latest.json` is read here as before.
  */
 export const BUILT_IN_SOURCE = 'https://raw.githubusercontent.com/dinomartino/dse-econ-question-bank/main/';
+
+/** A GitHub repo behind a raw address: `owner/repo` and the branch. */
+export interface GitHubSource {
+  repo: string;
+  branch: string;
+}
+
+const RAW_GITHUB = /^https:\/\/raw\.githubusercontent\.com\/([A-Za-z0-9-]+\/[A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)\/$/;
+
+/** The repo and branch of a base like the built-in one (a repo's root on raw GitHub), else undefined. */
+export function gitHubSource(base: string): GitHubSource | undefined {
+  const match = RAW_GITHUB.exec(base);
+  return match ? { repo: match[1], branch: match[2] } : undefined;
+}
+
+/** A full commit id, as `latest.json` must name it. */
+export const isCommit = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
+
+/**
+ * Where `latest.json` is read, in order: GitHub raw on the branch (fresh at every opening, so a
+ * publish or a switch-off is seen at once), then jsDelivr's copy of the branch (cached up to
+ * 12 h; used only when GitHub can't be reached and nothing is kept).
+ */
+export const latestUrls = ({ repo, branch }: GitHubSource): [string, string] => [
+  `https://raw.githubusercontent.com/${repo}/${branch}/latest.json`,
+  `https://cdn.jsdelivr.net/gh/${repo}@${branch}/latest.json`,
+];
+
+/**
+ * The bases a commit's files are read from, in order: jsDelivr (a public CDN mirroring GitHub;
+ * a file at a commit never changes there, so it is cached for a year), then GitHub raw at the
+ * same commit.
+ */
+export const pinnedSource = ({ repo }: GitHubSource, commit: string): string[] => [
+  `https://cdn.jsdelivr.net/gh/${repo}@${commit}/`,
+  `https://raw.githubusercontent.com/${repo}/${commit}/`,
+];
 
 export type PastPaperMode = 'builtIn' | 'off' | 'custom';
 

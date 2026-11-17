@@ -124,6 +124,13 @@ a version heading is edited afterwards.
   <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
 
 ### Changed
+- **Past paper bank: fewer downloads, from a public mirror.** Topics now come from jsDelivr, a
+  free public service that mirrors the bank on GitHub (GitHub itself is the backup), so a school
+  where many teachers share one connection is not slowed or refused. Opening the bank again checks
+  one tiny file; after the bank is updated, only the topics that changed download again, and every
+  topic you opened before still works without a connection. Settings → Past paper bank says where
+  the files come from.
+  <!-- zh: **歷屆試題庫：下載更少，並經公共鏡像下載。** 課題現經 jsDelivr 下載（一個轉載 GitHub 上題庫的免費公共服務，GitHub 本身作後備），即使學校多位老師共用同一網絡，也不會被拖慢或拒絕。再次開啟題庫時只會檢查一個極小的檔案；題庫更新後，只會重新下載有改動的課題，而你以前開過的課題在沒有網絡時仍可使用。「設定 → 歷屆試題庫」會說明檔案從何處下載。 -->
 - **Chinese wording follows the Education Bureau's 2025 supplement.** The inflationary and deflationary gap templates now say 差距 (通脹差距, 通縮差距), the labour curves say 勞力需求 and 勞力供應, the topic "Market intervention" is 政府干預, and the externality template says 界外效應. Nothing in your saved worksheets changes.
   <!-- zh: **中文用詞對齊教育局 2025 年補充文件。** 通脹和通縮缺口範本改稱「差距」（通脹差距、通縮差距），勞動市場曲線改稱「勞力需求」和「勞力供應」，課題「市場干預」改為「政府干預」，外部效應範本改稱「界外效應」。已儲存的工作紙不受影響。 -->
 - **Translation and term checks accept 價格水平.** Check terms and the translator no longer
