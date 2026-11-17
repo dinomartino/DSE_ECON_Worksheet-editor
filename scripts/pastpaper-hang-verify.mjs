@@ -90,7 +90,7 @@ async function openBank(zh) {
 }
 
 const findCard = async (page, tag, zh) => {
-  await page.getByRole('searchbox').fill(tag);
+  await page.getByRole('searchbox').first().fill(tag);
   await page.locator('[data-pastpaper-screen]').getByRole('radio', { name: zh ? '所有課題' : 'Every topic' }).click().catch(() => {});
   await page.waitForTimeout(2500);
   const card = page.locator('[data-pastpaper-screen] article').first();

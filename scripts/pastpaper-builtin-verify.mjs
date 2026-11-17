@@ -17,6 +17,12 @@ const zh = args.includes('--zh');
 const BUILT_IN = 'https://raw.githubusercontent.com/dinomartino/dse-econ-question-bank/main/';
 mkdirSync(OUT, { recursive: true });
 
+/** The picker groups topics under syllabus parts (k-0446): open every part so each topic shows. */
+const openEveryPart = async (page) => {
+  const all = page.locator('[data-pastpaper-screen] nav').getByRole('button', { name: /^(Open all|全部展開)$/ });
+  if (await all.count()) await all.first().click();
+};
+
 let failures = 0;
 const check = (ok, what, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}${ok || !detail ? '' : `  (${detail})`}`);
@@ -42,7 +48,8 @@ await page.getByRole('button', { name: zh ? /歷屆試題庫/ : /Past paper bank
 await page.locator('[data-pastpaper-screen] nav li').first().waitFor({ timeout: 60_000 });
 const header = (await page.locator('[data-pastpaper-screen] header').textContent()) ?? '';
 check(header.includes(manifest.questions.toLocaleString('en-US')), `the screen counts ${manifest.questions} questions`, header);
-const topics = page.locator('[data-pastpaper-screen] nav li button');
+await openEveryPart(page);
+const topics = page.locator('[data-pastpaper-screen] nav [data-pastpaper-topic]');
 const count = await topics.count();
 check(count === manifest.topics.length, `${count} topics listed of ${manifest.topics.length}`);
 await page.screenshot({ path: `${OUT}/builtin-${zh ? 'zh' : 'en'}-first-topic.png` });
@@ -54,7 +61,7 @@ let pictures = 0;
 const short = [];
 for (let i = 0; i < count; i += 1) {
   const entry = manifest.topics[i];
-  await topics.nth(i).click();
+  await page.locator(`[data-pastpaper-screen] nav [data-pastpaper-topic="${entry.id}"]`).click();
   await page.locator('[data-pastpaper-screen] article').first().waitFor({ timeout: 60_000 }).catch(() => {});
   await page.waitForTimeout(300);
   const status = (await page.locator('[data-pastpaper-screen] main [role="status"]').first().textContent()) ?? '';

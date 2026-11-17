@@ -2,6 +2,7 @@ import { rowsOf } from '@/library/indexer';
 import { stimuliServing } from '@/library/stimuli';
 import { migrate } from '@/model/migrations';
 import { plain } from '@/model/text';
+import { isTopicCode } from '@/model/topics';
 import type { BiText, ContentBlock, LanguageMode, LayoutElement, McqQuestion, Question, TableBlock, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
 import { fitTableToContent, tableFitPlace, type TableFitPlace } from '@/model/tableFit';
@@ -15,7 +16,8 @@ import { DEFAULT_PAGE_METRICS, pageMetricsOf, type PageMetrics } from '@/render/
  *
  * What the editor needs from the export (also in docs/design/pastpaper-bank.md):
  *  - `manifest.json`: `topics[]` with `id` and `file`; optional `title {en, zh}`,
- *    `questions`, `bytes`, `sha256`, `syllabusOrder`; optional `enabled` (false = off).
+ *    `questions`, `bytes`, `sha256`, `syllabusOrder`, `syllabus` (topic codes); optional
+ *    `enabled` (false = off).
  *  - `topics/<id>.json`: an editor document the editor's own loader (`migrate`) opens;
  *    questions of a type this build does not know are left out and counted.
  *  - per question: a tag `CE2011/P2/Q8` (exam, year, paper, number) for the source filters,
@@ -41,6 +43,12 @@ export interface TopicEntry {
   /** Lower-case hex; when present a download must match it to be kept. */
   sha256?: string;
   file: string;
+  /**
+   * The editor's topic codes the topic covers (`["C.ped", "C.pes"]`, `["G"]`; `model/topics.ts`),
+   * the same codes the export stamps on its questions' tags: the picker groups topics under
+   * their syllabus part by these (k-0446). Absent in an older export.
+   */
+  syllabus?: string[];
 }
 
 export interface Manifest {
@@ -93,6 +101,7 @@ export function parseManifest(raw: unknown): Manifest | { error: 'format' } {
     const title = isObject(entry.title) ? entry.title : {};
     const en = str(title.en) ?? str(entry.title) ?? id;
     const sha = str(entry.sha256)?.toLowerCase();
+    const codes = (Array.isArray(entry.syllabus) ? entry.syllabus : [entry.syllabus]).filter((code): code is string => isTopicCode(code));
     topics.push({
       id,
       file,
@@ -101,6 +110,7 @@ export function parseManifest(raw: unknown): Manifest | { error: 'format' } {
       ...(num(entry.questions) !== undefined ? { questions: num(entry.questions) } : {}),
       ...(num(entry.bytes) !== undefined ? { bytes: num(entry.bytes) } : {}),
       ...(sha && /^[0-9a-f]{64}$/.test(sha) ? { sha256: sha } : {}),
+      ...(codes.length > 0 ? { syllabus: [...new Set(codes)] } : {}),
     });
   });
   topics.sort((a, b) => a.order - b.order);

@@ -40,6 +40,14 @@ a version heading is edited afterwards.
   topics read “Scarcity” and the sources “HKDSE 2016 Paper 1 Q34”, while the buttons stay in 中文.
   In the editor's 題庫 tab they follow your paper's language.
   <!-- zh: **歷屆試題庫：名稱跟隨題目語言。** 歷屆試題庫中的課題名稱、試卷名稱及題目出處，現在跟隨題目的 EN／中文 切換，而不是介面語言，與編輯器其他地方的課題名稱一致：介面用中文而題目用英文時，課題顯示為「Scarcity」，出處為「HKDSE 2016 Paper 1 Q34」，按鈕則仍是中文。在編輯器的「題庫」分頁中，名稱跟隨你試卷的語言。 -->
+- **Past paper bank: topics grouped by syllabus part.** The topics are no longer one long list:
+  they sit under the syllabus parts A to J (“C · Market and Price”), each part folding open or
+  closed, with how many questions each part and each topic holds. The part of the topic you are
+  in opens by itself, “Find a topic” searches every part at once (Enter opens the first match),
+  and part names follow the EN / 中文 switch for the questions. On a phone the topics fold into
+  one bar above the questions; tap it to choose another topic. In the editor's 題庫 tab the topic
+  menu is grouped the same way.
+  <!-- zh: **歷屆試題庫：課題按課程部分分組。** 課題不再是一長串清單，而是按課程的 A 至 J 部分排列（例如「C · 市場與價格」），每部分可展開或收起，並顯示每部分及每個課題的題目數量。你所在課題的部分會自動展開；「搜尋課題」會同時搜尋所有部分（按 Enter 開啟第一個結果）；部分名稱跟隨題目的 EN／中文 切換。在手機上，課題會收合成題目上方的一列，輕按即可選擇其他課題。編輯器「題庫」分頁的課題選單亦以同樣方式分組。 -->
 - **A warning before the browser's storage fills up.** In the web version, all your documents share
   about 5 MB of the browser's storage, and pictures take the most room. The toolbar now says “Storage
   nearly full” once it is 80% used, and the Past paper bank tells you how full your picks would make

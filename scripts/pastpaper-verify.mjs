@@ -52,11 +52,11 @@ async function walk(zh) {
 
   await row.click();
   await page.locator('[data-pastpaper-screen] nav li').first().waitFor({ timeout: 30_000 });
-  const topics = await page.locator('[data-pastpaper-screen] nav li').count();
+  const topics = await page.locator('[data-pastpaper-screen] nav [data-pastpaper-topic]').count();
   check(topics > 0, `[${tag}] topics listed (${topics})`);
   const topicLabel = zh ? null : topicName;
   if (topicLabel) await page.locator('[data-pastpaper-screen] nav button', { hasText: topicLabel }).first().click();
-  else await page.locator('[data-pastpaper-screen] nav button').nth(4).click();
+  else await page.locator('[data-pastpaper-screen] nav [data-pastpaper-topic]').nth(4).click();
   await page.locator('[data-pastpaper-screen] article').first().waitFor({ timeout: 30_000 });
   // 中文 interface: the paper in 中文 too, so the Chinese picture is the one shown.
   if (zh) await page.getByRole('radio', { name: '中文', exact: true }).click();
@@ -84,7 +84,7 @@ async function walk(zh) {
   check(kept >= 2, `[${tag}] the list and opened topics are kept in IndexedDB (${kept} files)`);
 
   // A search by source.
-  await page.getByRole('searchbox').fill('1997');
+  await page.getByRole('searchbox').first().fill('1997');
   await page.waitForTimeout(500);
   const shown = await page.locator('[data-pastpaper-screen] article').count();
   check(shown >= 1, `[${tag}] search "1997" leaves ${shown} question(s)`);
@@ -94,7 +94,7 @@ async function walk(zh) {
   const boxes = page.locator('[data-pastpaper-screen] article input[type=checkbox]');
   const n = await boxes.count();
   for (let i = 0; i < Math.min(2, n); i++) await boxes.nth(i).check();
-  await page.getByRole('searchbox').fill('');
+  await page.getByRole('searchbox').first().fill('');
   await page.waitForTimeout(400);
   await page.locator('[data-pastpaper-screen] article input[type=checkbox]').first().check();
   await page.waitForTimeout(400);

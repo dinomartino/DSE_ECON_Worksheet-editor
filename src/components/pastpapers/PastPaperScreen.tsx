@@ -16,13 +16,14 @@ import { PastPaperIndexCard } from './PastPaperIndexCard';
 import { megabytes, NEARLY_FULL, webStorageUse } from '@/storage/webQuota';
 import { packName, sourceLabel } from '@/pastpapers/pack';
 import { PastPaperSheet } from './PastPaperSheet';
+import { PastPaperTopicPicker } from './PastPaperTopicPicker';
 import { answerLetter } from './pastPaperPreview';
 import { NO_FILTERS, pickKey, usePastPaperBrowse, type Pick } from './usePastPaperBrowse';
 
 /**
  * The Past paper bank 歷屆試題庫 as its own screen (k-0443): the start screen's view beside
- * the teacher's own Question bank 題庫, never mixed into it. Topics down the left, the
- * open topic's questions as they print, picks gathered in a tray at the foot that go into
+ * the teacher's own Question bank 題庫, never mixed into it. Topics down the left by syllabus
+ * part (`PastPaperTopicPicker`), the open topic's questions as they print, picks gathered in a tray at the foot that go into
  * a new worksheet, a new Paper 1, one of the teacher's papers, or their own bank. Read-only:
  * nothing here writes the bank, and its files are never the teacher's documents.
  */
@@ -177,36 +178,19 @@ export function PastPaperScreen({
         {settings}
       </header>
 
-      {/* A phone-width window stacks the topics over the questions (u-zhww asked for a phone look). */}
+      {/* A phone-width window stacks the topic bar over the questions (u-zhww asked for a phone look). */}
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <BankStateNote browse={browse}>
-          <nav aria-label={m.topics} className="scroll-slim flex max-h-[26vh] w-full shrink-0 flex-col overflow-y-auto border-b border-line py-3 md:max-h-none md:w-[260px] md:border-b-0 md:border-r">
-            <h2 className="px-5 pb-2 text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">{m.topics}</h2>
-            <ul>
-              {topics.map((entry) => {
-                const active = entry.id === topic?.id && !searchingAll;
-                const name = packName(entry.title, language);
-                return (
-                  <li key={entry.id}>
-                    <button
-                      type="button"
-                      aria-current={active ? 'true' : undefined}
-                      onClick={() => {
-                        browse.setTopic(entry.id);
-                        if (filters.everywhere || filters.paper !== undefined) setFilters({ ...filters, everywhere: false, paper: undefined });
-                      }}
-                      className={`flex w-full cursor-pointer items-baseline gap-2 px-5 py-1.5 text-left text-[12.5px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
-                        active ? 'bg-accent-soft font-medium text-ink' : 'text-ink-muted hover:bg-surface-sunken hover:text-ink'
-                      }`}
-                    >
-                      <span className="min-w-0 flex-1 truncate">{name}</span>
-                      {entry.questions !== undefined && <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle">{entry.questions}</span>}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+          <PastPaperTopicPicker
+            topics={topics}
+            current={topic}
+            active={!searchingAll}
+            language={language}
+            onPick={(id) => {
+              browse.setTopic(id);
+              if (filters.everywhere || filters.paper !== undefined) setFilters({ ...filters, everywhere: false, paper: undefined });
+            }}
+          />
 
           <main className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-6 py-2.5">

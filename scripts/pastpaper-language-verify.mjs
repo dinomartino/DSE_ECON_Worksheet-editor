@@ -59,6 +59,11 @@ async function openBank(ui) {
 
 const screen = (page) => page.locator('[data-pastpaper-screen]');
 const settle = (page, ms = 1200) => page.waitForTimeout(ms);
+/** The picker groups topics under syllabus parts (k-0446): open every part so each topic shows. */
+const openEveryPart = async (page) => {
+  const all = page.locator('[data-pastpaper-screen] nav').getByRole('button', { name: /^(Open all|全部展開)$/ });
+  if (await all.count()) await all.first().click();
+};
 const other = (q) => (q === 'en' ? 'zh' : 'en');
 
 async function walk(ui) {
@@ -68,11 +73,12 @@ async function walk(ui) {
     const pair = `[${tag} · questions ${q}]`;
     await screen(page).getByRole('radio', { name: q === 'en' ? 'EN' : '中文', exact: true }).click();
     await page.locator('[data-pastpaper-paper]').selectOption('');
-    await page.getByRole('searchbox').fill('');
+    await page.getByRole('searchbox').first().fill('');
     await settle(page);
 
     // The topic list: every name in the question language (a topic whose two names are the same counts for both).
-    const names = await screen(page).locator('nav li button span:first-child').allTextContents();
+    await openEveryPart(page);
+    const names = await screen(page).locator('nav [data-pastpaper-topic] span:first-child').allTextContents();
     const wrong = names.filter((n) => !titles[q].has(n));
     check(names.length === manifest.topics.length && wrong.length === 0, `${pair} the ${names.length} topic names are in the question language`, wrong.slice(0, 3).join(' | '));
     check((await screen(page).locator('nav h2').textContent()) === CHROME[ui].topics, `${pair} the "${CHROME[ui].topics}" heading stays in the interface language`);
@@ -94,7 +100,7 @@ async function walk(ui) {
 
     // A search of every topic: cards of topics not downloaded yet name source and topic in the question language.
     await page.locator('[data-pastpaper-paper]').selectOption('');
-    await page.getByRole('searchbox').fill('income');
+    await page.getByRole('searchbox').first().fill('income');
     await screen(page).getByRole('radio', { name: ui === 'zh-HK' ? '所有課題' : 'Every topic' }).click();
     await settle(page, 1500);
     const cards = screen(page).locator('article');
@@ -108,7 +114,7 @@ async function walk(ui) {
   // The editor: questions in the language the interface is not; its 題庫 tab names topics in the document's language.
   const q = ui === 'zh-HK' ? 'en' : 'zh';
   await screen(page).getByRole('radio', { name: q === 'en' ? 'EN' : '中文', exact: true }).click();
-  await page.getByRole('searchbox').fill('');
+  await page.getByRole('searchbox').first().fill('');
   await page.locator('[data-pastpaper-paper]').selectOption('DSE2016/P1');
   await settle(page, 2500);
   await screen(page).locator('article input[type="checkbox"]').first().check();
