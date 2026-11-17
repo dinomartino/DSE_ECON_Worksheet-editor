@@ -1,16 +1,16 @@
 # Group D: International trade, exchange rates, electives. What must be drawn
 
 Files read in full (English only; Chinese copies ignored):
-- LQ: BT FINAL_LQ Exchange Rate_LQ, Balance of Payment_LQ, In-trade_LQ, Trade Barriers_LQ, Elective 1, Elective 2; KP LQ Exchange Rate, Balance of Payment, In-trade, Trade Barriers.
+- LQ: BT FINAL_LQ Exchange Rate_LQ, Balance of Payment_LQ, In-trade_LQ, Trade Barriers_LQ, Elective 1, Elective 2; REF LQ Exchange Rate, Balance of Payment, In-trade, Trade Barriers.
 - MCQ: BT FINAL_MC_clean Exchange Rate_MC, Linked Exchange Rate System_MC, Balance of Payment_MC, In-trade- Concept_MC, In-trade- Calculation, Trade Barriers_MC.
 
 Short file names used below:
-- **BT-ER** = BT FINAL_LQ Exchange Rate_LQ; **KP-ER** = KP LQ Exchange Rate
-- **BT-TB / KP-TB** = Trade Barriers; **BT-BOP / KP-BOP** = Balance of Payment; **BT-IT / KP-IT** = In-trade
+- **BT-ER** = BT FINAL_LQ Exchange Rate_LQ; **REF-ER** = REF LQ Exchange Rate
+- **BT-TB / REF-TB** = Trade Barriers; **BT-BOP / REF-BOP** = Balance of Payment; **BT-IT / REF-IT** = In-trade
 - **E1** = BT FINAL_LQ Elective 1; **E2** = BT FINAL_LQ Elective 2
-- **S6-R1**, **S6-R2**, **S4-R3**, **S4-RX(2)**, **S5-R1**, **S5-R3** = KP round LQ papers (ENG), plus BT KP_edu S6-R1 copies. These are listed only where the diagram sub-part wording was found in them.
+- **S6-R1**, **S6-R2**, **S4-R3**, **S4-RX(2)**, **S5-R1**, **S5-R3** = REF round LQ papers (ENG), plus BT REF_edu S6-R1 copies. These are listed only where the diagram sub-part wording was found in them.
 
-KP copies sometimes re-weight marks. Where the KP scheme differs from BT, both versions are noted.
+REF copies sometimes re-weight marks. Where the REF scheme differs from BT, both versions are noted.
 
 ---
 
@@ -18,7 +18,7 @@ KP copies sometimes re-weight marks. Where the KP scheme differs from BT, both v
 
 Every question here uses the same core diagram: a single downward-sloping demand curve for imports (or exports). The price axis is labelled in the currency the question names. The exchange-rate change is shown as a price change along the curve (or, when the price is fixed in foreign currency, as a demand shift). Gain and loss rectangles are then compared.
 
-### CE1998/P1/Q11(b)  (8 marks BT; 6 marks KP) — files: BT-ER, KP-ER, S6-R2
+### CE1998/P1/Q11(b)  (8 marks BT; 6 marks REF) — files: BT-ER, REF-ER, S6-R2
 - Q: Yen depreciates against HK$ and HK demand for Japanese cars is elastic. With a diagram, explain the effect on sales revenue (in HK$) of Japanese cars in HK.
 - Diagram type: single demand curve, total revenue (TR) gain/loss rectangles
 - Must draw:
@@ -27,9 +27,9 @@ Every question here uses the same core diagram: a single downward-sloping demand
   - LOSS rectangle = (P1 − P2) × Q1
   - GAIN rectangle = P2 × (Q2 − Q1)
   - GAIN visibly larger than LOSS
-- Notes: The BT scheme lists 5 verbal marks (P in HK$ falls; Qd rises; elastic, so %ΔQ > %ΔP; TR rises). The remaining ~3 marks are for the diagram (inferred; no explicit diagram mark breakdown). The KP version redraws the same diagram with 3 listed verbal marks.
+- Notes: The BT scheme lists 5 verbal marks (P in HK$ falls; Qd rises; elastic, so %ΔQ > %ΔP; TR rises). The remaining ~3 marks are for the diagram (inferred; no explicit diagram mark breakdown). The REF version redraws the same diagram with 3 listed verbal marks.
 
-### CE1999/P1/Q9(b)  (9 marks) — files: BT-ER, BT Basic Supply & Demand_LQ, KP LQ Basic Supply & Demand, S4-R3 (also listed in BT Types of Market Structures_LQ)
+### CE1999/P1/Q9(b)  (9 marks) — files: BT-ER, BT Basic Supply & Demand_LQ, REF LQ Basic Supply & Demand, S4-R3 (also listed in BT Types of Market Structures_LQ)
 - Q: Yen depreciates sharply against HK$. Using a supply-demand diagram, show the effect on sales revenue of French cars in HK.
 - Diagram type: single-market S&D (substitute good, demand shift)
 - Must draw:
@@ -39,7 +39,7 @@ Every question here uses the same core diagram: a single downward-sloping demand
   - sales revenue falls from area 0P1E1Q1 to area 0P2E2Q2 (both rectangles shaded)
 - Notes: Diagram worth (3). Verbal marks: price of Japanese cars ↓ (1), substitutes (1), D for French cars ↓ (1), P and Q ↓ (1+1), revenue ↓ with the areas named (1).
 
-### CE2002/P1/Q12(a)(ii)  (7 marks) — files: BT-ER, KP-ER, S6-R2, S4-RX(2) (ID also in Wage Payment Methods / Inflation banks)
+### CE2002/P1/Q12(a)(ii)  (7 marks) — files: BT-ER, REF-ER, S6-R2, S4-RX(2) (ID also in Wage Payment Methods / Inflation banks)
 - Q: HK$ depreciates against £ under the linked rate; book prices in £ are unchanged and demand is inelastic. With a diagram, show how Mr Wong's sales revenue in HK$ changes.
 - Diagram type: single demand curve, TR rectangles
 - Must draw:
@@ -48,9 +48,9 @@ Every question here uses the same core diagram: a single downward-sloping demand
   - GAIN rectangle = (P2 − P1) × Q2
   - LOSS rectangle = P1 × (Q1 − Q2)
   - GAIN > LOSS
-- Notes: "Indicate in the graph": P↑ and Qd↓ (1), gain > loss (2). Verbal marks: 4 (BT) or 3 (KP).
+- Notes: "Indicate in the graph": P↑ and Qd↓ (1), gain > loss (2). Verbal marks: 4 (BT) or 3 (REF).
 
-### CE2004/P1/Q11(b)(ii)  (6 marks) — files: BT-ER, KP-ER, S6-R2 (part (a) of this question is in BT-IT/KP-IT; no diagram there)
+### CE2004/P1/Q11(b)(ii)  (6 marks) — files: BT-ER, REF-ER, S6-R2 (part (a) of this question is in BT-IT/REF-IT; no diagram there)
 - Q: The US$ depreciates against the € (so HK$ also depreciates). With a diagram, give the condition under which the total import value (HK$) of European fashion items decreases.
 - Diagram type: single import-demand curve, import-value rectangles
 - Must draw:
@@ -59,9 +59,9 @@ Every question here uses the same core diagram: a single downward-sloping demand
   - G rectangle = (P2 − P1) × Q2, small
   - L rectangle = P1 × (Q1 − Q2), large
   - G < L
-- Notes: BT: P↑ ⇒ Qd↓ (1) and gain < loss (1). KP: (1) + (2). Verbal: elastic import demand, %ΔP < %ΔQd.
+- Notes: BT: P↑ ⇒ Qd↓ (1) and gain < loss (1). REF: (1) + (2). Verbal: elastic import demand, %ΔP < %ΔQd.
 
-### CE2006/P1/Q10(a)(ii)  (6 marks) — files: BT-ER, KP-ER, S6-R2
+### CE2006/P1/Q10(a)(ii)  (6 marks) — files: BT-ER, REF-ER, S6-R2
 - Q: The € appreciates against HK$ while car prices in € are unchanged. With a diagram, explain why total expenditure (HK$) on European cars could rise.
 - Diagram type: single demand curve, expenditure rectangles
 - Must draw:
@@ -70,18 +70,18 @@ Every question here uses the same core diagram: a single downward-sloping demand
   - "+" (increase in total expenditure) rectangle between P1 and P2 over 0–Q2
   - "−" (decrease) rectangle under P1 between Q2 and Q1
   - + larger than −
-- Notes: BT: P↑ Qd↓ (1), correct position of the + and − labels (1), + > − (1). KP: P↑ Qd↓ (1), + > − (2). Verbal: inelastic demand, so %ΔP > %ΔQd.
+- Notes: BT: P↑ Qd↓ (1), correct position of the + and − labels (1), + > − (1). REF: P↑ Qd↓ (1), + > − (2). Verbal: inelastic demand, so %ΔP > %ΔQd.
 
-### CE2008/P1/Q11(a)  (7 marks BT; 6 marks KP) — files: BT-ER, KP-ER, S6-R2 (ID also in BOP / GDP banks and S5-R3 for other parts)
-- Q: Under what condition will US imports (US$) from China fall after an RMB revaluation? Illustrate in Diagram 1 (KP: "in a diagram").
+### CE2008/P1/Q11(a)  (7 marks BT; 6 marks REF) — files: BT-ER, REF-ER, S6-R2 (ID also in BOP / GDP banks and S5-R3 for other parts)
+- Q: Under what condition will US imports (US$) from China fall after an RMB revaluation? Illustrate in Diagram 1 (REF: "in a diagram").
 - Diagram type: single import-demand curve, import-value rectangles
 - Must draw:
   - elastic (flat) D; P1 → P2 up; Q1 → Q2 down
   - "+" rectangle (P2 − P1) × Q2 and "−" rectangle P1 × (Q1 − Q2)
   - area + < area −
-- Notes: BT: P↑ Q↓ (1), correct position of the two areas (1), + < − (1). KP: (1) + (2). Verbal: elastic demand, %ΔP < %ΔQd.
+- Notes: BT: P↑ Q↓ (1), correct position of the two areas (1), + < − (1). REF: (1) + (2). Verbal: elastic demand, %ΔP < %ΔQd.
 
-### CE2011/P1/Q10(a)(ii)  (6 marks BT; 5 marks KP) — files: BT-ER, KP-ER, S6-R2
+### CE2011/P1/Q10(a)(ii)  (6 marks BT; 5 marks REF) — files: BT-ER, REF-ER, S6-R2
 - Q: Under what condition will total US imports (US$) from China rise after an RMB revaluation? Illustrate in Figure 2 (given blank axes: Unit price (US$) against Quantity of US imports from China).
 - Diagram type: single import-demand curve
 - Must draw:
@@ -89,7 +89,7 @@ Every question here uses the same core diagram: a single downward-sloping demand
   - "+" rectangle (P2 − P1) × Q2 larger than "−" rectangle P1 × (Q1 − Q2)
 - Notes: price increase and quantity decrease along a D curve (1); loss < gain (2). Verbal: inelastic demand, %ΔQ < %ΔP.
 
-### DSE2012/P2/Q8  (7 marks) — files: BT-ER, KP-ER, S6-R2
+### DSE2012/P2/Q8  (7 marks) — files: BT-ER, REF-ER, S6-R2
 - Q: Does depreciation necessarily lower total import value in domestic currency? Explain with the given diagram (blank axes: Price (domestic currency) against Quantity of imports).
 - Diagram type: single import-demand curve
 - Must draw:
@@ -99,7 +99,7 @@ Every question here uses the same core diagram: a single downward-sloping demand
   - + > −
 - Notes: Diagram (3): P↑ Qd↓ (1), gain > loss (2). Answer "No" (1). Verbal: inelastic demand, %ΔP > %ΔQd.
 
-### DSE2014/P2/Q11(a)  (7 marks) — files: BT-ER, KP-ER, S6-R2 (ID also in GDP & GNP banks, S5-R3)
+### DSE2014/P2/Q11(a)  (7 marks) — files: BT-ER, REF-ER, S6-R2 (ID also in GDP & GNP banks, S5-R3)
 - Q: HK$ appreciates against the Yen and car prices in Yen are unchanged. With Figure 2 (blank axes: Price in Yen against Quantity of Japanese automobiles exported to HK), explain why the total export value in Yen rises.
 - Diagram type: demand shift at a fixed foreign-currency price
 - Must draw:
@@ -109,7 +109,7 @@ Every question here uses the same core diagram: a single downward-sloping demand
   - "Gain" rectangle = P0 × (Q1 − Q0)
 - Notes: Diagram (3): D shifts right (1), higher quantity (1), gain in total value (1). Verbal (4): Yen depreciates, cars cheaper in HK$, D rises, Q rises. The key trap: the price axis is in Yen, so this is a SHIFT of D, not a movement along D.
 
-### DSE2019/P2/Q11(c)  (8 marks) — files: BT-ER, KP-ER, S6-R2, S5-R1, S4-RX(2), BT 2019 Question Paper 2 (ID also in Efficiency / Labour Mobility banks)
+### DSE2019/P2/Q11(c)  (8 marks) — files: BT-ER, REF-ER, S6-R2, S5-R1, S4-RX(2), BT 2019 Question Paper 2 (ID also in Efficiency / Labour Mobility banks)
 - Q: RMB depreciates against the US$. With Figure 2 (blank axes: Fares (in HKD) against Number of passengers), give the condition under which HSR ticket revenue in HKD rises.
 - Diagram type: single demand curve, TR rectangles
 - Must draw:
@@ -117,9 +117,9 @@ Every question here uses the same core diagram: a single downward-sloping demand
   - LOSS rectangle (P0 − P1) × Q0
   - GAIN rectangle P1 × (Q1 − Q0)
   - GAIN > LOSS
-- Notes: BT: correct position of gain and loss, gain > loss (2); verbal (6). KP: P↓ Qd↑ (1), gain > loss (2); verbal 5 × (1). Condition: elastic demand.
+- Notes: BT: correct position of gain and loss, gain > loss (2); verbal (6). REF: P↓ Qd↑ (1), gain > loss (2); verbal 5 × (1). Condition: elastic demand.
 
-### DSE2023/P2/Q9(b)  (4 marks) — files: BT-ER, KP-ER, S6-R2
+### DSE2023/P2/Q9(b)  (4 marks) — files: BT-ER, REF-ER, S6-R2
 - Q: JPY depreciates against HKD. With Figure 4, justify the rise in HK's total imports from Japan (in JPY), assuming the price in JPY is unchanged.
 - Diagram type: demand shift at a fixed price
 - Must draw:
@@ -135,17 +135,17 @@ CE1990/P1/Q3(b)(i), CE1992/P1/Q2(c), CE1999/P1/Q10(d), CE2002/P1/Q12(a)(i), CE20
 
 ## Balance of Payments
 
-No diagram questions in BT-BOP or KP-BOP. All items are calculations or verbal. The only figures are given data charts: CE1997/P1/Q6 chart, DSE2019/P2/Q12 Source A graphic, DSE2020/P2/Q10 data table. None asks the student to draw.
+No diagram questions in BT-BOP or REF-BOP. All items are calculations or verbal. The only figures are given data charts: CE1997/P1/Q6 chart, DSE2019/P2/Q12 Source A graphic, DSE2020/P2/Q10 data table. None asks the student to draw.
 
 ## International Trade (comparative advantage)
 
-No diagram questions in BT-IT or KP-IT. All items are table-based calculations of opportunity cost, terms-of-trade range and gain per unit. There are no images and no PPF drawing. PPF/CPF drawing appears only in Elective 2 (below).
+No diagram questions in BT-IT or REF-IT. All items are table-based calculations of opportunity cost, terms-of-trade range and gain per unit. There are no images and no PPF drawing. PPF/CPF drawing appears only in Elective 2 (below).
 
 ---
 
 ## Trade Barriers (small open economy: world price, tariff, quota)
 
-### DSE2021/P2/Q9(b)  (4 marks) — files: BT-TB, KP-TB, S6-R1 (both KP and BT_KP_edu copies) (ID also in BT Business Cycle_LQ)
+### DSE2021/P2/Q9(b)  (4 marks) — files: BT-TB, REF-TB, S6-R1 (both REF and BT_REF_edu copies) (ID also in BT Business Cycle_LQ)
 - Q: During a recession local people consume more junk food, and the government imposes an effective import quota. In Figure 1 (given: S0, D0, horizontal Pw below the autarky equilibrium), mark the quota as QA and the final equilibrium as EA.
 - Diagram type: small-open-economy S&D with an import quota (kinked supply)
 - Must draw:
@@ -155,7 +155,7 @@ No diagram questions in BT-IT or KP-IT. All items are table-based calculations o
   - EA = intersection of D1 with the upward-sloping part of S-with-quota, above Pw (the quota is binding)
 - Notes: 1 mark each for QA position, D shift right, kinked S-with-quota, and EA position. EA must lie above Pw.
 
-### DSE2025/P2/Q8(a)(i)–(iii)  (2 + 1 + 1 marks) — files: BT-TB, KP-TB, S6-R1 (both copies), S6-R2 (ID also in BT-BOP/KP-BOP for part (b))
+### DSE2025/P2/Q8(a)(i)–(iii)  (2 + 1 + 1 marks) — files: BT-TB, REF-TB, S6-R1 (both copies), S6-R2 (ID also in BT-BOP/REF-BOP for part (b))
 - Q: A per-unit tariff on imported agricultural products; the economy still imports. In Figure 1 (given: domestic S, D, Pw), mark domestic production Q1, import volume QM and tariff revenue.
 - Diagram type: small-open-economy tariff diagram
 - Must draw:
@@ -408,7 +408,7 @@ DSE2012/P2/Q15 gives two linear PPFs (A: 60X or 60Y; B: 30X or 20Y) but asks onl
 - **Linked Exchange Rate System_MC:** no diagram questions.
 - **Balance of Payment_MC:** only data charts of export and import values (CE2003/P2/Q48, CE2005/P2/Q47, DSE2023/P1/Q45). No diagrammatic shift or area is tested.
 - **In-trade- Concept_MC / In-trade- Calculation:** no diagram questions.
-- **Trade Barriers_MC** (the KP_MCQ Trade Barriers copy has the same 17 images):
+- **Trade Barriers_MC** (the REF_MCQ Trade Barriers copy has the same 17 images):
   - AL2004/P2/Q25: quota raises price Pw → Pw'; areas 1–4. Quota rent = area 3; CS loss = 1 + 2 + 3 + 4; DWL = 2 + 4.
   - AL2004/P2/Q26: S, D and Pw given; a tariff raises the domestic price above Pw.
   - AL2009/P2/Q25: quota raises price Pw → P1; areas a, b, c, d. Rise in PS = a; CS loss = a + b + c + d; quota rent = c, not necessarily earned by the government.

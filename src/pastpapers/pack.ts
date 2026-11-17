@@ -6,8 +6,8 @@ import type { BiText, LanguageMode, LayoutElement, McqQuestion, Question, Worksh
 import { getQuestionType } from '@/registry';
 
 /**
- * Reading the Past paper bank's files (k-0443). The export is written by another tool
- * (`question_bank.py export --editor-pack`, repo kp-econ-bank) and may still change, so
+ * Reading the Past paper bank's files (k-0443). The question bank pack is written by another
+ * tool (the past-paper bank's exporter, outside this repo) and may still change, so
  * every reader here is tolerant: a field it does not know is ignored, a malformed entry
  * drops only itself, and nothing here throws on data.
  *
@@ -21,8 +21,12 @@ import { getQuestionType } from '@/registry';
  *  - a shared stimulus: a `stimulus` layout element directly before its questions in `flow`.
  */
 
-/** The manifest's format names this reader accepts; a later major version is still read, tolerantly. */
-export const PACK_FORMAT = 'kp-editor-pack';
+/**
+ * The one format name a manifest may carry (`format`); none at all is the usual case (the
+ * published bank names none). Any other name is some other JSON, refused. A later major
+ * version is still read, tolerantly.
+ */
+export const PACK_FORMAT = 'question-bank-pack';
 
 export interface TopicEntry {
   id: string;

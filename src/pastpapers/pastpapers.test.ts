@@ -26,10 +26,10 @@ function pastQuestion(tag: string, en: string, zh = `${en}（中）`): Question 
   const q = choiceQuestion(en, zh, ['C.intervention', tag]);
   return {
     ...q,
-    id: `kp-${tag.replaceAll('/', '_')}`,
+    id: `pp-${tag.replaceAll('/', '_')}`,
     answerIndex: 1,
     provenance: bi(`Source ${tag}`, `出處 ${tag}`),
-    lineage: { rootId: `kp:${tag}` },
+    lineage: { rootId: `pp:${tag}` },
   } as Question;
 }
 
@@ -47,11 +47,11 @@ function topicFile(lead: [string, string] | undefined = ['Answer Questions 2 and
   const q8 = pastQuestion('CE2011/P2/Q8', 'Shortage occurs when a price ceiling is set.');
   const q2 = pastQuestion('CE1997/P2/Q2', 'Which good is scarce?');
   const q3 = pastQuestion('CE1997/P2/Q3', 'Then the queue shows that');
-  const future = { ...pastQuestion('DSE2020/P1/Q1', 'Four diagrams'), type: 'diagramChoice', id: 'kp-future' } as unknown as Question;
-  const stim = stimulus('kp-stim-CE1997_P2_Q2-3', lead);
+  const future = { ...pastQuestion('DSE2020/P1/Q1', 'Four diagrams'), type: 'diagramChoice', id: 'pp-future' } as unknown as Question;
+  const stim = stimulus('pp-stim-CE1997_P2_Q2-3', lead);
   const doc: Worksheet = {
     ...createWorksheet(),
-    id: 'kp-bank-intervention',
+    id: 'pp-bank-intervention',
     kind: 'bank',
     questions: [q8, q2, q3, future],
     layout: [stim],
@@ -104,7 +104,7 @@ describe('config: the switch and the source', () => {
 describe('pack: tolerant reading of the export', () => {
   it('reads a manifest, dropping malformed entries and keeping unknown fields out', () => {
     const manifest = parseManifest({
-      format: 'kp-editor-pack',
+      format: 'question-bank-pack',
       version: 1,
       enabled: true,
       somethingNew: 42,
@@ -121,6 +121,11 @@ describe('pack: tolerant reading of the export', () => {
     expect(manifest.topics[0].title).toEqual({ en: 'A', zh: 'A' });
     expect(manifest.topics[1].sha256).toBe('a'.repeat(64));
     expect(manifest.questions).toBe(3);
+  });
+
+  it('reads a manifest that names no format, as the published bank writes it', () => {
+    const published = parseManifest({ version: 1, enabled: true, questions: 1, topics: [{ id: 'a', file: 'topics/a.json' }] });
+    expect('error' in published).toBe(false);
   });
 
   it('refuses another format, and reads enabled: false as off', () => {
@@ -143,8 +148,8 @@ describe('pack: tolerant reading of the export', () => {
     expect(topic.items.map((i) => i.question.id)).toEqual([q8.id, q2.id, q3.id]);
     expect(topic.skipped).toBe(1);
     expect(topic.items[0].stimulus).toBeUndefined();
-    expect(topic.items[1].stimulus?.id).toBe('kp-stim-CE1997_P2_Q2-3');
-    expect(topic.items[2].stimulus?.id).toBe('kp-stim-CE1997_P2_Q2-3');
+    expect(topic.items[1].stimulus?.id).toBe('pp-stim-CE1997_P2_Q2-3');
+    expect(topic.items[2].stimulus?.id).toBe('pp-stim-CE1997_P2_Q2-3');
     expect(topic.items[0].provenance).toEqual({ en: 'Source CE2011/P2/Q8', zh: '出處 CE2011/P2/Q8' });
     expect(topic.items[1].searchText).toContain('a table of prices');
   });
@@ -187,7 +192,7 @@ describe('pack: tolerant reading of the export', () => {
 
 describe('bank: on demand, cached, switchable', () => {
   const BASE = 'https://bank.example/';
-  const manifest = (extra: object = {}) => JSON.stringify({ format: 'kp-editor-pack', topics: [{ ...ENTRY, ...extra }], ...extra });
+  const manifest = (extra: object = {}) => JSON.stringify({ topics: [{ ...ENTRY, ...extra }], ...extra });
   function deps(files: Record<string, FetchResult>, cache = createMemoryCache()): Deps & { asked: string[] } {
     const asked: string[] = [];
     return {
@@ -263,7 +268,7 @@ describe('copies: a stimulus travels with its questions', () => {
 
   it('skips questions the paper holds (by root)', () => {
     const items = parseTopic(topicFile().doc, ENTRY)!.items;
-    const plan = planCopies(items, new Set(['kp:CE2011/P2/Q8']));
+    const plan = planCopies(items, new Set(['pp:CE2011/P2/Q8']));
     expect(plan.questions).toHaveLength(2);
   });
 });
@@ -284,7 +289,7 @@ describe('into the open paper and into my bank', () => {
     expect(stim.span).toBe(2);
     const flow = after.flow.map((f) => f.id);
     expect(flow.indexOf(stim.id)).toBe(flow.indexOf(done.inserted[0]) - 1);
-    expect(after.questions.find((q) => q.id === done.inserted[0])?.lineage).toMatchObject({ rootId: 'kp:CE1997/P2/Q2', fromDocId: 'kp-bank-intervention' });
+    expect(after.questions.find((q) => q.id === done.inserted[0])?.lineage).toMatchObject({ rootId: 'pp:CE1997/P2/Q2', fromDocId: 'pp-bank-intervention' });
     expect(useBankSession.getState().review?.summary).toBe('2/0');
 
     const again = insertIntoOpen(items, (n, skipped) => `${n}/${skipped}`);
@@ -305,7 +310,7 @@ describe('into the open paper and into my bank', () => {
       save: async (w: Worksheet) => void map.set(w.id, structuredClone(w)),
     } as unknown as WorksheetStore;
     const items = parseTopic(topicFile().doc, ENTRY)!.items;
-    const other = parseTopic({ ...topicFile().doc, id: 'kp-bank-other' }, { ...ENTRY, id: 'other' })!.items;
+    const other = parseTopic({ ...topicFile().doc, id: 'pp-bank-other' }, { ...ENTRY, id: 'other' })!.items;
     const first = await copyIntoMyBank([items[0], items[1]], { store });
     expect(first).toEqual({ copied: 2, already: 0, stimuli: 1 });
     expect(map.size).toBe(1);

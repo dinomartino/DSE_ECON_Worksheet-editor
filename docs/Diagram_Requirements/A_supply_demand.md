@@ -1,59 +1,59 @@
 # Group A — Supply & Demand core: what must be drawn
 
 File short names used below:
-- **BT-BSD** = By topic/FINAL_LQ/Basic Supply & Demand_LQ; **KP-BSD** = KP_ECON/LQ/Basic Supply & Demand
-- **BT-SS** / **KP-SS** = Shortage & Surplus; **BT-GI** = Government Intervention; **BT-EL** = Elasticity
-- **BT-CPS** / **KP-CPS** = Consumer/Producer Surplus; **BT-FP** / **KP-FP** = Function of Price
-- **BT-RP** / **KP-RP** = Relative Price; **BT-TAX** = Tax
+- **BT-BSD** = By topic/FINAL_LQ/Basic Supply & Demand_LQ; **REF-BSD** = the reference set/LQ/Basic Supply & Demand
+- **BT-SS** / **REF-SS** = Shortage & Surplus; **BT-GI** = Government Intervention; **BT-EL** = Elasticity
+- **BT-CPS** / **REF-CPS** = Consumer/Producer Surplus; **BT-FP** / **REF-FP** = Function of Price
+- **BT-RP** / **REF-RP** = Relative Price; **BT-TAX** = Tax
 - MCQ files: **MC-<topic>** = By topic/FINAL_MC_clean/<topic>_MC
 
-General KP marking pattern (from KP answer copies): diagram marks are listed under "Indicate in the diagram", typically 1 mark per element (each curve shift = 1, direction of P change = 1, direction of Q change / TR area = 1), plus separate "Verbal elaboration" marks. A diagram alone never earns the verbal marks.
+General REF marking pattern (from REF answer copies): diagram marks are listed under "Indicate in the diagram", typically 1 mark per element (each curve shift = 1, direction of P change = 1, direction of Q change / TR area = 1), plus separate "Verbal elaboration" marks. A diagram alone never earns the verbal marks.
 
 ## Basic Supply & Demand
 
-### CE1992/P1/Q2(b)(i) (5 marks) — files: BT-BSD, KP-BSD
+### CE1992/P1/Q2(b)(i) (5 marks) — files: BT-BSD, REF-BSD
 - Q: US import tax on HK-made garments: effect on P and Q of HK-made garments in US market (separate diagrams).
 - Diagram type: single-market S&D
 - Must draw:
   - S shifts left S → S' (tax raises cost)
   - new equilibrium E → E'; P rises P → P'
   - Q falls Q → Q'
-- Notes: KP: 3 diagram marks (S shift, P change, Q change) + 2 verbal. (KP text has typo "falls in price"; scheme image shows P rises.)
+- Notes: REF: 3 diagram marks (S shift, P change, Q change) + 2 verbal. (REF text has typo "falls in price"; scheme image shows P rises.)
 
-### CE1992/P1/Q2(b)(ii) (5 marks) — files: BT-BSD, KP-BSD
+### CE1992/P1/Q2(b)(ii) (5 marks) — files: BT-BSD, REF-BSD
 - Q: Effect on P and Q of US-made garments in the US market (separate diagram).
 - Diagram type: single-market S&D (substitute market)
 - Must draw:
   - D shifts right D → D' (price of substitute ↑)
   - P rises P → P', Q rises Q → Q'
-- Notes: KP: 3 diagram + 3 verbal. Must be a SEPARATE diagram from (b)(i).
+- Notes: REF: 3 diagram + 3 verbal. Must be a SEPARATE diagram from (b)(i).
 
-### CE1993/P1/Q4(b)(ii) (4 marks) — files: BT-BSD, KP-BSD
+### CE1993/P1/Q4(b)(ii) (4 marks) — files: BT-BSD, REF-BSD
 - Q: TV sets smuggled from HK into China: effect on equilibrium price in China.
 - Diagram type: single-market S&D
 - Must draw:
   - S shifts right S → S'
   - P falls P1 → P2
-- Notes: KP: 2 diagram + 2 verbal. Q change not required.
+- Notes: REF: 2 diagram + 2 verbal. Q change not required.
 
-### CE1994/P1/Q9(b)(i) (5 marks) — files: BT-BSD, KP-BSD
+### CE1994/P1/Q9(b)(i) (5 marks) — files: BT-BSD, REF-BSD
 - Q: US tariff on Japanese cars: equilibrium P and Q of Japanese cars in US.
 - Diagram type: single-market S&D
 - Must draw:
   - S shifts left S1 → S2
   - E1 → E2; P rises P1 → P2; Q falls Q1 → Q2
-- Notes: KP: 2 diagram (S shift; P↑ & Q↓) + 3 verbal.
+- Notes: REF: 2 diagram (S shift; P↑ & Q↓) + 3 verbal.
 
-### CE1994/P1/Q9(b)(ii) (6 marks) — files: BT-BSD, KP-BSD
+### CE1994/P1/Q9(b)(ii) (6 marks) — files: BT-BSD, REF-BSD
 - Q: Effect on equilibrium wage and employment of US car-manufacturing workers.
 - Diagram type: labour market S&D (axes: wage rate / employment)
 - Must draw:
   - axes labelled Wage rate and Employment/Quantity of labour
   - D for labour shifts right D1 → D2 (derived demand from US cars, a substitute)
   - W rises W1 → W2; L rises L1 → L2
-- Notes: KP: 3 diagram + 3 verbal.
+- Notes: REF: 3 diagram + 3 verbal.
 
-### CE1995/P1/Q11(a) (7 marks) — files: BT-BSD, KP-BSD
+### CE1995/P1/Q11(a) (7 marks) — files: BT-BSD, REF-BSD
 - Q: New highway (D↑) plus more land (S↑) for Tin Shui Wai housing: under what condition does price rise?
 - Diagram type: single-market S&D, simultaneous shifts
 - Must draw:
@@ -62,24 +62,24 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - shift of D visibly LARGER than shift of S so that P rises P1 → P2 (Q also rises Q1 → Q2 in scheme figure)
 - Notes: "Candidates should show on the graph" 3 marks (1 each); verbal 4 (D↑ 1, S↑ 1, ↑D > ↑S 2).
 
-### CE1997/P1/Q9(b) (6 marks) — files: BT-BSD, KP-BSD
+### CE1997/P1/Q9(b) (6 marks) — files: BT-BSD, REF-BSD
 - Q: New railway: effect on total revenue of minibuses on the same route.
 - Diagram type: single-market S&D with TR areas
 - Must draw:
   - D shifts left D1 → D2
   - E1 → E2; P falls P1 → P2; Q falls Q1 → Q2
   - TR shown as rectangles: 0P1E1Q1 (original) shaded vs smaller 0P2E2Q2 (new) — TR decreases
-- Notes: KP: 3 diagram (D shift; P↓; TR↓) + 3 verbal.
+- Notes: REF: 3 diagram (D shift; P↓; TR↓) + 3 verbal.
 
-### CE1998/P1/Q9(c)(i) (4 marks) — files: BT-BSD, KP-BSD
+### CE1998/P1/Q9(c)(i) (4 marks) — files: BT-BSD, REF-BSD
 - Q: Importation of workers: effect on equilibrium wage of restaurant workers in HK.
 - Diagram type: labour market S&D
 - Must draw:
   - S of labour shifts right: S (Local) → S' (Local + imported)
   - wage falls W1 → W2
-- Notes: KP: 2 diagram + 2 verbal. Label the new supply curve "local + imported".
+- Notes: REF: 2 diagram + 2 verbal. Label the new supply curve "local + imported".
 
-### CE1998/P1/Q9(c)(ii) (3 marks) — files: BT-BSD, KP-BSD
+### CE1998/P1/Q9(c)(ii) (3 marks) — files: BT-BSD, REF-BSD
 - Q: Use the SAME diagram to show effect on employment of LOCAL restaurant workers.
 - Diagram type: labour market S&D (same as (c)(i))
 - Must draw:
@@ -88,78 +88,78 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - arrow Q1 → Q2 showing local employment falls
 - Notes: 3 marks all on correct labelling of Q1, Q2 and the decrease. Key trap: local employment is read from S(Local) at W2.
 
-### CE1998/P1/Q10(b)(i) (6 marks) — files: BT-BSD, KP-BSD
+### CE1998/P1/Q10(b)(i) (6 marks) — files: BT-BSD, REF-BSD
 - Q: Government punishes both buyers and sellers of illegal software: effect on its market price.
 - Diagram type: single-market S&D, simultaneous shifts
 - Must draw:
   - D shifts left D1 → D2
   - S shifts left S1 → S2
   - (scheme figure shows P falling P1 → P2, but the verbal answer is "price uncertain, depends on relative extent")
-- Notes: KP: 2 diagram marks (D shift, S shift) + verbal; price change is "uncertain" so no fixed P-direction mark.
+- Notes: REF: 2 diagram marks (D shift, S shift) + verbal; price change is "uncertain" so no fixed P-direction mark.
 
-### CE1998/P1/Q10(b)(ii) (4 marks) — files: BT-BSD, KP-BSD
+### CE1998/P1/Q10(b)(ii) (4 marks) — files: BT-BSD, REF-BSD
 - Q: Effect on the market price of legal software (separate diagram).
 - Diagram type: single-market S&D
 - Must draw:
   - D shifts right D1 → D2 (substitute)
   - P rises P1 → P2
-- Notes: KP: 2 diagram + 3 verbal (KP totals exceed 4; follow BT).
+- Notes: REF: 2 diagram + 3 verbal (REF totals exceed 4; follow BT).
 
-### CE1999/P1/Q9(b) (9 marks) — files: BT-BSD, KP-BSD
+### CE1999/P1/Q9(b) (9 marks) — files: BT-BSD, REF-BSD
 - Q: Yen depreciation: effect on sales revenue of French cars in HK (supply-demand diagram).
 - Diagram type: single-market S&D with TR areas
 - Must draw:
   - D for French cars shifts left D1 → D2
   - E1 → E2; P falls P1 → P2; Q falls Q1 → Q2
   - sales revenue falls from area 0P1E1Q1 to area 0P2E2Q2 (both rectangles shaded differently)
-- Notes: KP: 3 diagram (D shift; P & Q ↓; TR ↓) + verbal (Yen depreciation → Japanese car price ↓, substitutes, D↓, P&Q↓, TR↓).
+- Notes: REF: 3 diagram (D shift; P & Q ↓; TR ↓) + verbal (Yen depreciation → Japanese car price ↓, substitutes, D↓, P&Q↓, TR↓).
 
-### CE2000/P1/Q9(b)(i) (7 marks) — files: BT-BSD, KP-BSD
+### CE2000/P1/Q9(b)(i) (7 marks) — files: BT-BSD, REF-BSD
 - Q: Smuggled gasoline: effect on sales revenue of petroleum companies.
 - Diagram type: single-market S&D with TR
 - Must draw:
   - D shifts left D → D'
   - P falls P → P'; Q falls Q → Q'
-  - total revenue falls (rectangle 0PEQ → 0P'E'Q') (area shading inferred from KP mark "Total revenue decreases")
-- Notes: KP: 3 diagram + 3 verbal.
+  - total revenue falls (rectangle 0PEQ → 0P'E'Q') (area shading inferred from REF mark "Total revenue decreases")
+- Notes: REF: 3 diagram + 3 verbal.
 
-### CE2002/P1/Q2 (7 marks) — files: BT-BSD, KP-BSD
+### CE2002/P1/Q2 (7 marks) — files: BT-BSD, REF-BSD
 - Q: OPEC cuts oil output and demand for automobiles falls: condition for gasoline price to rise.
 - Diagram type: single-market S&D, simultaneous shifts
 - Must draw:
   - S shifts left S0 → S1
   - D shifts left D0 → D1
   - leftward shift of S visibly LARGER than that of D, so P rises P0 → P1
-- Notes: KP: 3 diagram + 4 verbal (supply ↓ since gasoline is an oil product; complements → D↓; ↓S > ↓D).
+- Notes: REF: 3 diagram + 4 verbal (supply ↓ since gasoline is an oil product; complements → D↓; ↓S > ↓D).
 
-### CE2003/P1/Q10(b)(ii) (8 marks for (b)) — files: BT-BSD, KP-BSD
+### CE2003/P1/Q10(b)(ii) (8 marks for (b)) — files: BT-BSD, REF-BSD
 - Q: Paper price falls (S↑) and more schoolchildren (D↑): condition for textbook price to fall.
 - Diagram type: single-market S&D, simultaneous shifts
 - Must draw:
   - S shifts right S1 → S2
   - D shifts right D1 → D2
   - shift of S LARGER than shift of D, P falls P1 → P2
-- Notes: KP: 3 diagram + 1 verbal ("↑S > ↑D"); (b)(i) is verbal only.
+- Notes: REF: 3 diagram + 1 verbal ("↑S > ↑D"); (b)(i) is verbal only.
 
-### CE2003/P1/Q11(d) (6 marks) — files: BT-BSD, KP-BSD
+### CE2003/P1/Q11(d) (6 marks) — files: BT-BSD, REF-BSD
 - Q: IT companies close: effect on wage rate and employment of IT professionals.
 - Diagram type: labour market S&D
 - Must draw:
   - D for labour shifts left D1 → D2
   - W falls W1 → W2
   - employment falls Q1 → Q2
-- Notes: KP: 3 diagram + 3 verbal.
+- Notes: REF: 3 diagram + 3 verbal.
 
-### CE2004/P1/Q3 (6 marks) — files: BT-BSD, KP-BSD
+### CE2004/P1/Q3 (6 marks) — files: BT-BSD, REF-BSD
 - Q: Digital cameras popular: effect on consumers' total expenditure on rolls of film.
 - Diagram type: single-market S&D with TE areas
 - Must draw:
   - D1D1 shifts left to D2D2
   - P falls P1 → P2; Q falls Q1 → Q2
   - decrease in total expenditure shown as the shaded L-shaped area (0P1E1Q1 minus 0P2E2Q2), with legend "decrease in consumers' expenditure"
-- Notes: KP: 3 diagram + 4 verbal (chain: digital cameras substitute for traditional cameras; cameras and film complements).
+- Notes: REF: 3 diagram + 4 verbal (chain: digital cameras substitute for traditional cameras; cameras and film complements).
 
-### CE2008/P1/Q9(b)(ii) (7 marks) — files: BT-BSD, KP-BSD
+### CE2008/P1/Q9(b)(ii) (7 marks) — files: BT-BSD, REF-BSD
 - Q: Capital gains tax: effect on total market value of shares.
 - Diagram type: single-market S&D with a vertical (perfectly inelastic) supply of shares
 - Must draw:
@@ -167,18 +167,18 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - D shifts left D1 → D2
   - P falls P1 → P2, Q unchanged
   - market value falls from P1×Q to P2×Q (shaded strip between P1 and P2 marked "−")
-- Notes: KP: 3 diagram + 4 verbal ("quantity transacted remains unchanged").
+- Notes: REF: 3 diagram + 4 verbal ("quantity transacted remains unchanged").
 
-### CE2010/P1/Q1 (5 marks) — files: BT-BSD, KP-BSD
+### CE2010/P1/Q1 (5 marks) — files: BT-BSD, REF-BSD
 - Q: Plastic bag levy: change in TR of non-woven reusable bags.
 - Diagram type: single-market S&D with TR areas
 - Must draw:
   - D shifts right D1 → D2
   - E → F; P rises P1 → P2; Q rises Q1 → Q2
   - area 0P2FQ2 > area 0P1EQ1 (increase in TR shaded as the L-shaped area)
-- Notes: KP: 3 diagram (D shift; P & Q ↑; TR ↑) + verbal.
+- Notes: REF: 3 diagram (D shift; P & Q ↑; TR ↑) + verbal.
 
-### CE2011/P1/Q11(a) (6 marks) — files: BT-BSD, KP-BSD
+### CE2011/P1/Q11(a) (6 marks) — files: BT-BSD, REF-BSD
 - Q: Hot money (D↑) plus more land auctioned (S↑): condition for land price at auctions to rise.
 - Diagram type: single-market S&D with VERTICAL supply of land
 - Must draw:
@@ -187,7 +187,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - shift of D > shift of S, and P rises P1 → P2 (E1 → E2)
 - Notes: 3 diagram + 3 verbal (derived demand for land; the condition ↑D > ↑S).
 
-### DSE2012/P2/Q12(c)(i) (5 marks) — files: BT-BSD, KP-BSD
+### DSE2012/P2/Q12(c)(i) (5 marks) — files: BT-BSD, REF-BSD
 - Q: Re-introducing HOS cools the private housing market (demand-supply diagram).
 - Diagram type: single-market S&D (private housing)
 - Must draw:
@@ -195,7 +195,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - P falls P1 → P2 (Q2 < Q1 also shown in scheme figure)
 - Notes: 2 diagram marks (D shift; lower P) + 3 verbal. (c)(ii) explicitly WITHOUT a diagram.
 
-### DSE2015/P2/Q11(d) (7 marks) — files: BT-BSD, KP-BSD
+### DSE2015/P2/Q11(d) (7 marks) — files: BT-BSD, REF-BSD
 - Q: Tobacco duty rise (D for duty-not-paid ↑ as substitutes) plus Customs crackdown (S↓): can the quantity of duty-not-paid cigarettes rise?
 - Diagram type: single-market S&D, simultaneous shifts
 - Must draw:
@@ -209,16 +209,16 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
 
 ## Shortage & Surplus (price fixed away from equilibrium)
 
-### CE1990/P1/Q4(b) (6 marks) — files: BT-SS, KP-SS
+### CE1990/P1/Q4(b) (6 marks) — files: BT-SS, REF-SS
 - Q: Local desire to consume falls, unsold garments pile up: illustrate.
 - Diagram type: single-market S&D with a fixed price line
 - Must draw:
   - horizontal "selling price" line at P (fixed)
   - D shifts left D0 → D
   - P now ABOVE the new equilibrium; excess supply = horizontal gap between D and S at P, bracketed and labelled "excess supply"
-- Notes: BT: diagram 3 + D↓ 1 + excess supply 2. KP: 3 diagram (price above eq.; D shifts left; excess supply) + 3 verbal.
+- Notes: BT: diagram 3 + D↓ 1 + excess supply 2. REF: 3 diagram (price above eq.; D shifts left; excess supply) + 3 verbal.
 
-### CE1991/P1/Q2(b)(i)-(ii) (8 marks) — files: BT-SS, KP-SS
+### CE1991/P1/Q2(b)(i)-(ii) (8 marks) — files: BT-SS, REF-SS
 - Q: Public medical service perfectly inelastic in supply; fee raised from below-equilibrium P0 to equilibrium PE: effect on (i) Qd and (ii) total revenue.
 - Diagram type: single-market S&D, vertical supply
 - Must draw:
@@ -226,36 +226,36 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - present fee P0 below equilibrium; Qd at P0 = Q1 (point A) > Q2 → excess demand CA
   - fee raised to PE (point B): Qd falls Q1 → Q2 (movement along D, A → B)
   - TR rises from area 0Q2CP0 to 0Q2BPE; additional revenue P0PE·BC shaded
-- Notes: KP: (i) 1 diagram mark (P↑ & Qd↓); (ii) 1 diagram mark (increase in TR area). Quantity transacted unchanged (= Q2).
+- Notes: REF: (i) 1 diagram mark (P↑ & Qd↓); (ii) 1 diagram mark (increase in TR area). Quantity transacted unchanged (= Q2).
 
-### CE1991/P1/Q4(c)(i) (5 marks) — files: BT-SS, KP-SS
+### CE1991/P1/Q4(c)(i) (5 marks) — files: BT-SS, REF-SS
 - Q: What is a "shortage"? Illustrate with a diagram.
 - Diagram type: single-market S&D
 - Must draw:
   - price Pc set BELOW equilibrium
   - Qs and Qd marked on the Q-axis at that price, Qd > Qs
   - gap Qs–Qd bracketed and labelled "shortage"
-- Notes: BT: 3 verbal + 2 diagram; KP: 2 diagram (price below eq.; correct position of shortage).
+- Notes: BT: 3 verbal + 2 diagram; REF: 2 diagram (price below eq.; correct position of shortage).
 
-### CE1991/P1/Q4(c)(ii)(I) (5 marks) — files: BT-SS, KP-SS
+### CE1991/P1/Q4(c)(ii)(I) (5 marks) — files: BT-SS, REF-SS
 - Q: Wage unchanged: how a recession lessens the construction labour shortage (separate diagram).
 - Diagram type: labour market S&D, fixed wage
 - Must draw:
   - horizontal "existing wage rate" line below equilibrium
   - D for labour shifts left D0 → D1
   - original shortage and a SMALLER "new shortage" both bracketed at the fixed wage
-- Notes: BT: diagram 3 + 2 verbal; alternative (supply ↑) accepted with good explanation. KP: 2 diagram + 2 verbal.
+- Notes: BT: diagram 3 + 2 verbal; alternative (supply ↑) accepted with good explanation. REF: 2 diagram + 2 verbal.
 
-### CE1991/P1/Q4(c)(ii)(II) (5 marks) — files: BT-SS, KP-SS
+### CE1991/P1/Q4(c)(ii)(II) (5 marks) — files: BT-SS, REF-SS
 - Q: Wage unchanged: how importing workers lessens the shortage (separate diagram).
 - Diagram type: labour market S&D, fixed wage
 - Must draw:
   - fixed "existing wage rate" below equilibrium
   - S of labour shifts right S0 → S1
   - original shortage and a smaller "new shortage" bracketed
-- Notes: BT: diagram 3 + 2 verbal; KP: 2 diagram + 2 verbal.
+- Notes: BT: diagram 3 + 2 verbal; REF: 2 diagram + 2 verbal.
 
-### CE1993/P1/Q3(c) (8 marks) — files: BT-SS, KP-SS
+### CE1993/P1/Q3(c) (8 marks) — files: BT-SS, REF-SS
 - Q: MTR rush hour overcrowding; peak congestion fare reduces overcrowding.
 - Diagram type: single-market S&D, vertical supply (max capacity)
 - Must draw:
@@ -274,7 +274,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - equal-sized shifts so new equilibrium at the SAME price P (Q falls)
 - Notes: 3 verbal marks (D↓, S↓, equal falls); diagram marks implied (3). Filed under Shortage & Surplus but is a simultaneous-shift question.
 
-### CE1999/P1/Q11(a) (8 marks) — files: BT-SS, KP-SS
+### CE1999/P1/Q11(a) (8 marks) — files: BT-SS, REF-SS
 - Q: Taxis never satisfy demand; a fare rise would increase taxi sales revenue.
 - Diagram type: single-market S&D with price below equilibrium
 - Must draw:
@@ -283,9 +283,9 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - quantity transacted rises Qt1 → Qt2 (moving up along S, A → B)
   - TR rises from P1×Qt1 to P2×Qt2; additional revenue = P1P2BC + ACQt2Qt1 shaded
   - Alternative accepted: vertical S (Qt = QE), Q unchanged, TR rises P1×Q1 → P2×Q1, extra revenue P1P2BC
-- Notes: BT: @1 for each graph element and each verbal point (8 total); KP: 4 graph + 4 verbal.
+- Notes: BT: @1 for each graph element and each verbal point (8 total); REF: 4 graph + 4 verbal.
 
-### CE2001/P1/Q10(c)(i) (7 marks) — files: BT-SS, KP-SS
+### CE2001/P1/Q10(c)(i) (7 marks) — files: BT-SS, REF-SS
 - Q: Share issue with fixed quantity and subscription price, oversubscribed; indicate capital raised.
 - Diagram type: single-market S&D, vertical supply
 - Must draw:
@@ -295,7 +295,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - rectangle P̄ × Q̄ shaded = amount of capital raised
 - Notes: BT: vertical S 1, P below eq. 1, excess demand 1, P×Q 2; verbal 2.
 
-### CE2001/P1/Q11(d) (7 marks) — files: BT-SS, KP-SS
+### CE2001/P1/Q11(d) (7 marks) — files: BT-SS, REF-SS
 - Q: Excess supply of private housing at developers' price; HOS supply cut; P constant: effect on developers' sales revenue.
 - Diagram type: single-market S&D with fixed price above equilibrium
 - Must draw:
@@ -305,7 +305,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - increase in sales revenue = Q1Q2 × P shaded rectangle
 - Notes: 3 diagram + 4 verbal.
 
-### CE2002/P1/Q11(b) (7 marks) — files: BT-SS, KP-SS
+### CE2002/P1/Q11(b) (7 marks) — files: BT-SS, REF-SS
 - Q: Tutorial school with unfilled places; advertising at unchanged fee fills all places and raises TR.
 - Diagram type: single-market S&D, vertical supply (fixed places)
 - Must draw:
@@ -313,9 +313,9 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - fee P ABOVE equilibrium (excess supply Q1Q2 at P)
   - D1 shifts right to D2 (through the point where P meets S, or further right) so excess supply falls to zero
   - increase in TR = Q1Q2 × P shaded
-- Notes: BT: 4 diagram + 3 verbal; KP: 3 diagram + 4 verbal.
+- Notes: BT: 4 diagram + 3 verbal; REF: 3 diagram + 4 verbal.
 
-### CE2003/P1/Q1(a)-(b) (7 marks) — files: BT-SS, KP-SS
+### CE2003/P1/Q1(a)-(b) (7 marks) — files: BT-SS, REF-SS
 - Q: HOS units: price fixed and not enough units for applicants; then income limit lowered (use same diagram).
 - Diagram type: single-market S&D, vertical supply, fixed price
 - Must draw:
@@ -323,7 +323,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - (b) D shifts left D1 → D2; smaller (or zero) excess demand at P
 - Notes: (a) 2 diagram + 2 verbal; (b) 2 diagram + verbal.
 
-### CE2004/P1/Q10(a) (8 marks) — files: BT-SS, KP-SS
+### CE2004/P1/Q10(a) (8 marks) — files: BT-SS, REF-SS
 - Q: SARS: airlines kept fares and flights, many empty seats; effect on TR.
 - Diagram type: single-market S&D with fixed price
 - Must draw:
@@ -332,9 +332,9 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - Q (seats sold) falls Q1 → Q2
   - excess supply bracketed at P (between D2 and S)
   - TR (P×Q) falls from P×Q1 to P×Q2 (loss rectangle shaded)
-- Notes: BT: 5 diagram + 3 verbal; KP: 4 diagram. Remark: may start from an initial excess supply or demand, not only equilibrium.
+- Notes: BT: 5 diagram + 3 verbal; REF: 4 diagram. Remark: may start from an initial excess supply or demand, not only equilibrium.
 
-### CE2005/P1/Q9(a) (6 marks) — files: BT-SS (KP-SS has only (b)(i))
+### CE2005/P1/Q9(a) (6 marks) — files: BT-SS (REF-SS has only (b)(i))
 - Q: WHC not congested; condition under which a toll rise increases sales revenue.
 - Diagram type: single demand curve TR analysis (price-elasticity)
 - Must draw:
@@ -343,7 +343,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - Gain > Loss (1) (i.e. inelastic section of demand)
 - Notes: 2 diagram + 4 verbal (inelastic demand; %ΔP > %ΔQd).
 
-### CE2005/P1/Q9(b)(i) (6 marks) — files: BT-SS, KP-SS
+### CE2005/P1/Q9(b)(i) (6 marks) — files: BT-SS, REF-SS
 - Q: CHT toll unchanged while WHC toll rose: why CHT more congested at rush hours.
 - Diagram type: single-market S&D, vertical supply, fixed price
 - Must draw:
@@ -353,7 +353,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - excess demand increases from a to b (both bracketed at P1)
 - Notes: 3 diagram + 3 verbal.
 
-### CE2006/P1/Q9(a)(i)-(ii) (3 + 6 marks) — files: BT-SS, KP-SS
+### CE2006/P1/Q9(a)(i)-(ii) (3 + 6 marks) — files: BT-SS, REF-SS
 - Q: 3-star hotels: vacant rooms in Sept.; fewer vacancies in golden week despite higher charges (draw in Figure 2).
 - Diagram type: single-market S&D, vertical supply of rooms
 - Must draw:
@@ -364,7 +364,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - new excess supply a'b' with a'b' < ab
 - Notes: (i) 2 diagram + 1 verbal; (ii) 4 diagram (BT) + 2 verbal.
 
-### CE2007/P1/Q8(a) (6 marks) — files: BT-SS, KP-SS
+### CE2007/P1/Q8(a) (6 marks) — files: BT-SS, REF-SS
 - Q: Mainland students worsen shortage of university places (draw in Figure 1); same tuition fees.
 - Diagram type: single-market S&D, vertical supply of places
 - Must draw:
@@ -375,7 +375,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - b = new, larger excess demand at the same fee
 - Notes: 4 diagram + 2 verbal.
 
-### CE2010/P1/Q11(a) (9 marks) — files: BT-SS, KP-SS
+### CE2010/P1/Q11(a) (9 marks) — files: BT-SS, REF-SS
 - Q: Fixed wage; financial tsunami cuts business: why unemployment rises; show the loss in total wage earnings.
 - Diagram type: labour market S&D with fixed wage above equilibrium
 - Must draw:
@@ -386,7 +386,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - area cdga shaded = total wage loss (W × fall in employment)
 - Notes: 5 diagram (1 each) + 4 verbal.
 
-### DSEPP/P2/Q12(a)(i) (3 marks) — files: BT-SS, KP-SS
+### DSEPP/P2/Q12(a)(i) (3 marks) — files: BT-SS, REF-SS
 - Q: 600 000 tickets at $10 sold out quickly: illustrate.
 - Diagram type: single-market S&D, vertical supply
 - Must draw:
@@ -395,7 +395,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - excess demand/shortage bracketed at $10
 - Notes: 3 diagram marks, no verbal marks.
 
-### DSEPP/P2/Q12(a)(ii) (6 marks) — files: BT-SS, KP-SS
+### DSEPP/P2/Q12(a)(ii) (6 marks) — files: BT-SS, REF-SS
 - Q: Two measures to relieve the shortage, two separate diagrams.
 - Diagram type: single-market S&D, vertical supply
 - Must draw:
@@ -413,7 +413,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - final shortage bracketed at W (D > S1)
 - Notes: diagram 5 marks (W above eq. 1, surplus 1, leftward shift > surplus 2, final shortage 1) + 4 verbal.
 
-### DSE2020/P2/Q11(b) (4 marks) — files: BT-SS, KP-SS
+### DSE2020/P2/Q11(b) (4 marks) — files: BT-SS, REF-SS
 - Q: With the aid of a S-D diagram, explain CHT congestion at peak hours (Source B).
 - Diagram type: single-market S&D, vertical supply
 - Must draw:
@@ -422,7 +422,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - shortage bracketed at P
 - Notes: 2 diagram + 2 verbal. (d), (f) verbal only.
 
-### DSE2021/P2/Q12(c) (7 marks) — files: BT-SS, KP-SS
+### DSE2021/P2/Q12(c) (7 marks) — files: BT-SS, REF-SS
 - Q: Despite importing workers, vacancies remain in elderly care.
 - Diagram type: labour market S&D, fixed wage
 - Must draw:
@@ -432,7 +432,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - smaller excess demand ex dd1 (Q1 to Qd), still positive
 - Notes: 4 diagram (1 each) + 3 verbal.
 
-### DSE2022/P2/Q10(e) (5 marks) — files: BT-SS, KP-SS
+### DSE2022/P2/Q10(e) (5 marks) — files: BT-SS, REF-SS
 - Q: Gold medal → more people learn the sport → long queues for courses.
 - Diagram type: single-market S&D
 - Must draw:
@@ -440,7 +440,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - price stays at P0 (does not adjust); shortage Q0–Q1 bracketed at P0
 - Notes: 2 diagram + 3 verbal.
 
-### DSE2023/P2/Q11(a) (4 marks) — files: BT-SS, KP-SS
+### DSE2023/P2/Q11(a) (4 marks) — files: BT-SS, REF-SS
 - Q: Fans cannot buy concert tickets at official prices; use given Figure 5.
 - Diagram type: single-market S&D (Figure 5 given; vertical S)
 - Must draw (on Figure 5):
@@ -448,7 +448,7 @@ General KP marking pattern (from KP answer copies): diagram marks are listed und
   - excess demand ab bracketed/labelled (a on S, b on D)
 - Notes: 2 diagram + 2 verbal.
 
-### DSE2025/P2/Q11(b)(i) (2 marks) — files: BT-SS, KP-SS
+### DSE2025/P2/Q11(b)(i) (2 marks) — files: BT-SS, REF-SS
 - Q: Illustrate the long PRH waiting time (Source B) with a S-D diagram.
 - Diagram type: single-market S&D (rental market, vertical S at Q0)
 - Must draw:
@@ -752,7 +752,7 @@ Note: several scheme figures in BT-EL (and a few in BT-BSD) are clean redrawn co
   - increase in TE "+" (Q1 − Q0) × P1 and decrease "−" (P0 − P1) × Q0 correctly placed; for TE to fall, "−" > "+"
 - Notes: 4 verbal + 3 diagram. (Scheme text line reads "Area of (+) > Area of (−)", which contradicts the conclusion that TE drops; the figure shows the "−" rectangle larger. Draw "−" > "+".)
 
-### DSE2025/P2/Q11(b)(ii) (6 marks incl. (b)(i)) — files: BT-EL (and (b)(i) in BT-SS, KP-SS)
+### DSE2025/P2/Q11(b)(ii) (6 marks incl. (b)(i)) — files: BT-EL (and (b)(i) in BT-SS, REF-SS)
 - Q: Using the (b)(i) diagram, condition under which a 10% PRH rent rise raises tenants' total rental payment by 10%.
 - Diagram type: single-market S&D, vertical supply
 - Must draw:
@@ -766,7 +766,7 @@ Note: several scheme figures in BT-EL (and a few in BT-BSD) are clean redrawn co
 
 ## Consumer / Producer Surplus
 
-### DSESP/P2/Q9(a) (2 marks) — files: BT-CPS, KP-CPS
+### DSESP/P2/Q9(a) (2 marks) — files: BT-CPS, REF-CPS
 - Q: Indicate CS and PS on Figure 1 (electronic watches, D and S given).
 - Diagram type: single-market S&D surplus areas (given figure)
 - Must draw:
@@ -774,7 +774,7 @@ Note: several scheme figures in BT-EL (and a few in BT-BSD) are clean redrawn co
   - C.S. = triangle above Pe and below D; P.S. = triangle below Pe and above S (labelled)
 - Notes: 2 diagram marks. (b) verbal (S↑ → P↓, Q↑, CS↑, PS↑; 5 marks).
 
-### DSEPP/P2/Q4(b)(i) (3 marks) — files: BT-CPS, KP-CPS
+### DSEPP/P2/Q4(b)(i) (3 marks) — files: BT-CPS, REF-CPS
 - Q: "An effective price ceiling may increase consumer surplus": agree? Illustrate on Figure 1 (S, D, Pc given).
 - Diagram type: single-market S&D, price ceiling + surplus areas
 - Must draw:
@@ -783,22 +783,22 @@ Note: several scheme figures in BT-EL (and a few in BT-BSD) are clean redrawn co
   - "−" loss in CS = triangle between D and Pe from Qs to Qe
 - Notes: "Yes" 1 + gain (+) 1 + loss (−) 1. CS rises if + > −.
 
-### DSE2014/P2/Q9(b) (1 mark) — files: BT-CPS, KP-CPS
+### DSE2014/P2/Q9(b) (1 mark) — files: BT-CPS, REF-CPS
 - Q: With a diagram, indicate the change in consumer surplus after the per-unit soft-drink tax.
 - Diagram type: single-market S&D, per-unit tax (same diagram as (a), see Government Intervention)
 - Must draw:
   - reduction in CS = buyers' burden rectangle (P0 → P1 × Q1) + triangle "a" (between P0, P1 and D from Q1 to Q0)
 - Notes: 1 mark.
 
-### DSE2020/P2/Q10(c) (3 marks) — files: BT-CPS, KP-CPS
+### DSE2020/P2/Q10(c) (3 marks) — files: BT-CPS, REF-CPS
 - Q: Given labelled diagram (S0 before tariff, St after; points a,b,c,d,e,f,g,h,i,j,k), complete table of CS and PS before/after tariff.
 - Diagram type: single-market S&D with tariff (interpret given figure, name areas)
-- Must identify (inferred; scheme gives only "(3)", KP copy fills CS before = area adf):
+- Must identify (inferred; scheme gives only "(3)", REF copy fills CS before = area adf):
   - CS before = adf; CS after = abc
   - PS before = 0df (S0 starts at origin); PS after = 0hi (net-of-tariff price h on S0)
 - Notes: 3 marks for table; no drawing, area-naming only.
 
-### DSE2023/P2/Q5(a) (2 marks) — files: BT-CPS, KP-CPS
+### DSE2023/P2/Q5(a) (2 marks) — files: BT-CPS, REF-CPS
 - Q: Illustrate "if MC of each unit increases, total social surplus falls".
 - Diagram type: MB-MC (D = MB, S = MC) surplus diagram
 - Must draw:
@@ -806,7 +806,7 @@ Note: several scheme figures in BT-EL (and a few in BT-BSD) are clean redrawn co
   - decrease in total social surplus = area abE1E0 (band between MC0 and MC1 up to the new equilibrium plus the triangle to E0) shaded
 - Notes: 1 upward MC shift + 1 correct area.
 
-## Function of Price (BT-FP, KP-FP) and Relative Price (BT-RP, KP-RP)
+## Function of Price (BT-FP, REF-FP) and Relative Price (BT-RP, REF-RP)
 - No diagram questions. All items verbal: DSEPP/P2/Q12(b)(i), DSE2015/P2/Q4(a), DSE2023/P2/Q11(b) (Function of Price); DSE2014/P2/Q9(c), DSE2016/P2/Q13(b)(ii), DSE2021/P2/Q2, DSE2023/P2/Q11(e), DSE2024/P2/Q10(d) (Relative Price — lump-sum charge / relative price reasoning, no graph). No images in either marking scheme.
 
 ## Tax (BT-TAX)

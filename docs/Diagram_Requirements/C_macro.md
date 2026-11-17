@@ -1,9 +1,9 @@
 # Group C: Macroeconomics, money, banking, tax: what must be drawn
 
-Files read in full (LQ): ADAS, Business Cycle, Fiscal/Monetary Policies, GDP & GNP/GNI (+ KP__LQ copy), Real/Nominal GDP, Inflation/Deflation, Unemployment, Money, Quantity Theory of Money, Balance Sheet, Nominal/Real Interest Rate, Interest (+ KP__LQ copy), Shares & Bonds (+ KP__LQ copy).
+Files read in full (LQ): ADAS, Business Cycle, Fiscal/Monetary Policies, GDP & GNP/GNI (+ REF__LQ copy), Real/Nominal GDP, Inflation/Deflation, Unemployment, Money, Quantity Theory of Money, Balance Sheet, Nominal/Real Interest Rate, Interest (+ REF__LQ copy), Shares & Bonds (+ REF__LQ copy).
 Files read (MCQ): all 26 assigned BT__FINAL_MC_clean__ files. I scanned every [IMAGE] in the MCQ files and opened every image in the macro-diagram MCQ files.
 
-Only the **ADAS** and **Fiscal/Monetary Policies** LQ files contain diagram questions. The other 11 LQ topics (and the 3 KP copies) have none. See the "No-diagram files" note at the end of the LQ part.
+Only the **ADAS** and **Fiscal/Monetary Policies** LQ files contain diagram questions. The other 11 LQ topics (and the 3 REF copies) have none. See the "No-diagram files" note at the end of the LQ part.
 
 Short file names used below: `ADAS_LQ` = BT__FINAL_LQ__ADAS_LQ; `FM_LQ` = BT__FINAL_LQ__Fiscal:Monetary Policies_LQ. "Other parts in" lists files that carry the same DSE question number but only its non-diagram parts, such as GDP-accounting, shares/bonds, BoP or externality parts.
 
@@ -27,7 +27,7 @@ Short file names used below: `ADAS_LQ` = BT__FINAL_LQ__ADAS_LQ; `FM_LQ` = BT__FI
   - New equilibrium E2 where AD1 meets LRAS, so Y2 = Yf, with P2 below P1 (1)
 - Notes: 2 diagram + 3 verbal (excess supply in the factor market lowers input prices, so SRAS rises and P falls until Y = Yf). AD1 stays where it is. The model shows P0 > P1 > P2 on the axis.
 
-### DSE2012/P2/Q10(c)  (8 marks), files: ADAS_LQ (other parts in GDP & GNP/GNI_LQ, Shares & Bonds_LQ, Equity_LQ, KP__LQ GDP/Shares/Equity copies, KP S5-R2, S4-R2(2), S5-R3 round papers)
+### DSE2012/P2/Q10(c)  (8 marks), files: ADAS_LQ (other parts in GDP & GNP/GNI_LQ, Shares & Bonds_LQ, Equity_LQ, REF__LQ GDP/Shares/Equity copies, REF S5-R2, S4-R2(2), S5-R3 round papers)
 - Q: With a diagram, show the long-run effect of the "Scheme $6000" cash handout on price and output levels.
 - Diagram type: AD-AS long run (LRAS only)
 - Must draw:
@@ -46,7 +46,7 @@ Short file names used below: `ADAS_LQ` = BT__FINAL_LQ__ADAS_LQ; `FM_LQ` = BT__FI
   - Final P falls back to P0 at Yf (1)
 - Notes: 4 diagram + 5 verbal (factor prices up, so SRAS down; excess labour supply / deflationary gap brings wages down, so SRAS recovers). The model marks the movement along AD with arrows up to E1 and back down to E0.
 
-### DSE2015/P2/Q12(b)  (5 marks), files: ADAS_LQ (other parts in Balance of Payment_LQ, Externalities_LQ, KP__LQ BoP/Externalities copies, KP S5-R2, S6-R2)
+### DSE2015/P2/Q12(b)  (5 marks), files: ADAS_LQ (other parts in Balance of Payment_LQ, Externalities_LQ, REF__LQ BoP/Externalities copies, REF S5-R2, S6-R2)
 - Q: Using the given Figure 2 (E is right of LRAS0 at Yf, an inflationary gap), show how fewer Mainland tourists lower output to Yf.
 - Diagram type: AD-AS (given figure)
 - Must draw:
@@ -55,7 +55,7 @@ Short file names used below: `ADAS_LQ` = BT__FINAL_LQ__ADAS_LQ; `FM_LQ` = BT__FI
   - Correct new short-run output Y1 = Yf at E1, where AD1 meets SRAS0 on LRAS0 (1)
 - Notes: 3 diagram + 2 verbal (exports fall, AD falls). Part (c) of the same question says "WITHOUT using a diagram" (market forces: factor prices rise, SRAS falls). No diagram is required there.
 
-### DSE2016/P2/Q12(b)  (6 marks), files: ADAS_LQ (other parts in FM_LQ, GDP & GNP/GNI_LQ, KP__LQ GDP copy, KP S5-R3)
+### DSE2016/P2/Q12(b)  (6 marks), files: ADAS_LQ (other parts in FM_LQ, GDP & GNP/GNI_LQ, REF__LQ GDP copy, REF S5-R3)
 - Q: With an AS-AD diagram, show the short-run effect of Macau's cash-sharing scheme on output and price.
 - Diagram type: AD-AS short run (AD + SRAS only)
 - Must draw:
@@ -63,7 +63,7 @@ Short file names used below: `ADAS_LQ` = BT__FINAL_LQ__ADAS_LQ; `FM_LQ` = BT__FI
   - Higher P (P0 to P1) and higher Y (Y0 to Y1) (1)
 - Notes: 2 diagram + 4 verbal (disposable income up, C up, AD up, P and Y up).
 
-### DSE2017/P2/Q12(b)  (8 marks), files: ADAS_LQ (other parts in Balance of Payment_LQ, Labour Mobility_LQ, KP__LQ BoP/Labour Mobility copies, KP S4-RX(2), S6-R2)
+### DSE2017/P2/Q12(b)  (8 marks), files: ADAS_LQ (other parts in Balance of Payment_LQ, Labour Mobility_LQ, REF__LQ BoP/Labour Mobility copies, REF S4-RX(2), S6-R2)
 - Q: Brexit: the visa requirement raises labour cost, and political uncertainty cuts investment. With a diagram, show the short-run effect on aggregate output.
 - Diagram type: AD-AS short run, both curves shift
 - Must draw:
@@ -88,7 +88,7 @@ Short file names used below: `ADAS_LQ` = BT__FINAL_LQ__ADAS_LQ; `FM_LQ` = BT__FI
   - SRAS0 shifts left to SRAS1 (dashed in the model), so the new equilibrium E1 is on AD0 at LRAS0, and Y falls from Y0 to Yf (1)
 - Notes: 1 diagram + 4 verbal (inflationary gap, excess demand in the factor market, factor prices up, SRAS falls). The model labels Yf and Y0.
 
-### DSE2020/P2/Q9(b)  (8 marks), files: ADAS_LQ (other parts in GDP & GNP/GNI_LQ, Shares & Bonds_LQ, Types of Market Structures_LQ, KP__LQ GDP/Shares copies, KP S4-R2(2), S5-R3)
+### DSE2020/P2/Q9(b)  (8 marks), files: ADAS_LQ (other parts in GDP & GNP/GNI_LQ, Shares & Bonds_LQ, Types of Market Structures_LQ, REF__LQ GDP/Shares copies, REF S4-R2(2), S5-R3)
 - Q: Ocean Park hotels and water park attract tourists. With a diagram, show the effects on AD, on LRAS and on aggregate output.
 - Diagram type: AD-AS long run (AD + LRAS)
 - Must draw:
@@ -135,7 +135,7 @@ Short file names used below: `ADAS_LQ` = BT__FINAL_LQ__ADAS_LQ; `FM_LQ` = BT__FI
   - SRAS0 shifts right to SRAS1, and the new intersection with AD0 is on LRAS0, so Y rises from Y0 to Yf (1)
 - Notes: 1 diagram + 4 verbal (excess supply in the factor market, factor prices fall, costs fall, SRAS rises).
 
-### DSE2024/P2/Q12(a)  (5 marks), files: ADAS_LQ (other parts in Opportunity Cost_LQ, Tax_LQ, Unemployment_LQ, KP__LQ Opportunity Cost copy, S4-R1 round papers)
+### DSE2024/P2/Q12(a)  (5 marks), files: ADAS_LQ (other parts in Opportunity Cost_LQ, Tax_LQ, Unemployment_LQ, REF__LQ Opportunity Cost copy, S4-R1 round papers)
 - Q: Saudi Arabia builds a football stadium. With a diagram, show the short-run effect on aggregate output during construction.
 - Diagram type: AD-AS short run
 - Must draw:
@@ -190,7 +190,7 @@ Short file names used below: `ADAS_LQ` = BT__FINAL_LQ__ADAS_LQ; `FM_LQ` = BT__FI
 
 ### No-diagram LQ files (read fully; no question meets any criterion)
 - **Business Cycle_LQ**: every question gives a business-cycle curve or data (CE1995/Q7, CE2008/Q5, CE2010/Q7, DSEPP/Q7, DSE2017/Q9(a), DSE2020/Q3, DSE2022/Q11, DSE2024/Q4) and asks the student to *identify the phase* and list phenomena. Nothing is drawn or marked.
-- **GDP & GNP/GNI_LQ** and its KP__LQ copy, **Real/Nominal GDP_LQ**, **Inflation/Deflation_LQ**, **Unemployment_LQ**, **Money_LQ**, **Quantity Theory of Money_LQ**, **Nominal/Real Interest Rate_LQ**, **Interest_LQ** and its KP copy, **Shares & Bonds_LQ** and its KP copy: verbal or calculation questions only. Their images are source data, pictures or charts.
+- **GDP & GNP/GNI_LQ** and its REF__LQ copy, **Real/Nominal GDP_LQ**, **Inflation/Deflation_LQ**, **Unemployment_LQ**, **Money_LQ**, **Quantity Theory of Money_LQ**, **Nominal/Real Interest Rate_LQ**, **Interest_LQ** and its REF copy, **Shares & Bonds_LQ** and its REF copy: verbal or calculation questions only. Their images are source data, pictures or charts.
 - **Balance Sheet_LQ**: the answers are balance-sheet tables (fill in the blanks, deposit creation). There are no graphs.
 
 ---

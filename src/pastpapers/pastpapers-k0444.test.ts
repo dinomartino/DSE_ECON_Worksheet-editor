@@ -32,9 +32,9 @@ function pictureQuestion(tag: string, widthPx = 200): McqQuestion {
   const q = choiceQuestion('Which diagram is right?', '哪幅圖正確？', [tag]) as McqQuestion;
   return {
     ...q,
-    id: `kp-${tag.replaceAll('/', '_')}`,
+    id: `pp-${tag.replaceAll('/', '_')}`,
     options: q.options.map((option, i) => ({ ...option, text: bi('', ''), blocks: [image(`img-${i}`, widthPx)] })),
-    lineage: { rootId: `kp:${tag}` },
+    lineage: { rootId: `pp:${tag}` },
   };
 }
 
@@ -68,7 +68,7 @@ describe('the search index in the list', () => {
   });
 
   it('rides on the manifest; an old list without it still reads', () => {
-    const base = { format: 'kp-editor-pack', topics: [{ id: 'a', file: 'topics/a.json' }] };
+    const base = { topics: [{ id: 'a', file: 'topics/a.json' }] };
     const old = parseManifest(base);
     expect('error' in old || old.search).toBeFalsy();
     const withIndex = parseManifest({ ...base, search: { version: 1, questions: [{ topic: 'a', source: 'AL2002/P1/Q17', en: 'x', zh: 'y' }] } });
@@ -118,7 +118,7 @@ describe('questions whose options are pictures', () => {
     const mixed = pictureQuestion('DSE2016/P1/Q34');
     mixed.options[2] = { ...mixed.options[2], blocks: undefined, text: bi('None', '沒有') };
     expect(withPictureGrid(mixed)).toBe(mixed);
-    const doc = { ...createWorksheet(), kind: 'bank' as const, id: 'kp-bank-a', questions: [pictureQuestion('DSE2016/P1/Q34')] };
+    const doc = { ...createWorksheet(), kind: 'bank' as const, id: 'pp-bank-a', questions: [pictureQuestion('DSE2016/P1/Q34')] };
     doc.flow = [{ type: 'question', id: doc.questions[0].id }];
     const topic = parseTopic(doc, TOPICS[0])!;
     expect((topic.items[0].question as McqQuestion).optionLayout).toBe('columns2');
