@@ -1,4 +1,4 @@
-# Past paper bank 歷屆試題庫 (k-0443, k-0444)
+# Past paper bank 歷屆試題庫 (k-0443, k-0444, k-0447)
 
 Status: step B (k-0443) and step C (k-0444) built, 2026-11-16, on `develop` (not released). Plan: k-0441 `PLAN.md` § 15
 (the past-paper bank's own session), approved by the user with the data in a separate public repo,
@@ -48,7 +48,8 @@ topic). Read on demand: the list when the bank is opened, a topic when it is ope
 
 - Kept in IndexedDB `econ-pastpaper-bank` (web and desktop), not in the ~5 MB of document
   storage and not in backups. A topic is read from there while its `sha256` matches the
-  list's; the list is always asked for fresh, and the kept copy is used offline.
+  list's; the list is checked at every opening (through `latest.json` since k-0447, below),
+  and the kept copy is used offline.
 - Off for everyone at their next opening: `"enabled": false` in `manifest.json` (it also
   drops every kept topic of that source). Gone from a build: `BUILT_IN_SOURCE = ''`.
   Per computer: Settings → Past paper bank → Built-in / Off / Another address (https; http
@@ -59,6 +60,117 @@ topic). Read on demand: the list when the bank is opened, a topic when it is ope
   `https://raw.githubusercontent.com/dinomartino/dse-econ-question-bank/main/` (`BUILT_IN_SOURCE`).
   Its manifest names no format; question ids start `pp-`, root ids `pp:`. This repo is public
   too: the exporter's private names never appear here (u-qbmp).
+
+## Hosting and caching (k-0447)
+
+The user's question (u-1vja): GitHub limits with many teachers. Plan and measurements:
+`Outbox/k-0447-bank-caching/PLAN.md`; accepted as recommended (u-mzws): topic files from
+jsDelivr pinned to a commit, a tiny `latest.json` on GitHub, topics kept by fingerprint,
+GitHub at the commit as the fallback, offline for opened topics; one extra commit per publish
+and jsDelivr seeing teachers' IP addresses are accepted.
+
+**How the editor reads a GitHub repo** (`BUILT_IN_SOURCE`, or any other address of the form
+`https://raw.githubusercontent.com/<owner>/<repo>/<branch>/`; `config.ts:gitHubSource`):
+
+1. `latest.json` from GitHub raw on the branch, revalidated at every opening (usually
+   "304 unchanged": the only request that reaches GitHub).
+2. It names the commit whose list is kept → nothing else is downloaded.
+3. A new commit → its `manifest.json` once from `https://cdn.jsdelivr.net/gh/<repo>@<commit>/`,
+   else `https://raw.githubusercontent.com/<repo>/<commit>/` (`config.ts:pinnedSource`). Topics
+   come from the same two, in that order, when opened. A file at a commit never changes, so
+   jsDelivr and the browser keep it for a year (`immutable`, measured).
+4. Topics are kept under the bank's own address and the file's name (`<branch base>|topics/x.json`),
+   never the commit's or the mirror's, and checked by `sha256`: a publish re-downloads only the
+   topics whose fingerprint changed. The copies kept before k-0447 stay valid.
+5. GitHub can't be reached (no connection, or it throttles the school's address: 429) → the
+   kept list, with the topics at its commit; with nothing kept, jsDelivr's copy of
+   `latest.json` (`…@<branch>/latest.json`, up to 12 h old), never preferred over a kept list.
+6. **No `latest.json` (404), or one this build can't read** → the branch, exactly as before
+   k-0447 (`<base>manifest.json` fresh, topics from the branch). This is today's published repo:
+   the editor keeps working with it until the publish step below lands (proof: step 0 of
+   `scripts/pastpaper-cache-verify.mjs`). It costs one 404 per opening until then.
+7. The web build asks the browser once to keep the store (`navigator.storage.persist()`,
+   `bank.ts:keepDownloads`; Firefox may ask the teacher). Safari can still clear it after 7
+   days unused; the desktop app is not affected.
+
+Another address that is not a GitHub repo root (a local export, `/pastpaper-bank/`) is read
+as before: `manifest.json` fresh, files beside it; it never asks for `latest.json`.
+
+Settings → Past paper bank → Built-in says: "Downloaded from jsDelivr, a public service that
+mirrors dinomartino/dse-econ-question-bank on GitHub, and from GitHub itself. Like any
+website, both see your computer's IP address."
+
+Measured in Chrome against the live bank (`scripts/pastpaper-cache-verify.mjs`, live commit
+`96d99386`, `latest.json` served by the script, the publish simulated): first visit = `latest.json`
++ the list and opened topics from jsDelivr at the commit; second visit = `latest.json` only; a
+publish changing one topic = `latest.json` + the new list + that topic; jsDelivr down = the same
+files from GitHub raw at the commit; no connection = opened topics show, others say they can't
+be downloaded; no `latest.json` = the branch.
+
+### `latest.json`: what the export side must do (kp-bank; not built in this repo)
+
+**The file.** At the root of the public repo, on `main`, beside `manifest.json`. UTF-8, no BOM,
+one line and a newline:
+
+```json
+{"version":1,"commit":"<40 lower-case hex>","enabled":true,"published":"2026-11-20T09:15:00Z"}
+```
+
+- `version`: `1`. A different version is ignored by this build (it reads the branch), so a
+  change of meaning bumps it; a new optional key does not.
+- `commit`: the **full** id of the commit that holds the `manifest.json` and `topics/` being
+  published (the *data commit*). Never a short id, a branch or a tag.
+- `enabled`: `true`. `false` is the off switch: `{"version":1,"enabled":false}` (no commit
+  needed) turns the bank off at every teacher's next opening and drops what their computer
+  kept. A takedown also sets `"enabled": false` in `manifest.json` on `main`, for the branch
+  fallback.
+- `published`: when, ISO 8601 UTC. Informational; the editor does not compare it.
+- Nothing else in it (the editor ignores unknown keys; keep it tiny).
+
+**The exporter (`question_bank.py`)** must:
+
+1. Keep writing `manifest.json` and `topics/<id>.json` exactly as now, with a `sha256` (hex of
+   the file's exact UTF-8 bytes) and `bytes` on **every** topic row: the fingerprint is what
+   lets a publish re-download only changed topics (a row without one re-downloads at every
+   publish). Deterministic output stays required (same bank → same bytes).
+2. Never put `latest.json` in the export folder: the export cannot know the data commit.
+3. Offer the writer, so the Mac step does not hand-type JSON: e.g. `question_bank.py
+   latest-json --commit <sha> --out <public clone>/latest.json` (and `--disabled` for the
+   off switch), which refuses anything but 40 lower-case hex, writes the bytes above, and
+   checks in the public clone that `git cat-file -e <sha>:manifest.json` succeeds and that
+   every topic row of that manifest has a `sha256`. The exact command name is kp-bank's call;
+   the bytes and checks are not.
+4. Keep every topic file under 20 MB (jsDelivr's per-file limit; the largest today is 6.2 MB).
+   A larger file still works through the GitHub fallback, but loses the mirror.
+
+**The Mac publish step** (`Outbox/k-0441-question-bank/LOCAL-SYNC-PROMPT.md`, steps 10–11)
+must become:
+
+1. Step 10 as now: copy `manifest.json` and `topics/` into the clean clone, check the diff,
+   commit them (the data commit; same neutral author, same message rules). `latest.json`
+   must **not** be in this commit.
+2. Then, still in step 10: `DATA=$(git rev-parse HEAD)`; write `latest.json` naming `$DATA`
+   (the exporter's writer); `git add latest.json`; `git commit -m "Publish: latest.json
+   names <first 8 of $DATA>"`. Proof: `git show --stat HEAD` lists `latest.json` only, and
+   `git show HEAD~1 --stat` is the data commit. The proof line in step 10 that "only
+   `manifest.json` and `topics/` change" applies to the data commit; the second commit
+   changes `latest.json` only.
+3. Step 11: show both commits (`git log -2 --stat --format='%h %an <%ae> %s'`) and wait for
+   the OK; then **one** `git push origin main` sends both (no force, no tags, as now). If the
+   push is rejected: stop; never rebase or amend (that would orphan the commit `latest.json`
+   names).
+4. After the push, three checks (GitHub's cache can lag up to 5 min; try again once):
+   ```
+   curl -sL https://raw.githubusercontent.com/dinomartino/dse-econ-question-bank/main/latest.json   # names $DATA
+   curl -sL https://cdn.jsdelivr.net/gh/dinomartino/dse-econ-question-bank@$DATA/manifest.json | shasum -a 256
+   shasum -a 256 "$PUBLIC/manifest.json"                                                              # the same hash
+   ```
+   No jsDelivr purge is needed: an address with a commit id is new by construction.
+5. A takedown: write `latest.json` with `--disabled`, set `"enabled": false` in
+   `manifest.json`, commit both together, OK, push.
+
+The first `latest.json` can come with k-0448's syllabus republish: data commit (manifest gains
+`syllabus`), then the `latest.json` commit naming it.
 
 ## Copies
 

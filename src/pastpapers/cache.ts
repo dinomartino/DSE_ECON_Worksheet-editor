@@ -5,14 +5,22 @@
  * in a backup. On desktop the webview keeps IndexedDB on disk, so an opened topic works
  * offline after the first download.
  *
- * One store, `files`: `{ key: "<base>|<file>", text, sha256?, savedAt }`. Keys carry the
+ * One store, `files`: `{ key: "<base>|<file>", text, sha256?, rev?, savedAt }`. Keys carry the
  * source address, so pointing Settings at another source never mixes two banks. Inert
  * (every read a miss, every write dropped) where IndexedDB cannot open.
+ *
+ * A topic is kept by its name and checked by its fingerprint (k-0447): the key is the bank's
+ * own address (`<base>`, the branch, e.g. the built-in raw `…/main/`) and the file's path,
+ * never the commit or mirror it was downloaded from, so a publish re-downloads only the topics
+ * whose `sha256` changed, and the copies kept before k-0447 stay valid. `rev` is the published
+ * commit a file came from: the kept list's, and a topic's when the list names no fingerprint.
  */
 
 export interface CachedFile {
   text: string;
   sha256?: string;
+  /** The published commit the file was read at (`latest.json`); absent when read from a branch. */
+  rev?: string;
   savedAt: string;
 }
 
@@ -84,7 +92,13 @@ export function createIdbCache(factory: IDBFactory | undefined = globalThis.inde
     get: (key) =>
       run('readonly', async (store) => {
         const record = await done(store.get(key));
-        return isFile(record) ? { text: record.text, ...(record.sha256 ? { sha256: record.sha256 } : {}), savedAt: record.savedAt } : undefined;
+        if (!isFile(record)) return undefined;
+        return {
+          text: record.text,
+          ...(record.sha256 ? { sha256: record.sha256 } : {}),
+          ...(typeof record.rev === 'string' ? { rev: record.rev } : {}),
+          savedAt: record.savedAt,
+        };
       }, undefined),
     put: (key, file) => run('readwrite', async (store) => void (await done(store.put({ key, ...file }))), undefined),
     prune: (base, keep) =>

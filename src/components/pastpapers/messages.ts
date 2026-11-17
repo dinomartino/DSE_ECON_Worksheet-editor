@@ -170,6 +170,11 @@ export const PAST_PAPER_SETTINGS_MESSAGES = defineMessages({
   source: { en: 'Source', zh: '來源' },
   builtIn: { en: 'Built-in', zh: '內置' },
   builtInNote: { en: (host: string) => `Read from ${host}.`, zh: (host: string) => `從 ${host} 讀取。` },
+  builtInGitHubNote: {
+    en: (repo: string) =>
+      `Downloaded from jsDelivr, a public service that mirrors ${repo} on GitHub, and from GitHub itself. Like any website, both see your computer's IP address.`,
+    zh: (repo: string) => `從 jsDelivr（轉載 GitHub 上 ${repo} 的公共服務）及 GitHub 本身下載。與任何網站一樣，兩者都會看到你電腦的 IP 地址。`,
+  },
   off: { en: 'Off', zh: '關閉' },
   offNote: {
     en: 'Hides the past paper bank on this computer. Questions you already took stay in your worksheets.',

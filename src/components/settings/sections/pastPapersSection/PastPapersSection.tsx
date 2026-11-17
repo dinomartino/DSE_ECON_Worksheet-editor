@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useMessages } from '@/i18n/language';
 import { PAST_PAPER_SETTINGS_MESSAGES } from '@/components/pastpapers/messages';
-import { BUILT_IN_SOURCE, PAST_PAPER_SETTINGS, sourceAddress, type PastPaperMode } from '@/pastpapers/config';
+import { BUILT_IN_SOURCE, gitHubSource, PAST_PAPER_SETTINGS, sourceAddress, type PastPaperMode } from '@/pastpapers/config';
 import { pastPaperCache } from '@/pastpapers/bank';
 import { useSettings } from '@/settings/store';
 
@@ -37,9 +37,11 @@ export default function PastPapersSection() {
       return BUILT_IN_SOURCE;
     }
   })();
+  // The built-in bank is read through jsDelivr and GitHub (k-0447): the note names both.
+  const builtInRepo = gitHubSource(BUILT_IN_SOURCE)?.repo;
   const valid = draft.trim() === '' || sourceAddress(draft) !== undefined;
   const choices: { id: PastPaperMode; label: string; note: string }[] = [
-    { id: 'builtIn', label: m.builtIn, note: m.builtInNote(host) },
+    { id: 'builtIn', label: m.builtIn, note: builtInRepo ? m.builtInGitHubNote(builtInRepo) : m.builtInNote(host) },
     { id: 'off', label: m.off, note: m.offNote },
     { id: 'custom', label: m.custom, note: m.customNote },
   ];
