@@ -169,6 +169,14 @@ must become:
 5. A takedown: write `latest.json` with `--disabled`, set `"enabled": false` in
    `manifest.json`, commit both together, OK, push.
 
+**Live since 2026-11-17 (u-k7hq):** data repo `main` 8272b9c, `latest.json` naming
+`ce84ba12` (the syllabus manifest). `node scripts/pastpaper-cache-verify.mjs <out> --live`
+passed 17/17 against it, nothing supplied: first visit (GitHub `latest.json`, then the list and
+topics from jsDelivr at `ce84ba1`), second visit (`latest.json` only), GitHub down with a kept
+list (no jsDelivr `latest.json`; a new topic from jsDelivr), GitHub down with nothing kept
+(jsDelivr's `latest.json`), jsDelivr down (GitHub raw at the commit), no connection, A–J parts;
+`scripts/pastpaper-topics-verify.mjs` all passed with no `--codes`.
+
 The first `latest.json` can come with k-0448's syllabus republish: data commit (manifest gains
 `syllabus`), then the `latest.json` commit naming it.
 

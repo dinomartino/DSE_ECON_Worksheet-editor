@@ -11,7 +11,11 @@ import { join } from 'node:path';
  * the exporter publishes one, and the "publish" in step 3 is simulated (a fake commit whose
  * files are the real ones with one topic changed).
  *
- *   node scripts/pastpaper-cache-verify.mjs <out-dir> [--port=3000]
+ *   node scripts/pastpaper-cache-verify.mjs <out-dir> [--port=3000] [--live]
+ *
+ * --live (once the bank publishes latest.json, u-k7hq): nothing supplied; the published
+ * latest.json and its commit, steps 1, 2, GitHub down (with and without a kept list), jsDelivr
+ * down, no connection, and the A–J grouping.
  *
  * 0. Today's published repo (no latest.json): read from the branch, as before.
  * 1. First visit: latest.json from GitHub; the list and topics from jsDelivr at its commit.
@@ -38,13 +42,17 @@ const check = (ok, what, detail = '') => {
 };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-const head = (await (await fetch(`https://api.github.com/repos/${REPO}/commits/main`)).json()).sha;
+const live = args.includes('--live');
+// --live: the published latest.json names the commit; otherwise main's head, with latest.json supplied below.
+const head = live
+  ? (await (await fetch(LATEST, { cache: 'no-store' })).json()).commit
+  : (await (await fetch(`https://api.github.com/repos/${REPO}/commits/main`)).json()).sha;
 const A = /^[0-9a-f]{40}$/.test(head ?? '') ? head : process.exit(console.log('no commit id for main') || 2);
 const B = 'b'.repeat(40); // the simulated publish
 const manifestA = await (await fetch(`${CDN(A)}manifest.json`)).text();
 const listA = JSON.parse(manifestA);
 const bySize = [...listA.topics].sort((x, y) => x.bytes - y.bytes);
-const [X, Y, Z] = bySize; // three small topics: X unchanged, Y changed by the publish, Z never opened before offline
+const [X, Y, Z, W] = bySize; // small topics: X unchanged, Y changed by the publish, Z never opened before offline (W: --live)
 // The screen opens the first listed topic by itself on a computer's first visit.
 const F = listA.topics[0];
 console.log(`live commit ${A.slice(0, 8)}; first topic ${F.id}; topics ${X.id}, ${Y.id}, ${Z.id}`);
@@ -69,6 +77,7 @@ async function visit(context, label, { topics, latest, before } = {}) {
   await page.goto(`http://localhost:${port}`);
   await page.getByRole('button', { name: /Past paper bank 歷屆試題庫/ }).first().click();
   await page.locator('[data-pastpaper-screen] nav li').first().waitFor({ timeout: 60_000 });
+  const parts = await page.locator('[data-pastpaper-screen] nav [data-pastpaper-part]').evaluateAll((els) => els.map((el) => el.getAttribute('data-pastpaper-part')));
   const all = page.locator('[data-pastpaper-screen] nav').getByRole('button', { name: /^Open all$/ });
   if (await all.count()) await all.first().click();
   const shown = {};
@@ -87,7 +96,7 @@ async function visit(context, label, { topics, latest, before } = {}) {
   await page.screenshot({ path: join(OUT, `${label}.png`) });
   const text = (await page.locator('[data-pastpaper-screen]').textContent()) ?? '';
   await page.close();
-  return { asked, shown, text };
+  return { asked, shown, text, parts };
 }
 
 const browser = await chromium.launch({ channel: 'chrome' });
@@ -95,6 +104,65 @@ const fresh = () => {
   const dir = mkdtempSync(join(tmpdir(), 'pp-cache-'));
   return { dir, ctx: chromium.launchPersistentContext(dir, { channel: 'chrome', viewport: { width: 1512, height: 950 } }) };
 };
+
+if (live) {
+  const ghDown = async (page) => {
+    await page.route(/^https:\/\/raw\.githubusercontent\.com\//, (route) => route.abort('connectionrefused'));
+  };
+  const cdnDown = async (page) => {
+    await page.route(/^https:\/\/cdn\.jsdelivr\.net\//, (route) => route.abort('connectionrefused'));
+  };
+  const CDN_LATEST = `https://cdn.jsdelivr.net/gh/${REPO}@main/latest.json`;
+
+  const one = fresh();
+  const ctx = await one.ctx;
+  const v1 = await visit(ctx, 'live-1-first-visit', { topics: [X, Y] });
+  check(v1.shown[X.id] && v1.shown[Y.id], `1. first visit: ${X.id} and ${Y.id} show all their questions`);
+  check(same(v1.asked, [LATEST, `${CDN(A)}manifest.json`, `${CDN(A)}${F.file}`, `${CDN(A)}${X.file}`, `${CDN(A)}${Y.file}`]), `1. latest.json from GitHub; the list and topics from jsDelivr at ${A.slice(0, 7)}`, v1.asked.join(' '));
+  check(v1.parts.join('') === 'ABCDEFGHIJ', '1. topics grouped under parts A to J', v1.parts.join(' '));
+
+  const v2 = await visit(ctx, 'live-2-second-visit', { topics: [X, Y] });
+  check(v2.shown[X.id] && v2.shown[Y.id], '2. second visit: both topics show');
+  check(same(v2.asked, [LATEST]), '2. second visit asks for latest.json only', v2.asked.join(' '));
+  check(v2.parts.join('') === 'ABCDEFGHIJ', '2. still grouped A to J (from the kept list)', v2.parts.join(' '));
+
+  const v3 = await visit(ctx, 'live-3-github-down-kept', { topics: [X, Y, Z], before: ghDown });
+  check(v3.shown[X.id] && v3.shown[Y.id], '3. GitHub down, list kept: the opened topics show');
+  check(v3.shown[Z.id], `3. GitHub down, list kept: ${Z.id}, never opened, downloads from jsDelivr`);
+  check(same(v3.asked, [LATEST, `${CDN(A)}${Z.file}`]), '3. GitHub down, list kept: no jsDelivr latest.json, only the new topic', v3.asked.join(' '));
+
+  const v5 = await visit(ctx, 'live-5-offline', { topics: [X, Y, Z, W], before: async (page) => { await ghDown(page); await cdnDown(page); } });
+  check(v5.shown[X.id] && v5.shown[Y.id] && v5.shown[Z.id], '5. no connection: every topic opened before shows');
+  check(!v5.shown[W.id], `5. no connection: ${W.id}, never opened, says it can't be downloaded`);
+  await ctx.close();
+  rmSync(one.dir, { recursive: true, force: true });
+
+  const two = fresh();
+  const ctx2 = await two.ctx;
+  const g = await visit(ctx2, 'live-4a-github-down-fresh', { topics: [X], before: ghDown });
+  check(g.shown[X.id], `4a. GitHub down, nothing kept: ${X.id} shows`);
+  check(same(g.asked, [LATEST, CDN_LATEST, `${CDN(A)}manifest.json`, `${CDN(A)}${F.file}`, `${CDN(A)}${X.file}`]), "4a. GitHub down, nothing kept: jsDelivr's latest.json, then the commit from jsDelivr", g.asked.join(' '));
+  check(g.parts.join('') === 'ABCDEFGHIJ', '4a. grouped A to J', g.parts.join(' '));
+  await ctx2.close();
+  rmSync(two.dir, { recursive: true, force: true });
+
+  const three = fresh();
+  const ctx3 = await three.ctx;
+  const j = await visit(ctx3, 'live-4b-jsdelivr-down', { topics: [X], before: cdnDown });
+  check(j.shown[X.id], `4b. jsDelivr down: ${X.id} shows`);
+  check(
+    same(j.asked, [LATEST, `${CDN(A)}manifest.json`, `${RAW(A)}manifest.json`, `${CDN(A)}${F.file}`, `${RAW(A)}${F.file}`, `${CDN(A)}${X.file}`, `${RAW(A)}${X.file}`]),
+    '4b. jsDelivr down: each file from GitHub raw at the same commit',
+    j.asked.join(' '),
+  );
+  check(j.parts.join('') === 'ABCDEFGHIJ', '4b. grouped A to J', j.parts.join(' '));
+  await ctx3.close();
+  rmSync(three.dir, { recursive: true, force: true });
+
+  await browser.close();
+  console.log(failures ? `${failures} FAILED` : 'all passed');
+  process.exit(failures ? 1 : 0);
+}
 
 // 0. Today's repo, no latest.json: the branch, exactly as before k-0447.
 {
