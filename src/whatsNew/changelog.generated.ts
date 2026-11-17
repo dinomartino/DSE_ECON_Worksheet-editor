@@ -14,6 +14,76 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.9.0 — 2026-11-17
+
+### Added
+- **Past paper bank 歷屆試題庫.** A second, separate question bank on the start screen, beside
+  your own Question bank: HKCEE, HKALE and HKDSE multiple-choice questions with their official
+  answers, by topic, in English and 中文. Browse a topic, search by words or a source ("DSE2016"),
+  filter by exam and years, tick questions, then add them to a new worksheet, a new Paper 1, one of
+  your papers, or copy them into your own Question bank. In the editor, the 題庫 tab has a switch at
+  its top: My bank or Past papers, with Insert on each question. A shared passage goes in with its
+  questions and is renumbered by your paper. It is read-only and downloaded only when you open it
+  (kept on this computer, never counted as your documents); Settings → Past paper bank turns it off.
+  <!-- zh: **歷屆試題庫。** 開始畫面新增一個獨立題庫，與你自己的題庫分開：HKCEE、HKALE 及 HKDSE 的 MC 題目連官方答案，按課題排列，中英對照。可瀏覽課題、按字詞或出處（例如「DSE2016」）搜尋、按考試及年份篩選，剔選題目後加到新工作紙、新 Paper 1、你的試卷，或複製到你自己的題庫。在編輯器中，「題庫」分頁頂部可切換「我的題庫」或「歷屆試題」，每題都有「插入」。共用資料會與其題目一併加入，並按你的試卷重新編號。此題庫為唯讀，只在你開啟時下載（保存在此電腦上，不計作你的文件）；可在「設定 → 歷屆試題庫」關閉。 -->
+- **Past paper bank: search every topic, pick one paper, and diagram options two by two.** Search
+  “Every topic” now answers at once without downloading the bank: each question's topic downloads
+  only when you scroll to it. The new Paper filter shows one past paper (“HKDSE 2016 Paper 1”) from
+  every topic, in question order. Questions whose four options are diagrams print as on the paper,
+  A and B side by side, then C and D, each letter right above its diagram, the whole question on one
+  page, in the editor, the PDF and Word, with the Chinese diagrams in 中文. Copy to my question bank
+  now keeps a shared passage with its questions, and inserting such a question from your 題庫 brings
+  its passage along. A table can now have no lines at all (No lines), to set out four numbered
+  diagrams two by two.
+  <!-- zh: **歷屆試題庫：搜尋所有課題、選取單一試卷，以及兩行兩列的圖表選項。** 「所有課題」搜尋現在即時顯示結果，不必下載整個題庫：捲動到某題時才下載它所屬的課題。新的「試卷」篩選可顯示單一份試卷（例如「HKDSE 2016 Paper 1」）在所有課題中的題目，按題號排列。四個選項都是圖表的題目會照原卷排列：A 與 B 並排，C 與 D 在下，每個字母都在其圖表正上方，整題保持在同一頁，編輯器、PDF 及 Word 皆然，中文版用中文圖表。「複製到我的題庫」現在會連同共用資料一併複製，從你的題庫插入這類題目時，資料亦會一同加入。表格現在可設為「無框線」，用來兩行兩列排列四幅編號圖表。 -->
+- **Past paper bank: names follow the question language.** Topic names, paper names and question
+  sources in the Past paper bank now follow the EN / 中文 switch for the questions, not the app's
+  language, as topic names do everywhere else: with the app in 中文 and English questions, the
+  topics read “Scarcity” and the sources “HKDSE 2016 Paper 1 Q34”, while the buttons stay in 中文.
+  In the editor's 題庫 tab they follow your paper's language.
+  <!-- zh: **歷屆試題庫：名稱跟隨題目語言。** 歷屆試題庫中的課題名稱、試卷名稱及題目出處，現在跟隨題目的 EN／中文 切換，而不是介面語言，與編輯器其他地方的課題名稱一致：介面用中文而題目用英文時，課題顯示為「Scarcity」，出處為「HKDSE 2016 Paper 1 Q34」，按鈕則仍是中文。在編輯器的「題庫」分頁中，名稱跟隨你試卷的語言。 -->
+- **Past paper bank: topics grouped by syllabus part.** The topics are no longer one long list:
+  they sit under the syllabus parts A to J (“C · Market and Price”), each part folding open or
+  closed, with how many questions each part and each topic holds. The part of the topic you are
+  in opens by itself, “Find a topic” searches every part at once (Enter opens the first match),
+  and part names follow the EN / 中文 switch for the questions. On a phone the topics fold into
+  one bar above the questions; tap it to choose another topic. In the editor's 題庫 tab the topic
+  menu is grouped the same way.
+  <!-- zh: **歷屆試題庫：課題按課程部分分組。** 課題不再是一長串清單，而是按課程的 A 至 J 部分排列（例如「C · 市場與價格」），每部分可展開或收起，並顯示每部分及每個課題的題目數量。你所在課題的部分會自動展開；「搜尋課題」會同時搜尋所有部分（按 Enter 開啟第一個結果）；部分名稱跟隨題目的 EN／中文 切換。在手機上，課題會收合成題目上方的一列，輕按即可選擇其他課題。編輯器「題庫」分頁的課題選單亦以同樣方式分組。 -->
+- **A warning before the browser's storage fills up.** In the web version, all your documents share
+  about 5 MB of the browser's storage, and pictures take the most room. The toolbar now says “Storage
+  nearly full” once it is 80% used, and the Past paper bank tells you how full your picks would make
+  it, refusing ones that would not fit. The desktop app has no such limit.
+  <!-- zh: **瀏覽器儲存空間將滿前會提示。** 網頁版中，你所有文件共用瀏覽器約 5 MB 的儲存空間，圖片最佔空間。用量達 80% 時，工具列會顯示「儲存空間將滿」；歷屆試題庫亦會告訴你所選題目會令空間用到多少，放不下時不會加入。桌面版沒有此限制。 -->
+- **A Chinese version of a picture.** Select a picture and use + Chinese picture to give it a
+  second image (the same diagram with Chinese labels). Chinese output (preview, Word, copy)
+  prints that one; English and bilingual output keep the original. Replace or remove it any time.
+  <!-- zh: **圖片可另加中文版。** 圖片可另加「中文圖片」（同一幅圖、標籤改用中文）。選取圖片後按「+ 中文圖片」即可；輸出中文版（預覽、Word、複製）時會使用這張，英文及雙語版則維持原圖。可隨時更換或移除。 -->
+
+### Changed
+- **Past paper bank: fewer downloads, from a public mirror.** Topics now come from jsDelivr, a
+  free public service that mirrors the bank on GitHub (GitHub itself is the backup), so a school
+  where many teachers share one connection is not slowed or refused. Opening the bank again checks
+  one tiny file; after the bank is updated, only the topics that changed download again, and every
+  topic you opened before still works without a connection. Settings → Past paper bank says where
+  the files come from.
+  <!-- zh: **歷屆試題庫：下載更少，並經公共鏡像下載。** 課題現經 jsDelivr 下載（一個轉載 GitHub 上題庫的免費公共服務，GitHub 本身作後備），即使學校多位老師共用同一網絡，也不會被拖慢或拒絕。再次開啟題庫時只會檢查一個極小的檔案；題庫更新後，只會重新下載有改動的課題，而你以前開過的課題在沒有網絡時仍可使用。「設定 → 歷屆試題庫」會說明檔案從何處下載。 -->
+
+### Fixed
+- **Past paper tables sized to their words.** A table from the Past paper bank no longer spans the
+  whole page: each column is as wide as its words, the table only as wide as its columns and
+  centred under the question, with figures and short headings centred, as on the exam paper. A
+  wide table still uses the full width. It carries over into your paper, your Question bank and
+  Word, and a table you resize keeps your width. A table you already have can do the same with the
+  table bar's new **Fit to content**; **Full width** stretches it back. The Past paper bank also
+  fits a phone-width window now.
+  <!-- zh: **歷屆試題的表格按內容調整闊度。** 歷屆試題庫的表格不再橫跨整頁：每欄按文字調整闊度，表格只用所需闊度並置於題目下方中間，數字及簡短標題置中，與試卷一樣；較闊的表格仍可用全寬。加入你的試卷、題庫及 Word 後亦保持一樣；你自行調整過的闊度會保留。已有的表格可用表格工具列新增的「配合內容」得到同樣效果，「全寬」則可還原。歷屆試題庫在手機闊度的視窗亦可正常使用。 -->
+- **Question previews line up as on the paper.** In the Past paper bank, your Question bank's
+  preview and Copy for Word, a long question's wrapped lines now start under its first word, not
+  under its number, as in the editor and in Word; (1) (2) (3) statements and the A–D options hang
+  the same way, and the line after a table is no longer pressed against it.
+  <!-- zh: **題目預覽的排版與試卷一致。** 在歷屆試題庫、你的題庫預覽及「複製到 Word」中，較長題目換行後的文字現在會對齊第一個字，而不是退回到題號下方，與編輯器及 Word 一致；(1) (2) (3) 敘述及 A 至 D 選項亦同樣對齊，表格後的一行亦不再緊貼表格。 -->
+
 ## 0.8.7 — 2026-11-01
 
 ### Added
