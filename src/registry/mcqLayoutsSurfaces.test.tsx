@@ -112,8 +112,8 @@ describe('what each layout looks like', () => {
 
     const clipboard = questionClipboardHtml(worksheet, paper.short.id, EN)!;
     expect(htmlRows(clipboard)).toEqual([]);
-    expect(clipboard).toContain('A.&nbsp;(1) only');
-    expect(clipboard).toContain('D.&nbsp;(1), (2) and (3)');
+    expect(clipboard).toContain("A.<span style='mso-tab-count:1'>&#9;</span></span>(1) only");
+    expect(clipboard).toContain("D.<span style='mso-tab-count:1'>&#9;</span></span>(1), (2) and (3)");
   });
 
   it('in a row: all four on one line, three stops across the width', async () => {

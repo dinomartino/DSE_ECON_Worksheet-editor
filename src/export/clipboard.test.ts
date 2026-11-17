@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { OutputMode } from '@/model/types';
+import { documentShape } from '@/model/documentShape';
+import { listIndentScheme, PAPER1_LIST_INDENTS } from '@/model/numbering';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
+import { createWorksheetFrom } from '@/model/newWorksheet';
 import { questionClipboardHtml, worksheetClipboardHtml, worksheetPlainText } from './clipboard';
 
 const STUDENT_BI: OutputMode = { language: 'bilingual', version: 'student' };
@@ -29,10 +32,32 @@ describe('Copy for Word (§7.7, §11.12)', () => {
 
   it('writes numbering as literal text, which clipboard HTML cannot express natively', () => {
     const html = worksheetClipboardHtml(buildAcceptanceWorksheet(), STUDENT_BI);
-    expect(html).toContain('1.&nbsp;');
-    expect(html).toContain('A.&nbsp;');
-    expect(html).toContain('(1)&nbsp;');
-    expect(html).toContain('(a)&nbsp;');
+    // Each marker in its gutter box, then Word's tab to the hanging indent (§ textNodeHtml).
+    for (const marker of ['1.', 'A.', '(1)', '(a)']) expect(html).toContain(`>${marker}<span style='mso-tab-count:1'>&#9;</span></span>`);
+  });
+
+  it('leaves the blank line the .docx writes after every table (u-7gdr)', () => {
+    const html = worksheetClipboardHtml(buildAcceptanceWorksheet(), STUDENT_BI);
+    expect(html).toContain('</table><p style="height:12pt;margin:0">&nbsp;</p>');
+    // Never the next line flush on a table: after `</table>` comes the blank or a caption.
+    for (const after of html.split('</table>').slice(1)) expect(after).toMatch(/^<p style="(height:12pt;margin:0|[^"]*font-style:italic)/);
+  });
+
+  it('hangs a numbered paragraph as the .docx numbering does: every line at the text column (u-7gdr)', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const html = worksheetClipboardHtml(worksheet, STUDENT_BI);
+    const scheme = listIndentScheme(documentShape(worksheet));
+    const hang = (indent: { left: number; hanging: number }) => `margin-left:${indent.left / 20}pt;text-indent:-${indent.hanging / 20}pt;`;
+    expect(html).toContain(hang(scheme.question[0]));
+    expect(html).toContain(hang(scheme.option));
+    expect(html).toContain(hang(scheme.statement));
+    // The marker's box is the hang's width, so the first line's text starts at `left` too.
+    expect(html).toContain(`min-width:${scheme.question[0].hanging / 20}pt;text-indent:0">1.`);
+    // The exam paper hangs on its own geometry (its "1." in a 24pt gutter).
+    const paper1 = createWorksheetFrom({ documentType: 'paper1', seedSample: false });
+    const one = { ...paper1, questions: worksheet.questions.slice(0, 1), flow: [{ type: 'question' as const, id: worksheet.questions[0].id }] };
+    expect(documentShape(one)).toBe('paper1');
+    expect(worksheetClipboardHtml(one, STUDENT_BI)).toContain(hang(PAPER1_LIST_INDENTS.question[0]));
   });
 
   it('honours the selected language and version mode', () => {

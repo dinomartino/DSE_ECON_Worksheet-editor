@@ -93,6 +93,11 @@ a version heading is edited afterwards.
   <!-- zh: **匯出、檢視和複製整套試卷。** 匯出 → 內容 → 整套試卷會匯出套卷內每份試卷，以及整套試卷的一份評卷參考（先 Paper 1，後 Paper 2，頁碼連續）。以 Word 匯出時，瀏覽器會得到一個 .zip，桌面版則把檔案存入你選擇的資料夾。以 PDF 匯出時，桌面版會把所有 PDF 直接存入同一資料夾；瀏覽器每次只能列印一份文件，所以視窗會逐一列出每份試卷和評卷參考，各有「列印」按鈕。在評卷參考檢視中，可用「這份試卷／整套試卷」在畫面上查看整套評卷參考。開始畫面套卷的 ⋯ 有「複製套卷…」：把所有試卷複製到新套卷供下一年使用，並可把名稱、標題和封面上的年份改為下一年（2026-27 → 2027-28），題目內容不變。評卷參考的「一併包含」清單已收起在「在此檔案加入其他文件的評卷參考…」之下，用來把不屬於套卷的文件的評卷參考放在同一檔案；不會再預先剔選。 -->
 
 ### Fixed
+- **Question previews line up as on the paper.** In the Past paper bank, your Question bank's
+  preview and Copy for Word, a long question's wrapped lines now start under its first word, not
+  under its number, as in the editor and in Word; (1) (2) (3) statements and the A–D options hang
+  the same way, and the line after a table is no longer pressed against it.
+  <!-- zh: **題目預覽的排版與試卷一致。** 在歷屆試題庫、你的題庫預覽及「複製到 Word」中，較長題目換行後的文字現在會對齊第一個字，而不是退回到題號下方，與編輯器及 Word 一致；(1) (2) (3) 敘述及 A 至 D 選項亦同樣對齊，表格後的一行亦不再緊貼表格。 -->
 - **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer
   says SCHOOL NAME after Paper 1 said your school.
   <!-- zh: **新試卷會沿用上次輸入的學校名稱**，Paper 2 的封面不會在 Paper 1 已填好學校後仍顯示 SCHOOL NAME。 -->

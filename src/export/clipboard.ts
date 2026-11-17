@@ -11,11 +11,14 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { cleanTabStops } from '@/model/tabStops';
+import { documentShape } from '@/model/documentShape';
+import { DEFAULT_LIST_INDENTS, listIndentScheme, type ListIndentScheme } from '@/model/numbering';
 import {
   bandCellHasPageNumber,
   bandCellPieces,
   bandCellSides,
   bandZones,
+  BLANK_LINE_PT,
   trailLabel,
   type ColumnsNode,
   type EditTarget,
@@ -33,6 +36,13 @@ import type { DiagramImageMap } from './diagramImage';
  * definitions, so numbering is written as literal text here — the PRD explicitly
  * accepts that, with the .docx remaining the fidelity gold standard.
  */
+
+/**
+ * The empty paragraph the `.docx` writes after every table, figure row and option grid
+ * (Word requires one) and the preview draws as a 12pt line: without it a paste, the 題庫's and
+ * the Past paper bank's cards set the next line flush on the table (user u-7gdr).
+ */
+const AFTER_TABLE = `<p style="height:${BLANK_LINE_PT}pt;margin:0">&nbsp;</p>`;
 
 /** Where a page break element stood, for the start screen's card to cut its first page at. */
 export const CLIPBOARD_PAGE_BREAK = '<!--page-break-->';
@@ -148,13 +158,37 @@ export function formatCss(format: TextFormat | undefined): string {
   return parts.join('');
 }
 
-function textNodeHtml(node: TextNode, language: LanguageMode, fontCss: string): string {
+/** A numbered paragraph's geometry in the document's scheme, as the `.docx` numbering states it. */
+function listIndentOf(node: TextNode, indents: ListIndentScheme): { left: number; hanging: number } | undefined {
+  const ref = node.listRef;
+  if (!ref) return undefined;
+  if (ref.definition === 'option') return indents.option;
+  if (ref.definition === 'statement') return indents.statement;
+  return indents.question[ref.level] ?? indents.question[0];
+}
+
+function textNodeHtml(node: TextNode, language: LanguageMode, fontCss: string, indents: ListIndentScheme = DEFAULT_LIST_INDENTS): string {
+  /*
+   * A numbered paragraph hangs as the `.docx` and the preview lay it out (§ `listIndentScheme`):
+   * every line of its text, wrapped ones too, at `left`, the marker alone back in the gutter
+   * (user u-7gdr: a long stem's second line fell back under its "3."). Its geometry is the
+   * scheme's, never `node.indent` or the style's margin, as Word's numbering overrides both.
+   * The marker sits in a box the hang's width (it grows, never overprints, if a marker is
+   * wider); Word ignores the box and takes the tab span to the hanging indent instead.
+   */
+  const list = listIndentOf(node, indents);
+  const geometry = list
+    ? `margin-left:${list.left / 20}pt;text-indent:-${list.hanging / 20}pt;`
+    : `${NODE_CSS[node.style] ?? ''}${node.indent ? `margin-left:${node.indent / 20}pt;` : ''}`;
   // Overrides come last so they win over the named style's defaults.
-  const css = `${fontCss}${NODE_CSS[node.style] ?? ''}${
-    node.indent ? `margin-left:${node.indent / 20}pt;` : ''
-  }${node.marksColumn ? `padding-right:${node.marksColumn / 20}pt;` : ''}${formatCss(node.format)}`;
+  const css = `${fontCss}${list ? (NODE_CSS[node.style] ?? '').replace(/margin-left:[^;]*;/g, '') : ''}${geometry}${
+    node.marksColumn ? `padding-right:${node.marksColumn / 20}pt;` : ''
+  }${formatCss(node.format)}`;
   // Numbering becomes literal text, which is the accepted tradeoff for clipboard.
-  const marker = node.listRef ? `${escapeHtml(node.listRef.marker)}&nbsp;` : '';
+  const marker =
+    node.listRef && list
+      ? `<span style="display:inline-block;min-width:${list.hanging / 20}pt;text-indent:0">${escapeHtml(node.listRef.marker)}${TAB_HTML}</span>`
+      : '';
   const body = richHtml(node.text, language);
   const label = textNodeLabel(node, language);
   // In a Marks column the label floats into the paragraph's right padding.
@@ -170,8 +204,10 @@ function nodeHtml(
   diagramImages: DiagramImageMap = new Map(),
   /** The live text column; only a graph answer space reads it (§ `answerGraphBox`). */
   textWidthTwips: number = contentWidth(DEFAULT_PAGE_SETUP),
+  /** The document's list geometry (§ `listIndentScheme`): the exam paper hangs its own. */
+  indents: ListIndentScheme = DEFAULT_LIST_INDENTS,
 ): string {
-  if (node.kind === 'text') return textNodeHtml(node, language, fontCss);
+  if (node.kind === 'text') return textNodeHtml(node, language, fontCss, indents);
 
   if (node.kind === 'answerGraph') {
     // Its PNG from the same pre-pass map, at the size the `.docx` places it; the
@@ -289,7 +325,7 @@ function nodeHtml(
     const table =
       `<table style="border-collapse:collapse;${frame}${box}table-layout:fixed;${fontCss}">` +
       `${colgroup}${head}<tbody>${rows.slice(heading).join('')}</tbody></table>`;
-    return node.captionPlacement === 'above' ? caption + table : table + caption;
+    return (node.captionPlacement === 'above' ? caption + table : table + caption) + AFTER_TABLE;
   }
 
   if (node.kind === 'columns') return columnsHtml(node, language, fontCss, textWidthTwips);
@@ -392,7 +428,8 @@ function nodeHtml(
       : 'width:100%';
     return (
       `<table style="border-collapse:collapse;border:none;${box}">` +
-      `${rows.join('')}</table>`
+      `${rows.join('')}</table>` +
+      AFTER_TABLE
     );
   }
 
@@ -407,7 +444,8 @@ function nodeHtml(
       node.tableSide === 'left' ? cell(table) + cell(figure) : cell(figure) + cell(table);
     return (
       '<table style="border-collapse:collapse;border:none;width:100%">' +
-      `<tr>${cells}</tr></table>`
+      `<tr>${cells}</tr></table>` +
+      AFTER_TABLE
     );
   }
 
@@ -557,7 +595,8 @@ export function worksheetClipboardHtml(
   const css = fontCss(worksheet);
   const parts: string[] = [];
   const textWidth = contentWidth(pageSetupOf(worksheet));
-  const html = (node: RenderNode) => nodeHtml(node, mode.language, css, diagramImages, textWidth);
+  const indents = listIndentScheme(documentShape(worksheet));
+  const html = (node: RenderNode) => nodeHtml(node, mode.language, css, diagramImages, textWidth, indents);
 
   /*
    * The cover is deliberately not copied, by the same rule that keeps page setup and
@@ -635,9 +674,10 @@ export function questionClipboardNodes(
   if (!match) return [];
   const nodes = printedNumber === undefined ? match.nodes : match.nodes.map((node) => withQuestionNumber(node, printedNumber));
   const width = contentWidth(pageSetupOf(worksheet));
+  const indents = listIndentScheme(documentShape(worksheet));
   return nodes.map((node) => {
     const target = nodeTarget(node);
-    const html = nodeHtml(node, mode.language, css, diagramImages, width);
+    const html = nodeHtml(node, mode.language, css, diagramImages, width, indents);
     return target === undefined ? { html } : { html, target };
   });
 }

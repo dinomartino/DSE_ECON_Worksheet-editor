@@ -1025,7 +1025,7 @@ Word doesn't flag direct formatting; deliberately **not** a `NodeStyle`.
 
 Same IR; writes `text/html` + `text/plain` via `ClipboardItem`. One question at a time
 (the Outline ⋯ menu); the whole paper goes to Word as `.docx`. The paste font is the
-document's text size (`baseFontSize ?? 11`). Numbering becomes literal text. Carries **no page setup, headers, or cover** — pasting must not impose
+document's text size (`baseFontSize ?? 11`). Numbering becomes literal text, hung as the `.docx` numbering hangs it (`textNodeHtml`, user u-7gdr): the scheme's `left` as `margin-left`, its `hanging` as a negative `text-indent`, the marker in a box the hang's width for a browser and a `mso-tab-count` span for Word, so the bank's cards and the 題庫 preview (both read this HTML) wrap under the first word, never the number. Every table, figure row and option grid is followed by the 12pt blank paragraph the `.docx` writes (`AFTER_TABLE`). Carries **no page setup, headers, or cover** — pasting must not impose
 this document's furniture; the cover cannot be expressed in clipboard HTML at all (the
 `.docx` is the fidelity path). A test pins the exclusion.
 
