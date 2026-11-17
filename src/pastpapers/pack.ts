@@ -2,7 +2,7 @@ import { rowsOf } from '@/library/indexer';
 import { stimuliServing } from '@/library/stimuli';
 import { migrate } from '@/model/migrations';
 import { plain } from '@/model/text';
-import type { BiText, LayoutElement, McqQuestion, Question, Worksheet } from '@/model/types';
+import type { BiText, LanguageMode, LayoutElement, McqQuestion, Question, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
 
 /**
@@ -157,6 +157,20 @@ export function sourceLabel(source: SourceInfo, withNumber = true): { en: string
   const zh = `${PAPER_ZH[source.exam]} ${whenZh} 卷${ZH_NUMERALS[paper] ?? paper}`;
   if (!withNumber || source.number === undefined) return { en, zh };
   return { en: `${en} Q${source.number}`, zh: `${zh} 第 ${source.number} 題` };
+}
+
+/**
+ * A name from the pack ({en, zh}: a topic, a paper, a source) in the language the questions
+ * are shown in, never the interface's: pack names are paper words, as curriculum names are
+ * (`topicNamesFor`, SYSTEM_ARCHITECTURE § Curriculum names are paper-side). The other side
+ * when this one is empty; `wide` gives both names for a bilingual view, `tight` English.
+ */
+export function packName(name: { en: string; zh: string }, view: LanguageMode, room: 'tight' | 'wide' = 'tight'): string {
+  const en = name.en.trim();
+  const zh = name.zh.trim();
+  if (view === 'zh') return zh || en;
+  if (view === 'bilingual' && room === 'wide' && en && zh && en !== zh) return `${en} ${zh}`;
+  return en || zh;
 }
 
 /** The paper a source tag belongs to: `DSE2016/P1` of `DSE2016/P1/Q34`; '' without a tag. */

@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { escapeClears } from '@/components/bank/escapeClears';
 import { revealQuestion } from '@/components/bank/page/bankReturn';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { copyIntoMyBank, emptyPaperFor, insertIntoOpen } from '@/pastpapers/actions';
 import type { PastPaperItem } from '@/pastpapers/pack';
@@ -14,7 +14,7 @@ import { PAST_PAPER_MESSAGES } from './messages';
 import { BankStateNote, ExamChips, LanguageToggle, PaperSelect, SearchGlyph, YearSelects } from './PastPaperControls';
 import { PastPaperIndexCard } from './PastPaperIndexCard';
 import { megabytes, NEARLY_FULL, webStorageUse } from '@/storage/webQuota';
-import { sourceLabel } from '@/pastpapers/pack';
+import { packName, sourceLabel } from '@/pastpapers/pack';
 import { PastPaperSheet } from './PastPaperSheet';
 import { answerLetter } from './pastPaperPreview';
 import { NO_FILTERS, pickKey, usePastPaperBrowse, type Pick } from './usePastPaperBrowse';
@@ -44,7 +44,6 @@ export function PastPaperScreen({
   onError: (message: string) => void;
 }) {
   const m = useMessages(PAST_PAPER_MESSAGES);
-  const lang = useUiLanguage();
   const browse = usePastPaperBrowse();
   const { bank, topics, topic, topicState, filters, setFilters, entries } = browse;
   const [language, setLanguage] = useState<LanguageMode>(() => (paperLanguage() === 'zh' ? 'zh' : 'en'));
@@ -70,7 +69,7 @@ export function PastPaperScreen({
   const sharedTopicName = () => {
     const ids = new Set(pickedItems.map((item) => item.topicId));
     const only = ids.size === 1 ? topics.find((t) => t.id === [...ids][0]) : undefined;
-    return only ? (language === 'zh' ? only.title.zh : only.title.en) : m.newName;
+    return only ? packName(only.title, language) : m.newName;
   };
 
   const addPicks = async () => {
@@ -123,10 +122,10 @@ export function PastPaperScreen({
   const allLoaded = browse.loadedCount >= topics.length && topics.length > 0;
   const topicName = (id: string) => {
     const entry = topics.find((t) => t.id === id);
-    return entry ? (lang === 'zh-HK' ? entry.title.zh : entry.title.en) : id;
+    return entry ? packName(entry.title, language) : id;
   };
   const paperChoice = filters.paper !== undefined ? browse.papers.find((p) => p.key === filters.paper) : undefined;
-  const paperName = paperChoice ? (lang === 'zh-HK' ? sourceLabel(paperChoice.source, false).zh : sourceLabel(paperChoice.source, false).en) : '';
+  const paperName = paperChoice ? packName(sourceLabel(paperChoice.source, false), language) : '';
 
   // The web build's ~5 MB: what the picks would add, judged before they go in (k-0444).
   const adding = useMemo(
@@ -165,7 +164,7 @@ export function PastPaperScreen({
                     ? m.searchEvery
                     : m.searchOpened
                   : topic
-                    ? m.searchIn(lang === 'zh-HK' ? topic.title.zh : topic.title.en)
+                    ? m.searchIn(packName(topic.title, language))
                     : m.searchLabel
               }
               onChange={(event) => setFilters({ ...filters, words: event.target.value })}
@@ -185,7 +184,7 @@ export function PastPaperScreen({
             <ul>
               {topics.map((entry) => {
                 const active = entry.id === topic?.id && !searchingAll;
-                const name = lang === 'zh-HK' ? entry.title.zh : entry.title.en;
+                const name = packName(entry.title, language);
                 return (
                   <li key={entry.id}>
                     <button
@@ -211,7 +210,7 @@ export function PastPaperScreen({
           <main className="flex min-w-0 flex-1 flex-col">
             <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-6 py-2.5">
               <h2 className="text-[15px] font-semibold text-ink">
-                {paperChoice ? m.paperHeading(paperName) : searchingAll ? m.scopeAll : topic ? (lang === 'zh-HK' ? topic.title.zh : topic.title.en) : ''}
+                {paperChoice ? m.paperHeading(paperName) : searchingAll ? m.scopeAll : topic ? packName(topic.title, language) : ''}
               </h2>
               <span className="text-[12px] tabular-nums text-ink-subtle" role="status">
                 {m.shown(entries.length, browse.poolSize)}
@@ -237,7 +236,7 @@ export function PastPaperScreen({
               )}
               <ExamChips filters={filters} onChange={setFilters} />
               <YearSelects filters={filters} years={browse.years} onChange={setFilters} />
-              <PaperSelect filters={filters} papers={browse.papers} onChange={setFilters} />
+              <PaperSelect filters={filters} papers={browse.papers} language={language} onChange={setFilters} />
               <LanguageToggle value={language} onChange={setLanguage} />
               <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted">
                 <input type="checkbox" checked={answers} onChange={(e) => setAnswers(e.target.checked)} className="accent-[var(--color-accent)]" />
@@ -297,7 +296,7 @@ export function PastPaperScreen({
                   if (!doc) return null;
                   const key = pickKey({ topicId: item.topicId, questionId: item.question.id });
                   const picked = pickedKeys.has(key);
-                  const source = lang === 'zh-HK' ? item.provenance.zh : item.provenance.en;
+                  const source = packName(item.provenance, language);
                   const letter = answerLetter(item);
                   return (
                     <article

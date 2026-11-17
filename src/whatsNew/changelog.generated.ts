@@ -34,6 +34,12 @@ a version heading is edited afterwards.
   its passage along. A table can now have no lines at all (No lines), to set out four numbered
   diagrams two by two.
   <!-- zh: **歷屆試題庫：搜尋所有課題、選取單一試卷，以及兩行兩列的圖表選項。** 「所有課題」搜尋現在即時顯示結果，不必下載整個題庫：捲動到某題時才下載它所屬的課題。新的「試卷」篩選可顯示單一份試卷（例如「HKDSE 2016 Paper 1」）在所有課題中的題目，按題號排列。四個選項都是圖表的題目會照原卷排列：A 與 B 並排，C 與 D 在下，每個字母都在其圖表正上方，整題保持在同一頁，編輯器、PDF 及 Word 皆然，中文版用中文圖表。「複製到我的題庫」現在會連同共用資料一併複製，從你的題庫插入這類題目時，資料亦會一同加入。表格現在可設為「無框線」，用來兩行兩列排列四幅編號圖表。 -->
+- **Past paper bank: names follow the question language.** Topic names, paper names and question
+  sources in the Past paper bank now follow the EN / 中文 switch for the questions, not the app's
+  language, as topic names do everywhere else: with the app in 中文 and English questions, the
+  topics read “Scarcity” and the sources “HKDSE 2016 Paper 1 Q34”, while the buttons stay in 中文.
+  In the editor's 題庫 tab they follow your paper's language.
+  <!-- zh: **歷屆試題庫：名稱跟隨題目語言。** 歷屆試題庫中的課題名稱、試卷名稱及題目出處，現在跟隨題目的 EN／中文 切換，而不是介面語言，與編輯器其他地方的課題名稱一致：介面用中文而題目用英文時，課題顯示為「Scarcity」，出處為「HKDSE 2016 Paper 1 Q34」，按鈕則仍是中文。在編輯器的「題庫」分頁中，名稱跟隨你試卷的語言。 -->
 - **A warning before the browser's storage fills up.** In the web version, all your documents share
   about 5 MB of the browser's storage, and pictures take the most room. The toolbar now says “Storage
   nearly full” once it is 80% used, and the Past paper bank tells you how full your picks would make
