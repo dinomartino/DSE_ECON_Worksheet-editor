@@ -1,4 +1,4 @@
-import { oneOf } from '@/settings/validators';
+import { bool, oneOf } from '@/settings/validators';
 import type { FieldValidator, SettingsSchema } from '@/settings/types';
 
 /**
@@ -69,6 +69,12 @@ export interface PastPaperSettings {
   mode: PastPaperMode;
   /** Used only with `mode: 'custom'`. */
   url: string;
+  /**
+   * "Show source (year + question no.)" where picks go into a paper (user u-w7gs): a paper
+   * that gets its first sourced questions this way prints their sources
+   * (`Worksheet.showQuestionSources`). Remembered on this computer; off by default.
+   */
+  showSources: boolean;
 }
 
 /**
@@ -98,8 +104,8 @@ export const PAST_PAPER_SETTINGS: SettingsSchema<PastPaperSettings> = {
   section: 'pastPapers',
   version: 1,
   storageKey: 'econgen.settings.pastPapers',
-  defaults: () => ({ mode: 'builtIn', url: '' }),
-  fields: { mode: oneOf<PastPaperMode>(['builtIn', 'off', 'custom']), url: sourceAddress },
+  defaults: () => ({ mode: 'builtIn', url: '', showSources: false }),
+  fields: { mode: oneOf<PastPaperMode>(['builtIn', 'off', 'custom']), url: sourceAddress, showSources: bool },
 };
 
 /** The feature exists in this build at all. */
@@ -110,7 +116,7 @@ export const pastPapersBuiltIn = (builtIn: string = BUILT_IN_SOURCE) => builtIn.
  * off: switched off here, no address typed, or no built-in source in this build. A build
  * without a built-in source ignores a stored custom address too: one constant removes it all.
  */
-export function sourceUrl(settings: PastPaperSettings, builtIn: string = BUILT_IN_SOURCE): string | undefined {
+export function sourceUrl(settings: Pick<PastPaperSettings, 'mode' | 'url'>, builtIn: string = BUILT_IN_SOURCE): string | undefined {
   if (!pastPapersBuiltIn(builtIn) || settings.mode === 'off') return undefined;
   const base = settings.mode === 'custom' ? settings.url.trim() : builtIn.trim();
   if (!base || sourceAddress(base) === undefined) return undefined;

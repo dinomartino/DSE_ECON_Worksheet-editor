@@ -194,6 +194,8 @@ function textNodeHtml(node: TextNode, language: LanguageMode, fontCss: string, i
   // In a Marks column the label floats into the paragraph's right padding.
   const column = node.marksColumn ? `;margin-right:-${node.marksColumn / 20}pt` : '';
   const marks = label ? `<span style="float:right${column}">${escapeHtml(label)}</span>` : '';
+  // A label on its own line (`TextNode.trailOwnLine`) follows the text, after a break.
+  if (label && node.trailOwnLine && node.marks === undefined) return `<p style="${css}">${marker}${body}<br>${marks}</p>`;
   return `<p style="${css}">${marks}${marker}${body}</p>`;
 }
 

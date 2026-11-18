@@ -196,6 +196,17 @@ second copy of the passage (nothing links two copies of one passage).
 
 No change to the stored document shape for copies: a copy is an ordinary MCQ (and stimulus).
 
+**Show source (year + question no.)** (user u-w7gs, 2026-11-18): a box in the tray and in the
+editor's Past papers tab. Every bank question already carries its source as `provenance`
+("HKDSE 2019 Paper 1 Q12" / "香港中學文憑考試 2019 卷一 第 12 題"), which until now printed only in
+the teacher's copy and the answer key. With the box ticked, a paper that gets its first sourced
+questions turns on `Worksheet.showQuestionSources` in the same commit (one ⌘Z), and each
+question prints its source in brackets at the right of its numbered line (`render/questionSource.ts`).
+After that the paper's own switch rules (Setup → Page), so adding more never flips a paper; in the
+tab the box then reads "Show sources on this paper" and is that switch. The choice is remembered
+in `econgen.settings.pastPapers` (`showSources`), off by default. One optional paper field, in
+`KNOWN_KEYS`; no schema bump; nothing stored on the copies.
+
 ## Questions whose options are pictures (k-0444)
 
 The editor already had the shape: an MC option may carry blocks (`McqOption.blocks`), and

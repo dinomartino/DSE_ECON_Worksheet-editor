@@ -212,6 +212,11 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
     zh: '已開啟「每題由新頁開始」，題目不會緊接上一題，所以此設定暫時不起作用。',
   },
   startEveryQuestion: { en: 'Start every question on a new page', zh: '每題由新頁開始' },
+  questionSources: { en: 'Show each question\'s source (year + question no.)', zh: '顯示每題出處（年份及題號）' },
+  questionSourcesHint: {
+    en: 'Prints a question\'s source note (its exam, year and question number) in brackets at the right of its first line. Past paper bank questions come with one; add or edit one in an MC question\'s panel.',
+    zh: '在題目首行右方以括號印出其出處（考試、年份及題號）。歷屆試題庫的題目已附出處；亦可在 MC 題目面板加入或修改。',
+  },
   startEveryQuestionHint: {
     en: 'Each question begins a page, with the heading, lead-in or source above it. The first question, and one right under a New page, stay where they are. A question can still be kept on one page from its own panel.',
     zh: '每一題都由新頁開始，其上方的標題、引言或資料會一併移到新頁。第一題，以及緊接「新頁面」的題目維持原位。個別題目仍可在其面板設定保持在同一頁。',
