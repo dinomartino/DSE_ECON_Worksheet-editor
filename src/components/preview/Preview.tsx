@@ -682,6 +682,7 @@ function MarksTrail({
   blankLines,
   column = false,
   tabbed = false,
+  ownLine = false,
 }: {
   /** "(4 marks)", or a scheme's `trail` (§ `TextNode.trail`) — the same placement. */
   label: string;
@@ -698,6 +699,8 @@ function MarksTrail({
    * reserves anything for it.
    */
   column?: boolean;
+  /** The IR put the label on a line of its own (`TextNode.trailOwnLine`): always the extra line. */
+  ownLine?: boolean;
 }) {
   const labelRef = useRef<HTMLSpanElement>(null);
   /*
@@ -710,6 +713,10 @@ function MarksTrail({
   const [needsOwnLine, setNeedsOwnLine] = useState(false);
 
   useLayoutEffect(() => {
+    if (ownLine && !column) {
+      setNeedsOwnLine(true);
+      return;
+    }
     if (blankLines === 0 || column) {
       setNeedsOwnLine(false);
       return;
@@ -1298,6 +1305,7 @@ function TextNodeView({
           blankLines={trailingBlankLines(marksAnchorRuns(node.text, language))}
           column={node.marksColumn !== undefined}
           tabbed={hasTab(marksAnchorRuns(node.text, language))}
+          ownLine={node.trailOwnLine === true && node.marks === undefined}
         />
       )}
     </p>

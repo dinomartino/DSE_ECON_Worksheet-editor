@@ -493,6 +493,8 @@ interface WorksheetState {
       afterId?: string;
       at?: number;
       leads?: readonly (LayoutElement | undefined)[];
+      /** Paper-level fields set in the same commit (the bank's `showQuestionSources`), so one ⌘Z takes both. */
+      patch?: Partial<Worksheet>;
     },
   ) => string[];
   /**
@@ -1625,7 +1627,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     return { ok: true, questionIds: built.map((q) => q.id), ...(lead ? { leadId: lead.id } : {}), committed: get().worksheet };
   },
 
-  insertQuestionCopies: (questions, { fromDocId, afterId, at, leads } = {}) => {
+  insertQuestionCopies: (questions, { fromDocId, afterId, at, leads, patch } = {}) => {
     const state = get();
     if (state.readOnly) return [];
     const known = new Set(listQuestionTypes().map((type) => type.id));
@@ -1636,7 +1638,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     const copies = planned.map((entry) => entry.copy);
     if (!copies.length) return [];
     state.commit((draft) => {
-      let next = draft;
+      let next = patch ? { ...draft, ...patch } : draft;
       let after = afterId ?? state.insertAnchorId;
       // Nowhere chosen (no anchor, no drop): each copy may take its type's own section.
       const routed = after === undefined && at === undefined;

@@ -3,6 +3,7 @@ import { copyToBank, oneBank, type BankTarget } from '@/library/bankDocs';
 import { rootIdOf } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import type { Worksheet } from '@/model/types';
+import { hasQuestionSources, printsQuestionSources } from '@/render/questionSource';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { worksheetStore, type WorksheetStore } from '@/storage';
 import { planCopies } from './copy';
@@ -22,24 +23,38 @@ export interface InsertOutcome {
 }
 
 /**
+ * Whether "Show source (year + question no.)" decides this paper's switch
+ * (`Worksheet.showQuestionSources`): only while the paper has no question with a source yet.
+ * After that the paper's own switch rules (Setup → Page, or the box beside the bank in the
+ * editor), so adding more questions never flips what a paper already prints.
+ */
+export const sourceChoiceDecides = (worksheet: Pick<Worksheet, 'questions'>) => !hasQuestionSources(worksheet);
+
+/**
  * Copies of `items` into the open paper after the insert anchor (or, with none, each into
  * its type's section): one commit, one ⌘Z, the 題庫 review bar on them. A shared stimulus
- * goes in front of its questions (`planCopies`).
+ * goes in front of its questions (`planCopies`). With `showSources`, a paper getting its
+ * first sourced questions prints their sources, in the same commit (`sourceChoiceDecides`).
  */
-export function insertIntoOpen(items: readonly PastPaperItem[], summary: (added: number, skipped: number) => string): InsertOutcome {
+export function insertIntoOpen(
+  items: readonly PastPaperItem[],
+  summary: (added: number, skipped: number) => string,
+  { showSources = false }: { showSources?: boolean } = {},
+): InsertOutcome {
   const store = useWorksheetStore.getState();
   if (store.readOnly) return { inserted: [], skipped: 0, refused: 'readOnly' };
   const held = new Set(store.worksheet.questions.map(rootIdOf));
   const skipped = new Set(items.map((item) => rootIdOf(item.question)).filter((root) => held.has(root))).size;
   const plan = planCopies(items, held);
   if (plan.questions.length === 0) return { inserted: [], skipped };
+  const turnOn = showSources && sourceChoiceDecides(store.worksheet) && !printsQuestionSources(store.worksheet);
   const { inserted } = commitBankCopies(
     {
       openId: store.worksheet.id,
       found: plan.questions.map((question, index) => ({ question, docId: plan.fromDocIds[index] })),
       missing: [],
     },
-    { summary: (count) => summary(count, skipped), leads: plan.leads },
+    { summary: (count) => summary(count, skipped), leads: plan.leads, ...(turnOn ? { patch: { showQuestionSources: true } } : {}) },
   );
   if (inserted[0]) useWorksheetStore.getState().select(inserted[0]);
   return { inserted, skipped };

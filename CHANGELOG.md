@@ -99,6 +99,13 @@ a version heading is edited afterwards.
   other documents' answer keys to this file…", for putting the keys of papers that aren't in a
   set into one file; nothing comes ticked.
   <!-- zh: **匯出、檢視和複製整套試卷。** 匯出 → 內容 → 整套試卷會匯出套卷內每份試卷，以及整套試卷的一份評卷參考（先 Paper 1，後 Paper 2，頁碼連續）。以 Word 匯出時，瀏覽器會得到一個 .zip，桌面版則把檔案存入你選擇的資料夾。以 PDF 匯出時，桌面版會把所有 PDF 直接存入同一資料夾；瀏覽器每次只能列印一份文件，所以視窗會逐一列出每份試卷和評卷參考，各有「列印」按鈕。在評卷參考檢視中，可用「這份試卷／整套試卷」在畫面上查看整套評卷參考。開始畫面套卷的 ⋯ 有「複製套卷…」：把所有試卷複製到新套卷供下一年使用，並可把名稱、標題和封面上的年份改為下一年（2026-27 → 2027-28），題目內容不變。評卷參考的「一併包含」清單已收起在「在此檔案加入其他文件的評卷參考…」之下，用來把不屬於套卷的文件的評卷參考放在同一檔案；不會再預先剔選。 -->
+- **Past paper bank: keep each question's source on your worksheet.** When you add questions from the
+  Past paper bank, tick **Show source (year + question no.)** and each one prints where it came from
+  (its exam, year and question number, in brackets) at the right of its first line: on screen, in
+  print, the PDF and Word, in English and 中文 papers. Off by default and remembered on this computer. Change it for a
+  paper any time in Setup → Page (Show each question's source), or with the box above Past papers in
+  the editor's 題庫 tab. Numbering, answer keys and your saved papers are unchanged.
+  <!-- zh: **歷屆試題庫：在工作紙保留每題出處。** 從歷屆試題庫加入題目時，剔選「顯示出處（年份及題號）」，每題首行右方便會以括號印出其出處（考試、年份及題號）：畫面、列印、PDF 及 Word 皆同，英文及中文試卷皆適用。預設關閉，並會在此電腦上記住你的選擇。之後可隨時在「頁面設定 → 頁面」（顯示每題出處）或編輯器「題庫」分頁的歷屆試題上方為個別試卷更改。題號、答案及你已儲存的試卷均不受影響。 -->
 
 ### Fixed
 - **Past paper tables sized to their words.** A table from the Past paper bank no longer spans the

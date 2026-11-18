@@ -4,7 +4,10 @@ import { useMemo } from 'react';
 import { escapeClears } from '@/components/bank/escapeClears';
 import { useMessages } from '@/i18n/language';
 import { rootIdOf } from '@/model/lineage';
-import { insertIntoOpen } from '@/pastpapers/actions';
+import { insertIntoOpen, sourceChoiceDecides } from '@/pastpapers/actions';
+import { PAST_PAPER_SETTINGS } from '@/pastpapers/config';
+import { printsQuestionSources, withQuestionSources } from '@/render/questionSource';
+import { useSettings } from '@/settings/store';
 import { groupTopics } from '@/pastpapers/groups';
 import { packName, type TopicEntry } from '@/pastpapers/pack';
 import { topicHeading, topicNamesFor } from '@/model/topics';
@@ -28,6 +31,16 @@ export function PastPaperTab() {
   const language = useWorksheetStore((s) => s.mode.language);
   const readOnly = useWorksheetStore((s) => s.readOnly);
   const held = useMemo(() => new Set(worksheet.questions.map(rootIdOf)), [worksheet.questions]);
+  const commit = useWorksheetStore((s) => s.commit);
+  // "Show source": before the paper has a sourced question it is the remembered choice its
+  // first insert applies; after, it is this paper's own switch (`sourceChoiceDecides`, u-w7gs).
+  const [bankSettings, setBankSettings] = useSettings(PAST_PAPER_SETTINGS);
+  const decides = sourceChoiceDecides(worksheet);
+  const sourcesOn = decides ? bankSettings.showSources : printsQuestionSources(worksheet);
+  const setSources = (next: boolean) => {
+    setBankSettings({ showSources: next });
+    if (!decides && !readOnly) commit((draft) => withQuestionSources(draft, next));
+  };
   // Topic names and sources are paper words: the document's language, not the interface's.
   // A bilingual paper lists both names, as the sidebar's own topic rows do (`wide`).
   const name = (t: { title: { en: string; zh: string } }, room: 'tight' | 'wide' = 'tight') => packName(t.title, language, room);
@@ -75,6 +88,16 @@ export function PastPaperTab() {
             <SearchGlyph />
           </label>
           <ExamChips filters={filters} onChange={setFilters} />
+          <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted" title={m.showSourcesTitle} data-pastpaper-show-sources>
+            <input
+              type="checkbox"
+              checked={sourcesOn}
+              disabled={readOnly && !decides}
+              onChange={(e) => setSources(e.target.checked)}
+              className="h-4 w-4 accent-[var(--color-accent)]"
+            />
+            {decides ? m.showSources : m.showSourcesThisPaper}
+          </label>
         </div>
 
         <div className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-desk px-3 py-3">
@@ -108,7 +131,7 @@ export function PastPaperTab() {
                         type="button"
                         disabled={readOnly}
                         title={m.insertTitle}
-                        onClick={() => insertIntoOpen([item], m.added)}
+                        onClick={() => insertIntoOpen([item], m.added, { showSources: sourcesOn })}
                         className="shrink-0 cursor-pointer rounded-md bg-cta px-2.5 py-0.5 text-[11.5px] font-medium text-on-cta hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40"
                       >
                         {m.insert}

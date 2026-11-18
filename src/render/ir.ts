@@ -164,6 +164,13 @@ export interface TextNode {
    */
   trail?: BiText;
   /**
+   * The `trail` goes on a line of its own, still at the right, decided once in the IR
+   * (`render/questionSource.ts:sourceFits`): the `.docx` writes a break before its tab, the
+   * preview the same extra line it draws for a label that cannot fit. For a label too long to
+   * trust to each backend's own wrap (a question's source; Chinese breaks anywhere).
+   */
+  trailOwnLine?: true;
+  /**
    * A right-hand Marks column this many twips wide (the HKEAA scheme layout): the text
    * stops short of it (`w:ind w:right`), and the marks or `trail` label sits in it, on
    * the same right tab at the content edge. Absent = the text runs the full width.

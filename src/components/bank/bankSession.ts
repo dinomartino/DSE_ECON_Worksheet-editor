@@ -2,7 +2,7 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { withRowTags } from '@/library/sharedTags';
 import { planStimulusCopies, stimuliServing, type Stimulus } from '@/library/stimuli';
 import type { BankRow } from '@/library/types';
-import type { LayoutElement, Question } from '@/model/types';
+import type { LayoutElement, Question, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { resolveMessages } from '@/i18n/catalogue';
@@ -167,11 +167,14 @@ export function commitBankCopies(
     summary = reviewSummary,
     at,
     leads,
+    patch,
   }: {
     summary?: (count: number) => string;
     at?: number;
     /** Per found question, a layout element to print before its copy (the Past paper bank's stimuli). */
     leads?: readonly (LayoutElement | undefined)[];
+    /** Paper-level fields written in the same commit as the copies (`insertQuestionCopies`). */
+    patch?: Partial<Worksheet>;
   } = {},
 ): InsertReport {
   let found = given;
@@ -195,7 +198,7 @@ export function commitBankCopies(
   const note = outsidePaperNote(store.worksheet, found.map((entry) => entry.question.type)) ?? (extend ? previous.note : undefined);
   const inserted = store.insertQuestionCopies(
     found.map((entry) => entry.question),
-    { fromDocId: found.map((entry) => entry.docId), ...(at !== undefined ? { at } : {}), ...(leads ? { leads } : {}) },
+    { fromDocId: found.map((entry) => entry.docId), ...(at !== undefined ? { at } : {}), ...(leads ? { leads } : {}), ...(patch ? { patch } : {}) },
   );
   if (!inserted.length) return { inserted, missing };
   const committed = useWorksheetStore.getState().worksheet;

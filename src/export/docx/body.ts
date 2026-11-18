@@ -370,6 +370,7 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
     runs = marksColumnLabelXml(label, styleId, node.marksColumn!, context) + runs;
   } else if (labelled) {
     const marks =
+      (node.trailOwnLine && node.marks === undefined ? lineBreak() : '') +
       '<w:r><w:tab/></w:r>' +
       (node.marks !== undefined
         ? marksRuns(node.marks, context.fonts, context.language)

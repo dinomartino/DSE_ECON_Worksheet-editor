@@ -88,6 +88,13 @@ export const PAST_PAPER_MESSAGES = defineMessages({
   picked: { en: (n: number) => (n === 1 ? '1 picked' : `${n} picked`), zh: (n: number) => `已選 ${n} 題` },
   clear: { en: 'Clear', zh: '清除' },
   addTo: { en: 'Add to', zh: '加到' },
+  // u-w7gs: keep each question's source (year + question number) on the paper.
+  showSources: { en: 'Show source (year + question no.)', zh: '顯示出處（年份及題號）' },
+  showSourcesTitle: {
+    en: 'Prints each question\'s exam, year and question number in brackets at the right of its first line: on screen, in print, PDF and Word. Change it later in Setup → Page.',
+    zh: '在每題首行右方以括號印出其考試、年份及題號：畫面、列印、PDF 及 Word 皆同。之後可在「頁面設定 → 頁面」更改。',
+  },
+  showSourcesThisPaper: { en: 'Show sources on this paper', zh: '在此試卷顯示出處' },
   newWorksheet: { en: 'New worksheet', zh: '新工作紙' },
   newPaper1: { en: 'New Paper 1', zh: '新 Paper 1' },
   recentPapers: { en: 'Your papers', zh: '你的試卷' },

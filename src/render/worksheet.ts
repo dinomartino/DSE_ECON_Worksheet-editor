@@ -59,6 +59,7 @@ import {
   fitCoverColumns,
 } from '@/model/cover';
 import { contentWidth, pageSetupOf } from '@/model/page';
+import { printsQuestionSources, withSourceTrail } from './questionSource';
 import type { CoverLine, CoverPage } from '@/model/coverTypes';
 
 /** Twips: the gutter a "(1)" sits in, and where the instruction text column starts. */
@@ -240,6 +241,8 @@ const questionRenderCache = new WeakMap<
     variant: string;
     /** `Worksheet.justifyText`, which stamps the body paragraphs. */
     justify: boolean;
+    /** `Worksheet.showQuestionSources`, which puts the source on the numbered line. */
+    sources: boolean;
     /** The page metrics, as one string: a question type may lay out by them. */
     page: string;
     nodes: RenderNode[];
@@ -611,6 +614,8 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
   // The document's "Justify text": body paragraphs of every flow item, never the cover,
   // masthead, title or instructions (§ `withJustifiedBody`).
   const justify = worksheet.justifyText === true;
+  // Each question's source on its numbered line (`render/questionSource.ts`).
+  const sources = printsQuestionSources(worksheet);
 
   // The text column and body size, for a question type that lays out by width.
   const page = pageMetricsOf(worksheet);
@@ -770,6 +775,7 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
       cached.shape === shape &&
       cached.variant === variantKey &&
       cached.justify === justify &&
+      cached.sources === sources &&
       cached.page === pageKey
     ) {
       separated = cached.nodes;
@@ -790,7 +796,8 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
         })
         // Student output must contain no teacher content anywhere (§11.8).
         .filter((node) => includeNode(node, mode));
-      const shown = withAnswerLayers(rendered, mode);
+      const sourced = sources ? withSourceTrail(rendered, printed, { language: mode.language, page, indents: listIndentScheme(shape) }) : rendered;
+      const shown = withAnswerLayers(sourced, mode);
       const kept = keepWhole ? keepQuestionWhole(shown) : shown;
       const nodes = justify ? withJustifiedBody(kept) : kept;
       // The boundary rides on the first paragraph, not on spacers above it, so it dies
@@ -805,6 +812,7 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
         shape,
         variant: variantKey,
         justify,
+        sources,
         page: pageKey,
         nodes: separated,
       });

@@ -1052,6 +1052,14 @@ export interface Worksheet {
    */
   startEveryQuestionOnNewPage?: boolean;
   /**
+   * Print each question's source (its `provenance`, "HKDSE 2019 Paper 1 Q12") on the paper,
+   * in brackets at the right of its numbered first line, where a structured question's marks
+   * go (`render/questionSource.ts`). Stored as `true` or absent; off by default, so a saved
+   * paper prints as before. Set by the past paper bank's "Show source" when questions go in,
+   * and by Setup → Page. The answer key is untouched (its own `showSources`).
+   */
+  showQuestionSources?: boolean;
+  /**
    * Blank lines between two same-type questions (Setup → Between questions), on every
    * paper shape, overriding the shape's default: the question type's own `examGapLines`
    * on a Paper 1 (the MCQ paper's measured 3), one line elsewhere. Absent means that
