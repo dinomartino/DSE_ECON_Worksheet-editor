@@ -360,7 +360,7 @@ export const KEPT_KEYS: ReadonlySet<string> = new Set([
   // Ids and references to them.
   'id', 'rootId', 'fromDocId', 'follows', 'from', 'to', 'of', 'on', 'point', 'curve', 'cross', 'templateId', 'libraryId',
   // Kinds and enums.
-  'kind', 'type', 'align', 'along', 'borders', 'captionPlacement', 'change', 'density', 'dropTo', 'fill',
+  'kind', 'type', 'align', 'along', 'borders', 'captionPlacement', 'change', 'density', 'display', 'dropTo', 'fill',
   'instructionMarker', 'labelAt', 'labelPlacement', 'labelSide', 'leader', 'lqLayout', 'mcLayout',
   'optionAlign', 'optionLayout', 'orientation', 'paper', 'pattern', 'preset', 'questionSourceFormat', 'shading', 'shape', 'sharedAs', 'slot',
   'statementAlign', 'stroke', 'style', 'tableSide', 'titlePlacement', 'vAlign', 'vertAlign', 'width',

@@ -22,6 +22,14 @@ export interface MarkScheme {
   levels?: MarkLevel[];
   /** Effective Communication, awarded on top of the content mark (Paper 2 essays). */
   ec?: MarkEc;
+  /**
+   * How the points print (k-0470). Absent: a line per point with its mark, as every
+   * build before printed it. `paragraph`: HKEAA's other style, each route's points run
+   * together as one paragraph with the route's total beside it; the group rules (`n@`,
+   * any N, first only, `max`) stay stored and count, but do not print. A value a build
+   * does not know reads as absent and is kept (`model/markScheme.ts:schemeDisplay`).
+   */
+  display?: 'paragraph';
 }
 
 export interface MarkRoute {

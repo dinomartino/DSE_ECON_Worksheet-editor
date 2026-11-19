@@ -10,12 +10,15 @@ import {
   createMarkScheme,
   groupMax,
   groupPoints,
+  isStandardEc,
   routeGroups,
   routesDisagree,
+  schemeDisplay,
   schemeLevels,
   schemeMismatch,
   schemeMax,
   schemeRoutes,
+  withSchemeDisplay,
 } from '@/model/markScheme';
 import type {
   MarkEcDescriptor,
@@ -28,7 +31,7 @@ import type {
 import { newId } from '@/model/factories';
 import { emptyBiText } from '@/model/text';
 import type { BiText } from '@/model/types';
-import { Button, CheckField, IconButton, Pill } from '@/components/ui';
+import { Button, CheckField, IconButton, Pill, Segmented } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { BiTextField } from './BiTextField';
@@ -422,13 +425,25 @@ function EcBlock({
           </IconButton>
         </div>
       ))}
-      <Button
-        size="sm"
-        variant="subtle"
-        onClick={() => setRows([...rows, { id: newId(), marks: 0, text: emptyBiText() }])}
-      >
-        {m.addEcRow}
-      </Button>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button
+          size="sm"
+          variant="subtle"
+          onClick={() => setRows([...rows, { id: newId(), marks: 0, text: emptyBiText() }])}
+        >
+          {m.addEcRow}
+        </Button>
+        {!isStandardEc(ec) && (
+          <Button
+            size="sm"
+            variant="subtle"
+            title={m.useStandardEcHint}
+            onClick={() => onChange({ ...scheme, ec: createMarkEc() })}
+          >
+            {m.useStandardEc}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -458,6 +473,12 @@ export function MarkSchemeEditor({
   const setRoutes = (next: MarkRoute[]) => onChange({ ...scheme, routes: next });
   const mismatch = schemeMismatch(scheme, printedMarks);
   const total = schemeMax(scheme);
+  const display = schemeDisplay(scheme);
+  const hasGroupRules = routes.some((route) =>
+    routeGroups(route).some(
+      (group) => group.each !== undefined || group.take !== undefined || group.max !== undefined,
+    ),
+  );
 
   const menu: MenuItem[] = [
     { label: m.addOrRoute, onSelect: () => setRoutes([...routes, createMarkRoute()]) },
@@ -489,6 +510,21 @@ export function MarkSchemeEditor({
         </span>
         <Menu items={menu} label={m.schemeActions} />
       </div>
+      <div className="flex flex-wrap items-center gap-x-1.5">
+        <span className="text-[11px] text-ink-muted">{m.showAs}</span>
+        <Segmented
+          label={m.showAs}
+          value={display}
+          onChange={(next) => onChange(withSchemeDisplay(scheme, next))}
+          options={[
+            { value: 'points', label: m.showAsPoints, title: m.showAsPointsHint },
+            { value: 'paragraph', label: m.showAsParagraph, title: m.showAsParagraphHint },
+          ]}
+        />
+      </div>
+      {display === 'paragraph' && hasGroupRules && (
+        <p className="text-[11px] text-ink-muted">{m.paragraphRulesHidden}</p>
+      )}
       {routesDisagree(scheme) && (
         <p className="text-[11px] text-warn-ink">{m.routesDisagree}</p>
       )}

@@ -2283,6 +2283,18 @@ type needs only a definition.
   descriptor) carries `TextNode.segments` instead of `edit`: per side, its pieces, each
   field editable alone; joined they are `text`. Structure (points, routes, levels, marks)
   stays in the panel's `MarkSchemeEditor`.
+  - **Two ways to show the points (k-0470).** `MarkScheme.display` absent = a line per
+    point with its mark (every build before). `'paragraph'` = HKEAA's other style: each
+    route's points run into one paragraph (`render/markScheme.ts:schemeParagraphs`), its
+    total (`routeMax`, none with levels) beside it; group rules still count but do not
+    print. Per leaf, because HKEAA mixes both in one paper. Read tolerantly
+    (`schemeDisplay`: anything else is points), so an older build prints points.
+  - **EC in the answer key is HKEAA's table.** The paper's teacher version keeps EC as
+    lines; the key's Classic and HKEAA layouts print it before the points as
+    "Marks for effective communication (EC: max n marks)", a ruled Marks | Performance
+    table and "The maximum mark for content is n marks." (`answerKeySections.ts:ecBlock`;
+    `renderMarkScheme`'s `omitEc`). New EC blocks start from HKEAA's 2 / 1 / 0 statements
+    (`model/markScheme.ts:HKEAA_EC_STANDARD`); the rows are copies, the teacher's to edit.
 - **Paper versions are derived from a seed** (`model/versions.ts`). `Worksheet.versions`
   stores only `{count, seed}`; `OutputMode.variant` names the letter. The walker asks each
   type's `variant?` hook for the reordered question (inside the render cache, keyed on

@@ -2,6 +2,8 @@ import {
   groupPoints,
   isSchemeEmpty,
   routeGroups,
+  routeMax,
+  schemeDisplay,
   schemeLevels,
   schemeRoutes,
 } from '@/model/markScheme';
@@ -14,7 +16,8 @@ import type { EditSegment, EditTarget, SchemeAddress, TextNode } from './ir';
  * A marking scheme as IR, in HKEAA layout: one paragraph per point with its mark in the
  * marks column ("(1)", `TextNode.trail`), `/` between accepted wordings, a lead line for
  * "any N" / `n@`, "[Mark the FIRST N points only.]", a `max: N` line closing a capped
- * group, "OR" between routes, then level descriptors and the EC table.
+ * group, "OR" between routes, then level descriptors and the EC table. A scheme shown as
+ * a paragraph (`display`) prints each route as one paragraph with its total instead.
  *
  * Emitted once and read by all three backends; the paper's teacher version and the
  * answer key both call it. Given the leaf's address (`at`), the authored text carries
@@ -45,6 +48,16 @@ export const MARK_SCHEME_WORDING = {
   levels: bi('Levels of performance', '表現等級'),
   level: (n: number) => bi(`Level ${n}: `, `第${n}級：`),
   ec: bi('Effective communication (EC)', '有效傳意（EC）'),
+  /** The answer key's EC table, as HKEAA heads and closes it. */
+  ecTableHeading: (max: number) =>
+    bi(
+      `Marks for effective communication (EC: max ${max} ${max === 1 ? 'mark' : 'marks'})`,
+      `有效傳意評分（EC：最高${max}分）`,
+    ),
+  ecMarks: bi('Marks', '分數'),
+  ecPerformance: bi('Performance', '表現'),
+  contentMax: (n: number) =>
+    bi(`The maximum mark for content is ${n} ${n === 1 ? 'mark' : 'marks'}.`, `內容最高${n}分。`),
 } as const;
 
 export interface MarkSchemeRenderOptions {
@@ -60,6 +73,11 @@ export interface MarkSchemeRenderOptions {
    * set for an export, so nothing prints it.
    */
   editing?: boolean;
+  /**
+   * Leave the EC rows out: the answer key prints them as its own Marks | Performance
+   * table (`answerKeySections.ts:ecTable`). The paper's teacher version keeps the lines.
+   */
+  omitEc?: boolean;
 }
 
 const ALTERNATIVE_SEPARATOR = ' / ';
@@ -160,6 +178,61 @@ export function schemePointGroups(scheme: MarkScheme | undefined, at?: SchemeAdd
     .filter((groups) => groups.length > 0);
 }
 
+/** Between two points run together: a space in English; Chinese sentences close themselves. */
+const PARAGRAPH_JOIN = { en: ' ', zh: '' } as const;
+
+/** One route printed as a paragraph (`MarkScheme.display: 'paragraph'`). */
+export interface SchemeParagraph {
+  text: BiText;
+  /** The route's total, for the marks column; absent with levels (they award the marks) or at 0. */
+  marks?: number;
+  /** Each point typed where it sits in the paragraph. */
+  segments?: TextNode['segments'];
+}
+
+/**
+ * HKEAA's paragraph style: each route's points with words, in order, run together as one
+ * paragraph (`/` wordings kept), its total once beside it. The group rules are not
+ * printed — the paragraph is marked as a whole — but they still decide the total
+ * (`routeMax`). On an editing page an empty point keeps a place to type in, so the point
+ * Enter just made can take the caret. Empty routes are left out, as in the points style.
+ */
+export function schemeParagraphs(
+  scheme: MarkScheme | undefined,
+  options: { at?: SchemeAddress; editing?: boolean } = {},
+): SchemeParagraph[] {
+  if (!scheme || isSchemeEmpty(scheme)) return [];
+  const { at } = options;
+  const levels = schemeLevels(scheme).length > 0;
+  return schemeRoutes(scheme)
+    .filter((route) => routeGroups(route).some((group) => groupPoints(group).some(hasWording)))
+    .map((route): SchemeParagraph => {
+      const points = routeGroups(route)
+        .flatMap(groupPoints)
+        .filter((point) => hasWording(point) || (options.editing && at));
+      const text = (side: 'en' | 'zh'): RichText =>
+        points
+          .map((point) => withAlternatives(point)[side])
+          .filter(hasWords)
+          .flatMap((runs, index) => (index === 0 ? runs : [{ text: PARAGRAPH_JOIN[side] }, ...runs]))
+          .filter((run) => run.text.length > 0);
+      const segments = (side: 'en' | 'zh'): EditSegment[] =>
+        points.flatMap((point, index): EditSegment[] => {
+          const own: EditSegment[] =
+            (point.alternatives ?? []).length > 0
+              ? alternativeSegments(point, at!)![side]
+              : [{ edit: { kind: 'schemePoint', ...at!, pointId: point.id }, value: point.text }];
+          return index === 0 || !PARAGRAPH_JOIN[side] ? own : [{ runs: [{ text: PARAGRAPH_JOIN[side] }] }, ...own];
+        });
+      const total = routeMax(route);
+      return {
+        text: { en: text('en'), zh: text('zh') },
+        ...(!levels && total > 0 ? { marks: total } : {}),
+        ...(at ? { segments: { en: segments('en'), zh: segments('zh') } } : {}),
+      };
+    });
+}
+
 export function renderMarkScheme(
   scheme: MarkScheme | undefined,
   options: MarkSchemeRenderOptions = {},
@@ -182,7 +255,18 @@ export function renderMarkScheme(
   const routes = schemeRoutes(scheme).filter((route) =>
     routeGroups(route).some((group) => groupPoints(group).some(hasWording)),
   );
-  routes.forEach((route, routeIndex) => {
+  if (schemeDisplay(scheme) === 'paragraph') {
+    schemeParagraphs(scheme, { ...(at ? { at } : {}), ...(options.editing ? { editing: true } : {}) }).forEach(
+      (paragraph, index) => {
+        if (index > 0) line(MARK_SCHEME_WORDING.or, { format: { bold: true }, keepNext: true });
+        line(paragraph.text, {
+          ...(paragraph.marks !== undefined ? { trail: MARK_SCHEME_WORDING.mark(paragraph.marks) } : {}),
+          ...(paragraph.segments ? { segments: paragraph.segments } : {}),
+        });
+      },
+    );
+  }
+  (schemeDisplay(scheme) === 'paragraph' ? [] : routes).forEach((route, routeIndex) => {
     if (routeIndex > 0) line(MARK_SCHEME_WORDING.or, { format: { bold: true }, keepNext: true });
     routeGroups(route).forEach((group: MarkGroup) => {
       const all = groupPoints(group);
@@ -249,7 +333,7 @@ export function renderMarkScheme(
     });
   }
 
-  if (scheme.ec) {
+  if (scheme.ec && !options.omitEc) {
     line(MARK_SCHEME_WORDING.ec, {
       format: { bold: true },
       keepNext: true,

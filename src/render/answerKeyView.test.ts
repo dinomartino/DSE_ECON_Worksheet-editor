@@ -50,6 +50,14 @@ function targetsIn(nodes: RenderNode[]): EditTarget[] {
       }
     } else if (node.kind === 'columns') {
       for (const cell of node.cells) if (cell.edit) out.push(cell.edit);
+    } else if (node.kind === 'table') {
+      for (const cell of node.rows.flat()) {
+        if (cell.edit) out.push(cell.edit);
+        if (cell.segments) {
+          segment(cell.segments.en);
+          segment(cell.segments.zh);
+        }
+      }
     }
   }
   return out;

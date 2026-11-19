@@ -449,6 +449,46 @@ describe('the v2 optional-sections corpus: answer any ONE, section targets, essa
   });
 });
 
+describe('a scheme shown as a paragraph (k-0470, `MarkScheme.display`)', () => {
+  // Nested in a question, so no KNOWN_KEYS entry: `migrate` reads top-level keys only.
+  // The frozen corpus has none, and must print exactly as before (points).
+  const TEACHER: OutputMode = { language: 'en', version: 'teacher' };
+  const essays = (worksheet: ReturnType<typeof migrate>) =>
+    worksheet.questions.filter((q) => (q as StructuredQuestion).parts.length === 0) as StructuredQuestion[];
+  const withDisplay = (worksheet: ReturnType<typeof migrate>, display: unknown) => {
+    const [first] = essays(worksheet);
+    const edited = { ...first, scheme: { ...first.scheme!, display } } as StructuredQuestion;
+    return { ...worksheet, questions: worksheet.questions.map((q) => (q.id === first.id ? edited : q)) };
+  };
+
+  it('a published scheme has no display and prints as points, unchanged', () => {
+    const worksheet = migrate(structuredClone(optionalCorpus));
+    expect(JSON.stringify(worksheet.questions)).not.toMatch(/"display"/);
+    const explicitPoints = withDisplay(worksheet, undefined);
+    expect(JSON.stringify(renderWorksheet(explicitPoints, TEACHER))).toBe(
+      JSON.stringify(renderWorksheet(worksheet, TEACHER)),
+    );
+  });
+
+  it('carries display through load → save → load, changing nothing else', () => {
+    const loaded = migrate(structuredClone(optionalCorpus));
+    const edited = withDisplay(loaded, 'paragraph');
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(edited))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(essays(reloaded)[0].scheme?.display).toBe('paragraph');
+    expect(withDisplay(reloaded, undefined)).toEqual(withDisplay(loaded, undefined));
+    expect(countText(reloaded)).toBe(countText(loaded));
+  });
+
+  it('a display a newer build might write opens, prints as points, and is kept on save', () => {
+    const loaded = migrate(structuredClone(optionalCorpus));
+    const future = withDisplay(loaded, 'table-of-the-future');
+    expect(JSON.stringify(renderWorksheet(future, TEACHER))).toBe(JSON.stringify(renderWorksheet(loaded, TEACHER)));
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(future))));
+    expect(essays(reloaded)[0].scheme?.display).toBe('table-of-the-future');
+  });
+});
+
 describe('the v0.6.0 bank corpus: part tags, part roots, a copy pair and the legacy shape', () => {
   // `bank-v0.6.0-paper.json` / `bank-v0.6.0-bank.json`: frozen, written once by the v0.6.0
   // release itself (`scripts/emit-bank-v0.6.0-corpus.test.ts` refuses any other commit).
