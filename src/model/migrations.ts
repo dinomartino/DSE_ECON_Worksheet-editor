@@ -1,5 +1,6 @@
 import { foldLegacyClassTag } from './classes';
 import { normalizeAnswerKeyLayout } from './answerKeyLayout';
+import { normalizeExamResults } from './examResults';
 import { foldLegacyCellJustify } from './legacyCellJustify';
 import type { Worksheet } from './types';
 
@@ -103,6 +104,7 @@ export const KNOWN_KEYS = new Set([
   'bankHidden',
   'paperSet',
   'answerKeyLayout',
+  'examResults',
   'createdAt',
   'updatedAt',
   '__unknown',
@@ -173,11 +175,15 @@ export function isNewerThanBuild(worksheet: Pick<Worksheet, 'schemaVersion'>): b
 function normalize(worksheet: Worksheet): Worksheet {
   // A malformed answer-key layout loses only what is malformed, never the document.
   const answerKeyLayout = normalizeAnswerKeyLayout(worksheet.answerKeyLayout);
-  const { answerKeyLayout: _stored, ...rest } = worksheet;
+  // So do exam results (k-0471): a bad % or comment is dropped, the rest kept.
+  const examResults = normalizeExamResults(worksheet.examResults);
+  const { answerKeyLayout: _stored, examResults: _results, ...rest } = worksheet;
   void _stored;
+  void _results;
   return {
     ...rest,
     ...(answerKeyLayout ? { answerKeyLayout } : {}),
+    ...(examResults ? { examResults } : {}),
     fonts: worksheet.fonts ?? { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
     pageSetup: worksheet.pageSetup ?? {
       paper: 'A4',

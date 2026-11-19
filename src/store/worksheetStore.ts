@@ -55,6 +55,7 @@ import {
 import { applyBandFieldSide } from '@/model/bandSegments';
 import { isNewerThanBuild } from '@/model/migrations';
 import { withAnswerKeyLayout } from '@/model/answerKeyLayout';
+import { withExamResults } from '@/model/examResults';
 import type { ApplyReport, TranslationWrite } from '@/model/textSlots';
 import { applyTranslationBatch } from '@/model/translationApply';
 import { documentShape } from '@/model/documentShape';
@@ -79,6 +80,7 @@ import {
 } from '@/model/page';
 import type {
   AnswerKeyLayout,
+  ExamResults,
   Band,
   BandField,
   BandFieldSide,
@@ -228,6 +230,11 @@ interface WorksheetState {
   updateAnswerKeyLayout: (
     recipe: (layout: AnswerKeyLayout | undefined) => AnswerKeyLayout | undefined,
   ) => void;
+  /**
+   * Replace the exam results (`model/examResults.ts`, k-0471) through one undoable commit;
+   * empty or undefined removes the field.
+   */
+  updateExamResults: (results: ExamResults | undefined) => void;
   markSaved: () => void;
   /** Persist to storage now, rather than waiting for the autosave debounce. */
   save: () => Promise<void>;
@@ -912,6 +919,13 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       return JSON.stringify(next) === JSON.stringify(draft.answerKeyLayout)
         ? draft
         : withAnswerKeyLayout(draft, next);
+    }),
+
+  updateExamResults: (results) =>
+    get().commit((draft) => {
+      const next = withExamResults(draft, results);
+      // Unchanged → the same object, so commit records no history step.
+      return JSON.stringify(next.examResults) === JSON.stringify(draft.examResults) ? draft : next;
     }),
 
   markSaved: () => set({ dirty: false, lastSavedAt: new Date().toISOString() }),

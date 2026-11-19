@@ -40,6 +40,8 @@ export interface AnswerKeySettings {
   questionTotals: boolean;
   sectionTotals: boolean;
   paperTotal: boolean;
+  showMcPercent: boolean;
+  showPerformance: boolean;
 }
 
 export type AnswerKeySetting = keyof AnswerKeySettings;
@@ -67,6 +69,9 @@ const CLASSIC: AnswerKeySettings = {
   questionTotals: false,
   sectionTotals: false,
   paperTotal: false,
+  // Exam results (k-0471) print wherever they are entered; nothing entered prints nothing.
+  showMcPercent: true,
+  showPerformance: true,
 };
 
 /**
