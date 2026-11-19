@@ -290,6 +290,38 @@ describe('a document saved by the published build still opens', () => {
     expect({ kind: reloaded.kind, classes: reloaded.classes, satOn: reloaded.satOn, bankHidden: reloaded.bankHidden }).toEqual(fields);
     expect({ ...reloaded, kind: undefined, classes: undefined, satOn: undefined, bankHidden: undefined }).toEqual(loaded);
   });
+  it('carries exam results (k-0471) through load → save → load, still written at 1', () => {
+    const loaded = migrate(structuredClone(v1Corpus));
+    expect(loaded.examResults).toBeUndefined();
+
+    const mcq = loaded.questions[0];
+    const examResults = {
+      mcPercent: { [mcq.id]: 65 },
+      mcComments: bi('Q1 was well answered.', '第1題表現良好。'),
+      sqComments: bi('', '圖表欠佳。'),
+    };
+    const saved = serializeWorksheet({ ...loaded, examResults });
+    // Optional and additive: a released build (≤ 0.9.1) keeps it as an unknown field and
+    // still opens the paper editable, so the written version does not move.
+    expect(saved.schemaVersion).toBe(1);
+    const reloaded = migrate(JSON.parse(JSON.stringify(saved)));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(reloaded.examResults).toEqual(examResults);
+    expect({ ...reloaded, examResults: undefined }).toEqual({ ...loaded, examResults: undefined });
+  });
+
+  it('opens a document whose exam results are malformed, losing only the malformed parts', () => {
+    const raw = {
+      ...structuredClone(v1Corpus),
+      examResults: { mcPercent: { a: 50, b: 'lots', c: 900 }, mcComments: 'not text', futureKey: [1] },
+    };
+    const loaded = migrate(raw);
+    expect(loaded.examResults).toEqual({ mcPercent: { a: 50 }, futureKey: [1] });
+    expect(countText(loaded.questions)).toBe(countText(migrate(structuredClone(v1Corpus)).questions));
+    for (const junk of [null, 'x', 3, []]) {
+      expect(migrate({ ...structuredClone(v1Corpus), examResults: junk }).examResults).toBeUndefined();
+    }
+  });
 });
 
 /** Every `answer: true` in a stored value, so "keeps the answer layer" cannot mean "keeps some". */
