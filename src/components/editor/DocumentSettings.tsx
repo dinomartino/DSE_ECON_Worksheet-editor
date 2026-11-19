@@ -12,6 +12,7 @@ import {
 } from '@/model/bands';
 import { FONT_PRESETS } from '@/model/factories';
 import { BODY_TEXT_SIZES, bodyTextSizeOf, DEFAULT_BODY_TEXT_SIZE, withBodyTextSize, withJustifyText } from '@/model/fonts';
+import { DEFAULT_LINE_SPACING, LINE_SPACINGS, lineSpacingOf, withLineSpacing } from '@/model/lineSpacing';
 import {
   bandsHeight,
   bandsOverflow,
@@ -216,6 +217,8 @@ function DocumentTab() {
 
       <TextSizeField />
 
+      <LineSpacingField />
+
       <OptionLayoutField />
 
       <VersionsField />
@@ -259,6 +262,37 @@ function TextSizeField() {
         }))}
       />
       <JustifyTextField />
+    </Field>
+  );
+}
+
+/**
+ * The document's line spacing (`Worksheet.lineSpacing`, k-0468): Word's Single, 1.15, 1.5
+ * and Double, one undo step. A stored value outside the four (none is made today) is
+ * shown as its own choice rather than leaving the control with nothing selected.
+ */
+function LineSpacingField() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
+  const spacing = useWorksheetStore((s) => lineSpacingOf(s.worksheet));
+  const commit = useWorksheetStore((s) => s.commit);
+  const choices: number[] = [...LINE_SPACINGS];
+  if (!choices.includes(spacing)) choices.push(spacing);
+  choices.sort((a, b) => a - b);
+  const label = (times: number) =>
+    times === DEFAULT_LINE_SPACING ? m.lineSpacingSingle : times === 2 ? m.lineSpacingDouble : String(times);
+
+  return (
+    <Field label={m.lineSpacing} hint={m.lineSpacingHint}>
+      <Segmented<string>
+        label={m.lineSpacing}
+        value={String(spacing)}
+        onChange={(value) => commit((draft) => withLineSpacing(draft, Number(value)))}
+        options={choices.map((times) => ({
+          value: String(times),
+          label: label(times),
+          title: times === DEFAULT_LINE_SPACING ? m.lineSpacingDefault : m.lineSpacingOption(String(times)),
+        }))}
+      />
     </Field>
   );
 }

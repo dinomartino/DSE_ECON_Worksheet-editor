@@ -21,10 +21,12 @@ import type {
   OptionRowNode,
   SourceNode,
   ImageNode,
+  NodeStyle,
   RenderNode,
   TableNode,
   TextNode,
 } from '@/render/ir';
+import { spacedLineTwips } from '@/render/lineBox';
 import {
   biTextRuns,
   formatRunOptions,
@@ -138,14 +140,19 @@ function jcValue(align: TextAlign): string {
   return align === 'justify' ? 'both' : align;
 }
 
-export function formatParagraphProps(format: TextFormat | undefined): string {
-  if (!format) return '';
+export function formatParagraphProps(
+  format: TextFormat | undefined,
+  /** The document's line spacing on this paragraph (`TextNode.lineSpacing`), with its style. */
+  spaced?: { style: NodeStyle; spacing: number },
+): string {
+  if (!format && !spaced) return '';
   const parts: string[] = [];
   // A `w:spacing` is emitted when the teacher set paragraph spacing, and also when they
   // only enlarged the text: an exact line box does not grow to fit, so a font size the
-  // style's box cannot hold would be clipped unless the box is restated with it.
-  const needsLine = format.fontSize !== undefined;
-  if (format.spaceBefore !== undefined || format.spaceAfter !== undefined || needsLine) {
+  // style's box cannot hold would be clipped unless the box is restated with it. A
+  // spaced document states each spaced line's box (`spacedLineTwips`, as the page does).
+  const needsLine = format?.fontSize !== undefined || spaced !== undefined;
+  if (format?.spaceBefore !== undefined || format?.spaceAfter !== undefined || needsLine) {
     // Word measures paragraph spacing in twentieths of a point.
     //
     // `w:line` is restated even when only the before/after was overridden: direct
@@ -155,14 +162,16 @@ export function formatParagraphProps(format: TextFormat | undefined): string {
     // visible as a single stem set looser than everything around it.
     parts.push(
       `<w:spacing${attrs({
-        'w:before': format.spaceBefore !== undefined ? String(Math.round(format.spaceBefore * 20)) : undefined,
-        'w:after': format.spaceAfter !== undefined ? String(Math.round(format.spaceAfter * 20)) : undefined,
-        'w:line': String(exactLineFor(format.fontSize)),
+        'w:before': format?.spaceBefore !== undefined ? String(Math.round(format.spaceBefore * 20)) : undefined,
+        'w:after': format?.spaceAfter !== undefined ? String(Math.round(format.spaceAfter * 20)) : undefined,
+        'w:line': String(
+          spaced ? spacedLineTwips(spaced.style, format?.fontSize, spaced.spacing) : exactLineFor(format?.fontSize),
+        ),
         'w:lineRule': 'exact',
       })}/>`,
     );
   }
-  if (format.align) parts.push(`<w:jc w:val="${jcValue(format.align)}"/>`);
+  if (format?.align) parts.push(`<w:jc w:val="${jcValue(format.align)}"/>`);
   return parts.join('');
 }
 
@@ -177,6 +186,8 @@ function paragraph(options: {
   tabRight?: boolean;
   tabRightAt?: number;
   format?: TextFormat;
+  /** `TextNode.lineSpacing`, with the node's style (§ `formatParagraphProps`). */
+  spaced?: { style: NodeStyle; spacing: number };
 }): string {
   const props: string[] = [`<w:pStyle w:val="${options.styleId}"/>`];
 
@@ -206,7 +217,7 @@ function paragraph(options: {
     ),
   );
 
-  props.push(formatParagraphProps(options.format));
+  props.push(formatParagraphProps(options.format, options.spaced));
 
   return `<w:p><w:pPr>${props.join('')}</w:pPr>${options.runs}</w:p>`;
 }
@@ -320,7 +331,11 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
   const sizes = node.band
     ? node.cells.map((cell) => cell.format?.fontSize).filter((size): size is number => size !== undefined)
     : [];
-  const bandLine = exactLineFor(sizes.length > 0 ? Math.max(...sizes) : undefined);
+  const bandLine =
+    node.lineSpacing !== undefined
+      ? // A row of MC options at the document's line spacing (§ `withSpacedLines`).
+        spacedLineTwips(node.style, undefined, node.lineSpacing)
+      : exactLineFor(sizes.length > 0 ? Math.max(...sizes) : undefined);
   const props =
     `<w:pStyle w:val="${STYLE_IDS[node.style]}"/>` +
     // The boundary gap, when this row leads its item (§ `withLeadingGap`). The fixed
@@ -421,6 +436,7 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
     tabRight: labelled && !firstLine,
     tabRightAt: context.contentWidth,
     format: againstStyle(node.format, styleId, context),
+    ...(node.lineSpacing !== undefined ? { spaced: { style: node.style, spacing: node.lineSpacing } } : {}),
   });
 }
 

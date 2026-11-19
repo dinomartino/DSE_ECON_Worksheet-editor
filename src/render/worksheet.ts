@@ -10,6 +10,7 @@ import {
 import { questionMarks, sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering, listIndentScheme } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
+import { lineSpacingOf } from '@/model/lineSpacing';
 import { activeVersion, versionLetter, versionSeed } from '@/model/versions';
 import { versionInPageOneHeader } from '@/model/headerMarks';
 import type {
@@ -34,6 +35,7 @@ import {
   includeNode,
   withAnswerLayers,
   withJustifiedBody,
+  withSpacedLines,
   isWritingRoom,
   pushGap,
   renderContentBlocks,
@@ -242,6 +244,8 @@ const questionRenderCache = new WeakMap<
     variant: string;
     /** `Worksheet.justifyText`, which stamps the body paragraphs. */
     justify: boolean;
+    /** `Worksheet.lineSpacing` as read (`lineSpacingOf`), which stamps every line of text. */
+    spacing: number;
     /** `Worksheet.showQuestionSources` and its format, which put the source on the numbered line; '' when off. */
     sources: '' | QuestionSourceFormat;
     /** The page metrics, as one string: a question type may lay out by them. */
@@ -615,6 +619,8 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
   // The document's "Justify text": body paragraphs of every flow item, never the cover,
   // masthead, title or instructions (§ `withJustifiedBody`).
   const justify = worksheet.justifyText === true;
+  // The document's line spacing, on the same flow items (§ `withSpacedLines`).
+  const spacing = lineSpacingOf(worksheet);
   // Each question's source on its numbered line (`render/questionSource.ts`).
   const sources = printsQuestionSources(worksheet) ? questionSourceFormat(worksheet) : '';
 
@@ -723,7 +729,7 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
         stimulus,
       );
       const shown = withAnswerLayers(laid, mode);
-      const nodes = justify ? withJustifiedBody(shown) : shown;
+      const nodes = withSpacedLines(justify ? withJustifiedBody(shown) : shown, spacing);
       previousNodes = nodes;
       previous = { layout: item.element };
       return {
@@ -776,6 +782,7 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
       cached.shape === shape &&
       cached.variant === variantKey &&
       cached.justify === justify &&
+      cached.spacing === spacing &&
       cached.sources === sources &&
       cached.page === pageKey
     ) {
@@ -800,7 +807,7 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
       const sourced = sources ? withSourceTrail(rendered, printed, { language: mode.language, page, indents: listIndentScheme(shape), format: sources }) : rendered;
       const shown = withAnswerLayers(sourced, mode);
       const kept = keepWhole ? keepQuestionWhole(shown) : shown;
-      const nodes = justify ? withJustifiedBody(kept) : kept;
+      const nodes = withSpacedLines(justify ? withJustifiedBody(kept) : kept, spacing);
       // The boundary rides on the first paragraph, not on spacers above it, so it dies
       // at a page top in both backends (§ `withLeadingGap`).
       separated = withLeadingGap(nodes, gap);
@@ -813,6 +820,7 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
         shape,
         variant: variantKey,
         justify,
+        spacing,
         sources,
         page: pageKey,
         nodes: separated,

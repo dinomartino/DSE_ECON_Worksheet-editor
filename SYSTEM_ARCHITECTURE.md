@@ -359,6 +359,20 @@ stacked options keep native `w:num`.
   only what differs (`againstStyle`): a row or grid option gets `left`. `Body` is shared
   with cells, rows and the cover, so its prose keeps a direct `w:jc`.
 
+### Line spacing multiplies the line box, on the IR
+
+`Worksheet.lineSpacing` (k-0468; Single = absent, 1.15 / 1.5 / 2) is stamped on the IR like
+"Justify text": `withSpacedLines` puts `lineSpacing` on every `TextNode` and non-band
+`ColumnsNode` of the flow items (inside source panels and option grids too), never on the
+cover, masthead, title, instructions, tables, answer lines or spacers. Both backends read one
+box, `render/lineBox.ts:spacedLineTwips` (the single box `exactLineFor` gives, times the
+spacing, whole twips): the preview writes it as `line-height` in pt, the `.docx` as direct
+`w:line` with `exact`, Copy for Word as `line-height` + `mso-line-height-rule:exactly`. Gaps
+stay spacing in points (`w:before`), so they do not grow. A single-spaced document emits
+nothing new. `lineSpacingOf` prints a value outside (1, 3] single and keeps it in the file.
+Proof: `render/lineSpacing.test.ts`, `scripts/line-spacing-verify.mjs` (LibreOffice prints
+the spaced `.docx` on the preview's sheet count).
+
 ### An enlarged line box follows its font size
 
 Wherever the preview writes `fontSize` it must write `lineHeight` too (`formatStyle`,
@@ -736,6 +750,14 @@ No CSS property expresses that, so the preview separates reserving and placing
   `trailingBlankLines()` counts them for both backends; the preview lifts the label by
   that many `lh`, the exporter moves trailing breaks after the marks.
   `marksAnchorRuns()` picks the side to count in bilingual mode.
+- **That blank line belongs to the paragraph, so the field must reach it too** (k-0468,
+  issue #7). The idle field ends with the words; a click below them opens the field at its
+  end (`openAtBlankTail`). Open, a contenteditable gives a final break no line and Chrome
+  puts no caret after it, so `paintRuns` adds a caret line (a zero-width space in a
+  `data-caret-line` span, never read or counted: `textOf`). The reverse holds for the
+  browser's own placeholder break at the end of a field whose last line emptied: it shows
+  no line, so `readRuns` drops it (`withoutPlaceholderBreak`); read as text, it saved a
+  blank line nobody typed. Proof in Chrome: `scripts/blank-line-verify.mjs`.
 - **A full anchor line pushes the whole label to the next line in both backends.** The
   docx label's interior space is a **no-break space** (`marksText`) so Word wraps it
   whole; the preview **measures** the last text character against the label's own width

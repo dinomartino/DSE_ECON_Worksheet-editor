@@ -25,6 +25,7 @@ import {
   type RenderNode,
   type TextNode,
 } from '@/render/ir';
+import { spacedLineTwips } from '@/render/lineBox';
 import { renderWorksheet } from '@/render/worksheet';
 import type { DiagramImageMap } from './diagramImage';
 
@@ -167,6 +168,15 @@ function listIndentOf(node: TextNode, indents: ListIndentScheme): { left: number
   return indents.question[ref.level] ?? indents.question[0];
 }
 
+/**
+ * A spaced line (`TextNode.lineSpacing`, k-0468) as Word's HTML writes an exact line:
+ * the box the `.docx` states (`spacedLineTwips`), which Word keeps only with its
+ * `mso-line-height-rule`. Nothing for a single-spaced paragraph, so its HTML is unchanged.
+ */
+function spacedLineCss(twips: number): string {
+  return `line-height:${twips / 20}pt;mso-line-height-rule:exactly;`;
+}
+
 function textNodeHtml(node: TextNode, language: LanguageMode, fontCss: string, indents: ListIndentScheme = DEFAULT_LIST_INDENTS): string {
   /*
    * A numbered paragraph hangs as the `.docx` and the preview lay it out (§ `listIndentScheme`):
@@ -183,7 +193,7 @@ function textNodeHtml(node: TextNode, language: LanguageMode, fontCss: string, i
   // Overrides come last so they win over the named style's defaults.
   const css = `${fontCss}${list ? (NODE_CSS[node.style] ?? '').replace(/margin-left:[^;]*;/g, '') : ''}${geometry}${
     node.marksColumn ? `padding-right:${node.marksColumn / 20}pt;` : ''
-  }${formatCss(node.format)}`;
+  }${formatCss(node.format)}${node.lineSpacing !== undefined ? spacedLineCss(spacedLineTwips(node.style, node.format?.fontSize, node.lineSpacing)) : ''}`;
   // Numbering becomes literal text, which is the accepted tradeoff for clipboard.
   const marker =
     node.listRef && list
@@ -576,6 +586,7 @@ function columnsHtml(
     (node.hanging ? `text-indent:-${node.hanging / 20}pt;` : '') +
     (node.rule ? 'border-bottom:1px solid #808080;' : '') +
     (stops.length ? `tab-stops:${stops.join(' ')};` : '') +
+    (node.lineSpacing !== undefined ? spacedLineCss(spacedLineTwips(node.style, undefined, node.lineSpacing)) : '') +
     // Restated after `tab-stops`, which LibreOffice misreads as an alignment.
     'text-align:left;';
   // `data-band` is inert in Word; the thumbnail lays a band row out by it.

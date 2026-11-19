@@ -47,11 +47,20 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   },
   textSize: { en: 'Text size', zh: '文字大小' },
   textSizeHint: {
-    en: 'For questions, options and answers. The title, headings and cover keep their own sizes, and the line spacing stays the same.',
-    zh: '用於題目、選項及答案。標題、分部標題及封面保留各自的大小，行距不變。',
+    en: 'For questions, options and answers. The title, headings and cover keep their own sizes, and the line spacing stays the same (set it under Line spacing).',
+    zh: '用於題目、選項及答案。標題、分部標題及封面保留各自的大小，行距不變（可在「行距」設定）。',
   },
   textSizeOption: { en: (pt: number) => `${pt} pt`, zh: (pt: number) => `${pt} pt` },
   textSizeDefault: { en: (pt: number) => `${pt} pt (standard)`, zh: (pt: number) => `${pt} pt（標準）` },
+  lineSpacing: { en: 'Line spacing', zh: '行距' },
+  lineSpacingHint: {
+    en: 'The space between the lines of questions, options, answers and marking points. Gaps between questions, tables, answer lines, the title and the cover keep their size.',
+    zh: '題目、選項、答案及評分要點每行之間的距離。題目之間的空位、表格、答題線、標題及封面維持原有大小。',
+  },
+  lineSpacingSingle: { en: 'Single', zh: '單倍' },
+  lineSpacingDouble: { en: 'Double', zh: '雙倍' },
+  lineSpacingOption: { en: (times: string) => `${times} lines`, zh: (times: string) => `${times} 倍` },
+  lineSpacingDefault: { en: 'Single (standard)', zh: '單倍（標準）' },
   justifyText: { en: 'Justify text', zh: '文字左右對齊' },
   justifyTextHint: {
     en: 'Questions, options and passages line up with both margins. The title, headings, tables and cover stay as they are (justify a table’s cells with T≡ in Table tools), and text you align yourself keeps its own alignment.',

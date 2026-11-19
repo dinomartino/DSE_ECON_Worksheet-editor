@@ -85,6 +85,7 @@ export const KNOWN_KEYS = new Set([
   'fonts',
   'baseFontSize',
   'justifyText',
+  'lineSpacing',
   'startEveryQuestionOnNewPage',
   'showQuestionSources',
   'questionSourceFormat',

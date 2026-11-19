@@ -1045,6 +1045,15 @@ export interface Worksheet {
    */
   justifyText?: boolean;
   /**
+   * Line spacing (Document setup, k-0468): every line of the questions and the elements
+   * between them is this many times its single 12pt line, as Word's "Multiple" (1.15, 1.5,
+   * 2). Tables, dotted answer lines, blank axes, the gaps between questions, the cover,
+   * masthead, title and header/footer keep their own heights. Absent = single, stored only
+   * above 1 (`withLineSpacing`); read through `lineSpacingOf`, which prints a value outside
+   * (1, 3] single. Applied at render (`withSpacedLines`).
+   */
+  lineSpacing?: number;
+  /**
    * Start every question on a new page (Document setup → Page), for the papers whose questions
    * each want a page of their own (a long-question paper). Stored as `true` or absent, never
    * `false`; off by default, so a saved paper does not move. It asks of each question what its

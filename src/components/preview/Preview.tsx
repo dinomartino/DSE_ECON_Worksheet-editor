@@ -219,6 +219,7 @@ import {
   type ArrowDirection,
   type TextSelection,
 } from "./InlineEditable";
+import { spacedLineTwips } from "@/render/lineBox";
 import { ResizableBlock } from "./ResizableBlock";
 import { ResizableRows } from "./ResizableRows";
 import { MIN_ANSWER_LINES, MIN_SPACER_PT } from "@/model/flow";
@@ -736,9 +737,10 @@ function MarksTrail({
      * would un-push after every push and loop.
      */
     const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT, {
-      // A floating prompt prints nothing, so it is not the line's last character.
+      // A floating prompt prints nothing, so it is not the line's last character; nor is
+      // an open field's caret line (`CARET_LINE_ATTR`), the blank line's zero-width space.
       acceptNode: (node) =>
-        node.parentElement?.closest('[data-marks-trail], [data-floating-prompt]')
+        node.parentElement?.closest('[data-marks-trail], [data-floating-prompt], [data-caret-line]')
           ? NodeFilter.FILTER_REJECT
           : NodeFilter.FILTER_ACCEPT,
     });
@@ -1190,6 +1192,26 @@ function TextNodeView({
         : "";
   const trailingBreakFiller = !trailText && trailingBlankLines(tailRuns) > 0;
   /*
+   * The blank line a trailing hard break opens is the paragraph's, not its field's: the
+   * idle field ends with the words, and the line below is the filler's or the marks
+   * label's. A click there landed on no field, so the line could be seen but never
+   * reached to delete (k-0468). It opens the field at its end, which is that line.
+   */
+  const blankTail = trailText ? trailingBlankLines(marksAnchorRuns(node.text, language)) : trailingBlankLines(tailRuns);
+  const openAtBlankTail =
+    ctx && node.edit && blankTail > 0
+      ? (event: React.MouseEvent<HTMLParagraphElement>) => {
+          const fields = event.currentTarget.querySelectorAll<HTMLElement>('[data-field-key][role="textbox"]');
+          const field = fields[fields.length - 1];
+          if (!field || field.contains(event.target as Node)) return;
+          const rects = field.getClientRects();
+          const lastLine = rects[rects.length - 1];
+          if (!lastLine || event.clientY <= lastLine.bottom) return;
+          event.stopPropagation();
+          field.dispatchEvent(new CustomEvent(OPEN_FIELD_EVENT, { detail: { at: "end" } }));
+        }
+      : undefined;
+  /*
    * A text that prints nothing in this language still prints a paragraph in Word — the
    * "1." or "A." line of a 中文-only stem in an English copy — and the marker is drawn
    * out of flow, so without a filler the paragraph collapsed to nothing here. Editing, the
@@ -1225,6 +1247,7 @@ function TextNodeView({
       data-page-target={node.edit ? editTargetKey(node.edit) : undefined}
       // A line only made to be typed in (an empty mark point) never reaches paper.
       data-print-hide={node.editOnly ? "" : undefined}
+      onClick={openAtBlankTail}
       // The Word reflex: right-click offers this paragraph's own verbs. Only where an
       // edit target names it — derived text (marks totals, numbers) bubbles to the
       // question's box and gets the question's menu (§ `ItemBody`).
@@ -1256,6 +1279,12 @@ function TextNodeView({
           : undefined),
         // Applied last so a deliberate override beats the style default.
         ...formatStyle(node.format),
+        // The document's line spacing (k-0468): the very box the .docx states for this
+        // paragraph, from its style and size (§ `spacedLineTwips`), so the paginator
+        // measures the height Word prints.
+        ...(node.lineSpacing !== undefined
+          ? { lineHeight: `${spacedLineTwips(node.style, node.format?.fontSize, node.lineSpacing) / 20}pt` }
+          : undefined),
       }}
     >
       {listIndent && node.listRef && (
@@ -2909,6 +2938,11 @@ export function NodeView({
           // The boundary gap, when this row leads its item (§ `withLeadingGap`).
           marginTop:
             node.spaceBefore !== undefined ? `${node.spaceBefore}pt` : undefined,
+          // The document's line spacing, the box the .docx states (§ `spacedLineTwips`).
+          lineHeight:
+            node.lineSpacing !== undefined
+              ? `${spacedLineTwips(node.style, undefined, node.lineSpacing) / 20}pt`
+              : undefined,
         }}
       >
         {node.cells.map((cell, index) => (

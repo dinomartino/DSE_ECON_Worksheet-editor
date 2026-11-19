@@ -14,6 +14,59 @@ import { TAB_ATTR } from './tabLayout';
 export const RUN_ATTR = 'data-run';
 
 /**
+ * The line after a trailing hard break, while the field is open (k-0468).
+ *
+ * The model stores "words\n" as the words and a blank line under them, and the page and
+ * Word print that line. In a contenteditable it has no content, and Chrome and WebKit
+ * place no caret after a field's final break: the caret snapped back onto the words, so
+ * the blank line could be seen but never reached, and Backspace there deleted a letter
+ * instead. A zero-width space after the break gives the line something to hold the
+ * caret, in a span of its own so the reader knows it is not text (`readRuns`, offsets).
+ * Inline and zero-width, it sits on the very line the paragraph's filler or marks label
+ * already holds open, so opening the field moves nothing.
+ */
+export const CARET_LINE_ATTR = 'data-caret-line';
+const CARET_LINE_MARK = '\u200b';
+
+/** The caret line `paintRuns` puts after a trailing break (§ `CARET_LINE_ATTR`). */
+function caretLineNode(): HTMLElement {
+  const line = document.createElement('span');
+  line.setAttribute(CARET_LINE_ATTR, '');
+  line.textContent = CARET_LINE_MARK;
+  return line;
+}
+
+const inCaretLine = (node: Node): boolean => Boolean(node.parentElement?.closest(`[${CARET_LINE_ATTR}]`));
+
+/** A text node's characters that are text: the caret line's zero-width space is not. */
+function textOf(node: Node): string {
+  const text = node.nodeValue ?? '';
+  return inCaretLine(node) ? text.split(CARET_LINE_MARK).join('') : text;
+}
+
+/** The DOM offset in text node `node` of its `count`-th text character (§ `textOf`). */
+function domOffset(node: Node, count: number): number {
+  if (!inCaretLine(node)) return count;
+  const text = node.nodeValue ?? '';
+  let seen = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    if (seen === count) return index;
+    if (text[index] !== CARET_LINE_MARK) seen += 1;
+  }
+  return text.length;
+}
+
+/**
+ * The DOM for a field's runs: one element per run (`runToNode`), and the caret line when
+ * the text ends in a hard break, so that line can be typed on and deleted (k-0468).
+ */
+export function paintRuns(runs: RichText): Node[] {
+  const nodes: Node[] = runs.map(runToNode);
+  if (runs.length > 0 && runs[runs.length - 1].text.endsWith('\n')) nodes.push(caretLineNode());
+  return nodes;
+}
+
+/**
  * The inline CSS one run renders with.
  *
  * Bold/italic/underline are *also* expressed as real `<strong>`/`<em>`/`<u>` elements by
@@ -181,16 +234,24 @@ function nativeEmphasis(node: Node, owner: HTMLElement | null): RunFormat {
 export function readRuns(host: HTMLElement): RichText {
   const out: RichText = [];
   let lastAttrs: RunFormat = {};
+  /** The field ends on the caret line: the break before it is the one the line opens. */
+  let endsOnCaretLine = false;
 
   const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   let node: Node | null = walker.currentNode;
   while ((node = walker.nextNode())) {
     if (node.nodeType === Node.ELEMENT_NODE) {
       const element = node as HTMLElement;
-      if (element.tagName === 'BR') out.push({ ...lastAttrs, text: '\n' });
+      if (element.tagName === 'BR') {
+        out.push({ ...lastAttrs, text: '\n' });
+        endsOnCaretLine = false;
+      }
       continue;
     }
-    const text = node.nodeValue ?? '';
+    const raw = node.nodeValue ?? '';
+    if (!raw) continue;
+    endsOnCaretLine = inCaretLine(node) && raw.endsWith(CARET_LINE_MARK);
+    const text = textOf(node);
     if (!text) continue;
     const owner = (node.parentElement?.closest(`[${RUN_ATTR}]`) ?? null) as HTMLElement | null;
     // No owner means the browser inserted this text outside any run element; it belongs
@@ -203,7 +264,28 @@ export function readRuns(host: HTMLElement): RichText {
     out.push({ ...attrs, text });
   }
 
-  return normalizeRuns(out);
+  /*
+   * A final break with nothing after it is the browser's, not the teacher's: Chrome draws
+   * no line after a field's last break, so when the last line empties (Shift+Enter at the
+   * end, the last word of a line deleted) it writes a placeholder break to hold the caret,
+   * and typing on leaves that placeholder at the end. Read as text, it saved a blank line
+   * nobody typed and nobody could delete (k-0468). The field reads as it looks: a break the
+   * teacher typed at the end is followed by the caret line (`paintRuns`) or by the
+   * browser's placeholder, so the one break that shows no line is dropped.
+   */
+  return endsOnCaretLine ? normalizeRuns(out) : withoutPlaceholderBreak(normalizeRuns(out));
+}
+
+/**
+ * The text a field shows when its DOM ends in a break with nothing after it (§ `readRuns`):
+ * that break draws no line, so it is the browser's placeholder and is not text. One break
+ * only, the last: "words\n\n" shows one blank line, the break before the placeholder.
+ */
+export function withoutPlaceholderBreak(runs: RichText): RichText {
+  const last = runs[runs.length - 1];
+  if (!last || !last.text.endsWith('\n')) return runs;
+  const text = last.text.slice(0, -1);
+  return text ? [...runs.slice(0, -1), { ...last, text }] : runs.slice(0, -1);
 }
 
 /**
@@ -221,7 +303,9 @@ export function offsetOf(host: HTMLElement, container: Node, offset: number): nu
       ? Array.from(container.childNodes)
           .slice(0, offset)
           .reduce((total, child) => total + textLengthOf(child), 0)
-      : offset;
+      : inCaretLine(container)
+        ? (container.nodeValue ?? '').slice(0, offset).split(CARET_LINE_MARK).join('').length
+        : offset;
 
   let total = 0;
   const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
@@ -232,7 +316,7 @@ export function offsetOf(host: HTMLElement, container: Node, offset: number): nu
       if ((node as HTMLElement).tagName === 'BR') total += 1;
       continue;
     }
-    total += (node.nodeValue ?? '').length;
+    total += textOf(node).length;
   }
   // `container` is the host itself (or is not in it): the walk already counted nothing
   // that precedes it, so the in-subtree count is the whole answer.
@@ -290,7 +374,7 @@ export function offsetAtPoint(
 
 /** Characters a node contributes, counting a `<br>` as one newline. */
 function textLengthOf(node: Node): number {
-  if (node.nodeType === Node.TEXT_NODE) return (node.nodeValue ?? '').length;
+  if (node.nodeType === Node.TEXT_NODE) return textOf(node).length;
   if (node.nodeType !== Node.ELEMENT_NODE) return 0;
   const element = node as HTMLElement;
   if (element.tagName === 'BR') return 1;
@@ -338,18 +422,29 @@ export function setSelectionOffsets(host: HTMLElement, start: number, end = star
 function locate(host: HTMLElement, target: number): { node: Node; offset: number } | undefined {
   let seen = 0;
   let last: { node: Node; offset: number } | undefined;
+  let afterBreak: { node: Node; offset: number } | undefined;
   const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   let node: Node | null = walker.currentNode;
   while ((node = walker.nextNode())) {
     if (node.nodeType === Node.ELEMENT_NODE) {
-      if ((node as HTMLElement).tagName === 'BR') {
+      const element = node as HTMLElement;
+      if (element.tagName === 'BR') {
+        // Straight after an earlier break, with no text between: the blank line it opened.
+        if (afterBreak) return afterBreak;
         // A caret *after* a break belongs at the start of the next text node, which the
         // next iteration supplies; landing it on the <br>'s parent would place it before.
         seen += 1;
+        // With no text after it (a trailing break, or another break next), the place after
+        // the <br> itself: the blank line it opens, which is how a trailing blank line is
+        // reached and deleted (k-0468).
+        if (target === seen) {
+          const parent = element.parentNode!;
+          afterBreak = { node: parent, offset: (Array.prototype.indexOf.call(parent.childNodes, element) as number) + 1 };
+        }
       }
       continue;
     }
-    const length = (node.nodeValue ?? '').length;
+    const length = textOf(node).length;
     const tab = tabOf(node);
     if (tab) {
       // Never inside a tab: the caret goes beside it, in its parent.
@@ -361,9 +456,9 @@ function locate(host: HTMLElement, target: number): { node: Node; offset: number
       if (target <= seen) return last;
       continue;
     }
-    if (target <= seen + length) return { node, offset: Math.max(0, target - seen) };
+    if (target <= seen + length) return { node, offset: domOffset(node, Math.max(0, target - seen)) };
     seen += length;
-    last = { node, offset: length };
+    last = { node, offset: domOffset(node, length) };
   }
-  return last ?? { node: host, offset: 0 };
+  return afterBreak ?? last ?? { node: host, offset: 0 };
 }

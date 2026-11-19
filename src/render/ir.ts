@@ -220,6 +220,12 @@ export interface TextNode {
    * direct formatting, so the named style keeps supplying every value not set here.
    */
   format?: TextFormat;
+  /**
+   * The document's line spacing (`Worksheet.lineSpacing`, k-0468): each line of this
+   * paragraph is this many times its single height. Stamped by `withSpacedLines`; absent
+   * is single, as every paragraph was before.
+   */
+  lineSpacing?: number;
 }
 
 /**
@@ -519,6 +525,8 @@ export interface ColumnsNode {
   spaceBefore?: number;
   /** `spaceBefore` here is a boundary gap, not authored spacing. See `TextNode`. */
   boundaryGap?: boolean;
+  /** As `TextNode.lineSpacing`: a row of MC options is a line of the question. */
+  lineSpacing?: number;
   keepNext?: boolean;
   /** Keep the row's wrapped lines on one page. Read by no backend; see `TextNode`. */
   keepLines?: boolean;
@@ -893,6 +901,40 @@ export function withJustifiedBody(nodes: RenderNode[]): RenderNode[] {
     return node;
   });
   return changed ? justified : nodes;
+}
+
+/**
+ * A flow item's nodes with the document's line spacing (`Worksheet.lineSpacing`, k-0468)
+ * on every line of text: each `TextNode` and tab-stop row, inside source panels and MC
+ * option grids too. What is not a line of text keeps its height: tables (their rows are
+ * the table's), pictures, dotted answer lines and blank axes (writing room, on their own
+ * pitch), and the blank lines and gaps between items (separators, set in lines of their
+ * own). Stamped on the IR so every backend agrees. `spacing` 1 (or less) changes nothing,
+ * and the same array comes back when nothing changes.
+ */
+export function withSpacedLines(nodes: RenderNode[], spacing: number): RenderNode[] {
+  if (!(spacing > 1)) return nodes;
+  let changed = false;
+  const spaced = nodes.map((node): RenderNode => {
+    if (node.kind === 'text' || (node.kind === 'columns' && !node.band)) {
+      changed = true;
+      return { ...node, lineSpacing: spacing };
+    }
+    if (node.kind === 'source') {
+      const inner = withSpacedLines(node.nodes, spacing);
+      if (inner === node.nodes) return node;
+      changed = true;
+      return { ...node, nodes: inner };
+    }
+    if (node.kind === 'optionRow') {
+      const cells = node.cells.map((cell) => withSpacedLines(cell, spacing));
+      if (cells.every((cell, index) => cell === node.cells[index])) return node;
+      changed = true;
+      return { ...node, cells };
+    }
+    return node;
+  });
+  return changed ? spaced : nodes;
 }
 
 /**
