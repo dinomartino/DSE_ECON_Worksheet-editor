@@ -13,48 +13,6 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
-- **Past paper bank 歷屆試題庫.** A second, separate question bank on the start screen, beside
-  your own Question bank: HKCEE, HKALE and HKDSE multiple-choice questions with their official
-  answers, by topic, in English and 中文. Browse a topic, search by words or a source ("DSE2016"),
-  filter by exam and years, tick questions, then add them to a new worksheet, a new Paper 1, one of
-  your papers, or copy them into your own Question bank. In the editor, the 題庫 tab has a switch at
-  its top: My bank or Past papers, with Insert on each question. A shared passage goes in with its
-  questions and is renumbered by your paper. It is read-only and downloaded only when you open it
-  (kept on this computer, never counted as your documents); Settings → Past paper bank turns it off.
-  <!-- zh: **歷屆試題庫。** 開始畫面新增一個獨立題庫，與你自己的題庫分開：HKCEE、HKALE 及 HKDSE 的 MC 題目連官方答案，按課題排列，中英對照。可瀏覽課題、按字詞或出處（例如「DSE2016」）搜尋、按考試及年份篩選，剔選題目後加到新工作紙、新 Paper 1、你的試卷，或複製到你自己的題庫。在編輯器中，「題庫」分頁頂部可切換「我的題庫」或「歷屆試題」，每題都有「插入」。共用資料會與其題目一併加入，並按你的試卷重新編號。此題庫為唯讀，只在你開啟時下載（保存在此電腦上，不計作你的文件）；可在「設定 → 歷屆試題庫」關閉。 -->
-- **Past paper bank: search every topic, pick one paper, and diagram options two by two.** Search
-  “Every topic” now answers at once without downloading the bank: each question's topic downloads
-  only when you scroll to it. The new Paper filter shows one past paper (“HKDSE 2016 Paper 1”) from
-  every topic, in question order. Questions whose four options are diagrams print as on the paper,
-  A and B side by side, then C and D, each letter right above its diagram, the whole question on one
-  page, in the editor, the PDF and Word, with the Chinese diagrams in 中文. Copy to my question bank
-  now keeps a shared passage with its questions, and inserting such a question from your 題庫 brings
-  its passage along. A table can now have no lines at all (No lines), to set out four numbered
-  diagrams two by two.
-  <!-- zh: **歷屆試題庫：搜尋所有課題、選取單一試卷，以及兩行兩列的圖表選項。** 「所有課題」搜尋現在即時顯示結果，不必下載整個題庫：捲動到某題時才下載它所屬的課題。新的「試卷」篩選可顯示單一份試卷（例如「HKDSE 2016 Paper 1」）在所有課題中的題目，按題號排列。四個選項都是圖表的題目會照原卷排列：A 與 B 並排，C 與 D 在下，每個字母都在其圖表正上方，整題保持在同一頁，編輯器、PDF 及 Word 皆然，中文版用中文圖表。「複製到我的題庫」現在會連同共用資料一併複製，從你的題庫插入這類題目時，資料亦會一同加入。表格現在可設為「無框線」，用來兩行兩列排列四幅編號圖表。 -->
-- **Past paper bank: names follow the question language.** Topic names, paper names and question
-  sources in the Past paper bank now follow the EN / 中文 switch for the questions, not the app's
-  language, as topic names do everywhere else: with the app in 中文 and English questions, the
-  topics read “Scarcity” and the sources “HKDSE 2016 Paper 1 Q34”, while the buttons stay in 中文.
-  In the editor's 題庫 tab they follow your paper's language.
-  <!-- zh: **歷屆試題庫：名稱跟隨題目語言。** 歷屆試題庫中的課題名稱、試卷名稱及題目出處，現在跟隨題目的 EN／中文 切換，而不是介面語言，與編輯器其他地方的課題名稱一致：介面用中文而題目用英文時，課題顯示為「Scarcity」，出處為「HKDSE 2016 Paper 1 Q34」，按鈕則仍是中文。在編輯器的「題庫」分頁中，名稱跟隨你試卷的語言。 -->
-- **Past paper bank: topics grouped by syllabus part.** The topics are no longer one long list:
-  they sit under the syllabus parts A to J (“C · Market and Price”), each part folding open or
-  closed, with how many questions each part and each topic holds. The part of the topic you are
-  in opens by itself, “Find a topic” searches every part at once (Enter opens the first match),
-  and part names follow the EN / 中文 switch for the questions. On a phone the topics fold into
-  one bar above the questions; tap it to choose another topic. In the editor's 題庫 tab the topic
-  menu is grouped the same way.
-  <!-- zh: **歷屆試題庫：課題按課程部分分組。** 課題不再是一長串清單，而是按課程的 A 至 J 部分排列（例如「C · 市場與價格」），每部分可展開或收起，並顯示每部分及每個課題的題目數量。你所在課題的部分會自動展開；「搜尋課題」會同時搜尋所有部分（按 Enter 開啟第一個結果）；部分名稱跟隨題目的 EN／中文 切換。在手機上，課題會收合成題目上方的一列，輕按即可選擇其他課題。編輯器「題庫」分頁的課題選單亦以同樣方式分組。 -->
-- **A warning before the browser's storage fills up.** In the web version, all your documents share
-  about 5 MB of the browser's storage, and pictures take the most room. The toolbar now says “Storage
-  nearly full” once it is 80% used, and the Past paper bank tells you how full your picks would make
-  it, refusing ones that would not fit. The desktop app has no such limit.
-  <!-- zh: **瀏覽器儲存空間將滿前會提示。** 網頁版中，你所有文件共用瀏覽器約 5 MB 的儲存空間，圖片最佔空間。用量達 80% 時，工具列會顯示「儲存空間將滿」；歷屆試題庫亦會告訴你所選題目會令空間用到多少，放不下時不會加入。桌面版沒有此限制。 -->
-- **A Chinese version of a picture.** Select a picture and use + Chinese picture to give it a
-  second image (the same diagram with Chinese labels). Chinese output (preview, Word, copy)
-  prints that one; English and bilingual output keep the original. Replace or remove it any time.
-  <!-- zh: **圖片可另加中文版。** 圖片可另加「中文圖片」（同一幅圖、標籤改用中文）。選取圖片後按「+ 中文圖片」即可；輸出中文版（預覽、Word、複製）時會使用這張，英文及雙語版則維持原圖。可隨時更換或移除。 -->
 - **See how much of the syllabus a paper covers.** ✦ AI → Check syllabus coverage sends the
   paper's questions (or the ones you selected) to the AI provider you chose in Settings → AI, the
   same one Chinese translation uses, and shows a report: how many of the 2025 guide's key points
@@ -99,13 +57,42 @@ a version heading is edited afterwards.
   other documents' answer keys to this file…", for putting the keys of papers that aren't in a
   set into one file; nothing comes ticked.
   <!-- zh: **匯出、檢視和複製整套試卷。** 匯出 → 內容 → 整套試卷會匯出套卷內每份試卷，以及整套試卷的一份評卷參考（先 Paper 1，後 Paper 2，頁碼連續）。以 Word 匯出時，瀏覽器會得到一個 .zip，桌面版則把檔案存入你選擇的資料夾。以 PDF 匯出時，桌面版會把所有 PDF 直接存入同一資料夾；瀏覽器每次只能列印一份文件，所以視窗會逐一列出每份試卷和評卷參考，各有「列印」按鈕。在評卷參考檢視中，可用「這份試卷／整套試卷」在畫面上查看整套評卷參考。開始畫面套卷的 ⋯ 有「複製套卷…」：把所有試卷複製到新套卷供下一年使用，並可把名稱、標題和封面上的年份改為下一年（2026-27 → 2027-28），題目內容不變。評卷參考的「一併包含」清單已收起在「在此檔案加入其他文件的評卷參考…」之下，用來把不屬於套卷的文件的評卷參考放在同一檔案；不會再預先剔選。 -->
+
+### Fixed
+- **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer
+  says SCHOOL NAME after Paper 1 said your school.
+  <!-- zh: **新試卷會沿用上次輸入的學校名稱**，Paper 2 的封面不會在 Paper 1 已填好學校後仍顯示 SCHOOL NAME。 -->
+- **A duplicated document is named "（副本）" in the 中文 interface**, not "(copy)".
+  <!-- zh: **在中文介面建立的副本會以「（副本）」命名**，而不是「(copy)」。 -->
+- **Long folder names show in full in the folder list**, on two lines if needed, instead of
+  being cut off (for example "中六 Mock 202…").
+  <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
+
+### Changed
+- **Chinese wording follows the Education Bureau's 2025 supplement.** The inflationary and deflationary gap templates now say 差距 (通脹差距, 通縮差距), the labour curves say 勞力需求 and 勞力供應, the topic "Market intervention" is 政府干預, and the externality template says 界外效應. Nothing in your saved worksheets changes.
+  <!-- zh: **中文用詞對齊教育局 2025 年補充文件。** 通脹和通縮缺口範本改稱「差距」（通脹差距、通縮差距），勞動市場曲線改稱「勞力需求」和「勞力供應」，課題「市場干預」改為「政府干預」，外部效應範本改稱「界外效應」。已儲存的工作紙不受影響。 -->
+- **Translation and term checks accept 價格水平.** Check terms and the translator no longer
+  mark 價格水平 as wrong: both 價格水平 and 物價水平 pass for "price level" (the Education Bureau
+  writes both), and you can pick one as your wording in Settings. The translator now writes 甚麼
+  and 著 (not 什麼 and 着), and 界外效益 passes for "external benefit" beside 界外利益.
+  <!-- zh: **翻譯和用詞檢查接受「價格水平」。** 「檢查用詞」和翻譯不再把「價格水平」標為錯誤：「price level」寫成「價格水平」或「物價水平」都可以（教育局兩者都有用），你亦可在設定中選定其中一個。翻譯現在會寫「甚麼」和「著」（不再是「什麼」和「着」），「external benefit」除了「界外利益」，寫成「界外效益」亦可。 -->
+- **Elasticity wording follows the EDB glossary.** The translator writes 彈性需求, 高彈性需求 and
+  低彈性需求 (彈性供應, 低彈性供應), never 富彈性 or 缺乏彈性; the sample question in a new paper and
+  the import-quota template's hint say the same. Text you quote from past papers is never
+  changed, and saved worksheets stay as they are.
+  <!-- zh: **彈性用詞跟從教育局詞彙表。** 翻譯會寫「彈性需求」、「高彈性需求」和「低彈性需求」（「彈性供應」、「低彈性供應」），不再寫「富彈性」或「缺乏彈性」；新試卷的範例題目和進口配額範本的提示亦一樣。你引用的歷屆試題文字不會被更改，已儲存的工作紙亦不受影響。 -->
+
+## 0.9.1 — 2026-11-19
+
+### Added
 - **Past paper bank: keep each question's source on your worksheet.** When you add questions from the
   Past paper bank, tick **Show source (year + question no.)** and each one prints where it came from
-  (its exam, year and question number, in brackets) at the right of its first line: on screen, in
-  print, the PDF and Word, in English and 中文 papers. Off by default and remembered on this computer. Change it for a
-  paper any time in Setup → Page (Show each question's source), or with the box above Past papers in
-  the editor's 題庫 tab. Numbering, answer keys and your saved papers are unchanged.
-  <!-- zh: **歷屆試題庫：在工作紙保留每題出處。** 從歷屆試題庫加入題目時，剔選「顯示出處（年份及題號）」，每題首行右方便會以括號印出其出處（考試、年份及題號）：畫面、列印、PDF 及 Word 皆同，英文及中文試卷皆適用。預設關閉，並會在此電腦上記住你的選擇。之後可隨時在「頁面設定 → 頁面」（顯示每題出處）或編輯器「題庫」分頁的歷屆試題上方為個別試卷更改。題號、答案及你已儲存的試卷均不受影響。 -->
+  (its exam, year and question number in brackets, such as “(HKDSE 2019 Paper 1 Q12)”) at the right
+  of its first line: on screen, in print, the PDF and Word, in English and 中文 papers. Off by default
+  and remembered on this computer. Change it for a paper any time in Setup → Page (Show each
+  question's source), or with the box above Past papers in the editor's 題庫 tab. Numbering, answer
+  keys and your saved papers are unchanged.
+  <!-- zh: **歷屆試題庫：在工作紙保留每題出處。** 從歷屆試題庫加入題目時，剔選「顯示出處（年份及題號）」，每題首行右方便會以括號印出其出處（考試、年份及題號，例如「(HKDSE 2019 Paper 1 Q12)」，中文試卷印作「（香港中學文憑考試 2019 卷一 第 12 題）」）：畫面、列印、PDF 及 Word 皆同，英文及中文試卷皆適用。預設關閉，並會在此電腦上記住你的選擇。之後可隨時在「頁面設定 → 頁面」（顯示每題出處）或編輯器「題庫」分頁的歷屆試題上方為個別試卷更改。題號、答案及你已儲存的試卷均不受影響。 -->
 - **Past paper bank: a short source for students to look up.** Beside Show source, choose how the
   source prints: Full “(HKDSE 2019 Paper 1 Q12)”, as before, or Short “(DSE2019/P1/Q12)”, or Short
   with the paper in Roman numerals “(DSE2019/I/Q12)”. The short forms are the same on English, 中文
@@ -114,6 +101,66 @@ a version heading is edited afterwards.
   change it in Setup → Page under Show each question's source, or in the editor's 題庫 tab. A source
   you wrote yourself that is not in the exam-year-question form stays in full.
   <!-- zh: **歷屆試題庫：方便學生查閱的簡寫出處。** 在「顯示出處」旁邊可選出處的格式：完整「(HKDSE 2019 Paper 1 Q12)」（與以往相同）、簡寫「(DSE2019/P1/Q12)」，或以羅馬數字表示試卷的簡寫「(DSE2019/I/Q12)」。簡寫在英文、中文及雙語試卷上都一樣：HKCEE 寫作 CE、HKALE 寫作 AL、HKDSE 寫作 DSE；樣本試卷及練習卷寫作 DSESP 及 DSEPP。你的選擇會在此電腦上記住，而每份試卷各自保留其格式：可在「頁面設定 → 頁面」的「顯示每題出處」下，或在編輯器的「題庫」分頁更改。你自己寫的出處如不是「考試、年份、題號」的格式，會照樣完整印出。 -->
+- **A long source gets its own line, the same everywhere.** When a question's source does not fit
+  at the end of its first line (often in Chinese, always on bilingual papers), it moves whole to a
+  line of its own, at the right, in the editor, the PDF, Word and LibreOffice alike, instead of Word
+  splitting it across two lines.
+  <!-- zh: **較長的出處自成一行，各處一致。** 如題目出處無法放在首行末端（中文試卷較常見，雙語試卷一律如此），出處會整個移到下一行並靠右，編輯器、PDF、Word 及 LibreOffice 皆同，不會再被 Word 分拆成兩行。 -->
+
+## 0.9.0 — 2026-11-17
+
+### Added
+- **Past paper bank 歷屆試題庫.** A second, separate question bank on the start screen, beside
+  your own Question bank: HKCEE, HKALE and HKDSE multiple-choice questions with their official
+  answers, by topic, in English and 中文. Browse a topic, search by words or a source ("DSE2016"),
+  filter by exam and years, tick questions, then add them to a new worksheet, a new Paper 1, one of
+  your papers, or copy them into your own Question bank. In the editor, the 題庫 tab has a switch at
+  its top: My bank or Past papers, with Insert on each question. A shared passage goes in with its
+  questions and is renumbered by your paper. It is read-only and downloaded only when you open it
+  (kept on this computer, never counted as your documents); Settings → Past paper bank turns it off.
+  <!-- zh: **歷屆試題庫。** 開始畫面新增一個獨立題庫，與你自己的題庫分開：HKCEE、HKALE 及 HKDSE 的 MC 題目連官方答案，按課題排列，中英對照。可瀏覽課題、按字詞或出處（例如「DSE2016」）搜尋、按考試及年份篩選，剔選題目後加到新工作紙、新 Paper 1、你的試卷，或複製到你自己的題庫。在編輯器中，「題庫」分頁頂部可切換「我的題庫」或「歷屆試題」，每題都有「插入」。共用資料會與其題目一併加入，並按你的試卷重新編號。此題庫為唯讀，只在你開啟時下載（保存在此電腦上，不計作你的文件）；可在「設定 → 歷屆試題庫」關閉。 -->
+- **Past paper bank: search every topic, pick one paper, and diagram options two by two.** Search
+  “Every topic” now answers at once without downloading the bank: each question's topic downloads
+  only when you scroll to it. The new Paper filter shows one past paper (“HKDSE 2016 Paper 1”) from
+  every topic, in question order. Questions whose four options are diagrams print as on the paper,
+  A and B side by side, then C and D, each letter right above its diagram, the whole question on one
+  page, in the editor, the PDF and Word, with the Chinese diagrams in 中文. Copy to my question bank
+  now keeps a shared passage with its questions, and inserting such a question from your 題庫 brings
+  its passage along. A table can now have no lines at all (No lines), to set out four numbered
+  diagrams two by two.
+  <!-- zh: **歷屆試題庫：搜尋所有課題、選取單一試卷，以及兩行兩列的圖表選項。** 「所有課題」搜尋現在即時顯示結果，不必下載整個題庫：捲動到某題時才下載它所屬的課題。新的「試卷」篩選可顯示單一份試卷（例如「HKDSE 2016 Paper 1」）在所有課題中的題目，按題號排列。四個選項都是圖表的題目會照原卷排列：A 與 B 並排，C 與 D 在下，每個字母都在其圖表正上方，整題保持在同一頁，編輯器、PDF 及 Word 皆然，中文版用中文圖表。「複製到我的題庫」現在會連同共用資料一併複製，從你的題庫插入這類題目時，資料亦會一同加入。表格現在可設為「無框線」，用來兩行兩列排列四幅編號圖表。 -->
+- **Past paper bank: names follow the question language.** Topic names, paper names and question
+  sources in the Past paper bank now follow the EN / 中文 switch for the questions, not the app's
+  language, as topic names do everywhere else: with the app in 中文 and English questions, the
+  topics read “Scarcity” and the sources “HKDSE 2016 Paper 1 Q34”, while the buttons stay in 中文.
+  In the editor's 題庫 tab they follow your paper's language.
+  <!-- zh: **歷屆試題庫：名稱跟隨題目語言。** 歷屆試題庫中的課題名稱、試卷名稱及題目出處，現在跟隨題目的 EN／中文 切換，而不是介面語言，與編輯器其他地方的課題名稱一致：介面用中文而題目用英文時，課題顯示為「Scarcity」，出處為「HKDSE 2016 Paper 1 Q34」，按鈕則仍是中文。在編輯器的「題庫」分頁中，名稱跟隨你試卷的語言。 -->
+- **Past paper bank: topics grouped by syllabus part.** The topics are no longer one long list:
+  they sit under the syllabus parts A to J (“C · Market and Price”), each part folding open or
+  closed, with how many questions each part and each topic holds. The part of the topic you are
+  in opens by itself, “Find a topic” searches every part at once (Enter opens the first match),
+  and part names follow the EN / 中文 switch for the questions. On a phone the topics fold into
+  one bar above the questions; tap it to choose another topic. In the editor's 題庫 tab the topic
+  menu is grouped the same way.
+  <!-- zh: **歷屆試題庫：課題按課程部分分組。** 課題不再是一長串清單，而是按課程的 A 至 J 部分排列（例如「C · 市場與價格」），每部分可展開或收起，並顯示每部分及每個課題的題目數量。你所在課題的部分會自動展開；「搜尋課題」會同時搜尋所有部分（按 Enter 開啟第一個結果）；部分名稱跟隨題目的 EN／中文 切換。在手機上，課題會收合成題目上方的一列，輕按即可選擇其他課題。編輯器「題庫」分頁的課題選單亦以同樣方式分組。 -->
+- **A warning before the browser's storage fills up.** In the web version, all your documents share
+  about 5 MB of the browser's storage, and pictures take the most room. The toolbar now says “Storage
+  nearly full” once it is 80% used, and the Past paper bank tells you how full your picks would make
+  it, refusing ones that would not fit. The desktop app has no such limit.
+  <!-- zh: **瀏覽器儲存空間將滿前會提示。** 網頁版中，你所有文件共用瀏覽器約 5 MB 的儲存空間，圖片最佔空間。用量達 80% 時，工具列會顯示「儲存空間將滿」；歷屆試題庫亦會告訴你所選題目會令空間用到多少，放不下時不會加入。桌面版沒有此限制。 -->
+- **A Chinese version of a picture.** Select a picture and use + Chinese picture to give it a
+  second image (the same diagram with Chinese labels). Chinese output (preview, Word, copy)
+  prints that one; English and bilingual output keep the original. Replace or remove it any time.
+  <!-- zh: **圖片可另加中文版。** 圖片可另加「中文圖片」（同一幅圖、標籤改用中文）。選取圖片後按「+ 中文圖片」即可；輸出中文版（預覽、Word、複製）時會使用這張，英文及雙語版則維持原圖。可隨時更換或移除。 -->
+
+### Changed
+- **Past paper bank: fewer downloads, from a public mirror.** Topics now come from jsDelivr, a
+  free public service that mirrors the bank on GitHub (GitHub itself is the backup), so a school
+  where many teachers share one connection is not slowed or refused. Opening the bank again checks
+  one tiny file; after the bank is updated, only the topics that changed download again, and every
+  topic you opened before still works without a connection. Settings → Past paper bank says where
+  the files come from.
+  <!-- zh: **歷屆試題庫：下載更少，並經公共鏡像下載。** 課題現經 jsDelivr 下載（一個轉載 GitHub 上題庫的免費公共服務，GitHub 本身作後備），即使學校多位老師共用同一網絡，也不會被拖慢或拒絕。再次開啟題庫時只會檢查一個極小的檔案；題庫更新後，只會重新下載有改動的課題，而你以前開過的課題在沒有網絡時仍可使用。「設定 → 歷屆試題庫」會說明檔案從何處下載。 -->
 
 ### Fixed
 - **Past paper tables sized to their words.** A table from the Past paper bank no longer spans the
@@ -129,35 +176,6 @@ a version heading is edited afterwards.
   under its number, as in the editor and in Word; (1) (2) (3) statements and the A–D options hang
   the same way, and the line after a table is no longer pressed against it.
   <!-- zh: **題目預覽的排版與試卷一致。** 在歷屆試題庫、你的題庫預覽及「複製到 Word」中，較長題目換行後的文字現在會對齊第一個字，而不是退回到題號下方，與編輯器及 Word 一致；(1) (2) (3) 敘述及 A 至 D 選項亦同樣對齊，表格後的一行亦不再緊貼表格。 -->
-- **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer
-  says SCHOOL NAME after Paper 1 said your school.
-  <!-- zh: **新試卷會沿用上次輸入的學校名稱**，Paper 2 的封面不會在 Paper 1 已填好學校後仍顯示 SCHOOL NAME。 -->
-- **A duplicated document is named "（副本）" in the 中文 interface**, not "(copy)".
-  <!-- zh: **在中文介面建立的副本會以「（副本）」命名**，而不是「(copy)」。 -->
-- **Long folder names show in full in the folder list**, on two lines if needed, instead of
-  being cut off (for example "中六 Mock 202…").
-  <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
-
-### Changed
-- **Past paper bank: fewer downloads, from a public mirror.** Topics now come from jsDelivr, a
-  free public service that mirrors the bank on GitHub (GitHub itself is the backup), so a school
-  where many teachers share one connection is not slowed or refused. Opening the bank again checks
-  one tiny file; after the bank is updated, only the topics that changed download again, and every
-  topic you opened before still works without a connection. Settings → Past paper bank says where
-  the files come from.
-  <!-- zh: **歷屆試題庫：下載更少，並經公共鏡像下載。** 課題現經 jsDelivr 下載（一個轉載 GitHub 上題庫的免費公共服務，GitHub 本身作後備），即使學校多位老師共用同一網絡，也不會被拖慢或拒絕。再次開啟題庫時只會檢查一個極小的檔案；題庫更新後，只會重新下載有改動的課題，而你以前開過的課題在沒有網絡時仍可使用。「設定 → 歷屆試題庫」會說明檔案從何處下載。 -->
-- **Chinese wording follows the Education Bureau's 2025 supplement.** The inflationary and deflationary gap templates now say 差距 (通脹差距, 通縮差距), the labour curves say 勞力需求 and 勞力供應, the topic "Market intervention" is 政府干預, and the externality template says 界外效應. Nothing in your saved worksheets changes.
-  <!-- zh: **中文用詞對齊教育局 2025 年補充文件。** 通脹和通縮缺口範本改稱「差距」（通脹差距、通縮差距），勞動市場曲線改稱「勞力需求」和「勞力供應」，課題「市場干預」改為「政府干預」，外部效應範本改稱「界外效應」。已儲存的工作紙不受影響。 -->
-- **Translation and term checks accept 價格水平.** Check terms and the translator no longer
-  mark 價格水平 as wrong: both 價格水平 and 物價水平 pass for "price level" (the Education Bureau
-  writes both), and you can pick one as your wording in Settings. The translator now writes 甚麼
-  and 著 (not 什麼 and 着), and 界外效益 passes for "external benefit" beside 界外利益.
-  <!-- zh: **翻譯和用詞檢查接受「價格水平」。** 「檢查用詞」和翻譯不再把「價格水平」標為錯誤：「price level」寫成「價格水平」或「物價水平」都可以（教育局兩者都有用），你亦可在設定中選定其中一個。翻譯現在會寫「甚麼」和「著」（不再是「什麼」和「着」），「external benefit」除了「界外利益」，寫成「界外效益」亦可。 -->
-- **Elasticity wording follows the EDB glossary.** The translator writes 彈性需求, 高彈性需求 and
-  低彈性需求 (彈性供應, 低彈性供應), never 富彈性 or 缺乏彈性; the sample question in a new paper and
-  the import-quota template's hint say the same. Text you quote from past papers is never
-  changed, and saved worksheets stay as they are.
-  <!-- zh: **彈性用詞跟從教育局詞彙表。** 翻譯會寫「彈性需求」、「高彈性需求」和「低彈性需求」（「彈性供應」、「低彈性供應」），不再寫「富彈性」或「缺乏彈性」；新試卷的範例題目和進口配額範本的提示亦一樣。你引用的歷屆試題文字不會被更改，已儲存的工作紙亦不受影響。 -->
 
 ## 0.8.7 — 2026-11-01
 
