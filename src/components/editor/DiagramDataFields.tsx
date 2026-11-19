@@ -346,8 +346,9 @@ export function StakeholderFields({
         >
           {m.addStakeholder}
         </Button>
-        <span className="text-[11px] text-ink-subtle">{m.stakeholderLinks}</span>
-        <Segmented<StakeholderLinks>
+        <span className="inline-flex items-center gap-1">
+          <span className="text-[11px] text-ink-subtle">{m.stakeholderLinks}</span>
+          <Segmented<StakeholderLinks>
           label={m.stakeholderLinks}
           value={chart.links ?? 'fromIssue'}
           options={linkOptions}
@@ -355,7 +356,8 @@ export function StakeholderFields({
             // The default stays unstored, as every other diagram default does.
             onChange({ ...chart, links: links === 'fromIssue' ? undefined : links })
           }
-        />
+          />
+        </span>
       </div>
       <span className="block text-[11px] leading-snug text-ink-subtle">
         {full ? m.stakeholderLimit(MAX_STAKEHOLDERS) : m.stakeholdersPlaced}

@@ -111,7 +111,8 @@ for (const [ui, width] of [['en', 1440], ['zh', 1440], ['en', 820]]) {
   await page.getByRole('button', { name: /DRQ practice/ }).first().click();
   await page.locator('#print-root .paper').first().waitFor({ timeout: 30_000 });
   await dismissHint(page, w);
-  const figure = page.locator('#print-root [data-stakeholder-issue]').first();
+  // The figure sits under its selection overlay; a click on it selects the figure and opens its question.
+  const figure = page.locator('#print-root svg:has([data-stakeholder-issue])').first().locator('xpath=ancestor::*[.//button[@data-print-hide]][1]').locator('button[data-print-hide]').first();
   check((await page.locator('#print-root [data-stakeholder]').count()) === 5, `${ui} ${width}: the corpus draws five stakeholders`);
   if (ui === 'zh') {
     await page.getByRole('radio', { name: w.paperZh, exact: true }).first().click().catch(() => page.getByRole('button', { name: w.paperZh, exact: true }).first().click());
