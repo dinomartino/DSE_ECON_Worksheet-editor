@@ -207,6 +207,18 @@ tab the box then reads "Show sources on this paper" and is that switch. The choi
 in `econgen.settings.pastPapers` (`showSources`), off by default. One optional paper field, in
 `KNOWN_KEYS`; no schema bump; nothing stored on the copies.
 
+**Source format** (user u-z6ft, 2026-11-19): beside the box, a picker (`SourceFormatSelect`):
+Full "(HKDSE 2019 Paper 1 Q12)" (default), Short "(DSE2019/P1/Q12)", Short Roman
+"(DSE2019/I/Q12)". Short labels are the bank's own tag shape, one string on both language
+sides (so a bilingual paper prints it once): CE / AL / DSE, a year or SP / PP, `P<n>` or a
+Roman numeral, `Q<n>`. They are read off the printed `provenance` (`questionSource.ts:sourceParts`,
+English side first, then Chinese), never off `tags`, so a source the teacher rewrote in their own
+words prints in full. Stored per paper as `Worksheet.questionSourceFormat` only when not full
+(`KNOWN_KEYS`, no schema bump); remembered as `sourceFormat` in `econgen.settings.pastPapers`.
+The bank sets it with the switch in the insert's commit (`actions.ts:sourcesPatch`); after
+that Setup → Page and the tab's picker are the paper's. Position and the own-line rule are
+unchanged.
+
 ## Questions whose options are pictures (k-0444)
 
 The editor already had the shape: an MC option may carry blocks (`McqOption.blocks`), and

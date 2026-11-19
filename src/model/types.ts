@@ -978,6 +978,9 @@ export interface Watermark {
   cover?: boolean;
 }
 
+/** How a question's source prints (`Worksheet.questionSourceFormat`); `full` is never stored. */
+export type QuestionSourceFormat = 'full' | 'short' | 'shortRoman';
+
 export interface Worksheet {
   schemaVersion: number;
   id: string;
@@ -1047,6 +1050,13 @@ export interface Worksheet {
    * and by Setup → Page. The answer key is untouched (its own `showSources`).
    */
   showQuestionSources?: boolean;
+  /**
+   * How `showQuestionSources` writes each source (user u-z6ft): absent is the full form,
+   * "(HKDSE 2019 Paper 1 Q12)"; `short` is "(DSE2019/P1/Q12)" and `shortRoman`
+   * "(DSE2019/I/Q12)", the same on every language (`render/questionSource.ts`). Stored only
+   * when not full, so a saved paper prints as before.
+   */
+  questionSourceFormat?: QuestionSourceFormat;
   /**
    * Blank lines between two same-type questions (Setup → Between questions), on every
    * paper shape, overriding the shape's default: the question type's own `examGapLines`

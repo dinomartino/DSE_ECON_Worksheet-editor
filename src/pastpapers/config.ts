@@ -1,5 +1,6 @@
 import { bool, oneOf } from '@/settings/validators';
 import type { FieldValidator, SettingsSchema } from '@/settings/types';
+import type { QuestionSourceFormat } from '@/model/types';
 
 /**
  * Where the Past paper bank 歷屆試題庫 comes from (k-0443, plan k-0441 § 15).
@@ -75,6 +76,12 @@ export interface PastPaperSettings {
    * (`Worksheet.showQuestionSources`). Remembered on this computer; off by default.
    */
   showSources: boolean;
+  /**
+   * How those sources print (user u-z6ft): full "(HKDSE 2019 Paper 1 Q12)", short
+   * "(DSE2019/P1/Q12)" or short with a Roman paper "(DSE2019/I/Q12)"
+   * (`Worksheet.questionSourceFormat`). Remembered on this computer; full by default.
+   */
+  sourceFormat: QuestionSourceFormat;
 }
 
 /**
@@ -104,8 +111,13 @@ export const PAST_PAPER_SETTINGS: SettingsSchema<PastPaperSettings> = {
   section: 'pastPapers',
   version: 1,
   storageKey: 'econgen.settings.pastPapers',
-  defaults: () => ({ mode: 'builtIn', url: '', showSources: false }),
-  fields: { mode: oneOf<PastPaperMode>(['builtIn', 'off', 'custom']), url: sourceAddress, showSources: bool },
+  defaults: () => ({ mode: 'builtIn', url: '', showSources: false, sourceFormat: 'full' }),
+  fields: {
+    mode: oneOf<PastPaperMode>(['builtIn', 'off', 'custom']),
+    url: sourceAddress,
+    showSources: bool,
+    sourceFormat: oneOf<QuestionSourceFormat>(['full', 'short', 'shortRoman']),
+  },
 };
 
 /** The feature exists in this build at all. */

@@ -2,7 +2,7 @@ import { commitBankCopies } from '@/components/bank/bankSession';
 import { copyToBank, oneBank, type BankTarget } from '@/library/bankDocs';
 import { rootIdOf } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
-import type { Worksheet } from '@/model/types';
+import type { QuestionSourceFormat, Worksheet } from '@/model/types';
 import { hasQuestionSources, printsQuestionSources } from '@/render/questionSource';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { worksheetStore, type WorksheetStore } from '@/storage';
@@ -34,12 +34,13 @@ export const sourceChoiceDecides = (worksheet: Pick<Worksheet, 'questions'>) => 
  * Copies of `items` into the open paper after the insert anchor (or, with none, each into
  * its type's section): one commit, one ⌘Z, the 題庫 review bar on them. A shared stimulus
  * goes in front of its questions (`planCopies`). With `showSources`, a paper getting its
- * first sourced questions prints their sources, in the same commit (`sourceChoiceDecides`).
+ * first sourced questions prints their sources, in `sourceFormat`, in the same commit
+ * (`sourceChoiceDecides`).
  */
 export function insertIntoOpen(
   items: readonly PastPaperItem[],
   summary: (added: number, skipped: number) => string,
-  { showSources = false }: { showSources?: boolean } = {},
+  { showSources = false, sourceFormat = 'full' }: { showSources?: boolean; sourceFormat?: QuestionSourceFormat } = {},
 ): InsertOutcome {
   const store = useWorksheetStore.getState();
   if (store.readOnly) return { inserted: [], skipped: 0, refused: 'readOnly' };
@@ -54,10 +55,19 @@ export function insertIntoOpen(
       found: plan.questions.map((question, index) => ({ question, docId: plan.fromDocIds[index] })),
       missing: [],
     },
-    { summary: (count) => summary(count, skipped), leads: plan.leads, ...(turnOn ? { patch: { showQuestionSources: true } } : {}) },
+    { summary: (count) => summary(count, skipped), leads: plan.leads, ...(turnOn ? { patch: sourcesPatch(store.worksheet, sourceFormat) } : {}) },
   );
   if (inserted[0]) useWorksheetStore.getState().select(inserted[0]);
   return { inserted, skipped };
+}
+
+/**
+ * The paper fields that turn its sources on, in a format: the format is stored only when not
+ * full (a stale one on a paper with no sourced question left is cleared, never saved).
+ */
+export function sourcesPatch(worksheet: Pick<Worksheet, 'questionSourceFormat'>, format: QuestionSourceFormat): Partial<Worksheet> {
+  if (format !== 'full') return { showQuestionSources: true, questionSourceFormat: format };
+  return worksheet.questionSourceFormat === undefined ? { showQuestionSources: true } : { showQuestionSources: true, questionSourceFormat: undefined };
 }
 
 /** The empty paper "New worksheet / Paper 1 from these" opens, before the picks go in. */

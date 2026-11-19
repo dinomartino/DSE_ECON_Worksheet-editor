@@ -15,7 +15,18 @@ import { sourceOf as tagOf } from '@/pastpapers/pack';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { renderAnswerKey } from './answerKey';
 import { DEFAULT_PAGE_METRICS, trailLabel, type RenderNode, type TextNode } from './ir';
-import { hasQuestionSources, lastLineReach, printsQuestionSources, sourceFits, sourceTrail, withQuestionSources } from './questionSource';
+import {
+  hasQuestionSources,
+  lastLineReach,
+  printsQuestionSources,
+  questionSourceFormat,
+  shortSource,
+  sourceFits,
+  sourceParts,
+  sourceTrail,
+  withQuestionSourceFormat,
+  withQuestionSources,
+} from './questionSource';
 import { renderWorksheet } from './worksheet';
 
 /**
@@ -275,5 +286,149 @@ describe('a label that does not fit goes on a line of its own, in every backend'
     expect(long).toBeLessThanOrEqual(width);
     // Without the fit check, a label on a full line would not be flagged.
     expect(sourceFits(numbered(renderWorksheet(paper([Q2]), { language: 'en', version: 'student' }).questions[0].nodes), '(HKCEE 2006 Paper 2 Q32)', 'en', page, indents)).toBe(true);
+  });
+});
+
+describe('the source format: full, short, short with a Roman paper (user u-z6ft)', () => {
+  const AL = pastMcq('AL2002/P1/Q17', 'HKALE 2002 Paper 1 Q17', '香港高級程度會考 2002 卷一 第 17 題');
+  const SP = pastMcq('DSESP/P1/Q3', 'HKDSE Sample Paper Paper 1 Q3', '香港中學文憑考試 樣本試卷 卷一 第 3 題');
+  const PP = pastMcq('DSEPP/P1/Q40', 'HKDSE Practice Paper Paper 1 Q40', '香港中學文憑考試 練習卷 卷一 第 40 題');
+  const ALL = [Q1, Q2, AL, SP, PP];
+  const SHORT = ['DSE2019/P1/Q12', 'CE2006/P2/Q32', 'AL2002/P1/Q17', 'DSESP/P1/Q3', 'DSEPP/P1/Q40'];
+  const ROMAN = ['DSE2019/I/Q12', 'CE2006/II/Q32', 'AL2002/I/Q17', 'DSESP/I/Q3', 'DSEPP/I/Q40'];
+
+  it('reads every kind of source the bank writes, from either side', () => {
+    ALL.forEach((question, index) => {
+      const parts = sourceParts(question.provenance!)!;
+      expect(shortSource(parts, 'short')).toBe(SHORT[index]);
+      expect(shortSource(parts, 'shortRoman')).toBe(ROMAN[index]);
+      // The Chinese side alone reads the same.
+      expect(sourceParts(bi('', question.provenance!.zh[0].text))).toEqual(parts);
+    });
+    expect(sourceParts(bi('Adapted from HKEAA', '改編自考評局'))).toBeUndefined();
+    expect(shortSource({ exam: 'AL', when: '2002', paper: 4, number: 1 }, 'shortRoman')).toBe('AL2002/IV/Q1');
+  });
+
+  it('short prints the same label on English, Chinese and bilingual papers, in every backend', () => {
+    for (const [format, expected] of [['short', SHORT], ['shortRoman', ROMAN]] as const) {
+      const ws = paper(ALL, { showQuestionSources: true, questionSourceFormat: format });
+      for (const language of LANGUAGES) {
+        const ir = renderWorksheet(ws, { language, version: 'student' });
+        expect(ir.questions.map((q) => label(numbered(q.nodes).trail, language))).toEqual(expected.map((tag) => `(${tag})`));
+      }
+      for (const language of LANGUAGES) {
+        const xml = buildDocxParts(ws, { language, version: 'student' }).documentXml;
+        for (const tag of expected) expect(xml).toContain(`(${tag})`);
+        expect(xml).not.toContain(nb('HKDSE 2019 Paper 1'));
+        expect(xml).not.toContain('香港中學文憑考試');
+        const html = worksheetClipboardHtml(ws, { language, version: 'student' });
+        for (const tag of expected) expect(html).toContain(`(${tag})`);
+        // Once on a bilingual paper, not once per language.
+        expect(html.split(`(${expected[0]})`).length - 1).toBe(1);
+      }
+    }
+  });
+
+  it('full is today\'s label, and a source a short form cannot read stays in full', () => {
+    const own = pastMcq('X/P1/Q1', 'From our mock, 2024', '本校模擬試卷 2024');
+    const ws = paper([Q1, own], { showQuestionSources: true, questionSourceFormat: 'short' });
+    const ir = renderWorksheet(ws, { language: 'en', version: 'student' });
+    expect(label(numbered(ir.questions[0].nodes).trail, 'en')).toBe('(DSE2019/P1/Q12)');
+    expect(label(numbered(ir.questions[1].nodes).trail, 'en')).toBe('(From our mock, 2024)');
+    expect(label(numbered(ir.questions[1].nodes).trail, 'zh')).toBe('（本校模擬試卷 2024）');
+    const full = renderWorksheet(paper([Q1], { showQuestionSources: true }), { language: 'zh', version: 'student' });
+    expect(label(numbered(full.questions[0].nodes).trail, 'zh')).toBe('（香港中學文憑考試 2019 卷一 第 12 題）');
+  });
+
+  it('keeps the place: beside a short stem, its own line when it does not fit, always its own line on a bilingual paper', () => {
+    const ws = paper([Q2], { showQuestionSources: true, questionSourceFormat: 'short' });
+    expect(numbered(renderWorksheet(ws, { language: 'en', version: 'student' }).questions[0].nodes).trailOwnLine).toBeUndefined();
+    expect(numbered(renderWorksheet(ws, { language: 'zh', version: 'student' }).questions[0].nodes).trailOwnLine).toBeUndefined();
+    expect(numbered(renderWorksheet(ws, { language: 'bilingual', version: 'student' }).questions[0].nodes).trailOwnLine).toBe(true);
+    const page = { ...DEFAULT_PAGE_METRICS };
+    const width = page.textWidth - listIndentScheme('classroom').question[0].left;
+    let words = 'Which';
+    while (lastLineReach([{ text: `${words} word` }], width, page.fontSize, page.latinFont) > lastLineReach([{ text: words }], width, page.fontSize, page.latinFont)) words += ' word';
+    const long = pastMcq('DSE2020/P1/Q1', 'HKDSE 2020 Paper 1 Q1', '香港中學文憑考試 2020 卷一 第 1 題', `${words}?`);
+    const node = numbered(renderWorksheet(paper([long], { showQuestionSources: true, questionSourceFormat: 'shortRoman' }), { language: 'en', version: 'student' }).questions[0].nodes);
+    expect(node.trailOwnLine).toBe(true);
+  });
+
+  it('leaves numbering and the answer key exactly as they were', () => {
+    const off = paper(ALL);
+    for (const format of ['short', 'shortRoman'] as const) {
+      const on = paper(ALL, { showQuestionSources: true, questionSourceFormat: format });
+      expect(computeNumbering(on)).toEqual(computeNumbering(off));
+      for (const language of LANGUAGES) {
+        expect(renderAnswerKey(on, language)).toEqual(renderAnswerKey(off, language));
+        expect(buildAnswerKeyDocxParts(on, language).documentXml).toBe(buildAnswerKeyDocxParts(off, language).documentXml);
+      }
+    }
+  });
+
+  it('a format with the switch off prints nothing', () => {
+    const ws = paper(ALL, { questionSourceFormat: 'short' });
+    for (const mode of MODES) {
+      for (const question of renderWorksheet(ws, mode).questions) expect(numbered(question.nodes).trail).toBeUndefined();
+    }
+  });
+
+  it('is stored only when not full, survives save and reload, and old papers read as full', () => {
+    const on = withQuestionSources(paper(), true);
+    expect(withQuestionSourceFormat(on, 'full')).toBe(on);
+    const short = withQuestionSourceFormat(on, 'short');
+    expect(short.questionSourceFormat).toBe('short');
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(short))));
+    expect(reloaded.questionSourceFormat).toBe('short');
+    expect(reloaded.__unknown).toBeUndefined();
+    expect('questionSourceFormat' in withQuestionSourceFormat(short, 'full')).toBe(false);
+    expect(questionSourceFormat(paper(undefined, { questionSourceFormat: 'tiny' as never }))).toBe('full');
+    for (const corpus of [v1Corpus, v1Mcq]) {
+      const loaded = migrate(structuredClone(corpus));
+      expect(loaded.questionSourceFormat).toBeUndefined();
+      expect(questionSourceFormat(loaded)).toBe('full');
+    }
+  });
+
+  describe('the bank applies the remembered format with the switch', () => {
+    const item = (question: McqQuestion): PastPaperItem => ({
+      topicId: 't',
+      docId: 'pp-bank-t',
+      question,
+      source: tagOf(question),
+      provenance: { en: question.provenance!.en[0].text, zh: question.provenance!.zh[0].text },
+      excerpt: { en: '', zh: '' },
+      searchText: '',
+    });
+
+    beforeEach(() => {
+      useWorksheetStore.getState().replaceWorksheet(createWorksheet());
+      useBankSession.setState({ review: null });
+    });
+
+    it('a short format goes in with the first sourced questions; one ⌘Z takes all', () => {
+      insertIntoOpen([item(Q1)], () => '', { showSources: true, sourceFormat: 'shortRoman' });
+      const ws = useWorksheetStore.getState().worksheet;
+      expect(ws.showQuestionSources).toBe(true);
+      expect(ws.questionSourceFormat).toBe('shortRoman');
+      useWorksheetStore.getState().undo();
+      expect(useWorksheetStore.getState().worksheet.questionSourceFormat).toBeUndefined();
+      expect(useWorksheetStore.getState().worksheet.showQuestionSources).toBeUndefined();
+    });
+
+    it('full stores nothing, and clears a stale format left on a paper with no sourced question', () => {
+      insertIntoOpen([item(Q1)], () => '', { showSources: true, sourceFormat: 'full' });
+      expect('questionSourceFormat' in useWorksheetStore.getState().worksheet).toBe(false);
+      useWorksheetStore.getState().replaceWorksheet({ ...createWorksheet(), questionSourceFormat: 'short' });
+      insertIntoOpen([item(Q2)], () => '', { showSources: true, sourceFormat: 'full' });
+      const saved = JSON.parse(JSON.stringify(serializeWorksheet(useWorksheetStore.getState().worksheet)));
+      expect(saved.questionSourceFormat).toBeUndefined();
+      expect(questionSourceFormat(useWorksheetStore.getState().worksheet)).toBe('full');
+    });
+
+    it('with Show source off, the format changes nothing', () => {
+      insertIntoOpen([item(Q1)], () => '', { showSources: false, sourceFormat: 'short' });
+      expect(useWorksheetStore.getState().worksheet.questionSourceFormat).toBeUndefined();
+    });
   });
 });

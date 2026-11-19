@@ -95,6 +95,11 @@ export const PAST_PAPER_MESSAGES = defineMessages({
     zh: '在每題首行右方以括號印出其考試、年份及題號：畫面、列印、PDF 及 Word 皆同。之後可在「頁面設定 → 頁面」更改。',
   },
   showSourcesThisPaper: { en: 'Show sources on this paper', zh: '在此試卷顯示出處' },
+  // u-z6ft: how the source prints. The examples are the labels themselves (paper words).
+  sourceFormat: { en: 'Source format', zh: '出處格式' },
+  sourceFormatFull: { en: 'Full: HKDSE 2019 Paper 1 Q12', zh: '完整：HKDSE 2019 Paper 1 Q12（中文卷印中文全稱）' },
+  sourceFormatShort: { en: 'Short: DSE2019/P1/Q12', zh: '簡寫：DSE2019/P1/Q12' },
+  sourceFormatShortRoman: { en: 'Short: DSE2019/I/Q12', zh: '簡寫：DSE2019/I/Q12' },
   newWorksheet: { en: 'New worksheet', zh: '新工作紙' },
   newPaper1: { en: 'New Paper 1', zh: '新 Paper 1' },
   recentPapers: { en: 'Your papers', zh: '你的試卷' },
