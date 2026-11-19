@@ -4,19 +4,25 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import JSZip from 'jszip';
 
 /**
- * "Show source (year + question no.)" (user u-w7gs), walked in a real browser against the
- * built-in past paper bank: the tray's box, a new worksheet made with it on (EN and 中文),
- * the source on the page, in the `.docx` and in the printed PDF, Setup → Page turning it off,
- * the editor's Past papers tab, and the same at phone width.
+ * "Show source (year + question no.)" (user u-w7gs) and its format (u-z6ft), walked in a real
+ * browser against the built-in past paper bank: the tray's box and format picker, a new
+ * worksheet made with them (EN and 中文), the source on the page, in the `.docx` and in the
+ * printed PDF, Setup → Page changing the format and turning it off, the editor's Past papers
+ * tab, and the same at phone width. One format per run:
  *
- *   node scripts/pastpaper-source-verify.mjs <out-dir> [--port=3000] [--phone]
+ *   node scripts/pastpaper-source-verify.mjs <out-dir> [--port=3000] [--phone] [--format=full|short|shortRoman]
  */
 
 const args = process.argv.slice(2);
 const OUT = args.find((a) => !a.startsWith('--')) ?? '/tmp/pastpaper-source-verify';
 const port = args.find((a) => a.startsWith('--port='))?.slice(7) ?? '3000';
 const phone = args.includes('--phone');
-const tag = phone ? 'iphone' : 'macbook';
+const FORMATS = ['full', 'short', 'shortRoman'];
+const format = args.find((a) => a.startsWith('--format='))?.slice(9) ?? 'full';
+if (!FORMATS.includes(format)) throw new Error(`--format must be one of ${FORMATS.join(', ')}`);
+// Setup → Page then changes it to the next one, to prove the page follows.
+const nextFormat = FORMATS[(FORMATS.indexOf(format) + 1) % FORMATS.length];
+const tag = `${phone ? 'iphone' : 'macbook'}-${format}`;
 mkdirSync(OUT, { recursive: true });
 
 let failures = 0;
@@ -26,10 +32,17 @@ const check = (ok, what, detail = '') => {
 };
 
 const PICKS = ['DSE2019/P1/Q12', 'CE2006/P2/Q32'];
-const LABEL = {
-  en: ['(HKDSE 2019 Paper 1 Q12)', '(HKCEE 2006 Paper 2 Q32)'],
-  zh: ['（香港中學文憑考試 2019 卷一 第 12 題）', '（香港中學會考 2006 卷二 第 32 題）'],
+const LABELS = {
+  full: {
+    en: ['(HKDSE 2019 Paper 1 Q12)', '(HKCEE 2006 Paper 2 Q32)'],
+    zh: ['（香港中學文憑考試 2019 卷一 第 12 題）', '（香港中學會考 2006 卷二 第 32 題）'],
+  },
+  // Short forms are the same on every language.
+  short: { en: ['(DSE2019/P1/Q12)', '(CE2006/P2/Q32)'], zh: ['(DSE2019/P1/Q12)', '(CE2006/P2/Q32)'] },
+  shortRoman: { en: ['(DSE2019/I/Q12)', '(CE2006/II/Q32)'], zh: ['(DSE2019/I/Q12)', '(CE2006/II/Q32)'] },
 };
+const LABEL = LABELS[format];
+const ALL_LABELS = (language) => FORMATS.flatMap((f) => LABELS[f][language]);
 
 const browser = await chromium.launch({ channel: 'chrome' });
 const context = await browser.newContext(
@@ -90,7 +103,7 @@ const printedText = async (name) => {
   }
 };
 
-for (const language of phone ? ['en'] : ['en', 'zh']) {
+for (const language of ['en', 'zh']) {
   await openBank();
   if (language === 'zh') await page.getByRole('radiogroup', { name: 'Paper language' }).getByRole('radio', { name: '中文' }).click();
   for (const source of PICKS) await pick(source);
@@ -102,9 +115,15 @@ for (const language of phone ? ['en'] : ['en', 'zh']) {
     await tray.screenshot({ path: `${OUT}/${tag}-tray-off.png` });
   } else check(await box.isChecked(), `${language}: the choice was remembered from the last time`);
   await box.check();
-  await tray.screenshot({ path: `${OUT}/${tag}-tray-on${language === 'zh' ? '-zh' : ''}.png` });
+  const picker = tray.locator('[data-pastpaper-source-format] select');
+  check((await picker.count()) === 1, `${language}: with Show source on, the tray offers the format`);
+  if (language === 'en') {
+    check((await picker.inputValue()) === 'full', 'the format is Full by default', await picker.inputValue());
+    await picker.selectOption(format);
+  } else check((await picker.inputValue()) === format, `${language}: the format was remembered`, await picker.inputValue());
+  await tray.screenshot({ path: `${OUT}/${tag}-tray-${language}.png` });
   if (phone) await page.screenshot({ path: `${OUT}/${tag}-bank-screen.png` });
-  await tray.locator('select').selectOption('new:classroom');
+  await tray.locator('select:has(option[value="new:classroom"])').selectOption('new:classroom');
   await tray.getByRole('button', { name: 'Add', exact: true }).click();
   await page.locator('#print-root').waitFor({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Done', exact: true }).click().catch(() => {});
@@ -114,11 +133,14 @@ for (const language of phone ? ['en'] : ['en', 'zh']) {
   for (const label of LABEL[language]) check(text.includes(label), `${language}: the page shows ${label}`);
   const firstQuestion = page.locator('#print-root p', { hasText: LABEL[language][0] }).first();
   await firstQuestion.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `${OUT}/${tag}-worksheet-on-${language}.png` });
+  await page.screenshot({ path: `${OUT}/${tag}-worksheet-${language}.png` });
+  const others = ALL_LABELS(language).filter((label) => !LABEL[language].includes(label));
+  check(!others.some((label) => text.includes(label)), `${language}: no other format's label on the page`);
 
   if (!phone) {
     const xml = await exportDocx(language, 'on');
     for (const label of LABEL[language]) check(xml.includes(label), `${language}: the .docx prints ${label}`);
+    check(!others.some((label) => xml.includes(label)), `${language}: the .docx prints no other format`);
     const printed = await printedText(`print-on-${language}`);
     if (printed === undefined) console.log('(pdftotext missing: PDF not read back)');
     else {
@@ -127,7 +149,7 @@ for (const language of phone ? ['en'] : ['en', 'zh']) {
     }
   }
 
-  // Setup → Page turns it off for this paper; the page and the export follow.
+  // Setup → Page shows this paper's format and changes it; then turns the sources off.
   await page.getByRole('button', { name: language === 'zh' ? /^Setup|^頁面設定/ : /^Setup/ }).first().click();
   const setup = page.getByRole('dialog');
   await setup.getByRole('tab', { name: /^Page|^頁面$/ }).first().click();
@@ -136,17 +158,25 @@ for (const language of phone ? ['en'] : ['en', 'zh']) {
   await field.scrollIntoViewIfNeeded();
   await field.screenshot({ path: `${OUT}/${tag}-setup-switch.png` }).catch(() => {});
   check(await field.locator('input').isChecked(), `${language}: Setup shows it on`);
-  await field.locator('input').uncheck();
+  const setupPicker = field.locator('[data-pastpaper-source-format] select');
+  check((await setupPicker.count()) === 1 && (await setupPicker.inputValue()) === format, `${language}: Setup shows the format`, await setupPicker.inputValue().catch(() => 'none'));
+  await setupPicker.selectOption(nextFormat);
+  await page.waitForTimeout(1200);
+  const switched = await pageText();
+  for (const label of LABELS[nextFormat][language]) check(switched.includes(label), `${language}: Setup → ${nextFormat}, the page shows ${label}`);
+  await setupPicker.selectOption(format);
+  await page.waitForTimeout(800);
+  await field.locator('input[type="checkbox"]').uncheck();
   await page.keyboard.press('Escape');
   await page.waitForTimeout(1500);
   const offText = await pageText();
-  check(!LABEL[language].some((label) => offText.includes(label)), `${language}: off in Setup, the page shows no source`);
+  check(!ALL_LABELS(language).some((label) => offText.includes(label)), `${language}: off in Setup, the page shows no source`);
   await firstQuestion.scrollIntoViewIfNeeded().catch(() => {});
   await page.locator('#print-root').first().scrollIntoViewIfNeeded().catch(() => {});
-  await page.screenshot({ path: `${OUT}/${tag}-worksheet-off-${language}.png` });
+  if (format === 'full') await page.screenshot({ path: `${OUT}/${tag.replace(/-full$/, '')}-worksheet-off-${language}.png` });
   if (!phone) {
     const xml = await exportDocx(language, 'off');
-    check(!LABEL[language].some((label) => xml.includes(label)), `${language}: off, the .docx prints no source`);
+    check(!ALL_LABELS(language).some((label) => xml.includes(label)), `${language}: off, the .docx prints no source`);
   }
 }
 
@@ -163,6 +193,17 @@ if (!phone) {
     const label = tab.locator('[data-pastpaper-show-sources]');
     check((await label.count()) === 1, 'the editor’s Past papers tab has the box');
     check(/this paper|此試卷/.test(await label.innerText()), 'it names this paper once the paper has sourced questions', await label.innerText());
+    // Turned back on here, its format picker is this paper's: the page follows it.
+    await label.locator('input').check();
+    await page.waitForTimeout(800);
+    const tabPicker = tab.locator('[data-pastpaper-source-format] select');
+    check((await tabPicker.count()) === 1 && (await tabPicker.inputValue()) === format, 'the tab offers this paper’s format', await tabPicker.inputValue().catch(() => 'none'));
+    await tabPicker.selectOption(nextFormat);
+    await page.waitForTimeout(1200);
+    const fromTab = await pageText();
+    check(LABELS[nextFormat].zh.every((l) => fromTab.includes(l)), `the tab's format changes the paper (${nextFormat})`);
+    await tabPicker.selectOption(format);
+    await page.waitForTimeout(800);
     await tab.locator('div').first().screenshot({ path: `${OUT}/${tag}-editor-tab.png` });
   } else console.log('(editor Past papers tab not found by the walk; skipped)');
 }

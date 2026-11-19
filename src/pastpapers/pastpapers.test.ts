@@ -11,6 +11,7 @@ import { copyIntoMyBank, insertIntoOpen } from './actions';
 import { loadManifest, loadTopic, type Deps } from './bank';
 import { createMemoryCache, cacheKey } from './cache';
 import { fileUrl, PAST_PAPER_SETTINGS, sourceAddress, sourceUrl } from './config';
+import { createSettingsStore } from '@/settings/store';
 import { planCopies } from './copy';
 import { liftStimulusLead, matchItem, parseManifest, parseTopic, sourceOf, type TopicEntry } from './pack';
 import type { FetchResult } from './net';
@@ -90,7 +91,18 @@ describe('config: the switch and the source', () => {
     for (const bad of ['http://evil.example/', '//evil.example/', 'https://u:p@x.example/', 'https://x.example/?k=1', 'ftp://x/', 'not a url']) {
       expect(sourceAddress(bad)).toBeUndefined();
     }
-    expect(PAST_PAPER_SETTINGS.defaults({ desktop: false })).toEqual({ mode: 'builtIn', url: '', showSources: false });
+    expect(PAST_PAPER_SETTINGS.defaults({ desktop: false })).toEqual({ mode: 'builtIn', url: '', showSources: false, sourceFormat: 'full' });
+  });
+
+  it('reads settings saved before the source format existed as full, and an unknown format as full (u-z6ft)', () => {
+    const storage = (value: unknown) => {
+      const data = new Map<string, string>([[PAST_PAPER_SETTINGS.storageKey, JSON.stringify(value)]]);
+      return { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, text: string) => void data.set(key, text) };
+    };
+    const read = (value: unknown) => createSettingsStore(() => storage(value), { desktop: false }).read(PAST_PAPER_SETTINGS);
+    expect(read({ v: 1, mode: 'builtIn', url: '', showSources: true })).toMatchObject({ showSources: true, sourceFormat: 'full' });
+    expect(read({ v: 1, showSources: true, sourceFormat: 'tiny' }).sourceFormat).toBe('full');
+    expect(read({ v: 1, showSources: true, sourceFormat: 'shortRoman' }).sourceFormat).toBe('shortRoman');
   });
 
   it('never reads a file outside the source', () => {

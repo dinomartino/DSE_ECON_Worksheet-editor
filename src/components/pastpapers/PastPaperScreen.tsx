@@ -15,6 +15,7 @@ import { rootIdOf } from '@/model/lineage';
 import { PAST_PAPER_MESSAGES } from './messages';
 import { BankStateNote, ExamChips, LanguageToggle, PaperSelect, SearchGlyph, YearSelects } from './PastPaperControls';
 import { PastPaperIndexCard } from './PastPaperIndexCard';
+import { SourceFormatSelect } from './SourceFormatSelect';
 import { megabytes, NEARLY_FULL, webStorageUse } from '@/storage/webQuota';
 import { packName, sourceLabel } from '@/pastpapers/pack';
 import { PastPaperSheet } from './PastPaperSheet';
@@ -58,6 +59,7 @@ export function PastPaperScreen({
   // "Show source (year + question no.)": remembered on this computer (u-w7gs).
   const [bankSettings, setBankSettings] = useSettings(PAST_PAPER_SETTINGS);
   const showSources = bankSettings.showSources;
+  const sourceFormat = bankSettings.sourceFormat;
 
   const itemOf = useMemo(() => new Map(browse.allLoaded.map((item) => [pickKey({ topicId: item.topicId, questionId: item.question.id }), item])), [browse.allLoaded]);
   const pickedItems = useMemo(() => picks.flatMap((pick) => itemOf.get(pickKey(pick)) ?? []), [picks, itemOf]);
@@ -85,7 +87,7 @@ export function PastPaperScreen({
       if (target.startsWith('new:')) {
         const kind = target === 'new:paper1' ? 'paper1' : 'classroom';
         onOpenWorksheet(emptyPaperFor(kind, sharedTopicName()), language);
-        const { inserted } = insertIntoOpen(pickedItems, m.added, { showSources });
+        const { inserted } = insertIntoOpen(pickedItems, m.added, { showSources, sourceFormat });
         if (inserted.length > 0) setPicks([]);
         if (inserted[0]) revealQuestion(inserted[0]);
         return;
@@ -98,7 +100,7 @@ export function PastPaperScreen({
         return;
       }
       onOpenDocument(target, () => {
-        const { inserted, refused } = insertIntoOpen(pickedItems, m.added, { showSources });
+        const { inserted, refused } = insertIntoOpen(pickedItems, m.added, { showSources, sourceFormat });
         if (refused) onError(m.readOnlyPaper);
         if (inserted.length > 0) setPicks([]);
         if (inserted[0]) revealQuestion(inserted[0]);
@@ -342,6 +344,9 @@ export function PastPaperScreen({
                   />
                   {m.showSources}
                 </label>
+                {showSources && (
+                  <SourceFormatSelect value={sourceFormat} onChange={(next) => setBankSettings({ sourceFormat: next })} className="max-w-[240px]" />
+                )}
                 <label className="flex items-center gap-2 text-[12.5px] text-ink-muted">
                   {m.addTo}
                   <select

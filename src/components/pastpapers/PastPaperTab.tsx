@@ -6,7 +6,9 @@ import { useMessages } from '@/i18n/language';
 import { rootIdOf } from '@/model/lineage';
 import { insertIntoOpen, sourceChoiceDecides } from '@/pastpapers/actions';
 import { PAST_PAPER_SETTINGS } from '@/pastpapers/config';
-import { printsQuestionSources, withQuestionSources } from '@/render/questionSource';
+import { printsQuestionSources, questionSourceFormat, withQuestionSourceFormat, withQuestionSources } from '@/render/questionSource';
+import type { QuestionSourceFormat } from '@/model/types';
+import { SourceFormatSelect } from './SourceFormatSelect';
 import { useSettings } from '@/settings/store';
 import { groupTopics } from '@/pastpapers/groups';
 import { packName, type TopicEntry } from '@/pastpapers/pack';
@@ -40,6 +42,12 @@ export function PastPaperTab() {
   const setSources = (next: boolean) => {
     setBankSettings({ showSources: next });
     if (!decides && !readOnly) commit((draft) => withQuestionSources(draft, next));
+  };
+  // Its format follows the same rule (u-z6ft).
+  const format = decides ? bankSettings.sourceFormat : questionSourceFormat(worksheet);
+  const setFormat = (next: QuestionSourceFormat) => {
+    setBankSettings({ sourceFormat: next });
+    if (!decides && !readOnly) commit((draft) => withQuestionSourceFormat(draft, next));
   };
   // Topic names and sources are paper words: the document's language, not the interface's.
   // A bilingual paper lists both names, as the sidebar's own topic rows do (`wide`).
@@ -98,6 +106,7 @@ export function PastPaperTab() {
             />
             {decides ? m.showSources : m.showSourcesThisPaper}
           </label>
+          {sourcesOn && <SourceFormatSelect value={format} disabled={readOnly && !decides} onChange={setFormat} className="pl-[22px]" />}
         </div>
 
         <div className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-desk px-3 py-3">
@@ -131,7 +140,7 @@ export function PastPaperTab() {
                         type="button"
                         disabled={readOnly}
                         title={m.insertTitle}
-                        onClick={() => insertIntoOpen([item], m.added, { showSources: sourcesOn })}
+                        onClick={() => insertIntoOpen([item], m.added, { showSources: sourcesOn, sourceFormat: format })}
                         className="shrink-0 cursor-pointer rounded-md bg-cta px-2.5 py-0.5 text-[11.5px] font-medium text-on-cta hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40"
                       >
                         {m.insert}

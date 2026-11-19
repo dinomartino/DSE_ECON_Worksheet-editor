@@ -108,6 +108,14 @@ a version heading is edited afterwards.
   paper any time in Setup → Page (Show each question's source), or with the box above Past papers in
   the editor's 題庫 tab. Numbering, answer keys and your saved papers are unchanged.
   <!-- zh: **歷屆試題庫：在工作紙保留每題出處。** 從歷屆試題庫加入題目時，剔選「顯示出處（年份及題號）」，每題首行右方便會以括號印出其出處（考試、年份及題號）：畫面、列印、PDF 及 Word 皆同，英文及中文試卷皆適用。預設關閉，並會在此電腦上記住你的選擇。之後可隨時在「頁面設定 → 頁面」（顯示每題出處）或編輯器「題庫」分頁的歷屆試題上方為個別試卷更改。題號、答案及你已儲存的試卷均不受影響。 -->
+- **Past paper bank: a short source for students to look up.** Beside Show source, choose how the
+  source prints: Full “(HKDSE 2019 Paper 1 Q12)”, as before, or Short “(DSE2019/P1/Q12)”, or Short
+  with the paper in Roman numerals “(DSE2019/I/Q12)”. The short forms are the same on English, 中文
+  and bilingual papers: CE for HKCEE, AL for HKALE and DSE for HKDSE; the sample and practice papers
+  read DSESP and DSEPP. Your choice is remembered on this computer, and each paper keeps its own:
+  change it in Setup → Page under Show each question's source, or in the editor's 題庫 tab. A source
+  you wrote yourself that is not in the exam-year-question form stays in full.
+  <!-- zh: **歷屆試題庫：方便學生查閱的簡寫出處。** 在「顯示出處」旁邊可選出處的格式：完整「(HKDSE 2019 Paper 1 Q12)」（與以往相同）、簡寫「(DSE2019/P1/Q12)」，或以羅馬數字表示試卷的簡寫「(DSE2019/I/Q12)」。簡寫在英文、中文及雙語試卷上都一樣：HKCEE 寫作 CE、HKALE 寫作 AL、HKDSE 寫作 DSE；樣本試卷及練習卷寫作 DSESP 及 DSEPP。你的選擇會在此電腦上記住，而每份試卷各自保留其格式：可在「頁面設定 → 頁面」的「顯示每題出處」下，或在編輯器的「題庫」分頁更改。你自己寫的出處如不是「考試、年份、題號」的格式，會照樣完整印出。 -->
 
 ### Fixed
 - **Past paper tables sized to their words.** A table from the Past paper bank no longer spans the
