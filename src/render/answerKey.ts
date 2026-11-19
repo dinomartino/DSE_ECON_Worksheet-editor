@@ -6,9 +6,11 @@ import type { MarkScheme } from '@/model/markSchemeTypes';
 import type { AnswerKeyPreset, BiText, DiagramBlock, LanguageMode, Worksheet } from '@/model/types';
 import { versionLetters, versionSeed } from '@/model/versions';
 import { resolveAnswerKeyLayout, type ResolvedAnswerKeyLayout } from '@/model/answerKeyLayout';
+import { mcPercentOf } from '@/model/examResults';
 import { requireQuestionType } from '@/registry';
 import { pushGap, type EditTarget, type RenderNode, type SchemeAddress } from './ir';
 import { ANSWER_KEY_WORDING, KEY_LAYOUT_WORDING } from './answerKeyWording';
+import { renderPerformance } from './examResultsKey';
 import {
   answerGrid,
   hasNotes,
@@ -124,6 +126,8 @@ export interface KeyChoice {
   provenanceEdit?: EditTarget;
   stem?: KeyLine[];
   versions: ChoiceVersion[];
+  /** The % of candidates who chose the key, entered after the exam (`Worksheet.examResults`). */
+  percent?: number;
 }
 
 export interface KeyScheme {
@@ -152,6 +156,8 @@ export interface AnswerKeyData {
   letters: string[];
   /** The paper's marks. */
   total: number;
+  /** Candidates' performance, entered after the exam (`Worksheet.examResults`). */
+  performance?: { mc?: BiText; sq?: BiText };
 }
 
 /**
@@ -186,6 +192,7 @@ export function collectAnswerKey(worksheet: Worksheet): AnswerKeyData {
     const entry = definition.answerKey?.(item.question, context);
     if (!entry) continue;
     if (entry.kind === 'choice') {
+      const percent = mcPercentOf(worksheet.examResults, item.question.id);
       // Each version's key comes from the same hook, asked of the reordered question.
       const versions = letters.map((_, version): ChoiceVersion => {
         const shown = definition.variant?.(item.question, { seed, version });
@@ -208,6 +215,7 @@ export function collectAnswerKey(worksheet: Worksheet): AnswerKeyData {
         provenanceEdit: entry.provenanceEdit,
         stem: entry.stem,
         versions,
+        ...(percent !== undefined ? { percent } : {}),
       });
     } else {
       group.schemes.push({
@@ -228,7 +236,9 @@ export function collectAnswerKey(worksheet: Worksheet): AnswerKeyData {
     });
     total = worksheetMarks(worksheet);
   }
-  return { groups, letters, total };
+  const { mcComments: mc, sqComments: sq } = worksheet.examResults ?? {};
+  const performance = mc || sq ? { ...(mc ? { mc } : {}), ...(sq ? { sq } : {}) } : undefined;
+  return { groups, letters, total, ...(performance ? { performance } : {}) };
 }
 
 // --- Styles --------------------------------------------------------------------------
@@ -336,6 +346,8 @@ export function renderStandardKey(
     }
     if (layout.paperTotal) renderPaperTotal(nodes, data.total);
   }
+  // Candidates' performance closes the key, after the version map (k-0471).
+  if (layout.showPerformance && data.performance) renderPerformance(nodes, data.performance, language);
 
   return {
     nodes,

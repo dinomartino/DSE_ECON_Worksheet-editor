@@ -18,6 +18,7 @@ import type { TextKey } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import { AnswerKeySketch } from './AnswerKeySketch';
 import { ANSWER_KEY_LAYOUT_MESSAGES } from './AnswerKeyLayoutPanel.messages';
+import { ExamResultsSection } from './ExamResultsSection';
 
 /**
  * The Marking scheme view's **Layout 版面** tab: how the answer key is laid out, saved
@@ -211,6 +212,8 @@ export function AnswerKeyLayoutPanel() {
             />
           ))}
         </section>
+
+        <ExamResultsSection layout={layout} />
 
         <div>
           <Button

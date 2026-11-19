@@ -19,6 +19,7 @@ import {
 } from './ir';
 import { MARK_SCHEME_WORDING, renderMarkScheme, schemePointGroups } from './markScheme';
 import { ANSWER_KEY_WORDING, KEY_LAYOUT_WORDING } from './answerKeyWording';
+import { percentNote } from './examResultsKey';
 import type { AnswerKeyRow, KeyChoice, KeyGroup, KeyLine, KeyScheme } from './answerKey';
 import { schemeLevels } from '@/model/markScheme';
 
@@ -161,6 +162,24 @@ const centred = (text: BiText, bold = false, edges?: TableCellEdges): TableNodeC
 const ownedBy = (cell: TableNodeCell, choice: KeyChoice | undefined): TableNodeCell =>
   choice ? { ...cell, questionId: choice.questionId } : cell;
 
+/** A choice's key as printed: its letter (a dash when unset), then "(65%)" when entered. */
+export function keyText(choice: KeyChoice): string {
+  const letter = choice.letter ?? UNANSWERED_MARK;
+  return choice.percent === undefined ? letter : `${letter} ${percentNote(choice.percent)}`;
+}
+
+/** A key cell's text: the letter alone, or with its % correct after it in plain type. */
+function keyCellText(choice: KeyChoice, language: LanguageMode, boldLetter: boolean): Pick<TableNodeCell, 'text' | 'format'> {
+  if (choice.percent === undefined) {
+    return { text: neutral(keyText(choice), language), ...(boldLetter ? { format: { bold: true } } : {}) };
+  }
+  const runs = [
+    { text: choice.letter ?? UNANSWERED_MARK, ...(boldLetter ? { bold: true } : {}) },
+    { text: ` ${percentNote(choice.percent)}` },
+  ];
+  return { text: language === 'bilingual' ? { en: runs, zh: [] } : { en: runs, zh: runs } };
+}
+
 /** Number → letter pairs, `ANSWER_GRID_PAIRS_PER_ROW` to a row; a short last row pads empty. */
 export function answerGrid(choices: KeyChoice[], language: LanguageMode): TableNode {
   const cell = (text: string, bold = false) => centred(neutral(text, language), bold);
@@ -172,7 +191,9 @@ export function answerGrid(choices: KeyChoice[], language: LanguageMode): TableN
       const choice = choices[start + offset];
       row.push(
         ownedBy(cell(choice ? String(choice.number) : ''), choice),
-        ownedBy(cell(choice ? (choice.letter ?? UNANSWERED_MARK) : '', true), choice),
+        choice?.percent !== undefined
+          ? ownedBy({ ...centred(neutral('', language)), ...keyCellText(choice, language, true) }, choice)
+          : ownedBy(cell(choice ? (choice.letter ?? UNANSWERED_MARK) : '', true), choice),
       );
     }
     rows.push(row);
@@ -221,7 +242,7 @@ export function hkeaaTable(choices: KeyChoice[], language: LanguageMode): TableN
       const choice = choices[pair * down + index];
       row.push(
         ownedBy(centred(neutral(choice ? `${choice.number}.` : '', language), false, ruled), choice),
-        ownedBy(centred(neutral(choice ? (choice.letter ?? UNANSWERED_MARK) : '', language), false, ruled), choice),
+        ownedBy(centred(neutral(choice ? keyText(choice) : '', language), false, ruled), choice),
       );
     }
     rows.push(row);
@@ -249,6 +270,7 @@ export function shownNotes(choice: KeyChoice, layout: ResolvedAnswerKeyLayout): 
     note: layout.showExplanations ? choice.note : undefined,
     rationale: layout.showRationales ? choice.rationale : undefined,
     provenance: layout.showSources ? choice.provenance : undefined,
+    percent: layout.showMcPercent ? choice.percent : undefined,
   };
 }
 
@@ -345,7 +367,7 @@ function renderChoiceList(nodes: RenderNode[], choices: KeyChoice[], context: Ke
   const { language, layout, own } = context;
   for (const choice of choices) {
     const start = nodes.length;
-    const letter = choice.letter ?? UNANSWERED_MARK;
+    const letter = keyText(choice);
     const stem = layout.showStems ? (choice.stem ?? []) : [];
     const lines: NoteLine[] = [
       ...stem.map((line) => ({ text: line.text, ...(line.edit ? { edit: line.edit } : {}) })),
@@ -507,7 +529,9 @@ export function rationaleTable(choices: KeyChoice[], language: LanguageMode): Ta
     ];
     rows.push([
       ownedBy(keyCell({ text: neutral(`${choice.number}.`, language) }, { align: 'center' }), choice),
-      ownedBy(keyCell({ text: neutral(choice.letter ?? UNANSWERED_MARK, language) }, { align: 'center', bold: true }), choice),
+      choice.percent !== undefined
+        ? ownedBy({ ...keyCell({ text: { en: [], zh: [] } }, { align: 'center' }), ...keyCellText(choice, language, true) }, choice)
+        : ownedBy(keyCell({ text: neutral(choice.letter ?? UNANSWERED_MARK, language) }, { align: 'center', bold: true }), choice),
       keyCell(cellText(explanation)),
       keyCell(
         cellText(others.map((reason) => ({ lead: neutral(`${reason.letter}. `, language), value: reason.text, edit: reason.edit }))),

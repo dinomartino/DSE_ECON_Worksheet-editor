@@ -13,6 +13,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Put the exam results in the answer key.** After the exam, open Marking scheme → Layout →
+  Exam results → Enter results… and type each MC question's % correct and your comments on how
+  candidates did, for the MC and for the structured questions, in English, 中文 or both. The key
+  then prints each answer as HKEAA's answer keys do, "B (65%)", in every style and MC layout, and
+  ends with a Candidates' performance section like an HKEAA examination report. A box left empty
+  prints nothing, two switches take either part off the key again, the paper itself never shows
+  them, and a duplicate starts with no results.
+  <!-- zh: **在評卷參考加入考試結果。** 考試後，打開「評卷參考 → 版面 → 考試結果 → 輸入考試結果…」，輸入每題 MC 的答對百分比，以及你對考生在 MC 和結構題表現的評語（英文、中文或兩者皆可）。評卷參考便會像 HKEAA 的答案一樣，把每題答案印成「B (65%)」，所有樣式及 MC 排列都適用；最後附上「考生表現」一節，與 HKEAA 考試報告相似。留空的格不會印出；兩個開關可再把任何一部分從評卷參考移除；試卷本身永遠不會顯示這些結果；建立副本時不會帶走考試結果。 -->
 - **See how much of the syllabus a paper covers.** ✦ AI → Check syllabus coverage sends the
   paper's questions (or the ones you selected) to the AI provider you chose in Settings → AI, the
   same one Chinese translation uses, and shows a report: how many of the 2025 guide's key points

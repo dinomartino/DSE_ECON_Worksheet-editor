@@ -1138,6 +1138,12 @@ export interface Worksheet {
    * of the key only; the paper never reads it. Absent = the Classic key, unchanged.
    */
   answerKeyLayout?: AnswerKeyLayout;
+  /**
+   * How the candidates did, entered after the exam (k-0471): each MC question's % correct
+   * and comments on the MC and structured questions, printed in the answer key only
+   * (`model/examResults.ts`). Absent = nothing entered; the key prints as before.
+   */
+  examResults?: ExamResults;
   createdAt: string;
   updatedAt: string;
   /**
@@ -1226,6 +1232,23 @@ export interface AnswerKeyLayout {
   sectionTotals?: boolean;
   /** "Total: n marks" at the end of the key. */
   paperTotal?: boolean;
+  /** Each MC answer's % correct, when entered ("A (65%)", `Worksheet.examResults`). */
+  showMcPercent?: boolean;
+  /** The candidates' performance comments at the end of the key, when entered. */
+  showPerformance?: boolean;
+}
+
+/**
+ * After the exam (`Worksheet.examResults`, `model/examResults.ts`). Every field optional;
+ * empty ones are never stored.
+ */
+export interface ExamResults {
+  /** By MC question id: the % of candidates who chose the key, 0–100 ("A (65%)"). */
+  mcPercent?: Record<string, number>;
+  /** Candidates' performance on the MC questions (as an HKEAA examination report). */
+  mcComments?: BiText;
+  /** Candidates' performance on the structured (short and long) questions. */
+  sqComments?: BiText;
 }
 
 /** Every field optional; a missing or non-positive one is no target for that measure. */

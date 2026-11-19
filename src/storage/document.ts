@@ -119,7 +119,7 @@ function totalMarksOf(worksheet: Worksheet): Pick<WorksheetSummary, 'totalMarks'
  *
  * `createdAt` is reset because the copy is new; `updatedAt` is what the list sorts on,
  * so a fresh one puts the copy where the teacher is looking for it. Who sat the original
- * (`classes`, `satOn`) is not copied: nobody has sat the copy yet. Nor is its set
+ * (`classes`, `satOn`) is not copied, nor how they did (`examResults`): nobody has sat the copy yet. Nor is its set
  * (`paperSet`, k-0299): a copy of Paper 1 in the set would make two Paper 1s of one exam, so
  * it leaves the set (the user's call); a whole set is copied as a set, never paper by paper.
  *
@@ -145,6 +145,7 @@ export function duplicateWorksheet(worksheet: Worksheet, id: string, lang: UiLan
   delete copy.classes;
   delete copy.satOn;
   delete copy.paperSet;
+  delete copy.examResults;
   return copy;
 }
 
