@@ -86,6 +86,26 @@ export const MARK_SCHEME_MESSAGES = defineMessages({
     zh: (n: number) => `刪除有效溝通第 ${n} 行`,
   },
   addEcRow: { en: '+ EC row', zh: '+ 有效溝通行' },
+  useStandardEc: { en: 'Use HKEAA standard', zh: '使用考評局標準' },
+  useStandardEcHint: {
+    en: 'Replace these rows with the EC statements HKEAA marking schemes print (2 / 1 / 0 marks)',
+    zh: '以考評局評卷參考的有效溝通描述（2／1／0 分）取代以上各行',
+  },
+  showAs: { en: 'Show answer as', zh: '答案顯示方式' },
+  showAsPoints: { en: 'Points', zh: '逐點' },
+  showAsPointsHint: {
+    en: 'One line per point, its mark beside it',
+    zh: '每個要點一行，分數印在旁邊',
+  },
+  showAsParagraph: { en: 'Paragraph + total', zh: '一段 + 總分' },
+  showAsParagraphHint: {
+    en: 'HKEAA style: the points as one paragraph, the total marks beside it',
+    zh: '考評局格式：要點連成一段，旁邊只印總分',
+  },
+  paragraphRulesHidden: {
+    en: 'Shown as one paragraph: the group rules (n@, Any N, max) still count but do not print.',
+    zh: '以一段顯示：各組規則（n@、任何 N 項、最高分）仍會計分，但不會印出。',
+  },
   addMarkingPoints: { en: '+ Marking points', zh: '+ 評分要點' },
   addOrRoute: { en: 'Add OR route', zh: '加入 OR 解法' },
   addLevels: { en: 'Add level descriptors', zh: '加入等級描述' },

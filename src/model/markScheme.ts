@@ -43,36 +43,119 @@ export function createMarkLevel(previous?: MarkLevel): MarkLevel {
 }
 
 /**
- * EC with the three rows every Paper 2 essay prints. The wording is a starting point to
- * edit, not HKEAA's text.
+ * HKEAA's effective-communication statements, as its DSE Economics marking schemes print
+ * them under "Marks for effective communication (EC: max 2 marks)" (Sample Paper 2025,
+ * Paper 2 Q12(d), written for the 2028 framework; English and Chinese versions). One
+ * row per mark, its four statements one per line. The standard every new EC block starts
+ * from, so the table reads the same in every question (k-0470, issue #7).
+ */
+export const HKEAA_EC_MAX = 2;
+
+const statements = (lines: string[]) => lines.map((line) => `\u2022 ${line}`).join('\n');
+
+export const HKEAA_EC_STANDARD: ReadonlyArray<{ marks: number; text: BiText }> = [
+  {
+    marks: 2,
+    text: bi(
+      statements([
+        'Support arguments with the source/data and appropriate economic theories.',
+        'Present relevant material.',
+        'Present well-organised and coherent answers without repetition of ideas.',
+        'Use language that expresses ideas clearly and fluently with appropriate use of words/terms/symbols.',
+      ]),
+      statements([
+        '運用資料／數據及適當的經濟理論支持論點。',
+        '答案切合題旨。',
+        '答案組織良好，並且前後連貫一致，概念沒有重複。',
+        '能以清晰流暢的語文表達意思，並恰當地使用術語或符號。',
+      ]),
+    ),
+  },
+  {
+    marks: 1,
+    text: bi(
+      statements([
+        'Present arguments with some support of the source/data and economic theories.',
+        'Present some irrelevant material.',
+        'Present answers in a less organised way with some repetition.',
+        'Use language that conveys a clear message with some inappropriate use of words/terms/symbols.',
+      ]),
+      statements([
+        '從一些資料／數據和經濟理論支持論點。',
+        '部分答案並不切題。',
+        '答案組織一般，有些概念重複。',
+        '能運用語文清晰地傳遞訊息，但間中用詞不當／誤用術語或符號。',
+      ]),
+    ),
+  },
+  {
+    marks: 0,
+    text: bi(
+      statements([
+        'Present arguments with no support of the source/data and economic theories.',
+        'Present material unrelated to the gist of the question.',
+        'Present inconsistent arguments.',
+        'Express limited ideas with inappropriate use of words/terms/symbols.',
+      ]),
+      statements([
+        '沒有以資料／數據和經濟理論支持論點。',
+        '答案無關題旨。',
+        '答案組織鬆散欠連貫。',
+        '表達有限的意思，有用詞不當／誤用術語或符號的情況。',
+      ]),
+    ),
+  },
+];
+
+/**
+ * EC as HKEAA prints it: max 2, the 2 / 1 / 0 rows in its words (`HKEAA_EC_STANDARD`),
+ * each row still the teacher's to edit. Fresh ids, so two questions never share a row.
  */
 export function createMarkEc(): MarkEc {
   return {
-    max: 2,
-    descriptors: [
-      {
-        id: newId(),
-        marks: 2,
-        text: bi(
-          'Clear and logical presentation; economic terms used accurately.',
-          '表達清晰、有條理；準確運用經濟學術語。',
-        ),
-      },
-      {
-        id: newId(),
-        marks: 1,
-        text: bi(
-          'Some lapses in organisation or terminology, but the answer can be followed.',
-          '組織或術語運用有欠妥善，但答案仍可理解。',
-        ),
-      },
-      {
-        id: newId(),
-        marks: 0,
-        text: bi('Disorganised, or largely irrelevant.', '組織混亂或大部分內容不相關。'),
-      },
-    ],
+    max: HKEAA_EC_MAX,
+    descriptors: HKEAA_EC_STANDARD.map((row) => ({ id: newId(), marks: row.marks, text: row.text })),
   };
+}
+
+/**
+ * Whether `ec` already is the standard table: max 2 and the same rows, marks and words
+ * (ids aside), so "Use HKEAA standard" has nothing to do.
+ */
+export function isStandardEc(ec: MarkEc | undefined): boolean {
+  if (!ec || ec.max !== HKEAA_EC_MAX) return false;
+  const rows = Array.isArray(ec.descriptors) ? ec.descriptors : [];
+  return (
+    rows.length === HKEAA_EC_STANDARD.length &&
+    rows.every((row, index) => {
+      const standard = HKEAA_EC_STANDARD[index];
+      return (
+        row.marks === standard.marks &&
+        plainText(row.text?.en) === plainText(standard.text.en) &&
+        plainText(row.text?.zh) === plainText(standard.text.zh)
+      );
+    })
+  );
+}
+
+const plainText = (runs: BiText['en'] | undefined) => (runs ?? []).map((run) => run.text).join('');
+
+/**
+ * How a scheme's points print (`MarkScheme.display`): `points` (one line per point, its
+ * mark beside it; absent, and anything this build does not know) or `paragraph` (HKEAA's
+ * other style: each route's points as one paragraph, its total marks beside it).
+ */
+export type SchemeDisplay = 'points' | 'paragraph';
+
+export function schemeDisplay(scheme: MarkScheme | undefined): SchemeDisplay {
+  return scheme?.display === 'paragraph' ? 'paragraph' : 'points';
+}
+
+/** `scheme` shown as `display`; points removes the field, so a scheme set back stores nothing. */
+export function withSchemeDisplay(scheme: MarkScheme, display: SchemeDisplay): MarkScheme {
+  const { display: _previous, ...rest } = scheme;
+  void _previous;
+  return display === 'paragraph' ? { ...rest, display } : rest;
 }
 
 export function schemeRoutes(scheme: MarkScheme | undefined): MarkRoute[] {

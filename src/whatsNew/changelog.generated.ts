@@ -15,6 +15,20 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **A marking scheme can show its answer as one paragraph, as HKEAA's do.** In a part's marking
+  scheme, Show answer as has two choices. Points (the default, as before) prints each point on its
+  own line with its mark. Paragraph + total runs the points together as one paragraph with only the
+  part's total marks beside it. The group rules (n@, Any N, max) still count towards the total but
+  do not print. Each part keeps its own choice. It applies to the Teacher version and to every
+  answer key layout.
+  <!-- zh: **評分方案可把答案顯示為一段，與考評局的評卷參考一樣。** 在分題的評分方案中，「答案顯示方式」有兩個選擇。「逐點」（預設，與以往相同）把每個要點印成一行，分數印在旁邊；「一段 + 總分」把各要點連成一段，旁邊只印該分題的總分。各組規則（n@、任何 N 項、最高分）仍會計入總分，但不會印出。每個分題各自選擇，教師版及所有評卷參考版面都適用。 -->
+- **The effective communication (EC) table is the same every time, in HKEAA's words.** Add
+  effective communication now fills in the EC statements from HKEAA's marking schemes: 2, 1 and 0
+  marks, four statements each, in English and 中文. You can still edit every row. An EC table in
+  other words gets a Use HKEAA standard button. In the Marking scheme, EC prints as HKEAA prints
+  it, before the part's points: "Marks for effective communication (EC: max 2 marks)", a ruled
+  Marks | Performance table, then "The maximum mark for content is … marks."
+  <!-- zh: **有效溝通（EC）表格每次都一樣，採用考評局的字眼。** 「加入有效溝通」現在會填入考評局評卷參考的有效傳意描述：2、1、0 分，每級四項，中英對照，每行仍可修改。用了其他字眼的 EC 表格會有「使用考評局標準」按鈕。在評卷參考中，EC 會按考評局的格式印在分題要點之前：「有效傳意評分（EC：最高2分）」、有格線的「分數｜表現」表格，然後是「內容最高…分。」 -->
 - **See how much of the syllabus a paper covers.** ✦ AI → Check syllabus coverage sends the
   paper's questions (or the ones you selected) to the AI provider you chose in Settings → AI, the
   same one Chinese translation uses, and shows a report: how many of the 2025 guide's key points

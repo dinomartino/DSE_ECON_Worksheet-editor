@@ -206,10 +206,23 @@ describe('a scheme in the answer key', () => {
     const nodes = texts(renderAnswerKey(schemeWorksheet(true), 'en'));
     const words = nodes.map((node) => plain(node.text.en));
     const answer = words.indexOf('Plain answer');
-    expect(words[answer + 1]).toBe('Price rises / cost rises');
+    // HKEAA's order: the EC table (its heading, then the content's maximum) before the points.
+    expect(words[answer + 1]).toBe('Marks for effective communication (EC: max 2 marks)');
+    expect(words[answer + 2]).toMatch(/^The maximum mark for content is \d+ marks?\.$/);
+    expect(words[answer + 3]).toBe('Price rises / cost rises');
     expect(words).toContain('Sub point');
-    // The part-level EC closes the key, in a trailing continuation row.
-    expect(words[words.length - 1]).toBe(plain(createMarkEc().descriptors[2].text.en));
+    // The part-level EC is HKEAA's: its heading, a Marks | Performance table, then the
+    // content's maximum, all before the part's points (k-0470).
+    const all = renderAnswerKey(schemeWorksheet(true), 'en');
+    const heading = all.findIndex((node) => node.kind === 'text' && plain(node.text.en) === 'Marks for effective communication (EC: max 2 marks)');
+    expect(heading).toBeGreaterThan(-1);
+    const table = all[heading + 1];
+    expect(table.kind).toBe('table');
+    if (table.kind === 'table') {
+      expect(table.rows.map((row) => row.map((cell) => plain(cell.text.en))[0])).toEqual(['Marks', '2', '1', '0']);
+      expect(plain(table.rows[3][1].text.en)).toBe(plain(createMarkEc().descriptors[2].text.en));
+    }
+    expect(words).not.toContain(plain(MARK_SCHEME_WORDING.ec.en));
     for (const node of nodes.filter((entry) => entry.trail)) expect(node.teacherOnly).toBeUndefined();
   });
 

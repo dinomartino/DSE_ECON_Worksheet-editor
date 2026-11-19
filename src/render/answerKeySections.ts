@@ -17,10 +17,12 @@ import {
   type TableNodeCell,
   type TextNode,
 } from './ir';
-import { MARK_SCHEME_WORDING, renderMarkScheme, schemePointGroups } from './markScheme';
+import { MARK_SCHEME_WORDING, renderMarkScheme, schemeParagraphs, schemePointGroups } from './markScheme';
 import { ANSWER_KEY_WORDING, KEY_LAYOUT_WORDING } from './answerKeyWording';
 import type { AnswerKeyRow, KeyChoice, KeyGroup, KeyLine, KeyScheme } from './answerKey';
-import { schemeLevels } from '@/model/markScheme';
+import { contentMax, schemeDisplay, schemeLevels } from '@/model/markScheme';
+import type { MarkScheme } from '@/model/markSchemeTypes';
+import { contentWidth, DEFAULT_PAGE_SETUP } from '@/model/page';
 
 /**
  * The answer key's section layouts: how the MC answers and the long questions are laid
@@ -599,6 +601,7 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
       indent: row.depth === 1 ? partText : subPartText,
       ...(row.schemeAt ? { at: row.schemeAt } : {}),
       ...(context.editing ? { editing: true } : {}),
+      omitEc: true,
     }),
   }));
   /** A line's own total: "(n marks)" at the line end, or "(n)" in an unclaimed column. */
@@ -655,6 +658,11 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
         }),
       );
     }
+    if (row.scheme?.ec) {
+      nodes.push(...ecBlock(row.scheme, answerIndent, column, row.schemeAt, language).map((node) =>
+        node.kind === 'text' ? inColumn(node) : node,
+      ));
+    }
     const diagram = answerDiagramNode(row);
     // HKEAA (the Marks column): the points under "Indicate in Figure n:", then the figure
     // captioned "Figure n". Elsewhere the diagram precedes the scheme, uncaptioned.
@@ -697,6 +705,53 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
   own(start, scheme.questionId);
 }
 
+/** Marks | Performance, as HKEAA's EC table divides it. */
+const EC_TABLE_COLUMNS = [0.12, 0.88];
+
+/**
+ * A leaf's EC as HKEAA's marking schemes print it, before the content points (k-0470):
+ * "Marks for effective communication (EC: max 2 marks)", a ruled Marks | Performance
+ * table with each row typed where it prints, then "The maximum mark for content is N
+ * marks." (derived, when the content earns any). The table sits at the answer's indent
+ * and, in the Marks column layout, stops short of the column. Fractions of an A4 page's
+ * text width: the key's backends lay a table out in fractions of the content width.
+ */
+function ecBlock(
+  scheme: MarkScheme,
+  indent: number,
+  column: number | undefined,
+  at: AnswerKeyRow['schemeAt'],
+  language: LanguageMode,
+): RenderNode[] {
+  const ec = scheme.ec!;
+  const width = contentWidth(DEFAULT_PAGE_SETUP);
+  const left = Math.min(0.5, indent / width);
+  const right = column ? column / width : 0;
+  const rows: TableNodeCell[][] = [headingRow([MARK_SCHEME_WORDING.ecMarks, MARK_SCHEME_WORDING.ecPerformance])];
+  const keep: boolean[] = [true];
+  for (const descriptor of ec.descriptors ?? []) {
+    rows.push([
+      keyCell({ text: neutral(String(descriptor.marks), language) }, { align: 'center' }),
+      keyCell({ text: descriptor.text, ...(at ? { edit: { kind: 'schemeEc', ...at, descriptorId: descriptor.id } } : {}) }),
+    ]);
+    keep.push(false);
+  }
+  keep[keep.length - 1] = false;
+  const table: TableNode = {
+    ...keyTable(rows, keep, EC_TABLE_COLUMNS, `answer-key-ec-${at?.subPartId ?? at?.partId ?? at?.questionId ?? 'leaf'}`),
+    indent: left,
+    width: Math.max(0.3, 1 - left - right),
+  };
+  const content = contentMax(scheme);
+  return [
+    { kind: 'text', style: 'Marking Scheme', text: MARK_SCHEME_WORDING.ecTableHeading(ec.max), indent, keepNext: true },
+    table,
+    ...(content > 0
+      ? [{ kind: 'text', style: 'Marking Scheme', text: MARK_SCHEME_WORDING.contentMax(content), indent } as TextNode]
+      : []),
+  ];
+}
+
 /** A row's model answer diagram, its answer layer drawn (the whole key shows answers). */
 function answerDiagramNode(row: AnswerKeyRow): RenderNode | undefined {
   if (!row.diagram) return undefined;
@@ -728,9 +783,24 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
 
   const rows = scheme.rows.map((row) => {
     const indent = row.depth === 1 ? partText : subPartText;
-    const [route] = layout.schemeAsPoints ? schemePointGroups(row.scheme, row.schemeAt) : [];
+    // Shown as a paragraph (`MarkScheme.display`), the first route prints as one, unbulleted.
+    const asParagraph = layout.schemeAsPoints && schemeDisplay(row.scheme) === 'paragraph';
+    const [paragraph] = asParagraph ? schemeParagraphs(row.scheme, row.schemeAt ? { at: row.schemeAt } : {}) : [];
+    const [route] = layout.schemeAsPoints && !asParagraph ? schemePointGroups(row.scheme, row.schemeAt) : [];
     const points = (route ?? []).flatMap((group) => group.points);
-    const bullets: ColumnsNode[] = points.map((point) => ({
+    const bullets: Array<ColumnsNode | TextNode> = paragraph
+      ? [
+          {
+            kind: 'text',
+            style: 'Body',
+            text: paragraph.text,
+            indent,
+            keepLines: true,
+            ...(paragraph.segments ? { segments: paragraph.segments } : {}),
+          },
+        ]
+      : [];
+    bullets.push(...points.map((point): ColumnsNode => ({
       kind: 'columns',
       style: 'Body',
       indent: indent + BULLET_HANG,
@@ -744,7 +814,7 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
           ...(point.segments ? { segments: point.segments } : point.edit ? { edit: point.edit } : {}),
         },
       ],
-    }));
+    })));
     return { row, indent, bullets };
   });
 
@@ -915,18 +985,25 @@ function renderSchemeTable(nodes: RenderNode[], scheme: KeyScheme, context: KeyS
       opens = false;
       return out;
     };
-    const groups = schemePointGroups(entry.scheme, entry.schemeAt);
+    // Shown as a paragraph (`MarkScheme.display`): a row per route, its total in Marks.
+    const paragraphs =
+      schemeDisplay(entry.scheme) === 'paragraph'
+        ? schemeParagraphs(entry.scheme, entry.schemeAt ? { at: entry.schemeAt } : {})
+        : [];
+    const groups = paragraphs.length > 0 ? [] : schemePointGroups(entry.scheme, entry.schemeAt);
     const pointMarks = (each: number | undefined, marks: number | undefined) => each ?? marks;
-    const claimed = groups.some((route) =>
-      route.some((group) => group.points.some(({ point }) => pointMarks(group.each, point.marks) !== undefined)),
-    );
+    const claimed =
+      paragraphs.some((paragraph) => paragraph.marks !== undefined) ||
+      groups.some((route) =>
+        route.some((group) => group.points.some(({ point }) => pointMarks(group.each, point.marks) !== undefined)),
+      );
     let ownMarks = claimed ? undefined : entry.marks;
     const marks = () => {
       const out = ownMarks;
       ownMarks = undefined;
       return out;
     };
-    const hasPoints = groups.length > 0;
+    const hasPoints = groups.length > 0 || paragraphs.length > 0;
     const answered = entry.answer !== undefined && !isBiTextEmpty(entry.answer);
 
     const prompts = layout.showStems && entry.label !== undefined ? (entry.prompt ?? []) : [];
@@ -957,6 +1034,19 @@ function renderSchemeTable(nodes: RenderNode[], scheme: KeyScheme, context: KeyS
       flush(true);
       nodes.push(diagram);
     }
+    paragraphs.forEach((paragraph, routeIndex) => {
+      const head = take();
+      rows.push({
+        cells: [
+          keyCell({ text: neutral(head.question, language) }),
+          keyCell({ text: paragraph.text, ...(paragraph.segments ? { segments: paragraph.segments } : {}) }),
+          marksCell(paragraph.marks ?? marks()),
+          keyCell({ text: routeIndex > 0 ? KEY_LAYOUT_WORDING.orRoute : empty }),
+        ],
+        keepNext: false,
+        opensPart: head.opensPart || routeIndex > 0,
+      });
+    });
     groups.forEach((route, routeIndex) => {
       route.forEach((group, groupIndex) => {
         const rules: BiText[] = [
