@@ -19,6 +19,8 @@ import { buildPageFlowBooklet, buildPageFlowPaper, buildPageFlowPaper1 } from '@
 import { buildQuestionGapBooklet, buildQuestionGapOwnNumbers, buildQuestionGapPaper } from '@/test/questionGapFixture';
 import { buildTableJustifyPaper } from '@/test/tableJustifyFixture';
 import { createSamplePaper } from '@/model/samplePaper';
+import { migrate } from '@/model/migrations';
+import v3Corpus from '@/test/corpus/v3-stakeholder.json';
 import { OPTION_LAYOUT_CHOICES, withOptionLayouts } from '@/registry/mcqLayouts';
 import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
 import { presetFor } from '@/ai/providers';
@@ -290,6 +292,15 @@ it('emits a long question with a model answer diagram, and its answer key', asyn
     planPaper(worksheet, { language: 'bilingual', version }, `${OUT}/answer-diagram-${version}.docx`);
   }
   planKey(worksheet, 'bilingual', `${OUT}/answer-diagram-answer-key.docx`);
+});
+
+it('emits a DRQ with a Source A table and a Source B stakeholder diagram (k-0469)', () => {
+  mkdirSync(OUT, { recursive: true });
+  const worksheet = migrate(structuredClone(v3Corpus));
+  for (const language of ['en', 'zh'] as const) {
+    planPaper(worksheet, { language, version: 'student' }, `${OUT}/drq-stakeholder-${language}-student.docx`);
+  }
+  planPaper(worksheet, { language: 'bilingual', version: 'teacher' }, `${OUT}/drq-stakeholder-bilingual-teacher.docx`);
 });
 
 it('emits an English-only paper filled by the translation pipeline', async () => {

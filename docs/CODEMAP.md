@@ -151,7 +151,7 @@ Invariants:
 - `src/render/answerKey.ts:renderCombinedAnswerKey` · `:answerKeyPartTitle` · `:answerKeyParts` — several saved documents' keys in one file, each under its paper's heading; in the `.docx` a section each, in its document's page setup and body size
 - `src/render/markScheme.ts:schemeParagraphs` — a scheme shown as one paragraph per route with its total (`MarkScheme.display`, k-0470); `src/render/answerKeySections.ts:ecBlock` — the key's EC as HKEAA's Marks | Performance table; `src/model/markScheme.ts:HKEAA_EC_STANDARD` — the standard EC rows
 - `src/render/markScheme.ts:renderMarkScheme` — a part's HKEAA scheme as `Marking Scheme` paragraphs; marks ride `TextNode.trail` (`src/render/ir.ts:trailLabel`); given `at`, its text carries scheme edit targets (`src/model/markScheme.ts:withSchemeText` writes them)
-- `src/render/diagram.ts:diagramSvg` · `:diagramPlot` · `:diagramSize` · `:flowChartLayout` · `:forumChartLayout`
+- `src/render/diagram.ts:diagramSvg` · `:diagramPlot` · `:diagramSize` · `:flowChartLayout` · `:forumChartLayout` · `:stakeholderChartLayout`
 - `src/render/answerGraph.ts:answerGraphNode` · `:answerGraphBox` · `:answerGraphSvg` — blank answer axes (`src/model/answerGraph.ts:createAnswerGraph`); PNG via the diagram pre-pass, whole 12pt lines
 
 Invariants:

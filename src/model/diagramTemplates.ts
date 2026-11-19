@@ -298,6 +298,49 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
       },
     }),
   },
+  {
+    id: 'stakeholders',
+    group: 'data',
+    name: bi('Stakeholders', '持份者'),
+    hint: bi(
+      'An issue in the middle, with the stakeholders it affects and their views around it.',
+      '議題置中，四周是受影響的持份者及其意見。',
+    ),
+    // `stakeholder` makes this a stakeholder diagram (k-0469); invented wording.
+    build: () => ({
+      x: {},
+      y: {},
+      curves: [],
+      points: [],
+      labels: [],
+      arrows: [],
+      stakeholder: {
+        issue: bi('Raising the statutory minimum wage', '調高法定最低工資'),
+        stakeholders: [
+          {
+            id: newId(),
+            label: bi('Low-paid workers', '低薪工人'),
+            view: bi('Our income will rise.', '我們的收入會增加。'),
+          },
+          {
+            id: newId(),
+            label: bi('Employers', '僱主'),
+            view: bi('Our wage costs will go up.', '我們的工資成本會上升。'),
+          },
+          {
+            id: newId(),
+            label: bi('Consumers', '消費者'),
+            view: bi('Some prices may rise.', '部分物價或會上升。'),
+          },
+          {
+            id: newId(),
+            label: bi('The government', '政府'),
+            view: bi('Fewer people may need welfare.', '需要福利援助的人或會減少。'),
+          },
+        ],
+      },
+    }),
+  },
 ];
 
 /** Every template, in picker order: by group, originals first within each. */

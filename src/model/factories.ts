@@ -85,6 +85,12 @@ export function createImageBlock(src: string, widthPx: number, heightPx: number)
  */
 export const DEFAULT_DIAGRAM_SIZE = { widthPx: 400, heightPx: 300 };
 
+/**
+ * A stakeholder diagram's default width: three columns of boxes with arrows between them
+ * need most of the column, where an axes diagram's 400px would wrap every name.
+ */
+export const STAKEHOLDER_DIAGRAM_WIDTH_PX = 520;
+
 export function createDiagramBlock(
   templateId = 'blank',
   /**
@@ -94,7 +100,7 @@ export function createDiagramBlock(
    * MCQ option, where *four* diagrams stack in one question and a stem-width default
    * would put each one a third of the way down the sheet.
    */
-  widthPx: number = DEFAULT_DIAGRAM_SIZE.widthPx,
+  widthPx: number = templateId === 'stakeholders' ? STAKEHOLDER_DIAGRAM_WIDTH_PX : DEFAULT_DIAGRAM_SIZE.widthPx,
 ): DiagramBlock {
   const diagram = buildFromTemplate(templateId);
   return {
@@ -161,6 +167,22 @@ export function createSourceBlock(letter = 'A'): Extract<ContentBlock, { kind: '
     label: bi(`Source ${letter}: `, `資料${letter}：`),
     blocks: [createParagraphBlock()],
   };
+}
+
+/**
+ * A source with its body already started (Insert → Source…, k-0469): a table of data, a
+ * stakeholder diagram (centred, as the papers print it), or the plain paragraph of
+ * `createSourceBlock`.
+ */
+export function createSourceWith(
+  body: 'table' | 'stakeholders' | 'text',
+  letter = 'A',
+): Extract<ContentBlock, { kind: 'source' }> {
+  const source = createSourceBlock(letter);
+  if (body === 'text') return source;
+  const inside: ContentBlock =
+    body === 'table' ? createTableBlock(3, 3) : { ...createDiagramBlock('stakeholders'), align: 'center' };
+  return { ...source, blocks: [inside] };
 }
 
 export function createFigureRowBlock(

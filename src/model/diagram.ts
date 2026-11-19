@@ -504,6 +504,50 @@ export interface ForumChart {
 }
 
 /**
+ * One stakeholder around the issue: "Employers" over their view ("Our wage costs will
+ * rise."). Label and view are separate fields for the forum's reason: the label (the
+ * stakeholder's name) prints bold on its own line, the view does not, and a derived split
+ * would break on a name holding a colon. Either may be empty — a box with only a name is the common
+ * "who is affected" diagram a student fills in.
+ */
+export interface StakeholderBox {
+  id: string;
+  label: BiText;
+  view: BiText;
+}
+
+/**
+ * How the links between the issue and each stakeholder are drawn: arrows from the
+ * issue out to the stakeholders (the issue affects them — the default), arrows from the
+ * stakeholders in to the issue (their views on it), or plain lines.
+ */
+export type StakeholderLinks = 'fromIssue' | 'toIssue' | 'lines';
+
+/** The most boxes the layout places around the issue: the eight cells of a 3 × 3 grid. */
+export const MAX_STAKEHOLDERS = 8;
+
+/**
+ * A stakeholder diagram (持份者圖示, k-0469) — the DRQ figure of a central issue with the
+ * parties it affects in boxes around it, joined to it by arrows. A variant inside
+ * `Diagram` under the same contract as `pie`: one SVG, one rasterized PNG, resize by
+ * re-measure, and only the sidebar panel edits it (no canvas).
+ *
+ * Placement is **derived from order, never stored**: the boxes take the cells of a 3 × 3
+ * grid around the issue in a fixed pattern per count (`render/diagram.ts:stakeholderCells`),
+ * so adding or rewording a stakeholder reflows the figure and nothing can overlap.
+ *
+ * Builds before 0.9.2 do not know this field and would draw empty axes, so a document
+ * holding one is written at schema 3 and opens read-only there (`model/migrations.ts`).
+ */
+export interface StakeholderChart {
+  /** The issue in the middle: "Raising the statutory minimum wage". */
+  issue: BiText;
+  stakeholders: StakeholderBox[];
+  /** Absent = `fromIssue`. */
+  links?: StakeholderLinks;
+}
+
+/**
  * A complete diagram.
  *
  * Everything is optional except the axes, because the default state — what a teacher
@@ -577,6 +621,12 @@ export interface Diagram {
    * ignores the axes fields, and the sidebar panel edits the bubbles and the image.
    */
   forum?: ForumChart;
+  /**
+   * When present, the diagram **is** a stakeholder diagram, under the same contract as
+   * `pie`: the renderer draws the issue and its stakeholders and ignores the axes fields,
+   * and the sidebar panel edits them. Raises the written schema to 3 (§ `StakeholderChart`).
+   */
+  stakeholder?: StakeholderChart;
   x: DiagramAxis;
   y: DiagramAxis;
   curves: DiagramCurve[];
@@ -601,6 +651,14 @@ export interface Diagram {
  * projection holds it; the model needs it only where shape is judged as it looks.
  */
 export const DIAGRAM_PLOT_ASPECT = 3 / 4;
+
+/**
+ * A chart whose data is edited only in the sidebar panel, so it opens no canvas: the pie
+ * (slices) and the stakeholder diagram (issue and boxes). The page offers no Draw for it.
+ */
+export function isPanelOnlyDiagram(diagram: Pick<Diagram, 'pie' | 'stakeholder'>): boolean {
+  return Boolean(diagram.pie || diagram.stakeholder);
+}
 
 /** A unit coordinate as the axis's value (`max` × unit), or the unit itself unscaled. */
 export function axisValue(axis: DiagramAxis, unit: number): number {

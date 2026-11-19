@@ -22,6 +22,7 @@ import v1Corpus from '@/test/corpus/v1-published.json';
 import v2Corpus from '@/test/corpus/v2-published.json';
 import graphV2 from '@/test/corpus/graph-v2.json';
 import optionalCorpus from '@/test/corpus/v2-optional-sections.json';
+import v3Corpus from '@/test/corpus/v3-stakeholder.json';
 import bankPaperCorpus from '@/test/corpus/bank-v0.6.0-paper.json';
 import bankBankCorpus from '@/test/corpus/bank-v0.6.0-bank.json';
 import { migrate, serializeWorksheet, CURRENT_SCHEMA_VERSION, isNewerThanBuild } from '@/model/migrations';
@@ -31,6 +32,8 @@ import { answerLayer } from '@/model/diagramAnswers';
 import { computeNumbering } from '@/model/numbering';
 import { sectionMarksById, worksheetMarks } from '@/model/marks';
 import { renderWorksheet } from '@/render/worksheet';
+import { diagramSvg } from '@/render/diagram';
+import type { Diagram } from '@/model/diagram';
 import { resolveFlow } from '@/model/flow';
 import { createMcqQuestion, createStructuredQuestion, createSubPart } from '@/model/factories';
 import { copyQuestion } from '@/model/lineage';
@@ -486,6 +489,91 @@ describe('a scheme shown as a paragraph (k-0470, `MarkScheme.display`)', () => {
     expect(JSON.stringify(renderWorksheet(future, TEACHER))).toBe(JSON.stringify(renderWorksheet(loaded, TEACHER)));
     const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(future))));
     expect(essays(reloaded)[0].scheme?.display).toBe('table-of-the-future');
+  });
+});
+
+describe('the v3 corpus: a stakeholder diagram beside a table, in a DRQ', () => {
+  // `v3-stakeholder.json`: frozen, written once by `scripts/emit-v3-stakeholder-corpus.test.ts`.
+  // v3 is written only when a document holds a stakeholder diagram (k-0469).
+  const diagramsOf = (value: unknown): Diagram[] => {
+    const out: Diagram[] = [];
+    const walk = (entry: unknown): void => {
+      if (Array.isArray(entry)) return entry.forEach(walk);
+      if (entry && typeof entry === 'object') {
+        const record = entry as Record<string, unknown>;
+        if (record.kind === 'diagram') out.push(record.diagram as Diagram);
+        Object.values(record).forEach(walk);
+      }
+    };
+    walk(value);
+    return out;
+  };
+
+  it('opens editable here, with nothing unrecognised', () => {
+    const worksheet = migrate(structuredClone(v3Corpus));
+    expect(v3Corpus.schemaVersion).toBe(3);
+    expect(worksheet.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(isNewerThanBuild(worksheet)).toBe(false);
+    expect(worksheet.__unknown).toBeUndefined();
+  });
+
+  it('is newer than every build before it (they read schema 2 at most), so they open it read-only', () => {
+    // 0.9.1's `isNewerThanBuild` is `schemaVersion > 2`; it would draw the figure as empty axes.
+    expect(v3Corpus.schemaVersion).toBeGreaterThan(2);
+  });
+
+  it('keeps the issue, every stakeholder, the links, the table and all authored text', () => {
+    const worksheet = migrate(structuredClone(v3Corpus));
+    const [diagram] = diagramsOf(worksheet.questions);
+    const chart = diagram.stakeholder!;
+    expect(chart.issue.en[0].text).toBe('Raising the statutory minimum wage');
+    expect(chart.links).toBe('toIssue');
+    expect(chart.stakeholders.map((box) => box.label.en[0]?.text)).toEqual([
+      'Low-paid workers',
+      'Employers',
+      'Consumers',
+      'The government',
+      'Labour unions',
+    ]);
+    expect(chart.stakeholders[4].view).toEqual({ en: [], zh: [] });
+    expect(JSON.stringify(worksheet.questions)).toContain('Median hourly wage ($)');
+    expect(countText(worksheet)).toBe(countText(v3Corpus));
+  });
+
+  it('draws every box, in English and in Chinese', () => {
+    const worksheet = migrate(structuredClone(v3Corpus));
+    const block = JSON.parse(JSON.stringify(worksheet.questions)).flatMap(
+      (q: { blocks: Array<{ kind: string; blocks?: unknown[] }> }) => q.blocks,
+    ).flatMap((b: { kind: string; blocks?: unknown[] }) => (b.kind === 'source' ? b.blocks : [])).find(
+      (b: { kind: string }) => b.kind === 'diagram',
+    );
+    const en = diagramSvg(block.diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language: 'en' });
+    const zh = diagramSvg(block.diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language: 'zh' });
+    expect(en.match(/data-stakeholder=""/g)).toHaveLength(5);
+    expect(en).toContain('Labour unions');
+    expect(zh).toContain('工會');
+    expect(renderWorksheet(worksheet, MODE).items.length).toBeGreaterThan(0);
+  });
+
+  it('round-trips byte for byte, still written at 3', () => {
+    const raw = readFileSync('src/test/corpus/v3-stakeholder.json', 'utf8');
+    const saved = stringifyWorksheet(parseWorksheet(raw));
+    expect(saved).toBe(raw.trimEnd());
+    expect(JSON.parse(saved).schemaVersion).toBe(3);
+  });
+
+  it('drops back to the old version once the stakeholder diagram is gone', () => {
+    const worksheet = migrate(structuredClone(v3Corpus));
+    const without = {
+      ...worksheet,
+      questions: worksheet.questions.map((question) => ({
+        ...question,
+        blocks: question.blocks.filter(
+          (block) => !(block.kind === 'source' && block.blocks.some((inner) => inner.kind === 'diagram')),
+        ),
+      })),
+    } as typeof worksheet;
+    expect(serializeWorksheet(without).schemaVersion).toBe(1);
   });
 });
 

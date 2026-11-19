@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
 import { hasAnswerLayer } from '@/model/diagramAnswers';
+import { isPanelOnlyDiagram } from '@/model/diagram';
 import { graphFromBlock, rebaseOnGraph } from '@/model/graph';
 import { graphStore } from '@/storage';
 import { plain } from '@/model/text';
@@ -16,7 +17,7 @@ import { sideOf } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { DIAGRAM_PANEL_MESSAGES } from './diagramEditing.messages';
 import { DiagramCanvas } from './DiagramCanvas';
-import { ForumFields, PieSliceFields } from './DiagramDataFields';
+import { ForumFields, PieSliceFields, StakeholderFields } from './DiagramDataFields';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
 import { FlowCanvas } from './FlowCanvas';
 import { ForumCanvas } from './ForumCanvas';
@@ -94,9 +95,9 @@ export function DiagramEditor({ block, onChange }: Props) {
           would be cut off by the panel. The selector is `[&_svg]`, not `[&>svg]` — the
           markup is injected into a wrapping <span>, so the svg is a *grandchild*, and the
           direct-child form silently matched nothing. */}
-      {diagram.pie ? (
-        // A pie has no drawing surface — its slices are data, edited in the fields
-        // below — so the thumbnail is a plain preview, not a way into a canvas.
+      {isPanelOnlyDiagram(diagram) ? (
+        // A pie or stakeholder diagram has no drawing surface — its data is edited in
+        // the fields below — so the thumbnail is a plain preview, not a way into a canvas.
         <div
           className="overflow-hidden rounded border border-line bg-surface [&_svg]:h-auto [&_svg]:w-full"
           style={{ lineHeight: 0 }}
@@ -127,7 +128,7 @@ export function DiagramEditor({ block, onChange }: Props) {
       )}
 
       {drawing &&
-        !diagram.pie &&
+        !isPanelOnlyDiagram(diagram) &&
         (diagram.flow ? (
           <FlowCanvas block={block} onChange={onChange} onClose={() => setDrawing(false)} />
         ) : diagram.forum ? (
@@ -142,6 +143,19 @@ export function DiagramEditor({ block, onChange }: Props) {
           onChange={(slices) =>
             onChange({ ...block, diagram: { ...diagram, pie: { slices } } })
           }
+        />
+      ) : diagram.stakeholder ? (
+        <StakeholderFields
+          chart={diagram.stakeholder}
+          onChange={(stakeholder) => {
+            // Re-measured on every edit, as the forum: the boxes' text sets the height.
+            const next = { ...diagram, stakeholder };
+            onChange({
+              ...block,
+              ...diagramSize(next, block.widthPx, language),
+              diagram: next,
+            });
+          }}
         />
       ) : diagram.forum ? (
         <ForumFields

@@ -63,5 +63,14 @@ export function mapDiagramTexts(d: Diagram, fn: TextFn): Diagram {
         }),
       ),
     }),
+    stakeholder: d.stakeholder && patch(d.stakeholder, {
+      issue: d.stakeholder.issue && fn('stakeholder/issue', d.stakeholder.issue, 'flowNode'),
+      stakeholders: each(d.stakeholder.stakeholders, (s) =>
+        patch(s, {
+          label: fn(`stakeholder/box:${s.id}/label`, s.label, 'speaker'),
+          view: fn(`stakeholder/box:${s.id}/view`, s.view, 'bubble'),
+        }),
+      ),
+    }),
   });
 }

@@ -45,6 +45,7 @@ import { CommandPalette } from '@/components/editor/CommandPalette';
 import { createSamplePaper } from '@/model/samplePaper';
 import { sideOf } from '@/i18n/catalogue';
 import { useEditorRequests, type SetupTab } from '@/components/editor/editorRequests';
+import { isPanelOnlyDiagram } from '@/model/diagram';
 
 /** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
 const openBank = () => useBankSession.getState().openBank();
@@ -163,11 +164,11 @@ export function EditorApp({
   const foundDrawingBlock = drawingBlockId
     ? findDiagramBlock(worksheet, drawingBlockId)
     : undefined;
-  // A pie chart never opens a canvas: its slices are data, edited in the sidebar
-  // panel. A flow chart opens its own editor (`FlowCanvas`) rather than the axes
+  // A pie chart or stakeholder diagram never opens a canvas: its data is edited in the
+  // sidebar panel. A flow chart opens its own editor (`FlowCanvas`) rather than the axes
   // one, whose whole gesture vocabulary is about curves — and a forum figure opens
   // its own too (`ForumCanvas`), where bubble widths are dragged.
-  const drawingBlock = foundDrawingBlock?.diagram.pie ? undefined : foundDrawingBlock;
+  const drawingBlock = foundDrawingBlock && isPanelOnlyDiagram(foundDrawingBlock.diagram) ? undefined : foundDrawingBlock;
   const [activePage, setActivePage] = useState(0);
   /**
    * Whether the document-settings dialog is open.

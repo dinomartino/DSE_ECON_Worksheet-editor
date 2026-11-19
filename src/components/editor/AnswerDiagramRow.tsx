@@ -16,6 +16,7 @@ import { FlowCanvas } from './FlowCanvas';
 import { ForumCanvas } from './ForumCanvas';
 import { DiagramWordsFields } from './DiagramWordsFields';
 import { ANSWER_DIAGRAM_MESSAGES } from './AnswerDiagramRow.messages';
+import { isPanelOnlyDiagram } from '@/model/diagram';
 
 /**
  * A leaf's model answer diagram (§ `QuestionPart.answerDiagram`), compact: thumbnail,
@@ -37,7 +38,7 @@ export function AnswerDiagramRow({
   const [drawing, setDrawing] = useState(false);
   const diagram = block.diagram;
   // A pie's slices are data with no canvas of their own; it can be swapped, not drawn.
-  const drawable = !diagram.pie;
+  const drawable = !isPanelOnlyDiagram(diagram);
 
   // Memoised: the string goes to `dangerouslySetInnerHTML` (see `DiagramEditor`).
   const thumbnail = useMemo(

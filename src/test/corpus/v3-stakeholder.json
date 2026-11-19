@@ -1,0 +1,556 @@
+{
+  "schemaVersion": 3,
+  "id": "v3-stakeholder-corpus",
+  "title": {
+    "en": [
+      {
+        "text": "DRQ practice: the minimum wage"
+      }
+    ],
+    "zh": [
+      {
+        "text": "資料回應題練習：最低工資"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "sh002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "sh003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "sh004",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "sh005",
+          "text": {
+            "en": [
+              {
+                "text": "Study Sources A and B."
+              }
+            ],
+            "zh": [
+              {
+                "text": "細閱資料A及B。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "source",
+          "id": "sh006",
+          "label": {
+            "en": [
+              {
+                "text": "Source A: Hourly wages in Hong Kong"
+              }
+            ],
+            "zh": [
+              {
+                "text": "資料A：香港時薪"
+              }
+            ]
+          },
+          "blocks": [
+            {
+              "kind": "table",
+              "id": "sh007",
+              "rows": [
+                {
+                  "id": "sh008",
+                  "cells": [
+                    {
+                      "id": "sh009",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "Year"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "年份"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh010",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "2023"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "2023"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh011",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "2025"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "2025"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "sh012",
+                  "cells": [
+                    {
+                      "id": "sh013",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "Statutory minimum wage ($)"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "法定最低工資（元）"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh014",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "40.0"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "40.0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh015",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "42.1"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "42.1"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "sh016",
+                  "cells": [
+                    {
+                      "id": "sh017",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "Median hourly wage ($)"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "時薪中位數（元）"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh018",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "80.0"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "80.0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh019",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "84.5"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "84.5"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "source",
+          "id": "sh020",
+          "label": {
+            "en": [
+              {
+                "text": "Source B: Views on raising the minimum wage"
+              }
+            ],
+            "zh": [
+              {
+                "text": "資料B：對調高最低工資的意見"
+              }
+            ]
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "sh021",
+              "diagram": {
+                "x": {},
+                "y": {},
+                "curves": [],
+                "points": [],
+                "labels": [],
+                "arrows": [],
+                "stakeholder": {
+                  "issue": {
+                    "en": [
+                      {
+                        "text": "Raising the statutory minimum wage"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "調高法定最低工資"
+                      }
+                    ]
+                  },
+                  "stakeholders": [
+                    {
+                      "id": "sh022",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "Low-paid workers"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "低薪工人"
+                          }
+                        ]
+                      },
+                      "view": {
+                        "en": [
+                          {
+                            "text": "Our income will rise."
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "我們的收入會增加。"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh023",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "Employers"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "僱主"
+                          }
+                        ]
+                      },
+                      "view": {
+                        "en": [
+                          {
+                            "text": "Our wage costs will go up."
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "我們的工資成本會上升。"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh024",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "Consumers"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "消費者"
+                          }
+                        ]
+                      },
+                      "view": {
+                        "en": [
+                          {
+                            "text": "Some prices may rise."
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "部分物價或會上升。"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh025",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "The government"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "政府"
+                          }
+                        ]
+                      },
+                      "view": {
+                        "en": [
+                          {
+                            "text": "Fewer people may need welfare."
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "需要福利援助的人或會減少。"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "sh026",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "Labour unions"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "工會"
+                          }
+                        ]
+                      },
+                      "view": {
+                        "en": [],
+                        "zh": []
+                      }
+                    }
+                  ],
+                  "links": "toIssue"
+                },
+                "templateId": "stakeholders",
+                "title": {
+                  "en": [
+                    {
+                      "text": "Stakeholders"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "持份者"
+                    }
+                  ]
+                }
+              },
+              "widthPx": 520,
+              "heightPx": 261,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Stakeholders"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "持份者"
+                  }
+                ]
+              },
+              "align": "center"
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "id": "sh027",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "sh028",
+              "text": {
+                "en": [
+                  {
+                    "text": "With reference to Source B, explain how ONE stakeholder is affected."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "參考資料B，解釋一個持份者所受的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "answer": {
+            "en": [
+              {
+                "text": "Employers: wage costs rise."
+              }
+            ],
+            "zh": [
+              {
+                "text": "僱主：工資成本上升。"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "sh029",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "sh030",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構性問題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "sh029"
+    },
+    {
+      "type": "layout",
+      "id": "sh030"
+    },
+    {
+      "type": "question",
+      "id": "sh004"
+    }
+  ],
+  "createdAt": "2026-11-19T00:00:00.000Z",
+  "updatedAt": "2026-11-19T00:00:00.000Z"
+}

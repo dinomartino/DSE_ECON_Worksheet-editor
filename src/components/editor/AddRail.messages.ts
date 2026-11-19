@@ -24,6 +24,14 @@ export const ADD_RAIL_MESSAGES = defineMessages({
 
   table: { en: 'Table…', zh: '表格…' },
   picture: { en: 'Picture…', zh: '圖片…' },
+  // A DRQ's data source with something already in it (k-0469).
+  source: { en: 'Source…', zh: '資料…' },
+  sourceTable: { en: 'With a table', zh: '附表格' },
+  sourceTableHint: { en: 'Source A: a framed table of data', zh: '資料A：加框的數據表格' },
+  sourceStakeholders: { en: 'With a stakeholder diagram', zh: '附持份者圖示' },
+  sourceStakeholdersHint: { en: 'an issue and the people it affects', zh: '議題及受影響的持份者' },
+  sourceText: { en: 'With text', zh: '附文字' },
+  sourceTextHint: { en: 'a framed passage or extract', zh: '加框的文字或節錄' },
   intoHost: { en: (name: string) => `into ${name}`, zh: (name: string) => `加入 ${name}` },
   newQuestionHost: { en: 'as a new question', zh: '成為新題目' },
   back: { en: 'Back', zh: '返回' },

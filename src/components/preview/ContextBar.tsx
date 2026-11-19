@@ -50,6 +50,7 @@ import {
 import { useMessages } from '@/i18n/language';
 import type { TextKey } from '@/i18n/catalogue';
 import { CONTEXT_BAR_MESSAGES } from './ContextBar.messages';
+import { isPanelOnlyDiagram } from '@/model/diagram';
 
 /**
  * The contextual second toolbar row — Word's "Table Layout appears when you're in a
@@ -570,10 +571,10 @@ export function ContextDock({
 
   if (!dock || !live) return null;
 
-  // A pie chart opens no canvas — its slices are data, edited in the sidebar — so it
+  // A pie chart or stakeholder diagram opens no canvas — its slices are data, edited in the sidebar — so it
   // gets no Draw button rather than a dead one.
   const openable =
-    figure?.kind === 'diagram' && !figure.diagram.pie ? onOpenBlock : undefined;
+    figure?.kind === 'diagram' && !isPanelOnlyDiagram(figure.diagram) ? onOpenBlock : undefined;
 
   return (
     <div

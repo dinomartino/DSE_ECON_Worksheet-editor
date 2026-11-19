@@ -13,8 +13,8 @@ import {
   createTextElement,
 } from '@/model/flow';
 import { documentShape, offersLayoutKind } from '@/model/documentShape';
-import { createTableBlock } from '@/model/factories';
-import { insertHostFor } from '@/model/insertHost';
+import { createSourceWith, createTableBlock, nextSourceLetter } from '@/model/factories';
+import { hostBlocks, insertHostFor } from '@/model/insertHost';
 import { contentWidth, pageSetupOf } from '@/model/page';
 import { defaultTableIndent } from '@/model/table';
 import { bi, plain } from '@/model/text';
@@ -167,6 +167,33 @@ export function buildInsertEntries({
         input.click();
       },
     },
+    /*
+     * A DRQ's data source, started with what goes in it (k-0469): the source panel lands
+     * where Table… would, its letter the next free one in that question.
+     */
+    {
+      id: 'source',
+      label: m.source,
+      hint: hostHint,
+      icon: <StimulusIcon size={18} />,
+      choices: (
+        [
+          ['table', m.sourceTable, m.sourceTableHint, <TableIcon key="t" size={18} />],
+          ['stakeholders', m.sourceStakeholders, m.sourceStakeholdersHint, <StimulusIcon key="s" size={18} />],
+          ['text', m.sourceText, m.sourceTextHint, <TextIcon key="x" size={18} />],
+        ] as const
+      ).map(([body, label, hint, icon]) => ({
+        id: `source-${body}`,
+        label,
+        hint,
+        icon,
+        run: (runAfterId?: string) => {
+          const target = insertHostFor(worksheet, runAfterId ?? afterId);
+          const sources = target ? hostBlocks(worksheet, target).filter((block) => block.kind === 'source').length : 0;
+          insertBlockAtAnchor(createSourceWith(body, nextSourceLetter(sources)), runAfterId);
+        },
+      })),
+    },
     {
       id: 'section',
       label: m.section,
@@ -293,6 +320,8 @@ export function buildInsertEntries({
   const offered = (entry: InsertEntry) => {
     // Table and Picture go in a question, which every paper has.
     if (entry.id === 'table' || entry.id === 'picture') return true;
+    // A source is a data-response question's; a Paper 1 holds MC questions only.
+    if (entry.id.startsWith('source')) return shape !== 'paper1';
     // The two fill variants are the same element kind under different starting values.
     const kind = (entry.id === 'answerSpaceFill' ? 'answerSpace' : entry.id) as LayoutElement['kind'];
     return offersLayoutKind(shape, kind);

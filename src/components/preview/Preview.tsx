@@ -251,6 +251,7 @@ import { openAi } from "@/assist/menuStore";
 import { scopeFromSelection } from "@/assist/scope";
 import { coverWatermark, sheetWatermarks, watermarkOf, withCoverWatermark, withSheetWatermark, withCenteredPlacement } from "@/model/watermark";
 import { SheetWatermarkToggle, WatermarkAdjuster, WatermarkLayer } from "./WatermarkLayer";
+import { isPanelOnlyDiagram } from "@/model/diagram";
 
 // Re-exported so the page rail keeps importing the type from the component that
 // publishes it, rather than having to know pagination is factored out.
@@ -6302,7 +6303,7 @@ export function Preview({
     if (payload.kind === "block") {
       const figure = findFigureBlock(worksheet, payload.blockId);
       const items: PageMenuItem[] = [];
-      if (figure?.kind === "diagram" && !figure.diagram.pie && onOpenBlock) {
+      if (figure?.kind === "diagram" && !isPanelOnlyDiagram(figure.diagram) && onOpenBlock) {
         items.push({
           label: m.editDrawing,
           onSelect: () => onOpenBlock(payload.blockId),
