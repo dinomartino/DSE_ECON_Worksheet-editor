@@ -24,7 +24,7 @@ a version heading is edited afterwards.
   and remembered on this computer. Change it for a paper any time in Setup → Page (Show each
   question's source), or with the box above Past papers in the editor's 題庫 tab. Numbering, answer
   keys and your saved papers are unchanged.
-  <!-- zh: **歷屆試題庫：在工作紙保留每題出處。** 從歷屆試題庫加入題目時，剔選「顯示出處（年份及題號）」，每題首行右方便會以括號印出其出處（考試、年份及題號，例如「（香港中學文憑考試 2019 卷一 第 12 題）」）：畫面、列印、PDF 及 Word 皆同，英文及中文試卷皆適用。預設關閉，並會在此電腦上記住你的選擇。之後可隨時在「頁面設定 → 頁面」（顯示每題出處）或編輯器「題庫」分頁的歷屆試題上方為個別試卷更改。題號、答案及你已儲存的試卷均不受影響。 -->
+  <!-- zh: **歷屆試題庫：在工作紙保留每題出處。** 從歷屆試題庫加入題目時，剔選「顯示出處（年份及題號）」，每題首行右方便會以括號印出其出處（考試、年份及題號，例如「(HKDSE 2019 Paper 1 Q12)」，中文試卷印作「（香港中學文憑考試 2019 卷一 第 12 題）」）：畫面、列印、PDF 及 Word 皆同，英文及中文試卷皆適用。預設關閉，並會在此電腦上記住你的選擇。之後可隨時在「頁面設定 → 頁面」（顯示每題出處）或編輯器「題庫」分頁的歷屆試題上方為個別試卷更改。題號、答案及你已儲存的試卷均不受影響。 -->
 - **Past paper bank: a short source for students to look up.** Beside Show source, choose how the
   source prints: Full “(HKDSE 2019 Paper 1 Q12)”, as before, or Short “(DSE2019/P1/Q12)”, or Short
   with the paper in Roman numerals “(DSE2019/I/Q12)”. The short forms are the same on English, 中文
