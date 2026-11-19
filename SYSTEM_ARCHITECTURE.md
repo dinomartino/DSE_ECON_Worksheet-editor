@@ -736,6 +736,14 @@ No CSS property expresses that, so the preview separates reserving and placing
   `trailingBlankLines()` counts them for both backends; the preview lifts the label by
   that many `lh`, the exporter moves trailing breaks after the marks.
   `marksAnchorRuns()` picks the side to count in bilingual mode.
+- **That blank line belongs to the paragraph, so the field must reach it too** (k-0468,
+  issue #7). The idle field ends with the words; a click below them opens the field at its
+  end (`openAtBlankTail`). Open, a contenteditable gives a final break no line and Chrome
+  puts no caret after it, so `paintRuns` adds a caret line (a zero-width space in a
+  `data-caret-line` span, never read or counted: `textOf`). The reverse holds for the
+  browser's own placeholder break at the end of a field whose last line emptied: it shows
+  no line, so `readRuns` drops it (`withoutPlaceholderBreak`); read as text, it saved a
+  blank line nobody typed. Proof in Chrome: `scripts/blank-line-verify.mjs`.
 - **A full anchor line pushes the whole label to the next line in both backends.** The
   docx label's interior space is a **no-break space** (`marksText`) so Word wraps it
   whole; the preview **measures** the last text character against the label's own width

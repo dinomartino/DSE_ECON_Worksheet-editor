@@ -8,8 +8,8 @@ import { gridFromClipboard, type TextGrid } from '@/model/tableClipboard';
 import type { RichText, RunFormat } from '@/model/types';
 import {
   offsetAtPoint,
+  paintRuns,
   readRuns,
-  runToNode,
   sameRuns,
   selectionOffsets,
   setSelectionOffsets,
@@ -179,7 +179,7 @@ export function RichTextEditable({
     if (!entering && sameRuns(runs, painted)) return; // our own echo — leave the DOM alone
 
     const caret = entering ? undefined : selectionOffsets(host);
-    host.replaceChildren(...runs.map(runToNode));
+    host.replaceChildren(...paintRuns(runs));
     paintedRef.current = runs;
     layoutTabs(host);
 

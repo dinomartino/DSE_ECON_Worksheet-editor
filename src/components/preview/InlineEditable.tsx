@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { plain, richTextLength, sliceRichText } from '@/model/text';
+import { plain } from '@/model/text';
 import type { BiText, RichText } from '@/model/types';
 import { RichTextEditable } from './RichTextEditable';
 import type { TextGrid } from '@/model/tableClipboard';
 import { useMessages } from '@/i18n/language';
 import { PREVIEW_HANDLE_MESSAGES } from './messages';
-import { readRuns, selectionOffsets } from './richTextDom';
+import { selectionOffsets } from './richTextDom';
 import { holdKeystrokes, takeHeldKeystrokes, typesCharacter } from './heldKeystrokes';
 import { isImeKeydown } from '@/components/ui/ime';
 
@@ -280,13 +280,6 @@ export function InlineEditable({
   const [caretAnchor, setCaretAnchor] = useState<{ x: number; y: number } | undefined>(undefined);
   /** The press of the click that may open the field (§ `caretAnchorRef`). */
   const pressRef = useRef<{ x: number; y: number } | undefined>(undefined);
-  /**
-   * A line break went in at the very end of the text while this field was open. In a
-   * `pre-wrap` field Chrome then writes two `\n` — the break and a placeholder that gives
-   * the caret its new line — and typing on leaves the placeholder at the end, where the
-   * model would keep it as a blank line Word prints. Dropped once, as the field closes.
-   */
-  const breakAtEndRef = useRef(false);
   /** Where a keyboard route asked the caret to open: the start, the end, or an offset. */
   const [caretAt, setCaretAt] = useState<'start' | 'end' | number | undefined>(undefined);
   const beginEditing = (
@@ -325,11 +318,6 @@ export function InlineEditable({
 
   /** End editing and return the element to a neutral state. */
   const stopEditing = () => {
-    if (breakAtEndRef.current) {
-      breakAtEndRef.current = false;
-      const runs = value[side] ?? [];
-      if (plain(runs).endsWith('\n')) onCommit({ ...value, [side]: sliceRichText(runs, 0, richTextLength(runs) - 1) });
-    }
     setEditing(false);
     onSelectionChange?.(undefined);
     onDeselect?.();
@@ -479,17 +467,13 @@ export function InlineEditable({
           // Enter is Word's (k-0200): a paragraph splits at the caret and an option moves
           // to the next one (`onEnter`); a field that is one line (a heading, a marks box)
           // finishes. Shift+Enter falls through to the browser, which inserts the `<br>`
-          // that `readRuns` turns back into the `\n` the model stores for a hard break.
+          // that `readRuns` turns back into the `\n` the model stores for a hard break (and
+          // the placeholder break it adds at the end, which `readRuns` drops: k-0468).
           //
           // A table cell is the exception (§ `cell`), and so is a field of one text that runs
           // to lines (`enterBreaksLine`): Enter is Word's new line there,
           // the same hard break Shift+Enter makes — asked of the browser explicitly,
           // because a bare Enter in a contenteditable inserts a `<div>`, not a `<br>`.
-          const breaks = event.key === 'Enter' && (event.shiftKey || cell || enterBreaksLine);
-          if (breaks) {
-            const range = selectionOffsets(event.currentTarget);
-            if (range && range.end >= richTextLength(readRuns(event.currentTarget))) breakAtEndRef.current = true;
-          }
           if (event.key === 'Enter' && (cell || enterBreaksLine)) {
             event.preventDefault();
             document.execCommand('insertLineBreak');
