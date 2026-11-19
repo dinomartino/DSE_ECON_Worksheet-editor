@@ -58,6 +58,13 @@ a version heading is edited afterwards.
   set into one file; nothing comes ticked.
   <!-- zh: **匯出、檢視和複製整套試卷。** 匯出 → 內容 → 整套試卷會匯出套卷內每份試卷，以及整套試卷的一份評卷參考（先 Paper 1，後 Paper 2，頁碼連續）。以 Word 匯出時，瀏覽器會得到一個 .zip，桌面版則把檔案存入你選擇的資料夾。以 PDF 匯出時，桌面版會把所有 PDF 直接存入同一資料夾；瀏覽器每次只能列印一份文件，所以視窗會逐一列出每份試卷和評卷參考，各有「列印」按鈕。在評卷參考檢視中，可用「這份試卷／整套試卷」在畫面上查看整套評卷參考。開始畫面套卷的 ⋯ 有「複製套卷…」：把所有試卷複製到新套卷供下一年使用，並可把名稱、標題和封面上的年份改為下一年（2026-27 → 2027-28），題目內容不變。評卷參考的「一併包含」清單已收起在「在此檔案加入其他文件的評卷參考…」之下，用來把不屬於套卷的文件的評卷參考放在同一檔案；不會再預先剔選。 -->
 
+- **Line spacing.** Document setup → Worksheet → Line spacing sets how far apart the lines of
+  the questions, options, answers and marking points are: Single (as before), 1.15, 1.5 or Double,
+  as in Word. The page, the printed PDF, the Word file and Copy for Word all follow it. Gaps between
+  questions, tables, answer lines, the title and the cover keep their size. Existing papers stay on
+  Single.
+  <!-- zh: **行距。** 「文件設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
+
 ### Fixed
 - **No more blank line you cannot delete in an answer or a marking point.** Pressing Enter twice
   and taking it back, or deleting the last word of a line and typing it again, no longer leaves an

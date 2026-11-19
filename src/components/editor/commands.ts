@@ -38,6 +38,7 @@ export const SETUP_INDEX: ReadonlyArray<{ tab: SetupTab; key: SettingKey; keywor
   { tab: 'document', key: 'instructions', keywords: 'instructions rubric answer all questions 指示' },
   { tab: 'document', key: 'fonts', keywords: 'font fonts typeface times new roman 新細明體 標楷體 字型 字體' },
   { tab: 'document', key: 'textSize', keywords: 'font size text size points pt 字號 字體大小' },
+  { tab: 'document', key: 'lineSpacing', keywords: 'line spacing leading 1.15 1.5 double single 行距 行間距 單倍 雙倍' },
   { tab: 'document', key: 'justifyText', keywords: 'justify justified align alignment 對齊 左右對齊' },
   { tab: 'document', key: 'optionLayoutAll', keywords: 'options layout columns mc abcd 選項 排列' },
   { tab: 'document', key: 'versions', keywords: 'versions shuffle version a b 版本 亂序' },

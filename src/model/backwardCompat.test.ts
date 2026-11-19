@@ -37,6 +37,7 @@ import { copyQuestion } from '@/model/lineage';
 import { parsePatternTag } from '@/model/patterns';
 import { derivedTags, effectiveSlotTags, tagStateOf } from '@/model/tagSlots';
 import { bi } from '@/model/text';
+import { lineSpacingOf, withLineSpacing } from '@/model/lineSpacing';
 import type { McqQuestion, OutputMode, StructuredQuestion } from '@/model/types';
 
 const MODE: OutputMode = { language: 'bilingual', version: 'student' };
@@ -289,6 +290,37 @@ describe('a document saved by the published build still opens', () => {
     expect(reloaded.__unknown).toBeUndefined();
     expect({ kind: reloaded.kind, classes: reloaded.classes, satOn: reloaded.satOn, bankHidden: reloaded.bankHidden }).toEqual(fields);
     expect({ ...reloaded, kind: undefined, classes: undefined, satOn: undefined, bankHidden: undefined }).toEqual(loaded);
+  });
+});
+
+describe('line spacing (k-0468) on a document saved by the published build', () => {
+  it('opens single-spaced, as it always printed, with no field written', () => {
+    const loaded = migrate(structuredClone(v1Corpus));
+    expect(loaded.lineSpacing).toBeUndefined();
+    expect(lineSpacingOf(loaded)).toBe(1);
+    // Nothing on its pages is spaced, so it prints and exports as before.
+    const spaced = (nodes: unknown): boolean => JSON.stringify(nodes).includes('"lineSpacing"');
+    expect(spaced(renderWorksheet(loaded, MODE))).toBe(false);
+    // Set back to Single, the field goes: the file is the one the published build wrote.
+    expect(withLineSpacing(withLineSpacing(loaded, 1.5), 1)).toEqual(loaded);
+    expect(serializeWorksheet(withLineSpacing(withLineSpacing(loaded, 2), 1))).toEqual(serializeWorksheet(loaded));
+  });
+
+  it('carries a line spacing through load → save → load, and keeps the rest untouched', () => {
+    const loaded = migrate(structuredClone(v1Corpus));
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(withLineSpacing(loaded, 1.5)))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(reloaded.lineSpacing).toBe(1.5);
+    expect(lineSpacingOf(reloaded)).toBe(1.5);
+    expect({ ...reloaded, lineSpacing: undefined }).toEqual({ ...loaded, lineSpacing: undefined });
+  });
+
+  it('keeps a value this build cannot print in the file, and prints it single', () => {
+    const loaded = migrate({ ...structuredClone(v1Corpus), lineSpacing: 9 });
+    expect(loaded.__unknown).toBeUndefined();
+    expect(loaded.lineSpacing).toBe(9);
+    expect(lineSpacingOf(loaded)).toBe(1);
+    expect(migrate(JSON.parse(JSON.stringify(serializeWorksheet(loaded)))).lineSpacing).toBe(9);
   });
 });
 

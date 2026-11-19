@@ -359,6 +359,20 @@ stacked options keep native `w:num`.
   only what differs (`againstStyle`): a row or grid option gets `left`. `Body` is shared
   with cells, rows and the cover, so its prose keeps a direct `w:jc`.
 
+### Line spacing multiplies the line box, on the IR
+
+`Worksheet.lineSpacing` (k-0468; Single = absent, 1.15 / 1.5 / 2) is stamped on the IR like
+"Justify text": `withSpacedLines` puts `lineSpacing` on every `TextNode` and non-band
+`ColumnsNode` of the flow items (inside source panels and option grids too), never on the
+cover, masthead, title, instructions, tables, answer lines or spacers. Both backends read one
+box, `render/lineBox.ts:spacedLineTwips` (the single box `exactLineFor` gives, times the
+spacing, whole twips): the preview writes it as `line-height` in pt, the `.docx` as direct
+`w:line` with `exact`, Copy for Word as `line-height` + `mso-line-height-rule:exactly`. Gaps
+stay spacing in points (`w:before`), so they do not grow. A single-spaced document emits
+nothing new. `lineSpacingOf` prints a value outside (1, 3] single and keeps it in the file.
+Proof: `render/lineSpacing.test.ts`, `scripts/line-spacing-verify.mjs` (LibreOffice prints
+the spaced `.docx` on the preview's sheet count).
+
 ### An enlarged line box follows its font size
 
 Wherever the preview writes `fontSize` it must write `lineHeight` too (`formatStyle`,

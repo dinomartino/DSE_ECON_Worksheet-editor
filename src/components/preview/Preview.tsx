@@ -219,6 +219,7 @@ import {
   type ArrowDirection,
   type TextSelection,
 } from "./InlineEditable";
+import { spacedLineTwips } from "@/render/lineBox";
 import { ResizableBlock } from "./ResizableBlock";
 import { ResizableRows } from "./ResizableRows";
 import { MIN_ANSWER_LINES, MIN_SPACER_PT } from "@/model/flow";
@@ -1277,6 +1278,12 @@ function TextNodeView({
           : undefined),
         // Applied last so a deliberate override beats the style default.
         ...formatStyle(node.format),
+        // The document's line spacing (k-0468): the very box the .docx states for this
+        // paragraph, from its style and size (§ `spacedLineTwips`), so the paginator
+        // measures the height Word prints.
+        ...(node.lineSpacing !== undefined
+          ? { lineHeight: `${spacedLineTwips(node.style, node.format?.fontSize, node.lineSpacing) / 20}pt` }
+          : undefined),
       }}
     >
       {listIndent && node.listRef && (
@@ -2930,6 +2937,11 @@ export function NodeView({
           // The boundary gap, when this row leads its item (§ `withLeadingGap`).
           marginTop:
             node.spaceBefore !== undefined ? `${node.spaceBefore}pt` : undefined,
+          // The document's line spacing, the box the .docx states (§ `spacedLineTwips`).
+          lineHeight:
+            node.lineSpacing !== undefined
+              ? `${spacedLineTwips(node.style, undefined, node.lineSpacing) / 20}pt`
+              : undefined,
         }}
       >
         {node.cells.map((cell, index) => (
