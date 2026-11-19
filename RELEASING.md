@@ -141,6 +141,14 @@ the app, press Restart now, and expect `/Applications/Econ Studio.app` and no
 `Econ Worksheet.app`. A Dock icon usually follows the rename; if it shows a question
 mark, drag Econ Studio back into the Dock.
 
+`latest.json` must list six platforms (`darwin-x86_64`, `darwin-aarch64`, `windows-x86_64`, each
+also as `-app` / `-nsis`). The three jobs each merge their entry into the draft's copy, so jobs
+that finish together can overwrite one another: v0.9.1's draft listed only `darwin-aarch64`. Then
+rebuild it from the draft's own `.sig` files (each platform's `signature` is its `.sig` file's text,
+`url` its asset under `releases/download/vX.Y.Z/`), check each against the updater `pubkey` in
+`src-tauri/tauri.conf.json` (minisign: Ed25519 over the file's BLAKE2b-512), and
+`gh release upload vX.Y.Z latest.json --clobber` before publishing.
+
 No `latest.json`, or a missing `.sig`, means the signing secrets were absent — installed
 apps will not update. Fix the secrets and re-run the workflow rather than publishing.
 
