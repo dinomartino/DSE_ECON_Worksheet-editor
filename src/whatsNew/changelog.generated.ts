@@ -15,6 +15,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Stakeholder diagrams and data tables for data-response questions.** Insert → Source… now
+  starts a Source panel with what goes in it: a table of data, a stakeholder diagram, or text. A
+  stakeholder diagram puts the issue in a bold box in the middle and the stakeholders around it,
+  each with an optional view, joined by arrows (issue → stakeholders, stakeholders → issue, or plain
+  lines). Edit it in the side panel: type the issue, add up to eight stakeholders, reorder them,
+  leave a view blank for students to fill in. It is also under Diagram ▾ → Stakeholders, and prints
+  the same in Word and PDF. A paper with a stakeholder diagram opens read-only in Econ Studio 0.9.1
+  and older.
+  <!-- zh: **資料回應題可加入持份者圖示及數據表格。** 「插入 → 資料…」會直接建立附內容的資料框：數據表格、持份者圖示或文字。持份者圖示把議題放在中間的粗框內，四周是各持份者及其意見（可留空），以箭頭連接（議題 → 持份者、持份者 → 議題，或只用直線）。在側欄編輯：輸入議題，加入最多八個持份者，調整次序，意見可留空讓學生填寫。亦可在「圖表 ▾ → 持份者」加入，在 Word 及 PDF 中列印效果相同。含持份者圖示的試卷在 Econ Studio 0.9.1 或更舊版本只能以唯讀方式開啟。 -->
 - **See how much of the syllabus a paper covers.** ✦ AI → Check syllabus coverage sends the
   paper's questions (or the ones you selected) to the AI provider you chose in Settings → AI, the
   same one Chinese translation uses, and shows a report: how many of the 2025 guide's key points

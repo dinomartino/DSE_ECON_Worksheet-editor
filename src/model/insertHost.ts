@@ -21,6 +21,13 @@ export function insertHostFor(worksheet: Worksheet, anchorId: string | undefined
   return element?.kind === 'stimulus' ? { kind: 'stimulus', id: anchorId } : undefined;
 }
 
+/** The host's own blocks (a question's text, a stimulus's body); empty if it is gone. */
+export function hostBlocks(worksheet: Worksheet, host: InsertHost): ContentBlock[] {
+  if (host.kind === 'question') return worksheet.questions.find((question) => question.id === host.id)?.blocks ?? [];
+  const element = (worksheet.layout ?? []).find((item) => item.id === host.id);
+  return element?.kind === 'stimulus' ? element.blocks : [];
+}
+
 /** `block` appended to the host's own blocks (a question's text, before any parts). */
 export function appendBlockToHost(worksheet: Worksheet, host: InsertHost, block: ContentBlock): Worksheet {
   if (host.kind === 'question') {

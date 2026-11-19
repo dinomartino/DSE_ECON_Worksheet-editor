@@ -106,6 +106,31 @@ export const DIAGRAM_PANEL_MESSAGES = defineMessages({
   sliceRemove: { en: (n: number) => `Remove slice ${n}`, zh: (n: number) => `移除扇形 ${n}` },
   addSlice: { en: '+ Slice', zh: '+ 扇形' },
   percentNote: { en: 'Percentages are computed from the shares.', zh: '百分比由佔比自動計算。' },
+  // Stakeholder diagram (k-0469)
+  issueHeading: { en: 'Issue, in the middle', zh: '中間的議題' },
+  issueField: { en: 'Issue', zh: '議題' },
+  stakeholdersHeading: { en: 'Stakeholders, around the issue', zh: '議題四周的持份者' },
+  stakeholderName: { en: (n: number) => `Stakeholder ${n} name`, zh: (n: number) => `持份者 ${n} 名稱` },
+  stakeholderView: { en: (n: number) => `Stakeholder ${n} view (optional)`, zh: (n: number) => `持份者 ${n} 意見（可留空）` },
+  stakeholderUp: { en: (n: number) => `Move stakeholder ${n} up`, zh: (n: number) => `將持份者 ${n} 上移` },
+  stakeholderDown: { en: (n: number) => `Move stakeholder ${n} down`, zh: (n: number) => `將持份者 ${n} 下移` },
+  stakeholderRemove: { en: (n: number) => `Remove stakeholder ${n}`, zh: (n: number) => `移除持份者 ${n}` },
+  addStakeholder: { en: '+ Stakeholder', zh: '+ 持份者' },
+  stakeholderLimit: {
+    en: (max: number) => `Up to ${max} stakeholders fit around the issue.`,
+    zh: (max: number) => `議題四周最多可放 ${max} 個持份者。`,
+  },
+  stakeholderLinks: { en: 'Arrows', zh: '箭頭' },
+  linksFromIssue: { en: 'Issue → them', zh: '議題 → 持份者' },
+  linksFromIssueTitle: { en: 'Arrows point from the issue to each stakeholder', zh: '箭頭由議題指向各持份者' },
+  linksToIssue: { en: 'Them → issue', zh: '持份者 → 議題' },
+  linksToIssueTitle: { en: 'Arrows point from each stakeholder to the issue', zh: '箭頭由各持份者指向議題' },
+  linksLines: { en: 'Lines', zh: '直線' },
+  linksLinesTitle: { en: 'Plain lines, no arrowheads', zh: '只有直線，沒有箭頭' },
+  stakeholdersPlaced: {
+    en: 'Boxes are placed around the issue in list order. Leave a view empty for students to fill in.',
+    zh: '方框按列表次序排在議題四周。意見可留空，讓學生填寫。',
+  },
 });
 
 export const FORUM_CANVAS_MESSAGES = defineMessages({

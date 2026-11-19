@@ -1309,6 +1309,30 @@ the title mechanism — unchanged.
   reference figures are past-paper questions and the illustration is the teacher's
   own clipart. An empty forum stays visible as one empty bubble.
 
+### A stakeholder diagram is a diagram variant, laid out from its order (k-0469)
+
+`Diagram.stakeholder` (optional, like `pie`) draws the DRQ's 持份者圖示: the issue in a
+bold, rounded box in the middle, a box per stakeholder around it (name bold, view below,
+either may be empty) and a link from the issue to each, riding the whole block pipeline
+— one PNG, re-measure sizing, the title — unchanged.
+
+- **Placement is derived, never stored**: a 3 × 3 grid with the issue in the centre cell,
+  and `stakeholderCells(count)` gives each count (1–8, `MAX_STAKEHOLDERS`) a fixed,
+  balanced set of the outer cells, filled in list order. A top or bottom row whose middle
+  cell is empty gives its two boxes half the row each. Reordering is the only placement
+  control, so nothing can overlap and nothing goes stale when a box is rewritten.
+- Laid out at the stored width, as the forum (10pt, a narrower figure wraps more), with
+  the forum's per-character metric; boxes hug their text up to their column. Its wrap
+  keeps closing punctuation (。，、」) off a line's start (`wrapRichLines`'
+  `noStartPunctuation`, on for this variant only, so no older figure rewraps).
+- Links: `fromIssue` (absent, the default), `toIssue`, or `lines`; each is the segment
+  between the two boxes' edges along the line joining their centres.
+- **Panel only, no canvas** (`isPanelOnlyDiagram`, shared with the pie): `StakeholderFields`
+  edits the issue, the boxes (add, ↑ ↓, remove) and the links; every edit re-measures.
+- **It raises the written schema to 3** (§ Schema evolution): every build before it reads
+  the figure as empty axes. Insert → Source… (`insertEntries.tsx`) starts a source with a
+  table, this diagram (centred) or text (`factories.ts:createSourceWith`).
+
 ### Drawing (`model/diagramDraw.ts`, `components/editor/DiagramCanvas.tsx`)
 
 **The canvas owns the geometry; the panel owns everything else** (Template, Width, Alt
@@ -3613,7 +3637,9 @@ intact but unreachable.
   anywhere); `answerKeyLayout`; a section's `answerCount`; a part-less question's own
   non-blank `answer` or `scheme` (the essay); an `importQuota` derived curve (v0.5 throws
   editing around an unknown derive kind). The 1→2 step is identity. Graphs follow the
-  same rule. A section's `targetMarks` alone, a paragraph's `tabStops` (an older build prints the words on the default grid), and bank and organising metadata (topics,
+  same rule. v3 = v2 + a stakeholder diagram anywhere (`Diagram.stakeholder`, k-0469;
+  0.9.1 and older would print empty axes); the 2→3 step is identity, and its frozen corpus
+  is `v3-stakeholder.json` (`scripts/emit-v3-stakeholder-corpus.test.ts`). A section's `targetMarks` alone, a paragraph's `tabStops` (an older build prints the words on the default grid), and bank and organising metadata (topics,
   題型, `tagsAt`, lineage, part roots, `kind`, `classes`, `satOn`, `bankHidden`), stay at
   1: v0.5.0 keeps them and prints the same. v0.4–0.5 open a v2 file read-only (export stays possible there);
   v0.2–0.3 have no guard and open it editable, keeping the fields and the mark.

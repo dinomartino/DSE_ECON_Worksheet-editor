@@ -16,10 +16,12 @@ import type {
   FlowNode,
   ForumBubble,
   ForumChart,
+  StakeholderBox,
+  StakeholderChart,
   DiagramSpan,
   PieChart,
 } from '@/model/diagram';
-import { axisTickLabel, DIAGRAM_PLOT_ASPECT } from '@/model/diagram';
+import { axisTickLabel, DIAGRAM_PLOT_ASPECT, MAX_STAKEHOLDERS } from '@/model/diagram';
 import { cssFontFamilies } from '@/model/fonts';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
@@ -443,6 +445,9 @@ function estimateWidth(lines: RichText[], fontSize: number): number {
  * lines and are preserved. A line that already fits passes through untouched, run
  * identity intact, so a document wide enough for its title renders byte-identically.
  */
+/** Closing punctuation a line may not begin with (§ `wrapRichLines`' `noStartPunctuation`). */
+const NO_LINE_START = /^[。，、；：？！）」』〕】》〉．,.;:?!)\]]$/;
+
 function wrapRichLines(
   lines: RichText[],
   maxWidth: number,
@@ -453,6 +458,11 @@ function wrapRichLines(
    * coarse estimate there is not merely whitespace — it is a visibly wrong box.
    */
   measure: (lines: RichText[], fontSize: number) => number = estimateWidth,
+  /**
+   * Never start a line with closing punctuation (。，、」…): the glyph before it moves
+   * down with it. Off by default so the figures that wrapped before keep their lines.
+   */
+  noStartPunctuation = false,
 ): RichText[] {
   const wrapped: RichText[] = [];
   for (const line of lines) {
@@ -481,16 +491,30 @@ function wrapRichLines(
 
     let current: RichText = [];
     let currentWidth = 0;
+    let widths: number[] = [];
     const flush = () => {
       if (current.length > 0) wrapped.push(current);
       current = [];
       currentWidth = 0;
+      widths = [];
     };
     for (const unit of units) {
       const blank = unit.text.trim() === '';
-      if (!blank && current.length > 0 && currentWidth + unit.width > maxWidth) flush();
+      if (!blank && current.length > 0 && currentWidth + unit.width > maxWidth) {
+        if (noStartPunctuation && NO_LINE_START.test(unit.text) && current.length > 1) {
+          const carried = current.pop()!;
+          const carriedWidth = widths.pop()!;
+          flush();
+          current.push(carried);
+          widths.push(carriedWidth);
+          currentWidth = carriedWidth;
+        } else {
+          flush();
+        }
+      }
       if (blank && current.length === 0) continue; // the break swallows the space at it
       current.push({ ...unit.run, text: unit.text });
+      widths.push(unit.width);
       currentWidth += unit.width;
     }
     flush();
@@ -1539,6 +1563,8 @@ export function diagramSize(
   if (diagram.flow) return flowSize(diagram, diagram.flow, widthPx, language);
   // So does the forum's: bubbles measured from their own wrapped text.
   if (diagram.forum) return forumSize(diagram, diagram.forum, widthPx, language);
+  // And the stakeholder diagram's: boxes measured from their own wrapped text.
+  if (diagram.stakeholder) return stakeholderSize(diagram, diagram.stakeholder, widthPx, language);
   // A cropped diagram is sized by its frame, not by measuring: the teacher chose the
   // clearance on every side, so the plot takes what the width leaves after their pads
   // and the height follows from the plot's aspect plus their top and bottom. Language
@@ -2701,6 +2727,290 @@ function forumSvg(diagram: Diagram, forum: ForumChart, options: DiagramSvgOption
   );
 }
 
+/*
+ * ── The stakeholder diagram variant ───────────────────────────────────────────────
+ *
+ * A `Diagram` carrying `stakeholder` draws the DRQ's 持份者圖示 (k-0469): the issue in
+ * a bold box in the middle, a box per stakeholder around it (name bold, view below),
+ * each joined to the issue by an arrow or a line.
+ *
+ * Placement is derived from the count, never stored: the figure is a 3 × 3 grid with
+ * the issue in the centre cell, and `stakeholderCells` gives each count a fixed,
+ * balanced set of the eight outer cells, filled in reading order. Rows are as tall as
+ * their tallest box; an empty row costs nothing. Laid out at the stored width, like the
+ * forum, so every glyph stays the diagram's 10pt and a narrower figure means more lines.
+ */
+
+const SH_PAD = 6;
+/** White between columns, wide enough for an arrow to read between two boxes. */
+const SH_GUTTER_X = 30;
+/** White between rows, for the arrows reaching the top and bottom boxes. */
+const SH_GUTTER_Y = 30;
+const SH_BOX_PAD_X = 8;
+const SH_BOX_PAD_Y = 6;
+const SH_MIN_BOX_PX = 70;
+/** Space left between an arrow's end and the box it points at. */
+const SH_LINK_GAP = 3;
+const SH_LINE_HEIGHT = FONT_SIZE * 1.15;
+
+/** A grid cell: row and column, 0..2, the issue at (1, 1). */
+type ShCell = readonly [row: number, col: number];
+
+/**
+ * The cells a count of stakeholders takes, in reading order. Balanced left–right, and
+ * the middle row's side cells come last: an arrow straight across is the shortest and
+ * would crowd the issue box first.
+ */
+const STAKEHOLDER_CELLS: ReadonlyArray<ReadonlyArray<ShCell>> = [
+  [],
+  [[0, 1]],
+  [[1, 0], [1, 2]],
+  [[0, 0], [0, 2], [2, 1]],
+  [[0, 0], [0, 2], [2, 0], [2, 2]],
+  [[0, 0], [0, 1], [0, 2], [2, 0], [2, 2]],
+  [[0, 0], [0, 1], [0, 2], [2, 0], [2, 1], [2, 2]],
+  [[0, 0], [0, 1], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]],
+  [[0, 0], [0, 1], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1], [2, 2]],
+];
+
+/** Where `count` stakeholders sit (§ `STAKEHOLDER_CELLS`); past eight, the extras are not drawn. */
+export function stakeholderCells(count: number): ReadonlyArray<ShCell> {
+  return STAKEHOLDER_CELLS[Math.max(0, Math.min(count, STAKEHOLDER_CELLS.length - 1))];
+}
+
+export interface StakeholderBoxLayout {
+  /** Absent for the issue box. */
+  stakeholder?: StakeholderBox;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Bold lines first (the name, or the whole issue), then the view's lines. */
+  boldLines: RichText[];
+  lines: RichText[];
+}
+
+export interface StakeholderLayout {
+  issue: StakeholderBoxLayout;
+  boxes: StakeholderBoxLayout[];
+  /** One per box, in `boxes` order: `from` at the issue's edge, `to` at the box's. */
+  links: Array<{ from: { x: number; y: number }; to: { x: number; y: number } }>;
+  width: number;
+  height: number;
+  titleRoom: number;
+  titleBelow: boolean;
+}
+
+/** One box's wrapped text and the size that hugs it, no wider than `maxWidth`. */
+function stakeholderBoxText(
+  bold: BiText | undefined,
+  plainText: BiText | undefined,
+  maxWidth: number,
+  language: LanguageMode,
+): { boldLines: RichText[]; lines: RichText[]; w: number; h: number } {
+  const inner = maxWidth - 2 * SH_BOX_PAD_X;
+  const boldLines = wrapRichLines(pickSides(bold, language), inner, FONT_SIZE, forumTextWidth, true);
+  const lines = wrapRichLines(pickSides(plainText, language), inner, FONT_SIZE, forumTextWidth, true);
+  const all = [...boldLines.map((line) => line.map((run) => ({ ...run, bold: true }))), ...lines];
+  const content = forumTextWidth(all, FONT_SIZE);
+  const w = Math.min(maxWidth, Math.max(SH_MIN_BOX_PX, content + 2 * SH_BOX_PAD_X + FORUM_HUG_CUSHION));
+  const h = 2 * SH_BOX_PAD_Y + Math.max(1, all.length) * SH_LINE_HEIGHT;
+  return { boldLines, lines, w, h };
+}
+
+/** Where the ray from a box's centre toward `toward` leaves the box, pulled back by `gap`. */
+function boxExit(box: { x: number; y: number; w: number; h: number }, toward: { x: number; y: number }, gap: number) {
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const dx = toward.x - cx;
+  const dy = toward.y - cy;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return { x: cx, y: cy };
+  const t = Math.min(
+    dx === 0 ? Infinity : box.w / 2 / Math.abs(dx),
+    dy === 0 ? Infinity : box.h / 2 / Math.abs(dy),
+  );
+  return { x: cx + dx * t + (dx / length) * gap, y: cy + dy * t + (dy / length) * gap };
+}
+
+/**
+ * Lay the stakeholder diagram out at the figure's stored width. Shared by
+ * `stakeholderSize` and `stakeholderSvg`, so the measured box and the drawing agree.
+ */
+export function stakeholderChartLayout(
+  diagram: Diagram,
+  chart: StakeholderChart,
+  widthPx: number,
+  language: LanguageMode,
+): StakeholderLayout {
+  const room = titleRoom(diagram, language, 1);
+  const titleBelow = diagram.titlePlacement === 'below';
+  const width = Math.max(240, widthPx);
+  const colW = (width - 2 * SH_PAD - 2 * SH_GUTTER_X) / 3;
+  const colCentre = (col: number) => SH_PAD + col * (colW + SH_GUTTER_X) + colW / 2;
+
+  const stakeholders = (Array.isArray(chart.stakeholders) ? chart.stakeholders : []).slice(0, MAX_STAKEHOLDERS);
+  const cells = stakeholderCells(stakeholders.length);
+  // With nothing beside it, the issue may use some of the side columns' width too.
+  const sidesTaken = cells.some(([row]) => row === 1);
+  const issueMax = sidesTaken ? colW : Math.min(width - 2 * SH_PAD, colW * 1.6);
+
+  // A top or bottom row with its middle cell empty gives each side box half the row,
+  // centred in its half, so two corner boxes do not wrap into a narrow third each.
+  const halfW = (width - 2 * SH_PAD - 2 * SH_GUTTER_X) / 2;
+  const wideRow = (row: number) => row !== 1 && !cells.some(([r, c]) => r === row && c === 1);
+  const cellCentre = (row: number, col: number) =>
+    wideRow(row) && col !== 1
+      ? col === 0
+        ? SH_PAD + halfW / 2
+        : width - SH_PAD - halfW / 2
+      : colCentre(col);
+
+  const issueText = stakeholderBoxText(chart.issue, undefined, issueMax, language);
+  const measured = stakeholders.map((stakeholder, index) => ({
+    stakeholder,
+    cell: cells[index],
+    ...stakeholderBoxText(stakeholder.label, stakeholder.view, wideRow(cells[index][0]) ? halfW : colW, language),
+  }));
+
+  const rowHeights = [0, 1, 2].map((row) =>
+    Math.max(
+      0,
+      ...(row === 1 ? [issueText.h] : []),
+      ...measured.filter((box) => box.cell[0] === row).map((box) => box.h),
+    ),
+  );
+  const rowTops: number[] = [];
+  let cursor = SH_PAD + (titleBelow ? 0 : room);
+  for (const row of [0, 1, 2]) {
+    rowTops.push(cursor);
+    if (rowHeights[row] > 0) cursor += rowHeights[row] + (row < 2 ? SH_GUTTER_Y : 0);
+  }
+  // The last gutter was only owed if a row followed it.
+  const lastFilled = rowHeights[2] > 0 ? 2 : 1;
+  const contentBottom = rowTops[lastFilled] + rowHeights[lastFilled];
+
+  const place = (w: number, h: number, row: number, col: number) => ({
+    x: cellCentre(row, col) - w / 2,
+    y: rowTops[row] + (rowHeights[row] - h) / 2,
+    w,
+    h,
+  });
+
+  const issue: StakeholderBoxLayout = {
+    ...place(issueText.w, issueText.h, 1, 1),
+    boldLines: issueText.boldLines,
+    lines: issueText.lines,
+  };
+  const boxes: StakeholderBoxLayout[] = measured.map((box) => ({
+    stakeholder: box.stakeholder,
+    ...place(box.w, box.h, box.cell[0], box.cell[1]),
+    boldLines: box.boldLines,
+    lines: box.lines,
+  }));
+  const centre = (box: StakeholderBoxLayout) => ({ x: box.x + box.w / 2, y: box.y + box.h / 2 });
+  const links = boxes.map((box) => ({
+    from: boxExit(issue, centre(box), SH_LINK_GAP),
+    to: boxExit(box, centre(issue), SH_LINK_GAP),
+  }));
+
+  return {
+    issue,
+    boxes,
+    links,
+    width,
+    height: contentBottom + SH_PAD + (titleBelow ? room : 0),
+    titleRoom: room,
+    titleBelow,
+  };
+}
+
+/** `diagramSize` for the stakeholder variant: the teacher's width, the height measured. */
+function stakeholderSize(
+  diagram: Diagram,
+  chart: StakeholderChart,
+  widthPx: number,
+  language: LanguageMode,
+): { widthPx: number; heightPx: number } {
+  const layout = stakeholderChartLayout(diagram, chart, widthPx, language);
+  return { widthPx: layout.width, heightPx: Math.max(1, Math.round(layout.height)) };
+}
+
+/** `diagramSvg` for the stakeholder variant. */
+function stakeholderSvg(diagram: Diagram, chart: StakeholderChart, options: DiagramSvgOptions): string {
+  const scale = options.scale ?? 1;
+  const width = options.widthPx * scale;
+  const height = options.heightPx * scale;
+  const language = options.language;
+  const layout = stakeholderChartLayout(diagram, chart, options.widthPx, language);
+  // As the forum: fitted and centred, so a stale stored height letterboxes, never distorts.
+  const eff = Math.min(width / layout.width, height / layout.height);
+  const tx = (width - layout.width * eff) / 2;
+  const ty = (height - layout.height * eff) / 2;
+  const fontFamily = options.fonts
+    ? `${cssFontFamilies(options.fonts, '')}, serif`
+    : 'Times New Roman, serif';
+
+  const parts: string[] = [];
+  const mode = chart.links ?? 'fromIssue';
+  for (const link of layout.links) {
+    parts.push(
+      `<line x1="${n(link.from.x)}" y1="${n(link.from.y)}" x2="${n(link.to.x)}" y2="${n(link.to.y)}" ` +
+        `stroke="#000" stroke-width="1.2"/>`,
+    );
+    if (mode === 'fromIssue') parts.push(arrowheadPath(link.from, link.to, ARROWHEAD));
+    if (mode === 'toIssue') parts.push(arrowheadPath(link.to, link.from, ARROWHEAD));
+  }
+
+  const boxText = (box: StakeholderBoxLayout) => {
+    const cx = box.x + box.w / 2;
+    const count = box.boldLines.length + box.lines.length;
+    // Centred in the box both ways; an empty box keeps its one line of room.
+    const first = box.y + (box.h - count * SH_LINE_HEIGHT) / 2 + FONT_SIZE * 0.8;
+    return (
+      textAt(box.boldLines, cx, first, { anchor: 'middle', bold: true }) +
+      textAt(box.lines, cx, first + box.boldLines.length * SH_LINE_HEIGHT, { anchor: 'middle' })
+    );
+  };
+
+  // The issue's box is the one with the heavier rule and rounded corners, so the centre
+  // reads as the centre on a black-and-white photocopy.
+  const { issue } = layout;
+  parts.push(
+    `<rect x="${n(issue.x)}" y="${n(issue.y)}" width="${n(issue.w)}" height="${n(issue.h)}" ` +
+      `rx="6" stroke="#000" stroke-width="2" fill="#fff" data-stakeholder-issue=""/>`,
+    boxText(issue),
+  );
+  for (const box of layout.boxes) {
+    parts.push(
+      `<rect x="${n(box.x)}" y="${n(box.y)}" width="${n(box.w)}" height="${n(box.h)}" ` +
+        `stroke="#000" stroke-width="1.2" fill="#fff" data-stakeholder=""/>`,
+      boxText(box),
+    );
+  }
+
+  const titleLines = pickSides(diagram.title, language);
+  const title = textAt(
+    titleLines,
+    layout.width / 2,
+    layout.titleBelow
+      ? layout.height - layout.titleRoom + TITLE_GAP + TITLE_SIZE
+      : TITLE_TOP + TITLE_SIZE * 1.1,
+    { anchor: 'middle', fontSize: TITLE_SIZE, underline: true },
+  );
+
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${n(width)}" height="${n(height)}" ` +
+    `viewBox="0 0 ${n(width)} ${n(height)}" font-family="${escapeXml(fontFamily)}">` +
+    `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>` +
+    `<g transform="translate(${n(tx)} ${n(ty)}) scale(${n(eff)})">` +
+    parts.join('') +
+    title +
+    '</g>' +
+    '</svg>'
+  );
+}
+
 /**
  * Where the diagram's title is drawn.
  *
@@ -2846,6 +3156,7 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
   if (stored.pie) return pieSvg(stored, stored.pie, options);
   if (stored.flow) return flowSvg(stored, stored.flow, options);
   if (stored.forum) return forumSvg(stored, stored.forum, options);
+  if (stored.stakeholder) return stakeholderSvg(stored, stored.stakeholder, options);
   // Anchored points and derived curves are drawn where their relations put them now.
   const diagram = resolveDiagram(stored, plotAspectOf(diagramPlot(stored, options)));
   const scale = options.scale ?? 1;

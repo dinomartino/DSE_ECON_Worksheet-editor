@@ -10,7 +10,7 @@ import { areaReferences } from './diagramAreas';
  * edges, a span to it, a curve derived from it), so nothing dangles.
  */
 
-/** The element lists that can carry `answer`. Pie, flow and forum never do. */
+/** The element lists that can carry `answer`. Pie, flow, forum and stakeholder never do. */
 export type AnswerLayerKind = 'curves' | 'points' | 'labels' | 'arrows' | 'areas' | 'spans';
 
 export type AnswerLayer = Record<AnswerLayerKind, Set<string>>;
@@ -32,7 +32,7 @@ const KINDS: AnswerLayerKind[] = ['curves', 'points', 'labels', 'arrows', 'areas
 
 /** Does this diagram draw anything only the teacher sees? */
 export function hasAnswerLayer(diagram: Diagram): boolean {
-  if (diagram.pie || diagram.flow || diagram.forum) return false;
+  if (diagram.pie || diagram.flow || diagram.forum || diagram.stakeholder) return false;
   const all = lists(diagram);
   return KINDS.some((kind) => all[kind].some((element) => element.answer));
 }

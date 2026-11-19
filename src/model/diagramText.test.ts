@@ -80,13 +80,16 @@ describe('mapDiagramTexts', () => {
     });
   });
 
-  it('covers pie, flow and forum text', () => {
+  it('covers pie, flow, forum and stakeholder text', () => {
     const segments = (id: string) => [...visited(buildFromTemplate(id))].map(([segment, { kind }]) => `${kind} ${segment.replace(/:[^/]+/g, ':*')}`);
     expect(segments('pie')).toContain('diagramLabel pie/slice:*');
     expect(segments('flow')).toEqual(expect.arrayContaining([
       'flowNode flow/node:*', 'diagramLabel flow/arrow:*/label', 'diagramLabel flow/arrow:*/below',
     ]));
     expect(segments('forum')).toEqual(expect.arrayContaining(['speaker forum/bubble:*/speaker', 'bubble forum/bubble:*/text']));
+    expect(segments('stakeholders')).toEqual(expect.arrayContaining([
+      'flowNode stakeholder/issue', 'speaker stakeholder/box:*/label', 'bubble stakeholder/box:*/view',
+    ]));
   });
 
   it('keeps identity and never creates an optional field', () => {

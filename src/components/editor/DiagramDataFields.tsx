@@ -3,7 +3,16 @@
 import { useRef } from 'react';
 import { nanoid } from 'nanoid';
 import { emptyBiText } from '@/model/text';
-import type { ForumBubble, ForumChart, ForumSlot, PieSlice } from '@/model/diagram';
+import {
+  MAX_STAKEHOLDERS,
+  type ForumBubble,
+  type ForumChart,
+  type ForumSlot,
+  type PieSlice,
+  type StakeholderBox,
+  type StakeholderChart,
+  type StakeholderLinks,
+} from '@/model/diagram';
 import { prepareImageForStorage } from '@/export/imageImport';
 import { Button, IconButton, NumberField, Segmented } from '@/components/ui';
 import type { TextKey } from '@/i18n/catalogue';
@@ -12,7 +21,8 @@ import { BiTextField } from './BiTextField';
 import { DIAGRAM_PANEL_MESSAGES } from './diagramEditing.messages';
 
 /*
- * The data of the chart kinds not drawn on axes: a pie's slices and a forum's bubbles.
+ * The data of the chart kinds not drawn on axes: a pie's slices, a forum's bubbles and a
+ * stakeholder diagram's issue and boxes.
  * One set of fields for a worksheet's diagram panel and a saved graph's (Graphs 圖表庫),
  * so the two never edit a chart differently.
  */
@@ -228,6 +238,128 @@ export function PieSliceFields({
           {m.percentNote}
         </span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The stakeholder diagram's data (k-0469): the issue, then one row per stakeholder (name,
+ * optional view, move up/down, remove) and how the links are drawn. Placement is derived
+ * from list order, so the panel offers order, never positions; there is no canvas.
+ */
+export function StakeholderFields({
+  chart,
+  onChange,
+}: {
+  chart: StakeholderChart;
+  onChange: (chart: StakeholderChart) => void;
+}) {
+  const m = useMessages(DIAGRAM_PANEL_MESSAGES);
+  const stakeholders = chart.stakeholders;
+  const patch = (id: string, change: Partial<StakeholderBox>) =>
+    onChange({
+      ...chart,
+      stakeholders: stakeholders.map((box) => (box.id === id ? { ...box, ...change } : box)),
+    });
+  const move = (index: number, by: -1 | 1) => {
+    const next = [...stakeholders];
+    const [box] = next.splice(index, 1);
+    next.splice(index + by, 0, box);
+    onChange({ ...chart, stakeholders: next });
+  };
+  const full = stakeholders.length >= MAX_STAKEHOLDERS;
+  const linkOptions: Array<{ value: StakeholderLinks; label: string; title: string }> = [
+    { value: 'fromIssue', label: m.linksFromIssue, title: m.linksFromIssueTitle },
+    { value: 'toIssue', label: m.linksToIssue, title: m.linksToIssueTitle },
+    { value: 'lines', label: m.linksLines, title: m.linksLinesTitle },
+  ];
+
+  return (
+    <div className="space-y-1" data-stakeholder-fields="">
+      <span className="text-[11px] font-medium text-ink-subtle">{m.issueHeading}</span>
+      <BiTextField
+        translate={{ kind: 'flowNode', fallsBack: true }}
+        ariaLabel={m.issueField}
+        value={chart.issue}
+        onChange={(issue) => onChange({ ...chart, issue })}
+        rows={1}
+      />
+      <span className="block pt-1 text-[11px] font-medium text-ink-subtle">
+        {m.stakeholdersHeading}
+      </span>
+      {stakeholders.map((box, index) => (
+        <div key={box.id} className="space-y-1 rounded border border-line p-1.5">
+          <div className="flex items-center gap-1">
+            <div className="min-w-0 flex-1">
+              <BiTextField
+                translate={{ kind: 'speaker', fallsBack: true }}
+                ariaLabel={m.stakeholderName(index + 1)}
+                value={box.label}
+                onChange={(label) => patch(box.id, { label })}
+                rows={1}
+              />
+            </div>
+            <IconButton
+              label={m.stakeholderUp(index + 1)}
+              disabled={index === 0}
+              onClick={() => move(index, -1)}
+            >
+              ↑
+            </IconButton>
+            <IconButton
+              label={m.stakeholderDown(index + 1)}
+              disabled={index === stakeholders.length - 1}
+              onClick={() => move(index, 1)}
+            >
+              ↓
+            </IconButton>
+            <IconButton
+              label={m.stakeholderRemove(index + 1)}
+              onClick={() =>
+                onChange({ ...chart, stakeholders: stakeholders.filter((other) => other.id !== box.id) })
+              }
+            >
+              ✕
+            </IconButton>
+          </div>
+          <BiTextField
+            translate={{ kind: 'bubble', fallsBack: true }}
+            ariaLabel={m.stakeholderView(index + 1)}
+            value={box.view}
+            onChange={(view) => patch(box.id, { view })}
+            rows={2}
+          />
+        </div>
+      ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="subtle"
+          disabled={full}
+          title={full ? m.stakeholderLimit(MAX_STAKEHOLDERS) : undefined}
+          onClick={() =>
+            onChange({
+              ...chart,
+              stakeholders: [...stakeholders, { id: nanoid(10), label: emptyBiText(), view: emptyBiText() }],
+            })
+          }
+        >
+          {m.addStakeholder}
+        </Button>
+        <span className="text-[11px] text-ink-subtle">{m.stakeholderLinks}</span>
+        <Segmented<StakeholderLinks>
+          label={m.stakeholderLinks}
+          value={chart.links ?? 'fromIssue'}
+          options={linkOptions}
+          onChange={(links) =>
+            // The default stays unstored, as every other diagram default does.
+            onChange({ ...chart, links: links === 'fromIssue' ? undefined : links })
+          }
+        />
+      </div>
+      <span className="block text-[11px] leading-snug text-ink-subtle">
+        {full ? m.stakeholderLimit(MAX_STAKEHOLDERS) : m.stakeholdersPlaced}
+      </span>
     </div>
   );
 }
