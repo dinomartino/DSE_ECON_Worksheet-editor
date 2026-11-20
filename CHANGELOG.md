@@ -12,6 +12,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.10.0 — 2026-11-20
+
 ### Added
 - **Importing a Word or PDF paper brings its data-response question in as a DRQ.** Sources
   A, B, C… come in as lettered sources holding their tables, text and pictures; each part keeps

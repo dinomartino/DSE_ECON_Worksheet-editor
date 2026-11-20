@@ -14,6 +14,8 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.10.0 — 2026-11-20
+
 ### Added
 - **Importing a Word or PDF paper brings its data-response question in as a DRQ.** Sources
   A, B, C… come in as lettered sources holding their tables, text and pictures; each part keeps
@@ -114,16 +116,6 @@ a version heading is edited afterwards.
   it, before the part's points: "Marks for effective communication (EC: max 2 marks)", a ruled
   Marks | Performance table, then "The maximum mark for content is … marks."
   <!-- zh: **有效溝通（EC）表格每次都一樣，採用考評局的字眼。** 「加入有效溝通」現在會填入考評局評卷參考的有效傳意描述：2、1、0 分，每級四項，中英對照，每行仍可修改。用了其他字眼的 EC 表格會有「使用考評局標準」按鈕。在評卷參考中，EC 會按考評局的格式印在分題要點之前：「有效傳意評分（EC：最高2分）」、有格線的「分數｜表現」表格，然後是「內容最高…分。」 -->
-- **See how much of the syllabus a paper covers.** ✦ AI → Check syllabus coverage sends the
-  paper's questions (or the ones you selected) to the AI provider you chose in Settings → AI, the
-  same one Chinese translation uses, and shows a report: how many of the 2025 guide's key points
-  the paper tests, by count and by suggested lesson hours, then each topic and key point with its
-  marks split into Know, Apply / analyse and Evaluate, its share of the paper and of lesson time,
-  the questions that test it, and the key points nothing tests. The Elective Part counts when the
-  paper has its questions. Open By question to see what the AI said each part tests. These are AI
-  estimates: nothing is saved to the paper, and the working files are deleted when the report is
-  ready.
-  <!-- zh: **查看試卷覆蓋多少課程。** ✦ AI →「檢查課程覆蓋」會把試卷的題目（或你選取的題目）傳送到你在「設定 → AI」選擇的 AI 服務（與中文翻譯相同），然後顯示報告：試卷考核了 2025 年指引中多少個學習要點，按數目及按建議課時計算；再列出每個課題及學習要點的分數（分為知識、應用及分析、評鑑）、佔試卷及課時的比例、考核它的題目，以及沒有題目考核的學習要點。試卷有選修部分的題目時會一併計算。打開「按題目」可看到 AI 認為每部分考核甚麼。這些是 AI 的估算：不會儲存任何內容到試卷，報告完成後暫存檔案會被刪除。 -->
 - **Link Paper 1 and Paper 2 of one exam as a set.** On the start screen, a mock paper's ⋯ menu
   has Make a set…: name the set (it suggests one from the paper's name) and tick the other papers
   that sit the same exam; the matching Paper 2 comes ticked. The papers then show together in one
@@ -221,6 +213,10 @@ a version heading is edited afterwards.
   <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
 
 ### Changed
+- **Papers with a data chart or a stakeholder diagram need this version.** Econ Studio 0.9.1 and
+  older open them read-only, with a note to update. If you share papers with colleagues or work on
+  more than one computer, update Econ Studio on each one. Other papers still open as before.
+  <!-- zh: **含數據圖表或持份者圖示的試卷需要這個版本。** Econ Studio 0.9.1 或更舊版本只能以唯讀方式開啟，並提示更新。如與同事共用試卷，或在多於一部電腦上工作，請在每部電腦更新 Econ Studio。其他試卷照常開啟。 -->
 - **The side panel tells the parts of a question apart by colour**, in every theme: the question
   text grey; each source green, labelled "Source A", "Source B"… with what it holds; each part blue,
   with its sub-parts lighter blue and nested inside it; the answer and marking amber, labelled
