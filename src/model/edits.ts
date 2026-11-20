@@ -44,7 +44,7 @@ import { endsWithTab, tabPresetStops, tabPresetText, type TabPreset } from './ta
 
 type SchemeTarget = Extract<
   EditTarget,
-  { kind: 'schemePoint' | 'schemeAlternative' | 'schemeLevel' | 'schemeEc' }
+  { kind: 'schemePoint' | 'schemeAlternative' | 'schemeLevel' | 'schemeEc' | 'schemeHeading' }
 >;
 
 /** The piece of scheme text a scheme target names, within its leaf's scheme. */
@@ -58,6 +58,8 @@ function schemeSlot(target: SchemeTarget): SchemeTextSlot {
       return { level: target.levelId };
     case 'schemeEc':
       return { ec: target.descriptorId };
+    case 'schemeHeading':
+      return { heading: target.groupId };
   }
 }
 
@@ -439,6 +441,8 @@ export function editTargetKey(target: EditTarget): string {
       return `schemeLevel:${target.levelId}`;
     case 'schemeEc':
       return `schemeEc:${target.descriptorId}`;
+    case 'schemeHeading':
+      return `schemeHeading:${target.groupId}`;
     case 'layoutText':
       return `layoutText:${target.elementId}`;
     case 'labelListCell':
@@ -1009,6 +1013,7 @@ export function applyEditTarget(
     case 'schemeAlternative':
     case 'schemeLevel':
     case 'schemeEc':
+    case 'schemeHeading':
       return applySchemeText(worksheet, target, text);
 
     default:
@@ -1360,6 +1365,7 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
     case 'schemeAlternative':
     case 'schemeLevel':
     case 'schemeEc':
+    case 'schemeHeading':
       return schemeTextAt(targetScheme(worksheet, target), schemeSlot(target));
     case 'subPartAnswer': {
       const question = worksheet.questions.find((entry) => entry.id === target.questionId);

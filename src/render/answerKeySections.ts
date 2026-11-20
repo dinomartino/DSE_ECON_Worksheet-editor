@@ -17,7 +17,13 @@ import {
   type TableNodeCell,
   type TextNode,
 } from './ir';
-import { MARK_SCHEME_WORDING, renderMarkScheme, schemeParagraphs, schemePointGroups } from './markScheme';
+import {
+  MARK_SCHEME_WORDING,
+  renderMarkScheme,
+  schemeParagraphs,
+  schemePointGroups,
+  type PointLine,
+} from './markScheme';
 import { ANSWER_KEY_WORDING, KEY_LAYOUT_WORDING } from './answerKeyWording';
 import { percentNote } from './examResultsKey';
 import type { AnswerKeyRow, KeyChoice, KeyGroup, KeyLine, KeyScheme } from './answerKey';
@@ -442,6 +448,7 @@ interface CellOptions {
   align?: TableNodeCell['align'];
   bold?: boolean;
   italic?: boolean;
+  underline?: boolean;
   /** Spans this many columns; the row then carries `colSpan - 1` covered cells after it. */
   span?: number;
 }
@@ -451,6 +458,7 @@ function keyCell(content: Pick<TableNodeCell, 'text' | 'edit' | 'segments'>, opt
   const format = {
     ...(options.bold ? { bold: true } : {}),
     ...(options.italic ? { italic: true } : {}),
+    ...(options.underline ? { underline: true } : {}),
   };
   return {
     ...content,
@@ -811,7 +819,6 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
     const asParagraph = layout.schemeAsPoints && schemeDisplay(row.scheme) === 'paragraph';
     const [paragraph] = asParagraph ? schemeParagraphs(row.scheme, row.schemeAt ? { at: row.schemeAt } : {}) : [];
     const [route] = layout.schemeAsPoints && !asParagraph ? schemePointGroups(row.scheme, row.schemeAt) : [];
-    const points = (route ?? []).flatMap((group) => group.points);
     const bullets: Array<ColumnsNode | TextNode> = paragraph
       ? [
           {
@@ -824,7 +831,7 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
           },
         ]
       : [];
-    bullets.push(...points.map((point): ColumnsNode => ({
+    const bullet = (point: PointLine): ColumnsNode => ({
       kind: 'columns',
       style: 'Body',
       indent: indent + BULLET_HANG,
@@ -838,7 +845,22 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
           ...(point.segments ? { segments: point.segments } : point.edit ? { edit: point.edit } : {}),
         },
       ],
-    })));
+    });
+    // A group's heading (k-0475) heads its bullets, underlined, as the scheme prints it.
+    for (const group of route ?? []) {
+      if (group.heading) {
+        bullets.push({
+          kind: 'text',
+          style: 'Body',
+          text: group.heading,
+          indent,
+          format: { underline: true },
+          keepNext: group.points.length > 0,
+          ...(group.headingEdit ? { edit: group.headingEdit } : {}),
+        });
+      }
+      bullets.push(...group.points.map(bullet));
+    }
     return { row, indent, bullets };
   });
 
@@ -1082,6 +1104,19 @@ function renderSchemeTable(nodes: RenderNode[], scheme: KeyScheme, context: KeyS
         ];
         // A rule a row, beside the points from the first: one tall cell would hold a
         // whole page's rows together. A part has no rules inside, so they read as one.
+        if (group.heading) {
+          const head = take();
+          rows.push({
+            cells: [
+              keyCell({ text: neutral(head.question, language) }),
+              keyCell({ text: group.heading, ...(group.headingEdit ? { edit: group.headingEdit } : {}) }, { underline: true }),
+              marksCell(undefined),
+              keyCell({ text: empty }),
+            ],
+            keepNext: group.points.length > 0,
+            opensPart: head.opensPart || (routeIndex > 0 && groupIndex === 0),
+          });
+        }
         const count = Math.max(group.points.length, rules.length);
         for (let line = 0; line < count; line += 1) {
           const point = group.points[line];
@@ -1100,7 +1135,7 @@ function renderSchemeTable(nodes: RenderNode[], scheme: KeyScheme, context: KeyS
             ],
             // A rule that outruns its points stays beside them.
             keepNext: line + 1 < count && line + 1 >= group.points.length,
-            opensPart: head.opensPart || (routeIndex > 0 && groupIndex === 0 && line === 0),
+            opensPart: head.opensPart || (routeIndex > 0 && groupIndex === 0 && line === 0 && !group.heading),
           });
         }
       });

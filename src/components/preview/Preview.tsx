@@ -847,6 +847,7 @@ const TARGET_NAME: Record<EditTarget["kind"], TextKey<typeof PREVIEW_MESSAGES>> 
   schemeAlternative: "targetSchemeAlternative",
   schemeLevel: "targetSchemeLevel",
   schemeEc: "targetSchemeEc",
+  schemeHeading: "targetSchemeHeading",
   layoutText: "targetTextElement",
   sourceLabel: "targetSourceLabel",
   sourceFootnote: "targetSourceFootnote",

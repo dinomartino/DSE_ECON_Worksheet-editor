@@ -97,6 +97,7 @@ export type EditTarget =
   | (SchemeAddress & { kind: 'schemeAlternative'; pointId: string; index: number })
   | (SchemeAddress & { kind: 'schemeLevel'; levelId: string })
   | (SchemeAddress & { kind: 'schemeEc'; descriptorId: string })
+  | (SchemeAddress & { kind: 'schemeHeading'; groupId: string })
   /** A text-bearing layout element — heading, note, part header, section heading. */
   | { kind: 'layoutText'; elementId: string }
   /**

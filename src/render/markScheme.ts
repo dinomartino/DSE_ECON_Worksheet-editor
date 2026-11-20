@@ -1,4 +1,5 @@
 import {
+  groupHeading,
   groupPoints,
   isSchemeEmpty,
   routeGroups,
@@ -6,6 +7,7 @@ import {
   schemeDisplay,
   schemeLevels,
   schemeRoutes,
+  statedContentMax,
 } from '@/model/markScheme';
 import type { MarkGroup, MarkPoint, MarkScheme } from '@/model/markSchemeTypes';
 import { bi, isBiTextEmpty } from '@/model/text';
@@ -38,10 +40,10 @@ export const MARK_SCHEME_WORDING = {
   each: bi('Each of the following:', '以下每項：'),
   firstOnly: (n: number) =>
     n === 1
-      ? bi('[Mark the FIRST point only.]', '［只評閱第一點。］')
-      : bi(`[Mark the FIRST ${wordEn(n)} points only.]`, `［只評閱首${wordZh(n)}點。］`),
+      ? bi('[Mark the FIRST point only.]', '［只批閱首項。］')
+      : bi(`[Mark the FIRST ${wordEn(n)} points only.]`, `［只批閱首${wordZh(n)}項。］`),
   at: (n: number) => bi(`${n}@`, `${n}@`),
-  max: (n: number) => bi(`max: ${n}`, `最高${n}分`),
+  max: (n: number) => bi(`max: ${n}`, `最高：${n}`),
   mark: (n: number) => bi(`(${n})`, `(${n})`),
   range: (min: number, max: number) =>
     bi(min === max ? `(${min})` : `(${min}–${max})`, min === max ? `(${min})` : `(${min}–${max})`),
@@ -141,6 +143,9 @@ export interface PointLine {
 /** A group's points that print, with the group's rules read as numbers (`take`, `each`). */
 export interface PointGroup {
   group: MarkGroup;
+  /** The group's heading (`MarkGroup.heading`), when it has words, and where it is typed. */
+  heading?: BiText;
+  headingEdit?: EditTarget;
   take?: number;
   each?: number;
   points: PointLine[];
@@ -159,6 +164,12 @@ export function schemePointGroups(scheme: MarkScheme | undefined, at?: SchemeAdd
       routeGroups(route)
         .map((group): PointGroup => ({
           group,
+          ...(groupHeading(group)
+            ? {
+                heading: groupHeading(group),
+                ...(at ? { headingEdit: { kind: 'schemeHeading', ...at, groupId: group.id } as EditTarget } : {}),
+              }
+            : {}),
           ...(positive(group.take) ? { take: group.take } : {}),
           ...(positive(group.each) ? { each: group.each } : {}),
           points: groupPoints(group)
@@ -173,7 +184,7 @@ export function schemePointGroups(scheme: MarkScheme | undefined, at?: SchemeAdd
                 : {}),
             })),
         }))
-        .filter((group) => group.points.length > 0),
+        .filter((group) => group.points.length > 0 || group.heading !== undefined),
     )
     .filter((groups) => groups.length > 0);
 }
@@ -253,8 +264,14 @@ export function renderMarkScheme(
   const empty: BiText = { en: [], zh: [] };
 
   const routes = schemeRoutes(scheme).filter((route) =>
-    routeGroups(route).some((group) => groupPoints(group).some(hasWording)),
+    routeGroups(route).some((group) => groupHeading(group) || groupPoints(group).some(hasWording)),
   );
+  // A stated content mark (k-0475) heads the indicative content, as HKEAA prints it under
+  // the EC table; where the answer key prints that table, the table's block says it.
+  const stated = statedContentMax(scheme);
+  if (stated !== undefined && !(options.omitEc && scheme.ec)) {
+    line(MARK_SCHEME_WORDING.contentMax(stated), { keepNext: true });
+  }
   if (schemeDisplay(scheme) === 'paragraph') {
     schemeParagraphs(scheme, { ...(at ? { at } : {}), ...(options.editing ? { editing: true } : {}) }).forEach(
       (paragraph, index) => {
@@ -270,6 +287,15 @@ export function renderMarkScheme(
     if (routeIndex > 0) line(MARK_SCHEME_WORDING.or, { format: { bold: true }, keepNext: true });
     routeGroups(route).forEach((group: MarkGroup) => {
       const all = groupPoints(group);
+      const heading = groupHeading(group);
+      if (heading || (at && options.editing && group.heading)) {
+        line(heading ?? empty, {
+          format: { underline: true },
+          keepNext: true,
+          ...(heading ? {} : { editOnly: true as const }),
+          ...(at ? { edit: { kind: 'schemeHeading', ...at, groupId: group.id } } : {}),
+        });
+      }
       if (!all.some(hasWording)) return;
       // On an editing page an empty point keeps its line, to be typed in (`editOnly`).
       const points = all.filter((point) => hasWording(point) || (options.editing && at));

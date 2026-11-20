@@ -65,6 +65,7 @@ export const PREVIEW_MESSAGES = defineMessages({
   targetSchemeAlternative: { en: 'Alternative answer', zh: '其他答案' },
   targetSchemeLevel: { en: 'Level descriptor', zh: '等級描述' },
   targetSchemeEc: { en: 'EC descriptor', zh: '有效溝通描述' },
+  targetSchemeHeading: { en: 'Scheme heading', zh: '評分標題' },
   targetTextElement: { en: 'Text element', zh: '文字元素' },
   targetSourceLabel: { en: 'Source label', zh: '資料標籤' },
   targetSourceFootnote: { en: 'Source footnote', zh: '資料註腳' },

@@ -204,10 +204,34 @@ export function routeMax(route: MarkRoute): number {
  * indicative), otherwise the best route — a candidate is marked on one approach.
  */
 export function contentMax(scheme: MarkScheme): number {
+  const stated = statedContentMax(scheme);
+  if (stated !== undefined) return stated;
   const levels = schemeLevels(scheme);
   if (levels.length > 0) return Math.max(0, ...levels.map((level) => count(level.max)));
   const routes = schemeRoutes(scheme);
   return routes.length > 0 ? Math.max(...routes.map(routeMax)) : 0;
+}
+
+/**
+ * The content mark as the teacher stated it (`MarkScheme.contentMax`, k-0475), when it is
+ * a usable number; anything else reads as absent, so the points derive it.
+ */
+export function statedContentMax(scheme: MarkScheme | undefined): number | undefined {
+  const value = scheme?.contentMax;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+/** `scheme` with the content mark stated as `value`; undefined removes the field. */
+export function withContentMax(scheme: MarkScheme, value: number | undefined): MarkScheme {
+  const { contentMax: _previous, ...rest } = scheme;
+  void _previous;
+  return value === undefined ? rest : { ...rest, contentMax: value };
+}
+
+/** A group's heading, when it has words (`MarkGroup.heading`). */
+export function groupHeading(group: MarkGroup | undefined): BiText | undefined {
+  const heading = group?.heading;
+  return heading && typeof heading === 'object' && !isBiTextEmpty(heading) ? heading : undefined;
 }
 
 /** Content plus EC: what the scheme awards in total. */
@@ -217,7 +241,7 @@ export function schemeMax(scheme: MarkScheme): number {
 
 /** OR routes that award different totals — almost always an authoring slip. */
 export function routesDisagree(scheme: MarkScheme): boolean {
-  if (schemeLevels(scheme).length > 0) return false;
+  if (schemeLevels(scheme).length > 0 || statedContentMax(scheme) !== undefined) return false;
   const totals = new Set(schemeRoutes(scheme).map(routeMax));
   return totals.size > 1;
 }
@@ -228,6 +252,7 @@ export function isSchemeEmpty(scheme: MarkScheme | undefined): boolean {
   if (schemeLevels(scheme).length > 0 || scheme.ec) return false;
   return !schemeRoutes(scheme).some((route) =>
     routeGroups(route).some((group) =>
+      groupHeading(group) !== undefined ||
       groupPoints(group).some(
         (point) =>
           !isBiTextEmpty(point.text) ||
@@ -266,6 +291,7 @@ export function anchorSchemeMismatch(anchor: {
  */
 export type SchemeTextSlot =
   | { point: string; alternative?: number }
+  | { heading: string }
   | { level: string }
   | { ec: string };
 
@@ -274,6 +300,13 @@ export function schemeTextAt(scheme: MarkScheme | undefined, slot: SchemeTextSlo
   if (!scheme) return undefined;
   if ('level' in slot) return schemeLevels(scheme).find((level) => level.id === slot.level)?.descriptor;
   if ('ec' in slot) return scheme.ec?.descriptors?.find((row) => row.id === slot.ec)?.text;
+  if ('heading' in slot) {
+    for (const route of schemeRoutes(scheme)) {
+      const group = routeGroups(route).find((entry) => entry.id === slot.heading);
+      if (group) return group.heading ?? emptyBiText();
+    }
+    return undefined;
+  }
   for (const route of schemeRoutes(scheme)) {
     for (const group of routeGroups(route)) {
       const point = groupPoints(group).find((entry) => entry.id === slot.point);
@@ -304,6 +337,18 @@ export function withSchemeText(scheme: MarkScheme, slot: SchemeTextSlot, text: B
       ...scheme,
       ec: { ...scheme.ec, descriptors: rows.map((row) => (row.id === slot.ec ? { ...row, text } : row)) },
     };
+  }
+  if ('heading' in slot) {
+    let hit = false;
+    const routes = schemeRoutes(scheme).map((route) => ({
+      ...route,
+      groups: routeGroups(route).map((group) => {
+        if (group.id !== slot.heading) return group;
+        hit = true;
+        return { ...group, heading: text };
+      }),
+    }));
+    return hit ? { ...scheme, routes } : scheme;
   }
   let found = false;
   const write = (point: MarkPoint): MarkPoint => {

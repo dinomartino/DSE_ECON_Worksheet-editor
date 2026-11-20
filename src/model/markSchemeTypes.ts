@@ -30,6 +30,13 @@ export interface MarkScheme {
    * does not know reads as absent and is kept (`model/markScheme.ts:schemeDisplay`).
    */
   display?: 'paragraph';
+  /**
+   * The content mark, stated (k-0475): "The maximum mark for content is 12 marks." For an
+   * essay part whose points are indicative content with no mark each, as HKEAA marks a
+   * DRQ's last part. Set, it is the content total (`model/markScheme.ts:contentMax`),
+   * whatever the points add up to; absent, the points' rules derive it as before.
+   */
+  contentMax?: number;
 }
 
 export interface MarkRoute {
@@ -40,6 +47,11 @@ export interface MarkRoute {
 /** Points marked together under one allocation rule. */
 export interface MarkGroup {
   id: string;
+  /**
+   * The underlined line HKEAA prints above a group (k-0475): "Possible reasons:",
+   * "Verbal elaboration:", "How Objective 1 may be achieved:". Absent prints nothing.
+   */
+  heading?: BiText;
   points: MarkPoint[];
   /** `n@`: every point here earns n marks, overriding each point's own. */
   each?: number;

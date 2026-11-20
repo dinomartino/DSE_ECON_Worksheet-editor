@@ -2341,6 +2341,14 @@ type needs only a definition.
     table and "The maximum mark for content is n marks." (`answerKeySections.ts:ecBlock`;
     `renderMarkScheme`'s `omitEc`). New EC blocks start from HKEAA's 2 / 1 / 0 statements
     (`model/markScheme.ts:HKEAA_EC_STANDARD`); the rows are copies, the teacher's to edit.
+  - **A DRQ's shapes (k-0475).** `MarkGroup.heading` prints underlined above its group
+    ("Possible reasons:"; target `schemeHeading`, by group id), in every key layout and the
+    teacher version. `MarkScheme.contentMax`, when a usable number, *is* the content total
+    (`contentMax`), so an essay's indicative points carry no marks under "The maximum mark
+    for content is 12 marks." (printed once: by `ecBlock` when the key draws the EC table,
+    else by `renderMarkScheme`). Both nested, read tolerantly, no KNOWN_KEYS. A part's
+    scheme starts from a pattern sized to its printed marks
+    (`model/markSchemePatterns.ts:createSchemeFromPattern`): a first draft, nothing stored.
 - **Paper versions are derived from a seed** (`model/versions.ts`). `Worksheet.versions`
   stores only `{count, seed}`; `OutputMode.variant` names the letter. The walker asks each
   type's `variant?` hook for the reordered question (inside the render cache, keyed on
