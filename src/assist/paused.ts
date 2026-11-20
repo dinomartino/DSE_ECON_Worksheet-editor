@@ -2,7 +2,7 @@
  * Verbs built and registered but hidden from teachers until the AI is good enough: the
  * menu never lists them and `startVerb` refuses them. Remove an id to bring it back.
  */
-export const PAUSED_VERBS: ReadonlySet<string> = new Set(['write.answers', 'create.fromSource', 'check.quality', 'check.syllabus']);
+export const PAUSED_VERBS: ReadonlySet<string> = new Set(['write.answers', 'create.fromSource', 'check.quality']);
 
 let paused: ReadonlySet<string> = PAUSED_VERBS;
 
