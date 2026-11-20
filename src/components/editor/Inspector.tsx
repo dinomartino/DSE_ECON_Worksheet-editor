@@ -316,7 +316,7 @@ export function Inspector({
    * field can be well below the fold, so the panel appeared to respond by showing
    * something else. The page publishes an `editTargetKey`; each control carries the
    * same key as `data-edit-target`; this finds it, scrolls, and marks it
-   * (`markPanelTarget`: a tint, the selection bar, one pulse as it arrives).
+   * (`markPanelTarget`: a tint, an outline all round, one pulse as it arrives).
    *
    * `block: 'nearest'` and nothing else: a control already on screen must not be
    * yanked to the middle, because the common case is a teacher clicking around one
