@@ -693,25 +693,15 @@ u [data-tab] {
  */
 .panel-kind {
   position: relative;
-  border: 1px solid color-mix(in oklab, var(--kind) 30%, var(--line));
+  /* Told apart by colour all round — a tinted body, a matching border, a deeper tinted
+     header — not by a stripe down one edge (the user disliked the thin left line, k-0477). */
+  border: 1px solid color-mix(in oklab, var(--kind) 45%, var(--line));
   border-radius: var(--radius-lg);
-  background-color: var(--surface);
-}
-/* The stripe down the left edge: ::after, because a selected control's bar is ::before. */
-.panel-kind::after {
-  content: "";
-  position: absolute;
-  top: -1px;
-  bottom: -1px;
-  left: -1px;
-  width: 3px;
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  background-color: var(--kind);
-  pointer-events: none;
+  background-color: color-mix(in oklab, var(--kind) 5%, var(--surface));
 }
 .panel-kind-head {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  background-color: color-mix(in oklab, var(--kind) 9%, var(--surface));
+  background-color: color-mix(in oklab, var(--kind) 13%, var(--surface));
 }
 .panel-kind-chip {
   display: inline-flex;
@@ -726,20 +716,29 @@ u [data-tab] {
   white-space: nowrap;
   /* Mixed a fifth of the way to the body ink: AA (4.5:1) on the tint in every theme. */
   color: color-mix(in oklab, var(--kind-ink) 80%, var(--ink));
-  background-color: color-mix(in oklab, var(--kind) 12%, var(--surface));
+  /* Deeper than any header, the selected card's too, so the pill keeps its shape. */
+  background-color: color-mix(in oklab, var(--kind) 23%, var(--surface));
 }
-/* A card the page selected wears a ring in its own colour instead of the generic tint. */
+/* A card the page selected keeps its own tint instead of the generic accent one and bar. */
 .panel-kind[data-edit-current] {
-  background-color: var(--surface);
+  background-color: color-mix(in oklab, var(--kind) 5%, var(--surface));
 }
 .panel-kind[data-edit-current]::before {
   display: none;
 }
-/* The ring: on the innermost card holding the page's selection, never on its ancestors. */
+/* The card you are in — the innermost card holding the page's selection, never its
+   ancestors: its border in full colour, a deeper header and a ring in the same colour. */
 .panel-kind:is([data-edit-current], :has([data-edit-current])):not(
     :has(.panel-kind[data-edit-current], .panel-kind [data-edit-current])
   ) {
+  border-color: var(--kind);
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--kind) 70%, transparent);
+}
+.panel-kind:is([data-edit-current], :has([data-edit-current])):not(
+    :has(.panel-kind[data-edit-current], .panel-kind [data-edit-current])
+  )
+  > .panel-kind-head {
+  background-color: color-mix(in oklab, var(--kind) 18%, var(--surface));
 }
 
 /*

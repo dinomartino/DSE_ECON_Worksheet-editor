@@ -2586,11 +2586,16 @@ only by borders. Each is now a **panel kind** (`components/editor/panelKinds.tsx
 `stem` grey, `source` green (`ok`), `part` blue (`accent`), `subPart` lighter blue,
 `scheme` amber (`warn-ink`, "Teacher only"). They are made from theme tokens only, so
 every theme gets them. A card sets two variables (`--kind`, `--kind-ink`), and
-`globals.css` § Panel kinds draws the stripe, tinted header, chip and ring.
+`globals.css` § Panel kinds draws the tinted body and header, the matching border all
+round, the chip and the ring. **No stripe down the left edge** (k-0477, user u-oqzx: "i
+dont really like the thin line on the left"): kinds are told apart by tint and border, and
+sub-parts are grouped by indent, not a rule. Text on every tint is held at AA (4.5:1) in
+every theme by `scripts/drq-panel-verify.mjs --theme=<id>`.
 
 - **The ring goes on the innermost card that holds the page's selection.** That is the
   card whose control `markPanelTarget` marks; a parent card never also lights up. A card
-  that is itself the target swaps the generic tint for its own ring.
+  that is itself the target swaps the generic tint for its own ring. That card (the one
+  you are in) also gets its border in full colour and a deeper header.
 - **"Where am I" is derived from the model** (`panelLocation`, keyed on
   `selectedTargetKey`), the same way `targetOwner` opens rows. The DOM is never read.
 - **Source cards fold.** A source opens when the selection lands inside it, or when it is

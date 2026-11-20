@@ -66,7 +66,7 @@ export function PanelWhereAmI({ question }: { question: StructuredQuestion }) {
 export function StemCard({ hint, children }: { hint: string; children: ReactNode }) {
   const m = useMessages(DRQ_PANEL_MESSAGES);
   return (
-    <section {...panelKindProps('stem', 'space-y-2 p-2 pl-3')} data-panel-anchor="stem">
+    <section {...panelKindProps('stem', 'space-y-2 p-2')} data-panel-anchor="stem">
       <div className="flex items-center gap-2">
         <PanelKindChip>{m.stem}</PanelKindChip>
         <span className="truncate text-[11px] text-ink-subtle">{hint}</span>
@@ -84,7 +84,7 @@ export function DrqStarterCard({ onStart }: { onStart: (content: ReturnType<type
   const m = useMessages(DRQ_PANEL_MESSAGES);
   const columnTwips = useWorksheetStore((s) => contentWidth(pageSetupOf(s.worksheet)));
   return (
-    <section {...panelKindProps('source', 'p-2.5 pl-3')} data-drq-starter>
+    <section {...panelKindProps('source', 'p-2.5')} data-drq-starter>
       <p className="text-[13px] font-semibold text-ink">{m.drqTitle}</p>
       <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">{m.drqHint}</p>
       <Button size="sm" variant="primary" className="mt-2" onClick={() => onStart(createDrqContent(columnTwips))}>
@@ -153,7 +153,7 @@ export function ReferToRow({
 export function TeacherArea({ anchor, children }: { anchor: string; children: ReactNode }) {
   const m = useMessages(DRQ_PANEL_MESSAGES);
   return (
-    <div {...panelKindProps('scheme', 'space-y-2 p-2 pl-3')} data-panel-anchor={anchor}>
+    <div {...panelKindProps('scheme', 'space-y-2 p-2')} data-panel-anchor={anchor}>
       <div className="flex items-center gap-2">
         <PanelKindChip>{m.teacherOnly}</PanelKindChip>
         <span className="truncate text-[11px] text-ink-subtle">{m.answerAndMarking}</span>

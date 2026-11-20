@@ -568,7 +568,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                     />
 
                     {subParts.length > 0 && (
-                      <div className="space-y-1.5 border-l-2 border-[color-mix(in_oklab,var(--accent)_30%,var(--line))] pl-2">
+                      <div className="space-y-1.5 pl-2">
                         {subParts.map((subPart, subIndex) => {
                           const subOpen = expandedSubs.has(subPart.id);
                           const subMenu: MenuItem[] = [

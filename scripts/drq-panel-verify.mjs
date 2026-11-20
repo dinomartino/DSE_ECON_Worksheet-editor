@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 /**
  * The DRQ flow in the right panel, in a real Chrome (k-0474).
  *
- *   node scripts/drq-panel-verify.mjs [--url=http://localhost:3000] [--out=/tmp/drq-panel-verify]
+ *   node scripts/drq-panel-verify.mjs [--url=http://localhost:3000] [--out=/tmp/drq-panel-verify] [--theme=dark]
  *
  * For English at MacBook width (1440) and 中文 at iPad width (820):
  * 1. A new worksheet, Question → Structured, then the panel's "Start a DRQ": the page
@@ -13,13 +13,19 @@ import { chromium } from 'playwright-core';
  *    Source B's card wears the selection ring.
  * 3. Part (c)'s Refer to toggles rewrite its opening sentence on the page.
  * 4. Add → Source ▾ → People's views: a Source E card appears and is selected.
- * Screenshots of each step go to `--out`. Exits non-zero if a check fails.
+ * 5. Clicking part (a)'s line on the page: only part (a)'s card wears the ring (k-0477).
+ * After 2, 3 and 5, the chip text and muted text on every open kind's tints (the selected
+ * card's deeper header too) must reach AA, 4.5:1, in the theme under test (k-0477).
+ * Screenshots of each step go to `--out` (plus `3-part-…`, part (c)'s card alone), in
+ * `--theme` (any id in `settings/appearance.ts`; default the system's, light here).
+ * Exits non-zero if a check fails.
  */
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const URL_BASE = opt('url', 'http://localhost:3000');
 const OUT = opt('out', '/tmp/drq-panel-verify');
+const THEME = opt('theme', '');
 mkdirSync(OUT, { recursive: true });
 const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -45,17 +51,51 @@ const WORDS = {
   },
 };
 
+/** Text on every open kind's tints, the selected card's too, at AA (4.5:1) in this theme. */
+async function checkContrast(page, where) {
+  const contrast = await page.evaluate(() => {
+    const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    const rgb = (css) => {
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = '#000';
+      ctx.fillStyle = css;
+      ctx.fillRect(0, 0, 1, 1);
+      return [...ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+    };
+    const lum = (c) =>
+      c.map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const ratio = (a, b) => {
+      const [x, y] = [lum(rgb(a)), lum(rgb(b))].sort((p, q) => q - p);
+      return (x + 0.05) / (y + 0.05);
+    };
+    const muted = getComputedStyle(document.documentElement).getPropertyValue('--ink-muted');
+    const worst = {};
+    for (const card of document.querySelectorAll('[data-panel-kind]')) {
+      const pairs = [[muted, getComputedStyle(card).backgroundColor]];
+      const chip = card.querySelector('.panel-kind-chip');
+      if (chip) pairs.push([getComputedStyle(chip).color, getComputedStyle(chip).backgroundColor]);
+      const head = card.querySelector(':scope > .panel-kind-head');
+      if (head) pairs.push([muted, getComputedStyle(head).backgroundColor]);
+      for (const [fg, bg] of pairs) worst[card.dataset.panelKind] = Math.min(worst[card.dataset.panelKind] ?? 99, ratio(fg, bg));
+    }
+    return worst;
+  });
+  const lowest = Object.entries(contrast).map(([k, r]) => `${k} ${r.toFixed(2)}`).join(', ');
+  check(Object.values(contrast).every((r) => r >= 4.5), `${where}: panel text is AA on every kind's tint (${lowest})`);
+}
+
 const browser = await chromium.launch({ channel: 'chrome' });
 
 for (const [ui, width] of [['en', 1440], ['zh', 820]]) {
   const w = WORDS[ui];
   const context = await browser.newContext({ viewport: { width, height: ui === 'zh' ? 1180 : 950 }, deviceScaleFactor: 2 });
   await context.addInitScript(
-    ([ui, version]) => {
+    ([ui, version, theme]) => {
       window.localStorage.setItem('econ-worksheet-last-seen-version', version);
+      if (theme) window.localStorage.setItem('econgen.settings.appearance', JSON.stringify({ v: 1, theme }));
       if (ui === 'zh') window.localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: 'zh-HK', paper: 'zh' }));
     },
-    [ui, APP_VERSION],
+    [ui, APP_VERSION, THEME],
   );
   const page = await context.newPage();
   page.on('pageerror', (e) => {
@@ -103,6 +143,7 @@ for (const [ui, width] of [['en', 1440], ['zh', 820]]) {
   });
   check(ringed.length === 1 && ringed[0]?.includes(w.sourceB.slice(-1)), `${ui} ${width}: only Source B's card is ringed (${ringed.join(', ')})`);
   await page.screenshot({ path: `${OUT}/2-where-${ui}-${width}.png` });
+  await checkContrast(page, `${ui} ${width}`);
 
   // 3. Part (c): Refer to A as well as C and D.
   const partC = page.locator('[data-panel-kind="part"]').nth(2);
@@ -117,10 +158,16 @@ for (const [ui, width] of [['en', 1440], ['zh', 820]]) {
   );
   await partC.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${OUT}/3-refer-${ui}-${width}.png` });
+  await partC.screenshot({ path: `${OUT}/3-part-${ui}-${width}.png` });
+  await checkContrast(page, `${ui} ${width}, part (c) open`);
 
   // 4. Add → Source ▾ → People's views.
   const stem = page.locator('[data-panel-kind="stem"]').first();
-  await stem.getByRole('button', { name: w.addSource }).last().click();
+  // Settled first: the menu closes on any scroll, and the panel may still be moving.
+  const addSource = stem.getByRole('button', { name: w.addSource }).last();
+  await addSource.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(600);
+  await addSource.click();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${OUT}/4a-source-menu-${ui}-${width}.png` });
   await page.getByRole('menuitem', { name: w.views }).click();
@@ -128,6 +175,20 @@ for (const [ui, width] of [['en', 1440], ['zh', 820]]) {
   const cards = await page.locator('[data-panel-kind="source"] .panel-kind-chip').allInnerTexts();
   check(cards.includes(w.sourceE), `${ui} ${width}: Add → Source → views adds ${w.sourceE} (${cards.join(', ')})`);
   await page.screenshot({ path: `${OUT}/4-add-views-${ui}-${width}.png` });
+
+  // 5. Part (a)'s line on the page → part (a)'s card is the one ringed (k-0477).
+  await page.locator('#print-root').getByText(ui === 'en' ? 'Refer to Source A.' : '參閱資料A。').first().click();
+  await page.waitForTimeout(700);
+  await page.locator('[data-panel-kind="part"]').first().scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  const ringedPart = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-panel-kind]')]
+      .filter((card) => getComputedStyle(card).boxShadow !== 'none')
+      .map((card) => card.querySelector('.panel-kind-chip')?.textContent),
+  );
+  check(ringedPart.length === 1 && ringedPart[0] === '(a)', `${ui} ${width}: the part you are in, (a), is the one ringed (${ringedPart.join(', ')})`);
+  await page.screenshot({ path: `${OUT}/5-in-part-a-${ui}-${width}.png` });
+  await checkContrast(page, `${ui} ${width}, in part (a)`);
   void panel;
   await context.close();
 }

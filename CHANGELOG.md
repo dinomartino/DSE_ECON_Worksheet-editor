@@ -156,8 +156,9 @@ a version heading is edited afterwards.
   with its sub-parts lighter blue and nested inside it; the answer and marking amber, labelled
   Teacher only. Source cards fold to one line and open when you click that source on the page. A
   line at the top of the panel says where you are (for example "Question text › Source B" or
-  "(c) › (ii)"), and the card you clicked on the page gets a ring in its colour.
-  <!-- zh: **側欄以顏色區分題目各部分：** 題幹為灰色；每份資料為綠色，標示「資料 A」、「資料 B」…及其內容；分題為藍色，小分題為淺藍色並縮排於分題內；答案及評分為琥珀色，標示「教師專用」。各主題均適用。資料卡可摺疊成一行，在頁面上點選該資料時會自動打開。側欄頂部會顯示正在編輯的位置（例如「題幹 › 資料 B」或「(c) › (ii)」），在頁面上點選的部分會以相應顏色的外框標示。 -->
+  "(c) › (ii)"). Each card is lightly tinted in its colour, with a border to match, and the part
+  you are working in stands out with a stronger border and a ring in its colour.
+  <!-- zh: **側欄以顏色區分題目各部分：** 題幹為灰色；每份資料為綠色，標示「資料 A」、「資料 B」…及其內容；分題為藍色，小分題為淺藍色並縮排於分題內；答案及評分為琥珀色，標示「教師專用」。各主題均適用。資料卡可摺疊成一行，在頁面上點選該資料時會自動打開。側欄頂部會顯示正在編輯的位置（例如「題幹 › 資料 B」或「(c) › (ii)」）。每張卡片都以淺色填上其顏色，並配以同色邊框；你正在編輯的部分會以較深的邊框及同色外框突出顯示。 -->
 - **Marking schemes in Chinese use HKEAA's wording.** "Mark the first point only" now prints
   ［只批閱首項。］ (and ［只批閱首兩項。］…), and a group's maximum prints 最高：4, as the HKEAA
   Chinese marking schemes print them.

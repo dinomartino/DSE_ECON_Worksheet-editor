@@ -23,8 +23,9 @@ import { ChevronRightIcon } from '@/components/ui/icons';
  * A card is `<PanelKindCard kind=…>` or, where a component already draws its own box,
  * `panelKindProps(kind)` spread onto it plus `PanelKindChip` in its header. The colour
  * lives in one CSS variable per card (`--kind`, `--kind-ink`); `globals.css` § Panel kinds
- * draws the left stripe, the tinted header (`.panel-kind-head`), the chip and the
- * selection ring — the ring lands on the innermost card holding the page's selection, the
+ * draws the tinted body, the matching border all round, the tinted header
+ * (`.panel-kind-head`), the chip and the selection ring (no left stripe: the user disliked
+ * it, k-0477) — the ring lands on the innermost card holding the page's selection, the
  * same control `markPanelTarget` tints.
  *
  * Other panels (the marking-scheme editor, k-0475) use `kind="scheme"` rather than
@@ -41,7 +42,7 @@ const KIND_VARS: Record<PanelKind, string> = {
   scheme: '[--kind:var(--warn-ink)] [--kind-ink:var(--warn-ink)]',
 };
 
-/** Spread onto an element that is a kind's card: the stripe, border and ring come with it. */
+/** Spread onto an element that is a kind's card: the tint, border and ring come with it. */
 export function panelKindProps(kind: PanelKind, className = ''): { 'data-panel-kind': PanelKind; className: string } {
   return { 'data-panel-kind': kind, className: `panel-kind ${KIND_VARS[kind]} ${className}`.trim() };
 }
