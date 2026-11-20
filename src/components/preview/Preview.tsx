@@ -211,6 +211,7 @@ export interface BandEditingHandlers {
 }
 import { ContextDock, mergeSweep } from "./ContextBar";
 import { DOCK_INSET_PX, FormatToolbar } from "./FormatToolbar";
+import { useEditorClick } from "./editorClick";
 import {
   PageContextMenu,
   type PageMenuGroup,
@@ -5869,6 +5870,8 @@ export function Preview({
    * re-render, and this must be readable synchronously inside that handler.
    */
   const sweptRef = useRef(false);
+  /** A click that is the open text editor's own: caret, double-click, drag-select (k-0484). */
+  const editorClick = useEditorClick();
 
   /**
    * The document fields a sweep caught, held apart from `multiIds`.
@@ -7343,6 +7346,8 @@ export function Preview({
                   // click handler owns resetting the flag.
                   if (sweptRef.current) return;
                   event.stopPropagation();
+                  // A click inside its open text (a source's words) is the editor's (k-0484).
+                  if (editorClick(event)) return;
                   setSelectedLayoutId(id);
                   setSelectedElement(undefined);
                   setSelectedBlockId(undefined);
@@ -7361,6 +7366,13 @@ export function Preview({
                   // ancestor — not a click on the question's body. Read, not
                   // consumed: the paper's click handler owns resetting the flag.
                   if (sweptRef.current) return;
+                  /*
+                   * A click inside the open text box — the caret moved to a word, a word
+                   * double-clicked, a drag-select released past the box — is the editor's,
+                   * not a click on the question (k-0484): handled here, it dropped the text
+                   * selection and the format bar with it while the caret was still in the box.
+                   */
+                  if (editorClick(event)) return;
                   selfSelected.current = true;
                   onSelectQuestion?.(id);
                   setSelectedLayoutId(undefined);
@@ -7372,7 +7384,8 @@ export function Preview({
                    * This handler cannot be reached by a click on a child: every finer
                    * selection path (`InlineEditable`, `ResizableBlock`, the cell's own
                    * text) calls `stopPropagation` precisely because selecting the
-                   * question is this wrapper's job. So a click that arrives here landed
+                   * question is this wrapper's job. The open editor is the exception, and
+                   * `editorClick` above turns it away. So a click that arrives here landed
                    * on the question and nothing else — the gap between two parts, the
                    * padding beside a stem — and leaving the old selection set meant a
                    * teacher could only deselect a component by clicking another one or
@@ -8087,7 +8100,7 @@ export function Preview({
               onClick={(event) => {
                 const swept = sweptRef.current;
                 sweptRef.current = false;
-                if (swept) return;
+                if (swept || editorClick(event)) return;
                 if (isBlankAreaClick(event.target)) clearPageSelection();
               }}
             >
@@ -8149,7 +8162,7 @@ export function Preview({
                 // unconditionally, or a suppressed click would leak into the next one.
                 const swept = sweptRef.current;
                 sweptRef.current = false;
-                if (swept) return;
+                if (swept || editorClick(event)) return;
                 if (isBlankAreaClick(event.target)) clearPageSelection();
               }}
             >

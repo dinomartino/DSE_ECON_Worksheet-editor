@@ -166,6 +166,12 @@ a version heading is edited afterwards.
   <!-- zh: **行距。** 「頁面設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從，評卷參考（畫面、列印及其 Word 檔案）亦然。題目之間的空位、表格（包括 MC 答案表及 EC 表）、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
 
 ### Fixed
+- **The format bar stays while you work in a text box.** Clicking a second time inside the box
+  you are typing in, to put the cursor on a word, double-click a word, drag across some words or
+  tap on an iPad, used to hide the bar at the top. Now it stays as long as the cursor or a
+  selection is in the box, and goes only when you click outside the text, press Esc or click
+  something that is not text.
+  <!-- zh: **在文字方格內編輯時，格式工具列會一直顯示。** 以前在正在輸入的方格內再按一下，例如把游標移到某個字、按兩下選字、拖曳選取文字或在 iPad 上點按，頂部的工具列便會消失。現在只要游標或選取範圍仍在方格內，工具列就會保留，直至按方格以外的地方、按 Esc 或按非文字的項目才會隱藏。 -->
 - **Enter in the side panel's marking-point box starts a new point, as on the page.** It used to
   put a line break inside the same point, which is how blank lines got into a scheme. Now Enter
   splits the point where the cursor is (the new point gets the same mark), Enter on an empty point

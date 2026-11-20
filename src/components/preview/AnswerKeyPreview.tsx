@@ -35,6 +35,7 @@ import {
 } from "./Preview";
 import { PREVIEW_MESSAGES } from "./messages";
 import { enterBreaksLine, fieldEnter, fieldJoin } from "./fieldEnter";
+import { useEditorClick } from "./editorClick";
 import { ANSWER_KEY_PREVIEW_MESSAGES } from "./AnswerKeyPreview.messages";
 
 /**
@@ -498,6 +499,8 @@ export function AnswerKeyPreview({
     return () => observer.disconnect();
   }, [pageWidthMm]);
 
+  /** A click that is the open text editor's own, e.g. a drag-select released past it (k-0484). */
+  const editorClick = useEditorClick();
   // A question chosen in the sidebar scrolls its entry into view; a click here does not.
   const selfSelected = useRef(false);
   useEffect(() => {
@@ -561,7 +564,8 @@ export function AnswerKeyPreview({
               style={pageStyle}
               lang={language === "zh" ? "zh-HK" : "en"}
               onClick={(event) => {
-                if (!isBlankAreaClick(event.target)) return;
+                // A drag-select in an open point released on blank paper is the editor's (k-0484).
+                if (editorClick(event) || !isBlankAreaClick(event.target)) return;
                 setSelectedElement(undefined);
                 onSelectQuestion?.(undefined);
               }}
