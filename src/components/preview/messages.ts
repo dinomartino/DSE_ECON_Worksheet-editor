@@ -13,6 +13,8 @@ export const FORMAT_TOOLBAR_MESSAGES = defineMessages({
   subscriptTitle: { en: 'Subscript (S₁)', zh: '下標（S₁）' },
   superscript: { en: 'Superscript', zh: '上標' },
   superscriptTitle: { en: 'Superscript (m²)', zh: '上標（m²）' },
+  fraction: { en: 'Fraction', zh: '分數' },
+  fractionTitle: { en: 'Insert a fraction (numerator over denominator)', zh: '插入分數（分子在上、分母在下）' },
   insertBlank: { en: 'Insert blank', zh: '插入填充空位' },
   insertBlankTitle: { en: 'Insert a fill-in blank', zh: '插入填充空位' },
   insertTab: { en: 'Insert tab', zh: '插入定位字元' },
@@ -294,4 +296,24 @@ export const TAB_RULER_MESSAGES = defineMessages({
   answerLineHint: { en: 'A line from the text to the right margin', zh: '由文字畫線至右邊界' },
   nameLine: { en: 'Name / Class / No. line', zh: '姓名／班別／學號行' },
   nameLineHint: { en: 'Three ruled fields across the line', zh: '橫跨一行的三個填寫欄' },
+});
+
+/** The fraction dialog (k-0479, GitHub #8): numerator and denominator, each rich text. */
+export const FRACTION_DIALOG_MESSAGES = defineMessages({
+  insertTitle: { en: 'Insert fraction', zh: '插入分數' },
+  editTitle: { en: 'Edit fraction', zh: '編輯分數' },
+  numerator: { en: 'Numerator (top)', zh: '分子（上）' },
+  denominator: { en: 'Denominator (bottom)', zh: '分母（下）' },
+  preview: { en: 'Preview', zh: '預覽' },
+  hint: {
+    en: (sub: string, sup: string) =>
+      `For Q₁, type Q1, select the 1 (or put the cursor just after it) and press X₂ or ${sub}. X² or ${sup} raises it.`,
+    zh: (sub: string, sup: string) =>
+      `要打 Q₁：先打 Q1，選取 1（或把游標放在它後面），再按 X₂ 或 ${sub}。按 X² 或 ${sup} 則變上標。`,
+  },
+  insert: { en: 'Insert', zh: '插入' },
+  update: { en: 'Update', zh: '更新' },
+  remove: { en: 'Remove fraction', zh: '移除分數' },
+  cancel: { en: 'Cancel', zh: '取消' },
+  empty: { en: 'Type a numerator and a denominator.', zh: '請輸入分子和分母。' },
 });

@@ -1,9 +1,11 @@
 import { plain, runLines } from '@/model/text';
+import { hasFraction, linearFraction, textSegments } from '@/model/fraction';
 import { cssFontFamilies } from '@/model/fonts';
 import { contentWidth, DEFAULT_PAGE_SETUP, pageSetupOf, twipsToPt } from '@/model/page';
 import { answerGraphBox } from '@/render/answerGraph';
 import type {
   BiText,
+  InlineRun,
   LanguageMode,
   OutputMode,
   TabLeader,
@@ -63,35 +65,58 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/** One run as HTML (escaped text with its marks and per-run formatting). */
+function runHtml(runItem: InlineRun): string {
+  // A hard line break (Shift+Enter, stored as `\n`) has to become a real `<br/>`:
+  // a literal newline is whitespace in HTML and would paste as a space.
+  // Escaped first, so the tag inserted here is the only markup in the output.
+  // A tab as Word's HTML spells one (`TAB_HTML`); left raw, the paste collapses it
+  // to a space.
+  let html = runLines(escapeHtml(runItem.text)).join('<br/>').replace(/\t/g, TAB_HTML);
+  if (runItem.vertAlign === 'superscript') return `<sup>${html}</sup>`;
+  if (runItem.vertAlign === 'subscript') return `<sub>${html}</sub>`;
+  if (runItem.bold) html = `<b>${html}</b>`;
+  if (runItem.italic) html = `<i>${html}</i>`;
+  if (runItem.underline) html = `<u>${html}</u>`;
+  // A run's own size, colour and font, matching `richTextRuns` in the .docx
+  // backend — pasting into Word must carry the same per-run formatting the
+  // exported file would.
+  const styles: string[] = [];
+  if (runItem.fontSize !== undefined) styles.push(`font-size:${runItem.fontSize}pt;`);
+  if (runItem.color) styles.push(`color:#${runItem.color};`);
+  if (runItem.fonts) {
+    styles.push(`font-family:${cssFontFamilies(runItem.fonts, "'", ',')};`);
+  }
+  if (styles.length) html = `<span style="${styles.join('')}">${html}</span>`;
+  return html;
+}
+
+/** A stacked fraction (k-0479) as an inline block: numerator over a rule over denominator. */
+const FRACTION_BOX = 'display:inline-block;vertical-align:middle;text-align:center';
+
+function runsHtml(runs: BiText['en']): string {
+  if (!hasFraction(runs)) return runs.map(runHtml).join('');
+  return textSegments(runs)
+    .map((segment) =>
+      segment.kind === 'runs'
+        ? segment.runs.map(runHtml).join('')
+        : `<span style="${FRACTION_BOX}"><span style="display:block;border-bottom:1px solid currentColor;padding:0 2px">${segment.num.map(runHtml).join('')}</span>` +
+          `<span style="display:block;padding:0 2px">${segment.den.map(runHtml).join('')}</span></span>`,
+    )
+    .join('');
+}
+
+/** `plain()` for text/plain output: a fraction reads "ΔQ/Q" rather than "ΔQ⁄Q". */
+function linearText(runs: BiText['en']): string {
+  if (!hasFraction(runs)) return plain(runs);
+  return textSegments(runs)
+    .map((segment) => (segment.kind === 'runs' ? plain(segment.runs) : linearFraction(plain(segment.num), plain(segment.den))))
+    .join('');
+}
+
 export function richHtml(text: BiText | undefined, language: LanguageMode): string {
   if (!text) return '';
-  const side = (runs: BiText['en']) =>
-    runs
-      .map((runItem) => {
-        // A hard line break (Shift+Enter, stored as `\n`) has to become a real `<br/>`:
-        // a literal newline is whitespace in HTML and would paste as a space.
-        // Escaped first, so the tag inserted here is the only markup in the output.
-        // A tab as Word's HTML spells one (`TAB_HTML`); left raw, the paste collapses it
-        // to a space.
-        let html = runLines(escapeHtml(runItem.text)).join('<br/>').replace(/\t/g, TAB_HTML);
-        if (runItem.vertAlign === 'superscript') return `<sup>${html}</sup>`;
-        if (runItem.vertAlign === 'subscript') return `<sub>${html}</sub>`;
-        if (runItem.bold) html = `<b>${html}</b>`;
-        if (runItem.italic) html = `<i>${html}</i>`;
-        if (runItem.underline) html = `<u>${html}</u>`;
-        // A run's own size, colour and font, matching `richTextRuns` in the .docx
-        // backend — pasting into Word must carry the same per-run formatting the
-        // exported file would.
-        const styles: string[] = [];
-        if (runItem.fontSize !== undefined) styles.push(`font-size:${runItem.fontSize}pt;`);
-        if (runItem.color) styles.push(`color:#${runItem.color};`);
-        if (runItem.fonts) {
-          styles.push(`font-family:${cssFontFamilies(runItem.fonts, "'", ',')};`);
-        }
-        if (styles.length) html = `<span style="${styles.join('')}">${html}</span>`;
-        return html;
-      })
-      .join('');
+  const side = runsHtml;
 
   if (language === 'en') return side(text.en);
   if (language === 'zh') return side(text.zh);
@@ -766,8 +791,8 @@ function wrapHtml(body: string, css: string): string {
 function pushPlain(lines: string[], node: RenderNode, language: LanguageMode): void {
   if (node.kind === 'text') {
     const marker = node.listRef ? `${node.listRef.marker} ` : '';
-    const en = plain(node.text.en);
-    const zh = plain(node.text.zh);
+    const en = linearText(node.text.en);
+    const zh = linearText(node.text.zh);
     const body = language === 'en' ? en : language === 'zh' ? zh : [en, zh].filter(Boolean).join(' / ');
     const label = textNodeLabel(node, language);
     const marks = label ? ` ${label}` : '';
@@ -777,7 +802,7 @@ function pushPlain(lines: string[], node: RenderNode, language: LanguageMode): v
       lines.push(
         row
           .filter((cell) => !cell.covered)
-          .map((cell) => plain(language === 'zh' ? cell.text.zh : cell.text.en))
+          .map((cell) => linearText(language === 'zh' ? cell.text.zh : cell.text.en))
           .join('\t'),
       );
     }
@@ -788,9 +813,9 @@ function pushPlain(lines: string[], node: RenderNode, language: LanguageMode): v
         .map((side) =>
           bandCellHasPageNumber(cell)
             ? bandCellPieces(cell, side)
-                .map((piece) => ('field' in piece ? '1' : plain(piece.text)))
+                .map((piece) => ('field' in piece ? '1' : linearText(piece.text)))
                 .join('')
-            : plain(cell.text[side]),
+            : linearText(cell.text[side]),
         )
         .join(' / ');
     lines.push(
@@ -806,7 +831,7 @@ function pushPlain(lines: string[], node: RenderNode, language: LanguageMode): v
     lines.push(
       node.cells
         .map((cell) => {
-          const text = plain(language === 'zh' ? cell.text.zh : cell.text.en);
+          const text = linearText(language === 'zh' ? cell.text.zh : cell.text.en);
           return cell.marker ? `${cell.marker} ${text}` : text;
         })
         .join('\t'),

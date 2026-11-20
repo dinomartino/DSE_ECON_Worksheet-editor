@@ -143,6 +143,8 @@ interface Props {
   onPasted?: (paste: { html: string; text: string; before: RichText; side: 'en' | 'zh' }) => void;
   /** A picture pasted into this field (`RichTextEditable.onPastePicture`). */
   onPastePicture?: (file: File) => void;
+  /** A tap on a stacked fraction in the open field (`RichTextEditable.onOpenFraction`). */
+  onOpenFraction?: (range: { start: number; end: number }) => void;
   /**
    * While **empty**, stretch to the width of the container instead of shrinking to the
    * prompt.
@@ -201,6 +203,7 @@ export function InlineEditable({
   fieldKey,
   onPasted,
   onPastePicture,
+  onOpenFraction,
 }: Props) {
   const m = useMessages(PREVIEW_HANDLE_MESSAGES);
   // A floating prompt has no line end to stretch from (§ `floating`).
@@ -365,6 +368,7 @@ export function InlineEditable({
         onPasteGrid={cell?.onPasteGrid ? (grid) => cell.onPasteGrid!(grid, side) : undefined}
         onPasted={onPasted ? (paste) => onPasted({ ...paste, side }) : undefined}
         onPastePicture={onPastePicture}
+        onOpenFraction={onOpenFraction}
         // Tab types a tab in a text paragraph; a table's Tab walks its cells instead.
         tabInserts={onTab ? undefined : (host) => host.closest('[data-tab-host]') !== null}
         autoFocus

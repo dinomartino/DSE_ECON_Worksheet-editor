@@ -1,5 +1,6 @@
+import { hasFraction, textSegments } from '@/model/fraction';
 import { runLines } from '@/model/text';
-import type { BiText, FontPair, LanguageMode, RichText, TextFormat } from '@/model/types';
+import type { BiText, FontPair, InlineRun, LanguageMode, RichText, TextFormat } from '@/model/types';
 import { attrs, escapeXml, sanitizeText } from './xml';
 
 /**
@@ -116,19 +117,74 @@ export function richTextRuns(
   base: RunOptions = {},
 ): string {
   if (!text) return '';
-  return text
-    .map((inline) =>
-      run(inline.text, inline.fonts ?? fonts, {
-        ...base,
-        bold: base.bold || inline.bold,
-        italic: base.italic || inline.italic,
-        underline: base.underline || inline.underline,
-        vertAlign: inline.vertAlign ?? base.vertAlign,
-        fontSize: inline.fontSize ?? base.fontSize,
-        color: inline.color ?? base.color,
-      }),
+  if (!hasFraction(text)) return plainRuns(text, fonts, base);
+  // A fraction (k-0479) is Office Math; the stretches around it are the runs as ever.
+  return textSegments(text)
+    .map((segment) =>
+      segment.kind === 'runs' ? plainRuns(segment.runs, fonts, base) : fractionMath(segment.num, segment.den, fonts, base),
     )
     .join('');
+}
+
+function runOptionsOf(inline: InlineRun, base: RunOptions): RunOptions {
+  return {
+    ...base,
+    bold: base.bold || inline.bold,
+    italic: base.italic || inline.italic,
+    underline: base.underline || inline.underline,
+    vertAlign: inline.vertAlign ?? base.vertAlign,
+    fontSize: inline.fontSize ?? base.fontSize,
+    color: inline.color ?? base.color,
+  };
+}
+
+function plainRuns(text: RichText, fonts: FontPair, base: RunOptions): string {
+  return text.map((inline) => run(inline.text, inline.fonts ?? fonts, runOptionsOf(inline, base))).join('');
+}
+
+/** One `m:r` in the paper's own font (`m:nor`: not Cambria Math italic). Order: m:rPr, w:rPr, m:t. */
+function mathRun(text: string, fonts: FontPair, options: RunOptions): string {
+  const clean = sanitizeText(text).replace(/[\t\n]/g, ' ');
+  if (!clean) return '';
+  const flat = { ...options, vertAlign: undefined };
+  return `<m:r><m:rPr><m:nor/></m:rPr>${runProperties(fonts, flat)}<m:t xml:space="preserve">${escapeXml(clean)}</m:t></m:r>`;
+}
+
+/** A fraction's part as the content of `m:num` / `m:den`: scripts become `m:sSub` / `m:sSup`. */
+function mathPart(runs: RichText, fonts: FontPair, base: RunOptions): string {
+  const items: Array<{ kind: 'run'; text: string; fonts: FontPair; options: RunOptions } | { kind: 'xml'; xml: string }> = [];
+  for (const inline of runs) {
+    const options = runOptionsOf(inline, base);
+    const runFonts = inline.fonts ?? fonts;
+    if (options.vertAlign === undefined) {
+      items.push({ kind: 'run', text: inline.text, fonts: runFonts, options });
+      continue;
+    }
+    // The script's base is the character before it (Q of "ΔQ"), taken from the run before.
+    let baseXml = '';
+    const previous = items[items.length - 1];
+    if (previous?.kind === 'run' && previous.text) {
+      const chars = [...previous.text];
+      const last = chars.pop()!;
+      previous.text = chars.join('');
+      baseXml = mathRun(last, previous.fonts, previous.options);
+    }
+    const tag = options.vertAlign === 'subscript' ? 'sub' : 'sup';
+    const kind = tag === 'sub' ? 'sSub' : 'sSup';
+    items.push({
+      kind: 'xml',
+      xml: `<m:${kind}><m:e>${baseXml}</m:e><m:${tag}>${mathRun(inline.text, runFonts, options)}</m:${tag}></m:${kind}>`,
+    });
+  }
+  return items.map((item) => (item.kind === 'xml' ? item.xml : mathRun(item.text, item.fonts, item.options))).join('');
+}
+
+function fractionMath(num: RichText, den: RichText, fonts: FontPair, base: RunOptions): string {
+  return (
+    '<m:oMath><m:f>' +
+    `<m:num>${mathPart(num, fonts, base)}</m:num><m:den>${mathPart(den, fonts, base)}</m:den>` +
+    '</m:f></m:oMath>'
+  );
 }
 
 export function lineBreak(): string {

@@ -12,6 +12,7 @@ import type {
   ImageBlock,
   LayoutElement,
   Question,
+  RichText,
   RunFormatPatch,
   TableBlock,
   TextAlign,
@@ -39,7 +40,15 @@ import {
   type SchemeTextSlot,
 } from './markScheme';
 import type { MarkScheme } from './markSchemeTypes';
-import { applyRunFormat, insertBlank, isBiTextEmpty, replaceRichTextRange } from './text';
+import {
+  applyRunFormat,
+  insertBlank,
+  isBiTextEmpty,
+  normalizeRuns,
+  replaceRichTextRange,
+  richTextLength,
+  sliceRichText,
+} from './text';
 import { endsWithTab, tabPresetStops, tabPresetText, type TabPreset } from './tabStops';
 
 type SchemeTarget = Extract<
@@ -1467,6 +1476,54 @@ export function applyRunFormatTarget(
   const next = applyRunFormat(current[side], start, end, patch);
   if (next === current[side]) return worksheet;
   return applyEditTarget(worksheet, target, { ...current, [side]: next });
+}
+
+/**
+ * Bold, italic or underline for a whole element, from the format bar with no words
+ * selected (GitHub #8, k-0479).
+ *
+ * On sets the element's own override, as before. Off also takes the mark off every run
+ * of both sides: bold that arrived with a paste lives on the runs, so clearing only the
+ * element's override left the words bold and the button looked dead. One commit, one
+ * undo step.
+ */
+export function applyEmphasisWhole(
+  worksheet: Worksheet,
+  target: EditTarget,
+  key: 'bold' | 'italic' | 'underline',
+  on: boolean,
+): Worksheet {
+  const formatted = applyFormatTarget(worksheet, target, { [key]: on ? true : undefined });
+  if (on) return formatted;
+  const current = textOfTarget(formatted, target);
+  if (!current) return formatted;
+  const clear = (runs: RichText) => applyRunFormat(runs, 0, richTextLength(runs), { [key]: null });
+  const en = clear(current.en);
+  const zh = clear(current.zh);
+  if (en === current.en && zh === current.zh) return formatted;
+  return applyEditTarget(formatted, target, { ...current, en, zh });
+}
+
+/**
+ * Put `inserted` runs over `[start, end)` of one side, keeping their own marks — how a
+ * stacked fraction (`model/fraction.ts:fractionRuns`) goes in or is replaced (k-0479).
+ */
+export function applyInsertRuns(
+  worksheet: Worksheet,
+  target: EditTarget,
+  side: 'en' | 'zh',
+  start: number,
+  end: number,
+  inserted: RichText,
+): Worksheet {
+  const current = textOfTarget(worksheet, target);
+  if (!current) return worksheet;
+  const runs = current[side];
+  const from = Math.max(0, Math.min(start, end, richTextLength(runs)));
+  const to = Math.min(richTextLength(runs), Math.max(start, end));
+  const before = sliceRichText(runs, 0, from);
+  const after = sliceRichText(runs, to, richTextLength(runs));
+  return applyEditTarget(worksheet, target, { ...current, [side]: normalizeRuns([...before, ...inserted, ...after]) });
 }
 
 /**

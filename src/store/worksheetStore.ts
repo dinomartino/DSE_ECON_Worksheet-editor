@@ -17,7 +17,9 @@ import {
   applyDeleteTarget,
   applyEditTarget,
   applyFormatTarget,
+  applyEmphasisWhole,
   applyInsertBlank,
+  applyInsertRuns,
   applyInsertTab,
   applyTabPreset,
   applyRunFormatTarget,
@@ -92,6 +94,7 @@ import type {
   PageSetup,
   FlowItem,
   Question,
+  RichText,
   RunFormatPatch,
   TextFormat,
   Worksheet,
@@ -312,6 +315,10 @@ interface WorksheetState {
    * changes the *text*.
    */
   insertBlank: (target: EditTarget, side: 'en' | 'zh', start: number, end: number) => void;
+  /** Bold/italic/underline for a whole element; off also clears the runs' own (k-0479). */
+  emphasisWhole: (target: EditTarget, key: 'bold' | 'italic' | 'underline', on: boolean) => void;
+  /** Put runs (a stacked fraction) over a range of one side, keeping their marks (k-0479). */
+  insertRuns: (target: EditTarget, side: 'en' | 'zh', start: number, end: number, runs: RichText) => void;
   insertTab: (target: EditTarget, side: 'en' | 'zh', start: number, end: number) => void;
   applyTabPreset: (target: EditTarget, preset: TabPreset, width: number) => void;
   resizeBlock: (blockId: string, widthPx: number) => void;
@@ -1177,6 +1184,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) => applyRunFormatTarget(draft, target, side, start, end, patch)),
   insertBlank: (target, side, start, end) =>
     get().commit((draft) => applyInsertBlank(draft, target, side, start, end)),
+  emphasisWhole: (target, key, on) =>
+    get().commit((draft) => applyEmphasisWhole(draft, target, key, on)),
+  insertRuns: (target, side, start, end, runs) =>
+    get().commit((draft) => applyInsertRuns(draft, target, side, start, end, runs)),
   insertTab: (target, side, start, end) =>
     get().commit((draft) => applyInsertTab(draft, target, side, start, end)),
   applyTabPreset: (target, preset, width) =>

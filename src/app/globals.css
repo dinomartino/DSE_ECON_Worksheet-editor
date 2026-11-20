@@ -792,3 +792,41 @@ u [data-tab] {
   outline-offset: 4px;
   border-radius: 6px;
 }
+
+/* A stacked fraction (k-0479, `model/fraction.ts`): numerator over a rule over the
+   denominator, centred on the line's middle, as Word's equation draws `m:f`. Printed:
+   paper, not chrome. The line holding one grows, as the .docx's `atLeast` line does. */
+.econ-fraction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  vertical-align: middle;
+  text-align: center;
+  margin: 0 0.12em;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-indent: 0;
+}
+.econ-fraction-num {
+  display: block;
+  padding: 0 0.15em 0.05em;
+  border-bottom: 0.06em solid currentColor;
+}
+.econ-fraction-den {
+  display: block;
+  padding: 0.05em 0.15em 0;
+}
+/* The slash that separates the parts in run text: real characters for offsets, never shown. */
+.econ-fraction-slash {
+  display: none;
+}
+/* In a field being typed in, a fraction is one piece: a tap opens it to edit. */
+.rich-text-editable [data-fraction-chip] {
+  cursor: pointer;
+  border-radius: 3px;
+}
+.rich-text-editable [data-fraction-chip]:hover,
+.rich-text-editable [data-fraction-chip]:focus-visible {
+  outline: 1px dashed var(--color-hud-focus, #6b8afd);
+  outline-offset: 1px;
+}

@@ -419,11 +419,15 @@ export function replaceRichTextRange(
     // Inherit from the run to the left of the caret, then the one to the right, then
     // the caller's fallback. Left-first is what continues a bold phrase you are typing
     // inside; falling to the right covers inserting at offset 0.
-    const attrs = before.length
+    const inherited = before.length
       ? runAttrs(before[before.length - 1])
       : after.length
         ? runAttrs(after[0])
         : (fallback ?? {});
+    // Typing beside a fraction never joins it: a fraction is built whole (`fractionRuns`),
+    // so a character typed after a denominator is ordinary text (k-0479).
+    const attrs = { ...inherited };
+    delete attrs.fraction;
     out.push({ ...attrs, text: insert });
   }
   out.push(...after);

@@ -145,3 +145,26 @@ describe('Copy for Word (§7.7, §11.12)', () => {
     expect(text).not.toContain('Answer:');
   });
 });
+
+describe('stacked fraction in Copy for Word (k-0479)', () => {
+  it('stacks a fraction in the HTML and writes it linear in the plain text', async () => {
+    const { fractionRuns } = await import('@/model/fraction');
+    const worksheet = buildAcceptanceWorksheet();
+    const stem = worksheet.questions
+      .flatMap((question) => question.blocks)
+      .find((block) => block.kind === 'paragraph' && block.text.en.some((run) => run.text.startsWith('What happens when demand falls')));
+    if (!stem || stem.kind !== 'paragraph') throw new Error('fixture has no stem paragraph');
+    stem.text.en = [
+      { text: 'PED = ' },
+      ...fractionRuns([{ text: 'ΔQ', bold: true }], [{ text: 'Q' }, { text: '1', vertAlign: 'subscript' }]),
+    ];
+    const html = worksheetClipboardHtml(worksheet, TEACHER_EN);
+    expect(html).toContain('display:inline-block;vertical-align:middle;text-align:center');
+    expect(html).toContain('border-bottom:1px solid currentColor;padding:0 2px"><b>ΔQ</b></span>');
+    expect(html).toContain('<span style="display:block;padding:0 2px">Q<sub>1</sub></span>');
+    expect(html).not.toContain('⁄');
+    const text = worksheetPlainText(worksheet, TEACHER_EN);
+    expect(text).toContain('PED = ΔQ/Q1');
+    expect(text).not.toContain('⁄');
+  });
+});
