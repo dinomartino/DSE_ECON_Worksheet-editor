@@ -9,7 +9,8 @@
  * - **The essay's strategy table.** "Strategy X  Increasing the penalty …" / "Scheme C …"
  *   rows, read as paragraphs (a scan has no ruling to see): two or more labelled rows in a
  *   run become the starter's two-column table. A line set to the right of its row is the
- *   row's text wrapping; one back at the row's left edge ends the table.
+ *   row's text wrapping; one back at the row's left edge ends the table. A table the file
+ *   drew with such labels down its first column takes the same look.
  *
  * Pure. Nothing is dropped: every word of the rows is in the table.
  */
@@ -69,6 +70,12 @@ function trimmed(runs: InlineRun[]): InlineRun[] {
 
 const xOf = (block: OutBlock, lines: readonly SourceLine[]) => lines[block.lines[0]]?.x;
 
+/** A table the file already drew: two columns, two rows or more, every first cell a row label alone. */
+function isStrategyTable(block: OutBlock): boolean {
+  if (block.kind !== 'table' || block.rows.length < 2) return false;
+  return block.rows.every((row) => row.length === 2 && ROW_LABEL.exec(plain(row[0] ?? []))?.[0].trim() === plain(row[0] ?? []).trim() && plain(row[1] ?? []).trim() !== '');
+}
+
 /** Runs of two or more labelled rows (with their wrapped lines) as one strategy table each. */
 export function withStrategyTables(blocks: readonly OutBlock[], lines: readonly SourceLine[]): OutBlock[] {
   const out: OutBlock[] = [];
@@ -98,7 +105,7 @@ export function withStrategyTables(blocks: readonly OutBlock[], lines: readonly 
       out.push({ kind: 'table', lines: rows.flatMap((r) => r.lines), rows: rows.map((r) => [r.label, r.text]), look: 'strategy' });
       k = j;
     } else {
-      out.push(blocks[k]);
+      out.push(isStrategyTable(blocks[k]) ? { ...(blocks[k] as Extract<OutBlock, { kind: 'table' }>), look: 'strategy' } : blocks[k]);
       k++;
     }
   }

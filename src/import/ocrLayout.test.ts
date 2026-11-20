@@ -28,6 +28,7 @@ import {
   scaleAt,
   scanFigures,
   splitGluedLabel,
+  unstackColumn,
   type ScanFigures,
 } from './ocrLayout';
 import { pasteKind } from './scan';
@@ -61,6 +62,53 @@ describe('splitGluedLabel', () => {
   it.each(['1.5 million', '10:30 am', '2021-2022 S6 Mock', 'Answers:', 'land used by a farm', 'Ink is dry.'])('leaves %s alone', (raw) =>
     expect(splitGluedLabel(raw)).toBe(raw),
   );
+});
+
+describe('unstackColumn (k-0480)', () => {
+  it("splits a key's glued column of letters or counting numbers into its rows", () => {
+    expect(unstackColumn('ABD', 120, 40, 40)).toEqual(['A', 'B', 'D']);
+    expect(unstackColumn('12345', 180, 42, 40)).toEqual(['1', '2', '3', '4', '5']);
+    expect(unstackColumn('6789.10', 184, 48, 40)).toEqual(['6', '7', '8', '9', '10']);
+  });
+
+  it('leaves anything else sideways: words, a box not that tall, numbers that do not count up', () => {
+    expect(unstackColumn('Answers', 400, 40, 40)).toBeNull();
+    expect(unstackColumn('ABD', 300, 40, 40)).toBeNull();
+    expect(unstackColumn('13579', 180, 42, 40)).toBeNull();
+    expect(unstackColumn('AB', 60, 50, 40)).toBeNull();
+  });
+
+  it("reads a scanned key whose letters the detector glued into columns, each with its %", () => {
+    const box = (x: number, y: number, w: number, h: number): Array<[number, number]> => [
+      [x, y],
+      [x + w, y],
+      [x + w, y + h],
+      [x, y + h],
+    ];
+    const line = (text: string, x: number, y: number, w: number, h = 40, angle?: number) => ({ text, score: 0.99, box: box(x, y, w, h), ...(angle !== undefined ? { angle } : {}) });
+    const result: OcrResult = {
+      width: 1653,
+      height: 2339,
+      ms: 0,
+      lines: [
+        line('Marking Scheme of a Mock Paper', 500, 150, 600),
+        line('Question No.', 380, 330, 160),
+        line('Key', 600, 330, 60),
+        line('123', 430, 430, 42, 120, 90),
+        line('BAD', 600, 430, 40, 120, 90),
+        line('(65)', 640, 430, 70),
+        line('(48)', 640, 470, 70),
+        line('(71)', 640, 510, 70),
+      ],
+    };
+    const read = readOcrPages([result], [SCAN_SCALE]);
+    const sheet = readAnswerSheet(read);
+    expect(sheet.entries.map((e) => [e.question, e.letter, e.percent])).toEqual([
+      [1, 1, 65],
+      [2, 0, 48],
+      [3, 3, 71],
+    ]);
+  });
 });
 
 describe('ocrPage', () => {

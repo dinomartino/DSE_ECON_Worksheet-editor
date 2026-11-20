@@ -293,7 +293,12 @@ function markToken(text: string): Marks | null {
 
 /** "Max: 4", "1@", "1@; max: 2", 最高4分 — a group's rules — or null. */
 function ruleOf(text: string): { each?: number; max?: number } | null {
-  const tokens = fold(text).trim().replace(/^[([]|[)\]]$/g, '').split(/\s*[,;，；]\s*/).filter(Boolean);
+  // "2@; max: 4", or with only a space between them: "2@ max: 4", "2@ 最高：4" (k-0480).
+  const tokens = fold(text)
+    .trim()
+    .replace(/^[([]|[)\]]$/g, '')
+    .split(/\s*[,;，；]\s*|\s+(?=max\b|maximum\b|最高|\d{1,2}\s*@|@)/i)
+    .filter(Boolean);
   if (!tokens.length) return null;
   const out: { each?: number; max?: number } = {};
   for (const token of tokens) {
@@ -696,7 +701,6 @@ class Reader {
       const runs = trim(sliceRichText(line.runs, Math.min(level[0].length, plain(line.runs).length), plain(line.runs).length));
       const levels = (entry.levels ??= []);
       levels.push({ min: +level[3], max: +level[4], runs });
-      levels.sort((a, b) => a.min - b.min);
       void n;
       this.levelFor = entry;
       this.ecFor = undefined;
@@ -1084,6 +1088,7 @@ class Reader {
 function settleGroups(e: AnswerEntry): void {
   for (const point of e.points ?? []) delete point.dashed;
   if (e.ec && !e.ec.rows.length) delete e.ec;
+  e.levels?.sort((a, b) => a.min - b.min);
   if (e.groups) {
     const [only] = e.groups;
     if (e.groups.length === 1 && !only.heading && only.take === undefined) {
