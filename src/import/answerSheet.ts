@@ -150,7 +150,7 @@ export function keyLine(text: string): KeyPair[] | null {
   }
   rest = rest.replace(PAIR, '');
   if (!out.length || !/^[\s,;|]*$/.test(rest)) return null;
-  return out.sort((a, b) => a.at - b.at).map(({ at: _at, ...pair }) => pair);
+  return out.sort((a, b) => a.at - b.at).map(({ question, letters, percent }) => ({ question, letters, ...(percent !== undefined ? { percent } : {}) }));
 }
 
 /** A % with no letter before it: "(79)", what is left of "A (79)" when OCR lost the letter. */
@@ -279,6 +279,8 @@ const TRAILING = new RegExp(String.raw`(?:^|\s)((?:[([]\s*${NUM}\s*(?:marks?|分
 const INLINE = new RegExp(String.raw`[([]\s*${NUM}\s*(?:marks?|分)?\s*[)\]]`, 'gi');
 const RULE_TOKEN = /^(?:(\d{1,2})\s*@|@\s*(\d{1,2})|max(?:imum)?\.?\s*[:：]?\s*(\d{1,2})(?:\s*marks?)?|最高\s*[:：]?\s*(\d{1,2})\s*分?)$/i;
 const TRAILING_RULE = /\s*[([]\s*((?:\d{1,2}\s*@|@\s*\d{1,2}|max\.?\s*[:：]?\s*\d{1,2})(?:\s*[,;，；]\s*(?:\d{1,2}\s*@|@\s*\d{1,2}|max\.?\s*[:：]?\s*\d{1,2}))*)\s*[)\]]\s*$/i;
+/** The same at a line's end with no brackets, as a scheme's marks column leaves it ("… max: 2", "… 最高：4"; k-0480). */
+const TRAILING_BARE_RULE = /\s+((?:max(?:imum)?\.?\s*[:：]\s*\d{1,2}|最高\s*[:：]?\s*\d{1,2}\s*分?)(?:\s+(?:\d{1,2}\s*@|max(?:imum)?\.?\s*[:：]\s*\d{1,2}|最高\s*[:：]?\s*\d{1,2}\s*分?))*)\s*$/i;
 /** A cell or line written to a marker, not the candidate. */
 const NOTE_HINT = /→|->|\bok\b|\baccept|\breject|\bdo not\b|\bdon't\b|\bignore|\baward|\bdeduct|\bonly\s+\d|\bmax\b|^-\s*\d|\b0\s*(overall)?$|不給分|扣|接受|只給|最多/i;
 
@@ -428,7 +430,7 @@ interface Segment {
 function segments(runs: InlineRun[]): { segs: Segment[]; marks: Marks | null; rule: { each?: number; max?: number } | null } {
   let text = plain(runs);
   let rule: { each?: number; max?: number } | null = null;
-  const r = TRAILING_RULE.exec(fold(text));
+  const r = TRAILING_RULE.exec(fold(text)) ?? TRAILING_BARE_RULE.exec(fold(text));
   if (r && r.index > 0) {
     rule = ruleOf(r[1]);
     if (rule) {
@@ -798,7 +800,9 @@ class Reader {
       } else if (seg.runs.length) {
         // "- point", or a dash set tight against Chinese ("-當過夜旅客…").
         const isDashed = /^[-–—•·●▪](?:\s|(?=[\u3400-\u9fff]))/.test(segText);
-        const runs = isDashed ? trim(stripBullet(seg.runs)) : seg.runs;
+        // OCR reads a dash before English as 一: off, but OCR saw only some dashes, so no dash list.
+        const misread = /^[一ー]\s*(?=[A-Za-z])/.exec(segText);
+        const runs = isDashed ? trim(stripBullet(seg.runs)) : misread ? trim(sliceRichText(seg.runs, misread[0].length, segText.length)) : seg.runs;
         points.push({
           runs,
           ...(seg.marks !== undefined ? { marks: seg.marks } : {}),

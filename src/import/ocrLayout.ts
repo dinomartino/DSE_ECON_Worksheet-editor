@@ -180,6 +180,7 @@ export function ocrPage(result: OcrResult, scale: number, found: readonly PxBox[
       y: height - (centre + thick * 0.3) * k,
       w: Math.max(right - left - pad * 2, 1) * k,
       size,
+      ocr: true,
       ...(rotated ? { rotated: true } : {}),
     });
   }

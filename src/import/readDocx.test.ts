@@ -274,7 +274,12 @@ describe('docx reader: runs and paragraphs', () => {
     expect(second.text).toBe('Cost × 2 = ‘double’');
     expect(third.text).toBe('next line');
     expect(fifth).toMatchObject({ text: 'After the break', pageBreak: true });
-    expect(sixth.text).toBe('a/b');
+    // Word's equation: a stacked fraction, as the editor's Fraction dialog makes one (k-0480).
+    expect(sixth.text).toBe('a⁄b');
+    expect(sixth.runs).toEqual([
+      { text: 'a', fraction: 'num' },
+      { text: '⁄b', fraction: 'den' },
+    ]);
   });
 
   it('turns tab-only and dotted lines into answer space, and reads a bold option as the answer', async () => {

@@ -315,3 +315,118 @@ describe('matching a scanned paper', () => {
     expect(numberRuns(paper)).toHaveLength(1);
   });
 });
+
+describe('subscripts, fractions and bold come in as the editor’s own marks (k-0480 after k-0479, GitHub #8)', () => {
+  const sub = (base: string, n: string) => `<m:sSub><m:e><m:r><m:t>${base}</m:t></m:r></m:e><m:sub><m:r><m:t>${n}</m:t></m:r></m:sub></m:sSub>`;
+  const t = (s: string) => `<m:r><m:t xml:space="preserve">${s}</m:t></m:r>`;
+  // (Q₂ − Q₁) over Q₁, as Word's equation editor writes it.
+  const EQUATION = `<m:oMath><m:f><m:num><m:d><m:e>${sub('Q', '2')}${t(' − ')}${sub('Q', '1')}</m:e></m:d></m:num><m:den>${sub('Q', '1')}</m:den></m:f>${t(' × 100%')}</m:oMath>`;
+
+  it('reads Word’s subscripts, its equations as stacked fractions, and its bold as run bold', async () => {
+    const { p, r } = await import('./fixtures/docx');
+    const body = [
+      p(r('1.\tThe quantity rises from Q') + r('1', { vert: 'subscript' }) + r(' to Q') + r('2', { vert: 'subscript' }) + r('. Which of the following is ') + r('NOT', { b: true }) + r(' correct?')),
+      p(r('A.\tThe percentage change is ') + EQUATION),
+      para('B.\tDemand is elastic.'),
+      para('C.\tSupply is perfectly elastic.'),
+      para('D.\tThe price falls.'),
+    ].join('');
+    const [q] = built(buildImport(analyseLines(await readDocx(await makeDocx({ body }))))) as McqQuestion[];
+    const stem = q.blocks[0].kind === 'paragraph' ? q.blocks[0].text.en : [];
+    expect(stem.filter((x) => x.vertAlign === 'subscript').map((x) => x.text)).toEqual(['1', '2']);
+    expect(stem.find((x) => x.text === 'NOT')).toEqual({ text: 'NOT', bold: true });
+    const a = q.options[0].text.en;
+    expect(a.map((x) => x.text).join('')).toBe('The percentage change is (Q2 − Q1)⁄Q1 × 100%');
+    expect(a.filter((x) => x.fraction === 'num').map((x) => [x.text, x.vertAlign ?? ''])).toEqual([
+      ['(Q', ''],
+      ['2', 'subscript'],
+      [' − Q', ''],
+      ['1', 'subscript'],
+      [')', ''],
+    ]);
+    expect(a.filter((x) => x.fraction === 'den').map((x) => [x.text, x.vertAlign ?? ''])).toEqual([
+      ['⁄Q', ''],
+      ['1', 'subscript'],
+    ]);
+    expect(a[a.length - 1]).toEqual({ text: ' × 100%' });
+    const { textSegments } = await import('@/model/fraction');
+    expect(textSegments(a).map((s) => s.kind)).toEqual(['runs', 'fraction', 'runs']);
+  });
+
+  it('keeps a fraction inside a fraction readable as a/b, since runs stack one level', async () => {
+    const { p, r } = await import('./fixtures/docx');
+    const nested = `<m:oMath><m:f><m:num><m:f><m:num>${t('ΔQ')}</m:num><m:den>${t('Q')}</m:den></m:f></m:num><m:den><m:f><m:num>${t('ΔP')}</m:num><m:den>${t('P')}</m:den></m:f></m:den></m:f></m:oMath>`;
+    const read = await readDocx(await makeDocx({ body: p(r('Elasticity = ') + nested) }));
+    expect(read.lines[0].text).toBe('Elasticity = ΔQ/Q⁄ΔP/P');
+  });
+
+  it('reads a PDF’s subscripts and superscripts from their size and baseline, and its bold', async () => {
+    const { bufferOf, makePdf } = await import('./fixtures/pdfWriter');
+    const { readPdf, isPdfReadError } = await import('./index');
+    // Helvetica's widths (per 1000), so each piece is set tight against the last, as in a real file.
+    const AFM: Record<string, number> = { T: 611, h: 556, e: 556, ' ': 278, p: 556, r: 333, i: 222, c: 500, s: 500, f: 278, o: 556, m: 833, P: 667, t: 278, a: 556, n: 556, d: 556, u: 556, '1': 556, '0': 556, '2': 556, '3': 556 };
+    const width = (str: string, size: number) => [...str].reduce((w, ch) => w + (AFM[ch] ?? 556), 0) * size / 1000;
+    const pieces: Array<[string, number, number]> = [
+      ['The price rises from P', 760, 11],
+      ['1', 757, 7],
+      [' to P', 760, 11],
+      ['2', 757, 7],
+      [' and output is 10', 760, 11],
+      ['3', 765, 7],
+      [' units. Explain the change.', 760, 11],
+    ];
+    let x = 66;
+    const texts = pieces.map(([text, y, size]) => {
+      const at = { text, x, y, size };
+      x += width(text, size);
+      return at;
+    });
+    const bytes = makePdf([{ texts: [{ text: '1.', x: 42, y: 760, size: 11 }, ...texts.map((it) => ({ ...it, text: it.text.trimStart(), x: it.text.startsWith(' ') ? it.x + 3.06 : it.x }))] }]);
+    const read = await readPdf(bufferOf(bytes));
+    if (isPdfReadError(read)) throw new Error(read.kind);
+    const runs = read.lines[0].runs;
+    expect(runs.filter((x) => x.vertAlign).map((x) => [x.text, x.vertAlign])).toEqual([
+      ['1', 'subscript'],
+      ['2', 'subscript'],
+      ['3', 'superscript'],
+    ]);
+    expect(read.lines[0].text).toMatch(/^The price rises from P1 to P2 and output is 103 units\. Explain the change\./);
+  });
+});
+
+describe('a marking scheme laid out with a marks column', () => {
+  it('keeps two lines beside a tall "2@" apart, reads 2@ and max: 2 as the group’s rules, and joins each point’s wrapped line', async () => {
+    const { bufferOf, makePdf } = await import('./fixtures/pdfWriter');
+    const { readPdf, isPdfReadError } = await import('./index');
+    const long = 'investment expenditure: more firms have been set up by firms from overseas after';
+    const bytes = makePdf([
+      {
+        texts: [
+          { text: '3. (a) Possible components:', x: 60, y: 760, size: 11 },
+          { text: 'private consumption expenditure: households buy food and drinks at the', x: 96, y: 746, size: 11 },
+          { text: 'festival.', x: 96, y: 734, size: 11 },
+          { text: long, x: 96, y: 722, size: 11 },
+          { text: '2@', x: 556, y: 716, size: 14 },
+          { text: 'it joined the summit.', x: 96, y: 710, size: 11 },
+          { text: 'max: 2', x: 556, y: 704, size: 11 },
+          { text: '- net exports: tourists buy tickets for the games.', x: 96, y: 698, size: 11 },
+          { text: '[Mark the FIRST point only.]', x: 84, y: 684, size: 11 },
+        ],
+      },
+    ]);
+    const read = await readPdf(bufferOf(bytes));
+    if (isPdfReadError(read)) throw new Error(read.kind);
+    const [entry] = readAnswerSheet(read).entries;
+    expect(entry.groups).toEqual([{ heading: [{ text: 'Possible components:' }], each: 2, max: 2, take: 1, firstOnly: true }]);
+    expect(entry.points?.map((p) => text(p.runs))).toEqual([
+      'private consumption expenditure: households buy food and drinks at the festival.',
+      `${long} it joined the summit.`,
+      'net exports: tourists buy tickets for the games.',
+    ]);
+  });
+
+  it('takes off a dash OCR read as 一 before English words', () => {
+    const [entry] = readAnswerSheet(readPaste({ plain: '4. Possible motives:\n一 platform providers face less competition\nHigher prices for users (1)' })).entries;
+    expect(entry.points?.map((p) => text(p.runs))[0]).toBe('platform providers face less competition');
+  });
+});

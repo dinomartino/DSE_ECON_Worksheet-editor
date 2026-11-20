@@ -15,6 +15,31 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Importing a Word or PDF paper brings its data-response question in as a DRQ.** Sources
+  A, B, C… come in as lettered sources holding their tables, text and pictures; each part keeps
+  its "Refer to Source …"; (i) and (ii) sharing one mark keep it on the part, printed once after
+  (ii); the "For part (d), candidates are required to present their answers in an essay form…"
+  note sits before the essay part; and its Strategy X / Strategy Y (or Scheme A / B) rows become
+  the same strategy table Start a DRQ makes. This works for scanned papers too.
+  <!-- zh: **匯入 Word 或 PDF 試卷時，資料回應題會以資料回應題的形式匯入。** 資料A、B、C… 會成為附字母的資料，保留其中的表格、文字及圖片；每個分題保留「參閱資料…」；共用一個分數的 (i) 及 (ii) 會把分數放在分題上，只在 (ii) 之後印一次；「(d)部須以短文形式作答…」說明放在短文題之前；策略X／策略Y（或方案A／B）各行會變成與「建立資料回應題」相同的策略表格。掃描試卷同樣適用。 -->
+- **Importing a marking scheme keeps HKEAA's layout.** From an answer file, in English or 中文:
+  the underlined headings ("Possible reasons:", 可能因素：), 2@ and max: 4 (最高：4), [Mark the
+  FIRST TWO points only.] ([只批閱首兩項。]), the effective communication table with its 2 / 1 / 0
+  rows, "The maximum mark for content is 12 marks." (內容最高12分), level descriptors (L1, L2…),
+  and an answer written as one paragraph with its total beside it. Each comes in as the marking
+  scheme tools in the side panel make it, so you can edit it there.
+  <!-- zh: **匯入評卷參考時保留考評局的格式。** 從答案檔（英文或中文）匯入：有底線的標題（Possible reasons:、可能因素：）、2@ 及最高：4、[只批閱首兩項。]、有效傳意評分表及其 2／1／0 分各行、「內容最高12分」、等級描述（L1、L2…），以及以一段文字寫成並在旁列出總分的答案。每項都會以側欄評卷參考工具的格式匯入，可直接在側欄修改。 -->
+- **Importing an examination report fills in Exam results.** When the answer file prints each MC
+  answer with the % of candidates who got it right ("D (69)"), the % goes into Exam results and
+  prints in the answer key as "D (69%)". Its comments on candidates' performance go in too: for an
+  MC paper, the general comments and, for each question discussed, what candidates did ("Q8: …");
+  for Paper 2, the comment on each part. One undo takes back the import and the results together.
+  <!-- zh: **匯入考試報告時會填寫「考試結果」。** 若答案檔在每題 MC 答案旁列出答對百分率（例如「D (69)」），百分率會填入「考試結果」，答案中印為「D (69%)」。考生表現評論亦會一併匯入：MC 試卷包括整體評論及每條被討論題目的考生表現（「Q8：…」）；Paper 2 則包括每個分題的評論。按一次「復原」即可同時取消匯入及考試結果。 -->
+- **Imported papers keep subscripts, fractions and bold as the editor's own.** Q₁ and P₂ from Word
+  or a PDF come in as subscripts, 10³ as a superscript, and a fraction in a Word equation, such as
+  (Q₂ − Q₁) over Q₁, comes in stacked, as the Fraction button makes it. Bold comes in as ordinary
+  bold that ⌘B / Ctrl+B or the B button can take off.
+  <!-- zh: **匯入的試卷保留下標、分數及粗體，並與編輯器自己的格式相同。** Word 或 PDF 中的 Q₁、P₂ 會匯入為下標，10³ 為上標；Word 方程式中的分數（例如 (Q₂ − Q₁) 除以 Q₁）會以上下排列匯入，與「分數」按鈕的效果相同。粗體會匯入為一般粗體，可用 ⌘B／Ctrl+B 或 B 按鈕取消。 -->
 - **Fractions in question text and MC options.** Fraction (a⁄b) on the format bar opens a small
   box: type the top and the bottom, and it prints stacked, with a line between, as in an
   elasticity formula. Subscripts work inside it too, so (Q₂ − Q₁) over Q₁ is easy. Tap a fraction
@@ -141,6 +166,15 @@ a version heading is edited afterwards.
   <!-- zh: **行距。** 「頁面設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
 
 ### Fixed
+- **Scanned answer keys and marking schemes read more of their answers.** A key's letters printed
+  in a column, which the text reader joined into one ("A B D" read as "ABD"), are read one per
+  row again; the first rows of a key are no longer taken for the paper's heading; a row whose
+  letter could not be read no longer stops the rest of the key; and two lines of a marking scheme
+  beside a "2@" in the marks column no longer run into each other.
+  <!-- zh: **掃描的答案及評卷參考可讀出更多答案。** 答案欄中上下排列的字母（文字辨識把「A B D」讀成「ABD」）會重新逐行讀出；答案表的首幾行不再被當作試卷標題；有一行字母無法辨認時，不再令其餘答案無法讀出；評卷參考中分數欄有「2@」時，旁邊的兩行文字不再混在一起。 -->
+- **Imported answers and mark points never end in a blank line.** A blank line at the start or end
+  of an imported answer, mark point or comment is left out, so there is no empty line to delete.
+  <!-- zh: **匯入的答案及評分要點不會在結尾多出空行。** 匯入的答案、評分要點或評論開首或結尾的空行會被略去，不會出現需要刪除的空行。 -->
 - **Subscripts and superscripts in MC options, and from the keyboard.** Select the 1 of Q1 in an
   option and the format bar now offers X₂ and X² (and B, I, U), as it does in question text.
   Anywhere you type, Ctrl+= (⌘= on a Mac) makes a subscript and Ctrl+Shift+= (⌘⇧=) a superscript,

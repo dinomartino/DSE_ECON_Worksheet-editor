@@ -189,5 +189,15 @@ it('probes real imports', async () => {
     void ws;
     writeFileSync(path.join(out, `${path.basename(file)}.txt`), report.join('\n'));
     writeFileSync(path.join(out, `${path.basename(file)}.batch.json`), JSON.stringify({ questions: qs, lead: batch.lead, results: (batch as { results?: unknown }).results }, null, 1));
+    // The document the import dialog would make, for screenshots (`scripts/import-shot.mjs`).
+    const { createImportedDocument } = await import('@/components/import/fileImport');
+    const { useWorksheetStore } = await import('@/store/worksheetStore');
+    const mc = qs.filter((q) => q.type === 'mcq').length >= qs.length * 0.8;
+    const made = createImportedDocument(
+      batch,
+      { documentType: mc ? 'paper1' : 'lqMock', name: `Imported ${path.basename(file)}` },
+      (w) => useWorksheetStore.getState().replaceWorksheet(w),
+    );
+    if (made.ok) writeFileSync(path.join(out, `${path.basename(file)}.worksheet.json`), JSON.stringify(useWorksheetStore.getState().worksheet));
   }
 }, 600_000);

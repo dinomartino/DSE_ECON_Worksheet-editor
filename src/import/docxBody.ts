@@ -4,6 +4,7 @@
  * SmartArt, EMF, a drawing made of Word shapes) as an image line with no data so the
  * figure check shows a slot. Pictures are only noted here; `readDocx` loads them.
  */
+import { fractionRuns, linearFraction } from '@/model/fraction';
 import { foldTabs, indLeftOf, readRunProps, tabStopsOf, type Numbering, type RunProps, type Styles } from './docxNumbering';
 import { labelLevel, loneOptionLabel, parseLabel } from './labels';
 import { labelZone } from './normalize';
@@ -337,8 +338,10 @@ export class BodyReader {
           break;
         case 'm:oMathPara':
         case 'm:oMath': {
-          const math = mathText(el);
-          if (math && fields[fields.length - 1] !== 'code') lines[lines.length - 1].push({ text: math });
+          // Word's equations as the editor's own runs (k-0480): Q₁ as a subscript, ΔQ over Q
+          // as a stacked fraction (`model/fraction.ts`), brackets kept.
+          const math = mathRuns(el);
+          if (math.length && fields[fields.length - 1] !== 'code') lines[lines.length - 1].push(...math);
           break;
         }
         default:
@@ -620,16 +623,104 @@ function mergeParts(into: Parts, from: Parts): void {
 }
 
 function sameFormat(a: RawRun, b: Omit<RawRun, 'text'>): boolean {
-  return a.bold === b.bold && a.italic === b.italic && a.underline === b.underline && a.vertAlign === b.vertAlign && a.color === b.color && a.highlight === b.highlight;
+  return (
+    a.bold === b.bold &&
+    a.italic === b.italic &&
+    a.underline === b.underline &&
+    a.vertAlign === b.vertAlign &&
+    a.color === b.color &&
+    a.highlight === b.highlight &&
+    a.fraction === b.fraction
+  );
 }
 
-/** Office Math as its plain characters (`m:t`), fractions as a/b. */
+/** Office Math as its plain characters (`m:t`), fractions as a/b: where runs cannot stack. */
 function mathText(el: XmlElement): string {
   if (el.name === 'm:t') return textOf(el);
   if (el.name === 'm:f') {
     const num = child(el, 'm:num');
     const den = child(el, 'm:den');
-    if (num && den) return `${mathText(num)}/${mathText(den)}`;
+    if (num && den) return linearFraction(mathText(num), mathText(den));
   }
+  if (el.name === 'm:d') return delimited(el, mathText).map((r) => r.text).join('');
+  if (el.name.endsWith('Pr')) return '';
   return elements(el).map(mathText).join('');
+}
+
+/** An `m:d`'s brackets around its parts: "(" … ")" unless Word set other characters (or none). */
+function delimited(el: XmlElement, inner: (e: XmlElement) => RawRun[] | string): RawRun[] {
+  const pr = child(el, 'm:dPr');
+  const chr = (name: string, fallback: string) => {
+    const node = child(pr, name);
+    return node ? (node.attrs['m:val'] ?? '') : fallback;
+  };
+  const wrapped = elements(el).filter((e) => e.name === 'm:e');
+  // Word wraps each part in m:e; a file that does not is read as one part.
+  const parts = wrapped.length ? wrapped : [{ ...el, children: elements(el).filter((e) => !e.name.endsWith('Pr')) }];
+  const sep = chr('m:sepChr', '|');
+  const out: RawRun[] = [];
+  const open = chr('m:begChr', '(');
+  if (open) out.push({ text: open });
+  parts.forEach((part, k) => {
+    if (k && sep) out.push({ text: sep });
+    const got = inner(part);
+    out.push(...(typeof got === 'string' ? (got ? [{ text: got }] : []) : got));
+  });
+  const close = chr('m:endChr', ')');
+  if (close) out.push({ text: close });
+  return out;
+}
+
+/**
+ * Office Math as runs (k-0480). `m:sSub`/`m:sSup` give subscript and superscript runs;
+ * `m:f` a stacked fraction through `fractionRuns`, as the editor's Fraction dialog makes
+ * one; a fraction inside a fraction, which runs cannot stack, prints as a/b. Variables
+ * come in upright, as a teacher types them; bold set in the equation is kept.
+ */
+function mathRuns(el: XmlElement, inFraction = false): RawRun[] {
+  const all = (e: XmlElement | undefined) => (e ? elements(e).flatMap((c) => mathRuns(c, inFraction)) : []);
+  const raised = (runs: RawRun[], vertAlign: 'subscript' | 'superscript') => runs.map((r) => (r.vertAlign || r.fraction ? r : { ...r, vertAlign }));
+  switch (el.name) {
+    case 'm:r': {
+      const text = elements(el).filter((c) => c.name === 'm:t').map(textOf).join('');
+      if (!text) return [];
+      const sty = child(child(el, 'm:rPr'), 'm:sty')?.attrs['m:val'];
+      const bold = sty === 'b' || sty === 'bi' || onOff(child(child(el, 'w:rPr'), 'w:b')) === true;
+      return [{ text, ...(bold ? { bold: true } : {}) }];
+    }
+    case 'm:f': {
+      const num = child(el, 'm:num');
+      const den = child(el, 'm:den');
+      if (!num || !den) return all(el);
+      if (inFraction) return [{ text: mathText(el) }];
+      const top = elements(num).flatMap((c) => mathRuns(c, true));
+      const bottom = elements(den).flatMap((c) => mathRuns(c, true));
+      return fractionRuns(top, bottom) as RawRun[];
+    }
+    case 'm:sSub':
+      return [...all(child(el, 'm:e')), ...raised(all(child(el, 'm:sub')), 'subscript')];
+    case 'm:sSup':
+      return [...all(child(el, 'm:e')), ...raised(all(child(el, 'm:sup')), 'superscript')];
+    case 'm:sSubSup':
+      return [...all(child(el, 'm:e')), ...raised(all(child(el, 'm:sub')), 'subscript'), ...raised(all(child(el, 'm:sup')), 'superscript')];
+    case 'm:sPre':
+      return [...raised(all(child(el, 'm:sub')), 'subscript'), ...raised(all(child(el, 'm:sup')), 'superscript'), ...all(child(el, 'm:e'))];
+    case 'm:d':
+      return delimited(el, (part) => elements(part).flatMap((c) => mathRuns(c, inFraction)));
+    case 'm:rad': {
+      const degree = mathText(child(el, 'm:deg') ?? el).trim();
+      const body = all(child(el, 'm:e'));
+      const long = body.map((r) => r.text).join('').length > 1;
+      return [{ text: `${child(el, 'm:deg') && degree ? degree : ''}√` }, ...(long ? [{ text: '(' }, ...body, { text: ')' }] : body)];
+    }
+    case 'm:nary': {
+      const chr = child(child(el, 'm:naryPr'), 'm:chr')?.attrs['m:val'] ?? '∫';
+      return [{ text: chr }, ...raised(all(child(el, 'm:sub')), 'subscript'), ...raised(all(child(el, 'm:sup')), 'superscript'), ...all(child(el, 'm:e'))];
+    }
+    case 'm:t':
+      return textOf(el) ? [{ text: textOf(el) }] : [];
+    default:
+      if (el.name.endsWith('Pr')) return [];
+      return all(el);
+  }
 }
