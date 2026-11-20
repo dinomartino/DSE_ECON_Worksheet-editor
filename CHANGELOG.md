@@ -133,6 +133,9 @@ a version heading is edited afterwards.
   <!-- zh: **行距。** 「文件設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
 
 ### Fixed
+- **A sub-part's empty marks box reads "shared" / 「共用」 in full** in the side panel, instead of
+  being cut off.
+  <!-- zh: **側欄中小分題的空白分數格會完整顯示「共用」**，不再被截斷。 -->
 - **No more blank line you cannot delete in an answer or a marking point.** Pressing Enter twice
   and taking it back, or deleting the last word of a line and typing it again, no longer leaves an
   empty line under the answer. A blank line already there can now be clicked, and Backspace

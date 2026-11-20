@@ -65,7 +65,7 @@ export function MiniNumber({
       placeholder={placeholder}
       aria-label={label}
       title={label}
-      className="h-7 w-12 shrink-0 rounded-md border border-line bg-surface px-1.5 text-right text-xs tabular-nums text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+      className="h-7 w-12 shrink-0 rounded-md border border-line bg-surface px-1.5 text-right text-xs tabular-nums text-ink outline-none transition-colors placeholder:text-[10px] placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
       onChange={(event) => {
         if (event.target.value.trim() === '') {
           onChange(undefined);
