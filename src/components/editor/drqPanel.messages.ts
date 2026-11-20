@@ -35,6 +35,7 @@ export const DRQ_PANEL_MESSAGES = defineMessages({
   teacherOnly: { en: 'Teacher only', zh: '教師專用' },
   answerAndMarking: { en: 'Answer & marking', zh: '答案及評分' },
   where: { en: 'You are editing', zh: '正在編輯' },
+  whereNothing: { en: 'Click text on the page to edit it here', zh: '按頁面上的文字，即可在此編輯' },
   holdsText: { en: 'Text', zh: '文字' },
   holdsTable: { en: 'Table', zh: '表格' },
   holdsPicture: { en: 'Picture', zh: '圖片' },

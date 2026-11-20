@@ -141,6 +141,11 @@ a version heading is edited afterwards.
   <!-- zh: **行距。** 「頁面設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
 
 ### Fixed
+- **The side panel answers the first click.** After clicking text on the page, the first click on
+  a button in the side panel (Source ▾, Diagram ▾, Add text, the marking-scheme patterns…) often
+  did nothing and only a second click worked, with a mouse or a finger. Now one click is enough.
+  The "You are editing" line at the top of the panel no longer disappears and makes the panel jump.
+  <!-- zh: **側欄第一下就有反應。** 之前在頁面上按文字後，第一下按側欄的按鈕（資料 ▾、圖表 ▾、加入文字、評分方案範本等）往往沒有反應，要按第二下才有效，滑鼠或手指都一樣。現在按一下就可以。側欄頂部的「正在編輯」一行亦不會再消失而令側欄跳動。 -->
 - **Subscripts and superscripts in MC options, and from the keyboard.** Select the 1 of Q1 in an
   option and the format bar now offers X₂ and X² (and B, I, U), as it does in question text.
   Anywhere you type, Ctrl+= (⌘= on a Mac) makes a subscript and Ctrl+Shift+= (⌘⇧=) a superscript,

@@ -28,7 +28,13 @@ function scrollToAnchor(from: HTMLElement, anchor: string) {
 /**
  * The sticky "where am I" line: Question text › Source B, or (c) › (ii) › Teacher only,
  * each crumb in its kind's colour and a button back to its card. Follows what was clicked
- * on the page; says nothing when nothing inside the question is selected.
+ * on the page.
+ *
+ * The line stays put when nothing inside the question is selected, with a quiet hint in
+ * place of the crumbs (k-0478). It used to vanish: the first press in the panel after
+ * typing on the page blurs the field, which clears the selection, and the panel jumped up
+ * by this line's height between press and release, so the button pressed was no longer
+ * under the pointer and its click was lost (`pressedClick.ts` is the net under that).
  */
 export function PanelWhereAmI({ question }: { question: StructuredQuestion }) {
   const m = useMessages(DRQ_PANEL_MESSAGES);
@@ -38,14 +44,14 @@ export function PanelWhereAmI({ question }: { question: StructuredQuestion }) {
     source: m.sourceLabel,
     teacher: m.teacherOnly,
   });
-  if (crumbs.length === 0) return null;
   return (
     <nav
       aria-label={m.where}
       data-print-hide
-      className="sticky -top-3.5 z-10 -mx-3.5 -mt-3.5 mb-3 flex min-h-9 items-center gap-1 border-b border-line bg-surface/95 px-3.5 py-1.5 backdrop-blur-sm"
+      className="sticky -top-3.5 z-10 -mx-3.5 -mt-3.5 mb-3 flex h-9 items-center gap-1 overflow-hidden border-b border-line bg-surface/95 px-3.5 backdrop-blur-sm"
     >
-      <span className="mr-1 shrink-0 text-[11px] text-ink-subtle">{m.where}</span>
+      {crumbs.length === 0 && <span className="truncate text-[11px] text-ink-subtle">{m.whereNothing}</span>}
+      {crumbs.length > 0 && <span className="mr-1 shrink-0 text-[11px] text-ink-subtle">{m.where}</span>}
       {crumbs.map((crumb, index) => (
         <span key={crumb.anchor} className="flex min-w-0 items-center gap-1">
           {index > 0 && <ChevronRightIcon size={10} className="text-ink-subtle" />}
