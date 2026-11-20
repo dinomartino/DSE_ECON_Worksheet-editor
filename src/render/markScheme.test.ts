@@ -98,8 +98,8 @@ describe('renderMarkScheme', () => {
     expect(plain(first.text.zh)).toBe('Price rises（中） / cost rises（中）');
     expect(plain(lead.text.zh)).toBe('以下任何兩項：');
     expect(trailLabel(first.trail!, 'bilingual')).toBe('(1)');
-    expect(trailLabel(MARK_SCHEME_WORDING.max(4), 'bilingual')).toBe('max: 4 最高4分');
-    expect(trailLabel(MARK_SCHEME_WORDING.max(4), 'zh')).toBe('最高4分');
+    expect(trailLabel(MARK_SCHEME_WORDING.max(4), 'bilingual')).toBe('max: 4 最高：4');
+    expect(trailLabel(MARK_SCHEME_WORDING.max(4), 'zh')).toBe('最高：4');
   });
 
   it('prints nothing for an empty or absent scheme, and skips wordless points', () => {
@@ -230,7 +230,7 @@ describe('a scheme in the answer key', () => {
     const zip = await JSZip.loadAsync(await exportAnswerKeyDocxBuffer(schemeWorksheet(true), 'bilingual'));
     const xml = await zip.file('word/document.xml')!.async('string');
     expect(xml).toContain('以下任何兩項：');
-    expect(xml).toContain('max: 2 最高2分');
+    expect(xml).toContain('max: 2 最高：2');
   });
 
   it('keeps an answer key with no schemes unchanged', () => {

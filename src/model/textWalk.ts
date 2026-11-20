@@ -5,6 +5,7 @@ import type { CoverPage } from './coverTypes';
 import { isAreaOrFreeLabelPath, mapDiagramTexts } from './diagramText';
 import { resolveFlow } from './flow';
 import type { MarkScheme } from './markSchemeTypes';
+import { groupHeading } from './markScheme';
 import { computeNumbering } from './numbering';
 import { isSymbolOnly, wordedSymbol } from './symbols';
 import {
@@ -271,6 +272,7 @@ class Walk implements TextWalker {
           groups: each(route.groups, (group) => {
             const gw = rw.child(`group:${group.id}`);
             return patch(group, {
+              heading: groupHeading(group) ? gw.text('heading', group.heading!, teacher('schemePoint', 'heading')) : group.heading,
               points: each(group.points, (point) => {
                 const pw = gw.child(`point:${point.id}`);
                 return patch(point, {

@@ -38,30 +38,17 @@ a version heading is edited afterwards.
   English and 中文 ("Refer to Sources C and D." / "參閱資料C及D。"). A part's ⋯ menu can also add the
   essay-form note before it, with that part's letter.
   <!-- zh: **一按加入「參閱資料A。」** 打開的分題會顯示「參閱：A B C D」，每份資料一個按鈕；點選字母即自動寫好分題開首句（中英文同步，例如「參閱資料C及D。」）。分題的 ⋯ 選單亦可在題前加入短文作答說明，並附上該分題的字母。 -->
-
-### Fixed
-- **No more blank line you cannot delete in an answer or a marking point.** Pressing Enter twice
-  and taking it back, or deleting the last word of a line and typing it again, no longer leaves an
-  empty line under the answer. A blank line already there can now be clicked, and Backspace
-  deletes it.
-  <!-- zh: **答案及評分要點不會再出現刪不走的空行。** 按兩次 Enter 再刪回，或刪掉一行最後的字再重新輸入，答案下面不會再多出一行空白。已經出現的空行現在可以按一下，再按 Backspace 刪除。 -->
-- **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer
-  says SCHOOL NAME after Paper 1 said your school.
-  <!-- zh: **新試卷會沿用上次輸入的學校名稱**，Paper 2 的封面不會在 Paper 1 已填好學校後仍顯示 SCHOOL NAME。 -->
-- **A duplicated document is named "（副本）" in the 中文 interface**, not "(copy)".
-  <!-- zh: **在中文介面建立的副本會以「（副本）」命名**，而不是「(copy)」。 -->
-- **Long folder names show in full in the folder list**, on two lines if needed, instead of
-  being cut off (for example "中六 Mock 202…").
-  <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
-
-### Changed
-- **The side panel tells the parts of a question apart by colour**, in every theme: the question
-  text grey; each source green, labelled "Source A", "Source B"… with what it holds; each part blue,
-  with its sub-parts lighter blue and nested inside it; the answer and marking amber, labelled
-  Teacher only. Source cards fold to one line and open when you click that source on the page. A
-  line at the top of the panel says where you are (for example "Question text › Source B" or
-  "(c) › (ii)"), and the card you clicked on the page gets a ring in its colour.
-  <!-- zh: **側欄以顏色區分題目各部分：** 題幹為灰色；每份資料為綠色，標示「資料 A」、「資料 B」…及其內容；分題為藍色，小分題為淺藍色並縮排於分題內；答案及評分為琥珀色，標示「教師專用」。各主題均適用。資料卡可摺疊成一行，在頁面上點選該資料時會自動打開。側欄頂部會顯示正在編輯的位置（例如「題幹 › 資料 B」或「(c) › (ii)」），在頁面上點選的部分會以相應顏色的外框標示。 -->
+- **Build a data-response question's marking scheme quickly from the question panel.** Each part
+  in Parts & marks now shows its scheme at a glance: "Scheme" when it has none, a tick and the
+  total when it matches the part's marks, both totals when they differ. Click it to go straight
+  to the scheme. An empty scheme offers five starting shapes, sized to the part's marks, as
+  HKEAA's marking schemes use them: Points, Any N reasons ("2@ … [Mark the FIRST point only.]
+  max"), Paragraph + total, Explain + diagram ("Verbal elaboration:" plus a mark per thing shown
+  in the figure) and Essay + EC (the EC table, "The maximum mark for content is 12 marks" and
+  indicative points with no marks). Groups can have an underlined heading such as "Possible
+  reasons:", typed in the panel or on the page. Add an OR answer, an EC table, a content maximum
+  or levels with one click. The standard EC table folds to one line.
+  <!-- zh: **在題目側欄快速建立資料回應題的評分方案。** 「分題及分數」每個分題旁邊會顯示評分方案狀態：未有方案顯示「評分」，與分數相符顯示 ✓ 及總分，不相符則顯示兩個總分；按一下即可直達該分題的評分方案。空白方案提供五種按分題分數預設的考評局常用格式：逐點給分、任取 N 項理由（「2@……［只批閱首項。］最高」）、一段 + 總分、文字說明 + 圖（「文字說明：」及「在圖中顯示：」每項 1 分），以及論述 + 有效溝通（有效溝通表格、「內容最高12分」及不設分數的參考要點）。每組可加有底線的標題，例如「可能理由：」，可在側欄或頁面上輸入。OR 解法、有效溝通表格、內容最高分及等級均可一按加入；標準有效溝通表格會摺疊成一行。 -->
 - **Stakeholder diagrams and data tables for data-response questions.** Insert → Source… now
   starts a Source panel with what goes in it: a table of data, a stakeholder diagram, or text. A
   stakeholder diagram puts the issue in a bold box in the middle and the stakeholders around it,
@@ -144,6 +131,34 @@ a version heading is edited afterwards.
   questions, tables, answer lines, the title and the cover keep their size. Existing papers stay on
   Single.
   <!-- zh: **行距。** 「文件設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
+
+### Fixed
+- **No more blank line you cannot delete in an answer or a marking point.** Pressing Enter twice
+  and taking it back, or deleting the last word of a line and typing it again, no longer leaves an
+  empty line under the answer. A blank line already there can now be clicked, and Backspace
+  deletes it.
+  <!-- zh: **答案及評分要點不會再出現刪不走的空行。** 按兩次 Enter 再刪回，或刪掉一行最後的字再重新輸入，答案下面不會再多出一行空白。已經出現的空行現在可以按一下，再按 Backspace 刪除。 -->
+- **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer
+  says SCHOOL NAME after Paper 1 said your school.
+  <!-- zh: **新試卷會沿用上次輸入的學校名稱**，Paper 2 的封面不會在 Paper 1 已填好學校後仍顯示 SCHOOL NAME。 -->
+- **A duplicated document is named "（副本）" in the 中文 interface**, not "(copy)".
+  <!-- zh: **在中文介面建立的副本會以「（副本）」命名**，而不是「(copy)」。 -->
+- **Long folder names show in full in the folder list**, on two lines if needed, instead of
+  being cut off (for example "中六 Mock 202…").
+  <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
+
+### Changed
+- **The side panel tells the parts of a question apart by colour**, in every theme: the question
+  text grey; each source green, labelled "Source A", "Source B"… with what it holds; each part blue,
+  with its sub-parts lighter blue and nested inside it; the answer and marking amber, labelled
+  Teacher only. Source cards fold to one line and open when you click that source on the page. A
+  line at the top of the panel says where you are (for example "Question text › Source B" or
+  "(c) › (ii)"), and the card you clicked on the page gets a ring in its colour.
+  <!-- zh: **側欄以顏色區分題目各部分：** 題幹為灰色；每份資料為綠色，標示「資料 A」、「資料 B」…及其內容；分題為藍色，小分題為淺藍色並縮排於分題內；答案及評分為琥珀色，標示「教師專用」。各主題均適用。資料卡可摺疊成一行，在頁面上點選該資料時會自動打開。側欄頂部會顯示正在編輯的位置（例如「題幹 › 資料 B」或「(c) › (ii)」），在頁面上點選的部分會以相應顏色的外框標示。 -->
+- **Marking schemes in Chinese use HKEAA's wording.** "Mark the first point only" now prints
+  ［只批閱首項。］ (and ［只批閱首兩項。］…), and a group's maximum prints 最高：4, as the HKEAA
+  Chinese marking schemes print them.
+  <!-- zh: **中文評分方案改用考評局字眼。** 「只評閱第一點」改印［只批閱首項。］（及［只批閱首兩項。］等），組別最高分改印「最高：4」，與考評局中文評卷參考一致。 -->
 - **Chinese wording follows the Education Bureau's 2025 supplement.** The inflationary and deflationary gap templates now say 差距 (通脹差距, 通縮差距), the labour curves say 勞力需求 and 勞力供應, the topic "Market intervention" is 政府干預, and the externality template says 界外效應. Nothing in your saved worksheets changes.
   <!-- zh: **中文用詞對齊教育局 2025 年補充文件。** 通脹和通縮缺口範本改稱「差距」（通脹差距、通縮差距），勞動市場曲線改稱「勞力需求」和「勞力供應」，課題「市場干預」改為「政府干預」，外部效應範本改稱「界外效應」。已儲存的工作紙不受影響。 -->
 - **Translation and term checks accept 價格水平.** Check terms and the translator no longer

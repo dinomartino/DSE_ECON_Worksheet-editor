@@ -43,7 +43,7 @@ export const KEY_LAYOUT_WORDING = {
   legend: [
     { symbol: bi('/', '/'), meaning: bi('separates alternative answers; any one is accepted.', '分隔可接受的其他答案，答其中之一即可。') },
     { symbol: bi('n@', 'n@'), meaning: bi('n marks for each point.', '每項要點得 n 分。') },
-    { symbol: bi('max: n', '最高n分'), meaning: bi('the most marks the points above can earn.', '以上各項最多可得的分數。') },
+    { symbol: bi('max: n', '最高：n'), meaning: bi('the most marks the points above can earn.', '以上各項最多可得的分數。') },
     { symbol: bi('OR', '或'), meaning: bi('separates two complete alternative answers.', '分隔兩個完整的不同答案。') },
   ],
   /** HKEAA's figure in the Marks column layout: its caption, and the lead of the points shown in it. */

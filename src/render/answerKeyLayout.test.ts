@@ -182,7 +182,7 @@ describe('HKEAA style', () => {
     expect(legend).toHaveLength(KEY_LAYOUT_WORDING.legend.length * 2);
     expect(legend.every((row) => row.cells.every((cell) => cell.text.en.length === 0 || cell.text.zh.length === 0))).toBe(true);
     expect(plain(legend[2].cells[0].text.en)).toBe('max: n');
-    expect(plain(legend[6].cells[0].text.zh)).toBe('最高n分');
+    expect(plain(legend[6].cells[0].text.zh)).toBe('最高：n');
   });
 
   it('prints each question’s total and drops the MC notes the preset hides', () => {

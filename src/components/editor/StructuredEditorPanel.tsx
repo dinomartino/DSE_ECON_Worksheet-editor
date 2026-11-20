@@ -25,6 +25,7 @@ import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { excerptOfBlocks, MiniNumber, scrollPageTo } from './panelRows';
 import { MarkSchemeEditor } from './MarkSchemeEditor';
+import { SchemeStatusChip } from './SchemeStatusChip';
 import { PageFlowFields } from './PageFlowFields';
 import { SpaceAboveField } from './SpaceAboveField';
 import type { MarkScheme } from '@/model/markSchemeTypes';
@@ -121,8 +122,11 @@ function SchemeRow({
   menuLabel,
   kind,
   className = '',
+  scheme,
 }: {
   m: PanelMessages;
+  /** The row's marking-scheme chip (`SchemeStatusChip`), on a leaf's row. */
+  scheme?: ReactNode;
   open: boolean;
   onToggle: () => void;
   label: string;
@@ -164,6 +168,7 @@ function SchemeRow({
           {excerpt || <span className="italic">{m.typeOnPage}</span>}
         </span>
       </button>
+      {scheme}
       {marks}
       {lines}
       <Menu items={menu} label={menuLabel} />
@@ -514,6 +519,16 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                   }
                   menu={partMenu}
                   menuLabel={m.partActions(partLabel(partIndex))}
+                  scheme={
+                    !hasSubParts || part.scheme ? (
+                      <SchemeStatusChip
+                        ownerId={part.id}
+                        scheme={part.scheme}
+                        printedMarks={hasSubParts ? partMarks(part) : part.marks}
+                        onOpen={() => setExpandedParts((prev) => new Set(prev).add(part.id))}
+                      />
+                    ) : undefined
+                  }
                 />
 
                 {partOpen && (
@@ -649,6 +664,19 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                 }
                                 menu={subMenu}
                                 menuLabel={m.subActions(subPartLabel(subIndex))}
+                                scheme={
+                                  <SchemeStatusChip
+                                    ownerId={subPart.id}
+                                    scheme={subPart.scheme}
+                                    printedMarks={
+                                      sharesMarks && subIndex === subParts.length - 1 ? part.marks : subPart.marks
+                                    }
+                                    onOpen={() => {
+                                      setExpandedParts((prev) => new Set(prev).add(part.id));
+                                      setExpandedSubs((prev) => new Set(prev).add(subPart.id));
+                                    }}
+                                  />
+                                }
                               />
                               {subOpen && (
                                 <div className="animate-fade-in space-y-2 px-2 pb-2 pt-1">
@@ -715,6 +743,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                     />
                                   )}
                                   <MarkSchemeEditor
+                                    ownerId={subPart.id}
                                     scheme={subPart.scheme}
                                     printedMarks={
                                       sharesMarks && subIndex === subParts.length - 1
@@ -775,6 +804,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                       />
                     )}
                     <MarkSchemeEditor
+                      ownerId={part.id}
                       scheme={part.scheme}
                       printedMarks={hasSubParts ? partMarks(part) : part.marks}
                       onChange={(scheme) => setParts(replacePart(question.parts, partIndex, withScheme(part, scheme)))}

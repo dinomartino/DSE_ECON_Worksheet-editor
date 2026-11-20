@@ -525,6 +525,61 @@ describe('a scheme shown as a paragraph (k-0470, `MarkScheme.display`)', () => {
   });
 });
 
+describe('scheme headings and a stated content mark (k-0475, `MarkGroup.heading`, `MarkScheme.contentMax`)', () => {
+  // Both nested in a question's scheme, so no KNOWN_KEYS entry. The published corpus has
+  // neither and must print exactly as before; a document with them must round-trip; a
+  // malformed value from a hand-edited file must open and print as if absent.
+  const TEACHER: OutputMode = { language: 'en', version: 'teacher' };
+  const essays = (worksheet: ReturnType<typeof migrate>) =>
+    worksheet.questions.filter((q) => (q as StructuredQuestion).parts.length === 0) as StructuredQuestion[];
+  const editScheme = (
+    worksheet: ReturnType<typeof migrate>,
+    edit: (scheme: NonNullable<StructuredQuestion['scheme']>) => unknown,
+  ) => {
+    const [first] = essays(worksheet);
+    const edited = { ...first, scheme: edit(first.scheme!) } as StructuredQuestion;
+    return { ...worksheet, questions: worksheet.questions.map((q) => (q.id === first.id ? edited : q)) };
+  };
+  const withHeadingAndMax = (heading: unknown, contentMax: unknown) =>
+    (scheme: NonNullable<StructuredQuestion['scheme']>) => ({
+      ...scheme,
+      contentMax,
+      routes: scheme.routes.map((route, index) =>
+        index === 0 ? { ...route, groups: route.groups.map((group, g) => (g === 0 ? { ...group, heading } : group)) } : route,
+      ),
+    });
+
+  it('a published scheme has neither, and prints unchanged', () => {
+    const worksheet = migrate(structuredClone(optionalCorpus));
+    const json = JSON.stringify(worksheet.questions);
+    expect(json).not.toMatch(/"heading"|"contentMax"/);
+    const absent = editScheme(worksheet, withHeadingAndMax(undefined, undefined));
+    expect(JSON.stringify(renderWorksheet(absent, TEACHER))).toBe(JSON.stringify(renderWorksheet(worksheet, TEACHER)));
+  });
+
+  it('carries both through load → save → load, and prints them', () => {
+    const loaded = migrate(structuredClone(optionalCorpus));
+    const heading = { en: [{ text: 'Possible reasons:' }], zh: [{ text: '可能理由：' }] };
+    const edited = editScheme(loaded, withHeadingAndMax(heading, 9));
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(edited))));
+    expect(reloaded.__unknown).toBeUndefined();
+    const scheme = essays(reloaded)[0].scheme!;
+    expect(scheme.contentMax).toBe(9);
+    expect(scheme.routes[0].groups[0].heading).toEqual(heading);
+    const printed = JSON.stringify(renderWorksheet(reloaded, TEACHER));
+    expect(printed).toContain('Possible reasons:');
+    expect(printed).toContain('The maximum mark for content is 9 marks.');
+  });
+
+  it('malformed values (a hand-edited file) open, print as if absent, and are kept on save', () => {
+    const loaded = migrate(structuredClone(optionalCorpus));
+    const odd = editScheme(loaded, withHeadingAndMax('not text', 'twelve'));
+    expect(JSON.stringify(renderWorksheet(odd, TEACHER))).toBe(JSON.stringify(renderWorksheet(loaded, TEACHER)));
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(odd))));
+    expect(essays(reloaded)[0].scheme?.contentMax).toBe('twelve');
+  });
+});
+
 describe('the v3 corpus: a stakeholder diagram beside a table, in a DRQ', () => {
   // `v3-stakeholder.json`: frozen, written once by `scripts/emit-v3-stakeholder-corpus.test.ts`.
   // v3 is written only when a document holds a stakeholder diagram (k-0469).

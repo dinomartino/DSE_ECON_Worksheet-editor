@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   createMarkEc,
   createMarkGroup,
@@ -10,6 +10,7 @@ import {
   createMarkScheme,
   groupMax,
   groupPoints,
+  isSchemeEmpty,
   isStandardEc,
   routeGroups,
   routesDisagree,
@@ -18,8 +19,16 @@ import {
   schemeMismatch,
   schemeMax,
   schemeRoutes,
+  statedContentMax,
+  withContentMax,
   withSchemeDisplay,
 } from '@/model/markScheme';
+import {
+  createSchemeFromPattern,
+  patternPlan,
+  SCHEME_PATTERN_IDS,
+  type SchemePatternId,
+} from '@/model/markSchemePatterns';
 import type {
   MarkEcDescriptor,
   MarkGroup,
@@ -206,9 +215,51 @@ function GroupBox({
   const m = useMessages(MARK_SCHEME_MESSAGES);
   const points = groupPoints(group);
   const setPoints = (next: MarkPoint[]) => onChange({ ...group, points: next });
+  const hasRules = group.take !== undefined || group.each !== undefined || group.max !== undefined;
+  // The rule boxes wait until asked for: most groups have none, and three empty boxes
+  // on every group read as something to fill in.
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const showRules = hasRules || rulesOpen;
   return (
     <div className="space-y-1.5 rounded-md border border-line bg-surface-sunken/40 p-1.5">
+      {group.heading !== undefined && (
+        <div className="flex items-start gap-1.5">
+          <div className="min-w-0 flex-1">
+            <BiTextField
+              translate={{ kind: 'schemePoint' }}
+              ariaLabel={m.groupHeading(index + 1)}
+              value={group.heading}
+              rows={1}
+              placeholderEn="Possible reasons:"
+              placeholderZh="可能理由："
+              onChange={(heading) => onChange({ ...group, heading })}
+            />
+          </div>
+          <IconButton label={m.removeHeading} variant="danger" onClick={() => onChange(omit(group, 'heading'))}>
+            <span aria-hidden>✕</span>
+          </IconButton>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        {!showRules && (
+          <>
+            {group.heading === undefined && (
+              <Button size="sm" variant="subtle" onClick={() => onChange({ ...group, heading: emptyBiText() })}>
+                {m.addHeading}
+              </Button>
+            )}
+            <Button size="sm" variant="subtle" title={m.rulesHint} onClick={() => setRulesOpen(true)}>
+              {m.rules}
+            </Button>
+          </>
+        )}
+        {showRules && group.heading === undefined && (
+          <Button size="sm" variant="subtle" onClick={() => onChange({ ...group, heading: emptyBiText() })}>
+            {m.addHeading}
+          </Button>
+        )}
+        {showRules && (
+        <>
         <Rule label={m.any}>
           <MiniNumber
             label={m.creditAny(index + 1)}
@@ -233,8 +284,13 @@ function GroupBox({
             onChange={(max) => onChange(withRule(group, 'max', max))}
           />
         </Rule>
+        </>
+        )}
         <span className="ml-auto flex items-center gap-1">
-          <Pill>{m.marksShort(groupMax(group))}</Pill>
+          {/* Indicative points carry no marks: a "0m" pill would read as a mistake. */}
+          {(groupMax(group) > 0 || points.some((point) => point.marks !== undefined)) && (
+            <Pill>{m.marksShort(groupMax(group))}</Pill>
+          )}
           {onRemove && (
             <IconButton label={m.deleteGroup(index + 1)} variant="danger" onClick={onRemove}>
               <span aria-hidden>✕</span>
@@ -380,6 +436,11 @@ function EcBlock({
   const ec = scheme.ec!;
   const rows = ec.descriptors ?? [];
   const setRows = (descriptors: MarkEcDescriptor[]) => onChange({ ...scheme, ec: { ...ec, descriptors } });
+  // HKEAA's standard table is twelve statements: folded to one line until its wording is
+  // wanted, so the part's own points stay in view (k-0475).
+  const standard = isStandardEc(ec);
+  const [unfolded, setUnfolded] = useState(false);
+  const folded = standard && !unfolded;
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
@@ -399,7 +460,15 @@ function EcBlock({
           <span aria-hidden>✕</span>
         </IconButton>
       </div>
-      {rows.map((row, index) => (
+      {folded && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="flex-1 text-[11px] text-ink-muted">{m.ecStandardFolded}</span>
+          <Button size="sm" variant="subtle" onClick={() => setUnfolded(true)}>
+            {m.ecEditWording}
+          </Button>
+        </div>
+      )}
+      {!folded && rows.map((row, index) => (
         <div key={row.id} className={`flex items-start gap-1.5 ${stacked ? 'flex-wrap' : ''}`}>
           <MiniNumber
             label={m.ecRowMarks(index + 1)}
@@ -425,7 +494,7 @@ function EcBlock({
           </IconButton>
         </div>
       ))}
-      <div className="flex flex-wrap items-center gap-1.5">
+      {!folded && <div className="flex flex-wrap items-center gap-1.5">
         <Button
           size="sm"
           variant="subtle"
@@ -443,6 +512,66 @@ function EcBlock({
             {m.useStandardEc}
           </Button>
         )}
+      </div>}
+    </div>
+  );
+}
+
+/** The hint a pattern button carries: what it will build for this part's marks. */
+function usePatternHint() {
+  const m = useMessages(MARK_SCHEME_MESSAGES);
+  return (id: SchemePatternId, marks: number | undefined): string => {
+    const plan = patternPlan(id, marks);
+    switch (id) {
+      case 'points':
+        return m.pattern_pointsHint(plan.points);
+      case 'reasons':
+        return m.pattern_reasonsHint(plan.each, plan.take, plan.max);
+      case 'paragraph':
+        return m.pattern_paragraphHint(plan.total);
+      case 'explainDiagram':
+        return m.pattern_explainDiagramHint(plan.verbal, plan.diagram);
+      case 'essay':
+        return m.pattern_essayHint(plan.content, plan.ec);
+    }
+  };
+}
+
+/**
+ * The shapes HKEAA's DRQ schemes take, a click each (k-0475): offered while the part has
+ * no scheme words yet, sized to the marks the paper prints for it.
+ */
+function PatternPicker({
+  printedMarks,
+  onPick,
+}: {
+  printedMarks: number | undefined;
+  onPick: (scheme: MarkScheme) => void;
+}) {
+  const m = useMessages(MARK_SCHEME_MESSAGES);
+  const hint = usePatternHint();
+  const label: Record<SchemePatternId, string> = {
+    points: m.pattern_points,
+    reasons: m.pattern_reasons,
+    paragraph: m.pattern_paragraph,
+    explainDiagram: m.pattern_explainDiagram,
+    essay: m.pattern_essay,
+  };
+  return (
+    <div className="space-y-1">
+      <span className="text-[11px] text-ink-muted">{m.startFrom}</span>
+      <div role="group" aria-label={m.patternsLabel} className="flex flex-wrap gap-1">
+        {SCHEME_PATTERN_IDS.map((id) => (
+          <Button
+            key={id}
+            size="sm"
+            variant="subtle"
+            title={hint(id, printedMarks)}
+            onClick={() => onPick(createSchemeFromPattern(id, printedMarks))}
+          >
+            {label[id]}
+          </Button>
+        ))}
       </div>
     </div>
   );
@@ -452,7 +581,10 @@ export function MarkSchemeEditor({
   scheme,
   printedMarks,
   onChange,
+  ownerId,
 }: {
+  /** The leaf's id, so its row's scheme chip can bring this into view. */
+  ownerId?: string;
   scheme: MarkScheme | undefined;
   /** The marks the paper prints for this leaf, to check the scheme's total against. */
   printedMarks: number | undefined;
@@ -462,9 +594,15 @@ export function MarkSchemeEditor({
   const m = useMessages(MARK_SCHEME_MESSAGES);
   if (!scheme) {
     return (
-      <Button size="sm" variant="subtle" onClick={() => onChange(createMarkScheme())}>
-        {m.addMarkingPoints}
-      </Button>
+      <div className="space-y-1.5 rounded-md border border-dashed border-line p-2" data-scheme-editor="" data-scheme-owner={ownerId}>
+        <span className="block text-[11px] font-medium text-ink-muted">
+          {m.markingScheme} <span className="font-normal text-ink-subtle">{m.teacherVersion}</span>
+        </span>
+        <PatternPicker printedMarks={printedMarks} onPick={onChange} />
+        <Button size="sm" variant="subtle" onClick={() => onChange(createMarkScheme())}>
+          {m.addMarkingPoints}
+        </Button>
+      </div>
     );
   }
 
@@ -480,6 +618,14 @@ export function MarkSchemeEditor({
     ),
   );
 
+  const stated = statedContentMax(scheme);
+  const indicative =
+    stated !== undefined &&
+    routes.every((route) =>
+      routeGroups(route).every((group) =>
+        group.each === undefined && groupPoints(group).every((point) => point.marks === undefined),
+      ),
+    );
   const menu: MenuItem[] = [
     { label: m.addOrRoute, onSelect: () => setRoutes([...routes, createMarkRoute()]) },
     ...(levels.length === 0
@@ -492,7 +638,7 @@ export function MarkSchemeEditor({
   ];
 
   return (
-    <div className="space-y-2 rounded-md border border-line p-2">
+    <div className="space-y-2 rounded-md border border-line p-2" data-scheme-editor="" data-scheme-owner={ownerId}>
       <div className="flex items-center gap-1.5">
         <span className="flex-1 text-[11px] font-medium text-ink-muted">
           {m.markingScheme} <span className="font-normal text-ink-subtle">{m.teacherVersion}</span>
@@ -522,7 +668,25 @@ export function MarkSchemeEditor({
           ]}
         />
       </div>
-      {display === 'paragraph' && hasGroupRules && (
+      {isSchemeEmpty(scheme) && !scheme.levels && (
+        <PatternPicker printedMarks={printedMarks} onPick={onChange} />
+      )}
+      {stated !== undefined && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Rule label={m.contentMax}>
+            <MiniNumber
+              label={m.contentMax}
+              value={stated}
+              onChange={(value) => onChange(withContentMax(scheme, value))}
+            />
+          </Rule>
+          <IconButton label={m.removeContentMax} variant="danger" onClick={() => onChange(withContentMax(scheme, undefined))}>
+            <span aria-hidden>✕</span>
+          </IconButton>
+          {indicative && <span className="basis-full text-[11px] text-ink-muted">{m.indicativeNote}</span>}
+        </div>
+      )}
+      {display === 'paragraph' && (hasGroupRules || routes.some((route) => routeGroups(route).some((group) => group.heading))) && (
         <p className="text-[11px] text-ink-muted">{m.paragraphRulesHidden}</p>
       )}
       {routesDisagree(scheme) && (
@@ -563,6 +727,39 @@ export function MarkSchemeEditor({
           <EcBlock scheme={scheme} onChange={onChange} />
         </div>
       )}
+      {/* What a DRQ part adds, in sight rather than in the ⋯ menu (k-0475). */}
+      <div className="flex flex-wrap gap-1 border-t border-line pt-2">
+        <Button size="sm" variant="subtle" onClick={() => setRoutes([...routes, createMarkRoute()])}>
+          {m.addOr}
+        </Button>
+        {!scheme.ec && (
+          <Button size="sm" variant="subtle" onClick={() => onChange({ ...scheme, ec: createMarkEc() })}>
+            {m.addEcTable}
+          </Button>
+        )}
+        {stated === undefined && (
+          <Button
+            size="sm"
+            variant="subtle"
+            title={m.addContentMaxHint}
+            onClick={() =>
+              onChange(
+                withContentMax(
+                  scheme,
+                  Math.max(0, (printedMarks ?? schemeMax(scheme)) - (scheme.ec ? scheme.ec.max : 0)),
+                ),
+              )
+            }
+          >
+            {m.addContentMax}
+          </Button>
+        )}
+        {levels.length === 0 && (
+          <Button size="sm" variant="subtle" onClick={() => onChange({ ...scheme, levels: [createMarkLevel()] })}>
+            {m.addLevelsShort}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
