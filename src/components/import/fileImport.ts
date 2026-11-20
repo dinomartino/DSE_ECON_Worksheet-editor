@@ -1,9 +1,9 @@
-import { DocxReadError, isPdfReadError, readDocx, readPdf, type Analysis, type ImageRef, type ImportBatch, type PageChrome, type ReadPaste } from '@/import';
+import { DocxReadError, isPdfReadError, readDocx, readPdf, withImportResults, type Analysis, type ImageRef, type ImportBatch, type PageChrome, type ReadPaste } from '@/import';
 import { planChrome } from '@/import/chromePlan';
 import { questionMarks } from '@/model/marks';
 import { createWorksheetFrom, type DocumentType } from '@/model/newWorksheet';
 import type { Side } from '@/model/textSlots';
-import type { LanguageMode, Worksheet } from '@/model/types';
+import type { LanguageMode, Question, Worksheet } from '@/model/types';
 import { useWorksheetStore, type QuestionBatchReport } from '@/store/worksheetStore';
 import { pasteVerdict, review, type Language } from './pasteSession';
 import { materialize } from './previewDoc';
@@ -228,7 +228,15 @@ export function createImportedDocument(
   };
   open(worksheet);
   const store = useWorksheetStore.getState();
-  const report = store.insertQuestionBatch(batch.builds, { worksheetId: worksheet.id, ...(batch.lead ? { lead: batch.lead } : {}) });
+  // Exam results from an answer file (k-0480) are keyed by question id: note each id as its
+  // question is built, and write them last in the same commit (one ⌘Z takes back both).
+  const ids: string[] = [];
+  const builds = batch.results ? batch.builds.map((build, k) => ({ ...build, fill: (fresh: Question) => ((ids[k] = fresh.id), build.fill(fresh)) })) : batch.builds;
+  const report = store.insertQuestionBatch(builds, {
+    worksheetId: worksheet.id,
+    ...(batch.lead ? { lead: batch.lead } : {}),
+    ...(batch.results ? { finish: (draft: Worksheet) => withImportResults(batch, ids)?.(draft) ?? draft } : {}),
+  });
   if (report.ok) {
     store.select(report.questionIds[0]);
     void save?.(report.committed).catch(() => undefined);

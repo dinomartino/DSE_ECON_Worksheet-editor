@@ -199,21 +199,41 @@ function subPart(): QuestionSubPart {
  * the question number's gutter, left of "(e)").
  */
 function strategyTable(contentWidthTwips: number): TableBlock {
+  return strategyTableOf(
+    [
+      [bi('Strategy 1', '策略一'), emptyBiText()],
+      [bi('Strategy 2', '策略二'), emptyBiText()],
+    ],
+    contentWidthTwips,
+  );
+}
+
+/**
+ * A strategy table holding `rows` (label | what it does), as the DRQ starter lays one out;
+ * the import makes the one a paper prints from it (k-0480).
+ */
+export function strategyTableOf(
+  rows: ReadonlyArray<readonly [BiText, BiText]>,
+  contentWidthTwips: number = contentWidth(DEFAULT_PAGE_SETUP),
+): TableBlock {
   const table = buildTableFromTemplate('views');
   const indent = contentWidthTwips > 0 ? PART_TEXT_INDENT / contentWidthTwips : 0;
-  const labels = [bi('Strategy 1', '策略一'), bi('Strategy 2', '策略二')];
+  const template = table.rows[0];
   return {
     ...table,
     indent,
     width: 1 - indent,
     columnWidths: [0.22, 0.78],
-    rows: labels.map((label, index) => ({
-      id: newId(),
-      cells: [
-        { ...table.rows[index].cells[0], text: label },
-        { ...table.rows[index].cells[1], text: emptyBiText() },
-      ],
-    })),
+    rows: rows.map(([label, text], index) => {
+      const like = table.rows[index] ?? template;
+      return {
+        id: newId(),
+        cells: [
+          { ...like.cells[0], id: newId(), text: label },
+          { ...like.cells[1], id: newId(), text },
+        ],
+      };
+    }),
   };
 }
 

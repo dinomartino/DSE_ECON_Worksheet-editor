@@ -244,7 +244,7 @@ export function toSourceLines(raw: readonly RawLine[]): SourceLine[] {
   for (const [k, line] of raw.entries()) {
     const base = {
       ...(line.pageBreak ? { pageBreak: true } : {}),
-      ...(line.page !== undefined ? { page: line.page, x: line.x, y: line.y } : {}),
+      ...(line.page !== undefined ? { page: line.page, x: line.x, y: line.y, ...(line.right !== undefined ? { right: line.right } : {}) } : {}),
     };
     if (line.image) {
       out.push({ ...base, i: 0, runs: [], text: '', raw: '', depth: 0, image: line.image });

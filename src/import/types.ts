@@ -97,6 +97,8 @@ export interface SourceLine {
   page?: number;
   x?: number;
   y?: number;
+  /** Where the line's text ends (PDF and scans, points); a marks column beside it is not counted (k-0480). */
+  right?: number;
   image?: ImageRef;
 }
 
@@ -116,15 +118,25 @@ export type Pin =
   | { kind: 'join'; line: number }
   /** `line`: any line of the question. */
   | { kind: 'language'; line: number; side: Side }
-  /** `line`: any line of the question; `index`: 0 = A. `from: 'sheet'`: set by `matchAnswers`. */
-  | { kind: 'answer'; line: number; index: number; from?: 'sheet' }
+  /**
+   * `line`: any line of the question; `index`: 0 = A. `from: 'sheet'`: set by `matchAnswers`.
+   * `percent`: the % of candidates who chose the right answer, as an examination report
+   * prints it ("D (69)"; k-0480), for the answer key's exam results.
+   */
+  | { kind: 'answer'; line: number; index: number; from?: 'sheet'; percent?: number }
   /**
    * A marking scheme or answer from an answer file (`matchAnswers`). `line`: any line of the
    * question; `part`/`subPart`: 0-based positions in it, absent for the question itself.
    * A written leaf gets `scheme` when any point has marks (or `each`/`max`), else `answer`;
    * an MC gets the text as its `explanation`. `notes`: a marker's notes, printed after the points.
    */
-  | { kind: 'scheme'; line: number; part?: number; subPart?: number; points: SchemePoint[]; notes?: InlineRun[][]; each?: number; max?: number }
+  | ({ kind: 'scheme'; line: number; part?: number; subPart?: number; points: SchemePoint[]; notes?: InlineRun[][]; each?: number; max?: number } & SchemeShape)
+  /**
+   * Comments on candidates' performance from an answer file (k-0480), for the answer key's
+   * exam results: on the MC paper and on the written questions, a paragraph per row.
+   * `line` is always -1: the comments belong to the paper, not to a line of it.
+   */
+  | { kind: 'results'; line: -1; mcComments?: InlineRun[][]; sqComments?: InlineRun[][] }
   /**
    * A picture the teacher added, placed right after `line`'s content in the question that
    * owns it (an option line: under that option). `id` tells two pictures on one line apart.
@@ -137,10 +149,44 @@ export type Pin =
 export interface SchemePoint {
   runs: InlineRun[];
   marks?: number;
+  /** Into `SchemeShape.groups`, when the scheme has groups. */
+  group?: number;
+}
+
+/**
+ * A group of points as the sheet heads it (k-0480): HKEAA's underlined line above it
+ * ("Possible reasons:", 可能因素：) and the rules printed beside it (`2@ max: 4`,
+ * "[Mark the FIRST TWO points only.]").
+ */
+export interface SchemeGroup {
+  heading?: InlineRun[];
+  each?: number;
+  max?: number;
+  /** "[Mark the FIRST n points only.]" / [只批閱首兩項。]: n points earn credit, the first ones. */
+  take?: number;
+  firstOnly?: boolean;
+}
+
+/**
+ * The parts of a scheme beyond its points (k-0480), as the editor's `MarkScheme` holds them:
+ * groups, Effective Communication, a stated content mark, level descriptors, and HKEAA's
+ * paragraph style. All optional: a sheet without them reads as before.
+ */
+export interface SchemeShape {
+  /** Present when the sheet heads its points or gives groups their own rules; each point's `group` indexes it. */
+  groups?: SchemeGroup[];
+  /** "Marks for effective communication (EC: max 2 marks)" and its Marks | Performance rows. */
+  ec?: { max: number; rows: Array<{ marks: number; runs: InlineRun[] }> };
+  /** "The maximum mark for content is 12 marks." */
+  contentMax?: number;
+  /** "L3 (7–9 marks): …" — level descriptors, lowest first. */
+  levels?: Array<{ min: number; max: number; runs: InlineRun[] }>;
+  /** One paragraph with its total beside it (HKEAA's paragraph style, `MarkScheme.display`). */
+  paragraph?: true;
 }
 
 /** What a `scheme` pin put on a question, part or sub-part. */
-export interface OutScheme {
+export interface OutScheme extends SchemeShape {
   points: SchemePoint[];
   notes?: InlineRun[][];
   each?: number;
@@ -165,7 +211,8 @@ export interface LayoutProfile {
 
 export type OutBlock =
   | { kind: 'paragraph'; lines: number[]; runs: InlineRun[] }
-  | { kind: 'table'; lines: number[]; rows: InlineRun[][][] }
+  /** `look: 'strategy'`: a DRQ essay's strategy table (label | what it does), laid out as the DRQ starter's (k-0480). */
+  | { kind: 'table'; lines: number[]; rows: InlineRun[][][]; look?: 'strategy' }
   | { kind: 'source'; lines: number[]; label: InlineRun[]; blocks: OutBlock[] }
   /**
    * `pin`: placed by an image pin (its id). `missing`: a figure slot, a picture lost in the
@@ -211,6 +258,8 @@ export interface OutQuestion {
   marks?: number;
   answerSpace?: number;
   answer?: { index: number; from: 'key' | 'format' | 'inline' | 'pin' | 'sheet' };
+  /** % of candidates who chose the right answer, from an answer file (k-0480). */
+  percent?: number;
   /** From an answer file (`scheme` pin): a written question's own scheme, or an MC's explanation. */
   scheme?: OutScheme;
   side: Side;
@@ -231,6 +280,8 @@ export interface Outline {
   headings: number[];
   /** Question number → option index, from an answer key list. */
   answerKey: Record<number, number>;
+  /** Comments on candidates' performance, from an answer file (`results` pin; k-0480). */
+  results?: { mcComments?: InlineRun[][]; sqComments?: InlineRun[][] };
 }
 
 export type FlagKind =

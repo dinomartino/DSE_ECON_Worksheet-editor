@@ -53,6 +53,9 @@ describe('what a piece of text is', () => {
     expect(mastheadVerdict('Study the table below.')).toBe('stop');
     expect(mastheadVerdict('The government raised the tax on cars')).toBe('stop');
     expect(mastheadVerdict('Demand and supply', { centred: true })).toBe('masthead');
+    // An answer key's rows are content, however large they are set (k-0480).
+    expect(mastheadVerdict('1 D (49)   26. B (50)', { large: true })).toBe('stop');
+    expect(mastheadVerdict('12. A', { centred: true })).toBe('stop');
     expect(mastheadSpan(Array(10).fill('masthead'))).toBe(8);
   });
 });

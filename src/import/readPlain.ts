@@ -22,6 +22,8 @@ export interface RawLine {
   page?: number;
   x?: number;
   y?: number;
+  /** Where its text ends (PDF reader, points): a marks column beside it left out (k-0480). */
+  right?: number;
   /** `.docx` paragraph layout, for the masthead (`docxChrome.ts`): alignment, tab stops, largest type. */
   layout?: { jc?: string; tabs?: TabStop[]; size?: number };
 }

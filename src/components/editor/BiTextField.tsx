@@ -6,6 +6,8 @@ import { fieldNeedsFill } from '@/model/textWalk';
 import { sameRuns, type Side } from '@/model/textSlots';
 import type { BiText, RichText } from '@/model/types';
 import { RichTextEditable } from '@/components/preview/RichTextEditable';
+import { selectionOffsets } from '@/components/preview/richTextDom';
+import { isImeKeydown } from '@/components/ui/ime';
 import { isModalLayerOpen } from '@/components/ui/modalLayer';
 import { SparkleIcon } from '@/components/ui/icons';
 import {
@@ -65,6 +67,15 @@ interface Props {
   /** What the field holds, for the inline AI fill (§A.4). Without it there is no fill
    *  button: a guessed kind would drop the wording rules. */
   translate?: FieldTranslate;
+  /**
+   * Word's Enter, as the page makes it (k-0482): a plain Enter calls this with the side and
+   * the caret's range instead of typing a line break; Shift+Enter still breaks the line,
+   * and an Enter that confirms a Chinese IME composition is the IME's. Without it, Enter
+   * breaks the line (an answer, a descriptor: one text that may run to lines).
+   */
+  onEnter?: (side: Side, range: { start: number; end: number }) => void;
+  /** Names the field on the panel (`data-panel-field`), so a split can open the new one. */
+  fieldKey?: string;
 }
 
 /** The fill's transient line: a result (6 s, or until the side changes) or an error
@@ -103,6 +114,8 @@ export function BiTextField({
   placeholderZh,
   ariaLabel,
   translate,
+  onEnter,
+  fieldKey,
 }: Props) {
   const m = useMessages(BITEXT_MESSAGES);
   const name = ariaLabel ?? label;
@@ -132,7 +145,7 @@ export function BiTextField({
     // announces as "en" and says nothing about what the field is for.
     const sideName = side === 'en' ? m.sideEn : m.sideZh;
     return (
-    <div className="relative">
+    <div className="relative" data-panel-field={fieldKey} data-panel-side={side}>
       <RichTextEditable
         id={`${id}-${side}`}
         value={(value[side] ?? []) as RichText}
@@ -142,6 +155,18 @@ export function BiTextField({
         style={{ minHeight }}
         lang={langTag}
         ariaLabel={name ? `${name} (${sideName})` : sideName}
+        onKeyDown={
+          onEnter
+            ? (event) => {
+                if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return;
+                if (isImeKeydown(event.nativeEvent)) return;
+                const range = selectionOffsets(event.currentTarget);
+                if (!range) return;
+                event.preventDefault();
+                onEnter(side, range);
+              }
+            : undefined
+        }
       />
       {isRichTextEmpty(value[side]) && <Placeholder text={placeholder} />}
       {bothVisible && tag(side === 'en' ? 'en' : '中')}

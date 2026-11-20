@@ -19,7 +19,7 @@ import { solve } from './solve';
 import type { PageChrome } from './pageChrome';
 import type { AnalyseOptions, Analysis, PasteInput, SourceLine } from './types';
 
-export { buildImport, previewFigure, type ImportBatch } from './build';
+export { buildImport, importedRuns, previewFigure, withImportResults, type ImportBatch, type ImportResults } from './build';
 export {
   readAnswerSheet,
   type AnswerEntry,

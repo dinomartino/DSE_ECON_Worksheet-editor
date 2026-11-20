@@ -862,3 +862,70 @@ answers, marking points and the layout profile (the dialog's); a paste in the si
 (formatting kept, no offer). Proof: `src/import/pasteRuns.test.ts`,
 `src/components/editor/pasteActions.test.ts`, `scripts/word-like-verify.mjs --part=paste` (real
 ⌘V / Ctrl+V on Chrome's clipboard, EN + 中, MacBook and iPad sizes).
+
+## 15. DRQs, HKEAA schemes, exam results, rich runs (as built, 2026-11-20, k-0480)
+
+The editor gained DRQ sources and parts (k-0469, k-0474), HKEAA's scheme notation (k-0470,
+k-0475), exam results (k-0471), blank-line rules (k-0468), fractions and run bold (k-0479). The
+import now makes the same things, so an imported paper matches one built by hand. Tested on DSE
+2022–2025 Paper 2 and the 2026 papers and marking schemes (EN, 中), read through the app's own
+scan path with the shell's OCR ported to Python (`scripts/ocr-pages.py`); none of that text is in
+the repo (`scripts/import-probe.test.ts` writes outside it).
+
+**DRQ (`src/import/drq.ts`, after the walk).** Sources and the essay note already came in as
+`source` blocks and a part's `blocksBefore`. Added: a mark printed once after the last of two
+or more sub-parts, none on the others, moves to the part (as the DRQ starter keeps it; it
+prints in the same place). Two or more paragraphs in a run opening "Strategy X", "Scheme C",
+"Suggestion 2", 策略甲… become the starter's strategy table (`model/drq.ts:strategyTableOf`); a
+paragraph set at least 15 pt right of its row is that row wrapping, one back at the row's edge
+ends the table (PDF and scans only: a Word file's rows are whole paragraphs). A drawn table whose
+first column is all such labels takes the same look. Charts in a scan stay pictures: a picture
+holds no figures to rebuild a data chart from.
+
+**Schemes (`answerSheet.ts`).** An entry keeps `SchemeShape`: groups (a heading line: short,
+ending in a colon, no marks; also on the label line), each with its `n@`, `max` and take-first
+("[Mark the FIRST TWO points only.]", [只批閱首兩項。]); EC (a line naming effective
+communication starts it, rows open with their mark 0–3, the next row's mark glued to a line's
+end is split off); a stated content max (内/內 both read); levels ("L3 (7–9 marks)", 第三級);
+paragraph style (one marked point of two or more sentences, no groups). One unheaded group with
+no take-first collapses back to the entry's own `each`/`max`, so a sheet without structure reads
+exactly as before. Dashes come off points (the key prints its own bullets). A point's wrapped
+lines join: by a dash list, a lower-case or Chinese run-on, or, where the reader knows where
+lines end (`SourceLine.right`, PDF and scans), a line that runs to the page's text edge without
+ending a sentence; a short line ends the point even when the next opens in lower case. The
+marks column's rules ("2@", "max: 2", 最高：4) are marks-column text in the PDF layout, not a
+table column, and read as the group's rule.
+
+**Exam results.** A key pair may carry "(69)" → `percent`, which rides the `answer` pin (kept
+whichever letter the teacher settles on) to `OutQuestion.percent`. A comments section (heading
+"Comments on candidates' performance", 考生表現) ends the scheme: every line after it is a
+comment paragraph, tagged with the paper heading above it; its table header is skipped. The
+`results` pin (line −1) carries an MC paper's comments (general prose, and per discussed question
+the words after the last option % as "Q8: …", the quoted question left out) or a written paper's.
+`buildImport` returns `results` (each MC's % by build index, the comments as `BiText`), and
+`createImportedDocument` writes them with `withImportResults` in `insertQuestionBatch`'s `finish`,
+the ids noted as each build is filled: one commit, one ⌘Z. No results = no field, as before.
+
+**Scans.** The detector glues a key's column of short cells into one box it reads sideways
+("ABD", "6789.10"); `unstackColumn` splits it back into rows when the box is that many rows tall.
+The masthead stops at a key row. Inside a run of key rows, a row OCR damaged (a lost letter) is
+still a key row when what is left is key-shaped, so the rest of the key reads. Two numbering runs
+start only where numbers go down: a repeated number (a stray piece OCR split off) does not split.
+In the PDF layout, two different pieces of text that overlap across the page and sit most of a
+line apart never share a row (a tall "2@" box had drawn two lines into one).
+
+**Rich runs (after k-0479).** Word equations become runs: `m:f` → `fractionRuns` (a fraction in a
+fraction prints a/b), `m:sSub`/`m:sSup`/`m:sSubSup`/`m:sPre` → `vertAlign`, `m:d` keeps its
+brackets, `m:rad` √, `m:nary` its sign; variables come in upright. A PDF's subscript or
+superscript is a short piece set smaller than the row's main text, below or above its baseline
+(rows now also take a smaller piece near the main text's baseline when a superscript set the
+row's top); not for scans, whose box heights say too little (OCR reads Q₁ as "Q1"). Bold comes in
+as run `bold`, which ⌘B now takes off (k-0479); bold that marked an MC answer is still dropped.
+
+**Text.** Every imported field goes through `importedRuns`: no break at either end, a run of
+blank lines kept to one (k-0468, issue #7.1).
+
+**Not done.** A PDF's stacked fractions (no structure to read them from); OCR subscripts; a views
+table rebuilt from a scan's role | comment layout; pictures in a scheme (a mark point holds text
+only, so a scheme's model figure is left out); the review screen does not yet say that exam
+results were found.

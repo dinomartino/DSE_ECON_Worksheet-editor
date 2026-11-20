@@ -173,10 +173,17 @@ describe('readAnswerSheet', () => {
     expect(sheet.entries[1].marks).toBe(3);
   });
 
-  it('reads "(1@, max 2)" after a point as the group rule', () => {
+  it('reads "(1@, max 2)" after a heading as that group\'s rule (k-0480: the heading heads the group)', () => {
     const sheet = readAnswerSheet(plain('3(c)\tFeatures of a partnership: (1@, max 2)\n- unlimited liability\n- simple to set up'));
+    expect(sheet.entries[0]).toMatchObject({ question: 3, part: 'c', marks: 2 });
+    expect(sheet.entries[0].groups).toEqual([{ heading: [{ text: 'Features of a partnership:' }], each: 1, max: 2 }]);
+    expect(points(sheet, 0).map((p) => p[0])).toEqual(['unlimited liability', 'simple to set up']);
+  });
+
+  it('reads "(1@, max 2)" after a point that is not a heading as the entry rule', () => {
+    const sheet = readAnswerSheet(plain('3(c)\tAny feature of a partnership (1@, max 2)\n- unlimited liability\n- simple to set up'));
     expect(sheet.entries[0]).toMatchObject({ question: 3, part: 'c', each: 1, max: 2, marks: 2 });
-    expect(points(sheet, 0).map((p) => p[0])).toEqual(['Features of a partnership:', '- unlimited liability', '- simple to set up']);
+    expect(sheet.entries[0].groups).toBeUndefined();
   });
 
   it('keeps every line: an unplaced line is unknown, never dropped', () => {

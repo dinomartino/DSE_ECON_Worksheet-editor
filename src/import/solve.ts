@@ -8,7 +8,8 @@ import { placeFigures } from './figures';
 import { labelLevel } from './labels';
 import { inferLevels, settleQuestionRuns } from './levels';
 import { repeatKey } from './normalize';
-import type { Analysis, Family, Flag, LayoutProfile, Level, LineRole, MarksStyle, Outline, Pin, Role, SourceLine } from './types';
+import { shapeDrq } from './drq';
+import type { Analysis, Family, Flag, LayoutProfile, Level, LineRole, MarksStyle, OutScheme, Outline, Pin, Role, SourceLine } from './types';
 import { walk } from './walk';
 import type { Side } from '@/model/textSlots';
 
@@ -115,6 +116,7 @@ export function solve(
   const questionFamilies = new Set([...levels].filter(([, level]) => level === 'question').map(([f]) => f));
   const walked = walk({ lines, roles, conf, verdict, lineMode, fullLine, newQuestion, join, questionFamilies });
   const { outline, flags } = walked;
+  shapeDrq(outline, lines);
 
   applyAnswers(outline, walked.owner, pins);
   applySchemes(outline, walked.owner, pins);
@@ -164,6 +166,14 @@ function applyAnswers(outline: Outline, owner: ReadonlyArray<number | undefined>
     const at = questionAt(outline, owner, pin.line);
     const q = at === undefined || at < 0 ? undefined : outline.questions[at];
     if (q?.kind === 'mc' && pin.index >= 0 && pin.index < q.options.length) q.answer = { index: pin.index, from: pin.from ?? 'pin' };
+    // The % is the sheet's, whichever letter the teacher settles on (k-0480).
+    if (q?.kind === 'mc' && pin.percent !== undefined) q.percent = pin.percent;
+  }
+  for (const pin of pins) {
+    if (pin.kind !== 'results') continue;
+    const results = (outline.results ??= {});
+    if (pin.mcComments?.length) results.mcComments = pin.mcComments;
+    if (pin.sqComments?.length) results.sqComments = pin.sqComments;
   }
 }
 
@@ -174,7 +184,12 @@ function applySchemes(outline: Outline, owner: ReadonlyArray<number | undefined>
     const at = questionAt(outline, owner, pin.line);
     const q = at === undefined || at < 0 ? undefined : outline.questions[at];
     if (!q) continue;
-    const scheme = { points: pin.points, ...(pin.notes?.length ? { notes: pin.notes } : {}), ...(pin.each !== undefined ? { each: pin.each } : {}), ...(pin.max !== undefined ? { max: pin.max } : {}) };
+    const { kind: _k, line: _l, part: _p, subPart: _s, ...carried } = pin;
+    void _k;
+    void _l;
+    void _p;
+    void _s;
+    const scheme: OutScheme = carried;
     if (pin.part === undefined) {
       if (q.kind === 'mc' || q.parts.length === 0) q.scheme = scheme;
       continue;

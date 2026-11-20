@@ -6,8 +6,9 @@
  * key, in one file) is left for another paper: `unused`, not `extra`.
  */
 import { sectionKey, type AnswerSheet } from './answerSheet';
+import type { InlineRun } from '@/model/types';
 import { fold } from './normalize';
-import type { Analysis, OutPart, OutQuestion, OutSubPart, Pin } from './types';
+import type { Analysis, OutPart, OutQuestion, OutSubPart, Pin, SchemeShape } from './types';
 
 export type MatchStatus = 'matched' | 'missing' | 'extra' | 'conflict' | 'mismatch';
 
@@ -50,7 +51,7 @@ export interface AnswerMatchResult {
 }
 
 /** What `matchAnswers` reads of a sheet: any source (a reader, OCR, AI) can make it. */
-export type AnswerSource = Pick<AnswerSheet, 'entries' | 'sections'>;
+export type AnswerSource = Pick<AnswerSheet, 'entries' | 'sections'> & Partial<Pick<AnswerSheet, 'comments'>>;
 
 interface NumberRun {
   questions: number[];
@@ -66,7 +67,9 @@ export function numberRuns(analysis: Analysis): NumberRun[] {
   const keysBetween = (from: number, to: number) =>
     headings.filter((h) => h > from && h < to).map((h) => sectionKey(analysis.lines[h].text)).filter((x): x is string => !!x);
   questions.forEach((q, k) => {
-    const restart = prev?.number !== undefined && q.number !== undefined && q.number <= prev.number;
+    // Numbering going back starts a run; the same number again (a stray piece the walk split
+    // off, as OCR leaves an option whose letter it lost) does not (k-0480).
+    const restart = prev?.number !== undefined && q.number !== undefined && q.number < prev.number;
     if (!out.length || restart) out.push({ questions: [], keys: new Set() });
     const run = out[out.length - 1];
     for (const key of keysBetween(prev?.start ?? -1, q.start)) run.keys.add(key);
@@ -123,6 +126,101 @@ function findItem(items: readonly OutSubPart[], label: string, roman: boolean): 
   return n !== undefined && items[n - 1] && !items[n - 1].label ? n - 1 : -1;
 }
 
+/** An entry's groups, EC, content max, levels and paragraph style, as a `scheme` pin carries them (k-0480). */
+function schemeShape(e: AnswerSource['entries'][number]): SchemeShape {
+  return {
+    ...(e.groups?.length ? { groups: e.groups.map((g) => ({ ...g })) } : {}),
+    ...(e.ec ? { ec: e.ec } : {}),
+    ...(e.contentMax !== undefined ? { contentMax: e.contentMax } : {}),
+    ...(e.levels?.length ? { levels: e.levels } : {}),
+    ...(e.paragraph ? { paragraph: true as const } : {}),
+  };
+}
+
+/**
+ * A comment, not a quoted question: a sentence of some length that is not a question, an
+ * option ("A. …"), a statement ("(1) …") or a row of figures.
+ */
+function isProse(runs: readonly InlineRun[]): boolean {
+  const text = runs.map((r) => r.text).join('').trim();
+  if (text.length < 40 || /[?？]$/.test(text)) return false;
+  if (/^(?:\(?[A-D1-4][.)]|[A-D]\s)/.test(text)) return false;
+  if (/^\d{1,2}\.\s/.test(text) && !/candidates?|考生/i.test(text)) return false;
+  const letters = text.replace(/[\d\s.,%$()（）]/g, '').length;
+  return letters >= text.length * 0.6 && /[.。]$/.test(text);
+}
+
+/**
+ * An MC paper's comments (k-0480): the report quotes each question it discusses, its
+ * options with the % choosing each, then says what candidates did, often beside the
+ * options so the words follow the last % on its line. Kept: the general paragraphs, and
+ * per question its commentary as "Q8: …" (第8題：…), the quoted question left out.
+ */
+const COMMENTARY =
+  /\b(?:This question|These questions|The majority|Candidates|(?:Many|Most|Some|Few|Only a few|A few|Over half(?: of the)?|About half(?: of the)?) candidates|It is worth)|本題|此題|這題|(?:不少|大部分|部分|很多|少數|約半數)?考生/;
+
+export function mcProse(paragraphs: ReadonlyArray<readonly InlineRun[]>): InlineRun[][] {
+  const out: InlineRun[][] = [];
+  let question: number | undefined;
+  let open = false;
+  for (const runs of paragraphs) {
+    const text = runs.map((r) => r.text).join('').trim();
+    const numbered = /^(\d{1,2})\.\s/.exec(text);
+    if (numbered && !/candidates?|考生/i.test(text.slice(0, 60))) {
+      question = +numbered[1];
+      open = false;
+      continue;
+    }
+    const cut = [...text.matchAll(/[(（]\s*\d{1,3}(?:\.\d)?\s*%\s*[)）]/g)].pop();
+    const rest = cut ? text.slice(cut.index + cut[0].length).trim() : '';
+    // The commentary opens like one; an option's text running on after its % does not.
+    const opens = COMMENTARY.exec(rest);
+    const after = opens ? rest.slice(opens.index).trim() : '';
+    if (cut && after.length >= 30) {
+      const zh = /[\u3400-\u9fff]/.test(after.slice(0, 20));
+      out.push([{ text: question !== undefined ? (zh ? `第${question}題：${after}` : `Q${question}: ${after}`) : after }]);
+      open = true;
+      continue;
+    }
+    if (cut) continue;
+    // The commentary running on into a paragraph of its own (it may open "(2) because …").
+    if (open && text.length >= 90) {
+      const last = out[out.length - 1];
+      out[out.length - 1] = [...last, { text: ' ' }, { text }];
+      continue;
+    }
+    if (isProse(runs)) {
+      out.push([...runs]);
+      open = false;
+    }
+  }
+  return out;
+}
+
+/**
+ * The sheet's comments on candidates' performance for this paper (k-0480): those under its
+ * paper's heading ("Paper 1" for an MC paper, else "Paper 2", or the paper a matched
+ * section sits under), or all of them when the sheet names no paper. An MC paper's go
+ * on the MC comments, a written paper's on the structured ones.
+ */
+function commentsPin(analysis: Analysis, sheet: AnswerSource, aligned: Map<number, number>): Pin | undefined {
+  const comments = sheet.comments ?? [];
+  if (!comments.length || !analysis.outline.questions.length) return undefined;
+  // An MC paper: most of it, since OCR can leave a stray written piece among 45 questions.
+  const questions = analysis.outline.questions;
+  const mc = questions.filter((q) => q.kind === 'mc').length >= questions.length * 0.8;
+  const matched = [...aligned.keys()].map((k) => sheet.sections[k]?.paper).find((p): p is string => Boolean(p));
+  const paper = matched ?? (mc ? 'P1' : 'P2');
+  const named = comments.some((c) => c.paper);
+  const mine = comments.filter((c) => !named || c.paper === paper);
+  if (!mine.length) return undefined;
+  // An MC paper's report quotes the questions it discusses, options and all: the comments
+  // are the prose around them.
+  const runs = mc ? mcProse(mine.map((c) => c.runs)) : mine.map((c) => c.runs);
+  if (!runs.length) return undefined;
+  return { kind: 'results', line: -1, ...(mc ? { mcComments: runs } : { sqComments: runs }) };
+}
+
 /**
  * Match an answer file to a solved paper. Give the pins to `analyseLines` before the
  * teacher's own fixes, so a later click on an option wins. Re-run on the new analysis
@@ -169,7 +267,7 @@ export function matchAnswers(analysis: Analysis, sheet: AnswerSource): AnswerMat
       return;
     }
     const notes = e.notes?.length ? { notes: e.notes.map((x) => x.runs) } : {};
-    const points = (e.points ?? []).map(({ runs: r, marks }) => ({ runs: r, ...(marks !== undefined ? { marks } : {}) }));
+    const points = (e.points ?? []).map(({ runs: r, marks, group }) => ({ runs: r, ...(marks !== undefined ? { marks } : {}), ...(group !== undefined ? { group } : {}) }));
 
     if (q.kind === 'mc') {
       if (e.part) {
@@ -179,7 +277,7 @@ export function matchAnswers(analysis: Analysis, sheet: AnswerSource): AnswerMat
       if (e.letter === undefined) return problem(row, n, 'noLetter');
       if (e.letter >= q.options.length) return problem(row, n, 'letterOutOfRange', { sheetAnswer: e.letter });
       taken.add(target);
-      pins.push({ kind: 'answer', line: q.start, index: e.letter, from: 'sheet' });
+      pins.push({ kind: 'answer', line: q.start, index: e.letter, from: 'sheet', ...(e.percent !== undefined ? { percent: e.percent } : {}) });
       if (points.length || e.notes?.length) pins.push({ kind: 'scheme', line: q.start, points, ...notes });
       ok(row, n);
       if (q.answer && q.answer.from !== 'sheet' && q.answer.index !== e.letter) {
@@ -188,7 +286,8 @@ export function matchAnswers(analysis: Analysis, sheet: AnswerSource): AnswerMat
       return;
     }
 
-    if (!points.length && !e.notes?.length) return problem(row, n, e.letter !== undefined ? 'notWritten' : 'noLetter');
+    const shaped = Boolean(e.groups?.some((g) => g.heading) || e.ec || e.contentMax !== undefined || e.levels?.length);
+    if (!points.length && !e.notes?.length && !shaped) return problem(row, n, e.letter !== undefined ? 'notWritten' : 'noLetter');
     let part: number | undefined;
     let subPart: number | undefined;
     if (e.part) {
@@ -210,6 +309,7 @@ export function matchAnswers(analysis: Analysis, sheet: AnswerSource): AnswerMat
       ...notes,
       ...(e.each !== undefined ? { each: e.each } : {}),
       ...(e.max !== undefined ? { max: e.max } : {}),
+      ...schemeShape(e),
     });
     ok(row, n);
     if (part !== undefined) covered.set(k, (covered.get(k) ?? new Set()).add(part));
@@ -224,5 +324,7 @@ export function matchAnswers(analysis: Analysis, sheet: AnswerSource): AnswerMat
     if (missing.length) rows[k].missingParts = missing;
   }
   const sections = [...new Set(aligned.keys())];
+  const results = commentsPin(analysis, sheet, aligned);
+  if (results) pins.push(results);
   return { pins, report: [...rows, ...extra], sections, unused };
 }

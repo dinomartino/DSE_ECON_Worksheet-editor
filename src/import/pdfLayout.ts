@@ -29,6 +29,8 @@ export interface PdfItem {
   bold?: boolean;
   italic?: boolean;
   rotated?: boolean;
+  /** Read by OCR: its size and baseline come from a detector's box, too rough to tell a subscript by. */
+  ocr?: boolean;
 }
 
 export interface PdfBox {
@@ -239,16 +241,33 @@ interface Row {
   figure?: PdfBox;
 }
 
+/** How far two items overlap across the page (pt). */
+const overlap = (a: PdfItem, b: PdfItem) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+
 /** Group items by baseline (tolerance half the type size), each row sorted left to right. */
 export function rowsOf(items: readonly PdfItem[]): Row[] {
   const sorted = [...items].sort((a, b) => b.y - a.y || a.x - b.x);
   const rows: Row[] = [];
+  // The baseline of each row's largest type: a superscript sets a row's top, and a
+  // subscript on the same line is still within reach of the text's own baseline (k-0480).
+  const mainY = new Map<Row, { y: number; size: number }>();
   for (const it of sorted) {
     const row = rows[rows.length - 1];
-    if (row && row.top - it.y <= 0.5 * Math.max(it.size, row.size)) {
+    const main = row && mainY.get(row);
+    const reach = row ? 0.5 * Math.max(it.size, row.size) : 0;
+    // Two different pieces of text that overlap across the page are on two lines, however
+    // close their baselines (a scheme's tall "2@" box between two lines drew them into one
+    // row; k-0480). A piece drawn twice over itself (fake bold) still joins.
+    const clash = row?.items.some((o) => o.str !== it.str && overlap(o, it) > 0.3 * Math.min(o.w, it.w) && Math.abs(o.y - it.y) > 0.6 * Math.min(o.size, it.size));
+    if (row && !clash && (row.top - it.y <= reach || (main && Math.abs(main.y - it.y) <= reach && it.size < main.size))) {
       row.items.push(it);
       row.size = Math.max(row.size, it.size);
-    } else rows.push({ top: it.y, y: it.y, size: it.size, items: [it] });
+      if (main && it.size > main.size) mainY.set(row, { y: it.y, size: it.size });
+    } else {
+      const fresh = { top: it.y, y: it.y, size: it.size, items: [it] };
+      rows.push(fresh);
+      mainY.set(fresh, { y: it.y, size: it.size });
+    }
   }
   for (const row of rows) {
     row.items.sort((a, b) => a.x - b.x);
@@ -552,9 +571,24 @@ interface VLine {
 const blankIn = (rules: readonly PdfBox[], from: number, to: number, y: number, size: number) =>
   to - from > size * 0.5 && rules.some((r) => r.x < to && r.x + r.w > from && r.w >= size && r.y <= y + size * 0.3 && r.y >= y - size * 0.6);
 
+/**
+ * A subscript or superscript (k-0480): a short piece of letters or digits set smaller than
+ * the row's type, below or above the baseline of the row's main text (Q₁, P₀, 10³, a note's
+ * *). Not for OCR, whose boxes say too little.
+ */
+function shiftOf(it: PdfItem, base: number, size: number, str: string): RawRun['vertAlign'] {
+  if (it.ocr || it.size > size * 0.85 || str.trim().length > 6 || !/[\p{L}\p{N}*]/u.test(str)) return undefined;
+  const shift = it.y - base;
+  if (shift <= -it.size * 0.12) return 'subscript';
+  if (shift >= size * 0.2) return 'superscript';
+  return undefined;
+}
+
 function itemRuns(items: readonly PdfItem[], rules: readonly PdfBox[] = []): RawRun[] {
   const runs: RawRun[] = [];
   let prev: PdfItem | undefined;
+  const main = items.reduce<PdfItem | undefined>((best, it) => (!best || it.w > best.w ? it : best), undefined);
+  const size = Math.max(0, ...items.map((it) => it.size));
   for (const it of items) {
     const str = tidyText(it.str);
     if (prev) {
@@ -563,7 +597,8 @@ function itemRuns(items: readonly PdfItem[], rules: readonly PdfBox[] = []): Raw
       if (blankIn(rules, right(prev), it.x, it.y, it.size)) runs.push({ text: ' ______ ' });
       else if (gap > prev.size * 0.15 && !tight && !/\s$/.test(prev.str) && !/^\s/.test(str)) runs.push({ text: ' ' });
     }
-    runs.push({ text: str, ...(it.bold ? { bold: true } : {}), ...(it.italic ? { italic: true } : {}) });
+    const vertAlign = main && it !== main ? shiftOf(it, main.y, size, str) : undefined;
+    runs.push({ text: str, ...(it.bold ? { bold: true } : {}), ...(it.italic ? { italic: true } : {}), ...(vertAlign ? { vertAlign } : {}) });
     prev = it;
   }
   return normalizeRuns(runs) as RawRun[];
@@ -615,6 +650,9 @@ function joinSegs(segs: readonly Seg[], y: number, size: number, rules: readonly
   return normalizeRuns(runs) as RawRun[];
 }
 
+/** A marking scheme's group rule, alone in the marks column: "2@", "max: 2", "2@ max: 4", 最高：4. */
+const SCHEME_RULE = /^(?:\d{1,2}\s*@|max(?:imum)?\.?\s*[:：]\s*\d{1,2}|最高\s*[:：]?\s*\d{1,2}\s*分?)(?:\s+(?:\d{1,2}\s*@|max(?:imum)?\.?\s*[:：]\s*\d{1,2}|最高\s*[:：]?\s*\d{1,2}\s*分?))*$/i;
+
 function lineOf(row: Row, region: Region, rules: readonly PdfBox[], splits: ReadonlySet<number>): VLine[] {
   const base = { page: region.page, y: row.y, size: row.size, column: region.column, labelled: false, segs: [] as Seg[] };
   if (row.figure) {
@@ -624,7 +662,9 @@ function lineOf(row: Row, region: Region, rules: readonly PdfBox[], splits: Read
   const segs = segmentsOf(row, splits, rules);
   let marks: RawRun[] | undefined;
   const last = segs[segs.length - 1];
-  if (segs.length && marksOnly(plain(last.runs))) {
+  // A marking scheme's marks column holds its rules too ("2@", "max: 2", 最高：4; k-0480):
+  // marks-column text, not a second table column.
+  if (segs.length && (marksOnly(plain(last.runs)) || SCHEME_RULE.test(plain(last.runs).trim()))) {
     marks = last.runs;
     segs.pop();
   }
@@ -887,8 +927,10 @@ export function layoutPdf(pages: readonly PdfPage[], options: PdfLayoutOptions =
     }
     const runs = line.marks ? (joinRuns(line.runs, line.marks) as RawRun[]) : line.runs;
     if (heading === undefined && out.length < 6 && line.size >= docGeo.bodySize * 1.15 && plain(runs).trim()) heading = plain(runs).trim();
+    const right = line.kind === 'cells' ? line.segs[0]?.right : line.right;
     out.push({
       ...at,
+      ...(right !== undefined ? { right: Math.round(right * 10) / 10 } : {}),
       runs,
       marginDepth: Math.max(0, Math.round(((line.depthX ?? line.x) - geo.margin) / (geo.bodySize * 2))),
       ...(line.cells ? { cells: line.cells } : {}),
