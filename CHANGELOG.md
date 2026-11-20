@@ -164,6 +164,12 @@ a version heading is edited afterwards.
   <!-- zh: **行距。** 「頁面設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
 
 ### Fixed
+- **Enter in the side panel's marking-point box starts a new point, as on the page.** It used to
+  put a line break inside the same point, which is how blank lines got into a scheme. Now Enter
+  splits the point where the cursor is (the new point gets the same mark), Enter on an empty point
+  removes it, and Shift+Enter still starts a new line. Confirming Chinese input with Enter never
+  splits. The answer box keeps Enter as a new line, as on the page.
+  <!-- zh: **側欄評分要點方格按 Enter 會開新要點，與頁面相同。** 以前按 Enter 會在同一要點內換行，評分方案因此出現空行。現在按 Enter 會在游標位置把要點一分為二（新要點分數相同），在空白要點按 Enter 會刪除該要點，按 Shift+Enter 仍然是換行。用 Enter 確認中文輸入時不會分拆要點。答案方格按 Enter 仍是換行，與頁面相同。 -->
 - **Scanned answer keys and marking schemes read more of their answers.** A key's letters printed
   in a column, which the text reader joined into one ("A B D" read as "ABD"), are read one per
   row again; the first rows of a key are no longer taken for the paper's heading; a row whose

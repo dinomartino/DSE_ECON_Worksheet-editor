@@ -485,3 +485,28 @@ export function withoutEmptyMarkPoint(scheme: MarkScheme, pointId: string): Mark
   }));
   return found ? { ...scheme, routes } : scheme;
 }
+
+/**
+ * `splitMarkPoint` on one group: the side panel's point box makes Word's Enter exactly as
+ * the page does (k-0482). The group is run through the scheme-level function, so the two
+ * places cannot drift apart. The same object when the point is not in the group.
+ */
+export function splitGroupPoint(
+  group: MarkGroup,
+  pointId: string,
+  side: 'en' | 'zh',
+  start: number,
+  end: number,
+  newId: string,
+): MarkGroup {
+  const scheme: MarkScheme = { routes: [{ id: 'group', groups: [group] }] };
+  const next = splitMarkPoint(scheme, pointId, side, start, end, newId);
+  return next === scheme ? group : next.routes[0].groups[0];
+}
+
+/** `withoutEmptyMarkPoint` on one group (k-0482): Enter on an empty point ends the list. */
+export function withoutEmptyGroupPoint(group: MarkGroup, pointId: string): MarkGroup {
+  const scheme: MarkScheme = { routes: [{ id: 'group', groups: [group] }] };
+  const next = withoutEmptyMarkPoint(scheme, pointId);
+  return next === scheme ? group : next.routes[0].groups[0];
+}

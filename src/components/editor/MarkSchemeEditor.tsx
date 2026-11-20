@@ -19,9 +19,11 @@ import {
   schemeMismatch,
   schemeMax,
   schemeRoutes,
+  splitGroupPoint,
   statedContentMax,
   withContentMax,
   withSchemeDisplay,
+  withoutEmptyGroupPoint,
 } from '@/model/markScheme';
 import {
   createSchemeFromPattern,
@@ -38,7 +40,8 @@ import type {
   MarkScheme,
 } from '@/model/markSchemeTypes';
 import { newId } from '@/model/factories';
-import { emptyBiText } from '@/model/text';
+import { emptyBiText, isBiTextEmpty } from '@/model/text';
+import { setSelectionOffsets } from '@/components/preview/richTextDom';
 import type { BiText } from '@/model/types';
 import { Button, CheckField, IconButton, Pill, Segmented } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
@@ -114,10 +117,13 @@ function PointRow({
   onChange,
   onMove,
   onRemove,
+  onEnter,
 }: {
   point: MarkPoint;
   group: MarkGroup;
   index: number;
+  /** Word's Enter in the point's box, as on the page (k-0482, `GroupBox.pointEnter`). */
+  onEnter: (side: 'en' | 'zh', range: { start: number; end: number }) => void;
   count: number;
   onChange: (point: MarkPoint) => void;
   onMove: (delta: number) => void;
@@ -167,6 +173,8 @@ function PointRow({
             placeholderEn="Marking point…"
             placeholderZh="評分要點…"
             onChange={(text) => onChange({ ...point, text })}
+            onEnter={onEnter}
+            fieldKey={pointFieldKey(point.id)}
           />
         </div>
         {stacked && <span className="flex-1" />}
@@ -201,6 +209,29 @@ function PointRow({
   );
 }
 
+/** A point's box on the panel (`BiTextField.fieldKey`). */
+function pointFieldKey(pointId: string): string {
+  return `point:${pointId}`;
+}
+
+/**
+ * Put the caret at the start of a panel field once it is rendered: a split's new point
+ * appears after the store commits, a frame or two later.
+ */
+function focusPanelField(key: string, side: 'en' | 'zh', tries = 10): void {
+  requestAnimationFrame(() => {
+    const host = document.querySelector<HTMLElement>(
+      `[data-panel-field="${CSS.escape(key)}"][data-panel-side="${side}"] .rich-text-editable`,
+    );
+    if (!host) {
+      if (tries > 0) focusPanelField(key, side, tries - 1);
+      return;
+    }
+    host.focus({ preventScroll: false });
+    setSelectionOffsets(host, 0);
+  });
+}
+
 function GroupBox({
   group,
   index,
@@ -215,6 +246,24 @@ function GroupBox({
   const m = useMessages(MARK_SCHEME_MESSAGES);
   const points = groupPoints(group);
   const setPoints = (next: MarkPoint[]) => onChange({ ...group, points: next });
+  /*
+   * Word's Enter in a point's box, exactly as on the page (k-0482, `preview/fieldEnter.ts`):
+   * the point splits at the caret into a new point after it with the same mark, and the
+   * caret goes to the new point's start; Enter on an empty point removes it (when it is not
+   * the group's last) and finishes. Before, Enter typed a line break inside the point,
+   * which is how a scheme got blank lines (GitHub #7).
+   */
+  const pointEnter = (point: MarkPoint, side: 'en' | 'zh', range: { start: number; end: number }) => {
+    if (isBiTextEmpty(point.text) && (point.alternatives ?? []).length === 0) {
+      const next = withoutEmptyGroupPoint(group, point.id);
+      if (next !== group) onChange(next);
+      (document.activeElement as HTMLElement | null)?.blur();
+      return;
+    }
+    const id = newId();
+    onChange(splitGroupPoint(group, point.id, side, range.start, range.end, id));
+    focusPanelField(pointFieldKey(id), side);
+  };
   const hasRules = group.take !== undefined || group.each !== undefined || group.max !== undefined;
   // The rule boxes wait until asked for: most groups have none, and three empty boxes
   // on every group read as something to fill in.
@@ -318,6 +367,7 @@ function GroupBox({
           onChange={(next) => setPoints(replaceAt(points, pointIndex, next))}
           onMove={(delta) => setPoints(move(points, pointIndex, delta))}
           onRemove={() => setPoints(removeAt(points, pointIndex))}
+          onEnter={(side, range) => pointEnter(point, side, range)}
         />
       ))}
       <Button size="sm" variant="subtle" onClick={() => setPoints([...points, createMarkPoint()])}>
