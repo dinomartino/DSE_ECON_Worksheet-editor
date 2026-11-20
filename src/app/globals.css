@@ -654,23 +654,15 @@ u [data-tab] {
 
 /*
  * The sidebar control matching the page's selection (`editor/panelTarget.ts`): an accent
- * tint and the selection bar, then one soft ring that fades as it arrives. Chrome, so
- * tokens; background, shadow and a pseudo-element only, so nothing moves.
+ * tint and an accent outline all round, then one soft ring that fades as it arrives. No
+ * bar down one edge (the user asked for it gone, k-0477). Chrome, so tokens; background,
+ * outline and shadow only, so nothing moves. The outline sits at -1px, over the box's own
+ * 1px border (or its transparent one), so it adds no second line.
  */
 [data-edit-current] {
-  position: relative;
   background-color: var(--accent-soft);
-}
-[data-edit-current]::before {
-  content: "";
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 2px;
-  border-radius: 9999px;
-  background-color: var(--accent);
-  pointer-events: none;
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
 }
 @media (prefers-reduced-motion: no-preference) {
   [data-edit-current] {
@@ -719,12 +711,11 @@ u [data-tab] {
   /* Deeper than any header, the selected card's too, so the pill keeps its shape. */
   background-color: color-mix(in oklab, var(--kind) 23%, var(--surface));
 }
-/* A card the page selected keeps its own tint instead of the generic accent one and bar. */
+/* A card the page selected keeps its own tint and border instead of the generic accent
+   ones; the rule below marks it in its own colour. */
 .panel-kind[data-edit-current] {
   background-color: color-mix(in oklab, var(--kind) 5%, var(--surface));
-}
-.panel-kind[data-edit-current]::before {
-  display: none;
+  outline: none;
 }
 /* The card you are in — the innermost card holding the page's selection, never its
    ancestors: its border in full colour, a deeper header and a ring in the same colour. */

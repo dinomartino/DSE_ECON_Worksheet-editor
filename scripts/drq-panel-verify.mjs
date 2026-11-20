@@ -14,8 +14,12 @@ import { chromium } from 'playwright-core';
  * 3. Part (c)'s Refer to toggles rewrite its opening sentence on the page.
  * 4. Add → Source ▾ → People's views: a Source E card appears and is selected.
  * 5. Clicking part (a)'s line on the page: only part (a)'s card wears the ring (k-0477).
+ * 6. Clicking a cell of Source A's table on the page: its 表格 / Table box in the panel is
+ *    the marked field.
  * After 2, 3 and 5, the chip text and muted text on every open kind's tints (the selected
  * card's deeper header too) must reach AA, 4.5:1, in the theme under test (k-0477).
+ * After 2, 5 and 6, the marked field has no bar down its left edge, but a 1px outline all
+ * round at 3:1 against its tint and against what is around it (u-ifkm, k-0477).
  * Screenshots of each step go to `--out` (plus `3-part-…`, part (c)'s card alone), in
  * `--theme` (any id in `settings/appearance.ts`; default the system's, light here).
  * Exits non-zero if a check fails.
@@ -84,6 +88,58 @@ async function checkContrast(page, where) {
   check(Object.values(contrast).every((r) => r >= 4.5), `${where}: panel text is AA on every kind's tint (${lowest})`);
 }
 
+/** The marked field: no bar, a 1px outline all round, 3:1 inside and out (u-ifkm). */
+async function checkField(page, where) {
+  const field = await page.evaluate(() => {
+    const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    const rgba = (css) => {
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = '#000';
+      ctx.fillStyle = css;
+      ctx.fillRect(0, 0, 1, 1);
+      const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+      return [r, g, b, a / 255];
+    };
+    const over = (top, under) => top.slice(0, 3).map((v, i) => v * top[3] + under[i] * (1 - top[3]));
+    /** What `el` paints on: its ancestors' backgrounds composited from the page down. */
+    const behind = (el) => {
+      const chain = [];
+      for (let node = el; node; node = node.parentElement) chain.unshift(rgba(getComputedStyle(node).backgroundColor));
+      return chain.reduce((under, top) => over(top, under), [255, 255, 255]);
+    };
+    const lum = (c) =>
+      c.map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const ratio = (a, b) => {
+      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+      return (x + 0.05) / (y + 0.05);
+    };
+    const marked = [...document.querySelectorAll('[data-edit-current]')].filter((el) => !el.matches('[data-panel-kind]'));
+    if (marked.length !== 1) return { count: marked.length };
+    const el = marked[0];
+    const style = getComputedStyle(el);
+    const bar = getComputedStyle(el, '::before');
+    const line = over(rgba(style.outlineColor), behind(el));
+    return {
+      count: 1,
+      target: el.getAttribute('data-edit-target'),
+      bar: bar.content !== 'none' && bar.display !== 'none',
+      outline: `${style.outlineStyle} ${style.outlineWidth}`,
+      inside: ratio(line, behind(el)),
+      outside: ratio(line, behind(el.parentElement)),
+    };
+  });
+  if (field.count !== 1) {
+    check(false, `${where}: one field is marked (${field.count})`);
+    return;
+  }
+  check(!field.bar, `${where}: the marked field (${field.target}) has no bar down its edge`);
+  check(field.outline === 'solid 1px', `${where}: the marked field is outlined all round (${field.outline})`);
+  check(
+    field.inside >= 3 && field.outside >= 3,
+    `${where}: its outline is 3:1 on its tint and around it (${field.inside.toFixed(2)}, ${field.outside.toFixed(2)})`,
+  );
+}
+
 const browser = await chromium.launch({ channel: 'chrome' });
 
 for (const [ui, width] of [['en', 1440], ['zh', 820]]) {
@@ -144,6 +200,7 @@ for (const [ui, width] of [['en', 1440], ['zh', 820]]) {
   check(ringed.length === 1 && ringed[0]?.includes(w.sourceB.slice(-1)), `${ui} ${width}: only Source B's card is ringed (${ringed.join(', ')})`);
   await page.screenshot({ path: `${OUT}/2-where-${ui}-${width}.png` });
   await checkContrast(page, `${ui} ${width}`);
+  await checkField(page, `${ui} ${width}, Source B's label`);
 
   // 3. Part (c): Refer to A as well as C and D.
   const partC = page.locator('[data-panel-kind="part"]').nth(2);
@@ -189,6 +246,31 @@ for (const [ui, width] of [['en', 1440], ['zh', 820]]) {
   check(ringedPart.length === 1 && ringedPart[0] === '(a)', `${ui} ${width}: the part you are in, (a), is the one ringed (${ringedPart.join(', ')})`);
   await page.screenshot({ path: `${OUT}/5-in-part-a-${ui}-${width}.png` });
   await checkContrast(page, `${ui} ${width}, in part (a)`);
+  await checkField(page, `${ui} ${width}, part (a)'s line`);
+
+  // 6. A cell of Source A's table on the page → its table box in the panel is marked.
+  // The format toolbar from step 5 can sit over the cell at iPad width: away with it first.
+  await page.keyboard.press('Escape');
+  // At iPad width the page fits at under 20%, too small to hit a cell: zoom in first.
+  const zoomIn = page.getByRole('button', { name: ui === 'en' ? 'Zoom in' : '放大', exact: true });
+  for (let i = 0; i < 24 && (await zoomIn.isEnabled()) && (await page.locator('#print-root td').first().boundingBox()).height < 22; i += 1) {
+    await zoomIn.click();
+    await page.waitForTimeout(250);
+  }
+  const cell = page.locator('#print-root td').first();
+  await cell.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(300);
+  // Upper quarter, near the left: the row and column resize handles lie on the right and
+  // bottom edges.
+  const box = await cell.boundingBox();
+  await cell.click({ position: { x: Math.min(12, box.width / 3), y: box.height / 4 } });
+  await page.waitForTimeout(1000);
+  const marked = page.locator('[data-edit-current]:not([data-panel-kind])');
+  await marked.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  await checkField(page, `${ui} ${width}, a table cell`);
+  await page.screenshot({ path: `${OUT}/6-table-${ui}-${width}.png` });
+  await marked.locator('xpath=ancestor::*[@data-panel-kind][1]').screenshot({ path: `${OUT}/6-table-card-${ui}-${width}.png` });
   void panel;
   await context.close();
 }

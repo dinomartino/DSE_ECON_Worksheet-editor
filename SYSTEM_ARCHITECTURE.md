@@ -2875,8 +2875,10 @@ zones, and the band is entered by double-click, as Word's header is).
   working within one question whose fields are all visible. Keys are built from
   **ids, not positions**, or a reordered option would scroll to its neighbour.
   The match is also **marked** (`editor/panelTarget.ts`): `data-edit-current`, styled once
-  in `globals.css` as an accent tint, the selection bar and a one-shot ring (off under
-  reduced motion); background, shadow and a pseudo-element only, so nothing moves. A
+  in `globals.css` as an accent tint, a 1px accent outline all round (at -1px, over the
+  box's own border) and a one-shot ring (off under reduced motion); no bar down one edge
+  (the user asked for it gone, k-0477); background, outline and shadow only, so nothing
+  moves. A
   component with no control of its own marks its owner's (a cell → its table). A
   `MutationObserver` re-marks a row that remounts; `PartTopics` scrolls its row only if
   the marked control stays in view.
