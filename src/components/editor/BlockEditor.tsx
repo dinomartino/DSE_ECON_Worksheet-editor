@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { defaultFramed, editTargetKey } from '@/model/edits';
+import { defaultFramed, editTargetKey, flattenBlocks } from '@/model/edits';
 import { imageBlockFromFile, prepareImageForStorage } from '@/export/imageImport';
 import {
   createDiagramBlock,
@@ -64,7 +64,7 @@ import { Menu } from '@/components/ui/Menu';
 import { createSourceOf, nextLetterIn, sourceLetter } from '@/model/drq';
 import { DRQ_PANEL_MESSAGES } from './drqPanel.messages';
 import { PanelKindCard } from './panelKinds';
-import { sourceHolds, sourceKindOptions } from './sourceKinds';
+import { sourceCaption, sourceHolds, sourceKindOptions } from './sourceKinds';
 
 /**
  * Content-block editing (§5.3): insert paragraph / table / image in any order,
@@ -112,6 +112,37 @@ export function BlockEditor({
   // Add → Source → Picture: the same chooser, but the picture lands inside a new source.
   const sourcePictureInput = useRef<HTMLInputElement>(null);
   const setSelectedTargetKey = useWorksheetStore((s) => s.setSelectedTargetKey);
+  const selectedTargetKey = useWorksheetStore((s) => s.selectedTargetKey);
+
+  /*
+   * Source cards fold (k-0474): a DRQ stem holds four to six sources, and open they run to
+   * screens of table and diagram controls. A lone source starts open; a new one opens as it
+   * is added; and — as a part row does — a source opens when the page's selection lands
+   * inside it, so clicking Source C's table on the paper shows Source C here. Only a *change*
+   * of selection opens, so a teacher can still fold the one they are in.
+   */
+  const sourceIds = blocks.filter((block) => block.kind === 'source').map((block) => block.id);
+  const [openSources, setOpenSources] = useState<Set<string>>(() => new Set(sourceIds.length === 1 ? sourceIds : []));
+  const sourceOwning = (key: string | undefined) => {
+    const id = key?.split(':')[1];
+    if (!id) return undefined;
+    return blocks.find(
+      (block) => block.kind === 'source' && flattenBlocks([block]).some((inner) => inner.id === id),
+    )?.id;
+  };
+  const [seenTargetKey, setSeenTargetKey] = useState(selectedTargetKey);
+  if (selectedTargetKey !== seenTargetKey) {
+    setSeenTargetKey(selectedTargetKey);
+    const owning = sourceOwning(selectedTargetKey);
+    if (owning && !openSources.has(owning)) setOpenSources(new Set(openSources).add(owning));
+  }
+  const toggleSource = (id: string) =>
+    setOpenSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   /*
    * The content width a new table's default indent is a fraction of.
    *
@@ -146,6 +177,7 @@ export function BlockEditor({
    * source selected. A frame later, once the card exists to be found.
    */
   const addSource = (source: Extract<ContentBlock, { kind: 'source' }>) => {
+    setOpenSources((prev) => new Set(prev).add(source.id));
     onChange([...blocks, source]);
     requestAnimationFrame(() =>
       setSelectedTargetKey(editTargetKey({ kind: 'blockText', blockId: source.id })),
@@ -226,8 +258,11 @@ export function BlockEditor({
               anchor={block.id}
               editTarget={editTargetKey({ kind: 'blockText', blockId: block.id })}
               chip={dm.sourceLabel(sourceLetter(block, ordinal))}
-              title={sourceHolds(block, dm)}
+              title={[sourceHolds(block, dm), sourceCaption(block, language)].filter(Boolean).join(' · ')}
               actions={controls(index)}
+              open={openSources.has(block.id)}
+              onToggle={() => toggleSource(block.id)}
+              toggleLabel={dm.sourceLabel(sourceLetter(block, ordinal))}
             >
               <SourceBlockEditor block={block} onChange={(next) => replace(index, next)} />
             </PanelKindCard>

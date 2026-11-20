@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { ChevronRightIcon } from '@/components/ui/icons';
 
 /**
  * The right panel's visual system (k-0474): one calm colour per *kind of thing*, so a
@@ -67,6 +68,9 @@ export function PanelKindCard({
   children,
   anchor,
   editTarget,
+  open,
+  onToggle,
+  toggleLabel,
   className = '',
 }: {
   kind: PanelKind;
@@ -77,21 +81,47 @@ export function PanelKindCard({
   anchor?: string;
   /** The control key the page selects this card by (§ panelTarget). */
   editTarget?: string;
+  /** Foldable when given: the header opens and closes the body, which shows only when open. */
+  open?: boolean;
+  onToggle?: () => void;
+  /** The fold button's name, e.g. "Show Source B". */
+  toggleLabel?: string;
   className?: string;
 }) {
+  const foldable = onToggle !== undefined;
+  const shown = !foldable || open;
   return (
     <section
       {...panelKindProps(kind, `group/block ${className}`)}
       data-panel-anchor={anchor}
       data-edit-target={editTarget}
     >
-      <header className="panel-kind-head flex min-h-8 items-center gap-2 px-2 py-1">
-        <PanelKindChip>{chip}</PanelKindChip>
-        {title && <span className="min-w-0 flex-1 truncate text-[11px] text-ink-muted">{title}</span>}
-        {!title && <span className="flex-1" />}
+      <header className={`panel-kind-head flex min-h-8 items-center gap-2 px-2 py-1 ${shown ? '' : 'rounded-b-lg'}`}>
+        {foldable ? (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={toggleLabel}
+            onClick={onToggle}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <ChevronRightIcon
+              size={11}
+              className={`shrink-0 text-ink-subtle transition-transform duration-150 ease-out-soft ${open ? 'rotate-90' : ''}`}
+            />
+            <PanelKindChip>{chip}</PanelKindChip>
+            <span className="min-w-0 flex-1 truncate text-[11px] text-ink-muted">{title}</span>
+          </button>
+        ) : (
+          <>
+            <PanelKindChip>{chip}</PanelKindChip>
+            {title && <span className="min-w-0 flex-1 truncate text-[11px] text-ink-muted">{title}</span>}
+            {!title && <span className="flex-1" />}
+          </>
+        )}
         {actions}
       </header>
-      {children && <div className="px-2 pb-2 pt-1.5">{children}</div>}
+      {children && shown && <div className="animate-fade-in px-2 pb-2 pt-1.5">{children}</div>}
     </section>
   );
 }

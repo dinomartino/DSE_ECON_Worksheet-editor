@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import type { Messages } from '@/i18n/catalogue';
 import type { SourceKind } from '@/model/drq';
 import { SOURCE_KINDS } from '@/model/drq';
-import type { ContentBlock } from '@/model/types';
+import { plain } from '@/model/text';
+import type { ContentBlock, LanguageMode } from '@/model/types';
 import {
   BarChartIcon,
   ForumIcon,
@@ -80,4 +81,16 @@ export function sourceHolds(block: Extract<ContentBlock, { kind: 'source' }>, m:
   if (nouns.size === 0) return m.holdsText;
   if (nouns.size > 1) return m.holdsMixed;
   return [...nouns][0];
+}
+
+/**
+ * A source's caption without its "Source B:" lead, for the folded card's one line:
+ * "Source B · Bar chart · Visitor arrivals by region". The language the paper is shown in,
+ * falling back to the other when that side is still empty.
+ */
+export function sourceCaption(block: Extract<ContentBlock, { kind: 'source' }>, language: LanguageMode): string {
+  if (!block.label) return '';
+  const en = plain(block.label.en).replace(/^\s*Source\s+[A-Z]\s*[:：]\s*/, '').trim();
+  const zh = plain(block.label.zh).replace(/^\s*資料\s*[A-Z]\s*[:：]\s*/, '').trim();
+  return language === 'zh' ? zh || en : en || zh;
 }
