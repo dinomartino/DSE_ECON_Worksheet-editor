@@ -546,3 +546,55 @@ export function WatermarkIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/* DRQ source kinds (k-0474): the Add → Source menu is scanned by shape. */
+export function BarChartIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20h16" />
+      <path d="M7 20v-7M11 20V7M15 20v-10M19 20v-4" />
+    </Svg>
+  );
+}
+
+export function LineChartIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 4v16h16" />
+      <path d="M7 15l4-5 3 3 5-6" />
+    </Svg>
+  );
+}
+
+export function ViewsIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="1.5" />
+      <path d="M9 4v16M3 12h18" />
+      <circle cx="6" cy="8" r="1.2" />
+      <circle cx="6" cy="16" r="1.2" />
+    </Svg>
+  );
+}
+
+export function ForumIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 5h9v6H8l-2.5 2.5V11H4z" />
+      <path d="M20 10h-4v6h1.5v2.5L20 16h0z" />
+      <circle cx="12" cy="18" r="1.5" />
+    </Svg>
+  );
+}
+
+export function StakeholderIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="8.5" y="9.5" width="7" height="5" rx="1" />
+      <rect x="2.5" y="3" width="5" height="3.5" rx="0.8" />
+      <rect x="16.5" y="3" width="5" height="3.5" rx="0.8" />
+      <rect x="9.5" y="18" width="5" height="3.5" rx="0.8" />
+      <path d="M7 6.5l2 3M17 6.5l-2 3M12 14.5V18" />
+    </Svg>
+  );
+}

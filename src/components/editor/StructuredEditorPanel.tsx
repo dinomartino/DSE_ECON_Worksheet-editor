@@ -31,6 +31,10 @@ import type { MarkScheme } from '@/model/markSchemeTypes';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import { STRUCTURED_PANEL_MESSAGES } from './StructuredEditorPanel.messages';
+import { essayNote, hasEssayNote, isBlankStructured } from '@/model/drq';
+import { DRQ_PANEL_MESSAGES } from './drqPanel.messages';
+import { DrqStarterCard, PanelWhereAmI, ReferToRow, StemCard, TeacherArea } from './drqPanelParts';
+import { PanelKindChip, panelKindProps, type PanelKind } from './panelKinds';
 
 type PanelMessages = Messages<typeof STRUCTURED_PANEL_MESSAGES>;
 
@@ -115,6 +119,8 @@ function SchemeRow({
   lines,
   menu,
   menuLabel,
+  kind,
+  className = '',
 }: {
   m: PanelMessages;
   open: boolean;
@@ -129,9 +135,12 @@ function SchemeRow({
   lines: ReactNode;
   menu: MenuItem[];
   menuLabel: string;
+  /** The panel kind whose chip carries the letter (§ panelKinds). */
+  kind: PanelKind;
+  className?: string;
 }) {
   return (
-    <div data-edit-target={targetKey} className="flex items-center gap-1.5 rounded-md px-1 py-0.5">
+    <div data-edit-target={targetKey} className={`flex items-center gap-1.5 px-1 py-0.5 ${className}`}>
       <button
         type="button"
         aria-expanded={open}
@@ -148,9 +157,9 @@ function SchemeRow({
             className={`transition-transform duration-150 ease-out-soft ${open ? 'rotate-90' : ''}`}
           />
         </span>
-        <span className="w-8 shrink-0 text-[11px] font-semibold tabular-nums text-ink-muted">
+        <PanelKindChip className={`justify-center tabular-nums ${kind === 'part' ? 'min-w-9' : 'min-w-8'}`}>
           {label}
-        </span>
+        </PanelKindChip>
         <span className="min-w-0 flex-1 truncate text-[11px] text-ink-subtle">
           {excerpt || <span className="italic">{m.typeOnPage}</span>}
         </span>
@@ -175,6 +184,7 @@ function SchemeRow({
  */
 export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<StructuredQuestion>) {
   const m = useMessages(STRUCTURED_PANEL_MESSAGES);
+  const dm = useMessages(DRQ_PANEL_MESSAGES);
   const setParts = (parts: QuestionPart[]) => onChange({ parts });
 
   const selectedTargetKey = useWorksheetStore((s) => s.selectedTargetKey);
@@ -245,12 +255,22 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
 
   return (
     <div className="space-y-5">
-      <BlockEditor
-        label={m.stem}
-        labelHint={m.typedOnPage}
-        blocks={question.blocks}
-        onChange={(blocks) => onChange({ blocks })}
-      />
+      {/* Where the page's selection is, kept in view while the panel scrolls (k-0474). */}
+      <PanelWhereAmI question={question} />
+
+      {/* A blank question offers to become a whole DRQ in one click (k-0474). */}
+      {isBlankStructured(question) && (
+        <DrqStarterCard
+          onStart={(content) => {
+            setExpandedParts(new Set());
+            onChange(content);
+          }}
+        />
+      )}
+
+      <StemCard hint={m.typedOnPage}>
+        <BlockEditor blocks={question.blocks} onChange={(blocks) => onChange({ blocks })} />
+      </StemCard>
 
       {/* This question's own gap above it (§ `Question.gapBefore`), on any paper shape. */}
       <section className="space-y-3 border-t border-line pt-3">
@@ -297,26 +317,26 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
       )}
       {/* An essay's answer, model diagram and scheme, in print order, as a leaf part's. */}
       {question.parts.length === 0 && (
-        <BiTextField
-          translate={{ kind: 'answer' }}
-          label={m.answerTeacher}
-          value={question.answer ?? emptyBiText()}
-          onChange={(answer) => onChange({ answer })}
-        />
-      )}
-      {question.parts.length === 0 && question.answerDiagram && (
-        <AnswerDiagramRow
-          block={question.answerDiagram}
-          onChange={(answerDiagram) => onChange({ answerDiagram })}
-          onRemove={() => onChange({ answerDiagram: undefined })}
-        />
-      )}
-      {question.parts.length === 0 && (
-        <MarkSchemeEditor
-          scheme={question.scheme}
-          printedMarks={question.marks}
-          onChange={(scheme) => onChange({ scheme })}
-        />
+        <TeacherArea anchor={`teacher:${question.id}`}>
+          <BiTextField
+            translate={{ kind: 'answer' }}
+            label={m.answerTeacher}
+            value={question.answer ?? emptyBiText()}
+            onChange={(answer) => onChange({ answer })}
+          />
+          {question.answerDiagram && (
+            <AnswerDiagramRow
+              block={question.answerDiagram}
+              onChange={(answerDiagram) => onChange({ answerDiagram })}
+              onRemove={() => onChange({ answerDiagram: undefined })}
+            />
+          )}
+          <MarkSchemeEditor
+            scheme={question.scheme}
+            printedMarks={question.marks}
+            onChange={(scheme) => onChange({ scheme })}
+          />
+        </TeacherArea>
       )}
       {question.parts.length === 0 && question.answerGraph && (
         <AnswerGraphFields
@@ -406,6 +426,23 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                     },
                   ]
                 : []),
+              // The DRQ essay part's standard note, worded with this part's letter (k-0474).
+              ...(!hasEssayNote(part)
+                ? [
+                    {
+                      label: dm.essayNote,
+                      onSelect: () => {
+                        setExpandedParts((prev) => new Set(prev).add(part.id));
+                        patchPart(partIndex, {
+                          blocksBefore: [
+                            createParagraphBlock(essayNote(partLabel(partIndex))),
+                            ...interlude,
+                          ],
+                        });
+                      },
+                    },
+                  ]
+                : []),
               graphMenuItem(m, part.answerGraph, (answerGraph) => {
                 setExpandedParts((prev) => new Set(prev).add(part.id));
                 patchPart(partIndex, { answerGraph });
@@ -423,9 +460,11 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
             ];
 
             return (
-              <section key={part.id} className="rounded-lg border border-line bg-surface">
+              <section key={part.id} {...panelKindProps('part')} data-panel-anchor={part.id}>
                 <SchemeRow
                   m={m}
+                  kind="part"
+                  className={`panel-kind-head ${partOpen ? '' : 'rounded-b-lg'}`}
                   open={partOpen}
                   onToggle={() => togglePart(part.id)}
                   label={partLabel(partIndex)}
@@ -503,13 +542,18 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                       </div>
                     )}
 
+                    <ReferToRow
+                      stem={question.blocks}
+                      blocks={part.blocks}
+                      onChange={(blocks) => patchPart(partIndex, { blocks })}
+                    />
                     <BlockEditor
                       blocks={part.blocks}
                       onChange={(blocks) => patchPart(partIndex, { blocks })}
                     />
 
                     {subParts.length > 0 && (
-                      <div className="space-y-0.5 border-l-2 border-line pl-2">
+                      <div className="space-y-1.5 border-l-2 border-[color-mix(in_oklab,var(--accent)_30%,var(--line))] pl-2">
                         {subParts.map((subPart, subIndex) => {
                           const subOpen = expandedSubs.has(subPart.id);
                           const subMenu: MenuItem[] = [
@@ -550,9 +594,10 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                             },
                           ];
                           return (
-                            <div key={subPart.id}>
+                            <div key={subPart.id} {...panelKindProps('subPart')} data-panel-anchor={subPart.id}>
                               <SchemeRow
                                 m={m}
+                                kind="subPart"
                                 open={subOpen}
                                 onToggle={() => toggleSub(subPart.id)}
                                 label={subPartLabel(subIndex)}
@@ -606,7 +651,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                 menuLabel={m.subActions(subPartLabel(subIndex))}
                               />
                               {subOpen && (
-                                <div className="animate-fade-in space-y-2 py-1 pl-6">
+                                <div className="animate-fade-in space-y-2 px-2 pb-2 pt-1">
                                   <BlockEditor
                                     blocks={subPart.blocks}
                                     onChange={(blocks) =>
@@ -636,6 +681,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                       }
                                     />
                                   )}
+                                  <TeacherArea anchor={`teacher:${subPart.id}`}>
                                   <BiTextField
                                     translate={{ kind: 'answer' }}
                                     label={m.answerTeacher}
@@ -683,6 +729,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                       })
                                     }
                                   />
+                                  </TeacherArea>
                                 </div>
                               )}
                             </div>
@@ -690,6 +737,19 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                         })}
                       </div>
                     )}
+
+                    {/* Where a new sub-part will go: after the last one (k-0474). */}
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      onClick={() => {
+                        const created = createSubPart();
+                        setExpandedSubs((prev) => new Set(prev).add(created.id));
+                        patchPart(partIndex, { subParts: [...subParts, created] });
+                      }}
+                    >
+                      {dm.addSubPartHere}
+                    </Button>
 
                     {/* After the sub-parts, where it prints: a part's room follows its group. */}
                     {part.answerGraph && (
@@ -700,6 +760,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                       />
                     )}
 
+                    <TeacherArea anchor={`teacher:${part.id}`}>
                     <BiTextField
                       translate={{ kind: 'answer' }}
                       label={m.answerMarking}
@@ -718,6 +779,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                       printedMarks={hasSubParts ? partMarks(part) : part.marks}
                       onChange={(scheme) => setParts(replacePart(question.parts, partIndex, withScheme(part, scheme)))}
                     />
+                    </TeacherArea>
                   </div>
                 )}
               </section>

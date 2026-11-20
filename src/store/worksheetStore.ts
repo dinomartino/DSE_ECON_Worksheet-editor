@@ -264,7 +264,8 @@ interface WorksheetState {
 
   // --- Questions --------------------------------------------------------------
   /** Add a question, after `afterId` when given and at the end otherwise. */
-  addQuestion: (typeId: string, afterId?: string) => void;
+  /** `build` makes the question instead of the type's blank one (the DRQ starter, k-0474). */
+  addQuestion: (typeId: string, afterId?: string, build?: () => Question) => void;
   updateQuestion: (questionId: string, patch: Partial<Question>) => void;
   removeQuestion: (questionId: string) => void;
   duplicateQuestion: (questionId: string) => void;
@@ -1000,10 +1001,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
    * knowing the anchor exists; an explicit `afterId` wins. The anchor then advances
    * onto what was just added, or consecutive inserts enter backwards.
    */
-  addQuestion: (typeId, afterId) => {
+  addQuestion: (typeId, afterId, build) => {
     const definition = listQuestionTypes().find((type) => type.id === typeId);
     if (!definition) return;
-    const question = definition.create();
+    const question = build ? build() : definition.create();
     const anchor = afterId ?? get().insertAnchorId;
     get().commit((draft) => insertIntoFlow(draft, { type: 'question', id: question.id }, anchor, {
       questions: [...draft.questions, question],

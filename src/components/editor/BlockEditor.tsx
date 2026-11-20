@@ -9,7 +9,6 @@ import {
   createParagraphBlock,
   createSourceBlock,
   createTableBlock,
-  nextSourceLetter,
 } from '@/model/factories';
 import {
   cellRects,
@@ -61,6 +60,11 @@ import { DiagramEditor } from './DiagramEditor';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { BLOCK_EDITOR_MESSAGES } from './BlockEditor.messages';
+import { Menu } from '@/components/ui/Menu';
+import { createSourceOf, nextLetterIn, sourceLetter } from '@/model/drq';
+import { DRQ_PANEL_MESSAGES } from './drqPanel.messages';
+import { PanelKindCard } from './panelKinds';
+import { sourceHolds, sourceKindOptions } from './sourceKinds';
 
 /**
  * Content-block editing (§5.3): insert paragraph / table / image in any order,
@@ -103,7 +107,11 @@ export function BlockEditor({
   nested,
 }: Props) {
   const m = useMessages(BLOCK_EDITOR_MESSAGES);
+  const dm = useMessages(DRQ_PANEL_MESSAGES);
   const fileInput = useRef<HTMLInputElement>(null);
+  // Add → Source → Picture: the same chooser, but the picture lands inside a new source.
+  const sourcePictureInput = useRef<HTMLInputElement>(null);
+  const setSelectedTargetKey = useWorksheetStore((s) => s.setSelectedTargetKey);
   /*
    * The content width a new table's default indent is a fraction of.
    *
@@ -131,6 +139,23 @@ export function BlockEditor({
   };
 
   const remove = (index: number) => onChange(blocks.filter((_, i) => i !== index));
+
+  /*
+   * A new source is where the teacher works next, so the panel goes to it: selecting its
+   * key marks the card and scrolls it into view (§ Inspector), and the page shows the same
+   * source selected. A frame later, once the card exists to be found.
+   */
+  const addSource = (source: Extract<ContentBlock, { kind: 'source' }>) => {
+    onChange([...blocks, source]);
+    requestAnimationFrame(() =>
+      setSelectedTargetKey(editTargetKey({ kind: 'blockText', blockId: source.id })),
+    );
+  };
+
+  const handleSourcePicture = async (file: File) => {
+    const picture = await imageBlockFromFile(file, figureWidth ?? 420);
+    addSource({ ...createSourceOf('text', nextLetterIn(blocks)), blocks: [{ ...picture, align: 'center' }] });
+  };
 
   const handleImageFile = async (file: File) => {
     // Reduced, sized and re-measured by the one shared route (§ `imageBlockFromFile`);
@@ -190,6 +215,25 @@ export function BlockEditor({
           );
         }
 
+        if (block.kind === 'source') {
+          // A source is a card of its own kind (§ panelKinds): "Source B" in green, what it
+          // holds beside it, so a stem of four sources reads as A, B, C, D at a glance.
+          const ordinal = blocks.slice(0, index).filter((b) => b.kind === 'source').length;
+          return (
+            <PanelKindCard
+              key={block.id}
+              kind="source"
+              anchor={block.id}
+              editTarget={editTargetKey({ kind: 'blockText', blockId: block.id })}
+              chip={dm.sourceLabel(sourceLetter(block, ordinal))}
+              title={sourceHolds(block, dm)}
+              actions={controls(index)}
+            >
+              <SourceBlockEditor block={block} onChange={(next) => replace(index, next)} />
+            </PanelKindCard>
+          );
+        }
+
         return (
           <div
             key={block.id}
@@ -224,8 +268,6 @@ export function BlockEditor({
                   onChange={(next) => replace(index, next)}
                   onUnwrap={(survivor) => replace(index, survivor)}
                 />
-              ) : block.kind === 'source' ? (
-                <SourceBlockEditor block={block} onChange={(next) => replace(index, next)} />
               ) : (
                 <ImageBlockEditor block={block} onChange={(next) => replace(index, next)} />
               )}
@@ -300,25 +342,45 @@ export function BlockEditor({
         {/* Withheld inside a source: a source may not contain another (§`SourceBlock`),
             and nesting one framed panel in another would put a third level of `w:tbl`
             in the file, past the one level the export is bounded to. */}
+        {/* Source ▾: pick what the source holds first (k-0474) — the kinds DSE data-response
+            questions print — so it arrives as "Source C" with a table, chart, extract or
+            views already in it, rather than an empty frame and a second Add row. Seeded with
+            the next free letter as a convenience only — nothing stores an index, and
+            reordering relabels nothing (§`SourceBlock`). */}
         {!nested && (
-          <Button
-            size="sm"
-            variant="subtle"
-            aria-label={m.addSource}
-            onClick={() =>
-              onChange([
-                ...blocks,
-                // Seeded with the next free letter as a convenience only — nothing
-                // stores an index, and reordering relabels nothing (§`SourceBlock`).
-                createSourceBlock(
-                  nextSourceLetter(blocks.filter((block) => block.kind === 'source').length),
-                ),
-              ])
+          <Menu
+            align="left"
+            label={dm.addSourceOf}
+            trigger={
+              <span className="inline-flex items-center gap-0.5">
+                {dm.sourceMenu}
+                <span aria-hidden className="text-[9px] text-ink-subtle">▾</span>
+              </span>
             }
-          >
-            {m.source}
-          </Button>
+            items={sourceKindOptions(dm).map((option) => ({
+              label: option.label,
+              hint: option.hint,
+              icon: option.icon,
+              separated: option.kind === 'picture',
+              onSelect: () => {
+                if (option.kind === 'picture') sourcePictureInput.current?.click();
+                else if (option.kind === 'empty') addSource(createSourceBlock(nextLetterIn(blocks)));
+                else addSource(createSourceOf(option.kind, nextLetterIn(blocks)));
+              },
+            }))}
+          />
         )}
+        <input
+          ref={sourcePictureInput}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void handleSourcePicture(file);
+            event.target.value = '';
+          }}
+        />
         <input
           ref={fileInput}
           type="file"
@@ -1204,37 +1266,6 @@ function SourceBlockEditor({
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-line pt-2">
-        <Eyebrow>{m.frame}</Eyebrow>
-        <Segmented<'auto' | 'framed' | 'bare'>
-          label={m.frameLabel}
-          // Unstored means "follow the body", which is the resting state — a source
-          // whose body is one table needs no frame of its own, because the table
-          // already draws one (§`defaultFramed`).
-          value={block.framed === undefined ? 'auto' : block.framed ? 'framed' : 'bare'}
-          onChange={(choice) =>
-            onChange({
-              ...block,
-              framed: choice === 'auto' ? undefined : choice === 'framed',
-            })
-          }
-          options={[
-            { value: 'auto', label: m.frameAuto },
-            { value: 'framed', label: m.frameFramed },
-            { value: 'bare', label: m.frameNone },
-          ]}
-        />
-      </div>
-      <p className="text-xs text-muted">
-        {block.framed === undefined
-          ? !defaultFramed(block.blocks)
-            ? m.noFrameOwnBox
-            : m.framedOneSource
-          : block.framed
-            ? m.alwaysFramed
-            : m.neverFramed}
-      </p>
-
       <BlockEditor
         blocks={block.blocks}
         onChange={(blocks) => onChange({ ...block, blocks })}
@@ -1270,6 +1301,42 @@ function SourceBlockEditor({
             {m.addFootnote}
           </Button>
         )}
+      </div>
+
+      {/* The frame, last and on one line (k-0474): it is set once if at all, and the
+          resting "Auto" is right for nearly every source. The explanation that used to
+          take a paragraph is the row's tooltip. */}
+      <div
+        className="flex flex-wrap items-center gap-2 border-t border-line pt-2"
+        title={
+          block.framed === undefined
+            ? !defaultFramed(block.blocks)
+              ? m.noFrameOwnBox
+              : m.framedOneSource
+            : block.framed
+              ? m.alwaysFramed
+              : m.neverFramed
+        }
+      >
+        <Eyebrow>{m.frame}</Eyebrow>
+        <Segmented<'auto' | 'framed' | 'bare'>
+          label={m.frameLabel}
+          // Unstored means "follow the body", which is the resting state — a source
+          // whose body is one table needs no frame of its own, because the table
+          // already draws one (§`defaultFramed`).
+          value={block.framed === undefined ? 'auto' : block.framed ? 'framed' : 'bare'}
+          onChange={(choice) =>
+            onChange({
+              ...block,
+              framed: choice === 'auto' ? undefined : choice === 'framed',
+            })
+          }
+          options={[
+            { value: 'auto', label: m.frameAuto },
+            { value: 'framed', label: m.frameFramed },
+            { value: 'bare', label: m.frameNone },
+          ]}
+        />
       </div>
     </div>
   );

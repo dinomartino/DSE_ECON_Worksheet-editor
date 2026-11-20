@@ -686,6 +686,62 @@ u [data-tab] {
 }
 
 /*
+ * Panel kinds (k-0474, `components/editor/panelKinds.tsx`): the right panel's cards say
+ * what they are by colour — question text, source, part, sub-part, teacher-only answer.
+ * Each card sets `--kind` (its colour) and `--kind-ink` (text in that colour, at a
+ * readable contrast); these rules are the only place that turns them into pixels.
+ */
+.panel-kind {
+  position: relative;
+  border: 1px solid color-mix(in oklab, var(--kind) 30%, var(--line));
+  border-radius: var(--radius-lg);
+  background-color: var(--surface);
+}
+/* The stripe down the left edge: ::after, because a selected control's bar is ::before. */
+.panel-kind::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: 3px;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  background-color: var(--kind);
+  pointer-events: none;
+}
+.panel-kind-head {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background-color: color-mix(in oklab, var(--kind) 9%, var(--surface));
+}
+.panel-kind-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.0625rem 0.5rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  color: var(--kind-ink);
+  background-color: color-mix(in oklab, var(--kind) 14%, var(--surface));
+}
+/* A card the page selected wears a ring in its own colour instead of the generic tint. */
+.panel-kind[data-edit-current] {
+  background-color: var(--surface);
+}
+.panel-kind[data-edit-current]::before {
+  display: none;
+}
+/* The ring: on the innermost card holding the page's selection, never on its ancestors. */
+.panel-kind:is([data-edit-current], :has([data-edit-current])):not(
+    :has(.panel-kind[data-edit-current], .panel-kind [data-edit-current])
+  ) {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--kind) 70%, transparent);
+}
+
+/*
  * AI review highlights (`src/components/ai/pageMarks.ts`): set imperatively on page text
  * while the run bar reviews a result. Screen only — they never print, and the .docx
  * never sees the DOM. On-paper literal hex; nothing here changes layout.

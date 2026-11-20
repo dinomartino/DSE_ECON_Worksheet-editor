@@ -160,6 +160,34 @@ function boxedExtract(): TableBlock {
   };
 }
 
+/**
+ * People's views — the role | comment table every DSE data-response question since 2022
+ * prints at least once (k-0474): a narrow column naming who speaks (often with a small
+ * picture under the name, which a cell picture supplies) and a wide one for what they say.
+ *
+ * Roles ship as invented examples, in both languages, because the shape only reads as a
+ * views table once the left column holds a speaker; comments ship empty. Rows are tall
+ * enough for a picture under the role, as the papers print them.
+ */
+function views(): TableBlock {
+  const roles = [
+    bi('A shop owner', '一名店主'),
+    bi('An economist', '一位經濟學家'),
+    bi('A government official', '一名政府官員'),
+  ];
+  return {
+    kind: 'table',
+    id: newId(),
+    columnWidths: [0.3, 0.7],
+    rows: roles.map((role) =>
+      row([cell(role, { align: 'left' }), cell(undefined, { align: 'left' })], VIEWS_ROW_TWIPS),
+    ),
+  };
+}
+
+/** About 2 cm: room for a role's name and a small picture under it. */
+const VIEWS_ROW_TWIPS = 1100;
+
 export const TABLE_TEMPLATES: TableTemplate[] = [
   {
     id: 'balanceSheet',
@@ -178,6 +206,12 @@ export const TABLE_TEMPLATES: TableTemplate[] = [
     name: bi('Boxed extract', '方框資料'),
     hint: bi('One framed block for a quoted source', '單一方框，用於引述資料'),
     build: boxedExtract,
+  },
+  {
+    id: 'views',
+    name: bi("People's views", '各方意見'),
+    hint: bi('Who says it | what they say, one row each', '發言者｜意見，每人一行'),
+    build: views,
   },
 ];
 

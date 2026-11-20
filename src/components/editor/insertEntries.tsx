@@ -13,12 +13,13 @@ import {
   createTextElement,
 } from '@/model/flow';
 import { documentShape, offersLayoutKind } from '@/model/documentShape';
-import { createSourceWith, createTableBlock, nextSourceLetter } from '@/model/factories';
+import { createTableBlock } from '@/model/factories';
+import { createDrqQuestion, createSourceOf, nextLetterIn } from '@/model/drq';
 import { hostBlocks, insertHostFor } from '@/model/insertHost';
 import { contentWidth, pageSetupOf } from '@/model/page';
 import { defaultTableIndent } from '@/model/table';
 import { bi, plain } from '@/model/text';
-import type { ContentBlock, LayoutElement, Worksheet } from '@/model/types';
+import type { ContentBlock, LayoutElement, Question, Worksheet } from '@/model/types';
 import { listQuestionTypes } from '@/registry';
 import { useBankSession } from '@/components/bank/bankSession';
 import {
@@ -40,8 +41,10 @@ import {
   TableIcon,
   TextIcon,
 } from '@/components/ui/icons';
-import type { Messages } from '@/i18n/catalogue';
+import { resolveMessages, type Messages } from '@/i18n/catalogue';
 import type { ADD_RAIL_MESSAGES } from './AddRail.messages';
+import { DRQ_PANEL_MESSAGES } from './drqPanel.messages';
+import { sourceKindOptions } from './sourceKinds';
 
 /**
  * Everything the Insert and Question menus offer, built in one place (k-0201) so the rail
@@ -77,7 +80,8 @@ export interface InsertContext {
   labelFor: (id: string | undefined) => string | undefined;
   /** With no anchor, the section each question type lands in, by its short label. */
   typeDestinations?: Map<string, string | undefined>;
-  addQuestion: (typeId: string, afterId?: string) => void;
+  /** `build` makes the question instead of the type's blank one (the DRQ starter). */
+  addQuestion: (typeId: string, afterId?: string, build?: () => Question) => void;
   addLayoutElement: (element: LayoutElement, afterId?: string) => void;
   insertBlockAtAnchor: (block: ContentBlock, afterId?: string) => void;
 }
@@ -123,6 +127,18 @@ export function buildInsertEntries({
       icon: definition.id === 'mcq' ? <McqIcon size={18} /> : <StructuredIcon size={18} />,
       run: (afterId) => addQuestion(definition.id, afterId),
     };
+  });
+  /*
+   * A whole data-response question in one go (k-0474): Sources A–D and parts (a)–(e), as
+   * the papers set it. A structured question underneath, so it lands where one would.
+   */
+  const dm = resolveMessages(DRQ_PANEL_MESSAGES, english ? 'en' : 'zh-HK');
+  questionEntries.push({
+    id: 'drq',
+    label: dm.drqRail,
+    hint: dm.drqRailHint,
+    icon: <StimulusIcon size={18} />,
+    run: (afterId) => addQuestion('structured', afterId, createDrqQuestion),
   });
   // Copies from the other saved documents: opens the sidebar's 題庫 tab, where the
   // anchor line names the same destination this flyout does.
@@ -176,21 +192,18 @@ export function buildInsertEntries({
       label: m.source,
       hint: hostHint,
       icon: <StimulusIcon size={18} />,
-      choices: (
-        [
-          ['table', m.sourceTable, m.sourceTableHint, <TableIcon key="t" size={18} />],
-          ['stakeholders', m.sourceStakeholders, m.sourceStakeholdersHint, <StimulusIcon key="s" size={18} />],
-          ['text', m.sourceText, m.sourceTextHint, <TextIcon key="x" size={18} />],
-        ] as const
-      ).map(([body, label, hint, icon]) => ({
-        id: `source-${body}`,
-        label,
-        hint,
-        icon,
+      // The kinds the right panel's Add → Source ▾ offers (k-0474), from one list; a
+      // picture needs a file, so the rail leaves it to Picture… and the panel.
+      choices: sourceKindOptions(dm, { picture: false }).map((option) => ({
+        id: `source-${option.kind}`,
+        label: option.label,
+        hint: option.hint,
+        icon: option.icon,
         run: (runAfterId?: string) => {
           const target = insertHostFor(worksheet, runAfterId ?? afterId);
-          const sources = target ? hostBlocks(worksheet, target).filter((block) => block.kind === 'source').length : 0;
-          insertBlockAtAnchor(createSourceWith(body, nextSourceLetter(sources)), runAfterId);
+          const letter = nextLetterIn(target ? hostBlocks(worksheet, target) : []);
+          const source = option.kind === 'picture' || option.kind === 'empty' ? createSourceOf('text', letter) : createSourceOf(option.kind, letter);
+          insertBlockAtAnchor(source, runAfterId);
         },
       })),
     },
@@ -333,5 +346,7 @@ export function buildInsertEntries({
     return choices.length > 0 ? [{ ...entry, choices }] : [];
   });
 
-  return { questions: questionEntries, layout: offeredLayout };
+  // A Paper 1 holds MC questions only, so it is offered no DRQ.
+  const questions = shape === 'paper1' ? questionEntries.filter((entry) => entry.id !== 'drq') : questionEntries;
+  return { questions, layout: offeredLayout };
 }

@@ -18,17 +18,21 @@ function withQuestion(documentType: 'classroom' | 'paper1'): { worksheet: Worksh
   };
 }
 
-function entries(worksheet: Worksheet, afterId: string | undefined, insertBlockAtAnchor = vi.fn()) {
+function build(worksheet: Worksheet, afterId: string | undefined, insertBlockAtAnchor = vi.fn(), addQuestion = vi.fn()) {
   return buildInsertEntries({
     m: resolveMessages(ADD_RAIL_MESSAGES, 'en'),
     english: true,
     worksheet,
     afterId,
     labelFor: (id) => (id ? 'Q1' : undefined),
-    addQuestion: vi.fn(),
+    addQuestion,
     addLayoutElement: vi.fn(),
     insertBlockAtAnchor,
-  }).layout;
+  });
+}
+
+function entries(worksheet: Worksheet, afterId: string | undefined, insertBlockAtAnchor = vi.fn()) {
+  return build(worksheet, afterId, insertBlockAtAnchor).layout;
 }
 
 const sourceEntry = (list: InsertEntry[]) => list.find((entry) => entry.id === 'source');
@@ -39,7 +43,17 @@ describe('Insert → Source…', () => {
     const entry = sourceEntry(entries(worksheet, questionId));
     expect(entry?.label).toBe('Source…');
     expect(entry?.hint).toBe('into Q1');
-    expect(entry?.choices?.map((choice) => choice.id)).toEqual(['source-table', 'source-stakeholders', 'source-text']);
+    // The right panel's Add → Source ▾ kinds (k-0474), less Picture, which needs a file.
+    expect(entry?.choices?.map((choice) => choice.id)).toEqual([
+      'source-table',
+      'source-barChart',
+      'source-lineChart',
+      'source-text',
+      'source-views',
+      'source-forum',
+      'source-stakeholders',
+      'source-empty',
+    ]);
     // Right after Picture…, beside the other things that go into a question.
     expect(entries(worksheet, questionId).map((e) => e.id).slice(0, 3)).toEqual(['table', 'picture', 'source']);
   });
@@ -78,5 +92,25 @@ describe('Insert → Source…', () => {
   it('with no question to go into, still names where it lands', () => {
     const { worksheet } = withQuestion('classroom');
     expect(sourceEntry(entries(worksheet, undefined))?.hint).toBe('as a new question');
+  });
+});
+
+describe('Question → Data-response (DRQ) (k-0474)', () => {
+  it('adds a structured question built as a whole DRQ', () => {
+    const { worksheet, questionId } = withQuestion('classroom');
+    const addQuestion = vi.fn();
+    const drq = build(worksheet, questionId, vi.fn(), addQuestion).questions.find((entry) => entry.id === 'drq');
+    expect(drq?.label).toBe('Data-response (DRQ)');
+    drq!.run!(questionId);
+    const [typeId, afterId, make] = addQuestion.mock.calls[0];
+    expect([typeId, afterId]).toEqual(['structured', questionId]);
+    const question = make();
+    expect(question.blocks.filter((block: ContentBlock) => block.kind === 'source')).toHaveLength(4);
+    expect(question.parts).toHaveLength(5);
+  });
+
+  it('is not offered on a Paper 1', () => {
+    const { worksheet, questionId } = withQuestion('paper1');
+    expect(build(worksheet, questionId).questions.some((entry) => entry.id === 'drq')).toBe(false);
   });
 });
