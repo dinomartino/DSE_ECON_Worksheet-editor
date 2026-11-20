@@ -20,7 +20,7 @@ a version heading is edited afterwards.
   part with the "For part (e), candidates are required to present their answers in an essay form…"
   note before it. Type over everything on the page. It is also under Question → Data-response
   (DRQ) on the left.
-  <!-- zh: **在側欄一鍵建立整題資料回應題。** 新增而仍空白的結構性問題會提供「建立資料回應題」：一按即加入資料A至D（表格、棒形圖、新聞節錄、各方意見表）及分題 (a) 至 (e)，格式與文憑試卷二資料回應題相同：每個分題以「參閱資料…」開首，(c) 有兩個共用分數的小分題，(e) 為 14 分的短文題，題前附「(e)部須以短文形式作答…」說明。所有內容可直接在頁面上改寫。亦可在左側「題目 → 資料回應題」加入。 -->
+  <!-- zh: **在側欄一鍵建立整題資料回應題。** 新增而仍空白的結構性問題會提供「建立資料回應題」：一按即加入資料A至D（表格、棒形圖、新聞節錄、各方意見表）及分題 (a) 至 (e)，格式與 DSE Paper 2 資料回應題相同：每個分題以「參閱資料…」開首，(c) 有兩個共用分數的小分題，(e) 為 14 分的短文題，題前附「(e)部須以短文形式作答…」說明。所有內容可直接在頁面上改寫。亦可在左側「題目 → 資料回應題」加入。 -->
 - **Bar charts and line graphs for data-response sources.** Type the figures into a small table in
   the side panel and the chart is drawn for you, in the black-and-white style of the exam paper.
   Bars can be grouped, a negative figure's bar goes down, there can be up to 4 series (with a
