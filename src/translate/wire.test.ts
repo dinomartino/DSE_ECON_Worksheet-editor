@@ -178,3 +178,24 @@ describe('source facts', () => {
     }
   });
 });
+
+describe('fraction marks ride in the style class (k-0479)', () => {
+  const runs: RichText = [
+    { text: 'PED = ' },
+    { text: 'ΔQ', fraction: 'num' },
+    { text: '⁄Q', fraction: 'den' },
+    { text: '1', fraction: 'den', vertAlign: 'subscript' },
+  ];
+
+  it('round-trips the numerator and denominator marks and the slash', () => {
+    const { wire } = encodeRuns(runs);
+    expect(wire).toContain('<s1>ΔQ</s1>');
+    expect(wire).toContain('<s2>⁄Q<sub>1</sub></s2>');
+    expect(clean(roundTrip(runs))).toEqual(clean(runs));
+  });
+
+  it('encodes runs without a fraction exactly as before', () => {
+    const { wire } = encodeRuns([{ text: 'Cost ', fontSize: 12 }, { text: 'x', bold: true }]);
+    expect(wire).toBe('<s1>Cost </s1><b>x</b>');
+  });
+});

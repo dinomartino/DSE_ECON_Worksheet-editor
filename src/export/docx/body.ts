@@ -1,3 +1,4 @@
+import { hasFraction } from '@/model/fraction';
 import type {
   BiText,
   CaptionPlacement,
@@ -144,14 +145,19 @@ export function formatParagraphProps(
   format: TextFormat | undefined,
   /** The document's line spacing on this paragraph (`TextNode.lineSpacing`), with its style. */
   spaced?: { style: NodeStyle; spacing: number },
+  /**
+   * The paragraph holds a stacked fraction (k-0479): its line is `atLeast`, not `exact`,
+   * so a two-storey fraction is not clipped. Same `w:line` value either way.
+   */
+  growing = false,
 ): string {
-  if (!format && !spaced) return '';
+  if (!format && !spaced && !growing) return '';
   const parts: string[] = [];
   // A `w:spacing` is emitted when the teacher set paragraph spacing, and also when they
   // only enlarged the text: an exact line box does not grow to fit, so a font size the
   // style's box cannot hold would be clipped unless the box is restated with it. A
   // spaced document states each spaced line's box (`spacedLineTwips`, as the page does).
-  const needsLine = format?.fontSize !== undefined || spaced !== undefined;
+  const needsLine = format?.fontSize !== undefined || spaced !== undefined || growing;
   if (format?.spaceBefore !== undefined || format?.spaceAfter !== undefined || needsLine) {
     // Word measures paragraph spacing in twentieths of a point.
     //
@@ -167,7 +173,7 @@ export function formatParagraphProps(
         'w:line': String(
           spaced ? spacedLineTwips(spaced.style, format?.fontSize, spaced.spacing) : exactLineFor(format?.fontSize),
         ),
-        'w:lineRule': 'exact',
+        'w:lineRule': growing ? 'atLeast' : 'exact',
       })}/>`,
     );
   }
@@ -188,6 +194,8 @@ function paragraph(options: {
   format?: TextFormat;
   /** `TextNode.lineSpacing`, with the node's style (§ `formatParagraphProps`). */
   spaced?: { style: NodeStyle; spacing: number };
+  /** The runs hold a stacked fraction: an `atLeast` line (§ `formatParagraphProps`). */
+  growing?: boolean;
 }): string {
   const props: string[] = [`<w:pStyle w:val="${options.styleId}"/>`];
 
@@ -217,7 +225,7 @@ function paragraph(options: {
     ),
   );
 
-  props.push(formatParagraphProps(options.format, options.spaced));
+  props.push(formatParagraphProps(options.format, options.spaced, options.growing));
 
   return `<w:p><w:pPr>${props.join('')}</w:pPr>${options.runs}</w:p>`;
 }
@@ -437,6 +445,7 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
     tabRightAt: context.contentWidth,
     format: againstStyle(node.format, styleId, context),
     ...(node.lineSpacing !== undefined ? { spaced: { style: node.style, spacing: node.lineSpacing } } : {}),
+    ...(hasFraction(node.text.en) || hasFraction(node.text.zh) ? { growing: true } : {}),
   });
 }
 
@@ -490,7 +499,8 @@ function cellParagraph(cellText: string, align: CellAlign, format?: TextFormat):
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
     tabsElement(format) +
     `<w:jc w:val="${jcValue(align)}"/>` +
-    formatParagraphProps(format ? { ...format, align: undefined } : undefined) +
+    // A cell holding a stacked fraction grows its line, as a paragraph does (k-0479).
+    formatParagraphProps(format ? { ...format, align: undefined } : undefined, undefined, cellText.includes('<m:f>')) +
     '</w:pPr>' +
     cellText +
     '</w:p>'

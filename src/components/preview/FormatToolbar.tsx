@@ -6,6 +6,7 @@ import type { TabPreset } from '@/model/tabStops';
 import { TabRuler, type RulerGeometry } from './TabRuler';
 import { nextOptionAlign, optionPrintsJustified } from '@/model/edits';
 import { useMessages } from '@/i18n/language';
+import { useShortcutLabel } from '@/components/ui/useShortcutLabel';
 import type { TextKey } from '@/i18n/catalogue';
 import { FORMAT_TOOLBAR_MESSAGES } from './messages';
 
@@ -83,6 +84,16 @@ interface Props {
    * nowhere to put it, and the bar hides the control rather than offering a dead one.
    */
   onInsertBlank?: () => void;
+  /**
+   * Open the fraction dialog at the caret (k-0479, GitHub #8). A caret is enough, as for a
+   * blank; absent with none, and the bar hides the control.
+   */
+  onInsertFraction?: () => void;
+  /**
+   * Offer bold, italic and underline on an `alignOnly` target: an MC option or statement
+   * whose characters are selected. Its size and colour stay its question's (GitHub #8).
+   */
+  emphasis?: boolean;
   /**
    * Type a tab at the caret. The Tab key already does this in a paragraph; the button is
    * for a table cell, where Tab walks to the next cell as in Word. Absent with no caret.
@@ -221,6 +232,8 @@ export function FormatToolbar({
   onVertAlign,
   vertAlign,
   onInsertBlank,
+  onInsertFraction,
+  emphasis,
   onInsertTab,
   tabRuler,
   tabStops,
@@ -237,6 +250,11 @@ export function FormatToolbar({
   onDuplicate,
 }: Props) {
   const m = useMessages(FORMAT_TOOLBAR_MESSAGES);
+  const boldKey = useShortcutLabel('B');
+  const italicKey = useShortcutLabel('I');
+  const underlineKey = useShortcutLabel('U');
+  const subKey = useShortcutLabel('=');
+  const supKey = useShortcutLabel('Shift+=').replace('⌘Shift+', '⌘⇧');
   const ref = useRef<HTMLDivElement>(null);
   const [colorOpen, setColorOpen] = useState(false);
   // Word's View ▸ Ruler: once shown, it stays shown for every paragraph, across sessions.
@@ -378,12 +396,15 @@ export function FormatToolbar({
           </select>
 
           <span className="mx-0.5 h-5 w-px bg-hud-divider" aria-hidden />
-
+        </>
+      )}
+      {(!alignOnly || emphasis) && (
+        <>
           <button
             type="button"
             aria-label={m.bold}
             aria-pressed={Boolean(format?.bold)}
-            title={m.bold}
+            title={`${m.bold} (${boldKey})`}
             className={`${BTN} ${format?.bold ? ACTIVE : IDLE} font-bold`}
             onClick={() => toggle('bold')}
           >
@@ -393,7 +414,7 @@ export function FormatToolbar({
             type="button"
             aria-label={m.italic}
             aria-pressed={Boolean(format?.italic)}
-            title={m.italic}
+            title={`${m.italic} (${italicKey})`}
             className={`${BTN} ${format?.italic ? ACTIVE : IDLE} italic`}
             onClick={() => toggle('italic')}
           >
@@ -403,7 +424,7 @@ export function FormatToolbar({
             type="button"
             aria-label={m.underline}
             aria-pressed={Boolean(format?.underline)}
-            title={m.underline}
+            title={`${m.underline} (${underlineKey})`}
             className={`${BTN} ${format?.underline ? ACTIVE : IDLE} underline`}
             onClick={() => toggle('underline')}
           >
@@ -422,7 +443,7 @@ export function FormatToolbar({
             type="button"
             aria-label={m.subscript}
             aria-pressed={vertAlign === 'subscript'}
-            title={m.subscriptTitle}
+            title={`${m.subscriptTitle} (${subKey})`}
             className={`${BTN} ${vertAlign === 'subscript' ? ACTIVE : IDLE}`}
             onClick={() => onVertAlign(vertAlign === 'subscript' ? undefined : 'subscript')}
           >
@@ -434,7 +455,7 @@ export function FormatToolbar({
             type="button"
             aria-label={m.superscript}
             aria-pressed={vertAlign === 'superscript'}
-            title={m.superscriptTitle}
+            title={`${m.superscriptTitle} (${supKey})`}
             className={`${BTN} ${vertAlign === 'superscript' ? ACTIVE : IDLE}`}
             onClick={() => onVertAlign(vertAlign === 'superscript' ? undefined : 'superscript')}
           >
@@ -443,6 +464,24 @@ export function FormatToolbar({
             </span>
           </button>
         </>
+      )}
+
+      {/* A stacked fraction (k-0479, GitHub #8): ΔQ over Q in an elasticity formula. A
+          dialog rather than typing in place: a numerator and a denominator are two lines
+          a single-line field cannot hold. */}
+      {onInsertFraction && (
+        <button
+          type="button"
+          aria-label={m.fraction}
+          title={m.fractionTitle}
+          className={`${BTN} ${IDLE}`}
+          onClick={onInsertFraction}
+        >
+          <span aria-hidden className="econ-fraction text-[9px] leading-none">
+            <span className="econ-fraction-num">a</span>
+            <span className="econ-fraction-den">b</span>
+          </span>
+        </button>
       )}
 
       {/* A fill-in blank. Its own action rather than a format, because it inserts

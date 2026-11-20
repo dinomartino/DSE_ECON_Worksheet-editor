@@ -13,6 +13,12 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Fractions in question text and MC options.** Fraction (a⁄b) on the format bar opens a small
+  box: type the top and the bottom, and it prints stacked, with a line between, as in an
+  elasticity formula. Subscripts work inside it too, so (Q₂ − Q₁) over Q₁ is easy. Tap a fraction
+  while typing to change it. It prints the same in the PDF, and in Word as a real equation. A paper
+  with a fraction still opens in older versions, which show it on one line as Q₂ − Q₁⁄Q₁.
+  <!-- zh: **題幹及 MC 選項可輸入分數。** 格式列上的「分數」(a⁄b) 會打開小視窗：輸入分子和分母，就會上下排列、中間有分數線，例如彈性公式。分數內也可用下標，輕鬆打出 (Q₂ − Q₁) 除以 Q₁。輸入時按一下分數即可修改。PDF 列印效果相同，Word 中則是真正的方程式。含分數的試卷在舊版本仍可開啟，只會以單行顯示，例如 Q₂ − Q₁⁄Q₁。 -->
 - **Build a whole data-response question from the side panel.** A new, still-blank structured
   question offers **Start a DRQ**: one click gives Sources A–D (a table, a bar chart, a news
   extract and a people's views table) and parts (a)–(e) shaped like a DSE Paper 2 DRQ. Each part
@@ -133,6 +139,15 @@ a version heading is edited afterwards.
   <!-- zh: **行距。** 「頁面設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
 
 ### Fixed
+- **Subscripts and superscripts in MC options, and from the keyboard.** Select the 1 of Q1 in an
+  option and the format bar now offers X₂ and X² (and B, I, U), as it does in question text.
+  Anywhere you type, Ctrl+= (⌘= on a Mac) makes a subscript and Ctrl+Shift+= (⌘⇧=) a superscript,
+  as in Word; press it before typing to type straight into it.
+  <!-- zh: **MC 選項可用下標及上標，亦可用鍵盤。** 在選項中選取 Q1 的 1，格式列現在會提供 X₂ 和 X²（以及 B、I、U），與題幹相同。任何輸入位置按 Ctrl+=（Mac 為 ⌘=）即變下標，Ctrl+Shift+=（⌘⇧=）即變上標，與 Word 相同；先按再輸入，就會直接打出下標或上標。 -->
+- **Bold that came with a paste can be taken off.** Text pasted in bold from Word or a web page
+  stayed bold: Ctrl+B (⌘B) and the B button did nothing to it. Both now unbold it, whether you
+  select the words or, with B, just click into the text.
+  <!-- zh: **貼上時帶來的粗體可以取消。** 從 Word 或網頁貼上的粗體文字之前無法取消：按 Ctrl+B（⌘B）或 B 按鈕都沒有作用。現在兩者都可取消粗體，無論是選取文字，或（用 B 按鈕時）只是在文字中按一下。 -->
 - **A sub-part's empty marks box reads "shared" / 「共用」 in full** in the side panel, instead of
   being cut off.
   <!-- zh: **側欄中小分題的空白分數格會完整顯示「共用」**，不再被截斷。 -->

@@ -30,6 +30,12 @@ export interface InlineRun {
   color?: string;
   /** Override the element's font pair for this run only. */
   fonts?: FontPair;
+  /**
+   * Part of a stacked fraction (k-0479, GitHub #8): the numerator's runs, then the
+   * denominator's, the first of which starts with U+2044. Optional and tolerant, so no
+   * schema bump: an older build prints "ΔQ⁄Q" inline. Rules: `model/fraction.ts`.
+   */
+  fraction?: 'num' | 'den';
 }
 
 /**

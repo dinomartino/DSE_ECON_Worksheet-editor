@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { changeEnd, replaceRichTextRange, replaceRichTextRangeWithRuns, richTextLength } from '@/model/text';
+import {
+  applyRunFormat,
+  changeEnd,
+  replaceRichTextRange,
+  replaceRichTextRangeWithRuns,
+  richTextLength,
+} from '@/model/text';
+import { fractionAt } from '@/model/fraction';
+import { runShortcut, toggledAtCaret, toggledRange, type TypingFormat } from './runShortcuts';
 import { pastedRuns } from '@/import/pasteRuns';
 import { clipboardPicture } from '@/components/editor/pasteActions';
 import { gridFromClipboard, type TextGrid } from '@/model/tableClipboard';
@@ -86,6 +94,11 @@ interface Props {
    * the host, since the field only knows where it sits once it is in the page.
    */
   tabInserts?: (host: HTMLElement) => boolean;
+  /**
+   * A tap on a stacked fraction (k-0479): its range in this field's offsets, so the host
+   * can open it to edit. Without it a fraction is still one piece, just not editable here.
+   */
+  onOpenFraction?: (range: { start: number; end: number }) => void;
 }
 
 /**
@@ -127,6 +140,7 @@ export function RichTextEditable({
   onPasted,
   onPastePicture,
   tabInserts,
+  onOpenFraction,
 }: Props) {
   const hostRef = useRef<HTMLSpanElement>(null);
   const paintedRef = useRef<RichText | undefined>(undefined);
@@ -141,6 +155,11 @@ export function RichTextEditable({
   // Stable reference, so the paint effect does not fire on every render — which would
   // move the caret on every keystroke.
   const runs = useMemo(() => value ?? [], [value]);
+  /**
+   * ⌘B / ⌘I / ⌘U / ⌘= / ⌘⇧= pressed at a caret: what the next characters typed there get,
+   * as Word does. Only for that caret: typing moves it along, any other move forgets it.
+   */
+  const typingRef = useRef<TypingFormat | undefined>(undefined);
 
   /**
    * Write a range edit the browser must not perform itself, and restore the caret.
@@ -304,14 +323,43 @@ export function RichTextEditable({
          * switched on with nothing selected" has no run for the browser to continue, so
          * that insertion is performed against the model instead.
          */
-        if (!pendingFormat) return;
-        const data = (event.nativeEvent as InputEvent).data;
-        if (!data) return;
+        const native = event.nativeEvent as InputEvent | KeyboardEvent;
+        // React's own `data`: for the space bar Chrome's event here is a `keypress`, whose
+        // native event has no `data`, and reading that typed spaces past the format.
+        const data = (event as unknown as { data?: string | null }).data ?? (native as InputEvent).data;
+        if (!data || native.isComposing) return;
         const host = hostRef.current;
         const at = host ? selectionOffsets(host) : undefined;
         if (!at) return;
+        const typing = typingRef.current;
+        if (typing && typing.at === at.start && at.start === at.end) {
+          // A format switched on (or off) at this caret by a shortcut (k-0479): the typed
+          // characters take it, and it follows the caret as typing goes on.
+          event.preventDefault();
+          const typed = replaceRichTextRange(runs, at.start, at.end, data, pendingFormat);
+          onChange(applyRunFormat(typed, at.start, at.start + data.length, typing.patch));
+          onPendingConsumed?.();
+          const next = at.start + data.length;
+          typingRef.current = { ...typing, at: next };
+          queueMicrotask(() => {
+            const field = hostRef.current;
+            if (field) setSelectionOffsets(field, next);
+          });
+          return;
+        }
+        if (!pendingFormat) return;
         event.preventDefault();
         writeRange(at.start, at.end, data);
+      }}
+      onClick={(event) => {
+        // A tap on a stacked fraction opens it to edit (k-0479); it is one piece here.
+        const chip = (event.target as HTMLElement).closest?.('[data-fraction-chip]');
+        if (!chip || !onOpenFraction) return;
+        const [start, end] = (chip.getAttribute('data-fraction-chip') ?? '').split('-').map(Number);
+        const fraction = Number.isFinite(start) ? fractionAt(runs, start) : undefined;
+        if (!fraction || fraction.end !== end) return;
+        event.preventDefault();
+        onOpenFraction({ start: fraction.start, end: fraction.end });
       }}
       onPaste={(event) => {
         /*
@@ -349,6 +397,27 @@ export function RichTextEditable({
       }}
       onKeyDown={(event) => {
         const host = hostRef.current;
+        /*
+         * Character formats from the keyboard, done on the runs rather than left to the
+         * browser (GitHub #8). The browser's own ⌘B wraps a `<b>` the reader can only *add*
+         * from (`nativeEmphasis`), so pasted bold could never be taken off, and it has no
+         * subscript at all. Word's keys: ⌘B ⌘I ⌘U, ⌘= subscript, ⌘⇧= superscript.
+         */
+        const shortcut = runShortcut(event);
+        if (shortcut && host) {
+          event.preventDefault();
+          event.stopPropagation();
+          const at = selectionOffsets(host);
+          if (!at) return;
+          if (at.start < at.end) {
+            const next = toggledRange(runs, at.start, at.end, shortcut);
+            if (next !== runs) onChange(next);
+          } else {
+            const current = typingRef.current?.at === at.start ? typingRef.current : undefined;
+            typingRef.current = toggledAtCaret(runs, at.start, shortcut, current);
+          }
+          return;
+        }
         if (
           event.key === 'Tab' &&
           !event.altKey &&

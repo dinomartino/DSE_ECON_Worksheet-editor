@@ -549,6 +549,22 @@ re-merges identical neighbours. `null` in a patch **clears**; `undefined` cannot
 `vertAlign` is offered in the page toolbar and the diagram canvas's in-place editor
 (storage marker `_{1}`). It stays **off `TextFormat`** (a paragraph wholly in subscript
 is meaningless); it rides as an explicit extra field on the `onFormatRuns` patch.
+MC options and statements (align-only targets) get it too, with B/I/U, once characters are
+selected (k-0479). Every rich-text field also takes Word's keys itself
+(`src/components/preview/runShortcuts.ts`): ⌘B ⌘I ⌘U ⌘= ⌘⇧= toggle the **runs** (off clears
+the run's own mark, so pasted bold comes off), and at a caret they set what is typed next.
+The browser's own ⌘B is never reached: `readRuns` can only add native emphasis, never remove it.
+
+### Stacked fractions are marked runs (`src/model/fraction.ts`)
+
+A fraction is ordinary runs carrying the optional `InlineRun.fraction` ('num' then 'den'),
+the denominator's text starting with U+2044. No new block, no schema bump: an older build
+keeps the key and prints "ΔQ⁄Q" inline. Reading is tolerant (`textSegments`): broken marks
+print as plain text, never lose words. Typed text never inherits the mark. Each backend draws
+it from `textSegments`: the page (`.econ-fraction`), the open field (one non-editable piece,
+a tap opens `FractionDialog`), the `.docx` (OMML `m:f`, the paragraph's line `atLeast` instead
+of `exact` so it is not clipped), the clipboard HTML, and translation (the mark rides in a
+style class).
 
 ### A field cleared to nothing stores nothing
 

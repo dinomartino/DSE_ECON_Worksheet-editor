@@ -1,4 +1,5 @@
 import { normalizeRuns, runLines } from '@/model/text';
+import { FRACTION_SLASH, hasFraction, textSegments } from '@/model/fraction';
 import { cssFontFamilies } from '@/model/fonts';
 import type { InlineRun, RichText, RunFormat } from '@/model/types';
 import { TAB_ATTR } from './tabLayout';
@@ -61,8 +62,55 @@ function domOffset(node: Node, count: number): number {
  * the text ends in a hard break, so that line can be typed on and deleted (k-0468).
  */
 export function paintRuns(runs: RichText): Node[] {
-  const nodes: Node[] = runs.map(runToNode);
+  const nodes: Node[] = hasFraction(runs) ? paintWithFractions(runs) : runs.map(runToNode);
   if (runs.length > 0 && runs[runs.length - 1].text.endsWith('\n')) nodes.push(caretLineNode());
+  return nodes;
+}
+
+/** Marks a fraction's one-piece element in an open field (k-0479); its range in offsets. */
+export const FRACTION_CHIP_ATTR = 'data-fraction-chip';
+
+/**
+ * The DOM for runs holding a stacked fraction (`model/fraction.ts`). Plain stretches paint
+ * as `runToNode` does; each fraction is one non-editable piece (Backspace takes it whole,
+ * a tap opens it to edit) holding its runs as ordinary run elements, so `readRuns` reads
+ * them back with their `fraction` marks exactly as stored. The slash before the
+ * denominator stays in the DOM, hidden, so offsets count it as the model does.
+ */
+function paintWithFractions(runs: RichText): Node[] {
+  const nodes: Node[] = [];
+  let index = 0;
+  for (const segment of textSegments(runs)) {
+    if (segment.kind === 'runs') {
+      // Plain stretches are the stored runs (a stray mark already dropped), in order.
+      for (const run of segment.runs) nodes.push(runToNode(run, index++));
+      continue;
+    }
+    const chip = document.createElement('span');
+    chip.setAttribute(FRACTION_CHIP_ATTR, `${segment.start}-${segment.end}`);
+    chip.className = 'econ-fraction';
+    chip.contentEditable = 'false';
+    chip.setAttribute('role', 'button');
+    const num = document.createElement('span');
+    num.className = 'econ-fraction-num';
+    for (const run of segment.num) num.appendChild(runToNode({ ...run, fraction: 'num' }, index++));
+    const den = document.createElement('span');
+    den.className = 'econ-fraction-den';
+    const bottom = segment.den.length > 0 ? segment.den : [{ text: '' }];
+    bottom.forEach((run, at) => {
+      const holder = runToNode({ ...run, fraction: 'den' }, index++);
+      if (at === 0) {
+        // The run's stored text starts with the slash: it goes back in front, hidden.
+        const slash = document.createElement('span');
+        slash.className = 'econ-fraction-slash';
+        slash.textContent = FRACTION_SLASH;
+        holder.insertBefore(slash, holder.firstChild);
+      }
+      den.appendChild(holder);
+    });
+    chip.append(num, den);
+    nodes.push(chip);
+  }
   return nodes;
 }
 
@@ -256,7 +304,10 @@ export function readRuns(host: HTMLElement): RichText {
     const owner = (node.parentElement?.closest(`[${RUN_ATTR}]`) ?? null) as HTMLElement | null;
     // No owner means the browser inserted this text outside any run element; it belongs
     // to whatever was being typed into, which is the previous run's formatting.
-    const base = owner ? attrsOf(owner) : lastAttrs;
+    // Text the browser put beside a fraction is never part of it (`replaceRichTextRange`).
+    const outside = { ...lastAttrs };
+    delete outside.fraction;
+    const base = owner ? attrsOf(owner) : outside;
     // The run's stored attributes first, so a native `<b>` adds bold to a phrase that
     // already carries a size and a colour instead of replacing them.
     const attrs = { ...base, ...nativeEmphasis(node, owner) };

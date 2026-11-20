@@ -1,5 +1,7 @@
 "use client";
 
+import { fractionAt, fractionRuns, hasFraction, linearFraction, textSegments } from "@/model/fraction";
+import { FractionDialog } from "./FractionDialog";
 import { Fragment, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   BAND_ROW_TWIPS,
@@ -60,6 +62,7 @@ import {
   marksAnchorRuns,
   plain,
   runLines,
+  sliceRichText,
   trailingBlankLines,
 } from "@/model/text";
 import type {
@@ -72,6 +75,7 @@ import type {
   OutputMode,
   PageFurniture,
   PageSetup,
+  RichText,
   RunFormat,
   TableAlign,
   TextFormat,
@@ -322,7 +326,26 @@ function TabScope({ children }: { children: React.ReactNode }) {
   return <span ref={ref}>{children}</span>;
 }
 
-function runSpans(runs: BiText["en"], key: string) {
+function runSpans(runs: BiText["en"], key: string): React.JSX.Element[] {
+  // A stacked fraction (k-0479) draws its two parts with this same function, so Q₁ in a
+  // numerator renders exactly as Q₁ does in a stem. A field without one renders the very
+  // DOM it always did.
+  if (hasFraction(runs)) {
+    return textSegments(runs).flatMap((segment, index) =>
+      segment.kind === "runs"
+        ? plainRunSpans(segment.runs, `${key}-s${index}`)
+        : [
+            <span key={`${key}-f${index}`} className="econ-fraction" data-fraction="">
+              <span className="econ-fraction-num">{plainRunSpans(segment.num, `${key}-f${index}n`)}</span>
+              <span className="econ-fraction-den">{plainRunSpans(segment.den, `${key}-f${index}d`)}</span>
+            </span>,
+          ],
+    );
+  }
+  return plainRunSpans(runs, key);
+}
+
+function plainRunSpans(runs: BiText["en"], key: string): React.JSX.Element[] {
   const spans = runs.map((runItem, index) => {
     // A hard line break (Shift+Enter, stored as `\n`) becomes a real <br/>. Rendered
     // as raw text it would collapse to a space, exactly as it does in Word and in the
@@ -368,6 +391,25 @@ function runSpans(runs: BiText["en"], key: string) {
     );
   });
   return hasTab(runs) ? [<TabScope key={`${key}-tabs`}>{spans}</TabScope>] : spans;
+}
+
+/** The format-bar keys that toggle on the whole element and on its runs alike (k-0479). */
+const EMPHASIS_KEYS: ReadonlySet<string> = new Set(["bold", "italic", "underline"]);
+
+/**
+ * What the format bar reports with no words selected: the element's own overrides, plus
+ * bold / italic / underline when every visible character carries it on its runs. Pasted
+ * bold lives on the runs, so without this B showed unpressed over bold words and a press
+ * meant "bold" (GitHub #8, k-0479).
+ */
+function wholeFormat(format: TextFormat | undefined, runs: RichText | undefined): TextFormat | undefined {
+  const inked = (runs ?? []).filter((run) => run.text.trim().length > 0);
+  if (inked.length === 0) return format;
+  const out: TextFormat = { ...format };
+  for (const key of ["bold", "italic", "underline"] as const) {
+    if (!out[key] && inked.every((run) => run[key] === true)) out[key] = true;
+  }
+  return out;
 }
 
 /** Whether `text` prints nothing in `language`, as `biTextRuns` trims it for the `.docx`. */
@@ -467,6 +509,7 @@ function richNodes(
             : ({ html, text, before, side }) => offerPastedQuestions({ html, text }, { target: edit, side, before })
         }
         onPastePicture={(file) => void pastePicture(file, edit)}
+        onOpenFraction={ctx.onOpenFraction ? (range) => ctx.onOpenFraction!(edit, sideKey, range) : undefined}
       >
         {rendered}
       </InlineEditable>
@@ -953,6 +996,8 @@ export interface EditContext {
    */
   textSelection?: TextSelection;
   onTextSelectionChange?: (selection: TextSelection | undefined) => void;
+  /** A tap on a stacked fraction in an open field: open it to edit (k-0479). */
+  onOpenFraction?: (target: EditTarget, side: "en" | "zh", range: { start: number; end: number }) => void;
   /** True while a toolbar click is in flight, so the field must not close on blur. */
   keepEditing?: boolean;
   /**
@@ -4994,6 +5039,16 @@ interface Props {
   ) => void;
   /** Type a tab at a caret: the format bar's button, for a cell whose Tab key moves on. */
   onInsertTab?: (target: EditTarget, side: "en" | "zh", start: number, end: number) => void;
+  /**
+   * Put runs over `[start, end)` of one side, keeping their marks: how a stacked fraction
+   * goes in or is replaced (k-0479). Omit and the bar offers no Fraction button.
+   */
+  onInsertRuns?: (target: EditTarget, side: "en" | "zh", start: number, end: number, runs: RichText) => void;
+  /**
+   * Bold / italic / underline for the whole element with no words selected; off also
+   * clears the runs' own mark, which is where pasted bold lives (k-0479, GitHub #8).
+   */
+  onEmphasisWhole?: (target: EditTarget, key: "bold" | "italic" | "underline", on: boolean) => void;
   /** Give an element a ready-made tab layout (`model/tabStops.ts:tabPresetStops`). */
   onTabPreset?: (target: EditTarget, preset: TabPreset, widthTwips: number) => void;
   /**
@@ -5257,6 +5312,8 @@ export function Preview({
   onFormatRuns,
   onInsertBlank,
   onInsertTab,
+  onInsertRuns,
+  onEmphasisWhole,
   onTabPreset,
   onResizeBlock,
   onResizeRows,
@@ -5599,6 +5656,13 @@ export function Preview({
    */
   const [textSelection, setTextSelection] = useState<TextSelection | undefined>();
   const [formatting, setFormatting] = useState(false);
+  /** A new fraction's numerator, from the words selected when Fraction was pressed. */
+  const [fractionSeed, setFractionSeed] = useState<RichText>([]);
+  /** The fraction dialog: where it writes, and the fraction it edits if any (k-0479). */
+  const [fractionEdit, setFractionEdit] = useState<
+    | { target: EditTarget; side: "en" | "zh"; start: number; end: number; initial?: { num: RichText; den: RichText } }
+    | undefined
+  >(undefined);
 
   // The picture selected for resizing. Its own state rather than a variant of
   // `selectedElement`, because a block has no language side and nothing to format —
@@ -6098,8 +6162,14 @@ export function Preview({
       // arrows here would mean "text" right above ▦ arrows meaning "table".
       return { alignOnly: false, alignable: target.kind !== "tableCell", range: runRange, caret: runCaret };
     }
-    if (!printsAsParagraph(rendered.questions, target)) return undefined;
-    return { alignOnly: true, alignable: true, range: undefined, caret: undefined };
+    /*
+     * An MC option or statement: its size and alignment are its question's, but its
+     * characters are its own (GitHub #8): with a caret or a range it gets bold, italic,
+     * underline, X₂ X² and a fraction, like any stem. Justify only where it can align.
+     */
+    const alignable = printsAsParagraph(rendered.questions, target);
+    if (!alignable && !runCaret) return undefined;
+    return { alignOnly: true, alignable, range: runRange, caret: runCaret };
   }, [selectedElement, rendered, runRange, runCaret]);
 
   const barRange = formatBar?.range;
@@ -6500,7 +6570,14 @@ export function Preview({
           selectedElement?.side === side && sameTarget(selectedElement.target, target),
         textSelection,
         onTextSelectionChange: setTextSelection,
-        keepEditing: formatting,
+        onOpenFraction: onInsertRuns
+          ? (target, side, range) => {
+              const fraction = fractionAt(textOf?.(target)?.[side], range.start);
+              if (!fraction) return;
+              setFractionEdit({ target, side, start: fraction.start, end: fraction.end, initial: { num: fraction.num, den: fraction.den } });
+            }
+          : undefined,
+        keepEditing: formatting || fractionEdit !== undefined,
         listIndents,
         activeCell,
         // A cell selects the item holding its table, like every other component
@@ -8413,8 +8490,31 @@ export function Preview({
              * un-bolding the selection instead of bolding it, while the size dropdown
              * reported the element's size rather than the selection's.
              */
-            format={barRange ? barRange.common : formatOf?.(selectedElement.target)}
+            format={
+              barRange
+                ? // The paragraph's own alignment still shows, so Justify reads true with words selected.
+                  { ...barRange.common, align: formatOf?.(selectedElement.target)?.align }
+                : wholeFormat(formatOf?.(selectedElement.target), textOf?.(selectedElement.target)?.[selectedElement.side])
+            }
+            emphasis={formatBar.alignOnly && Boolean(barRange)}
             vertAlign={barRange?.vertAlign}
+            onInsertFraction={
+              barCaret && onInsertRuns
+                ? () => {
+                    const { side, start, end } = barCaret;
+                    // A selection becomes the numerator: select "ΔQ", press the button.
+                    const selected = start < end ? sliceRichText(textOf?.(selectedElement.target)?.[side], start, end) : [];
+                    setFractionEdit({
+                      target: selectedElement.target,
+                      side,
+                      start,
+                      end,
+                      initial: undefined,
+                    });
+                    setFractionSeed(selected);
+                  }
+                : undefined
+            }
             /* Offered only with characters selected: raising or lowering needs a range
                to act on, and there is no sensible element-wide meaning for it. */
             onVertAlign={
@@ -8487,6 +8587,18 @@ export function Preview({
                 : undefined
             }
             onChange={(patch) => {
+              const keys = Object.keys(patch);
+              // Alignment belongs to the paragraph, whatever words are selected.
+              if (keys.length === 1 && keys[0] === "align") {
+                onFormat(selectedElement.target, patch);
+                return;
+              }
+              if (!barRange && onEmphasisWhole && keys.length === 1 && EMPHASIS_KEYS.has(keys[0])) {
+                // No words selected: the whole element, including bold that came with a paste.
+                const key = keys[0] as "bold" | "italic" | "underline";
+                onEmphasisWhole(selectedElement.target, key, patch[key] === true);
+                return;
+              }
               if (barRange && onFormatRuns) {
                 /*
                  * Hold the editor open across the commit. The click already blurred the
@@ -8527,6 +8639,44 @@ export function Preview({
             }
           />
         )}
+
+      {/* The fraction dialog (k-0479, GitHub #8): Fraction on the bar inserts at the caret,
+          a tap on a fraction in an open field edits it. One commit, one undo step. */}
+      {fractionEdit && onInsertRuns && (
+        <FractionDialog
+          initial={fractionEdit.initial ?? (fractionSeed.length > 0 ? { num: fractionSeed, den: [] } : undefined)}
+          lang={fractionEdit.side}
+          onClose={() => {
+            setFractionEdit(undefined);
+            setFractionSeed([]);
+          }}
+          onSubmit={(num, den) => {
+            const { target, side, start, end } = fractionEdit;
+            onInsertRuns(target, side, start, end, fractionRuns(num, den));
+            setFractionEdit(undefined);
+            setFractionSeed([]);
+          }}
+          onRemove={
+            fractionEdit.initial
+              ? () => {
+                  // Back to one line of text, keeping each part's own marks: "(Q₂ − Q₁)/Q₁".
+                  const { target, side, start, end, initial } = fractionEdit;
+                  const linear = linearFraction(plain(initial!.num), plain(initial!.den));
+                  const bracketed = linear.startsWith("(");
+                  const runs: RichText = [
+                    ...(bracketed ? [{ text: "(" }] : []),
+                    ...initial!.num,
+                    ...(bracketed ? [{ text: ")" }] : []),
+                    { text: "/" },
+                    ...(linear.endsWith(")") ? [{ text: "(" }, ...initial!.den, { text: ")" }] : initial!.den),
+                  ];
+                  onInsertRuns(target, side, start, end, runs);
+                  setFractionEdit(undefined);
+                }
+              : undefined
+          }
+        />
+      )}
 
       {/* The page's right-click menu, and the hidden input its Image item opens.
           Built per open, not per render — the payload is the fresh document's. */}

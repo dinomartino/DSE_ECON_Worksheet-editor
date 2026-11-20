@@ -9,7 +9,7 @@ import type { InlineRun, RichText, RunFormat } from '@/model/types';
  * Edge newlines and boundary spaces are never sent; the codec restores them.
  */
 
-export type StyleClass = Pick<RunFormat, 'fontSize' | 'color' | 'fonts'>;
+export type StyleClass = Pick<RunFormat, 'fontSize' | 'color' | 'fonts'> & Pick<InlineRun, 'fraction'>;
 
 export interface WireCodec {
   /** '\n' counts outside the sent text. */
@@ -68,15 +68,23 @@ interface Cell { ch: string; run: InlineRun }
 const cells = (runs: RichText): Cell[] => runs.flatMap((run) => [...run.text].map((ch) => ({ ch, run })));
 
 const styleKey = (run: InlineRun): string =>
-  run.fontSize === undefined && !run.color && !run.fonts
+  run.fontSize === undefined && !run.color && !run.fonts && !run.fraction
     ? ''
-    : JSON.stringify([run.fontSize ?? null, run.color ?? null, run.fonts?.latin ?? null, run.fonts?.eastAsia ?? null]);
+    : JSON.stringify([
+        run.fontSize ?? null,
+        run.color ?? null,
+        run.fonts?.latin ?? null,
+        run.fonts?.eastAsia ?? null,
+        // Only a fraction part adds an element, so every other key is what it always was.
+        ...(run.fraction ? [run.fraction] : []),
+      ]);
 
 function styleOf(run: InlineRun): StyleClass {
   const style: StyleClass = {};
   if (run.fontSize !== undefined) style.fontSize = run.fontSize;
   if (run.color) style.color = run.color;
   if (run.fonts) style.fonts = run.fonts;
+  if (run.fraction) style.fraction = run.fraction;
   return style;
 }
 
