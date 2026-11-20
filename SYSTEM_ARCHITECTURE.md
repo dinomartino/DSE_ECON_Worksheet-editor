@@ -2560,6 +2560,29 @@ arrive knowing, and the one the table panel already followed.
 - **One editing place per number**: the Outline's rows report sizes as pills; answer
   lines and spacers are edited by dragging on the page or in the element's panel.
 
+### The structured panel shows what each card is (k-0474)
+
+The user found the question text, sources, parts and answers all one colour, told apart
+only by borders. Each is now a **panel kind** (`components/editor/panelKinds.tsx`):
+`stem` grey, `source` green (`ok`), `part` blue (`accent`), `subPart` lighter blue,
+`scheme` amber (`warn-ink`, "Teacher only"). They are made from theme tokens only, so
+every theme gets them. A card sets two variables (`--kind`, `--kind-ink`), and
+`globals.css` § Panel kinds draws the stripe, tinted header, chip and ring.
+
+- **The ring goes on the innermost card that holds the page's selection.** That is the
+  card whose control `markPanelTarget` marks; a parent card never also lights up. A card
+  that is itself the target swaps the generic tint for its own ring.
+- **"Where am I" is derived from the model** (`panelLocation`, keyed on
+  `selectedTargetKey`), the same way `targetOwner` opens rows. The DOM is never read.
+- **Source cards fold.** A source opens when the selection lands inside it, or when it is
+  added. Only a *change* of selection opens one, the rule part rows follow.
+- **Other panels reuse the kinds instead of adding colours.** The marking-scheme editor
+  sits inside `TeacherArea` (`scheme`).
+- **The DRQ helpers store nothing new** (`model/drq.ts`). The starter, the source kinds,
+  "Refer to Source …" and the essay note only set starting values or edit text, so a DRQ
+  built with them opens in every released build. A data chart is the exception: it is a
+  diagram variant and needs schema 3 (§ data charts).
+
 ### The contextual toolbar row (`preview/ContextBar.tsx`)
 
 Word's "Table Layout appears when you're in a table": a second docked row under the

@@ -13,6 +13,48 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Build a whole data-response question from the side panel.** A new, still-blank structured
+  question offers **Start a DRQ**: one click gives Sources A–D (a table, a bar chart, a news
+  extract and a people's views table) and parts (a)–(e) shaped like a DSE Paper 2 DRQ. Each part
+  opens "Refer to Source …", (c) has two sub-parts sharing one mark, and (e) is the 14-mark essay
+  part with the "For part (e), candidates are required to present their answers in an essay form…"
+  note before it. Type over everything on the page. It is also under Question → Data-response
+  (DRQ) on the left.
+  <!-- zh: **在側欄一鍵建立整題資料回應題。** 新增而仍空白的結構性問題會提供「建立資料回應題」：一按即加入資料A至D（表格、棒形圖、新聞節錄、各方意見表）及分題 (a) 至 (e)，格式與文憑試卷二資料回應題相同：每個分題以「參閱資料…」開首，(c) 有兩個共用分數的小分題，(e) 為 14 分的短文題，題前附「(e)部須以短文形式作答…」說明。所有內容可直接在頁面上改寫。亦可在左側「題目 → 資料回應題」加入。 -->
+- **Add → Source in the side panel lets you pick what the source holds.** The choices are a table,
+  bar chart, line graph, news extract, people's views (who says it | what they say), forum,
+  stakeholder diagram, picture, or an empty frame. The new source gets the next letter and opens
+  ready to edit. Insert → Source… on the left offers the same list.
+  <!-- zh: **側欄「加入 → 資料」可先選擇資料內容：** 表格、棒形圖、折線圖、新聞節錄、各方意見（發言者｜意見）、論壇對話、持份者圖示、圖片或空白框。新資料會自動編上下一個字母，並即時打開供編輯。左側「插入 → 資料…」提供相同選項。 -->
+- **"Refer to Source A." in one click.** An open part shows **Refer to: A B C D**, one button per
+  source in the question. Tap the letters and the part's opening sentence is written for you in
+  English and 中文 ("Refer to Sources C and D." / "參閱資料C及D。"). A part's ⋯ menu can also add the
+  essay-form note before it, with that part's letter.
+  <!-- zh: **一按加入「參閱資料A。」** 打開的分題會顯示「參閱：A B C D」，每份資料一個按鈕；點選字母即自動寫好分題開首句（中英文同步，例如「參閱資料C及D。」）。分題的 ⋯ 選單亦可在題前加入短文作答說明，並附上該分題的字母。 -->
+
+### Fixed
+- **No more blank line you cannot delete in an answer or a marking point.** Pressing Enter twice
+  and taking it back, or deleting the last word of a line and typing it again, no longer leaves an
+  empty line under the answer. A blank line already there can now be clicked, and Backspace
+  deletes it.
+  <!-- zh: **答案及評分要點不會再出現刪不走的空行。** 按兩次 Enter 再刪回，或刪掉一行最後的字再重新輸入，答案下面不會再多出一行空白。已經出現的空行現在可以按一下，再按 Backspace 刪除。 -->
+- **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer
+  says SCHOOL NAME after Paper 1 said your school.
+  <!-- zh: **新試卷會沿用上次輸入的學校名稱**，Paper 2 的封面不會在 Paper 1 已填好學校後仍顯示 SCHOOL NAME。 -->
+- **A duplicated document is named "（副本）" in the 中文 interface**, not "(copy)".
+  <!-- zh: **在中文介面建立的副本會以「（副本）」命名**，而不是「(copy)」。 -->
+- **Long folder names show in full in the folder list**, on two lines if needed, instead of
+  being cut off (for example "中六 Mock 202…").
+  <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
+
+### Changed
+- **The side panel tells the parts of a question apart by colour**, in every theme: the question
+  text grey; each source green, labelled "Source A", "Source B"… with what it holds; each part blue,
+  with its sub-parts lighter blue and nested inside it; the answer and marking amber, labelled
+  Teacher only. Source cards fold to one line and open when you click that source on the page. A
+  line at the top of the panel says where you are (for example "Question text › Source B" or
+  "(c) › (ii)"), and the card you clicked on the page gets a ring in its colour.
+  <!-- zh: **側欄以顏色區分題目各部分：** 題幹為灰色；每份資料為綠色，標示「資料 A」、「資料 B」…及其內容；分題為藍色，小分題為淺藍色並縮排於分題內；答案及評分為琥珀色，標示「教師專用」。各主題均適用。資料卡可摺疊成一行，在頁面上點選該資料時會自動打開。側欄頂部會顯示正在編輯的位置（例如「題幹 › 資料 B」或「(c) › (ii)」），在頁面上點選的部分會以相應顏色的外框標示。 -->
 - **Stakeholder diagrams and data tables for data-response questions.** Insert → Source… now
   starts a Source panel with what goes in it: a table of data, a stakeholder diagram, or text. A
   stakeholder diagram puts the issue in a bold box in the middle and the stakeholders around it,
@@ -95,23 +137,6 @@ a version heading is edited afterwards.
   questions, tables, answer lines, the title and the cover keep their size. Existing papers stay on
   Single.
   <!-- zh: **行距。** 「文件設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
-
-### Fixed
-- **No more blank line you cannot delete in an answer or a marking point.** Pressing Enter twice
-  and taking it back, or deleting the last word of a line and typing it again, no longer leaves an
-  empty line under the answer. A blank line already there can now be clicked, and Backspace
-  deletes it.
-  <!-- zh: **答案及評分要點不會再出現刪不走的空行。** 按兩次 Enter 再刪回，或刪掉一行最後的字再重新輸入，答案下面不會再多出一行空白。已經出現的空行現在可以按一下，再按 Backspace 刪除。 -->
-- **A new exam paper starts with the school you typed last time**, so Paper 2's cover no longer
-  says SCHOOL NAME after Paper 1 said your school.
-  <!-- zh: **新試卷會沿用上次輸入的學校名稱**，Paper 2 的封面不會在 Paper 1 已填好學校後仍顯示 SCHOOL NAME。 -->
-- **A duplicated document is named "（副本）" in the 中文 interface**, not "(copy)".
-  <!-- zh: **在中文介面建立的副本會以「（副本）」命名**，而不是「(copy)」。 -->
-- **Long folder names show in full in the folder list**, on two lines if needed, instead of
-  being cut off (for example "中六 Mock 202…").
-  <!-- zh: **資料夾清單會完整顯示較長的資料夾名稱**，需要時分兩行，不再被截斷（例如「中六 Mock 202…」）。 -->
-
-### Changed
 - **Chinese wording follows the Education Bureau's 2025 supplement.** The inflationary and deflationary gap templates now say 差距 (通脹差距, 通縮差距), the labour curves say 勞力需求 and 勞力供應, the topic "Market intervention" is 政府干預, and the externality template says 界外效應. Nothing in your saved worksheets changes.
   <!-- zh: **中文用詞對齊教育局 2025 年補充文件。** 通脹和通縮缺口範本改稱「差距」（通脹差距、通縮差距），勞動市場曲線改稱「勞力需求」和「勞力供應」，課題「市場干預」改為「政府干預」，外部效應範本改稱「界外效應」。已儲存的工作紙不受影響。 -->
 - **Translation and term checks accept 價格水平.** Check terms and the translator no longer
