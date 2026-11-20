@@ -132,7 +132,7 @@ a version heading is edited afterwards.
   as in Word. The page, the printed PDF, the Word file and Copy for Word all follow it. Gaps between
   questions, tables, answer lines, the title and the cover keep their size. Existing papers stay on
   Single.
-  <!-- zh: **行距。** 「文件設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
+  <!-- zh: **行距。** 「頁面設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
 
 ### Fixed
 - **A sub-part's empty marks box reads "shared" / 「共用」 in full** in the side panel, instead of
