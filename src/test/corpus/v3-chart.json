@@ -1,0 +1,508 @@
+{
+  "schemaVersion": 3,
+  "id": "v3-chart-corpus",
+  "title": {
+    "en": [
+      {
+        "text": "DRQ practice: a small economy"
+      }
+    ],
+    "zh": [
+      {
+        "text": "資料回應題練習：一個小型經濟體"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "ch002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "ch003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "ch004",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "ch005",
+          "text": {
+            "en": [
+              {
+                "text": "Study Sources A and B."
+              }
+            ],
+            "zh": [
+              {
+                "text": "細閱資料A及B。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "source",
+          "id": "ch006",
+          "label": {
+            "en": [
+              {
+                "text": "Source A: Budget balance of Country X"
+              }
+            ],
+            "zh": [
+              {
+                "text": "資料A：X國的財政預算結餘"
+              }
+            ]
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "ch007",
+              "diagram": {
+                "x": {},
+                "y": {},
+                "curves": [],
+                "points": [],
+                "labels": [],
+                "arrows": [],
+                "chart": {
+                  "kind": "bar",
+                  "categories": [
+                    {
+                      "en": [
+                        {
+                          "text": "2021-22"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "2021-22"
+                        }
+                      ]
+                    },
+                    {
+                      "en": [
+                        {
+                          "text": "2022-23"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "2022-23"
+                        }
+                      ]
+                    },
+                    {
+                      "en": [
+                        {
+                          "text": "2023-24"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "2023-24"
+                        }
+                      ]
+                    }
+                  ],
+                  "series": [
+                    {
+                      "id": "ch008",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "Budget balance"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "財政預算結餘"
+                          }
+                        ]
+                      },
+                      "values": [
+                        12000,
+                        -85000,
+                        null
+                      ]
+                    }
+                  ],
+                  "yTitle": {
+                    "en": [
+                      {
+                        "text": "$ million"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "百萬元"
+                      }
+                    ]
+                  },
+                  "xTitle": {
+                    "en": [
+                      {
+                        "text": "Fiscal year"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "財政年度"
+                      }
+                    ]
+                  },
+                  "yMin": -100000,
+                  "yMax": 50000,
+                  "yStep": 25000
+                },
+                "templateId": "bar-chart",
+                "title": {
+                  "en": [
+                    {
+                      "text": "Budget balance"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "財政預算結餘"
+                    }
+                  ]
+                }
+              },
+              "widthPx": 480,
+              "heightPx": 386,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Bar chart"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "棒形圖"
+                  }
+                ]
+              },
+              "align": "center"
+            }
+          ]
+        },
+        {
+          "kind": "source",
+          "id": "ch009",
+          "label": {
+            "en": [
+              {
+                "text": "Source B: Unemployment rate by industry"
+              }
+            ],
+            "zh": [
+              {
+                "text": "資料B：按行業劃分的失業率"
+              }
+            ]
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "ch010",
+              "diagram": {
+                "x": {},
+                "y": {},
+                "curves": [],
+                "points": [],
+                "labels": [],
+                "arrows": [],
+                "chart": {
+                  "kind": "line",
+                  "categories": [
+                    {
+                      "en": [
+                        {
+                          "text": "Q1"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "第一季"
+                        }
+                      ]
+                    },
+                    {
+                      "en": [
+                        {
+                          "text": "Q2"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "第二季"
+                        }
+                      ]
+                    },
+                    {
+                      "en": [
+                        {
+                          "text": "Q3"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "第三季"
+                        }
+                      ]
+                    },
+                    {
+                      "en": [
+                        {
+                          "text": "Q4"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "第四季"
+                        }
+                      ]
+                    }
+                  ],
+                  "series": [
+                    {
+                      "id": "ch011",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "Retail"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "零售業"
+                          }
+                        ]
+                      },
+                      "values": [
+                        4.2,
+                        5.1,
+                        6,
+                        6.4
+                      ]
+                    },
+                    {
+                      "id": "ch012",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "Finance"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "金融業"
+                          }
+                        ]
+                      },
+                      "values": [
+                        2.1,
+                        2.3,
+                        null,
+                        2.6
+                      ]
+                    },
+                    {
+                      "id": "ch013",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "All industries"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "所有行業"
+                          }
+                        ]
+                      },
+                      "values": [
+                        3,
+                        3.4,
+                        3.9,
+                        4.1
+                      ]
+                    }
+                  ],
+                  "yTitle": {
+                    "en": [
+                      {
+                        "text": "%"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "%"
+                      }
+                    ]
+                  },
+                  "xTitle": {
+                    "en": [
+                      {
+                        "text": "Quarter"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "季度"
+                      }
+                    ]
+                  }
+                },
+                "templateId": "line-chart",
+                "title": {
+                  "en": [],
+                  "zh": []
+                }
+              },
+              "widthPx": 480,
+              "heightPx": 407,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Line graph"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "折線圖"
+                  }
+                ]
+              },
+              "align": "center"
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "id": "ch014",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "ch015",
+              "text": {
+                "en": [
+                  {
+                    "text": "Refer to Source A. Describe the change in the budget balance."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "參考資料A，描述財政預算結餘的變化。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "ch016",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "ch017",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構性問題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "ch016"
+    },
+    {
+      "type": "layout",
+      "id": "ch017"
+    },
+    {
+      "type": "question",
+      "id": "ch004"
+    }
+  ],
+  "createdAt": "2026-11-20T00:00:00.000Z",
+  "updatedAt": "2026-11-20T00:00:00.000Z"
+}

@@ -4,7 +4,12 @@ import { useRef } from 'react';
 import { nanoid } from 'nanoid';
 import { emptyBiText } from '@/model/text';
 import {
+  MAX_CHART_CATEGORIES,
+  MAX_CHART_SERIES,
   MAX_STAKEHOLDERS,
+  type DataChart,
+  type DataChartKind,
+  type DataChartSeries,
   type ForumBubble,
   type ForumChart,
   type ForumSlot,
@@ -21,8 +26,8 @@ import { BiTextField } from './BiTextField';
 import { DIAGRAM_PANEL_MESSAGES } from './diagramEditing.messages';
 
 /*
- * The data of the chart kinds not drawn on axes: a pie's slices, a forum's bubbles and a
- * stakeholder diagram's issue and boxes.
+ * The data of the chart kinds not drawn on axes: a pie's slices, a forum's bubbles, a
+ * stakeholder diagram's issue and boxes, and a data chart's table of figures.
  * One set of fields for a worksheet's diagram panel and a saved graph's (Graphs 圖表庫),
  * so the two never edit a chart differently.
  */
@@ -362,6 +367,264 @@ export function StakeholderFields({
       <span className="block text-[11px] leading-snug text-ink-subtle">
         {full ? m.stakeholderLimit(MAX_STAKEHOLDERS) : m.stakeholdersPlaced}
       </span>
+    </div>
+  );
+}
+
+/** The legend swatch a series prints with, as a glyph for the panel's column heads. */
+const SERIES_GLYPHS = { bar: ['■', '□', '▒', '▨'], line: ['━■', '╌●', '┈▲', '─◆'] } as const;
+
+/**
+ * One figure: empty is a real state (no bar, a gap in the line), and negative is allowed
+ * (a deficit). A number input reports '' while a "-" is half-typed, which reads as empty
+ * and leaves the box alone.
+ */
+function ChartValueInput({
+  value,
+  label,
+  width,
+  onChange,
+}: {
+  value: number | null;
+  label: string;
+  width: string;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <input
+      type="number"
+      step="any"
+      aria-label={label}
+      value={value ?? ''}
+      // No spinner: it ate a third of the box, and "-85000" must show whole.
+      className={`${width} h-8 shrink-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none rounded-md border border-line bg-surface px-1.5 text-right text-xs tabular-nums text-ink outline-none transition-colors duration-150 ease-out-soft focus:border-accent focus:ring-2 focus:ring-accent/25`}
+      onChange={(event) => {
+        const raw = event.target.value.trim();
+        const parsed = raw === '' ? null : Number(raw);
+        onChange(parsed === null || Number.isFinite(parsed) ? parsed : null);
+      }}
+    />
+  );
+}
+
+/** An optional axis pin; empty = derived from the figures. */
+function AxisPinInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+}) {
+  return (
+    <label className="inline-flex shrink-0 items-center gap-1.5 text-xs text-ink-muted">
+      {label}
+      <input
+        type="number"
+        step="any"
+        value={value ?? ''}
+        className="h-8 w-16 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors duration-150 ease-out-soft focus:border-accent focus:ring-2 focus:ring-accent/25"
+        onChange={(event) => {
+          const raw = event.target.value.trim();
+          const parsed = Number(raw);
+          onChange(raw === '' || !Number.isFinite(parsed) ? undefined : parsed);
+        }}
+      />
+    </label>
+  );
+}
+
+/**
+ * The data chart's data (k-0474): bar or line, the series (legend names), then one row
+ * per category with its label and a figure per series, the unit above the y-axis and an
+ * optional title under the categories. The scale is derived; "Axis range" pins it. There
+ * is no canvas: what the panel holds is the whole chart.
+ */
+export function DataChartFields({
+  chart,
+  onChange,
+}: {
+  chart: DataChart;
+  onChange: (chart: DataChart) => void;
+}) {
+  const m = useMessages(DIAGRAM_PANEL_MESSAGES);
+  const series = Array.isArray(chart.series) ? chart.series : [];
+  const categories = Array.isArray(chart.categories) ? chart.categories : [];
+  const glyphs = SERIES_GLYPHS[chart.kind === 'line' ? 'line' : 'bar'];
+  const seriesFull = series.length >= MAX_CHART_SERIES;
+  const categoriesFull = categories.length >= MAX_CHART_CATEGORIES;
+  // Figure boxes as wide as the row allows: one or two series fit "-250000" whole; four
+  // still leave the category label a usable field in the 380px sidebar.
+  const valueWidth = series.length <= 2 ? 'w-20' : series.length === 3 ? 'w-[4.25rem]' : 'w-[3.75rem]';
+
+  const patchSeries = (id: string, change: Partial<DataChartSeries>) =>
+    onChange({ ...chart, series: series.map((entry) => (entry.id === id ? { ...entry, ...change } : entry)) });
+  const setValue = (seriesId: string, category: number, value: number | null) =>
+    onChange({
+      ...chart,
+      series: series.map((entry) => {
+        if (entry.id !== seriesId) return entry;
+        const values = categories.map((_, c) => entry.values?.[c] ?? null);
+        values[category] = value;
+        return { ...entry, values };
+      }),
+    });
+  const removeCategory = (index: number) =>
+    onChange({
+      ...chart,
+      categories: categories.filter((_, c) => c !== index),
+      series: series.map((entry) => ({ ...entry, values: (entry.values ?? []).filter((_, c) => c !== index) })),
+    });
+  /** A cleared pin is dropped, not stored as `undefined`. */
+  const pin = (key: 'yMin' | 'yMax' | 'yStep', value: number | undefined) => {
+    const next = { ...chart };
+    if (value === undefined || (key === 'yStep' && value <= 0)) delete next[key];
+    else next[key] = value;
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-2" data-chart-fields="">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-medium text-ink-subtle">{m.chartKind}</span>
+        <Segmented<DataChartKind>
+          label={m.chartKind}
+          value={chart.kind === 'line' ? 'line' : 'bar'}
+          options={[
+            { value: 'bar', label: m.chartBar },
+            { value: 'line', label: m.chartLine },
+          ]}
+          onChange={(kind) => onChange({ ...chart, kind })}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <span className="text-[11px] font-medium text-ink-subtle">{m.seriesHeading}</span>
+        {series.map((entry, index) => (
+          <div key={entry.id} className="flex items-center gap-1">
+            <span aria-hidden className="w-7 shrink-0 text-center text-xs text-ink-muted">
+              {glyphs[index % glyphs.length]}
+            </span>
+            <div className="min-w-0 flex-1">
+              <BiTextField
+                translate={{ kind: 'diagramLabel', fallsBack: true }}
+                ariaLabel={m.seriesName(index + 1)}
+                value={entry.label}
+                onChange={(label) => patchSeries(entry.id, { label })}
+                rows={1}
+              />
+            </div>
+            <IconButton
+              label={m.seriesRemove(index + 1)}
+              disabled={series.length <= 1}
+              onClick={() => onChange({ ...chart, series: series.filter((other) => other.id !== entry.id) })}
+            >
+              ✕
+            </IconButton>
+          </div>
+        ))}
+        <Button
+          size="sm"
+          variant="subtle"
+          disabled={seriesFull}
+          title={seriesFull ? m.seriesLimit(MAX_CHART_SERIES) : undefined}
+          onClick={() =>
+            onChange({
+              ...chart,
+              series: [...series, { id: nanoid(10), label: emptyBiText(), values: categories.map(() => null) }],
+            })
+          }
+        >
+          {m.addSeries}
+        </Button>
+      </div>
+
+      <div className="space-y-1">
+        <span className="text-[11px] font-medium text-ink-subtle">{m.categoriesHeading}</span>
+        {/* Column heads: each figure column wears its series' legend glyph. */}
+        <div aria-hidden className="flex items-center gap-1 pr-8">
+          <span className="min-w-0 flex-1" />
+          {series.map((entry, index) => (
+            <span key={entry.id} className={`${valueWidth} shrink-0 text-center text-xs text-ink-muted`}>
+              {glyphs[index % glyphs.length]}
+            </span>
+          ))}
+        </div>
+        {categories.map((category, c) => (
+          <div key={c} className="flex items-start gap-1" data-chart-category="">
+            <div className="min-w-0 flex-1">
+              <BiTextField
+                translate={{ kind: 'tickLabel', fallsBack: true }}
+                ariaLabel={m.categoryLabel(c + 1)}
+                value={category}
+                onChange={(label) =>
+                  onChange({ ...chart, categories: categories.map((other, i) => (i === c ? label : other)) })
+                }
+                rows={1}
+              />
+            </div>
+            {series.map((entry, s) => (
+              <ChartValueInput
+                key={entry.id}
+                label={m.categoryValue(c + 1, s + 1)}
+                width={valueWidth}
+                value={typeof entry.values?.[c] === 'number' ? (entry.values[c] as number) : null}
+                onChange={(value) => setValue(entry.id, c, value)}
+              />
+            ))}
+            <IconButton label={m.categoryRemove(c + 1)} onClick={() => removeCategory(c)}>
+              ✕
+            </IconButton>
+          </div>
+        ))}
+        <Button
+          size="sm"
+          variant="subtle"
+          disabled={categoriesFull}
+          title={categoriesFull ? m.categoryLimit(MAX_CHART_CATEGORIES) : undefined}
+          onClick={() =>
+            onChange({
+              ...chart,
+              categories: [...categories, emptyBiText()],
+              series: series.map((entry) => ({
+                ...entry,
+                values: [...categories.map((_, c) => entry.values?.[c] ?? null), null],
+              })),
+            })
+          }
+        >
+          {m.addCategory}
+        </Button>
+        <span className="block text-[11px] leading-snug text-ink-subtle">
+          {categoriesFull ? m.categoryLimit(MAX_CHART_CATEGORIES) : m.valueNote}
+        </span>
+      </div>
+
+      <BiTextField
+        translate={{ kind: 'axisTitle', fallsBack: true }}
+        label={m.yAxisTitle}
+        value={chart.yTitle ?? emptyBiText()}
+        onChange={(yTitle) => onChange({ ...chart, yTitle })}
+        rows={1}
+      />
+      <BiTextField
+        translate={{ kind: 'axisTitle', fallsBack: true }}
+        label={m.xAxisTitle}
+        value={chart.xTitle ?? emptyBiText()}
+        onChange={(xTitle) => onChange({ ...chart, xTitle })}
+        rows={1}
+      />
+
+      <details className="rounded border border-line px-2 py-1">
+        <summary className="cursor-pointer text-[11px] font-medium text-ink-subtle">{m.axisRange}</summary>
+        <div className="flex flex-wrap items-center gap-2 py-1.5">
+          <AxisPinInput label={m.axisMin} value={chart.yMin} onChange={(value) => pin('yMin', value)} />
+          <AxisPinInput label={m.axisMax} value={chart.yMax} onChange={(value) => pin('yMax', value)} />
+          <AxisPinInput label={m.axisStep} value={chart.yStep} onChange={(value) => pin('yStep', value)} />
+        </div>
+        <span className="block pb-1 text-[11px] text-ink-subtle">{m.axisRangeHint}</span>
+      </details>
     </div>
   );
 }

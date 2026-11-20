@@ -17,7 +17,7 @@ import { sideOf } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { DIAGRAM_PANEL_MESSAGES } from './diagramEditing.messages';
 import { DiagramCanvas } from './DiagramCanvas';
-import { ForumFields, PieSliceFields, StakeholderFields } from './DiagramDataFields';
+import { DataChartFields, ForumFields, PieSliceFields, StakeholderFields } from './DiagramDataFields';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
 import { FlowCanvas } from './FlowCanvas';
 import { ForumCanvas } from './ForumCanvas';
@@ -96,7 +96,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           markup is injected into a wrapping <span>, so the svg is a *grandchild*, and the
           direct-child form silently matched nothing. */}
       {isPanelOnlyDiagram(diagram) ? (
-        // A pie or stakeholder diagram has no drawing surface — its data is edited in
+        // A pie, stakeholder diagram or data chart has no drawing surface — its data is edited in
         // the fields below — so the thumbnail is a plain preview, not a way into a canvas.
         <div
           className="overflow-hidden rounded border border-line bg-surface [&_svg]:h-auto [&_svg]:w-full"
@@ -150,6 +150,19 @@ export function DiagramEditor({ block, onChange }: Props) {
           onChange={(stakeholder) => {
             // Re-measured on every edit, as the forum: the boxes' text sets the height.
             const next = { ...diagram, stakeholder };
+            onChange({
+              ...block,
+              ...diagramSize(next, block.widthPx, language),
+              diagram: next,
+            });
+          }}
+        />
+      ) : diagram.chart ? (
+        <DataChartFields
+          chart={diagram.chart}
+          onChange={(chart) => {
+            // Re-measured on every edit: labels, legend and titles set the height.
+            const next = { ...diagram, chart };
             onChange({
               ...block,
               ...diagramSize(next, block.widthPx, language),

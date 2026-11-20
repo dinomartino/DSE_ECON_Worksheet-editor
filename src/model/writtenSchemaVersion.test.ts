@@ -129,8 +129,8 @@ describe('the version a document is written at', () => {
     for (const template of DIAGRAM_TEMPLATES) {
       const diagram = buildFromTemplate(template.id);
       if (diagram.curves.some((c) => c.derive?.kind === 'importQuota')) continue;
-      // A stakeholder diagram is v3 on its own (§ STAKEHOLDER_VERSION) and draws no answer layer.
-      if (diagram.stakeholder) {
+      // A stakeholder diagram or data chart is v3 on its own (§ V3_DIAGRAM_VERSION) and draws no answer layer.
+      if (diagram.stakeholder || diagram.chart) {
         expect(writtenSchemaVersion(1, { kind: 'diagram', diagram })).toBe(3);
         continue;
       }

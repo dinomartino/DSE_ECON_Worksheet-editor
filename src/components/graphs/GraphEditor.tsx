@@ -6,7 +6,7 @@ import { DownloadIcon } from '@/components/ui/icons';
 import { useNotices } from '@/components/ui/NoticeLayer';
 import { undoChord } from '@/components/ui/undoChord';
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
-import { ForumFields, PieSliceFields, StakeholderFields } from '@/components/editor/DiagramDataFields';
+import { DataChartFields, ForumFields, PieSliceFields, StakeholderFields } from '@/components/editor/DiagramDataFields';
 import { FieldScopeContext } from '@/components/editor/fieldScope';
 import { FlowCanvas } from '@/components/editor/FlowCanvas';
 import { ForumCanvas } from '@/components/editor/ForumCanvas';
@@ -345,6 +345,23 @@ function GraphSurface({
             onChange={(stakeholder) => {
               // Re-measured on every edit, as in a worksheet: the boxes' text sets the height.
               const next = { ...diagram, stakeholder };
+              setBlock({ ...block, ...diagramSize(next, block.widthPx, graph.language), diagram: next });
+            }}
+          />
+        </div>
+      </StaticGraph>
+    );
+  }
+  if (diagram.chart) {
+    return (
+      <StaticGraph graph={graph}>
+        {settings}
+        <div className="mt-4 border-t border-line pt-4">
+          <DataChartFields
+            chart={diagram.chart}
+            onChange={(chart) => {
+              // Re-measured on every edit, as in a worksheet: labels and legend set the height.
+              const next = { ...diagram, chart };
               setBlock({ ...block, ...diagramSize(next, block.widthPx, graph.language), diagram: next });
             }}
           />

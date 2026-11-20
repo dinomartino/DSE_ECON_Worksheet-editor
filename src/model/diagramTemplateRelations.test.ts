@@ -12,7 +12,7 @@ import { plain } from './text';
 
 /** The templates are written in relations, so a drag moves what the scheme marks. */
 
-const DATA = new Set(['flow', 'pie', 'forum', 'stakeholders']);
+const DATA = new Set(['flow', 'pie', 'forum', 'stakeholders', 'bar-chart', 'line-chart']);
 const drawn = DIAGRAM_TEMPLATES.filter((t) => !DATA.has(t.id));
 
 const name = (c: DiagramCurve) => plain(c.label?.en);

@@ -341,6 +341,68 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
       },
     }),
   },
+  {
+    id: 'bar-chart',
+    group: 'data',
+    name: bi('Bar chart', '棒形圖'),
+    hint: bi(
+      'Bars from a small table of figures, side by side for each category.',
+      '由簡單數據表繪成的棒形，每個類別並排顯示。',
+    ),
+    // `chart` makes this a data chart (k-0474); invented figures, one below zero so the
+    // baseline shows how a fall or deficit is drawn.
+    build: () => ({
+      x: {},
+      y: {},
+      curves: [],
+      points: [],
+      labels: [],
+      arrows: [],
+      chart: {
+        kind: 'bar',
+        categories: [bi('2022', '2022'), bi('2023', '2023'), bi('2024', '2024'), bi('2025', '2025')],
+        series: [
+          { id: newId(), label: bi('Country A', 'A國'), values: [2.1, -1.5, 3.2, 2.6] },
+          { id: newId(), label: bi('Country B', 'B國'), values: [1.4, 0.8, 2.0, 2.9] },
+        ],
+        yTitle: bi('Real GDP growth rate (%)', '實質本地生產總值增長率（%）'),
+        xTitle: bi('Year', '年份'),
+      },
+    }),
+  },
+  {
+    id: 'line-chart',
+    group: 'data',
+    name: bi('Line graph', '折線圖'),
+    hint: bi(
+      'Lines with markers from a small table of figures, one line per series.',
+      '由簡單數據表繪成的折線，每個數列一條線。',
+    ),
+    // `chart` makes this a data chart (k-0474); invented figures.
+    build: () => ({
+      x: {},
+      y: {},
+      curves: [],
+      points: [],
+      labels: [],
+      arrows: [],
+      chart: {
+        kind: 'line',
+        categories: [
+          bi('2024 Q1', '2024年第一季'),
+          bi('2024 Q2', '2024年第二季'),
+          bi('2024 Q3', '2024年第三季'),
+          bi('2024 Q4', '2024年第四季'),
+          bi('2025 Q1', '2025年第一季'),
+        ],
+        series: [
+          { id: newId(), label: bi('Retail industry', '零售業'), values: [4.8, 5.6, 6.3, 6.9, 7.1] },
+          { id: newId(), label: bi('All industries', '所有行業'), values: [3.1, 3.4, 3.8, 4.0, 4.1] },
+        ],
+        yTitle: bi('Unemployment rate (%)', '失業率（%）'),
+      },
+    }),
+  },
 ];
 
 /** Every template, in picker order: by group, originals first within each. */

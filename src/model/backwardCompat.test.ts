@@ -23,6 +23,7 @@ import v2Corpus from '@/test/corpus/v2-published.json';
 import graphV2 from '@/test/corpus/graph-v2.json';
 import optionalCorpus from '@/test/corpus/v2-optional-sections.json';
 import v3Corpus from '@/test/corpus/v3-stakeholder.json';
+import v3ChartCorpus from '@/test/corpus/v3-chart.json';
 import bankPaperCorpus from '@/test/corpus/bank-v0.6.0-paper.json';
 import bankBankCorpus from '@/test/corpus/bank-v0.6.0-bank.json';
 import { migrate, serializeWorksheet, CURRENT_SCHEMA_VERSION, isNewerThanBuild } from '@/model/migrations';
@@ -603,6 +604,81 @@ describe('the v3 corpus: a stakeholder diagram beside a table, in a DRQ', () => 
         blocks: question.blocks.filter(
           (block) => !(block.kind === 'source' && block.blocks.some((inner) => inner.kind === 'diagram')),
         ),
+      })),
+    } as typeof worksheet;
+    expect(serializeWorksheet(without).schemaVersion).toBe(1);
+  });
+});
+
+describe('the v3 chart corpus: a bar chart and a line graph, in a DRQ', () => {
+  // `v3-chart.json`: frozen, written once by `scripts/emit-v3-chart-corpus.test.ts`.
+  // v3 is also written when a document holds a data chart (k-0474).
+  const chartBlocks = (value: unknown): Array<{ diagram: Diagram; widthPx: number; heightPx: number }> => {
+    const out: Array<{ diagram: Diagram; widthPx: number; heightPx: number }> = [];
+    const walk = (entry: unknown): void => {
+      if (Array.isArray(entry)) return entry.forEach(walk);
+      if (entry && typeof entry === 'object') {
+        const record = entry as Record<string, unknown>;
+        if (record.kind === 'diagram' && (record.diagram as Diagram).chart) {
+          out.push(record as unknown as { diagram: Diagram; widthPx: number; heightPx: number });
+        }
+        Object.values(record).forEach(walk);
+      }
+    };
+    walk(value);
+    return out;
+  };
+
+  it('opens editable here, with nothing unrecognised, and read-only in builds before v3', () => {
+    const worksheet = migrate(structuredClone(v3ChartCorpus));
+    expect(v3ChartCorpus.schemaVersion).toBe(3);
+    expect(worksheet.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(isNewerThanBuild(worksheet)).toBe(false);
+    expect(worksheet.__unknown).toBeUndefined();
+  });
+
+  it('keeps every series, figure (negative and missing ones too), pin and title', () => {
+    const worksheet = migrate(structuredClone(v3ChartCorpus));
+    const [bar, line] = chartBlocks(worksheet.questions).map((block) => block.diagram.chart!);
+    expect(bar.kind).toBe('bar');
+    expect(bar.series[0].values).toEqual([12000, -85000, null]);
+    expect([bar.yMin, bar.yMax, bar.yStep]).toEqual([-100000, 50000, 25000]);
+    expect(bar.yTitle?.en[0].text).toBe('$ million');
+    expect(bar.xTitle?.zh[0].text).toBe('財政年度');
+    expect(line.kind).toBe('line');
+    expect(line.series.map((s) => s.label.en[0].text)).toEqual(['Retail', 'Finance', 'All industries']);
+    expect(line.series[1].values).toEqual([2.1, 2.3, null, 2.6]);
+    expect(line.categories.map((c) => c.zh[0].text)).toEqual(['第一季', '第二季', '第三季', '第四季']);
+    expect(countText(worksheet)).toBe(countText(v3ChartCorpus));
+  });
+
+  it('draws the bars below zero and the line with its gap, in English and in Chinese', () => {
+    const worksheet = migrate(structuredClone(v3ChartCorpus));
+    const [bar, line] = chartBlocks(worksheet.questions);
+    const svg = (block: (typeof bar), language: 'en' | 'zh') =>
+      diagramSvg(block.diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language });
+    expect(svg(bar, 'en').match(/data-chart-bar="/g)).toHaveLength(2);
+    expect(svg(bar, 'zh')).toContain('財政年度');
+    // Finance's missing Q3 splits its line in two: one "M" per run of points.
+    const finance = svg(line, 'en').match(/<path d="[^"]*" [^>]*data-chart-line=""/g)![1];
+    expect(finance.match(/M /g)).toHaveLength(2);
+    expect(renderWorksheet(worksheet, MODE).items.length).toBeGreaterThan(0);
+  });
+
+  it('round-trips byte for byte, still written at 3', () => {
+    const raw = readFileSync('src/test/corpus/v3-chart.json', 'utf8');
+    const saved = stringifyWorksheet(parseWorksheet(raw));
+    expect(saved).toBe(raw.trimEnd());
+    expect(JSON.parse(saved).schemaVersion).toBe(3);
+  });
+
+  it('drops back to the old version once the charts are gone', () => {
+    const worksheet = migrate(structuredClone(v3ChartCorpus));
+    const without = {
+      ...worksheet,
+      questions: worksheet.questions.map((question) => ({
+        ...question,
+        blocks: question.blocks.filter((block) => block.kind !== 'source'),
       })),
     } as typeof worksheet;
     expect(serializeWorksheet(without).schemaVersion).toBe(1);
