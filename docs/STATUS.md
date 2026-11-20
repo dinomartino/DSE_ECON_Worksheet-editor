@@ -71,9 +71,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 - Sync: an older build that receives this build's copy first can still make its own extra copy. Windows code passes CI but never ran on a real PC or provider.
 - Windows unsigned; updater key only at `~/.tauri/econ-worksheet.key`; film not re-rendered for the rename.
 
-## Last verified (2026-11-20, `fix/key-line-spacing-k0483` on `develop`)
+## Last verified (2026-11-20, `fix/key-line-spacing-k0483` merged with `origin/develop` 9ed8905e)
 
-- key line spacing: `npm test` 7014 (497 files), all green; typecheck, lint at baseline (40); `key-line-spacing-verify.mjs` all passed (Classic, HKEAA, Detailed, Suggested; EN, 中文, EN+中; Single and 1.5; Chrome print + LibreOffice). `npm run build`, `lq-verify` and `cover-verify` not re-run (nothing in them changed).
+- key line spacing: `npm test` 7042 (500 files), all green; typecheck, lint at baseline (40); `key-line-spacing-verify.mjs` 144 checks passed (Classic, HKEAA, Detailed, Suggested; EN, 中文, EN+中; Single and 1.5; Chrome print + LibreOffice); `npm run samples` 64/64; `cover-verify` ok (no reference PDF here); `lq-verify` fails only "dotted pitch off the reference", identically on clean origin/develop (no reference PDF). `npm run build` not run (the verify planner calls it skippable: no Tauri import added, `tauriImports.test.ts` passes).
 
 ## Log
 - **2026-11-20** — on develop (unreleased, k-0483): the answer key (Marking scheme view, print, Word) follows Line spacing; a fraction in the key's hung rows no longer clips in Word.
