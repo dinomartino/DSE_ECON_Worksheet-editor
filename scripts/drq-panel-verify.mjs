@@ -121,6 +121,8 @@ for (const [ui, width] of [['en', 1440], ['zh', 820]]) {
   // 4. Add → Source ▾ → People's views.
   const stem = page.locator('[data-panel-kind="stem"]').first();
   await stem.getByRole('button', { name: w.addSource }).last().click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/4a-source-menu-${ui}-${width}.png` });
   await page.getByRole('menuitem', { name: w.views }).click();
   await page.waitForTimeout(800);
   const cards = await page.locator('[data-panel-kind="source"] .panel-kind-chip').allInnerTexts();

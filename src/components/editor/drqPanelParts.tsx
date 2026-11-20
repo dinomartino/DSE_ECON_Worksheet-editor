@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { createDrqContent, referencedSources, sourceLetter, withSourceReference } from '@/model/drq';
+import { contentWidth, pageSetupOf } from '@/model/page';
 import type { ContentBlock, StructuredQuestion } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button } from '@/components/ui';
@@ -81,11 +82,12 @@ export function StemCard({ hint, children }: { hint: string; children: ReactNode
  */
 export function DrqStarterCard({ onStart }: { onStart: (content: ReturnType<typeof createDrqContent>) => void }) {
   const m = useMessages(DRQ_PANEL_MESSAGES);
+  const columnTwips = useWorksheetStore((s) => contentWidth(pageSetupOf(s.worksheet)));
   return (
     <section {...panelKindProps('source', 'p-2.5 pl-3')} data-drq-starter>
       <p className="text-[13px] font-semibold text-ink">{m.drqTitle}</p>
       <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">{m.drqHint}</p>
-      <Button size="sm" variant="primary" className="mt-2" onClick={() => onStart(createDrqContent())}>
+      <Button size="sm" variant="primary" className="mt-2" onClick={() => onStart(createDrqContent(columnTwips))}>
         {m.drqStart}
       </Button>
     </section>

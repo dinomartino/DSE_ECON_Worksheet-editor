@@ -138,7 +138,7 @@ export function buildInsertEntries({
     label: dm.drqRail,
     hint: dm.drqRailHint,
     icon: <StimulusIcon size={18} />,
-    run: (afterId) => addQuestion('structured', afterId, createDrqQuestion),
+    run: (afterId) => addQuestion('structured', afterId, () => createDrqQuestion(contentWidth(pageSetupOf(worksheet)))),
   });
   // Copies from the other saved documents: opens the sidebar's 題庫 tab, where the
   // anchor line names the same destination this flyout does.

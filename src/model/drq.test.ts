@@ -173,3 +173,13 @@ describe('the DRQ starter and saved documents', () => {
     expect(writtenSchemaVersion(CURRENT_SCHEMA_VERSION, { ...withChart, questions: [noChart] })).toBe(1);
   });
 });
+
+describe('the essay part\'s strategy table', () => {
+  it('starts at the part\'s text column and runs to the right margin', async () => {
+    const { PART_TEXT_INDENT } = await import('./numbering');
+    const table = createDrqContent(9000).parts[4].blocks.find((block) => block.kind === 'table');
+    if (table?.kind !== 'table') throw new Error('expected the strategy table');
+    expect(table.indent).toBeCloseTo(PART_TEXT_INDENT / 9000);
+    expect((table.indent ?? 0) + (table.width ?? 1)).toBeCloseTo(1);
+  });
+});

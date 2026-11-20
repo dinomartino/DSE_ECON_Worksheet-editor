@@ -1,4 +1,6 @@
 import { createDiagramBlock, createParagraphBlock, createSourceBlock, newId, nextSourceLetter } from './factories';
+import { PART_TEXT_INDENT } from './numbering';
+import { contentWidth, DEFAULT_PAGE_SETUP } from './page';
 import { buildTableFromTemplate } from './tableTemplates';
 import { bi, emptyBiText, plain } from './text';
 import type {
@@ -191,12 +193,19 @@ function subPart(): QuestionSubPart {
   return { id: newId(), blocks: [createParagraphBlock()] };
 }
 
-/** The essay part's two-row table of strategies, as 2022–2025 each set one. */
-function strategyTable(): TableBlock {
+/**
+ * The essay part's two-row table of strategies, as 2022–2025 each set one: from the part's
+ * text column to the right margin, as the papers print it (flush at 0 would put it out in
+ * the question number's gutter, left of "(e)").
+ */
+function strategyTable(contentWidthTwips: number): TableBlock {
   const table = buildTableFromTemplate('views');
+  const indent = contentWidthTwips > 0 ? PART_TEXT_INDENT / contentWidthTwips : 0;
   const labels = [bi('Strategy 1', '策略一'), bi('Strategy 2', '策略二')];
   return {
     ...table,
+    indent,
+    width: 1 - indent,
     columnWidths: [0.22, 0.78],
     rows: labels.map((label, index) => ({
       id: newId(),
@@ -214,7 +223,9 @@ function strategyTable(): TableBlock {
  * sharing one mark, (d) D, and (e) the 14-mark essay with its note before it and a strategy
  * table. Totals 28 marks. Every caption and question line is the teacher's to type over.
  */
-export function createDrqContent(): Pick<StructuredQuestion, 'blocks' | 'parts'> {
+export function createDrqContent(
+  contentWidthTwips: number = contentWidth(DEFAULT_PAGE_SETUP),
+): Pick<StructuredQuestion, 'blocks' | 'parts'> {
   const kinds: SourceKind[] = ['table', 'barChart', 'text', 'views'];
   const blocks: ContentBlock[] = [
     createParagraphBlock(),
@@ -225,7 +236,7 @@ export function createDrqContent(): Pick<StructuredQuestion, 'blocks' | 'parts'>
     blocksBefore: [createParagraphBlock(essayNote('(e)'))],
     blocks: [
       createParagraphBlock(bi('Suppose the Government is considering two strategies.', '假設政府正考慮兩項策略。')),
-      strategyTable(),
+      strategyTable(contentWidthTwips),
       createParagraphBlock(
         bi(
           'With reference to the above sources and your own knowledge in Economics, discuss',
@@ -246,8 +257,8 @@ export function createDrqContent(): Pick<StructuredQuestion, 'blocks' | 'parts'>
 }
 
 /** A whole new DRQ, for the rail's Question menu. */
-export function createDrqQuestion(): StructuredQuestion {
-  return { id: newId(), type: 'structured', ...createDrqContent() };
+export function createDrqQuestion(contentWidthTwips?: number): StructuredQuestion {
+  return { id: newId(), type: 'structured', ...createDrqContent(contentWidthTwips) };
 }
 
 /**
