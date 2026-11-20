@@ -25,7 +25,7 @@ function chartOf(chart: Partial<DataChart>, title?: string): Diagram {
     chart: {
       kind: 'bar',
       categories: [bi('2022', '2022'), bi('2023', '2023'), bi('2024', '2024')],
-      series: [{ id: 'a', name: bi('Exports', '出口'), values: [3, 7, 5] }],
+      series: [{ id: 'a', label: bi('Exports', '出口'), values: [3, 7, 5] }],
       ...chart,
     },
   };
@@ -37,14 +37,14 @@ const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w - 1e-6 && b.x < a.x + a.w
 describe('data chart scale', () => {
   it('counts in round steps through zero', () => {
     expect(chartScale(chartOf({}).chart!)).toEqual({ min: 0, max: 8, step: 2 });
-    const negative = chartScale(chartOf({ series: [{ id: 'a', name: bi('', ''), values: [12000, -85000] }] }).chart!);
+    const negative = chartScale(chartOf({ series: [{ id: 'a', label: bi('', ''), values: [12000, -85000] }] }).chart!);
     expect(negative.min).toBeLessThan(-85000);
     expect(negative.max).toBeGreaterThanOrEqual(12000);
     expect([1, 2, 2.5, 5].some((k) => Math.abs(negative.step / 10 ** Math.floor(Math.log10(negative.step)) - k) < 1e-9)).toBe(true);
   });
 
   it('lets a line chart of figures far from zero start above it, never a bar chart', () => {
-    const series = [{ id: 'a', name: bi('', ''), values: [110, 125, 140] }];
+    const series = [{ id: 'a', label: bi('', ''), values: [110, 125, 140] }];
     expect(chartScale(chartOf({ kind: 'line', series }).chart!).min).toBeGreaterThan(0);
     expect(chartScale(chartOf({ kind: 'bar', series }).chart!).min).toBe(0);
   });
@@ -65,7 +65,7 @@ describe('data chart scale', () => {
 
 describe('data chart layout', () => {
   it('puts a negative bar below the baseline and a positive one above it', () => {
-    const diagram = chartOf({ series: [{ id: 'a', name: bi('', ''), values: [4, -2, 1] }] });
+    const diagram = chartOf({ series: [{ id: 'a', label: bi('', ''), values: [4, -2, 1] }] });
     const layout = chartLayout(diagram, diagram.chart!, 480, 'en');
     const [up, down] = layout.bars;
     expect(up.y + up.h).toBeCloseTo(layout.baseline);
@@ -76,7 +76,7 @@ describe('data chart layout', () => {
 
   it('never overlaps two bars, and keeps every bar inside the plot', () => {
     for (let count = 1; count <= MAX_CHART_SERIES; count += 1) {
-      const series = Array.from({ length: count }, (_, s) => ({ id: `s${s}`, name: bi(`S${s}`, `S${s}`), values: [1, 2, 3, 4, 5, 6] }));
+      const series = Array.from({ length: count }, (_, s) => ({ id: `s${s}`, label: bi(`S${s}`, `S${s}`), values: [1, 2, 3, 4, 5, 6] }));
       const categories = Array.from({ length: 6 }, (_, c) => bi(`C${c}`, `C${c}`));
       const diagram = chartOf({ series, categories });
       const layout = chartLayout(diagram, diagram.chart!, 400, 'en');
@@ -99,9 +99,9 @@ describe('data chart layout', () => {
   });
 
   it('draws no bar for a missing figure, and breaks the line there', () => {
-    const bars = chartOf({ series: [{ id: 'a', name: bi('', ''), values: [3, null, 5] }] });
+    const bars = chartOf({ series: [{ id: 'a', label: bi('', ''), values: [3, null, 5] }] });
     expect(diagramSvg(bars, { ...diagramSize(bars, 480, 'en'), language: 'en' }).match(/data-chart-bar=/g)).toHaveLength(2);
-    const line = chartOf({ kind: 'line', series: [{ id: 'a', name: bi('', ''), values: [3, null, 5] }] });
+    const line = chartOf({ kind: 'line', series: [{ id: 'a', label: bi('', ''), values: [3, null, 5] }] });
     const svg = diagramSvg(line, { ...diagramSize(line, 480, 'en'), language: 'en' });
     const path = svg.match(/<path d="([^"]*)"[^>]*data-chart-line=""/)![1];
     expect(path.match(/M /g)).toHaveLength(2);
@@ -143,7 +143,7 @@ describe('data chart layout', () => {
   it('escapes what a teacher types', () => {
     const diagram = chartOf({
       categories: [bi('<script>alert(1)</script>', '')],
-      series: [{ id: 'a', name: bi('"><img src=x onerror=alert(1)>', ''), values: [1] }, { id: 'b', name: bi('&', ''), values: [2] }],
+      series: [{ id: 'a', label: bi('"><img src=x onerror=alert(1)>', ''), values: [1] }, { id: 'b', label: bi('&', ''), values: [2] }],
       yTitle: bi('<b>unit</b>', ''),
     });
     const svg = diagramSvg(diagram, { ...diagramSize(diagram, 480, 'en'), language: 'en' });
@@ -154,7 +154,7 @@ describe('data chart layout', () => {
   });
 
   it('survives a malformed stored chart', () => {
-    const diagram = chartOf({ series: [{ id: 'a', name: bi('', ''), values: ['x' as unknown as number, Infinity, 4] }] });
+    const diagram = chartOf({ series: [{ id: 'a', label: bi('', ''), values: ['x' as unknown as number, Infinity, 4] }] });
     const svg = diagramSvg(diagram, { ...diagramSize(diagram, 480, 'en'), language: 'en' });
     expect(svg.match(/data-chart-bar=/g)).toHaveLength(1);
     const empty = chartOf({ categories: [], series: [] });

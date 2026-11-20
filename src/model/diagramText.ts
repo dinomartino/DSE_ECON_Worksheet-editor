@@ -76,7 +76,7 @@ export function mapDiagramTexts(d: Diagram, fn: TextFn): Diagram {
       categories: Array.isArray(d.chart.categories)
         ? mapSame(d.chart.categories, (c, i) => fn(`chart/category:${i}`, c, 'tickLabel'))
         : d.chart.categories,
-      series: each(d.chart.series, (s) => patch(s, { name: fn(`chart/series:${s.id}/name`, s.name, 'diagramLabel') })),
+      series: each(d.chart.series, (s) => patch(s, { label: fn(`chart/series:${s.id}/label`, s.label, 'diagramLabel') })),
       yTitle: d.chart.yTitle && fn('chart/yTitle', d.chart.yTitle, 'axisTitle'),
       xTitle: d.chart.xTitle && fn('chart/xTitle', d.chart.xTitle, 'axisTitle'),
     }),

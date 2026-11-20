@@ -362,8 +362,8 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
         kind: 'bar',
         categories: [bi('2022', '2022'), bi('2023', '2023'), bi('2024', '2024'), bi('2025', '2025')],
         series: [
-          { id: newId(), name: bi('Country A', 'A國'), values: [2.1, -1.5, 3.2, 2.6] },
-          { id: newId(), name: bi('Country B', 'B國'), values: [1.4, 0.8, 2.0, 2.9] },
+          { id: newId(), label: bi('Country A', 'A國'), values: [2.1, -1.5, 3.2, 2.6] },
+          { id: newId(), label: bi('Country B', 'B國'), values: [1.4, 0.8, 2.0, 2.9] },
         ],
         yTitle: bi('Real GDP growth rate (%)', '實質本地生產總值增長率（%）'),
         xTitle: bi('Year', '年份'),
@@ -396,8 +396,8 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
           bi('2025 Q1', '2025年第一季'),
         ],
         series: [
-          { id: newId(), name: bi('Retail industry', '零售業'), values: [4.8, 5.6, 6.3, 6.9, 7.1] },
-          { id: newId(), name: bi('All industries', '所有行業'), values: [3.1, 3.4, 3.8, 4.0, 4.1] },
+          { id: newId(), label: bi('Retail industry', '零售業'), values: [4.8, 5.6, 6.3, 6.9, 7.1] },
+          { id: newId(), label: bi('All industries', '所有行業'), values: [3.1, 3.4, 3.8, 4.0, 4.1] },
         ],
         yTitle: bi('Unemployment rate (%)', '失業率（%）'),
       },

@@ -550,10 +550,14 @@ export interface StakeholderChart {
 /** A data chart's drawing: grouped bars, or lines with markers. */
 export type DataChartKind = 'bar' | 'line';
 
-/** One data series: a legend name and one value per category (null = no value). */
+/**
+ * One data series: its legend label and one value per category (null = no value).
+ * `label`, not `name`: a field called `name` is a template's or preset's own title, which
+ * the text census never visits.
+ */
 export interface DataChartSeries {
   id: string;
-  name: BiText;
+  label: BiText;
   /** Index-aligned with `DataChart.categories`; `null` draws no bar / leaves a gap in the line. */
   values: (number | null)[];
 }

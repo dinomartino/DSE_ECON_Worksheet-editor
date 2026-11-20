@@ -510,8 +510,8 @@ export function DataChartFields({
               <BiTextField
                 translate={{ kind: 'diagramLabel', fallsBack: true }}
                 ariaLabel={m.seriesName(index + 1)}
-                value={entry.name}
-                onChange={(name) => patchSeries(entry.id, { name })}
+                value={entry.label}
+                onChange={(label) => patchSeries(entry.id, { label })}
                 rows={1}
               />
             </div>
@@ -532,7 +532,7 @@ export function DataChartFields({
           onClick={() =>
             onChange({
               ...chart,
-              series: [...series, { id: nanoid(10), name: emptyBiText(), values: categories.map(() => null) }],
+              series: [...series, { id: nanoid(10), label: emptyBiText(), values: categories.map(() => null) }],
             })
           }
         >

@@ -91,7 +91,7 @@ describe('mapDiagramTexts', () => {
       'flowNode stakeholder/issue', 'speaker stakeholder/box:*/label', 'bubble stakeholder/box:*/view',
     ]));
     expect(segments('bar-chart')).toEqual(expect.arrayContaining([
-      'tickLabel chart/category:*', 'diagramLabel chart/series:*/name', 'axisTitle chart/yTitle', 'axisTitle chart/xTitle',
+      'tickLabel chart/category:*', 'diagramLabel chart/series:*/label', 'axisTitle chart/yTitle', 'axisTitle chart/xTitle',
     ]));
     expect(segments('line-chart')).toContain('tickLabel chart/category:*');
   });

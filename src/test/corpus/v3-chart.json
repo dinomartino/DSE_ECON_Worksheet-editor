@@ -155,7 +155,7 @@
                   "series": [
                     {
                       "id": "ch008",
-                      "name": {
+                      "label": {
                         "en": [
                           {
                             "text": "Budget balance"
@@ -315,7 +315,7 @@
                   "series": [
                     {
                       "id": "ch011",
-                      "name": {
+                      "label": {
                         "en": [
                           {
                             "text": "Retail"
@@ -336,7 +336,7 @@
                     },
                     {
                       "id": "ch012",
-                      "name": {
+                      "label": {
                         "en": [
                           {
                             "text": "Finance"
@@ -357,7 +357,7 @@
                     },
                     {
                       "id": "ch013",
-                      "name": {
+                      "label": {
                         "en": [
                           {
                             "text": "All industries"

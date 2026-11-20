@@ -75,7 +75,7 @@ it('emits the frozen v3 chart corpus', () => {
       {
         kind: 'bar',
         categories: [bi('2021-22', '2021-22'), bi('2022-23', '2022-23'), bi('2023-24', '2023-24')],
-        series: [{ id: 'balance', name: bi('Budget balance', '財政預算結餘'), values: [12000, -85000, null] }],
+        series: [{ id: 'balance', label: bi('Budget balance', '財政預算結餘'), values: [12000, -85000, null] }],
         yTitle: bi('$ million', '百萬元'),
         xTitle: bi('Fiscal year', '財政年度'),
         yMin: -100000,
@@ -95,9 +95,9 @@ it('emits the frozen v3 chart corpus', () => {
         kind: 'line',
         categories: [bi('Q1', '第一季'), bi('Q2', '第二季'), bi('Q3', '第三季'), bi('Q4', '第四季')],
         series: [
-          { id: 'retail', name: bi('Retail', '零售業'), values: [4.2, 5.1, 6.0, 6.4] },
-          { id: 'finance', name: bi('Finance', '金融業'), values: [2.1, 2.3, null, 2.6] },
-          { id: 'all', name: bi('All industries', '所有行業'), values: [3.0, 3.4, 3.9, 4.1] },
+          { id: 'retail', label: bi('Retail', '零售業'), values: [4.2, 5.1, 6.0, 6.4] },
+          { id: 'finance', label: bi('Finance', '金融業'), values: [2.1, 2.3, null, 2.6] },
+          { id: 'all', label: bi('All industries', '所有行業'), values: [3.0, 3.4, 3.9, 4.1] },
         ],
         yTitle: bi('%', '%'),
         xTitle: bi('Quarter', '季度'),

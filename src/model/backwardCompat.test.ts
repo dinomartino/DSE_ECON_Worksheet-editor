@@ -646,7 +646,7 @@ describe('the v3 chart corpus: a bar chart and a line graph, in a DRQ', () => {
     expect(bar.yTitle?.en[0].text).toBe('$ million');
     expect(bar.xTitle?.zh[0].text).toBe('財政年度');
     expect(line.kind).toBe('line');
-    expect(line.series.map((s) => s.name.en[0].text)).toEqual(['Retail', 'Finance', 'All industries']);
+    expect(line.series.map((s) => s.label.en[0].text)).toEqual(['Retail', 'Finance', 'All industries']);
     expect(line.series[1].values).toEqual([2.1, 2.3, null, 2.6]);
     expect(line.categories.map((c) => c.zh[0].text)).toEqual(['第一季', '第二季', '第三季', '第四季']);
     expect(countText(worksheet)).toBe(countText(v3ChartCorpus));

@@ -3227,7 +3227,7 @@ export function chartLayout(diagram: Diagram, chart: DataChart, widthPx: number,
     const swatch = chart.kind === 'line' ? CHART_LEGEND_SWATCH.line : CHART_LEGEND_SWATCH.bar;
     const maxText = width - 2 * CHART_PAD - swatch - 6;
     const items = series.map((entry, s) => {
-      const lines = wrapRichLines(pickSides(entry.name, language), maxText, FONT_SIZE, forumTextWidth, true);
+      const lines = wrapRichLines(pickSides(entry.label, language), maxText, FONT_SIZE, forumTextWidth, true);
       return { series: s, lines, w: swatch + 6 + forumTextWidth(lines, FONT_SIZE) };
     });
     const rows: Array<typeof items> = [[]];
