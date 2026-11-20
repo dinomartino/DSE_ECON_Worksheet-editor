@@ -16,6 +16,7 @@ import { stringifyWorksheet } from '@/storage/document';
 import { bi } from '@/model/text';
 import { TINY_PNG, withFlow } from '@/test/fixtures';
 import { buildOptionLayoutPaper } from '@/test/optionLayoutFixture';
+import { buildKeyLineSpacingPaper } from '@/test/keyLineSpacingFixture';
 import type { LayoutElement, McqQuestion, Question, Worksheet } from '@/model/types';
 
 const OUT = 'test-fixtures/manual';
@@ -395,6 +396,7 @@ it('emits the manual test documents', () => {
     ['page-flow-mix', pageFlowMix()],
     ['table-justify-mix', tableJustifyMix()],
     ['word-typing-mix', wordTypingMix()],
+    ['key-line-spacing-mix', buildKeyLineSpacingPaper()],
   ];
   // EMIT_ONLY=<name> writes one file, leaving the others' timestamps alone.
   const only = process.env.EMIT_ONLY;

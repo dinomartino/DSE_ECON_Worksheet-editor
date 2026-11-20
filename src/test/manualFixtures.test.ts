@@ -21,10 +21,11 @@ const shape = (name: string) =>
     .join('');
 
 describe('manual test documents', () => {
-  it('lists the seven files', () => {
+  it('lists the files', () => {
     expect(readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()).toEqual([
       'issue-4-many-breaks.json',
       'issue-4-repro.json',
+      'key-line-spacing-mix.json',
       'mixed-for-anonymiser.json',
       'option-layout-mix.json',
       'page-flow-mix.json',
@@ -99,7 +100,18 @@ describe('manual test documents', () => {
     expect(shape('table-justify-mix')).toBe('QQ|Q'); // two pages, so the page rail draws its thumbnails
   });
 
-  it.each(['issue-4-repro', 'issue-4-many-breaks', 'mixed-for-anonymiser', 'option-layout-mix', 'page-flow-mix', 'question-gap-mix', 'table-justify-mix', 'word-typing-mix'])('%s exports a .docx', async (name) => {
+  it('key-line-spacing-mix: six MC and two structured questions, line spacing left at Single, a fraction in the key', () => {
+    const w = load('key-line-spacing-mix');
+    expect(w.questions.map((q) => q.type)).toEqual([...Array(6).fill('mcq'), 'structured', 'structured']);
+    // Nothing chosen yet: the harness sets Line spacing through Setup, as a teacher does.
+    expect(w.lineSpacing).toBeUndefined();
+    // The key's notes hold k-0479's stacked fraction, and the DRQ carries k-0475's EC table.
+    const json = JSON.stringify(w.questions);
+    expect(json).toContain('"fraction":"den"');
+    expect(json).toContain('"ec"');
+  });
+
+  it.each(['issue-4-repro', 'issue-4-many-breaks', 'key-line-spacing-mix', 'mixed-for-anonymiser', 'option-layout-mix', 'page-flow-mix', 'question-gap-mix', 'table-justify-mix', 'word-typing-mix'])('%s exports a .docx', async (name) => {
     const bytes = await exportDocxBuffer(load(name), { language: 'bilingual', version: 'student' });
     expect(bytes.length).toBeGreaterThan(2000);
   });

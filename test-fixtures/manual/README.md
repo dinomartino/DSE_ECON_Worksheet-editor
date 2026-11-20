@@ -175,3 +175,20 @@ whose options C and D are empty. Checked in Chrome by `node scripts/word-typing-
 4. Click option A, press Enter: the caret moves to option B; Enter in D finishes. Esc finishes
    anywhere.
 5. Export → Word: the split stem is two paragraphs, the number on the first.
+
+## `key-line-spacing-mix.json` — Line spacing in the Marking scheme (k-0483)
+
+Six MC (the first two with an explanation, per-option reasons and a stacked fraction), the
+marking-scheme question (answer, `/` alternatives, OR routes, any-TWO group, levels, EC), and a
+data-response question whose parts use the DRQ patterns (group headings, the EC table, a content
+max). Line spacing is left at Single.
+
+1. Marking scheme view: the key at Single, as it has always been.
+2. Setup → Worksheet → **Line spacing** → 1.5: every line of the key opens out (question numbers,
+   part labels, answers, marking points, explanations, headings, totals); the MC grid, the EC table
+   and the title keep their size. The key runs to more sheets; ⌘Z takes it back in one step.
+3. Marking scheme → Layout → HKEAA: the Marks column's "(1)" stays on its line's baseline.
+4. Export → Word → Answer key: the file states the same 18pt lines; open it beside the Single one.
+5. EN, 中文 and EN+中 give the same boxes.
+
+`scripts/key-line-spacing-verify.mjs` does 1–5 in Chrome and LibreOffice, in English and 中文.

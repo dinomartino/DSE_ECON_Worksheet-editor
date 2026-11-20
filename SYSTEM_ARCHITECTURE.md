@@ -373,6 +373,21 @@ nothing new. `lineSpacingOf` prints a value outside (1, 3] single and keeps it i
 Proof: `render/lineSpacing.test.ts`, `scripts/line-spacing-verify.mjs` (LibreOffice prints
 the spaced `.docx` on the preview's sheet count).
 
+**The answer key follows it** (k-0483). `render/answerKey.ts:answerKeyView` hands back its view
+through `withSpacedKey`, so the Marking scheme view, its print and every key `.docx`
+(`renderAnswerKey`, `answerKeyParts`: the parts of a combined key each follow their own paper's
+setting) read the same stamped nodes, by the paper's rule: text and hung or bulleted rows are
+spaced; the MC grid, the EC, level and Detailed tables, model diagrams and gaps keep their
+height; the key's own title lines (`AnswerKeyView.fields`) keep theirs. It is applied there, not
+in a style (`ANSWER_KEY_STYLES`), so a style that lays the key out its own way cannot forget it.
+Two things only the key has. The HKEAA Marks column's label is an anchored box sized to its
+paragraph's first line, so `marksColumnLabelXml` states the spaced line for the box and for its
+paragraph (an exact line puts its extra height above the text: unstated, the label rides above
+the first baseline). And a hung row (`columns`: the notes under the MC grid, Suggested answers'
+bullets) holding a stacked fraction is `atLeast`, as a paragraph is (k-0479), or Word clips the
+two storeys. Proof: `render/answerKeyLineSpacing.test.tsx`; `scripts/key-line-spacing-verify.mjs`
+(Chrome's print and LibreOffice's print of the key `.docx`, the Marks label at 0.00pt).
+
 ### An enlarged line box follows its font size
 
 Wherever the preview writes `fontSize` it must write `lineHeight` too (`formatStyle`,

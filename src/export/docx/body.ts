@@ -344,16 +344,20 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
       ? // A row of MC options at the document's line spacing (§ `withSpacedLines`).
         spacedLineTwips(node.style, undefined, node.lineSpacing)
       : exactLineFor(sizes.length > 0 ? Math.max(...sizes) : undefined);
+  // A row holding a stacked fraction (k-0479) grows its line as a paragraph does: `atLeast`,
+  // the same `w:line`, or Word clips the two storeys to one exact line (k-0483: the answer
+  // key's hung notes and bullets are rows, and a fraction typed into an explanation was cut).
+  const growing = !node.band && node.cells.some((cell) => hasFraction(cell.text.en) || hasFraction(cell.text.zh));
   const props =
     `<w:pStyle w:val="${STYLE_IDS[node.style]}"/>` +
     // The boundary gap, when this row leads its item (§ `withLeadingGap`). The fixed
     // line is restated with it for the reason `formatParagraphProps` restates it:
     // direct formatting replaces the style's `w:spacing` element wholesale, so a bare
     // `w:before` would drop this one row off the page's 12pt rhythm.
-    (node.spaceBefore !== undefined || bandLine !== FIXED_LINE_TWIPS
+    (node.spaceBefore !== undefined || bandLine !== FIXED_LINE_TWIPS || growing
       ? '<w:spacing' +
         (node.spaceBefore !== undefined ? ` w:before="${Math.round(node.spaceBefore * 20)}"` : '') +
-        ` w:line="${bandLine}" w:lineRule="exact"/>`
+        ` w:line="${bandLine}" w:lineRule="${growing ? 'atLeast' : 'exact'}"/>`
       : '') +
     (stops ? `<w:tabs>${stops}</w:tabs>` : '') +
     // One `w:ind`, since Word merges the element as a whole — emitting `left` and
@@ -390,7 +394,14 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
       node.marks !== undefined
         ? marksRuns(node.marks, context.fonts, context.language)
         : richTextRuns([{ text: trail }], context.fonts, {});
-    runs = marksColumnLabelXml(label, styleId, node.marksColumn!, context) + runs;
+    runs =
+      marksColumnLabelXml(
+        label,
+        styleId,
+        node.marksColumn!,
+        context,
+        node.lineSpacing !== undefined ? spacedLineTwips(node.style, node.format?.fontSize, node.lineSpacing) : undefined,
+      ) + runs;
   } else if (labelled) {
     const marks =
       (node.trailOwnLine && node.marks === undefined ? lineBreak() : '') +
@@ -453,11 +464,22 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
  * A Marks column label as a borderless text box anchored at the top of its paragraph,
  * spanning the column and right-aligned in it: the first line's height and style, so it
  * sits on that line's baseline. `wrapNone`: the right indent already keeps text clear.
+ *
+ * `spaced`: the paragraph's own line box in twips when the document's Line spacing is on
+ * (`TextNode.lineSpacing`, k-0483). An exact line puts its extra height above the text, so
+ * the box and its paragraph state the same line or the label rides above the first line's
+ * baseline. Absent, the fixed line, and the box is written exactly as it always was.
  */
-function marksColumnLabelXml(label: string, styleId: string, column: number, context: BodyContext): string {
+function marksColumnLabelXml(
+  label: string,
+  styleId: string,
+  column: number,
+  context: BodyContext,
+  spaced?: number,
+): string {
   const id = context.nextDrawingId();
   const cx = column * EMU_PER_TWIP;
-  const cy = FIXED_LINE_TWIPS * EMU_PER_TWIP;
+  const cy = (spaced ?? FIXED_LINE_TWIPS) * EMU_PER_TWIP;
   return (
     '<w:r><w:drawing>' +
     '<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" ' +
@@ -474,7 +496,9 @@ function marksColumnLabelXml(label: string, styleId: string, column: number, con
     `<a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr>' +
     '<wps:txbx><w:txbxContent><w:p><w:pPr>' +
-    `<w:pStyle w:val="${styleId}"/><w:ind w:left="0" w:right="0" w:firstLine="0"/><w:jc w:val="right"/>` +
+    `<w:pStyle w:val="${styleId}"/>` +
+    (spaced !== undefined ? `<w:spacing w:line="${spaced}" w:lineRule="exact"/>` : '') +
+    `<w:ind w:left="0" w:right="0" w:firstLine="0"/><w:jc w:val="right"/>` +
     `</w:pPr>${label}</w:p></w:txbxContent></wps:txbx>` +
     '<wps:bodyPr rot="0" vert="horz" wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t" anchorCtr="0">' +
     '<a:noAutofit/></wps:bodyPr></wps:wsp>' +

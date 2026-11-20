@@ -16,9 +16,10 @@ a version heading is edited afterwards.
 - **Fractions in question text and MC options.** Fraction (a⁄b) on the format bar opens a small
   box: type the top and the bottom, and it prints stacked, with a line between, as in an
   elasticity formula. Subscripts work inside it too, so (Q₂ − Q₁) over Q₁ is easy. Tap a fraction
-  while typing to change it. It prints the same in the PDF, and in Word as a real equation. A paper
-  with a fraction still opens in older versions, which show it on one line as Q₂ − Q₁⁄Q₁.
-  <!-- zh: **題幹及 MC 選項可輸入分數。** 格式列上的「分數」(a⁄b) 會打開小視窗：輸入分子和分母，就會上下排列、中間有分數線，例如彈性公式。分數內也可用下標，輕鬆打出 (Q₂ − Q₁) 除以 Q₁。輸入時按一下分數即可修改。PDF 列印效果相同，Word 中則是真正的方程式。含分數的試卷在舊版本仍可開啟，只會以單行顯示，例如 Q₂ − Q₁⁄Q₁。 -->
+  while typing to change it. It prints the same in the PDF, and in Word as a real equation, in the
+  marking scheme too. A paper with a fraction still opens in older versions, which show it on one
+  line as Q₂ − Q₁⁄Q₁.
+  <!-- zh: **題幹及 MC 選項可輸入分數。** 格式列上的「分數」(a⁄b) 會打開小視窗：輸入分子和分母，就會上下排列、中間有分數線，例如彈性公式。分數內也可用下標，輕鬆打出 (Q₂ − Q₁) 除以 Q₁。輸入時按一下分數即可修改。PDF 列印效果相同，Word 中則是真正的方程式，評卷參考亦然。含分數的試卷在舊版本仍可開啟，只會以單行顯示，例如 Q₂ − Q₁⁄Q₁。 -->
 - **Build a whole data-response question from the side panel.** A new, still-blank structured
   question offers **Start a DRQ**: one click gives Sources A–D (a table, a bar chart, a news
   extract and a people's views table) and parts (a)–(e) shaped like a DSE Paper 2 DRQ. Each part
@@ -133,10 +134,11 @@ a version heading is edited afterwards.
 
 - **Line spacing.** Document setup → Worksheet → Line spacing sets how far apart the lines of
   the questions, options, answers and marking points are: Single (as before), 1.15, 1.5 or Double,
-  as in Word. The page, the printed PDF, the Word file and Copy for Word all follow it. Gaps between
-  questions, tables, answer lines, the title and the cover keep their size. Existing papers stay on
-  Single.
-  <!-- zh: **行距。** 「頁面設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從。題目之間的空位、表格、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
+  as in Word. The page, the printed PDF, the Word file and Copy for Word all follow it, and so does
+  the Marking scheme (answer key): on screen, in print and in its Word file. Gaps between questions,
+  tables (the MC answer grid and the EC table too), answer lines, the title and the cover keep their
+  size. Existing papers stay on Single.
+  <!-- zh: **行距。** 「頁面設定 → 工作紙 → 行距」可設定題目、選項、答案及評分要點每行之間的距離：單倍（與以往相同）、1.15、1.5 或雙倍，與 Word 相同。頁面、列印的 PDF、Word 檔案及「複製到 Word」都會跟從，評卷參考（畫面、列印及其 Word 檔案）亦然。題目之間的空位、表格（包括 MC 答案表及 EC 表）、答題線、標題及封面維持原有大小。現有試卷維持單倍。 -->
 
 ### Fixed
 - **Subscripts and superscripts in MC options, and from the keyboard.** Select the 1 of Q1 in an

@@ -141,7 +141,7 @@ Invariants:
   `src/test/pageFlowFixture.ts:buildPageFlowPaper` and `test-fixtures/manual/page-flow-mix.json`; browser proof
   `scripts/page-flow-verify.mjs`
 - `src/render/answerKey.ts:renderAnswerKey` — the separate answer key; entries come from the `answerKey` hook
-- `src/render/answerKey.ts:answerKeyView` — the same nodes plus each node's question and the key's own fields (title, subtitle), for the Marking scheme view
+- `src/render/answerKey.ts:answerKeyView` — the same nodes plus each node's question and the key's own fields (title, subtitle), for the Marking scheme view; it hands them back through `:withSpacedKey`, the paper's Line spacing on every text line and hung row of the key (k-0483; tables, diagrams, gaps and the title lines keep theirs), so the view, print and every key `.docx` agree
 - `src/render/answerKey.ts:collectAnswerKey` → `:ANSWER_KEY_STYLES` → `:renderStandardKey` — the key's data gathered once, laid out by its preset's style; `src/render/answerKeySections.ts:MC_KEY_RENDERERS` · `:LQ_KEY_RENDERERS` are the per-section layouts (grid / HKEAA table / list / reasons table; compact / Marks column / Detailed table / Suggested answers' answers-only)
 - `src/model/answerKeyLayout.ts:ANSWER_KEY_FIXED` — what a preset decides alone (Suggested answers: LQ layout, legend, disclaimer, sources); stored changes to it are ignored. Leak tests: `src/render/suggestedAnswers.test.tsx` over `src/test/suggestedAnswersFixture.ts:buildLeakWorksheet`
 - `src/render/ir.ts:TableNode` `headerRows` · `rowKeepNext` — a table that breaks between rows; `src/components/preview/AnswerKeyPreview.tsx:keyUnits` · `:runNodes` pack it row by row, its heading again on a sheet it opens (`src/components/preview/pagination.ts:PackItem` `leadKey`)

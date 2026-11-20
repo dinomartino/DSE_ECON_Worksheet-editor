@@ -7,8 +7,9 @@ import type { AnswerKeyPreset, BiText, DiagramBlock, LanguageMode, Worksheet } f
 import { versionLetters, versionSeed } from '@/model/versions';
 import { resolveAnswerKeyLayout, type ResolvedAnswerKeyLayout } from '@/model/answerKeyLayout';
 import { mcPercentOf } from '@/model/examResults';
+import { lineSpacingOf } from '@/model/lineSpacing';
 import { requireQuestionType } from '@/registry';
-import { pushGap, type EditTarget, type RenderNode, type SchemeAddress } from './ir';
+import { pushGap, withSpacedLines, type EditTarget, type RenderNode, type SchemeAddress } from './ir';
 import { ANSWER_KEY_WORDING, KEY_LAYOUT_WORDING } from './answerKeyWording';
 import { renderPerformance } from './examResultsKey';
 import {
@@ -538,6 +539,26 @@ export function answerKeyPartTitle(worksheet: Worksheet): BiText {
 
 // --- Entry points ----------------------------------------------------------------------
 
+/**
+ * The key with the paper's line spacing (`Worksheet.lineSpacing`, k-0483; k-0468 gave the
+ * paper its own): every line of text and every hung or bulleted row is `spacing` times its
+ * single box, by the paper's own rule (`withSpacedLines`), so tables (the MC grid, a
+ * ruled scheme, the EC table), model diagrams and gaps keep their height. The key's own
+ * title lines (`fields`: title, subtitle) keep theirs, as the paper's title does.
+ * Single (1) hands the same nodes back, so a key at the default prints as it always did.
+ *
+ * Applied once, in `answerKeyView`, the one view the Marking scheme view, the print and
+ * every `.docx` key read: a style (`ANSWER_KEY_STYLES`) that lays the key out its own way
+ * gets the setting without having to know about it.
+ */
+export function withSpacedKey(view: AnswerKeyView, spacing: number): AnswerKeyView {
+  if (!(spacing > 1)) return view;
+  const titles = new Set(view.fields.map((field) => field.index));
+  const spaced = withSpacedLines(view.nodes, spacing);
+  if (spaced === view.nodes) return view;
+  return { ...view, nodes: spaced.map((node, index) => (titles.has(index) ? view.nodes[index] : node)) };
+}
+
 /** `renderAnswerKey`, with each node's question and the key's own fields (§ `AnswerKeyView`). */
 export function answerKeyView(
   worksheet: Worksheet,
@@ -546,12 +567,13 @@ export function answerKeyView(
   options: { title?: BiText; editing?: boolean } = {},
 ): AnswerKeyView {
   const layout = resolveAnswerKeyLayout(worksheet.answerKeyLayout);
-  return ANSWER_KEY_STYLES[layout.preset].render(collectAnswerKey(worksheet), {
+  const view = ANSWER_KEY_STYLES[layout.preset].render(collectAnswerKey(worksheet), {
     language,
     layout,
     title: options.title ?? answerKeyTitle(worksheet),
     ...(options.editing ? { editing: true } : {}),
   });
+  return withSpacedKey(view, lineSpacingOf(worksheet));
 }
 
 /** The answer key of one document, laid out as its `answerKeyLayout` says. */

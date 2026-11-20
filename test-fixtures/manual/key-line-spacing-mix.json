@@ -1,0 +1,1686 @@
+{
+  "schemaVersion": 1,
+  "id": "m-001",
+  "title": {
+    "en": [
+      {
+        "text": "Key line spacing mix"
+      }
+    ],
+    "zh": [
+      {
+        "text": "評卷行距示例"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "m-002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "m-003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "m-004",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-005",
+          "text": {
+            "en": [
+              {
+                "text": "Which change shifts the demand curve for tea to the right?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項會令茶的需求曲線右移？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-006",
+          "text": {
+            "en": [
+              {
+                "text": "Option A"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 A"
+              }
+            ]
+          },
+          "rationale": {
+            "en": [
+              {
+                "text": "A is wrong: a fall in price moves along the curve."
+              }
+            ],
+            "zh": [
+              {
+                "text": "A 錯：價格下跌只是沿曲線移動。"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-007",
+          "text": {
+            "en": [
+              {
+                "text": "Option B"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 B"
+              }
+            ]
+          },
+          "rationale": {
+            "en": [
+              {
+                "text": "B is right: a rise in income shifts demand to the right."
+              }
+            ],
+            "zh": [
+              {
+                "text": "B 對：收入上升令需求曲線右移。"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-008",
+          "text": {
+            "en": [
+              {
+                "text": "Option C"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 C"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-009",
+          "text": {
+            "en": [
+              {
+                "text": "Option D"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 D"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1,
+      "explanation": {
+        "en": [
+          {
+            "text": "Higher income raises demand for a normal good. Elasticity is "
+          },
+          {
+            "text": "Q",
+            "fraction": "num"
+          },
+          {
+            "text": "2",
+            "vertAlign": "subscript",
+            "fraction": "num"
+          },
+          {
+            "text": " − Q",
+            "fraction": "num"
+          },
+          {
+            "text": "1",
+            "vertAlign": "subscript",
+            "fraction": "num"
+          },
+          {
+            "text": "⁄Q",
+            "fraction": "den"
+          },
+          {
+            "text": "1",
+            "vertAlign": "subscript",
+            "fraction": "den"
+          }
+        ],
+        "zh": [
+          {
+            "text": "收入上升令正常貨品的需求增加。彈性是 "
+          },
+          {
+            "text": "Q",
+            "fraction": "num"
+          },
+          {
+            "text": "2",
+            "vertAlign": "subscript",
+            "fraction": "num"
+          },
+          {
+            "text": " − Q",
+            "fraction": "num"
+          },
+          {
+            "text": "1",
+            "vertAlign": "subscript",
+            "fraction": "num"
+          },
+          {
+            "text": "⁄Q",
+            "fraction": "den"
+          },
+          {
+            "text": "1",
+            "vertAlign": "subscript",
+            "fraction": "den"
+          }
+        ]
+      }
+    },
+    {
+      "id": "m-010",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-011",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following is a public good?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項屬公共物品？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-012",
+          "text": {
+            "en": [
+              {
+                "text": "Option A"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 A"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-013",
+          "text": {
+            "en": [
+              {
+                "text": "Option B"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 B"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-014",
+          "text": {
+            "en": [
+              {
+                "text": "Option C"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 C"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-015",
+          "text": {
+            "en": [
+              {
+                "text": "Option D"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 D"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2,
+      "explanation": {
+        "en": [
+          {
+            "text": "A public good is non-rival and non-excludable."
+          }
+        ],
+        "zh": [
+          {
+            "text": "公共物品具非競爭性和非排他性。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "m-016",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-017",
+          "text": {
+            "en": [
+              {
+                "text": "A fall in the price of a substitute will cause"
+              }
+            ],
+            "zh": [
+              {
+                "text": "代替品價格下跌會導致"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-018",
+          "text": {
+            "en": [
+              {
+                "text": "Option A"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 A"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-019",
+          "text": {
+            "en": [
+              {
+                "text": "Option B"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 B"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-020",
+          "text": {
+            "en": [
+              {
+                "text": "Option C"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 C"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-021",
+          "text": {
+            "en": [
+              {
+                "text": "Option D"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 D"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "m-022",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-023",
+          "text": {
+            "en": [
+              {
+                "text": "The opportunity cost of studying tonight is"
+              }
+            ],
+            "zh": [
+              {
+                "text": "今晚温習的機會成本是"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-024",
+          "text": {
+            "en": [
+              {
+                "text": "Option A"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 A"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-025",
+          "text": {
+            "en": [
+              {
+                "text": "Option B"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 B"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-026",
+          "text": {
+            "en": [
+              {
+                "text": "Option C"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 C"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-027",
+          "text": {
+            "en": [
+              {
+                "text": "Option D"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 D"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 3
+    },
+    {
+      "id": "m-028",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-029",
+          "text": {
+            "en": [
+              {
+                "text": "Price elasticity of demand is high when"
+              }
+            ],
+            "zh": [
+              {
+                "text": "當以下情況出現，需求價格彈性較大："
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-030",
+          "text": {
+            "en": [
+              {
+                "text": "Option A"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 A"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-031",
+          "text": {
+            "en": [
+              {
+                "text": "Option B"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 B"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-032",
+          "text": {
+            "en": [
+              {
+                "text": "Option C"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 C"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-033",
+          "text": {
+            "en": [
+              {
+                "text": "Option D"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 D"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "m-034",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-035",
+          "text": {
+            "en": [
+              {
+                "text": "A minimum wage above the market wage leads to"
+              }
+            ],
+            "zh": [
+              {
+                "text": "高於市場工資的最低工資會引致"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "m-036",
+          "text": {
+            "en": [
+              {
+                "text": "Option A"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 A"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-037",
+          "text": {
+            "en": [
+              {
+                "text": "Option B"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 B"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-038",
+          "text": {
+            "en": [
+              {
+                "text": "Option C"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 C"
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-039",
+          "text": {
+            "en": [
+              {
+                "text": "Option D"
+              }
+            ],
+            "zh": [
+              {
+                "text": "選項 D"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "m-040",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-041",
+          "text": {
+            "en": [
+              {
+                "text": "The government imposes a per-unit tax on cigarettes."
+              }
+            ],
+            "zh": [
+              {
+                "text": "政府向香煙徵收從量稅。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-042",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-043",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain how the tax affects the equilibrium price of cigarettes."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋該稅項如何影響香煙的均衡價格。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3,
+          "answer": {
+            "en": [
+              {
+                "text": "Answers are for reference only."
+              }
+            ],
+            "zh": [
+              {
+                "text": "答案僅供參考。"
+              }
+            ]
+          },
+          "scheme": {
+            "routes": [
+              {
+                "id": "m-044",
+                "groups": [
+                  {
+                    "id": "m-045",
+                    "points": [
+                      {
+                        "id": "m-046",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "Supply decreases"
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "供應減少"
+                            }
+                          ]
+                        },
+                        "marks": 1,
+                        "alternatives": [
+                          {
+                            "en": [
+                              {
+                                "text": "the supply curve shifts upward"
+                              }
+                            ],
+                            "zh": [
+                              {
+                                "text": "供應曲線向上移"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "m-047",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "At the original price there is a shortage"
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "在原來價格下出現短缺"
+                            }
+                          ]
+                        },
+                        "marks": 1
+                      },
+                      {
+                        "id": "m-048",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "The equilibrium price rises"
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "均衡價格上升"
+                            }
+                          ]
+                        },
+                        "marks": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "m-049",
+                "groups": [
+                  {
+                    "id": "m-050",
+                    "points": [
+                      {
+                        "id": "m-051",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "Diagram: parallel upward shift of S by the tax, new equilibrium at a higher price"
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "圖示：供應曲線按稅額平行上移，新均衡價格較高"
+                            }
+                          ]
+                        },
+                        "marks": 3
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-052",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-053",
+              "text": {
+                "en": [
+                  {
+                    "text": "Refer to the tax above."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "參考上述稅項。"
+                  }
+                ]
+              }
+            }
+          ],
+          "subParts": [
+            {
+              "id": "m-054",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "m-055",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Give TWO reasons why the government may impose this tax."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "列出兩個政府可能徵收此稅的原因。"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "marks": 2,
+              "scheme": {
+                "routes": [
+                  {
+                    "id": "m-056",
+                    "groups": [
+                      {
+                        "id": "m-057",
+                        "take": 2,
+                        "each": 1,
+                        "firstOnly": true,
+                        "max": 2,
+                        "points": [
+                          {
+                            "id": "m-058",
+                            "text": {
+                              "en": [
+                                {
+                                  "text": "To raise tax revenue"
+                                }
+                              ],
+                              "zh": [
+                                {
+                                  "text": "增加稅收"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "id": "m-059",
+                            "text": {
+                              "en": [
+                                {
+                                  "text": "To reduce consumption of a harmful good"
+                                }
+                              ],
+                              "zh": [
+                                {
+                                  "text": "減少有害物品的消費"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "id": "m-060",
+                            "text": {
+                              "en": [
+                                {
+                                  "text": "To internalise the external cost of smoking"
+                                }
+                              ],
+                              "zh": [
+                                {
+                                  "text": "將吸煙的界外成本內部化"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "id": "m-061",
+                            "text": {
+                              "en": [
+                                {
+                                  "text": "Any other relevant point"
+                                }
+                              ],
+                              "zh": [
+                                {
+                                  "text": "其他合理答案"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "id": "m-062",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "m-063",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Discuss whether the tax is an efficient way to reduce smoking."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "討論該稅項是否減少吸煙的有效方法。"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "marks": 8,
+              "scheme": {
+                "routes": [
+                  {
+                    "id": "m-064",
+                    "groups": [
+                      {
+                        "id": "m-065",
+                        "points": [
+                          {
+                            "id": "m-066",
+                            "text": {
+                              "en": [
+                                {
+                                  "text": "Demand for cigarettes is price-inelastic"
+                                }
+                              ],
+                              "zh": [
+                                {
+                                  "text": "香煙的需求缺乏價格彈性"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "id": "m-067",
+                            "text": {
+                              "en": [
+                                {
+                                  "text": "Deadweight loss vs. the external cost corrected"
+                                }
+                              ],
+                              "zh": [
+                                {
+                                  "text": "無謂損失與所糾正的界外成本"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "levels": [
+                  {
+                    "id": "m-068",
+                    "min": 1,
+                    "max": 2,
+                    "descriptor": {
+                      "en": [
+                        {
+                          "text": "Few relevant points, little explanation."
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "只有少量相關論點，解釋不足。"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "m-069",
+                    "min": 3,
+                    "max": 4,
+                    "descriptor": {
+                      "en": [
+                        {
+                          "text": "Relevant points with some explanation."
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "論點相關並有一些解釋。"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "m-070",
+                    "min": 5,
+                    "max": 6,
+                    "descriptor": {
+                      "en": [
+                        {
+                          "text": "Balanced discussion with a reasoned conclusion."
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "討論全面，結論有理據。"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "ec": {
+                  "max": 2,
+                  "descriptors": [
+                    {
+                      "id": "m-071",
+                      "marks": 2,
+                      "text": {
+                        "en": [
+                          {
+                            "text": "• Support arguments with the source/data and appropriate economic theories.\n• Present relevant material.\n• Present well-organised and coherent answers without repetition of ideas.\n• Use language that expresses ideas clearly and fluently with appropriate use of words/terms/symbols."
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "• 運用資料／數據及適當的經濟理論支持論點。\n• 答案切合題旨。\n• 答案組織良好，並且前後連貫一致，概念沒有重複。\n• 能以清晰流暢的語文表達意思，並恰當地使用術語或符號。"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "m-072",
+                      "marks": 1,
+                      "text": {
+                        "en": [
+                          {
+                            "text": "• Present arguments with some support of the source/data and economic theories.\n• Present some irrelevant material.\n• Present answers in a less organised way with some repetition.\n• Use language that conveys a clear message with some inappropriate use of words/terms/symbols."
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "• 從一些資料／數據和經濟理論支持論點。\n• 部分答案並不切題。\n• 答案組織一般，有些概念重複。\n• 能運用語文清晰地傳遞訊息，但間中用詞不當／誤用術語或符號。"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "m-073",
+                      "marks": 0,
+                      "text": {
+                        "en": [
+                          {
+                            "text": "• Present arguments with no support of the source/data and economic theories.\n• Present material unrelated to the gist of the question.\n• Present inconsistent arguments.\n• Express limited ideas with inappropriate use of words/terms/symbols."
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "• 沒有以資料／數據和經濟理論支持論點。\n• 答案無關題旨。\n• 答案組織鬆散欠連貫。\n• 表達有限的意思，有用詞不當／誤用術語或符號的情況。"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m-074",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "m-075",
+          "text": {
+            "en": [
+              {
+                "text": "Source A: Hong Kong’s fiscal balance went from a surplus in 2018-19 to a deficit in 2022-23."
+              }
+            ],
+            "zh": [
+              {
+                "text": "資料A：香港的財政結餘由2018-19年度的盈餘轉為2022-23年度的赤字。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "m-076",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-077",
+              "text": {
+                "en": [
+                  {
+                    "text": "Suggest TWO reasons why the fiscal balance worsened."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "試提出兩個財政結餘轉差的原因。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "scheme": {
+            "routes": [
+              {
+                "id": "m-078",
+                "groups": [
+                  {
+                    "id": "m-079",
+                    "heading": {
+                      "en": [
+                        {
+                          "text": "Possible reasons:"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "可能理由："
+                        }
+                      ]
+                    },
+                    "each": 2,
+                    "take": 2,
+                    "firstOnly": true,
+                    "max": 4,
+                    "points": [
+                      {
+                        "id": "m-080",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "Profits tax and salaries tax fall in a downturn."
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "經濟下滑時，利得稅及薪俸稅收入減少。"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "m-081",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "Government spending rises to support the economy."
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "政府增加開支支援經濟。"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "m-082",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "Land sales revenue falls with property prices."
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "地價收入隨樓價下跌。"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-083",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-084",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain, with the aid of a diagram, the effect of a subsidy on tea."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "試借助圖解釋津貼對茶葉市場的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 7,
+          "scheme": {
+            "routes": [
+              {
+                "id": "m-085",
+                "groups": [
+                  {
+                    "id": "m-086",
+                    "heading": {
+                      "en": [
+                        {
+                          "text": "Verbal elaboration:"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "文字說明："
+                        }
+                      ]
+                    },
+                    "points": [
+                      {
+                        "id": "m-087",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "The subsidy lowers firms’ costs, so supply increases and the price falls."
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "津貼降低廠商成本，供應增加，價格下跌。"
+                            }
+                          ]
+                        },
+                        "marks": 3
+                      }
+                    ]
+                  },
+                  {
+                    "id": "m-088",
+                    "heading": {
+                      "en": [
+                        {
+                          "text": "Indicate in the figure:"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "在圖中顯示："
+                        }
+                      ]
+                    },
+                    "points": [
+                      {
+                        "id": "m-089",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "S shifts rightward to S₁ by the amount of the subsidy."
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "S 右移至 S₁，幅度等於津貼額。"
+                            }
+                          ]
+                        },
+                        "marks": 1
+                      },
+                      {
+                        "id": "m-090",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "New equilibrium: lower price P₁, larger quantity Q₁."
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "新均衡：價格下降至 P₁，數量增至 Q₁。"
+                            }
+                          ]
+                        },
+                        "marks": 1
+                      },
+                      {
+                        "id": "m-091",
+                        "text": {
+                          "en": [],
+                          "zh": []
+                        },
+                        "marks": 1
+                      },
+                      {
+                        "id": "m-092",
+                        "text": {
+                          "en": [],
+                          "zh": []
+                        },
+                        "marks": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "m-093",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "m-094",
+              "text": {
+                "en": [
+                  {
+                    "text": "Discuss whether the government should raise tax on private cars."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "討論政府應否提高私家車稅。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 14,
+          "scheme": {
+            "routes": [
+              {
+                "id": "m-095",
+                "groups": [
+                  {
+                    "id": "m-096",
+                    "heading": {
+                      "en": [
+                        {
+                          "text": "How the objective may be achieved:"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "如何達成目標："
+                        }
+                      ]
+                    },
+                    "points": [
+                      {
+                        "id": "m-097",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "Demand for car travel is inelastic: "
+                            },
+                            {
+                              "text": "Q",
+                              "fraction": "num"
+                            },
+                            {
+                              "text": "2",
+                              "vertAlign": "subscript",
+                              "fraction": "num"
+                            },
+                            {
+                              "text": " − Q",
+                              "fraction": "num"
+                            },
+                            {
+                              "text": "1",
+                              "vertAlign": "subscript",
+                              "fraction": "num"
+                            },
+                            {
+                              "text": "⁄Q",
+                              "fraction": "den"
+                            },
+                            {
+                              "text": "1",
+                              "vertAlign": "subscript",
+                              "fraction": "den"
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "私家車出行需求缺乏彈性："
+                            },
+                            {
+                              "text": "Q",
+                              "fraction": "num"
+                            },
+                            {
+                              "text": "2",
+                              "vertAlign": "subscript",
+                              "fraction": "num"
+                            },
+                            {
+                              "text": " − Q",
+                              "fraction": "num"
+                            },
+                            {
+                              "text": "1",
+                              "vertAlign": "subscript",
+                              "fraction": "num"
+                            },
+                            {
+                              "text": "⁄Q",
+                              "fraction": "den"
+                            },
+                            {
+                              "text": "1",
+                              "vertAlign": "subscript",
+                              "fraction": "den"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "m-098",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "A higher tax shifts some drivers to public transport."
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "稅項提高令部分司機改乘公共交通。"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "m-099",
+                    "heading": {
+                      "en": [
+                        {
+                          "text": "Possible factors that may limit the effectiveness:"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "可能限制有效達成目標的因素："
+                        }
+                      ]
+                    },
+                    "points": [
+                      {
+                        "id": "m-100",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "The tax raises revenue for the government."
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "稅項增加政府收入。"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "m-101",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "Low-income drivers are hurt more by the tax."
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "低收入司機受稅項影響較大。"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "contentMax": 12,
+            "ec": {
+              "max": 2,
+              "descriptors": [
+                {
+                  "id": "m-102",
+                  "marks": 2,
+                  "text": {
+                    "en": [
+                      {
+                        "text": "• Support arguments with the source/data and appropriate economic theories.\n• Present relevant material.\n• Present well-organised and coherent answers without repetition of ideas.\n• Use language that expresses ideas clearly and fluently with appropriate use of words/terms/symbols."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "• 運用資料／數據及適當的經濟理論支持論點。\n• 答案切合題旨。\n• 答案組織良好，並且前後連貫一致，概念沒有重複。\n• 能以清晰流暢的語文表達意思，並恰當地使用術語或符號。"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-103",
+                  "marks": 1,
+                  "text": {
+                    "en": [
+                      {
+                        "text": "• Present arguments with some support of the source/data and economic theories.\n• Present some irrelevant material.\n• Present answers in a less organised way with some repetition.\n• Use language that conveys a clear message with some inappropriate use of words/terms/symbols."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "• 從一些資料／數據和經濟理論支持論點。\n• 部分答案並不切題。\n• 答案組織一般，有些概念重複。\n• 能運用語文清晰地傳遞訊息，但間中用詞不當／誤用術語或符號。"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "m-104",
+                  "marks": 0,
+                  "text": {
+                    "en": [
+                      {
+                        "text": "• Present arguments with no support of the source/data and economic theories.\n• Present material unrelated to the gist of the question.\n• Present inconsistent arguments.\n• Express limited ideas with inappropriate use of words/terms/symbols."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "• 沒有以資料／數據和經濟理論支持論點。\n• 答案無關題旨。\n• 答案組織鬆散欠連貫。\n• 表達有限的意思，有用詞不當／誤用術語或符號的情況。"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "m-105",
+      "kind": "section",
+      "text": {
+        "en": [
+          {
+            "text": "Section A"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部"
+          }
+        ]
+      },
+      "restartNumbering": false
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "m-105"
+    },
+    {
+      "type": "question",
+      "id": "m-004"
+    },
+    {
+      "type": "question",
+      "id": "m-010"
+    },
+    {
+      "type": "question",
+      "id": "m-016"
+    },
+    {
+      "type": "question",
+      "id": "m-022"
+    },
+    {
+      "type": "question",
+      "id": "m-028"
+    },
+    {
+      "type": "question",
+      "id": "m-034"
+    },
+    {
+      "type": "question",
+      "id": "m-040"
+    },
+    {
+      "type": "question",
+      "id": "m-074"
+    }
+  ],
+  "createdAt": "2026-11-20T13:12:09.360Z",
+  "updatedAt": "2026-11-20T13:12:09.360Z",
+  "name": "Key line spacing mix"
+}
