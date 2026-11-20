@@ -7,6 +7,7 @@ import { BankTab } from '@/components/bank/BankTab';
 import { BankTabSwitch } from '@/components/pastpapers/BankTabSwitch';
 import { useBankSession } from '@/components/bank/bankSession';
 import { Inspector } from './Inspector';
+import { usePressedClick } from './pressedClick';
 import { AnswerKeyLayoutPanel } from './AnswerKeyLayoutPanel';
 import { ANSWER_KEY_LAYOUT_MESSAGES } from './AnswerKeyLayoutPanel.messages';
 import type { PageComposition } from '@/components/preview/pagination';
@@ -45,6 +46,9 @@ export function Sidebar({
   pages: PageComposition[];
   onOpenSettings: () => void;
 }) {
+  // A press on a panel control clicks it even if the panel moved under the pointer (k-0478).
+  const asideRef = useRef<HTMLElement>(null);
+  usePressedClick(asideRef);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const language = useWorksheetStore((s) => s.mode.language);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
@@ -113,7 +117,9 @@ export function Sidebar({
   ];
 
   return (
-    <aside className="flex h-full min-h-0 w-[400px] shrink-0 flex-col overflow-hidden border-l border-line bg-surface">
+    <aside
+      ref={asideRef}
+      className="flex h-full min-h-0 w-[400px] shrink-0 flex-col overflow-hidden border-l border-line bg-surface">
       {/* Two tabs in the toolbar's own dialect: words with a short accent underline
           naming the active one — no icons, no count chip, one control language. The
           underline is one bar that slides between the halves, so the selection travels

@@ -173,6 +173,11 @@ a version heading is edited afterwards.
 - **Imported answers and mark points never end in a blank line.** A blank line at the start or end
   of an imported answer, mark point or comment is left out, so there is no empty line to delete.
   <!-- zh: **匯入的答案及評分要點不會在結尾多出空行。** 匯入的答案、評分要點或評論開首或結尾的空行會被略去，不會出現需要刪除的空行。 -->
+- **The side panel answers the first click.** After clicking text on the page, the first click on
+  a button in the side panel (Source ▾, Diagram ▾, Add text, the marking-scheme patterns…) often
+  did nothing and only a second click worked, with a mouse or a finger. Now one click is enough.
+  The "You are editing" line at the top of the panel no longer disappears and makes the panel jump.
+  <!-- zh: **側欄第一下就有反應。** 之前在頁面上按文字後，第一下按側欄的按鈕（資料 ▾、圖表 ▾、加入文字、評分方案範本等）往往沒有反應，要按第二下才有效，滑鼠或手指都一樣。現在按一下就可以。側欄頂部的「正在編輯」一行亦不會再消失而令側欄跳動。 -->
 - **Subscripts and superscripts in MC options, and from the keyboard.** Select the 1 of Q1 in an
   option and the format bar now offers X₂ and X² (and B, I, U), as it does in question text.
   Anywhere you type, Ctrl+= (⌘= on a Mac) makes a subscript and Ctrl+Shift+= (⌘⇧=) a superscript,
