@@ -7,6 +7,7 @@
  * Writes each document as `<OUT>/.plan/<n>.worksheet.json` and the files to make from it
  * as `<OUT>/.plan/plan.json`. Run alone: `npx vitest run scripts/emit-samples.test.ts`.
  */
+import { createDrqQuestion } from '@/model/drq';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { afterAll, expect, it } from 'vitest';
 import { answerKeyFileName, docxFileName } from '@/export/docx';
@@ -301,6 +302,20 @@ it('emits a DRQ with a Source A table and a Source B stakeholder diagram (k-0469
     planPaper(worksheet, { language, version: 'student' }, `${OUT}/drq-stakeholder-${language}-student.docx`);
   }
   planPaper(worksheet, { language: 'bilingual', version: 'teacher' }, `${OUT}/drq-stakeholder-bilingual-teacher.docx`);
+});
+
+it('emits a DRQ from the panel\'s DRQ starter: Sources A–D and parts (a)–(e) (k-0474)', () => {
+  mkdirSync(OUT, { recursive: true });
+  const worksheet = createWorksheet();
+  worksheet.title = bi('DRQ practice', '資料回應題練習');
+  worksheet.layout = [];
+  const question = createDrqQuestion();
+  worksheet.questions = [question];
+  worksheet.flow = [{ type: 'question', id: question.id }];
+  for (const language of ['en', 'zh'] as const) {
+    planPaper(worksheet, { language, version: 'student' }, `${OUT}/drq-starter-${language}-student.docx`);
+  }
+  planPaper(worksheet, { language: 'bilingual', version: 'teacher' }, `${OUT}/drq-starter-bilingual-teacher.docx`);
 });
 
 it('emits an English-only paper filled by the translation pipeline', async () => {
