@@ -131,6 +131,44 @@ export const DIAGRAM_PANEL_MESSAGES = defineMessages({
     en: 'Boxes are placed around the issue in list order. Leave a view empty for students to fill in.',
     zh: '方框按列表次序排在議題四周。意見可留空，讓學生填寫。',
   },
+  // Data chart (k-0474)
+  chartKind: { en: 'Chart type', zh: '圖表類型' },
+  chartBar: { en: 'Bar chart', zh: '棒形圖' },
+  chartLine: { en: 'Line graph', zh: '折線圖' },
+  seriesHeading: { en: 'Series (legend)', zh: '數列（圖例）' },
+  seriesName: { en: (n: number) => `Series ${n} name`, zh: (n: number) => `數列 ${n} 名稱` },
+  seriesRemove: { en: (n: number) => `Remove series ${n}`, zh: (n: number) => `移除數列 ${n}` },
+  addSeries: { en: '+ Series', zh: '+ 數列' },
+  seriesLimit: {
+    en: (max: number) => `Up to ${max} series fit in black and white.`,
+    zh: (max: number) => `黑白列印最多可分辨 ${max} 個數列。`,
+  },
+  categoriesHeading: { en: 'Figures, one row per category', zh: '數據（每個類別一行）' },
+  categoryLabel: { en: (n: number) => `Category ${n} label`, zh: (n: number) => `類別 ${n} 名稱` },
+  categoryValue: {
+    en: (category: number, series: number) => `Category ${category}, series ${series} value`,
+    zh: (category: number, series: number) => `類別 ${category}、數列 ${series} 的數值`,
+  },
+  categoryRemove: { en: (n: number) => `Remove category ${n}`, zh: (n: number) => `移除類別 ${n}` },
+  addCategory: { en: '+ Category', zh: '+ 類別' },
+  categoryLimit: {
+    en: (max: number) => `Up to ${max} categories fit along the axis.`,
+    zh: (max: number) => `橫軸最多可放 ${max} 個類別。`,
+  },
+  valueNote: {
+    en: 'Leave a figure empty for no bar or a gap in the line. Negative figures go below zero.',
+    zh: '數值留空即不畫棒形或在折線留空；負數會畫在零線以下。',
+  },
+  yAxisTitle: { en: 'Unit above the y-axis', zh: '縱軸上方的單位' },
+  xAxisTitle: { en: 'Title under the categories (optional)', zh: '類別下方的標題（可留空）' },
+  axisRange: { en: 'Axis range', zh: '縱軸範圍' },
+  axisRangeHint: {
+    en: 'Empty boxes follow the figures.',
+    zh: '留空即按數據自動設定。',
+  },
+  axisMin: { en: 'From', zh: '由' },
+  axisMax: { en: 'To', zh: '至' },
+  axisStep: { en: 'Step', zh: '間距' },
 });
 
 export const FORUM_CANVAS_MESSAGES = defineMessages({

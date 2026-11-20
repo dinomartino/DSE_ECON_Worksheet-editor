@@ -91,6 +91,19 @@ export const DEFAULT_DIAGRAM_SIZE = { widthPx: 400, heightPx: 300 };
  */
 export const STAKEHOLDER_DIAGRAM_WIDTH_PX = 520;
 
+/**
+ * A data chart's default width: four categories of grouped bars with their labels, a
+ * y-axis and a legend need more than an axes diagram's 400px to stay readable.
+ */
+export const DATA_CHART_WIDTH_PX = 480;
+
+/** The width a template's figure starts at when the caller names none. */
+function defaultDiagramWidth(templateId: string): number {
+  if (templateId === 'stakeholders') return STAKEHOLDER_DIAGRAM_WIDTH_PX;
+  if (templateId === 'bar-chart' || templateId === 'line-chart') return DATA_CHART_WIDTH_PX;
+  return DEFAULT_DIAGRAM_SIZE.widthPx;
+}
+
 export function createDiagramBlock(
   templateId = 'blank',
   /**
@@ -100,7 +113,7 @@ export function createDiagramBlock(
    * MCQ option, where *four* diagrams stack in one question and a stem-width default
    * would put each one a third of the way down the sheet.
    */
-  widthPx: number = templateId === 'stakeholders' ? STAKEHOLDER_DIAGRAM_WIDTH_PX : DEFAULT_DIAGRAM_SIZE.widthPx,
+  widthPx: number = defaultDiagramWidth(templateId),
 ): DiagramBlock {
   const diagram = buildFromTemplate(templateId);
   return {

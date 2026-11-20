@@ -35,11 +35,12 @@ export const CURRENT_SCHEMA_VERSION = 3;
 const ANSWER_LAYER_VERSION = 2;
 
 /**
- * v3 = v2 plus the stakeholder diagram (`Diagram.stakeholder`, k-0469): every build before
- * it reads the diagram as empty axes and prints that. A document holding one anywhere is
- * written at 3 and opens read-only in 0.9.1 and older; nothing else is.
+ * v3 = v2 plus the stakeholder diagram (`Diagram.stakeholder`, k-0469) and the data chart
+ * (`Diagram.chart`, k-0474): every build before it reads either as empty axes and prints
+ * that. A document holding one anywhere is written at 3 and opens read-only in 0.9.1 and
+ * older; nothing else is.
  */
-const STAKEHOLDER_VERSION = 3;
+const V3_DIAGRAM_VERSION = 3;
 
 type RawDoc = Record<string, unknown>;
 
@@ -57,7 +58,7 @@ const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [
   // 1 → 2: additive (§ ANSWER_LAYER_VERSION). Nothing to change; a develop build's v1
   // document already carrying either field keeps it.
   (doc) => doc,
-  // 2 → 3: additive (§ STAKEHOLDER_VERSION). Nothing to change.
+  // 2 → 3: additive (§ V3_DIAGRAM_VERSION). Nothing to change.
   (doc) => doc,
 ];
 
@@ -216,7 +217,7 @@ export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown
  */
 export function writtenSchemaVersion(version: number, doc: unknown): number {
   if (version > CURRENT_SCHEMA_VERSION) return version;
-  if (hasStakeholderDiagram(doc)) return STAKEHOLDER_VERSION;
+  if (hasV3Diagram(doc)) return V3_DIAGRAM_VERSION;
   if (isRecord(doc) && (doc.answerKeyLayout !== undefined || hasAnswerAnySection(doc.layout) || hasEssayAnswer(doc.questions))) {
     return ANSWER_LAYER_VERSION;
   }
@@ -269,15 +270,21 @@ function hasWords(value: unknown): boolean {
   return Object.values(value).some(hasWords);
 }
 
-/** Any diagram anywhere in `value` that is a stakeholder diagram (§ STAKEHOLDER_VERSION). */
-function hasStakeholderDiagram(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some(hasStakeholderDiagram);
+/** Any diagram anywhere in `value` that is a stakeholder diagram or a data chart (§ V3_DIAGRAM_VERSION). */
+function hasV3Diagram(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasV3Diagram);
   if (!isRecord(value)) return false;
-  if (value.kind === 'diagram' && isRecord(value.diagram) && isRecord(value.diagram.stakeholder)) return true;
-  return Object.values(value).some(hasStakeholderDiagram);
+  if (
+    value.kind === 'diagram' &&
+    isRecord(value.diagram) &&
+    (isRecord(value.diagram.stakeholder) || isRecord(value.diagram.chart))
+  ) {
+    return true;
+  }
+  return Object.values(value).some(hasV3Diagram);
 }
 
-/** Answer-layer lists; pie, flow, forum and stakeholder diagrams never draw them (`hasAnswerLayer`). */
+/** Answer-layer lists; pie, flow, forum, stakeholder and chart diagrams never draw them (`hasAnswerLayer`). */
 const ANSWER_LISTS = ['curves', 'points', 'labels', 'arrows', 'areas', 'spans'];
 
 /** Derive kinds v0.5.0 does not know. */
@@ -299,7 +306,7 @@ function hasV2Diagram(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(hasV2Diagram);
   if (!isRecord(value)) return false;
   const diagram = value.kind === 'diagram' ? value.diagram : undefined;
-  if (isRecord(diagram) && !diagram.pie && !diagram.flow && !diagram.forum && !diagram.stakeholder) {
+  if (isRecord(diagram) && !diagram.pie && !diagram.flow && !diagram.forum && !diagram.stakeholder && !diagram.chart) {
     const flagged = ANSWER_LISTS.some((list) => {
       const elements = diagram[list];
       return Array.isArray(elements) && elements.some((element) => isRecord(element) && Boolean(element.answer));

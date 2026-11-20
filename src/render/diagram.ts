@@ -18,10 +18,11 @@ import type {
   ForumChart,
   StakeholderBox,
   StakeholderChart,
+  DataChart,
   DiagramSpan,
   PieChart,
 } from '@/model/diagram';
-import { axisTickLabel, DIAGRAM_PLOT_ASPECT, MAX_STAKEHOLDERS } from '@/model/diagram';
+import { axisTickLabel, DIAGRAM_PLOT_ASPECT, MAX_CHART_CATEGORIES, MAX_CHART_SERIES, MAX_STAKEHOLDERS } from '@/model/diagram';
 import { cssFontFamilies } from '@/model/fonts';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
@@ -1565,6 +1566,8 @@ export function diagramSize(
   if (diagram.forum) return forumSize(diagram, diagram.forum, widthPx, language);
   // And the stakeholder diagram's: boxes measured from their own wrapped text.
   if (diagram.stakeholder) return stakeholderSize(diagram, diagram.stakeholder, widthPx, language);
+  // And the data chart's: plot, labels and legend measured at the stored width.
+  if (diagram.chart) return chartSize(diagram, diagram.chart, widthPx, language);
   // A cropped diagram is sized by its frame, not by measuring: the teacher chose the
   // clearance on every side, so the plot takes what the width leaves after their pads
   // and the height follows from the plot's aspect plus their top and bottom. Language
@@ -3011,6 +3014,418 @@ function stakeholderSvg(diagram: Diagram, chart: StakeholderChart, options: Diag
   );
 }
 
+/*
+ * ── The data chart variant (k-0474) ───────────────────────────────────────────────
+ *
+ * A `Diagram` carrying `chart` draws a bar or line chart from its small table of
+ * figures, as DRQ sources print them: a y-axis of round ticks with light gridlines, the
+ * unit above it, a zero baseline (a deficit's bar goes down), category labels under the
+ * plot, and a legend under those when there is more than one series. Black and white
+ * only — fills black / white / grey / hatched, lines solid / dashed / dotted / dash-dot
+ * with distinct markers — because the papers are photocopied. Laid out at the stored
+ * width like the stakeholder diagram, so every glyph stays 10pt.
+ */
+
+const CHART_PAD = 8;
+/** Gap between the y tick labels and the axis. */
+const CHART_TICK_GAP = 6;
+const CHART_TICK_LEN = 4;
+/** White right of the plot, so the last category's label is not cut. */
+const CHART_RIGHT = 12;
+const CHART_LINE_HEIGHT = FONT_SIZE * 1.15;
+/** The plot's height against its width; flatter than an axes diagram, as the papers print. */
+const CHART_PLOT_ASPECT = 0.56;
+const CHART_MIN_PLOT_HEIGHT = 120;
+/** Space between the plot's bottom and the first category line. */
+const CHART_CATEGORY_GAP = 5;
+const CHART_LEGEND_GAP = 12;
+const CHART_LEGEND_SWATCH = { bar: 12, line: 26 };
+const CHART_LEGEND_ITEM_GAP = 18;
+/** Share of a category's slot the group of bars takes. */
+const CHART_GROUP_SHARE = 0.72;
+const CHART_MAX_BAR = 46;
+const CHART_MARKER = 3.6;
+const CHART_GRID = '#bdbdbd';
+
+/** The fills bars take, by series index (§ black-and-white printing). */
+const CHART_BAR_FILLS: ReadonlyArray<'black' | 'white' | 'grey' | 'hatch'> = ['black', 'white', 'grey', 'hatch'];
+/** Line dash patterns, by series index; `''` is solid. */
+const CHART_DASHES = ['', '6 4', '1.6 3', '9 3 2 3'];
+const CHART_MARKERS: ReadonlyArray<'square' | 'circle' | 'triangle' | 'diamond'> = ['square', 'circle', 'triangle', 'diamond'];
+
+export interface ChartTick {
+  value: number;
+  y: number;
+  label: string;
+}
+
+export interface ChartBarLayout {
+  series: number;
+  category: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface ChartLayout {
+  width: number;
+  height: number;
+  plot: { left: number; right: number; top: number; bottom: number };
+  /** Where the value 0 (or the scale's floor, when it starts above 0) sits. */
+  baseline: number;
+  ticks: ChartTick[];
+  scale: { min: number; max: number; step: number };
+  categories: Array<{ x: number; lines: RichText[] }>;
+  categoryTop: number;
+  bars: ChartBarLayout[];
+  /** One list per series, `null` where the value is missing (a gap in the line). */
+  points: Array<Array<{ x: number; y: number } | null>>;
+  legend: Array<{ series: number; x: number; y: number; lines: RichText[] }>;
+  yTitle: { lines: RichText[]; x: number; y: number };
+  xTitle: { lines: RichText[]; y: number };
+  titleRoom: number;
+  titleBelow: boolean;
+}
+
+/** A finite number, or null: a stored value from an old or hand-edited file may be anything. */
+function chartValue(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/** 1, 2, 2.5 or 5 times a power of ten: the steps a printed axis counts in. */
+function niceStep(raw: number): number {
+  if (!(raw > 0)) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const norm = raw / magnitude;
+  const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
+  return nice * magnitude;
+}
+
+/**
+ * The y scale: round ticks through zero for bars (a bar is measured from zero), and for
+ * lines unless the data sit far from it (an index between 100 and 150). A pinned
+ * `yMin` / `yMax` / `yStep` wins over the derived one.
+ */
+export function chartScale(chart: DataChart): { min: number; max: number; step: number } {
+  const values = (Array.isArray(chart.series) ? chart.series : [])
+    .flatMap((series) => (Array.isArray(series.values) ? series.values : []))
+    .map(chartValue)
+    .filter((value): value is number => value !== null);
+  let lo = values.length ? Math.min(...values) : 0;
+  let hi = values.length ? Math.max(...values) : 10;
+  const farFromZero = lo > 0 && (hi - lo) / hi < 0.4;
+  if (chart.kind === 'bar' || !farFromZero) {
+    lo = Math.min(0, lo);
+    hi = Math.max(0, hi);
+  }
+  if (chartValue(chart.yMin) !== null) lo = chart.yMin as number;
+  if (chartValue(chart.yMax) !== null) hi = chart.yMax as number;
+  if (hi <= lo) hi = lo + (Math.abs(lo) || 10);
+  const step = chartValue(chart.yStep) !== null && (chart.yStep as number) > 0
+    ? (chart.yStep as number)
+    : niceStep((hi - lo) / 5);
+  const min = chartValue(chart.yMin) !== null ? lo : Math.floor(lo / step + 1e-9) * step;
+  const max = chartValue(chart.yMax) !== null ? hi : Math.ceil(hi / step - 1e-9) * step;
+  return { min, max: max > min ? max : min + step, step };
+}
+
+/** A tick value as the papers print it: the step's decimals, thousands spaced past 9 999. */
+export function chartTickLabel(value: number, step: number): string {
+  let decimals = 0;
+  while (decimals < 3 && Math.abs(step * 10 ** decimals - Math.round(step * 10 ** decimals)) > 1e-9) decimals += 1;
+  const fixed = (Math.abs(value) < 1e-9 ? 0 : value).toFixed(decimals);
+  const [whole, fraction] = fixed.split('.');
+  const sign = whole.startsWith('-') ? '-' : '';
+  const digits = sign ? whole.slice(1) : whole;
+  const grouped = digits.length > 4 ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : digits;
+  return `${sign}${grouped}${fraction ? `.${fraction}` : ''}`;
+}
+
+const plainLine = (text: string): RichText[] => [[{ text }]];
+
+/**
+ * Lay the data chart out at the figure's stored width. Shared by `chartSize` and
+ * `chartSvg`, so the measured box and the drawing agree.
+ */
+export function chartLayout(diagram: Diagram, chart: DataChart, widthPx: number, language: LanguageMode): ChartLayout {
+  const room = titleRoom(diagram, language, 1);
+  const titleBelow = diagram.titlePlacement === 'below';
+  const width = Math.max(220, widthPx);
+  const series = (Array.isArray(chart.series) ? chart.series : []).slice(0, MAX_CHART_SERIES);
+  const categoryTexts = (Array.isArray(chart.categories) ? chart.categories : []).slice(0, MAX_CHART_CATEGORIES);
+  const count = Math.max(1, categoryTexts.length);
+
+  const scale = chartScale(chart);
+  const tickValues: number[] = [];
+  for (let k = 0; k <= 200; k += 1) {
+    const value = scale.min + k * scale.step;
+    if (value > scale.max + scale.step * 1e-6) break;
+    tickValues.push(Math.round(value * 1e9) / 1e9);
+  }
+  const tickLabels = tickValues.map((value) => chartTickLabel(value, scale.step));
+  const tickWidth = Math.max(0, ...tickLabels.map((label) => forumTextWidth(plainLine(label), FONT_SIZE)));
+
+  const yTitleLines = pickSides(chart.yTitle, language);
+  const left = CHART_PAD + tickWidth + CHART_TICK_GAP + CHART_TICK_LEN;
+  const right = width - CHART_RIGHT;
+  const plotWidth = Math.max(40, right - left);
+  const slot = plotWidth / count;
+
+  let cursor = CHART_PAD + (titleBelow ? 0 : room);
+  const yTitleY = cursor + FONT_SIZE * 0.8;
+  if (yTitleLines.length) cursor += yTitleLines.length * CHART_LINE_HEIGHT + 4;
+  // Half a label's height above the top tick, so its text is not cut.
+  const top = cursor + FONT_SIZE * 0.5;
+  const plotHeight = Math.max(CHART_MIN_PLOT_HEIGHT, plotWidth * CHART_PLOT_ASPECT);
+  const bottom = top + plotHeight;
+  const valueY = (value: number) => bottom - ((value - scale.min) / (scale.max - scale.min)) * plotHeight;
+  const clampY = (y: number) => Math.min(bottom, Math.max(top, y));
+  const baseline = clampY(valueY(Math.min(Math.max(0, scale.min), scale.max)));
+
+  const ticks = tickValues.map((value, index) => ({ value, y: valueY(value), label: tickLabels[index] }));
+
+  const categoryTop = bottom + CHART_CATEGORY_GAP;
+  const categories = categoryTexts.map((text, index) => ({
+    x: left + slot * (index + 0.5),
+    lines: wrapRichLines(pickSides(text, language), Math.max(24, slot - 8), FONT_SIZE, forumTextWidth, true),
+  }));
+  const categoryLines = Math.max(0, ...categories.map((category) => category.lines.length));
+  cursor = categoryTop + categoryLines * CHART_LINE_HEIGHT;
+
+  const xTitleLines = pickSides(chart.xTitle, language);
+  const xTitleY = cursor + 4 + FONT_SIZE * 0.8;
+  if (xTitleLines.length) cursor += 4 + xTitleLines.length * CHART_LINE_HEIGHT;
+
+  // Bars: one group per category, the series side by side and touching, as printed.
+  const bars: ChartBarLayout[] = [];
+  if (chart.kind === 'bar' && series.length > 0) {
+    const barW = Math.min(CHART_MAX_BAR, (slot * CHART_GROUP_SHARE) / series.length);
+    series.forEach((entry, s) => {
+      categoryTexts.forEach((_, c) => {
+        const value = chartValue(entry.values?.[c]);
+        if (value === null) return;
+        const groupLeft = left + slot * (c + 0.5) - (barW * series.length) / 2;
+        const y = clampY(valueY(value));
+        bars.push({ series: s, category: c, x: groupLeft + s * barW, y: Math.min(y, baseline), w: barW, h: Math.abs(baseline - y) });
+      });
+    });
+  }
+  const points = chart.kind === 'line'
+    ? series.map((entry) =>
+        categoryTexts.map((_, c) => {
+          const value = chartValue(entry.values?.[c]);
+          return value === null ? null : { x: left + slot * (c + 0.5), y: clampY(valueY(value)) };
+        }),
+      )
+    : [];
+
+  // Legend under everything, items flowed into centred rows.
+  const legend: ChartLayout['legend'] = [];
+  if (series.length >= 2) {
+    cursor += CHART_LEGEND_GAP;
+    const swatch = chart.kind === 'line' ? CHART_LEGEND_SWATCH.line : CHART_LEGEND_SWATCH.bar;
+    const maxText = width - 2 * CHART_PAD - swatch - 6;
+    const items = series.map((entry, s) => {
+      const lines = wrapRichLines(pickSides(entry.name, language), maxText, FONT_SIZE, forumTextWidth, true);
+      return { series: s, lines, w: swatch + 6 + forumTextWidth(lines, FONT_SIZE) };
+    });
+    const rows: Array<typeof items> = [[]];
+    let rowWidth = 0;
+    for (const item of items) {
+      const extra = (rows[rows.length - 1].length ? CHART_LEGEND_ITEM_GAP : 0) + item.w;
+      if (rows[rows.length - 1].length && rowWidth + extra > width - 2 * CHART_PAD) {
+        rows.push([]);
+        rowWidth = 0;
+      }
+      rowWidth += (rows[rows.length - 1].length ? CHART_LEGEND_ITEM_GAP : 0) + item.w;
+      rows[rows.length - 1].push(item);
+    }
+    for (const row of rows) {
+      const total = row.reduce((sum, item, i) => sum + item.w + (i ? CHART_LEGEND_ITEM_GAP : 0), 0);
+      let x = (width - total) / 2;
+      const lines = Math.max(1, ...row.map((item) => item.lines.length));
+      for (const item of row) {
+        legend.push({ series: item.series, x, y: cursor, lines: item.lines });
+        x += item.w + CHART_LEGEND_ITEM_GAP;
+      }
+      cursor += lines * CHART_LINE_HEIGHT + 4;
+    }
+  }
+
+  const contentBottom = cursor;
+  return {
+    width,
+    height: contentBottom + CHART_PAD + (titleBelow ? room : 0),
+    plot: { left, right: left + plotWidth, top, bottom },
+    baseline,
+    ticks,
+    scale,
+    categories,
+    categoryTop,
+    bars,
+    points,
+    legend,
+    yTitle: { lines: yTitleLines, x: CHART_PAD, y: yTitleY },
+    xTitle: { lines: xTitleLines, y: xTitleY },
+    titleRoom: room,
+    titleBelow,
+  };
+}
+
+/** `diagramSize` for the data chart: the teacher's width, the height measured. */
+function chartSize(diagram: Diagram, chart: DataChart, widthPx: number, language: LanguageMode): { widthPx: number; heightPx: number } {
+  const layout = chartLayout(diagram, chart, widthPx, language);
+  return { widthPx: layout.width, heightPx: Math.max(1, Math.round(layout.height)) };
+}
+
+/** One bar's ink: a filled rect, or a white one with clipped diagonal hatching. */
+function chartBarMarkup(fill: (typeof CHART_BAR_FILLS)[number], x: number, y: number, w: number, h: number, data: string): string {
+  const colour = fill === 'black' ? '#262626' : fill === 'grey' ? '#a6a6a6' : '#fff';
+  let markup =
+    `<rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}" fill="${colour}" ` +
+    `stroke="#000" stroke-width="0.8" data-chart-bar="${data}"/>`;
+  if (fill === 'hatch' && h > 0.5 && w > 0.5) {
+    const pts = [
+      { x, y },
+      { x: x + w, y },
+      { x: x + w, y: y + h },
+      { x, y: y + h },
+    ];
+    const d = PATTERN_LINES.diagonal.flatMap(([a, b, norm]) => hatchLines(pts, a, b, norm, 4)).join(' ');
+    if (d) markup += `<path d="${d}" fill="none" stroke="#000" stroke-width="0.8"/>`;
+  }
+  return markup;
+}
+
+/** A line series' marker at a point. */
+function chartMarkerMarkup(kind: (typeof CHART_MARKERS)[number], x: number, y: number): string {
+  const r = CHART_MARKER;
+  const attrs = 'fill="#000" stroke="none" data-chart-marker=""';
+  if (kind === 'circle') return `<circle cx="${n(x)}" cy="${n(y)}" r="${n(r)}" ${attrs}/>`;
+  if (kind === 'square') return `<rect x="${n(x - r)}" y="${n(y - r)}" width="${n(2 * r)}" height="${n(2 * r)}" ${attrs}/>`;
+  const shape = kind === 'triangle'
+    ? [[x, y - r * 1.2], [x + r * 1.15, y + r * 0.85], [x - r * 1.15, y + r * 0.85]]
+    : [[x, y - r * 1.3], [x + r * 1.1, y], [x, y + r * 1.3], [x - r * 1.1, y]];
+  return `<polygon points="${shape.map(([px, py]) => `${n(px)},${n(py)}`).join(' ')}" ${attrs}/>`;
+}
+
+/** `diagramSvg` for the data chart. */
+function chartSvg(diagram: Diagram, chart: DataChart, options: DiagramSvgOptions): string {
+  const scale = options.scale ?? 1;
+  const width = options.widthPx * scale;
+  const height = options.heightPx * scale;
+  const language = options.language;
+  const layout = chartLayout(diagram, chart, options.widthPx, language);
+  // As the stakeholder diagram: fitted and centred, so a stale stored height letterboxes.
+  const eff = Math.min(width / layout.width, height / layout.height);
+  const tx = (width - layout.width * eff) / 2;
+  const ty = (height - layout.height * eff) / 2;
+  const fontFamily = options.fonts
+    ? `${cssFontFamilies(options.fonts, '')}, serif`
+    : 'Times New Roman, serif';
+  const { plot } = layout;
+  const parts: string[] = [];
+
+  // Gridlines first, under everything; the baseline and the y-axis over them.
+  for (const tick of layout.ticks) {
+    if (Math.abs(tick.y - layout.baseline) > 0.5) {
+      parts.push(
+        `<line x1="${n(plot.left)}" y1="${n(tick.y)}" x2="${n(plot.right)}" y2="${n(tick.y)}" stroke="${CHART_GRID}" stroke-width="0.6"/>`,
+      );
+    }
+    parts.push(
+      `<line x1="${n(plot.left - CHART_TICK_LEN)}" y1="${n(tick.y)}" x2="${n(plot.left)}" y2="${n(tick.y)}" stroke="#000" stroke-width="1"/>`,
+      textAt(plainLine(tick.label), plot.left - CHART_TICK_LEN - CHART_TICK_GAP, tick.y, {
+        anchor: 'end',
+        baseline: 'middle',
+      }).replace('<text ', '<text data-chart-tick="" '),
+    );
+  }
+
+  for (const bar of layout.bars) {
+    parts.push(chartBarMarkup(CHART_BAR_FILLS[bar.series % CHART_BAR_FILLS.length], bar.x, bar.y, bar.w, bar.h, `${bar.series}:${bar.category}`));
+  }
+  layout.points.forEach((points, s) => {
+    const dash = CHART_DASHES[s % CHART_DASHES.length];
+    // A missing value breaks the line: each run of present points is its own path.
+    let d = '';
+    let pen = false;
+    for (const point of points) {
+      if (!point) {
+        pen = false;
+        continue;
+      }
+      d += `${pen ? 'L' : 'M'} ${n(point.x)} ${n(point.y)} `;
+      pen = true;
+    }
+    if (d) {
+      parts.push(
+        `<path d="${d.trim()}" fill="none" stroke="#000" stroke-width="1.5" stroke-linejoin="round"` +
+          `${dash ? ` stroke-dasharray="${dash}"` : ''}${s === 2 ? ' stroke-linecap="round"' : ''} data-chart-line=""/>`,
+      );
+    }
+    for (const point of points) {
+      if (point) parts.push(chartMarkerMarkup(CHART_MARKERS[s % CHART_MARKERS.length], point.x, point.y));
+    }
+  });
+
+  parts.push(
+    `<line x1="${n(plot.left)}" y1="${n(layout.baseline)}" x2="${n(plot.right)}" y2="${n(layout.baseline)}" stroke="#000" stroke-width="1" data-chart-baseline=""/>`,
+    `<line x1="${n(plot.left)}" y1="${n(plot.top)}" x2="${n(plot.left)}" y2="${n(plot.bottom)}" stroke="#000" stroke-width="1"/>`,
+  );
+
+  for (const category of layout.categories) {
+    parts.push(textAt(category.lines, category.x, layout.categoryTop, { anchor: 'middle', baseline: 'hanging' }));
+  }
+  if (layout.yTitle.lines.length) parts.push(textAt(layout.yTitle.lines, layout.yTitle.x, layout.yTitle.y));
+  if (layout.xTitle.lines.length) {
+    parts.push(textAt(layout.xTitle.lines, (plot.left + plot.right) / 2, layout.xTitle.y, { anchor: 'middle' }));
+  }
+
+  for (const item of layout.legend) {
+    const midY = item.y + CHART_LINE_HEIGHT / 2;
+    if (chart.kind === 'line') {
+      const dash = CHART_DASHES[item.series % CHART_DASHES.length];
+      const x2 = item.x + CHART_LEGEND_SWATCH.line;
+      parts.push(
+        `<line x1="${n(item.x)}" y1="${n(midY)}" x2="${n(x2)}" y2="${n(midY)}" stroke="#000" stroke-width="1.5"` +
+          `${dash ? ` stroke-dasharray="${dash}"` : ''} data-chart-legend=""/>`,
+        chartMarkerMarkup(CHART_MARKERS[item.series % CHART_MARKERS.length], (item.x + x2) / 2, midY),
+      );
+    } else {
+      const size = CHART_LEGEND_SWATCH.bar;
+      parts.push(
+        chartBarMarkup(CHART_BAR_FILLS[item.series % CHART_BAR_FILLS.length], item.x, midY - size / 2 + 0.5, size, size - 1, `legend:${item.series}`)
+          .replace('data-chart-bar="legend:', 'data-chart-legend="'),
+      );
+    }
+    const swatch = chart.kind === 'line' ? CHART_LEGEND_SWATCH.line : CHART_LEGEND_SWATCH.bar;
+    parts.push(textAt(item.lines, item.x + swatch + 6, item.y + FONT_SIZE * 0.85));
+  }
+
+  const titleLines = pickSides(diagram.title, language);
+  const title = textAt(
+    titleLines,
+    layout.width / 2,
+    layout.titleBelow
+      ? layout.height - layout.titleRoom + TITLE_GAP + TITLE_SIZE
+      : TITLE_TOP + TITLE_SIZE * 1.1,
+    { anchor: 'middle', fontSize: TITLE_SIZE, underline: true },
+  );
+
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${n(width)}" height="${n(height)}" ` +
+    `viewBox="0 0 ${n(width)} ${n(height)}" font-family="${escapeXml(fontFamily)}">` +
+    `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>` +
+    `<g transform="translate(${n(tx)} ${n(ty)}) scale(${n(eff)})">` +
+    parts.join('') +
+    title +
+    '</g>' +
+    '</svg>'
+  );
+}
+
 /**
  * Where the diagram's title is drawn.
  *
@@ -3157,6 +3572,7 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
   if (stored.flow) return flowSvg(stored, stored.flow, options);
   if (stored.forum) return forumSvg(stored, stored.forum, options);
   if (stored.stakeholder) return stakeholderSvg(stored, stored.stakeholder, options);
+  if (stored.chart) return chartSvg(stored, stored.chart, options);
   // Anchored points and derived curves are drawn where their relations put them now.
   const diagram = resolveDiagram(stored, plotAspectOf(diagramPlot(stored, options)));
   const scale = options.scale ?? 1;

@@ -72,5 +72,13 @@ export function mapDiagramTexts(d: Diagram, fn: TextFn): Diagram {
         }),
       ),
     }),
+    chart: d.chart && patch(d.chart, {
+      categories: Array.isArray(d.chart.categories)
+        ? mapSame(d.chart.categories, (c, i) => fn(`chart/category:${i}`, c, 'tickLabel'))
+        : d.chart.categories,
+      series: each(d.chart.series, (s) => patch(s, { name: fn(`chart/series:${s.id}/name`, s.name, 'diagramLabel') })),
+      yTitle: d.chart.yTitle && fn('chart/yTitle', d.chart.yTitle, 'axisTitle'),
+      xTitle: d.chart.xTitle && fn('chart/xTitle', d.chart.xTitle, 'axisTitle'),
+    }),
   });
 }

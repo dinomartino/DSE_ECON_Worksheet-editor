@@ -547,6 +547,47 @@ export interface StakeholderChart {
   links?: StakeholderLinks;
 }
 
+/** A data chart's drawing: grouped bars, or lines with markers. */
+export type DataChartKind = 'bar' | 'line';
+
+/** One data series: a legend name and one value per category (null = no value). */
+export interface DataChartSeries {
+  id: string;
+  name: BiText;
+  /** Index-aligned with `DataChart.categories`; `null` draws no bar / leaves a gap in the line. */
+  values: (number | null)[];
+}
+
+/** The most series a chart holds: four fills (black, white, grey, hatched) and four line styles. */
+export const MAX_CHART_SERIES = 4;
+/** The most categories along the x-axis before labels stop fitting a column-wide figure. */
+export const MAX_CHART_CATEGORIES = 12;
+
+/**
+ * A data chart (棒形圖 / 折線圖, k-0474) — the bar or line chart a DRQ source prints from
+ * a small table of figures ("Visitor arrivals by region", "Fiscal balance"). A variant
+ * inside `Diagram` under the same contract as `pie`: one SVG, one rasterized PNG, resize
+ * by re-measure, and only the sidebar panel edits it (no canvas).
+ *
+ * The y scale is **derived** from the values (nice ticks through zero, so a deficit's bar
+ * goes down) unless `yMin`/`yMax`/`yStep` pin it. Builds before 0.9.2 would draw empty
+ * axes, so a document holding one is written at schema 3 (`model/migrations.ts`).
+ */
+export interface DataChart {
+  kind: DataChartKind;
+  /** The x-axis labels, in order: "2021", "Mainland", "Q1 2024"… */
+  categories: BiText[];
+  series: DataChartSeries[];
+  /** The unit printed above the y-axis: "$ million", "%", "('000 persons)". */
+  yTitle?: BiText;
+  /** Printed centred under the category labels: "Year". */
+  xTitle?: BiText;
+  /** Pins for the derived scale; each absent one is derived. */
+  yMin?: number;
+  yMax?: number;
+  yStep?: number;
+}
+
 /**
  * A complete diagram.
  *
@@ -627,6 +668,11 @@ export interface Diagram {
    * and the sidebar panel edits them. Raises the written schema to 3 (§ `StakeholderChart`).
    */
   stakeholder?: StakeholderChart;
+  /**
+   * When present, the diagram **is** a bar or line chart of data, under the same contract
+   * as `pie`; the sidebar panel edits it. Raises the written schema to 3 (§ `DataChart`).
+   */
+  chart?: DataChart;
   x: DiagramAxis;
   y: DiagramAxis;
   curves: DiagramCurve[];
@@ -654,10 +700,11 @@ export const DIAGRAM_PLOT_ASPECT = 3 / 4;
 
 /**
  * A chart whose data is edited only in the sidebar panel, so it opens no canvas: the pie
- * (slices) and the stakeholder diagram (issue and boxes). The page offers no Draw for it.
+ * (slices), the stakeholder diagram (issue and boxes) and the data chart (a table of
+ * figures). The page offers no Draw for it.
  */
-export function isPanelOnlyDiagram(diagram: Pick<Diagram, 'pie' | 'stakeholder'>): boolean {
-  return Boolean(diagram.pie || diagram.stakeholder);
+export function isPanelOnlyDiagram(diagram: Pick<Diagram, 'pie' | 'stakeholder' | 'chart'>): boolean {
+  return Boolean(diagram.pie || diagram.stakeholder || diagram.chart);
 }
 
 /** A unit coordinate as the axis's value (`max` × unit), or the unit itself unscaled. */

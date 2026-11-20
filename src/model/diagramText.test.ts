@@ -90,6 +90,10 @@ describe('mapDiagramTexts', () => {
     expect(segments('stakeholders')).toEqual(expect.arrayContaining([
       'flowNode stakeholder/issue', 'speaker stakeholder/box:*/label', 'bubble stakeholder/box:*/view',
     ]));
+    expect(segments('bar-chart')).toEqual(expect.arrayContaining([
+      'tickLabel chart/category:*', 'diagramLabel chart/series:*/name', 'axisTitle chart/yTitle', 'axisTitle chart/xTitle',
+    ]));
+    expect(segments('line-chart')).toContain('tickLabel chart/category:*');
   });
 
   it('keeps identity and never creates an optional field', () => {
