@@ -13,7 +13,7 @@ import './verbs';
 
 /** What the real registry holds before any test resets it. */
 const registered = verbs().map((v) => v.id);
-const PAUSED = ['write.answers', 'create.fromSource', 'check.quality'];
+const PAUSED = ['write.answers', 'create.fromSource', 'check.quality', 'check.syllabus'];
 
 const q1 = createStructuredQuestion();
 q1.blocks = [createParagraphBlock(bi('Explain demand.', ''))];
@@ -49,6 +49,7 @@ describe('PAUSED_VERBS', () => {
     registerVerb(fake('write.answers', 'write', 'Write answers & mark scheme'));
     registerVerb(fake('create.fromSource', 'create', 'Questions from a source…'));
     registerVerb(fake('check.quality', 'check', 'Check question quality'));
+    registerVerb(fake('check.syllabus', 'check', 'Check syllabus coverage'));
   });
   afterEach(() => {
     setPausedForTest(null);
@@ -56,7 +57,7 @@ describe('PAUSED_VERBS', () => {
     useAiMenu.getState().close();
   });
 
-  it('pauses E1, E3 and E4 — still registered, so their own tests keep running', () => {
+  it('pauses E1, E3, E4 and the syllabus coverage check — still registered, so their own tests keep running', () => {
     expect([...PAUSED_VERBS].sort()).toEqual([...PAUSED].sort());
     for (const id of PAUSED) expect(registered).toContain(id);
     expect(isPaused('translate.fillZh') || isPaused('check.terms')).toBe(false);
@@ -64,7 +65,7 @@ describe('PAUSED_VERBS', () => {
 
   it('the menu never lists a paused verb, even for a matching search or a preselect', () => {
     expect(listed()).toEqual(['translate.fillZh', 'check.terms']);
-    for (const query of ['answers', 'mark scheme', 'source', 'quality', 'check']) {
+    for (const query of ['answers', 'mark scheme', 'source', 'quality', 'syllabus', 'coverage', 'check']) {
       for (const id of PAUSED) expect(listed(query)).not.toContain(id);
     }
     const groups = menuGroups(ctx());
@@ -97,7 +98,7 @@ describe('PAUSED_VERBS', () => {
     expect(runs).toEqual(['check.quality']);
 
     setPausedForTest([]);
-    expect(listed()).toEqual(['translate.fillZh', 'check.terms', 'check.quality', 'write.answers', 'create.fromSource']);
+    expect(listed()).toEqual(['translate.fillZh', 'check.terms', 'check.quality', 'check.syllabus', 'write.answers', 'create.fromSource']);
   });
 
   it('a paused verb is never asked what it offers (its engine does no work)', () => {
