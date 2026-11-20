@@ -131,7 +131,7 @@ export function ReferToRow({
             }}
             className={`${panelKindVars('source')} h-6 min-w-6 cursor-pointer rounded-full border px-1.5 text-[11px] font-semibold transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
               on
-                ? 'border-transparent bg-[color-mix(in_oklab,var(--kind)_16%,var(--surface))] text-[var(--kind-ink)]'
+                ? 'border-transparent bg-[color-mix(in_oklab,var(--kind)_14%,var(--surface))] text-[color-mix(in_oklab,var(--kind-ink)_80%,var(--ink))]'
                 : 'border-line text-ink-muted hover:bg-surface-hover'
             }`}
           >

@@ -724,8 +724,9 @@ u [data-tab] {
   font-weight: 600;
   line-height: 1.25rem;
   white-space: nowrap;
-  color: var(--kind-ink);
-  background-color: color-mix(in oklab, var(--kind) 14%, var(--surface));
+  /* Mixed a fifth of the way to the body ink: AA (4.5:1) on the tint in every theme. */
+  color: color-mix(in oklab, var(--kind-ink) 80%, var(--ink));
+  background-color: color-mix(in oklab, var(--kind) 12%, var(--surface));
 }
 /* A card the page selected wears a ring in its own colour instead of the generic tint. */
 .panel-kind[data-edit-current] {
