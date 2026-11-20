@@ -1331,6 +1331,17 @@ the title mechanism — unchanged.
   reference figures are past-paper questions and the illustration is the teacher's
   own clipart. An empty forum stays visible as one empty bubble.
 
+### A data chart is a diagram variant, drawn from a table of figures (k-0474)
+
+`Diagram.chart` (`DataChart`): `kind` bar | line, `categories` (BiText), up to 4 `series`
+(`label`, not `name`, which the text census skips; `values` with `null` for a missing figure),
+optional `yTitle` / `xTitle` and a pinned `yMin` / `yMax` / `yStep`. It is panel only, like the
+pie (`isPanelOnlyDiagram`, `DiagramDataFields.tsx:DataChartFields`). `render/diagram.ts:chartLayout`
+picks round steps through zero, so a negative bar hangs below the baseline. Long category labels
+wrap. A legend is drawn only with 2 or more series. Fills and line dashes are black and white,
+for print. A missing figure leaves no bar, or a gap in the line. It rasterises to one PNG for the
+`.docx`, like every diagram. A document holding a chart saves at schema 3.
+
 ### A stakeholder diagram is a diagram variant, laid out from its order (k-0469)
 
 `Diagram.stakeholder` (optional, like `pie`) draws the DRQ's 持份者圖示: the issue in a
@@ -2581,7 +2592,7 @@ every theme gets them. A card sets two variables (`--kind`, `--kind-ink`), and
 - **The DRQ helpers store nothing new** (`model/drq.ts`). The starter, the source kinds,
   "Refer to Source …" and the essay note only set starting values or edit text, so a DRQ
   built with them opens in every released build. A data chart is the exception: it is a
-  diagram variant and needs schema 3 (§ data charts).
+  diagram variant and needs schema 3 (§ A data chart is a diagram variant).
 
 ### The contextual toolbar row (`preview/ContextBar.tsx`)
 
@@ -3694,9 +3705,10 @@ intact but unreachable.
   anywhere); `answerKeyLayout`; a section's `answerCount`; a part-less question's own
   non-blank `answer` or `scheme` (the essay); an `importQuota` derived curve (v0.5 throws
   editing around an unknown derive kind). The 1→2 step is identity. Graphs follow the
-  same rule. v3 = v2 + a stakeholder diagram anywhere (`Diagram.stakeholder`, k-0469;
-  0.9.1 and older would print empty axes); the 2→3 step is identity, and its frozen corpus
-  is `v3-stakeholder.json` (`scripts/emit-v3-stakeholder-corpus.test.ts`). A section's `targetMarks` alone, a paragraph's `tabStops` (an older build prints the words on the default grid), and bank and organising metadata (topics,
+  same rule. v3 = v2 + a stakeholder diagram or a data chart anywhere (`Diagram.stakeholder`, k-0469;
+  `Diagram.chart`, k-0474; 0.9.1 and older would print empty axes; `hasV3Diagram`); the 2→3
+  step is identity, and its frozen corpora are `v3-stakeholder.json` and `v3-chart.json`
+  (`scripts/emit-v3-stakeholder-corpus.test.ts`, `scripts/emit-v3-chart-corpus.test.ts`). A section's `targetMarks` alone, a paragraph's `tabStops` (an older build prints the words on the default grid), and bank and organising metadata (topics,
   題型, `tagsAt`, lineage, part roots, `kind`, `classes`, `satOn`, `bankHidden`), stay at
   1: v0.5.0 keeps them and prints the same. v0.4–0.5 open a v2 file read-only (export stays possible there);
   v0.2–0.3 have no guard and open it editable, keeping the fields and the mark.

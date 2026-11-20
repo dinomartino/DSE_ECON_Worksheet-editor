@@ -21,6 +21,13 @@ a version heading is edited afterwards.
   note before it. Type over everything on the page. It is also under Question → Data-response
   (DRQ) on the left.
   <!-- zh: **在側欄一鍵建立整題資料回應題。** 新增而仍空白的結構性問題會提供「建立資料回應題」：一按即加入資料A至D（表格、棒形圖、新聞節錄、各方意見表）及分題 (a) 至 (e)，格式與文憑試卷二資料回應題相同：每個分題以「參閱資料…」開首，(c) 有兩個共用分數的小分題，(e) 為 14 分的短文題，題前附「(e)部須以短文形式作答…」說明。所有內容可直接在頁面上改寫。亦可在左側「題目 → 資料回應題」加入。 -->
+- **Bar charts and line graphs for data-response sources.** Type the figures into a small table in
+  the side panel and the chart is drawn for you, in the black-and-white style of the exam paper.
+  Bars can be grouped, a negative figure's bar goes down, there can be up to 4 series (with a
+  legend), and the unit goes above the axis. An empty figure leaves a gap. It is under Diagram ▾
+  → Data figures and Add → Source, and prints the same in Word and PDF. A paper with a chart opens
+  read-only in Econ Studio 0.9.1 and older.
+  <!-- zh: **資料回應題可加入棒形圖及折線圖。** 在側欄的小表格輸入數據，即自動繪製考試卷風格的黑白圖表：可分組棒形、負數棒形向下、最多 4 個數列（附圖例）、單位標於軸上；留空的數據會留下空位。可在「圖表 ▾ → 數據圖表」及「加入 → 資料」加入，在 Word 及 PDF 中列印效果相同。含圖表的試卷在 Econ Studio 0.9.1 或更舊版本只能以唯讀方式開啟。 -->
 - **Add → Source in the side panel lets you pick what the source holds.** The choices are a table,
   bar chart, line graph, news extract, people's views (who says it | what they say), forum,
   stakeholder diagram, picture, or an empty frame. The new source gets the next letter and opens

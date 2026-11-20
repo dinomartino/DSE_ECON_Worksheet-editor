@@ -67,8 +67,7 @@ function blockNoun(inner: ContentBlock, m: DrqMessages): string {
   if (inner.kind === 'image') return m.holdsPicture;
   if (inner.kind === 'figureRow') return m.holdsDiagram;
   if (inner.kind !== 'diagram') return m.holdsText;
-  // `chart` is read loosely: the data-chart variant is a later field (k-0474).
-  const diagram = inner.diagram as typeof inner.diagram & { chart?: { kind?: string } };
+  const diagram = inner.diagram;
   if (diagram.chart) return diagram.chart.kind === 'line' ? m.kindLineChart : m.kindBarChart;
   if (diagram.stakeholder) return m.kindStakeholders;
   if (diagram.forum) return m.kindForum;

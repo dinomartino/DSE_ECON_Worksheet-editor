@@ -157,3 +157,19 @@ describe('the DRQ starter', () => {
     expect(isBlankStructured({ ...blank, ...createDrqContent() })).toBe(false);
   });
 });
+
+describe('the DRQ starter and saved documents', () => {
+  it('saves at schema 3 only because of its bar chart, and at 1 without it', async () => {
+    const { CURRENT_SCHEMA_VERSION, writtenSchemaVersion } = await import('./migrations');
+    const { createWorksheet } = await import('./factories');
+    const worksheet = createWorksheet();
+    const question = createDrqQuestion();
+    const withChart = { ...worksheet, questions: [question], flow: [{ type: 'question' as const, id: question.id }] };
+    const chart = question.blocks.find((block) => block.kind === 'source' && block.blocks[0]?.kind === 'diagram');
+    expect(chart && chart.kind === 'source' && chart.blocks[0].kind === 'diagram' && chart.blocks[0].diagram.chart?.kind).toBe('bar');
+    expect(writtenSchemaVersion(CURRENT_SCHEMA_VERSION, withChart)).toBe(3);
+    // Everything else the starter adds (tables, views, text, the essay note) is schema 1.
+    const noChart = { ...question, blocks: question.blocks.filter((block) => block !== chart) };
+    expect(writtenSchemaVersion(CURRENT_SCHEMA_VERSION, { ...withChart, questions: [noChart] })).toBe(1);
+  });
+});
