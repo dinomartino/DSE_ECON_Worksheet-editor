@@ -59,7 +59,11 @@ jobs:
           dir=$(node scripts/fetch-onnxruntime.mjs "$target" "$RUNNER_TEMP/ort")
           echo "ORT_LIB_LOCATION=$dir" >> "$GITHUB_ENV"
 
-      - run: npx tauri build ${{ matrix.args }}
+      # No updater artifacts: they need the release signing key, which a preview never has
+      # (the same flag as docs/DESKTOP-PREVIEW.md way B). bash, so Windows gets the JSON intact.
+      - name: Build
+        shell: bash
+        run: npx tauri build ${{ matrix.args }} --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - uses: actions/upload-artifact@v4
         with:
