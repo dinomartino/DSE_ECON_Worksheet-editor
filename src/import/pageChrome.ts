@@ -263,6 +263,9 @@ export type MastheadVerdict = 'masthead' | 'skip' | 'stop';
  * question, section heading, instructions, long prose, picture, or text that does not
  * look like a heading, a blank to fill or a marks/time line.
  */
+/** A question number then its answer letter, as an answer key's rows open. */
+const KEY_ROW = /^\d{1,3}\s*[.)、:]?\s*\(?[A-E]\)?(?=\s|$|[(（])/;
+
 export function mastheadVerdict(text: string, hints: MastheadHints = {}): MastheadVerdict {
   const t = text.replace(/\s+/g, ' ').trim();
   if (hints.image) return 'stop';
@@ -272,6 +275,8 @@ export function mastheadVerdict(text: string, hints: MastheadHints = {}): Masthe
   if (label && labelLevel(label.family) !== 'text') return 'stop';
   if (SECTION.test(t) || INSTRUCTIONS.test(t)) return 'stop';
   if ((hints.cells ?? 0) > 4) return 'stop';
+  // An answer key's row ("1 D (49)   26. B (50)"): content, though short and set large (k-0480).
+  if (KEY_ROW.test(t)) return 'stop';
   if (BLANK.test(t) || FILL_LABEL.test(t) || text.trim().split(/\s{3,}|\t|　{2,}/).every((p) => FILL_LABEL.test(p.trim()))) return 'masthead';
   if (MARKS_OR_TIME.test(t) && t.length <= 70) return 'masthead';
   // A sentence or an instruction to the reader ("Study the table below.") is content.

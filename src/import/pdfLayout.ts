@@ -887,8 +887,10 @@ export function layoutPdf(pages: readonly PdfPage[], options: PdfLayoutOptions =
     }
     const runs = line.marks ? (joinRuns(line.runs, line.marks) as RawRun[]) : line.runs;
     if (heading === undefined && out.length < 6 && line.size >= docGeo.bodySize * 1.15 && plain(runs).trim()) heading = plain(runs).trim();
+    const right = line.kind === 'cells' ? line.segs[0]?.right : line.right;
     out.push({
       ...at,
+      ...(right !== undefined ? { right: Math.round(right * 10) / 10 } : {}),
       runs,
       marginDepth: Math.max(0, Math.round(((line.depthX ?? line.x) - geo.margin) / (geo.bodySize * 2))),
       ...(line.cells ? { cells: line.cells } : {}),

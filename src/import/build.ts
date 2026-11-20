@@ -14,8 +14,10 @@ import {
   createTableCell,
   newId,
 } from '@/model/factories';
+import { strategyTableOf } from '@/model/drq';
 import { createStimulusElement } from '@/model/flow';
-import type { MarkScheme } from '@/model/markSchemeTypes';
+import { withExamResults } from '@/model/examResults';
+import type { MarkGroup, MarkScheme } from '@/model/markSchemeTypes';
 import { normalizeRuns } from '@/model/text';
 import type { Side } from '@/model/textSlots';
 import type {
@@ -28,6 +30,7 @@ import type {
   QuestionPart,
   QuestionSubPart,
   StructuredQuestion,
+  Worksheet,
 } from '@/model/types';
 import type { QuestionBuild } from '@/store/worksheetStore';
 import { cjkShare } from './normalize';
@@ -42,10 +45,40 @@ export interface ImportBatch {
   starts: number[];
   /** Lines not imported: headings, noise, answer keys. */
   skipped: number[];
+  /**
+   * How candidates did, from an answer file (k-0480): each MC question's % correct, by its
+   * index in `builds`, and the comments on their performance. Written by `withImportResults`
+   * in the insert's own commit, once the questions have their ids.
+   */
+  results?: ImportResults;
+}
+
+export interface ImportResults {
+  /** Index-aligned with `builds`; a gap where the sheet gave no %. */
+  mcPercent: Array<number | undefined>;
+  mcComments?: BiText;
+  sqComments?: BiText;
+}
+
+/**
+ * A file's runs as the editor's text, with no blank line at either end (k-0468, issue #7.1):
+ * a break before the first words or after the last prints a blank line nobody typed.
+ * Breaks inside are kept, a run of blank lines kept to one.
+ */
+export function importedRuns(runs: readonly InlineRun[]): InlineRun[] {
+  const clean = normalizeRuns(runs.map((r) => ({ ...r, text: r.text.replace(/\n[ \t]*(?=\n)/g, '\n').replace(/\n{3,}/g, '\n\n') })));
+  while (clean.length && /^[\s\u200b]*$/.test(clean[0].text) && clean[0].text.includes('\n')) clean.shift();
+  while (clean.length && /^[\s\u200b]*$/.test(clean[clean.length - 1].text) && clean[clean.length - 1].text.includes('\n')) clean.pop();
+  if (clean.length) {
+    clean[0] = { ...clean[0], text: clean[0].text.replace(/^[ \t\u200b]*\n[\s\u200b]*/, '') };
+    const last = clean.length - 1;
+    clean[last] = { ...clean[last], text: clean[last].text.replace(/[\s\u200b]*\n[ \t\u200b]*$/, '') };
+  }
+  return normalizeRuns(clean.filter((r) => r.text !== ''));
 }
 
 const bi = (runs: readonly InlineRun[], side: Side): BiText => {
-  const clean = normalizeRuns(runs.map((r) => ({ ...r })));
+  const clean = importedRuns(runs);
   return { en: side === 'en' ? clean : [], zh: side === 'zh' ? clean : [] };
 };
 
@@ -93,6 +126,7 @@ function contentBlocks(blocks: readonly OutBlock[], side: Side, ctx: Ctx, inSour
       case 'paragraph':
         return [createParagraphBlock(bi(block.runs, side))];
       case 'table': {
+        if (block.look === 'strategy') return [strategyTableOf(block.rows.map(([label, text]) => [bi(label ?? [], side), bi(text ?? [], side)] as const))];
         const width = Math.max(...block.rows.map((r) => r.length));
         return [
           {
@@ -136,23 +170,45 @@ const joined = (scheme: OutScheme): InlineRun[] => {
 };
 
 /**
- * An answer file's text on a written leaf: a `scheme` (one route; a group with a point per
- * line and its mark, then the marker's notes as a second, unmarked group) when anything
- * carries marks, else the model `answer` (notes after a blank line).
+ * An answer file's text on a written leaf: a `scheme` (one route; its groups with a point
+ * per line and its mark, then the marker's notes as a last, unmarked group) when anything
+ * carries marks or the sheet gave it structure, else the model `answer` (notes after a
+ * blank line). The sheet's structure (k-0480) is the editor's own: group headings and
+ * rules (`n@`, take-first, `max`), EC rows, a stated content mark, levels, paragraph style.
  */
 function schemeFields(scheme: OutScheme | undefined, side: Side): { scheme?: MarkScheme; answer?: BiText } {
-  if (!scheme?.points.length && !scheme?.notes?.length) return {};
-  const marked = scheme.each !== undefined || scheme.max !== undefined || scheme.points.some((p) => p.marks !== undefined);
+  if (!scheme) return {};
+  const shaped = Boolean(scheme.groups?.length || scheme.ec?.rows.length || scheme.contentMax !== undefined || scheme.levels?.length);
+  if (!scheme.points.length && !scheme.notes?.length && !shaped) return {};
+  const marked = shaped || scheme.each !== undefined || scheme.max !== undefined || scheme.points.some((p) => p.marks !== undefined);
   if (!marked) return { answer: bi(joined(scheme), side) };
   const point = (runs: InlineRun[], marks?: number) => ({ id: newId(), text: bi(runs, side), ...(marks !== undefined ? { marks } : {}) });
-  const group = {
-    id: newId(),
-    points: scheme.points.map((p) => point(p.runs, p.marks)),
-    ...(scheme.each !== undefined ? { each: scheme.each } : {}),
-    ...(scheme.max !== undefined ? { max: scheme.max } : {}),
-  };
+  const rules = (g: { each?: number; max?: number; take?: number; firstOnly?: boolean }) => ({
+    ...(g.each !== undefined ? { each: g.each } : {}),
+    ...(g.take !== undefined ? { take: g.take, ...(g.firstOnly ? { firstOnly: true } : {}) } : {}),
+    ...(g.max !== undefined ? { max: g.max } : {}),
+  });
+  const groups: MarkGroup[] = scheme.groups?.length
+    ? scheme.groups.map((g, k) => ({
+        id: newId(),
+        ...(g.heading?.length ? { heading: bi(g.heading, side) } : {}),
+        // A point the sheet left outside every group goes with the first.
+        points: scheme.points.filter((p) => (p.group ?? 0) === k).map((p) => point(p.runs, p.marks)),
+        ...rules(g),
+      }))
+    : [{ id: newId(), points: scheme.points.map((p) => point(p.runs, p.marks)), ...rules(scheme) }];
+  const kept = groups.filter((g) => g.points.length || g.heading || g.each !== undefined || g.max !== undefined);
   const notes = scheme.notes?.length ? [{ id: newId(), points: scheme.notes.map((n) => point(n)) }] : [];
-  return { scheme: { routes: [{ id: newId(), groups: [group, ...notes] }] } };
+  const out: MarkScheme = {
+    routes: [{ id: newId(), groups: [...kept, ...notes].length ? [...kept, ...notes] : [{ id: newId(), points: [] }] }],
+    ...(scheme.ec?.rows.length
+      ? { ec: { max: scheme.ec.max, descriptors: scheme.ec.rows.map((r) => ({ id: newId(), marks: r.marks, text: bi(r.runs, side) })) } }
+      : {}),
+    ...(scheme.contentMax !== undefined ? { contentMax: scheme.contentMax } : {}),
+    ...(scheme.levels?.length ? { levels: scheme.levels.map((l) => ({ id: newId(), min: l.min, max: l.max, descriptor: bi(l.runs, side) })) } : {}),
+    ...(scheme.paragraph ? { display: 'paragraph' as const } : {}),
+  };
+  return { scheme: out };
 }
 
 /** Never an empty stem: a fresh question keeps its one empty paragraph to type into. */
@@ -272,5 +328,40 @@ export function buildImport(analysis: Analysis, options: { preview?: boolean } =
     return q.kind === 'mc' ? { typeId: 'mcq', fill: fillMcq(q, extra, ctx) } : { typeId: 'structured', fill: fillStructured(q, extra, ctx) };
   });
   const skipped = analysis.roles.flatMap((r, i) => (r.role === 'heading' || r.role === 'noise' || r.role === 'answerKey' ? [i] : []));
-  return { builds, ...(lead ? { lead } : {}), starts: outline.questions.map((q) => q.start), skipped };
+  const results = resultsOf(analysis);
+  return { builds, ...(lead ? { lead } : {}), starts: outline.questions.map((q) => q.start), skipped, ...(results ? { results } : {}) };
+}
+
+/** The comments' paragraphs as one text, a blank line between them, on the side their words are in. */
+function commentText(paragraphs: readonly InlineRun[][] | undefined): BiText | undefined {
+  if (!paragraphs?.length) return undefined;
+  const runs = paragraphs.flatMap((p, k) => (k ? [{ text: '\n\n' }, ...p] : [...p]));
+  const side: Side = cjkShare(runs.map((r) => r.text).join('')) >= 0.5 ? 'zh' : 'en';
+  return bi(runs, side);
+}
+
+function resultsOf(analysis: Analysis): ImportResults | undefined {
+  const mcPercent = analysis.outline.questions.map((q) => (q.kind === 'mc' ? q.percent : undefined));
+  const mcComments = commentText(analysis.outline.results?.mcComments);
+  const sqComments = commentText(analysis.outline.results?.sqComments);
+  if (!mcPercent.some((p) => p !== undefined) && !mcComments && !sqComments) return undefined;
+  return { mcPercent, ...(mcComments ? { mcComments } : {}), ...(sqComments ? { sqComments } : {}) };
+}
+
+/**
+ * The batch's exam results onto the paper (k-0480), for `insertQuestionBatch`'s `finish`:
+ * `ids` are the inserted questions' ids, in `builds` order. Nothing to write leaves the
+ * paper as it is, so a file with no results imports exactly as before.
+ */
+export function withImportResults(batch: ImportBatch, ids: readonly string[]): ((draft: Worksheet) => Worksheet) | undefined {
+  const results = batch.results;
+  if (!results) return undefined;
+  const mcPercent = Object.fromEntries(results.mcPercent.flatMap((p, k) => (p !== undefined && ids[k] ? [[ids[k], p]] : [])));
+  return (draft) =>
+    withExamResults(draft, {
+      ...draft.examResults,
+      ...(Object.keys(mcPercent).length ? { mcPercent: { ...draft.examResults?.mcPercent, ...mcPercent } } : {}),
+      ...(results.mcComments ? { mcComments: results.mcComments } : {}),
+      ...(results.sqComments ? { sqComments: results.sqComments } : {}),
+    });
 }

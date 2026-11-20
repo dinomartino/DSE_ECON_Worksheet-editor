@@ -7,6 +7,8 @@
  * - the detector's unclip margin taken off each end, so a label's box stops overlapping
  *   its text; type size from the box's height, baseline a fifth of it above the bottom;
  * - upright text set sideways (the margin's "do not write" strip) marked rotated: dropped;
+ * - a column of short table cells the detector glued into one box and read sideways
+ *   ("A", "B", "D" one under another read as "ABD"; "6789.10") put back as rows (k-0480);
  * - labels glued to their text split ("3.一位" → "3. 一位", "A.(1)" → "A. (1)",
  *   "(a)Explain" → "(a) Explain", "1：" → "1. ", "la." → "1a.").
  *
@@ -52,6 +54,73 @@ export function splitGluedLabel(text: string): string {
   );
 }
 
+/**
+ * Consecutive numbers run together ("678910", "12345"): split as `n` numbers counting up
+ * by one, or null. Stops and spaces between them are ignored.
+ */
+function countingUp(text: string): string[] | null {
+  const digits = text.replace(/[.\s]/g, '');
+  if (!/^\d+$/.test(digits)) return null;
+  for (const width of [1, 2, 3]) {
+    let at = width;
+    let n = +digits.slice(0, width);
+    const out = [String(n)];
+    while (at < digits.length) {
+      const next = String(n + 1);
+      if (!digits.startsWith(next, at)) break;
+      out.push(next);
+      at += next.length;
+      n++;
+    }
+    if (at === digits.length && out.length >= 2) return out;
+  }
+  return null;
+}
+
+/**
+ * A column of table cells the detector glued into one box and read sideways (k-0480): an
+ * answer key's letters "A", "B", "D" one under another come back as "ABD", its question
+ * numbers as "12345" or "6789.10". Split into one cell per row when the box is a column
+ * that tall (`lineHeight` per row, within 40%), else null: anything else sideways (the
+ * margin's "do not write" strip) stays sideways.
+ */
+export function unstackColumn(text: string, height: number, width: number, lineHeight: number): string[] | null {
+  const t = text.trim();
+  if (!t || /\s/.test(t) || t.length > 16 || height < width * 1.5 || lineHeight <= 0) return null;
+  const cells = /^[A-E]{2,}$/.test(t) ? [...t] : countingUp(t);
+  if (!cells) return null;
+  const row = height / cells.length;
+  return row >= lineHeight * 0.6 && row <= lineHeight * 1.4 ? cells : null;
+}
+
+/** The page's usual line height (px): the median height of level lines with words in them. */
+function lineHeightOf(result: OcrResult): number {
+  const heights = result.lines
+    .filter((l) => l.box?.length >= 4 && (l.text ?? '').trim().length >= 3 && Math.abs(l.angle ?? 0) < 20)
+    .map((l) => Math.abs(l.box[3][1] - l.box[0][1]))
+    .sort((a, b) => a - b);
+  return heights.length ? heights[Math.floor(heights.length / 2)] : 0;
+}
+
+/** The lines with glued sideways columns (`unstackColumn`) split into level boxes, one per row. */
+function withColumnsUnstacked(result: OcrResult): OcrResult['lines'] {
+  const lineHeight = lineHeightOf(result);
+  return result.lines.flatMap((line) => {
+    if (!line.box || line.box.length < 4 || Math.abs(Math.abs(line.angle ?? 0) - 90) > 20) return [line];
+    const xs = line.box.map((p) => p[0]);
+    const ys = line.box.map((p) => p[1]);
+    const [left, right, top, bottom] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const cells = unstackColumn(line.text ?? '', bottom - top, right - left, lineHeight);
+    if (!cells) return [line];
+    const row = (bottom - top) / cells.length;
+    return cells.map((text, k) => {
+      const y0 = top + row * k;
+      const y1 = y0 + row;
+      return { text, score: line.score, box: [[left, y0], [right, y0], [right, y1], [left, y1]] as Array<[number, number]> };
+    });
+  });
+}
+
 const dist = (a: Point, b: Point) => Math.hypot(b[0] - a[0], b[1] - a[1]);
 const angleOf = (a: Point, b: Point) => (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
 
@@ -85,7 +154,7 @@ export function ocrPage(result: OcrResult, scale: number, found: readonly PxBox[
     turn ? [cx + (x - cx) * Math.cos(turn) - (y - cy) * Math.sin(turn), cy + (x - cx) * Math.sin(turn) + (y - cy) * Math.cos(turn)] : [x, y];
 
   const items: PdfItem[] = [];
-  for (const line of result.lines) {
+  for (const line of withColumnsUnstacked(result)) {
     const str = splitGluedLabel(line.text ?? '');
     if (!str.trim() || line.box?.length < 4 || !(line.score >= MIN_SCORE)) continue;
     const [p0, p1, p2, p3] = line.box.slice(0, 4).map(level);
