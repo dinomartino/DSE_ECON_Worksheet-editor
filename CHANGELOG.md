@@ -18,7 +18,7 @@ a version heading is edited afterwards.
   elasticity formula. Subscripts work inside it too, so (Q₂ − Q₁) over Q₁ is easy. Tap a fraction
   while typing to change it. It prints the same in the PDF, and in Word as a real equation. A paper
   with a fraction still opens in older versions, which show it on one line as Q₂ − Q₁⁄Q₁.
-  <!-- zh: **題幹及選擇題選項可輸入分數。** 格式列上的「分數」(a⁄b) 會打開小視窗：輸入分子和分母，就會上下排列、中間有分數線，例如彈性公式。分數內也可用下標，輕鬆打出 (Q₂ − Q₁) 除以 Q₁。輸入時按一下分數即可修改。PDF 列印效果相同，Word 中則是真正的方程式。含分數的試卷在舊版本仍可開啟，只會以單行顯示，例如 Q₂ − Q₁⁄Q₁。 -->
+  <!-- zh: **題幹及 MC 選項可輸入分數。** 格式列上的「分數」(a⁄b) 會打開小視窗：輸入分子和分母，就會上下排列、中間有分數線，例如彈性公式。分數內也可用下標，輕鬆打出 (Q₂ − Q₁) 除以 Q₁。輸入時按一下分數即可修改。PDF 列印效果相同，Word 中則是真正的方程式。含分數的試卷在舊版本仍可開啟，只會以單行顯示，例如 Q₂ − Q₁⁄Q₁。 -->
 - **Build a whole data-response question from the side panel.** A new, still-blank structured
   question offers **Start a DRQ**: one click gives Sources A–D (a table, a bar chart, a news
   extract and a people's views table) and parts (a)–(e) shaped like a DSE Paper 2 DRQ. Each part
@@ -143,7 +143,7 @@ a version heading is edited afterwards.
   option and the format bar now offers X₂ and X² (and B, I, U), as it does in question text.
   Anywhere you type, Ctrl+= (⌘= on a Mac) makes a subscript and Ctrl+Shift+= (⌘⇧=) a superscript,
   as in Word; press it before typing to type straight into it.
-  <!-- zh: **選擇題選項可用下標及上標，亦可用鍵盤。** 在選項中選取 Q1 的 1，格式列現在會提供 X₂ 和 X²（以及 B、I、U），與題幹相同。任何輸入位置按 Ctrl+=（Mac 為 ⌘=）即變下標，Ctrl+Shift+=（⌘⇧=）即變上標，與 Word 相同；先按再輸入，就會直接打出下標或上標。 -->
+  <!-- zh: **MC 選項可用下標及上標，亦可用鍵盤。** 在選項中選取 Q1 的 1，格式列現在會提供 X₂ 和 X²（以及 B、I、U），與題幹相同。任何輸入位置按 Ctrl+=（Mac 為 ⌘=）即變下標，Ctrl+Shift+=（⌘⇧=）即變上標，與 Word 相同；先按再輸入，就會直接打出下標或上標。 -->
 - **Bold that came with a paste can be taken off.** Text pasted in bold from Word or a web page
   stayed bold: Ctrl+B (⌘B) and the B button did nothing to it. Both now unbold it, whether you
   select the words or, with B, just click into the text.
