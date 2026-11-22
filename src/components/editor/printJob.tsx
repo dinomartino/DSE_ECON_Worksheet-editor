@@ -1,12 +1,14 @@
 'use client';
 
 import { create } from 'zustand';
+import { CoverageReportSheets, reportPageBox } from '@/components/ai/CoverageReportSheets';
+import type { CoverageResult } from '@/coverage/result';
 import { Preview } from '@/components/preview/Preview';
 import { SetKeyPreview } from '@/components/preview/SetKeyPreview';
 import { useMessages } from '@/i18n/language';
 import { pageSetupOf } from '@/model/page';
-import type { LanguageMode, OutputMode, Worksheet } from '@/model/types';
-import { printPage, savePdf } from '@/platform';
+import type { LanguageMode, OutputMode, PageSetup, Worksheet } from '@/model/types';
+import { printPage, savePdf, type PdfPage } from '@/platform';
 import { pdfPageBox, pdfPrintMode, sheetsSettled, type PdfOutcome, type PrintDeps } from './printPdf';
 import { PRINT_JOB_MESSAGES } from './printJob.messages';
 
@@ -21,14 +23,22 @@ import { PRINT_JOB_MESSAGES } from './printJob.messages';
  */
 export type PrintJob =
   | { kind: 'paper'; worksheet: Worksheet; mode: OutputMode; label: string }
-  | { kind: 'setKey'; worksheets: Worksheet[]; language: LanguageMode; label: string };
+  | { kind: 'setKey'; worksheets: Worksheet[]; language: LanguageMode; label: string }
+  /** The syllabus coverage report (k-0489): its own sheets, portrait, the paper's page size. */
+  | { kind: 'coverage'; coverage: CoverageResult; label: string };
 
 export const usePrintJob = create<{ job?: PrintJob; setJob: (job?: PrintJob) => void }>((set) => ({
   setJob: (job) => set({ job }),
 }));
 
-/** The page box the job prints at: its first document's. */
-const jobWorksheet = (job: PrintJob): Worksheet => (job.kind === 'paper' ? job.worksheet : job.worksheets[0]);
+/** The page the job prints at: its first document's, or the report's own (portrait). */
+function jobPage(job: PrintJob): { setup: Pick<PageSetup, 'paper' | 'orientation'>; box: (pages: number) => PdfPage } {
+  if (job.kind === 'coverage') {
+    return { setup: { paper: job.coverage.pageSize, orientation: 'portrait' }, box: (pages) => reportPageBox(job.coverage.pageSize, pages) };
+  }
+  const worksheet = job.kind === 'paper' ? job.worksheet : job.worksheets[0];
+  return { setup: pageSetupOf(worksheet), box: (pages) => pdfPageBox(worksheet, pages) };
+}
 
 /** What the page shows while a job prints. */
 export function PrintJobView({ job }: { job: PrintJob }) {
@@ -44,6 +54,8 @@ export function PrintJobView({ job }: { job: PrintJob }) {
       </p>
       {job.kind === 'paper' ? (
         <Preview worksheet={job.worksheet} mode={pdfPrintMode(job.mode)} />
+      ) : job.kind === 'coverage' ? (
+        <CoverageReportSheets coverage={job.coverage} />
       ) : (
         <SetKeyPreview worksheets={job.worksheets} language={job.language} zoomControl={false} />
       )}
@@ -62,8 +74,7 @@ export type JobDeps = Pick<PrintDeps, 'root' | 'settled' | 'sheetCount' | 'liste
  * done (`afterprint`; else the first input after it, as `printWorksheetPdf` does).
  */
 export async function printJobPdf(job: PrintJob, deps: JobDeps, file?: string): Promise<PdfOutcome> {
-  const worksheet = jobWorksheet(job);
-  const setup = pageSetupOf(worksheet);
+  const { setup, box } = jobPage(job);
   deps.root.style.setProperty('--print-size', setup.paper);
   deps.root.style.setProperty('--print-orientation', setup.orientation);
   deps.show(job);
@@ -76,7 +87,7 @@ export async function printJobPdf(job: PrintJob, deps: JobDeps, file?: string): 
   let fallback: string | undefined;
   if (file !== undefined) {
     try {
-      await savePdf(file, pdfPageBox(worksheet, deps.sheetCount()));
+      await savePdf(file, box(deps.sheetCount()));
       restore();
       return { saved: file };
     } catch (cause) {

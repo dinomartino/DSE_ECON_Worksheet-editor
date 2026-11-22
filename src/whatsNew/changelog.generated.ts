@@ -26,6 +26,15 @@ a version heading is edited afterwards.
   ready.
   <!-- zh: **查看試卷覆蓋多少課程。** ✦ AI →「檢查課程覆蓋」會把試卷的題目（或你選取的題目）傳送到你在「設定 → AI」選擇的 AI 服務（與中文翻譯相同），然後顯示報告：試卷考核了 2025 年指引中多少個學習要點，按數目及按建議課時計算；再列出每個課題及學習要點的分數（分為知識、應用及分析、評鑑）、佔試卷及課時的比例、考核它的題目，以及沒有題目考核的學習要點。試卷有選修部分的題目時會一併計算。打開「按題目」可看到 AI 認為每部分考核甚麼。這些是 AI 的估算：不會儲存任何內容到試卷，報告完成後暫存檔案會被刪除。 -->
 
+- **The syllabus coverage report speaks the paper's language, downloads as a PDF, and can
+  cover a whole mock set.** Topic and key point names, and the AI's notes on each question, are
+  now in the paper's language (a 中文 paper reads 中文 even when the app is in English); buttons
+  stay in the app's language. Download report (PDF) saves a printable report with the paper's
+  title, date, scope, coverage figures, every topic and key point, the questions that test each,
+  and the gaps. In a paper set, ✦ AI → Check coverage for the whole set checks Paper 1 and Paper
+  2 together: one report for the set, each paper's figures beside it, and the same PDF.
+  <!-- zh: **課程覆蓋報告使用試卷的語言、可下載為 PDF，並可檢查整套模擬試卷。** 課題及學習要點名稱，以及 AI 對每條題目的說明，現在使用試卷的語言（即使程式介面是英文，中文試卷的報告也是中文）；按鈕仍使用程式介面的語言。「下載報告（PDF）」會儲存一份可列印的報告，包括試卷名稱、日期、範圍、覆蓋數字、每個課題及學習要點、考核它們的題目，以及缺口。在套卷中，✦ AI →「檢查整套試卷的課程覆蓋」會一併檢查 Paper 1 及 Paper 2：整套試卷一份報告，旁邊列出每份試卷的數字，同樣可下載 PDF。 -->
+
 ## 0.10.0 — 2026-11-20
 
 ### Added

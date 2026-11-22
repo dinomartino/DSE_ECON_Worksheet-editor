@@ -72,6 +72,30 @@ export const COVERAGE_MESSAGES = defineMessages({
     zh: '學習要點及細項每項計一次。課時把每個課題的建議課時（指引第 23 頁）按細項數目分給其學習要點。一部分有多於一個學習要點時，分數按主要 2 : 其次 1 分配。',
   },
   close: { en: 'Close', zh: '關閉' },
+  // k-0489: the paper's language, the PDF, the whole set
+  languageNote: {
+    en: (zh: boolean) => `Syllabus names and the AI’s notes are in ${zh ? 'Chinese' : 'English'}, the paper’s language.`,
+    zh: (zh: boolean) => `課程名稱及 AI 的說明使用試卷的語言（${zh ? '中文' : '英文'}）。`,
+  },
+  download: { en: 'Download report (PDF)', zh: '下載報告（PDF）' },
+  downloading: { en: 'Preparing the PDF…', zh: '正在準備 PDF…' },
+  downloadWebHint: { en: 'Opens the print window: choose Save as PDF.', zh: '會開啟列印視窗：請選擇「另存為 PDF」。' },
+  saved: { en: (name: string) => `Saved ${name}`, zh: (name: string) => `已儲存 ${name}` },
+  savedFallback: {
+    en: (why: string) => `Could not write the file directly (${why}); the print window opened instead.`,
+    zh: (why: string) => `未能直接寫入檔案（${why}），已改為開啟列印視窗。`,
+  },
+  downloadFailed: { en: (why: string) => `Could not make the PDF: ${why}`, zh: (why: string) => `未能製作 PDF：${why}` },
+  viewPick: { en: 'Show', zh: '顯示' },
+  viewSet: { en: 'Whole set', zh: '整套試卷' },
+  viewPaper: { en: (n: number) => `Paper ${n}`, zh: (n: number) => `Paper ${n}` },
+  byPaper: { en: 'By paper', zh: '按試卷' },
+  colPaper: { en: 'Paper', zh: '試卷' },
+  colQuestions: { en: 'Questions', zh: '題目' },
+  paperWhere: {
+    en: (paper: number, where: string) => `P${paper} Q${where}`,
+    zh: (paper: number, where: string) => `Paper ${paper} 第 ${where} 題`,
+  },
   listJoin: { en: ', ', zh: '、' },
   pointsJoin: { en: '; ', zh: '；' },
 });

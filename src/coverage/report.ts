@@ -34,8 +34,17 @@ export interface KeyPointRow {
   hit: boolean;
   /** Points inside it that were tested, in guide order. */
   points: PointRow[];
-  /** "3", "12(b)(ii)": the units that test it, in print order. */
-  where: string[];
+  /** The units that test it, in print order. */
+  where: Where[];
+}
+
+/**
+ * A place on the paper: "3", "12(b)(ii)" (`at`), and in a whole set's report the paper it is
+ * on (`paper`, 1-based: Paper 1, Paper 2). How it reads is the reader's (`whereText`).
+ */
+export interface Where {
+  paper?: number;
+  at: string;
 }
 
 export interface TopicRow {
@@ -61,7 +70,7 @@ export interface Ratio {
 }
 
 export interface UnitRow {
-  where: string;
+  where: Where;
   marks: number;
   ok: boolean;
   picks: Array<{ code: string; main: boolean; band: Band; conf: Confidence; why: string }>;
@@ -88,10 +97,13 @@ export interface CoverageReport {
   units: UnitRow[];
 }
 
-const where = (number: string, label: string) => `${number}${label.replace(/\s+/g, '')}`;
+const where = (result: QuestionResult, label: string): Where => ({
+  ...(result.paper !== undefined ? { paper: result.paper } : {}),
+  at: `${result.number}${label.replace(/\s+/g, '')}`,
+});
 
 export function buildReport(results: QuestionResult[], sent: number, choice: ElectiveChoice = 'auto'): CoverageReport {
-  const keyPointMarks = new Map<string, { marks: number; bands: ByBand; hit: boolean; where: string[] }>();
+  const keyPointMarks = new Map<string, { marks: number; bands: ByBand; hit: boolean; where: Where[] }>();
   const pointMarks = new Map<string, number>();
   const topicMarks = new Map<string, number>();
   const bands = noBands();
@@ -105,7 +117,7 @@ export function buildReport(results: QuestionResult[], sent: number, choice: Ele
       total += unit.marks;
       const picks = result.ok ? unit.picks.filter((p) => lookupCode(p.code)) : [];
       units.push({
-        where: where(result.number, unit.label),
+        where: where(result, unit.label),
         marks: unit.marks,
         ok: result.ok,
         picks: picks.map((p) => ({ code: p.code, main: p.w === 2, band: p.band, conf: p.conf, why: p.why })),
@@ -123,7 +135,7 @@ export function buildReport(results: QuestionResult[], sent: number, choice: Ele
         keyPoint.marks += share;
         keyPoint.bands[pick.band] += share;
         keyPoint.hit = true;
-        if (!seenKeyPoint.has(hit.keyPoint.code)) keyPoint.where.push(where(result.number, unit.label));
+        if (!seenKeyPoint.has(hit.keyPoint.code)) keyPoint.where.push(where(result, unit.label));
         seenKeyPoint.add(hit.keyPoint.code);
         keyPointMarks.set(hit.keyPoint.code, keyPoint);
         if (hit.point) pointMarks.set(hit.point.code, (pointMarks.get(hit.point.code) ?? 0) + share);
@@ -212,4 +224,12 @@ export function percent(share: number | null): string {
 export function marksText(marks: number): string {
   const r = Math.round(marks * 10) / 10;
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+
+/** The key points in scope that no question tests, by topic, in guide order: the gaps. */
+export function gaps(report: CoverageReport): Array<{ topic: TopicRow; keyPoints: KeyPointRow[] }> {
+  return report.topics
+    .filter((topic) => topic.counted)
+    .map((topic) => ({ topic, keyPoints: topic.keyPoints.filter((keyPoint) => !keyPoint.hit) }))
+    .filter((row) => row.keyPoints.length > 0);
 }

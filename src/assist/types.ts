@@ -1,5 +1,6 @@
 import type { AiErrorInfo } from '@/ai/types';
-import type { CoverageReport, ElectiveChoice } from '@/coverage/report';
+import type { ElectiveChoice } from '@/coverage/report';
+import type { CoverageResult } from '@/coverage/result';
 import type { OutputMode, Worksheet } from '@/model/types';
 import type { TranslateScope } from '@/translate/types';
 
@@ -20,6 +21,12 @@ export interface VerbContext {
   scope: AiScope;
   /** Human label of the scope: "Whole paper", "Question 2", "3 questions", "This text". */
   scopeLabel: string;
+  /**
+   * The open paper's set, when it is in one and its papers are read (k-0489): every paper
+   * with questions, in set order, the open one as the editor holds it. Read by the whole
+   * set's coverage check only.
+   */
+  paperSet?: { name: string; papers: Worksheet[] };
 }
 
 export interface VerbAvailability {
@@ -98,5 +105,5 @@ export type VerbOutcome =
   | { kind: 'nothing'; summary: string }
   /** Nothing written: a report to read (Check syllabus coverage). `rebuild` re-reads it with
    *  another Elective Part counted, from the run's results held in memory. */
-  | { kind: 'report'; summary: string; report: CoverageReport; rebuild(choice: ElectiveChoice): CoverageReport }
+  | { kind: 'report'; summary: string; coverage: CoverageResult; rebuild(choice: ElectiveChoice): CoverageResult }
   | { kind: 'error'; error: AiErrorInfo };

@@ -58,6 +58,8 @@ export interface QuestionResult {
   questionId: string;
   /** The printed question number, "3". */
   number: string;
+  /** A whole set's run: which paper, 1-based. Absent on one paper's run. */
+  paper?: number;
   /** False: the request failed; `units` then carry no picks. */
   ok: boolean;
   units: UnitResult[];

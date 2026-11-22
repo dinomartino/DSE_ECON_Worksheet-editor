@@ -3,6 +3,7 @@ import { isAiError, type AiErrorInfo } from '@/ai/types';
 import { genericError } from './fillRules';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { useAiMenu } from './menuStore';
+import { paperSetFor } from './paperSetSource';
 import { isPaused } from './paused';
 import { verbById } from './registry';
 import { scopeFromSelection, scopeLabel } from './scope';
@@ -61,7 +62,14 @@ export function buildVerbContext(): VerbContext {
     mode: ws.mode,
     scope,
     scopeLabel: open?.scopeLabel ?? scopeLabel(ws.worksheet, scope),
+    ...withPaperSet(ws.worksheet),
   };
+}
+
+/** `{ paperSet }` when the open paper's set is read, else nothing (the key stays absent). */
+function withPaperSet(worksheet: VerbContext['worksheet']): Pick<VerbContext, 'paperSet'> {
+  const paperSet = paperSetFor(worksheet);
+  return paperSet ? { paperSet } : {};
 }
 
 function applyView(outcome: Extract<VerbOutcome, { kind: 'inserted' }>): void {
@@ -164,7 +172,7 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
   retry: () => {
     if (!last || get().phase.kind === 'running') return;
     const ws = useWorksheetStore.getState();
-    retrying = { worksheet: ws.worksheet, mode: ws.mode, scope: last.scope, scopeLabel: last.scopeLabel };
+    retrying = { worksheet: ws.worksheet, mode: ws.mode, scope: last.scope, scopeLabel: last.scopeLabel, ...withPaperSet(ws.worksheet) };
     void get().startVerb(last.verbId, last.input);
   },
 

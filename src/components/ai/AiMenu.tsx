@@ -14,6 +14,7 @@ import { useMessages } from '@/i18n/language';
 import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { isWholeSet, useSetPapers } from '@/components/editor/setMembers';
 import { countLabel, highlighted, menuGroups, stepFor, stepHighlight, type MenuGroup, type MenuStep } from './aiMenuModel';
 import { AI_UI_MESSAGES } from './messages';
 import { ProviderFooter } from './ProviderFooter';
@@ -65,9 +66,12 @@ export function AiMenuPopover({ open }: { open: AiMenuOpen }) {
     inList.current = step.kind === 'list';
   }, [step]);
 
+  // The set's papers, for Check coverage for the whole set (k-0489).
+  const set = useSetPapers();
+  const paperSet = useMemo(() => (set && isWholeSet(set) ? { name: set.name, papers: set.papers } : undefined), [set]);
   const ctx: VerbContext = useMemo(
-    () => ({ worksheet, mode, scope: open.scope, scopeLabel: open.scopeLabel }),
-    [worksheet, mode, open.scope, open.scopeLabel],
+    () => ({ worksheet, mode, scope: open.scope, scopeLabel: open.scopeLabel, ...(paperSet ? { paperSet } : {}) }),
+    [worksheet, mode, open.scope, open.scopeLabel, paperSet],
   );
   const groups = useMemo(() => menuGroups(ctx, query), [ctx, query]);
   const current = highlighted(groups, active, open.preselect);

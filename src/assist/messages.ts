@@ -147,6 +147,25 @@ export const ASSIST_MESSAGES = defineMessages({
     zh: (n: number) => `${n} 條題目未能分析`,
   },
   coverageNothing: { en: 'No question could be matched to the syllabus', zh: '沒有題目能對照課程' },
+  // The whole set (k-0489)
+  coverageSetLabel: { en: 'Check coverage for the whole set', zh: '檢查整套試卷的課程覆蓋' },
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the same signature as en
+  unitPapers: { en: (n: number): string => (n === 1 ? 'paper' : 'papers'), zh: (_n: number) => '份試卷' },
+  setBlank: { en: 'Fewer than two papers of the set have questions', zh: '這套試卷少於兩份有題目' },
+  sendsCoverageSet: {
+    en: (n: number, papers: number, provider: string) =>
+      `Sends ${n} ${n === 1 ? 'question' : 'questions'} from ${papers} papers to ${provider} with your key, then shows one report for the set. Changes nothing.`,
+    zh: (n: number, papers: number, provider: string) =>
+      `會連同你的 API key 把 ${papers} 份試卷共 ${n} 條題目傳送到 ${provider}，然後顯示整套試卷的報告。不會更改任何內容。`,
+  },
+  analysingPaper: {
+    en: (paper: number, papers: number, n: number) => `Paper ${paper} of ${papers}: matching ${n} ${n === 1 ? 'question' : 'questions'} to the syllabus`,
+    zh: (paper: number, papers: number, n: number) => `Paper ${paper}（共 ${papers} 份）：正在把 ${n} 條題目對照課程`,
+  },
+  coverageSetHead: {
+    en: (hit: number, of: number, pct: string) => `Whole set: ${hit} of ${of} key points (${pct})`,
+    zh: (hit: number, of: number, pct: string) => `整套試卷：${of} 個重點中的 ${hit} 個（${pct}）`,
+  },
 
   // Check question quality
   qualityLabel: { en: 'Check question quality', zh: '檢查題目質素' },

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { setPaperSetSource } from '@/assist/paperSetSource';
 import { useMemo } from 'react';
 import { paperSetOf } from '@/model/paperSet';
 import type { Worksheet } from '@/model/types';
@@ -76,3 +77,17 @@ export function useSetPapers() {
 
 /** A whole set worth showing: at least two papers with something in them. */
 export const isWholeSet = (set: { papers: readonly Worksheet[] } | undefined): boolean => (set?.papers.length ?? 0) >= 2;
+
+/**
+ * The AI's view of the set (k-0489, Check coverage for the whole set): the papers with
+ * questions, when there are two or more and the strip has read them.
+ */
+export function paperSetForAi(worksheet: Worksheet): { name: string; papers: Worksheet[] } | undefined {
+  const { rows, partners, setId } = useSetMembers.getState();
+  const own = paperSetOf(worksheet)?.id;
+  if (!own || setId !== own) return undefined;
+  const set = setPapersInOrder(worksheet, rows, partners);
+  return set && isWholeSet(set) ? { name: set.name, papers: set.papers } : undefined;
+}
+
+setPaperSetSource(paperSetForAi);

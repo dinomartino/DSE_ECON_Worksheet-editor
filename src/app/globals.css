@@ -229,6 +229,14 @@ body {
   overflow-wrap: break-word;
 }
 
+/* The printed coverage report (k-0489, `CoverageReportSheets`) is a report, not a page Word
+   will print: no exporter contract to keep, so its leading is a ratio that grows with each
+   line's own size (a heading, a small note) instead of the sheet's fixed 12pt. */
+.paper.coverage-sheet {
+  font-size: 9pt;
+  line-height: 1.4;
+}
+
 /* Paragraph margins are the exporter's `w:before`/`w:after`, and those are zero. Any
    margin the browser or Tailwind's reset supplies is a gap that exists on screen and
    not on paper, which the paginator would then measure. */

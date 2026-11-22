@@ -184,7 +184,7 @@ describe('the report', () => {
     const ped = c.keyPoints.find((keyPoint) => keyPoint.code === 'C.ped')!;
     expect(ped.hit).toBe(true);
     expect(ped.points.map((p) => p.code)).toEqual(['C.ped#revenue']);
-    expect(ped.where).toEqual(['1']);
+    expect(ped.where).toEqual([{ at: '1' }]);
     const i = report.topics.find((t) => t.code === 'I')!;
     expect(i.marks).toBeCloseTo(2, 9);
     expect(i.bands.evaluate).toBeCloseTo(2, 9);
@@ -245,7 +245,7 @@ describe('the verb', () => {
     const outcome = await coverageVerb.run(ctx, { signal: new AbortController().signal, progress: () => {} });
     expect(outcome.kind).toBe('report');
     if (outcome.kind !== 'report') return;
-    expect(outcome.report.topics.find((t) => t.code === 'B')!.keyPoints.find((keyPoint) => keyPoint.code === 'B.factors')!.hit).toBe(true);
+    expect(outcome.coverage.report.topics.find((t) => t.code === 'B')!.keyPoints.find((keyPoint) => keyPoint.code === 'B.factors')!.hit).toBe(true);
     expect(outcome.summary).toMatch(/1 of 49 key points/);
     expect(disposed).toEqual(['coverage']);
 
