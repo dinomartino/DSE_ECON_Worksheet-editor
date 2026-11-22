@@ -1,7 +1,5 @@
 import type { AiErrorInfo } from '@/ai/types';
-import type { ElectiveChoice } from '@/coverage/report';
-import type { CoverageResult } from '@/coverage/result';
-import type { OutputMode, Worksheet } from '@/model/types';
+import type { OutputMode, SavedCoverageReport, Worksheet } from '@/model/types';
 import type { TranslateScope } from '@/translate/types';
 
 /**
@@ -103,7 +101,10 @@ export type VerbOutcome =
   /** Nothing written, things to look at (Check terms, Quality check). */
   | { kind: 'findings'; summary: string; items: ReviewItem[]; applyAll?: { label: string; run(): void }; refresh?(): FindingsRefresh }
   | { kind: 'nothing'; summary: string }
-  /** Nothing written: a report to read (Check syllabus coverage). `rebuild` re-reads it with
-   *  another Elective Part counted, from the run's results held in memory. */
-  | { kind: 'report'; summary: string; coverage: CoverageResult; rebuild(choice: ElectiveChoice): CoverageResult }
+  /**
+   * A report to read (Check syllabus coverage): the saved check `record` (k-0489 v2). `fresh`:
+   * this run made it, so it is kept with the paper (`keepCoverageReport`) as the bar opens;
+   * otherwise it is one already kept, reopened (Past coverage reports).
+   */
+  | { kind: 'report'; summary: string; record: SavedCoverageReport; fresh: boolean }
   | { kind: 'error'; error: AiErrorInfo };

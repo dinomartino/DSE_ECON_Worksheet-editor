@@ -234,7 +234,22 @@ body {
    line's own size (a heading, a small note) instead of the sheet's fixed 12pt. */
 .paper.coverage-sheet {
   font-size: 9pt;
-  line-height: 1.4;
+  line-height: 1.45;
+  /* One sans face for the report (k-0489 v2): Latin first, then each platform's Traditional
+     Chinese face (PingFang on a Mac, JhengHei on Windows, Noto elsewhere), so 中文 never
+     falls back to a missing glyph and both languages share one weight and colour. */
+  font-family: "Helvetica Neue", Helvetica, Arial, "PingFang HK", "PingFang TC", "Microsoft JhengHei", "Microsoft JhengHei UI",
+    "Noto Sans CJK HK", "Noto Sans HK", "Noto Sans CJK TC", "Noto Sans TC", "Source Han Sans HK", sans-serif;
+  /* The bars and tinted panels are the report: print them as shown. */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.paper.coverage-sheet h1,
+.paper.coverage-sheet h2,
+.paper.coverage-sheet h3,
+.paper.coverage-sheet p,
+.paper.coverage-sheet ol {
+  margin: 0;
 }
 
 /* Paragraph margins are the exporter's `w:before`/`w:after`, and those are zero. Any

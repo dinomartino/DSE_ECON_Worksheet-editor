@@ -3,14 +3,25 @@ import type { ReportLanguage } from '@/coverage/language';
 import { reportLanguage } from '@/coverage/language';
 import { percent, type CoverageReport } from '@/coverage/report';
 import { leadSide } from '@/coverage/prompt';
-import { paperNumbers, paperResult, setResult, titleIn, type CoverageResult, type PaperRun } from '@/coverage/result';
+import {
+  coverageFromSaved,
+  coverageRecord,
+  paperNumbers,
+  paperResult,
+  setResult,
+  titleIn,
+  type CheckedPaper,
+  type CoverageResult,
+  type PaperRun,
+} from '@/coverage/result';
 import { runCoverage } from '@/coverage/run';
 import type { CoverageDeps, CoverageQuestion, CoverageRunOutcome } from '@/coverage/types';
-import { markedUnits } from '@/coverage/units';
+import { coverageQuestions, paperFingerprint, wholePaperQuestions } from '@/coverage/questions';
 import { uiLanguage } from '@/i18n/language';
-import { computeNumbering } from '@/model/numbering';
+import { savedCoverageReports } from '@/model/coverageReports';
+import { newId } from '@/model/factories';
 import { pageSetupOf } from '@/model/page';
-import { setRoleOf } from '@/model/paperSet';
+import { paperSetOf, setRoleOf } from '@/model/paperSet';
 import type { Worksheet } from '@/model/types';
 import { isDesktop } from '@/platform';
 import { openScratch, sweepScratch } from '@/platform/scratch';
@@ -25,7 +36,8 @@ import type { AiVerb, VerbContext, VerbIO, VerbOutcome } from '../types';
  * `docs/research/2026-11-syllabus-analysis.md`): every question with words goes to the AI
  * provider set in Settings (the one Chinese translation uses), each question's result goes
  * to a temporary file, the report is built from those files, and the files are deleted.
- * Writes nothing to the document.
+ * The finished check is kept with the paper (k-0489 v2, `keepCoverageReport`); the
+ * questions are never touched.
  *
  * The report is written in the paper's language (`reportLanguage`, k-0489), and a paper in
  * a set can be checked with the rest of its set (`coverageSetVerb`): one report over every
@@ -34,17 +46,7 @@ import type { AiVerb, VerbContext, VerbIO, VerbOutcome } from '../types';
 
 export const SCRATCH_JOB = 'coverage';
 
-/** The questions in scope with words, keyed and numbered, with their marked units. */
-export function coverageQuestions(ctx: Pick<VerbContext, 'worksheet' | 'scope'>): CoverageQuestion[] {
-  const numbering = computeNumbering(ctx.worksheet);
-  return qualityQuestions(ctx.worksheet, ctx.scope)
-    .filter((q) => !questionEmpty(q))
-    .map((view, index) => {
-      const numbered = numbering.byQuestionId.get(view.questionId);
-      const key = `q${index + 1}`;
-      return { question: view, key, number: String(numbered?.number ?? index + 1), units: markedUnits(view, numbered?.question, key) };
-    });
-}
+export { coverageQuestions };
 
 const appLanguage = (): ReportLanguage => (uiLanguage() === 'en' ? 'en' : 'zh');
 
@@ -118,11 +120,12 @@ export const coverageVerb: AiVerb = {
     };
     const coverage = paperResult(base, results, total);
     if (!tagged(coverage)) return { kind: 'nothing', summary: m.coverageNothing };
+    const paper: CheckedPaper = { worksheetId: ctx.worksheet.id, title: base.title, sent: total, fingerprint: paperFingerprint(ctx.worksheet), results };
     return {
       kind: 'report',
       summary: summaryOf(m.coverageHead, coverage.report, outcome),
-      coverage,
-      rebuild: (choice) => paperResult(base, results, total, choice),
+      record: coverageRecord({ ...base, id: newId() }, [paper]),
+      fresh: true,
     };
   },
 };
@@ -131,7 +134,7 @@ export const coverageVerb: AiVerb = {
 const setPapers = (ctx: VerbContext): Worksheet[] | undefined =>
   ctx.paperSet && ctx.paperSet.papers.length >= 2 ? ctx.paperSet.papers : undefined;
 
-const wholePaper = (worksheet: Worksheet) => coverageQuestions({ worksheet, scope: { kind: 'paper' } });
+const wholePaper = wholePaperQuestions;
 
 /**
  * Check coverage for the whole set (k-0489): every paper of the open paper's set, whole,
@@ -174,6 +177,7 @@ export const coverageSetVerb: AiVerb = {
     await sweepScratch(SCRATCH_JOB);
 
     const runs: PaperRun[] = [];
+    const checked: CheckedPaper[] = [];
     let stopped = false;
     let fatal: CoverageRunOutcome['fatal'];
     let before = 0;
@@ -193,6 +197,8 @@ export const coverageSetVerb: AiVerb = {
     // Papers never reached still count as sent, so the report says they were not analysed.
     for (const [i, { worksheet, questions }] of papers.entries()) {
       if (i >= runs.length) runs.push({ paper: numbers[i], title: titleIn(worksheet, language), results: [], sent: questions.length });
+      const run = runs[i];
+      checked.push({ worksheetId: worksheet.id, paper: run.paper, title: run.title, sent: run.sent, fingerprint: paperFingerprint(worksheet), results: run.results });
     }
 
     const analysed = runs.reduce((n, run) => n + run.results.filter((r) => r.ok).length, 0);
@@ -206,14 +212,52 @@ export const coverageSetVerb: AiVerb = {
     };
     const coverage = setResult(base, runs);
     if (!tagged(coverage)) return { kind: 'nothing', summary: m.coverageNothing };
+    const setId = paperSetOf(ctx.worksheet)?.id;
     return {
       kind: 'report',
       summary: summaryOf(m.coverageSetHead, coverage.report, { stopped, ...(fatal ? { fatal } : {}) }),
-      coverage,
-      rebuild: (choice) => setResult(base, runs, choice),
+      record: coverageRecord({ ...base, id: newId(), ...(setId ? { setId } : {}) }, checked),
+      fresh: true,
     };
+  },
+};
+
+/** "22 Nov 2026: 31 of 49 key points (63%)": a saved check's line in the bar and the list. */
+export function savedSummary(record: Parameters<typeof coverageFromSaved>[0]): string {
+  const m = assistMessages();
+  const { hit, of } = coverageFromSaved(record).report.breadth.keyPoints;
+  const at = new Date(record.at);
+  return m.coverageSavedHead(at.getDate(), at.getMonth() + 1, at.getFullYear(), hit, of, percent(of ? hit / of : null));
+}
+
+/**
+ * Past coverage reports (k-0489 v2): the checks saved with this paper, the newest opened
+ * straight away, the rest a pick away in the report. Nothing is sent and no key is needed.
+ * Its id extends `check.syllabus`, so it is paused with the check (`isPaused`).
+ */
+export const coverageSavedVerb: AiVerb = {
+  id: 'check.syllabus.saved',
+  group: 'check',
+  order: 32,
+  needsKey: false,
+  label: () => assistMessages().coverageSavedLabel,
+
+  available(ctx) {
+    const count = savedCoverageReports(ctx.worksheet).length;
+    return count > 0 ? { count, unit: assistMessages().unitReports(count) } : null;
+  },
+
+  sendsLine() {
+    return assistMessages().coverageSavedLine;
+  },
+
+  async run(ctx): Promise<VerbOutcome> {
+    const latest = savedCoverageReports(ctx.worksheet)[0];
+    if (!latest) return { kind: 'nothing', summary: assistMessages().coverageSavedNone };
+    return { kind: 'report', summary: savedSummary(latest), record: latest, fresh: false };
   },
 };
 
 registerVerb(coverageVerb);
 registerVerb(coverageSetVerb);
+registerVerb(coverageSavedVerb);

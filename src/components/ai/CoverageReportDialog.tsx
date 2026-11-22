@@ -1,15 +1,22 @@
 'use client';
 
 import { Fragment, useMemo, useState } from 'react';
+import { insights } from '@/coverage/insights';
+import { paperFingerprint } from '@/coverage/questions';
 import type { CoverageReport, ElectiveChoice, ElectiveCode, KeyPointRow, TopicRow, Where } from '@/coverage/report';
-import { marksText, percent } from '@/coverage/report';
-import type { CoverageResult } from '@/coverage/result';
+import { gaps, marksText, percent } from '@/coverage/report';
+import { changedRuns, coverageFromSaved } from '@/coverage/result';
 import { nameIn, reportFileName } from '@/coverage/reportText';
 import { BANDS, type Band, type Confidence } from '@/coverage/types';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { chooseSavePath, isDesktop, PDF_FILTERS, revealFile, revealLabel } from '@/platform';
 import { lookupCode } from '@/syllabus';
-import { Button, Segmented } from '@/components/ui';
+import { Button, Segmented, SelectField } from '@/components/ui';
+import { MAX_COVERAGE_REPORTS, savedCoverageReports } from '@/model/coverageReports';
+import type { SavedCoverageReport } from '@/model/types';
+import { deleteCoverageReport, useCoverageSaves } from '@/store/coverageReports';
+import { useWorksheetStore } from '@/store/worksheetStore';
+import { useSetMembers } from '@/components/editor/setMembers';
 import { Dialog } from '@/components/ui/Dialog';
 import { browserJobDeps, printJobPdf } from '@/components/editor/printJob';
 import { COVERAGE_MESSAGES } from './coverageReport.messages';
@@ -20,6 +27,11 @@ import { COVERAGE_MESSAGES } from './coverageReport.messages';
  * untested key points greyed, and what the AI said per part. Read-only, teacher-facing;
  * the dialog itself is never printed (outside `#print-root`).
  *
+ * k-0489 v2: every check is kept with the paper; the dialog opens on one and picks among
+ * the others (date, scope, overall %), says whether it is kept, deletes one, and says when
+ * a paper has changed since its check. Laid out as the printed report is: key figures,
+ * skills, sections as bars beside the gaps, then the tables.
+ *
  * k-0489: syllabus names and the AI's notes are in the paper's language
  * (`coverage.language`), the chrome in the app's; "Download report (PDF)" prints the report
  * as its own sheets (`CoverageReportSheets`, the print job path), all in the paper's
@@ -27,20 +39,47 @@ import { COVERAGE_MESSAGES } from './coverageReport.messages';
  */
 type Status = { kind: 'idle' } | { kind: 'busy' } | { kind: 'saved'; path: string } | { kind: 'note'; text: string };
 
-export function CoverageReportDialog({
-  coverage: first,
-  rebuild,
-  onClose,
-}: {
-  coverage: CoverageResult;
-  rebuild(choice: ElectiveChoice): CoverageResult;
-  onClose(): void;
-}) {
+export function CoverageReportDialog({ record: opened, onClose }: { record: SavedCoverageReport; onClose(): void }) {
   const m = useMessages(COVERAGE_MESSAGES);
   const uiZh = useUiLanguage() !== 'en';
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const partners = useSetMembers((s) => s.partners);
+  const saves = useCoverageSaves((s) => s.byId);
+
+  // Every check kept with this paper, newest first; the one just run first if its save has
+  // not landed (or failed), so the report never vanishes from under the reader.
+  const [gone, setGone] = useState<readonly string[]>([]);
+  const records = useMemo(() => {
+    const saved = savedCoverageReports(worksheet).filter((r) => !gone.includes(r.id));
+    return saved.some((r) => r.id === opened.id) || gone.includes(opened.id) ? saved : [opened, ...saved];
+  }, [worksheet, opened, gone]);
+  const [selectedId, setSelectedId] = useState(opened.id);
+  const record = records.find((r) => r.id === selectedId) ?? records[0];
+
   const [choice, setChoice] = useState<ElectiveChoice>('auto');
-  const coverage = useMemo(() => (choice === 'auto' ? first : rebuild(choice)), [choice, first, rebuild]);
+  const coverage = useMemo(() => (record ? coverageFromSaved(record, choice) : null), [record, choice]);
   const [view, setView] = useState<'set' | number>('set');
+
+  // Which papers read differently now than when this check read them.
+  const fingerprints = useMemo(() => {
+    const map = new Map<string, string>([[worksheet.id, paperFingerprint(worksheet)]]);
+    for (const partner of partners) map.set(partner.id, paperFingerprint(partner));
+    return map;
+  }, [worksheet, partners]);
+  const changed = record ? changedRuns(record, (id) => fingerprints.get(id)) : [];
+
+  const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const [asking, setAsking] = useState(false);
+  const [deleteNote, setDeleteNote] = useState('');
+  const pick = (id: string) => {
+    setSelectedId(id);
+    setChoice('auto');
+    setView('set');
+    setStatus({ kind: 'idle' });
+    setAsking(false);
+  };
+
+  if (!record || !coverage) return null;
   const shownPaper = view === 'set' ? undefined : coverage.papers?.find((p) => p.paper === view);
   const report: CoverageReport = shownPaper?.report ?? coverage.report;
   const name = nameIn(coverage.language);
@@ -53,9 +92,22 @@ export function CoverageReportDialog({
   };
   const electiveName = (code: ElectiveCode) => (code === 'EL1' ? m.electivePart1 : m.electivePart2);
   const bandLabel: Record<Band, string> = { know: m.colKnow, apply: m.colApply, evaluate: m.colEvaluate };
+  const facts = insights(report);
+  const missing = gaps(report);
   const desktop = isDesktop();
+  const scopeWord = (r: SavedCoverageReport) => (r.scope === 'set' ? m.scopeSet : r.scope === 'part' ? m.scopePart : m.scopePaper);
+  const optionLine = (r: SavedCoverageReport) => {
+    const { hit, of } = coverageFromSaved(r).report.breadth.keyPoints;
+    return m.option(whenOf(r.at), scopeWord(r), share(hit, of));
+  };
+  const save = saves[record.id];
+  function whenOf(iso: string) {
+    const d = new Date(iso);
+    return m.when(d.getDate(), d.getMonth() + 1, d.getFullYear(), d.getHours(), d.getMinutes());
+  }
+  const saveLine =
+    save === 'saving' ? m.savingReport : save === 'failed' ? m.saveFailed : record.scope === 'set' ? m.savedSet : m.savedPaper;
 
-  const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const download = async () => {
     setStatus({ kind: 'busy' });
     try {
@@ -73,6 +125,15 @@ export function CoverageReportDialog({
     } catch (cause) {
       setStatus({ kind: 'note', text: m.downloadFailed(cause instanceof Error ? cause.message : String(cause)) });
     }
+  };
+  const remove = async () => {
+    setAsking(false);
+    const ok = await deleteCoverageReport(record);
+    setDeleteNote(ok ? '' : m.deleteFailed);
+    const rest = records.filter((r) => r.id !== record.id);
+    setGone((list) => [...list, record.id]);
+    if (rest.length === 0) onClose();
+    else pick(rest[0].id);
   };
   const savedName = status.kind === 'saved' ? status.path.split(/[\\/]/).pop() ?? status.path : '';
 
@@ -101,6 +162,40 @@ export function CoverageReportDialog({
   return (
     <Dialog title={m.title} description={m.description(report.questions)} size="large" onClose={onClose} footer={footer}>
       <div className="space-y-4 px-5 pb-5 pt-4 text-[13px] text-ink" data-print-hide>
+        {/* Which saved check, whether it is kept, and Delete. */}
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-[16rem] flex-1">
+              <SelectField<string> label={m.reportPick} value={record.id} options={records.map((r) => ({ value: r.id, label: optionLine(r) }))} onChange={pick} />
+            </div>
+            {!asking && (
+              <Button variant="danger" size="sm" onClick={() => setAsking(true)}>
+                {m.deleteReport}
+              </Button>
+            )}
+          </div>
+          {asking && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-danger-soft px-3 py-2 text-[12.5px] text-danger-ink">
+              <span className="mr-auto">{record.scope === 'set' ? m.deleteAskSet : m.deleteAsk}</span>
+              <Button size="sm" onClick={() => setAsking(false)}>{m.cancel}</Button>
+              <Button size="sm" variant="primary" onClick={() => void remove()}>{m.deleteReport}</Button>
+            </div>
+          )}
+          <p className={`text-[11.5px] ${save === 'failed' ? 'text-warn-ink' : 'text-ink-subtle'}`}>
+            {saveLine}
+            {save !== 'failed' && ` · ${m.keptHint(MAX_COVERAGE_REPORTS)}`}
+            {deleteNote && <span className="text-warn-ink"> · {deleteNote}</span>}
+          </p>
+        </div>
+
+        {changed.length > 0 && (
+          <div className="rounded-lg bg-warn-soft px-3 py-2 text-[12.5px] text-warn-ink" role="note">
+            {record.scope === 'set'
+              ? m.changedSet(changed.map((i) => m.viewPaper(record.runs[i].paper ?? i + 1)).join(m.listJoin))
+              : m.changedPaper(whenOf(record.at))}
+          </div>
+        )}
+
         {coverage.papers && coverage.papers.length > 0 && (
           <Segmented<string>
             label={m.viewPick}
@@ -110,12 +205,35 @@ export function CoverageReportDialog({
           />
         )}
 
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <Tile label={m.keyPoints} sub={m.byCount} value={share(keyPoints.hit, keyPoints.of)} detail={m.ofN(String(keyPoints.hit), String(keyPoints.of))} />
+        {/* Key figures: the headline first, as the printed report leads with it. */}
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+          <div className="col-span-2 rounded-lg bg-accent-soft px-3.5 py-2.5 md:col-span-1">
+            <div className="text-[11.5px] text-ink-muted">{m.keyPoints} · {m.byCount}</div>
+            <div className="text-[28px] font-semibold leading-tight tabular-nums text-accent-ink">{share(keyPoints.hit, keyPoints.of)}</div>
+            <div className="pb-1.5 text-[11.5px] tabular-nums text-ink-muted">{m.ofN(String(keyPoints.hit), String(keyPoints.of))}</div>
+            <Meter value={keyPoints.of ? keyPoints.hit / keyPoints.of : 0} />
+          </div>
           <Tile label={m.hours} sub={m.byHours} value={share(hours.hit, hours.of)} detail={m.hoursOf(marksText(hours.hit), String(hours.of))} />
           <Tile label={m.points} sub={m.detail} value={share(points.hit, points.of)} detail={m.ofN(String(points.hit), String(points.of))} />
           <Tile label={m.marksTile} value={marksText(report.marks.total)} detail={m.confidenceLine(conf('high'), conf('medium'), conf('low'))} />
         </div>
+
+        {facts.skills && (
+          <div>
+            <div className="pb-1 text-[11.5px] font-medium text-ink-muted">{m.skills}</div>
+            <div className="flex h-2.5 overflow-hidden rounded-full bg-surface-sunken">
+              {BANDS.map((band) => (facts.skills![band] > 0 ? <div key={band} className={SKILL_CLASS[band]} style={{ width: `${facts.skills![band] * 100}%` }} /> : null))}
+            </div>
+            <div className="flex flex-wrap gap-x-4 pt-1 text-[11.5px] text-ink-muted">
+              {BANDS.map((band) => (
+                <span key={band} className="inline-flex items-center gap-1.5">
+                  <span className={`inline-block h-2 w-2 rounded-sm ${SKILL_CLASS[band]}`} />
+                  {bandText(m, band)} <span className="font-medium tabular-nums text-ink">{percent(facts.skills![band])}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-muted">
           {report.elective.found.length === 0 && <span>{m.electiveNone}</span>}
@@ -165,7 +283,59 @@ export function CoverageReportDialog({
           </div>
         )}
 
-        <div className="overflow-x-auto rounded-lg border border-line">
+        {/* Sections as bars beside the gaps: what is there, then what is missing. */}
+        <div className="grid gap-3 lg:grid-cols-2">
+          <section className="rounded-lg border border-line px-3 py-2.5">
+            <h3 className="pb-1.5 text-[12.5px] font-semibold">{m.bySection}</h3>
+            <ul className="space-y-1">
+              {facts.sections.map(({ topic, hit, of, share: part }) => (
+                <li key={topic.code} className={`grid grid-cols-[2rem_minmax(0,1fr)_5.5rem_2.75rem] items-center gap-2 text-[12px] ${topic.counted ? '' : 'text-ink-subtle'}`}>
+                  <span className={`rounded px-1 text-center text-[11px] font-semibold ${topic.counted ? 'bg-accent-soft text-accent-ink' : 'bg-surface-sunken'}`}>{topic.code}</span>
+                  <span className="truncate" title={name(topic)}>{name(topic)}</span>
+                  <Meter value={part} />
+                  <span className={`text-right tabular-nums ${hit === 0 && topic.counted ? 'font-semibold text-warn-ink' : ''}`}>{hit}/{of}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section className="rounded-lg border border-warn-soft bg-warn-soft/50 px-3 py-2.5">
+            <h3 className="pb-1 text-[12.5px] font-semibold text-warn-ink">{m.gapsTitle}</h3>
+            {missing.length === 0 ? (
+              <p className="text-[12px]">{m.gapsNone}</p>
+            ) : (
+              <div className="space-y-2 text-[12px]">
+                <p className="font-medium">{m.gapsLead(facts.gapCount)}</p>
+                {facts.untested.length > 0 && (
+                  <div>
+                    <div className="text-[11.5px] text-ink-muted">{m.untestedSections}</div>
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {facts.untested.map((s) => (
+                        <span key={s.topic.code} className="rounded-full border border-warn-soft bg-surface px-2 py-px text-[11.5px]">
+                          {s.topic.code} {name(s.topic)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <div className="text-[11.5px] text-ink-muted">{m.biggestGaps}</div>
+                  <ol className="list-decimal space-y-0.5 pl-5 pt-0.5">
+                    {facts.biggestGaps.map(({ topic, keyPoint }) => (
+                      <li key={keyPoint.code}>
+                        <span className="font-medium">{name(keyPoint)}</span>
+                        <span className="text-ink-subtle"> · {topic.code} · {m.aboutHours(marksText(keyPoint.hours))}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+
+        <details className="rounded-lg border border-line" open>
+          <summary className="cursor-pointer select-none px-3 py-2 text-[12.5px] font-medium">{m.topicTable}</summary>
+          <div className="overflow-x-auto border-t border-line">
           <table className="w-full border-collapse text-[12.5px] lg:min-w-[760px]">
             <thead>
               <tr className="whitespace-nowrap border-b border-line bg-surface-sunken text-left text-[11.5px] text-ink-muted">
@@ -186,7 +356,8 @@ export function CoverageReportDialog({
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </details>
 
         <details className="rounded-lg border border-line px-3 py-2">
           <summary className="cursor-pointer select-none text-[12.5px] font-medium">{m.byQuestion}</summary>
@@ -220,6 +391,16 @@ export function CoverageReportDialog({
         {(coverage.language === 'zh') !== uiZh && <p className="text-[11.5px] text-ink-subtle">{m.languageNote(coverage.language === 'zh')}</p>}
       </div>
     </Dialog>
+  );
+}
+
+const SKILL_CLASS: Record<Band, string> = { know: 'bg-accent/35', apply: 'bg-accent/70', evaluate: 'bg-accent' };
+
+function Meter({ value }: { value: number }) {
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-surface-sunken" aria-hidden>
+      <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%` }} />
+    </div>
   );
 }
 

@@ -1,6 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { isAiError, type AiErrorInfo } from '@/ai/types';
 import { genericError } from './fillRules';
+import { keepCoverageReport } from '@/store/coverageReports';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { useAiMenu } from './menuStore';
 import { paperSetFor } from './paperSetSource';
@@ -123,6 +124,9 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
       return;
     }
     if (outcome.kind === 'inserted') applyView(outcome);
+    // A finished coverage check is kept with its paper(s) at once (k-0489 v2), before the
+    // report is even read: closing it without downloading loses nothing.
+    if (outcome.kind === 'report' && outcome.fresh) void keepCoverageReport(outcome.record);
     runs += 1;
     set({ phase: { kind: 'review', verbId, runId: runs, outcome, index: 0 } });
   },

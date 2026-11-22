@@ -1,3 +1,4 @@
+import { coverageFromSaved } from './result';
 import { describe, expect, it, vi } from 'vitest';
 import { presetFor } from '@/ai/providers';
 import { AiError, type CompletionRequest } from '@/ai/types';
@@ -245,8 +246,10 @@ describe('the verb', () => {
     const outcome = await coverageVerb.run(ctx, { signal: new AbortController().signal, progress: () => {} });
     expect(outcome.kind).toBe('report');
     if (outcome.kind !== 'report') return;
-    expect(outcome.coverage.report.topics.find((t) => t.code === 'B')!.keyPoints.find((keyPoint) => keyPoint.code === 'B.factors')!.hit).toBe(true);
+    expect(coverageFromSaved(outcome.record).report.topics.find((t) => t.code === 'B')!.keyPoints.find((keyPoint) => keyPoint.code === 'B.factors')!.hit).toBe(true);
     expect(outcome.summary).toMatch(/1 of 49 key points/);
+    expect(outcome.fresh).toBe(true);
+    expect(outcome.record.runs[0].worksheetId).toBe(ctx.worksheet.id);
     expect(disposed).toEqual(['coverage']);
 
     client.complete = async () => { throw new Error('boom'); };

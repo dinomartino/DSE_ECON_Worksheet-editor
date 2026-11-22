@@ -105,6 +105,7 @@ export function duplicateSetPapers(papers: readonly Worksheet[], options: Duplic
     delete copy.classes;
     delete copy.satOn;
     delete copy.examResults;
+    delete copy.coverageReports;
     const shown = paper.name?.trim() || plain(paper.title.en).trim() || plain(paper.title.zh).trim();
     if (options.bumpYear) {
       copy.title = bumpBi(paper.title);

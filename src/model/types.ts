@@ -1150,6 +1150,14 @@ export interface Worksheet {
    * (`model/examResults.ts`). Absent = nothing entered; the key prints as before.
    */
   examResults?: ExamResults;
+  /**
+   * Saved syllabus coverage checks (k-0489 v2), newest first, at most
+   * `MAX_COVERAGE_REPORTS` this build can read: what each check read and what the AI said,
+   * so a report reopens exactly as it was run. Never printed. Typed loosely on purpose:
+   * read only through `savedCoverageReports` (`model/coverageReports.ts`), which skips a
+   * newer build's records and keeps them untouched. Absent = never checked.
+   */
+  coverageReports?: unknown[];
   createdAt: string;
   updatedAt: string;
   /**
@@ -1263,4 +1271,55 @@ export interface PaperTarget {
   minutes?: number;
   /** Items wanted per question type id (`mcq`: 45). */
   counts?: Record<string, number>;
+}
+
+/**
+ * One saved syllabus coverage check (k-0489 v2, `model/coverageReports.ts`): enough to
+ * build the report again exactly as it was run, in the language it was written in, even
+ * after the paper changes. `v` is the record's own format: a build reads the versions it
+ * knows and keeps the others as they are.
+ */
+export interface SavedCoverageReport {
+  v: 1;
+  id: string;
+  /** ISO time the check finished: the report's date. */
+  at: string;
+  scope: 'paper' | 'part' | 'set';
+  language: 'en' | 'zh';
+  /** The paper's title, or the set's name, as the report prints it. */
+  title: string;
+  /** The printed report's sheet size. */
+  pageSize: PaperSize;
+  /** The syllabus the codes belong to (`SYLLABUS.id`). */
+  syllabus: string;
+  /** A whole set's check: the set it checked. */
+  setId?: string;
+  /** What was checked: one paper's run, or each paper of the set in set order. */
+  runs: SavedCoverageRun[];
+}
+
+export interface SavedCoverageRun {
+  worksheetId: string;
+  /** Paper 1, Paper 2: a whole set's check only. */
+  paper?: number;
+  title: string;
+  /** Questions with words sent. */
+  sent: number;
+  /** What the check read of the whole paper (`coverage/fingerprint.ts`): tells "changed since". */
+  fingerprint: string;
+  results: SavedQuestionResult[];
+}
+
+export interface SavedQuestionResult {
+  number: string;
+  ok: boolean;
+  units: Array<{ label: string; marks: number; picks: SavedPick[] }>;
+}
+
+export interface SavedPick {
+  code: string;
+  w: 1 | 2;
+  band: 'know' | 'apply' | 'evaluate';
+  conf: 'high' | 'medium' | 'low';
+  why: string;
 }

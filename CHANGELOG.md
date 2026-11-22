@@ -20,9 +20,9 @@ a version heading is edited afterwards.
   marks split into Know, Apply / analyse and Evaluate, its share of the paper and of lesson time,
   the questions that test it, and the key points nothing tests. The Elective Part counts when the
   paper has its questions. Open By question to see what the AI said each part tests. These are AI
-  estimates: nothing is saved to the paper, and the working files are deleted when the report is
-  ready.
-  <!-- zh: **查看試卷覆蓋多少課程。** ✦ AI →「檢查課程覆蓋」會把試卷的題目（或你選取的題目）傳送到你在「設定 → AI」選擇的 AI 服務（與中文翻譯相同），然後顯示報告：試卷考核了 2025 年指引中多少個學習要點，按數目及按建議課時計算；再列出每個課題及學習要點的分數（分為知識、應用及分析、評鑑）、佔試卷及課時的比例、考核它的題目，以及沒有題目考核的學習要點。試卷有選修部分的題目時會一併計算。打開「按題目」可看到 AI 認為每部分考核甚麼。這些是 AI 的估算：不會儲存任何內容到試卷，報告完成後暫存檔案會被刪除。 -->
+  estimates: the questions are never changed, and the working files are deleted when the report
+  is ready.
+  <!-- zh: **查看試卷覆蓋多少課程。** ✦ AI →「檢查課程覆蓋」會把試卷的題目（或你選取的題目）傳送到你在「設定 → AI」選擇的 AI 服務（與中文翻譯相同），然後顯示報告：試卷考核了 2025 年指引中多少個學習要點，按數目及按建議課時計算；再列出每個課題及學習要點的分數（分為知識、應用及分析、評鑑）、佔試卷及課時的比例、考核它的題目，以及沒有題目考核的學習要點。試卷有選修部分的題目時會一併計算。打開「按題目」可看到 AI 認為每部分考核甚麼。這些是 AI 的估算：題目不會被更改，報告完成後暫存檔案會被刪除。 -->
 
 - **The syllabus coverage report speaks the paper's language, downloads as a PDF, and can
   cover a whole mock set.** Topic and key point names, and the AI's notes on each question, are
@@ -32,6 +32,18 @@ a version heading is edited afterwards.
   and the gaps. In a paper set, ✦ AI → Check coverage for the whole set checks Paper 1 and Paper
   2 together: one report for the set, each paper's figures beside it, and the same PDF.
   <!-- zh: **課程覆蓋報告使用試卷的語言、可下載為 PDF，並可檢查整套模擬試卷。** 課題及學習要點名稱，以及 AI 對每條題目的說明，現在使用試卷的語言（即使程式介面是英文，中文試卷的報告也是中文）；按鈕仍使用程式介面的語言。「下載報告（PDF）」會儲存一份可列印的報告，包括試卷名稱、日期、範圍、覆蓋數字、每個課題及學習要點、考核它們的題目，以及缺口。在套卷中，✦ AI →「檢查整套試卷的課程覆蓋」會一併檢查 Paper 1 及 Paper 2：整套試卷一份報告，旁邊列出每份試卷的數字，同樣可下載 PDF。 -->
+
+- **Coverage reports are kept with the paper, and the PDF is easier to read.** Every syllabus
+  coverage check, for one paper or a whole set, is now saved with the paper by itself, so closing
+  the report without downloading loses nothing. ✦ AI → Past coverage reports opens the latest one;
+  pick any of the last five by date, scope and overall %, download its PDF again or delete it. If
+  the paper has changed since a check, the report says so and still shows the paper as it was
+  checked. The reports travel with the paper (sync, copies of the file) and older versions of the
+  app open these papers as before. The PDF is redesigned: a summary page with the key figures, a
+  few plain sentences, the skills the marks go to and every section as a bar; then the gaps with
+  the largest ones to cover next; each topic's key points in a roomy table; and every question's
+  mapping as an appendix, with page headers and numbers, in 中文 or English.
+  <!-- zh: **課程覆蓋報告會與試卷一併保存，PDF 亦更易閱讀。** 每次檢查課程覆蓋（單份試卷或整套試卷）都會自動與試卷一併儲存，即使關閉報告時沒有下載也不會遺失。✦ AI →「過往的課程覆蓋報告」會打開最近一份；可按日期、範圍及整體百分比選擇最近五份中的任何一份，再次下載 PDF 或刪除。若試卷在檢查後有改動，報告會註明，並仍顯示檢查時的試卷。報告會隨試卷一併同步及複製，舊版程式仍可如常開啟這些試卷。PDF 重新設計：首頁是重要數據、幾句總覽、各能力所佔分數及每個課題的覆蓋橫條；然後是缺口及最值得補上的部分、每個課題的學習要點表，以及作為附錄的逐題分析，附頁首及頁碼，以中文或英文顯示。 -->
 
 ### Fixed
 - **Tables in imported Word papers come in whole.** A heading row with one filled cell (such

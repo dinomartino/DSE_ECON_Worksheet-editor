@@ -1,5 +1,6 @@
 import { foldLegacyClassTag } from './classes';
 import { normalizeAnswerKeyLayout } from './answerKeyLayout';
+import { normalizeCoverageReports } from './coverageReports';
 import { normalizeExamResults } from './examResults';
 import { foldLegacyCellJustify } from './legacyCellJustify';
 import type { Worksheet } from './types';
@@ -107,6 +108,7 @@ export const KNOWN_KEYS = new Set([
   'paperSet',
   'answerKeyLayout',
   'examResults',
+  'coverageReports',
   'createdAt',
   'updatedAt',
   '__unknown',
@@ -179,13 +181,17 @@ function normalize(worksheet: Worksheet): Worksheet {
   const answerKeyLayout = normalizeAnswerKeyLayout(worksheet.answerKeyLayout);
   // So do exam results (k-0471): a bad % or comment is dropped, the rest kept.
   const examResults = normalizeExamResults(worksheet.examResults);
-  const { answerKeyLayout: _stored, examResults: _results, ...rest } = worksheet;
+  // And saved coverage checks (k-0489 v2): a malformed one is dropped, a newer build's kept.
+  const coverageReports = normalizeCoverageReports(worksheet.coverageReports);
+  const { answerKeyLayout: _stored, examResults: _results, coverageReports: _reports, ...rest } = worksheet;
   void _stored;
   void _results;
+  void _reports;
   return {
     ...rest,
     ...(answerKeyLayout ? { answerKeyLayout } : {}),
     ...(examResults ? { examResults } : {}),
+    ...(coverageReports ? { coverageReports } : {}),
     fonts: worksheet.fonts ?? { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
     pageSetup: worksheet.pageSetup ?? {
       paper: 'A4',

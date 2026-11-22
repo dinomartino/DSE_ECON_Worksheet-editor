@@ -6,8 +6,8 @@ export const COVERAGE_MESSAGES = defineMessages({
   title: { en: 'Syllabus coverage', zh: '課程覆蓋' },
   description: {
     en: (n: number) =>
-      `HKDSE Economics, 2025 curriculum guide. AI estimates from ${n} ${n === 1 ? 'question' : 'questions'}; nothing was saved to the paper.`,
-    zh: (n: number) => `HKDSE 經濟科，2025 年課程及評估指引。由 AI 按 ${n} 條題目估算；沒有儲存任何內容到試卷。`,
+      `HKDSE Economics, 2025 curriculum guide. AI estimates from ${n} ${n === 1 ? 'question' : 'questions'}; the questions were not changed.`,
+    zh: (n: number) => `HKDSE 經濟科，2025 年課程及評估指引。由 AI 按 ${n} 條題目估算；題目沒有被更改。`,
   },
   keyPoints: { en: 'Key points tested', zh: '已考核的學習要點' },
   byCount: { en: 'by count', zh: '按數目' },
@@ -98,4 +98,58 @@ export const COVERAGE_MESSAGES = defineMessages({
   },
   listJoin: { en: ', ', zh: '、' },
   pointsJoin: { en: '; ', zh: '；' },
+  // k-0489 v2: saved reports, the redesign
+  reportPick: { en: 'Report', zh: '報告' },
+  when: {
+    en: (day: number, month: number, year: number, hours: number, minutes: number) =>
+      `${day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1] ?? month} ${year}, ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
+    zh: (day: number, month: number, year: number, hours: number, minutes: number) =>
+      `${year}年${month}月${day}日 ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
+  },
+  scopePaper: { en: 'Whole paper', zh: '全份試卷' },
+  scopePart: { en: 'Part of the paper', zh: '部分試卷' },
+  scopeSet: { en: 'Whole set', zh: '整套試卷' },
+  option: {
+    en: (when: string, scope: string, pct: string) => `${when} · ${scope} · ${pct}`,
+    zh: (when: string, scope: string, pct: string) => `${when} · ${scope} · ${pct}`,
+  },
+  savingReport: { en: 'Saving with the paper…', zh: '正在與試卷一併儲存…' },
+  savedPaper: { en: 'Saved with this paper', zh: '已與這份試卷一併儲存' },
+  savedSet: { en: 'Saved with each paper of the set', zh: '已與整套試卷的每份試卷一併儲存' },
+  saveFailed: {
+    en: 'Could not save this report with every paper. Download the PDF to keep it.',
+    zh: '未能把報告與每份試卷一併儲存。請下載 PDF 保留。',
+  },
+  keptHint: {
+    en: (n: number) => `The last ${n} checks are kept with the paper, and travel with it.`,
+    zh: (n: number) => `試卷會保留最近 ${n} 次檢查，並隨試卷一併保存及同步。`,
+  },
+  deleteReport: { en: 'Delete', zh: '刪除' },
+  deleteAsk: { en: 'Delete this saved report? This cannot be undone.', zh: '刪除這份已儲存的報告？此操作無法復原。' },
+  deleteAskSet: {
+    en: 'Delete this saved report from every paper of the set? This cannot be undone.',
+    zh: '從整套試卷的每份試卷刪除這份已儲存的報告？此操作無法復原。',
+  },
+  cancel: { en: 'Cancel', zh: '取消' },
+  deleteFailed: { en: 'Could not delete it from every paper.', zh: '未能從每份試卷刪除。' },
+  changedPaper: {
+    en: (when: string) => `This paper has changed since this check (${when}). The report shows the paper as it was checked; run the check again to see it as it is now.`,
+    zh: (when: string) => `這份試卷在這次檢查（${when}）後有改動。報告顯示的是檢查時的試卷；如要看現在的試卷，請再檢查一次。`,
+  },
+  changedSet: {
+    en: (papers: string) => `Changed since this check: ${papers}. The report shows the set as it was checked; run the check again to see it as it is now.`,
+    zh: (papers: string) => `這次檢查後有改動：${papers}。報告顯示的是檢查時的整套試卷；如要看現在的試卷，請再檢查一次。`,
+  },
+  bySection: { en: 'Coverage by section', zh: '各課題的覆蓋' },
+  skills: { en: 'Skills tested, by marks', zh: '考核的能力（按分數）' },
+  gapsTitle: { en: 'Gaps and suggestions', zh: '缺口及建議' },
+  gapsLead: {
+    en: (n: number) => `${n} ${n === 1 ? 'key point' : 'key points'} in scope ${n === 1 ? 'is' : 'are'} not tested.`,
+    zh: (n: number) => `範圍內有 ${n} 個學習要點未有考核。`,
+  },
+  gapsNone: { en: 'Every key point in scope is tested.', zh: '範圍內每個學習要點都有考核。' },
+  untestedSections: { en: 'Sections not tested at all', zh: '完全未有考核的課題' },
+  biggestGaps: { en: 'Largest gaps by lesson time: worth a question next time', zh: '課時最多的缺口：下次可考慮出題' },
+  aboutHours: { en: (h: string) => `about ${h} h`, zh: (h: string) => `約 ${h} 小時` },
+  topicTable: { en: 'Topic by topic', zh: '逐個課題' },
 });

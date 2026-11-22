@@ -113,7 +113,7 @@ export function AiBar() {
   return (
     <>
       {review?.outcome.kind === 'report' && reportClosedFor !== review.runId && (
-        <CoverageReportDialog coverage={review.outcome.coverage} rebuild={review.outcome.rebuild} onClose={() => setReportClosedFor(review.runId)} />
+        <CoverageReportDialog key={review.runId} record={review.outcome.record} onClose={() => setReportClosedFor(review.runId)} />
       )}
       {cardOpen && current && (
         <ItemCard

@@ -11,9 +11,10 @@ import type { Worksheet } from '@/model/types';
 import { withFlow } from '@/test/fixtures';
 import { scriptedClient } from '@/translate/testKit';
 import { reportLanguage } from './language';
+import { insights } from './insights';
 import { gaps } from './report';
 import { reportText, reportFileName } from './reportText';
-import { paperNumbers, setResult, titleIn } from './result';
+import { coverageFromSaved, paperNumbers, setResult, titleIn } from './result';
 import type { QuestionResult } from './types';
 
 /** A paper of one structured question per text, each part worth 2 marks. */
@@ -76,9 +77,8 @@ describe('the report language follows the paper (k-0489)', () => {
     expect(client.requests[0].system).toMatch(/Traditional Chinese/);
     expect(outcome.kind).toBe('report');
     if (outcome.kind !== 'report') return;
-    expect(outcome.coverage.language).toBe('zh');
-    expect(outcome.coverage.title).toBe('模擬試卷');
-    expect(outcome.coverage.scope).toBe('paper');
+    expect(outcome.record).toMatchObject({ v: 1, language: 'zh', title: '模擬試卷', scope: 'paper' });
+    expect(coverageFromSaved(outcome.record).language).toBe('zh');
 
     // The whole set: hidden without a set, then one report over both papers.
     expect(coverageSetVerb.available(ctx)).toBeNull();
@@ -90,13 +90,15 @@ describe('the report language follows the paper (k-0489)', () => {
     const set = await coverageSetVerb.run(setCtx, { signal: new AbortController().signal, progress: (done) => progress.push(done) });
     expect(set.kind).toBe('report');
     if (set.kind !== 'report') return;
-    expect(set.coverage).toMatchObject({ language: 'en', title: 'S6 Mock', scope: 'set' });
-    expect(set.coverage.papers?.map((p) => [p.paper, p.title, p.report.questions])).toEqual([[1, 'Paper 1', 2], [2, 'Paper 2', 1]]);
-    expect(set.coverage.report.questions).toBe(3);
-    expect(set.coverage.report.units.map((u) => u.where.paper)).toEqual([1, 1, 2]);
+    const coverage = coverageFromSaved(set.record);
+    expect(coverage).toMatchObject({ language: 'en', title: 'S6 Mock', scope: 'set', id: set.record.id });
+    expect(set.record.runs.map((run) => [run.worksheetId, run.paper])).toEqual([[p1.id, 1], [p2.id, 2]]);
+    expect(coverage.papers?.map((p) => [p.paper, p.title, p.report.questions])).toEqual([[1, 'Paper 1', 2], [2, 'Paper 2', 1]]);
+    expect(coverage.report.questions).toBe(3);
+    expect(coverage.report.units.map((u) => u.where.paper)).toEqual([1, 1, 2]);
     expect(Math.max(...progress)).toBe(3);
     expect(set.summary).toMatch(/^Whole set: 1 of 49 key points/);
-    expect(set.rebuild('EL1').papers).toHaveLength(2);
+    expect(coverageFromSaved(set.record, 'EL1').papers).toHaveLength(2);
     vi.doUnmock('@/translate/deps');
   });
 });
@@ -161,6 +163,14 @@ describe('printed report pagination (k-0489)', () => {
     expect(pages).toEqual([[{ block: 0 }], [{ block: 1 }, { block: 2 }]]);
   });
 
+  it('starts a major section on a fresh sheet (k-0489 v2)', () => {
+    expect(packBlocks([{}, { breakBefore: true }, {}], [10, 10, 10], heads, 100)).toEqual([[{ block: 0 }], [{ block: 1 }, { block: 2 }]]);
+    expect(packBlocks([{ breakBefore: true }], [10], heads, 100)).toEqual([[{ block: 0 }]]);
+    // Soft: only when less than the share is left.
+    expect(packBlocks([{}, { breakUnless: 0.4 }], [50, 10], heads, 100)).toEqual([[{ block: 0 }, { block: 1 }]]);
+    expect(packBlocks([{}, { breakUnless: 0.4 }], [70, 10], heads, 100)).toEqual([[{ block: 0 }], [{ block: 1 }]]);
+  });
+
   it('puts a block taller than a sheet on its own', () => {
     expect(packBlocks([{}, {}, {}], [10, 500, 10], heads, 100)).toEqual([[{ block: 0 }], [{ block: 1 }], [{ block: 2 }]]);
   });
@@ -171,9 +181,56 @@ describe('pausing check.syllabus pauses the whole set too', () => {
   it('pauses the family, not the siblings', () => {
     setPausedForTest(['check.syllabus']);
     expect(isPaused('check.syllabus.set')).toBe(true);
+    expect(isPaused('check.syllabus.saved')).toBe(true);
     expect(isPaused('check.terms')).toBe(false);
     expect(isPaused('check')).toBe(false);
     setPausedForTest([]);
     expect(isPaused('check.syllabus.set')).toBe(false);
+  });
+});
+
+describe('the report’s summary (k-0489 v2)', () => {
+  const tagged = (number: string, code: string, band: 'know' | 'apply' | 'evaluate', marks = 2): QuestionResult => ({
+    questionId: number,
+    number,
+    ok: true,
+    units: [{ key: number, label: '', marks, picks: [{ code, w: 2, band, conf: 'high', why: '' }], outside: '' }],
+  });
+
+  it('names the best-covered and untested sections, the top skill and the biggest gaps', () => {
+    const report = setResult({ language: 'en', title: 'T', scope: 'paper', at: '2026-11-22T00:00:00Z', pageSize: 'A4' }, [
+      { paper: 1, title: 'P', sent: 3, results: [tagged('1', 'C.ped', 'apply', 4), tagged('2', 'C.pes', 'know'), tagged('3', 'A.scarcity', 'apply')] },
+    ]).report;
+    const facts = insights(report);
+    expect(facts.sections.map((s) => s.topic.code).slice(0, 3)).toEqual(['A', 'B', 'C']);
+    expect(facts.best[0].topic.code).toMatch(/^[AC]$/);
+    expect(facts.untested.map((s) => s.topic.code)).toContain('B');
+    expect(facts.untested.map((s) => s.topic.code)).not.toContain('C');
+    expect(facts.topSkill).toBe('apply');
+    expect(facts.skills!.apply).toBeCloseTo(6 / 8);
+    expect(facts.biggestGaps).toHaveLength(5);
+    const hours = facts.biggestGaps.map((g) => g.keyPoint.hours);
+    expect([...hours].sort((a, b) => b - a)).toEqual(hours);
+    expect(facts.gapCount).toBe(gaps(report).reduce((n, g) => n + g.keyPoints.length, 0));
+  });
+});
+
+describe('past coverage reports (k-0489 v2)', () => {
+  it('is offered only with a saved check of this paper, and opens the newest without the AI', async () => {
+    const { coverageSavedVerb } = await import('@/assist/verbs/coverage');
+    const { coverageRecord } = await import('./result');
+    const { withCoverageReport } = await import('@/model/coverageReports');
+    const ws = paperOf('Mock', [[EN, '']]);
+    const ctx: VerbContext = { worksheet: ws, mode: { language: 'en', version: 'student' }, scope: { kind: 'paper' }, scopeLabel: 'Whole paper' };
+    expect(coverageSavedVerb.available(ctx)).toBeNull();
+    expect(coverageSavedVerb.needsKey).toBe(false);
+    const make = (id: string, at: string) =>
+      coverageRecord({ id, language: 'en', title: 'Mock', scope: 'paper', at, pageSize: 'A4' }, [{ worksheetId: ws.id, title: 'Mock', sent: 1, fingerprint: 'x', results: [] }]);
+    const saved = withCoverageReport(withCoverageReport(ws, make('old', '2026-11-01T12:00:00Z')), make('new', '2026-11-20T12:00:00Z'));
+    const withSaved = { ...ctx, worksheet: saved };
+    expect(coverageSavedVerb.available(withSaved)).toMatchObject({ count: 2, unit: 'reports' });
+    const outcome = await coverageSavedVerb.run(withSaved, { signal: new AbortController().signal, progress: () => {} });
+    expect(outcome).toMatchObject({ kind: 'report', fresh: false, record: { id: 'new' } });
+    if (outcome.kind === 'report') expect(outcome.summary).toMatch(/^Saved report, 20 Nov 2026: 0 of 49 key points/);
   });
 });

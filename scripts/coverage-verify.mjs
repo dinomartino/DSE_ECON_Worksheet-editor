@@ -111,6 +111,9 @@ async function newPage(browser, { width = 1280, height = 800, ui = 'en', touch =
   const ai = { v: 1, provider: 'custom', models: { custom: MOCK_MODEL }, baseUrls: { custom: `${MOCK_ORIGIN}/v1` } };
   await context.addInitScript(
     ([index, bodies, version, settings, lang]) => {
+      // Seeded once per context: a reload keeps what the page saved (k-0489 v2, saved reports).
+      if (localStorage.getItem('coverage-verify-seeded')) return;
+      localStorage.setItem('coverage-verify-seeded', '1');
       localStorage.setItem('econ-worksheet-index', index);
       for (const [id, body] of bodies) localStorage.setItem(`econ-worksheet:${id}`, body);
       localStorage.setItem('econ-worksheet-last-seen-version', version);
@@ -192,9 +195,9 @@ for (const engineName of ENGINES) {
   const engine = engineName === 'webkit' ? webkit : chromium;
   const browser = await engine.launch(engineName === 'chromium' ? { channel: 'chrome' } : {});
   try {
-    await check(engineName, 'run → report, nothing saved, no temporary files left', async () => {
+    await check(engineName, 'run → report saved with the paper, questions untouched, no temporary files left', async () => {
       const { context, page } = await newPage(browser);
-      const before = await stored(page);
+      const before = JSON.parse(await stored(page));
       await runCoverage(page);
       const dialog = page.getByRole('dialog', { name: 'Syllabus coverage' });
       const text = await dialog.innerText();
@@ -217,8 +220,10 @@ for (const engineName of ENGINES) {
       await page.keyboard.press('Escape');
       await page.waitForTimeout(300);
       await bar.getByRole('button', { name: 'Done' }).click();
-      const after = await stored(page);
-      expect(before === after, 'the document changed');
+      const after = JSON.parse(await stored(page));
+      expect(JSON.stringify(before.questions) === JSON.stringify(after.questions), 'the questions changed');
+      expect(Array.isArray(after.coverageReports) && after.coverageReports.length === 1, 'the report was not saved with the paper');
+      expect(after.schemaVersion === before.schemaVersion, `schema version moved: ${before.schemaVersion} → ${after.schemaVersion}`);
       await context.close();
       return left === 0 ? 'files were in OPFS, folder emptied' : `no writable OPFS here: ${left}`;
     });
@@ -232,7 +237,7 @@ for (const engineName of ENGINES) {
       const printed = await downloadReport(page, engineName, 'report-en');
       expect(printed.sheets >= 2, `sheets: ${printed.sheets}`);
       expect(/Syllabus coverage report/.test(printed.text) && /Coverage verify/.test(printed.text), 'title missing on the sheets');
-      expect(/Gaps: key points not tested/.test(printed.text) && /Which questions cover what/.test(printed.text), 'sections missing');
+      expect(/Gaps and suggestions/.test(printed.text) && /Appendix: question by question/.test(printed.text) && /Coverage by section/.test(printed.text) && /At a glance/.test(printed.text), 'sections missing');
       expect(/Page 1 of \d+/.test(printed.text), 'page numbers missing');
       expect(!/[一-鿿]{3,}/.test(printed.text.replace(/Coverage verify/g, '')), 'Chinese on an English report');
       if (printed.pdfPages !== undefined) expect(printed.pdfPages === printed.sheets, `PDF pages ${printed.pdfPages} ≠ sheets ${printed.sheets}`);
@@ -252,7 +257,7 @@ for (const engineName of ENGINES) {
       await page.screenshot({ path: `${OUT}/${engineName}-zh-paper-en-app.png` });
       const printed = await downloadReport(page, engineName, 'report-zh');
       expect(/課程覆蓋報告/.test(printed.text) && /覆蓋測試中文卷/.test(printed.text), 'Chinese title missing');
-      expect(/缺口：未考核的學習要點/.test(printed.text) && /第 1 頁，共 \d+ 頁/.test(printed.text), 'Chinese sections missing');
+      expect(/缺口及建議/.test(printed.text) && /附錄：逐題分析/.test(printed.text) && /第 1 頁，共 \d+ 頁/.test(printed.text), 'Chinese sections missing');
       expect(!/Syllabus coverage report|Key points tested/.test(printed.text), 'English on a Chinese report');
       await context.close();
       return `${printed.sheets} sheets`;
@@ -277,6 +282,43 @@ for (const engineName of ENGINES) {
       expect(/Verify Mock 2026/.test(printed.text) && /By paper/.test(printed.text) && /Whole set: Paper 1, Paper 2/.test(printed.text), 'set report incomplete');
       await context.close();
       return `${printed.sheets} sheets`;
+    });
+
+    await check(engineName, 'k-0489 v2: a saved report reopens after a reload, says the paper changed, and deletes', async () => {
+      const { context, page } = await newPage(browser);
+      await runCoverage(page);
+      const dialog = page.getByRole('dialog', { name: 'Syllabus coverage' });
+      expect(/Saved with this paper/.test(await dialog.innerText()), 'no saved line');
+      await page.getByRole('button', { name: 'Close', exact: true }).last().click();
+      await page.waitForTimeout(400);
+      // Someone edits the paper after the check, then the app is opened again.
+      await page.evaluate((id) => {
+        const d = JSON.parse(localStorage.getItem(`econ-worksheet:${id}`));
+        d.questions[0].blocks[0].text.en = [{ text: 'Edited after the check: a rise in income lowers the demand for an inferior good.' }];
+        localStorage.setItem(`econ-worksheet:${id}`, JSON.stringify(d));
+      }, doc.id);
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: new RegExp(TITLE) }).first().click();
+      await page.waitForSelector('#print-root .paper', { timeout: 15_000 });
+      await page.waitForTimeout(600);
+      await runCoverage(page, 'check.syllabus.saved');
+      const again = page.getByRole('dialog', { name: 'Syllabus coverage' });
+      const text = await again.innerText();
+      expect(/Saved with this paper/.test(text), 'reopened report lost its saved line');
+      expect(/This paper has changed since this check/.test(text), `no changed note: ${text.slice(0, 400)}`);
+      expect(/Whole paper · \d+%/.test(await again.locator('select').first().innerText()), 'picker line missing');
+      await page.screenshot({ path: `${OUT}/${engineName}-saved-changed.png` });
+      const printed = await downloadReport(page, engineName, 'report-saved');
+      expect(/Coverage verify/.test(printed.text), 'saved report did not print');
+      if (await page.getByRole('dialog', { name: 'Syllabus coverage' }).count() === 0) await runCoverage(page, 'check.syllabus.saved');
+      const open = page.getByRole('dialog', { name: 'Syllabus coverage' });
+      await open.getByRole('button', { name: 'Delete', exact: true }).click();
+      await open.getByRole('button', { name: 'Delete', exact: true }).last().click();
+      await page.waitForTimeout(600);
+      expect((await page.getByRole('dialog', { name: 'Syllabus coverage' }).count()) === 0, 'dialog should close with nothing left');
+      const left = JSON.parse(await stored(page));
+      expect(!('coverageReports' in left), 'deleted report still stored');
+      await context.close();
     });
 
     for (const [width, height, ui, touch] of [[1180, 820, 'zh-HK', true], [820, 1180, 'en', true], [390, 844, 'zh-HK', true]]) {

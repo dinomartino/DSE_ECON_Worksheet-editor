@@ -131,8 +131,8 @@ export const ASSIST_MESSAGES = defineMessages({
   coverageLabel: { en: 'Check syllabus coverage', zh: '檢查課程覆蓋' },
   sendsCoverage: {
     en: (n: number, provider: string) =>
-      `Sends ${n} ${n === 1 ? 'question' : 'questions'} to ${provider} with your key, then shows a report. Changes nothing.`,
-    zh: (n: number, provider: string) => `會連同你的 API key 把 ${n} 條題目傳送到 ${provider}，然後顯示報告。不會更改任何內容。`,
+      `Sends ${n} ${n === 1 ? 'question' : 'questions'} to ${provider} with your key, then shows a report, saved with the paper. The questions are not changed.`,
+    zh: (n: number, provider: string) => `會連同你的 API key 把 ${n} 條題目傳送到 ${provider}，然後顯示報告，並與試卷一併儲存。不會更改題目。`,
   },
   analysingQuestions: {
     en: (n: number) => `Matching ${n} ${n === 1 ? 'question' : 'questions'} to the syllabus`,
@@ -154,9 +154,9 @@ export const ASSIST_MESSAGES = defineMessages({
   setBlank: { en: 'Fewer than two papers of the set have questions', zh: '這套試卷少於兩份有題目' },
   sendsCoverageSet: {
     en: (n: number, papers: number, provider: string) =>
-      `Sends ${n} ${n === 1 ? 'question' : 'questions'} from ${papers} papers to ${provider} with your key, then shows one report for the set. Changes nothing.`,
+      `Sends ${n} ${n === 1 ? 'question' : 'questions'} from ${papers} papers to ${provider} with your key, then shows one report for the set, saved with each paper. The questions are not changed.`,
     zh: (n: number, papers: number, provider: string) =>
-      `會連同你的 API key 把 ${papers} 份試卷共 ${n} 條題目傳送到 ${provider}，然後顯示整套試卷的報告。不會更改任何內容。`,
+      `會連同你的 API key 把 ${papers} 份試卷共 ${n} 條題目傳送到 ${provider}，然後顯示整套試卷的報告，並與每份試卷一併儲存。不會更改題目。`,
   },
   analysingPaper: {
     en: (paper: number, papers: number, n: number) => `Paper ${paper} of ${papers}: matching ${n} ${n === 1 ? 'question' : 'questions'} to the syllabus`,
@@ -165,6 +165,22 @@ export const ASSIST_MESSAGES = defineMessages({
   coverageSetHead: {
     en: (hit: number, of: number, pct: string) => `Whole set: ${hit} of ${of} key points (${pct})`,
     zh: (hit: number, of: number, pct: string) => `整套試卷：${of} 個重點中的 ${hit} 個（${pct}）`,
+  },
+
+  // Saved checks (k-0489 v2)
+  coverageSavedLabel: { en: 'Past coverage reports', zh: '過往的課程覆蓋報告' },
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the same signature as en
+  unitReports: { en: (n: number): string => (n === 1 ? 'report' : 'reports'), zh: (_n: number) => '份報告' },
+  coverageSavedLine: {
+    en: 'Opens the latest check saved with this paper; the others are in the report. Sends nothing.',
+    zh: '打開與這份試卷一併儲存的最近一次檢查；其他的可在報告中選擇。不會傳送任何內容。',
+  },
+  coverageSavedNone: { en: 'No coverage report is saved with this paper', zh: '這份試卷沒有儲存課程覆蓋報告' },
+  coverageSavedHead: {
+    en: (day: number, month: number, year: number, hit: number, of: number, pct: string) =>
+      `Saved report, ${day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1] ?? month} ${year}: ${hit} of ${of} key points (${pct})`,
+    zh: (day: number, month: number, year: number, hit: number, of: number, pct: string) =>
+      `已儲存的報告（${year}年${month}月${day}日）：${of} 個重點中的 ${hit} 個（${pct}）`,
   },
 
   // Check question quality
