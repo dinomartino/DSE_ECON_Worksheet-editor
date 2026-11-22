@@ -63,3 +63,10 @@ skills-lock.json
 /scripts/film/score/.venv/
 __pycache__/
 /public/pastpaper-bank
+
+# release signing (RELEASING.md, GitHub secrets): the Tauri updater key (~/.tauri/econ-worksheet.key), the Apple
+# Developer ID certificate (.p12) and any App Store Connect key stay in the keychain and in GitHub secrets, never here.
+# (*.pem and .env* are above; the updater's public key is .key.pub, which these do not match.)
+*.key
+*.p12
+*.p8
