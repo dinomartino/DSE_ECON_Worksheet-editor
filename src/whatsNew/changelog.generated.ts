@@ -26,6 +26,18 @@ a version heading is edited afterwards.
   ready.
   <!-- zh: **查看試卷覆蓋多少課程。** ✦ AI →「檢查課程覆蓋」會把試卷的題目（或你選取的題目）傳送到你在「設定 → AI」選擇的 AI 服務（與中文翻譯相同），然後顯示報告：試卷考核了 2025 年指引中多少個學習要點，按數目及按建議課時計算；再列出每個課題及學習要點的分數（分為知識、應用及分析、評鑑）、佔試卷及課時的比例、考核它的題目，以及沒有題目考核的學習要點。試卷有選修部分的題目時會一併計算。打開「按題目」可看到 AI 認為每部分考核甚麼。這些是 AI 的估算：不會儲存任何內容到試卷，報告完成後暫存檔案會被刪除。 -->
 
+### Fixed
+- **Tables in imported Word papers come in whole.** A heading row with one filled cell (such
+  as "$ billion") stays in its table instead of falling out above it; a fill-in sentence typed
+  after a table, a dialogue laid out with tabs and sentences side by side stay text instead of
+  becoming table rows; a heading merged across columns or down rows stays merged; a cell of
+  several lines keeps its line breaks; cell alignment, column widths and a narrow table's width
+  and centring carry over; a picture in a ruled table stays in its cell beside its text; one
+  table Word split in two comes in as one; a borderless table that only lays out text reads as
+  text; a bank's balance sheet typed as two columns comes in as the T-account; and "Table 1: …"
+  next to a table becomes its caption.
+  <!-- zh: **匯入 Word 試卷時，表格完整保留。** 只有一格有文字的標題列（例如「$ billion」）會留在表格內，不再跑到表格上方；表格後以 Tab 排版的填充句、對話及並排的句子會保留為文字，不再變成表格的一列；跨欄或跨列合併的標題保持合併；一格內的多行文字保留換行；儲存格對齊、欄寬，以及較窄表格的寬度和置中會一併保留；有格線表格內的圖片會留在儲存格內、文字旁邊；Word 分成兩段的同一個表格會匯入為一個表格；沒有格線、只用來排版文字的表格會讀作文字；以兩欄輸入的銀行資產負債表會匯入為 T 型帳戶；表格旁的「Table 1：…」或「表二」會成為表格標題。 -->
+
 ## 0.10.0 — 2026-11-20
 
 ### Added

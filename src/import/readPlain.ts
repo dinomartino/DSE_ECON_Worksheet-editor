@@ -1,7 +1,7 @@
 import type { TabStop } from './docxNumbering';
 import type { InlineRun } from '@/model/types';
 import { tidyText } from './normalize';
-import type { ImageRef } from './types';
+import type { ImageRef, ReaderRow } from './types';
 
 /** A run as a reader emits it: highlight is read for answer detection, then dropped. */
 export type RawRun = InlineRun & { highlight?: boolean };
@@ -16,6 +16,8 @@ export interface RawLine {
   /** Indent level from paragraph margins (HTML). */
   marginDepth?: number;
   cells?: RawRun[][];
+  /** A row of a `.docx` table: its merges, alignment and pictures, by grid column (k-0491). */
+  tableRow?: ReaderRow;
   image?: ImageRef;
   pageBreak?: boolean;
   /** Where the line starts on the page (PDF reader): points, y up from the bottom. */

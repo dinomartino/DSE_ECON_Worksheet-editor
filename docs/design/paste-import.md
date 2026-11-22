@@ -317,7 +317,10 @@ lost by OCR.
   no cells on the lines either side, is text, not a one-row table (`table` in `detectors.ts`), and
   any cells line read as text keeps its tabs (`cellsAsText`, `walk.ts`). Rows of tabbed lines, and
   a table the reader saw (HTML, `.docx`, PDF columns), stay tables; a flattened reader table joins
-  its cells with spaces. Tab stops (`w:tabs`) are not carried: their positions belong to the
+  its cells with spaces. A tabbed line that lays a sentence out is never cut into cells
+  (`typedLayout`, `lines.ts`, k-0491): an underlined gap (a fill-in blank), a cell that is only
+  the closing stop, a passage after a "label:" (a dialogue), or whole sentences side by side.
+  Tabbed rows never join a `.docx` table's rows, nor rows of another table (`sameTable`, `walk.ts`). Tab stops (`w:tabs`) are not carried: their positions belong to the
   source's margins or cell, and the commonest one (a right stop for marks) is read as marks.
 
 ### The dialog, as built (2026-10-08)
@@ -438,7 +441,21 @@ detectors, solver and builder are unchanged: the reader only gives them better l
   Word), `startOverride` restarts, `lvlRestart`, style-linked numbering, Word's formats
   (Chinese counting → `一、`; circled → `(1)`). The label is a `list` label at depth `ilvl`.
 - **Tables:** rows with cells, numbered cells as `A.⇥…` so an option table splits into options;
-  a one-column table is a frame and reads as body text.
+  a one-column table is a frame and reads as body text (a whole paper set in one framed cell
+  keeps its nested tables as tables). Each row of a multi-column table carries a `tableRow`
+  (k-0491): one `ReaderTable` per table (column widths from `w:tblGrid`, width against the
+  page's text column, `w:jc`, `box` rules, "Repeat as header row") and, per grid column, its
+  `gridSpan`/`vMerge` merge (covered cells hold their place), alignment from its paragraphs,
+  `w:vAlign` where a row's cells differ in height, and its one picture when the table is
+  ruled (`settleCellImages` moves a picture that did not load back out, for its slot). A row
+  with one filled cell stays a row when the table has data rows. Rules come from the table,
+  its style's `w:tblBorders` (the default "Normal Table" has none) or most cells' own. A
+  borderless table whose cells hold prose only lays text out: each row reads as a tabbed
+  line (`layoutTable`). Two columns of "label ⇥ figure" under two headings are a balance
+  sheet, read as the editor's T-account (`tAccount`). "Table 1: …" / 表二 just above or
+  below a table becomes its caption (`isTableCaption`, `walk.ts`). Not carried: shading,
+  borderless vs ruled for a data table (it prints ruled), a table nested in a multi-column
+  cell (flattened into the cell's text), HTML pastes' spans.
 - **Text boxes** go where their anchor paragraph is: before it when set above it, else after.
 - **Pictures** become data URLs on their own line, at the display size Word gives
   (`wp:extent`), natural size from the header; `prepareImage` lets the UI downsize. Grouped

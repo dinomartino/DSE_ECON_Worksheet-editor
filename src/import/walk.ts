@@ -6,7 +6,7 @@
 import { cjkShare } from './normalize';
 import { inlineAnswer, isShared, keyPairs, sharedSpan } from './detectors';
 import type { RunVerdict } from './levels';
-import type { Family, Flag, FlagKind, OutBlock, OutPart, OutQuestion, OutStimulus, OutSubPart, OutText, Outline, Role, SourceLine } from './types';
+import type { Family, Flag, FlagKind, OutBlock, OutPart, OutQuestion, OutStimulus, OutSubPart, OutText, Outline, ReaderTable, Role, SourceLine } from './types';
 import type { InlineRun } from '@/model/types';
 import { normalizeRuns } from '@/model/text';
 
@@ -142,6 +142,15 @@ class Walker {
       this.pre.push(line);
       return;
     }
+    const table = this.lastTable;
+    if (table && table.ctr === ctr && ctr[ctr.length - 1] === table.block && !table.block.caption && isTableCaption(text(runs))) {
+      // "Table 1: …" just below a table that has none is its caption.
+      table.block.caption = { runs: [...runs], placement: 'below' };
+      table.block.lines.push(line.i);
+      this.lastTable = null;
+      this.lastPara = null;
+      return;
+    }
     const last = this.lastPara;
     const joinable = last && last.ctr === ctr && ctr[ctr.length - 1] === last.block;
     if (joinable && !opts.alone && (opts.join || (this.input.lineMode === 'visual' && !this.afterBlank && this.wraps(last.tail, text(runs))))) {
@@ -178,11 +187,25 @@ class Walker {
     }
     const row = rowCells(line, line.cells);
     const last = this.lastTable;
-    if (last && last.ctr === ctr && ctr[ctr.length - 1] === last.block) {
+    const reader = line.tableRow?.table;
+    if (last && last.ctr === ctr && ctr[ctr.length - 1] === last.block && sameTable(last.block, reader, row.length)) {
       last.block.rows.push(row);
       last.block.lines.push(line.i);
+      if (last.block.cellInfo) last.block.cellInfo.push(line.tableRow?.cells);
     } else {
-      const block = { kind: 'table' as const, lines: [line.i], rows: [row] };
+      const block: Extract<OutBlock, { kind: 'table' }> = {
+        kind: 'table',
+        lines: [line.i],
+        rows: [row],
+        ...(reader ? { table: reader, cellInfo: [line.tableRow!.cells] } : {}),
+      };
+      // "Table 1: …" just above it is its caption.
+      const before = ctr[ctr.length - 1];
+      if (before?.kind === 'paragraph' && before === this.lastPara?.block && isTableCaption(text(before.runs))) {
+        ctr.pop();
+        block.caption = { runs: before.runs, placement: 'above' };
+        block.lines.unshift(...before.lines);
+      }
       ctr.push(block);
       this.lastTable = { block, ctr };
     }
@@ -781,6 +804,23 @@ class Walker {
     return { items, extra };
   }
 }
+
+/**
+ * Whether a row joins the table above (k-0491): rows of one reader table do; rows typed with
+ * TABs join each other, never a reader table; two reader tables join when their grids match
+ * (one table Word split across a page, or with a blank line between its halves).
+ */
+function sameTable(block: Extract<OutBlock, { kind: 'table' }>, reader: ReaderTable | undefined, width: number): boolean {
+  const prev = block.table;
+  if (!prev || !reader) return !prev && !reader;
+  if (prev === reader) return true;
+  const widths = (t: ReaderTable) => (t.columnWidths ?? []).map((w) => Math.round(w * 100)).join(',');
+  return !!prev.columnWidths && widths(prev) === widths(reader) && prev.borders === reader.borders && block.rows[0].length === width;
+}
+
+/** "Table 1", "Table 2: Exports", 表一, 表 2：…: a line that names the table beside it. */
+const TABLE_CAPTION = /^(?:table\s*(?:\d{1,2}|[A-Z]|[IVX]{1,4})(?:\s*[:：.\-–—]\s*.{0,80}|\s+[A-Z(].{0,80})?|表\s*[（(]?(?:\d{1,2}|[一二三四五六七八九十]{1,2}|[A-Z])[）)]?(?:\s*[:：.]\s*.{0,40}|\s+.{0,40})?)$/i;
+export const isTableCaption = (line: string): boolean => TABLE_CAPTION.test(line.trim());
 
 /** A table row's cells, a row label kept: its own cell when a TAB followed it, else in the first. */
 function rowCells(line: SourceLine, cells: InlineRun[][]): InlineRun[][] {
