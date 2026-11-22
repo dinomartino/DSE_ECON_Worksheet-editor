@@ -337,7 +337,7 @@ describe('docx reader: runs and paragraphs', () => {
       'Source C: A news report',
       'Retail sales fell for the third month in a row.',
       ['Year', 'Sales'],
-      ['2025', '$1 million'],
+      ['2025', '$1\nmillion'],
     ]);
   });
 });

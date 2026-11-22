@@ -160,6 +160,8 @@ export const DETECTORS: readonly Detector[] = [
   },
   function table(line, ctx) {
     if (!line.cells || line.labelInfo) return null;
+    // A row of a table the reader saw, however few cells hold text (k-0491).
+    if (line.tableRow) return { role: 'table', weight: 0.85 };
     // One line of typed tabs ("Name:⇥Class:⇥No.:") is text the page lays out as Word does;
     // rows of them, or a table the reader saw, are a table.
     if (line.tabbed && !ctx.lines[line.i - 1]?.cells && !ctx.lines[line.i + 1]?.cells) return null;

@@ -227,7 +227,7 @@ function toLines(piece: Piece, base: Omit<SourceLine, 'i' | 'runs' | 'text' | 'r
     }
     cells.push(trimRuns(sliceRichText(body, from, cellText.length)));
     while (cells.length && !plainOf(cells[cells.length - 1]).trim()) cells.pop();
-    if (cells.filter((c) => plainOf(c).trim()).length >= 2) {
+    if (cells.filter((c) => plainOf(c).trim()).length >= 2 && !typedLayout(body, cells)) {
       line.cells = cells;
       if (cutAt === '\t') line.tabbed = true;
     }
@@ -236,6 +236,26 @@ function toLines(piece: Piece, base: Omit<SourceLine, 'i' | 'runs' | 'text' | 'r
   line.runs = body;
   line.text = plainOf(body).trim();
   out.push(line);
+}
+
+const LONE_PUNCT = /^[.,;:!?。，；：！？、）)」』…]+$/;
+const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
+const isProseCell = (text: string) => (text.length >= 40 && wordCount(text) >= 7) || (text.match(/[\u3400-\u9fff]/g) ?? []).length >= 20;
+const isSentence = (text: string) => /[.!?。！？]["”’)）]?$/.test(text) && (wordCount(text) >= 4 || (text.match(/[\u3400-\u9fff]/g) ?? []).length >= 6);
+
+/**
+ * Typed TABs (or wide gaps) that lay a sentence out rather than cut a row of figures
+ * (k-0491): an underlined gap (a blank to fill, "the old system is ⇥ and …"), a cell that
+ * is only the sentence's closing stop, a passage after a "label:" ("Tom: ⇥ I love
+ * apples…", a dialogue), or nothing but whole sentences side by side. Such a line keeps
+ * its TABs as typed and is never a table row.
+ */
+function typedLayout(body: readonly InlineRun[], cells: readonly InlineRun[][]): boolean {
+  if (body.some((run) => run.underline && /\t| {3,}/.test(run.text))) return true;
+  const texts = cells.map((c) => plainOf(c).trim()).filter(Boolean);
+  if (texts.some((t) => LONE_PUNCT.test(t))) return true;
+  if (/[:：]$/.test(texts[0]) && isProseCell(texts[texts.length - 1])) return true;
+  return texts.every((t) => isSentence(t) || isProseCell(t)) && texts.some(isSentence);
 }
 
 /** Every raw line to one or more source lines, numbered in order. */
@@ -268,9 +288,15 @@ export function toSourceLines(raw: readonly RawLine[]): SourceLine[] {
         continue;
       }
       // A table row the reader saw as cells keeps them (empty ones too) unless it split into items.
-      if (line.cells && pieces.length === 1 && out.length === before + 1 && !out[before].labelInfo) {
+      // A row of a `.docx` table keeps them with one filled cell too ("" | "$ billion"), when
+      // the table is one of data (k-0491).
+      if (line.cells && pieces.length === 1 && out.length === before + 1) {
+        const row = line.tableRow;
+        if (row) out[before].tableRow = row;
         const cells = line.cells.map((c) => trimRuns(clean(c)));
-        if (cells.filter((c) => plainOf(c).trim()).length >= 2) {
+        const filled = cells.filter((c) => plainOf(c).trim()).length;
+        const sparse = !!row?.table.dense && (filled >= 1 || row.cells.some((c) => c.image)) && out[before].trailingMarks === undefined;
+        if (!out[before].labelInfo && (filled >= 2 || sparse)) {
           out[before].cells = cells;
           delete out[before].tabbed;
         }

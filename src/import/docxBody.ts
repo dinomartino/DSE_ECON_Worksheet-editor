@@ -5,13 +5,14 @@
  * figure check shows a slot. Pictures are only noted here; `readDocx` loads them.
  */
 import { fractionRuns, linearFraction } from '@/model/fraction';
-import { foldTabs, indLeftOf, readRunProps, tabStopsOf, type Numbering, type RunProps, type Styles } from './docxNumbering';
+import { bordersOf, foldTabs, indLeftOf, readRunProps, tabStopsOf, type BorderSides, type Numbering, type RunProps, type Styles } from './docxNumbering';
 import { labelLevel, loneOptionLabel, parseLabel } from './labels';
 import { labelZone } from './normalize';
 import { pairByCell } from './pictureOptions';
 import type { RawLine, RawRun } from './readPlain';
-import type { ImageRef } from './types';
-import { child, elements, find, onOff, textOf, val, type XmlElement } from './xml';
+import type { ImageRef, ReaderCell, ReaderTable } from './types';
+import { child, childrenNamed, elements, find, onOff, textOf, val, type XmlElement } from './xml';
+import { normalizeRuns, sliceRichText } from '@/model/text';
 
 export interface Rel {
   target: string;
@@ -197,12 +198,19 @@ export class BodyReader {
   readonly headings: Heading[] = [];
   private pageBreakPending = false;
   private depth = 0;
+  /** The text column's width (twips), from the page size and margins, when the file says. */
+  private textWidth = 0;
   /** The largest type in the paragraph being read (points). */
   private paraSize = 0;
 
   constructor(private ctx: BodyContext) {}
 
   read(body: XmlElement): RawLine[] {
+    const sect = child(body, 'w:sectPr');
+    const page = +(child(sect, 'w:pgSz')?.attrs['w:w'] ?? 0);
+    const margins = child(sect, 'w:pgMar');
+    const side = (name: string) => +(margins?.attrs[name] ?? 0) || 0;
+    this.textWidth = page > 0 ? Math.max(0, page - side('w:left') - side('w:right')) : 0;
     const out: RawLine[] = [];
     const pool: Pool = { parts: emptyParts() };
     this.blocks(elements(body), out, pool);
@@ -526,30 +534,160 @@ export class BodyReader {
       this.flushPool(pool, out);
       return;
     }
-    const grid = rows.map((tr) =>
-      cellsOf(tr).map((tc) => {
-        const pictures: RawLine[] = [];
-        // A break inside a cell joins with a space, as in the HTML paste.
-        const runs = this.cell(tc, pictures).map((r) => ({ ...r, text: r.text.replace(/\n/g, ' ') }));
-        return { runs, pictures };
-      }),
-    );
-    const options = pictureOptionCells(grid);
-    if (options) {
-      // Option letters with their pictures: each letter, then its picture (`pairByCell`).
-      for (const { row, col, pictures } of options) out.push({ runs: grid[row][col].runs }, ...pictures);
+    const tblPr = child(tbl, 'w:tblPr');
+    const borders = this.tableBorders(tblPr, rows);
+    if (borders === 'none' && isLayoutTable(rows)) {
+      this.layoutTable(rows, out);
       return;
     }
+    const read = rows.map((tr) => {
+      let col = +(val(child(child(tr, 'w:trPr'), 'w:gridBefore')) ?? 0) || 0;
+      return cellsOf(tr).map((tc) => {
+        const tcPr = child(tc, 'w:tcPr');
+        const span = Math.max(1, +(val(child(tcPr, 'w:gridSpan')) ?? 1) || 1);
+        const vMerge = child(tcPr, 'w:vMerge');
+        const pictures: RawLine[] = [];
+        const lined = this.cell(tc, pictures);
+        // A break inside a cell joins with a space on the row's line, as in the HTML paste;
+        // the cell itself keeps it as a line break.
+        const runs = lined.map((r) => ({ ...r, text: r.text.replace(/\n/g, ' ') }));
+        const cell: ReadCell = { runs, lined, pictures, col, span, info: this.cellInfo(tc) };
+        if (vMerge) cell.vMerge = vMerge.attrs['w:val'] === 'restart' ? 'restart' : 'continue';
+        col += span;
+        return cell;
+      });
+    });
+    const options = pictureOptionCells(read);
+    if (options) {
+      // Option letters with their pictures: each letter, then its picture (`pairByCell`).
+      for (const { row, col, pictures } of options) out.push({ runs: read[row][col].runs }, ...pictures);
+      return;
+    }
+    const gridCols = childrenNamed(child(tbl, 'w:tblGrid'), 'w:gridCol').map((g) => +(g.attrs['w:w'] ?? 0) || 0);
+    const account = tAccount(read);
+    if (account) {
+      out.push(...account);
+      return;
+    }
+    const width = Math.max(gridCols.length, ...read.map((row) => (row.length ? row[row.length - 1].col + row[row.length - 1].span : 0)));
+    // Grid-complete rows: a merged cell, then the columns it covers.
+    const placed = read.map((row) => {
+      const cells: (ReadCell | null)[] = Array.from({ length: width }, () => null);
+      for (const c of row) if (c.col < width) cells[c.col] = c;
+      return cells;
+    });
+    const inked = (c: ReadCell | null) => !!c && c.vMerge !== 'continue' && (c.runs.some((r) => r.text.trim()) || c.pictures.some((p) => p.image));
+    const kept = placed.map((_, r) => r).filter((r) => placed[r].some(inked));
+    const header = rows.findIndex((tr) => onOff(child(child(tr, 'w:trPr'), 'w:tblHeader')) !== true);
+    const headerRows = kept.filter((r) => r < (header < 0 ? rows.length : header)).length;
+    const total = gridCols.reduce((a, b) => a + b, 0);
+    const jc = val(child(tblPr, 'w:jc'));
+    const table: ReaderTable = {
+      ...(gridCols.length === width && total > 0 ? { columnWidths: gridCols.map((w) => Math.round((w / total) * 10000) / 10000) } : {}),
+      ...(total > 0 && this.textWidth && total / this.textWidth < 0.9 ? { width: Math.round((total / this.textWidth) * 100) / 100 } : {}),
+      ...(jc === 'center' || jc === 'right' || jc === 'end' ? { align: jc === 'center' ? ('center' as const) : ('right' as const) } : {}),
+      ...(borders === 'box' ? { borders: 'box' as const } : {}),
+      ...(headerRows ? { headerRows } : {}),
+      dense: kept.some((r) => placed[r].filter((c) => c?.runs.some((x) => x.text.trim())).length >= 2),
+    };
     const after: RawLine[] = [];
-    for (const row of grid) {
-      after.push(...row.flatMap((c) => c.pictures));
-      const cells = row.map((c) => c.runs);
-      if (!cells.some((c) => c.some((r) => r.text.trim()))) continue;
+    for (const [k, r] of kept.entries()) {
+      const infos: ReaderCell[] = [];
+      const cells: RawRun[][] = [];
+      const flat: RawRun[][] = [];
+      const tall = placed[r].some((c) => !!c && (c.lined.some((x) => x.text.includes('\n')) || c.pictures.some((p) => p.image)));
+      for (let col = 0; col < width; col++) {
+        const c = placed[r][col];
+        if (!c) {
+          // Covered by a merge from the left, or a column this row does not reach.
+          const covered = placed[r].slice(0, col).some((x) => !!x && x.col + x.span > col);
+          infos.push(covered ? { covered: true } : {});
+          cells.push([]);
+          flat.push([]);
+          continue;
+        }
+        const info: ReaderCell = { ...c.info };
+        if (c.span > 1) info.colSpan = c.span;
+        if (c.vMerge === 'continue' && kept.slice(0, k).some((above) => placed[above][col]?.vMerge === 'restart')) info.covered = true;
+        if (c.vMerge === 'restart') {
+          let n = 1;
+          while (k + n < kept.length && placed[kept[k + n]][col]?.vMerge === 'continue') n++;
+          if (n > 1) info.rowSpan = n;
+        }
+        // Top or middle shows only where a row's cells differ in height.
+        if (info.vAlign === 'top' && !tall) delete info.vAlign;
+        // A ruled table keeps a cell's one picture in the cell; others go after the table.
+        const pictures = c.pictures.filter((p) => p.image);
+        if (borders !== 'none' && pictures.length === 1 && !info.covered) info.image = pictures[0].image;
+        else after.push(...c.pictures);
+        infos.push(info);
+        cells.push(info.covered ? [] : c.lined);
+        flat.push(info.covered ? [] : c.runs);
+      }
       const joined: RawRun[] = [];
-      cells.forEach((c, k) => joined.push(...(k ? [{ text: '\t' }] : []), ...c));
-      out.push({ runs: joined, cells });
+      flat.forEach((c, n) => joined.push(...(n ? [{ text: '\t' }] : []), ...c));
+      out.push({ runs: joined, cells, tableRow: { table, cells: infos } });
     }
     out.push(...after);
+  }
+
+  /**
+   * Which rules a table draws: the table's own borders over its style's (Word's "Normal
+   * Table" draws none), or most cells ruling themselves.
+   */
+  private tableBorders(tblPr: XmlElement | undefined, rows: XmlElement[]): 'all' | 'box' | 'none' {
+    const { styles } = this.ctx;
+    const style = styles.get(val(child(tblPr, 'w:tblStyle')) ?? styles.defaultTable);
+    const sides: BorderSides = { ...style?.borders, ...bordersOf(child(tblPr, 'w:tblBorders')) };
+    if (sides.insideH || sides.insideV) return 'all';
+    const cells = rows.flatMap(cellsOf);
+    const ruled = cells.filter((tc) => Object.values(bordersOf(child(child(tc, 'w:tcPr'), 'w:tcBorders')) ?? {}).filter(Boolean).length >= 2).length;
+    if (cells.length && ruled >= cells.length / 2) return 'all';
+    return sides.top && sides.bottom && sides.left && sides.right ? 'box' : 'none';
+  }
+
+  /** A cell's alignment, from its paragraphs (all the same, or none), and its vertical placement. */
+  private cellInfo(tc: XmlElement): ReaderCell {
+    const { styles } = this.ctx;
+    const jcs = new Set<string>();
+    for (const p of childrenNamed(tc, 'w:p')) {
+      if (!textOf(p).trim()) continue;
+      const pPr = child(p, 'w:pPr');
+      jcs.add(val(child(pPr, 'w:jc')) ?? styles.get(val(child(pPr, 'w:pStyle')) ?? styles.defaultParagraph)?.jc ?? 'left');
+    }
+    const jc = jcs.size === 1 ? [...jcs][0] : undefined;
+    const v = val(child(child(tc, 'w:tcPr'), 'w:vAlign'));
+    return {
+      ...(jc === 'center' ? { align: 'center' as const } : jc === 'right' || jc === 'end' ? { align: 'right' as const } : jc === 'both' || jc === 'distribute' ? { justify: true as const } : {}),
+      // Word's default is the top; the editor's is the middle, which a row of one line never shows.
+      ...(v === 'bottom' ? { vAlign: 'bottom' as const } : v === 'center' ? {} : { vAlign: 'top' as const }),
+    };
+  }
+
+  /**
+   * A borderless table that only lays text out (a dialogue, a passage beside a label): each
+   * row reads as one line with TABs between its cells, as if typed so; a row whose cells
+   * hold several paragraphs reads as body text, cell after cell.
+   */
+  private layoutTable(rows: XmlElement[], out: RawLine[]): void {
+    for (const tr of rows) {
+      const cells = cellsOf(tr);
+      if (cells.every((tc) => childrenNamed(tc, 'w:p').filter((p) => textOf(p).trim()).length <= 1 && !childrenNamed(tc, 'w:tbl').length)) {
+        const after: RawLine[] = [];
+        const runs: RawRun[] = [];
+        cells.forEach((tc, k) => {
+          const cell = this.cell(tc, after).filter((r) => r.text !== '\n');
+          if (k) runs.push({ text: '\t' });
+          runs.push(...cell);
+        });
+        if (runs.some((r) => r.text.trim())) out.push({ runs });
+        out.push(...after);
+        continue;
+      }
+      const pool: Pool = { parts: emptyParts() };
+      for (const tc of cells) this.blocks(elements(tc), out, pool);
+      this.flushPool(pool, out);
+    }
   }
 
   /** A cell's paragraphs as one run list, `\n` between them; its pictures go after the table. */
@@ -582,6 +720,32 @@ export class BodyReader {
   }
 }
 
+/**
+ * Once pictures are loaded: a cell picture that did not load (a chart, an EMF) leaves the
+ * cell for a line of its own after its table, where the figure check shows its slot.
+ */
+export function settleCellImages(lines: RawLine[]): RawLine[] {
+  const out: RawLine[] = [];
+  let lost: RawLine[] = [];
+  for (const [k, line] of lines.entries()) {
+    const row = line.tableRow;
+    if (row) {
+      for (const cell of row.cells) {
+        if (cell.image && !/^data:image\//.test(cell.image.src)) {
+          lost.push({ runs: [], image: cell.image });
+          delete cell.image;
+        }
+      }
+    }
+    out.push(line);
+    if (lost.length && lines[k + 1]?.tableRow?.table !== row?.table) {
+      out.push(...lost);
+      lost = [];
+    }
+  }
+  return out;
+}
+
 function rowsOf(el: XmlElement): XmlElement[] {
   if (el.name === 'w:tr') return child(child(el, 'w:trPr'), 'w:del') ? [] : [el];
   if (el.name === 'w:sdt') return elements(child(el, 'w:sdtContent') ?? el).flatMap(rowsOf);
@@ -601,6 +765,97 @@ function pictureOptionCells(grid: ReadonlyArray<ReadonlyArray<{ runs: RawRun[]; 
       }),
     ),
   );
+}
+
+/** A cell as the table reader holds it: its runs (breaks as spaces, and as `\n`), pictures and grid place. */
+interface ReadCell {
+  runs: RawRun[];
+  lined: RawRun[];
+  pictures: RawLine[];
+  col: number;
+  span: number;
+  vMerge?: 'restart' | 'continue';
+  info: ReaderCell;
+}
+
+const words = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+const cjk = (text: string) => (text.match(/[\u3400-\u9fff]/g) ?? []).length;
+/** Running text, not a figure or a heading: what a data table's cell rarely holds. */
+const isProse = (text: string) => (text.length >= 50 && words(text) >= 8) || cjk(text) >= 25;
+
+/** A table that lays out prose rather than holding data: some cell is a passage. */
+function isLayoutTable(rows: XmlElement[]): boolean {
+  return rows.some((tr) => cellsOf(tr).some((tc) => isProse(childrenNamed(tc, 'w:p').map(textOf).join(' ').trim())));
+}
+
+/** A figure in a balance sheet: a number (with $, %, a sign, brackets), or a blank to fill. */
+const FIGURE = /^(?:[-−+(]?\s*[$¥£€]?\s*\d[\d,.\s]*\)?\s*%?|[?？_＿.…]+)$/;
+
+/** "Reserves ⇥ 500": an entry's label and figure, cut at its last TAB. */
+function entryOf(runs: RawRun[]): [RawRun[], RawRun[]] | null {
+  const text = runs.map((r) => r.text).join('');
+  const at = text.lastIndexOf('\t');
+  if (at < 0) return null;
+  const label = text.slice(0, at).trim();
+  const figure = text.slice(at + 1).trim();
+  if (!label) return null;
+  if (!FIGURE.test(figure)) return null;
+  const trim = (from: number, to: number) => {
+    const piece = text.slice(from, to);
+    const start = from + piece.length - piece.trimStart().length;
+    const end = from + piece.trimEnd().length;
+    return normalizeRuns(sliceRichText(runs, start, end)) as RawRun[];
+  };
+  const labelRuns = trim(0, at).map((r) => ({ ...r, text: r.text.replace(/\t+/g, ' ') }));
+  return labelRuns.some((r) => r.text.trim()) ? [labelRuns, trim(at + 1, text.length)] : null;
+}
+
+/** A cell's lines (its `\n` breaks) as run lists. */
+function cellLines(runs: RawRun[]): RawRun[][] {
+  const lines: RawRun[][] = [[]];
+  for (const r of runs) {
+    const parts = r.text.split('\n');
+    parts.forEach((part, k) => {
+      if (k) lines.push([]);
+      if (part) lines[lines.length - 1].push({ ...r, text: part });
+    });
+  }
+  return lines.filter((l) => l.some((r) => r.text.trim()));
+}
+
+/**
+ * A bank's balance sheet typed as two columns: a heading over each side, and under it
+ * lines of "label ⇥ figure". Read as the editor's T-account (`tableTemplates`
+ * `balanceSheet`): four columns, each heading across its side's two, the rules of a
+ * T-account (k-0491).
+ */
+function tAccount(read: ReadCell[][]): RawLine[] | null {
+  if (read.length < 2 || read.some((row) => row.length !== 2 || row.some((c) => c.span !== 1 || c.vMerge || c.pictures.length))) return null;
+  const head = read[0].map((c) => c.lined.map((r) => r.text).join('').trim());
+  if (head.some((t) => !t || /[\t\n]/.test(t))) return null;
+  const sides: [RawRun[], RawRun[]][][] = [[], []];
+  for (const row of read.slice(1)) {
+    for (const [k, c] of row.entries()) {
+      for (const line of cellLines(c.lined)) {
+        const entry = entryOf(line);
+        if (!entry) return null;
+        sides[k].push(entry);
+      }
+    }
+  }
+  if (!sides[0].length || !sides[1].length) return null;
+  const table: ReaderTable = { borders: 'headerRule', columnWidths: [0.3275, 0.1725, 0.3275, 0.1725], width: 0.62, align: 'center', dense: true };
+  const line = (cells: RawRun[][], infos: ReaderCell[]): RawLine => {
+    const runs: RawRun[] = [];
+    cells.forEach((c, n) => runs.push(...(n ? [{ text: '\t' }] : []), ...c));
+    return { runs, cells, tableRow: { table, cells: infos } };
+  };
+  const out = [line([read[0][0].runs, [], read[0][1].runs, []], [{ colSpan: 2, align: 'center' }, { covered: true }, { colSpan: 2, align: 'center' }, { covered: true }])];
+  for (let n = 0; n < Math.max(sides[0].length, sides[1].length); n++) {
+    const [l = [[], []], r = [[], []]] = [sides[0][n], sides[1][n]];
+    out.push(line([l[0], l[1], r[0], r[1]], [{}, { align: 'right' }, {}, { align: 'right' }]));
+  }
+  return out;
 }
 
 function cellsOf(tr: XmlElement): XmlElement[] {

@@ -2,7 +2,7 @@
  * `.docx` styles and list numbering: what a paragraph's style gives it, and the label
  * Word would print for a numbered paragraph, from real counters.
  */
-import { child, childrenNamed, onOff, val, type XmlElement } from './xml';
+import { child, childrenNamed, elements, onOff, val, type XmlElement } from './xml';
 
 // ---- styles ----
 
@@ -44,6 +44,27 @@ export interface StyleInfo {
   jc?: string;
   /** Tab stops, the `basedOn` chain folded in (a `clear` removes an inherited stop). */
   tabs?: TabStop[];
+  /** A table style's rules (`w:tblPr/w:tblBorders`), side by side, the chain folded in. */
+  borders?: BorderSides;
+  /** The default table style (Word's "Normal Table"). */
+  isDefault?: boolean;
+}
+
+export type BorderSide = 'top' | 'left' | 'bottom' | 'right' | 'insideH' | 'insideV';
+/** Which sides draw a rule; a side not named says nothing (inherits). */
+export type BorderSides = Partial<Record<BorderSide, boolean>>;
+
+const SIDES: Record<string, BorderSide> = { 'w:top': 'top', 'w:left': 'left', 'w:start': 'left', 'w:bottom': 'bottom', 'w:right': 'right', 'w:end': 'right', 'w:insideH': 'insideH', 'w:insideV': 'insideV' };
+
+/** A `w:tblBorders` or `w:tcBorders` element's sides: `nil`/`none` draws nothing. */
+export function bordersOf(el: XmlElement | undefined): BorderSides | undefined {
+  if (!el) return undefined;
+  const out: BorderSides = {};
+  for (const side of elements(el)) {
+    const key = SIDES[side.name];
+    if (key) out[key] = !/^(nil|none)$/.test(side.attrs['w:val'] ?? 'nil');
+  }
+  return out;
 }
 
 /** A `w:tabs` element's stops, `clear` ones included. */
@@ -107,6 +128,7 @@ export class Styles {
   private byId = new Map<string, StyleInfo>();
   private resolved = new Map<string, StyleInfo>();
   defaultParagraph?: string;
+  defaultTable?: string;
   defaults: RunProps = {};
 
   constructor(root?: XmlElement) {
@@ -129,7 +151,10 @@ export class Styles {
         ...(outline !== undefined ? { outlineLvl: +outline } : {}),
         ...(val(child(pPr, 'w:jc')) ? { jc: val(child(pPr, 'w:jc')) } : {}),
         ...(tabStopsOf(pPr) ? { tabs: tabStopsOf(pPr) } : {}),
+        ...(type === 'table' && bordersOf(child(child(s, 'w:tblPr'), 'w:tblBorders')) ? { borders: bordersOf(child(child(s, 'w:tblPr'), 'w:tblBorders')) } : {}),
+        ...(type === 'table' && /^(1|true|on)$/.test(s.attrs['w:default'] ?? '') ? { isDefault: true } : {}),
       });
+      if (type === 'table' && /^(1|true|on)$/.test(s.attrs['w:default'] ?? '')) this.defaultTable = id;
       if (type === 'paragraph' && /^(1|true|on)$/.test(s.attrs['w:default'] ?? '')) this.defaultParagraph = id;
     }
   }
@@ -154,6 +179,7 @@ export class Styles {
       if (s.indLeft !== undefined) out.indLeft = s.indLeft;
       if (s.outlineLvl !== undefined) out.outlineLvl = s.outlineLvl;
       if (s.jc !== undefined) out.jc = s.jc;
+      if (s.borders) out.borders = { ...out.borders, ...s.borders };
     }
     out.tabs = [...chain].reverse().reduce<TabStop[] | undefined>((acc, s) => foldTabs(acc, s.tabs), undefined);
     if (!out.tabs) delete out.tabs;

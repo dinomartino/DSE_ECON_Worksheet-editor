@@ -22,6 +22,7 @@ import { normalizeRuns } from '@/model/text';
 import type { Side } from '@/model/textSlots';
 import type {
   BiText,
+  CellImage,
   ContentBlock,
   ImageBlock,
   InlineRun,
@@ -30,6 +31,8 @@ import type {
   QuestionPart,
   QuestionSubPart,
   StructuredQuestion,
+  TableBlock,
+  TableCell,
   Worksheet,
 } from '@/model/types';
 import type { QuestionBuild } from '@/store/worksheetStore';
@@ -120,6 +123,65 @@ function imageBlock(image: ImageRef, maxWidth?: number): ImageBlock {
   return block;
 }
 
+/**
+ * A table: its rows' text, and from a table the reader saw (k-0491) its merges, cell
+ * alignment, pictures, column widths, rules and caption. A row whose cells do not line up
+ * with what the reader saw (a label given its own cell) keeps its text only.
+ */
+function tableBlock(block: Extract<OutBlock, { kind: 'table' }>, side: Side, ctx: Ctx): TableBlock {
+  const width = Math.max(...block.rows.map((r) => r.length));
+  const shape = block.table;
+  const columns = shape?.columnWidths?.length === width ? shape.columnWidths : undefined;
+  const rows = block.rows.map((cells, r) => {
+    const info = block.cellInfo?.[r];
+    const fits = info?.length === width && cells.length === width;
+    return {
+      id: newId(),
+      cells: Array.from({ length: width }, (_, k): TableCell => {
+        const cell = createTableCell(bi(cells[k] ?? [], side));
+        const got = fits ? info[k] : undefined;
+        if (!got) return cell;
+        if (got.covered) return { ...cell, covered: true };
+        const image = got.image && /^data:image\//.test(got.image.src) ? cellImage(got.image, side, columnPx(columns, k, got.colSpan ?? 1, width, shape?.width, ctx.maxWidth)) : undefined;
+        return {
+          ...cell,
+          ...(got.colSpan && got.colSpan > 1 ? { colSpan: Math.min(got.colSpan, width - k) } : {}),
+          ...(got.rowSpan && got.rowSpan > 1 ? { rowSpan: Math.min(got.rowSpan, block.rows.length - r) } : {}),
+          ...(got.align ? { align: got.align } : {}),
+          ...(got.justify ? { justify: true as const } : {}),
+          ...(got.vAlign ? { vAlign: got.vAlign } : {}),
+          ...(image ? { image } : {}),
+        };
+      }),
+    };
+  });
+  return {
+    kind: 'table',
+    id: newId(),
+    rows,
+    ...(columns ? { columnWidths: [...columns] } : {}),
+    ...(shape?.width ? { width: shape.width } : {}),
+    ...(shape?.align ? { align: shape.align } : {}),
+    ...(shape?.borders && shape.borders !== 'all' ? { borders: shape.borders } : {}),
+    ...(shape?.headerRows ? { headerRows: Math.min(shape.headerRows, rows.length) } : {}),
+    ...(block.caption ? { caption: bi(block.caption.runs, side), captionPlacement: block.caption.placement } : {}),
+  };
+}
+
+/** The width a picture in columns `k`…`k + span` may take, when the page width is known. */
+function columnPx(columns: readonly number[] | undefined, k: number, span: number, width: number, tableWidth: number | undefined, maxWidth: number | undefined): number | undefined {
+  if (!maxWidth) return undefined;
+  const share = columns ? columns.slice(k, k + span).reduce((a, b) => a + b, 0) : span / width;
+  return Math.max(24, Math.floor(maxWidth * (tableWidth ?? 1) * share) - 12);
+}
+
+function cellImage(image: ImageRef, side: Side, maxWidth?: number): CellImage {
+  const w = image.widthPx ?? 120;
+  const h = image.heightPx ?? Math.round(w * 0.75);
+  const scale = maxWidth && w > maxWidth ? maxWidth / w : 1;
+  return { src: image.src, widthPx: Math.round(w * scale), heightPx: Math.round(h * scale), altText: bi(image.alt ? [{ text: image.alt }] : [], side) };
+}
+
 function contentBlocks(blocks: readonly OutBlock[], side: Side, ctx: Ctx, inSource = false): ContentBlock[] {
   return blocks.flatMap((block): ContentBlock[] => {
     switch (block.kind) {
@@ -127,17 +189,7 @@ function contentBlocks(blocks: readonly OutBlock[], side: Side, ctx: Ctx, inSour
         return [createParagraphBlock(bi(block.runs, side))];
       case 'table': {
         if (block.look === 'strategy') return [strategyTableOf(block.rows.map(([label, text]) => [bi(label ?? [], side), bi(text ?? [], side)] as const))];
-        const width = Math.max(...block.rows.map((r) => r.length));
-        return [
-          {
-            kind: 'table',
-            id: newId(),
-            rows: block.rows.map((cells) => ({
-              id: newId(),
-              cells: Array.from({ length: width }, (_, k) => createTableCell(bi(cells[k] ?? [], side))),
-            })),
-          },
-        ];
+        return [tableBlock(block, side, ctx)];
       }
       case 'source': {
         // A source holds no source: a nested one gives up its frame, not its content.

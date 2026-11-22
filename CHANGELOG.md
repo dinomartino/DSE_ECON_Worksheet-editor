@@ -33,6 +33,18 @@ a version heading is edited afterwards.
   2 together: one report for the set, each paper's figures beside it, and the same PDF.
   <!-- zh: **課程覆蓋報告使用試卷的語言、可下載為 PDF，並可檢查整套模擬試卷。** 課題及學習要點名稱，以及 AI 對每條題目的說明，現在使用試卷的語言（即使程式介面是英文，中文試卷的報告也是中文）；按鈕仍使用程式介面的語言。「下載報告（PDF）」會儲存一份可列印的報告，包括試卷名稱、日期、範圍、覆蓋數字、每個課題及學習要點、考核它們的題目，以及缺口。在套卷中，✦ AI →「檢查整套試卷的課程覆蓋」會一併檢查 Paper 1 及 Paper 2：整套試卷一份報告，旁邊列出每份試卷的數字，同樣可下載 PDF。 -->
 
+### Fixed
+- **Tables in imported Word papers come in whole.** A heading row with one filled cell (such
+  as "$ billion") stays in its table instead of falling out above it; a fill-in sentence typed
+  after a table, a dialogue laid out with tabs and sentences side by side stay text instead of
+  becoming table rows; a heading merged across columns or down rows stays merged; a cell of
+  several lines keeps its line breaks; cell alignment, column widths and a narrow table's width
+  and centring carry over; a picture in a ruled table stays in its cell beside its text; one
+  table Word split in two comes in as one; a borderless table that only lays out text reads as
+  text; a bank's balance sheet typed as two columns comes in as the T-account; and "Table 1: …"
+  next to a table becomes its caption.
+  <!-- zh: **匯入 Word 試卷時，表格完整保留。** 只有一格有文字的標題列（例如「$ billion」）會留在表格內，不再跑到表格上方；表格後以 Tab 排版的填充句、對話及並排的句子會保留為文字，不再變成表格的一列；跨欄或跨列合併的標題保持合併；一格內的多行文字保留換行；儲存格對齊、欄寬，以及較窄表格的寬度和置中會一併保留；有格線表格內的圖片會留在儲存格內、文字旁邊；Word 分成兩段的同一個表格會匯入為一個表格；沒有格線、只用來排版文字的表格會讀作文字；以兩欄輸入的銀行資產負債表會匯入為 T 型帳戶；表格旁的「Table 1：…」或「表二」會成為表格標題。 -->
+
 ## 0.10.0 — 2026-11-20
 
 ### Added

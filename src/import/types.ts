@@ -3,7 +3,7 @@
  * Everything here is pure data; nothing is stored in a document.
  */
 import type { Side } from '@/model/textSlots';
-import type { InlineRun } from '@/model/types';
+import type { InlineRun, TableBorders } from '@/model/types';
 
 /** What one pasted line is, after the solver. */
 export type Role =
@@ -61,6 +61,43 @@ export interface ImageRef {
   alt?: string;
 }
 
+/**
+ * A table the reader saw (a `.docx` `w:tbl`), shared by each of its rows' lines: what the
+ * editor's table can keep of it beyond the text (k-0491). One object per table, so lines
+ * point at the same one exactly when they are rows of the same table.
+ */
+export interface ReaderTable {
+  /** Column widths as fractions of the table (`w:tblGrid`). */
+  columnWidths?: number[];
+  /** Fraction of the text column the table spans, when clearly narrower than it. */
+  width?: number;
+  align?: 'center' | 'right';
+  borders?: TableBorders;
+  /** Leading rows marked "Repeat as header row" (`w:tblHeader`). */
+  headerRows?: number;
+  /** Some row has two cells with text: a row with one is still a row of this table. */
+  dense: boolean;
+}
+
+/** One cell of a reader table row, by grid column: a merge, its alignment, its picture. */
+export interface ReaderCell {
+  colSpan?: number;
+  rowSpan?: number;
+  /** Under a merge from the left or above: holds the place, prints nothing. */
+  covered?: true;
+  align?: 'center' | 'right';
+  justify?: true;
+  vAlign?: 'top' | 'bottom';
+  /** The cell's one picture, printed under its text (`TableCell.image`). */
+  image?: ImageRef;
+}
+
+export interface ReaderRow {
+  table: ReaderTable;
+  /** One per grid column, in step with the row's `cells`. */
+  cells: ReaderCell[];
+}
+
 /** One line of the paste, whatever its source. Roles, pins and flags refer to `i`. */
 export interface SourceLine {
   i: number;
@@ -77,6 +114,8 @@ export interface SourceLine {
   labelSource?: 'text' | 'list';
   depth: number;
   cells?: InlineRun[][];
+  /** A row of a table the reader saw (`.docx`), with what the editor keeps of it (k-0491). */
+  tableRow?: ReaderRow;
   /**
    * `cells` were cut at tabs typed in the text (not a table the reader saw), and `runs`
    * keep those tabs: a line that is not read as a table keeps them as typed.
@@ -212,7 +251,17 @@ export interface LayoutProfile {
 export type OutBlock =
   | { kind: 'paragraph'; lines: number[]; runs: InlineRun[] }
   /** `look: 'strategy'`: a DRQ essay's strategy table (label | what it does), laid out as the DRQ starter's (k-0480). */
-  | { kind: 'table'; lines: number[]; rows: InlineRun[][][]; look?: 'strategy' }
+  | {
+      kind: 'table';
+      lines: number[];
+      rows: InlineRun[][][];
+      look?: 'strategy';
+      /** A reader table's own shape, and each row's cells (in step with `rows`; undefined for a row it did not see). */
+      table?: ReaderTable;
+      cellInfo?: (ReaderCell[] | undefined)[];
+      /** "Table 1: …" just above or below it, printed as its caption. */
+      caption?: { runs: InlineRun[]; placement: 'above' | 'below' };
+    }
   | { kind: 'source'; lines: number[]; label: InlineRun[]; blocks: OutBlock[] }
   /**
    * `pin`: placed by an image pin (its id). `missing`: a figure slot, a picture lost in the

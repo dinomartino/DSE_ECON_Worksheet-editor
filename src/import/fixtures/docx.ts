@@ -56,6 +56,8 @@ export interface ParaOpts {
   num?: [numId: number, ilvl: number];
   style?: string;
   ind?: number;
+  /** Paragraph alignment (`w:jc`): center, right, both. */
+  jc?: string;
 }
 
 export function p(content: string, o: ParaOpts = {}): string {
@@ -63,6 +65,7 @@ export function p(content: string, o: ParaOpts = {}): string {
     o.style ? `<w:pStyle w:val="${o.style}"/>` : '',
     o.num ? `<w:numPr><w:ilvl w:val="${o.num[1]}"/><w:numId w:val="${o.num[0]}"/></w:numPr>` : '',
     o.ind !== undefined ? `<w:ind w:left="${o.ind}"/>` : '',
+    o.jc ? `<w:jc w:val="${o.jc}"/>` : '',
   ].join('');
   return `<w:p>${pPr ? `<w:pPr>${pPr}</w:pPr>` : ''}${content}</w:p>`;
 }
@@ -72,6 +75,68 @@ export const para = (text: string, o: ParaOpts = {}) => p(text ? r(text) : '', o
 
 export function tbl(rows: string[][]): string {
   return `<w:tbl><w:tblPr/>${rows.map((cells) => `<w:tr>${cells.map((c) => `<w:tc>${c || '<w:p/>'}</w:tc>`).join('')}</w:tr>`).join('')}</w:tbl>`;
+}
+
+/** Word's "Normal Table" (no rules) and "Table Grid" (every rule), as `styles` in a spec. */
+export const TABLE_STYLES =
+  '<w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/></w:style>' +
+  '<w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:basedOn w:val="TableNormal"/><w:tblPr><w:tblBorders>' +
+  ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map((s) => `<w:${s} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`).join('') +
+  '</w:tblBorders></w:tblPr></w:style>';
+
+/** A4 with 1080-twip side margins: a 9746-twip text column. */
+export const A4_SECT = '<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1080" w:bottom="1440" w:left="1080"/>';
+
+export interface GridCell {
+  /** The cell's paragraphs (and pictures), as XML. */
+  xml: string;
+  span?: number;
+  vMerge?: 'restart' | 'continue';
+  vAlign?: 'top' | 'center' | 'bottom';
+  /** Sides this cell rules off (`nil`), as Word writes for a merged heading. */
+  nil?: Array<'top' | 'left' | 'bottom' | 'right'>;
+}
+
+export interface GridOpts {
+  /** A table style id (`TableGrid` from `TABLE_STYLES`), or none. */
+  style?: string;
+  /** The table's own rules: `none` writes every side `nil`, `box` the frame only. */
+  borders?: 'none' | 'box';
+  /** Column widths, twips (`w:tblGrid`). */
+  grid?: number[];
+  jc?: string;
+  /** Leading rows marked "Repeat as header row". */
+  header?: number;
+}
+
+/** A `w:tbl` with Word's own table furniture: grid, spans, vertical merges, rules. */
+export function gridTable(rows: Array<Array<string | GridCell>>, o: GridOpts = {}): string {
+  const sides = ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'];
+  const borders =
+    o.borders === 'none'
+      ? `<w:tblBorders>${sides.map((s) => `<w:${s} w:val="nil"/>`).join('')}</w:tblBorders>`
+      : o.borders === 'box'
+        ? `<w:tblBorders>${sides.map((s) => `<w:${s} w:val="${s.startsWith('inside') ? 'nil' : 'single'}"/>`).join('')}</w:tblBorders>`
+        : '';
+  const tblPr = `<w:tblPr>${o.style ? `<w:tblStyle w:val="${o.style}"/>` : ''}${o.jc ? `<w:jc w:val="${o.jc}"/>` : ''}${borders}</w:tblPr>`;
+  const grid = o.grid ? `<w:tblGrid>${o.grid.map((w) => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>` : '';
+  const body = rows
+    .map((cells, k) => {
+      const trPr = o.header && k < o.header ? '<w:trPr><w:tblHeader/></w:trPr>' : '';
+      const tcs = cells.map((c) => {
+        const cell = typeof c === 'string' ? { xml: c } : c;
+        const tcPr = [
+          cell.span ? `<w:gridSpan w:val="${cell.span}"/>` : '',
+          cell.vMerge ? `<w:vMerge${cell.vMerge === 'restart' ? ' w:val="restart"' : ''}/>` : '',
+          cell.nil ? `<w:tcBorders>${cell.nil.map((s) => `<w:${s} w:val="nil"/>`).join('')}</w:tcBorders>` : '',
+          cell.vAlign ? `<w:vAlign w:val="${cell.vAlign}"/>` : '',
+        ].join('');
+        return `<w:tc>${tcPr ? `<w:tcPr>${tcPr}</w:tcPr>` : ''}${cell.xml || '<w:p/>'}</w:tc>`;
+      });
+      return `<w:tr>${trPr}${tcs.join('')}</w:tr>`;
+    })
+    .join('');
+  return `<w:tbl>${tblPr}${grid}${body}</w:tbl>`;
 }
 
 // ---- numbering ----

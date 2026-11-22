@@ -5,7 +5,7 @@
  * lines; footnotes and comments are never read.
  */
 import JSZip from 'jszip';
-import { BodyReader, type PendingImage, type Rel } from './docxBody';
+import { BodyReader, settleCellImages, type PendingImage, type Rel } from './docxBody';
 import { docxMasthead, readHeadersFooters, sectionsOf } from './docxChrome';
 import { Numbering, Styles } from './docxNumbering';
 import { tidyText } from './normalize';
@@ -204,8 +204,9 @@ export async function readDocxLines(data: ArrayBuffer | Uint8Array, options: Doc
 
   const reader = new BodyReader({ styles, numbering, rels });
   const tidy = (runs: RawRun[]) => runs.map((r) => ({ ...r, text: tidyText(r.text) }));
-  const lines = reader.read(body).map((l) => ({ ...l, runs: tidy(l.runs), ...(l.cells ? { cells: l.cells.map(tidy) } : {}) }));
+  const read = reader.read(body).map((l) => ({ ...l, runs: tidy(l.runs), ...(l.cells ? { cells: l.cells.map(tidy) } : {}) }));
   await loadImages(zip, reader.images, options);
+  const lines = settleCellImages(read);
 
   const title = await titleOf(zip, body, rels, reader.headings).catch(() => undefined);
   const chrome = await chromeOf(zip, body, rels, styles, lines).catch(() => undefined);
