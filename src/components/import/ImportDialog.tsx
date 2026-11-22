@@ -1,9 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { analyseLines, hasChrome, type ChromeLeftover, type FileRole, type ImageRef, type PageChrome } from '@/import';
+import { analyseLines, hasChrome, type ChromeLeftover, type FileRole, type PageChrome } from '@/import';
 import { planChrome } from '@/import/chromePlan';
-import { imageBlockFromFile } from '@/export/imageImport';
 import { addToOneBank, addedRoots } from '@/library/bankDocs';
 import type { DocumentType } from '@/model/newWorksheet';
 import type { LanguageMode, Question, Worksheet } from '@/model/types';
@@ -32,9 +31,11 @@ import {
   readPaperFile,
   readPictureFiles,
   startLanguage,
+  prepareImportImage,
   type FileOutcome,
   type PaperFile,
 } from './fileImport';
+import { rememberImport } from '@/importCheck/sources';
 import {
   NO_LINKS,
   answerSource,
@@ -98,18 +99,7 @@ export interface ImportDialogProps {
   onAddedToBank: (bankId: string, roots: string[]) => void;
 }
 
-/** The app's downsizer for the readers: a picture this browser cannot draw stays a slot. */
-async function prepareImage(blob: Blob): Promise<ImageRef | null> {
-  const type = blob.type || 'image/png';
-  const block = await imageBlockFromFile(new File([blob], `figure.${type.split('/')[1] ?? 'png'}`, { type }), 420, { decodedOnly: true }).catch(() => null);
-  if (!block) return null;
-  return {
-    src: block.src,
-    widthPx: block.widthPx,
-    heightPx: block.heightPx,
-    ...(block.naturalWidthPx && block.naturalHeightPx ? { naturalWidthPx: block.naturalWidthPx, naturalHeightPx: block.naturalHeightPx } : {}),
-  };
-}
+const prepareImage = prepareImportImage;
 
 const isTyping = () => {
   const active = document.activeElement;
@@ -337,6 +327,8 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
       return;
     }
     onCreated([report.committed.id]);
+    // ✦ AI → Check import compares the new paper with this file, this session, without asking for it again.
+    rememberImport(report.committed.id, { name: row.fileName, read: paperRead(one.paper), analysis: one.result.analysis });
     const noAnswer = one.result.analysis.flags.filter((f) => f.kind === 'noAnswer').length;
     notify(papersDoneNotice(m, [{ name, kind: kindText(chosen, lang).title, questions: report.questionIds.length }], () => {}, noAnswer));
     onClose();
@@ -378,6 +370,10 @@ export default function ImportDialog({ files: chosen, onClose, onChooseAnother, 
       return;
     }
     const docs = [...made].sort((a, b) => a.index - b.index).map((d) => ({ ...papersToMake[d.index], id: d.worksheet.id, questions: d.questions }));
+    for (const d of made) {
+      const row = rows[d.index];
+      if (row) rememberImport(d.worksheet.id, { name: row.row.fileName, read: paperRead(row.paper), analysis: row.result.analysis });
+    }
     onCreated(docs.map((d) => d.id));
     notify(
       papersDoneNotice(

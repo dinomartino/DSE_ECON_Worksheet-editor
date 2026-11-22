@@ -33,6 +33,16 @@ import { ReviewLines, RoleMenu, type LineView } from './ReviewLines';
 import { ReviewPreview, type FigureActions, type PreviewCard } from './ReviewPreview';
 import { ChromeReview } from './ChromeReview';
 import { importedMarks } from './fileImport';
+import { ImportCheckPanel } from './ImportCheckPanel';
+import { isPaused } from '@/assist/paused';
+import { runAiCheck } from '@/importCheck/ai';
+import { IMPORT_CHECK_MESSAGES } from '@/importCheck/messages';
+import { applyOp, type CheckOp } from '@/importCheck/ops';
+import { checkReview, materializeBatch, reviewInput, safeFixes } from '@/importCheck/run';
+import type { ImportFinding } from '@/importCheck/types';
+import { useMessages } from '@/i18n/language';
+import { contentWidth, pageSetupOf } from '@/model/page';
+import { createRunDeps } from '@/translate/deps';
 
 /**
  * One paper's review: the file's lines with a role chip each (left), the questions as they
@@ -142,6 +152,75 @@ export function ReviewStep({
     [update],
   );
   const undoLast = useCallback(() => update(undoFix), [update]);
+
+  // ---- the import check (k-0494): what the import got wrong, fixed before Save ----
+
+  const cm = useMessages(IMPORT_CHECK_MESSAGES);
+  const [checkOpen, setCheckOpen] = useState(false);
+  const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
+  const [aiFound, setAiFound] = useState<ImportFinding[]>([]);
+  const [ai, setAi] = useState<{ busy: boolean; note?: string; progress?: string }>({ busy: false });
+  const aiStop = useRef<AbortController | null>(null);
+  useEffect(() => () => aiStop.current?.abort(), []);
+  const maxWidthPx = useMemo(() => Math.round(contentWidth(pageSetupOf(base)) / 15), [base]);
+  // Lines the teacher already settled: a picture added at a slot, "no picture", a role, a join.
+  const settled = useMemo(
+    () => new Set(pins.flatMap((p) => (p.kind === 'image' || p.kind === 'noPicture' || p.kind === 'role' || p.kind === 'join' || p.kind === 'newQuestion' ? [p.line] : []))),
+    [pins],
+  );
+  const checkOptions = useMemo(() => ({ maxWidthPx, settled }), [maxWidthPx, settled]);
+  const found = useMemo(
+    () => (checkOpen ? checkReview(analysis, result.unfixed ?? batch, batch, checkOptions) : []),
+    [checkOpen, analysis, result.unfixed, batch, checkOptions],
+  );
+  // The AI's findings stay while their fix still fits the questions as they now are.
+  const current = useMemo(() => (checkOpen && aiFound.length ? materializeBatch(batch) : []), [checkOpen, aiFound.length, batch]);
+  const findings = useMemo(() => {
+    const live = aiFound.filter((f) => !f.fix || 'pins' in f.fix || applyOp(current, f.fix.op));
+    return [...found, ...live].filter((f) => !skipped.has(f.id)).sort((a, b) => a.q - b.q);
+  }, [found, aiFound, current, skipped]);
+  const safe = useMemo(() => safeFixes(findings), [findings]);
+
+  const applyFinding = useCallback(
+    (f: ImportFinding) => {
+      if (!f.fix) return;
+      const fix = f.fix;
+      if ('pins' in fix) {
+        const now = latest.current.analysis;
+        update((s) => ({ ...s, pins: fix.pins.reduce((all, pin) => withPin(all, pin, now), s.pins), undo: [...s.undo, ...fix.pins.map(() => 'pin' as const)] }));
+      } else update((s) => ({ ...s, fixes: [...(s.fixes ?? []), [fix.op]], undo: [...s.undo, 'check'] }));
+      if (f.from === 'ai') setAiFound((all) => all.filter((x) => x.id !== f.id));
+    },
+    [update],
+  );
+  const applySafe = useCallback(() => {
+    const ops: CheckOp[] = safe.flatMap((f) => (f.fix && 'op' in f.fix ? [f.fix.op] : []));
+    if (ops.length) update((s) => ({ ...s, fixes: [...(s.fixes ?? []), ops], undo: [...s.undo, 'check'] }));
+  }, [safe, update]);
+  const askAi = useCallback(async () => {
+    aiStop.current?.abort();
+    const controller = new AbortController();
+    aiStop.current = controller;
+    setAi({ busy: true });
+    const resolved = await createRunDeps({ glossary: false });
+    if (!resolved.ok) {
+      setAi({ busy: false, note: cm.aiNoProvider });
+      return;
+    }
+    const { client, preset, model } = resolved.deps;
+    const input = reviewInput(latest.current.analysis, result.unfixed ?? batch, batch, checkOptions);
+    const outcome = await runAiCheck(input, { client, preset, model }, controller.signal, (done, total) =>
+      setAi({ busy: true, progress: `${cm.aiChecking(total)} ${done}/${total}` }),
+    );
+    if (controller.signal.aborted) return;
+    setAiFound(outcome.findings);
+    setAi({ busy: false, ...(outcome.fatal ? { note: outcome.fatal.message } : outcome.failed ? { note: cm.aiFailed(outcome.failed) } : {}) });
+  }, [batch, result.unfixed, checkOptions, cm]);
+  const closeCheck = useCallback(() => {
+    aiStop.current?.abort();
+    setCheckOpen(false);
+    setAi({ busy: false });
+  }, []);
 
   // ---- pictures: pasted, dropped or chosen; each becomes an image pin after its line ----
 
@@ -478,7 +557,30 @@ export function ReviewStep({
         onNext={goTo}
         onLanguage={setAllLanguage}
         onUndo={undoLast}
+        // Paused with ✦ AI → Check import (`PAUSED_VERBS`): one switch hides both doors.
+        checkLabel={isPaused('check.import') ? undefined : cm.checkImport}
+        checkTitle={cm.checkImportTitle}
+        checkOpen={checkOpen}
+        onCheck={() => {
+          setSkipped(new Set());
+          setCheckOpen((open) => !open);
+        }}
       />
+      {checkOpen && (
+        <ImportCheckPanel
+          findings={findings}
+          number={(q) => analysis.outline.questions[q]?.number ?? q + 1}
+          safe={safe.length}
+          stale={result.stale ?? 0}
+          ai={{ ...ai, available: true }}
+          onApply={applyFinding}
+          onSkip={(f) => setSkipped((all) => new Set([...all, f.id]))}
+          onApplySafe={applySafe}
+          onGo={(f) => goToLine(f.line ?? analysis.outline.questions[f.q]?.start)}
+          onAskAi={() => void askAi()}
+          onClose={closeCheck}
+        />
+      )}
       {answers && <AnswersBar text={m} name={answers.name} summary={answers.summary} onGo={goToLine} />}
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 w-[42%] min-w-0 flex-col border-r border-line">
@@ -574,6 +676,7 @@ export function undoFix(state: PaperState): PaperState {
   const last = state.undo[state.undo.length - 1];
   const undo = state.undo.slice(0, -1);
   if (last === 'drop') return { ...state, dropped: state.dropped.slice(0, -1), undo };
+  if (last === 'check') return { ...state, fixes: (state.fixes ?? []).slice(0, -1), undo };
   return { ...state, pins: state.pins.slice(0, -1), undo };
 }
 
@@ -588,6 +691,10 @@ function ReviewBar({
   onNext,
   onLanguage,
   onUndo,
+  checkLabel,
+  checkTitle,
+  checkOpen,
+  onCheck,
 }: {
   text: Text;
   questions: number;
@@ -599,6 +706,11 @@ function ReviewBar({
   onNext: (place: CheckPlace | undefined) => void;
   onLanguage: (language: Language) => void;
   onUndo: () => void;
+  /** Absent: the import check is paused, no button. */
+  checkLabel?: string;
+  checkTitle: string;
+  checkOpen: boolean;
+  onCheck: () => void;
 }) {
   const choices: Array<{ id: Language; label: string }> = [
     { id: 'auto', label: m.languageAuto },
@@ -623,6 +735,11 @@ function ReviewBar({
         // The count is the way there: each press goes to the next MC still without an answer.
         <Button size="sm" variant="subtle" title={m.nextNoAnswer} onClick={() => onNext(nextPlace(noAnswer, selectedLine))}>
           {m.noAnswerCount(noAnswer.length)} →
+        </Button>
+      )}
+      {checkLabel && (
+        <Button size="sm" variant={checkOpen ? 'ghostAccent' : 'default'} aria-pressed={checkOpen} title={checkTitle} onClick={onCheck} data-check-import>
+          {checkLabel}
         </Button>
       )}
       <span className="flex-1" />

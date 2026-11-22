@@ -1,3 +1,4 @@
+import { imageBlockFromFile } from '@/export/imageImport';
 import { DocxReadError, isPdfReadError, readDocx, readPdf, withImportResults, type Analysis, type ImageRef, type ImportBatch, type PageChrome, type ReadPaste } from '@/import';
 import { planChrome } from '@/import/chromePlan';
 import { questionMarks } from '@/model/marks';
@@ -86,6 +87,23 @@ export function sniffPaper(bytes: ArrayBuffer, name: string): 'docx' | 'pdf' | '
 }
 
 /** Read a chosen or dropped file into a review, or say plainly why not. */
+/**
+ * The app's downsizer for the readers: a picture this browser cannot draw stays a slot.
+ * The import dialog and ✦ AI → Check import read a file with it, so the same file gives
+ * the same pictures both times (k-0494).
+ */
+export async function prepareImportImage(blob: Blob): Promise<ImageRef | null> {
+  const type = blob.type || 'image/png';
+  const block = await imageBlockFromFile(new File([blob], `figure.${type.split('/')[1] ?? 'png'}`, { type }), 420, { decodedOnly: true }).catch(() => null);
+  if (!block) return null;
+  return {
+    src: block.src,
+    widthPx: block.widthPx,
+    heightPx: block.heightPx,
+    ...(block.naturalWidthPx && block.naturalHeightPx ? { naturalWidthPx: block.naturalWidthPx, naturalHeightPx: block.naturalHeightPx } : {}),
+  };
+}
+
 export async function readPaperFile(
   name: string,
   bytes: ArrayBuffer,

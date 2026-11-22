@@ -521,7 +521,8 @@ interface WorksheetState {
 }
 
 /** One question to build: the type id, and what to fill into its fresh `create()`. */
-export interface QuestionBuild { typeId: string; fill: (fresh: Question) => Question }
+/** `key`: what tells two builds of one outline question apart beyond the outline (an import check fix, k-0494). */
+export interface QuestionBuild { typeId: string; fill: (fresh: Question) => Question; key?: string }
 export type QuestionBatchReport =
   | { ok: true; questionIds: string[]; leadId?: string; committed: Worksheet }
   | { ok: false; refused: 'readOnly' | 'otherDocument' | 'nothing' };

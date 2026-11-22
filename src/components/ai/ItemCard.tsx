@@ -120,6 +120,12 @@ export function ItemCard({
             {acted ? m.done : item.action.label}
           </Button>
         )}
+        {item.action && !acted && position && (
+          // Leaves this one as it is and goes to the next (k-0494: Apply / Skip).
+          <Button size="sm" variant="subtle" onClick={onNext}>
+            {m.skip}
+          </Button>
+        )}
         <span className="flex-1" />
         {position && (
           <>

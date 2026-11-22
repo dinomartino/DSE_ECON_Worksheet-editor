@@ -82,10 +82,23 @@ interface Parts {
   curves: number;
   /** Drawn figures already recognised (a group of shapes and labels). */
   figures: number;
+  /** Of `shapes`: flat horizontal lines across the column, a question-answer book's ruled answer lines (k-0494). */
+  rules: number;
   lost?: string;
 }
 
-const emptyParts = (): Parts => ({ pics: [], boxes: [], shapes: 0, curves: 0, figures: 0 });
+const emptyParts = (): Parts => ({ pics: [], boxes: [], shapes: 0, curves: 0, figures: 0, rules: 0 });
+
+/** A ruled answer line drawn as a shape: a straight line, flat, at least this wide (px). */
+const RULE_MIN_PX = 200;
+function isRule(wsp: XmlElement, scale: number): boolean {
+  const geom = find(wsp, 'a:prstGeom')?.attrs.prst;
+  if (geom !== 'line' && geom !== 'straightConnector1') return false;
+  const ext = find(wsp, 'a:ext');
+  const cx = +(ext?.attrs.cx ?? 0) * scale;
+  const cy = +(ext?.attrs.cy ?? 0) * scale;
+  return cx / EMU_PER_PX >= RULE_MIN_PX && cy / EMU_PER_PX <= 2;
+}
 
 const boxText = (box: XmlElement) => textOf(box).replace(/\s+/g, ' ').trim();
 
@@ -126,6 +139,7 @@ function collect(el: XmlElement, parts: Parts, scale: number): void {
         else {
           parts.shapes++;
           if (find(c, 'a:custGeom')) parts.curves++;
+          else if (isRule(c, scale)) parts.rules++;
         }
         continue;
       case 'c:chart':
@@ -496,6 +510,12 @@ export class BodyReader {
     const p = pool.parts;
     pool.parts = emptyParts();
     if (!p.shapes && !p.boxes.length && !p.figures) return;
+    // Nothing but ruled lines across the column: the answer lines of a question-answer book,
+    // read as the typed ones are (an answer line each), not as a lost picture (k-0494).
+    if (p.rules >= 2 && p.rules === p.shapes && !p.figures && !p.boxes.length && !p.pics.length) {
+      for (let k = 0; k < p.rules; k++) out.push({ runs: [{ text: '\t' }] });
+      return;
+    }
     const tiny = p.boxes.filter((b) => boxText(b).length <= LABEL_MAX).length;
     if (!p.figures && !isFigure(p, tiny)) {
       for (const box of p.boxes) this.box(box, out);
@@ -874,6 +894,7 @@ function mergeParts(into: Parts, from: Parts): void {
   into.shapes += from.shapes;
   into.curves += from.curves;
   into.figures += from.figures;
+  into.rules += from.rules;
   into.lost ??= from.lost;
 }
 

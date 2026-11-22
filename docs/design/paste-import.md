@@ -946,3 +946,69 @@ blank lines kept to one (k-0468, issue #7.1).
 table rebuilt from a scan's role | comment layout; pictures in a scheme (a mark point holds text
 only, so a scheme's model figure is left out); the review screen does not yet say that exam
 results were found.
+
+## 16. Import check (as built, 2026-11-22, k-0494)
+
+The user (u-t17b): "extend the ai function to help user to checking the import paper and fix some
+misalignment … to let use have a perfect import"; placement (u-ywqa): a Check import button in the
+review step itself, before Save, and ✦ AI → Check import on a paper already imported.
+
+**Two doors, one engine** (`src/importCheck/`). The review's check compares the batch as it stands
+with the file it was read from (`run.ts:checkReview`); the open paper's check compares the paper's
+questions, in print order, with the same file solved again (or the review's solve, remembered for
+the session by `sources.ts:rememberImport`; otherwise the teacher picks the file, read with the
+import's own `prepareImportImage` so pictures compare by bytes). `run.ts:alignQuestions` pairs
+paper questions with outline questions in order by their words, so a question the teacher added
+or deleted since does not shift the rest.
+
+**Rules first** (`checks.ts`, instant, no AI): layout text left in (page numbers, Turn over, END OF
+PAPER, "Answers written in the margins…", Word's picture credit 此相片 (作者: …) 已透過 CC BY 授權 /
+"This Photo by Unknown Author…", copyright lines), marks still in the words ("[4m]", "(4 marks)",
+（4分）), Symbol-font characters in the Private Use Area (`SYMBOL_PUA`, only unambiguous ones are
+replaced), U+FFFD, empty paragraphs at a list's ends, a sentence cut into two paragraphs, a
+question's words on the wrong side (CJK share), options read as one ("A. … B. …"), not four
+options, an MC with picture options that became a written question, marks the file prints and the
+paper lacks (per part against the importer's own build, else the total), answer lines the file has
+and the paper not (open papers imported before the reader fix below), pictures wider than the text
+column, and against the file's lines: words nowhere on the paper (compared without spaces, case or
+punctuation), pictures missing or in another question, the next question's number or a part label
+kept as text, a dense Word table read as text, a table that differs from the importer's build of
+it (open paper only), and drawings the reader cannot import (Word shapes, charts, SmartArt) that
+the paper has no picture for yet.
+
+**Fixes** (`ops.ts:CheckOp`) are a closed set of edits that keep every question id and the number
+of questions: edit words (paragraph, option line, statement, table cell), remove a block, set
+marks or answer lines (only when the owner had none: `expect`), move a question's words to the
+other side, split an option, move or put back a picture, resize one, put lost words back, rebuild a
+table from the file, join two paragraphs, make a written question an MC. A fix finds its block by
+`address.ts:blockKey` (kind + words, a picture by its bytes), not by id or position: the review's
+preview carries figure slots the saved batch does not, and an open paper has been edited since.
+When the words moved on, the fix no longer applies (`applyOp` → null) and nothing is written. In the
+review a structural fix is a pin (new question, a role) and re-solves; lines the teacher already
+pinned are theirs and are not reported. `safe` fixes (Apply all safe fixes) are the ones that need
+no judgement: junk, marks text moved to marks, symbol characters, empty paragraphs, a split option
+that comes out at four, missing marks or answer lines, the wrong side, an overwide picture.
+
+**The review**: the fixes are `PaperState.fixes` (one group per Apply; Apply all safe fixes is one
+group), re-applied to both builds on every solve by `run.ts:batchWithFixes`, so the preview shows
+them (`QuestionBuild.key` changes the preview cache's key) and Save writes them. ⌘Z (`undoFix`)
+takes the last group back. **The open paper**: each card's fix is one `commit` (`paperRecipe`), one
+⌘Z; Apply all safe fixes is one commit; the bar re-reads the paper after each.
+
+**The AI** (`ai.ts`), the same path as the other ✦ verbs (`createRunDeps`, Settings → AI): each
+question with its stretch of the file (raw lines, labels and marks included; figures as markers)
+and the paper's texts by request-local refs. The model may propose replace / remove / marks / none.
+`validateProposals` keeps an edit only when its `from` is in that entry, a replacement's words are
+in the file (no invention), removed words are not the file's, and a mark is one the file prints;
+any other edit is dropped and the finding kept as a note without a fix. AI fixes are never safe.
+No provider: the rules alone, and the bar says so. Prompt `promptText.ts`, version `ic.1`.
+
+**Reader fix found on the user's Paper 2**: its 442 answer lines are Word line shapes (flat,
+column-wide, one per paragraph). They were pooled into a lost "drawing" (no answer space, a
+picture slot per question). `docxBody.ts` now counts such rules (`isRule`: `line` /
+`straightConnector1`, ≥ 200 px wide, ≤ 2 px high) and a pool of nothing else becomes typed answer
+lines, which the solver turns into answer space as it does tab or dotted lines.
+
+**Not done**: Word shapes and charts are not drawn (the finding points to the slot: paste the
+picture copied from Word); a lost picture inside a table cell is not compared; PDF pages are not
+rendered for the AI (text only); the AI was tried with a scripted client only.

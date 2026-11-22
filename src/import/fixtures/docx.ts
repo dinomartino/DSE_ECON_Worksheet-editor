@@ -199,6 +199,9 @@ export function group(labels: string[], pictures: Array<[rid: string, w: number,
 
 /** One loose floating shape: a line, or a small label box. */
 export const looseLine = () => `<w:r><w:drawing>${anchor(`<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">${wspLine}</a:graphicData></a:graphic>`, 200, 1)}</w:drawing></w:r>`;
+/** A question-answer book's ruled answer line, drawn as a flat line shape `w` px wide in its own paragraph (k-0494). */
+export const ruledLine = (w = 640) =>
+  p(`<w:r><w:drawing>${anchor(`<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:cNvCnPr/><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${w * EMU}" cy="0"/></a:xfrm><a:prstGeom prst="line"/></wps:spPr><wps:bodyPr/></wps:wsp></a:graphicData></a:graphic>`, w, 0)}</w:drawing></w:r>`);
 export const looseLabel = (text: string) => `<w:r><w:drawing>${anchor(`<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">${wspBox(para(text))}</a:graphicData></a:graphic>`, 40, 20)}</w:drawing></w:r>`;
 
 // ---- media ----

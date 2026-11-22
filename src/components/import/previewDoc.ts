@@ -84,7 +84,7 @@ export function previewItems(base: Worksheet, analysis: Analysis, batch: ImportB
   batch.builds.forEach((build, k) => {
     const q = outline.questions[k];
     const folded = outline.stimuli.filter((s) => s.before === k);
-    const key = JSON.stringify([build.typeId, q, folded, k === 0 && batch.lead ? 'lead' : '']);
+    const key = JSON.stringify([build.typeId, q, folded, k === 0 && batch.lead ? 'lead' : '', build.key ?? '']);
     let question = used.has(key) ? undefined : cache.get(key);
     if (!question) {
       question = materialize(build);

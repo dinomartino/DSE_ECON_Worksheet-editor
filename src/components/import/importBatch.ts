@@ -16,6 +16,9 @@ import {
   type ReadPaste,
 } from '@/import';
 import { numberRuns } from '@/import/matchAnswers';
+import type { ImportBatch } from '@/import';
+import type { CheckOp } from '@/importCheck/ops';
+import { batchWithFixes } from '@/importCheck/run';
 import type { TextKey } from '@/i18n/catalogue';
 import type { FileOutcome } from './fileImport';
 import type { IMPORT_MESSAGES } from './messages';
@@ -136,8 +139,14 @@ export interface PaperState {
   language: Language;
   /** `sheetPinKey`s of answer-file pins removed by the teacher. */
   dropped: string[];
-  /** What ⌘Z takes back next: a fix, or a removed answer-file pin. */
-  undo: Array<'pin' | 'drop'>;
+  /** What ⌘Z takes back next: a fix, a removed answer-file pin, or an import check fix. */
+  undo: Array<'pin' | 'drop' | 'check'>;
+  /**
+   * Import check fixes applied before Save (k-0494): edits of the batch, one group per
+   * Apply (Apply all safe fixes is one group, one ⌘Z). Re-applied on every solve; one that
+   * no longer fits the questions is left out (`PaperReview.stale`).
+   */
+  fixes?: CheckOp[][];
 }
 
 export const paperState = (language: Language): PaperState => ({ pins: [], language, dropped: [], undo: [] });
@@ -150,6 +159,19 @@ export interface PaperReview extends Review {
   match?: AnswerMatchResult;
   /** The answer-file pins in force (matched, not removed). */
   sheetPins: Pin[];
+  /** The batch before the import check's fixes (what the file alone makes); absent with none. */
+  unfixed?: ImportBatch;
+  /** Import check fixes that no longer fit the questions. */
+  stale?: number;
+}
+
+/** The review with the import check's fixes applied to what Save writes and to the preview. */
+function withFixes(result: PaperReview, state: PaperState): PaperReview {
+  const ops = (state.fixes ?? []).flat();
+  if (!ops.length) return result;
+  const batch = batchWithFixes(result.batch, ops);
+  const preview = batchWithFixes(result.preview, ops);
+  return { ...result, batch: batch.batch, preview: preview.batch, unfixed: result.batch, stale: batch.stale };
 }
 
 /**
@@ -158,12 +180,12 @@ export interface PaperReview extends Review {
  * pins first so a teacher's click wins over them.
  */
 export function paperReview(read: ReadPaste, state: PaperState, sheet?: AnswerSheet): PaperReview {
-  if (!sheet) return { ...review(read, state.pins, state.language), sheetPins: [] };
+  if (!sheet) return withFixes({ ...review(read, state.pins, state.language), sheetPins: [] }, state);
   const structural = state.pins.filter((p) => p.kind !== 'answer');
   const match = matchAnswers(analyseLines(read, { pins: structural, language: state.language }), sheet);
   const sheetPins = match.pins.filter((p) => !state.dropped.includes(sheetPinKey(p)));
   const analysis = analyseLines(read, { pins: [...sheetPins, ...state.pins], language: state.language });
-  return { analysis, batch: buildImport(analysis), preview: buildImport(analysis, { preview: true }), match, sheetPins };
+  return withFixes({ analysis, batch: buildImport(analysis), preview: buildImport(analysis, { preview: true }), match, sheetPins }, state);
 }
 
 // ---- the answers summary ----

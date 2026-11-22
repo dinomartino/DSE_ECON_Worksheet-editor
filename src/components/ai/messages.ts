@@ -9,6 +9,7 @@ export const AI_UI_MESSAGES = defineMessages({
   back: { en: 'Back', zh: '返回' },
   previous: { en: 'Previous', zh: '上一個' },
   next: { en: 'Next', zh: '下一個' },
+  skip: { en: 'Skip', zh: '略過' },
   settings: { en: 'Settings', zh: '設定' },
 
   // Toolbar button

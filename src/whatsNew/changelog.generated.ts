@@ -47,6 +47,20 @@ a version heading is edited afterwards.
   mapping as an appendix, with page headers and numbers, in 中文 or English.
   <!-- zh: **課程覆蓋報告會與試卷一併保存，PDF 亦更易閱讀。** 每次檢查課程覆蓋（單份試卷或整套試卷）都會自動與試卷一併儲存，即使關閉報告時沒有下載也不會遺失。✦ AI →「過往的課程覆蓋報告」會打開最近一份；可按日期、範圍及整體百分比選擇最近五份中的任何一份，再次下載 PDF 或刪除。若試卷在檢查後有改動，報告會註明，並仍顯示檢查時的試卷。報告會隨試卷一併同步及複製，舊版程式仍可如常開啟這些試卷。PDF 重新設計：首頁是重要數據、幾句總覽、各能力所佔分數及每個課題的覆蓋橫條；然後是缺口及最值得補上的部分、每個課題的學習要點表，以及作為附錄的逐題分析，附頁首及頁碼，以中文或英文顯示。 -->
 
+- **Check an import against its file, and fix what it got wrong.** In the import review, Check
+  import compares the questions with the Word or PDF file and lists what went wrong, question by
+  question: words missing or garbled, symbols from a symbol font, page numbers, "Turn over" and
+  picture credits left in the text, marks still in the words or missing, options read as one,
+  tables read as text, pictures missing or in the wrong question, Chinese on the English side, and
+  diagrams drawn with Word shapes that could not come in. Each one shows the words as they are and
+  as they will be, with Apply and Skip; Apply all safe fixes does the ones that need no judgement.
+  Fixes change the import before you save, and ⌘Z takes them back. Also ask the AI sends each
+  question with its part of the file to the AI provider in Settings → AI for what the rules cannot
+  see; it can only suggest the file's own words or marks, and nothing changes until you apply it.
+  On a paper you have already imported, ✦ AI → Check import does the same (it asks for the file
+  when the paper was imported before you opened the app), each fix one step of Undo.
+  <!-- zh: **把匯入的試卷與原檔案比較，修正出錯的地方。** 在匯入的檢查步驟中，按「檢查匯入」會把題目與 Word 或 PDF 檔案比較，逐題列出出錯的地方：缺少或亂碼的文字、符號字型的符號、殘留在文字中的頁碼、「請翻頁」和圖片來源說明、仍在文字中或缺少的分數、被讀成一個的選項、被讀成文字的表格、缺少或放錯題目的圖片、放在英文一邊的中文，以及無法匯入、用 Word 圖形繪畫的圖。每項都會顯示文字現在和修正後的樣子，並有「套用」及「略過」；「套用全部安全修正」會處理不需判斷的項目。修正會在儲存前改動匯入內容，⌘Z 可取消。「同時詢問 AI」會把每條題目及檔案中相應的部分傳送到「設定 → AI」中的 AI 服務，找出規則看不到的問題；AI 只能建議檔案本身的文字或分數，你按「套用」前不會有任何改動。已匯入的試卷可用 ✦ AI →「檢查匯入」做同樣的檢查（如試卷在開啟程式前已匯入，會要求選擇檔案），每項修正都可逐步復原。 -->
+
 ### Fixed
 - **Tables in imported Word papers come in whole.** A heading row with one filled cell (such
   as "$ billion") stays in its table instead of falling out above it; a fill-in sentence typed
@@ -58,6 +72,11 @@ a version heading is edited afterwards.
   text; a bank's balance sheet typed as two columns comes in as the T-account; and "Table 1: …"
   next to a table becomes its caption.
   <!-- zh: **匯入 Word 試卷時，表格完整保留。** 只有一格有文字的標題列（例如「$ billion」）會留在表格內，不再跑到表格上方；表格後以 Tab 排版的填充句、對話及並排的句子會保留為文字，不再變成表格的一列；跨欄或跨列合併的標題保持合併；一格內的多行文字保留換行；儲存格對齊、欄寬，以及較窄表格的寬度和置中會一併保留；有格線表格內的圖片會留在儲存格內、文字旁邊；Word 分成兩段的同一個表格會匯入為一個表格；沒有格線、只用來排版文字的表格會讀作文字；以兩欄輸入的銀行資產負債表會匯入為 T 型帳戶；表格旁的「Table 1：…」或「表二」會成為表格標題。 -->
+
+- **Answer lines drawn as lines in Word now come in as answer lines.** A question-answer book
+  whose writing lines are drawn with Word's line tool used to import with no answer space and a
+  "picture missing" box; each part now gets its lines, as in the file.
+  <!-- zh: **在 Word 中用線條繪畫的作答橫線，現在會匯入為作答橫線。** 以前，用 Word 線條工具繪畫作答橫線的題目答題簿，匯入後沒有作答空間，還會出現「缺少圖片」方框；現在每部分都會有與檔案相同的作答橫線。 -->
 
 ## 0.10.0 — 2026-11-20
 
