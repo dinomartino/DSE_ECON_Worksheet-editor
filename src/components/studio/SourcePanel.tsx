@@ -23,7 +23,7 @@ const label = 'text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-su
  * the teacher presses Write; the list under "Sends this to" is built from the same brief the
  * request is (`sentSummary`), so it cannot say less than what goes.
  */
-export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn: boolean; onGoTo: (view: 'pastpapers' | 'bank') => void; onTrialOff: () => void }) {
+export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn: boolean; onGoTo: (view: 'pastpapers' | 'bank') => void; onTrialOff?: () => void }) {
   const m = useMessages(QUESTION_STUDIO_MESSAGES);
   const lang = useUiLanguage();
   const form = useStudio((s) => s.form);
@@ -268,9 +268,11 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
 
       <p className="flex flex-wrap items-center gap-x-2 text-[11px] leading-relaxed text-ink-subtle">
         <span>{m.trialFoot}</span>
-        <button type="button" onClick={onTrialOff} className="cursor-pointer font-medium text-accent-ink hover:underline">
-          {m.trialOff}
-        </button>
+        {onTrialOff && (
+          <button type="button" onClick={onTrialOff} data-studio-trial-off className="cursor-pointer font-medium text-accent-ink hover:underline">
+            {m.trialOff}
+          </button>
+        )}
       </p>
     </div>
   );

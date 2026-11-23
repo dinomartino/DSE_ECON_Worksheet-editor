@@ -251,7 +251,7 @@ export function StartScreen({
   const [pastPaperSettings] = useSettings(PAST_PAPER_SETTINGS);
   const pastPapersOn = sourceUrl(pastPaperSettings) !== undefined;
   const pastPaperTotal = usePastPaperBank((state) => state.manifest?.questions);
-  // The Question studio is a trial (k-0499): off for everyone until `?studio=trial` turns it on here.
+  // The Question studio is a trial (k-0499): shown in a develop build, hidden in a release build (`?studio=trial` / `?studio=off` set it here).
   const qs = useMessages(QUESTION_STUDIO_MESSAGES);
   const studioOn = useStudioTrial();
   useEffect(() => {

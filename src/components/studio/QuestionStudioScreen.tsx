@@ -5,7 +5,7 @@ import { Segmented } from '@/components/ui';
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { useStudio } from '@/questionStudio/live';
-import { setStudioTrial } from '@/questionStudio/trial';
+import { setStudioTrial, studioDefaultOn } from '@/questionStudio/trial';
 import type { WorksheetSummary } from '@/storage';
 import { ChecksPanel } from './ChecksPanel';
 import { DraftsPanel } from './DraftsPanel';
@@ -18,8 +18,8 @@ import { Tray } from './Tray';
 
 /**
  * The Question studio 擬題工作室 as its own screen (k-0499, decision 2c): the start
- * screen's view beside the Question bank and the Past paper bank, behind the trial switch
- * (`src/questionStudio/trial.ts`). Source on the left (a key point, bank questions to write
+ * screen's view beside the Question bank and the Past paper bank, shown in a develop build
+ * and hidden in a release build (the trial switch, `src/questionStudio/trial.ts`). Source on the left (a key point, bank questions to write
  * like, how many and how hard, exactly what is sent), the drafts as they print in the middle,
  * the checks on the right, and a tray at the foot. Nothing is saved or sent until Write, and
  * nothing lands in a paper or the bank until Add or Keep.
@@ -122,10 +122,16 @@ function WriteView({
           <SourcePanel
             pastPapersOn={pastPapersOn}
             onGoTo={onGoTo}
-            onTrialOff={() => {
-              setStudioTrial(false);
-              onHome();
-            }}
+            onTrialOff={
+              // Only where the studio is opt-in (a release build): in a develop build it is part of
+              // the app, and the desktop app has no address bar to bring it back once hidden.
+              studioDefaultOn()
+                ? undefined
+                : () => {
+                    setStudioTrial(false);
+                    onHome();
+                  }
+            }
           />
         </div>
         <main className="flex min-w-0 flex-1 flex-col lg:min-h-0">

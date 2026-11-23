@@ -97,6 +97,14 @@ gh release edit vX.Y.Z --draft=false --latest --notes-file /tmp/notes.md
 "Release" means the whole sequence including this step; a release instruction is
 already the sign-off on the version.
 
+**What a release hides.** The Release workflow builds with `NEXT_PUBLIC_RELEASE_BUILD=1`
+(`src/platform/buildChannel.ts`), and nothing else sets it: a feature that is built and on
+`develop` but not shipped hides itself in that build and shows in every other one (`npm run
+dev`, CI, a desktop preview). Today that is the Question studio (k-0499): the release has no
+Library row for it, and its CHANGELOG line is held back (`docs/design/question-studio.md` §
+The trial switch). Nothing to flip at release time; to ship the studio, follow that section
+before tagging.
+
 ### Beta
 
 ```bash

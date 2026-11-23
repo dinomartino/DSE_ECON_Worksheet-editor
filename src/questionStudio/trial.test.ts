@@ -1,16 +1,36 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { appSettings } from '@/settings/store';
-import { STUDIO_TRIAL_SETTINGS, applyTrialRequest, readTrialRequest, setStudioTrial, studioTrialOn } from './trial';
+import { STUDIO_TRIAL_SETTINGS, applyTrialRequest, readTrialRequest, setStudioTrial, studioDefaultOn, studioTrialOn } from './trial';
 
-afterEach(() => appSettings.reset(STUDIO_TRIAL_SETTINGS));
+afterEach(() => {
+  appSettings.reset(STUDIO_TRIAL_SETTINGS);
+  delete process.env.NEXT_PUBLIC_RELEASE_BUILD;
+  vi.resetModules();
+});
+
+const addressOf = (search: string) =>
+  ({ location: { search, pathname: '/', hash: '' }, history: { state: null, replaceState: () => {} } }) as unknown as Pick<Window, 'location' | 'history'>;
 
 describe('the trial switch', () => {
-  it('is off until it is turned on, and stays where it was put', () => {
+  it('shows the studio in a develop build without anyone turning it on (these tests run as one)', () => {
+    expect(studioDefaultOn()).toBe(true);
+    expect(STUDIO_TRIAL_SETTINGS.defaults({ desktop: false })).toEqual({ on: true });
+    expect(studioTrialOn()).toBe(true);
+  });
+
+  it('stays where it was put, and Reset goes back to what the build shows', () => {
+    setStudioTrial(false);
     expect(studioTrialOn()).toBe(false);
     setStudioTrial(true);
     expect(studioTrialOn()).toBe(true);
     setStudioTrial(false);
-    expect(studioTrialOn()).toBe(false);
+    appSettings.reset(STUDIO_TRIAL_SETTINGS);
+    expect(studioTrialOn()).toBe(true);
+  });
+
+  it('hides it in a release build unless it was turned on, whichever way the build is asked', () => {
+    expect(studioDefaultOn(true)).toBe(false);
+    expect(studioDefaultOn(false)).toBe(true);
   });
 
   it('reads ?studio=trial and ?studio=off, and hands back the address without it', () => {
@@ -42,7 +62,7 @@ describe('the trial switch', () => {
   it('does nothing for an address that does not name it, or with no window', () => {
     const win = { location: { search: '?x=1', pathname: '/', hash: '' }, history: { state: null, replaceState: () => { throw new Error('no'); } } } as unknown as Pick<Window, 'location' | 'history'>;
     expect(applyTrialRequest(win)).toBeUndefined();
-    expect(studioTrialOn()).toBe(false);
+    expect(studioTrialOn()).toBe(true);
     expect(applyTrialRequest(undefined)).toBeUndefined();
   });
 
@@ -52,6 +72,43 @@ describe('the trial switch', () => {
       history: { state: null, replaceState: () => { throw new Error('sandboxed'); } },
     } as unknown as Pick<Window, 'location' | 'history'>;
     expect(applyTrialRequest(win)).toBe(true);
+    expect(studioTrialOn()).toBe(true);
+  });
+});
+
+describe('in a release build (the Release workflow sets the flag)', () => {
+  // Next inlines the flag when it builds, so a release is a module graph that read it as 1.
+  const releaseModules = async () => {
+    process.env.NEXT_PUBLIC_RELEASE_BUILD = '1';
+    vi.resetModules();
+    const [store, trial] = await Promise.all([import('@/settings/store'), import('./trial')]);
+    return { appSettings: store.appSettings, ...trial };
+  };
+
+  it('is hidden on a first launch: no one has to ask for it to be hidden', async () => {
+    const t = await releaseModules();
+    expect(t.studioDefaultOn()).toBe(false);
+    expect(t.studioTrialOn()).toBe(false);
+    expect(t.STUDIO_TRIAL_SETTINGS.defaults({ desktop: true })).toEqual({ on: false });
+  });
+
+  it('is still turned on by ?studio=trial and off by ?studio=off, and Reset goes back to hidden', async () => {
+    const t = await releaseModules();
+    expect(t.applyTrialRequest(addressOf('?studio=trial'))).toBe(true);
+    expect(t.studioTrialOn()).toBe(true);
+    expect(t.applyTrialRequest(addressOf('?studio=off'))).toBe(false);
+    expect(t.studioTrialOn()).toBe(false);
+    t.setStudioTrial(true);
+    t.appSettings.reset(t.STUDIO_TRIAL_SETTINGS);
+    expect(t.studioTrialOn()).toBe(false);
+  });
+});
+
+describe('in a develop build, with the address', () => {
+  it('?studio=off hides it, and ?studio=trial shows it again', () => {
+    expect(applyTrialRequest(addressOf('?studio=off'))).toBe(false);
+    expect(studioTrialOn()).toBe(false);
+    expect(applyTrialRequest(addressOf('?studio=trial'))).toBe(true);
     expect(studioTrialOn()).toBe(true);
   });
 });

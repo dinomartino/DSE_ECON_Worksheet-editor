@@ -3475,10 +3475,13 @@ The engine is `src/generate/`, pure over injected deps like `src/translate/run.t
 
 ## AI question studio (k-0499)
 
-**A trial, off for everyone** — the engine (`src/questionStudio/`) and its page
-(`src/components/studio/`) are built and tested; a teacher sees nothing of it until the app
-is opened once with `?studio=trial` (`trial.ts`, a setting on that computer). Design:
-`docs/design/question-studio.md`.
+**Not shipped: shown in every develop build, hidden in a release build** — the engine
+(`src/questionStudio/`) and its page (`src/components/studio/`) are built and tested; a
+develop build (`npm run dev`, a build on develop or in CI, a desktop preview) shows the studio
+with nothing to turn on, a release build (the `v*` tag's, `NEXT_PUBLIC_RELEASE_BUILD=1` from
+`release.yml`, read once in `src/platform/buildChannel.ts`) hides it until the user ships it.
+`trial.ts` holds the switch: a setting on that computer (`?studio=trial` / `?studio=off`)
+overrides the build's default. Design: `docs/design/question-studio.md`.
 
 Writes new multiple-choice questions from a syllabus key point, optionally in the manner of
 bank questions the teacher picked, and returns **drafts**. Pure over injected deps like
@@ -3878,7 +3881,11 @@ Desktop:  the same `out/` wrapped by Tauri 2 → signed .dmg (macOS arm64 + x64)
 Browser:  .docx via JSZip client-side · localStorage autosave · file up/download · PDF via window.print() · optional AI translation: `fetch` from `src/ai/http.ts` straight to the teacher's chosen provider
 ```
 
-Nothing in `src/` reads `process.env` or the filesystem at runtime. New on-page chrome
+Nothing in `src/` reads `process.env` or the filesystem at runtime. Two build-time
+constants are inlined by Next when it builds, so a build carries them and nothing reads them
+later: `NODE_ENV` (`whatsNew/notes.ts:SHOW_UNRELEASED`) and `NEXT_PUBLIC_RELEASE_BUILD`
+(`platform/buildChannel.ts:RELEASE_BUILD`, `1` only in the Release workflow, so a feature
+built but not shipped can hide itself in a release and nowhere else). New on-page chrome
 needs `data-print-hide`, or it appears in the PDF.
 
 CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every PR and push to

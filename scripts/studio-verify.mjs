@@ -11,7 +11,12 @@ import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
  * a tiny invented export served from here, and requests to the provider hosts are blocked.
  *
  *   npm run dev -- -p 3199   (or any build served somewhere)
- *   node scripts/studio-verify.mjs [--url=http://localhost:3199] [--out=/tmp/studio-verify] [--only=gate,write,tray,like,stop,vpn,zh,layout,label,trial]
+ *   node scripts/studio-verify.mjs [--url=http://localhost:3199] [--out=/tmp/studio-verify] [--only=gate,write,tray,like,stop,vpn,zh,layout,label,trial] [--release]
+ *
+ * The studio is shown by a develop build with nothing turned on, and hidden by a release build
+ * (`src/platform/buildChannel.ts`; a build made with `NEXT_PUBLIC_RELEASE_BUILD=1`). The run
+ * checks the build it is pointed at: a develop build by default, a release build with `--release`
+ * (then `?studio=trial` turns the studio on first, as the other sections need it).
  *
  * Package 3 (the AI-made label and the trial kit) adds `label` (the chip on the page, the Edit
  * panel's note and Checked, the outline's mark, that none of it prints) and `trial` (run the 30
@@ -28,6 +33,8 @@ const BANK_PORT = Number(opt('bank-port', '8792'));
 const MOCK = `http://localhost:${MOCK_PORT}`;
 const BANK = `http://localhost:${BANK_PORT}/`;
 const want = (name) => ONLY.length === 0 || ONLY.includes(name);
+/** The build under test is a release build (made with NEXT_PUBLIC_RELEASE_BUILD=1): the studio starts hidden. */
+const RELEASE = args.includes('--release');
 mkdirSync(OUT, { recursive: true });
 
 // ---- an invented Past paper bank: one topic, three questions, and its search index ----
@@ -149,8 +156,9 @@ async function openStudio(page, w) {
   await page.getByRole('button', { name: w.row }).first().click();
   await screen(page).waitFor();
 }
+/** A develop build shows the studio with nothing turned on; a release build needs the address's switch. */
 async function enable(page) {
-  await page.goto(`${APP}/?studio=trial`, { waitUntil: 'networkidle' });
+  await page.goto(RELEASE ? `${APP}/?studio=trial` : APP, { waitUntil: 'networkidle' });
 }
 async function writeThree(page) {
   await page.locator('#studio-key-point').selectOption('C.ped');
@@ -170,34 +178,82 @@ try {
   const w = WORDS.en;
 
   if (want('gate')) {
-    console.log('gate');
+    console.log(RELEASE ? 'gate (release build)' : 'gate (develop build)');
     const { context, page, errors } = await newPage(browser);
     await page.goto(APP, { waitUntil: 'networkidle' });
-    await check('off by default: no Library row, nothing about it', async () => {
+    const rowCount = () => page.getByRole('button', { name: w.row }).count();
+    const likeButtons = async () => {
+      await page.getByRole('button', { name: w.pastRow }).first().click();
+      await page.locator('[data-pastpaper-card]').first().waitFor({ timeout: 30_000 });
+      const n = await page.locator('[data-pastpaper-card] [data-write-like]').count();
+      await page.getByRole('button', { name: w.home }).first().click();
       await page.getByRole('button', { name: w.pastRow }).first().waitFor();
-      expect((await page.getByRole('button', { name: w.row }).count()) === 0, 'the studio row is there');
-      expect(!(await page.locator('[data-write-like]').count()), 'a write-like button is there');
-    });
-    await check('?studio=trial turns it on, once, and leaves the address clean', async () => {
-      await page.goto(`${APP}/?studio=trial&nosplash=1`, { waitUntil: 'networkidle' });
-      await page.getByRole('button', { name: w.row }).first().waitFor();
-      expect(!page.url().includes('studio='), `address ${page.url()}`);
-      expect(page.url().includes('nosplash=1'), `address lost the other parameter: ${page.url()}`);
-      await page.reload({ waitUntil: 'networkidle' });
-      await page.getByRole('button', { name: w.row }).first().waitFor();
-    });
-    await check('the screen opens, says Trial, and ← Home leaves', async () => {
-      await openStudio(page, w);
-      expect((await screen(page).getByText('Trial', { exact: true }).count()) === 1, 'no Trial tag');
-      await page.screenshot({ path: `${OUT}/01-empty-en.png` });
-      await screen(page).getByRole('button', { name: w.home }).click();
-      await page.getByRole('button', { name: w.row }).first().waitFor();
-    });
-    await check('?studio=off turns it off again', async () => {
-      await page.goto(`${APP}/?studio=off`, { waitUntil: 'networkidle' });
-      await page.getByRole('button', { name: w.pastRow }).first().waitFor();
-      expect((await page.getByRole('button', { name: w.row }).count()) === 0, 'the studio row stayed');
-    });
+      return n;
+    };
+    if (!RELEASE) {
+      await check('a develop build shows it from the first launch: the row and ✦ Write like this, nothing turned on', async () => {
+        await page.getByRole('button', { name: w.row }).first().waitFor();
+        expect((await page.evaluate(() => localStorage.getItem('econgen.settings.questionStudio'))) === null, 'looking at it wrote a setting');
+        expect((await likeButtons()) > 0, 'no ✦ Write like this on the Past paper cards');
+      });
+      await check('the screen opens, says Trial, and has no "Turn the trial off" (a desktop app has no address bar to bring it back)', async () => {
+        await openStudio(page, w);
+        expect((await screen(page).getByText('Trial', { exact: true }).count()) === 1, 'no Trial tag');
+        expect((await screen(page).locator('[data-studio-trial-off]').count()) === 0, 'an off button is there');
+        await page.screenshot({ path: `${OUT}/01-empty-en.png` });
+        await screen(page).getByRole('button', { name: w.home }).click();
+        await page.getByRole('button', { name: w.row }).first().waitFor();
+      });
+      await check('?studio=off hides it, once, leaves the address clean, and it stays hidden after a reload', async () => {
+        await page.goto(`${APP}/?studio=off&nosplash=1`, { waitUntil: 'networkidle' });
+        await page.getByRole('button', { name: w.pastRow }).first().waitFor();
+        expect((await rowCount()) === 0, 'the studio row stayed');
+        expect(!page.url().includes('studio='), `address ${page.url()}`);
+        expect(page.url().includes('nosplash=1'), `address lost the other parameter: ${page.url()}`);
+        expect((await likeButtons()) === 0, '✦ Write like this stayed');
+        await page.reload({ waitUntil: 'networkidle' });
+        await page.getByRole('button', { name: w.pastRow }).first().waitFor();
+        expect((await rowCount()) === 0, 'it came back by itself');
+      });
+      await check('?studio=trial brings it back, once, with the address clean', async () => {
+        await page.goto(`${APP}/?studio=trial&nosplash=1`, { waitUntil: 'networkidle' });
+        await page.getByRole('button', { name: w.row }).first().waitFor();
+        expect(!page.url().includes('studio=') && page.url().includes('nosplash=1'), `address ${page.url()}`);
+        await page.reload({ waitUntil: 'networkidle' });
+        await page.getByRole('button', { name: w.row }).first().waitFor();
+      });
+    } else {
+      await check('a release build hides it on a first launch: no Library row, no ✦ Write like this, nothing about it', async () => {
+        await page.getByRole('button', { name: w.pastRow }).first().waitFor();
+        expect((await rowCount()) === 0, 'the studio row is there');
+        expect((await likeButtons()) === 0, 'a write-like button is there');
+        expect(!/Question studio|擬題工作室/.test(await page.locator('body').innerText()), 'the start screen mentions it');
+      });
+      await check('?studio=trial turns it on, once, and leaves the address clean', async () => {
+        await page.goto(`${APP}/?studio=trial&nosplash=1`, { waitUntil: 'networkidle' });
+        await page.getByRole('button', { name: w.row }).first().waitFor();
+        expect(!page.url().includes('studio='), `address ${page.url()}`);
+        expect(page.url().includes('nosplash=1'), `address lost the other parameter: ${page.url()}`);
+        await page.reload({ waitUntil: 'networkidle' });
+        await page.getByRole('button', { name: w.row }).first().waitFor();
+        expect((await likeButtons()) > 0, 'no ✦ Write like this after the switch');
+      });
+      await check('the screen opens, says Trial, and its foot turns the trial off again', async () => {
+        await openStudio(page, w);
+        expect((await screen(page).getByText('Trial', { exact: true }).count()) === 1, 'no Trial tag');
+        await page.screenshot({ path: `${OUT}/01-empty-en.png` });
+        await screen(page).locator('[data-studio-trial-off]').click();
+        await page.getByRole('button', { name: w.pastRow }).first().waitFor();
+        expect((await rowCount()) === 0, 'the studio row stayed');
+      });
+      await check('?studio=off turns it off again', async () => {
+        await page.goto(`${APP}/?studio=trial`, { waitUntil: 'networkidle' });
+        await page.getByRole('button', { name: w.row }).first().waitFor();
+        await page.goto(`${APP}/?studio=off`, { waitUntil: 'networkidle' });
+        await page.getByRole('button', { name: w.pastRow }).first().waitFor();
+        expect((await rowCount()) === 0, 'the studio row stayed');
+      });
+    }
     expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
     await context.close();
   }

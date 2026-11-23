@@ -1,26 +1,39 @@
+import { RELEASE_BUILD } from '@/platform/buildChannel';
 import { appSettings, useSettings } from '@/settings/store';
 import type { SettingsSchema } from '@/settings/types';
 import { bool } from '@/settings/validators';
 
 /**
- * The Question studio's trial switch (k-0499, decision 7a, u-x79v): the studio ships built
- * but off until the trial (about 20 requests from the teacher and 30 invented briefs on
- * their own key) has shown the questions are good enough. Off = no Library row, no
- * screen, and the "✦ Write like this" entries are not drawn; nothing about it is
- * mentioned to a teacher. The switch is a setting on this computer, turned on by opening
- * the app once with `?studio=trial` (and off again with `?studio=off`, or from the
- * studio's own foot). Taking the trial out for good = removing the check, not the code.
+ * The Question studio's trial switch (k-0499, decision 7a, u-x79v; "shown on develop, no
+ * need to turn on", u-z4n3): the studio is built and on `develop`, and is not shipped
+ * until the trial (about 20 requests from the teacher and 30 invented briefs on their own
+ * key) has shown the questions are good enough. What the switch reads before anyone has
+ * set it depends on the build (`platform/buildChannel.ts`):
+ *  - a develop build (`npm run dev`, a build on develop or in CI, a desktop preview) shows
+ *    the studio from the first launch: nothing to turn on;
+ *  - a release build (the Release workflow's, for a `v*` tag) hides it: no Library row, no
+ *    screen, the "✦ Write like this" entries are not drawn, and nothing about it is
+ *    mentioned to a teacher.
+ * Once a setting is given on this computer it wins in either build: `?studio=trial` turns
+ * the studio on and `?studio=off` turns it off (the address is cleaned afterwards). In a
+ * release build the studio's own foot also turns it off; in a develop build it has no such
+ * button, since the desktop app has no address bar to bring it back.
+ * Shipping it = making the default `true` here (no build check), plus the CHANGELOG line
+ * held in `docs/design/question-studio.md`.
  */
 
 export interface StudioTrialSettings {
   on: boolean;
 }
 
+/** What the switch reads before anyone has set it: shown in a develop build, hidden in a release build. */
+export const studioDefaultOn = (release: boolean = RELEASE_BUILD): boolean => !release;
+
 export const STUDIO_TRIAL_SETTINGS: SettingsSchema<StudioTrialSettings> = {
   section: 'questionStudio',
   version: 1,
   storageKey: 'econgen.settings.questionStudio',
-  defaults: () => ({ on: false }),
+  defaults: () => ({ on: studioDefaultOn() }),
   fields: { on: bool },
 };
 

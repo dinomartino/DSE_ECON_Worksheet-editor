@@ -57,6 +57,11 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This is the release build: what is built but not shipped yet (the Question studio,
+          # k-0499) hides itself. Next reads it when `beforeBuildCommand` runs `npm run build`
+          # (src/platform/buildChannel.ts); no other workflow sets it, so a develop build,
+          # CI and the desktop preview keep showing it.
+          NEXT_PUBLIC_RELEASE_BUILD: '1'
           # Updater signing: without these, latest.json carries no signature and
           # installed apps refuse the update.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}

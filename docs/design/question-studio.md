@@ -1,10 +1,11 @@
 # Question studio — AI that writes new questions (k-0499)
 
-Status, 2026-11-24: **all three packages are on `develop`, a trial: nothing is visible to
-teachers** until the app is opened once with `?studio=trial`. The engine, the page, the
-AI-made label and the trial kit are built; no real model has run, so the user's trial (30
-invented briefs and about 20 requests of their own, on their key) is what is next. The
-proposal is `Outbox/k-0495/AI-QUESTION-GEN-PROPOSAL.md` (not in the repo); the older design it
+Status, 2026-11-23: **all three packages are on `develop`, and every develop build shows the
+studio** with nothing to turn on (u-z4n3: "shown on the dev, no need turn on"). **A release
+build hides it**, so nothing is visible to teachers until the user ships it (§ The trial
+switch). The engine, the page, the AI-made label and the trial kit are built; no real model
+has run, so the user's trial (30 invented briefs and about 20 requests of their own, on their
+key) is what is next. The proposal is `Outbox/k-0495/AI-QUESTION-GEN-PROPOSAL.md` (not in the repo); the older design it
 builds on is `docs/design/ai-pattern-questions.md`.
 
 ## What it is
@@ -24,7 +25,7 @@ Add. Release 1 is MC only (the published bank is MC only: no DRQs, no schemes).
 | 4 | Always review before insert: drafts wait; nothing lands until Add. | `insert.ts:studioBuilds` is the only way in |
 | 5 | AI-made label, screen only, until the teacher presses Checked. | `Question.aiMade`, `AiMadeNote.tsx`, `AiMadeChip.tsx` (§ The AI-made label) |
 | 6 | **6a:** the blind solve is the same provider, a fresh request. | `run.ts:writeDrafts`, `prompt.ts:buildSolveRequest` |
-| 7 | **7a:** paused on develop until a trial (about 20 of the user's requests plus 30 invented briefs on their key). | `trial.ts` (the gate), `trialBriefs.ts`, `trialLog.ts`, `trialScore.ts` (§ The trial kit) |
+| 7 | **7a:** not shipped until a trial (about 20 of the user's requests plus 30 invented briefs on their key); shown in every develop build, hidden in a release build (u-z4n3). | `trial.ts` (the switch), `platform/buildChannel.ts`, `trialBriefs.ts`, `trialLog.ts`, `trialScore.ts` (§ The trial kit) |
 | 8 | Gemini for the trial; it needs a VPN in Hong Kong, so the UI's error says so. | package 2 |
 
 ## What is sent
@@ -143,13 +144,29 @@ as the Past paper screen is (header, columns, a tray at the foot):
   exactly the actions the error names; Gemini that cannot be reached says it needs a VPN in
   Hong Kong (`errorNote`: network, "didn't answer", timeout; also for the ✦ doors).
 
-**The trial switch** (`trial.ts`, decision 7a): `econgen.settings.questionStudio`, off by
-default. Opening the app once with `?studio=trial` turns it on (and removes the parameter
-from the address), `?studio=off` or "Turn the trial off" on the page turns it off. Off: no
-Library row, no screen, no ✦ Write like this. Taking the trial out for good means removing
-`useStudioTrial` from the start screen and the two buttons' props. It needs an address bar,
-so the desktop shell cannot turn it on yet (add a Settings or version-tap route if the
-trial must run there).
+**The trial switch** (`trial.ts`, decision 7a; u-z4n3): the studio is shown by a develop
+build from the first launch and hidden by a release build. What decides is a build-time
+constant, `RELEASE_BUILD` (`platform/buildChannel.ts`): `NEXT_PUBLIC_RELEASE_BUILD=1`, which
+only `.github/workflows/release.yml` sets (the workflow a `v*` tag runs, so nobody has to
+remember anything at release time). A setting on the computer, `econgen.settings.questionStudio`,
+overrides the build's default once it has been given:
+
+| Build | Before any setting | `?studio=trial` | `?studio=off` | "Turn the trial off" on the page |
+|---|---|---|---|---|
+| `npm run dev`, `npm run desktop:dev` | shown | shown | hidden | not offered |
+| `npm run build` on develop or in CI, a local `.dmg` (`DESKTOP-PREVIEW.md` way B), a CI desktop preview (way C) | shown | shown | hidden | not offered |
+| a release: the Release workflow's build for a `v*` tag | **hidden** | shown | hidden | offered (only after `?studio=trial`) |
+
+"Hidden" is no Library row, no screen, no ✦ Write like this, nothing about it for a teacher.
+The off button is left out of a develop build because the desktop app has no address bar to
+bring the studio back once hidden. Nothing is written to the settings by looking: only a
+`?studio=` request (or the button in a release build) stores a value, and resetting the
+setting goes back to the build's default (`trial.test.ts` covers both builds by loading the
+module with the flag set).
+**Shipping it**: make `studioDefaultOn` return `true` (drop its `RELEASE_BUILD` check) and
+add the CHANGELOG line below; the page's off button then goes away by itself, and the flag in
+`release.yml` stays, since it is the general "release build" fact. **Captures**: a film or site screenshot taken from a develop build shows the Library row;
+build with `NEXT_PUBLIC_RELEASE_BUILD=1 npm run build` to capture what teachers see.
 
 ## The AI-made label (package 3, decision 5)
 
@@ -220,6 +237,11 @@ already in Settings, with the same engine, checks and corpus as Write.
    `contentKey` and copies, the Paper check warning; the 30 briefs, the run, the record, the
    marks and the bar. Browser proof `scripts/studio-verify.mjs` (`label`, `trial`).
 
-Draft CHANGELOG line, to add when the studio is unpaused (a paused feature has none, as
-`check.syllabus` on main): "Write new multiple-choice questions from the syllabus — Library
+4. **Shown on develop** (done, u-z4n3): the default is on in a develop build and off in a
+   release build; `platform/buildChannel.ts`, the flag in `release.yml`, `trial.ts`, the
+   gate section of `scripts/studio-verify.mjs` (`--release` for a release build's).
+
+Draft CHANGELOG line, to add when the studio ships. It stays out of `CHANGELOG.md` while a
+release hides the studio, because the release body is copied from Unreleased (a feature a
+release hides has none, as `check.syllabus` on main): "Write new multiple-choice questions from the syllabus — Library
 → Question studio writes drafts on a key point, checks them, and adds the ones you pick."

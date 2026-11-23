@@ -10,6 +10,9 @@ Terminal as-is. (Releasing for real: [`RELEASING.md`](./RELEASING.md).)
 | B. Local `.dmg` | ~5–10 min | A real installer built on this Mac. |
 | C. CI preview | ~15 min | Unsigned `.dmg` + Windows installer from GitHub — for another computer. |
 
+A preview shows everything on `develop`, including what a release hides: the Question
+studio (Library → Question studio 擬題工作室) is there with nothing to turn on.
+
 **Before any of them**, get the latest `develop`:
 
 ```bash

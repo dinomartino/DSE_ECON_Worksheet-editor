@@ -10,8 +10,8 @@ export const QUESTION_STUDIO_MESSAGES = defineMessages({
   home: { en: 'Home', zh: '主頁' },
   trial: { en: 'Trial', zh: '試用' },
   trialTitle: {
-    en: 'Not released yet. Only this computer shows it, until the trial says the questions are good enough.',
-    zh: '尚未發布。在試用證明題目質素足夠之前，只有這部電腦會顯示。',
+    en: 'Not released yet. The released app does not show it until the trial says the questions are good enough.',
+    zh: '尚未發布。在試用證明題目質素足夠之前，正式發布的版本不會顯示。',
   },
   rowHint: {
     en: 'AI writes new multiple-choice questions on a syllabus key point. You read them before anything is added.',
