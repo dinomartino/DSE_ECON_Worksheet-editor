@@ -13,6 +13,13 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Browse the past paper bank by year.** A By topic / By year switch at the top of the Past paper
+  bank (and of Past papers in the editor's 題庫 tab) lists every exam year: HKDSE 2026 back to
+  2012 and the Practice and Sample papers, then HKCEE and HKALE. Open a year to see its questions
+  in question order, ready to pick or insert as before; a year with two papers lists both. Search,
+  the exam and year filters and show answers still work, and ↑ ↓ move from year to year. The bank
+  remembers the view you chose last.
+  <!-- zh: **按年份瀏覽歷屆試題庫。** 歷屆試題庫頂部（及編輯器「題庫」分頁的「歷屆試題」）新增「按課題／按年份」切換，列出每個考試年份：HKDSE 2026 至 2012 年及練習卷、樣本試卷，然後是 HKCEE 及 HKALE。開啟某一年份即可按題號順序查看題目，並如常選取或插入；有兩份試卷的年份會同時列出。搜尋、考試及年份篩選與顯示答案照常可用，按 ↑ ↓ 可逐年移動。題庫會記住你上次選擇的排列方式。 -->
 - **See how much of the syllabus a paper covers.** ✦ AI → Check syllabus coverage sends the
   paper's questions (or the ones you selected) to the AI provider you chose in Settings → AI, the
   same one Chinese translation uses, and shows a report: how many of the 2025 guide's key points

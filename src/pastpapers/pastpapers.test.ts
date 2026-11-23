@@ -91,7 +91,7 @@ describe('config: the switch and the source', () => {
     for (const bad of ['http://evil.example/', '//evil.example/', 'https://u:p@x.example/', 'https://x.example/?k=1', 'ftp://x/', 'not a url']) {
       expect(sourceAddress(bad)).toBeUndefined();
     }
-    expect(PAST_PAPER_SETTINGS.defaults({ desktop: false })).toEqual({ mode: 'builtIn', url: '', showSources: false, sourceFormat: 'full' });
+    expect(PAST_PAPER_SETTINGS.defaults({ desktop: false })).toEqual({ mode: 'builtIn', url: '', showSources: false, sourceFormat: 'full', view: 'topic' });
   });
 
   it('reads settings saved before the source format existed as full, and an unknown format as full (u-z6ft)', () => {

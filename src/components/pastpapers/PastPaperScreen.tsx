@@ -17,11 +17,12 @@ import { BankStateNote, ExamChips, LanguageToggle, PaperSelect, SearchGlyph, Yea
 import { PastPaperIndexCard } from './PastPaperIndexCard';
 import { SourceFormatSelect } from './SourceFormatSelect';
 import { megabytes, NEARLY_FULL, webStorageUse } from '@/storage/webQuota';
-import { packName, sourceLabel } from '@/pastpapers/pack';
+import { packName, paperKey, sittingLabel, sourceLabel } from '@/pastpapers/pack';
 import { PastPaperSheet } from './PastPaperSheet';
 import { PastPaperTopicPicker } from './PastPaperTopicPicker';
+import { PastPaperYearPicker, ViewSwitch } from './PastPaperYearPicker';
 import { answerLetter } from './pastPaperPreview';
-import { NO_FILTERS, pickKey, usePastPaperBrowse, type Pick } from './usePastPaperBrowse';
+import { NO_FILTERS, pickKey, usePastPaperBrowse, type BrowseEntry, type Pick } from './usePastPaperBrowse';
 
 /**
  * The Past paper bank 歷屆試題庫 as its own screen (k-0443): the start screen's view beside
@@ -77,7 +78,11 @@ export function PastPaperScreen({
   const sharedTopicName = () => {
     const ids = new Set(pickedItems.map((item) => item.topicId));
     const only = ids.size === 1 ? topics.find((t) => t.id === [...ids][0]) : undefined;
-    return only ? packName(only.title, language) : m.newName;
+    if (only) return packName(only.title, language);
+    // Picks of one paper across topics (the usual By year pick) are named after the paper.
+    const keys = new Set(pickedItems.map((item) => paperKey(item.source)));
+    const paper = keys.size === 1 && !keys.has('') ? pickedItems[0] : undefined;
+    return paper ? packName(sourceLabel(paper.source, false), language) : m.newName;
   };
 
   const addPicks = async () => {
@@ -126,14 +131,42 @@ export function PastPaperScreen({
   };
 
   const totalBytes = bank.manifest?.topics.reduce((n, t) => n + (t.bytes ?? 0), 0) ?? 0;
-  const searchingAll = browse.acrossBank;
+  const byYear = browse.view === 'year';
+  /** The whole bank, not the open topic or year: what the topic picker greys its choice for. */
+  const searchingAll = byYear ? browse.searchingAll : browse.acrossBank;
+  const sitting = browse.sitting;
   const allLoaded = browse.loadedCount >= topics.length && topics.length > 0;
+  /** Questions of many topics on screen (a search of every topic, one paper, a year): each card names its topic. */
+  const acrossTopics = browse.acrossBank;
+  const loadEverything = () => {
+    setLoadingAll({ done: 0, total: topics.length });
+    void bank.loadAll((done, total) => setLoadingAll({ done, total })).finally(() => setLoadingAll(undefined));
+  };
   const topicName = (id: string) => {
     const entry = topics.find((t) => t.id === id);
     return entry ? packName(entry.title, language) : id;
   };
   const paperChoice = filters.paper !== undefined ? browse.papers.find((p) => p.key === filters.paper) : undefined;
   const paperName = paperChoice ? packName(sourceLabel(paperChoice.source, false), language) : '';
+  const sittingName = sitting ? packName(sittingLabel(sitting.source), language) : '';
+  const heading = byYear
+    ? searchingAll
+      ? m.scopeEveryYear
+      : browse.yearPaper && paperChoice
+        ? m.paperHeading(paperName)
+        : sitting
+          ? m.paperHeading(sittingName)
+          : ''
+    : paperChoice
+      ? m.paperHeading(paperName)
+      : searchingAll
+        ? m.scopeAll
+        : topic
+          ? packName(topic.title, language)
+          : '';
+  // By year, a list holding more than one paper gets a heading at each paper.
+  const paperHeadings = byYear && new Set(entries.map((entry) => paperOfTag(entry.tag))).size > 1;
+  const yearsPartial = byYear && !browse.indexed && !allLoaded;
 
   // The web build's ~5 MB: what the picks would add, judged before they go in (k-0444).
   const adding = useMemo(
@@ -169,11 +202,17 @@ export function PastPaperScreen({
               placeholder={
                 filters.everywhere
                   ? browse.indexed
-                    ? m.searchEvery
+                    ? byYear
+                      ? m.searchEveryYear
+                      : m.searchEvery
                     : m.searchOpened
-                  : topic
-                    ? m.searchIn(packName(topic.title, language))
-                    : m.searchLabel
+                  : byYear
+                    ? sitting
+                      ? m.searchIn(sittingName)
+                      : m.searchLabel
+                    : topic
+                      ? m.searchIn(packName(topic.title, language))
+                      : m.searchLabel
               }
               onChange={(event) => setFilters({ ...filters, words: event.target.value })}
               onKeyDown={(event) => void escapeClears(event, filters.words, () => setFilters({ ...filters, words: '' }))}
@@ -188,21 +227,58 @@ export function PastPaperScreen({
       {/* A phone-width window stacks the topic bar over the questions (u-zhww asked for a phone look). */}
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <BankStateNote browse={browse}>
-          <PastPaperTopicPicker
-            topics={topics}
-            current={topic}
-            active={!searchingAll}
-            language={language}
-            onPick={(id) => {
-              browse.setTopic(id);
-              if (filters.everywhere || filters.paper !== undefined) setFilters({ ...filters, everywhere: false, paper: undefined });
-            }}
-          />
+          {byYear ? (
+            <PastPaperYearPicker
+              groups={browse.yearGroups}
+              current={sitting}
+              paper={browse.yearPaper}
+              active={!searchingAll}
+              language={language}
+              top={<ViewSwitch value={browse.view} onChange={browse.setView} />}
+              empty={
+                yearsPartial ? (
+                  <div className="mx-4 mt-3 rounded-lg border border-line bg-surface px-3 py-2.5 text-[12px] leading-snug text-ink-muted" data-pastpaper-years-partial>
+                    {loadingAll ? (
+                      <span role="status">{m.loadingAll(loadingAll.done, loadingAll.total)}</span>
+                    ) : (
+                      <>
+                        <p>{m.yearsNeedAll((totalBytes / 1_000_000).toFixed(0))}</p>
+                        <button type="button" className="mt-1.5 cursor-pointer font-medium text-accent hover:underline" onClick={loadEverything}>
+                          {m.loadAllYears}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : undefined
+              }
+              onPick={(key) => {
+                // A year opens whole: a paper narrowed to (in this year or the last) is dropped.
+                browse.setSitting(key);
+                if (filters.everywhere || filters.paper !== undefined) setFilters({ ...filters, everywhere: false, paper: undefined });
+              }}
+              onPickPaper={(key, paper) => {
+                browse.setSitting(key);
+                setFilters({ ...filters, everywhere: false, paper });
+              }}
+            />
+          ) : (
+            <PastPaperTopicPicker
+              topics={topics}
+              current={topic}
+              active={!searchingAll}
+              language={language}
+              top={<ViewSwitch value={browse.view} onChange={browse.setView} />}
+              onPick={(id) => {
+                browse.setTopic(id);
+                if (filters.everywhere || filters.paper !== undefined) setFilters({ ...filters, everywhere: false, paper: undefined });
+              }}
+            />
+          )}
 
           <main className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-6 py-2.5">
-              <h2 className="text-[15px] font-semibold text-ink">
-                {paperChoice ? m.paperHeading(paperName) : searchingAll ? m.scopeAll : topic ? packName(topic.title, language) : ''}
+              <h2 className="text-[15px] font-semibold text-ink" data-pastpaper-heading>
+                {heading}
               </h2>
               <span className="text-[12px] tabular-nums text-ink-subtle" role="status">
                 {m.shown(entries.length, browse.poolSize)}
@@ -221,14 +297,14 @@ export function PastPaperScreen({
                         filters.everywhere === all ? 'bg-surface-sunken font-medium text-ink' : 'text-ink-muted hover:text-ink'
                       }`}
                     >
-                      {all ? m.scopeAll : m.scopeTopic}
+                      {byYear ? (all ? m.scopeEveryYear : m.scopeYear) : all ? m.scopeAll : m.scopeTopic}
                     </button>
                   ))}
                 </div>
               )}
               <ExamChips filters={filters} onChange={setFilters} />
               <YearSelects filters={filters} years={browse.years} onChange={setFilters} />
-              <PaperSelect filters={filters} papers={browse.papers} language={language} onChange={setFilters} />
+              {!byYear && <PaperSelect filters={filters} papers={browse.papers} language={language} onChange={setFilters} />}
               <LanguageToggle value={language} onChange={setLanguage} />
               <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted">
                 <input type="checkbox" checked={answers} onChange={(e) => setAnswers(e.target.checked)} className="accent-[var(--color-accent)]" />
@@ -239,29 +315,22 @@ export function PastPaperScreen({
             <div className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-desk px-6 py-5">
               <div className="mx-auto flex max-w-[860px] flex-col gap-4">
                 {searchingAll && browse.indexed && <p className="text-[12px] text-ink-subtle">{m.indexNote}</p>}
-                {searchingAll && !browse.indexed && !allLoaded && (
+                {searchingAll && !byYear && !browse.indexed && !allLoaded && (
                   <div className="rounded-lg border border-line bg-surface px-4 py-3 text-[12.5px] text-ink-muted">
                     {loadingAll ? (
                       <span role="status">{m.loadingAll(loadingAll.done, loadingAll.total)}</span>
                     ) : (
                       <>
                         <span>{m.loadAllNote((totalBytes / 1_000_000).toFixed(0))}</span>{' '}
-                        <button
-                          type="button"
-                          className="ml-1 cursor-pointer font-medium text-accent hover:underline"
-                          onClick={() => {
-                            setLoadingAll({ done: 0, total: topics.length });
-                            void bank.loadAll((done, total) => setLoadingAll({ done, total })).finally(() => setLoadingAll(undefined));
-                          }}
-                        >
+                        <button type="button" className="ml-1 cursor-pointer font-medium text-accent hover:underline" onClick={loadEverything}>
                           {m.loadAll}
                         </button>
                       </>
                     )}
                   </div>
                 )}
-                {!searchingAll && topicState?.state === 'loading' && <p className="text-[13px] text-ink-muted" role="status">{m.loadingTopic}</p>}
-                {!searchingAll && topicState?.state === 'error' && (
+                {!acrossTopics && topicState?.state === 'loading' && <p className="text-[13px] text-ink-muted" role="status">{m.loadingTopic}</p>}
+                {!acrossTopics && topicState?.state === 'error' && (
                   <div className="text-[13px] text-ink-muted" role="alert">
                     <p>{m.topicError}</p>
                     <button type="button" className="mt-2 cursor-pointer text-accent hover:underline" onClick={() => topic && void bank.topic(topic.id)}>
@@ -270,7 +339,7 @@ export function PastPaperScreen({
                   </div>
                 )}
                 {(bank.offline || (topicState?.state === 'ready' && topicState.offline)) && <p className="text-[12px] text-ink-subtle">{m.offline}</p>}
-                {!searchingAll && topicState?.state === 'ready' && topicState.data.skipped > 0 && (
+                {!acrossTopics && topicState?.state === 'ready' && topicState.data.skipped > 0 && (
                   <p className="text-[12px] text-ink-subtle">{m.skipped(topicState.data.skipped)}</p>
                 )}
                 {browse.poolSize > 0 && entries.length === 0 && (
@@ -281,25 +350,32 @@ export function PastPaperScreen({
                     </button>
                   </div>
                 )}
-                {entries.map((entry) => {
+                {entries.map((entry, at) => {
                   const item = entry.item;
-                  if (!item) return <PastPaperIndexCard key={entry.key} entry={entry} topicName={topicName(entry.topicId)} language={language} />;
+                  const thisPaper = paperOfTag(entry.tag);
+                  const before = paperHeadings && thisPaper !== paperOfTag(entries[at - 1]?.tag ?? '');
+                  const headingRow = before ? <PaperHeading key={`h:${thisPaper}`} entry={entry} language={language} /> : null;
+                  if (!item) {
+                    return [headingRow, <PastPaperIndexCard key={entry.key} entry={entry} topicName={topicName(entry.topicId)} language={language} />];
+                  }
                   const doc = browse.docOf.get(item.topicId);
-                  if (!doc) return null;
+                  if (!doc) return headingRow;
                   const key = pickKey({ topicId: item.topicId, questionId: item.question.id });
                   const picked = pickedKeys.has(key);
                   const source = packName(item.provenance, language);
                   const letter = answerLetter(item);
-                  return (
+                  return [
+                    headingRow,
                     <article
                       key={key}
+                      data-pastpaper-card={entry.tag}
                       className={`rounded-xl border bg-surface p-3 transition-colors duration-150 ${picked ? 'border-accent ring-2 ring-accent/25' : 'border-line'}`}
                     >
                       <div className="mb-2 flex items-center gap-2.5 px-1">
                         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
                           <input type="checkbox" checked={picked} onChange={() => toggle(item)} aria-label={m.pickTitle(source)} className="h-4 w-4 accent-[var(--color-accent)]" />
                           <span className="truncate text-[12.5px] font-medium text-ink">{source}</span>
-                          {searchingAll && <span className="truncate text-[11.5px] text-ink-subtle">{m.inTopic(topicName(item.topicId))}</span>}
+                          {acrossTopics && <span className="truncate text-[11.5px] text-ink-subtle">{m.inTopic(topicName(item.topicId))}</span>}
                         </label>
                         {item.stimulus && <span className="shrink-0 text-[11.5px] text-ink-subtle">{m.shared}</span>}
                         {answers && letter && (
@@ -309,8 +385,8 @@ export function PastPaperScreen({
                       <div className="cursor-pointer" onClick={() => toggle(item)}>
                         <PastPaperSheet item={item} doc={doc} language={language} />
                       </div>
-                    </article>
-                  );
+                    </article>,
+                  ];
                 })}
               </div>
             </div>
@@ -381,5 +457,18 @@ export function PastPaperScreen({
         </BankStateNote>
       </div>
     </div>
+  );
+}
+
+const paperOfTag = (tag: string) => tag.replace(/\/Q\d+$/, '');
+
+/** By year: the paper a run of questions comes from, when the list holds more than one. */
+function PaperHeading({ entry, language }: { entry: BrowseEntry; language: LanguageMode }) {
+  const source = entry.item?.source ?? entry.row?.source;
+  if (!source) return null;
+  return (
+    <h3 className="mt-2 border-b border-line pb-1 text-[13px] font-semibold text-ink first:mt-0" data-pastpaper-paper-heading>
+      {packName(sourceLabel(source, false), language)}
+    </h3>
   );
 }

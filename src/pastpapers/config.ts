@@ -82,7 +82,14 @@ export interface PastPaperSettings {
    * (`Worksheet.questionSourceFormat`). Remembered on this computer; full by default.
    */
   sourceFormat: QuestionSourceFormat;
+  /**
+   * How the bank lists its questions (k-0497, user u-nlb5): by topic (the default) or by exam
+   * year. The last one chosen, remembered on this computer.
+   */
+  view: PastPaperView;
 }
+
+export type PastPaperView = 'topic' | 'year';
 
 /**
  * A source address: https anywhere; http only on this computer (a local export served by
@@ -111,12 +118,13 @@ export const PAST_PAPER_SETTINGS: SettingsSchema<PastPaperSettings> = {
   section: 'pastPapers',
   version: 1,
   storageKey: 'econgen.settings.pastPapers',
-  defaults: () => ({ mode: 'builtIn', url: '', showSources: false, sourceFormat: 'full' }),
+  defaults: () => ({ mode: 'builtIn', url: '', showSources: false, sourceFormat: 'full', view: 'topic' }),
   fields: {
     mode: oneOf<PastPaperMode>(['builtIn', 'off', 'custom']),
     url: sourceAddress,
     showSources: bool,
     sourceFormat: oneOf<QuestionSourceFormat>(['full', 'short', 'shortRoman']),
+    view: oneOf<PastPaperView>(['topic', 'year']),
   },
 };
 

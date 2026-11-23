@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSettings } from '@/settings/store';
-import { PAST_PAPER_SETTINGS, sourceUrl } from '@/pastpapers/config';
+import { PAST_PAPER_SETTINGS, sourceUrl, type PastPaperView } from '@/pastpapers/config';
 import { usePastPaperBank, type TopicState } from '@/pastpapers/bank';
 import { matchItem, papersOf, paperKey, yearSpan, type PastPaperItem, type SearchRow, type SourceInfo } from '@/pastpapers/pack';
+import { compareByYear, sittingOfPaper, yearSelection } from '@/pastpapers/years';
 
 /**
  * What both views of the Past paper bank share (the screen and the editor's 題庫 tab): the
@@ -41,21 +42,34 @@ export interface BrowseEntry {
 export const NO_FILTERS: BrowseFilters = { words: '', exams: [], everywhere: false };
 
 const TOPIC_KEY = 'econ-pastpaper-topic';
+const SITTING_KEY = 'econ-pastpaper-year';
 
-function readTopic(): string | undefined {
+function readSession(key: string): string | undefined {
   try {
-    return globalThis.sessionStorage?.getItem(TOPIC_KEY) ?? undefined;
+    return globalThis.sessionStorage?.getItem(key) ?? undefined;
   } catch {
     return undefined;
   }
 }
 
+function keepSession(key: string, value: string) {
+  try {
+    globalThis.sessionStorage?.setItem(key, value);
+  } catch {
+    // Private mode: the choice is simply not remembered.
+  }
+}
+
 export function usePastPaperBrowse() {
-  const [settings] = useSettings(PAST_PAPER_SETTINGS);
+  const [settings, setSettings] = useSettings(PAST_PAPER_SETTINGS);
   const base = sourceUrl(settings);
   const bank = usePastPaperBank();
-  const [topicId, setTopicId] = useState<string | undefined>(readTopic);
+  const [topicId, setTopicId] = useState<string | undefined>(() => readSession(TOPIC_KEY));
+  const [sittingId, setSittingId] = useState<string | undefined>(() => readSession(SITTING_KEY));
   const [filters, setFilters] = useState<BrowseFilters>(NO_FILTERS);
+  /** By topic or by year (k-0497): the last one chosen, remembered on this computer. */
+  const view: PastPaperView = settings.view;
+  const byYear = view === 'year';
 
   // Opened (again) whenever the source changes; once per source otherwise.
   useEffect(() => {
@@ -68,13 +82,10 @@ export function usePastPaperBrowse() {
 
   useEffect(() => {
     if (!topic) return;
-    try {
-      globalThis.sessionStorage?.setItem(TOPIC_KEY, topic.id);
-    } catch {
-      // Private mode: the topic is simply not remembered.
-    }
-    void usePastPaperBank.getState().topic(topic.id);
-  }, [topic]);
+    keepSession(TOPIC_KEY, topic.id);
+    // By year shows no topic: a year's questions download their topics as they are reached.
+    if (!byYear) void usePastPaperBank.getState().topic(topic.id);
+  }, [topic, byYear]);
 
   const topicState: TopicState | undefined = topic ? bank.topics[topic.id] : undefined;
   const loadedTopics = useMemo(
@@ -87,9 +98,28 @@ export function usePastPaperBrowse() {
 
   const index = bank.manifest?.search;
   const words = filters.words.trim();
-  /** The bank as a whole, not the open topic: a search of every topic, or one paper. */
-  const acrossBank = filters.paper !== undefined || (filters.everywhere && words !== '');
-  const query = { words: filters.words, exams: filters.exams, from: filters.from, to: filters.to, paper: filters.paper };
+
+  const everything = useMemo(() => (index && index.length > 0 ? index : loadedTopics.flatMap((t) => t.items)), [index, loadedTopics]);
+  const years = useMemo(() => yearSpan(everything), [everything]);
+  const papers = useMemo(() => papersOf(everything), [everything]);
+
+  /** A search of the whole bank, not the open topic or year. */
+  const searchingAll = filters.everywhere && words !== '';
+  // By year (k-0497): every paper under its exam and year, the open year, its questions' filter.
+  const year = useMemo(() => yearSelection(everything, filters, sittingId, searchingAll), [everything, filters, sittingId, searchingAll]);
+  const yearGroups = year.groups;
+  const sitting = year.sitting;
+  const yearPaper = byYear ? year.paper : undefined;
+
+  useEffect(() => {
+    if (byYear && sitting) keepSession(SITTING_KEY, sitting.key);
+  }, [byYear, sitting]);
+
+  /** The bank as a whole, not the open topic: a search of every topic, one paper, or (by year) a year. */
+  const acrossBank = byYear || filters.paper !== undefined || searchingAll;
+  const query = byYear ? year.query : { words: filters.words, exams: filters.exams, from: filters.from, to: filters.to, paper: filters.paper };
+  /** In question order: one paper, or (by year) exam, newest year, paper, number. */
+  const ordered = byYear || filters.paper !== undefined;
 
   const itemByTag = useMemo(() => {
     const map = new Map<string, PastPaperItem>();
@@ -102,12 +132,13 @@ export function usePastPaperBrowse() {
     return topicState?.state === 'ready' ? topicState.data.items : [];
   }, [acrossBank, loadedTopics, topicState]);
 
-  const byNumber = (a: { source: SourceInfo }, b: { source: SourceInfo }) => (a.source.number ?? 0) - (b.source.number ?? 0);
+  const byNumber = (a: { source: SourceInfo }, b: { source: SourceInfo }) =>
+    byYear ? compareByYear(a.source, b.source) : (a.source.number ?? 0) - (b.source.number ?? 0);
 
   const entries: BrowseEntry[] = useMemo(() => {
     if (acrossBank && index) {
       const rows = index.filter((row) => matchItem(row, query));
-      if (filters.paper !== undefined) rows.sort(byNumber);
+      if (ordered) rows.sort(byNumber);
       return rows.map((row) => {
         const key = `${row.topicId}|${row.source.tag}`;
         const item = itemByTag.get(key);
@@ -115,19 +146,21 @@ export function usePastPaperBrowse() {
       });
     }
     const items = pool.filter((item) => matchItem(item, query));
-    if (filters.paper !== undefined) items.sort(byNumber);
+    if (ordered) items.sort(byNumber);
     return items.map((item) => ({ key: `${item.topicId}|${item.question.id}`, topicId: item.topicId, tag: item.source.tag, item }));
-    // `query` is rebuilt from `filters` each render; `filters` is the real dependency.
+    // `query` is rebuilt from `filters` each render; `filters`, the view and the year are the real dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [acrossBank, index, pool, filters, itemByTag]);
+  }, [acrossBank, index, pool, filters, itemByTag, byYear, year]);
 
   const items = useMemo(() => entries.flatMap((entry) => (entry.item ? [entry.item] : [])), [entries]);
-  /** How many the filters chose from. */
-  const poolSize = acrossBank && index ? index.length : pool.length;
+  /** How many the filters chose from: by year, the open year (or paper) unless the whole bank is searched. */
+  const poolSize =
+    byYear && !searchingAll
+      ? (yearPaper ? sitting?.papers.find((p) => p.key === yearPaper)?.questions : sitting?.questions) ?? 0
+      : acrossBank && index
+        ? index.length
+        : pool.length;
 
-  const everything = useMemo(() => (index && index.length > 0 ? index : loadedTopics.flatMap((t) => t.items)), [index, loadedTopics]);
-  const years = useMemo(() => yearSpan(everything), [everything]);
-  const papers = useMemo(() => papersOf(everything), [everything]);
   const docOf = useMemo(() => new Map(loadedTopics.map((t) => [t.entry.id, t.doc])), [loadedTopics]);
   const filtered =
     words !== '' || filters.exams.length > 0 || filters.from !== undefined || filters.to !== undefined || filters.paper !== undefined;
@@ -139,6 +172,26 @@ export function usePastPaperBrowse() {
     topic,
     topicState,
     setTopic: (id: string) => setTopicId(id),
+    view,
+    /**
+     * By topic or by year. Going to By year opens the paper the Paper filter had chosen; going
+     * back to By topic drops the year's paper, which would otherwise read as "one paper of every topic".
+     */
+    setView: (next: PastPaperView) => {
+      if (next === view) return;
+      setSettings({ view: next });
+      if (next === 'year' && filters.paper !== undefined) setSittingId(sittingOfPaper(filters.paper));
+      if (next === 'topic' && filters.paper !== undefined) setFilters({ ...filters, paper: undefined });
+    },
+    yearGroups,
+    sitting,
+    yearPaper,
+    /** Open a year (and drop a paper of the last one). */
+    setSitting: (key: string) => {
+      setSittingId(key);
+      if (filters.paper !== undefined && sittingOfPaper(filters.paper) !== key) setFilters({ ...filters, paper: undefined });
+    },
+    searchingAll,
     filters,
     setFilters,
     filtered,

@@ -37,6 +37,23 @@ teacher's documents and never counts as one; questions taken from it are ordinar
   topic's questions with Insert (after the insert anchor; one ⌘Z; the review bar) and
   marks those already in the paper. The switch is not drawn when the bank is off.
 
+- **By topic / By year** (k-0497, user u-nlb5): a switch at the top of the screen's left column
+  and of the 題庫 tab's Past papers side. By year lists the exams (HKDSE, then HKCEE, then HKALE),
+  each year newest first (HKDSE 2026 … 2012, then the Practice and Sample papers), with the paper
+  and question count; a year opens to its questions in paper, then question-number order. A year
+  with more than one paper (HKALE) lists its papers under it, to narrow to one, and the questions
+  get a heading at each paper. Built only from the source tags of the list's search index
+  (`src/pastpapers/years.ts`), so the list needs no topic downloaded; each question downloads its
+  topic when scrolled to, as a search of every topic does. Without an index (an older export) only
+  the years of opened topics are listed, with a Download every year button. Exam chips and Years
+  narrow the list (the open year follows when they drop it); the Paper filter is hidden (the list
+  is it); search is This year / Every year (every year in year order). Keyboard: ↑ ↓ the year
+  above or below, Home / End, → ← a year's papers. The view is remembered on this computer
+  (`view` in `econgen.settings.pastPapers`), the open year for the session; going to By year opens
+  the paper the Paper filter had chosen. Picks of one paper across topics make a new worksheet
+  named after the paper ("HKDSE 2019 Paper 1"). The tab has a year picker instead of the list.
+  Proof: `src/pastpapers/years.test.ts`, `scripts/pastpaper-years-verify.mjs` (EN and 中, live bank).
+
 The user's "the top part" was read as these two tops: the Library's list of banks, and the
 top of the 題庫 tab. A fourth sidebar tab was the alternative (the 400 px sidebar holds three).
 
