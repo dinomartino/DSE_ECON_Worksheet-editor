@@ -14,6 +14,10 @@ import { pathToFileURL } from 'node:url';
  *     "length" (the run bisects);
  *   - anything else → the source with a 譯： / EN: prefix, tags kept.
  * A system prompt naming "questions-from-source" (E3) gets canned, valid questions instead.
+ * The question studio (k-0499): a "question-studio-write" request gets that many invented
+ * MC questions on price elasticity (the key placed where `make.keys` says; a rewrite or
+ * redo gets fresh ones; a teacherNote holding "!look" makes the solver disagree with them),
+ * and a "question-studio-solve" request is answered from what the writer wrote.
  * A request whose system prompt is the answer writer's (E1) gets a valid canned answer,
  * a scheme of 1-mark points totalling the marks, and a rationale per asked option.
  * A quality-check request (E4) gets canned findings instead (`qualityReply`); a syllabus
@@ -241,10 +245,107 @@ export function coverageReply(payload) {
   return completion(JSON.stringify({ items }));
 }
 
+/** Invented price-elasticity questions for the question studio (no past-paper text). Each: stem, the key, three wrong options, why. */
+const STUDIO_POOL = [
+  {
+    stem: ['A cafe raises the price of a milk tea from $20 to $25, and the cups sold each day fall from 400 to 300. Over this range, demand for the milk tea is', '一間茶餐廳把奶茶的價格由 $20 提高至 $25，每日售出的杯數由 400 杯減至 300 杯。在這個範圍內，奶茶的需求'],
+    key: ['unit elastic.', '屬單一價格彈性。'],
+    wrong: [['price elastic.', '富有價格彈性。'], ['price inelastic.', '缺乏價格彈性。'], ['perfectly inelastic.', '完全缺乏價格彈性。']],
+    why: ['Price rises by 25% and quantity falls by 25%, so the elasticity is 1.', '價格上升 25%，需求量下降 25%，彈性為 1。'],
+    angle: 'unit elasticity from a price and quantity change',
+  },
+  {
+    stem: ['A ferry operator lowers its fares by 10% and finds that its total revenue falls. Which of the following must be true?', '一間渡輪公司把船票價格調低 10%，總收入隨之下降。以下哪項必定正確？'],
+    key: ['Demand for the ferry service is price inelastic.', '渡輪服務的需求缺乏價格彈性。'],
+    wrong: [['Demand for the ferry service is price elastic.', '渡輪服務的需求富有價格彈性。'], ['Demand for the ferry service is unit elastic.', '渡輪服務的需求屬單一價格彈性。'], ['The number of passengers did not change.', '乘客人數沒有改變。']],
+    why: ['Revenue falls with a lower price only if demand is inelastic.', '價格下降而收入下降，表示需求缺乏彈性。'],
+    angle: 'total revenue test',
+  },
+  {
+    stem: ['A bookshop raises the price of a textbook by 8% and the quantity demanded falls by 20%. The price elasticity of demand for the textbook is', '一間書店把一本課本的價格提高 8%，需求量減少 20%。這本課本的需求價格彈性為'],
+    key: ['2.5', '2.5'],
+    wrong: [['0.4', '0.4'], ['8', '8'], ['12', '12']],
+    why: ['Elasticity is 20% ÷ 8% = 2.5.', '彈性為 20% ÷ 8% = 2.5。'],
+    angle: 'calculation from two percentages',
+  },
+  {
+    stem: ['If the demand for a good is perfectly inelastic, its demand curve is', '若一種物品的需求完全缺乏彈性，它的需求曲線是'],
+    key: ['vertical.', '垂直的。'],
+    wrong: [['horizontal.', '水平的。'], ['a downward-sloping straight line.', '一條向右下傾斜的直線。'], ['an upward-sloping curve.', '一條向右上傾斜的曲線。']],
+    why: ['Quantity demanded stays the same at every price.', '無論價格如何，需求量都不變。'],
+    angle: 'shape of the demand curve',
+  },
+  {
+    stem: ['Moving down a straight-line demand curve, price elasticity of demand', '沿著一條向右下傾斜的直線需求曲線向下移動，需求價格彈性'],
+    key: ['becomes smaller.', '變小。'],
+    wrong: [['stays constant.', '保持不變。'], ['becomes larger.', '變大。'], ['first rises, then falls.', '先上升，後下降。']],
+    why: ['Price falls and quantity rises, so elasticity gets smaller.', '價格下降、需求量上升，所以彈性變小。'],
+    angle: 'elasticity along a line',
+  },
+  {
+    stem: ['A phone shop cuts the price of a charger from $120 to $90 and sells 50% more. Its total revenue', '一間手機店把充電器的價格由 $120 減至 $90，銷量增加 50%。它的總收入'],
+    key: ['rises, because demand is price elastic.', '上升，因為需求富有價格彈性。'],
+    wrong: [['falls, because demand is price inelastic.', '下降，因為需求缺乏價格彈性。'], ['stays the same.', '保持不變。'], ['falls, because price is lower.', '下降，因為價格較低。']],
+    why: ['Price falls 25% while quantity rises 50%, so revenue rises.', '價格下降 25%，銷量上升 50%，所以收入上升。'],
+    angle: 'revenue after a price cut',
+  },
+  {
+    stem: ['Which good is likely to have the most price elastic demand?', '以下哪種物品的需求最可能富有價格彈性？'],
+    key: ['A brand of bottled water sold in many shops.', '在很多商店發售的某個牌子樽裝水。'],
+    wrong: [['Rice for daily meals.', '日常膳食所需的白米。'], ['Insulin for diabetics.', '糖尿病患者所需的胰島素。'], ['Electricity at home.', '家居用電。']],
+    why: ['Many close substitutes make demand more elastic.', '有很多相近的替代品令需求更富彈性。'],
+    angle: 'close substitutes',
+  },
+  {
+    stem: ['A tunnel company raises its toll from $30 to $36. The number of vehicles per day falls from 5,000 to 4,000. Along this range, the price elasticity of demand is', '一條隧道的通行費由 $30 提高至 $36，每日車輛數目由 5,000 輛減至 4,000 輛。在這個範圍內，需求價格彈性為'],
+    key: ['1.', '1。'],
+    wrong: [['0.5.', '0.5。'], ['2.', '2。'], ['0.2.', '0.2。']],
+    why: ['Price rises 20% and quantity falls 20%, so the elasticity is 1.', '價格上升 20%，數量下降 20%，所以彈性為 1。'],
+    angle: 'two changes of 20%',
+  },
+];
+let studioNext = 0;
+/** Written stems and their keys, so the blind solver can answer them (and disagree on request). */
+const studioKeys = new Map();
+const studioNorm = (text) => String(text).replace(/\*\*/g, '').replace(/[\s$,.，。：:()（）]/g, '').toLowerCase();
+
+function studioWriteReply(payload) {
+  const langs = Array.isArray(payload.languages) ? payload.languages : ['en'];
+  const t = (pair) => ({ en: langs.includes('en') ? pair[0] : '', zh: langs.includes('zh') ? pair[1] : '' });
+  const count = payload.rewrite ? 1 : (payload.redo?.length || payload.make?.count || 1);
+  const keys = Array.isArray(payload.make?.keys) ? payload.make.keys : [];
+  const disagree = /!look/.test(String(payload.teacherNote ?? ''));
+  const questions = [];
+  for (let i = 0; i < count; i += 1) {
+    const item = STUDIO_POOL[studioNext % STUDIO_POOL.length];
+    studioNext += 1;
+    const at = Number.isInteger(keys[i]) && keys[i] >= 0 && keys[i] <= 3 ? keys[i] : 0;
+    const options = [...item.wrong];
+    options.splice(at, 0, item.key);
+    const stem = disagree ? [`${item.stem[0]} [look]`, `${item.stem[1]} [look]`] : item.stem;
+    const written = t(stem);
+    studioKeys.set(studioNorm(written.en || written.zh), at);
+    questions.push({ stem: written, statements: [], options: options.map(t), answer: at, explanation: t(item.why), angle: item.angle });
+  }
+  return completion(JSON.stringify({ questions }));
+}
+
+function studioSolveReply(payload) {
+  const answers = (payload.questions ?? []).map((q) => {
+    const known = studioKeys.get(studioNorm(q.stem));
+    const answer = known ?? 0;
+    // A question marked [look] is one the solver reads differently from its key.
+    return { id: q.id, working: 'Worked out from the numbers in the stem.', answer: /\[look\]/.test(q.stem) ? (answer + 1) % 4 : answer, ambiguous: false };
+  });
+  return completion(JSON.stringify({ answers }));
+}
+
 export function reply(body) {
   if (systemOf(body).includes(COVERAGE_MARKER)) return coverageReply(payloadOf(body));
   if (systemOf(body).includes(ANSWERS_MARKER)) return answersReply(payloadOf(body));
   if (systemOf(body).includes(QUALITY_MARKER)) return qualityReply(payloadOf(body));
+  if (systemOf(body).includes('question-studio-write')) return studioWriteReply(payloadOf(body));
+  if (systemOf(body).includes('question-studio-solve')) return studioSolveReply(payloadOf(body));
   if (systemOf(body).includes('questions-from-source')) return sourceReply(body);
   const items = itemsOf(payloadOf(body));
   if (items.length > 1 && items.some((i) => i.text.includes('(long)'))) {

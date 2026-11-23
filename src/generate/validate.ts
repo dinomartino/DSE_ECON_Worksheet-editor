@@ -105,7 +105,7 @@ export function toRuns(text: string): RichText {
   return runs.filter((run) => run.text.length > 0);
 }
 
-const fromRuns = (runs: RichText): string => runs.map((run) => (run.bold ? `**${run.text}**` : run.text)).join('');
+export const fromRuns = (runs: RichText): string => runs.map((run) => (run.bold ? `**${run.text}**` : run.text)).join('');
 
 /** Hong Kong forms and punctuation for 中文, the usual tidy for English. */
 function tidySide(text: string, side: Side): string {
@@ -115,15 +115,15 @@ function tidySide(text: string, side: Side): string {
   return fromRuns(normalizeZh(traditionalize(runs).runs).runs).trim();
 }
 
-type Strip = RegExp;
+export type Strip = RegExp;
 /** The paper derives these; a model that writes them would print them twice. */
-const STEM_NUMBER: Strip = /^\s*(?:Q(?:uestion)?\s*)?\d{1,2}\s*[.)．、]\s*/i;
+export const STEM_NUMBER: Strip = /^\s*(?:Q(?:uestion)?\s*)?\d{1,2}\s*[.)．、]\s*/i;
 const PART_LETTER: Strip = /^\s*(?:[(（][a-h][)）]|[a-h][).．])\s*/i;
-const OPTION_LETTER: Strip = /^\s*(?:[(（][A-D][)）]|[A-D][.．)])\s*/;
-const STATEMENT_NUMBER: Strip = /^\s*[(（][1-9][)）]\s*/;
+export const OPTION_LETTER: Strip = /^\s*(?:[(（][A-D][)）]|[A-D][.．)])\s*/;
+export const STATEMENT_NUMBER: Strip = /^\s*[(（][1-9][)）]\s*/;
 
 /** Tidied, with the printed label stripped; a side the paper doesn't print is dropped. */
-function clean(text: BiDraft, sides: readonly Side[], strip?: Strip): BiDraft {
+export function clean(text: BiDraft, sides: readonly Side[], strip?: Strip): BiDraft {
   const side = (s: Side) => {
     if (!sides.includes(s)) return '';
     const tidy = tidySide(text[s], s);
@@ -132,8 +132,8 @@ function clean(text: BiDraft, sides: readonly Side[], strip?: Strip): BiDraft {
   return { en: side('en'), zh: side('zh') };
 }
 
-const visible = (text: string) => plain(toRuns(text)).trim();
-const emptySides = (text: BiDraft, sides: readonly Side[]) => sides.filter((s) => !visible(text[s]));
+export const visible = (text: string) => plain(toRuns(text)).trim();
+export const emptySides = (text: BiDraft, sides: readonly Side[]) => sides.filter((s) => !visible(text[s]));
 
 // ---- checks ----
 
@@ -164,12 +164,15 @@ function termNote(check: TermCheck): string {
     : `${source}: ${check.expected}`;
 }
 
+/** What `glossaryPass` reads of a check context (the question studio passes no source). */
+export type GlossaryContext = Pick<CheckContext, 'sides' | 'source' | 'sourceSide' | 'glossary'>;
+
 /**
  * The glossary on every 中文 text: deny forms fixed in place, warn-level findings as
  * notes. Against the text's own English when both are written; else against an English
  * source, where only a finding with a fix or a conflict is about this text.
  */
-function glossaryPass(texts: BiDraft[], ctx: CheckContext): string[] {
+export function glossaryPass(texts: BiDraft[], ctx: GlossaryContext): string[] {
   const { glossary } = ctx;
   if (!glossary || !ctx.sides.includes('zh')) return [];
   const notes = new Set<string>();
@@ -188,7 +191,7 @@ function glossaryPass(texts: BiDraft[], ctx: CheckContext): string[] {
   return [...notes];
 }
 
-const normalizedOption = (text: string) => visible(text).toLowerCase().replace(/\s+/g, ' ').replace(/[。.]$/, '');
+export const normalizedOption = (text: string) => visible(text).toLowerCase().replace(/\s+/g, ' ').replace(/[。.]$/, '');
 
 function checkMcq(raw: McqDraft, ctx: CheckContext): CheckedItem {
   const { sides } = ctx;

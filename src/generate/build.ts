@@ -29,7 +29,7 @@ export function sourceParagraphs(source: string, side: Side): ParagraphBlock[] {
     .map((text) => createParagraphBlock({ en: side === 'en' ? [{ text }] : [], zh: side === 'zh' ? [{ text }] : [] }));
 }
 
-function fillMcq(draft: McqDraft): QuestionBuild['fill'] {
+export function fillMcq(draft: McqDraft): QuestionBuild['fill'] {
   return (fresh) => {
     const q = fresh as McqQuestion;
     return {
