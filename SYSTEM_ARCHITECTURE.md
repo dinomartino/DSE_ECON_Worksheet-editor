@@ -2979,6 +2979,9 @@ the chrome between English and Hong Kong Traditional Chinese. Design and wording
 - **Curriculum names are paper-side.** Topic and sub-topic names follow the view language
   (`useViewLanguage()`: the 題庫 screen's view, the sidebar's document mode, else the paper
   language) through `topicNamesFor(language, room)`, both names only where there is room.
+  No exception (k-0500): the 題型 map and sort board read the 題庫's view; the question
+  studio names key points in its own Language (`studioView.ts:syllabusName`); the Past paper
+  screen in its EN/中文 toggle; the coverage report in `reportLanguage`.
   Question excerpts likewise (`rowExcerpt`, and the Edit panel's rows through `biExcerpt`:
   the view's side, else the other). A 中文 entry that glues such a name to Chinese is a
   `spaced` template (`src/i18n/spacing.ts`).

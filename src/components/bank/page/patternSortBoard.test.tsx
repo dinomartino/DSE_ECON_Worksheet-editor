@@ -9,7 +9,9 @@ import { UiLanguageOverride } from '@/i18n/language';
 import { listPatterns } from '@/library/patterns';
 import { row } from '@/library/testKit';
 import { createMcqQuestion, createStructuredQuestion } from '@/model/factories';
+import type { LanguageMode } from '@/model/types';
 import type { UiLanguage } from '@/settings/language';
+import { ViewLanguageProvider } from '@/settings/paperLanguage';
 import { levelUp, parseLevel, serializeLevel } from './bankScreen';
 import { PatternSortBoard } from './PatternSortBoard';
 
@@ -24,20 +26,22 @@ const rows = [
   row({ rootId: 'd', typeId: MCQ, tags: ['D.structure'], excerpt: { en: 'Another topic', zh: '' } }),
 ];
 
-const board = (ui: UiLanguage, topic = 'C') =>
+const board = (ui: UiLanguage, topic = 'C', view: LanguageMode = 'en') =>
   renderToStaticMarkup(
     <UiLanguageOverride.Provider value={ui}>
-      <PatternSortBoard
-        topic={topic}
-        rows={rows}
-        items={listPatterns(rows, { patterns: [] })}
-        language="en"
-        busy={false}
-        onSortInto={noop}
-        onUnsort={noop}
-        onNext={noop}
-        onDone={noop}
-      />
+      <ViewLanguageProvider value={view}>
+        <PatternSortBoard
+          topic={topic}
+          rows={rows}
+          items={listPatterns(rows, { patterns: [] })}
+          language="en"
+          busy={false}
+          onSortInto={noop}
+          onUnsort={noop}
+          onNext={noop}
+          onDone={noop}
+        />
+      </ViewLanguageProvider>
     </UiLanguageOverride.Provider>,
   );
 
@@ -58,10 +62,14 @@ describe('the 題型 sort board', () => {
     expect(out).toContain('Select questions first');
   });
 
-  it('reads in 中文, topic names too', () => {
+  it('reads in 中文; topic names follow the questions’ language, not the interface (k-0500)', () => {
     const out = board('zh-HK');
     expect(out).toContain('選取相似的題目，然後為它們命名');
-    expect(out).toContain('需求價格彈性');
+    expect(out).toContain('Price elasticity of demand');
+    expect(out).not.toContain('需求價格彈性');
+    const zh = board('en', 'C', 'zh');
+    expect(zh).toContain('需求價格彈性');
+    expect(zh).not.toContain('Price elasticity of demand');
   });
 
   it('says so when a topic has no sub-topic questions', () => {

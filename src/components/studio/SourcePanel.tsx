@@ -3,7 +3,8 @@
 import { useMemo } from 'react';
 import { ProviderFooter } from '@/components/ai/ProviderFooter';
 import { Segmented } from '@/components/ui';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
+import { topicNamesFor } from '@/model/topics';
 import { sentSummary } from '@/questionStudio/brief';
 import { useStudio } from '@/questionStudio/live';
 import { canWrite, requestOf } from '@/questionStudio/session';
@@ -13,7 +14,7 @@ import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
 import { lookupCode } from '@/syllabus';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
-import { keyPointGroups, tokenCount } from './studioView';
+import { keyPointGroups, syllabusName, tokenCount } from './studioView';
 
 const label = 'text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle';
 
@@ -25,13 +26,14 @@ const label = 'text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-su
  */
 export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn: boolean; onGoTo: (view: 'pastpapers' | 'bank') => void; onTrialOff?: () => void }) {
   const m = useMessages(QUESTION_STUDIO_MESSAGES);
-  const lang = useUiLanguage();
   const form = useStudio((s) => s.form);
+  // Syllabus names are paper words: the language the studio writes in, not the interface's (k-0500).
+  const names = topicNamesFor(form.language, 'wide');
   const phase = useStudio((s) => s.phase);
   const { setForm, removeExample, write, stop } = useStudio.getState();
   const status = useAiStatus();
   const running = phase.kind === 'running';
-  const groups = useMemo(() => keyPointGroups(lang), [lang]);
+  const groups = useMemo(() => keyPointGroups(names), [names]);
   const hit = lookupCode(form.keyPoint);
   const keyPoint = hit && !hit.point ? hit.keyPoint : undefined;
   const sent = useMemo(() => sentSummary(requestOf(form)), [form]);
@@ -87,7 +89,7 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
                   onChange={(event) => setForm({ points: event.target.checked ? [...form.points, point.code] : form.points.filter((code) => code !== point.code) })}
                   className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
                 />
-                <span>{lang === 'zh-HK' ? point.zh : point.en}</span>
+                <span>{syllabusName(point, names)}</span>
               </label>
             ))}
             <p className="text-[11.5px] text-ink-subtle">{m.allPoints}</p>

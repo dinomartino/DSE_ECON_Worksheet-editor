@@ -1,10 +1,10 @@
-import { sideOf } from '@/i18n/catalogue';
 import type { Side } from '@/model/textSlots';
+import type { TopicNames } from '@/model/topics';
 import type { LanguageMode } from '@/model/types';
 import type { SheetDraft } from '@/questionStudio/session';
 import { isBriefLabel, isMarked, type TrialDraft, type TrialRun } from '@/questionStudio/trialLog';
-import type { UiLanguage } from '@/settings/language';
 import { lookupCode } from '@/syllabus';
+import { syllabusName } from './studioView';
 
 /** The trial kit's pure half: what its list holds, in what order, and how a recorded draft is drawn. */
 
@@ -45,8 +45,8 @@ export function languageOfSides(sides: readonly Side[]): LanguageMode {
   return sides.length === 2 ? 'bilingual' : sides[0] === 'zh' ? 'zh' : 'en';
 }
 
-/** A key point's name in the interface language ("Price elasticity of demand"), or its code. */
-export function keyPointLabel(code: string, lang: UiLanguage): string {
+/** A key point's name as `names` asks (the draft's own language, k-0500), or its code. */
+export function keyPointLabel(code: string, names: TopicNames): string {
   const hit = lookupCode(code);
-  return hit ? hit.keyPoint[sideOf(lang)] : code;
+  return hit ? syllabusName(hit.keyPoint, names) : code;
 }

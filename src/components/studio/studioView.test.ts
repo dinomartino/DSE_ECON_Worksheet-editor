@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { INVENTED } from '@/questionStudio/fixtures';
 import type { SheetDraft } from '@/questionStudio/session';
 import type { CheckRow, StudioDraft } from '@/questionStudio/types';
-import { draftItem, explanationLines, keyPointGroups, keyPointOfTags, letterOf, partition, rowOf, stemLines, tokenCount } from './studioView';
+import { draftItem, explanationLines, keyPointGroups, syllabusName, keyPointOfTags, letterOf, partition, rowOf, stemLines, tokenCount } from './studioView';
 
 const [A, , C] = INVENTED;
 const entry = (id: string, source = A, status: StudioDraft['status'] = 'ok', checks: CheckRow[] = []): SheetDraft => ({
@@ -18,15 +18,31 @@ const entry = (id: string, source = A, status: StudioDraft['status'] = 'ok', che
 });
 
 describe('the key point list', () => {
-  it('is every topic of the syllabus with its key points, named in the interface language', () => {
+  it('is every topic of the syllabus with its key points, named in the studio’s language (k-0500)', () => {
     const en = keyPointGroups('en');
-    const zh = keyPointGroups('zh-HK');
+    const zh = keyPointGroups('zh');
     expect(en).toHaveLength(12);
     expect(en.reduce((n, g) => n + g.options.length, 0)).toBe(53);
     const ped = en.flatMap((g) => g.options).find((o) => o.code === 'C.ped');
     expect(ped?.name).toBe('Price elasticity of demand');
     expect(zh.flatMap((g) => g.options).find((o) => o.code === 'C.ped')?.name).toBe('需求價格彈性');
     expect(en.every((g) => g.name && g.options.every((o) => o.name))).toBe(true);
+    expect(zh.find((g) => g.code === 'C')?.name).toBe('市場與價格');
+  });
+
+  it('names both sides for both languages', () => {
+    const both = keyPointGroups('both');
+    expect(both.flatMap((g) => g.options).find((o) => o.code === 'C.ped')?.name).toBe('Price elasticity of demand 需求價格彈性');
+  });
+});
+
+describe('a syllabus name', () => {
+  it('reads one side, both, or English where the asked side is empty', () => {
+    expect(syllabusName({ en: 'Law of demand', zh: '需求定律' }, 'zh')).toBe('需求定律');
+    expect(syllabusName({ en: 'Law of demand', zh: '需求定律' }, 'en')).toBe('Law of demand');
+    expect(syllabusName({ en: 'Law of demand', zh: '需求定律' }, 'both')).toBe('Law of demand 需求定律');
+    expect(syllabusName({ en: 'GDP', zh: '' }, 'zh')).toBe('GDP');
+    expect(syllabusName({ en: 'GDP', zh: 'GDP' }, 'both')).toBe('GDP');
   });
 });
 

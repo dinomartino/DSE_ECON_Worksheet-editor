@@ -7,13 +7,14 @@ import { sortBuckets, sortSections, type PatternId, type PatternItem, type SortB
 import type { BankRow } from '@/library/types';
 import { cleanPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
 import type { LanguageMode } from '@/model/types';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { listQuestionTypes } from '@/registry';
 import { escapeClears } from '../escapeClears';
 import { typeName } from './bankPage';
 import { SORT_BOARD_MESSAGES } from './PatternSortBoard.messages';
 import { shownLanguage } from './ReviewPage';
-import { chromeTopicName } from './topicText';
+import { topicName } from './topicText';
 
 /** Questions sorted into a 題型 under one sub-topic: what the caller writes. */
 export interface SortRequest {
@@ -78,7 +79,7 @@ export function PatternSortBoard({
   onDone: () => void;
 }) {
   const m = useMessages(SORT_BOARD_MESSAGES);
-  const ui = useUiLanguage();
+  const view = useViewLanguage();
   const sections = useMemo(() => sortSections(rows, topic), [rows, topic]);
   const [selection, setSelection] = useState<{ topic: string; roots: string[]; anchor: string }>();
   const [name, setName] = useState('');
@@ -220,7 +221,7 @@ export function PatternSortBoard({
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
-  const topicLabel = (code: string) => chromeTopicName(code, ui);
+  const topicLabel = (code: string) => topicName(code, view);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col" data-pattern-board={topic}>

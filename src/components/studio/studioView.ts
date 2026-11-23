@@ -1,12 +1,10 @@
-import { sideOf } from '@/i18n/catalogue';
-import { uiLanguage } from '@/i18n/language';
 import { plain } from '@/model/text';
 import type { Side } from '@/model/textSlots';
 import type { PastPaperItem } from '@/pastpapers/pack';
 import { buildsOf, materialize } from '@/questionStudio/deliver';
 import type { SheetDraft } from '@/questionStudio/session';
+import { type TopicNames } from '@/model/topics';
 import type { CheckRow, StudioDraft } from '@/questionStudio/types';
-import type { UiLanguage } from '@/settings/language';
 import { lookupCode, SYLLABUS } from '@/syllabus';
 import { toRuns } from '@/generate/validate';
 
@@ -18,13 +16,22 @@ export interface KeyPointGroup {
   options: Array<{ code: string; name: string }>;
 }
 
-/** The syllabus's topics and their key points, named in the interface language. */
-export function keyPointGroups(lang: UiLanguage = uiLanguage()): KeyPointGroup[] {
-  const side = sideOf(lang);
+/**
+ * A syllabus name ({en, zh}: a topic, key point or point) as `names` asks: topic names are
+ * paper words (`model/topics.ts` → `topicNamesFor`), so the studio names them in the
+ * language it writes in, never the interface's (k-0500).
+ */
+export function syllabusName(name: { en: string; zh: string }, names: TopicNames): string {
+  if (names === 'both') return name.en === name.zh ? name.en : `${name.en} ${name.zh}`;
+  return name[names] || name.en;
+}
+
+/** The syllabus's topics and their key points, named as `names` asks (the studio's language). */
+export function keyPointGroups(names: TopicNames): KeyPointGroup[] {
   return SYLLABUS.topics.map((topic) => ({
     code: topic.code,
-    name: topic[side],
-    options: topic.keyPoints.map((keyPoint) => ({ code: keyPoint.code, name: keyPoint[side] })),
+    name: syllabusName(topic, names),
+    options: topic.keyPoints.map((keyPoint) => ({ code: keyPoint.code, name: syllabusName(keyPoint, names) })),
   }));
 }
 

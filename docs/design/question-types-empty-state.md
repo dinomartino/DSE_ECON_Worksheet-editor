@@ -405,8 +405,9 @@ remembered level gains `{ kind: 'sort', topic }`; an older build reads it as the
 - **Item 4, fixes.** The 題型 header button needs a question in the library and always
   opens the whole map; the review crumb shows the topic letter, not `C.ped`; "Review these"
   is gone from the map (its sorting is the board's).
-- **Item 6.** Topic names on the map and the board follow the interface language
-  (`src/components/bank/page/topicText.ts:chromeTopicName`).
+- **Item 6.** Topic names on the map and the board followed the interface language until
+  k-0500 (2026-11-23, the user: topic names follow the paper language in the whole app);
+  they now follow the 題庫's view language (`src/components/bank/page/topicText.ts:topicName`).
 - **Checked:** Chrome on the website demo seed, 1440×900, en and 中文, light and dark
   (`question-types-ux/v3-*.png`). **Not checked:** Tauri, Safari, narrow windows, a
   library over 100 questions, a question with parts on the board (it is sorted whole).

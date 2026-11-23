@@ -55,9 +55,9 @@ describe('a recorded draft drawn as the studio draws one', () => {
     expect(languageOfSides(['en', 'zh'])).toBe('bilingual');
   });
 
-  it('names a key point in the interface language, or falls back to its code', () => {
+  it('names a key point in the draft’s language, or falls back to its code (k-0500)', () => {
     expect(keyPointLabel('C.ped', 'en')).toBe('Price elasticity of demand');
-    expect(keyPointLabel('C.ped', 'zh-HK')).toMatch(/[一-鿿]/);
+    expect(keyPointLabel('C.ped', 'zh')).toBe('需求價格彈性');
     expect(keyPointLabel('Z.nothing', 'en')).toBe('Z.nothing');
   });
 });

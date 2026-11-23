@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
 import { Segmented } from '@/components/ui';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
+import { topicNamesFor } from '@/model/topics';
 import { createWorksheet } from '@/model/factories';
 import { useTrialLog } from '@/questionStudio/live';
 import { isBriefLabel, isMarked, shownDrafts } from '@/questionStudio/trialLog';
@@ -72,7 +73,6 @@ function TrialCard({ item }: { item: ListItem }) {
   const m = useMessages(QUESTION_STUDIO_MESSAGES);
   const t = useMessages(STUDIO_TRIAL_MESSAGES);
   const f = useMessages(STUDIO_FINDING_MESSAGES);
-  const lang = useUiLanguage();
   const sheet = useMemo(() => sheetDraftOf(run, entry), [run, entry]);
   const preview = useMemo(() => draftItem(sheet), [sheet]);
   const why = explanationLines(entry.draft.draft, run.request.sides);
@@ -87,7 +87,7 @@ function TrialCard({ item }: { item: ListItem }) {
     <article data-trial-draft={entry.id} data-marked={isMarked(entry)} className="rounded-xl border border-line bg-surface p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2 px-1">
         <Chip tone="idle">{isBriefLabel(run.label) ? t.cardBrief(run.label) : t.cardMine}</Chip>
-        <span className="min-w-0 truncate text-[12px] text-ink-muted">{t.asked(keyPointLabel(run.request.keyPoint, lang), level, shape, languages)}</span>
+        <span className="min-w-0 truncate text-[12px] text-ink-muted">{t.asked(keyPointLabel(run.request.keyPoint, topicNamesFor(languageOfSides(run.request.sides))), level, shape, languages)}</span>
         <span className="flex-1" />
         <Chip tone={look ? 'look' : 'ok'}>{look ? m.statusLook : m.statusOk}</Chip>
         <span className="shrink-0 rounded-md bg-surface-sunken px-2 py-0.5 text-[11.5px] font-medium text-ink">{m.key(letterOf(entry.draft.draft.answerIndex))}</span>
