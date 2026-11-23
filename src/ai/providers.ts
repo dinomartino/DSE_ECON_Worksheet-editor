@@ -107,7 +107,8 @@ const qwen: ProviderPreset = {
   keyPrefix: /^sk-/,
   models: [
     { id: 'qwen3.8-flash', label: 'Qwen 3.8 Flash' }, // †
-    { id: 'qwen3.8-max', label: 'Qwen 3.8 Max' }, // †
+    { id: 'qwen3.7-plus', label: 'Qwen 3.7 Plus' }, // †
+    { id: 'qwen4-max', label: 'Qwen 4 Max' }, // †
   ],
   structured: 'json_schema',
   maxTokensParam: 'max_tokens',
@@ -135,6 +136,10 @@ const openrouter: ProviderPreset = {
     { id: 'qwen/qwen3.8-flash', label: 'Qwen 3.8 Flash' },
     { id: 'deepseek/deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
     { id: 'google/gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite' },
+    { id: 'google/gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
+    { id: 'deepseek/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash' },
+    { id: 'anthropic/claude-haiku-5.5', label: 'Claude Haiku 5.5' },
+    { id: 'openai/gpt-6-luna', label: 'GPT-6 Luna' },
   ],
   structured: 'json_schema',
   maxTokensParam: 'max_tokens',
@@ -167,7 +172,8 @@ const openai: ProviderPreset = {
   keyPrefix: /^sk-/,
   models: [
     { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
-    { id: 'gpt-6-sol', label: 'GPT-6 Sol' },
+    { id: 'gpt-6.1-terra', label: 'GPT-6.1 Terra' },
+    { id: 'gpt-6.2-sol', label: 'GPT-6.2 Sol' },
   ],
   structured: 'json_schema',
   maxTokensParam: 'max_completion_tokens',
@@ -190,7 +196,11 @@ const anthropic: ProviderPreset = {
   keyUrl: 'https://console.anthropic.com/settings/keys',
   billingUrl: 'https://console.anthropic.com/settings/billing',
   keyPrefix: /^sk-ant-/,
-  models: [{ id: 'claude-sonnet-5', label: 'Claude Sonnet 5' }],
+  models: [
+    { id: 'claude-sonnet-5', label: 'Claude Sonnet 5' },
+    { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
+    { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5' },
+  ],
   structured: 'anthropic',
   maxTokensParam: 'max_tokens',
   outputCap: 32000,

@@ -13,6 +13,11 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Newer AI models to choose from.** In Settings → AI, Qwen now offers Qwen 3.7 Plus and Qwen 4 Max
+  (replacing Qwen 3.8 Max), OpenAI offers GPT-6.1 Terra and GPT-6.2 Sol (replacing GPT-6 Sol), Anthropic offers
+  Claude Sonnet 5.5 and Claude Haiku 5.5, and OpenRouter adds Gemini 3.8 Flash, DeepSeek V4.1 Flash,
+  Claude Haiku 5.5 and GPT-6 Luna. Defaults are unchanged, and a model you already chose keeps working.
+  <!-- zh: **新增較新的 AI 模型選擇。** 在「設定 → AI」，Qwen 新增 Qwen 3.7 Plus 和 Qwen 4 Max（取代 Qwen 3.8 Max），OpenAI 新增 GPT-6.1 Terra 和 GPT-6.2 Sol（取代 GPT-6 Sol），Anthropic 新增 Claude Sonnet 5.5 和 Claude Haiku 5.5，OpenRouter 新增 Gemini 3.8 Flash、DeepSeek V4.1 Flash、Claude Haiku 5.5 和 GPT-6 Luna。預設模型不變，你已選的模型照常使用。 -->
 - **Browse the past paper bank by year.** A By topic / By year switch at the top of the Past paper
   bank (and of Past papers in the editor's 題庫 tab) lists every exam year: HKDSE 2026 back to
   2012 and the Practice and Sample papers, then HKCEE and HKALE. Open a year to see its questions

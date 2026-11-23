@@ -99,9 +99,9 @@ describe('the AI status in a browser', () => {
   });
 
   it('follows the saved provider, model and base URL', async () => {
-    const m = await fresh(false, { provider: 'qwen', models: { qwen: 'qwen3.8-max' } });
+    const m = await fresh(false, { provider: 'qwen', models: { qwen: 'qwen4-max' } });
     const status = m.readAiStatus();
-    expect(status).toMatchObject({ provider: 'qwen', model: 'qwen3.8-max', configured: false });
+    expect(status).toMatchObject({ provider: 'qwen', model: 'qwen4-max', configured: false });
     expect(status.baseUrl).toBe(status.preset.baseUrl);
   });
 
