@@ -6,6 +6,8 @@ import { paperFingerprint } from '@/coverage/questions';
 import type { CoverageReport, ElectiveChoice, ElectiveCode, KeyPointRow, TopicRow, Where } from '@/coverage/report';
 import { gaps, marksText, percent } from '@/coverage/report';
 import { changedRuns, coverageFromSaved } from '@/coverage/result';
+import type { ReportLanguage } from '@/coverage/language';
+import { readReportLanguage, writeReportLanguage } from '@/coverage/reportLanguagePref';
 import { nameIn, reportFileName } from '@/coverage/reportText';
 import { BANDS, type Band, type Confidence } from '@/coverage/types';
 import { useMessages, useUiLanguage } from '@/i18n/language';
@@ -35,6 +37,10 @@ import { COVERAGE_MESSAGES } from './coverageReport.messages';
  * (`coverage.language`), the chrome in the app's; "Download report (PDF)" prints the report
  * as its own sheets (`CoverageReportSheets`, the print job path), all in the paper's
  * language; a whole set's report shows the set or one paper at a time.
+ *
+ * k-0503: the PDF's own words follow "Report in" English / 中文 beside Download (the
+ * paper's language until the teacher picks, then their last pick); its syllabus names stay
+ * the paper's.
  */
 type Status = { kind: 'idle' } | { kind: 'busy' } | { kind: 'saved'; path: string } | { kind: 'note'; text: string };
 
@@ -48,6 +54,11 @@ export function CoverageReportDialog({ record, onClose }: { record: SavedCoverag
   const [choice, setChoice] = useState<ElectiveChoice>('auto');
   const coverage = useMemo(() => coverageFromSaved(record, choice), [record, choice]);
   const [view, setView] = useState<'set' | number>('set');
+  const [text, setText] = useState<ReportLanguage>(() => readReportLanguage(coverage.language));
+  const pickText = (language: ReportLanguage) => {
+    setText(language);
+    writeReportLanguage(language);
+  };
 
   // Which papers read differently now than when this check read them.
   const fingerprints = useMemo(() => {
@@ -91,13 +102,13 @@ export function CoverageReportDialog({ record, onClose }: { record: SavedCoverag
     try {
       let file: string | undefined;
       if (desktop) {
-        file = await chooseSavePath(reportFileName(coverage.title, coverage.language), PDF_FILTERS);
+        file = await chooseSavePath(reportFileName(coverage.title, text), PDF_FILTERS);
         if (!file) {
           setStatus({ kind: 'idle' });
           return;
         }
       }
-      const outcome = await printJobPdf({ kind: 'coverage', coverage, label: m.title }, browserJobDeps(), file);
+      const outcome = await printJobPdf({ kind: 'coverage', coverage, label: m.title, text }, browserJobDeps(), file);
       if ('saved' in outcome) setStatus({ kind: 'saved', path: outcome.saved });
       else setStatus(outcome.fallback ? { kind: 'note', text: m.savedFallback(outcome.fallback) } : { kind: 'idle' });
     } catch (cause) {
@@ -127,6 +138,18 @@ export function CoverageReportDialog({ record, onClose }: { record: SavedCoverag
         )}
         {status.kind === 'note' && <span className="text-warn-ink">{status.text}</span>}
         {status.kind === 'idle' && !desktop && m.downloadWebHint}
+      </div>
+      <div className="flex items-center gap-1.5" title={m.reportLanguageHint}>
+        <span className="text-[12px] text-ink-muted">{m.reportLanguage}</span>
+        <Segmented<ReportLanguage>
+          label={m.reportLanguage}
+          value={text}
+          options={[
+            { value: 'en', label: m.reportEnglish, title: m.reportLanguageHint },
+            { value: 'zh', label: m.reportChinese, title: m.reportLanguageHint },
+          ]}
+          onChange={pickText}
+        />
       </div>
       <Button onClick={() => void download()} disabled={status.kind === 'busy'}>
         {m.download}

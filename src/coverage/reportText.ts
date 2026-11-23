@@ -3,9 +3,13 @@ import type { Band, Confidence } from './types';
 import type { Where } from './report';
 
 /**
- * The printed coverage report's words (k-0489). They follow the paper's language, not the
- * interface's, so they live here beside the syllabus names rather than in a UI catalogue
- * (AGENTS.md: printed text stays out of catalogues). Both sides must have every key.
+ * The printed coverage report's words (k-0489): the one place they live, mirrored by the
+ * dse-econ-coverage skill. Printed text, so not in a UI catalogue (AGENTS.md: printed text
+ * stays out of catalogues). Both sides must have every key.
+ *
+ * k-0503 (u-2mvu): these words follow the language the teacher picks at download
+ * (English / 中文), while syllabus names keep the paper's language (`nameIn`). So an
+ * English report of a Chinese paper reads "Key points tested … 需求的價格彈性".
  */
 
 const ZH_NUMERALS = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
@@ -243,7 +247,10 @@ export function reportText(language: ReportLanguage): ReportText {
 export const bandWord = (t: ReportText, band: Band) => (band === 'know' ? t.bandKnow : band === 'apply' ? t.bandApply : t.bandEvaluate);
 export const confWord = (t: ReportText, conf: Confidence) => (conf === 'high' ? t.confHigh : conf === 'medium' ? t.confMedium : t.confLow);
 
-/** A syllabus item's name in the report's language. */
+/** A report's two languages (k-0503): `text` for its own words, `names` for the syllabus (the paper's). */
+export type ReportLanguages = { text: ReportLanguage; names: ReportLanguage };
+
+/** A syllabus item's name in the paper's language. */
 export const nameIn = (language: ReportLanguage) => (row: { en: string; zh: string }) => (language === 'zh' ? row.zh : row.en);
 
 /** The report's file name: the title made safe for Windows and macOS. */
