@@ -59,6 +59,9 @@ export interface ImageRef {
   naturalWidthPx?: number;
   naturalHeightPx?: number;
   alt?: string;
+  /** Drawn here from Word shapes or a chart (k-0498); `optionLetters`: the drawing labels A–D itself (picture options). */
+  drawn?: 'shapes' | 'chart';
+  optionLetters?: true;
 }
 
 /**

@@ -13,6 +13,9 @@ import type { PageChrome } from './pageChrome';
 import type { RawLine, RawRun } from './readPlain';
 import type { ImageRef } from './types';
 import { child, find, findAll, parseXml, textOf, type XmlElement } from './xml';
+import { drawChart } from './docxChart';
+import type { DrawContext } from './docxDrawing';
+import { readTheme, svgDataUrl, type Theme } from './drawingml';
 
 export type DocxErrorKind = 'unreadable' | 'encrypted' | 'notDocx';
 
@@ -144,7 +147,18 @@ function base64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-async function loadImages(zip: JSZip, pending: readonly PendingImage[], options: DocxOptions): Promise<void> {
+/**
+ * A picture drawn here (Word shapes, a chart; k-0498) made ready to store: the app's
+ * downsizer turns the SVG into a PNG (`.docx` export takes no SVG); without one (tests,
+ * workers) the SVG itself. Null when it could not be made.
+ */
+async function preparedDrawing(svg: string, options: DocxOptions): Promise<string | null> {
+  if (!options.prepareImage) return svgDataUrl(svg);
+  const prepared = await options.prepareImage(new Blob([svg], { type: 'image/svg+xml' })).catch(() => null);
+  return prepared?.src && /^data:image\/(png|jpeg|gif)/.test(prepared.src) ? prepared.src : null;
+}
+
+async function loadImages(zip: JSZip, pending: readonly PendingImage[], options: DocxOptions, theme: Theme): Promise<void> {
   const cache = new Map<string, Promise<Partial<ImageRef> & { lost?: string }>>();
   const load = async (path: string): Promise<Partial<ImageRef> & { lost?: string }> => {
     const file = fileOf(zip, path);
@@ -158,7 +172,22 @@ async function loadImages(zip: JSZip, pending: readonly PendingImage[], options:
     if (!prepared?.src) return { lost: 'picture' };
     return { ...natural, ...prepared };
   };
-  for (const { ref, rel } of pending) {
+  for (const { ref, rel, svg, chart, lostAs } of pending) {
+    if (svg !== undefined || chart) {
+      let drawn = svg ?? null;
+      if (chart) {
+        const root = await xmlPart(zip, chart.target).catch(() => undefined);
+        drawn = root ? drawChart(root, theme, ref.widthPx ?? 400, ref.heightPx ?? 300) : null;
+      }
+      const src = drawn ? await preparedDrawing(drawn, options) : null;
+      if (src) ref.src = src;
+      else {
+        ref.alt = lostAs ?? 'drawing';
+        delete ref.drawn;
+        delete ref.optionLetters;
+      }
+      continue;
+    }
     if (!rel || rel.external) {
       ref.alt = rel?.external ? 'linked' : 'missing';
       continue;
@@ -199,19 +228,36 @@ export async function readDocxLines(data: ArrayBuffer | Uint8Array, options: Doc
 
   const rels = await relsOf(zip, main);
   const partOf = (suffix: string) => [...rels.values()].find((r) => r.type.endsWith(suffix) && !r.external)?.target;
-  const styles = new Styles(await xmlPart(zip, partOf('/styles') ?? `${dirOf(main)}styles.xml`));
+  const stylesRoot = await xmlPart(zip, partOf('/styles') ?? `${dirOf(main)}styles.xml`);
+  const styles = new Styles(stylesRoot);
   const numbering = new Numbering(await xmlPart(zip, partOf('/numbering') ?? `${dirOf(main)}numbering.xml`), styles);
 
-  const reader = new BodyReader({ styles, numbering, rels });
+  const theme = readTheme(await xmlPart(zip, partOf('/theme') ?? `${dirOf(main)}theme/theme1.xml`).catch(() => undefined));
+  const reader = new BodyReader({ styles, numbering, rels, draw: drawContext(styles, stylesRoot, theme) });
   const tidy = (runs: RawRun[]) => runs.map((r) => ({ ...r, text: tidyText(r.text) }));
   const read = reader.read(body).map((l) => ({ ...l, runs: tidy(l.runs), ...(l.cells ? { cells: l.cells.map(tidy) } : {}) }));
-  await loadImages(zip, reader.images, options);
+  await loadImages(zip, reader.images, options, theme);
   const lines = settleCellImages(read);
 
   const title = await titleOf(zip, body, rels, reader.headings).catch(() => undefined);
   const chrome = await chromeOf(zip, body, rels, styles, lines).catch(() => undefined);
   const body1 = chrome ? lines.slice(chrome.taken) : lines;
   return { lines: body1, ...(title ? { title } : {}), ...(chrome?.chrome ? { chrome: chrome.chrome } : {}) };
+}
+
+/** What drawing Word shapes needs from the styles: the default font and paragraph spacing. */
+function drawContext(styles: Styles, root: XmlElement | undefined, theme: Theme): DrawContext {
+  const defaults = child(root, 'w:docDefaults');
+  const fonts = child(child(child(defaults, 'w:rPrDefault'), 'w:rPr'), 'w:rFonts');
+  const themed = (attr: string | undefined) => (attr ? (/^major/.test(attr) ? (/EastAsia/.test(attr) ? theme.fonts.majorEa : theme.fonts.major) : /EastAsia/.test(attr) ? theme.fonts.minorEa : theme.fonts.minor) : undefined);
+  const font = fonts?.attrs['w:ascii'] ?? themed(fonts?.attrs['w:asciiTheme']);
+  const fontEa = fonts?.attrs['w:eastAsia'] ?? themed(fonts?.attrs['w:eastAsiaTheme']);
+  // Spacing: the document default, then the default paragraph style over it.
+  const spacingOf = (el: XmlElement | undefined) => el && child(child(el, 'w:pPr'), 'w:spacing');
+  const normal = root && styles.defaultParagraph ? findAll(root, 'w:style').find((s) => s.attrs['w:styleId'] === styles.defaultParagraph) : undefined;
+  const layers = [spacingOf(child(defaults, 'w:pPrDefault')), spacingOf(normal)];
+  const pick = (k: string, d: number) => layers.reduce((v, el) => (el?.attrs[k] !== undefined && Number.isFinite(+el.attrs[k]) ? +el.attrs[k] : v), d);
+  return { theme, styles, ...(font ? { font } : {}), ...(fontEa ? { fontEa } : {}), spacing: { after: pick('w:after', 0), before: pick('w:before', 0), line: pick('w:line', 240) } };
 }
 
 /** Header, footer and masthead, and how many leading lines the masthead took. */

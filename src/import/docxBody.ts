@@ -11,6 +11,7 @@ import { labelZone } from './normalize';
 import { pairByCell } from './pictureOptions';
 import type { RawLine, RawRun } from './readPlain';
 import type { ImageRef, ReaderCell, ReaderTable } from './types';
+import { drawPieces, graphicOf, isShapeGraphic, type DrawContext, type Drawn, type Piece } from './docxDrawing';
 import { child, childrenNamed, elements, find, onOff, textOf, val, type XmlElement } from './xml';
 import { normalizeRuns, sliceRichText } from '@/model/text';
 
@@ -19,16 +20,25 @@ export interface Rel {
   external: boolean;
 }
 
-/** A picture to load: `ref` is filled in place once its bytes are read. */
+/**
+ * A picture to load: `ref` is filled in place once its bytes are read. `svg`: a drawing
+ * made here from Word shapes; `chart`: a Word chart part to draw (k-0498). Either one
+ * that cannot be finished leaves `ref` empty with `lostAs` as its alt, a slot as before.
+ */
 export interface PendingImage {
   ref: ImageRef;
   rel?: Rel;
+  svg?: string;
+  chart?: Rel;
+  lostAs?: string;
 }
 
 export interface BodyContext {
   styles: Styles;
   numbering: Numbering;
   rels: ReadonlyMap<string, Rel>;
+  /** Theme, fonts and spacing for drawing shapes and charts; without it they stay slots. */
+  draw?: DrawContext;
 }
 
 const EMU_PER_PX = 9525;
@@ -85,9 +95,21 @@ interface Parts {
   /** Of `shapes`: flat horizontal lines across the column, a question-answer book's ruled answer lines (k-0494). */
   rules: number;
   lost?: string;
+  /** Floating drawings to draw as one picture (k-0498), and how many pooled drawings could not be placed. */
+  pieces: PoolPiece[];
+  unplaced: number;
 }
 
-const emptyParts = (): Parts => ({ pics: [], boxes: [], shapes: 0, curves: 0, figures: 0, rules: 0 });
+/** A pooled drawing: where it sits, and whether it is a caption (kept as text, not drawn). */
+interface PoolPiece extends Piece {
+  /** What its vertical offset is measured from: the paragraph (estimated) or the page. */
+  frame: 'paragraph' | 'page';
+  caption: boolean;
+  /** A ruled answer line on its own (`isRule`). */
+  rule: boolean;
+}
+
+const emptyParts = (): Parts => ({ pics: [], boxes: [], shapes: 0, curves: 0, figures: 0, rules: 0, pieces: [], unplaced: 0 });
 
 /** A ruled answer line drawn as a shape: a straight line, flat, at least this wide (px). */
 const RULE_MIN_PX = 200;
@@ -193,6 +215,8 @@ const isFigure = (p: Parts, tiny: number) => (tiny >= 2 && p.shapes >= 1) || (p.
 /** Loose anchored shapes and labels from paragraphs with no text: one diagram drawn shape by shape. */
 interface Pool {
   parts: Parts;
+  /** How far down the current paragraph sits below the pool's first (EMU, estimated from empty lines). */
+  y: number;
 }
 
 interface ParaOut {
@@ -214,6 +238,8 @@ export class BodyReader {
   private depth = 0;
   /** The text column's width (twips), from the page size and margins, when the file says. */
   private textWidth = 0;
+  /** The page's left margin (twips), to place a drawing measured from the page edge. */
+  private leftMargin = 0;
   /** The largest type in the paragraph being read (points). */
   private paraSize = 0;
 
@@ -225,8 +251,9 @@ export class BodyReader {
     const margins = child(sect, 'w:pgMar');
     const side = (name: string) => +(margins?.attrs[name] ?? 0) || 0;
     this.textWidth = page > 0 ? Math.max(0, page - side('w:left') - side('w:right')) : 0;
+    this.leftMargin = side('w:left');
     const out: RawLine[] = [];
-    const pool: Pool = { parts: emptyParts() };
+    const pool: Pool = { parts: emptyParts(), y: 0 };
     this.blocks(elements(body), out, pool);
     this.flushPool(pool, out);
     return out;
@@ -317,9 +344,23 @@ export class BodyReader {
     });
     if (emitted && this.depth === 0 && text.trim()) this.noteHeading(text.trim(), style?.name, style?.outlineLvl, lines, pPr, !!label);
     out.push(...para.after);
-    for (const parts of para.loose) mergeParts(pool.parts, parts);
+    for (const parts of para.loose) {
+      for (const piece of parts.pieces) if (piece.frame === 'paragraph') piece.y += pool.y;
+      mergeParts(pool.parts, parts);
+    }
     if (hasInk) this.flushPool(pool, out);
+    else if (pool.parts.pieces.length || pool.parts.unplaced) pool.y += this.emptyParagraphEmu(pPr, base.size);
     this.paraSize = Math.max(outerSize, this.paraSize);
+  }
+
+  /** An empty paragraph's height (EMU): one line at its size, and its spacing. */
+  private emptyParagraphEmu(pPr: XmlElement | undefined, size: number | undefined): number {
+    const spacing = child(pPr, 'w:spacing');
+    const dflt = this.ctx.draw?.spacing;
+    const twips = (k: string, d: number) => (spacing?.attrs[k] !== undefined && Number.isFinite(+spacing.attrs[k]) ? +spacing.attrs[k] : d);
+    const rule = spacing?.attrs['w:lineRule'];
+    const line = rule && rule !== 'auto' ? twips('w:line', 240) * 635 : (size ?? 10.5) * 12700 * 1.15 * (twips('w:line', dflt?.line ?? 240) / 240);
+    return line + (twips('w:before', dflt?.before ?? 0) + twips('w:after', dflt?.after ?? 0)) * 635;
   }
 
   private hasText(p: XmlElement): boolean {
@@ -474,7 +515,11 @@ export class BodyReader {
     const sink = above || atStart ? para.before : para.after;
 
     if (parts.lost) {
-      sink.push(this.lostLine(parts.lost));
+      const graphic = graphicOf(el);
+      const rid = graphic?.name === 'c:chart' ? graphic.attrs['r:id'] : undefined;
+      const rel = rid ? this.ctx.rels.get(rid) : undefined;
+      if (parts.lost === 'chart' && rel && !rel.external && this.ctx.draw && cx && cy) sink.push(this.chartLine(rel, cx, cy, alt));
+      else sink.push(this.lostLine(parts.lost));
       return;
     }
     const tiny = parts.boxes.filter((b) => boxText(b).length <= LABEL_MAX).length;
@@ -488,19 +533,65 @@ export class BodyReader {
     // Floating pieces are pooled with their neighbours: a diagram drawn shape by shape,
     // its caption and legend, settle together once text resumes.
     const floating = !!anchor || el.name === 'w:pict';
+    const piece = this.pieceOf(el, cx, cy, parts);
     if (isFigure(parts, tiny)) {
-      if (floating) para.loose.push({ ...emptyParts(), figures: 1 });
-      else sink.push(this.lostLine('drawing'));
+      if (floating) para.loose.push({ ...emptyParts(), figures: 1, ...(piece ? { pieces: [piece] } : { unplaced: 1 }) });
+      else {
+        const drawn = piece && this.ctx.draw ? drawPieces([{ ...piece, x: 0, y: 0 }], this.ctx.draw) : null;
+        sink.push(drawn ? this.drawnLine(drawn, alt) : this.lostLine('drawing'));
+      }
       return;
     }
     for (const box of prose) this.box(box, sink);
-    if (floating) para.loose.push({ ...parts, boxes: short });
+    // A drawing holding running text is read as text, never drawn into a diagram.
+    if (floating) para.loose.push({ ...parts, boxes: short, ...(piece && !prose.length ? { pieces: [piece] } : { unplaced: prose.length ? 0 : 1 }) });
     else for (const box of short) this.box(box, sink);
+  }
+
+  /** Where a drawing sits, for drawing it alone or with its pooled neighbours (k-0498); undefined when it cannot be drawn or placed. */
+  private pieceOf(el: XmlElement, cx: number, cy: number, parts: Parts): PoolPiece | undefined {
+    if (el.name !== 'w:drawing' || !(cx || cy) || parts.pics.length || parts.lost) return undefined;
+    const graphic = graphicOf(el);
+    if (!isShapeGraphic(graphic)) return undefined;
+    const anchor = find(el, 'wp:anchor');
+    const offsetOf = (pos: XmlElement | undefined) => {
+      const off = child(pos, 'wp:posOffset');
+      return off ? Number(textOf(off)) : NaN;
+    };
+    let x = 0;
+    let y = 0;
+    let frame: PoolPiece['frame'] = 'paragraph';
+    if (anchor) {
+      const posH = child(anchor, 'wp:positionH');
+      const posV = child(anchor, 'wp:positionV');
+      const relH = posH?.attrs.relativeFrom ?? 'column';
+      const alignH = posH && child(posH, 'wp:align') ? textOf(child(posH, 'wp:align')!) : undefined;
+      const column = this.textWidth * 635;
+      if (alignH) x = alignH === 'center' ? (column - cx) / 2 : alignH === 'right' ? column - cx : 0;
+      else x = offsetOf(posH) - (/^(page|leftMargin|outsideMargin)$/.test(relH) ? this.leftMargin * 635 : 0);
+      const relV = posV?.attrs.relativeFrom ?? 'paragraph';
+      if (posV && child(posV, 'wp:align')) return undefined;
+      frame = /^(paragraph|line)$/.test(relV) ? 'paragraph' : 'page';
+      y = offsetOf(posV);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined;
+    }
+    const lone = parts.boxes.length === 1 && parts.shapes === 0;
+    return {
+      graphic: graphic!,
+      x,
+      y,
+      cx,
+      cy,
+      z: +(anchor?.attrs.relativeHeight ?? 0),
+      frame,
+      caption: lone && CAPTION.test(boxText(parts.boxes[0])),
+      rule: parts.rules === 1 && parts.shapes === 1 && !parts.boxes.length,
+    };
   }
 
   private box(box: XmlElement, sink: RawLine[]): void {
     this.depth++;
-    const pool: Pool = { parts: emptyParts() };
+    const pool: Pool = { parts: emptyParts(), y: 0 };
     this.blocks(elements(box), sink, pool);
     this.flushPool(pool, sink);
     this.depth--;
@@ -509,6 +600,7 @@ export class BodyReader {
   private flushPool(pool: Pool, out: RawLine[]): void {
     const p = pool.parts;
     pool.parts = emptyParts();
+    pool.y = 0;
     if (!p.shapes && !p.boxes.length && !p.figures) return;
     // Nothing but ruled lines across the column: the answer lines of a question-answer book,
     // read as the typed ones are (an answer line each), not as a lost picture (k-0494).
@@ -523,7 +615,43 @@ export class BodyReader {
     }
     // Labels and legends are the diagram's; a caption stays as text before its slot.
     for (const box of p.boxes) if (CAPTION.test(boxText(box))) this.box(box, out);
-    for (let k = 0; k < Math.max(1, p.figures); k++) out.push(this.lostLine('drawing'));
+    // Ruled answer lines pooled above or below a figure are answer lines, not part of it.
+    const placed = p.pieces.filter((x) => !x.caption);
+    const figure = placed.filter((x) => !x.rule);
+    const top = Math.min(...figure.map((x) => x.y));
+    const bottom = Math.max(...figure.map((x) => x.y + x.cy));
+    // A rule across the column is always an answer line (Word may float the figure over them); a shorter one only outside the figure.
+    const across = (x: PoolPiece) => !!this.textWidth && x.cx >= this.textWidth * 635 * 0.8;
+    const ruleAt = (x: PoolPiece) => {
+      if (!x.rule || !figure.length || x.frame !== figure[0].frame) return 0;
+      if (x.y + x.cy <= top) return -1;
+      return x.y >= bottom || across(x) ? 1 : 0;
+    };
+    const pieces = placed.filter((x) => !ruleAt(x));
+    const answerLines = (side: number) => {
+      for (const x of placed) if (ruleAt(x) === side) out.push({ runs: [{ text: '\t' }] });
+    };
+    answerLines(-1);
+    // The rest as one picture, when every piece could be placed in one frame (k-0498).
+    const oneFrame = pieces.every((x) => x.frame === pieces[0]?.frame);
+    const drawn = this.ctx.draw && pieces.length && !p.unplaced && oneFrame ? drawPieces(pieces, this.ctx.draw) : null;
+    if (drawn) out.push(this.drawnLine(drawn));
+    else for (let k = 0; k < Math.max(1, p.figures); k++) out.push(this.lostLine('drawing'));
+    answerLines(1);
+  }
+
+  /** A picture drawn from Word shapes; rasterised once loaded. */
+  private drawnLine(drawn: Drawn, alt?: string): RawLine {
+    const ref: ImageRef = { src: '', widthPx: drawn.widthPx, heightPx: drawn.heightPx, drawn: 'shapes', ...(drawn.optionLetters ? { optionLetters: true } : {}), ...(alt ? { alt } : {}) };
+    this.images.push({ ref, svg: drawn.svg, lostAs: 'drawing' });
+    return { runs: [], image: ref };
+  }
+
+  /** A Word chart, drawn once its part is read (`readDocx`). */
+  private chartLine(rel: Rel, cx: number, cy: number, alt?: string): RawLine {
+    const ref: ImageRef = { src: '', widthPx: Math.round(cx / EMU_PER_PX), heightPx: Math.round(cy / EMU_PER_PX), drawn: 'chart', ...(alt ? { alt } : {}) };
+    this.images.push({ ref, chart: rel, lostAs: 'chart' });
+    return { runs: [], image: ref };
   }
 
   private picture(pic: Parts['pics'][number]): RawLine {
@@ -549,7 +677,7 @@ export class BodyReader {
     const single = rows.every((tr) => cellsOf(tr).length <= 1);
     if (single) {
       // A one-column table is a frame (a source box): its content reads as body text.
-      const pool: Pool = { parts: emptyParts() };
+      const pool: Pool = { parts: emptyParts(), y: 0 };
       for (const tr of rows) for (const tc of cellsOf(tr)) this.blocks(elements(tc), out, pool);
       this.flushPool(pool, out);
       return;
@@ -704,7 +832,7 @@ export class BodyReader {
         out.push(...after);
         continue;
       }
-      const pool: Pool = { parts: emptyParts() };
+      const pool: Pool = { parts: emptyParts(), y: 0 };
       for (const tc of cells) this.blocks(elements(tc), out, pool);
       this.flushPool(pool, out);
     }
@@ -714,7 +842,7 @@ export class BodyReader {
   private cell(tc: XmlElement, after: RawLine[]): RawRun[] {
     const lines: RawLine[] = [];
     this.depth++;
-    const pool: Pool = { parts: emptyParts() };
+    const pool: Pool = { parts: emptyParts(), y: 0 };
     this.blocks(elements(tc), lines, pool);
     this.flushPool(pool, lines);
     this.depth--;
@@ -889,6 +1017,8 @@ function cellsOf(tr: XmlElement): XmlElement[] {
 }
 
 function mergeParts(into: Parts, from: Parts): void {
+  into.pieces.push(...from.pieces);
+  into.unplaced += from.unplaced;
   into.pics.push(...from.pics);
   into.boxes.push(...from.boxes);
   into.shapes += from.shapes;

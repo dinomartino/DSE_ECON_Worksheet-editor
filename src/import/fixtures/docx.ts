@@ -281,3 +281,46 @@ export async function makeDocx(spec: DocxSpec): Promise<ArrayBuffer> {
   for (const [path, content] of Object.entries(spec.parts ?? {})) zip.file(path, content);
   return zip.generateAsync({ type: 'arraybuffer' });
 }
+
+// ---- shapes with positions (k-0498: drawn as pictures) ----
+
+/** A positioned shape in a group, `x`, `y`, `w`, `h` in px of the group's own frame. */
+export interface ShapeOpts {
+  prst?: string;
+  flipH?: boolean;
+  flipV?: boolean;
+  rot?: number;
+  /** `a:ln` content, e.g. `<a:prstDash val="dash"/><a:tailEnd type="triangle"/>`. */
+  ln?: string;
+  /** Fill: an `a:solidFill`/`a:noFill`… element, else none. */
+  fill?: string;
+  /** Text-box paragraphs; `bodyPr` attributes for it. */
+  text?: string;
+  bodyPr?: string;
+}
+
+export function shape(x: number, y: number, w: number, h: number, o: ShapeOpts = {}): string {
+  const flips = `${o.flipH ? ' flipH="1"' : ''}${o.flipV ? ' flipV="1"' : ''}${o.rot ? ` rot="${o.rot * 60000}"` : ''}`;
+  const xfrm = `<a:xfrm${flips}><a:off x="${x * EMU}" y="${y * EMU}"/><a:ext cx="${w * EMU}" cy="${h * EMU}"/></a:xfrm>`;
+  const style = '<wps:style><a:lnRef idx="1"><a:schemeClr val="dk1"/></a:lnRef><a:fillRef idx="0"><a:schemeClr val="dk1"/></a:fillRef><a:effectRef idx="0"><a:schemeClr val="dk1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="dk1"/></a:fontRef></wps:style>';
+  const ln = o.text && o.ln === undefined ? '<a:ln><a:noFill/></a:ln>' : `<a:ln w="12700">${o.ln ?? ''}</a:ln>`;
+  const sp = `<wps:spPr>${xfrm}<a:prstGeom prst="${o.prst ?? (o.text ? 'rect' : 'line')}"><a:avLst/></a:prstGeom>${o.fill ?? (o.text ? '<a:noFill/>' : '')}${ln}</wps:spPr>`;
+  const txbx = o.text ? `<wps:txbx><w:txbxContent>${o.text}</w:txbxContent></wps:txbx>` : '';
+  return `<wps:wsp>${o.text ? '<wps:cNvSpPr txBox="1"/>' : '<wps:cNvCnPr/>'}${sp}${style}${txbx}<wps:bodyPr ${o.bodyPr ?? 'lIns="0" tIns="0" rIns="0" bIns="0"'}/></wps:wsp>`;
+}
+
+/** A floating (or inline) group of positioned shapes, `w`×`h` px. */
+export function shapeGroup(shapes: string[], w: number, h: number, o: { inline?: boolean; offsetY?: number } = {}): string {
+  const grp = `<wpg:wgp><wpg:cNvGrpSpPr/><wpg:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${w * EMU}" cy="${h * EMU}"/><a:chOff x="0" y="0"/><a:chExt cx="${w * EMU}" cy="${h * EMU}"/></a:xfrm></wpg:grpSpPr>${shapes.join('')}</wpg:wgp>`;
+  const graphic = `<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup">${grp}</a:graphicData></a:graphic>`;
+  const holder = o.inline ? `<wp:inline><wp:extent cx="${w * EMU}" cy="${h * EMU}"/><wp:docPr id="3" name="Group"/>${graphic}</wp:inline>` : anchor(graphic, w, h, o.offsetY ?? 0);
+  return `<w:r><mc:AlternateContent><mc:Choice Requires="wpg"><w:drawing>${holder}</w:drawing></mc:Choice><mc:Fallback><w:pict><v:group><v:line/></v:group></w:pict></mc:Fallback></mc:AlternateContent></w:r>`;
+}
+
+/** A chart part (`word/charts/…`): `plot` is the `c:plotArea` content. */
+export const chartPart = (plot: string, extra = '') =>
+  `<?xml version="1.0"?><c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><c:chart><c:autoTitleDeleted val="1"/><c:plotArea><c:layout/>${plot}</c:plotArea>${extra}</c:chart></c:chartSpace>`;
+
+/** A pie series of invented values with category names and percent labels. */
+export const pieSeries = (cats: string[], vals: number[]) =>
+  `<c:pieChart><c:varyColors val="1"/><c:ser><c:idx val="0"/><c:order val="0"/><c:dLbls><c:showLegendKey val="0"/><c:showVal val="0"/><c:showCatName val="1"/><c:showSerName val="0"/><c:showPercent val="1"/></c:dLbls><c:cat><c:strRef><c:strCache><c:ptCount val="${cats.length}"/>${cats.map((c, i) => `<c:pt idx="${i}"><c:v>${esc(c)}</c:v></c:pt>`).join('')}</c:strCache></c:strRef></c:cat><c:val><c:numRef><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${vals.length}"/>${vals.map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join('')}</c:numCache></c:numRef></c:val></c:ser><c:firstSliceAng val="0"/></c:pieChart>`;
