@@ -1,7 +1,8 @@
 /** ✦ AI → Check import (k-0494): the open paper against its file, fixes one commit each. */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { presetFor } from '@/ai/providers';
-import type { AiClient } from '@/ai/types';
+import { GEMINI_REGION_MESSAGE } from '@/ai/errors';
+import { AiError, type AiClient } from '@/ai/types';
 import { analyseLines, buildImport, readPaste } from '@/import';
 import { forgetImportsForTest, rememberImport } from '@/importCheck/sources';
 import { materializeBatch } from '@/importCheck/run';
@@ -105,6 +106,17 @@ describe('check.import', () => {
     const out = findings(await verbById('check.import')!.run(ctx(), io));
     expect(out.items.map((i) => i.notes[0])).toContain('AI: Looks fine but the model says so.');
     expect(out.items.find((i) => i.notes[0].startsWith('AI:'))!.action).toBeUndefined();
+  });
+
+  it('says when the AI found nothing, and why it failed when it did (k-0501)', async () => {
+    load();
+    fake.ok = true;
+    fake.client = scriptedClient([JSON.stringify({ items: [] })]);
+    const clean = findings(await verbById('check.import')!.run(ctx(), io));
+    expect(clean.summary).toContain('AI checked 1 question: no problems found');
+    fake.client = scriptedClient([new AiError({ kind: 'region', provider: 'gemini', message: GEMINI_REGION_MESSAGE, fatal: true, actions: [] })]);
+    const failed = findings(await verbById('check.import')!.run(ctx(), io));
+    expect(failed.summary).toContain(`AI check failed: ${GEMINI_REGION_MESSAGE}`);
   });
 });
 

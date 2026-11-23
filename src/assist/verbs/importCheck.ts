@@ -1,4 +1,5 @@
 import { prepareImportImage, readPaperFile } from '@/components/import/fileImport';
+import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { copyMessages } from '@/components/translate/text';
 import { runAiCheck } from '@/importCheck/ai';
 import { importSourceFor, rememberImport } from '@/importCheck/sources';
@@ -168,8 +169,14 @@ export const importCheckVerb: AiVerb = {
       const only = ids ? new Set(input.paper.flatMap((q, k) => (ids.has(q.id) ? [k] : []))) : undefined;
       const outcome = await runAiCheck(input, { client, preset, model }, io.signal, (done, total) => io.progress(done, total, m.aiChecking(total)), only);
       all = sortFindings([...findings, ...outcome.findings]);
-      if (outcome.fatal) tail = outcome.fatal.message;
-      else if (outcome.failed) tail = m.aiFailed(outcome.failed);
+      // Always a word on the AI's half (k-0501): its failure and why, or that it found nothing.
+      const error = outcome.fatal ?? outcome.lastError;
+      const why = error ? localizedErrorMessage(error) : '';
+      if (outcome.stopped) tail = '';
+      else if (outcome.total === 0) tail = m.aiNothingSent;
+      else if (outcome.done === 0) tail = m.aiFailedWhy(why || m.aiUnreadable);
+      else if (outcome.failed || outcome.fatal) tail = m.aiFailedNote(outcome.total - outcome.done, why);
+      else if (!outcome.findings.length) tail = m.aiVerbClean(outcome.done);
     } else if (!resolved.ok) tail = m.aiNoProvider;
     const withTail = (summary: string) => (tail ? `${summary} · ${tail}` : summary);
     if (!all.length) return { kind: 'nothing', summary: withTail(m.noFindings) };

@@ -1,9 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import type { AiErrorInfo } from '@/ai/types';
+import { localizedErrorMessage } from '@/components/ai/errorCopy';
+import { aiReport, aiTiming, type AiRun, type AiTone } from '@/importCheck/aiSummary';
 import type { ImportFinding } from '@/importCheck/types';
 import { IMPORT_CHECK_MESSAGES } from '@/importCheck/messages';
 import { findingMessage, fixLabel } from '@/importCheck/text';
-import { useMessages } from '@/i18n/language';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
 import { Button, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 
@@ -25,6 +30,7 @@ export function ImportCheckPanel({
   onApplySafe,
   onGo,
   onAskAi,
+  onStopAi,
   onClose,
 }: {
   findings: readonly ImportFinding[];
@@ -32,12 +38,14 @@ export function ImportCheckPanel({
   number: (q: number) => number | string;
   safe: number;
   stale: number;
-  ai: { busy: boolean; note?: string; progress?: string; available: boolean };
+  /** The AI check's run and the provider it would go to (Settings → AI). */
+  ai: { run: AiRun; provider: string; configured: boolean };
   onApply: (finding: ImportFinding) => void;
   onSkip: (finding: ImportFinding) => void;
   onApplySafe: () => void;
   onGo: (finding: ImportFinding) => void;
   onAskAi: () => void;
+  onStopAi: () => void;
   onClose: () => void;
 }) {
   const m = useMessages(IMPORT_CHECK_MESSAGES);
@@ -62,16 +70,13 @@ export function ImportCheckPanel({
             {m.applyAllSafe(safe)}
           </Button>
         )}
-        <Button size="sm" variant="subtle" title={m.askAiTitle} disabled={ai.busy || !ai.available} onClick={onAskAi}>
-          ✦ {ai.busy ? (ai.progress ?? m.checking) : m.askAi}
-        </Button>
-        {ai.note && <span className="text-xs text-ink-muted">{ai.note}</span>}
         <span className="flex-1" />
         <span className="hidden text-xs text-ink-subtle sm:inline">{m.reviewNote}</span>
         <IconButton label={m.close} onClick={onClose}>
           <CloseIcon size={14} />
         </IconButton>
       </div>
+      <AiCheckRow {...ai} onAsk={onAskAi} onStop={onStopAi} />
       {findings.length > 0 && (
         <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto border-t border-line">
           {findings.map((f) => {
@@ -126,5 +131,103 @@ export function ImportCheckPanel({
         </ul>
       )}
     </section>
+  );
+}
+
+const TONE: Record<AiTone, string> = {
+  ok: 'text-ok',
+  found: 'text-warn-ink',
+  warn: 'text-warn-ink',
+  failed: 'text-danger-ink',
+};
+
+const timeOf = (lang: UiLanguage) => (at: number) =>
+  new Date(at).toLocaleTimeString(lang === 'en' ? 'en-GB' : 'zh-HK', { hour: '2-digit', minute: '2-digit' });
+
+/** A clock that ticks once a second while `on`, so a long run visibly moves. */
+function useNow(on: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!on) return;
+    // The first tick comes within a second; until then a stale clock reads 0:00 (clamped).
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [on]);
+  return now;
+}
+
+/**
+ * The AI check's own row (k-0501, user u-2ywo): always in the panel, never only a button.
+ * Not run yet (and where it would send), connecting, checking (a bar, how many, how long,
+ * Stop), then what came of it: a headline in its tone and a few lines of what was checked
+ * and found — also when it found nothing, and when it failed and why.
+ */
+export function AiCheckRow({
+  run,
+  provider,
+  configured,
+  onAsk,
+  onStop,
+  now: fixedNow,
+}: {
+  run: AiRun;
+  provider: string;
+  configured: boolean;
+  onAsk: () => void;
+  onStop: () => void;
+  /** Tests pin the clock. */
+  now?: number;
+}) {
+  const m = useMessages(IMPORT_CHECK_MESSAGES);
+  const lang = useUiLanguage();
+  const busy = run.state === 'connecting' || run.state === 'running';
+  const ticking = useNow(busy && fixedNow === undefined);
+  const now = fixedNow ?? ticking;
+  const why = (error: AiErrorInfo) => localizedErrorMessage(error, lang);
+  const report = run.state === 'done' || run.state === 'failed' ? aiReport(m, run, timeOf(lang), why) : undefined;
+  const share = run.state === 'running' && run.total ? Math.round((run.done / run.total) * 100) : 0;
+  return (
+    <div data-ai-check={run.state} className="shrink-0 border-t border-line bg-surface-sunken px-4 py-2" role="status" aria-live="polite">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="text-[12.5px] font-semibold text-ink">✦ {m.aiCheck}</span>
+        <span className="text-ink-subtle">·</span>
+        {run.state === 'idle' && <span className="min-w-0 flex-1 text-[12px] text-ink-muted">{configured ? m.aiIdle(provider) : m.aiIdleNoProvider}</span>}
+        {run.state === 'connecting' && <span className="min-w-0 flex-1 text-[12px] text-ink">{m.aiConnecting(provider)}</span>}
+        {run.state === 'running' && (
+          <span className="min-w-0 flex-1 text-[12px] text-ink">
+            {m.aiSending(run.total, run.batches, provider)}
+            <span className="text-ink-muted"> · {m.aiProgress(run.done, run.total)}</span>
+          </span>
+        )}
+        {report && <span className={`min-w-0 flex-1 text-[12.5px] font-medium ${TONE[report.tone]}`}>{report.tone === 'ok' ? '✓ ' : ''}{report.headline}</span>}
+        {busy ? (
+          <Button size="sm" variant="subtle" onClick={onStop}>
+            {m.aiStop}
+          </Button>
+        ) : (
+          <Button size="sm" variant={run.state === 'idle' ? 'default' : 'subtle'} onClick={onAsk} data-ai-ask>
+            ✦ {run.state === 'idle' ? m.aiRun : m.aiRunAgain}
+          </Button>
+        )}
+      </div>
+      {busy && (
+        <div className="mt-1.5 flex items-center gap-2">
+          <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-line" aria-hidden>
+            <span
+              className={`block h-full rounded-full bg-accent transition-[width] duration-500 ease-out-soft ${run.state === 'connecting' || share === 0 ? 'w-1/12 animate-pulse' : ''}`}
+              style={run.state === 'running' && share > 0 ? { width: `${share}%` } : undefined}
+            />
+          </span>
+          {run.state === 'running' && <span className="shrink-0 text-[11.5px] tabular-nums text-ink-muted">{aiTiming(m, run, now)}</span>}
+        </div>
+      )}
+      {report && report.lines.length > 0 && (
+        <ul className="mt-1 space-y-0.5 text-[11.5px] text-ink-muted">
+          {report.lines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

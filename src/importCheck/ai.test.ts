@@ -1,6 +1,7 @@
 /** The import check's AI half (k-0494): only checked edits are ever offered. Invented fixtures. */
 import { describe, expect, it } from 'vitest';
 import { presetFor } from '@/ai/providers';
+import { AiError } from '@/ai/types';
 import { analyseLines, buildImport, readPaste } from '@/import';
 import { plain } from '@/model/text';
 import type { ParagraphBlock, Question, StructuredQuestion } from '@/model/types';
@@ -104,5 +105,28 @@ describe('the run', () => {
     const client = scriptedClient(['not json', 'still not']);
     const outcome = await runAiCheck(input, { client, preset: { ...presetFor('openai'), concurrency: 1 }, model: 'fake' }, new AbortController().signal);
     expect(outcome).toMatchObject({ findings: [], failed: 1 });
+  });
+
+  it('counts what it sent and what it dropped, for the summary (k-0501)', async () => {
+    const input = setup();
+    const reply = JSON.stringify({ items: [proposal({ op: 'replace', from: 'nood1e', to: 'noodle' }), proposal({ key: 'q9' }), proposal({ ref: 'b99' })] });
+    const outcome = await runAiCheck(input, { client: scriptedClient([reply]), preset: { ...presetFor('openai'), concurrency: 1 }, model: 'fake' }, new AbortController().signal);
+    expect(outcome).toMatchObject({ total: 1, done: 1, failed: 0, dropped: 2, checked: { questions: 1, options: 0, marks: 2, pictures: 0, tables: 0 } });
+    expect(outcome.ms).toBeGreaterThanOrEqual(0);
+  });
+
+  it('keeps the reason a question could not be checked (a timeout is not fatal)', async () => {
+    const input = setup();
+    const timeout = new AiError({ kind: 'timeout', provider: 'openai', message: 'OpenAI took too long.', fatal: false, actions: ['retry'] });
+    const outcome = await runAiCheck(input, { client: scriptedClient([timeout]), preset: { ...presetFor('openai'), concurrency: 1 }, model: 'fake' }, new AbortController().signal);
+    expect(outcome).toMatchObject({ done: 0, failed: 1, lastError: { kind: 'timeout' } });
+    expect(outcome.fatal).toBeUndefined();
+  });
+
+  it('tells its progress with the number of batches', async () => {
+    const input = setup();
+    const seen: number[][] = [];
+    await runAiCheck(input, { client: scriptedClient([JSON.stringify({ items: [] })]), preset: { ...presetFor('openai'), concurrency: 1 }, model: 'fake' }, new AbortController().signal, (d, t, b) => seen.push([d, t, b]));
+    expect(seen).toEqual([[0, 1, 1], [1, 1, 1]]);
   });
 });

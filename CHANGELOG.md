@@ -59,12 +59,15 @@ a version heading is edited afterwards.
   tables read as text, pictures missing or in the wrong question, Chinese on the English side, and
   diagrams drawn with Word shapes that could not come in. Each one shows the words as they are and
   as they will be, with Apply and Skip; Apply all safe fixes does the ones that need no judgement.
-  Fixes change the import before you save, and ⌘Z takes them back. Also ask the AI sends each
-  question with its part of the file to the AI provider in Settings → AI for what the rules cannot
-  see; it can only suggest the file's own words or marks, and nothing changes until you apply it.
+  Fixes change the import before you save, and ⌘Z takes them back. ✦ AI check, always on the
+  review bar, sends each question with its part of the file to the AI provider in Settings → AI
+  for what the rules cannot see. It shows how far it has got and roughly how long is left, then
+  always says what came of it: no problems found, or what it found, with a few lines on what it
+  checked; when it cannot run (no key, Gemini without a VPN, no answer) it says why. It can only
+  suggest the file's own words or marks, and nothing changes until you apply it.
   On a paper you have already imported, ✦ AI → Check import does the same (it asks for the file
   when the paper was imported before you opened the app), each fix one step of Undo.
-  <!-- zh: **把匯入的試卷與原檔案比較，修正出錯的地方。** 在匯入的檢查步驟中，按「檢查匯入」會把題目與 Word 或 PDF 檔案比較，逐題列出出錯的地方：缺少或亂碼的文字、符號字型的符號、殘留在文字中的頁碼、「請翻頁」和圖片來源說明、仍在文字中或缺少的分數、被讀成一個的選項、被讀成文字的表格、缺少或放錯題目的圖片、放在英文一邊的中文，以及無法匯入、用 Word 圖形繪畫的圖。每項都會顯示文字現在和修正後的樣子，並有「套用」及「略過」；「套用全部安全修正」會處理不需判斷的項目。修正會在儲存前改動匯入內容，⌘Z 可取消。「同時詢問 AI」會把每條題目及檔案中相應的部分傳送到「設定 → AI」中的 AI 服務，找出規則看不到的問題；AI 只能建議檔案本身的文字或分數，你按「套用」前不會有任何改動。已匯入的試卷可用 ✦ AI →「檢查匯入」做同樣的檢查（如試卷在開啟程式前已匯入，會要求選擇檔案），每項修正都可逐步復原。 -->
+  <!-- zh: **把匯入的試卷與原檔案比較，修正出錯的地方。** 在匯入的檢查步驟中，按「檢查匯入」會把題目與 Word 或 PDF 檔案比較，逐題列出出錯的地方：缺少或亂碼的文字、符號字型的符號、殘留在文字中的頁碼、「請翻頁」和圖片來源說明、仍在文字中或缺少的分數、被讀成一個的選項、被讀成文字的表格、缺少或放錯題目的圖片、放在英文一邊的中文，以及無法匯入、用 Word 圖形繪畫的圖。每項都會顯示文字現在和修正後的樣子，並有「套用」及「略過」；「套用全部安全修正」會處理不需判斷的項目。修正會在儲存前改動匯入內容，⌘Z 可取消。檢查步驟頂部一直顯示的「✦ AI 檢查」會把每條題目及檔案中相應的部分傳送到「設定 → AI」中的 AI 服務，找出規則看不到的問題。檢查時會顯示進度及大約尚餘的時間，完成後一定會交代結果：沒有發現問題，或發現了甚麼，並以數行說明檢查了甚麼；無法執行時（沒有 API key、未開 VPN 使用 Gemini、沒有回應）會說明原因。AI 只能建議檔案本身的文字或分數，你按「套用」前不會有任何改動。已匯入的試卷可用 ✦ AI →「檢查匯入」做同樣的檢查（如試卷在開啟程式前已匯入，會要求選擇檔案），每項修正都可逐步復原。 -->
 
 - **Diagrams and charts drawn in Word come in as pictures.** A graph you drew in Word with
   lines, arrows, boxes, dots and text boxes for its labels (S₀, D₁, Price, Quantity…) now imports

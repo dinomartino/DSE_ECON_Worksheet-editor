@@ -36,6 +36,10 @@ import { importedMarks } from './fileImport';
 import { ImportCheckPanel } from './ImportCheckPanel';
 import { isPaused } from '@/assist/paused';
 import { runAiCheck } from '@/importCheck/ai';
+import { aiBarLabel, type AiRun } from '@/importCheck/aiSummary';
+import { depsError } from '@/assist/fillRules';
+import { isDesktop } from '@/platform';
+import { useAiStatus } from '@/settings/aiSettings';
 import { IMPORT_CHECK_MESSAGES } from '@/importCheck/messages';
 import { applyOp, type CheckOp } from '@/importCheck/ops';
 import { checkReview, materializeBatch, reviewInput, safeFixes } from '@/importCheck/run';
@@ -159,7 +163,8 @@ export function ReviewStep({
   const [checkOpen, setCheckOpen] = useState(false);
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
   const [aiFound, setAiFound] = useState<ImportFinding[]>([]);
-  const [ai, setAi] = useState<{ busy: boolean; note?: string; progress?: string }>({ busy: false });
+  const [aiRun, setAiRun] = useState<AiRun>({ state: 'idle' });
+  const aiStatus = useAiStatus();
   const aiStop = useRef<AbortController | null>(null);
   useEffect(() => () => aiStop.current?.abort(), []);
   const maxWidthPx = useMemo(() => Math.round(contentWidth(pageSetupOf(base)) / 15), [base]);
@@ -197,30 +202,45 @@ export function ReviewStep({
     const ops: CheckOp[] = safe.flatMap((f) => (f.fix && 'op' in f.fix ? [f.fix.op] : []));
     if (ops.length) update((s) => ({ ...s, fixes: [...(s.fixes ?? []), ops], undo: [...s.undo, 'check'] }));
   }, [safe, update]);
+  // The AI check (k-0501): one click from the review bar, always in a visible state.
   const askAi = useCallback(async () => {
     aiStop.current?.abort();
     const controller = new AbortController();
     aiStop.current = controller;
-    setAi({ busy: true });
+    setCheckOpen(true);
+    setAiRun({ state: 'connecting' });
     const resolved = await createRunDeps({ glossary: false });
+    if (aiStop.current !== controller) return;
     if (!resolved.ok) {
-      setAi({ busy: false, note: cm.aiNoProvider });
+      setAiRun({ state: 'failed', at: Date.now(), error: depsError(resolved, isDesktop()) });
       return;
     }
     const { client, preset, model } = resolved.deps;
     const input = reviewInput(latest.current.analysis, result.unfixed ?? batch, batch, checkOptions);
-    const outcome = await runAiCheck(input, { client, preset, model }, controller.signal, (done, total) =>
-      setAi({ busy: true, progress: `${cm.aiChecking(total)} ${done}/${total}` }),
-    );
-    if (controller.signal.aborted) return;
+    const startedAt = Date.now();
+    const outcome = await runAiCheck(input, { client, preset, model }, controller.signal, (done, total, batches) => {
+      if (aiStop.current === controller) setAiRun({ state: 'running', done, total, batches, concurrency: preset.concurrency, startedAt });
+    });
+    // Closed meanwhile: nothing to show. Stopped: the run says how far it got.
+    if (aiStop.current !== controller) return;
+    aiStop.current = null;
     setAiFound(outcome.findings);
-    setAi({ busy: false, ...(outcome.fatal ? { note: outcome.fatal.message } : outcome.failed ? { note: cm.aiFailed(outcome.failed) } : {}) });
-  }, [batch, result.unfixed, checkOptions, cm]);
+    setAiRun({ state: 'done', at: Date.now(), outcome });
+  }, [batch, result.unfixed, checkOptions]);
+  const stopAi = useCallback(() => aiStop.current?.abort(), []);
+  const aiBusy = aiRun.state === 'connecting' || aiRun.state === 'running';
   const closeCheck = useCallback(() => {
     aiStop.current?.abort();
+    aiStop.current = null;
     setCheckOpen(false);
-    setAi({ busy: false });
+    // A finished run keeps its summary for when the panel opens again; one cut short is forgotten.
+    setAiRun((run) => (run.state === 'connecting' || run.state === 'running' ? { state: 'idle' } : run));
   }, []);
+  // The bar's ✦ AI check: runs when it has not run (or failed to start); otherwise shows the result.
+  const onBarAi = useCallback(() => {
+    if (aiRun.state === 'idle' || aiRun.state === 'failed') void askAi();
+    else setCheckOpen(true);
+  }, [aiRun.state, askAi]);
 
   // ---- pictures: pasted, dropped or chosen; each becomes an image pin after its line ----
 
@@ -563,8 +583,13 @@ export function ReviewStep({
         checkOpen={checkOpen}
         onCheck={() => {
           setSkipped(new Set());
-          setCheckOpen((open) => !open);
+          if (checkOpen) closeCheck();
+          else setCheckOpen(true);
         }}
+        aiLabel={isPaused('check.import') ? undefined : aiBarLabel(cm, aiRun)}
+        aiTitle={cm.aiBarTitle}
+        aiBusy={aiBusy}
+        onAi={onBarAi}
       />
       {checkOpen && (
         <ImportCheckPanel
@@ -572,12 +597,13 @@ export function ReviewStep({
           number={(q) => analysis.outline.questions[q]?.number ?? q + 1}
           safe={safe.length}
           stale={result.stale ?? 0}
-          ai={{ ...ai, available: true }}
+          ai={{ run: aiRun, provider: aiStatus.preset.label, configured: aiStatus.configured }}
           onApply={applyFinding}
           onSkip={(f) => setSkipped((all) => new Set([...all, f.id]))}
           onApplySafe={applySafe}
           onGo={(f) => goToLine(f.line ?? analysis.outline.questions[f.q]?.start)}
           onAskAi={() => void askAi()}
+          onStopAi={stopAi}
           onClose={closeCheck}
         />
       )}
@@ -695,6 +721,10 @@ function ReviewBar({
   checkTitle,
   checkOpen,
   onCheck,
+  aiLabel,
+  aiTitle,
+  aiBusy,
+  onAi,
 }: {
   text: Text;
   questions: number;
@@ -711,6 +741,11 @@ function ReviewBar({
   checkTitle: string;
   checkOpen: boolean;
   onCheck: () => void;
+  /** The ✦ AI check button's words (it also tells the last run's result); absent: paused. */
+  aiLabel?: string;
+  aiTitle: string;
+  aiBusy: boolean;
+  onAi: () => void;
 }) {
   const choices: Array<{ id: Language; label: string }> = [
     { id: 'auto', label: m.languageAuto },
@@ -740,6 +775,11 @@ function ReviewBar({
       {checkLabel && (
         <Button size="sm" variant={checkOpen ? 'ghostAccent' : 'default'} aria-pressed={checkOpen} title={checkTitle} onClick={onCheck} data-check-import>
           {checkLabel}
+        </Button>
+      )}
+      {aiLabel && (
+        <Button size="sm" variant="ghostAccent" title={aiTitle} aria-busy={aiBusy} onClick={onAi} data-ai-bar>
+          <span className={aiBusy ? 'tabular-nums' : undefined}>{aiLabel}</span>
         </Button>
       )}
       <span className="flex-1" />
