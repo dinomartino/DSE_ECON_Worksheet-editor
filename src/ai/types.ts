@@ -54,6 +54,8 @@ export interface ProviderPreset {
 }
 export interface ProviderConfig { provider: ProviderId; apiKey: string | null; model: string; baseUrl: string }
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
+/** A picture sent with a request: `data:image/png|jpeg|webp|gif;base64,…`. Never a remote URL. */
+export interface ImagePart { dataUrl: string }
 export interface CompletionRequest {
   system: string;
   /** Few-shot pair(s), then the real payload last. */
@@ -64,6 +66,12 @@ export interface CompletionRequest {
   shapeHint?: string;
   maxOutputTokens: number;
   signal: AbortSignal;
+  /**
+   * Pictures sent with the last user turn (k-0514), in order. A provider that cannot read
+   * pictures (`supportsImages`) never gets them: the client drops them, so a caller that
+   * wants to tell the model "a figure is attached" must ask `supportsImages(preset)` first.
+   */
+  images?: readonly ImagePart[];
   /** Default 120 000. */
   timeoutMs?: number;
 }
@@ -106,6 +114,13 @@ export interface HttpDeps { fetch: typeof fetch; now: () => number; sleep: (ms: 
 export interface AiClient {
   /** Throws AiError. Runs the structured-output ladder and transport retries. */
   complete(req: CompletionRequest): Promise<CompletionResult>;
+  /**
+   * `complete`, streamed (k-0514): `onText` gets the whole reply so far each time more arrives.
+   * Same result, same errors, same output-dialect ladder. Absent on a client that cannot
+   * stream (tests' fakes): callers use `complete`. A failure before the first text is an
+   * ordinary `AiError`; after it, the error is thrown too and the caller keeps what it had.
+   */
+  stream?(req: CompletionRequest, onText: (reply: string) => void): Promise<CompletionResult>;
   /** [] on failure. */
   listModels(signal: AbortSignal): Promise<ModelInfo[]>;
 }

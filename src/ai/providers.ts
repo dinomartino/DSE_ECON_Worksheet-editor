@@ -274,3 +274,23 @@ export const PRESETS: Readonly<Record<ProviderId, ProviderPreset>> = {
 export function presetFor(id: ProviderId): ProviderPreset {
   return PRESETS[id] ?? PRESETS.gemini;
 }
+
+/**
+ * Whether the provider reads pictures sent with a request (k-0514). Gemini, Claude and the
+ * two big OpenAI-style gateways do; DeepSeek's chat models, Qwen's text models, a custom
+ * server and Ollama (whatever model the teacher pulled) are not assumed to.
+ */
+export function supportsImages(preset: Pick<ProviderPreset, 'id' | 'family'>): boolean {
+  return preset.family === 'gemini' || preset.family === 'anthropic' || preset.id === 'openai' || preset.id === 'openrouter';
+}
+
+/**
+ * Whether the question studio asks the provider for a server-sent-event stream (k-0514) so the
+ * draft can be shown as it is written. Gemini, Claude and the OpenAI-style hosted gateways
+ * stream structured output; a custom server or Ollama (unknown servers, an unknown model) is
+ * asked for the whole reply, and any stream that fails before its first text falls back to
+ * the whole reply too.
+ */
+export function supportsStreaming(preset: Pick<ProviderPreset, 'id' | 'family'>): boolean {
+  return preset.id !== 'custom' && preset.id !== 'ollama';
+}

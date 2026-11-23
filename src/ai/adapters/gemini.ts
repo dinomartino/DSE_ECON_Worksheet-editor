@@ -1,5 +1,5 @@
-import type { CompletionResult, OutputDialect } from '../types';
-import { isRecord, modelExtra, systemFor, trimBase, type Adapter } from './adapter';
+import type { CompletionRequest, CompletionResult, OutputDialect } from '../types';
+import { isRecord, modelExtra, parseImage, systemFor, trimBase, type Adapter, type StreamPiece } from './adapter';
 
 /**
  * Gemini native `generateContent` (stateless; not the Interactions API, which stores by
@@ -31,6 +31,13 @@ function outputConfig(dialect: OutputDialect, schema: unknown): Record<string, u
   }
 }
 
+function imageParts(images: CompletionRequest['images']) {
+  return (images ?? []).flatMap((image) => {
+    const parsed = parseImage(image.dataUrl);
+    return parsed ? [{ inlineData: { mimeType: parsed.mime, data: parsed.data } }] : [];
+  });
+}
+
 export const geminiAdapter: Adapter = {
   rungs: () => ['gemini-jsonSchema', 'gemini-responseFormat', 'gemini-mime', 'prompt'],
 
@@ -47,7 +54,10 @@ export const geminiAdapter: Adapter = {
       headers: { 'content-type': 'application/json', 'x-goog-api-key': config.apiKey ?? '', ...preset.extraHeaders },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemFor(req.system, enforced, req.shapeHint) }] },
-        contents: req.turns.map((t) => ({ role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] })),
+        contents: req.turns.map((t, i) => ({
+          role: t.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: t.content }, ...(i === req.turns.length - 1 && t.role === 'user' ? imageParts(req.images) : [])],
+        })),
         generationConfig,
       }),
     };
@@ -73,6 +83,34 @@ export const geminiAdapter: Adapter = {
       .map((p) => p.text as string)
       .join('');
     return { text, finish: finishOf(candidate.finishReason), usage: usageOut };
+  },
+
+  buildStream(preset, config, req, dialect) {
+    const wire = geminiAdapter.build(preset, config, req, dialect);
+    return { ...wire, url: wire.url.replace(':generateContent', ':streamGenerateContent?alt=sse') };
+  },
+
+  streamPiece(event) {
+    if (!isRecord(event)) return null;
+    const usage = isRecord(event.usageMetadata) ? event.usageMetadata : null;
+    const candidate = Array.isArray(event.candidates) && isRecord(event.candidates[0]) ? event.candidates[0] : null;
+    const piece: StreamPiece = {};
+    if (usage) {
+      piece.usage = {
+        input: typeof usage.promptTokenCount === 'number' ? usage.promptTokenCount : undefined,
+        output: typeof usage.candidatesTokenCount === 'number' ? usage.candidatesTokenCount : undefined,
+        thinking: typeof usage.thoughtsTokenCount === 'number' ? usage.thoughtsTokenCount : undefined,
+      };
+    }
+    if (!candidate) {
+      if (isRecord(event.promptFeedback) && typeof event.promptFeedback.blockReason === 'string') piece.finish = 'safety';
+      return piece.finish || piece.usage ? piece : null;
+    }
+    const parts = isRecord(candidate.content) && Array.isArray(candidate.content.parts) ? candidate.content.parts : [];
+    const text = parts.filter((p): p is Record<string, unknown> => isRecord(p) && p.thought !== true && typeof p.text === 'string').map((p) => p.text as string).join('');
+    if (text) piece.text = text;
+    if (typeof candidate.finishReason === 'string') piece.finish = finishOf(candidate.finishReason);
+    return piece;
   },
 
   models(preset, config) {

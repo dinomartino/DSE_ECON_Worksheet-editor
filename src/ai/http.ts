@@ -8,6 +8,7 @@ import { AiError, type HttpDeps, type ProviderId } from './types';
  */
 
 export const MAX_BODY_BYTES = 2 * 1024 * 1024;
+export const MAX_STREAM_BYTES = 8 * 1024 * 1024;
 export const COMPLETION_TIMEOUT_MS = 120_000;
 export const PROBE_TIMEOUT_MS = 30_000;
 const RATE_LIMIT_MAX_WAIT_MS = 20_000;
@@ -158,6 +159,74 @@ export async function send(deps: HttpDeps, req: HttpRequest): Promise<HttpRespon
       }
       return { status, headers, body };
     }
+  } finally {
+    clearTimeout(timer);
+    req.signal.removeEventListener('abort', onAbort);
+  }
+}
+
+/**
+ * One streamed request (k-0514): no retries (a stream that restarts would repeat text the
+ * caller already showed). A non-2xx answer comes back as a normal response (its body read and
+ * parsed); a 2xx one is read as server-sent events and each `data:` payload goes to `onData`.
+ * Same caller-signal + timer rules as `send`; the timer covers the whole stream.
+ */
+export async function sendStream(deps: HttpDeps, req: HttpRequest, onData: (data: string) => void): Promise<HttpResponse | { status: number; headers: Headers; body: null }> {
+  const { provider } = req;
+  if (req.signal.aborted) throw new AiError(mapThrown(provider, null, 'user'));
+  const controller = new AbortController();
+  let reason: 'user' | 'timeout' | null = null;
+  const onAbort = () => {
+    reason ??= 'user';
+    controller.abort();
+  };
+  req.signal.addEventListener('abort', onAbort, { once: true });
+  const timer = setTimeout(() => {
+    reason ??= 'timeout';
+    controller.abort();
+  }, req.timeoutMs);
+  try {
+    const res = await deps.fetch(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: req.body,
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+      cache: 'no-store',
+      redirect: 'error',
+      mode: 'cors',
+      signal: controller.signal,
+    });
+    if (res.status < 200 || res.status >= 300) return { status: res.status, headers: res.headers, body: parseBody(await readCapped(res)) };
+    if (!res.body) {
+      for (const line of (await readCapped(res)).split('\n')) if (line.startsWith('data:')) onData(line.slice(5).trim());
+      return { status: res.status, headers: res.headers, body: null };
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let pending = '';
+    let bytes = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > MAX_STREAM_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        break;
+      }
+      pending += decoder.decode(value, { stream: true });
+      let at: number;
+      while ((at = pending.indexOf('\n')) !== -1) {
+        const line = pending.slice(0, at).replace(/\r$/, '');
+        pending = pending.slice(at + 1);
+        if (line.startsWith('data:')) onData(line.slice(5).trim());
+      }
+    }
+    pending += decoder.decode();
+    if (pending.startsWith('data:')) onData(pending.slice(5).trim());
+    return { status: res.status, headers: res.headers, body: null };
+  } catch (error) {
+    throw new AiError(mapThrown(provider, error, reason));
   } finally {
     clearTimeout(timer);
     req.signal.removeEventListener('abort', onAbort);
