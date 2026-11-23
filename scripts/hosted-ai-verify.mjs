@@ -11,7 +11,10 @@ import { chromium, webkit } from 'playwright-core';
  * that charges credits), and walks a teacher with no key through: the setup card's Sign in, the
  * code, Allow, the clicked verb running on the account; Settings' account card, Advanced,
  * the credit line in the ✦ AI menu, out of credits (Buy credits / Use my own key), Sign out.
- * Any other provider host is a failure. A screenshot per step lands in --out.
+ * Any other provider host is a failure. A screenshot per step lands in --out. k-0521 adds the
+ * audit fixes: an Idempotency-Key on each generate (allowed through CORS as CONTRACT v1.3
+ * will), the 14-day web sign-in, "Shared computer" (this tab only), and a sign-out Mentor
+ * can't confirm (signed out here, with the warning and Open my account).
  *
  *   npm run build && node scripts/hosted-ai-verify.mjs [--out=/tmp/hosted-ai-verify] [--engines=chromium,webkit] [--app-port=3419]
  */
@@ -63,7 +66,7 @@ const DOC = { ...englishOnly(corpus), id: 'hosted-ai-verify', title: { en: [{ te
 
 const TOKEN = 'dsm_hosted_verify_0123456789abcdefghij';
 function fakeMentor() {
-  const state = { credits: 900, polls: 0, signedIn: true, requests: [], charged: 0 };
+  const state = { credits: 900, polls: 0, signedIn: true, requests: [], charged: 0, logoutFails: false };
   const json = (body, status = 200) => ({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) });
   const relayError = (status, code) => json({ error: code }, status);
   /** Translate requests: each item back with a 譯： prefix, as JSON items. */
@@ -84,12 +87,14 @@ function fakeMentor() {
     try {
       feature = JSON.parse(req.postData() ?? '{}').feature;
     } catch {}
-    state.requests.push({ path, auth, feature });
-    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST' } });
+    state.requests.push({ path, auth, feature, key: req.headers()['idempotency-key'] });
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type, idempotency-key', 'access-control-allow-methods': 'GET, POST' } });
     if (url.pathname === '/link') return route.fulfill({ status: 200, contentType: 'text/html', body: '<h1>Allow Econ Studio?</h1>' });
     if (path === '/auth/link/start') return route.fulfill(json({ code: 'KQ7M-4PXD', pollToken: 'dsl_verify_0123456789', verifyUrl: `https://${MENTOR}/link?code=KQ7M-4PXD`, interval: 1, expiresAt: new Date(Date.now() + 600_000).toISOString() }));
     if (path === '/auth/link/check') return route.fulfill(json(state.polls++ < 2 ? { status: 'pending' } : { status: 'approved', token: TOKEN, userId: 'u1' }));
     if (path === '/auth/logout') {
+      // As before Mentor's F9 fix: no CORS on logout, so the browser sees a network failure.
+      if (state.logoutFails) return route.abort('failed');
       state.signedIn = false;
       return route.fulfill(json({ ok: true }));
     }
@@ -194,6 +199,10 @@ async function run(engine, browserType) {
     await shot('03-verb-ran');
     const ai = mentor.state.requests.filter((r) => r.path === '/ai/generate');
     expect(ai.length > 0 && ai.every((r) => r.auth === `Bearer ${TOKEN}` && r.feature === 'translate'), 'relay calls without the token or the feature');
+    const keys = ai.map((r) => r.key);
+    expect(keys.every((k) => /^[A-Za-z0-9._-]{8,128}$/.test(k ?? '')) && new Set(keys).size === keys.length, `generate without its own Idempotency-Key (${keys.join(', ')})`);
+    const idle = await page.evaluate(() => JSON.parse(localStorage.getItem('econgen.secret.ai:mentor.idle') ?? 'null'));
+    expect(idle?.idleMs === 14 * 24 * 3600 * 1000, 'the web sign-in has no 14-day limit');
     expect(leaks.length === 0, `leaked to ${leaks.join(', ')}`);
     return `${ai.length} relay call(s), ${mentor.state.charged} charged`;
   });
@@ -209,6 +218,7 @@ async function run(engine, browserType) {
     expect((await account.getAttribute('data-mentor-account')) === 'signedIn', 'not signed in');
     expect(!(await settings.locator('[data-provider="gemini"]').isVisible().catch(() => false)), 'own-key providers shown while the account is in use');
     expect(!(await page.content()).includes(TOKEN), 'the token is in the DOM');
+    expect((await account.locator('[data-mentor-kept]').getAttribute('data-mentor-kept')) === 'browser', 'no "kept in this browser" line');
     return (await account.getByText(/credits left/).innerText()).trim();
   });
 
@@ -268,13 +278,47 @@ async function run(engine, browserType) {
     expect(leaks.length === 0, `leaked to ${leaks.join(', ')}`);
   });
 
+  await check(engine, 'Shared computer: signed in for this tab only (sessionStorage, nothing in localStorage)', async () => {
+    mentor.state.polls = 0;
+    mentor.state.signedIn = true;
+    const popup = context.waitForEvent('page', { timeout: 5000 }).catch(() => null);
+    await account.locator('[data-mentor-tab-only]').check();
+    await shot('09-shared-computer');
+    await account.getByRole('button', { name: 'Sign in with DSEcon Mentor' }).click();
+    await (await popup)?.close();
+    await settings.locator('[data-mentor-account="signedIn"]').waitFor({ timeout: 20_000 });
+    await account.locator('[data-mentor-kept="tab"]').waitFor();
+    const where = await page.evaluate(() => ({ tab: sessionStorage.getItem('econgen.secret.ai:mentor') !== null, browser: localStorage.getItem('econgen.secret.ai:mentor') !== null }));
+    expect(where.tab && !where.browser, `token kept in ${JSON.stringify(where)}`);
+    await page.waitForTimeout(300);
+    await shot('10-tab-only');
+  });
+
+  await check(engine, 'Sign out Mentor cannot confirm: signed out here, warned, Open my account', async () => {
+    mentor.state.logoutFails = true;
+    await account.getByRole('button', { name: 'Sign out' }).click();
+    const warning = settings.locator('[data-mentor-revoke-failed]');
+    await warning.waitFor({ timeout: 15_000 });
+    await page.waitForTimeout(300);
+    await shot('11-revoke-failed');
+    const left = await page.evaluate(() => Object.keys({ ...localStorage, ...sessionStorage }).filter((k) => k.startsWith('econgen.secret.ai:mentor')));
+    expect(left.length === 0, `token still kept: ${left.join(', ')}`);
+    expect(await warning.getByRole('button', { name: 'Open my account' }).isVisible(), 'no Open my account');
+    const popup = context.waitForEvent('page', { timeout: 5000 }).catch(() => null);
+    await warning.getByRole('button', { name: 'Open my account' }).click();
+    const opened = await popup;
+    expect(opened?.url().includes('/account#ai-credits'), `opened ${opened?.url()}`);
+    await opened?.close();
+    return (await warning.innerText()).split('\n')[0];
+  });
+
   await check(engine, 'phone width: the setup card fits', async () => {
     await page.keyboard.press('Escape');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(300);
     await page.locator('[data-ai-door]').click().catch(() => undefined);
     await card.waitFor({ timeout: 3000 }).catch(() => undefined);
-    await shot('09-phone');
+    await shot('12-phone');
   });
 
   await browser.close();

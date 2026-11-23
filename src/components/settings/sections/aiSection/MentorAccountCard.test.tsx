@@ -89,6 +89,28 @@ describe('MentorAccountCard', () => {
     expect(html).toContain('登出');
   });
 
+  it('a sign-out Mentor could not confirm: signed out here, and where to end it (k-0521 F9)', () => {
+    const state: MentorState = { kind: 'signedOut', revokeFailed: { accountUrl: 'https://dseconmentor.com/account#ai-credits' } };
+    const html = renderToStaticMarkup(card(state));
+    expect(html).toContain('data-mentor-revoke-failed');
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('the sign-in still works there');
+    expect(html).toContain('Econ Studio sign-ins');
+    expect(html).toContain('Open my account');
+    expect(zh(card(state))).toContain('「Econ Studio 登入」');
+    expect(renderToStaticMarkup(card({ kind: 'signedOut' }))).not.toContain('data-mentor-revoke-failed');
+  });
+
+  it('web: a shared-computer choice before Sign in, and how long the browser keeps it (k-0521 F15)', () => {
+    const web = (state: MentorState, kept: 'browser' | 'tab' | null) => renderToStaticMarkup(createElement(MentorAccountCard, { state, inUse: true, actions, web: { kept } }));
+    expect(web({ kind: 'signedOut' }, null)).toContain('Shared computer: keep me signed in only in this tab');
+    expect(web(SIGNED_IN, 'browser')).toContain('for 14 days of no use');
+    expect(web(SIGNED_IN, 'tab')).toContain('closing it signs you out');
+    // Desktop: the keychain, no choice and no line.
+    expect(renderToStaticMarkup(card({ kind: 'signedOut' }))).not.toContain('data-mentor-tab-only');
+    expect(renderToStaticMarkup(card(SIGNED_IN))).not.toContain('data-mentor-kept');
+  });
+
   it('formats credits whole, never 0 for a fraction left', () => {
     expect(formatCredits(0.4, 'en')).toBe('<1');
     expect(formatCredits(12345.9, 'en')).toBe('12,345');
@@ -103,7 +125,7 @@ describe('Settings → AI with the account', () => {
     const settings = { ...AI_SETTINGS.defaults({ desktop: false }), provider };
     const state = initialAiSetup(settings, { desktop: false }, undefined, () => null);
     return renderToStaticMarkup(
-      createElement(AiSectionView, { env: { desktop: false }, state, settings, keys: [], configured: true, listed: null, platform: 'web', actions: sectionActions, mentor, mentorActions: actions }),
+      createElement(AiSectionView, { env: { desktop: false }, state, settings, keys: [], configured: true, listed: null, platform: 'web', actions: sectionActions, mentor, mentorActions: actions, mentorKept: mentor.kind === 'signedIn' ? 'browser' : null }),
     );
   };
 
@@ -123,6 +145,11 @@ describe('Settings → AI with the account', () => {
     const html = view(SIGNED_IN, 'gemini');
     expect(html).toContain('Advanced: use your own API key');
     expect(html).toContain('data-provider="gemini"');
+  });
+
+  it('the web build shows where the sign-in is kept', () => {
+    expect(view(SIGNED_IN, 'mentor')).toContain('data-mentor-kept="browser"');
+    expect(view({ kind: 'signedOut' }, 'gemini')).toContain('data-mentor-tab-only');
   });
 
   it('the account is never a provider card or a saved key', () => {

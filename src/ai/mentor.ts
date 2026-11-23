@@ -60,8 +60,11 @@ export interface MentorRelay {
   startLink(device: LinkDevice, signal: AbortSignal): Promise<LinkStart>;
   pollLink(pollToken: string, signal: AbortSignal): Promise<LinkPoll>;
   account(token: string, signal: AbortSignal): Promise<MentorAccount>;
-  /** Best effort; never throws. The caller forgets its token whatever happens. */
-  signOut(token: string, signal: AbortSignal): Promise<void>;
+  /**
+   * Asks Mentor to revoke the token; never throws. `revoked` also when Mentor no longer
+   * knows it (401). The caller forgets its own copy first, whatever this answers (k-0521 F9).
+   */
+  signOut(token: string, signal: AbortSignal): Promise<'revoked' | 'failed'>;
 }
 
 export const MENTOR_PRICING_URL = 'https://dseconmentor.com/pricing#ai-credits';
@@ -213,10 +216,13 @@ export function createMentorRelay(opts: { relayBase?: string; deps?: Partial<Htt
 
     async signOut(token, signal) {
       try {
-        await call('/auth/logout', { method: 'POST', token, body: {} }, signal);
+        const res = await call('/auth/logout', { method: 'POST', token, body: {} }, signal);
+        if (ok(res) || res.status === 401) return 'revoked';
+        console.warn('Mentor sign-out not confirmed', { status: res.status });
       } catch (error) {
-        if (!isAiError(error)) console.warn('Mentor sign-out failed');
+        console.warn('Mentor sign-out failed', { kind: isAiError(error) ? error.info.kind : 'unknown' });
       }
+      return 'failed';
     },
   };
 }

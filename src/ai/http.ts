@@ -10,6 +10,8 @@ import { AiError, type HttpDeps, type ProviderId } from './types';
 export const MAX_BODY_BYTES = 2 * 1024 * 1024;
 export const MAX_STREAM_BYTES = 8 * 1024 * 1024;
 export const COMPLETION_TIMEOUT_MS = 120_000;
+/** Mentor's relay gives a request up to 300 s; the editor waits past that, so it never abandons a job Mentor still finishes and charges (k-0521 F10). */
+export const RELAY_TIMEOUT_MS = 330_000;
 export const PROBE_TIMEOUT_MS = 30_000;
 const RATE_LIMIT_MAX_WAIT_MS = 20_000;
 const RATE_LIMIT_DEFAULT_MS = 3_000;
@@ -91,7 +93,9 @@ const isServerError = (status: number, body: unknown) =>
 
 /**
  * One request with the transport retries: a 429 once (only when the wait asked for is
- * ≤ 20 s), a 5xx or overload twice (1 s, 3 s, jittered), a network TypeError once. Returns
+ * ≤ 20 s), a 5xx or overload twice (1 s, 3 s, jittered), a network TypeError once. Every
+ * retry sends the same headers, so a relay's `Idempotency-Key` repeats with it; a timeout or
+ * the caller's cancel is never retried. Returns
  * the final response whatever its status; throws `AiError` only for a thrown failure. The
  * caller's signal and the timer are combined by hand (no `AbortSignal.any` in older WKWebView).
  */

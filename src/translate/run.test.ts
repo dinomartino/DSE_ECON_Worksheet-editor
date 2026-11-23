@@ -6,7 +6,8 @@ import type { SlotKind } from '@/model/textSlots';
 import type { RichText } from '@/model/types';
 import { loadGlossary } from '@/glossary/load';
 import { fakeGlossary } from './fakeGlossary';
-import { announcedSleep, runTranslation, translateOne, writesFor } from './run';
+import { announcedSleep, repairNotesFor, runTranslation, translateOne, writesFor } from './run';
+import { aiErrorInfo } from '@/ai/errors';
 import { payloadOf, reply, scriptedClient } from './testKit';
 import type { Chunk, Direction, RunDeps, RunProgress, TranslationJob, TranslationPlan } from './types';
 
@@ -293,5 +294,24 @@ describe('translateOne', () => {
     const failing = await translateOne({ en: [{ text: 'Explain.' }], zh: [] }, 'toZh', { kind: 'part' },
       depsFor(scriptedClient([fatal])), new AbortController().signal);
     expect(failing).toMatchObject({ status: 'failed', error: { kind: 'region' } });
+  });
+});
+
+describe('no paid repeat after a hosted timeout (k-0521 F10)', () => {
+  const pass = (provider: 'mentor' | 'deepseek', kind: 'timeout' | 'server') => ({
+    output: '',
+    issues: [],
+    terms: [],
+    fixes: [],
+    error: aiErrorInfo(kind, provider),
+  });
+
+  it('a Mentor call the editor stopped waiting for is not asked again (Mentor may still charge it)', () => {
+    expect(repairNotesFor(pass('mentor', 'timeout'))).toBeNull();
+  });
+
+  it('an own key still gets its repair pass after a timeout, and Mentor after other failures', () => {
+    expect(repairNotesFor(pass('deepseek', 'timeout'))).not.toBeNull();
+    expect(repairNotesFor(pass('mentor', 'server'))).not.toBeNull();
   });
 });

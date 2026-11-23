@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { createMentorRelay, type LinkDevice, type MentorAccount, type MentorRelay } from '@/ai/mentor';
+import { MENTOR_BUY_URL, createMentorRelay, type LinkDevice, type MentorAccount, type MentorRelay } from '@/ai/mentor';
 import { mapThrown } from '@/ai/errors';
 import { presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type AiErrorInfo, type ProviderId } from '@/ai/types';
@@ -14,10 +14,23 @@ import { appSettings } from './store';
  * keychain (desktop) or this browser (web) as secret `ai:mentor`, the credits left, sign out.
  * Signing in makes the account the AI in use; signing out goes back to a saved own key.
  * Nothing here runs until the teacher presses Sign in, or opens Settings → AI while signed in.
+ *
+ * Web (k-0521 F15): browser storage is readable by any script on the page, so the sign-in
+ * is forgotten after `MENTOR_WEB_IDLE_MS` unused, and a teacher on a shared computer can
+ * keep it to this tab only. Sign out forgets it here before asking Mentor to revoke it (F9).
  */
 
+/** Web: a sign-in left unused this long is forgotten on this browser (the keychain has no limit). */
+export const MENTOR_WEB_IDLE_MS = 14 * 24 * 60 * 60 * 1000;
+
 export type MentorState =
-  | { kind: 'signedOut'; reason?: 'denied' | 'expired' | 'keychain'; error?: AiErrorInfo }
+  | {
+      kind: 'signedOut';
+      reason?: 'denied' | 'expired' | 'keychain';
+      error?: AiErrorInfo;
+      /** Signed out here, but Mentor could not be told: the sign-in still works there until removed on the account page. */
+      revokeFailed?: { accountUrl: string };
+    }
   /** `code` is null until Mentor has answered the start. */
   | { kind: 'linking'; code: string | null; verifyUrl: string | null }
   | { kind: 'signedIn'; account: MentorAccount | null; loading: boolean; error?: AiErrorInfo };
@@ -27,8 +40,8 @@ export interface MentorDeps {
   device: () => LinkDevice;
   open(url: string): Promise<void>;
   readToken(): Promise<string | null>;
-  /** The store it went to, or null when it could not be kept. */
-  writeToken(token: string): Promise<'keychain' | 'other' | null>;
+  /** The store it went to, or null when it could not be kept. `tabOnly` (web): gone when the tab closes. */
+  writeToken(token: string, opts: { tabOnly: boolean }): Promise<'keychain' | 'other' | null>;
   deleteToken(): Promise<void>;
   /** Without reading the keychain. */
   hasToken(): boolean;
@@ -43,7 +56,8 @@ export interface MentorDeps {
 export interface MentorSession {
   subscribe(listener: () => void): () => void;
   current(): MentorState;
-  signIn(): Promise<void>;
+  /** `tabOnly` (web, a shared computer): the sign-in lasts until this tab closes. */
+  signIn(opts?: { tabOnly?: boolean }): Promise<void>;
   /** Stops a sign-in that is waiting for the browser. */
   cancel(): void;
   signOut(): Promise<void>;
@@ -103,7 +117,7 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
     }
   }
 
-  async function signIn() {
+  async function signIn(opts: { tabOnly?: boolean } = {}) {
     linking?.abort();
     const controller = new AbortController();
     linking = controller;
@@ -123,7 +137,7 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
           continue;
         }
         if (poll.status !== 'approved') return set({ kind: 'signedOut', reason: poll.status });
-        const store = await deps.writeToken(poll.token);
+        const store = await deps.writeToken(poll.token, { tabOnly: opts.tabOnly === true });
         if (!store) return set({ kind: 'signedOut', reason: 'keychain' });
         const settings = deps.readSettings();
         deps.writeSettings({
@@ -157,8 +171,12 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
     async signOut() {
       reading?.abort();
       const token = await deps.readToken().catch(() => null);
-      if (token) await deps.relay().signOut(token, new AbortController().signal);
-      await forget();
+      const accountUrl = (state.kind === 'signedIn' && state.account?.buyUrl) || MENTOR_BUY_URL;
+      // Forgotten here first: a slow or failing Mentor never keeps the sign-in on this computer.
+      await forget().catch(() => set({ kind: 'signedOut' }));
+      if (!token) return;
+      const outcome = await deps.relay().signOut(token, new AbortController().signal).catch(() => 'failed' as const);
+      if (outcome === 'failed' && state.kind === 'signedOut' && !state.reason && !state.error) set({ kind: 'signedOut', revokeFailed: { accountUrl } });
     },
     refresh,
     use() {
@@ -202,9 +220,14 @@ export function liveMentorDeps(): MentorDeps {
       const read = await readSecret('ai:mentor');
       return read.ok ? read.value : null;
     },
-    async writeToken(token) {
-      // Always remembered: a sign-in that vanished on restart would mean signing in daily.
-      const kept = await writeSecret('ai:mentor', token, { remember: true });
+    async writeToken(token, { tabOnly }) {
+      if (tabOnly && !isDesktop()) {
+        const tab = await writeSecret('ai:mentor', token, { remember: false });
+        return tab.ok ? 'other' : null;
+      }
+      // Remembered (a sign-in that vanished on restart would mean signing in daily), but on the
+      // web only while it is used: browser storage is plain text (k-0521 F15).
+      const kept = await writeSecret('ai:mentor', token, { remember: true, idleMs: MENTOR_WEB_IDLE_MS });
       if (kept.ok) return kept.store === 'keychain' ? 'keychain' : 'other';
       // Keychain refused (desktop): this session only, said in Settings.
       const session = await writeSecret('ai:mentor', token, { remember: false });

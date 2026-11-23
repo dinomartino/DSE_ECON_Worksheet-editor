@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fakeMentor, type FakeMentorOptions } from '@/ai/fakeMentor';
-import { createMentorRelay } from '@/ai/mentor';
+import { MENTOR_BUY_URL, createMentorRelay } from '@/ai/mentor';
 import type { ProviderId } from '@/ai/types';
 import { AI_SETTINGS, type AiSettings } from './aiSettings';
 import { createMentorSession, ownProviderAfterSignOut, type MentorDeps } from './mentorAccount';
@@ -13,13 +13,15 @@ function harness(opts: FakeMentorOptions & { storedToken?: string; keychain?: 'k
   let token: string | null = opts.storedToken ?? null;
   const opened: string[] = [];
   const sleeps: number[] = [];
+  const writes: Array<{ tabOnly: boolean }> = [];
   let clock = 0;
   const deps: MentorDeps = {
     relay: () => createMentorRelay({ deps: server.deps }),
     device: () => ({ platform: 'desktop', deviceLabel: 'Econ Studio on Mac', appVersion: '0.10.0' }),
     open: async (url) => void opened.push(url),
     readToken: async () => token,
-    writeToken: async (t) => {
+    writeToken: async (t, how) => {
+      writes.push(how);
       const store = opts.keychain === undefined ? 'keychain' : opts.keychain;
       if (store) token = t;
       return store;
@@ -38,7 +40,7 @@ function harness(opts: FakeMentorOptions & { storedToken?: string; keychain?: 'k
     now: () => clock,
   };
   const session = createMentorSession(deps);
-  return { server, session, opened, sleeps, settings: () => settings, token: () => token };
+  return { server, session, opened, sleeps, writes, deps, settings: () => settings, token: () => token };
 }
 
 describe('Sign in with DSEcon Mentor', () => {
@@ -140,6 +142,51 @@ describe('Signed in', () => {
     expect(h.token()).toBeNull();
     expect(h.settings().provider).toBe('gemini');
     expect(h.session.current()).toEqual({ kind: 'signedOut' });
+  });
+
+  it('Sign out forgets the token before Mentor answers (k-0521 F9)', async () => {
+    const h = harness({ storedToken: 'dsm_test_token_0123456789abcdef', settings: { provider: 'mentor', keychainSaved: { mentor: true } } });
+    let tokenWhenAsked: string | null | undefined;
+    const relay = h.deps.relay;
+    h.deps.relay = () => ({ ...relay(), signOut: async () => ((tokenWhenAsked = h.token()), 'revoked' as const) });
+    await createMentorSession(h.deps).signOut();
+    expect(tokenWhenAsked).toBeNull();
+  });
+
+  it('Sign out Mentor could not confirm: signed out here all the same, and says where to end it', async () => {
+    for (const logout of ['network', 500] as const) {
+      const h = harness({ logout, storedToken: 'dsm_test_token_0123456789abcdef', settings: { provider: 'mentor', keychainSaved: { mentor: true } } });
+      await h.session.refresh();
+      await h.session.signOut();
+      expect(h.token(), String(logout)).toBeNull();
+      expect(h.settings().provider).toBe('gemini');
+      expect(h.settings().keychainSaved.mentor).toBeUndefined();
+      expect(h.session.current()).toEqual({ kind: 'signedOut', revokeFailed: { accountUrl: 'https://dseconmentor.com/account#ai-credits' } });
+    }
+    // Even a relay that throws outright cannot keep the sign-in.
+    const h = harness({ storedToken: 'dsm_test_token_0123456789abcdef' });
+    const relay = h.deps.relay;
+    h.deps.relay = () => ({ ...relay(), signOut: () => Promise.reject(new Error('boom')) });
+    const session = createMentorSession(h.deps);
+    await session.signOut();
+    expect(h.token()).toBeNull();
+    expect(session.current()).toEqual({ kind: 'signedOut', revokeFailed: { accountUrl: MENTOR_BUY_URL } });
+  });
+
+  it('signing in again clears the warning', async () => {
+    const h = harness({ logout: 'network', storedToken: 'dsm_test_token_0123456789abcdef' });
+    await h.session.signOut();
+    expect(h.session.current()).toMatchObject({ revokeFailed: {} });
+    await h.session.signIn();
+    expect(h.session.current().kind).toBe('signedIn');
+  });
+
+  it('"Shared computer" keeps the sign-in to this tab (k-0521 F15)', async () => {
+    const h = harness();
+    await h.session.signIn({ tabOnly: true });
+    await h.session.signOut();
+    await h.session.signIn();
+    expect(h.writes).toEqual([{ tabOnly: true }, { tabOnly: false }]);
   });
 
   it('Use my account switches back from an own key', async () => {

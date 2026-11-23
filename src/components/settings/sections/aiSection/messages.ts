@@ -75,6 +75,17 @@ export const AI_SECTION_MESSAGES = defineMessages({
     en: "Your text goes to DSEcon Mentor's server and on to Google Gemini. Mentor keeps only a usage record (when, which feature, cost), never your text.",
     zh: '你的文字會傳送到 DSEcon Mentor 的伺服器，再轉交 Google Gemini。Mentor 只保留使用紀錄（時間、功能、費用），不會保留你的文字。',
   },
+  mentorRevokeFailed: {
+    en: 'Signed out on this computer, but DSEcon Mentor couldn’t be reached, so the sign-in still works there. To end it, open your account and press Sign out under “Econ Studio sign-ins”.',
+    zh: '已在這部電腦登出，但未能連上 DSEcon Mentor，所以這次登入在 Mentor 仍然有效。如要結束，請打開你的帳戶，在「Econ Studio 登入」下按「登出」。',
+  },
+  mentorOpenAccount: { en: 'Open my account', zh: '打開我的帳戶' },
+  mentorTabOnly: { en: 'Shared computer: keep me signed in only in this tab', zh: '共用電腦：只在這個分頁保持登入' },
+  mentorKeptBrowser: {
+    en: 'This browser keeps you signed in until you sign out, or for 14 days of no use. On a shared computer, sign out when you finish.',
+    zh: '這個瀏覽器會保持登入，直至你登出，或 14 天沒有使用為止。在共用電腦上，用完請登出。',
+  },
+  mentorKeptTab: { en: 'Signed in only in this tab: closing it signs you out.', zh: '只在這個分頁登入：關閉分頁即會登出。' },
   ownKeyAdvanced: { en: 'Advanced: use your own API key', zh: '進階：使用自己的 API key' },
 
   yourKeys: { en: 'Your keys', zh: '你的 API key' },

@@ -7,6 +7,11 @@ import { platformMessages } from './text';
  * a URL. Web: sessionStorage, or localStorage when "Remember" is ticked (keys under
  * `econgen.secret.`, never `econ-worksheet:`). Desktop: the OS keychain through the
  * shell's `secret_*` commands, loaded with `await import()` behind `isDesktop()`.
+ *
+ * Web storage is plain text to any script on the editor's page; a secret written with
+ * `idleMs` (the DSEcon Mentor sign-in, k-0521 F15) is dropped once it goes unread that long,
+ * so a browser left signed in does not stay so for months. Its last use sits beside it in
+ * `econgen.secret.<account>.idle` (no key material).
  */
 
 export type SecretAccount = `ai:${ProviderId}`;
@@ -19,6 +24,7 @@ const ACCOUNT = /^ai:[a-z]{2,16}$/;
 // Any whitespace or control character: a pasted key with a line break is refused, not trimmed inside.
 const BAD_CHAR = /[\s\p{Cc}]/u;
 const PREFIX = 'econgen.secret.';
+const IDLE = '.idle';
 
 /**
  * This session's copy. Desktop: the key read from (or saved to) the keychain, so the
@@ -42,21 +48,54 @@ function webStorage(kind: 'local' | 'session'): Storage | null {
   }
 }
 
-function getWeb(kind: 'local' | 'session', account: string): string | null {
+/** `{ seen, idleMs }` beside a secret written with an idle limit, or null. */
+function readIdle(storage: Storage, account: string): { seen: number; idleMs: number } | null {
   try {
-    return webStorage(kind)?.getItem(PREFIX + account) ?? null;
+    const raw = JSON.parse(storage.getItem(PREFIX + account + IDLE) ?? 'null') as unknown;
+    if (typeof raw !== 'object' || raw === null) return null;
+    const { seen, idleMs } = raw as { seen?: unknown; idleMs?: unknown };
+    return typeof seen === 'number' && typeof idleMs === 'number' ? { seen, idleMs } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The stored value, or null. A secret past its idle limit is removed here (both halves);
+ * `touch` (a real read, not a peek) moves its last use to now (at most hourly).
+ */
+function getWeb(kind: 'local' | 'session', account: string, touch = false): string | null {
+  try {
+    const storage = webStorage(kind);
+    if (!storage) return null;
+    const value = storage.getItem(PREFIX + account);
+    if (value === null) return null;
+    const idle = readIdle(storage, account);
+    if (idle) {
+      const now = Date.now();
+      if (now - idle.seen > idle.idleMs) {
+        storage.removeItem(PREFIX + account);
+        storage.removeItem(PREFIX + account + IDLE);
+        return null;
+      }
+      // At most hourly: each write fires a storage event in the editor's other tabs.
+      if (touch && now - idle.seen > 3_600_000) storage.setItem(PREFIX + account + IDLE, JSON.stringify({ seen: now, idleMs: idle.idleMs }));
+    }
+    return value;
   } catch {
     return null;
   }
 }
 
 /** False when that storage is missing or refuses. */
-function setWeb(kind: 'local' | 'session', account: string, value: string | null): boolean {
+function setWeb(kind: 'local' | 'session', account: string, value: string | null, idleMs?: number): boolean {
   try {
     const storage = webStorage(kind);
     if (!storage) return false;
     if (value === null) storage.removeItem(PREFIX + account);
     else storage.setItem(PREFIX + account, value);
+    if (value !== null && idleMs) storage.setItem(PREFIX + account + IDLE, JSON.stringify({ seen: Date.now(), idleMs }));
+    else storage.removeItem(PREFIX + account + IDLE);
     return true;
   } catch {
     return false;
@@ -115,20 +154,23 @@ export async function readSecret(account: SecretAccount): Promise<SecretRead> {
       return { ok: false, error: keychainError(error) };
     }
   }
-  const session = getWeb('session', account);
+  const session = getWeb('session', account, true);
   if (session !== null) return { ok: true, value: session, store: 'session' };
-  const local = getWeb('local', account);
+  const local = getWeb('local', account, true);
   if (local !== null) return { ok: true, value: local, store: 'browser' };
   return { ok: true, value: null, store: null };
 }
 
-/** Trimmed; 8–512 characters with no whitespace or control characters. */
-export async function writeSecret(account: SecretAccount, value: string, opts: { remember: boolean }): Promise<SecretWrite> {
+/**
+ * Trimmed; 8–512 characters with no whitespace or control characters. `idleMs` (web only):
+ * forgotten once unread for that long. The keychain needs no such limit.
+ */
+export async function writeSecret(account: SecretAccount, value: string, opts: { remember: boolean; idleMs?: number }): Promise<SecretWrite> {
   const bad = checkAccount(account);
   if (bad) return bad;
   const key = value.trim();
   if (key.length < 8 || key.length > 512 || BAD_CHAR.test(key)) return invalid(platformMessages().notAKey);
-  const result = isDesktop() ? await writeDesktop(account, key, opts.remember) : writeWeb(account, key, opts.remember);
+  const result = isDesktop() ? await writeDesktop(account, key, opts.remember) : writeWeb(account, key, opts.remember, opts.idleMs);
   if (result.ok) notify();
   return result;
 }
@@ -150,9 +192,9 @@ async function writeDesktop(account: string, key: string, remember: boolean): Pr
   return { ok: true, store: 'keychain' };
 }
 
-function writeWeb(account: string, key: string, remember: boolean): SecretWrite {
+function writeWeb(account: string, key: string, remember: boolean, idleMs?: number): SecretWrite {
   const [into, other] = remember ? (['local', 'session'] as const) : (['session', 'local'] as const);
-  if (setWeb(into, account, key)) {
+  if (setWeb(into, account, key, idleMs)) {
     setWeb(other, account, null);
     memory.delete(account);
     return { ok: true, store: remember ? 'browser' : 'session' };
