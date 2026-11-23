@@ -4,7 +4,8 @@ import { Fragment, useLayoutEffect, useMemo, useRef, useState, type CSSPropertie
 import { insights, type SectionLine } from '@/coverage/insights';
 import { gaps, marksText, percent, type CoverageReport, type KeyPointRow, type TopicRow, type UnitRow } from '@/coverage/report';
 import type { CoverageResult } from '@/coverage/result';
-import { bandWord, confWord, nameIn, reportText } from '@/coverage/reportText';
+import { bandWord, confWord, nameIn, reportText, type ReportLanguages } from '@/coverage/reportText';
+import type { ReportLanguage } from '@/coverage/language';
 import { BANDS, type Band } from '@/coverage/types';
 import { PAPER_SIZES, twipsToPt } from '@/model/page';
 import type { PaperSize } from '@/model/types';
@@ -16,7 +17,8 @@ import { lookupCode } from '@/syllabus';
  * HKEAA's examination reports): a summary page first — key figures, a few plain
  * sentences, the skills the marks go to, every section's coverage as a bar — then the gaps
  * with what to add next, each topic's key points in a roomy table, and the per-question
- * mapping as an appendix. All in the paper's language (`reportText`), on the paper's size,
+ * mapping as an appendix. Syllabus names in the paper's language, every other word in the
+ * language the teacher picked at download (k-0503, `reportText`), on the paper's size,
  * one sans face throughout (Latin first, then the platform's Traditional Chinese face, so
  * no tofu on Mac, Windows or Linux), running header and page numbers.
  *
@@ -116,9 +118,9 @@ const GRID = {
   picks: 'minmax(0,1fr) 84px minmax(0,1fr)',
 };
 
-export function CoverageReportSheets({ coverage }: { coverage: CoverageResult }) {
-  const blocks = useMemo(() => reportBlocks(coverage), [coverage]);
-  const heads = useMemo(() => tableHeads(coverage), [coverage]);
+export function CoverageReportSheets({ coverage, text = coverage.language }: { coverage: CoverageResult; text?: ReportLanguage }) {
+  const blocks = useMemo(() => reportBlocks(coverage, { text, names: coverage.language }), [coverage, text]);
+  const heads = useMemo(() => tableHeads(text), [text]);
   const { width, height } = PAPER_SIZES[coverage.pageSize] ?? PAPER_SIZES.A4;
   const sheet = { width: width / TWIPS_PER_PX, height: height / TWIPS_PER_PX };
   const contentWidth = sheet.width - 2 * MARGIN.side;
@@ -147,8 +149,8 @@ export function CoverageReportSheets({ coverage }: { coverage: CoverageResult })
     };
   }, [blocks, heads, room]);
 
-  const t = reportText(coverage.language);
-  const lang = coverage.language === 'zh' ? 'zh-HK' : 'en';
+  const t = reportText(text);
+  const lang = text === 'zh' ? 'zh-HK' : 'en';
   const sheetStyle: CSSProperties = {
     width: sheet.width,
     height: sheet.height,
@@ -260,8 +262,8 @@ function Badge({ code, muted }: { code: string; muted?: boolean }) {
 }
 
 /** The table heads, one per kind, repeated on each sheet a table runs onto. */
-function tableHeads(coverage: CoverageResult): Record<Table, ReactNode> {
-  const t = reportText(coverage.language);
+function tableHeads(text: ReportLanguage): Record<Table, ReactNode> {
+  const t = reportText(text);
   // A heading wraps between words only (the sheet's `overflow-wrap: break-word` would split "Evaluate").
   const head = (columns: string): CSSProperties => ({
     display: 'grid',
@@ -270,8 +272,8 @@ function tableHeads(coverage: CoverageResult): Record<Table, ReactNode> {
     fontSize: '7.5pt',
     fontWeight: 600,
     color: C.muted,
-    textTransform: coverage.language === 'en' ? 'uppercase' : undefined,
-    letterSpacing: coverage.language === 'en' ? '0.04em' : undefined,
+    textTransform: text === 'en' ? 'uppercase' : undefined,
+    letterSpacing: text === 'en' ? '0.04em' : undefined,
     borderBottom: `0.75pt solid ${C.faint}`,
   });
   const cell: CSSProperties = { padding: '4px 6px' };
@@ -317,9 +319,9 @@ function tableHeads(coverage: CoverageResult): Record<Table, ReactNode> {
 
 /* ── The blocks, in reading order ────────────────────────────────────────── */
 
-function reportBlocks(coverage: CoverageResult): Block[] {
-  const t = reportText(coverage.language);
-  const name = nameIn(coverage.language);
+function reportBlocks(coverage: CoverageResult, langs: ReportLanguages): Block[] {
+  const t = reportText(langs.text);
+  const name = nameIn(langs.names);
   const report = coverage.report;
   const facts = insights(report);
   const out: Block[] = [];
@@ -348,8 +350,8 @@ function reportBlocks(coverage: CoverageResult): Block[] {
             fontSize: '8pt',
             fontWeight: 700,
             color: C.accent,
-            letterSpacing: coverage.language === 'en' ? '0.08em' : '0.04em',
-            textTransform: coverage.language === 'en' ? 'uppercase' : undefined,
+            letterSpacing: langs.text === 'en' ? '0.08em' : '0.04em',
+            textTransform: langs.text === 'en' ? 'uppercase' : undefined,
           }}
         >
           {t.brand} · {t.reportTitle}
@@ -381,12 +383,12 @@ function reportBlocks(coverage: CoverageResult): Block[] {
 
   // 2. Key figures.
   heading('h-figures', t.keyFigures, { top: 12 });
-  out.push({ key: 'figures', node: <Figures report={report} language={coverage.language} /> });
+  out.push({ key: 'figures', node: <Figures report={report} text={langs.text} /> });
 
   // 3. At a glance: a few plain sentences, then the skills the marks go to.
   heading('h-glance', t.atAGlance);
-  out.push({ key: 'glance', node: <Glance coverage={coverage} /> });
-  if (facts.skills) out.push({ key: 'skills', node: <Skills skills={facts.skills} language={coverage.language} /> });
+  out.push({ key: 'glance', node: <Glance coverage={coverage} langs={langs} /> });
+  if (facts.skills) out.push({ key: 'skills', node: <Skills skills={facts.skills} text={langs.text} /> });
 
   // 4. A whole set: each paper.
   if (coverage.papers && coverage.papers.length > 0) {
@@ -423,7 +425,7 @@ function reportBlocks(coverage: CoverageResult): Block[] {
 
   // 5. Every section as a bar.
   heading('h-sections', t.bySection, { hint: t.bySectionHint });
-  for (const line of facts.sections) out.push({ key: `section-${line.topic.code}`, table: 'sections', node: <SectionRow line={line} language={coverage.language} /> });
+  for (const line of facts.sections) out.push({ key: `section-${line.topic.code}`, table: 'sections', node: <SectionRow line={line} langs={langs} /> });
 
   // 6. Gaps and suggestions: one tinted panel over several blocks.
   heading('h-gaps', t.gapsTitle);
@@ -528,9 +530,9 @@ function reportBlocks(coverage: CoverageResult): Block[] {
   // 7. Topic by topic.
   heading('h-topics', t.topicByTopic, { hint: t.topicByTopicHint, breakUnless: 0.4, top: 24 });
   for (const topic of report.topics) {
-    out.push({ key: `topic-${topic.code}`, keepWithNext: true, node: <TopicHead topic={topic} language={coverage.language} /> });
+    out.push({ key: `topic-${topic.code}`, keepWithNext: true, node: <TopicHead topic={topic} langs={langs} /> });
     for (const keyPoint of topic.keyPoints) {
-      out.push({ key: `kp-${keyPoint.code}`, table: 'keyPoints', node: <KeyPointLine keyPoint={keyPoint} muted={!topic.counted} language={coverage.language} /> });
+      out.push({ key: `kp-${keyPoint.code}`, table: 'keyPoints', node: <KeyPointLine keyPoint={keyPoint} muted={!topic.counted} langs={langs} /> });
     }
   }
 
@@ -540,7 +542,7 @@ function reportBlocks(coverage: CoverageResult): Block[] {
   for (const paper of papers) {
     if (paper !== undefined) out.push({ key: `units-paper-${paper}`, keepWithNext: true, node: <H3 color={C.accent}>{t.paper(paper)}</H3> });
     for (const unit of report.units.filter((u) => u.where.paper === paper)) {
-      out.push({ key: `unit-${unit.where.paper ?? 0}-${unit.where.at}`, table: 'units', node: <UnitLine unit={unit} language={coverage.language} /> });
+      out.push({ key: `unit-${unit.where.paper ?? 0}-${unit.where.at}`, table: 'units', node: <UnitLine unit={unit} langs={langs} /> });
     }
   }
 
@@ -548,8 +550,8 @@ function reportBlocks(coverage: CoverageResult): Block[] {
   return out;
 }
 
-function Figures({ report, language }: { report: CoverageReport; language: CoverageResult['language'] }) {
-  const t = reportText(language);
+function Figures({ report, text }: { report: CoverageReport; text: ReportLanguage }) {
+  const t = reportText(text);
   const { keyPoints, points, hours } = report.breadth;
   const tagged = report.confidence.high + report.confidence.medium + report.confidence.low;
   const conf = (n: number) => percent(tagged ? n / tagged : null);
@@ -587,9 +589,9 @@ function Figures({ report, language }: { report: CoverageReport; language: Cover
   );
 }
 
-function Glance({ coverage }: { coverage: CoverageResult }) {
-  const t = reportText(coverage.language);
-  const name = nameIn(coverage.language);
+function Glance({ coverage, langs }: { coverage: CoverageResult; langs: ReportLanguages }) {
+  const t = reportText(langs.text);
+  const name = nameIn(langs.names);
   const report = coverage.report;
   const facts = insights(report);
   const { hit, of } = report.breadth.keyPoints;
@@ -605,13 +607,13 @@ function Glance({ coverage }: { coverage: CoverageResult }) {
   ].filter(Boolean);
   return (
     <p style={{ background: C.panel, borderRadius: 8, padding: '11px 14px', fontSize: '10pt', lineHeight: 1.65 }}>
-      {sentences.join(coverage.language === 'zh' ? '' : ' ')}
+      {sentences.join(langs.text === 'zh' ? '' : ' ')}
     </p>
   );
 }
 
-function Skills({ skills, language }: { skills: Record<Band, number>; language: CoverageResult['language'] }) {
-  const t = reportText(language);
+function Skills({ skills, text }: { skills: Record<Band, number>; text: ReportLanguage }) {
+  const t = reportText(text);
   return (
     <div style={{ paddingTop: 12 }}>
       <div style={{ fontSize: '9pt', fontWeight: 700, paddingBottom: 6 }}>{t.skillsTitle}</div>
@@ -630,8 +632,8 @@ function Skills({ skills, language }: { skills: Record<Band, number>; language: 
   );
 }
 
-function SectionRow({ line, language }: { line: SectionLine; language: CoverageResult['language'] }) {
-  const t = reportText(language);
+function SectionRow({ line, langs }: { line: SectionLine; langs: ReportLanguages }) {
+  const t = reportText(langs.text);
   const { topic, hit, of } = line;
   const muted = !topic.counted;
   return (
@@ -649,7 +651,7 @@ function SectionRow({ line, language }: { line: SectionLine; language: CoverageR
         <Badge code={topic.code} muted={muted} />
       </div>
       <div style={{ padding: '5px 6px' }}>
-        {nameIn(language)(topic)}
+        {nameIn(langs.names)(topic)}
         {muted && <span style={{ fontSize: '8pt' }}> · {t.notCounted}</span>}
       </div>
       <div style={{ padding: '5px 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -665,14 +667,14 @@ function SectionRow({ line, language }: { line: SectionLine; language: CoverageR
   );
 }
 
-function TopicHead({ topic, language }: { topic: TopicRow; language: CoverageResult['language'] }) {
-  const t = reportText(language);
+function TopicHead({ topic, langs }: { topic: TopicRow; langs: ReportLanguages }) {
+  const t = reportText(langs.text);
   const hit = topic.keyPoints.filter((keyPoint) => keyPoint.hit).length;
   const muted = !topic.counted;
   return (
     <div style={{ paddingTop: 14, paddingBottom: 4, display: 'flex', alignItems: 'baseline', gap: 8, color: muted ? C.faint : C.ink }}>
       <Badge code={topic.code} muted={muted} />
-      <span style={{ fontSize: '10.5pt', fontWeight: 700 }}>{nameIn(language)(topic)}</span>
+      <span style={{ fontSize: '10.5pt', fontWeight: 700 }}>{nameIn(langs.names)(topic)}</span>
       <span style={{ marginLeft: 'auto', fontSize: '8.5pt', color: C.muted }} className="tabular-nums">
         {muted ? t.notCounted : t.keyPointsOf(hit, topic.keyPoints.length)}
         {topic.marks > 0 && ` · ${t.unitMarks(marksText(topic.marks))} (${percent(topic.marksShare)})`}
@@ -681,9 +683,9 @@ function TopicHead({ topic, language }: { topic: TopicRow; language: CoverageRes
   );
 }
 
-function KeyPointLine({ keyPoint, muted, language }: { keyPoint: KeyPointRow; muted: boolean; language: CoverageResult['language'] }) {
-  const t = reportText(language);
-  const name = nameIn(language);
+function KeyPointLine({ keyPoint, muted, langs }: { keyPoint: KeyPointRow; muted: boolean; langs: ReportLanguages }) {
+  const t = reportText(langs.text);
+  const name = nameIn(langs.names);
   const dim = muted || !keyPoint.hit;
   const skills = BANDS.filter((band) => keyPoint.bands[band] > 0).map((band) => `${bandWord(t, band)} ${marksText(keyPoint.bands[band])}`);
   return (
@@ -694,7 +696,7 @@ function KeyPointLine({ keyPoint, muted, language }: { keyPoint: KeyPointRow; mu
           <div style={{ fontSize: '7.5pt', color: C.muted, paddingTop: 1 }}>{t.pointsLine(keyPoint.points.map(name).join(t.pointsJoin))}</div>
         )}
       </div>
-      <div style={{ padding: '5px 6px' }}>{keyPoint.hit ? keyPoint.where.map((w) => t.where(w)).join(t.listJoin) : <span style={{ fontStyle: language === 'en' ? 'italic' : undefined }}>{t.notTested}</span>}</div>
+      <div style={{ padding: '5px 6px' }}>{keyPoint.hit ? keyPoint.where.map((w) => t.where(w)).join(t.listJoin) : <span style={{ fontStyle: langs.text === 'en' ? 'italic' : undefined }}>{t.notTested}</span>}</div>
       <div className="tabular-nums" style={{ padding: '5px 6px', textAlign: 'right' }}>
         {keyPoint.marks > 0 ? marksText(keyPoint.marks) : ''}
       </div>
@@ -703,9 +705,9 @@ function KeyPointLine({ keyPoint, muted, language }: { keyPoint: KeyPointRow; mu
   );
 }
 
-function UnitLine({ unit, language }: { unit: UnitRow; language: CoverageResult['language'] }) {
-  const t = reportText(language);
-  const name = nameIn(language);
+function UnitLine({ unit, langs }: { unit: UnitRow; langs: ReportLanguages }) {
+  const t = reportText(langs.text);
+  const name = nameIn(langs.names);
   return (
     <div style={{ display: 'grid', gridTemplateColumns: GRID.units, borderBottom: `0.5pt solid ${C.rule}`, fontSize: '8.5pt' }}>
       <div style={{ padding: '5px 6px 5px 0', fontWeight: 700 }}>{t.where({ at: unit.where.at })}</div>

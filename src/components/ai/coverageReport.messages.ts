@@ -78,6 +78,14 @@ export const COVERAGE_MESSAGES = defineMessages({
     zh: (zh: boolean) => `課程名稱及 AI 的說明使用試卷的語言（${zh ? '中文' : '英文'}）。`,
   },
   download: { en: 'Download report (PDF)', zh: '下載報告（PDF）' },
+  // k-0503: the language of the downloaded report's own words; syllabus names stay the paper's.
+  reportLanguage: { en: 'Report in', zh: '報告語言' },
+  reportLanguageHint: {
+    en: 'Headings and text of the PDF. Topic names stay in the paper’s language.',
+    zh: 'PDF 的標題及文字。課題名稱仍按試卷的語言。',
+  },
+  reportEnglish: { en: 'English', zh: 'English' },
+  reportChinese: { en: '中文', zh: '中文' },
   downloading: { en: 'Preparing the PDF…', zh: '正在準備 PDF…' },
   downloadWebHint: { en: 'Opens the print window: choose Save as PDF.', zh: '會開啟列印視窗：請選擇「另存為 PDF」。' },
   saved: { en: (name: string) => `Saved ${name}`, zh: (name: string) => `已儲存 ${name}` },
