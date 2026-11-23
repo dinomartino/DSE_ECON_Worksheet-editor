@@ -2,7 +2,8 @@ import { createElement, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { creditsFor, importCheckJob, roundCredits, studioJob, textTokens, translateJob, usdFor } from '@/ai/credits';
-import { aiErrorInfo } from '@/ai/errors';
+import { aiErrorInfo, describeHttpError } from '@/ai/errors';
+import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { CreditEstimateLine } from '@/components/ai/CreditEstimate';
 import { AI_UI_MESSAGES } from '@/components/ai/messages';
 import { errorActions } from '@/components/ai/errorActions';
@@ -109,6 +110,27 @@ describe('MentorAccountCard', () => {
     // Desktop: the keychain, no choice and no line.
     expect(renderToStaticMarkup(card({ kind: 'signedOut' }))).not.toContain('data-mentor-tab-only');
     expect(renderToStaticMarkup(card(SIGNED_IN))).not.toContain('data-mentor-kept');
+  });
+
+  it('a balance below zero and a refused trial say so (CONTRACT v1.3)', () => {
+    const html = renderToStaticMarkup(card({ ...SIGNED_IN, account: { ...SIGNED_IN.account!, credits: -12.5, trialRefused: true } }));
+    expect(html).toContain('-13 credits left');
+    expect(html).toContain('data-mentor-negative');
+    expect(html).toContain('No free trial on this account.');
+    expect(renderToStaticMarkup(card(SIGNED_IN))).not.toContain('data-mentor-negative');
+    expect(zh(card({ ...SIGNED_IN, account: { ...SIGNED_IN.account!, credits: -1, trialRefused: true } }))).toContain('這個帳戶沒有免費試用');
+  });
+
+  it("Mentor's v1.3 errors read in 中文 too", () => {
+    const relay = (status: number, body: Record<string, unknown>) => describeHttpError('mentor', status, body, new Headers(), {});
+    const cases = [
+      [relay(504, { error: 'deadline', charged: 41.2, balance: 700 }), '已扣除 41 點'],
+      [relay(504, { error: 'deadline' }), '已扣除所用的點數'],
+      [relay(409, { error: 'duplicate_request', state: 'done' }), '已傳送過一次'],
+      [relay(503, { error: 'limits_unavailable' }), '暫時出現問題'],
+      [relay(402, { error: 'insufficient_credits', balance: -3 }), '低於零'],
+    ] as const;
+    for (const [info, words] of cases) expect(localizedErrorMessage(info, 'zh-HK'), info.message).toContain(words);
   });
 
   it('formats credits whole, never 0 for a fraction left', () => {

@@ -12,8 +12,7 @@ import { chromium, webkit } from 'playwright-core';
  * code, Allow, the clicked verb running on the account; Settings' account card, Advanced,
  * the credit line in the ✦ AI menu, out of credits (Buy credits / Use my own key), Sign out.
  * Any other provider host is a failure. A screenshot per step lands in --out. k-0521 adds the
- * audit fixes: an Idempotency-Key on each generate (allowed through CORS as CONTRACT v1.3
- * will), the 14-day web sign-in, "Shared computer" (this tab only), and a sign-out Mentor
+ * audit fixes: an Idempotency-Key on each generate (allowed through CORS, CONTRACT v1.3), the 14-day web sign-in, "Shared computer" (this tab only), and a sign-out Mentor
  * can't confirm (signed out here, with the warning and Open my account).
  *
  *   npm run build && node scripts/hosted-ai-verify.mjs [--out=/tmp/hosted-ai-verify] [--engines=chromium,webkit] [--app-port=3419]

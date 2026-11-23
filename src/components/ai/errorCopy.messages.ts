@@ -97,6 +97,26 @@ export const ERROR_COPY_MESSAGES = defineMessages({
     en: "Google's AI didn't answer through DSEcon Mentor. No credits were used. Try again.",
     zh: 'Google 的 AI 未有經 DSEcon Mentor 回應，沒有扣除點數。請再試一次。',
   },
+  mentorNoCreditsNegative: {
+    en: 'Your credit balance is below zero after a refund or dispute. Buy credits to continue, or use your own key.',
+    zh: '因退款或爭議，你的點數結餘已低於零。請購買點數以繼續，或改用你自己的 API key。',
+  },
+  mentorDuplicate: {
+    en: 'This job was already sent once, and its answer didn’t arrive. Try again to send it afresh.',
+    zh: '這項工作已傳送過一次，但未有收到回應。請再試一次，重新傳送。',
+  },
+  mentorTrouble: {
+    en: 'DSEcon Mentor is having trouble. No credits were used. Try again in a minute.',
+    zh: 'DSEcon Mentor 暫時出現問題，沒有扣除點數。請一分鐘後再試。',
+  },
+  mentorDeadline: {
+    en: (n: string) => `This took too long and DSEcon Mentor stopped it; ${n} credits were used. Try a smaller job.`,
+    zh: (n: string) => `這項工作用時太長，已被 DSEcon Mentor 停止；已扣除 ${n} 點。請改用較小的工作。`,
+  },
+  mentorDeadlineCharged: {
+    en: 'This took too long and DSEcon Mentor stopped it; the credits it used were charged. Try a smaller job.',
+    zh: '這項工作用時太長，已被 DSEcon Mentor 停止；已扣除所用的點數。請改用較小的工作。',
+  },
   mentorQuota: {
     en: 'Too many AI requests at once. Wait a minute and try again.',
     zh: '同時發出的 AI 要求太多。請等一分鐘再試。',

@@ -75,6 +75,11 @@ export const AI_SECTION_MESSAGES = defineMessages({
     en: "Your text goes to DSEcon Mentor's server and on to Google Gemini. Mentor keeps only a usage record (when, which feature, cost), never your text.",
     zh: '你的文字會傳送到 DSEcon Mentor 的伺服器，再轉交 Google Gemini。Mentor 只保留使用紀錄（時間、功能、費用），不會保留你的文字。',
   },
+  mentorNegative: {
+    en: 'Your credit balance is below zero after a refund or dispute. Buy credits to continue.',
+    zh: '因退款或爭議，你的點數結餘已低於零。請購買點數以繼續。',
+  },
+  mentorNoTrial: { en: 'No free trial on this account.', zh: '這個帳戶沒有免費試用。' },
   mentorRevokeFailed: {
     en: 'Signed out on this computer, but DSEcon Mentor couldn’t be reached, so the sign-in still works there. To end it, open your account and press Sign out under “Econ Studio sign-ins”.',
     zh: '已在這部電腦登出，但未能連上 DSEcon Mentor，所以這次登入在 Mentor 仍然有效。如要結束，請打開你的帳戶，在「Econ Studio 登入」下按「登出」。',

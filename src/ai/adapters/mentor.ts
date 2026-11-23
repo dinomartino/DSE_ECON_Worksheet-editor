@@ -8,11 +8,11 @@ import { isRecord, trimBase, type Adapter } from './adapter';
  * answer is `{ response: <Gemini's>, mentor: {…} }`; a stream passes Gemini's chunks
  * through and ends with Mentor's receipt (`event: mentor`) or `event: error`, so a stream
  * without the receipt failed (`mustSettle`). `Idempotency-Key` (k-0521 F10, CONTRACT v1.3)
- * carries `req.requestKey`: a repeat with the same key gets the first answer, charged once.
+ * carries `req.requestKey`: a key Mentor already saw answers `409 duplicate_request`, never charged.
  */
 
-/** A key Mentor accepts: 8–128 of `A–Z a–z 0–9 - _ .`; anything else is not sent. */
-const REQUEST_KEY = /^[A-Za-z0-9._-]{8,128}$/;
+/** A key Mentor accepts (CONTRACT v1.3): 8–100 of letters, digits and `- _ . :`; anything else is not sent. */
+const REQUEST_KEY = /^[A-Za-z0-9._:-]{8,100}$/;
 
 function wrap(wire: ReturnType<Adapter['build']>, feature: string, stream: boolean, base: string, token: string | null, requestKey: string | undefined) {
   const headers: Record<string, string> = { 'content-type': 'application/json', authorization: `Bearer ${token ?? ''}` };
@@ -41,8 +41,8 @@ export const mentorAdapter: Adapter = {
 
   streamPiece(event) {
     if (!isRecord(event)) return null;
-    // `event: error` (`{"error":"upstream_error","refunded":true}`) and Gemini's own error chunk.
-    if (typeof event.error === 'string') return { error: event.error };
+    // `event: error` (`{"error":"upstream_error","refunded":true}`; `deadline` is charged) and Gemini's own error chunk.
+    if (typeof event.error === 'string') return { error: event.error, ...(typeof event.charged === 'number' ? { errorCharged: event.charged } : {}) };
     // `event: mentor`: the receipt that closes a stream that went well.
     if (typeof event.requestId === 'string' && 'charged' in event) return { settled: true };
     return geminiAdapter.streamPiece(event);

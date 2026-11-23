@@ -10,7 +10,7 @@ import { AiError, type HttpDeps, type ProviderId } from './types';
 export const MAX_BODY_BYTES = 2 * 1024 * 1024;
 export const MAX_STREAM_BYTES = 8 * 1024 * 1024;
 export const COMPLETION_TIMEOUT_MS = 120_000;
-/** Mentor's relay gives a request up to 300 s; the editor waits past that, so it never abandons a job Mentor still finishes and charges (k-0521 F10). */
+/** Mentor stops a call at about 270 s and asks for ≥ 300 s (CONTRACT v1.3); the editor never abandons a job Mentor still finishes and charges (k-0521 F10). */
 export const RELAY_TIMEOUT_MS = 330_000;
 export const PROBE_TIMEOUT_MS = 30_000;
 const RATE_LIMIT_MAX_WAIT_MS = 20_000;
@@ -83,8 +83,11 @@ function parseBody(text: string): unknown {
   }
 }
 
-/** Mentor relay refusals a retry can't change (`Outbox/k-0518/CONTRACT.md` §4–5). */
-const RELAY_FINAL = new Set(['monthly_cap', 'hosted_ai_paused', 'hosted_ai_off']);
+/**
+ * Mentor relay answers a retry can't change (`Outbox/k-0518/CONTRACT.md` §4–5), and `deadline`
+ * (v1.3): a 504 that was charged, so asking again would pay twice for the same job.
+ */
+const RELAY_FINAL = new Set(['monthly_cap', 'hosted_ai_paused', 'hosted_ai_off', 'deadline', 'duplicate_request']);
 const relayFinal = (body: unknown) =>
   typeof body === 'object' && body !== null && RELAY_FINAL.has(String((body as { error?: unknown }).error));
 
@@ -154,7 +157,7 @@ export async function send(deps: HttpDeps, req: HttpRequest): Promise<HttpRespon
         }
         throw fail(error);
       }
-      // Mentor's month limit, daily pause and switch-off don't lift in seconds: no retry (k-0519).
+      // Mentor's month limit, daily pause and switch-off don't lift in seconds (k-0519); a deadline was charged (k-0521).
       if (req.provider === 'mentor' && relayFinal(body)) return { status, headers, body };
       if (status === 429 && !rateRetried) {
         const wait = retryDelayMs(body, headers) ?? RATE_LIMIT_DEFAULT_MS;
