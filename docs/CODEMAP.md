@@ -613,6 +613,26 @@ Invariants:
 - Highlights are imperative chrome: no IR or `ItemBody` read, never printed, never in the `.docx`.
 - A verb's network call happens only on its menu click; nothing AI-related is stored in a document.
 
+## questionStudio — the Question studio's engine (k-0499; paused, no UI yet)
+
+Design `docs/design/question-studio.md`. Pure over injected deps, like `src/generate/`; one click is at most five requests.
+
+- `src/questionStudio/types.ts:StudioRequest` · `:StudioDraft` · `:CheckRow` · `:StudioOutcome` — what a teacher asks, what comes back (findings are codes; the words belong to the page)
+- `src/questionStudio/run.ts:writeDrafts` — write → local checks → one rewrite of hard failures → blind solve → one rewrite of key disagreements → solve; `:refine` — Another / Harder / Easier / the Change line; `:parseSolveReply`
+- `src/questionStudio/brief.ts:makeBrief` — the key point, points and NOT-required limits from `src/syllabus`, the key plan; `:briefPayload` the JSON that is sent; `:sentSummary` what the form lists; `:PAYLOAD_KEYS` the keys nothing else may join
+- `src/questionStudio/prompt.ts:buildWriteRequest` · `:buildSolveRequest` — the two requests, their schemas and system prompts (`WRITE_TASK_MARKER`, `SOLVE_TASK_MARKER`)
+- `src/questionStudio/validate.ts:localChecks` — every local check on one cleaned draft; `:parseWriteReply` · `:shapeFindings` · `:statusOf`
+- `src/questionStudio/nearCopy.ts:checkNearCopy` · `:buildCorpusIndex` — shingles (6 words / 8 characters, numbers read as `#`) against an index of the bank, the teacher's questions, the open paper
+- `src/questionStudio/numbers.ts:checkNumbers` (EN = 中文 numbers, 5 billion = 50億) · `src/questionStudio/lint.ts:lintDraft` · `:lintBatch` · `src/questionStudio/guard.ts:scanLimited` (NOT-required terms)
+- `src/questionStudio/source.ts:sourceFromQuestion` (an MC question as an example) · `:corpusDocOf` (any question's printed words) — text only
+- `src/questionStudio/insert.ts:studioBuilds` — picked drafts → `QuestionBuild`s for `insertQuestionBatch`, tagged with the key point; reuses `src/generate/build.ts:fillMcq`
+- Test-only `src/questionStudio/fixtures.ts` (invented questions, never past-paper text); `scripts/ai-mock-server.mjs` answers the studio's requests for browser runs
+
+Invariants:
+- Nothing is sent before a click, and what is sent is exactly the brief: a picked example's words and key, never its label (year, paper, number).
+- A draft the hard checks fail (`shape`, `copy`) is never built; nothing is inserted except by `studioBuilds` on the teacher's Add.
+- No file here reads `src/coverage/` words or edits `src/syllabus/`.
+
 ## import — Import from Word or PDF (D1), the engine
 
 `docs/design/paste-import.md` (§ 10 As built). Pure: no React, no store, no DOM (the PDF reader's optional figure crops aside).

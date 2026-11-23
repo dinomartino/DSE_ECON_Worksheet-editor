@@ -3473,6 +3473,42 @@ The engine is `src/generate/`, pure over injected deps like `src/translate/run.t
 
 ---
 
+## AI question studio (k-0499)
+
+**Paused** — the engine (`src/questionStudio/`) is built and tested; there is no page yet
+and nothing is reachable by a teacher. Design: `docs/design/question-studio.md`.
+
+Writes new multiple-choice questions from a syllabus key point, optionally in the manner of
+bank questions the teacher picked, and returns **drafts**. Pure over injected deps like
+`src/generate/run.ts` (client, preset, glossary, a near-copy corpus); it never reads the
+store and never touches a paper.
+
+- **What is sent is the brief and nothing else** (`brief.ts:briefPayload`): the key point,
+  its points and NOT-required limits from `src/syllabus`, EDB term lines, the picked examples
+  whole (decision 1c: the user accepts the licence risk for bank questions they pick), the
+  Change line as `teacherNote`. Never an example's label, year, paper or number. The form's
+  "Sends this to {provider}" lines come from the same brief (`sentSummary`).
+- **Everything the model reads is data**: the system prompt says so; only `teacherNote` is
+  the teacher's request, and it cannot change the rules or the format.
+- **At most five requests per click**: write; one rewrite of hard failures (a bad shape, a
+  copy); the blind solve; one rewrite of key disagreements; its solve. A rewrite stands only
+  if it passes the hard checks. Never repaired by hand.
+- **Checks** are local and free except the solve (`validate.ts:localChecks`): shape and
+  near-copy are hard (a failed draft is never built), key, numbers, terms, syllabus and
+  lint are notes to read. The blind solve is a fresh request with the stem and options only:
+  no key, no explanation, no brief (`prompt.ts:buildSolveRequest`).
+- **Findings are codes** (`shape.keyRange`, `copy.close`, `key.differs`…) with params; the
+  interface words live in the page's catalogue (English and 中文), never in the engine.
+- **Near-copy** compares 6-word / 8-character runs (numbers read as `#`) with the bank, the
+  teacher's own questions, the open paper, the examples and the other drafts; runs found in
+  many questions are stock phrasing and do not count.
+- **Insert** is `insert.ts:studioBuilds` → the store's `insertQuestionBatch`, on the
+  teacher's Add only; a failed draft is refused there too. A question is tagged with its key
+  point, so the coverage check counts it. No `src/coverage/` word and no `src/syllabus/`
+  change: the coverage skill's golden tests pin them.
+
+---
+
 ## AI question quality check (E4)
 
 **Paused** — built and tested, hidden from teachers by `PAUSED_VERBS` (§ The AI door).
