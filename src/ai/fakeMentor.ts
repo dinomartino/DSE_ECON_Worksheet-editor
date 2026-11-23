@@ -6,7 +6,8 @@ import type { HttpDeps } from './types';
  * `GET /ai/credits`, and `POST /ai/generate` (`{ feature, stream, request }` → `{ response,
  * mentor }`, or Gemini's chunks then `event: mentor`). It charges each call from
  * `usageMetadata` at the contract's rates, refuses with 402 when the credits are short and
- * records every request.
+ * records every request. A repeat with the same `Idempotency-Key` (CONTRACT v1.3, k-0521)
+ * gets the first answer again, charged once.
  */
 
 export interface FakeMentorOptions {
@@ -23,6 +24,10 @@ export interface FakeMentorOptions {
   streamEnd?: 'mentor' | 'error' | 'none';
   status?: 'on' | 'paused' | 'off';
   token?: string;
+  /** Answers the first n generates with this status before working (an answer lost on the way). */
+  failFirst?: { times: number; status: number };
+  /** Sign-out answers this status (or fails as a network error), not 204. */
+  logout?: number | 'network';
 }
 
 export interface FakeMentorRequest { method: string; path: string; headers: Record<string, string>; json: Record<string, unknown> | null }
@@ -33,7 +38,9 @@ export const FAKE_RATES = { inputPerMillionTokens: 1170, outputPerMillionTokens:
 
 export function fakeMentor(opts: FakeMentorOptions = {}) {
   const token = opts.token ?? 'dsm_test_token_0123456789abcdef';
-  const state = { credits: opts.credits ?? 900, polls: 0, revoked: false, charged: 0 };
+  const state = { credits: opts.credits ?? 900, polls: 0, revoked: false, charged: 0, charges: 0, generates: 0 };
+  /** Non-streamed answers by `Idempotency-Key`. */
+  const answered = new Map<string, string>();
   const requests: FakeMentorRequest[] = [];
   const usage = opts.usage ?? { promptTokenCount: 1000, candidatesTokenCount: 400, thoughtsTokenCount: 100 };
   const reply = opts.reply ?? JSON.stringify({ items: [{ key: 't1', text: '物價水平' }] });
@@ -47,6 +54,7 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
     const charged = cost();
     state.credits = Math.max(0, state.credits - charged);
     state.charged += charged;
+    state.charges++;
     return { requestId: 'req_test', model: 'gemini-4-hydrogen', usage: { inputTokens: usage.promptTokenCount, outputTokens: usage.candidatesTokenCount, thinkingTokens: usage.thoughtsTokenCount ?? 0 }, charged, balance: state.credits, estimated: false };
   };
 
@@ -68,6 +76,8 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
       return json(200, outcome === 'approved' ? { status: 'approved', token, expiresAt: new Date(Date.now() + 1e10).toISOString(), userId: 'u1' } : { status: outcome });
     }
     if (path === '/auth/logout') {
+      if (opts.logout === 'network') throw new TypeError('Failed to fetch');
+      if (opts.logout && opts.logout !== 204) return relayError(opts.logout, 'server_error');
       state.revoked = true;
       return json(204, null);
     }
@@ -92,10 +102,17 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
       if (opts.failWith) return relayError(opts.failWith.status, opts.failWith.code, opts.failWith.message ? { message: opts.failWith.message } : {});
       const request = body?.request as Record<string, unknown> | undefined;
       if (typeof body?.feature !== 'string' || !request || !Array.isArray(request.contents)) return relayError(400, 'invalid_request', { field: 'request' });
+      const key = headers['idempotency-key'];
+      const before = key ? answered.get(key) : undefined;
+      if (before) return new Response(before, { status: 200, headers: { 'content-type': 'application/json' } });
       if (state.credits < cost()) return relayError(402, 'insufficient_credits', { balance: state.credits, needed: cost() });
       const candidate = (text: string, finish?: string) => ({ content: { role: 'model', parts: [{ text }] }, ...(finish ? { finishReason: finish } : {}) });
       if (body.stream !== true) {
-        return json(200, { response: { candidates: [candidate(reply, 'STOP')], usageMetadata: usage, modelVersion: 'gemini-4-hydrogen' }, mentor: receipt() });
+        const whole = JSON.stringify({ response: { candidates: [candidate(reply, 'STOP')], usageMetadata: usage, modelVersion: 'gemini-4-hydrogen' }, mentor: receipt() });
+        if (key) answered.set(key, whole);
+        // Charged, but the answer never reaches the editor.
+        if (opts.failFirst && state.generates++ < opts.failFirst.times) return relayError(opts.failFirst.status, 'upstream_error');
+        return new Response(whole, { status: 200, headers: { 'content-type': 'application/json' } });
       }
       const half = Math.ceil(reply.length / 2);
       const chunks = [`data: ${JSON.stringify({ candidates: [candidate(reply.slice(0, half))] })}`, `data: ${JSON.stringify({ candidates: [candidate(reply.slice(half), 'STOP')], usageMetadata: usage })}`];

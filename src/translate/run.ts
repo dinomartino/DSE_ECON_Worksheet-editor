@@ -89,6 +89,8 @@ const NOT_RETRYABLE: ReadonlySet<AiErrorKind> = new Set(['truncated', 'safety'])
 /** Fix notes for the repair pass, or null when the item does not go. */
 export function repairNotesFor(pass: Pass): string[] | null {
   if (pass.error && NOT_RETRYABLE.has(pass.error.kind)) return null;
+  // Mentor may still finish (and charge) a call the editor stopped waiting for: never pay twice (k-0521 F10).
+  if (pass.error?.kind === 'timeout' && pass.error.provider === 'mentor') return null;
   const failing = pass.issues.filter((i) => i.severity === 'fail');
   const simplified = pass.issues.filter((i) => i.code === 'simplified');
   const terms = pass.terms.filter((t) => t.severity === 'warn');

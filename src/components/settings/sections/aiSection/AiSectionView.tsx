@@ -59,6 +59,8 @@ export interface AiSectionViewProps {
   /** The DSEcon Mentor account (k-0519). */
   mentor: MentorState;
   mentorActions: MentorCardActions;
+  /** Web: where this browser keeps the account's sign-in (null when signed out). */
+  mentorKept?: 'browser' | 'tab' | null;
 }
 
 export function AiSectionView(props: AiSectionViewProps) {
@@ -107,6 +109,7 @@ export function AiSectionView(props: AiSectionViewProps) {
         state={props.mentor}
         inUse={settings.provider === 'mentor'}
         focus={props.focus === 'account'}
+        web={props.env.desktop ? undefined : { kept: props.mentorKept ?? null }}
         actions={props.mentorActions}
       />
       {props.mentor.kind === 'signedIn' ? (

@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { clearDialectCache, createClient, testConnection } from './client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearDialectCache, createClient, newRequestKey, testConnection } from './client';
+import { RELAY_TIMEOUT_MS } from './http';
 import { describeHttpError, isSchemaRejection } from './errors';
 import { FAKE_RATES, fakeMentor } from './fakeMentor';
 import { MENTOR_BUY_URL, MENTOR_PRICING_URL, createMentorRelay, mentorApiRoot, readAccount, safeMentorUrl } from './mentor';
@@ -195,12 +196,17 @@ describe('sign-in, credits and sign-out (CONTRACT §1–2)', () => {
     expect(error.info.kind).toBe('signedOut');
   });
 
-  it('sign-out (204) and sign-out with no connection never throw', async () => {
+  it('sign-out says whether Mentor revoked the token, and never throws (k-0521 F9)', async () => {
     const server = fakeMentor();
-    await expect(createMentorRelay({ deps: server.deps }).signOut(server.token, signal())).resolves.toBeUndefined();
+    await expect(createMentorRelay({ deps: server.deps }).signOut(server.token, signal())).resolves.toBe('revoked');
     expect(server.state.revoked).toBe(true);
-    const offline = { fetch: (async () => { throw new TypeError('Failed to fetch'); }) as typeof fetch, now: () => 0, sleep: async () => undefined };
-    await expect(createMentorRelay({ deps: offline }).signOut('dsm_x_0123456789', signal())).resolves.toBeUndefined();
+    // A token Mentor no longer knows is as good as revoked.
+    await expect(createMentorRelay({ deps: fakeMentor().deps }).signOut('dsm_unknown_0123456789', signal())).resolves.toBe('revoked');
+    // No connection (or no CORS: the browser reports both as a TypeError) and a server error are failures.
+    await expect(createMentorRelay({ deps: fakeMentor({ logout: 'network' }).deps }).signOut(server.token, signal())).resolves.toBe('failed');
+    const broken = fakeMentor({ logout: 500 });
+    await expect(createMentorRelay({ deps: broken.deps }).signOut(broken.token, signal())).resolves.toBe('failed');
+    expect(broken.state.revoked).toBe(false);
   });
 
   it('no connection at all names the host', async () => {
@@ -232,5 +238,101 @@ describe('sign-in, credits and sign-out (CONTRACT §1–2)', () => {
     expect(readAccount({ balance: 5, buyUrl: 'https://evil.example', pricingUrl: 7 }, MENTOR_API)).toEqual({ credits: 5, status: 'on', buyUrl: MENTOR_BUY_URL, pricingUrl: MENTOR_PRICING_URL });
     expect(readAccount({ balance: 'many' }, MENTOR_API)).toBeNull();
     expect(readAccount({ balance: 5, status: 'weird', rates: { inputPerMillionTokens: -1, outputPerMillionTokens: 2 } }, MENTOR_API)).toEqual({ credits: 5, status: 'on', buyUrl: MENTOR_BUY_URL, pricingUrl: MENTOR_PRICING_URL });
+  });
+});
+
+describe('one request is charged once: Idempotency-Key (k-0521 F10, CONTRACT v1.3)', () => {
+  afterEach(() => vi.useRealTimers());
+  const generates = (server: ReturnType<typeof fakeMentor>) => server.requests.filter((r) => r.path === '/ai/generate');
+
+  it('every generate carries a fresh random key; streams too', async () => {
+    const server = fakeMentor();
+    const client = createClient(config(server.token), server.deps);
+    await client.complete(request());
+    await client.complete(request());
+    await client.stream!(request(), () => undefined);
+    const keys = generates(server).map((r) => r.headers['idempotency-key']);
+    expect(keys).toHaveLength(3);
+    for (const key of keys) expect(key).toMatch(/^[A-Za-z0-9._-]{8,128}$/);
+    expect(new Set(keys).size).toBe(3);
+  });
+
+  it('a lost answer is retried with the same key, and Mentor charges it once', async () => {
+    // The first try was charged but its answer came back as a 502: the transport retries.
+    const server = fakeMentor({ failFirst: { times: 1, status: 502 } });
+    const res = await createClient(config(server.token), server.deps).complete(request());
+    expect(res.text).toContain('物價水平');
+    const [first, again] = generates(server);
+    expect(again.headers['idempotency-key']).toBe(first.headers['idempotency-key']);
+    expect(server.state.charges).toBe(1);
+  });
+
+  it('a network drop is retried with the same key too', async () => {
+    const server = fakeMentor();
+    let dropped = false;
+    const flaky = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!dropped) {
+        dropped = true;
+        await server.fetch(input, init);
+        throw new TypeError('Failed to fetch');
+      }
+      return server.fetch(input, init);
+    }) as typeof fetch;
+    await createClient(config(server.token), { ...server.deps, fetch: flaky }).complete(request());
+    const [first, again] = generates(server);
+    expect(again.headers['idempotency-key']).toBe(first.headers['idempotency-key']);
+    expect(server.state.charges).toBe(1);
+  });
+
+  it("a caller's own key is used as given, so asking again for the same thing is charged once", async () => {
+    const server = fakeMentor();
+    const client = createClient(config(server.token), server.deps);
+    const requestKey = newRequestKey();
+    await client.complete(request({ requestKey }));
+    await client.complete(request({ requestKey }));
+    expect(generates(server).map((r) => r.headers['idempotency-key'])).toEqual([requestKey, requestKey]);
+    expect(server.state.charges).toBe(1);
+  });
+
+  it('a different body (one step down the output ladder) gets its own key', async () => {
+    const server = fakeMentor({ failWith: { status: 422, code: 'invalid_request', message: 'responseJsonSchema' } });
+    await caught(createClient(config(server.token), server.deps).complete(request({ requestKey: 'job-0123456789' })));
+    const keys = generates(server).map((r) => r.headers['idempotency-key']);
+    expect(keys[0]).toBe('job-0123456789');
+    expect(keys.length).toBeGreaterThan(1);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('a key Mentor would refuse is not sent', async () => {
+    const server = fakeMentor();
+    await createClient(config(server.token), server.deps).complete(request({ requestKey: 'bad key\n' }));
+    expect(generates(server)[0].headers['idempotency-key']).toBeUndefined();
+  });
+
+  it("own-key providers never get the header", async () => {
+    const seen: Array<Record<string, string>> = [];
+    const fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      seen.push(init?.headers as Record<string, string>);
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"items":[]}' }] }, finishReason: 'STOP' }] }), { status: 200 });
+    }) as typeof globalThis.fetch;
+    await createClient({ provider: 'gemini', apiKey: 'AIzaTestKey0123456789', model: 'gemini-2.5-flash', baseUrl: '' }, { fetch, sleep: async () => undefined }).complete(request());
+    expect(Object.keys(seen[0]).map((k) => k.toLowerCase())).not.toContain('idempotency-key');
+  });
+
+  it("the editor waits past Mentor's own 300 s, and a timeout is never retried", async () => {
+    vi.useFakeTimers();
+    const server = fakeMentor();
+    const hang = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      server.requests.push({ method: 'POST', path: new URL(String(input)).pathname, headers: {}, json: null });
+      return new Promise<Response>((_resolve, reject) => init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))));
+    }) as typeof fetch;
+    let settled: AiError | null = null;
+    void caught(createClient(config(server.token), { ...server.deps, fetch: hang }).complete(request())).then((e) => (settled = e));
+    await vi.advanceTimersByTimeAsync(300_000);
+    expect(settled).toBeNull();
+    await vi.advanceTimersByTimeAsync(RELAY_TIMEOUT_MS - 300_000 + 1);
+    expect(settled).not.toBeNull();
+    expect(settled!.info.kind).toBe('timeout');
+    expect(server.requests).toHaveLength(1);
   });
 });

@@ -82,6 +82,13 @@ export interface CompletionRequest {
   timeoutMs?: number;
   /** Which feature asked; sent to the hosted relay for its usage record only (k-0519). */
   feature?: AiFeature;
+  /**
+   * The hosted relay's `Idempotency-Key` (k-0521 F10): one per logical request, the same on
+   * every transport retry, so Mentor charges a repeat once. The client makes one when absent
+   * (and a new one for each different body it sends); a caller that asks again for the same
+   * thing after a timeout passes the key it used before.
+   */
+  requestKey?: string;
 }
 /** The relay's `feature` (CONTRACT §3): recorded with the usage, never sent to Google. */
 export type AiFeature =

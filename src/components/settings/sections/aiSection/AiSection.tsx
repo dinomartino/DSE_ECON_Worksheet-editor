@@ -82,18 +82,21 @@ export default function AiSection({
 
   // The DSEcon Mentor account (k-0519): its credits are read when Settings opens.
   const mentor = useMentorAccount();
+  const mentorPeek = peeks[PROVIDER_IDS.indexOf("mentor")];
+  const mentorKept = mentorPeek ? (mentorPeek.store === "browser" ? "browser" : "tab") : null;
   const signedIn = mentor.kind === "signedIn";
   useEffect(() => {
     if (signedIn) void mentorSession().refresh();
   }, [signedIn]);
   const mentorActions: MentorCardActions = {
-    signIn: () => void mentorSession().signIn(),
+    signIn: (opts) => void mentorSession().signIn(opts),
     cancel: () => mentorSession().cancel(),
     reopen: (url) => void openExternal(url),
     signOut: () => void mentorSession().signOut(),
     refresh: () => void mentorSession().refresh(),
     use: () => mentorSession().use(),
     buy: (url) => void openExternal(url || MENTOR_BUY_URL),
+    openAccount: (url) => void openExternal(url || MENTOR_BUY_URL),
     prices: () => void openExternal((mentor.kind === "signedIn" && mentor.account?.pricingUrl) || MENTOR_PRICING_URL),
   };
 
@@ -148,6 +151,7 @@ export default function AiSection({
         actions={actions}
         mentor={mentor}
         mentorActions={mentorActions}
+        mentorKept={mentorKept}
       />
       <div className="mt-4 empty:hidden">
         <TrialKitBlock />

@@ -4,7 +4,7 @@ import { geminiAdapter } from './adapters/gemini';
 import { mentorAdapter } from './adapters/mentor';
 import { openaiCompatAdapter } from './adapters/openaiCompat';
 import { aiErrorInfo, describeHttpError, isSchemaRejection, keyLikeModel, mapThrown } from './errors';
-import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, defaultHttpDeps, send, sendStream, type HttpResponse } from './http';
+import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, RELAY_TIMEOUT_MS, defaultHttpDeps, send, sendStream, type HttpResponse } from './http';
 import { presetFor, supportsImages } from './providers';
 import { ITEMS_SCHEMA, parseItemsPayload } from './schema';
 import {
@@ -55,6 +55,18 @@ function safeBaseUrl(url: string): URL | null {
   }
 }
 
+/** A fresh `Idempotency-Key` (k-0521 F10): random, never derived from the request. */
+export function newRequestKey(): string {
+  const c = globalThis.crypto;
+  if (typeof c?.randomUUID === 'function') return c.randomUUID();
+  const bytes = new Uint8Array(16);
+  c.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** The key for the `n`th body one logical request sends (a step down the rungs is a different request). */
+const keyFor = (base: string, n: number) => (n === 0 ? base : `${base}-${n}`);
+
 function log(info: AiErrorInfo): void {
   if (info.kind !== 'cancelled') console.warn('AI request failed', { kind: info.kind, status: info.status });
 }
@@ -75,6 +87,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
   const { provider, apiKey: key, model } = cfg;
   const base = safeBaseUrl(cfg.baseUrl);
   const cacheKey = `${provider}|${model}|${cfg.baseUrl}`;
+  const timeoutFor = (req: { timeoutMs?: number }) => req.timeoutMs ?? (preset.relay ? RELAY_TIMEOUT_MS : COMPLETION_TIMEOUT_MS);
 
   /** Why nothing can be sent, or null. */
   const blocked = (needsModel: boolean): AiErrorInfo | null => {
@@ -111,9 +124,10 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     const rungs = adapter.rungs(preset);
     let i = Math.max(0, rungs.indexOf(workingRung.get(cacheKey) ?? rungs[0]));
     let steppedForOutput = false;
-    for (;;) {
+    const baseKey = req.requestKey ?? newRequestKey();
+    for (let n = 0; ; n++) {
       const dialect = rungs[i];
-      const res = await request(adapter.build(preset, cfg, req, dialect), req.signal, req.timeoutMs ?? COMPLETION_TIMEOUT_MS);
+      const res = await request(adapter.build(preset, cfg, { ...req, requestKey: keyFor(baseKey, n) }, dialect), req.signal, timeoutFor(req));
       if (res.status < 200 || res.status >= 300) {
         if (isSchemaRejection(provider, res.status, res.body) && i < rungs.length - 1) {
           i++;
@@ -143,9 +157,10 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     const started = http.now();
     const rungs = adapter.rungs(preset);
     let i = Math.max(0, rungs.indexOf(workingRung.get(cacheKey) ?? rungs[0]));
-    for (;;) {
+    const baseKey = req.requestKey ?? newRequestKey();
+    for (let n = 0; ; n++) {
       const dialect = rungs[i];
-      const wire = adapter.buildStream(preset, cfg, req, dialect);
+      const wire = adapter.buildStream(preset, cfg, { ...req, requestKey: keyFor(baseKey, n) }, dialect);
       let text = '';
       let finish: CompletionResult['finish'] | undefined;
       let usage: CompletionResult['usage'];
@@ -153,7 +168,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
       let settled = false;
       let res: Awaited<ReturnType<typeof sendStream>>;
       try {
-        res = await sendStream(http, { provider, url: wire.url, method: 'POST', headers: wire.headers, body: wire.body, signal: req.signal, timeoutMs: req.timeoutMs ?? COMPLETION_TIMEOUT_MS }, (data) => {
+        res = await sendStream(http, { provider, url: wire.url, method: 'POST', headers: wire.headers, body: wire.body, signal: req.signal, timeoutMs: timeoutFor(req) }, (data) => {
           if (data === '[DONE]' || data === '') return;
           let event: unknown;
           try {

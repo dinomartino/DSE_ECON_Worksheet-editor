@@ -3363,6 +3363,19 @@ with a dummy key or follows a documented shape.
   `windows-native`; Linux would fall back to keyring's mock store and is not shipped). A
   refused prompt is `denied`, a missing keychain or command `unavailable`, anything else
   `failed`; each offers session-only use — never a silent plaintext fallback. Unsigned builds prompt for Keychain access; signed releases don't.
+- **The DSEcon Mentor sign-in** (`ai:mentor`, k-0519/k-0521) is a secret like a key, with three
+  differences. Web: always remembered, but written with `idleMs` (`src/settings/mentorAccount.ts:MENTOR_WEB_IDLE_MS`,
+  14 days), so it is dropped once unread that long (its last use sits beside it in
+  `econgen.secret.ai:mentor.idle`, no key material); "Shared computer" keeps it in `sessionStorage`
+  instead. **Known risk (audit F15):** browser storage is plain text to any script on the editor's
+  origin, so an XSS on the web build could copy the token and spend that account's credits (only
+  the credits: the token reaches nothing else, CONTRACT §1); desktop keeps it in the keychain, with
+  no idle limit. Sign out forgets it on this computer first and only then asks Mentor to revoke it
+  (`/auth/logout`); a revoke Mentor doesn't confirm is shown with a link to the account page's
+  "Econ Studio sign-ins" (F9). Each `/ai/generate` carries an `Idempotency-Key`
+  (`src/ai/client.ts:newRequestKey`), the same on every transport retry, new for each different
+  body; the editor waits `src/ai/http.ts:RELAY_TIMEOUT_MS` (past Mentor's own 300 s) and never
+  retries a timeout, so one request is charged once (F10).
 - **Storage namespace**: `econgen.settings.*` and `econgen.secret.*` sit outside
   `econ-worksheet:`, so documents, the index, backups and "Clear saved documents" never
   touch them (`src/test/secretsNeverLeave.test.ts`). The older per-viewer keys

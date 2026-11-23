@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { Button, Pill } from '@/components/ui';
 import { useMessages, useUiLanguage } from '@/i18n/language';
@@ -11,17 +11,20 @@ import { AI_SECTION_MESSAGES } from './messages';
  * Settings → AI's first card (k-0519): the DSEcon Mentor account. Signed out: what it is and
  * Sign in. Signing in: the link code and Open the page again. Signed in: credits left (and a
  * pause or switch-off), Buy credits, Sign out, and whether AI uses the account or an own key.
- * Props only.
+ * Web (k-0521 F15): a "shared computer" choice before Sign in, and how long the browser keeps
+ * the sign-in. After a sign-out Mentor did not confirm (F9): where to end it. Props only.
  */
 
 export interface MentorCardActions {
-  signIn(): void;
+  signIn(opts: { tabOnly: boolean }): void;
   cancel(): void;
   reopen(url: string): void;
   signOut(): void;
   refresh(): void;
   use(): void;
   buy(url: string): void;
+  /** Mentor's account page (where its Econ Studio sign-ins can be signed out). */
+  openAccount(url: string): void;
   prices(url: string): void;
 }
 
@@ -34,17 +37,22 @@ export function MentorAccountCard({
   state,
   inUse,
   focus,
+  web,
   actions,
 }: {
   state: MentorState;
   /** Settings' provider is the account. */
   inUse: boolean;
   focus?: boolean;
+  /** The web build: where the sign-in is kept in this browser (absent on desktop: the keychain). */
+  web?: { kept: 'browser' | 'tab' | null };
   actions: MentorCardActions;
 }) {
   const m = useMessages(AI_SECTION_MESSAGES);
   const lang = useUiLanguage();
   const ref = useRef<HTMLElement>(null);
+  const tabOnlyId = useId();
+  const [tabOnly, setTabOnly] = useState(false);
   useEffect(() => {
     if (focus) ref.current?.scrollIntoView({ block: 'center' });
   }, [focus]);
@@ -74,8 +82,22 @@ export function MentorAccountCard({
               {localizedErrorMessage(state.error, lang)}
             </p>
           )}
+          {state.revokeFailed && (
+            <div role="alert" data-mentor-revoke-failed className="space-y-1.5 rounded-lg bg-warn-soft px-2.5 py-2">
+              <p className="text-xs text-warn-ink">{m.mentorRevokeFailed}</p>
+              <Button size="sm" onClick={() => actions.openAccount(state.revokeFailed?.accountUrl ?? '')}>
+                {m.mentorOpenAccount}
+              </Button>
+            </div>
+          )}
+          {web && (
+            <label htmlFor={tabOnlyId} className="flex items-center gap-2 text-xs text-ink-muted">
+              <input id={tabOnlyId} type="checkbox" data-mentor-tab-only checked={tabOnly} onChange={(e) => setTabOnly(e.target.checked)} />
+              {m.mentorTabOnly}
+            </label>
+          )}
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="primary" size="md" autoFocus={focus} onClick={actions.signIn}>
+            <Button variant="primary" size="md" autoFocus={focus} onClick={() => actions.signIn({ tabOnly: Boolean(web) && tabOnly })}>
               {m.mentorSignIn}
             </Button>
             <Button variant="subtle" size="md" onClick={() => actions.prices('')}>
@@ -152,6 +174,11 @@ export function MentorAccountCard({
               {m.mentorSignOut}
             </Button>
           </div>
+          {web?.kept && (
+            <p data-mentor-kept={web.kept} className="text-[11px] text-ink-subtle">
+              {web.kept === 'tab' ? m.mentorKeptTab : m.mentorKeptBrowser}
+            </p>
+          )}
           <p className="text-[11px] text-ink-subtle">{m.mentorPrivacy}</p>
         </>
       )}

@@ -109,6 +109,56 @@ describe('secrets on the web', () => {
     expect(peekSecret('ai:gemini')).toBeNull();
   });
 
+  describe('a sign-in kept only while used (idleMs, k-0521 F15)', () => {
+    const TOKEN = 'dsm_test_token_0123456789abcdef';
+    const DAY = 24 * 60 * 60 * 1000;
+    let now = 1_800_000_000_000;
+    beforeEach(() => {
+      now = 1_800_000_000_000;
+      vi.spyOn(Date, 'now').mockImplementation(() => now);
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    it('is forgotten once unused past the limit, by a read or a peek', async () => {
+      await writeSecret('ai:mentor', TOKEN, { remember: true, idleMs: 14 * DAY });
+      expect(JSON.parse(local.data.get('econgen.secret.ai:mentor.idle') ?? '')).toEqual({ seen: now, idleMs: 14 * DAY });
+      now += 14 * DAY - 1;
+      expect(peekSecret('ai:mentor')).toEqual({ store: 'browser', last4: 'cdef' });
+      now += 2;
+      expect(peekSecret('ai:mentor')).toBeNull();
+      expect(local.data.size).toBe(0);
+      expect(await readSecret('ai:mentor')).toEqual({ ok: true, value: null, store: null });
+    });
+
+    it('each use moves the limit on (at most hourly); a peek does not', async () => {
+      await writeSecret('ai:mentor', TOKEN, { remember: true, idleMs: 14 * DAY });
+      now += 10 * DAY;
+      peekSecret('ai:mentor');
+      expect(JSON.parse(local.data.get('econgen.secret.ai:mentor.idle') ?? '').seen).toBe(now - 10 * DAY);
+      expect((await readSecret('ai:mentor')).ok).toBe(true);
+      expect(JSON.parse(local.data.get('econgen.secret.ai:mentor.idle') ?? '').seen).toBe(now);
+      now += 10 * DAY;
+      expect(await readSecret('ai:mentor')).toEqual({ ok: true, value: TOKEN, store: 'browser' });
+    });
+
+    it('sign-out removes both halves; own keys never get a limit', async () => {
+      await writeSecret('ai:mentor', TOKEN, { remember: true, idleMs: 14 * DAY });
+      await deleteSecret('ai:mentor');
+      expect(local.data.size + session.data.size).toBe(0);
+      await writeSecret('ai:gemini', KEY, { remember: true });
+      expect([...local.data.keys()]).toEqual(['econgen.secret.ai:gemini']);
+      now += 365 * DAY;
+      expect(await readSecret('ai:gemini')).toEqual({ ok: true, value: KEY, store: 'browser' });
+    });
+
+    it('this tab only: sessionStorage, nothing in localStorage', async () => {
+      await writeSecret('ai:mentor', TOKEN, { remember: true, idleMs: 14 * DAY });
+      expect(await writeSecret('ai:mentor', TOKEN, { remember: false })).toEqual({ ok: true, store: 'session' });
+      expect(local.data.size).toBe(0);
+      expect(session.data.get('econgen.secret.ai:mentor')).toBe(TOKEN);
+    });
+  });
+
   it('peeks the store and the last 4 characters, never the value', async () => {
     await writeSecret('ai:gemini', `  ${KEY}\n`, { remember: true });
     const peek = peekSecret('ai:gemini');
