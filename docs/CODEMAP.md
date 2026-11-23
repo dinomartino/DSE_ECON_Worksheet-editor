@@ -648,6 +648,21 @@ Invariants:
 - The trial's record holds the AI's drafts, their checks and the teacher's marks, never an example's words (`RequestSummary` counts them) and never a paper.
 - No file here reads `src/coverage/` words or edits `src/syllabus/`.
 
+## diagramGen — AI-made diagrams for generated questions (k-0515; engine only, no UI yet)
+
+The model returns a small semantic spec, never coordinates; `compile.ts` builds it with the template kit into an ordinary anchored `Diagram`, so a teacher edits it like one they drew. Pure over injected deps; at most two requests (one repair turn when a check fails). Entry: `src/diagramGen/index.ts` (the call the studio engine makes, documented there).
+
+- `src/diagramGen/types.ts:DiagramSpec` (kinds `none` / `curves` / `chart` / `template`, `placement` question or answer) · `:DiagramGenInput` (question + key + optional `reference`: an editor diagram, a picture, or words) · `:DiagramGenDeps` (`completeWithImages` sends a picture when the provider layer can) · `:DiagramGenOutcome`
+- `src/diagramGen/schema.ts:DIAGRAM_SPEC_SCHEMA` (every key required, strict-mode safe) · `:parseSpec` (never throws; a bad enum is a `look`)
+- `src/diagramGen/compile.ts:compileSpec` — curves by role and slope, `shift` copies with following arrows, anchored equilibria, price lines, shortage/surplus brackets, Shade-menu presets and revenue areas, frontiers, data charts, editor templates
+- `src/diagramGen/validate.ts:checkDiagram` (axes titled, curves named and distinct, a gap's word matches Qd vs Qs, a ceiling/floor that binds) · `:checkAgainstKey` — `:keyClaims` (English and 中文 "demand increases", "S shifts upward", "需求減少") against `:diagramChanges` (read from labels and geometry, so templates are covered); opposite = error
+- `src/diagramGen/prompt.ts:buildDiagramRequest` (the template and Shade menus are derived from the registries) · `:buildRepairRequest`; `src/diagramGen/describe.ts:describeDiagram` (a reference figure in words)
+- `src/diagramGen/run.ts:generateDiagram` · `:evaluateReply` · `:blockOf`; cases `src/diagramGen/fixtures.ts:CASES`; samples `scripts/diagram-gen-samples.mjs` (PNG + contact sheet)
+
+Invariants:
+- Never `failed` into a paper: a diagram with an error issue comes back with `block: null`.
+- No file here imports `src/generate/`, `src/questionStudio/`, `src/import*/`, `src/coverage/` or `src/syllabus/`.
+
 ## import — Import from Word or PDF (D1), the engine
 
 `docs/design/paste-import.md` (§ 10 As built). Pure: no React, no store, no DOM (the PDF reader's optional figure crops aside).

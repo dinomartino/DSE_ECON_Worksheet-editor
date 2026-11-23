@@ -1,0 +1,196 @@
+import type { JsonSchema } from '@/ai/types';
+import {
+  CURVE_ROLES,
+  DIRECTIONS,
+  LEVEL_KINDS,
+  PLACES,
+  SIZES,
+  SLOPES,
+  SPEC_KINDS,
+  type DiagramIssue,
+  type DiagramSpec,
+  type SpecText,
+} from './types';
+
+/**
+ * The reply's shape. Every property required and no unions, so it fits OpenAI strict mode,
+ * Anthropic's and Gemini's subsets (as `ai/schema.ts:ITEMS_SCHEMA`). Enums are fine there
+ * (`importCheck/ai.ts` uses them); everything is still re-checked by `parseSpec`.
+ */
+const TEXT: JsonSchema = {
+  type: 'object',
+  properties: { en: { type: 'string' }, zh: { type: 'string' } },
+  required: ['en', 'zh'],
+  additionalProperties: false,
+};
+const str = { type: 'string' } as const;
+const obj = (properties: Record<string, unknown>): JsonSchema => ({
+  type: 'object',
+  properties,
+  required: Object.keys(properties),
+  additionalProperties: false,
+});
+const list = (items: JsonSchema): JsonSchema => ({ type: 'array', items });
+
+export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
+  kind: { type: 'string', enum: [...SPEC_KINDS] },
+  reason: str,
+  placement: { type: 'string', enum: ['question', 'answer'] },
+  template: str,
+  title: TEXT,
+  xAxis: TEXT,
+  yAxis: TEXT,
+  curves: list(
+    obj({
+      id: str,
+      role: { type: 'string', enum: [...CURVE_ROLES] },
+      slope: { type: 'string', enum: [...SLOPES] },
+      place: { type: 'string', enum: [...PLACES] },
+      label: str,
+    }),
+  ),
+  shifts: list(
+    obj({
+      of: str,
+      id: str,
+      direction: { type: 'string', enum: [...DIRECTIONS] },
+      size: { type: 'string', enum: [...SIZES] },
+      label: str,
+    }),
+  ),
+  levels: list(
+    obj({
+      id: str,
+      kind: { type: 'string', enum: [...LEVEL_KINDS] },
+      side: { type: 'string', enum: ['below', 'above'] },
+      label: str,
+    }),
+  ),
+  equilibria: list(obj({ a: str, b: str, name: str, yTick: str, xTick: str })),
+  gaps: list(obj({ level: str, label: TEXT })),
+  shades: list(obj({ preset: str, label: TEXT })),
+  marks: list(obj({ of: str, where: { type: 'string', enum: ['inside', 'on', 'outside'] }, label: str })),
+  changeArrows: { type: 'boolean' },
+  chart: obj({
+    type: { type: 'string', enum: ['bar', 'line'] },
+    categories: list(TEXT),
+    series: list(obj({ label: TEXT, values: list({ type: 'number' }) })),
+    yTitle: TEXT,
+    xTitle: TEXT,
+  }),
+});
+
+/** For the rungs that do not enforce the schema (json_object, prompt). */
+export const DIAGRAM_SHAPE_HINT =
+  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, equilibria, gaps, shades, marks, changeArrows, chart (see the shape described above). Every key is always present; use "" or [] for unused ones.';
+
+const EMPTY_TEXT: SpecText = { en: '', zh: '' };
+
+export function emptySpec(kind: DiagramSpec['kind'] = 'none'): DiagramSpec {
+  return {
+    kind,
+    reason: '',
+    placement: 'question',
+    template: '',
+    title: { ...EMPTY_TEXT },
+    xAxis: { ...EMPTY_TEXT },
+    yAxis: { ...EMPTY_TEXT },
+    curves: [],
+    shifts: [],
+    levels: [],
+    equilibria: [],
+    gaps: [],
+    shades: [],
+    marks: [],
+    changeArrows: false,
+    chart: { type: 'bar', categories: [], series: [], yTitle: { ...EMPTY_TEXT }, xTitle: { ...EMPTY_TEXT } },
+  };
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+const s = (v: unknown): string => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
+const text = (v: unknown): SpecText => (isRecord(v) ? { en: s(v.en), zh: s(v.zh) } : typeof v === 'string' ? { en: v, zh: '' } : { ...EMPTY_TEXT });
+const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+/**
+ * The model's reply → a spec, never throwing. Takes the outermost braces (a ```json fence
+ * falls away). An unknown enum value is replaced by the default and reported, so one slip
+ * costs a `look`, not the diagram. null when the reply is not a JSON object.
+ */
+export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIssue[] } | null {
+  const start = reply.indexOf('{');
+  const end = reply.lastIndexOf('}');
+  if (start === -1 || end <= start) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(reply.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+  if (!isRecord(raw)) return null;
+  const issues: DiagramIssue[] = [];
+  const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T, where: string): T => {
+    if (typeof v === 'string' && (allowed as readonly string[]).includes(v)) return v as T;
+    if (v !== undefined && v !== '') issues.push({ level: 'look', code: 'spec.value', text: `${where}: "${s(v)}" is not one of ${allowed.join(', ')}; used ${fallback}.` });
+    return fallback;
+  };
+  const spec = emptySpec(pick(raw.kind, SPEC_KINDS, 'none', 'kind'));
+  spec.reason = s(raw.reason);
+  spec.placement = pick(raw.placement, ['question', 'answer'] as const, 'question', 'placement');
+  spec.template = s(raw.template).trim();
+  spec.title = text(raw.title);
+  spec.xAxis = text(raw.xAxis);
+  spec.yAxis = text(raw.yAxis);
+  spec.curves = arr(raw.curves).filter(isRecord).map((c, i) => ({
+    id: s(c.id).trim() || `c${i + 1}`,
+    role: pick(c.role, CURVE_ROLES, 'demand', `curve ${s(c.id)} role`),
+    slope: pick(c.slope, SLOPES, 'normal', `curve ${s(c.id)} slope`),
+    place: pick(c.place, PLACES, 'mid', `curve ${s(c.id)} place`),
+    label: s(c.label),
+  }));
+  spec.shifts = arr(raw.shifts).filter(isRecord).map((c, i) => ({
+    of: s(c.of).trim(),
+    id: s(c.id).trim() || `shift${i + 1}`,
+    direction: pick(c.direction, DIRECTIONS, 'right', `shift ${s(c.id)} direction`),
+    size: pick(c.size, SIZES, 'normal', `shift ${s(c.id)} size`),
+    label: s(c.label),
+  }));
+  spec.levels = arr(raw.levels).filter(isRecord).map((c, i) => ({
+    id: s(c.id).trim() || `level${i + 1}`,
+    kind: pick(c.kind, LEVEL_KINDS, 'fixed', `level ${s(c.id)} kind`),
+    side: pick(c.side, ['below', 'above'] as const, 'below', `level ${s(c.id)} side`),
+    label: s(c.label),
+  }));
+  spec.equilibria = arr(raw.equilibria).filter(isRecord).map((c) => ({
+    a: s(c.a).trim(),
+    b: s(c.b).trim(),
+    name: s(c.name),
+    yTick: s(c.yTick),
+    xTick: s(c.xTick),
+  }));
+  spec.gaps = arr(raw.gaps).filter(isRecord).map((c) => ({ level: s(c.level).trim(), label: text(c.label) }));
+  spec.shades = arr(raw.shades).filter(isRecord).map((c) => ({ preset: s(c.preset).trim(), label: text(c.label) }));
+  spec.marks = arr(raw.marks).filter(isRecord).map((c) => ({
+    of: s(c.of).trim(),
+    where: pick(c.where, ['inside', 'on', 'outside'] as const, 'on', `mark ${s(c.label)} where`),
+    label: s(c.label),
+  }));
+  spec.changeArrows = raw.changeArrows === true;
+  if (isRecord(raw.chart)) {
+    const c = raw.chart;
+    spec.chart = {
+      type: pick(c.type, ['bar', 'line'] as const, 'bar', 'chart type'),
+      categories: arr(c.categories).map(text),
+      series: arr(c.series).filter(isRecord).map((x) => ({
+        label: text(x.label),
+        values: arr(x.values).map((v) => (typeof v === 'number' ? v : Number(v))),
+      })),
+      yTitle: text(c.yTitle),
+      xTitle: text(c.xTitle),
+    };
+  }
+  return { spec, issues };
+}
