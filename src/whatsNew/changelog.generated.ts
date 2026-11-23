@@ -15,6 +15,8 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Gemini 4 Hydrogen to choose from.** In Settings → AI, Google Gemini and OpenRouter now offer Gemini 4 Hydrogen, Google's fast, low-cost Gemini 4 model. The default is unchanged. It has not been tried with a real key yet.
+  <!-- zh: **新增 Gemini 4 Hydrogen 模型選擇。** 在「設定 → AI」，Google Gemini 和 OpenRouter 新增 Gemini 4 Hydrogen（Google 速度快、成本低的 Gemini 4 模型）。預設模型不變。尚未以真實金鑰試用。 -->
 - **Newer AI models to choose from.** In Settings → AI, Qwen now offers Qwen 3.7 Plus and Qwen 4 Max
   (replacing Qwen 3.8 Max), OpenAI offers GPT-6.1 Terra and GPT-6.2 Sol (replacing GPT-6 Sol), Anthropic offers
   Claude Sonnet 5.5 and Claude Haiku 5.5, and OpenRouter adds Gemini 3.8 Flash, DeepSeek V4.1 Flash,
