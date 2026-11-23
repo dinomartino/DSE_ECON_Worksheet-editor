@@ -90,6 +90,7 @@ export function buildRequest(
     schema: COVERAGE_SCHEMA,
     shapeHint: SHAPE_HINT,
     maxOutputTokens: Math.min(preset.outputCap, 1024 + 300 * units + thinking),
+    feature: 'coverage',
     signal,
   };
 }

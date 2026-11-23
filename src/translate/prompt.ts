@@ -99,6 +99,7 @@ export function buildRequest(
     turns: [...fewShotTurns(chunk.direction), { role: 'user', content: JSON.stringify(payload) }],
     schema: ITEMS_SCHEMA,
     maxOutputTokens: maxOutputTokens(chars, chunk.direction, preset),
+    feature: 'translate',
     signal,
   };
 }

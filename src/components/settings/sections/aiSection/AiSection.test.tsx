@@ -1,3 +1,5 @@
+import type { MentorState } from '@/settings/mentorAccount';
+import type { MentorCardActions } from './MentorAccountCard';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -29,13 +31,15 @@ function view(
   env = web,
   platform: 'mac' | 'windows' | 'web' = 'web',
   keys: SavedKeyRow[] = [],
+  mentor: MentorState = { kind: 'signedOut' },
 ) {
   const s = { ...AI_SETTINGS.defaults(env), ...settings };
   const state = { ...initialAiSetup(s, env, undefined, () => null), ...patch };
   return renderToStaticMarkup(
-    createElement(AiSectionView, { env, state, settings: s, keys, configured: false, listed: null, platform, actions }),
+    createElement(AiSectionView, { env, state, settings: s, keys, configured: false, listed: null, platform, actions, mentor, mentorActions }),
   );
 }
+const mentorActions = new Proxy({}, { get: () => () => undefined }) as MentorCardActions;
 
 /** The markup of one "Your keys" row. */
 const keyRowOf = (html: string, id: string) => html.split(`data-key-row="${id}"`)[1]?.split('</li>')[0] ?? '';

@@ -135,6 +135,7 @@ export function buildRequest(
     schema: ANSWERS_SCHEMA,
     shapeHint: ANSWERS_SHAPE_HINT,
     maxOutputTokens: maxOutputTokens(plan, chunk.targetKeys, preset),
+    feature: 'answers',
     signal,
   };
 }

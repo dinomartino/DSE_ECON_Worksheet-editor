@@ -23,6 +23,55 @@ export const AI_SECTION_MESSAGES = defineMessages({
   trialOff: { en: 'Turn the trial off', zh: '關閉試用' },
   privacyAndTerms: { en: 'Privacy and terminology', zh: '私隱與用詞' },
 
+  // The DSEcon Mentor account (k-0519): AI without a key, paid by credits.
+  mentorTitle: { en: 'DSEcon Mentor account', zh: 'DSEcon Mentor 帳戶' },
+  mentorBlurb: {
+    en: 'Use AI without an API key. Sign in, then pay only for what you use. New accounts get free trial credits.',
+    zh: '毋須 API key 即可使用 AI。登入後按用量付費。新帳戶可獲免費試用點數。',
+  },
+  mentorSignIn: { en: 'Sign in with DSEcon Mentor', zh: '以 DSEcon Mentor 登入' },
+  mentorPrices: { en: 'Prices', zh: '收費' },
+  mentorStarting: { en: 'Opening DSEcon Mentor…', zh: '正在開啟 DSEcon Mentor…' },
+  mentorWaiting: {
+    en: (code: string) => `In your browser, check that the code is ${code}, then press Allow. This updates by itself.`,
+    zh: (code: string) => `請在瀏覽器確認代碼是 ${code}，然後按「允許」。這裏會自動更新。`,
+  },
+  mentorOpenAgain: { en: 'Open the page again', zh: '再次開啟頁面' },
+  mentorDenied: { en: 'Sign-in was not allowed.', zh: '登入未獲允許。' },
+  mentorExpired: { en: 'The sign-in code expired. Sign in again.', zh: '登入代碼已過期，請重新登入。' },
+  mentorKeychain: {
+    en: "Couldn't keep the sign-in on this computer. Sign in again.",
+    zh: '未能在這部電腦保存登入資料，請重新登入。',
+  },
+  mentorSignedIn: { en: 'Signed in', zh: '已登入' },
+  mentorCredits: {
+    en: (n: string) => `${n} credits left`,
+    zh: (n: string) => `尚餘 ${n} 點`,
+  },
+  mentorPaused: {
+    en: "DSEcon Mentor's AI is paused for today (a safety stop). It is back after midnight; until then, use your own key.",
+    zh: 'DSEcon Mentor 的 AI 今日已暫停（安全上限），午夜後恢復；在此之前，請改用你自己的 API key。',
+  },
+  mentorOff: {
+    en: "DSEcon Mentor's AI is switched off at the moment. Use your own key.",
+    zh: 'DSEcon Mentor 的 AI 現已關閉。請改用你自己的 API key。',
+  },
+  mentorChecking: { en: 'Checking your credits…', zh: '正在查詢點數…' },
+  mentorRefresh: { en: 'Refresh', zh: '重新整理' },
+  mentorBuy: { en: 'Buy credits', zh: '購買點數' },
+  mentorSignOut: { en: 'Sign out', zh: '登出' },
+  mentorInUse: {
+    en: 'AI uses your DSEcon Mentor account (Gemini 4 Hydrogen). No VPN needed.',
+    zh: 'AI 正使用你的 DSEcon Mentor 帳戶（Gemini 4 Hydrogen），毋須 VPN。',
+  },
+  mentorNotInUse: { en: 'AI uses your own key now.', zh: '現時 AI 使用你自己的 API key。' },
+  mentorUse: { en: 'Use my DSEcon Mentor account', zh: '改用 DSEcon Mentor 帳戶' },
+  mentorPrivacy: {
+    en: "Your text goes to DSEcon Mentor's server and on to Google Gemini. Mentor keeps only a usage record (when, which feature, cost), never your text.",
+    zh: '你的文字會傳送到 DSEcon Mentor 的伺服器，再轉交 Google Gemini。Mentor 只保留使用紀錄（時間、功能、費用），不會保留你的文字。',
+  },
+  ownKeyAdvanced: { en: 'Advanced: use your own API key', zh: '進階：使用自己的 API key' },
+
   yourKeys: { en: 'Your keys', zh: '你的 API key' },
   savedCount: { en: (n: number) => `${n} saved`, zh: (n: number) => `已儲存 ${n} 個` },
   forgetAllAsk: { en: 'Forget every AI key saved here?', zh: '要移除這裏儲存的所有 AI key 嗎？' },

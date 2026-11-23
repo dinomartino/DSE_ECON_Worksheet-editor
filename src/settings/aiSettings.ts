@@ -77,6 +77,8 @@ export type AiConfigResult =
 /** The model and base URL in effect for `provider`: the saved choice, else the preset's. */
 export function providerChoice(settings: AiSettings, provider: ProviderId): { model: string; baseUrl: string } {
   const preset = presetFor(provider);
+  // The hosted relay runs one model (k-0519); a stored choice never overrides it.
+  if (preset.group === 'hosted') return { model: preset.models[0]?.id ?? '', baseUrl: settings.baseUrls[provider] ?? preset.baseUrl };
   return {
     model: settings.models[provider] ?? preset.models[0]?.id ?? '',
     baseUrl: settings.baseUrls[provider] ?? preset.baseUrl,

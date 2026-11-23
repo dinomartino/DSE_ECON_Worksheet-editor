@@ -1,3 +1,4 @@
+import { importCheckJob } from '@/ai/credits';
 import { prepareImportImage, readPaperFile } from '@/components/import/fileImport';
 import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { copyMessages } from '@/components/translate/text';
@@ -16,7 +17,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { createRunDeps } from '@/translate/deps';
 import { registerVerb } from '../registry';
 import type { AiVerb, FindingsRefresh, ReviewItem, VerbContext, VerbOutcome } from '../types';
-import { commitUndo } from './translateShared';
+import { commitUndo, paperText } from './translateShared';
 
 /**
  * ✦ AI → Check import (k-0494, user u-t17b): the open paper against the file it was
@@ -147,6 +148,12 @@ export const importCheckVerb: AiVerb = {
   sendsLine: (ctx, providerLabel) => {
     const m = checkMessages(uiLanguage());
     return importSourceFor(ctx.worksheet.id) ? m.sendsImport(ctx.worksheet.questions.length, providerLabel) : m.noSourceYet;
+  },
+  estimate(ctx) {
+    if (!importSourceFor(ctx.worksheet.id)) return null;
+    const ids = scopeIds(ctx.scope);
+    const count = ids ? ids.size : ctx.worksheet.questions.length;
+    return importCheckJob(count, paperText(ctx.worksheet, ids));
   },
 
   async run(ctx, io): Promise<VerbOutcome> {

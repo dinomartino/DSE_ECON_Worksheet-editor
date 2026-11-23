@@ -1,3 +1,4 @@
+import { questionsJob } from '@/ai/credits';
 import { aiErrorInfo } from '@/ai/errors';
 import type { AiErrorInfo } from '@/ai/types';
 import { planAnswers } from '@/answers/plan';
@@ -7,6 +8,7 @@ import { editTargetKey } from '@/model/edits';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { createRunDeps } from '@/translate/deps';
 import { assistMessages } from '../text';
+import { paperText } from './translateShared';
 import { registerVerb } from '../registry';
 import type { AiVerb, ReviewItem, VerbContext, VerbOutcome } from '../types';
 
@@ -73,6 +75,10 @@ export function makeWriteAnswersVerb(deps: () => Promise<AnswerDepsResult> = ans
     },
     sendsLine(ctx, providerLabel) {
       return assistMessages().sendsParts(plan(ctx).targets.size, providerLabel);
+    },
+    estimate(ctx) {
+      const parts = plan(ctx).targets.size;
+      return parts ? questionsJob(parts, paperText(ctx.worksheet), 450) : null;
     },
     async run(ctx, io): Promise<VerbOutcome> {
       const answers = plan(ctx);
