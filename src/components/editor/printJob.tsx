@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { CoverageReportSheets, reportPageBox } from '@/components/ai/CoverageReportSheets';
+import type { ReportLanguage } from '@/coverage/language';
 import type { CoverageResult } from '@/coverage/result';
 import { Preview } from '@/components/preview/Preview';
 import { SetKeyPreview } from '@/components/preview/SetKeyPreview';
@@ -24,8 +25,9 @@ import { PRINT_JOB_MESSAGES } from './printJob.messages';
 export type PrintJob =
   | { kind: 'paper'; worksheet: Worksheet; mode: OutputMode; label: string }
   | { kind: 'setKey'; worksheets: Worksheet[]; language: LanguageMode; label: string }
-  /** The syllabus coverage report (k-0489): its own sheets, portrait, the paper's page size. */
-  | { kind: 'coverage'; coverage: CoverageResult; label: string };
+  /** The syllabus coverage report (k-0489): its own sheets, portrait, the paper's page size;
+   *  `text` is the language of its own words (k-0503), the paper's when absent. */
+  | { kind: 'coverage'; coverage: CoverageResult; label: string; text?: ReportLanguage };
 
 export const usePrintJob = create<{ job?: PrintJob; setJob: (job?: PrintJob) => void }>((set) => ({
   setJob: (job) => set({ job }),
@@ -55,7 +57,7 @@ export function PrintJobView({ job }: { job: PrintJob }) {
       {job.kind === 'paper' ? (
         <Preview worksheet={job.worksheet} mode={pdfPrintMode(job.mode)} />
       ) : job.kind === 'coverage' ? (
-        <CoverageReportSheets coverage={job.coverage} />
+        <CoverageReportSheets coverage={job.coverage} text={job.text} />
       ) : (
         <SetKeyPreview worksheets={job.worksheets} language={job.language} zoomControl={false} />
       )}
