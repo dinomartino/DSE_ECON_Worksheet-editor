@@ -53,6 +53,35 @@ describe('the pick request', () => {
   });
 });
 
+describe('bilingual reason and the chat\'s current key point (k-0520)', () => {
+  it('reads the Chinese reason, or leaves it empty when the reply has none', () => {
+    const both = JSON.stringify({ picks: [{ code: 'C.ped', reason: 'It tests elasticity.', reasonZh: '考核需求價格彈性。' }, { code: 'C.law-of-demand', reason: 'x' }] });
+    expect(parsePicks(both)).toEqual([
+      { code: 'C.ped', reason: 'It tests elasticity.', reasonZh: '考核需求價格彈性。' },
+      { code: 'C.law-of-demand', reason: 'x', reasonZh: '' },
+    ]);
+  });
+  it('the schema asks for both reasons', () => {
+    const req = buildPickRequest({ text: 'x', examples: [] }, gemini, signal);
+    expect(JSON.stringify(req.schema)).toContain('reasonZh');
+    expect(req.system).toContain('reasonZh');
+  });
+  it('sends the current key points (real ones only, at most two) and nothing when there are none', () => {
+    const user = (current?: string[]) => JSON.parse(buildPickRequest({ text: 'the same in Chinese', examples: [], current }, gemini, signal).turns.at(-1)!.content);
+    expect(user().currentKeyPoints).toBeUndefined();
+    expect(user(['nonsense']).currentKeyPoints).toBeUndefined();
+    const sent = user(['C.ped', 'C.ped#arc', 'C.law-of-demand', 'C.ped']).currentKeyPoints;
+    expect(sent.map((k: { code: string }) => k.code)).toEqual(['C.ped', 'C.law-of-demand']);
+    expect(sent[0]).toMatchObject({ en: expect.any(String), zh: expect.any(String) });
+    expect(PICK_SYSTEM_PROMPT).toContain('currentKeyPoints');
+  });
+  it('pickKeyPoints passes the current key points to the request', async () => {
+    const client = scriptedClient([pickReply('C.ped')]);
+    await pickKeyPoints({ text: 'same in Chinese', examples: [], current: ['C.ped'] }, { client, preset: gemini }, signal);
+    expect(JSON.parse(client.requests[0].turns.at(-1)!.content).currentKeyPoints[0].code).toBe('C.ped');
+  });
+});
+
 describe('pickKeyPoints', () => {
   it('asks once and returns the picks with usage', async () => {
     const client = scriptedClient([pickReply('C.ped')]);

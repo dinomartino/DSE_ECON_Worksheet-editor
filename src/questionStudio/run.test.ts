@@ -46,6 +46,23 @@ const checkOf = (d: StudioDraft, id: string) => d.checks.find((c) => c.id === id
 const [A, B, C, D, E] = INVENTED;
 const write = (...items: Invented[]) => writeReply(items);
 
+describe('writeDrafts: what changed (k-0520)', () => {
+  it('each draft carries the model\'s changes list next to its angle; none when the reply has none', async () => {
+    const withChanges = (item: Invented) => ({ ...replyEntry(item), changes: [{ aspect: 'numbers', note: { en: 'new prices', zh: '新價格' } }, { aspect: 'key', note: { en: 'key is now C', zh: '答案改為 C' } }] });
+    const { deps } = setup([JSON.stringify({ questions: [withChanges(A), replyEntry(B)] }), solver()]);
+    const out = ok(await writeDrafts({ ...REQUEST, count: 2 }, deps, hooks()));
+    expect(out.drafts[0].changes).toEqual([{ aspect: 'numbers', note: { en: 'new prices', zh: '新價格' } }, { aspect: 'key', note: { en: 'key is now C', zh: '答案改為 C' } }]);
+    expect(out.drafts[0].angle).toBe(A.angle);
+    expect(out.drafts[1].changes).toEqual([]);
+  });
+  it('the write request asks for changes in the schema and the rules', async () => {
+    const { client, deps } = setup([write(A, B, C), solver()]);
+    await writeDrafts(REQUEST, deps, hooks());
+    expect(JSON.stringify(client.requests[0].schema)).toContain('changes');
+    expect(client.requests[0].system).toContain('"changes"');
+  });
+});
+
 describe('writeDrafts: the happy path', () => {
   it('writes, checks and solves in two requests', async () => {
     const { client, deps } = setup([write(A, B, C), solver()]);

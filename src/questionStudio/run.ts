@@ -18,8 +18,8 @@ import {
   type WriteJob,
 } from './prompt';
 import { corpusDocOfDraft, corpusDocOfSource, referenceFor } from './source';
-import type { CheckRow, DraftDiagram, Finding, Refinement, Stage, StudioEvent, SolveResult, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from './types';
-import { cleanMcq, localChecks, parseWriteReply, statusOf, type CheckContext } from './validate';
+import type { CheckRow, DraftChange, DraftDiagram, Finding, Refinement, Stage, StudioEvent, SolveResult, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from './types';
+import { cleanMcq, localChecks, parseWriteReply, statusOf, type CheckContext, type RawDraft } from './validate';
 
 /**
  * One click → checked drafts, in at most five requests: write; one rewrite of drafts that
@@ -54,6 +54,7 @@ interface Slot {
   id: string;
   draft: McqDraft;
   angle: string;
+  changes: DraftChange[];
   attempt: 1 | 2;
   checks: CheckRow[];
   solve?: SolveResult;
@@ -149,7 +150,7 @@ export async function writeDrafts(
       // A listener that throws must not take the run down.
     }
   };
-  const draftOf = (s: Slot): StudioDraft => ({ id: s.id, draft: s.draft, angle: s.angle, attempt: s.attempt, checks: s.checks, ...(s.solve ? { solve: s.solve } : {}), ...(s.diagram ? { diagram: s.diagram } : {}), status: statusOf(s.checks) });
+  const draftOf = (s: Slot): StudioDraft => ({ id: s.id, draft: s.draft, angle: s.angle, changes: s.changes, attempt: s.attempt, checks: s.checks, ...(s.solve ? { solve: s.solve } : {}), ...(s.diagram ? { diagram: s.diagram } : {}), status: statusOf(s.checks) });
   const emitDrafts = (all: readonly Slot[]) => all.forEach((s, index) => emit({ type: 'draft', index, draft: draftOf(s) }));
 
   // What a draft must not copy: the examples, and the drafts already on the sheet.
@@ -159,24 +160,24 @@ export async function writeDrafts(
     ...(exempt.length ? [] : brief.request.examples.map(corpusDocOfSource)),
     ...(opts.avoid ?? []).map((d) => corpusDocOfDraft(d.id, d.draft)),
   ];
-  const assess = (raw: McqDraft, angle: string, accepted: readonly CorpusDoc[], attempt: 1 | 2): Slot => {
+  const assess = (raw: McqDraft, angle: string, changes: DraftChange[], accepted: readonly CorpusDoc[], attempt: 1 | 2): Slot => {
     const draft = cleanMcq(raw, sides);
     const ctx: CheckContext = { sides, keyPoint: brief.keyPoint.code, asked: brief.request.shape, glossary: deps.glossary, corpus: deps.corpus, extra: [...baseExtra, ...accepted], exempt };
     const id = newId();
-    return { id, draft, angle, attempt, checks: localChecks(draft, ctx) };
+    return { id, draft, angle, changes, attempt, checks: localChecks(draft, ctx) };
   };
   const hardFailed = (slot: Slot) => slot.checks.some((c) => c.state === 'fail');
   const failingFindings = (slot: Slot) => slot.checks.filter((c) => c.state === 'fail').flatMap((c) => c.findings);
   const acceptedDocs = (slots: readonly Slot[]) => slots.filter((s) => !hardFailed(s)).map((s) => corpusDocOfDraft(s.id, s.draft));
 
   /** Assess a batch in order: each draft is compared with the ones before it. */
-  const assessAll = (raws: ReadonlyArray<{ draft: McqDraft; angle: string }>, attempt: 1 | 2, before: readonly Slot[] = []): Slot[] => {
+  const assessAll = (raws: readonly RawDraft[], attempt: 1 | 2, before: readonly Slot[] = []): Slot[] => {
     const out: Slot[] = [];
-    for (const raw of raws) out.push(assess(raw.draft, raw.angle, [...acceptedDocs(before), ...acceptedDocs(out)], attempt));
+    for (const raw of raws) out.push(assess(raw.draft, raw.angle, raw.changes, [...acceptedDocs(before), ...acceptedDocs(out)], attempt));
     return out;
   };
 
-  const write = async (job: WriteJob, stage: Stage = 'write', slotOf: (k: number) => number = (k) => k): Promise<{ ok: true; drafts: Array<{ draft: McqDraft; angle: string }> } | { ok: false; error: AiErrorInfo }> => {
+  const write = async (job: WriteJob, stage: Stage = 'write', slotOf: (k: number) => number = (k) => k): Promise<{ ok: true; drafts: RawDraft[] } | { ok: false; error: AiErrorInfo }> => {
     step(stage);
     const attempt: 1 | 2 = stage === 'write' ? 1 : 2;
     const request = buildWriteRequest(brief, job, deps.glossary, deps.preset, signal);
@@ -270,7 +271,7 @@ export async function writeDrafts(
       failedAt.forEach((at, k) => {
         const replacement = again.drafts[k];
         if (!replacement) return;
-        const next = assess(replacement.draft, replacement.angle, acceptedDocs(slots.filter((_, j) => j !== at)), 2);
+        const next = assess(replacement.draft, replacement.angle, replacement.changes, acceptedDocs(slots.filter((_, j) => j !== at)), 2);
         // The new draft stands even when it fails too: its own findings are the latest.
         slots[at] = next;
       });
@@ -333,7 +334,7 @@ export async function writeDrafts(
           const replacement = again.drafts[k];
           if (!replacement) return;
           const at = slots.indexOf(s);
-          const next = assess(replacement.draft, replacement.angle, acceptedDocs(slots.filter((_, j) => j !== at)), 2);
+          const next = assess(replacement.draft, replacement.angle, replacement.changes, acceptedDocs(slots.filter((_, j) => j !== at)), 2);
           // A replacement stands only if it passes the hard checks; else the original stays, flagged.
           if (!hardFailed(next)) replaced.push({ at, slot: next });
         });
