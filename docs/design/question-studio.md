@@ -189,7 +189,8 @@ already in Settings, with the same engine, checks and corpus as Write.
   28 key points over the ten compulsory topics, English / 中文 / both, plain and combination,
   easier and harder, ten of them on key points whose items the guide limits, a third on
   arithmetic, four with a Change line, three written like an example. Ordered so any ten in a
-  row are a fair mix. About 90 drafts and about 150 provider requests.
+  row are a fair mix. About 90 drafts and 60 to 150 provider requests (two a brief when every
+  draft passes, up to five when drafts are written again).
 - **The run** (`trialRun.ts`): one Write per brief, in order, on `liveEnv`; each is judged on
   its own (no `avoid` list from the brief before) and none touches the studio's sheet. A run
   survives leaving the tab (`createBriefRunner`), stops on Stop or at the first error (the

@@ -14,8 +14,8 @@ export const STUDIO_TRIAL_MESSAGES = defineMessages({
   // The briefs
   briefsTitle: { en: 'The 30 briefs', zh: '30 個擬定要求' },
   briefsBody: {
-    en: 'Thirty invented requests, each written once with your AI key, so the trial does not depend on what you happen to ask. About 90 drafts and about 150 requests to your provider. With Gemini in Hong Kong, turn the VPN on first.',
-    zh: '30 個自擬的要求，各用你的 AI key 擬題一次，令試用結果不受你偶然的提問所左右。共約 90 份草稿，向服務供應商發出約 150 次請求。在香港使用 Gemini，請先開啟 VPN。',
+    en: 'Thirty invented requests, each written once with your AI key, so the trial does not depend on what you happen to ask. About 90 drafts, and between 60 and 150 requests to your provider (a draft that fails a check is written again). With Gemini in Hong Kong, turn the VPN on first.',
+    zh: '30 個自擬的要求，各用你的 AI key 擬題一次，令試用結果不受你偶然的提問所左右。共約 90 份草稿，向服務供應商發出 60 至 150 次請求（草稿未通過檢查時會重寫）。在香港使用 Gemini，請先開啟 VPN。',
   },
   briefsRun: { en: 'Run the 30 briefs', zh: '執行 30 個要求' },
   briefsRunRest: { en: 'Run the rest', zh: '執行餘下的要求' },
