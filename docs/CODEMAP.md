@@ -583,6 +583,7 @@ through `AppSettingsHost` alone.
 - `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
 - `src/components/settings/SettingsButton.tsx:SettingsButton` — the gear, far right of the start screen's and bank's top row; the editor keeps ⋯ Settings… (no room at 1024); `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
 - `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the AI door's browser run (six groups, Chromium and WebKit; answers / source / quality paused) against a canned provider; nothing sent before a click
+- `scripts/hosted-ai-live.mjs` — the same account against a REAL Mentor dev server (real Gemini, keep runs few): sign in with Allow, credits and packs, one studio send with a reference picture and diagrams, one import check, no credits and the month's limit (through Mentor's test-account helper); screenshots in Outbox/k-0519/live
 - `scripts/hosted-ai-verify.mjs` — the DSEcon Mentor account in a browser (k-0519): setup card Sign in → code → Allow → the verb runs on the account, Settings card and Advanced, the menu's credit line, out of credits, Sign out; Mentor's host answered by a stand-in inside the browser
 - `scripts/bank-ai-verify.mjs` — the bank's ✦ run in Chromium and WebKit (filter, fill into identical copies, Undo all, a 25-question batch with confirm and Stop, Check terms, SetupCard, region error, 1024 and dark layout); `--seed=` adds a teacher's documents
 

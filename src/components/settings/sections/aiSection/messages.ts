@@ -59,6 +59,11 @@ export const AI_SECTION_MESSAGES = defineMessages({
   mentorChecking: { en: 'Checking your credits…', zh: '正在查詢點數…' },
   mentorRefresh: { en: 'Refresh', zh: '重新整理' },
   mentorBuy: { en: 'Buy credits', zh: '購買點數' },
+  mentorPacks: { en: 'Credit packs:', zh: '點數套裝：' },
+  mentorPack: {
+    en: (price: string, credits: string) => `HK$${price} · ${credits} credits`,
+    zh: (price: string, credits: string) => `HK$${price} · ${credits} 點`,
+  },
   mentorSignOut: { en: 'Sign out', zh: '登出' },
   mentorInUse: {
     en: 'AI uses your DSEcon Mentor account (Gemini 4 Hydrogen). No VPN needed.',

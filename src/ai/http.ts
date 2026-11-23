@@ -81,6 +81,11 @@ function parseBody(text: string): unknown {
   }
 }
 
+/** Mentor relay refusals a retry can't change (`Outbox/k-0518/CONTRACT.md` §4–5). */
+const RELAY_FINAL = new Set(['monthly_cap', 'hosted_ai_paused', 'hosted_ai_off']);
+const relayFinal = (body: unknown) =>
+  typeof body === 'object' && body !== null && RELAY_FINAL.has(String((body as { error?: unknown }).error));
+
 const isServerError = (status: number, body: unknown) =>
   status >= 500 || (typeof body === 'object' && JSON.stringify(body ?? '').includes('overloaded_error'));
 
@@ -145,6 +150,8 @@ export async function send(deps: HttpDeps, req: HttpRequest): Promise<HttpRespon
         }
         throw fail(error);
       }
+      // Mentor's month limit, daily pause and switch-off don't lift in seconds: no retry (k-0519).
+      if (req.provider === 'mentor' && relayFinal(body)) return { status, headers, body };
       if (status === 429 && !rateRetried) {
         const wait = retryDelayMs(body, headers) ?? RATE_LIMIT_DEFAULT_MS;
         if (wait <= RATE_LIMIT_MAX_WAIT_MS) {

@@ -2,7 +2,7 @@ import type { HttpDeps } from './types';
 
 /**
  * Test support, never shipped: a stand-in for Mentor's hosted AI (k-0519), answering as
- * `Outbox/k-0518/CONTRACT.md` v0.1 says: link-code sign-in (`/auth/link/start`, `/check`),
+ * `Outbox/k-0518/CONTRACT.md` v1.1 says: link-code sign-in (`/auth/link/start`, `/check`),
  * `GET /ai/credits`, and `POST /ai/generate` (`{ feature, stream, request }` → `{ response,
  * mentor }`, or Gemini's chunks then `event: mentor`). It charges each call from
  * `usageMetadata` at the contract's rates, refuses with 402 when the credits are short and
@@ -81,7 +81,8 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
         model: 'gemini-4-hydrogen',
         rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, ...FAKE_RATES, cachedInputPerMillionTokens: 58.5 },
         estimates: { studioWorksheet: 280, importCheck: 50, translate: 50, answerKey: 80 },
-        packs: [{ id: 'hkd50', priceHkd: 50, credits: 4440 }],
+        extraPct: 10,
+        packs: [{ id: 'hkd50', priceHkd: 50, credits: 4170 }, { id: 'hkd100', priceHkd: 100, credits: 8560 }, { id: 'hkd200', priceHkd: 200, credits: 17350 }],
         buyUrl: 'https://dseconmentor.com/account#ai-credits',
         pricingUrl: 'https://dseconmentor.com/pricing#ai-credits',
       });

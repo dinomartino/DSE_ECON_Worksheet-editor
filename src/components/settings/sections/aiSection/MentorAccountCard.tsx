@@ -129,6 +129,11 @@ export function MentorAccountCard({
             </p>
           )}
           <p className={`text-xs ${inUse ? 'text-ink' : 'text-ink-muted'}`}>{inUse ? m.mentorInUse : m.mentorNotInUse}</p>
+          {state.account?.packs && (
+            <p data-mentor-packs className="text-xs tabular-nums text-ink-muted">
+              {m.mentorPacks} {state.account.packs.map((pack) => m.mentorPack(formatCredits(pack.priceHkd, lang), formatCredits(pack.credits, lang))).join(' / ')}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             {!inUse && (
               <Button variant="primary" size="sm" onClick={actions.use}>
