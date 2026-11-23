@@ -34,8 +34,8 @@ export const STUDIO_TRIAL_MESSAGES = defineMessages({
   // The teacher's own requests
   mineTitle: { en: 'Your own requests', zh: '你自己的要求' },
   mineBody: {
-    en: 'Write as usual on the Write tab. Every Write, Another, Harder, Easier and Change you ask is added here to mark.',
-    zh: '照常在「擬題」分頁擬題。你每次按「擬題」、「再擬一題」、「更難」、「更易」或「修改」，都會加入這裏供你評分。',
+    en: 'Write as usual in the Question studio. Every request, Another, Harder, Easier and change you ask is added here to mark.',
+    zh: '照常在擬題工作室擬題。你每次的要求，以及「再擬一題」、「更難」、「更易」或修改，都會加入這裏供你評分。',
   },
   mineCount: {
     en: (writes: number, changes: number) => `${writes} of your requests so far, and ${changes} changes`,
@@ -54,8 +54,8 @@ export const STUDIO_TRIAL_MESSAGES = defineMessages({
     zh: (shown: number, marked: number, total: number) => `${total} 份中，已評分 ${marked} 份，顯示 ${shown} 份`,
   },
   listEmpty: {
-    en: 'Nothing to read yet. Run the briefs, or write a few questions on the Write tab.',
-    zh: '暫時沒有可閱讀的草稿。請執行擬定要求，或在「擬題」分頁擬幾題。',
+    en: 'Nothing to read yet. Run the briefs, or write a few questions in the Question studio.',
+    zh: '暫時沒有可閱讀的草稿。請執行擬定要求，或在擬題工作室擬幾題。',
   },
   listDone: { en: 'Everything shown is marked.', zh: '顯示的草稿都已評分。' },
   cardBrief: { en: (id: string) => `Brief ${id}`, zh: (id: string) => `要求 ${id}` },

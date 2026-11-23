@@ -1,24 +1,27 @@
-import type { BiDraft } from '@/generate/types';
+import type { AiErrorInfo } from '@/ai/types';
 import { normalizeRequest } from '@/questionStudio/brief';
+import { pickKeyPoints } from '@/questionStudio/pick';
 import { refine as refineDraft, writeDrafts, type RunHooks } from '@/questionStudio/run';
 import type { Refinement, SourceQuestion, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from '@/questionStudio/types';
 import { localPick } from './localPick';
 
+export type { PartialDraft } from '@/questionStudio/partial';
+
 /**
  * The seam between the chat screen (k-0516) and the engine (`src/questionStudio/`, k-0514).
- * The screen calls only this; the engine team owns what sits behind it. Three calls:
+ * The screen calls only this; the engine team owns what sits behind it.
  *
  * - `pick`: step 1 of every request (u-lm1c). The AI picks the EDB key point(s) for what the
- *   teacher typed and/or the reference questions, with a reason each. Today this falls back to
- *   `localPick` (the reference's own tag, or the syllabus names in the typed words) until the
- *   engine's `pickKeyPoints` lands; then `livePick` below swaps to it and nothing else changes.
- * - `write`: step 2. Writes and checks drafts on the picked key point. `hooks.partial`, when the
- *   engine supports it, is called with each draft's words as they stream (u-2ouc: word by word);
- *   until then drafts arrive whole when the run finishes and the screen shows "writing…" cards.
+ *   teacher typed and the reference questions (with their pictures), a reason each
+ *   (`pick.ts:pickKeyPoints`). When it names none, the computer's own pick (`localPick`: the
+ *   reference's bank tag, or syllabus names in the words) fills in, marked as such.
+ * - `write`: step 2, `run.ts:writeDrafts` with `hooks.onEvent`, so the drafts' words stream in
+ *   (u-2ouc: word by word, where the provider streams), then the checked drafts, then each
+ *   draft's AI-made diagram.
  * - `refine`: Another / Harder / Easier / a change in words, on one draft.
  */
 
-/** One key point the AI picked, with its reason (the engine's `KeyPick`, k-0514 `pick.ts`). */
+/** One key point the AI picked, with its reason (the engine's `KeyPick`, plus the computer's own basis when it picked). */
 export interface KeyPick {
   /** A key point code, `C.ped`. */
   code: string;
@@ -32,30 +35,13 @@ export interface PickInput {
   /** What the teacher typed ('' = nothing). */
   text: string;
   examples: readonly SourceQuestion[];
-  /** The key point each picked example's tags name, by example id (the bank knows it). */
+  /** The key point each picked example's tags name, by example id (the bank knows it): the fallback's hint. */
   tagged?: Readonly<Record<string, string>>;
 }
 
-export type PickOutcome = { ok: true; picks: KeyPick[]; usage: Usage; model: string; /** Picked on the computer, not by the AI (the fallback). */ local?: boolean } | { ok: false; error: import('@/ai/types').AiErrorInfo; usage: Usage };
+export type PickOutcome = { ok: true; picks: KeyPick[]; usage: Usage; model: string; /** Picked on the computer, not by the AI. */ local?: boolean } | { ok: false; error: AiErrorInfo; usage: Usage };
 
-/**
- * A draft while it streams: whatever words have arrived so far, in the order they print.
- * `index` is its place in the batch (0-based). The engine calls `partial` as often as it likes;
- * each call carries the whole draft so far, never a delta.
- */
-export interface PartialDraft {
-  index: number;
-  stem: Partial<BiDraft>;
-  statements: Array<Partial<BiDraft>>;
-  options: Array<Partial<BiDraft>>;
-  /** True once the words are complete and the checks are running. */
-  checking?: boolean;
-}
-
-export interface WriteHooks extends RunHooks {
-  /** Streaming (k-0514): each draft's words as they arrive. Optional: an engine without it never calls it. */
-  partial?: (draft: PartialDraft) => void;
-}
+export type WriteHooks = RunHooks;
 
 export interface StudioEngine {
   pick(input: PickInput, deps: StudioDeps, signal: AbortSignal): Promise<PickOutcome>;
@@ -65,14 +51,19 @@ export interface StudioEngine {
 
 const noUsage = (): Usage => ({ requests: 0, input: 0, output: 0, thinking: 0, ms: 0 });
 
-/** Until k-0514's `pickKeyPoints` is on develop: the computer's own pick (no request is made). */
-export async function livePick(input: PickInput): Promise<PickOutcome> {
-  const picks = localPick(input);
-  return { ok: true, picks, usage: noUsage(), model: '', local: true };
+/** The computer's own pick, with no request made (tests; and when the AI names no key point). */
+export async function computerPick(input: PickInput): Promise<PickOutcome> {
+  return { ok: true, picks: localPick(input), usage: noUsage(), model: '', local: true };
 }
 
 export const liveEngine: StudioEngine = {
-  pick: (input) => livePick(input),
+  async pick(input, deps, signal) {
+    const asked = await pickKeyPoints({ text: input.text, examples: input.examples }, deps, signal);
+    if (!asked.ok) return asked;
+    if (asked.picks.length > 0) return { ok: true, picks: asked.picks, usage: asked.usage, model: asked.model };
+    const local = await computerPick(input);
+    return local.ok ? { ...local, usage: asked.usage } : local;
+  },
   write: (request, deps, hooks, avoid) => writeDrafts(normalizeRequest(request), deps, hooks, { avoid }),
   refine: (request, target, refinement, others, deps, hooks) => refineDraft(request, target, refinement, others, deps, hooks),
 };

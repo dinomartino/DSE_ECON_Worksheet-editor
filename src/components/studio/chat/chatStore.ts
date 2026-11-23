@@ -7,7 +7,9 @@ import { sidesOf, withReferences, type Compared, type RunInfo, type StudioEnv } 
 import { MAX_EXAMPLES, type Refinement, type SourceQuestion, type StudioDeps, type StudioDraft, type StudioOutcome, type StudioRequest } from '@/questionStudio/types';
 import type { ChatStorage } from './chatStorage';
 import type { AiTurn, Chat, ChatDraft, ChatRef, ChatSettings, ChangeHow, Note, Step, Turn } from './chatTypes';
-import type { KeyPick, PartialDraft, StudioEngine } from './engine';
+import { applyEvent, emptyLive } from '@/questionStudio/stream';
+import type { LiveState, SourceQuestion as Source, StudioEvent } from '@/questionStudio/types';
+import type { KeyPick, StudioEngine } from './engine';
 
 /**
  * The chat studio's one store (k-0516): every chat, the open one, and the run in progress.
@@ -20,8 +22,10 @@ import type { KeyPick, PartialDraft, StudioEngine } from './engine';
 export interface RunState {
   chatId: string;
   turnId: string;
-  /** Streaming drafts of the running write, by batch index (not saved). */
-  partial: PartialDraft[];
+  /** What the running write has shown so far (streamed words, checked drafts, figures; not saved). */
+  live: LiveState;
+  /** The request the running write asked (the drafts shown while it streams are drawn with it). */
+  request?: StudioRequest;
   /** How many drafts this run writes (the placeholders before words arrive). */
   count: number;
   /** The draft being changed, when one is. */
@@ -116,12 +120,23 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
 
     const pushTurns = (chatId: string, ...turns: Turn[]) => edit(chatId, (c) => ({ ...c, turns: [...c.turns, ...turns] }));
 
+    /** The examples with their pictures read (the engine sends them to a provider that reads pictures). Never throws. */
+    const withPictures = async (examples: readonly Source[]): Promise<Source[]> => {
+      if (!deps.env.figures || examples.length === 0) return [...examples];
+      try {
+        return await deps.env.figures(examples);
+      } catch {
+        return [...examples];
+      }
+    };
+
     const aiTurn = (): AiTurn => ({ id: newId(), role: 'ai', steps: [], notes: [], draftIds: [] });
 
     const requestFor = (chat: Chat, text: string, picks: KeyPick[]): StudioRequest => {
       const mine = chat.refs.filter((r) => r.who === 'you').map((r) => r.source);
       return {
         keyPoint: picks[0]?.code ?? '',
+        ...(picks[1] ? { alsoKeyPoints: [picks[1].code] } : {}),
         points: [],
         examples: mine,
         strict: mine.length > 0,
@@ -164,7 +179,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       if (running()) return;
       const mine = new AbortController();
       controller = mine;
-      set({ run: { chatId, turnId, partial: [], count, ...(target ? { target } : {}) } });
+      set({ run: { chatId, turnId, live: emptyLive(), count, ...(target ? { target } : {}) } });
       try {
         await body(mine.signal);
       } finally {
@@ -181,12 +196,11 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
           setStep(chatId, turnId, { kind: 'check', state: 'run' });
         } else if (stage !== 'references' && !change) setStep(chatId, turnId, { kind: 'write', state: 'run', count, done, total });
       },
-      partial: (draft: PartialDraft) => {
+      onEvent: (event: StudioEvent) => {
         const run = get().run;
         if (!run || run.turnId !== turnId) return;
-        const partial = [...run.partial];
-        partial[draft.index] = draft;
-        set({ run: { ...run, partial } });
+        if (event.type === 'stage' && event.stage === 'diagram') setStep(chatId, turnId, { kind: 'diagram', state: 'run' });
+        set({ run: { ...run, live: applyEvent(run.live, event) } });
       },
     });
 
@@ -211,8 +225,13 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         edit(chatId, (c) => ({ ...c, refs: [...c.refs.filter((r) => r.who === 'you'), ...auto.map((source): ChatRef => ({ source, who: 'ai' }))] }));
       }
       if (signal.aborted) return;
+      // The reference's pictures go with it (read now: they are never saved with the chat).
+      request = { ...request, examples: await withPictures(request.examples) };
+      if (signal.aborted) return;
       const count = request.count;
       setStep(chatId, turnId, { kind: 'write', state: 'run', count });
+      const run = get().run;
+      if (run?.turnId === turnId) set({ run: { ...run, request } });
       const avoid = (get().chats.find((c) => c.id === chatId)?.drafts ?? []).filter((d) => d.state !== 'rejected').map((d) => d.entry.draft);
       let outcome: StudioOutcome;
       try {
@@ -268,7 +287,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         const ready = await resolve(chatId, ai.id, signal);
         if (!ready) return;
         const tagged = Object.fromEntries(mine.filter((r) => r.keyPoint).map((r) => [r.source.id, r.keyPoint as string]));
-        const picked = await deps.engine.pick({ text, examples: mine.map((r) => r.source), tagged }, ready.deps, signal);
+        const picked = await deps.engine.pick({ text, examples: await withPictures(mine.map((r) => r.source)), tagged }, ready.deps, signal);
         if (!picked.ok) {
           failTurn(chatId, ai.id, picked.error);
           return;

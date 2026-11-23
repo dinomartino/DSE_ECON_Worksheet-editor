@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
 import { useMessages } from '@/i18n/language';
 import { createWorksheet } from '@/model/factories';
@@ -92,7 +92,8 @@ export function PaperCanvas({
     />
   );
 
-  const streaming = writing ? <Streaming run={writing} language={chat.settings.language} /> : null;
+  const firstNo = chat.drafts.reduce((max, d) => Math.max(max, d.no), 0) + 1;
+  const streaming = writing ? <Streaming run={writing} language={chat.settings.language} firstNo={firstNo} /> : null;
   const empty = chat.drafts.length === 0 && !writing;
 
   return (
@@ -292,34 +293,52 @@ function ChangedList({ changes }: { changes: readonly Change[] }) {
   );
 }
 
-/** The drafts being written: their words as they arrive (u-2ouc), or a placeholder before the first word. */
-function Streaming({ run, language }: { run: RunState; language: LanguageMode }) {
-  const slots = useMemo(() => Array.from({ length: Math.max(run.count, run.partial.length) }, (_, i) => run.partial[i]), [run]);
+/** The drafts being written: their words as they arrive (u-2ouc), then the checked draft as it prints, then its diagram. */
+function Streaming({ run, language, firstNo }: { run: RunState; language: LanguageMode; firstNo: number }) {
+  const slots = Array.from({ length: Math.max(run.count, run.live.drafts.length) }, (_, i) => run.live.drafts.find((d) => d.index === i));
   return (
     <>
-      {slots.map((p, i) => (
-        <StreamingCard key={i} index={i} partial={p} language={language} />
-      ))}
+      {slots.map((live, i) =>
+        live?.draft && run.request ? (
+          <ChatDraftCard
+            key={i}
+            draft={{ id: `live-${i}`, no: firstNo + i, entry: { draft: live.draft, request: run.request }, older: [], state: 'open', turnId: run.turnId }}
+            language={language}
+            busy
+            working={false}
+            highlight={false}
+            drawing={live.diagram === 'working'}
+            onAccept={() => undefined}
+            onReject={() => undefined}
+            onChange={() => undefined}
+            onAsk={() => undefined}
+            onRestore={() => undefined}
+          />
+        ) : (
+          <StreamingCard key={i} no={firstNo + i} partial={live?.partial} language={language} />
+        ),
+      )}
     </>
   );
 }
 
-function StreamingCard({ index, partial, language }: { index: number; partial?: PartialDraft; language: LanguageMode }) {
+function StreamingCard({ no, partial, language }: { no: number; partial?: PartialDraft; language: LanguageMode }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
   const q = useMessages(QUESTION_STUDIO_MESSAGES);
-  const side = (t?: Partial<{ en: string; zh: string }>) => (t ? (language === 'zh' ? t.zh ?? t.en : t.en ?? t.zh) ?? '' : '');
+  const side = (t?: { en: string; zh: string }) => (t ? (language === 'zh' ? t.zh || t.en : t.en || t.zh) : '');
   const caret = <span aria-hidden className="ml-px inline-block h-[1.05em] w-[6px] animate-pulse rounded-sm bg-accent align-[-2px]" />;
+  const done = partial?.complete ?? false;
   return (
-    <article className="overflow-hidden rounded-xl border border-accent/40 bg-surface shadow-sm ring-2 ring-accent/15" aria-busy data-streaming={index}>
+    <article className="overflow-hidden rounded-xl border border-accent/40 bg-surface shadow-sm ring-2 ring-accent/15" aria-busy data-streaming={no}>
       <header className="flex items-center gap-2 border-b border-line px-3 py-2">
-        <span className="text-[12.5px] font-semibold text-ink">{q.draftN(index + 1)}</span>
-        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-ink">✦ {partial?.checking ? m.checking : m.writing}</span>
+        <span className="text-[12.5px] font-semibold text-ink">{q.draftN(no)}</span>
+        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-ink">✦ {done ? m.checking : m.writing}</span>
       </header>
       {partial ? (
         <div className="bg-white px-6 py-4 font-serif text-[15.5px] leading-snug text-black">
           <p>
             {side(partial.stem)}
-            {!partial.options.length && !partial.checking && caret}
+            {!partial.options.length && !done && caret}
           </p>
           {partial.statements.length > 0 && (
             <ol className="mt-2 space-y-0.5">
@@ -335,7 +354,7 @@ function StreamingCard({ index, partial, language }: { index: number; partial?: 
               {partial.options.map((o, i) => (
                 <li key={i}>
                   {'ABCD'[i]}. {side(o)}
-                  {i === partial.options.length - 1 && !partial.checking && caret}
+                  {i === partial.options.length - 1 && !done && caret}
                 </li>
               ))}
             </ol>

@@ -112,6 +112,10 @@ sums the provider's real counts so the first trial logs them. Model ids in
 
 ## The page (`src/components/studio/`, package 2)
 
+**Replaced by the chat screen (k-0516, § The chat screen below).** This section records the first
+page (form | drafts | checks), whose source, drafts and checks columns are gone; its tray, error
+notice, check rows and "✦ Write like this" entries live on in the new screen.
+
 The start screen's view `studio`, beside the Question bank and the Past paper bank, built
 as the Past paper screen is (header, columns, a tray at the foot):
 
@@ -169,6 +173,62 @@ module with the flag set).
 add the CHANGELOG line below; the page's off button then goes away by itself, and the flag in
 `release.yml` stays, since it is the general "release build" fact. **Captures**: a film or site screenshot taken from a develop build shows the Library row;
 build with `NEXT_PUBLIC_RELEASE_BUILD=1 npm run build` to capture what teachers see.
+
+## The chat screen (k-0516, the k-0513 redesign; user u-6060, u-2ouc, u-lm1c, u-fwvn)
+
+The mockups and research are `Outbox/k-0513/` (README there). The user took all five
+recommendations (u-2ouc): A's layout (chat left, the paper writing itself right) with D's
+one-click start from the bank and C's side-by-side compare in A's look (u-fwvn: C's own
+visuals were ugly); word-by-word streaming; ask before rewriting on a changed key point; chats
+kept on this computer; the Trial kit in Settings → AI. **No topic picker anywhere (u-lm1c).**
+
+- **Screen** `src/components/studio/QuestionStudioScreen.tsx:QuestionStudioScreen`: header (Home,
+  title, Trial, Chats ▾, New chat, Settings); the chat column (380 px) with the welcome (Pick a
+  past-paper question / Describe what you need), the log and the composer; the paper
+  (`chat/PaperCanvas.tsx`) with Paper | Side by side, and the tray (`Tray.tsx`, now fed the
+  accepted drafts by props).
+- **Store** `src/components/studio/chat/chatStore.ts:createChatStore` (app instance
+  `chat/live.ts:useChat`, over the studio's `liveEnv`). A request is steps, stored as codes on the
+  AI's reply (`chatTypes.ts:Step`): read the reference → **pick** (step 1, the AI's
+  `pick.ts:pickKeyPoints`; if it names none, the computer's `chat/localPick.ts`, marked "matched on this
+  computer") → real references when none was picked (`withReferences`) → write (streamed: the
+  engine's `onEvent` folded by `stream.ts:applyEvent` into the run's `live`, never saved) →
+  checks → diagrams. A message after drafts exist changes one draft when it names one ("draft 2
+  …", or the draft chip from "Ask about this"), else it is a new request; a follow-up with no key
+  point of its own keeps the chat's. The pick shows as a step with **Change** (`chat/PickLine.tsx`:
+  the AI's other pick, the same topic's key points, a search); changing it with drafts on the paper
+  asks **Rewrite them / Keep them** (Rewrite replaces the open drafts; accepted ones stay). A
+  change to one draft stays on that draft's key point. Every run reaches the Trial kit's record
+  as the teacher's own (`onRun`).
+- **Drafts** `chat/ChatDraftCard.tsx`: drawn as they print (`PastPaperSheet`, so the AI-made
+  diagram prints with the question), AI-made, status, key; **Accept / Reject** on the head;
+  check chips that open the rows (`CheckLine.tsx`); Another / Harder / Easier / Ask about this;
+  `v2 · v1` with Back to v1 (`restoreVersion`). Drafts are numbered once and never renumbered.
+  While a write runs, each slot shows the words as they arrive, then the checked draft with
+  "drawing the diagram…" until its figure comes; a figure the checks flag shows "Read the diagram"
+  with its issues.
+- **Side by side**: the reference as it prints (with its picture when it was picked from the
+  bank this session; a saved chat keeps only its words) beside each draft, and **What changed
+  from the reference** (`chat/whatChanged.ts`: the AI's own "varies" words, format, numbers, key
+  letter).
+- **Saved chats** `chat/chatStorage.ts`: `localStorage` `econgen.studioChats.v1`, newest first, at
+  most 30; each chat checked on its own when read (a damaged one is skipped, a damaged draft
+  dropped); reference pictures never saved. Chats ▾ lists, opens and deletes them.
+- **Entries**: "✦ Write like this" (`openStudio.ts:writeLikeThis`) opens a fresh chat with the
+  question and starts at once (no form); ＋ Reference and the welcome open
+  `ReferencePicker.tsx` (the bank by topic or year, search, drawn as printed with diagrams, "only
+  with a diagram or table").
+- **Trial kit**: Settings → AI → Question studio trial (`settings/sections/aiSection/TrialKitBlock.tsx`,
+  shown only while the studio is on), opens `TrialView` in its own dialog; "Turn the trial off" is
+  there in a release build.
+- **Seam** `chat/engine.ts:StudioEngine` (`pick`, `write`, `refine`): the only calls the screen makes.
+- **Browser proof** `scripts/studio-chat-verify.mjs` (mock AI with pick and diagram replies, an
+  invented bank with a pictured question): the whole flow, saved chats across a reload, the bank's
+  one-click start, Settings → AI, 中文; screenshots in `Outbox/k-0516/`. The old
+  the studio-verify script (the form's screen, the 30-brief run in the browser) went with that
+  screen; the trial kit's logic keeps its unit tests.
+- Not built yet: editing the AI's diagram inside the studio (once added, it is an ordinary editor
+  diagram); the chat panel inside the worksheet editor (package B, next).
 
 ## The AI-made label (package 3, decision 5)
 
@@ -281,22 +341,23 @@ u-uugw).
 1. **Engine** (done): `src/questionStudio/`, the mock server's studio replies, tests.
 2. **Studio page** (done): the screen, the "Write like this" entries, the form's "what is
    sent" lines, Gemini's VPN note, the near-copy corpus, the trial switch. Browser proof
-   `scripts/studio-verify.mjs` (mock AI, an invented bank).
+   the first page's the studio-verify script (retired with that page by k-0516).
 3. **AI-made label and trial kit** (done): the field, chip, Edit-panel note and Checked,
    `contentKey` and copies, the Paper check warning; the 30 briefs, the run, the record, the
-   marks and the bar. Browser proof `scripts/studio-verify.mjs` (`label`, `trial`).
+   marks and the bar. Browser proof: the retired the studio-verify script (`label`, `trial`).
 
 4. **Shown on develop** (done, u-z4n3): the default is on in a develop build and off in a
    release build; `platform/buildChannel.ts`, the flag in `release.yml`, `trial.ts`, the
-   gate section of `scripts/studio-verify.mjs` (`--release` for a release build's).
+   gate section of the retired the studio-verify script (`--release` for a release build's).
 
 5. **Quality** (done, u-bd41): real references by default, strict reference mode, DSE counts
    in the key point list, the two extra marks and the arms in the trial kit (§ Quality).
 
 Draft CHANGELOG line, to add when the studio ships. It stays out of `CHANGELOG.md` while a
 release hides the studio, because the release body is copied from Unreleased (a feature a
-release hides has none, as `check.syllabus` on main): "Write new multiple-choice questions from the syllabus — Library
-→ Question studio writes drafts on a key point, checks them, and adds the ones you pick."
+release hides has none, as `check.syllabus` on main): "Write new multiple-choice questions with AI — Library
+→ Question studio: pick any past-paper question or say what you need; the AI picks the syllabus key point, writes
+drafts (with diagrams) as you watch, and adds the ones you accept."
 
 ## Engine v2 (k-0514, user u-6060, u-lm1c): the AI picks the key point, pictures go with the reference
 

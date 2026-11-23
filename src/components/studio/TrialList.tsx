@@ -62,7 +62,7 @@ export function TrialList() {
           {shown.length === 0 ? t.listEmpty : t.listDone}
         </p>
       ) : (
-        items.map((item) => <TrialCard key={item.entry.id} item={item} />)
+        items.map((item) => <TrialCard key={`${item.run.id}:${item.entry.id}`} item={item} />)
       )}
     </div>
   );

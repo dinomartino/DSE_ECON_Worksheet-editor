@@ -177,6 +177,10 @@ try {
     await page.locator('[data-step="pick"][data-state="done"]').waitFor();
     await page.waitForTimeout(400);
     await shot(page, 'A2-writing');
+    // The words land on the paper before the checks finish (a custom server sends each draft whole; Gemini and the others word by word).
+    await page.locator('[data-chat-draft]').first().waitFor({ timeout: 40_000 });
+    expect(await page.locator('[data-chat-stop]').isVisible(), 'the drafts only showed once the run had ended');
+    await shot(page, 'A2b-words-arrive');
     const picked = await page.locator('[data-pick]').first().getAttribute('data-pick');
     expect(picked === 'C.ped', `picked ${picked}`);
     await drafts(page).nth(2).waitFor({ timeout: 40_000 });
@@ -255,6 +259,11 @@ try {
     await page.getByText('AI & translation', { exact: true }).first().click();
     await page.locator('[data-studio-trial-block]').waitFor();
     await shot(page, 'A8-settings-trial');
+    await page.locator('[data-studio-trial-block] button', { hasText: 'Open the trial kit' }).click();
+    await page.locator('[data-studio-trial]').first().waitFor();
+    await page.waitForTimeout(2500);
+    await shot(page, 'A8b-trial-kit');
+    await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
   });
 

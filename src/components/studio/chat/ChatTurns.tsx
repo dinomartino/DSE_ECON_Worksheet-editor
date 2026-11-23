@@ -81,6 +81,8 @@ function stepWords(step: Step, m: M): string {
       return step.state === 'run' ? m.stepWriteRun(step.count) : m.stepWriteDone(step.count);
     case 'check':
       return step.state === 'run' ? m.stepCheckRun : m.stepCheckDone;
+    case 'diagram':
+      return step.state === 'run' ? m.stepDiagramRun : m.stepDiagramDone;
     case 'change':
       return step.state === 'run' ? m.stepChangeRun(step.draftNo, step.how) : m.stepChangeDone(step.draftNo, step.how);
     case 'pick':

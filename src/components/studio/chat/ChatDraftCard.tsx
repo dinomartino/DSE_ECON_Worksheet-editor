@@ -33,6 +33,7 @@ export function ChatDraftCard({
   busy,
   working,
   highlight,
+  drawing = false,
   onAccept,
   onReject,
   onChange,
@@ -44,6 +45,8 @@ export function ChatDraftCard({
   busy: boolean;
   working: boolean;
   highlight: boolean;
+  /** The AI is drawing this draft's diagram. */
+  drawing?: boolean;
   onAccept: () => void;
   onReject: () => void;
   onChange: (how: 'harder' | 'easier' | 'another') => void;
@@ -91,10 +94,16 @@ export function ChatDraftCard({
         <Chip tone="ai" title={q.aiMadeTitle}>
           ✦ {q.aiMade}
         </Chip>
+        {drawing && <Chip tone="ai">✦ {m.drawing}</Chip>}
+        {studio.diagram?.status === 'look' && (
+          <span title={studio.diagram.issues.map((i) => i.text).join('\n')}>
+            <Chip tone="look">{m.diagramLook}</Chip>
+          </span>
+        )}
         {failed ? <Chip tone="fail">{m.leftOut}</Chip> : <Chip tone={studio.status === 'look' ? 'look' : 'ok'}>{studio.status === 'look' ? q.statusLook : q.statusOk}</Chip>}
         <span className="flex-1" />
         <span className="shrink-0 rounded-md bg-surface-sunken px-2 py-0.5 text-[11.5px] font-medium text-ink">{q.key(letterOf(studio.draft.answerIndex))}</span>
-        {!failed && !added && (
+        {!failed && !added && !(busy && draft.id.startsWith('live-')) && (
           <>
             <button
               type="button"

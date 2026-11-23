@@ -95,7 +95,6 @@ function TrialDialog({ onClose }: { onClose: () => void }) {
       title={m.trialTitle}
       onClose={onClose}
       size="large"
-      scrollBody={false}
     >
       <Suspense fallback={null}>
         <TrialView />

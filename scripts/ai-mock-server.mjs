@@ -340,7 +340,51 @@ function studioSolveReply(payload) {
   return completion(JSON.stringify({ answers }));
 }
 
+/** The studio's step 1 (k-0514 `pick.ts`): the key point a request is about, with a reason. */
+export function studioPickReply(payload) {
+  const words = `${payload?.request ?? ''} ${JSON.stringify(payload?.examples ?? [])}`;
+  const pick = /unit tax|從量稅|subsid/i.test(payload?.request ?? '')
+    ? { code: 'C.intervention', reason: 'The request asks about a unit tax, a market intervention.' }
+    : /elastic|彈性/i.test(words)
+      ? { code: 'C.ped', reason: 'It asks how the quantity demanded responds to a change in price.' }
+      : { code: 'C.equilibrium', reason: 'It asks how demand and supply set the price.' };
+  return completion(JSON.stringify({ picks: [pick] }));
+}
+
+/** An AI-made diagram for a draft (k-0515 `diagramGen`): a demand curve and a supply curve, demand shifting right. */
+export function studioDiagramReply() {
+  const t = (en, zh) => ({ en, zh });
+  return completion(
+    JSON.stringify({
+      kind: 'curves',
+      reason: 'The question is about demand and price: a demand-supply diagram.',
+      placement: 'question',
+      template: '',
+      title: t('', ''),
+      xAxis: t('Quantity', '數量'),
+      yAxis: t('Price', '價格'),
+      curves: [
+        { id: 'D0', role: 'demand', slope: 'normal', place: 'mid', label: 'D_0' },
+        { id: 'S', role: 'supply', slope: 'normal', place: 'mid', label: 'S' },
+      ],
+      shifts: [{ of: 'D0', id: 'D1', direction: 'right', size: 'normal', label: 'D_1' }],
+      levels: [],
+      equilibria: [
+        { a: 'D0', b: 'S', name: '', yTick: 'P_0', xTick: 'Q_0' },
+        { a: 'D1', b: 'S', name: '', yTick: 'P_1', xTick: 'Q_1' },
+      ],
+      gaps: [],
+      shades: [],
+      marks: [],
+      changeArrows: true,
+      chart: { type: 'bar', categories: [], series: [], yTitle: t('', ''), xTitle: t('', '') },
+    }),
+  );
+}
+
 export function reply(body) {
+  if (systemOf(body).includes('Task: question-studio-pick.')) return studioPickReply(payloadOf(body));
+  if (systemOf(body).includes('You draw diagrams for HKDSE Economics questions')) return studioDiagramReply();
   if (systemOf(body).includes(COVERAGE_MARKER)) return coverageReply(payloadOf(body));
   if (systemOf(body).includes(ANSWERS_MARKER)) return answersReply(payloadOf(body));
   if (systemOf(body).includes(QUALITY_MARKER)) return qualityReply(payloadOf(body));

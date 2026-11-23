@@ -81,6 +81,10 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   stepWriteDone: { en: (n: number) => `Wrote ${n}`, zh: (n: number) => `已擬 ${n} 題` },
   stepCheckRun: { en: 'Checking: solving each again without the key…', zh: '檢查中：不看答案重新作答…' },
   stepCheckDone: { en: 'Checked: solved again without the key', zh: '已檢查：不看答案重新作答' },
+  stepDiagramRun: { en: 'Drawing the diagrams…', zh: '正在繪畫圖表…' },
+  stepDiagramDone: { en: 'Drew the diagrams', zh: '已繪畫圖表' },
+  drawing: { en: 'drawing the diagram…', zh: '正在繪畫圖表…' },
+  diagramLook: { en: 'Read the diagram', zh: '請細閱圖表' },
   stepChangeRun: {
     en: (n: number, how: string) => (how === 'another' ? `Writing another like draft ${n}…` : `Changing draft ${n}…`),
     zh: (n: number, how: string) => (how === 'another' ? `正在仿照草稿 ${n} 再擬一題…` : `正在修改草稿 ${n}…`),

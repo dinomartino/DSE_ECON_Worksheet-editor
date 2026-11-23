@@ -36,6 +36,7 @@ export type Step =
   | { kind: 'refs'; state: StepState; labels: string[] }
   | { kind: 'write'; state: StepState; count: number; done?: number; total?: number }
   | { kind: 'check'; state: StepState }
+  | { kind: 'diagram'; state: StepState }
   | { kind: 'change'; state: StepState; draftNo: number; how: ChangeHow };
 
 export type StepState = 'run' | 'done' | 'fail';

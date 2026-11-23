@@ -9,7 +9,7 @@ import { CHATS_KEY, localChatStorage, readChat } from './chatStorage';
 import { createChatStore } from './chatStore';
 import type { AiTurn, Chat } from './chatTypes';
 import type { PickInput, StudioEngine, WriteHooks } from './engine';
-import { livePick } from './engine';
+import { computerPick } from './engine';
 import { localPick } from './localPick';
 
 const preset = presetFor('gemini');
@@ -31,7 +31,7 @@ function setup(over: { write?: (request: StudioRequest, hooks: WriteHooks) => Pr
   const engine: StudioEngine = {
     pick: async (input) => {
       calls.picks.push(input);
-      return livePick(input);
+      return computerPick(input);
     },
     write: async (request, _deps, hooks) => {
       calls.writes.push(request);
@@ -88,8 +88,8 @@ describe('the chat studio store (k-0516)', () => {
     let seen = 0;
     const { useChat } = setup({
       write: async (request, hooks) => {
-        hooks.partial?.({ index: 0, stem: { en: 'The price of' }, statements: [], options: [] });
-        seen = useChat.getState().run?.partial.length ?? 0;
+        hooks.onEvent?.({ type: 'text', index: 0, attempt: 1, draft: { index: 0, stem: { en: 'The price of', zh: '' }, statements: [], options: [], explanation: { en: '', zh: '' }, angle: '', complete: false } });
+        seen = useChat.getState().run?.live.drafts.length ?? 0;
         return okOutcome([studioDraft('s1')]);
       },
     });
