@@ -144,7 +144,20 @@ const addUsage = (a: Usage, b: Usage): Usage => ({
 
 type Action = () => Promise<void>;
 
-export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMode = 'en'): UseBoundStore<StoreApi<StudioState>> {
+/** What a run that reached the provider asked and got (the trial's record is built from it). */
+export interface RunInfo {
+  kind: 'write' | 'refine';
+  request: StudioRequest;
+  outcome: StudioOutcome;
+  compared: Compared;
+}
+
+export interface SessionHooks {
+  /** After every run that reached the provider, written, changed, failed or stopped. A throw here never breaks the run. */
+  onRun?: (info: RunInfo) => void;
+}
+
+export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMode = 'en', hooks: SessionHooks = {}): UseBoundStore<StoreApi<StudioState>> {
   return create<StudioState>((set, get) => {
     let controller: AbortController | undefined;
     let last: Action | undefined;
@@ -153,6 +166,7 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
 
     /** One run at a time: resolve, call `go`, settle the phase. A throw leaves the sheet idle, never stuck on "Writing". */
     async function run(
+      meta: Pick<RunInfo, 'kind' | 'request'>,
       action: Action,
       go: (deps: StudioDeps, hooks: RunHooks) => Promise<StudioOutcome>,
       apply: (outcome: Extract<StudioOutcome, { ok: true }>) => void,
@@ -176,6 +190,11 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
         }
         const outcome = await go(resolved.deps, { signal: mine.signal, progress: (done, total, stage) => set({ phase: at(done, total, stage) }) });
         set({ usage: addUsage(get().usage, outcome.usage), compared: resolved.compared });
+        try {
+          hooks.onRun?.({ ...meta, outcome, compared: resolved.compared });
+        } catch {
+          // A record that cannot be kept (storage full) must not take the run down with it.
+        }
         if (!outcome.ok) {
           // Stopped before anything was written: nothing to show, and no error.
           set({ phase: outcome.error.kind === 'cancelled' ? { kind: 'idle' } : { kind: 'error', error: outcome.error } });
@@ -222,9 +241,10 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
         const request = normalizeRequest(requestOf(form));
         const action: Action = () => get().write();
         await run(
+          { kind: 'write', request },
           action,
-          (deps, hooks) =>
-            writeDrafts(request, deps, hooks, { avoid: get().entries.filter((e) => e.request.keyPoint === request.keyPoint).map((e) => e.draft) }),
+          (deps, runHooks) =>
+            writeDrafts(request, deps, runHooks, { avoid: get().entries.filter((e) => e.request.keyPoint === request.keyPoint).map((e) => e.draft) }),
           (outcome) => {
             const fresh = outcome.drafts.map((draft): SheetDraft => ({ draft, request }));
             set({ entries: [...fresh, ...get().entries], notes: outcome.notes, ...(fresh[0] ? { focus: fresh[0].draft.id } : {}) });
@@ -237,10 +257,11 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
         if (!entry || running()) return;
         const action: Action = () => get().refine(id, refinement);
         await run(
+          { kind: 'refine', request: entry.request },
           action,
-          (deps, hooks) => {
+          (deps, runHooks) => {
             const others = get().entries.filter((e) => e !== entry && e.request.keyPoint === entry.request.keyPoint).map((e) => e.draft);
-            return refineDraft(entry.request, entry.draft, refinement, others, deps, hooks);
+            return refineDraft(entry.request, entry.draft, refinement, others, deps, runHooks);
           },
           (outcome) => {
             const made = outcome.drafts[0];

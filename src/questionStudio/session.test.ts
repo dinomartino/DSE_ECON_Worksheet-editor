@@ -5,7 +5,7 @@ import { AiError } from '@/ai/types';
 import { scriptedClient } from '@/translate/testKit';
 import { EXAMPLE, INVENTED, solver, writeReply } from './fixtures';
 import { EMPTY_CORPUS } from './nearCopy';
-import { canWrite, createStudioSession, requestOf, sidesOf, type Resolved, type SheetDraft, type StudioEnv } from './session';
+import { canWrite, createStudioSession, requestOf, sidesOf, type Resolved, type RunInfo, type SheetDraft, type StudioEnv } from './session';
 import { MAX_EXAMPLES, type StudioDraft } from './types';
 
 const [A, B, C, D, E] = INVENTED;
@@ -274,5 +274,42 @@ describe('refine', () => {
     session.subscribe((s) => s.phase.kind === 'running' && seen.push(s.phase.target));
     await session.getState().refine(id, { kind: 'change', text: 'use property prices' });
     expect(new Set(seen)).toEqual(new Set([id]));
+  });
+});
+
+describe('the run record hook', () => {
+  it('hears of every run that reached the provider, what it asked and got, and a hook that fails does not stop a run', async () => {
+    const client = scriptedClient([writeReply([A, B, C]), solver(), writeReply([D]), solver(), new AiError(aiErrorInfo('quota', 'gemini'))]);
+    const heard: RunInfo[] = [];
+    const compared = { past: 1759, mine: 12 };
+    const env: StudioEnv = { resolve: async () => ({ ok: true, deps: { client, preset, glossary: null, corpus: EMPTY_CORPUS, random: seeded() }, compared }) };
+    const session = createStudioSession(env, 'bilingual', {
+      onRun: (info) => {
+        heard.push(info);
+        if (heard.length === 2) throw new Error('storage full');
+      },
+    });
+    session.getState().setForm({ keyPoint: 'C.ped', count: 3 });
+    await session.getState().write();
+    const first = session.getState().entries[0].draft.id;
+    await session.getState().refine(first, { kind: 'another' });
+    expect(session.getState().phase).toEqual({ kind: 'idle' });
+    expect(session.getState().entries).toHaveLength(4);
+    await session.getState().refine(first, { kind: 'harder' });
+    expect(heard.map((h) => h.kind)).toEqual(['write', 'refine', 'refine']);
+    expect(heard[0]).toMatchObject({ request: { keyPoint: 'C.ped', count: 3 }, compared });
+    expect(heard[0].outcome.ok && heard[0].outcome.drafts).toHaveLength(3);
+    expect(heard[1].request.keyPoint).toBe('C.ped');
+    expect(heard[2].outcome).toMatchObject({ ok: false, error: { kind: 'quota' } });
+    expect(session.getState().phase).toMatchObject({ kind: 'error' });
+  });
+
+  it('hears nothing of a run that never reached the provider (no key)', async () => {
+    const heard: RunInfo[] = [];
+    const env: StudioEnv = { resolve: async () => ({ ok: false, error: aiErrorInfo('notConfigured', 'gemini') }) };
+    const session = createStudioSession(env, 'en', { onRun: (info) => heard.push(info) });
+    session.getState().setForm({ keyPoint: 'C.ped' });
+    await session.getState().write();
+    expect(heard).toEqual([]);
   });
 });

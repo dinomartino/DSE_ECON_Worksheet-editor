@@ -1,9 +1,11 @@
 # Question studio — AI that writes new questions (k-0499)
 
-Status, 2026-11-23: **package 1 (the engine) is on `develop`, paused; nothing is visible
-to teachers.** Package 2 (the studio page and its entries) and package 3 (the AI-made
-label and the trial kit) are next. The proposal is `Outbox/k-0495/AI-QUESTION-GEN-PROPOSAL.md`
-(not in the repo); the older design it builds on is `docs/design/ai-pattern-questions.md`.
+Status, 2026-11-24: **all three packages are on `develop`, a trial: nothing is visible to
+teachers** until the app is opened once with `?studio=trial`. The engine, the page, the
+AI-made label and the trial kit are built; no real model has run, so the user's trial (30
+invented briefs and about 20 requests of their own, on their key) is what is next. The
+proposal is `Outbox/k-0495/AI-QUESTION-GEN-PROPOSAL.md` (not in the repo); the older design it
+builds on is `docs/design/ai-pattern-questions.md`.
 
 ## What it is
 
@@ -20,9 +22,9 @@ Add. Release 1 is MC only (the published bank is MC only: no DRQs, no schemes).
 | 2 | **2c:** build the Question studio page directly (Library → Question studio: source / drafts / checks / tray). A "✦ Write like this" entry on bank questions opens it with that question as the source. | package 2 |
 | 3 | Release 1 is MC only. | `types.ts` (`StudioRequest`), `insert.ts` |
 | 4 | Always review before insert: drafts wait; nothing lands until Add. | `insert.ts:studioBuilds` is the only way in |
-| 5 | AI-made label, screen only, until the teacher presses Checked. | package 3 (needs one question field) |
+| 5 | AI-made label, screen only, until the teacher presses Checked. | `Question.aiMade`, `AiMadeNote.tsx`, `AiMadeChip.tsx` (§ The AI-made label) |
 | 6 | **6a:** the blind solve is the same provider, a fresh request. | `run.ts:writeDrafts`, `prompt.ts:buildSolveRequest` |
-| 7 | **7a:** paused on develop until a trial (about 20 of the user's requests plus 30 invented briefs on their key). | package 3 |
+| 7 | **7a:** paused on develop until a trial (about 20 of the user's requests plus 30 invented briefs on their key). | `trial.ts` (the gate), `trialBriefs.ts`, `trialLog.ts`, `trialScore.ts` (§ The trial kit) |
 | 8 | Gemini for the trial; it needs a VPN in Hong Kong, so the UI's error says so. | package 2 |
 
 ## What is sent
@@ -149,17 +151,73 @@ Library row, no screen, no ✦ Write like this. Taking the trial out for good me
 so the desktop shell cannot turn it on yet (add a Settings or version-tap route if the
 trial must run there).
 
+## The AI-made label (package 3, decision 5)
+
+One optional question field, `Question.aiMade` (`true` or absent, never `false`), on
+`QuestionBase`. A question field is nested in the worksheet, so it needs **no `KNOWN_KEYS`
+entry and no schema bump** (that set is the worksheet's top-level keys only; `startOnNewPage`
+is the precedent). The decisions it needed:
+
+- **Set** by `insert.ts:studioBuilds`, the only way a draft becomes a question, so a question
+  added to a paper and one kept in the bank are marked alike.
+- **Review state, not content**: `contentKey` ignores it (`library/contentKey.ts:IGNORED`,
+  classed `metadata` in `contentKeyFields.test.ts`), so pressing Checked never makes a new
+  version and a checked copy still matches its unchecked one.
+- **Travels with a copy** (`lineage.ts:copyQuestion`; the page-break ask `startOnNewPage` is
+  the one field a copy leaves behind): an unchecked question taken out of the bank into a paper
+  is marked again. A duplicate in the same paper keeps it too.
+- **Screen only, and no backend reads it**: the IR is unchanged, so the printed page, `.docx`,
+  PDF and clipboard are the same with it or without it (`aiMade.test.ts` renders both). On
+  screen: a chip at the top corner of the question on the page (`AiMadeChip`: absolute, so it
+  moves nothing and re-breaks no page; `data-print-hide`; only on a page being typed on, never
+  print preview or a read-only file; it lets clicks through to the question), a note with the
+  **Checked** button at the top of the Edit panel (`AiMadeNote`), a ✦ in the outline row, a
+  read-only line on the 題庫 review page, and a warning in the export dialog's Paper check
+  (`paperHealth.ts`, finding `aiMade`), the last look before printing.
+- **Checked** writes absence (`CHECKED_PATCH`): one undo step, and the question is then the
+  question it would have been without the label, JSON and key. Not offered in a read-only file.
+
+## The trial kit (package 3, decision 7a)
+
+The proposal's gate: the key is defensible on 90% or more of what is shown, 60% or more is
+usable as it stands or after one edit, and a near-copy is never shown; judged on 30 invented
+briefs run once on the teacher's key plus about 20 requests of their own. It is the studio's
+second tab, so the teacher needs no terminal and no key pasted anywhere: it runs on the key
+already in Settings, with the same engine, checks and corpus as Write.
+
+- **The 30 briefs** (`trialBriefs.ts`, invented; three example questions written for it):
+  28 key points over the ten compulsory topics, English / 中文 / both, plain and combination,
+  easier and harder, ten of them on key points whose items the guide limits, a third on
+  arithmetic, four with a Change line, three written like an example. Ordered so any ten in a
+  row are a fair mix. About 90 drafts and about 150 provider requests.
+- **The run** (`trialRun.ts`): one Write per brief, in order, on `liveEnv`; each is judged on
+  its own (no `avoid` list from the brief before) and none touches the studio's sheet. A run
+  survives leaving the tab (`createBriefRunner`), stops on Stop or at the first error (the
+  same notice as Write, with the VPN note), and **resumes**: a brief that has drafts is skipped.
+- **The record** (`trialLog.ts`): every run's drafts with their checks and the teacher's two
+  marks, in `localStorage` (`econgen.studioTrial.v1`), so a two-hour reading survives a reload.
+  The session's `onRun` hook adds every request the teacher makes themselves (labelled `mine`).
+  It keeps counts of the examples, never their words, and no paper. A damaged saved record
+  reads as empty, run by run.
+- **The marks**: *Key defensible?* (exactly one option the teacher would defend: Yes / No) and
+  *Would you use it?* (As it stands / After one edit / Reject), on every draft in the Trial kit
+  list and on Write-tab drafts alike. The list shows the next draft to mark first.
+- **The bar** (`trialScore.ts:tally`): judged on what is marked, and only once 20 are marked.
+  Beside it: how often the blind solve agreed, the lint, syllabus, number and term notes, the
+  closest near-copy shown (a basis for tuning the 30% limit), drafts a hard check left out, and
+  what it cost (requests, tokens, seconds a click). Near-copy is also marked "means less" in
+  any run that had no Past paper bank to compare with. **Copy report** writes it all as English
+  text (the bar, the checks, each brief's result, up to 20 drafts that need a look).
+
 ## Packages
 
 1. **Engine** (done): `src/questionStudio/`, the mock server's studio replies, tests.
 2. **Studio page** (done): the screen, the "Write like this" entries, the form's "what is
    sent" lines, Gemini's VPN note, the near-copy corpus, the trial switch. Browser proof
    `scripts/studio-verify.mjs` (mock AI, an invented bank).
-3. **AI-made label and trial kit:** one optional question field (print-hidden chip,
-   Checked), which joins `contentKey`'s ignored list in `src/library/`; Keep in my 題庫 then
-   keeps the label; 30 invented briefs and a script that scores them (key defensible, usable
-   as is, near-copy, syllabus, terms); the user's ~20 requests marked use as is / after one
-   edit / reject.
+3. **AI-made label and trial kit** (done): the field, chip, Edit-panel note and Checked,
+   `contentKey` and copies, the Paper check warning; the 30 briefs, the run, the record, the
+   marks and the bar. Browser proof `scripts/studio-verify.mjs` (`label`, `trial`).
 
 Draft CHANGELOG line, to add when the studio is unpaused (a paused feature has none, as
 `check.syllabus` on main): "Write new multiple-choice questions from the syllabus — Library

@@ -1,6 +1,7 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Segmented } from '@/components/ui';
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { useStudio } from '@/questionStudio/live';
@@ -11,6 +12,8 @@ import { DraftsPanel } from './DraftsPanel';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
 import { SourcePanel } from './SourcePanel';
 import { StudioError } from './StudioError';
+import { STUDIO_TRIAL_MESSAGES } from './trial.messages';
+import { TrialView } from './TrialView';
 import { Tray } from './Tray';
 
 /**
@@ -41,7 +44,10 @@ export function QuestionStudioScreen({
   onError: (message: string) => void;
 }) {
   const m = useMessages(QUESTION_STUDIO_MESSAGES);
+  const t = useMessages(STUDIO_TRIAL_MESSAGES);
   const language = useStudio((s) => s.form.language);
+  // Write is the studio; the Trial kit is its evidence (the 30 briefs, the marks, the bar).
+  const [tab, setTab] = useState<'write' | 'trial'>('write');
 
   return (
     <div className="zone-light flex h-full min-h-0 flex-col bg-surface text-ink" data-studio-screen data-print-hide>
@@ -57,10 +63,59 @@ export function QuestionStudioScreen({
         <span title={m.trialTitle} className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-muted">
           {m.trial}
         </span>
+        <Segmented<'write' | 'trial'>
+          label={t.tabsLabel}
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'write', label: t.tabWrite },
+            { value: 'trial', label: t.tabTrial },
+          ]}
+        />
         <span className="flex-1" />
         {settings}
       </header>
 
+      {tab === 'trial' ? (
+        <TrialView />
+      ) : (
+        <WriteView
+          summaries={summaries}
+          pastPapersOn={pastPapersOn}
+          onGoTo={onGoTo}
+          onHome={onHome}
+          onOpenWorksheet={onOpenWorksheet}
+          onOpenDocument={onOpenDocument}
+          onError={onError}
+          language={language}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The Write tab: the source, the drafts as they print and their checks, and the tray at the foot. */
+function WriteView({
+  summaries,
+  pastPapersOn,
+  onGoTo,
+  onHome,
+  onOpenWorksheet,
+  onOpenDocument,
+  onError,
+  language,
+}: {
+  summaries: readonly WorksheetSummary[];
+  pastPapersOn: boolean;
+  onGoTo: (view: 'pastpapers' | 'bank') => void;
+  onHome: () => void;
+  onOpenWorksheet: (worksheet: Worksheet, language: LanguageMode) => void;
+  onOpenDocument: (docId: string, then?: () => void) => void;
+  onError: (message: string) => void;
+  language: LanguageMode;
+}) {
+  return (
+    <>
       {/* Below `lg` the three columns stack in one scroller; from `lg` each scrolls on its own. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         <div className="scroll-slim shrink-0 border-b border-line lg:w-[340px] lg:overflow-y-auto lg:border-b-0 lg:border-r">
@@ -85,6 +140,6 @@ export function QuestionStudioScreen({
       </div>
 
       <Tray summaries={summaries} onOpenWorksheet={onOpenWorksheet} onOpenDocument={onOpenDocument} onError={onError} />
-    </div>
+    </>
   );
 }

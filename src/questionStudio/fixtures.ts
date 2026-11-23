@@ -5,7 +5,7 @@
 import type { BiDraft } from '@/generate/types';
 import type { CompletionRequest } from '@/ai/types';
 import { buildCorpusIndex, type CorpusDoc } from './nearCopy';
-import type { SourceQuestion, StudioRequest } from './types';
+import type { CheckRow, Finding, SourceQuestion, StudioDraft, StudioOutcome, StudioRequest, Usage } from './types';
 
 const bi = (en: string, zh: string): BiDraft => ({ en, zh });
 
@@ -176,3 +176,36 @@ export const EXAMPLE: SourceQuestion = {
 /** A small corpus of invented docs, for the near-copy check. */
 export const corpusOf = (docs: Array<Partial<CorpusDoc> & { en: string }>) =>
   buildCorpusIndex(docs.map((d, i) => ({ id: d.id ?? `c${i}`, kind: d.kind ?? 'bank', en: d.en, zh: d.zh ?? '' })));
+
+// ---- the trial's record (trialLog, trialScore, trialRun) ----
+
+/** A usage as a provider reports it. */
+export const usageOf = (over: Partial<Usage> = {}): Usage => ({ requests: 2, input: 3000, output: 1500, thinking: 0, ms: 12000, ...over });
+
+const row = (id: CheckRow['id'], state: CheckRow['state'], findings: CheckRow['findings'] = [], value?: number): CheckRow => ({ id, state, findings, ...(value === undefined ? {} : { value }) });
+
+/** The seven rows of a draft every check passed (the key solved and agreeing, near-copy 4%). */
+export const cleanRows = (): CheckRow[] => [row('shape', 'pass'), row('key', 'pass'), row('numbers', 'pass'), row('terms', 'pass'), row('syllabus', 'pass'), row('lint', 'pass'), row('copy', 'pass', [], 4)];
+
+/** A draft of the invented question `from`, with the rows a test wants changed. */
+export function studioDraft(id: string, over: { from?: Invented; status?: StudioDraft['status']; rows?: CheckRow[]; keyIndex?: number } = {}): StudioDraft {
+  const from = over.from ?? INVENTED[0];
+  const rows = cleanRows().map((r) => over.rows?.find((o) => o.id === r.id) ?? r);
+  return {
+    id,
+    draft: { kind: 'mcq', stem: from.stem, statements: from.statements, options: from.options, answerIndex: over.keyIndex ?? from.answer, explanation: from.explanation },
+    angle: from.angle,
+    status: over.status ?? (rows.some((r) => r.state === 'fail') ? 'failed' : rows.some((r) => r.state === 'look') ? 'look' : 'ok'),
+    checks: rows,
+    attempt: 1,
+  };
+}
+
+/** A write that came back with these drafts. */
+export const okOutcome = (drafts: StudioDraft[], over: { usage?: Usage; notes?: Finding[] } = {}): StudioOutcome => ({
+  ok: true,
+  drafts,
+  notes: over.notes ?? [],
+  model: 'fake-model',
+  usage: over.usage ?? usageOf(),
+});

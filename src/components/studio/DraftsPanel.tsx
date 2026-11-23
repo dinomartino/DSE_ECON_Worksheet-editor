@@ -7,8 +7,10 @@ import { createWorksheet } from '@/model/factories';
 import type { LanguageMode } from '@/model/types';
 import type { Refinement } from '@/questionStudio/types';
 import type { SheetDraft } from '@/questionStudio/session';
-import { useStudio } from '@/questionStudio/live';
+import { useStudio, useTrialLog } from '@/questionStudio/live';
+import { findDraft } from '@/questionStudio/trialLog';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
+import { TrialMarks } from './TrialMarks';
 import { CHECK_LABEL, Chip, StateGlyph, stateWord, toneOf } from './parts';
 import { draftItem, explanationLines, letterOf, partition, stemLines } from './studioView';
 import { CHECK_IDS } from '@/questionStudio/types';
@@ -121,6 +123,8 @@ function DraftCard({
   const item = useMemo(() => draftItem(entry), [entry]);
   const why = explanationLines(draft.draft, entry.request.sides);
   const look = draft.status === 'look';
+  // The trial's two marks for this draft, kept in its record (the same ones the Trial kit lists).
+  const recorded = useTrialLog((s) => findDraft(s.runs, draft.id)?.entry);
 
   return (
     <article
@@ -183,6 +187,8 @@ function DraftCard({
           );
         })}
       </div>
+
+      {recorded && <TrialMarks entry={recorded} />}
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5 px-1">
         <button type="button" className={ghost} disabled={busy} title={m.anotherTitle} onClick={() => onRefine({ kind: 'another' })}>

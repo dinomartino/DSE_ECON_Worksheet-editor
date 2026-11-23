@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 import { errorActions, errorNote, runErrorAction, type RunControl } from '@/components/ai/errorActions';
 import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { COPY_MESSAGES } from '@/components/translate/messages';
+import type { AiErrorInfo } from '@/ai/types';
 import { useMessages } from '@/i18n/language';
 import { useStudio } from '@/questionStudio/live';
 import { dismiss, notify } from '@/store/notices';
@@ -15,19 +16,23 @@ export const STUDIO_ERROR_NOTICE = 'studio-error';
  * A provider failure, as a notice (the app's rule: errors are raised with `notify`, never
  * drawn inline). The same words and buttons as the ✦ bars give: exactly the actions the
  * error names, and for Gemini the VPN note when it cannot be reached (decision 8). Try
- * again runs the last Write or change again. Draws nothing itself.
+ * again and Dismiss are the caller's. Draws nothing itself. Used by the Write tab and the
+ * trial kit's run of the 30 briefs.
  */
-export function StudioError() {
-  const phase = useStudio((s) => s.phase);
+export function RunErrorNotice({ error, onRetry, onDismiss }: { error: AiErrorInfo | undefined; onRetry: () => void; onDismiss: () => void }) {
   const copy = useMessages(COPY_MESSAGES);
-  const control: RunControl = useMemo(() => ({ retry: () => void useStudio.getState().retry(), dismiss: () => useStudio.getState().dismissError() }), []);
-  const error = phase.kind === 'error' ? phase.error : undefined;
+  // The latest callbacks, without raising the notice again each time the caller re-renders.
+  const handlers = useRef({ onRetry, onDismiss });
+  useEffect(() => {
+    handlers.current = { onRetry, onDismiss };
+  });
 
   useEffect(() => {
     if (!error) {
       dismiss(STUDIO_ERROR_NOTICE);
       return;
     }
+    const control: RunControl = { retry: () => handlers.current.onRetry(), dismiss: () => handlers.current.onDismiss() };
     const note = errorNote(error);
     notify({
       id: STUDIO_ERROR_NOTICE,
@@ -38,7 +43,19 @@ export function StudioError() {
       onDismiss: control.dismiss,
     });
     return () => dismiss(STUDIO_ERROR_NOTICE);
-  }, [error, copy, control]);
+  }, [error, copy]);
 
   return null;
+}
+
+/** The Write tab's: the session's own error, with Try again running the last Write or change again. */
+export function StudioError() {
+  const phase = useStudio((s) => s.phase);
+  return (
+    <RunErrorNotice
+      error={phase.kind === 'error' ? phase.error : undefined}
+      onRetry={() => void useStudio.getState().retry()}
+      onDismiss={() => useStudio.getState().dismissError()}
+    />
+  );
 }

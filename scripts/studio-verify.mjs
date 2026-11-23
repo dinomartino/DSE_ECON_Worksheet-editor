@@ -11,7 +11,11 @@ import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
  * a tiny invented export served from here, and requests to the provider hosts are blocked.
  *
  *   npm run dev -- -p 3199   (or any build served somewhere)
- *   node scripts/studio-verify.mjs [--url=http://localhost:3199] [--out=/tmp/studio-verify] [--only=gate,write,tray,like,stop,vpn,zh,layout]
+ *   node scripts/studio-verify.mjs [--url=http://localhost:3199] [--out=/tmp/studio-verify] [--only=gate,write,tray,like,stop,vpn,zh,layout,label,trial]
+ *
+ * Package 3 (the AI-made label and the trial kit) adds `label` (the chip on the page, the Edit
+ * panel's note and Checked, the outline's mark, that none of it prints) and `trial` (run the 30
+ * invented briefs against the mock, mark drafts, the bar, the report, the record across a reload).
  */
 
 const args = process.argv.slice(2);
@@ -415,6 +419,186 @@ try {
     await context.close();
   }
 
+
+  if (want('label')) {
+    console.log('label');
+    const { context, page, errors } = await newPage(browser);
+    await enable(page);
+    await openStudio(page, w);
+    await writeThree(page);
+    await drafts(page).nth(0).getByRole('checkbox').check();
+    await drafts(page).nth(1).getByRole('checkbox').check();
+    await page.locator('[data-studio-tray]').getByRole('button', { name: w.add, exact: true }).click();
+    await page.locator('#print-root').waitFor({ timeout: 20_000 });
+    // The page being edited is `#print-root`; a second, off-screen copy of it measures the pages.
+    const chips = page.locator('#print-root [data-testid="ai-made-chip"]');
+    const marks = page.getByRole('img', { name: 'AI-made, not checked yet' });
+    await chips.first().waitFor({ timeout: 20_000 });
+    await page.waitForTimeout(500);
+    await check('both added questions wear the AI-made chip on the page', async () => {
+      await page.screenshot({ path: `${OUT}/12-label-page-en.png` });
+      expect((await chips.count()) === 2, `chips: ${await chips.count()}`);
+      expect(/AI-made · not checked/.test(await chips.first().innerText()), 'chip words');
+    });
+    await check('the outline marks both questions', async () => {
+      expect((await marks.count()) === 2, `outline marks: ${await marks.count()}`);
+    });
+    await check('the Edit panel of the first question says so and offers Checked', async () => {
+      await page.locator('[role="tab"]', { hasText: 'Question 1' }).click();
+      const note = page.locator('[data-testid="ai-made-note"]');
+      await note.waitFor({ timeout: 10_000 });
+      expect(/AI-made, not checked yet/.test(await note.innerText()), 'note words');
+      expect((await note.getByRole('button', { name: 'Checked', exact: true }).count()) === 1, 'no Checked button');
+      await page.screenshot({ path: `${OUT}/12b-label-note-en.png` });
+    });
+    await check('none of it prints: no chip is drawn in the print root, and the paper text carries no label', async () => {
+      await page.emulateMedia({ media: 'print' });
+      const drawn = await page.evaluate(() => [...document.querySelectorAll('#print-root [data-testid="ai-made-chip"]')].filter((el) => el.getClientRects().length > 0).length);
+      await page.emulateMedia({ media: 'screen' });
+      expect(drawn === 0, `${drawn} chips would print`);
+      const paper = (await page.locator('#print-root').innerText()).replace(/AI-made · not checked/g, '');
+      expect(!/AI-made|AI 擬題/.test(paper), 'the paper itself names the label');
+    });
+    await check('Checked clears that question only: one chip, no note, one outline mark left', async () => {
+      await page.locator('[data-testid="ai-made-note"]').getByRole('button', { name: 'Checked', exact: true }).click();
+      await page.waitForFunction(() => document.querySelectorAll('#print-root [data-testid="ai-made-chip"]').length === 1, null, { timeout: 10_000 });
+      expect((await page.locator('[data-testid="ai-made-note"]').count()) === 0, 'the note stayed');
+      await page.locator('[role="tab"]', { hasText: 'Content' }).click();
+      expect((await marks.count()) === 1, `outline marks: ${await marks.count()}`);
+      await page.screenshot({ path: `${OUT}/13-label-checked-en.png` });
+    });
+    await check('Undo puts the label back', async () => {
+      await page.keyboard.press('Control+z');
+      await page.waitForFunction(() => document.querySelectorAll('#print-root [data-testid="ai-made-chip"]').length === 2, null, { timeout: 10_000 });
+      expect((await marks.count()) === 2, 'the outline mark did not come back');
+    });
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+
+    const zh = await newPage(browser, { ui: 'zh-HK' });
+    await enable(zh.page);
+    await check('in 中文 the chip, the outline and the note read in 中文', async () => {
+      await openStudio(zh.page, WORDS['zh-HK']);
+      await writeThree(zh.page);
+      await drafts(zh.page).nth(0).getByRole('checkbox').check();
+      await zh.page.locator('[data-studio-tray]').getByRole('button', { name: WORDS['zh-HK'].add, exact: true }).click();
+      await zh.page.locator('#print-root [data-testid="ai-made-chip"]').first().waitFor({ timeout: 20_000 });
+      expect(/AI 擬題 · 未核對/.test(await zh.page.locator('#print-root [data-testid="ai-made-chip"]').first().innerText()), 'chip not in 中文');
+      expect((await zh.page.getByRole('img', { name: 'AI 擬題，尚未核對' }).count()) === 1, 'outline mark not in 中文');
+      await zh.page.locator('[role="tab"]', { hasText: /題目 1|問題 1|第 1 題/ }).first().click();
+      const note = zh.page.locator('[data-testid="ai-made-note"]');
+      await note.waitFor({ timeout: 10_000 });
+      expect(/AI 擬題，尚未核對/.test(await note.innerText()) && (await note.getByRole('button', { name: '已核對', exact: true }).count()) === 1, 'note not in 中文');
+      await zh.page.screenshot({ path: `${OUT}/14-label-zh.png` });
+    });
+    expect(zh.errors.length === 0, `page errors: ${zh.errors.join(' | ')}`);
+    await zh.context.close();
+  }
+
+  if (want('trial')) {
+    console.log('trial');
+    const { context, page, errors } = await newPage(browser);
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(APP).origin }).catch(() => undefined);
+    await enable(page);
+    await openStudio(page, w);
+    const progress = page.locator('[data-trial-progress]');
+    const cards = page.locator('[data-trial-draft]');
+    await check('the Write tab’s drafts carry the trial’s two marks, and a mark there is the same record', async () => {
+      await writeThree(page);
+      const marks = drafts(page).first().locator('[data-trial-marks]');
+      expect((await marks.count()) === 1, 'no marks row on the draft');
+      await marks.locator('[data-mark="key-ok"]').click();
+      expect((await marks.locator('[data-mark="key-ok"]').getAttribute('aria-pressed')) === 'true', 'the mark did not take');
+    });
+    await check('the Trial kit tab shows the 30 briefs, your own requests so far, and the first mark you gave', async () => {
+      await screen(page).getByRole('radio', { name: 'Trial kit', exact: true }).click();
+      await page.locator('[data-studio-trial]').waitFor();
+      expect(/0 of 30 briefs have drafts/.test(await progress.innerText()), `progress: ${await progress.innerText()}`);
+      expect(/1 of your requests so far/.test(await page.locator('[data-trial-briefs]').innerText()), 'own requests not counted');
+      expect((await cards.count()) === 3, `cards: ${await cards.count()}`);
+      const first = page.locator('[data-trial-draft] [data-mark="key-ok"][aria-pressed="true"]');
+      expect((await first.count()) === 1, 'the mark given on the Write tab is not here');
+      await page.screenshot({ path: `${OUT}/15-trial-empty-en.png` });
+    });
+    await mockReset();
+    await check('Run the 30 briefs: every brief gets drafts, the list fills, and nothing is lost on the way', async () => {
+      await page.locator('[data-trial-run]').click();
+      await page.waitForFunction(() => /30 of 30 briefs have drafts/.test(document.querySelector('[data-trial-progress]')?.textContent ?? ''), null, { timeout: 240_000 });
+      expect((await cards.count()) > 30, `cards: ${await cards.count()}`);
+      expect((await mockCount()) >= 60, `requests: ${await mockCount()}`);
+      expect(/Every brief has drafts/.test(await page.locator('[data-trial-briefs]').innerText()), 'no all-done line');
+      expect((await page.locator('[data-trial-run]').count()) === 0, 'Run is still offered');
+      await page.screenshot({ path: `${OUT}/16-trial-run-en.png` });
+      return `${await cards.count()} drafts to read, ${await mockCount()} requests`;
+    });
+    await check('a card shows its brief, what was asked, its checks, and the marks to give', async () => {
+      const brief = page.locator('[data-trial-draft]', { hasText: 'Brief B01' }).first();
+      expect((await brief.count()) === 1, 'no card for B01');
+      const text = await brief.innerText();
+      expect(/Price elasticity of demand/.test(text), 'what was asked is missing');
+      expect((await brief.locator('[data-trial-marks]').count()) === 1, 'no marks');
+      expect(/Key [A-D]/.test(text), 'no key');
+    });
+    await check('marking a draft drops it from "Not marked yet"; twenty marked, the bar is judged', async () => {
+      const before = await cards.count();
+      for (let i = 0; i < 20; i += 1) {
+        const top = cards.first();
+        // The first card already holds the key mark given on the Write tab: a second press would take it back.
+        if ((await top.locator('[data-mark="key-ok"]').getAttribute('aria-pressed')) !== 'true') await top.locator('[data-mark="key-ok"]').click();
+        await top.locator('[data-mark="use-asis"]').click();
+        await page.waitForFunction((n) => document.querySelectorAll('[data-trial-draft]').length === n, before - i - 1, { timeout: 10_000 });
+      }
+      expect((await cards.count()) === before - 20, 'marked drafts stayed in the list');
+      const report = await page.locator('[data-trial-report]').innerText();
+      expect(/20 of \d+ drafts marked/.test(report), `report: ${report.slice(0, 200)}`);
+      expect(/The bar is met/.test(report), `verdict: ${report.slice(0, 260)}`);
+      await page.screenshot({ path: `${OUT}/17-trial-report-en.png` });
+    });
+    await check('All shows the marked ones again, with their marks held', async () => {
+      await screen(page).getByRole('radio', { name: 'All', exact: true }).click();
+      expect((await page.locator('[data-trial-draft] [data-mark="use-asis"][aria-pressed="true"]').count()) >= 20, 'marks not shown');
+    });
+    await check('Copy report puts the English report on the clipboard', async () => {
+      await page.getByRole('button', { name: 'Copy report', exact: true }).click();
+      await page.waitForTimeout(300);
+      const text = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+      const shown = await page.locator('[data-trial-report] textarea').inputValue();
+      const got = text || shown;
+      expect(/^Question studio trial report/.test(got) && /Key defensible: \d+ of \d+/.test(got) && /Verdict: PASS/.test(got), `report: ${got.slice(0, 200)}`);
+      expect(!/sk-mock-verify|AIzaSy/.test(got), 'a key is in the report');
+    });
+    await check('a reload keeps the record: the briefs are still done and the marks still held', async () => {
+      await page.reload({ waitUntil: 'networkidle' });
+      await openStudio(page, w);
+      await screen(page).getByRole('radio', { name: 'Trial kit', exact: true }).click();
+      await page.locator('[data-studio-trial]').waitFor();
+      expect(/30 of 30 briefs have drafts/.test(await progress.innerText()), `progress: ${await progress.innerText()}`);
+      await screen(page).getByRole('radio', { name: 'All', exact: true }).click();
+      expect((await page.locator('[data-trial-draft] [data-mark="use-asis"][aria-pressed="true"]').count()) >= 20, 'marks lost on reload');
+      expect(/The bar is met/.test(await page.locator('[data-trial-report]').innerText()), 'verdict lost');
+    });
+    await check('Clear needs a second click, then empties the record', async () => {
+      const clear = page.locator('[data-trial-clear]');
+      await clear.click();
+      expect(/Click again/.test(await clear.innerText()), 'no second-click prompt');
+      await clear.click();
+      await page.waitForFunction(() => /0 of 30 briefs have drafts/.test(document.querySelector('[data-trial-progress]')?.textContent ?? ''), null, { timeout: 10_000 });
+      expect((await cards.count()) === 0, 'cards left');
+      expect((await page.evaluate(() => localStorage.getItem('econgen.studioTrial.v1'))) === null, 'the saved record stayed');
+    });
+    await check('Trial kit in 中文 reads in 中文', async () => {
+      await page.evaluate(() => localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: 'zh-HK', paper: 'bilingual' })));
+      await page.reload({ waitUntil: 'networkidle' });
+      await openStudio(page, WORDS['zh-HK']);
+      await screen(page).getByRole('radio', { name: '試用工具', exact: true }).click();
+      const text = await screen(page).innerText();
+      for (const word of ['30 個擬定要求', '你自己的要求', '執行 30 個要求', '目前結果']) expect(text.includes(word), `missing ${word}`);
+      await page.screenshot({ path: `${OUT}/18-trial-zh.png` });
+    });
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
   if (want('layout')) {
     console.log('layout');
     for (const [name, viewport] of [['1024', { width: 1024, height: 768 }], ['390', { width: 390, height: 844 }]]) {
@@ -430,6 +614,14 @@ try {
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(overflow <= 1, `horizontal overflow ${overflow}px`);
         await page.screenshot({ path: `${OUT}/10-layout-${name}.png`, fullPage: false });
+      });
+      await check(`${name} px wide: the Trial kit splits or stacks, nothing cut off`, async () => {
+        await screen(page).getByRole('radio', { name: 'Trial kit', exact: true }).click();
+        await page.locator('[data-studio-trial]').waitFor();
+        await page.waitForTimeout(400);
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow <= 1, `horizontal overflow ${overflow}px`);
+        await page.screenshot({ path: `${OUT}/19-trial-layout-${name}.png`, fullPage: false });
       });
       expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
       await context.close();

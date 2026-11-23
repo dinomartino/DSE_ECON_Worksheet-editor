@@ -194,6 +194,14 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Brief** — everything sent to the provider for one writing request, built on the computer
   (key point, limits, EDB terms, picked examples, the Change line). Not a 題型 pattern.
   `src/questionStudio/brief.ts:makeBrief`
+- **AI-made** (AI 擬題) — a question the studio wrote that nobody has checked yet: `Question.aiMade`,
+  set when a draft is added or kept, shown (never printed) as a chip on the page, a note in the
+  Edit panel and a ✦ in the outline, and warned about in the export Paper check, until the
+  teacher presses **Checked** (已核對). `src/components/editor/AiMadeNote.tsx:AiMadeNote`
+- **Trial kit** (試用工具) — the studio's second tab: the 30 invented **briefs** (`B01`…`B30`, a
+  different place in the syllabus each) run on the teacher's key, every draft with the two
+  marks to give it (key defensible? use as it stands / after one edit / reject), and where it
+  stands against the bar. `src/components/studio/TrialView.tsx:TrialView`
 - **Draft** — a written question that is not in any paper yet; only Add builds it.
   `src/questionStudio/types.ts:StudioDraft`
 - **Near-copy check** — local comparison of a draft's words with every question the app holds;

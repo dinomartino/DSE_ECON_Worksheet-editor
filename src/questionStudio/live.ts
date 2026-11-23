@@ -5,6 +5,8 @@ import { readAiStatus } from '@/settings/aiSettings';
 import { paperLanguage } from '@/settings/paperLanguage';
 import { studioCorpus, type PastRow } from './corpus';
 import { createStudioSession, type StudioEnv } from './session';
+import { createTrialLog, MINE } from './trialLog';
+import { createBriefRunner } from './trialRun';
 
 /**
  * The studio's session wired to the app: the provider from Settings (`createRunDeps`, the
@@ -37,5 +39,13 @@ export const liveEnv: StudioEnv = {
   },
 };
 
-/** The app's one studio session. */
-export const useStudio = createStudioSession(liveEnv, typeof window === 'undefined' ? 'en' : paperLanguage());
+/** The trial's record (`trialLog.ts`): kept on this computer, so a long reading survives a reload. */
+export const useTrialLog = createTrialLog();
+
+/** The 30 invented briefs' run, over the same provider and corpus as Write; its drafts go to the record only. */
+export const useBriefRun = createBriefRunner(liveEnv, useTrialLog);
+
+/** The app's one studio session; every request the teacher makes in it goes into the trial's record, as theirs. */
+export const useStudio = createStudioSession(liveEnv, typeof window === 'undefined' ? 'en' : paperLanguage(), {
+  onRun: (info) => useTrialLog.getState().record({ label: MINE, ...info }),
+});

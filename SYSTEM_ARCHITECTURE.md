@@ -3518,6 +3518,19 @@ store and never touches a paper.
   Errors are notices (§ Notices), with the VPN note for Gemini that cannot be reached
   (`errorNote`). "✦ Write like this" (Past paper cards, the 題庫 review page) adds an
   example and opens the page; with the trial off it is not drawn.
+- **The AI-made label** (decision 5) is one optional question field, `Question.aiMade`
+  (`true` or absent): set by `studioBuilds`, so a question is marked in a paper and in the
+  bank, kept by every copy (`copyQuestion`), ignored by `contentKey` (review state, so Checked
+  is never a new version), and read by no backend: it is a print-hidden chip on the page, a
+  note with the Checked button in the Edit panel, a mark in the outline, and a warning in the
+  export Paper check. A question field is nested, so it needs no `KNOWN_KEYS` entry and no
+  schema bump (the set is the worksheet's top level only).
+- **The trial kit** (decision 7a) is the studio's second tab. The record
+  (`trialLog.ts`, `localStorage`, this computer only) holds each run's drafts and checks and
+  the teacher's two marks; the 30 invented briefs (`trialBriefs.ts`) run one Write each on the
+  teacher's key (`trialRun.ts`, resumable, off the sheet); `trialScore.ts:tally` judges the
+  bar the proposal set (key defensible 90%, usable 60%, no near-copy shown). Taking the trial
+  out for good removes the kit with the gate.
 
 ---
 

@@ -18,7 +18,7 @@ export function AiMadeChip() {
       data-print-hide=""
       data-testid="ai-made-chip"
       title={m.chipTitle}
-      className="pointer-events-none absolute -top-2 right-1 z-10 inline-flex select-none items-center gap-1 rounded-[3px] bg-accent-soft px-1.5 py-px font-sans text-[9px] font-semibold leading-tight text-accent-ink ring-1 ring-accent/30"
+      className="pointer-events-none absolute -top-3 right-1 z-10 inline-flex select-none items-center gap-1 rounded-[3px] bg-accent-soft px-1.5 py-px font-sans text-[9px] font-semibold leading-tight text-accent-ink ring-1 ring-accent/30"
     >
       <SparkleIcon size={9} />
       {m.chip}
