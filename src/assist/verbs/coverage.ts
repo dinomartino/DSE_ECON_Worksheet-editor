@@ -231,8 +231,8 @@ export function savedSummary(record: Parameters<typeof coverageFromSaved>[0]): s
 }
 
 /**
- * Past coverage reports (k-0489 v2): the checks saved with this paper, the newest opened
- * straight away, the rest a pick away in the report. Nothing is sent and no key is needed.
+ * Last coverage report (k-0489 v2): the check saved with this paper (only the latest is
+ * kept, u-vouw), opened straight away. Nothing is sent and no key is needed.
  * Its id extends `check.syllabus`, so it is paused with the check (`isPaused`).
  */
 export const coverageSavedVerb: AiVerb = {

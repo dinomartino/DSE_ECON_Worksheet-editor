@@ -11,8 +11,7 @@ import { BANDS, type Band, type Confidence } from '@/coverage/types';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { chooseSavePath, isDesktop, PDF_FILTERS, revealFile, revealLabel } from '@/platform';
 import { lookupCode } from '@/syllabus';
-import { Button, Segmented, SelectField } from '@/components/ui';
-import { MAX_COVERAGE_REPORTS, savedCoverageReports } from '@/model/coverageReports';
+import { Button, Segmented } from '@/components/ui';
 import type { SavedCoverageReport } from '@/model/types';
 import { deleteCoverageReport, useCoverageSaves } from '@/store/coverageReports';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -27,9 +26,9 @@ import { COVERAGE_MESSAGES } from './coverageReport.messages';
  * untested key points greyed, and what the AI said per part. Read-only, teacher-facing;
  * the dialog itself is never printed (outside `#print-root`).
  *
- * k-0489 v2: every check is kept with the paper; the dialog opens on one and picks among
- * the others (date, scope, overall %), says whether it is kept, deletes one, and says when
- * a paper has changed since its check. Laid out as the printed report is: key figures,
+ * k-0489 v2: every check is kept with the paper (the latest only, u-vouw); the dialog says
+ * when it was run, whether it is kept, deletes it, and says when a paper has changed since
+ * its check. Laid out as the printed report is: key figures,
  * skills, sections as bars beside the gaps, then the tables.
  *
  * k-0489: syllabus names and the AI's notes are in the paper's language
@@ -39,25 +38,15 @@ import { COVERAGE_MESSAGES } from './coverageReport.messages';
  */
 type Status = { kind: 'idle' } | { kind: 'busy' } | { kind: 'saved'; path: string } | { kind: 'note'; text: string };
 
-export function CoverageReportDialog({ record: opened, onClose }: { record: SavedCoverageReport; onClose(): void }) {
+export function CoverageReportDialog({ record, onClose }: { record: SavedCoverageReport; onClose(): void }) {
   const m = useMessages(COVERAGE_MESSAGES);
   const uiZh = useUiLanguage() !== 'en';
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const partners = useSetMembers((s) => s.partners);
   const saves = useCoverageSaves((s) => s.byId);
 
-  // Every check kept with this paper, newest first; the one just run first if its save has
-  // not landed (or failed), so the report never vanishes from under the reader.
-  const [gone, setGone] = useState<readonly string[]>([]);
-  const records = useMemo(() => {
-    const saved = savedCoverageReports(worksheet).filter((r) => !gone.includes(r.id));
-    return saved.some((r) => r.id === opened.id) || gone.includes(opened.id) ? saved : [opened, ...saved];
-  }, [worksheet, opened, gone]);
-  const [selectedId, setSelectedId] = useState(opened.id);
-  const record = records.find((r) => r.id === selectedId) ?? records[0];
-
   const [choice, setChoice] = useState<ElectiveChoice>('auto');
-  const coverage = useMemo(() => (record ? coverageFromSaved(record, choice) : null), [record, choice]);
+  const coverage = useMemo(() => coverageFromSaved(record, choice), [record, choice]);
   const [view, setView] = useState<'set' | number>('set');
 
   // Which papers read differently now than when this check read them.
@@ -66,20 +55,12 @@ export function CoverageReportDialog({ record: opened, onClose }: { record: Save
     for (const partner of partners) map.set(partner.id, paperFingerprint(partner));
     return map;
   }, [worksheet, partners]);
-  const changed = record ? changedRuns(record, (id) => fingerprints.get(id)) : [];
+  const changed = changedRuns(record, (id) => fingerprints.get(id));
 
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [asking, setAsking] = useState(false);
   const [deleteNote, setDeleteNote] = useState('');
-  const pick = (id: string) => {
-    setSelectedId(id);
-    setChoice('auto');
-    setView('set');
-    setStatus({ kind: 'idle' });
-    setAsking(false);
-  };
 
-  if (!record || !coverage) return null;
   const shownPaper = view === 'set' ? undefined : coverage.papers?.find((p) => p.paper === view);
   const report: CoverageReport = shownPaper?.report ?? coverage.report;
   const name = nameIn(coverage.language);
@@ -96,10 +77,7 @@ export function CoverageReportDialog({ record: opened, onClose }: { record: Save
   const missing = gaps(report);
   const desktop = isDesktop();
   const scopeWord = (r: SavedCoverageReport) => (r.scope === 'set' ? m.scopeSet : r.scope === 'part' ? m.scopePart : m.scopePaper);
-  const optionLine = (r: SavedCoverageReport) => {
-    const { hit, of } = coverageFromSaved(r).report.breadth.keyPoints;
-    return m.option(whenOf(r.at), scopeWord(r), share(hit, of));
-  };
+  const overall = coverage.report.breadth.keyPoints;
   const save = saves[record.id];
   function whenOf(iso: string) {
     const d = new Date(iso);
@@ -129,11 +107,9 @@ export function CoverageReportDialog({ record: opened, onClose }: { record: Save
   const remove = async () => {
     setAsking(false);
     const ok = await deleteCoverageReport(record);
-    setDeleteNote(ok ? '' : m.deleteFailed);
-    const rest = records.filter((r) => r.id !== record.id);
-    setGone((list) => [...list, record.id]);
-    if (rest.length === 0) onClose();
-    else pick(rest[0].id);
+    // The only report kept: nothing is left to show once it is gone.
+    if (ok) onClose();
+    else setDeleteNote(m.deleteFailed);
   };
   const savedName = status.kind === 'saved' ? status.path.split(/[\\/]/).pop() ?? status.path : '';
 
@@ -162,12 +138,12 @@ export function CoverageReportDialog({ record: opened, onClose }: { record: Save
   return (
     <Dialog title={m.title} description={m.description(report.questions)} size="large" onClose={onClose} footer={footer}>
       <div className="space-y-4 px-5 pb-5 pt-4 text-[13px] text-ink" data-print-hide>
-        {/* Which saved check, whether it is kept, and Delete. */}
+        {/* When this check ran, whether it is kept, and Delete. */}
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="min-w-[16rem] flex-1">
-              <SelectField<string> label={m.reportPick} value={record.id} options={records.map((r) => ({ value: r.id, label: optionLine(r) }))} onChange={pick} />
-            </div>
+            <p className="min-w-[12rem] flex-1 text-[12.5px] font-medium text-ink">
+              {m.checkedLine(whenOf(record.at), scopeWord(record), share(overall.hit, overall.of))}
+            </p>
             {!asking && (
               <Button variant="danger" size="sm" onClick={() => setAsking(true)}>
                 {m.deleteReport}
@@ -183,7 +159,7 @@ export function CoverageReportDialog({ record: opened, onClose }: { record: Save
           )}
           <p className={`text-[11.5px] ${save === 'failed' ? 'text-warn-ink' : 'text-ink-subtle'}`}>
             {saveLine}
-            {save !== 'failed' && ` · ${m.keptHint(MAX_COVERAGE_REPORTS)}`}
+            {save !== 'failed' && ` · ${m.keptHint}`}
             {deleteNote && <span className="text-warn-ink"> · {deleteNote}</span>}
           </p>
         </div>

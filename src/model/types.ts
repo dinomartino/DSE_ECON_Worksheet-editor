@@ -1151,8 +1151,8 @@ export interface Worksheet {
    */
   examResults?: ExamResults;
   /**
-   * Saved syllabus coverage checks (k-0489 v2), newest first, at most
-   * `MAX_COVERAGE_REPORTS` this build can read: what each check read and what the AI said,
+   * Saved syllabus coverage checks (k-0489 v2): this paper's latest check, the one record
+   * (`MAX_COVERAGE_REPORTS`) this build can read, a new check replacing it: what each check read and what the AI said,
    * so a report reopens exactly as it was run. Never printed. Typed loosely on purpose:
    * read only through `savedCoverageReports` (`model/coverageReports.ts`), which skips a
    * newer build's records and keeps them untouched. Absent = never checked.

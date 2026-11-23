@@ -39,16 +39,28 @@ describe('saved coverage checks (k-0489 v2)', () => {
     expect(coverage.report.units.map((u) => u.where.at)).toEqual(['1', '2']);
   });
 
-  it('newest first, one of each id, at most five; delete removes the field when empty', () => {
+  it('keeps only the latest check (u-vouw): a new one replaces it; delete removes the field', () => {
     let ws: Worksheet = { ...createWorksheet(), id: 'W' };
-    for (let minute = 1; minute <= 7; minute += 1) ws = withCoverageReport(ws, record('W', minute));
-    ws = withCoverageReport(ws, record('W', 7));
-    const ids = savedCoverageReports(ws).map((r) => r.id);
-    expect(ids).toEqual(['r7', 'r6', 'r5', 'r4', 'r3']);
-    expect(ids).toHaveLength(MAX_COVERAGE_REPORTS);
-    for (const id of ids) ws = withoutCoverageReport(ws, id);
+    expect(MAX_COVERAGE_REPORTS).toBe(1);
+    for (let minute = 1; minute <= 3; minute += 1) ws = withCoverageReport(ws, record('W', minute));
+    expect(savedCoverageReports(ws).map((r) => r.id)).toEqual(['r3']);
+    expect(ws.coverageReports).toHaveLength(1);
+    // The same check kept again stays one; an older one arriving late does not replace it.
+    ws = withCoverageReport(ws, record('W', 3));
+    ws = withCoverageReport(ws, record('W', 2));
+    expect(savedCoverageReports(ws).map((r) => r.id)).toEqual(['r3']);
+    ws = withoutCoverageReport(ws, 'r3');
     expect(ws).not.toHaveProperty('coverageReports');
     expect(withoutCoverageReport(ws, 'nope')).toBe(ws);
+  });
+
+  it('tidies a paper saved with several checks to the latest of its own on load', () => {
+    const newer = { v: 2, id: 'future' };
+    const stored = [record('W', 2), record('W', 5), record('OTHER', 9), newer, record('W', 3)];
+    expect(normalizeCoverageReports(stored, 'W')).toEqual([record('W', 5), newer]);
+    const ws = migrate({ ...JSON.parse(stringifyWorksheet({ ...createWorksheet(), id: 'W' })), coverageReports: stored });
+    expect(ws.coverageReports).toEqual([record('W', 5), newer]);
+    expect(savedCoverageReports(ws).map((r) => r.id)).toEqual(['r5']);
   });
 
   it('survives a save and reload, and does not raise the written schema version', () => {
@@ -70,20 +82,21 @@ describe('saved coverage checks (k-0489 v2)', () => {
 
   it('reads tolerantly: a malformed record is dropped, a newer format kept and never shown', () => {
     const newer = { v: 2, id: 'future', anything: true };
-    const kept = normalizeCoverageReports([record('W', 1), { v: 1, id: 'broken' }, 'junk', newer]);
+    const kept = normalizeCoverageReports([record('W', 1), { v: 1, id: 'broken' }, 'junk', newer], 'W');
     expect(kept).toEqual([record('W', 1), newer]);
-    expect(normalizeCoverageReports('nope')).toBeUndefined();
-    expect(normalizeCoverageReports([{ v: 1 }])).toBeUndefined();
+    expect(normalizeCoverageReports('nope', 'W')).toBeUndefined();
+    expect(normalizeCoverageReports([{ v: 1 }], 'W')).toBeUndefined();
     const ws = migrate({ ...JSON.parse(stringifyWorksheet({ ...createWorksheet(), id: 'W' })), coverageReports: [record('W', 1), newer, 42] });
     expect(ws.coverageReports).toEqual([record('W', 1), newer]);
     expect(savedCoverageReports(ws).map((r) => r.id)).toEqual(['r1']);
-    // A new check never drops a newer build's record, nor counts it toward the five.
+    // A new check never drops a newer build's record, nor counts it as this build's one.
     const more = withCoverageReport(ws, record('W', 2));
-    expect(more.coverageReports).toContainEqual(newer);
+    expect(more.coverageReports).toEqual([record('W', 2), newer]);
   });
 
   it('shows only checks of this paper; a duplicate leaves them behind', () => {
-    const ws = withCoverageReport(withCoverageReport({ ...createWorksheet(), id: 'W' }, record('W', 1)), record('OTHER', 2));
+    // A record of another paper (an older build's copy) is never shown.
+    const ws: Worksheet = { ...withCoverageReport({ ...createWorksheet(), id: 'W' }, record('W', 1)), coverageReports: [record('W', 1), record('OTHER', 2)] };
     expect(savedCoverageReports(ws).map((r) => r.id)).toEqual(['r1']);
     expect(duplicateWorksheet(ws, 'copy')).not.toHaveProperty('coverageReports');
     const [copy] = duplicateSetPapers([ws], { set: { id: 's2', name: 'Copy' }, bumpYear: false, lang: 'en', newId: () => 'c1' });

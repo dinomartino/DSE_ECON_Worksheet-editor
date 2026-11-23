@@ -168,12 +168,12 @@ export const ASSIST_MESSAGES = defineMessages({
   },
 
   // Saved checks (k-0489 v2)
-  coverageSavedLabel: { en: 'Past coverage reports', zh: '過往的課程覆蓋報告' },
+  coverageSavedLabel: { en: 'Last coverage report', zh: '上次的課程覆蓋報告' },
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the same signature as en
   unitReports: { en: (n: number): string => (n === 1 ? 'report' : 'reports'), zh: (_n: number) => '份報告' },
   coverageSavedLine: {
-    en: 'Opens the latest check saved with this paper; the others are in the report. Sends nothing.',
-    zh: '打開與這份試卷一併儲存的最近一次檢查；其他的可在報告中選擇。不會傳送任何內容。',
+    en: 'Opens the latest check, saved with this paper. Sends nothing.',
+    zh: '打開與這份試卷一併儲存的最近一次檢查。不會傳送任何內容。',
   },
   coverageSavedNone: { en: 'No coverage report is saved with this paper', zh: '這份試卷沒有儲存課程覆蓋報告' },
   coverageSavedHead: {

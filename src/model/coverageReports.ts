@@ -11,14 +11,15 @@ import type { SavedCoverageReport, SavedCoverageRun, SavedPick, SavedQuestionRes
  *   always, editable, and carry the field through their saves untouched (`__unknown`).
  * - **Read tolerantly.** A record that is not one of ours is dropped on load; a record of a
  *   newer format (`v` above 1) is kept as it is and never shown or counted.
- * - **A few per paper.** At most `MAX_COVERAGE_REPORTS` readable records; the oldest goes
- *   when a new one comes in.
+ * - **The latest only (u-vouw).** One readable record per paper (`MAX_COVERAGE_REPORTS`):
+ *   a new check replaces the one before. A paper saved while more were kept (develop builds
+ *   of k-0489 v2 kept five) is tidied the same way on load: the newest of this paper's stays.
  * - **Belongs to this paper.** A duplicate leaves them behind (`duplicateWorksheet`,
  *   `duplicateSetPapers`); a record naming another paper (copied by an older build) is
  *   not shown here.
  */
 
-export const MAX_COVERAGE_REPORTS = 5;
+export const MAX_COVERAGE_REPORTS = 1;
 export const COVERAGE_RECORD_VERSION = 1;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -79,13 +80,19 @@ export function isSavedCoverageReport(value: unknown): value is SavedCoverageRep
 const isNewerRecord = (value: unknown): boolean =>
   isRecord(value) && typeof value.v === 'number' && value.v > COVERAGE_RECORD_VERSION;
 
+const newestFirst = (a: SavedCoverageReport, b: SavedCoverageReport) => Date.parse(b.at) - Date.parse(a.at);
+const names = (worksheetId: string) => (record: SavedCoverageReport) => record.runs.some((run) => run.worksheetId === worksheetId);
+
 /**
- * The stored field as loaded: not a list → nothing; each entry kept when this build reads it
- * or a newer build wrote it, dropped otherwise. Empty → undefined.
+ * The stored field as loaded: not a list → nothing; a newer build's entries kept untouched;
+ * of the entries this build reads, the newest `MAX_COVERAGE_REPORTS` naming paper
+ * `worksheetId` (records of another paper, copied by an older build, are never shown, so
+ * they go too); the rest dropped. Empty → undefined.
  */
-export function normalizeCoverageReports(raw: unknown): unknown[] | undefined {
+export function normalizeCoverageReports(raw: unknown, worksheetId: string): unknown[] | undefined {
   if (!Array.isArray(raw)) return undefined;
-  const kept = raw.filter((entry) => isSavedCoverageReport(entry) || isNewerRecord(entry));
+  const ours = raw.filter(isSavedCoverageReport).filter(names(worksheetId)).sort(newestFirst).slice(0, MAX_COVERAGE_REPORTS);
+  const kept = [...ours, ...raw.filter(isNewerRecord)];
   return kept.length > 0 ? kept : undefined;
 }
 
@@ -93,21 +100,23 @@ export function normalizeCoverageReports(raw: unknown): unknown[] | undefined {
 export function savedCoverageReports(worksheet: Pick<Worksheet, 'id' | 'coverageReports'>): SavedCoverageReport[] {
   return (worksheet.coverageReports ?? [])
     .filter(isSavedCoverageReport)
-    .filter((record) => record.runs.some((run) => run.worksheetId === worksheet.id))
-    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    .filter(names(worksheet.id))
+    .sort(newestFirst);
 }
 
 /**
  * `worksheet` with `record` kept: newest first, one of each id, at most
- * `MAX_COVERAGE_REPORTS` readable records (the oldest dropped). A newer build's records stay.
+ * `MAX_COVERAGE_REPORTS` readable records of this paper (so a new check replaces the last
+ * one; a stray record of another paper goes too). A newer build's records stay.
  */
-export function withCoverageReport<T extends Pick<Worksheet, 'coverageReports'>>(worksheet: T, record: SavedCoverageReport): T {
+export function withCoverageReport<T extends Pick<Worksheet, 'id' | 'coverageReports'>>(worksheet: T, record: SavedCoverageReport): T {
   const stored = worksheet.coverageReports ?? [];
   const ours = stored
     .filter(isSavedCoverageReport)
+    .filter(names(worksheet.id))
     .filter((entry) => entry.id !== record.id)
     .concat(record)
-    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .sort(newestFirst)
     .slice(0, MAX_COVERAGE_REPORTS);
   const newer = stored.filter(isNewerRecord);
   return { ...worksheet, coverageReports: [...ours, ...newer] };

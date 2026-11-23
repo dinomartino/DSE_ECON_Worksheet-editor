@@ -181,8 +181,9 @@ function normalize(worksheet: Worksheet): Worksheet {
   const answerKeyLayout = normalizeAnswerKeyLayout(worksheet.answerKeyLayout);
   // So do exam results (k-0471): a bad % or comment is dropped, the rest kept.
   const examResults = normalizeExamResults(worksheet.examResults);
-  // And saved coverage checks (k-0489 v2): a malformed one is dropped, a newer build's kept.
-  const coverageReports = normalizeCoverageReports(worksheet.coverageReports);
+  // And saved coverage checks (k-0489 v2): a malformed one is dropped, a newer build's kept,
+  // and only this paper's latest stays (u-vouw).
+  const coverageReports = normalizeCoverageReports(worksheet.coverageReports, worksheet.id);
   const { answerKeyLayout: _stored, examResults: _results, coverageReports: _reports, ...rest } = worksheet;
   void _stored;
   void _results;

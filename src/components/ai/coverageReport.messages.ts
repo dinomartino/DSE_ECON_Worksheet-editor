@@ -99,7 +99,6 @@ export const COVERAGE_MESSAGES = defineMessages({
   listJoin: { en: ', ', zh: '、' },
   pointsJoin: { en: '; ', zh: '；' },
   // k-0489 v2: saved reports, the redesign
-  reportPick: { en: 'Report', zh: '報告' },
   when: {
     en: (day: number, month: number, year: number, hours: number, minutes: number) =>
       `${day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1] ?? month} ${year}, ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
@@ -109,9 +108,9 @@ export const COVERAGE_MESSAGES = defineMessages({
   scopePaper: { en: 'Whole paper', zh: '全份試卷' },
   scopePart: { en: 'Part of the paper', zh: '部分試卷' },
   scopeSet: { en: 'Whole set', zh: '整套試卷' },
-  option: {
-    en: (when: string, scope: string, pct: string) => `${when} · ${scope} · ${pct}`,
-    zh: (when: string, scope: string, pct: string) => `${when} · ${scope} · ${pct}`,
+  checkedLine: {
+    en: (when: string, scope: string, pct: string) => `Checked ${when} · ${scope} · ${pct}`,
+    zh: (when: string, scope: string, pct: string) => `檢查時間：${when} · ${scope} · ${pct}`,
   },
   savingReport: { en: 'Saving with the paper…', zh: '正在與試卷一併儲存…' },
   savedPaper: { en: 'Saved with this paper', zh: '已與這份試卷一併儲存' },
@@ -121,8 +120,8 @@ export const COVERAGE_MESSAGES = defineMessages({
     zh: '未能把報告與每份試卷一併儲存。請下載 PDF 保留。',
   },
   keptHint: {
-    en: (n: number) => `The last ${n} checks are kept with the paper, and travel with it.`,
-    zh: (n: number) => `試卷會保留最近 ${n} 次檢查，並隨試卷一併保存及同步。`,
+    en: 'Only the latest check is kept with the paper (a new check replaces it), and it travels with the paper.',
+    zh: '試卷只會保留最近一次檢查（新的檢查會取代它），並隨試卷一併保存及同步。',
   },
   deleteReport: { en: 'Delete', zh: '刪除' },
   deleteAsk: { en: 'Delete this saved report? This cannot be undone.', zh: '刪除這份已儲存的報告？此操作無法復原。' },

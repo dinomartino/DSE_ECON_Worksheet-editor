@@ -284,13 +284,20 @@ for (const engineName of ENGINES) {
       return `${printed.sheets} sheets`;
     });
 
-    await check(engineName, 'k-0489 v2: a saved report reopens after a reload, says the paper changed, and deletes', async () => {
+    await check(engineName, 'k-0489 v2: only the latest check is kept; it reopens after a reload, says the paper changed, and deletes', async () => {
       const { context, page } = await newPage(browser);
       await runCoverage(page);
       const dialog = page.getByRole('dialog', { name: 'Syllabus coverage' });
       expect(/Saved with this paper/.test(await dialog.innerText()), 'no saved line');
       await page.getByRole('button', { name: 'Close', exact: true }).last().click();
       await page.waitForTimeout(400);
+      const first = JSON.parse(await stored(page)).coverageReports?.[0]?.id;
+      // A second check replaces the first (u-vouw: keep the most recent one).
+      await runCoverage(page);
+      await page.getByRole('button', { name: 'Close', exact: true }).last().click();
+      await page.waitForTimeout(600);
+      const kept = JSON.parse(await stored(page)).coverageReports ?? [];
+      expect(kept.length === 1 && kept[0].id !== first, `expected only the newest check kept, got ${kept.length}`);
       // Someone edits the paper after the check, then the app is opened again.
       await page.evaluate((id) => {
         const d = JSON.parse(localStorage.getItem(`econ-worksheet:${id}`));
@@ -306,7 +313,8 @@ for (const engineName of ENGINES) {
       const text = await again.innerText();
       expect(/Saved with this paper/.test(text), 'reopened report lost its saved line');
       expect(/This paper has changed since this check/.test(text), `no changed note: ${text.slice(0, 400)}`);
-      expect(/Whole paper · \d+%/.test(await again.locator('select').first().innerText()), 'picker line missing');
+      expect(/Checked .+ · Whole paper · \d+%/.test(text), 'checked line missing');
+      expect((await again.locator('select').count()) === 0, 'no picker: only one report is kept');
       await page.screenshot({ path: `${OUT}/${engineName}-saved-changed.png` });
       const printed = await downloadReport(page, engineName, 'report-saved');
       expect(/Coverage verify/.test(printed.text), 'saved report did not print');

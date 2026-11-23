@@ -215,7 +215,7 @@ describe('the report’s summary (k-0489 v2)', () => {
   });
 });
 
-describe('past coverage reports (k-0489 v2)', () => {
+describe('last coverage report (k-0489 v2)', () => {
   it('is offered only with a saved check of this paper, and opens the newest without the AI', async () => {
     const { coverageSavedVerb } = await import('@/assist/verbs/coverage');
     const { coverageRecord } = await import('./result');
@@ -228,7 +228,8 @@ describe('past coverage reports (k-0489 v2)', () => {
       coverageRecord({ id, language: 'en', title: 'Mock', scope: 'paper', at, pageSize: 'A4' }, [{ worksheetId: ws.id, title: 'Mock', sent: 1, fingerprint: 'x', results: [] }]);
     const saved = withCoverageReport(withCoverageReport(ws, make('old', '2026-11-01T12:00:00Z')), make('new', '2026-11-20T12:00:00Z'));
     const withSaved = { ...ctx, worksheet: saved };
-    expect(coverageSavedVerb.available(withSaved)).toMatchObject({ count: 2, unit: 'reports' });
+    // Only the latest is kept (u-vouw).
+    expect(coverageSavedVerb.available(withSaved)).toMatchObject({ count: 1, unit: 'report' });
     const outcome = await coverageSavedVerb.run(withSaved, { signal: new AbortController().signal, progress: () => {} });
     expect(outcome).toMatchObject({ kind: 'report', fresh: false, record: { id: 'new' } });
     if (outcome.kind === 'report') expect(outcome.summary).toMatch(/^Saved report, 20 Nov 2026: 0 of 49 key points/);

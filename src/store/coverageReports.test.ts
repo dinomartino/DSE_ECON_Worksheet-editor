@@ -58,6 +58,18 @@ describe('keeping a check with its papers (k-0489 v2)', () => {
     expect(useWorksheetStore.getState().worksheet).not.toHaveProperty('coverageReports');
   });
 
+  it('a new check replaces the last one on each paper it read, and only there (u-vouw)', async () => {
+    const store = memoryStore([paper('P1'), paper('P2')]);
+    const set = check(['P1', 'P2']);
+    await keepCoverageReport(set, store);
+    const later = { ...check(['P1']), id: 'r-later', at: '2026-11-22T11:00:00.000Z' };
+    await keepCoverageReport(later, store);
+    expect(store.map.get('P1')!.coverageReports).toHaveLength(1);
+    expect(savedCoverageReports(store.map.get('P1')!).map((r) => r.id)).toEqual(['r-later']);
+    expect(savedCoverageReports(useWorksheetStore.getState().worksheet).map((r) => r.id)).toEqual(['r-later']);
+    expect(savedCoverageReports(store.map.get('P2')!).map((r) => r.id)).toEqual([set.id]);
+  });
+
   it('a failed save is reported; the open paper still holds the check', async () => {
     const store = memoryStore([paper('P1')], ['P1']);
     const record = check(['P1']);

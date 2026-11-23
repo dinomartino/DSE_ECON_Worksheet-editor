@@ -104,7 +104,7 @@ export type VerbOutcome =
   /**
    * A report to read (Check syllabus coverage): the saved check `record` (k-0489 v2). `fresh`:
    * this run made it, so it is kept with the paper (`keepCoverageReport`) as the bar opens;
-   * otherwise it is one already kept, reopened (Past coverage reports).
+   * otherwise it is the one already kept, reopened (Last coverage report).
    */
   | { kind: 'report'; summary: string; record: SavedCoverageReport; fresh: boolean }
   | { kind: 'error'; error: AiErrorInfo };
