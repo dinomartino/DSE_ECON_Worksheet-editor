@@ -7,7 +7,7 @@ import { AiError, isAiError, type HttpDeps } from './types';
  * The DSEcon Mentor account's own calls (k-0519): sign in by link code, read the credits
  * left, sign out. Plain transport like the rest of `src/ai/`; the AI requests themselves go
  * through `createClient` (the `mentor` preset, `adapters/mentor.ts`). The wire is Mentor's
- * `Outbox/k-0518/CONTRACT.md` §1–2 (v0.1): fields may be added, never renamed.
+ * `Outbox/k-0518/CONTRACT.md` §1–2 (v1.1): fields may be added, never renamed.
  */
 
 export interface LinkStart {
@@ -38,6 +38,10 @@ export interface MentorAccount {
   rates?: { inputPerM: number; outputPerM: number };
   /** The one-time trial credits this account was given. */
   trialCredits?: number;
+  /** Credit packs on sale (CONTRACT §2 v1.1): read, never computed. */
+  packs?: Array<{ priceHkd: number; credits: number }>;
+  /** The extra on top of Google's cost in each pack, in % (requests are charged at Google's cost). */
+  extraPct?: number;
   /** Where Buy credits goes (Account page, credit packs). */
   buyUrl: string;
   /** The pricing page (the cost basis). */
@@ -103,7 +107,18 @@ export function readAccount(body: unknown, api: string): MentorAccount | null {
   }
   const trial = isRecord(body.trial) ? num(body.trial.credits) : undefined;
   if (trial !== undefined && trial > 0) account.trialCredits = trial;
+  const packs = Array.isArray(body.packs) ? body.packs.flatMap(readPack).slice(0, 6) : [];
+  if (packs.length) account.packs = packs;
+  const extra = num(body.extraPct);
+  if (extra !== undefined && extra >= 0) account.extraPct = extra;
   return account;
+}
+
+function readPack(pack: unknown): Array<{ priceHkd: number; credits: number }> {
+  if (!isRecord(pack)) return [];
+  const priceHkd = num(pack.priceHkd);
+  const credits = num(pack.credits);
+  return priceHkd !== undefined && credits !== undefined && priceHkd > 0 && credits > 0 ? [{ priceHkd, credits }] : [];
 }
 
 function readStart(body: unknown, api: string, now: number): LinkStart | null {

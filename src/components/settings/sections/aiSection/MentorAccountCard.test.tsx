@@ -29,6 +29,8 @@ const SIGNED_IN: Extract<MentorState, { kind: 'signedIn' }> = {
     status: 'on',
     rates: { inputPerM: 1170, outputPerM: 5850 },
     trialCredits: 900,
+    packs: [{ priceHkd: 50, credits: 4170 }, { priceHkd: 100, credits: 8560 }],
+    extraPct: 10,
     buyUrl: 'https://dseconmentor.com/account#ai-credits',
     pricingUrl: 'https://dseconmentor.com/pricing#ai-credits',
   },
@@ -53,6 +55,8 @@ describe('MentorAccountCard', () => {
   it('signed in and in use: credits left (rounded down), Buy credits, Sign out', () => {
     const html = renderToStaticMarkup(card(SIGNED_IN));
     expect(html).toContain('3,456 credits left');
+    expect(html).toContain('Credit packs: HK$50 · 4,170 credits / HK$100 · 8,560 credits');
+    expect(html).not.toMatch(/at cost|no profit/i);
     expect(html).toContain('Gemini 4 Hydrogen');
     expect(html).toContain('Buy credits');
     expect(html).toContain('Sign out');

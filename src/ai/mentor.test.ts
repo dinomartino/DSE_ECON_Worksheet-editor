@@ -97,6 +97,21 @@ describe('AI requests through the relay (CONTRACT §3)', () => {
     expect(error.info).toMatchObject({ kind: 'noCredits', status: 402, actions: ['buyCredits', 'useOwnKey'] });
   });
 
+  it('the month limit, the daily pause and the switch-off are asked once, never retried (live test, k-0519)', async () => {
+    for (const [status, code] of [[429, 'monthly_cap'], [503, 'hosted_ai_paused'], [503, 'hosted_ai_off']] as const) {
+      const server = fakeMentor({ failWith: { status, code } });
+      await caught(createClient(config(server.token), server.deps).complete(request()));
+      expect(server.requests.filter((r) => r.path === '/ai/generate'), code).toHaveLength(1);
+    }
+    // A plain rate limit is still waited out once, and Google being busy retried.
+    const limited = fakeMentor({ failWith: { status: 429, code: 'rate_limited' } });
+    await caught(createClient(config(limited.token), limited.deps).complete(request()));
+    expect(limited.requests).toHaveLength(2);
+    const busy = fakeMentor({ failWith: { status: 503, code: 'upstream_busy' } });
+    await caught(createClient(config(busy.token), busy.deps).complete(request()));
+    expect(busy.requests).toHaveLength(3);
+  });
+
   it('every §5 code reads as what the teacher can do', () => {
     expect(err(401, 'unauthorized').kind).toBe('signedOut');
     expect(err(402, 'insufficient_credits', { balance: 1, needed: 9 }).kind).toBe('noCredits');
@@ -154,6 +169,8 @@ describe('sign-in, credits and sign-out (CONTRACT §1–2)', () => {
       status: 'on',
       rates: { inputPerM: 1170, outputPerM: 5850 },
       trialCredits: 900,
+      packs: [{ priceHkd: 50, credits: 4170 }, { priceHkd: 100, credits: 8560 }, { priceHkd: 200, credits: 17350 }],
+      extraPct: 10,
       buyUrl: 'https://dseconmentor.com/account#ai-credits',
       pricingUrl: 'https://dseconmentor.com/pricing#ai-credits',
     });
