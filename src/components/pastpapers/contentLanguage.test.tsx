@@ -45,7 +45,7 @@ describe('pack names follow the question language', () => {
   });
 
   it('no Past paper bank view picks a pack name by the interface language', () => {
-    for (const file of ['PastPaperScreen.tsx', 'PastPaperTab.tsx', 'PastPaperIndexCard.tsx', 'PastPaperControls.tsx']) {
+    for (const file of ['PastPaperScreen.tsx', 'PastPaperTab.tsx', 'PastPaperIndexCard.tsx', 'PastPaperControls.tsx', 'PastPaperYearPicker.tsx']) {
       const source = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8');
       expect(source, file).not.toMatch(/=== 'zh-HK' \?[^:]*\.(title|provenance|zh)\b|label\.zh/);
     }
