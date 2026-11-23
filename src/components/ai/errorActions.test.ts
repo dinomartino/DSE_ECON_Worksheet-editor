@@ -26,6 +26,14 @@ describe('errorActions', () => {
     expect(labels(error({ kind: 'region', provider: 'deepseek', actions: [] }))).toEqual(['Use Qwen', 'Open Settings']);
   });
 
+  it('Gemini that cannot be reached says it needs a VPN in Hong Kong (k-0499); other errors and providers say nothing', () => {
+    const vpn = 'In Hong Kong, Gemini needs a VPN. Turn it on, then try again. DeepSeek and Qwen work in Hong Kong without a VPN.';
+    for (const kind of ['network', 'networkOrKey', 'timeout'] as const) expect(errorNote(error({ kind }))).toBe(vpn);
+    for (const kind of ['quota', 'badKey', 'server', 'badRequest', 'model'] as const) expect(errorNote(error({ kind }))).toBeUndefined();
+    expect(errorNote(error({ kind: 'network', provider: 'deepseek' }))).toBeUndefined();
+    expect(errorNote(error({ kind: 'timeout', provider: 'qwen' }))).toBeUndefined();
+  });
+
   it('shows only the actions the error names', () => {
     expect(labels(error({ actions: ['useFallbackModel', 'retry'] }))).toEqual(['Switch to Gemini 3.5 Flash-Lite', 'Try again']);
     expect(labels(error({ kind: 'badKey', actions: ['openKeyPage', 'openSettings'] }))).toEqual(['Get a new key', 'Open Settings']);

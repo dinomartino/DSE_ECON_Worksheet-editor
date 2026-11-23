@@ -1,0 +1,85 @@
+import { sideOf } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
+import { plain } from '@/model/text';
+import type { Side } from '@/model/textSlots';
+import type { PastPaperItem } from '@/pastpapers/pack';
+import { buildsOf, materialize } from '@/questionStudio/deliver';
+import type { SheetDraft } from '@/questionStudio/session';
+import type { CheckRow, StudioDraft } from '@/questionStudio/types';
+import type { UiLanguage } from '@/settings/language';
+import { lookupCode, SYLLABUS } from '@/syllabus';
+import { toRuns } from '@/generate/validate';
+
+/** The Question studio screen's pure half: what its lists and cards are made of. */
+
+export interface KeyPointGroup {
+  code: string;
+  name: string;
+  options: Array<{ code: string; name: string }>;
+}
+
+/** The syllabus's topics and their key points, named in the interface language. */
+export function keyPointGroups(lang: UiLanguage = uiLanguage()): KeyPointGroup[] {
+  const side = sideOf(lang);
+  return SYLLABUS.topics.map((topic) => ({
+    code: topic.code,
+    name: topic[side],
+    options: topic.keyPoints.map((keyPoint) => ({ code: keyPoint.code, name: keyPoint[side] })),
+  }));
+}
+
+/** The key point a question's tags name (a topic code, or the topic part of a pattern tag), if any. */
+export function keyPointOfTags(tags: readonly string[] | undefined): string | undefined {
+  for (const tag of tags ?? []) {
+    const code = tag.split('::')[0];
+    const hit = lookupCode(code);
+    if (hit && !hit.point) return code;
+  }
+  return undefined;
+}
+
+/** Drafts the teacher can use (in the order the sheet has them), and those left out by a hard check. */
+export function partition(entries: readonly SheetDraft[]): { standing: SheetDraft[]; leftOut: SheetDraft[] } {
+  return {
+    standing: entries.filter((e) => e.draft.status !== 'failed'),
+    leftOut: entries.filter((e) => e.draft.status === 'failed'),
+  };
+}
+
+const LETTERS = 'ABCD';
+export const letterOf = (index: number): string => LETTERS[index] ?? '?';
+
+/** 18420 → "18.4k"; under a thousand as is. */
+export function tokenCount(n: number): string {
+  if (n < 1000) return String(Math.round(n));
+  return `${(n / 1000).toFixed(n < 100_000 ? 1 : 0).replace(/\.0$/, '')}k`;
+}
+
+/** A draft as the Past paper bank's card draws a question, so its preview is the card's own. */
+export function draftItem(entry: SheetDraft): PastPaperItem | undefined {
+  const build = buildsOf([entry])[0];
+  const question = build ? materialize(build) : undefined;
+  if (!question) return undefined;
+  return {
+    topicId: '',
+    docId: '',
+    question,
+    source: { exam: 'other', tag: '' },
+    provenance: { en: '', zh: '' },
+    excerpt: { en: '', zh: '' },
+    searchText: '',
+  };
+}
+
+/** The explanation as plain lines, one per side the draft was written in. */
+export function explanationLines(draft: StudioDraft['draft'], sides: readonly Side[]): string[] {
+  return sides.map((side) => plain(toRuns(draft.explanation[side])).trim()).filter(Boolean);
+}
+
+/** The words of a stem, for a card with no preview: one line per side. */
+export function stemLines(draft: StudioDraft['draft'], sides: readonly Side[]): string[] {
+  return sides.map((side) => plain(toRuns(draft.stem[side])).trim()).filter(Boolean);
+}
+
+/** The check row for an id, if the draft has it. */
+export const rowOf = (draft: StudioDraft, id: CheckRow['id']): CheckRow | undefined => draft.checks.find((c) => c.id === id);

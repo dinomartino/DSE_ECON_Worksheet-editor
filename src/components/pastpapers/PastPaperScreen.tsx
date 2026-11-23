@@ -13,6 +13,10 @@ import { PAST_PAPER_SETTINGS } from '@/pastpapers/config';
 import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { rootIdOf } from '@/model/lineage';
 import { PAST_PAPER_MESSAGES } from './messages';
+import { WriteLikeButton } from '@/components/studio/WriteLikeButton';
+import { keyPointOfTags } from '@/components/studio/studioView';
+import { sourceFromQuestion } from '@/questionStudio/source';
+import type { SourceQuestion } from '@/questionStudio/types';
 import { BankStateNote, ExamChips, LanguageToggle, PaperSelect, SearchGlyph, YearSelects } from './PastPaperControls';
 import { PastPaperIndexCard } from './PastPaperIndexCard';
 import { SourceFormatSelect } from './SourceFormatSelect';
@@ -37,6 +41,7 @@ export function PastPaperScreen({
   onHome,
   onOpenWorksheet,
   onOpenDocument,
+  onWriteLike,
   onNotice,
   onError,
 }: {
@@ -45,6 +50,8 @@ export function PastPaperScreen({
   onHome: () => void;
   onOpenWorksheet: (worksheet: Worksheet, language: LanguageMode) => void;
   onOpenDocument: (docId: string, then?: () => void) => void;
+  /** "✦ Write like this" on a card (the Question studio trial, k-0499); absent = no button. */
+  onWriteLike?: (source: SourceQuestion, keyPoint?: string) => void;
   onNotice: (message: string) => void;
   onError: (message: string) => void;
 }) {
@@ -364,6 +371,7 @@ export function PastPaperScreen({
                   const picked = pickedKeys.has(key);
                   const source = packName(item.provenance, language);
                   const letter = answerLetter(item);
+                  const mcq = item.question.type === 'mcq' ? item.question : undefined;
                   return [
                     headingRow,
                     <article
@@ -378,6 +386,16 @@ export function PastPaperScreen({
                           {acrossTopics && <span className="truncate text-[11.5px] text-ink-subtle">{m.inTopic(topicName(item.topicId))}</span>}
                         </label>
                         {item.stimulus && <span className="shrink-0 text-[11.5px] text-ink-subtle">{m.shared}</span>}
+                        {onWriteLike && mcq && (
+                          <WriteLikeButton
+                            onClick={() =>
+                              onWriteLike(
+                                sourceFromQuestion(mcq, { id: item.source.tag || mcq.id, label: source, passage: item.stimulus?.blocks }),
+                                keyPointOfTags(mcq.tags),
+                              )
+                            }
+                          />
+                        )}
                         {answers && letter && (
                           <span className="shrink-0 rounded-md bg-surface-sunken px-2 py-0.5 text-[11.5px] font-medium text-ink">{m.answer(letter)}</span>
                         )}

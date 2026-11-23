@@ -110,6 +110,7 @@ export async function writeDrafts(
       usage.thinking += res.usage?.thinking ?? 0;
       usage.ms += res.ms;
       done += 1;
+      if (typeof res.text !== 'string') return { ok: false, error: aiErrorInfo('badOutput', provider) };
       if (res.finish === 'length') return { ok: false, error: aiErrorInfo('truncated', provider) };
       if (res.finish === 'safety') return { ok: false, error: aiErrorInfo('safety', provider) };
       return { ok: true, text: res.text, model: res.model };

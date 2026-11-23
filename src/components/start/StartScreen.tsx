@@ -63,6 +63,12 @@ import { QuestionBankScreen } from '@/components/bank/page/QuestionBankScreen';
 import { PastPaperScreen } from '@/components/pastpapers/PastPaperScreen';
 import { PAST_PAPER_MESSAGES } from '@/components/pastpapers/messages';
 import { PAST_PAPER_SETTINGS, sourceUrl } from '@/pastpapers/config';
+import { QuestionStudioScreen } from '@/components/studio/QuestionStudioScreen';
+import { QUESTION_STUDIO_MESSAGES } from '@/components/studio/messages';
+import { writeLikeThis } from '@/components/studio/openStudio';
+import type { SourceQuestion } from '@/questionStudio/types';
+import { applyTrialRequest, useStudioTrial } from '@/questionStudio/trial';
+import { notify } from '@/store/notices';
 import { usePastPaperBank } from '@/pastpapers/bank';
 import { useSettings } from '@/settings/store';
 import { GraphsScreen, useGraphCount } from '@/components/graphs/GraphsScreen';
@@ -132,6 +138,8 @@ async function textOf(data: Uint8Array | Blob): Promise<string> {
 
 /** The folder-name dialog: a new folder (optionally filing one document into it), or a rename. */
 type Naming = { folder?: Folder; fileDoc?: WorksheetSummary };
+/** The start screen's views beside its documents; the studio only while its trial is on. */
+type StartView = 'home' | 'bank' | 'pastpapers' | 'graphs' | 'studio';
 
 /** The start screen's one result notice and one failure notice: each new one replaces its own. */
 const START_RESULT = 'start-result';
@@ -236,13 +244,26 @@ export function StartScreen({
   // The Question bank replaces this screen's view the way opening a document replaces
   // it; ← Home comes back. Session state: the app always opens on the documents.
   // Back from a worksheet opened from a bank question: straight into the bank.
-  const [view, setView] = useState<'home' | 'bank' | 'pastpapers' | 'graphs'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
+  const [view, setView] = useState<StartView>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
   const { groups: bankGroups, rows: bankRows, status: bankStatus } = useBank();
   const graphTotal = useGraphCount(`${view}:${lastResult}`);
   const pm = useMessages(PAST_PAPER_MESSAGES);
   const [pastPaperSettings] = useSettings(PAST_PAPER_SETTINGS);
   const pastPapersOn = sourceUrl(pastPaperSettings) !== undefined;
   const pastPaperTotal = usePastPaperBank((state) => state.manifest?.questions);
+  // The Question studio is a trial (k-0499): off for everyone until `?studio=trial` turns it on here.
+  const qs = useMessages(QUESTION_STUDIO_MESSAGES);
+  const studioOn = useStudioTrial();
+  useEffect(() => {
+    applyTrialRequest();
+  }, []);
+  // "✦ Write like this" on a bank question: it becomes the studio's example, and the studio opens.
+  const writeLike = studioOn
+    ? (source: SourceQuestion, keyPoint?: string) => {
+        if (writeLikeThis(source, keyPoint) === 'full') notify({ id: 'studio-full', tone: 'info', body: qs.writeLikeFull });
+        showView('studio');
+      }
+    : undefined;
   const closeFeedback = useCallback(() => setFeedback(false), []);
   // First launch, or everything deleted: the desk welcomes instead of listing. Never
   // while storage is still being read, so a returning teacher sees no flash of it.
@@ -255,7 +276,7 @@ export function StartScreen({
     const current = useNoticeStore.getState().notices.find((n) => n.id === START_RESULT);
     if (current && !current.details?.length) notices.dismiss(START_RESULT);
   }, [notices]);
-  const showView = (next: 'home' | 'bank' | 'pastpapers' | 'graphs') => {
+  const showView = (next: StartView) => {
     clearPassingNotice();
     setView(next);
   };
@@ -877,7 +898,23 @@ export function StartScreen({
         documents already on it. The panel runs the full height like the editor's own
         rail, so the screen reads as the same room as the tool it opens.
       */}
-      {view === 'graphs' ? (
+      {view === 'studio' && studioOn ? (
+        <div className="min-h-0 min-w-0 flex-1">
+          <QuestionStudioScreen
+            summaries={summaries}
+            settings={<SettingsButton separated />}
+            pastPapersOn={pastPapersOn}
+            onHome={() => showView('home')}
+            onGoTo={(next) => showView(next)}
+            onOpenWorksheet={(worksheet, language) => onOpen(worksheet, language)}
+            onOpenDocument={(id, then) => void openSaved(id, then)}
+            onError={(message) => {
+              setNotice(undefined);
+              setError(message);
+            }}
+          />
+        </div>
+      ) : view === 'graphs' ? (
         <div className="min-h-0 min-w-0 flex-1">
           <GraphsScreen
             onHome={() => showView('home')}
@@ -896,6 +933,7 @@ export function StartScreen({
             onHome={() => showView('home')}
             onOpenDocument={(id, then) => void openSaved(id, then)}
             onOpenWorksheet={(worksheet, language) => onOpen(worksheet, language)}
+            onWriteLike={writeLike}
             onNotice={(message) => {
               setError(undefined);
               setNotice({ message });
@@ -919,6 +957,7 @@ export function StartScreen({
             onOpenDocument={(id, then) => void openSaved(id, then)}
             onOpenWorksheet={(worksheet, language) => onOpen(worksheet, language)}
             onDocumentsChanged={() => void refresh()}
+            onWriteLike={writeLike}
             onNotice={(message) => {
               setError(undefined);
               setNotice({ message });
@@ -1001,6 +1040,9 @@ export function StartScreen({
                 hint={pm.hint}
                 onClick={() => showView('pastpapers')}
               />
+            )}
+            {studioOn && (
+              <StartRow icon={<SparkleIcon size={16} />} title={qs.title} hint={qs.rowHint} onClick={() => showView('studio')} />
             )}
             <StartRow
               icon={<DiagramIcon size={16} />}

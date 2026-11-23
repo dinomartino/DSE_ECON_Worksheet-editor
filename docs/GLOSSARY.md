@@ -186,7 +186,11 @@ Words this repository uses in its own way. One line each, with where the thing l
   to a model, copied only when that side prints alone. `src/model/symbols.ts:isSymbolOnly`
 - **Question studio** — the page (and engine) that writes new MC questions from a syllabus
   key point and shows them as drafts to review before Add. `docs/design/question-studio.md`
-  · `src/questionStudio/run.ts:writeDrafts`
+  · `src/questionStudio/run.ts:writeDrafts` · `src/components/studio/QuestionStudioScreen.tsx:QuestionStudioScreen`
+- **Trial switch** — the setting that shows the studio at all (off by default, `?studio=trial`
+  once): the studio ships paused until the trial passes. `src/questionStudio/trial.ts:applyTrialRequest`
+- **Write like this** (✦ 擬類似題目) — the button on a bank question that opens the studio with it
+  as the example to write like. `src/components/studio/openStudio.ts:writeLikeThis`
 - **Brief** — everything sent to the provider for one writing request, built on the computer
   (key point, limits, EDB terms, picked examples, the Change line). Not a 題型 pattern.
   `src/questionStudio/brief.ts:makeBrief`
