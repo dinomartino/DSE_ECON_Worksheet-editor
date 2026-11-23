@@ -46,9 +46,21 @@ export function errorActions(error: AiErrorInfo): ErrorAction[] {
 /** Where a billing error sends the teacher: the provider's billing page, else its key page. */
 export const billingPage = (preset: ProviderPreset): string | undefined => preset.billingUrl ?? preset.keyUrl;
 
-/** Only Gemini's region error carries a note: keep the VPN on, or use DeepSeek or Qwen. */
-export const errorNote = (error: AiErrorInfo): string | undefined =>
-  error.kind === 'region' && error.provider === 'gemini' ? `${copyMessages().regionGeminiNote} ${copyMessages().hkProvidersNote}` : undefined;
+/** What Gemini failing to answer at all can mean in Hong Kong: no VPN (k-0499). */
+const GEMINI_UNREACHED: ReadonlySet<AiErrorInfo['kind']> = new Set(['network', 'networkOrKey', 'timeout']);
+
+/**
+ * Only Gemini's errors about location carry a note: its region refusal (keep the VPN on)
+ * and not being reached at all (Gemini needs a VPN in Hong Kong); either way DeepSeek and
+ * Qwen work without one.
+ */
+export function errorNote(error: AiErrorInfo): string | undefined {
+  if (error.provider !== 'gemini') return undefined;
+  const copy = copyMessages();
+  if (error.kind === 'region') return `${copy.regionGeminiNote} ${copy.hkProvidersNote}`;
+  if (GEMINI_UNREACHED.has(error.kind)) return `${copy.unreachedGeminiNote} ${copy.hkProvidersNote}`;
+  return undefined;
+}
 
 const aiSettings = () => appSettings.read(AI_SETTINGS);
 const keySaved = (provider: ProviderId) => peekSecret(`ai:${provider}`) !== null || aiSettings().keychainSaved[provider] === true;

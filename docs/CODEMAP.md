@@ -613,9 +613,9 @@ Invariants:
 - Highlights are imperative chrome: no IR or `ItemBody` read, never printed, never in the `.docx`.
 - A verb's network call happens only on its menu click; nothing AI-related is stored in a document.
 
-## questionStudio — the Question studio's engine (k-0499; paused, no UI yet)
+## questionStudio — the Question studio, engine and page (k-0499; a trial: off until `?studio=trial`)
 
-Design `docs/design/question-studio.md`. Pure over injected deps, like `src/generate/`; one click is at most five requests.
+Design `docs/design/question-studio.md`. The engine is pure over injected deps, like `src/generate/`; one click is at most five requests. The session, delivery and gate files wire it to the app; the page is `src/components/studio/`.
 
 - `src/questionStudio/types.ts:StudioRequest` · `:StudioDraft` · `:CheckRow` · `:StudioOutcome` — what a teacher asks, what comes back (findings are codes; the words belong to the page)
 - `src/questionStudio/run.ts:writeDrafts` — write → local checks → one rewrite of hard failures → blind solve → one rewrite of key disagreements → solve; `:refine` — Another / Harder / Easier / the Change line; `:parseSolveReply`
@@ -626,11 +626,19 @@ Design `docs/design/question-studio.md`. Pure over injected deps, like `src/gene
 - `src/questionStudio/numbers.ts:checkNumbers` (EN = 中文 numbers, 5 billion = 50億) · `src/questionStudio/lint.ts:lintDraft` · `:lintBatch` · `src/questionStudio/guard.ts:scanLimited` (NOT-required terms)
 - `src/questionStudio/source.ts:sourceFromQuestion` (an MC question as an example) · `:corpusDocOf` (any question's printed words) — text only
 - `src/questionStudio/insert.ts:studioBuilds` — picked drafts → `QuestionBuild`s for `insertQuestionBatch`, tagged with the key point; reuses `src/generate/build.ts:fillMcq`
+- `src/questionStudio/session.ts:createStudioSession` · `:StudioState` · `:canWrite` · `:requestOf` — the screen's one in-memory state (form, drafts newest first with the request each was written for, ticks, focus, the run in progress, usage); one run at a time, Stop, Try again, Another/Harder/Easier/Change in place; never saved. `src/questionStudio/live.ts:useStudio` is the app's session over `src/questionStudio/live.ts:liveEnv` (provider from `createRunDeps`, glossary, corpus from the Past paper bank's search index and the library index `bankRowsNow`)
+- `src/questionStudio/corpus.ts:studioCorpus` · `:pastPaperDocs` · `:ownDocs` — what drafts are compared with (the Past paper index's words, the teacher's own questions once per `contentKey`); built once per inputs
+- `src/questionStudio/deliver.ts:pickedEntries` · `:buildsOf` · `:insertIntoOpenPaper` · `:keepInMyBank` · `:materialize` · `:languageOf` · `:paperName` — the tray's two ways out: one `insertQuestionBatch` (one ⌘Z) or `src/library/bankDocs.ts:addToOneBank`; originals, tagged with each draft's key point
+- `src/questionStudio/trial.ts:STUDIO_TRIAL_SETTINGS` · `:useStudioTrial` · `:applyTrialRequest` · `:readTrialRequest` — the trial switch (`econgen.settings.questionStudio`): off by default, `?studio=trial` / `?studio=off` once at the start screen, the address cleaned
+- Page `src/components/studio/QuestionStudioScreen.tsx:QuestionStudioScreen` (start screen view `studio`, Library row in `src/components/start/StartScreen.tsx` only while the trial is on) over `src/components/studio/SourcePanel.tsx:SourcePanel` (key point, points, examples, count/level/format/language, the Change line, "Sends this to {provider}") · `src/components/studio/DraftsPanel.tsx:DraftsPanel` (cards drawn by `src/components/pastpapers/PastPaperSheet.tsx:PastPaperSheet`, key and why, a chip per check, Another/Harder/Easier/Change…/Discard, "Left out" group) · `src/components/studio/ChecksPanel.tsx:ChecksPanel` (rows, batch notes, what was compared, session usage) · `src/components/studio/Tray.tsx:Tray` · `src/components/studio/StudioError.tsx:StudioError` (a notice; Gemini unreachable adds the VPN note, `src/components/ai/errorActions.ts:errorNote`)
+- Words: `src/components/studio/messages.ts:QUESTION_STUDIO_MESSAGES` · `src/components/studio/findings.messages.ts:STUDIO_FINDING_MESSAGES` · `src/components/studio/findings.ts:findingText` (every code the engine reports has a sentence: `findings.test.ts` reads the engine's sources)
+- "✦ Write like this": `src/components/studio/WriteLikeButton.tsx:WriteLikeButton` on Past paper cards (`src/components/pastpapers/PastPaperScreen.tsx`) and the Question bank review page (`src/components/bank/page/ReviewPage.tsx`); `src/components/studio/openStudio.ts:writeLikeThis` adds the example (three at most) and chooses the key point its tags name; `src/components/studio/studioView.ts:keyPointOfTags`
 - Test-only `src/questionStudio/fixtures.ts` (invented questions, never past-paper text); `scripts/ai-mock-server.mjs` answers the studio's requests for browser runs
 
 Invariants:
 - Nothing is sent before a click, and what is sent is exactly the brief: a picked example's words and key, never its label (year, paper, number).
 - A draft the hard checks fail (`shape`, `copy`) is never built; nothing is inserted except by `studioBuilds` on the teacher's Add.
+- The studio is off for everyone: no row, no screen, no ✦ Write like this button unless `studioTrialOn()`; nothing is written to a paper or the bank except by Add or Keep, and a draft that landed leaves the sheet.
 - No file here reads `src/coverage/` words or edits `src/syllabus/`.
 
 ## import — Import from Word or PDF (D1), the engine

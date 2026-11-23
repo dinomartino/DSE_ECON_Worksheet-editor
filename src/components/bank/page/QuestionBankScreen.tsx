@@ -1,5 +1,6 @@
 'use client';
 
+import type { SourceQuestion } from '@/questionStudio/types';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { isModalLayerOpen } from '@/components/ui/modalLayer';
 import { groupRows } from '@/library/group';
@@ -177,6 +178,7 @@ export function QuestionBankScreen({
   onOpenDocument,
   onOpenWorksheet,
   onDocumentsChanged,
+  onWriteLike,
   onNotice,
   onError,
   onLeaveLevel,
@@ -194,6 +196,8 @@ export function QuestionBankScreen({
   onOpenWorksheet: (worksheet: Worksheet, language: LanguageMode) => void;
   /** Saved documents changed under the start screen: re-read the list. */
   onDocumentsChanged: () => void;
+  /** "✦ Write like this" on a question (the Question studio trial, k-0499); absent = no button. */
+  onWriteLike?: (source: SourceQuestion, keyPoint?: string) => void;
   /** A result or failure: the host raises it as a notice (`notify`), never inline. */
   onNotice: (message: string) => void;
   onError: (message: string) => void;
@@ -1022,6 +1026,7 @@ export function QuestionBankScreen({
           onLanguage={setLanguage}
           onVersion={setVersion}
           onEditTopics={(row) => setPicker({ mode: 'edit', row })}
+          onWriteLike={onWriteLike}
           onPattern={showPattern}
           onOpen={openRow}
         />

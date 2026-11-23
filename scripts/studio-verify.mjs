@@ -1,0 +1,447 @@
+import { createServer } from 'node:http';
+import { mkdirSync } from 'node:fs';
+import { chromium } from 'playwright-core';
+import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
+
+/**
+ * The Question studio's browser run (k-0499, package 2): the trial gate, the page, Write with
+ * the canned mock provider, the drafts and their checks, the tray (a new worksheet, a bank),
+ * "✦ Write like this" from a Past paper card, Stop, and Gemini that cannot be reached (the
+ * VPN note). Nothing real is reached: the AI is `ai-mock-server.mjs`, the Past paper bank is
+ * a tiny invented export served from here, and requests to the provider hosts are blocked.
+ *
+ *   npm run dev -- -p 3199   (or any build served somewhere)
+ *   node scripts/studio-verify.mjs [--url=http://localhost:3199] [--out=/tmp/studio-verify] [--only=gate,write,tray,like,stop,vpn,zh,layout]
+ */
+
+const args = process.argv.slice(2);
+const opt = (name, fallback) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
+const APP = opt('url', 'http://localhost:3199');
+const OUT = opt('out', '/tmp/studio-verify');
+const ONLY = opt('only', '').split(',').filter(Boolean);
+const MOCK_PORT = Number(opt('mock-port', '8791'));
+const BANK_PORT = Number(opt('bank-port', '8792'));
+const MOCK = `http://localhost:${MOCK_PORT}`;
+const BANK = `http://localhost:${BANK_PORT}/`;
+const want = (name) => ONLY.length === 0 || ONLY.includes(name);
+mkdirSync(OUT, { recursive: true });
+
+// ---- an invented Past paper bank: one topic, three questions, and its search index ----
+
+const bi = (en, zh = '') => ({ en: en ? [{ text: en }] : [], zh: zh ? [{ text: zh }] : [] });
+const question = (n, tag, en, zh, options, key) => ({
+  id: `pp-q${n}`,
+  type: 'mcq',
+  blocks: [{ kind: 'paragraph', id: `pp-q${n}-b`, text: bi(en, zh) }],
+  marks: 1,
+  options: options.map(([oe, oz], i) => ({ id: `pp-q${n}-o${i}`, text: bi(oe, oz) })),
+  answerIndex: key,
+  tags: ['C.ped', tag],
+  lineage: { rootId: `pp:${tag}` },
+});
+const QUESTIONS = [
+  question(1, 'DSE2099/P1/Q1', 'When the price of a notebook rises from $10 to $12, the quantity demanded falls from 500 to 450. The price elasticity of demand is closest to', '當一本記事簿的價格由 $10 升至 $12，需求量由 500 減至 450。需求價格彈性最接近', [['0.25', '0.25'], ['0.5', '0.5'], ['2', '2'], ['4', '4']], 1),
+  question(2, 'DSE2099/P1/Q2', 'A taxi company raises its fares by 6% and the number of trips falls by 3%. The price elasticity of demand for its trips is', '一間的士公司把車資提高 6%，載客次數減少 3%。其載客服務的需求價格彈性為', [['0.5', '0.5'], ['2', '2'], ['3', '3'], ['9', '9']], 0),
+  question(3, 'CE2099/P2/Q3', 'The demand for table salt is price inelastic mainly because salt', '食用鹽的需求缺乏價格彈性，主要是因為鹽', [['has many close substitutes', '有很多相近的替代品'], ['takes up a very small share of income', '只佔收入很小的比例'], ['is a luxury', '是奢侈品'], ['can be stored for years', '可以儲存多年']], 1),
+];
+const doc = {
+  v: 3,
+  id: 'pp-bank-C',
+  kind: 'bank',
+  name: 'Demand and elasticity',
+  title: bi('Demand and elasticity'),
+  questions: QUESTIONS,
+  layout: [],
+  flow: QUESTIONS.map((q) => ({ type: 'question', id: q.id })),
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+const plain = (q, side) => [q.blocks[0].text[side], ...q.options.map((o) => o.text[side])].map((runs) => runs.map((r) => r.text).join('')).join(' ');
+const MANIFEST = {
+  version: 1,
+  enabled: true,
+  questions: QUESTIONS.length,
+  topics: [{ id: 'C', title: { en: 'Demand and elasticity', zh: '需求與彈性' }, file: 'topics/C.json', questions: QUESTIONS.length, syllabus: ['C.ped'] }],
+  search: { version: 1, questions: QUESTIONS.map((q) => ({ topic: 'C', source: q.tags[1], en: plain(q, 'en'), zh: plain(q, 'zh'), pictures: 0 })) },
+};
+
+function startBankServer(port) {
+  const server = createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const path = new URL(req.url, BANK).pathname;
+    if (path === '/manifest.json') return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(MANIFEST));
+    if (path === '/topics/C.json') return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(doc));
+    res.writeHead(404).end('not found');
+  });
+  return new Promise((resolve) => server.listen(port, () => resolve(server)));
+}
+
+// ---- helpers ----
+
+const results = [];
+async function check(name, fn) {
+  try {
+    const detail = await fn();
+    results.push({ name, ok: true });
+    console.log(`  ok   ${name}${detail ? ` — ${detail}` : ''}`);
+  } catch (e) {
+    const first = e.message.split('\n')[0];
+    results.push({ name, ok: false, detail: first });
+    console.log(`  FAIL ${name} — ${first}`);
+  }
+}
+const expect = (cond, message) => {
+  if (!cond) throw new Error(message);
+};
+const PROVIDER_HOSTS = ['generativelanguage.googleapis.com', 'api.deepseek.com', 'dashscope.aliyuncs.com', 'dashscope-intl.aliyuncs.com', 'openrouter.ai', 'api.openai.com', 'api.anthropic.com'];
+const mockCount = async () => (await (await fetch(`${MOCK}/__count`)).json()).count;
+const mockReset = () => fetch(`${MOCK}/__reset`, { method: 'POST' });
+
+const WORDS = {
+  en: { row: /Question studio 擬題工作室/, home: /^← Home$/, pastRow: /Past paper bank 歷屆試題庫/, add: 'Add', keep: /Keep in my 題庫/, write: /✦ Write 3/, stop: 'Stop' },
+  'zh-HK': { row: /擬題工作室/, home: /^← 主頁$/, pastRow: /歷屆試題庫/, add: '加入', keep: /存入我的題庫/, write: /✦ 擬 3 題/, stop: '停止' },
+};
+
+/** A fresh teacher: AI pointed at the mock (or Gemini with a fake key), the Past paper bank at the invented export, the studio off. */
+async function newPage(browser, { ui = 'en', viewport = { width: 1512, height: 950 }, provider = 'custom', route = '', pastPapers = true, secret = true } = {}) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+  context.setDefaultTimeout(15_000);
+  const ai =
+    provider === 'custom'
+      ? { v: 1, provider: 'custom', models: { custom: MOCK_MODEL }, baseUrls: { custom: `${MOCK}${route}/v1` } }
+      : { v: 1, provider: 'gemini' };
+  await context.addInitScript(
+    ([aiJson, bank, withBank, lang, secretKey, secretValue]) => {
+      if (sessionStorage.getItem('studio-seeded')) return;
+      sessionStorage.setItem('studio-seeded', '1');
+      localStorage.clear();
+      localStorage.setItem('econgen.settings.ai', aiJson);
+      if (secretValue) sessionStorage.setItem(secretKey, secretValue);
+      localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: lang, paper: 'bilingual' }));
+      localStorage.setItem('econgen.settings.pastPapers', JSON.stringify(withBank ? { v: 1, mode: 'custom', url: bank } : { v: 1, mode: 'off' }));
+    },
+    [JSON.stringify(ai), BANK, pastPapers, ui, provider === 'custom' ? 'econgen.secret.ai:custom' : 'econgen.secret.ai:gemini', !secret ? '' : provider === 'custom' ? 'sk-mock-verify-0000' : 'AIzaSyFAKEFAKEFAKEFAKEFAKEFAKE0000000'],
+  );
+  const leaks = [];
+  await context.route(
+    (url) => PROVIDER_HOSTS.includes(url.hostname),
+    (r) => {
+      leaks.push(r.request().url());
+      // Gemini "cannot be reached": the connection fails, as it does in Hong Kong without a VPN.
+      return provider === 'gemini' ? r.abort('failed') : r.fulfill({ status: 599, body: 'blocked by studio-verify' });
+    },
+  );
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => m.type() === 'error' && !/Failed to load resource|net::ERR/.test(m.text()) && errors.push(m.text()));
+  await mockReset();
+  return { context, page, leaks, errors };
+}
+
+const screen = (page) => page.locator('[data-studio-screen]');
+const drafts = (page) => page.locator('[data-studio-draft]:not([data-left-out])');
+async function openStudio(page, w) {
+  await page.getByRole('button', { name: w.row }).first().click();
+  await screen(page).waitFor();
+}
+async function enable(page) {
+  await page.goto(`${APP}/?studio=trial`, { waitUntil: 'networkidle' });
+}
+async function writeThree(page) {
+  await page.locator('#studio-key-point').selectOption('C.ped');
+  await page.getByRole('radio', { name: '3', exact: true }).click();
+  await page.locator('[data-studio-write]').click();
+  await drafts(page).nth(2).waitFor({ timeout: 30_000 });
+  await page.locator('[data-studio-write]').waitFor();
+}
+
+// ---- the run ----
+
+const bankServer = await startBankServer(BANK_PORT);
+const mockServer = await startMockServer(MOCK_PORT);
+const browser = await chromium.launch({ channel: 'chrome' });
+
+try {
+  const w = WORDS.en;
+
+  if (want('gate')) {
+    console.log('gate');
+    const { context, page, errors } = await newPage(browser);
+    await page.goto(APP, { waitUntil: 'networkidle' });
+    await check('off by default: no Library row, nothing about it', async () => {
+      await page.getByRole('button', { name: w.pastRow }).first().waitFor();
+      expect((await page.getByRole('button', { name: w.row }).count()) === 0, 'the studio row is there');
+      expect(!(await page.locator('[data-write-like]').count()), 'a write-like button is there');
+    });
+    await check('?studio=trial turns it on, once, and leaves the address clean', async () => {
+      await page.goto(`${APP}/?studio=trial&nosplash=1`, { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: w.row }).first().waitFor();
+      expect(!page.url().includes('studio='), `address ${page.url()}`);
+      expect(page.url().includes('nosplash=1'), `address lost the other parameter: ${page.url()}`);
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: w.row }).first().waitFor();
+    });
+    await check('the screen opens, says Trial, and ← Home leaves', async () => {
+      await openStudio(page, w);
+      expect((await screen(page).getByText('Trial', { exact: true }).count()) === 1, 'no Trial tag');
+      await page.screenshot({ path: `${OUT}/01-empty-en.png` });
+      await screen(page).getByRole('button', { name: w.home }).click();
+      await page.getByRole('button', { name: w.row }).first().waitFor();
+    });
+    await check('?studio=off turns it off again', async () => {
+      await page.goto(`${APP}/?studio=off`, { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: w.pastRow }).first().waitFor();
+      expect((await page.getByRole('button', { name: w.row }).count()) === 0, 'the studio row stayed');
+    });
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  if (want('write') || want('tray')) {
+    console.log('write');
+    const { context, page, leaks, errors } = await newPage(browser);
+    await enable(page);
+    await openStudio(page, w);
+    await check('Write needs a key point, and nothing is sent before it', async () => {
+      expect(await page.locator('[data-studio-write]').isDisabled(), 'Write is enabled with no key point');
+      expect((await mockCount()) === 0, 'a request left already');
+    });
+    await check('the form lists what is sent, and writes three drafts with two requests', async () => {
+      await page.locator('#studio-key-point').selectOption('C.ped');
+      const sends = (await page.locator('[data-studio-sends]').innerText()).replace(/\s+/g, ' ');
+      expect(/Sends this to/.test(sends) && /key point/i.test(sends) && /Nothing else/.test(sends), `sends: ${sends}`);
+      expect((await mockCount()) === 0, 'a request left before Write');
+      await writeThree(page);
+      // Write and the blind solve; a third request means a draft was written again (a check failed it).
+      expect((await mockCount()) >= 2 && (await mockCount()) <= 4, `requests: ${await mockCount()}`);
+      expect((await drafts(page).count()) === 3, 'not three drafts');
+      return `${await drafts(page).count()} drafts, ${await mockCount()} requests`;
+    });
+    await check('each draft is AI-made, shows its key, and carries seven check chips', async () => {
+      const card = drafts(page).first();
+      expect((await card.getByText('AI-made', { exact: true }).count()) === 1, 'no AI-made chip');
+      expect(/Key [A-D]/.test(await card.innerText()), 'no key');
+      expect((await card.locator('[data-check]').count()) === 7, 'not seven chips');
+      expect((await page.locator('[data-studio-draft] [data-check="copy"]').first().getAttribute('data-state')) === 'pass', 'copy not passed');
+    });
+    await check('the checks column explains the focused draft, and the session has counts', async () => {
+      const checks = page.locator('[data-studio-checks]');
+      expect((await checks.locator('[data-check-row]').count()) === 7, 'not seven rows');
+      expect((await checks.locator('[data-check-row="key"]').getAttribute('data-state')) === 'pass', 'key row not passed');
+      const text = await checks.innerText();
+      expect(/compared with 3 past paper questions/.test(text), `compared line: ${text.slice(-260)}`);
+      expect(/This session: \d+ requests/.test(text), 'no usage line');
+      await page.screenshot({ path: `${OUT}/02-drafts-en.png` });
+    });
+    await check('Harder changes that draft in place with two more requests, and the other drafts stay', async () => {
+      const before = await drafts(page).first().innerText();
+      const others = await drafts(page).nth(1).innerText();
+      const sent = await mockCount();
+      await drafts(page).first().getByRole('button', { name: 'Harder', exact: true }).click();
+      await page.waitForFunction((n) => (document.querySelector('[data-studio-usage]')?.textContent ?? '').match(/(\d+) requests/)?.[1] >= n + 2, sent, { timeout: 30_000 });
+      await page.waitForTimeout(300);
+      expect((await drafts(page).count()) === 3, 'the number of drafts changed');
+      expect((await drafts(page).first().innerText()) !== before, 'the draft did not change');
+      expect((await drafts(page).nth(1).innerText()) === others, 'another draft changed');
+      expect((await mockCount()) >= sent + 2, `requests: ${await mockCount()}`);
+    });
+    await check('Another adds one beside it; Discard takes one away', async () => {
+      await drafts(page).first().getByRole('button', { name: 'Another', exact: true }).click();
+      await page.waitForFunction(() => document.querySelectorAll('[data-studio-draft]:not([data-left-out])').length === 4, null, { timeout: 30_000 });
+      await drafts(page).nth(1).getByRole('button', { name: 'Discard', exact: true }).click();
+      expect((await drafts(page).count()) === 3, 'discard did not remove it');
+    });
+    await check('the keys are asked blind: the solve request has no key and no brief', async () => {
+      // 2 requests happened; the mock cannot show payloads, so look at what the page sent.
+      expect(leaks.length === 0, `leaks: ${leaks.join(', ')}`);
+    });
+    if (want('tray')) {
+      console.log('tray');
+      await check('ticking drafts shows the tray; a failed or unticked draft is not offered', async () => {
+        await drafts(page).nth(0).getByRole('checkbox').check();
+        await drafts(page).nth(1).getByRole('checkbox').check();
+        await page.locator('[data-studio-tray]').waitFor();
+        expect(/2 picked/.test(await page.locator('[data-studio-tray]').innerText()), 'not 2 picked');
+        await page.screenshot({ path: `${OUT}/03-tray-en.png` });
+      });
+      await check('Add → New worksheet opens the editor with both, one ⌘Z away', async () => {
+        await page.locator('[data-studio-tray]').getByRole('button', { name: w.add, exact: true }).click();
+        await page.locator('#print-root').waitFor({ timeout: 20_000 });
+        await page.waitForFunction(() => /elastic/i.test(document.querySelector('#print-root')?.textContent ?? ''), null, { timeout: 15_000 });
+        const text = await page.locator('#print-root').innerText();
+        expect(/milk tea|ferry|textbook/i.test(text), `paper text: ${text.slice(0, 160)}`);
+        await page.screenshot({ path: `${OUT}/04-added-en.png` });
+        return 'two AI-made questions on the paper';
+      });
+      await check('back in the studio the added drafts are gone and the third is still there', async () => {
+        // Leave the editor the way a teacher does (its Econ Studio breadcrumb), never by reloading: the session is in memory.
+        await page.getByRole('button', { name: /Econ Studio/ }).first().click();
+        await page.getByRole('button', { name: w.row }).first().waitFor({ timeout: 20_000 });
+        await openStudio(page, w);
+        const left = await drafts(page).count();
+        expect(left === 1, `drafts now ${left}`);
+        return `${left} drafts left on the sheet`;
+      });
+      await check('Keep in my 題庫 puts the ticked draft in the one bank, and it leaves the sheet', async () => {
+        await drafts(page).first().getByRole('checkbox').check();
+        await page.locator('[data-studio-tray]').getByRole('button', { name: w.keep }).click();
+        await page.getByText(/kept in/).first().waitFor({ timeout: 15_000 });
+        await page.waitForTimeout(400);
+        expect((await drafts(page).count()) === 0, 'the draft stayed on the sheet');
+        const banks = await page.evaluate(() => {
+          const index = JSON.parse(localStorage.getItem('econ-worksheet-index') ?? '[]');
+          return index.filter((entry) => JSON.parse(localStorage.getItem(`econ-worksheet:${entry.id}`) ?? '{}').kind === 'bank').length;
+        });
+        expect(banks === 1, `banks: ${banks}`);
+        await page.screenshot({ path: `${OUT}/04b-kept-en.png` });
+      });
+    }
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  if (want('like')) {
+    console.log('like');
+    const { context, page, errors } = await newPage(browser);
+    await enable(page);
+    await check('✦ Write like this on a Past paper card opens the studio with it as the example and its key point chosen', async () => {
+      await page.getByRole('button', { name: w.pastRow }).first().click();
+      await page.locator('[data-pastpaper-card]').first().waitFor({ timeout: 30_000 });
+      await page.screenshot({ path: `${OUT}/05-pastpaper-en.png` });
+      await page.locator('[data-pastpaper-card] [data-write-like]').first().click();
+      await screen(page).waitFor();
+      const example = page.locator('[data-studio-example]');
+      expect((await example.count()) === 1, 'no example');
+      expect(/DSE2099|HKDSE 2099/.test(await example.innerText()), `example: ${await example.innerText()}`);
+      expect((await page.locator('#studio-key-point').inputValue()) === 'C.ped', 'key point not chosen');
+      const sends = (await page.locator('[data-studio-sends]').innerText()).replace(/\s+/g, ' ');
+      expect(/1 question you picked, word for word/.test(sends) && /HKEAA/.test(sends), `sends: ${sends}`);
+      await page.screenshot({ path: `${OUT}/06-example-en.png` });
+    });
+    await check('the request carries the example’s words and never its year or paper', async () => {
+      const bodies = [];
+      page.on('request', (req) => req.url().startsWith(MOCK) && req.method() === 'POST' && bodies.push(req.postData() ?? ''));
+      await page.locator('#studio-key-point').selectOption('C.ped');
+      await page.getByRole('radio', { name: '1', exact: true }).click();
+      await page.locator('[data-studio-write]').click();
+      await drafts(page).first().waitFor({ timeout: 30_000 });
+      const write = bodies.find((b) => b.includes('question-studio-write')) ?? '';
+      const solve = bodies.find((b) => b.includes('question-studio-solve')) ?? '';
+      expect(write.includes('notebook rises from $10 to $12'), 'example words missing from the write request');
+      // The system prompts say "HKDSE" themselves; the example's own year (2099) and tag must not travel.
+      expect(!/2099/.test(write + solve), 'the example\u2019s year or source tag was sent');
+      expect(solve && !solve.includes('notebook') && !solve.includes('explanation') && !solve.includes('syllabus'), 'the solve request carries more than the question');
+    });
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  if (want('stop')) {
+    console.log('stop');
+    const { context, page, errors } = await newPage(browser, { route: '/slow' });
+    await enable(page);
+    await openStudio(page, w);
+    await check('Stop during the first write: no drafts, no error', async () => {
+      await page.locator('#studio-key-point').selectOption('C.ped');
+      await page.locator('[data-studio-write]').click();
+      await page.getByRole('button', { name: w.stop, exact: true }).click();
+      await page.locator('[data-studio-write]').waitFor();
+      await page.waitForTimeout(500);
+      expect((await drafts(page).count()) === 0, 'drafts appeared');
+      expect((await page.locator('[data-notice="error"]').count()) === 0, 'an error showed');
+    });
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  if (want('setup')) {
+    console.log('setup');
+    const { context, page, errors } = await newPage(browser, { secret: false });
+    await enable(page);
+    await openStudio(page, w);
+    await check('no key yet: Write says to set up a provider, with Open Settings, and nothing is sent', async () => {
+      await page.locator('#studio-key-point').selectOption('C.ped');
+      await page.locator('[data-studio-write]').click();
+      const error = page.locator('[data-notice="error"]');
+      await error.waitFor({ timeout: 15_000 });
+      const text = (await error.innerText()).replace(/\s+/g, ' ');
+      expect(/Set up a provider in Settings first/.test(text) && /Open Settings/.test(text), `error: ${text}`);
+      expect((await mockCount()) === 0, 'a request left without a key');
+      await page.screenshot({ path: `${OUT}/11-setup-en.png` });
+    });
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  if (want('vpn')) {
+    console.log('vpn');
+    const { context, page, errors } = await newPage(browser, { provider: 'gemini' });
+    await enable(page);
+    await openStudio(page, w);
+    await check('Gemini that cannot connect says it needs a VPN in Hong Kong, with Try again', async () => {
+      await page.locator('#studio-key-point').selectOption('C.ped');
+      await page.locator('[data-studio-write]').click();
+      const error = page.locator('[data-notice="error"]');
+      await error.waitFor({ timeout: 40_000 });
+      const text = (await error.innerText()).replace(/\s+/g, ' ');
+      expect(/needs a VPN/.test(text), `error: ${text}`);
+      expect(/Try again/.test(text), 'no Try again');
+      await page.screenshot({ path: `${OUT}/07-vpn-en.png` });
+      return text.slice(0, 140);
+    });
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  if (want('zh')) {
+    console.log('zh-HK');
+    const z = WORDS['zh-HK'];
+    const { context, page, errors } = await newPage(browser, { ui: 'zh-HK' });
+    await enable(page);
+    await check('the whole page reads in 中文: row, source, drafts, checks, tray', async () => {
+      await openStudio(page, z);
+      await page.screenshot({ path: `${OUT}/08-empty-zh.png` });
+      await page.locator('#studio-key-point').selectOption('C.ped');
+      await page.locator('[data-studio-write]').click();
+      await drafts(page).nth(2).waitFor({ timeout: 30_000 });
+      await drafts(page).first().getByRole('checkbox').check();
+      await page.locator('[data-studio-tray]').waitFor();
+      await page.screenshot({ path: `${OUT}/09-drafts-zh.png` });
+      const text = await screen(page).innerText();
+      for (const word of ['擬題工作室', '來源', '草稿', '檢查', '加入', '存入我的題庫', '會把以下內容傳送給']) expect(text.includes(word), `missing ${word}`);
+      for (const english of ['Sends this to', 'Key point', 'Drafts', 'Keep in my']) expect(!text.includes(english), `English left: ${english}`);
+    });
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  if (want('layout')) {
+    console.log('layout');
+    for (const [name, viewport] of [['1024', { width: 1024, height: 768 }], ['390', { width: 390, height: 844 }]]) {
+      const { context, page, errors } = await newPage(browser, { viewport });
+      await enable(page);
+      await check(`${name} px wide: three columns or one stack, nothing cut off`, async () => {
+        await openStudio(page, w);
+        await page.locator('#studio-key-point').selectOption('C.ped');
+        await page.locator('[data-studio-write]').scrollIntoViewIfNeeded();
+        await page.locator('[data-studio-write]').click();
+        await drafts(page).first().waitFor({ timeout: 30_000 });
+        await page.waitForTimeout(600);
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow <= 1, `horizontal overflow ${overflow}px`);
+        await page.screenshot({ path: `${OUT}/10-layout-${name}.png`, fullPage: false });
+      });
+      expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+      await context.close();
+    }
+  }
+} finally {
+  await browser.close();
+  mockServer.close();
+  bankServer.close();
+}
+
+const failed = results.filter((r) => !r.ok);
+console.log(`\n${results.length - failed.length}/${results.length} checks passed; screenshots in ${OUT}`);
+process.exit(failed.length ? 1 : 0);

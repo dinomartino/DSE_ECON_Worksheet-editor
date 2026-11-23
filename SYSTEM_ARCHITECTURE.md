@@ -3475,8 +3475,10 @@ The engine is `src/generate/`, pure over injected deps like `src/translate/run.t
 
 ## AI question studio (k-0499)
 
-**Paused** — the engine (`src/questionStudio/`) is built and tested; there is no page yet
-and nothing is reachable by a teacher. Design: `docs/design/question-studio.md`.
+**A trial, off for everyone** — the engine (`src/questionStudio/`) and its page
+(`src/components/studio/`) are built and tested; a teacher sees nothing of it until the app
+is opened once with `?studio=trial` (`trial.ts`, a setting on that computer). Design:
+`docs/design/question-studio.md`.
 
 Writes new multiple-choice questions from a syllabus key point, optionally in the manner of
 bank questions the teacher picked, and returns **drafts**. Pure over injected deps like
@@ -3506,6 +3508,16 @@ store and never touches a paper.
   teacher's Add only; a failed draft is refused there too. A question is tagged with its key
   point, so the coverage check counts it. No `src/coverage/` word and no `src/syllabus/`
   change: the coverage skill's golden tests pin them.
+- **The page** is the start screen's view `studio` (source | drafts | checks | tray, the Past
+  paper screen's anatomy; drafts are drawn by `PastPaperSheet`). Its state is
+  `session.ts:createStudioSession`: in memory only, one run at a time, kept while the app is
+  open. The provider, glossary and corpus come from `live.ts:liveEnv` when Write is pressed,
+  never when the screen opens (the engine and the provider layer load on the first Write).
+  The tray's ways out are `deliver.ts:insertIntoOpenPaper` (one `insertQuestionBatch`, one
+  ⌘Z) and `deliver.ts:keepInMyBank` (`addToOneBank`); a draft that landed leaves the sheet.
+  Errors are notices (§ Notices), with the VPN note for Gemini that cannot be reached
+  (`errorNote`). "✦ Write like this" (Past paper cards, the 題庫 review page) adds an
+  example and opens the page; with the trial off it is not drawn.
 
 ---
 

@@ -17,6 +17,10 @@ import { distinctVersions, patternLines, rowKey, type ClassChoice } from './bank
 import { alsoInText, partsTesting, testsThisText, testsWhatText, topicsByPart, type RailEntry, type RailPart, type RailSection } from './bankScreen';
 import { RAIL_WINDOW_FROM, railRows, rowAt, rowOffsets, scrollToShow, visibleRange } from './railWindow';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
+import { QUESTION_STUDIO_MESSAGES } from '@/components/studio/messages';
+import { keyPointOfTags } from '@/components/studio/studioView';
+import { sourceFromQuestion } from '@/questionStudio/source';
+import type { SourceQuestion } from '@/questionStudio/types';
 import { useOwningDocument } from './useOwningDocument';
 import { BANK_PAGE_MESSAGES } from './bankPage.messages';
 import { REVIEW_PAGE_MESSAGES } from './ReviewPage.messages';
@@ -89,6 +93,7 @@ export function ReviewPage({
   onEditTopics,
   onPattern,
   onOpen,
+  onWriteLike,
   stageAi,
   targetPicker,
 }: {
@@ -113,6 +118,8 @@ export function ReviewPage({
   /** A 題型 named in the rail or the facts: show only its questions. */
   onPattern?: (pattern: PatternId) => void;
   onOpen: (row: BankRow) => void;
+  /** "✦ Write like this" (the Question studio trial, k-0499); absent = no button. */
+  onWriteLike?: (source: SourceQuestion, keyPoint?: string) => void;
 }) {
   const { order, focused, railHidden } = state;
   return (
@@ -141,6 +148,7 @@ export function ReviewPage({
           onEditTopics={onEditTopics}
           onOpen={onOpen}
           onPick={onPick}
+          onWriteLike={onWriteLike}
           ai={stageAi}
         />
       )}
@@ -578,6 +586,7 @@ function Stage({
   onEditTopics,
   onOpen,
   onPick,
+  onWriteLike,
   ai,
 }: {
   state: ReviewState;
@@ -591,12 +600,16 @@ function Stage({
   onEditTopics?: (row: BankRow) => void;
   onOpen: (row: BankRow) => void;
   onPick: (row: BankRow) => void;
+  onWriteLike?: (source: SourceQuestion, keyPoint?: string) => void;
 }) {
   const { order, index, language, version, usedWith, picked } = state;
   const m = useMessages(REVIEW_PAGE_MESSAGES);
+  const studio = useMessages(QUESTION_STUDIO_MESSAGES);
   const onPattern = useContext(PatternLink);
   const inList = picked.has(row.rootId);
   const { worksheet, failed } = useOwningDocument(row);
+  const owned = worksheet?.questions.find((q) => q.id === row.questionId);
+  const mcq = owned?.type === 'mcq' ? owned : undefined;
   const topicTags = row.tags.filter((tag) => !isPatternTag(tag));
   const byPart = topicsByPart(row);
   const patterns = patternLines(row.tags);
@@ -773,6 +786,20 @@ function Stage({
             <Button size="sm" onClick={() => onOpen(row)} title={m.openTitle}>
               {m.open}
             </Button>
+            {onWriteLike && mcq && (
+              <Button
+                size="sm"
+                title={studio.writeLikeTitle}
+                onClick={() =>
+                  onWriteLike(
+                    sourceFromQuestion(mcq, { id: `mine:${row.docId}/${row.questionId}`, label: `${docLabel(state, row)}${row.number ? ` · Q${row.number}` : ''}` }),
+                    keyPointOfTags(row.tags),
+                  )
+                }
+              >
+                {studio.writeLike}
+              </Button>
+            )}
           </div>
         </div>
       </div>

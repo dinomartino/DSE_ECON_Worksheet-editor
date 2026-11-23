@@ -105,16 +105,61 @@ about 6–7k tokens and 15–40 s for five checked MCQs in both languages. `Stud
 sums the provider's real counts so the first trial logs them. Model ids in
 `src/ai/providers.ts` are unverified.
 
+## The page (`src/components/studio/`, package 2)
+
+The start screen's view `studio`, beside the Question bank and the Past paper bank, built
+as the Past paper screen is (header, columns, a tray at the foot):
+
+- **Source** (left): a key point (a select grouped by topic, named in the interface
+  language), narrow it to some of its points, the syllabus limits that go with it (listed:
+  they are sent), up to three bank questions to write like, how many (1, 3, 5), level,
+  format (either, plain, combination), language (English, 中文, both), the Change line, and
+  **Sends this to {provider}**: the lines come from `brief.ts:sentSummary`, so the list can
+  never say less than what goes (a picked question's words and key, with a note that past
+  paper questions are HKEAA's; nothing else, no label, year or paper number). Write / Stop
+  with the run's stage and progress; the provider line and Settings under it.
+- **Drafts** (middle): each draft drawn as it prints (`PastPaperSheet`, the Past paper
+  card's own preview), AI-made, "No problems found" or "Read it", its key and why, a chip
+  per check (clicking one shows its words), Another / Harder / Easier / Change… / Discard.
+  A draft a hard check failed is set apart under **Left out** with its reason and cannot be
+  ticked.
+- **Checks** (right): the focused draft's seven rows in words (`findings.messages.ts`; the
+  key row says how the blind solve worked and shows its working), notes about the batch,
+  what the near-copy check compared with (the Past paper bank's search index and the
+  teacher's own questions; or "only yours" when the bank was not available), and the
+  session's requests and tokens (the trial's cost evidence).
+- **Tray:** picked drafts go into a new worksheet, a new Paper 1 or one of the teacher's
+  papers (`insertQuestionBatch`: one commit, one ⌘Z, the first question selected and
+  revealed, a notice "N AI-made questions added. Read each one before you use it."), or
+  into their one question bank (`addToOneBank`, duplicates skipped). Drafts that landed leave
+  the sheet.
+- **✦ Write like this** on a Past paper card and on the 題庫 review page adds that
+  question as an example (three at most; its tags choose the key point if none is chosen)
+  and opens the studio. Gone when the trial is off.
+- Session state (`session.ts`) is in memory only and survives leaving the page for a
+  bank to pick an example; a reload clears it. Errors are notices (the app's rule), with
+  exactly the actions the error names; Gemini that cannot be reached says it needs a VPN in
+  Hong Kong (`errorNote`: network, "didn't answer", timeout; also for the ✦ doors).
+
+**The trial switch** (`trial.ts`, decision 7a): `econgen.settings.questionStudio`, off by
+default. Opening the app once with `?studio=trial` turns it on (and removes the parameter
+from the address), `?studio=off` or "Turn the trial off" on the page turns it off. Off: no
+Library row, no screen, no ✦ Write like this. Taking the trial out for good means removing
+`useStudioTrial` from the start screen and the two buttons' props. It needs an address bar,
+so the desktop shell cannot turn it on yet (add a Settings or version-tap route if the
+trial must run there).
+
 ## Packages
 
 1. **Engine** (done): `src/questionStudio/`, the mock server's studio replies, tests.
-2. **Studio page:** Library → Question studio (source, drafts, checks, tray), the "Write
-   like this" entry on bank questions, the form's "what is sent" lines, Gemini's VPN note in
-   its errors, the near-copy corpus from the bank's search index. Waits on k-0497 (By year
-   view) for the pastpapers files it must touch.
-3. **AI-made label and trial kit:** one optional question field (print-hidden chip, Checked),
-   which joins `contentKey`'s ignored list in `src/library/` (waits on k-0497); the trial
-   switch; 30 invented briefs and a script that scores them.
+2. **Studio page** (done): the screen, the "Write like this" entries, the form's "what is
+   sent" lines, Gemini's VPN note, the near-copy corpus, the trial switch. Browser proof
+   `scripts/studio-verify.mjs` (mock AI, an invented bank).
+3. **AI-made label and trial kit:** one optional question field (print-hidden chip,
+   Checked), which joins `contentKey`'s ignored list in `src/library/`; Keep in my 題庫 then
+   keeps the label; 30 invented briefs and a script that scores them (key defensible, usable
+   as is, near-copy, syllabus, terms); the user's ~20 requests marked use as is / after one
+   edit / reject.
 
 Draft CHANGELOG line, to add when the studio is unpaused (a paused feature has none, as
 `check.syllabus` on main): "Write new multiple-choice questions from the syllabus — Library

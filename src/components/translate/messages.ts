@@ -53,6 +53,8 @@ export const COPY_MESSAGES = defineMessages({
 
   technicalDetail: { en: 'Technical detail', zh: '技術詳情' },
   regionGeminiNote: { en: 'Keep the VPN on while you use Gemini.', zh: '使用 Gemini 期間，請保持 VPN 開啟。' },
+  // Gemini that cannot be reached at all (no answer, no connection, too slow): in Hong Kong it is the VPN first (k-0499).
+  unreachedGeminiNote: { en: 'In Hong Kong, Gemini needs a VPN. Turn it on, then try again.', zh: '在香港使用 Gemini 需要 VPN。請先開啟 VPN，然後再試一次。' },
   useProvider: { en: (name: string) => `Use ${name}`, zh: (name: string) => `改用 ${name}` },
   hkProvidersNote: {
     en: 'DeepSeek and Qwen work in Hong Kong without a VPN.',
