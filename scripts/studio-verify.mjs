@@ -252,8 +252,7 @@ try {
       await drafts(page).nth(1).getByRole('button', { name: 'Discard', exact: true }).click();
       expect((await drafts(page).count()) === 3, 'discard did not remove it');
     });
-    await check('the keys are asked blind: the solve request has no key and no brief', async () => {
-      // 2 requests happened; the mock cannot show payloads, so look at what the page sent.
+    await check('nothing reached a real provider (the blind solve request itself is checked under "like")', async () => {
       expect(leaks.length === 0, `leaks: ${leaks.join(', ')}`);
     });
     if (want('tray')) {
