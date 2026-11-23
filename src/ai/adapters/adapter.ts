@@ -32,6 +32,8 @@ export interface StreamPiece {
   usage?: CompletionResult['usage'];
   /** The provider sent an error event mid-stream. */
   error?: string;
+  /** The relay's credits charged for that failed stream (`deadline` is charged, CONTRACT v1.3). */
+  errorCharged?: number;
   /** The relay's closing receipt (`mustSettle`). */
   settled?: true;
 }

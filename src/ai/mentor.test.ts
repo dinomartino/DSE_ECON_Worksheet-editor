@@ -253,13 +253,12 @@ describe('one request is charged once: Idempotency-Key (k-0521 F10, CONTRACT v1.
     await client.stream!(request(), () => undefined);
     const keys = generates(server).map((r) => r.headers['idempotency-key']);
     expect(keys).toHaveLength(3);
-    for (const key of keys) expect(key).toMatch(/^[A-Za-z0-9._-]{8,128}$/);
+    for (const key of keys) expect(key).toMatch(/^[A-Za-z0-9._:-]{8,100}$/);
     expect(new Set(keys).size).toBe(3);
   });
 
-  it('a lost answer is retried with the same key, and Mentor charges it once', async () => {
-    // The first try was charged but its answer came back as a 502: the transport retries.
-    const server = fakeMentor({ failFirst: { times: 1, status: 502 } });
+  it('a call Mentor gave back (502) is retried with the same key, and charged once', async () => {
+    const server = fakeMentor({ failFirst: 1 });
     const res = await createClient(config(server.token), server.deps).complete(request());
     expect(res.text).toContain('物價水平');
     const [first, again] = generates(server);
@@ -267,7 +266,7 @@ describe('one request is charged once: Idempotency-Key (k-0521 F10, CONTRACT v1.
     expect(server.state.charges).toBe(1);
   });
 
-  it('a network drop is retried with the same key too', async () => {
+  it('an answer lost on the way: the retry with the same key gets 409, never a second charge', async () => {
     const server = fakeMentor();
     let dropped = false;
     const flaky = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -278,20 +277,57 @@ describe('one request is charged once: Idempotency-Key (k-0521 F10, CONTRACT v1.
       }
       return server.fetch(input, init);
     }) as typeof fetch;
-    await createClient(config(server.token), { ...server.deps, fetch: flaky }).complete(request());
+    const error = await caught(createClient(config(server.token), { ...server.deps, fetch: flaky }).complete(request()));
     const [first, again] = generates(server);
     expect(again.headers['idempotency-key']).toBe(first.headers['idempotency-key']);
+    expect(generates(server)).toHaveLength(2);
     expect(server.state.charges).toBe(1);
+    expect(error.info).toMatchObject({ kind: 'server', status: 409, actions: ['retry'] });
+    expect(error.info.message).toContain('already sent once');
+    expect(error.info.message).not.toContain('No credits were used');
   });
 
-  it("a caller's own key is used as given, so asking again for the same thing is charged once", async () => {
+  it("a caller's own key is used as given; asking again with it is refused (409), not charged", async () => {
     const server = fakeMentor();
     const client = createClient(config(server.token), server.deps);
     const requestKey = newRequestKey();
     await client.complete(request({ requestKey }));
-    await client.complete(request({ requestKey }));
+    await caught(client.complete(request({ requestKey })));
     expect(generates(server).map((r) => r.headers['idempotency-key'])).toEqual([requestKey, requestKey]);
     expect(server.state.charges).toBe(1);
+  });
+
+  it('Mentor stopping a long call (504 deadline, or event: error in a stream): charged, never retried, says how much', async () => {
+    const whole = fakeMentor({ deadline: true });
+    const error = await caught(createClient(config(whole.token), whole.deps).complete(request()));
+    expect(generates(whole)).toHaveLength(1);
+    expect(whole.state.charges).toBe(1);
+    expect(error.info).toMatchObject({ kind: 'timeout', status: 504 });
+    expect(error.info.message).toBe('This took too long and DSEcon Mentor stopped it; 4 credits were used. Try a smaller job.');
+    const streamed = fakeMentor({ deadline: true });
+    const late = await caught(createClient(config(streamed.token), streamed.deps).stream!(request(), () => undefined));
+    expect(late.info).toMatchObject({ kind: 'timeout' });
+    expect(late.info.message).toContain('4 credits were used');
+  });
+
+  it('503 limits_unavailable is retried like Google being busy, then says Mentor has trouble', async () => {
+    const server = fakeMentor({ failWith: { status: 503, code: 'limits_unavailable' } });
+    const error = await caught(createClient(config(server.token), server.deps).complete(request()));
+    expect(generates(server)).toHaveLength(3);
+    expect(new Set(generates(server).map((r) => r.headers['idempotency-key'])).size).toBe(1);
+    expect(error.info).toMatchObject({ kind: 'server', actions: ['retry'] });
+    expect(error.info.message).toContain('DSEcon Mentor is having trouble');
+  });
+
+  it('a balance below zero: noCredits with its own words; a refused trial is read', async () => {
+    const neg = err(402, 'insufficient_credits', { balance: -12.5, needed: 3 });
+    expect(neg).toMatchObject({ kind: 'noCredits', actions: ['buyCredits', 'useOwnKey'] });
+    expect(neg.message).toContain('below zero after a refund or dispute');
+    expect(err(402, 'insufficient_credits', { balance: 2, needed: 3 }).message).toContain('Not enough AI credits left');
+    const server = fakeMentor({ trialRefused: true });
+    const account = await createMentorRelay({ deps: server.deps }).account(server.token, signal());
+    expect(account).toMatchObject({ trialRefused: true });
+    expect(account.trialCredits).toBeUndefined();
   });
 
   it('a different body (one step down the output ladder) gets its own key', async () => {

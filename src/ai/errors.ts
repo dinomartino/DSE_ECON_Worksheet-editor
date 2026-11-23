@@ -45,7 +45,29 @@ export interface ErrorContext {
   key?: string | null;
   model?: string;
   host?: string;
+  /** Mentor's own error (`CONTRACT.md` §5): its code, and the credits it charged / left when it says. */
+  relay?: RelayError;
 }
+
+export interface RelayError { code: string; charged?: number; balance?: number }
+
+/** Mentor's `{ error, charged?, balance? }`, or undefined for any other body. */
+export function relayErrorOf(body: unknown): RelayError | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+  const b = body as { error?: unknown; charged?: unknown; balance?: unknown };
+  if (typeof b.error !== 'string') return undefined;
+  const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : undefined);
+  return { code: b.error, ...(n(b.charged) !== undefined ? { charged: n(b.charged) } : {}), ...(n(b.balance) !== undefined ? { balance: n(b.balance) } : {}) };
+}
+
+/** "41" · "<1": the credits a stopped call used, for the deadline message. */
+export const usedCredits = (n: number) => (n < 1 ? '<1' : String(Math.round(n)));
+
+/** Mentor stopped the call at its ~270 s limit (CONTRACT v1.3): charged for what it used. */
+export const mentorDeadlineMessage = (charged?: number) =>
+  charged === undefined
+    ? 'This took too long and DSEcon Mentor stopped it; the credits it used were charged. Try a smaller job.'
+    : `This took too long and DSEcon Mentor stopped it; ${usedCredits(charged)} credits were used. Try a smaller job.`;
 
 /** Gemini refuses Hong Kong per request, so the fix is a VPN kept on, not a new key. */
 export const GEMINI_REGION_MESSAGE = "Gemini can't be reached from your location. Turn on a VPN and try again.";
@@ -88,9 +110,12 @@ function messageFor(kind: AiErrorKind, provider: ProviderId, ctx: ErrorContext):
       if (provider === 'mentor') return "DSEcon Mentor couldn't use this request: it may be too big (fewer or smaller pictures), or Econ Studio needs an update.";
       return `${p} couldn't read the request.`;
     case 'server':
+      if (provider === 'mentor' && ctx.relay?.code === 'duplicate_request') return 'This job was already sent once, and its answer didn’t arrive. Try again to send it afresh.';
+      if (provider === 'mentor' && ctx.relay?.code === 'limits_unavailable') return 'DSEcon Mentor is having trouble. No credits were used. Try again in a minute.';
       if (provider === 'mentor') return "Google's AI didn't answer through DSEcon Mentor. No credits were used. Try again.";
       return `${p} is having trouble right now.`;
     case 'timeout':
+      if (provider === 'mentor' && ctx.relay?.code === 'deadline') return mentorDeadlineMessage(ctx.relay.charged);
       return `${p} took too long to answer.`;
     case 'cancelled':
       return 'Stopped.';
@@ -103,6 +128,7 @@ function messageFor(kind: AiErrorKind, provider: ProviderId, ctx: ErrorContext):
     case 'signedOut':
       return 'You are signed out of DSEcon Mentor. Sign in again in Settings → AI.';
     case 'noCredits':
+      if ((ctx.relay?.balance ?? 0) < 0) return 'Your credit balance is below zero after a refund or dispute. Buy credits to continue, or use your own key.';
       return 'Not enough AI credits left. Buy credits to keep using AI, or use your own key.';
     case 'monthlyCap':
       return 'This account reached its monthly AI limit. It resets at the start of next month; until then, use your own key.';
@@ -247,9 +273,13 @@ export function describeHttpError(
   ctx: Pick<ErrorContext, 'key' | 'model'>,
 ): AiErrorInfo {
   const text = haystack(body);
-  const kind = RULES.find((rule) => rule.when(status, text, provider))?.kind ?? 'badRequest';
+  const relay = provider === 'mentor' ? relayErrorOf(body) : undefined;
+  // CONTRACT v1.3: a stopped call (charged), a repeated job key, the limits not checkable.
+  const relayKind: AiErrorKind | undefined =
+    relay?.code === 'deadline' ? 'timeout' : relay?.code === 'duplicate_request' || relay?.code === 'limits_unavailable' ? 'server' : undefined;
+  const kind = relayKind ?? RULES.find((rule) => rule.when(status, text, provider))?.kind ?? 'badRequest';
   const retryAfterMs = kind === 'quota' ? retryDelayMs(body, headers) : undefined;
-  return aiErrorInfo(kind, provider, { ...ctx, status, retryAfterMs, detail: providerMessage(body) });
+  return aiErrorInfo(kind, provider, { ...ctx, status, retryAfterMs, detail: providerMessage(body), ...(relay ? { relay } : {}) });
 }
 
 /**

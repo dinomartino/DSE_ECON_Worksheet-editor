@@ -165,6 +165,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
       let finish: CompletionResult['finish'] | undefined;
       let usage: CompletionResult['usage'];
       let failed: string | undefined;
+      let failedCharged: number | undefined;
       let settled = false;
       let res: Awaited<ReturnType<typeof sendStream>>;
       try {
@@ -178,7 +179,10 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
           }
           const piece = adapter.streamPiece(event);
           if (!piece) return;
-          if (piece.error) failed = piece.error;
+          if (piece.error) {
+            failed = piece.error;
+            failedCharged = piece.errorCharged;
+          }
           if (piece.settled) settled = true;
           if (piece.text) {
             text += piece.text;
@@ -199,6 +203,8 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
         }
         throw httpFailure(res as HttpResponse);
       }
+      // Mentor stopped a long call at its limit: charged, the text so far incomplete (CONTRACT v1.3).
+      if (failed === 'deadline' && preset.relay) throw new AiError(aiErrorInfo('timeout', provider, { status: res.status, relay: { code: failed, charged: failedCharged } }));
       if (failed !== undefined) throw new AiError(aiErrorInfo('server', provider, { status: res.status, detail: failed }));
       // A relay stream closed without its receipt was cut off: nothing it said can be trusted as whole.
       if (adapter.mustSettle && !settled) throw new AiError(aiErrorInfo('server', provider, { status: res.status, detail: 'stream ended early' }));

@@ -16,6 +16,7 @@ const CJK = /[㐀-鿿]/;
 
 const NETWORK = /^Couldn't reach (.+?)\. Check your connection\./;
 const MODEL = /“(.+)”/;
+const DEADLINE = /stopped it; (\S+) credits were used\./;
 
 /** Gemini's region refusal, the line Settings and the setup card repeat. */
 export function geminiRegionMessage(lang: UiLanguage = uiLanguage()): string {
@@ -66,10 +67,15 @@ export function localizedErrorMessage(
       if (info.provider === 'mentor') return pick(en.mentorBadRequest, zh.mentorBadRequest) ?? info.message;
       return pick(en.badRequest(p), zh.badRequest(p)) ?? info.message;
     case 'server':
-      if (info.provider === 'mentor') return pick(en.mentorServer, zh.mentorServer) ?? info.message;
+      if (info.provider === 'mentor') {
+        return pick(en.mentorServer, zh.mentorServer) ?? pick(en.mentorDuplicate, zh.mentorDuplicate) ?? pick(en.mentorTrouble, zh.mentorTrouble) ?? info.message;
+      }
       return pick(en.server(p), zh.server(p)) ?? info.message;
-    case 'timeout':
-      return pick(en.timeout(p), zh.timeout(p)) ?? info.message;
+    case 'timeout': {
+      const used = info.provider === 'mentor' ? DEADLINE.exec(info.message)?.[1] : undefined;
+      if (used) return pick(en.mentorDeadline(used), zh.mentorDeadline(used)) ?? info.message;
+      return pick(en.timeout(p), zh.timeout(p)) ?? pick(en.mentorDeadlineCharged, zh.mentorDeadlineCharged) ?? info.message;
+    }
     case 'cancelled':
       return pick(en.cancelled, zh.cancelled) ?? info.message;
     case 'safety':
@@ -81,7 +87,7 @@ export function localizedErrorMessage(
     case 'signedOut':
       return pick(en.signedOut, zh.signedOut) ?? info.message;
     case 'noCredits':
-      return pick(en.noCredits, zh.noCredits) ?? info.message;
+      return pick(en.noCredits, zh.noCredits) ?? pick(en.mentorNoCreditsNegative, zh.mentorNoCreditsNegative) ?? info.message;
     case 'monthlyCap':
       return pick(en.monthlyCap, zh.monthlyCap) ?? info.message;
     case 'serviceDown':

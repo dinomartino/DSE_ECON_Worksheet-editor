@@ -3374,8 +3374,9 @@ with a dummy key or follows a documented shape.
   (`/auth/logout`); a revoke Mentor doesn't confirm is shown with a link to the account page's
   "Econ Studio sign-ins" (F9). Each `/ai/generate` carries an `Idempotency-Key`
   (`src/ai/client.ts:newRequestKey`), the same on every transport retry, new for each different
-  body; the editor waits `src/ai/http.ts:RELAY_TIMEOUT_MS` (past Mentor's own 300 s) and never
-  retries a timeout, so one request is charged once (F10).
+  body; a repeat Mentor already saw answers `409 duplicate_request` (never charged). The editor
+  waits `src/ai/http.ts:RELAY_TIMEOUT_MS` (past Mentor's own ~270 s stop) and never retries a
+  timeout or Mentor's charged `deadline`, so one request is charged once (F10, CONTRACT v1.3).
 - **Storage namespace**: `econgen.settings.*` and `econgen.secret.*` sit outside
   `econ-worksheet:`, so documents, the index, backups and "Clear saved documents" never
   touch them (`src/test/secretsNeverLeave.test.ts`). The older per-viewer keys

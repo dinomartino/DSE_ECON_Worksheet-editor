@@ -140,6 +140,12 @@ export function MentorAccountCard({
               <span className="text-ink-muted">{m.mentorChecking}</span>
             ) : null}
           </p>
+          {state.account && state.account.credits < 0 && (
+            <p role="status" data-mentor-negative className="text-xs text-warn-ink">
+              {m.mentorNegative}
+            </p>
+          )}
+          {state.account?.trialRefused && <p className="text-xs text-ink-muted">{m.mentorNoTrial}</p>}
           {state.account && state.account.status !== 'on' && (
             <p role="status" className="text-xs text-warn-ink">
               {state.account.status === 'paused' ? m.mentorPaused : m.mentorOff}

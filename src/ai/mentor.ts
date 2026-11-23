@@ -7,7 +7,7 @@ import { AiError, isAiError, type HttpDeps } from './types';
  * The DSEcon Mentor account's own calls (k-0519): sign in by link code, read the credits
  * left, sign out. Plain transport like the rest of `src/ai/`; the AI requests themselves go
  * through `createClient` (the `mentor` preset, `adapters/mentor.ts`). The wire is Mentor's
- * `Outbox/k-0518/CONTRACT.md` §1–2 (v1.1): fields may be added, never renamed.
+ * `Outbox/k-0518/CONTRACT.md` §1–2 (v1.3): fields may be added, never renamed.
  */
 
 export interface LinkStart {
@@ -30,7 +30,7 @@ export type LinkPoll =
   | { status: 'expired' };
 
 export interface MentorAccount {
-  /** Credits left (may have decimals; shown rounded down). 100 credits = HK$1 of Google's price. */
+  /** Credits left (may have decimals; shown rounded down; below zero after a refund or dispute, v1.3). 100 credits = HK$1 of Google's price. */
   credits: number;
   /** 'paused': today's safety stop (back after midnight HKT); 'off': switched off. */
   status: 'on' | 'paused' | 'off';
@@ -38,6 +38,8 @@ export interface MentorAccount {
   rates?: { inputPerM: number; outputPerM: number };
   /** The one-time trial credits this account was given. */
   trialCredits?: number;
+  /** No trial: the same sign-in already had one on an earlier account (CONTRACT v1.3). */
+  trialRefused?: true;
   /** Credit packs on sale (CONTRACT §2 v1.1): read, never computed. */
   packs?: Array<{ priceHkd: number; credits: number }>;
   /** The extra on top of Google's cost in each pack, in % (requests are charged at Google's cost). */
@@ -110,6 +112,7 @@ export function readAccount(body: unknown, api: string): MentorAccount | null {
   }
   const trial = isRecord(body.trial) ? num(body.trial.credits) : undefined;
   if (trial !== undefined && trial > 0) account.trialCredits = trial;
+  if (isRecord(body.trial) && body.trial.refused === true) account.trialRefused = true;
   const packs = Array.isArray(body.packs) ? body.packs.flatMap(readPack).slice(0, 6) : [];
   if (packs.length) account.packs = packs;
   const extra = num(body.extraPct);
