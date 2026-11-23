@@ -125,7 +125,7 @@ describe('the source column with the bank behind it', () => {
 
   it('is in Hong Kong Chinese', () => {
     const html = panel(undefined, 'zh-HK', true);
-    expect(html).toContain('自動加入這個學習要點的真實文憑試題');
+    expect(html).toContain('自動加入這個學習要點的真實 HKDSE 題目');
     expect(html).toContain('歷屆試題庫');
   });
 });
