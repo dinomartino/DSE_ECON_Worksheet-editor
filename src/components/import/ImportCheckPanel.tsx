@@ -54,7 +54,8 @@ export function ImportCheckPanel({
       data-import-check
       data-print-hide
       aria-label={m.checkImport}
-      className="flex max-h-[38%] min-h-0 shrink-0 flex-col border-b border-line bg-surface"
+      // Too tall for its share (a phone, a long AI summary): the panel scrolls as one, never spills.
+      className="flex max-h-[50%] min-h-0 shrink-0 flex-col overflow-y-auto border-b border-line bg-surface sm:max-h-[38%]"
     >
       <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2">
         <p className="mr-1 text-[13px] text-ink" role="status">
@@ -78,7 +79,7 @@ export function ImportCheckPanel({
       </div>
       <AiCheckRow {...ai} onAsk={onAskAi} onStop={onStopAi} />
       {findings.length > 0 && (
-        <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto border-t border-line">
+        <ul className="min-h-[5.5rem] flex-1 divide-y divide-line overflow-y-auto border-t border-line">
           {findings.map((f) => {
             const label = fixLabel(m, f);
             return (
@@ -133,6 +134,9 @@ export function ImportCheckPanel({
     </section>
   );
 }
+
+/** The row's status words: their own line under the title on a phone, beside it from `sm` up. */
+const STATUS = 'order-last min-w-0 basis-full sm:order-none sm:basis-0 sm:flex-1';
 
 const TONE: Record<AiTone, string> = {
   ok: 'text-ok',
@@ -190,22 +194,22 @@ export function AiCheckRow({
     <div data-ai-check={run.state} className="shrink-0 border-t border-line bg-surface-sunken px-4 py-2" role="status" aria-live="polite">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-[12.5px] font-semibold text-ink">✦ {m.aiCheck}</span>
-        <span className="text-ink-subtle">·</span>
-        {run.state === 'idle' && <span className="min-w-0 flex-1 text-[12px] text-ink-muted">{configured ? m.aiIdle(provider) : m.aiIdleNoProvider}</span>}
-        {run.state === 'connecting' && <span className="min-w-0 flex-1 text-[12px] text-ink">{m.aiConnecting(provider)}</span>}
+        <span className="hidden text-ink-subtle sm:inline">·</span>
+        {run.state === 'idle' && <span className={`${STATUS} text-[12px] text-ink-muted`}>{configured ? m.aiIdle(provider) : m.aiIdleNoProvider}</span>}
+        {run.state === 'connecting' && <span className={`${STATUS} text-[12px] text-ink`}>{m.aiConnecting(provider)}</span>}
         {run.state === 'running' && (
-          <span className="min-w-0 flex-1 text-[12px] text-ink">
+          <span className={`${STATUS} text-[12px] text-ink`}>
             {m.aiSending(run.total, run.batches, provider)}
             <span className="text-ink-muted"> · {m.aiProgress(run.done, run.total)}</span>
           </span>
         )}
-        {report && <span className={`min-w-0 flex-1 text-[12.5px] font-medium ${TONE[report.tone]}`}>{report.tone === 'ok' ? '✓ ' : ''}{report.headline}</span>}
+        {report && <span className={`${STATUS} text-[12.5px] font-medium ${TONE[report.tone]}`}>{report.tone === 'ok' ? '✓ ' : ''}{report.headline}</span>}
         {busy ? (
-          <Button size="sm" variant="subtle" onClick={onStop}>
+          <Button size="sm" variant="subtle" onClick={onStop} className="ml-auto sm:ml-0">
             {m.aiStop}
           </Button>
         ) : (
-          <Button size="sm" variant={run.state === 'idle' ? 'default' : 'subtle'} onClick={onAsk} data-ai-ask>
+          <Button size="sm" variant={run.state === 'idle' ? 'default' : 'subtle'} onClick={onAsk} className="ml-auto sm:ml-0" data-ai-ask>
             ✦ {run.state === 'idle' ? m.aiRun : m.aiRunAgain}
           </Button>
         )}

@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core';
  * Check import, then Also ask the AI) to show what the teacher saw.
  *
  *   npm run build && node scripts/import-ai-verify.mjs --file=/path/paper.docx --out=/tmp/k0501 \
- *     [--name=p1] [--mode=clean|found|region] [--lang=en|zh-HK] [--width=1440] [--before] [--root=out]
+ *     [--name=p1] [--mode=clean|found|region] [--lang=en|zh-HK] [--width=1440] [--delay=1500] [--before] [--root=out]
  *
  * Point --file and --out outside the repo when the paper is real.
  */
@@ -30,6 +30,8 @@ const WIDTH = Number(opt('width', '1440'));
 const BEFORE = args.includes('--before');
 const ROOT = opt('root', 'out');
 const PORT = Number(opt('port', '3511'));
+/** Each canned answer's delay: long enough for the row's running state to be seen. */
+const DELAY = Number(opt('delay', '1500'));
 if (!FILE) {
   console.error('--file=<paper.docx> is required');
   process.exit(1);
@@ -80,7 +82,7 @@ try {
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     if (req.url().endsWith('/models')) return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify({ object: 'list', data: [{ id: 'mock' }] }) });
     asked++;
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, DELAY));
     let items = [];
     if (MODE === 'found') {
       const body = JSON.parse(req.postData() ?? '{}');
@@ -138,7 +140,7 @@ try {
     await row.waitFor({ timeout: 10_000 });
     if (MODE !== 'region') {
       await dialog.locator('[data-ai-check="running"]').waitFor({ timeout: 20_000 });
-      await page.waitForTimeout(2600);
+      await page.waitForTimeout(Math.min(2600, DELAY * 0.6));
       await shot('2-running');
       const text = await row.innerText();
       check(/checked|已檢查/.test(text) && /so far|已用/.test(text), `while running the row says how far and how long: ${text.replace(/\n/g, ' | ')}`);
