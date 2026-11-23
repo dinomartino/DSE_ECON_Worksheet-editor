@@ -86,6 +86,22 @@ describe('AI requests through the relay (CONTRACT §3)', () => {
     expect(server.requests[0].headers.authorization).toBeUndefined();
   });
 
+  it('401 after 30 days unused, and 403 token_scope (v1.3): both ask to sign in again', () => {
+    for (const info of [err(401, 'unauthorized'), err(403, 'token_scope')]) {
+      expect(info).toMatchObject({ kind: 'signedOut', fatal: true, actions: ['signIn'] });
+      expect(info.message).toContain('Sign in again');
+    }
+  });
+
+  it('the fake answers like v1.3: logout 200 {ok:true}, a link token refused off the AI routes', async () => {
+    const server = fakeMentor();
+    const res = await server.fetch(`${server.api}/me`, { method: 'GET', headers: { authorization: `Bearer ${server.token}` } });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'token_scope' });
+    const out = await server.fetch(`${server.api}/auth/logout`, { method: 'POST', headers: { authorization: `Bearer ${server.token}` }, body: '{}' });
+    expect([out.status, await out.json()]).toEqual([200, { ok: true }]);
+  });
+
   it('a revoked token: signedOut, with Sign in', async () => {
     const server = fakeMentor();
     const error = await caught(createClient(config('dsm_revoked_0123456789'), server.deps).complete(request()));
@@ -166,10 +182,10 @@ describe('sign-in, credits and sign-out (CONTRACT §1–2)', () => {
     expect(server.requests[1]).toMatchObject({ path: '/auth/link/check', json: { pollToken: 'dsl_poll_secret_0123456789' } });
     const account = await relay.account(server.token, signal());
     expect(account).toEqual({
-      credits: 900,
+      credits: 500,
       status: 'on',
       rates: { inputPerM: 1170, outputPerM: 5850 },
-      trialCredits: 900,
+      trialCredits: 500,
       packs: [{ priceHkd: 50, credits: 4170 }, { priceHkd: 100, credits: 8560 }, { priceHkd: 200, credits: 17350 }],
       extraPct: 10,
       buyUrl: 'https://dseconmentor.com/account#ai-credits',

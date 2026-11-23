@@ -2,7 +2,7 @@ import type { HttpDeps } from './types';
 
 /**
  * Test support, never shipped: a stand-in for Mentor's hosted AI (k-0519), answering as
- * `Outbox/k-0518/CONTRACT.md` v1.1 says: link-code sign-in (`/auth/link/start`, `/check`),
+ * `Outbox/k-0518/CONTRACT.md` v1.3 says: link-code sign-in (`/auth/link/start`, `/check`),
  * `GET /ai/credits`, and `POST /ai/generate` (`{ feature, stream, request }` → `{ response,
  * mentor }`, or Gemini's chunks then `event: mentor`). It charges each call from
  * `usageMetadata` at the contract's rates, refuses with 402 when the credits are short and
@@ -43,7 +43,8 @@ export const FAKE_RATES = { inputPerMillionTokens: 1170, outputPerMillionTokens:
 
 export function fakeMentor(opts: FakeMentorOptions = {}) {
   const token = opts.token ?? 'dsm_test_token_0123456789abcdef';
-  const state = { credits: opts.credits ?? 900, polls: 0, revoked: false, charged: 0, charges: 0, generates: 0 };
+  // A new account's balance is its trial (CONTRACT v1.2+: 500 credits).
+  const state = { credits: opts.credits ?? 500, polls: 0, revoked: false, charged: 0, charges: 0, generates: 0 };
   /** Keys used, with what their call charged. */
   const used = new Map<string, number>();
   const requests: FakeMentorRequest[] = [];
@@ -82,16 +83,17 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
     }
     if (path === '/auth/logout') {
       if (opts.logout === 'network') throw new TypeError('Failed to fetch');
-      if (opts.logout && opts.logout !== 204) return relayError(opts.logout, 'server_error');
+      if (opts.logout && opts.logout !== 200) return relayError(opts.logout, 'server_error');
       state.revoked = true;
-      return json(204, null);
+      // v1.3: 200 {"ok":true} with CORS (was documented as 204).
+      return json(200, { ok: true });
     }
     if (path === '/ai/credits') {
       if (!authed) return relayError(401, 'unauthorized');
       return json(200, {
         status: opts.status ?? 'on',
         balance: state.credits,
-        trial: opts.trialRefused ? { credits: 0, refused: true } : { credits: 900, grantedAt: '2026-11-23T09:58:01.000Z' },
+        trial: opts.trialRefused ? { credits: 0, refused: true } : { credits: 500, grantedAt: '2026-11-23T09:58:01.000Z' },
         month: { spent: 0, cap: 20000, resetsAt: '2026-11-30T16:00:00.000Z' },
         model: 'gemini-4-hydrogen',
         rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, ...FAKE_RATES, cachedInputPerMillionTokens: 58.5 },
@@ -132,6 +134,8 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
       if (end === 'error') chunks.push(`event: error\ndata: ${JSON.stringify({ error: 'upstream_error', refunded: true })}`);
       return new Response(chunks.map((c) => `${c}\n\n`).join(''), { status: 200, headers: { 'content-type': 'text/event-stream' } });
     }
+    // v1.3: the link token reaches only /ai/* and /auth/logout.
+    if (authed) return relayError(403, 'token_scope');
     return relayError(404, 'not_found');
   }) as typeof globalThis.fetch;
 
