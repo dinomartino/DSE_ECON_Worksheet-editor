@@ -5,6 +5,7 @@ import type { Side } from '@/model/textSlots';
 import type { LanguageMode } from '@/model/types';
 import { lookupCode } from '@/syllabus';
 import { normalizeRequest } from './brief';
+import { needsPick, pickKeyPoints, type KeyPick } from './pick';
 import { emptyUsage, refine as refineDraft, writeDrafts, type RunHooks, type Stage } from './run';
 import {
   BATCH_SIZES,
@@ -30,7 +31,7 @@ import {
  */
 
 export interface StudioForm {
-  /** A syllabus key point code (`C.ped`); '' = not chosen yet. */
+  /** A syllabus key point code (`C.ped`) the teacher set by hand; '' = the AI picks it (step 1, `pick.ts`), the normal case. */
   keyPoint: string;
   /** Narrow it to some of its points (`C.ped#arc`); none = the whole key point. */
   points: string[];
@@ -74,12 +75,16 @@ export interface StudioEnv {
    * [] when there are none or the teacher turned it off. Never throws.
    */
   references?(request: StudioRequest, signal: AbortSignal): Promise<SourceQuestion[]>;
+  /** Reads the pictures of examples that carry `figureBlocks` (draws diagrams: browser only). Never throws; absent = words only. */
+  figures?(examples: readonly SourceQuestion[]): Promise<SourceQuestion[]>;
 }
 
 export interface StudioState {
   form: StudioForm;
   /** Newest batch first. */
   entries: SheetDraft[];
+  /** The key points step 1 picked for the latest write, with its reasons ([] = the teacher set one, or nothing written yet). */
+  picks: KeyPick[];
   /** Notes about the latest run (fewer drafts than asked, a key letter used too often…). */
   notes: Finding[];
   /** Ticked draft ids, in the order ticked. */
@@ -137,10 +142,14 @@ export const requestOf = (form: StudioForm): StudioRequest => ({
   note: form.note,
 });
 
-/** Whether the form can be written: a key point of the syllabus, and nothing running. */
+/**
+ * Whether the form can be written: something to go on. A request typed in words, a picked
+ * question to write like, or a key point set by hand (never required: the AI picks the key
+ * point, step 1). Nothing running is checked by the caller.
+ */
 export const canWrite = (form: StudioForm): boolean => {
   const hit = lookupCode(form.keyPoint);
-  return Boolean(hit && !hit.point);
+  return Boolean((hit && !hit.point) || form.examples.length > 0 || form.note.trim() !== '');
 };
 
 const addUsage = (a: Usage, b: Usage): Usage => ({
@@ -166,6 +175,41 @@ export async function withReferences(request: StudioRequest, env: Pick<StudioEnv
   } catch {
     return request;
   }
+}
+
+/** The request's examples with their pictures read, so the model gets them with the request (k-0514). */
+export async function withExampleFigures(request: StudioRequest, env: Pick<StudioEnv, 'figures'>): Promise<StudioRequest> {
+  if (!env.figures || !request.examples.some((e) => !e.figures && e.figureBlocks?.length)) return request;
+  try {
+    return { ...request, examples: await env.figures(request.examples) };
+  } catch {
+    return request;
+  }
+}
+
+export type KeyPointsResult =
+  | { ok: true; request: StudioRequest; picks: KeyPick[]; usage: Usage; model?: string }
+  | { ok: false; error: AiErrorInfo; usage: Usage };
+
+/**
+ * Step 1 (u-lm1c): a request with no key point of its own gets one from the model: the same
+ * provider reads the typed request and the picked question and names the key point(s) from
+ * the syllabus, with a reason. A request that already names one (set by hand, or a refine of
+ * a draft) goes through untouched, with no call.
+ */
+export async function withKeyPoints(request: StudioRequest, deps: Pick<StudioDeps, 'client' | 'preset'>, hooks: Pick<RunHooks, 'signal' | 'progress'>): Promise<KeyPointsResult> {
+  if (!needsPick(request)) return { ok: true, request, picks: [], usage: emptyUsage() };
+  hooks.progress?.(0, 3, 'pick');
+  const picked = await pickKeyPoints({ text: request.note, examples: request.examples }, deps, hooks.signal);
+  if (!picked.ok) return { ok: false, error: picked.error, usage: picked.usage };
+  const [main, ...rest] = picked.picks;
+  return {
+    ok: true,
+    request: normalizeRequest({ ...request, keyPoint: main.code, points: [], alsoKeyPoints: rest.map((p) => p.code) }),
+    picks: picked.picks,
+    usage: picked.usage,
+    model: picked.model,
+  };
 }
 
 /** What a run that reached the provider asked and got (the trial's record is built from it). */
@@ -239,6 +283,7 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
     return {
       form: defaultForm(initialLanguage),
       entries: [],
+      picks: [],
       notes: [],
       picked: [],
       phase: { kind: 'idle' },
@@ -263,22 +308,31 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
         const form = get().form;
         if (!canWrite(form) || running()) return;
         const asked = normalizeRequest(requestOf(form));
-        // What was written is what the drafts keep (refining asks the same thing again): with no
-        // example picked, that includes the real questions the studio chose.
+        // What was written is what the drafts keep (refining asks the same thing again): that
+        // includes the key point step 1 picked, and the real questions the studio chose when
+        // none was picked.
         const meta: Pick<RunInfo, 'kind' | 'request'> = { kind: 'write', request: asked };
+        let picks: KeyPick[] = [];
         const action: Action = () => get().write();
         await run(
           meta,
           action,
           async (deps, runHooks) => {
-            const request = await withReferences(asked, env, runHooks);
+            // The pictures of a picked question are read first: step 1 may need them to see what it tests.
+            const step1 = await withKeyPoints(await withExampleFigures(asked, env), deps, runHooks);
+            if (!step1.ok) return { ok: false, error: step1.error, usage: step1.usage };
+            picks = step1.picks;
+            // Step 1 took one of the requests: the bar counts on from there.
+            const hooks2: RunHooks = step1.picks.length ? { signal: runHooks.signal, progress: (done, total, stage) => runHooks.progress?.(done + 1, total + 1, stage) } : runHooks;
+            const request = await withExampleFigures(await withReferences(step1.request, env, hooks2), env);
             meta.request = request;
-            return writeDrafts(request, deps, runHooks, { avoid: get().entries.filter((e) => e.request.keyPoint === request.keyPoint).map((e) => e.draft) });
+            const outcome = await writeDrafts(request, deps, hooks2, { avoid: get().entries.filter((e) => e.request.keyPoint === request.keyPoint).map((e) => e.draft) });
+            return { ...outcome, usage: addUsage(step1.usage, outcome.usage) };
           },
           (outcome) => {
             const request = meta.request;
             const fresh = outcome.drafts.map((draft): SheetDraft => ({ draft, request }));
-            set({ entries: [...fresh, ...get().entries], notes: outcome.notes, ...(fresh[0] ? { focus: fresh[0].draft.id } : {}) });
+            set({ entries: [...fresh, ...get().entries], picks, notes: outcome.notes, ...(fresh[0] ? { focus: fresh[0].draft.id } : {}) });
           },
         );
       },

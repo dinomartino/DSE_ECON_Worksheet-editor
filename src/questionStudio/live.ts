@@ -35,6 +35,7 @@ export const liveBank: ReferenceBank = {
 };
 
 export const liveEnv: StudioEnv = {
+  figures: async (examples) => (await import('./figures')).withFigures(examples),
   references: (request, signal) => (autoReferencesOn() ? findReferences(request, liveBank, { signal }) : Promise.resolve([])),
   async resolve() {
     const provider = readAiStatus().provider;

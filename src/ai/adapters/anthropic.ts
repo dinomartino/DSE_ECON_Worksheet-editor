@@ -1,5 +1,5 @@
-import type { CompletionResult } from '../types';
-import { isRecord, modelExtra, systemFor, trimBase, type Adapter } from './adapter';
+import type { CompletionRequest, CompletionResult } from '../types';
+import { isRecord, modelExtra, parseImage, systemFor, trimBase, type Adapter } from './adapter';
 
 /**
  * Anthropic Messages. The preset's `anthropic-dangerous-direct-browser-access` header is what
@@ -12,6 +12,15 @@ function finishOf(reason: unknown): CompletionResult['finish'] {
   return reason === 'refusal' ? 'safety' : 'other';
 }
 
+/** The last user turn's text, preceded by its pictures when it has any. */
+function withImages(text: string, images: CompletionRequest['images']): string | Record<string, unknown>[] {
+  const blocks = (images ?? []).flatMap((image) => {
+    const parsed = parseImage(image.dataUrl);
+    return parsed ? [{ type: 'image', source: { type: 'base64', media_type: parsed.mime, data: parsed.data } }] : [];
+  });
+  return blocks.length ? [...blocks, { type: 'text', text }] : text;
+}
+
 export const anthropicAdapter: Adapter = {
   rungs: () => ['anthropic-jsonSchema', 'prompt'],
 
@@ -21,7 +30,7 @@ export const anthropicAdapter: Adapter = {
       model: config.model,
       max_tokens: req.maxOutputTokens,
       system: systemFor(req.system, enforced, req.shapeHint),
-      messages: req.turns.map((t) => ({ role: t.role, content: t.content })),
+      messages: req.turns.map((t, i) => ({ role: t.role, content: i === req.turns.length - 1 && t.role === 'user' ? withImages(t.content, req.images) : t.content })),
       ...preset.extraBody,
       ...modelExtra(preset, config.model),
     };

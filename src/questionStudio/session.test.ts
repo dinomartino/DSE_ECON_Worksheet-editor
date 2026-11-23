@@ -46,10 +46,16 @@ describe('the form', () => {
     expect(canWrite(session.getState().form)).toBe(true);
     expect(sidesOf('en')).toEqual(['en']);
     expect(sidesOf('bilingual')).toEqual(['en', 'zh']);
-    session.getState().setForm({ keyPoint: 'C.ped#arc' });
+    session.getState().setForm({ keyPoint: 'C.ped#arc', note: '' });
     expect(canWrite(session.getState().form)).toBe(false);
     session.getState().setForm({ keyPoint: 'nonsense' });
     expect(canWrite(session.getState().form)).toBe(false);
+    // k-0514: a typed request, or a picked question, is enough: the AI picks the key point.
+    session.getState().setForm({ note: 'a question on elasticity' });
+    expect(canWrite(session.getState().form)).toBe(true);
+    session.getState().setForm({ note: '' });
+    session.getState().addExample(EXAMPLE);
+    expect(canWrite(session.getState().form)).toBe(true);
   });
 
   it('a new key point forgets the narrowed points; the same one keeps them', () => {

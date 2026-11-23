@@ -4,6 +4,7 @@ import { plain } from '@/model/text';
 import type { Side } from '@/model/textSlots';
 import { questionTexts } from '@/model/textWalk';
 import type { BiText, ContentBlock, McqQuestion, Question, TableBlock } from '@/model/types';
+import { figureBlocksOf } from './figures';
 import type { CorpusDoc, CorpusKind } from './nearCopy';
 import type { SourceQuestion } from './types';
 
@@ -60,6 +61,7 @@ export function sourceFromQuestion(
   const passage = opts.passage?.length ? blocksText(opts.passage) : null;
   const optionFigure = question.options.some((o) => (o.blocks?.length ?? 0) > 0);
   const key = question.answerIndex;
+  const figureBlocks = figureBlocksOf(question, opts.passage);
   return {
     id: opts.id ?? question.id,
     label: opts.label,
@@ -69,6 +71,7 @@ export function sourceFromQuestion(
     options: question.options.map((o) => biOf(o.text)),
     answerIndex: Number.isInteger(key) && key >= 0 && key < question.options.length ? key : -1,
     hasFigure: stem.figure || (passage?.figure ?? false) || optionFigure,
+    ...(figureBlocks.length ? { figureBlocks } : {}),
   };
 }
 

@@ -274,3 +274,12 @@ export const PRESETS: Readonly<Record<ProviderId, ProviderPreset>> = {
 export function presetFor(id: ProviderId): ProviderPreset {
   return PRESETS[id] ?? PRESETS.gemini;
 }
+
+/**
+ * Whether the provider reads pictures sent with a request (k-0514). Gemini, Claude and the
+ * two big OpenAI-style gateways do; DeepSeek's chat models, Qwen's text models, a custom
+ * server and Ollama (whatever model the teacher pulled) are not assumed to.
+ */
+export function supportsImages(preset: Pick<ProviderPreset, 'id' | 'family'>): boolean {
+  return preset.family === 'gemini' || preset.family === 'anthropic' || preset.id === 'openai' || preset.id === 'openrouter';
+}

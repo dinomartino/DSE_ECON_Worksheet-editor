@@ -91,11 +91,11 @@ export interface ReferenceBank {
 }
 
 /** A bank item as a style reference; undefined when it is not a usable multiple-choice question. */
-export function referenceOf(item: PastPaperItem): SourceQuestion | undefined {
+export function referenceOf(item: PastPaperItem, auto = true): SourceQuestion | undefined {
   const question = item.question;
   if (question.type !== 'mcq' || question.options.length < 2) return undefined;
   const source = sourceFromQuestion(question, { id: item.source.tag || question.id, label: item.provenance.en || item.source.tag, passage: item.stimulus?.blocks });
-  return source.answerIndex >= 0 ? { ...source, auto: true } : undefined;
+  return source.answerIndex >= 0 ? (auto ? { ...source, auto: true } : source) : undefined;
 }
 
 /**
@@ -127,4 +127,29 @@ export async function findReferences(request: Pick<StudioRequest, 'keyPoint' | '
     }
   }
   return found;
+}
+
+// ---- picking one by hand (k-0514) ----
+
+/** Rows shown at most for one search. */
+export const MAX_FOUND = 30;
+
+/**
+ * The bank's questions that match what the teacher typed (every word, in either language, the
+ * source line or the tag: "elasticity 2019", "價格彈性", "HKDSE paper 1 Q12"), newest HKDSE first.
+ * Nothing typed lists the newest. From the index only: no topic is downloaded to search.
+ */
+export function searchRows(rows: readonly SearchRow[], query: string, limit = MAX_FOUND): SearchRow[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const rank = (row: SearchRow) => (row.source.exam === 'HKDSE' ? 3 : row.source.exam === 'HKCEE' ? 2 : 1) * 10_000 + (row.source.year ?? 0);
+  return rows
+    .filter((row) => words.every((word) => row.searchText.includes(word)))
+    .sort((a, b) => rank(b) - rank(a))
+    .slice(0, limit);
+}
+
+/** One searched row as an example the teacher picked (not an `auto` one); undefined when it cannot be read as a multiple-choice question with a key. */
+export async function loadReference(row: SearchRow, bank: Pick<ReferenceBank, 'items'>): Promise<SourceQuestion | undefined> {
+  const item = (await bank.items(row.topicId).catch(() => undefined))?.find((candidate) => candidate.source.tag === row.source.tag);
+  return item ? referenceOf(item, false) : undefined;
 }

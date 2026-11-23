@@ -54,6 +54,8 @@ export interface ProviderPreset {
 }
 export interface ProviderConfig { provider: ProviderId; apiKey: string | null; model: string; baseUrl: string }
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
+/** A picture sent with a request: `data:image/png|jpeg|webp|gif;base64,…`. Never a remote URL. */
+export interface ImagePart { dataUrl: string }
 export interface CompletionRequest {
   system: string;
   /** Few-shot pair(s), then the real payload last. */
@@ -64,6 +66,12 @@ export interface CompletionRequest {
   shapeHint?: string;
   maxOutputTokens: number;
   signal: AbortSignal;
+  /**
+   * Pictures sent with the last user turn (k-0514), in order. A provider that cannot read
+   * pictures (`supportsImages`) never gets them: the client drops them, so a caller that
+   * wants to tell the model "a figure is attached" must ask `supportsImages(preset)` first.
+   */
+  images?: readonly ImagePart[];
   /** Default 120 000. */
   timeoutMs?: number;
 }

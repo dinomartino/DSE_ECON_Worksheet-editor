@@ -297,3 +297,29 @@ Draft CHANGELOG line, to add when the studio ships. It stays out of `CHANGELOG.m
 release hides the studio, because the release body is copied from Unreleased (a feature a
 release hides has none, as `check.syllabus` on main): "Write new multiple-choice questions from the syllabus — Library
 → Question studio writes drafts on a key point, checks them, and adds the ones you pick."
+
+## Engine v2 (k-0514, user u-6060, u-lm1c): the AI picks the key point, pictures go with the reference
+
+The first studio made the teacher choose a key point and sent only words. Three changes, all engine-side:
+
+- **Step 1, `src/questionStudio/pick.ts`.** Every write with no key point of its own first asks the same provider
+  which EDB key point(s) the request is about: the typed request (`note`), the picked questions' words and pictures,
+  and the 52 key points with their points. Structured reply, one or two `{ code, reason }`; each code is checked
+  against `src/syllabus` (a point code maps to its key point, a made-up code is dropped). One repeat on an unreadable
+  reply, then `badOutput`. A key point set by hand (the form's select, now "AI picks" by default) skips the call, so
+  does a refine. The first pick is the main key point every check reads; the second (`alsoKeyPoints`) is only named in
+  the write payload. `session.ts:withKeyPoints`, state `picks` (shown, tap one to set it by hand). A request is
+  writable with a typed request, a picked question or a key point (`canWrite`). "Write like this" no longer sets the
+  key point from the question's tag.
+- **Pictures with the reference.** `figures.ts` reads a question's image blocks (data URLs) and draws its diagrams to a PNG
+  (`export/diagramImage.ts:rasterizeDiagram`, browser only), at most 3 per example, 6 per request, 2 MB each.
+  `CompletionRequest.images` goes on the last user turn: Gemini `inlineData`, Claude image blocks, OpenAI-style
+  `image_url` (`ai/adapters`); `ai/providers.ts:supportsImages` (Gemini, Claude, OpenAI, OpenRouter) — the client drops images
+  for any other provider, and the payload then says `figureNotShown` as before. The pick and the write both get them.
+  Not built: a rendered picture of the whole question (tables and stems are words already).
+- **Pick one yourself.** `references.ts:searchRows` / `:loadReference` over the bank's search index (words in either
+  language, source line, tag; newest HKDSE first); `components/studio/ReferencePicker.tsx` in the source panel.
+
+Step 1's accuracy: `pickEval.test.ts` (`PICK_EVAL=dump|score|live`, bank copy in `PICK_EVAL_DIR`). First run, stand-in
+model Claude Haiku, not Gemini: 22/33 (67%) from a real HKDSE question alone, 27/28 from a specific typed request,
+50/63 overall; the misses are mostly neighbouring key points. A Gemini run needs a key (`PICK_EVAL=live`).

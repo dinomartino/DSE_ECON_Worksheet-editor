@@ -1,3 +1,4 @@
+import type { ImagePart } from '@/ai/types';
 import type { BiDraft } from '@/generate/types';
 import type { Glossary } from '@/glossary/types';
 import type { Side } from '@/model/textSlots';
@@ -30,6 +31,8 @@ export interface Brief {
   request: StudioRequest;
   topic: { code: string; en: string; zh: string };
   keyPoint: { code: string; en: string; zh: string; notRequired: readonly string[] };
+  /** Further key points the questions may also touch (the AI's pick); names only. */
+  also: ReadonlyArray<{ code: string; en: string; zh: string }>;
   points: ReadonlyArray<{ code: string; en: string; zh: string }>;
   /** Where each draft's key should sit (0–3), so a batch does not pile up on one letter. */
   keys: readonly number[];
@@ -64,6 +67,7 @@ export function normalizeRequest(request: StudioRequest): StudioRequest {
   return {
     ...request,
     points: [...new Set(points)],
+    alsoKeyPoints: [...new Set(request.alsoKeyPoints ?? [])].filter((code) => code !== request.keyPoint && lookupCode(code) && !lookupCode(code)?.point).slice(0, 1),
     examples: request.examples.slice(0, request.examples.length > 0 && request.examples.every((e) => e.auto === true) ? MAX_AUTO_EXAMPLES : MAX_EXAMPLES),
     count: Math.min(MAX_COUNT, Math.max(1, Math.floor(request.count) || 1)),
     sides: (['en', 'zh'] as const).filter((side) => request.sides.includes(side)),
@@ -83,6 +87,10 @@ export function makeBrief(raw: StudioRequest, random?: () => number): BriefResul
     request,
     topic: { code: hit.topic.code, en: hit.topic.en, zh: hit.topic.zh },
     keyPoint: { code: hit.keyPoint.code, en: hit.keyPoint.en, zh: hit.keyPoint.zh, notRequired: hit.keyPoint.notRequired },
+    also: (request.alsoKeyPoints ?? []).flatMap((code) => {
+      const other = lookupCode(code);
+      return other ? [{ code: other.keyPoint.code, en: other.keyPoint.en, zh: other.keyPoint.zh }] : [];
+    }),
     points: chosen.map(({ code, en, zh }) => ({ code, en, zh })),
     keys: keyPlan(request.count, random),
   };
@@ -100,15 +108,33 @@ function sidesOf(text: BiDraft, sides: readonly Side[]): Partial<Record<Side, st
 const LETTERS = 'ABCD';
 
 /** One example as the provider sees it: its words and key. Never its label, id or source. */
-export function examplePayload(source: SourceQuestion, sides: readonly Side[]): Record<string, unknown> {
+export function examplePayload(source: SourceQuestion, sides: readonly Side[], figures = 0): Record<string, unknown> {
   return {
     ...(source.passage ? { passage: sidesOf(source.passage, sides) } : {}),
     stem: sidesOf(source.stem, sides),
     statements: source.statements.map((s) => sidesOf(s, sides)),
     options: source.options.map((o) => sidesOf(o, sides)),
     ...(source.answerIndex >= 0 ? { key: LETTERS[source.answerIndex] } : {}),
-    ...(source.hasFigure ? { figureNotShown: true } : {}),
+    // `figures`: this many pictures are attached, in this example's order; else the model is told it had one it cannot see.
+    ...(figures > 0 ? { figures } : source.hasFigure ? { figureNotShown: true } : {}),
   };
+}
+
+/** Pictures in all of a request's examples that one request carries (a bigger set is cut, earlier examples first). */
+export const MAX_REQUEST_FIGURES = 6;
+
+/**
+ * The pictures each example sends: its own figures when the provider reads pictures, within
+ * `MAX_REQUEST_FIGURES` over the request. One list per example, same order as the examples.
+ */
+export function sentFigures(examples: readonly SourceQuestion[], vision: boolean): ImagePart[][] {
+  let room = MAX_REQUEST_FIGURES;
+  return examples.map((example) => {
+    if (!vision || room <= 0) return [];
+    const take = [...(example.figures ?? [])].slice(0, room);
+    room -= take.length;
+    return take;
+  });
 }
 
 /** The EDB term lines for the Chinese side: the key point's names and the examples' English. */
@@ -116,6 +142,7 @@ function pinLines(brief: Brief, glossary: Glossary | null, denyHints: boolean): 
   if (!glossary || !brief.request.sides.includes('zh')) return [];
   const texts = [
     brief.keyPoint.en,
+    ...brief.also.map((k) => k.en),
     ...brief.points.map((p) => p.en),
     ...brief.request.examples.flatMap((e) => [e.stem.en, ...e.statements.map((s) => s.en), ...e.options.map((o) => o.en)]),
   ].filter(Boolean);
@@ -128,8 +155,9 @@ export const PAYLOAD_KEYS: readonly string[] = [
 ];
 
 /** The JSON object the provider receives as the user turn (extra fields are the run's own: `avoid`, `redo`, `rewrite`). */
-export function briefPayload(brief: Brief, glossary: Glossary | null, denyHints: boolean): Record<string, unknown> {
+export function briefPayload(brief: Brief, glossary: Glossary | null, denyHints: boolean, vision = false): Record<string, unknown> {
   const { request } = brief;
+  const figures = sentFigures(request.examples, vision);
   return {
     task: 'question-studio-write',
     make: {
@@ -143,17 +171,18 @@ export function briefPayload(brief: Brief, glossary: Glossary | null, denyHints:
     syllabus: {
       topic: { en: brief.topic.en, zh: brief.topic.zh },
       keyPoint: { en: brief.keyPoint.en, zh: brief.keyPoint.zh },
+      ...(brief.also.length ? { alsoKeyPoints: brief.also.map((k) => ({ en: k.en, zh: k.zh })) } : {}),
       points: brief.points.map((p) => ({ en: p.en, zh: p.zh })),
       notRequired: brief.keyPoint.notRequired,
     },
     glossary: pinLines(brief, glossary, denyHints),
-    ...(request.examples.length ? { examples: request.examples.map((e) => examplePayload(e, request.sides)) } : {}),
+    ...(request.examples.length ? { examples: request.examples.map((e, i) => examplePayload(e, request.sides, figures[i].length)) } : {}),
     ...(request.note ? { teacherNote: request.note } : {}),
   };
 }
 
 /** What the form says is sent (the words are the UI's). */
-export function sentSummary(request: StudioRequest): SentSummary {
+export function sentSummary(request: StudioRequest, vision = false): SentSummary {
   const brief = makeBrief(request);
   const clean = 'error' in brief ? normalizeRequest(request) : brief.request;
   const hit = lookupCode(clean.keyPoint);
@@ -166,6 +195,7 @@ export function sentSummary(request: StudioRequest): SentSummary {
     reference: referenceMode(clean),
     exampleChars: chars,
     note: clean.note !== '',
+    figures: sentFigures(clean.examples, vision).reduce((n, list) => n + list.length, 0),
     sides: clean.sides,
     count: clean.count,
     level: clean.level,

@@ -4,10 +4,11 @@
  * Types only. The engine is pure over injected deps (like `src/generate/run.ts`): no
  * React, no store, no Settings.
  */
-import type { AiClient, AiErrorInfo, ProviderPreset } from '@/ai/types';
+import type { AiClient, AiErrorInfo, ImagePart, ProviderPreset } from '@/ai/types';
 import type { BiDraft, McqDraft } from '@/generate/types';
 import type { Glossary } from '@/glossary/types';
 import type { Side } from '@/model/textSlots';
+import type { ContentBlock } from '@/model/types';
 import type { CorpusIndex } from './nearCopy';
 
 /** How hard a draft is meant to be. Intended, not measured (no results to measure it). */
@@ -44,6 +45,18 @@ export interface SourceQuestion {
   answerIndex: number;
   /** A picture or diagram the words cannot carry: the model is told it is not shown. */
   hasFigure: boolean;
+  /**
+   * The question's pictures, `data:image/…` in reading order (`figures.ts`), read when the
+   * question is picked or found. Sent with the request when the provider reads pictures; the
+   * model is told how many belong to this example. Absent/empty = words only.
+   */
+  figures?: readonly ImagePart[];
+  /**
+   * The picture and diagram blocks `figures` is drawn from (`figures.ts`), kept until the
+   * run reads them: drawing a diagram needs a canvas, so it happens when a request is
+   * written (`StudioEnv.figures`), not when a question is picked.
+   */
+  figureBlocks?: readonly ContentBlock[];
   /** Added by the studio as a style reference (never picked by the teacher); never exempt from the near-copy check. */
   auto?: boolean;
 }
@@ -52,6 +65,11 @@ export interface SourceQuestion {
 export interface StudioRequest {
   /** A syllabus key point code, `C.ped` (`src/syllabus`). */
   keyPoint: string;
+  /**
+   * Further key points the AI picked (step 1, `pick.ts`) that the questions may also touch,
+   * 0–1 of them; the first key point is the primary one every check reads.
+   */
+  alsoKeyPoints?: readonly string[];
   /** Narrow it to some of its points (`C.ped#arc`); none = the whole key point. */
   points: readonly string[];
   /** Zero to `MAX_EXAMPLES` picked questions to write like, or up to `MAX_AUTO_EXAMPLES` the studio chose (all `auto`). */
@@ -167,6 +185,8 @@ export interface SentSummary {
   /** Characters of those questions, for a size hint. */
   exampleChars: number;
   note: boolean;
+  /** Pictures attached to the request (only to a provider that reads them; 0 otherwise). */
+  figures: number;
   sides: readonly Side[];
   count: number;
   level: Level;

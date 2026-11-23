@@ -259,8 +259,8 @@ export function StartScreen({
   }, []);
   // "✦ Write like this" on a bank question: it becomes the studio's example, and the studio opens.
   const writeLike = studioOn
-    ? (source: SourceQuestion, keyPoint?: string) => {
-        if (writeLikeThis(source, keyPoint) === 'full') notify({ id: 'studio-full', tone: 'info', body: qs.writeLikeFull });
+    ? (source: SourceQuestion) => {
+        if (writeLikeThis(source) === 'full') notify({ id: 'studio-full', tone: 'info', body: qs.writeLikeFull });
         showView('studio');
       }
     : undefined;

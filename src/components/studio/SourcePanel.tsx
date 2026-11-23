@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { supportsImages } from '@/ai/providers';
 import { ProviderFooter } from '@/components/ai/ProviderFooter';
 import { Segmented } from '@/components/ui';
 import { useMessages } from '@/i18n/language';
@@ -18,6 +19,7 @@ import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
 import { lookupCode } from '@/syllabus';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
+import { ReferencePicker } from './ReferencePicker';
 import { keyPointGroups, rankKeyPoints, syllabusName, tokenCount } from './studioView';
 
 const label = 'text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle';
@@ -50,16 +52,21 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
   const autoOn = form.examples.length === 0 && pastPapersOn && options.autoReferences;
   const hit = lookupCode(form.keyPoint);
   const keyPoint = hit && !hit.point ? hit.keyPoint : undefined;
-  const sent = useMemo(() => sentSummary(requestOf(form)), [form]);
+  const visionNow = supportsImages(status.preset);
+  const sent = useMemo(() => sentSummary(requestOf(form), visionNow), [form, visionNow]);
+  const picks = useStudio((s) => s.picks);
   const sideNames = (language: LanguageMode) => (language === 'en' ? m.langEn : language === 'zh' ? m.langZh : `${m.langEn} + ${m.langZh}`);
   const levelWord = form.level === 'same' ? m.levelSame : form.level === 'harder' ? m.levelHarder : m.levelEasier;
   const usesZh = form.language !== 'en';
+  const visionOn = supportsImages(status.preset);
 
   const stage =
     phase.kind !== 'running'
       ? ''
       : phase.target
         ? m.stageChange
+        : phase.stage === 'pick'
+          ? m.stagePick
         : phase.stage === 'references'
           ? m.stageRefs
           : phase.stage === 'solve'
@@ -82,7 +89,7 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
           onChange={(event) => setForm({ keyPoint: event.target.value })}
           className="h-9 w-full rounded-lg border border-line bg-surface px-2 text-[13px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
         >
-          <option value="">{m.chooseKeyPoint}</option>
+          <option value="">{m.autoKeyPoint}</option>
           {ranked.groups.map((group) => (
             <optgroup key={group.code} label={group.name}>
               {group.options.map((option) => (
@@ -102,6 +109,21 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
             </optgroup>
           )}
         </select>
+        {!keyPoint && picks.length > 0 && (
+          <ul className="flex flex-col gap-1 text-[12px] text-ink-muted" data-studio-picks>
+            {picks.map((pick) => {
+              const found = lookupCode(pick.code);
+              return (
+                <li key={pick.code}>
+                  <button type="button" disabled={running} onClick={() => setForm({ keyPoint: pick.code })} className="cursor-pointer text-left font-medium text-ink hover:underline">
+                    ✦ {found ? syllabusName(found.keyPoint, names) : pick.code}
+                  </button>
+                  {pick.reason && <span> — {pick.reason}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        )}
         {counts && (
           <>
             <p className="text-[11.5px] leading-snug text-ink-subtle" data-studio-counts-hint>
@@ -185,7 +207,7 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[12.5px] font-medium text-ink">{example.label}</span>
                     <span className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-ink-muted">{words}</span>
-                    {example.hasFigure && <span className="mt-0.5 block text-[11px] text-warn-ink">{m.figureNotSent}</span>}
+                    {example.hasFigure && (visionOn ? <span className="mt-0.5 block text-[11px] text-ink-subtle">{m.figuresAttached(example.figures?.length ?? example.figureBlocks?.length ?? 0)}</span> : <span className="mt-0.5 block text-[11px] text-warn-ink">{m.figureNotSent}</span>)}
                   </span>
                   <button
                     type="button"
@@ -216,6 +238,7 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
             </span>
           </label>
         )}
+        {pastPapersOn && <ReferencePicker disabled={running} />}
         <div className="flex flex-wrap gap-3 text-[12px]">
           {pastPapersOn && (
             <button type="button" onClick={() => onGoTo('pastpapers')} className="cursor-pointer font-medium text-accent-ink hover:underline">
@@ -294,7 +317,8 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
       <section className="rounded-lg border border-line bg-surface-sunken px-3 py-2.5" data-studio-sends>
         <h2 className="text-[12px] font-semibold text-ink">{m.sends(status.preset.label)}</h2>
         <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[12px] leading-relaxed text-ink-muted">
-          <li>{m.sendsKeyPoint(sent.points)}</li>
+          {keyPoint ? <li>{m.sendsKeyPoint(sent.points)}</li> : <li data-studio-sends-pick>{m.sendsPick}</li>}
+          {sent.figures > 0 && <li data-studio-sends-figures>{m.sendsFigures(sent.figures)}</li>}
           {sent.limits > 0 && <li>{m.sendsLimits(sent.limits)}</li>}
           {autoOn && <li data-studio-sends-auto>{m.sendsAuto(referencesWanted(form.count))}</li>}
           {sent.examples > 0 && <li>{m.sendsExamples(sent.examples, tokenCount(sent.exampleChars))}</li>}

@@ -1,11 +1,17 @@
-import type { CompletionResult, OutputDialect } from '../types';
-import { isRecord, modelExtra, systemFor, trimBase, type Adapter } from './adapter';
+import type { CompletionRequest, CompletionResult, OutputDialect } from '../types';
+import { isRecord, modelExtra, parseImage, systemFor, trimBase, type Adapter } from './adapter';
 
 /**
  * OpenAI-compatible `chat/completions`: DeepSeek, Qwen, OpenRouter, OpenAI, custom and
  * Ollama. Provider quirks are preset data (`extraBody`, `extraHeaders`, `maxTokensParam`),
  * never branches here. No `temperature`.
  */
+
+/** The last user turn's text, followed by its pictures as `image_url` parts when it has any. */
+function withImages(text: string, images: CompletionRequest['images']): string | Record<string, unknown>[] {
+  const parts = (images ?? []).flatMap((image) => (parseImage(image.dataUrl) ? [{ type: 'image_url', image_url: { url: image.dataUrl } }] : []));
+  return parts.length ? [{ type: 'text', text }, ...parts] : text;
+}
 
 function finishOf(reason: unknown): CompletionResult['finish'] {
   if (reason === 'stop') return 'stop';
@@ -44,7 +50,7 @@ export const openaiCompatAdapter: Adapter = {
       model: config.model,
       messages: [
         { role: 'system', content: systemFor(req.system, dialect === 'openai-jsonSchema', req.shapeHint) },
-        ...req.turns.map((t) => ({ role: t.role, content: t.content })),
+        ...req.turns.map((t, i) => ({ role: t.role, content: i === req.turns.length - 1 && t.role === 'user' ? withImages(t.content, req.images) : t.content })),
       ],
       [preset.maxTokensParam ?? 'max_tokens']: req.maxOutputTokens,
       ...preset.extraBody,

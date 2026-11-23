@@ -1,5 +1,5 @@
-import type { CompletionResult, OutputDialect } from '../types';
-import { isRecord, modelExtra, systemFor, trimBase, type Adapter } from './adapter';
+import type { CompletionRequest, CompletionResult, OutputDialect } from '../types';
+import { isRecord, modelExtra, parseImage, systemFor, trimBase, type Adapter } from './adapter';
 
 /**
  * Gemini native `generateContent` (stateless; not the Interactions API, which stores by
@@ -31,6 +31,13 @@ function outputConfig(dialect: OutputDialect, schema: unknown): Record<string, u
   }
 }
 
+function imageParts(images: CompletionRequest['images']) {
+  return (images ?? []).flatMap((image) => {
+    const parsed = parseImage(image.dataUrl);
+    return parsed ? [{ inlineData: { mimeType: parsed.mime, data: parsed.data } }] : [];
+  });
+}
+
 export const geminiAdapter: Adapter = {
   rungs: () => ['gemini-jsonSchema', 'gemini-responseFormat', 'gemini-mime', 'prompt'],
 
@@ -47,7 +54,10 @@ export const geminiAdapter: Adapter = {
       headers: { 'content-type': 'application/json', 'x-goog-api-key': config.apiKey ?? '', ...preset.extraHeaders },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemFor(req.system, enforced, req.shapeHint) }] },
-        contents: req.turns.map((t) => ({ role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] })),
+        contents: req.turns.map((t, i) => ({
+          role: t.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: t.content }, ...(i === req.turns.length - 1 && t.role === 'user' ? imageParts(req.images) : [])],
+        })),
         generationConfig,
       }),
     };

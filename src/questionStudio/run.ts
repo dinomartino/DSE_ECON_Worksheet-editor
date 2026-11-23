@@ -27,7 +27,7 @@ import { cleanMcq, localChecks, parseWriteReply, statusOf, type CheckContext } f
  * never rejects, honours the signal, and never touches a paper.
  */
 
-export type Stage = 'references' | 'write' | 'rewrite' | 'solve';
+export type Stage = 'pick' | 'references' | 'write' | 'rewrite' | 'solve';
 
 export interface RunHooks {
   signal: AbortSignal;

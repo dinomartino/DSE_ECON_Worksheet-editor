@@ -4,7 +4,7 @@ import { geminiAdapter } from './adapters/gemini';
 import { openaiCompatAdapter } from './adapters/openaiCompat';
 import { aiErrorInfo, describeHttpError, isSchemaRejection, keyLikeModel, mapThrown } from './errors';
 import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, defaultHttpDeps, send, type HttpResponse } from './http';
-import { presetFor } from './providers';
+import { presetFor, supportsImages } from './providers';
 import { ITEMS_SCHEMA, parseItemsPayload } from './schema';
 import {
   AiError,
@@ -99,7 +99,9 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     return new AiError(info);
   };
 
-  async function complete(req: Parameters<AiClient['complete']>[0]) {
+  async function complete(asked: Parameters<AiClient['complete']>[0]) {
+    // A provider that cannot read pictures is never sent one (the caller asks `supportsImages` to word its prompt).
+    const req = asked.images?.length && !supportsImages(preset) ? { ...asked, images: undefined } : asked;
     const problem = blocked(true);
     if (problem) throw new AiError(problem);
     const started = http.now();
