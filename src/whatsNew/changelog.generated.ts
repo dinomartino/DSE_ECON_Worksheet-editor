@@ -79,6 +79,13 @@ a version heading is edited afterwards.
   still leaves an empty picture box, and Check import still asks you to paste that one by hand.
   <!-- zh: **在 Word 繪畫的圖和圖表會以圖片匯入。** 你在 Word 用直線、箭咀、方框、圓點及文字方塊標籤（S₀、D₁、Price、Quantity 等）畫的圖，現在會在原來位置匯入為圖片，由程式在你的電腦上自行繪畫，不會傳送到任何地方。Word 製作的圓形圖、棒形圖或折線圖也一樣。同一幅圖內標有 A 至 D 的四幅圖，會建議改為選項留空的 MC 題。程式無法如實繪畫的圖仍會留下空白圖片框，「檢查匯入」仍會提示你手動貼上。 -->
 
+### Changed
+- **Topic names follow your paper's language everywhere.** The 題型 map, its sort board and the
+  question studio's key-point list now name syllabus topics in the language of the questions you
+  are looking at (an English paper or view shows English names, a Chinese one 中文 names), as the
+  rest of the editor already did. Buttons and headings stay in the app's language.
+  <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
+
 ### Fixed
 - **Tables in imported Word papers come in whole.** A heading row with one filled cell (such
   as "$ billion") stays in its table instead of falling out above it; a fill-in sentence typed

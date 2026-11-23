@@ -16,7 +16,7 @@ import type { BankRow } from '@/library/types';
 import { cleanPatternName, matchPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
 import { TOPICS, type Topic } from '@/model/topics';
 import type { LanguageMode } from '@/model/types';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
 import { listQuestionTypes } from '@/registry';
 import { escapeClears } from '../escapeClears';
 import { typeName } from './bankPage';
@@ -24,7 +24,8 @@ import { FirstPattern } from './FirstPattern';
 import { FIRST_PATTERN_MESSAGES } from './FirstPattern.messages';
 import type { SortRequest, UnsortRequest } from './PatternSortBoard';
 import { PATTERNS_PAGE_MESSAGES } from './PatternsPage.messages';
-import { chromeTopicName } from './topicText';
+import { useViewLanguage } from '@/settings/paperLanguage';
+import { topicName } from './topicText';
 
 type Confirm = { kind: 'merge'; item: PatternItem; into: PatternItem } | { kind: 'delete'; item: PatternItem };
 
@@ -36,10 +37,10 @@ const LINK =
 /** A sub-topic's coarse letter: "C" for C.ped. */
 const letterOf = (code: string) => (code.includes('.') ? code.slice(0, code.indexOf('.')) : code);
 
-/** Topic names here follow the interface (`chromeTopicName`): the page holds no paper. */
+/** Topic names are paper words: the 題庫's view language, not the interface's (k-0500). */
 function useTopicName(): (code: string) => string {
-  const ui = useUiLanguage();
-  return (code) => chromeTopicName(code, ui);
+  const view = useViewLanguage();
+  return (code) => topicName(code, view);
 }
 
 /**

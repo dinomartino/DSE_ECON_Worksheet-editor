@@ -120,7 +120,7 @@ import { stateOfRow } from '@/library/sharedTags';
 import { PatternsPage } from './PatternsPage';
 import { PatternSortBoard, type SortRequest, type UnsortRequest } from './PatternSortBoard';
 import { BANK_SCREEN_MESSAGES } from './QuestionBankScreen.messages';
-import { chromeTopicName, topicName, topicTitle } from './topicText';
+import { topicName, topicTitle } from './topicText';
 import {
   bulkTopicEdit,
   copyWrites,
@@ -854,7 +854,7 @@ export function QuestionBankScreen({
     }
     if (level.kind === 'patterns') return <h1 className="text-[13.5px] font-semibold text-ink">{m.patternsTitle}</h1>;
     if (level.kind === 'sort') {
-      return <h1 className="text-[13.5px] font-semibold text-ink">{m.sortTitle(level.topic, chromeTopicName(level.topic, lang))}</h1>;
+      return <h1 className="text-[13.5px] font-semibold text-ink">{m.sortTitle(level.topic, topicName(level.topic, language))}</h1>;
     }
     const found = level.topic === 'all' ? undefined : topicOf(level.topic);
     return (

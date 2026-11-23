@@ -6,14 +6,15 @@ import { sortSections, topicsToSort, type SortProgress, type SubTopicTally } fro
 import type { BankRow } from '@/library/types';
 import { cleanPatternName, PATTERN_NAME_MAX } from '@/model/patterns';
 import type { LanguageMode } from '@/model/types';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { useMessages } from '@/i18n/language';
+import { useViewLanguage } from '@/settings/paperLanguage';
 import { listQuestionTypes } from '@/registry';
 import { escapeClears } from '../escapeClears';
 import { typeName } from './bankPage';
 import { FIRST_PATTERN_MESSAGES } from './FirstPattern.messages';
 import { SortCard, type SortRequest } from './PatternSortBoard';
 import { PATTERNS_PAGE_MESSAGES } from './PatternsPage.messages';
-import { chromeTopicName } from './topicText';
+import { topicName } from './topicText';
 
 /** Cards shown before "Show n more": two rows of three on a wide window. */
 const FIRST_CARDS = 6;
@@ -53,9 +54,9 @@ export function FirstPattern({
   onSort: (topic: string) => void;
 }) {
   const m = useMessages(FIRST_PATTERN_MESSAGES);
-  const ui = useUiLanguage();
+  const view = useViewLanguage();
   const whyId = useId();
-  const name = (code: string) => chromeTopicName(code, ui);
+  const name = (code: string) => topicName(code, view);
   const starts = topicsToSort(progress);
   const rest = progress.topics.filter((entry) => entry.notSorted > 0 && !starts.includes(entry));
 
@@ -311,7 +312,7 @@ function Step({ n, title, aside, children }: { n: number; title: string; aside?:
 function Preview({ sub, label, typeIds, picked, left }: { sub: string; label: string; typeIds: string[]; picked: number; left: number }) {
   const m = useMessages(FIRST_PATTERN_MESSAGES);
   const page = useMessages(PATTERNS_PAGE_MESSAGES);
-  const ui = useUiLanguage();
+  const view = useViewLanguage();
   const live = picked > 0;
   return (
     <figure
@@ -324,7 +325,7 @@ function Preview({ sub, label, typeIds, picked, left }: { sub: string; label: st
         <span className="rounded bg-surface-sunken px-1.5 py-px text-[10.5px] font-medium text-ink-subtle">{m.previewNote}</span>
       </figcaption>
       <p className="text-[12.5px] text-ink">
-        <span className="tabular-nums text-ink-subtle">{letterOf(sub)}</span> · <span className="font-medium">{chromeTopicName(sub, ui)}</span>
+        <span className="tabular-nums text-ink-subtle">{letterOf(sub)}</span> · <span className="font-medium">{topicName(sub, view)}</span>
       </p>
       <ul className="mt-1 text-[12.5px]">
         <li

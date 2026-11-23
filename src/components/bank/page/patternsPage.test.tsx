@@ -12,6 +12,7 @@ import { listPatterns, sortProgress, subTopicTallies } from '@/library/patterns'
 import { row } from '@/library/testKit';
 import { NO_FILTERS } from '@/library/tabFilters';
 import { createMcqQuestion, createStructuredQuestion } from '@/model/factories';
+import type { LanguageMode } from '@/model/types';
 import type { UiLanguage } from '@/settings/language';
 import { ViewLanguageProvider } from '@/settings/paperLanguage';
 import type { PatternRegistry } from '@/storage/patterns';
@@ -25,15 +26,15 @@ const MCQ = createMcqQuestion().type;
 const LQ = createStructuredQuestion().type;
 const noop = () => {};
 
-function render(ui: UiLanguage, node: ReactNode): string {
+function render(ui: UiLanguage, node: ReactNode, view: LanguageMode = 'en'): string {
   return renderToStaticMarkup(
     <UiLanguageOverride.Provider value={ui}>
-      <ViewLanguageProvider value="en">{node}</ViewLanguageProvider>
+      <ViewLanguageProvider value={view}>{node}</ViewLanguageProvider>
     </UiLanguageOverride.Provider>,
   );
 }
 
-const page = (ui: UiLanguage, rows: ReturnType<typeof row>[], registry: PatternRegistry = { patterns: [] }) =>
+const page = (ui: UiLanguage, rows: ReturnType<typeof row>[], registry: PatternRegistry = { patterns: [] }, view: LanguageMode = 'en') =>
   render(
     ui,
     <PatternsPage
@@ -56,6 +57,7 @@ const page = (ui: UiLanguage, rows: ReturnType<typeof row>[], registry: PatternR
       onUnsort={noop}
       onStartNew={noop}
     />,
+    view,
   );
 
 const unsorted = [
@@ -108,15 +110,22 @@ describe('the 題型 map, nothing named yet', () => {
     expect(out).not.toContain('<select');
   });
 
-  it('reads in 中文, topic names too, with 題目類型 never 題型 for MCQ / LQ', () => {
+  it('reads in 中文, with 題目類型 never 題型 for MCQ / LQ; topic names stay the questions’ English (k-0500)', () => {
     const out = page('zh-HK', unsorted);
     expect(out).toContain('把題目分成不同題型');
     expect(out).toContain('選一個課題');
     expect(out).toContain('按選相似的題目');
     expect(out).toContain('建立題型');
+    expect(out).toContain('Market and Price');
+    expect(out).not.toContain('市場與價格');
+    expect(out).not.toContain('MCQ 題型');
+  });
+
+  it('names topics in 中文 when the 題庫 shows 中文 questions, in an English interface (k-0500)', () => {
+    const out = page('en', unsorted, undefined, 'zh');
     expect(out).toContain('市場與價格');
     expect(out).not.toContain('Market and Price');
-    expect(out).not.toContain('MCQ 題型');
+    expect(out).toContain('Sort your questions into 題型');
   });
 });
 
