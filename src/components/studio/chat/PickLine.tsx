@@ -69,7 +69,7 @@ export function PickLine({
         (main.reason || main.reasonZh || main.basis) && (
           <span className="block text-[12px] leading-snug text-ink-muted">
             {m.because}{' '}
-            {(ui === 'en' ? main.reason : main.reasonZh || main.reason) ||
+            {(ui === 'en' ? main.reason || main.reasonZh : main.reasonZh || main.reason) ||
               (main.basis?.kind === 'tag' ? m.basisTag(main.basis.label) : main.basis?.kind === 'words' ? m.basisWords(main.basis.hit) : main.basis ? m.basisExample(main.basis.hit) : '')}
             {by === 'computer' && <span className="text-ink-subtle"> · {m.byComputer}</span>}
           </span>
