@@ -83,3 +83,39 @@ export function studioJob(opts: { questions: number; sides: number; diagrams?: n
     outputTokens: 2000 + opts.questions * (1500 + 1100 * sides) + (opts.diagrams ?? 0) * 1000,
   };
 }
+
+// ── Buying credits (CONTRACT v1.4, u-1zca): any whole HK$ amount ─────────────────────────
+
+/** The fee figures a credits payment is worked out from (`/ai/credits` → `buy`, `extraPct`, `rates`). */
+export interface PaymentTerms {
+  stripeFee: { pct: number; fixedHkd: number };
+  extraPct: number;
+  creditsPerHkd: number;
+}
+
+/**
+ * Credits a payment of `hkd` gives: Mentor's own formula (CONTRACT §2, `creditsForPayment` in
+ * Mentor's `src/lib/ai-credits-config.ts`), so the preview is the number the server grants.
+ * Stripe's fee comes off, the rest is Google cost + `extraPct`% of it, rounded down to 10 credits
+ * (`1e-9`: float noise never loses 10 credits).
+ */
+export function creditsForPayment(hkd: number, terms: PaymentTerms): number {
+  if (!Number.isFinite(hkd) || hkd <= 0) return 0;
+  const net = hkd - (hkd * (terms.stripeFee.pct / 100) + terms.stripeFee.fixedHkd);
+  const googleHkd = net / (1 + terms.extraPct / 100);
+  return Math.max(0, Math.floor((googleHkd * terms.creditsPerHkd) / 10 + 1e-9) * 10);
+}
+
+/** About how many studio questions `credits` make (a 10-question worksheet ≈ `studioWorksheet`), down to 5 from 10 up (Mentor's `studioQuestions`). */
+export function studioQuestions(credits: number, studioWorksheet: number): number {
+  if (!(studioWorksheet > 0)) return 0;
+  const q = Math.max(0, Math.floor(credits / (studioWorksheet / 10)));
+  return q >= 10 ? Math.floor(q / 5) * 5 : q;
+}
+
+/** A typed amount: a whole number of HK$ from `min` to `max`, else null (Mentor's `cleanBuyHkd`). */
+export function cleanBuyHkd(text: string, range: { minHkd: number; maxHkd: number }): number | null {
+  if (!/^\s*\d+\s*$/.test(text)) return null;
+  const n = Number(text);
+  return Number.isInteger(n) && n >= range.minHkd && n <= range.maxHkd ? n : null;
+}

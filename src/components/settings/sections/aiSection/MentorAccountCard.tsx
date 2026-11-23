@@ -5,6 +5,7 @@ import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { Button, Pill } from '@/components/ui';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { MentorState } from '@/settings/mentorAccount';
+import { BuyCredits } from './BuyCredits';
 import { AI_SECTION_MESSAGES } from './messages';
 
 /**
@@ -157,7 +158,8 @@ export function MentorAccountCard({
             </p>
           )}
           <p className={`text-xs ${inUse ? 'text-ink' : 'text-ink-muted'}`}>{inUse ? m.mentorInUse : m.mentorNotInUse}</p>
-          {state.account?.packs && (
+          {state.account?.buy && <BuyCredits buy={state.account.buy} primary={inUse} onBuy={actions.buy} />}
+          {!state.account?.buy && state.account?.packs && (
             <p data-mentor-packs className="text-xs tabular-nums text-ink-muted">
               {m.mentorPacks} {state.account.packs.map((pack) => m.mentorPack(formatCredits(pack.priceHkd, lang), formatCredits(pack.credits, lang))).join(' / ')}
             </p>
@@ -168,9 +170,11 @@ export function MentorAccountCard({
                 {m.mentorUse}
               </Button>
             )}
-            <Button variant={inUse ? 'primary' : 'default'} size="sm" onClick={() => actions.buy(state.account?.buyUrl ?? '')}>
-              {m.mentorBuy}
-            </Button>
+            {!state.account?.buy && (
+              <Button variant={inUse ? 'primary' : 'default'} size="sm" onClick={() => actions.buy(state.account?.buyUrl ?? '')}>
+                {m.mentorBuy}
+              </Button>
+            )}
             {state.error && (
               <Button variant="subtle" size="sm" onClick={actions.refresh}>
                 {m.mentorRefresh}

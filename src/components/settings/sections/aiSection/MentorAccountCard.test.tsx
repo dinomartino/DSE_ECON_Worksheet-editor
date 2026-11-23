@@ -11,6 +11,8 @@ import { resolveMessages } from '@/i18n/catalogue';
 import { UiLanguageOverride } from '@/i18n/language';
 import { assistMessages } from '@/assist/text';
 import type { MentorState } from '@/settings/mentorAccount';
+import { FAKE_BUY } from '@/ai/fakeMentor';
+import type { MentorBuy } from '@/ai/mentor';
 import { AI_SETTINGS } from '@/settings/aiSettings';
 import { AiSectionView } from './AiSectionView';
 import { initialAiSetup } from './aiSetup';
@@ -131,6 +133,49 @@ describe('MentorAccountCard', () => {
       [relay(402, { error: 'insufficient_credits', balance: -3 }), '低於零'],
     ] as const;
     for (const [info, words] of cases) expect(localizedErrorMessage(info, 'zh-HK'), info.message).toContain(words);
+  });
+
+  const BUY: MentorBuy = {
+    minHkd: 50,
+    maxHkd: 1000,
+    quickPicks: FAKE_BUY.quickPicks,
+    urlTemplate: FAKE_BUY.urlTemplate,
+    terms: { stripeFee: FAKE_BUY.stripeFee, extraPct: 10, creditsPerHkd: 100 },
+    studioWorksheet: 280,
+  };
+  const WITH_BUY: MentorState = { ...SIGNED_IN, account: { ...SIGNED_IN.account!, buy: BUY } };
+
+  it('v1.4: quick picks, an amount box and the live credits line replace the pack list', () => {
+    const html = renderToStaticMarkup(card(WITH_BUY));
+    expect(html).toContain('data-mentor-buy');
+    expect(html).not.toContain('data-mentor-packs');
+    for (const pick of ['HK$50 · 4,170 credits', 'HK$100 · 8,560 credits', 'HK$200 · 17,350 credits']) expect(html).toContain(pick);
+    expect(html).toMatch(/data-buy-amount[^>]*value="50"|value="50"[^>]*data-buy-amount/);
+    expect(html).toContain('aria-pressed="true" data-buy-pick="50"');
+    expect(html).toContain('≈ 4,170 credits · ≈ 145 questions');
+    // One Buy credits button: the box's own.
+    expect(html.match(/>Buy credits</g)).toHaveLength(1);
+  });
+
+  it('v1.4 in 中文', () => {
+    const html = zh(card(WITH_BUY));
+    expect(html).toContain('HK$100 · 8,560 點');
+    expect(html).toContain('≈ 4,170 點 · ≈ 145 條題目');
+    expect(html).toContain('購買點數');
+  });
+
+  it('no fee figures: no live line; no studio estimate: credits only', () => {
+    const noTerms = renderToStaticMarkup(card({ ...SIGNED_IN, account: { ...SIGNED_IN.account!, buy: { ...BUY, terms: undefined } } }));
+    expect(noTerms).not.toContain('≈');
+    const noStudio = renderToStaticMarkup(card({ ...SIGNED_IN, account: { ...SIGNED_IN.account!, buy: { ...BUY, studioWorksheet: undefined } } }));
+    expect(noStudio).toContain('≈ 4,170 credits<');
+  });
+
+  it('an older Mentor (no buy): the pack list and Buy credits as before', () => {
+    const html = renderToStaticMarkup(card(SIGNED_IN));
+    expect(html).toContain('data-mentor-packs');
+    expect(html).not.toContain('data-mentor-buy');
+    expect(html.match(/>Buy credits</g)).toHaveLength(1);
   });
 
   it('formats credits whole, never 0 for a fraction left', () => {
