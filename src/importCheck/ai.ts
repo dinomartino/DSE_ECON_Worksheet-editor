@@ -168,6 +168,7 @@ export function buildRequest(sent: Sent[], deps: QualityDeps, signal: AbortSigna
     turns: [{ role: 'user', content: JSON.stringify({ questions: sent.map((s) => s.payload) }) }],
     schema: IMPORT_CHECK_SCHEMA,
     maxOutputTokens: Math.min(deps.preset.outputCap, 1024 + 400 * sent.length + (deps.preset.family === 'gemini' ? 4096 : 0)),
+    feature: 'importCheck',
     signal,
   };
 }

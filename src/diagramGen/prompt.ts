@@ -115,6 +115,7 @@ export function buildDiagramRequest(
     schema: DIAGRAM_SPEC_SCHEMA,
     shapeHint: DIAGRAM_SHAPE_HINT,
     maxOutputTokens: maxOutputTokens(preset),
+    feature: 'studio.diagram',
     signal,
   };
 }

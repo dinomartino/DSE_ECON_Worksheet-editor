@@ -1,4 +1,5 @@
-import { depsError } from './translateShared';
+import { questionsJob } from '@/ai/credits';
+import { depsError, paperText } from './translateShared';
 import { editTargetKey } from '@/model/edits';
 import { isDesktop } from '@/platform';
 import { qualityQuestions, questionEmpty } from '@/quality/collect';
@@ -55,6 +56,11 @@ export const qualityVerb: AiVerb = {
   sendsLine(ctx, providerLabel) {
     const count = qualityQuestions(ctx.worksheet, ctx.scope).filter((q) => !questionEmpty(q)).length;
     return assistMessages().sendsQuestions(count, providerLabel);
+  },
+
+  estimate(ctx) {
+    const questions = qualityQuestions(ctx.worksheet, ctx.scope).filter((q) => !questionEmpty(q));
+    return questions.length ? questionsJob(questions.length, paperText(ctx.worksheet, new Set(questions.map((q) => q.questionId))), 300) : null;
   },
 
   async run(ctx, io): Promise<VerbOutcome> {

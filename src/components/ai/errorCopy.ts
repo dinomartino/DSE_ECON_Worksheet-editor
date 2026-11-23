@@ -51,6 +51,7 @@ export function localizedErrorMessage(
       return pick(en.network(host) + suffix, zh.network(host) + zhSuffix) ?? info.message;
     }
     case 'quota':
+      if (info.provider === 'mentor') return pick(en.mentorQuota, zh.mentorQuota) ?? info.message;
       return (gemini ? pick(en.geminiQuota(p), zh.geminiQuota(p)) : pick(en.quota(p), zh.quota(p))) ?? info.message;
     case 'billing':
       return pick(en.billing(p), zh.billing(p)) ?? info.message;
@@ -62,8 +63,10 @@ export function localizedErrorMessage(
     case 'policy':
       return pick(en.policy, zh.policy) ?? info.message;
     case 'badRequest':
+      if (info.provider === 'mentor') return pick(en.mentorBadRequest, zh.mentorBadRequest) ?? info.message;
       return pick(en.badRequest(p), zh.badRequest(p)) ?? info.message;
     case 'server':
+      if (info.provider === 'mentor') return pick(en.mentorServer, zh.mentorServer) ?? info.message;
       return pick(en.server(p), zh.server(p)) ?? info.message;
     case 'timeout':
       return pick(en.timeout(p), zh.timeout(p)) ?? info.message;
@@ -75,5 +78,13 @@ export function localizedErrorMessage(
       return pick(en.truncated, zh.truncated) ?? info.message;
     case 'badOutput':
       return pick(en.badOutput, zh.badOutput) ?? info.message;
+    case 'signedOut':
+      return pick(en.signedOut, zh.signedOut) ?? info.message;
+    case 'noCredits':
+      return pick(en.noCredits, zh.noCredits) ?? info.message;
+    case 'monthlyCap':
+      return pick(en.monthlyCap, zh.monthlyCap) ?? info.message;
+    case 'serviceDown':
+      return pick(en.serviceDown, zh.serviceDown) ?? info.message;
   }
 }

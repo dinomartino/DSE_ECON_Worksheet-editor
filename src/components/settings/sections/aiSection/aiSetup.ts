@@ -90,7 +90,8 @@ export function savedKeys(
   env: SettingsEnv,
   peek: (provider: ProviderId) => { store: SecretStore; last4: string } | null,
 ): SavedKeyRow[] {
-  return PROVIDER_IDS.flatMap((provider) => {
+  // The DSEcon Mentor sign-in (k-0519) is the account at the top, not a key.
+  return PROVIDER_IDS.filter((provider) => PRESETS[provider].group !== 'hosted').flatMap((provider) => {
     const key = savedKeyFor(settings, env, provider, peek(provider));
     if (key.kind !== 'saved') return [];
     return [{ provider, store: key.store, ...(key.last4 ? { last4: key.last4 } : {}) }];

@@ -1,3 +1,4 @@
+import { plain } from '@/model/text';
 import type { ApplyReport, TextSlot, TranslationWrite } from '@/model/textSlots';
 import { collectTexts } from '@/model/textWalk';
 import type { Worksheet } from '@/model/types';
@@ -31,6 +32,14 @@ export {
 const slotCache = new WeakMap<Worksheet, TextSlot[]>();
 
 /** The walker's slots, once per worksheet object (the menu asks every verb on open). */
+/** Every text of the paper (or of these questions), both languages, for a credit estimate (k-0519). */
+export function paperText(ws: Worksheet, questionIds?: ReadonlySet<string>): string {
+  return slotsOf(ws)
+    .filter((slot) => !questionIds || (slot.questionId !== undefined && questionIds.has(slot.questionId)))
+    .map((slot) => `${plain(slot.text.en)}\n${plain(slot.text.zh)}`)
+    .join('\n');
+}
+
 export function slotsOf(ws: Worksheet): TextSlot[] {
   let slots = slotCache.get(ws);
   if (!slots) slotCache.set(ws, (slots = collectTexts(ws)));

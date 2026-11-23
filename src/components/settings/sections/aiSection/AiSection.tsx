@@ -6,12 +6,15 @@ import { openExternal } from '@/platform';
 import { peekSecret, subscribeSecrets } from '@/platform/secrets';
 import { useMessages } from '@/i18n/language';
 import { AI_SETTINGS, useAiStatus } from '@/settings/aiSettings';
+import { MENTOR_BUY_URL, MENTOR_PRICING_URL } from '@/ai/mentor';
+import { mentorSession, useMentorAccount } from '@/settings/mentorAccount';
 import type { SettingsSectionProps } from '@/settings/sections';
 import { useSettings } from '@/settings/store';
 import { initialAiSetup, needsCloseGuard, savedKeys } from './aiSetup';
 import { liveDeps, secretPlatform } from './aiSetupLive';
 import { createAiSetupRunner } from './aiSetupRunner';
 import { AiSectionView } from './AiSectionView';
+import type { MentorCardActions } from './MentorAccountCard';
 import { AI_SECTION_MESSAGES } from './messages';
 
 /**
@@ -52,6 +55,23 @@ export default function AiSection({ env, focus, params, setCloseGuard }: Setting
   const keys = savedKeys(settings, env, (p) => peeks[PROVIDER_IDS.indexOf(p)] ?? null);
 
   useEffect(() => () => runner.dispose(), [runner]);
+
+  // The DSEcon Mentor account (k-0519): its credits are read when Settings opens.
+  const mentor = useMentorAccount();
+  const signedIn = mentor.kind === 'signedIn';
+  useEffect(() => {
+    if (signedIn) void mentorSession().refresh();
+  }, [signedIn]);
+  const mentorActions: MentorCardActions = {
+    signIn: () => void mentorSession().signIn(),
+    cancel: () => mentorSession().cancel(),
+    reopen: (url) => void openExternal(url),
+    signOut: () => void mentorSession().signOut(),
+    refresh: () => void mentorSession().refresh(),
+    use: () => mentorSession().use(),
+    buy: (url) => void openExternal(url || MENTOR_BUY_URL),
+    prices: () => void openExternal((mentor.kind === 'signedIn' && mentor.account?.pricingUrl) || MENTOR_PRICING_URL),
+  };
 
   const guarded = needsCloseGuard(state);
   useEffect(() => {
@@ -94,6 +114,8 @@ export default function AiSection({ env, focus, params, setCloseGuard }: Setting
       listed={listed?.provider === state.provider ? listed.models : null}
       platform={secretPlatform(env.desktop)}
       actions={actions}
+      mentor={mentor}
+      mentorActions={mentorActions}
     />
   );
 }

@@ -73,4 +73,32 @@ export const ERROR_COPY_MESSAGES = defineMessages({
     en: "Couldn't translate this text safely (the answer wasn't readable).",
     zh: '未能安全地翻譯這段文字（回應無法讀取）。',
   },
+  signedOut: {
+    en: 'You are signed out of DSEcon Mentor. Sign in again in Settings → AI.',
+    zh: '你已登出 DSEcon Mentor。請在「設定 → AI」重新登入。',
+  },
+  noCredits: {
+    en: 'Not enough AI credits left. Buy credits to keep using AI, or use your own key.',
+    zh: 'AI 點數不足。請購買點數以繼續使用 AI，或改用你自己的 API key。',
+  },
+  monthlyCap: {
+    en: 'This account reached its monthly AI limit. It resets at the start of next month; until then, use your own key.',
+    zh: '這個帳戶已達本月的 AI 用量上限，下月初會重設；在此之前，請改用你自己的 API key。',
+  },
+  serviceDown: {
+    en: "DSEcon Mentor's AI is paused or switched off right now. Try again later (a pause ends at midnight), or use your own key.",
+    zh: 'DSEcon Mentor 的 AI 服務現已暫停或關閉。請稍後再試（暫停會在午夜結束），或改用你自己的 API key。',
+  },
+  mentorBadRequest: {
+    en: "DSEcon Mentor couldn't use this request: it may be too big (fewer or smaller pictures), or Econ Studio needs an update.",
+    zh: 'DSEcon Mentor 未能處理這個要求：內容可能太大（請減少或縮小圖片），或 Econ Studio 需要更新。',
+  },
+  mentorServer: {
+    en: "Google's AI didn't answer through DSEcon Mentor. No credits were used. Try again.",
+    zh: 'Google 的 AI 未有經 DSEcon Mentor 回應，沒有扣除點數。請再試一次。',
+  },
+  mentorQuota: {
+    en: 'Too many AI requests at once. Wait a minute and try again.',
+    zh: '同時發出的 AI 要求太多。請等一分鐘再試。',
+  },
 });

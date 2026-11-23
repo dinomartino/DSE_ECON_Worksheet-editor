@@ -1,6 +1,7 @@
 import type { Adapter } from './adapters/adapter';
 import { anthropicAdapter } from './adapters/anthropic';
 import { geminiAdapter } from './adapters/gemini';
+import { mentorAdapter } from './adapters/mentor';
 import { openaiCompatAdapter } from './adapters/openaiCompat';
 import { aiErrorInfo, describeHttpError, isSchemaRejection, keyLikeModel, mapThrown } from './errors';
 import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, defaultHttpDeps, send, sendStream, type HttpResponse } from './http';
@@ -60,7 +61,8 @@ function log(info: AiErrorInfo): void {
 
 export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): AiClient {
   const preset = presetFor(config.provider);
-  const adapter = ADAPTERS[preset.family];
+  // Mentor's relay wraps Gemini's request (k-0519); the family stays 'gemini' for every budget.
+  const adapter = preset.relay === 'mentor' ? mentorAdapter : ADAPTERS[preset.family];
   // Field by field: a caller passing `{ sleep: undefined }` still gets the real sleep.
   const d = defaultHttpDeps();
   const http: HttpDeps = { fetch: deps?.fetch ?? d.fetch, now: deps?.now ?? d.now, sleep: deps?.sleep ?? d.sleep };
@@ -148,6 +150,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
       let finish: CompletionResult['finish'] | undefined;
       let usage: CompletionResult['usage'];
       let failed: string | undefined;
+      let settled = false;
       let res: Awaited<ReturnType<typeof sendStream>>;
       try {
         res = await sendStream(http, { provider, url: wire.url, method: 'POST', headers: wire.headers, body: wire.body, signal: req.signal, timeoutMs: req.timeoutMs ?? COMPLETION_TIMEOUT_MS }, (data) => {
@@ -161,6 +164,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
           const piece = adapter.streamPiece(event);
           if (!piece) return;
           if (piece.error) failed = piece.error;
+          if (piece.settled) settled = true;
           if (piece.text) {
             text += piece.text;
             onText(text);
@@ -181,6 +185,8 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
         throw httpFailure(res as HttpResponse);
       }
       if (failed !== undefined) throw new AiError(aiErrorInfo('server', provider, { status: res.status, detail: failed }));
+      // A relay stream closed without its receipt was cut off: nothing it said can be trusted as whole.
+      if (adapter.mustSettle && !settled) throw new AiError(aiErrorInfo('server', provider, { status: res.status, detail: 'stream ended early' }));
       workingRung.set(cacheKey, dialect);
       return { text, finish: finish ?? 'stop', dialect, model, ms: http.now() - started, ...(usage ? { usage } : {}) } satisfies CompletionResult;
     }
@@ -208,7 +214,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     },
 
     async listModels(signal) {
-      if (blocked(false)) return [];
+      if (blocked(false) || preset.relay) return [];
       try {
         const res = await request(adapter.models(preset, cfg), signal, PROBE_TIMEOUT_MS);
         return res.status >= 200 && res.status < 300 ? adapter.parseModels(res.body) : [];
@@ -245,6 +251,7 @@ export async function testConnection(
       turns: [{ role: 'user', content: TEST_PAYLOAD }],
       schema: ITEMS_SCHEMA,
       maxOutputTokens: Math.min(preset.outputCap, 2048 + (thinks ? 4096 : 0)),
+      feature: 'test',
       signal,
       timeoutMs: PROBE_TIMEOUT_MS,
     });

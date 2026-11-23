@@ -6,6 +6,12 @@ import { defineMessages } from '@/i18n/catalogue';
  * (`./text.ts`). Where a function's first argument is `.trim()`med, that is only to keep the
  * guard test's numeric samples from reading "2 in" as inches.
  */
+/** The DSEcon Mentor account's label (k-0519): its requests go through the account, not a key. */
+const MENTOR_LABEL = 'DSEcon Mentor';
+const toWithKey = (provider: string) => (provider === MENTOR_LABEL ? 'through your DSEcon Mentor account' : `to ${provider} with your key`);
+const zhSend = (provider: string, what: string) =>
+  provider === MENTOR_LABEL ? `會透過你的 DSEcon Mentor 帳戶傳送${what}` : `會連同你的 API key 把${what}傳送到 ${provider}`;
+
 export const ASSIST_MESSAGES = defineMessages({
   sideZh: { en: '中文', zh: '中文' },
   sideEn: { en: 'English', zh: '英文' },
@@ -28,8 +34,8 @@ export const ASSIST_MESSAGES = defineMessages({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the same signature as en
   unitTexts: { en: (n: number) => (n === 1 ? 'text' : 'texts'), zh: (_n: number) => '段文字' },
   sendsTexts: {
-    en: (n: number, provider: string) => `Sends ${n} ${n === 1 ? 'text' : 'texts'} to ${provider} with your key`,
-    zh: (n: number, provider: string) => `會連同你的 API key 把 ${n} 段文字傳送到 ${provider}`,
+    en: (n: number, provider: string) => `Sends ${n} ${n === 1 ? 'text' : 'texts'} ${toWithKey(provider)}`,
+    zh: (n: number, provider: string) => `${zhSend(provider, ` ${n} 段文字`)}`,
   },
   translatingInto: { en: (name: string) => `Translating into ${name}`, zh: (name: string) => `正在翻譯成${name}` },
   remove: { en: 'Remove', zh: '移除' },
@@ -131,8 +137,8 @@ export const ASSIST_MESSAGES = defineMessages({
   coverageLabel: { en: 'Check syllabus coverage', zh: '檢查課程覆蓋' },
   sendsCoverage: {
     en: (n: number, provider: string) =>
-      `Sends ${n} ${n === 1 ? 'question' : 'questions'} to ${provider} with your key, then shows a report, saved with the paper. The questions are not changed.`,
-    zh: (n: number, provider: string) => `會連同你的 API key 把 ${n} 條題目傳送到 ${provider}，然後顯示報告，並與試卷一併儲存。不會更改題目。`,
+      `Sends ${n} ${n === 1 ? 'question' : 'questions'} ${toWithKey(provider)}, then shows a report, saved with the paper. The questions are not changed.`,
+    zh: (n: number, provider: string) => `${zhSend(provider, ` ${n} 條題目`)}，然後顯示報告，並與試卷一併儲存。不會更改題目。`,
   },
   analysingQuestions: {
     en: (n: number) => `Matching ${n} ${n === 1 ? 'question' : 'questions'} to the syllabus`,
@@ -154,9 +160,9 @@ export const ASSIST_MESSAGES = defineMessages({
   setBlank: { en: 'Fewer than two papers of the set have questions', zh: '這套試卷少於兩份有題目' },
   sendsCoverageSet: {
     en: (n: number, papers: number, provider: string) =>
-      `Sends ${n} ${n === 1 ? 'question' : 'questions'} from ${papers} papers to ${provider} with your key, then shows one report for the set, saved with each paper. The questions are not changed.`,
+      `Sends ${n} ${n === 1 ? 'question' : 'questions'} from ${papers} papers ${toWithKey(provider)}, then shows one report for the set, saved with each paper. The questions are not changed.`,
     zh: (n: number, papers: number, provider: string) =>
-      `會連同你的 API key 把 ${papers} 份試卷共 ${n} 條題目傳送到 ${provider}，然後顯示整套試卷的報告，並與每份試卷一併儲存。不會更改題目。`,
+      `${zhSend(provider, ` ${papers} 份試卷共 ${n} 條題目`)}，然後顯示整套試卷的報告，並與每份試卷一併儲存。不會更改題目。`,
   },
   analysingPaper: {
     en: (paper: number, papers: number, n: number) => `Paper ${paper} of ${papers}: matching ${n} ${n === 1 ? 'question' : 'questions'} to the syllabus`,
@@ -189,8 +195,8 @@ export const ASSIST_MESSAGES = defineMessages({
   unitQuestions: { en: (n: number) => (n === 1 ? 'question' : 'questions'), zh: (_n: number) => '條題目' },
   questionsBlank: { en: 'These questions are blank', zh: '這些題目是空白的' },
   sendsQuestions: {
-    en: (n: number, provider: string) => `Sends ${n} ${n === 1 ? 'question' : 'questions'} to ${provider} with your key. Changes nothing.`,
-    zh: (n: number, provider: string) => `會連同你的 API key 把 ${n} 條題目傳送到 ${provider}。不會更改任何內容。`,
+    en: (n: number, provider: string) => `Sends ${n} ${n === 1 ? 'question' : 'questions'} ${toWithKey(provider)}. Changes nothing.`,
+    zh: (n: number, provider: string) => `${zhSend(provider, ` ${n} 條題目`)}。不會更改任何內容。`,
   },
   checkingQuestions: {
     en: (n: number) => `Checking ${n} ${n === 1 ? 'question' : 'questions'}`,
@@ -224,8 +230,8 @@ export const ASSIST_MESSAGES = defineMessages({
   writeAnswersLabel: { en: 'Write answers & mark scheme', zh: '撰寫答案及評卷參考' },
   unitParts: { en: 'parts', zh: '個分題' },
   sendsParts: {
-    en: (n: number, provider: string) => `Sends ${n} ${n === 1 ? 'part' : 'parts'} to ${provider} with your key`,
-    zh: (n: number, provider: string) => `會連同你的 API key 把 ${n} 個分題傳送到 ${provider}`,
+    en: (n: number, provider: string) => `Sends ${n} ${n === 1 ? 'part' : 'parts'} ${toWithKey(provider)}`,
+    zh: (n: number, provider: string) => `${zhSend(provider, ` ${n} 個分題`)}`,
   },
   changedWhileWriting: { en: 'Changed while writing. Not inserted', zh: '寫入期間已有更改，未有插入' },
   nothingInserted: { en: (tail: string) => `Nothing inserted${tail}`, zh: (tail: string) => `沒有插入任何內容${tail}` },
@@ -239,8 +245,8 @@ export const ASSIST_MESSAGES = defineMessages({
   // Questions from a source
   fromSourceLabel: { en: 'Questions from a source…', zh: '根據資料撰寫題目…' },
   sendsSource: {
-    en: (provider: string, makes: string) => `Sends your source to ${provider} with your key; adds ${makes}`,
-    zh: (provider: string, makes: string) => `會連同你的 API key 把資料傳送到 ${provider}；將加入 ${makes}`,
+    en: (provider: string, makes: string) => `Sends your source ${toWithKey(provider)}; adds ${makes}`,
+    zh: (provider: string, makes: string) => `${zhSend(provider, `資料`)}；將加入 ${makes}`,
   },
   makesMcq: { en: (n: number) => `${n} MCQs`, zh: (n: number) => `${n} 條 MCQ` },
   makesStructured: {

@@ -1,3 +1,4 @@
+import { MENTOR_BUY_URL } from '@/ai/mentor';
 import { presetFor } from '@/ai/providers';
 import type { AiErrorInfo, ProviderId, ProviderPreset } from '@/ai/types';
 import { useAiRun } from '@/assist/runStore';
@@ -5,6 +6,7 @@ import { copyMessages } from '@/components/translate/text';
 import { openExternal } from '@/platform';
 import { peekSecret } from '@/platform/secrets';
 import { AI_SETTINGS } from '@/settings/aiSettings';
+import { mentorSession } from '@/settings/mentorAccount';
 import { appSettings } from '@/settings/store';
 import { useAppDialogs } from '@/store/appDialogs';
 
@@ -14,7 +16,9 @@ const SHORT_NAME: Partial<Record<ProviderId, string>> = { deepseek: 'DeepSeek', 
 
 export type ErrorAction =
   | { kind: 'useProvider'; provider: ProviderId; label: string }
-  | { kind: 'keyPage' | 'billingPage' | 'fallbackModel' | 'chooseModel' | 'settings' | 'retry'; label: string };
+  | { kind: 'keyPage' | 'billingPage' | 'fallbackModel' | 'chooseModel' | 'settings' | 'retry'; label: string }
+  /** The DSEcon Mentor account (k-0519). */
+  | { kind: 'signIn' | 'buyCredits' | 'useOwnKey'; label: string };
 
 /** The buttons an error earns, in order: only the actions it names (the old ErrorPanel's rules). */
 export function errorActions(error: AiErrorInfo): ErrorAction[] {
@@ -30,6 +34,8 @@ export function errorActions(error: AiErrorInfo): ErrorAction[] {
       out.push({ kind: 'useProvider', provider, label: copy.useProvider(SHORT_NAME[provider] ?? presetFor(provider).label) });
     }
   }
+  if (has('signIn')) out.push({ kind: 'signIn', label: copy.signInAgain });
+  if (has('buyCredits')) out.push({ kind: 'buyCredits', label: copy.buyCredits });
   if (has('openKeyPage') && preset.keyUrl) out.push({ kind: 'keyPage', label: copy.getNewKey });
   if (has('openBilling') && billingPage(preset)) out.push({ kind: 'billingPage', label: copy.openProvider(preset.label) });
   const fallback = preset.quotaFallbackModel;
@@ -40,6 +46,7 @@ export function errorActions(error: AiErrorInfo): ErrorAction[] {
   if (!region && has('switchProvider')) out.push({ kind: 'settings', label: copy.switchProvider });
   if (region || has('openSettings')) out.push({ kind: 'settings', label: copy.openSettings });
   if (!region && has('retry')) out.push({ kind: 'retry', label: copy.tryAgain });
+  if (has('useOwnKey')) out.push({ kind: 'useOwnKey', label: copy.useOwnKey });
   return out;
 }
 
@@ -76,7 +83,7 @@ const editorRun: RunControl = {
   dismiss: () => useAiRun.getState().dismiss(),
 };
 
-function openSettings(run: RunControl, focus: 'key' | 'model', params?: Record<string, string>) {
+function openSettings(run: RunControl, focus: 'key' | 'model' | 'account' | 'ownKey', params?: Record<string, string>) {
   run.dismiss();
   useAppDialogs.getState().openSettings({ section: 'ai', focus, ...(params ? { params } : {}) });
 }
@@ -107,5 +114,15 @@ export function runErrorAction(action: ErrorAction, error: AiErrorInfo, run: Run
       return openSettings(run, 'key');
     case 'retry':
       return run.retry();
+    case 'signIn':
+      return openSettings(run, 'account');
+    case 'buyCredits': {
+      const state = mentorSession().current();
+      const url = (state.kind === 'signedIn' && state.account?.buyUrl) || MENTOR_BUY_URL;
+      void openExternal(url);
+      return;
+    }
+    case 'useOwnKey':
+      return openSettings(run, 'ownKey');
   }
 }

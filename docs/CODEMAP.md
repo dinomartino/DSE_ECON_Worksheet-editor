@@ -552,6 +552,9 @@ through `AppSettingsHost` alone.
 - `src/ai/errors.ts:mapHttpError` · `src/ai/errors.ts:mapThrown` · `src/ai/errors.ts:isSchemaRejection` · `src/ai/errors.ts:redact` — table-driven error mapping, teacher-facing messages
 - `src/ai/adapters/gemini.ts:geminiAdapter` · `src/ai/adapters/openaiCompat.ts:openaiCompatAdapter` · `src/ai/adapters/anthropic.ts:anthropicAdapter` — wire shapes (`src/ai/adapters/adapter.ts:Adapter`)
 - `src/ai/keyShape.ts:keyShapeProblem` — a key from another provider is never sent without "test anyway"
+- `src/ai/mentor.ts:createMentorRelay` · `src/ai/providers.ts:MENTOR_API` — the DSEcon Mentor account (k-0519): link-code sign-in, credits, sign-out; its AI requests are the `mentor` preset (`relay: 'mentor'`: Gemini's request wrapped by `src/ai/adapters/mentor.ts:mentorAdapter` for `POST /ai/generate`, the server's model, a stream must end with Mentor's receipt) through `createClient`. Wire: Mentor's `Outbox/k-0518/CONTRACT.md` (k-0518). `src/ai/fakeMentor.ts:fakeMentor` — the stand-in relay tests use
+- `src/settings/mentorAccount.ts:createMentorSession` · `src/settings/mentorAccount.ts:useMentorAccount` — sign in (token = secret `ai:mentor`, keychain on desktop), signed in makes `provider: 'mentor'`, sign-out returns to an own key; Settings → AI's `src/components/settings/sections/aiSection/MentorAccountCard.tsx:MentorAccountCard` (own keys under Advanced when signed in) and the setup card's `MentorRow`
+- `src/ai/credits.ts:creditsFor` · `src/components/ai/CreditEstimate.tsx:CreditEstimate` — "Uses about N credits" before a run (a verb's `estimate`, the import dialog's AI check; `studioJob` for the studio screen)
 - `src/ai/fixtures/` — provider error bodies (recorded with dummy keys, or documented shapes); `src/ai/fakeFetch.ts` — the scripted fetch tests use
 - `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` — schema and section registry
 - `src/settings/store.ts:createSettingsStore` · `src/settings/store.ts:appSettings` · `src/settings/store.ts:useSettings` — per-field validation, unknown keys kept, never lowers `v`
@@ -580,6 +583,7 @@ through `AppSettingsHost` alone.
 - `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
 - `src/components/settings/SettingsButton.tsx:SettingsButton` — the gear, far right of the start screen's and bank's top row; the editor keeps ⋯ Settings… (no room at 1024); `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
 - `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the AI door's browser run (six groups, Chromium and WebKit; answers / source / quality paused) against a canned provider; nothing sent before a click
+- `scripts/hosted-ai-verify.mjs` — the DSEcon Mentor account in a browser (k-0519): setup card Sign in → code → Allow → the verb runs on the account, Settings card and Advanced, the menu's credit line, out of credits, Sign out; Mentor's host answered by a stand-in inside the browser
 - `scripts/bank-ai-verify.mjs` — the bank's ✦ run in Chromium and WebKit (filter, fill into identical copies, Undo all, a 25-question batch with confirm and Stop, Check terms, SetupCard, region error, 1024 and dark layout); `--seed=` adds a teacher's documents
 
 Invariants:
