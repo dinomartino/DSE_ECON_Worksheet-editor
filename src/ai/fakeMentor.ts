@@ -2,7 +2,7 @@ import type { HttpDeps } from './types';
 
 /**
  * Test support, never shipped: a stand-in for Mentor's hosted AI (k-0519), answering as
- * `Outbox/k-0518/CONTRACT.md` v1.3 says: link-code sign-in (`/auth/link/start`, `/check`),
+ * `Outbox/k-0518/CONTRACT.md` v1.4 says: link-code sign-in (`/auth/link/start`, `/check`),
  * `GET /ai/credits`, and `POST /ai/generate` (`{ feature, stream, request }` → `{ response,
  * mentor }`, or Gemini's chunks then `event: mentor`). It charges each call from
  * `usageMetadata` at the contract's rates, refuses with 402 when the credits are short and
@@ -31,6 +31,8 @@ export interface FakeMentorOptions {
   deadline?: boolean;
   /** `/ai/credits` says the trial was refused and the balance is this (may be below zero). */
   trialRefused?: boolean;
+  /** An older Mentor (before v1.4): `/ai/credits` has `packs` but no `buy`. */
+  noBuy?: boolean;
   /** Sign-out answers this status (or fails as a network error), not 204. */
   logout?: number | 'network';
 }
@@ -40,6 +42,20 @@ export interface FakeMentorRequest { method: string; path: string; headers: Reco
 const API = 'https://dseconmentor.com/api/app/v1';
 /** CONTRACT §2: 100 credits = HK$1 at US$1 = HK$7.8 of US$1.50 in / US$7.50 out per million. */
 export const FAKE_RATES = { inputPerMillionTokens: 1170, outputPerMillionTokens: 5850 };
+
+/** CONTRACT §2 v1.4 `buy`, as Mentor sends it (its quick-pick credits are the server's own results). */
+export const FAKE_BUY = {
+  unitHkd: 1,
+  minHkd: 50,
+  maxHkd: 1000,
+  quickPicks: [
+    { hkd: 50, credits: 4170 },
+    { hkd: 100, credits: 8560 },
+    { hkd: 200, credits: 17350 },
+  ],
+  stripeFee: { pct: 3.4, fixedHkd: 2.35 },
+  urlTemplate: 'https://dseconmentor.com/account?amount={hkd}#ai-credits',
+};
 
 export function fakeMentor(opts: FakeMentorOptions = {}) {
   const token = opts.token ?? 'dsm_test_token_0123456789abcdef';
@@ -93,12 +109,13 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
       return json(200, {
         status: opts.status ?? 'on',
         balance: state.credits,
-        trial: opts.trialRefused ? { credits: 0, refused: true } : { credits: 500, grantedAt: '2026-11-23T09:58:01.000Z' },
+        trial: opts.trialRefused ? { credits: 0, refused: true } : { credits: 500, grantedAt: '2026-11-23T09:58:01.000Z', refused: false },
         month: { spent: 0, cap: 20000, resetsAt: '2026-11-30T16:00:00.000Z' },
         model: 'gemini-4-hydrogen',
         rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, ...FAKE_RATES, cachedInputPerMillionTokens: 58.5 },
         estimates: { studioWorksheet: 280, importCheck: 50, translate: 50, answerKey: 80 },
         extraPct: 10,
+        ...(opts.noBuy ? {} : { buy: FAKE_BUY }),
         packs: [{ id: 'hkd50', priceHkd: 50, credits: 4170 }, { id: 'hkd100', priceHkd: 100, credits: 8560 }, { id: 'hkd200', priceHkd: 200, credits: 17350 }],
         buyUrl: 'https://dseconmentor.com/account#ai-credits',
         pricingUrl: 'https://dseconmentor.com/pricing#ai-credits',

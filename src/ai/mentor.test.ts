@@ -188,6 +188,14 @@ describe('sign-in, credits and sign-out (CONTRACT §1–2)', () => {
       trialCredits: 500,
       packs: [{ priceHkd: 50, credits: 4170 }, { priceHkd: 100, credits: 8560 }, { priceHkd: 200, credits: 17350 }],
       extraPct: 10,
+      buy: {
+        minHkd: 50,
+        maxHkd: 1000,
+        quickPicks: [{ hkd: 50, credits: 4170 }, { hkd: 100, credits: 8560 }, { hkd: 200, credits: 17350 }],
+        urlTemplate: 'https://dseconmentor.com/account?amount={hkd}#ai-credits',
+        terms: { stripeFee: { pct: 3.4, fixedHkd: 2.35 }, extraPct: 10, creditsPerHkd: 100 },
+        studioWorksheet: 280,
+      },
       buyUrl: 'https://dseconmentor.com/account#ai-credits',
       pricingUrl: 'https://dseconmentor.com/pricing#ai-credits',
     });

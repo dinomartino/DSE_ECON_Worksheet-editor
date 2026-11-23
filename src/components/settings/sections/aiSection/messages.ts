@@ -60,6 +60,17 @@ export const AI_SECTION_MESSAGES = defineMessages({
   mentorRefresh: { en: 'Refresh', zh: '重新整理' },
   mentorBuy: { en: 'Buy credits', zh: '購買點數' },
   mentorPacks: { en: 'Credit packs:', zh: '點數套裝：' },
+  buyQuickPicks: { en: 'Amounts', zh: '金額' },
+  buyAmount: { en: 'Amount', zh: '金額' },
+  buyPreview: {
+    en: (credits: string, questions: string) => `≈ ${credits} credits · ≈ ${questions} questions`,
+    zh: (credits: string, questions: string) => `≈ ${credits} 點 · ≈ ${questions} 條題目`,
+  },
+  buyCredits: { en: (credits: string) => `≈ ${credits} credits`, zh: (credits: string) => `≈ ${credits} 點` },
+  buyRange: {
+    en: (min: string, max: string) => `Enter a whole amount from HK$${min} to HK$${max}.`,
+    zh: (min: string, max: string) => `請輸入 HK$${min} 至 HK$${max} 的整數金額。`,
+  },
   mentorPack: {
     en: (price: string, credits: string) => `HK$${price} · ${credits} credits`,
     zh: (price: string, credits: string) => `HK$${price} · ${credits} 點`,

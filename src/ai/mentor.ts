@@ -2,12 +2,13 @@ import { aiErrorInfo, describeHttpError, mapThrown } from './errors';
 import { PROBE_TIMEOUT_MS, defaultHttpDeps, send, type HttpResponse } from './http';
 import { MENTOR_API } from './providers';
 import { AiError, isAiError, type HttpDeps } from './types';
+import type { PaymentTerms } from './credits';
 
 /**
  * The DSEcon Mentor account's own calls (k-0519): sign in by link code, read the credits
  * left, sign out. Plain transport like the rest of `src/ai/`; the AI requests themselves go
  * through `createClient` (the `mentor` preset, `adapters/mentor.ts`). The wire is Mentor's
- * `Outbox/k-0518/CONTRACT.md` §1–2 (v1.3): fields may be added, never renamed.
+ * `Outbox/k-0518/CONTRACT.md` §1–2 (v1.4): fields may be added, never renamed.
  */
 
 export interface LinkStart {
@@ -40,8 +41,10 @@ export interface MentorAccount {
   trialCredits?: number;
   /** No trial: the same sign-in already had one on an earlier account (CONTRACT v1.3). */
   trialRefused?: true;
-  /** Credit packs on sale (CONTRACT §2 v1.1): read, never computed. */
+  /** Credit packs on sale (CONTRACT §2 v1.1): read, never computed. Superseded by `buy` (v1.4), kept as its fallback. */
   packs?: Array<{ priceHkd: number; credits: number }>;
+  /** Any whole HK$ amount (v1.4, u-1zca); absent from an older Mentor (then `packs`). */
+  buy?: MentorBuy;
   /** The extra on top of Google's cost in each pack, in % (requests are charged at Google's cost). */
   extraPct?: number;
   /** Where Buy credits goes (Account page, credit packs). */
@@ -49,6 +52,22 @@ export interface MentorAccount {
   /** The pricing page (the cost basis). */
   pricingUrl: string;
 }
+
+export interface MentorBuy {
+  minHkd: number;
+  maxHkd: number;
+  /** Buttons that fill the amount box, with Mentor's own credits for each. */
+  quickPicks: Array<{ hkd: number; credits: number }>;
+  /** The Account page with `{hkd}` for the amount; checked to be Mentor's (`safeMentorUrl`). */
+  urlTemplate: string;
+  /** For the live "≈ N credits" line; absent when `/ai/credits` gave no `extraPct` (no line then). */
+  terms?: PaymentTerms;
+  /** Credits per 10-question studio worksheet (`estimates.studioWorksheet`), for "≈ N questions". */
+  studioWorksheet?: number;
+}
+
+/** The Account page with `hkd` filled in (`{hkd}` in `buy.urlTemplate`). */
+export const buyUrlFor = (buy: Pick<MentorBuy, 'urlTemplate'>, hkd: number) => buy.urlTemplate.replace('{hkd}', String(Math.trunc(hkd)));
 
 export interface LinkDevice {
   platform: 'desktop' | 'web';
@@ -117,7 +136,38 @@ export function readAccount(body: unknown, api: string): MentorAccount | null {
   if (packs.length) account.packs = packs;
   const extra = num(body.extraPct);
   if (extra !== undefined && extra >= 0) account.extraPct = extra;
+  const buy = readBuy(body, api, account.extraPct);
+  if (buy) account.buy = buy;
   return account;
+}
+
+/** `/ai/credits` → `buy` (v1.4), or undefined when absent or unusable (the card falls back to `packs`). */
+function readBuy(body: Record<string, unknown>, api: string, extraPct: number | undefined): MentorBuy | undefined {
+  const b = body.buy;
+  if (!isRecord(b)) return undefined;
+  const minHkd = num(b.minHkd);
+  const maxHkd = num(b.maxHkd);
+  const template = typeof b.urlTemplate === 'string' && b.urlTemplate.includes('{hkd}') ? b.urlTemplate : undefined;
+  if (minHkd === undefined || maxHkd === undefined || !Number.isInteger(minHkd) || !Number.isInteger(maxHkd) || minHkd < 1 || maxHkd < minHkd || !template) return undefined;
+  // Only digits ever go in, so a template that is Mentor's with a number is Mentor's with any.
+  if (!safeMentorUrl(buyUrlFor({ urlTemplate: template }, minHkd), api)) return undefined;
+  const quickPicks = (Array.isArray(b.quickPicks) ? b.quickPicks : [])
+    .flatMap((q) => {
+      if (!isRecord(q)) return [];
+      const hkd = num(q.hkd);
+      const credits = num(q.credits);
+      return hkd !== undefined && credits !== undefined && Number.isInteger(hkd) && hkd >= minHkd && hkd <= maxHkd && credits > 0 ? [{ hkd, credits }] : [];
+    })
+    .slice(0, 6);
+  const buy: MentorBuy = { minHkd, maxHkd, quickPicks, urlTemplate: template };
+  const fee = isRecord(b.stripeFee) ? { pct: num(b.stripeFee.pct), fixedHkd: num(b.stripeFee.fixedHkd) } : null;
+  const perHkd = isRecord(body.rates) ? (num(body.rates.creditsPerHkd) ?? 100) : 100;
+  if (fee && fee.pct !== undefined && fee.fixedHkd !== undefined && fee.pct >= 0 && fee.fixedHkd >= 0 && extraPct !== undefined && perHkd > 0) {
+    buy.terms = { stripeFee: { pct: fee.pct, fixedHkd: fee.fixedHkd }, extraPct, creditsPerHkd: perHkd };
+  }
+  const studio = isRecord(body.estimates) ? num(body.estimates.studioWorksheet) : undefined;
+  if (studio !== undefined && studio > 0) buy.studioWorksheet = studio;
+  return buy;
 }
 
 function readPack(pack: unknown): Array<{ priceHkd: number; credits: number }> {

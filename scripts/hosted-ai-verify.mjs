@@ -13,7 +13,8 @@ import { chromium, webkit } from 'playwright-core';
  * the credit line in the ✦ AI menu, out of credits (Buy credits / Use my own key), Sign out.
  * Any other provider host is a failure. A screenshot per step lands in --out. k-0521 adds the
  * audit fixes: an Idempotency-Key on each generate (allowed through CORS, CONTRACT v1.3), the 14-day web sign-in, "Shared computer" (this tab only), and a sign-out Mentor
- * can't confirm (signed out here, with the warning and Open my account).
+ * can't confirm (signed out here, with the warning and Open my account). v1.4 (u-1zca): buy any
+ * whole HK$ amount: quick picks, the amount box, the live credits line, the range error, Buy.
  *
  *   npm run build && node scripts/hosted-ai-verify.mjs [--out=/tmp/hosted-ai-verify] [--engines=chromium,webkit] [--app-port=3419]
  */
@@ -100,7 +101,7 @@ function fakeMentor() {
     const authed = auth === `Bearer ${TOKEN}` && state.signedIn;
     if (path === '/ai/credits') {
       if (!authed) return route.fulfill(relayError(401, 'unauthorized'));
-      return route.fulfill(json({ status: 'on', balance: state.credits, trial: { credits: 500, grantedAt: new Date().toISOString() }, model: 'gemini-4-hydrogen', rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, inputPerMillionTokens: 1170, outputPerMillionTokens: 5850 }, buyUrl: `https://${MENTOR}/account#ai-credits`, pricingUrl: `https://${MENTOR}/pricing#ai-credits` }));
+      return route.fulfill(json({ status: 'on', balance: state.credits, trial: { credits: 500, grantedAt: new Date().toISOString() }, model: 'gemini-4-hydrogen', rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, inputPerMillionTokens: 1170, outputPerMillionTokens: 5850 }, estimates: { studioWorksheet: 280, importCheck: 50, translate: 50, answerKey: 80 }, extraPct: 10, buy: { unitHkd: 1, minHkd: 50, maxHkd: 1000, quickPicks: [{ hkd: 50, credits: 4170 }, { hkd: 100, credits: 8560 }, { hkd: 200, credits: 17350 }], stripeFee: { pct: 3.4, fixedHkd: 2.35 }, urlTemplate: `https://${MENTOR}/account?amount={hkd}#ai-credits` }, buyUrl: `https://${MENTOR}/account#ai-credits`, pricingUrl: `https://${MENTOR}/pricing#ai-credits` }));
     }
     if (path === '/ai/generate') {
       if (!authed) return route.fulfill(relayError(401, 'unauthorized'));
@@ -219,6 +220,29 @@ async function run(engine, browserType) {
     expect(!(await page.content()).includes(TOKEN), 'the token is in the DOM');
     expect((await account.locator('[data-mentor-kept]').getAttribute('data-mentor-kept')) === 'browser', 'no "kept in this browser" line');
     return (await account.getByText(/credits left/).innerText()).trim();
+  });
+
+  await check(engine, 'Buy any amount: quick picks, the live line, the range error, Buy opens the amount (v1.4)', async () => {
+    const buy = account.locator('[data-mentor-buy]');
+    const box = buy.locator('[data-buy-amount]');
+    const line = buy.locator('[data-buy-line]');
+    expect((await line.innerText()).includes('≈ 4,170 credits · ≈ 145 questions'), `first line: ${await line.innerText()}`);
+    await buy.locator('[data-buy-pick="200"]').click();
+    expect((await box.inputValue()) === '200', 'the quick pick did not fill the box');
+    expect((await line.innerText()).includes('≈ 17,350 credits · ≈ 615 questions'), `200: ${await line.innerText()}`);
+    await box.fill('40');
+    expect((await line.innerText()).includes('Enter a whole amount from HK$50 to HK$1,000.'), `40: ${await line.innerText()}`);
+    expect(await buy.getByRole('button', { name: 'Buy credits' }).isDisabled(), 'Buy enabled for HK$40');
+    await box.fill('75');
+    await page.waitForTimeout(150);
+    await shot('04b-buy-75');
+    expect((await line.innerText()).includes('≈ 6,370 credits · ≈ 225 questions'), `75: ${await line.innerText()}`);
+    const popup = context.waitForEvent('page', { timeout: 5000 }).catch(() => null);
+    await buy.getByRole('button', { name: 'Buy credits' }).click();
+    const opened = await popup;
+    expect(opened?.url() === `https://${MENTOR}/account?amount=75#ai-credits`, `opened ${opened?.url()}`);
+    await opened?.close();
+    return (await line.innerText()).trim();
   });
 
   await check(engine, '中文 Settings', async () => {
