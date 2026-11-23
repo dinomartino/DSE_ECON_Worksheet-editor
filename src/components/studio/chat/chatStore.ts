@@ -295,7 +295,8 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         const ready = await resolve(chatId, ai.id, signal);
         if (!ready) return;
         const tagged = Object.fromEntries(mine.filter((r) => r.keyPoint).map((r) => [r.source.id, r.keyPoint as string]));
-        const picked = await deps.engine.pick({ text, examples: await withPictures(mine.map((r) => r.source)), tagged }, ready.deps, signal);
+        const current = (get().chats.find((c) => c.id === chatId)?.picks ?? []).map((p) => p.code);
+        const picked = await deps.engine.pick({ text, examples: await withPictures(mine.map((r) => r.source)), tagged, ...(current.length ? { current } : {}) }, ready.deps, signal);
         if (!picked.ok) {
           failTurn(chatId, ai.id, picked.error);
           return;

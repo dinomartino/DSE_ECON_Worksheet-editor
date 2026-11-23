@@ -343,11 +343,16 @@ function studioSolveReply(payload) {
 /** The studio's step 1 (k-0514 `pick.ts`): the key point a request is about, with a reason. */
 export function studioPickReply(payload) {
   const words = `${payload?.request ?? ''} ${JSON.stringify(payload?.examples ?? [])}`;
-  const pick = /unit tax|從量稅|subsid/i.test(payload?.request ?? '')
-    ? { code: 'C.intervention', reason: 'The request asks about a unit tax, a market intervention.' }
-    : /elastic|彈性/i.test(words)
-      ? { code: 'C.ped', reason: 'It asks how the quantity demanded responds to a change in price.' }
-      : { code: 'C.equilibrium', reason: 'It asks how demand and supply set the price.' };
+  // A follow-up keeps the chat's key point (k-0520 `currentKeyPoints`) unless it names another.
+  const current = payload?.currentKeyPoints?.[0]?.code;
+  const named = /unit tax|從量稅|subsid|elastic|彈性/i.test(payload?.request ?? '');
+  const pick = current && !named
+    ? { code: current, reason: 'The request only changes the question, so the key point stays.', reasonZh: '這個要求只改題目，課題重點不變。' }
+    : /unit tax|從量稅|subsid/i.test(payload?.request ?? '')
+      ? { code: 'C.intervention', reason: 'The request asks about a unit tax, a market intervention.', reasonZh: '要求問的是從量稅，屬市場干預。' }
+      : /elastic|彈性/i.test(words)
+        ? { code: 'C.ped', reason: 'It asks how the quantity demanded responds to a change in price.', reasonZh: '題目問需求量對價格變動的反應。' }
+        : { code: 'C.equilibrium', reason: 'It asks how demand and supply set the price.', reasonZh: '題目問需求與供應如何決定價格。' };
   return completion(JSON.stringify({ picks: [pick] }));
 }
 

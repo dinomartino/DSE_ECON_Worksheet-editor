@@ -27,6 +27,8 @@ export interface KeyPick {
   code: string;
   /** One sentence, English (the model's); '' when there is none. */
   reason: string;
+  /** The same in Hong Kong Chinese (k-0520); '' or absent from an older reply, or a pick made on the computer. */
+  reasonZh?: string;
   /** Picked on the computer (the fallback): why, as a code the interface words. */
   basis?: { kind: 'tag'; label: string } | { kind: 'words'; hit: string } | { kind: 'example'; hit: string };
 }
@@ -37,6 +39,8 @@ export interface PickInput {
   examples: readonly SourceQuestion[];
   /** The key point each picked example's tags name, by example id (the bank knows it): the fallback's hint. */
   tagged?: Readonly<Record<string, string>>;
+  /** The key point(s) the chat is on now, main first: a follow-up ("the same in Chinese") keeps them (k-0520). */
+  current?: readonly string[];
 }
 
 export type PickOutcome = { ok: true; picks: KeyPick[]; usage: Usage; model: string; /** Picked on the computer, not by the AI. */ local?: boolean } | { ok: false; error: AiErrorInfo; usage: Usage };
@@ -58,7 +62,7 @@ export async function computerPick(input: PickInput): Promise<PickOutcome> {
 
 export const liveEngine: StudioEngine = {
   async pick(input, deps, signal) {
-    const asked = await pickKeyPoints({ text: input.text, examples: input.examples }, deps, signal);
+    const asked = await pickKeyPoints({ text: input.text, examples: input.examples, ...(input.current?.length ? { current: input.current } : {}) }, deps, signal);
     if (!asked.ok) return asked;
     if (asked.picks.length > 0) return { ok: true, picks: asked.picks, usage: asked.usage, model: asked.model };
     const local = await computerPick(input);

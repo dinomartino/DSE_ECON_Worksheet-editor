@@ -278,6 +278,8 @@ function ChangedList({ changes }: { changes: readonly Change[] }) {
       <dl className="mt-1 divide-y divide-line">
         {changes.map((c, i) => {
           switch (c.kind) {
+            case 'note':
+              return row(c.aspect === 'varies' ? m.changedVaries : c.aspect === 'format' ? m.changedFormat : c.aspect === 'numbers' ? m.changedNumbers : m.changedKey, c.text, `a${i}`);
             case 'varies':
               return row(m.changedVaries, c.text, `v${i}`);
             case 'format':

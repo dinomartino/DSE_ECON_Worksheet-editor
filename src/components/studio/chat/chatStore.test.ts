@@ -265,3 +265,13 @@ describe('paper chats: the editor ✦ Write panel (k-0516 B)', () => {
     expect(localChatStorage(store, 'econgen.paperChats.v1').load()[0].paper).toBe('p');
   });
 });
+
+describe('engine k-0520 in the chat', () => {
+  it('a follow-up sends the chat’s key point to the pick', async () => {
+    const { useChat, calls } = setup();
+    await useChat.getState().send('Write 3 MC questions on price elasticity of demand');
+    expect(calls.picks[0].current).toBeUndefined();
+    await useChat.getState().send('the same in Chinese');
+    expect(calls.picks[1].current?.[0]).toBe(calls.writes[0].keyPoint);
+  });
+});

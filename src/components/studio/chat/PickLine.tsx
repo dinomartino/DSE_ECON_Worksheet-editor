@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useMessages } from '@/i18n/language';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { topicNamesFor } from '@/model/topics';
 import type { LanguageMode } from '@/model/types';
 import { lookupCode, SYLLABUS } from '@/syllabus';
@@ -35,6 +35,8 @@ export function PickLine({
   onChange: (code: string) => void;
 }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
+  // The reason is the interface's words: the model writes it in both languages (k-0520).
+  const ui = useUiLanguage();
   const [open, setOpen] = useState(false);
   const main = picks[0];
   if (!main) return null;
@@ -64,10 +66,10 @@ export function PickLine({
       {by === 'you' || by === 'draft' ? (
         <span className="block text-[12px] text-ink-muted">{by === 'you' ? m.byYou : m.sameAsDraft}</span>
       ) : (
-        (main.reason || main.basis) && (
+        (main.reason || main.reasonZh || main.basis) && (
           <span className="block text-[12px] leading-snug text-ink-muted">
             {m.because}{' '}
-            {main.reason ||
+            {(ui === 'en' ? main.reason : main.reasonZh || main.reason) ||
               (main.basis?.kind === 'tag' ? m.basisTag(main.basis.label) : main.basis?.kind === 'words' ? m.basisWords(main.basis.hit) : main.basis ? m.basisExample(main.basis.hit) : '')}
             {by === 'computer' && <span className="text-ink-subtle"> · {m.byComputer}</span>}
           </span>
