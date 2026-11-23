@@ -84,7 +84,6 @@ export const IMPORT_CHECK_MESSAGES = defineMessages({
   // The check itself
   checkImport: { en: 'Check import', zh: '檢查匯入' },
   checkImportTitle: { en: 'Compare the paper with the file and list what the import got wrong', zh: '把試卷與檔案比較，列出匯入出錯的地方' },
-  checking: { en: 'Checking the import…', zh: '正在檢查匯入…' },
   findingsN: {
     en: (n: number, safe: number) => `${n} ${n === 1 ? 'thing' : 'things'} to check${safe ? ` · ${safe} safe ${safe === 1 ? 'fix' : 'fixes'}` : ''}`,
     zh: (n: number, safe: number) => `${n} 項要檢查${safe ? ` · ${safe} 項安全修正` : ''}`,
@@ -105,13 +104,7 @@ export const IMPORT_CHECK_MESSAGES = defineMessages({
   noFix: { en: 'No automatic fix: change it on the page', zh: '沒有自動修正：請在頁面上修改' },
   close: { en: 'Close', zh: '關閉' },
   where: { en: (n: number, place: string) => `Question ${n}${place ? ` ${place}` : ''}`, zh: (n: number, place: string) => `第 ${n} 題${place ? ` ${place}` : ''}` },
-  askAi: { en: 'Also ask the AI', zh: '同時詢問 AI' },
-  askAiTitle: {
-    en: 'Send each question and its part of the file to the AI provider in Settings → AI, for what the rules cannot see',
-    zh: '把每條題目及檔案中相應的部分傳送到「設定 → AI」中的 AI 服務，找出規則看不到的問題',
-  },
   aiNoProvider: { en: 'No AI provider is set up (Settings → AI): only the rules ran', zh: '未設定 AI 服務（設定 → AI）：只用了規則檢查' },
-  aiFailed: { en: (n: number) => `The AI could not check ${n} ${n === 1 ? 'question' : 'questions'}`, zh: (n: number) => `AI 未能檢查 ${n} 條題目` },
   aiChecking: { en: (n: number) => `Asking the AI about ${n} ${n === 1 ? 'question' : 'questions'}…`, zh: (n: number) => `正在向 AI 查詢 ${n} 條題目…` },
   reviewNote: {
     en: 'Fixes change the import before Save; ⌘Z takes the last one back.',
@@ -129,5 +122,102 @@ export const IMPORT_CHECK_MESSAGES = defineMessages({
     en: (n: number, provider: string) => `Rules first, then ${n} ${n === 1 ? 'question' : 'questions'} and the file's words to ${provider} with your key`,
     zh: (n: number, provider: string) => `先用規則檢查，再把 ${n} 條題目及檔案文字連同你的 API key 傳送到 ${provider}`,
   },
+  // The AI check's own row (k-0501, user u-2ywo): always there, with progress, a result and a summary
+  aiCheck: { en: 'AI check', zh: 'AI 檢查' },
+  aiBarButton: { en: '✦ AI check', zh: '✦ AI 檢查' },
+  aiBarTitle: {
+    en: 'Ask the AI to compare every question with the file, for what the rules cannot see',
+    zh: '請 AI 把每條題目與檔案比較，找出規則看不到的問題',
+  },
+  aiBarBusy: { en: (done: number, total: number) => `✦ AI checking ${done}/${total}`, zh: (done: number, total: number) => `✦ AI 檢查中 ${done}/${total}` },
+  aiBarConnecting: { en: '✦ AI connecting…', zh: '✦ AI 連接中…' },
+  aiBarClean: { en: '✦ AI: no problems', zh: '✦ AI：沒有問題' },
+  aiBarFound: { en: (n: number) => `✦ AI: ${n} to look at`, zh: (n: number) => `✦ AI：${n} 項要看` },
+  aiBarFailed: { en: '✦ AI check failed', zh: '✦ AI 檢查失敗' },
+  aiRun: { en: 'Ask the AI', zh: '請 AI 檢查' },
+  aiRunAgain: { en: 'Ask again', zh: '再檢查一次' },
+  aiStop: { en: 'Stop', zh: '停止' },
+  aiIdle: {
+    en: (provider: string) => `Not run yet. Sends each question and its part of the file to ${provider} with your key.`,
+    zh: (provider: string) => `尚未執行。會把每條題目及檔案中相應的部分，連同你的 API key 傳送到 ${provider}。`,
+  },
+  aiIdleNoProvider: {
+    en: 'Not run yet. No AI provider is set up: add one in Settings → AI first.',
+    zh: '尚未執行。未設定 AI 服務：請先在「設定 → AI」中加入。',
+  },
+  aiConnecting: { en: (provider: string) => `Connecting to ${provider}…`, zh: (provider: string) => `正在連接 ${provider}…` },
+  aiSending: {
+    en: (total: number, batches: number, provider: string) =>
+      `Sending ${total} ${total === 1 ? 'question' : 'questions'}${batches > 1 ? ` in ${batches} batches` : ''} to ${provider}`,
+    zh: (total: number, batches: number, provider: string) => `正在把 ${total} 條題目${batches > 1 ? `分 ${batches} 批` : ''}傳送到 ${provider}`,
+  },
+  aiProgress: {
+    en: (done: number, total: number) => `${done} of ${total} checked`,
+    zh: (done: number, total: number) => `已檢查 ${done}／${total} 條`,
+  },
+  aiElapsed: { en: (time: string) => `${time} so far`, zh: (time: string) => `已用 ${time}` },
+  aiLeft: { en: (time: string) => `about ${time} left`, zh: (time: string) => `約剩 ${time}` },
+  aiGuess: { en: (time: string) => `usually about ${time} in all`, zh: (time: string) => `通常共需約 ${time}` },
+  seconds: { en: (n: number) => `${n} s`, zh: (n: number) => `${n} 秒` },
+  minutes: { en: (n: number) => `${n} min`, zh: (n: number) => `${n} 分鐘` },
+  aiClean: {
+    en: (time: string, n: number) => `AI checked the whole paper (${n} ${n === 1 ? 'question' : 'questions'}) at ${time}: no problems found`,
+    zh: (time: string, n: number) => `AI 已於 ${time} 檢查整份試卷（${n} 條題目）：沒有發現問題`,
+  },
+  aiFound: {
+    en: (time: string, n: number, found: number) =>
+      `AI checked the whole paper (${n} ${n === 1 ? 'question' : 'questions'}) at ${time}: ${found} ${found === 1 ? 'thing' : 'things'} to look at, listed below`,
+    zh: (time: string, n: number, found: number) => `AI 已於 ${time} 檢查整份試卷（${n} 條題目）：有 ${found} 項要看，列在下面`,
+  },
+  aiPartly: {
+    en: (time: string, done: number, total: number, found: number) =>
+      `AI checked ${done} of ${total} questions at ${time}: ${found ? `${found} ${found === 1 ? 'thing' : 'things'} to look at, listed below` : 'no problems found in those'}`,
+    zh: (time: string, done: number, total: number, found: number) =>
+      `AI 已於 ${time} 檢查 ${done}／${total} 條題目：${found ? `有 ${found} 項要看，列在下面` : '這些題目沒有發現問題'}`,
+  },
+  aiStopped: {
+    en: (done: number, total: number) => `AI check stopped: ${done} of ${total} questions checked`,
+    zh: (done: number, total: number) => `AI 檢查已停止：已檢查 ${done}／${total} 條題目`,
+  },
+  aiFailedWhy: { en: (why: string) => `AI check failed: ${why}`, zh: (why: string) => `AI 檢查失敗：${why}` },
+  aiUnreadable: { en: 'its replies could not be read. Ask again, or try another model in Settings → AI.', zh: '無法讀取它的回覆。請再試一次，或在「設定 → AI」中改用另一個模型。' },
+  aiNothingSent: {
+    en: 'No question could be matched to its part of the file, so nothing was sent to the AI.',
+    zh: '沒有題目能與檔案中相應的部分配對，所以沒有傳送任何內容給 AI。',
+  },
+  aiRulesStand: { en: 'The rule check above still stands.', zh: '上面的規則檢查結果仍然有效。' },
+  aiCheckedLine: { en: (list: string) => `Checked: ${list}`, zh: (list: string) => `檢查了：${list}` },
+  aiQuestionsN: { en: (n: number) => `${n} ${n === 1 ? 'question' : 'questions'}`, zh: (n: number) => `${n} 條題目` },
+  aiOptionsN: { en: (n: number) => `${n} MC ${n === 1 ? 'option' : 'options'}`, zh: (n: number) => `${n} 個 MC 選項` },
+  aiStatementsN: { en: (n: number) => `${n} ${n === 1 ? 'statement' : 'statements'}`, zh: (n: number) => `${n} 句陳述` },
+  aiPicturesN: { en: (n: number) => `${n} ${n === 1 ? 'picture or diagram' : 'pictures and diagrams'}`, zh: (n: number) => `${n} 張圖片或圖表` },
+  aiTablesN: { en: (n: number) => `${n} ${n === 1 ? 'table' : 'tables'}`, zh: (n: number) => `${n} 個表格` },
+  aiMarksN: { en: (n: number) => `the marks of ${n} ${n === 1 ? 'part' : 'parts'}`, zh: (n: number) => `${n} 個部分的分數` },
+  aiListJoin: { en: ' · ', zh: '、' },
+  aiLookedFor: {
+    en: 'Looked for missing or garbled words, lines run together or cut in two, wrong marks, page text left in and the wrong language: none found.',
+    zh: '找過缺漏或亂碼的文字、黏在一起或被切開的句子、錯誤的分數、殘留的版面文字及放錯語言：全部沒有發現。',
+  },
+  aiFoundLine: { en: (list: string) => `Found: ${list}`, zh: (list: string) => `發現：${list}` },
+  aiWithFix: { en: (n: number) => `${n} with a fix to apply`, zh: (n: number) => `${n} 項附有可套用的修正` },
+  aiIssue: {
+    en: (issue: string, n: number) =>
+      `${({ lostWords: 'missing words', garbled: 'garbled words', merged: 'lines run together', split: 'a line cut in two', marks: 'marks', leftover: 'page text left in', language: 'wrong language' } as Record<string, string>)[issue] ?? 'other'} (${n})`,
+    zh: (issue: string, n: number) =>
+      `${({ lostWords: '缺漏文字', garbled: '亂碼文字', merged: '句子黏在一起', split: '句子被切開', marks: '分數', leftover: '殘留版面文字', language: '放錯語言' } as Record<string, string>)[issue] ?? '其他'}（${n}）`,
+  },
+  aiPicturesNote: {
+    en: 'Pictures and diagrams are checked for their place only: the AI does not see the image.',
+    zh: '圖片及圖表只檢查位置：AI 看不到圖像本身。',
+  },
+  aiDroppedNote: {
+    en: (n: number) => `${n} more ${n === 1 ? 'suggestion was' : 'suggestions were'} left out: ${n === 1 ? 'it named' : 'they named'} nothing on this paper.`,
+    zh: (n: number) => `另有 ${n} 項建議沒有列出：它們指向的內容不在這份試卷上。`,
+  },
+  aiFailedNote: {
+    en: (n: number, why: string) => `Could not check ${n} ${n === 1 ? 'question' : 'questions'}${why ? `: ${why}` : ''}. Ask again to retry.`,
+    zh: (n: number, why: string) => `有 ${n} 條題目未能檢查${why ? `：${why}` : ''}。請再檢查一次。`,
+  },
+  aiVerbClean: { en: (n: number) => `AI checked ${n} ${n === 1 ? 'question' : 'questions'}: no problems found`, zh: (n: number) => `AI 檢查了 ${n} 條題目：沒有發現問題` },
   noSourceYet: { en: 'Asks for the file the paper came from', zh: '會要求選擇試卷來源檔案' },
 });

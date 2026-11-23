@@ -52,6 +52,12 @@ a version heading is edited afterwards.
   mapping as an appendix, with page headers and numbers, in 中文 or English.
   <!-- zh: **課程覆蓋報告會與試卷一併保存，PDF 亦更易閱讀。** 每次檢查課程覆蓋（單份試卷或整套試卷）都會自動與試卷一併儲存，即使關閉報告時沒有下載也不會遺失。✦ AI →「上次的課程覆蓋報告」會再次打開它；試卷會保留最近一次檢查（新的檢查會取代它），可再次下載 PDF 或刪除。若試卷在檢查後有改動，報告會註明，並仍顯示檢查時的試卷。報告會隨試卷一併同步及複製，舊版程式仍可如常開啟這些試卷。PDF 重新設計：首頁是重要數據、幾句總覽、各能力所佔分數及每個課題的覆蓋橫條；然後是缺口及最值得補上的部分、每個課題的學習要點表，以及作為附錄的逐題分析，附頁首及頁碼，以中文或英文顯示。 -->
 
+- **Choose the language of a coverage report's PDF.** Beside Download report (PDF), Report in
+  English / 中文 sets the language of the report's headings, figures, summary, notes, dates and
+  page numbers. Topic and key point names stay in the paper's language. A report starts in the
+  paper's language; after that, the app remembers the language you chose last on that device.
+  <!-- zh: **可選擇課程覆蓋報告 PDF 的語言。** 「下載報告（PDF）」旁的「報告語言」English／中文，決定報告的標題、數據、總覽、備註、日期及頁碼使用的語言；課題及學習要點名稱仍按試卷的語言。報告最初按試卷的語言，之後會在該部裝置記住你上次的選擇。 -->
+
 - **Check an import against its file, and fix what it got wrong.** In the import review, Check
   import compares the questions with the Word or PDF file and lists what went wrong, question by
   question: words missing or garbled, symbols from a symbol font, page numbers, "Turn over" and
@@ -59,12 +65,15 @@ a version heading is edited afterwards.
   tables read as text, pictures missing or in the wrong question, Chinese on the English side, and
   diagrams drawn with Word shapes that could not come in. Each one shows the words as they are and
   as they will be, with Apply and Skip; Apply all safe fixes does the ones that need no judgement.
-  Fixes change the import before you save, and ⌘Z takes them back. Also ask the AI sends each
-  question with its part of the file to the AI provider in Settings → AI for what the rules cannot
-  see; it can only suggest the file's own words or marks, and nothing changes until you apply it.
+  Fixes change the import before you save, and ⌘Z takes them back. ✦ AI check, always on the
+  review bar, sends each question with its part of the file to the AI provider in Settings → AI
+  for what the rules cannot see. It shows how far it has got and roughly how long is left, then
+  always says what came of it: no problems found, or what it found, with a few lines on what it
+  checked; when it cannot run (no key, Gemini without a VPN, no answer) it says why. It can only
+  suggest the file's own words or marks, and nothing changes until you apply it.
   On a paper you have already imported, ✦ AI → Check import does the same (it asks for the file
   when the paper was imported before you opened the app), each fix one step of Undo.
-  <!-- zh: **把匯入的試卷與原檔案比較，修正出錯的地方。** 在匯入的檢查步驟中，按「檢查匯入」會把題目與 Word 或 PDF 檔案比較，逐題列出出錯的地方：缺少或亂碼的文字、符號字型的符號、殘留在文字中的頁碼、「請翻頁」和圖片來源說明、仍在文字中或缺少的分數、被讀成一個的選項、被讀成文字的表格、缺少或放錯題目的圖片、放在英文一邊的中文，以及無法匯入、用 Word 圖形繪畫的圖。每項都會顯示文字現在和修正後的樣子，並有「套用」及「略過」；「套用全部安全修正」會處理不需判斷的項目。修正會在儲存前改動匯入內容，⌘Z 可取消。「同時詢問 AI」會把每條題目及檔案中相應的部分傳送到「設定 → AI」中的 AI 服務，找出規則看不到的問題；AI 只能建議檔案本身的文字或分數，你按「套用」前不會有任何改動。已匯入的試卷可用 ✦ AI →「檢查匯入」做同樣的檢查（如試卷在開啟程式前已匯入，會要求選擇檔案），每項修正都可逐步復原。 -->
+  <!-- zh: **把匯入的試卷與原檔案比較，修正出錯的地方。** 在匯入的檢查步驟中，按「檢查匯入」會把題目與 Word 或 PDF 檔案比較，逐題列出出錯的地方：缺少或亂碼的文字、符號字型的符號、殘留在文字中的頁碼、「請翻頁」和圖片來源說明、仍在文字中或缺少的分數、被讀成一個的選項、被讀成文字的表格、缺少或放錯題目的圖片、放在英文一邊的中文，以及無法匯入、用 Word 圖形繪畫的圖。每項都會顯示文字現在和修正後的樣子，並有「套用」及「略過」；「套用全部安全修正」會處理不需判斷的項目。修正會在儲存前改動匯入內容，⌘Z 可取消。檢查步驟頂部一直顯示的「✦ AI 檢查」會把每條題目及檔案中相應的部分傳送到「設定 → AI」中的 AI 服務，找出規則看不到的問題。檢查時會顯示進度及大約尚餘的時間，完成後一定會交代結果：沒有發現問題，或發現了甚麼，並以數行說明檢查了甚麼；無法執行時（沒有 API key、未開 VPN 使用 Gemini、沒有回應）會說明原因。AI 只能建議檔案本身的文字或分數，你按「套用」前不會有任何改動。已匯入的試卷可用 ✦ AI →「檢查匯入」做同樣的檢查（如試卷在開啟程式前已匯入，會要求選擇檔案），每項修正都可逐步復原。 -->
 
 - **Diagrams and charts drawn in Word come in as pictures.** A graph you drew in Word with
   lines, arrows, boxes, dots and text boxes for its labels (S₀, D₁, Price, Quantity…) now imports

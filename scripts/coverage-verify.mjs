@@ -263,6 +263,41 @@ for (const engineName of ENGINES) {
       return `${printed.sheets} sheets`;
     });
 
+    await check(engineName, 'k-0503: Report in English / 中文: the words follow the pick, topic names stay the paper\'s, the pick is remembered', async () => {
+      const { context, page } = await newPage(browser, { docs: [[docZh, TITLE_ZH]], open: TITLE_ZH });
+      await runCoverage(page);
+      let dialog = page.getByRole('dialog', { name: 'Syllabus coverage' });
+      const picker = () => page.getByRole('radiogroup', { name: 'Report in' });
+      expect((await picker().getByRole('radio', { name: '中文' }).getAttribute('aria-checked')) === 'true', 'a Chinese paper should start on 中文');
+      await page.screenshot({ path: `${OUT}/${engineName}-report-language-picker.png` });
+      await picker().getByRole('radio', { name: 'English' }).click();
+      const printed = await downloadReport(page, engineName, 'report-zh-paper-en-words');
+      expect(/Syllabus coverage report/.test(printed.text) && /Gaps and suggestions/.test(printed.text) && /Page 1 of \d+/.test(printed.text), 'English words missing');
+      expect(/基本經濟概念/.test(printed.text) && !/Basic Economic Concepts/.test(printed.text), 'topic names should stay Chinese');
+      expect(!/課程覆蓋報告|缺口及建議|第 1 頁/.test(printed.text), 'Chinese report words on an English report');
+      // Remembered: a reopened report starts on English, even for this Chinese paper.
+      // (downloadReport's click outside may have closed the dialog already.)
+      if (await dialog.isVisible()) await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+      await page.getByRole('status', { name: 'AI' }).getByRole('button', { name: 'Open report' }).click();
+      dialog = page.getByRole('dialog', { name: 'Syllabus coverage' });
+      await dialog.waitFor();
+      expect((await picker().getByRole('radio', { name: 'English' }).getAttribute('aria-checked')) === 'true', 'the pick was not remembered');
+      await context.close();
+      return `${printed.sheets} sheets`;
+    });
+
+    await check(engineName, 'k-0503: an English paper with 中文 report words keeps English topic names', async () => {
+      const { context, page } = await newPage(browser);
+      await runCoverage(page);
+      await page.getByRole('radiogroup', { name: 'Report in' }).getByRole('radio', { name: '中文' }).click();
+      const printed = await downloadReport(page, engineName, 'report-en-paper-zh-words');
+      expect(/課程覆蓋報告/.test(printed.text) && /缺口及建議/.test(printed.text) && /第 1 頁，共 \d+ 頁/.test(printed.text), 'Chinese words missing');
+      expect(/Basic Economic Concepts/.test(printed.text) && !/基本經濟概念/.test(printed.text), 'topic names should stay English');
+      await context.close();
+      return `${printed.sheets} sheets`;
+    });
+
     await check(engineName, 'k-0489: Check coverage for the whole set → one report, per paper, PDF', async () => {
       const { context, page } = await newPage(browser, { docs: [[setA, 'Verify Mock Paper 1'], [setB, 'Verify Mock Paper 2']], open: 'Verify Mock Paper 1' });
       await page.getByText(SET.name).first().waitFor({ timeout: 10_000 });

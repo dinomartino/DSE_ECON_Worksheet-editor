@@ -1003,6 +1003,22 @@ in the file (no invention), removed words are not the file's, and a mark is one 
 any other edit is dropped and the finding kept as a note without a fix. AI fixes are never safe.
 No provider: the rules alone, and the bar says so. Prompt `promptText.ts`, version `ic.1`.
 
+**The AI row** (k-0501, user u-2ywo: "I just click a button and nothing happened"). The review
+bar has ✦ AI check beside Check import at all times (paused with `check.import`): one click opens
+the panel and runs the AI; once it has run, the button carries the result ("✦ AI: no problems",
+"✦ AI: 2 to look at", "✦ AI check failed") and reopens the panel. The panel's AI row
+(`ImportCheckPanel.tsx:AiCheckRow`) is always in one visible state (`aiSummary.ts:AiRun`): not run
+yet (where it would send, or that no provider is set up), connecting, checking (a bar, "10 of 30
+checked", elapsed and a rough time left, Stop), finished. A finished run always has a headline and
+lines (`aiReport`): when, how many questions, nothing found / what was found by issue / stopped /
+partly checked; what was sent (questions, MC options, statements, pictures, tables, marks, counted
+by `ai.ts:countChecked`); that pictures are seen as markers only; proposals dropped because they
+named nothing sent. A failure says why in the interface language (`depsError` for no key,
+`localizedErrorMessage` for the provider's error: Gemini's region refusal reads "Turn on a VPN");
+`runAiCheck` keeps the last non-fatal error (`lastError`), so a run lost to timeouts says so. The
+summary is the app's own words from counts, never the model's prose: it reads the same in EN and
+中文 and claims only what was sent and returned. ✦ AI → Check import's bar uses the same words.
+
 **Reader fix found on the user's Paper 2**: its 442 answer lines are Word line shapes (flat,
 column-wide, one per paragraph). They were pooled into a lost "drawing" (no answer space, a
 picture slot per question). `docxBody.ts` now counts such rules (`isRule`: `line` /
@@ -1011,4 +1027,4 @@ lines, which the solver turns into answer space as it does tab or dotted lines.
 
 **Not done**: Word shapes and charts are not drawn (the finding points to the slot: paste the
 picture copied from Word); a lost picture inside a table cell is not compared; PDF pages are not
-rendered for the AI (text only); the AI was tried with a scripted client only.
+rendered for the AI (text only); the AI was tried with a scripted client and a canned provider in the browser only (`scripts/import-ai-verify.mjs`).
