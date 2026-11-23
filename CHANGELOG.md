@@ -66,6 +66,14 @@ a version heading is edited afterwards.
   when the paper was imported before you opened the app), each fix one step of Undo.
   <!-- zh: **把匯入的試卷與原檔案比較，修正出錯的地方。** 在匯入的檢查步驟中，按「檢查匯入」會把題目與 Word 或 PDF 檔案比較，逐題列出出錯的地方：缺少或亂碼的文字、符號字型的符號、殘留在文字中的頁碼、「請翻頁」和圖片來源說明、仍在文字中或缺少的分數、被讀成一個的選項、被讀成文字的表格、缺少或放錯題目的圖片、放在英文一邊的中文，以及無法匯入、用 Word 圖形繪畫的圖。每項都會顯示文字現在和修正後的樣子，並有「套用」及「略過」；「套用全部安全修正」會處理不需判斷的項目。修正會在儲存前改動匯入內容，⌘Z 可取消。「同時詢問 AI」會把每條題目及檔案中相應的部分傳送到「設定 → AI」中的 AI 服務，找出規則看不到的問題；AI 只能建議檔案本身的文字或分數，你按「套用」前不會有任何改動。已匯入的試卷可用 ✦ AI →「檢查匯入」做同樣的檢查（如試卷在開啟程式前已匯入，會要求選擇檔案），每項修正都可逐步復原。 -->
 
+- **Diagrams and charts drawn in Word come in as pictures.** A graph you drew in Word with
+  lines, arrows, boxes, dots and text boxes for its labels (S₀, D₁, Price, Quantity…) now imports
+  as a picture where it stood, drawn by the app itself on your computer, nothing sent anywhere. A
+  pie, bar or line chart made in Word comes in the same way. Four graphs lettered A to D in one
+  drawing are offered as an MC question with blank options. Anything it cannot draw faithfully
+  still leaves an empty picture box, and Check import still asks you to paste that one by hand.
+  <!-- zh: **在 Word 繪畫的圖和圖表會以圖片匯入。** 你在 Word 用直線、箭咀、方框、圓點及文字方塊標籤（S₀、D₁、Price、Quantity 等）畫的圖，現在會在原來位置匯入為圖片，由程式在你的電腦上自行繪畫，不會傳送到任何地方。Word 製作的圓形圖、棒形圖或折線圖也一樣。同一幅圖內標有 A 至 D 的四幅圖，會建議改為選項留空的 MC 題。程式無法如實繪畫的圖仍會留下空白圖片框，「檢查匯入」仍會提示你手動貼上。 -->
+
 ### Fixed
 - **Tables in imported Word papers come in whole.** A heading row with one filled cell (such
   as "$ billion") stays in its table instead of falling out above it; a fill-in sentence typed

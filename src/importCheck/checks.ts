@@ -394,12 +394,15 @@ function structureRules(question: Question, q: number, input: CheckInput, add: A
       }
     });
     const filled = mc.options.filter((o) => plain(o.text.en).trim() || plain(o.text.zh).trim() || o.blocks?.length).length;
-    if (filled !== 4 && !out_hasMerged(mc)) add({ kind: 'optionCount', key: String(filled), q, place: '', params: { count: filled }, safe: false });
+    // Blank options under one drawn figure that letters them A–D itself are right as they are (k-0498).
+    const lettered = filled === 0 && srcLines.some((l) => l.image?.optionLetters);
+    if (filled !== 4 && !out_hasMerged(mc) && !lettered) add({ kind: 'optionCount', key: String(filled), q, place: '', params: { count: filled }, safe: false });
   }
 
   if (question.type === 'structured' && (question as StructuredQuestion).parts.length === 0) {
     const words = questionText(question);
-    const lost = srcLines.some((l) => l.image && !l.image.src);
+    // A picture the paste lost, or one drawn from Word shapes that letters its own options A–D (k-0498).
+    const lost = srcLines.some((l) => l.image && (!l.image.src || l.image.optionLetters));
     if (lost && /which of the following|下列哪/i.test(words)) {
       add({
         kind: 'mcAsWritten',

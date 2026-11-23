@@ -214,7 +214,7 @@ describe('docx reader: what the paste loses', () => {
     expect(read.lines.map((l) => (l.image ? `img ${l.image.widthPx}x${l.image.heightPx}` : l.text))).toEqual(['img 120x80', 'April 2025: tariffs of 25% were announced on imported steel.']);
   });
 
-  it('pools an ungrouped diagram drawn shape by shape into one slot, keeping its caption', async () => {
+  it('pools an ungrouped diagram drawn shape by shape into one picture (drawn, k-0498), keeping its caption as text', async () => {
     const { read, analysis } = await analyse({
       numbering: abstractNum(1, [['decimal', '%1.'], ['lowerLetter', '(%2)']]) + num(1, 1),
       body: [
@@ -226,13 +226,17 @@ describe('docx reader: what the paste loses', () => {
         para('Explain whether it is efficient.\t(3 marks)', { num: [1, 1] }),
       ].join(''),
     });
-    expect(read.lines.filter((l) => l.text || l.image).map((l) => (l.image ? `slot:${l.image.alt}` : l.text))).toEqual([
+    expect(read.lines.filter((l) => l.text || l.image).map((l) => (l.image ? (l.image.src.startsWith('data:image/svg+xml') ? 'drawn' : `slot:${l.image.alt}`) : l.text))).toEqual([
       'A firm is the only seller of a drug.',
       'Figure 1',
-      'slot:drawing',
+      'drawn',
       'Explain how it sets its price.',
       'Explain whether it is efficient.',
     ]);
+    // Its labels are drawn into it; the caption is not.
+    const svg = atob(read.lines.find((l) => l.image)!.image!.src.split(',')[1]);
+    expect(svg).toContain('Marginal');
+    expect(svg).not.toContain('Figure 1');
     expectOutline(analysis, [{ stem: 'A firm is the only seller', kind: 'structured', parts: [{ text: 'Explain how', marks: 4 }, { text: 'Explain whether', marks: 3 }] }]);
   });
 
