@@ -54,6 +54,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Waiting on the user's call
 
+- Question studio redesign (k-0513, u-6060 + u-lm1c, 2026-11-23): four clickable mockups and the research in `Outbox/k-0513/README.md` (not in the repo). Recommended: one studio with chat on the left and the paper writing itself live on the right, opened at once by ✦ Write like this, with a side-by-side compare view; the same chat as an editor panel second. **u-lm1c: no topic picker anywhere** — the AI picks the EDB key point for every request (typed or from a reference) as a visible step, changeable afterwards, never required (two steps: pick, then write). Five decisions wait on the user (layout, how live the streaming is, rewrite on a changed pick, saved chats, where the Trial kit goes). Engine k-0514, diagrams k-0515.
 - Themes (2026-10-31): Classic and Dark already miss WCAG AA (subtle text 2.7–4.0:1, input edges 1.7:1, the dimmed Edit tab 2.7:1; `node scripts/theme-contrast.mjs`): fixing changes the default look. Theme names/notes; whether System should pick High contrast under the OS's Increase contrast; on-page editing hints (Click to add, block handles) stay paper-blue in every theme.
 - Paid service (`docs/research/2026-09-paid-product/`): what first; in-app "use a VPN" Gemini
   wording breaks Google's terms — Gemini privacy line may be dropped.
