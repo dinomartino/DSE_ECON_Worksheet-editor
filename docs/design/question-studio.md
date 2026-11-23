@@ -323,3 +323,37 @@ The first studio made the teacher choose a key point and sent only words. Three 
 Step 1's accuracy: `pickEval.test.ts` (`PICK_EVAL=dump|score|live`, bank copy in `PICK_EVAL_DIR`). First run, stand-in
 model Claude Haiku, not Gemini: 22/33 (67%) from a real HKDSE question alone, 27/28 from a specific typed request,
 50/63 overall; the misses are mostly neighbouring key points. A Gemini run needs a key (`PICK_EVAL=live`).
+
+
+## Engine API for the screen (k-0514 part 2; the screen is k-0516's)
+
+The screen builds on these; nothing in `src/questionStudio/` knows about React. Two ways in: the session store
+(`live.ts:useStudio`, state `live`, actions `write`/`refine`/`stop`) or the engine call
+(`run.ts:writeDrafts(request, deps, { signal, progress, onEvent })`).
+
+- **Pick step result.** `session.ts:withKeyPoints` → event `{ type: 'pick', picks: KeyPick[] }` and state `picks`. `KeyPick = { code, reason }`
+  (`pick.ts`), first = main key point, at most two; `[]` when the teacher set a key point by hand (no call, no event).
+  `form.keyPoint = ''` means "AI picks"; set it to override (tap a pick). The write request that follows has `keyPoint` and
+  `alsoKeyPoints` filled, and every `SheetDraft.request` keeps them, so a refine does not pick again.
+- **Streaming events.** `types.ts:StudioEvent`, in order of a run: `stage` (`pick`, `references`, `write`, `rewrite`, `solve`,
+  `diagram`), `pick`, `references {count}`, `write {mode, attempt}`, `text {index, draft: PartialDraft, attempt}` (many; a draft's
+  words so far: `stem`, `statements`, `options`, `answer` once written, `explanation`, `complete`), `draft {index, draft: StudioDraft}`
+  (the latest state of that draft: after the local checks, after the solve, with its figure), `diagram {index, state: working|done}`.
+  `index` is the draft's place in the batch (a rewritten draft's text events carry the slot it replaces; `attempt: 2` tells the
+  screen to show the rewrite over the first try). Strings in a `PartialDraft` may end mid-word until `complete`. A listener that
+  throws is ignored. `stream.ts:applyEvent(live, event)` folds events into `LiveState` (`drafts[i] = { partial?, draft?, diagram?, attempt }`),
+  which the session keeps as `live` (reset at each run, kept after it, cleared by `clearDrafts`). `SessionHooks.onEvent` sees every event too.
+  The final `StudioOutcome.drafts` is what the sheet keeps, as before.
+- **Which providers stream.** `ai/providers.ts:supportsStreaming`: Gemini, Claude, OpenAI, OpenRouter, DeepSeek, Qwen stream the
+  structured reply (`AiClient.stream`, server-sent events through each adapter's `buildStream`/`streamPiece`; same rungs and errors as
+  `complete`) and `write {mode: 'streamed'}` events arrive token by token. A custom server and Ollama are asked for the whole reply
+  (`mode: 'whole'`: each draft's `text` event arrives once, complete). A stream that fails for a non-fatal reason (before or after
+  the first text) is redone as a whole reply; a fatal one (key, quota, region) ends the run as before. No `onEvent` = no stream.
+- **Diagram result.** `StudioDeps.diagrams` (the live env sets it; default off, so the trial kit and tests are unchanged): after the
+  words are settled, each draft that stands gets one `generateDiagram` call (its stem/statements/options, the key and explanation,
+  and the figure of the example it follows: an editor diagram as words, else a picture when the provider reads pictures;
+  `completeWithImages` is `client.complete({ …req, images })`). `StudioDraft.diagram?: DraftDiagram = { status: ok|look|failed|none,
+  block, placement: question|answer|null, issues, imageSkipped?, error? }`. Show `look` with its `issues` for the teacher; `failed`
+  and `none` have no block. Cost: one extra request per draft, counted in `Usage`. `insert.ts:studioBuilds` appends an `ok`/`look` figure
+  placed `question` to the question's blocks; a figure placed `answer` is not inserted (an MC question has no model-answer slot).
+- **Not changed:** `src/diagramGen/` (used as documented). Not built: the diagram does not stream (it arrives with `diagram: done`).

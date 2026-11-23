@@ -45,7 +45,7 @@ export const liveEnv: StudioEnv = {
       if (!resolved.ok) return { ok: false, error: aiErrorInfo('notConfigured', resolved.provider) };
       const corpus = studioCorpus(await pastRows(), await bankRowsNow());
       const { client, preset, glossary } = resolved.deps;
-      return { ok: true, deps: { client, preset, glossary, corpus: corpus.index }, compared: { past: corpus.past, mine: corpus.mine } };
+      return { ok: true, deps: { client, preset, glossary, corpus: corpus.index, diagrams: true }, compared: { past: corpus.past, mine: corpus.mine } };
     } catch {
       // Settings or the key store could not be read: the same way out as a missing key.
       return { ok: false, error: aiErrorInfo('notConfigured', provider) };

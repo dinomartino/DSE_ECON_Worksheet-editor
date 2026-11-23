@@ -148,6 +148,23 @@ describe('the session: step 1 for every request', () => {
     expect(client.requests[1].images).toEqual([{ dataUrl: PNG }]);
     expect(session.getState().entries).toHaveLength(1);
   });
+  it('the live state follows the run: pick, stage, drafts with their checks; the listener sees every event', async () => {
+    const client = scriptedClient([pickReply('C.ped'), writeReply([A]), solver()]);
+    const seen: string[] = [];
+    const env: StudioEnv = { resolve: async () => ({ ok: true, deps: { client, preset: gemini, glossary: null, corpus: EMPTY_CORPUS, random: () => 0.3 }, compared: { past: 0, mine: 0 } }) };
+    const session = createStudioSession(env, 'bilingual', { onEvent: (e) => seen.push(e.type) });
+    session.getState().setForm({ note: 'elasticity', count: 1 });
+    await session.getState().write();
+    const { live } = session.getState();
+    expect(live.picks.map((p) => p.code)).toEqual(['C.ped']);
+    expect(live.drafts).toHaveLength(1);
+    expect(live.drafts[0].draft?.status).toBeDefined();
+    expect(live.mode).toBe('whole');
+    expect(seen[0]).toBe('stage');
+    expect(seen).toContain('pick');
+    session.getState().clearDrafts();
+    expect(session.getState().live.drafts).toEqual([]);
+  });
   it('a key point set by hand skips step 1', async () => {
     const { client, session } = setup([writeReply([A]), solver()]);
     session.getState().setForm({ keyPoint: 'C.ped', count: 1 });

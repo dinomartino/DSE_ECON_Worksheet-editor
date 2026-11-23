@@ -1,5 +1,5 @@
 import type { CompletionRequest, CompletionResult, OutputDialect } from '../types';
-import { isRecord, modelExtra, parseImage, systemFor, trimBase, type Adapter } from './adapter';
+import { isRecord, modelExtra, parseImage, systemFor, trimBase, withBody, type Adapter, type StreamPiece } from './adapter';
 
 /**
  * OpenAI-compatible `chat/completions`: DeepSeek, Qwen, OpenRouter, OpenAI, custom and
@@ -82,6 +82,33 @@ export const openaiCompatAdapter: Adapter = {
         thinking: typeof details.reasoning_tokens === 'number' ? details.reasoning_tokens : undefined,
       },
     };
+  },
+
+  buildStream(preset, config, req, dialect) {
+    return withBody(openaiCompatAdapter.build(preset, config, req, dialect), { stream: true, stream_options: { include_usage: true } });
+  },
+
+  streamPiece(event) {
+    if (!isRecord(event)) return null;
+    if (isRecord(event.error)) return { error: typeof event.error.message === 'string' ? event.error.message : 'error' };
+    const piece: StreamPiece = {};
+    const usage = isRecord(event.usage) ? event.usage : null;
+    if (usage) {
+      const details = isRecord(usage.completion_tokens_details) ? usage.completion_tokens_details : {};
+      piece.usage = {
+        input: typeof usage.prompt_tokens === 'number' ? usage.prompt_tokens : undefined,
+        output: typeof usage.completion_tokens === 'number' ? usage.completion_tokens : undefined,
+        thinking: typeof details.reasoning_tokens === 'number' ? details.reasoning_tokens : undefined,
+      };
+    }
+    const choice = Array.isArray(event.choices) && isRecord(event.choices[0]) ? event.choices[0] : null;
+    if (choice) {
+      const delta = isRecord(choice.delta) ? choice.delta : {};
+      if (typeof delta.content === 'string' && delta.content) piece.text = delta.content;
+      if (typeof delta.refusal === 'string' && delta.refusal) piece.finish = 'safety';
+      else if (typeof choice.finish_reason === 'string') piece.finish = finishOf(choice.finish_reason);
+    }
+    return piece.text || piece.finish || piece.usage ? piece : null;
   },
 
   models(preset, config) {

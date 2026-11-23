@@ -114,6 +114,13 @@ export interface HttpDeps { fetch: typeof fetch; now: () => number; sleep: (ms: 
 export interface AiClient {
   /** Throws AiError. Runs the structured-output ladder and transport retries. */
   complete(req: CompletionRequest): Promise<CompletionResult>;
+  /**
+   * `complete`, streamed (k-0514): `onText` gets the whole reply so far each time more arrives.
+   * Same result, same errors, same output-dialect ladder. Absent on a client that cannot
+   * stream (tests' fakes): callers use `complete`. A failure before the first text is an
+   * ordinary `AiError`; after it, the error is thrown too and the caller keeps what it had.
+   */
+  stream?(req: CompletionRequest, onText: (reply: string) => void): Promise<CompletionResult>;
   /** [] on failure. */
   listModels(signal: AbortSignal): Promise<ModelInfo[]>;
 }

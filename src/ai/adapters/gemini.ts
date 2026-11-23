@@ -1,5 +1,5 @@
 import type { CompletionRequest, CompletionResult, OutputDialect } from '../types';
-import { isRecord, modelExtra, parseImage, systemFor, trimBase, type Adapter } from './adapter';
+import { isRecord, modelExtra, parseImage, systemFor, trimBase, type Adapter, type StreamPiece } from './adapter';
 
 /**
  * Gemini native `generateContent` (stateless; not the Interactions API, which stores by
@@ -83,6 +83,34 @@ export const geminiAdapter: Adapter = {
       .map((p) => p.text as string)
       .join('');
     return { text, finish: finishOf(candidate.finishReason), usage: usageOut };
+  },
+
+  buildStream(preset, config, req, dialect) {
+    const wire = geminiAdapter.build(preset, config, req, dialect);
+    return { ...wire, url: wire.url.replace(':generateContent', ':streamGenerateContent?alt=sse') };
+  },
+
+  streamPiece(event) {
+    if (!isRecord(event)) return null;
+    const usage = isRecord(event.usageMetadata) ? event.usageMetadata : null;
+    const candidate = Array.isArray(event.candidates) && isRecord(event.candidates[0]) ? event.candidates[0] : null;
+    const piece: StreamPiece = {};
+    if (usage) {
+      piece.usage = {
+        input: typeof usage.promptTokenCount === 'number' ? usage.promptTokenCount : undefined,
+        output: typeof usage.candidatesTokenCount === 'number' ? usage.candidatesTokenCount : undefined,
+        thinking: typeof usage.thoughtsTokenCount === 'number' ? usage.thoughtsTokenCount : undefined,
+      };
+    }
+    if (!candidate) {
+      if (isRecord(event.promptFeedback) && typeof event.promptFeedback.blockReason === 'string') piece.finish = 'safety';
+      return piece.finish || piece.usage ? piece : null;
+    }
+    const parts = isRecord(candidate.content) && Array.isArray(candidate.content.parts) ? candidate.content.parts : [];
+    const text = parts.filter((p): p is Record<string, unknown> => isRecord(p) && p.thought !== true && typeof p.text === 'string').map((p) => p.text as string).join('');
+    if (text) piece.text = text;
+    if (typeof candidate.finishReason === 'string') piece.finish = finishOf(candidate.finishReason);
+    return piece;
   },
 
   models(preset, config) {

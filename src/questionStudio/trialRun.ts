@@ -73,7 +73,7 @@ export async function runBriefs(args: {
     onProgress?.({ done: finished(), total, current: brief.id, stage: 'references' });
     const request = await requestForArm(brief, arm, env, signal);
     if (signal.aborted) return { kind: 'stopped' };
-    const outcome = await writeDrafts(request, resolved.deps, {
+    const outcome = await writeDrafts(request, { ...resolved.deps, diagrams: false }, {
       signal,
       progress: (_done, _total, stage) => onProgress?.({ done: finished(), total, current: brief.id, stage }),
     });

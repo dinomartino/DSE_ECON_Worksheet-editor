@@ -5,6 +5,7 @@ import type { Side } from '@/model/textSlots';
 import { questionTexts } from '@/model/textWalk';
 import type { BiText, ContentBlock, McqQuestion, Question, TableBlock } from '@/model/types';
 import { figureBlocksOf } from './figures';
+import type { DiagramReference } from '@/diagramGen/types';
 import type { CorpusDoc, CorpusKind } from './nearCopy';
 import type { SourceQuestion } from './types';
 
@@ -105,3 +106,20 @@ export function corpusDocOfDraft(id: string, draft: { stem: BiDraft; statements:
 
 /** Whether an example is a combination item (statements (1)(2)(3)). */
 export const isCombinationSource = (source: SourceQuestion): boolean => source.statements.length >= 2;
+
+/**
+ * The figure of the example a draft follows, for `generateDiagram`'s `reference` (k-0514):
+ * in pattern mode draft n follows example n (cycling), otherwise the first example that has a
+ * figure. An editor diagram is sent as words (every provider reads that); a picture only when
+ * the provider reads pictures. Undefined when the example has none.
+ */
+export function referenceFor(examples: readonly SourceQuestion[], index: number, vision: boolean): DiagramReference | undefined {
+  const pool = examples.filter((e) => e.hasFigure || e.figureBlocks?.length || e.figures?.length);
+  if (pool.length === 0) return undefined;
+  const own = examples[index % examples.length];
+  const example = own && pool.includes(own) ? own : pool[0];
+  const block = example.figureBlocks?.find((b): b is Extract<ContentBlock, { kind: 'diagram' }> => b.kind === 'diagram');
+  if (block) return { diagram: block.diagram };
+  const image = example.figures?.[0];
+  return image && vision ? { image } : undefined;
+}

@@ -6,12 +6,15 @@ import type { LanguageMode } from '@/model/types';
 import { lookupCode } from '@/syllabus';
 import { normalizeRequest } from './brief';
 import { needsPick, pickKeyPoints, type KeyPick } from './pick';
+import { applyEvent, emptyLive } from './stream';
 import { emptyUsage, refine as refineDraft, writeDrafts, type RunHooks, type Stage } from './run';
 import {
   BATCH_SIZES,
   MAX_EXAMPLES,
   type Finding,
   type Level,
+  type LiveState,
+  type StudioEvent,
   type Refinement,
   type Shape,
   type SourceQuestion,
@@ -83,6 +86,8 @@ export interface StudioState {
   form: StudioForm;
   /** Newest batch first. */
   entries: SheetDraft[];
+  /** The latest run's events folded for the screen (k-0514): stage, picks, each draft's words as they stream, its checks, its figure. Reset when a run starts; kept until the next. */
+  live: LiveState;
   /** The key points step 1 picked for the latest write, with its reasons ([] = the teacher set one, or nothing written yet). */
   picks: KeyPick[];
   /** Notes about the latest run (fewer drafts than asked, a key letter used too often…). */
@@ -166,11 +171,13 @@ type Action = () => Promise<void>;
  * The request with real questions to write like, when none was picked and the environment has
  * some for its key point (the stage shown meanwhile is "Finding real questions…").
  */
-export async function withReferences(request: StudioRequest, env: Pick<StudioEnv, 'references'>, hooks: Pick<RunHooks, 'signal' | 'progress'>): Promise<StudioRequest> {
+export async function withReferences(request: StudioRequest, env: Pick<StudioEnv, 'references'>, hooks: Pick<RunHooks, 'signal' | 'progress' | 'onEvent'>): Promise<StudioRequest> {
   if (request.examples.length > 0 || !env.references) return request;
   hooks.progress?.(0, 2, 'references');
+  hooks.onEvent?.({ type: 'stage', stage: 'references' });
   try {
     const found = await env.references(request, hooks.signal);
+    hooks.onEvent?.({ type: 'references', count: found.length });
     return found.length > 0 ? normalizeRequest({ ...request, examples: found }) : request;
   } catch {
     return request;
@@ -197,11 +204,13 @@ export type KeyPointsResult =
  * the syllabus, with a reason. A request that already names one (set by hand, or a refine of
  * a draft) goes through untouched, with no call.
  */
-export async function withKeyPoints(request: StudioRequest, deps: Pick<StudioDeps, 'client' | 'preset'>, hooks: Pick<RunHooks, 'signal' | 'progress'>): Promise<KeyPointsResult> {
+export async function withKeyPoints(request: StudioRequest, deps: Pick<StudioDeps, 'client' | 'preset'>, hooks: Pick<RunHooks, 'signal' | 'progress' | 'onEvent'>): Promise<KeyPointsResult> {
   if (!needsPick(request)) return { ok: true, request, picks: [], usage: emptyUsage() };
   hooks.progress?.(0, 3, 'pick');
+  hooks.onEvent?.({ type: 'stage', stage: 'pick' });
   const picked = await pickKeyPoints({ text: request.note, examples: request.examples }, deps, hooks.signal);
   if (!picked.ok) return { ok: false, error: picked.error, usage: picked.usage };
+  hooks.onEvent?.({ type: 'pick', picks: picked.picks });
   const [main, ...rest] = picked.picks;
   return {
     ok: true,
@@ -223,6 +232,8 @@ export interface RunInfo {
 export interface SessionHooks {
   /** After every run that reached the provider, written, changed, failed or stopped. A throw here never breaks the run. */
   onRun?: (info: RunInfo) => void;
+  /** Every event of every run as it happens (`StudioEvent`), for a screen that wants more than `live`. A throw here never breaks the run. */
+  onEvent?: (event: StudioEvent) => void;
 }
 
 export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMode = 'en', hooks: SessionHooks = {}): UseBoundStore<StoreApi<StudioState>> {
@@ -245,7 +256,15 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
       const mine = new AbortController();
       controller = mine;
       const at = (done: number, total: number, stage: Stage): StudioPhase => ({ kind: 'running', done, total, stage, ...(target ? { target } : {}) });
-      set({ phase: at(0, 2, 'write') });
+      set({ phase: at(0, 2, 'write'), live: emptyLive() });
+      const onEvent = (event: StudioEvent) => {
+        set({ live: applyEvent(get().live, event) });
+        try {
+          hooks.onEvent?.(event);
+        } catch {
+          // A listener that throws must not take the run down.
+        }
+      };
       try {
         const resolved = await env.resolve();
         if (mine.signal.aborted) {
@@ -256,7 +275,7 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
           set({ phase: { kind: 'error', error: resolved.error } });
           return;
         }
-        const outcome = await go(resolved.deps, { signal: mine.signal, progress: (done, total, stage) => set({ phase: at(done, total, stage) }) });
+        const outcome = await go(resolved.deps, { signal: mine.signal, onEvent, progress: (done, total, stage) => set({ phase: at(done, total, stage) }) });
         set({ usage: addUsage(get().usage, outcome.usage), compared: resolved.compared });
         try {
           hooks.onRun?.({ ...meta, outcome, compared: resolved.compared });
@@ -283,6 +302,7 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
     return {
       form: defaultForm(initialLanguage),
       entries: [],
+      live: emptyLive(),
       picks: [],
       notes: [],
       picked: [],
@@ -323,7 +343,7 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
             if (!step1.ok) return { ok: false, error: step1.error, usage: step1.usage };
             picks = step1.picks;
             // Step 1 took one of the requests: the bar counts on from there.
-            const hooks2: RunHooks = step1.picks.length ? { signal: runHooks.signal, progress: (done, total, stage) => runHooks.progress?.(done + 1, total + 1, stage) } : runHooks;
+            const hooks2: RunHooks = step1.picks.length ? { signal: runHooks.signal, onEvent: runHooks.onEvent, progress: (done, total, stage) => runHooks.progress?.(done + 1, total + 1, stage) } : runHooks;
             const request = await withExampleFigures(await withReferences(step1.request, env, hooks2), env);
             meta.request = request;
             const outcome = await writeDrafts(request, deps, hooks2, { avoid: get().entries.filter((e) => e.request.keyPoint === request.keyPoint).map((e) => e.draft) });
@@ -389,7 +409,7 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
         set({ entries, picked: get().picked.filter((p) => !gone.has(p)), ...(focus && gone.has(focus) ? { focus: entries[0]?.draft.id } : {}) });
       },
 
-      clearDrafts: () => set({ entries: [], picked: [], notes: [], focus: undefined }),
+      clearDrafts: () => set({ entries: [], picked: [], notes: [], focus: undefined, live: emptyLive() }),
 
       setFocus: (id) => set({ focus: id }),
 

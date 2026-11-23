@@ -29,11 +29,11 @@ describe('a question\'s pictures', () => {
   it('a diagram needs a canvas: without one it is skipped, never an error', async () => {
     expect(await figuresOfBlocks(figureBlocksOf(withFigures(base, 'diagram')))).toEqual([]);
   });
-  it('withFigures reads each example once and drops the blocks', async () => {
+  it('withFigures reads each example once and keeps the blocks', async () => {
     const source = sourceFromQuestion(withFigures(base, 'image'), { label: 'x' });
     const [done] = await readFigures([source]);
     expect(done.figures).toHaveLength(MAX_FIGURES_PER_EXAMPLE);
-    expect(done.figureBlocks).toBeUndefined();
+    expect(done.figureBlocks).toHaveLength(4);
     const [again] = await readFigures([done]);
     expect(again).toBe(done);
     expect(await readFigures([EXAMPLE])).toEqual([EXAMPLE]);

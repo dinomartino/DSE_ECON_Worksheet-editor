@@ -1,10 +1,12 @@
 import { aiErrorInfo, mapThrown } from '@/ai/errors';
-import type { AiErrorInfo, CompletionRequest } from '@/ai/types';
+import { supportsImages, supportsStreaming } from '@/ai/providers';
+import type { AiErrorInfo, AiClient, CompletionRequest, CompletionResult } from '@/ai/types';
 import type { McqDraft } from '@/generate/types';
 import { toRuns } from '@/generate/validate';
 import { plain } from '@/model/text';
 import type { Side } from '@/model/textSlots';
 import { makeBrief, referenceMode, type Brief } from './brief';
+import { partialDrafts } from './partial';
 import { lintBatch } from './lint';
 import type { CorpusDoc } from './nearCopy';
 import {
@@ -15,8 +17,8 @@ import {
   type SolveItem,
   type WriteJob,
 } from './prompt';
-import { corpusDocOfDraft, corpusDocOfSource } from './source';
-import type { CheckRow, Finding, Refinement, SolveResult, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from './types';
+import { corpusDocOfDraft, corpusDocOfSource, referenceFor } from './source';
+import type { CheckRow, DraftDiagram, Finding, Refinement, Stage, StudioEvent, SolveResult, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from './types';
 import { cleanMcq, localChecks, parseWriteReply, statusOf, type CheckContext } from './validate';
 
 /**
@@ -27,12 +29,14 @@ import { cleanMcq, localChecks, parseWriteReply, statusOf, type CheckContext } f
  * never rejects, honours the signal, and never touches a paper.
  */
 
-export type Stage = 'pick' | 'references' | 'write' | 'rewrite' | 'solve';
+export type { Stage } from './types';
 
 export interface RunHooks {
   signal: AbortSignal;
   /** `done` of `total` requests; `total` grows when a rewrite is needed. */
   progress?: (done: number, total: number, stage: Stage) => void;
+  /** What the run shows as it works (streamed words, checked drafts, figures; `StudioEvent`). Absent = none, and no stream is asked for. */
+  onEvent?: (event: StudioEvent) => void;
 }
 
 /** Changes the teacher asks of one draft, or drafts to differ from (the ones already on the sheet). */
@@ -53,6 +57,7 @@ interface Slot {
   attempt: 1 | 2;
   checks: CheckRow[];
   solve?: SolveResult;
+  diagram?: DraftDiagram;
 }
 
 type Asked = { ok: true; text: string; model: string } | { ok: false; error: AiErrorInfo };
@@ -99,25 +104,53 @@ export async function writeDrafts(
   let model = '';
   let total = 2;
   let done = 0;
-  const step = (stage: Stage) => hooks.progress?.(done, total, stage);
+  const step = (stage: Stage) => {
+    hooks.progress?.(done, total, stage);
+    emit({ type: 'stage', stage });
+  };
+
+  const account = (res: CompletionResult): Asked => {
+    usage.requests += 1;
+    usage.input += res.usage?.input ?? 0;
+    usage.output += res.usage?.output ?? 0;
+    usage.thinking += res.usage?.thinking ?? 0;
+    usage.ms += res.ms;
+    done += 1;
+    if (typeof res.text !== 'string') return { ok: false, error: aiErrorInfo('badOutput', provider) };
+    if (res.finish === 'length') return { ok: false, error: aiErrorInfo('truncated', provider) };
+    if (res.finish === 'safety') return { ok: false, error: aiErrorInfo('safety', provider) };
+    return { ok: true, text: res.text, model: res.model };
+  };
 
   const ask = async (req: CompletionRequest): Promise<Asked> => {
     try {
-      const res = await deps.client.complete(req);
-      usage.requests += 1;
-      usage.input += res.usage?.input ?? 0;
-      usage.output += res.usage?.output ?? 0;
-      usage.thinking += res.usage?.thinking ?? 0;
-      usage.ms += res.ms;
-      done += 1;
-      if (typeof res.text !== 'string') return { ok: false, error: aiErrorInfo('badOutput', provider) };
-      if (res.finish === 'length') return { ok: false, error: aiErrorInfo('truncated', provider) };
-      if (res.finish === 'safety') return { ok: false, error: aiErrorInfo('safety', provider) };
-      return { ok: true, text: res.text, model: res.model };
+      return account(await deps.client.complete(req));
     } catch (error) {
       return { ok: false, error: mapThrown(provider, error, signal.aborted ? 'user' : null) };
     }
   };
+
+  /** Streams only when someone listens, the provider streams and the client can; any stream trouble that is not fatal falls back to the whole reply. */
+  const canStream = Boolean(hooks.onEvent && deps.client.stream && supportsStreaming(deps.preset));
+  const askStreamed = async (req: CompletionRequest, onText: (reply: string) => void): Promise<Asked> => {
+    try {
+      return account(await deps.client.stream!(req, onText));
+    } catch (error) {
+      const info = mapThrown(provider, error, signal.aborted ? 'user' : null);
+      if (info.fatal || signal.aborted || info.kind === 'cancelled') return { ok: false, error: info };
+      return ask(req);
+    }
+  };
+
+  const emit = (event: StudioEvent) => {
+    try {
+      hooks.onEvent?.(event);
+    } catch {
+      // A listener that throws must not take the run down.
+    }
+  };
+  const draftOf = (s: Slot): StudioDraft => ({ id: s.id, draft: s.draft, angle: s.angle, attempt: s.attempt, checks: s.checks, ...(s.solve ? { solve: s.solve } : {}), ...(s.diagram ? { diagram: s.diagram } : {}), status: statusOf(s.checks) });
+  const emitDrafts = (all: readonly Slot[]) => all.forEach((s, index) => emit({ type: 'draft', index, draft: draftOf(s) }));
 
   // What a draft must not copy: the examples, and the drafts already on the sheet.
   // Close to each picked example on purpose (strict mode): those are left out of the limit, not compared with.
@@ -143,14 +176,62 @@ export async function writeDrafts(
     return out;
   };
 
-  const write = async (job: WriteJob, stage: Stage = 'write'): Promise<{ ok: true; drafts: Array<{ draft: McqDraft; angle: string }> } | { ok: false; error: AiErrorInfo }> => {
+  const write = async (job: WriteJob, stage: Stage = 'write', slotOf: (k: number) => number = (k) => k): Promise<{ ok: true; drafts: Array<{ draft: McqDraft; angle: string }> } | { ok: false; error: AiErrorInfo }> => {
     step(stage);
-    const got = await ask(buildWriteRequest(brief, job, deps.glossary, deps.preset, signal));
+    const attempt: 1 | 2 = stage === 'write' ? 1 : 2;
+    const request = buildWriteRequest(brief, job, deps.glossary, deps.preset, signal);
+    emit({ type: 'write', mode: canStream ? 'streamed' : 'whole', attempt });
+    // Words go out as they arrive: only a draft whose text changed since the last event.
+    const sent = new Map<number, string>();
+    const show = (text: string, finished: boolean) => {
+      for (const partial of partialDrafts(text, finished)) {
+        const key = JSON.stringify([partial.stem, partial.statements, partial.options, partial.answer, partial.explanation, partial.angle, partial.complete]);
+        if (sent.get(partial.index) === key) continue;
+        sent.set(partial.index, key);
+        emit({ type: 'text', index: slotOf(partial.index), draft: { ...partial, index: slotOf(partial.index) }, attempt });
+      }
+    };
+    const got = canStream ? await askStreamed(request, (reply) => show(reply, false)) : await ask(request);
     if (!got.ok) return got;
     if (!model) model = got.model;
+    show(got.text, true);
     const parsed = parseWriteReply(got.text);
     if (!parsed) return { ok: false, error: aiErrorInfo('badOutput', provider) };
     return { ok: true, drafts: parsed };
+  };
+
+  /** The figure for one draft: its words, its key, and the reference's figure. Never throws; a failed request is a `failed` figure. */
+  const diagramFor = async (slot: Slot, index: number): Promise<DraftDiagram> => {
+    const { generateDiagram } = await import('@/diagramGen');
+    const side: Side = sides.includes('en') ? 'en' : 'zh';
+    const pick = (t: { en: string; zh: string }) => t[side] || t[side === 'en' ? 'zh' : 'en'];
+    const d = slot.draft;
+    const question = [pick(d.stem), ...d.statements.map((t, i) => `(${i + 1}) ${pick(t)}`), ...d.options.map((t, i) => `${letter(i)}. ${pick(t)}`)].filter(Boolean).join('\n');
+    const key = `Correct answer: ${letter(d.answerIndex)}. ${pick(d.options[d.answerIndex] ?? { en: '', zh: '' })}\n${pick(d.explanation)}`.trim();
+    const vision = supportsImages(deps.preset);
+    const counting: AiClient = {
+      listModels: (s) => deps.client.listModels(s),
+      complete: async (req) => {
+        const res = await deps.client.complete(req);
+        usage.requests += 1;
+        usage.input += res.usage?.input ?? 0;
+        usage.output += res.usage?.output ?? 0;
+        usage.thinking += res.usage?.thinking ?? 0;
+        usage.ms += res.ms;
+        return res;
+      },
+    };
+    try {
+      const out = await generateDiagram(
+        { question, key, sides, reference: referenceFor(brief.request.examples, index, vision) },
+        { client: counting, preset: deps.preset, ...(vision ? { completeWithImages: (req, images) => counting.complete({ ...req, images }) } : {}) },
+        signal,
+      );
+      if (!out.ok) return { status: 'failed', block: null, placement: null, issues: [], error: out.error };
+      return { status: out.status, block: out.block, placement: out.block ? out.spec.placement : null, issues: out.issues, ...(out.imageSkipped ? { imageSkipped: true } : {}) };
+    } catch {
+      return { status: 'failed', block: null, placement: null, issues: [], error: aiErrorInfo('badOutput', provider) };
+    }
   };
 
   // 1. Write.
@@ -163,10 +244,11 @@ export async function writeDrafts(
   if (!first.ok) return { ok: false, error: first.error, usage };
   const wanted = opts.rewrite ? 1 : brief.request.count;
   const slots = assessAll(first.drafts.slice(0, wanted), 1);
+  emitDrafts(slots);
 
   const notes: Finding[] = [];
   const finish = (): StudioOutcome => {
-    const drafts: StudioDraft[] = slots.map((s) => ({ id: s.id, draft: s.draft, angle: s.angle, attempt: s.attempt, checks: s.checks, ...(s.solve ? { solve: s.solve } : {}), status: statusOf(s.checks) }));
+    const drafts: StudioDraft[] = slots.map(draftOf);
     const kept = drafts.filter((d) => d.status !== 'failed');
     if (kept.length < wanted) notes.push({ id: 'run.fewer', params: { asked: wanted, got: kept.length } });
     notes.push(...lintBatch(kept.map((d) => d.draft.answerIndex)));
@@ -183,7 +265,7 @@ export async function writeDrafts(
   if (failedAt.length && !opts.rewrite) {
     total += 1;
     const redo = failedAt.map((i) => ({ problem: problemOf(failingFindings(slots[i])), draft: textOf(slots[i]) }));
-    const again = await write({ ...job, count: redo.length, keys: failedAt.map((i) => brief.keys[i] ?? 0), redo }, 'rewrite');
+    const again = await write({ ...job, count: redo.length, keys: failedAt.map((i) => brief.keys[i] ?? 0), redo }, 'rewrite', (k) => failedAt[k] ?? k);
     if (again.ok) {
       failedAt.forEach((at, k) => {
         const replacement = again.drafts[k];
@@ -192,6 +274,7 @@ export async function writeDrafts(
         // The new draft stands even when it fails too: its own findings are the latest.
         slots[at] = next;
       });
+      emitDrafts(slots);
     }
     if (signal.aborted) return stopped();
   }
@@ -232,6 +315,7 @@ export async function writeDrafts(
     const solved = await solveOf(standing);
     if (solved instanceof Map) standing.forEach((s) => applySolve(s, solved.get(s.id)));
     else if (!signal.aborted) notes.push({ id: 'run.keyNotChecked', params: { message: solved.message } });
+    emitDrafts(slots);
     if (signal.aborted) return stopped();
 
     // 4. One rewrite of drafts whose key the solver disagreed with, and its solve.
@@ -242,7 +326,7 @@ export async function writeDrafts(
         problem: `A student solving it from the text alone chose option ${letter(s.solve!.answer)}, but you marked option ${letter(s.draft.answerIndex)}. Their working: ${plain(toRuns(s.solve!.working)).slice(0, 300)} Make exactly one option correct and the others clearly wrong.`,
         draft: textOf(s),
       }));
-      const again = await write({ ...job, count: redo.length, keys: differing.map((s) => brief.keys[slots.indexOf(s)] ?? 0), redo }, 'rewrite');
+      const again = await write({ ...job, count: redo.length, keys: differing.map((s) => brief.keys[slots.indexOf(s)] ?? 0), redo }, 'rewrite', (k) => (differing[k] ? slots.indexOf(differing[k]) : k));
       if (again.ok) {
         const replaced: Array<{ at: number; slot: Slot }> = [];
         differing.forEach((s, k) => {
@@ -262,8 +346,27 @@ export async function writeDrafts(
         } else {
           for (const { at, slot } of replaced) slots[at] = slot;
         }
+        emitDrafts(slots);
       }
       if (signal.aborted) return stopped();
+    }
+  }
+
+  // 5. A figure for each draft that stands (k-0514 → `generateDiagram`, k-0515): one request each, after the words are settled.
+  if (deps.diagrams) {
+    const needing = slots.map((slot, index) => ({ slot, index })).filter(({ slot }) => !hardFailed(slot));
+    if (needing.length) {
+      total += needing.length;
+      step('diagram');
+      for (const { slot, index } of needing) {
+        if (signal.aborted) return stopped();
+        emit({ type: 'diagram', index, state: 'working' });
+        slot.diagram = await diagramFor(slot, index);
+        done += 1;
+        hooks.progress?.(done, total, 'diagram');
+        emit({ type: 'draft', index, draft: draftOf(slot) });
+        emit({ type: 'diagram', index, state: 'done' });
+      }
     }
   }
   return finish();

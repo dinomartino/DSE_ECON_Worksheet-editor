@@ -3,7 +3,7 @@ import { anthropicAdapter } from './adapters/anthropic';
 import { geminiAdapter } from './adapters/gemini';
 import { openaiCompatAdapter } from './adapters/openaiCompat';
 import { aiErrorInfo, describeHttpError, isSchemaRejection, keyLikeModel, mapThrown } from './errors';
-import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, defaultHttpDeps, send, type HttpResponse } from './http';
+import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, defaultHttpDeps, send, sendStream, type HttpResponse } from './http';
 import { presetFor, supportsImages } from './providers';
 import { ITEMS_SCHEMA, parseItemsPayload } from './schema';
 import {
@@ -12,6 +12,7 @@ import {
   type AiClient,
   type AiErrorInfo,
   type ApiFamily,
+  type CompletionResult,
   type ConnectionTest,
   type HttpDeps,
   type OutputDialect,
@@ -132,7 +133,70 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     }
   }
 
+  /** `complete`, read as a stream: same rungs, same errors; `onText` gets the reply so far. */
+  async function stream(asked: Parameters<AiClient['complete']>[0], onText: (reply: string) => void) {
+    const problem = blocked(true);
+    if (problem) throw new AiError(problem);
+    const req = asked.images?.length && !supportsImages(preset) ? { ...asked, images: undefined } : asked;
+    const started = http.now();
+    const rungs = adapter.rungs(preset);
+    let i = Math.max(0, rungs.indexOf(workingRung.get(cacheKey) ?? rungs[0]));
+    for (;;) {
+      const dialect = rungs[i];
+      const wire = adapter.buildStream(preset, cfg, req, dialect);
+      let text = '';
+      let finish: CompletionResult['finish'] | undefined;
+      let usage: CompletionResult['usage'];
+      let failed: string | undefined;
+      let res: Awaited<ReturnType<typeof sendStream>>;
+      try {
+        res = await sendStream(http, { provider, url: wire.url, method: 'POST', headers: wire.headers, body: wire.body, signal: req.signal, timeoutMs: req.timeoutMs ?? COMPLETION_TIMEOUT_MS }, (data) => {
+          if (data === '[DONE]' || data === '') return;
+          let event: unknown;
+          try {
+            event = JSON.parse(data);
+          } catch {
+            return;
+          }
+          const piece = adapter.streamPiece(event);
+          if (!piece) return;
+          if (piece.error) failed = piece.error;
+          if (piece.text) {
+            text += piece.text;
+            onText(text);
+          }
+          if (piece.finish) finish = piece.finish;
+          if (piece.usage) usage = { ...usage, ...Object.fromEntries(Object.entries(piece.usage).filter(([, v]) => v !== undefined)) };
+        });
+      } catch (error) {
+        const info = mapThrown(provider, error, null);
+        if (info.kind !== 'network') throw error;
+        throw new AiError(aiErrorInfo('network', provider, { host: base?.host, detail: info.detail, key }));
+      }
+      if (res.status < 200 || res.status >= 300) {
+        if (isSchemaRejection(provider, res.status, res.body) && i < rungs.length - 1) {
+          i++;
+          continue;
+        }
+        throw httpFailure(res as HttpResponse);
+      }
+      if (failed !== undefined) throw new AiError(aiErrorInfo('server', provider, { status: res.status, detail: failed }));
+      workingRung.set(cacheKey, dialect);
+      return { text, finish: finish ?? 'stop', dialect, model, ms: http.now() - started, ...(usage ? { usage } : {}) } satisfies CompletionResult;
+    }
+  }
+
   return {
+    async stream(req, onText) {
+      try {
+        return await stream(req, onText);
+      } catch (error) {
+        const info = mapThrown(provider, error, null);
+        log(info);
+        throw isAiError(error) ? error : new AiError(info);
+      }
+    },
+
     async complete(req) {
       try {
         return await complete(req);

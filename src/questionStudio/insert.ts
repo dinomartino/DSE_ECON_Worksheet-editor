@@ -22,7 +22,13 @@ export function studioBuilds(drafts: readonly StudioDraft[], keyPoint: string | 
         typeId: 'mcq',
         key: d.id,
         // `aiMade`: the editor says so until the teacher presses Checked (decision 5).
-        fill: (fresh) => ({ ...(fillMcq(d.draft)(fresh) as McqQuestion), tags: [tag], aiMade: true }),
+        fill: (fresh) => {
+          const q = fillMcq(d.draft)(fresh) as McqQuestion;
+          // The AI's figure goes with the question when it is meant for the students (ok, or look: the teacher saw its issues).
+          // An MC question has no slot for a model-answer diagram, so a figure placed `answer` is not inserted.
+          const figure = d.diagram && (d.diagram.status === 'ok' || d.diagram.status === 'look') && d.diagram.placement === 'question' ? d.diagram.block : null;
+          return { ...q, ...(figure ? { blocks: [...q.blocks, figure] } : {}), tags: [tag], aiMade: true };
+        },
       };
     });
 }

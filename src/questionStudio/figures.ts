@@ -65,14 +65,14 @@ export function figuresOfQuestion(question: McqQuestion, passage?: readonly Cont
 /**
  * Examples with their pictures read: each one that carries `figureBlocks` and has no
  * `figures` yet gets them (an example whose pictures cannot be read keeps `figures: []`).
- * Never rejects; the blocks are dropped once read.
+ * Never rejects; the blocks are kept (the figure generator reads a diagram as words).
  */
 export async function withFigures(examples: readonly SourceQuestion[]): Promise<SourceQuestion[]> {
   return Promise.all(
     examples.map(async (example) => {
       if (example.figures || !example.figureBlocks?.length) return example;
-      const { figureBlocks, ...rest } = example;
-      return { ...rest, figures: await figuresOfBlocks(figureBlocks) };
+      // The blocks stay: a diagram is also the reference `generateDiagram` reads in words.
+      return { ...example, figures: await figuresOfBlocks(example.figureBlocks) };
     }),
   );
 }

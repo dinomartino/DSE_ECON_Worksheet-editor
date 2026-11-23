@@ -9,7 +9,11 @@ import type { BiDraft, McqDraft } from '@/generate/types';
 import type { Glossary } from '@/glossary/types';
 import type { Side } from '@/model/textSlots';
 import type { ContentBlock } from '@/model/types';
+import type { DiagramIssue } from '@/diagramGen/types';
+import type { DiagramBlock } from '@/model/types';
 import type { CorpusIndex } from './nearCopy';
+import type { KeyPick } from './pick';
+import type { PartialDraft } from './partial';
 
 /** How hard a draft is meant to be. Intended, not measured (no results to measure it). */
 export type Level = 'same' | 'harder' | 'easier';
@@ -137,6 +141,25 @@ export interface StudioDraft {
   solve?: SolveResult;
   /** 1 = first write; 2 = rewritten once after a check failed. */
   attempt: 1 | 2;
+  /** The AI-made figure (k-0514 → k-0515's `generateDiagram`), when the run was asked for diagrams; absent = not asked. */
+  diagram?: DraftDiagram;
+}
+
+/**
+ * The figure written for one draft. `ok` and `look` carry a `block` (an ordinary editable
+ * diagram); `look` is to be shown with its `issues` for the teacher to check; `failed` has
+ * no block and is never inserted; `none` means the question needs no figure.
+ */
+export interface DraftDiagram {
+  status: 'ok' | 'look' | 'failed' | 'none';
+  block: DiagramBlock | null;
+  /** `question`: printed with the question. `answer`: the model answer's diagram. */
+  placement: 'question' | 'answer' | null;
+  issues: DiagramIssue[];
+  /** A reference picture was given but the provider could not take it. */
+  imageSkipped?: boolean;
+  /** Why it failed, when the provider call itself did. */
+  error?: AiErrorInfo;
 }
 
 // ---- running ----
@@ -150,6 +173,51 @@ export interface StudioDeps {
   corpus: CorpusIndex;
   /** For the key plan; tests inject a seeded one. */
   random?: () => number;
+  /** Also write a figure for each draft that stands (`generateDiagram`, one more request per draft). Default off. */
+  diagrams?: boolean;
+}
+
+/** The steps of a run, in order (a rewrite or a second solve repeats its stage). */
+export type Stage = 'pick' | 'references' | 'write' | 'rewrite' | 'solve' | 'diagram';
+
+/**
+ * What a run tells the screen while it works (k-0514), UI-independent: `RunHooks.onEvent`,
+ * or the session's `live` state (`stream.ts:applyEvent` is the reducer between the two).
+ * `index` is the draft's position in the batch (the order `StudioOutcome.drafts` keeps).
+ */
+export type StudioEvent =
+  | { type: 'stage'; stage: Stage }
+  /** Step 1 finished: the key points the AI chose (never sent when the teacher set one). */
+  | { type: 'pick'; picks: KeyPick[] }
+  /** Real questions found to write like. */
+  | { type: 'references'; count: number }
+  /** A write request starts: `streamed` = text arrives word by word; `whole` = each draft arrives complete. */
+  | { type: 'write'; mode: 'streamed' | 'whole'; attempt: 1 | 2 }
+  /** A draft's words as far as they have arrived (also sent once complete). */
+  | { type: 'text'; index: number; draft: PartialDraft; attempt: 1 | 2 }
+  /** A draft after the local checks, after the solve, or with its figure: the latest state of that draft. */
+  | { type: 'draft'; index: number; draft: StudioDraft }
+  /** A figure is being written for the draft (`working`), or finished (`done`, the draft event carries it). */
+  | { type: 'diagram'; index: number; state: 'working' | 'done' };
+
+/** A draft on the live screen: its words while they arrive, then the checked draft. */
+export interface LiveDraft {
+  index: number;
+  /** Absent only before the first text of this draft arrives. */
+  partial?: PartialDraft;
+  /** Set once the draft has been checked; replaces `partial` as the thing to show. */
+  draft?: StudioDraft;
+  diagram?: 'working' | 'done';
+  attempt: 1 | 2;
+}
+
+export interface LiveState {
+  stage?: Stage;
+  /** The write that is running or ran last: `streamed` or `whole`. */
+  mode?: 'streamed' | 'whole';
+  picks: KeyPick[];
+  references: number;
+  drafts: LiveDraft[];
 }
 
 /** Real provider counts, summed over a run: the first trial logs them. */
