@@ -616,6 +616,23 @@ function insertIntoFlow(
 }
 
 /**
+ * New questions placed in order after `afterId` (default: none, so each takes its type's own
+ * section, as an unanchored insert does): the placement `insertQuestionBatch` commits without
+ * a lead. Pure. The ✦ Write panel (k-0516) draws its AI drafts with it, so a draft shows
+ * exactly where Accept will put it.
+ */
+export function placeQuestions(worksheet: Worksheet, questions: readonly Question[], afterId: string | undefined): Worksheet {
+  let next = worksheet;
+  let after = afterId;
+  const routed = after === undefined;
+  for (const question of questions) {
+    next = insertIntoFlow(next, { type: 'question', id: question.id }, after, { questions: [...next.questions, question] }, { routed });
+    after = question.id;
+  }
+  return next;
+}
+
+/**
  * The last flow gap a question may be dropped into: ahead of the trailing closing lines
  * on the exam papers (§ Nothing lands after "END OF PAPER"), the end otherwise.
  */
@@ -1644,10 +1661,12 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         next = insertIntoFlow(next, { type: 'layout', id: lead.id }, after, { layout: [...(next.layout ?? []), lead] }, { typeId: built[0].type });
         after = lead.id;
       }
-      for (const question of built) {
-        next = insertIntoFlow(next, { type: 'question', id: question.id }, after, { questions: [...next.questions, question] }, { routed });
-        after = question.id;
-      }
+      if (lead) {
+        for (const question of built) {
+          next = insertIntoFlow(next, { type: 'question', id: question.id }, after, { questions: [...next.questions, question] }, { routed });
+          after = question.id;
+        }
+      } else next = placeQuestions(next, built, after);
       return finish ? finish(next) : next;
     });
     set({ insertAnchorId: built[built.length - 1].id });

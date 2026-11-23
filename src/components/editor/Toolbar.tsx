@@ -40,6 +40,7 @@ import { uiLanguage, useMessages } from '@/i18n/language';
 import { TOOLBAR_MESSAGES } from './Toolbar.messages';
 import { useShortcutLabel } from '@/components/ui/useShortcutLabel';
 import { useEditorRequests } from './editorRequests';
+import { hideGhostsForPrint } from '@/components/studio/panel/writePanelState';
 import { openCommandPalette } from './CommandPalette';
 import { COMMAND_PALETTE_MESSAGES } from './CommandPalette.messages';
 import type { ExportFormat, ExportWhat } from './exportSession';
@@ -243,8 +244,11 @@ export function Toolbar({
     setDocumentView(view);
     // The key asked for is this paper's, not the Whole set's (k-0299 step C).
     if (view === 'answerKey') useSetMembers.getState().setKeyScope('paper');
+    // The ✦ Write panel's drafts are not in the paper: off the page while it prints (k-0516).
+    const ghostsBack = hideGhostsForPrint();
     const deps = browserPrintDeps(setMode, () => select(undefined));
     printWorksheetPdf(worksheet, printMode, deps, file)
+      .finally(ghostsBack)
       .then((outcome) => {
         if ('saved' in outcome) flash(m.exportedPdf, revealAction(outcome.saved));
         else if (outcome.fallback !== undefined) {

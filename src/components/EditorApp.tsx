@@ -46,6 +46,7 @@ import { createSamplePaper } from '@/model/samplePaper';
 import { sideOf } from '@/i18n/catalogue';
 import { useEditorRequests, type SetupTab } from '@/components/editor/editorRequests';
 import { isPanelOnlyDiagram } from '@/model/diagram';
+import { usePageDrafts } from '@/components/studio/panel/PageDrafts';
 
 /** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
 const openBank = () => useBankSession.getState().openBank();
@@ -774,10 +775,17 @@ function PreviewWithBankDrop(props: React.ComponentProps<typeof Preview>) {
   const ghost = useBankDrag((s) => s.ghost);
   const slot = useBankDrag((s) => s.slot);
   const { worksheet } = props;
+  const dragging = Boolean(ghost && slot !== null);
+  // The ✦ Write panel's AI drafts, where Accept would put them (k-0516 B). Not while a 題庫
+  // drag shows its own (its slot is a gap of the paper without them), nor in print preview.
+  const printPreview = useWorksheetStore((s) => s.printPreview);
+  const readOnly = useWorksheetStore((s) => s.readOnly);
+  const drafts = usePageDrafts(worksheet, dragging || printPreview || readOnly || Boolean(props.measureOnly));
   const shown = useMemo(
     () => (ghost && slot !== null ? provisionalWorksheet(worksheet, ghost, slot) : worksheet),
     [worksheet, ghost, slot],
   );
+  if (drafts.layer) return <Preview {...props} worksheet={drafts.shown} ghosts={drafts.layer} />;
   return <Preview {...props} worksheet={shown} provisionalId={shown !== worksheet ? ghost?.id : undefined} />;
 }
 

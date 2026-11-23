@@ -41,6 +41,11 @@ export interface ChatState {
 
   newChat(): void;
   openChat(id: string): void;
+  /**
+   * The ✦ Write panel's paper (a worksheet id): its newest chat, else a new one for it. New
+   * chats started from there (`newChat`) stay that paper's.
+   */
+  openPaper(paper: string): void;
   deleteChat(id: string): void;
   setSettings(patch: Partial<ChatSettings>): void;
   /** False when already there or `MAX_EXAMPLES` reached. */
@@ -57,6 +62,8 @@ export interface ChatState {
   /** Back to an older version of a draft (the current one becomes the newest older one). */
   restoreVersion(draftId: string, index: number): void;
   delivered(draftIds: readonly string[]): void;
+  /** Added drafts back to open (their question was undone in the paper: the ✦ Write panel). */
+  undelivered(draftIds: readonly string[]): void;
   stop(): void;
   retry(turnId: string): Promise<void>;
   /** The error notice closed: the reply keeps its line, the notice is not raised again. */
@@ -81,7 +88,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
   let seq = 0;
   const newId = deps.newId ?? (() => `c${Date.now().toString(36)}${(seq++).toString(36)}${Math.random().toString(36).slice(2, 6)}`);
 
-  const blank = (): Chat => ({
+  const blank = (paper?: string): Chat => ({
     v: 1,
     id: newId(),
     createdAt: now(),
@@ -92,6 +99,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
     picks: [],
     settings: { count: 3, level: 'same', language: deps.language() },
     lastText: '',
+    ...(paper ? { paper } : {}),
   });
 
   const stored = deps.storage.load();
@@ -382,8 +390,20 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         const current = active();
         // An empty chat is reused, never stacked.
         if (current && current.turns.length === 0 && current.refs.length === 0) return;
-        const chat = blank();
+        const chat = blank(current?.paper);
         set({ chats: [chat, ...get().chats.filter((c) => c.turns.length > 0 || c.refs.length > 0)], activeId: chat.id });
+      },
+      openPaper: (paper) => {
+        const current = active();
+        if (current?.paper === paper) return;
+        const kept = get().chats.filter((c) => c.turns.length > 0 || c.refs.length > 0);
+        const newest = kept.filter((c) => c.paper === paper).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+        if (newest) {
+          set({ chats: kept, activeId: newest.id });
+          return;
+        }
+        const chat = blank(paper);
+        set({ chats: [chat, ...kept], activeId: chat.id });
       },
       openChat: (id) => {
         if (get().chats.some((c) => c.id === id)) set({ activeId: id, chats: get().chats.filter((c) => c.id === id || c.turns.length > 0 || c.refs.length > 0) });
@@ -470,6 +490,13 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       delivered: (ids) => {
         const gone = new Set(ids);
         edit(active().id, (c) => ({ ...c, drafts: c.drafts.map((d) => (gone.has(d.id) ? { ...d, state: 'added' } : d)) }));
+      },
+
+      undelivered: (ids) => {
+        const back = new Set(ids);
+        // Any chat: the panel's paper chat may not be the open one by then.
+        set({ chats: get().chats.map((c) => (c.drafts.some((d) => back.has(d.id) && d.state === 'added') ? { ...c, updatedAt: now(), drafts: c.drafts.map((d) => (back.has(d.id) && d.state === 'added' ? { ...d, state: 'open' } : d)) } : c)) });
+        save();
       },
 
       stop: () => controller?.abort(),

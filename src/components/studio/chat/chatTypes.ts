@@ -109,6 +109,8 @@ export interface Chat {
   settings: ChatSettings;
   /** The last request's words, so a rewrite asks the same thing on a new key point. */
   lastText: string;
+  /** The paper it writes for (a worksheet id): a chat of the editor's ✦ Write panel. */
+  paper?: string;
 }
 
 /** A chat's line in the Chats ▾ list. */

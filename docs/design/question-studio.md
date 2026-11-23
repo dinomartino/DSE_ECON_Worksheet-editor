@@ -224,11 +224,47 @@ kept on this computer; the Trial kit in Settings → AI. **No topic picker anywh
 - **Seam** `chat/engine.ts:StudioEngine` (`pick`, `write`, `refine`): the only calls the screen makes.
 - **Browser proof** `scripts/studio-chat-verify.mjs` (mock AI with pick and diagram replies, an
   invented bank with a pictured question): the whole flow, saved chats across a reload, the bank's
-  one-click start, Settings → AI, 中文; screenshots in `Outbox/k-0516/`. The old
-  the studio-verify script (the form's screen, the 30-brief run in the browser) went with that
+  one-click start, Settings → AI, 中文, and (u-na4k) the ＋ Reference picker's topic and year lists
+  scrolling inside the dialog in a short window; screenshots in `Outbox/k-0516/`. Shared fixtures
+  (the invented bank, a long `/big/` bank, the blocked providers) are `scripts/studio-verify-kit.mjs`.
+  The old studio-verify script (the form's screen, the 30-brief run in the browser) went with that
   screen; the trial kit's logic keeps its unit tests.
+- **Reference picker rail** (u-na4k): the rail around the shared topic/year navs is a *row*, so the
+  nav (a column sized to its list) is stretched to the dialog's height and its list scrolls; in a
+  column it grew past the footer and the topics below could not be reached.
 - Not built yet: editing the AI's diagram inside the studio (once added, it is an ordinary editor
-  diagram); the chat panel inside the worksheet editor (package B, next).
+  diagram).
+
+## The ✦ Write panel in the editor (k-0516 package B, mockup B)
+
+The same chat docked in the worksheet editor's right sidebar as a fourth tab, **✦ Write 擬題**
+(`editor/Sidebar.tsx`; only where the studio is shown, `trial.ts`, and not in the Marking scheme
+view). Sticky like 題庫: a click on the page moves the insert anchor and stays on the tab.
+
+- **Panel** `src/components/studio/panel/WritePanel.tsx:WritePanel`: "Writing for <paper> · after
+  Q14" (the insert anchor, or the section/end an unanchored insert takes); an empty chat opens on
+  the paper's topics from its tags (`panel/coverage.ts:paperCoverage`, compulsory A–J, no AI) with
+  the first topic that has no question offered as one click ("Write 3" sends "Write 3 MC questions
+  on C · …"; the AI still picks the key point) or a reference; then the chat (`ChatTurns`,
+  `Composer`), a row per draft (would-be number, state, → to it on the page, checks and
+  Another / Harder / Easier / Ask on demand) and "Accept all without problems".
+- **Store** `panel/paperChat.ts:usePaperChat`: a second `createChatStore`, its own saved list
+  (`chatStorage.ts:PAPER_CHATS_KEY`), each chat naming its paper (`Chat.paper`, `openPaper`), so the
+  studio's Chats ▾ and the panel never trade places; drafts default to the paper's language.
+- **Drafts on the page** `panel/ghosts.ts`: open drafts (and words still arriving) as questions
+  placed by `worksheetStore.ts:placeQuestions`, the same placement `insertQuestionBatch` commits, so a
+  draft is drawn exactly where Accept puts it, numbered "would be Q16". `EditorApp.tsx` gives the
+  page that derived copy (`panel/PageDrafts.tsx:usePageDrafts`, as the 題庫 drag's provisional
+  question) with a `Preview.tsx:GhostLayer` that frames them (dashed, faded, a head in the gap above
+  with Key, Ask, Reject, Accept; `data-print-hide`; one line more room above each). Autosave, undo
+  and export never see them; while any is shown nothing measured is written back (split, trim,
+  fill), as during a 題庫 drag. Off while the tab is closed, in print preview, read-only, during a
+  題庫 drag, and while a PDF prints (`panel/writePanelState.ts:hideGhostsForPrint`, from the toolbar).
+- **Accept** `paperChat.ts:acceptDrafts`: `insertIntoOpenPaper` at the anchor, one commit, one ⌘Z;
+  the cursor moves after what went in. An accepted draft whose question leaves the paper (⌘Z,
+  delete) comes back on the page (`reopenUndone`), and the cursor returns to where it was written.
+- **Browser proof** `scripts/studio-panel-verify.mjs`: opener and gap, the anchor, drafts after Q4,
+  never saved or printed, Accept / ⌘Z / Reject / Accept all, a change from the page, reload, 中文.
 
 ## The AI-made label (package 3, decision 5)
 
@@ -357,7 +393,8 @@ Draft CHANGELOG line, to add when the studio ships. It stays out of `CHANGELOG.m
 release hides the studio, because the release body is copied from Unreleased (a feature a
 release hides has none, as `check.syllabus` on main): "Write new multiple-choice questions with AI — Library
 → Question studio: pick any past-paper question or say what you need; the AI picks the syllabus key point, writes
-drafts (with diagrams) as you watch, and adds the ones you accept."
+drafts (with diagrams) as you watch, and adds the ones you accept. Or open ✦ Write beside a paper:
+the drafts appear on the page where they would go, and Accept puts each one in."
 
 ## Engine v2 (k-0514, user u-6060, u-lm1c): the AI picks the key point, pictures go with the reference
 

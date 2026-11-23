@@ -171,7 +171,10 @@ function PickerDialog({ onClose, onPick, language }: { onClose: () => void; onPi
         <div className="flex min-h-0 flex-1 flex-col">
           <BankStateNote browse={browse}>
             <div className="flex min-h-0 flex-1">
-              <div className="flex min-h-0 shrink-0 flex-col border-r border-line bg-surface-sunken" aria-label={m.rail}>
+              {/* A row, so the rail (a column that sizes to its list) is stretched to the dialog's
+                  height and its list scrolls inside it (u-na4k: in a column it grew past the
+                  footer and the topics below could not be reached). */}
+              <div className="flex min-h-0 shrink-0 border-r border-line bg-surface-sunken [&>nav]:min-h-0" aria-label={m.rail} data-reference-rail>
                 {byYear ? (
                   <PastPaperYearPicker
                     groups={browse.yearGroups}

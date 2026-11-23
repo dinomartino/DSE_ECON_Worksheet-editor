@@ -63,6 +63,7 @@ export function readChat(x: unknown): Chat | undefined {
     picks,
     settings: { count, level, language },
     lastText: isStr(x.lastText) ? x.lastText : '',
+    ...(isStr(x.paper) && x.paper ? { paper: x.paper } : {}),
   };
 }
 
@@ -94,12 +95,18 @@ export interface ChatStorage {
   save(chats: readonly Chat[]): void;
 }
 
-export function localChatStorage(store: Pick<Storage, 'getItem' | 'setItem'> | undefined = typeof window === 'undefined' ? undefined : window.localStorage): ChatStorage {
+/** The ✦ Write panel's chats (one list for every paper, each chat naming its paper). */
+export const PAPER_CHATS_KEY = 'econgen.paperChats.v1';
+
+export function localChatStorage(
+  store: Pick<Storage, 'getItem' | 'setItem'> | undefined = typeof window === 'undefined' ? undefined : window.localStorage,
+  key: string = CHATS_KEY,
+): ChatStorage {
   return {
     load() {
       if (!store) return [];
       try {
-        const raw = store.getItem(CHATS_KEY);
+        const raw = store.getItem(key);
         if (!raw) return [];
         const data: unknown = JSON.parse(raw);
         if (!Array.isArray(data)) return [];
@@ -118,7 +125,7 @@ export function localChatStorage(store: Pick<Storage, 'getItem' | 'setItem'> | u
         .map(forSaving);
       while (list.length > 0) {
         try {
-          store.setItem(CHATS_KEY, JSON.stringify(list));
+          store.setItem(key, JSON.stringify(list));
           return;
         } catch {
           list = list.slice(0, -1);

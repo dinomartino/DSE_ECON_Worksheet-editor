@@ -226,3 +226,42 @@ describe('the computer\'s own key-point pick (until the AI pick lands)', () => {
     expect(localPick({ text: 'hello', examples: [] })).toEqual([]);
   });
 });
+
+describe('paper chats: the editor ✦ Write panel (k-0516 B)', () => {
+  it('openPaper starts a chat for the paper, keeps it, and comes back to it after another paper', async () => {
+    const { useChat, chat, store } = setup();
+    useChat.getState().openPaper('paper-1');
+    expect(chat().paper).toBe('paper-1');
+    await useChat.getState().send('Write 3 MC questions on price elasticity of demand');
+    const first = chat().id;
+    useChat.getState().openPaper('paper-2');
+    expect(chat().paper).toBe('paper-2');
+    expect(chat().id).not.toBe(first);
+    useChat.getState().openPaper('paper-1');
+    expect(chat().id).toBe(first);
+    // A new chat from the panel stays the paper's; the paper survives a reload.
+    useChat.getState().newChat();
+    expect(chat().paper).toBe('paper-1');
+    const saved = JSON.parse(store.data.get(CHATS_KEY) ?? '[]') as unknown[];
+    expect(saved.map(readChat).find((c) => c?.id === first)?.paper).toBe('paper-1');
+  });
+
+  it('undelivered brings an added draft back to open', async () => {
+    const { useChat, chat } = setup();
+    useChat.getState().openPaper('paper-1');
+    await useChat.getState().send('Write 3 MC questions on price elasticity of demand');
+    const [a, b] = chat().drafts;
+    useChat.getState().delivered([a.id, b.id]);
+    expect(chat().drafts.map((d) => d.state)).toEqual(['added', 'added', 'open']);
+    useChat.getState().undelivered([a.id]);
+    expect(chat().drafts.map((d) => d.state)).toEqual(['open', 'added', 'open']);
+  });
+
+  it('a second storage key keeps the panel’s chats apart from the studio’s', () => {
+    const store = memory();
+    localChatStorage(store, 'econgen.paperChats.v1').save([{ ...readChat({ v: 1, id: 'x', createdAt: 'a', updatedAt: 'a', refs: [], turns: [{ id: 't', role: 'user', text: 'hi', refs: [] }], drafts: [], settings: {} })!, paper: 'p' }]);
+    expect(store.data.has('econgen.paperChats.v1')).toBe(true);
+    expect(store.data.has(CHATS_KEY)).toBe(false);
+    expect(localChatStorage(store, 'econgen.paperChats.v1').load()[0].paper).toBe('p');
+  });
+});

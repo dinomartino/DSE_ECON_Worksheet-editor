@@ -4627,6 +4627,12 @@ const SELECTED_ITEM = "bg-[#0d77c9]/[0.04] shadow-[0_0_0_1px_#bcdcf2]";
  */
 const MULTI_SELECTED_ITEM = "bg-[#0d77c9]/[0.10]";
 
+/** Questions drawn in place that are not in the document (the ✦ Write panel's drafts), and their frame. */
+export interface GhostLayer {
+  ids: ReadonlySet<string>;
+  frame: (id: string, body: React.ReactNode) => React.ReactNode;
+}
+
 /**
  * The 題庫 drag's provisional question: drawn where it would land, faded under a dashed
  * outline. Outline and tag reserve no space (the paginator measures the real height);
@@ -5120,6 +5126,12 @@ interface Props {
    */
   provisionalId?: string;
   /**
+   * The ✦ Write panel's AI drafts drawn in place (k-0516, `studio/panel/ghosts.ts`): not in the
+   * document, inert, framed by `frame` (their Accept / Reject). While any is shown the page is
+   * a preview like the 題庫 drag's, so nothing measured off it is written back.
+   */
+  ghosts?: GhostLayer;
+  /**
    * A hidden second copy that only paginates (`PageCountProbe`): no `#print-root` id, so
    * page-scoped queries and the print still see the one real stack; no zoom control.
    */
@@ -5352,10 +5364,13 @@ export function Preview({
   onOpenSample,
   onPagesChange,
   onDragItemChange,
-  provisionalId,
+  provisionalId: dragProvisionalId,
+  ghosts,
   measureOnly,
   onPageStarts,
 }: Props) {
+  // Either kind of drawn-in question makes the page a preview (nothing measured is written back).
+  const provisionalId = dragProvisionalId ?? (ghosts && ghosts.ids.size > 0 ? "ghost-drafts" : undefined);
   /*
    * The one document walk, memoised on its only two inputs.
    *
@@ -7345,7 +7360,7 @@ export function Preview({
           range={range}
           language={language}
           // The provisional question is a picture of the drop, not something to edit.
-          ctx={id === provisionalId ? undefined : ctx}
+          ctx={id === provisionalId || ghosts?.ids.has(id) ? undefined : ctx}
           ctxStamp={ctxStamp}
           selected={
             item.type === "layout"
@@ -7425,8 +7440,10 @@ export function Preview({
       // The chrome around the body is the same whichever slice is inside it, so it is
       // built from the body rather than around one fixed copy of it.
       const wrap = (body: React.ReactNode) =>
-        id === provisionalId ? (
+        id === dragProvisionalId ? (
           <ProvisionalItem id={id}>{body}</ProvisionalItem>
+        ) : ghosts?.ids.has(id) ? (
+          ghosts.frame(id, body)
         ) : !onReorder ? (
           body
         ) : (

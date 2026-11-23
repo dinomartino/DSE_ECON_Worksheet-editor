@@ -6,6 +6,9 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { BankTab } from '@/components/bank/BankTab';
 import { BankTabSwitch } from '@/components/pastpapers/BankTabSwitch';
 import { useBankSession } from '@/components/bank/bankSession';
+import { WritePanel } from '@/components/studio/panel/WritePanel';
+import { WRITE_PANEL_MESSAGES } from '@/components/studio/panel/panel.messages';
+import { useStudioTrial } from '@/questionStudio/trial';
 import { Inspector } from './Inspector';
 import { usePressedClick } from './pressedClick';
 import { AnswerKeyLayoutPanel } from './AnswerKeyLayoutPanel';
@@ -32,7 +35,7 @@ import { LAYOUT_KIND_MESSAGES } from './layoutKind.messages';
  * opens it; leaving returns to Content.
  */
 
-type Tab = 'content' | 'edit' | 'bank' | 'layout';
+type Tab = 'content' | 'edit' | 'bank' | 'layout' | 'write';
 
 export function Sidebar({
   pages,
@@ -59,8 +62,13 @@ export function Sidebar({
 
   const keyView = useWorksheetStore((s) => s.documentView === 'answerKey');
   const lm = useMessages(ANSWER_KEY_LAYOUT_MESSAGES);
+  const wm = useMessages(WRITE_PANEL_MESSAGES);
+  // ✦ Write (k-0516 B): the Question studio's chat for this paper, where the studio is shown
+  // (a develop build; `trial.ts`). Not in the Marking scheme view: drafts go into the paper.
+  const writeOn = useStudioTrial() && !keyView;
   const [tab, setTab] = useState<Tab>(keyView ? 'layout' : 'content');
-  const tabOrder: readonly Tab[] = ['content', 'edit', keyView ? 'layout' : 'bank'];
+  const tabOrder: readonly Tab[] = ['content', 'edit', keyView ? 'layout' : 'bank', ...(writeOn ? (['write'] as const) : [])];
+  const shown: Tab = tab === 'write' && !writeOn ? 'content' : tab;
 
   // The view's own tab follows the view: opened on entering it, closed on leaving.
   const lastKeyView = useRef(keyView);
@@ -87,7 +95,7 @@ export function Sidebar({
     // The bank tab stays put: a click on the page is where the next insert lands. In the
     // Marking scheme view a cleared selection returns to Layout, the view's resting place.
     setTab((current) =>
-      current === 'bank' ? current : selectionKey ? 'edit' : lastKeyView.current ? 'layout' : 'content',
+      current === 'bank' || current === 'write' ? current : selectionKey ? 'edit' : lastKeyView.current ? 'layout' : 'content',
     );
   }, [selectionKey]);
 
@@ -110,10 +118,11 @@ export function Sidebar({
       ? kinds[panelElement.kind]
       : m.edit;
 
-  const tabs: Array<{ id: Tab; label: string; count?: number }> = [
+  const tabs: Array<{ id: Tab; label: string; count?: number; title?: string }> = [
     { id: 'content', label: m.content, count: totalQuestions },
     { id: 'edit', label: editLabel },
     keyView ? { id: 'layout', label: lm.tab } : { id: 'bank', label: m.bank },
+    ...(writeOn ? [{ id: 'write' as const, label: `✦ ${wm.tab}`, title: wm.tabTitle }] : []),
   ];
 
   return (
@@ -126,7 +135,7 @@ export function Sidebar({
           rather than blinking from tab to tab. */}
       <div role="tablist" aria-label={m.sidebar} className="relative flex shrink-0 border-b border-line px-2">
         {tabs.map((entry) => {
-          const active = tab === entry.id;
+          const active = shown === entry.id;
           const dim = entry.id === 'edit' && !selected && !panelElementId;
           return (
             <button
@@ -134,6 +143,8 @@ export function Sidebar({
               type="button"
               role="tab"
               aria-selected={active}
+              title={entry.title}
+              data-sidebar-tab={entry.id}
               onClick={() => setTab(entry.id)}
               className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1 px-3 py-2.5 text-[13px] font-medium transition-[color,opacity] duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 active ? 'text-ink' : 'text-ink-muted hover:text-ink'
@@ -150,8 +161,8 @@ export function Sidebar({
             the old per-tab bar; each 100% of translation moves it exactly one tab over. */}
         <span
           aria-hidden
-          style={{ transform: `translateX(${Math.max(0, tabOrder.indexOf(tab)) * 100}%)` }}
-          className="pointer-events-none absolute bottom-0 left-2 w-[calc((100%-1rem)/3)] px-4 transition-transform duration-200 ease-out-soft"
+          style={{ transform: `translateX(${Math.max(0, tabOrder.indexOf(shown)) * 100}%)`, width: `calc((100% - 1rem) / ${tabOrder.length})` }}
+          className="pointer-events-none absolute bottom-0 left-2 px-4 transition-transform duration-200 ease-out-soft"
         >
           <span className="block h-0.5 rounded-full bg-accent" />
         </span>
@@ -164,13 +175,15 @@ export function Sidebar({
           the containing block for the fixed popovers and canvases the panels open. */}
       {/* Topic names in the panels follow the document's language (`useViewLanguage`). */}
       <ViewLanguageProvider value={language}>
-        <div key={tab} className="flex min-h-0 flex-1 animate-fade-in flex-col">
-          {tab === 'content' ? (
+        <div key={shown} className="flex min-h-0 flex-1 animate-fade-in flex-col">
+          {shown === 'content' ? (
             <Outline numbering={numbering} pages={pages} onOpenSettings={onOpenSettings} />
-          ) : tab === 'layout' ? (
+          ) : shown === 'layout' ? (
             <AnswerKeyLayoutPanel />
-          ) : tab === 'bank' ? (
+          ) : shown === 'bank' ? (
             <BankTabSwitch mine={<BankTab />} />
+          ) : shown === 'write' ? (
+            <WritePanel />
           ) : (
             <Inspector numbering={numbering} onShowContent={() => setTab('content')} />
           )}
