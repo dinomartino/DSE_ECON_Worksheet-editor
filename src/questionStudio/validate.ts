@@ -31,6 +31,19 @@ export interface RawDraft { draft: McqDraft; angle: string }
 
 const asText = (x: unknown): string => (typeof x === 'string' ? x.trim().slice(0, 200) : '');
 
+/**
+ * A key written as a letter ("B") or a digit in a string ("1") reads as its index; a
+ * provider that does not enforce the schema may send either. Anything else is left as sent
+ * and fails the shape check.
+ */
+function answerIndexOf(x: unknown): unknown {
+  if (typeof x !== 'string') return x;
+  const t = x.trim().toUpperCase();
+  if (/^[A-D]$/.test(t)) return 'ABCD'.indexOf(t);
+  if (/^[0-3]$/.test(t)) return Number(t);
+  return x;
+}
+
 /** The reply's drafts, or null when it is not the requested JSON. Entries that are not objects are dropped. */
 export function parseWriteReply(text: string): RawDraft[] | null {
   const raw = parseSourceReply(text);
@@ -38,7 +51,8 @@ export function parseWriteReply(text: string): RawDraft[] | null {
   const out: RawDraft[] = [];
   for (const entry of raw) {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) continue;
-    const draft = draftOf({ ...(entry as Record<string, unknown>), kind: 'mcq' });
+    const fields = entry as Record<string, unknown>;
+    const draft = draftOf({ ...fields, answer: answerIndexOf(fields.answer), kind: 'mcq' });
     if (draft?.kind === 'mcq') out.push({ draft, angle: asText((entry as { angle?: unknown }).angle) });
   }
   return out;
