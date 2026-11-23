@@ -91,6 +91,10 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **Coverage report downloads without a warning.** Downloading the syllabus coverage report as a
+  PDF no longer shows an error message in the app's developer console about repeated table
+  headings; every page of the report, in English or 中文, has each heading and row once.
+  <!-- zh: **下載課程覆蓋報告不再出現警告。** 將課程覆蓋報告下載為 PDF 時，程式的開發者主控台不再顯示表格標題重複的錯誤訊息；無論以英文或中文製作，報告每一頁的標題和每一行都只出現一次。 -->
 - **Tables in imported Word papers come in whole.** A heading row with one filled cell (such
   as "$ billion") stays in its table instead of falling out above it; a fill-in sentence typed
   after a table, a dialogue laid out with tabs and sentences side by side stay text instead of

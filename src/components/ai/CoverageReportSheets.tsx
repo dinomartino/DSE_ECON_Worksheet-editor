@@ -110,6 +110,29 @@ export function packBlocks(
   return pages;
 }
 
+/**
+ * One React key per item on a sheet. A table's header can open on one sheet several times
+ * (the key-point rows restart after every topic heading, the appendix after every paper),
+ * so a header is keyed by the row it introduces, never by its table alone (k-0509).
+ */
+export function sheetKeys(items: ReadonlyArray<{ block: number } | { head: string }>, blocks: ReadonlyArray<{ key: string }>): string[] {
+  return items.map((item, i) => {
+    if ('block' in item) return blocks[item.block].key;
+    const next = items[i + 1];
+    return `head-${item.head}-${next && 'block' in next ? blocks[next.block].key : i}`;
+  });
+}
+
+/** Block keys made unique in order: a repeat (two units at the same place, say) gets `#2`, `#3`… */
+export function uniqueKeys<T extends { key: string }>(blocks: T[]): T[] {
+  const seen = new Map<string, number>();
+  return blocks.map((b) => {
+    const n = (seen.get(b.key) ?? 0) + 1;
+    seen.set(b.key, n);
+    return n === 1 ? b : { ...b, key: `${b.key}#${n}` };
+  });
+}
+
 const GRID = {
   papers: 'minmax(0,1fr) 64px 56px 200px',
   sections: '30px minmax(0,1fr) 170px 64px',
@@ -193,13 +216,10 @@ export function CoverageReportSheets({ coverage, text = coverage.language }: { c
                     </span>
                   </div>
                 )}
-                {items.map((item) =>
-                  'head' in item ? (
-                    <Fragment key={`head-${item.head}`}>{heads[item.head]}</Fragment>
-                  ) : (
-                    <Fragment key={blocks[item.block].key}>{blocks[item.block].node}</Fragment>
-                  ),
-                )}
+                {sheetKeys(items, blocks).map((key, i) => {
+                  const item = items[i];
+                  return <Fragment key={key}>{'head' in item ? heads[item.head] : blocks[item.block].node}</Fragment>;
+                })}
                 <div className="absolute flex justify-between gap-4" style={{ ...edge, bottom: FOOTER_FROM_BOTTOM }}>
                   <span className="truncate">
                     {t.checked} {t.date(new Date(coverage.at))} · {t.footNote}
@@ -262,7 +282,7 @@ function Badge({ code, muted }: { code: string; muted?: boolean }) {
 }
 
 /** The table heads, one per kind, repeated on each sheet a table runs onto. */
-function tableHeads(text: ReportLanguage): Record<Table, ReactNode> {
+export function tableHeads(text: ReportLanguage): Record<Table, ReactNode> {
   const t = reportText(text);
   // A heading wraps between words only (the sheet's `overflow-wrap: break-word` would split "Evaluate").
   const head = (columns: string): CSSProperties => ({
@@ -319,7 +339,7 @@ function tableHeads(text: ReportLanguage): Record<Table, ReactNode> {
 
 /* ── The blocks, in reading order ────────────────────────────────────────── */
 
-function reportBlocks(coverage: CoverageResult, langs: ReportLanguages): Block[] {
+export function reportBlocks(coverage: CoverageResult, langs: ReportLanguages): Block[] {
   const t = reportText(langs.text);
   const name = nameIn(langs.names);
   const report = coverage.report;
@@ -547,7 +567,7 @@ function reportBlocks(coverage: CoverageResult, langs: ReportLanguages): Block[]
   }
 
   out.push({ key: 'denominators', node: <p style={{ paddingTop: 14, fontSize: '7.5pt', color: C.faint }}>{t.denominators}</p> });
-  return out;
+  return uniqueKeys(out);
 }
 
 function Figures({ report, text }: { report: CoverageReport; text: ReportLanguage }) {
@@ -717,11 +737,11 @@ function UnitLine({ unit, langs }: { unit: UnitRow; langs: ReportLanguages }) {
       <div>
         {!unit.ok && <div style={{ padding: '5px 6px', color: C.warnInk }}>{t.unitFailed}</div>}
         {unit.ok && unit.picks.length === 0 && <div style={{ padding: '5px 6px', color: C.muted }}>{t.unitNone}</div>}
-        {unit.picks.map((pick) => {
+        {unit.picks.map((pick, i) => {
           const hit = lookupCode(pick.code);
           const label = hit ? `${name(hit.keyPoint)}${hit.point && hit.point.en !== hit.keyPoint.en ? ` · ${name(hit.point)}` : ''}` : pick.code;
           return (
-            <div key={pick.code} style={{ display: 'grid', gridTemplateColumns: GRID.picks }}>
+            <div key={`${i}-${pick.code}`} style={{ display: 'grid', gridTemplateColumns: GRID.picks }}>
               <div style={{ padding: '5px 6px' }}>
                 <span style={{ fontWeight: pick.main ? 600 : 400 }}>
                   {hit ? `${hit.topic.code} · ` : ''}

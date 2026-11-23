@@ -77,3 +77,4 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Log
 - **2026-11-23** — on develop (unreleased, k-0499): the Question studio's AI-made label and trial kit; then shown in every develop build with nothing to turn on, hidden in a release build; the user runs the trial next; quality changes (real references, strict mode, DSE counts) on develop after the user's feedback.
 - **2026-11-23** — on develop (unreleased, k-0503): coverage report "Report in" English / 中文 pick; names stay the paper's.
+- **2026-11-23** — on develop (unreleased, k-0509): coverage report sheets no longer repeat React keys (`head-keyPoints`: a table header opens again after each topic / paper heading); headers keyed by the row they open (`sheetKeys`), block keys de-duplicated (`uniqueKeys`); `coverageReportKeys.test.tsx`.
