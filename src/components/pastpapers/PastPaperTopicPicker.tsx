@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { escapeClears } from '@/components/bank/escapeClears';
 import { ChevronDownIcon, ChevronRightIcon } from '@/components/ui/icons';
 import { useMessages } from '@/i18n/language';
@@ -26,6 +26,7 @@ export function PastPaperTopicPicker({
   current,
   active,
   language,
+  top,
   onPick,
 }: {
   topics: readonly TopicEntry[];
@@ -34,6 +35,8 @@ export function PastPaperTopicPicker({
   /** False while the screen shows the bank as a whole (a search of every topic, one paper). */
   active: boolean;
   language: LanguageMode;
+  /** Drawn above the list (the By topic / By year switch, k-0497). */
+  top?: ReactNode;
   onPick: (id: string) => void;
 }) {
   const m = useMessages(PAST_PAPER_MESSAGES);
@@ -156,6 +159,7 @@ export function PastPaperTopicPicker({
       data-pastpaper-topics
       className="flex w-full shrink-0 flex-col border-b border-line md:w-[280px] md:border-b-0 md:border-r"
     >
+      {top}
       {/* Phone width: one bar naming the open topic; the list opens under it. */}
       <button
         type="button"

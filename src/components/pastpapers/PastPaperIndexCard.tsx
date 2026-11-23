@@ -55,7 +55,7 @@ export function PastPaperIndexCard({
   const cut = text.length > EXCERPT;
 
   return (
-    <article ref={ref} className="rounded-xl border border-line bg-surface p-3" data-pastpaper-index-card>
+    <article ref={ref} className="rounded-xl border border-line bg-surface p-3" data-pastpaper-index-card data-pastpaper-card={entry.tag}>
       <div className="mb-2 flex items-center gap-2.5 px-1">
         <input type="checkbox" disabled aria-label={m.pickTitle(label)} className="h-4 w-4" />
         <span className="truncate text-[12.5px] font-medium text-ink">{label}</span>

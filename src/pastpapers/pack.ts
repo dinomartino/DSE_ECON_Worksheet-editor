@@ -159,6 +159,27 @@ const PAPER_EN = { HKCEE: 'HKCEE', HKALE: 'HKALE', HKDSE: 'HKDSE', other: '' } a
 const PAPER_ZH = { HKCEE: '香港中學會考', HKALE: '香港高級程度會考', HKDSE: '香港中學文憑考試', other: '' } as const;
 const ZH_NUMERALS = ['', '一', '二', '三', '四', '五'];
 
+/** When a paper was set, as its source line spells it: "2016", "Sample Paper" / "樣本試卷". */
+export function whenLabel(source: Pick<SourceInfo, 'year' | 'special'>): { en: string; zh: string } {
+  if (source.special === 'SP') return { en: 'Sample Paper', zh: '樣本試卷' };
+  if (source.special === 'PP') return { en: 'Practice Paper', zh: '練習卷' };
+  const year = String(source.year ?? '');
+  return { en: year, zh: year };
+}
+
+/** An exam year, as its source lines spell it: "HKDSE 2016" / "香港中學文憑考試 2016". */
+export function sittingLabel(source: SourceInfo): { en: string; zh: string } {
+  if (source.exam === 'other') return { en: source.tag, zh: source.tag };
+  const when = whenLabel(source);
+  return { en: `${PAPER_EN[source.exam]} ${when.en}`, zh: `${PAPER_ZH[source.exam]} ${when.zh}` };
+}
+
+/** A paper's own name, as its source line spells it: "Paper 1" / "卷一". */
+export function paperLabel(source: Pick<SourceInfo, 'paper'>): { en: string; zh: string } {
+  const paper = source.paper ?? 1;
+  return { en: `Paper ${paper}`, zh: `卷${ZH_NUMERALS[paper] ?? paper}` };
+}
+
 /**
  * The paper a source names, as the export's own source lines spell it ("HKDSE 2016 Paper 1",
  * "香港中學文憑考試 2016 卷一"); with `number`, the question too ("… Q34", "… 第 34 題").
@@ -166,11 +187,10 @@ const ZH_NUMERALS = ['', '一', '二', '三', '四', '五'];
  */
 export function sourceLabel(source: SourceInfo, withNumber = true): { en: string; zh: string } {
   if (source.exam === 'other') return { en: source.tag, zh: source.tag };
-  const when = source.special === 'SP' ? 'Sample Paper' : source.special === 'PP' ? 'Practice Paper' : String(source.year ?? '');
-  const whenZh = source.special === 'SP' ? '樣本試卷' : source.special === 'PP' ? '練習卷' : String(source.year ?? '');
-  const paper = source.paper ?? 1;
-  const en = `${PAPER_EN[source.exam]} ${when} Paper ${paper}`;
-  const zh = `${PAPER_ZH[source.exam]} ${whenZh} 卷${ZH_NUMERALS[paper] ?? paper}`;
+  const when = whenLabel(source);
+  const paper = paperLabel(source);
+  const en = `${PAPER_EN[source.exam]} ${when.en} ${paper.en}`;
+  const zh = `${PAPER_ZH[source.exam]} ${when.zh} ${paper.zh}`;
   if (!withNumber || source.number === undefined) return { en, zh };
   return { en: `${en} Q${source.number}`, zh: `${zh} 第 ${source.number} 題` };
 }
@@ -191,6 +211,9 @@ export function packName(name: { en: string; zh: string }, view: LanguageMode, r
 
 /** The paper a source tag belongs to: `DSE2016/P1` of `DSE2016/P1/Q34`; '' without a tag. */
 export const paperKey = (source: SourceInfo) => source.tag.replace(/\/Q\d+$/, '');
+
+/** The exam year a source tag belongs to: `DSE2016` of `DSE2016/P1/Q34`, `DSESP`; '' without a tag. */
+export const sittingKey = (source: SourceInfo) => source.tag.split('/')[0] ?? '';
 
 /** Where a question comes from, read off its source tag (`CE2011/P2/Q8`). */
 export interface SourceInfo {
@@ -406,6 +429,8 @@ export interface PastPaperQuery {
   to?: number;
   /** One paper only (`paperKey`, `DSE2016/P1`). */
   paper?: string;
+  /** One exam year only, every paper of it (`sittingKey`, `DSE2016`, `DSESP`). */
+  sitting?: string;
 }
 
 const yearOf = (source: SourceInfo) => source.year ?? (source.exam === 'HKDSE' ? 2012 : undefined);
@@ -420,6 +445,7 @@ export function matchItem(item: Pick<PastPaperItem, 'source' | 'searchText'>, qu
   if (query.from !== undefined && (year === undefined || year < query.from)) return false;
   if (query.to !== undefined && (year === undefined || year > query.to)) return false;
   if (query.paper !== undefined && paperKey(item.source) !== query.paper) return false;
+  if (query.sitting !== undefined && sittingKey(item.source) !== query.sitting) return false;
   const words = (query.words ?? '').toLowerCase().split(/\s+/).filter(Boolean);
   return words.every((word) => item.searchText.includes(word));
 }
