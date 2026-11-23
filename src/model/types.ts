@@ -444,6 +444,16 @@ export interface QuestionBase {
    * another document leaves it behind (`copyQuestion`).
    */
   startOnNewPage?: boolean;
+  /**
+   * Written by the Question studio and not yet read by a teacher (k-0499, decision 5): the
+   * editor says so beside it (a chip on the page, a note in the Edit panel, a mark in the
+   * outline) until the teacher presses Checked, which clears it. Stored as `true` or
+   * absent, never `false`. Review state, not content: `contentKey` ignores it, so pressing
+   * Checked never makes a new version; a copy keeps it (`copyQuestion`), so an unchecked
+   * question stays marked wherever it travels. Screen only: no backend reads it, so the
+   * printed page, `.docx`, PDF and clipboard are the same with or without it.
+   */
+  aiMade?: boolean;
   /** Machine identity across copies (`model/lineage.ts`); never printed. Absent = an original. */
   lineage?: QuestionLineage;
   /**

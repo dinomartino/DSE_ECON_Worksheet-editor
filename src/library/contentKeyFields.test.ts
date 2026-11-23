@@ -27,6 +27,7 @@ const QUESTION_FIELDS: Record<AnyQuestionKey, 'content' | 'metadata'> = {
   gapBefore: 'metadata',
   keepOnOnePage: 'metadata',
   startOnNewPage: 'metadata',
+  aiMade: 'metadata', // review state of a Question studio draft; Checked is not a new version
   lineage: 'metadata',
   tags: 'metadata',
   tagsAt: 'metadata',

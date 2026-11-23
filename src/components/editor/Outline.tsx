@@ -45,6 +45,7 @@ import {
   PlusIcon,
   SectionIcon,
   PageSetupIcon,
+  SparkleIcon,
   SpacerIcon,
   StructuredIcon,
   TextIcon,
@@ -57,6 +58,7 @@ import { outlineTagLine } from './partTopicView';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
+import { AI_MADE_MESSAGES } from './AiMade.messages';
 import { OUTLINE_MESSAGES } from './Outline.messages';
 import { LAYOUT_KIND_MESSAGES } from './layoutKind.messages';
 
@@ -286,6 +288,7 @@ function QuestionRow({
   onSelect: () => void;
 }) {
   const m = useMessages(OUTLINE_MESSAGES);
+  const ai = useMessages(AI_MADE_MESSAGES);
   const lang = useUiLanguage();
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
@@ -419,6 +422,12 @@ function QuestionRow({
 
       {/* Facts as quiet text, not a chip parade: the type code and the marks share
           one muted line of tabular figures. */}
+      {question.aiMade === true && (
+        // Written by the Question studio and not checked yet (cleared by Checked in the Edit panel).
+        <span className="shrink-0 text-accent-ink" role="img" title={ai.outlineMark} aria-label={ai.outlineMark}>
+          <SparkleIcon size={11} />
+        </span>
+      )}
       <span
         className="shrink-0 text-[10px] font-medium tracking-wide text-ink-subtle"
         title={plain(requireQuestionType(question).displayName[lang === 'en' ? 'en' : 'zh'])}

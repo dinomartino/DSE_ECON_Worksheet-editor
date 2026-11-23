@@ -185,6 +185,10 @@ export const PAPER_CHECK_MESSAGES = defineMessages({
       `${n} ${n === 1 ? 'question has' : 'questions have'} a marking scheme that totals differently from the marks printed.`,
     zh: (n: number) => `${n} 條題目的評分方案總分與試卷印出的分數不同。`,
   },
+  fAiMade: {
+    en: (n: number) => `${n} ${n === 1 ? 'question is' : 'questions are'} AI-made and not checked yet.`,
+    zh: (n: number) => `${n} 條題目為 AI 擬題，尚未核對。`,
+  },
   fUnmarked: {
     en: (n: number) => `${n} ${n === 1 ? 'question carries' : 'questions carry'} no marks.`,
     zh: (n: number) => `${n} 條題目沒有分數。`,

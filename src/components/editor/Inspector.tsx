@@ -19,6 +19,7 @@ import { PartTopics } from './PartTopics';
 import { useShownTags, useShownTagState } from './sharedTopics';
 import { setQuestionTags, setQuestionTopics, topicSyncDeps } from './topicSync';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
+import { AiMadeNote } from './AiMadeNote';
 import { markPanelTarget } from './panelTarget';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { Messages, TextKey } from '@/i18n/catalogue';
@@ -436,6 +437,7 @@ export function Inspector({
       </header>
 
       <div ref={panelRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
+        <AiMadeNote question={selected} onChange={(patch) => updateQuestion(selected.id, patch)} />
         <definition.EditorPanel
           key={selected.id}
           question={selected}

@@ -42,6 +42,8 @@ describe('what the tray sends', () => {
     expect(questions[0].answerIndex).toBe(A.answer);
     expect(questions[0].lineage).toBeUndefined();
     expect(questions[0].provenance).toBeUndefined();
+    // The editor labels it until the teacher presses Checked.
+    expect(questions.every((q) => q.aiMade === true)).toBe(true);
     expect(questions[0].id).not.toBe(questions[1].id);
   });
 
@@ -113,6 +115,8 @@ describe('into the question bank', () => {
     expect(bank.kind).toBe('bank');
     expect(bank.questions.map((q) => (q as McqQuestion).tags)).toEqual([['C.ped'], ['C.law-of-demand']]);
     expect(bank.questions.every((q) => q.lineage === undefined)).toBe(true);
+    // Kept unchecked: the label goes into the bank with the question, and comes out with it.
+    expect(bank.questions.every((q) => q.aiMade === true)).toBe(true);
   });
 
   it('never keeps the same question twice', async () => {

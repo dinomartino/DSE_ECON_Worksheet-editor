@@ -1,6 +1,7 @@
 "use client";
 
 import { fractionAt, fractionRuns, hasFraction, linearFraction, textSegments } from "@/model/fraction";
+import { AiMadeChip } from "./AiMadeChip";
 import { FractionDialog } from "./FractionDialog";
 import { Fragment, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -4588,6 +4589,11 @@ interface ItemBodyProps {
   ctxStamp: string;
   /** This item is the page's single selection (question or layout element). */
   selected: boolean;
+  /**
+   * The question was written by the Question studio and not checked yet (`Question.aiMade`):
+   * the page labels it. Screen only (`AiMadeChip`), and set only on a page being typed on.
+   */
+  aiMade?: boolean;
   onSelect: (event: React.MouseEvent) => void;
   /**
    * The slice of the item's nodes this copy renders, when it was split across sheets
@@ -4693,7 +4699,7 @@ function bodyViews(
 }
 
 const ItemBody = memo(
-  function ItemBody({ item, language, ctx: pageCtx, selected, onSelect, range }: ItemBodyProps) {
+  function ItemBody({ item, language, ctx: pageCtx, selected, aiMade, onSelect, range }: ItemBodyProps) {
     const questionId = item.type === "question" ? item.question.questionId : undefined;
     // A right-click inside a question names it, so the question acted on is the one
     // clicked whatever is selected. Nothing new is read at render time.
@@ -4757,6 +4763,8 @@ const ItemBody = memo(
           selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
         }`}
       >
+        {/* On the sheet a split question starts on, once (an MC is never split). */}
+        {aiMade && (!range || range.from === 0) && <AiMadeChip />}
         {bodyViews(nodes, language, ctx)}
       </div>
     );
@@ -4769,6 +4777,7 @@ const ItemBody = memo(
     prev.item.type === next.item.type &&
     prev.language === next.language &&
     prev.selected === next.selected &&
+    prev.aiMade === next.aiMade &&
     prev.ctxStamp === next.ctxStamp &&
     // The rendered slice is content too: a repagination that moves the break inside a
     // split item changes nothing else about it, so comparing by value here is what keeps
@@ -5362,6 +5371,12 @@ export function Preview({
   const typing = useWorksheetStore((s) => !s.printPreview && !s.readOnly) && Boolean(onEdit) && !measureOnly;
   const renderMode = useMemo(() => (typing ? { ...mode, editing: true } : mode), [mode, typing]);
   const rendered = useMemo(() => renderWorksheet(worksheet, renderMode), [worksheet, renderMode]);
+  // Questions the Question studio wrote that nobody has checked: the page being typed on labels
+  // them (`AiMadeChip`, screen only). Nothing here reaches `renderWorksheet`, so no backend sees it.
+  const aiMadeIds = useMemo(
+    () => (typing ? new Set(worksheet.questions.filter((question) => question.aiMade === true).map((question) => question.id)) : undefined),
+    [worksheet.questions, typing],
+  );
   const { language } = mode;
   // Which of the four papers this is (derived, § documentShape) and the list geometry
   // that follows from it — the exam paper renders on its own scheme.
@@ -7337,6 +7352,7 @@ export function Preview({
               ? selectedLayoutId === id
               : selectedQuestionId === id
           }
+          aiMade={item.type === "question" && aiMadeIds?.has(id) === true}
           onSelect={
             item.type === "layout"
               ? (event) => {

@@ -17,6 +17,8 @@ import { distinctVersions, patternLines, rowKey, type ClassChoice } from './bank
 import { alsoInText, partsTesting, testsThisText, testsWhatText, topicsByPart, type RailEntry, type RailPart, type RailSection } from './bankScreen';
 import { RAIL_WINDOW_FROM, railRows, rowAt, rowOffsets, scrollToShow, visibleRange } from './railWindow';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
+import { AI_MADE_MESSAGES } from '@/components/editor/AiMade.messages';
+import { SparkleIcon } from '@/components/ui/icons';
 import { QUESTION_STUDIO_MESSAGES } from '@/components/studio/messages';
 import { keyPointOfTags } from '@/components/studio/studioView';
 import { sourceFromQuestion } from '@/questionStudio/source';
@@ -605,6 +607,7 @@ function Stage({
   const { order, index, language, version, usedWith, picked } = state;
   const m = useMessages(REVIEW_PAGE_MESSAGES);
   const studio = useMessages(QUESTION_STUDIO_MESSAGES);
+  const aiMade = useMessages(AI_MADE_MESSAGES);
   const onPattern = useContext(PatternLink);
   const inList = picked.has(row.rootId);
   const { worksheet, failed } = useOwningDocument(row);
@@ -670,6 +673,13 @@ function Stage({
             </NavButton>
             <div className="min-w-0 flex-1" style={{ maxWidth: SHEET_MAX_WIDTH }}>
               {ai?.note}
+              {owned?.aiMade === true && (
+                // Kept in the bank unchecked: said here, read-only (Checked is pressed on the paper it is opened in).
+                <p className="mb-2 flex items-center gap-1.5 text-[12.5px] text-accent-ink" data-stage-ai-made title={aiMade.chipTitle}>
+                  <SparkleIcon size={12} />
+                  {aiMade.chip}
+                </p>
+              )}
               {testsWhat && (
                 <p className="mb-2 flex items-center gap-2 text-[12.5px] text-ink-muted" data-stage-tests>
                   {/* The paper's margin rule, as a key: literal hex like the sheet's mark. */}

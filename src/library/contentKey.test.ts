@@ -26,6 +26,8 @@ describe('contentKey', () => {
     expect(contentKey({ ...question, tags: ['C.ped'], tagsAt: '2026-09-30T00:00:00.000Z', gapBefore: 3 })).toBe(key);
     // Where the question sits on the paper is not what it says: ticking either never makes a new version.
     expect(contentKey({ ...question, startOnNewPage: true, keepOnOnePage: true })).toBe(key);
+    // Whether the Question studio wrote it and a teacher has read it yet is review state: Checked is not an edit.
+    expect(contentKey({ ...question, aiMade: true })).toBe(key);
     const reordered = Object.fromEntries(Object.entries(question).reverse()) as typeof question;
     expect(contentKey(reordered)).toBe(key);
   });

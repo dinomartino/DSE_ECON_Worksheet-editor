@@ -3,9 +3,11 @@ import type { Question } from '@/model/types';
 
 /**
  * Fields that say where a copy sits or came from, not what it says: its place on the paper (the
- * gap above it, the page it starts or is kept on) is the paper's business, not the question's.
+ * gap above it, the page it starts or is kept on) is the paper's business, not the question's,
+ * and whether the Question studio wrote it and a teacher has read it yet (`aiMade`) is review
+ * state: pressing Checked must not make a new version.
  */
-export const IGNORED = ['lineage', 'tags', 'tagsAt', 'gapBefore', 'keepOnOnePage', 'startOnNewPage'] as const;
+export const IGNORED = ['lineage', 'tags', 'tagsAt', 'gapBefore', 'keepOnOnePage', 'startOnNewPage', 'aiMade'] as const;
 
 /** The same, on every part and sub-part (`questionIdOwners`' `part` owners): its topics and its identity across copies. */
 export const IGNORED_PART = ['tags', 'rootId'] as const;
@@ -13,7 +15,7 @@ export const IGNORED_PART = ['tags', 'rootId'] as const;
 /**
  * A fingerprint of what a question says: every id `questionIdOwners` finds is blanked and
  * the `IGNORED` metadata (`lineage`, `tags`, `tagsAt`, `gapBefore`, `keepOnOnePage`,
- * `startOnNewPage`) dropped, with each
+ * `startOnNewPage`, `aiMade`) dropped, with each
  * part's `IGNORED_PART` (`tags`, `rootId`), so `copyQuestion` copies are equal and any text
  * edit is not. Keys are sorted, so field order never matters.
  */

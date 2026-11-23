@@ -127,7 +127,8 @@ export function freshIdsKeepingParts<Q extends Question>(question: Q): Q {
  * A question's ask to start a new page (`startOnNewPage`) stays behind: where it falls in a paper
  * is that paper's business, and a bank question that arrived with it would break a page in every
  * paper it was dropped into. Its ask to be kept on one page (`keepOnOnePage`) is about the
- * question's own size and travels.
+ * question's own size and travels, and so does the Question studio's label (`aiMade`): a
+ * question nobody has checked yet stays marked wherever it is copied to.
  */
 export function copyQuestion<Q extends Question>(question: Q, fromDocId?: string): Q {
   const lineage = question.lineage;

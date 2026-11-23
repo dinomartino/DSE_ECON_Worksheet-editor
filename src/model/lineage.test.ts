@@ -115,6 +115,13 @@ describe('copyQuestion', () => {
     expect(copyQuestion(richMcq())).not.toHaveProperty('startOnNewPage');
   });
 
+  it('keeps the Question studio label on a copy and on a duplicate: an unchecked question stays marked', () => {
+    const made = { ...richMcq(), aiMade: true as const };
+    expect(copyQuestion(made, 'doc-a').aiMade).toBe(true);
+    expect(freshIds(made).aiMade).toBe(true);
+    expect(copyQuestion(richMcq())).not.toHaveProperty('aiMade');
+  });
+
   it('keeps the ask to start a new page on an in-document duplicate, which is a copy beside it', () => {
     const placed = { ...richStructured(), startOnNewPage: true };
     expect(freshIds(placed).startOnNewPage).toBe(true);

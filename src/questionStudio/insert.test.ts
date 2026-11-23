@@ -46,6 +46,8 @@ describe('studioBuilds', () => {
     // Nothing that says "a copy": no source line, no lineage.
     expect(inserted[0].provenance).toBeUndefined();
     expect(inserted[0].lineage).toBeUndefined();
+    // Labelled until the teacher presses Checked.
+    expect(inserted.every((q) => q.aiMade === true)).toBe(true);
     // The combination item keeps its statements.
     expect((inserted[2].statements ?? []).length).toBe(3);
   });

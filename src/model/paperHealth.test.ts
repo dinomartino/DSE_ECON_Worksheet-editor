@@ -168,6 +168,23 @@ describe('checkPaper', () => {
       expect(ids(checkPaper(sheet(agrees, differs, unmarked)))).not.toContain('schemeMarks');
     });
 
+    it('warns on a question the Question studio wrote until Checked, in the order the paper prints', () => {
+      const made = mcq(0, 'm');
+      made.aiMade = true;
+      const read = mcq(1, 'r');
+      const alsoMade = mcq(2, 'n');
+      alsoMade.aiMade = true;
+      const report = checkPaper(sheet(read, made, alsoMade));
+      const finding = report.findings.find((f) => f.id === 'aiMade');
+      expect(finding?.severity).toBe('warn');
+      expect(finding?.questions?.map((q) => q.number)).toEqual([2, 3]);
+      expect(finding?.message).toBe('2 questions are AI-made and not checked yet.');
+      expect(report.severity).toBe('warn');
+      made.aiMade = undefined;
+      alsoMade.aiMade = undefined;
+      expect(ids(checkPaper(sheet(read, made, alsoMade)))).not.toContain('aiMade');
+    });
+
     it('warns on empty questions, blank options and duplicate options', () => {
       const blank = mcq(0, 'b');
       blank.options[3].text = bi('', '');

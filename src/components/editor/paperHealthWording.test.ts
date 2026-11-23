@@ -21,7 +21,10 @@ describe('the Paper check wording', () => {
   essay.blocks = [createParagraphBlock(bi('Explain.', '解釋。'))];
   essay.parts[0].marks = 2;
   essay.parts[0].scheme = { routes: [{ id: newId(), groups: [{ id: newId(), points: [{ id: newId(), text: bi('P', 'P'), marks: 1 }] }] }] };
-  const questions = [...Array.from({ length: 10 }, (_, i) => mcq(0, `q${i}`)), mcq(undefined, 'x'), createStructuredQuestion(), essay];
+  // One the Question studio wrote and nobody has checked.
+  const made = mcq(1, 'ai');
+  made.aiMade = true;
+  const questions = [...Array.from({ length: 10 }, (_, i) => mcq(0, `q${i}`)), mcq(undefined, 'x'), createStructuredQuestion(), essay, made];
   const worksheet = withFlow(createWorksheet(), questions, { replaceLayout: true });
   worksheet.target = { marks: 3, counts: { mcq: 40 } };
   const report = checkPaper(worksheet);
@@ -35,6 +38,10 @@ describe('the Paper check wording', () => {
 
   it('includes the scheme/marks mismatch', () => {
     expect(report.findings.map((f) => f.id)).toContain('schemeMarks');
+  });
+
+  it('includes a question the studio wrote that nobody has checked', () => {
+    expect(report.findings.map((f) => f.id)).toContain('aiMade');
   });
 
   it('says every finding in Chinese', () => {

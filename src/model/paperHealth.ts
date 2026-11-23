@@ -27,6 +27,7 @@ export type HealthFindingId =
   | 'untranslated'
   | 'unanswered'
   | 'schemeMarks'
+  | 'aiMade'
   | 'unmarked'
   | 'timeMismatch'
   | 'overTarget'
@@ -196,6 +197,12 @@ export function checkPaper(
 
   flag('schemeMarks', 'warn', live.filter((e) => e.schemeMismatch), (n) =>
     `${plural(n, 'question has', 'questions have')} a marking scheme that totals differently from the marks printed.`,
+  );
+  // Written by the Question studio and not checked yet (`Question.aiMade`, decision 5, k-0499): a
+  // warning, so the last look before printing says it. Pressing Checked in the Edit panel clears it.
+  const unchecked = new Set(plan.questions.filter(({ question }) => question.aiMade === true).map(({ question }) => question.id));
+  flag('aiMade', 'warn', entries.filter((e) => unchecked.has(e.ref.questionId)), (n) =>
+    `${plural(n, 'question is', 'questions are')} AI-made and not checked yet.`,
   );
 
   const letters = letterBalance(choice);
