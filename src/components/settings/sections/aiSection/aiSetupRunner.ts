@@ -208,10 +208,13 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
     async forget(): Promise<void> {
       const which = state.confirmForget;
       if (!which) return;
-      const gone = which === 'all' ? PROVIDER_IDS : [which];
+      // "Forget all keys" leaves the DSEcon Mentor sign-in alone: Sign out is its own button.
+      const gone = which === 'all' ? PROVIDER_IDS.filter((id) => presetFor(id).group !== 'hosted') : [which];
       gone.forEach(stopSavedTest);
       await Promise.all(gone.map((id) => deps.deleteSecret(account(id))));
-      patch((s) => ({ keychainSaved: which === 'all' ? {} : withFlag(s.keychainSaved, which, false) }));
+      patch((s) => ({
+        keychainSaved: which === 'all' ? (s.keychainSaved.mentor ? { mentor: true } : {}) : withFlag(s.keychainSaved, which, false),
+      }));
       send({ type: 'forgotten', which });
     },
     model(id: string): void {

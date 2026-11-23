@@ -13,7 +13,9 @@ import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { AiSettings } from '@/settings/aiSettings';
 import type { SettingsEnv } from '@/settings/types';
+import type { MentorState } from '@/settings/mentorAccount';
 import type { AiSectionActions } from './AiSection';
+import { MentorAccountCard, type MentorCardActions } from './MentorAccountCard';
 import {
   canTest,
   canTestSaved,
@@ -54,6 +56,9 @@ export interface AiSectionViewProps {
   listed: ModelInfo[] | null;
   platform: 'mac' | 'windows' | 'web';
   actions: AiSectionActions;
+  /** The DSEcon Mentor account (k-0519). */
+  mentor: MentorState;
+  mentorActions: MentorCardActions;
 }
 
 export function AiSectionView(props: AiSectionViewProps) {
@@ -98,6 +103,44 @@ export function AiSectionView(props: AiSectionViewProps) {
           ⚠ {regionBanner(refusedBy)}
         </p>
       )}
+      <MentorAccountCard
+        state={props.mentor}
+        inUse={settings.provider === 'mentor'}
+        focus={props.focus === 'account'}
+        actions={props.mentorActions}
+      />
+      {props.mentor.kind === 'signedIn' ? (
+        // Signed in, the account is the default and own keys are Advanced (k-0519, u-x8td).
+        <div className="-mx-3">
+          <Collapsible plain title={m.ownKeyAdvanced} defaultOpen={settings.provider !== 'mentor' || props.focus === 'ownKey' || props.focus === 'key' || props.focus === 'model'}>
+            <div className="space-y-4">
+              <OwnKeys {...props} card={card} selectedInMore={selectedInMore} />
+            </div>
+          </Collapsible>
+        </div>
+      ) : (
+        <OwnKeys {...props} card={card} selectedInMore={selectedInMore} />
+      )}
+      <CheckField
+        label={m.includeTeacher}
+        checked={settings.includeTeacherText}
+        onChange={actions.includeTeacher}
+      />
+      <div className="-mx-3 -mt-2">
+        <Collapsible plain title={m.privacyAndTerms} keepMounted>
+          <About {...props} />
+        </Collapsible>
+      </div>
+    </div>
+  );
+}
+
+/** Your keys and the provider cards: the own-key setup (under Advanced once signed in to Mentor). */
+function OwnKeys(props: AiSectionViewProps & { card: (id: ProviderId) => ReactNode; selectedInMore: boolean }) {
+  const { card, selectedInMore } = props;
+  const m = useMessages(AI_SECTION_MESSAGES);
+  return (
+    <>
       <YourKeys {...props} />
       <div role="radiogroup" aria-label={m.providerGroup} className="divide-y divide-line overflow-hidden rounded-xl border border-line">
         {TOP.map(card)}
@@ -117,17 +160,7 @@ export function AiSectionView(props: AiSectionViewProps) {
           </div>
         </Collapsible>
       </div>
-      <CheckField
-        label={m.includeTeacher}
-        checked={settings.includeTeacherText}
-        onChange={actions.includeTeacher}
-      />
-      <div className="-mx-3 -mt-2">
-        <Collapsible plain title={m.privacyAndTerms} keepMounted>
-          <About {...props} />
-        </Collapsible>
-      </div>
-    </div>
+    </>
   );
 }
 

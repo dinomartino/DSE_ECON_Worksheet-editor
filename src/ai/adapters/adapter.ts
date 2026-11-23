@@ -21,6 +21,8 @@ export interface Adapter {
   buildStream(preset: ProviderPreset, config: ProviderConfig, req: CompletionRequest, dialect: OutputDialect): WireRequest;
   /** What one event's JSON carries; null for an event with nothing of ours (a ping, a start). */
   streamPiece(event: unknown): StreamPiece | null;
+  /** A stream that ends without a `settled` piece failed (Mentor's relay, k-0519). */
+  mustSettle?: boolean;
 }
 
 /** A streamed event's useful part: new text, and at the end why it stopped and the counts. */
@@ -30,6 +32,8 @@ export interface StreamPiece {
   usage?: CompletionResult['usage'];
   /** The provider sent an error event mid-stream. */
   error?: string;
+  /** The relay's closing receipt (`mustSettle`). */
+  settled?: true;
 }
 
 /** `build`'s body with extra fields. */

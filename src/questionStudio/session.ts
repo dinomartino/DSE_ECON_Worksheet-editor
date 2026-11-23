@@ -47,6 +47,8 @@ export interface StudioForm {
   shape: Shape;
   language: LanguageMode;
   note: string;
+  /** Key point code(s) the chat is on (main first): step 1 keeps them for a follow-up. Not part of the request. */
+  current?: string[];
 }
 
 /** A draft on the sheet with the request it was written for (refining it asks the same thing again). */
@@ -204,11 +206,11 @@ export type KeyPointsResult =
  * the syllabus, with a reason. A request that already names one (set by hand, or a refine of
  * a draft) goes through untouched, with no call.
  */
-export async function withKeyPoints(request: StudioRequest, deps: Pick<StudioDeps, 'client' | 'preset'>, hooks: Pick<RunHooks, 'signal' | 'progress' | 'onEvent'>): Promise<KeyPointsResult> {
+export async function withKeyPoints(request: StudioRequest, deps: Pick<StudioDeps, 'client' | 'preset'>, hooks: Pick<RunHooks, 'signal' | 'progress' | 'onEvent'>, current?: readonly string[]): Promise<KeyPointsResult> {
   if (!needsPick(request)) return { ok: true, request, picks: [], usage: emptyUsage() };
   hooks.progress?.(0, 3, 'pick');
   hooks.onEvent?.({ type: 'stage', stage: 'pick' });
-  const picked = await pickKeyPoints({ text: request.note, examples: request.examples }, deps, hooks.signal);
+  const picked = await pickKeyPoints({ text: request.note, examples: request.examples, ...(current?.length ? { current } : {}) }, deps, hooks.signal);
   if (!picked.ok) return { ok: false, error: picked.error, usage: picked.usage };
   hooks.onEvent?.({ type: 'pick', picks: picked.picks });
   const [main, ...rest] = picked.picks;
@@ -339,7 +341,7 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
           action,
           async (deps, runHooks) => {
             // The pictures of a picked question are read first: step 1 may need them to see what it tests.
-            const step1 = await withKeyPoints(await withExampleFigures(asked, env), deps, runHooks);
+            const step1 = await withKeyPoints(await withExampleFigures(asked, env), deps, runHooks, form.current);
             if (!step1.ok) return { ok: false, error: step1.error, usage: step1.usage };
             picks = step1.picks;
             // Step 1 took one of the requests: the bar counts on from there.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BiDraft, McqDraft } from '@/generate/types';
-import { cleanMcq, parseWriteReply, shapeFindings, statusOf } from './validate';
+import { cleanMcq, parseChanges, parseWriteReply, shapeFindings, statusOf } from './validate';
 import { INVENTED, replyEntry } from './fixtures';
 import type { CheckRow } from './types';
 
@@ -15,6 +15,31 @@ const base = (over: Partial<McqDraft> = {}): McqDraft => ({
   ...over,
 });
 const ids = (d: McqDraft, sides: ReadonlyArray<'en' | 'zh'> = ['en']) => shapeFindings(d, sides).map((f) => f.id);
+
+describe('parseChanges (k-0520)', () => {
+  it('keeps known aspects once each in the screen order, a string note as English, drops empty and unknown ones', () => {
+    const out = parseChanges([
+      { aspect: 'key', note: { en: 'key moves to C', zh: '答案移到 C' } },
+      { aspect: 'Varies', note: { en: 'a different firm', zh: '另一家公司' } },
+      { aspect: 'numbers', note: 'new prices' },
+      { aspect: 'numbers', note: 'again' },
+      { aspect: 'format', note: { en: '', zh: '' } },
+      { aspect: 'tone', note: { en: 'x', zh: 'x' } },
+      'junk',
+    ]);
+    expect(out).toEqual([
+      { aspect: 'varies', note: { en: 'a different firm', zh: '另一家公司' } },
+      { aspect: 'numbers', note: { en: 'new prices', zh: '' } },
+      { aspect: 'key', note: { en: 'key moves to C', zh: '答案移到 C' } },
+    ]);
+    expect(parseChanges(undefined)).toEqual([]);
+  });
+  it('a reply without "changes" still parses, with none', () => {
+    expect(parseWriteReply(JSON.stringify({ questions: [replyEntry(INVENTED[0])] }))![0].changes).toEqual([]);
+    const withChanges = { ...replyEntry(INVENTED[0]), changes: [{ aspect: 'format', note: { en: 'now a combination item', zh: '改為組合題' } }] };
+    expect(parseWriteReply(JSON.stringify({ questions: [withChanges] }))![0].changes).toEqual([{ aspect: 'format', note: { en: 'now a combination item', zh: '改為組合題' } }]);
+  });
+});
 
 describe('parseWriteReply', () => {
   it('reads the questions out of a fenced reply and keeps the model\'s angle', () => {

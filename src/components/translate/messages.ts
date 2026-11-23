@@ -61,6 +61,10 @@ export const COPY_MESSAGES = defineMessages({
     zh: 'DeepSeek 和 Qwen 在香港毋須 VPN 也可以使用。',
   },
   tryAgain: { en: 'Try again', zh: '再試一次' },
+  // The DSEcon Mentor account's errors (k-0519).
+  signInAgain: { en: 'Sign in…', zh: '登入…' },
+  buyCredits: { en: 'Buy credits', zh: '購買點數' },
+  useOwnKey: { en: 'Use my own key…', zh: '改用自己的 API key…' },
   openSettings: { en: 'Open Settings', zh: '開啟設定' },
   chooseModel: { en: 'Choose a model…', zh: '選擇模型…' },
   switchProvider: { en: 'Switch provider…', zh: '轉換供應商…' },

@@ -22,6 +22,8 @@ import { isDesktop, openExternal } from '@/platform';
 import { platformMessages } from '@/platform/text';
 import { peekSecret, secretStoreLabel } from '@/platform/secrets';
 import { AI_SETTINGS } from '@/settings/aiSettings';
+import { mentorSession, useMentorAccount, type MentorState } from '@/settings/mentorAccount';
+import { AI_SECTION_MESSAGES } from '@/components/settings/sections/aiSection/messages';
 import { appSettings } from '@/settings/store';
 import { useAppDialogs } from '@/store/appDialogs';
 import { AI_UI_MESSAGES } from './messages';
@@ -51,6 +53,12 @@ export function SetupCard({ verb, onReady = closeMenu, onCancel = closeMenu }: S
   const state = useSyncExternalStore(runner.subscribe, runner.current, runner.current);
   const flow = useMemo(() => createSetupCardFlow(runner, onReady), [runner, onReady]);
   useEffect(() => () => runner.dispose(), [runner]);
+  // Signing in to DSEcon Mentor from here (k-0519) finishes setup: the verb runs.
+  const mentor = useMentorAccount();
+  const [signingIn, setSigningIn] = useState(false);
+  useEffect(() => {
+    if (signingIn && mentor.kind === 'signedIn') onReady();
+  }, [signingIn, mentor.kind, onReady]);
 
   return (
     <SetupCardView
@@ -65,6 +73,13 @@ export function SetupCard({ verb, onReady = closeMenu, onCancel = closeMenu }: S
         useAppDialogs.getState().openSettings({ section: 'ai' });
       }}
       onGetKey={(url) => void openExternal(url)}
+      mentor={mentor}
+      onMentorSignIn={() => {
+        setSigningIn(true);
+        void mentorSession().signIn();
+      }}
+      onMentorCancel={() => mentorSession().cancel()}
+      onMentorReopen={(url) => void openExternal(url)}
     />
   );
 }
@@ -78,6 +93,11 @@ export interface SetupCardViewProps {
   onCancel(): void;
   onMore(): void;
   onGetKey(url: string): void;
+  /** The DSEcon Mentor account (k-0519); absent in older tests: no sign-in row. */
+  mentor?: MentorState;
+  onMentorSignIn?(): void;
+  onMentorCancel?(): void;
+  onMentorReopen?(url: string): void;
 }
 
 /** Where the key is kept, in one line under the header. */
@@ -107,6 +127,7 @@ export function SetupCardView(props: SetupCardViewProps) {
         </div>
         <p className="text-[11px] leading-snug text-ink-muted">{keepsLine(desktop, props.platform)}</p>
       </div>
+      {props.mentor && <MentorRow {...props} mentor={props.mentor} />}
       <div role="radiogroup" aria-label={m.aiProvider} className="divide-y divide-line overflow-hidden rounded-lg border border-line">
         {TOP_PROVIDERS.map((id) => (
           <ProviderRow
@@ -144,6 +165,62 @@ export function SetupCardView(props: SetupCardViewProps) {
         </Button>
       </div>
     </div>
+  );
+}
+
+/** No key: sign in with DSEcon Mentor instead (k-0519). Shown above the own-key setup. */
+function MentorRow({ mentor, onMentorSignIn, onMentorCancel, onMentorReopen }: SetupCardViewProps & { mentor: MentorState }) {
+  const m = useMessages(AI_UI_MESSAGES);
+  const s = useMessages(AI_SECTION_MESSAGES);
+  const lang = useUiLanguage();
+  const problem =
+    mentor.kind !== 'signedOut'
+      ? null
+      : mentor.error
+        ? localizedErrorMessage(mentor.error, lang)
+        : mentor.reason === 'denied'
+          ? s.mentorDenied
+          : mentor.reason === 'expired'
+            ? s.mentorExpired
+            : mentor.reason === 'keychain'
+              ? s.mentorKeychain
+              : null;
+  return (
+    <>
+      <div data-setup-mentor={mentor.kind} className="space-y-1.5 rounded-lg border border-line bg-surface-raised px-2.5 py-2">
+        {mentor.kind === 'linking' ? (
+          <>
+            <p role="status" aria-live="polite" className="text-[11px] leading-snug text-ink">
+              {mentor.code ? s.mentorWaiting(mentor.code) : s.mentorStarting}
+            </p>
+            {mentor.code && <p className="font-mono text-sm font-semibold tracking-widest text-ink">{mentor.code}</p>}
+            <div className="flex items-center gap-2">
+              {mentor.verifyUrl && (
+                <Button size="sm" onClick={() => onMentorReopen?.(mentor.verifyUrl as string)}>
+                  {s.mentorOpenAgain}
+                </Button>
+              )}
+              <Button size="sm" variant="subtle" onClick={() => onMentorCancel?.()}>
+                {m.cancel}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-[11px] leading-snug text-ink-muted">{m.mentorNoKey}</p>
+            {problem && (
+              <p role="alert" className="text-[11px] text-warn-ink">
+                {problem}
+              </p>
+            )}
+            <Button size="sm" variant="primary" onClick={() => onMentorSignIn?.()}>
+              {s.mentorSignIn}
+            </Button>
+          </>
+        )}
+      </div>
+      <p className="text-[11px] font-medium text-ink-muted">{m.orOwnKey}</p>
+    </>
   );
 }
 

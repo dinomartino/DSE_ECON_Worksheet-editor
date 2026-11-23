@@ -28,6 +28,20 @@ export const AI_UI_MESSAGES = defineMessages({
   noMatch: { en: (query: string) => `No AI action matches “${query}”`, zh: (query: string) => `沒有符合「${query}」的 AI 功能` },
   nothingToDo: { en: 'Nothing to do for this selection', zh: '所選內容沒有可執行的項目' },
   free: { en: 'free', zh: '免費' },
+  // First-run setup: the DSEcon Mentor account before an own key (k-0519).
+  mentorNoKey: {
+    en: 'No API key? Sign in with DSEcon Mentor and pay only for what you use. New accounts get free trial credits.',
+    zh: '沒有 API key？以 DSEcon Mentor 登入，按用量付費。新帳戶可獲免費試用點數。',
+  },
+  orOwnKey: { en: 'Or use your own API key:', zh: '或使用你自己的 API key：' },
+  // Before a run on the DSEcon Mentor account (k-0519, E4).
+  creditsAbout: {
+    en: (n: string, one: boolean) => `Uses about ${n} ${one ? 'credit' : 'credits'}`,
+    // 中文 has one word for one and many.
+    zh: (n: string, one: boolean) => (one ? `約用 ${n} 點` : `約用 ${n} 點`),
+  },
+  creditsLeft: { en: (n: string) => `${n} left`, zh: (n: string) => `尚餘 ${n} 點` },
+  creditsShort: { en: 'More than your credits left', zh: '多於尚餘點數' },
   scope: { en: (label: string) => `Scope: ${label}`, zh: (label: string) => `範圍：${label}` },
   groupTranslate: { en: 'Translate', zh: '翻譯' },
   groupCheck: { en: 'Check', zh: '檢查' },

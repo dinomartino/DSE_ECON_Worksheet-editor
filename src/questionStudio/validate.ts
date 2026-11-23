@@ -19,7 +19,7 @@ import { scanLimited } from './guard';
 import { lintDraft } from './lint';
 import { checkNearCopy, EMPTY_CORPUS, type CorpusDoc, type CorpusIndex } from './nearCopy';
 import { checkNumbers } from './numbers';
-import type { CheckRow, DraftStatus, Finding, Shape, StudioDraft } from './types';
+import { CHANGE_ASPECTS, type ChangeAspect, type CheckRow, type DraftChange, type DraftStatus, type Finding, type Shape, type StudioDraft } from './types';
 
 /**
  * Checking what the model wrote: the reply → clean drafts → one `CheckRow` per check. All
@@ -27,9 +27,31 @@ import type { CheckRow, DraftStatus, Finding, Shape, StudioDraft } from './types
  * means the draft is never offered for insert; `look` means read it.
  */
 
-export interface RawDraft { draft: McqDraft; angle: string }
+export interface RawDraft { draft: McqDraft; angle: string; changes: DraftChange[] }
 
 const asText = (x: unknown): string => (typeof x === 'string' ? x.trim().slice(0, 200) : '');
+
+const asBi = (x: unknown): { en: string; zh: string } => {
+  const v = typeof x === 'object' && x !== null ? (x as Record<string, unknown>) : {};
+  return { en: asText(v.en), zh: asText(v.zh) };
+};
+
+/** The reply's "what changed" list: known aspects only, one note each (the first), no empty notes. A string note counts as English. */
+export function parseChanges(x: unknown): DraftChange[] {
+  if (!Array.isArray(x)) return [];
+  const out: DraftChange[] = [];
+  for (const entry of x) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const { aspect, note } = entry as { aspect?: unknown; note?: unknown };
+    if (typeof aspect !== 'string') continue;
+    const key = aspect.trim().toLowerCase() as ChangeAspect;
+    if (!CHANGE_ASPECTS.includes(key) || out.some((c) => c.aspect === key)) continue;
+    const bi = typeof note === 'string' ? { en: asText(note), zh: '' } : asBi(note);
+    if (!bi.en && !bi.zh) continue;
+    out.push({ aspect: key, note: bi });
+  }
+  return out.sort((a, b) => CHANGE_ASPECTS.indexOf(a.aspect) - CHANGE_ASPECTS.indexOf(b.aspect));
+}
 
 /**
  * A key written as a letter ("B") or a digit in a string ("1") reads as its index; a
@@ -53,7 +75,7 @@ export function parseWriteReply(text: string): RawDraft[] | null {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) continue;
     const fields = entry as Record<string, unknown>;
     const draft = draftOf({ ...fields, answer: answerIndexOf(fields.answer), kind: 'mcq' });
-    if (draft?.kind === 'mcq') out.push({ draft, angle: asText((entry as { angle?: unknown }).angle) });
+    if (draft?.kind === 'mcq') out.push({ draft, angle: asText((entry as { angle?: unknown }).angle), changes: parseChanges((entry as { changes?: unknown }).changes) });
   }
   return out;
 }

@@ -36,8 +36,17 @@ export const STUDIO_QUESTIONS_SCHEMA: JsonSchema = {
           answer: { type: 'integer' },
           explanation: BI,
           angle: { type: 'string' },
+          changes: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { aspect: { type: 'string' }, note: BI },
+              required: ['aspect', 'note'],
+              additionalProperties: false,
+            },
+          },
         },
-        required: ['stem', 'statements', 'options', 'answer', 'explanation', 'angle'],
+        required: ['stem', 'statements', 'options', 'answer', 'explanation', 'angle', 'changes'],
         additionalProperties: false,
       },
     },
@@ -50,7 +59,7 @@ export const STUDIO_QUESTIONS_SCHEMA: JsonSchema = {
 export const STUDIO_SHAPE_HINT =
   'Reply with one JSON object only, exactly in this shape: {"questions":[{"stem":{"en":"…","zh":"…"},"statements":[],' +
   '"options":[{"en":"…","zh":"…"},{"en":"…","zh":"…"},{"en":"…","zh":"…"},{"en":"…","zh":"…"}],"answer":0,' +
-  '"explanation":{"en":"…","zh":"…"},"angle":"…"}]}';
+  '"explanation":{"en":"…","zh":"…"},"angle":"…","changes":[{"aspect":"varies","note":{"en":"…","zh":"…"}}]}]}';
 
 export const STUDIO_SYSTEM_PROMPT = [
   WRITE_TASK_MARKER,
@@ -68,6 +77,7 @@ export const STUDIO_SYSTEM_PROMPT = [
   '9. Numbers must be right: work out every figure you state and check it against the key before you write it. Use the same numbers in every language ("5 billion" is 50億, "1 million" is 100萬). Use Hong Kong contexts and HK$ where natural.',
   '10. "explanation": two or three short sentences: why the key is right, and why each wrong option is wrong.',
   '11. Write every text in the languages listed in "languages"; a language not listed is "". Chinese is Traditional Chinese as in Hong Kong DSE papers, using the EDB Economics glossary terms in "glossary" exactly. **bold** is the only markup: use it for **NOT** in a negative stem, as HKEAA papers do, and nowhere else.',
+  '12. "changes": only when "examples" are given (else []): what this question changed from the example it follows (question n follows example n, cycling), at most one entry per aspect, in this order, each a short phrase ("note", in the languages listed, like every text): "varies" = the context, scenario or slip it tests instead; "format" = a change of question format (plain or combination, number of statements); "numbers" = the figures that changed (say which); "key" = where the key sits now, against the example\'s. Leave out an aspect that did not change.',
   'Return JSON only.',
 ].join('\n');
 
@@ -109,10 +119,10 @@ const draftPayload = (draft: DraftText, wanted: readonly Side[]) => ({
   explanation: sides(draft.explanation, wanted),
 });
 
-/** Output room: about 700 tokens per question per language, plus a thinking allowance, under the cap. */
+/** Output room: about 850 tokens per question per language (the "changes" notes included), plus a thinking allowance, under the cap. */
 export function writeTokens(count: number, sideCount: number, preset: ProviderPreset): number {
   const thinking = preset.family === 'gemini' ? 4096 : 0;
-  return Math.min(preset.outputCap, 1500 + 700 * count * Math.max(1, sideCount) + thinking);
+  return Math.min(preset.outputCap, 1500 + 850 * count * Math.max(1, sideCount) + thinking);
 }
 
 export function buildWriteRequest(brief: Brief, job: WriteJob, glossary: Glossary | null, preset: ProviderPreset, signal: AbortSignal): CompletionRequest {

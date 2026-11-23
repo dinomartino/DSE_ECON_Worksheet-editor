@@ -11,6 +11,8 @@ import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
 import { Button, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
+import type { CreditJob } from '@/ai/credits';
+import { CreditEstimate } from '@/components/ai/CreditEstimate';
 
 /**
  * The import check in the import review (k-0494, user u-ywqa): what the import got wrong,
@@ -39,7 +41,7 @@ export function ImportCheckPanel({
   safe: number;
   stale: number;
   /** The AI check's run and the provider it would go to (Settings → AI). */
-  ai: { run: AiRun; provider: string; configured: boolean };
+  ai: { run: AiRun; provider: string; configured: boolean; estimate?: CreditJob | null };
   onApply: (finding: ImportFinding) => void;
   onSkip: (finding: ImportFinding) => void;
   onApplySafe: () => void;
@@ -170,6 +172,7 @@ export function AiCheckRow({
   run,
   provider,
   configured,
+  estimate,
   onAsk,
   onStop,
   now: fixedNow,
@@ -177,6 +180,8 @@ export function AiCheckRow({
   run: AiRun;
   provider: string;
   configured: boolean;
+  /** "Uses about N credits" on the DSEcon Mentor account, before it runs (k-0519). */
+  estimate?: CreditJob | null;
   onAsk: () => void;
   onStop: () => void;
   /** Tests pin the clock. */
@@ -214,6 +219,7 @@ export function AiCheckRow({
           </Button>
         )}
       </div>
+      {run.state === 'idle' && configured && <CreditEstimate job={estimate} className="mt-0.5" />}
       {busy && (
         <div className="mt-1.5 flex items-center gap-2">
           <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-line" aria-hidden>

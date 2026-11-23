@@ -15,6 +15,7 @@ import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { isWholeSet, useSetPapers } from '@/components/editor/setMembers';
+import { CreditEstimate } from './CreditEstimate';
 import { countLabel, highlighted, menuGroups, stepFor, stepHighlight, type MenuGroup, type MenuStep } from './aiMenuModel';
 import { AI_UI_MESSAGES } from './messages';
 import { ProviderFooter } from './ProviderFooter';
@@ -257,6 +258,7 @@ function VerbList({
                   {verb.input && <ChevronRightIcon size={13} className="text-ink-subtle" />}
                 </span>
                 {sends && <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{sends}</span>}
+                {on && verb.needsKey !== false && verb.estimate && <CreditEstimate job={verb.estimate(ctx)} className="mt-0.5" />}
               </button>
             );
           })}

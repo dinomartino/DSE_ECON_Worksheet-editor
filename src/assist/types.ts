@@ -1,3 +1,4 @@
+import type { CreditJob } from '@/ai/credits';
 import type { AiErrorInfo } from '@/ai/types';
 import type { OutputMode, SavedCoverageReport, Worksheet } from '@/model/types';
 import type { TranslateScope } from '@/translate/types';
@@ -56,6 +57,11 @@ export interface AiVerb {
   needsKey: boolean;
   /** One line under the label while highlighted, e.g. "Sends 52 texts to Gemini with your key". */
   sendsLine?(ctx: VerbContext, providerLabel: string): string;
+  /**
+   * What a run would send, in tokens, for "Uses about N credits" on the DSEcon Mentor
+   * account (k-0519). Absent or null: no estimate shown.
+   */
+  estimate?(ctx: VerbContext): CreditJob | null;
   /** Present when the teacher must give input before running (E3's pasted source). */
   input?: VerbInput;
   run(ctx: VerbContext, io: VerbIO, input?: string): Promise<VerbOutcome>;

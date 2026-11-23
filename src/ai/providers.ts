@@ -259,6 +259,39 @@ const ollama: ProviderPreset = {
   denyHintsInPrompt: true,
 };
 
+/** Mentor's app API root; the relay is `${MENTOR_API}/ai` (k-0519, `Outbox/k-0518/CONTRACT.md`). */
+export const MENTOR_API = 'https://dseconmentor.com/api/app/v1';
+/** The only model the hosted relay runs (the user, u-x8td). */
+export const MENTOR_MODEL = 'gemini-4-hydrogen';
+
+/**
+ * The DSEcon Mentor account (k-0519): no key. The teacher signs in (link code), and the editor
+ * sends Gemini's own request, wrapped, to Mentor's relay with the sign-in token as a bearer;
+ * Mentor holds the Gemini key and the model (Gemini 4 Hydrogen), holds the credits a call may
+ * cost and keeps its real cost. `family: 'gemini'` keeps every Gemini budget (thinking) as it
+ * is. Never a provider card: Settings → AI shows it as the account at the top.
+ */
+const mentor: ProviderPreset = {
+  id: 'mentor',
+  label: 'DSEcon Mentor',
+  group: 'hosted',
+  hk: { status: 'available', note: 'Works in Hong Kong without a VPN.' },
+  blurb: 'No key needed: sign in and pay for what you use.',
+  privacy:
+    "Sent to DSEcon Mentor's server, which passes them to Google Gemini (paid service: not used to improve Google's products). Mentor keeps a usage record (when, which feature, cost), never the text.",
+  family: 'gemini',
+  baseUrl: `${MENTOR_API}/ai`,
+  baseUrlEditable: false,
+  keyRequired: true,
+  billingUrl: 'https://dseconmentor.com/account#ai-credits',
+  models: [{ id: MENTOR_MODEL, label: 'Gemini 4 Hydrogen', extra: { thinkingLevel: 'low' } }],
+  structured: 'gemini',
+  outputCap: 65536,
+  concurrency: 3,
+  denyHintsInPrompt: true,
+  relay: 'mentor',
+};
+
 export const PRESETS: Readonly<Record<ProviderId, ProviderPreset>> = {
   gemini,
   deepseek,
@@ -268,6 +301,7 @@ export const PRESETS: Readonly<Record<ProviderId, ProviderPreset>> = {
   anthropic,
   custom,
   ollama,
+  mentor,
 };
 
 /** The preset for `id`; an unknown id (a newer build's provider) reads as Gemini. */

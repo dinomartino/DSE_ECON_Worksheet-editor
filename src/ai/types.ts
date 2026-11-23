@@ -3,7 +3,7 @@
  * `src/model`, `src/settings`, `@/platform` or Tauri: it is plain transport.
  */
 
-export const PROVIDER_IDS = ['gemini', 'deepseek', 'qwen', 'openrouter', 'openai', 'anthropic', 'custom', 'ollama'] as const;
+export const PROVIDER_IDS = ['gemini', 'deepseek', 'qwen', 'openrouter', 'openai', 'anthropic', 'custom', 'ollama', 'mentor'] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 export type ApiFamily = 'gemini' | 'openai' | 'anthropic';
 export type OutputDialect =
@@ -15,7 +15,8 @@ export interface ProviderPreset {
   id: ProviderId;
   /** "Google Gemini". */
   label: string;
-  group: 'top' | 'more';
+  /** 'hosted': the DSEcon Mentor account (k-0519), never a card among the own-key providers. */
+  group: 'top' | 'more' | 'hosted';
   /** Gemini only. */
   recommended?: true;
   hk: { status: 'available' | 'notOfficial' | 'unavailable' | 'local' | 'unknown'; note: string };
@@ -51,6 +52,11 @@ export interface ProviderPreset {
   denyHintsInPrompt: boolean;
   /** Offered on 429. */
   quotaFallbackModel?: string;
+  /**
+   * 'mentor': Gemini's request, wrapped for DSEcon Mentor's relay (`src/ai/adapters/mentor.ts`,
+   * `Outbox/k-0518/CONTRACT.md`); the secret is the sign-in token, sent as a bearer (k-0519).
+   */
+  relay?: 'mentor';
 }
 export interface ProviderConfig { provider: ProviderId; apiKey: string | null; model: string; baseUrl: string }
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
@@ -74,7 +80,13 @@ export interface CompletionRequest {
   images?: readonly ImagePart[];
   /** Default 120 000. */
   timeoutMs?: number;
+  /** Which feature asked; sent to the hosted relay for its usage record only (k-0519). */
+  feature?: AiFeature;
 }
+/** The relay's `feature` (CONTRACT §3): recorded with the usage, never sent to Google. */
+export type AiFeature =
+  | 'translate' | 'importCheck' | 'studio' | 'studio.write' | 'studio.solve' | 'studio.quality' | 'studio.diagram'
+  | 'answers' | 'quality' | 'coverage' | 'assist' | 'test' | 'other';
 export interface CompletionResult {
   text: string;
   finish: 'stop' | 'length' | 'safety' | 'other';
@@ -86,9 +98,12 @@ export interface CompletionResult {
 export type AiErrorKind =
   | 'notConfigured' | 'region' | 'badKey' | 'keyBlocked' | 'networkOrKey' | 'network'
   | 'quota' | 'billing' | 'model' | 'policy' | 'badRequest' | 'server'
-  | 'timeout' | 'cancelled' | 'safety' | 'truncated' | 'badOutput';
+  | 'timeout' | 'cancelled' | 'safety' | 'truncated' | 'badOutput'
+  /** The hosted relay (k-0519): sign in again · not enough credits · the month's limit · paused or off. */
+  | 'signedOut' | 'noCredits' | 'monthlyCap' | 'serviceDown';
 export type AiAction =
-  | 'retry' | 'openSettings' | 'chooseModel' | 'switchProvider' | 'openKeyPage' | 'openBilling' | 'useFallbackModel';
+  | 'retry' | 'openSettings' | 'chooseModel' | 'switchProvider' | 'openKeyPage' | 'openBilling' | 'useFallbackModel'
+  | 'signIn' | 'buyCredits' | 'useOwnKey';
 export interface AiErrorInfo {
   kind: AiErrorKind;
   provider: ProviderId;

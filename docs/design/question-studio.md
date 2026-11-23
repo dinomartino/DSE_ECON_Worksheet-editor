@@ -429,10 +429,23 @@ The screen builds on these; nothing in `src/questionStudio/` knows about React. 
 (`live.ts:useStudio`, state `live`, actions `write`/`refine`/`stop`) or the engine call
 (`run.ts:writeDrafts(request, deps, { signal, progress, onEvent })`).
 
-- **Pick step result.** `session.ts:withKeyPoints` → event `{ type: 'pick', picks: KeyPick[] }` and state `picks`. `KeyPick = { code, reason }`
-  (`pick.ts`), first = main key point, at most two; `[]` when the teacher set a key point by hand (no call, no event).
+- **Pick step result.** `session.ts:withKeyPoints` → event `{ type: 'pick', picks: KeyPick[] }` and state `picks`. `KeyPick = { code, reason, reasonZh }`
+  (`pick.ts`; `reason` English, `reasonZh` the same sentence in Traditional Chinese, `''` if the model sent none: show the one for the screen's language, fall back to the other), first = main key point, at most two; `[]` when the teacher set a key point by hand (no call, no event).
   `form.keyPoint = ''` means "AI picks"; set it to override (tap a pick). The write request that follows has `keyPoint` and
   `alsoKeyPoints` filled, and every `SheetDraft.request` keeps them, so a refine does not pick again.
+- **Follow-ups keep the key point (k-0520).** `pick.ts:PickInput.current?: string[]` (key point codes, main first, unknown ones ignored, at most two):
+  sent as `currentKeyPoints` with their names, and the picker is told that a follow-up changing only format, language, number, level or
+  wording ("the same in Chinese", "another one") answers with those codes. The screen passes its chat's current picks to
+  `pickKeyPoints({ text, examples, current })`; through the session store set `form.current` (read by `write`, not part of the request).
+  No `current` = as before. The picker may still move on when the request or the examples clearly ask for another key point.
+- **What each draft changed (k-0520).** `StudioDraft.changes?: DraftChange[]`, `DraftChange = { aspect: 'varies' | 'format' | 'numbers' | 'key', note: BiDraft }`
+  (`types.ts`; `''` for a side the paper does not print). The write request asks for it per question (`prompt.ts` rule 12, schema field
+  `changes`, `validate.ts:parseChanges`): at most one entry per aspect, in the order varies, format, numbers, key, only for aspects that changed
+  against the example the question follows; `[]` when the request had no reference (so a request with an auto reference list may still have
+  entries: the screen decides whether to show them). Unknown aspects and empty notes are dropped, a bare-string note counts as English. `angle`
+  stays, as the AI's one-line note. Always set by the engine; absent only on a draft saved before k-0520, which the screen handles as before.
+  Not streamed (no `text` event field): it arrives with the `draft` event. Replaced drafts (rewrite after a failed check) carry their own.
+  Cost: ~150 more output tokens per question per run (`writeTokens` room raised to match).
 - **Streaming events.** `types.ts:StudioEvent`, in order of a run: `stage` (`pick`, `references`, `write`, `rewrite`, `solve`,
   `diagram`), `pick`, `references {count}`, `write {mode, attempt}`, `text {index, draft: PartialDraft, attempt}` (many; a draft's
   words so far: `stem`, `statements`, `options`, `answer` once written, `explanation`, `complete`), `draft {index, draft: StudioDraft}`

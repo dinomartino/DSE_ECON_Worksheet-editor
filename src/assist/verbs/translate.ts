@@ -1,3 +1,4 @@
+import { translateJob } from '@/ai/credits';
 import * as copy from '@/components/translate/copy';
 import { loadGlossary } from '@/glossary/load';
 import type { Glossary } from '@/glossary/types';
@@ -74,6 +75,10 @@ export function translateVerb(side: Side, replace: boolean, deps: TranslateVerbD
       return count > 0 ? { count, unit: assistMessages().unitTexts(count) } : null;
     },
     sendsLine: (ctx, provider) => assistMessages().sendsTexts(textsIn(planFor(ctx)), provider),
+    estimate(ctx) {
+      const plan = planFor(ctx);
+      return plan.jobs.size ? translateJob([...plan.jobs.values()].map((job) => plain(job.source)), Math.max(1, plan.chunks.length)) : null;
+    },
     run: (ctx, io) => runFill(ctx, io, planFor(ctx), side, replace, deps),
   };
 }

@@ -87,6 +87,7 @@ export function buildRequest(
     turns: [{ role: 'user', content: JSON.stringify(buildPayload(questions, keys)) }],
     schema: FINDINGS_SCHEMA,
     maxOutputTokens: Math.min(preset.outputCap, 1024 + 500 * questions.length + thinking),
+    feature: 'quality',
     signal,
   };
 }

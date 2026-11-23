@@ -69,6 +69,13 @@ export const PROVIDER_COPY_MESSAGES = defineMessages({
     zh: '任何允許瀏覽器要求（CORS）的 OpenAI 相容伺服器。',
   },
 
+  mentorBlurb: { en: 'No key needed: sign in and pay for what you use.', zh: '毋須 API key：登入後按用量付費。' },
+  mentorPrivacy: {
+    en: "Sent to DSEcon Mentor's server, which passes them to Google Gemini (paid service: not used to improve Google's products). Mentor keeps a usage record (when, which feature, cost), never the text.",
+    zh: '傳送到 DSEcon Mentor 的伺服器，再轉交 Google Gemini（付費服務：不會用於改進 Google 的產品）。Mentor 只保留使用紀錄（時間、功能、費用），不會保留內容。',
+  },
+  mentorHk: { en: 'Works in Hong Kong without a VPN.', zh: '在香港毋須 VPN 也可以使用。' },
+
   ollamaBlurb: { en: 'Models running on this computer.', zh: '在這部電腦上運行的模型。' },
   ollamaPrivacy: { en: 'Nothing leaves this computer.', zh: '內容不會離開這部電腦。' },
   ollamaHk: {

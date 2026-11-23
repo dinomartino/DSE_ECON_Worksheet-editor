@@ -9,6 +9,7 @@ import { isAiError, type AiAction, type AiErrorInfo, type AiErrorKind, type Prov
 
 const FATAL: ReadonlySet<AiErrorKind> = new Set([
   'notConfigured', 'region', 'badKey', 'keyBlocked', 'quota', 'billing', 'model', 'policy',
+  'signedOut', 'noCredits', 'monthlyCap', 'serviceDown',
 ]);
 
 const ACTIONS: Record<AiErrorKind, AiAction[]> = {
@@ -29,6 +30,10 @@ const ACTIONS: Record<AiErrorKind, AiAction[]> = {
   safety: [],
   truncated: [],
   badOutput: [],
+  signedOut: ['signIn'],
+  noCredits: ['buyCredits', 'useOwnKey'],
+  monthlyCap: ['useOwnKey'],
+  serviceDown: ['retry', 'useOwnKey'],
 };
 
 export interface ErrorContext {
@@ -67,6 +72,7 @@ function messageFor(kind: AiErrorKind, provider: ProviderId, ctx: ErrorContext):
       return base;
     }
     case 'quota':
+      if (provider === 'mentor') return 'Too many AI requests at once. Wait a minute and try again.';
       return provider === 'gemini'
         ? `${p}'s limit was reached. Daily limits reset at midnight Pacific time (3 pm or 4 pm in Hong Kong).`
         : `${p}'s limit was reached.`;
@@ -79,8 +85,10 @@ function messageFor(kind: AiErrorKind, provider: ProviderId, ctx: ErrorContext):
     case 'policy':
       return 'No model matches the privacy setting (no data collection).';
     case 'badRequest':
+      if (provider === 'mentor') return "DSEcon Mentor couldn't use this request: it may be too big (fewer or smaller pictures), or Econ Studio needs an update.";
       return `${p} couldn't read the request.`;
     case 'server':
+      if (provider === 'mentor') return "Google's AI didn't answer through DSEcon Mentor. No credits were used. Try again.";
       return `${p} is having trouble right now.`;
     case 'timeout':
       return `${p} took too long to answer.`;
@@ -92,6 +100,14 @@ function messageFor(kind: AiErrorKind, provider: ProviderId, ctx: ErrorContext):
       return "Couldn't translate this text safely (the answer was cut off).";
     case 'badOutput':
       return "Couldn't translate this text safely (the answer wasn't readable).";
+    case 'signedOut':
+      return 'You are signed out of DSEcon Mentor. Sign in again in Settings → AI.';
+    case 'noCredits':
+      return 'Not enough AI credits left. Buy credits to keep using AI, or use your own key.';
+    case 'monthlyCap':
+      return 'This account reached its monthly AI limit. It resets at the start of next month; until then, use your own key.';
+    case 'serviceDown':
+      return "DSEcon Mentor's AI is paused or switched off right now. Try again later (a pause ends at midnight), or use your own key.";
   }
 }
 
@@ -169,8 +185,19 @@ export function retryDelayMs(body: unknown, headers: Headers): number | undefine
 
 type Rule = { kind: AiErrorKind; when: (status: number, text: string, provider: ProviderId) => boolean };
 
-/** First match wins: region and a blocked key before a plain bad key, policy before model. */
+/** The relay's own error code (`Outbox/k-0518/CONTRACT.md` §5: `{ "error": "<code>" }`). */
+const relayCode = (t: string, ...codes: string[]) => codes.some((code) => new RegExp(`\\b${code}\\b`).test(t));
+
+/** First match wins: the hosted relay's own errors, then region and a blocked key before a plain bad key, policy before model. */
 const RULES: Rule[] = [
+  { kind: 'signedOut', when: (s, t, p) => p === 'mentor' && (s === 401 || relayCode(t, 'unauthorized')) },
+  { kind: 'noCredits', when: (s, t, p) => p === 'mentor' && (s === 402 || relayCode(t, 'insufficient_credits')) },
+  { kind: 'monthlyCap', when: (_s, t, p) => p === 'mentor' && relayCode(t, 'monthly_cap') },
+  { kind: 'serviceDown', when: (_s, t, p) => p === 'mentor' && relayCode(t, 'hosted_ai_paused', 'hosted_ai_off') },
+  // The rest of the relay's codes: too_large / invalid_request / upstream_rejected (a 422 is
+  // Gemini refusing the request as sent) are a bad request; upstream_error / upstream_busy /
+  // server_error fall to 'server' below, rate_limited to 'quota'.
+  { kind: 'badRequest', when: (s, t, p) => p === 'mentor' && (s === 413 || s === 422 || relayCode(t, 'too_large', 'invalid_request', 'upstream_rejected')) },
   {
     kind: 'region',
     when: (s, t) =>
@@ -230,7 +257,9 @@ export function describeHttpError(
  * Region and key failures are mapped first, so "location is not supported" never counts.
  */
 export function isSchemaRejection(provider: ProviderId, status: number, body: unknown): boolean {
-  if (status !== 400 || mapHttpError(provider, status, body, new Headers()).kind !== 'badRequest') return false;
+  // Mentor's relay hands Gemini's 400 on as `422 upstream_rejected` with Gemini's message (k-0519).
+  const relayed = provider === 'mentor' && status === 422;
+  if ((status !== 400 && !relayed) || mapHttpError(provider, status, body, new Headers()).kind !== 'badRequest') return false;
   return SCHEMA_WORDS.test(haystack(body));
 }
 

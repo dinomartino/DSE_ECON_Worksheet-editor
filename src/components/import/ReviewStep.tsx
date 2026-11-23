@@ -47,6 +47,7 @@ import type { ImportFinding } from '@/importCheck/types';
 import { useMessages } from '@/i18n/language';
 import { contentWidth, pageSetupOf } from '@/model/page';
 import { createRunDeps } from '@/translate/deps';
+import { importCheckJob } from '@/ai/credits';
 
 /**
  * One paper's review: the file's lines with a role chip each (left), the questions as they
@@ -202,6 +203,11 @@ export function ReviewStep({
     const ops: CheckOp[] = safe.flatMap((f) => (f.fix && 'op' in f.fix ? [f.fix.op] : []));
     if (ops.length) update((s) => ({ ...s, fixes: [...(s.fixes ?? []), ops], undo: [...s.undo, 'check'] }));
   }, [safe, update]);
+  // What the AI check would cost on the DSEcon Mentor account (k-0519): the pasted text, checked against the paper.
+  const aiEstimate = useMemo(
+    () => (aiStatus.provider === 'mentor' ? importCheckJob(analysis.outline.questions.length, analysis.lines.map((l) => l.text).join('\n')) : null),
+    [aiStatus.provider, analysis],
+  );
   // The AI check (k-0501): one click from the review bar, always in a visible state.
   const askAi = useCallback(async () => {
     aiStop.current?.abort();
@@ -597,7 +603,7 @@ export function ReviewStep({
           number={(q) => analysis.outline.questions[q]?.number ?? q + 1}
           safe={safe.length}
           stale={result.stale ?? 0}
-          ai={{ run: aiRun, provider: aiStatus.preset.label, configured: aiStatus.configured }}
+          ai={{ run: aiRun, provider: aiStatus.preset.label, configured: aiStatus.configured, estimate: aiEstimate }}
           onApply={applyFinding}
           onSkip={(f) => setSkipped((all) => new Set([...all, f.id]))}
           onApplySafe={applySafe}

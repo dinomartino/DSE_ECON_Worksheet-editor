@@ -128,6 +128,16 @@ export interface SolveResult {
   ambiguous: boolean;
 }
 
+/** What a draft changed from its reference, in one of the four ways the screen lists. */
+export type ChangeAspect = 'varies' | 'format' | 'numbers' | 'key';
+export const CHANGE_ASPECTS: readonly ChangeAspect[] = ['varies', 'format', 'numbers', 'key'];
+
+/** One line of "what changed from the reference", as the model wrote it (k-0520): both languages, `''` for a side the paper does not print. */
+export interface DraftChange {
+  aspect: ChangeAspect;
+  note: BiDraft;
+}
+
 export type DraftStatus = 'ok' | 'look' | 'failed';
 
 export interface StudioDraft {
@@ -136,6 +146,13 @@ export interface StudioDraft {
   draft: McqDraft;
   /** A few words on what this draft varies (its slip or context), as the model wrote them. */
   angle: string;
+  /**
+   * What it changed from its reference (what varies, format, numbers, key), a note each, one
+   * line per aspect at most. Empty when the request had no reference or the model gave none;
+   * the screen then falls back to what it can tell itself. `angle` stays the one-line note.
+   * Always set by the engine; optional so a draft saved before k-0520 still reads.
+   */
+  changes?: DraftChange[];
   status: DraftStatus;
   checks: CheckRow[];
   solve?: SolveResult;
