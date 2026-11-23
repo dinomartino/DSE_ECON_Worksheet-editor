@@ -54,7 +54,7 @@ describe('Sign in with DSEcon Mentor', () => {
     expect(h.token()).toBe(h.server.token);
     expect(h.settings().provider).toBe('mentor');
     expect(h.settings().keychainSaved.mentor).toBe(true);
-    expect(h.session.current()).toMatchObject({ kind: 'signedIn', loading: false, account: { credits: 900, status: 'on' } });
+    expect(h.session.current()).toMatchObject({ kind: 'signedIn', loading: false, account: { credits: 500, status: 'on' } });
     expect(states[0]).toBe('linking');
   });
 

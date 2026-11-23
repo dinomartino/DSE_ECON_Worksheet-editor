@@ -65,7 +65,7 @@ const DOC = { ...englishOnly(corpus), id: 'hosted-ai-verify', title: { en: [{ te
 
 const TOKEN = 'dsm_hosted_verify_0123456789abcdefghij';
 function fakeMentor() {
-  const state = { credits: 900, polls: 0, signedIn: true, requests: [], charged: 0, logoutFails: false };
+  const state = { credits: 500, polls: 0, signedIn: true, requests: [], charged: 0, logoutFails: false };
   const json = (body, status = 200) => ({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) });
   const relayError = (status, code) => json({ error: code }, status);
   /** Translate requests: each item back with a 譯： prefix, as JSON items. */
@@ -100,7 +100,7 @@ function fakeMentor() {
     const authed = auth === `Bearer ${TOKEN}` && state.signedIn;
     if (path === '/ai/credits') {
       if (!authed) return route.fulfill(relayError(401, 'unauthorized'));
-      return route.fulfill(json({ status: 'on', balance: state.credits, trial: { credits: 900, grantedAt: new Date().toISOString() }, model: 'gemini-4-hydrogen', rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, inputPerMillionTokens: 1170, outputPerMillionTokens: 5850 }, buyUrl: `https://${MENTOR}/account#ai-credits`, pricingUrl: `https://${MENTOR}/pricing#ai-credits` }));
+      return route.fulfill(json({ status: 'on', balance: state.credits, trial: { credits: 500, grantedAt: new Date().toISOString() }, model: 'gemini-4-hydrogen', rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, inputPerMillionTokens: 1170, outputPerMillionTokens: 5850 }, buyUrl: `https://${MENTOR}/account#ai-credits`, pricingUrl: `https://${MENTOR}/pricing#ai-credits` }));
     }
     if (path === '/ai/generate') {
       if (!authed) return route.fulfill(relayError(401, 'unauthorized'));

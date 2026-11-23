@@ -216,7 +216,8 @@ const relayCode = (t: string, ...codes: string[]) => codes.some((code) => new Re
 
 /** First match wins: the hosted relay's own errors, then region and a blocked key before a plain bad key, policy before model. */
 const RULES: Rule[] = [
-  { kind: 'signedOut', when: (s, t, p) => p === 'mentor' && (s === 401 || relayCode(t, 'unauthorized')) },
+  // 401: missing, revoked, or unused for 30 days; 403 token_scope (v1.3): a token this route won't take. Both: sign in again.
+  { kind: 'signedOut', when: (s, t, p) => p === 'mentor' && (s === 401 || relayCode(t, 'unauthorized', 'token_scope')) },
   { kind: 'noCredits', when: (s, t, p) => p === 'mentor' && (s === 402 || relayCode(t, 'insufficient_credits')) },
   { kind: 'monthlyCap', when: (_s, t, p) => p === 'mentor' && relayCode(t, 'monthly_cap') },
   { kind: 'serviceDown', when: (_s, t, p) => p === 'mentor' && relayCode(t, 'hosted_ai_paused', 'hosted_ai_off') },
