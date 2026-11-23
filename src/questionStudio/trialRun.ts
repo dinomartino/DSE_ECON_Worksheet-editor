@@ -2,9 +2,10 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import type { AiErrorInfo } from '@/ai/types';
 import { normalizeRequest } from './brief';
 import { writeDrafts, type Stage } from './run';
-import type { StudioEnv } from './session';
+import { withReferences, type StudioEnv } from './session';
 import { requestOfBrief, TRIAL_BRIEFS, type TrialBrief } from './trialBriefs';
-import { briefsDone, type TrialLogState } from './trialLog';
+import type { StudioRequest } from './types';
+import { briefsDone, type Arm, type TrialLogState } from './trialLog';
 
 /**
  * Running the trial's invented briefs (k-0499, decision 7a): each brief is one Write, asked
@@ -33,31 +34,51 @@ export type BriefRunEnd =
   /** The provider or the set-up said no (no key, no connection, quota…): stopped here, nothing lost. */
   | { kind: 'error'; error: AiErrorInfo };
 
+/**
+ * A brief's request as the way being tried writes it: `today` the key point alone (the brief's
+ * own example, if it has one, is not used), `refs` with the real questions the studio picks
+ * (the product's default), `strict` close to one real question on purpose (the brief's own
+ * invented example, else the first real question the studio picked).
+ */
+export async function requestForArm(brief: TrialBrief, arm: Arm, env: StudioEnv, signal: AbortSignal): Promise<StudioRequest> {
+  const own = requestOfBrief(brief);
+  const base = normalizeRequest({ ...own, examples: arm === 'strict' ? own.examples : [] });
+  if (arm === 'today' || arm === 'style') return base;
+  if (arm === 'strict' && base.examples.length > 0) return { ...base, strict: true };
+  const found = await withReferences(base, env, { signal });
+  if (arm === 'refs') return found;
+  const first = found.examples[0];
+  return first ? normalizeRequest({ ...base, examples: [{ ...first, auto: false }], strict: true }) : base;
+}
+
 export async function runBriefs(args: {
   env: StudioEnv;
   log: UseBoundStore<StoreApi<TrialLogState>>;
   signal: AbortSignal;
   /** Tests run a few; the trial runs `TRIAL_BRIEFS`. */
   briefs?: readonly TrialBrief[];
+  /** Which way of writing is being tried (default: the product's, with the studio's real questions). */
+  arm?: Arm;
   onProgress?: (progress: BriefProgress) => void;
 }): Promise<BriefRunEnd> {
-  const { env, log, signal, briefs = TRIAL_BRIEFS, onProgress } = args;
+  const { env, log, signal, briefs = TRIAL_BRIEFS, onProgress, arm = 'refs' } = args;
   const resolved = await env.resolve();
   if (!resolved.ok) return { kind: 'error', error: resolved.error };
   const total = briefs.length;
-  const finished = () => briefs.filter((brief) => briefsDone(log.getState().runs).has(brief.id)).length;
+  const finished = () => briefs.filter((brief) => briefsDone(log.getState().runs, arm).has(brief.id)).length;
 
   for (const brief of briefs) {
     if (signal.aborted) return { kind: 'stopped' };
-    if (briefsDone(log.getState().runs).has(brief.id)) continue;
-    onProgress?.({ done: finished(), total, current: brief.id });
-    const request = normalizeRequest(requestOfBrief(brief));
+    if (briefsDone(log.getState().runs, arm).has(brief.id)) continue;
+    onProgress?.({ done: finished(), total, current: brief.id, stage: 'references' });
+    const request = await requestForArm(brief, arm, env, signal);
+    if (signal.aborted) return { kind: 'stopped' };
     const outcome = await writeDrafts(request, resolved.deps, {
       signal,
       progress: (_done, _total, stage) => onProgress?.({ done: finished(), total, current: brief.id, stage }),
     });
     try {
-      log.getState().record({ label: brief.id, kind: 'write', request, outcome, compared: resolved.compared });
+      log.getState().record({ label: brief.id, kind: 'write', arm, request, outcome, compared: resolved.compared });
     } catch {
       // A record that cannot be kept must not end the run.
     }
@@ -72,7 +93,7 @@ export interface BriefRunnerState {
   progress?: BriefProgress;
   /** How the last run ended; cleared when a new one starts or the teacher dismisses it. */
   end?: BriefRunEnd;
-  start(): Promise<void>;
+  start(arm?: Arm): Promise<void>;
   stop(): void;
   dismiss(): void;
 }
@@ -89,13 +110,13 @@ export function createBriefRunner(
 ): UseBoundStore<StoreApi<BriefRunnerState>> {
   let controller: AbortController | undefined;
   return create<BriefRunnerState>((set, get) => ({
-    start: async () => {
+    start: async (arm: Arm = 'refs') => {
       if (get().progress) return;
       const mine = new AbortController();
       controller = mine;
-      set({ progress: { done: briefs.filter((brief) => briefsDone(log.getState().runs).has(brief.id)).length, total: briefs.length }, end: undefined });
+      set({ progress: { done: briefs.filter((brief) => briefsDone(log.getState().runs, arm).has(brief.id)).length, total: briefs.length }, end: undefined });
       try {
-        const end = await runBriefs({ env, log, signal: mine.signal, briefs, onProgress: (progress) => set({ progress }) });
+        const end = await runBriefs({ env, log, signal: mine.signal, briefs, arm, onProgress: (progress) => set({ progress }) });
         set({ progress: undefined, end });
       } catch (error) {
         set({ progress: undefined, end: undefined });

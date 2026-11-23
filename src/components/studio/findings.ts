@@ -59,6 +59,8 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       const kind = ({ bank: m.copyKindBank, mine: m.copyKindMine, paper: m.copyKindPaper, example: m.copyKindExample, draft: m.copyKindDraft } as Record<string, string>)[str(p.with)] ?? m.copyKindBank;
       return p.verbatim ? m.copyVerbatim(kind) : m.copyClose(num(p.percent), kind);
     }
+    case 'copy.reference':
+      return m.copyReference(num(p.percent));
     case 'run.fewer':
       return m.runFewer(num(p.asked), num(p.got));
     case 'run.stopped':
@@ -74,6 +76,6 @@ export function findingText(finding: Finding, m: FindingMessages): string {
 export const KNOWN_FINDINGS: readonly string[] = [
   'shape.stemEmpty', 'shape.optionCount', 'shape.optionEmpty', 'shape.optionsSame', 'shape.keyRange', 'shape.statementEmpty',
   'shape.statementCount', 'shape.notCombination', 'key.differs', 'key.ambiguous', 'numbers.differ', 'terms.note', 'syllabus.limited',
-  'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close',
+  'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close', 'copy.reference',
   'run.fewer', 'run.stopped', 'run.keyNotChecked',
 ];

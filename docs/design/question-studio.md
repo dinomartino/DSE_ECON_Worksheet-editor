@@ -39,8 +39,10 @@ make instructions (count, level, shape, where each key should sit).
 It never holds an example's label (year, paper, number), a document title, a name, or
 anything from the paper the teacher is writing for: `brief.test.ts` fails if a key outside
 `PAYLOAD_KEYS` appears or a label reaches the request. `brief.ts:sentSummary` is what the
-form lists under "Sends this to {provider}", from the same brief. With no example picked
-nothing from the bank is sent. The blind-solve request carries only the questions' text:
+form lists under "Sends this to {provider}", from the same brief. With no example picked the
+studio adds 3 to 5 real HKDSE questions of the key point from the Past paper bank as style
+references (§ Quality), and the form says so ("N real HKDSE questions … word for word");
+turned off (the option on the Write tab) nothing from the bank is sent. The blind-solve request carries only the questions' text:
 no key, no explanation, no brief.
 
 The HKEAA licence for schools (Licence 1, revised August 2026, § E) restricts use of its
@@ -227,6 +229,53 @@ already in Settings, with the same engine, checks and corpus as Write.
   any run that had no Past paper bank to compare with. **Copy report** writes it all as English
   text (the bar, the checks, each brief's result, up to 20 drafts that need a look).
 
+## Quality: DSE style and DSE concepts (u-bd41, u-uugw, u-7jvk; proposal `Outbox/k-0499/QUALITY-PROPOSAL.md`)
+
+The user found the drafts "not DSE style" and on concepts DSE rarely tests. Cause: the prompt
+named the syllabus (what is allowed, not what is asked), described style in a few generic
+phrases, sent no example unless one was picked, and told the model not to resemble the ones it
+had. Three changes, none of which touches the checks or the cost per click (still at most five
+requests; input grows by about 250 tokens per reference). The model stays Gemini Flash (no Pro,
+u-uugw).
+
+- **Real references by default** (`references.ts`, option `options.ts:STUDIO_OPTIONS`, on). With
+  no example picked, `session.ts:withReferences` asks the environment for `referencesWanted`
+  (3, 4 or 5 by how many questions are written) real questions of the key point: weighted
+  sampling over the bank's search index (recent HKDSE years above older papers and HKCEE/HKALE,
+  a picture the model cannot see counts less, the shape asked, a plain/combination mix for
+  "either"), then only the topics holding the picks are downloaded. A topic that names a whole
+  syllabus topic ("G") serves each key point of it. The request keeps them (`auto: true` on each
+  `SourceQuestion`), so Another, Harder and Easier ask the same thing, the trial's record counts
+  them, and the checks column says which questions a draft was "Written like" (labels stay on
+  the computer). They are a style: `make.reference = "style"`, rule 6 of the prompt keeps "new
+  context, figures, wording and options", and the near-copy limit (30%) holds against them and
+  the rest of the bank.
+- **Strict reference mode** (`StudioRequest.strict`, form default on whenever a question is
+  picked with ✦ Write like this; off = a style only). `make.reference = "pattern"`: question n
+  follows example n (cycling), keeping its concept, stem and option pattern and the slip behind
+  each wrong option, changing scenario and figures. **No similarity limit against the picked
+  reference** (u-uugw: unlimited): `nearCopy.ts:checkNearCopy` takes `exempt` docs, left out of
+  the comparison by id (`mine:doc/question` also as `doc/question`) and by their words, wherever the
+  corpus holds them; a draft that is close is told so (`copy.reference`, "Close to your reference
+  on purpose", the row stays pass). Everything else keeps the 30% limit; an automatic reference
+  never gets the exemption (`brief.ts:referenceMode`).
+- **DSE counts** (`frequency.ts:keyPointCounts`): HKDSE multiple-choice questions per key point
+  from the same index (sittings with a year; a topic naming two key points shares each question,
+  a whole topic code spreads over its key points). The key point list shows the count, sorts
+  key points and topics by it, and folds the key points never asked (the link under it shows them;
+  the chosen one never folds): `studioView.ts:rankKeyPoints`. Without the bank's index the list
+  is the syllabus's own.
+- **The trial kit compares ways of writing** (cheap part of the test plan): two more marks on
+  each draft, "Reads like DSE?" and "Concept often tested?" (no bar; the bar stays 90% key
+  defensible, 60% usable), and the brief run takes a way: `today` the key point alone (the
+  studio before), `refs` the studio's own real questions (the default), `strict` close to one
+  real question (the brief's invented example, else the first real question picked). Each runs
+  and resumes on its own (`trialLog.ts:Arm`, `trialRun.ts:requestForArm`); the report's "Style
+  and concepts" lines give each way's key-defensible, usable, DSE-like and often-tested shares.
+  The 20 DSE-weighted briefs of the proposal's plan are not added; the user runs the test later.
+- **Not built** (backlog): a style card the teacher writes for the AI to follow (d3 of the
+  proposal), Mentor's notes as context (not now), Gemini Pro.
+
 ## Packages
 
 1. **Engine** (done): `src/questionStudio/`, the mock server's studio replies, tests.
@@ -240,6 +289,9 @@ already in Settings, with the same engine, checks and corpus as Write.
 4. **Shown on develop** (done, u-z4n3): the default is on in a develop build and off in a
    release build; `platform/buildChannel.ts`, the flag in `release.yml`, `trial.ts`, the
    gate section of `scripts/studio-verify.mjs` (`--release` for a release build's).
+
+5. **Quality** (done, u-bd41): real references by default, strict reference mode, DSE counts
+   in the key point list, the two extra marks and the arms in the trial kit (§ Quality).
 
 Draft CHANGELOG line, to add when the studio ships. It stays out of `CHANGELOG.md` while a
 release hides the studio, because the release body is copied from Unreleased (a feature a

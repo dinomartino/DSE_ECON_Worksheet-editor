@@ -2,7 +2,7 @@ import { toRuns } from '@/generate/validate';
 import { plain } from '@/model/text';
 import type { CheckId, StudioDraft } from './types';
 import { TRIAL_BRIEFS } from './trialBriefs';
-import { isBriefLabel, isMarked, MINE, shownDrafts, type TrialDraft, type TrialRun } from './trialLog';
+import { ARMS, isBriefLabel, isMarked, MINE, shownDrafts, type Arm, type TrialDraft, type TrialRun } from './trialLog';
 
 /**
  * Scoring the trial (k-0499, decision 7a). The bar is the proposal's, to be agreed with the
@@ -56,6 +56,10 @@ export interface Tally {
     bankMissing: number;
   };
   marks: { shown: number; marked: number; keyMarked: number; keyOk: number; useMarked: number; asis: number; edit: number; reject: number };
+  /** The quality trial's two extra marks: reads like DSE, concept commonly tested (no bar: the ways of writing are compared). */
+  style: { dseMarked: number; dseYes: number; testedMarked: number; testedYes: number };
+  /** The same marks for each way of writing that was used, so the ways can be compared. */
+  byArm: Array<{ arm: Arm; shown: number; keyMarked: number; keyOk: number; useMarked: number; usable: number; dseMarked: number; dseYes: number; testedMarked: number; testedYes: number }>;
   cost: { runs: number; requests: number; input: number; output: number; thinking: number; ms: number };
   bar: { keyDefensible: Gate; usable: Gate; nearCopy: Gate; verdict: 'pending' | 'pass' | 'fail' };
 }
@@ -75,6 +79,13 @@ function percentile(sorted: number[], p: number): number | undefined {
   if (sorted.length === 0) return undefined;
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)];
 }
+
+const styleOf = (list: readonly TrialDraft[]) => ({
+  dseMarked: list.filter((entry) => entry.dse !== undefined).length,
+  dseYes: list.filter((entry) => entry.dse === 'yes').length,
+  testedMarked: list.filter((entry) => entry.tested !== undefined).length,
+  testedYes: list.filter((entry) => entry.tested === 'yes').length,
+});
 
 export function tally(runs: readonly TrialRun[]): Tally {
   const okRuns = runs.filter((run) => run.ok);
@@ -139,6 +150,14 @@ export function tally(runs: readonly TrialRun[]): Tally {
       bankMissing,
     },
     marks: { shown: shown.length, marked: shown.filter(isMarked).length, keyMarked: keyMarked.length, keyOk, useMarked: useMarked.length, asis, edit, reject },
+    style: styleOf(shown),
+    byArm: ARMS.flatMap((arm) => {
+      const own = shownList.filter(({ run }) => run.arm === arm).map(({ entry }) => entry);
+      if (own.length === 0) return [];
+      const keyed = own.filter((entry) => entry.key !== undefined);
+      const used = own.filter((entry) => entry.use !== undefined);
+      return [{ arm, shown: own.length, keyMarked: keyed.length, keyOk: keyed.filter((e) => e.key === 'ok').length, useMarked: used.length, usable: used.filter((e) => e.use !== 'reject').length, ...styleOf(own) }];
+    }),
     cost: okRuns.concat(runs.filter((run) => !run.ok)).reduce(
       (sum, run) => ({
         runs: sum.runs + 1,
@@ -167,6 +186,14 @@ const stemOf = (draft: StudioDraft): string => {
 export function flagsOf(draft: StudioDraft): string[] {
   return draft.checks.filter((check) => check.state === 'look').flatMap((check) => (check.findings.length > 0 ? check.findings.map((finding) => finding.id) : [check.id]));
 }
+
+/** The ways of writing, as the report names them. */
+export const ARM_WORDS: Record<Arm, string> = {
+  today: 'Key point alone',
+  refs: 'With real questions the studio picked',
+  strict: 'Close to one real question on purpose',
+  style: 'With questions you picked as a style',
+};
 
 const pct = (gate: Gate) => (gate.percent === undefined ? 'n/a' : `${gate.percent}%`);
 const word = (pass: boolean | undefined) => (pass === undefined ? 'not enough marked yet' : pass ? 'PASS' : 'FAIL');
@@ -199,6 +226,14 @@ export function reportText(runs: readonly TrialRun[], today: Date = new Date()):
       (t.local.copyMax === undefined ? '' : ` · closest near-copy ${t.local.copyMax}% (90th percentile ${t.local.copyP90}%)`),
   );
   add(`Cost over ${t.cost.runs} runs of the studio: ${t.cost.requests} provider requests · ${Math.round((t.cost.input + t.cost.output) / 1000)}k tokens in and out (thinking ${Math.round(t.cost.thinking / 1000)}k) · about ${seconds(t.cost.ms, t.cost.runs)} a click`);
+  add();
+
+  add('Style and concepts (no bar: for comparing the ways of writing)');
+  add(`  Reads like DSE: ${t.style.dseYes} of ${t.style.dseMarked} marked = ${percentOf(t.style.dseYes, t.style.dseMarked) ?? 'n/a'}${t.style.dseMarked ? '%' : ''} · concept commonly tested: ${t.style.testedYes} of ${t.style.testedMarked} marked = ${percentOf(t.style.testedYes, t.style.testedMarked) ?? 'n/a'}${t.style.testedMarked ? '%' : ''}`);
+  for (const a of t.byArm) {
+    const p = (got: number, of: number) => (of > 0 ? `${Math.round((got / of) * 100)}%` : 'n/a');
+    add(`  ${ARM_WORDS[a.arm]}: ${a.shown} shown · key ok ${a.keyOk}/${a.keyMarked} (${p(a.keyOk, a.keyMarked)}) · usable ${a.usable}/${a.useMarked} (${p(a.usable, a.useMarked)}) · DSE-like ${a.dseYes}/${a.dseMarked} (${p(a.dseYes, a.dseMarked)}) · commonly tested ${a.testedYes}/${a.testedMarked} (${p(a.testedYes, a.testedMarked)})`);
+  }
   add();
 
   add('By brief');

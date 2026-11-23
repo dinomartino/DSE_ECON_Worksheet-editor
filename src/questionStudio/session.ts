@@ -36,6 +36,8 @@ export interface StudioForm {
   points: string[];
   /** Up to `MAX_EXAMPLES` bank questions to write like. */
   examples: SourceQuestion[];
+  /** With picked examples: write close to each on purpose (strict mode); false = a style reference only. */
+  strict: boolean;
   count: (typeof BATCH_SIZES)[number];
   level: Level;
   shape: Shape;
@@ -67,6 +69,11 @@ export type Resolved = { ok: true; deps: StudioDeps; compared: Compared } | { ok
 export interface StudioEnv {
   /** The provider, glossary and corpus for a run, from Settings and the libraries. Never throws. */
   resolve(): Promise<Resolved>;
+  /**
+   * Real questions to write like when the teacher picked none (decision of u-7jvk: by default),
+   * [] when there are none or the teacher turned it off. Never throws.
+   */
+  references?(request: StudioRequest, signal: AbortSignal): Promise<SourceQuestion[]>;
 }
 
 export interface StudioState {
@@ -109,6 +116,7 @@ export const defaultForm = (language: LanguageMode): StudioForm => ({
   keyPoint: '',
   points: [],
   examples: [],
+  strict: true,
   count: 3,
   level: 'same',
   shape: 'any',
@@ -121,6 +129,7 @@ export const requestOf = (form: StudioForm): StudioRequest => ({
   keyPoint: form.keyPoint,
   points: form.points,
   examples: form.examples,
+  strict: form.strict,
   count: form.count,
   level: form.level,
   shape: form.shape,
@@ -143,6 +152,21 @@ const addUsage = (a: Usage, b: Usage): Usage => ({
 });
 
 type Action = () => Promise<void>;
+
+/**
+ * The request with real questions to write like, when none was picked and the environment has
+ * some for its key point (the stage shown meanwhile is "Finding real questions…").
+ */
+export async function withReferences(request: StudioRequest, env: Pick<StudioEnv, 'references'>, hooks: Pick<RunHooks, 'signal' | 'progress'>): Promise<StudioRequest> {
+  if (request.examples.length > 0 || !env.references) return request;
+  hooks.progress?.(0, 2, 'references');
+  try {
+    const found = await env.references(request, hooks.signal);
+    return found.length > 0 ? normalizeRequest({ ...request, examples: found }) : request;
+  } catch {
+    return request;
+  }
+}
 
 /** What a run that reached the provider asked and got (the trial's record is built from it). */
 export interface RunInfo {
@@ -238,14 +262,21 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
       write: async () => {
         const form = get().form;
         if (!canWrite(form) || running()) return;
-        const request = normalizeRequest(requestOf(form));
+        const asked = normalizeRequest(requestOf(form));
+        // What was written is what the drafts keep (refining asks the same thing again): with no
+        // example picked, that includes the real questions the studio chose.
+        const meta: Pick<RunInfo, 'kind' | 'request'> = { kind: 'write', request: asked };
         const action: Action = () => get().write();
         await run(
-          { kind: 'write', request },
+          meta,
           action,
-          (deps, runHooks) =>
-            writeDrafts(request, deps, runHooks, { avoid: get().entries.filter((e) => e.request.keyPoint === request.keyPoint).map((e) => e.draft) }),
+          async (deps, runHooks) => {
+            const request = await withReferences(asked, env, runHooks);
+            meta.request = request;
+            return writeDrafts(request, deps, runHooks, { avoid: get().entries.filter((e) => e.request.keyPoint === request.keyPoint).map((e) => e.draft) });
+          },
           (outcome) => {
+            const request = meta.request;
             const fresh = outcome.drafts.map((draft): SheetDraft => ({ draft, request }));
             set({ entries: [...fresh, ...get().entries], notes: outcome.notes, ...(fresh[0] ? { focus: fresh[0].draft.id } : {}) });
           },

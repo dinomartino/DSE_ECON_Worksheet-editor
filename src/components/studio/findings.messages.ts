@@ -69,6 +69,10 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
     en: (percent: number, kind: string) => `Too close to ${kind}: ${percent}% of its wording is shared. Write another, or change it.`,
     zh: (percent: number, kind: string) => `與${kind}太相似：${percent}% 的用字相同。請另擬一題，或加以修改。`,
   },
+  copyReference: {
+    en: (percent: number) => `Close to your reference on purpose: ${percent}% of its wording is shared. There is no limit against it.`,
+    zh: (percent: number) => `刻意貼近你揀選的參考題：${percent}% 的用字相同。與參考題之間沒有相似度上限。`,
+  },
   copyVerbatim: {
     en: (kind: string) => `It repeats a long passage of ${kind} word for word. Write another, or change it.`,
     zh: (kind: string) => `整段文字與${kind}一字不差。請另擬一題，或加以修改。`,

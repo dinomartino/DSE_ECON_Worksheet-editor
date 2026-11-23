@@ -2,7 +2,7 @@
 
 import { useMessages } from '@/i18n/language';
 import { useTrialLog } from '@/questionStudio/live';
-import type { KeyMark, TrialDraft, UseMark } from '@/questionStudio/trialLog';
+import type { KeyMark, TrialDraft, UseMark, YesNo } from '@/questionStudio/trialLog';
 import { STUDIO_TRIAL_MESSAGES } from './trial.messages';
 
 const pill = (on: boolean) =>
@@ -21,6 +21,8 @@ export function TrialMarks({ entry }: { entry: TrialDraft }) {
   const { mark } = useTrialLog.getState();
   const key = (value: KeyMark) => mark(entry.id, { key: entry.key === value ? null : value });
   const use = (value: UseMark) => mark(entry.id, { use: entry.use === value ? null : value });
+  const dse = (value: YesNo) => mark(entry.id, { dse: entry.dse === value ? null : value });
+  const tested = (value: YesNo) => mark(entry.id, { tested: entry.tested === value ? null : value });
 
   return (
     <div role="group" aria-label={m.marksLabel} data-trial-marks={entry.id} className="mt-3 flex flex-col gap-2 rounded-lg bg-surface-sunken px-3 py-2.5">
@@ -45,6 +47,28 @@ export function TrialMarks({ entry }: { entry: TrialDraft }) {
         </button>
         <button type="button" aria-pressed={entry.use === 'reject'} data-mark="use-reject" onClick={() => use('reject')} className={pill(entry.use === 'reject')}>
           {m.useReject}
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="min-w-[112px] text-[12px] font-medium text-ink" title={m.dseHint}>
+          {m.dseQuestion}
+        </span>
+        <button type="button" aria-pressed={entry.dse === 'yes'} data-mark="dse-yes" onClick={() => dse('yes')} className={pill(entry.dse === 'yes')}>
+          {m.yes}
+        </button>
+        <button type="button" aria-pressed={entry.dse === 'no'} data-mark="dse-no" onClick={() => dse('no')} className={pill(entry.dse === 'no')}>
+          {m.no}
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="min-w-[112px] text-[12px] font-medium text-ink" title={m.testedHint}>
+          {m.testedQuestion}
+        </span>
+        <button type="button" aria-pressed={entry.tested === 'yes'} data-mark="tested-yes" onClick={() => tested('yes')} className={pill(entry.tested === 'yes')}>
+          {m.yes}
+        </button>
+        <button type="button" aria-pressed={entry.tested === 'no'} data-mark="tested-no" onClick={() => tested('no')} className={pill(entry.tested === 'no')}>
+          {m.no}
         </button>
       </div>
     </div>

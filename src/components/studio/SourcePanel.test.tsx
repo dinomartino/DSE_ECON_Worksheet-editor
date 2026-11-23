@@ -5,6 +5,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { UiLanguageOverride } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
 import type { StudioForm } from '@/questionStudio/session';
+import { useStudio } from '@/questionStudio/live';
+import { EXAMPLE } from '@/questionStudio/fixtures';
 import { SourcePanel } from './SourcePanel';
 
 // A server render reads a store's initial state, so the studio's form is set through a
@@ -21,10 +23,10 @@ vi.mock('@/questionStudio/live', async (importOriginal) => {
   return { ...real, useStudio };
 });
 
-const panel = (onTrialOff?: () => void, ui: UiLanguage = 'en') =>
+const panel = (onTrialOff?: () => void, ui: UiLanguage = 'en', pastPapersOn = false) =>
   renderToStaticMarkup(
     <UiLanguageOverride.Provider value={ui}>
-      <SourcePanel pastPapersOn={false} onGoTo={() => {}} onTrialOff={onTrialOff} />
+      <SourcePanel pastPapersOn={pastPapersOn} onGoTo={() => {}} onTrialOff={onTrialOff} />
     </UiLanguageOverride.Provider>,
   );
 
@@ -87,5 +89,43 @@ describe('syllabus names follow the studio’s language, not the interface (k-05
     expect(html).toContain('Law of Demand 需求定律');
     expect(html).toContain('Market and Price 市場與價格');
     expect(html).toContain('Factors affecting individual demand 影響個別需求的因素');
+  });
+});
+
+describe('the source column with the bank behind it', () => {
+  const reset = () => {
+    useStudio.setState({ form: { ...useStudio.getState().form, examples: [], keyPoint: '' } });
+  };
+
+  it('says it will add real questions when none is picked, word for word, and lets that be switched off', () => {
+    const html = panel(undefined, 'en', true);
+    expect(html).toContain('data-studio-auto-refs');
+    expect(html).toContain('data-studio-sends-auto');
+    expect(html).toMatch(/4 real HKDSE questions on this key point from the Past paper bank, word for word/);
+    expect(html).toContain('Past paper questions belong to HKEAA');
+    const off = panel(undefined, 'en', false);
+    expect(off).not.toContain('data-studio-sends-auto');
+    expect(off).toContain('The Past paper bank is off');
+  });
+
+  it('with an example picked it offers strict mode instead, on, and says it is sent word for word', () => {
+    useStudio.getState().addExample(EXAMPLE);
+    try {
+      const html = panel(undefined, 'en', true);
+      expect(html).toContain('data-studio-strict');
+      expect(html).toContain('Close to these on purpose');
+      expect(html).toMatch(/data-studio-strict[^>]*>\s*<input[^>]*checked/);
+      expect(html).toContain('Written close to each of them on purpose.');
+      expect(html).not.toContain('data-studio-auto-refs');
+      expect(html).not.toContain('data-studio-sends-auto');
+    } finally {
+      reset();
+    }
+  });
+
+  it('is in Hong Kong Chinese', () => {
+    const html = panel(undefined, 'zh-HK', true);
+    expect(html).toContain('自動加入這個學習要點的真實文憑試題');
+    expect(html).toContain('歷屆試題庫');
   });
 });

@@ -11,7 +11,7 @@ import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
  * a tiny invented export served from here, and requests to the provider hosts are blocked.
  *
  *   npm run dev -- -p 3199   (or any build served somewhere)
- *   node scripts/studio-verify.mjs [--url=http://localhost:3199] [--out=/tmp/studio-verify] [--only=gate,write,tray,like,stop,vpn,zh,layout,label,trial] [--release]
+ *   node scripts/studio-verify.mjs [--url=http://localhost:3199] [--out=/tmp/studio-verify] [--only=gate,write,tray,like,stop,vpn,zh,layout,label,trial,quality] [--release]
  *
  * The studio is shown by a develop build with nothing turned on, and hidden by a release build
  * (`src/platform/buildChannel.ts`; a build made with `NEXT_PUBLIC_RELEASE_BUILD=1`). The run
@@ -650,6 +650,92 @@ try {
       const text = await screen(page).innerText();
       for (const word of ['30 個擬定要求', '你自己的要求', '執行 30 個要求', '目前結果']) expect(text.includes(word), `missing ${word}`);
       await page.screenshot({ path: `${OUT}/18-trial-zh.png` });
+    });
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  if (want('quality')) {
+    console.log('quality');
+    const { context, page, errors } = await newPage(browser);
+    await enable(page);
+    await openStudio(page, w);
+    const bodies = [];
+    page.on('request', (req) => req.url().startsWith(MOCK) && req.method() === 'POST' && bodies.push(req.postData() ?? ''));
+    const lastWrite = () => [...bodies].reverse().find((b) => b.includes('question-studio-write')) ?? '';
+    const payloadOf = (body) => {
+      const user = JSON.parse(body).messages?.at(-1)?.content;
+      return JSON.parse(typeof user === 'string' ? user : JSON.stringify(user));
+    };
+    await check('the key point list counts HKDSE questions, and folds the key points DSE never asked', async () => {
+      const select = page.locator('#studio-key-point');
+      await page.waitForFunction(() => document.querySelector('[data-studio-counts-hint]'), null, { timeout: 30_000 });
+      expect((await select.locator('option', { hasText: /Price elasticity of demand.* · 2$/ }).count()) === 1, `no count beside Price elasticity of demand: ${(await select.locator('option').allInnerTexts()).slice(0, 6).join(' | ')} :: ${await page.locator('[data-studio-counts-hint]').innerText()}`);
+      expect((await select.locator('option', { hasText: 'Law of Demand' }).count()) === 0, 'a never-asked key point is listed');
+      const link = page.locator('[data-studio-show-never]');
+      expect(/Show \d+ key points HKDSE has never asked/.test(await link.innerText()), 'no link to the folded ones');
+      await link.click();
+      expect((await select.locator('option', { hasText: /Law of Demand.* · 0$/ }).count()) === 1, 'the folded key points did not appear');
+      await select.selectOption('C.ped');
+      expect(/HKDSE asked 2 multiple-choice questions on this key point/.test(await page.locator('[data-studio-count-this]').innerText()), 'no count for the chosen key point');
+      await page.screenshot({ path: `${OUT}/20-quality-counts-en.png` });
+    });
+    await check('with nothing picked it says it will add real questions word for word, and Write sends them as a style', async () => {
+      const sends = (await page.locator('[data-studio-sends]').innerText()).replace(/\s+/g, ' ');
+      expect(/real HKDSE questions on this key point from the Past paper bank, word for word/.test(sends) && /HKEAA/.test(sends), `sends: ${sends}`);
+      await page.getByRole('radio', { name: '1', exact: true }).click();
+      await page.locator('[data-studio-write]').click();
+      await drafts(page).first().waitFor({ timeout: 30_000 });
+      const payload = payloadOf(lastWrite());
+      expect(payload.examples?.length === 3, `examples sent: ${payload.examples?.length}`);
+      expect(payload.make.reference === 'style', `reference ${payload.make.reference}`);
+      expect(!/2099|DSE2099/.test(lastWrite().replace(/HKDSE/g, '')), 'a year or source tag was sent');
+    });
+    await check('the checks column says which questions it was written like, kept on this computer', async () => {
+      const like = page.locator('[data-studio-written-like]');
+      expect((await like.locator('li').count()) === 3, 'not three questions listed');
+      expect(/Real HKDSE questions the studio picked/.test(await like.innerText()), 'no explanation');
+      await page.screenshot({ path: `${OUT}/21-quality-written-like-en.png` });
+    });
+    await check('turning the option off sends the key point alone', async () => {
+      await page.locator('[data-studio-auto-refs] input').uncheck();
+      expect((await page.locator('[data-studio-sends-auto]').count()) === 0, 'still says it adds questions');
+      const before = bodies.filter((b) => b.includes('question-studio-write')).length;
+      await page.locator('[data-studio-write]').click();
+      await page.waitForFunction(() => !document.querySelector('[role="status"] [aria-hidden]') && document.querySelector('[data-studio-write]'), null, { timeout: 30_000 });
+      await page.locator('[data-studio-write]').waitFor();
+      expect(bodies.filter((b) => b.includes('question-studio-write')).length > before, 'nothing was written');
+      const payload = payloadOf(lastWrite());
+      expect(payload.examples === undefined, 'examples were sent with the option off');
+      expect(payload.make.reference === undefined, 'a reference mode was sent');
+      await page.locator('[data-studio-auto-refs] input').check();
+    });
+    await check('a picked question is written close to on purpose by default, and unticking sends it as a style only', async () => {
+      await page.getByRole('button', { name: /Past paper bank →/ }).first().click();
+      await page.locator('[data-pastpaper-card]').first().waitFor({ timeout: 30_000 });
+      await page.locator('[data-pastpaper-card] [data-write-like]').first().click();
+      await screen(page).waitFor();
+      const strict = page.locator('[data-studio-strict] input');
+      expect(await strict.isChecked(), 'strict is not on by default');
+      expect((await page.locator('[data-studio-auto-refs]').count()) === 0, 'the automatic option is still offered with a question picked');
+      const sends = (await page.locator('[data-studio-sends]').innerText()).replace(/\s+/g, ' ');
+      expect(/Written close to each of them on purpose/.test(sends), `sends: ${sends}`);
+      await page.getByRole('radio', { name: '1', exact: true }).click();
+      let before = bodies.filter((b) => b.includes('question-studio-write')).length;
+      await page.locator('[data-studio-write]').click();
+      await page.locator('[data-studio-write]').waitFor({ timeout: 30_000 });
+      expect(bodies.filter((b) => b.includes('question-studio-write')).length > before, 'nothing was written');
+      let payload = payloadOf(lastWrite());
+      expect(payload.make.reference === 'pattern' && payload.examples.length === 1, `reference ${payload.make.reference}, examples ${payload.examples?.length}`);
+      await page.screenshot({ path: `${OUT}/22-quality-strict-en.png` });
+      await strict.uncheck();
+      expect(!/Written close to each of them on purpose/.test((await page.locator('[data-studio-sends]').innerText()).replace(/\s+/g, ' ')), 'still says it is written close');
+      before = bodies.filter((b) => b.includes('question-studio-write')).length;
+      await page.locator('[data-studio-write]').click();
+      await page.locator('[data-studio-write]').waitFor({ timeout: 30_000 });
+      expect(bodies.filter((b) => b.includes('question-studio-write')).length > before, 'nothing was written');
+      payload = payloadOf(lastWrite());
+      expect(payload.make.reference === 'style', `reference ${payload.make.reference}`);
     });
     expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
     await context.close();

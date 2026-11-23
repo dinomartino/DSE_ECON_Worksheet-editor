@@ -53,6 +53,18 @@ export function ChecksPanel() {
         )}
       </section>
 
+      {entry && entry.request.examples.length > 0 && (
+        <section data-studio-written-like>
+          <h2 className="text-[13px] font-semibold text-ink">{m.writtenLike}</h2>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-ink-subtle">{entry.request.examples.every((e) => e.auto) ? m.writtenLikeAuto : m.writtenLikePicked}</p>
+          <ul className="mt-1.5 flex flex-col gap-0.5 leading-relaxed text-ink-muted">
+            {entry.request.examples.map((example) => (
+              <li key={example.id}>{example.label}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {notes.length > 0 && (
         <section data-studio-notes>
           <h2 className="text-[13px] font-semibold text-ink">{m.batchNotes}</h2>

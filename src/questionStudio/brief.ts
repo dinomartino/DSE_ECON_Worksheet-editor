@@ -3,6 +3,7 @@ import type { Glossary } from '@/glossary/types';
 import type { Side } from '@/model/textSlots';
 import { lookupCode } from '@/syllabus';
 import {
+  MAX_AUTO_EXAMPLES,
   MAX_COUNT,
   MAX_EXAMPLES,
   MAX_NOTE_CHARS,
@@ -51,13 +52,19 @@ export function keyPlan(count: number, random: () => number = Math.random): numb
 }
 
 /** The request as the engine will use it: counts clamped, the note capped, points that belong to the key point. */
+/** How a request's examples are used: not at all, as a style reference, or close to each on purpose. */
+export function referenceMode(request: Pick<StudioRequest, 'examples' | 'strict'>): 'none' | 'style' | 'pattern' {
+  if (request.examples.length === 0) return 'none';
+  return request.strict === true && request.examples.every((e) => e.auto !== true) ? 'pattern' : 'style';
+}
+
 export function normalizeRequest(request: StudioRequest): StudioRequest {
   const hit = lookupCode(request.keyPoint);
   const points = hit ? request.points.filter((code) => lookupCode(code)?.keyPoint.code === hit.keyPoint.code) : [];
   return {
     ...request,
     points: [...new Set(points)],
-    examples: request.examples.slice(0, MAX_EXAMPLES),
+    examples: request.examples.slice(0, request.examples.length > 0 && request.examples.every((e) => e.auto === true) ? MAX_AUTO_EXAMPLES : MAX_EXAMPLES),
     count: Math.min(MAX_COUNT, Math.max(1, Math.floor(request.count) || 1)),
     sides: (['en', 'zh'] as const).filter((side) => request.sides.includes(side)),
     note: request.note.trim().slice(0, MAX_NOTE_CHARS),
@@ -125,7 +132,13 @@ export function briefPayload(brief: Brief, glossary: Glossary | null, denyHints:
   const { request } = brief;
   return {
     task: 'question-studio-write',
-    make: { count: request.count, level: request.level, shape: request.shape, keys: brief.keys },
+    make: {
+      count: request.count,
+      level: request.level,
+      shape: request.shape,
+      keys: brief.keys,
+      ...(request.examples.length ? { reference: referenceMode(request) } : {}),
+    },
     languages: request.sides,
     syllabus: {
       topic: { en: brief.topic.en, zh: brief.topic.zh },
@@ -150,6 +163,7 @@ export function sentSummary(request: StudioRequest): SentSummary {
     points: 'error' in brief ? 0 : brief.points.length,
     limits: hit?.keyPoint.notRequired.length ?? 0,
     examples: clean.examples.length,
+    reference: referenceMode(clean),
     exampleChars: chars,
     note: clean.note !== '',
     sides: clean.sides,

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { ProviderFooter } from '@/components/ai/ProviderFooter';
 import { useMessages } from '@/i18n/language';
 import { useBriefRun, useTrialLog } from '@/questionStudio/live';
-import { briefsDone, isBriefLabel, MINE } from '@/questionStudio/trialLog';
+import { briefsDone, isBriefLabel, MINE, type Arm } from '@/questionStudio/trialLog';
+import { Segmented } from '@/components/ui';
 import { TRIAL_BRIEFS } from '@/questionStudio/trialBriefs';
 import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
@@ -48,7 +49,8 @@ function BriefsPanel() {
   const end = useBriefRun((s) => s.end);
   const status = useAiStatus();
   const [armed, setArmed] = useState(false);
-  const done = briefsDone(runs).size;
+  const [arm, setArm] = useState<Arm>('refs');
+  const done = briefsDone(runs, arm).size;
   const total = TRIAL_BRIEFS.length;
   const running = progress !== undefined;
   const writes = runs.filter((run) => run.ok && run.kind === 'write' && run.label === MINE).length;
@@ -64,11 +66,27 @@ function BriefsPanel() {
 
   return (
     <div className="flex flex-col gap-5 px-4 py-4" data-trial-briefs>
-      <RunErrorNotice error={end?.kind === 'error' ? end.error : undefined} onRetry={() => void start()} onDismiss={dismiss} />
+      <RunErrorNotice error={end?.kind === 'error' ? end.error : undefined} onRetry={() => void start(arm)} onDismiss={dismiss} />
 
       <section className="flex flex-col gap-2">
         <h2 className={heading}>{t.briefsTitle}</h2>
         <p className="text-[12.5px] leading-relaxed text-ink-muted">{t.briefsBody}</p>
+        <div className="flex flex-col gap-1.5" data-trial-arms>
+          <span className="text-[12px] font-medium text-ink">{t.armTitle}</span>
+          <Segmented<Arm>
+            label={t.armTitle}
+            value={arm}
+            onChange={(next) => {
+              if (!running) setArm(next);
+            }}
+            options={[
+              { value: 'today', label: t.armToday },
+              { value: 'refs', label: t.armRefs },
+              { value: 'strict', label: t.armStrict },
+            ]}
+          />
+          <p className="text-[11.5px] leading-snug text-ink-subtle">{t.armHint}</p>
+        </div>
         <p className="text-[12.5px] tabular-nums text-ink" role="status" data-trial-progress>
           {t.briefsProgress(done, total)}
           {running && progress?.current ? ` · ${t.briefsRunning(progress.current)}` : ''}
@@ -86,7 +104,7 @@ function BriefsPanel() {
             done < total && (
               <button
                 type="button"
-                onClick={() => void start()}
+                onClick={() => void start(arm)}
                 data-trial-run
                 className="cursor-pointer rounded-lg bg-cta px-3 py-1.5 text-[12.5px] font-medium text-on-cta hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >

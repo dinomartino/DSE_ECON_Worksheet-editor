@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useMessages } from '@/i18n/language';
 import { useTrialLog } from '@/questionStudio/live';
 import { BAR, reportText, tally, type Gate } from '@/questionStudio/trialScore';
+import type { Arm } from '@/questionStudio/trialLog';
 import { notify } from '@/store/notices';
 import { Chip, type Tone } from './parts';
 import { tokenCount } from './studioView';
@@ -21,7 +22,9 @@ export function TrialReport() {
   const saveFailed = useTrialLog((s) => s.saveFailed);
   const score = useMemo(() => tally(runs), [runs]);
   const text = useMemo(() => reportText(runs), [runs]);
-  const { bar, local, drafts, marks, cost } = score;
+  const { bar, local, drafts, marks, cost, byArm } = score;
+  const armName: Record<Arm, string> = { today: t.armToday, refs: t.armRefs, strict: t.armStrict, style: t.armPicked };
+  const share = (got: number, of: number) => (of > 0 ? `${Math.round((got / of) * 100)}% (${got}/${of})` : '–');
 
   const copy = async () => {
     try {
@@ -62,6 +65,21 @@ export function TrialReport() {
           {local.copyMax !== undefined && local.copyP90 !== undefined && <li>{t.localCopy(local.copyMax, local.copyP90)}</li>}
           <li>{t.localLeftOut(drafts.leftOut, drafts.leftOutBy.copy, drafts.leftOutBy.shape)}</li>
         </ul>
+      </section>
+
+      <section data-trial-style>
+        <h2 className="text-[13px] font-semibold text-ink">{t.styleTitle}</h2>
+        {score.style.dseMarked + score.style.testedMarked === 0 ? (
+          <p className="mt-2 leading-relaxed text-ink-muted">{t.styleNone}</p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-1 leading-relaxed text-ink-muted">
+            {byArm.map((a) => (
+              <li key={a.arm} className="tabular-nums" data-trial-arm={a.arm}>
+                {t.styleLine(armName[a.arm], share(a.dseYes, a.dseMarked), share(a.testedYes, a.testedMarked))}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {cost.runs > 0 && (

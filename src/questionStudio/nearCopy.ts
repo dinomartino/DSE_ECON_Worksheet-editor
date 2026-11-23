@@ -79,24 +79,31 @@ interface SideIndex {
 
 export interface CorpusIndex {
   readonly docs: readonly CorpusDoc[];
+  /** Each doc's words as one string (`wordsKey`), so a question can be left out of a comparison by its words. */
+  readonly prints: readonly string[];
   readonly en: SideIndex;
   readonly zh: SideIndex;
 }
 
 const newSide = (): SideIndex => ({ postings: new Map(), runs: [] });
 
+/** A question's words as one string: two docs with the same words are the same question. */
+export const wordsKey = (doc: Pick<CorpusDoc, 'en' | 'zh'>): string => `${enTokens(doc.en).join(' ')}\u0000${zhChars(doc.zh)}`;
+
 /** An index over `docs`. A doc whose words equal an earlier one's is left out (copies must not look like stock phrasing). */
 export function buildCorpusIndex(docs: readonly CorpusDoc[]): CorpusIndex {
   const kept: CorpusDoc[] = [];
+  const prints: string[] = [];
   const en = newSide();
   const zh = newSide();
   const seen = new Set<string>();
   for (const doc of docs) {
-    const fingerprint = `${enTokens(doc.en).join(' ')}\u0000${zhChars(doc.zh)}`;
+    const fingerprint = wordsKey(doc);
     if (fingerprint === '\u0000' || seen.has(fingerprint)) continue;
     seen.add(fingerprint);
     const at = kept.length;
     kept.push(doc);
+    prints.push(fingerprint);
     for (const [side, runs] of [[en, new Set(enRuns(doc.en))], [zh, new Set(zhRuns(doc.zh))]] as const) {
       side.runs.push(runs);
       for (const run of runs) {
@@ -106,7 +113,7 @@ export function buildCorpusIndex(docs: readonly CorpusDoc[]): CorpusIndex {
       }
     }
   }
-  return { docs: kept, en, zh };
+  return { docs: kept, prints, en, zh };
 }
 
 export const EMPTY_CORPUS: CorpusIndex = buildCorpusIndex([]);
@@ -126,7 +133,10 @@ export interface NearCopyResult {
 
 interface SideScore { ratio: number; doc?: CorpusDoc; verbatim: boolean }
 
-function scoreSide(side: Side, text: string, layers: readonly CorpusIndex[]): SideScore {
+/** Questions left out of a comparison: by their words, and by the id the corpus knows them under. */
+interface Exempt { prints: ReadonlySet<string>; ids: ReadonlySet<string> }
+
+function scoreSide(side: Side, text: string, layers: readonly CorpusIndex[], exempt: Exempt): SideScore {
   const runs = side === 'en' ? enRuns(text) : zhRuns(text);
   const unique = [...new Set(runs)];
   if (!unique.length) return { ratio: 0, verbatim: false };
@@ -143,6 +153,7 @@ function scoreSide(side: Side, text: string, layers: readonly CorpusIndex[]): Si
     for (const layer of layers) {
       for (const at of layer[side].postings.get(run) ?? []) {
         const doc = layer.docs[at];
+        if (exempt.prints.has(layer.prints[at]) || exempt.ids.has(doc.id)) continue;
         if (isRare) shared.set(doc, (shared.get(doc) ?? 0) + 1);
         const entry = all.get(doc);
         if (entry) entry.count += 1;
@@ -180,13 +191,22 @@ function scoreSide(side: Side, text: string, layers: readonly CorpusIndex[]): Si
 
 /**
  * How close a draft is to the questions in `base` (the bank, the teacher's own, the open
- * paper) and `extra` (the examples and the other drafts: few, indexed on the spot).
+ * paper) and `extra` (the examples and the other drafts: few, indexed on the spot). `exempt`
+ * names questions to leave out of the comparison wherever they are held: the reference a
+ * teacher picked for strict mode (u-uugw: no limit against it), found by their id (a bank
+ * question is named by its source tag, one of the teacher's own `mine:doc/question` in the
+ * example and `doc/question` in the corpus) and by their words, so the corpus's own copy of it
+ * is left out too.
  */
-export function checkNearCopy(text: { en: string; zh: string }, base: CorpusIndex, extra: readonly CorpusDoc[] = []): NearCopyResult {
+export function checkNearCopy(text: { en: string; zh: string }, base: CorpusIndex, extra: readonly CorpusDoc[] = [], exempt: readonly CorpusDoc[] = []): NearCopyResult {
   const layers = extra.length ? [base, buildCorpusIndex(extra)] : [base];
+  const skip: Exempt = {
+    prints: new Set(exempt.map(wordsKey)),
+    ids: new Set(exempt.flatMap((doc) => [doc.id, doc.id.replace(/^mine:/, '')])),
+  };
   let result: NearCopyResult = { percent: 0, verbatim: false, tooClose: false };
   for (const side of ['en', 'zh'] as const) {
-    const score = scoreSide(side, text[side], layers);
+    const score = scoreSide(side, text[side], layers, skip);
     const tooClose = score.ratio >= NEAR_COPY_LIMIT || score.verbatim;
     const worse = Number(tooClose) > Number(result.tooClose) || (tooClose === result.tooClose && score.ratio > result.percent / 100);
     if (worse) {

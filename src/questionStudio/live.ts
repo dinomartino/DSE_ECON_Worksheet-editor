@@ -4,6 +4,8 @@ import { bankRowsNow } from '@/library/useBank';
 import { readAiStatus } from '@/settings/aiSettings';
 import { paperLanguage } from '@/settings/paperLanguage';
 import { studioCorpus, type PastRow } from './corpus';
+import { autoReferencesOn } from './options';
+import { findReferences, type ReferenceBank } from './references';
 import { createStudioSession, type StudioEnv } from './session';
 import { createTrialLog, MINE } from './trialLog';
 import { createBriefRunner } from './trialRun';
@@ -22,7 +24,18 @@ async function pastRows(): Promise<PastRow[] | undefined> {
   return usePastPaperBank.getState().manifest?.search;
 }
 
+/** The app's Past paper bank as the reference finder reads it. */
+export const liveBank: ReferenceBank = {
+  open: () => usePastPaperBank.getState().open(),
+  manifest: () => usePastPaperBank.getState().manifest,
+  items: async (topicId) => {
+    const state = await usePastPaperBank.getState().topic(topicId);
+    return state?.state === 'ready' ? state.data.items : undefined;
+  },
+};
+
 export const liveEnv: StudioEnv = {
+  references: (request, signal) => (autoReferencesOn() ? findReferences(request, liveBank, { signal }) : Promise.resolve([])),
   async resolve() {
     const provider = readAiStatus().provider;
     try {

@@ -187,6 +187,9 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Question studio** — the page (and engine) that writes new MC questions from a syllabus
   key point and shows them as drafts to review before Add. `docs/design/question-studio.md`
   · `src/questionStudio/run.ts:writeDrafts` · `src/components/studio/QuestionStudioScreen.tsx:QuestionStudioScreen`
+- **Strict reference** — a picked question the studio writes close to on purpose (same concept, stem and option pattern, new scenario and figures) with no near-copy limit against it; off = a style only. `src/questionStudio/brief.ts:referenceMode`
+- **Style reference** — a real HKDSE question the studio adds by itself (3–5, none picked) so drafts read like DSE; never copied (the 30% limit holds). `src/questionStudio/references.ts:findReferences`
+- **Arm** — a way of writing the trial's briefs, to compare: key point alone, with real questions, or strict. `src/questionStudio/trialLog.ts:ARMS`
 - **Trial switch** — what shows the studio at all: on in a develop build, off in a release build
   (the studio is not shipped until the trial passes), and a setting on the computer that
   `?studio=trial` / `?studio=off` give once. `src/questionStudio/trial.ts:studioDefaultOn`

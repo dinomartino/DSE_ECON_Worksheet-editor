@@ -4,7 +4,7 @@ import type { McqDraft } from '@/generate/types';
 import { toRuns } from '@/generate/validate';
 import { plain } from '@/model/text';
 import type { Side } from '@/model/textSlots';
-import { makeBrief, type Brief } from './brief';
+import { makeBrief, referenceMode, type Brief } from './brief';
 import { lintBatch } from './lint';
 import type { CorpusDoc } from './nearCopy';
 import {
@@ -27,7 +27,7 @@ import { cleanMcq, localChecks, parseWriteReply, statusOf, type CheckContext } f
  * never rejects, honours the signal, and never touches a paper.
  */
 
-export type Stage = 'write' | 'rewrite' | 'solve';
+export type Stage = 'references' | 'write' | 'rewrite' | 'solve';
 
 export interface RunHooks {
   signal: AbortSignal;
@@ -120,13 +120,15 @@ export async function writeDrafts(
   };
 
   // What a draft must not copy: the examples, and the drafts already on the sheet.
+  // Close to each picked example on purpose (strict mode): those are left out of the limit, not compared with.
+  const exempt: CorpusDoc[] = referenceMode(brief.request) === 'pattern' ? brief.request.examples.map(corpusDocOfSource) : [];
   const baseExtra: CorpusDoc[] = [
-    ...brief.request.examples.map(corpusDocOfSource),
+    ...(exempt.length ? [] : brief.request.examples.map(corpusDocOfSource)),
     ...(opts.avoid ?? []).map((d) => corpusDocOfDraft(d.id, d.draft)),
   ];
   const assess = (raw: McqDraft, angle: string, accepted: readonly CorpusDoc[], attempt: 1 | 2): Slot => {
     const draft = cleanMcq(raw, sides);
-    const ctx: CheckContext = { sides, keyPoint: brief.keyPoint.code, asked: brief.request.shape, glossary: deps.glossary, corpus: deps.corpus, extra: [...baseExtra, ...accepted] };
+    const ctx: CheckContext = { sides, keyPoint: brief.keyPoint.code, asked: brief.request.shape, glossary: deps.glossary, corpus: deps.corpus, extra: [...baseExtra, ...accepted], exempt };
     const id = newId();
     return { id, draft, angle, attempt, checks: localChecks(draft, ctx) };
   };

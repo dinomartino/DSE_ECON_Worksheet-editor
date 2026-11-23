@@ -1,6 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { newId } from '@/model/factories';
 import type { Side } from '@/model/textSlots';
+import { referenceMode } from './brief';
 import type { Compared } from './session';
 import type { Level, Shape, StudioDraft, StudioOutcome, StudioRequest, Usage } from './types';
 
@@ -17,6 +18,15 @@ import type { Level, Shape, StudioDraft, StudioOutcome, StudioRequest, Usage } f
 export type KeyMark = 'ok' | 'bad';
 /** What the teacher would do with the draft: use it as it stands, after one edit, or not at all. */
 export type UseMark = 'asis' | 'edit' | 'reject';
+/** The two extra marks of the quality trial: does it read like a DSE question, is its concept one DSE commonly tests. */
+export type YesNo = 'yes' | 'no';
+/**
+ * How a request was written, for comparing ways: `today` key point alone, `refs` with real
+ * questions the studio chose (the default), `strict` close to one real question on purpose,
+ * `style` with questions the teacher picked as a style only.
+ */
+export type Arm = 'today' | 'refs' | 'strict' | 'style';
+export const ARMS: readonly Arm[] = ['today', 'refs', 'strict', 'style'];
 
 export interface TrialDraft {
   /** The draft's own id (random, so it is unique across reloads). */
@@ -24,6 +34,8 @@ export interface TrialDraft {
   draft: StudioDraft;
   key?: KeyMark;
   use?: UseMark;
+  dse?: YesNo;
+  tested?: YesNo;
 }
 
 /** What was asked, without the examples' words (those are the bank's, and stay out of the record). */
@@ -31,6 +43,10 @@ export interface RequestSummary {
   keyPoint: string;
   points: number;
   examples: number;
+  /** How the examples were used (none for a request with no example). */
+  reference: 'none' | 'style' | 'pattern';
+  /** The examples were the studio's own pick. */
+  auto: boolean;
   note: boolean;
   count: number;
   level: Level;
@@ -43,6 +59,8 @@ export interface TrialRun {
   /** `B07` for an invented brief, `mine` for a request the teacher made. */
   label: string;
   kind: 'write' | 'refine';
+  /** How it was written (runs kept before the arms existed read as `today`). */
+  arm: Arm;
   /** ISO time. */
   at: string;
   request: RequestSummary;
@@ -64,6 +82,8 @@ export const isBriefLabel = (label: string): boolean => /^B\d\d$/.test(label);
 export interface RunEntry {
   label: string;
   kind: 'write' | 'refine';
+  /** Set by the brief runner; else read off the request. */
+  arm?: Arm;
   request: StudioRequest;
   outcome: StudioOutcome;
   compared?: Compared;
@@ -74,6 +94,8 @@ export interface MarkPatch {
   /** `null` takes a mark back. */
   key?: KeyMark | null;
   use?: UseMark | null;
+  dse?: YesNo | null;
+  tested?: YesNo | null;
 }
 
 export interface TrialLogState {
@@ -93,6 +115,8 @@ export const summaryOf = (request: StudioRequest): RequestSummary => ({
   keyPoint: request.keyPoint,
   points: request.points.length,
   examples: request.examples.length,
+  reference: referenceMode(request),
+  auto: request.examples.length > 0 && request.examples.every((e) => e.auto === true),
   note: request.note.trim() !== '',
   count: request.count,
   level: request.level,
@@ -107,6 +131,10 @@ function isDraft(value: unknown): value is TrialDraft {
   const draft = value.draft;
   return typeof draft.id === 'string' && Array.isArray(draft.checks) && isObject(draft.draft) && typeof draft.status === 'string';
 }
+
+/** The way a request was written, read off what it held. */
+export const armOfSummary = (summary: Pick<RequestSummary, 'reference' | 'auto'>): Arm =>
+  summary.reference === 'none' ? 'today' : summary.reference === 'pattern' ? 'strict' : summary.auto ? 'refs' : 'style';
 
 function isRun(value: unknown): value is TrialRun {
   if (!isObject(value)) return false;
@@ -129,7 +157,8 @@ export function parseTrialLog(raw: string | null): TrialRun[] {
   try {
     const data: unknown = JSON.parse(raw);
     if (!isObject(data) || data.version !== VERSION || !Array.isArray(data.runs)) return [];
-    return data.runs.filter(isRun);
+    // A run kept before the arms existed asked with no example the studio chose: `today`.
+    return data.runs.filter(isRun).map((run) => ({ ...run, arm: ARMS.includes(run.arm) ? run.arm : 'today', request: { ...run.request, reference: run.request.reference ?? 'none', auto: run.request.auto ?? false } }));
   } catch {
     return [];
   }
@@ -157,13 +186,15 @@ export function createTrialLog(storage: Storage_ | undefined = browserStorage())
     runs: initial,
     saveFailed: false,
 
-    record: ({ label, kind, request, outcome, compared, at }) => {
+    record: ({ label, kind, arm, request, outcome, compared, at }) => {
+      const summary = summaryOf(request);
       const run: TrialRun = {
         id: newId(),
         label,
         kind,
+        arm: arm ?? armOfSummary(summary),
         at: at ?? new Date().toISOString(),
-        request: summaryOf(request),
+        request: summary,
         ok: outcome.ok,
         usage: outcome.usage,
         ...(compared ? { compared } : {}),
@@ -190,6 +221,14 @@ export function createTrialLog(storage: Storage_ | undefined = browserStorage())
                   if (patch.use !== undefined) {
                     if (patch.use === null) delete next.use;
                     else next.use = patch.use;
+                  }
+                  if (patch.dse !== undefined) {
+                    if (patch.dse === null) delete next.dse;
+                    else next.dse = patch.dse;
+                  }
+                  if (patch.tested !== undefined) {
+                    if (patch.tested === null) delete next.tested;
+                    else next.tested = patch.tested;
                   }
                   return next;
                 }),
@@ -230,8 +269,8 @@ export function shownDrafts(runs: readonly TrialRun[]): Array<{ run: TrialRun; e
 export const isMarked = (entry: TrialDraft): boolean => entry.key !== undefined && entry.use !== undefined;
 
 /** The invented briefs that have been run through to drafts (a run that errored does not count, so it is run again). */
-export function briefsDone(runs: readonly TrialRun[]): Set<string> {
-  return new Set(runs.filter((run) => run.ok && run.kind === 'write' && isBriefLabel(run.label)).map((run) => run.label));
+export function briefsDone(runs: readonly TrialRun[], arm?: Arm): Set<string> {
+  return new Set(runs.filter((run) => run.ok && run.kind === 'write' && isBriefLabel(run.label) && (arm === undefined || run.arm === arm)).map((run) => run.label));
 }
 
 export function findDraft(runs: readonly TrialRun[], draftId: string): { run: TrialRun; entry: TrialDraft } | undefined {

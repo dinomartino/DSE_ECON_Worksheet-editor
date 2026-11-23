@@ -3486,8 +3486,11 @@ with nothing to turn on, a release build (the `v*` tag's, `NEXT_PUBLIC_RELEASE_B
 `trial.ts` holds the switch: a setting on that computer (`?studio=trial` / `?studio=off`)
 overrides the build's default. Design: `docs/design/question-studio.md`.
 
-Writes new multiple-choice questions from a syllabus key point, optionally in the manner of
-bank questions the teacher picked, and returns **drafts**. Pure over injected deps like
+Writes new multiple-choice questions from a syllabus key point, in the manner of real HKDSE
+questions (the teacher's picks, written close to on purpose with no near-copy limit against them
+in strict mode; else 3–5 the studio picks from the Past paper bank, a style only, the 30% limit
+holding), and returns **drafts**. The key point list carries HKDSE counts and folds what DSE
+never asks (§ `docs/design/question-studio.md` Quality). Pure over injected deps like
 `src/generate/run.ts` (client, preset, glossary, a near-copy corpus); it never reads the
 store and never touches a paper.
 

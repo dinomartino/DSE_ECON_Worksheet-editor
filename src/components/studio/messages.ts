@@ -38,6 +38,40 @@ export const QUESTION_STUDIO_MESSAGES = defineMessages({
   limitsNone: { en: 'No “not required” limits for this key point.', zh: '這個學習要點沒有「毋須」的限制。' },
   examples: { en: 'Write like these', zh: '仿照這些題目' },
   examplesCount: { en: (n: number, max: number) => `${n} of ${max}`, zh: (n: number, max: number) => `${n} / ${max}` },
+  keyPointCount: { en: (name: string, n: number) => `${name} · ${n}`, zh: (name: string, n: number) => `${name} · ${n}` },
+  keyPointCountsHint: {
+    en: (n: number, from: number, to: number) => `The number beside a key point is how many of the ${n} HKDSE multiple-choice questions of ${from}–${to} (Past paper bank) were on it. Most asked first.`,
+    zh: (n: number, from: number, to: number) => `學習要點旁的數字，是 ${from}–${to} 年 ${n} 條HKDSE 選擇題（歷屆試題庫）中屬該要點的題數。最常考的排在最前。`,
+  },
+  keyPointNever: {
+    en: (n: number) => `Show ${n} key points HKDSE has never asked`,
+    zh: (n: number) => `顯示 ${n} 個 HKDSE 從未考過的學習要點`,
+  },
+  keyPointNeverHide: { en: 'Hide the key points HKDSE has never asked', zh: '收起 HKDSE 從未考過的學習要點' },
+  keyPointNeverGroup: { en: 'HKDSE has never asked these', zh: 'HKDSE 從未考過' },
+  keyPointThisCount: {
+    en: (n: number) => (n === 0 ? 'HKDSE has not asked a multiple-choice question on this key point.' : `HKDSE asked ${n} multiple-choice question${n === 1 ? '' : 's'} on this key point.`),
+    zh: (n: number) => (n === 0 ? 'HKDSE 未曾就這個學習要點出選擇題。' : `HKDSE 曾就這個學習要點出 ${n} 條選擇題。`),
+  },
+  strict: { en: 'Close to these on purpose', zh: '刻意貼近這些題目' },
+  strictHint: {
+    en: 'Same concept, stem and option pattern, and the slip behind each wrong option; a new scenario and new figures. No similarity limit against these questions. Off: they are only a style to follow.',
+    zh: '相同概念、題幹與選項格式，以及每個錯誤選項背後的錯誤想法；只換情境與數字。與這些題目之間沒有相似度上限。關閉：只當作文風參考。',
+  },
+  autoRefs: { en: 'Add real HKDSE questions on this key point', zh: '自動加入這個學習要點的真實 HKDSE 題目' },
+  autoRefsHint: {
+    en: 'With none picked, the studio adds 3 to 5 real HKDSE questions on this key point from the Past paper bank, as style references (not to be copied). Turn off to write from the key point alone.',
+    zh: '沒有揀選題目時，擬題工作室會從歷屆試題庫自動加入 3 至 5 條這個學習要點的真實 HKDSE 題目，作文風參考（不會照抄）。關閉後只按學習要點擬題。',
+  },
+  autoRefsNoBank: {
+    en: 'The Past paper bank is off, so no real questions can be added.',
+    zh: '歷屆試題庫已關閉，因此無法自動加入真實試題。',
+  },
+  sendsAuto: {
+    en: (n: number) => `${n} real HKDSE questions on this key point from the Past paper bank, word for word with their keys (picked when you press Write)`,
+    zh: (n: number) => `從歷屆試題庫挑選 ${n} 條這個學習要點的真實 HKDSE 題目，連同答案，全文傳送（按「擬題」時挑選）`,
+  },
+  sendsExamplesStrict: { en: 'Written close to each of them on purpose.', zh: '會刻意貼近每一條擬題。' },
   examplesEmpty: {
     en: 'None yet. Open a question in the Past paper bank or your 題庫 and press ✦ Write like this. Or leave this empty to write from the key point alone.',
     zh: '暫時沒有。在歷屆試題庫或你的題庫打開一條題目，按「✦ 擬類似題目」。也可以不選，只按學習要點擬題。',
@@ -100,6 +134,10 @@ export const QUESTION_STUDIO_MESSAGES = defineMessages({
   stop: { en: 'Stop', zh: '停止' },
   stageWrite: { en: 'Writing the questions…', zh: '正在擬題…' },
   stageRewrite: { en: 'Writing a draft again…', zh: '正在重寫一份草稿…' },
+  writtenLike: { en: 'Written like', zh: '仿照的題目' },
+  writtenLikeAuto: { en: 'Real HKDSE questions the studio picked as style references (kept on this computer, not told to the model).', zh: '擬題工作室自動挑選作文風參考的真實 HKDSE 題目（只留在這部電腦，不會告知模型）。' },
+  writtenLikePicked: { en: 'The questions you picked (kept on this computer, not told to the model).', zh: '你揀選的題目（只留在這部電腦，不會告知模型）。' },
+  stageRefs: { en: 'Finding real questions to write like…', zh: '正在找真實試題作參考…' },
   stageSolve: { en: 'Solving them again, without the key…', zh: '正在不看答案重新作答…' },
   stageChange: { en: 'Changing this draft…', zh: '正在修改這份草稿…' },
   progress: { en: (done: number, total: number) => `${done} of ${total}`, zh: (done: number, total: number) => `${done} / ${total}` },

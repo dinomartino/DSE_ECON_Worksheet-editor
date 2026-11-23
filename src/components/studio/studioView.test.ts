@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { INVENTED } from '@/questionStudio/fixtures';
 import type { SheetDraft } from '@/questionStudio/session';
 import type { CheckRow, StudioDraft } from '@/questionStudio/types';
-import { draftItem, explanationLines, keyPointGroups, syllabusName, keyPointOfTags, letterOf, partition, rowOf, stemLines, tokenCount } from './studioView';
+import { draftItem, explanationLines, keyPointGroups, rankKeyPoints, syllabusName, keyPointOfTags, letterOf, partition, rowOf, stemLines, tokenCount } from './studioView';
 
 const [A, , C] = INVENTED;
 const entry = (id: string, source = A, status: StudioDraft['status'] = 'ok', checks: CheckRow[] = []): SheetDraft => ({
@@ -89,5 +89,33 @@ describe('the sheet', () => {
   it('names the key letters and counts tokens briefly', () => {
     expect([0, 1, 2, 3, 4].map(letterOf)).toEqual(['A', 'B', 'C', 'D', '?']);
     expect([0, 999, 1000, 18_420, 99_950, 1_250_000].map(tokenCount)).toEqual(['0', '999', '1k', '18.4k', '100k', '1250k']);
+  });
+});
+
+describe('the key point list, ranked by how often HKDSE asks', () => {
+  const groups = keyPointGroups('en');
+  const found = (counts: Record<string, number>) => ({ counts: new Map(Object.entries(counts)), questions: 40, years: [2012, 2026] as const });
+
+  it('is the syllabus’s own list, nothing folded, while there are no counts', () => {
+    const ranked = rankKeyPoints(groups, undefined);
+    expect(ranked.groups).toEqual(groups);
+    expect(ranked.folded).toEqual([]);
+  });
+
+  it('carries each count, sorts key points and topics by them, and folds the key points never asked', () => {
+    const ranked = rankKeyPoints(groups, found({ 'C.ped': 9, 'C.equilibrium': 38, 'I.fiscal': 52, 'A.scarcity': 2 }));
+    expect(ranked.groups.map((g) => g.code)).toEqual(['I', 'C', 'A']);
+    expect(ranked.groups[1].options.map((o) => [o.code, o.count])).toEqual([['C.equilibrium', 38], ['C.ped', 9]]);
+    const folded = ranked.folded.flatMap((g) => g.options.map((o) => o.code));
+    expect(folded).toContain('C.law-of-demand');
+    expect(folded).toContain('EL1.pricing');
+    expect(folded).not.toContain('C.ped');
+    expect(ranked.groups.flatMap((g) => g.options).length + folded.length).toBe(53);
+  });
+
+  it('keeps the chosen key point in the list even when HKDSE has never asked it', () => {
+    const ranked = rankKeyPoints(groups, found({ 'C.ped': 9 }), 'A.specialization');
+    expect(ranked.groups.flatMap((g) => g.options).map((o) => o.code)).toContain('A.specialization');
+    expect(ranked.folded.flatMap((g) => g.options).map((o) => o.code)).not.toContain('A.specialization');
   });
 });

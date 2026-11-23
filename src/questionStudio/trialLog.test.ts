@@ -19,7 +19,7 @@ const failedCopy = () => studioDraft('gone', { rows: [{ id: 'copy', state: 'fail
 describe('what the record keeps of a request', () => {
   it('is what was asked and no more: the examples are counted, never kept', () => {
     const summary = summaryOf({ ...REQUEST, points: ['C.ped#arc'], examples: [EXAMPLE], note: ' HK prices ' });
-    expect(summary).toEqual({ keyPoint: 'C.ped', points: 1, examples: 1, note: true, count: 3, level: 'same', shape: 'any', sides: ['en', 'zh'] });
+    expect(summary).toEqual({ keyPoint: 'C.ped', points: 1, examples: 1, reference: 'style', auto: false, note: true, count: 3, level: 'same', shape: 'any', sides: ['en', 'zh'] });
     expect(JSON.stringify(summary)).not.toContain('pen');
     expect(summaryOf(REQUEST).note).toBe(false);
   });

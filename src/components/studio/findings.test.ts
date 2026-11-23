@@ -33,6 +33,7 @@ const SAMPLES: Finding[] = [
   { id: 'lint.keySpread', params: { letter: 'B', count: 4, of: 5 } },
   { id: 'copy.close', params: { percent: 41, with: 'bank', verbatim: 0 } },
   { id: 'copy.close', params: { percent: 100, with: 'mine', verbatim: 1 } },
+  { id: 'copy.reference', params: { percent: 62 } },
   { id: 'run.fewer', params: { asked: 5, got: 3 } },
   { id: 'run.stopped' },
   { id: 'run.keyNotChecked', params: { message: 'Gemini took too long to answer.' } },

@@ -19,8 +19,10 @@ export type Shape = 'plain' | 'combination' | 'any';
 /** Drafts per request. The form offers 1, 3 or 5; the engine never writes more than the cap. */
 export const BATCH_SIZES = [1, 3, 5] as const;
 export const MAX_COUNT = 5;
-/** Bank questions that may travel as examples in one request. */
+/** Bank questions the teacher may pick as examples in one request. */
 export const MAX_EXAMPLES = 3;
+/** Real questions the studio adds by itself as style references when none is picked (3 to 5). */
+export const MAX_AUTO_EXAMPLES = 5;
 /** The Change line's longest text. */
 export const MAX_NOTE_CHARS = 400;
 
@@ -42,6 +44,8 @@ export interface SourceQuestion {
   answerIndex: number;
   /** A picture or diagram the words cannot carry: the model is told it is not shown. */
   hasFigure: boolean;
+  /** Added by the studio as a style reference (never picked by the teacher); never exempt from the near-copy check. */
+  auto?: boolean;
 }
 
 /** What a teacher asks for. */
@@ -50,8 +54,15 @@ export interface StudioRequest {
   keyPoint: string;
   /** Narrow it to some of its points (`C.ped#arc`); none = the whole key point. */
   points: readonly string[];
-  /** Zero to `MAX_EXAMPLES` questions to write like. */
+  /** Zero to `MAX_EXAMPLES` picked questions to write like, or up to `MAX_AUTO_EXAMPLES` the studio chose (all `auto`). */
   examples: readonly SourceQuestion[];
+  /**
+   * Picked examples only: write each draft close to its example on purpose (same concept, stem
+   * and option pattern, the logic of each wrong option; a new scenario and new figures), and
+   * do not hold the draft to the near-copy limit against them (u-uugw: unlimited). Absent or
+   * false = a style reference only. Never applies to `auto` examples.
+   */
+  strict?: boolean;
   count: number;
   level: Level;
   shape: Shape;
@@ -151,6 +162,8 @@ export interface SentSummary {
   limits: number;
   /** Bank or paper questions sent whole (stem, options, key). */
   examples: number;
+  /** How they are used: close to each on purpose (`pattern`) or as a style reference (`style`). */
+  reference: 'none' | 'style' | 'pattern';
   /** Characters of those questions, for a size hint. */
   exampleChars: number;
   note: boolean;

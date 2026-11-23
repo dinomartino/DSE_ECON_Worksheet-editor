@@ -17,7 +17,7 @@ import { plain } from '@/model/text';
 import type { Side } from '@/model/textSlots';
 import { scanLimited } from './guard';
 import { lintDraft } from './lint';
-import { checkNearCopy, type CorpusDoc, type CorpusIndex } from './nearCopy';
+import { checkNearCopy, EMPTY_CORPUS, type CorpusDoc, type CorpusIndex } from './nearCopy';
 import { checkNumbers } from './numbers';
 import type { CheckRow, DraftStatus, Finding, Shape, StudioDraft } from './types';
 
@@ -103,6 +103,9 @@ export function shapeFindings(draft: McqDraft, sides: readonly Side[]): Finding[
 
 // ---- the local checks ----
 
+/** From this share of its reference a strict draft is told it is close on purpose. */
+const REFERENCE_NOTE = 30;
+
 export interface CheckContext {
   sides: readonly Side[];
   keyPoint: string;
@@ -112,6 +115,11 @@ export interface CheckContext {
   corpus: CorpusIndex;
   /** The examples and the other drafts: indexed on the spot. */
   extra: readonly CorpusDoc[];
+  /**
+   * The references the teacher picked for strict mode: left out of the near-copy limit (u-uugw:
+   * unlimited), wherever the corpus holds them. A draft close to one is told so, not failed.
+   */
+  exempt?: readonly CorpusDoc[];
 }
 
 const row = (id: CheckRow['id'], findings: Finding[], state?: CheckRow['state']): CheckRow => ({
@@ -152,13 +160,16 @@ export function localChecks(draft: McqDraft, ctx: CheckContext): CheckRow[] {
   if (!shape.length && ((ctx.asked === 'combination' && !combination) || (ctx.asked === 'plain' && combination))) {
     lint.push({ id: 'lint.shapeAsked', params: { asked: ctx.asked, got: combination ? 'combination' : 'plain' } });
   }
-  const copy = checkNearCopy(words, ctx.corpus, ctx.extra);
+  const copy = checkNearCopy(words, ctx.corpus, ctx.extra, ctx.exempt);
+  const reference = ctx.exempt?.length ? checkNearCopy(words, EMPTY_CORPUS, ctx.exempt) : undefined;
   const copyRow: CheckRow = {
     id: 'copy',
     state: copy.tooClose ? 'fail' : 'pass',
     findings: copy.tooClose
       ? [{ id: 'copy.close', params: { percent: copy.percent, with: copy.closest?.kind ?? 'bank', verbatim: copy.verbatim ? 1 : 0 } }]
-      : [],
+      : reference && reference.percent >= REFERENCE_NOTE
+        ? [{ id: 'copy.reference', params: { percent: reference.percent } }]
+        : [],
     value: copy.percent,
   };
   return [

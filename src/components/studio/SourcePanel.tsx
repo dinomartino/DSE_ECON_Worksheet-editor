@@ -1,12 +1,16 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ProviderFooter } from '@/components/ai/ProviderFooter';
 import { Segmented } from '@/components/ui';
 import { useMessages } from '@/i18n/language';
 import { topicNamesFor } from '@/model/topics';
+import { usePastPaperBank } from '@/pastpapers/bank';
 import { sentSummary } from '@/questionStudio/brief';
+import { countOf, keyPointCounts } from '@/questionStudio/frequency';
 import { useStudio } from '@/questionStudio/live';
+import { useStudioOptions } from '@/questionStudio/options';
+import { referencesWanted } from '@/questionStudio/references';
 import { canWrite, requestOf } from '@/questionStudio/session';
 import { BATCH_SIZES, MAX_EXAMPLES, MAX_NOTE_CHARS, type Level, type Shape } from '@/questionStudio/types';
 import type { LanguageMode } from '@/model/types';
@@ -14,7 +18,7 @@ import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
 import { lookupCode } from '@/syllabus';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
-import { keyPointGroups, syllabusName, tokenCount } from './studioView';
+import { keyPointGroups, rankKeyPoints, syllabusName, tokenCount } from './studioView';
 
 const label = 'text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle';
 
@@ -34,6 +38,16 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
   const status = useAiStatus();
   const running = phase.kind === 'running';
   const groups = useMemo(() => keyPointGroups(names), [names]);
+  // HKDSE counts beside each key point, once the bank's index is there to count (it is read here, as Write reads it).
+  const manifest = usePastPaperBank((s) => s.manifest);
+  useEffect(() => {
+    if (pastPapersOn) void usePastPaperBank.getState().open().catch(() => undefined);
+  }, [pastPapersOn]);
+  const counts = useMemo(() => keyPointCounts(manifest), [manifest]);
+  const ranked = useMemo(() => rankKeyPoints(groups, counts, form.keyPoint), [groups, counts, form.keyPoint]);
+  const [showNever, setShowNever] = useState(false);
+  const [options, setOptions] = useStudioOptions();
+  const autoOn = form.examples.length === 0 && pastPapersOn && options.autoReferences;
   const hit = lookupCode(form.keyPoint);
   const keyPoint = hit && !hit.point ? hit.keyPoint : undefined;
   const sent = useMemo(() => sentSummary(requestOf(form)), [form]);
@@ -46,8 +60,10 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
       ? ''
       : phase.target
         ? m.stageChange
-        : phase.stage === 'solve'
-          ? m.stageSolve
+        : phase.stage === 'references'
+          ? m.stageRefs
+          : phase.stage === 'solve'
+            ? m.stageSolve
           : phase.stage === 'rewrite'
             ? m.stageRewrite
             : m.stageWrite;
@@ -67,16 +83,38 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
           className="h-9 w-full rounded-lg border border-line bg-surface px-2 text-[13px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
         >
           <option value="">{m.chooseKeyPoint}</option>
-          {groups.map((group) => (
+          {ranked.groups.map((group) => (
             <optgroup key={group.code} label={group.name}>
               {group.options.map((option) => (
                 <option key={option.code} value={option.code}>
-                  {option.name}
+                  {option.count === undefined ? option.name : m.keyPointCount(option.name, option.count)}
                 </option>
               ))}
             </optgroup>
           ))}
+          {showNever && ranked.folded.length > 0 && (
+            <optgroup label={m.keyPointNeverGroup}>
+              {ranked.folded.flatMap((group) => group.options).map((option) => (
+                <option key={option.code} value={option.code}>
+                  {m.keyPointCount(option.name, 0)}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
+        {counts && (
+          <>
+            <p className="text-[11.5px] leading-snug text-ink-subtle" data-studio-counts-hint>
+              {m.keyPointCountsHint(counts.questions, counts.years?.[0] ?? 0, counts.years?.[1] ?? 0)}
+            </p>
+            {keyPoint && <p className="text-[12px] text-ink-muted" data-studio-count-this>{m.keyPointThisCount(countOf(counts, form.keyPoint))}</p>}
+            {ranked.folded.length > 0 && (
+              <button type="button" data-studio-show-never onClick={() => setShowNever((on) => !on)} className="cursor-pointer self-start text-[12px] font-medium text-accent-ink hover:underline">
+                {showNever ? m.keyPointNeverHide : m.keyPointNever(ranked.folded.reduce((n, group) => n + group.options.length, 0))}
+              </button>
+            )}
+          </>
+        )}
 
         {keyPoint && keyPoint.points.length > 0 && (
           <fieldset className="mt-1 flex flex-col gap-1" disabled={running}>
@@ -118,7 +156,26 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
           <span className="text-[11.5px] tabular-nums text-ink-subtle">{m.examplesCount(form.examples.length, MAX_EXAMPLES)}</span>
         </div>
         {form.examples.length === 0 ? (
-          <p className="text-[12px] leading-relaxed text-ink-muted">{m.examplesEmpty}</p>
+          <>
+            <p className="text-[12px] leading-relaxed text-ink-muted">{m.examplesEmpty}</p>
+            {pastPapersOn ? (
+              <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink" data-studio-auto-refs>
+                <input
+                  type="checkbox"
+                  checked={options.autoReferences}
+                  disabled={running}
+                  onChange={(event) => setOptions({ autoReferences: event.target.checked })}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                />
+                <span>
+                  {m.autoRefs}
+                  <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-subtle">{m.autoRefsHint}</span>
+                </span>
+              </label>
+            ) : (
+              <p className="text-[11.5px] leading-snug text-ink-subtle">{m.autoRefsNoBank}</p>
+            )}
+          </>
         ) : (
           <ul className="flex flex-col gap-1.5">
             {form.examples.map((example) => {
@@ -143,6 +200,21 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
               );
             })}
           </ul>
+        )}
+        {form.examples.length > 0 && (
+          <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink" data-studio-strict>
+            <input
+              type="checkbox"
+              checked={form.strict}
+              disabled={running}
+              onChange={(event) => setForm({ strict: event.target.checked })}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+            />
+            <span>
+              {m.strict}
+              <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-subtle">{m.strictHint}</span>
+            </span>
+          </label>
         )}
         <div className="flex flex-wrap gap-3 text-[12px]">
           {pastPapersOn && (
@@ -224,12 +296,14 @@ export function SourcePanel({ pastPapersOn, onGoTo, onTrialOff }: { pastPapersOn
         <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[12px] leading-relaxed text-ink-muted">
           <li>{m.sendsKeyPoint(sent.points)}</li>
           {sent.limits > 0 && <li>{m.sendsLimits(sent.limits)}</li>}
+          {autoOn && <li data-studio-sends-auto>{m.sendsAuto(referencesWanted(form.count))}</li>}
           {sent.examples > 0 && <li>{m.sendsExamples(sent.examples, tokenCount(sent.exampleChars))}</li>}
+          {sent.reference === 'pattern' && <li>{m.sendsExamplesStrict}</li>}
           {sent.note && <li>{m.sendsNote}</li>}
           {usesZh && <li>{m.sendsTerms}</li>}
           <li>{m.sendsMake(sent.count, levelWord, sideNames(form.language))}</li>
         </ul>
-        {sent.examples > 0 && <p className="mt-1.5 text-[11.5px] leading-relaxed text-warn-ink">{m.sendsExamplesRisk}</p>}
+        {(sent.examples > 0 || autoOn) && <p className="mt-1.5 text-[11.5px] leading-relaxed text-warn-ink">{m.sendsExamplesRisk}</p>}
         <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-subtle">{m.sendsNothing}</p>
       </section>
 
