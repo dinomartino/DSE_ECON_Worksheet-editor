@@ -66,6 +66,7 @@ import { PAST_PAPER_SETTINGS, sourceUrl } from '@/pastpapers/config';
 import { QuestionStudioScreen } from '@/components/studio/QuestionStudioScreen';
 import { QUESTION_STUDIO_MESSAGES } from '@/components/studio/messages';
 import { writeLikeThis } from '@/components/studio/openStudio';
+import type { PastPaperItem } from '@/pastpapers/pack';
 import type { SourceQuestion } from '@/questionStudio/types';
 import { applyTrialRequest, useStudioTrial } from '@/questionStudio/trial';
 import { notify } from '@/store/notices';
@@ -259,8 +260,8 @@ export function StartScreen({
   }, []);
   // "✦ Write like this" on a bank question: it becomes the studio's example, and the studio opens.
   const writeLike = studioOn
-    ? (source: SourceQuestion, keyPoint?: string) => {
-        if (writeLikeThis(source, keyPoint) === 'full') notify({ id: 'studio-full', tone: 'info', body: qs.writeLikeFull });
+    ? (source: SourceQuestion, keyPoint?: string, item?: PastPaperItem) => {
+        if (writeLikeThis(source, keyPoint, item) === 'full') notify({ id: 'studio-full', tone: 'info', body: qs.writeLikeFull });
         showView('studio');
       }
     : undefined;
@@ -905,7 +906,6 @@ export function StartScreen({
             settings={<SettingsButton separated />}
             pastPapersOn={pastPapersOn}
             onHome={() => showView('home')}
-            onGoTo={(next) => showView(next)}
             onOpenWorksheet={(worksheet, language) => onOpen(worksheet, language)}
             onOpenDocument={(id, then) => void openSaved(id, then)}
             onError={(message) => {

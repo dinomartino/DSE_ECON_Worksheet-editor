@@ -51,7 +51,7 @@ export function PastPaperScreen({
   onOpenWorksheet: (worksheet: Worksheet, language: LanguageMode) => void;
   onOpenDocument: (docId: string, then?: () => void) => void;
   /** "✦ Write like this" on a card (the Question studio trial, k-0499); absent = no button. */
-  onWriteLike?: (source: SourceQuestion, keyPoint?: string) => void;
+  onWriteLike?: (source: SourceQuestion, keyPoint?: string, item?: PastPaperItem) => void;
   onNotice: (message: string) => void;
   onError: (message: string) => void;
 }) {
@@ -392,6 +392,7 @@ export function PastPaperScreen({
                               onWriteLike(
                                 sourceFromQuestion(mcq, { id: item.source.tag || mcq.id, label: source, passage: item.stimulus?.blocks }),
                                 keyPointOfTags(mcq.tags),
+                                item,
                               )
                             }
                           />

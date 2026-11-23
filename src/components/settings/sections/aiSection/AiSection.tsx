@@ -1,18 +1,19 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { PROVIDER_IDS, type ModelInfo, type ProviderId } from '@/ai/types';
-import { openExternal } from '@/platform';
-import { peekSecret, subscribeSecrets } from '@/platform/secrets';
-import { useMessages } from '@/i18n/language';
-import { AI_SETTINGS, useAiStatus } from '@/settings/aiSettings';
-import type { SettingsSectionProps } from '@/settings/sections';
-import { useSettings } from '@/settings/store';
-import { initialAiSetup, needsCloseGuard, savedKeys } from './aiSetup';
-import { liveDeps, secretPlatform } from './aiSetupLive';
-import { createAiSetupRunner } from './aiSetupRunner';
-import { AiSectionView } from './AiSectionView';
-import { AI_SECTION_MESSAGES } from './messages';
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { PROVIDER_IDS, type ModelInfo, type ProviderId } from "@/ai/types";
+import { openExternal } from "@/platform";
+import { peekSecret, subscribeSecrets } from "@/platform/secrets";
+import { useMessages } from "@/i18n/language";
+import { AI_SETTINGS, useAiStatus } from "@/settings/aiSettings";
+import type { SettingsSectionProps } from "@/settings/sections";
+import { useSettings } from "@/settings/store";
+import { initialAiSetup, needsCloseGuard, savedKeys } from "./aiSetup";
+import { liveDeps, secretPlatform } from "./aiSetupLive";
+import { createAiSetupRunner } from "./aiSetupRunner";
+import { AiSectionView } from "./AiSectionView";
+import { TrialKitBlock } from "./TrialKitBlock";
+import { AI_SECTION_MESSAGES } from "./messages";
 
 /**
  * Settings → AI & translation: your saved keys, then pick a provider, save and test its key,
@@ -24,38 +25,68 @@ export { secretPlatform };
 
 type Peek = ReturnType<typeof peekSecret>;
 /** Every provider's peek (store and last4 only), as one string so a change re-renders. */
-const peekAll = () => JSON.stringify(PROVIDER_IDS.map((p) => peekSecret(`ai:${p}`)));
+const peekAll = () =>
+  JSON.stringify(PROVIDER_IDS.map((p) => peekSecret(`ai:${p}`)));
 function subscribeKeys(listener: () => void): () => void {
   const off = subscribeSecrets(listener);
   // A key remembered or forgotten in another tab.
   const onStorage = (event: StorageEvent) => {
-    if (event.key === null || event.key.startsWith('econgen.secret.')) listener();
+    if (event.key === null || event.key.startsWith("econgen.secret."))
+      listener();
   };
-  window.addEventListener('storage', onStorage);
+  window.addEventListener("storage", onStorage);
   return () => {
     off();
-    window.removeEventListener('storage', onStorage);
+    window.removeEventListener("storage", onStorage);
   };
 }
 
-export default function AiSection({ env, focus, params, setCloseGuard }: SettingsSectionProps) {
+export default function AiSection({
+  env,
+  focus,
+  params,
+  setCloseGuard,
+}: SettingsSectionProps) {
   const [settings, update] = useSettings(AI_SETTINGS);
   const m = useMessages(AI_SECTION_MESSAGES);
   const status = useAiStatus();
   const [runner] = useState(() =>
-    createAiSetupRunner(liveDeps(env), initialAiSetup(settings, env, params, (p) => peekSecret(`ai:${p}`))),
+    createAiSetupRunner(
+      liveDeps(env),
+      initialAiSetup(settings, env, params, (p) => peekSecret(`ai:${p}`)),
+    ),
   );
-  const state = useSyncExternalStore(runner.subscribe, runner.current, runner.current);
-  const [listed, setListed] = useState<{ provider: ProviderId; models: ModelInfo[] } | null>(null);
+  const state = useSyncExternalStore(
+    runner.subscribe,
+    runner.current,
+    runner.current,
+  );
+  const [listed, setListed] = useState<{
+    provider: ProviderId;
+    models: ModelInfo[];
+  } | null>(null);
   // Read each render: after a desktop test reads the keychain, a key's last 4 is known.
-  const peeks = JSON.parse(useSyncExternalStore(subscribeKeys, peekAll, peekAll)) as Peek[];
-  const keys = savedKeys(settings, env, (p) => peeks[PROVIDER_IDS.indexOf(p)] ?? null);
+  const peeks = JSON.parse(
+    useSyncExternalStore(subscribeKeys, peekAll, peekAll),
+  ) as Peek[];
+  const keys = savedKeys(
+    settings,
+    env,
+    (p) => peeks[PROVIDER_IDS.indexOf(p)] ?? null,
+  );
 
   useEffect(() => () => runner.dispose(), [runner]);
 
   const guarded = needsCloseGuard(state);
   useEffect(() => {
-    setCloseGuard(guarded ? { message: m.unsavedKey, save: { label: m.saveAndTest, run: () => runner.saveAndTest() } } : null);
+    setCloseGuard(
+      guarded
+        ? {
+            message: m.unsavedKey,
+            save: { label: m.saveAndTest, run: () => runner.saveAndTest() },
+          }
+        : null,
+    );
   }, [guarded, setCloseGuard, runner, m]);
   useEffect(() => () => setCloseGuard(null), [setCloseGuard]);
 
@@ -84,17 +115,22 @@ export default function AiSection({ env, focus, params, setCloseGuard }: Setting
   };
 
   return (
-    <AiSectionView
-      env={env}
-      focus={focus}
-      state={state}
-      settings={settings}
-      keys={keys}
-      configured={status.configured}
-      listed={listed?.provider === state.provider ? listed.models : null}
-      platform={secretPlatform(env.desktop)}
-      actions={actions}
-    />
+    <>
+      <AiSectionView
+        env={env}
+        focus={focus}
+        state={state}
+        settings={settings}
+        keys={keys}
+        configured={status.configured}
+        listed={listed?.provider === state.provider ? listed.models : null}
+        platform={secretPlatform(env.desktop)}
+        actions={actions}
+      />
+      <div className="mt-4 empty:hidden">
+        <TrialKitBlock />
+      </div>
+    </>
   );
 }
 
@@ -109,7 +145,7 @@ export interface AiSectionActions {
   useForSession(): void;
   retryKeychain(): void;
   remember(value: boolean): void;
-  forgetAsked(which: ProviderId | 'all'): void;
+  forgetAsked(which: ProviderId | "all"): void;
   cancelForget(): void;
   forget(): Promise<void>;
   model(id: string): void;

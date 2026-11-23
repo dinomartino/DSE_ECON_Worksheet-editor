@@ -6,7 +6,6 @@ import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { COPY_MESSAGES } from '@/components/translate/messages';
 import type { AiErrorInfo } from '@/ai/types';
 import { useMessages } from '@/i18n/language';
-import { useStudio } from '@/questionStudio/live';
 import { dismiss, notify } from '@/store/notices';
 
 /** The notice a failed run raises; the same id replaces it, and a new run takes it down. */
@@ -46,16 +45,4 @@ export function RunErrorNotice({ error, onRetry, onDismiss }: { error: AiErrorIn
   }, [error, copy]);
 
   return null;
-}
-
-/** The Write tab's: the session's own error, with Try again running the last Write or change again. */
-export function StudioError() {
-  const phase = useStudio((s) => s.phase);
-  return (
-    <RunErrorNotice
-      error={phase.kind === 'error' ? phase.error : undefined}
-      onRetry={() => void useStudio.getState().retry()}
-      onDismiss={() => useStudio.getState().dismissError()}
-    />
-  );
 }

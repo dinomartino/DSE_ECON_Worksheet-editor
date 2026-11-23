@@ -5,37 +5,43 @@ import { revealQuestion } from '@/components/bank/page/bankReturn';
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { emptyPaperFor } from '@/pastpapers/actions';
-import { buildsOf, insertIntoOpenPaper, keepInMyBank, languageOf, paperName, pickedEntries, type InsertResult } from '@/questionStudio/deliver';
-import { useStudio } from '@/questionStudio/live';
+import { buildsOf, insertIntoOpenPaper, keepInMyBank, languageOf, paperName, type InsertResult } from '@/questionStudio/deliver';
 import type { SheetDraft } from '@/questionStudio/session';
 import type { WorksheetSummary } from '@/storage';
 import { notify } from '@/store/notices';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
 
 /**
- * The tray at the foot (Past paper bank's own anatomy): the ticked drafts go into a new
+ * The tray at the foot (Past paper bank's own anatomy): the accepted drafts go into a new
  * worksheet, a new Paper 1, one of the teacher's papers (one commit, one ⌘Z), or their own
  * question bank. Nothing lands until a button here is pressed; drafts that landed leave the
  * sheet.
  */
 export function Tray({
+  items,
+  busyRun,
+  onDelivered,
+  onClear,
   summaries,
   onOpenWorksheet,
   onOpenDocument,
   onError,
 }: {
+  /** The accepted drafts, in the paper's order. */
+  items: readonly SheetDraft[];
+  /** The AI is working: nothing lands meanwhile. */
+  busyRun: boolean;
+  /** These drafts became questions (Add, Keep). */
+  onDelivered: (from: readonly SheetDraft[]) => void;
+  onClear: () => void;
   summaries: readonly WorksheetSummary[];
   onOpenWorksheet: (worksheet: Worksheet, language: LanguageMode) => void;
   onOpenDocument: (docId: string, then?: () => void) => void;
   onError: (message: string) => void;
 }) {
   const m = useMessages(QUESTION_STUDIO_MESSAGES);
-  const entries = useStudio((s) => s.entries);
-  const picked = useStudio((s) => s.picked);
-  const busyRun = useStudio((s) => s.phase.kind === 'running');
   const [target, setTarget] = useState('new:classroom');
   const [busy, setBusy] = useState(false);
-  const items = useMemo(() => pickedEntries(entries, picked), [entries, picked]);
   const papers = useMemo(
     () => [...summaries].filter((s) => s.kind !== 'bank').sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 12),
     [summaries],
@@ -47,7 +53,7 @@ export function Tray({
       onError(result.reason === 'readOnly' ? m.readOnlyPaper : m.deliverFailed);
       return;
     }
-    useStudio.getState().delivered(from.map((e) => e.draft.id));
+    onDelivered(from);
     notify({ id: 'studio-added', tone: 'info', body: m.added(result.ids.length) });
     if (result.ids[0]) revealQuestion(result.ids[0]);
   };
@@ -77,7 +83,7 @@ export function Tray({
       const done = await keepInMyBank(buildsOf(from));
       if (done.copied === 0) notify({ id: 'studio-kept', tone: 'info', body: m.keptNone });
       else notify({ id: 'studio-kept', tone: 'success', body: done.already > 0 ? m.keptSome(done.copied, done.already, done.bankName) : m.kept(done.copied, done.bankName) });
-      useStudio.getState().delivered(from.map((e) => e.draft.id));
+      onDelivered(from);
     } catch (error) {
       onError(error instanceof Error ? error.message : m.deliverFailed);
     } finally {
@@ -89,7 +95,7 @@ export function Tray({
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-3 border-t border-line bg-surface px-6 py-3" role="region" aria-label={m.picked(items.length)} data-studio-tray>
       <span className="text-[13px] font-medium text-ink">{m.picked(items.length)}</span>
-      <button type="button" onClick={() => useStudio.setState({ picked: [] })} className="cursor-pointer text-[12.5px] text-ink-muted hover:text-ink hover:underline">
+      <button type="button" onClick={onClear} className="cursor-pointer text-[12.5px] text-ink-muted hover:text-ink hover:underline">
         {m.clear}
       </button>
       <span className="hidden min-w-0 max-w-[340px] text-[12px] leading-snug text-ink-subtle xl:block">{m.trayNote}</span>

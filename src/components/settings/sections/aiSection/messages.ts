@@ -14,6 +14,13 @@ export const AI_SECTION_MESSAGES = defineMessages({
     en: 'Include answers and mark schemes when translating',
     zh: '翻譯時包括答案和評卷參考',
   },
+  trialTitle: { en: 'Question studio trial', zh: '擬題工作室試用' },
+  trialBody: {
+    en: 'The trial for the Question studio: 30 invented briefs written with your AI key, your marks on each draft, the bar it has to reach, and a report to copy.',
+    zh: '擬題工作室的試用：用你的 AI key 寫 30 個虛構題目要求，你為每份草稿評分，對照要達到的標準，並可複製報告。',
+  },
+  trialOpen: { en: 'Open the trial kit', zh: '開啟試用工具' },
+  trialOff: { en: 'Turn the trial off', zh: '關閉試用' },
   privacyAndTerms: { en: 'Privacy and terminology', zh: '私隱與用詞' },
 
   yourKeys: { en: 'Your keys', zh: '你的 API key' },

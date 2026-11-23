@@ -218,7 +218,7 @@ export const QUESTION_STUDIO_MESSAGES = defineMessages({
   },
 
   // ---- tray ----
-  picked: { en: (n: number) => `${n} picked`, zh: (n: number) => `已選 ${n} 題` },
+  picked: { en: (n: number) => `${n} accepted`, zh: (n: number) => `已接受 ${n} 份` },
   clear: { en: 'Clear', zh: '清除' },
   trayNote: {
     en: 'AI-made questions can be wrong. Read each one before you use it.',
