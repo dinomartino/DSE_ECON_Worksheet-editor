@@ -101,6 +101,10 @@ export const AI_SECTION_MESSAGES = defineMessages({
     en: 'This browser keeps you signed in until you sign out, or for 14 days of no use. On a shared computer, sign out when you finish.',
     zh: '這個瀏覽器會保持登入，直至你登出，或 14 天沒有使用為止。在共用電腦上，用完請登出。',
   },
+  mentorTestServer: {
+    en: (host: string) => `Test build: uses the DSEcon Mentor at ${host}, not dseconmentor.com.`,
+    zh: (host: string) => `測試版本：使用 ${host} 的 DSEcon Mentor，而不是 dseconmentor.com。`,
+  },
   mentorKeptTab: { en: 'Signed in only in this tab: closing it signs you out.', zh: '只在這個分頁登入：關閉分頁即會登出。' },
   ownKeyAdvanced: { en: 'Advanced: use your own API key', zh: '進階：使用自己的 API key' },
 

@@ -3377,6 +3377,13 @@ with a dummy key or follows a documented shape.
   body; a repeat Mentor already saw answers `409 duplicate_request` (never charged). The editor
   waits `src/ai/http.ts:RELAY_TIMEOUT_MS` (past Mentor's own ~270 s stop) and never retries a
   timeout or Mentor's charged `deadline`, so one request is charged once (F10, CONTRACT v1.3).
+- **Which Mentor** (`src/ai/mentorOrigin.ts:MENTOR`): one origin sets the relay, the pricing and
+  Account pages and the only host whose links the app opens. Production unless a develop build sets
+  `NEXT_PUBLIC_MENTOR_ORIGIN` (a bare https origin, or http on localhost); Next writes it in at build
+  time and nothing at runtime can change it: a stored `baseUrls.mentor` is ignored
+  (`src/settings/aiSettings.ts:providerChoice`), so no setting can send the token elsewhere. A release
+  never uses it: the Release workflow empties it and `next.config.ts` refuses a release with it set.
+  A test build says so on the account card. Recipe: `docs/RECIPES.md` § Point a develop build at another Mentor.
 - **Storage namespace**: `econgen.settings.*` and `econgen.secret.*` sit outside
   `econ-worksheet:`, so documents, the index, backups and "Clear saved documents" never
   touch them (`src/test/secretsNeverLeave.test.ts`). The older per-viewer keys

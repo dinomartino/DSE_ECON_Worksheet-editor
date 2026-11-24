@@ -61,6 +61,8 @@ export interface AiSectionViewProps {
   mentorActions: MentorCardActions;
   /** Web: where this browser keeps the account's sign-in (null when signed out). */
   mentorKept?: 'browser' | 'tab' | null;
+  /** A develop build pointed at another Mentor (`ai/mentorOrigin.ts`): its host; absent for production. */
+  mentorServer?: string;
 }
 
 export function AiSectionView(props: AiSectionViewProps) {
@@ -110,6 +112,7 @@ export function AiSectionView(props: AiSectionViewProps) {
         inUse={settings.provider === 'mentor'}
         focus={props.focus === 'account'}
         web={props.env.desktop ? undefined : { kept: props.mentorKept ?? null }}
+        server={props.mentorServer}
         actions={props.mentorActions}
       />
       {props.mentor.kind === 'signedIn' ? (

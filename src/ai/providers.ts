@@ -1,4 +1,5 @@
 import type { ProviderId, ProviderPreset } from './types';
+import { MENTOR } from './mentorOrigin';
 
 /**
  * Provider presets: data only. Model ids are hypotheses until the eval gate confirms
@@ -259,8 +260,11 @@ const ollama: ProviderPreset = {
   denyHintsInPrompt: true,
 };
 
-/** Mentor's app API root; the relay is `${MENTOR_API}/ai` (k-0519, `Outbox/k-0518/CONTRACT.md`). */
-export const MENTOR_API = 'https://dseconmentor.com/api/app/v1';
+/**
+ * Mentor's app API root; the relay is `${MENTOR_API}/ai` (k-0519, `Outbox/k-0518/CONTRACT.md`).
+ * Production, or a develop build's `NEXT_PUBLIC_MENTOR_ORIGIN` (`mentorOrigin.ts`).
+ */
+export const MENTOR_API = MENTOR.api;
 /** The only model the hosted relay runs (the user, u-x8td). */
 export const MENTOR_MODEL = 'gemini-4-hydrogen';
 
@@ -283,7 +287,7 @@ const mentor: ProviderPreset = {
   baseUrl: `${MENTOR_API}/ai`,
   baseUrlEditable: false,
   keyRequired: true,
-  billingUrl: 'https://dseconmentor.com/account#ai-credits',
+  billingUrl: MENTOR.buyUrl,
   models: [{ id: MENTOR_MODEL, label: 'Gemini 4 Hydrogen', extra: { thinkingLevel: 'low' } }],
   structured: 'gemini',
   outputCap: 65536,

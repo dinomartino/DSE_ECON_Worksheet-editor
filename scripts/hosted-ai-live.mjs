@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
-import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
@@ -20,7 +20,8 @@ import { chromium } from 'playwright-core';
  * `--set-state` is the command that changes the test account on the dev database, given the
  * words after it (`balance 0`, `month-spent 2500`, `reset`).
  *
- *   npm run build && node scripts/hosted-ai-live.mjs --api=http://localhost:3124/api/app/v1 \
+ *   NEXT_PUBLIC_MENTOR_ORIGIN=http://localhost:3124 npm run build && \
+ *   node scripts/hosted-ai-live.mjs --api=http://localhost:3124/api/app/v1 \
  *     --cookie-file=… --docx=… --out=/tmp/hosted-ai-live --state=/tmp/zz/state.json \
  *     [--set-state="node …/set-state.mjs"] [--only=signin,studio,import,broke,cap]
  */
@@ -46,6 +47,12 @@ const PROVIDER_HOSTS = ['generativelanguage.googleapis.com', 'api.deepseek.com',
 mkdirSync(OUT, { recursive: true });
 if (!existsSync(join(ROOT, 'out/index.html'))) {
   console.error('out/ is missing: run `npm run build` first.');
+  process.exit(1);
+}
+// The Mentor a build talks to is fixed when it is built (src/ai/mentorOrigin.ts), never stored.
+const chunks = join(ROOT, 'out/_next/static/chunks');
+if (!readdirSync(chunks).some((f) => f.endsWith('.js') && readFileSync(join(chunks, f), 'utf8').includes(SITE))) {
+  console.error(`out/ was not built for ${SITE}: run NEXT_PUBLIC_MENTOR_ORIGIN=${SITE} npm run build first.`);
   process.exit(1);
 }
 
@@ -148,12 +155,9 @@ const context = await browser.newContext({
 });
 context.setDefaultTimeout(20_000);
 await context.addInitScript(
-  ([api, bank, doc, version]) => {
+  ([bank, doc, version]) => {
     if (sessionStorage.getItem('live-seeded')) return;
     sessionStorage.setItem('live-seeded', '1');
-    const ai = JSON.parse(localStorage.getItem('econgen.settings.ai') ?? '{"v":1}');
-    ai.baseUrls = { ...(ai.baseUrls ?? {}), mentor: `${api}/ai` };
-    localStorage.setItem('econgen.settings.ai', JSON.stringify(ai));
     localStorage.setItem('econgen.settings.pastPapers', JSON.stringify({ v: 1, mode: 'custom', url: bank }));
     localStorage.setItem('econ-worksheet-last-seen-version', version);
     const index = JSON.parse(localStorage.getItem('econ-worksheet-index') ?? '[]');
@@ -162,7 +166,7 @@ await context.addInitScript(
       localStorage.setItem(`econ-worksheet:${doc.id}`, JSON.stringify(doc));
     }
   },
-  [API, BANK, DOC, VERSION],
+  [BANK, DOC, VERSION],
 );
 const leaks = [];
 await context.route((url) => PROVIDER_HOSTS.includes(url.hostname), (route) => {

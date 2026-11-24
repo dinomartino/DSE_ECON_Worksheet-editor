@@ -430,6 +430,23 @@ text, re-capture, scenes, timing, the score, a new cut, and multi-agent work. In
 Follow `DESKTOP-PREVIEW.md`: dev window, a local `.dmg`, or the CI preview workflow.
 None of them needs a tag or touches `main`.
 
+## Point a develop build at another Mentor
+
+For a test against a Vercel Preview of DSEcon Mentor (Stripe test mode) or its local dev server.
+Set the origin when building; it is fixed in the bundle (`src/ai/mentorOrigin.ts`):
+
+```sh
+NEXT_PUBLIC_MENTOR_ORIGIN=https://<preview>.vercel.app npm run dev            # web, http://localhost:3000
+NEXT_PUBLIC_MENTOR_ORIGIN=https://<preview>.vercel.app npm run desktop:dev    # desktop shell
+```
+
+Only a bare origin (no path); `http://` only for localhost. The account card shows "Test build:
+uses the DSEcon Mentor at …". Restart without the variable to go back to production. A Preview
+with Vercel Deployment Protection on answers every call (and the CORS preflight) with a 302 to
+Vercel's sign-in, so sign-in fails with a network error until protection is off for Preview.
+Browser check against a stand-in on that host: `node scripts/hosted-ai-verify.mjs --mentor=<host>`
+after building with the variable. Never set it in a workflow; a release refuses it.
+
 ## Adding a changelog line
 
 1. `CHANGELOG.md` — one bullet under `## Unreleased` → `### Added`, `### Changed` or
