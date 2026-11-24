@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AiStatusChip } from '@/components/ai/AiStatusChip';
+import { PastPaperIcon, PencilIcon } from '@/components/ui/icons';
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import type { WorksheetSummary } from '@/storage';
@@ -12,6 +13,7 @@ import { ChatTurns } from './chat/ChatTurns';
 import { Composer } from './chat/Composer';
 import { useChat } from './chat/live';
 import { PaperCanvas } from './chat/PaperCanvas';
+import { useDismiss } from './dismiss';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
 import { ReferencePicker } from './ReferencePicker';
 import { Tray } from './Tray';
@@ -51,6 +53,7 @@ export function QuestionStudioScreen({
   const chat = chats.find((c) => c.id === activeId) ?? chats[0];
   const store = useChat.getState();
   const [text, setText] = useState('');
+  const [hint, setHint] = useState<{ text: string; at: number }>();
   const [aboutDraft, setAboutDraft] = useState<string>();
   const [picker, setPicker] = useState(false);
   const [focus, setFocus] = useState<{ id: string; at: number }>();
@@ -69,6 +72,7 @@ export function QuestionStudioScreen({
     const said = words.trim() || (chat.drafts.length === 0 ? '' : words);
     void store.send(said, draftChip?.id);
     setText('');
+    setHint(undefined);
     setAboutDraft(undefined);
   };
 
@@ -96,6 +100,7 @@ export function QuestionStudioScreen({
           onClick={() => {
             store.newChat();
             setText('');
+            setHint(undefined);
             setAboutDraft(undefined);
           }}
           disabled={running}
@@ -116,7 +121,7 @@ export function QuestionStudioScreen({
               <Welcome
                 pastPapersOn={pastPapersOn}
                 onPick={() => setPicker(true)}
-                onDescribe={() => setText(m.describeExample)}
+                onDescribe={() => setHint({ text: m.describeHint, at: Date.now() })}
               />
             ) : (
               <ChatTurns
@@ -144,6 +149,7 @@ export function QuestionStudioScreen({
             onRemoveReference={(id) => store.removeReference(id)}
             onSettings={(patch) => store.setSettings(patch)}
             suggestions={suggestions}
+            hint={hint}
           />
         </section>
 
@@ -179,8 +185,8 @@ export function QuestionStudioScreen({
         language={chat.settings.language}
         onClose={() => setPicker(false)}
         onPick={(source, keyPoint, item) => {
+          // Nothing is typed into the box (k-0528): an empty box + a reference sends "N like this".
           if (!store.addReference(source, keyPoint, item)) notify({ id: 'studio-full', tone: 'info', body: m.full });
-          else if (!text.trim() && chat.turns.length === 0) setText(m.likeThis(chat.settings.count));
         }}
       />
     </div>
@@ -198,8 +204,8 @@ function Welcome({ pastPapersOn, onPick, onDescribe }: { pastPapersOn: boolean; 
       <p className="mt-1 text-ink-muted">{m.welcomeBody}</p>
       <div className="mt-3 flex flex-col gap-2">
         <button type="button" className={start} onClick={onPick} disabled={!pastPapersOn} data-start-pick>
-          <span aria-hidden className="mt-0.5 w-5 text-center text-[16px] text-ink-muted">
-            ▣
+          <span aria-hidden className="mt-0.5 flex w-5 justify-center text-ink-muted">
+            <PastPaperIcon size={18} />
           </span>
           <span>
             <span className="block font-medium text-ink">{m.startPick}</span>
@@ -207,8 +213,8 @@ function Welcome({ pastPapersOn, onPick, onDescribe }: { pastPapersOn: boolean; 
           </span>
         </button>
         <button type="button" className={start} onClick={onDescribe} data-start-describe>
-          <span aria-hidden className="mt-0.5 w-5 text-center text-[16px] text-ink-muted">
-            ✎
+          <span aria-hidden className="mt-0.5 flex w-5 justify-center text-ink-muted">
+            <PencilIcon size={18} />
           </span>
           <span>
             <span className="block font-medium text-ink">{m.startDescribe}</span>
@@ -226,18 +232,13 @@ function ChatsMenu({ chats, activeId, onOpen, onDelete }: { chats: readonly Chat
   const [open, setOpen] = useState(false);
   const [asking, setAsking] = useState<string>();
   const ref = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const saved = chats.filter((c) => c.turns.length > 0).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
-    };
-    window.addEventListener('mousedown', close);
-    return () => window.removeEventListener('mousedown', close);
-  }, [open]);
+  useDismiss(open, () => setOpen(false), [ref], button);
   return (
     <div ref={ref} className="relative">
       <button
+        ref={button}
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
@@ -252,7 +253,6 @@ function ChatsMenu({ chats, activeId, onOpen, onDelete }: { chats: readonly Chat
           role="menu"
           aria-label={m.chatsLabel}
           className="absolute left-0 top-[calc(100%+4px)] z-30 w-[320px] whitespace-normal rounded-xl border border-line bg-surface p-1.5 shadow-lg"
-          onKeyDown={(event) => event.key === 'Escape' && setOpen(false)}
           data-chats-list
         >
           {saved.length === 0 ? (

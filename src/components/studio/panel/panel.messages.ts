@@ -25,7 +25,7 @@ export const WRITE_PANEL_MESSAGES = defineMessages({
   },
   pickReference: { en: 'Pick a reference…', zh: '選參考題…' },
   describe: { en: 'Describe what you need', zh: '描述你需要的題目' },
-  describeExample: { en: 'Write 3 MC questions on ', zh: '擬 3 條 MC 題，關於' },
+  describeHint: { en: 'e.g. Write 3 MC questions on price elasticity of demand', zh: '例如：擬 3 條關於需求的價格彈性的 MC 題' },
   drafts: { en: 'Drafts', zh: '草稿' },
   aiDraft: { en: 'AI draft', zh: 'AI 草稿' },
   wouldBe: { en: (n: string) => `would be Q${n}`, zh: (n: string) => `將成為第 ${n} 題` },

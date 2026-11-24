@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
+import { ChatIcon, RefreshIcon } from '@/components/ui/icons';
 import { useMessages } from '@/i18n/language';
 import { createWorksheet } from '@/model/factories';
 import type { LanguageMode } from '@/model/types';
@@ -165,8 +166,8 @@ export function ChatDraftCard({
           )}
           {!failed && !added && (
             <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5 pt-0.5">
-              <button type="button" className={small} disabled={busy} title={q.anotherTitle} onClick={() => onChange('another')}>
-                ↻ {q.another}
+              <button type="button" className={`${small} inline-flex items-center gap-1`} disabled={busy} title={q.anotherTitle} onClick={() => onChange('another')}>
+                <RefreshIcon size={13} /> {q.another}
               </button>
               <button type="button" className={small} disabled={busy} onClick={() => onChange('harder')}>
                 {q.harder}
@@ -175,8 +176,8 @@ export function ChatDraftCard({
                 {q.easier}
               </button>
               <span className="flex-1" />
-              <button type="button" className={small} disabled={busy} title={m.askAboutTitle} onClick={onAsk} data-ask>
-                💬 {m.askAbout}
+              <button type="button" className={`${small} inline-flex items-center gap-1`} disabled={busy} title={m.askAboutTitle} onClick={onAsk} data-ask>
+                <ChatIcon size={13} /> {m.askAbout}
               </button>
             </div>
           )}

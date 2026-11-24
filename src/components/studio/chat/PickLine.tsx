@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { topicNamesFor } from '@/model/topics';
 import type { LanguageMode } from '@/model/types';
 import { lookupCode, SYLLABUS } from '@/syllabus';
+import { useDismiss } from '../dismiss';
 import { syllabusName } from '../studioView';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 import type { KeyPick } from './engine';
@@ -38,6 +39,9 @@ export function PickLine({
   // The reason is the interface's words: the model writes it in both languages (k-0520).
   const ui = useUiLanguage();
   const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLSpanElement>(null);
+  useDismiss(open, () => setOpen(false), [menu, button], button);
   const main = picks[0];
   if (!main) return null;
   const also = picks[1];
@@ -48,6 +52,7 @@ export function PickLine({
       </span>
       {editable && (
         <button
+          ref={button}
           type="button"
           title={m.changeTitle}
           aria-expanded={open}
@@ -76,16 +81,21 @@ export function PickLine({
         )
       )}
       {open && (
-        <PickMenu
-          current={main.code}
-          others={picks.slice(1).map((p) => p.code)}
-          language={language}
-          onPick={(code) => {
-            setOpen(false);
-            onChange(code);
-          }}
-          onClose={() => setOpen(false)}
-        />
+        <span ref={menu} className="block">
+          <PickMenu
+            current={main.code}
+            others={picks.slice(1).map((p) => p.code)}
+            language={language}
+            onPick={(code) => {
+              setOpen(false);
+              onChange(code);
+            }}
+            onClose={() => {
+              setOpen(false);
+              button.current?.focus();
+            }}
+          />
+        </span>
       )}
     </span>
   );
@@ -108,12 +118,6 @@ function PickMenu({ current, others, language, onPick, onClose }: { current: str
       role="dialog"
       aria-label={m.pickMenuTitle}
       className="mt-1.5 block rounded-xl border border-line bg-surface p-2 shadow-lg"
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.stopPropagation();
-          onClose();
-        }
-      }}
       data-pick-menu
     >
       <span className="block px-1.5 pb-1 text-[11px] text-ink-subtle">{m.pickMenuTitle}</span>

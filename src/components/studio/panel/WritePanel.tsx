@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ChatIcon, PastPaperIcon, PencilIcon, RefreshIcon } from '@/components/ui/icons';
 import { useMessages } from '@/i18n/language';
 import { anchorLabel } from '@/library/tabFilters';
 import { computeNumbering } from '@/model/numbering';
@@ -49,6 +50,7 @@ export function WritePanel() {
   const run = usePaperChat((s) => s.run);
   const ask = useWritePanel((s) => s.ask);
   const [text, setText] = useState('');
+  const [hint, setHint] = useState<{ text: string; at: number }>();
   const [picker, setPicker] = useState(false);
   const log = useRef<HTMLDivElement>(null);
   const store = usePaperChat.getState();
@@ -80,6 +82,7 @@ export function WritePanel() {
   const send = (words: string) => {
     void usePaperChat.getState().send(words.trim(), draftChip?.id);
     setText('');
+    setHint(undefined);
     useWritePanel.getState().setAsk(undefined);
   };
   const openDraft = mine.drafts.find(acceptable);
@@ -97,7 +100,7 @@ export function WritePanel() {
             pastPapersOn={pastPapersOn}
             onWrite={(words) => send(words)}
             onPick={() => setPicker(true)}
-            onDescribe={() => setText(m.describeExample)}
+            onDescribe={() => setHint({ text: m.describeHint, at: Date.now() })}
           />
         ) : (
           <>
@@ -128,14 +131,15 @@ export function WritePanel() {
         onRemoveReference={(id) => store.removeReference(id)}
         onSettings={(patch) => store.setSettings(patch)}
         suggestions={suggestions}
+        hint={hint}
       />
       <ReferencePicker
         open={picker}
         language={mine.settings.language}
         onClose={() => setPicker(false)}
         onPick={(source, keyPoint, item) => {
+          // Nothing is typed into the box (k-0528): an empty box + a reference sends "N like this".
           if (!store.addReference(source, keyPoint, item)) notify({ id: 'studio-full', tone: 'info', body: c.full });
-          else if (!text.trim() && mine.turns.length === 0) setText(c.likeThis(mine.settings.count));
         }}
       />
     </div>
@@ -247,11 +251,11 @@ function Opener({
       )}
       {!gapName && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={onPick} disabled={!pastPapersOn} className={button} data-write-pick>
-            ▣ {m.pickReference}
+          <button type="button" onClick={onPick} disabled={!pastPapersOn} className={`${button} inline-flex items-center gap-1.5`} data-write-pick>
+            <PastPaperIcon size={14} /> {m.pickReference}
           </button>
-          <button type="button" onClick={onDescribe} className={button}>
-            ✎ {m.describe}
+          <button type="button" onClick={onDescribe} className={`${button} inline-flex items-center gap-1.5`} data-write-describe>
+            <PencilIcon size={14} /> {m.describe}
           </button>
         </div>
       )}
@@ -389,8 +393,8 @@ function DraftDetails({ draft, busy }: { draft: ChatDraft; busy: boolean }) {
             </button>
           ) : (
             <>
-              <button type="button" className={small} disabled={busy} title={q.anotherTitle} onClick={() => void store.change(draft.id, 'another')}>
-                ↻ {q.another}
+              <button type="button" className={`${small} inline-flex items-center gap-1`} disabled={busy} title={q.anotherTitle} onClick={() => void store.change(draft.id, 'another')}>
+                <RefreshIcon size={12} /> {q.another}
               </button>
               <button type="button" className={small} disabled={busy} onClick={() => void store.change(draft.id, 'harder')}>
                 {q.harder}
@@ -399,8 +403,8 @@ function DraftDetails({ draft, busy }: { draft: ChatDraft; busy: boolean }) {
                 {q.easier}
               </button>
               <span className="flex-1" />
-              <button type="button" className={small} title={m.askTitle} onClick={() => useWritePanel.getState().setAsk(draft.id)}>
-                💬 {c.askAbout}
+              <button type="button" className={`${small} inline-flex items-center gap-1`} title={m.askTitle} onClick={() => useWritePanel.getState().setAsk(draft.id)} data-ask>
+                <ChatIcon size={12} /> {c.askAbout}
               </button>
             </>
           )}

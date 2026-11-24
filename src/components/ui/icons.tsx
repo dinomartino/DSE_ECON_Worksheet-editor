@@ -587,6 +587,38 @@ export function ForumIcon(props: IconProps) {
   );
 }
 
+/** The Past paper bank's mark: a stack of exam papers, the top one dated. */
+export function PastPaperIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6.75 3.75h9l3 3V19.5h-12z" />
+      <path d="M4.5 6.75v15h11.25" />
+      <path d="M9.75 9.75h6M9.75 12.75h6M9.75 15.75h3.75" />
+    </Svg>
+  );
+}
+
+/** Options to tune (how many, level, language): three sliders. The gear means app Settings only. */
+export function SlidersIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" />
+      <circle cx="15" cy="6" r="2" />
+      <circle cx="9" cy="12" r="2" />
+      <circle cx="17" cy="18" r="2" />
+    </Svg>
+  );
+}
+
+/** A speech bubble: talk about something in the chat (the studio's Ask about this, k-0528). */
+export function ChatIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
+    </Svg>
+  );
+}
+
 export function StakeholderIcon(props: IconProps) {
   return (
     <Svg {...props}>

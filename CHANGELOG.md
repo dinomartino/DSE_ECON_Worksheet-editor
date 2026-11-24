@@ -102,6 +102,13 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **The question studio's menus close when you click away.** The ⚙ options (how many, level,
+  language), the Chats list and Change key point now close when you click anywhere else or press
+  Esc; picking an option keeps the ⚙ panel open so you can set several. Picking a past-paper
+  question no longer types "Write 3 like this." into the message box: the box stays empty, and
+  pressing Send writes that many like it with your chosen options. Ask about this has a plain
+  icon instead of an emoji.
+  <!-- zh: **擬題工作室的選單按旁邊即會關閉。** ⚙ 選項（數量、程度、語言）、「對話」清單及「更改學習要點」，現在按畫面其他地方或按 Esc 即會關閉；在 ⚙ 選擇一項後面板仍保持開啟，方便連續設定。揀選歷屆試題後，訊息欄不再自動填上「仿照這題擬 3 題。」：訊息欄保持空白，直接按「傳送」即按你的選項仿照該題擬題。「就這題提問」改用簡潔圖示，不再用表情符號。 -->
 - **Coverage report downloads without a warning.** Downloading the syllabus coverage report as a
   PDF no longer shows an error message in the app's developer console about repeated table
   headings; every page of the report, in English or 中文, has each heading and row once.
