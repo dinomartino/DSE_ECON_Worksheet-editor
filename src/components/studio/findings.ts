@@ -82,6 +82,10 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       const kind = ({ bank: m.copyKindBank, mine: m.copyKindMine, paper: m.copyKindPaper, example: m.copyKindExample, draft: m.copyKindDraft } as Record<string, string>)[str(p.with)] ?? m.copyKindBank;
       return p.verbatim ? m.copyVerbatim(kind) : m.copyClose(num(p.percent), kind);
     }
+    case 'copy.wordsOnly': {
+      const kind = ({ bank: m.copyKindBank, mine: m.copyKindMine, paper: m.copyKindPaper, example: m.copyKindExample, draft: m.copyKindDraft } as Record<string, string>)[str(p.with)] ?? m.copyKindBank;
+      return m.copyWordsOnly(num(p.percent), kind);
+    }
     case 'copy.reference':
       return m.copyReference(num(p.percent));
     case 'run.fewer':
@@ -101,6 +105,6 @@ export function findingText(finding: Finding, m: FindingMessages): string {
 export const KNOWN_FINDINGS: readonly string[] = [
   'shape.stemEmpty', 'shape.optionCount', 'shape.optionEmpty', 'shape.optionsSame', 'shape.keyRange', 'shape.statementEmpty',
   'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'shape.figureSet', 'shape.referenceForm', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'numbers.differ', 'terms.note', 'syllabus.limited',
-  'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close', 'copy.reference',
+  'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close', 'copy.wordsOnly', 'copy.reference',
   'run.fewer', 'run.stopped', 'run.keyNotChecked', 'run.referenceShape',
 ];

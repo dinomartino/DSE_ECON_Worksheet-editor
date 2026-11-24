@@ -23,6 +23,7 @@ const SAMPLES: Finding[] = [
   { id: 'shape.narrates', params: { side: 'en', words: 'dashed lines' } },
   { id: 'shape.figureFailed' },
   { id: 'shape.figureSet', params: { problem: 'optionsAll' } },
+  { id: 'copy.wordsOnly', params: { percent: 63, with: 'paper' } },
   { id: 'key.differs', params: { solver: 'C', key: 'B' } },
   { id: 'key.ambiguous' },
   { id: 'key.edited' },

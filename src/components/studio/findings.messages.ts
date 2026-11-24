@@ -115,6 +115,10 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
     en: (percent: number, kind: string) => `Too close to ${kind}: ${percent}% of its wording is shared. Do not use it as it is: change the wording, or write another.`,
     zh: (percent: number, kind: string) => `與${kind}太相似：${percent}% 的用字相同。請勿直接使用：先修改用字，或另擬一題。`,
   },
+  copyWordsOnly: {
+    en: (percent: number, kind: string) => `Its words are close to ${kind} (${percent}% shared), but this question is in its diagrams: check that they are not the same as that question's.`,
+    zh: (percent: number, kind: string) => `用字與${kind}相近（${percent}% 相同），但這題的內容在圖表中：請檢查各圖與該題的圖不同。`,
+  },
   copyReference: {
     en: (percent: number) => `Close to your reference on purpose: ${percent}% of its wording is shared. There is no limit against it.`,
     zh: (percent: number) => `刻意貼近你揀選的參考題：${percent}% 的用字相同。與參考題之間沒有相似度上限。`,

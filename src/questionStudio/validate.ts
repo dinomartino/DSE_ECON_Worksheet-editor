@@ -283,10 +283,17 @@ export function localChecks(draft: McqDraft, ctx: CheckContext): CheckRow[] {
   }
   const copy = checkNearCopy(words, ctx.corpus, ctx.extra, ctx.exempt);
   const reference = ctx.exempt?.length ? checkNearCopy(words, EMPTY_CORPUS, ctx.exempt) : undefined;
+  // A question told in its diagrams (k-0545: a grid (1)–(4), option diagrams) has few words, and
+  // those are the papers' own formula ("Which of the following diagrams …", "(1) and (2) only"):
+  // shared words alone say little, so they are a note to compare the diagrams, not a red warning
+  // (which also sent every such draft back for a rewrite). A long passage word for word still fails.
+  const toldInFigures = set.length >= 2 && copy.tooClose && !copy.verbatim;
   const copyRow: CheckRow = {
     id: 'copy',
-    state: copy.tooClose ? 'fail' : 'pass',
-    findings: copy.tooClose
+    state: toldInFigures ? 'look' : copy.tooClose ? 'fail' : 'pass',
+    findings: toldInFigures
+      ? [{ id: 'copy.wordsOnly', params: { percent: copy.percent, with: copy.closest?.kind ?? 'bank' } }]
+      : copy.tooClose
       ? [{ id: 'copy.close', params: { percent: copy.percent, with: copy.closest?.kind ?? 'bank', verbatim: copy.verbatim ? 1 : 0 } }]
       : reference && reference.percent >= REFERENCE_NOTE
         ? [{ id: 'copy.reference', params: { percent: reference.percent } }]

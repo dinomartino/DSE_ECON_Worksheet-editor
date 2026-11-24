@@ -9,7 +9,7 @@ import { applyEdit } from './edit';
 import { REQUEST, solver } from './fixtures';
 import { studioBuilds } from './insert';
 import { keyCheckOf } from './keyCheck';
-import { EMPTY_CORPUS } from './nearCopy';
+import { buildCorpusIndex, EMPTY_CORPUS } from './nearCopy';
 import { refine, writeDrafts } from './run';
 import { figuresOf } from './validate';
 import type { StudioDeps, StudioDraft } from './types';
@@ -140,5 +140,26 @@ describe('follow-ups on a draft with several figures', () => {
     if (!kept.ok) throw new Error('failed');
     expect(words.requests.map((r) => payload(r).task ?? 'write')).not.toContain('diagram-set');
     expect(kept.drafts[0].diagramSet).toBe(draft.diagramSet);
+  });
+});
+
+describe('a question told in its diagrams and the near-copy check', () => {
+  it('shared formula words are a note to compare the diagrams, not a red warning, and ask for no rewrite', async () => {
+    const f = fixture('grid-regressive');
+    const corpus = buildCorpusIndex([
+      {
+        id: 'past',
+        kind: 'paper',
+        en: 'Which of the following diagrams describe a progressive tax? (1) and (2) only (1) and (3) only (2) and (4) only (3) and (4) only',
+        zh: '下列哪些圖描繪累進稅？ 只有 (1)、(2) 只有 (1)、(3) 只有 (2)、(4) 只有 (3)、(4)',
+      },
+    ]);
+    const client = scriptedClient([writeOf(f), JSON.stringify(f.reply), solveKey(f)]);
+    const out = await writeDrafts({ ...REQUEST, count: 1 }, { ...deps(client), corpus }, { signal: ctl() });
+    if (!out.ok) throw new Error('failed');
+    expect(client.requests).toHaveLength(3);
+    const copy = out.drafts[0].checks.find((c) => c.id === 'copy');
+    expect(copy?.state).toBe('look');
+    expect(copy?.findings[0].id).toBe('copy.wordsOnly');
   });
 });
