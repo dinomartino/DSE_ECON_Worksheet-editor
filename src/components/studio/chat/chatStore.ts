@@ -1,7 +1,9 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { aiErrorInfo } from '@/ai/errors';
 import type { AiErrorInfo } from '@/ai/types';
+import type { Side } from '@/model/textSlots';
 import type { LanguageMode } from '@/model/types';
+import { figureLang } from '@/questionStudio/figures';
 import type { PastPaperItem } from '@/pastpapers/pack';
 import { sidesOf, withReferences, type Compared, type RunInfo, type StudioEnv } from '@/questionStudio/session';
 import { MAX_EXAMPLES, type Refinement, type SourceQuestion, type StudioDeps, type StudioDraft, type StudioOutcome, type StudioRequest } from '@/questionStudio/types';
@@ -167,10 +169,11 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
     const pushTurns = (chatId: string, ...turns: Turn[]) => edit(chatId, (c) => ({ ...c, turns: [...c.turns, ...turns] }));
 
     /** The examples with their pictures read (the engine sends them to a provider that reads pictures). Never throws. */
-    const withPictures = async (examples: readonly Source[]): Promise<Source[]> => {
+    const withPictures = async (examples: readonly Source[], sides: readonly Side[]): Promise<Source[]> => {
       if (!deps.env.figures || examples.length === 0) return [...examples];
       try {
-        return await deps.env.figures(examples);
+        // A paper in Chinese only gets the Chinese pictures where a question has them (k-0544).
+        return await deps.env.figures(examples, figureLang(sides));
       } catch {
         return [...examples];
       }
@@ -276,7 +279,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       }
       if (signal.aborted) return;
       // The reference's pictures go with it (read now: they are never saved with the chat).
-      request = { ...request, examples: await withPictures(request.examples) };
+      request = { ...request, examples: await withPictures(request.examples, request.sides) };
       if (signal.aborted) return;
       const count = request.count;
       setStep(chatId, turnId, { kind: 'write', state: 'run', count });
@@ -335,7 +338,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       if (!ready) return;
       const tagged = Object.fromEntries(mine.filter((r) => r.keyPoint).map((r) => [r.source.id, r.keyPoint as string]));
       const current = (get().chats.find((c) => c.id === chatId)?.picks ?? []).map((p) => p.code);
-      const picked = await deps.engine.pick({ text, examples: await withPictures(mine.map((r) => r.source)), tagged, ...(current.length ? { current } : {}) }, ready.deps, signal);
+      const picked = await deps.engine.pick({ text, examples: await withPictures(mine.map((r) => r.source), sidesOf(get().chats.find((c) => c.id === chatId)?.settings.language ?? 'en')), tagged, ...(current.length ? { current } : {}) }, ready.deps, signal);
       if (!picked.ok) {
         failTurn(chatId, turnId, picked.error);
         return;
@@ -374,7 +377,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       const picked = await deps.engine.pick(
         {
           text,
-          examples: onlyRead ? [] : await withPictures(mine.map((r) => r.source)),
+          examples: onlyRead ? [] : await withPictures(mine.map((r) => r.source), sidesOf(chat.settings.language)),
           tagged,
           ...(current.length ? { current } : {}),
           drafts: briefsOf(chat, reading.chip),

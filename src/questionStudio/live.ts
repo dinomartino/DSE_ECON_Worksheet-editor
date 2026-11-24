@@ -35,7 +35,7 @@ export const liveBank: ReferenceBank = {
 };
 
 export const liveEnv: StudioEnv = {
-  figures: async (examples) => (await import('./figures')).withFigures(examples),
+  figures: async (examples, lang) => (await import('./figures')).withFigures(examples, lang),
   async localChecks() {
     // No provider: the glossary and the corpus only (an edit never reaches the AI, k-0530).
     const [glossary, corpus] = await Promise.all([

@@ -20,7 +20,7 @@ describe('a question\'s pictures', () => {
   it('reads stored images as data URLs, at most the cap, and skips anything unusable', async () => {
     const blocks = figureBlocksOf(withFigures(base, 'image'));
     const read = await figuresOfBlocks(blocks);
-    expect(read).toHaveLength(MAX_FIGURES_PER_EXAMPLE);
+    expect(read).toHaveLength(Math.min(4, MAX_FIGURES_PER_EXAMPLE));
     expect(read[0].dataUrl).toMatch(/^data:image\/png;base64,/);
     // An asset id or a remote address is not a picture the engine can send.
     const odd = blocks.map((b) => (b.kind === 'image' ? { ...b, src: 'asset-123' } : b));
@@ -32,7 +32,7 @@ describe('a question\'s pictures', () => {
   it('withFigures reads each example once and keeps the blocks', async () => {
     const source = sourceFromQuestion(withFigures(base, 'image'), { label: 'x' });
     const [done] = await readFigures([source]);
-    expect(done.figures).toHaveLength(MAX_FIGURES_PER_EXAMPLE);
+    expect(done.figures).toHaveLength(Math.min(4, MAX_FIGURES_PER_EXAMPLE));
     expect(done.figureBlocks).toHaveLength(4);
     const [again] = await readFigures([done]);
     expect(again).toBe(done);

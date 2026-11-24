@@ -116,8 +116,10 @@ export function examplePayload(source: SourceQuestion, sides: readonly Side[], f
     options: source.options.map((o) => sidesOf(o, sides)),
     ...(source.answerIndex >= 0 ? { key: LETTERS[source.answerIndex] } : {}),
     ...(source.explanation && (source.explanation.en.trim() || source.explanation.zh.trim()) ? { explanation: sidesOf(source.explanation, sides) } : {}),
-    // `figures`: this many pictures are attached, in this example's order; else the model is told it had one it cannot see.
-    ...(figures > 0 ? { figures } : source.hasFigure ? { figureNotShown: true } : {}),
+    // `figures`: this many pictures are attached, in this example's order, `figureAt` saying where each sits
+    // ("stem (1)", "option A"); `figureNotShown`: it has a picture (or more) the model cannot see.
+    ...(figures > 0 ? { figures, ...(source.figureAt?.length ? { figureAt: source.figureAt.slice(0, figures) } : {}) } : {}),
+    ...(source.hasFigure && figures < Math.max(1, source.figurePlaces?.length ?? source.figureBlocks?.length ?? 0) ? { figureNotShown: true } : {}),
   };
 }
 

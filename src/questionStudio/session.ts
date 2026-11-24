@@ -6,6 +6,7 @@ import type { Side } from '@/model/textSlots';
 import type { LanguageMode } from '@/model/types';
 import { lookupCode } from '@/syllabus';
 import { normalizeRequest } from './brief';
+import { figureLang } from './figures';
 import { needsPick, pickKeyPoints, type KeyPick } from './pick';
 import { applyEvent, emptyLive } from './stream';
 import { emptyUsage, refine as refineDraft, writeDrafts, type RunHooks, type Stage } from './run';
@@ -82,7 +83,7 @@ export interface StudioEnv {
    */
   references?(request: StudioRequest, signal: AbortSignal): Promise<SourceQuestion[]>;
   /** Reads the pictures of examples that carry `figureBlocks` (draws diagrams: browser only). Never throws; absent = words only. */
-  figures?(examples: readonly SourceQuestion[]): Promise<SourceQuestion[]>;
+  figures?(examples: readonly SourceQuestion[], lang?: Side): Promise<SourceQuestion[]>;
   /**
    * What the local checks read after the teacher's own edit (k-0530): the glossary and the
    * corpus, with no provider and no AI. Never throws; a part it cannot read is null (that
@@ -195,9 +196,10 @@ export async function withReferences(request: StudioRequest, env: Pick<StudioEnv
 
 /** The request's examples with their pictures read, so the model gets them with the request (k-0514). */
 export async function withExampleFigures(request: StudioRequest, env: Pick<StudioEnv, 'figures'>): Promise<StudioRequest> {
-  if (!env.figures || !request.examples.some((e) => !e.figures && e.figureBlocks?.length)) return request;
+  const lang = figureLang(request.sides);
+  if (!env.figures || !request.examples.some((e) => e.figureBlocks?.length && (!e.figures || (e.figuresLang ?? 'en') !== lang))) return request;
   try {
-    return { ...request, examples: await env.figures(request.examples) };
+    return { ...request, examples: await env.figures(request.examples, lang) };
   } catch {
     return request;
   }

@@ -58,6 +58,16 @@ export interface SourceQuestion {
    */
   figures?: readonly ImagePart[];
   /**
+   * Where each of `figures` sits, same order and length (k-0544): "stem", "stem (1)" (a picture
+   * in a table cell, by the cell's label), "option A", "passage". Sent with the pictures so the
+   * model can tie a picture to its letter or label.
+   */
+  figureAt?: readonly string[];
+  /** The language `figures` were read in: 'zh' = the Chinese pictures (`srcZh`) where there are any (k-0544). */
+  figuresLang?: Side;
+  /** Where each of `figureBlocks` sits, same order and length (k-0544). Absent on examples saved before it. */
+  figurePlaces?: readonly string[];
+  /**
    * The picture and diagram blocks `figures` is drawn from (`figures.ts`), kept until the
    * run reads them: drawing a diagram needs a canvas, so it happens when a request is
    * written (`StudioEnv.figures`), not when a question is picked.

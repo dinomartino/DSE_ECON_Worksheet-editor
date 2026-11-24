@@ -4,7 +4,7 @@ import { plain } from '@/model/text';
 import type { Side } from '@/model/textSlots';
 import { questionTexts } from '@/model/textWalk';
 import type { BiText, ContentBlock, McqQuestion, Question, TableBlock } from '@/model/types';
-import { figureBlocksOf } from './figures';
+import { placedFigureBlocks } from './figures';
 import type { DiagramReference } from '@/diagramGen/types';
 import type { CorpusDoc, CorpusKind } from './nearCopy';
 import type { SourceQuestion } from './types';
@@ -18,35 +18,70 @@ const SIDES: readonly Side[] = ['en', 'zh'];
 
 const biOf = (text: BiText): BiDraft => ({ en: plain(text.en).trim(), zh: plain(text.zh).trim() });
 
-/** A table as plain lines: one per row, cells joined by " | ". */
+/** The marker a picture leaves in an example's words; `figureAt` says which picture sits there (k-0544). */
+export const PICTURE_MARK = '[picture]';
+
+/**
+ * A table as plain lines: one per row, cells joined by " | ". A merged cell's words fill every
+ * cell it covers, so each column keeps its heading ("Total expenditure ($) | Total expenditure
+ * ($)" over "Mary | Peter"); a cell holding a picture says so after its label ("(1) [picture]").
+ */
 function tableLines(table: TableBlock, side: Side): string {
-  return table.rows
-    .map((row) => row.cells.map((cell) => plain(cell.text[side]).trim()).join(' | '))
+  const grid = table.rows.map((row) => row.cells.map((cell) => (cell.covered ? null : [plain(cell.text[side]).trim(), cell.image ? PICTURE_MARK : ''].filter(Boolean).join(' '))));
+  table.rows.forEach((row, r) =>
+    row.cells.forEach((cell, c) => {
+      if (cell.covered) return;
+      for (let dr = 0; dr < (cell.rowSpan ?? 1); dr += 1) {
+        for (let dc = 0; dc < (cell.colSpan ?? 1); dc += 1) {
+          if ((dr || dc) && grid[r + dr] && grid[r + dr][c + dc] === null) grid[r + dr][c + dc] = grid[r][c];
+        }
+      }
+    }),
+  );
+  return grid
+    .map((row) => row.map((text) => text ?? '').join(' | '))
     .filter((line) => line.replace(/[|\s]/g, '') !== '')
     .join('\n');
 }
 
 /**
- * Blocks as plain text per side: paragraphs, table rows, source labels, in order. A
- * picture or diagram sets `figure` (the words cannot carry it).
+ * Blocks as plain text per side: paragraphs, table rows, source labels, in order; two tables
+ * in a row are kept apart by a blank line. A picture or diagram sets `figure` (the words cannot
+ * carry it) and leaves `PICTURE_MARK` where it sits.
  */
 export function blocksText(blocks: ContentBlock[]): { text: BiDraft; figure: boolean } {
   const out: Record<Side, string[]> = { en: [], zh: [] };
   let figure = false;
+  let lastTable = false;
   for (const block of flattenBlocks(blocks)) {
+    if (block.kind === 'figureRow') continue;
     if (block.kind === 'paragraph') {
       for (const side of SIDES) out[side].push(plain(block.text[side]).trim());
     } else if (block.kind === 'table') {
-      for (const side of SIDES) out[side].push(tableLines(block, side));
+      for (const side of SIDES) out[side].push((lastTable ? '\n' : '') + tableLines(block, side));
       if (block.caption) for (const side of SIDES) out[side].push(plain(block.caption[side]).trim());
+      if (block.rows.some((row) => row.cells.some((cell) => cell.image && !cell.covered))) figure = true;
     } else if (block.kind === 'source') {
       if (block.label) for (const side of SIDES) out[side].push(plain(block.label[side]).trim());
     } else if (block.kind === 'image' || block.kind === 'diagram') {
       figure = true;
+      for (const side of SIDES) out[side].push(PICTURE_MARK);
     }
+    lastTable = block.kind === 'table' && !block.caption;
   }
   const join = (side: Side) => out[side].filter(Boolean).join('\n');
-  return { text: { en: join('en'), zh: join('zh') }, figure };
+  // A side with no words of its own keeps no bare picture marks.
+  const words = (side: Side) => (out[side].some((t) => t && t !== PICTURE_MARK) ? join(side) : '');
+  return { text: { en: words('en'), zh: words('zh') }, figure };
+}
+
+/** An option's words: its line, then anything printed under it (a table as lines, a picture as `PICTURE_MARK`). */
+function optionText(option: McqQuestion['options'][number]): { text: BiDraft; figure: boolean } {
+  const line = biOf(option.text);
+  if (!option.blocks?.length) return { text: line, figure: false };
+  const under = blocksText(option.blocks);
+  const both = (side: Side) => [line[side], under.text[side] || (under.figure ? PICTURE_MARK : '')].filter(Boolean).join('\n');
+  return { text: { en: both('en'), zh: both('zh') }, figure: under.figure };
 }
 
 /**
@@ -60,9 +95,10 @@ export function sourceFromQuestion(
 ): SourceQuestion {
   const stem = blocksText(question.blocks);
   const passage = opts.passage?.length ? blocksText(opts.passage) : null;
-  const optionFigure = question.options.some((o) => (o.blocks?.length ?? 0) > 0);
+  const options = question.options.map(optionText);
+  const optionFigure = options.some((o) => o.figure);
   const key = question.answerIndex;
-  const figureBlocks = figureBlocksOf(question, opts.passage);
+  const placed = placedFigureBlocks(question, opts.passage);
   const explanation = question.explanation ? biOf(question.explanation) : undefined;
   return {
     id: opts.id ?? question.id,
@@ -70,11 +106,11 @@ export function sourceFromQuestion(
     ...(passage && (passage.text.en || passage.text.zh) ? { passage: passage.text } : {}),
     stem: stem.text,
     statements: (question.statements ?? []).map(biOf),
-    options: question.options.map((o) => biOf(o.text)),
+    options: options.map((o) => o.text),
     answerIndex: Number.isInteger(key) && key >= 0 && key < question.options.length ? key : -1,
     ...(explanation && (explanation.en || explanation.zh) ? { explanation } : {}),
     hasFigure: stem.figure || (passage?.figure ?? false) || optionFigure,
-    ...(figureBlocks.length ? { figureBlocks } : {}),
+    ...(placed.length ? { figureBlocks: placed.map((p) => p.block), figurePlaces: placed.map((p) => p.at) } : {}),
   };
 }
 

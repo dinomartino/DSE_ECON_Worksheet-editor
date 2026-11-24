@@ -86,6 +86,8 @@ function forSaving(chat: Chat): Chat {
       if (!isObj(e) || !('figures' in e)) return e;
       const rest = { ...e };
       delete rest.figures;
+      delete rest.figureAt;
+      delete rest.figuresLang;
       return rest;
     }),
   });
@@ -95,6 +97,8 @@ function forSaving(chat: Chat): Chat {
       if (!('figures' in r.source)) return r;
       const source: typeof r.source & { figures?: unknown } = { ...r.source };
       delete source.figures;
+      delete source.figureAt;
+      delete source.figuresLang;
       return { ...r, source };
     }),
     drafts: chat.drafts.map((d) => ({ ...d, entry: { ...d.entry, request: strip(d.entry.request) } })),

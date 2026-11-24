@@ -144,6 +144,14 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **The Question studio now sees every diagram of a past-paper question you base a question on.**
+  A question whose diagrams sit in a numbered grid, like HKDSE 2023 Paper 1 Q36 with its four
+  graphs labelled (1) to (4), used to reach the AI as words only, so it could not make one of the
+  same kind. Now every diagram goes with it and the AI is told where each one is printed (which
+  number, which option). That includes option D's diagram when every option is a diagram, tables
+  printed under the options, tables with merged headings, and the Chinese diagrams on a
+  Chinese paper.
+  <!-- zh: **擬題工作室現在會看到你所參考的歷屆試題中的每一幅圖。** 以往若題目的圖表排成編號方格（例如 2023 年文憑試卷一第 36 題，四幅圖分別標示 (1) 至 (4)），AI 只會收到文字，因此無法擬出同類題目。現在每幅圖都會一併送出，並告訴 AI 每幅圖印在哪裏（哪一個編號、哪一個選項）。這包括每個選項都是圖表時選項 D 的圖、印在選項下的表格、有合併標題的表格，以及中文試卷所用的中文版圖表。 -->
 - **The AI menu is no longer cut off in the Question studio.** Clicking the AI credits button
   under the studio's message box opened its menu (DSEcon Mentor credits / your own key) half
   off the left side of the window. It now opens fully on screen, above or below the button,
