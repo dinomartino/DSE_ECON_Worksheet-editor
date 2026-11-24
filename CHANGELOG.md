@@ -117,6 +117,13 @@ a version heading is edited afterwards.
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
+- **The Question studio's drafts are as wide as the worksheet page, and the chat takes the
+  rest.** A draft card used to be wider than the question inside it, leaving an empty band on
+  the right. Now the whole card (question, explanation, checks and buttons) is the width of the
+  page's text, so every line breaks exactly where it will in your worksheet, and the chat
+  beside it widens to use the space (up to a comfortable reading width). Side by side with the
+  reference makes room for two page-wide cards. In a narrow window the cards shrink as before.
+  <!-- zh: **擬題工作室的草稿與工作紙頁面同寬，餘下空間留給對話。** 以往草稿卡比卡內題目闊，右邊留下一大片空白。現在整張卡（題目、解釋、檢查及按鈕）與頁面文字同寬，每行在同一位置換行，與工作紙上一樣；旁邊的對話欄則加闊，用盡餘下空間（以舒適閱讀的闊度為限）。「與參考題並排」會留出兩張頁面闊的卡的位置。視窗較窄時，草稿卡會如常縮小。 -->
 - **The Question studio now writes 1 question by default, not 3.** The count picker is still there
   (1, 3 or 5), and a number you type in your request ("3 questions…") still wins. The credit
   estimate follows the count.

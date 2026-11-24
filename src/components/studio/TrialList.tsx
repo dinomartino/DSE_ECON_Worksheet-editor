@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
+import { PastPaperSheet, pastPaperSheetWidth } from '@/components/pastpapers/PastPaperSheet';
 import { Segmented } from '@/components/ui';
 import { useMessages } from '@/i18n/language';
 import { topicNamesFor } from '@/model/topics';
@@ -20,6 +20,8 @@ import { keyPointLabel, languageOfSides, readingList, sheetDraftOf, type ListFil
 
 /** The frame every preview is drawn in: its page, fonts and size (the question's own words are the draft's). */
 const FRAME = createWorksheet();
+/** The list's widest: a card's paper at page width, its `p-3` and border, so no empty band (k-0546). */
+const LIST_WIDTH = pastPaperSheetWidth(FRAME, true) + 2 * 12 + 2;
 
 /**
  * The trial kit's middle column: every draft the studio showed, from the 30 invented briefs
@@ -37,7 +39,7 @@ export function TrialList() {
   const items = useMemo(() => readingList(runs, filter), [runs, filter]);
 
   return (
-    <div className="mx-auto flex max-w-[860px] flex-col gap-4" data-trial-list>
+    <div className="mx-auto flex flex-col gap-4" style={{ maxWidth: LIST_WIDTH }} data-trial-list>
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-[15px] font-semibold text-ink">{t.listTitle}</h2>
         <span className="text-[12px] tabular-nums text-ink-subtle" role="status">

@@ -14,12 +14,21 @@ import { QUESTION_STUDIO_MESSAGES } from '../messages';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 import type { ChatState, RunState } from './chatStore';
 import type { Chat, ChatDraft, ChatRef } from './chatTypes';
-import { ChatDraftCard } from './ChatDraftCard';
+import { ChatDraftCard, DRAFT_CARD_WIDTH } from './ChatDraftCard';
 import type { PartialDraft } from './engine';
 import { whatChanged, type Change } from './whatChanged';
 
 const FRAME = createWorksheet();
-type View = 'paper' | 'compare';
+/** Side by side: two page-wide cards and the 20px gap between them (k-0546). */
+const COMPARE_WIDTH = 2 * DRAFT_CARD_WIDTH + 20;
+export type CanvasView = 'paper' | 'compare';
+type View = CanvasView;
+
+/**
+ * The width the canvas needs to show its cards at page width: the column, its `px-6` and a
+ * slim scrollbar. The studio gives the chat whatever is left (u-tyzl, k-0546).
+ */
+export const canvasNeed = (view: CanvasView) => (view === 'compare' ? COMPARE_WIDTH : DRAFT_CARD_WIDTH) + 2 * 24 + 10;
 
 /**
  * The main area: the paper writing itself. In Paper view the drafts sit in one column under a
@@ -41,6 +50,8 @@ export function PaperCanvas({
   onEdit,
   onUndoEdit,
   onShowReference,
+  view,
+  onView,
   footer,
 }: {
   chat: Chat;
@@ -57,11 +68,14 @@ export function PaperCanvas({
   onEdit: (d: ChatDraft, edit: DraftEdit) => Promise<void> | void;
   onUndoEdit: (d: ChatDraft) => void;
   onShowReference: () => void;
+  /** Paper or Side by side: held by the studio, which sizes the chat to it. */
+  view: View;
+  onView: (view: View) => void;
   footer: ReactNode;
 }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
   const q = useMessages(QUESTION_STUDIO_MESSAGES);
-  const [view, setView] = useState<View>('paper');
+  const setView = onView;
   const mine = chat.refs.filter((r) => r.who === 'you');
   const refs = mine.length ? mine : chat.refs;
   const [refId, setRefId] = useState<string>();
@@ -153,7 +167,7 @@ export function PaperCanvas({
             <p className="mt-1 text-[12.5px] text-ink-subtle">{m.canvasEmptyNote}</p>
           </div>
         ) : compare && ref ? (
-          <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-5">
+          <div className="mx-auto grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-5" style={{ maxWidth: COMPARE_WIDTH }}>
             <div className="sticky top-0 flex flex-col gap-2">
               {refs.length > 1 && (
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label={m.referencePick}>
@@ -183,7 +197,7 @@ export function PaperCanvas({
             </div>
           </div>
         ) : (
-          <div className="mx-auto flex max-w-[860px] flex-col gap-4">
+          <div className="mx-auto flex flex-col gap-4" style={{ maxWidth: DRAFT_CARD_WIDTH }}>
             {refs.length > 0 && <RefBar refs={refs} onShow={() => (ref ? setView('compare') : onShowReference())} />}
             {standing.map(card)}
             {streaming}

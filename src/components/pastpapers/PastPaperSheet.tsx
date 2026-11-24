@@ -1,12 +1,25 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { contentWidth, pageSetupOf } from '@/model/page';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import type { PastPaperItem } from '@/pastpapers/pack';
 import { pastPaperPreviewHtml } from './pastPaperPreview';
 
 /** The smallest the paper is drawn; narrower cards reflow instead (as the 題庫 preview). */
 const MIN_SCALE = 0.72;
+
+/** The white paper's side padding (each side), compact or not. */
+const padX = (compact: boolean) => (compact ? 14 : 28);
+
+/**
+ * The widest the sheet is worth drawing: the printed page's text column plus its padding.
+ * Wider, the paper never grows (it keeps the page's line breaks), so a card capped here has
+ * no empty band on the right (k-0546); narrower, it scales down, then reflows.
+ */
+export function pastPaperSheetWidth(doc: Worksheet, compact = false): number {
+  return Math.ceil(contentWidth(pageSetupOf(doc)) / 15) + 2 * padX(compact);
+}
 
 /**
  * One past-paper question on white paper, drawn only once its card nears the viewport (a
@@ -89,7 +102,7 @@ export function PastPaperSheet({
       style={{
         background: '#ffffff',
         boxShadow: '0 1px 4px rgba(40, 36, 30, 0.16), 0 0 0 1px rgba(40, 36, 30, 0.06)',
-        padding: compact ? '12px 14px' : '20px 28px',
+        padding: compact ? `12px ${padX(true)}px` : `20px ${padX(false)}px`,
       }}
     >
       <div ref={frameRef} style={{ height: preview ? height * scale : 96, position: 'relative' }}>

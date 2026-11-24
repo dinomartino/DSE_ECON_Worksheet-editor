@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
+import { PastPaperSheet, pastPaperSheetWidth } from '@/components/pastpapers/PastPaperSheet';
 import { ChatIcon, PencilIcon, RefreshIcon, WarningIcon } from '@/components/ui/icons';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
@@ -25,6 +25,13 @@ import type { DraftEdit } from '@/questionStudio/edit';
 
 /** The frame every preview is drawn in (its page and fonts); the words are the draft's. */
 const FRAME = createWorksheet();
+
+/**
+ * A draft card's widest: the paper as it prints (page text width), its `px-2` frame and the
+ * card's border. The canvas caps its column here so the question fills the card, line breaks
+ * as in the worksheet, instead of leaving an empty band on the right (k-0546).
+ */
+export const DRAFT_CARD_WIDTH = pastPaperSheetWidth(FRAME, true) + 2 * 8 + 2;
 
 const small =
   'cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1 text-[12px] text-ink hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50';

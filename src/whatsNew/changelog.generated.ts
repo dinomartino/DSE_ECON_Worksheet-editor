@@ -119,6 +119,13 @@ a version heading is edited afterwards.
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
+- **The Question studio's drafts are as wide as the worksheet page, and the chat takes the
+  rest.** A draft card used to be wider than the question inside it, leaving an empty band on
+  the right. Now the whole card (question, explanation, checks and buttons) is the width of the
+  page's text, so every line breaks exactly where it will in your worksheet, and the chat
+  beside it widens to use the space (up to a comfortable reading width). Side by side with the
+  reference makes room for two page-wide cards. In a narrow window the cards shrink as before.
+  <!-- zh: **擬題工作室的草稿與工作紙頁面同寬，餘下空間留給對話。** 以往草稿卡比卡內題目闊，右邊留下一大片空白。現在整張卡（題目、解釋、檢查及按鈕）與頁面文字同寬，每行在同一位置換行，與工作紙上一樣；旁邊的對話欄則加闊，用盡餘下空間（以舒適閱讀的闊度為限）。「與參考題並排」會留出兩張頁面闊的卡的位置。視窗較窄時，草稿卡會如常縮小。 -->
 - **The Question studio now writes 1 question by default, not 3.** The count picker is still there
   (1, 3 or 5), and a number you type in your request ("3 questions…") still wins. The credit
   estimate follows the count.
@@ -146,6 +153,14 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **The Question studio now sees every diagram of a past-paper question you base a question on.**
+  A question whose diagrams sit in a numbered grid, like HKDSE 2023 Paper 1 Q36 with its four
+  graphs labelled (1) to (4), used to reach the AI as words only, so it could not make one of the
+  same kind. Now every diagram goes with it and the AI is told where each one is printed (which
+  number, which option). That includes option D's diagram when every option is a diagram, tables
+  printed under the options, tables with merged headings, and the Chinese diagrams on a
+  Chinese paper.
+  <!-- zh: **擬題工作室現在會看到你所參考的歷屆試題中的每一幅圖。** 以往若題目的圖表排成編號方格（例如 2023 年文憑試卷一第 36 題，四幅圖分別標示 (1) 至 (4)），AI 只會收到文字，因此無法擬出同類題目。現在每幅圖都會一併送出，並告訴 AI 每幅圖印在哪裏（哪一個編號、哪一個選項）。這包括每個選項都是圖表時選項 D 的圖、印在選項下的表格、有合併標題的表格，以及中文試卷所用的中文版圖表。 -->
 - **The AI menu is no longer cut off in the Question studio.** Clicking the AI credits button
   under the studio's message box opened its menu (DSEcon Mentor credits / your own key) half
   off the left side of the window. It now opens fully on screen, above or below the button,

@@ -12,7 +12,7 @@ import { summaryOf, type Chat } from './chat/chatTypes';
 import { ChatTurns } from './chat/ChatTurns';
 import { Composer } from './chat/Composer';
 import { useChat } from './chat/live';
-import { PaperCanvas } from './chat/PaperCanvas';
+import { canvasNeed, PaperCanvas, type CanvasView } from './chat/PaperCanvas';
 import { useDismiss } from './dismiss';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
 import { ReferencePicker } from './ReferencePicker';
@@ -55,6 +55,7 @@ export function QuestionStudioScreen({
   const [aboutDraft, setAboutDraft] = useState<string>();
   const [picker, setPicker] = useState(false);
   const [focus, setFocus] = useState<{ id: string; at: number }>();
+  const [view, setView] = useState<CanvasView>('paper');
   const log = useRef<HTMLDivElement>(null);
   const running = run !== undefined;
   const runningHere = run?.chatId === chat.id ? run : undefined;
@@ -113,7 +114,12 @@ export function QuestionStudioScreen({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <section className="flex w-[380px] shrink-0 flex-col border-r border-line bg-surface" aria-label={m.chats} data-chat-column>
+        <section
+          className="flex shrink-0 flex-col border-r border-line bg-surface transition-[width] duration-200 motion-reduce:transition-none"
+          style={{ width: chatWidth(canvasNeed(view === 'compare' && chat.refs.length > 0 ? 'compare' : 'paper')) }}
+          aria-label={m.chats}
+          data-chat-column
+        >
           <div ref={log} className="scroll-slim flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4" role="log" aria-live="polite">
             {chat.turns.length === 0 ? (
               <Welcome
@@ -165,6 +171,8 @@ export function QuestionStudioScreen({
           onEdit={(d, edit) => store.editDraft(d.id, edit)}
           onUndoEdit={(d) => store.undoEdit(d.id)}
           onShowReference={() => setPicker(true)}
+          view={view}
+          onView={setView}
           footer={
             <Tray
               items={accepted.map((d) => d.entry)}
@@ -192,6 +200,16 @@ export function QuestionStudioScreen({
     </div>
   );
 }
+
+/** The chat's narrowest and widest: past ~680px its lines grow too long to read. */
+const CHAT_MIN = 380;
+const CHAT_MAX = 680;
+
+/**
+ * The chat takes what the paper does not need (u-tyzl, k-0546): the cards stay at the
+ * printed page's width, so on a wide window the chat grows instead of the desk.
+ */
+export const chatWidth = (need: number) => `clamp(${CHAT_MIN}px, calc(100% - ${need}px), ${CHAT_MAX}px)`;
 
 function Welcome({ onPick, onDescribe }: { onPick: () => void; onDescribe: () => void }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
