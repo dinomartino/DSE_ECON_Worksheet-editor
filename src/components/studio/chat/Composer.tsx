@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { studioJob } from '@/ai/credits';
 import { AiStatusChip } from '@/components/ai/AiStatusChip';
 import { CreditEstimate } from '@/components/ai/CreditEstimate';
@@ -14,6 +14,7 @@ import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 import { useDismiss } from '../dismiss';
 import { ReferenceBadge } from '../ReferenceBadge';
 import { CHAT_COUNTS, type Chat, type ChatCount, type ChatSettings } from './chatTypes';
+import { briefsOf, readLocally, recentOf } from './intent';
 
 const seg = (on: boolean) =>
   `cursor-pointer rounded-md px-2.5 py-1 text-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${on ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`;
@@ -48,7 +49,8 @@ export function Composer({
   text: string;
   onText: (text: string) => void;
   onClearDraft: () => void;
-  onSend: (text: string) => void;
+  /** `asNew`: the teacher took the guessed chip away (k-0535): write new ones. */
+  onSend: (text: string, opts?: { asNew?: boolean }) => void;
   onStop: () => void;
   onAddReference: () => void;
   onRemoveReference: (id: string) => void;
@@ -82,11 +84,33 @@ export function Composer({
   useEffect(() => {
     if (hint) box.current?.focus();
   }, [hint]);
+  // What the words point at, read on the computer as they are typed (k-0535): shown before
+  // anything is sent, so a wrong guess is taken away (✕) before it costs a credit.
+  // The guess the teacher took away (its kind and drafts): hidden while the words still read so.
+  const [offFor, setOffFor] = useState<string>();
+  const guess = useMemo(() => {
+    if (draft || !text.trim() || chat.drafts.length === 0) return undefined;
+    const read = readLocally(text, briefsOf(chat), { recent: recentOf(chat) });
+    return read.sure && read.kind !== 'new' && read.kind !== 'unsure' && read.drafts.length ? read : undefined;
+  }, [draft, text, chat]);
+  const guessKey = guess ? `${guess.kind}:${guess.drafts.join(',')}` : undefined;
+  const guessOff = guessKey !== undefined && guessKey === offFor;
+  const shownGuess = guessOff ? undefined : guess;
+  const guessWords = shownGuess
+    ? shownGuess.kind === 'another'
+      ? m.anotherChip(shownGuess.drafts[0])
+      : shownGuess.kind === 'ask'
+        ? m.askChip(shownGuess.drafts[0])
+        : shownGuess.drafts.length > 1
+          ? m.draftsChip(shownGuess.drafts.join(', '))
+          : m.draftChip(shownGuess.drafts[0])
+    : '';
   const placeholder = draft ? m.placeholderDraft(draft.no) : mine.length > 0 ? m.placeholderRef(count) : hint ? hint.text : m.placeholder;
 
   const send = () => {
     if (!canSend) return;
-    onSend(text);
+    onSend(text, guessOff ? { asNew: true } : undefined);
+    setOffFor(undefined);
   };
 
   return (
@@ -105,7 +129,7 @@ export function Composer({
           ))}
         </div>
       )}
-      {(mine.length > 0 || draft) && (
+      {(mine.length > 0 || draft || shownGuess) && (
         <div className="mb-1.5 flex flex-wrap gap-1.5">
           {mine.map((r) => (
             <ReferenceBadge key={r.source.id} source={r.source} language={language} onRemove={() => onRemoveReference(r.source.id)} removeLabel={m.removeReference(r.source.label)} />
@@ -114,6 +138,14 @@ export function Composer({
             <span className="inline-flex items-center gap-1 rounded-md border border-line-strong bg-surface-sunken px-1.5 py-0.5 text-[11.5px] text-ink" data-draft-chip={draft.no}>
               ✦ {m.draftChip(draft.no)}
               <button type="button" aria-label={m.removeDraftChip} onClick={onClearDraft} className="cursor-pointer px-0.5 text-ink-subtle hover:text-ink">
+                ✕
+              </button>
+            </span>
+          )}
+          {shownGuess && (
+            <span title={m.guessTitle} className="inline-flex items-center gap-1 rounded-md border border-dashed border-line-strong bg-surface px-1.5 py-0.5 text-[11.5px] text-ink" data-guess-chip={shownGuess.drafts.join(',')}>
+              ✦ {guessWords}
+              <button type="button" aria-label={m.removeGuess} onClick={() => setOffFor(guessKey)} className="cursor-pointer px-0.5 text-ink-subtle hover:text-ink">
                 ✕
               </button>
             </span>

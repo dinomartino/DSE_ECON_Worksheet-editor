@@ -7,7 +7,7 @@ import { ReferenceBadge } from '../ReferenceBadge';
 import { referenceByLabel } from '../referenceItem';
 import { RunErrorNotice } from '../StudioError';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
-import type { AiTurn, Chat, Note, Step } from './chatTypes';
+import type { AiTurn, Chat, Note, Step, WhichAsk } from './chatTypes';
 import { keyPointName, PickLine } from './PickLine';
 
 type M = ReturnType<typeof useMessages<typeof STUDIO_CHAT_MESSAGES>>;
@@ -22,6 +22,7 @@ export function ChatTurns({
   onDismiss,
   onChangePick,
   onAnswer,
+  onWhich,
 }: {
   chat: Chat;
   runningTurn?: string;
@@ -31,6 +32,8 @@ export function ChatTurns({
   onDismiss: (turnId: string) => void;
   onChangePick: (code: string) => void;
   onAnswer: (turnId: string, answer: 'rewrite' | 'keep') => void;
+  /** The answer to "Which draft do you mean?" (k-0535); absent = the buttons are not offered. */
+  onWhich?: (turnId: string, choice: number | 'all' | 'new') => void;
 }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
   // Only the newest pick can be changed: older ones are history.
@@ -60,6 +63,7 @@ export function ChatTurns({
             onDismiss={() => onDismiss(turn.id)}
             onChangePick={onChangePick}
             onAnswer={(answer) => onAnswer(turn.id, answer)}
+            onWhich={onWhich && !runningTurn ? (choice) => onWhich(turn.id, choice) : undefined}
           />
         ),
       )}
@@ -89,6 +93,27 @@ function stepWords(step: Step, m: M): string {
       return step.state === 'run' ? m.stepChangeRun(step.draftNo, step.how) : m.stepChangeDone(step.draftNo, step.how);
     case 'pick':
       return m.stepPicking;
+    case 'understand':
+      return step.state === 'run' ? m.stepUnderstandRun : m.stepUnderstandDone(readWords(step, m));
+  }
+}
+
+const listOf = (nos: readonly number[]) => nos.join(', ');
+
+/** What the message was read as (k-0535). */
+function readWords(step: Extract<Step, { kind: 'understand' }>, m: M): string {
+  const nos = step.drafts ?? [];
+  switch (step.intent) {
+    case 'edit':
+      return m.readEdit(listOf(nos));
+    case 'another':
+      return m.readAnother(nos[0]);
+    case 'ask':
+      return m.readAsk(nos[0]);
+    case 'unsure':
+      return m.readUnsure;
+    default:
+      return m.readNew;
   }
 }
 
@@ -108,6 +133,10 @@ function noteWords(note: Note, m: M, language: LanguageMode): string {
       return m.notePickChanged(keyPointName(note.code, language));
     case 'kept':
       return m.answeredKeep;
+    case 'reply':
+      return note.text;
+    case 'noReply':
+      return m.noteNoReply(note.draftNo);
   }
 }
 
@@ -124,6 +153,7 @@ function AiReply({
   onDismiss,
   onChangePick,
   onAnswer,
+  onWhich,
 }: {
   turn: AiTurn;
   chat: Chat;
@@ -137,6 +167,7 @@ function AiReply({
   onDismiss: () => void;
   onChangePick: (code: string) => void;
   onAnswer: (answer: 'rewrite' | 'keep') => void;
+  onWhich?: (choice: number | 'all' | 'new') => void;
 }) {
   const made = turn.draftIds.map((id) => chat.drafts.find((d) => d.id === id)).filter((d) => d !== undefined);
   return (
@@ -160,11 +191,12 @@ function AiReply({
         </ul>
       )}
       {turn.notes.map((note, i) => (
-        <p key={`${note.kind}:${i}`} className="mt-1 text-ink" data-note={note.kind}>
+        <p key={`${note.kind}:${i}`} className={`mt-1 text-ink ${note.kind === 'reply' ? 'whitespace-pre-line' : ''}`} data-note={note.kind}>
           {noteWords(note, m, language)}
         </p>
       ))}
-      {turn.ask && (
+      {turn.ask?.kind === 'which' && <WhichAskView ask={turn.ask} m={m} onWhich={onWhich} />}
+      {turn.ask?.kind === 'rewrite' && (
         <div className="mt-1.5" data-chat-ask>
           <p className="text-ink">{m.askRewrite}</p>
           {turn.ask.answer ? (
@@ -226,6 +258,42 @@ function TurnRefs({ labels, chat, language }: { labels: readonly string[]; chat:
           </span>
         );
       })}
+    </div>
+  );
+}
+
+const choiceBtn =
+  'cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1 text-[12.5px] text-ink hover:border-accent hover:text-accent-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50';
+
+/** "Which draft do you mean?" with a button per draft, all of them (when more than one), and new ones (k-0535). */
+function WhichAskView({ ask, m, onWhich }: { ask: WhichAsk; m: M; onWhich?: (choice: number | 'all' | 'new') => void }) {
+  const answered = ask.answer === undefined ? undefined : ask.answer === 'all' ? m.whichAll : ask.answer === 'new' ? m.whichNew : m.whichDraft(ask.answer);
+  return (
+    <div className="mt-1.5" data-chat-ask="which">
+      <p className="text-ink">{m.askWhich}</p>
+      {answered ? (
+        <p className="mt-1 text-[12px] text-ink-muted" data-which-answered>
+          {m.answeredWhich(answered)}
+        </p>
+      ) : (
+        <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label={m.askWhich}>
+          {ask.options.map((n) => (
+            <button key={n} type="button" className={choiceBtn} disabled={!onWhich} onClick={() => onWhich?.(n)} data-which={n}>
+              {m.whichDraft(n)}
+            </button>
+          ))}
+          {ask.wanted === 'edit' && ask.options.length > 1 && (
+            <button type="button" className={choiceBtn} disabled={!onWhich} onClick={() => onWhich?.('all')} data-which="all">
+              {m.whichAll}
+            </button>
+          )}
+          {ask.wanted !== 'ask' && (
+            <button type="button" className={choiceBtn} disabled={!onWhich} onClick={() => onWhich?.('new')} data-which="new">
+              {m.whichNew}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

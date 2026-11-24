@@ -3,6 +3,7 @@ import { normalizeRequest } from '@/questionStudio/brief';
 import { pickKeyPoints } from '@/questionStudio/pick';
 import { refine as refineDraft, writeDrafts, type RunHooks } from '@/questionStudio/run';
 import type { Refinement, SourceQuestion, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from '@/questionStudio/types';
+import { understandTurn, type DraftBrief, type TurnRead } from '@/questionStudio/understand';
 import { localPick } from './localPick';
 
 export type { PartialDraft } from '@/questionStudio/partial';
@@ -19,6 +20,12 @@ export type { PartialDraft } from '@/questionStudio/partial';
  *   (u-2ouc: word by word, where the provider streams), then the checked drafts, then each
  *   draft's AI-made diagram.
  * - `refine`: Another / Harder / Easier / a change in words, on one draft.
+ *
+ * Once drafts exist, `pick` also reads the message (k-0535): with `drafts` it asks the same
+ * request what the teacher wants and which draft(s) (`understand.ts`), so a message still
+ * costs one request. `picks: false` = the draft is known and only an answer is wanted (a
+ * small request without the syllabus). An engine that gives no `turn` leaves the chat to its
+ * own rules (`intent.ts`).
  */
 
 /** One key point the AI picked, with its reason (the engine's `KeyPick`, plus the computer's own basis when it picked). */
@@ -41,9 +48,19 @@ export interface PickInput {
   tagged?: Readonly<Record<string, string>>;
   /** The key point(s) the chat is on now, main first: a follow-up ("the same in Chinese") keeps them (k-0520). */
   current?: readonly string[];
+  /** The drafts on the page (k-0535): also read what the message wants. */
+  drafts?: readonly DraftBrief[];
+  /** Drafts the last reply wrote or changed, by number. */
+  recent?: readonly number[];
+  /** The draft chosen before typing (the chip), by number. */
+  target?: number;
+  /** False: only read the message (no key point wanted, no syllabus sent). Default true. */
+  picks?: boolean;
 }
 
-export type PickOutcome = { ok: true; picks: KeyPick[]; usage: Usage; model: string; /** Picked on the computer, not by the AI. */ local?: boolean } | { ok: false; error: AiErrorInfo; usage: Usage };
+export type PickOutcome =
+  | { ok: true; picks: KeyPick[]; usage: Usage; model: string; /** Picked on the computer, not by the AI. */ local?: boolean; /** What the message wants (k-0535), when the AI said. */ turn?: TurnRead }
+  | { ok: false; error: AiErrorInfo; usage: Usage };
 
 export type WriteHooks = RunHooks;
 
@@ -62,6 +79,19 @@ export async function computerPick(input: PickInput): Promise<PickOutcome> {
 
 export const liveEngine: StudioEngine = {
   async pick(input, deps, signal) {
+    if (input.drafts?.length) {
+      const wantPicks = input.picks !== false;
+      const read = await understandTurn(
+        { text: input.text, examples: input.examples, ...(input.current?.length ? { current: input.current } : {}), drafts: input.drafts, recent: input.recent ?? [], ...(input.target !== undefined ? { target: input.target } : {}), picks: wantPicks },
+        deps,
+        signal,
+      );
+      if (!read.ok) return read;
+      const turn = read.read ? { turn: read.read } : {};
+      if (read.picks.length > 0 || !wantPicks || (read.read && read.read.intent !== 'new')) return { ok: true, picks: read.picks, usage: read.usage, model: read.model, ...turn };
+      const local = await computerPick(input);
+      return local.ok ? { ...local, usage: read.usage, ...turn } : local;
+    }
     const asked = await pickKeyPoints({ text: input.text, examples: input.examples, ...(input.current?.length ? { current: input.current } : {}) }, deps, signal);
     if (!asked.ok) return asked;
     if (asked.picks.length > 0) return { ok: true, picks: asked.picks, usage: asked.usage, model: asked.model };

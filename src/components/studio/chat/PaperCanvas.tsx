@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
 import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
 import { useMessages } from '@/i18n/language';
 import { createWorksheet } from '@/model/factories';
@@ -76,20 +76,29 @@ export function PaperCanvas({
     el?.animate?.([{ boxShadow: '0 0 0 4px var(--color-accent)' }, { boxShadow: '0 0 0 0 transparent' }], { duration: 1600, easing: 'ease-out' });
   }, [focus]);
 
+  // A click on a card (not on its buttons, links or fields, not a text selection) makes the
+  // next message about it: the composer's chip (k-0535).
+  const pickCard = (d: ChatDraft) => (event: MouseEvent) => {
+    if (d.state === 'added' || (event.target as HTMLElement).closest('button, a, input, textarea, select, [contenteditable="true"], [role="button"]')) return;
+    if (typeof window !== 'undefined' && window.getSelection()?.isCollapsed === false) return;
+    onAsk(d);
+  };
+
   const card = (d: ChatDraft) => (
-    <ChatDraftCard
-      key={d.id}
-      draft={d}
-      language={chat.settings.language}
-      busy={busy}
-      working={run?.target === d.id}
-      highlight={false}
-      onAccept={() => onAccept(d)}
-      onReject={() => onReject(d)}
-      onChange={(how) => onChange(d, how)}
-      onAsk={() => onAsk(d)}
-      onRestore={(i) => onRestore(d, i)}
-    />
+    <div key={d.id} className="contents" onClick={pickCard(d)} data-card-pick>
+      <ChatDraftCard
+        draft={d}
+        language={chat.settings.language}
+        busy={busy}
+        working={run?.target === d.id}
+        highlight={false}
+        onAccept={() => onAccept(d)}
+        onReject={() => onReject(d)}
+        onChange={(how) => onChange(d, how)}
+        onAsk={() => onAsk(d)}
+        onRestore={(i) => onRestore(d, i)}
+      />
+    </div>
   );
 
   const firstNo = chat.drafts.reduce((max, d) => Math.max(max, d.no), 0) + 1;

@@ -2,6 +2,7 @@ import type { AiErrorInfo } from '@/ai/types';
 import type { LanguageMode } from '@/model/types';
 import type { SheetDraft } from '@/questionStudio/session';
 import type { Level, SourceQuestion, StudioDraft } from '@/questionStudio/types';
+import type { TurnPart } from '@/questionStudio/understand';
 import type { KeyPick } from './engine';
 
 /**
@@ -37,7 +38,9 @@ export type Step =
   | { kind: 'write'; state: StepState; count: number; done?: number; total?: number }
   | { kind: 'check'; state: StepState }
   | { kind: 'diagram'; state: StepState }
-  | { kind: 'change'; state: StepState; draftNo: number; how: ChangeHow };
+  | { kind: 'change'; state: StepState; draftNo: number; how: ChangeHow }
+  /** The message read with the drafts on the page (k-0535): what it wants, by the AI or the computer. */
+  | { kind: 'understand'; state: StepState; intent?: 'new' | 'edit' | 'another' | 'ask' | 'unsure'; drafts?: number[]; by?: 'ai' | 'computer' };
 
 export type StepState = 'run' | 'done' | 'fail';
 export type ChangeHow = 'harder' | 'easier' | 'change' | 'another';
@@ -50,7 +53,11 @@ export type Note =
   | { kind: 'stopped' }
   | { kind: 'noPick' }
   | { kind: 'pickChanged'; code: string }
-  | { kind: 'kept' };
+  | { kind: 'kept' }
+  /** The AI's answer to a question about a draft (k-0535): its own words, not the catalogue's. */
+  | { kind: 'reply'; text: string; draftNo: number }
+  /** A question about a draft that got no answer back. */
+  | { kind: 'noReply'; draftNo: number };
 
 export interface UserTurn {
   id: string;
@@ -60,6 +67,8 @@ export interface UserTurn {
   refs: string[];
   /** The draft it was about ("Make draft 2 harder"). */
   draftNo?: number;
+  /** All the drafts it was about, when more than one (k-0535). */
+  draftNos?: number[];
   /** A quick change from the draft's buttons: the words are the catalogue's. */
   how?: ChangeHow;
 }
@@ -74,8 +83,28 @@ export interface AiTurn {
   error?: AiErrorInfo;
   /** The teacher closed the error's notice: it is not raised again. */
   errorSeen?: boolean;
-  /** A question back to the teacher: the key point changed while drafts exist (decision 3). */
-  ask?: { kind: 'rewrite'; code: string; answer?: 'rewrite' | 'keep' };
+  /**
+   * A question back to the teacher: the key point changed while drafts exist (decision 3), or
+   * (k-0535) which draft a message means, with a button per draft, all of them, or new ones.
+   */
+  ask?: RewriteAsk | WhichAsk;
+}
+
+export interface RewriteAsk {
+  kind: 'rewrite';
+  code: string;
+  answer?: 'rewrite' | 'keep';
+}
+
+/** "Which draft do you mean?" (k-0535): the message, what it wanted, the drafts offered, and the answer once given. */
+export interface WhichAsk {
+  kind: 'which';
+  text: string;
+  wanted: 'edit' | 'another' | 'ask';
+  options: number[];
+  how: 'harder' | 'easier' | 'change';
+  parts: TurnPart[];
+  answer?: number | 'all' | 'new';
 }
 
 export type Turn = UserTurn | AiTurn;
