@@ -49,7 +49,7 @@ function setup(over: { write?: (request: StudioRequest, hooks: WriteHooks) => Pr
   };
   const store = memory();
   const runs: string[] = [];
-  const useChat = createChatStore({ env, engine, storage: localChatStorage(store), language: () => 'en', onRun: (info) => runs.push(info.kind) });
+  const useChat = createChatStore({ env, engine, storage: localChatStorage(store), language: () => 'en', initialSettings: { count: 3 }, onRun: (info) => runs.push(info.kind) });
   const chat = () => useChat.getState().chats.find((c) => c.id === useChat.getState().activeId) as Chat;
   const lastAi = () => [...chat().turns].reverse().find((t): t is AiTurn => t.role === 'ai') as AiTurn;
   return { useChat, chat, lastAi, calls, store, runs };

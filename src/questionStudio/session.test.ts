@@ -39,7 +39,7 @@ const stub = (id: string, keyPoint = 'C.ped', status: StudioDraft['status'] = 'o
 describe('the form', () => {
   it('makes the request: the paper language gives the sides, and a key point must be one of the syllabus', () => {
     const { session } = setup(['']);
-    expect(session.getState().form).toMatchObject({ keyPoint: '', count: 3, level: 'same', shape: 'any', language: 'bilingual' });
+    expect(session.getState().form).toMatchObject({ keyPoint: '', count: 1, level: 'same', shape: 'any', language: 'bilingual' });
     expect(canWrite(session.getState().form)).toBe(false);
     session.getState().setForm({ keyPoint: 'C.ped', language: 'zh', level: 'harder', note: 'HK prices' });
     expect(requestOf(session.getState().form)).toMatchObject({ keyPoint: 'C.ped', sides: ['zh'], level: 'harder', note: 'HK prices' });

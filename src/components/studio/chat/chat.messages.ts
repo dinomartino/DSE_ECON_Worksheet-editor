@@ -38,7 +38,7 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   // composer
   placeholder: { en: 'Ask for questions, or say what to change…', zh: '要求擬題，或說明要修改甚麼…' },
   placeholderRef: {
-    en: (n: number) => `Send as it is to write ${n} like this, or add what you want…`,
+    en: (n: number) => `Send as it is to write ${n === 1 ? 'one' : n} like this, or add what you want…`,
     zh: (n: number) => `可以直接傳送（仿照這題擬 ${n} 題），或補充要求…`,
   },
   placeholderDraft: { en: (n: number) => `What should change in draft ${n}?`, zh: (n: number) => `草稿 ${n} 要怎樣修改？` },
@@ -55,7 +55,7 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   removeDraftChip: { en: 'Not about this draft', zh: '不是關於這份草稿' },
   removeGuess: { en: 'Not an edit: write new questions', zh: '不是修改：擬寫新題目' },
   settings: { en: 'How many, level, language', zh: '數量、程度、語言' },
-  settingsSummary: { en: (count: number, level: string, language: string) => `${count} · ${level} · ${language}`, zh: (count: number, level: string, language: string) => `${count} 題 · ${level} · ${language}` },
+  settingsSummary: { en: (count: number, level: string, language: string) => `${count === 1 ? '1 question' : `${count} questions`} · ${level} · ${language}`, zh: (count: number, level: string, language: string) => `${count} 題 · ${level} · ${language}` },
   levelSameLong: { en: 'Same level', zh: '相同程度' },
   settingsNote: { en: 'None of this is required: you can also say it (“make 5, in Chinese”).', zh: '以上都不是必須的：你也可以直接說（「擬 5 題，用中文」）。' },
   send: { en: 'Send', zh: '傳送' },

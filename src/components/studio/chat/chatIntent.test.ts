@@ -39,7 +39,7 @@ function setup(read?: (input: PickInput) => TurnRead | undefined) {
     references: async () => [],
   };
   const data = new Map<string, string>();
-  const useChat = createChatStore({ env, engine, storage: localChatStorage({ getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v) }), language: () => 'en' });
+  const useChat = createChatStore({ env, engine, storage: localChatStorage({ getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v) }), language: () => 'en', initialSettings: { count: 3 } });
   useChat.subscribe((s) => s.run && runCounts.push(s.run.count));
   const chat = () => useChat.getState().chats.find((c) => c.id === useChat.getState().activeId) as Chat;
   const lastAi = () => [...chat().turns].reverse().find((t): t is AiTurn => t.role === 'ai') as AiTurn;

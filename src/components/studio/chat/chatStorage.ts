@@ -58,7 +58,7 @@ export function readChat(x: unknown): Chat | undefined {
   if (!isObj(x) || x.v !== 1 || !isStr(x.id) || !isStr(x.createdAt) || !isStr(x.updatedAt)) return undefined;
   if (!Array.isArray(x.turns) || !Array.isArray(x.drafts) || !Array.isArray(x.refs) || !isObj(x.settings)) return undefined;
   const s = x.settings;
-  const count = CHAT_COUNTS.includes(s.count as never) ? (s.count as Chat['settings']['count']) : 3;
+  const count = CHAT_COUNTS.includes(s.count as never) ? (s.count as Chat['settings']['count']) : 1;
   const level = s.level === 'harder' || s.level === 'easier' ? s.level : 'same';
   const language: LanguageMode = LANGUAGE_MODES.includes(s.language as LanguageMode) ? (s.language as LanguageMode) : 'en';
   const picks = Array.isArray(x.picks) ? x.picks.filter((p): p is Chat['picks'][number] => isObj(p) && isStr(p.code) && isStr(p.reason)) : [];

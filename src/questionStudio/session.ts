@@ -136,7 +136,7 @@ export const defaultForm = (language: LanguageMode): StudioForm => ({
   points: [],
   examples: [],
   strict: true,
-  count: 3,
+  count: 1,
   level: 'same',
   shape: 'any',
   language,

@@ -97,6 +97,8 @@ export interface ChatDeps {
   engine: StudioEngine;
   storage: ChatStorage;
   language: () => LanguageMode;
+  /** Starting settings for a new chat (tests); the count defaults to 1. */
+  initialSettings?: Partial<Pick<ChatSettings, 'count'>>;
   now?: () => Date;
   newId?: () => string;
   /** After every run that reached the provider (the Trial kit records the teacher's own requests). A throw is ignored. */
@@ -133,7 +135,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
     turns: [],
     drafts: [],
     picks: [],
-    settings: { count: 3, level: 'same', language: deps.language() },
+    settings: { count: 1, level: 'same', language: deps.language(), ...deps.initialSettings },
     lastText: '',
     ...(paper ? { paper } : {}),
   });
