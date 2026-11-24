@@ -333,16 +333,18 @@ try {
       await k.page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
       const mine = en ? 'A bakery raises the price of a loaf from $20 to $25 and sells 300 loaves a day instead of 400. Demand for the bread is' : 'A bakery raises the price of a loaf from $20 to $25. Demand is';
       await k.page.keyboard.type(mine);
-      // The key: B, then Undo (back), then B again.
-      await form.locator('[data-edit-key="B"]').check();
+      // The key: a letter that is not the AI's key, then Undo (back to the AI's), then that letter again.
+      const aiKey = Number(await form.getAttribute('data-answer'));
+      const pick = ['A', 'B', 'C', 'D'][(aiKey + 1) % 4];
+      await form.locator(`[data-edit-key="${pick}"]`).check();
       await form.locator('[data-edit-undo]').click();
       let undone = false;
       for (let i = 0; i < 20 && !undone; i += 1) {
-        undone = !(await form.locator('[data-edit-key="B"]').isChecked());
+        undone = Number(await form.getAttribute('data-answer')) === aiKey;
         if (!undone) await k.page.waitForTimeout(100);
       }
-      expect(undone, 'Undo did not take the key back');
-      await form.locator('[data-edit-key="B"]').check();
+      expect(undone, `Undo did not take the key back to the AI's (${await form.getAttribute('data-answer')} ≠ ${aiKey})`);
+      await form.locator(`[data-edit-key="${pick}"]`).check();
       // The diagram: open it in the worksheet's diagram editor, clear it, Done.
       const fig = form.locator('[data-edit-diagram-preview] svg');
       const before = await fig.locator('path, line, polyline').count();
@@ -367,7 +369,7 @@ try {
       expect((await edited()) > 0, `the card does not show the edited stem: ${JSON.stringify(text.slice(0, 200))}`);
       expect(await draft.locator('[data-edited-chip]').isVisible(), 'no Edited chip');
       expect((await draft.locator('[data-version-button="2"]').count()) === 1, 'the edit is not version 2');
-      expect(text.includes(en ? 'Key B' : '答案 B'), 'the key did not change to B');
+      expect(text.includes(en ? `Key ${pick}` : `答案 ${pick}`), `the key did not change to ${pick}`);
       const key = draft.locator('[data-check="key"]');
       expect((await key.getAttribute('data-state')) === 'skipped', `key check is ${await key.getAttribute('data-state')}, not "check again"`);
       await draft.scrollIntoViewIfNeeded();

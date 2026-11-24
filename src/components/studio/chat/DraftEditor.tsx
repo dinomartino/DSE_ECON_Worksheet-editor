@@ -13,7 +13,7 @@ import { useMessages } from '@/i18n/language';
 import { isPanelOnlyDiagram } from '@/model/diagram';
 import { createWorksheet } from '@/model/factories';
 import type { BiText, DiagramBlock, LanguageMode } from '@/model/types';
-import type { Side } from '@/model/textSlots';
+import { sameRuns, type Side } from '@/model/textSlots';
 import { richOf, type DraftEdit } from '@/questionStudio/edit';
 import { hasStemTable } from '@/questionStudio/stemTable';
 import type { DraftRich, StudioDraft } from '@/questionStudio/types';
@@ -33,6 +33,24 @@ interface Form {
   rich: DraftRich;
   answerIndex: number;
   diagram?: DiagramBlock;
+}
+
+const sameBi = (a: BiText, b: BiText) => sameRuns(a.en ?? [], b.en ?? []) && sameRuns(a.zh ?? [], b.zh ?? []);
+const sameList = (a: readonly BiText[], b: readonly BiText[]) => a.length === b.length && a.every((x, i) => sameBi(x, b[i]));
+
+/**
+ * Two states of the form that print the same: runs compared as the editor does (`sameRuns`), so
+ * a field that reports its text again with its runs merged differently (on blur) is no change.
+ */
+function sameForm(a: Form, b: Form): boolean {
+  return (
+    a.answerIndex === b.answerIndex &&
+    a.diagram === b.diagram &&
+    sameBi(a.rich.stem, b.rich.stem) &&
+    sameBi(a.rich.explanation, b.rich.explanation) &&
+    sameList(a.rich.statements, b.rich.statements) &&
+    sameList(a.rich.options, b.rich.options)
+  );
 }
 
 /**
@@ -66,7 +84,7 @@ export function DraftEditor({
   const [drawing, setDrawing] = useState(false);
   const [saving, setSaving] = useState(false);
   const last = useRef<{ key: string; at: number }>({ key: '', at: 0 });
-  const dirty = JSON.stringify(form) !== JSON.stringify(start);
+  const dirty = !sameForm(form, start);
 
   /** A change, kept for Undo: typing in one field coalesces into one step (a pause or another field starts a new one). */
   const change = (key: string, next: (f: Form) => Form) => {
@@ -76,7 +94,7 @@ export function DraftEditor({
     setState((s) => {
       const after = next(s.form);
       // A field that reports what it already holds (on blur, say) is no change and no Undo step.
-      if (JSON.stringify(after) === JSON.stringify(s.form)) return s;
+      if (sameForm(after, s.form)) return s;
       return { form: after, history: coalesce ? s.history : [...s.history, s.form].slice(-50) };
     });
   };
@@ -111,7 +129,7 @@ export function DraftEditor({
 
   return (
     <FieldScopeContext.Provider value={{ language, readOnly: false }}>
-      <div role="group" aria-label={m.editing(no)} className="space-y-3 px-4 pb-3 pt-3" onKeyDown={onKeyDown} data-draft-editor>
+      <div role="group" aria-label={m.editing(no)} className="space-y-3 px-4 pb-3 pt-3" onKeyDown={onKeyDown} data-draft-editor data-undo-depth={history.length} data-answer={form.answerIndex}>
         <p className="rounded-lg bg-surface-sunken px-3 py-1.5 text-[12px] text-ink-muted">{m.editFree}</p>
         <div>
           <BiTextField label={m.editStem} rows={3} value={form.rich.stem} onChange={(stem) => setRich('stem', (r) => ({ ...r, stem }))} />
