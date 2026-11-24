@@ -37,6 +37,7 @@ export const CHECK_LABEL = {
   terms: 'checkTerms',
   syllabus: 'checkSyllabus',
   lint: 'checkLint',
+  style: 'checkStyle',
   copy: 'checkCopy',
 } as const satisfies Record<CheckId, keyof ReturnType<typeof useStates>>;
 

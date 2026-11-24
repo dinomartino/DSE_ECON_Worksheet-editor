@@ -37,7 +37,7 @@ export const INVENTED: Invented[] = [
   {
     stem: bi(
       'A ferry operator lowers its fares by 10% and finds that its total revenue falls. Which of the following must be true?',
-      '一間渡輪公司把船票價格調低 10%，總收入隨之下降。以下哪項必定正確？',
+      '一間渡輪公司把船票價格調低 10%，總收入隨之下降。下列哪項必定正確？',
     ),
     statements: [],
     options: [
@@ -184,8 +184,8 @@ export const usageOf = (over: Partial<Usage> = {}): Usage => ({ requests: 2, inp
 
 const row = (id: CheckRow['id'], state: CheckRow['state'], findings: CheckRow['findings'] = [], value?: number): CheckRow => ({ id, state, findings, ...(value === undefined ? {} : { value }) });
 
-/** The seven rows of a draft every check passed (the key solved and agreeing, near-copy 4%). */
-export const cleanRows = (): CheckRow[] => [row('shape', 'pass'), row('key', 'pass'), row('numbers', 'pass'), row('terms', 'pass'), row('syllabus', 'pass'), row('lint', 'pass'), row('copy', 'pass', [], 4)];
+/** The eight rows of a draft every check passed (the key solved and agreeing, near-copy 4%). */
+export const cleanRows = (): CheckRow[] => [row('shape', 'pass'), row('key', 'pass'), row('numbers', 'pass'), row('terms', 'pass'), row('syllabus', 'pass'), row('lint', 'pass'), row('style', 'pass'), row('copy', 'pass', [], 4)];
 
 /** A draft of the invented question `from`, with the rows a test wants changed. */
 export function studioDraft(id: string, over: { from?: Invented; status?: StudioDraft['status']; rows?: CheckRow[]; keyIndex?: number } = {}): StudioDraft {

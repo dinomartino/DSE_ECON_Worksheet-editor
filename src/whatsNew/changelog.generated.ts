@@ -15,6 +15,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio writes like an HKDSE paper.** The AI now follows the house style of
+  HKDSE Economics Paper 1, measured on all 725 HKDSE questions in the past-paper bank: how the
+  question line is asked ("Which of the following …?", blanks, 「下列哪項／哪些」), short
+  sentences, "Suppose …" for a change, bold capitals for **NOT**, combination options exactly
+  like the papers' ("(1) and (2) only", 「只有 (1)、(2)」), numbers in ascending order and
+  "10 000" with a space, full-width 中文 punctuation. A new **HKDSE style** line on every draft
+  says what does not follow it (a note to read, never a block).
+  <!-- zh: **擬題工作室所擬的題目更像 HKDSE 試卷。** AI 現依照 HKDSE 經濟科 Paper 1 的出題風格擬題，風格取自歷屆試題庫中全部 725 道 HKDSE 題目：題目的問法（"Which of the following …?"、填充、「下列哪項／哪些」）、簡短句子、以「假設……」帶出變化、以粗體大寫標示 **NOT**、組合選項與試卷寫法一致（"(1) and (2) only"、「只有 (1)、(2)」）、數字由小至大排列並寫成「10 000」、中文使用全形標點。每份草稿新增 **HKDSE 風格** 一行，列出不符合之處（僅供參考，不會阻擋）。 -->
 - **Studio cards say whether the answer matches the diagram.** When the AI draws a diagram for a
   question, each draft card (and its row in the ✦ Write panel and the Version list) now shows the
   result of working the answer out again from the drawing: a quiet ✓ when it matches, a red

@@ -100,10 +100,17 @@ export function questionsJob(questions: number, text: string, outPerQuestion: nu
  * 10 MC with diagrams ≈ 52k in / 37k out. Priced as `studio.write`, the bulk of it (its solve,
  * diagram and pick calls run on the same model today).
  */
+/**
+ * The HKDSE house-style block in every studio write call's system prompt (k-0548,
+ * `dseStyle/profile.ts`, ≈ 1,550 tokens; `dseStyle/check.test.ts` keeps this at or above it).
+ * One write call writes the whole request.
+ */
+export const STYLE_BLOCK_TOKENS = 1600;
+
 export function studioJob(opts: { questions: number; sides: number; diagrams?: number; images?: number }): CreditJob {
   const sides = Math.max(1, opts.sides);
   return {
-    inputTokens: 3000 + opts.questions * (3400 + 600 * sides) + (opts.diagrams ?? 0) * 2000 + (opts.images ?? 0) * IMAGE_TOKENS,
+    inputTokens: 3000 + STYLE_BLOCK_TOKENS + opts.questions * (3400 + 600 * sides) + (opts.diagrams ?? 0) * 2000 + (opts.images ?? 0) * IMAGE_TOKENS,
     outputTokens: 2000 + opts.questions * (1500 + 1100 * sides) + (opts.diagrams ?? 0) * 1000,
     feature: 'studio.write',
   };

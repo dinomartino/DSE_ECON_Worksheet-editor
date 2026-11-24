@@ -255,7 +255,7 @@ const STUDIO_POOL = [
     angle: 'unit elasticity from a price and quantity change',
   },
   {
-    stem: ['A ferry operator lowers its fares by 10% and finds that its total revenue falls. Which of the following must be true?', '一間渡輪公司把船票價格調低 10%，總收入隨之下降。以下哪項必定正確？'],
+    stem: ['A ferry operator lowers its fares by 10% and finds that its total revenue falls. Which of the following must be true?', '一間渡輪公司把船票價格調低 10%，總收入隨之下降。下列哪項必定正確？'],
     key: ['Demand for the ferry service is price inelastic.', '渡輪服務的需求缺乏價格彈性。'],
     wrong: [['Demand for the ferry service is price elastic.', '渡輪服務的需求富有價格彈性。'], ['Demand for the ferry service is unit elastic.', '渡輪服務的需求屬單一價格彈性。'], ['The number of passengers did not change.', '乘客人數沒有改變。']],
     why: ['Revenue falls with a lower price only if demand is inelastic.', '價格下降而收入下降，表示需求缺乏彈性。'],
@@ -263,8 +263,8 @@ const STUDIO_POOL = [
   },
   {
     stem: ['A bookshop raises the price of a textbook by 8% and the quantity demanded falls by 20%. The price elasticity of demand for the textbook is', '一間書店把一本課本的價格提高 8%，需求量減少 20%。這本課本的需求價格彈性為'],
-    key: ['2.5', '2.5'],
-    wrong: [['0.4', '0.4'], ['8', '8'], ['12', '12']],
+    // Numbers: options ascending (the HKDSE house style, k-0548), the key where the plan puts it.
+    ladder: ['0.4', '0.8', '1.6', '2.5', '8', '12', '28'],
     why: ['Elasticity is 20% ÷ 8% = 2.5.', '彈性為 20% ÷ 8% = 2.5。'],
     angle: 'calculation from two percentages',
   },
@@ -290,16 +290,15 @@ const STUDIO_POOL = [
     angle: 'revenue after a price cut',
   },
   {
-    stem: ['Which good is likely to have the most price elastic demand?', '以下哪種物品的需求最可能富有價格彈性？'],
-    key: ['A brand of bottled water sold in many shops.', '在很多商店發售的某個牌子樽裝水。'],
-    wrong: [['Rice for daily meals.', '日常膳食所需的白米。'], ['Insulin for diabetics.', '糖尿病患者所需的胰島素。'], ['Electricity at home.', '家居用電。']],
+    stem: ['Demand for which of the following goods is most likely to be price elastic?', '下列哪種物品的需求最可能富有價格彈性？'],
+    key: ['a brand of bottled water sold in many shops', '在很多商店發售的某個牌子樽裝水'],
+    wrong: [['rice for daily meals', '日常膳食所需的白米'], ['insulin for diabetics', '糖尿病患者所需的胰島素'], ['electricity at home', '家居用電']],
     why: ['Many close substitutes make demand more elastic.', '有很多相近的替代品令需求更富彈性。'],
     angle: 'close substitutes',
   },
   {
-    stem: ['A tunnel company raises its toll from $30 to $36. The number of vehicles per day falls from 5,000 to 4,000. Along this range, the price elasticity of demand is', '一條隧道的通行費由 $30 提高至 $36，每日車輛數目由 5,000 輛減至 4,000 輛。在這個範圍內，需求價格彈性為'],
-    key: ['1.', '1。'],
-    wrong: [['0.5.', '0.5。'], ['2.', '2。'], ['0.2.', '0.2。']],
+    stem: ['A tunnel company raises its toll from $30 to $36. The number of vehicles per day falls from 5 000 to 4 000. Along this range, the price elasticity of demand is', '一條隧道的通行費由 $30 提高至 $36，每日車輛數目由 5 000 輛減至 4 000 輛。在這個範圍內，需求價格彈性為'],
+    ladder: ['0.2', '0.5', '0.8', '1', '1.2', '2', '5'],
     why: ['Price rises 20% and quantity falls 20%, so the elasticity is 1.', '價格上升 20%，數量下降 20%，所以彈性為 1。'],
     angle: 'two changes of 20%',
   },
@@ -318,6 +317,21 @@ const STUDIO_TABLE = {
   wrong: [['shortage of 30 units.', '短缺 30 單位。'], ['surplus of 15 units.', '過剩 15 單位。'], ['surplus of 85 units.', '過剩 85 單位。']],
   why: ['At $35, quantity supplied is 85 and quantity demanded is 55: a surplus of 30 units.', '價格為 $35 時，供應量為 85，需求量為 55，過剩 30 單位。'],
   angle: 'price floor read from a table',
+};
+/**
+ * k-0548: a draft off the HKDSE house style, so the style row has something to say: an asking
+ * "not" in lower case, "1,000" with a comma, a half-width comma in the 中文. A teacherNote
+ * holding "!style" makes it the first question of a write.
+ */
+const STUDIO_STYLE = {
+  stem: [
+    'A firm raises its output from 1,000 units to 1,500 units. Which of the following is not a possible reason?',
+    '一間廠商把產量由 1,000 單位增至 1,500 單位,下列哪項不是可能的原因？',
+  ],
+  key: ['The price of its product falls.', '其產品的價格下降。'],
+  wrong: [['The price of its product rises.', '其產品的價格上升。'], ['The wage rate it pays falls.', '它支付的工資率下降。'], ['Its production technology improves.', '它的生產技術改善。']],
+  why: ['A lower price makes a firm produce less, not more; the other three raise output.', '價格下降會令廠商減產而非增產；其餘三項都會令產量上升。'],
+  angle: 'off the house style on purpose',
 };
 /** studio-verify-kit.mjs's bank question DSE2099/P1/Q2, word for word: what "!copy" writes (k-0531). */
 const STUDIO_BANK_COPY = {
@@ -339,6 +353,7 @@ function studioWriteReply(payload) {
   // the bank question DSE2099/P1/Q2 in studio-verify-kit.mjs (not the picked reference: a copy of that is allowed), so it stays warned.
   const table = /!table/.test(String(payload.teacherNote ?? '')) && !payload.redo && !payload.rewrite;
   const copy = /!copy/.test(String(payload.teacherNote ?? '')) && !payload.rewrite;
+  const style = /!style/.test(String(payload.teacherNote ?? '')) && !payload.redo && !payload.rewrite;
   const questions = [];
   for (let i = 0; i < count; i += 1) {
     if (copy && (payload.redo || i === count - 1)) {
@@ -347,11 +362,12 @@ function studioWriteReply(payload) {
       questions.push({ stem: written, statements: [], options: STUDIO_BANK_COPY.options.map(t), answer: 0, explanation: t(['Elasticity is 3% ÷ 6% = 0.5.', '彈性為 3% ÷ 6% = 0.5。']), angle: 'a copy of a bank question' });
       continue;
     }
-    const item = table && i === 0 ? STUDIO_TABLE : STUDIO_POOL[studioNext % STUDIO_POOL.length];
-    if (item !== STUDIO_TABLE) studioNext += 1;
+    const item = table && i === 0 ? STUDIO_TABLE : style && i === 0 ? STUDIO_STYLE : STUDIO_POOL[studioNext % STUDIO_POOL.length];
+    if (item !== STUDIO_TABLE && item !== STUDIO_STYLE) studioNext += 1;
     const at = Number.isInteger(keys[i]) && keys[i] >= 0 && keys[i] <= 3 ? keys[i] : 0;
-    const options = [...item.wrong];
-    options.splice(at, 0, item.key);
+    // A number ladder (key in the middle) gives four ascending options with the key at `at`.
+    const options = item.ladder ? item.ladder.slice(3 - at, 7 - at).map((n) => [n, n]) : [...item.wrong];
+    if (!item.ladder) options.splice(at, 0, item.key);
     const stem = disagree ? [`${item.stem[0]} [look]`, `${item.stem[1]} [look]`] : item.stem;
     const written = t(stem);
     studioKeys.set(studioNorm(written.en || written.zh), at);

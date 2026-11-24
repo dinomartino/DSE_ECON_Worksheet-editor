@@ -622,6 +622,19 @@ Invariants:
 - Highlights are imperative chrome: no IR or `ItemBody` read, never printed, never in the `.docx`.
 - A verb's network call happens only on its menu click; nothing AI-related is stored in a document.
 
+## dseStyle — the HKDSE Paper 1 MC house style (k-0548)
+
+Measured on the 725 HKDSE Paper 1 questions of the past-paper bank (report `Outbox/k-0548/DSE-STYLE.md`). Not tied to the studio: any feature that asks the AI to write or improve a Paper 1 question uses the same block and check (k-0549's wording enhancement next).
+
+- `src/dseStyle/profile.ts:DSE_STYLE_PROFILE` · `:DSE_STYLE_MARKER` · `:DSE_STYLE_PROFILE_VERSION` — one fixed text (EN rules with the 中文 patterns inside), ≈ 1,550 tokens; `src/ai/credits.ts:STYLE_BLOCK_TOKENS` counts it in the studio's estimate
+- `src/dseStyle/check.ts:checkDseStyle` · `:STYLE_FINDING_IDS` · `:optionNumber` — 16 deterministic rules on `{ stem, statements, options }` per side (`**bold**`, table rows as "a | b")
+- `src/dseStyle/bank.ts:styleItemOf` — an editor-schema question (rich runs, paragraph/table blocks) as the check's input
+- `src/dseStyle/messages.ts:DSE_STYLE_MESSAGES` · `:styleFindingText` (entries in `src/dseStyle/words.ts:DSE_STYLE_WORDS`)
+
+Invariants:
+- The block is one constant: the same bytes on every call (a prompt cache can reuse it). Change it only on purpose, bump the version, and re-run the check over the bank (`DSE_BANK_DIR=<bank>/topics npx vitest run src/dseStyle`): real HKDSE questions must stay ≥ 95% clean (717 of 725 at v1).
+- Style findings are notes, never a block; past-paper wording never enters the block (it describes patterns, with counts).
+
 ## questionStudio — the Question studio, engine and page (k-0499; shown in a develop build, hidden in a release build)
 
 Design `docs/design/question-studio.md`. The engine is pure over injected deps, like `src/generate/`; one click is at most five requests. The session, delivery and gate files wire it to the app; the page is `src/components/studio/`.
@@ -652,6 +665,7 @@ Design `docs/design/question-studio.md`. The engine is pure over injected deps, 
 - The trial kit (decision 7a): `src/questionStudio/trialBriefs.ts:TRIAL_BRIEFS` (30 invented briefs, `:TRIAL_EXAMPLES`, `:requestOfBrief`) · `src/questionStudio/trialRun.ts:runBriefs` · `:createBriefRunner` (one Write per brief on the teacher's key, resumable, never touches the sheet; `src/questionStudio/live.ts:useBriefRun`) · `src/questionStudio/trialLog.ts:createTrialLog` (every run's drafts and checks plus the teacher's marks, in `localStorage` `econgen.studioTrial.v1`; `live.ts:useTrialLog`; the session's `onRun` hook records the teacher's own requests) · `src/questionStudio/trialScore.ts:tally` · `:reportText` · `:BAR` (key defensible ≥ 90%, usable ≥ 60%, no near-copy shown, judged once 20 are marked). Page: Settings → AI, `src/components/settings/sections/aiSection/TrialKitBlock.tsx:TrialKitBlock` opens `src/components/studio/TrialView.tsx:TrialView` in a dialog (k-0516) (`:BriefsPanel`) · `src/components/studio/TrialList.tsx:TrialList` (cards, `src/components/studio/trialView.ts:readingList`) · `src/components/studio/TrialReport.tsx:TrialReport` · `src/components/studio/TrialMarks.tsx:TrialMarks`; words `src/components/studio/trial.messages.ts:STUDIO_TRIAL_MESSAGES`
 - Reading a message once drafts exist (k-0535, u-yu7s): `src/components/studio/chat/intent.ts:readLocally` (the computer's rules: fast path and fallback) · `:decide` · `:briefsOf`; the AI's read is folded into step 1, `src/questionStudio/understand.ts:buildUnderstandRequest` · `:parseTurn` (via `src/components/studio/chat/engine.ts:liveEngine` `pick` with `drafts`; `picks: false` = answer-only, no syllabus); the store acts in `src/components/studio/chat/chatStore.ts:createChatStore` (`readAndAct` → `act` → `changeIn`, the one place an AI edit makes a version; `answerWhich`); the composer's chip and guess in `src/components/studio/chat/Composer.tsx:Composer`; phrasings `src/components/studio/chat/intentPhrasings.ts:PHRASINGS` with recorded AI replies (re-record with `intent.record.test.ts` after a prompt change); browser run `scripts/studio-intent-verify.mjs`. `Refinement.parts` (`src/questionStudio/types.ts:Refinement`) tells refine what a change touches (`diagram` → k-0534's diagram path)
 - Test-only `src/questionStudio/fixtures.ts` (invented questions, never past-paper text); `scripts/ai-mock-server.mjs` answers the studio's requests for browser runs
+- HKDSE house style (k-0548): `src/dseStyle/profile.ts:DSE_STYLE_PROFILE` (the fixed prompt block, in the write system prompt as rule 15 + block) · `src/dseStyle/check.ts:checkDseStyle` (the `style` row of `localChecks`) · `src/dseStyle/messages.ts:styleFindingText` (words; `src/dseStyle/words.ts:DSE_STYLE_WORDS` spread into the studio's findings catalogue) — a module of its own, see § dseStyle
 
 Invariants:
 - Once drafts exist, an edit is never turned into new drafts: an AI "new" against the computer's edit, or no read at all, asks which draft (`intent.ts:decide`); an edit is a new version of its card (`older`), never a new card (only Another adds one).
