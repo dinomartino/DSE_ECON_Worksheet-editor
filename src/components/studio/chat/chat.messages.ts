@@ -33,10 +33,14 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   startPickHint: { en: 'Browse the Past paper bank by topic or year', zh: '按課題或年份瀏覽歷屆試題庫' },
   startDescribe: { en: 'Describe what you need', zh: '說出你的需要' },
   startDescribeHint: { en: '“3 MC on unit tax with a diagram, harder than DSE”', zh: '「3 條有圖的從量稅 MC，比 DSE 難」' },
-  describeExample: { en: '3 MC on unit tax with a diagram, a bit harder than DSE', zh: '3 條有圖的從量稅 MC，比 DSE 稍難' },
+  describeHint: { en: 'e.g. 3 MC on unit tax with a diagram, a bit harder than DSE', zh: '例如：3 條有圖的從量稅 MC，比 DSE 稍難' },
 
   // composer
   placeholder: { en: 'Ask for questions, or say what to change…', zh: '要求擬題，或說明要修改甚麼…' },
+  placeholderRef: {
+    en: (n: number) => `Send as it is to write ${n} like this, or add what you want…`,
+    zh: (n: number) => `可以直接傳送（仿照這題擬 ${n} 題），或補充要求…`,
+  },
   placeholderDraft: { en: (n: number) => `What should change in draft ${n}?`, zh: (n: number) => `草稿 ${n} 要怎樣修改？` },
   message: { en: 'Message', zh: '訊息' },
   addReference: { en: 'Reference', zh: '參考題' },

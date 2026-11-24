@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { studioJob } from '@/ai/credits';
 import { AiStatusChip } from '@/components/ai/AiStatusChip';
 import { CreditEstimate } from '@/components/ai/CreditEstimate';
+import { SlidersIcon } from '@/components/ui/icons';
 import { isImeKeydown } from '@/components/ui/ime';
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode } from '@/model/types';
 import type { Level } from '@/questionStudio/types';
 import { QUESTION_STUDIO_MESSAGES } from '../messages';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
+import { useDismiss } from '../dismiss';
 import { CHAT_COUNTS, type Chat, type ChatCount, type ChatSettings } from './chatTypes';
 
 const seg = (on: boolean) =>
@@ -18,7 +20,10 @@ const seg = (on: boolean) =>
 /**
  * The chat's input: the references and the draft it is about as chips, the message, and a
  * small ⚙ with how many, the level and the language (none of it required). Enter sends;
- * Shift+Enter is a new line; Send turns into Stop while the AI works.
+ * Shift+Enter is a new line; Send turns into Stop while the AI works. Nothing is ever typed
+ * into the box for the teacher (k-0528): with a reference and an empty box, Send means "N more
+ * like this" and the placeholder says so; ✎ Describe shows its example as the placeholder.
+ * The ⚙ popover closes on a press outside, Esc or focus leaving it; a choice keeps it open.
  */
 export function Composer({
   chat,
@@ -33,6 +38,7 @@ export function Composer({
   onRemoveReference,
   onSettings,
   suggestions,
+  hint,
 }: {
   chat: Chat;
   running: boolean;
@@ -47,11 +53,16 @@ export function Composer({
   onRemoveReference: (id: string) => void;
   onSettings: (patch: Partial<ChatSettings>) => void;
   suggestions: string[];
+  /** An example shown as the placeholder (✎ Describe); a new `at` puts the caret in the box. */
+  hint?: { text: string; at: number };
 }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
   const q = useMessages(QUESTION_STUDIO_MESSAGES);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
+  const settingsButton = useRef<HTMLButtonElement>(null);
+  const settingsPop = useRef<HTMLDivElement>(null);
+  useDismiss(settingsOpen, () => setSettingsOpen(false), [settingsPop, settingsButton], settingsButton);
   const mine = chat.refs.filter((r) => r.who === 'you');
   const { count, level, language } = chat.settings;
   const levelWord = level === 'harder' ? q.levelHarder : level === 'easier' ? q.levelEasier : m.levelSameLong;
@@ -61,6 +72,16 @@ export function Composer({
   useEffect(() => {
     if (draft) box.current?.focus();
   }, [draft]);
+  // A reference just added, or ✎ Describe: the caret waits in the (empty) box.
+  const refCount = useRef(mine.length);
+  useEffect(() => {
+    if (mine.length > refCount.current) box.current?.focus();
+    refCount.current = mine.length;
+  }, [mine.length]);
+  useEffect(() => {
+    if (hint) box.current?.focus();
+  }, [hint]);
+  const placeholder = draft ? m.placeholderDraft(draft.no) : mine.length > 0 ? m.placeholderRef(count) : hint ? hint.text : m.placeholder;
 
   const send = () => {
     if (!canSend) return;
@@ -118,7 +139,7 @@ export function Composer({
           rows={2}
           maxLength={600}
           aria-label={m.message}
-          placeholder={draft ? m.placeholderDraft(draft.no) : m.placeholder}
+          placeholder={placeholder}
           className="block max-h-32 min-h-[40px] w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-subtle"
           data-chat-input
         />
@@ -134,14 +155,16 @@ export function Composer({
             ＋ {m.addReference}
           </button>
           <button
+            ref={settingsButton}
             type="button"
             title={m.settings}
             aria-expanded={settingsOpen}
+            aria-haspopup="dialog"
             onClick={() => setSettingsOpen((v) => !v)}
             className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-[12px] text-ink-muted hover:bg-surface-hover hover:text-ink"
             data-chat-settings
           >
-            ⚙ {m.settingsSummary(count, levelWord, langWord)}
+            <SlidersIcon size={14} /> {m.settingsSummary(count, levelWord, langWord)}
           </button>
           <span className="flex-1" />
           {running ? (
@@ -172,10 +195,10 @@ export function Composer({
       )}
       {settingsOpen && (
         <div
+          ref={settingsPop}
           role="dialog"
           aria-label={m.settings}
           className="absolute bottom-[calc(100%-6px)] left-3 z-20 grid w-[340px] grid-cols-[72px_1fr] items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-surface p-3 text-[12px] shadow-lg"
-          onKeyDown={(event) => event.key === 'Escape' && setSettingsOpen(false)}
           data-chat-settings-pop
         >
           <span className="text-ink-muted">{q.count}</span>

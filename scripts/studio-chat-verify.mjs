@@ -68,7 +68,59 @@ try {
     await shot(page, 'A1-picker');
     await page.getByRole('button', { name: 'Use as reference' }).click();
     await page.locator('[data-ref-chip]').waitFor();
-    expect((await page.locator('[data-chat-input]').inputValue()).includes('like this'), 'the message was not filled in');
+    // k-0528 (u-5ev0): nothing is typed into the box; the placeholder says Send writes N like this.
+    const input = page.locator('[data-chat-input]');
+    expect((await input.inputValue()) === '', `the box was filled in: "${await input.inputValue()}"`);
+    expect((await input.getAttribute('placeholder')).includes('like this'), 'the placeholder does not say what Send does');
+    expect(await input.evaluate((el) => el === document.activeElement), 'the caret is not in the box');
+    expect(await page.locator('[data-chat-send]').isEnabled(), 'Send is off with a reference and an empty box');
+    await shot(page, 'k0528-empty-box-with-reference');
+  });
+
+  await check('k-0528: the ⚙ popover closes on a press outside, Esc, focus leaving; its button toggles; a choice keeps it open', async () => {
+    const button = page.locator('[data-chat-settings]');
+    const pop = page.locator('[data-chat-settings-pop]');
+    const open = async () => {
+      await button.click();
+      await pop.waitFor();
+    };
+    const closed = async (why) => {
+      await pop.waitFor({ state: 'detached', timeout: 2000 }).catch(() => {});
+      expect((await pop.count()) === 0, `still open after ${why}`);
+    };
+    await open();
+    await pop.getByRole('button', { name: '5', exact: true }).click();
+    await pop.getByRole('button', { name: 'Harder', exact: true }).click();
+    expect(await pop.isVisible(), 'a choice closed it');
+    await shot(page, 'k0528-options-open');
+    await pop.getByRole('button', { name: '3', exact: true }).click();
+    await pop.getByRole('button', { name: 'Same', exact: true }).click();
+    // Blank space in the chat column.
+    const log = await page.locator('[data-chat-column] [role="log"]').boundingBox();
+    // Between the welcome and the popover (the popover sits over the log's lower part).
+    await page.mouse.click(log.x + log.width / 2, log.y + log.height * 0.45);
+    await closed('a click on blank space');
+    await open();
+    await page.locator('[data-chat-input]').click();
+    await closed('a click in the message box');
+    await open();
+    await page.locator('[data-chat-canvas]').click({ position: { x: 30, y: 200 } });
+    await closed('a click on the paper side');
+    await open();
+    await pop.getByRole('button', { name: '3', exact: true }).focus();
+    await page.keyboard.press('Escape');
+    await closed('Esc');
+    expect(await button.evaluate((el) => el === document.activeElement), 'Esc did not give focus back to ⚙');
+    await open();
+    await button.click();
+    await closed('a second click on ⚙');
+    await open();
+    await pop.getByRole('button', { name: 'Both', exact: true }).focus();
+    await page.keyboard.press('Shift+Tab');
+    expect(await pop.isVisible(), 'Shift+Tab within it closed it');
+    await page.locator('[data-chat-input]').focus();
+    await closed('focus moving to the box');
+    expect((await button.textContent()).includes('3 · Same level · English'), `settings now ${await button.textContent()}`);
   });
 
   await check('Send: the AI reads the reference, picks the key point itself, and writes (steps in the chat, drafts on the paper)', async () => {
@@ -105,6 +157,27 @@ try {
     await page.locator('[data-view-button="paper"]').click();
   });
 
+  await check('k-0528: the Change key point menu closes on a press outside and on Esc (focus back to Change)', async () => {
+    const change = page.locator('[data-pick-change]').last();
+    await change.click();
+    await page.locator('[data-pick-menu]').waitFor();
+    await page.locator('[data-chat-canvas]').click({ position: { x: 30, y: 200 } });
+    await page.locator('[data-pick-menu]').waitFor({ state: 'detached', timeout: 2000 });
+    await change.click();
+    await page.locator('[data-pick-menu]').waitFor();
+    await page.keyboard.press('Escape');
+    await page.locator('[data-pick-menu]').waitFor({ state: 'detached', timeout: 2000 });
+    expect(await change.evaluate((el) => el === document.activeElement), 'Esc did not give focus back to Change');
+  });
+
+  await check('k-0528: Ask about this has a line icon, no emoji', async () => {
+    const ask = drafts(page).first().locator('[data-ask]');
+    expect((await ask.locator('svg').count()) === 1, 'no icon');
+    expect(!/\p{Extended_Pictographic}/u.test(await ask.textContent()), `emoji left: ${await ask.textContent()}`);
+    await drafts(page).first().scrollIntoViewIfNeeded();
+    await shot(page, 'k0528-ask-icon');
+  });
+
   await check('Change the pick (never required): it asks Rewrite them / Keep them; Keep writes nothing', async () => {
     await page.locator('[data-pick-change]').last().click();
     await page.locator('[data-pick-menu] button').nth(1).click();
@@ -137,6 +210,14 @@ try {
     await page.locator('[data-chats-menu]').click();
     await page.locator('[data-chats-list] [role="menuitem"]').first().waitFor();
     await shot(page, 'A7-chats');
+    // k-0528: Esc and a press outside close it too.
+    await page.keyboard.press('Escape');
+    await page.locator('[data-chats-list]').waitFor({ state: 'detached', timeout: 2000 });
+    expect(await page.locator('[data-chats-menu]').evaluate((el) => el === document.activeElement), 'Esc did not give focus back to Chats');
+    await page.locator('[data-chats-menu]').click();
+    await page.locator('[data-chat-canvas]').click({ position: { x: 30, y: 200 } });
+    await page.locator('[data-chats-list]').waitFor({ state: 'detached', timeout: 2000 });
+    await page.locator('[data-chats-menu]').click();
     await page.locator('[data-chats-list] [role="menuitem"]').first().click();
     await drafts(page).first().waitFor();
     expect((await page.locator('[data-chat-draft][data-state="added"]').count()) === 2, 'the added drafts are not marked Added');
@@ -230,10 +311,22 @@ try {
     await zh.page.locator('[data-chat-welcome]').waitFor();
     const card = await pickReference(zh.page);
     await card.dblclick();
+    // k-0528: empty box + a reference; Send works and means "N like this".
+    await zh.page.locator('[data-ref-chip]').waitFor();
+    expect((await zh.page.locator('[data-chat-input]').inputValue()) === '', 'the box was filled in');
+    await shot(zh.page, 'k0528-zh-empty-box-with-reference');
+    await zh.page.locator('[data-chat-settings]').click();
+    await zh.page.locator('[data-chat-settings-pop]').waitFor();
+    await shot(zh.page, 'k0528-zh-options-open');
+    await zh.page.locator('[data-chat-canvas]').click({ position: { x: 30, y: 200 } });
+    await zh.page.locator('[data-chat-settings-pop]').waitFor({ state: 'detached', timeout: 2000 });
     await zh.page.locator('[data-chat-send]').click();
+    await zh.page.locator('[data-chat-user]', { hasText: '仿照這題擬 3 題' }).waitFor();
     await zh.page.locator('[data-chat-draft]').nth(2).waitFor({ timeout: 40_000 });
     await zh.page.locator('[data-chat-send]').waitFor();
     await shot(zh.page, 'A9-zh');
+    await zh.page.locator('[data-chat-draft]').first().scrollIntoViewIfNeeded();
+    await shot(zh.page, 'k0528-zh-ask-icon');
     expect(zh.errors.length === 0, zh.errors[0]);
   });
   await zh.context.close();

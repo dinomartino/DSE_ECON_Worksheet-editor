@@ -21,7 +21,7 @@ import { useNoticeStore } from '@/store/notices';
 import { AppMark } from '@/components/ui/AppMark';
 import { ScrollEdgeHints } from '@/components/ui/ScrollEdgeHints';
 import { useScrollEdges } from '@/components/ui/scrollEdges';
-import { ArchiveIcon, BankIcon, DiagramIcon, FolderIcon, FolderOpenIcon, ImportIcon, PlusIcon, SheetIcon, SparkleIcon } from '@/components/ui/icons';
+import { ArchiveIcon, BankIcon, DiagramIcon, FolderIcon, FolderOpenIcon, ImportIcon, PastPaperIcon, PlusIcon, SheetIcon, SparkleIcon } from '@/components/ui/icons';
 import { createSamplePaper } from '@/model/samplePaper';
 import { paperLanguage } from '@/settings/paperLanguage';
 import { sideOf } from '@/i18n/catalogue';
@@ -1791,13 +1791,3 @@ async function restoreTerms(csv: string): Promise<number> {
   return restoreTermsCsv(csv);
 }
 
-/** The Past paper bank's mark: a stack of exam papers, the top one dated. */
-function PastPaperIcon() {
-  return (
-    <svg aria-hidden viewBox="0 0 16 16" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round">
-      <path d="M4.5 2.5h6l2 2v8.5h-8z" />
-      <path d="M3 4.5v10h7.5" />
-      <path d="M6.5 6.5h4M6.5 8.5h4M6.5 10.5h2.5" strokeLinecap="round" />
-    </svg>
-  );
-}
