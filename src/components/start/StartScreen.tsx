@@ -904,7 +904,6 @@ export function StartScreen({
           <QuestionStudioScreen
             summaries={summaries}
             settings={<SettingsButton separated />}
-            pastPapersOn={pastPapersOn}
             onHome={() => showView('home')}
             onOpenWorksheet={(worksheet, language) => onOpen(worksheet, language)}
             onOpenDocument={(id, then) => void openSaved(id, then)}

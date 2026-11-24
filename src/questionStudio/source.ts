@@ -63,6 +63,7 @@ export function sourceFromQuestion(
   const optionFigure = question.options.some((o) => (o.blocks?.length ?? 0) > 0);
   const key = question.answerIndex;
   const figureBlocks = figureBlocksOf(question, opts.passage);
+  const explanation = question.explanation ? biOf(question.explanation) : undefined;
   return {
     id: opts.id ?? question.id,
     label: opts.label,
@@ -71,6 +72,7 @@ export function sourceFromQuestion(
     statements: (question.statements ?? []).map(biOf),
     options: question.options.map((o) => biOf(o.text)),
     answerIndex: Number.isInteger(key) && key >= 0 && key < question.options.length ? key : -1,
+    ...(explanation && (explanation.en || explanation.zh) ? { explanation } : {}),
     hasFigure: stem.figure || (passage?.figure ?? false) || optionFigure,
     ...(figureBlocks.length ? { figureBlocks } : {}),
   };

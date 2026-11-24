@@ -8,6 +8,7 @@ import { useMessages } from '@/i18n/language';
 import { createWorksheet } from '@/model/factories';
 import type { LanguageMode } from '@/model/types';
 import { CHECK_IDS, type Finding } from '@/questionStudio/types';
+import { BasedOn } from '../BasedOn';
 import { CheckLine } from '../CheckLine';
 import { findingText } from '../findings';
 import { STUDIO_FINDING_MESSAGES } from '../findings.messages';
@@ -109,6 +110,7 @@ export function ChatDraftCard({
             </Chip>
           </span>
         )}
+        <BasedOn request={entry.request} />
         {drawing && <Chip tone="ai">✦ {m.drawing}</Chip>}
         {studio.diagram?.status === 'look' && (
           <span title={studio.diagram.issues.map((i) => i.text).join('\n')}>

@@ -29,7 +29,6 @@ import { Tray } from './Tray';
 export function QuestionStudioScreen({
   summaries,
   settings,
-  pastPapersOn,
   onHome,
   onOpenWorksheet,
   onOpenDocument,
@@ -37,7 +36,6 @@ export function QuestionStudioScreen({
 }: {
   summaries: readonly WorksheetSummary[];
   settings?: ReactNode;
-  pastPapersOn: boolean;
   onHome: () => void;
   onGoTo?: (view: 'pastpapers' | 'bank') => void;
   onOpenWorksheet: (worksheet: Worksheet, language: LanguageMode) => void;
@@ -119,7 +117,6 @@ export function QuestionStudioScreen({
           <div ref={log} className="scroll-slim flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4" role="log" aria-live="polite">
             {chat.turns.length === 0 ? (
               <Welcome
-                pastPapersOn={pastPapersOn}
                 onPick={() => setPicker(true)}
                 onDescribe={() => setHint({ text: m.describeHint, at: Date.now() })}
               />
@@ -195,7 +192,7 @@ export function QuestionStudioScreen({
   );
 }
 
-function Welcome({ pastPapersOn, onPick, onDescribe }: { pastPapersOn: boolean; onPick: () => void; onDescribe: () => void }) {
+function Welcome({ onPick, onDescribe }: { onPick: () => void; onDescribe: () => void }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
   const start =
     'flex w-full cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface px-3 py-2.5 text-left hover:border-accent hover:ring-2 hover:ring-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50';
@@ -205,7 +202,7 @@ function Welcome({ pastPapersOn, onPick, onDescribe }: { pastPapersOn: boolean; 
       <h2 className="text-[17px] font-semibold text-ink">{m.welcomeTitle}</h2>
       <p className="mt-1 text-ink-muted">{m.welcomeBody}</p>
       <div className="mt-3 flex flex-col gap-2">
-        <button type="button" className={start} onClick={onPick} disabled={!pastPapersOn} data-start-pick>
+        <button type="button" className={start} onClick={onPick} data-start-pick>
           <span aria-hidden className="mt-0.5 flex w-5 justify-center text-ink-muted">
             <PastPaperIcon size={18} />
           </span>

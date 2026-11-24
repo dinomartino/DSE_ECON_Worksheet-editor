@@ -47,6 +47,8 @@ export interface SourceQuestion {
   options: BiDraft[];
   /** 0–3; -1 when the question has no usable key. */
   answerIndex: number;
+  /** The question's own explanation of its key, when it has one (k-0529: sent with the example). */
+  explanation?: BiDraft;
   /** A picture or diagram the words cannot carry: the model is told it is not shown. */
   hasFigure: boolean;
   /**
