@@ -114,7 +114,7 @@ describe('compile: relations, not frozen geometry', () => {
   it('broken references are errors, not crashes', () => {
     const s = clone(caseById('demand-increase').spec);
     s.shifts[0].of = 'Dx';
-    s.equilibria.push({ a: 'D0', b: 'nothing', name: '', yTick: '', xTick: '' });
+    s.points.push({ a: 'D0', b: 'nothing', name: '', yTick: '', xTick: '', dot: false });
     const out = compileSpec(s);
     expect(out.issues.map((i) => i.code)).toEqual(expect.arrayContaining(['shift.of', 'eq.ref']));
   });

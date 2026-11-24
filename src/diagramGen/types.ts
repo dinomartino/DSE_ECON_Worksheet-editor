@@ -63,28 +63,80 @@ export interface SpecShift {
   label: string;
 }
 
-/** A horizontal price line: a ceiling, a floor or minimum wage, a world price, a fixed price. */
-export const LEVEL_KINDS = ['ceiling', 'floor', 'world', 'fixed'] as const;
+/**
+ * A fixed level: a horizontal price line (a ceiling, a floor or minimum wage, a world price,
+ * a fixed price) or, for a quota, a vertical quantity line.
+ */
+export const LEVEL_KINDS = ['ceiling', 'floor', 'world', 'fixed', 'quota'] as const;
 export type LevelKind = (typeof LEVEL_KINDS)[number];
+
+/**
+ * line: drawn across the plot, its name at the axis end (a price ceiling drawn as a line).
+ * guide: dashed from the axis to the last point marked on it, its name a tick: the HKDSE
+ * MC look ("P₁ - - - -" to the crossings it reads).
+ */
+export const LEVEL_STYLES = ['line', 'guide'] as const;
+export type LevelStyle = (typeof LEVEL_STYLES)[number];
 
 export interface SpecLevel {
   id: string;
   kind: LevelKind;
-  /** Against the first market equilibrium (first demand-like × supply-like curve). */
+  /**
+   * Where it sits, against crossings of two drawn curves (k-0534): higher than (a quota:
+   * to the right of) the crossing of `above`'s two ids, lower than (left of) `below`'s.
+   * [] = no bound. Both empty: `side` against the first market equilibrium.
+   */
+  above: string[];
+  below: string[];
+  /** The fallback when `above` and `below` are both empty. */
   side: 'below' | 'above';
+  style: LevelStyle;
   label: string;
 }
 
-/** A marked crossing of two curves, with dashed drops and ticks. */
-export interface SpecEquilibrium {
+/**
+ * A marked point where two lines meet (k-0534: any two drawn lines, a price line or quota
+ * included), with dashed drops and ticks. `b` may also name an earlier point's x tick
+ * ("Q_1": the point on `a` above that quantity, a producer price under a tax) or y tick
+ * ("P_1": the point on `a` at that price).
+ */
+export interface SpecPoint {
   a: string;
   b: string;
-  /** The point's own name ("E_0"); '' = none (most scheme diagrams name only the ticks). */
+  /** The point's own name ("E_0"); '' = none (most DSE diagrams name only the ticks). */
   name: string;
   /** The y-axis tick ("P_0"); '' = no drop to the y-axis. */
   yTick: string;
   /** The x-axis tick ("Q_0"); '' = no drop to the x-axis. */
   xTick: string;
+  /** A filled dot. HKDSE MC figures have none; a named point usually does. */
+  dot: boolean;
+}
+/** The pre-k-0534 name: every point was an equilibrium. */
+export type SpecEquilibrium = SpecPoint;
+
+/**
+ * What the question asks, so the key can be worked out again from the drawing (k-0534):
+ * the answer point is computed from the curves, shifts and controls, and its label must be
+ * the keyed option. 'none' = nothing this solver reads (a PPC point, a reason, a shade).
+ */
+export const ASKS = [
+  'none',
+  'quantityTransacted',
+  'quantityDemanded',
+  'quantitySupplied',
+  'shortage',
+  'surplus',
+  'marketPrice',
+  'buyersPay',
+  'sellersGet',
+] as const;
+export type AskWhat = (typeof ASKS)[number];
+
+export interface SpecAsks {
+  what: AskWhat;
+  /** before: the curves as first drawn; after: each curve's last shift in their place. */
+  state: 'before' | 'after';
 }
 
 /** The quantity gap at a price line between the demand and supply curves: a shortage or surplus. */
@@ -148,12 +200,15 @@ export interface DiagramSpec {
   curves: SpecCurve[];
   shifts: SpecShift[];
   levels: SpecLevel[];
-  equilibria: SpecEquilibrium[];
+  /** Marked points (was `equilibria`; a reply using that name still reads). */
+  points: SpecPoint[];
   gaps: SpecGap[];
   shades: SpecShade[];
   marks: SpecMark[];
   /** Arrows along the axes from the first equilibrium's P and Q to the second's. */
   changeArrows: boolean;
+  /** What a question asks, for the key check against the drawing. */
+  asks: SpecAsks;
   chart: SpecChart;
 }
 
@@ -190,6 +245,24 @@ export interface DiagramGenInput {
   /** The sides the paper prints; the diagram's words are checked on these. */
   sides: readonly Side[];
   reference?: DiagramReference;
+  /**
+   * The writer's note to the diagram maker (k-0534): what to draw, which labels the options
+   * use, which is the key. Never printed.
+   */
+  figure?: string;
+  /**
+   * An MCQ's options and key, one language (labels are the same in both): the key is worked
+   * out again from the drawing and must be this option (k-0534). Also every text the
+   * question prints, for the label check.
+   */
+  mcq?: { stem: string; statements: string[]; options: string[]; answer: number };
+  /**
+   * Edit this diagram instead of drawing a new one (a follow-up, k-0534): the model gets the
+   * spec and `note`, keeps all the note does not touch, and says whether the words must change.
+   */
+  edit?: { spec: DiagramSpec; note: string };
+  /** The figure of the draft this one replaces (Harder, Easier, Another): a starting point, not to be copied blindly. */
+  base?: DiagramSpec;
   /** Printed width; default the full-column figure. */
   widthPx?: number;
 }
@@ -207,6 +280,16 @@ export interface DiagramGenDeps {
 
 export type DiagramStatus = 'ok' | 'look' | 'failed';
 
+/** The key worked out from the drawing (k-0534). */
+export interface SolvedKey {
+  /** The label(s) at the answer: one tick, or two for a shortage / surplus. */
+  labels: string[];
+  /** The keyed option that reads as those labels; -1 = none does. */
+  option: number;
+  /** How it was found, in English, for the repair turn and the log. */
+  why: string;
+}
+
 export type DiagramGenOutcome =
   | {
       ok: true;
@@ -218,6 +301,13 @@ export type DiagramGenOutcome =
       issues: DiagramIssue[];
       /** 1 = first reply; 2 = after one repair turn. */
       attempt: 1 | 2;
+      /**
+       * An edit only (`input.edit`): what the question's words must change to fit, in the
+       * model's English; '' = the words stand as they are.
+       */
+      questionChange: string;
+      /** What the drawing says the answer is, when `spec.asks` is something the solver reads. */
+      solved: SolvedKey | null;
       /** A reference picture was given but could not be sent. */
       imageSkipped: boolean;
       model: string;

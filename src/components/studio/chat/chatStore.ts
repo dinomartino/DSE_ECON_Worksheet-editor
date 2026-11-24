@@ -232,7 +232,11 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       onEvent: (event: StudioEvent) => {
         const run = get().run;
         if (!run || run.turnId !== turnId) return;
-        if (event.type === 'stage' && event.stage === 'diagram') setStep(chatId, turnId, { kind: 'diagram', state: 'run' });
+        if (event.type === 'stage' && event.stage === 'diagram') {
+          // Figures are drawn before the check (k-0534): writing is done once they start.
+          if (!change) setStep(chatId, turnId, { kind: 'write', state: 'done', count });
+          setStep(chatId, turnId, { kind: 'diagram', state: 'run' });
+        }
         set({ run: { ...run, live: applyEvent(run.live, event) } });
       },
     });

@@ -26,6 +26,15 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
     zh: (side: string) => `${side}版本的選項沒有像「只有 (1) 及 (2)」那樣組合陳述。`,
   },
 
+  shapeNarrates: {
+    en: (side: string) => `In ${side}, the question describes its diagram in words. An HKDSE question only refers to the diagram.`,
+    zh: (side: string) => `${side}版本的題目用文字描述了圖表。HKDSE 題目只會寫「參看下圖」。`,
+  },
+  shapeFigureFailed: {
+    en: 'The diagram for this question could not be drawn to match it. Draw it yourself or ask for a change.',
+    zh: '未能畫出與題目相符的圖表。請自行繪畫，或要求修改。',
+  },
+
   // ---- key ----
   keyDiffers: {
     en: (solver: string, key: string) => `Solved again from the text alone, the check chose ${solver}, but the key says ${key}. Work it out before you use this question.`,

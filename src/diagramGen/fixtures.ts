@@ -42,9 +42,9 @@ export const CASES: DiagramCase[] = [
         { id: 'S', role: 'supply', slope: 'normal', place: 'mid', label: 'S' },
       ],
       shifts: [{ of: 'D0', id: 'D1', direction: 'right', size: 'normal', label: 'D_1' }],
-      equilibria: [
-        { a: 'D0', b: 'S', name: '', yTick: 'P_0', xTick: 'Q_0' },
-        { a: 'D1', b: 'S', name: '', yTick: 'P_1', xTick: 'Q_1' },
+      points: [
+        { a: 'D0', b: 'S', name: '', yTick: 'P_0', xTick: 'Q_0', dot: true },
+        { a: 'D1', b: 'S', name: '', yTick: 'P_1', xTick: 'Q_1', dot: true },
       ],
       changeArrows: true,
     }),
@@ -64,9 +64,9 @@ export const CASES: DiagramCase[] = [
         { id: 'S0', role: 'supply', slope: 'normal', place: 'mid', label: 'S_0' },
       ],
       shifts: [{ of: 'S0', id: 'S1', direction: 'up', size: 'normal', label: 'S_1 = S_0 + t' }],
-      equilibria: [
-        { a: 'D', b: 'S0', name: '', yTick: 'P_0', xTick: 'Q_0' },
-        { a: 'D', b: 'S1', name: '', yTick: 'P_1', xTick: 'Q_1' },
+      points: [
+        { a: 'D', b: 'S0', name: '', yTick: 'P_0', xTick: 'Q_0', dot: true },
+        { a: 'D', b: 'S1', name: '', yTick: 'P_1', xTick: 'Q_1', dot: true },
       ],
       shades: [
         { preset: 'taxRevenue', label: t('tax revenue', '稅收') },
@@ -88,8 +88,8 @@ export const CASES: DiagramCase[] = [
         { id: 'D', role: 'demand', slope: 'normal', place: 'mid', label: 'D' },
         { id: 'S', role: 'supply', slope: 'normal', place: 'mid', label: 'S' },
       ],
-      levels: [{ id: 'Pc', kind: 'ceiling', side: 'below', label: 'P_c' }],
-      equilibria: [{ a: 'D', b: 'S', name: '', yTick: 'P_e', xTick: 'Q_e' }],
+      levels: [{ id: 'Pc', kind: 'ceiling', above: [], below: [], side: 'below', style: 'line', label: 'P_c' }],
+      points: [{ a: 'D', b: 'S', name: '', yTick: 'P_e', xTick: 'Q_e', dot: true }],
       gaps: [{ level: 'Pc', label: t('shortage', '短缺') }],
     }),
   },
@@ -106,8 +106,8 @@ export const CASES: DiagramCase[] = [
         { id: 'D', role: 'demand', slope: 'normal', place: 'mid', label: 'D_L' },
         { id: 'S', role: 'supply', slope: 'normal', place: 'mid', label: 'S_L' },
       ],
-      levels: [{ id: 'Wm', kind: 'floor', side: 'above', label: 'W_m' }],
-      equilibria: [{ a: 'D', b: 'S', name: '', yTick: 'W_e', xTick: 'Q_e' }],
+      levels: [{ id: 'Wm', kind: 'floor', above: [], below: [], side: 'above', style: 'line', label: 'W_m' }],
+      points: [{ a: 'D', b: 'S', name: '', yTick: 'W_e', xTick: 'Q_e', dot: true }],
       gaps: [{ level: 'Wm', label: t('surplus', '過剩') }],
     }),
   },
@@ -125,9 +125,9 @@ export const CASES: DiagramCase[] = [
         { id: 'SRAS0', role: 'sras', slope: 'normal', place: 'mid', label: 'SRAS_0' },
       ],
       shifts: [{ of: 'SRAS0', id: 'SRAS1', direction: 'left', size: 'normal', label: 'SRAS_1' }],
-      equilibria: [
-        { a: 'AD', b: 'SRAS0', name: '', yTick: 'P_0', xTick: 'Y_0' },
-        { a: 'AD', b: 'SRAS1', name: '', yTick: 'P_1', xTick: 'Y_1' },
+      points: [
+        { a: 'AD', b: 'SRAS0', name: '', yTick: 'P_0', xTick: 'Y_0', dot: true },
+        { a: 'AD', b: 'SRAS1', name: '', yTick: 'P_1', xTick: 'Y_1', dot: true },
       ],
       changeArrows: true,
     }),
@@ -160,9 +160,9 @@ export const CASES: DiagramCase[] = [
         { id: 'S', role: 'supply', slope: 'normal', place: 'mid', label: 'S' },
       ],
       shifts: [{ of: 'D0', id: 'D1', direction: 'left', size: 'normal', label: 'D_1' }],
-      equilibria: [
-        { a: 'D0', b: 'S', name: '', yTick: 'P_0', xTick: 'Q_0' },
-        { a: 'D1', b: 'S', name: '', yTick: 'P_1', xTick: 'Q_1' },
+      points: [
+        { a: 'D0', b: 'S', name: '', yTick: 'P_0', xTick: 'Q_0', dot: true },
+        { a: 'D1', b: 'S', name: '', yTick: 'P_1', xTick: 'Q_1', dot: true },
       ],
       changeArrows: true,
     }),

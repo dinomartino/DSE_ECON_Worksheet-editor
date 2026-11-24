@@ -17,7 +17,10 @@
  * The block is an ordinary editable diagram (`model/diagram.ts`): the teacher drags,
  * re-labels and re-shades it in the diagram editor like one they drew.
  */
-export { generateDiagram, evaluateReply, blockOf, languageOf } from './run';
+export { generateDiagram, evaluateReply, evaluateSpec, blockOf, languageOf } from './run';
+export { figureWords } from './words';
+export { solveKey } from './solve';
+export { checkLabels, labelsIn } from './labels';
 export { compileSpec } from './compile';
 export { checkAgainstKey, checkDiagram, diagramChanges, keyClaims } from './validate';
 export { describeDiagram } from './describe';

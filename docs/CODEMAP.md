@@ -662,7 +662,7 @@ Invariants:
 - The trial's record holds the AI's drafts, their checks and the teacher's marks, never an example's words (`RequestSummary` counts them) and never a paper.
 - No file here reads `src/coverage/` words or edits `src/syllabus/`.
 
-## diagramGen — AI-made diagrams for generated questions (k-0515; engine only, no UI yet)
+## diagramGen — AI-made diagrams for generated questions (k-0515; MC figures, checks and edits k-0534)
 
 The model returns a small semantic spec, never coordinates; `compile.ts` builds it with the template kit into an ordinary anchored `Diagram`, so a teacher edits it like one they drew. Pure over injected deps; at most two requests (one repair turn when a check fails). Entry: `src/diagramGen/index.ts` (the call the studio engine makes, documented there).
 
@@ -671,7 +671,8 @@ The model returns a small semantic spec, never coordinates; `compile.ts` builds 
 - `src/diagramGen/compile.ts:compileSpec` — curves by role and slope, `shift` copies with following arrows, anchored equilibria, price lines, shortage/surplus brackets, Shade-menu presets and revenue areas, frontiers, data charts, editor templates
 - `src/diagramGen/validate.ts:checkDiagram` (axes titled, curves named and distinct, a gap's word matches Qd vs Qs, a ceiling/floor that binds) · `:checkAgainstKey` — `:keyClaims` (English and 中文 "demand increases", "S shifts upward", "需求減少") against `:diagramChanges` (read from labels and geometry, so templates are covered); opposite = error
 - `src/diagramGen/prompt.ts:buildDiagramRequest` (the template and Shade menus are derived from the registries) · `:buildRepairRequest`; `src/diagramGen/describe.ts:describeDiagram` (a reference figure in words)
-- `src/diagramGen/run.ts:generateDiagram` · `:evaluateReply` · `:blockOf`; cases `src/diagramGen/fixtures.ts:CASES`; samples `scripts/diagram-gen-samples.mjs` (PNG + contact sheet)
+- `src/diagramGen/run.ts:generateDiagram` · `:evaluateReply` · `:evaluateSpec` (compile + every check, no request) · `:blockOf`; cases `src/diagramGen/fixtures.ts:CASES`, MC cases `src/diagramGen/mcFixtures.ts:MC_CASES`; samples `scripts/diagram-gen-samples.mjs` (PNG + contact sheet)
+- k-0534: `types.ts:SpecPoint` (any two lines meet, or a curve at an earlier tick) · `:SpecLevel` (`above`/`below` a named crossing; `style` guide = the HKDSE dashed drop carried by its furthest point, no line of its own; `quota` = a quantity level) · `:SpecAsks` (what the question asks). `compile.ts:compileSpec` slides each level inside its band to keep ticks apart, widens a shift a level must sit between, and places shift arrows clear of levels and points. `labels.ts:checkLabels` (every label the question names is drawn; Q/P ticks numbered in order) · `validate.ts:checkStem` (the stem's policy and "from S1 to S2" match the drawing) · `solve.ts:solveKey` (the key worked out again from the geometry: ceiling, floor, quota, tax, subsidy; must be the keyed option) · `words.ts:figureWords` (the figure in words for the blind solve). Edit mode: `DiagramGenInput.edit` → `DIAGRAM_EDIT_SCHEMA` (the spec + `questionChange`). The system prompt is a fixed prefix, byte-identical per call (Gemini implicit caching, u-gi2a; test in `src/questionStudio/figureFlow.test.ts`). Before/after sheet: `scripts/k0534-before-after.mjs`
 
 Invariants:
 - Never `failed` into a paper: a diagram with an error issue comes back with `block: null`.
