@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MentorAccount } from '@/ai/mentor';
 import type { MentorSession, MentorState } from './mentorAccount';
-import { BUY_POLL_MS, BUY_WATCH_MS, FOCUS_GAP_MS, LIGHT_MS, createMentorLive } from './mentorLive';
+import { BUY_POLL_MS, BUY_WATCH_MS, FOCUS_GAP_MS, LIGHT_MS, createLiveHolds, createMentorLive } from './mentorLive';
 
 /** The credits kept current without a reload (k-0524): timers, focus, the purchase watch. */
 
@@ -175,5 +175,28 @@ describe('live credits', () => {
     stop();
     await h.advance(LIGHT_MS * 3);
     expect(h.reads()).toBe(0);
+  });
+});
+
+describe('live refresher holds (k-0526: runs only while a chip or Settings shows the credits)', () => {
+  it('starts on the first hold, once, and stops when the last one is released', () => {
+    let starts = 0;
+    let stops = 0;
+    const hold = createLiveHolds(() => {
+      starts++;
+      return () => void stops++;
+    });
+    const header = hold();
+    const composer = hold();
+    expect([starts, stops]).toEqual([1, 0]);
+    header();
+    header(); // a second release of the same hold changes nothing
+    expect([starts, stops]).toEqual([1, 0]);
+    composer();
+    expect([starts, stops]).toEqual([1, 1]);
+    const again = hold();
+    expect([starts, stops]).toEqual([2, 1]);
+    again();
+    expect([starts, stops]).toEqual([2, 2]);
   });
 });

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { openExternal } from '@/platform';
 import { MENTOR_BUY_URL } from '@/ai/mentor';
 import { AI_SETTINGS } from './aiSettings';
@@ -147,9 +148,49 @@ export function mentorLive(): MentorLive {
   return live;
 }
 
-/** Opens Mentor's page to buy credits and watches for the payment to land (k-0524). */
+/**
+ * Runs `start` while at least one hold is open (k-0526): every place that shows the credits
+ * holds the refresher while it is on screen, so it runs exactly then and is started once.
+ * Each release is idempotent.
+ */
+export function createLiveHolds(start: () => () => void): () => () => void {
+  let holds = 0;
+  let stop: (() => void) | null = null;
+  return () => {
+    if (holds++ === 0) stop = start();
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      if (--holds === 0) {
+        stop?.();
+        stop = null;
+      }
+    };
+  };
+}
+
+let holdLive: (() => () => void) | null = null;
+
+/** Keeps the live refresher running until the returned release is called. */
+export function holdMentorLive(): () => void {
+  holdLive ??= createLiveHolds(() => mentorLive().start());
+  return holdLive();
+}
+
+/** The credits are on screen (the AI chip, Settings → AI): keep them current while mounted. */
+export function useMentorLive(): void {
+  useEffect(() => holdMentorLive(), []);
+}
+
+/**
+ * Opens Mentor's page to buy credits and watches for the payment to land (k-0524). The
+ * watch holds the refresher itself, so it runs even where no chip is on screen.
+ */
 export function openBuyCredits(url?: string | null): void {
   const s = mentorSession().current();
   void openExternal(url || (s.kind === 'signedIn' && s.account?.buyUrl) || MENTOR_BUY_URL);
+  const release = holdMentorLive();
   mentorLive().watchPurchase();
+  setTimeout(release, BUY_WATCH_MS);
 }

@@ -15,10 +15,12 @@ import { chromium, webkit } from 'playwright-core';
  * audit fixes: an Idempotency-Key on each generate (allowed through CORS, CONTRACT v1.3), the 14-day web sign-in, "Shared computer" (this tab only), and a sign-out Mentor
  * can't confirm (signed out here, with the warning and Open my account). v1.4 (u-1zca): buy any
  * whole HK$ amount: quick picks, the amount box, the live credits line, the range error, Buy.
- * k-0524 (u-fs5v): the AI status chip in the status bar (Set up AI → credits from each receipt →
- * amber when low → red with Buy credits at 0 → own key), live refresh on focus with never two
- * reads at once, Buy's fast poll until the payment lands, the studio header and composer chip, the
- * red Sign out; a crop of the chip per state in English and 中文 (`chip-<state>-<en|zh>.png`).
+ * k-0524 (u-fs5v): the AI status chip (Set up AI → credits from each receipt → amber when low →
+ * red with Buy credits at 0 → own key), live refresh on focus with never two reads at once, Buy's
+ * fast poll until the payment lands, the studio header and composer chip, the red Sign out; a crop
+ * of the chip per state in English and 中文 (`chip-<state>-<en|zh>.png`). k-0526 (u-uw4t): no
+ * status bar any more: the editor reaches the window's bottom with no chip on it, so the chip's
+ * states are read in the Question studio's header; no reads on focus while no chip is shown.
  *
  *   npm run build && node scripts/hosted-ai-verify.mjs [--out=/tmp/hosted-ai-verify] [--engines=chromium,webkit] [--app-port=3419]
  *   NEXT_PUBLIC_MENTOR_ORIGIN=https://<preview> npm run build && node scripts/hosted-ai-verify.mjs --mentor=<preview host>
@@ -182,16 +184,17 @@ async function run(engine, browserType) {
   const card = aiMenu.locator('[data-setup-card]');
   const settings = page.getByRole('dialog', { name: /Settings/ });
   const account = settings.locator('[data-mentor-account]');
-  const bar = page.locator('[data-ai-status-bar]');
-  const chip = bar.locator('[data-ai-chip]');
+  // The chip lives in the Question studio's header (no status bar since k-0526).
+  const studioHeader = page.locator('header:has([data-ai-chip])');
+  const chip = page.locator('header [data-ai-chip]');
   const fmt = (n) => new Intl.NumberFormat('en-HK', { maximumFractionDigits: 0 }).format(Math.floor(n));
   const setLang = (ui) =>
     page.evaluate((ui) => {
       localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui, paper: 'en' }));
       window.dispatchEvent(new StorageEvent('storage', { key: 'econgen.settings.language' }));
     }, ui);
-  /** The chip, cropped from the status bar, in English and 中文. */
-  const chipShot = async (name, scope = bar) => {
+  /** The chip, cropped from the studio's header, in English and 中文. */
+  const chipShot = async (name, scope = studioHeader) => {
     for (const ui of ['en', 'zh-HK']) {
       await setLang(ui);
       await page.waitForTimeout(300);
@@ -212,6 +215,24 @@ async function run(engine, browserType) {
     }
   };
   const wake = () => page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const openDoc = async () => {
+    await page.getByRole('button', { name: /Hosted AI verify/ }).first().click();
+    await page.waitForSelector('#print-root .paper', { timeout: 15_000 });
+  };
+  /** Editor → the Question studio (its header carries the chip). */
+  const toStudio = async () => {
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Econ Studio home' }).first().click();
+    await page.getByRole('button', { name: /Question studio/ }).first().click();
+    await chip.waitFor({ timeout: 10_000 });
+  };
+  /** The Question studio → back to the worksheet. */
+  const toEditor = async () => {
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /Home/ }).first().click();
+    await page.getByRole('button', { name: /Hosted AI verify/ }).first().waitFor();
+    await openDoc();
+  };
 
   await page.goto(APP, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: /Hosted AI verify/ }).first().click();
@@ -219,7 +240,22 @@ async function run(engine, browserType) {
   await page.getByRole('radio', { name: '中文', exact: true }).first().click();
   await page.waitForTimeout(400);
 
-  await check(engine, 'chip: "Set up AI" with no AI, in the status bar; a click opens Settings → AI', async () => {
+  await check(engine, 'no status bar: the editor reaches the window\'s bottom, no chip on it (k-0526)', async () => {
+    expect((await page.locator('[data-ai-status-bar], footer[aria-label="AI status"]').count()) === 0, 'the status bar is back');
+    expect((await page.locator('[data-ai-chip]').count()) === 0, 'a chip on the editor screen');
+    const gap = await page.evaluate(() => {
+      // The shell's screen pane (EditorHost's flex-1 box around the editor) ends at the window's bottom.
+      let pane = document.querySelector('#print-root');
+      while (pane?.parentElement && !pane.parentElement.classList.contains('h-screen')) pane = pane.parentElement;
+      return Math.round(window.innerHeight - (pane?.getBoundingClientRect().bottom ?? 0));
+    });
+    expect(Math.abs(gap) <= 1, `${gap}px left under the editor`);
+    await page.screenshot({ path: `${OUT}/${engine}-00-editor-no-status-bar.png` });
+    return `bottom gap ${gap}px`;
+  });
+
+  await check(engine, 'chip: "Set up AI" with no AI, in the studio header; a click opens Settings → AI', async () => {
+    await toStudio();
     await chipSays(/^Set up AI$/);
     expect((await chip.getAttribute('data-ai-chip')) === 'setup', 'not the setup chip');
     await chipShot('setup');
@@ -228,6 +264,7 @@ async function run(engine, browserType) {
     await page.keyboard.press('Escape');
     await settings.waitFor({ state: 'hidden' });
     expect(mentor.state.requests.length === 0, 'the chip sent a request');
+    await toEditor();
   });
 
   await check(engine, 'no key: the setup card offers Sign in with DSEcon Mentor first, nothing sent', async () => {
@@ -264,6 +301,7 @@ async function run(engine, browserType) {
 
   await check(engine, 'chip: the credits from the last receipt, no extra read', async () => {
     const reads = mentor.state.creditReads;
+    await toStudio();
     const text = await chipSays(new RegExp(`^AI credits ${fmt(mentor.state.credits).replace(',', ',')}$`));
     expect(mentor.state.creditReads === reads, 'the receipt still needed a read');
     await chipShot('credits');
@@ -299,6 +337,16 @@ async function run(engine, browserType) {
     await page.waitForTimeout(3200);
     await wake();
     await chipSays(/^AI credits 9,003$/);
+    await toEditor();
+  });
+
+  await check(engine, 'live: no chip on screen (the editor), no reads on focus', async () => {
+    await page.waitForTimeout(3200);
+    const reads = mentor.state.creditReads;
+    await wake();
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await page.waitForTimeout(1500);
+    expect(mentor.state.creditReads === reads, `${mentor.state.creditReads - reads} read(s) with no chip shown`);
   });
 
   await check(engine, 'Settings: the account card, credits, Advanced closed, no token in the page', async () => {
@@ -403,6 +451,7 @@ async function run(engine, browserType) {
   });
 
   await check(engine, 'chip: red at 0 with Buy credits (from the 402 balance); after Buy it polls until the payment lands', async () => {
+    await toStudio();
     await chipSays(/^AI credits 0\s*Buy credits$/);
     expect((await chip.getAttribute('data-ai-chip-tone')) === 'out', 'not red');
     await chipShot('out');
@@ -425,9 +474,6 @@ async function run(engine, browserType) {
   });
 
   await check(engine, 'the Question studio: chip in its header and beside the cost line in the composer', async () => {
-    await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: 'Econ Studio home' }).first().click();
-    await page.getByRole('button', { name: /Question studio/ }).first().click();
     const header = page.locator('header [data-ai-chip="credits"]');
     await header.waitFor({ timeout: 10_000 });
     const composer = page.locator('[data-chat-ai-status]');
@@ -441,10 +487,7 @@ async function run(engine, browserType) {
     await page.waitForTimeout(400);
     await shot('07c-studio-zh');
     await setLang('en');
-    await page.getByRole('button', { name: /Home/ }).first().click();
-    await page.getByRole('button', { name: /Hosted AI verify/ }).first().waitFor();
-    await page.getByRole('button', { name: /Hosted AI verify/ }).first().click();
-    await page.waitForSelector('#print-root .paper', { timeout: 15_000 });
+    await toEditor();
     return estimate.trim();
   });
 
@@ -504,8 +547,10 @@ async function run(engine, browserType) {
       window.dispatchEvent(new StorageEvent('storage', { key: 'econgen.secret.ai:gemini' }));
       window.dispatchEvent(new StorageEvent('storage', { key: 'econgen.settings.ai' }));
     });
+    await toStudio();
     const text = await chipSays(/^AI: own key \(Gemini\)$/);
     await chipShot('ownkey');
+    await toEditor();
     return text;
   });
 

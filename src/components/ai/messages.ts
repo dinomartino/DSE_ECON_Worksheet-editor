@@ -99,8 +99,7 @@ export const AI_UI_MESSAGES = defineMessages({
   toneFailed: { en: "Couldn't translate", zh: '未能翻譯' },
   toneFinding: { en: 'Finding', zh: '發現' },
 
-  // The AI status chip on every screen, the studio's header and before big runs (k-0524).
-  chipBar: { en: 'AI status', zh: 'AI 狀態' },
+  // The AI status chip in the studio's header and before big runs (k-0524; no status bar, k-0526).
   chipCredits: { en: (n: string) => `AI credits ${n}`, zh: (n: string) => `AI 點數 ${n}` },
   chipChecking: { en: 'AI credits …', zh: 'AI 點數 …' },
   chipOwnKey: { en: (p: string) => `AI: own key (${p})`, zh: (p: string) => `AI：自己的 API key（${p}）` },
