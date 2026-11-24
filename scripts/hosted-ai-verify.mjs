@@ -17,6 +17,7 @@ import { chromium, webkit } from 'playwright-core';
  * whole HK$ amount: quick picks, the amount box, the live credits line, the range error, Buy.
  *
  *   npm run build && node scripts/hosted-ai-verify.mjs [--out=/tmp/hosted-ai-verify] [--engines=chromium,webkit] [--app-port=3419]
+ *   NEXT_PUBLIC_MENTOR_ORIGIN=https://<preview> npm run build && node scripts/hosted-ai-verify.mjs --mentor=<preview host>
  */
 
 const args = process.argv.slice(2);
@@ -26,8 +27,11 @@ const ENGINES = opt('engines', 'chromium,webkit').split(',');
 const APP_PORT = Number(opt('app-port', '3419'));
 const APP = `http://localhost:${APP_PORT}`;
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const MENTOR = 'dseconmentor.com';
-const OTHER_HOSTS = ['generativelanguage.googleapis.com', 'api.deepseek.com', 'dashscope-intl.aliyuncs.com', 'openrouter.ai', 'api.openai.com', 'api.anthropic.com'];
+// A build made with NEXT_PUBLIC_MENTOR_ORIGIN (src/ai/mentorOrigin.ts): pass its host to stand in there
+// instead; then nothing may reach dseconmentor.com, and the account card must say it is a test build.
+const MENTOR = opt('mentor', 'dseconmentor.com');
+const TEST_BUILD = MENTOR !== 'dseconmentor.com';
+const OTHER_HOSTS = [...(TEST_BUILD ? ['dseconmentor.com', 'www.dseconmentor.com'] : []), 'generativelanguage.googleapis.com', 'api.deepseek.com', 'dashscope-intl.aliyuncs.com', 'openrouter.ai', 'api.openai.com', 'api.anthropic.com'];
 
 mkdirSync(OUT, { recursive: true });
 if (!existsSync(join(ROOT, 'out/index.html'))) {
@@ -221,6 +225,16 @@ async function run(engine, browserType) {
     expect((await account.locator('[data-mentor-kept]').getAttribute('data-mentor-kept')) === 'browser', 'no "kept in this browser" line');
     return (await account.getByText(/credits left/).innerText()).trim();
   });
+
+  if (TEST_BUILD) {
+    await check(engine, `a test build: the card names ${MENTOR}`, async () => {
+      const line = account.locator('[data-mentor-server]');
+      const text = (await line.innerText()).trim();
+      expect(text === `Test build: uses the DSEcon Mentor at ${MENTOR}, not dseconmentor.com.`, `line: ${text}`);
+      await shot('03b-test-build');
+      return text;
+    });
+  }
 
   await check(engine, 'Buy any amount: quick picks, the live line, the range error, Buy opens the amount (v1.4)', async () => {
     const buy = account.locator('[data-mentor-buy]');

@@ -62,6 +62,10 @@ jobs:
           # (src/platform/buildChannel.ts); no other workflow sets it, so a develop build,
           # CI and the desktop preview keep showing it.
           NEXT_PUBLIC_RELEASE_BUILD: '1'
+          # Teachers' app talks to production Mentor only: empty here overrides any value a
+          # job or repository variable might carry (src/ai/mentorOrigin.ts; next.config.ts
+          # also refuses a release with it set).
+          NEXT_PUBLIC_MENTOR_ORIGIN: ''
           # Updater signing: without these, latest.json carries no signature and
           # installed apps refuse the update.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}

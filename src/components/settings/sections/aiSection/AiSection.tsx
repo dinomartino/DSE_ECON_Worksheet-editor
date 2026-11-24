@@ -7,6 +7,7 @@ import { peekSecret, subscribeSecrets } from "@/platform/secrets";
 import { useMessages } from "@/i18n/language";
 import { AI_SETTINGS, useAiStatus } from "@/settings/aiSettings";
 import { MENTOR_BUY_URL, MENTOR_PRICING_URL } from "@/ai/mentor";
+import { MENTOR } from "@/ai/mentorOrigin";
 import { mentorSession, useMentorAccount } from "@/settings/mentorAccount";
 import type { SettingsSectionProps } from "@/settings/sections";
 import { useSettings } from "@/settings/store";
@@ -152,6 +153,7 @@ export default function AiSection({
         mentor={mentor}
         mentorActions={mentorActions}
         mentorKept={mentorKept}
+        mentorServer={MENTOR.production ? undefined : MENTOR.label}
       />
       <div className="mt-4 empty:hidden">
         <TrialKitBlock />

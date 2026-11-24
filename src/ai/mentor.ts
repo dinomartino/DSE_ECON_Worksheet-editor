@@ -1,5 +1,6 @@
 import { aiErrorInfo, describeHttpError, mapThrown } from './errors';
 import { PROBE_TIMEOUT_MS, defaultHttpDeps, send, type HttpResponse } from './http';
+import { MENTOR } from './mentorOrigin';
 import { MENTOR_API } from './providers';
 import { AiError, isAiError, type HttpDeps } from './types';
 import type { PaymentTerms } from './credits';
@@ -88,22 +89,21 @@ export interface MentorRelay {
   signOut(token: string, signal: AbortSignal): Promise<'revoked' | 'failed'>;
 }
 
-export const MENTOR_PRICING_URL = 'https://dseconmentor.com/pricing#ai-credits';
-export const MENTOR_BUY_URL = 'https://dseconmentor.com/account#ai-credits';
-const MENTOR_HOSTS = new Set(['www.dseconmentor.com', 'dseconmentor.com']);
+export const MENTOR_PRICING_URL = MENTOR.pricingUrl;
+export const MENTOR_BUY_URL = MENTOR.buyUrl;
 
 const isRecord = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const str = (x: unknown, max = 200): string | undefined => (typeof x === 'string' && x.trim() && x.length <= max ? x.trim() : undefined);
 const num = (x: unknown): number | undefined => (typeof x === 'number' && Number.isFinite(x) ? x : undefined);
 
-/** A link the app may open: https on Mentor's host (or the dev server the relay itself is on). */
+/** A link the app may open: https on this build's Mentor host (`mentorOrigin.ts`), or the server the relay itself is on. */
 export function safeMentorUrl(url: unknown, api: string): string | undefined {
   if (typeof url !== 'string') return undefined;
   try {
     const u = new URL(url);
     const own = new URL(api);
     if (u.username || u.password) return undefined;
-    if (u.protocol === 'https:' && (MENTOR_HOSTS.has(u.hostname) || u.host === own.host)) return u.toString();
+    if (u.protocol === 'https:' && (MENTOR.hosts.has(u.host) || u.host === own.host)) return u.toString();
     return u.protocol === 'http:' && u.host === own.host && ['localhost', '127.0.0.1'].includes(u.hostname) ? u.toString() : undefined;
   } catch {
     return undefined;

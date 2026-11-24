@@ -39,6 +39,7 @@ export function MentorAccountCard({
   inUse,
   focus,
   web,
+  server,
   actions,
 }: {
   state: MentorState;
@@ -47,6 +48,8 @@ export function MentorAccountCard({
   focus?: boolean;
   /** The web build: where the sign-in is kept in this browser (absent on desktop: the keychain). */
   web?: { kept: 'browser' | 'tab' | null };
+  /** A develop build pointed at another Mentor: its host, shown so it is never taken for the real one. */
+  server?: string;
   actions: MentorCardActions;
 }) {
   const m = useMessages(AI_SECTION_MESSAGES);
@@ -69,6 +72,11 @@ export function MentorAccountCard({
         <h4 className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{m.mentorTitle}</h4>
         {state.kind === 'signedIn' && <Pill tone={inUse ? 'accent' : 'neutral'}>{m.mentorSignedIn}</Pill>}
       </div>
+      {server && (
+        <p data-mentor-server={server} className="rounded-lg bg-warn-soft px-2.5 py-1.5 text-xs text-warn-ink">
+          {m.mentorTestServer(server)}
+        </p>
+      )}
 
       {state.kind === 'signedOut' && (
         <>

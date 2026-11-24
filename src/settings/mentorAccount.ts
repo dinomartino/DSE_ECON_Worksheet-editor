@@ -208,7 +208,8 @@ function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-const relayBase = () => appSettings.read(AI_SETTINGS).baseUrls.mentor ?? presetFor('mentor').baseUrl;
+/** The build's own Mentor (`ai/mentorOrigin.ts`); never a stored address. */
+const relayBase = () => presetFor('mentor').baseUrl;
 
 export function liveMentorDeps(): MentorDeps {
   const readSettings = () => appSettings.read(AI_SETTINGS);
