@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { MENTOR } from '@/ai/mentorOrigin';
 import { formatCredits } from '@/components/settings/sections/aiSection/MentorAccountCard';
 import { AI_SECTION_MESSAGES } from '@/components/settings/sections/aiSection/messages';
@@ -53,7 +54,7 @@ export function AiStatusChip({ where = 'inline', className = '' }: { where?: Whe
   }, [unread]);
 
   const choice = useAiChoice();
-  const [menu, setMenu] = useState<null | 'down' | 'up'>(null);
+  const [menu, setMenu] = useState(false);
   const label = chipLabel(chip, m, lang);
   const test = !MENTOR.production && chip.kind === 'credits';
   const title = [chipTitle(chip, m, s, lang), choice ? m.chipClickChoose : m.chipClickSettings, test ? s.mentorTestServer(MENTOR.label) : null].filter(Boolean).join('\n');
@@ -62,10 +63,7 @@ export function AiStatusChip({ where = 'inline', className = '' }: { where?: Whe
   const triggerRef = useRef<HTMLButtonElement>(null);
   const click = () => {
     if (!choice) return openSettings();
-    if (menu) return setMenu(null);
-    // Opens upward when the chip sits low in the window (the composer, the import's check).
-    const rect = triggerRef.current?.getBoundingClientRect();
-    setMenu(rect && rect.bottom > window.innerHeight - 180 ? 'up' : 'down');
+    setMenu((open) => !open);
   };
 
   return (
@@ -76,7 +74,7 @@ export function AiStatusChip({ where = 'inline', className = '' }: { where?: Whe
         onClick={click}
         title={title}
         aria-label={`${label}. ${title}`}
-        {...(choice ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': menu !== null } : {})}
+        {...(choice ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': menu } : {})}
         className={`inline-flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap rounded-full border font-medium tabular-nums transition-[background-color,color,filter] duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${SIZE[where]} ${TONE[tone]}`}
       >
         {test && <span aria-hidden data-ai-chip-test className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn-ink" />}
@@ -89,21 +87,20 @@ export function AiStatusChip({ where = 'inline', className = '' }: { where?: Whe
       </button>
       {choice && menu && (
         <ChoiceMenu
-          side={menu}
           using={choice.using}
           own={providerShortName(choice.own)}
           credits={mentor.kind === 'signedIn' && mentor.account ? formatCredits(mentor.account.credits, lang) : null}
           onChoose={(next) => {
-            setMenu(null);
+            setMenu(false);
             if (next !== choice.using) setAiChoice(next);
             triggerRef.current?.focus();
           }}
           onSettings={() => {
-            setMenu(null);
+            setMenu(false);
             openSettings();
           }}
           onClose={(refocus) => {
-            setMenu(null);
+            setMenu(false);
             if (refocus) triggerRef.current?.focus();
           }}
           trigger={triggerRef}
@@ -154,11 +151,14 @@ function chipTitle(chip: AiChip, m: UiMessages, s: ReturnType<typeof useMessages
 
 /**
  * The chip's menu when both exist (k-0527): which one the AI uses, in one click, and the way to
- * Settings → AI. In place under (or over) the chip, not in a portal: it opens inside dialogs
- * (the import's AI check), whose outside-click would close them. Escape stays in the menu.
+ * Settings → AI. In a portal, fixed-positioned from the chip (k-0541): the chip sits in
+ * overflow-clipped columns (the studio's chat sidebar, where an absolutely placed menu was cut
+ * off at the sidebar's left edge), so it is placed by `placeChoiceMenu` — under or over the
+ * chip, whichever fits, and shifted to stay inside the window. Inside a dialog (the import's AI
+ * check) that is still safe: the dialog closes on a click on its scrim, which the menu is not
+ * in. Escape stays in the menu.
  */
 function ChoiceMenu({
-  side,
   using,
   own,
   credits,
@@ -167,7 +167,6 @@ function ChoiceMenu({
   onClose,
   trigger,
 }: {
-  side: 'down' | 'up';
   using: AiChoice;
   own: string;
   credits: string | null;
@@ -182,8 +181,31 @@ function ChoiceMenu({
   useEffect(() => {
     close.current = onClose;
   });
+  // Placed before paint, and again when the window resizes or anything under the chip scrolls.
+  useLayoutEffect(() => {
+    const place = () => {
+      const popup = ref.current;
+      const anchor = trigger.current?.getBoundingClientRect();
+      if (!popup || !anchor) return;
+      // Layout size, not the pop-in's scaled first frame.
+      const at = placeChoiceMenu(anchor, { width: popup.offsetWidth, height: popup.offsetHeight }, { width: window.innerWidth, height: window.innerHeight });
+      popup.style.top = `${at.top}px`;
+      popup.style.left = `${at.left}px`;
+      popup.style.transformOrigin = `${at.align} ${at.side === 'up' ? 'bottom' : 'top'}`;
+      popup.style.setProperty('--pop-from-y', at.side === 'up' ? '2px' : '-2px');
+      popup.style.visibility = 'visible';
+      popup.dataset.side = at.side;
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [trigger]);
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+    ref.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus({ preventScroll: true });
     const outside = (event: MouseEvent) => {
       const target = event.target as Node;
       if (ref.current?.contains(target) || trigger.current?.contains(target)) return;
@@ -214,14 +236,16 @@ function ChoiceMenu({
     { value: 'mentor', label: m.choiceMentor, ...(credits ? { hint: credits } : {}) },
     { value: 'own', label: m.choiceOwn(own) },
   ];
-  return (
+  return createPortal(
     <div
       ref={ref}
       role="menu"
       aria-label={m.choiceTitle}
       data-ai-choice-menu
       onKeyDown={keys}
-      className={`absolute right-0 z-50 min-w-[15rem] animate-pop-in rounded-xl border border-line bg-surface-raised p-1 text-left shadow-xl ${side === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}
+      // Above dialogs (z-50); zone-light like the panels it opens from, now that it sits in <body>.
+      className="zone-light fixed z-[60] min-w-[15rem] max-w-[calc(100vw-16px)] animate-pop-in rounded-xl border border-line bg-surface-raised p-1 text-left shadow-xl"
+      style={{ top: 0, left: 0, visibility: 'hidden' }}
     >
       <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium text-ink-subtle">{m.choiceTitle}</p>
       {options.map((option) => (
@@ -236,6 +260,33 @@ function ChoiceMenu({
         <span aria-hidden className="w-3.5 shrink-0" />
         {m.choiceSettings}
       </button>
-    </div>
+    </div>,
+    document.body,
   );
+}
+
+const GAP = 6;
+const EDGE = 8;
+
+/**
+ * Where the chip's menu goes (k-0541), in window coordinates. Under the chip when it fits, else
+ * over it (the composer and the import's check sit low), else on whichever side has more room.
+ * Its right edge lines up with the chip's (the studio header's chip is at the right) unless that
+ * would push it past the window's left edge — then its left edge lines up with the chip's (the
+ * chat sidebar's chip is at the left). Either way it is kept EDGE px inside the window.
+ */
+export function placeChoiceMenu(
+  anchor: { top: number; bottom: number; left: number; right: number },
+  menu: { width: number; height: number },
+  view: { width: number; height: number },
+): { top: number; left: number; side: 'up' | 'down'; align: 'left' | 'right' } {
+  const below = view.height - EDGE - (anchor.bottom + GAP);
+  const above = anchor.top - GAP - EDGE;
+  const side = menu.height <= below || (menu.height > above && below >= above) ? 'down' : 'up';
+  const rawTop = side === 'down' ? anchor.bottom + GAP : anchor.top - GAP - menu.height;
+  const top = Math.max(EDGE, Math.min(rawTop, view.height - EDGE - menu.height));
+  const align = anchor.right - menu.width >= EDGE ? 'right' : 'left';
+  const rawLeft = align === 'right' ? anchor.right - menu.width : anchor.left;
+  const left = Math.max(EDGE, Math.min(rawLeft, view.width - EDGE - menu.width));
+  return { top, left, side, align };
 }

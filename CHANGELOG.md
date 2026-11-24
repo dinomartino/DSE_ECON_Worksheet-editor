@@ -128,6 +128,11 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **The AI menu is no longer cut off in the Question studio.** Clicking the AI credits button
+  under the studio's message box opened its menu (DSEcon Mentor credits / your own key) half
+  off the left side of the window. It now opens fully on screen, above or below the button,
+  wherever the button is.
+  <!-- zh: **擬題工作室的 AI 選單不再被遮去。** 在擬題工作室訊息框下方按 AI 點數按鈕時，選單（DSEcon Mentor 點數／你自己的 API key）有一半超出視窗左邊。現在無論按鈕在哪裏，選單都會完整顯示在按鈕的上方或下方。 -->
 - **Every question the studio writes is shown to you.** A draft that failed a check (too close
   to a past paper or another question, or a format problem) used to be set apart as "Left out";
   it is now a normal card you can read in full, accept, change or reject, with a red warning

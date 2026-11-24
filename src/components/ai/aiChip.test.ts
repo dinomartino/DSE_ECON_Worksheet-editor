@@ -5,7 +5,7 @@ import type { ProviderId } from '@/ai/types';
 import { resolveMessages } from '@/i18n/catalogue';
 import type { MentorState } from '@/settings/mentorAccount';
 import { LOW_FALLBACK, aiChipState, lowCreditsLine } from './aiChip';
-import { chipLabel } from './AiStatusChip';
+import { chipLabel, placeChoiceMenu } from './AiStatusChip';
 import { AI_UI_MESSAGES } from './messages';
 
 /** The AI status chip's states (k-0524, u-fs5v). */
@@ -72,5 +72,49 @@ describe('chipLabel', () => {
     expect(chipLabel({ kind: 'setup' }, en, 'en')).toBe('Set up AI');
     expect(chipLabel({ kind: 'setup' }, zh, 'zh-HK')).toBe('設定 AI');
     expect(chipLabel(aiChipState(status('mentor'), signedIn(null)), en, 'en')).toBe('AI credits …');
+  });
+});
+
+/** The chip's menu stays inside the window wherever the chip is (k-0541, u-14xb). */
+describe('placeChoiceMenu', () => {
+  const view = { width: 1280, height: 800 };
+  const menu = { width: 240, height: 130 };
+  const chip = (left: number, top: number, width = 110, height = 24) => ({ left, top, right: left + width, bottom: top + height });
+  const inside = (at: { top: number; left: number }) => {
+    expect(at.left).toBeGreaterThanOrEqual(8);
+    expect(at.left + menu.width).toBeLessThanOrEqual(view.width - 8);
+    expect(at.top).toBeGreaterThanOrEqual(8);
+    expect(at.top + menu.height).toBeLessThanOrEqual(view.height - 8);
+  };
+
+  it('the studio sidebar: chip at the far left and low, menu opens up from its left edge, not off-screen', () => {
+    const anchor = chip(10, 760);
+    const at = placeChoiceMenu(anchor, menu, view);
+    expect(at).toMatchObject({ side: 'up', align: 'left', left: 10 });
+    expect(at.top + menu.height).toBeLessThanOrEqual(anchor.top);
+    inside(at);
+  });
+
+  it('the studio header: chip at the right and high, menu opens down from its right edge', () => {
+    const anchor = chip(1150, 12);
+    const at = placeChoiceMenu(anchor, menu, view);
+    expect(at).toMatchObject({ side: 'down', align: 'right', left: anchor.right - menu.width, top: anchor.bottom + 6 });
+    inside(at);
+  });
+
+  it('never covers the chip when either side has room, and is pushed back in at the window edges', () => {
+    for (const [left, top] of [[0, 0], [1270, 0], [0, 776], [1270, 776], [600, 400], [-30, 300]]) {
+      const anchor = chip(left, top);
+      const at = placeChoiceMenu(anchor, menu, view);
+      inside(at);
+      expect(at.top >= anchor.bottom || at.top + menu.height <= anchor.top).toBe(true);
+    }
+  });
+
+  it('a window too short for either side: the side with more room, still inside', () => {
+    const short = { width: 400, height: 200 };
+    const at = placeChoiceMenu(chip(20, 120), menu, short);
+    expect(at.side).toBe('up');
+    expect(at.top).toBeGreaterThanOrEqual(8);
   });
 });
