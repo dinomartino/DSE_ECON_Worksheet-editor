@@ -94,6 +94,18 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   stepDiagramDone: { en: 'Drew the diagrams', zh: '已繪畫圖表' },
   drawing: { en: 'drawing the diagram…', zh: '正在繪畫圖表…' },
   diagramLook: { en: 'Read the diagram', zh: '請細閱圖表' },
+  keyMatches: { en: 'Key matches the diagram', zh: '答案與圖表相符' },
+  keyMatchesTitle: { en: 'Worked out again from the diagram, it gives the keyed option.', zh: '由圖表重新推算，結果與所標答案一致。' },
+  keyDiffers: {
+    en: (gives: string) => (gives ? `Key ≠ diagram (it gives ${gives})` : 'Key ≠ diagram'),
+    zh: (gives: string) => (gives ? `答案與圖表不符（圖表得 ${gives}）` : '答案與圖表不符'),
+  },
+  keyDiffersTitle: {
+    en: (gives: string) => (gives ? `Worked out again from the diagram, the answer is option ${gives}, not the key.` : 'Worked out again from the diagram, no option gives the answer.'),
+    zh: (gives: string) => (gives ? `由圖表重新推算，答案是選項 ${gives}，與所標答案不同。` : '由圖表重新推算，沒有任何選項是答案。'),
+  },
+  keyAgain: { en: 'Check the key again', zh: '請再核對答案' },
+  keyAgainTitle: { en: 'You changed the diagram, so the key was not checked against it. Read the diagram and the key again.', zh: '圖表已被修改，答案未有對照新圖表檢查。請重新細閱圖表與答案。' },
   stepChangeRun: {
     en: (n: number, how: string) => (how === 'another' ? `Writing another like draft ${n}…` : `Changing draft ${n}…`),
     zh: (n: number, how: string) => (how === 'another' ? `正在仿照草稿 ${n} 再擬一題…` : `正在修改草稿 ${n}…`),

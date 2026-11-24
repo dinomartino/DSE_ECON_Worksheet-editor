@@ -7,6 +7,7 @@ import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import { createWorksheet } from '@/model/factories';
 import type { LanguageMode } from '@/model/types';
+import { keyCheckOf } from '@/questionStudio/keyCheck';
 import { CHECK_IDS, type Finding } from '@/questionStudio/types';
 import { BasedOn } from '../BasedOn';
 import { CheckLine } from '../CheckLine';
@@ -18,6 +19,7 @@ import { draftItem, explanationLines, letterOf } from '../studioView';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 import type { ChatDraft } from './chatTypes';
 import { DraftEditor } from './DraftEditor';
+import { KeyCheckChip } from './KeyCheckChip';
 import { VersionMenu } from './VersionMenu';
 import type { DraftEdit } from '@/questionStudio/edit';
 
@@ -78,6 +80,7 @@ export function ChatDraftCard({
   // A failed check (near-copy, format) is a warning on the card, never a reason to hide it (k-0531).
   const warnings = studio.checks.filter((c) => c.state === 'fail').flatMap((c) => c.findings);
   const warned = warnings.length > 0;
+  const keyCheck = keyCheckOf(studio);
   const accepted = state === 'accepted';
   const rejected = state === 'rejected';
   const added = state === 'added';
@@ -117,6 +120,7 @@ export function ChatDraftCard({
             <Chip tone="look">{m.diagramLook}</Chip>
           </span>
         )}
+        <KeyCheckChip check={keyCheck} m={m} quiet />
         {warned ? (
           <Chip tone="fail">
             <WarningIcon size={12} /> {warnLabel(warnings, m, f)}
@@ -201,6 +205,7 @@ export function ChatDraftCard({
                 </button>
               );
             })}
+            {keyCheck?.state === 'ok' && <KeyCheckChip check={keyCheck} m={m} />}
           </div>
           {details && (
             <ul className="mx-3 mb-2 flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-sunken px-3 text-[12.5px]" aria-label={m.checkDetails}>
