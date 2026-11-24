@@ -198,6 +198,7 @@ export const QUESTION_STUDIO_MESSAGES = defineMessages({
   checkTerms: { en: 'EDB terms', zh: 'EDB 詞彙' },
   checkSyllabus: { en: 'Syllabus', zh: '課程範圍' },
   checkLint: { en: 'Question quality', zh: '題目質素' },
+  checkStyle: { en: 'HKDSE style', zh: 'HKDSE 風格' },
   checkCopy: { en: 'Near-copy', zh: '相似度' },
   statePass: { en: 'OK', zh: '正常' },
   stateLook: { en: 'Read it', zh: '請細閱' },

@@ -111,8 +111,8 @@ export interface StudioRequest {
 
 // ---- checks ----
 
-export type CheckId = 'shape' | 'key' | 'numbers' | 'terms' | 'syllabus' | 'lint' | 'copy';
-export const CHECK_IDS: readonly CheckId[] = ['shape', 'key', 'numbers', 'terms', 'syllabus', 'lint', 'copy'];
+export type CheckId = 'shape' | 'key' | 'numbers' | 'terms' | 'syllabus' | 'lint' | 'style' | 'copy';
+export const CHECK_IDS: readonly CheckId[] = ['shape', 'key', 'numbers', 'terms', 'syllabus', 'lint', 'style', 'copy'];
 
 /**
  * One thing a check found. `id` is a code and `params` its values: the interface words for

@@ -33,7 +33,7 @@ describe('recording a run', () => {
     expect(run).toMatchObject({ label: 'B07', kind: 'write', ok: true, model: 'fake-model', at: '2026-11-24T01:00:00.000Z', compared, notes: ['batch.keyLetter'] });
     expect(run.usage).toEqual(usageOf());
     expect(run.drafts.map((d) => d.id)).toEqual(['d1', 'gone']);
-    expect(run.drafts[0].draft.checks).toHaveLength(7);
+    expect(run.drafts[0].draft.checks).toHaveLength(8);
     expect(run.drafts.every((d) => d.key === undefined && d.use === undefined)).toBe(true);
   });
 

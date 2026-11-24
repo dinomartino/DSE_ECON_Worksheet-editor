@@ -15,6 +15,7 @@ import {
 import type { Glossary } from '@/glossary/types';
 import { plain } from '@/model/text';
 import type { Side } from '@/model/textSlots';
+import { checkDseStyle } from '@/dseStyle/check';
 import { scanLimited } from './guard';
 import { lintDraft } from './lint';
 import { checkNearCopy, EMPTY_CORPUS, type CorpusDoc, type CorpusIndex } from './nearCopy';
@@ -239,6 +240,8 @@ export function localChecks(draft: McqDraft, ctx: CheckContext): CheckRow[] {
     row('terms', terms),
     row('syllabus', syllabus),
     row('lint', lint),
+    // The HKDSE house style (k-0548, `src/dseStyle`): notes, never a block; read once the format holds.
+    row('style', shape.length ? [] : checkDseStyle(draft, ctx.sides)),
     copyRow,
   ];
 }

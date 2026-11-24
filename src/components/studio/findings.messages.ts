@@ -1,3 +1,4 @@
+import { DSE_STYLE_WORDS } from '@/dseStyle/words';
 import { defineMessages } from '@/i18n/catalogue';
 
 /**
@@ -6,6 +7,8 @@ import { defineMessages } from '@/i18n/catalogue';
  * wrong and, where it helps, what to look at; none blames the teacher.
  */
 export const STUDIO_FINDING_MESSAGES = defineMessages({
+  // ---- HKDSE house style (k-0548): the module's own words, shared with other features ----
+  ...DSE_STYLE_WORDS,
   sideEn: { en: 'English', zh: '英文' },
   sideZh: { en: '中文', zh: '中文' },
   unknown: { en: (id: string) => `A check reported “${id}”.`, zh: (id: string) => `有檢查回報「${id}」。` },

@@ -1,4 +1,5 @@
 import type { Messages } from '@/i18n/catalogue';
+import { styleFindingText } from '@/dseStyle/messages';
 import type { Finding } from '@/questionStudio/types';
 import type { STUDIO_FINDING_MESSAGES } from './findings.messages';
 
@@ -76,7 +77,7 @@ export function findingText(finding: Finding, m: FindingMessages): string {
     case 'run.keyNotChecked':
       return m.runKeyNotChecked;
     default:
-      return m.unknown(finding.id);
+      return (finding.id.startsWith('style.') && styleFindingText(finding, m)) || m.unknown(finding.id);
   }
 }
 
