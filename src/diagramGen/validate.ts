@@ -2,7 +2,7 @@ import type { Diagram, DiagramCurve } from '@/model/diagram';
 import { curveXAt } from '@/model/diagramAnchors';
 import { curveCrossing } from '@/model/diagramAreas';
 import type { Side } from '@/model/textSlots';
-import { DEMAND_LIKE, SUPPLY_LIKE, type Compiled } from './compile';
+import { DEMAND_LIKE, SUPPLY_LIKE, tickKey, type Compiled } from './compile';
 import { labelBase, labelIndex, plainOf } from './text';
 import type { DiagramIssue, DiagramSpec, SpecText } from './types';
 
@@ -403,7 +403,7 @@ export function checkDiagram(spec: DiagramSpec, compiled: Compiled, sides: reado
         error('gap.kind', `At "${gap.level}" quantity supplied exceeds quantity demanded: that is a surplus, not "${gap.label.en || gap.label.zh}".`);
       }
     }
-    if (d && s && !spec.equilibria.length && !spec.levels.length) {
+    if (d && s && !spec.points.length && !spec.levels.length) {
       look('eq.none', 'Demand and supply are drawn, but no equilibrium is marked.');
     }
   }
@@ -416,5 +416,68 @@ export function checkDiagram(spec: DiagramSpec, compiled: Compiled, sides: reado
     }
   }
   issues.push(...checkAgainstKey(diagram, key));
+  return issues;
+}
+
+// ---- the stem against the drawing (k-0534) ----
+
+const CONTROL_WORDS: Array<{ kind: 'ceiling' | 'floor' | 'quota'; re: RegExp }> = [
+  { kind: 'ceiling', re: /price ceiling|maximum price|rent control|最高價格|價格上限|租金管制/i },
+  { kind: 'floor', re: /price floor|minimum price|minimum wage|最低價格|價格下限|最低工資/i },
+  { kind: 'quota', re: /\bquota\b|配額/i },
+];
+const TAX = /\b(?:unit|per[- ]unit|specific|sales|commodity) tax\b|\btax(?:es)? (?:of|on)\b|從量稅|徵收.{0,8}稅|稅款/i;
+const SUBSIDY = /\bsubsid(?:y|ies|ise|ize)\b|津貼|補貼|資助/i;
+/** "from S1 to S2", "S₁ to S₂", "由 S1 移至 S2", "S1 → S2". */
+const FROM_TO = /([A-Z]{1,4}(?:_\{?[0-9a-z]{1,2}\}?|[₀-₉]|[0-9]))\s*(?:to|→|->|至|移至|轉移至|移到|變為)\s*([A-Z]{1,4}(?:_\{?[0-9a-z]{1,2}\}?|[₀-₉]|[0-9]))/g;
+
+/**
+ * What the question's own words say about the drawing must be true of it: a ceiling in
+ * the stem is a ceiling on the figure (not a floor), a tax moves supply up, "from S₁ to S₂"
+ * is a shift drawn that way, and any curve move the stem states goes the stated way.
+ * The stem names the policy; it never describes the figure (that is `shape.narrates`).
+ */
+export function checkStem(spec: DiagramSpec, compiled: Compiled, stem: string): DiagramIssue[] {
+  const issues: DiagramIssue[] = [];
+  const diagram = compiled.diagram;
+  if (!diagram || spec.kind !== 'curves' || !stem.trim()) return issues;
+  const kinds = new Set(spec.levels.map((l) => l.kind));
+  for (const { kind, re } of CONTROL_WORDS) {
+    if (!re.test(stem) || kinds.has(kind)) continue;
+    const drawn = [...kinds].filter((k) => k === 'ceiling' || k === 'floor' || k === 'quota');
+    issues.push({
+      level: 'error',
+      code: 'stem.control',
+      text: `The question sets a ${kind === 'quota' ? 'quota' : `price ${kind}`}, but the diagram ${drawn.length ? `draws a ${drawn.join(' and a ')} instead` : 'draws none'}.`,
+    });
+  }
+  const supplyShifts = spec.shifts.filter((sh) => {
+    const role = compiled.roles.get(sh.id);
+    return role && SUPPLY_LIKE.has(role);
+  });
+  if (TAX.test(stem) && !SUBSIDY.test(stem) && !supplyShifts.some((sh) => sh.direction === 'up' || sh.direction === 'left') && spec.asks.what !== 'none') {
+    issues.push({ level: 'error', code: 'stem.tax', text: 'The question has a tax, but the diagram does not move supply up by it.' });
+  }
+  if (SUBSIDY.test(stem) && !TAX.test(stem) && !supplyShifts.some((sh) => sh.direction === 'down' || sh.direction === 'right') && spec.asks.what !== 'none') {
+    issues.push({ level: 'error', code: 'stem.subsidy', text: 'The question has a subsidy, but the diagram does not move supply down by it.' });
+  }
+  const byLabel = new Map<string, string>();
+  for (const c of spec.curves) byLabel.set(tickKey(c.label), c.id);
+  for (const sh of spec.shifts) byLabel.set(tickKey(sh.label), sh.id);
+  for (const m of stem.matchAll(FROM_TO)) {
+    const from = byLabel.get(tickKey(m[1]));
+    const to = byLabel.get(tickKey(m[2]));
+    if (!from || !to) continue; // a missing label is label.missing's to report
+    let at: string | undefined = to;
+    const seen = new Set<string>();
+    while (at && at !== from && !seen.has(at)) {
+      seen.add(at);
+      at = spec.shifts.find((sh) => sh.id === at)?.of;
+    }
+    if (at !== from) issues.push({ level: 'error', code: 'stem.shift', text: `The question says ${m[1]} moves to ${m[2]}, but the diagram does not draw ${m[2]} as a shift of ${m[1]}.` });
+  }
+  for (const issue of checkAgainstKey(diagram, stem)) {
+    if (issue.level === 'error') issues.push({ ...issue, code: 'stem.opposite', text: issue.text.replace(/^The key says/, 'The question says') });
+  }
   return issues;
 }

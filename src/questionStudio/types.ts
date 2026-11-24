@@ -9,7 +9,7 @@ import type { BiDraft, McqDraft } from '@/generate/types';
 import type { Glossary } from '@/glossary/types';
 import type { Side } from '@/model/textSlots';
 import type { ContentBlock } from '@/model/types';
-import type { DiagramIssue } from '@/diagramGen/types';
+import type { DiagramIssue, DiagramSpec, SolvedKey } from '@/diagramGen/types';
 import type { BiText, DiagramBlock } from '@/model/types';
 import type { CorpusIndex } from './nearCopy';
 import type { KeyPick } from './pick';
@@ -167,6 +167,8 @@ export interface StudioDraft {
   attempt: 1 | 2;
   /** The AI-made figure (k-0514 → k-0515's `generateDiagram`), when the run was asked for diagrams; absent = not asked. */
   diagram?: DraftDiagram;
+  /** The writer's note to the diagram maker (k-0534), never printed; absent = no figure asked for. */
+  figure?: string;
   /**
    * The teacher edited this version by hand (k-0530): its local checks were run again, and
    * the key check is out of date (`key.edited`) when the question itself changed.
@@ -224,6 +226,16 @@ export interface DraftDiagram {
   imageSkipped?: boolean;
   /** Why it failed, when the provider call itself did. */
   error?: AiErrorInfo;
+  /**
+   * The figure's spec (k-0534): what a follow-up edits ("label Q1 and Q3", "move P1 up")
+   * and what direct editing (k-0530) opens; `compileSpec` draws it again. Saved with the
+   * chat, never in a document (the paper gets `block`).
+   */
+  spec?: DiagramSpec;
+  /** The key as the drawing gives it, when the solver could read the question. */
+  solved?: SolvedKey;
+  /** The figure in words for the blind solve (ticks in order, what each marks). */
+  figureWords?: string;
   /** The teacher changed it in the diagram editor (k-0530): the AI's issues no longer describe it. */
   edited?: true;
 }
@@ -331,4 +343,9 @@ export type Refinement =
   | { kind: 'another' }
   | { kind: 'harder' }
   | { kind: 'easier' }
-  | { kind: 'change'; text: string };
+  /**
+   * `parts`: what the teacher's words touch, as the chat read them (k-0535: `stem`, `options`,
+   * `diagram`, `table`, …; `understand.ts:TURN_PARTS`). Absent = not known. A change with
+   * `diagram` is the diagram-spec path's to make (k-0534).
+   */
+  | { kind: 'change'; text: string; parts?: readonly string[] };

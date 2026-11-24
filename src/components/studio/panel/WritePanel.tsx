@@ -79,8 +79,8 @@ export function WritePanel() {
 
   if (!mine) return null;
 
-  const send = (words: string) => {
-    void usePaperChat.getState().send(words.trim(), draftChip?.id);
+  const send = (words: string, opts?: { asNew?: boolean }) => {
+    void usePaperChat.getState().send(words.trim(), draftChip?.id, opts);
     setText('');
     setHint(undefined);
     useWritePanel.getState().setAsk(undefined);
@@ -112,6 +112,7 @@ export function WritePanel() {
               onDismiss={(turnId) => store.dismissError(turnId)}
               onChangePick={(code) => store.changePick(code)}
               onAnswer={(turnId, answer) => void store.answerRewrite(turnId, answer)}
+              onWhich={(turnId, choice) => void store.answerWhich(turnId, choice)}
             />
             <DraftList drafts={mine.drafts} worksheet={worksheet} readOnly={readOnly} busy={running} />
           </>

@@ -28,7 +28,16 @@ import { CHANGE_ASPECTS, type ChangeAspect, type CheckRow, type DraftChange, typ
  * draft is ever hidden or refused for a check (k-0531, u-p8bn): the teacher decides.
  */
 
-export interface RawDraft { draft: McqDraft; angle: string; changes: DraftChange[] }
+export interface RawDraft {
+  draft: McqDraft;
+  angle: string;
+  changes: DraftChange[];
+  /**
+   * The writer's note to the diagram maker (k-0534): '' = no figure; undefined = the reply
+   * has no "figure" key at all (an older reply or mock), when every draft is offered one.
+   */
+  figure?: string;
+}
 
 const asText = (x: unknown): string => (typeof x === 'string' ? x.trim().slice(0, 200) : '');
 
@@ -76,7 +85,9 @@ export function parseWriteReply(text: string): RawDraft[] | null {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) continue;
     const fields = entry as Record<string, unknown>;
     const draft = draftOf({ ...fields, answer: answerIndexOf(fields.answer), kind: 'mcq' });
-    if (draft?.kind === 'mcq') out.push({ draft, angle: asText((entry as { angle?: unknown }).angle), changes: parseChanges((entry as { changes?: unknown }).changes) });
+    if (draft?.kind !== 'mcq') continue;
+    const figure = typeof fields.figure === 'string' ? fields.figure.trim().slice(0, 600) : undefined;
+    out.push({ draft, angle: asText(fields.angle), changes: parseChanges(fields.changes), ...(figure !== undefined ? { figure } : {}) });
   }
   return out;
 }
@@ -91,6 +102,30 @@ export function cleanMcq(raw: McqDraft, sides: readonly Side[]): McqDraft {
     answerIndex: raw.answerIndex,
     explanation: clean(raw.explanation, sides),
   };
+}
+
+// ---- a stem that narrates its figure (k-0534) ----
+
+/**
+ * Words that describe a figure instead of referring to it. HKDSE stems say "Refer to the
+ * following diagram" and state the policy; the k-0534 draft narrated "dashed lines mark four
+ * quantities: Q1 is the quantity supplied on S2 at P1…", and its words then disagreed with
+ * the drawing. Matched on the stem and statements, not the options or the explanation.
+ */
+const NARRATION: Array<{ side: Side; re: RegExp }> = [
+  { side: 'en', re: /\bdashed lines?\b|\bdotted lines?\b|\b(?:the )?intersection (?:point )?of\b|\b(?:horizontal|vertical) (?:quantity |price )?axis\b|\bon the (?:x|y)-axis\b|\bfrom left to right\b|\b[PQ]_?\{?\d\}?\s+is\s+the\s+(?:equilibrium\s+)?(?:quantity|price)\b|\bwhere the (?:demand|supply) curve\b|\bthe diagram shows\b|\bmarks? (?:four|three|two) (?:quantities|prices)\b/i },
+  { side: 'zh', re: /虛線|交點|相交於|橫軸|縱軸|由左至右|圖中顯示|[PQ]_?\{?\d\}?\s*(?:是|為|代表).{0,12}(?:數量|價格)/ },
+];
+
+export function narrationFindings(draft: McqDraft, sides: readonly Side[]): Finding[] {
+  const out: Finding[] = [];
+  for (const { side, re } of NARRATION) {
+    if (!sides.includes(side)) continue;
+    const text = [draft.stem[side], ...draft.statements.map((s) => s[side])].join('\n');
+    const m = re.exec(text);
+    if (m) out.push({ id: 'shape.narrates', params: { side, words: m[0].slice(0, 60) } });
+  }
+  return out;
 }
 
 // ---- shape (the hard checks) ----
@@ -143,6 +178,8 @@ export interface CheckContext {
    * unlimited), wherever the corpus holds them. A draft close to one is told so, not failed.
    */
   exempt?: readonly CorpusDoc[];
+  /** The draft has a diagram drawn for it (k-0534): its stem must not describe it. */
+  figure?: boolean;
 }
 
 const row = (id: CheckRow['id'], findings: Finding[], state?: CheckRow['state']): CheckRow => ({
@@ -164,7 +201,7 @@ export function draftWords(draft: McqDraft, side: Side): string {
  * a deny form in place (as E3 does). The `key` row is `skipped` until the blind solve runs.
  */
 export function localChecks(draft: McqDraft, ctx: CheckContext): CheckRow[] {
-  const shape = shapeFindings(draft, ctx.sides);
+  const shape = [...shapeFindings(draft, ctx.sides), ...(ctx.figure ? narrationFindings(draft, ctx.sides) : [])];
   const terms = glossaryPass([draft.stem, ...draft.statements, ...draft.options, draft.explanation], {
     sides: ctx.sides,
     source: '',

@@ -101,6 +101,7 @@ export function buildPickRequest(input: PickInput, preset: ProviderPreset, signa
     schema: PICK_SCHEMA,
     shapeHint: PICK_SHAPE_HINT,
     maxOutputTokens: preset.family === 'gemini' ? 2048 : 600,
+    feature: 'studio.pick',
     signal,
     ...(images.length ? { images } : {}),
   };

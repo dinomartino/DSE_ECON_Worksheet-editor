@@ -12,14 +12,19 @@ import { hasWarning } from '@/questionStudio/validate';
 import { applyEdit, type DraftEdit } from '@/questionStudio/edit';
 import { firstVersion, showing, undoEdit, withAiVersion, withEdit } from './versions';
 import type { LiveState, SourceQuestion as Source, StudioEvent } from '@/questionStudio/types';
-import type { KeyPick, StudioEngine } from './engine';
+import type { KeyPick, PickOutcome, StudioEngine } from './engine';
+import { briefsOf, decide, editable, readLocally, recentOf, type IntentKind, type LocalRead, type TurnIntent } from './intent';
 
 /**
  * The chat studio's one store (k-0516): every chat, the open one, and the run in progress.
  * A request is: read the reference (if any) → the AI picks the key point (step 1, u-lm1c) →
- * write on it (step 2, streamed when the engine can) → checks. The teacher's own words after
- * drafts exist change one draft ("draft 2 …", or the draft chip from "Ask about this") or ask
- * for new ones. Nothing reaches a paper here: Add in the tray does that (`deliver.ts`).
+ * write on it (step 2, streamed when the engine can) → checks. Once drafts exist, every
+ * message is read with them (k-0535, `intent.ts`): edit one draft, several or all, one more
+ * like a draft, a question about a draft, or new ones, from any wording. Clear words and the
+ * composer's chip act at once; anything else is read by the AI in the same step-1 request;
+ * when it cannot tell which draft, the reply asks (draft buttons) instead of guessing. An
+ * edit is a new version of its card (undo = an older version), never a new card. Nothing
+ * reaches a paper here: Add in the tray does that (`deliver.ts`).
  */
 
 export interface RunState {
@@ -54,8 +59,13 @@ export interface ChatState {
   /** False when already there or `MAX_EXAMPLES` reached. */
   addReference(source: SourceQuestion, keyPoint?: string, item?: PastPaperItem): boolean;
   removeReference(id: string): void;
-  /** The teacher's message. `draftId`: about that draft (the composer's draft chip). */
-  send(text: string, draftId?: string): Promise<void>;
+  /**
+   * The teacher's message. `draftId`: about that draft (the composer's chip). `asNew`: the
+   * teacher took the composer's guess away: write new ones, no reading.
+   */
+  send(text: string, draftId?: string, opts?: { asNew?: boolean }): Promise<void>;
+  /** The answer to "Which draft do you mean?": a draft number, every draft offered, or new ones. */
+  answerWhich(turnId: string, choice: number | 'all' | 'new'): Promise<void>;
   /** A quick change on one draft (the card's Harder / Easier / Another). */
   change(draftId: string, how: Exclude<ChangeHow, 'change'>): Promise<void>;
   /** The teacher changes the AI's pick (never required). Asks before rewriting existing drafts. */
@@ -93,7 +103,21 @@ export interface ChatDeps {
   onRun?: (info: RunInfo) => void;
 }
 
-const DRAFT_REF = /(?:draft|草稿)\s*(\d+)|\bQ\s*(\d+)\b/i;
+/** A message being read with the drafts (k-0535): the computer's read, and the chip's draft. */
+interface Reading {
+  local: LocalRead;
+  chip?: number;
+}
+
+/** The refinement an edit asks for: Harder / Easier for a short difficulty-only message, else the teacher's words. */
+export function refinementFor(intent: Pick<TurnIntent, 'how' | 'parts'>, text: string): Refinement {
+  const words = text.trim();
+  const cjk = words.match(/[\u3400-\u9fff]/g)?.length ?? 0;
+  const latin = words.replace(/[\u3400-\u9fff]/g, ' ').split(/\s+/).filter(Boolean).length;
+  const short = latin + Math.ceil(cjk / 3) <= 6;
+  if (intent.how !== 'change' && (short || !words)) return { kind: intent.how };
+  return { kind: 'change', text: words, ...(intent.parts.length ? { parts: intent.parts } : {}) };
+}
 
 export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatState>> {
   const now = () => (deps.now ? deps.now() : new Date()).toISOString();
@@ -219,7 +243,11 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       onEvent: (event: StudioEvent) => {
         const run = get().run;
         if (!run || run.turnId !== turnId) return;
-        if (event.type === 'stage' && event.stage === 'diagram') setStep(chatId, turnId, { kind: 'diagram', state: 'run' });
+        if (event.type === 'stage' && event.stage === 'diagram') {
+          // Figures are drawn before the check (k-0534): writing is done once they start.
+          if (!change) setStep(chatId, turnId, { kind: 'write', state: 'done', count });
+          setStep(chatId, turnId, { kind: 'diagram', state: 'run' });
+        }
         set({ run: { ...run, live: applyEvent(run.live, event) } });
       },
     });
@@ -291,109 +319,213 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       });
     }
 
-    /** A new request: read → pick → write. */
-    async function request(text: string) {
+    /** Sets fields of the running run, when it is this turn's. */
+    const patchRun = (turnId: string, patch: Partial<RunState>) => {
+      const run = get().run;
+      if (run?.turnId === turnId) set({ run: { ...run, ...patch } });
+    };
+
+    /** Step 1 then 2 of a new request, inside a reply: the AI picks the key point, then writes on it. */
+    async function pickAndWrite(chatId: string, turnId: string, text: string, signal: AbortSignal) {
+      const mine = (get().chats.find((c) => c.id === chatId)?.refs ?? []).filter((r) => r.who === 'you');
+      setStep(chatId, turnId, { kind: 'pick', state: 'run', picks: [], by: 'ai' });
+      const ready = await resolve(chatId, turnId, signal);
+      if (!ready) return;
+      const tagged = Object.fromEntries(mine.filter((r) => r.keyPoint).map((r) => [r.source.id, r.keyPoint as string]));
+      const current = (get().chats.find((c) => c.id === chatId)?.picks ?? []).map((p) => p.code);
+      const picked = await deps.engine.pick({ text, examples: await withPictures(mine.map((r) => r.source)), tagged, ...(current.length ? { current } : {}) }, ready.deps, signal);
+      if (!picked.ok) {
+        failTurn(chatId, turnId, picked.error);
+        return;
+      }
+      await writeWith(chatId, turnId, text, picked, signal);
+    }
+
+    /** Step 2 with step 1's answer: keep the picks (or the chat's, for a follow-up), then write. */
+    async function writeWith(chatId: string, turnId: string, text: string, picked: Extract<PickOutcome, { ok: true }>, signal: AbortSignal) {
+      // Nothing to go on in a follow-up ("the same in Chinese"): the chat's key point stands.
+      const picks = picked.picks.length ? picked.picks : get().chats.find((c) => c.id === chatId)?.picks ?? [];
+      setStep(chatId, turnId, { kind: 'pick', state: 'done', picks, by: picked.local ? 'computer' : 'ai' });
+      edit(chatId, (c) => ({ ...c, picks, lastText: text }));
+      if (!picks.length) {
+        addNote(chatId, turnId, { kind: 'noPick' });
+        return;
+      }
+      await writeOn(chatId, turnId, text, signal);
+    }
+
+    /**
+     * A message once drafts exist (k-0535): the same step-1 request also reads what it wants
+     * and which draft(s), then the reply edits, answers, asks which draft, or writes new ones.
+     */
+    async function readAndAct(chatId: string, turnId: string, text: string, reading: Reading, signal: AbortSignal) {
+      const chat = get().chats.find((c) => c.id === chatId);
+      if (!chat) return;
+      const mine = chat.refs.filter((r) => r.who === 'you');
+      // The draft is known (the chip): only an answer is wanted, no key point, no syllabus.
+      const onlyRead = reading.chip !== undefined;
+      setStep(chatId, turnId, { kind: 'understand', state: 'run' });
+      const ready = await resolve(chatId, turnId, signal);
+      if (!ready) return;
+      const tagged = Object.fromEntries(mine.filter((r) => r.keyPoint).map((r) => [r.source.id, r.keyPoint as string]));
+      const current = chat.picks.map((p) => p.code);
+      const picked = await deps.engine.pick(
+        {
+          text,
+          examples: onlyRead ? [] : await withPictures(mine.map((r) => r.source)),
+          tagged,
+          ...(current.length ? { current } : {}),
+          drafts: briefsOf(chat, reading.chip),
+          recent: recentOf(chat),
+          ...(reading.chip !== undefined ? { target: reading.chip } : {}),
+          picks: !onlyRead,
+        },
+        ready.deps,
+        signal,
+      );
+      if (!picked.ok) {
+        failTurn(chatId, turnId, picked.error);
+        return;
+      }
+      const intent = decide(reading.local, picked.turn);
+      setStep(chatId, turnId, { kind: 'understand', state: 'done', intent: intent.kind, drafts: intent.drafts, by: picked.turn ? 'ai' : 'computer' });
+      if (intent.kind !== 'new') return act(chatId, turnId, intent, text, reading.local.kind, signal);
+      patchRun(turnId, { count: chat.settings.count });
+      if (mine.length) setStep(chatId, turnId, { kind: 'read', state: 'done', labels: mine.map((r) => r.source.label) });
+      await writeWith(chatId, turnId, text, picked, signal);
+    }
+
+    /** What the read said, done in this reply: edit, one more like a draft, an answer, or a question back. */
+    async function act(chatId: string, turnId: string, intent: TurnIntent, text: string, wanted: IntentKind, signal: AbortSignal) {
+      const chat = get().chats.find((c) => c.id === chatId);
+      if (!chat) return;
+      const targets = intent.drafts.map((n) => chat.drafts.find((d) => d.no === n && editable(d))).filter((d): d is ChatDraft => d !== undefined);
+      if (intent.kind === 'unsure' || targets.length === 0) {
+        const options = (intent.drafts.length ? intent.drafts : chat.drafts.filter(editable).map((d) => d.no)).filter((n) => chat.drafts.some((d) => d.no === n && editable(d)));
+        const kind = wanted === 'ask' || wanted === 'another' ? wanted : 'edit';
+        editTurn(chatId, turnId, (t) => ({ ...t, ask: { kind: 'which', text, wanted: kind, options, how: intent.how, parts: intent.parts } }));
+        settle(chatId, turnId);
+        return;
+      }
+      if (intent.kind === 'ask') {
+        settle(chatId, turnId);
+        if (intent.reply) addNote(chatId, turnId, { kind: 'reply', text: intent.reply, draftNo: targets[0].no });
+        else addNote(chatId, turnId, { kind: 'noReply', draftNo: targets[0].no });
+        editTurn(chatId, turnId, (t) => ({ ...t, draftIds: targets.map((d) => d.id) }));
+        return;
+      }
+      if (intent.kind === 'another') return changeIn(chatId, turnId, [targets[0].id], { kind: 'another' }, signal);
+      await changeIn(chatId, turnId, targets.map((d) => d.id), refinementFor(intent, text), signal);
+    }
+
+    /** Draft(s) changed (or one more like it) in this reply: each a new version of its own card, never a new card (but Another). */
+    async function changeIn(chatId: string, turnId: string, ids: readonly string[], refinement: Refinement, signal: AbortSignal) {
+      const how: ChangeHow = refinement.kind;
+      const first = get().chats.find((c) => c.id === chatId)?.drafts.find((d) => d.id === ids[0]);
+      if (!first) return;
+      // A change stays on the draft's own key point (whatever the chat's pick is now).
+      setStep(chatId, turnId, { kind: 'pick', state: 'done', picks: [{ code: first.entry.request.keyPoint, reason: '' }], by: 'draft' });
+      const ready = await resolve(chatId, turnId, signal);
+      if (!ready) return;
+      const done: string[] = [];
+      for (const draftId of ids) {
+        if (signal.aborted) break;
+        const chat = get().chats.find((c) => c.id === chatId);
+        const target = chat?.drafts.find((d) => d.id === draftId);
+        if (!chat || !target) continue;
+        patchRun(turnId, { target: draftId, count: 1, live: emptyLive() });
+        setStep(chatId, turnId, { kind: 'change', state: 'run', draftNo: target.no, how });
+        // The current version is what changes (an older one the teacher picked back, too).
+        const others = chat.drafts.filter((d) => d.id !== draftId && d.state !== 'rejected').map((d) => d.entry.draft);
+        let outcome: StudioOutcome;
+        try {
+          outcome = await deps.engine.refine(target.entry.request, target.entry.draft, refinement, others, ready.deps, hooksFor(chatId, turnId, 1, signal, true));
+        } catch {
+          failTurn(chatId, turnId, aiErrorInfo('badOutput', ready.deps.preset.id));
+          return;
+        }
+        record({ kind: 'refine', request: target.entry.request, outcome, compared: ready.compared });
+        if (!outcome.ok) {
+          if (outcome.error.kind === 'cancelled') {
+            editTurn(chatId, turnId, (t) => ({ ...t, steps: t.steps.map((s) => (s.state === 'run' ? { ...s, state: 'fail' } : s)) }));
+            addNote(chatId, turnId, { kind: 'stopped' });
+          } else failTurn(chatId, turnId, outcome.error);
+          break;
+        }
+        const made = outcome.drafts[0];
+        setStep(chatId, turnId, { kind: 'change', state: 'done', draftNo: target.no, how });
+        if (!made) continue;
+        if (how === 'another') {
+          let no = 0;
+          let freshId = '';
+          edit(chatId, (c) => {
+            no = c.drafts.reduce((max, d) => Math.max(max, d.no), 0) + 1;
+            const fresh: ChatDraft = { id: newId(), no, entry: { draft: firstVersion(made, now(), 'another'), request: target.entry.request }, older: [], state: 'open', turnId };
+            freshId = fresh.id;
+            const at = c.drafts.findIndex((d) => d.id === draftId);
+            return { ...c, drafts: [...c.drafts.slice(0, at + 1), fresh, ...c.drafts.slice(at + 1)] };
+          });
+          done.push(freshId);
+          addNote(chatId, turnId, { kind: 'another', draftNo: no });
+        } else {
+          let version = 1;
+          edit(chatId, (c) => ({
+            ...c,
+            drafts: c.drafts.map((d) => {
+              if (d.id !== draftId) return d;
+              // A new version on top of the one shown (k-0530: numbered once, never renumbered).
+              const next = withAiVersion(d, made, how, refinement.kind === 'change' ? refinement.text : '', now());
+              version = next.entry.draft.version ?? next.older.length + 1;
+              // Changed: read it again, so it is open (not accepted) until the teacher says.
+              return { ...next, state: 'open' };
+            }),
+          }));
+          done.push(draftId);
+          addNote(chatId, turnId, { kind: 'changed', draftNo: target.no, version });
+        }
+      }
+      settle(chatId, turnId);
+      if (done.length) editTurn(chatId, turnId, (t) => ({ ...t, draftIds: done }));
+    }
+
+    /** A new message: its turns, then pick → write (no drafts yet, or "write new ones"), or read → act. */
+    async function request(text: string, reading?: Reading) {
       const chat = active();
       const chatId = chat.id;
       const mine = chat.refs.filter((r) => r.who === 'you');
-      const user: Turn = { id: newId(), role: 'user', text, refs: mine.map((r) => r.source.label) };
+      const user: Turn = { id: newId(), role: 'user', text, refs: mine.map((r) => r.source.label), ...(reading?.chip !== undefined ? { draftNo: reading.chip } : {}) };
       const ai = aiTurn();
       pushTurns(chatId, user, ai);
-      edit(chatId, (c) => ({ ...c, lastText: text }));
-      const action = () => request(text);
-      lastAction.set(ai.id, action);
-      await exclusive(chatId, ai.id, chat.settings.count, async (signal) => {
-        if (mine.length) setStep(chatId, ai.id, { kind: 'read', state: 'done', labels: mine.map((r) => r.source.label) });
-        setStep(chatId, ai.id, { kind: 'pick', state: 'run', picks: [], by: 'ai' });
-        const ready = await resolve(chatId, ai.id, signal);
-        if (!ready) return;
-        const tagged = Object.fromEntries(mine.filter((r) => r.keyPoint).map((r) => [r.source.id, r.keyPoint as string]));
-        const current = (get().chats.find((c) => c.id === chatId)?.picks ?? []).map((p) => p.code);
-        const picked = await deps.engine.pick({ text, examples: await withPictures(mine.map((r) => r.source)), tagged, ...(current.length ? { current } : {}) }, ready.deps, signal);
-        if (!picked.ok) {
-          failTurn(chatId, ai.id, picked.error);
-          return;
-        }
-        // Nothing to go on in a follow-up ("the same in Chinese"): the chat's key point stands.
-        const picks = picked.picks.length ? picked.picks : get().chats.find((c) => c.id === chatId)?.picks ?? [];
-        setStep(chatId, ai.id, { kind: 'pick', state: 'done', picks, by: picked.local ? 'computer' : 'ai' });
-        edit(chatId, (c) => ({ ...c, picks }));
-        if (!picks.length) {
-          addNote(chatId, ai.id, { kind: 'noPick' });
-          return;
-        }
-        await writeOn(chatId, ai.id, text, signal);
+      lastAction.set(ai.id, () => request(text, reading));
+      // While the message is read nothing is drawn as new: the placeholders come once it says "new".
+      await exclusive(chatId, ai.id, reading ? 0 : chat.settings.count, async (signal) => {
+        // A message being read shows the reference only once it turns out to be a new request.
+        if (mine.length && !reading) setStep(chatId, ai.id, { kind: 'read', state: 'done', labels: mine.map((r) => r.source.label) });
+        if (reading) await readAndAct(chatId, ai.id, text, reading, signal);
+        else await pickAndWrite(chatId, ai.id, text, signal);
       });
     }
 
-    /** One draft changed (or one more like it), with the teacher's words when there are any. */
-    async function changeDraft(draftId: string, refinement: Refinement, said: string) {
+    /** Draft(s) changed with no reading request (the card's buttons, the chip, clear words), as one exchange. */
+    async function changeDrafts(draftIds: readonly string[], refinement: Refinement, said: string) {
       const chat = active();
       const chatId = chat.id;
-      const target = chat.drafts.find((d) => d.id === draftId);
-      if (!target) return;
+      const targets = draftIds.map((id) => chat.drafts.find((d) => d.id === id)).filter((d): d is ChatDraft => d !== undefined);
+      if (!targets.length) return;
       const how: ChangeHow = refinement.kind;
-      const user: Turn = { id: newId(), role: 'user', text: said, refs: [], draftNo: target.no, ...(said ? {} : { how }) };
+      const user: Turn = {
+        id: newId(),
+        role: 'user',
+        text: said,
+        refs: [],
+        draftNo: targets[0].no,
+        ...(targets.length > 1 ? { draftNos: targets.map((d) => d.no) } : {}),
+        ...(said ? {} : { how }),
+      };
       const ai = aiTurn();
       pushTurns(chatId, user, ai);
-      lastAction.set(ai.id, () => changeDraft(draftId, refinement, said));
-      await exclusive(
-        chatId,
-        ai.id,
-        1,
-        async (signal) => {
-          // A change stays on the draft's own key point (whatever the chat's pick is now).
-          setStep(chatId, ai.id, { kind: 'pick', state: 'done', picks: [{ code: target.entry.request.keyPoint, reason: '' }], by: 'draft' });
-          setStep(chatId, ai.id, { kind: 'change', state: 'run', draftNo: target.no, how });
-          const ready = await resolve(chatId, ai.id, signal);
-          if (!ready) return;
-          const others = chat.drafts.filter((d) => d.id !== draftId && d.state !== 'rejected').map((d) => d.entry.draft);
-          let outcome: StudioOutcome;
-          try {
-            outcome = await deps.engine.refine(target.entry.request, target.entry.draft, refinement, others, ready.deps, hooksFor(chatId, ai.id, 1, signal, true));
-          } catch {
-            failTurn(chatId, ai.id, aiErrorInfo('badOutput', ready.deps.preset.id));
-            return;
-          }
-          record({ kind: 'refine', request: target.entry.request, outcome, compared: ready.compared });
-          if (!outcome.ok) {
-            if (outcome.error.kind === 'cancelled') addNote(chatId, ai.id, { kind: 'stopped' });
-            else failTurn(chatId, ai.id, outcome.error);
-            return;
-          }
-          const made = outcome.drafts[0];
-          setStep(chatId, ai.id, { kind: 'change', state: 'done', draftNo: target.no, how });
-          settle(chatId, ai.id);
-          if (!made) return;
-          if (how === 'another') {
-            let no = 0;
-            edit(chatId, (c) => {
-              no = c.drafts.reduce((max, d) => Math.max(max, d.no), 0) + 1;
-              const fresh: ChatDraft = { id: newId(), no, entry: { draft: firstVersion(made, now(), 'another'), request: target.entry.request }, older: [], state: 'open', turnId: ai.id };
-              const at = c.drafts.findIndex((d) => d.id === draftId);
-              const drafts = [...c.drafts.slice(0, at + 1), fresh, ...c.drafts.slice(at + 1)];
-              return { ...c, drafts, turns: c.turns.map((t) => (t.id === ai.id && t.role === 'ai' ? { ...t, draftIds: [fresh.id] } : t)) };
-            });
-            addNote(chatId, ai.id, { kind: 'another', draftNo: no });
-          } else {
-            let version = 1;
-            edit(chatId, (c) => ({
-              ...c,
-              drafts: c.drafts.map((d) => {
-                if (d.id !== draftId) return d;
-                // A new version on top of the one shown (k-0530: numbered once, never renumbered).
-                const next = withAiVersion(d, made, how, said, now());
-                version = next.entry.draft.version ?? next.older.length + 1;
-                // Changed: read it again, so it is open (not accepted) until the teacher says.
-                return { ...next, state: 'open' };
-              }),
-              turns: c.turns.map((t) => (t.id === ai.id && t.role === 'ai' ? { ...t, draftIds: [draftId] } : t)),
-            }));
-            addNote(chatId, ai.id, { kind: 'changed', draftNo: target.no, version });
-          }
-        },
-        draftId,
-      );
+      lastAction.set(ai.id, () => changeDrafts(draftIds, refinement, said));
+      await exclusive(chatId, ai.id, 1, (signal) => changeIn(chatId, ai.id, targets.map((d) => d.id), refinement, signal), targets[0].id);
     }
 
     return {
@@ -442,29 +574,68 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       },
       removeReference: (id) => edit(active().id, (c) => ({ ...c, refs: c.refs.filter((r) => r.source.id !== id) })),
 
-      send: async (text, draftId) => {
+      send: async (text, draftId, opts) => {
         const words = text.trim();
         if (running()) return;
         const chat = active();
-        if (draftId && words) return changeDraft(draftId, { kind: 'change', text: words }, words);
-        if (words && chat.drafts.length > 0) {
-          const m = words.match(DRAFT_REF);
-          const no = m ? Number(m[1] ?? m[2]) : NaN;
-          const target = chat.drafts.find((d) => d.no === no && d.state !== 'added');
-          if (target) {
-            const how = /^\s*(another|one more)\b|再擬/i.test(words) ? 'another' : /harder|更難|難一點|改難/i.test(words) ? 'harder' : /easier|更易|容易|改易/i.test(words) ? 'easier' : undefined;
-            return changeDraft(target.id, how ? { kind: how } : { kind: 'change', text: words }, words);
-          }
+        const chip = draftId ? chat.drafts.find((d) => d.id === draftId && editable(d)) : undefined;
+        if (!words) {
+          // An empty message with a reference: "N more like this".
+          if (chip || !chat.refs.some((r) => r.who === 'you')) return;
+          return request(words);
         }
-        if (!words && !chat.refs.some((r) => r.who === 'you')) return;
-        return request(words);
+        if (opts?.asNew || chat.drafts.length === 0) return request(words);
+        const local = readLocally(words, briefsOf(chat), { ...(chip ? { chip: chip.no } : {}), recent: recentOf(chat) });
+        // Clear: act now, no reading request.
+        if (local.sure && (local.kind === 'edit' || local.kind === 'another')) {
+          const ids = local.drafts.map((n) => chat.drafts.find((d) => d.no === n && editable(d))?.id).filter((id): id is string => id !== undefined);
+          if (ids.length) return changeDrafts(local.kind === 'another' ? ids.slice(0, 1) : ids, local.kind === 'another' ? { kind: 'another' } : refinementFor(local, words), words);
+        }
+        // A clear question about one draft needs only the answer: asked as if the chip were set.
+        const about = chip?.no ?? (local.sure && local.kind === 'ask' && local.drafts.length === 1 ? local.drafts[0] : undefined);
+        return request(words, { local, ...(about !== undefined ? { chip: about } : {}) });
+      },
+
+      answerWhich: async (turnId, choice) => {
+        const chat = active();
+        const turn = chat.turns.find((t): t is AiTurn => t.id === turnId && t.role === 'ai');
+        const ask = turn?.ask;
+        if (!ask || ask.kind !== 'which' || ask.answer !== undefined || running()) return;
+        editTurn(chat.id, turnId, (t) => (t.ask?.kind === 'which' ? { ...t, ask: { ...t.ask, answer: choice } } : t));
+        const ai = aiTurn();
+        pushTurns(chat.id, ai);
+        lastAction.set(ai.id, async () => {
+          editTurn(chat.id, turnId, (t) => (t.ask?.kind === 'which' ? { ...t, ask: { ...t.ask, answer: undefined } } : t));
+          await get().answerWhich(turnId, choice);
+        });
+        if (choice === 'new') {
+          await exclusive(chat.id, ai.id, chat.settings.count, (signal) => pickAndWrite(chat.id, ai.id, ask.text, signal));
+          return;
+        }
+        const nos = choice === 'all' ? ask.options : [choice];
+        const first = chat.drafts.find((d) => d.no === nos[0]);
+        await exclusive(
+          chat.id,
+          ai.id,
+          ask.wanted === 'ask' ? 0 : 1,
+          async (signal) => {
+            if (ask.wanted === 'ask') {
+              const local: LocalRead = { kind: 'ask', drafts: [nos[0]], how: ask.how, parts: ask.parts, sure: true };
+              await readAndAct(chat.id, ai.id, ask.text, { local, chip: nos[0] }, signal);
+              return;
+            }
+            const intent: TurnIntent = { kind: ask.wanted === 'another' ? 'another' : 'edit', drafts: nos, how: ask.how, parts: ask.parts };
+            await act(chat.id, ai.id, intent, ask.text, intent.kind, signal);
+          },
+          ask.wanted === 'ask' ? undefined : first?.id,
+        );
       },
 
       change: async (draftId, how) => {
         const target = active().drafts.find((d) => d.id === draftId);
         if (!target || running()) return;
         // The words are what the chat log shows; the request is the code.
-        await changeDraft(draftId, { kind: how }, '');
+        await changeDrafts([draftId], { kind: how }, '');
       },
 
       changePick: (code) => {
@@ -479,7 +650,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
 
       answerRewrite: async (turnId, answer) => {
         const chat = active();
-        editTurn(chat.id, turnId, (t) => (t.ask ? { ...t, ask: { ...t.ask, answer } } : t));
+        editTurn(chat.id, turnId, (t) => (t.ask?.kind === 'rewrite' ? { ...t, ask: { ...t.ask, answer } } : t));
         if (answer === 'keep') return;
         const ai = aiTurn();
         pushTurns(chat.id, ai);

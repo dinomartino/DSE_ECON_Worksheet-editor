@@ -102,12 +102,12 @@ describe('streaming events', () => {
   });
 });
 
-describe('diagrams after each draft', () => {
+describe('diagrams for each draft, before the solve (k-0534)', () => {
   const spec = { ...caseById('demand-increase').spec, placement: 'question' as const };
   const withDiagrams = async (replies: Replies, count = 1) => run(streaming(replies), { diagrams: true }, count);
 
   it('asks once per standing draft with its words, key and the figure of its example; places it', async () => {
-    const client = streaming([writeReply([A]), solver(), replyOf(spec)]);
+    const client = streaming([writeReply([A]), replyOf(spec), solver()]);
     const events: StudioEvent[] = [];
     const out = await writeDrafts({ ...REQUEST, count: 1 }, deps(client, { diagrams: true }), { signal: ctl(), onEvent: (e) => events.push(e) });
     expect(out.ok).toBe(true);
@@ -115,7 +115,7 @@ describe('diagrams after each draft', () => {
     const d = out.drafts[0];
     expect(d.diagram).toMatchObject({ status: 'ok', placement: 'question' });
     expect(d.diagram?.block).toMatchObject({ kind: 'diagram' });
-    const asked = JSON.parse(client.requests[2].turns[0].content);
+    const asked = JSON.parse(client.requests[1].turns[0].content);
     expect(asked.task).toBe('diagram');
     expect(asked.question).toContain(A.stem.en);
     expect(asked.key).toContain('Correct answer');
@@ -127,9 +127,9 @@ describe('diagrams after each draft', () => {
     expect(q.blocks.map((b) => b.kind)).toEqual(['paragraph', 'diagram']);
   });
   it('none: no figure, nothing inserted; a failed request is a failed figure, never inserted', async () => {
-    const none = await withDiagrams([writeReply([A]), solver(), JSON.stringify({ kind: 'none', reason: 'words only' })]);
+    const none = await withDiagrams([writeReply([A]), JSON.stringify({ kind: 'none', reason: 'words only' }), solver()]);
     expect(none.outcome.ok && none.outcome.drafts[0].diagram).toMatchObject({ status: 'none', block: null });
-    const failing = await run(streaming([writeReply([A]), solver(), new Error('boom')]), { diagrams: true }, 1);
+    const failing = await run(streaming([writeReply([A]), new Error('boom'), solver()]), { diagrams: true }, 1);
     const diagram = failing.outcome.ok ? failing.outcome.drafts[0].diagram : undefined;
     expect(diagram?.status).toBe('failed');
     expect(diagram?.block).toBeNull();

@@ -1,7 +1,7 @@
 'use client';
 
 import type { DraftEdit } from '@/questionStudio/edit';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
 import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
 import { useMessages } from '@/i18n/language';
 import { createWorksheet } from '@/model/factories';
@@ -81,22 +81,34 @@ export function PaperCanvas({
     el?.animate?.([{ boxShadow: '0 0 0 4px var(--color-accent)' }, { boxShadow: '0 0 0 0 transparent' }], { duration: 1600, easing: 'ease-out' });
   }, [focus]);
 
+  // A click on a card (not on its buttons, links or fields, not a text selection) makes the
+  // next message about it: the composer's chip (k-0535).
+  const pickCard = (d: ChatDraft) => (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (d.state === 'added' || target.closest('button, a, input, textarea, select, label, [contenteditable="true"], [role="button"]')) return;
+    // Not while the teacher edits it (k-0530), nor a click in the diagram editor that React passes up from its overlay.
+    if (target.closest('[data-draft-editor]') || !(event.currentTarget as HTMLElement).contains(target)) return;
+    if (typeof window !== 'undefined' && window.getSelection()?.isCollapsed === false) return;
+    onAsk(d);
+  };
+
   const card = (d: ChatDraft) => (
-    <ChatDraftCard
-      key={d.id}
-      draft={d}
-      language={chat.settings.language}
-      busy={busy}
-      working={run?.target === d.id}
-      highlight={false}
-      onAccept={() => onAccept(d)}
-      onReject={() => onReject(d)}
-      onChange={(how) => onChange(d, how)}
-      onAsk={() => onAsk(d)}
-      onShowVersion={(id) => onShowVersion(d, id)}
-      onEdit={(edit) => onEdit(d, edit)}
-      onUndoEdit={() => onUndoEdit(d)}
-    />
+    <div key={d.id} className="contents" onClick={pickCard(d)} data-card-pick>
+      <ChatDraftCard
+        draft={d}
+        language={chat.settings.language}
+        busy={busy}
+        working={run?.target === d.id}
+        highlight={false}
+        onAccept={() => onAccept(d)}
+        onReject={() => onReject(d)}
+        onChange={(how) => onChange(d, how)}
+        onAsk={() => onAsk(d)}
+        onShowVersion={(id) => onShowVersion(d, id)}
+        onEdit={(edit) => onEdit(d, edit)}
+        onUndoEdit={() => onUndoEdit(d)}
+      />
+    </div>
   );
 
   const firstNo = chat.drafts.reduce((max, d) => Math.max(max, d.no), 0) + 1;

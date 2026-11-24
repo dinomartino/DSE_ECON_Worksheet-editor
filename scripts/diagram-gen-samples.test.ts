@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, it } from 'vitest';
 import { CASES, replyOf } from '@/diagramGen/fixtures';
+import { MC_CASES } from '@/diagramGen/mcFixtures';
 import { blockOf, evaluateReply } from '@/diagramGen/run';
 import { diagramSvg } from '@/render/diagram';
 import type { Side } from '@/model/textSlots';
@@ -37,6 +38,20 @@ it('draws every case', () => {
       const errors = evaluated.issues.filter((i) => i.level === 'error');
       index.push({ id: c.id, file, status: errors.length ? 'failed' : evaluated.issues.length ? 'look' : 'ok', issues: evaluated.issues.map((i) => `${i.level}: ${i.text}`) });
     }
+  }
+  // Multiple-choice figures (k-0534), in the language each case is written in.
+  for (const c of MC_CASES) {
+    const evaluated = evaluateReply(replyOf(c.spec), {
+      sides: c.sides,
+      key: `Correct answer: ${'ABCD'[c.answer]}`,
+      mcq: { stem: c.stem, statements: [], options: c.options, answer: c.answer },
+    })!;
+    const block = blockOf(evaluated, c.sides)!;
+    const language = c.sides[0];
+    const file = `${c.id}.${language}.svg`;
+    writeFileSync(path.join(OUT, file), diagramSvg(block.diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language, scale: 2, answers: 'show' }));
+    const errors = evaluated.issues.filter((i) => i.level === 'error');
+    index.push({ id: c.id, file, status: errors.length ? 'failed' : evaluated.issues.length ? 'look' : 'ok', issues: evaluated.issues.map((i) => `${i.level}: ${i.text}`) });
   }
   writeFileSync(path.join(OUT, 'index.json'), JSON.stringify(index, null, 2));
 });

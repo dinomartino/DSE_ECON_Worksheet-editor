@@ -259,11 +259,28 @@ kept on this computer; the Trial kit in Settings → AI. **No topic picker anywh
   the picked references ("Based on Mock 2026 · Q4", `src/components/studio/BasedOn.tsx:BasedOn`). Preview card
   `src/components/studio/ReferenceSheet.tsx:ReferenceSheet`. Browser proof
   `scripts/studio-mine-verify.mjs` (screenshots `Outbox/k-0529/`; a 2400-question bank opens in under half a second).
+- **Reference badge preview** (k-0533, u-9uf8): a reference's name, on the composer's chip or a past request's line,
+  is a button (tooltip View this question 查看這題, Enter/Space) that opens the picker's card for it
+  (`src/components/studio/ReferenceBadge.tsx:ReferenceBadge`, fixed popover above or below by room,
+  `:previewPlacement`; closed by `useDismiss`). Its printed form: one of the teacher's own is read again from its
+  document, a past paper's from the bank topics already read (`src/components/studio/referenceItem.ts:pastItemOf`, no
+  download), else the words (a chat reopened later). A past request's labels find their source in the chat's
+  references, then in its drafts' requests (`:referenceByLabel`), so a reference removed since still opens.
 - **Reference picker rail** (u-na4k): the rail around the shared topic/year navs is a *row*, so the
   nav (a column sized to its list) is stretched to the dialog's height and its list scrolls; in a
   column it grew past the footer and the topics below could not be reached.
 - Not built yet: editing the AI's diagram inside the studio (once added, it is an ordinary editor
   diagram).
+- **Diagrams (k-0534).** The writer's reply has `figure`: one English line for the diagram maker,
+  never printed ('' = no diagram, and then no diagram request). The stem only refers to the figure
+  ("Refer to the following diagram"): a stem that narrates it (`validate.ts:narrationFindings`,
+  `shape.narrates`) is rewritten once. Figures are drawn before the blind solve, which reads each
+  in words (`diagramGen/words.ts`); a figure that cannot be drawn to fit warns the draft
+  (`shape.figureFailed`). The draft keeps the figure's spec (`DraftDiagram.spec`). A change in words
+  (`run.ts:refine`): touching the diagram, or unknown (k-0535 `parts`) → one edit request on the
+  spec; the words stay byte for byte unless the edit says otherwise or moves the key, then the writer
+  rewrites and the edited figure is kept if it fits. Words only → the writer, the figure kept as it
+  is when it still fits. Harder / Easier / Another start from the old spec.
 
 ## The ✦ Write panel in the editor (k-0516 package B, mockup B)
 
