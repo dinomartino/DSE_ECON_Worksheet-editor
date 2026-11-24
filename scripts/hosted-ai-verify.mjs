@@ -26,12 +26,19 @@ import { chromium, webkit } from 'playwright-core';
  * Use my own key (Gemini)" switches and re-runs on Google with Mentor charged nothing, Mentor
  * chosen sends nothing to Google, forgetting the key falls back to Mentor; `k0527-*.png` EN + 中.
  *
- *   npm run build && node scripts/hosted-ai-verify.mjs [--out=/tmp/hosted-ai-verify] [--engines=chromium,webkit] [--app-port=3419]
+ *   npm run build && node scripts/hosted-ai-verify.mjs [--out=/tmp/hosted-ai-verify] [--engines=chromium,webkit] [--app-port=3419] [--no-models]
+ *   (--no-models: an older Mentor, before CONTRACT v1.6, with one model and no `models` in /ai/credits)
  *   NEXT_PUBLIC_MENTOR_ORIGIN=https://<preview> npm run build && node scripts/hosted-ai-verify.mjs --mentor=<preview host>
  */
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
+const NO_MODELS = args.includes('--no-models');
+const HYDROGEN = { inputPerMillionTokens: 1170, cachedInputPerMillionTokens: 58.5, outputPerMillionTokens: 5850 };
+const LITE = { inputPerMillionTokens: 234, cachedInputPerMillionTokens: 23.4, outputPerMillionTokens: 1950 };
+/** CONTRACT v1.6 (k-0539): the server picks the model by `feature`; translate and test on Flash-Lite. */
+const MODELS = { default: 'gemini-4-hydrogen', byFeature: { translate: 'gemini-3.5-flash-lite', test: 'gemini-3.5-flash-lite' }, rates: { 'gemini-4-hydrogen': HYDROGEN, 'gemini-3.5-flash-lite': LITE } };
+const modelOf = (feature) => (NO_MODELS ? MODELS.default : (MODELS.byFeature[feature] ?? MODELS.default));
 const OUT = opt('out', '/tmp/hosted-ai-verify');
 const ENGINES = opt('engines', 'chromium,webkit').split(',');
 const APP_PORT = Number(opt('app-port', '3419'));
@@ -121,18 +128,20 @@ function fakeMentor() {
       state.maxInflight = Math.max(state.maxInflight, state.inflight);
       await new Promise((r) => setTimeout(r, 150));
       state.inflight--;
-      return route.fulfill(json({ status: 'on', balance: state.credits, trial: { credits: 500, grantedAt: new Date().toISOString() }, model: 'gemini-4-hydrogen', rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, inputPerMillionTokens: 1170, outputPerMillionTokens: 5850 }, estimates: { studioWorksheet: 280, importCheck: 50, translate: 50, answerKey: 80 }, extraPct: 10, buy: { unitHkd: 1, minHkd: 50, maxHkd: 1000, quickPicks: [{ hkd: 50, credits: 4170 }, { hkd: 100, credits: 8560 }, { hkd: 200, credits: 17350 }], stripeFee: { pct: 3.4, fixedHkd: 2.35 }, urlTemplate: `https://${MENTOR}/account?amount={hkd}#ai-credits` }, buyUrl: `https://${MENTOR}/account#ai-credits`, pricingUrl: `https://${MENTOR}/pricing#ai-credits` }));
+      return route.fulfill(json({ status: 'on', balance: state.credits, trial: { credits: 500, grantedAt: new Date().toISOString() }, model: 'gemini-4-hydrogen', rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, inputPerMillionTokens: 1170, outputPerMillionTokens: 5850 }, ...(NO_MODELS ? {} : { models: MODELS }), estimates: { studioWorksheet: 280, importCheck: 50, translate: NO_MODELS ? 50 : 15, answerKey: 80 }, extraPct: 10, buy: { unitHkd: 1, minHkd: 50, maxHkd: 1000, quickPicks: [{ hkd: 50, credits: 4170 }, { hkd: 100, credits: 8560 }, { hkd: 200, credits: 17350 }], stripeFee: { pct: 3.4, fixedHkd: 2.35 }, urlTemplate: `https://${MENTOR}/account?amount={hkd}#ai-credits` }, buyUrl: `https://${MENTOR}/account#ai-credits`, pricingUrl: `https://${MENTOR}/pricing#ai-credits` }));
     }
     if (path === '/ai/generate') {
       if (!authed) return route.fulfill(relayError(401, 'unauthorized'));
       if (state.credits <= 0) return route.fulfill(json({ error: 'insufficient_credits', balance: state.credits, needed: 40 }, 402));
       const usage = { promptTokenCount: 2000, candidatesTokenCount: 800, thoughtsTokenCount: 300 };
-      const charged = (2000 * 1170 + 1100 * 5850) / 1e6;
+      const body = JSON.parse(req.postData() ?? '{}');
+      const model = modelOf(body.feature);
+      const r = MODELS.rates[model];
+      const charged = (2000 * r.inputPerMillionTokens + 1100 * r.outputPerMillionTokens) / 1e6;
       state.credits = Math.max(0, state.credits - charged);
       state.charged++;
-      const body = JSON.parse(req.postData() ?? '{}');
       const response = { candidates: [{ content: { role: 'model', parts: [{ text: answer(body) }] }, finishReason: 'STOP' }], usageMetadata: usage };
-      const receipt = { requestId: `req_${state.charged}`, model: 'gemini-4-hydrogen', charged, balance: state.credits, estimated: false };
+      const receipt = { requestId: `req_${state.charged}`, model, charged, balance: state.credits, estimated: false };
       if (body.stream) return route.fulfill({ status: 200, contentType: 'text/event-stream', headers: { 'access-control-allow-origin': '*' }, body: `data: ${JSON.stringify(response)}\n\nevent: mentor\ndata: ${JSON.stringify(receipt)}\n\n` });
       return route.fulfill(json({ response, mentor: receipt }));
     }

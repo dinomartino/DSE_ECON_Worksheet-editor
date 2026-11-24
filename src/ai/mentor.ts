@@ -9,7 +9,7 @@ import type { PaymentTerms } from './credits';
  * The DSEcon Mentor account's own calls (k-0519): sign in by link code, read the credits
  * left, sign out. Plain transport like the rest of `src/ai/`; the AI requests themselves go
  * through `createClient` (the `mentor` preset, `adapters/mentor.ts`). The wire is Mentor's
- * `Outbox/k-0518/CONTRACT.md` §1–2 (v1.4): fields may be added, never renamed.
+ * `Outbox/k-0518/CONTRACT.md` §1–2 (v1.6): fields may be added, never renamed.
  */
 
 export interface LinkStart {
@@ -36,8 +36,10 @@ export interface MentorAccount {
   credits: number;
   /** 'paused': today's safety stop (back after midnight HKT); 'off': switched off. */
   status: 'on' | 'paused' | 'off';
-  /** Credits per million tokens, the rate the server charges; absent → no estimate. */
-  rates?: { inputPerM: number; outputPerM: number };
+  /** Credits per million tokens on the main model (`rates`); absent → no estimate. An older Mentor's only rates. */
+  rates?: CreditRates;
+  /** Which model each job runs on, and each model's rates (CONTRACT v1.6, k-0539); absent from an older Mentor. */
+  models?: MentorModels;
   /** The one-time trial credits this account was given. */
   trialCredits?: number;
   /** No trial: the same sign-in already had one on an earlier account (CONTRACT v1.3). */
@@ -52,6 +54,23 @@ export interface MentorAccount {
   buyUrl: string;
   /** The pricing page (the cost basis). */
   pricingUrl: string;
+}
+
+export interface CreditRates {
+  inputPerM: number;
+  outputPerM: number;
+}
+
+/**
+ * `/ai/credits` → `models` (v1.6): the server picks the model by the call's `feature`. Read,
+ * never hard-coded: `byFeature` changes with a server setting and may be empty (all on `default`).
+ */
+export interface MentorModels {
+  default: string;
+  /** feature → model; a feature not listed runs on `default`. */
+  byFeature: Record<string, string>;
+  /** model → its rates. */
+  rates: Record<string, CreditRates>;
 }
 
 export interface MentorBuy {
@@ -124,11 +143,10 @@ export function readAccount(body: unknown, api: string): MentorAccount | null {
     buyUrl: safeMentorUrl(body.buyUrl, api) ?? MENTOR_BUY_URL,
     pricingUrl: safeMentorUrl(body.pricingUrl, api) ?? MENTOR_PRICING_URL,
   };
-  if (isRecord(body.rates)) {
-    const input = num(body.rates.inputPerMillionTokens);
-    const output = num(body.rates.outputPerMillionTokens);
-    if (input !== undefined && output !== undefined && input >= 0 && output >= 0) account.rates = { inputPerM: input, outputPerM: output };
-  }
+  const rates = readRates(body.rates);
+  if (rates) account.rates = rates;
+  const models = readModels(body.models);
+  if (models) account.models = models;
   const trial = isRecord(body.trial) ? num(body.trial.credits) : undefined;
   if (trial !== undefined && trial > 0) account.trialCredits = trial;
   if (isRecord(body.trial) && body.trial.refused === true) account.trialRefused = true;
@@ -139,6 +157,35 @@ export function readAccount(body: unknown, api: string): MentorAccount | null {
   const buy = readBuy(body, api, account.extraPct);
   if (buy) account.buy = buy;
   return account;
+}
+
+function readRates(r: unknown): CreditRates | undefined {
+  if (!isRecord(r)) return undefined;
+  const input = num(r.inputPerMillionTokens);
+  const output = num(r.outputPerMillionTokens);
+  return input !== undefined && output !== undefined && input >= 0 && output >= 0 ? { inputPerM: input, outputPerM: output } : undefined;
+}
+
+/** `/ai/credits` → `models` (v1.6), or undefined when absent or without a `default` (then `rates` price every job). */
+function readModels(m: unknown): MentorModels | undefined {
+  if (!isRecord(m)) return undefined;
+  const fallback = str(m.default, 100);
+  if (!fallback) return undefined;
+  const byFeature: Record<string, string> = {};
+  if (isRecord(m.byFeature)) {
+    for (const [feature, model] of Object.entries(m.byFeature).slice(0, 50)) {
+      const name = str(model, 100);
+      if (name && feature.length <= 50) byFeature[feature] = name;
+    }
+  }
+  const rates: Record<string, CreditRates> = {};
+  if (isRecord(m.rates)) {
+    for (const [model, r] of Object.entries(m.rates).slice(0, 20)) {
+      const read = readRates(r);
+      if (read && model.length <= 100) rates[model] = read;
+    }
+  }
+  return { default: fallback, byFeature, rates };
 }
 
 /** `/ai/credits` → `buy` (v1.4), or undefined when absent or unusable (the card falls back to `packs`). */

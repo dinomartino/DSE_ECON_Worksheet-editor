@@ -39,7 +39,7 @@ export const LOW_FALLBACK = 300;
  * "Low" = less than one typical Question studio run: Mentor's own figure for a 10-question
  * worksheet (`estimates.studioWorksheet`), else our estimate at its rates, else `LOW_FALLBACK`.
  */
-export function lowCreditsLine(account: Pick<MentorAccount, 'rates' | 'buy'> | null): number {
+export function lowCreditsLine(account: Pick<MentorAccount, 'rates' | 'models' | 'buy'> | null): number {
   const mentors = account?.buy?.studioWorksheet;
   if (mentors && mentors > 0) return roundCredits(mentors);
   const ours = creditsFor(studioJob({ questions: 10, sides: 1 }), account);

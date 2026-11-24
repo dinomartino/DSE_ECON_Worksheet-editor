@@ -3,7 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { clearDialectCache, createClient } from '@/ai/client';
+import { ratesFor } from '@/ai/credits';
 import { fakeMentor } from '@/ai/fakeMentor';
+import { createMentorRelay, type MentorAccount } from '@/ai/mentor';
 import { MENTOR_MODEL, PRESETS, presetFor } from '@/ai/providers';
 import type { AiClient, ProviderConfig } from '@/ai/types';
 import { clearUsageLog, usageByJob, usageLog, type UsageRecord } from '@/ai/usage';
@@ -27,6 +29,10 @@ import { translateOne } from '@/translate/run';
  *
  * EVAL_MENTOR_API is the app API root (`…/api/app/v1`); the relay is its `/ai` (as `MENTOR_API` in `src/ai/providers.ts`).
  *
+ * Since CONTRACT v1.6 (k-0539/k-0543) the server picks the model by `feature` (translate on
+ * Flash-Lite): the report reads `/ai/credits` → `models` once and names each feature's model and
+ * rates. An own Gemini key prices everything at Hydrogen's.
+ *
  * Real calls cost real money: about 15–25 HK$ of Gemini for the whole set.
  */
 
@@ -39,18 +45,21 @@ const WORKSHEETS: ReadonlyArray<[string, boolean]> = [
 ];
 const TRANSLATIONS = 4;
 
-function setUp(): { client: () => AiClient; config: ProviderConfig } {
+/** Hydrogen's rates (CONTRACT §2): an own key, or a Mentor that names no models. */
+const MAIN_RATES: Pick<MentorAccount, 'rates' | 'models'> = { rates: { inputPerM: 1170, outputPerM: 5850 } };
+
+function setUp(): { client: () => AiClient; config: ProviderConfig; account: () => Promise<Pick<MentorAccount, 'rates' | 'models'>> } {
   if (MODE === 'mentor') {
     const config: ProviderConfig = { provider: 'mentor', apiKey: process.env.EVAL_MENTOR_TOKEN ?? '', model: MENTOR_MODEL, baseUrl: process.env.EVAL_MENTOR_API ? `${process.env.EVAL_MENTOR_API.replace(/\/+$/, '').replace(/\/ai$/, '')}/ai` : PRESETS.mentor.baseUrl };
-    return { config, client: () => createClient(config) };
+    return { config, client: () => createClient(config), account: () => createMentorRelay({ relayBase: config.baseUrl }).account(config.apiKey ?? '', new AbortController().signal) };
   }
   if (MODE === 'gemini') {
     const config: ProviderConfig = { provider: 'gemini', apiKey: process.env.EVAL_GEMINI_KEY ?? '', model: process.env.EVAL_GEMINI_MODEL ?? 'gemini-4-hydrogen', baseUrl: '' };
-    return { config, client: () => createClient(config) };
+    return { config, client: () => createClient(config), account: async () => MAIN_RATES };
   }
   const server = fakeMentor({ credits: 1e6 });
   const config: ProviderConfig = { provider: 'mentor', apiKey: server.token, model: MENTOR_MODEL, baseUrl: PRESETS.mentor.baseUrl };
-  return { config, client: () => createClient(config, server.deps) };
+  return { config, client: () => createClient(config, server.deps), account: () => createMentorRelay({ deps: server.deps }).account(server.token, new AbortController().signal) };
 }
 
 interface FeatureRow { feature: string; calls: number; input: number; cached: number; output: number; thinking: number; credits: number }
@@ -77,8 +86,10 @@ describe.skipIf(!MODE)('AI usage per job (k-0537)', () => {
   it('runs the scripted jobs and writes the usage report', async () => {
     clearDialectCache();
     clearUsageLog();
-    const { client, config } = setUp();
+    const { client, config, account } = setUp();
     const preset = presetFor(config.provider);
+    const pricing = await account();
+    const modelOf = (feature: string) => (pricing.models ? (Object.hasOwn(pricing.models.byFeature, feature) ? pricing.models.byFeature[feature] : pricing.models.default) : config.model);
     const glossary = await loadGlossary();
     const worksheets: Array<{ brief: string; count: number; sides: string; diagrams: boolean; ok: boolean; drafts: number; figures: number; job: string; error?: string }> = [];
 
@@ -113,7 +124,7 @@ describe.skipIf(!MODE)('AI usage per job (k-0537)', () => {
     const features = byFeature(log);
     const dir = path.join(process.env.EVAL_REPORT_DIR ?? path.join(tmpdir(), 'econgen-eval'), 'usage');
     mkdirSync(dir, { recursive: true });
-    writeFileSync(path.join(dir, `usage-${MODE}.json`), JSON.stringify({ mode: MODE, model: config.model, at: new Date().toISOString(), worksheets, jobs, features, log }, null, 2));
+    writeFileSync(path.join(dir, `usage-${MODE}.json`), JSON.stringify({ mode: MODE, model: config.model, models: pricing.models ?? null, at: new Date().toISOString(), worksheets, jobs, features, log }, null, 2));
 
     const lines = [
       `# AI usage, ${MODE} (${config.model}), ${new Date().toISOString().slice(0, 16)}`,
@@ -126,11 +137,11 @@ describe.skipIf(!MODE)('AI usage per job (k-0537)', () => {
         return `| ${w.brief} | ${w.count} | ${w.sides} | ${w.diagrams ? `on (${w.figures} drawn)` : 'off'} | ${j.calls} | ${n(j.input)} | ${n(j.cached)} | ${n(j.output)} | ${n(j.thinking)} | ${c(j.credits ?? 0)}${j.estimated ? ' ≈' : ''} | ${c(((j.credits ?? 0) * 10) / w.count)}${w.error ? ` (${w.error})` : ''} |`;
       }),
       '',
-      '| Feature | Calls | Input / call | Cached share | Output / call | Thinking / call | Credits / call | Thinking share of credits |',
-      '|---|---|---|---|---|---|---|---|',
+      '| Feature | Model | Calls | Input / call | Cached share | Output / call | Thinking / call | Credits / call | Thinking share of credits |',
+      '|---|---|---|---|---|---|---|---|---|',
       ...features.map((f) => {
-        const thinkCredits = (f.thinking * 5850) / 1e6;
-        return `| ${f.feature} | ${f.calls} | ${n(f.input / f.calls)} | ${f.input ? Math.round((100 * f.cached) / f.input) : 0}% | ${n(f.output / f.calls)} | ${n(f.thinking / f.calls)} | ${c(f.credits / f.calls)} | ${f.credits ? Math.round((100 * thinkCredits) / f.credits) : 0}% |`;
+        const thinkCredits = (f.thinking * (ratesFor(pricing, f.feature as UsageRecord['feature'])?.outputPerM ?? 5850)) / 1e6;
+        return `| ${f.feature} | ${modelOf(f.feature)} | ${f.calls} | ${n(f.input / f.calls)} | ${f.input ? Math.round((100 * f.cached) / f.input) : 0}% | ${n(f.output / f.calls)} | ${n(f.thinking / f.calls)} | ${c(f.credits / f.calls)} | ${f.credits ? Math.round((100 * thinkCredits) / f.credits) : 0}% |`;
       }),
     ];
     writeFileSync(path.join(dir, `usage-${MODE}.md`), `${lines.join('\n')}\n`);

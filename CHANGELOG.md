@@ -115,6 +115,12 @@ a version heading is edited afterwards.
   (1, 3 or 5), and a number you type in your request ("3 questions…") still wins. The credit
   estimate follows the count.
   <!-- zh: **擬題工作室預設一次擬 1 條題目，不再是 3 條。**數量選擇仍在（1、3 或 5），你在要求中寫明的數量（例如「3 條…」）仍然優先；所需點數的估算會跟隨數量。 -->
+- **Translating with DSEcon Mentor credits costs less, and the estimate says so.** DSEcon Mentor
+  now runs translation (in a worksheet and the question bank's Fill missing 中文) on a lighter,
+  cheaper AI model, so "Uses about N credits" before a translation is about a third of what it
+  was. The Question studio and the import check stay on the main model, and their estimates do
+  not change.
+  <!-- zh: **使用 DSEcon Mentor 點數翻譯更便宜，預計點數亦會反映。** DSEcon Mentor 現以較輕巧、較便宜的 AI 模型進行翻譯（包括工作紙及題庫的「補上缺少的中文」），因此翻譯前顯示的「約用 N 點」約為以往的三分之一。擬題工作室及匯入檢查仍使用主要模型，其預計點數不變。 -->
 - **The question studio draws diagrams the way HKDSE papers do, and you can change them by
   asking.** A question with a diagram now just says "Refer to the following diagram" instead of
   describing it in words; every label its options name (Q1 to Q4, P1, area A) is on the diagram,
