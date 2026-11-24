@@ -21,6 +21,10 @@ import { chromium, webkit } from 'playwright-core';
  * of the chip per state in English and 中文 (`chip-<state>-<en|zh>.png`). k-0526 (u-uw4t): no
  * status bar any more: the editor reaches the window's bottom with no chip on it, so the chip's
  * states are read in the Question studio's header; no reads on focus while no chip is shown.
+ * k-0527 (u-ypm9): signed in AND an own key saved: sign-in keeps Mentor (today's default),
+ * Settings' "Use for AI" choice and the chip's menu switch in one click, "Not enough credits →
+ * Use my own key (Gemini)" switches and re-runs on Google with Mentor charged nothing, Mentor
+ * chosen sends nothing to Google, forgetting the key falls back to Mentor; `k0527-*.png` EN + 中.
  *
  *   npm run build && node scripts/hosted-ai-verify.mjs [--out=/tmp/hosted-ai-verify] [--engines=chromium,webkit] [--app-port=3419]
  *   NEXT_PUBLIC_MENTOR_ORIGIN=https://<preview> npm run build && node scripts/hosted-ai-verify.mjs --mentor=<preview host>
@@ -173,8 +177,17 @@ async function run(engine, browserType) {
   const mentor = fakeMentor();
   const leaks = [];
   await context.route((url) => url.hostname === MENTOR, (route) => mentor.handle(route));
+  // k-0527: while `google.open`, Google's API is the own key's provider (answered with a 400 and
+  // counted), not a leak; Mentor's requests are counted by the stand-in.
+  const google = { open: false, calls: [] };
   await context.route((url) => OTHER_HOSTS.includes(url.hostname), (route) => {
-    leaks.push(route.request().url());
+    const url = route.request().url();
+    if (google.open && url.includes('generativelanguage.googleapis.com')) {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST' } });
+      google.calls.push(url);
+      return route.fulfill({ status: 400, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ error: { code: 400, message: 'stand-in: stop here', status: 'INVALID_ARGUMENT' } }) });
+    }
+    leaks.push(url);
     return route.fulfill({ status: 599, body: 'blocked' });
   });
   const page = await context.newPage();
@@ -552,6 +565,145 @@ async function run(engine, browserType) {
     await chipShot('ownkey');
     await toEditor();
     return text;
+  });
+
+  // ---- k-0527: signed in AND an own key saved ----
+  const choiceField = settings.locator('[data-ai-choice-field]');
+  const providerNow = () => page.evaluate(() => JSON.parse(localStorage.getItem('econgen.settings.ai') ?? '{}').provider);
+  const generates = () => mentor.state.requests.filter((r) => r.path === '/ai/generate' && r.auth).length;
+  const openSettingsAi = async () => {
+    await page.keyboard.press('Escape');
+    await page.keyboard.press(`${META}+Comma`);
+    await account.waitFor();
+  };
+  /** Runs the first translate verb from the ✦ AI menu and waits for it to end (done or an error). */
+  const runVerb = async () => {
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    await page.locator('[data-ai-door]').click();
+    await aiMenu.waitFor();
+    await aiMenu.locator('[data-verb^="translate."]').first().click();
+    await page.locator('[role="alert"][aria-label="AI"], [role="status"][aria-label="AI"]').first().waitFor({ timeout: 20_000 });
+    await page.waitForTimeout(1500);
+  };
+
+  await check(engine, 'both: signing in with an own key saved keeps today\'s default (Mentor credits), and Settings shows "Use for AI"', async () => {
+    mentor.state.polls = 0;
+    mentor.state.signedIn = true;
+    mentor.state.logoutFails = false;
+    mentor.state.credits = 9003.6;
+    await openSettingsAi();
+    const popup = context.waitForEvent('page', { timeout: 5000 }).catch(() => null);
+    await account.getByRole('button', { name: 'Sign in with DSEcon Mentor' }).click();
+    await (await popup)?.close();
+    await settings.locator('[data-mentor-account="signedIn"]').waitFor({ timeout: 20_000 });
+    await choiceField.waitFor();
+    expect((await providerNow()) === 'mentor', `provider after sign-in: ${await providerNow()}`);
+    expect((await choiceField.getAttribute('data-ai-choice-field')) === 'mentor', 'the choice does not say Mentor');
+    await account.getByText(/credits left/).waitFor();
+    // Page-wide locators: in 中文 the dialog is no longer named "Settings".
+    const field = page.locator('[data-ai-choice-field]');
+    const card = page.locator('[data-mentor-account]');
+    for (const ui of ['en', 'zh-HK']) {
+      await setLang(ui);
+      await page.waitForTimeout(350);
+      await field.scrollIntoViewIfNeeded();
+      const a = await field.boundingBox();
+      const b = await card.boundingBox();
+      await page.screenshot({ path: `${OUT}/${engine}-k0527-settings-choice-${ui === 'en' ? 'en' : 'zh'}.png`, clip: { x: a.x - 12, y: a.y - 12, width: a.width + 24, height: b.y + b.height - a.y + 24 } });
+    }
+    await setLang('en');
+    expect(!(await account.getByRole('button', { name: 'Use my DSEcon Mentor account' }).isVisible().catch(() => false)), 'the card still offers its own switch');
+  });
+
+  await check(engine, 'Settings: "My own key (Gemini)" switches, remembered across a reload', async () => {
+    await choiceField.locator('[data-ai-choice="own"]').click();
+    await settings.locator('[data-ai-choice-field="own"]').waitFor();
+    expect((await providerNow()) === 'gemini', `provider: ${await providerNow()}`);
+    await page.reload({ waitUntil: 'networkidle' });
+    await openDoc();
+    expect((await providerNow()) === 'gemini', 'the choice did not survive a reload');
+    await openSettingsAi();
+    await settings.locator('[data-ai-choice-field="own"]').waitFor();
+    await page.keyboard.press('Escape');
+  });
+
+  await check(engine, 'own key chosen: a run goes to Google only, Mentor charges nothing', async () => {
+    google.open = true;
+    const before = { mentor: generates(), google: google.calls.length };
+    await runVerb();
+    google.open = false;
+    expect(generates() === before.mentor, `${generates() - before.mentor} request(s) to Mentor while "own key" is chosen`);
+    expect(google.calls.length > before.google, 'the run never reached Google');
+    return `${google.calls.length - before.google} to Google, 0 to Mentor`;
+  });
+
+  await check(engine, 'the studio chip says which one and switches in one click (menu)', async () => {
+    await toStudio();
+    await chipSays(/^AI: own key \(Gemini\)$/);
+    expect((await chip.getAttribute('data-ai-chip-choice')) === 'own', 'chip choice not own');
+    await chip.locator('button').first().click();
+    const menu = page.locator('[data-ai-choice-menu]');
+    await menu.waitFor();
+    for (const ui of ['en', 'zh-HK']) {
+      await setLang(ui);
+      await page.waitForTimeout(350);
+      const a = await studioHeader.boundingBox();
+      const b = await menu.boundingBox();
+      const x = Math.max(0, Math.min(b.x, a.x + a.width - 560) - 12);
+      await page.screenshot({ path: `${OUT}/${engine}-k0527-chip-menu-${ui === 'en' ? 'en' : 'zh'}.png`, clip: { x, y: Math.max(0, a.y), width: a.x + a.width - x, height: b.y + b.height - a.y + 12 } });
+    }
+    await setLang('en');
+    expect((await menu.locator('[data-ai-choice="own"]').getAttribute('aria-checked')) === 'true', 'own not checked');
+    await menu.locator('[data-ai-choice="mentor"]').click();
+    await menu.waitFor({ state: 'hidden' });
+    const text = await chipSays(/^AI credits [\d,]+$/);
+    expect((await providerNow()) === 'mentor', `provider: ${await providerNow()}`);
+    // The composer's chip shows the same choice.
+    expect((await page.locator('[data-chat-ai-status] [data-ai-chip]').getAttribute('data-ai-chip-choice')) === 'mentor', 'the composer chip disagrees');
+    await toEditor();
+    return text;
+  });
+
+  await check(engine, 'Mentor chosen: a run goes to Mentor only, nothing to Google or the key', async () => {
+    google.open = true;
+    const before = { mentor: generates(), google: google.calls.length, leaks: leaks.length };
+    await runVerb();
+    google.open = false;
+    expect(google.calls.length === before.google && leaks.length === before.leaks, 'a request went to Google while Mentor is chosen');
+    expect(generates() > before.mentor, 'the run never reached Mentor');
+    return `${generates() - before.mentor} to Mentor, 0 to Google`;
+  });
+
+  await check(engine, 'Not enough credits → "Use my own key (Gemini)" switches the choice and re-runs on Google, no charge', async () => {
+    mentor.state.credits = 0;
+    google.open = true;
+    await runVerb();
+    const error = page.getByRole('alert', { name: 'AI' });
+    await error.getByText(/Not enough AI credits/).waitFor({ timeout: 15_000 });
+    const button = error.getByRole('button', { name: 'Use my own key (Gemini)', exact: true });
+    expect(await button.isVisible(), 'no "Use my own key (Gemini)"');
+    await shot('k0527-use-own-key');
+    const before = { charged: mentor.state.charged, google: google.calls.length };
+    await button.click();
+    await page.waitForTimeout(2500);
+    google.open = false;
+    expect((await providerNow()) === 'gemini', `provider: ${await providerNow()}`);
+    expect(google.calls.length > before.google, 'the retry never reached Google');
+    expect(mentor.state.charged === before.charged, 'Mentor charged');
+    mentor.state.credits = 9003.6;
+  });
+
+  await check(engine, 'forgetting the own key in use falls back to Mentor, and the choice goes away', async () => {
+    await openSettingsAi();
+    await settings.locator('[data-ai-choice-field="own"]').waitFor();
+    const row = settings.locator('section[aria-label="Your keys"] li').first();
+    await row.getByRole('button', { name: 'Forget', exact: true }).click();
+    await row.getByText('Forget this key?').waitFor();
+    await row.getByRole('button', { name: 'Forget', exact: true }).click();
+    await choiceField.waitFor({ state: 'detached', timeout: 5000 });
+    expect((await providerNow()) === 'mentor', `provider: ${await providerNow()}`);
+    await page.keyboard.press('Escape');
   });
 
   await check(engine, 'phone width: the setup card fits', async () => {

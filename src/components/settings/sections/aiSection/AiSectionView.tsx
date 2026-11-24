@@ -13,7 +13,9 @@ import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { AiSettings } from '@/settings/aiSettings';
 import type { SettingsEnv } from '@/settings/types';
+import type { AiChoice } from '@/settings/aiChoice';
 import type { MentorState } from '@/settings/mentorAccount';
+import { AiChoiceField } from './AiChoiceField';
 import type { AiSectionActions } from './AiSection';
 import { MentorAccountCard, type MentorCardActions } from './MentorAccountCard';
 import {
@@ -63,6 +65,8 @@ export interface AiSectionViewProps {
   mentorKept?: 'browser' | 'tab' | null;
   /** A develop build pointed at another Mentor (`ai/mentorOrigin.ts`): its host; absent for production. */
   mentorServer?: string;
+  /** Signed in AND an own key saved (k-0527): which one the AI uses, and the switch. */
+  choice?: { using: AiChoice; own: string; credits: string | null; choose(choice: AiChoice): void } | null;
 }
 
 export function AiSectionView(props: AiSectionViewProps) {
@@ -107,9 +111,11 @@ export function AiSectionView(props: AiSectionViewProps) {
           ⚠ {regionBanner(refusedBy)}
         </p>
       )}
+      {props.choice && <AiChoiceField using={props.choice.using} own={props.choice.own} credits={props.choice.credits} onChoose={props.choice.choose} />}
       <MentorAccountCard
         state={props.mentor}
         inUse={settings.provider === 'mentor'}
+        choiceShown={Boolean(props.choice)}
         focus={props.focus === 'account'}
         web={props.env.desktop ? undefined : { kept: props.mentorKept ?? null }}
         server={props.mentorServer}

@@ -107,8 +107,8 @@ export const AI_UI_MESSAGES = defineMessages({
   chipSetup: { en: 'Set up AI', zh: '設定 AI' },
   chipBuy: { en: 'Buy credits', zh: '購買點數' },
   chipTitleCredits: {
-    en: 'Credits left on your DSEcon Mentor account. Click for Settings → AI.',
-    zh: '你的 DSEcon Mentor 帳戶尚餘的點數。按一下開啟「設定 → AI」。',
+    en: 'Credits left on your DSEcon Mentor account.',
+    zh: '你的 DSEcon Mentor 帳戶尚餘的點數。',
   },
   chipTitleLow: {
     en: (n: string) => `Running low: under ${n} credits, about one Question studio run.`,
@@ -119,16 +119,36 @@ export const AI_UI_MESSAGES = defineMessages({
     zh: '點數已用完。請購買點數以繼續使用 AI，或改用你自己的 API key。',
   },
   chipTitleOwnKey: {
-    en: (p: string) => `AI uses your own ${p} API key. Its balance is on ${p}’s own site. Click for Settings → AI.`,
-    zh: (p: string) => `AI 正使用你自己的 ${p} API key，餘額請到 ${p} 的網站查看。按一下開啟「設定 → AI」。`,
+    en: (p: string) => `AI uses your own ${p} API key. Its balance is on ${p}’s own site.`,
+    zh: (p: string) => `AI 正使用你自己的 ${p} API key，餘額請到 ${p} 的網站查看。`,
   },
   chipTitleLocal: {
-    en: (p: string) => `AI runs on ${p} on this computer. Click for Settings → AI.`,
-    zh: (p: string) => `AI 正使用這部電腦上的 ${p}。按一下開啟「設定 → AI」。`,
+    en: (p: string) => `AI runs on ${p} on this computer.`,
+    zh: (p: string) => `AI 正使用這部電腦上的 ${p}。`,
   },
   chipTitleSetup: {
     en: 'AI isn’t set up. Sign in with DSEcon Mentor or add your own API key in Settings → AI.',
     zh: 'AI 尚未設定。請到「設定 → AI」以 DSEcon Mentor 登入，或加入你自己的 API key。',
   },
   chipTest: { en: 'Test build', zh: '測試版本' },
+  chipClickSettings: { en: 'Click for Settings → AI.', zh: '按一下開啟「設定 → AI」。' },
+
+  // Mentor credits or my own key, when both exist (k-0527, u-ypm9): the chip's menu and Settings → AI.
+  chipClickChoose: {
+    en: 'Click to choose DSEcon Mentor credits or your own key.',
+    zh: '按一下選擇使用 DSEcon Mentor 點數或你自己的 API key。',
+  },
+  choiceTitle: { en: 'Use for AI', zh: 'AI 使用' },
+  choiceMentor: { en: 'DSEcon Mentor credits', zh: 'DSEcon Mentor 點數' },
+  choiceOwn: { en: (p: string) => `My own key (${p})`, zh: (p: string) => `我自己的 API key（${p}）` },
+  choiceMentorNote: {
+    en: (n: string) => `${n} credits left. No VPN needed.`,
+    zh: (n: string) => `尚餘 ${n} 點，毋須 VPN。`,
+  },
+  choiceMentorNoteUnread: { en: 'Pay as you go with credits. No VPN needed.', zh: '以點數按用量付費，毋須 VPN。' },
+  choiceOwnNote: {
+    en: (p: string) => `${p} bills your own account. No credits are used.`,
+    zh: (p: string) => `由 ${p} 向你自己的帳戶收費，不會用點數。`,
+  },
+  choiceSettings: { en: 'AI settings…', zh: 'AI 設定…' },
 });

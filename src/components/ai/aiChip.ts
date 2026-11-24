@@ -1,5 +1,6 @@
 import { creditsFor, roundCredits, studioJob } from '@/ai/credits';
 import type { MentorAccount } from '@/ai/mentor';
+import { presetFor } from '@/ai/providers';
 import type { ProviderId, ProviderPreset } from '@/ai/types';
 import type { MentorState } from '@/settings/mentorAccount';
 
@@ -25,6 +26,11 @@ const SHORT: Partial<Record<ProviderId, string>> = {
   anthropic: 'Claude',
   custom: 'Custom',
 };
+
+/** The short name of a provider, as the chip and the AI choice say it ("Gemini"). */
+export function providerShortName(p: ProviderId): string {
+  return SHORT[p] ?? presetFor(p).label;
+}
 
 /** No account figure for a studio run yet: about one 10-question worksheet at Gemini 4 Hydrogen. */
 export const LOW_FALLBACK = 300;

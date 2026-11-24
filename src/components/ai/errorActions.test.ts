@@ -83,3 +83,45 @@ describe('markTones', () => {
     expect([...markTones([fixed])]).toEqual([['k1', 'inserted']]);
   });
 });
+
+describe('Not enough credits → Use my own key (k-0527)', () => {
+  const noCredits = error({ kind: 'noCredits', provider: 'mentor', actions: ['buyCredits', 'useOwnKey'] });
+
+  it('with an own key saved: names it, switches the choice to it and runs the job again', async () => {
+    const { appSettings } = await import('@/settings/store');
+    const { AI_SETTINGS } = await import('@/settings/aiSettings');
+    const { writeSecret, deleteSecret } = await import('@/platform/secrets');
+    appSettings.write(AI_SETTINGS, { provider: 'mentor' });
+    await writeSecret('ai:gemini', 'AIzaSyTESTKEY000000000000007Qx4', { remember: false });
+    try {
+      expect(labels(noCredits)).toEqual(['Buy credits', 'Use my own key (Gemini)']);
+      const retry = vi.fn();
+      const dismiss = vi.fn();
+      runErrorAction(errorActions(noCredits).find((a) => a.kind === 'useOwnKey')!, noCredits, { retry, dismiss });
+      expect(appSettings.read(AI_SETTINGS).provider).toBe('gemini');
+      expect(retry).toHaveBeenCalledTimes(1);
+    } finally {
+      await deleteSecret('ai:gemini');
+      appSettings.write(AI_SETTINGS, { provider: 'gemini' });
+    }
+  });
+
+  it('with no own key: opens Settings → AI to add one, the choice stays on Mentor', async () => {
+    const { appSettings } = await import('@/settings/store');
+    const { AI_SETTINGS } = await import('@/settings/aiSettings');
+    const { useAppDialogs } = await import('@/store/appDialogs');
+    appSettings.write(AI_SETTINGS, { provider: 'mentor' });
+    const openSettings = vi.spyOn(useAppDialogs.getState(), 'openSettings').mockImplementation(() => {});
+    try {
+      expect(labels(noCredits)).toEqual(['Buy credits', 'Use my own key…']);
+      const retry = vi.fn();
+      runErrorAction(errorActions(noCredits).find((a) => a.kind === 'useOwnKey')!, noCredits, { retry, dismiss: () => {} });
+      expect(appSettings.read(AI_SETTINGS).provider).toBe('mentor');
+      expect(retry).not.toHaveBeenCalled();
+      expect(openSettings).toHaveBeenCalledWith(expect.objectContaining({ section: 'ai', focus: 'ownKey' }));
+    } finally {
+      openSettings.mockRestore();
+      appSettings.write(AI_SETTINGS, { provider: 'gemini' });
+    }
+  });
+});

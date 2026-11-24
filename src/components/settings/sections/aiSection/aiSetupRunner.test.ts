@@ -187,6 +187,36 @@ describe('Forget', () => {
     expect(secrets.size).toBe(0);
     expect(runner.current()).toMatchObject({ confirmForget: null, key: { kind: 'none' } });
   });
+
+  it('the own key in use is forgotten while signed in to DSEcon Mentor: the account takes over (k-0527)', async () => {
+    const { runner, secrets, settings } = setup({ provider: 'gemini' });
+    secrets.set('ai:mentor', 'mtok_signed_in_000000');
+    secrets.set('ai:gemini', 'AIzaSySAVED0000000');
+    secrets.set('ai:deepseek', 'sk-deepseek-0000000');
+    runner.forgetAsked('deepseek');
+    await runner.forget();
+    expect(settings().provider).toBe('gemini');
+    runner.forgetAsked('gemini');
+    await runner.forget();
+    expect(settings().provider).toBe('mentor');
+    expect(secrets.has('ai:mentor')).toBe(true);
+  });
+
+  it('forget all keys while signed in falls back to Mentor; signed out, the provider stays', async () => {
+    const signedIn = setup({ provider: 'qwen' });
+    signedIn.secrets.set('ai:mentor', 'mtok_signed_in_000000');
+    signedIn.secrets.set('ai:qwen', 'sk-qwen-0000000000');
+    signedIn.runner.forgetAsked('all');
+    await signedIn.runner.forget();
+    expect(signedIn.settings().provider).toBe('mentor');
+    expect(signedIn.secrets.has('ai:mentor')).toBe(true);
+
+    const signedOut = setup({ provider: 'qwen' });
+    signedOut.secrets.set('ai:qwen', 'sk-qwen-0000000000');
+    signedOut.runner.forgetAsked('qwen');
+    await signedOut.runner.forget();
+    expect(signedOut.settings().provider).toBe('qwen');
+  });
 });
 
 describe('Test a saved key', () => {

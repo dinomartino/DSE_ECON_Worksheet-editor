@@ -3,10 +3,11 @@ import { MENTOR_BUY_URL, createMentorRelay, type LinkDevice, type MentorAccount,
 import { mapThrown } from '@/ai/errors';
 import { presetFor } from '@/ai/providers';
 import { onRelayOutcome } from '@/ai/relayOutcome';
-import { PROVIDER_IDS, type AiErrorInfo, type ProviderId } from '@/ai/types';
+import type { AiErrorInfo, ProviderId } from '@/ai/types';
 import { isDesktop, openExternal } from '@/platform';
 import { deleteSecret, peekSecret, readSecret, subscribeSecrets, writeSecret } from '@/platform/secrets';
 import pkg from '../../package.json';
+import { ownKeyProvider } from './aiChoice';
 import { AI_SETTINGS, type AiSettings } from './aiSettings';
 import { appSettings } from './store';
 
@@ -70,10 +71,13 @@ export interface MentorSession {
   use(): void;
 }
 
-/** The provider to fall back to on sign-out: the one in use if it is not the account, else the first with a saved key. */
+/**
+ * The provider to fall back to on sign-out: the one in use if it is not the account, else the
+ * own key "My own key" means (the remembered one, else the first saved, k-0527), else Gemini.
+ */
 export function ownProviderAfterSignOut(settings: AiSettings, saved: (p: ProviderId) => boolean): ProviderId {
   if (settings.provider !== 'mentor') return settings.provider;
-  return PROVIDER_IDS.find((p) => presetFor(p).group !== 'hosted' && saved(p)) ?? 'gemini';
+  return ownKeyProvider(settings, saved) ?? 'gemini';
 }
 
 export function createMentorSession(deps: MentorDeps): MentorSession {
@@ -160,8 +164,11 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
         const store = await deps.writeToken(poll.token, { tabOnly: opts.tabOnly === true });
         if (!store) return set({ kind: 'signedOut', reason: 'keychain' });
         const settings = deps.readSettings();
+        // Signing in makes the account the AI in use (today's default); the own key in use is
+        // remembered as "My own key" for the choice (k-0527).
         deps.writeSettings({
           provider: 'mentor',
+          ...(settings.provider !== 'mentor' ? { ownProvider: settings.provider } : {}),
           keychainSaved: store === 'keychain' ? { ...settings.keychainSaved, mentor: true } : settings.keychainSaved,
         });
         linking = null;
@@ -210,7 +217,9 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
       set({ ...state, account: { ...state.account, credits: balance } });
     },
     use() {
-      if (state.kind === 'signedIn') deps.writeSettings({ provider: 'mentor' });
+      if (state.kind !== 'signedIn') return;
+      const settings = deps.readSettings();
+      deps.writeSettings({ provider: 'mentor', ...(settings.provider !== 'mentor' ? { ownProvider: settings.provider } : {}) });
     },
   };
 }

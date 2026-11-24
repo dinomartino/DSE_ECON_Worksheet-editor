@@ -37,6 +37,7 @@ export function formatCredits(n: number, lang: string): string {
 export function MentorAccountCard({
   state,
   inUse,
+  choiceShown = false,
   focus,
   web,
   server,
@@ -45,6 +46,8 @@ export function MentorAccountCard({
   state: MentorState;
   /** Settings' provider is the account. */
   inUse: boolean;
+  /** The "Use for AI" choice is shown above (k-0527): it says which one is in use and switches. */
+  choiceShown?: boolean;
   focus?: boolean;
   /** The web build: where the sign-in is kept in this browser (absent on desktop: the keychain). */
   web?: { kept: 'browser' | 'tab' | null };
@@ -165,7 +168,7 @@ export function MentorAccountCard({
               {localizedErrorMessage(state.error, lang)}
             </p>
           )}
-          <p className={`text-xs ${inUse ? 'text-ink' : 'text-ink-muted'}`}>{inUse ? m.mentorInUse : m.mentorNotInUse}</p>
+          {!choiceShown && <p className={`text-xs ${inUse ? 'text-ink' : 'text-ink-muted'}`}>{inUse ? m.mentorInUse : m.mentorNotInUse}</p>}
           {state.account?.buy && <BuyCredits buy={state.account.buy} primary={inUse} onBuy={actions.buy} />}
           {!state.account?.buy && state.account?.packs && (
             <p data-mentor-packs className="text-xs tabular-nums text-ink-muted">
@@ -173,7 +176,7 @@ export function MentorAccountCard({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2">
-            {!inUse && (
+            {!inUse && !choiceShown && (
               <Button variant="primary" size="sm" onClick={actions.use}>
                 {m.mentorUse}
               </Button>
