@@ -178,6 +178,8 @@ function toSegment(p: { x: number; y: number }, a: Pair, b: Pair): number {
 }
 
 const ARROW_ROOM = 0.045;
+/** Where lettered points sit on a frontier (degrees from the x-axis). */
+const MARK_DEG = 55;
 
 /** True when the arrow from–to touches no other line and no marked point. */
 function clearOf(from: Pair, to: Pair, room: Clearance | undefined): boolean {
@@ -399,7 +401,9 @@ export function compileSpec(given: DiagramSpec): Compiled {
       const copy = frontierCurve(next, name);
       add(s.id, copy, role);
       frontiers.set(s.id, next);
-      const deg = s.direction === 'right' || s.direction === 'left' ? 25 : s.direction === 'up' || s.direction === 'down' ? 65 : 45;
+      // Lettered points sit at 55° (below): an outward arrow then runs low, at 25°, clear of them.
+      const marked = spec.marks.some((m) => m.of === s.of);
+      const deg = s.direction === 'right' || s.direction === 'left' ? 25 : s.direction === 'up' || s.direction === 'down' ? 65 : marked ? 25 : 45;
       const [fx, fy] = onFrontier(ab, deg);
       const [tx, ty] = onFrontier(next, deg);
       const k = 0.18;
@@ -700,8 +704,15 @@ export function compileSpec(given: DiagramSpec): Compiled {
     const ab = frontiers.get(m.of);
     let p: Pair;
     if (ab) {
-      const [x, y] = onFrontier(ab, 45);
-      p = m.where === 'on' ? [x, y] : m.where === 'inside' ? [x * 0.62, y * 0.62] : [Math.min(x * 1.3, 0.95), Math.min(y * 1.3, 0.95)];
+      const [x, y] = onFrontier(ab, MARK_DEG);
+      // Outside a frontier that later moves out: halfway to the new one, never on it (k-0534:
+      // at ×1.3 a point C sat on PPC₁, and "attainable after the growth?" had no clear answer).
+      const grown = spec.shifts
+        .filter((sh) => sh.of === m.of && frontiers.has(sh.id))
+        .map((sh) => Math.min(frontiers.get(sh.id)![0] / ab[0], frontiers.get(sh.id)![1] / ab[1]))
+        .filter((r) => r > 1.05);
+      const out = grown.length ? 1 + (Math.min(...grown) - 1) / 2 : 1.3;
+      p = m.where === 'on' ? [x, y] : m.where === 'inside' ? [x * 0.62, y * 0.62] : [Math.min(x * out, 0.95), Math.min(y * out, 0.95)];
     } else {
       const mid = c.points[Math.floor((c.points.length - 1) / 2)];
       const end = c.points[c.points.length - 1];

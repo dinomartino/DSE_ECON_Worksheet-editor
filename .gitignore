@@ -70,3 +70,4 @@ __pycache__/
 *.key
 *.p12
 *.p8
+/out-diagram-gen/

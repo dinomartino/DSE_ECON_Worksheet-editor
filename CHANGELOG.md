@@ -99,6 +99,16 @@ a version heading is edited afterwards.
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
+- **The question studio draws diagrams the way HKDSE papers do, and you can change them by
+  asking.** A question with a diagram now just says "Refer to the following diagram" instead of
+  describing it in words; every label its options name (Q1 to Q4, P1, area A) is on the diagram,
+  numbered in order, with the dashed lines from the right points; and the answer is worked out
+  again from the drawing itself, so the key always matches what you see. Price ceilings and
+  floors, taxes, subsidies, quotas and the PPC are covered. Ask for a change ("label Q1 and Q3",
+  "move P1 up") and the diagram changes, with the question's words left as they were (if the
+  change moves the answer, the key and explanation follow). Questions that need no diagram no
+  longer use AI credits on one.
+  <!-- zh: **擬題工作室會以 HKDSE 試卷的方式繪畫圖表，你亦可直接要求修改。** 附圖的題目現在只寫「參看下圖」，不再用文字描述圖表；選項提及的每個標示（Q1 至 Q4、P1、面積 A）都會畫在圖上，按次序編號，虛線由正確的點引出；答案會根據圖表本身重新推算，確保答案與圖表一致。涵蓋最高價格、最低價格、稅項、津貼、配額及生產可能曲線。要求修改（例如「標示 Q1 及 Q3」、「把 P1 移高」）時，圖表會跟著改，題目文字保持不變（若修改令答案改變，答案及解釋亦會隨之更新）。不需要圖表的題目不會再為圖表耗用 AI 點數。 -->
 - **Topic names follow your paper's language everywhere.** The 題型 map, its sort board and the
   question studio's key-point list now name syllabus topics in the language of the questions you
   are looking at (an English paper or view shows English names, a Chinese one 中文 names), as the

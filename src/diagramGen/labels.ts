@@ -16,7 +16,7 @@ const SYMBOL =
 const AREA_EN = /\b(?:[Aa]reas?|[Rr]egions?)\s+([A-H](?:\s*(?:\+|,|and|or|&)\s*[A-H])*)(?![A-Za-z])/g;
 const AREA_ZH = /(?:面積|區域)\s*([A-H](?:\s*(?:\+|＋|、|及|和|與)\s*[A-H])*)(?![A-Za-z])/g;
 const POINT_EN = /\b[Pp]oints?\s+([A-H](?:\s*(?:,|and|or|&)\s*[A-H])*)(?![A-Za-z])/g;
-const POINT_ZH = /點\s*([A-H](?:\s*(?:、|及|和|與)\s*[A-H])*)(?![A-Za-z])/g;
+const POINT_ZH = /點\s*([A-H](?:\s*(?:、|及|和|與)\s*[A-H])*)(?![A-Za-z])|(?<![A-Za-z])([A-H])\s*點/g;
 const LETTERS_ONLY = /^\s*[A-H](?:\s*\+\s*[A-H])+\s*$/;
 
 const SUB: Record<string, string> = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9' };
@@ -42,7 +42,7 @@ export function labelsIn(raw: string): string[] {
     add(tickKey(`${m[2]}${index}`));
   }
   for (const re of [AREA_EN, AREA_ZH, POINT_EN, POINT_ZH]) {
-    for (const m of text.matchAll(re)) letters(m[1]).forEach(add);
+    for (const m of text.matchAll(re)) letters(m[1] ?? m[2] ?? '').forEach(add);
   }
   if (LETTERS_ONLY.test(text)) letters(text).forEach(add);
   return out;

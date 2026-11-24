@@ -476,8 +476,12 @@ export function refine(
 ): Promise<StudioOutcome> {
   // A draft with a figure keeps it as the starting point: its spec, not a new drawing (k-0534).
   const spec = deps.diagrams ? target.diagram?.spec : undefined;
-  if (refinement.kind === 'change' && spec) return changeWithFigure(request, target, refinement.text, spec, others, deps, hooks);
-  const figure = spec ? { figure: { spec, mode: 'base' as const } } : {};
+  // What the words touch (k-0535's `parts`): absent = unknown. A change that touches the
+  // diagram, or may, edits its spec; one that touches only the words keeps the figure when the
+  // new words still fit it.
+  const parts = refinement.kind === 'change' ? (refinement as { parts?: readonly string[] }).parts : undefined;
+  if (refinement.kind === 'change' && spec && (!parts || parts.includes('diagram'))) return changeWithFigure(request, target, refinement.text, spec, others, deps, hooks);
+  const figure = spec ? { figure: { spec, mode: refinement.kind === 'change' ? ('keep' as const) : ('base' as const) } } : {};
   if (refinement.kind === 'another') {
     return writeDrafts({ ...request, count: 1 }, deps, hooks, { avoid: [target, ...others], ...figure });
   }

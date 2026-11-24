@@ -138,6 +138,23 @@ describe('a follow-up edits the figure, not a new draft', () => {
   });
 });
 
+describe('a change that touches only the words (k-0535 parts)', () => {
+  it('goes to the writer and keeps the figure without a diagram request when the words still fit it', async () => {
+    const client0 = scriptedClient([write(draft()), specReply(), solveKey(1)]);
+    const first = await writeDrafts({ ...REQUEST, count: 1 }, deps(client0), { signal: ctl() });
+    if (!first.ok) throw new Error('run failed');
+    const target = first.drafts[0];
+    const reworded = draft({ stem: { en: floor.stem.replace('Country B', 'Country C'), zh: floorZh.stem.replace('B 國', 'C 國') } });
+    const client = scriptedClient([write(reworded), solveKey(1)]);
+    const refinement = { kind: 'change' as const, text: 'call it Country C', parts: ['stem'] };
+    const out = await refine(REQUEST, target, refinement, [], deps(client), { signal: ctl() });
+    if (!out.ok) throw new Error('refine failed');
+    expect(client.requests).toHaveLength(2);
+    expect(out.drafts[0].draft.stem.en).toMatch(/Country C/);
+    expect(out.drafts[0].diagram?.spec).toEqual(target.diagram?.spec);
+  });
+});
+
 describe('the diagram instructions are a fixed prefix (Gemini implicit caching, u-gi2a)', () => {
   it('the system text is byte-identical for every question, edit and reference; the variable parts are in the user turn', () => {
     const signal = ctl();

@@ -258,6 +258,16 @@ kept on this computer; the Trial kit in Settings → AI. **No topic picker anywh
   column it grew past the footer and the topics below could not be reached.
 - Not built yet: editing the AI's diagram inside the studio (once added, it is an ordinary editor
   diagram).
+- **Diagrams (k-0534).** The writer's reply has `figure`: one English line for the diagram maker,
+  never printed ('' = no diagram, and then no diagram request). The stem only refers to the figure
+  ("Refer to the following diagram"): a stem that narrates it (`validate.ts:narrationFindings`,
+  `shape.narrates`) is rewritten once. Figures are drawn before the blind solve, which reads each
+  in words (`diagramGen/words.ts`); a figure that cannot be drawn to fit warns the draft
+  (`shape.figureFailed`). The draft keeps the figure's spec (`DraftDiagram.spec`). A change in words
+  (`run.ts:refine`): touching the diagram, or unknown (k-0535 `parts`) → one edit request on the
+  spec; the words stay byte for byte unless the edit says otherwise or moves the key, then the writer
+  rewrites and the edited figure is kept if it fits. Words only → the writer, the figure kept as it
+  is when it still fits. Harder / Easier / Another start from the old spec.
 
 ## The ✦ Write panel in the editor (k-0516 package B, mockup B)
 
