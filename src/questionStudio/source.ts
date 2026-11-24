@@ -110,6 +110,7 @@ export function sourceFromQuestion(
     answerIndex: Number.isInteger(key) && key >= 0 && key < question.options.length ? key : -1,
     ...(explanation && (explanation.en || explanation.zh) ? { explanation } : {}),
     hasFigure: stem.figure || (passage?.figure ?? false) || optionFigure,
+    ...(question.options.some((o) => flattenBlocks(o.blocks ?? []).some((b) => b.kind === 'table')) ? { optionTables: true } : {}),
     ...(placed.length ? { figureBlocks: placed.map((p) => p.block), figurePlaces: placed.map((p) => p.at), ...(placed.some((p) => p.cell) ? { figureGrid: placed.map((p) => p.cell ?? null) } : {}) } : {}),
   };
 }

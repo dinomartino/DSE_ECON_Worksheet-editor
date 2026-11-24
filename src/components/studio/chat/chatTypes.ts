@@ -57,7 +57,9 @@ export type Note =
   /** The AI's answer to a question about a draft (k-0535): its own words, not the catalogue's. */
   | { kind: 'reply'; text: string; draftNo: number }
   /** A question about a draft that got no answer back. */
-  | { kind: 'noReply'; draftNo: number };
+  | { kind: 'noReply'; draftNo: number }
+  /** The teacher's reference has a form the studio cannot write yet (k-0544): its diagrams, option diagrams or option tables. */
+  | { kind: 'refShape'; pictures: number; optionPictures: number; optionTables: number };
 
 export interface UserTurn {
   id: string;

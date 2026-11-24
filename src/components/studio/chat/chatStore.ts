@@ -322,6 +322,9 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         // Warned drafts (a failed check): shown like the rest (k-0531). The saved field keeps its old name.
         failed: made.filter((d) => hasWarning(d)).length,
       });
+      // The teacher's reference has a form the studio cannot write yet (k-0544): say so, once.
+      const gap = outcome.notes.find((n) => n.id === 'run.referenceShape')?.params;
+      if (gap) addNote(chatId, turnId, { kind: 'refShape', pictures: Number(gap.pictures) || 0, optionPictures: Number(gap.optionPictures) || 0, optionTables: Number(gap.optionTables) || 0 });
     }
 
     /** Sets fields of the running run, when it is this turn's. */
