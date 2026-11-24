@@ -48,7 +48,7 @@ export function briefsOf(chat: Pick<Chat, 'drafts'>, explain?: number): DraftBri
       options: q.options.map(side),
       answer: q.answerIndex >= 0 && q.answerIndex < 4 ? LETTERS[q.answerIndex] : '',
       table: /^\s*\|.*\|/m.test(q.stem.en) || /^\s*\|.*\|/m.test(q.stem.zh),
-      diagram: Boolean(d.entry.draft.diagram?.block),
+      diagram: Boolean(d.entry.draft.diagram?.block || d.entry.draft.diagramSet?.figures.some((f) => f.block)),
       state: d.state,
       ...(d.no === explain ? { explanation: side(q.explanation) } : {}),
     };

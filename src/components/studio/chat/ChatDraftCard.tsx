@@ -122,8 +122,8 @@ export function ChatDraftCard({
         )}
         <BasedOn request={entry.request} />
         {drawing && <Chip tone="ai">✦ {m.drawing}</Chip>}
-        {studio.diagram?.status === 'look' && (
-          <span title={studio.diagram.issues.map((i) => i.text).join('\n')}>
+        {(studio.diagram?.status === 'look' || studio.diagramSet?.figures.some((f) => f.status === 'look')) && (
+          <span title={[...(studio.diagram?.issues ?? []), ...(studio.diagramSet?.figures.flatMap((f) => f.issues) ?? [])].map((i) => i.text).join('\n')}>
             <Chip tone="look">{m.diagramLook}</Chip>
           </span>
         )}

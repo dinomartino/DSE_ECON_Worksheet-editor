@@ -13,6 +13,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio writes questions with several diagrams.** Like HKDSE 2023 Paper 1 Q36,
+  it can now write "Which of the following diagrams …" with four small graphs (1)–(4) in the
+  question (tax payment or tax rate against income, and other plain graphs), or a diagram under
+  every option A–D, as in 2024 Q11. All the diagrams are drawn in one go. The answer check reads
+  every diagram, and for a grid of tax graphs it works the answer out from the drawings. Each
+  diagram can be edited by hand. Such a question may use about a third more AI credits than one
+  with a single diagram.
+  <!-- zh: **擬題工作室可擬寫有多幅圖表的題目。** 如 HKDSE 2023 Paper 1 第 36 題，現在可擬寫「下列哪些圖……」，題目內有四幅小圖 (1)–(4)（例如稅款或稅率與收入的關係圖及其他簡單圖表），或如 2024 年第 11 題般每個選項 A–D 各有一幅圖。所有圖表一次過繪畫。答案檢查會閱讀每一幅圖；若是一組稅項圖，更會從圖中推算答案。每幅圖都可以自行修改。這類題目所用的 AI 點數可能比只有一幅圖的題目多約三分之一。 -->
 - **Diagrams (1)–(4) in an MC question.** A question can now hold a grid of small diagrams
   labelled (1), (2), (3), (4), as in "Which of the following diagrams …", two to a row (or one
   to four, from the question's panel). Each one is an ordinary diagram: click it to edit it.

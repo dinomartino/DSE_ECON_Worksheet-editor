@@ -1,8 +1,10 @@
 import { fillMcq } from '@/generate/build';
-import type { McqQuestion } from '@/model/types';
+import { isGridCell } from '@/diagramGen/figureAt';
+import { createFigureGridBlock } from '@/model/factories';
+import type { ContentBlock, DiagramBlock, McqQuestion } from '@/model/types';
 import type { QuestionBuild } from '@/store/worksheetStore';
 import { stemBlocks, stemBlocksOf } from './stemTable';
-import type { StudioDraft } from './types';
+import type { DraftDiagram, StudioDraft } from './types';
 
 /**
  * Drafts the teacher picked → what the store inserts (`insertQuestionBatch`), one build
@@ -14,6 +16,32 @@ import type { StudioDraft } from './types';
  * marked `aiMade` (§ `Question.aiMade`) until the teacher presses Checked, in a paper and
  * in the question bank alike.
  */
+/** A figure of a set that goes on the paper: drawn, and meant for the students. */
+const printable = (f: DraftDiagram): f is DraftDiagram & { block: DiagramBlock } =>
+  Boolean(f.block) && (f.status === 'ok' || f.status === 'look') && f.placement === 'question';
+
+/**
+ * A draft's several figures (k-0545) where the paper prints them: the stem's after its words,
+ * the grid "(1)"–"(4)" as one figure grid after that, each option's under its letter (the
+ * options then two to a row, the HKDSE 2 × 2). A failed figure is left out, as one alone is.
+ */
+export function withFigureSet(q: McqQuestion, stem: ContentBlock[], d: Pick<StudioDraft, 'diagramSet'>): McqQuestion {
+  const figures = (d.diagramSet?.figures ?? []).filter(printable);
+  if (!figures.length) return { ...q, blocks: stem };
+  const at = (where: string) => figures.find((f) => f.at === where)?.block;
+  const lead = at('stem');
+  const cells = figures.filter((f) => f.at && isGridCell(f.at)).map((f) => f.block);
+  const blocks = [...stem, ...(lead ? [lead] : []), ...(cells.length >= 2 ? [createFigureGridBlock(cells)] : cells)];
+  const optionBlocks = q.options.map((_, i) => at('ABCD'[i]));
+  if (!optionBlocks.some(Boolean)) return { ...q, blocks };
+  return {
+    ...q,
+    blocks,
+    options: q.options.map((option, i) => (optionBlocks[i] ? { ...option, blocks: [optionBlocks[i]!] } : option)),
+    optionLayout: 'columns2',
+  };
+}
+
 export function studioBuilds(drafts: readonly StudioDraft[], keyPoint: string | ((draft: StudioDraft) => string)): QuestionBuild[] {
   return drafts.map((d) => {
     const tag = typeof keyPoint === 'function' ? keyPoint(d) : keyPoint;
@@ -37,7 +65,8 @@ export function studioBuilds(drafts: readonly StudioDraft[], keyPoint: string | 
         // An MC question has no slot for a model-answer diagram, so a figure placed `answer` is not inserted.
         const figure = d.diagram && (d.diagram.status === 'ok' || d.diagram.status === 'look') && d.diagram.placement === 'question' ? d.diagram.block : null;
         // A table written in the stem (pipe rows) is drawn as a table (k-0531).
-        return { ...q, blocks: [...(rich ? stemBlocksOf(rich.stem) : stemBlocks(d.draft.stem)), ...(figure ? [figure] : [])], tags: [tag], aiMade: true };
+        const stem = [...(rich ? stemBlocksOf(rich.stem) : stemBlocks(d.draft.stem)), ...(figure ? [figure] : [])];
+        return { ...withFigureSet(q, stem, d), tags: [tag], aiMade: true };
       },
     };
   });

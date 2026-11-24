@@ -17,6 +17,7 @@ import { sameRuns, type Side } from '@/model/textSlots';
 import { richOf, type DraftEdit } from '@/questionStudio/edit';
 import { hasStemTable } from '@/questionStudio/stemTable';
 import type { DraftRich, StudioDraft } from '@/questionStudio/types';
+import type { FigureAt } from '@/diagramGen/figureAt';
 import { diagramSize, diagramSvg } from '@/render/diagram';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 
@@ -33,7 +34,15 @@ interface Form {
   rich: DraftRich;
   answerIndex: number;
   diagram?: DiagramBlock;
+  /** A several-figure draft's figures (k-0545), by place. */
+  figures?: Readonly<Record<string, DiagramBlock>>;
 }
+
+/** Each figure of a set, by place: the stem's, the grid's (1)–(4), the options' A–D. */
+const figuresOf = (draft: StudioDraft): Record<string, DiagramBlock> =>
+  Object.fromEntries((draft.diagramSet?.figures ?? []).flatMap((f) => (f.at && f.block ? [[f.at, f.block]] : [])));
+const sameFigures = (a: Form['figures'], b: Form['figures']) =>
+  Object.keys({ ...a, ...b }).every((at) => a?.[at] === b?.[at]);
 
 const sameBi = (a: BiText, b: BiText) => sameRuns(a.en ?? [], b.en ?? []) && sameRuns(a.zh ?? [], b.zh ?? []);
 const sameList = (a: readonly BiText[], b: readonly BiText[]) => a.length === b.length && a.every((x, i) => sameBi(x, b[i]));
@@ -46,6 +55,7 @@ function sameForm(a: Form, b: Form): boolean {
   return (
     a.answerIndex === b.answerIndex &&
     a.diagram === b.diagram &&
+    sameFigures(a.figures, b.figures) &&
     sameBi(a.rich.stem, b.rich.stem) &&
     sameBi(a.rich.explanation, b.rich.explanation) &&
     sameList(a.rich.statements, b.rich.statements) &&
@@ -76,12 +86,16 @@ export function DraftEditor({
 }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
   const language = languageOfSides(sides);
-  const start = useMemo<Form>(() => ({ rich: richOf(draft), answerIndex: draft.draft.answerIndex, ...(draft.diagram?.block ? { diagram: draft.diagram.block } : {}) }), [draft]);
+  const start = useMemo<Form>(
+    () => ({ rich: richOf(draft), answerIndex: draft.draft.answerIndex, ...(draft.diagram?.block ? { diagram: draft.diagram.block } : {}), ...(draft.diagramSet ? { figures: figuresOf(draft) } : {}) }),
+    [draft],
+  );
   // The form and its Undo steps in one state, changed only by pure updaters: a field may call
   // back from an older render, and must never put back another field's older value.
   const [state, setState] = useState<{ form: Form; history: Form[] }>({ form: start, history: [] });
   const { form, history } = state;
-  const [drawing, setDrawing] = useState(false);
+  // Which figure's drawing canvas is open: 'one' for a single figure, a place ("(2)", "B") in a set.
+  const [drawingAt, setDrawingAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const last = useRef<{ key: string; at: number }>({ key: '', at: 0 });
   const dirty = !sameForm(form, start);
@@ -106,7 +120,13 @@ export function DraftEditor({
     if (!dirty || saving) return;
     setSaving(true);
     try {
-      await onSave({ rich: form.rich, answerIndex: form.answerIndex, ...(form.diagram && form.diagram !== start.diagram ? { diagram: form.diagram } : {}) });
+      const figures = Object.entries(form.figures ?? {}).flatMap(([at, block]) => (block !== start.figures?.[at] ? [{ at: at as FigureAt, block }] : []));
+      await onSave({
+        rich: form.rich,
+        answerIndex: form.answerIndex,
+        ...(form.diagram && form.diagram !== start.diagram ? { diagram: form.diagram } : {}),
+        ...(figures.length ? { figures } : {}),
+      });
     } finally {
       setSaving(false);
     }
@@ -177,11 +197,37 @@ export function DraftEditor({
                 block={block}
                 language={language}
                 edited={block !== start.diagram || Boolean(draft.diagram.edited)}
-                drawing={drawing}
-                onDraw={setDrawing}
+                drawing={drawingAt === 'one'}
+                onDraw={(on) => setDrawingAt(on ? 'one' : null)}
                 onChange={(next) => change('diagram', (f) => ({ ...f, diagram: next }))}
               />
             )}
+          </section>
+        )}
+
+        {draft.diagramSet && (
+          <section aria-label={m.editDiagram} className="space-y-3" data-edit-diagram-set>
+            {draft.diagramSet.figures.map((figure) => {
+              const at = figure.at ?? '';
+              const here = form.figures?.[at];
+              return (
+                <div key={at} className="space-y-1.5" data-edit-figure={at}>
+                  <div className="text-[11px] font-medium text-ink-muted">{m.editFigureAt(at)}</div>
+                  {!here ? (
+                    <p className="text-[12px] text-ink-muted">{m.editDiagramNone}</p>
+                  ) : (
+                    <DiagramPart
+                      block={here}
+                      language={language}
+                      edited={here !== start.figures?.[at] || Boolean(figure.edited)}
+                      drawing={drawingAt === at}
+                      onDraw={(on) => setDrawingAt(on ? at : null)}
+                      onChange={(next) => change(`figure:${at}`, (f) => ({ ...f, figures: { ...f.figures, [at]: next } }))}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </section>
         )}
 

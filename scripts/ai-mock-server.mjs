@@ -345,9 +345,28 @@ let studioNext = 0;
 const studioKeys = new Map();
 const studioNorm = (text) => String(text).replace(/\*\*/g, '').replace(/[\s$,.，。：:()（）]/g, '').toLowerCase();
 
+/**
+ * k-0545: a write whose request or references hold a several-figure fixture's words (its
+ * marker "!grid-regressive", or a line of the past-paper question it remakes) gets that
+ * fixture's question, its "figures" list included; its diagrams come from `studioDiagramSetReply`.
+ */
+function setFixtureFor(payload) {
+  const words = JSON.stringify([payload.teacherNote ?? '', payload.request ?? '', payload.examples ?? [], payload.rewrite ?? null]);
+  return SET_FIXTURES.find((f) => words.includes(f.marker) || f.match.some((m) => words.includes(m)));
+}
+
 function studioWriteReply(payload) {
   const langs = Array.isArray(payload.languages) ? payload.languages : ['en'];
   const t = (pair) => ({ en: langs.includes('en') ? pair[0] : '', zh: langs.includes('zh') ? pair[1] : '' });
+  const set = setFixtureFor(payload);
+  if (set) {
+    const side = (bi) => ({ en: langs.includes('en') ? bi.en : '', zh: langs.includes('zh') ? bi.zh : '' });
+    const q = set.question;
+    const written = side(q.stem);
+    studioKeys.set(studioNorm(written.en || written.zh), q.answer);
+    const question = { stem: written, statements: [], options: q.options.map(side), answer: q.answer, explanation: side(q.explanation), angle: q.angle, figures: q.figures, changes: [] };
+    return completion(JSON.stringify({ questions: [question] }));
+  }
   const count = payload.rewrite ? 1 : (payload.redo?.length || payload.make?.count || 1);
   const keys = Array.isArray(payload.make?.keys) ? payload.make.keys : [];
   const disagree = /!look/.test(String(payload.teacherNote ?? ''));

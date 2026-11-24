@@ -16,7 +16,18 @@ export type KeyCheck = { state: 'ok' } | { state: 'differs'; gives: string } | {
 
 const LETTERS = 'ABCD';
 
-export function keyCheckOf(draft: Pick<StudioDraft, 'diagram' | 'draft'>): KeyCheck | null {
+export function keyCheckOf(draft: Pick<StudioDraft, 'diagram' | 'draft' | 'diagramSet'>): KeyCheck | null {
+  // Several figures (k-0545): the key the drawings give together (a grid of tax graphs); a
+  // figure the teacher redrew means checking again.
+  const set = draft.diagramSet;
+  if (set) {
+    const drawn = set.figures.filter((f) => f.block && f.placement === 'question');
+    if (!drawn.length) return null;
+    if (drawn.some((f) => f.edited)) return { state: 'again' };
+    if (!set.solved) return null;
+    if (set.solved.option === draft.draft.answerIndex) return { state: 'ok' };
+    return { state: 'differs', gives: set.solved.option >= 0 ? (LETTERS[set.solved.option] ?? '') : '' };
+  }
   const figure = draft.diagram;
   if (!figure?.block || figure.placement !== 'question') return null;
   if (figure.edited) return { state: 'again' };

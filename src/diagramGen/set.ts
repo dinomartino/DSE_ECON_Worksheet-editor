@@ -18,15 +18,8 @@ import type { DiagramGenDeps, DiagramGenInput, DiagramIssue, DiagramSpec, Diagra
  * At most two requests: the repair turn re-asks only for the figures that failed.
  */
 
-/** Where a figure goes: the stem, a cell of the stem's grid, or under an option. */
-export const FIGURE_ATS = ['stem', '(1)', '(2)', '(3)', '(4)', 'A', 'B', 'C', 'D'] as const;
-export type FigureAt = (typeof FIGURE_ATS)[number];
-
-/** The writer's ask for one figure: where it goes and what to draw (never printed). */
-export interface FigureAsk {
-  at: FigureAt;
-  note: string;
-}
+import { FIGURE_ATS, type FigureAsk, type FigureAt } from './figureAt';
+export { FIGURE_ATS, type FigureAsk, type FigureAt };
 
 /**
  * What a grid of plain graphs asks, so the key can be worked out from the drawings: which of

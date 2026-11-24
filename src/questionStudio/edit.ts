@@ -1,4 +1,5 @@
 import type { BiDraft, McqDraft } from '@/generate/types';
+import type { FigureAt } from '@/diagramGen/figureAt';
 import { fromRuns, toRuns } from '@/generate/validate';
 import type { Glossary } from '@/glossary/types';
 import type { BiText, DiagramBlock } from '@/model/types';
@@ -23,6 +24,8 @@ export interface DraftEdit {
   answerIndex: number;
   /** The figure as the diagram editor left it; absent = not touched. */
   diagram?: DiagramBlock;
+  /** A several-figure draft's figures the teacher changed (k-0545), by place; absent = none touched. */
+  figures?: Array<{ at: FigureAt; block: DiagramBlock }>;
 }
 
 /** What the local checks read besides the draft. null = could not be read: that check says "check again". */
@@ -87,7 +90,9 @@ export function applyEdit(previous: StudioDraft, edit: DraftEdit, request: Studi
   const draft = wordsOfEdit(edit);
   const keep = sameQuestion(previous.draft, draft);
   // A copy goes to the checks: the term check fixes 中文 in place on an AI draft, never on the teacher's words.
-  const fresh = localChecks(structuredClone(draft), editContext(request, others, found));
+  // A draft with several figures keeps their checks (option diagrams may have no words, k-0545).
+  const ctx = { ...editContext(request, others, found), ...(previous.figureSet?.length ? { figureSet: previous.figureSet } : {}) };
+  const fresh = localChecks(structuredClone(draft), ctx);
   const checks = fresh.map((row): CheckRow => {
     if (row.id === 'key') return keep ? (previous.checks.find((c) => c.id === 'key') ?? stale('key', KEY_STALE)) : stale('key', KEY_STALE);
     if (row.id === 'terms' && !found.glossary) return stale('terms', CHECK_STALE);
@@ -95,6 +100,13 @@ export function applyEdit(previous: StudioDraft, edit: DraftEdit, request: Studi
     return row;
   });
   const diagram = edit.diagram && previous.diagram ? { ...previous.diagram, block: edit.diagram, edited: true as const } : previous.diagram;
+  const changedAt = new Map((edit.figures ?? []).map((f) => [f.at, f.block]));
+  const diagramSet = previous.diagramSet && changedAt.size
+    ? {
+        ...previous.diagramSet,
+        figures: previous.diagramSet.figures.map((f) => (f.at && changedAt.has(f.at) ? { ...f, block: changedAt.get(f.at)!, edited: true as const } : f)),
+      }
+    : previous.diagramSet;
   const { solve, ...rest } = previous;
   return {
     ...rest,
@@ -106,5 +118,6 @@ export function applyEdit(previous: StudioDraft, edit: DraftEdit, request: Studi
     edited: true,
     ...(keep && solve ? { solve } : {}),
     ...(diagram ? { diagram } : {}),
+    ...(diagramSet ? { diagramSet } : {}),
   };
 }

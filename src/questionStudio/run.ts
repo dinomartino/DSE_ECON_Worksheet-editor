@@ -21,7 +21,8 @@ import { corpusDocOfDraft, corpusDocOfSource, referenceFor } from './source';
 import { gapParams, referenceGap, type ReferenceGap } from './referenceShape';
 import type { DiagramGenInput, DiagramSpec, SolvedKey } from '@/diagramGen/types';
 import { figureWords } from '@/diagramGen/words';
-import type { CheckRow, DraftChange, DraftDiagram, Finding, Refinement, Stage, StudioEvent, SolveResult, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from './types';
+import type { FigureAsk, FigureAt } from '@/diagramGen/figureAt';
+import type { CheckRow, DraftChange, DraftDiagram, DraftDiagramSet, Finding, Refinement, Stage, StudioEvent, SolveResult, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from './types';
 import { cleanMcq, localChecks, parseWriteReply, statusOf, type CheckContext, type RawDraft } from './validate';
 
 /**
@@ -52,6 +53,8 @@ export interface RunOptions {
    * starting point the diagram maker may change.
    */
   figure?: { spec: DiagramSpec; mode: 'keep' | 'base' };
+  /** A several-figure draft's figures to start from (k-0545: Harder, Easier, Another), by place. */
+  figureSet?: { bases: Array<{ at: FigureAt; spec: DiagramSpec }> };
 }
 
 export const emptyUsage = (): Usage => ({ requests: 0, input: 0, output: 0, thinking: 0, ms: 0 });
@@ -70,6 +73,9 @@ interface Slot {
   diagram?: DraftDiagram;
   /** The writer's note to the diagram maker; '' = no figure; undefined = an older reply that did not say. */
   figure?: string;
+  /** Several figures asked for (k-0545), and what was drawn for them in one request. */
+  figureSet?: FigureAsk[];
+  diagramSet?: DraftDiagramSet;
 }
 
 type Asked = { ok: true; text: string; model: string } | { ok: false; error: AiErrorInfo };
@@ -80,7 +86,8 @@ const letter = (index: number) => LETTERS[index] ?? '?';
 const textOf = (slot: Slot | StudioDraft): DraftText => {
   const d = 'draft' in slot ? slot.draft : slot;
   const figure = slot.figure;
-  return { stem: d.stem, statements: d.statements, options: d.options, answer: d.answerIndex, explanation: d.explanation, ...(figure ? { figure } : {}) };
+  const figureSet = slot.figureSet;
+  return { stem: d.stem, statements: d.statements, options: d.options, answer: d.answerIndex, explanation: d.explanation, ...(figure ? { figure } : {}), ...(figureSet?.length ? { figureSet } : {}) };
 };
 
 /** The way a hard finding reads to the model: an instruction, in English whatever the paper's language. */
@@ -98,7 +105,17 @@ function problemOf(findings: readonly Finding[]): string {
     if (f.id === 'shape.statementCount') return 'A combination item has two to four statements.';
     if (f.id === 'shape.narrates')
       return `Its stem describes the diagram in words ("${f.params?.words ?? ''}"). An HKDSE stem only refers to the diagram ("Refer to the following diagram.") and states the situation; put what to draw in "figure" and keep the same options and key.`;
-    if (f.id === 'shape.figureFailed') return 'Its diagram could not be drawn to match it. Keep the question, and write "figure" again so it says exactly which point each label marks and which label is the key.';
+    if (f.id === 'shape.figureFailed') return 'Its diagram could not be drawn to match it. Keep the question, and write its "figures" note again so it says exactly which point each label marks and which label is the key.';
+    if (f.id === 'shape.figureSet') {
+      const p = f.params?.problem;
+      return p === 'optionsAll'
+        ? 'Some options have a diagram and some do not: give all four options A to D a figure, or none.'
+        : p === 'gridStatements'
+          ? 'A grid of diagrams (1)–(4) is labelled like statements: drop the statements, the diagrams are the items.'
+          : p === 'gridNamed'
+            ? 'The question names a diagram the grid does not have: name only (1) to the last cell.'
+            : 'The grid of diagrams must be 2 to 4 cells numbered "(1)", "(2)", … in order.';
+    }
     return 'It does not meet the format.';
   });
   return [...new Set(parts)].join(' ');
@@ -148,7 +165,11 @@ function markReferenceGaps(slots: Slot[], brief: Brief, notes: Finding[]): void 
   let first: ReferenceGap | undefined;
   slots.forEach((slot, index) => {
     const gap = referenceGap(examples[index % examples.length]);
-    if (!gap) return;
+    // k-0545: a grid or option diagrams are written now; only what the draft did not follow is a gap.
+    const set = slot.figureSet ?? [];
+    const followsGrid = gap && gap.pictures >= 2 && set.filter((f) => /^\([1-4]\)$/.test(f.at)).length >= 2;
+    const followsOptions = gap?.optionPictures && set.filter((f) => /^[A-D]$/.test(f.at)).length === 4;
+    if (!gap || ((gap.pictures < 2 || followsGrid) && (!gap.optionPictures || followsOptions) && !gap.optionTables)) return;
     first ??= gap;
     const shape = slot.checks.find((c) => c.id === 'shape');
     if (!shape || shape.findings.some((f) => f.id === 'shape.referenceForm')) return;
@@ -233,7 +254,7 @@ export async function writeDrafts(
       // A listener that throws must not take the run down.
     }
   };
-  const draftOf = (s: Slot): StudioDraft => ({ id: s.id, draft: s.draft, angle: s.angle, changes: s.changes, attempt: s.attempt, checks: s.checks, ...(s.solve ? { solve: s.solve } : {}), ...(s.diagram ? { diagram: s.diagram } : {}), ...(s.figure ? { figure: s.figure } : {}), status: statusOf(s.checks) });
+  const draftOf = (s: Slot): StudioDraft => ({ id: s.id, draft: s.draft, angle: s.angle, changes: s.changes, attempt: s.attempt, checks: s.checks, ...(s.solve ? { solve: s.solve } : {}), ...(s.diagram ? { diagram: s.diagram } : {}), ...(s.figure ? { figure: s.figure } : {}), ...(s.figureSet?.length ? { figureSet: s.figureSet } : {}), ...(s.diagramSet ? { diagramSet: s.diagramSet } : {}), status: statusOf(s.checks) });
   const emitDrafts = (all: readonly Slot[]) => all.forEach((s, index) => emit({ type: 'draft', index, draft: draftOf(s) }));
 
   // What a draft must not copy: the examples, and the drafts already on the sheet.
@@ -244,13 +265,15 @@ export async function writeDrafts(
     ...(opts.avoid ?? []).map((d) => corpusDocOfDraft(d.id, d.draft)),
   ];
   /** Whether a draft gets a diagram request: diagrams on, and the writer asked for one (an older reply that did not say: always, as before k-0534). */
-  const wantsFigure = (slot: Slot) => Boolean(deps.diagrams) && (slot.figure === undefined || slot.figure.length > 0);
+  const wantsFigure = (slot: Slot) => Boolean(deps.diagrams) && !slot.figureSet?.length && (slot.figure === undefined || slot.figure.length > 0);
+  const wantsSet = (slot: Slot) => Boolean(deps.diagrams) && Boolean(slot.figureSet?.length);
   const assess = (raw: RawDraft, accepted: readonly CorpusDoc[], attempt: 1 | 2): Slot => {
     const draft = cleanMcq(raw.draft, sides);
     const figure = deps.diagrams ? raw.figure : undefined;
-    const ctx: CheckContext = { sides, keyPoint: brief.keyPoint.code, asked: brief.request.shape, glossary: deps.glossary, corpus: deps.corpus, extra: [...baseExtra, ...accepted], exempt, figure: Boolean(figure) };
+    const figureSet = deps.diagrams && raw.figureSet?.length ? raw.figureSet : undefined;
+    const ctx: CheckContext = { sides, keyPoint: brief.keyPoint.code, asked: brief.request.shape, glossary: deps.glossary, corpus: deps.corpus, extra: [...baseExtra, ...accepted], exempt, figure: Boolean(figure), ...(figureSet ? { figureSet } : {}) };
     const id = newId();
-    return { id, draft, angle: raw.angle, changes: raw.changes, attempt, checks: localChecks(draft, ctx), ...(figure !== undefined ? { figure } : {}) };
+    return { id, draft, angle: raw.angle, changes: raw.changes, attempt, checks: localChecks(draft, ctx), ...(figure !== undefined ? { figure } : {}), ...(figureSet ? { figureSet } : {}) };
   };
   const hardFailed = (slot: Slot) => slot.checks.some((c) => c.state === 'fail');
   const failingFindings = (slot: Slot) => slot.checks.filter((c) => c.state === 'fail').flatMap((c) => c.findings);
@@ -312,17 +335,53 @@ export async function writeDrafts(
     }
   };
 
-  /** Figures for these drafts, one request each, in order, each shown as it lands. A draft whose writer asked for a figure and got none is warned. */
+  /**
+   * A draft's several figures in ONE request (k-0545: a grid "(1)"–"(4)", option diagrams).
+   * Never throws; a failed request leaves every figure `failed`. `bases`: the replaced draft's
+   * figures (Harder, Easier, Another), a starting point.
+   */
+  const diagramSetFor = async (slot: Slot, index: number): Promise<DraftDiagramSet> => {
+    const asked = slot.figureSet ?? [];
+    const failedAll = (error?: AiErrorInfo): DraftDiagramSet => ({
+      figures: asked.map((f) => ({ status: 'failed', block: null, placement: null, issues: [], at: f.at })),
+      issues: [],
+      ...(error ? { error } : {}),
+    });
+    try {
+      const { generateDiagrams } = await import('@/diagramGen');
+      const vision = supportsImages(deps.preset);
+      const { figure: _note, ...input } = diagramInput(slot.draft, sides);
+      void _note;
+      const bases = (opts.figureSet?.bases ?? []).filter((b) => asked.some((f) => f.at === b.at));
+      const out = await generateDiagrams(
+        { ...input, figures: asked, reference: referenceFor(brief.request.examples, index, vision), ...(bases.length ? { bases } : {}) },
+        { client: countingClient(deps.client, usage), preset: deps.preset, ...(vision ? { completeWithImages: (req, images) => countingClient(deps.client, usage).complete({ ...req, images }) } : {}) },
+        signal,
+      );
+      if (!out.ok) return failedAll(out.error);
+      return {
+        figures: out.figures.map((f) => ({ ...figureOf({ status: f.status, block: f.block, spec: f.spec, issues: f.issues, solved: null, imageSkipped: out.imageSkipped }), at: f.at })),
+        issues: out.issues,
+        ...(out.solved ? { solved: out.solved } : {}),
+      };
+    } catch {
+      return failedAll(aiErrorInfo('badOutput', provider));
+    }
+  };
+
+  /** Figures for these drafts, one request each (a draft's several figures too), in order, each shown as it lands. A draft whose writer asked for a figure and got none is warned. */
   const drawFigures = async (which: ReadonlyArray<{ slot: Slot; index: number }>): Promise<boolean> => {
-    const needing = which.filter(({ slot }) => wantsFigure(slot));
+    const needing = which.filter(({ slot }) => wantsFigure(slot) || wantsSet(slot));
     if (!needing.length) return true;
     total += needing.length;
     step('diagram');
     for (const { slot, index } of needing) {
       if (signal.aborted) return false;
       emit({ type: 'diagram', index, state: 'working' });
-      slot.diagram = await diagramFor(slot, index);
-      if (slot.figure && !slot.diagram.block) {
+      if (wantsSet(slot)) slot.diagramSet = await diagramSetFor(slot, index);
+      else slot.diagram = await diagramFor(slot, index);
+      const missing = slot.diagramSet ? slot.diagramSet.figures.some((f) => !f.block) : Boolean(slot.figure && slot.diagram && !slot.diagram.block);
+      if (missing) {
         const shape = slot.checks.find((c) => c.id === 'shape');
         if (shape && !shape.findings.some((f) => f.id === 'shape.figureFailed')) {
           shape.findings = [...shape.findings, { id: 'shape.figureFailed' }];
@@ -396,11 +455,26 @@ export async function writeDrafts(
       stem: s.draft.stem[solveSide] || s.draft.stem[solveSide === 'en' ? 'zh' : 'en'],
       statements: s.draft.statements.map((t) => t[solveSide] || t[solveSide === 'en' ? 'zh' : 'en']),
       options: s.draft.options.map((t) => t[solveSide] || t[solveSide === 'en' ? 'zh' : 'en']),
-      ...(s.diagram?.figureWords ? { figure: s.diagram.figureWords } : {}),
+      ...solveFigures(s),
     }));
     const got = await ask(buildSolveRequest(items, solveSide, deps.preset, signal));
     if (!got.ok) return got.error;
     return parseSolveReply(got.text) ?? aiErrorInfo('badOutput', provider);
+  };
+  /**
+   * What the blind solve reads of a draft's figures (k-0545): one figure as before; several,
+   * each after its label ("(1) …"), and an option's own figure as that option's words.
+   */
+  const solveFigures = (s: Slot): Partial<Pick<SolveItem, 'figure' | 'options'>> => {
+    if (!s.diagramSet) return s.diagram?.figureWords ? { figure: s.diagram.figureWords } : {};
+    const words = (at: string) => s.diagramSet!.figures.find((f) => f.at === at)?.figureWords ?? '';
+    const options = s.draft.options.map((t, i) => {
+      const own = t[solveSide] || t[solveSide === 'en' ? 'zh' : 'en'];
+      const drawn = words(LETTERS[i]);
+      return drawn ? [own, `[its diagram] ${drawn}`].filter(Boolean).join(' ') : own;
+    });
+    const stem = s.diagramSet.figures.filter((f) => f.at && !/^[A-D]$/.test(f.at) && f.figureWords).map((f) => (f.at === 'stem' ? f.figureWords! : `${f.at} ${f.figureWords}`));
+    return { options, ...(stem.length ? { figure: stem.join('\n') } : {}) };
   };
   const applySolve = (slot: Slot, result: SolveResult | undefined) => {
     const key = slot.checks.find((c) => c.id === 'key');
@@ -515,7 +589,20 @@ export function refine(
     );
   }
   if (refinement.kind === 'change' && spec && (!parts || parts.includes('diagram'))) return changeWithFigure(request, target, refinement.text, spec, others, deps, hooks);
-  const figure = spec ? { figure: { spec, mode: refinement.kind === 'change' ? ('keep' as const) : ('base' as const) } } : {};
+  // Several figures (k-0545): a change of the words only keeps them all as they are (no request
+  // for figures); anything else redraws them in one request, from the old ones as a start.
+  const set = deps.diagrams ? target.diagramSet : undefined;
+  if (set && refinement.kind === 'change' && parts && !parts.includes('diagram')) {
+    return writeDrafts({ ...request, count: 1 }, { ...deps, diagrams: false }, hooks, { avoid: others, rewrite: { how: 'change', target, note: refinement.text.trim().slice(0, 400) } }).then((out) =>
+      out.ok ? { ...out, drafts: out.drafts.map((d) => ({ ...d, ...(target.figureSet ? { figureSet: target.figureSet } : {}), diagramSet: set })) } : out,
+    );
+  }
+  const bases = set?.figures.flatMap((f) => (f.spec && f.at ? [{ at: f.at, spec: f.spec }] : [])) ?? [];
+  const figure = spec
+    ? { figure: { spec, mode: refinement.kind === 'change' ? ('keep' as const) : ('base' as const) } }
+    : bases.length
+      ? { figureSet: { bases } }
+      : {};
   if (refinement.kind === 'another') {
     return writeDrafts({ ...request, count: 1 }, deps, hooks, { avoid: [target, ...others], ...figure });
   }

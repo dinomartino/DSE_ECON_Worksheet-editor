@@ -223,6 +223,10 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   editExplanation: { en: 'Why (the key and the wrong options)', zh: '原因（答案及錯誤選項）' },
   editTableHint: { en: 'A table is kept as lines of cells separated by “|”: the first line is the headings.', zh: '表格以「|」分隔每格，每行一列；第一行是標題。' },
   editDiagram: { en: 'Diagram', zh: '圖表' },
+  editFigureAt: {
+    en: (at: string) => (at === 'stem' ? 'Diagram in the question' : /^[A-D]$/.test(at) ? `Diagram of option ${at}` : `Diagram ${at}`),
+    zh: (at: string) => (at === 'stem' ? '題目的圖表' : /^[A-D]$/.test(at) ? `選項 ${at} 的圖表` : `圖表 ${at}`),
+  },
   editDiagramOpen: { en: 'Edit diagram', zh: '修改圖表' },
   editDiagramTitle: { en: 'Open it in the diagram editor teachers use in a worksheet', zh: '在工作紙所用的圖表編輯器中開啟' },
   editDiagramFields: { en: 'Its data is edited in these fields, as in a worksheet.', zh: '如在工作紙中一樣，在以下欄位修改其數據。' },

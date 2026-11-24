@@ -1,4 +1,5 @@
 import type { BiDraft, McqDraft } from '@/generate/types';
+import { FIGURE_ATS, isGridCell, isOptionAt, type FigureAsk, type FigureAt } from '@/diagramGen/figureAt';
 import {
   OPTION_LETTER,
   STATEMENT_NUMBER,
@@ -38,6 +39,58 @@ export interface RawDraft {
    * has no "figure" key at all (an older reply or mock), when every draft is offered one.
    */
   figure?: string;
+  /** Several figures, each with its place (k-0545); `figure` is then unset. */
+  figureSet?: FigureAsk[];
+}
+
+/**
+ * The reply's figures (k-0545: `figures: [{at, note}]`; k-0534's `figure: string` still reads):
+ * one in the stem → `figure`; several → `figureSet`; [] → `figure: ''`; neither key → undefined.
+ * Unknown places and repeats are dropped; notes are kept short.
+ */
+export function figuresOf(fields: Record<string, unknown>): Pick<RawDraft, 'figure' | 'figureSet'> {
+  if (Array.isArray(fields.figures)) {
+    const asks: FigureAsk[] = [];
+    for (const entry of fields.figures) {
+      if (typeof entry !== 'object' || entry === null) continue;
+      const at = String((entry as { at?: unknown }).at ?? '').trim();
+      const note = String((entry as { note?: unknown }).note ?? '').trim().slice(0, 600);
+      if (!(FIGURE_ATS as readonly string[]).includes(at) || asks.some((a) => a.at === at)) continue;
+      asks.push({ at: at as FigureAt, note });
+    }
+    if (!asks.length) return { figure: '' };
+    if (asks.length === 1 && asks[0].at === 'stem') return { figure: asks[0].note };
+    // Stem first, then the grid in order, then the options in order: as the paper prints them.
+    asks.sort((a, b) => FIGURE_ATS.indexOf(a.at) - FIGURE_ATS.indexOf(b.at));
+    return { figureSet: asks };
+  }
+  if (typeof fields.figure === 'string') return { figure: fields.figure.trim().slice(0, 600) };
+  return {};
+}
+
+/**
+ * A several-figure draft against its own words (k-0545): a grid is 2 to 4 cells numbered (1)
+ * up without a gap and holds no statements (its labels are the diagrams); option figures are
+ * all four; the stem or options name every grid cell they refer to.
+ */
+export function figureSetFindings(draft: McqDraft, set: readonly FigureAsk[], sides: readonly Side[]): Finding[] {
+  const out: Finding[] = [];
+  const cells = set.filter((f) => isGridCell(f.at)).map((f) => Number(f.at.slice(1, 2)));
+  const options = set.filter((f) => isOptionAt(f.at));
+  if (cells.length === 1 || cells.some((n, i) => n !== i + 1)) out.push({ id: 'shape.figureSet', params: { problem: 'gridCells' } });
+  if (cells.length >= 2 && draft.statements.length > 0) out.push({ id: 'shape.figureSet', params: { problem: 'gridStatements' } });
+  if (options.length > 0 && options.length !== 4) out.push({ id: 'shape.figureSet', params: { problem: 'optionsAll' } });
+  if (cells.length >= 2) {
+    for (const side of sides) {
+      const words = [draft.stem[side], ...draft.options.map((o) => o[side])].join(' ');
+      const named = [...words.matchAll(/[(（]\s*([1-9])\s*[)）]/g)].map((m) => Number(m[1]));
+      if (named.some((n) => n > cells.length)) {
+        out.push({ id: 'shape.figureSet', params: { problem: 'gridNamed' } });
+        break;
+      }
+    }
+  }
+  return out;
 }
 
 const asText = (x: unknown): string => (typeof x === 'string' ? x.trim().slice(0, 200) : '');
@@ -87,8 +140,7 @@ export function parseWriteReply(text: string): RawDraft[] | null {
     const fields = entry as Record<string, unknown>;
     const draft = draftOf({ ...fields, answer: answerIndexOf(fields.answer), kind: 'mcq' });
     if (draft?.kind !== 'mcq') continue;
-    const figure = typeof fields.figure === 'string' ? fields.figure.trim().slice(0, 600) : undefined;
-    out.push({ draft, angle: asText(fields.angle), changes: parseChanges(fields.changes), ...(figure !== undefined ? { figure } : {}) });
+    out.push({ draft, angle: asText(fields.angle), changes: parseChanges(fields.changes), ...figuresOf(fields) });
   }
   return out;
 }
@@ -132,12 +184,13 @@ export function narrationFindings(draft: McqDraft, sides: readonly Side[]): Find
 // ---- shape (the hard checks) ----
 
 /** Why a draft cannot be a question: never offered for insert. */
-export function shapeFindings(draft: McqDraft, sides: readonly Side[]): Finding[] {
+export function shapeFindings(draft: McqDraft, sides: readonly Side[], optionFigures = false): Finding[] {
   const out: Finding[] = [];
   for (const side of emptySides(draft.stem, sides)) out.push({ id: 'shape.stemEmpty', params: { side } });
   if (draft.options.length !== 4) out.push({ id: 'shape.optionCount', params: { count: draft.options.length } });
   if (!(draft.answerIndex >= 0 && draft.answerIndex <= 3)) out.push({ id: 'shape.keyRange' });
-  for (const side of sides) {
+  // An option that is its own diagram (k-0545) may have no words, or the same few.
+  for (const side of optionFigures ? [] : sides) {
     const texts = draft.options.map((o) => normalizedOption(o[side]));
     if (texts.some((t) => !t)) out.push({ id: 'shape.optionEmpty', params: { side } });
     else if (new Set(texts).size !== texts.length) out.push({ id: 'shape.optionsSame', params: { side } });
@@ -181,6 +234,8 @@ export interface CheckContext {
   exempt?: readonly CorpusDoc[];
   /** The draft has a diagram drawn for it (k-0534): its stem must not describe it. */
   figure?: boolean;
+  /** Several figures asked for (k-0545): their places are checked against the words. */
+  figureSet?: readonly FigureAsk[];
 }
 
 const row = (id: CheckRow['id'], findings: Finding[], state?: CheckRow['state']): CheckRow => ({
@@ -202,7 +257,12 @@ export function draftWords(draft: McqDraft, side: Side): string {
  * a deny form in place (as E3 does). The `key` row is `skipped` until the blind solve runs.
  */
 export function localChecks(draft: McqDraft, ctx: CheckContext): CheckRow[] {
-  const shape = [...shapeFindings(draft, ctx.sides), ...(ctx.figure ? narrationFindings(draft, ctx.sides) : [])];
+  const set = ctx.figureSet ?? [];
+  const shape = [
+    ...shapeFindings(draft, ctx.sides, set.filter((f) => isOptionAt(f.at)).length === 4),
+    ...(ctx.figure || set.length ? narrationFindings(draft, ctx.sides) : []),
+    ...(set.length ? figureSetFindings(draft, set, ctx.sides) : []),
+  ];
   const terms = glossaryPass([draft.stem, ...draft.statements, ...draft.options, draft.explanation], {
     sides: ctx.sides,
     source: '',

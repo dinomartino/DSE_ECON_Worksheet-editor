@@ -41,6 +41,24 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
   refWhatOptionPictures: { en: 'a diagram for each option', zh: '每個選項各有一幅圖' },
   refWhatOptionTables: { en: 'a table for each option', zh: '每個選項各有一個表' },
   refWhatAnd: { en: ' and ', zh: '，' },
+  shapeFigureSet: {
+    en: (problem: string) =>
+      problem === 'optionsAll'
+        ? 'Some options have a diagram and some do not: every option needs its own.'
+        : problem === 'gridStatements'
+          ? 'It has both a grid of diagrams (1)–(4) and statements (1)–(4): the labels clash.'
+          : problem === 'gridNamed'
+            ? 'The question names a diagram the grid does not have.'
+            : 'The grid of diagrams is not numbered (1), (2), … in order.',
+    zh: (problem: string) =>
+      problem === 'optionsAll'
+        ? '部分選項有圖表、部分沒有：每個選項都需要自己的圖表。'
+        : problem === 'gridStatements'
+          ? '題目同時有圖表 (1)–(4) 及陳述 (1)–(4)：標籤重複。'
+          : problem === 'gridNamed'
+            ? '題目提及的圖表不在圖表組中。'
+            : '圖表組未有按 (1)、(2)…… 順序編號。',
+  },
   shapeFigureFailed: {
     en: 'The diagram for this question could not be drawn to match it. Draw it yourself or ask for a change.',
     zh: '未能畫出與題目相符的圖表。請自行繪畫，或要求修改。',

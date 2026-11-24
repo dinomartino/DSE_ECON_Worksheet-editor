@@ -46,6 +46,8 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       return m.shapeNotCombination(side());
     case 'shape.narrates':
       return m.shapeNarrates(side());
+    case 'shape.figureSet':
+      return m.shapeFigureSet(str(p.problem));
     case 'shape.figureFailed':
       return m.shapeFigureFailed;
     case 'shape.referenceForm':
@@ -98,7 +100,7 @@ export function findingText(finding: Finding, m: FindingMessages): string {
 /** Every code `findingText` knows, for the test that holds the engine to it. */
 export const KNOWN_FINDINGS: readonly string[] = [
   'shape.stemEmpty', 'shape.optionCount', 'shape.optionEmpty', 'shape.optionsSame', 'shape.keyRange', 'shape.statementEmpty',
-  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'shape.referenceForm', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'numbers.differ', 'terms.note', 'syllabus.limited',
+  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'shape.figureSet', 'shape.referenceForm', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'numbers.differ', 'terms.note', 'syllabus.limited',
   'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close', 'copy.reference',
   'run.fewer', 'run.stopped', 'run.keyNotChecked', 'run.referenceShape',
 ];

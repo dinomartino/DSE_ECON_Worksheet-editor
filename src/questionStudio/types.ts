@@ -10,6 +10,7 @@ import type { Glossary } from '@/glossary/types';
 import type { Side } from '@/model/textSlots';
 import type { ContentBlock } from '@/model/types';
 import type { DiagramIssue, DiagramSpec, SolvedKey } from '@/diagramGen/types';
+import type { FigureAsk, FigureAt } from '@/diagramGen/figureAt';
 import type { BiText, DiagramBlock } from '@/model/types';
 import type { CorpusIndex } from './nearCopy';
 import type { KeyPick } from './pick';
@@ -185,6 +186,14 @@ export interface StudioDraft {
   /** The writer's note to the diagram maker (k-0534), never printed; absent = no figure asked for. */
   figure?: string;
   /**
+   * The writer asked for several figures (k-0545): a grid "(1)"–"(4)" in the stem, a figure
+   * under every option, or both with one in the stem; each with its note. Absent = one figure
+   * or none (`figure`). Never set together with `figure`.
+   */
+  figureSet?: FigureAsk[];
+  /** The figures drawn for `figureSet`, in one request (k-0545); `diagram` stays unset. */
+  diagramSet?: DraftDiagramSet;
+  /**
    * The teacher edited this version by hand (k-0530): its local checks were run again, and
    * the key check is out of date (`key.edited`) when the question itself changed.
    */
@@ -226,6 +235,17 @@ export interface DraftRich {
   explanation: BiText;
 }
 
+/** A draft's several figures (k-0545), and what the set gives as the key, when the set asks something the solver reads. */
+export interface DraftDiagramSet {
+  /** One per `figureSet` entry, in its order, each with its `at`. */
+  figures: DraftDiagram[];
+  /** The key worked out from the drawings together (a grid of tax graphs). */
+  solved?: SolvedKey;
+  /** What went wrong with the set as a whole, or why the request failed. */
+  issues: DiagramIssue[];
+  error?: AiErrorInfo;
+}
+
 /**
  * The figure written for one draft. `ok` and `look` carry a `block` (an ordinary editable
  * diagram); `look` is to be shown with its `issues` for the teacher to check; `failed` has
@@ -253,6 +273,8 @@ export interface DraftDiagram {
   figureWords?: string;
   /** The teacher changed it in the diagram editor (k-0530): the AI's issues no longer describe it. */
   edited?: true;
+  /** Where it goes, in a draft with several figures (k-0545): the stem, a grid cell "(1)", an option "A". */
+  at?: FigureAt;
 }
 
 // ---- running ----

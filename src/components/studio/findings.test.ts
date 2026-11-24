@@ -22,6 +22,7 @@ const SAMPLES: Finding[] = [
   { id: 'shape.notCombination', params: { side: 'zh' } },
   { id: 'shape.narrates', params: { side: 'en', words: 'dashed lines' } },
   { id: 'shape.figureFailed' },
+  { id: 'shape.figureSet', params: { problem: 'optionsAll' } },
   { id: 'key.differs', params: { solver: 'C', key: 'B' } },
   { id: 'key.ambiguous' },
   { id: 'key.edited' },
