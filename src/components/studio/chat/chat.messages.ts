@@ -86,6 +86,10 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
     en: (n: number, labels: string) => (n === 0 ? 'Writing from the key point alone' : `Chose ${n} real HKDSE question${n === 1 ? '' : 's'} to write like: ${labels}`),
     zh: (n: number, labels: string) => (n === 0 ? '只按學習要點擬題' : `選了 ${n} 條真實 HKDSE 試題作參考：${labels}`),
   },
+  stepRefsChose: {
+    en: (n: number) => `Chose ${n} real HKDSE question${n === 1 ? '' : 's'} to write like:`,
+    zh: (n: number) => `選了 ${n} 條真實 HKDSE 試題作參考：`,
+  },
   stepWriteRun: { en: (n: number) => `Writing ${n}…`, zh: (n: number) => `正在擬 ${n} 題…` },
   stepWriteDone: { en: (n: number) => `Wrote ${n}`, zh: (n: number) => `已擬 ${n} 題` },
   stepCheckRun: { en: 'Checking: solving each again without the key…', zh: '檢查中：不看答案重新作答…' },
@@ -182,7 +186,8 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   aiChose: { en: 'The AI chose these as the style to follow', zh: 'AI 選了這些作文風參考' },
   showReference: { en: 'Show it', zh: '顯示' },
   noReference: { en: 'No reference question: the AI wrote from the key point alone.', zh: '沒有參考題：AI 只按學習要點擬題。' },
-  referenceWords: { en: 'Its picture is not kept with a saved chat; open the question again to see it.', zh: '已儲存的對話不保留圖片；請再次開啟該題查看。' },
+  pickReferenceNow: { en: 'Pick a question', zh: '揀選題目' },
+  closeWhy: { en: 'Close', zh: '關閉' },
   varies: { en: 'What changed', zh: '改了甚麼' },
 
   changedTitle: { en: 'What changed from the reference', zh: '與參考題的分別' },

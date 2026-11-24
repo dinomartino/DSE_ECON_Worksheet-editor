@@ -63,4 +63,9 @@ export const REFERENCE_PICKER_MESSAGES = defineMessages({
   withDiagram: { en: 'with its diagram', zh: '連圖表' },
   yourReference: { en: 'Your reference', zh: '你的參考題' },
   wordsOnly: { en: 'Shown as words: its diagram or table is not drawn here.', zh: '只顯示文字：這裏未能畫出它的圖表。' },
+  // ---- why a reference shows as words only (k-0547) ----
+  missingBankOff: { en: 'Shown as words: the Past paper bank is off in Settings, so its printed page cannot be read.', zh: '只顯示文字：設定中已關閉歷屆試題庫，未能讀取它的印刷版面。' },
+  missingBankError: { en: 'Shown as words: the Past paper bank could not be reached. Open it again when you are online.', zh: '只顯示文字：未能連接歷屆試題庫。請在連線後再開啟。' },
+  missingNotInBank: { en: 'Shown as words: this question is no longer in the Past paper bank.', zh: '只顯示文字：歷屆試題庫已沒有這題。' },
+  missingDocGone: { en: 'Shown as words: the worksheet it came from was deleted, or the question was removed from it.', zh: '只顯示文字：它原屬的工作紙已刪除，或該題已從工作紙移除。' },
 });

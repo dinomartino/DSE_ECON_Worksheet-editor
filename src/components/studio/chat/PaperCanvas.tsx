@@ -11,6 +11,9 @@ import { toRuns } from '@/generate/validate';
 import type { PastPaperItem } from '@/pastpapers/pack';
 import type { SourceQuestion } from '@/questionStudio/types';
 import { QUESTION_STUDIO_MESSAGES } from '../messages';
+import { REFERENCE_PICKER_MESSAGES } from '../picker.messages';
+import { chatReferences, isPrinted, usePrintedReference } from '../referenceItem';
+import { missingWords } from '../ReferenceSheet';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 import type { ChatState, RunState } from './chatStore';
 import type { Chat, ChatDraft, ChatRef } from './chatTypes';
@@ -62,9 +65,14 @@ export function PaperCanvas({
   const m = useMessages(STUDIO_CHAT_MESSAGES);
   const q = useMessages(QUESTION_STUDIO_MESSAGES);
   const [view, setView] = useState<View>('paper');
+  // The chat's references and every one a draft was written from (k-0547): one removed from
+  // the composer, or replaced by a later request's, can still be set beside its drafts.
+  const refs = chatReferences(chat);
   const mine = chat.refs.filter((r) => r.who === 'you');
-  const refs = mine.length ? mine : chat.refs;
+  const current = mine.length ? mine : chat.refs;
   const [refId, setRefId] = useState<string>();
+  // Side by side with no reference at all says why, instead of a silently greyed-out button.
+  const [why, setWhy] = useState(false);
   const ref = refs.find((r) => r.source.id === refId) ?? refs[0];
   const writing = run && run.chatId === chat.id && !run.target ? run : undefined;
   // Every draft is a card, a warned one too (k-0531): nothing is left out.
@@ -131,17 +139,29 @@ export function PaperCanvas({
               key={v}
               type="button"
               aria-pressed={view === v}
-              disabled={v === 'compare' && !ref}
+              aria-disabled={v === 'compare' && !ref ? true : undefined}
               title={v === 'compare' && !ref ? m.noReference : undefined}
-              onClick={() => setView(v)}
+              onClick={() => (v === 'compare' && !ref ? setWhy((w) => !w) : (setWhy(false), setView(v)))}
               data-view-button={v}
-              className={`cursor-pointer rounded-md px-2.5 py-1 text-[12px] disabled:cursor-not-allowed disabled:opacity-45 ${view === v ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+              className={`cursor-pointer rounded-md px-2.5 py-1 text-[12px] aria-disabled:text-ink-subtle ${view === v ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
             >
               {v === 'paper' ? m.viewPaper : m.viewCompare}
             </button>
           ))}
         </div>
       </div>
+
+      {why && !ref && (
+        <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface-sunken px-4 py-2 text-[12.5px] text-ink-muted" role="status" data-compare-why>
+          <span className="min-w-0 flex-1">{m.noReference}</span>
+          <button type="button" onClick={onShowReference} className="cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1 text-[12px] text-ink hover:border-line-strong">
+            {m.pickReferenceNow}
+          </button>
+          <button type="button" onClick={() => setWhy(false)} aria-label={m.closeWhy} className="cursor-pointer rounded px-1 text-ink-subtle hover:text-ink">
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="scroll-slim min-h-0 flex-1 overflow-y-auto px-6 py-5">
         {empty ? (
@@ -184,7 +204,7 @@ export function PaperCanvas({
           </div>
         ) : (
           <div className="mx-auto flex max-w-[860px] flex-col gap-4">
-            {refs.length > 0 && <RefBar refs={refs} onShow={() => (ref ? setView('compare') : onShowReference())} />}
+            {refs.length > 0 && <RefBar refs={current.length ? current : refs} onShow={() => (ref ? setView('compare') : onShowReference())} />}
             {standing.map(card)}
             {streaming}
           </div>
@@ -215,13 +235,21 @@ function RefBar({ refs, onShow }: { refs: readonly ChatRef[]; onShow: () => void
   );
 }
 
-/** The reference as it prints: with its diagram when the bank question is at hand, else its words. */
+/**
+ * The reference as it prints: with its diagram or table when its printed form is found (the
+ * picker's copy, else read again from the bank or the teacher's document, k-0547), else its
+ * words and why.
+ */
 function ReferenceCard({ reference, item, language }: { reference: ChatRef; item?: PastPaperItem; language: LanguageMode }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
+  const p = useMessages(REFERENCE_PICKER_MESSAGES);
   const q = useMessages(QUESTION_STUDIO_MESSAGES);
   const { source } = reference;
+  const looked = usePrintedReference(source, !item);
+  const found = item ? { item, doc: FRAME } : isPrinted(looked) ? looked : undefined;
+  const missing = !item && looked && !isPrinted(looked) ? looked.missing : undefined;
   return (
-    <article className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm" data-compare-reference={source.id}>
+    <article className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm" data-compare-reference={source.id} data-printed={found ? 'yes' : looked === undefined && !item ? 'looking' : 'no'}>
       <header className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
         <span className="text-[12.5px] font-semibold text-ink">{reference.who === 'ai' ? m.writtenLike : m.yourReference}</span>
         <span className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-muted">{source.label}</span>
@@ -229,9 +257,18 @@ function ReferenceCard({ reference, item, language }: { reference: ChatRef; item
         {source.answerIndex >= 0 && <span className="rounded-md bg-surface-sunken px-2 py-0.5 text-[11.5px] font-medium text-ink">{q.key('ABCD'[source.answerIndex] ?? '?')}</span>}
       </header>
       <div className="bg-white px-2 pt-1">
-        {item ? <PastPaperSheet item={item} doc={FRAME} language={language} compact /> : <SourceWords source={source} language={language} />}
+        {found ? <PastPaperSheet item={found.item} doc={found.doc} language={language} compact /> : <SourceWords source={source} language={language} />}
       </div>
-      {!item && source.hasFigure && <p className="border-t border-line px-3 py-2 text-[11.5px] text-ink-subtle">{m.referenceWords}</p>}
+      {!found && looked === undefined && !item && (
+        <p className="border-t border-line px-3 py-2 text-[11.5px] text-ink-subtle" role="status">
+          {p.previewLoading}
+        </p>
+      )}
+      {missing && (
+        <p className="border-t border-line px-3 py-2 text-[11.5px] text-ink-subtle" data-reference-missing={missing}>
+          {missingWords(p, missing)}
+        </p>
+      )}
     </article>
   );
 }

@@ -146,6 +146,15 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **The studio no longer loses a draft's reference question.** "Side by side with reference"
+  stays on for as long as the chat has drafts written from one, even after you remove the
+  reference from the message box, after a later request found no reference, or after the app
+  was closed and opened again. The reference is drawn as it prints, with its diagram or table,
+  read again from the Past paper bank (or from your own worksheet). The references the AI chose
+  are now clickable in the chat too. When the printed page really cannot be found, the studio
+  says why (bank off, offline, no longer in the bank, worksheet deleted); a chat with no
+  reference at all says so instead of showing a greyed-out button.
+  <!-- zh: **擬題工作室不再遺失草稿的參考題。** 只要對話中有按參考題擬出的草稿，「與參考題並排」都可使用，即使你已從訊息框移除該參考題、之後的要求找不到參考題，或關閉 app 再開啟亦然。參考題會按印刷版面顯示（連圖表或表格），從歷屆試題庫（或你自己的工作紙）重新讀取。對話中 AI 挑選的參考題現在亦可點擊查看。若真的找不到印刷版面，工作室會說明原因（試題庫已關閉、離線、試題庫已沒有這題、工作紙已刪除）；完全沒有參考題的對話會直接說明，而不是顯示灰色按鈕。 -->
 - **The AI menu is no longer cut off in the Question studio.** Clicking the AI credits button
   under the studio's message box opened its menu (DSEcon Mentor credits / your own key) half
   off the left side of the window. It now opens fully on screen, above or below the button,
