@@ -73,7 +73,9 @@ describe('ReferencePicker', () => {
   it('is a labelled modal with a card per question, the sheet drawn, and a diagram pill only on the figure', () => {
     const out = html();
     expect(out).toContain('role="dialog"');
-    expect(out).toContain('Pick a past-paper question to write like');
+    expect(out).toContain('Pick a question to write like');
+    expect(out).toContain('data-picker-source="mine"');
+    expect(out).toContain('aria-checked="true" data-picker-source="past"');
     expect(out).toContain('data-reference-card="DSE2019/P1/Q15"');
     expect(out).toContain('data-reference-card="DSE2020/P1/Q3"');
     expect(out.match(/data-sheet/g)).toHaveLength(2);
@@ -85,7 +87,8 @@ describe('ReferencePicker', () => {
 
   it('speaks 中文 in a 中文 interface', () => {
     const out = html(true, 'zh-HK');
-    expect(out).toContain('選一條歷屆試題作參考');
+    expect(out).toContain('選一條題目作參考');
+    expect(out).toContain('我的題目');
     expect(out).toContain('只顯示有圖表的題目');
     expect(out).toContain('用作參考');
   });
@@ -107,10 +110,12 @@ describe('ReferencePicker', () => {
     expect(keepEntries(entries, built, true).map((e) => e.tag)).toEqual(['DSE2020/P1/Q3']);
   });
 
-  it('says the bank is off, in the Past paper screen’s words, instead of crashing', () => {
+  it('opens on My questions when the bank is off here (k-0529), instead of crashing', () => {
     fake.status = 'off';
     try {
-      expect(html()).toContain('The past paper bank is switched off on this computer.');
+      const out = html();
+      expect(out).toContain('aria-checked="true" data-picker-source="mine"');
+      expect(out).toContain('data-my-questions');
     } finally {
       fake.status = 'ready';
     }

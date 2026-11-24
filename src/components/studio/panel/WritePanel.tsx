@@ -9,12 +9,11 @@ import { documentName, plain } from '@/model/text';
 import { toRuns } from '@/generate/validate';
 import { topicNamesFor } from '@/model/topics';
 import type { LanguageMode, Worksheet } from '@/model/types';
-import { PAST_PAPER_SETTINGS, sourceUrl } from '@/pastpapers/config';
 import { CHECK_IDS, type Finding } from '@/questionStudio/types';
 import { hasWarning } from '@/questionStudio/validate';
-import { useSettings } from '@/settings/store';
 import { notify } from '@/store/notices';
 import { unanchoredQuestionSectionLabel, useWorksheetStore } from '@/store/worksheetStore';
+import { BasedOn } from '../BasedOn';
 import { CheckLine } from '../CheckLine';
 import { STUDIO_CHAT_MESSAGES } from '../chat/chat.messages';
 import type { ChatDraft } from '../chat/chatTypes';
@@ -55,8 +54,6 @@ export function WritePanel() {
   const [picker, setPicker] = useState(false);
   const log = useRef<HTMLDivElement>(null);
   const store = usePaperChat.getState();
-  const [settings] = useSettings(PAST_PAPER_SETTINGS);
-  const pastPapersOn = sourceUrl(settings) !== undefined;
 
   // The panel is open: the page draws the drafts; this paper's chat is the one shown.
   useEffect(() => {
@@ -98,7 +95,6 @@ export function WritePanel() {
             worksheet={worksheet}
             language={paperLanguage}
             count={mine.settings.count}
-            pastPapersOn={pastPapersOn}
             onWrite={(words) => send(words)}
             onPick={() => setPicker(true)}
             onDescribe={() => setHint({ text: m.describeHint, at: Date.now() })}
@@ -187,7 +183,6 @@ function Opener({
   worksheet,
   language,
   count,
-  pastPapersOn,
   onWrite,
   onPick,
   onDescribe,
@@ -195,7 +190,6 @@ function Opener({
   worksheet: Worksheet;
   language: LanguageMode;
   count: number;
-  pastPapersOn: boolean;
   onWrite: (words: string) => void;
   onPick: () => void;
   onDescribe: () => void;
@@ -242,7 +236,7 @@ function Opener({
                 <button type="button" onClick={() => onWrite(m.gapAsk(count, gapName))} className="cursor-pointer rounded-lg bg-cta px-3 py-1.5 text-[12.5px] font-medium text-on-cta hover:bg-cta-hover" data-write-gap-go>
                   ✦ {m.gapWrite(count)}
                 </button>
-                <button type="button" onClick={onPick} disabled={!pastPapersOn} className={button}>
+                <button type="button" onClick={onPick} className={button}>
                   {m.pickReference}
                 </button>
               </div>
@@ -252,7 +246,7 @@ function Opener({
       )}
       {!gapName && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={onPick} disabled={!pastPapersOn} className={`${button} inline-flex items-center gap-1.5`} data-write-pick>
+          <button type="button" onClick={onPick} className={`${button} inline-flex items-center gap-1.5`} data-write-pick>
             <PastPaperIcon size={14} /> {m.pickReference}
           </button>
           <button type="button" onClick={onDescribe} className={`${button} inline-flex items-center gap-1.5`} data-write-describe>
@@ -360,6 +354,7 @@ function DraftDetails({ draft, busy }: { draft: ChatDraft; busy: boolean }) {
   return (
     <div className="border-t border-line bg-surface-sunken/50 px-3 pb-2.5 pt-2 text-[12px]" data-write-details>
       <div className="flex flex-wrap gap-1">
+        <BasedOn request={draft.entry.request} />
         {CHECK_IDS.map((id) => {
           const row = studio.checks.find((each) => each.id === id);
           return row ? (
