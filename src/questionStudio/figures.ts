@@ -4,6 +4,7 @@ import { DEFAULT_FONTS } from '@/model/factories';
 import { plain } from '@/model/text';
 import type { Side } from '@/model/textSlots';
 import type { BiText, ContentBlock, ImageBlock, McqQuestion, TableBlock } from '@/model/types';
+import type { CompositeCell } from './composite';
 import type { SourceQuestion } from './types';
 
 /**
@@ -43,24 +44,83 @@ async function drawn(block: Extract<ContentBlock, { kind: 'diagram' }>, lang: Si
 /** The picture of an image block in this language: the Chinese one (`srcZh`) for 'zh' when there is one. */
 const imageSrc = (block: ImageBlock, lang: Side): string => (lang === 'zh' && block.srcZh ? block.srcZh : block.src);
 
-/** The pictures in these blocks, in order, at most `MAX_FIGURES_PER_EXAMPLE`. */
+/** The pictures in these blocks, in order, at most `MAX_FIGURES_PER_EXAMPLE` (one by one: no sets drawn together). */
 export async function figuresOfBlocks(blocks: readonly ContentBlock[], lang: Side = 'en'): Promise<ImagePart[]> {
   return (await placedFigures(blocks, undefined, lang)).map((f) => f.image);
 }
 
-/** The pictures in these blocks with where each sits (`places`, same order; absent = "figure"). */
-export async function placedFigures(blocks: readonly ContentBlock[], places: readonly string[] | undefined, lang: Side = 'en'): Promise<Array<{ image: ImagePart; at: string }>> {
-  const out: Array<{ image: ImagePart; at: string }> = [];
-  for (const [index, block] of blocks.entries()) {
-    if (out.length >= MAX_FIGURES_PER_EXAMPLE) break;
-    const at = places?.[index] ?? 'figure';
+/**
+ * A picture's place in a set printed together (k-0544): a cell of a stem table holding several
+ * pictures, or one option of a set where every option is a picture. `row`/`col` as printed
+ * (rows and columns without a picture left out), `label` "(1)" or "A".
+ */
+export interface FigureCell {
+  group: string;
+  row: number;
+  col: number;
+  label: string;
+}
+
+/** Draws a set as one picture; undefined = cannot (no canvas), and the set goes one by one. */
+export type Composer = (cells: readonly CompositeCell[]) => Promise<string | undefined>;
+
+const browserComposer: Composer = async (cells) => {
+  try {
+    return await (await import('./composite')).drawComposite(cells, MAX_FIGURE_BYTES);
+  } catch {
+    return undefined;
+  }
+};
+
+/** Where a set drawn as one picture sits: "stem (1), (2), (3), (4) in one picture, as printed". */
+function setPlace(places: readonly string[], cells: readonly FigureCell[]): string {
+  const where = places[0].startsWith('option') ? 'options' : places[0].replace(/ \(.*$|,.*$/, '');
+  const labels = cells.map((c) => c.label).filter(Boolean);
+  return `${where} ${labels.join(', ')} in one picture, as printed, each under its label`.replace(/\s+/g, ' ');
+}
+
+/**
+ * The pictures in these blocks with where each sits (`places`, same order; absent = "figure").
+ * A set printed together (`grid`) goes as one picture drawn by `compose` (a browser canvas), so
+ * the model sees it as the student does and reads one picture instead of four; when it cannot
+ * be drawn, its pictures go one by one.
+ */
+export async function placedFigures(
+  blocks: readonly ContentBlock[],
+  places: readonly string[] | undefined,
+  lang: Side = 'en',
+  grid?: readonly (FigureCell | null)[],
+  compose: Composer = browserComposer,
+): Promise<Array<{ image: ImagePart; at: string }>> {
+  // Every picture first (an unreadable one is null), then the sets.
+  const read: Array<string | undefined> = [];
+  for (const block of blocks) {
     if (block.kind === 'image') {
       const src = imageSrc(block, lang);
-      if (usable(src)) out.push({ image: { dataUrl: src }, at });
-    } else if (block.kind === 'diagram') {
-      const url = await drawn(block, lang);
-      if (url) out.push({ image: { dataUrl: url }, at });
+      read.push(usable(src) ? src : undefined);
+    } else if (block.kind === 'diagram') read.push(await drawn(block, lang));
+    else read.push(undefined);
+  }
+  const out: Array<{ image: ImagePart; at: string }> = [];
+  const done = new Set<string>();
+  for (const [index] of blocks.entries()) {
+    if (out.length >= MAX_FIGURES_PER_EXAMPLE) break;
+    const cell = grid?.[index];
+    if (cell && done.has(cell.group)) continue;
+    if (cell) {
+      done.add(cell.group);
+      const members = blocks.map((_, i) => i).filter((i) => grid?.[i]?.group === cell.group && read[i]);
+      if (members.length >= 2) {
+        const url = await compose(members.map((i) => ({ dataUrl: read[i]!, label: grid![i]!.label, row: grid![i]!.row, col: grid![i]!.col })));
+        if (url && usable(url)) {
+          out.push({ image: { dataUrl: url }, at: setPlace(members.map((i) => places?.[i] ?? 'figure'), members.map((i) => grid![i]!)) });
+          continue;
+        }
+      }
+      for (const i of members) if (out.length < MAX_FIGURES_PER_EXAMPLE) out.push({ image: { dataUrl: read[i]! }, at: places?.[i] ?? 'figure' });
+      continue;
     }
+    if (read[index]) out.push({ image: { dataUrl: read[index]! }, at: places?.[index] ?? 'figure' });
   }
   return out;
 }
@@ -71,9 +131,24 @@ function cellLabel(text: BiText): string {
   return words.length > 0 && words.length <= 24 ? words : '';
 }
 
-/** A table's cell pictures as image blocks (the cell's id), with where each sits: "stem (1)" or "stem, table row 1 column 2". */
-function cellPictures(table: TableBlock, where: string): Array<{ block: ImageBlock; at: string }> {
-  const out: Array<{ block: ImageBlock; at: string }> = [];
+type Placed = { block: ContentBlock; at: string; cell?: FigureCell };
+
+/**
+ * A table's cell pictures as image blocks (the cell's id), with where each sits: "stem (1)" or
+ * "stem, table row 1 column 2"; two or more make a set, placed as printed.
+ */
+function cellPictures(table: TableBlock, where: string): Placed[] {
+  const out: Placed[] = [];
+  const rows: number[] = [];
+  const cols: number[] = [];
+  table.rows.forEach((row, r) =>
+    row.cells.forEach((cell, c) => {
+      if (!cell.image || cell.covered) return;
+      if (!rows.includes(r)) rows.push(r);
+      if (!cols.includes(c)) cols.push(c);
+    }),
+  );
+  cols.sort((a, b) => a - b);
   table.rows.forEach((row, r) =>
     row.cells.forEach((cell, c) => {
       if (!cell.image || cell.covered) return;
@@ -81,15 +156,16 @@ function cellPictures(table: TableBlock, where: string): Array<{ block: ImageBlo
       out.push({
         block: { kind: 'image', id: cell.id, src: cell.image.src, ...(cell.image.srcZh ? { srcZh: cell.image.srcZh } : {}), widthPx: cell.image.widthPx, heightPx: cell.image.heightPx, altText: cell.image.altText },
         at: label ? `${where} ${label}` : `${where}, table row ${r + 1} column ${c + 1}`,
+        cell: { group: table.id, row: rows.indexOf(r), col: cols.indexOf(c), label },
       });
     }),
   );
-  return out;
+  return out.length >= 2 ? out : out.map(({ block, at }) => ({ block, at }));
 }
 
 /** The picture-holding blocks of some content, flattened, with where each sits; a cell picture becomes an image block. */
-function placedBlocks(blocks: readonly ContentBlock[], where: string): Array<{ block: ContentBlock; at: string }> {
-  const out: Array<{ block: ContentBlock; at: string }> = [];
+function placedBlocks(blocks: readonly ContentBlock[], where: string): Placed[] {
+  const out: Placed[] = [];
   for (const block of flattenBlocks([...blocks])) {
     if (block.kind === 'image' || block.kind === 'diagram') out.push({ block, at: where });
     else if (block.kind === 'table') out.push(...cellPictures(block, where));
@@ -102,13 +178,20 @@ const LETTERS = 'ABCDEFGH';
 /**
  * The figures of a question and of the passage printed before it, in reading order, with
  * where each sits: "passage", "stem", "stem (1)" (a picture in a table cell, by its label),
- * "option A".
+ * "option A"; and, for a set printed together (a grid in a table, a picture under every
+ * option), its place in the set.
  */
-export function placedFigureBlocks(question: McqQuestion, passage?: readonly ContentBlock[]): Array<{ block: ContentBlock; at: string }> {
+export function placedFigureBlocks(question: McqQuestion, passage?: readonly ContentBlock[]): Placed[] {
+  const options = question.options.map((o, i) => placedBlocks(o.blocks ?? [], `option ${LETTERS[i] ?? i + 1}`));
+  // Options that are each one picture make a set, two to a row as the paper prints them.
+  const pictured = options.filter((list) => list.length === 1 && !list[0].cell);
+  const optionSet = pictured.length >= 2 && pictured.length === options.filter((list) => list.length > 0).length;
   return [
     ...placedBlocks(passage ?? [], 'passage'),
     ...placedBlocks(question.blocks, 'stem'),
-    ...question.options.flatMap((o, i) => placedBlocks(o.blocks ?? [], `option ${LETTERS[i] ?? i + 1}`)),
+    ...options.flatMap((list, i) =>
+      optionSet && list.length === 1 ? [{ ...list[0], cell: { group: 'options', row: Math.floor(i / 2), col: i % 2, label: LETTERS[i] ?? String(i + 1) } }] : list,
+    ),
   ];
 }
 
@@ -131,13 +214,13 @@ export const figureLang = (sides: readonly Side[]): Side => (sides.length > 0 &&
  * be read keeps `figures: []`). Never rejects; the blocks are kept (the figure generator reads
  * a diagram as words).
  */
-export async function withFigures(examples: readonly SourceQuestion[], lang: Side = 'en'): Promise<SourceQuestion[]> {
+export async function withFigures(examples: readonly SourceQuestion[], lang: Side = 'en', compose: Composer = browserComposer): Promise<SourceQuestion[]> {
   return Promise.all(
     examples.map(async (example) => {
       if (!example.figureBlocks?.length) return example;
       if (example.figures && (example.figuresLang ?? 'en') === lang) return example;
       // The blocks stay: a diagram is also the reference `generateDiagram` reads in words.
-      const placed = await placedFigures(example.figureBlocks, example.figurePlaces, lang);
+      const placed = await placedFigures(example.figureBlocks, example.figurePlaces, lang, example.figureGrid, compose);
       return { ...example, figures: placed.map((p) => p.image), figureAt: placed.map((p) => p.at), figuresLang: lang };
     }),
   );

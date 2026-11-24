@@ -14,6 +14,7 @@ import type { BiText, DiagramBlock } from '@/model/types';
 import type { CorpusIndex } from './nearCopy';
 import type { KeyPick } from './pick';
 import type { PartialDraft } from './partial';
+import type { FigureCell } from './figures';
 
 /** How hard a draft is meant to be. Intended, not measured (no results to measure it). */
 export type Level = 'same' | 'harder' | 'easier';
@@ -67,6 +68,8 @@ export interface SourceQuestion {
   figuresLang?: Side;
   /** Where each of `figureBlocks` sits, same order and length (k-0544). Absent on examples saved before it. */
   figurePlaces?: readonly string[];
+  /** Each of `figureBlocks`' place in a set printed together (a grid, a picture per option), or null; sent as one picture (k-0544). */
+  figureGrid?: readonly (FigureCell | null)[];
   /**
    * The picture and diagram blocks `figures` is drawn from (`figures.ts`), kept until the
    * run reads them: drawing a diagram needs a canvas, so it happens when a request is

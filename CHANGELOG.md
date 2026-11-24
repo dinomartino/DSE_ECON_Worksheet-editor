@@ -124,6 +124,13 @@ a version heading is edited afterwards.
   beside it widens to use the space (up to a comfortable reading width). Side by side with the
   reference makes room for two page-wide cards. In a narrow window the cards shrink as before.
   <!-- zh: **擬題工作室的草稿與工作紙頁面同寬，餘下空間留給對話。** 以往草稿卡比卡內題目闊，右邊留下一大片空白。現在整張卡（題目、解釋、檢查及按鈕）與頁面文字同寬，每行在同一位置換行，與工作紙上一樣；旁邊的對話欄則加闊，用盡餘下空間（以舒適閱讀的闊度為限）。「與參考題並排」會留出兩張頁面闊的卡的位置。視窗較窄時，草稿卡會如常縮小。 -->
+- **A set of diagrams goes to the AI the way it is printed.** When a past-paper question you
+  base a question on has a grid of diagrams labelled (1) to (4), or a diagram for every option,
+  the Question studio sends them as one picture laid out as on the paper, each under its label.
+  The AI sees them as your students do, and it costs fewer credits than four separate pictures.
+  When the AI draws a diagram for the new question, it now works from the question's main
+  diagram, not from option A's.
+  <!-- zh: **一組圖表會按試卷的排版送給 AI。** 若你所參考的歷屆試題有一組標示 (1) 至 (4) 的方格圖表，或每個選項各有一幅圖，擬題工作室會把它們合成一張圖、按試卷的排版送出，每幅圖都附上標示。AI 看到的與學生看到的一樣，而且比分開送出四張圖用較少點數。AI 為新題目繪圖時，現在會以題目的主圖為參考，而不是選項 A 的圖。 -->
 - **The Question studio now writes 1 question by default, not 3.** The count picker is still there
   (1, 3 or 5), and a number you type in your request ("3 questions…") still wins. The credit
   estimate follows the count.
@@ -158,7 +165,7 @@ a version heading is edited afterwards.
   number, which option). That includes option D's diagram when every option is a diagram, tables
   printed under the options, tables with merged headings, and the Chinese diagrams on a
   Chinese paper.
-  <!-- zh: **擬題工作室現在會看到你所參考的歷屆試題中的每一幅圖。** 以往若題目的圖表排成編號方格（例如 2023 年文憑試卷一第 36 題，四幅圖分別標示 (1) 至 (4)），AI 只會收到文字，因此無法擬出同類題目。現在每幅圖都會一併送出，並告訴 AI 每幅圖印在哪裏（哪一個編號、哪一個選項）。這包括每個選項都是圖表時選項 D 的圖、印在選項下的表格、有合併標題的表格，以及中文試卷所用的中文版圖表。 -->
+  <!-- zh: **擬題工作室現在會看到你所參考的歷屆試題中的每一幅圖。** 以往若題目的圖表排成編號方格（例如 HKDSE 2023 Paper 1 Q36，四幅圖分別標示 (1) 至 (4)），AI 只會收到文字，因此無法擬出同類題目。現在每幅圖都會一併送出，並告訴 AI 每幅圖印在哪裏（哪一個編號、哪一個選項）。這包括每個選項都是圖表時選項 D 的圖、印在選項下的表格、有合併標題的表格，以及中文試卷所用的中文版圖表。 -->
 - **The AI menu is no longer cut off in the Question studio.** Clicking the AI credits button
   under the studio's message box opened its menu (DSEcon Mentor credits / your own key) half
   off the left side of the window. It now opens fully on screen, above or below the button,
