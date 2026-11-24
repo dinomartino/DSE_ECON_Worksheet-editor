@@ -77,6 +77,16 @@ try {
     await shot(page, 'k0528-empty-box-with-reference');
   });
 
+  // k-0542: one draft is the default; a check that needs several asks for 3 in the ⚙ popover first.
+  const askFor3 = async (pg) => {
+    await pg.locator('[data-chat-settings]').click();
+    const pop = pg.locator('[data-chat-settings-pop]');
+    await pop.waitFor();
+    await pop.getByRole('button', { name: '3', exact: true }).click();
+    await pg.locator('[data-chat-canvas]').click({ position: { x: 30, y: 200 } });
+    await pop.waitFor({ state: 'detached', timeout: 2000 });
+  };
+
   await check('k-0528: the ⚙ popover closes on a press outside, Esc, focus leaving; its button toggles; a choice keeps it open', async () => {
     const button = page.locator('[data-chat-settings]');
     const pop = page.locator('[data-chat-settings-pop]');
@@ -120,7 +130,7 @@ try {
     expect(await pop.isVisible(), 'Shift+Tab within it closed it');
     await page.locator('[data-chat-input]').focus();
     await closed('focus moving to the box');
-    expect((await button.textContent()).includes('3 · Same level · English'), `settings now ${await button.textContent()}`);
+    expect((await button.textContent()).includes('3 questions · Same level · English'), `settings now ${await button.textContent()}`);
   });
 
   await check('Send: the AI reads the reference, picks the key point itself, and writes (steps in the chat, drafts on the paper)', async () => {
@@ -230,7 +240,8 @@ try {
     await page.locator('[data-pastpaper-card] [data-write-like]').first().click();
     await page.locator('[data-studio-screen]').waitFor();
     await page.locator('[data-chat-ai]').first().waitFor();
-    await drafts(page).nth(2).waitFor({ timeout: 40_000 });
+    // k-0542: a chat started from the bank writes the default 1 question.
+    await drafts(page).first().waitFor({ timeout: 40_000 });
     expect((await page.locator('[data-chat-user]').count()) === 1, 'not a fresh chat');
   });
 
@@ -313,6 +324,7 @@ try {
       const card = await pickReference(k.page);
       await card.dblclick();
       await k.page.locator('[data-ref-chip]').waitFor();
+      await askFor3(k.page);
       await k.page.locator('[data-chat-send]').click();
       await k.page.locator('[data-chat-draft]').nth(2).waitFor({ timeout: 40_000 });
       await k.page.locator('[data-chat-send]').waitFor({ timeout: 60_000 });
@@ -413,6 +425,7 @@ try {
       await card.dblclick();
       await k.page.locator('[data-ref-chip]').waitFor();
       await k.page.locator('[data-chat-input]').fill('!table !copy');
+      await askFor3(k.page);
       await k.page.locator('[data-chat-send]').click();
       await k.page.locator('[data-chat-draft]').nth(2).waitFor({ timeout: 40_000 });
       await k.page.locator('[data-chat-send]').waitFor({ timeout: 40_000 });
@@ -455,6 +468,7 @@ try {
     await zh.page.locator('[data-chat-settings]').click();
     await zh.page.locator('[data-chat-settings-pop]').waitFor();
     await shot(zh.page, 'k0528-zh-options-open');
+    await zh.page.locator('[data-chat-settings-pop]').getByRole('button', { name: '3', exact: true }).click();
     await zh.page.locator('[data-chat-canvas]').click({ position: { x: 30, y: 200 } });
     await zh.page.locator('[data-chat-settings-pop]').waitFor({ state: 'detached', timeout: 2000 });
     await zh.page.locator('[data-chat-send]').click();
