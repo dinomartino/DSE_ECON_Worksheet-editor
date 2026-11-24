@@ -7,7 +7,7 @@ import { AI_SECTION_MESSAGES } from '@/components/settings/sections/aiSection/me
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import { useAiStatus } from '@/settings/aiSettings';
 import { mentorSession, useMentorAccount } from '@/settings/mentorAccount';
-import { mentorLive, openBuyCredits } from '@/settings/mentorLive';
+import { openBuyCredits, useMentorLive } from '@/settings/mentorLive';
 import { useAppDialogs } from '@/store/appDialogs';
 import { aiChipState, type AiChip } from './aiChip';
 import { AI_UI_MESSAGES } from './messages';
@@ -15,15 +15,16 @@ import { AI_UI_MESSAGES } from './messages';
 /**
  * The AI status chip (k-0524, u-fs5v): "AI credits 9,003" on the DSEcon Mentor account (amber
  * when under one studio run, red with Buy credits at 0 or below), "AI: own key (Gemini)", or
- * "Set up AI". A click opens Settings → AI. Shown in the app's status bar on every screen
- * (`AiStatusBar`), the Question studio's header and beside the cost line before big runs.
+ * "Set up AI". A click opens Settings → AI. Shown in the Question studio's header and beside
+ * the cost line before big runs (the studio's composer, the import's AI check). While one is
+ * on screen it keeps the credits current (`useMentorLive`). The bottom status bar that also
+ * carried it on every screen is gone (k-0526, u-uw4t: the user didn't want it).
  * A develop build pointed at another Mentor says so (amber dot + tooltip, `mentorOrigin.ts`).
  */
 
-type Where = 'bar' | 'header' | 'inline';
+type Where = 'header' | 'inline';
 
 const SIZE: Record<Where, string> = {
-  bar: 'h-5 px-2 text-[11px]',
   header: 'h-7 px-2.5 text-xs',
   inline: 'h-6 px-2 text-[11px]',
 };
@@ -42,6 +43,7 @@ export function AiStatusChip({ where = 'inline', className = '' }: { where?: Whe
   const s = useMessages(AI_SECTION_MESSAGES);
   const lang = useUiLanguage();
   const chip = aiChipState(status, mentor);
+  useMentorLive();
   const unread = chip.kind === 'credits' && mentor.kind === 'signedIn' && mentor.account === null && !mentor.loading && !mentor.error;
   useEffect(() => {
     if (unread) void mentorSession().refresh();
@@ -106,23 +108,4 @@ function chipTitle(chip: AiChip, m: UiMessages, s: ReturnType<typeof useMessages
     case 'setup':
       return m.chipTitleSetup;
   }
-}
-
-/**
- * The app's status bar (k-0524): a slim strip under every screen with the AI chip on the right,
- * and the one place the credits are kept current (`mentorLive`). Never printed.
- */
-export function AiStatusBar() {
-  const m = useMessages(AI_UI_MESSAGES);
-  useEffect(() => mentorLive().start(), []);
-  return (
-    <footer
-      aria-label={m.chipBar}
-      data-ai-status-bar
-      data-print-hide
-      className="flex h-7 shrink-0 items-center justify-end gap-2 border-t border-line bg-surface px-3 print:hidden"
-    >
-      <AiStatusChip where="bar" />
-    </footer>
-  );
 }

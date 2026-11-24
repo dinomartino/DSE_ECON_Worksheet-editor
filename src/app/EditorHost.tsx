@@ -8,7 +8,6 @@ import { NoticeLayer } from '@/components/ui/NoticeLayer';
 import { setBeforeRestart } from '@/desktop/updateStore';
 import { useBankReturn, useKeptTarget } from '@/components/bank/page/bankReturn';
 import { StartScreen } from '@/components/start/StartScreen';
-import { AiStatusBar } from '@/components/ai/AiStatusChip';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { isDesktop } from '@/platform';
 import { guardStrayFileDrops } from '@/platform/fileDropGuard';
@@ -260,8 +259,6 @@ export function EditorHost() {
           <EditorApp onOpenFiles={() => void leave()} onBackToBank={cameFromBank ? () => void backToBank() : undefined} onClearAll={clearAndLeave} onOpenDocument={open} />
         )}
       </div>
-      {/* The AI status chip on every screen, and the credits kept current (k-0524). */}
-      <AiStatusBar />
       {/* The one app notice stack: start screen, 題庫, Graphs and the editor all share it. */}
       <NoticeLayer />
     </div>

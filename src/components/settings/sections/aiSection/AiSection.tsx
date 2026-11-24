@@ -9,7 +9,7 @@ import { AI_SETTINGS, useAiStatus } from "@/settings/aiSettings";
 import { MENTOR_BUY_URL, MENTOR_PRICING_URL } from "@/ai/mentor";
 import { MENTOR } from "@/ai/mentorOrigin";
 import { mentorSession, useMentorAccount } from "@/settings/mentorAccount";
-import { openBuyCredits } from "@/settings/mentorLive";
+import { openBuyCredits, useMentorLive } from "@/settings/mentorLive";
 import type { SettingsSectionProps } from "@/settings/sections";
 import { useSettings } from "@/settings/store";
 import { initialAiSetup, needsCloseGuard, savedKeys } from "./aiSetup";
@@ -90,6 +90,8 @@ export default function AiSection({
   useEffect(() => {
     if (signedIn) void mentorSession().refresh();
   }, [signedIn]);
+  // The card shows the credits: keep them current while Settings is open (k-0526).
+  useMentorLive();
   const mentorActions: MentorCardActions = {
     signIn: (opts) => void mentorSession().signIn(opts),
     cancel: () => mentorSession().cancel(),
