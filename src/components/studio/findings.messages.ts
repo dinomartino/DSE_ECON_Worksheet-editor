@@ -33,6 +33,14 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
     en: (side: string) => `In ${side}, the question describes its diagram in words. An HKDSE question only refers to the diagram.`,
     zh: (side: string) => `${side}版本的題目用文字描述了圖表。HKDSE 題目只會寫「參看下圖」。`,
   },
+  shapeReferenceForm: {
+    en: (what: string) => `The question it follows has ${what}. The studio can give a question only one diagram for now, so this one is not the same form: check that it still tests what you want.`,
+    zh: (what: string) => `所仿照的題目${what}。擬題工作室目前每題只能附一幅圖，所以這題的形式不同：請檢查它是否仍測試你想要的內容。`,
+  },
+  refWhatPictures: { en: (n: number) => `${n} diagrams`, zh: (n: number) => `有 ${n} 幅圖` },
+  refWhatOptionPictures: { en: 'a diagram for each option', zh: '每個選項各有一幅圖' },
+  refWhatOptionTables: { en: 'a table for each option', zh: '每個選項各有一個表' },
+  refWhatAnd: { en: ' and ', zh: '，' },
   shapeFigureFailed: {
     en: 'The diagram for this question could not be drawn to match it. Draw it yourself or ask for a change.',
     zh: '未能畫出與題目相符的圖表。請自行繪畫，或要求修改。',
@@ -111,6 +119,10 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
   runStopped: {
     en: 'Stopped. The keys of these drafts were not checked.',
     zh: '已停止。這些草稿的答案還沒有檢查。',
+  },
+  runReferenceShape: {
+    en: (what: string) => `The question you based this on has ${what}. The studio can make only one diagram per question for now (more is coming), so the new question carries the rest in words.`,
+    zh: (what: string) => `你所參考的題目${what}。擬題工作室目前每題只能繪畫一幅圖（稍後會支援更多），所以新題目以文字表達其餘內容。`,
   },
   runKeyNotChecked: {
     en: 'The keys could not be checked this time, so read each one yourself.',

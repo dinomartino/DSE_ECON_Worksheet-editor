@@ -41,6 +41,8 @@ const SAMPLES: Finding[] = [
   { id: 'run.fewer', params: { asked: 5, got: 3 } },
   { id: 'run.stopped' },
   { id: 'run.keyNotChecked', params: { message: 'Gemini took too long to answer.' } },
+  { id: 'run.referenceShape', params: { pictures: 4, optionPictures: 0, optionTables: 0 } },
+  { id: 'shape.referenceForm', params: { pictures: 0, optionPictures: 1, optionTables: 0 } },
 ];
 
 describe('the words for what the checks found', () => {

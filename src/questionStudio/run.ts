@@ -18,6 +18,7 @@ import {
   type WriteJob,
 } from './prompt';
 import { corpusDocOfDraft, corpusDocOfSource, referenceFor } from './source';
+import { gapParams, referenceGap, type ReferenceGap } from './referenceShape';
 import type { DiagramGenInput, DiagramSpec, SolvedKey } from '@/diagramGen/types';
 import { figureWords } from '@/diagramGen/words';
 import type { CheckRow, DraftChange, DraftDiagram, Finding, Refinement, Stage, StudioEvent, SolveResult, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from './types';
@@ -132,6 +133,29 @@ function diagramInput(d: McqDraft, sides: readonly Side[], figure?: string): Dia
     ...(figure ? { figure } : {}),
     mcq: { stem: pick(d.stem), statements: d.statements.map(pick), options: d.options.map(pick), answer: d.answerIndex },
   };
+}
+
+/**
+ * k-0544 step 7: a draft written close to a reference whose form the writer cannot follow yet
+ * (several stem diagrams, a diagram or table under every option; `referenceShape.ts`) says so
+ * on its format row (a "check this", not a failure), and the run says so once. Pattern mode
+ * only: draft n follows example n. Added at the end, so it never asks for a rewrite.
+ */
+function markReferenceGaps(slots: Slot[], brief: Brief, notes: Finding[]): void {
+  if (referenceMode(brief.request) !== 'pattern') return;
+  const examples = brief.request.examples;
+  if (!examples.length) return;
+  let first: ReferenceGap | undefined;
+  slots.forEach((slot, index) => {
+    const gap = referenceGap(examples[index % examples.length]);
+    if (!gap) return;
+    first ??= gap;
+    const shape = slot.checks.find((c) => c.id === 'shape');
+    if (!shape || shape.findings.some((f) => f.id === 'shape.referenceForm')) return;
+    shape.findings = [...shape.findings, { id: 'shape.referenceForm', params: gapParams(gap) }];
+    if (shape.state === 'pass') shape.state = 'look';
+  });
+  if (first && !notes.some((n) => n.id === 'run.referenceShape')) notes.push({ id: 'run.referenceShape', params: gapParams(first) });
 }
 
 /** A diagram outcome as the draft keeps it: the block, the spec a follow-up edits, and the figure in words for the blind solve. */
@@ -328,6 +352,7 @@ export async function writeDrafts(
 
   const notes: Finding[] = [];
   const finish = (): StudioOutcome => {
+    markReferenceGaps(slots, brief, notes);
     const drafts: StudioDraft[] = slots.map(draftOf);
     // Every draft is shown, a warned one too (k-0531): fewer only when the model wrote fewer.
     if (drafts.length < wanted) notes.push({ id: 'run.fewer', params: { asked: wanted, got: drafts.length } });
