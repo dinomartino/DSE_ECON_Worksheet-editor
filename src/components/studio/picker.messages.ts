@@ -57,5 +57,10 @@ export const REFERENCE_PICKER_MESSAGES = defineMessages({
   savedIn: { en: (n: number) => `Saved in ${n} ${n === 1 ? 'file' : 'files'}`, zh: (n: number) => `儲存於 ${n} 份文件` },
   neverChanged: { en: 'Your question is only read: it never changes.', zh: '只會讀取你的題目，不會改動它。' },
   basedOn: { en: (labels: string) => `Based on ${labels}`, zh: (labels: string) => `參考：${labels}` },
+  // ---- the reference badge preview (k-0533) ----
+  viewQuestion: { en: 'View this question', zh: '查看這題' },
+  viewQuestionOf: { en: (label: string) => `View this question: ${label}`, zh: (label: string) => `查看這題：${label}` },
+  withDiagram: { en: 'with its diagram', zh: '連圖表' },
+  yourReference: { en: 'Your reference', zh: '你的參考題' },
   wordsOnly: { en: 'Shown as words: its diagram or table is not drawn here.', zh: '只顯示文字：這裏未能畫出它的圖表。' },
 });
