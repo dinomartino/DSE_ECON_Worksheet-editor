@@ -4,8 +4,9 @@ import { bi } from '@/model/text';
 import type { ContentBlock, McqQuestion, TableBlock } from '@/model/types';
 import { optionLayoutMcq } from '@/test/optionLayoutFixture';
 import { examplePayload, sentFigures } from './brief';
-import { figureLang, MAX_FIGURES_PER_EXAMPLE, withFigures } from './figures';
-import { PICTURE_MARK, sourceFromQuestion } from './source';
+import { COMPOSITE_MAX_SIDE, compositeLayout, drawComposite } from './composite';
+import { figureLang, MAX_FIGURES_PER_EXAMPLE, withFigures, type Composer } from './figures';
+import { PICTURE_MARK, referenceFor, sourceFromQuestion } from './source';
 
 /**
  * k-0544: every shape a past-paper reference comes in reaches the model whole — a grid of
@@ -166,5 +167,64 @@ describe('older saved examples', () => {
     delete old.figurePlaces;
     const [read] = await withFigures([old]);
     expect(read.figureAt).toEqual(['figure']);
+  });
+});
+
+describe('a set printed together goes as one picture (k-0544 step 3)', () => {
+  const calls: Array<Array<{ label: string; row: number; col: number }>> = [];
+  const compose: Composer = async (cells) => {
+    calls.push(cells.map(({ label, row, col }) => ({ label, row, col })));
+    return pic(`set-${cells.map((c) => c.label).join('')}`);
+  };
+  it('a grid in a stem table: one picture, laid out as printed, placed by its labels', async () => {
+    calls.length = 0;
+    const [read] = await withFigures([sourceFromQuestion(grid, { label: 'grid' })], 'en', compose);
+    expect(calls).toEqual([[{ label: '(1)', row: 0, col: 0 }, { label: '(2)', row: 0, col: 1 }, { label: '(3)', row: 1, col: 0 }, { label: '(4)', row: 1, col: 1 }]]);
+    expect(read.figures?.map((f) => f.dataUrl)).toEqual([pic('set-(1)(2)(3)(4)')]);
+    expect(read.figureAt).toEqual(['stem (1), (2), (3), (4) in one picture, as printed, each under its label']);
+  });
+  it('a picture under every option: one picture, two to a row, each under its letter; a stem picture stays its own', async () => {
+    calls.length = 0;
+    const q = withOptionBlocks(optionLayoutMcq(['Study the diagram.', '參看下圖。'], [['', ''], ['', ''], ['', ''], ['', '']]), (i) => [createImageBlock(pic(`opt${i}`), 120, 90)]);
+    const both = { ...q, blocks: [...q.blocks, createImageBlock(pic('stem'), 200, 120)] };
+    const [read] = await withFigures([sourceFromQuestion(both, { label: 'x' })], 'en', compose);
+    expect(calls).toEqual([[{ label: 'A', row: 0, col: 0 }, { label: 'B', row: 0, col: 1 }, { label: 'C', row: 1, col: 0 }, { label: 'D', row: 1, col: 1 }]]);
+    expect(read.figureAt).toEqual(['stem', 'options A, B, C, D in one picture, as printed, each under its label']);
+    // The diagram step builds on the stem's picture, not option A's.
+    expect(referenceFor([read], 0, true)).toEqual({ image: { dataUrl: pic('stem') }, text: "The attached picture is the past question's stem." });
+  });
+  it('the diagram step gets the set for a question whose only pictures are the set', async () => {
+    const [read] = await withFigures([sourceFromQuestion(grid, { label: 'grid' })], 'en', compose);
+    expect(referenceFor([read], 0, true)?.image?.dataUrl).toBe(pic('set-(1)(2)(3)(4)'));
+    expect(referenceFor([read], 0, false)).toBeUndefined();
+  });
+  it('where a set cannot be drawn (no canvas), its pictures go one by one', async () => {
+    const [read] = await withFigures([sourceFromQuestion(grid, { label: 'grid' })], 'en', async () => undefined);
+    expect(read.figures).toHaveLength(4);
+    expect(read.figureAt).toEqual(['stem (1)', 'stem (2)', 'stem (3)', 'stem (4)']);
+  });
+});
+
+describe('the composite layout', () => {
+  const cells = (n: number) => Array.from({ length: n }, (_, i) => ({ dataUrl: '', label: `(${i + 1})`, row: Math.floor(i / 2), col: i % 2 }));
+  it('keeps the printed grid, every picture its column\'s width, the long side within the cap', () => {
+    const layout = compositeLayout(cells(4), [{ w: 625, h: 459 }, { w: 625, h: 450 }, { w: 590, h: 436 }, { w: 603, h: 445 }]);
+    expect(layout.width).toBeLessThanOrEqual(COMPOSITE_MAX_SIDE);
+    expect(layout.height).toBeLessThanOrEqual(COMPOSITE_MAX_SIDE);
+    const [a, b, c] = layout.boxes;
+    expect(a.y).toBe(b.y);
+    expect(c.x).toBe(a.x);
+    expect(c.y).toBeGreaterThan(a.y + a.h);
+    expect(new Set(layout.boxes.map((x) => x.w)).size).toBe(1);
+    // Each label sits above its picture.
+    for (const box of layout.boxes) expect(box.labelY).toBeLessThan(box.y);
+  });
+  it('a tall set is shrunk until it fits', () => {
+    const tall = Array.from({ length: 4 }, (_, i) => ({ dataUrl: '', label: 'ABCD'[i], row: i, col: 0 }));
+    const layout = compositeLayout(tall, Array.from({ length: 4 }, () => ({ w: 800, h: 700 })));
+    expect(Math.max(layout.width, layout.height)).toBeLessThanOrEqual(COMPOSITE_MAX_SIDE);
+  });
+  it('outside a browser it draws nothing', async () => {
+    expect(await drawComposite(cells(4))).toBeUndefined();
   });
 });

@@ -110,7 +110,7 @@ export function sourceFromQuestion(
     answerIndex: Number.isInteger(key) && key >= 0 && key < question.options.length ? key : -1,
     ...(explanation && (explanation.en || explanation.zh) ? { explanation } : {}),
     hasFigure: stem.figure || (passage?.figure ?? false) || optionFigure,
-    ...(placed.length ? { figureBlocks: placed.map((p) => p.block), figurePlaces: placed.map((p) => p.at) } : {}),
+    ...(placed.length ? { figureBlocks: placed.map((p) => p.block), figurePlaces: placed.map((p) => p.at), ...(placed.some((p) => p.cell) ? { figureGrid: placed.map((p) => p.cell ?? null) } : {}) } : {}),
   };
 }
 
@@ -149,7 +149,8 @@ export const isCombinationSource = (source: SourceQuestion): boolean => source.s
  * The figure of the example a draft follows, for `generateDiagram`'s `reference` (k-0514):
  * in pattern mode draft n follows example n (cycling), otherwise the first example that has a
  * figure. An editor diagram is sent as words (every provider reads that); a picture only when
- * the provider reads pictures. Undefined when the example has none.
+ * the provider reads pictures: the stem's, else a set drawn as one, with where it is printed
+ * (k-0544). Undefined when the example has none.
  */
 export function referenceFor(examples: readonly SourceQuestion[], index: number, vision: boolean): DiagramReference | undefined {
   const pool = examples.filter((e) => e.hasFigure || e.figureBlocks?.length || e.figures?.length);
@@ -158,6 +159,13 @@ export function referenceFor(examples: readonly SourceQuestion[], index: number,
   const example = own && pool.includes(own) ? own : pool[0];
   const block = example.figureBlocks?.find((b): b is Extract<ContentBlock, { kind: 'diagram' }> => b.kind === 'diagram');
   if (block) return { diagram: block.diagram };
-  const image = example.figures?.[0];
-  return image && vision ? { image } : undefined;
+  // The picture the question is built on (k-0544): the stem's or the passage's first, then a set
+  // drawn as one (a grid, the options), then whatever there is — never option A's alone by default.
+  const figures = example.figures ?? [];
+  const at = example.figureAt ?? [];
+  const order = [(p: string) => /^(stem|passage)/.test(p), (p: string) => p.includes('in one picture'), () => true];
+  const pick = order.map((test) => figures.findIndex((_, i) => test(at[i] ?? ''))).find((i) => i >= 0) ?? -1;
+  if (pick < 0 || !vision) return undefined;
+  const where = at[pick];
+  return { image: figures[pick], ...(where && where !== 'figure' ? { text: `The attached picture is the past question's ${where}.` } : {}) };
 }

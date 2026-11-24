@@ -117,6 +117,13 @@ a version heading is edited afterwards.
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
+- **A set of diagrams goes to the AI the way it is printed.** When a past-paper question you
+  base a question on has a grid of diagrams labelled (1) to (4), or a diagram for every option,
+  the Question studio sends them as one picture laid out as on the paper, each under its label.
+  The AI sees them as your students do, and it costs fewer credits than four separate pictures.
+  When the AI draws a diagram for the new question, it now works from the question's main
+  diagram, not from option A's.
+  <!-- zh: **一組圖表會按試卷的排版送給 AI。** 若你所參考的歷屆試題有一組標示 (1) 至 (4) 的方格圖表，或每個選項各有一幅圖，擬題工作室會把它們合成一張圖、按試卷的排版送出，每幅圖都附上標示。AI 看到的與學生看到的一樣，而且比分開送出四張圖用較少點數。AI 為新題目繪圖時，現在會以題目的主圖為參考，而不是選項 A 的圖。 -->
 - **The Question studio now writes 1 question by default, not 3.** The count picker is still there
   (1, 3 or 5), and a number you type in your request ("3 questions…") still wins. The credit
   estimate follows the count.
@@ -151,7 +158,7 @@ a version heading is edited afterwards.
   number, which option). That includes option D's diagram when every option is a diagram, tables
   printed under the options, tables with merged headings, and the Chinese diagrams on a
   Chinese paper.
-  <!-- zh: **擬題工作室現在會看到你所參考的歷屆試題中的每一幅圖。** 以往若題目的圖表排成編號方格（例如 2023 年文憑試卷一第 36 題，四幅圖分別標示 (1) 至 (4)），AI 只會收到文字，因此無法擬出同類題目。現在每幅圖都會一併送出，並告訴 AI 每幅圖印在哪裏（哪一個編號、哪一個選項）。這包括每個選項都是圖表時選項 D 的圖、印在選項下的表格、有合併標題的表格，以及中文試卷所用的中文版圖表。 -->
+  <!-- zh: **擬題工作室現在會看到你所參考的歷屆試題中的每一幅圖。** 以往若題目的圖表排成編號方格（例如 HKDSE 2023 Paper 1 Q36，四幅圖分別標示 (1) 至 (4)），AI 只會收到文字，因此無法擬出同類題目。現在每幅圖都會一併送出，並告訴 AI 每幅圖印在哪裏（哪一個編號、哪一個選項）。這包括每個選項都是圖表時選項 D 的圖、印在選項下的表格、有合併標題的表格，以及中文試卷所用的中文版圖表。 -->
 - **The AI menu is no longer cut off in the Question studio.** Clicking the AI credits button
   under the studio's message box opened its menu (DSEcon Mentor credits / your own key) half
   off the left side of the window. It now opens fully on screen, above or below the button,
