@@ -31,6 +31,8 @@ import {
   type DiagramIssue,
   type DiagramSpec,
   type Direction,
+  type GraphRise,
+  type GraphShape,
   type Place,
   type ShiftSize,
   type Slope,
@@ -144,7 +146,28 @@ function baseCurve(spec: SpecCurve): { curve: DiagramCurve; frontier?: Pair } {
       const ab = FRONTIER[spec.place] ?? FRONTIER.mid;
       return { curve: frontierCurve(ab, name), frontier: ab };
     }
+    case 'graph':
+      return { curve: graphCurve(spec.shape ?? 'none', spec.rise ?? 'rising', name) };
   }
+}
+
+/**
+ * A plain graph's line (k-0545), drawn as the HKDSE papers sketch them: a straight line from
+ * the origin, a straight line from a point on the y-axis, a curve bending up (convex) or
+ * down (concave), or a horizontal line. 'none' reads as straight from the origin.
+ */
+export const GRAPH_LINES: Record<Exclude<GraphShape, 'none'>, Record<GraphRise, Pair[]>> = {
+  origin: { rising: [[0, 0], [0.85, 0.72]], falling: [[0.04, 0.82], [0.86, 0.04]] },
+  linear: { rising: [[0, 0.24], [0.85, 0.74]], falling: [[0, 0.78], [0.85, 0.24]] },
+  convex: { rising: [[0, 0], [0.45, 0.16], [0.68, 0.38], [0.86, 0.76]], falling: [[0.08, 0.84], [0.22, 0.4], [0.48, 0.2], [0.86, 0.12]] },
+  concave: { rising: [[0, 0], [0.18, 0.38], [0.42, 0.6], [0.86, 0.76]], falling: [[0.02, 0.76], [0.4, 0.68], [0.62, 0.5], [0.8, 0.1]] },
+  flat: { rising: [[0, 0.45], [0.86, 0.45]], falling: [[0, 0.45], [0.86, 0.45]] },
+};
+
+function graphCurve(shape: GraphShape, rise: GraphRise, name: DiagramCurve['label']): DiagramCurve {
+  const lines = GRAPH_LINES[shape === 'none' ? 'origin' : shape];
+  const bent = shape === 'convex' || shape === 'concave';
+  return curve(lines[rise] ?? lines.rising, name, bent ? { shape: 'curved' } : {});
 }
 
 /**

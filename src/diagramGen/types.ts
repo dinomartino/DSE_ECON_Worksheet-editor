@@ -22,8 +22,19 @@ export interface SpecText {
  * answer key (right = increase for every role; up = increase for demand-like roles,
  * decrease for supply-like ones).
  */
-export const CURVE_ROLES = ['demand', 'supply', 'ad', 'sras', 'lras', 'vertical', 'horizontal', 'frontier'] as const;
+export const CURVE_ROLES = ['demand', 'supply', 'ad', 'sras', 'lras', 'vertical', 'horizontal', 'frontier', 'graph'] as const;
 export type CurveRole = (typeof CURVE_ROLES)[number];
+
+/**
+ * A plain graph's line (role 'graph', k-0545): "tax payment against income", "average cost
+ * against output". origin: straight from the origin; linear: straight from a point on the
+ * y-axis; convex: bending upward (rising ever faster, or falling ever slower); concave:
+ * bending downward; flat: horizontal. 'none' on every other role.
+ */
+export const GRAPH_SHAPES = ['none', 'origin', 'linear', 'convex', 'concave', 'flat'] as const;
+export type GraphShape = (typeof GRAPH_SHAPES)[number];
+export const GRAPH_RISES = ['rising', 'falling'] as const;
+export type GraphRise = (typeof GRAPH_RISES)[number];
 
 /** normal: the usual slope; steep: inelastic; flat: elastic. Ignored by vertical, horizontal. */
 export const SLOPES = ['normal', 'steep', 'flat'] as const;
@@ -39,8 +50,11 @@ export interface SpecCurve {
   role: CurveRole;
   slope: Slope;
   place: Place;
-  /** The printed name, a symbol: "D", "S_0", "SRAS_1", "PPC". `_x` / `_{xy}` subscripts. */
+  /** The printed name, a symbol: "D", "S_0", "SRAS_1", "PPC". `_x` / `_{xy}` subscripts. '' allowed on a graph line. */
   label: string;
+  /** Role 'graph' only (k-0545): the line's shape and which way it goes; absent in a spec saved before = 'none' / 'rising'. */
+  shape?: GraphShape;
+  rise?: GraphRise;
 }
 
 /**

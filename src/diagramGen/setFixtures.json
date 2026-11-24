@@ -1,0 +1,1328 @@
+{
+ "note": "k-0545 synthetic several-figure questions (no bank text): the studio writer reply and the batched diagram reply, used by set.test.ts and scripts/ai-mock-server.mjs. \"like\" names the past-paper question each remakes.",
+ "fixtures": [
+  {
+   "id": "grid-regressive",
+   "like": "DSE2023/P1/Q36",
+   "marker": "!grid-regressive",
+   "match": [
+    "describe a progressive tax",
+    "描繪累進稅"
+   ],
+   "question": {
+    "stem": {
+     "en": "Which of the following diagrams describe a regressive tax?",
+     "zh": "下列哪些圖描繪累退稅？"
+    },
+    "statements": [],
+    "options": [
+     {
+      "en": "(1) and (2) only",
+      "zh": "只有 (1)、(2)"
+     },
+     {
+      "en": "(1) and (3) only",
+      "zh": "只有 (1)、(3)"
+     },
+     {
+      "en": "(2) and (4) only",
+      "zh": "只有 (2)、(4)"
+     },
+     {
+      "en": "(3) and (4) only",
+      "zh": "只有 (3)、(4)"
+     }
+    ],
+    "answer": 0,
+    "explanation": {
+     "en": "A regressive tax takes a smaller share of a higher income: tax payment rising at a decreasing rate (1) and a falling average tax rate (2). (3) is proportional and (4) progressive.",
+     "zh": "累退稅向較高入息徵收較小的比例：稅款以遞減的速度上升 (1)，平均稅率下降 (2)。(3) 是比例稅，(4) 是累進稅。"
+    },
+    "angle": "regressive instead of progressive, the same four kinds of graph",
+    "figures": [
+     {
+      "at": "(1)",
+      "note": "Tax payment against taxable income: a curve from the origin, concave, rising at a decreasing rate (regressive)."
+     },
+     {
+      "at": "(2)",
+      "note": "Average tax rate against taxable income: a straight line, falling (regressive)."
+     },
+     {
+      "at": "(3)",
+      "note": "Tax payment against taxable income: a straight line through the origin (proportional)."
+     },
+     {
+      "at": "(4)",
+      "note": "Average tax rate against taxable income: rising (progressive)."
+     }
+    ]
+   },
+   "reply": {
+    "gridAsks": "regressiveTax",
+    "figures": [
+     {
+      "at": "(1)",
+      "kind": "curves",
+      "reason": "Tax payment rising at a decreasing rate.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Taxable income ($)",
+       "zh": "應課稅入息（元）"
+      },
+      "yAxis": {
+       "en": "Tax payment ($)",
+       "zh": "稅款（元）"
+      },
+      "curves": [
+       {
+        "id": "L",
+        "role": "graph",
+        "slope": "normal",
+        "place": "mid",
+        "label": "",
+        "shape": "concave",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "(2)",
+      "kind": "curves",
+      "reason": "A falling average tax rate.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Taxable income ($)",
+       "zh": "應課稅入息（元）"
+      },
+      "yAxis": {
+       "en": "Average tax rate (%)",
+       "zh": "平均稅率（%）"
+      },
+      "curves": [
+       {
+        "id": "L",
+        "role": "graph",
+        "slope": "normal",
+        "place": "mid",
+        "label": "",
+        "shape": "linear",
+        "rise": "falling"
+       }
+      ],
+      "shifts": [],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "(3)",
+      "kind": "curves",
+      "reason": "Tax payment proportional to income.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Taxable income ($)",
+       "zh": "應課稅入息（元）"
+      },
+      "yAxis": {
+       "en": "Tax payment ($)",
+       "zh": "稅款（元）"
+      },
+      "curves": [
+       {
+        "id": "L",
+        "role": "graph",
+        "slope": "normal",
+        "place": "mid",
+        "label": "",
+        "shape": "origin",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "(4)",
+      "kind": "curves",
+      "reason": "A rising average tax rate.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Taxable income ($)",
+       "zh": "應課稅入息（元）"
+      },
+      "yAxis": {
+       "en": "Average tax rate (%)",
+       "zh": "平均稅率（%）"
+      },
+      "curves": [
+       {
+        "id": "L",
+        "role": "graph",
+        "slope": "normal",
+        "place": "mid",
+        "label": "",
+        "shape": "origin",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "grid-proportional",
+   "like": "DSE2026/P1/Q38",
+   "marker": "!grid-proportional",
+   "match": [
+    "equality principle",
+    "公平賦稅原則"
+   ],
+   "question": {
+    "stem": {
+     "en": "Which of the following tax systems are in line with the principle that people should pay taxes in proportion to their incomes?",
+     "zh": "下列哪些稅制符合人們應按收入比例納稅的原則？"
+    },
+    "statements": [],
+    "options": [
+     {
+      "en": "(1) and (2) only",
+      "zh": "只有 (1) 及 (2)"
+     },
+     {
+      "en": "(1) and (3) only",
+      "zh": "只有 (1) 及 (3)"
+     },
+     {
+      "en": "(2) and (4) only",
+      "zh": "只有 (2) 及 (4)"
+     },
+     {
+      "en": "(3) and (4) only",
+      "zh": "只有 (3) 及 (4)"
+     }
+    ],
+    "answer": 1,
+    "explanation": {
+     "en": "A proportional tax: a constant tax rate (1) and tax payment straight from the origin (3). (2) is progressive and (4), a lump sum, regressive.",
+     "zh": "比例稅：稅率不變 (1)，稅款為一條通過原點的直線 (3)。(2) 是累進稅，(4) 是定額稅，屬累退稅。"
+    },
+    "angle": "the proportional graphs in a new order",
+    "figures": [
+     {
+      "at": "(1)",
+      "note": "Tax rate against taxable income: horizontal (proportional)."
+     },
+     {
+      "at": "(2)",
+      "note": "Tax payment against taxable income: convex, rising at an increasing rate (progressive)."
+     },
+     {
+      "at": "(3)",
+      "note": "Tax payment against taxable income: a straight line from the origin (proportional)."
+     },
+     {
+      "at": "(4)",
+      "note": "Tax payment against taxable income: horizontal, a lump sum (regressive)."
+     }
+    ]
+   },
+   "reply": {
+    "gridAsks": "proportionalTax",
+    "figures": [
+     {
+      "at": "(1)",
+      "kind": "curves",
+      "reason": "A constant tax rate.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Taxable income ($)",
+       "zh": "應課稅入息（元）"
+      },
+      "yAxis": {
+       "en": "Tax rate (%)",
+       "zh": "稅率（%）"
+      },
+      "curves": [
+       {
+        "id": "L",
+        "role": "graph",
+        "slope": "normal",
+        "place": "mid",
+        "label": "",
+        "shape": "flat",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "(2)",
+      "kind": "curves",
+      "reason": "Tax payment rising at an increasing rate.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Taxable income ($)",
+       "zh": "應課稅入息（元）"
+      },
+      "yAxis": {
+       "en": "Tax payment ($)",
+       "zh": "稅款（元）"
+      },
+      "curves": [
+       {
+        "id": "L",
+        "role": "graph",
+        "slope": "normal",
+        "place": "mid",
+        "label": "",
+        "shape": "convex",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "(3)",
+      "kind": "curves",
+      "reason": "Tax payment proportional to income.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Taxable income ($)",
+       "zh": "應課稅入息（元）"
+      },
+      "yAxis": {
+       "en": "Tax payment ($)",
+       "zh": "稅款（元）"
+      },
+      "curves": [
+       {
+        "id": "L",
+        "role": "graph",
+        "slope": "normal",
+        "place": "mid",
+        "label": "",
+        "shape": "origin",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "(4)",
+      "kind": "curves",
+      "reason": "A lump-sum tax.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Taxable income ($)",
+       "zh": "應課稅入息（元）"
+      },
+      "yAxis": {
+       "en": "Tax payment ($)",
+       "zh": "稅款（元）"
+      },
+      "curves": [
+       {
+        "id": "L",
+        "role": "graph",
+        "slope": "normal",
+        "place": "mid",
+        "label": "",
+        "shape": "flat",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "options-labour",
+   "like": "DSE2024/P1/Q11",
+   "marker": "!options-labour",
+   "match": [
+    "pilots in Mainland",
+    "內地城市的機師"
+   ],
+   "question": {
+    "stem": {
+     "en": "Suppose many nurses from overseas come to work in Hong Kong. Meanwhile, the population ages and more people need nursing care. Which of the following diagrams best illustrates the effects on the market for nurses in Hong Kong?",
+     "zh": "假設很多海外護士來港工作。與此同時，人口老化，更多人需要護理服務。下列哪一幅圖最能說明上述事件對香港護士市場的影響？"
+    },
+    "statements": [],
+    "options": [
+     {
+      "en": "",
+      "zh": ""
+     },
+     {
+      "en": "",
+      "zh": ""
+     },
+     {
+      "en": "",
+      "zh": ""
+     },
+     {
+      "en": "",
+      "zh": ""
+     }
+    ],
+    "answer": 0,
+    "explanation": {
+     "en": "More nurses come to work: supply increases (right). More people need care: demand for nurses increases (right).",
+     "zh": "更多護士來港工作：供應增加（向右移）。更多人需要護理：對護士的需求增加（向右移）。"
+    },
+    "angle": "nurses instead of pilots, both curves moving",
+    "figures": [
+     {
+      "at": "A",
+      "note": "Nurses market: supply shifts right (S_0 to S_1) and demand shifts right (D_0 to D_1). The key."
+     },
+     {
+      "at": "B",
+      "note": "Nurses market: only demand shifts right."
+     },
+     {
+      "at": "C",
+      "note": "Nurses market: supply shifts right, demand shifts left."
+     },
+     {
+      "at": "D",
+      "note": "Nurses market: supply shifts left, demand shifts right."
+     }
+    ]
+   },
+   "reply": {
+    "gridAsks": "none",
+    "figures": [
+     {
+      "at": "A",
+      "kind": "curves",
+      "reason": "Both increase.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "Nurses working in Hong Kong",
+       "zh": "在香港工作的護士"
+      },
+      "xAxis": {
+       "en": "Quantity",
+       "zh": "數量"
+      },
+      "yAxis": {
+       "en": "Wage rate",
+       "zh": "工資率"
+      },
+      "curves": [
+       {
+        "id": "D",
+        "role": "demand",
+        "slope": "normal",
+        "place": "mid",
+        "label": "D_0",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "S",
+        "role": "supply",
+        "slope": "normal",
+        "place": "mid",
+        "label": "S_0",
+        "shape": "none",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [
+       {
+        "of": "D",
+        "id": "D1",
+        "direction": "right",
+        "size": "normal",
+        "label": "D_1"
+       },
+       {
+        "of": "S",
+        "id": "S1",
+        "direction": "right",
+        "size": "normal",
+        "label": "S_1"
+       }
+      ],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "B",
+      "kind": "curves",
+      "reason": "Only demand increases.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "Nurses working in Hong Kong",
+       "zh": "在香港工作的護士"
+      },
+      "xAxis": {
+       "en": "Quantity",
+       "zh": "數量"
+      },
+      "yAxis": {
+       "en": "Wage rate",
+       "zh": "工資率"
+      },
+      "curves": [
+       {
+        "id": "D",
+        "role": "demand",
+        "slope": "normal",
+        "place": "mid",
+        "label": "D_0",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "S",
+        "role": "supply",
+        "slope": "normal",
+        "place": "mid",
+        "label": "S",
+        "shape": "none",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [
+       {
+        "of": "D",
+        "id": "D1",
+        "direction": "right",
+        "size": "normal",
+        "label": "D_1"
+       }
+      ],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "C",
+      "kind": "curves",
+      "reason": "Supply up, demand down.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "Nurses working in Hong Kong",
+       "zh": "在香港工作的護士"
+      },
+      "xAxis": {
+       "en": "Quantity",
+       "zh": "數量"
+      },
+      "yAxis": {
+       "en": "Wage rate",
+       "zh": "工資率"
+      },
+      "curves": [
+       {
+        "id": "D",
+        "role": "demand",
+        "slope": "normal",
+        "place": "mid",
+        "label": "D_0",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "S",
+        "role": "supply",
+        "slope": "normal",
+        "place": "mid",
+        "label": "S_0",
+        "shape": "none",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [
+       {
+        "of": "D",
+        "id": "D1",
+        "direction": "left",
+        "size": "normal",
+        "label": "D_1"
+       },
+       {
+        "of": "S",
+        "id": "S1",
+        "direction": "right",
+        "size": "normal",
+        "label": "S_1"
+       }
+      ],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "D",
+      "kind": "curves",
+      "reason": "Supply down, demand up.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "Nurses working in Hong Kong",
+       "zh": "在香港工作的護士"
+      },
+      "xAxis": {
+       "en": "Quantity",
+       "zh": "數量"
+      },
+      "yAxis": {
+       "en": "Wage rate",
+       "zh": "工資率"
+      },
+      "curves": [
+       {
+        "id": "D",
+        "role": "demand",
+        "slope": "normal",
+        "place": "mid",
+        "label": "D_0",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "S",
+        "role": "supply",
+        "slope": "normal",
+        "place": "mid",
+        "label": "S_0",
+        "shape": "none",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [
+       {
+        "of": "D",
+        "id": "D1",
+        "direction": "right",
+        "size": "normal",
+        "label": "D_1"
+       },
+       {
+        "of": "S",
+        "id": "S1",
+        "direction": "left",
+        "size": "normal",
+        "label": "S_1"
+       }
+      ],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "options-adas",
+   "like": "DSE2024/P1/Q29",
+   "marker": "!options-adas",
+   "match": [
+    "highly skilled foreign talents",
+    "高技術境外人才"
+   ],
+   "question": {
+    "stem": {
+     "en": "Suppose a large number of young workers emigrate from Hong Kong. Which of the following diagrams best illustrates the effects on Hong Kong's economy?",
+     "zh": "假設大量年輕勞動人口移居海外。下列哪幅圖最能說明其對香港經濟的影響？"
+    },
+    "statements": [],
+    "options": [
+     {
+      "en": "",
+      "zh": ""
+     },
+     {
+      "en": "",
+      "zh": ""
+     },
+     {
+      "en": "",
+      "zh": ""
+     },
+     {
+      "en": "",
+      "zh": ""
+     }
+    ],
+    "answer": 2,
+    "explanation": {
+     "en": "Fewer workers lower the productive capacity: LRAS and SRAS both shift left.",
+     "zh": "勞動人口減少令生產能力下降：LRAS 及 SRAS 均向左移。"
+    },
+    "angle": "emigration instead of talent admission",
+    "figures": [
+     {
+      "at": "A",
+      "note": "AD-AS: LRAS and SRAS both shift right."
+     },
+     {
+      "at": "B",
+      "note": "AD-AS: only AD shifts left."
+     },
+     {
+      "at": "C",
+      "note": "AD-AS: LRAS and SRAS both shift left. The key."
+     },
+     {
+      "at": "D",
+      "note": "AD-AS: only SRAS shifts left."
+     }
+    ]
+   },
+   "reply": {
+    "gridAsks": "none",
+    "figures": [
+     {
+      "at": "A",
+      "kind": "curves",
+      "reason": "Capacity grows.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Real output",
+       "zh": "實質產出"
+      },
+      "yAxis": {
+       "en": "Price level",
+       "zh": "物價水平"
+      },
+      "curves": [
+       {
+        "id": "AD",
+        "role": "ad",
+        "slope": "normal",
+        "place": "mid",
+        "label": "AD",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "SRAS",
+        "role": "sras",
+        "slope": "normal",
+        "place": "mid",
+        "label": "SRAS_0",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "LRAS",
+        "role": "lras",
+        "slope": "normal",
+        "place": "mid",
+        "label": "LRAS_0",
+        "shape": "none",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [
+       {
+        "of": "LRAS",
+        "id": "LRAS1",
+        "direction": "right",
+        "size": "normal",
+        "label": "LRAS_1"
+       },
+       {
+        "of": "SRAS",
+        "id": "SRAS1",
+        "direction": "right",
+        "size": "normal",
+        "label": "SRAS_1"
+       }
+      ],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "B",
+      "kind": "curves",
+      "reason": "Spending falls.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Real output",
+       "zh": "實質產出"
+      },
+      "yAxis": {
+       "en": "Price level",
+       "zh": "物價水平"
+      },
+      "curves": [
+       {
+        "id": "AD",
+        "role": "ad",
+        "slope": "normal",
+        "place": "mid",
+        "label": "AD_0",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "SRAS",
+        "role": "sras",
+        "slope": "normal",
+        "place": "mid",
+        "label": "SRAS",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "LRAS",
+        "role": "lras",
+        "slope": "normal",
+        "place": "mid",
+        "label": "LRAS",
+        "shape": "none",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [
+       {
+        "of": "AD",
+        "id": "AD1",
+        "direction": "left",
+        "size": "normal",
+        "label": "AD_1"
+       }
+      ],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "C",
+      "kind": "curves",
+      "reason": "Capacity falls.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Real output",
+       "zh": "實質產出"
+      },
+      "yAxis": {
+       "en": "Price level",
+       "zh": "物價水平"
+      },
+      "curves": [
+       {
+        "id": "AD",
+        "role": "ad",
+        "slope": "normal",
+        "place": "mid",
+        "label": "AD",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "SRAS",
+        "role": "sras",
+        "slope": "normal",
+        "place": "mid",
+        "label": "SRAS_0",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "LRAS",
+        "role": "lras",
+        "slope": "normal",
+        "place": "mid",
+        "label": "LRAS_0",
+        "shape": "none",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [
+       {
+        "of": "LRAS",
+        "id": "LRAS1",
+        "direction": "left",
+        "size": "normal",
+        "label": "LRAS_1"
+       },
+       {
+        "of": "SRAS",
+        "id": "SRAS1",
+        "direction": "left",
+        "size": "normal",
+        "label": "SRAS_1"
+       }
+      ],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     },
+     {
+      "at": "D",
+      "kind": "curves",
+      "reason": "Costs rise.",
+      "placement": "question",
+      "template": "",
+      "title": {
+       "en": "",
+       "zh": ""
+      },
+      "xAxis": {
+       "en": "Real output",
+       "zh": "實質產出"
+      },
+      "yAxis": {
+       "en": "Price level",
+       "zh": "物價水平"
+      },
+      "curves": [
+       {
+        "id": "AD",
+        "role": "ad",
+        "slope": "normal",
+        "place": "mid",
+        "label": "AD",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "SRAS",
+        "role": "sras",
+        "slope": "normal",
+        "place": "mid",
+        "label": "SRAS_0",
+        "shape": "none",
+        "rise": "rising"
+       },
+       {
+        "id": "LRAS",
+        "role": "lras",
+        "slope": "normal",
+        "place": "mid",
+        "label": "LRAS",
+        "shape": "none",
+        "rise": "rising"
+       }
+      ],
+      "shifts": [
+       {
+        "of": "SRAS",
+        "id": "SRAS1",
+        "direction": "left",
+        "size": "normal",
+        "label": "SRAS_1"
+       }
+      ],
+      "levels": [],
+      "points": [],
+      "gaps": [],
+      "shades": [],
+      "marks": [],
+      "changeArrows": false,
+      "asks": {
+       "what": "none",
+       "state": "after"
+      },
+      "chart": {
+       "type": "bar",
+       "categories": [],
+       "series": [],
+       "yTitle": {
+        "en": "",
+        "zh": ""
+       },
+       "xTitle": {
+        "en": "",
+        "zh": ""
+       }
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

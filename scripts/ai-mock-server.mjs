@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 /**
@@ -434,6 +435,21 @@ export function studioDiagramReply() {
   );
 }
 
+/**
+ * k-0545: several figures in one request (`diagramGen/set.ts`, task "diagram-set"). A question
+ * from `setFixtures.json` (recognised by its first figure's note) gets its recorded reply; any
+ * other gets this demand-supply figure at every place asked.
+ */
+export const SET_FIXTURES = JSON.parse(readFileSync(new URL('../src/diagramGen/setFixtures.json', import.meta.url), 'utf8')).fixtures;
+
+export function studioDiagramSetReply(payload) {
+  const asked = Array.isArray(payload.figures) ? payload.figures : [];
+  const known = SET_FIXTURES.find((f) => f.question.figures[0]?.note === asked[0]?.note);
+  if (known) return completion(JSON.stringify(known.reply));
+  const one = JSON.parse(studioDiagramReply().choices[0].message.content);
+  return completion(JSON.stringify({ gridAsks: 'none', figures: asked.map((f) => ({ at: f.at, ...one })) }));
+}
+
 /** Wording enhancement (k-0549), recognised by `src/polish/prompt.ts`'s marker. */
 const POLISH_MARKER = 'Task: question-polish.';
 
@@ -493,7 +509,9 @@ export function polishReply(payload) {
 export function reply(body) {
   if (systemOf(body).includes(POLISH_MARKER)) return polishReply(payloadOf(body));
   if (systemOf(body).includes('Task: question-studio-pick.')) return studioPickReply(payloadOf(body));
-  if (systemOf(body).includes('You draw diagrams for HKDSE Economics questions')) return studioDiagramReply();
+  if (systemOf(body).includes('You draw diagrams for HKDSE Economics questions')) {
+    return payloadOf(body).task === 'diagram-set' ? studioDiagramSetReply(payloadOf(body)) : studioDiagramReply();
+  }
   if (systemOf(body).includes(COVERAGE_MARKER)) return coverageReply(payloadOf(body));
   if (systemOf(body).includes(ANSWERS_MARKER)) return answersReply(payloadOf(body));
   if (systemOf(body).includes(QUALITY_MARKER)) return qualityReply(payloadOf(body));

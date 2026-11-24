@@ -18,7 +18,9 @@
  * re-labels and re-shades it in the diagram editor like one they drew.
  */
 export { generateDiagram, evaluateReply, evaluateSpec, blockOf, languageOf } from './run';
-export { figureWords } from './words';
+export { figureWords, graphWords } from './words';
+export { generateDiagrams, solveSet, taxKind, checkGraphNote, noteShape, parseSet, buildSetRequest, DIAGRAM_SET_SCHEMA, FIGURE_ATS, GRID_ASKS } from './set';
+export type { FigureAt, FigureAsk, GridAsk, DiagramSetInput, DiagramSetOutcome, SetFigure } from './set';
 export { solveKey } from './solve';
 export { checkLabels, labelsIn } from './labels';
 export { compileSpec } from './compile';

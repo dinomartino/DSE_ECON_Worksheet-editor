@@ -369,8 +369,10 @@ export function checkDiagram(spec: DiagramSpec, compiled: Compiled, sides: reado
       if (blank(spec.yAxis, side) && blank(spec.yAxis, other)) error('axes.y', 'The y-axis has no title.');
       else if (blank(spec.yAxis, side)) look('axes.side', `The y-axis title has no ${which}.`);
     }
+    // A plain graph's line may go unnamed (k-0545: the axes say what it is).
+    const graphIds = new Set(spec.curves.filter((c) => c.role === 'graph').map((c) => compiled.curveIds.get(c.id)));
     for (const c of diagram.curves) {
-      if (!plainOf(c.label).trim()) error('curve.unnamed', 'A curve has no name.');
+      if (!plainOf(c.label).trim() && !graphIds.has(c.id)) error('curve.unnamed', 'A curve has no name.');
     }
     const names = diagram.curves.map((c) => plainOf(c.label).trim()).filter(Boolean);
     const dupes = [...new Set(names.filter((n, i) => names.indexOf(n) !== i))];

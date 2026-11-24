@@ -37,7 +37,8 @@ DECIDE
 - kind "template": one of the editor's ready-made diagrams, by id, when the question is one of these and kind "curves" cannot draw it (tariffs, import quotas, monopoly, externalities, money market, Lorenz curve). Its labels are fixed; set title/xAxis/yAxis only to rename them, else leave them "".
 
 KIND "curves"
-- curves: {id, role, slope, place, label}. role: demand | supply | ad | sras | lras | vertical (fixed supply) | horizontal (perfectly elastic) | frontier (PPC). slope: normal | steep (inelastic) | flat (elastic). place (vertical, horizontal, frontier only): low | mid | high.
+- curves: {id, role, slope, place, label, shape, rise}. role: demand | supply | ad | sras | lras | vertical (fixed supply) | horizontal (perfectly elastic) | frontier (PPC) | graph (a plain line against two named axes, below). slope: normal | steep (inelastic) | flat (elastic). place (vertical, horizontal, frontier only): low | mid | high. shape and rise: "none" and "rising" except on a graph.
+- role "graph": the line of a plain graph such as "tax payment against taxable income", "average tax rate against income", "average cost against output". Name the axes exactly in xAxis and yAxis; the label may be "". shape: origin (straight from the origin) | linear (straight from a point on the y-axis) | convex (bending upward: rising faster and faster, or falling more and more slowly) | concave (bending downward: rising more and more slowly, or falling faster and faster) | flat (horizontal). rise: rising | falling. Taxes: a proportional tax is tax payment straight from the origin and a flat average rate; a progressive tax is tax payment convex and rising, and a rising average rate; a regressive tax is tax payment concave (or flat, a lump sum), and a falling average rate.
 - shifts: {of, id, direction, size, label}. A shifted copy of curve "of" (or of an earlier shift). direction: right | left | up | down | out | in. size: small | normal | large. For a frontier, out/in move both ends, right/left only the x end, up/down only the y end.
 - levels: {id, kind, above, below, side, style, label}: a fixed price line, or for kind "quota" a fixed quantity line. kind: ceiling | floor (also minimum wage) | world | fixed | quota.
   Place it against crossings of two drawn curves: "above": ["D1","S1"] puts it higher than (a quota: right of) where D1 meets S1; "below": ["D1","S2"] lower than (left of) where D1 meets S2. Give both when the question needs it between two equilibria. [] = no bound; with both [] it goes "side" (below | above) the first equilibrium. The editor finds the exact height.
@@ -75,6 +76,12 @@ REFERENCE
 EDIT
 - When "edit" is given, you are changing an existing figure, not drawing a new one. "edit.spec" is the figure as JSON and "edit.note" the teacher's request ("label Q1 and Q3", "move P1 up", "make it a price floor"). Return the whole spec with only what the note asks changed; keep every other entry, id and label as it is.
 - "questionChange": "" when the question's words (stem, options, key) still fit the edited figure. Otherwise one English sentence saying what the words must change to (for example "the policy is now a price floor; the key becomes Q2"). Never change the words just to describe the figure.
+
+SEVERAL FIGURES (task "diagram-set")
+- "figures" lists every figure the question needs, each {at, note}: at "stem" is the stem's one figure, "(1)" to "(4)" the cells of a grid of small figures in the stem (the question asks "Which of the following diagrams …"), "A" to "D" the figure under each option. Reply {"figures": [...], "gridAsks": "..."}: one diagram object per asked figure, its "at" first, in the order asked.
+- Each figure is a whole diagram on its own (its own axes, curves, ticks and labels), drawn to its note. A grid's figures are small and alike: the same axes, changing only what the question tests. Option figures differ only in what the options test; exactly the keyed one is right.
+- The grid's labels (1)–(4) and the option letters are printed by the paper, never on the figures.
+- gridAsks: what a grid of plain graphs asks, so the editor can work the key out from your drawings: progressiveTax | proportionalTax | regressiveTax ("which of the following show a progressive tax") | none (anything else).
 
 TEMPLATES
 ${'${TEMPLATES}'}

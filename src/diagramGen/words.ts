@@ -2,7 +2,7 @@ import type { Diagram, DiagramCurve } from '@/model/diagram';
 import { curveCrossing } from '@/model/diagramAreas';
 import { DEMAND_LIKE, SUPPLY_LIKE, tickKey } from './compile';
 import { plainOf } from './text';
-import type { DiagramSpec, SpecPoint } from './types';
+import type { DiagramSpec, SpecCurve, SpecPoint } from './types';
 
 /**
  * A drawn figure in plain English for the blind solve (k-0534): what a student sees, read
@@ -26,6 +26,23 @@ const ROLE: Record<string, string> = {
 };
 const WAY: Record<string, string> = { right: 'to the right', left: 'to the left', up: 'upward', down: 'downward', out: 'outward', in: 'inward' };
 
+/** A plain graph's line in words (k-0545), as a student reads the sketch. */
+export function graphWords(shape: SpecCurve['shape'], rise: SpecCurve['rise']): string {
+  const up = rise !== 'falling';
+  switch (shape) {
+    case 'linear':
+      return `a straight line starting from a positive value on the vertical axis, ${up ? 'rising' : 'falling'}`;
+    case 'convex':
+      return up ? 'a curve from the origin, rising at an increasing rate' : 'a curve falling at a decreasing rate';
+    case 'concave':
+      return up ? 'a curve from the origin, rising at a decreasing rate' : 'a curve falling at an increasing rate';
+    case 'flat':
+      return 'a horizontal straight line (constant)';
+    default:
+      return up ? 'a straight line from the origin, rising' : 'a straight line, falling';
+  }
+}
+
 export function figureWords(spec: DiagramSpec, diagram: Diagram): string {
   if (spec.kind !== 'curves') return '';
   const lines: string[] = [];
@@ -37,7 +54,7 @@ export function figureWords(spec: DiagramSpec, diagram: Diagram): string {
     return c ? sym(c.label) || id : sym(id);
   };
   const curveLines = [
-    ...spec.curves.map((c) => `${sym(c.label)}: ${ROLE[c.role] ?? c.role}`),
+    ...spec.curves.map((c) => (c.role === 'graph' ? `${sym(c.label) || 'the line'}: ${graphWords(c.shape, c.rise)}` : `${sym(c.label)}: ${ROLE[c.role] ?? c.role}`)),
     ...spec.shifts.map((s) => `${sym(s.label)}: ${name(s.of)} shifted ${WAY[s.direction] ?? s.direction}`),
     ...spec.levels.map((l) => (l.kind === 'quota' ? `${sym(l.label)}: a quota, a fixed quantity` : `${sym(l.label)}: a fixed price (${l.kind === 'ceiling' ? 'a price ceiling' : l.kind === 'floor' ? 'a price floor' : l.kind === 'world' ? 'the world price' : 'a set price'})`)),
   ];

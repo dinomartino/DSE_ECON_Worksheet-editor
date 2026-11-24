@@ -4,6 +4,8 @@ import {
   CURVE_ROLES,
   LEVEL_STYLES,
   DIRECTIONS,
+  GRAPH_RISES,
+  GRAPH_SHAPES,
   LEVEL_KINDS,
   PLACES,
   SIZES,
@@ -49,6 +51,8 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
       slope: { type: 'string', enum: [...SLOPES] },
       place: { type: 'string', enum: [...PLACES] },
       label: str,
+      shape: { type: 'string', enum: [...GRAPH_SHAPES] },
+      rise: { type: 'string', enum: [...GRAPH_RISES] },
     }),
   ),
   shifts: list(
@@ -167,13 +171,23 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
   spec.title = text(raw.title);
   spec.xAxis = text(raw.xAxis);
   spec.yAxis = text(raw.yAxis);
-  spec.curves = arr(raw.curves).filter(isRecord).map((c, i) => ({
-    id: s(c.id).trim() || `c${i + 1}`,
-    role: pick(c.role, CURVE_ROLES, 'demand', `curve ${s(c.id)} role`),
-    slope: pick(c.slope, SLOPES, 'normal', `curve ${s(c.id)} slope`),
-    place: pick(c.place, PLACES, 'mid', `curve ${s(c.id)} place`),
-    label: s(c.label),
-  }));
+  spec.curves = arr(raw.curves).filter(isRecord).map((c, i) => {
+    const role = pick(c.role, CURVE_ROLES, 'demand', `curve ${s(c.id)} role`);
+    const curve: DiagramSpec['curves'][number] = {
+      id: s(c.id).trim() || `c${i + 1}`,
+      role,
+      slope: pick(c.slope, SLOPES, 'normal', `curve ${s(c.id)} slope`),
+      place: pick(c.place, PLACES, 'mid', `curve ${s(c.id)} place`),
+      label: s(c.label),
+    };
+    // A graph line's shape (k-0545); other roles carry none, and an older spec has neither key.
+    if (role === 'graph') {
+      curve.shape = pick(c.shape, GRAPH_SHAPES, 'origin', `curve ${s(c.id)} shape`);
+      if (curve.shape === 'none') curve.shape = 'origin';
+      curve.rise = pick(c.rise, GRAPH_RISES, 'rising', `curve ${s(c.id)} rise`);
+    }
+    return curve;
+  });
   spec.shifts = arr(raw.shifts).filter(isRecord).map((c, i) => ({
     of: s(c.of).trim(),
     id: s(c.id).trim() || `shift${i + 1}`,
