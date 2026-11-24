@@ -203,6 +203,19 @@ class Walk implements TextWalker {
           table: block.table && w.table('table', block.table, role),
         });
       }
+      case 'figureGrid': {
+        // k-0545: each cell's label ("(1)") then its figure, in print order.
+        const w = this.child(segment, { blockId: block.id });
+        return patch(block, {
+          cells: Array.isArray(block.cells) ? mapSame(block.cells, (cell, index) => {
+            const cw = w.child(`cell:${index}`);
+            return patch(cell, {
+              label: cw.optional('label', cell.label, { kind: 'caption', role, label: `figure ${index + 1}` }) as BiText,
+              figure: cell.figure && (cw.block('figure', cell.figure, { role }) as ImageBlock | DiagramBlock),
+            });
+          }) : block.cells,
+        });
+      }
       default: {
         // A block kind from a newer build: carried through untouched. A kind added to
         // `ContentBlock` fails to compile here until the walk reads its text.

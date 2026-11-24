@@ -22,6 +22,7 @@ import { buildTableJustifyPaper } from '@/test/tableJustifyFixture';
 import { createSamplePaper } from '@/model/samplePaper';
 import { migrate } from '@/model/migrations';
 import v3Corpus from '@/test/corpus/v3-stakeholder.json';
+import v4GridCorpus from '@/test/corpus/v4-figure-grid.json';
 import { OPTION_LAYOUT_CHOICES, withOptionLayouts } from '@/registry/mcqLayouts';
 import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
 import { presetFor } from '@/ai/providers';
@@ -302,6 +303,15 @@ it('emits a DRQ with a Source A table and a Source B stakeholder diagram (k-0469
     planPaper(worksheet, { language, version: 'student' }, `${OUT}/drq-stakeholder-${language}-student.docx`);
   }
   planPaper(worksheet, { language: 'bilingual', version: 'teacher' }, `${OUT}/drq-stakeholder-bilingual-teacher.docx`);
+});
+
+it('emits MC questions with a stem figure grid (1)-(4) and option diagrams (k-0545)', () => {
+  mkdirSync(OUT, { recursive: true });
+  const worksheet = migrate(structuredClone(v4GridCorpus));
+  for (const language of ['en', 'zh'] as const) {
+    planPaper(worksheet, { language, version: 'student' }, `${OUT}/figure-grid-${language}-student.docx`);
+  }
+  planPaper(worksheet, { language: 'bilingual', version: 'teacher' }, `${OUT}/figure-grid-bilingual-teacher.docx`);
 });
 
 it('emits a DRQ from the panel\'s DRQ starter: Sources A–D and parts (a)–(e) (k-0474)', () => {

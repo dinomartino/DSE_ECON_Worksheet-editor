@@ -221,6 +221,7 @@ export function BlockEditor({
     diagram: m.kindDiagram,
     source: m.kindSource,
     figureRow: m.kindFigureRow,
+    figureGrid: m.kindFigureGrid,
   };
 
   const controls = (index: number) => (
@@ -297,6 +298,8 @@ export function BlockEditor({
                 <TableBlockEditor block={block} onChange={(next) => replace(index, next)} />
               ) : block.kind === 'diagram' ? (
                 <DiagramEditor block={block} onChange={(next) => replace(index, next)} />
+              ) : block.kind === 'figureGrid' ? (
+                <FigureGridEditor block={block} onChange={(next) => replace(index, next)} />
               ) : block.kind === 'figureRow' ? (
                 <FigureRowEditor
                   block={block}
@@ -1373,6 +1376,64 @@ function SourceBlockEditor({
           ]}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * A stem's figure grid (§ `FigureGridBlock`, k-0545): how many to a row, then each cell's
+ * label and its figure in the ordinary diagram (or picture) editor, keyed by the figure's
+ * own id so a click on the page opens the one it hit.
+ */
+function FigureGridEditor({
+  block,
+  onChange,
+}: {
+  block: Extract<ContentBlock, { kind: 'figureGrid' }>;
+  onChange: (block: ContentBlock) => void;
+}) {
+  const m = useMessages(BLOCK_EDITOR_MESSAGES);
+  const setCell = (index: number, cell: (typeof block.cells)[number]) =>
+    onChange({ ...block, cells: block.cells.map((c, i) => (i === index ? cell : c)) });
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Eyebrow>{m.gridColumns}</Eyebrow>
+        <Segmented<string>
+          label={m.gridColumns}
+          value={String(block.columns ?? 2)}
+          onChange={(value) => onChange({ ...block, columns: Number(value) === 2 ? undefined : Number(value) })}
+          options={['1', '2', '3', '4'].map((value) => ({ value, label: value }))}
+        />
+      </div>
+      {block.cells.map((cell, index) => (
+        <div
+          key={cell.figure.id}
+          className="-mx-1.5 space-y-1.5 rounded-md border-t border-line px-1.5 pt-2"
+          data-edit-target={editTargetKey({ kind: 'blockText', blockId: cell.figure.id })}
+        >
+          <label className="flex items-center gap-2 text-[12px] text-ink-subtle">
+            {m.gridLabel}
+            <input
+              className="w-20 rounded border border-line bg-surface px-1.5 py-0.5 text-[13px] text-ink"
+              value={plain(cell.label?.en ?? []) || plain(cell.label?.zh ?? [])}
+              aria-label={m.gridLabelOf(index + 1)}
+              onChange={(e) => setCell(index, { ...cell, label: bi(e.target.value, e.target.value) })}
+            />
+          </label>
+          {cell.figure.kind === 'diagram' ? (
+            <DiagramEditor
+              block={cell.figure}
+              onChange={(figure) => figure.kind === 'diagram' && setCell(index, { ...cell, figure })}
+            />
+          ) : (
+            <ImageBlockEditor
+              block={cell.figure}
+              onChange={(figure) => figure.kind === 'image' && setCell(index, { ...cell, figure })}
+            />
+          )}
+        </div>
+      ))}
     </div>
   );
 }

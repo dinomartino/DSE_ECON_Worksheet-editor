@@ -24,6 +24,7 @@ import graphV2 from '@/test/corpus/graph-v2.json';
 import optionalCorpus from '@/test/corpus/v2-optional-sections.json';
 import v3Corpus from '@/test/corpus/v3-stakeholder.json';
 import v3ChartCorpus from '@/test/corpus/v3-chart.json';
+import v4GridCorpus from '@/test/corpus/v4-figure-grid.json';
 import bankPaperCorpus from '@/test/corpus/bank-v0.6.0-paper.json';
 import bankBankCorpus from '@/test/corpus/bank-v0.6.0-bank.json';
 import { migrate, serializeWorksheet, CURRENT_SCHEMA_VERSION, isNewerThanBuild } from '@/model/migrations';
@@ -737,6 +738,92 @@ describe('the v3 chart corpus: a bar chart and a line graph, in a DRQ', () => {
       })),
     } as typeof worksheet;
     expect(serializeWorksheet(without).schemaVersion).toBe(1);
+  });
+});
+
+describe('the v4 figure grid corpus: diagrams (1)-(4) in a stem, a picture cell, option diagrams', () => {
+  // `v4-figure-grid.json`: frozen, written once by `scripts/emit-v4-figure-grid-corpus.test.ts`.
+  // v4 is written when a document holds a stem figure grid (k-0545); 0.10.x and older open it read-only.
+  const grids = (worksheet: ReturnType<typeof migrate>) =>
+    worksheet.questions.flatMap((q) => q.blocks.filter((b): b is Extract<typeof b, { kind: 'figureGrid' }> => b.kind === 'figureGrid'));
+
+  it('opens editable here, with nothing unrecognised, and is marked newer than 0.10.x', () => {
+    const worksheet = migrate(structuredClone(v4GridCorpus));
+    expect(v4GridCorpus.schemaVersion).toBe(4);
+    expect(worksheet.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(isNewerThanBuild(worksheet)).toBe(false);
+    // A v3 build reads `schemaVersion > 3` as newer (its own `isNewerThanBuild`): read-only.
+    expect(isNewerThanBuild({ schemaVersion: v4GridCorpus.schemaVersion + 1 })).toBe(true);
+    expect(worksheet.__unknown).toBeUndefined();
+  });
+
+  it('keeps every cell, label, figure, column count and option diagram', () => {
+    const worksheet = migrate(structuredClone(v4GridCorpus));
+    const [four, three] = grids(worksheet);
+    expect(four.columns).toBeUndefined();
+    expect(four.cells.map((c) => c.label.en[0].text)).toEqual(['(1)', '(2)', '(3)', '(4)']);
+    expect(four.cells.map((c) => c.figure.kind)).toEqual(['diagram', 'diagram', 'diagram', 'diagram']);
+    expect(four.cells[1].figure.kind === 'diagram' && four.cells[1].figure.diagram.title?.zh[0].text).toBe('平均稅率與收入');
+    expect(three.columns).toBe(3);
+    expect(three.cells.map((c) => c.figure.kind)).toEqual(['diagram', 'diagram', 'image']);
+    const options = worksheet.questions[worksheet.questions.length - 1] as McqQuestion;
+    expect(options.optionLayout).toBe('columns2');
+    expect(options.options.map((o) => o.blocks?.[0]?.kind)).toEqual(['diagram', 'diagram', 'diagram', 'diagram']);
+    expect(countText(worksheet)).toBe(countText(v4GridCorpus));
+  });
+
+  it('prints each grid as rows of labelled figures, in English and in Chinese', () => {
+    const worksheet = migrate(structuredClone(v4GridCorpus));
+    for (const language of ['en', 'zh', 'bilingual'] as const) {
+      const rendered = renderWorksheet(worksheet, { language, version: 'student' });
+      const rows = JSON.stringify(rendered.items).match(/"kind":"optionRow"/g) ?? [];
+      // Grid of four: 2 rows; grid of three, three to a row: 1; four option diagrams: 2.
+      expect(rows).toHaveLength(5);
+    }
+  });
+
+  it('stores with every grid the picture builds before v4 show in its place', () => {
+    // 0.10.x and older draw an unknown block kind as a picture (their `imageNodeFor`): without
+    // these the page failed to load. Checked in a real 0.10.0 by `scripts/figure-grid-verify.mjs --old`.
+    const stored = JSON.parse(stringifyWorksheet(migrate(structuredClone(v4GridCorpus))));
+    const found: Array<Record<string, unknown>> = [];
+    const walk = (v: unknown): void => {
+      if (Array.isArray(v)) return v.forEach(walk);
+      if (v && typeof v === 'object') {
+        if ((v as Record<string, unknown>).kind === 'figureGrid') found.push(v as Record<string, unknown>);
+        Object.values(v).forEach(walk);
+      }
+    };
+    walk(stored);
+    expect(found).toHaveLength(2);
+    for (const grid of found) {
+      expect(String(grid.src)).toMatch(/^data:image\/png;base64,/);
+      expect(typeof grid.widthPx).toBe('number');
+      expect(typeof grid.heightPx).toBe('number');
+      const alt = grid.altText as { en: Array<{ text: string }>; zh: Array<{ text: string }> };
+      expect(alt.en[0].text).toContain('newer Econ Studio');
+      expect(alt.zh[0].text).toContain('較新版本');
+    }
+  });
+
+  it('round-trips byte for byte, still written at 4', () => {
+    const raw = readFileSync('src/test/corpus/v4-figure-grid.json', 'utf8');
+    const saved = stringifyWorksheet(parseWorksheet(raw));
+    expect(saved).toBe(raw.trimEnd());
+    expect(JSON.parse(saved).schemaVersion).toBe(4);
+  });
+
+  it('drops back to the old version once the grids are gone (option diagrams are not v4)', () => {
+    const worksheet = migrate(structuredClone(v4GridCorpus));
+    const without = {
+      ...worksheet,
+      questions: worksheet.questions.map((question) => ({
+        ...question,
+        blocks: question.blocks.filter((block) => block.kind !== 'figureGrid'),
+      })),
+    } as typeof worksheet;
+    // 2, not 1: the import-quota option diagram is a v2 derived curve (§ ANSWER_LAYER_VERSION).
+    expect(serializeWorksheet(without).schemaVersion).toBe(2);
   });
 });
 

@@ -6,6 +6,7 @@ import { buildFromTemplate, defaultDiagramAltText } from './diagramTemplates';
 import { createSectionElement } from './flow';
 import { CURRENT_SCHEMA_VERSION } from './migrations';
 import { bi, emptyBiText, isBiTextEmpty, plain } from './text';
+import { withGridFallback } from './figureGridFallback';
 // Value import from `render/` — safe for the reason spelled out in `model/edits.ts`:
 // `render/diagram.ts` takes only types from `model/`, so the edge stays one-way.
 import { diagramSize } from '@/render/diagram';
@@ -203,6 +204,22 @@ export function createFigureRowBlock(
   table: TableBlock = createTableBlock(3, 2),
 ): Extract<ContentBlock, { kind: 'figureRow' }> {
   return { kind: 'figureRow', id: newId(), figure, table };
+}
+
+/**
+ * A stem's figure grid (k-0545), its cells labelled "(1)", "(2)", … in order. Undefined
+ * `columns` prints two to a row, the reference's 2 × 2.
+ */
+export function createFigureGridBlock(
+  figures: Array<ImageBlock | DiagramBlock>,
+  columns?: number,
+): Extract<ContentBlock, { kind: 'figureGrid' }> {
+  return withGridFallback({
+    kind: 'figureGrid',
+    id: newId(),
+    ...(columns && columns !== 2 ? { columns } : {}),
+    cells: figures.map((figure, i) => ({ label: bi(`(${i + 1})`, `(${i + 1})`), figure })),
+  });
 }
 
 /**

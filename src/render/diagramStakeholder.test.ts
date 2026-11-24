@@ -3,7 +3,7 @@ import { buildFromTemplate } from '@/model/diagramTemplates';
 import { isPanelOnlyDiagram, MAX_STAKEHOLDERS, type Diagram, type StakeholderBox } from '@/model/diagram';
 import { hasAnswerLayer } from '@/model/diagramAnswers';
 import { createDiagramBlock, createSourceWith, createStructuredQuestion, createPart, createWorksheet, STAKEHOLDER_DIAGRAM_WIDTH_PX } from '@/model/factories';
-import { serializeWorksheet, writtenSchemaVersion } from '@/model/migrations';
+import { CURRENT_SCHEMA_VERSION, serializeWorksheet, writtenSchemaVersion } from '@/model/migrations';
 import { createGraph, serializeGraph } from '@/model/graph';
 import { bi } from '@/model/text';
 import type { LanguageMode } from '@/model/types';
@@ -192,7 +192,7 @@ describe('the stakeholder diagram in a document', () => {
     part.blocks = [createSourceWith('stakeholders')];
     expect(serializeWorksheet(worksheet).schemaVersion).toBe(3);
     // A newer build's own version is still kept.
-    expect(writtenSchemaVersion(4, {})).toBe(4);
+    expect(writtenSchemaVersion(CURRENT_SCHEMA_VERSION + 1, {})).toBe(CURRENT_SCHEMA_VERSION + 1);
   });
 
   it('saves a graph of one at schema 3 too', () => {

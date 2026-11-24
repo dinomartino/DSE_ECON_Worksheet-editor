@@ -3,7 +3,7 @@ import { createMcqQuestion } from '@/model/factories';
 import { optionLabel, statementLabel, toUpperLetter } from '@/model/numbering';
 import { areBlocksEmpty, bi, isBiTextEmpty, plain, provenanceLabel } from '@/model/text';
 import { mapSame, patch, type TextWalker } from '@/model/textSlots';
-import type { BiText, ContentBlock, LanguageMode, McqOption, McqOptionLayout, McqQuestion } from '@/model/types';
+import type { BiText, LanguageMode, McqOption, McqOptionLayout, McqQuestion } from '@/model/types';
 import { shuffledOrder } from '@/model/versions';
 import {
   DEFAULT_PAGE_METRICS,
@@ -26,6 +26,7 @@ import type {
   VariantContext,
 } from './types';
 import type { AnswerKeyEntry } from '@/render/answerKey';
+import { cellWidthPx, fitToCell } from '@/render/cellFit';
 import { paragraphLines } from '@/render/answerKeySections';
 import { lineWidthTwips, splitRunLines } from '@/render/textWidth';
 
@@ -205,35 +206,6 @@ export function printedOptionLayout(
   return optionRowsFit(question, 2, language, page) ? 'columns2' : 'grid';
 }
 
-const TWIPS_PER_PX = 15;
-/** Kept clear between the two figures of a grid row. */
-const CELL_GUTTER_PX = 8;
-/** The most of its cell a table option spans. */
-const TABLE_IN_CELL = 0.9;
-
-/**
- * A grid cell's figures, any wider than the cell scaled down to it (height in proportion),
- * as printed only: the stored size is untouched. A past paper's diagram option can be a few
- * pixels wider than half the page, and a fixed-width Word cell would cut it off.
- */
-function fitToCell(blocks: ContentBlock[], maxPx: number): ContentBlock[] {
-  if (maxPx <= 0) return blocks;
-  let changed = false;
-  const fitted = blocks.map((block) => {
-    // A table as an option (four tables, A to D) leaves a gap to its neighbour's, or the two
-    // read as one table across the row.
-    if (block.kind === 'table') {
-      if ((block.width ?? 1) <= TABLE_IN_CELL) return block;
-      changed = true;
-      return { ...block, width: TABLE_IN_CELL };
-    }
-    if ((block.kind !== 'image' && block.kind !== 'diagram') || block.widthPx <= maxPx) return block;
-    changed = true;
-    return { ...block, widthPx: maxPx, heightPx: Math.round((block.heightPx * maxPx) / block.widthPx) };
-  });
-  return changed ? fitted : blocks;
-}
-
 function render(question: McqQuestion, context: RenderContext): RenderNode[] {
   const nodes: RenderNode[] = [];
   const [firstBlock, ...restBlocks] = question.blocks;
@@ -362,7 +334,7 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
     // (§ `OptionRowNode`): each cell is the option's own nodes, the lettered line then
     // its blocks. Like every side-by-side layout, the markers are literal text.
     // Half the text column, less a gutter, so two figures never touch or run past it.
-    const cellPx = Math.floor(((context.page ?? DEFAULT_PAGE_METRICS).textWidth / 2) / TWIPS_PER_PX) - CELL_GUTTER_PX;
+    const cellPx = cellWidthPx((context.page ?? DEFAULT_PAGE_METRICS).textWidth, 2);
     for (let start = 0; start < question.options.length; start += 2) {
       const row = question.options.slice(start, start + 2);
       const lastRow = start + 2 >= question.options.length;

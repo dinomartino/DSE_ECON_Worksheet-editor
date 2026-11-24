@@ -140,6 +140,10 @@ export function answeredDiagrams(blocks: ContentBlock[] | undefined): DiagramBlo
       if (hasAnswerLayer(block.diagram)) found.push(block);
     } else if (block.kind === 'figureRow') {
       if (block.figure.kind === 'diagram' && hasAnswerLayer(block.figure.diagram)) found.push(block.figure);
+    } else if (block.kind === 'figureGrid') {
+      for (const cell of block.cells) {
+        if (cell.figure.kind === 'diagram' && hasAnswerLayer(cell.figure.diagram)) found.push(cell.figure);
+      }
     } else if (block.kind === 'source') {
       found.push(...answeredDiagrams(block.blocks));
     }

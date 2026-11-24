@@ -56,6 +56,8 @@ export function blockText(block: ContentBlock): string {
       return norm([biPlain(block.label), ...block.blocks.map(blockText), biPlain(block.footnote)].join(' '));
     case 'figureRow':
       return norm(`${blockText(block.figure)} ${blockText(block.table)}`);
+    case 'figureGrid':
+      return norm(block.cells.map((cell) => `${biPlain(cell.label)} ${blockText(cell.figure)}`).join(' '));
     default:
       return '';
   }

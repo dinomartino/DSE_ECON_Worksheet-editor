@@ -107,6 +107,9 @@ export function blocksLines(blocks: ContentBlock[] | undefined, lang: Side): str
       case 'figureRow':
         lines.push(...blocksLines([block.figure, block.table], lang));
         break;
+      case 'figureGrid':
+        for (const cell of block.cells) lines.push(side(cell.label, lang), ...blocksLines([cell.figure], lang));
+        break;
       case 'source':
         lines.push(side(block.label, lang), ...blocksLines(block.blocks, lang), side(block.footnote, lang));
         break;

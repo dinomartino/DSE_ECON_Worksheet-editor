@@ -53,8 +53,19 @@ export function blocksText(blocks: ContentBlock[]): { text: BiDraft; figure: boo
   const out: Record<Side, string[]> = { en: [], zh: [] };
   let figure = false;
   let lastTable = false;
+  // A grid's figures print under their labels ("(1) [picture]"), read once at the grid (k-0545).
+  const inGrid = new Set<string>();
   for (const block of flattenBlocks(blocks)) {
-    if (block.kind === 'figureRow') continue;
+    if (block.kind === 'figureRow' || inGrid.has(block.id)) continue;
+    if (block.kind === 'figureGrid') {
+      figure = true;
+      for (const cell of block.cells) {
+        inGrid.add(cell.figure.id);
+        for (const side of SIDES) out[side].push(`${plain(cell.label?.[side]).trim()} ${PICTURE_MARK}`.trim());
+      }
+      lastTable = false;
+      continue;
+    }
     if (block.kind === 'paragraph') {
       for (const side of SIDES) out[side].push(plain(block.text[side]).trim());
     } else if (block.kind === 'table') {
