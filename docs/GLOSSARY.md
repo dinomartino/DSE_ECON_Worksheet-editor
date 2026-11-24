@@ -210,6 +210,7 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Draft** — a written question that is not in any paper yet; only Add builds it.
   `src/questionStudio/types.ts:StudioDraft`
 - **Near-copy check** — local comparison of a draft's words with every question the app holds;
-  too close is rewritten once, then left out. `src/questionStudio/nearCopy.ts:checkNearCopy`
+  too close is rewritten once, then shown with a red warning (never left out, k-0531); runs of
+  mostly numbers (table cells) never count. `src/questionStudio/nearCopy.ts:checkNearCopy`
 - **Blind solve** — a fresh request that answers a draft from its text alone, with no key; a
   different answer makes the draft "Look". `src/questionStudio/prompt.ts:buildSolveRequest`

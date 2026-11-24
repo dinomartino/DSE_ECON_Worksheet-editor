@@ -37,13 +37,13 @@ describe('the tally of the record', () => {
     expect(tally(build()).runs).toEqual({ briefs: 2, mine: 1, refinements: 1, errors: 1, stopped: 1 });
   });
 
-  it('counts drafts written, shown and left out, and what left them out', () => {
-    expect(tally(build()).drafts).toEqual({ written: 6, shown: 5, leftOut: 1, leftOutBy: { copy: 1, shape: 0 } });
+  it('counts drafts written, shown and warned (k-0531: shown, never left out), and what warned them', () => {
+    expect(tally(build()).drafts).toEqual({ written: 6, shown: 6, warned: 1, warnedBy: { copy: 1, shape: 0 } });
   });
 
-  it('counts the local checks over what was shown', () => {
+  it('counts the local checks over every draft (the copy figures over those without a warning)', () => {
     const { local } = tally(build());
-    expect(local).toMatchObject({ keyAgree: 4, keyLook: 1, keySkipped: 0, lint: 1, syllabus: 0, numbers: 0, terms: 0, nearCopyShown: 0, copyMax: 4, copyP90: 4 });
+    expect(local).toMatchObject({ keyAgree: 5, keyLook: 1, keySkipped: 0, lint: 1, syllabus: 0, numbers: 0, terms: 0, nearCopyShown: 0, copyMax: 4, copyP90: 4 });
     // B02's near-copy check had no bank to compare with.
     expect(local.bankMissing).toBe(1);
   });
@@ -56,12 +56,12 @@ describe('the tally of the record', () => {
   });
 
   it('counts the marks given', () => {
-    expect(tally(build()).marks).toEqual({ shown: 5, marked: 2, keyMarked: 2, keyOk: 1, useMarked: 2, asis: 1, edit: 0, reject: 1 });
+    expect(tally(build()).marks).toEqual({ shown: 6, marked: 2, keyMarked: 2, keyOk: 1, useMarked: 2, asis: 1, edit: 0, reject: 1 });
   });
 
   it('reads an empty record as zeros and no verdict', () => {
     const t = tally([]);
-    expect(t.drafts).toEqual({ written: 0, shown: 0, leftOut: 0, leftOutBy: { copy: 0, shape: 0 } });
+    expect(t.drafts).toEqual({ written: 0, shown: 0, warned: 0, warnedBy: { copy: 0, shape: 0 } });
     expect(t.local.copyMax).toBeUndefined();
     expect(t.bar.verdict).toBe('pending');
     expect(t.bar.keyDefensible.percent).toBeUndefined();
@@ -120,10 +120,10 @@ describe('the report', () => {
     const text = reportText(runs(), new Date('2026-11-24T08:00:00Z'));
     expect(text).toContain('Question studio trial report');
     expect(text).toContain('Date 2026-11-24 · model fake-model');
-    expect(text).toContain('Drafts: 3 written · 2 shown · 1 left out (copy 1, shape 0)');
+    expect(text).toContain('Drafts: 3 written · 3 shown · 1 warned (copy 1, shape 0)');
     expect(text).toContain('Key defensible: 1 of 2 = 50% (need 90%) not enough marked yet');
     expect(text).toContain('Near-copy shown: 0 (must be 0)');
-    expect(text).toContain('B01 C.ped C.ped#arc: asked 3, shown 2 (1 left out)');
+    expect(text).toContain('B01 C.ped C.ped#arc: asked 3, shown 3 (1 warned)');
     expect(text).toContain('Not run: B02, B03');
     expect(text).toContain('Verdict: PENDING');
   });
@@ -136,7 +136,7 @@ describe('the report', () => {
 
   it('reads an empty record without failing', () => {
     const text = reportText([]);
-    expect(text).toContain('Drafts: 0 written · 0 shown · 0 left out');
+    expect(text).toContain('Drafts: 0 written · 0 shown · 0 warned');
     expect(text).toContain('Not run: B01');
   });
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { INVENTED } from '@/questionStudio/fixtures';
 import type { SheetDraft } from '@/questionStudio/session';
 import type { CheckRow, StudioDraft } from '@/questionStudio/types';
-import { draftItem, explanationLines, keyPointGroups, rankKeyPoints, syllabusName, keyPointOfTags, letterOf, partition, rowOf, stemLines, tokenCount } from './studioView';
+import { draftItem, explanationLines, keyPointGroups, rankKeyPoints, syllabusName, keyPointOfTags, letterOf, rowOf, stemLines, tokenCount } from './studioView';
 
 const [A, , C] = INVENTED;
 const entry = (id: string, source = A, status: StudioDraft['status'] = 'ok', checks: CheckRow[] = []): SheetDraft => ({
@@ -58,10 +58,8 @@ describe('the key point a question names', () => {
 });
 
 describe('the sheet', () => {
-  it('keeps the usable drafts in order and sets the failed ones apart', () => {
-    const { standing, leftOut } = partition([entry('a'), entry('b', A, 'failed'), entry('c', A, 'look')]);
-    expect(standing.map((e) => e.draft.id)).toEqual(['a', 'c']);
-    expect(leftOut.map((e) => e.draft.id)).toEqual(['b']);
+  it('draws a draft saved as failed before k-0531 like any other: nothing is left out', () => {
+    expect(draftItem(entry('b', A, 'failed'))?.question.type).toBe('mcq');
   });
 
   it('draws a draft as the Past paper card does: one multiple-choice question with its four options and key', () => {

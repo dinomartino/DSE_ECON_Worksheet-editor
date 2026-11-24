@@ -86,8 +86,8 @@ describe('reading the record', () => {
     return log.getState().runs;
   };
 
-  it('shows only the drafts the studio showed: a hard check’s failure was never offered', () => {
-    expect(shownDrafts(runs()).map(({ entry }) => entry.id)).toEqual(['a', 'c', 'd']);
+  it('shows every draft, one with a failed hard check too (k-0531)', () => {
+    expect(shownDrafts(runs()).map(({ entry }) => entry.id)).toEqual(['a', 'gone', 'c', 'd']);
   });
 
   it('counts a brief as done once it has drafts: not when it failed, and not a refinement under its name', () => {

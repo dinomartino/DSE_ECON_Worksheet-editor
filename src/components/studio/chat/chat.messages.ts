@@ -99,10 +99,13 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   },
 
   // what the AI says
+  // `warned`: drafts with a failed check (a red warning), shown like the rest (k-0531). A note
+  // saved before k-0531 counted them as left out; they are shown now, so the same words fit.
   noteWritten: {
-    en: (ok: number, look: number, failed: number) =>
-      `${ok + look} draft${ok + look === 1 ? ' is' : 's are'} ready.${look ? ` ${look} need${look === 1 ? 's' : ''} a read: see its checks.` : ''}${failed ? ` ${failed} failed a check and ${failed === 1 ? 'was' : 'were'} left out.` : ''}`,
-    zh: (ok: number, look: number, failed: number) => `${ok + look} 份草稿已完成。${look ? `其中 ${look} 份請細閱：見其檢查結果。` : ''}${failed ? `${failed} 份未通過檢查，已剔除。` : ''}`,
+    en: (ok: number, look: number, warned: number) =>
+      `${ok + look + warned} draft${ok + look + warned === 1 ? ' is' : 's are'} ready.${look ? ` ${look} need${look === 1 ? 's' : ''} a read: see ${look === 1 ? 'its' : 'their'} checks.` : ''}${warned ? ` ${warned} ${warned === 1 ? 'has a warning' : 'have warnings'}: see ${warned === 1 ? 'its' : 'their'} checks before you use ${warned === 1 ? 'it' : 'them'}.` : ''}`,
+    zh: (ok: number, look: number, warned: number) =>
+      `${ok + look + warned} 份草稿已完成。${look ? `其中 ${look} 份請細閱：見其檢查結果。` : ''}${warned ? `${warned} 份有警告：使用前請先看其檢查結果。` : ''}`,
   },
   noteChanged: { en: (n: number, v: number) => `Draft ${n} is now v${v}. Older versions are kept.`, zh: (n: number, v: number) => `草稿 ${n} 現為第 ${v} 版，舊版本已保留。` },
   noteAnother: { en: (n: number) => `Added draft ${n}.`, zh: (n: number) => `已加入草稿 ${n}。` },
@@ -172,7 +175,10 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   versionsLabel: { en: 'Versions of this draft', zh: '這份草稿的版本' },
   backTo: { en: (v: number) => `Back to v${v}`, zh: (v: number) => `回到第 ${v} 版` },
   checkDetails: { en: 'What was checked', zh: '檢查了甚麼' },
-  leftOut: { en: 'Left out: it failed a check', zh: '已剔除：未通過檢查' },
+  // A failed check, shown on the card (k-0531): the draft is never hidden; the teacher decides.
+  warnCopy: { en: (kind: string) => `Very close to ${kind}`, zh: (kind: string) => `與${kind}非常相似` },
+  warnShape: { en: 'Format problem', zh: '格式有問題' },
+  warnTitle: { en: 'Read this before you use it', zh: '使用前請先細閱' },
 
   // tray
   acceptedCount: { en: (n: number) => `${n} accepted`, zh: (n: number) => `已接受 ${n} 份` },

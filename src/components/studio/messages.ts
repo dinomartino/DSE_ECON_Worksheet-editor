@@ -173,7 +173,6 @@ export const QUESTION_STUDIO_MESSAGES = defineMessages({
   aiMadeTitle: { en: 'Written by the AI. It can be wrong: read the key, the numbers and the wording.', zh: '由 AI 擬寫，可能有錯。請細閱答案、數字及用字。' },
   statusOk: { en: 'No problems found', zh: '未發現問題' },
   statusLook: { en: 'Read it', zh: '請細閱' },
-  statusFailed: { en: 'Left out', zh: '已剔除' },
   key: { en: (letter: string) => `Key ${letter}`, zh: (letter: string) => `答案 ${letter}` },
   why: { en: 'Why', zh: '原因' },
   angle: { en: (angle: string) => `Varies: ${angle}`, zh: (angle: string) => `變化：${angle}` },
@@ -187,11 +186,6 @@ export const QUESTION_STUDIO_MESSAGES = defineMessages({
   changeApply: { en: 'Change it', zh: '修改' },
   discard: { en: 'Discard', zh: '放棄' },
   working: { en: 'Working on this draft…', zh: '正在處理這份草稿…' },
-  leftOut: { en: (n: number) => `Left out (${n})`, zh: (n: number) => `已剔除（${n}）` },
-  leftOutNote: {
-    en: 'These failed a check, so they cannot be added. Read why, or write another.',
-    zh: '這些草稿未通過檢查，所以不能加入。請看原因，或另擬一題。',
-  },
   noPreview: { en: 'No preview: this draft is not a complete question.', zh: '沒有預覽：這份草稿不是完整的題目。' },
 
   // ---- checks ----

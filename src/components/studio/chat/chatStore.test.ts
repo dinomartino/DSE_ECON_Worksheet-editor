@@ -203,6 +203,32 @@ describe('the chat studio store (k-0516)', () => {
     expect(readChat({ ...(raw[0] as object), drafts: [{ id: 'x' }] })?.drafts).toEqual([]);
   });
 
+  it('a chat saved before k-0531 with a left-out (failed) draft opens with it as a normal card, its failed check kept (k-0531)', async () => {
+    const { useChat, store } = setup();
+    useChat.getState().addReference(EXAMPLE, 'C.ped');
+    await useChat.getState().send('');
+    const raw = JSON.parse(store.data.get(CHATS_KEY) as string) as Array<{ drafts: Array<{ entry: { draft: StudioDraft } }> }>;
+    const old = raw[0].drafts[1].entry.draft;
+    old.status = 'failed';
+    old.checks = old.checks.map((c) => (c.id === 'copy' ? { ...c, state: 'fail', findings: [{ id: 'copy.close', params: { percent: 52, with: 'bank', verbatim: 0 } }] } : c));
+    store.setItem(CHATS_KEY, JSON.stringify(raw));
+    const loaded = localChatStorage(store).load()[0];
+    expect(loaded.drafts).toHaveLength(3);
+    expect(loaded.drafts[1].entry.draft.status).toBe('look');
+    expect(loaded.drafts[1].entry.draft.checks.find((c) => c.id === 'copy')?.state).toBe('fail');
+  });
+
+  it('the reply counts a warned draft as ready, with a warning (k-0531)', async () => {
+    const copyFail = { id: 'copy' as const, state: 'fail' as const, findings: [{ id: 'copy.close', params: { percent: 52, with: 'bank', verbatim: 0 } }], value: 52 };
+    const { useChat } = setup({ write: async () => okOutcome([studioDraft('a'), studioDraft('b', { rows: [copyFail] }), studioDraft('c')]) });
+    useChat.getState().addReference(EXAMPLE, 'C.ped');
+    await useChat.getState().send('');
+    const chat = useChat.getState().chats[0];
+    expect(chat.drafts).toHaveLength(3);
+    const ai = chat.turns.find((t): t is AiTurn => t.role === 'ai')!;
+    expect(ai.notes).toContainEqual({ kind: 'written', ok: 2, look: 0, failed: 1 });
+  });
+
   it('New chat reuses an empty one, and opening a saved chat brings back its drafts', async () => {
     const { useChat, chat } = setup();
     useChat.getState().newChat();

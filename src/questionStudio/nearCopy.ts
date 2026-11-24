@@ -54,10 +54,22 @@ export function zhChars(text: string): string {
   return (text.match(CJK) ?? []).join('');
 }
 
+/**
+ * A run needs this many real words (not `#`) to count (k-0531). A table's cells are mostly
+ * numbers, and every number reads as `#`, so without this any two tables (a draft's and its
+ * reference's, or two drafts') shared runs like "# # # # # #" and a new question laid out as a
+ * table read as a copy, often word for word. Runs that are mostly words still count, so "the
+ * same question with new numbers" still matches.
+ */
+export const MIN_RUN_WORDS = 3;
+
 const enRuns = (text: string): string[] => {
   const words = enTokens(text);
   const out: string[] = [];
-  for (let i = 0; i + EN_SHINGLE <= words.length; i += 1) out.push(words.slice(i, i + EN_SHINGLE).join(' '));
+  for (let i = 0; i + EN_SHINGLE <= words.length; i += 1) {
+    const run = words.slice(i, i + EN_SHINGLE);
+    if (run.filter((word) => word !== '#').length >= MIN_RUN_WORDS) out.push(run.join(' '));
+  }
   return out;
 };
 

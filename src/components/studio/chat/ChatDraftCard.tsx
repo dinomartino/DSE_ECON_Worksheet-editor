@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
-import { ChatIcon, RefreshIcon } from '@/components/ui/icons';
+import { ChatIcon, RefreshIcon, WarningIcon } from '@/components/ui/icons';
+import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import { createWorksheet } from '@/model/factories';
 import type { LanguageMode } from '@/model/types';
@@ -62,7 +63,9 @@ export function ChatDraftCard({
   const studio = entry.draft;
   const item = useMemo(() => draftItem(entry), [entry]);
   const why = explanationLines(studio.draft, entry.request.sides);
-  const failed = studio.status === 'failed';
+  // A failed check (near-copy, format) is a warning on the card, never a reason to hide it (k-0531).
+  const warnings = studio.checks.filter((c) => c.state === 'fail').flatMap((c) => c.findings);
+  const warned = warnings.length > 0;
   const accepted = state === 'accepted';
   const rejected = state === 'rejected';
   const added = state === 'added';
@@ -75,6 +78,7 @@ export function ChatDraftCard({
       data-chat-draft={draft.no}
       data-state={state}
       data-status={studio.status}
+      data-warned={warned || undefined}
       aria-busy={working}
       className={`relative scroll-mt-4 overflow-hidden rounded-xl border bg-surface shadow-sm transition-[border-color,box-shadow,opacity] duration-200 ${
         accepted ? 'border-ok-line ring-2 ring-ok-soft' : highlight ? 'border-accent ring-2 ring-accent/30' : 'border-line'
@@ -101,10 +105,16 @@ export function ChatDraftCard({
             <Chip tone="look">{m.diagramLook}</Chip>
           </span>
         )}
-        {failed ? <Chip tone="fail">{m.leftOut}</Chip> : <Chip tone={studio.status === 'look' ? 'look' : 'ok'}>{studio.status === 'look' ? q.statusLook : q.statusOk}</Chip>}
+        {warned ? (
+          <Chip tone="fail">
+            <WarningIcon size={12} /> {warnLabel(warnings, m, f)}
+          </Chip>
+        ) : (
+          <Chip tone={studio.status === 'look' ? 'look' : 'ok'}>{studio.status === 'look' ? q.statusLook : q.statusOk}</Chip>
+        )}
         <span className="flex-1" />
         <span className="shrink-0 rounded-md bg-surface-sunken px-2 py-0.5 text-[11.5px] font-medium text-ink">{q.key(letterOf(studio.draft.answerIndex))}</span>
-        {!failed && !added && !(busy && draft.id.startsWith('live-')) && (
+        {!added && !(busy && draft.id.startsWith('live-')) && (
           <>
             <button
               type="button"
@@ -128,6 +138,18 @@ export function ChatDraftCard({
 
       {!rejected && (
         <>
+          {warned && (
+            <div role="note" className="mx-3 mt-2.5 rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-[12.5px] leading-snug text-danger-ink" data-draft-warning>
+              <p className="flex items-center gap-1.5 font-semibold">
+                <WarningIcon size={14} /> {m.warnTitle}
+              </p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                {warnings.map((finding, i) => (
+                  <li key={i}>{words(finding)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="bg-white px-2 pt-1">
             {item ? <PastPaperSheet item={item} doc={FRAME} language={language} compact /> : <p className="px-3 py-3 text-[12.5px] text-ink-muted">{q.noPreview}</p>}
           </div>
@@ -164,7 +186,7 @@ export function ChatDraftCard({
               })}
             </ul>
           )}
-          {!failed && !added && (
+          {!added && (
             <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5 pt-0.5">
               <button type="button" className={`${small} inline-flex items-center gap-1`} disabled={busy} title={q.anotherTitle} onClick={() => onChange('another')}>
                 <RefreshIcon size={13} /> {q.another}
@@ -190,4 +212,14 @@ export function ChatDraftCard({
       )}
     </article>
   );
+}
+
+/** The red chip's words: the first failed check, in a few words ("Very close to a past paper question"). */
+function warnLabel(warnings: readonly Finding[], m: Messages<typeof STUDIO_CHAT_MESSAGES>, f: Messages<typeof STUDIO_FINDING_MESSAGES>): string {
+  const copy = warnings.find((w) => w.id === 'copy.close');
+  if (copy) {
+    const kind = ({ bank: f.copyKindBank, mine: f.copyKindMine, paper: f.copyKindPaper, example: f.copyKindExample, draft: f.copyKindDraft } as Record<string, string>)[String(copy.params?.with ?? 'bank')] ?? f.copyKindBank;
+    return m.warnCopy(kind);
+  }
+  return m.warnShape;
 }

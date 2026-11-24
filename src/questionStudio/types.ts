@@ -138,6 +138,11 @@ export interface DraftChange {
   note: BiDraft;
 }
 
+/**
+ * ok: every check passed. look: read it (a check found something, or failed: a near-copy or a
+ * broken format, shown as a red warning on the card, k-0531). failed: only in drafts saved
+ * before k-0531, when such a draft was left out; read as look on load (`shownDraft`).
+ */
 export type DraftStatus = 'ok' | 'look' | 'failed';
 
 export interface StudioDraft {

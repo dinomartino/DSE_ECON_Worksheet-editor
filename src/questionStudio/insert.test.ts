@@ -61,10 +61,10 @@ describe('studioBuilds', () => {
     expect(store().worksheet.questions).toHaveLength(before.questions.length);
   });
 
-  it('never builds a draft that failed a hard check', async () => {
+  it('builds a warned draft too, and one saved as failed before k-0531: the teacher picked it', async () => {
     const list = await drafts(true);
     const failedOne = { ...list[0], status: 'failed' as const };
-    expect(studioBuilds([failedOne, list[1]], 'C.ped')).toHaveLength(1);
+    expect(studioBuilds([failedOne, list[1]], 'C.ped')).toHaveLength(2);
   });
 
   it('nothing is inserted until the builds are handed to the store', async () => {

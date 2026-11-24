@@ -4,14 +4,16 @@ import { computeNumbering } from '@/model/numbering';
 import type { Question, Worksheet } from '@/model/types';
 import { buildsOf, materialize } from '@/questionStudio/deliver';
 import { studioBuilds } from '@/questionStudio/insert';
+import { stemBlocks } from '@/questionStudio/stemTable';
+import { hasWarning } from '@/questionStudio/validate';
 import type { PartialDraft } from '@/questionStudio/partial';
 import { flowOf } from '@/model/flow';
 import { placeQuestions } from '@/store/worksheetStore';
 import type { RunState } from '../chat/chatStore';
 import type { Chat, ChatDraft } from '../chat/chatTypes';
 
-/** Drafts that can go into the paper: open (or ticked) and not failed. */
-export const acceptable = (d: ChatDraft): boolean => (d.state === 'open' || d.state === 'accepted') && d.entry.draft.status !== 'failed';
+/** A draft still on offer: open or accepted, a warned one too (k-0531: the teacher decides). */
+export const acceptable = (d: ChatDraft): boolean => d.state === 'open' || d.state === 'accepted';
 
 /**
  * The ✦ Write panel's drafts drawn on the page (k-0516 B): each open draft as a question, faded
@@ -27,7 +29,8 @@ export interface Ghost {
   draftId?: string;
   no?: number;
   question: Question;
-  status: 'writing' | 'changing' | 'drawing' | 'ok' | 'look';
+  /** `warn`: a check failed (near-copy, format): drawn like the rest with a red chip (k-0531). */
+  status: 'writing' | 'changing' | 'drawing' | 'ok' | 'look' | 'warn';
   /** The key's letter, once known. */
   key?: string;
 }
@@ -50,7 +53,7 @@ function partialQuestion(p: PartialDraft): Question | undefined {
     explanation: blank,
   };
   const q = materialize({ typeId: 'mcq', fill: fillMcq(draft) });
-  return q ? ({ ...q, aiMade: true } as Question) : undefined;
+  return q ? ({ ...q, blocks: stemBlocks(draft.stem), aiMade: true } as Question) : undefined;
 }
 
 export function ghostsOf(chat: Chat, run: RunState | undefined): Ghost[] {
@@ -66,7 +69,7 @@ export function ghostsOf(chat: Chat, run: RunState | undefined): Ghost[] {
       draftId: d.id,
       no: d.no,
       question: { ...q, id },
-      status: mine?.target === d.id ? 'changing' : d.entry.draft.status === 'look' ? 'look' : 'ok',
+      status: mine?.target === d.id ? 'changing' : hasWarning(d.entry.draft) ? 'warn' : d.entry.draft.status === 'look' ? 'look' : 'ok',
       ...(d.entry.draft.draft.answerIndex >= 0 ? { key: LETTERS[d.entry.draft.draft.answerIndex] } : {}),
     });
   }
@@ -75,10 +78,9 @@ export function ghostsOf(chat: Chat, run: RunState | undefined): Ghost[] {
     for (const live of mine.live.drafts) {
       const id = `${GHOST_PREFIX}live-${mine.turnId}-${live.index}`;
       if (live.draft) {
-        if (live.draft.status === 'failed') continue;
         const build = studioBuilds([live.draft], mine.request?.keyPoint ?? '')[0];
         const q = build && materialize(build);
-        if (q) out.push({ id, question: { ...q, id }, status: live.diagram === 'working' ? 'drawing' : live.draft.status === 'look' ? 'look' : 'ok', ...(live.draft.draft.answerIndex >= 0 ? { key: LETTERS[live.draft.draft.answerIndex] } : {}) });
+        if (q) out.push({ id, question: { ...q, id }, status: live.diagram === 'working' ? 'drawing' : hasWarning(live.draft) ? 'warn' : live.draft.status === 'look' ? 'look' : 'ok', ...(live.draft.draft.answerIndex >= 0 ? { key: LETTERS[live.draft.draft.answerIndex] } : {}) });
       } else if (live.partial) {
         const q = partialQuestion(live.partial);
         if (q) out.push({ id, question: { ...q, id }, status: 'writing' });

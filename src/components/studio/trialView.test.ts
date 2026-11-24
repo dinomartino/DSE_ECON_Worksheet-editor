@@ -16,13 +16,13 @@ function record() {
 }
 
 describe('the trial kit’s reading list', () => {
-  it('is the teacher’s own requests newest first, then the briefs in order, and never a draft the studio left out', () => {
-    expect(readingList(record().getState().runs, 'all').map(({ entry }) => entry.id)).toEqual(['m2', 'm1', 'b1a', 'b2a', 'b2b']);
+  it('is the teacher’s own requests newest first, then the briefs in order, a warned draft too (k-0531: nothing is left out)', () => {
+    expect(readingList(record().getState().runs, 'all').map(({ entry }) => entry.id)).toEqual(['m2', 'm1', 'b1a', 'xleft', 'b2a', 'b2b']);
   });
 
   it('keeps to the briefs, or to the teacher’s own', () => {
     const runs = record().getState().runs;
-    expect(readingList(runs, 'briefs').map(({ entry }) => entry.id)).toEqual(['b1a', 'b2a', 'b2b']);
+    expect(readingList(runs, 'briefs').map(({ entry }) => entry.id)).toEqual(['b1a', 'xleft', 'b2a', 'b2b']);
     expect(readingList(runs, 'mine').map(({ entry }) => entry.id)).toEqual(['m2', 'm1']);
   });
 
@@ -32,8 +32,8 @@ describe('the trial kit’s reading list', () => {
     expect(readingList(log.getState().runs, 'todo').map(({ entry }) => entry.id)).toContain('m2');
     log.getState().mark('m2', { use: 'asis' });
     log.getState().mark('b1a', { key: 'bad', use: 'reject' });
-    expect(readingList(log.getState().runs, 'todo').map(({ entry }) => entry.id)).toEqual(['m1', 'b2a', 'b2b']);
-    expect(readingList(log.getState().runs, 'all')).toHaveLength(5);
+    expect(readingList(log.getState().runs, 'todo').map(({ entry }) => entry.id)).toEqual(['m1', 'xleft', 'b2a', 'b2b']);
+    expect(readingList(log.getState().runs, 'all')).toHaveLength(6);
   });
 
   it('reads an empty record as an empty list', () => {

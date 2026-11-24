@@ -107,11 +107,12 @@ describe('shapeFindings', () => {
 
 describe('statusOf', () => {
   const row = (id: CheckRow['id'], state: CheckRow['state']): CheckRow => ({ id, state, findings: [] });
-  it('is failed when a check failed, look when one has notes or the key was never solved, else ok', () => {
-    expect(statusOf([row('shape', 'fail'), row('key', 'pass')])).toBe('failed');
+  it('is look when a check failed (a warning, never left out: k-0531), has notes or the key was never solved, else ok', () => {
+    expect(statusOf([row('shape', 'fail'), row('key', 'pass')])).toBe('look');
     expect(statusOf([row('numbers', 'look'), row('key', 'pass')])).toBe('look');
     expect(statusOf([row('shape', 'pass'), row('key', 'skipped')])).toBe('look');
     expect(statusOf([row('shape', 'pass'), row('key', 'pass'), row('copy', 'pass')])).toBe('ok');
-    expect(statusOf([row('shape', 'fail'), row('numbers', 'look')])).toBe('failed');
+    expect(statusOf([row('shape', 'fail'), row('numbers', 'look')])).toBe('look');
+    expect(statusOf([row('copy', 'fail'), row('key', 'pass')])).toBe('look');
   });
 });

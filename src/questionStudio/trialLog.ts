@@ -262,7 +262,8 @@ export function createTrialLog(storage: Storage_ | undefined = browserStorage())
 
 /** Every draft the studio showed, with the run that wrote it (a draft a hard check failed was never shown). */
 export function shownDrafts(runs: readonly TrialRun[]): Array<{ run: TrialRun; entry: TrialDraft }> {
-  return runs.flatMap((run) => run.drafts.filter((d) => d.draft.status !== 'failed').map((entry) => ({ run, entry })));
+  // Every draft is shown, a warned one too (k-0531).
+  return runs.flatMap((run) => run.drafts.map((entry) => ({ run, entry })));
 }
 
 /** A draft with both marks given. */

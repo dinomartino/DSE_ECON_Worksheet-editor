@@ -32,7 +32,7 @@ export const WRITE_PANEL_MESSAGES = defineMessages({
   qn: { en: (n: string) => `Q${n}`, zh: (n: string) => `第 ${n} 題` },
   inPaper: { en: 'In the paper', zh: '已加入試卷' },
   rejected: { en: 'Rejected', zh: '已拒絕' },
-  failed: { en: 'Left out', zh: '未能使用' },
+  warned: { en: 'Warning: see its checks', zh: '有警告：請看檢查結果' },
   writing: { en: 'writing…', zh: '撰寫中…' },
   changing: { en: 'changing…', zh: '修改中…' },
   acceptAll: { en: (n: number) => `Accept all without problems (${n})`, zh: (n: number) => `接受所有未發現問題的草稿（${n}）` },
