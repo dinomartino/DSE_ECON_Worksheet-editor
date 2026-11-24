@@ -126,6 +126,7 @@ export function buildSourceRequest(
     schema: SOURCE_QUESTIONS_SCHEMA,
     shapeHint: SOURCE_SHAPE_HINT,
     maxOutputTokens: maxOutputTokens(input.sides.length, preset),
+    feature: 'generate',
     signal,
   };
 }

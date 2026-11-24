@@ -147,6 +147,7 @@ export function buildWriteRequest(brief: Brief, job: WriteJob, glossary: Glossar
     schema: STUDIO_QUESTIONS_SCHEMA,
     shapeHint: STUDIO_SHAPE_HINT,
     maxOutputTokens: writeTokens(count, wanted.length, preset),
+    feature: 'studio.write',
     signal,
     ...(images.length ? { images } : {}),
   };
@@ -206,6 +207,7 @@ export function buildSolveRequest(items: readonly SolveItem[], language: Side, p
     schema: SOLVE_SCHEMA,
     shapeHint: SOLVE_SHAPE_HINT,
     maxOutputTokens: solveTokens(items.length, preset),
+    feature: 'studio.solve',
     signal,
   };
 }

@@ -1,10 +1,30 @@
-import type { CompletionRequest, CompletionResult } from '../types';
+import type { CompletionRequest, CompletionResult, TokenUsage } from '../types';
 import { isRecord, modelExtra, parseImage, systemFor, trimBase, withBody, type Adapter, type StreamPiece } from './adapter';
 
 /**
  * Anthropic Messages. The preset's `anthropic-dangerous-direct-browser-access` header is what
  * makes its errors readable from a browser; structured output is GA `output_config`.
+ *
+ * Prompt caching (k-0537): Anthropic discounts a repeated prefix only when the request marks it
+ * with `cache_control`, so the system prompt (every feature's fixed instructions: the diagram
+ * rules, the translate rules, the studio writer…) goes as one text block marked `ephemeral`
+ * (5 minutes). A prefix under the model's minimum is simply not cached, never an error. Reads cost
+ * a tenth of input; the first write costs 1.25×, repaid by the second call within five minutes.
  */
+
+/** `usage`: `input_tokens` excludes the cache reads and writes, so the prompt is their sum. */
+export function anthropicUsage(usage: Record<string, unknown>): TokenUsage {
+  const n = (x: unknown) => (typeof x === 'number' ? x : undefined);
+  const fresh = n(usage.input_tokens);
+  const cached = n(usage.cache_read_input_tokens);
+  const cacheWrite = n(usage.cache_creation_input_tokens);
+  const result: TokenUsage = {};
+  if (fresh !== undefined || cached !== undefined || cacheWrite !== undefined) result.input = (fresh ?? 0) + (cached ?? 0) + (cacheWrite ?? 0);
+  if (n(usage.output_tokens) !== undefined) result.output = n(usage.output_tokens);
+  if (cached !== undefined) result.cached = cached;
+  if (cacheWrite !== undefined) result.cacheWrite = cacheWrite;
+  return result;
+}
 
 function finishOf(reason: unknown): CompletionResult['finish'] {
   if (reason === 'end_turn' || reason === 'stop_sequence') return 'stop';
@@ -29,7 +49,7 @@ export const anthropicAdapter: Adapter = {
     const body: Record<string, unknown> = {
       model: config.model,
       max_tokens: req.maxOutputTokens,
-      system: systemFor(req.system, enforced, req.shapeHint),
+      system: [{ type: 'text', text: systemFor(req.system, enforced, req.shapeHint), cache_control: { type: 'ephemeral' } }],
       messages: req.turns.map((t, i) => ({ role: t.role, content: i === req.turns.length - 1 && t.role === 'user' ? withImages(t.content, req.images) : t.content })),
       ...preset.extraBody,
       ...modelExtra(preset, config.model),
@@ -48,15 +68,7 @@ export const anthropicAdapter: Adapter = {
       .filter((c): c is Record<string, unknown> => isRecord(c) && c.type === 'text' && typeof c.text === 'string')
       .map((c) => c.text as string)
       .join('');
-    const usage = isRecord(body.usage) ? body.usage : {};
-    return {
-      text,
-      finish: finishOf(body.stop_reason),
-      usage: {
-        input: typeof usage.input_tokens === 'number' ? usage.input_tokens : undefined,
-        output: typeof usage.output_tokens === 'number' ? usage.output_tokens : undefined,
-      },
-    };
+    return { text, finish: finishOf(body.stop_reason), usage: anthropicUsage(isRecord(body.usage) ? body.usage : {}) };
   },
 
   buildStream(preset, config, req, dialect) {
@@ -67,8 +79,10 @@ export const anthropicAdapter: Adapter = {
     if (!isRecord(event)) return null;
     if (event.type === 'error') return { error: isRecord(event.error) && typeof event.error.message === 'string' ? event.error.message : 'error' };
     if (event.type === 'message_start' && isRecord(event.message) && isRecord(event.message.usage)) {
-      const input = event.message.usage.input_tokens;
-      return typeof input === 'number' ? { usage: { input } } : null;
+      // The start's output count is a placeholder; the real one comes with `message_delta`.
+      const usage = anthropicUsage(event.message.usage);
+      delete usage.output;
+      return usage.input === undefined ? null : { usage };
     }
     if (event.type === 'content_block_delta' && isRecord(event.delta) && event.delta.type === 'text_delta' && typeof event.delta.text === 'string') return { text: event.delta.text };
     if (event.type === 'message_delta') {

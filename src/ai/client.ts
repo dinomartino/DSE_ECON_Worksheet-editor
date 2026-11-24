@@ -8,12 +8,14 @@ import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, RELAY_TIMEOUT_MS, defaultHttpD
 import { presetFor, supportsImages } from './providers';
 import { reportRelayOutcome, type RelayOutcome } from './relayOutcome';
 import { ITEMS_SCHEMA, parseItemsPayload } from './schema';
+import { newJobId, recordUsage } from './usage';
 import {
   AiError,
   isAiError,
   type AiClient,
   type AiErrorInfo,
   type ApiFamily,
+  type CompletionRequest,
   type CompletionResult,
   type ConnectionTest,
   type HttpDeps,
@@ -88,6 +90,10 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
   const { provider, apiKey: key, model } = cfg;
   const base = safeBaseUrl(cfg.baseUrl);
   const cacheKey = `${provider}|${model}|${cfg.baseUrl}`;
+  // One client per run (`createRunDeps`), so its calls make one job in the usage log (k-0537).
+  const job = newJobId();
+  const logUsage = (req: CompletionRequest, res: CompletionResult) =>
+    recordUsage({ job, feature: req.feature ?? 'other', provider, family: preset.family, relay: Boolean(preset.relay), model: res.model, usage: res.usage, charged: res.charged, ms: res.ms, at: Date.now() });
   const timeoutFor = (req: { timeoutMs?: number }) => req.timeoutMs ?? (preset.relay ? RELAY_TIMEOUT_MS : COMPLETION_TIMEOUT_MS);
 
   /** Why nothing can be sent, or null. */
@@ -179,6 +185,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
       let usage: CompletionResult['usage'];
       let failed: string | undefined;
       let failedCharged: number | undefined;
+      let charged: number | undefined;
       let settled = false;
       let res: Awaited<ReturnType<typeof sendStream>>;
       try {
@@ -197,6 +204,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
             failedCharged = piece.errorCharged;
           }
           if (piece.settled) settled = true;
+          if (piece.charged !== undefined) charged = piece.charged;
           if (piece.balance !== undefined) note.balance = piece.balance;
           if (piece.text) {
             text += piece.text;
@@ -224,7 +232,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
       // A relay stream closed without its receipt was cut off: nothing it said can be trusted as whole.
       if (adapter.mustSettle && !settled) throw new AiError(aiErrorInfo('server', provider, { status: res.status, detail: 'stream ended early' }));
       workingRung.set(cacheKey, dialect);
-      return { text, finish: finish ?? 'stop', dialect, model, ms: http.now() - started, ...(usage ? { usage } : {}) } satisfies CompletionResult;
+      return { text, finish: finish ?? 'stop', dialect, model, ms: http.now() - started, ...(usage ? { usage } : {}), ...(charged !== undefined ? { charged } : {}) } satisfies CompletionResult;
     }
   }
 
@@ -232,7 +240,9 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     async stream(req, onText) {
       const note: RelayOutcome = {};
       try {
-        return await stream(req, onText, note);
+        const res = await stream(req, onText, note);
+        logUsage(req, res);
+        return res;
       } catch (error) {
         const info = mapThrown(provider, error, null);
         log(info);
@@ -245,7 +255,9 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     async complete(req) {
       const note: RelayOutcome = {};
       try {
-        return await complete(req, note);
+        const res = await complete(req, note);
+        logUsage(req, res);
+        return res;
       } catch (error) {
         const info = mapThrown(provider, error, null);
         log(info);
