@@ -1,6 +1,6 @@
-import type { Diagram, DiagramArea, DiagramArrow, DiagramCurve, DiagramPointMark, DiagramSpan } from '@/model/diagram';
+import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramArrow, DiagramCurve, DiagramPointMark, DiagramSpan } from '@/model/diagram';
 import { MAX_CHART_CATEGORIES, MAX_CHART_SERIES } from '@/model/diagram';
-import { curveXAt, curveYAt } from '@/model/diagramAnchors';
+import { curveXAt, curveYAt, resolveAnchor } from '@/model/diagramAnchors';
 import { curveCrossing, revenueArea } from '@/model/diagramAreas';
 import { SHADE_PRESETS, type PresetRoles, type ShadePresetId } from '@/model/diagramPresets';
 import {
@@ -24,7 +24,7 @@ import {
   type Pair,
 } from '@/model/diagramTemplateKit';
 import { buildFromTemplate, getDiagramTemplate } from '@/model/diagramTemplates';
-import { phrase, plainOf, symbol } from './text';
+import { phrase, plainOf, symbol, symbolRuns } from './text';
 import {
   REVENUE_SHADES,
   type CurveRole,
@@ -35,6 +35,8 @@ import {
   type ShiftSize,
   type Slope,
   type SpecCurve,
+  type SpecLevel,
+  type SpecPoint,
   type SpecShift,
 } from './types';
 
@@ -54,6 +56,8 @@ export interface Compiled {
   curveIds: Map<string, string>;
   /** Spec curve / shift id → its role, inherited down a shift chain. */
   roles: Map<string, CurveRole>;
+  /** Spec level id → where it sits (y for a price, x for a quota), drawn as a line or not (a guide). */
+  levels: Map<string, { vertical: boolean; at: number }>;
 }
 
 const DEMAND_LINES: Record<Slope, Pair[]> = {
@@ -74,6 +78,31 @@ const LINE_STEP: Record<ShiftSize, number> = { small: 0.1, normal: 0.18, large: 
 const VERTICAL_STEP: Record<ShiftSize, number> = { small: 0.14, normal: 0.24, large: 0.32 };
 /** Room for two frontier names side by side on the x-axis. */
 const FRONTIER_STEP: Record<ShiftSize, number> = { small: 0.22, normal: 0.32, large: 0.44 };
+
+/** How far a level sits from a crossing it is placed against, at least, and at most when it has one bound. */
+const LEVEL_MARGIN = 0.06;
+const LEVEL_REACH = 0.26;
+
+/** A tick or label as a lookup key: "Q_1", "Q₁", "Q1", "q 1" → "Q1". */
+export function tickKey(raw: string): string {
+  return symbolRuns(raw)
+    .map((r) => r.text)
+    .join('')
+    .replace(/[\s_{}]/g, '')
+    .toUpperCase();
+}
+
+const pointName = (p: SpecPoint) => p.name || p.xTick || p.yTick || `${p.a}×${p.b}`;
+
+function setLevel(line: DiagramCurve, vertical: boolean, at: number): void {
+  if (vertical) {
+    if (line.derive?.kind === 'vertical') line.derive = { ...line.derive, x: at };
+    line.points = line.points.map((p) => ({ ...p, x: at }));
+  } else {
+    if (line.derive?.kind === 'level') line.derive = { ...line.derive, y: at };
+    line.points = line.points.map((p) => ({ ...p, y: at }));
+  }
+}
 
 export const DEMAND_LIKE: ReadonlySet<CurveRole> = new Set(['demand', 'ad']);
 export const SUPPLY_LIKE: ReadonlySet<CurveRole> = new Set(['supply', 'sras', 'lras', 'vertical']);
@@ -132,36 +161,71 @@ function xAt(c: DiagramCurve, y: number): number | null {
   return curveXAt(c, y);
 }
 
-/** Where a shift arrow fits: a short arrow beside the source, pointing the way of the shift. */
-function shiftArrowPlace(source: DiagramCurve, by: { x: number; y: number }): [Pair, Pair] | null {
+/** What a shift arrow must keep clear of: every other line, and the marked points. */
+interface Clearance {
+  curves: readonly DiagramCurve[];
+  points: readonly DiagramPointMark[];
+  /** The source and its copy: the arrow runs between them. */
+  keep: readonly string[];
+}
+
+/** Distance from point p to segment ab, in unit space. */
+function toSegment(p: { x: number; y: number }, a: Pair, b: Pair): number {
+  const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+  const len = dx * dx + dy * dy || 1;
+  const t = Math.max(0, Math.min(1, ((p.x - a[0]) * dx + (p.y - a[1]) * dy) / len));
+  return Math.hypot(p.x - (a[0] + t * dx), p.y - (a[1] + t * dy));
+}
+
+const ARROW_ROOM = 0.045;
+
+/** True when the arrow from–to touches no other line and no marked point. */
+function clearOf(from: Pair, to: Pair, room: Clearance | undefined): boolean {
+  if (!room) return true;
+  const probe = curve([[from[0], from[1]], [to[0], to[1]]]);
+  // The arrow, fattened by ARROW_ROOM: two parallel probes either side catch a near miss.
+  const offsets = from[1] === to[1] ? [[0, ARROW_ROOM], [0, -ARROW_ROOM]] : [[ARROW_ROOM, 0], [-ARROW_ROOM, 0]];
+  for (const c of room.curves) {
+    if (room.keep.includes(c.id)) continue;
+    if (curveCrossing(probe, c)) return false;
+    for (const [ox, oy] of offsets) {
+      if (curveCrossing(curve([[from[0] + ox, from[1] + oy], [to[0] + ox, to[1] + oy]]), c)) return false;
+    }
+  }
+  return !room.points.some((p) => toSegment(p.at, from, to) < ARROW_ROOM + 0.01);
+}
+
+/** Where a shift arrow fits: a short arrow beside the source, pointing the way of the shift, clear of everything else. */
+function shiftArrowPlace(source: DiagramCurve, by: { x: number; y: number }, room?: Clearance): [Pair, Pair] | null {
   const ys = source.points.map((p) => p.y);
   const xs = source.points.map((p) => p.x);
   const [ylo, yhi] = [Math.min(...ys), Math.max(...ys)];
   const [xlo, xhi] = [Math.min(...xs), Math.max(...xs)];
+  const fits: Array<[Pair, Pair]> = [];
   if (Math.abs(by.x) > 1e-6) {
     const sign = Math.sign(by.x);
     const len = Math.abs(by.x);
-    for (const f of [0.8, 0.6, 0.4]) {
+    for (const f of [0.8, 0.7, 0.6, 0.9, 0.5, 0.4, 0.3, 0.2]) {
       const y = Math.min(0.86, ylo + f * (yhi - ylo));
       const x0 = xAt(source, y);
       if (x0 === null) continue;
       const from: Pair = [x0 + sign * 0.03, y];
       const to: Pair = [x0 + sign * Math.max(len - 0.03, 0.05), y];
-      if (to[0] > 0.02 && to[0] < 0.98) return [from, to];
+      if (to[0] > 0.02 && to[0] < 0.98) fits.push([from, to]);
     }
-    return null;
+  } else {
+    const sign = Math.sign(by.y);
+    const len = Math.abs(by.y);
+    for (const f of [0.85, 0.7, 0.5, 0.3, 0.15]) {
+      const x = xlo + f * (xhi - xlo);
+      const y0 = curveYAt(source, x);
+      if (y0 === null) continue;
+      const from: Pair = [x, y0 + sign * 0.03];
+      const to: Pair = [x, y0 + sign * Math.max(len - 0.03, 0.05)];
+      if (to[1] > 0.04 && to[1] < 0.96) fits.push([from, to]);
+    }
   }
-  const sign = Math.sign(by.y);
-  const len = Math.abs(by.y);
-  for (const f of [0.85, 0.5, 0.15]) {
-    const x = xlo + f * (xhi - xlo);
-    const y0 = curveYAt(source, x);
-    if (y0 === null) continue;
-    const from: Pair = [x, y0 + sign * 0.03];
-    const to: Pair = [x, y0 + sign * Math.max(len - 0.03, 0.05)];
-    if (to[1] > 0.04 && to[1] < 0.96) return [from, to];
-  }
-  return null;
+  return fits.find(([from, to]) => clearOf(from, to, room)) ?? fits[0] ?? null;
 }
 
 function frontierShift(ab: Pair, direction: Direction, size: ShiftSize): Pair {
@@ -206,20 +270,35 @@ function staggerNames(source: DiagramCurve, copy: DiagramCurve, by: { x: number;
   left.labelOffset = { x: -0.02, y: end.y >= other.y ? 0.07 : -0.07 };
 }
 
-export function compileSpec(spec: DiagramSpec): Compiled {
+/**
+ * A level held between two crossings needs room: the shifts those crossings use are drawn
+ * large, so the four readings of an HKDSE figure (Qs, Qd at the price, the equilibria)
+ * stand apart. The returned spec is the one drawn; the model's own is left as it was.
+ */
+function roomForLevels(spec: DiagramSpec): DiagramSpec {
+  const between = spec.levels.filter((l) => l.above.length === 2 && l.below.length === 2);
+  if (!between.length) return spec;
+  const ids = new Set(between.flatMap((l) => [...l.above, ...l.below]));
+  if (!spec.shifts.some((s) => ids.has(s.id) && s.size !== 'large')) return spec;
+  return { ...spec, shifts: spec.shifts.map((s) => (ids.has(s.id) ? { ...s, size: 'large' as const } : s)) };
+}
+
+export function compileSpec(given: DiagramSpec): Compiled {
+  const spec = roomForLevels(given);
   const issues: DiagramIssue[] = [];
   const curveIds = new Map<string, string>();
   const roles = new Map<string, CurveRole>();
+  const levelAt = new Map<string, { vertical: boolean; at: number }>();
   const error = (code: string, text: string) => issues.push({ level: 'error', code, text });
   const look = (code: string, text: string) => issues.push({ level: 'look', code, text });
 
-  if (spec.kind === 'none') return { diagram: null, issues, curveIds, roles };
+  if (spec.kind === 'none') return { diagram: null, issues, curveIds, roles, levels: levelAt };
 
   if (spec.kind === 'template') {
     const template = getDiagramTemplate(spec.template);
     if (!template || spec.template === 'blank') {
       error('template.unknown', `"${spec.template}" is not one of the editor's diagram templates.`);
-      return { diagram: null, issues, curveIds, roles };
+      return { diagram: null, issues, curveIds, roles, levels: levelAt };
     }
     const built = buildFromTemplate(spec.template);
     const title = phrase(spec.title);
@@ -231,7 +310,7 @@ export function compileSpec(spec: DiagramSpec): Compiled {
       x: x && !built.chart ? { ...built.x, title: x } : built.x,
       y: y && !built.chart ? { ...built.y, title: y } : built.y,
     };
-    return { diagram, issues, curveIds, roles };
+    return { diagram, issues, curveIds, roles, levels: levelAt };
   }
 
   if (spec.kind === 'chart') {
@@ -268,7 +347,7 @@ export function compileSpec(spec: DiagramSpec): Compiled {
         ...(xTitle ? { xTitle } : {}),
       },
     };
-    return { diagram, issues, curveIds, roles };
+    return { diagram, issues, curveIds, roles, levels: levelAt };
   }
 
   // ---- curves ----
@@ -302,6 +381,8 @@ export function compileSpec(spec: DiagramSpec): Compiled {
     }
   }
 
+  /** Shift arrows are placed last, clear of the price lines and points (k-0534: one sat on P₁). */
+  const pendingArrows: Array<{ id: string; source: DiagramCurve; copy: DiagramCurve; by: { x: number; y: number } }> = [];
   for (const s of spec.shifts) compileShift(s);
 
   function compileShift(s: SpecShift): void {
@@ -337,74 +418,245 @@ export function compileSpec(spec: DiagramSpec): Compiled {
     }
     add(s.id, copy, role);
     staggerNames(source, copy, by);
-    const place = shiftArrowPlace(source, by);
-    if (place) {
-      try {
-        arrows.push(shiftArrow(source, copy, place[0], place[1]));
-      } catch {
-        look('shift.arrow', `No room for the arrow of "${s.id}".`);
-      }
-    } else look('shift.arrow', `No room for the arrow of "${s.id}".`);
+    pendingArrows.push({ id: s.id, source, copy, by });
   }
 
-  // ---- price lines ----
+  // ---- levels: price lines and quotas, placed against named crossings (k-0534) ----
+  const levelKinds = new Map<string, string>();
+  const levelOrder: string[] = [];
+  const crossingOf = (ids: readonly string[]): { x: number; y: number } | null => {
+    const a = bySpecId.get(ids[0] ?? '');
+    const b = bySpecId.get(ids[1] ?? '');
+    return a && b ? curveCrossing(a, b) : null;
+  };
   const firstMarket = (): { x: number; y: number } | null => {
     const demand = spec.curves.find((c) => DEMAND_LIKE.has(c.role));
     const supply = spec.curves.find((c) => SUPPLY_LIKE.has(c.role));
-    const d = demand && bySpecId.get(demand.id);
-    const s = supply && bySpecId.get(supply.id);
-    return d && s ? curveCrossing(d, s) : null;
+    return demand && supply ? crossingOf([demand.id, supply.id]) : null;
   };
-  const levelKinds = new Map<string, string>();
-  const levelOrder: string[] = [];
-  for (const level of spec.levels) {
-    const market = firstMarket();
-    const y0 = market?.y ?? 0.5;
-    const offset = level.side === 'below' ? -0.17 : 0.17;
-    const y = Math.max(0.1, Math.min(0.88, y0 + offset));
-    try {
-      const line = derived({ kind: 'level', y, from: 0, to: 0.9 }, [], symbol(level.label), { labelAt: 'start', weight: 0.8 });
-      add(level.id, line, 'horizontal');
-      levelKinds.set(level.id, level.kind);
-      levelOrder.push(level.id);
-    } catch {
-      error('level.build', `Price line "${level.id}" could not be drawn.`);
+  /** The band a level may sit in, on its own axis (y for a price, x for a quota); null when its bounds contradict. */
+  const bandOf = (level: SpecLevel): { lo: number; hi: number; free: boolean } | null => {
+    const vertical = level.kind === 'quota';
+    const coord = (p: { x: number; y: number }) => (vertical ? p.x : p.y);
+    const named = (ids: string[], side: string) => {
+      if (!ids.length) return undefined;
+      const p = crossingOf(ids);
+      if (!p) error('level.ref', `"${level.id}" is placed ${side} ${ids.join('×')}, but those two do not cross on the diagram.`);
+      return p ? coord(p) : null;
+    };
+    const above = named(level.above, vertical ? 'right of' : 'above');
+    const below = named(level.below, vertical ? 'left of' : 'below');
+    if (above === null || below === null) return { lo: 0.4, hi: 0.4, free: false };
+    const max = 0.86;
+    if (above !== undefined && below !== undefined) {
+      if (above >= below - 0.02) {
+        error(
+          'level.band',
+          `"${level.id}" cannot be ${vertical ? 'right of' : 'above'} ${level.above.join('×')} and ${vertical ? 'left of' : 'below'} ${level.below.join('×')}: ${level.below.join('×')} is ${vertical ? 'left of' : 'lower than'} ${level.above.join('×')} on this diagram, not ${vertical ? 'right of' : 'higher than'} it.`,
+        );
+        return null;
+      }
+      const margin = Math.min(LEVEL_MARGIN, (below - above) / 3);
+      return { lo: above + margin, hi: below - margin, free: true };
     }
-    if (!market && (level.kind === 'ceiling' || level.kind === 'floor')) {
+    if (above !== undefined) return { lo: Math.min(above + LEVEL_MARGIN, max), hi: Math.min(above + LEVEL_REACH, max), free: true };
+    if (below !== undefined) return { lo: Math.max(below - LEVEL_REACH, 0.08), hi: Math.max(below - LEVEL_MARGIN, 0.08), free: true };
+    const market = firstMarket();
+    const at0 = market ? coord(market) : 0.5;
+    const y = Math.max(0.1, Math.min(0.88, at0 + (level.side === 'below' ? -0.17 : 0.17)));
+    return { lo: y, hi: y, free: false };
+  };
+  /**
+   * A guide is drawn the HKDSE way: no line of its own; the furthest point on it carries
+   * the dashed line to the axis and its tick, and the other points on it follow that
+   * point's height (drag it and P₁ moves for all). It needs a line after all when a gap
+   * or a shade reads it, or when no point sits on it.
+   */
+  const isGuide = (level: SpecLevel) =>
+    level.style === 'guide' &&
+    spec.points.some((p) => p.a === level.id || p.b === level.id) &&
+    !spec.gaps.some((g) => g.level === level.id) &&
+    !((level.kind === 'ceiling' || level.kind === 'floor' || level.kind === 'world' || level.kind === 'fixed') && spec.shades.length);
+  const levelLine = (level: SpecLevel, at: number): DiagramCurve => {
+    const name = symbol(level.label);
+    return level.kind === 'quota'
+      ? derived({ kind: 'vertical', x: at, from: 0, to: 0.9 }, [], name, { labelAt: 'end', weight: 0.8 })
+      : derived({ kind: 'level', y: at, from: 0, to: 0.9 }, [], name, { labelAt: 'start', weight: 0.8 });
+  };
+  const bands = new Map<string, { lo: number; hi: number; free: boolean }>();
+  const guides = new Map<string, SpecLevel>();
+  const placeLevel = (level: SpecLevel, at: number) => {
+    const vertical = level.kind === 'quota';
+    levelAt.set(level.id, { vertical, at });
+    const line = bySpecId.get(level.id);
+    if (line) setLevel(line, vertical, at);
+  };
+  for (const level of spec.levels) {
+    const band = bandOf(level);
+    if (!band) continue;
+    bands.set(level.id, band);
+    const at = (band.lo + band.hi) / 2;
+    levelKinds.set(level.id, level.kind);
+    levelOrder.push(level.id);
+    levelAt.set(level.id, { vertical: level.kind === 'quota', at });
+    roles.set(level.id, level.kind === 'quota' ? 'vertical' : 'horizontal');
+    if (isGuide(level)) guides.set(level.id, level);
+    else {
+      try {
+        add(level.id, levelLine(level, at), level.kind === 'quota' ? 'vertical' : 'horizontal');
+      } catch {
+        error('level.build', `Price line "${level.id}" could not be drawn.`);
+      }
+    }
+    if (!firstMarket() && (level.kind === 'ceiling' || level.kind === 'floor')) {
       error('level.market', `A ${level.kind} needs a demand and a supply curve to sit against.`);
     }
   }
 
-  // ---- equilibria ----
+  // ---- points ----
+  /** A point's two references → where it is and the anchor that keeps it there; a tick name refers to an earlier point. */
+  type Placed = { at: { x: number; y: number }; anchor: DiagramAnchorRef; guide?: string };
+  const marksByTick = new Map<string, DiagramPointMark>();
+  const placePoint = (p: SpecPoint, scratch: Array<DiagramCurve | DiagramPointMark>): Placed | string => {
+    // A guide level holds no line: the point is on the other curve at the guide's height.
+    const guideId = guides.has(p.b) ? p.b : guides.has(p.a) ? p.a : '';
+    if (guideId) {
+      const other = bySpecId.get(guideId === p.b ? p.a : p.b);
+      const place = levelAt.get(guideId)!;
+      if (!other) return `Point ${pointName(p)} names "${guideId === p.b ? p.a : p.b}", which is not drawn.`;
+      if (place.vertical) {
+        const y = curveYAt(other, place.at);
+        if (y === null) return `"${other === bySpecId.get(p.a) ? p.a : p.b}" does not reach the quota "${guideId}".`;
+        return { at: { x: place.at, y }, anchor: { on: other.id, x: { x: place.at, y: 0 } }, guide: guideId };
+      }
+      const x = curveXAt(other, place.at);
+      if (x === null) return `"${guideId === p.b ? p.a : p.b}" does not reach the price line "${guideId}".`;
+      return { at: { x, y: place.at }, anchor: { on: other.id, y: place.at }, guide: guideId };
+    }
+    const a = bySpecId.get(p.a);
+    if (!a) return `Point ${pointName(p)} names "${p.a}", which is not drawn.`;
+    const b = bySpecId.get(p.b);
+    if (b) {
+      const hit = curveCrossing(a, b);
+      if (!hit) return `"${p.a}" and "${p.b}" do not cross inside the plot.`;
+      return { at: hit, anchor: cross(a, b) };
+    }
+    const ref = marksByTick.get(`x:${tickKey(p.b)}`) ?? marksByTick.get(`y:${tickKey(p.b)}`);
+    if (!ref) return `Point ${pointName(p)} names "${p.b}", which is neither a drawn line nor an earlier point's tick.`;
+    const byX = marksByTick.get(`x:${tickKey(p.b)}`) === ref;
+    const anchor: DiagramAnchorRef = byX ? { on: a.id, x: { point: ref.id } } : { on: a.id, y: { point: ref.id } };
+    const at = resolveAnchor({ x: {}, y: {}, curves: scratch.filter((k): k is DiagramCurve => 'points' in k), points: scratch.filter((k): k is DiagramPointMark => 'at' in k), labels: [], arrows: [] }, anchor);
+    if (!at) return `Point ${pointName(p)}: "${p.a}" does not reach ${byX ? 'that quantity' : 'that price'}.`;
+    return { at, anchor };
+  };
+
+  /** How far apart the closest two different ticks on one axis would be, with the levels where they are now: the layout search reads this. */
+  const tickSpread = (): number => {
+    marksByTick.clear();
+    const scratch: Array<DiagramCurve | DiagramPointMark> = [...parts];
+    const xs: Array<[number, string]> = [];
+    const ys: Array<[number, string]> = [];
+    for (const lv of spec.levels) {
+      const place = levelAt.get(lv.id);
+      if (!place || !lv.label.trim()) continue;
+      (place.vertical ? xs : ys).push([place.at, tickKey(lv.label)]);
+    }
+    for (const p of spec.points) {
+      const placed = placePoint(p, scratch);
+      if (typeof placed === 'string') continue;
+      const mark = point(placed.at.x, placed.at.y, undefined, { anchor: placed.anchor });
+      scratch.push(mark);
+      if (p.xTick.trim()) {
+        xs.push([placed.at.x, tickKey(p.xTick)]);
+        marksByTick.set(`x:${tickKey(p.xTick)}`, mark);
+      }
+      if (p.yTick.trim()) {
+        ys.push([placed.at.y, tickKey(p.yTick)]);
+        marksByTick.set(`y:${tickKey(p.yTick)}`, mark);
+      }
+    }
+    const gap = (list: Array<[number, string]>) => {
+      let min = 1;
+      for (let i = 0; i < list.length; i += 1) {
+        for (let j = i + 1; j < list.length; j += 1) {
+          if (list[i][1] === list[j][1]) continue;
+          min = Math.min(min, Math.abs(list[i][0] - list[j][0]));
+        }
+      }
+      return min;
+    };
+    return Math.min(gap(xs), gap(ys));
+  };
+
+  // Each free level slides inside its band to where the ticks are furthest apart (labels never touch).
+  for (const level of spec.levels) {
+    const band = bands.get(level.id);
+    if (!band || !band.free || band.hi - band.lo < 0.01) continue;
+    let best = { at: (band.lo + band.hi) / 2, score: -1 };
+    for (const f of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
+      const at = band.lo + f * (band.hi - band.lo);
+      placeLevel(level, at);
+      const score = tickSpread();
+      if (score > best.score + 0.004) best = { at, score };
+    }
+    placeLevel(level, best.at);
+  }
+  marksByTick.clear();
+
   const equilibriumMarks: DiagramPointMark[] = [];
-  for (const e of spec.equilibria) {
-    const a = bySpecId.get(e.a);
-    const b = bySpecId.get(e.b);
-    if (!a || !b) {
-      error('eq.ref', `Equilibrium ${e.name || `${e.a}×${e.b}`} names a curve that is not drawn.`);
+  const onGuide = new Map<string, DiagramPointMark[]>();
+  for (const e of spec.points) {
+    const placed = placePoint(e, parts);
+    if (typeof placed === 'string') {
+      error(bySpecId.get(e.a) && (bySpecId.get(e.b) || guides.has(e.b) || !e.b) ? 'eq.cross' : 'eq.ref', placed);
       continue;
     }
-    const p = curveCrossing(a, b);
-    if (!p) {
-      error('eq.cross', `"${e.a}" and "${e.b}" do not cross inside the plot.`);
-      continue;
-    }
+    // A guide's own tick is printed once, by its furthest point (below).
+    const guide = placed.guide ? guides.get(placed.guide) : undefined;
+    const sameTick = (tick: string) => guide && tickKey(tick) === tickKey(guide.label);
+    const yTick = guide && guide.kind !== 'quota' && sameTick(e.yTick) ? '' : e.yTick;
+    const xTick = guide && guide.kind === 'quota' && sameTick(e.xTick) ? '' : e.xTick;
+    const byTick = !bySpecId.has(e.b) && !guides.has(e.b);
     const drops: Array<'x' | 'y'> = [];
-    if (e.xTick.trim()) drops.push('x');
-    if (e.yTick.trim()) drops.push('y');
-    const mark = point(p.x, p.y, symbol(e.name), {
-      anchor: cross(a, b),
+    // A point read off a tick ("S₀ above Q₁") carries that tick's line on up to it, untagged.
+    if (xTick.trim() || (byTick && marksByTick.has(`x:${tickKey(e.b)}`))) drops.push('x');
+    if (yTick.trim() || (byTick && marksByTick.has(`y:${tickKey(e.b)}`))) drops.push('y');
+    const mark = point(placed.at.x, placed.at.y, symbol(e.name), {
+      anchor: placed.anchor,
+      dot: e.dot,
       dropTo: drops,
-      xTickLabel: symbol(e.xTick),
-      yTickLabel: symbol(e.yTick),
+      xTickLabel: symbol(xTick),
+      yTickLabel: symbol(yTick),
       labelSide: 'upRight',
     });
-    equilibriumMarks.push(mark);
+    if (e.xTick.trim()) marksByTick.set(`x:${tickKey(e.xTick)}`, mark);
+    if (e.yTick.trim()) marksByTick.set(`y:${tickKey(e.yTick)}`, mark);
+    if (guide) onGuide.set(guide.id, [...(onGuide.get(guide.id) ?? []), mark]);
+    // Equilibria (two curves, not a level) are what the change arrows run between.
+    if (!levelAt.has(e.a) && !levelAt.has(e.b) && bySpecId.has(e.b)) equilibriumMarks.push(mark);
     points.push(mark);
     parts.push(mark);
   }
   if (spec.changeArrows && equilibriumMarks.length >= 2) {
     spans.push(...axisArrows(equilibriumMarks[0], equilibriumMarks[1]));
+  }
+
+  // The furthest point on a guide draws "P₁ - - - -" to the axis; the rest follow its height.
+  for (const [id, guide] of guides) {
+    const marks = onGuide.get(id) ?? [];
+    if (!marks.length) continue;
+    const vertical = guide.kind === 'quota';
+    const head = marks.reduce((far, m) => ((vertical ? m.at.y > far.at.y : m.at.x > far.at.x) ? m : far));
+    const axis: 'x' | 'y' = vertical ? 'x' : 'y';
+    if (guide.label.trim()) {
+      head.dropTo = [...new Set([...(head.dropTo ?? []), axis])];
+      if (vertical) head.xTickLabel = symbol(guide.label);
+      else head.yTickLabel = symbol(guide.label);
+    }
+    for (const m of marks) {
+      if (m === head || !m.anchor || !('on' in m.anchor)) continue;
+      m.anchor = vertical ? { on: m.anchor.on, x: { point: head.id } } : { on: m.anchor.on, y: { point: head.id } };
+    }
   }
 
   // ---- gaps at a price line ----
@@ -461,6 +713,17 @@ export function compileSpec(spec: DiagramSpec): Compiled {
     parts.push(mark);
   }
 
+  for (const pending of pendingArrows) {
+    const place = shiftArrowPlace(pending.source, pending.by, { curves, points, keep: [pending.source.id, pending.copy.id] });
+    if (place) {
+      try {
+        arrows.push(shiftArrow(pending.source, pending.copy, place[0], place[1]));
+      } catch {
+        look('shift.arrow', `No room for the arrow of "${pending.id}".`);
+      }
+    } else look('shift.arrow', `No room for the arrow of "${pending.id}".`);
+  }
+
   const title = phrase(spec.title);
   const body = axes(phrase(spec.xAxis) ?? { en: [], zh: [] }, phrase(spec.yAxis) ?? { en: [], zh: [] }, {
     curves,
@@ -484,9 +747,9 @@ export function compileSpec(spec: DiagramSpec): Compiled {
   if (demandId) presetRoles.demand = bySpecId.get(demandId)!.id;
   if (supplyId) presetRoles.supply = bySpecId.get(supplyId)!.id;
   if (shiftedId) presetRoles.shifted = bySpecId.get(shiftedId)!.id;
-  const control = levelOrder.find((id) => levelKinds.get(id) === 'ceiling' || levelKinds.get(id) === 'floor');
+  const control = levelOrder.find((id) => (levelKinds.get(id) === 'ceiling' || levelKinds.get(id) === 'floor') && bySpecId.has(id));
   if (control) presetRoles.control = { curve: bySpecId.get(control)!.id };
-  const worlds = levelOrder.filter((id) => levelKinds.get(id) === 'world' || levelKinds.get(id) === 'fixed');
+  const worlds = levelOrder.filter((id) => (levelKinds.get(id) === 'world' || levelKinds.get(id) === 'fixed') && bySpecId.has(id));
   if (worlds[0]) presetRoles.world = { curve: bySpecId.get(worlds[0])!.id };
   if (worlds[1]) presetRoles.raised = { curve: bySpecId.get(worlds[1])!.id };
 
@@ -525,7 +788,7 @@ export function compileSpec(spec: DiagramSpec): Compiled {
     });
   } catch {
     error('diagram.resolve', 'The diagram could not be resolved.');
-    return { diagram: null, issues, curveIds, roles };
+    return { diagram: null, issues, curveIds, roles, levels: levelAt };
   }
-  return { diagram, issues, curveIds, roles };
+  return { diagram, issues, curveIds, roles, levels: levelAt };
 }

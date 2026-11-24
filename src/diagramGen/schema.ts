@@ -1,6 +1,8 @@
 import type { JsonSchema } from '@/ai/types';
 import {
+  ASKS,
   CURVE_ROLES,
+  LEVEL_STYLES,
   DIRECTIONS,
   LEVEL_KINDS,
   PLACES,
@@ -62,15 +64,19 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
     obj({
       id: str,
       kind: { type: 'string', enum: [...LEVEL_KINDS] },
+      above: list(str),
+      below: list(str),
       side: { type: 'string', enum: ['below', 'above'] },
+      style: { type: 'string', enum: [...LEVEL_STYLES] },
       label: str,
     }),
   ),
-  equilibria: list(obj({ a: str, b: str, name: str, yTick: str, xTick: str })),
+  points: list(obj({ a: str, b: str, name: str, yTick: str, xTick: str, dot: { type: 'boolean' } })),
   gaps: list(obj({ level: str, label: TEXT })),
   shades: list(obj({ preset: str, label: TEXT })),
   marks: list(obj({ of: str, where: { type: 'string', enum: ['inside', 'on', 'outside'] }, label: str })),
   changeArrows: { type: 'boolean' },
+  asks: obj({ what: { type: 'string', enum: [...ASKS] }, state: { type: 'string', enum: ['before', 'after'] } }),
   chart: obj({
     type: { type: 'string', enum: ['bar', 'line'] },
     categories: list(TEXT),
@@ -80,9 +86,18 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
   }),
 });
 
+/** An edit's reply (k-0534): the whole edited spec, and what the question's words must change ('' = nothing). */
+export const DIAGRAM_EDIT_SCHEMA: JsonSchema = {
+  ...DIAGRAM_SPEC_SCHEMA,
+  properties: { ...(DIAGRAM_SPEC_SCHEMA.properties as Record<string, unknown>), questionChange: str },
+  required: [...(DIAGRAM_SPEC_SCHEMA.required as string[]), 'questionChange'],
+};
+
 /** For the rungs that do not enforce the schema (json_object, prompt). */
 export const DIAGRAM_SHAPE_HINT =
-  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, equilibria, gaps, shades, marks, changeArrows, chart (see the shape described above). Every key is always present; use "" or [] for unused ones.';
+  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, points, gaps, shades, marks, changeArrows, asks, chart (see the shape described above). Every key is always present; use "" or [] for unused ones.';
+
+export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, chart', 'changeArrows, asks, chart, questionChange');
 
 const EMPTY_TEXT: SpecText = { en: '', zh: '' };
 
@@ -98,11 +113,12 @@ export function emptySpec(kind: DiagramSpec['kind'] = 'none'): DiagramSpec {
     curves: [],
     shifts: [],
     levels: [],
-    equilibria: [],
+    points: [],
     gaps: [],
     shades: [],
     marks: [],
     changeArrows: false,
+    asks: { what: 'none', state: 'after' },
     chart: { type: 'bar', categories: [], series: [], yTitle: { ...EMPTY_TEXT }, xTitle: { ...EMPTY_TEXT } },
   };
 }
@@ -114,6 +130,13 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 const s = (v: unknown): string => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
 const text = (v: unknown): SpecText => (isRecord(v) ? { en: s(v.en), zh: s(v.zh) } : typeof v === 'string' ? { en: v, zh: '' } : { ...EMPTY_TEXT });
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+/** A crossing named by two ids: ["D1","S1"], or "D1×S1" / "D1 x S1" / "D1,S1" from a looser reply. */
+function crossingRef(v: unknown): string[] {
+  const ids = Array.isArray(v) ? v.map(s) : typeof v === 'string' ? v.split(/\s*(?:×|\*|,|\/|&|\band\b|\s[xX]\s)\s*/) : [];
+  const clean = ids.map((x) => x.trim()).filter(Boolean);
+  return clean.length === 2 ? clean : [];
+}
 
 /**
  * The model's reply → a spec, never throwing. Takes the outermost braces (a ```json fence
@@ -158,18 +181,27 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
     size: pick(c.size, SIZES, 'normal', `shift ${s(c.id)} size`),
     label: s(c.label),
   }));
-  spec.levels = arr(raw.levels).filter(isRecord).map((c, i) => ({
-    id: s(c.id).trim() || `level${i + 1}`,
-    kind: pick(c.kind, LEVEL_KINDS, 'fixed', `level ${s(c.id)} kind`),
-    side: pick(c.side, ['below', 'above'] as const, 'below', `level ${s(c.id)} side`),
-    label: s(c.label),
-  }));
-  spec.equilibria = arr(raw.equilibria).filter(isRecord).map((c) => ({
+  spec.levels = arr(raw.levels).filter(isRecord).map((c, i) => {
+    const kind = pick(c.kind, LEVEL_KINDS, 'fixed', `level ${s(c.id)} kind`);
+    return {
+      id: s(c.id).trim() || `level${i + 1}`,
+      kind,
+      above: crossingRef(c.above),
+      below: crossingRef(c.below),
+      // A ceiling binds below equilibrium, a floor above: the natural default when unsaid.
+      side: pick(c.side, ['below', 'above'] as const, kind === 'floor' ? 'above' : 'below', `level ${s(c.id)} side`),
+      style: pick(c.style, LEVEL_STYLES, 'line', `level ${s(c.id)} style`),
+      label: s(c.label),
+    };
+  });
+  // `equilibria` is the name before k-0534; a reply (or a saved spec) using it still reads.
+  spec.points = arr(raw.points ?? raw.equilibria).filter(isRecord).map((c) => ({
     a: s(c.a).trim(),
     b: s(c.b).trim(),
     name: s(c.name),
     yTick: s(c.yTick),
     xTick: s(c.xTick),
+    dot: typeof c.dot === 'boolean' ? c.dot : Boolean(s(c.name).trim()),
   }));
   spec.gaps = arr(raw.gaps).filter(isRecord).map((c) => ({ level: s(c.level).trim(), label: text(c.label) }));
   spec.shades = arr(raw.shades).filter(isRecord).map((c) => ({ preset: s(c.preset).trim(), label: text(c.label) }));
@@ -179,6 +211,12 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
     label: s(c.label),
   }));
   spec.changeArrows = raw.changeArrows === true;
+  if (isRecord(raw.asks)) {
+    spec.asks = {
+      what: pick(raw.asks.what, ASKS, 'none', 'asks what'),
+      state: pick(raw.asks.state, ['before', 'after'] as const, 'after', 'asks state'),
+    };
+  }
   if (isRecord(raw.chart)) {
     const c = raw.chart;
     spec.chart = {

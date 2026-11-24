@@ -10,8 +10,10 @@ import { compileSpec, type Compiled } from './compile';
 import { buildDiagramRequest, buildRepairRequest } from './prompt';
 import { parseSpec } from './schema';
 import { phrase } from './text';
-import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, DiagramSpec } from './types';
-import { checkDiagram } from './validate';
+import { checkLabels } from './labels';
+import { solveKey } from './solve';
+import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, DiagramSpec, SolvedKey } from './types';
+import { checkDiagram, checkStem } from './validate';
 
 /**
  * Question + key (+ a reference figure) → an editable diagram. Pure over injected deps,
@@ -24,20 +26,46 @@ export interface Evaluated {
   spec: DiagramSpec;
   compiled: Compiled;
   issues: DiagramIssue[];
+  /** The key as the drawing gives it (k-0534), when the spec asks something the solver reads. */
+  solved: SolvedKey | null;
+  /** An edit reply's note on the words (`questionChange`); '' otherwise. */
+  questionChange: string;
 }
 
 const errors = (issues: readonly DiagramIssue[]) => issues.filter((i) => i.level === 'error').length;
 
 /** A reply checked end to end; null when it is not a spec at all. Exported for the harness and tests. */
-export function evaluateReply(reply: string, input: Pick<DiagramGenInput, 'sides' | 'key'>): Evaluated | null {
+export function evaluateReply(reply: string, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq'>): Evaluated | null {
   const parsed = parseSpec(reply);
   if (!parsed) return null;
-  const compiled = compileSpec(parsed.spec);
-  const issues = [...parsed.issues, ...compiled.issues, ...checkDiagram(parsed.spec, compiled, input.sides, input.key)];
-  if (parsed.spec.kind !== 'none' && !compiled.diagram && !errors(issues)) {
+  return { ...evaluateSpec(parsed.spec, input, parsed.issues), questionChange: questionChangeOf(reply) };
+}
+
+/** A spec checked end to end: compiled, its drawing checked, the question's labels and words against it, the key worked out again. */
+export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq'>, parseIssues: DiagramIssue[] = []): Evaluated {
+  const compiled = compileSpec(spec);
+  const issues = [...parseIssues, ...compiled.issues, ...checkDiagram(spec, compiled, input.sides, input.key)];
+  let solved: SolvedKey | null = null;
+  if (compiled.diagram && input.mcq && spec.placement === 'question') {
+    issues.push(...checkLabels(input.mcq, compiled.diagram), ...checkStem(spec, compiled, [input.mcq.stem, ...input.mcq.statements].join('\n')));
+    const solvedKey = solveKey(spec, compiled, input.mcq);
+    solved = solvedKey.solved;
+    issues.push(...solvedKey.issues);
+  }
+  if (spec.kind !== 'none' && !compiled.diagram && !errors(issues)) {
     issues.push({ level: 'error', code: 'diagram.empty', text: 'Nothing could be drawn from that diagram.' });
   }
-  return { spec: parsed.spec, compiled, issues };
+  return { spec, compiled, issues, solved, questionChange: '' };
+}
+
+/** An edit reply's `questionChange`, '' when absent. */
+function questionChangeOf(reply: string): string {
+  try {
+    const raw = JSON.parse(reply.slice(reply.indexOf('{'), reply.lastIndexOf('}') + 1)) as { questionChange?: unknown };
+    return typeof raw.questionChange === 'string' ? raw.questionChange.trim().slice(0, 600) : '';
+  } catch {
+    return '';
+  }
 }
 
 export function languageOf(sides: readonly Side[]): LanguageMode {
@@ -107,7 +135,7 @@ export async function generateDiagram(input: DiagramGenInput, deps: DiagramGenDe
 
   const imageSkipped = Boolean(image && !withImages);
   if (best.spec.kind === 'none') {
-    return { ok: true, status: 'none', block: null, spec: best.spec, issues: best.issues, attempt, imageSkipped, model };
+    return { ok: true, status: 'none', block: null, spec: best.spec, issues: best.issues, attempt, imageSkipped, model, questionChange: best.questionChange, solved: null };
   }
   const failed = errors(best.issues) > 0;
   const status = failed ? 'failed' : best.issues.length ? 'look' : 'ok';
@@ -120,5 +148,7 @@ export async function generateDiagram(input: DiagramGenInput, deps: DiagramGenDe
     attempt,
     imageSkipped,
     model,
+    questionChange: best.questionChange,
+    solved: best.solved,
   };
 }
