@@ -1,4 +1,4 @@
-import type { CompletionRequest, CompletionResult, OutputDialect } from '../types';
+import type { CompletionRequest, CompletionResult, OutputDialect, TokenUsage } from '../types';
 import { isRecord, modelExtra, parseImage, systemFor, trimBase, type Adapter, type StreamPiece } from './adapter';
 
 /**
@@ -38,6 +38,17 @@ function imageParts(images: CompletionRequest['images']) {
   });
 }
 
+/**
+ * Gemini's `usageMetadata`: `promptTokenCount` includes `cachedContentTokenCount`, the part its
+ * implicit cache served at the cached rate (k-0537); thinking (`thoughtsTokenCount`) bills as output.
+ */
+export function geminiUsage(meta: Record<string, unknown>): TokenUsage {
+  const n = (x: unknown) => (typeof x === 'number' ? x : undefined);
+  const usage: TokenUsage = { input: n(meta.promptTokenCount), output: n(meta.candidatesTokenCount), thinking: n(meta.thoughtsTokenCount) };
+  const cached = n(meta.cachedContentTokenCount);
+  return cached === undefined ? usage : { ...usage, cached };
+}
+
 export const geminiAdapter: Adapter = {
   rungs: () => ['gemini-jsonSchema', 'gemini-responseFormat', 'gemini-mime', 'prompt'],
 
@@ -65,12 +76,7 @@ export const geminiAdapter: Adapter = {
 
   extract(body) {
     if (!isRecord(body)) return null;
-    const usage = isRecord(body.usageMetadata) ? body.usageMetadata : {};
-    const usageOut = {
-      input: typeof usage.promptTokenCount === 'number' ? usage.promptTokenCount : undefined,
-      output: typeof usage.candidatesTokenCount === 'number' ? usage.candidatesTokenCount : undefined,
-      thinking: typeof usage.thoughtsTokenCount === 'number' ? usage.thoughtsTokenCount : undefined,
-    };
+    const usageOut = geminiUsage(isRecord(body.usageMetadata) ? body.usageMetadata : {});
     const candidate = Array.isArray(body.candidates) && isRecord(body.candidates[0]) ? body.candidates[0] : null;
     if (!candidate) {
       const blocked = isRecord(body.promptFeedback) && typeof body.promptFeedback.blockReason === 'string';
@@ -95,13 +101,7 @@ export const geminiAdapter: Adapter = {
     const usage = isRecord(event.usageMetadata) ? event.usageMetadata : null;
     const candidate = Array.isArray(event.candidates) && isRecord(event.candidates[0]) ? event.candidates[0] : null;
     const piece: StreamPiece = {};
-    if (usage) {
-      piece.usage = {
-        input: typeof usage.promptTokenCount === 'number' ? usage.promptTokenCount : undefined,
-        output: typeof usage.candidatesTokenCount === 'number' ? usage.candidatesTokenCount : undefined,
-        thinking: typeof usage.thoughtsTokenCount === 'number' ? usage.thoughtsTokenCount : undefined,
-      };
-    }
+    if (usage) piece.usage = geminiUsage(usage);
     if (!candidate) {
       if (isRecord(event.promptFeedback) && typeof event.promptFeedback.blockReason === 'string') piece.finish = 'safety';
       return piece.finish || piece.usage ? piece : null;

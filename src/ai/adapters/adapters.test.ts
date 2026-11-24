@@ -189,7 +189,8 @@ describe('anthropic', () => {
     expect(wire.json).toEqual({
       model: 'claude-sonnet-5',
       max_tokens: 2000,
-      system: 'SYSTEM',
+      // The fixed instructions are marked for Anthropic's prompt cache (k-0537).
+      system: [{ type: 'text', text: 'SYSTEM', cache_control: { type: 'ephemeral' } }],
       messages: [
         { role: 'user', content: 'shot' },
         { role: 'assistant', content: 'answer' },
@@ -202,7 +203,7 @@ describe('anthropic', () => {
   it('drops output_config on the prompt rung and adds the hint', () => {
     const { json } = built('anthropic', 'prompt');
     expect(json.output_config).toBeUndefined();
-    expect(json.system).toBe(`SYSTEM\n\n${JSON_SHAPE_HINT}`);
+    expect(json.system).toEqual([{ type: 'text', text: `SYSTEM\n\n${JSON_SHAPE_HINT}`, cache_control: { type: 'ephemeral' } }]);
   });
 
   it("carries a request's own shapeHint on an unenforced rung, in every family", () => {
@@ -223,6 +224,49 @@ describe('anthropic', () => {
     expect(anthropicAdapter.extract(body)).toEqual({ text: '{"items":[]}', finish: 'stop', usage: { input: 3, output: 2 } });
     expect(anthropicAdapter.extract({ content: [], stop_reason: 'max_tokens' })?.finish).toBe('length');
     expect(anthropicAdapter.extract({ content: [], stop_reason: 'refusal' })?.finish).toBe('safety');
+  });
+
+  it('marks only the system prompt for the cache, so every feature\'s fixed instructions are one cached prefix (k-0537)', () => {
+    for (const dialect of ['anthropic-jsonSchema', 'prompt'] as const) {
+      const { body } = anthropicAdapter.build(PRESETS.anthropic, config('anthropic'), { ...req, images: [{ dataUrl: 'data:image/png;base64,AAAA' }] }, dialect);
+      expect(body?.match(/cache_control/g)).toHaveLength(1);
+      const json = JSON.parse(body ?? '{}') as { system: Array<Record<string, unknown>>; messages: unknown[] };
+      expect(json.system).toHaveLength(1);
+      expect(json.system[0]).toMatchObject({ type: 'text', cache_control: { type: 'ephemeral' } });
+      expect(JSON.stringify(json.messages)).not.toContain('cache_control');
+    }
+    // A stream asks the same way.
+    expect(anthropicAdapter.buildStream(PRESETS.anthropic, config('anthropic'), req, 'anthropic-jsonSchema').body).toContain('"cache_control":{"type":"ephemeral"}');
+  });
+
+  it('counts cache reads and writes inside the prompt (input_tokens excludes them)', () => {
+    const usage = { input_tokens: 50, cache_read_input_tokens: 4000, cache_creation_input_tokens: 0, output_tokens: 300 };
+    expect(anthropicAdapter.extract({ content: [], stop_reason: 'end_turn', usage })?.usage).toEqual({ input: 4050, cached: 4000, cacheWrite: 0, output: 300 });
+    const first = { input_tokens: 50, cache_read_input_tokens: 0, cache_creation_input_tokens: 4000, output_tokens: 1 };
+    expect(anthropicAdapter.streamPiece({ type: 'message_start', message: { usage: first } })).toEqual({ usage: { input: 4050, cached: 0, cacheWrite: 4000 } });
+  });
+});
+
+describe('cached tokens, every provider (k-0537)', () => {
+  it('Gemini: cachedContentTokenCount, in the whole reply and in a stream', () => {
+    const usageMetadata = { promptTokenCount: 5000, cachedContentTokenCount: 4100, candidatesTokenCount: 200, thoughtsTokenCount: 90 };
+    const body = { candidates: [{ content: { parts: [{ text: 'x' }] }, finishReason: 'STOP' }], usageMetadata };
+    expect(geminiAdapter.extract(body)?.usage).toEqual({ input: 5000, cached: 4100, output: 200, thinking: 90 });
+    expect(geminiAdapter.streamPiece({ usageMetadata })?.usage).toEqual({ input: 5000, cached: 4100, output: 200, thinking: 90 });
+    // No cache hit: no `cached` at all, as before.
+    expect(geminiAdapter.extract({ ...body, usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 2 } })?.usage).toEqual({ input: 10, output: 2, thinking: undefined });
+  });
+
+  it('OpenAI, Qwen and OpenRouter: prompt_tokens_details.cached_tokens; DeepSeek: prompt_cache_hit_tokens', () => {
+    const reply = (usage: Record<string, unknown>) => ({ choices: [{ message: { content: 'x' }, finish_reason: 'stop' }], usage });
+    expect(openaiCompatAdapter.extract(reply({ prompt_tokens: 3000, completion_tokens: 400, prompt_tokens_details: { cached_tokens: 2048 }, completion_tokens_details: { reasoning_tokens: 100 } }))?.usage)
+      .toEqual({ input: 3000, output: 400, thinking: 100, cached: 2048 });
+    expect(openaiCompatAdapter.extract(reply({ prompt_tokens: 3000, completion_tokens: 400, prompt_cache_hit_tokens: 2944, prompt_cache_miss_tokens: 56 }))?.usage)
+      .toEqual({ input: 3000, output: 400, thinking: undefined, cached: 2944 });
+    expect(openaiCompatAdapter.streamPiece({ choices: [], usage: { prompt_tokens: 9, completion_tokens: 1, prompt_tokens_details: { cached_tokens: 0 } } })?.usage)
+      .toEqual({ input: 9, output: 1, thinking: undefined, cached: 0 });
+    // Ollama reports no cache field.
+    expect(openaiCompatAdapter.extract(reply({ prompt_tokens: 9, completion_tokens: 1 }))?.usage).toEqual({ input: 9, output: 1, thinking: undefined });
   });
 });
 

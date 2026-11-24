@@ -92,18 +92,27 @@ export interface CompletionRequest {
 }
 /** The relay's `feature` (CONTRACT §3): recorded with the usage, never sent to Google. */
 export type AiFeature =
-  | 'translate' | 'importCheck' | 'studio' | 'studio.write' | 'studio.solve' | 'studio.quality' | 'studio.diagram'
-  | 'answers' | 'quality' | 'coverage' | 'assist' | 'test' | 'other';
+  | 'translate' | 'importCheck' | 'studio' | 'studio.pick' | 'studio.write' | 'studio.solve' | 'studio.quality' | 'studio.diagram'
+  | 'answers' | 'quality' | 'coverage' | 'generate' | 'assist' | 'test' | 'other';
 export interface CompletionResult {
   text: string;
   finish: 'stop' | 'length' | 'safety' | 'other';
   dialect: OutputDialect;
   model: string;
   ms: number;
-  usage?: { input?: number; output?: number; thinking?: number };
+  /**
+   * Token counts as the provider reported them (k-0537). `input` is the whole prompt, cached part
+   * included; `cached` is the part the provider read from its prompt cache (billed at its discount);
+   * `cacheWrite` is Anthropic's cache-creation count (billed at a premium); `thinking` sits inside
+   * the output bill. Each provider names these differently; the adapters translate.
+   */
+  usage?: TokenUsage;
   /** The hosted relay only: credits left after this call, from Mentor's receipt (k-0524). */
   balance?: number;
+  /** The hosted relay only: credits Mentor's receipt says this call cost (k-0537). */
+  charged?: number;
 }
+export interface TokenUsage { input?: number; output?: number; thinking?: number; cached?: number; cacheWrite?: number }
 export type AiErrorKind =
   | 'notConfigured' | 'region' | 'badKey' | 'keyBlocked' | 'networkOrKey' | 'network'
   | 'quota' | 'billing' | 'model' | 'policy' | 'badRequest' | 'server'

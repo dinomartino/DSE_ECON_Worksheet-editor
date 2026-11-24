@@ -96,6 +96,8 @@ a version heading is edited afterwards.
   still leaves an empty picture box, and Check import still asks you to paste that one by hand.
   <!-- zh: **在 Word 繪畫的圖和圖表會以圖片匯入。** 你在 Word 用直線、箭咀、方框、圓點及文字方塊標籤（S₀、D₁、Price、Quantity 等）畫的圖，現在會在原來位置匯入為圖片，由程式在你的電腦上自行繪畫，不會傳送到任何地方。Word 製作的圓形圖、棒形圖或折線圖也一樣。同一幅圖內標有 A 至 D 的四幅圖，會建議改為選項留空的 MC 題。程式無法如實繪畫的圖仍會留下空白圖片框，「檢查匯入」仍會提示你手動貼上。 -->
 
+- **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
+  <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
 - **Topic names follow your paper's language everywhere.** The 題型 map, its sort board and the
   question studio's key-point list now name syllabus topics in the language of the questions you

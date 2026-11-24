@@ -35,9 +35,11 @@ export const mentorAdapter: Adapter = {
   extract(body) {
     if (!isRecord(body)) return null;
     const out = geminiAdapter.extract(body.response);
-    // `mentor.balance`: the credits left after this call (k-0524).
+    // `mentor.balance`: the credits left after this call (k-0524); `mentor.charged`: what it cost (k-0537).
     const balance = isRecord(body.mentor) ? balanceOf(body.mentor.balance) : undefined;
-    return out && balance !== undefined ? { ...out, balance } : out;
+    const charged = isRecord(body.mentor) ? balanceOf(body.mentor.charged) : undefined;
+    if (!out) return out;
+    return { ...out, ...(balance !== undefined ? { balance } : {}), ...(charged !== undefined ? { charged } : {}) };
   },
 
   buildStream(preset, config, req, dialect) {
@@ -51,7 +53,10 @@ export const mentorAdapter: Adapter = {
     const left = balance === undefined ? {} : { balance };
     if (typeof event.error === 'string') return { error: event.error, ...(typeof event.charged === 'number' ? { errorCharged: event.charged } : {}), ...left };
     // `event: mentor`: the receipt that closes a stream that went well.
-    if (typeof event.requestId === 'string' && 'charged' in event) return { settled: true, ...left };
+    if (typeof event.requestId === 'string' && 'charged' in event) {
+      const charged = balanceOf(event.charged);
+      return { settled: true, ...left, ...(charged !== undefined ? { charged } : {}) };
+    }
     return geminiAdapter.streamPiece(event);
   },
 

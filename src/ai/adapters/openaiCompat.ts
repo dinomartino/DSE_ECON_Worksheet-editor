@@ -1,4 +1,4 @@
-import type { CompletionRequest, CompletionResult, OutputDialect } from '../types';
+import type { CompletionRequest, CompletionResult, OutputDialect, TokenUsage } from '../types';
 import { isRecord, modelExtra, parseImage, systemFor, trimBase, withBody, type Adapter, type StreamPiece } from './adapter';
 
 /**
@@ -38,6 +38,20 @@ function contentText(content: unknown): string | null {
   return content.map((part) => (isRecord(part) && typeof part.text === 'string' ? part.text : '')).join('');
 }
 
+/**
+ * `usage` in the OpenAI shape (k-0537). `prompt_tokens` includes the cached part on every
+ * provider; the cached count is `prompt_tokens_details.cached_tokens` on OpenAI, Qwen
+ * (compatible mode) and OpenRouter, and `prompt_cache_hit_tokens` on DeepSeek. Ollama reports none.
+ */
+export function compatUsage(usage: Record<string, unknown>): TokenUsage {
+  const n = (x: unknown) => (typeof x === 'number' ? x : undefined);
+  const out = isRecord(usage.completion_tokens_details) ? usage.completion_tokens_details : {};
+  const prompt = isRecord(usage.prompt_tokens_details) ? usage.prompt_tokens_details : {};
+  const result: TokenUsage = { input: n(usage.prompt_tokens), output: n(usage.completion_tokens), thinking: n(out.reasoning_tokens) };
+  const cached = n(prompt.cached_tokens) ?? n(usage.prompt_cache_hit_tokens);
+  return cached === undefined ? result : { ...result, cached };
+}
+
 export const openaiCompatAdapter: Adapter = {
   rungs: (preset) =>
     preset.structured === 'json_object'
@@ -70,17 +84,11 @@ export const openaiCompatAdapter: Adapter = {
     const message = isRecord(choice.message) ? choice.message : {};
     const text = contentText(message.content ?? null);
     if (text === null) return null;
-    const usage = isRecord(body.usage) ? body.usage : {};
-    const details = isRecord(usage.completion_tokens_details) ? usage.completion_tokens_details : {};
     const refused = typeof message.refusal === 'string' && message.refusal.length > 0;
     return {
       text,
       finish: refused ? 'safety' : finishOf(choice.finish_reason),
-      usage: {
-        input: typeof usage.prompt_tokens === 'number' ? usage.prompt_tokens : undefined,
-        output: typeof usage.completion_tokens === 'number' ? usage.completion_tokens : undefined,
-        thinking: typeof details.reasoning_tokens === 'number' ? details.reasoning_tokens : undefined,
-      },
+      usage: compatUsage(isRecord(body.usage) ? body.usage : {}),
     };
   },
 
@@ -93,14 +101,7 @@ export const openaiCompatAdapter: Adapter = {
     if (isRecord(event.error)) return { error: typeof event.error.message === 'string' ? event.error.message : 'error' };
     const piece: StreamPiece = {};
     const usage = isRecord(event.usage) ? event.usage : null;
-    if (usage) {
-      const details = isRecord(usage.completion_tokens_details) ? usage.completion_tokens_details : {};
-      piece.usage = {
-        input: typeof usage.prompt_tokens === 'number' ? usage.prompt_tokens : undefined,
-        output: typeof usage.completion_tokens === 'number' ? usage.completion_tokens : undefined,
-        thinking: typeof details.reasoning_tokens === 'number' ? details.reasoning_tokens : undefined,
-      };
-    }
+    if (usage) piece.usage = compatUsage(usage);
     const choice = Array.isArray(event.choices) && isRecord(event.choices[0]) ? event.choices[0] : null;
     if (choice) {
       const delta = isRecord(choice.delta) ? choice.delta : {};

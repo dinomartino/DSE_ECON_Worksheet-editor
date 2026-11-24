@@ -44,7 +44,8 @@
     "desktop:build:debug": "tauri build --debug",
     "sync-version": "node scripts/sync-version.mjs",
     "changelog": "node scripts/sync-changelog.mjs",
-    "version": "npm run sync-version && git add src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock"
+    "version": "npm run sync-version && git add src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock",
+    "eval:usage": "vitest run --config vitest.eval.config.ts evals/usage.eval.ts"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
