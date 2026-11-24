@@ -7,9 +7,20 @@ import type { LanguageMode, Worksheet } from '@/model/types';
 import type { PastPaperItem } from '@/pastpapers/pack';
 import type { SourceQuestion } from '@/questionStudio/types';
 import { REFERENCE_PICKER_MESSAGES } from './picker.messages';
+import type { MissingReason } from './referenceItem';
 
 const FRAME = createWorksheet();
 const LETTERS = 'ABCD';
+
+type M = ReturnType<typeof useMessages<typeof REFERENCE_PICKER_MESSAGES>>;
+
+/** Why a reference shows as words only, in the teacher's words (k-0547). */
+export function missingWords(m: M, reason: MissingReason): string {
+  if (reason === 'bankOff') return m.missingBankOff;
+  if (reason === 'notInBank') return m.missingNotInBank;
+  if (reason === 'docGone') return m.missingDocGone;
+  return m.missingBankError;
+}
 
 const textOf = (t: { en: string; zh: string } | undefined, language: LanguageMode) => (t ? (language === 'zh' ? t.zh || t.en : t.en || t.zh).trim() : '');
 
@@ -23,6 +34,7 @@ export function ReferenceSheet({
   reference,
   item,
   doc,
+  missing,
   language,
 }: {
   reference: SourceQuestion;
@@ -30,6 +42,8 @@ export function ReferenceSheet({
   item?: PastPaperItem;
   /** The document whose fonts and page it prints in; a blank one when absent. */
   doc?: Worksheet;
+  /** Why the printed form could not be found (k-0547): said under the words. */
+  missing?: MissingReason;
   language: LanguageMode;
 }) {
   const m = useMessages(REFERENCE_PICKER_MESSAGES);
@@ -53,7 +67,11 @@ export function ReferenceSheet({
       <div className="bg-white px-2 pt-1">
         {item ? <PastPaperSheet item={item} doc={doc ?? FRAME} language={language} compact /> : <Words source={reference} language={language} />}
       </div>
-      {!item && reference.hasFigure && <p className="border-t border-line px-3 py-2 text-[11.5px] text-ink-subtle">{m.wordsOnly}</p>}
+      {!item && (missing || reference.hasFigure) && (
+        <p className="border-t border-line px-3 py-2 text-[11.5px] text-ink-subtle" data-reference-missing={missing ?? 'words'}>
+          {missing ? missingWords(m, missing) : m.wordsOnly}
+        </p>
+      )}
       {explanation && (
         <div className="border-t border-line px-3 py-2 text-[12.5px] leading-snug text-ink-muted" data-reference-explanation>
           <span className="mr-1.5 font-medium text-ink">{m.explanation}</span>

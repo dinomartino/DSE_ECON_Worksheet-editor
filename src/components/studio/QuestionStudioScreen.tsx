@@ -15,6 +15,7 @@ import { useChat } from './chat/live';
 import { canvasNeed, PaperCanvas, type CanvasView } from './chat/PaperCanvas';
 import { useDismiss } from './dismiss';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
+import { chatReferences } from './referenceItem';
 import { ReferencePicker } from './ReferencePicker';
 import { Tray } from './Tray';
 
@@ -116,7 +117,7 @@ export function QuestionStudioScreen({
       <div className="flex min-h-0 flex-1">
         <section
           className="flex shrink-0 flex-col border-r border-line bg-surface transition-[width] duration-200 motion-reduce:transition-none"
-          style={{ width: chatWidth(canvasNeed(view === 'compare' && chat.refs.length > 0 ? 'compare' : 'paper')) }}
+          style={{ width: chatWidth(canvasNeed(view === 'compare' && chatReferences(chat).length > 0 ? 'compare' : 'paper')) }}
           aria-label={m.chats}
           data-chat-column
         >

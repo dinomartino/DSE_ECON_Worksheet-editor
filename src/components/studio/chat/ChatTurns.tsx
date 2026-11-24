@@ -182,7 +182,7 @@ function AiReply({
                 <PickLine picks={step.picks} by={step.by} language={language} editable={pickEditable} onChange={onChangePick} />
               ) : (
                 <span className="min-w-0">
-                  {stepWords(step, m)}
+                  {step.kind === 'refs' && step.state === 'done' && step.labels.length > 0 ? <ChosenRefs labels={step.labels} chat={chat} language={language} m={m} /> : stepWords(step, m)}
                   
                 </span>
               )}
@@ -259,6 +259,24 @@ function TurnRefs({ labels, chat, language }: { labels: readonly string[]; chat:
         );
       })}
     </div>
+  );
+}
+
+/** "Chose 3 real HKDSE questions to write like: …", each one a badge that opens it (k-0547). */
+function ChosenRefs({ labels, chat, language, m }: { labels: readonly string[]; chat: Chat; language: LanguageMode; m: M }) {
+  return (
+    <>
+      {m.stepRefsChose(labels.length)}{' '}
+      {labels.map((label, i) => {
+        const source = referenceByLabel(chat, label, { auto: true });
+        return (
+          <span key={`${label}-${i}`} className="inline-flex min-w-0 items-center" data-step-ref={source ? source.id : undefined}>
+            {source ? <ReferenceBadge source={source} language={language} tone="quiet" /> : label}
+            {i < labels.length - 1 && ','}
+          </span>
+        );
+      })}
+    </>
   );
 }
 

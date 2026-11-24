@@ -215,7 +215,7 @@ try {
   await check('k-0529: Send: the AI gets the stem, options, key, explanation of my question; drafts say what they are based on', async () => {
     sent.length = 0;
     await page.locator('[data-chat-send]').click();
-    await page.locator('[data-chat-draft]').nth(2).waitFor({ timeout: 60_000 });
+    await page.locator('[data-chat-draft]').first().waitFor({ timeout: 60_000 });
     await page.locator('[data-chat-send]').waitFor({ timeout: 60_000 });
     const write = sent.find((body) => body.includes('bubble tea') && body.includes('examples'));
     expect(write, 'no request carried my question');
@@ -362,7 +362,7 @@ try {
     await shot(zh.page, 'k0529-zh-my-questions');
     await zh.page.getByRole('button', { name: '用作參考' }).click();
     await zh.page.locator('[data-chat-send]').click();
-    await zh.page.locator('[data-chat-draft]').nth(2).waitFor({ timeout: 60_000 });
+    await zh.page.locator('[data-chat-draft]').first().waitFor({ timeout: 60_000 });
     await zh.page.locator('[data-chat-send]').waitFor({ timeout: 60_000 });
     expect((await zh.page.locator('[data-chat-draft]').first().locator('[data-draft-based-on]').innerText()).startsWith('參考：'), 'based-on chip');
     await zh.page.locator('[data-chat-draft]').first().scrollIntoViewIfNeeded();

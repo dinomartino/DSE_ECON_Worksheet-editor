@@ -7,7 +7,7 @@ import type { LanguageMode } from '@/model/types';
 import type { SourceQuestion } from '@/questionStudio/types';
 import { useDismiss } from './dismiss';
 import { REFERENCE_PICKER_MESSAGES } from './picker.messages';
-import { usePrintedReference } from './referenceItem';
+import { isPrinted, usePrintedReference } from './referenceItem';
 import { ReferenceSheet } from './ReferenceSheet';
 
 const GAP = 6;
@@ -101,7 +101,7 @@ export function ReferenceBadge({ source, language, onRemove, removeLabel, tone =
                 {m.previewLoading}
               </p>
             ) : (
-              <ReferenceSheet reference={source} item={printed?.item} doc={printed?.doc} language={language} />
+              <ReferenceSheet reference={source} {...(isPrinted(printed) ? { item: printed.item, doc: printed.doc } : { missing: printed.missing })} language={language} />
             )}
           </div>
         </div>
