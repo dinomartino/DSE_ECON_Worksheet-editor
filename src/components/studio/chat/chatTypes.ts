@@ -131,7 +131,7 @@ export const summaryOf = (chat: Chat): ChatSummary => {
     updatedAt: chat.updatedAt,
     title: first?.text ?? '',
     like: first?.refs[0] ?? chat.refs.find((r) => r.who === 'you')?.source.label,
-    drafts: chat.drafts.filter((d) => d.entry.draft.status !== 'failed').length,
+    drafts: chat.drafts.length,
     added: chat.drafts.filter((d) => d.state === 'added').length,
   };
 };

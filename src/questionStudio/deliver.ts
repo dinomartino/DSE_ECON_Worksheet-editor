@@ -14,12 +14,12 @@ import type { SheetDraft } from './session';
  * was written for. Nothing is written until the teacher presses a tray button.
  */
 
-/** The ticked drafts still on the sheet and usable, in the order ticked. */
+/** The ticked drafts still on the sheet, in the order ticked (a warned one too: the teacher chose it). */
 export function pickedEntries(entries: readonly SheetDraft[], picked: readonly string[]): SheetDraft[] {
   const byId = new Map(entries.map((e) => [e.draft.id, e]));
   return picked.flatMap((id) => {
     const entry = byId.get(id);
-    return entry && entry.draft.status !== 'failed' ? [entry] : [];
+    return entry ? [entry] : [];
   });
 }
 

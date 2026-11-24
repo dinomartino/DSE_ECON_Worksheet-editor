@@ -74,14 +74,6 @@ export function keyPointOfTags(tags: readonly string[] | undefined): string | un
   return undefined;
 }
 
-/** Drafts the teacher can use (in the order the sheet has them), and those left out by a hard check. */
-export function partition(entries: readonly SheetDraft[]): { standing: SheetDraft[]; leftOut: SheetDraft[] } {
-  return {
-    standing: entries.filter((e) => e.draft.status !== 'failed'),
-    leftOut: entries.filter((e) => e.draft.status === 'failed'),
-  };
-}
-
 const LETTERS = 'ABCD';
 export const letterOf = (index: number): string => LETTERS[index] ?? '?';
 

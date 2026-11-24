@@ -250,9 +250,9 @@ export async function writeDrafts(
   const notes: Finding[] = [];
   const finish = (): StudioOutcome => {
     const drafts: StudioDraft[] = slots.map(draftOf);
-    const kept = drafts.filter((d) => d.status !== 'failed');
-    if (kept.length < wanted) notes.push({ id: 'run.fewer', params: { asked: wanted, got: kept.length } });
-    notes.push(...lintBatch(kept.map((d) => d.draft.answerIndex)));
+    // Every draft is shown, a warned one too (k-0531): fewer only when the model wrote fewer.
+    if (drafts.length < wanted) notes.push({ id: 'run.fewer', params: { asked: wanted, got: drafts.length } });
+    notes.push(...lintBatch(drafts.map((d) => d.draft.answerIndex)));
     return { ok: true, drafts, notes, model, usage };
   };
   const stopped = () => {
@@ -280,7 +280,7 @@ export async function writeDrafts(
     if (signal.aborted) return stopped();
   }
 
-  // 3. The blind solve of every draft still standing.
+  // 3. The blind solve of every draft (a warned one too: the teacher may still use it, k-0531).
   const solveSide: Side = sides.includes('en') ? 'en' : 'zh';
   const solveOf = async (which: readonly Slot[]): Promise<Map<string, SolveResult> | AiErrorInfo> => {
     step('solve');
@@ -311,7 +311,7 @@ export async function writeDrafts(
     key.state = findings.length ? 'look' : 'pass';
   };
 
-  const standing = slots.filter((s) => !hardFailed(s));
+  const standing = [...slots];
   if (standing.length) {
     const solved = await solveOf(standing);
     if (solved instanceof Map) standing.forEach((s) => applySolve(s, solved.get(s.id)));
@@ -353,9 +353,9 @@ export async function writeDrafts(
     }
   }
 
-  // 5. A figure for each draft that stands (k-0514 → `generateDiagram`, k-0515): one request each, after the words are settled.
+  // 5. A figure for each draft (k-0514 → `generateDiagram`, k-0515): one request each, after the words are settled.
   if (deps.diagrams) {
-    const needing = slots.map((slot, index) => ({ slot, index })).filter(({ slot }) => !hardFailed(slot));
+    const needing = slots.map((slot, index) => ({ slot, index }));
     if (needing.length) {
       total += needing.length;
       step('diagram');

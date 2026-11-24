@@ -10,7 +10,7 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
   sideZh: { en: '中文', zh: '中文' },
   unknown: { en: (id: string) => `A check reported “${id}”.`, zh: (id: string) => `有檢查回報「${id}」。` },
 
-  // ---- format (a failure: the draft cannot be added) ----
+  // ---- format (a failure: a red warning on the card; the teacher decides, k-0531) ----
   shapeStemEmpty: { en: (side: string) => `The question text is missing in ${side}.`, zh: (side: string) => `題幹缺少${side}版本。` },
   shapeOptionCount: { en: (count: number) => `It has ${count} options; a question needs 4.`, zh: (count: number) => `共有 ${count} 個選項，必須有 4 個。` },
   shapeOptionEmpty: { en: (side: string) => `An option is empty in ${side}.`, zh: (side: string) => `有選項的${side}版本是空白的。` },
@@ -64,18 +64,18 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
     zh: (letter: string, count: number, of: number) => `這 ${of} 條題目中，有 ${count} 條的答案是 ${letter}。學生可能會發現這個規律。`,
   },
 
-  // ---- near-copy (a failure) ----
+  // ---- near-copy (a failure: a red warning; keep it strong, it guards against copying past papers) ----
   copyClose: {
-    en: (percent: number, kind: string) => `Too close to ${kind}: ${percent}% of its wording is shared. Write another, or change it.`,
-    zh: (percent: number, kind: string) => `與${kind}太相似：${percent}% 的用字相同。請另擬一題，或加以修改。`,
+    en: (percent: number, kind: string) => `Too close to ${kind}: ${percent}% of its wording is shared. Do not use it as it is: change the wording, or write another.`,
+    zh: (percent: number, kind: string) => `與${kind}太相似：${percent}% 的用字相同。請勿直接使用：先修改用字，或另擬一題。`,
   },
   copyReference: {
     en: (percent: number) => `Close to your reference on purpose: ${percent}% of its wording is shared. There is no limit against it.`,
     zh: (percent: number) => `刻意貼近你揀選的參考題：${percent}% 的用字相同。與參考題之間沒有相似度上限。`,
   },
   copyVerbatim: {
-    en: (kind: string) => `It repeats a long passage of ${kind} word for word. Write another, or change it.`,
-    zh: (kind: string) => `整段文字與${kind}一字不差。請另擬一題，或加以修改。`,
+    en: (kind: string) => `It repeats a long passage of ${kind} word for word. Do not use it as it is: change the wording, or write another.`,
+    zh: (kind: string) => `整段文字與${kind}一字不差。請勿直接使用：先修改用字，或另擬一題。`,
   },
   copyKindBank: { en: 'a past paper question', zh: '一條歷屆試題' },
   copyKindMine: { en: 'one of your questions', zh: '你的一條題目' },
@@ -85,8 +85,8 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
 
   // ---- the run ----
   runFewer: {
-    en: (asked: number, got: number) => `You asked for ${asked} and ${got} could be used. The others failed a check and are listed as left out.`,
-    zh: (asked: number, got: number) => `你要求 ${asked} 題，其中 ${got} 題可以使用。其餘未通過檢查，列在「已剔除」。`,
+    en: (asked: number, got: number) => `You asked for ${asked} and the AI wrote ${got}.`,
+    zh: (asked: number, got: number) => `你要求 ${asked} 題，AI 寫了 ${got} 題。`,
   },
   runStopped: {
     en: 'Stopped. The keys of these drafts were not checked.',

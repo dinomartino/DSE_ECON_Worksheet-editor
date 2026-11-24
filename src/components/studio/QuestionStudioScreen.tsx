@@ -77,7 +77,7 @@ export function QuestionStudioScreen({
   };
 
   const accepted = useMemo(() => chat.drafts.filter((d) => d.state === 'accepted'), [chat.drafts]);
-  const openDraft = chat.drafts.find((d) => d.state === 'open' && d.entry.draft.status !== 'failed');
+  const openDraft = chat.drafts.find((d) => d.state === 'open');
   const suggestions = !running && openDraft ? [m.sugHarder(openDraft.no), m.userAnother(openDraft.no)] : [];
 
   return (

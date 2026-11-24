@@ -8,6 +8,7 @@ import { EXAMPLE, INVENTED, REQUEST, corpusOf, replyEntry, solveQuestions, solve
 import { EMPTY_CORPUS, type CorpusIndex } from './nearCopy';
 import { SOLVE_TASK_MARKER, WRITE_TASK_MARKER } from './prompt';
 import { parseSolveReply, refine, writeDrafts, type Stage } from './run';
+import { hasWarning } from './validate';
 import { CHECK_IDS, type StudioDeps, type StudioDraft, type StudioOutcome } from './types';
 
 const preset = presetFor('gemini');
@@ -223,15 +224,17 @@ describe('writeDrafts: the local checks', () => {
     expect(out.usage.requests).toBe(3);
   });
 
-  it('a draft that is a copy twice is left out, never solved, and noted', async () => {
+  it('a draft that is a copy twice is still returned (k-0531), warned, and solved like the others', async () => {
     const corpus = corpusOf([{ en: [A.stem.en, ...A.options.map((o) => o.en)].join(' ') }]);
     const { client, deps } = setup([write(A, B, C), write(A), solver()], corpus);
     const out = ok(await writeDrafts(REQUEST, deps, hooks()));
-    expect(out.drafts[0].status).toBe('failed');
+    expect(out.drafts).toHaveLength(3);
+    expect(out.drafts[0].status).toBe('look');
+    expect(hasWarning(out.drafts[0])).toBe(true);
     expect(checkOf(out.drafts[0], 'copy')).toMatchObject({ state: 'fail', findings: [{ id: 'copy.close' }] });
     expect(checkOf(out.drafts[0], 'copy').value).toBeGreaterThanOrEqual(30);
-    expect(userOf(client.requests[2]).questions).toHaveLength(2);
-    expect(out.notes).toContainEqual({ id: 'run.fewer', params: { asked: 3, got: 2 } });
+    expect(userOf(client.requests[2]).questions).toHaveLength(3);
+    expect(out.notes.some((n) => n.id === 'run.fewer')).toBe(false);
   });
 
   it('a draft that copies the example it was shown is caught as a copy of that example', async () => {
@@ -257,11 +260,12 @@ describe('writeDrafts: the local checks', () => {
     expect(out.drafts[0].draft.stem.en).toBe(D.stem.en);
   });
 
-  it('a draft that fails after its rewrite is returned failed, with its shape finding', async () => {
+  it('a draft that fails after its rewrite is returned, warned, with its shape finding', async () => {
     const broken = { ...replyEntry(A), answer: 7 };
     const { deps } = setup([JSON.stringify({ questions: [broken, replyEntry(B), replyEntry(C)] }), JSON.stringify({ questions: [broken] }), solver()]);
     const out = ok(await writeDrafts(REQUEST, deps, hooks()));
-    expect(out.drafts[0].status).toBe('failed');
+    expect(out.drafts[0].status).toBe('look');
+    expect(hasWarning(out.drafts[0])).toBe(true);
     expect(checkOf(out.drafts[0], 'shape').findings).toEqual([{ id: 'shape.keyRange' }]);
   });
 

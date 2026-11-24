@@ -11,6 +11,7 @@ import { topicNamesFor } from '@/model/topics';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { PAST_PAPER_SETTINGS, sourceUrl } from '@/pastpapers/config';
 import { CHECK_IDS, type Finding } from '@/questionStudio/types';
+import { hasWarning } from '@/questionStudio/validate';
 import { useSettings } from '@/settings/store';
 import { notify } from '@/store/notices';
 import { unanchoredQuestionSectionLabel, useWorksheetStore } from '@/store/worksheetStore';
@@ -314,8 +315,8 @@ function DraftList({ drafts, worksheet, readOnly, busy }: { drafts: readonly Cha
                   <Chip tone="ok">{m.inPaper}</Chip>
                 ) : d.state === 'rejected' ? (
                   <Chip tone="idle">{m.rejected}</Chip>
-                ) : status === 'failed' ? (
-                  <Chip tone="fail">{m.failed}</Chip>
+                ) : hasWarning(d.entry.draft) ? (
+                  <Chip tone="fail">{m.warned}</Chip>
                 ) : (
                   <Chip tone={status === 'look' ? 'look' : 'ok'}>{status === 'look' ? q.statusLook : q.statusOk}</Chip>
                 )}

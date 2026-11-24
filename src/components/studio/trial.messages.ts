@@ -133,9 +133,9 @@ export const STUDIO_TRIAL_MESSAGES = defineMessages({
     en: (max: number, p90: number) => `Closest near-copy shown: ${max}% (90th percentile ${p90}%)`,
     zh: (max: number, p90: number) => `顯示出來最接近的近似抄襲：${max}%（第 90 百分位 ${p90}%）`,
   },
-  localLeftOut: {
-    en: (n: number, copy: number, shape: number) => `Left out by a hard check: ${n} (near-copy ${copy}, format ${shape})`,
-    zh: (n: number, copy: number, shape: number) => `因嚴格檢查而剔除：${n} 份（近似抄襲 ${copy}，格式 ${shape}）`,
+  localWarned: {
+    en: (n: number, copy: number, shape: number) => `Shown with a hard-check warning: ${n} (near-copy ${copy}, format ${shape})`,
+    zh: (n: number, copy: number, shape: number) => `顯示時附有嚴格檢查警告：${n} 份（近似抄襲 ${copy}，格式 ${shape}）`,
   },
   costTitle: { en: 'What it cost', zh: '用量' },
   cost: {

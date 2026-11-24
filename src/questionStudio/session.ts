@@ -299,7 +299,8 @@ export function createStudioSession(env: StudioEnv, initialLanguage: LanguageMod
       }
     }
 
-    const tickable = (entry: SheetDraft) => entry.draft.status !== 'failed';
+    // Every draft can be ticked, a warned one too (k-0531: the teacher decides).
+    const tickable = (entry: SheetDraft) => Boolean(entry.draft);
 
     return {
       form: defaultForm(initialLanguage),

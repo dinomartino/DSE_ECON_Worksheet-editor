@@ -8,6 +8,7 @@ import { MAX_EXAMPLES, type Refinement, type SourceQuestion, type StudioDeps, ty
 import type { ChatStorage } from './chatStorage';
 import type { AiTurn, Chat, ChatDraft, ChatRef, ChatSettings, ChangeHow, Note, Step, Turn } from './chatTypes';
 import { applyEvent, emptyLive } from '@/questionStudio/stream';
+import { hasWarning } from '@/questionStudio/validate';
 import type { LiveState, SourceQuestion as Source, StudioEvent } from '@/questionStudio/types';
 import type { KeyPick, StudioEngine } from './engine';
 
@@ -273,8 +274,9 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       addNote(chatId, turnId, {
         kind: 'written',
         ok: made.filter((d) => d.status === 'ok').length,
-        look: made.filter((d) => d.status === 'look').length,
-        failed: made.filter((d) => d.status === 'failed').length,
+        look: made.filter((d) => d.status === 'look' && !hasWarning(d)).length,
+        // Warned drafts (a failed check): shown like the rest (k-0531). The saved field keeps its old name.
+        failed: made.filter((d) => hasWarning(d)).length,
       });
     }
 
@@ -456,7 +458,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         const chat = active();
         if (chat.picks[0]?.code === code) return;
         const pick: KeyPick = { code, reason: '' };
-        const openDrafts = chat.drafts.some((d) => d.state === 'open' && d.entry.draft.status !== 'failed');
+        const openDrafts = chat.drafts.some((d) => d.state === 'open');
         edit(chat.id, (c) => ({ ...c, picks: [pick] }));
         const turn: AiTurn = { ...aiTurn(), notes: [{ kind: 'pickChanged', code }], ...(openDrafts ? { ask: { kind: 'rewrite', code } } : {}) };
         pushTurns(chat.id, turn);
@@ -476,7 +478,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       },
 
       setDraftState: (draftId, state) =>
-        edit(active().id, (c) => ({ ...c, drafts: c.drafts.map((d) => (d.id === draftId && d.state !== 'added' && d.entry.draft.status !== 'failed' ? { ...d, state } : d)) })),
+        edit(active().id, (c) => ({ ...c, drafts: c.drafts.map((d) => (d.id === draftId && d.state !== 'added' ? { ...d, state } : d)) })),
 
       restoreVersion: (draftId, index) =>
         edit(active().id, (c) => ({

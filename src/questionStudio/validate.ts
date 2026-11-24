@@ -23,8 +23,9 @@ import { CHANGE_ASPECTS, type ChangeAspect, type CheckRow, type DraftChange, typ
 
 /**
  * Checking what the model wrote: the reply → clean drafts → one `CheckRow` per check. All
- * local and free; the one AI check (the blind solve) is added by `run.ts`. A `fail` row
- * means the draft is never offered for insert; `look` means read it.
+ * local and free; the one AI check (the blind solve) is added by `run.ts`. A `fail` row (a
+ * near-copy, a broken format) is a warning the teacher must see; `look` means read it. No
+ * draft is ever hidden or refused for a check (k-0531, u-p8bn): the teacher decides.
  */
 
 export interface RawDraft { draft: McqDraft; angle: string; changes: DraftChange[] }
@@ -205,11 +206,18 @@ export function localChecks(draft: McqDraft, ctx: CheckContext): CheckRow[] {
   ];
 }
 
-/** failed: a hard check failed. look: something to read, or the key never checked. ok: all pass. */
+/** look: a check failed (a warning), something to read, or the key never checked. ok: all pass. Never `failed` (k-0531). */
 export function statusOf(checks: readonly CheckRow[]): DraftStatus {
-  if (checks.some((c) => c.state === 'fail')) return 'failed';
-  if (checks.some((c) => c.state === 'look' || (c.id === 'key' && c.state === 'skipped'))) return 'look';
+  if (checks.some((c) => c.state === 'fail' || c.state === 'look' || (c.id === 'key' && c.state === 'skipped'))) return 'look';
   return 'ok';
+}
+
+/** Whether a check failed on this draft: it carries a red warning (near-copy, format). */
+export const hasWarning = (draft: Pick<StudioDraft, 'checks' | 'status'>): boolean => draft.status === 'failed' || draft.checks.some((c) => c.state === 'fail');
+
+/** A draft as it is shown: one saved before k-0531 as `failed` (left out then) reads as `look`. */
+export function shownDraft<T extends StudioDraft>(draft: T): T {
+  return draft.status === 'failed' ? { ...draft, status: 'look' } : draft;
 }
 
 export const failing = (draft: StudioDraft): Finding[] => draft.checks.filter((c) => c.state === 'fail').flatMap((c) => c.findings);

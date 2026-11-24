@@ -130,8 +130,11 @@ as the Past paper screen is (header, columns, a tray at the foot):
 - **Drafts** (middle): each draft drawn as it prints (`PastPaperSheet`, the Past paper
   card's own preview), AI-made, "No problems found" or "Read it", its key and why, a chip
   per check (clicking one shows its words), Another / Harder / Easier / Change… / Discard.
-  A draft a hard check failed is set apart under **Left out** with its reason and cannot be
-  ticked.
+  A draft a hard check failed (near-copy, format) is a normal card with a red chip and its
+  reason in words above the question; the teacher reads it and decides (k-0531, u-p8bn: it was
+  set apart under **Left out** before, and a chat saved then shows it this way now,
+  `validate.ts:shownDraft`). A table the model writes in the stem as "|" rows is drawn as a
+  table (`stemTable.ts:stemBlocks`).
 - **Checks** (right): the focused draft's seven rows in words (`findings.messages.ts`; the
   key row says how the blind solve worked and shows its working), notes about the batch,
   what the near-copy check compared with (the Past paper bank's search index and the
@@ -320,7 +323,7 @@ already in Settings, with the same engine, checks and corpus as Write.
   list and on Write-tab drafts alike. The list shows the next draft to mark first.
 - **The bar** (`trialScore.ts:tally`): judged on what is marked, and only once 20 are marked.
   Beside it: how often the blind solve agreed, the lint, syllabus, number and term notes, the
-  closest near-copy shown (a basis for tuning the 30% limit), drafts a hard check left out, and
+  closest near-copy among drafts without a warning (a basis for tuning the 30% limit), drafts shown with a hard-check warning, and
   what it cost (requests, tokens, seconds a click). Near-copy is also marked "means less" in
   any run that had no Past paper bank to compare with. **Copy report** writes it all as English
   text (the bar, the checks, each brief's result, up to 20 drafts that need a look).

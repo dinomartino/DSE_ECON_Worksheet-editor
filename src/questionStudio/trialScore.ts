@@ -3,6 +3,7 @@ import { plain } from '@/model/text';
 import type { CheckId, StudioDraft } from './types';
 import { TRIAL_BRIEFS } from './trialBriefs';
 import { ARMS, isBriefLabel, isMarked, MINE, shownDrafts, type Arm, type TrialDraft, type TrialRun } from './trialLog';
+import { hasWarning } from './validate';
 
 /**
  * Scoring the trial (k-0499, decision 7a). The bar is the proposal's, to be agreed with the
@@ -37,7 +38,8 @@ export interface Tally {
     /** Runs the teacher stopped. */
     stopped: number;
   };
-  drafts: { written: number; shown: number; leftOut: number; leftOutBy: { copy: number; shape: number } };
+  /** `warned`: drafts with a failed hard check (near-copy, format), shown with a red warning since k-0531 (left out before). */
+  drafts: { written: number; shown: number; warned: number; warnedBy: { copy: number; shape: number } };
   /** The local checks, over the drafts shown. */
   local: {
     keyAgree: number;
@@ -92,11 +94,13 @@ export function tally(runs: readonly TrialRun[]): Tally {
   const written = runs.flatMap((run) => run.drafts);
   const shownList = shownDrafts(runs);
   const shown = shownList.map(({ entry }) => entry);
-  const failed = written.filter((entry) => entry.draft.status === 'failed');
-  const failedWith = (id: CheckId) => failed.filter((entry) => rowOf(entry.draft, id)?.state === 'fail').length;
+  const warned = written.filter((entry) => hasWarning(entry.draft));
+  const warnedWith = (id: CheckId) => warned.filter((entry) => rowOf(entry.draft, id)?.state === 'fail').length;
 
   const briefLabels = new Set(okRuns.filter((run) => run.kind === 'write' && isBriefLabel(run.label)).map((run) => run.label));
-  const copyPercents = shown.flatMap((entry) => {
+  // The copy figures read the drafts offered without a warning (a warned near-copy is shown in red, k-0531).
+  const clean = shown.filter((entry) => !hasWarning(entry.draft));
+  const copyPercents = clean.flatMap((entry) => {
     const value = rowOf(entry.draft, 'copy')?.value;
     return value === undefined ? [] : [value];
   });
@@ -109,7 +113,7 @@ export function tally(runs: readonly TrialRun[]): Tally {
   const edit = useMarked.filter((entry) => entry.use === 'edit').length;
   const reject = useMarked.filter((entry) => entry.use === 'reject').length;
 
-  const nearCopyShown = shown.filter((entry) => {
+  const nearCopyShown = clean.filter((entry) => {
     const state = rowOf(entry.draft, 'copy')?.state;
     return state !== undefined && state !== 'pass';
   }).length;
@@ -119,10 +123,10 @@ export function tally(runs: readonly TrialRun[]): Tally {
   const usable = gate(asis + edit, useMarked.length, BAR.usable, useMarked.length >= BAR.minMarked);
   const nearCopy: Gate = {
     got: nearCopyShown,
-    of: shown.length,
-    percent: percentOf(nearCopyShown, shown.length),
+    of: clean.length,
+    percent: percentOf(nearCopyShown, clean.length),
     need: 0,
-    pass: shown.length === 0 ? undefined : nearCopyShown === 0 && bankMissing === 0,
+    pass: clean.length === 0 ? undefined : nearCopyShown === 0 && bankMissing === 0,
   };
   const gates = [keyDefensible.pass, usable.pass, nearCopy.pass];
   const verdict = gates.some((pass) => pass === undefined) ? 'pending' : gates.every(Boolean) ? 'pass' : 'fail';
@@ -135,7 +139,7 @@ export function tally(runs: readonly TrialRun[]): Tally {
       errors: runs.filter((run) => !run.ok && run.error !== 'cancelled').length,
       stopped: runs.filter((run) => !run.ok && run.error === 'cancelled').length,
     },
-    drafts: { written: written.length, shown: shown.length, leftOut: failed.length, leftOutBy: { copy: failedWith('copy'), shape: failedWith('shape') } },
+    drafts: { written: written.length, shown: shown.length, warned: warned.length, warnedBy: { copy: warnedWith('copy'), shape: warnedWith('shape') } },
     local: {
       keyAgree: shown.filter((entry) => rowOf(entry.draft, 'key')?.state === 'pass').length,
       keyLook: shown.filter((entry) => looked(entry.draft, 'key')).length,
@@ -212,7 +216,7 @@ export function reportText(runs: readonly TrialRun[], today: Date = new Date()):
   add('Question studio trial report');
   add(`Date ${today.toISOString().slice(0, 10)} · model ${model}`);
   add(`Runs: ${t.runs.briefs} of ${TRIAL_BRIEFS.length} invented briefs · ${t.runs.mine} of your own requests · ${t.runs.refinements} refinements · ${t.runs.errors} failed · ${t.runs.stopped} stopped`);
-  add(`Drafts: ${t.drafts.written} written · ${t.drafts.shown} shown · ${t.drafts.leftOut} left out (copy ${t.drafts.leftOutBy.copy}, shape ${t.drafts.leftOutBy.shape})`);
+  add(`Drafts: ${t.drafts.written} written · ${t.drafts.shown} shown · ${t.drafts.warned} warned (copy ${t.drafts.warnedBy.copy}, shape ${t.drafts.warnedBy.shape})`);
   add(`Marked: ${t.marks.marked} of ${t.marks.shown} shown have both marks (key ${t.marks.keyMarked}, use ${t.marks.useMarked})`);
   add();
   add('The bar');
@@ -242,10 +246,10 @@ export function reportText(runs: readonly TrialRun[], today: Date = new Date()):
     const ofBrief = runs.filter((run) => run.ok && run.kind === 'write' && run.label === brief.id).flatMap((run) => run.drafts);
     if (ofBrief.length === 0) continue;
     done.add(brief.id);
-    const shown = ofBrief.filter((entry) => entry.draft.status !== 'failed');
+    const shown = ofBrief;
     const count = (pick: (entry: TrialDraft) => boolean) => shown.filter(pick).length;
     add(
-      `  ${brief.id} ${[brief.keyPoint, ...(brief.points ?? [])].join(' ')}: asked ${brief.count}, shown ${shown.length}${ofBrief.length > shown.length ? ` (${ofBrief.length - shown.length} left out)` : ''}` +
+      `  ${brief.id} ${[brief.keyPoint, ...(brief.points ?? [])].join(' ')}: asked ${brief.count}, shown ${shown.length}${ofBrief.some((e) => hasWarning(e.draft)) ? ` (${ofBrief.filter((e) => hasWarning(e.draft)).length} warned)` : ''}` +
         ` · key ok ${count((e) => e.key === 'ok')}/${count((e) => e.key !== undefined)} marked · as it stands ${count((e) => e.use === 'asis')}, edit ${count((e) => e.use === 'edit')}, reject ${count((e) => e.use === 'reject')}`,
     );
   }

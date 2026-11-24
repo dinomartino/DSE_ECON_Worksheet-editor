@@ -304,6 +304,26 @@ const STUDIO_POOL = [
     angle: 'two changes of 20%',
   },
 ];
+/**
+ * k-0531: a real model's table draft (Claude Sonnet standing in for Gemini, to the studio's real
+ * write request), its lead-in and last sentence in its own words. A teacherNote holding "!table"
+ * makes it the first question of a write.
+ */
+const STUDIO_TABLE = {
+  stem: [
+    'Good Y is sold in a competitive market. Its demand and supply schedules are given below.\nPrice ($) | Quantity demanded (units) | Quantity supplied (units)\n20 | 100 | 40\n25 | 85 | 55\n30 | 70 | 70\n35 | 55 | 85\nWhat happens in the market when a minimum price of $35 is imposed? There is a',
+    '物品 Y 在競爭市場出售，其需求及供應表如下。\n價格（$）| 需求量（單位）| 供應量（單位）\n20 | 100 | 40\n25 | 85 | 55\n30 | 70 | 70\n35 | 55 | 85\n當政府實施 $35 的最低價格時，市場上會有',
+  ],
+  key: ['surplus of 30 units.', '過剩 30 單位。'],
+  wrong: [['shortage of 30 units.', '短缺 30 單位。'], ['surplus of 15 units.', '過剩 15 單位。'], ['surplus of 85 units.', '過剩 85 單位。']],
+  why: ['At $35, quantity supplied is 85 and quantity demanded is 55: a surplus of 30 units.', '價格為 $35 時，供應量為 85，需求量為 55，過剩 30 單位。'],
+  angle: 'price floor read from a table',
+};
+/** studio-verify-kit.mjs's bank question DSE2099/P1/Q2, word for word: what "!copy" writes (k-0531). */
+const STUDIO_BANK_COPY = {
+  stem: ['A taxi company raises its fares by 6% and the number of trips falls by 3%. The price elasticity of demand for its trips is', '一間的士公司把車資提高 6%，載客次數減少 3%。其載客服務的需求價格彈性為'],
+  options: [['0.5', '0.5'], ['2', '2'], ['3', '3'], ['9', '9']],
+};
 let studioNext = 0;
 /** Written stems and their keys, so the blind solver can answer them (and disagree on request). */
 const studioKeys = new Map();
@@ -315,10 +335,20 @@ function studioWriteReply(payload) {
   const count = payload.rewrite ? 1 : (payload.redo?.length || payload.make?.count || 1);
   const keys = Array.isArray(payload.make?.keys) ? payload.make.keys : [];
   const disagree = /!look/.test(String(payload.teacherNote ?? ''));
+  // k-0531: "!table" puts the table draft first; "!copy" makes the last question (and its redo) a word-for-word copy of
+  // the bank question DSE2099/P1/Q2 in studio-verify-kit.mjs (not the picked reference: a copy of that is allowed), so it stays warned.
+  const table = /!table/.test(String(payload.teacherNote ?? '')) && !payload.redo && !payload.rewrite;
+  const copy = /!copy/.test(String(payload.teacherNote ?? '')) && !payload.rewrite;
   const questions = [];
   for (let i = 0; i < count; i += 1) {
-    const item = STUDIO_POOL[studioNext % STUDIO_POOL.length];
-    studioNext += 1;
+    if (copy && (payload.redo || i === count - 1)) {
+      const written = t(STUDIO_BANK_COPY.stem);
+      studioKeys.set(studioNorm(written.en || written.zh), 0);
+      questions.push({ stem: written, statements: [], options: STUDIO_BANK_COPY.options.map(t), answer: 0, explanation: t(['Elasticity is 3% ÷ 6% = 0.5.', '彈性為 3% ÷ 6% = 0.5。']), angle: 'a copy of a bank question' });
+      continue;
+    }
+    const item = table && i === 0 ? STUDIO_TABLE : STUDIO_POOL[studioNext % STUDIO_POOL.length];
+    if (item !== STUDIO_TABLE) studioNext += 1;
     const at = Number.isInteger(keys[i]) && keys[i] >= 0 && keys[i] <= 3 ? keys[i] : 0;
     const options = [...item.wrong];
     options.splice(at, 0, item.key);

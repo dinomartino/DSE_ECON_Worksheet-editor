@@ -62,8 +62,8 @@ export function PaperCanvas({
   const [refId, setRefId] = useState<string>();
   const ref = refs.find((r) => r.source.id === refId) ?? refs[0];
   const writing = run && run.chatId === chat.id && !run.target ? run : undefined;
-  const standing = chat.drafts.filter((d) => d.entry.draft.status !== 'failed');
-  const leftOut = chat.drafts.filter((d) => d.entry.draft.status === 'failed');
+  // Every draft is a card, a warned one too (k-0531): nothing is left out.
+  const standing = chat.drafts;
   const accepted = chat.drafts.filter((d) => d.state === 'accepted').length;
   const busy = Boolean(run);
   const compare = view === 'compare' && ref !== undefined;
@@ -168,13 +168,6 @@ export function PaperCanvas({
             {refs.length > 0 && <RefBar refs={refs} onShow={() => (ref ? setView('compare') : onShowReference())} />}
             {standing.map(card)}
             {streaming}
-            {leftOut.length > 0 && (
-              <details className="rounded-xl border border-line bg-surface px-4 py-3" data-left-out>
-                <summary className="cursor-pointer select-none text-[13px] font-medium text-ink">{q.leftOut(leftOut.length)}</summary>
-                <p className="mb-3 mt-1.5 text-[12px] text-ink-muted">{q.leftOutNote}</p>
-                <div className="flex flex-col gap-3">{leftOut.map(card)}</div>
-              </details>
-            )}
           </div>
         )}
       </div>

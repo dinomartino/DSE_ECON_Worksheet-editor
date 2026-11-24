@@ -32,11 +32,11 @@ describe('the ✦ Write panel’s drafts on the page (k-0516 B)', () => {
     for (let i = 0; i < 4; i += 1) store().addQuestion('mcq');
   });
 
-  it('open drafts only, in draft order; failed, rejected and added ones stay off the page', () => {
+  it('open drafts only, in draft order, a warned (or pre-k-0531 failed) one too in red; rejected and added ones stay off the page', () => {
     const chat = chatWith([draft('b', 2), draft('a', 1), draft('x', 3, 'rejected'), draft('y', 4, 'added'), draft('z', 5, 'open', 'failed'), draft('l', 6, 'open', 'look')]);
     const ghosts = ghostsOf(chat, undefined);
-    expect(ghosts.map((g) => g.draftId)).toEqual(['a', 'b', 'l']);
-    expect(ghosts.map((g) => g.status)).toEqual(['ok', 'ok', 'look']);
+    expect(ghosts.map((g) => g.draftId)).toEqual(['a', 'b', 'z', 'l']);
+    expect(ghosts.map((g) => g.status)).toEqual(['ok', 'ok', 'warn', 'look']);
     expect(ghosts[0].id).toBe(`${GHOST_PREFIX}a`);
     expect(ghosts[0].question.id).toBe(ghosts[0].id);
     expect(ghosts[0].question.aiMade).toBe(true);

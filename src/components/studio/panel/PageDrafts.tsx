@@ -106,10 +106,12 @@ function GhostFrame({ ghost, number, children }: { ghost: Ghost; number: string;
   const q = useMessages(QUESTION_STUDIO_MESSAGES);
   const c = useMessages(STUDIO_CHAT_MESSAGES);
   const setAsk = useWritePanel((s) => s.setAsk);
-  const ready = ghost.draftId !== undefined && (ghost.status === 'ok' || ghost.status === 'look');
+  const ready = ghost.draftId !== undefined && (ghost.status === 'ok' || ghost.status === 'look' || ghost.status === 'warn');
   const statusChip =
     ghost.status === 'ok' ? (
       <span className={`${chip} border-ok-line bg-ok-soft text-ok`}>{q.statusOk}</span>
+    ) : ghost.status === 'warn' ? (
+      <span className={`${chip} border-danger/40 bg-danger-soft text-danger-ink`}>{m.warned}</span>
     ) : ghost.status === 'look' ? (
       <span className={`${chip} border-warn-ink/30 bg-warn-soft text-warn-ink`}>{q.statusLook}</span>
     ) : (

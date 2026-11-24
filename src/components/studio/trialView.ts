@@ -25,7 +25,7 @@ export function readingList(runs: readonly TrialRun[], filter: ListFilter): List
   const mine = runs.filter((run) => !isBriefLabel(run.label)).reverse();
   const briefs = runs.filter((run) => isBriefLabel(run.label)).sort((a, b) => a.label.localeCompare(b.label) || a.at.localeCompare(b.at));
   return [...mine, ...briefs]
-    .flatMap((run) => run.drafts.filter((entry) => entry.draft.status !== 'failed').map((entry): ListItem => ({ run, entry })))
+    .flatMap((run) => run.drafts.map((entry): ListItem => ({ run, entry })))
     .filter(({ run, entry }) => {
       if (filter === 'todo') return !isMarked(entry);
       if (filter === 'briefs') return isBriefLabel(run.label);

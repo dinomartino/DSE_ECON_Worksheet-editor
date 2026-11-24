@@ -27,9 +27,9 @@ function entry(id: string, source: (typeof INVENTED)[number], over: { keyPoint?:
 describe('what the tray sends', () => {
   const sheet = [entry('d1', A), entry('d2', B, { status: 'failed' }), entry('d3', C, { keyPoint: 'C.law-of-demand' })];
 
-  it('is the ticked drafts, in the order ticked, never one that failed or is gone', () => {
+  it('is the ticked drafts, in the order ticked, a warned one too (k-0531), never one that is gone', () => {
     expect(pickedEntries(sheet, ['d3', 'd1']).map((e) => e.draft.id)).toEqual(['d3', 'd1']);
-    expect(pickedEntries(sheet, ['d2', 'd9', 'd1']).map((e) => e.draft.id)).toEqual(['d1']);
+    expect(pickedEntries(sheet, ['d2', 'd9', 'd1']).map((e) => e.draft.id)).toEqual(['d2', 'd1']);
     expect(pickedEntries(sheet, [])).toEqual([]);
   });
 

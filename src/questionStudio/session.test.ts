@@ -198,14 +198,14 @@ describe('the sheet', () => {
     return session;
   };
 
-  it('ticks and unticks; a draft that failed cannot be ticked', () => {
+  it('ticks and unticks; a warned draft can be ticked too (k-0531)', () => {
     const session = seeded2();
     session.getState().toggle('d2');
     session.getState().toggle('d1');
     session.getState().toggle('d3');
-    expect(session.getState().picked).toEqual(['d2', 'd1']);
+    expect(session.getState().picked).toEqual(['d2', 'd1', 'd3']);
     session.getState().toggle('d2');
-    expect(session.getState().picked).toEqual(['d1']);
+    expect(session.getState().picked).toEqual(['d1', 'd3']);
   });
 
   it('drafts that were delivered leave the sheet with their ticks', () => {

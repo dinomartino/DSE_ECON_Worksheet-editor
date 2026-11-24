@@ -63,7 +63,7 @@ export function TrialReport() {
           <Count label={t.localNumbers} value={local.numbers} />
           <Count label={t.localTerms} value={local.terms} />
           {local.copyMax !== undefined && local.copyP90 !== undefined && <li>{t.localCopy(local.copyMax, local.copyP90)}</li>}
-          <li>{t.localLeftOut(drafts.leftOut, drafts.leftOutBy.copy, drafts.leftOutBy.shape)}</li>
+          <li>{t.localWarned(drafts.warned, drafts.warnedBy.copy, drafts.warnedBy.shape)}</li>
         </ul>
       </section>
 

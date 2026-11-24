@@ -1,4 +1,5 @@
 import type { LanguageMode } from '@/model/types';
+import { shownDraft } from '@/questionStudio/validate';
 
 const LANGUAGE_MODES: readonly LanguageMode[] = ['en', 'zh', 'bilingual'];
 import { CHAT_COUNTS, type Chat, type ChatDraft, type ChatRef, type Turn } from './chatTypes';
@@ -43,6 +44,14 @@ function isTurn(x: unknown): x is Turn {
   return false;
 }
 
+/**
+ * A draft saved before k-0531 as `failed` was left out then; it reads as `look` now, so it
+ * shows as a normal card with its red warning (its failed check rows are kept as saved).
+ */
+function shownChatDraft(draft: ChatDraft): ChatDraft {
+  return { ...draft, entry: { ...draft.entry, draft: shownDraft(draft.entry.draft) }, older: draft.older.map(shownDraft) };
+}
+
 /** A stored chat as the screen can use it, or undefined when it is not one. */
 export function readChat(x: unknown): Chat | undefined {
   if (!isObj(x) || x.v !== 1 || !isStr(x.id) || !isStr(x.createdAt) || !isStr(x.updatedAt)) return undefined;
@@ -59,7 +68,7 @@ export function readChat(x: unknown): Chat | undefined {
     updatedAt: x.updatedAt,
     refs: x.refs.filter(isRef),
     turns: x.turns.filter(isTurn),
-    drafts: x.drafts.filter(isDraft),
+    drafts: x.drafts.filter(isDraft).map(shownChatDraft),
     picks,
     settings: { count, level, language },
     lastText: isStr(x.lastText) ? x.lastText : '',

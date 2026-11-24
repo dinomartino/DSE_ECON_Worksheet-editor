@@ -106,6 +106,14 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **Every question the studio writes is shown to you.** A draft that failed a check (too close
+  to a past paper or another question, or a format problem) used to be set apart as "Left out";
+  it is now a normal card you can read in full, accept, change or reject, with a red warning
+  that says why in plain words. A near-copy warning still says not to use it as it is. Chats
+  you saved before show those drafts the same way. Drafts with a table were often wrongly
+  marked as copies, only because tables share their numbers' layout; that is fixed, and a table
+  the AI writes now prints as a real table instead of lines with "|".
+  <!-- zh: **擬題工作室寫出的每條題目都會顯示給你。** 未通過檢查的草稿（與歷屆試題或其他題目太相似，或格式有問題）以往會被列為「已剔除」；現在會以一般卡片顯示，你可以完整閱讀、接受、修改或不要，卡片上以紅色警告清楚說明原因。近似抄襲的警告仍會提醒你不要直接使用。以往儲存的對話也會以同樣方式顯示這些草稿。附有表格的草稿以往常因表格數字排列相似而被誤判為抄襲，現已修正；AI 寫的表格現在會印成真正的表格，不再是帶「|」的文字。 -->
 - **The question studio's menus close when you click away.** The ⚙ options (how many, level,
   language), the Chats list and Change key point now close when you click anywhere else or press
   Esc; picking an option keeps the ⚙ panel open so you can set several. Picking a past-paper

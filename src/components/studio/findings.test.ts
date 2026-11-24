@@ -61,7 +61,7 @@ describe('the words for what the checks found', () => {
     expect(findingText({ id: 'key.differs', params: { solver: 'C', key: 'B' } }, en)).toContain('chose C');
     expect(findingText({ id: 'key.differs', params: { solver: 'C', key: 'B' } }, zh)).toContain('選了 C');
     expect(findingText({ id: 'copy.close', params: { percent: 41, with: 'bank', verbatim: 0 } }, en)).toBe(
-      'Too close to a past paper question: 41% of its wording is shared. Write another, or change it.',
+      'Too close to a past paper question: 41% of its wording is shared. Do not use it as it is: change the wording, or write another.',
     );
     expect(findingText({ id: 'copy.close', params: { percent: 100, with: 'mine', verbatim: 1 } }, zh)).toContain('你的一條題目');
     expect(findingText({ id: 'shape.optionEmpty', params: { side: 'zh' } }, en)).toBe('An option is empty in 中文.');

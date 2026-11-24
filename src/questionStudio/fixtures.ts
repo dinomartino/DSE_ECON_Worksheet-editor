@@ -195,7 +195,8 @@ export function studioDraft(id: string, over: { from?: Invented; status?: Studio
     id,
     draft: { kind: 'mcq', stem: from.stem, statements: from.statements, options: from.options, answerIndex: over.keyIndex ?? from.answer, explanation: from.explanation },
     angle: from.angle,
-    status: over.status ?? (rows.some((r) => r.state === 'fail') ? 'failed' : rows.some((r) => r.state === 'look') ? 'look' : 'ok'),
+    // As the engine sets it since k-0531: a failed check is a warning (look), never left out. Pass `status: 'failed'` for a draft saved before.
+    status: over.status ?? (rows.some((r) => r.state === 'fail' || r.state === 'look') ? 'look' : 'ok'),
     checks: rows,
     attempt: 1,
   };

@@ -304,6 +304,43 @@ try {
   });
   await short.context.close();
 
+  // k-0531: a draft with a table is drawn as a table; a near-copy is shown with a red warning, never left out.
+  for (const ui of ['en', 'zh-HK']) {
+    const k = await newPage(browser, ui === 'en' ? {} : { ui });
+    await check(`k-0531 (${ui}): a table draft shows its table; a near-copy is a normal card with a red warning, nothing left out`, async () => {
+      await openStudio(k.page, ui === 'en' ? undefined : /擬題工作室/);
+      const card = await pickReference(k.page);
+      await card.dblclick();
+      await k.page.locator('[data-ref-chip]').waitFor();
+      await k.page.locator('[data-chat-input]').fill('!table !copy');
+      await k.page.locator('[data-chat-send]').click();
+      await k.page.locator('[data-chat-draft]').nth(2).waitFor({ timeout: 40_000 });
+      await k.page.locator('[data-chat-send]').waitFor({ timeout: 40_000 });
+      const first = k.page.locator('[data-chat-draft="1"]');
+      expect((await first.locator('table').count()) >= 1, 'the table draft has no table');
+      const cells = await first.locator('table td, table th').allTextContents();
+      expect(cells.some((c) => c.includes('85')), `table cells: ${cells.slice(0, 6).join(' / ')}`);
+      expect(!(await first.innerText()).includes(' | '), 'pipes printed on the card');
+      await first.scrollIntoViewIfNeeded();
+      await shot(k.page, `k0531-${ui}-table-draft`);
+      const warned = k.page.locator('[data-chat-draft][data-warned]');
+      expect((await warned.count()) === 1, `${await warned.count()} warned drafts`);
+      expect(await warned.locator('[data-draft-warning]').isVisible(), 'the warning is not shown');
+      const warning = await warned.locator('[data-draft-warning]').innerText();
+      expect(ui === 'en' ? /Too close to|word for word/.test(warning) : /太相似|一字不差/.test(warning), `warning: ${warning}`);
+      expect(await warned.locator('[data-accept]').isVisible(), 'a warned draft cannot be accepted');
+      expect((await k.page.locator('[data-left-out]').count()) === 0, 'a Left out list is still there');
+      const note = await k.page.locator('[data-chat-ai]').last().innerText();
+      expect(ui === 'en' ? /3 drafts are ready\..*1 has a warning/s.test(note) : /3 份草稿已完成.*1 份有警告/s.test(note), `note: ${note}`);
+      await warned.scrollIntoViewIfNeeded();
+      await shot(k.page, `k0531-${ui}-warned-draft`);
+      await warned.locator('[data-accept]').click();
+      expect((await warned.getAttribute('data-state')) === 'accepted', 'Accept did nothing on a warned draft');
+      expect(k.errors.length === 0, k.errors[0]);
+    });
+    await k.context.close();
+  }
+
   // 中文 interface: the same screen's words.
   const zh = await newPage(browser, { ui: 'zh-HK' });
   await check('中文: the studio in 繁體中文', async () => {
