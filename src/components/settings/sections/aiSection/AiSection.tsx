@@ -4,7 +4,10 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { PROVIDER_IDS, type ModelInfo, type ProviderId } from "@/ai/types";
 import { openExternal } from "@/platform";
 import { peekSecret, subscribeSecrets } from "@/platform/secrets";
-import { useMessages } from "@/i18n/language";
+import { useMessages, useUiLanguage } from "@/i18n/language";
+import { providerShortName } from "@/components/ai/aiChip";
+import { aiChoiceState, type AiChoice } from "@/settings/aiChoice";
+import { setAiChoice } from "@/settings/aiChoiceLive";
 import { AI_SETTINGS, useAiStatus } from "@/settings/aiSettings";
 import { MENTOR_BUY_URL, MENTOR_PRICING_URL } from "@/ai/mentor";
 import { MENTOR } from "@/ai/mentorOrigin";
@@ -16,7 +19,7 @@ import { initialAiSetup, needsCloseGuard, savedKeys } from "./aiSetup";
 import { liveDeps, secretPlatform } from "./aiSetupLive";
 import { createAiSetupRunner } from "./aiSetupRunner";
 import { AiSectionView } from "./AiSectionView";
-import type { MentorCardActions } from "./MentorAccountCard";
+import { formatCredits, type MentorCardActions } from "./MentorAccountCard";
 import { TrialKitBlock } from "./TrialKitBlock";
 import { AI_SECTION_MESSAGES } from "./messages";
 
@@ -54,6 +57,7 @@ export default function AiSection({
 }: SettingsSectionProps) {
   const [settings, update] = useSettings(AI_SETTINGS);
   const m = useMessages(AI_SECTION_MESSAGES);
+  const lang = useUiLanguage();
   const status = useAiStatus();
   const [runner] = useState(() =>
     createAiSetupRunner(
@@ -103,6 +107,16 @@ export default function AiSection({
     buy: (url) => openBuyCredits(url),
     openAccount: (url) => void openExternal(url || MENTOR_BUY_URL),
     prices: () => void openExternal((mentor.kind === "signedIn" && mentor.account?.pricingUrl) || MENTOR_PRICING_URL),
+  };
+
+  // Signed in AND an own key saved: the "Use for AI" choice (k-0527).
+  const saved = (p: ProviderId) => peeks[PROVIDER_IDS.indexOf(p)] != null || settings.keychainSaved[p] === true;
+  const both = aiChoiceState(settings, signedIn, saved);
+  const choice = both && {
+    using: both.using,
+    own: providerShortName(both.own),
+    credits: mentor.kind === "signedIn" && mentor.account ? formatCredits(mentor.account.credits, lang) : null,
+    choose: (next: AiChoice) => void setAiChoice(next),
   };
 
   const guarded = needsCloseGuard(state);
@@ -158,6 +172,7 @@ export default function AiSection({
         mentorActions={mentorActions}
         mentorKept={mentorKept}
         mentorServer={MENTOR.production ? undefined : MENTOR.label}
+        choice={choice}
       />
       <div className="mt-4 empty:hidden">
         <TrialKitBlock />

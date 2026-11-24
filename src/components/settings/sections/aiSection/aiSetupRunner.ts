@@ -2,6 +2,7 @@ import { presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type ConnectionTest, type ModelInfo, type ProviderConfig, type ProviderId } from '@/ai/types';
 import type { SecretAccount, SecretError, SecretRead, SecretStore, SecretWrite } from '@/platform/secrets';
 import { AI_SETTINGS, providerChoice, type AiConfigResult, type AiSettings } from '@/settings/aiSettings';
+import { providerAfterForget } from '@/settings/aiChoice';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
 import type { SettingsEnv } from '@/settings/types';
@@ -212,9 +213,16 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
       const gone = which === 'all' ? PROVIDER_IDS.filter((id) => presetFor(id).group !== 'hosted') : [which];
       gone.forEach(stopSavedTest);
       await Promise.all(gone.map((id) => deps.deleteSecret(account(id))));
-      patch((s) => ({
-        keychainSaved: which === 'all' ? (s.keychainSaved.mentor ? { mentor: true } : {}) : withFlag(s.keychainSaved, which, false),
-      }));
+      // The key in use is gone and the teacher is signed in to DSEcon Mentor: the account
+      // takes over, so AI keeps working (k-0527). The token never moves with a forget.
+      const signedIn = deps.peekSecret(account('mentor')) !== null || deps.readSettings().keychainSaved.mentor === true;
+      patch((s) => {
+        const next = providerAfterForget(s, gone, signedIn);
+        return {
+          keychainSaved: which === 'all' ? (s.keychainSaved.mentor ? { mentor: true } : {}) : withFlag(s.keychainSaved, which, false),
+          ...(next ? { provider: next } : {}),
+        };
+      });
       send({ type: 'forgotten', which });
     },
     model(id: string): void {

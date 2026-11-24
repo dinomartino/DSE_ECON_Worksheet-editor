@@ -26,6 +26,11 @@ export interface AiSettings {
   keychainSaved: Partial<Record<ProviderId, true>>;
   /** Default true. */
   includeTeacherText: boolean;
+  /**
+   * The own provider "My own key" means while DSEcon Mentor is chosen (k-0527, `aiChoice.ts`).
+   * Absent → the first saved key. Never 'mentor'.
+   */
+  ownProvider?: ProviderId;
 }
 
 const modelId = text(128, /^[A-Za-z0-9._:/@-]+$/);
@@ -53,6 +58,7 @@ export const AI_SETTINGS: SettingsSchema<AiSettings> = {
     rememberKey: bool,
     keychainSaved: recordOf(PROVIDER_IDS, trueFlag),
     includeTeacherText: bool,
+    ownProvider: oneOf(PROVIDER_IDS.filter((p) => p !== 'mentor')),
   },
 };
 

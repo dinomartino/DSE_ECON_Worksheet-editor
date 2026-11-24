@@ -4,6 +4,9 @@ import { useAiRun } from '@/assist/runStore';
 import { copyMessages } from '@/components/translate/text';
 import { openExternal } from '@/platform';
 import { peekSecret } from '@/platform/secrets';
+import { ownKeyProvider } from '@/settings/aiChoice';
+import { setAiChoice } from '@/settings/aiChoiceLive';
+import { providerShortName } from './aiChip';
 import { AI_SETTINGS } from '@/settings/aiSettings';
 import { openBuyCredits } from '@/settings/mentorLive';
 import { appSettings } from '@/settings/store';
@@ -45,7 +48,10 @@ export function errorActions(error: AiErrorInfo): ErrorAction[] {
   if (!region && has('switchProvider')) out.push({ kind: 'settings', label: copy.switchProvider });
   if (region || has('openSettings')) out.push({ kind: 'settings', label: copy.openSettings });
   if (!region && has('retry')) out.push({ kind: 'retry', label: copy.tryAgain });
-  if (has('useOwnKey')) out.push({ kind: 'useOwnKey', label: copy.useOwnKey });
+  if (has('useOwnKey')) {
+    const own = ownKeyProvider(aiSettings(), keySaved);
+    out.push({ kind: 'useOwnKey', label: own ? copy.useOwnKeyNamed(providerShortName(own)) : copy.useOwnKey });
+  }
   return out;
 }
 
@@ -118,6 +124,9 @@ export function runErrorAction(action: ErrorAction, error: AiErrorInfo, run: Run
     case 'buyCredits':
       return openBuyCredits();
     case 'useOwnKey':
-      return openSettings(run, 'ownKey');
+      // A saved own key: the choice switches to it and the job runs again on it (k-0527);
+      // none saved yet: set one up in Settings.
+      if (!setAiChoice('own')) return openSettings(run, 'ownKey');
+      return run.retry();
   }
 }
