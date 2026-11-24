@@ -61,6 +61,11 @@ describe('reading a message with the drafts (k-0535): ~40 real phrasings', () =>
     expect(readLocally('make draft 3 harder', added, { recent: [] }).kind).toBe('unsure');
   });
 
+  it('Simplified Chinese reads like Traditional', () => {
+    // 第二題太易 typed in Simplified characters (kept as escapes: no Simplified text in the source).
+    expect(readLocally('\u7b2c\u4e8c\u9898\u592a\u6613', PAGE)).toMatchObject({ kind: 'edit', drafts: [2], how: 'harder', sure: true });
+  });
+
   it('reads difficulty and what an edit touches', () => {
     expect(readLocally('Q2 太易', PAGE).how).toBe('harder');
     expect(readLocally('最後一題太難', PAGE).how).toBe('easier');
