@@ -232,6 +232,20 @@ kept on this computer; the Trial kit in Settings → AI. **No topic picker anywh
   (the invented bank, a long `/big/` bank, the blocked providers) are `scripts/studio-verify-kit.mjs`.
   The old studio-verify script (the form's screen, the 30-brief run in the browser) went with that
   screen; the trial kit's logic keeps its unit tests.
+- **My questions** (k-0529, u-ov6l): the picker's second side (`src/components/studio/MyQuestionsPane.tsx:MyQuestionsPane`,
+  pure half `src/components/studio/myQuestions.ts:myQuestionList`) lists the teacher's own saved questions from the 題庫
+  index (`useBank`: every saved paper and bank, one entry per `rootId`, the newest copy shown). MC only for now: other
+  types are left out and counted ("Only MC for now: N other questions are not listed"), not greyed, so the list holds only
+  what can be picked. Search (as the 題庫's: every copy and its paper's title), a topic rail (coarse topics with counts) and
+  "Last used or made" (`:inWhen`); questions used as a reference before come first (`:noteRecent`, `econgen.recentRefs.v1`,
+  this computer only); the list draws 40 at a time ("Show more"), the preview only the selected one. A pick reads the
+  owning document and builds the same source as a past paper (`:mineReference`: stem, statements, options, key, its shared
+  passage, pictures, and now its explanation, `SourceQuestion.explanation` → `brief.ts:examplePayload`), id
+  `mine:<docId>/<questionId>` as the 題庫's ✦ Write like this; the question is copied, its document never written. The
+  bank switched off opens the picker on this side, so the start buttons no longer wait for the bank. Each draft names
+  the picked references ("Based on Mock 2026 · Q4", `src/components/studio/BasedOn.tsx:BasedOn`). Preview card
+  `src/components/studio/ReferenceSheet.tsx:ReferenceSheet`. Browser proof
+  `scripts/studio-mine-verify.mjs` (screenshots `Outbox/k-0529/`; a 2400-question bank opens in under half a second).
 - **Reference picker rail** (u-na4k): the rail around the shared topic/year navs is a *row*, so the
   nav (a column sized to its list) is stretched to the dialog's height and its list scrolls; in a
   column it grew past the footer and the topics below could not be reached.
@@ -395,7 +409,7 @@ u-uugw).
 Draft CHANGELOG line, to add when the studio ships. It stays out of `CHANGELOG.md` while a
 release hides the studio, because the release body is copied from Unreleased (a feature a
 release hides has none, as `check.syllabus` on main): "Write new multiple-choice questions with AI — Library
-→ Question studio: pick any past-paper question or say what you need; the AI picks the syllabus key point, writes
+→ Question studio: pick any past-paper question or one of your own, or say what you need; the AI picks the syllabus key point, writes
 drafts (with diagrams) as you watch, and adds the ones you accept. Or open ✦ Write beside a paper:
 the drafts appear on the page where they would go, and Accept puts each one in."
 

@@ -16,6 +16,7 @@ import { packName } from '@/pastpapers/pack';
 import type { PastPaperItem } from '@/pastpapers/pack';
 import { sourceFromQuestion } from '@/questionStudio/source';
 import type { SourceQuestion } from '@/questionStudio/types';
+import { MyQuestionsPane, type MineChoice } from './MyQuestionsPane';
 import { REFERENCE_PICKER_MESSAGES } from './picker.messages';
 import { keyPointOfTags } from './studioView';
 
@@ -42,10 +43,20 @@ export function keepEntries(entries: readonly BrowseEntry[], built: ReadonlyMap<
   });
 }
 
+/** Where the picker's questions come from: the Past paper bank, or the teacher's own (k-0529). */
+export type PickerSource = 'past' | 'mine';
+/** The side last used, for the next time the picker opens (this session). */
+const lastSource: { side: PickerSource } = { side: 'past' };
+const rememberSource = (side: PickerSource) => {
+  lastSource.side = side;
+};
+
 /**
- * A modal over the Question studio: any Past paper bank question, drawn as it prints, to use as
- * the reference the AI writes like (k-0516). Reuses the Past paper screen's browse state, topic
- * and year pickers, search and bank-state notes; only multiple-choice questions can be picked.
+ * A modal over the Question studio: a question to use as the reference the AI writes like.
+ * Two sides: any Past paper bank question, drawn as it prints (k-0516; reuses the Past paper
+ * screen's browse state, topic and year pickers, search and bank-state notes), or one of the
+ * teacher's own questions from their papers and 題庫 (k-0529, `MyQuestionsPane`). Only
+ * multiple-choice questions can be picked.
  */
 export function ReferencePicker({
   open,
@@ -72,6 +83,16 @@ function PickerDialog({ onClose, onPick, language }: { onClose: () => void; onPi
   const [onlyDiagram, setOnlyDiagram] = useState(false);
   const [selected, setSelected] = useState<string | undefined>();
   const panel = useRef<HTMLDivElement>(null);
+  // The bank switched off here: open on the teacher's own questions.
+  const pastOff = !browse.base || browse.bank.status === 'off' || browse.bank.status === 'disabled';
+  const [side, setSideState] = useState<PickerSource>(() => (pastOff ? 'mine' : lastSource.side));
+  const setSide = (next: PickerSource) => {
+    rememberSource(next);
+    setSideState(next);
+  };
+  const [mineWords, setMineWords] = useState('');
+  const [mineChoice, setMineChoice] = useState<MineChoice | undefined>();
+  const mine = side === 'mine';
 
   // Focus moves in on open and returns to what had it on close; Tab stays inside; Esc closes.
   useEffect(() => {
@@ -118,10 +139,18 @@ function PickerDialog({ onClose, onPick, language }: { onClose: () => void; onPi
   const shown = useMemo(() => keepEntries(entries, built, onlyDiagram), [entries, built, onlyDiagram]);
 
   const chosen = selected !== undefined ? built.get(selected) : undefined;
+  const chosenLabel = mine ? mineChoice?.label : chosen?.source.label;
   const topicName = (id: string) => {
     const entry = topics.find((t) => t.id === id);
     return entry ? packName(entry.title, language) : id;
   };
+  const pickMine = useCallback(
+    (ref: { source: SourceQuestion; keyPoint?: string; item: PastPaperItem }) => {
+      onPick(ref.source, ref.keyPoint, ref.item);
+      onClose();
+    },
+    [onPick, onClose],
+  );
   const use = (key: string | undefined) => {
     const made = key !== undefined ? built.get(key) : undefined;
     if (!made) return;
@@ -144,9 +173,41 @@ function PickerDialog({ onClose, onPick, language }: { onClose: () => void; onPi
         className="zone-light relative flex animate-dialog-in flex-col overflow-hidden rounded-2xl border border-line bg-surface text-ink shadow-2xl outline-none"
       >
         <header className="flex shrink-0 items-center gap-4 border-b border-line px-5 py-3.5">
-          <h2 className="min-w-0 flex-1 truncate font-display text-[19px] font-normal leading-snug text-ink">{m.title}</h2>
-          {browse.bank.status === 'ready' && (
-            <label className="relative w-[min(340px,34vw)] min-w-[200px]">
+          <h2 className="min-w-0 shrink truncate font-display text-[19px] font-normal leading-snug text-ink">{m.title}</h2>
+          <div role="radiogroup" aria-label={m.sources} className="flex shrink-0 rounded-lg bg-surface-sunken p-0.5" data-picker-sources>
+            {(['past', 'mine'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="radio"
+                aria-checked={side === s}
+                onClick={() => setSide(s)}
+                data-picker-source={s}
+                className={`cursor-pointer rounded-md px-3 py-1 text-[12.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                  side === s ? 'bg-surface font-medium text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
+                }`}
+              >
+                {s === 'past' ? m.sourcePast : m.sourceMine}
+              </button>
+            ))}
+          </div>
+          <span className="flex-1" />
+          {mine && (
+            <label className="relative w-[min(340px,30vw)] min-w-[200px]">
+              <span className="sr-only">{m.mineSearch}</span>
+              <input
+                type="search"
+                value={mineWords}
+                placeholder={m.mineSearchPlaceholder}
+                onChange={(event) => setMineWords(event.target.value)}
+                data-my-search
+                className="h-8 w-full rounded-lg border border-transparent bg-surface-sunken pl-8 pr-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:bg-surface focus:ring-2 focus:ring-accent/25"
+              />
+              <SearchGlyph />
+            </label>
+          )}
+          {!mine && browse.bank.status === 'ready' && (
+            <label className="relative w-[min(340px,30vw)] min-w-[200px]">
               <span className="sr-only">{m.search}</span>
               <input
                 type="search"
@@ -169,6 +230,9 @@ function PickerDialog({ onClose, onPick, language }: { onClose: () => void; onPi
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col">
+          {mine ? (
+            <MyQuestionsPane words={mineWords} language={language} onChoice={setMineChoice} onPick={pickMine} />
+          ) : (
           <BankStateNote browse={browse}>
             <div className="flex min-h-0 flex-1">
               {/* A row, so the rail (a column that sizes to its list) is stretched to the dialog's
@@ -254,23 +318,26 @@ function PickerDialog({ onClose, onPick, language }: { onClose: () => void; onPi
               </div>
             </div>
           </BankStateNote>
+          )}
         </div>
 
         <footer className="flex shrink-0 items-center gap-4 border-t border-line bg-surface-sunken px-5 py-3">
-          <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-ink-muted">
-            <input type="checkbox" checked={onlyDiagram} onChange={(e) => setOnlyDiagram(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
-            {m.onlyDiagram}
-          </label>
+          {!mine && (
+            <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-ink-muted">
+              <input type="checkbox" checked={onlyDiagram} onChange={(e) => setOnlyDiagram(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
+              {m.onlyDiagram}
+            </label>
+          )}
           <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-muted" role="status">
-            {chosen ? m.selected(chosen.source.label) : m.noneSelected}
+            {chosenLabel ? m.selected(chosenLabel) : m.noneSelected}
           </span>
           <button type="button" className={button} onClick={onClose}>
             {m.cancel}
           </button>
           <button
             type="button"
-            disabled={!chosen}
-            onClick={() => use(selected)}
+            disabled={!chosenLabel}
+            onClick={() => (mine ? mineChoice?.use() : use(selected))}
             className="cursor-pointer rounded-lg bg-cta px-3.5 py-1.5 text-[13px] font-medium text-on-cta hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-50"
           >
             {m.use}

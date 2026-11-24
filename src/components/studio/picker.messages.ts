@@ -2,7 +2,10 @@ import { defineMessages } from '@/i18n/catalogue';
 
 /** The reference picker of the Question studio (k-0516): a past-paper question to write like. */
 export const REFERENCE_PICKER_MESSAGES = defineMessages({
-  title: { en: 'Pick a past-paper question to write like', zh: '選一條歷屆試題作參考' },
+  title: { en: 'Pick a question to write like', zh: '選一條題目作參考' },
+  sources: { en: 'Where the question comes from', zh: '題目來源' },
+  sourcePast: { en: 'Past papers', zh: '歷屆試題' },
+  sourceMine: { en: 'My questions', zh: '我的題目' },
   close: { en: 'Close', zh: '關閉' },
   search: { en: 'Search the past paper bank', zh: '搜尋歷屆試題庫' },
   searchPlaceholder: { en: 'Search every question…', zh: '搜尋所有題目…' },
@@ -17,4 +20,42 @@ export const REFERENCE_PICKER_MESSAGES = defineMessages({
   use: { en: 'Use as reference', zh: '用作參考' },
   shown: { en: (n: number) => `${n} shown`, zh: (n: number) => `顯示 ${n} 條` },
   empty: { en: 'No multiple-choice question matches. Clear the search or the filter.', zh: '沒有相符的多項選擇題。請清除搜尋或篩選。' },
+  // ---- My questions (k-0529) ----
+  mineSearch: { en: 'Search my questions', zh: '搜尋我的題目' },
+  mineSearchPlaceholder: { en: 'Search my questions or paper names…', zh: '搜尋我的題目或試卷名稱…' },
+  mineRail: { en: 'Filter my questions', zh: '篩選我的題目' },
+  topicHeading: { en: 'Topic', zh: '課題' },
+  allTopics: { en: 'All topics', zh: '所有課題' },
+  whenHeading: { en: 'Last used or made', zh: '最近使用或製作' },
+  when: {
+    en: (w: string) => (({ any: 'Any time', month: 'Past month', half: 'Past 6 months', year: 'Past year', older: 'Over a year ago' }) as Record<string, string>)[w] ?? w,
+    zh: (w: string) => (({ any: '任何時間', month: '過去一個月', half: '過去六個月', year: '過去一年', older: '一年以前' }) as Record<string, string>)[w] ?? w,
+  },
+  mineShown: {
+    en: (shown: number, total: number) => (shown === total ? `${total} multiple-choice questions` : `${shown} of ${total} multiple-choice questions`),
+    zh: (shown: number, total: number) => (shown === total ? `${total} 條多項選擇題` : `${total} 條多項選擇題中的 ${shown} 條`),
+  },
+  onlyMc: {
+    en: (n: number) => `Only MC for now: ${n} other ${n === 1 ? 'question is' : 'questions are'} not listed.`,
+    zh: (n: number) => `暫時只限 MC：另有 ${n} 條其他題目未列出。`,
+  },
+  mineEmpty: { en: 'No question matches. Clear the search or a filter.', zh: '沒有相符的題目。請清除搜尋或篩選。' },
+  mineNone: {
+    en: 'No multiple-choice questions saved yet. Questions in your papers and 題庫 show here.',
+    zh: '仍未儲存任何多項選擇題。你試卷和題庫中的題目會在這裏顯示。',
+  },
+  mineScanning: { en: 'Reading your saved papers…', zh: '正在讀取已儲存的試卷…' },
+  mineError: { en: 'Your saved questions could not be read.', zh: '未能讀取已儲存的題目。' },
+  showMore: { en: (n: number) => `Show more (${n} left)`, zh: (n: number) => `顯示更多（尚餘 ${n} 條）` },
+  recent: { en: 'Recently used', zh: '最近使用' },
+  untagged: { en: 'No topic', zh: '未有課題' },
+  previewNone: { en: 'Select a question to see it here.', zh: '選取題目後會在這裏顯示。' },
+  previewLoading: { en: 'Opening…', zh: '正在開啟…' },
+  previewFailed: { en: 'This question could not be opened.', zh: '未能開啟這條題目。' },
+  answer: { en: (letter: string) => `Answer ${letter}`, zh: (letter: string) => `答案 ${letter}` },
+  explanation: { en: 'Explanation', zh: '解釋' },
+  savedIn: { en: (n: number) => `Saved in ${n} ${n === 1 ? 'file' : 'files'}`, zh: (n: number) => `儲存於 ${n} 份文件` },
+  neverChanged: { en: 'Your question is only read: it never changes.', zh: '只會讀取你的題目，不會改動它。' },
+  basedOn: { en: (labels: string) => `Based on ${labels}`, zh: (labels: string) => `參考：${labels}` },
+  wordsOnly: { en: 'Shown as words: its diagram or table is not drawn here.', zh: '只顯示文字：這裏未能畫出它的圖表。' },
 });
