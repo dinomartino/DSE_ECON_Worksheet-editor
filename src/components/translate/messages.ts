@@ -65,6 +65,8 @@ export const COPY_MESSAGES = defineMessages({
   signInAgain: { en: 'Sign in…', zh: '登入…' },
   buyCredits: { en: 'Buy credits', zh: '購買點數' },
   useOwnKey: { en: 'Use my own key…', zh: '改用自己的 API key…' },
+  // An own key is saved: the button switches to it and runs the job again (k-0527).
+  useOwnKeyNamed: { en: (name: string) => `Use my own key (${name})`, zh: (name: string) => `改用自己的 API key（${name}）` },
   openSettings: { en: 'Open Settings', zh: '開啟設定' },
   chooseModel: { en: 'Choose a model…', zh: '選擇模型…' },
   switchProvider: { en: 'Switch provider…', zh: '轉換供應商…' },
