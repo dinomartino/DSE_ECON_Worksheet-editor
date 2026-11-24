@@ -289,4 +289,9 @@ export type Refinement =
   | { kind: 'another' }
   | { kind: 'harder' }
   | { kind: 'easier' }
-  | { kind: 'change'; text: string };
+  /**
+   * `parts`: what the teacher's words touch, as the chat read them (k-0535: `stem`, `options`,
+   * `diagram`, `table`, …; `understand.ts:TURN_PARTS`). Absent = not known. A change with
+   * `diagram` is the diagram-spec path's to make (k-0534).
+   */
+  | { kind: 'change'; text: string; parts?: readonly string[] };

@@ -66,9 +66,9 @@ export function QuestionStudioScreen({
     log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' });
   }, [turnsKey]);
 
-  const send = (words: string) => {
+  const send = (words: string, opts?: { asNew?: boolean }) => {
     const said = words.trim() || (chat.drafts.length === 0 ? '' : words);
-    void store.send(said, draftChip?.id);
+    void store.send(said, draftChip?.id, opts);
     setText('');
     setHint(undefined);
     setAboutDraft(undefined);
@@ -130,6 +130,7 @@ export function QuestionStudioScreen({
                 onDismiss={(turnId) => store.dismissError(turnId)}
                 onChangePick={(code) => store.changePick(code)}
                 onAnswer={(turnId, answer) => void store.answerRewrite(turnId, answer)}
+                onWhich={(turnId, choice) => void store.answerWhich(turnId, choice)}
               />
             )}
           </div>

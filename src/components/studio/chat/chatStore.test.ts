@@ -123,7 +123,7 @@ describe('the chat studio store (k-0516)', () => {
     await useChat.getState().send('');
     const d1 = chat().drafts[0];
     await useChat.getState().send('use property prices', d1.id);
-    expect(calls.refines[0].refinement).toEqual({ kind: 'change', text: 'use property prices' });
+    expect(calls.refines[0].refinement).toMatchObject({ kind: 'change', text: 'use property prices' });
     await useChat.getState().change(d1.id, 'another');
     expect(chat().drafts.map((d) => d.no)).toEqual([1, 4, 2, 3]);
   });
