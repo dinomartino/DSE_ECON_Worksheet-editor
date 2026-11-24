@@ -163,7 +163,15 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
     if (outcome.kind === 'findings' && outcome.refresh) {
       const { refresh } = outcome;
       const fresh = refresh();
-      outcome = { kind: 'findings', summary: fresh.summary, items, refresh, ...(fresh.applyAll ? { applyAll: fresh.applyAll } : {}) };
+      const dismissLabel = fresh.dismissLabel ?? outcome.dismissLabel;
+      outcome = {
+        kind: 'findings',
+        summary: fresh.summary,
+        items,
+        refresh,
+        ...(fresh.applyAll ? { applyAll: fresh.applyAll } : {}),
+        ...(dismissLabel ? { dismissLabel } : {}),
+      };
     }
     set({ phase: { ...now, outcome } });
   },

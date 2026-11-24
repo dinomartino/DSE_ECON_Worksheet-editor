@@ -5,6 +5,7 @@ import type { ReviewItem } from '@/assist/types';
 import { Button, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import { useMessages } from '@/i18n/language';
+import { diffText } from '@/polish/diff';
 import { AI_UI_MESSAGES } from './messages';
 import { pageTextFor } from './pageMarks';
 
@@ -89,17 +90,18 @@ export function ItemCard({
       data-print-hide
       role="dialog"
       aria-label={item.where || m[TONE_LABEL[item.tone]]}
-      className="fixed z-[45] w-72 animate-pop-in rounded-xl border border-line bg-surface-raised p-3 text-[13px] text-ink shadow-xl"
+      className={`fixed z-[45] ${item.diff?.length ? 'w-[26rem] max-w-[calc(100vw-16px)]' : 'w-72'} animate-pop-in rounded-xl border border-line bg-surface-raised p-3 text-[13px] text-ink shadow-xl`}
     >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <div className={`text-[11px] font-semibold uppercase tracking-wide ${TONE_CLASS[item.tone]}`}>{m[TONE_LABEL[item.tone]]}</div>
+          <div className={`text-[11px] font-semibold uppercase tracking-wide ${TONE_CLASS[item.tone]}`}>{item.kicker ?? m[TONE_LABEL[item.tone]]}</div>
           {item.where && <div className="truncate font-medium">{item.where}</div>}
         </div>
         <IconButton label={m.close} onClick={onClose}>
           <CloseIcon size={14} />
         </IconButton>
       </div>
+      {item.diff?.map((d) => <DiffLines key={d.side} side={d.side} before={d.before} after={d.after} />)}
       {item.source && <p className="mt-1.5 line-clamp-3 text-xs text-ink-muted">{item.source}</p>}
       {item.notes.length > 0 && (
         <ul className="mt-1.5 space-y-0.5">
@@ -135,6 +137,31 @@ export function ItemCard({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/** A proposed rewording, one language: the words taken out struck through, the words put in marked. */
+function DiffLines({ side, before, after }: { side: 'en' | 'zh'; before: string; after: string }) {
+  const m = useMessages(AI_UI_MESSAGES);
+  return (
+    <div data-diff={side} className="mt-2 rounded-lg bg-surface-sunken px-2.5 py-1.5" lang={side === 'zh' ? 'zh-HK' : 'en'}>
+      <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-subtle">{side === 'zh' ? m.diffChinese : m.diffEnglish}</div>
+      <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed">
+        {diffText(before, after).map((part, i) =>
+          part.op === 'same' ? (
+            <span key={i}>{part.text}</span>
+          ) : part.op === 'del' ? (
+            <del key={i} data-diff-op="del" className="rounded-sm bg-danger-soft text-danger-ink decoration-danger-ink/60">
+              {part.text}
+            </del>
+          ) : (
+            <ins key={i} data-diff-op="ins" className="rounded-sm bg-accent-soft text-accent-ink no-underline">
+              {part.text}
+            </ins>
+          ),
+        )}
+      </p>
     </div>
   );
 }

@@ -88,6 +88,13 @@ export interface ReviewItem {
   source?: string;
   /** Card lines: "EDB: 物價水平", "Bold not kept", "Two options are defensible". */
   notes: string[];
+  /** The card's heading in place of the tone's ("Suggested wording"); the tone still colours it. */
+  kicker?: string;
+  /**
+   * A proposed rewording (k-0549), per language it changes: the card shows the words taken
+   * out and put in. Plain text, display only.
+   */
+  diff?: ReadonlyArray<{ side: 'en' | 'zh'; before: string; after: string }>;
   /** One-click action in the card: "Replace with 稅收承擔", "Remove". Commits once;
    *  `false` = nothing changed (the text moved on), so the item stays open. */
   action?: { label: string; run(): boolean | void };
@@ -99,13 +106,22 @@ export interface ReviewItem {
 export interface FindingsRefresh {
   summary: string;
   applyAll?: { label: string; run(): void };
+  dismissLabel?: string;
 }
 
 export type VerbOutcome =
   /** Something was written: `undo` reverts exactly that one commit (null once stale). */
   | { kind: 'inserted'; summary: string; items: ReviewItem[]; undo: { run(): void; live(): boolean } | null; showSide?: 'en' | 'zh'; showTeacher?: boolean }
   /** Nothing written, things to look at (Check terms, Quality check). */
-  | { kind: 'findings'; summary: string; items: ReviewItem[]; applyAll?: { label: string; run(): void }; refresh?(): FindingsRefresh }
+  | {
+      kind: 'findings';
+      summary: string;
+      items: ReviewItem[];
+      applyAll?: { label: string; run(): void };
+      refresh?(): FindingsRefresh;
+      /** The bar's closing button in place of Done ("Discard": nothing accepted is kept otherwise). */
+      dismissLabel?: string;
+    }
   | { kind: 'nothing'; summary: string }
   /**
    * A report to read (Check syllabus coverage): the saved check `record` (k-0489 v2). `fresh`:

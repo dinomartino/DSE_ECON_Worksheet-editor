@@ -21,7 +21,8 @@ import { pathToFileURL } from 'node:url';
  * A request whose system prompt is the answer writer's (E1) gets a valid canned answer,
  * a scheme of 1-mark points totalling the marks, and a rationale per asked option.
  * A quality-check request (E4) gets canned findings instead (`qualityReply`); a syllabus
- * coverage request (k-0317) gets canned codes by keyword (`coverageReply`).
+ * coverage request (k-0317) gets canned codes by keyword (`coverageReply`); a wording
+ * enhancement request (k-0549) gets canned rewordings (`polishReply`).
  * Base-URL prefixes: `/region/v1` answers Gemini's FAILED_PRECONDITION location error,
  * `/401/v1` rejects the key, `/slow/v1` answers after 4 s (Stop and the scrim question). `GET /__count` and `POST /__reset` expose the request count.
  *
@@ -433,7 +434,64 @@ export function studioDiagramReply() {
   );
 }
 
+/** Wording enhancement (k-0549), recognised by `src/polish/prompt.ts`'s marker. */
+const POLISH_MARKER = 'Task: question-polish.';
+
+const POLISH_EN = [
+  [/\bWhich one of the following\b/g, 'Which of the following'],
+  [/\bcan't\b/g, 'cannot'],
+  [/\bdon't\b/g, 'do not'],
+  [/\bwill not\b/g, 'will <b>NOT</b>'],
+  [/\bis not\b/g, 'is <b>NOT</b>'],
+  [/(\d),(\d{3})(?!\d)/g, '$1 $2'],
+  [/\bIn your opinion, /g, ''],
+];
+const POLISH_ZH = [
+  [/,/g, '，'],
+  [/\?/g, '？'],
+  [/:/g, '：'],
+  [/下面哪一個/g, '下列哪項'],
+];
+
+/**
+ * Canned rewordings: English contractions spelt out, "not" in the question line in bold
+ * capitals, "1,000" → "1 000"; 中文 half-width punctuation made full-width and 「下列哪項」.
+ * Markers in a text: "!num" changes a number in it, "!order" swaps options A and B, "!key"
+ * answers another letter (the client's guards must refuse all three).
+ */
+export function polishReply(payload) {
+  const items = (payload.questions ?? []).map((q) => {
+    const all = JSON.stringify(q.fields);
+    const fields = [];
+    const options = q.fields.filter((f) => f.role === 'option');
+    for (const field of q.fields) {
+      const out = { id: field.id, en: '', zh: '', why: { en: '', zh: '' } };
+      let changed = false;
+      for (const side of ['en', 'zh']) {
+        if (typeof field[side] !== 'string') continue;
+        let text = field[side];
+        for (const [re, to] of side === 'en' ? POLISH_EN : POLISH_ZH) text = text.replace(re, to);
+        if (text.includes('!num')) text = text.replace('!num', '').replace(/\d+/, (n) => String(Number(n) + 5)).trim();
+        if (all.includes('!order') && field.role === 'option' && options.length >= 2) {
+          const swap = field.id === options[0].id ? options[1] : field.id === options[1].id ? options[0] : null;
+          if (swap && typeof swap[side] === 'string') text = swap[side];
+        }
+        out[side] = text;
+        if (text !== field[side]) changed = true;
+      }
+      if (!changed) continue;
+      out.why = { en: 'In the HKDSE house style: plain words, the negative in bold capitals.', zh: '依 HKDSE 風格：用字簡潔，否定字以粗體大楷標示。' };
+      fields.push(out);
+    }
+    const letters = 'ABCD';
+    const answer = all.includes('!key') ? letters[(letters.indexOf(q.answer) + 1) % 4] : q.answer;
+    return { q: q.q, answer, fields };
+  });
+  return completion(JSON.stringify({ items }));
+}
+
 export function reply(body) {
+  if (systemOf(body).includes(POLISH_MARKER)) return polishReply(payloadOf(body));
   if (systemOf(body).includes('Task: question-studio-pick.')) return studioPickReply(payloadOf(body));
   if (systemOf(body).includes('You draw diagrams for HKDSE Economics questions')) return studioDiagramReply();
   if (systemOf(body).includes(COVERAGE_MARKER)) return coverageReply(payloadOf(body));

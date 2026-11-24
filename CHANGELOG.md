@@ -13,6 +13,13 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Improve the wording of your own MC questions.** ✦ AI → Improve wording (HKDSE style), next
+  to Check terms, sends the MC questions you pick to the AI with the HKDSE Paper 1 house style
+  and suggests better wording, grammar and structure, in English and 中文 as the question has
+  them. Nothing changes until you say so: a card beside each changed text shows the words taken
+  out and put in and why; Accept one, or Accept all (one Undo), or Discard. A suggestion that
+  would change a number, the order of the options or the answer is shown but never applied.
+  <!-- zh: **改善你自己 MC 題目的字眼。** ✦ AI → 改善題目字眼（HKDSE 風格）（在「按 EDB 詞彙表檢查用詞」旁）會把所選的 MC 題目連同 HKDSE Paper 1 的出題風格交給 AI，建議更好的字眼、文法和句子結構，按題目原有的英文或中文修改。你確認前不會更改任何內容：每段改動的文字旁有卡片，顯示刪去和加入的字眼及原因；可逐項接受、全部接受（一次復原），或捨棄。會改動數字、選項次序或答案的建議只會顯示，絕不套用。 -->
 - **The Question studio writes like an HKDSE paper.** The AI now follows the house style of
   HKDSE Economics Paper 1, measured on all 725 HKDSE questions in the past-paper bank: how the
   question line is asked ("Which of the following …?", blanks, 「下列哪項／哪些」), short

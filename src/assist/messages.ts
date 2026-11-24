@@ -226,6 +226,62 @@ export const ASSIST_MESSAGES = defineMessages({
   },
   tailJoin: { en: '; ', zh: '；' },
 
+  // Improve wording (k-0549): an MC question reworded to the HKDSE house style
+  polishLabel: { en: 'Improve wording (HKDSE style)', zh: '改善題目字眼（HKDSE 風格）' },
+  sendsPolish: {
+    en: (n: number, provider: string) =>
+      `Sends ${n} MC ${n === 1 ? 'question' : 'questions'} ${toWithKey(provider)}. Nothing changes until you accept.`,
+    zh: (n: number, provider: string) => `${zhSend(provider, ` ${n} 條 MC 題目`)}。接受前不會更改任何內容。`,
+  },
+  polishing: {
+    en: (n: number) => `Improving the wording of ${n} ${n === 1 ? 'question' : 'questions'}`,
+    zh: (n: number) => `正在改善 ${n} 條題目的字眼`,
+  },
+  polishKicker: { en: 'Suggested wording', zh: '建議字眼' },
+  polishBlockedKicker: { en: 'Not offered', zh: '不會套用' },
+  polishBlockedNumbers: {
+    en: (detail: string) => `A number changed (${detail}), so this change is not offered.`,
+    zh: (detail: string) => `數字有改動（${detail}），因此不會套用這項修改。`,
+  },
+  polishBlockedOrder: {
+    en: 'The options or statements read as reordered, so this change is not offered.',
+    zh: '選項或陳述的次序似乎有改動，因此不會套用這項修改。',
+  },
+  polishBlockedKey: {
+    en: (detail: string) => `The AI read a different answer (${detail}), so nothing in this question is offered.`,
+    zh: (detail: string) => `AI 讀出的答案不同（${detail}），因此這題的修改都不會套用。`,
+  },
+  polishAccept: { en: 'Accept', zh: '接受' },
+  polishAcceptAll: { en: (n: number) => `Accept all (${n})`, zh: (n: number) => `全部接受（${n}）` },
+  polishDiscard: { en: 'Discard', zh: '捨棄' },
+  polishDiscardRest: { en: 'Discard the rest', zh: '捨棄其餘' },
+  polishHead: {
+    en: (changes: number, questions: number) =>
+      `${changes} suggested ${changes === 1 ? 'change' : 'changes'} in ${questions} ${questions === 1 ? 'question' : 'questions'}`,
+    zh: (changes: number, questions: number) => `${questions} 條題目共 ${changes} 項建議修改`,
+  },
+  polishLeft: {
+    en: (n: number) => `${n} ${n === 1 ? 'suggestion' : 'suggestions'} left`,
+    zh: (n: number) => `尚餘 ${n} 項建議`,
+  },
+  polishAllDone: { en: 'All suggestions dealt with', zh: '所有建議已處理' },
+  polishStyle: {
+    en: (before: number, after: number) => `HKDSE style notes ${before} → ${after}`,
+    zh: (before: number, after: number) => `HKDSE 風格提示 ${before} → ${after}`,
+  },
+  polishNothing: {
+    en: (n: number) => `No wording changes suggested for ${n} ${n === 1 ? 'question' : 'questions'}`,
+    zh: (n: number) => `${n} 條題目沒有建議修改的字眼`,
+  },
+  polishAccepted: {
+    en: (n: number) => `Accepted ${n} ${n === 1 ? 'change' : 'changes'}`,
+    zh: (n: number) => `已接受 ${n} 項修改`,
+  },
+  polishChangedSince: {
+    en: 'This text changed since the AI read it. Left as it is.',
+    zh: '這段文字在 AI 讀取後已有更改，保持原樣。',
+  },
+
   // Write answers & mark scheme
   writeAnswersLabel: { en: 'Write answers & mark scheme', zh: '撰寫答案及評卷參考' },
   unitParts: { en: 'parts', zh: '個分題' },
