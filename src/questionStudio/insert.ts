@@ -1,7 +1,7 @@
 import { fillMcq } from '@/generate/build';
 import type { McqQuestion } from '@/model/types';
 import type { QuestionBuild } from '@/store/worksheetStore';
-import { stemBlocks } from './stemTable';
+import { stemBlocks, stemBlocksOf } from './stemTable';
 import type { StudioDraft } from './types';
 
 /**
@@ -22,12 +22,22 @@ export function studioBuilds(drafts: readonly StudioDraft[], keyPoint: string | 
       key: d.id,
       // `aiMade`: the editor says so until the teacher presses Checked (decision 5).
       fill: (fresh) => {
-        const q = fillMcq(d.draft)(fresh) as McqQuestion;
+        const filled = fillMcq(d.draft)(fresh) as McqQuestion;
+        // The teacher's edit keeps its formatting (k-0530): its rich text is what prints.
+        const rich = d.rich;
+        const q: McqQuestion = rich
+          ? {
+              ...filled,
+              options: filled.options.map((option, i) => ({ ...option, text: rich.options[i] ?? option.text })),
+              ...(rich.statements.length ? { statements: rich.statements } : {}),
+              ...(filled.explanation ? { explanation: rich.explanation } : {}),
+            }
+          : filled;
         // The AI's figure goes with the question when it is meant for the students (ok, or look: the teacher saw its issues).
         // An MC question has no slot for a model-answer diagram, so a figure placed `answer` is not inserted.
         const figure = d.diagram && (d.diagram.status === 'ok' || d.diagram.status === 'look') && d.diagram.placement === 'question' ? d.diagram.block : null;
         // A table written in the stem (pipe rows) is drawn as a table (k-0531).
-        return { ...q, blocks: [...stemBlocks(d.draft.stem), ...(figure ? [figure] : [])], tags: [tag], aiMade: true };
+        return { ...q, blocks: [...(rich ? stemBlocksOf(rich.stem) : stemBlocks(d.draft.stem)), ...(figure ? [figure] : [])], tags: [tag], aiMade: true };
       },
     };
   });

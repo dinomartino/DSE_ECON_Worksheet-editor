@@ -31,6 +31,14 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
     en: (solver: string, key: string) => `Solved again from the text alone, the check chose ${solver}, but the key says ${key}. Work it out before you use this question.`,
     zh: (solver: string, key: string) => `只憑題目文字重新作答，檢查選了 ${solver}，但答案是 ${key}。使用這條題目前，請自己計算一次。`,
   },
+  keyEdited: {
+    en: 'You edited this question after the AI checked its key: check again. Work the answer out yourself, or ask the AI to change the draft (that checks it again).',
+    zh: '你在 AI 核對答案後修改了這條題目：請再檢查。請自己計算答案，或請 AI 修改草稿（會再次核對）。',
+  },
+  checkEdited: {
+    en: 'You edited this question, and this check could not run again here: check again.',
+    zh: '你修改了這條題目，而這項檢查未能在此再次進行：請再檢查。',
+  },
   keyAmbiguous: {
     en: 'Solved again from the text alone, the check found more than one option defensible.',
     zh: '只憑題目文字重新作答，檢查認為有多於一個選項說得通。',

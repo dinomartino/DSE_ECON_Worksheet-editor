@@ -10,7 +10,7 @@ import type { Glossary } from '@/glossary/types';
 import type { Side } from '@/model/textSlots';
 import type { ContentBlock } from '@/model/types';
 import type { DiagramIssue } from '@/diagramGen/types';
-import type { DiagramBlock } from '@/model/types';
+import type { BiText, DiagramBlock } from '@/model/types';
 import type { CorpusIndex } from './nearCopy';
 import type { KeyPick } from './pick';
 import type { PartialDraft } from './partial';
@@ -108,7 +108,7 @@ export interface Finding {
   params?: Readonly<Record<string, string | number>>;
 }
 
-/** pass: nothing to say. look: read it. fail: never offered for insert. skipped: did not run. */
+/** pass: nothing to say. look: read it. fail: a red warning (k-0531). skipped: did not run (or out of date after the teacher's edit, k-0530). */
 export type CheckState = 'pass' | 'look' | 'fail' | 'skipped';
 
 export interface CheckRow {
@@ -165,6 +165,46 @@ export interface StudioDraft {
   attempt: 1 | 2;
   /** The AI-made figure (k-0514 → k-0515's `generateDiagram`), when the run was asked for diagrams; absent = not asked. */
   diagram?: DraftDiagram;
+  /**
+   * The teacher edited this version by hand (k-0530): its local checks were run again, and
+   * the key check is out of date (`key.edited`) when the question itself changed.
+   */
+  edited?: true;
+  /**
+   * Its number in the draft's history, 第 N 版 (k-0530, u-hyt5): given when the version is
+   * made and never renumbered, so going back to an older one moves nothing. Absent in a draft
+   * saved before: numbered by its place on reading (`chatStorage`).
+   */
+  version?: number;
+  /** Who made this version and how, for the version list. Absent: an AI version from before k-0530. */
+  made?: VersionMade;
+  /**
+   * The teacher's words with their formatting (subscripts, fractions, colour), as the editor's
+   * fields hold them (k-0530). The paper prints these; `draft` keeps the plain words (bold as
+   * `**…**`) that the checks and the AI read. Absent: `draft` is all there is.
+   */
+  rich?: DraftRich;
+}
+
+/** Who made a version of a draft (k-0530): the AI (its first write, or a change asked for) or the teacher's own edit. */
+export interface VersionMade {
+  by: 'ai' | 'you';
+  /** The AI's kind of change: write = the first draft; harder / easier / change / another. */
+  how?: 'write' | 'harder' | 'easier' | 'change' | 'another';
+  /** The teacher's words for a change, shortened for the list. */
+  said?: string;
+  /** ISO time. */
+  at: string;
+  /** An edit: the version it was edited from (Undo edit goes back to it). */
+  from?: number;
+}
+
+/** A draft's printed text as rich text, field by field (k-0530). */
+export interface DraftRich {
+  stem: BiText;
+  statements: BiText[];
+  options: BiText[];
+  explanation: BiText;
 }
 
 /**
@@ -182,6 +222,8 @@ export interface DraftDiagram {
   imageSkipped?: boolean;
   /** Why it failed, when the provider call itself did. */
   error?: AiErrorInfo;
+  /** The teacher changed it in the diagram editor (k-0530): the AI's issues no longer describe it. */
+  edited?: true;
 }
 
 // ---- running ----

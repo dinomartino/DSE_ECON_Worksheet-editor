@@ -224,6 +224,32 @@ try {
     await shot(page, 'B6-changed-v2');
   });
 
+  await check('k-0530: in the panel a draft is edited by hand (no AI call) and becomes a version of its own in the drop list; the page shows the edit', async () => {
+    const row = page.locator('[data-write-panel] [data-write-draft][data-state="open"]').first();
+    await row.locator('button').nth(0).click();
+    const details = page.locator('[data-write-panel] [data-write-details]').first();
+    await details.locator('[data-edit]').click();
+    const form = page.locator('[data-write-panel] [data-draft-editor]');
+    await form.waitFor();
+    let aiCalls = 0;
+    const count = (r) => {
+      if (r.url().startsWith(MOCK)) aiCalls += 1;
+    };
+    page.on('request', count);
+    const why = form.locator('[data-panel-side="en"] [contenteditable="true"]').last();
+    await why.click();
+    await page.keyboard.press('End');
+    await page.keyboard.type(' Edited in the panel.');
+    await shot(page, 'k0530-panel-edit-form');
+    await form.locator('[data-edit-save]').click();
+    await form.waitFor({ state: 'detached', timeout: 10_000 });
+    page.off('request', count);
+    expect(aiCalls === 0, `the edit called the AI ${aiCalls} time(s)`);
+    await page.locator('[data-write-panel] [data-edited-chip]').first().waitFor();
+    expect((await page.locator('[data-write-panel] [data-version-button]').count()) >= 1, 'no version drop list in the panel');
+    await shot(page, 'k0530-panel-edited');
+  });
+
   await check('k-0528: in the panel the ⚙ options close on a click on the page and on Esc; the draft rows use line icons', async () => {
     const button = page.locator('[data-write-panel] [data-chat-settings]');
     const pop = page.locator('[data-write-panel] [data-chat-settings-pop]');

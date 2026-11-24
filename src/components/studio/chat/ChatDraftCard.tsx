@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
-import { ChatIcon, RefreshIcon, WarningIcon } from '@/components/ui/icons';
+import { ChatIcon, PencilIcon, RefreshIcon, WarningIcon } from '@/components/ui/icons';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import { createWorksheet } from '@/model/factories';
@@ -16,6 +16,9 @@ import { CHECK_LABEL, Chip, StateGlyph, toneOf } from '../parts';
 import { draftItem, explanationLines, letterOf } from '../studioView';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 import type { ChatDraft } from './chatTypes';
+import { DraftEditor } from './DraftEditor';
+import { VersionMenu } from './VersionMenu';
+import type { DraftEdit } from '@/questionStudio/edit';
 
 /** The frame every preview is drawn in (its page and fonts); the words are the draft's. */
 const FRAME = createWorksheet();
@@ -40,7 +43,9 @@ export function ChatDraftCard({
   onReject,
   onChange,
   onAsk,
-  onRestore,
+  onShowVersion,
+  onEdit,
+  onUndoEdit,
 }: {
   draft: ChatDraft;
   language: LanguageMode;
@@ -53,12 +58,18 @@ export function ChatDraftCard({
   onReject: () => void;
   onChange: (how: 'harder' | 'easier' | 'another') => void;
   onAsk: () => void;
-  onRestore: (index: number) => void;
+  /** Show another version of the draft (the version list). */
+  onShowVersion: (versionId: string) => void;
+  /** The teacher's own edit (k-0530): no AI. */
+  onEdit: (edit: DraftEdit) => Promise<void> | void;
+  /** Back to the version the shown edit came from. */
+  onUndoEdit: () => void;
 }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
   const q = useMessages(QUESTION_STUDIO_MESSAGES);
   const f = useMessages(STUDIO_FINDING_MESSAGES);
   const [details, setDetails] = useState(false);
+  const [editing, setEditing] = useState(false);
   const { entry, state } = draft;
   const studio = entry.draft;
   const item = useMemo(() => draftItem(entry), [entry]);
@@ -69,7 +80,8 @@ export function ChatDraftCard({
   const accepted = state === 'accepted';
   const rejected = state === 'rejected';
   const added = state === 'added';
-  const version = draft.older.length + 1;
+  // Undo edit: back to the version this edit came from, while it is still there.
+  const undoFrom = studio.made?.by === 'you' && draft.older.some((v) => v.version === studio.made?.from) ? studio.made.from : undefined;
   const words = (finding: Finding) => findingText(finding, f);
 
   return (
@@ -86,19 +98,17 @@ export function ChatDraftCard({
     >
       <header className={`flex flex-wrap items-center gap-2 border-b border-line px-3 py-2 ${accepted ? 'bg-ok-soft' : ''}`}>
         <span className="text-[12.5px] font-semibold text-ink">{q.draftN(draft.no)}</span>
-        {draft.older.length > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-line px-1.5 py-0.5 text-[11px] text-ink-muted" aria-label={m.versionsLabel}>
-            {m.version(version)}
-            {draft.older.map((_, i) => (
-              <button key={i} type="button" title={m.backTo(i + 1)} onClick={() => onRestore(i)} disabled={busy} className="cursor-pointer text-accent underline underline-offset-2 disabled:opacity-50">
-                {m.version(i + 1)}
-              </button>
-            ))}
-          </span>
-        )}
+        <VersionMenu draft={draft} disabled={busy || editing} onShow={onShowVersion} />
         <Chip tone="ai" title={q.aiMadeTitle}>
           ✦ {q.aiMade}
         </Chip>
+        {studio.edited && (
+          <span data-edited-chip>
+            <Chip tone="idle">
+              <PencilIcon size={11} /> {m.editedChip}
+            </Chip>
+          </span>
+        )}
         {drawing && <Chip tone="ai">✦ {m.drawing}</Chip>}
         {studio.diagram?.status === 'look' && (
           <span title={studio.diagram.issues.map((i) => i.text).join('\n')}>
@@ -136,7 +146,19 @@ export function ChatDraftCard({
         {added && <Chip tone="ok">{m.added}</Chip>}
       </header>
 
-      {!rejected && (
+      {editing && !rejected && (
+        <DraftEditor
+          draft={studio}
+          sides={entry.request.sides}
+          no={draft.no}
+          onCancel={() => setEditing(false)}
+          onSave={async (edit) => {
+            await onEdit(edit);
+            setEditing(false);
+          }}
+        />
+      )}
+      {!rejected && !editing && (
         <>
           {warned && (
             <div role="note" className="mx-3 mt-2.5 rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-[12.5px] leading-snug text-danger-ink" data-draft-warning>
@@ -198,6 +220,14 @@ export function ChatDraftCard({
                 {q.easier}
               </button>
               <span className="flex-1" />
+              {undoFrom !== undefined && (
+                <button type="button" className={small} disabled={busy} title={m.undoEditTitle(undoFrom)} onClick={onUndoEdit} data-undo-edit>
+                  {m.undoEdit}
+                </button>
+              )}
+              <button type="button" className={`${small} inline-flex items-center gap-1`} disabled={busy} title={m.editTitle} onClick={() => setEditing(true)} data-edit>
+                <PencilIcon size={13} /> {m.edit}
+              </button>
               <button type="button" className={`${small} inline-flex items-center gap-1`} disabled={busy} title={m.askAboutTitle} onClick={onAsk} data-ask>
                 <ChatIcon size={13} /> {m.askAbout}
               </button>

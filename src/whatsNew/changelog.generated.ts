@@ -15,6 +15,16 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Edit the studio's questions yourself.** Every question the AI writes in the Question studio
+  now has an **Edit** button: change the question, the options, the correct answer and the
+  explanation in the same fields as the editor (bold, subscripts and fractions included), and
+  open its diagram in the diagram editor you use in a worksheet. Your edits cost no AI credits.
+  Saving keeps your version beside the AI's: a **Version** list on the card shows every version,
+  newest first, who made it (the AI, or you) and when, and you can go back to any of them, or
+  press **Undo edit**. The checks that run on your computer run again; the answer check that
+  needs the AI says "check again" until the AI changes the question. Add, and the AI's next
+  change, use the version you are looking at.
+  <!-- zh: **自己修改擬題工作室的題目。** AI 在擬題工作室寫出的每條題目現在都有「修改」按鈕：可在與編輯器相同的欄位中修改題幹、選項、正確答案及解釋（包括粗體、下標及分數），並在工作紙所用的圖表編輯器中開啟其圖表。你的修改不會扣 AI 點數。儲存後，你的版本會與 AI 的版本並存：卡片上的「版本」清單顯示每個版本（最新的在最上）、由誰（AI 或你）及何時製作，你可以返回任何一個版本，或按「復原修改」。在你電腦上進行的檢查會再次進行；需要 AI 的答案檢查會顯示「請再檢查」，直至 AI 修改該題。「加入」及 AI 的下一次修改都會使用你正在查看的版本。 -->
 - **Choose between your DSEcon Mentor credits and your own API key.** If you are signed in with DSEcon Mentor and also have your own API key saved, Settings → AI now asks **Use for AI: DSEcon Mentor credits / My own key (Gemini)**, and remembers your choice. The AI chip in the Question studio and the import's AI check says which one is in use; click it to switch in one click. Signing out of DSEcon Mentor or forgetting your key switches to the other one by itself, and **Use my own key** after "Not enough AI credits" switches to your key and runs the job again. Nothing is ever charged to the one you didn't choose.
   <!-- zh: **可選擇使用 DSEcon Mentor 點數或你自己的 API key。** 如你已以 DSEcon Mentor 登入，同時亦儲存了自己的 API key，「設定 → AI」會讓你選擇「AI 使用：DSEcon Mentor 點數／我自己的 API key（Gemini）」，並記住你的選擇。擬題工作室及匯入 AI 檢查的 AI 標籤會顯示正在使用哪一個，按一下即可切換。登出 DSEcon Mentor 或移除你的 API key 後，會自動改用另一個；出現「AI 點數不足」時按「改用自己的 API key」，會改用你的 API key 並重新執行。沒有選用的一方絕不會被收費。 -->
 - **See your AI credits.** A small chip shows what AI you are using: **AI credits 9,003** when you are signed in with DSEcon Mentor, **AI: own key (Gemini)** with your own API key, or **Set up AI**. Click it to open Settings → AI. It turns amber when you have less than about one Question studio run left, and red with a **Buy credits** button at 0. The number updates by itself: after every AI job, when you come back to the window, and every few seconds after you press Buy credits until your new credits arrive, so you never need to reload. It is in the Question studio's header and beside the cost of the next request, and in the import's AI check beside its cost. **Sign out** in Settings → AI is now a red button, so it is clear you can press it.

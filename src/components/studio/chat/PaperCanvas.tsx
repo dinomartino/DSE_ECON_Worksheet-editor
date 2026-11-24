@@ -1,5 +1,6 @@
 'use client';
 
+import type { DraftEdit } from '@/questionStudio/edit';
 import { useEffect, useState, type ReactNode } from 'react';
 import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
 import { useMessages } from '@/i18n/language';
@@ -36,7 +37,9 @@ export function PaperCanvas({
   onReject,
   onChange,
   onAsk,
-  onRestore,
+  onShowVersion,
+  onEdit,
+  onUndoEdit,
   onShowReference,
   footer,
 }: {
@@ -50,7 +53,9 @@ export function PaperCanvas({
   onReject: (d: ChatDraft) => void;
   onChange: (d: ChatDraft, how: 'harder' | 'easier' | 'another') => void;
   onAsk: (d: ChatDraft) => void;
-  onRestore: (d: ChatDraft, index: number) => void;
+  onShowVersion: (d: ChatDraft, versionId: string) => void;
+  onEdit: (d: ChatDraft, edit: DraftEdit) => Promise<void> | void;
+  onUndoEdit: (d: ChatDraft) => void;
   onShowReference: () => void;
   footer: ReactNode;
 }) {
@@ -88,7 +93,9 @@ export function PaperCanvas({
       onReject={() => onReject(d)}
       onChange={(how) => onChange(d, how)}
       onAsk={() => onAsk(d)}
-      onRestore={(i) => onRestore(d, i)}
+      onShowVersion={(id) => onShowVersion(d, id)}
+      onEdit={(edit) => onEdit(d, edit)}
+      onUndoEdit={() => onUndoEdit(d)}
     />
   );
 
@@ -307,7 +314,9 @@ function Streaming({ run, language, firstNo }: { run: RunState; language: Langua
             onReject={() => undefined}
             onChange={() => undefined}
             onAsk={() => undefined}
-            onRestore={() => undefined}
+            onShowVersion={() => undefined}
+            onEdit={() => undefined}
+            onUndoEdit={() => undefined}
           />
         ) : (
           <StreamingCard key={i} no={firstNo + i} partial={live?.partial} language={language} />

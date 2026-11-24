@@ -1,7 +1,8 @@
 import type { BiDraft } from '@/generate/types';
 import { toRuns } from '@/generate/validate';
 import { createParagraphBlock, createTableBlock } from '@/model/factories';
-import type { ContentBlock, TableBlock } from '@/model/types';
+import { plain } from '@/model/text';
+import type { BiText, ContentBlock, RichText, TableBlock } from '@/model/types';
 import type { Side } from '@/model/textSlots';
 
 /**
@@ -16,7 +17,13 @@ import type { Side } from '@/model/textSlots';
  * they are not, the stem stays one paragraph, exactly as before, so nothing is lost.
  */
 
-type Segment = { kind: 'text'; lines: string[] } | { kind: 'table'; rows: string[][] };
+/** One line of a side's stem: its words with their formatting, and as plain text. */
+interface Line {
+  runs: RichText;
+  text: string;
+}
+
+type Segment = { kind: 'text'; lines: Line[] } | { kind: 'table'; rows: string[][] };
 
 /** A markdown rule row: "|---|:---:|". */
 const RULE = /^\s*\|?\s*:?-{2,}:?\s*(?:\|\s*:?-{2,}:?\s*)*\|?\s*$/;
@@ -28,17 +35,27 @@ export function cellsOf(line: string): string[] | null {
   return cells.length >= 2 && cells.some(Boolean) ? cells : null;
 }
 
-/** One side's stem as text and table segments, in order. A single pipe line is text, not a table. */
-export function segmentsOf(text: string): Segment[] {
+/** Rich text cut at its line breaks, each line keeping its runs' formatting. */
+function linesOf(runs: RichText): Line[] {
+  const lines: RichText[] = [[]];
+  for (const run of runs) {
+    run.text.replace(/\r\n?/g, '\n').split('\n').forEach((piece, i) => {
+      if (i > 0) lines.push([]);
+      if (piece) lines[lines.length - 1].push({ ...run, text: piece });
+    });
+  }
+  return lines.map((line) => ({ runs: line, text: plain(line) }));
+}
+
+function segmentLines(lines: readonly Line[]): Segment[] {
   const out: Segment[] = [];
-  const lines = text.replace(/\r\n?/g, '\n').split('\n');
   let i = 0;
   while (i < lines.length) {
     const rows: string[][] = [];
     let j = i;
     for (; j < lines.length; j += 1) {
-      if (RULE.test(lines[j]) && lines[j].includes('-')) continue;
-      const cells = cellsOf(lines[j]);
+      if (RULE.test(lines[j].text) && lines[j].text.includes('-')) continue;
+      const cells = cellsOf(lines[j].text);
       if (!cells) break;
       rows.push(cells);
     }
@@ -57,11 +74,16 @@ export function segmentsOf(text: string): Segment[] {
     .filter((segment) => segment.kind === 'table' || segment.lines.length > 0);
 }
 
-function trimLines(lines: string[]): string[] {
+/** One side's stem as text and table segments, in order. A single pipe line is text, not a table. */
+export function segmentsOf(text: string): Segment[] {
+  return segmentLines(linesOf(toRuns(text)));
+}
+
+function trimLines(lines: Line[]): Line[] {
   let start = 0;
   let end = lines.length;
-  while (start < end && !lines[start].trim()) start += 1;
-  while (end > start && !lines[end - 1].trim()) end -= 1;
+  while (start < end && !lines[start].text.trim()) start += 1;
+  while (end > start && !lines[end - 1].text.trim()) end -= 1;
   return lines.slice(start, end);
 }
 
@@ -90,9 +112,17 @@ function tableOf(sides: Partial<Record<Side, string[][]>>): TableBlock {
  * differently shaped ones), else its words and tables in order.
  */
 export function stemBlocks(stem: BiDraft): ContentBlock[] {
-  const whole = (): ContentBlock[] => [createParagraphBlock({ en: toRuns(stem.en), zh: toRuns(stem.zh) })];
-  const en = stem.en.trim() ? segmentsOf(stem.en) : null;
-  const zh = stem.zh.trim() ? segmentsOf(stem.zh) : null;
+  return stemBlocksOf({ en: toRuns(stem.en), zh: toRuns(stem.zh) });
+}
+
+/**
+ * The same from rich text: a stem the teacher edited keeps its formatting (k-0530) in its
+ * words; a table's cells are read as plain text.
+ */
+export function stemBlocksOf(stem: BiText): ContentBlock[] {
+  const whole = (): ContentBlock[] => [createParagraphBlock({ en: stem.en, zh: stem.zh })];
+  const en = plain(stem.en).trim() ? segmentLines(linesOf(stem.en)) : null;
+  const zh = plain(stem.zh).trim() ? segmentLines(linesOf(stem.zh)) : null;
   const sides = [en, zh].filter((s): s is Segment[] => s !== null);
   if (!sides.some((segments) => segments.some((s) => s.kind === 'table'))) return whole();
   if (en && zh && shapeOf(en) !== shapeOf(zh)) return whole();
@@ -103,7 +133,7 @@ export function stemBlocks(stem: BiDraft): ContentBlock[] {
       const rows = (s?: Segment) => (s?.kind === 'table' ? s.rows : undefined);
       return tableOf({ ...(rows(pair.en) ? { en: rows(pair.en) } : {}), ...(rows(pair.zh) ? { zh: rows(pair.zh) } : {}) });
     }
-    const words = (s?: Segment) => (s?.kind === 'text' ? s.lines.join('\n') : '');
-    return createParagraphBlock({ en: toRuns(words(pair.en)), zh: toRuns(words(pair.zh)) });
+    const words = (s?: Segment): RichText => (s?.kind === 'text' ? s.lines.flatMap((line, k) => (k === 0 ? line.runs : [{ text: '\n' }, ...line.runs])) : []);
+    return createParagraphBlock({ en: words(pair.en), zh: words(pair.zh) });
   });
 }

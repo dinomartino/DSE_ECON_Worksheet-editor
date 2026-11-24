@@ -135,6 +135,19 @@ as the Past paper screen is (header, columns, a tray at the foot):
   set apart under **Left out** before, and a chat saved then shows it this way now,
   `validate.ts:shownDraft`). A table the model writes in the stem as "|" rows is drawn as a
   table (`stemTable.ts:stemBlocks`).
+  **Edit** (k-0530, u-xjpd) turns a card into the editor's own fields (`chat/DraftEditor.tsx`:
+  `BiTextField` per stem, statement, option and the why, a Correct answer pick, the figure in
+  `DiagramCanvas` / `FlowCanvas` / `ForumCanvas`, or a chart's data fields), with Undo, Esc and
+  ⌘↩. No AI and no credits: `questionStudio/edit.ts:applyEdit` re-runs the local checks (the
+  glossary and corpus from `StudioEnv.localChecks`, never a provider); the key row turns
+  `key.edited` ("check again") when the question changed, and a check whose glossary or corpus
+  could not be read turns `check.edited`. `StudioDraft.rich` keeps the teacher's formatting for
+  print (`insert.ts`, `stemTable.ts:stemBlocksOf`); `draft` keeps the plain words the AI reads.
+  **Versions** (u-hyt5, `chat/versions.ts`, `chat/VersionMenu.tsx`): every AI result and every
+  edit is a numbered version (`StudioDraft.version`, `made`), never renumbered; the first Save
+  on an AI version makes 「第 N 版 · 你修改」, later Saves update it; the drop list shows them
+  newest first and picks the one Add, the page and the AI use. The trial kit's cards stay
+  read-only (they are the evidence of the AI's quality).
 - **Checks** (right): the focused draft's seven rows in words (`findings.messages.ts`; the
   key row says how the blind solve worked and shows its working), notes about the batch,
   what the near-copy check compared with (the Past paper bank's search index and the

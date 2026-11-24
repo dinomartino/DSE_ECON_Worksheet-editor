@@ -163,7 +163,9 @@ export function QuestionStudioScreen({
           onReject={(d) => store.setDraftState(d.id, d.state === 'rejected' ? 'open' : 'rejected')}
           onChange={(d, how) => void store.change(d.id, how)}
           onAsk={(d) => setAboutDraft(d.id)}
-          onRestore={(d, index) => store.restoreVersion(d.id, index)}
+          onShowVersion={(d, id) => store.showVersion(d.id, id)}
+          onEdit={(d, edit) => store.editDraft(d.id, edit)}
+          onUndoEdit={(d) => store.undoEdit(d.id)}
           onShowReference={() => setPicker(true)}
           footer={
             <Tray
