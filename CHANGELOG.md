@@ -13,6 +13,12 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Diagrams (1)–(4) in an MC question.** A question can now hold a grid of small diagrams
+  labelled (1), (2), (3), (4), as in "Which of the following diagrams …", two to a row (or one
+  to four, from the question's panel). Each one is an ordinary diagram: click it to edit it.
+  It prints in the paper, the Word file and the PDF. Papers holding one open read-only in
+  Econ Studio 0.10 and older, which show a note to update in its place.
+  <!-- zh: **MC 題可加入圖表 (1)–(4)。** 題目可包含一組標示為 (1)、(2)、(3)、(4) 的小圖表，例如「以下哪些圖表……」，每行兩個（亦可在題目面板改為每行一至四個）。每個都是一般圖表，按一下即可編輯，並會印在試卷、Word 檔及 PDF 中。載有這類圖表的試卷在 Econ Studio 0.10 或更早版本中只能以唯讀方式開啟，並在該處顯示更新提示。 -->
 - **The Question studio writes like an HKDSE paper.** The AI now follows the house style of
   HKDSE Economics Paper 1, measured on all 725 HKDSE questions in the past-paper bank: how the
   question line is asked ("Which of the following …?", blanks, 「下列哪項／哪些」), short

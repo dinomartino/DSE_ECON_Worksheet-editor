@@ -23,9 +23,11 @@ import type {
   TableBorders,
   TextFormat,
   Worksheet,
+  FigureGridBlock,
 } from '@/model/types';
 import { isBiTextEmpty, plain, trailingBlankLines } from '@/model/text';
 import { defaultFramed } from '@/model/edits';
+import { cellWidthPx, fitToCell } from './cellFit';
 import {
   cellAlignOf,
   resolveCellEdges,
@@ -1082,11 +1084,48 @@ export function renderContentBlocks(
         teacherOnly: options.teacherOnly,
         blockId: block.id,
       });
+    } else if (block.kind === 'figureGrid') {
+      renderFigureGrid(nodes, block, options);
     } else if (block.kind === 'source') {
       renderSource(nodes, block, style, options);
     } else {
       nodes.push(imageNodeFor(block, options));
     }
+  }
+}
+
+/**
+ * A stem's figure grid (§ `FigureGridBlock`, k-0545): `columns` cells to a row, each its
+ * label line above its own figure, printed by the MC options' figure-grid frame
+ * (§ `OptionRowNode`), so every backend draws it with the emitters it already has. Each row
+ * is one borderless layout table; a row keeps with the next so the grid never parts.
+ * Figures wider than their cell are fitted to it as printed (`fitToCell`).
+ */
+function renderFigureGrid(nodes: RenderNode[], block: FigureGridBlock, options: BlockNodeOptions): void {
+  const cells = Array.isArray(block.cells) ? block.cells.filter((cell) => cell?.figure) : [];
+  if (cells.length === 0) return;
+  const perRow = Math.min(4, Math.max(1, Math.round(block.columns ?? 2)));
+  const cellPx = cellWidthPx(DEFAULT_PAGE_METRICS.textWidth, perRow);
+  if (nodes.length > 0 && !endsInBlankLine(nodes)) {
+    nodes.push({ ...blankLine(), keepNext: options.keepNext });
+  }
+  for (let start = 0; start < cells.length; start += perRow) {
+    const row = cells.slice(start, start + perRow).map((cell) => {
+      const out: RenderNode[] = [];
+      if (cell.label && !isBiTextEmpty(cell.label)) {
+        out.push({ kind: 'columns', style: 'MCQ Option', keepNext: true, cells: [{ text: cell.label, at: 0 }] });
+      }
+      renderContentBlocks(out, fitToCell([cell.figure], cellPx), 'MCQ Option', { teacherOnly: options.teacherOnly });
+      return out;
+    });
+    // A short last row keeps its cells the width of the rows above.
+    while (row.length < perRow) row.push([]);
+    nodes.push({
+      kind: 'optionRow',
+      cells: row,
+      keepNext: start + perRow < cells.length || options.keepNext,
+      teacherOnly: options.teacherOnly,
+    });
   }
 }
 

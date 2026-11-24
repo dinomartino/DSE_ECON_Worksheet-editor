@@ -3845,7 +3845,15 @@ intact but unreachable.
   same rule. v3 = v2 + a stakeholder diagram or a data chart anywhere (`Diagram.stakeholder`, k-0469;
   `Diagram.chart`, k-0474; 0.9.1 and older would print empty axes; `hasV3Diagram`); the 2→3
   step is identity, and its frozen corpora are `v3-stakeholder.json` and `v3-chart.json`
-  (`scripts/emit-v3-stakeholder-corpus.test.ts`, `scripts/emit-v3-chart-corpus.test.ts`). A section's `targetMarks` alone, a paragraph's `tabStops` (an older build prints the words on the default grid), and bank and organising metadata (topics,
+  (`scripts/emit-v3-stakeholder-corpus.test.ts`, `scripts/emit-v3-chart-corpus.test.ts`). v4 = v3 +
+  a stem figure grid anywhere (`FigureGridBlock`, k-0545; `hasFigureGrid`); the 3→4 step is
+  identity, its frozen corpus `v4-figure-grid.json` (`scripts/emit-v4-figure-grid-corpus.test.ts`).
+  **A new block kind needs a picture for older builds**: 0.10.x and older draw any block kind
+  they do not know as an image (reading `src`, `altText`, `widthPx`, `heightPx`), and a block
+  without those stopped the page from loading. So a stored grid carries a small "made in a
+  newer version, update" picture (`src/model/figureGridFallback.ts`, added by
+  `serializeWorksheet`); proven in a real 0.10.0 by `scripts/figure-grid-verify.mjs --old`.
+  A section's `targetMarks` alone, a paragraph's `tabStops` (an older build prints the words on the default grid), and bank and organising metadata (topics,
   題型, `tagsAt`, lineage, part roots, `kind`, `classes`, `satOn`, `bankHidden`), stay at
   1: v0.5.0 keeps them and prints the same. v0.4–0.5 open a v2 file read-only (export stays possible there);
   v0.2–0.3 have no guard and open it editable, keeping the fields and the mark.

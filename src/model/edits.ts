@@ -228,6 +228,18 @@ function patchBlocks(
     if (block.kind === 'source') {
       return { ...block, blocks: patchBlocks(block.blocks, blockId, patch) };
     }
+    if (block.kind === 'figureGrid') {
+      // A grid's figures are whole blocks (k-0545); a patch keeps each one its own kind.
+      let changed = false;
+      const cells = block.cells.map((cell) => {
+        if (cell.figure.id !== blockId) return cell;
+        const figure = patch(cell.figure);
+        if (figure.kind !== cell.figure.kind) return cell;
+        changed = true;
+        return { ...cell, figure: figure as typeof cell.figure };
+      });
+      return changed ? { ...block, cells } : block;
+    }
     if (block.kind !== 'figureRow') return block;
     if (block.figure.id === blockId) {
       const figure = patch(block.figure);
@@ -271,6 +283,7 @@ export function defaultFramed(blocks: ContentBlock[]): boolean {
 export function flattenBlocks(blocks: ContentBlock[]): ContentBlock[] {
   return blocks.flatMap((block): ContentBlock[] => {
     if (block.kind === 'figureRow') return [block, block.figure, block.table];
+    if (block.kind === 'figureGrid') return [block, ...block.cells.map((cell) => cell.figure)];
     // A source surfaces its body beside itself, recursively — `patchBlocks` descends
     // into it, and the two walks must agree or an inner block is findable but
     // unwritable: a field a teacher can click and silently lose.
@@ -506,7 +519,8 @@ function spliceAfterInList(
     (block) =>
       block.id === afterId ||
       (block.kind === 'figureRow' &&
-        (block.figure.id === afterId || block.table.id === afterId)),
+        (block.figure.id === afterId || block.table.id === afterId)) ||
+      (block.kind === 'figureGrid' && block.cells.some((cell) => cell.figure.id === afterId)),
   );
   if (index !== -1) {
     const next = [...blocks];
@@ -1852,11 +1866,17 @@ function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
         // deletes by the same route. Without descending, Delete aimed at a table
         // inside a panel silently did nothing.
         if (block.kind === 'source') return { ...block, blocks: strip(block.blocks) };
+        if (block.kind === 'figureGrid') {
+          // Deleting one figure of a grid removes its cell (k-0545); the last one goes with the grid.
+          const cells = block.cells.filter((cell) => cell.figure.id !== blockId);
+          return cells.length === block.cells.length ? block : { ...block, cells };
+        }
         if (block.kind !== 'figureRow') return block;
         if (block.figure.id === blockId) return block.table;
         if (block.table.id === blockId) return block.figure;
         return block;
-      });
+      })
+      .filter((block) => block.kind !== 'figureGrid' || block.cells.length > 0);
 
   return {
     ...worksheet,

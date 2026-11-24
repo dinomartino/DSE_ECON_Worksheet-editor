@@ -1,0 +1,2951 @@
+{
+  "schemaVersion": 4,
+  "id": "v4-figure-grid-corpus",
+  "title": {
+    "en": [
+      {
+        "text": "MC practice: diagrams"
+      }
+    ],
+    "zh": [
+      {
+        "text": "多項選擇題練習：圖表"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "fg002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "fg003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "fg004",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "fg005",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following diagrams show a progressive tax?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪些圖表顯示累進稅？"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "figureGrid",
+          "id": "fg006",
+          "cells": [
+            {
+              "label": {
+                "en": [
+                  {
+                    "text": "(1)"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "(1)"
+                  }
+                ]
+              },
+              "figure": {
+                "kind": "diagram",
+                "id": "fg007",
+                "diagram": {
+                  "x": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Taxable\nincome ($)"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "應課稅收入 ($)"
+                        }
+                      ]
+                    }
+                  },
+                  "y": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Tax rate (%)"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "稅率（%）"
+                        }
+                      ]
+                    }
+                  },
+                  "curves": [
+                    {
+                      "id": "fg008",
+                      "points": [
+                        {
+                          "x": 0,
+                          "y": 0.1
+                        },
+                        {
+                          "x": 0.86,
+                          "y": 0.86
+                        }
+                      ],
+                      "shape": "straight",
+                      "labelAt": "end"
+                    }
+                  ],
+                  "points": [],
+                  "labels": [],
+                  "arrows": [],
+                  "showOrigin": true,
+                  "templateId": "proportional-tax",
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Tax payment against income"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "稅款與收入"
+                      }
+                    ]
+                  }
+                },
+                "widthPx": 260,
+                "heightPx": 230,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "Tax schedule"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "稅項圖"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": {
+                "en": [
+                  {
+                    "text": "(2)"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "(2)"
+                  }
+                ]
+              },
+              "figure": {
+                "kind": "diagram",
+                "id": "fg009",
+                "diagram": {
+                  "x": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Quantity"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "數量"
+                        }
+                      ]
+                    }
+                  },
+                  "y": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Price"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "價格"
+                        }
+                      ]
+                    }
+                  },
+                  "curves": [
+                    {
+                      "id": "fg010",
+                      "points": [
+                        {
+                          "x": 0.08,
+                          "y": 0.88
+                        },
+                        {
+                          "x": 0.86,
+                          "y": 0.12
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "D"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "D"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    },
+                    {
+                      "id": "fg011",
+                      "points": [
+                        {
+                          "x": 0.08,
+                          "y": 0.12
+                        },
+                        {
+                          "x": 0.86,
+                          "y": 0.88
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "S"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "S"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    }
+                  ],
+                  "points": [
+                    {
+                      "id": "fg012",
+                      "at": {
+                        "x": 0.47000000000000003,
+                        "y": 0.5
+                      },
+                      "labelSide": "right",
+                      "dot": true,
+                      "dropTo": [
+                        "x",
+                        "y"
+                      ],
+                      "xTickLabel": {
+                        "en": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "yTickLabel": {
+                        "en": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "anchor": {
+                        "cross": [
+                          "fg010",
+                          "fg011"
+                        ]
+                      }
+                    }
+                  ],
+                  "labels": [],
+                  "arrows": [],
+                  "showOrigin": true,
+                  "templateId": "supply-demand",
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Average tax rate against income"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "平均稅率與收入"
+                      }
+                    ]
+                  }
+                },
+                "widthPx": 260,
+                "heightPx": 230,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "Supply and demand"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "供應與需求"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": {
+                "en": [
+                  {
+                    "text": "(3)"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "(3)"
+                  }
+                ]
+              },
+              "figure": {
+                "kind": "diagram",
+                "id": "fg013",
+                "diagram": {
+                  "x": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Quantity"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "數量"
+                        }
+                      ]
+                    }
+                  },
+                  "y": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Price"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "價格"
+                        }
+                      ]
+                    }
+                  },
+                  "curves": [
+                    {
+                      "id": "fg014",
+                      "points": [
+                        {
+                          "x": 0.06,
+                          "y": 0.9
+                        },
+                        {
+                          "x": 0.74,
+                          "y": 0.2
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "D"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "D"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    },
+                    {
+                      "id": "fg015",
+                      "points": [
+                        {
+                          "x": 0.24,
+                          "y": 0.9
+                        },
+                        {
+                          "x": 0.9199999999999999,
+                          "y": 0.20000000000000007
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "D"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "D"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "labelAt": "end",
+                      "derive": {
+                        "kind": "shift",
+                        "of": "fg014",
+                        "by": {
+                          "x": 0.18,
+                          "y": 0
+                        }
+                      }
+                    },
+                    {
+                      "id": "fg016",
+                      "points": [
+                        {
+                          "x": 0.06,
+                          "y": 0.1
+                        },
+                        {
+                          "x": 0.7,
+                          "y": 0.86
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "S"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "S"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    }
+                  ],
+                  "points": [
+                    {
+                      "id": "fg017",
+                      "at": {
+                        "x": 0.4208623548922055,
+                        "y": 0.5285240464344942
+                      },
+                      "labelSide": "right",
+                      "dot": true,
+                      "dropTo": [
+                        "x",
+                        "y"
+                      ],
+                      "xTickLabel": {
+                        "en": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "yTickLabel": {
+                        "en": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "anchor": {
+                        "cross": [
+                          "fg014",
+                          "fg016"
+                        ]
+                      }
+                    },
+                    {
+                      "id": "fg018",
+                      "at": {
+                        "x": 0.5044444444444444,
+                        "y": 0.6277777777777779
+                      },
+                      "labelSide": "right",
+                      "dot": true,
+                      "dropTo": [
+                        "x",
+                        "y"
+                      ],
+                      "xTickLabel": {
+                        "en": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "yTickLabel": {
+                        "en": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "anchor": {
+                        "cross": [
+                          "fg015",
+                          "fg016"
+                        ]
+                      }
+                    }
+                  ],
+                  "labels": [],
+                  "arrows": [
+                    {
+                      "id": "fg019",
+                      "from": {
+                        "x": 0.184143,
+                        "y": 0.8
+                      },
+                      "to": {
+                        "x": 0.310143,
+                        "y": 0.8
+                      },
+                      "follows": "fg015",
+                      "followOffset": {
+                        "x": -0.072857,
+                        "y": 0.075
+                      }
+                    }
+                  ],
+                  "showOrigin": true,
+                  "spans": [
+                    {
+                      "id": "fg020",
+                      "from": {
+                        "point": "fg017"
+                      },
+                      "to": {
+                        "point": "fg018"
+                      },
+                      "style": "arrow",
+                      "along": "y"
+                    },
+                    {
+                      "id": "fg021",
+                      "from": {
+                        "point": "fg017"
+                      },
+                      "to": {
+                        "point": "fg018"
+                      },
+                      "style": "arrow",
+                      "along": "x"
+                    }
+                  ],
+                  "templateId": "demand-shift",
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Marginal tax rate against income"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "邊際稅率與收入"
+                      }
+                    ]
+                  }
+                },
+                "widthPx": 260,
+                "heightPx": 230,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "Demand shift"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "需求變動"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": {
+                "en": [
+                  {
+                    "text": "(4)"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "(4)"
+                  }
+                ]
+              },
+              "figure": {
+                "kind": "diagram",
+                "id": "fg022",
+                "diagram": {
+                  "x": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Real output"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "實質產出"
+                        }
+                      ]
+                    },
+                    "ticks": [
+                      {
+                        "id": "fg023",
+                        "at": 0.46,
+                        "label": {
+                          "en": [
+                            {
+                              "text": "Y"
+                            },
+                            {
+                              "text": "f",
+                              "vertAlign": "subscript"
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "Y"
+                            },
+                            {
+                              "text": "f",
+                              "vertAlign": "subscript"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "y": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Price level"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "物價水平"
+                        }
+                      ]
+                    }
+                  },
+                  "curves": [
+                    {
+                      "id": "fg024",
+                      "points": [
+                        {
+                          "x": 0.1,
+                          "y": 0.78
+                        },
+                        {
+                          "x": 0.82,
+                          "y": 0.18
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "AD"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "AD"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    },
+                    {
+                      "id": "fg025",
+                      "points": [
+                        {
+                          "x": 0.1,
+                          "y": 0.18
+                        },
+                        {
+                          "x": 0.82,
+                          "y": 0.78
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "SRAS"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "SRAS"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    },
+                    {
+                      "id": "fg026",
+                      "points": [
+                        {
+                          "x": 0.46,
+                          "y": 0
+                        },
+                        {
+                          "x": 0.46,
+                          "y": 0.94
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "LRAS"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "LRAS"
+                          }
+                        ]
+                      },
+                      "labelAt": "end",
+                      "derive": {
+                        "kind": "vertical",
+                        "x": 0.46,
+                        "from": 0,
+                        "to": 0.94
+                      }
+                    }
+                  ],
+                  "points": [
+                    {
+                      "id": "fg027",
+                      "at": {
+                        "x": 0.45999999999999996,
+                        "y": 0.48
+                      },
+                      "labelSide": "right",
+                      "dot": true,
+                      "anchor": {
+                        "cross": [
+                          "fg024",
+                          "fg025"
+                        ]
+                      }
+                    }
+                  ],
+                  "labels": [],
+                  "arrows": [],
+                  "showOrigin": true,
+                  "templateId": "ad-as",
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Tax payment against income"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "稅款與收入"
+                      }
+                    ]
+                  }
+                },
+                "widthPx": 260,
+                "heightPx": 230,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "AD–AS with LRAS"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "AD–AS 及 LRAS"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "src": "data:image/png;base64,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",
+          "widthPx": 480,
+          "heightPx": 96,
+          "altText": {
+            "en": [
+              {
+                "text": "Diagrams (1)–(4) were made in a newer Econ Studio. Update Econ Studio to see and print them."
+              }
+            ],
+            "zh": [
+              {
+                "text": "圖表 (1)–(4) 由較新版本的 Econ Studio 製作，請更新以檢視及列印。"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "fg028",
+          "text": {
+            "en": [
+              {
+                "text": "(1) and (2) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (1) 和 (2)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fg029",
+          "text": {
+            "en": [
+              {
+                "text": "(1) and (3) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (1) 和 (3)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fg030",
+          "text": {
+            "en": [
+              {
+                "text": "(2) and (4) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (2) 和 (4)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fg031",
+          "text": {
+            "en": [
+              {
+                "text": "(3) and (4) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (3) 和 (4)"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "fg032",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "fg033",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the figures below. Which one shows a fall in demand?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "參閱下列各圖。哪一個顯示需求下降？"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "figureGrid",
+          "id": "fg034",
+          "columns": 3,
+          "cells": [
+            {
+              "label": {
+                "en": [
+                  {
+                    "text": "(1)"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "(1)"
+                  }
+                ]
+              },
+              "figure": {
+                "kind": "diagram",
+                "id": "fg035",
+                "diagram": {
+                  "x": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Quantity"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "數量"
+                        }
+                      ]
+                    }
+                  },
+                  "y": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Price"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "價格"
+                        }
+                      ]
+                    }
+                  },
+                  "curves": [
+                    {
+                      "id": "fg036",
+                      "points": [
+                        {
+                          "x": 0.06,
+                          "y": 0.9
+                        },
+                        {
+                          "x": 0.74,
+                          "y": 0.2
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "D"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "D"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    },
+                    {
+                      "id": "fg037",
+                      "points": [
+                        {
+                          "x": 0.24,
+                          "y": 0.9
+                        },
+                        {
+                          "x": 0.9199999999999999,
+                          "y": 0.20000000000000007
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "D"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "D"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "labelAt": "end",
+                      "derive": {
+                        "kind": "shift",
+                        "of": "fg036",
+                        "by": {
+                          "x": 0.18,
+                          "y": 0
+                        }
+                      }
+                    },
+                    {
+                      "id": "fg038",
+                      "points": [
+                        {
+                          "x": 0.06,
+                          "y": 0.1
+                        },
+                        {
+                          "x": 0.7,
+                          "y": 0.86
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "S"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "S"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    }
+                  ],
+                  "points": [
+                    {
+                      "id": "fg039",
+                      "at": {
+                        "x": 0.4208623548922055,
+                        "y": 0.5285240464344942
+                      },
+                      "labelSide": "right",
+                      "dot": true,
+                      "dropTo": [
+                        "x",
+                        "y"
+                      ],
+                      "xTickLabel": {
+                        "en": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "yTickLabel": {
+                        "en": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "anchor": {
+                        "cross": [
+                          "fg036",
+                          "fg038"
+                        ]
+                      }
+                    },
+                    {
+                      "id": "fg040",
+                      "at": {
+                        "x": 0.5044444444444444,
+                        "y": 0.6277777777777779
+                      },
+                      "labelSide": "right",
+                      "dot": true,
+                      "dropTo": [
+                        "x",
+                        "y"
+                      ],
+                      "xTickLabel": {
+                        "en": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "yTickLabel": {
+                        "en": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "1",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "anchor": {
+                        "cross": [
+                          "fg037",
+                          "fg038"
+                        ]
+                      }
+                    }
+                  ],
+                  "labels": [],
+                  "arrows": [
+                    {
+                      "id": "fg041",
+                      "from": {
+                        "x": 0.184143,
+                        "y": 0.8
+                      },
+                      "to": {
+                        "x": 0.310143,
+                        "y": 0.8
+                      },
+                      "follows": "fg037",
+                      "followOffset": {
+                        "x": -0.072857,
+                        "y": 0.075
+                      }
+                    }
+                  ],
+                  "showOrigin": true,
+                  "spans": [
+                    {
+                      "id": "fg042",
+                      "from": {
+                        "point": "fg039"
+                      },
+                      "to": {
+                        "point": "fg040"
+                      },
+                      "style": "arrow",
+                      "along": "y"
+                    },
+                    {
+                      "id": "fg043",
+                      "from": {
+                        "point": "fg039"
+                      },
+                      "to": {
+                        "point": "fg040"
+                      },
+                      "style": "arrow",
+                      "along": "x"
+                    }
+                  ],
+                  "templateId": "demand-shift",
+                  "title": {
+                    "en": [],
+                    "zh": []
+                  }
+                },
+                "widthPx": 260,
+                "heightPx": 230,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "Demand shift"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "需求變動"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": {
+                "en": [
+                  {
+                    "text": "(2)"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "(2)"
+                  }
+                ]
+              },
+              "figure": {
+                "kind": "diagram",
+                "id": "fg044",
+                "diagram": {
+                  "x": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Quantity"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "數量"
+                        }
+                      ]
+                    }
+                  },
+                  "y": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Price"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "價格"
+                        }
+                      ]
+                    }
+                  },
+                  "curves": [
+                    {
+                      "id": "fg045",
+                      "points": [
+                        {
+                          "x": 0.08,
+                          "y": 0.88
+                        },
+                        {
+                          "x": 0.86,
+                          "y": 0.12
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "D"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "D"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    },
+                    {
+                      "id": "fg046",
+                      "points": [
+                        {
+                          "x": 0.08,
+                          "y": 0.12
+                        },
+                        {
+                          "x": 0.86,
+                          "y": 0.88
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "S"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "S"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    }
+                  ],
+                  "points": [
+                    {
+                      "id": "fg047",
+                      "at": {
+                        "x": 0.47000000000000003,
+                        "y": 0.5
+                      },
+                      "labelSide": "right",
+                      "dot": true,
+                      "dropTo": [
+                        "x",
+                        "y"
+                      ],
+                      "xTickLabel": {
+                        "en": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "yTickLabel": {
+                        "en": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "anchor": {
+                        "cross": [
+                          "fg045",
+                          "fg046"
+                        ]
+                      }
+                    }
+                  ],
+                  "labels": [],
+                  "arrows": [],
+                  "showOrigin": true,
+                  "templateId": "supply-demand",
+                  "title": {
+                    "en": [],
+                    "zh": []
+                  }
+                },
+                "widthPx": 260,
+                "heightPx": 230,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "Supply and demand"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "供應與需求"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "label": {
+                "en": [
+                  {
+                    "text": "(3)"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "(3)"
+                  }
+                ]
+              },
+              "figure": {
+                "kind": "image",
+                "id": "fg048",
+                "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+                "widthPx": 120,
+                "heightPx": 90,
+                "naturalWidthPx": 120,
+                "naturalHeightPx": 90,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "A sketch"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "草圖"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "src": "data:image/png;base64,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",
+          "widthPx": 480,
+          "heightPx": 96,
+          "altText": {
+            "en": [
+              {
+                "text": "Diagrams (1)–(4) were made in a newer Econ Studio. Update Econ Studio to see and print them."
+              }
+            ],
+            "zh": [
+              {
+                "text": "圖表 (1)–(4) 由較新版本的 Econ Studio 製作，請更新以檢視及列印。"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "fg049",
+          "text": {
+            "en": [
+              {
+                "text": "(1)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "(1)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fg050",
+          "text": {
+            "en": [
+              {
+                "text": "(2)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "(2)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fg051",
+          "text": {
+            "en": [
+              {
+                "text": "(3)"
+              }
+            ],
+            "zh": [
+              {
+                "text": "(3)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fg052",
+          "text": {
+            "en": [
+              {
+                "text": "None of them"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以上皆不是"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "fg053",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "fg054",
+          "text": {
+            "en": [
+              {
+                "text": "The government sets a price ceiling below the equilibrium price. Which diagram shows the shortage?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "政府把價格上限定於均衡價格以下。哪一個圖表顯示短缺？"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "fg055",
+          "text": {
+            "en": [],
+            "zh": []
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "fg056",
+              "diagram": {
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "數量"
+                      }
+                    ]
+                  }
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Price"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "fg057",
+                    "points": [
+                      {
+                        "x": 0.08,
+                        "y": 0.88
+                      },
+                      {
+                        "x": 0.86,
+                        "y": 0.12
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "fg058",
+                    "points": [
+                      {
+                        "x": 0.08,
+                        "y": 0.12
+                      },
+                      {
+                        "x": 0.86,
+                        "y": 0.88
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "S"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "S"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "fg059",
+                    "at": {
+                      "x": 0.47000000000000003,
+                      "y": 0.5
+                    },
+                    "labelSide": "right",
+                    "dot": true,
+                    "dropTo": [
+                      "x",
+                      "y"
+                    ],
+                    "xTickLabel": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "yTickLabel": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "anchor": {
+                      "cross": [
+                        "fg057",
+                        "fg058"
+                      ]
+                    }
+                  }
+                ],
+                "labels": [],
+                "arrows": [],
+                "showOrigin": true,
+                "templateId": "supply-demand",
+                "title": {
+                  "en": [],
+                  "zh": []
+                }
+              },
+              "widthPx": 260,
+              "heightPx": 230,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Supply and demand"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "供應與需求"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "fg060",
+          "text": {
+            "en": [],
+            "zh": []
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "fg061",
+              "diagram": {
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "數量"
+                      }
+                    ]
+                  }
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Price"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "fg062",
+                    "points": [
+                      {
+                        "x": 0.1,
+                        "y": 0.06
+                      },
+                      {
+                        "x": 0.6,
+                        "y": 0.9
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "S"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "S"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "fg063",
+                    "points": [
+                      {
+                        "x": 0,
+                        "y": 0.3
+                      },
+                      {
+                        "x": 0.9,
+                        "y": 0.3
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "w",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "w",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "labelAt": "start",
+                    "weight": 0.8,
+                    "derive": {
+                      "kind": "level",
+                      "y": 0.3,
+                      "from": 0,
+                      "to": 0.9
+                    }
+                  },
+                  {
+                    "id": "fg064",
+                    "points": [
+                      {
+                        "x": 0.1,
+                        "y": 0.06
+                      },
+                      {
+                        "x": 0.2428571428571428,
+                        "y": 0.29999999999999993
+                      },
+                      {
+                        "x": 0.4628571428571428,
+                        "y": 0.29999999999999993
+                      },
+                      {
+                        "x": 0.82,
+                        "y": 0.9
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "S with quota"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "有配額的供應"
+                        }
+                      ]
+                    },
+                    "labelAt": "end",
+                    "derive": {
+                      "kind": "importQuota",
+                      "of": "fg062",
+                      "price": {
+                        "cross": [
+                          "fg062",
+                          "fg063"
+                        ]
+                      },
+                      "by": 0.22
+                    }
+                  },
+                  {
+                    "id": "fg065",
+                    "points": [
+                      {
+                        "x": 0.06,
+                        "y": 0.9
+                      },
+                      {
+                        "x": 0.9,
+                        "y": 0.12
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "fg066",
+                    "at": {
+                      "x": 0.5494633077765608,
+                      "y": 0.44549835706462215
+                    },
+                    "labelSide": "right",
+                    "dot": true,
+                    "dropTo": [
+                      "y"
+                    ],
+                    "yTickLabel": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "A",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "A",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "anchor": {
+                      "cross": [
+                        "fg065",
+                        "fg064"
+                      ]
+                    }
+                  }
+                ],
+                "labels": [],
+                "arrows": [],
+                "showOrigin": true,
+                "spans": [
+                  {
+                    "id": "fg067",
+                    "from": {
+                      "cross": [
+                        "fg062",
+                        "fg063"
+                      ]
+                    },
+                    "to": {
+                      "on": "fg064",
+                      "y": {
+                        "cross": [
+                          "fg062",
+                          "fg063"
+                        ]
+                      },
+                      "last": true
+                    },
+                    "style": "doubleArrow",
+                    "offset": -0.04,
+                    "label": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "A",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "A",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "templateId": "import-quota",
+                "title": {
+                  "en": [],
+                  "zh": []
+                }
+              },
+              "widthPx": 260,
+              "heightPx": 230,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Import quota"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "進口配額"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "fg068",
+          "text": {
+            "en": [],
+            "zh": []
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "fg069",
+              "diagram": {
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "數量"
+                      }
+                    ]
+                  }
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Price"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "fg070",
+                    "points": [
+                      {
+                        "x": 0.06,
+                        "y": 0.9
+                      },
+                      {
+                        "x": 0.74,
+                        "y": 0.2
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "fg071",
+                    "points": [
+                      {
+                        "x": 0.24,
+                        "y": 0.9
+                      },
+                      {
+                        "x": 0.9199999999999999,
+                        "y": 0.20000000000000007
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "labelAt": "end",
+                    "derive": {
+                      "kind": "shift",
+                      "of": "fg070",
+                      "by": {
+                        "x": 0.18,
+                        "y": 0
+                      }
+                    }
+                  },
+                  {
+                    "id": "fg072",
+                    "points": [
+                      {
+                        "x": 0.06,
+                        "y": 0.1
+                      },
+                      {
+                        "x": 0.7,
+                        "y": 0.86
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "S"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "S"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "fg073",
+                    "at": {
+                      "x": 0.4208623548922055,
+                      "y": 0.5285240464344942
+                    },
+                    "labelSide": "right",
+                    "dot": true,
+                    "dropTo": [
+                      "x",
+                      "y"
+                    ],
+                    "xTickLabel": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "yTickLabel": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "0",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "anchor": {
+                      "cross": [
+                        "fg070",
+                        "fg072"
+                      ]
+                    }
+                  },
+                  {
+                    "id": "fg074",
+                    "at": {
+                      "x": 0.5044444444444444,
+                      "y": 0.6277777777777779
+                    },
+                    "labelSide": "right",
+                    "dot": true,
+                    "dropTo": [
+                      "x",
+                      "y"
+                    ],
+                    "xTickLabel": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "yTickLabel": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "anchor": {
+                      "cross": [
+                        "fg071",
+                        "fg072"
+                      ]
+                    }
+                  }
+                ],
+                "labels": [],
+                "arrows": [
+                  {
+                    "id": "fg075",
+                    "from": {
+                      "x": 0.184143,
+                      "y": 0.8
+                    },
+                    "to": {
+                      "x": 0.310143,
+                      "y": 0.8
+                    },
+                    "follows": "fg071",
+                    "followOffset": {
+                      "x": -0.072857,
+                      "y": 0.075
+                    }
+                  }
+                ],
+                "showOrigin": true,
+                "spans": [
+                  {
+                    "id": "fg076",
+                    "from": {
+                      "point": "fg073"
+                    },
+                    "to": {
+                      "point": "fg074"
+                    },
+                    "style": "arrow",
+                    "along": "y"
+                  },
+                  {
+                    "id": "fg077",
+                    "from": {
+                      "point": "fg073"
+                    },
+                    "to": {
+                      "point": "fg074"
+                    },
+                    "style": "arrow",
+                    "along": "x"
+                  }
+                ],
+                "templateId": "demand-shift",
+                "title": {
+                  "en": [],
+                  "zh": []
+                }
+              },
+              "widthPx": 260,
+              "heightPx": 230,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Demand shift"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "需求變動"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "fg078",
+          "text": {
+            "en": [],
+            "zh": []
+          },
+          "blocks": [
+            {
+              "kind": "diagram",
+              "id": "fg079",
+              "diagram": {
+                "x": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Quantity"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "數量"
+                      }
+                    ]
+                  }
+                },
+                "y": {
+                  "title": {
+                    "en": [
+                      {
+                        "text": "Price"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "價格"
+                      }
+                    ]
+                  }
+                },
+                "curves": [
+                  {
+                    "id": "fg080",
+                    "points": [
+                      {
+                        "x": 0.06,
+                        "y": 0.92
+                      },
+                      {
+                        "x": 0.88,
+                        "y": 0.12
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "D"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "D"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "fg081",
+                    "points": [
+                      {
+                        "x": 0.1,
+                        "y": 0.06
+                      },
+                      {
+                        "x": 0.62,
+                        "y": 0.94
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "S"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "S"
+                        }
+                      ]
+                    },
+                    "labelAt": "end"
+                  },
+                  {
+                    "id": "fg082",
+                    "points": [
+                      {
+                        "x": 0,
+                        "y": 0.32
+                      },
+                      {
+                        "x": 0.9,
+                        "y": 0.32
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "w",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "w",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "labelAt": "start",
+                    "weight": 0.8,
+                    "derive": {
+                      "kind": "level",
+                      "y": 0.32,
+                      "from": 0,
+                      "to": 0.9
+                    }
+                  },
+                  {
+                    "id": "fg083",
+                    "points": [
+                      {
+                        "x": 0,
+                        "y": 0.48
+                      },
+                      {
+                        "x": 0.9,
+                        "y": 0.48
+                      }
+                    ],
+                    "shape": "straight",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "w",
+                          "vertAlign": "subscript"
+                        },
+                        {
+                          "text": " + t"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "P"
+                        },
+                        {
+                          "text": "w",
+                          "vertAlign": "subscript"
+                        },
+                        {
+                          "text": " + t"
+                        }
+                      ]
+                    },
+                    "labelAt": "start",
+                    "weight": 0.8,
+                    "derive": {
+                      "kind": "shift",
+                      "of": "fg082",
+                      "by": {
+                        "x": 0,
+                        "y": 0.16
+                      }
+                    }
+                  }
+                ],
+                "points": [
+                  {
+                    "id": "fg084",
+                    "at": {
+                      "x": 0.3481818181818182,
+                      "y": 0.48
+                    },
+                    "labelSide": "right",
+                    "dot": false,
+                    "dropTo": [
+                      "x"
+                    ],
+                    "xTickLabel": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "1",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "anchor": {
+                      "cross": [
+                        "fg081",
+                        "fg083"
+                      ]
+                    }
+                  },
+                  {
+                    "id": "fg085",
+                    "at": {
+                      "x": 0.5110000000000001,
+                      "y": 0.48
+                    },
+                    "labelSide": "right",
+                    "dot": false,
+                    "dropTo": [
+                      "x"
+                    ],
+                    "xTickLabel": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "2",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "2",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    },
+                    "anchor": {
+                      "cross": [
+                        "fg080",
+                        "fg083"
+                      ]
+                    }
+                  }
+                ],
+                "labels": [],
+                "arrows": [],
+                "showOrigin": true,
+                "spans": [
+                  {
+                    "id": "fg086",
+                    "from": {
+                      "point": "fg084"
+                    },
+                    "to": {
+                      "point": "fg085"
+                    },
+                    "style": "bracket",
+                    "along": "x",
+                    "label": {
+                      "en": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "M",
+                          "vertAlign": "subscript"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "Q"
+                        },
+                        {
+                          "text": "M",
+                          "vertAlign": "subscript"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "areas": [
+                  {
+                    "band": {
+                      "edges": [
+                        {
+                          "curve": "fg082"
+                        },
+                        {
+                          "curve": "fg083"
+                        }
+                      ],
+                      "from": {
+                        "cross": [
+                          "fg081",
+                          "fg083"
+                        ]
+                      },
+                      "to": {
+                        "cross": [
+                          "fg080",
+                          "fg083"
+                        ]
+                      }
+                    },
+                    "label": {
+                      "en": [
+                        {
+                          "text": "Tariff revenue"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "關稅收入"
+                        }
+                      ]
+                    },
+                    "fill": "hatch",
+                    "pattern": "dots",
+                    "id": "fg087"
+                  }
+                ],
+                "templateId": "tariff",
+                "title": {
+                  "en": [],
+                  "zh": []
+                }
+              },
+              "widthPx": 260,
+              "heightPx": 235,
+              "altText": {
+                "en": [
+                  {
+                    "text": "Import tariff"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "進口關稅"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "answerIndex": 2,
+      "optionLayout": "columns2"
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "fg088",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "fg089",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構性問題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "fg088"
+    },
+    {
+      "type": "layout",
+      "id": "fg089"
+    },
+    {
+      "type": "question",
+      "id": "fg004"
+    },
+    {
+      "type": "question",
+      "id": "fg032"
+    },
+    {
+      "type": "question",
+      "id": "fg053"
+    }
+  ],
+  "createdAt": "2026-11-24T00:00:00.000Z",
+  "updatedAt": "2026-11-24T00:00:00.000Z"
+}

@@ -3,6 +3,7 @@ import { normalizeAnswerKeyLayout } from './answerKeyLayout';
 import { normalizeCoverageReports } from './coverageReports';
 import { normalizeExamResults } from './examResults';
 import { foldLegacyCellJustify } from './legacyCellJustify';
+import { withGridFallbacks } from './figureGridFallback';
 import type { Worksheet } from './types';
 
 /**
@@ -22,7 +23,7 @@ import type { Worksheet } from './types';
  */
 
 /** The newest schema this build reads and writes. */
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 /**
  * v2 = v1 plus what v0.5.0 reads as v1 but mis-prints or cannot edit: the diagram answer
@@ -43,6 +44,17 @@ const ANSWER_LAYER_VERSION = 2;
  */
 const V3_DIAGRAM_VERSION = 3;
 
+/**
+ * v4 = v3 plus the stem's figure grid (`FigureGridBlock`, k-0545: "(1) (2) (3) (4)", each an
+ * editable diagram). Every build before it has no such block kind: 0.10.x and older print
+ * no such block: they draw any block kind they do not know as a picture, so a grid is stored
+ * with one (`figureGridFallback.ts`: "made in a newer version, update to see them"; without
+ * it the page failed to load). A document holding one anywhere is written at 4 and opens
+ * read-only there, under the "saved by a newer version" bar (which also offers the update).
+ * Nothing else is.
+ */
+const V4_FIGURE_GRID_VERSION = 4;
+
 type RawDoc = Record<string, unknown>;
 
 /**
@@ -60,6 +72,8 @@ const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [
   // document already carrying either field keeps it.
   (doc) => doc,
   // 2 → 3: additive (§ V3_DIAGRAM_VERSION). Nothing to change.
+  (doc) => doc,
+  // 3 → 4: additive (§ V4_FIGURE_GRID_VERSION). Nothing to change.
   (doc) => doc,
 ];
 
@@ -213,7 +227,8 @@ export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown
   const { __unknown, ...rest } = worksheet;
   const out: RawDoc = { ...(__unknown ?? {}), ...rest };
   out.schemaVersion = writtenSchemaVersion(worksheet.schemaVersion, out);
-  return out;
+  // A grid carries the picture older builds show in its place (§ V4_FIGURE_GRID_VERSION).
+  return out.schemaVersion === V4_FIGURE_GRID_VERSION ? withGridFallbacks(out) : out;
 }
 
 /**
@@ -224,6 +239,7 @@ export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown
  */
 export function writtenSchemaVersion(version: number, doc: unknown): number {
   if (version > CURRENT_SCHEMA_VERSION) return version;
+  if (hasFigureGrid(doc)) return V4_FIGURE_GRID_VERSION;
   if (hasV3Diagram(doc)) return V3_DIAGRAM_VERSION;
   if (isRecord(doc) && (doc.answerKeyLayout !== undefined || hasAnswerAnySection(doc.layout) || hasEssayAnswer(doc.questions))) {
     return ANSWER_LAYER_VERSION;
@@ -275,6 +291,14 @@ function hasWords(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (typeof value.text === 'string') return value.text.trim().length > 0;
   return Object.values(value).some(hasWords);
+}
+
+/** A figure grid block anywhere in `value` (§ V4_FIGURE_GRID_VERSION). */
+function hasFigureGrid(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasFigureGrid);
+  if (!isRecord(value)) return false;
+  if (value.kind === 'figureGrid') return true;
+  return Object.values(value).some(hasFigureGrid);
 }
 
 /** Any diagram anywhere in `value` that is a stakeholder diagram or a data chart (§ V3_DIAGRAM_VERSION). */

@@ -166,8 +166,22 @@ function cellPictures(table: TableBlock, where: string): Placed[] {
 /** The picture-holding blocks of some content, flattened, with where each sits; a cell picture becomes an image block. */
 function placedBlocks(blocks: readonly ContentBlock[], where: string): Placed[] {
   const out: Placed[] = [];
+  const inGrid = new Set<string>();
   for (const block of flattenBlocks([...blocks])) {
-    if (block.kind === 'image' || block.kind === 'diagram') out.push({ block, at: where });
+    if (inGrid.has(block.id)) continue;
+    if (block.kind === 'figureGrid') {
+      // A stem's figure grid (k-0545) is a set, placed as printed, each by its label.
+      const columns = Math.min(4, Math.max(1, block.columns ?? 2));
+      block.cells.forEach((cell, i) => {
+        inGrid.add(cell.figure.id);
+        const label = cellLabel(cell.label);
+        out.push({
+          block: cell.figure,
+          at: label ? `${where} ${label}` : `${where}, figure ${i + 1}`,
+          ...(block.cells.length >= 2 ? { cell: { group: block.id, row: Math.floor(i / columns), col: i % columns, label } } : {}),
+        });
+      });
+    } else if (block.kind === 'image' || block.kind === 'diagram') out.push({ block, at: where });
     else if (block.kind === 'table') out.push(...cellPictures(block, where));
   }
   return out;

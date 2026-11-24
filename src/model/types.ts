@@ -359,6 +359,41 @@ export interface FigureRowBlock {
 }
 
 /**
+ * A grid of small labelled figures in a stem, "(1) (2) (3) (4)", the reference's
+ * "Which of the following diagrams…" (HKDSE 2023 Paper 1 Q36, k-0545). Each cell is its
+ * own label above its own figure, an editable diagram (or a picture), so a teacher
+ * re-draws one graph in the diagram editor like any other.
+ *
+ * A block, not table cells: a cell is one `w:p` and cannot hold a diagram
+ * (§ `TableCell.image`). It prints as the MC options' figure grid does (`OptionRowNode`,
+ * one borderless row of `columns` cells per row), so every backend reuses that frame.
+ *
+ * **Schema v4** (`migrations.ts` § V4_FIGURE_GRID_VERSION): a build before it has no such
+ * kind, so a document holding one is written at 4 and opens read-only there.
+ */
+export interface FigureGridBlock {
+  kind: 'figureGrid';
+  id: string;
+  /** Figures per row, 1–4. Undefined means 2, the reference's 2 × 2. */
+  columns?: number;
+  cells: FigureGridCell[];
+  /**
+   * Only for builds before v4, which draw a block kind they do not know as a picture: a small
+   * notice to update (`figureGridFallback.ts`). Set when stored; this build never reads them.
+   */
+  src?: string;
+  widthPx?: number;
+  heightPx?: number;
+  altText?: BiText;
+}
+
+export interface FigureGridCell {
+  /** "(1)", printed above the figure. Authored, like a source's letter: the stem names it. */
+  label: BiText;
+  figure: DiagramBlock | ImageBlock;
+}
+
+/**
  * A labelled source panel — the data-response question's unit ("Source A: Basic
  * information about housing in Hong Kong", DSE 2025 Q11 / 2019 Q12).
  *
@@ -392,7 +427,7 @@ export interface SourceBlock {
    */
   framed?: boolean;
   /**
-   * The body. May not contain another `source` — nor a `figureRow`, which is itself a
+   * The body. May not contain another `source` — nor a `figureRow` or `figureGrid`, each itself a
    * layout table: nesting one inside a framed source would put three levels of `w:tbl`
    * in the file, past the one level `FigureRowBlock` proved safe.
    */
@@ -408,6 +443,7 @@ export type ContentBlock =
   | ImageBlock
   | DiagramBlock
   | FigureRowBlock
+  | FigureGridBlock
   | SourceBlock;
 
 export interface QuestionBase {
