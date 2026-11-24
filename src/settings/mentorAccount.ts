@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { MENTOR_BUY_URL, createMentorRelay, type LinkDevice, type MentorAccount, type MentorRelay } from '@/ai/mentor';
 import { mapThrown } from '@/ai/errors';
 import { presetFor } from '@/ai/providers';
+import { onRelayOutcome } from '@/ai/relayOutcome';
 import { PROVIDER_IDS, type AiErrorInfo, type ProviderId } from '@/ai/types';
 import { isDesktop, openExternal } from '@/platform';
 import { deleteSecret, peekSecret, readSecret, subscribeSecrets, writeSecret } from '@/platform/secrets';
@@ -61,8 +62,10 @@ export interface MentorSession {
   /** Stops a sign-in that is waiting for the browser. */
   cancel(): void;
   signOut(): Promise<void>;
-  /** Re-reads the credits (Settings open, after a run). */
+  /** Re-reads the credits (Settings open, focus, a timer). A read already under way is shared, never doubled (k-0524). */
   refresh(): Promise<void>;
+  /** The credits Mentor's receipt gave after a request (k-0524): shown without asking again; read when nothing is known yet. */
+  applyBalance(balance: number): void;
   /** Makes the account the AI in use again (after the teacher picked an own key). */
   use(): void;
 }
@@ -78,6 +81,10 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
   let state: MentorState = deps.hasToken() ? { kind: 'signedIn', account: null, loading: false } : { kind: 'signedOut' };
   let linking: AbortController | null = null;
   let reading: AbortController | null = null;
+  /** The read under way, shared by every caller until it ends (one request in flight). */
+  let inflight: Promise<void> | null = null;
+  /** Bumped by each receipt balance: a read that started before it carries an older number. */
+  let receipts = 0;
 
   const set = (next: MentorState) => {
     state = next;
@@ -94,12 +101,22 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
     set({ kind: 'signedOut', ...(error ? { error } : {}) });
   };
 
-  async function refresh() {
-    if (state.kind === 'linking') return;
-    reading?.abort();
+  function refresh(): Promise<void> {
+    if (state.kind === 'linking') return Promise.resolve();
+    if (inflight) return inflight;
+    const run = read().finally(() => {
+      if (inflight === run) inflight = null;
+    });
+    inflight = run;
+    return run;
+  }
+
+  async function read() {
     const controller = new AbortController();
     reading = controller;
+    const seen = receipts;
     const token = await deps.readToken().catch(() => null);
+    if (reading !== controller) return;
     if (!token) {
       if (state.kind === 'signedIn') set({ kind: 'signedOut' });
       return;
@@ -108,7 +125,10 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
     set({ kind: 'signedIn', account: before, loading: true });
     try {
       const account = await deps.relay().account(token, controller.signal);
-      if (reading === controller) set({ kind: 'signedIn', account, loading: false });
+      if (reading !== controller) return;
+      // A receipt that came in meanwhile is newer than what this read saw.
+      const now = state.kind === 'signedIn' ? state.account : null;
+      set({ kind: 'signedIn', account: receipts !== seen && now ? { ...account, credits: now.credits } : account, loading: false });
     } catch (error) {
       if (reading !== controller) return;
       const info = mapThrown('mentor', error, null);
@@ -170,6 +190,9 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
     },
     async signOut() {
       reading?.abort();
+      // The aborted read must not write its 'cancelled' over the signed-out state.
+      reading = null;
+      inflight = null;
       const token = await deps.readToken().catch(() => null);
       const accountUrl = (state.kind === 'signedIn' && state.account?.buyUrl) || MENTOR_BUY_URL;
       // Forgotten here first: a slow or failing Mentor never keeps the sign-in on this computer.
@@ -179,6 +202,13 @@ export function createMentorSession(deps: MentorDeps): MentorSession {
       if (outcome === 'failed' && state.kind === 'signedOut' && !state.reason && !state.error) set({ kind: 'signedOut', revokeFailed: { accountUrl } });
     },
     refresh,
+    applyBalance(balance) {
+      if (state.kind !== 'signedIn' || !Number.isFinite(balance)) return;
+      if (!state.account) return void refresh();
+      receipts += 1;
+      if (state.account.credits === balance) return;
+      set({ ...state, account: { ...state.account, credits: balance } });
+    },
     use() {
       if (state.kind === 'signedIn') deps.writeSettings({ provider: 'mentor' });
     },
@@ -256,6 +286,13 @@ export function mentorSession(): MentorSession {
       if (s?.kind === 'signedIn' && peekSecret('ai:mentor') === null && !(isDesktop() && appSettings.read(AI_SETTINGS).keychainSaved.mentor)) {
         void live?.refresh();
       }
+    });
+    // Each AI request through the account: its receipt's balance, or a fresh read (k-0524).
+    onRelayOutcome(({ balance }) => {
+      const session = live;
+      if (session?.current().kind !== 'signedIn') return;
+      if (balance === undefined) void session.refresh();
+      else session.applyBalance(balance);
     });
   }
   return live;

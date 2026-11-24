@@ -66,6 +66,16 @@ describe('MentorAccountCard', () => {
     expect(html).not.toContain('Use my DSEcon Mentor account');
   });
 
+  it('Sign out is red at rest, not grey text (k-0524, u-fs5v), in both languages', () => {
+    for (const html of [renderToStaticMarkup(card(SIGNED_IN)), zh(card(SIGNED_IN))]) {
+      const button = html.match(/<button[^>]*data-mentor-sign-out[^>]*>([^<]*)</);
+      expect(button?.[0]).toMatch(/bg-danger-soft/);
+      expect(button?.[0]).toMatch(/text-danger-ink/);
+      expect(button?.[0]).not.toMatch(/text-ink-muted/);
+      expect(['Sign out', '登出']).toContain(button?.[1]);
+    }
+  });
+
   it('signed in but an own key in use: offers to switch back', () => {
     const html = renderToStaticMarkup(card(SIGNED_IN, false));
     expect(html).toContain('AI uses your own key now.');

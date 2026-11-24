@@ -1,4 +1,3 @@
-import { MENTOR_BUY_URL } from '@/ai/mentor';
 import { presetFor } from '@/ai/providers';
 import type { AiErrorInfo, ProviderId, ProviderPreset } from '@/ai/types';
 import { useAiRun } from '@/assist/runStore';
@@ -6,7 +5,7 @@ import { copyMessages } from '@/components/translate/text';
 import { openExternal } from '@/platform';
 import { peekSecret } from '@/platform/secrets';
 import { AI_SETTINGS } from '@/settings/aiSettings';
-import { mentorSession } from '@/settings/mentorAccount';
+import { openBuyCredits } from '@/settings/mentorLive';
 import { appSettings } from '@/settings/store';
 import { useAppDialogs } from '@/store/appDialogs';
 
@@ -116,12 +115,8 @@ export function runErrorAction(action: ErrorAction, error: AiErrorInfo, run: Run
       return run.retry();
     case 'signIn':
       return openSettings(run, 'account');
-    case 'buyCredits': {
-      const state = mentorSession().current();
-      const url = (state.kind === 'signedIn' && state.account?.buyUrl) || MENTOR_BUY_URL;
-      void openExternal(url);
-      return;
-    }
+    case 'buyCredits':
+      return openBuyCredits();
     case 'useOwnKey':
       return openSettings(run, 'ownKey');
   }

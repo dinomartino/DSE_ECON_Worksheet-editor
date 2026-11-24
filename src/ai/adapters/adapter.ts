@@ -36,6 +36,8 @@ export interface StreamPiece {
   errorCharged?: number;
   /** The relay's closing receipt (`mustSettle`). */
   settled?: true;
+  /** Credits left, from the relay's receipt or error event (k-0524). */
+  balance?: number;
 }
 
 /** `build`'s body with extra fields. */
@@ -44,7 +46,7 @@ export function withBody(wire: WireRequest, extra: Record<string, unknown>): Wir
 }
 
 export interface WireRequest { url: string; headers: Record<string, string>; body?: string }
-export type Extracted = Pick<CompletionResult, 'text' | 'finish' | 'usage'>;
+export type Extracted = Pick<CompletionResult, 'text' | 'finish' | 'usage' | 'balance'>;
 
 /** A rung that doesn't enforce the schema carries the JSON shape hint in `system` (the request's own, else the items shape). */
 export function systemFor(system: string, enforced: boolean, hint: string = JSON_SHAPE_HINT): string {

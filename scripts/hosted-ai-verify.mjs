@@ -15,6 +15,10 @@ import { chromium, webkit } from 'playwright-core';
  * audit fixes: an Idempotency-Key on each generate (allowed through CORS, CONTRACT v1.3), the 14-day web sign-in, "Shared computer" (this tab only), and a sign-out Mentor
  * can't confirm (signed out here, with the warning and Open my account). v1.4 (u-1zca): buy any
  * whole HK$ amount: quick picks, the amount box, the live credits line, the range error, Buy.
+ * k-0524 (u-fs5v): the AI status chip in the status bar (Set up AI → credits from each receipt →
+ * amber when low → red with Buy credits at 0 → own key), live refresh on focus with never two
+ * reads at once, Buy's fast poll until the payment lands, the studio header and composer chip, the
+ * red Sign out; a crop of the chip per state in English and 中文 (`chip-<state>-<en|zh>.png`).
  *
  *   npm run build && node scripts/hosted-ai-verify.mjs [--out=/tmp/hosted-ai-verify] [--engines=chromium,webkit] [--app-port=3419]
  *   NEXT_PUBLIC_MENTOR_ORIGIN=https://<preview> npm run build && node scripts/hosted-ai-verify.mjs --mentor=<preview host>
@@ -70,7 +74,7 @@ const DOC = { ...englishOnly(corpus), id: 'hosted-ai-verify', title: { en: [{ te
 
 const TOKEN = 'dsm_hosted_verify_0123456789abcdefghij';
 function fakeMentor() {
-  const state = { credits: 500, polls: 0, signedIn: true, requests: [], charged: 0, logoutFails: false };
+  const state = { credits: 500, polls: 0, signedIn: true, requests: [], charged: 0, logoutFails: false, creditReads: 0, inflight: 0, maxInflight: 0 };
   const json = (body, status = 200) => ({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) });
   const relayError = (status, code) => json({ error: code }, status);
   /** Translate requests: each item back with a 譯： prefix, as JSON items. */
@@ -105,11 +109,17 @@ function fakeMentor() {
     const authed = auth === `Bearer ${TOKEN}` && state.signedIn;
     if (path === '/ai/credits') {
       if (!authed) return route.fulfill(relayError(401, 'unauthorized'));
+      // Slow enough that a second read sent meanwhile would overlap (k-0524: never two at once).
+      state.creditReads++;
+      state.inflight++;
+      state.maxInflight = Math.max(state.maxInflight, state.inflight);
+      await new Promise((r) => setTimeout(r, 150));
+      state.inflight--;
       return route.fulfill(json({ status: 'on', balance: state.credits, trial: { credits: 500, grantedAt: new Date().toISOString() }, model: 'gemini-4-hydrogen', rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, inputPerMillionTokens: 1170, outputPerMillionTokens: 5850 }, estimates: { studioWorksheet: 280, importCheck: 50, translate: 50, answerKey: 80 }, extraPct: 10, buy: { unitHkd: 1, minHkd: 50, maxHkd: 1000, quickPicks: [{ hkd: 50, credits: 4170 }, { hkd: 100, credits: 8560 }, { hkd: 200, credits: 17350 }], stripeFee: { pct: 3.4, fixedHkd: 2.35 }, urlTemplate: `https://${MENTOR}/account?amount={hkd}#ai-credits` }, buyUrl: `https://${MENTOR}/account#ai-credits`, pricingUrl: `https://${MENTOR}/pricing#ai-credits` }));
     }
     if (path === '/ai/generate') {
       if (!authed) return route.fulfill(relayError(401, 'unauthorized'));
-      if (state.credits <= 0) return route.fulfill(relayError(402, 'insufficient_credits'));
+      if (state.credits <= 0) return route.fulfill(json({ error: 'insufficient_credits', balance: state.credits, needed: 40 }, 402));
       const usage = { promptTokenCount: 2000, candidatesTokenCount: 800, thoughtsTokenCount: 300 };
       const charged = (2000 * 1170 + 1100 * 5850) / 1e6;
       state.credits = Math.max(0, state.credits - charged);
@@ -172,12 +182,53 @@ async function run(engine, browserType) {
   const card = aiMenu.locator('[data-setup-card]');
   const settings = page.getByRole('dialog', { name: /Settings/ });
   const account = settings.locator('[data-mentor-account]');
+  const bar = page.locator('[data-ai-status-bar]');
+  const chip = bar.locator('[data-ai-chip]');
+  const fmt = (n) => new Intl.NumberFormat('en-HK', { maximumFractionDigits: 0 }).format(Math.floor(n));
+  const setLang = (ui) =>
+    page.evaluate((ui) => {
+      localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui, paper: 'en' }));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'econgen.settings.language' }));
+    }, ui);
+  /** The chip, cropped from the status bar, in English and 中文. */
+  const chipShot = async (name, scope = bar) => {
+    for (const ui of ['en', 'zh-HK']) {
+      await setLang(ui);
+      await page.waitForTimeout(300);
+      const box = await scope.boundingBox();
+      const width = Math.min(560, box.width);
+      await page.screenshot({ path: `${OUT}/${engine}-chip-${name}-${ui === 'en' ? 'en' : 'zh'}.png`, clip: { x: box.x + box.width - width, y: Math.max(0, box.y - 6), width, height: box.height + 12 } });
+    }
+    await setLang('en');
+    await page.waitForTimeout(200);
+  };
+  const chipSays = async (pattern, timeout = 8000) => {
+    const started = Date.now();
+    for (;;) {
+      const text = (await chip.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+      if (pattern.test(text)) return text;
+      if (Date.now() - started > timeout) throw new Error(`chip says "${text}", wanted ${pattern}`);
+      await page.waitForTimeout(150);
+    }
+  };
+  const wake = () => page.evaluate(() => window.dispatchEvent(new Event('focus')));
 
   await page.goto(APP, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: /Hosted AI verify/ }).first().click();
   await page.waitForSelector('#print-root .paper', { timeout: 15_000 });
   await page.getByRole('radio', { name: '中文', exact: true }).first().click();
   await page.waitForTimeout(400);
+
+  await check(engine, 'chip: "Set up AI" with no AI, in the status bar; a click opens Settings → AI', async () => {
+    await chipSays(/^Set up AI$/);
+    expect((await chip.getAttribute('data-ai-chip')) === 'setup', 'not the setup chip');
+    await chipShot('setup');
+    await chip.locator('button').first().click();
+    await account.waitFor();
+    await page.keyboard.press('Escape');
+    await settings.waitFor({ state: 'hidden' });
+    expect(mentor.state.requests.length === 0, 'the chip sent a request');
+  });
 
   await check(engine, 'no key: the setup card offers Sign in with DSEcon Mentor first, nothing sent', async () => {
     await page.locator('[data-ai-door]').click();
@@ -211,6 +262,45 @@ async function run(engine, browserType) {
     return `${ai.length} relay call(s), ${mentor.state.charged} charged`;
   });
 
+  await check(engine, 'chip: the credits from the last receipt, no extra read', async () => {
+    const reads = mentor.state.creditReads;
+    const text = await chipSays(new RegExp(`^AI credits ${fmt(mentor.state.credits).replace(',', ',')}$`));
+    expect(mentor.state.creditReads === reads, 'the receipt still needed a read');
+    await chipShot('credits');
+    return text;
+  });
+
+  await check(engine, 'live: credits bought elsewhere show on focus, no reload; never two reads at once', async () => {
+    await page.waitForTimeout(3200);
+    mentor.state.credits = 9003.6;
+    mentor.state.maxInflight = 0;
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('focus'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      window.dispatchEvent(new Event('focus'));
+    });
+    const text = await chipSays(/^AI credits 9,003$/);
+    expect(mentor.state.maxInflight <= 1, `${mentor.state.maxInflight} reads at once`);
+    await shot('03c-chip-live');
+    return text;
+  });
+
+  await check(engine, 'chip: amber under one studio run (280 credits, Mentor\'s estimate)', async () => {
+    await page.waitForTimeout(3200);
+    mentor.state.credits = 150;
+    await wake();
+    await chipSays(/^AI credits 150$/);
+    expect((await chip.getAttribute('data-ai-chip-tone')) === 'low', 'not amber');
+    const title = await chip.locator('button').first().getAttribute('title');
+    expect(/under 280 credits/.test(title ?? ''), `tooltip: ${title}`);
+    if (TEST_BUILD) expect((await chip.locator('[data-ai-chip-test]').count()) === 1 && title.includes(`Test build: uses the DSEcon Mentor at ${MENTOR}`), 'no test-build hint on the chip');
+    await chipShot('low');
+    mentor.state.credits = 9003.6;
+    await page.waitForTimeout(3200);
+    await wake();
+    await chipSays(/^AI credits 9,003$/);
+  });
+
   await check(engine, 'Settings: the account card, credits, Advanced closed, no token in the page', async () => {
     await page.keyboard.press('Escape');
     await page.keyboard.press(`${META}+Comma`);
@@ -219,6 +309,16 @@ async function run(engine, browserType) {
     await account.getByText(/credits left/).waitFor();
     await page.waitForTimeout(300);
     await shot('04-settings-signed-in');
+    const signOut = account.locator('[data-mentor-sign-out]');
+    const look = await signOut.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { color: s.color, background: s.backgroundColor };
+    });
+    const rgb = (c) => (c.match(/[\d.]+/g) ?? []).map(Number);
+    const [r, g, b] = rgb(look.color);
+    expect(r > g + 60 && r > b + 60, `Sign out is not red: ${look.color}`);
+    expect(!/rgba\(0, 0, 0, 0\)|transparent/.test(look.background), `Sign out has no fill: ${look.background}`);
+    await signOut.screenshot({ path: `${OUT}/${engine}-04a-sign-out-red.png` });
     expect((await account.getAttribute('data-mentor-account')) === 'signedIn', 'not signed in');
     expect(!(await settings.locator('[data-provider="gemini"]').isVisible().catch(() => false)), 'own-key providers shown while the account is in use');
     expect(!(await page.content()).includes(TOKEN), 'the token is in the DOM');
@@ -302,6 +402,52 @@ async function run(engine, browserType) {
     for (const name of ['Buy credits', 'Use my own key…']) expect(await error.getByRole('button', { name, exact: true }).isVisible(), `no ${name}`);
   });
 
+  await check(engine, 'chip: red at 0 with Buy credits (from the 402 balance); after Buy it polls until the payment lands', async () => {
+    await chipSays(/^AI credits 0\s*Buy credits$/);
+    expect((await chip.getAttribute('data-ai-chip-tone')) === 'out', 'not red');
+    await chipShot('out');
+    const popup = context.waitForEvent('page', { timeout: 5000 }).catch(() => null);
+    await chip.locator('[data-ai-chip-buy]').click();
+    const opened = await popup;
+    expect(opened?.url().includes('/account#ai-credits'), `Buy opened ${opened?.url()}`);
+    await opened?.close();
+    await page.bringToFront();
+    const reads = mentor.state.creditReads;
+    const started = Date.now();
+    mentor.state.credits = 4170;
+    const text = await chipSays(/^AI credits 4,170$/, 12_000);
+    const secs = ((Date.now() - started) / 1000).toFixed(1);
+    expect(Date.now() - started < 8000, `took ${secs}s (no 5 s poll)`);
+    const after = mentor.state.creditReads;
+    await page.waitForTimeout(6000);
+    expect(mentor.state.creditReads === after, 'still polling after the balance changed');
+    return `${text} after ${secs}s, ${after - reads} read(s)`;
+  });
+
+  await check(engine, 'the Question studio: chip in its header and beside the cost line in the composer', async () => {
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Econ Studio home' }).first().click();
+    await page.getByRole('button', { name: /Question studio/ }).first().click();
+    const header = page.locator('header [data-ai-chip="credits"]');
+    await header.waitFor({ timeout: 10_000 });
+    const composer = page.locator('[data-chat-ai-status]');
+    await composer.waitFor();
+    expect((await composer.locator('[data-ai-chip="credits"]').count()) === 1, 'no chip in the composer');
+    const estimate = await composer.locator('[data-credit-estimate]').innerText().catch(() => '');
+    expect(/^Uses about [\d,]+ credits$/.test(estimate.trim()), `cost line: ${estimate}`);
+    await page.waitForTimeout(300);
+    await shot('07b-studio');
+    await setLang('zh-HK');
+    await page.waitForTimeout(400);
+    await shot('07c-studio-zh');
+    await setLang('en');
+    await page.getByRole('button', { name: /Home/ }).first().click();
+    await page.getByRole('button', { name: /Hosted AI verify/ }).first().waitFor();
+    await page.getByRole('button', { name: /Hosted AI verify/ }).first().click();
+    await page.waitForSelector('#print-root .paper', { timeout: 15_000 });
+    return estimate.trim();
+  });
+
   await check(engine, 'Sign out: Mentor is told, the card is signed out, own keys are back', async () => {
     await page.keyboard.press('Escape');
     await page.keyboard.press(`${META}+Comma`);
@@ -347,6 +493,20 @@ async function run(engine, browserType) {
     expect(opened?.url().includes('/account#ai-credits'), `opened ${opened?.url()}`);
     await opened?.close();
     return (await warning.innerText()).split('\n')[0];
+  });
+
+  await check(engine, 'chip: an own key says whose, with no balance', async () => {
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => {
+      localStorage.setItem('econgen.secret.ai:gemini', 'AIzaSyVerify0123456789abcdefghijklmnopq');
+      const raw = JSON.parse(localStorage.getItem('econgen.settings.ai') ?? '{}');
+      localStorage.setItem('econgen.settings.ai', JSON.stringify({ ...raw, provider: 'gemini' }));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'econgen.secret.ai:gemini' }));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'econgen.settings.ai' }));
+    });
+    const text = await chipSays(/^AI: own key \(Gemini\)$/);
+    await chipShot('ownkey');
+    return text;
   });
 
   await check(engine, 'phone width: the setup card fits', async () => {

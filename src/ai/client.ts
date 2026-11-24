@@ -3,9 +3,10 @@ import { anthropicAdapter } from './adapters/anthropic';
 import { geminiAdapter } from './adapters/gemini';
 import { mentorAdapter } from './adapters/mentor';
 import { openaiCompatAdapter } from './adapters/openaiCompat';
-import { aiErrorInfo, describeHttpError, isSchemaRejection, keyLikeModel, mapThrown } from './errors';
+import { aiErrorInfo, describeHttpError, isSchemaRejection, keyLikeModel, mapThrown, relayErrorOf } from './errors';
 import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, RELAY_TIMEOUT_MS, defaultHttpDeps, send, sendStream, type HttpResponse } from './http';
 import { presetFor, supportsImages } from './providers';
+import { reportRelayOutcome, type RelayOutcome } from './relayOutcome';
 import { ITEMS_SCHEMA, parseItemsPayload } from './schema';
 import {
   AiError,
@@ -115,7 +116,17 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     return new AiError(info);
   };
 
-  async function complete(asked: Parameters<AiClient['complete']>[0]) {
+  /** The relay's balance from an error body (402 `insufficient_credits`, 504 `deadline`). */
+  const noteFailure = (note: RelayOutcome, res: HttpResponse) => {
+    const balance = preset.relay ? relayErrorOf(res.body)?.balance : undefined;
+    if (balance !== undefined) note.balance = balance;
+  };
+  /** Every relay request, however it ended, tells the credits display (k-0524). */
+  const report = (note: RelayOutcome) => {
+    if (preset.relay) reportRelayOutcome(note.balance === undefined ? {} : { balance: note.balance });
+  };
+
+  async function complete(asked: Parameters<AiClient['complete']>[0], note: RelayOutcome) {
     // A provider that cannot read pictures is never sent one (the caller asks `supportsImages` to word its prompt).
     const req = asked.images?.length && !supportsImages(preset) ? { ...asked, images: undefined } : asked;
     const problem = blocked(true);
@@ -133,9 +144,11 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
           i++;
           continue;
         }
+        noteFailure(note, res);
         throw httpFailure(res);
       }
       const out = adapter.extract(res.body);
+      if (out?.balance !== undefined) note.balance = out.balance;
       if (!out) throw new AiError(aiErrorInfo('badOutput', provider, { status: res.status }));
       // An unreadable reply steps down once, uncached (DeepSeek sometimes returns empty content).
       const unreadable = req.schema === ITEMS_SCHEMA && out.finish === 'stop' && parseItemsPayload(out.text) === null;
@@ -150,7 +163,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
   }
 
   /** `complete`, read as a stream: same rungs, same errors; `onText` gets the reply so far. */
-  async function stream(asked: Parameters<AiClient['complete']>[0], onText: (reply: string) => void) {
+  async function stream(asked: Parameters<AiClient['complete']>[0], onText: (reply: string) => void, note: RelayOutcome) {
     const problem = blocked(true);
     if (problem) throw new AiError(problem);
     const req = asked.images?.length && !supportsImages(preset) ? { ...asked, images: undefined } : asked;
@@ -184,6 +197,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
             failedCharged = piece.errorCharged;
           }
           if (piece.settled) settled = true;
+          if (piece.balance !== undefined) note.balance = piece.balance;
           if (piece.text) {
             text += piece.text;
             onText(text);
@@ -201,6 +215,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
           i++;
           continue;
         }
+        noteFailure(note, res as HttpResponse);
         throw httpFailure(res as HttpResponse);
       }
       // Mentor stopped a long call at its limit: charged, the text so far incomplete (CONTRACT v1.3).
@@ -215,22 +230,28 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
 
   return {
     async stream(req, onText) {
+      const note: RelayOutcome = {};
       try {
-        return await stream(req, onText);
+        return await stream(req, onText, note);
       } catch (error) {
         const info = mapThrown(provider, error, null);
         log(info);
         throw isAiError(error) ? error : new AiError(info);
+      } finally {
+        report(note);
       }
     },
 
     async complete(req) {
+      const note: RelayOutcome = {};
       try {
-        return await complete(req);
+        return await complete(req, note);
       } catch (error) {
         const info = mapThrown(provider, error, null);
         log(info);
         throw isAiError(error) ? error : new AiError(info);
+      } finally {
+        report(note);
       }
     },
 

@@ -1,4 +1,5 @@
 import { geminiAdapter } from './gemini';
+import { balanceOf } from '../relayOutcome';
 import { isRecord, trimBase, type Adapter } from './adapter';
 
 /**
@@ -32,7 +33,11 @@ export const mentorAdapter: Adapter = {
   },
 
   extract(body) {
-    return isRecord(body) ? geminiAdapter.extract(body.response) : null;
+    if (!isRecord(body)) return null;
+    const out = geminiAdapter.extract(body.response);
+    // `mentor.balance`: the credits left after this call (k-0524).
+    const balance = isRecord(body.mentor) ? balanceOf(body.mentor.balance) : undefined;
+    return out && balance !== undefined ? { ...out, balance } : out;
   },
 
   buildStream(preset, config, req, dialect) {
@@ -42,9 +47,11 @@ export const mentorAdapter: Adapter = {
   streamPiece(event) {
     if (!isRecord(event)) return null;
     // `event: error` (`{"error":"upstream_error","refunded":true}`; `deadline` is charged) and Gemini's own error chunk.
-    if (typeof event.error === 'string') return { error: event.error, ...(typeof event.charged === 'number' ? { errorCharged: event.charged } : {}) };
+    const balance = balanceOf(event.balance);
+    const left = balance === undefined ? {} : { balance };
+    if (typeof event.error === 'string') return { error: event.error, ...(typeof event.charged === 'number' ? { errorCharged: event.charged } : {}), ...left };
     // `event: mentor`: the receipt that closes a stream that went well.
-    if (typeof event.requestId === 'string' && 'charged' in event) return { settled: true };
+    if (typeof event.requestId === 'string' && 'charged' in event) return { settled: true, ...left };
     return geminiAdapter.streamPiece(event);
   },
 

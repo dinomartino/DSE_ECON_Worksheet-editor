@@ -19,7 +19,7 @@ import { UI_MESSAGES } from './messages';
  * quietly failing contrast in one theme while passing in the other.
  */
 
-type Variant = 'primary' | 'default' | 'subtle' | 'danger' | 'ghostAccent';
+type Variant = 'primary' | 'default' | 'subtle' | 'danger' | 'dangerTinted' | 'ghostAccent';
 type Size = 'sm' | 'md' | 'lg';
 
 const VARIANT: Record<Variant, string> = {
@@ -33,6 +33,10 @@ const VARIANT: Record<Variant, string> = {
     'border-transparent bg-transparent text-ink-muted hover:bg-surface-hover hover:text-ink active:scale-[0.97]',
   danger:
     'border-transparent bg-transparent text-ink-muted hover:bg-danger-soft hover:text-danger-ink active:scale-[0.97]',
+  // Red at rest, for the one leave-or-lose action a card offers (Sign out, k-0524): `danger`
+  // above stays grey until hovered, which read as plain text. Soft tint + ink pass AA in every theme.
+  dangerTinted:
+    'border-danger-ink/35 bg-danger-soft text-danger-ink hover:border-transparent hover:bg-danger hover:text-on-danger active:scale-[0.97]',
   ghostAccent:
     'border-transparent bg-accent-soft text-accent-ink hover:brightness-95 active:scale-[0.97]',
 };

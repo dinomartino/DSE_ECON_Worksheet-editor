@@ -101,6 +101,8 @@ export interface CompletionResult {
   model: string;
   ms: number;
   usage?: { input?: number; output?: number; thinking?: number };
+  /** The hosted relay only: credits left after this call, from Mentor's receipt (k-0524). */
+  balance?: number;
 }
 export type AiErrorKind =
   | 'notConfigured' | 'region' | 'badKey' | 'keyBlocked' | 'networkOrKey' | 'network'

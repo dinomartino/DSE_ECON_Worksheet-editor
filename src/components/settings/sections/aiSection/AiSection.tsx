@@ -9,6 +9,7 @@ import { AI_SETTINGS, useAiStatus } from "@/settings/aiSettings";
 import { MENTOR_BUY_URL, MENTOR_PRICING_URL } from "@/ai/mentor";
 import { MENTOR } from "@/ai/mentorOrigin";
 import { mentorSession, useMentorAccount } from "@/settings/mentorAccount";
+import { openBuyCredits } from "@/settings/mentorLive";
 import type { SettingsSectionProps } from "@/settings/sections";
 import { useSettings } from "@/settings/store";
 import { initialAiSetup, needsCloseGuard, savedKeys } from "./aiSetup";
@@ -96,7 +97,8 @@ export default function AiSection({
     signOut: () => void mentorSession().signOut(),
     refresh: () => void mentorSession().refresh(),
     use: () => mentorSession().use(),
-    buy: (url) => void openExternal(url || MENTOR_BUY_URL),
+    // Watches for the payment to land, so the credits update by themselves (k-0524).
+    buy: (url) => openBuyCredits(url),
     openAccount: (url) => void openExternal(url || MENTOR_BUY_URL),
     prices: () => void openExternal((mentor.kind === "signedIn" && mentor.account?.pricingUrl) || MENTOR_PRICING_URL),
   };

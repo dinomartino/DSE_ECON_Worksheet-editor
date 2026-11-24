@@ -208,6 +208,51 @@ describe('Signed in', () => {
   });
 });
 
+describe('Credits kept current (k-0524)', () => {
+  const TOKEN = 'dsm_test_token_0123456789abcdef';
+
+  it('two refreshes at once share one read', async () => {
+    const h = harness({ storedToken: TOKEN, credits: 42 });
+    await Promise.all([h.session.refresh(), h.session.refresh(), h.session.refresh()]);
+    expect(h.server.requests.filter((r) => r.path === '/ai/credits')).toHaveLength(1);
+    await h.session.refresh();
+    expect(h.server.requests.filter((r) => r.path === '/ai/credits')).toHaveLength(2);
+  });
+
+  it("a receipt's balance shows without a read; nothing known yet reads once", async () => {
+    const h = harness({ storedToken: TOKEN, credits: 42 });
+    h.session.applyBalance(30);
+    await h.session.refresh();
+    expect(h.server.requests.filter((r) => r.path === '/ai/credits')).toHaveLength(1);
+    h.session.applyBalance(17.5);
+    expect(h.session.current()).toMatchObject({ kind: 'signedIn', account: { credits: 17.5 } });
+    expect(h.server.requests.filter((r) => r.path === '/ai/credits')).toHaveLength(1);
+  });
+
+  it('a receipt that lands during a read is kept over the older number the read brings back', async () => {
+    const h = harness({ storedToken: TOKEN, credits: 42 });
+    await h.session.refresh();
+    const reading = h.session.refresh();
+    h.session.applyBalance(12);
+    await reading;
+    expect(h.session.current()).toMatchObject({ account: { credits: 12 } });
+  });
+
+  it('signed out: a receipt changes nothing', () => {
+    const h = harness({ credits: 42 });
+    h.session.applyBalance(10);
+    expect(h.session.current()).toEqual({ kind: 'signedOut' });
+  });
+
+  it('Sign out during a read stays signed out', async () => {
+    const h = harness({ storedToken: TOKEN, credits: 42 });
+    const reading = h.session.refresh();
+    await h.session.signOut();
+    await reading;
+    expect(h.session.current().kind).toBe('signedOut');
+  });
+});
+
 describe('ownProviderAfterSignOut', () => {
   const base = AI_SETTINGS.defaults({ desktop: false });
   it('keeps an own provider in use; else the first with a saved key; else Gemini', () => {

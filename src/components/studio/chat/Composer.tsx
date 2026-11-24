@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { studioJob } from '@/ai/credits';
+import { AiStatusChip } from '@/components/ai/AiStatusChip';
+import { CreditEstimate } from '@/components/ai/CreditEstimate';
 import { isImeKeydown } from '@/components/ui/ime';
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode } from '@/model/types';
@@ -160,6 +163,13 @@ export function Composer({
           )}
         </div>
       </div>
+      {/* What the AI is and what it has left, beside what this request costs (k-0524). */}
+      {!running && (
+        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1" data-chat-ai-status>
+          <AiStatusChip />
+          <CreditEstimate job={studioJob({ questions: count, sides: language === 'bilingual' ? 2 : 1 })} showLeft={false} className="!inline" />
+        </div>
+      )}
       {settingsOpen && (
         <div
           role="dialog"

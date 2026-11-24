@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AiStatusChip } from '@/components/ai/AiStatusChip';
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import type { WorksheetSummary } from '@/storage';
@@ -104,6 +105,7 @@ export function QuestionStudioScreen({
           ＋ {m.newChat}
         </button>
         <span className="flex-1" />
+        <AiStatusChip where="header" />
         {settings}
       </header>
 

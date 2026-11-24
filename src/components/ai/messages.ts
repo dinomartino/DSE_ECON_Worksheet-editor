@@ -98,4 +98,38 @@ export const AI_UI_MESSAGES = defineMessages({
   toneLook: { en: 'Needs a look', zh: '需要留意' },
   toneFailed: { en: "Couldn't translate", zh: '未能翻譯' },
   toneFinding: { en: 'Finding', zh: '發現' },
+
+  // The AI status chip on every screen, the studio's header and before big runs (k-0524).
+  chipBar: { en: 'AI status', zh: 'AI 狀態' },
+  chipCredits: { en: (n: string) => `AI credits ${n}`, zh: (n: string) => `AI 點數 ${n}` },
+  chipChecking: { en: 'AI credits …', zh: 'AI 點數 …' },
+  chipOwnKey: { en: (p: string) => `AI: own key (${p})`, zh: (p: string) => `AI：自己的 API key（${p}）` },
+  chipLocal: { en: (p: string) => `AI: ${p} on this computer`, zh: (p: string) => `AI：這部電腦的 ${p}` },
+  chipSetup: { en: 'Set up AI', zh: '設定 AI' },
+  chipBuy: { en: 'Buy credits', zh: '購買點數' },
+  chipTitleCredits: {
+    en: 'Credits left on your DSEcon Mentor account. Click for Settings → AI.',
+    zh: '你的 DSEcon Mentor 帳戶尚餘的點數。按一下開啟「設定 → AI」。',
+  },
+  chipTitleLow: {
+    en: (n: string) => `Running low: under ${n} credits, about one Question studio run.`,
+    zh: (n: string) => `點數快將用完：少於 ${n} 點，約為擬題工作室一次的用量。`,
+  },
+  chipTitleOut: {
+    en: 'No credits left. Buy credits to keep using AI, or use your own API key.',
+    zh: '點數已用完。請購買點數以繼續使用 AI，或改用你自己的 API key。',
+  },
+  chipTitleOwnKey: {
+    en: (p: string) => `AI uses your own ${p} API key. Its balance is on ${p}’s own site. Click for Settings → AI.`,
+    zh: (p: string) => `AI 正使用你自己的 ${p} API key，餘額請到 ${p} 的網站查看。按一下開啟「設定 → AI」。`,
+  },
+  chipTitleLocal: {
+    en: (p: string) => `AI runs on ${p} on this computer. Click for Settings → AI.`,
+    zh: (p: string) => `AI 正使用這部電腦上的 ${p}。按一下開啟「設定 → AI」。`,
+  },
+  chipTitleSetup: {
+    en: 'AI isn’t set up. Sign in with DSEcon Mentor or add your own API key in Settings → AI.',
+    zh: 'AI 尚未設定。請到「設定 → AI」以 DSEcon Mentor 登入，或加入你自己的 API key。',
+  },
+  chipTest: { en: 'Test build', zh: '測試版本' },
 });

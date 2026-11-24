@@ -188,7 +188,7 @@ export function MentorAccountCard({
                 {m.mentorRefresh}
               </Button>
             )}
-            <Button variant="subtle" size="sm" onClick={actions.signOut}>
+            <Button variant="dangerTinted" size="sm" onClick={actions.signOut} data-mentor-sign-out>
               {m.mentorSignOut}
             </Button>
           </div>

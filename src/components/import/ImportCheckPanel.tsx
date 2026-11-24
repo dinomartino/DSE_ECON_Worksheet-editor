@@ -12,6 +12,7 @@ import type { UiLanguage } from '@/settings/language';
 import { Button, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import type { CreditJob } from '@/ai/credits';
+import { AiStatusChip } from '@/components/ai/AiStatusChip';
 import { CreditEstimate } from '@/components/ai/CreditEstimate';
 
 /**
@@ -219,7 +220,12 @@ export function AiCheckRow({
           </Button>
         )}
       </div>
-      {run.state === 'idle' && configured && <CreditEstimate job={estimate} className="mt-0.5" />}
+      {run.state === 'idle' && (
+        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <AiStatusChip />
+          {configured && <CreditEstimate job={estimate} showLeft={false} className="!inline" />}
+        </div>
+      )}
       {busy && (
         <div className="mt-1.5 flex items-center gap-2">
           <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-line" aria-hidden>
