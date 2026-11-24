@@ -20,6 +20,8 @@ const SAMPLES: Finding[] = [
   { id: 'shape.statementEmpty', params: { side: 'en' } },
   { id: 'shape.statementCount', params: { count: 5 } },
   { id: 'shape.notCombination', params: { side: 'zh' } },
+  { id: 'shape.narrates', params: { side: 'en', words: 'dashed lines' } },
+  { id: 'shape.figureFailed' },
   { id: 'key.differs', params: { solver: 'C', key: 'B' } },
   { id: 'key.ambiguous' },
   { id: 'numbers.differ', params: { en: '5 billion', zh: '' } },

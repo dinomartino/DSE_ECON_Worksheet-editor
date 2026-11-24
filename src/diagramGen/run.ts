@@ -35,10 +35,28 @@ export interface Evaluated {
 const errors = (issues: readonly DiagramIssue[]) => issues.filter((i) => i.level === 'error').length;
 
 /** A reply checked end to end; null when it is not a spec at all. Exported for the harness and tests. */
-export function evaluateReply(reply: string, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq'>): Evaluated | null {
+export function evaluateReply(reply: string, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq' | 'edit'>): Evaluated | null {
   const parsed = parseSpec(reply);
   if (!parsed) return null;
-  return { ...evaluateSpec(parsed.spec, input, parsed.issues), questionChange: questionChangeOf(reply) };
+  const evaluated = { ...evaluateSpec(parsed.spec, input, parsed.issues), questionChange: questionChangeOf(reply) };
+  return input.edit ? editOutcome(evaluated, input) : evaluated;
+}
+
+/**
+ * An edit may move the answer ("move P1 up" can make a ceiling stop binding): that is the
+ * teacher's change, not a fault to repair. When the drawing gives another option as the
+ * answer, the words follow it: the key-against-geometry error becomes `questionChange`.
+ */
+function editOutcome(evaluated: Evaluated, input: Pick<DiagramGenInput, 'mcq'>): Evaluated {
+  const solved = evaluated.solved;
+  if (!solved || solved.option < 0 || !input.mcq || solved.option === input.mcq.answer) return evaluated;
+  const letter = 'ABCD'[solved.option];
+  const move = `With the edited diagram the answer is ${solved.labels.join(' to ')} (option ${letter}): ${solved.why}. Make option ${letter} the key and rewrite the explanation; keep the stem and the options.`;
+  return {
+    ...evaluated,
+    issues: evaluated.issues.filter((i) => i.code !== 'key.geometry'),
+    questionChange: [evaluated.questionChange, move].filter(Boolean).join(' '),
+  };
 }
 
 /** A spec checked end to end: compiled, its drawing checked, the question's labels and words against it, the key worked out again. */
