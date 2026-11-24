@@ -224,6 +224,23 @@ try {
     await shot(page, 'B6-changed-v2');
   });
 
+  await check('k-0528: in the panel the ⚙ options close on a click on the page and on Esc; the draft rows use line icons', async () => {
+    const button = page.locator('[data-write-panel] [data-chat-settings]');
+    const pop = page.locator('[data-write-panel] [data-chat-settings-pop]');
+    await button.click();
+    await pop.waitFor();
+    await shot(page, 'k0528-panel-options');
+    await page.locator('#print-root').click({ position: { x: 20, y: 20 } });
+    await pop.waitFor({ state: 'detached', timeout: 2000 });
+    await button.click();
+    await pop.waitFor();
+    await page.keyboard.press('Escape');
+    await pop.waitFor({ state: 'detached', timeout: 2000 });
+    const asks = page.locator('[data-write-panel] [data-ask]');
+    if ((await asks.count()) > 0) expect(!/\p{Extended_Pictographic}/u.test(await asks.first().textContent()), 'an emoji is left on Ask about this');
+    expect((await button.locator('svg').count()) === 1, 'the options button has no line icon');
+  });
+
   await check('the chat comes back after a reload (this paper’s), apart from the studio’s Chats', async () => {
     await page.reload({ waitUntil: 'networkidle' });
     await openPaper(page);
