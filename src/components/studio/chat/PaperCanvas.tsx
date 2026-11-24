@@ -1,5 +1,6 @@
 'use client';
 
+import type { DraftEdit } from '@/questionStudio/edit';
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
 import { PastPaperSheet } from '@/components/pastpapers/PastPaperSheet';
 import { useMessages } from '@/i18n/language';
@@ -36,7 +37,9 @@ export function PaperCanvas({
   onReject,
   onChange,
   onAsk,
-  onRestore,
+  onShowVersion,
+  onEdit,
+  onUndoEdit,
   onShowReference,
   footer,
 }: {
@@ -50,7 +53,9 @@ export function PaperCanvas({
   onReject: (d: ChatDraft) => void;
   onChange: (d: ChatDraft, how: 'harder' | 'easier' | 'another') => void;
   onAsk: (d: ChatDraft) => void;
-  onRestore: (d: ChatDraft, index: number) => void;
+  onShowVersion: (d: ChatDraft, versionId: string) => void;
+  onEdit: (d: ChatDraft, edit: DraftEdit) => Promise<void> | void;
+  onUndoEdit: (d: ChatDraft) => void;
   onShowReference: () => void;
   footer: ReactNode;
 }) {
@@ -79,7 +84,10 @@ export function PaperCanvas({
   // A click on a card (not on its buttons, links or fields, not a text selection) makes the
   // next message about it: the composer's chip (k-0535).
   const pickCard = (d: ChatDraft) => (event: MouseEvent) => {
-    if (d.state === 'added' || (event.target as HTMLElement).closest('button, a, input, textarea, select, [contenteditable="true"], [role="button"]')) return;
+    const target = event.target as HTMLElement;
+    if (d.state === 'added' || target.closest('button, a, input, textarea, select, label, [contenteditable="true"], [role="button"]')) return;
+    // Not while the teacher edits it (k-0530), nor a click in the diagram editor that React passes up from its overlay.
+    if (target.closest('[data-draft-editor]') || !(event.currentTarget as HTMLElement).contains(target)) return;
     if (typeof window !== 'undefined' && window.getSelection()?.isCollapsed === false) return;
     onAsk(d);
   };
@@ -96,7 +104,9 @@ export function PaperCanvas({
         onReject={() => onReject(d)}
         onChange={(how) => onChange(d, how)}
         onAsk={() => onAsk(d)}
-        onRestore={(i) => onRestore(d, i)}
+        onShowVersion={(id) => onShowVersion(d, id)}
+        onEdit={(edit) => onEdit(d, edit)}
+        onUndoEdit={() => onUndoEdit(d)}
       />
     </div>
   );
@@ -316,7 +326,9 @@ function Streaming({ run, language, firstNo }: { run: RunState; language: Langua
             onReject={() => undefined}
             onChange={() => undefined}
             onAsk={() => undefined}
-            onRestore={() => undefined}
+            onShowVersion={() => undefined}
+            onEdit={() => undefined}
+            onUndoEdit={() => undefined}
           />
         ) : (
           <StreamingCard key={i} no={firstNo + i} partial={live?.partial} language={language} />

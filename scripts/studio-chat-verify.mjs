@@ -190,7 +190,7 @@ try {
   await check('"Make draft 3 harder": that draft changes in place, v2 · v1, the others stay', async () => {
     const third = drafts(page).nth(2);
     await third.locator('button', { hasText: 'Harder' }).click();
-    await page.locator('[data-chat-draft="3"] [aria-label="Versions of this draft"]').waitFor({ timeout: 40_000 });
+    await page.locator('[data-chat-draft="3"] [data-version-button="2"]').waitFor({ timeout: 40_000 });
     await page.locator('[data-chat-send]').waitFor();
     await page.locator('[data-chat-draft="3"]').scrollIntoViewIfNeeded();
     await shot(page, 'A6-harder-v2');
@@ -303,6 +303,101 @@ try {
     return scrolls ? 'years scroll too' : 'years fit';
   });
   await short.context.close();
+
+  // k-0530: the teacher edits a draft by hand (words, key, diagram), with no AI call; every version is in a drop list.
+  for (const ui of ['en', 'zh-HK']) {
+    const k = await newPage(browser, ui === 'en' ? {} : { ui });
+    const en = ui === 'en';
+    await check(`k-0530 (${ui}): Edit a draft by hand (words, key, diagram): no AI call, a new version, Undo edit, the version list`, async () => {
+      await openStudio(k.page, en ? undefined : /擬題工作室/);
+      const card = await pickReference(k.page);
+      await card.dblclick();
+      await k.page.locator('[data-ref-chip]').waitFor();
+      await k.page.locator('[data-chat-send]').click();
+      await k.page.locator('[data-chat-draft]').nth(2).waitFor({ timeout: 40_000 });
+      await k.page.locator('[data-chat-send]').waitFor({ timeout: 60_000 });
+      const draft = k.page.locator('[data-chat-draft="1"]');
+      // Every request to the AI from here on is counted: an edit must make none.
+      let aiCalls = 0;
+      k.page.on('request', (r) => {
+        if (r.url().startsWith(MOCK)) aiCalls += 1;
+      });
+      await draft.locator('[data-edit]').click();
+      const form = draft.locator('[data-draft-editor]');
+      await form.waitFor();
+      await draft.scrollIntoViewIfNeeded();
+      await shot(k.page, `k0530-${ui}-edit-form`);
+      // The stem's English box (the editor's own rich-text field).
+      const stem = form.locator('[data-panel-side="en"] [contenteditable="true"]').first();
+      await stem.click();
+      await k.page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+      const mine = en ? 'A bakery raises the price of a loaf from $20 to $25 and sells 300 loaves a day instead of 400. Demand for the bread is' : 'A bakery raises the price of a loaf from $20 to $25. Demand is';
+      await k.page.keyboard.type(mine);
+      // The key: a letter that is not the AI's key, then Undo (back to the AI's), then that letter again.
+      const aiKey = Number(await form.getAttribute('data-answer'));
+      const pick = ['A', 'B', 'C', 'D'][(aiKey + 1) % 4];
+      await form.locator(`[data-edit-key="${pick}"]`).check();
+      await form.locator('[data-edit-undo]').click();
+      let undone = false;
+      for (let i = 0; i < 20 && !undone; i += 1) {
+        undone = Number(await form.getAttribute('data-answer')) === aiKey;
+        if (!undone) await k.page.waitForTimeout(100);
+      }
+      expect(undone, `Undo did not take the key back to the AI's (${await form.getAttribute('data-answer')} ≠ ${aiKey})`);
+      await form.locator(`[data-edit-key="${pick}"]`).check();
+      // The diagram: open it in the worksheet's diagram editor, clear it, Done.
+      const fig = form.locator('[data-edit-diagram-preview] svg');
+      const before = await fig.locator('path, line, polyline').count();
+      await form.locator('[data-edit-diagram-open]').click();
+      const done = k.page.getByRole('button', { name: en ? 'Done' : '完成', exact: true });
+      await done.waitFor();
+      await shot(k.page, `k0530-${ui}-diagram-editor`);
+      await k.page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+      await k.page.keyboard.press('Delete');
+      await done.click();
+      const after = await fig.locator('path, line, polyline').count();
+      expect(after < before, `the diagram did not change (${before} → ${after})`);
+      await form.locator('[data-edit-save]').click();
+      await form.waitFor({ state: 'detached', timeout: 10_000 });
+      expect(aiCalls === 0, `the edit called the AI ${aiCalls} time(s)`);
+      await draft.scrollIntoViewIfNeeded();
+      await shot(k.page, `k0530-${ui}-edited-card`);
+      const flat = async () => ((await draft.textContent()) ?? '').replace(/\s+/g, ' ');
+      const text = await flat();
+      // The question is drawn in the sheet's own shadow root: a locator reaches it, textContent does not.
+      const edited = () => draft.getByText('A bakery raises the price', { exact: false }).count();
+      expect((await edited()) > 0, `the card does not show the edited stem: ${JSON.stringify(text.slice(0, 200))}`);
+      expect(await draft.locator('[data-edited-chip]').isVisible(), 'no Edited chip');
+      expect((await draft.locator('[data-version-button="2"]').count()) === 1, 'the edit is not version 2');
+      expect(text.includes(en ? `Key ${pick}` : `答案 ${pick}`), `the key did not change to ${pick}`);
+      const key = draft.locator('[data-check="key"]');
+      expect((await key.getAttribute('data-state')) === 'skipped', `key check is ${await key.getAttribute('data-state')}, not "check again"`);
+      await draft.scrollIntoViewIfNeeded();
+      await shot(k.page, `k0530-${ui}-edited-card`);
+      // The version list: newest first, the shown one ticked; picking v1 shows the AI's again, nothing renumbers.
+      await draft.locator('[data-version-button]').click();
+      const list = k.page.locator('[data-version-list]');
+      await list.waitFor();
+      const rows = await list.locator('[data-version-row]').evaluateAll((els) => els.map((e) => e.getAttribute('data-version-row')));
+      expect(rows.join(',') === '2,1', `rows ${rows.join(',')}`);
+      await shot(k.page, `k0530-${ui}-version-list`);
+      await k.page.keyboard.press('Escape');
+      await list.waitFor({ state: 'detached', timeout: 2000 });
+      await draft.locator('[data-undo-edit]').click();
+      expect((await draft.locator('[data-version-button="1"]').count()) === 1, 'Undo edit did not show version 1');
+      expect((await edited()) === 0, 'version 1 still shows the edit');
+      await draft.locator('[data-version-button]').click();
+      await list.locator('[data-version-row="2"]').click();
+      expect((await draft.locator('[data-version-button="2"]').count()) === 1, 'picking version 2 did not show it');
+      // Add takes the version shown: accept it and add it into a new worksheet.
+      expect(aiCalls === 0, `the version list called the AI ${aiCalls} time(s)`);
+      await draft.locator('[data-accept]').click();
+      await k.page.locator('[data-studio-tray] button', { hasText: en ? /^Add$/ : /^加入$/ }).click();
+      await k.page.locator('#print-root').getByText('A bakery raises the price', { exact: false }).first().waitFor({ timeout: 20_000 });
+      expect(k.errors.length === 0, k.errors[0]);
+    });
+    await k.context.close();
+  }
 
   // k-0531: a draft with a table is drawn as a table; a near-copy is shown with a red warning, never left out.
   for (const ui of ['en', 'zh-HK']) {

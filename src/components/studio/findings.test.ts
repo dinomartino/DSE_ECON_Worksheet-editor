@@ -24,6 +24,8 @@ const SAMPLES: Finding[] = [
   { id: 'shape.figureFailed' },
   { id: 'key.differs', params: { solver: 'C', key: 'B' } },
   { id: 'key.ambiguous' },
+  { id: 'key.edited' },
+  { id: 'check.edited' },
   { id: 'numbers.differ', params: { en: '5 billion', zh: '' } },
   { id: 'terms.note', params: { text: 'Term fixed: deadweight loss → 無謂損失' } },
   { id: 'syllabus.limited', params: { term: 'Giffen goods', code: 'C.individual-demand' } },

@@ -39,6 +39,10 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       return m.shapeFigureFailed;
     case 'key.differs':
       return m.keyDiffers(str(p.solver), str(p.key));
+    case 'key.edited':
+      return m.keyEdited;
+    case 'check.edited':
+      return m.checkEdited;
     case 'key.ambiguous':
       return m.keyAmbiguous;
     case 'numbers.differ':
@@ -79,7 +83,7 @@ export function findingText(finding: Finding, m: FindingMessages): string {
 /** Every code `findingText` knows, for the test that holds the engine to it. */
 export const KNOWN_FINDINGS: readonly string[] = [
   'shape.stemEmpty', 'shape.optionCount', 'shape.optionEmpty', 'shape.optionsSame', 'shape.keyRange', 'shape.statementEmpty',
-  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'key.differs', 'key.ambiguous', 'numbers.differ', 'terms.note', 'syllabus.limited',
+  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'numbers.differ', 'terms.note', 'syllabus.limited',
   'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close', 'copy.reference',
   'run.fewer', 'run.stopped', 'run.keyNotChecked',
 ];

@@ -480,6 +480,15 @@ export function refine(
   // diagram, or may, edits its spec; one that touches only the words keeps the figure when the
   // new words still fit it.
   const parts = refinement.kind === 'change' ? (refinement as { parts?: readonly string[] }).parts : undefined;
+  // A figure the teacher redrew by hand (k-0530) is not its spec any more: a change of the words
+  // only keeps that drawing as it is, and asks for no new one. (A change of the diagram itself
+  // starts from the spec; the hand-drawn version stays in the draft's version list.)
+  const handDrawn = target.diagram?.edited && target.diagram.block ? target.diagram : undefined;
+  if (handDrawn && refinement.kind === 'change' && parts && !parts.includes('diagram')) {
+    return writeDrafts({ ...request, count: 1 }, { ...deps, diagrams: false }, hooks, { avoid: others, rewrite: { how: 'change', target, note: refinement.text.trim().slice(0, 400) } }).then((out) =>
+      out.ok ? { ...out, drafts: out.drafts.map((d) => ({ ...d, diagram: handDrawn })) } : out,
+    );
+  }
   if (refinement.kind === 'change' && spec && (!parts || parts.includes('diagram'))) return changeWithFigure(request, target, refinement.text, spec, others, deps, hooks);
   const figure = spec ? { figure: { spec, mode: refinement.kind === 'change' ? ('keep' as const) : ('base' as const) } } : {};
   if (refinement.kind === 'another') {

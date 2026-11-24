@@ -1,4 +1,5 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
+import type { LocalCheckContext } from './edit';
 import { aiErrorInfo } from '@/ai/errors';
 import type { AiErrorInfo } from '@/ai/types';
 import type { Side } from '@/model/textSlots';
@@ -82,6 +83,12 @@ export interface StudioEnv {
   references?(request: StudioRequest, signal: AbortSignal): Promise<SourceQuestion[]>;
   /** Reads the pictures of examples that carry `figureBlocks` (draws diagrams: browser only). Never throws; absent = words only. */
   figures?(examples: readonly SourceQuestion[]): Promise<SourceQuestion[]>;
+  /**
+   * What the local checks read after the teacher's own edit (k-0530): the glossary and the
+   * corpus, with no provider and no AI. Never throws; a part it cannot read is null (that
+   * check then says "check again"). Absent: both null.
+   */
+  localChecks?(): Promise<LocalCheckContext>;
 }
 
 export interface StudioState {

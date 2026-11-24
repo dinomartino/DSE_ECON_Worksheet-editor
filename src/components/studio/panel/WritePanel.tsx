@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ChatIcon, PastPaperIcon, PencilIcon, RefreshIcon } from '@/components/ui/icons';
+import { DraftEditor } from '../chat/DraftEditor';
+import { VersionMenu } from '../chat/VersionMenu';
 import { useMessages } from '@/i18n/language';
 import { anchorLabel } from '@/library/tabFilters';
 import { computeNumbering } from '@/model/numbering';
@@ -350,8 +352,26 @@ function DraftDetails({ draft, busy }: { draft: ChatDraft; busy: boolean }) {
   const words = (finding: Finding) => findingText(finding, f);
   const store = usePaperChat.getState();
   const live = acceptable(draft);
+  const [editing, setEditing] = useState(false);
+  const undoFrom = studio.made?.by === 'you' && draft.older.some((v) => v.version === studio.made?.from) ? studio.made.from : undefined;
   const small =
     'cursor-pointer rounded-lg border border-line bg-surface px-2 py-0.5 text-[11.5px] text-ink hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50';
+  if (editing) {
+    return (
+      <div className="border-t border-line bg-surface text-[12px]" data-write-details>
+        <DraftEditor
+          draft={studio}
+          sides={draft.entry.request.sides}
+          no={draft.no}
+          onCancel={() => setEditing(false)}
+          onSave={async (change) => {
+            await store.editDraft(draft.id, change);
+            setEditing(false);
+          }}
+        />
+      </div>
+    );
+  }
   return (
     <div className="border-t border-line bg-surface-sunken/50 px-3 pb-2.5 pt-2 text-[12px]" data-write-details>
       <div className="flex flex-wrap gap-1">
@@ -372,14 +392,14 @@ function DraftDetails({ draft, busy }: { draft: ChatDraft; busy: boolean }) {
           return row && row.state !== 'pass' ? <CheckLine key={id} row={row} solve={id === 'key' ? studio.solve : undefined} words={words} /> : null;
         })}
       </ul>
-      {draft.older.length > 0 && (
-        <div className="mt-1.5 flex items-center gap-1.5 text-ink-muted" aria-label={c.versionsLabel}>
-          {c.version(draft.older.length + 1)}
-          {draft.older.map((_, i) => (
-            <button key={i} type="button" title={c.backTo(i + 1)} onClick={() => store.restoreVersion(draft.id, i)} disabled={busy} className="cursor-pointer text-accent underline underline-offset-2 disabled:opacity-50">
-              {c.version(i + 1)}
-            </button>
-          ))}
+      {(draft.older.length > 0 || studio.edited) && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-ink-muted">
+          <VersionMenu draft={draft} disabled={busy} onShow={(id) => store.showVersion(draft.id, id)} />
+          {studio.edited && (
+            <span data-edited-chip>
+              <Chip tone="idle">{c.editedChip}</Chip>
+            </span>
+          )}
         </div>
       )}
       {(live || draft.state === 'rejected') && (
@@ -400,6 +420,14 @@ function DraftDetails({ draft, busy }: { draft: ChatDraft; busy: boolean }) {
                 {q.easier}
               </button>
               <span className="flex-1" />
+              {undoFrom !== undefined && (
+                <button type="button" className={small} disabled={busy} title={c.undoEditTitle(undoFrom)} onClick={() => store.undoEdit(draft.id)} data-undo-edit>
+                  {c.undoEdit}
+                </button>
+              )}
+              <button type="button" className={`${small} inline-flex items-center gap-1`} disabled={busy} title={c.editTitle} onClick={() => setEditing(true)} data-edit>
+                <PencilIcon size={12} /> {c.edit}
+              </button>
               <button type="button" className={`${small} inline-flex items-center gap-1`} title={m.askTitle} onClick={() => useWritePanel.getState().setAsk(draft.id)} data-ask>
                 <ChatIcon size={12} /> {c.askAbout}
               </button>

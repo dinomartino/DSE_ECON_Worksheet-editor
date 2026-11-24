@@ -9,6 +9,8 @@ import type { ChatStorage } from './chatStorage';
 import type { AiTurn, Chat, ChatDraft, ChatRef, ChatSettings, ChangeHow, Note, Step, Turn } from './chatTypes';
 import { applyEvent, emptyLive } from '@/questionStudio/stream';
 import { hasWarning } from '@/questionStudio/validate';
+import { applyEdit, type DraftEdit } from '@/questionStudio/edit';
+import { firstVersion, showing, undoEdit, withAiVersion, withEdit } from './versions';
 import type { LiveState, SourceQuestion as Source, StudioEvent } from '@/questionStudio/types';
 import type { KeyPick, PickOutcome, StudioEngine } from './engine';
 import { briefsOf, decide, editable, readLocally, recentOf, type IntentKind, type LocalRead, type TurnIntent } from './intent';
@@ -72,6 +74,15 @@ export interface ChatState {
   setDraftState(draftId: string, state: 'open' | 'accepted' | 'rejected'): void;
   /** Back to an older version of a draft (the current one becomes the newest older one). */
   restoreVersion(draftId: string, index: number): void;
+  /** Show this version of a draft (by its id, from the version list): Add, the page and the AI use it. Nothing renumbers (k-0530). */
+  showVersion(draftId: string, versionId: string): void;
+  /**
+   * The teacher's own edit of the version shown (k-0530): no AI, no credits. The local checks
+   * run again; on an AI version it makes a new 「你修改」 version, on their own it updates it.
+   */
+  editDraft(draftId: string, edit: DraftEdit): Promise<void>;
+  /** Back to the version the shown edit came from. */
+  undoEdit(draftId: string): void;
   delivered(draftIds: readonly string[]): void;
   /** Added drafts back to open (their question was undone in the paper: the ✦ Write panel). */
   undelivered(draftIds: readonly string[]): void;
@@ -291,7 +302,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       edit(chatId, (c) => {
         const kept = replace ? c.drafts.filter((d) => d.state !== 'open') : c.drafts;
         let no = c.drafts.reduce((max, d) => Math.max(max, d.no), 0);
-        const fresh = outcome.drafts.map((draft): ChatDraft => ({ id: newId(), no: ++no, entry: { draft, request }, older: [], state: 'open', turnId }));
+        const fresh = outcome.drafts.map((draft): ChatDraft => ({ id: newId(), no: ++no, entry: { draft: firstVersion(draft, now()), request }, older: [], state: 'open', turnId }));
         return {
           ...c,
           drafts: [...kept, ...fresh],
@@ -449,7 +460,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
           let freshId = '';
           edit(chatId, (c) => {
             no = c.drafts.reduce((max, d) => Math.max(max, d.no), 0) + 1;
-            const fresh: ChatDraft = { id: newId(), no, entry: { draft: made, request: target.entry.request }, older: [], state: 'open', turnId };
+            const fresh: ChatDraft = { id: newId(), no, entry: { draft: firstVersion(made, now(), 'another'), request: target.entry.request }, older: [], state: 'open', turnId };
             freshId = fresh.id;
             const at = c.drafts.findIndex((d) => d.id === draftId);
             return { ...c, drafts: [...c.drafts.slice(0, at + 1), fresh, ...c.drafts.slice(at + 1)] };
@@ -462,9 +473,11 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
             ...c,
             drafts: c.drafts.map((d) => {
               if (d.id !== draftId) return d;
-              version = d.older.length + 2;
+              // A new version on top of the one shown (k-0530: numbered once, never renumbered).
+              const next = withAiVersion(d, made, how, refinement.kind === 'change' ? refinement.text : '', now());
+              version = next.entry.draft.version ?? next.older.length + 1;
               // Changed: read it again, so it is open (not accepted) until the teacher says.
-              return { ...d, older: [...d.older, d.entry.draft], entry: { ...d.entry, draft: made }, state: 'open' };
+              return { ...next, state: 'open' };
             }),
           }));
           done.push(draftId);
@@ -654,12 +667,27 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       restoreVersion: (draftId, index) =>
         edit(active().id, (c) => ({
           ...c,
-          drafts: c.drafts.map((d) => {
-            if (d.id !== draftId || !d.older[index]) return d;
-            const older = [...d.older.filter((_, i) => i !== index), d.entry.draft];
-            return { ...d, older, entry: { ...d.entry, draft: d.older[index] }, state: 'open' };
-          }),
+          drafts: c.drafts.map((d) => (d.id === draftId && d.older[index] ? { ...showing(d, d.older[index].id), state: 'open' } : d)),
         })),
+
+      showVersion: (draftId, versionId) =>
+        edit(active().id, (c) => ({ ...c, drafts: c.drafts.map((d) => (d.id === draftId && d.state !== 'added' ? showing(d, versionId) : d)) })),
+
+      editDraft: async (draftId, change) => {
+        const chatId = active().id;
+        const found = (await deps.env.localChecks?.().catch(() => undefined)) ?? { glossary: null, corpus: null };
+        edit(chatId, (c) => ({
+          ...c,
+          drafts: c.drafts.map((d) => {
+            if (d.id !== draftId || d.state === 'added') return d;
+            const others = c.drafts.filter((o) => o.id !== draftId && o.state !== 'rejected').map((o) => o.entry.draft);
+            const edited = applyEdit(d.entry.draft, change, d.entry.request, others, found, newId());
+            return withEdit(d, edited, now());
+          }),
+        }));
+      },
+
+      undoEdit: (draftId) => edit(active().id, (c) => ({ ...c, drafts: c.drafts.map((d) => (d.id === draftId && d.state !== 'added' ? undoEdit(d) : d)) })),
 
       delivered: (ids) => {
         const gone = new Set(ids);

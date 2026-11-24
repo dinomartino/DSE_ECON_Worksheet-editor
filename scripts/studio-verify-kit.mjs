@@ -91,6 +91,8 @@ export function startBankServer(port) {
 
 export const results = [];
 export async function check(name, fn) {
+  // STUDIO_ONLY=<words>: run only the checks whose name holds them (a self-contained one, like k-0530's), for a quick re-run.
+  if (process.env.STUDIO_ONLY && !name.includes(process.env.STUDIO_ONLY)) return;
   try {
     const detail = await fn();
     results.push({ name, ok: true });

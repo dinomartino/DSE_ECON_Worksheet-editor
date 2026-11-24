@@ -15,6 +15,16 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Edit the studio's questions yourself.** Every question the AI writes in the Question studio
+  now has an **Edit** button: change the question, the options, the correct answer and the
+  explanation in the same fields as the editor (bold, subscripts and fractions included), and
+  open its diagram in the diagram editor you use in a worksheet. Your edits cost no AI credits.
+  Saving keeps your version beside the AI's: a **Version** list on the card shows every version,
+  newest first, who made it (the AI, or you) and when, and you can go back to any of them, or
+  press **Undo edit**. The checks that run on your computer run again; the answer check that
+  needs the AI says "check again" until the AI changes the question. Add, and the AI's next
+  change, use the version you are looking at.
+  <!-- zh: **自己修改擬題工作室的題目。** AI 在擬題工作室寫出的每條題目現在都有「修改」按鈕：可在與編輯器相同的欄位中修改題幹、選項、正確答案及解釋（包括粗體、下標及分數），並在工作紙所用的圖表編輯器中開啟其圖表。你的修改不會扣 AI 點數。儲存後，你的版本會與 AI 的版本並存：卡片上的「版本」清單顯示每個版本（最新的在最上）、由誰（AI 或你）及何時製作，你可以返回任何一個版本，或按「復原修改」。在你電腦上進行的檢查會再次進行；需要 AI 的答案檢查會顯示「請再檢查」，直至 AI 修改該題。「加入」及 AI 的下一次修改都會使用你正在查看的版本。 -->
 - **The Question studio chat understands which draft you mean.** Once drafts are on the page, you can ask for a change in your own words, in English, Chinese or both: "the second one is too wordy", "the one with the table", "make the last question harder", "上面嗰題難啲", "改返啲選項", "Q2 太易". The draft you are editing gets a new version (the old one is one click away), and no new draft is started. Click a draft card (or **Ask about this**) and the message box shows **Editing Draft 2 ×**. When your words clearly name a draft, the same chip appears as you type, so you can remove it before anything is sent. If the AI cannot tell which draft you mean, it asks, with a button for each draft. Ask a question about a draft ("why is B wrong?", 「點解答案係 C？」) and it answers in the chat without rewriting the draft. Reading your message adds no extra AI request: the request that picks the key point does it, and clear wording is read on your computer for free.
   <!-- zh: **擬題工作室的對話明白你指哪一題。** 草稿出現後，你可以用自己的字眼（英文、中文或中英夾雜）要求修改：「the second one is too wordy」、「有表格嗰題」、「最後一題難啲」、「上面嗰題難啲」、「改返啲選項」、「Q2 太易」。被修改的草稿會產生新版本（舊版本一按即可取回），不會另外開始擬新題目。按一下草稿卡（或「就這題提問」），訊息框會顯示「修改第 2 題 ×」；如你的字眼清楚指明某一題，輸入時已會顯示同一標籤，傳送前可以移除。如 AI 未能確定你指哪一題，會先問你，並為每一題提供按鈕。就某一題提問（「why is B wrong?」、「點解答案係 C？」），AI 會在對話中回答，不會改寫草稿。理解你的訊息不會多用一次 AI 請求：由選取學習要點的同一請求處理，字眼清楚的訊息更會在你的電腦上直接判斷，不收費。 -->
 - **Choose between your DSEcon Mentor credits and your own API key.** If you are signed in with DSEcon Mentor and also have your own API key saved, Settings → AI now asks **Use for AI: DSEcon Mentor credits / My own key (Gemini)**, and remembers your choice. The AI chip in the Question studio and the import's AI check says which one is in use; click it to switch in one click. Signing out of DSEcon Mentor or forgetting your key switches to the other one by itself, and **Use my own key** after "Not enough AI credits" switches to your key and runs the job again. Nothing is ever charged to the one you didn't choose.

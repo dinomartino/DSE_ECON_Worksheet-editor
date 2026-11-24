@@ -36,6 +36,14 @@ export const liveBank: ReferenceBank = {
 
 export const liveEnv: StudioEnv = {
   figures: async (examples) => (await import('./figures')).withFigures(examples),
+  async localChecks() {
+    // No provider: the glossary and the corpus only (an edit never reaches the AI, k-0530).
+    const [glossary, corpus] = await Promise.all([
+      import('@/glossary/load').then(({ loadGlossary }) => loadGlossary()).catch(() => null),
+      Promise.all([pastRows(), bankRowsNow()]).then(([past, mine]) => studioCorpus(past, mine).index).catch(() => null),
+    ]);
+    return { glossary, corpus };
+  },
   references: (request, signal) => (autoReferencesOn() ? findReferences(request, liveBank, { signal }) : Promise.resolve([])),
   async resolve() {
     const provider = readAiStatus().provider;

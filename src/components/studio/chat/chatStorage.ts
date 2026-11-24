@@ -3,6 +3,7 @@ import { shownDraft } from '@/questionStudio/validate';
 
 const LANGUAGE_MODES: readonly LanguageMode[] = ['en', 'zh', 'bilingual'];
 import { CHAT_COUNTS, type Chat, type ChatDraft, type ChatRef, type Turn } from './chatTypes';
+import { numbered } from './versions';
 
 /**
  * Saved chats (decision 4, u-2ouc): kept on this computer in localStorage, newest first, at
@@ -68,7 +69,8 @@ export function readChat(x: unknown): Chat | undefined {
     updatedAt: x.updatedAt,
     refs: x.refs.filter(isRef),
     turns: x.turns.filter(isTurn),
-    drafts: x.drafts.filter(isDraft).map(shownChatDraft),
+    // Versions saved before k-0530 get their numbers by place (`numbered`).
+    drafts: x.drafts.filter(isDraft).map(shownChatDraft).map(numbered),
     picks,
     settings: { count, level, language },
     lastText: isStr(x.lastText) ? x.lastText : '',
