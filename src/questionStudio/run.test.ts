@@ -378,6 +378,17 @@ describe('refine', () => {
     expect(userOf(change.client.requests[0]).rewrite).toMatchObject({ how: 'change', note: 'make #2 use property prices' });
   });
 
+  it('a words-only change of a draft whose figure the teacher redrew keeps that drawing and asks for no new one (k-0530)', async () => {
+    const drafts = await sheet();
+    const block = { kind: 'diagram', id: 'hand', widthPx: 300, heightPx: 200, diagram: { curves: [], points: [], labels: [], arrows: [] } } as never;
+    const target = { ...drafts[0], diagram: { status: 'ok' as const, block, placement: 'question' as const, issues: [], edited: true as const, spec: {} as never } };
+    const { client, deps } = setup([write(D), solver()]);
+    const out = ok(await refine(REQUEST, target, { kind: 'change', text: 'use property prices', parts: ['stem'] }, [], { ...deps, diagrams: true }, hooks()));
+    expect(out.drafts[0].diagram).toMatchObject({ block, edited: true });
+    // The write and the blind solve only: no diagram request.
+    expect(client.requests).toHaveLength(2);
+  });
+
   it('Another writes one more beside the others and must not repeat any of them', async () => {
     const drafts = await sheet();
     const { client, deps } = setup([write(A), write(D), solver()]);
