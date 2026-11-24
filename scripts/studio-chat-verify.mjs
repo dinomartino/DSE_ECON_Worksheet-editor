@@ -372,6 +372,11 @@ try {
       expect(text.includes(en ? `Key ${pick}` : `答案 ${pick}`), `the key did not change to ${pick}`);
       const key = draft.locator('[data-check="key"]');
       expect((await key.getAttribute('data-state')) === 'skipped', `key check is ${await key.getAttribute('data-state')}, not "check again"`);
+      // k-0540: the hand-edited diagram has not been checked against the key: the card says so.
+      if (await draft.locator('[data-key-check]').count()) {
+        expect((await draft.locator('[data-key-check]').first().getAttribute('data-key-check')) === 'again', 'the edited diagram does not ask to check the key again');
+        await shot(k.page, `k0540-${ui}-key-again`);
+      }
       await draft.scrollIntoViewIfNeeded();
       await shot(k.page, `k0530-${ui}-edited-card`);
       // The version list: newest first, the shown one ticked; picking v1 shows the AI's again, nothing renumbers.

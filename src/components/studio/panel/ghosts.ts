@@ -5,6 +5,7 @@ import type { Question, Worksheet } from '@/model/types';
 import { buildsOf, materialize } from '@/questionStudio/deliver';
 import { studioBuilds } from '@/questionStudio/insert';
 import { stemBlocks } from '@/questionStudio/stemTable';
+import { keyCheckOf, type KeyCheck } from '@/questionStudio/keyCheck';
 import { hasWarning } from '@/questionStudio/validate';
 import type { PartialDraft } from '@/questionStudio/partial';
 import { flowOf } from '@/model/flow';
@@ -33,6 +34,8 @@ export interface Ghost {
   status: 'writing' | 'changing' | 'drawing' | 'ok' | 'look' | 'warn';
   /** The key's letter, once known. */
   key?: string;
+  /** The key against the drawing (k-0540), when the draft has a figure. */
+  keyCheck?: KeyCheck;
 }
 
 export const GHOST_PREFIX = 'ai-draft-';
@@ -56,6 +59,11 @@ function partialQuestion(p: PartialDraft): Question | undefined {
   return q ? ({ ...q, blocks: stemBlocks(draft.stem), aiMade: true } as Question) : undefined;
 }
 
+const keyCheckPart = (d: Parameters<typeof keyCheckOf>[0]): { keyCheck?: KeyCheck } => {
+  const k = keyCheckOf(d);
+  return k ? { keyCheck: k } : {};
+};
+
 export function ghostsOf(chat: Chat, run: RunState | undefined): Ghost[] {
   const mine = run?.chatId === chat.id ? run : undefined;
   const out: Ghost[] = [];
@@ -71,6 +79,7 @@ export function ghostsOf(chat: Chat, run: RunState | undefined): Ghost[] {
       question: { ...q, id },
       status: mine?.target === d.id ? 'changing' : hasWarning(d.entry.draft) ? 'warn' : d.entry.draft.status === 'look' ? 'look' : 'ok',
       ...(d.entry.draft.draft.answerIndex >= 0 ? { key: LETTERS[d.entry.draft.draft.answerIndex] } : {}),
+      ...keyCheckPart(d.entry.draft),
     });
   }
   // A new write's drafts as they arrive (a change shows the draft it changes, marked).
@@ -80,7 +89,7 @@ export function ghostsOf(chat: Chat, run: RunState | undefined): Ghost[] {
       if (live.draft) {
         const build = studioBuilds([live.draft], mine.request?.keyPoint ?? '')[0];
         const q = build && materialize(build);
-        if (q) out.push({ id, question: { ...q, id }, status: live.diagram === 'working' ? 'drawing' : hasWarning(live.draft) ? 'warn' : live.draft.status === 'look' ? 'look' : 'ok', ...(live.draft.draft.answerIndex >= 0 ? { key: LETTERS[live.draft.draft.answerIndex] } : {}) });
+        if (q) out.push({ id, question: { ...q, id }, status: live.diagram === 'working' ? 'drawing' : hasWarning(live.draft) ? 'warn' : live.draft.status === 'look' ? 'look' : 'ok', ...(live.draft.draft.answerIndex >= 0 ? { key: LETTERS[live.draft.draft.answerIndex] } : {}), ...keyCheckPart(live.draft) });
       } else if (live.partial) {
         const q = partialQuestion(live.partial);
         if (q) out.push({ id, question: { ...q, id }, status: 'writing' });

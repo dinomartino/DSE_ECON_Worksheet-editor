@@ -13,6 +13,12 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Studio cards say whether the answer matches the diagram.** When the AI draws a diagram for a
+  question, each draft card (and its row in the ✦ Write panel and the Version list) now shows the
+  result of working the answer out again from the drawing: a quiet ✓ when it matches, a red
+  warning when the drawing gives another option, and "Check the key again" after you changed the
+  diagram by hand.
+  <!-- zh: **擬題工作室的草稿會標明答案是否與圖表相符。** AI 為題目繪圖後，每張草稿卡（以及 ✦ 擬題面板和版本清單中的該行）會顯示由圖表重新推算答案的結果：相符時顯示低調的 ✓；圖表得出另一個選項時顯示紅色警告；你手動修改圖表後則提示「請再核對答案」。 -->
 - **Edit the studio's questions yourself.** Every question the AI writes in the Question studio
   now has an **Edit** button: change the question, the options, the correct answer and the
   explanation in the same fields as the editor (bold, subscripts and fractions included), and

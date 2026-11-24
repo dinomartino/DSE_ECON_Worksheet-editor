@@ -5,6 +5,7 @@ import type { GhostLayer } from '@/components/preview/Preview';
 import { useMessages } from '@/i18n/language';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { keyCheckWords } from '../chat/KeyCheckChip';
 import { STUDIO_CHAT_MESSAGES } from '../chat/chat.messages';
 import { QUESTION_STUDIO_MESSAGES } from '../messages';
 import type { RunState } from '../chat/chatStore';
@@ -134,6 +135,15 @@ function GhostFrame({ ghost, number, children }: { ghost: Ghost; number: string;
         </span>
         {statusChip}
         <span className="flex-1" />
+        {ghost.keyCheck && ghost.keyCheck.state !== 'ok' && (
+          <span
+            className={`${chip} ${ghost.keyCheck.state === 'differs' ? 'border-danger/40 bg-danger-soft text-danger-ink' : 'border-warn-ink/30 bg-warn-soft text-warn-ink'}`}
+            title={keyCheckWords(ghost.keyCheck, c).title}
+            data-ghost-key-check={ghost.keyCheck.state}
+          >
+            {keyCheckWords(ghost.keyCheck, c).label}
+          </span>
+        )}
         {ghost.key && <span className={`${chip} border-line bg-surface text-ink`}>{q.key(ghost.key)}</span>}
         {ready && ghost.draftId && (
           <>

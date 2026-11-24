@@ -5,12 +5,14 @@ import { ChevronDownIcon } from '@/components/ui/icons';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import type { StudioDraft, VersionMade } from '@/questionStudio/types';
+import { keyCheckOf } from '@/questionStudio/keyCheck';
 import { hasWarning } from '@/questionStudio/validate';
 import { useDismiss } from '../dismiss';
 import { QUESTION_STUDIO_MESSAGES } from '../messages';
 import { Chip } from '../parts';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 import type { ChatDraft } from './chatTypes';
+import { KeyCheckChip } from './KeyCheckChip';
 import { currentNumber, madeOf, versionsOf } from './versions';
 
 type ChatMessages = Messages<typeof STUDIO_CHAT_MESSAGES>;
@@ -97,6 +99,7 @@ export function VersionMenu({ draft, disabled = false, onShow }: { draft: ChatDr
                   </span>
                   {timeOf(made.at) && <span className="block text-[11px] text-ink-subtle">{timeOf(made.at)}</span>}
                 </span>
+                <KeyCheckChip check={keyCheckOf(version)} m={m} quiet />
                 {chipOf(version)}
               </button>
             );
