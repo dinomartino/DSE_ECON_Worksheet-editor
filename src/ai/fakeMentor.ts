@@ -2,13 +2,14 @@ import type { HttpDeps } from './types';
 
 /**
  * Test support, never shipped: a stand-in for Mentor's hosted AI (k-0519), answering as
- * `Outbox/k-0518/CONTRACT.md` v1.4 says: link-code sign-in (`/auth/link/start`, `/check`),
+ * `Outbox/k-0518/CONTRACT.md` v1.6 says: link-code sign-in (`/auth/link/start`, `/check`),
  * `GET /ai/credits`, and `POST /ai/generate` (`{ feature, stream, request }` → `{ response,
  * mentor }`, or Gemini's chunks then `event: mentor`). It charges each call from
  * `usageMetadata` at the contract's rates, refuses with 402 when the credits are short and
  * records every request. CONTRACT v1.3 (k-0521): a key already used answers `409
  * duplicate_request` and is never charged (Mentor keeps no answers); a call that failed and
- * was given back (502) frees its key; `deadline` stops a call and charges it.
+ * was given back (502) frees its key; `deadline` stops a call and charges it. CONTRACT v1.6
+ * (k-0539): the call's `feature` picks the model (`FAKE_MODELS`), and it is charged at that model's rates.
  */
 
 export interface FakeMentorOptions {
@@ -33,6 +34,8 @@ export interface FakeMentorOptions {
   trialRefused?: boolean;
   /** An older Mentor (before v1.4): `/ai/credits` has `packs` but no `buy`. */
   noBuy?: boolean;
+  /** An older Mentor (before v1.6): one model for every job, `/ai/credits` has no `models`. */
+  noModels?: boolean;
   /** Sign-out answers this status (or fails as a network error), not 204. */
   logout?: number | 'network';
 }
@@ -42,6 +45,16 @@ export interface FakeMentorRequest { method: string; path: string; headers: Reco
 const API = 'https://dseconmentor.com/api/app/v1';
 /** CONTRACT §2: 100 credits = HK$1 at US$1 = HK$7.8 of US$1.50 in / US$7.50 out per million. */
 export const FAKE_RATES = { inputPerMillionTokens: 1170, outputPerMillionTokens: 5850 };
+
+/** CONTRACT §2 v1.6 `models`, as Mentor's development sends it (k-0539): the easy jobs on Flash-Lite. */
+export const FAKE_MODELS = {
+  default: 'gemini-4-hydrogen',
+  byFeature: { translate: 'gemini-3.5-flash-lite', test: 'gemini-3.5-flash-lite' } as Record<string, string>,
+  rates: {
+    'gemini-4-hydrogen': { ...FAKE_RATES, cachedInputPerMillionTokens: 58.5 },
+    'gemini-3.5-flash-lite': { inputPerMillionTokens: 234, cachedInputPerMillionTokens: 23.4, outputPerMillionTokens: 1950 },
+  } as Record<string, { inputPerMillionTokens: number; cachedInputPerMillionTokens: number; outputPerMillionTokens: number }>,
+};
 
 /** CONTRACT §2 v1.4 `buy`, as Mentor sends it (its quick-pick credits are the server's own results). */
 export const FAKE_BUY = {
@@ -71,13 +84,17 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
     new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
   const relayError = (status: number, error: string, extra: Record<string, unknown> = {}) => json(status, { error, ...extra });
 
-  const cost = () => (usage.promptTokenCount * FAKE_RATES.inputPerMillionTokens + (usage.candidatesTokenCount + (usage.thoughtsTokenCount ?? 0)) * FAKE_RATES.outputPerMillionTokens) / 1e6;
-  const receipt = () => {
-    const charged = cost();
+  const modelOf = (feature: unknown) => (opts.noModels || typeof feature !== 'string' ? FAKE_MODELS.default : (FAKE_MODELS.byFeature[feature] ?? FAKE_MODELS.default));
+  const cost = (feature?: unknown) => {
+    const r = FAKE_MODELS.rates[modelOf(feature)];
+    return (usage.promptTokenCount * r.inputPerMillionTokens + (usage.candidatesTokenCount + (usage.thoughtsTokenCount ?? 0)) * r.outputPerMillionTokens) / 1e6;
+  };
+  const receipt = (feature?: unknown) => {
+    const charged = cost(feature);
     state.credits = Math.max(0, state.credits - charged);
     state.charged += charged;
     state.charges++;
-    return { requestId: 'req_test', model: 'gemini-4-hydrogen', usage: { inputTokens: usage.promptTokenCount, outputTokens: usage.candidatesTokenCount, thinkingTokens: usage.thoughtsTokenCount ?? 0 }, charged, balance: state.credits, estimated: false };
+    return { requestId: 'req_test', model: modelOf(feature), usage: { inputTokens: usage.promptTokenCount, outputTokens: usage.candidatesTokenCount, thinkingTokens: usage.thoughtsTokenCount ?? 0 }, charged, balance: state.credits, estimated: false };
   };
 
   const fetch = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -113,7 +130,8 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
         month: { spent: 0, cap: 20000, resetsAt: '2026-11-30T16:00:00.000Z' },
         model: 'gemini-4-hydrogen',
         rates: { creditsPerHkd: 100, hkdPerUsd: 7.8, ...FAKE_RATES, cachedInputPerMillionTokens: 58.5 },
-        estimates: { studioWorksheet: 280, importCheck: 50, translate: 50, answerKey: 80 },
+        ...(opts.noModels ? {} : { models: FAKE_MODELS }),
+        estimates: { studioWorksheet: 280, importCheck: 50, translate: opts.noModels ? 50 : 15, answerKey: 80 },
         extraPct: 10,
         ...(opts.noBuy ? {} : { buy: FAKE_BUY }),
         packs: [{ id: 'hkd50', priceHkd: 50, credits: 4170 }, { id: 'hkd100', priceHkd: 100, credits: 8560 }, { id: 'hkd200', priceHkd: 200, credits: 17350 }],
@@ -129,25 +147,26 @@ export function fakeMentor(opts: FakeMentorOptions = {}) {
       const key = headers['idempotency-key'];
       if (key && !/^[A-Za-z0-9._:-]{8,100}$/.test(key)) return relayError(400, 'invalid_request', { field: 'Idempotency-Key' });
       if (key && used.has(key)) return relayError(409, 'duplicate_request', { state: 'done', requestId: 'req_test', charged: used.get(key) });
-      if (state.credits < cost()) return relayError(402, 'insufficient_credits', { balance: state.credits, needed: cost() });
+      const feature = body.feature;
+      if (state.credits < cost(feature)) return relayError(402, 'insufficient_credits', { balance: state.credits, needed: cost(feature) });
       if (opts.failFirst && state.generates++ < opts.failFirst) return relayError(502, 'upstream_error');
-      if (key) used.set(key, cost());
+      if (key) used.set(key, cost(feature));
       if (opts.deadline && body.stream !== true) {
-        const { charged, balance } = receipt();
+        const { charged, balance } = receipt(feature);
         return relayError(504, 'deadline', { charged, balance });
       }
       const candidate = (text: string, finish?: string) => ({ content: { role: 'model', parts: [{ text }] }, ...(finish ? { finishReason: finish } : {}) });
       if (body.stream !== true) {
-        return json(200, { response: { candidates: [candidate(reply, 'STOP')], usageMetadata: usage, modelVersion: 'gemini-4-hydrogen' }, mentor: receipt() });
+        return json(200, { response: { candidates: [candidate(reply, 'STOP')], usageMetadata: usage, modelVersion: modelOf(feature) }, mentor: receipt(feature) });
       }
       const half = Math.ceil(reply.length / 2);
       const chunks = [`data: ${JSON.stringify({ candidates: [candidate(reply.slice(0, half))] })}`, `data: ${JSON.stringify({ candidates: [candidate(reply.slice(half), 'STOP')], usageMetadata: usage })}`];
       const end = opts.deadline ? 'deadline' : (opts.streamEnd ?? 'mentor');
       if (end === 'deadline') {
-        const { charged, balance } = receipt();
+        const { charged, balance } = receipt(feature);
         chunks.push(`event: error\ndata: ${JSON.stringify({ error: 'deadline', refunded: false, charged, balance })}`);
       }
-      if (end === 'mentor') chunks.push(`event: mentor\ndata: ${JSON.stringify(receipt())}`);
+      if (end === 'mentor') chunks.push(`event: mentor\ndata: ${JSON.stringify(receipt(feature))}`);
       if (end === 'error') chunks.push(`event: error\ndata: ${JSON.stringify({ error: 'upstream_error', refunded: true })}`);
       return new Response(chunks.map((c) => `${c}\n\n`).join(''), { status: 200, headers: { 'content-type': 'text/event-stream' } });
     }

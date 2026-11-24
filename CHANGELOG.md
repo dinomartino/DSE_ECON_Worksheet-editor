@@ -111,6 +111,12 @@ a version heading is edited afterwards.
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
+- **Translating with DSEcon Mentor credits costs less, and the estimate says so.** DSEcon Mentor
+  now runs translation (in a worksheet and the question bank's Fill missing 中文) on a lighter,
+  cheaper AI model, so "Uses about N credits" before a translation is about a third of what it
+  was. The Question studio and the import check stay on the main model, and their estimates do
+  not change.
+  <!-- zh: **使用 DSEcon Mentor 點數翻譯更便宜，預計點數亦會反映。** DSEcon Mentor 現以較輕巧、較便宜的 AI 模型進行翻譯（包括工作紙及題庫的「補上缺少的中文」），因此翻譯前顯示的「約用 N 點」約為以往的三分之一。擬題工作室及匯入檢查仍使用主要模型，其預計點數不變。 -->
 - **The question studio draws diagrams the way HKDSE papers do, and you can change them by
   asking.** A question with a diagram now just says "Refer to the following diagram" instead of
   describing it in words; every label its options name (Q1 to Q4, P1, area A) is on the diagram,

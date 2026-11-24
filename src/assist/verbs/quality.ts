@@ -60,7 +60,7 @@ export const qualityVerb: AiVerb = {
 
   estimate(ctx) {
     const questions = qualityQuestions(ctx.worksheet, ctx.scope).filter((q) => !questionEmpty(q));
-    return questions.length ? questionsJob(questions.length, paperText(ctx.worksheet, new Set(questions.map((q) => q.questionId))), 300) : null;
+    return questions.length ? questionsJob(questions.length, paperText(ctx.worksheet, new Set(questions.map((q) => q.questionId))), 300, 'quality') : null;
   },
 
   async run(ctx, io): Promise<VerbOutcome> {

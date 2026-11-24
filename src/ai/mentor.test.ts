@@ -185,6 +185,11 @@ describe('sign-in, credits and sign-out (CONTRACT §1–2)', () => {
       credits: 500,
       status: 'on',
       rates: { inputPerM: 1170, outputPerM: 5850 },
+      models: {
+        default: 'gemini-4-hydrogen',
+        byFeature: { translate: 'gemini-3.5-flash-lite', test: 'gemini-3.5-flash-lite' },
+        rates: { 'gemini-4-hydrogen': { inputPerM: 1170, outputPerM: 5850 }, 'gemini-3.5-flash-lite': { inputPerM: 234, outputPerM: 1950 } },
+      },
       trialCredits: 500,
       packs: [{ priceHkd: 50, credits: 4170 }, { priceHkd: 100, credits: 8560 }, { priceHkd: 200, credits: 17350 }],
       extraPct: 10,
@@ -262,6 +267,22 @@ describe('sign-in, credits and sign-out (CONTRACT §1–2)', () => {
     expect(readAccount({ balance: 5, buyUrl: 'https://evil.example', pricingUrl: 7 }, MENTOR_API)).toEqual({ credits: 5, status: 'on', buyUrl: MENTOR_BUY_URL, pricingUrl: MENTOR_PRICING_URL });
     expect(readAccount({ balance: 'many' }, MENTOR_API)).toBeNull();
     expect(readAccount({ balance: 5, status: 'weird', rates: { inputPerMillionTokens: -1, outputPerMillionTokens: 2 } }, MENTOR_API)).toEqual({ credits: 5, status: 'on', buyUrl: MENTOR_BUY_URL, pricingUrl: MENTOR_PRICING_URL });
+  });
+
+  it('models (v1.6): no default → ignored; bad map entries and bad rates are dropped, the rest kept', () => {
+    const base = { credits: 5, status: 'on', buyUrl: MENTOR_BUY_URL, pricingUrl: MENTOR_PRICING_URL };
+    expect(readAccount({ balance: 5, models: { byFeature: { translate: 'x' } } }, MENTOR_API)).toEqual(base);
+    expect(readAccount({ balance: 5, models: 'gemini' }, MENTOR_API)).toEqual(base);
+    expect(
+      readAccount({ balance: 5, models: { default: 'main', byFeature: { translate: 'lite', test: 7, quality: '' }, rates: { main: { inputPerMillionTokens: 10, outputPerMillionTokens: 20 }, lite: { inputPerMillionTokens: -1, outputPerMillionTokens: 2 } } } }, MENTOR_API),
+    ).toEqual({ ...base, models: { default: 'main', byFeature: { translate: 'lite' }, rates: { main: { inputPerM: 10, outputPerM: 20 } } } });
+  });
+
+  it('an older Mentor (before v1.6) has no models: the account is as before', async () => {
+    const server = fakeMentor({ noModels: true });
+    const account = await createMentorRelay({ deps: server.deps }).account(server.token, signal());
+    expect(account.models).toBeUndefined();
+    expect(account.rates).toEqual({ inputPerM: 1170, outputPerM: 5850 });
   });
 });
 

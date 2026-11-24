@@ -78,7 +78,7 @@ export function makeWriteAnswersVerb(deps: () => Promise<AnswerDepsResult> = ans
     },
     estimate(ctx) {
       const parts = plan(ctx).targets.size;
-      return parts ? questionsJob(parts, paperText(ctx.worksheet), 450) : null;
+      return parts ? questionsJob(parts, paperText(ctx.worksheet), 450, 'answers') : null;
     },
     async run(ctx, io): Promise<VerbOutcome> {
       const answers = plan(ctx);
