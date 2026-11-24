@@ -25,6 +25,8 @@ import { translateOne } from '@/translate/run';
  *   EVAL_USAGE=gemini EVAL_GEMINI_KEY=… [EVAL_GEMINI_MODEL=gemini-4-hydrogen] npm run eval:usage
  *   EVAL_USAGE=fake npm run eval:usage     (the harness itself, against the fake relay; no network)
  *
+ * EVAL_MENTOR_API is the app API root (`…/api/app/v1`); the relay is its `/ai` (as `MENTOR_API` in `src/ai/providers.ts`).
+ *
  * Real calls cost real money: about 15–25 HK$ of Gemini for the whole set.
  */
 
@@ -39,7 +41,7 @@ const TRANSLATIONS = 4;
 
 function setUp(): { client: () => AiClient; config: ProviderConfig } {
   if (MODE === 'mentor') {
-    const config: ProviderConfig = { provider: 'mentor', apiKey: process.env.EVAL_MENTOR_TOKEN ?? '', model: MENTOR_MODEL, baseUrl: process.env.EVAL_MENTOR_API ?? PRESETS.mentor.baseUrl };
+    const config: ProviderConfig = { provider: 'mentor', apiKey: process.env.EVAL_MENTOR_TOKEN ?? '', model: MENTOR_MODEL, baseUrl: process.env.EVAL_MENTOR_API ? `${process.env.EVAL_MENTOR_API.replace(/\/+$/, '').replace(/\/ai$/, '')}/ai` : PRESETS.mentor.baseUrl };
     return { config, client: () => createClient(config) };
   }
   if (MODE === 'gemini') {
