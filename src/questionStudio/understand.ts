@@ -163,7 +163,7 @@ export function buildUnderstandRequest(input: UnderstandInput, preset: ProviderP
     shapeHint: TURN_SHAPE_HINT,
     maxOutputTokens: preset.family === 'gemini' ? 2048 : 900,
     signal,
-    feature: 'studio',
+    feature: 'studio.pick',
     ...(images.length ? { images } : {}),
   };
 }
