@@ -224,7 +224,7 @@ function ReviewBody({
       {actions}
       {outcome.kind !== 'nothing' && (
         <BarButton primary={!(outcome.kind === 'findings' && outcome.applyAll) && outcome.kind !== 'report'} onClick={run.dismiss}>
-          {m.done}
+          {outcome.kind === 'findings' && outcome.dismissLabel ? outcome.dismissLabel : m.done}
         </BarButton>
       )}
     </>

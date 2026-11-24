@@ -98,6 +98,8 @@ export const AI_UI_MESSAGES = defineMessages({
   toneLook: { en: 'Needs a look', zh: '需要留意' },
   toneFailed: { en: "Couldn't translate", zh: '未能翻譯' },
   toneFinding: { en: 'Finding', zh: '發現' },
+  diffEnglish: { en: 'English', zh: '英文' },
+  diffChinese: { en: '中文', zh: '中文' },
 
   // The AI status chip in the studio's header and before big runs (k-0524; no status bar, k-0526).
   chipCredits: { en: (n: string) => `AI credits ${n}`, zh: (n: string) => `AI 點數 ${n}` },

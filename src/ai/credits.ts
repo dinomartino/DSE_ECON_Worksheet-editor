@@ -95,6 +95,23 @@ export function questionsJob(questions: number, text: string, outPerQuestion: nu
 }
 
 /**
+ * Wording enhancement (k-0549, `polish`): the questions' texts (stem, statements, options) in
+ * chunks of up to 5, each request led by the HKDSE style block and the task's rules; back, the
+ * texts that change (often most of them, in every language the question has), a reason each,
+ * and the model's thinking.
+ */
+export const POLISH_CHUNK = 5;
+export function polishJob(questions: number, text: string): CreditJob {
+  const requests = Math.max(1, Math.ceil(questions / POLISH_CHUNK));
+  const tokens = textTokens(text);
+  return {
+    inputTokens: requests * (STYLE_BLOCK_TOKENS + 900) + Math.ceil(tokens * 1.3),
+    outputTokens: requests * 900 + Math.ceil(tokens * 1.2) + 120 * questions,
+    feature: 'polish',
+  };
+}
+
+/**
  * Question studio: per question, writing (both languages), solving and checking, a diagram
  * where asked, and the reference pictures. From the k-0517 proposal's measured shape:
  * 10 MC with diagrams ≈ 52k in / 37k out. Priced as `studio.write`, the bulk of it (its solve,

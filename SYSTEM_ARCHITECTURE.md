@@ -3009,9 +3009,11 @@ the chrome between English and Hong Kong Traditional Chinese. Design and wording
 
 Every AI action is a **verb behind one door**, the ✦ AI menu: Fill missing 中文 / English,
 Re-translate, Check terms against the EDB Economics glossary (2020, keyless), Write
-answers & mark scheme (E1), Questions from a source (E3) and Check question quality (E4).
-A verb runs with the teacher's own key, writes its result straight into the document as
-one commit, and is reviewed afterwards on the page. App Settings holds the provider and
+answers & mark scheme (E1), Questions from a source (E3), Check question quality (E4) and
+Improve wording (k-0549). A verb runs with the teacher's own key, writes its result straight
+into the document as one commit, and is reviewed afterwards on the page. Check terms and
+Improve wording write nothing by themselves: each finding carries its own Accept, and the
+bar's Replace N / Accept all applies the rest as one commit. App Settings holds the provider and
 key. This section covers the door and the run, then the glossary, the text walk, the
 provider layer, Settings and the translation engine; E1, E3 and E4 follow as their own
 sections.

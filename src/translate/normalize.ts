@@ -48,7 +48,11 @@ function neighbour(chars: Ch[], index: number, step: 1 | -1): Ch | undefined {
   return chars[i];
 }
 
-export function normalizeZh(runs: RichText): Normalized {
+/**
+ * `keepSpaces`: leave typed spaces as they are (the wording enhancement, k-0549: the HKDSE house
+ * style writes 物品 X and 2020 年, and a teacher's own spacing is not the AI's to change).
+ */
+export function normalizeZh(runs: RichText, opts: { keepSpaces?: boolean } = {}): Normalized {
   let chars = explode(runs);
   const text = () => chars.map((c) => c.ch).join('');
   const set = (i: number, ch: string) => {
@@ -93,6 +97,7 @@ export function normalizeZh(runs: RichText): Normalized {
 
   // One spacing rule: no typed space between a CJK character and a Latin letter, a digit
   // or another CJK character.
+  if (opts.keepSpaces) return implode(chars, runs, runs);
   chars = chars.filter((c, i) => {
     if (c.ch !== ' ' || c.fixed) return true;
     const prev = chars[i - 1];

@@ -9,3 +9,4 @@ import './quality';
 import './writeAnswers';
 import './coverage';
 import './importCheck';
+import './polish';
