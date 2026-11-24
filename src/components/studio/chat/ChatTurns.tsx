@@ -3,6 +3,8 @@
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode } from '@/model/types';
 import { localizedErrorMessage } from '@/components/ai/errorCopy';
+import { ReferenceBadge } from '../ReferenceBadge';
+import { referenceByLabel } from '../referenceItem';
 import { RunErrorNotice } from '../StudioError';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 import type { AiTurn, Chat, Note, Step } from './chatTypes';
@@ -39,7 +41,7 @@ export function ChatTurns({
       {chat.turns.map((turn) =>
         turn.role === 'user' ? (
           <div key={turn.id} className="max-w-[88%] self-end rounded-2xl rounded-br-md border border-line bg-surface-sunken px-3 py-2 text-[13px] leading-relaxed text-ink" data-chat-user>
-            {turn.refs.length > 0 && <div className="mb-1 text-[11.5px] text-ink-muted">▣ {turn.refs.join(', ')}</div>}
+            {turn.refs.length > 0 && <TurnRefs labels={turn.refs} chat={chat} language={language} />}
             {turn.draftNo !== undefined && !turn.text && (turn.how === 'harder' ? m.userHarder(turn.draftNo) : turn.how === 'easier' ? m.userEasier(turn.draftNo) : turn.how === 'another' ? m.userAnother(turn.draftNo) : m.aboutDraft(turn.draftNo))}
             {turn.text || (turn.draftNo === undefined ? m.likeThis(chat.settings.count) : '')}
           </div>
@@ -207,6 +209,23 @@ function AiReply({
       )}
       {/* The app's notice (with the error's own actions), for the newest reply only. */}
       {latest && <RunErrorNotice error={turn.errorSeen ? undefined : turn.error} onRetry={onRetry} onDismiss={onDismiss} />}
+    </div>
+  );
+}
+
+/** A past request's references (k-0533): each one found in the chat opens its preview; a lost one stays words. */
+function TurnRefs({ labels, chat, language }: { labels: readonly string[]; chat: Chat; language: LanguageMode }) {
+  return (
+    <div className="mb-1 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-ink-muted">
+      {labels.map((label, i) => {
+        const source = referenceByLabel(chat, label);
+        return (
+          <span key={`${label}-${i}`} className="inline-flex min-w-0 items-center">
+            {source ? <ReferenceBadge source={source} language={language} tone="quiet" /> : label}
+            {i < labels.length - 1 && ','}
+          </span>
+        );
+      })}
     </div>
   );
 }

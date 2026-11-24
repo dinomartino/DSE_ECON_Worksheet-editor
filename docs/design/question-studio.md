@@ -246,6 +246,13 @@ kept on this computer; the Trial kit in Settings → AI. **No topic picker anywh
   the picked references ("Based on Mock 2026 · Q4", `src/components/studio/BasedOn.tsx:BasedOn`). Preview card
   `src/components/studio/ReferenceSheet.tsx:ReferenceSheet`. Browser proof
   `scripts/studio-mine-verify.mjs` (screenshots `Outbox/k-0529/`; a 2400-question bank opens in under half a second).
+- **Reference badge preview** (k-0533, u-9uf8): a reference's name, on the composer's chip or a past request's line,
+  is a button (tooltip View this question 查看這題, Enter/Space) that opens the picker's card for it
+  (`src/components/studio/ReferenceBadge.tsx:ReferenceBadge`, fixed popover above or below by room,
+  `:previewPlacement`; closed by `useDismiss`). Its printed form: one of the teacher's own is read again from its
+  document, a past paper's from the bank topics already read (`src/components/studio/referenceItem.ts:pastItemOf`, no
+  download), else the words (a chat reopened later). A past request's labels find their source in the chat's
+  references, then in its drafts' requests (`:referenceByLabel`), so a reference removed since still opens.
 - **Reference picker rail** (u-na4k): the rail around the shared topic/year navs is a *row*, so the
   nav (a column sized to its list) is stretched to the dialog's height and its list scrolls; in a
   column it grew past the footer and the topics below could not be reached.

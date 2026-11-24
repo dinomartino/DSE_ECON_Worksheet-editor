@@ -12,6 +12,7 @@ import type { Level } from '@/questionStudio/types';
 import { QUESTION_STUDIO_MESSAGES } from '../messages';
 import { STUDIO_CHAT_MESSAGES } from './chat.messages';
 import { useDismiss } from '../dismiss';
+import { ReferenceBadge } from '../ReferenceBadge';
 import { CHAT_COUNTS, type Chat, type ChatCount, type ChatSettings } from './chatTypes';
 
 const seg = (on: boolean) =>
@@ -107,13 +108,7 @@ export function Composer({
       {(mine.length > 0 || draft) && (
         <div className="mb-1.5 flex flex-wrap gap-1.5">
           {mine.map((r) => (
-            <span key={r.source.id} className="inline-flex max-w-full items-center gap-1 rounded-md border border-accent/40 bg-accent-soft/60 px-1.5 py-0.5 text-[11.5px] text-ink" data-ref-chip={r.source.id}>
-              ▣ {r.source.label}
-              {r.source.hasFigure && <span className="text-ink-muted"> · {m.withDiagram}</span>}
-              <button type="button" aria-label={m.removeReference(r.source.label)} onClick={() => onRemoveReference(r.source.id)} className="cursor-pointer px-0.5 text-ink-subtle hover:text-ink">
-                ✕
-              </button>
-            </span>
+            <ReferenceBadge key={r.source.id} source={r.source} language={language} onRemove={() => onRemoveReference(r.source.id)} removeLabel={m.removeReference(r.source.label)} />
           ))}
           {draft && (
             <span className="inline-flex items-center gap-1 rounded-md border border-line-strong bg-surface-sunken px-1.5 py-0.5 text-[11.5px] text-ink" data-draft-chip={draft.no}>

@@ -9,8 +9,9 @@ import { check, configure, expect, newPage, results, startBankServer } from './s
  * counted), with search, topic and date filters, a preview drawn as it prints (table, diagram,
  * answer, explanation), recently used first, a page at a time on a large bank; the picked
  * question goes to the AI like a past-paper reference (its explanation and picture too), the
- * drafts say what they are based on, and the teacher's own document is never changed. Nothing
- * real is reached: the AI is `ai-mock-server.mjs`, the Past paper bank an invented export.
+ * drafts say what they are based on, and the teacher's own document is never changed. k-0533:
+ * a reference's badge, in the composer or a past request, opens a preview of the question,
+ * closed by a click away or Esc. Nothing real is reached: the AI is `ai-mock-server.mjs`, the Past paper bank an invented export.
  *
  *   npm run dev -- -p 3229
  *   node scripts/studio-mine-verify.mjs [--url=http://localhost:3229] [--out=/tmp/studio-mine] [--mock-port=8831] [--bank-port=8832]
@@ -231,6 +232,56 @@ try {
     expect((await savedDoc(page, MOCK_PAPER.id)) === before, 'the saved paper changed');
   });
 
+  // k-0533: a reference's badge opens a preview of the question.
+  const preview = (pg) => pg.locator('[data-reference-preview]');
+  const sheetHas = (pg, sel) =>
+    pg.waitForFunction((s) => {
+      const host = document.querySelector('[data-reference-preview] [data-reference-sheet]');
+      return [...(host?.querySelectorAll('*') ?? [])].some((el) => el.shadowRoot?.querySelector(s));
+    }, sel);
+
+  await check('k-0533: clicking the reference badge (not its ✕) previews my question: table, answer, explanation; click away closes', async () => {
+    const view = page.locator('[data-ref-chip] [data-ref-view]');
+    expect((await view.getAttribute('title')) === 'View this question', `title ${await view.getAttribute('title')}`);
+    expect((await view.evaluate((el) => getComputedStyle(el).cursor)) === 'pointer', 'no pointer cursor');
+    await view.click();
+    await preview(page).waitFor();
+    await sheetHas(page, 'table');
+    expect((await preview(page).locator('[data-reference-answer]').innerText()).includes('A'), 'no answer');
+    expect((await preview(page).locator('[data-reference-explanation]').innerText()).includes('elastic'), 'no explanation');
+    expect((await preview(page).innerText()).includes('Mock 2026 · Paper 1 · Q2'), 'no source');
+    const box = await preview(page).boundingBox();
+    expect(box && box.y >= 0 && box.y + box.height <= 900, `off screen: ${JSON.stringify(box)}`);
+    await shot(page, 'k0533-en-composer-preview');
+    await page.locator('[data-chat-canvas]').click({ position: { x: 40, y: 300 } });
+    await preview(page).waitFor({ state: 'detached', timeout: 2000 });
+    expect((await page.locator('[data-ref-chip]').count()) === 1, 'the click removed the reference');
+  });
+
+  await check('k-0533: keyboard: Enter opens, Esc closes with focus back on the badge; Space opens too', async () => {
+    const view = page.locator('[data-ref-chip] [data-ref-view]');
+    await view.focus();
+    await page.keyboard.press('Enter');
+    await preview(page).waitFor();
+    await page.keyboard.press('Escape');
+    await preview(page).waitFor({ state: 'detached', timeout: 2000 });
+    expect(await view.evaluate((el) => el === document.activeElement), 'focus did not come back');
+    await page.keyboard.press('Space');
+    await preview(page).waitFor();
+    await page.keyboard.press('Escape');
+    await preview(page).waitFor({ state: 'detached', timeout: 2000 });
+  });
+
+  await check('k-0533: a past request’s reference opens the same preview', async () => {
+    const line = page.locator('[data-chat-user] [data-ref-line] [data-ref-view]').first();
+    await line.click();
+    await preview(page).waitFor();
+    await sheetHas(page, 'table');
+    await shot(page, 'k0533-en-turn-preview');
+    await page.keyboard.press('Escape');
+    await preview(page).waitFor({ state: 'detached', timeout: 2000 });
+  });
+
   await check('k-0529: reopened, the picker is on My questions with the one just used first; a click outside or Esc closes it', async () => {
     await page.locator('[data-add-reference]').click();
     await page.locator('[data-my-questions]').waitFor();
@@ -244,6 +295,25 @@ try {
     await picker(page).waitFor();
     await page.keyboard.press('Escape');
     await picker(page).waitFor({ state: 'detached', timeout: 3000 });
+  });
+
+  await check('k-0533: a past-paper reference’s badge previews it with its diagram; ✕ still removes it', async () => {
+    await page.locator('[data-add-reference]').click();
+    await page.locator('[data-picker-source="past"]').click();
+    const card = picker(page).locator('[data-reference-card]', { hasText: 'DSE2099/P1/Q12' }).first();
+    await card.waitFor({ timeout: 30_000 });
+    await card.dblclick();
+    await picker(page).waitFor({ state: 'detached' });
+    const chip = page.locator('[data-ref-chip="DSE2099/P1/Q12"]');
+    await chip.locator('[data-ref-view]').click();
+    await preview(page).waitFor();
+    await sheetHas(page, 'img');
+    expect((await preview(page).locator('[data-reference-answer]').innerText()).includes('A'), 'no answer');
+    await shot(page, 'k0533-en-past-paper-preview');
+    await page.keyboard.press('Escape');
+    await preview(page).waitFor({ state: 'detached', timeout: 2000 });
+    await chip.getByRole('button', { name: /Remove/ }).click();
+    await chip.waitFor({ state: 'detached', timeout: 2000 });
   });
 
   await check('nothing reached a real provider, and no errors', async () => {
@@ -297,6 +367,13 @@ try {
     expect((await zh.page.locator('[data-chat-draft]').first().locator('[data-draft-based-on]').innerText()).startsWith('參考：'), 'based-on chip');
     await zh.page.locator('[data-chat-draft]').first().scrollIntoViewIfNeeded();
     await shot(zh.page, 'k0529-zh-drafts-based-on');
+    const view = zh.page.locator('[data-ref-chip] [data-ref-view]');
+    expect((await view.getAttribute('title')) === '查看這題', `title ${await view.getAttribute('title')}`);
+    await view.click();
+    await zh.page.locator('[data-reference-preview] [data-reference-explanation]').waitFor();
+    expect((await zh.page.locator('[data-reference-preview]').innerText()).includes('你的參考題'), 'preview heading');
+    await shot(zh.page, 'k0533-zh-composer-preview');
+    await zh.page.keyboard.press('Escape');
     expect(zh.errors.length === 0, zh.errors[0]);
   });
   await zh.context.close();
