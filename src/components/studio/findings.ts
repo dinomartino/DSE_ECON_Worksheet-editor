@@ -13,6 +13,16 @@ export type FindingMessages = Messages<typeof STUDIO_FINDING_MESSAGES>;
 const str = (value: string | number | undefined): string => (value === undefined ? '' : String(value));
 const num = (value: string | number | undefined): number => (typeof value === 'number' ? value : Number(value) || 0);
 
+/** What a reference has that a draft cannot follow (k-0544): "4 diagrams and a table for each option". */
+export function referenceWhat(p: Readonly<Record<string, string | number>>, m: FindingMessages): string {
+  const parts = [
+    num(p.pictures) >= 2 ? m.refWhatPictures(num(p.pictures)) : '',
+    num(p.optionPictures) ? m.refWhatOptionPictures : '',
+    num(p.optionTables) ? m.refWhatOptionTables : '',
+  ].filter(Boolean);
+  return parts.join(m.refWhatAnd);
+}
+
 export function findingText(finding: Finding, m: FindingMessages): string {
   const p = finding.params ?? {};
   const side = () => (p.side === 'zh' ? m.sideZh : m.sideEn);
@@ -37,6 +47,8 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       return m.shapeNarrates(side());
     case 'shape.figureFailed':
       return m.shapeFigureFailed;
+    case 'shape.referenceForm':
+      return m.shapeReferenceForm(referenceWhat(p, m));
     case 'key.differs':
       return m.keyDiffers(str(p.solver), str(p.key));
     case 'key.edited':
@@ -75,6 +87,8 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       return m.runStopped;
     case 'run.keyNotChecked':
       return m.runKeyNotChecked;
+    case 'run.referenceShape':
+      return m.runReferenceShape(referenceWhat(p, m));
     default:
       return m.unknown(finding.id);
   }
@@ -83,7 +97,7 @@ export function findingText(finding: Finding, m: FindingMessages): string {
 /** Every code `findingText` knows, for the test that holds the engine to it. */
 export const KNOWN_FINDINGS: readonly string[] = [
   'shape.stemEmpty', 'shape.optionCount', 'shape.optionEmpty', 'shape.optionsSame', 'shape.keyRange', 'shape.statementEmpty',
-  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'numbers.differ', 'terms.note', 'syllabus.limited',
+  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'shape.referenceForm', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'numbers.differ', 'terms.note', 'syllabus.limited',
   'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close', 'copy.reference',
-  'run.fewer', 'run.stopped', 'run.keyNotChecked',
+  'run.fewer', 'run.stopped', 'run.keyNotChecked', 'run.referenceShape',
 ];

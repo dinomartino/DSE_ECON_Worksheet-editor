@@ -7,6 +7,17 @@ import { examplePayload, sentFigures } from './brief';
 import { COMPOSITE_MAX_SIDE, compositeLayout, drawComposite } from './composite';
 import { figureLang, MAX_FIGURES_PER_EXAMPLE, withFigures, type Composer } from './figures';
 import { PICTURE_MARK, referenceFor, sourceFromQuestion } from './source';
+import { presetFor } from '@/ai/providers';
+import { resolveMessages } from '@/i18n/catalogue';
+import { scriptedClient } from '@/translate/testKit';
+import { findingText } from '@/components/studio/findings';
+import { STUDIO_FINDING_MESSAGES } from '@/components/studio/findings.messages';
+import { INVENTED, solver, writeReply } from './fixtures';
+import { EMPTY_CORPUS } from './nearCopy';
+import { referenceGap } from './referenceShape';
+import { writeDrafts } from './run';
+import type { SourceQuestion, StudioRequest } from './types';
+import { hasWarning } from './validate';
 
 /**
  * k-0544: every shape a past-paper reference comes in reaches the model whole — a grid of
@@ -226,5 +237,43 @@ describe('the composite layout', () => {
   });
   it('outside a browser it draws nothing', async () => {
     expect(await drawComposite(cells(4))).toBeUndefined();
+  });
+});
+
+describe('a reference whose form the studio cannot write yet (k-0544 step 7)', () => {
+  const deps = () => ({ client: scriptedClient([writeReply([INVENTED[0]]), solver()]), preset: presetFor('gemini'), glossary: null, corpus: EMPTY_CORPUS, random: () => 0.3 });
+  const request = (example: SourceQuestion, strict: boolean): StudioRequest => ({ keyPoint: 'C.ped', points: [], examples: [example], strict, count: 1, level: 'same', shape: 'any', sides: ['en', 'zh'], note: '' });
+  it('knows each form: a grid, option pictures, option tables; one picture is no gap', () => {
+    expect(referenceGap(sourceFromQuestion(grid, { label: 'g' }))).toEqual({ pictures: 4, optionPictures: false, optionTables: false });
+    const opts = withOptionBlocks(optionLayoutMcq(['Which?', '哪個？'], [['', ''], ['', ''], ['', ''], ['', '']]), (i) => [createImageBlock(pic(`o${i}`), 120, 90)]);
+    expect(referenceGap(sourceFromQuestion(opts, { label: 'o' }))).toEqual({ pictures: 0, optionPictures: true, optionTables: false });
+    const tables = withOptionBlocks(optionLayoutMcq(['Which?', '哪個？'], [['', ''], ['', ''], ['', ''], ['', '']]), () => [table([[{ en: 'a' }, { en: '1' }]])]);
+    expect(referenceGap(sourceFromQuestion(tables, { label: 't' }))).toMatchObject({ optionTables: true });
+    const one = optionLayoutMcq(['Look.', '看。'], combination);
+    one.blocks = [...one.blocks, createImageBlock(pic('one'), 200, 120)];
+    expect(referenceGap(sourceFromQuestion(one, { label: '1' }))).toBeUndefined();
+  });
+  it('a draft written close to Q36 says it is not the same form (a read, not a failure), and the run says so once', async () => {
+    const out = await writeDrafts(request(sourceFromQuestion(grid, { label: 'g' }), true), deps(), { signal: new AbortController().signal });
+    if (!out.ok) throw new Error(out.error.message);
+    const shape = out.drafts[0].checks.find((c) => c.id === 'shape')!;
+    expect(shape.findings).toContainEqual({ id: 'shape.referenceForm', params: { pictures: 4, optionPictures: 0, optionTables: 0 } });
+    expect(shape.state).toBe('look');
+    expect(hasWarning(out.drafts[0])).toBe(false);
+    expect(out.notes.filter((n) => n.id === 'run.referenceShape')).toEqual([{ id: 'run.referenceShape', params: { pictures: 4, optionPictures: 0, optionTables: 0 } }]);
+  });
+  it('a reference used only for style (the studio\'s own picks) says nothing', async () => {
+    const out = await writeDrafts(request({ ...sourceFromQuestion(grid, { label: 'g' }), auto: true }, false), deps(), { signal: new AbortController().signal });
+    if (!out.ok) throw new Error(out.error.message);
+    expect(out.notes.some((n) => n.id === 'run.referenceShape')).toBe(false);
+    expect(out.drafts[0].checks.find((c) => c.id === 'shape')!.findings.some((f) => f.id === 'shape.referenceForm')).toBe(false);
+  });
+  it('reads in English and 中文', () => {
+    const en = resolveMessages(STUDIO_FINDING_MESSAGES, 'en');
+    const zh = resolveMessages(STUDIO_FINDING_MESSAGES, 'zh-HK');
+    const params = { pictures: 4, optionPictures: 0, optionTables: 1 };
+    expect(findingText({ id: 'run.referenceShape', params }, en)).toContain('4 diagrams and a table for each option');
+    expect(findingText({ id: 'run.referenceShape', params }, zh)).toContain('有 4 幅圖，每個選項各有一個表');
+    expect(findingText({ id: 'shape.referenceForm', params: { pictures: 0, optionPictures: 1, optionTables: 0 } }, en)).toContain('a diagram for each option');
   });
 });

@@ -160,6 +160,12 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **The Question studio says when it can't make a question in the same form.** If the
+  past-paper question you base a question on has several diagrams (like the numbered grid of
+  HKDSE 2023 Paper 1 Q36), a diagram for every option or a table for every option, the studio
+  now tells you in the chat that it can draw only one diagram per question for now. Each draft's
+  Format check asks you to read it, instead of quietly handing back a different kind of question.
+  <!-- zh: **擬題工作室無法擬出相同形式的題目時會告訴你。** 若你所參考的歷屆試題有多幅圖（例如 HKDSE 2023 Paper 1 Q36 的編號方格圖）、每個選項各有一幅圖，或每個選項各有一個表，擬題工作室現在會在對話中說明它目前每題只能繪畫一幅圖；每份草稿的「格式」檢查亦會請你細閱，而不是默默交出另一種題目。 -->
 - **The Question studio now sees every diagram of a past-paper question you base a question on.**
   A question whose diagrams sit in a numbered grid, like HKDSE 2023 Paper 1 Q36 with its four
   graphs labelled (1) to (4), used to reach the AI as words only, so it could not make one of the

@@ -66,6 +66,8 @@ export interface SourceQuestion {
   figureAt?: readonly string[];
   /** The language `figures` were read in: 'zh' = the Chinese pictures (`srcZh`) where there are any (k-0544). */
   figuresLang?: Side;
+  /** Its options print tables (k-0544): a form the writer cannot follow yet (`referenceShape.ts`). */
+  optionTables?: boolean;
   /** Where each of `figureBlocks` sits, same order and length (k-0544). Absent on examples saved before it. */
   figurePlaces?: readonly string[];
   /** Each of `figureBlocks`' place in a set printed together (a grid, a picture per option), or null; sent as one picture (k-0544). */

@@ -1,6 +1,8 @@
 'use client';
 
 import { useMessages } from '@/i18n/language';
+import { referenceWhat, type FindingMessages } from '../findings';
+import { STUDIO_FINDING_MESSAGES } from '../findings.messages';
 import type { LanguageMode } from '@/model/types';
 import { localizedErrorMessage } from '@/components/ai/errorCopy';
 import { ReferenceBadge } from '../ReferenceBadge';
@@ -117,7 +119,7 @@ function readWords(step: Extract<Step, { kind: 'understand' }>, m: M): string {
   }
 }
 
-function noteWords(note: Note, m: M, language: LanguageMode): string {
+function noteWords(note: Note, m: M, language: LanguageMode, fm: FindingMessages): string {
   switch (note.kind) {
     case 'written':
       return m.noteWritten(note.ok, note.look, note.failed);
@@ -137,6 +139,8 @@ function noteWords(note: Note, m: M, language: LanguageMode): string {
       return note.text;
     case 'noReply':
       return m.noteNoReply(note.draftNo);
+    case 'refShape':
+      return fm.runReferenceShape(referenceWhat(note, fm));
   }
 }
 
@@ -169,6 +173,7 @@ function AiReply({
   onAnswer: (answer: 'rewrite' | 'keep') => void;
   onWhich?: (choice: number | 'all' | 'new') => void;
 }) {
+  const fm = useMessages(STUDIO_FINDING_MESSAGES);
   const made = turn.draftIds.map((id) => chat.drafts.find((d) => d.id === id)).filter((d) => d !== undefined);
   return (
     <div className="self-stretch text-[13px] leading-relaxed" data-chat-ai aria-busy={running}>
@@ -192,7 +197,7 @@ function AiReply({
       )}
       {turn.notes.map((note, i) => (
         <p key={`${note.kind}:${i}`} className={`mt-1 text-ink ${note.kind === 'reply' ? 'whitespace-pre-line' : ''}`} data-note={note.kind}>
-          {noteWords(note, m, language)}
+          {noteWords(note, m, language, fm)}
         </p>
       ))}
       {turn.ask?.kind === 'which' && <WhichAskView ask={turn.ask} m={m} onWhich={onWhich} />}
