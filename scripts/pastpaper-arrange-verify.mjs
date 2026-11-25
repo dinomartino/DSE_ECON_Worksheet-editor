@@ -309,6 +309,32 @@ const printed = expected.map((label) => text.indexOf(`(${label})`));
 const inOrder = printed.every((at, i) => at >= 0 && (i === 0 || at > printed[i - 1]));
 check(inOrder, `the new worksheet holds all ${expected.length} in the teacher’s order, each with its short source`, printed.slice(0, 6).join(' '));
 await page.screenshot({ path: `${OUT}/after-worksheet-en.png` });
+// Each source on its own line above its question, never alone at the foot of a sheet (u-tchj).
+const tagPlaces = await page.evaluate(() => {
+  const ps = [...document.querySelectorAll('#print-root p')];
+  return ps
+    .filter((p) => /^\((DSE|CE|AL)(\d{4}|SP|PP)\/P\d\/Q\d+\)$/.test(p.textContent.trim()))
+    .map((p) => {
+      const next = ps[ps.indexOf(p) + 1];
+      return { tag: p.textContent.trim(), page: p.closest('[data-page-index]')?.getAttribute('data-page-index'), nextPage: next?.closest('[data-page-index]')?.getAttribute('data-page-index'), numbered: Boolean(next && [...next.querySelectorAll('span.absolute')].some((s) => /^\d+\.$/.test(s.textContent.trim()))) };
+    });
+});
+const tagSheets = new Set(tagPlaces.map((t) => t.page));
+check(tagPlaces.length === expected.length && tagSheets.size >= 3 && tagPlaces.every((t) => t.numbered && t.page === t.nextPage), `every source sits on its own line right above its question, on the same sheet (${tagPlaces.length} over ${tagSheets.size} sheets)`, JSON.stringify(tagPlaces.filter((t) => !t.numbered || t.page !== t.nextPage).slice(0, 3)));
+await page.emulateMedia({ media: 'print' });
+const tagPdf = `${OUT}/after-worksheet-en.pdf`;
+await page.pdf({ path: tagPdf, format: 'A4', printBackground: true, preferCSSPageSize: true });
+await page.emulateMedia({ media: 'screen' });
+const pdfPages = execFileSync('pdftotext', ['-layout', tagPdf, '-'], { encoding: 'utf8' }).split('\f');
+const pdfTags = pdfPages.flatMap((sheet, at) => {
+  const lines = sheet.split('\n');
+  return lines.flatMap((line, i) => {
+    if (!/^\s*\((DSE|CE|AL)(\d{4}|SP|PP)\/P\d\/Q\d+\)\s*$/.test(line)) return [];
+    const next = lines.slice(i + 1).find((l) => l.trim() !== '');
+    return [{ at, tag: line.trim(), numbered: next !== undefined && /^\s*\d+\.\s*\S/.test(next) }];
+  });
+});
+check(pdfTags.length === expected.length && pdfTags.every((t) => t.numbered), `the PDF: all ${pdfTags.length} sources alone on their line, each with its numbered line below on the same page (${pdfPages.length - 1} pages)`, JSON.stringify(pdfTags.filter((t) => !t.numbered).slice(0, 3)));
 
 // The .docx carries the sources in that order.
 await page.getByRole('button', { name: /^Export/ }).first().click();

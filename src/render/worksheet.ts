@@ -62,7 +62,7 @@ import {
   fitCoverColumns,
 } from '@/model/cover';
 import { contentWidth, pageSetupOf } from '@/model/page';
-import { printsQuestionSources, questionSourceFormat, withSourceTrail } from './questionSource';
+import { printsQuestionSources, questionSourceFormat, withSourceLine } from './questionSource';
 import type { CoverLine, CoverPage } from '@/model/coverTypes';
 
 /** Twips: the gutter a "(1)" sits in, and where the instruction text column starts. */
@@ -804,7 +804,7 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
         })
         // Student output must contain no teacher content anywhere (§11.8).
         .filter((node) => includeNode(node, mode));
-      const sourced = sources ? withSourceTrail(rendered, printed, { language: mode.language, page, indents: listIndentScheme(shape), format: sources }) : rendered;
+      const sourced = sources ? withSourceLine(rendered, printed, { language: mode.language, indents: listIndentScheme(shape), format: sources }) : rendered;
       const shown = withAnswerLayers(sourced, mode);
       const kept = keepWhole ? keepQuestionWhole(shown) : shown;
       const nodes = withSpacedLines(justify ? withJustifiedBody(kept) : kept, spacing);

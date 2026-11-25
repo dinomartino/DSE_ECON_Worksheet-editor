@@ -218,7 +218,7 @@ editor's Past papers tab. Every bank question already carries its source as `pro
 ("HKDSE 2019 Paper 1 Q12" / "香港中學文憑考試 2019 卷一 第 12 題"), which until now printed only in
 the teacher's copy and the answer key. With the box ticked, a paper that gets its first sourced
 questions turns on `Worksheet.showQuestionSources` in the same commit (one ⌘Z), and each
-question prints its source in brackets at the right of its numbered line (`render/questionSource.ts`).
+question prints its source in brackets on its own line above the question, at the number's left edge (`render/questionSource.ts`; at the right of the numbered line until u-tchj).
 After that the paper's own switch rules (Setup → Page), so adding more never flips a paper; in the
 tab the box then reads "Show sources on this paper" and is that switch. The choice is remembered
 in `econgen.settings.pastPapers` (`showSources`), off by default. One optional paper field, in

@@ -112,8 +112,8 @@ export const PAST_PAPER_MESSAGES = defineMessages({
   // u-w7gs: keep each question's source (year + question number) on the paper.
   showSources: { en: 'Show source (year + question no.)', zh: '顯示出處（年份及題號）' },
   showSourcesTitle: {
-    en: 'Prints each question\'s exam, year and question number in brackets at the right of its first line: on screen, in print, PDF and Word. Change it later in Setup → Page.',
-    zh: '在每題首行右方以括號印出其考試、年份及題號：畫面、列印、PDF 及 Word 皆同。之後可在「頁面設定 → 頁面」更改。',
+    en: 'Prints each question\'s exam, year and question number in brackets on its own line above the question: on screen, in print, PDF and Word. Change it later in Setup → Page.',
+    zh: '在每題上方獨立一行以括號印出其考試、年份及題號：畫面、列印、PDF 及 Word 皆同。之後可在「頁面設定 → 頁面」更改。',
   },
   showSourcesThisPaper: { en: 'Show sources on this paper', zh: '在此試卷顯示出處' },
   // u-z6ft: how the source prints. The examples are the labels themselves (paper words).

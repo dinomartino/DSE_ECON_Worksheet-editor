@@ -170,6 +170,12 @@ a version heading is edited afterwards.
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
+- **Show source prints above the question.** A question's source, for example (DSESP/P1/Q3), now
+  sits on its own line just above the question, starting where the question number starts,
+  instead of at the right of its first line. The same on screen, in print, PDF, Word and copied
+  text, in English, 中文 and bilingual papers, in every source format; a page never ends on a
+  source without its question.
+  <!-- zh: **「顯示出處」改印在題目上方。** 每題的出處（例如 (DSESP/P1/Q3)）現在獨佔一行，印在題目正上方，與題號左邊對齊，不再放在首行右方。畫面、列印、PDF、Word 及複製的文字皆同，英文、中文及雙語試卷和各種出處格式都適用；出處不會單獨留在頁底而與題目分開。 -->
 - **AI questions follow the grammar of HKDSE papers.** From all 725 Paper 1 questions, the
   Question studio and Improve wording now follow the papers' grammar: active voice, "will" and
   中文 「會」, conditions with "Suppose" / "If" and 「假設」 / 「若」, and cause and effect with "lead to",

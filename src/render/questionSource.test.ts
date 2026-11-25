@@ -6,22 +6,22 @@ import { buildAnswerKeyDocxParts, buildDocxParts } from '@/export/docx';
 import { worksheetClipboardHtml } from '@/export/clipboard';
 import { createMcqQuestion, createStructuredQuestion, createWorksheet } from '@/model/factories';
 import { migrate, serializeWorksheet } from '@/model/migrations';
-import { computeNumbering, listIndentScheme } from '@/model/numbering';
+import { computeNumbering } from '@/model/numbering';
 import { bi } from '@/model/text';
 import type { LanguageMode, McqQuestion, OutputMode, Question, Worksheet } from '@/model/types';
-import { insertIntoOpen } from '@/pastpapers/actions';
+import { emptyPaperFor, insertIntoOpen } from '@/pastpapers/actions';
 import type { PastPaperItem } from '@/pastpapers/pack';
 import { sourceOf as tagOf } from '@/pastpapers/pack';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { renderAnswerKey } from './answerKey';
-import { DEFAULT_PAGE_METRICS, trailLabel, type RenderNode, type TextNode } from './ir';
+import { breakAfterNodes } from '@/components/preview/Preview';
+import { documentShape } from '@/model/documentShape';
+import { trailLabel, type RenderNode, type TextNode } from './ir';
 import {
   hasQuestionSources,
-  lastLineReach,
   printsQuestionSources,
   questionSourceFormat,
   shortSource,
-  sourceFits,
   sourceParts,
   sourceTrail,
   withQuestionSourceFormat,
@@ -31,8 +31,9 @@ import { renderWorksheet } from './worksheet';
 
 /**
  * A question's source on the paper (user u-w7gs): `Worksheet.showQuestionSources` puts each
- * question's `provenance` in brackets at the right of its numbered line, in every backend,
- * and off (the default, and every saved paper) changes nothing at all.
+ * question's `provenance` in brackets on a line of its own above the question, at the left
+ * edge of its number (u-tchj), in every backend, and off (the default, and every saved
+ * paper) changes nothing at all.
  */
 
 const LANGUAGES: LanguageMode[] = ['en', 'zh', 'bilingual'];
@@ -74,13 +75,29 @@ const label = (trail: TextNode['trail'], language: LanguageMode) => trailLabel(t
 const numbered = (nodes: RenderNode[]) =>
   nodes.find((n): n is TextNode => n.kind === 'text' && n.listRef?.definition === 'question' && n.listRef.level === 0)!;
 
+/** The source line: the question's first node, a plain paragraph before its numbered line. */
+const sourceLine = (nodes: RenderNode[]): TextNode | undefined => {
+  const first = nodes[0];
+  return first?.kind === 'text' && first.listRef === undefined && nodes.indexOf(numbered(nodes)) > 0 ? first : undefined;
+};
+/** What the source line prints on a paper in `language` (both sides once on a bilingual paper). */
+const printed = (nodes: RenderNode[], language: LanguageMode) => {
+  const line = sourceLine(nodes);
+  if (!line) return undefined;
+  const side = language === 'zh' ? line.text.zh : line.text.en;
+  return side.map((run) => run.text).join('').replace(/\u00a0/g, ' ');
+};
+
 describe('off: the default, and every saved paper', () => {
   it('prints exactly what it printed before (IR, .docx, clipboard, answer key) in every language and copy', () => {
     const off = paper();
     expect(withQuestionSources(off, false)).toBe(off);
     for (const mode of MODES) {
       const ir = renderWorksheet(off, mode);
-      for (const question of ir.questions) expect(numbered(question.nodes).trail).toBeUndefined();
+      for (const question of ir.questions) {
+        expect(numbered(question.nodes).trail).toBeUndefined();
+        expect(sourceLine(question.nodes)).toBeUndefined();
+      }
     }
     // The student copy never had the source; it still has none.
     const studentXml = buildDocxParts(off, { language: 'en', version: 'student' }).documentXml;
@@ -97,6 +114,7 @@ describe('off: the default, and every saved paper', () => {
       for (const question of ir.questions) {
         const line = numbered(question.nodes);
         if (line && line.marks === undefined) expect(line.trail).toBeUndefined();
+        if (line) expect(sourceLine(question.nodes)).toBeUndefined();
       }
     }
   });
@@ -105,29 +123,59 @@ describe('off: the default, and every saved paper', () => {
 describe('on', () => {
   const on = paper(undefined, { showQuestionSources: true });
 
-  it('puts the bracketed source on the numbered line, each language its own side', () => {
-    const ir = renderWorksheet(on, { language: 'en', version: 'student' });
-    const [first, second] = ir.questions.map((q) => numbered(q.nodes));
-    expect(label(first.trail, 'en')).toBe('(HKDSE 2019 Paper 1 Q12)');
-    expect(label(first.trail, 'zh')).toBe('（香港中學文憑考試 2019 卷一 第 12 題）');
-    expect(label(second.trail, 'en')).toBe('(HKCEE 2006 Paper 2 Q32)');
-    expect(label(second.trail, 'zh')).toBe('（香港中學會考 2006 卷二 第 32 題）');
-    // The stem's own words are untouched: the source is beside them, not in them.
-    expect(first.text).toEqual(Q1.blocks[0].kind === 'paragraph' ? Q1.blocks[0].text : undefined);
+  it('puts the bracketed source on its own line above the question, each language its own side', () => {
+    const en = renderWorksheet(on, { language: 'en', version: 'student' });
+    const zh = renderWorksheet(on, { language: 'zh', version: 'student' });
+    expect(en.questions.map((q) => printed(q.nodes, 'en'))).toEqual(['(HKDSE 2019 Paper 1 Q12)', '(HKCEE 2006 Paper 2 Q32)']);
+    expect(zh.questions.map((q) => printed(q.nodes, 'zh'))).toEqual(['（香港中學文憑考試 2019 卷一 第 12 題）', '（香港中學會考 2006 卷二 第 32 題）']);
+    const [line, number] = en.questions[0].nodes as TextNode[];
+    // Right above the numbered line, unnumbered, at the number's left edge (the margin), in its style.
+    expect(number).toBe(numbered(en.questions[0].nodes));
+    expect(line.listRef).toBeUndefined();
+    expect(line.indent).toBeUndefined();
+    expect(line.style).toBe(number.style);
+    // The numbered line carries nothing at its right any more, and its words are untouched.
+    expect(number.trail).toBeUndefined();
+    expect(number.trailOwnLine).toBeUndefined();
+    expect(number.text).toEqual(Q1.blocks[0].kind === 'paragraph' ? Q1.blocks[0].text : undefined);
   });
 
-  it('adds no node, so numbering, keeps and the page flow stay as they were', () => {
+  it('adds only that line: numbering and the question below it stay as they were', () => {
     const off = paper();
+    // The gap between questions rides the first paragraph (`withLeadingGap`): now the source line.
+    const unspaced = (node: RenderNode) => {
+      if (node.kind !== 'text' || !node.boundaryGap) return node;
+      const { boundaryGap: _gap, format, ...rest } = node;
+      const { spaceBefore: _before, ...kept } = format ?? {};
+      void _gap;
+      void _before;
+      return Object.keys(kept).length > 0 ? { ...rest, format: kept } : rest;
+    };
     for (const mode of MODES) {
       const before = renderWorksheet(off, mode);
       const after = renderWorksheet(on, mode);
       expect(after.questions.map((q) => q.number)).toEqual(before.questions.map((q) => q.number));
       after.questions.forEach((question, index) => {
-        const stripped = question.nodes.map((node) => (node.kind === 'text' && node.trail ? { ...node, trail: undefined, trailOwnLine: undefined } : node));
-        expect(stripped).toEqual(before.questions[index].nodes.map((node) => (node.kind === 'text' && node.trail ? { ...node, trail: undefined, trailOwnLine: undefined } : node)));
+        expect(question.nodes.slice(1).map(unspaced)).toEqual(before.questions[index].nodes.map(unspaced));
+        // The gap above the question now sits above its source.
+        const gap = (before.questions[index].nodes[0] as TextNode).format?.spaceBefore;
+        expect((question.nodes[0] as TextNode).format?.spaceBefore).toBe(gap);
       });
     }
     expect(computeNumbering(on)).toEqual(computeNumbering(off));
+  });
+
+  it('never ends a page: the paginator offers no break after the source, on every shape', () => {
+    for (const shape of ['classroom', 'paper1'] as const) {
+      const ws = { ...emptyPaperFor(shape, 'Sources'), ...paper(undefined, { showQuestionSources: true }), cover: emptyPaperFor(shape, 'Sources').cover };
+      expect(documentShape(ws)).toBe(shape);
+      for (const mode of MODES) {
+        for (const question of renderWorksheet(ws, mode).questions) {
+          expect(sourceLine(question.nodes)?.keepNext).toBe(true);
+          expect(breakAfterNodes(question.nodes)).not.toContain(0);
+        }
+      }
+    }
   });
 
   it('prints in the .docx and the clipboard, English and Chinese, student and teacher', () => {
@@ -135,8 +183,13 @@ describe('on', () => {
       const en = buildDocxParts(on, { language: 'en', version }).documentXml;
       expect(en).toContain(nb('(HKDSE 2019 Paper 1 Q12)'));
       expect(en).toContain(nb('(HKCEE 2006 Paper 2 Q32)'));
-      // On the question's numbered line, after a tab, as a marks label rides.
-      expect(en).toMatch(/<w:tab\/><\/w:r><w:r>(?:(?!<\/w:p>).)*\(HKDSE 2019 Paper 1 Q12\)/);
+      // A paragraph of its own, with no tab and no number, right before the numbered one.
+      const paragraphs = en.match(/<w:p[ >](?:(?!<\/w:p>).)*<\/w:p>/g) ?? [];
+      const at = paragraphs.findIndex((p) => p.includes(nb('(HKDSE 2019 Paper 1 Q12)')));
+      expect(paragraphs[at]).not.toContain('<w:tab/>');
+      expect(paragraphs[at]).not.toContain('<w:numPr>');
+      expect(paragraphs[at].replace(/<[^>]+>/g, '')).toBe(nb('(HKDSE 2019 Paper 1 Q12)'));
+      expect(paragraphs[at + 1]).toContain('Which of the following is correct?');
       const zh = buildDocxParts(on, { language: 'zh', version }).documentXml;
       expect(zh).toContain(nb('（香港中學文憑考試 2019 卷一 第 12 題）'));
       expect(zh).not.toContain(nb('(HKDSE 2019 Paper 1 Q12)'));
@@ -161,26 +214,26 @@ describe('on', () => {
       const ir = renderWorksheet(versioned, { language: 'en', version: 'student', variant });
       for (const question of ir.questions) {
         const original = versioned.questions.find((q) => q.id === question.questionId) as McqQuestion;
-        expect(label(numbered(question.nodes).trail, 'en')).toBe(`(${original.provenance!.en[0].text})`);
+        expect(printed(question.nodes, 'en')).toBe(`(${original.provenance!.en[0].text})`);
       }
     }
   });
 
-  it('prints nothing for a question without a source, and never over a marks label', () => {
+  it('prints nothing for a question without a source', () => {
     const plainMcq = { ...pastMcq('X/P1/Q1', '', ''), provenance: undefined };
     const structured = createStructuredQuestion();
     const ws = paper([plainMcq, structured, Q1], { showQuestionSources: true });
     const ir = renderWorksheet(ws, { language: 'en', version: 'student' });
-    expect(numbered(ir.questions[0].nodes).trail).toBeUndefined();
-    expect(numbered(ir.questions[1].nodes)?.trail).toBeUndefined();
-    expect(numbered(ir.questions[2].nodes).trail).toBeDefined();
+    expect(ir.questions[0].nodes[0]).toBe(numbered(ir.questions[0].nodes));
+    expect(sourceLine(ir.questions[1].nodes)).toBeUndefined();
+    expect(printed(ir.questions[2].nodes, 'en')).toBe('(HKDSE 2019 Paper 1 Q12)');
   });
 
-  it('a stem opening with a picture still gets it on its number line', () => {
+  it('a stem opening with a picture has it above the picture, at the top of the question', () => {
     const q = pastMcq('DSE2024/P1/Q23', 'HKDSE 2024 Paper 1 Q23', '香港中學文憑考試 2024 卷一 第 23 題');
     q.blocks = [{ kind: 'image', id: 'img', src: 'data:image/png;base64,iVBORw0KGgo=', widthPx: 100, heightPx: 50 } as McqQuestion['blocks'][number], ...q.blocks];
     const ir = renderWorksheet(paper([q], { showQuestionSources: true }), { language: 'en', version: 'student' });
-    expect(label(numbered(ir.questions[0].nodes).trail, 'en')).toBe('(HKDSE 2024 Paper 1 Q23)');
+    expect(printed(ir.questions[0].nodes, 'en')).toBe('(HKDSE 2024 Paper 1 Q23)');
   });
 
   it('a side with no words falls back to the other, as every trail does', () => {
@@ -244,48 +297,26 @@ describe('the past paper bank sets it as questions go in', () => {
   });
 });
 
-describe('a label that does not fit goes on a line of its own, in every backend', () => {
-  const page = { ...DEFAULT_PAGE_METRICS };
-  const indents = listIndentScheme('classroom');
-  const width = page.textWidth - indents.question[0].left;
-
-  it('a short stem keeps it beside its words; a full last line moves it down', () => {
-    const short = renderWorksheet(paper([Q2], { showQuestionSources: true }), { language: 'en', version: 'student' });
-    expect(numbered(short.questions[0].nodes).trailOwnLine).toBeUndefined();
-    // Words up to just short of the margin: the label cannot fit after them.
-    let words = 'Which';
-    while (lastLineReach([{ text: `${words} word` }], width, page.fontSize, page.latinFont) > lastLineReach([{ text: words }], width, page.fontSize, page.latinFont)) words += ' word';
-    const full = pastMcq('DSE2020/P1/Q1', 'HKDSE 2020 Paper 1 Q1', '香港中學文憑考試 2020 卷一 第 1 題', `${words}?`);
-    const ws = paper([full], { showQuestionSources: true });
-    const node = numbered(renderWorksheet(ws, { language: 'en', version: 'student' }).questions[0].nodes);
-    expect(node.trailOwnLine).toBe(true);
-    // The .docx breaks the line before the label's tab, so Word cannot tear it or leave it short.
-    expect(buildDocxParts(ws, { language: 'en', version: 'student' }).documentXml).toMatch(/<w:br\/><\/w:r><w:r><w:tab\/><\/w:r><w:r>(?:(?!<\/w:p>).)*HKDSE\u00a02020/);
-    expect(worksheetClipboardHtml(ws, { language: 'en', version: 'student' })).toMatch(/<br><span style="float:right">\(HKDSE\u00a02020/);
+describe('the line above the question, in every language and backend', () => {
+  it('a bilingual paper prints the label once: both sides on one line, or the short tag alone', () => {
+    const full = renderWorksheet(paper([Q2], { showQuestionSources: true }), { language: 'bilingual', version: 'student' });
+    expect(printed(full.questions[0].nodes, 'bilingual')).toBe('(HKCEE 2006 Paper 2 Q32) （香港中學會考 2006 卷二 第 32 題）');
+    expect(sourceLine(full.questions[0].nodes)!.text.zh).toEqual([]);
   });
 
-  it('Chinese, which breaks anywhere, is judged the same way', () => {
-    const zh = pastMcq('CE2006/P2/Q32', 'HKCEE 2006 Paper 2 Q32', '香港中學會考 2006 卷二 第 32 題');
-    zh.blocks = [{ kind: 'paragraph', id: 'zh-stem', text: bi('x', '下列哪項最有可能導致一個經濟體系的潛在本地生產總值 (即最大生產能力) 增加？') }];
-    const node = numbered(renderWorksheet(paper([zh], { showQuestionSources: true }), { language: 'zh', version: 'student' }).questions[0].nodes);
-    expect(node.trailOwnLine).toBe(true);
-    const shortZh = { ...zh, blocks: [{ kind: 'paragraph' as const, id: 'zh-stem', text: bi('x', '下列哪項正確？') }] };
-    expect(numbered(renderWorksheet(paper([shortZh], { showQuestionSources: true }), { language: 'zh', version: 'student' }).questions[0].nodes).trailOwnLine).toBeUndefined();
+  it('keeps the numbered line\'s size and fonts', () => {
+    const ws = paper([Q1], { showQuestionSources: true });
+    const nodes = renderWorksheet(ws, { language: 'en', version: 'student' }).questions[0].nodes;
+    const { fontSize, fonts } = numbered(nodes).format ?? {};
+    expect(sourceLine(nodes)!.format?.fontSize).toBe(fontSize);
+    expect(sourceLine(nodes)!.format?.fonts).toEqual(fonts);
   });
 
-  it('a bilingual paper always gives it its own line', () => {
-    const node = numbered(renderWorksheet(paper([Q2], { showQuestionSources: true }), { language: 'bilingual', version: 'student' }).questions[0].nodes);
-    expect(node.trailOwnLine).toBe(true);
-  });
-
-  it('the reach of a wrapped line', () => {
-    const one = lastLineReach([{ text: 'Short line' }], width, page.fontSize, page.latinFont);
-    expect(one).toBeGreaterThan(0);
-    expect(one).toBeLessThan(width / 4);
-    const long = lastLineReach([{ text: 'word '.repeat(200) }], width, page.fontSize, page.latinFont);
-    expect(long).toBeLessThanOrEqual(width);
-    // Without the fit check, a label on a full line would not be flagged.
-    expect(sourceFits(numbered(renderWorksheet(paper([Q2]), { language: 'en', version: 'student' }).questions[0].nodes), '(HKCEE 2006 Paper 2 Q32)', 'en', page, indents)).toBe(true);
+  it('the clipboard has it as its own paragraph before the numbered one', () => {
+    const html = worksheetClipboardHtml(paper([Q1], { showQuestionSources: true, questionSourceFormat: 'short' }), { language: 'en', version: 'student' });
+    expect(html).toMatch(/<p[^>]*>\(DSE2019\/P1\/Q12\)<\/p>/);
+    expect(html.indexOf('(DSE2019/P1/Q12)')).toBeLessThan(html.indexOf('Which of the following is correct?'));
+    expect(html).not.toContain('float:right">(DSE2019');
   });
 });
 
@@ -314,7 +345,7 @@ describe('the source format: full, short, short with a Roman paper (user u-z6ft)
       const ws = paper(ALL, { showQuestionSources: true, questionSourceFormat: format });
       for (const language of LANGUAGES) {
         const ir = renderWorksheet(ws, { language, version: 'student' });
-        expect(ir.questions.map((q) => label(numbered(q.nodes).trail, language))).toEqual(expected.map((tag) => `(${tag})`));
+        expect(ir.questions.map((q) => printed(q.nodes, language))).toEqual(expected.map((tag) => `(${tag})`));
       }
       for (const language of LANGUAGES) {
         const xml = buildDocxParts(ws, { language, version: 'student' }).documentXml;
@@ -333,25 +364,21 @@ describe('the source format: full, short, short with a Roman paper (user u-z6ft)
     const own = pastMcq('X/P1/Q1', 'From our mock, 2024', '本校模擬試卷 2024');
     const ws = paper([Q1, own], { showQuestionSources: true, questionSourceFormat: 'short' });
     const ir = renderWorksheet(ws, { language: 'en', version: 'student' });
-    expect(label(numbered(ir.questions[0].nodes).trail, 'en')).toBe('(DSE2019/P1/Q12)');
-    expect(label(numbered(ir.questions[1].nodes).trail, 'en')).toBe('(From our mock, 2024)');
-    expect(label(numbered(ir.questions[1].nodes).trail, 'zh')).toBe('（本校模擬試卷 2024）');
+    expect(printed(ir.questions[0].nodes, 'en')).toBe('(DSE2019/P1/Q12)');
+    expect(printed(ir.questions[1].nodes, 'en')).toBe('(From our mock, 2024)');
+    const zhOwn = renderWorksheet(ws, { language: 'zh', version: 'student' });
+    expect(printed(zhOwn.questions[1].nodes, 'zh')).toBe('（本校模擬試卷 2024）');
     const full = renderWorksheet(paper([Q1], { showQuestionSources: true }), { language: 'zh', version: 'student' });
-    expect(label(numbered(full.questions[0].nodes).trail, 'zh')).toBe('（香港中學文憑考試 2019 卷一 第 12 題）');
+    expect(printed(full.questions[0].nodes, 'zh')).toBe('（香港中學文憑考試 2019 卷一 第 12 題）');
   });
 
-  it('keeps the place: beside a short stem, its own line when it does not fit, always its own line on a bilingual paper', () => {
-    const ws = paper([Q2], { showQuestionSources: true, questionSourceFormat: 'short' });
-    expect(numbered(renderWorksheet(ws, { language: 'en', version: 'student' }).questions[0].nodes).trailOwnLine).toBeUndefined();
-    expect(numbered(renderWorksheet(ws, { language: 'zh', version: 'student' }).questions[0].nodes).trailOwnLine).toBeUndefined();
-    expect(numbered(renderWorksheet(ws, { language: 'bilingual', version: 'student' }).questions[0].nodes).trailOwnLine).toBe(true);
-    const page = { ...DEFAULT_PAGE_METRICS };
-    const width = page.textWidth - listIndentScheme('classroom').question[0].left;
-    let words = 'Which';
-    while (lastLineReach([{ text: `${words} word` }], width, page.fontSize, page.latinFont) > lastLineReach([{ text: words }], width, page.fontSize, page.latinFont)) words += ' word';
-    const long = pastMcq('DSE2020/P1/Q1', 'HKDSE 2020 Paper 1 Q1', '香港中學文憑考試 2020 卷一 第 1 題', `${words}?`);
-    const node = numbered(renderWorksheet(paper([long], { showQuestionSources: true, questionSourceFormat: 'shortRoman' }), { language: 'en', version: 'student' }).questions[0].nodes);
-    expect(node.trailOwnLine).toBe(true);
+  it('keeps the place on every language: its own line above the question', () => {
+    const ws = paper([Q2], { showQuestionSources: true, questionSourceFormat: 'shortRoman' });
+    for (const language of LANGUAGES) {
+      const nodes = renderWorksheet(ws, { language, version: 'student' }).questions[0].nodes;
+      expect(printed(nodes, language)).toBe('(CE2006/II/Q32)');
+      expect(numbered(nodes).trail).toBeUndefined();
+    }
   });
 
   it('leaves numbering and the answer key exactly as they were', () => {
@@ -369,7 +396,7 @@ describe('the source format: full, short, short with a Roman paper (user u-z6ft)
   it('a format with the switch off prints nothing', () => {
     const ws = paper(ALL, { questionSourceFormat: 'short' });
     for (const mode of MODES) {
-      for (const question of renderWorksheet(ws, mode).questions) expect(numbered(question.nodes).trail).toBeUndefined();
+      for (const question of renderWorksheet(ws, mode).questions) expect(sourceLine(question.nodes)).toBeUndefined();
     }
   });
 

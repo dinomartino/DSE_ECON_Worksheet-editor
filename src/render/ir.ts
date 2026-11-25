@@ -168,10 +168,10 @@ export interface TextNode {
    */
   trail?: BiText;
   /**
-   * The `trail` goes on a line of its own, still at the right, decided once in the IR
-   * (`render/questionSource.ts:sourceFits`): the `.docx` writes a break before its tab, the
-   * preview the same extra line it draws for a label that cannot fit. For a label too long to
-   * trust to each backend's own wrap (a question's source; Chinese breaks anywhere).
+   * The `trail` goes on a line of its own, still at the right, decided once in the IR: the
+   * `.docx` writes a break before its tab, the preview the same extra line it draws for a
+   * label that cannot fit. For a label too long to trust to each backend's own wrap (a
+   * question's source rode here until it got a line of its own above the question, u-tchj).
    */
   trailOwnLine?: true;
   /**
