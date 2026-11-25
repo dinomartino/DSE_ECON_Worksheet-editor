@@ -65,7 +65,7 @@ it('emits the frozen v0.6.0 question-bank corpus', async () => {
   const { copyToBank, createBank } = await import('@/library/bankDocs');
   const { createBankIndex } = await import('@/library/bankIndex');
   const { createDocFilesBackend, INDEX_FORMAT, STORED_INDEX_FORMAT } = await import('@/library/bankBackend');
-  if (INDEX_FORMAT !== 7) throw new Error(`Expected INDEX_FORMAT 7, got ${INDEX_FORMAT}.`);
+  if ((INDEX_FORMAT as number) !== 7) throw new Error(`Expected INDEX_FORMAT 7, got ${INDEX_FORMAT}.`);
   const store = new LocalStorageWorksheetStore();
 
   // An MCQ tagged at question level (its only list).

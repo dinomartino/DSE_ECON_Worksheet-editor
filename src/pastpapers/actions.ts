@@ -1,5 +1,6 @@
 import { commitBankCopies } from '@/components/bank/bankSession';
 import { copyToBank, oneBank, type BankTarget } from '@/library/bankDocs';
+import { withPastPaperOrigin } from '@/library/pastPaperCopies';
 import { rootIdOf } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import { createHeadingElement } from '@/model/flow';
@@ -8,7 +9,7 @@ import { hasQuestionSources, printsQuestionSources } from '@/render/questionSour
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { worksheetStore, type WorksheetStore } from '@/storage';
 import { planCopies } from './copy';
-import type { PastPaperItem } from './pack';
+import { sourceOf, type PastPaperItem } from './pack';
 
 /**
  * The three ways out of the Past paper bank (k-0443): into the open paper, into a new
@@ -36,7 +37,8 @@ export const sourceChoiceDecides = (worksheet: Pick<Worksheet, 'questions'>) => 
  * its type's section): one commit, one ⌘Z, the 題庫 review bar on them. A shared stimulus
  * goes in front of its questions (`planCopies`). With `showSources`, a paper getting its
  * first sourced questions prints their sources, in `sourceFormat`, in the same commit
- * (`sourceChoiceDecides`).
+ * (`sourceChoiceDecides`). Every copy records its past-paper origin
+ * (`library/pastPaperCopies.ts`), so the 題庫 leaves it out until the teacher edits it.
  */
 /** The topic a question goes in under (Arrange, k-0556): its key and its printed name. */
 export interface TopicHeading {
@@ -89,7 +91,8 @@ export function insertIntoOpen(
   const { inserted } = commitBankCopies(
     {
       openId: store.worksheet.id,
-      found: plan.questions.map((question, index) => ({ question, docId: plan.fromDocIds[index] })),
+      // Each copy keeps its source tag and what it says now: unchanged, it stays out of the 題庫 (k-0559).
+      found: plan.questions.map((question, index) => ({ question: withPastPaperOrigin(question, sourceOf(question).tag), docId: plan.fromDocIds[index] })),
       missing: [],
     },
     { summary: (count) => summary(count, skipped), leads, ...(turnOn ? { patch: sourcesPatch(store.worksheet, sourceFormat) } : {}) },

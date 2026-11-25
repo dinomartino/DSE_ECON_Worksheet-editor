@@ -30,7 +30,7 @@ import { rowsOf } from './indexer';
 import type { BankRow } from './types';
 
 /** The rows version that wrote the corpus. */
-const WRITTEN_AT = 7;
+const WRITTEN_AT: number = 7;
 /** This build reads the stored rows as they are (else it rebuilds them). */
 const sameFormat = frozen.storedIndexFormat === STORED_INDEX_FORMAT;
 

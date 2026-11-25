@@ -31,7 +31,7 @@ export interface BankIndexBackend {
  * text, `contentKey`), and every persisted index is dropped and rebuilt on next use. The
  * golden test in `indexer.test.ts` fails when the output moves, to say so.
  */
-export const INDEX_FORMAT = 7;
+export const INDEX_FORMAT = 8; // 8: a paper's unchanged past-paper copies yield no row (k-0559)
 
 /**
  * What a stored index is stamped with and checked against: the rows version plus a hash of

@@ -2,6 +2,7 @@ import { isNewerThanBuild } from '@/model/migrations';
 import type { Question, Worksheet } from '@/model/types';
 import type { WorksheetStore } from '@/storage/types';
 import { contentKey } from './contentKey';
+import { showsInBank } from './pastPaperCopies';
 import type { BankRow } from './types';
 
 /**
@@ -20,16 +21,19 @@ export function feedsBank(doc: Worksheet): boolean {
 /**
  * The questions of `paper` no document in `others` says the same as, in paper order, one
  * per content (two identical questions in the paper are one kept). Only `others` that
- * `feedsBank` count; the paper itself is never one of its own holders.
+ * `feedsBank` count; the paper itself is never one of its own holders. Questions the 題庫
+ * does not show (`showsInBank`: a paper's unchanged past-paper copies) neither leave nor hold.
  */
 export function questionsOnlyIn(paper: Worksheet, others: Iterable<Worksheet>): Question[] {
   const held = new Set<string>();
   for (const doc of others) {
     if (doc.id === paper.id || !feedsBank(doc)) continue;
-    for (const question of doc.questions) held.add(contentKey(question));
+    for (const question of doc.questions) if (showsInBank(question, doc)) held.add(contentKey(question));
   }
   const leaving: Question[] = [];
   for (const question of paper.questions) {
+    // An unchanged past-paper copy was never in the 題庫, so it takes nothing out (k-0559).
+    if (!showsInBank(question, paper)) continue;
     const key = contentKey(question);
     if (held.has(key)) continue;
     held.add(key);
