@@ -156,10 +156,17 @@ interface Keeper {
 }
 
 const keepers = new WeakMap<PictureStore, Keeper>();
+/**
+ * Plain statements on purpose: written as `if (!k) keepers.set(store, (k = {…}))`, the
+ * production minifier inlined it into `localChatStorage` as `(e=…)||…; let e`, a use before
+ * its declaration that broke prerendering `/` (k-0551 build fix).
+ */
 function keeperOf(store: PictureStore, now: () => number): Keeper {
-  let keeper = keepers.get(store);
-  if (!keeper) keepers.set(store, (keeper = { store, now, known: new Map(), writing: new Map(), works: true }));
-  return keeper;
+  const found = keepers.get(store);
+  if (found) return found;
+  const made: Keeper = { store, now, known: new Map(), writing: new Map(), works: true };
+  keepers.set(store, made);
+  return made;
 }
 
 const isKnown = (keeper: Keeper, id: string) => {
@@ -212,12 +219,12 @@ export function localChatStorage(
   const lean = new WeakMap<Chat, { chat: Chat; pictures: Map<string, string> }>();
 
   const leanOf = (chat: Chat) => {
-    let hit = lean.get(chat);
-    if (!hit) {
-      const { value, pictures: found } = takePictures(forSaving(chat));
-      lean.set(chat, (hit = { chat: value, pictures: found }));
-    }
-    return hit;
+    const hit = lean.get(chat);
+    if (hit) return hit;
+    const { value, pictures: found } = takePictures(forSaving(chat));
+    const made = { chat: value, pictures: found };
+    lean.set(chat, made);
+    return made;
   };
 
   /** Pictures neither list names, older than the grace, dropped. Never throws. */

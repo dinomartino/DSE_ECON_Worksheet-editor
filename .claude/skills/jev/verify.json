@@ -70,8 +70,9 @@
     {
       "id": "web-build",
       "cmd": "npm run build",
-      "why": "desktop-adjacent or build config changed; postbuild checks no Tauri in the web bundle",
-      "triggers": ["src/desktop/**", "src/platform/**", "src/storage/fileStore.ts", "next.config.*", "package.json", "scripts/check-web-bundle.mjs"]
+      "why": "desktop-adjacent or build config changed, or code the server prerender runs when a module loads (module-level stores: the production minifier can break it while dev and tests pass, k-0551); postbuild checks no Tauri in the web bundle",
+      "triggers": ["src/desktop/**", "src/platform/**", "src/storage/fileStore.ts", "next.config.*", "package.json", "scripts/check-web-bundle.mjs", "src/store/**", "src/**/*Store.ts", "src/**/*Storage.ts", "src/**/live.ts", "src/components/studio/chat/**", "src/components/studio/panel/paperChat.ts"],
+      "ignore": ["**/*.test.{ts,tsx}"]
     },
     {
       "id": "changelog-line",
