@@ -18,7 +18,7 @@
  * The deterministic half of the same rules is `check.ts:checkDseStyle`.
  */
 
-export const DSE_STYLE_PROFILE_VERSION = 1;
+export const DSE_STYLE_PROFILE_VERSION = 2;
 
 /** Opens the block: a marker tests and a mock server can find. */
 export const DSE_STYLE_MARKER = 'HKDSE ECONOMICS PAPER 1 MC HOUSE STYLE';
@@ -53,7 +53,7 @@ export const DSE_STYLE_PROFILE = [
   '',
   'E. NUMBERS AND UNITS',
   '- "$" before the number ($120; $1 500 million). Thousands separated by a space (10 000; 1 500), never a comma (0 of 725). "%" for percentages. A table heading carries the unit: "$ million", "Price ($)", "(units)".',
-  '- 中文: $120、1 500 百萬元、億、10%; 「2020 年」.',
+  '- 中文: $120、1 500 百萬元、30 億元 (no "$" before 百萬元 or 億元: never 「$1 500 百萬元」)、10%; 「2020 年」.',
   '',
   'F. 中文 TEXT',
   '- Hong Kong Traditional Chinese, the EDB terms. Full-width punctuation ，。？：；、「」（）; statement numbers stay half-width (1) (2) (3).',

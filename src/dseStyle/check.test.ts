@@ -60,6 +60,9 @@ describe('checkDseStyle: rules', () => {
     expect(ids(comboItem([['1 and 2', '1、2'], ...COMBO_OK.slice(1)]))).toEqual([]); // not a set at all: shape's business
     expect(ids(comboItem([['(1) & (2) only', '只有 (1) 和 (2)'], ...COMBO_OK.slice(1)]))).toContain('style.comboForm');
     expect(ids(comboItem([['(2) and (1) only', '只有 (2)、(1)'], ...COMBO_OK.slice(1)]))).toContain('style.comboForm');
+    // 「及」 between two statements: the pre-profile studio form and the Sample Paper's, not the papers' (k-0548 A/B).
+    expect(ids(comboItem(COMBO_OK.map(([en, zh]) => [en, zh.replace(/只有 \((\d)\)、\((\d)\)/, '只有(\$1)及(\$2)')]) as [string, string][]), ['zh'])).toEqual(['style.comboForm']);
+    expect(ids(comboItem(COMBO_OK), ['zh'])).toEqual([]);
     expect(ids(comboItem([['(1) and (2)', '(1)、(2)'], ...COMBO_OK.slice(1)]))).toEqual(['style.comboOnly']);
     expect(ids(comboItem([...COMBO_OK.slice(0, 3), ['(1), (2) and (3) only', '只有 (1)、(2)、(3)']]))).toEqual(['style.comboOnly']);
     expect(ids(comboItem([COMBO_OK[3], ...COMBO_OK.slice(0, 3)]))).toEqual(['style.comboOrder']);
@@ -100,6 +103,15 @@ describe('checkDseStyle: rules', () => {
   it('reads 中文 punctuation and characters', () => {
     expect(ids({ ...CLEAN, stem: bi('', '假設政府向物品 X 徵收從量稅,下列哪項最可能出現？') }, ['zh'])).toEqual(['style.zhPunctuation']);
     expect(ids({ ...CLEAN, stem: bi('', '下列哪項最可能出現?') }, ['zh'])).toEqual(['style.zhPunctuation']);
+  });
+
+  it('money in 百萬元／億元 has no "$" in 中文 (style.zhMoney)', () => {
+    const money = (zh: string) => item(['What is the GNI of Country A?', zh], [['$1 760 million', '1 760 百萬元'], ['$1 820 million', '1 820 百萬元'], ['$2 040 million', '2 040 百萬元'], ['$2 160 million', '2 160 百萬元']]);
+    expect(ids(money('甲國的本地居民總收入是多少？'), ['zh'])).toEqual([]);
+    expect(ids(money('若政府開支增加 $30 億元，甲國的本地居民總收入是多少？'), ['zh'])).toEqual(['style.zhMoney']);
+    expect(ids(money('若政府開支增加$1 500百萬元，甲國的本地居民總收入是多少？'), ['zh'])).toEqual(['style.zhMoney']);
+    // 「$230 億」 (no 元) is on the papers.
+    expect(ids(money('若政府開支增加 $230 億，甲國的本地居民總收入是多少？'), ['zh'])).toEqual([]);
     expect(ids({ ...CLEAN, stem: bi('', '下列哪项最可能出现？') }, ['zh'])).toEqual(['style.zhSimplified']);
     // Statement numbers and Latin text stay half-width.
     expect(ids(comboItem(COMBO_OK), ['zh'])).toEqual([]);

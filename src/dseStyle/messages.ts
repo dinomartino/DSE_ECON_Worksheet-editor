@@ -44,6 +44,8 @@ export function styleFindingText(finding: StyleFinding | { id: string; params?: 
       return m.styleZhPunctuation(str(p.example));
     case 'style.zhSimplified':
       return m.styleZhSimplified(str(p.example));
+    case 'style.zhMoney':
+      return m.styleZhMoney(str(p.example));
     case 'style.contraction':
       return m.styleContraction(str(p.example));
     case 'style.filler':

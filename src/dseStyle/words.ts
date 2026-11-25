@@ -46,6 +46,10 @@ export const DSE_STYLE_WORDS = {
     en: (side: string) => `With two blanks, every ${side} option should read “X ... Y”.`,
     zh: (side: string) => `題目有兩個空格時，每個${side}選項都應寫成「X …… Y」。`,
   },
+  styleZhMoney: {
+    en: (example: string) => `The 中文 writes “${example}”; HKDSE papers drop the “$” before 百萬元 or 億元 (400 百萬元).`,
+    zh: (example: string) => `中文寫成「${example}」；HKDSE 試卷在百萬元、億元前不加「$」（400 百萬元）。`,
+  },
   styleZhPunctuation: {
     en: (example: string) => `The 中文 uses half-width punctuation (“${example}”); HKDSE papers use full-width ，。？：.`,
     zh: (example: string) => `中文使用了半形標點（「${example}」）；HKDSE 試卷使用全形標點 ，。？：。`,

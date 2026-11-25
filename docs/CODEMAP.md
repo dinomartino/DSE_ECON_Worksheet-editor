@@ -626,7 +626,7 @@ Invariants:
 
 ## dseStyle — the HKDSE Paper 1 MC house style (k-0548)
 
-Measured on the 725 HKDSE Paper 1 questions of the past-paper bank (report `Outbox/k-0548/DSE-STYLE.md`). Not tied to the studio: any feature that asks the AI to write or improve a Paper 1 question uses the same block and check (k-0549's wording enhancement, `src/polish/`, does).
+Measured on the 725 HKDSE Paper 1 questions of the past-paper bank (report `Outbox/k-0548/DSE-STYLE.md`; live before/after `evals/style-ab.eval.ts`, report `Outbox/k-0548/AB.md`). Not tied to the studio: any feature that asks the AI to write or improve a Paper 1 question uses the same block and check (k-0549's wording enhancement, `src/polish/`, does).
 
 - `src/dseStyle/profile.ts:DSE_STYLE_PROFILE` · `:DSE_STYLE_MARKER` · `:DSE_STYLE_PROFILE_VERSION` — one fixed text (EN rules with the 中文 patterns inside), ≈ 1,550 tokens; `src/ai/credits.ts:STYLE_BLOCK_TOKENS` counts it in the studio's estimate
 - `src/dseStyle/check.ts:checkDseStyle` · `:STYLE_FINDING_IDS` · `:optionNumber` — 16 deterministic rules on `{ stem, statements, options }` per side (`**bold**`, table rows as "a | b")

@@ -35,6 +35,7 @@ export type StyleFindingId =
   | 'style.questionMark'
   | 'style.zhPunctuation'
   | 'style.zhSimplified'
+  | 'style.zhMoney'
   | 'style.contraction'
   | 'style.filler'
   | 'style.longSentence'
@@ -44,7 +45,7 @@ export type StyleFindingId =
 export const STYLE_FINDING_IDS: readonly StyleFindingId[] = [
   'style.negativeCase', 'style.questionMark', 'style.comboForm', 'style.comboOnly', 'style.comboOrder',
   'style.numberOrder', 'style.thousandsComma', 'style.optionStops', 'style.statementStops', 'style.blankSeparator',
-  'style.zhPunctuation', 'style.zhSimplified', 'style.contraction', 'style.filler', 'style.longSentence', 'style.spelling',
+  'style.zhPunctuation', 'style.zhSimplified', 'style.zhMoney', 'style.contraction', 'style.filler', 'style.longSentence', 'style.spelling',
 ];
 
 export interface StyleFinding {
@@ -119,7 +120,9 @@ function comboFindings(item: StyleItem, side: StyleSide): StyleFinding[] {
   const out: StyleFinding[] = [];
   const form = side === 'en' ? COMBO_EN : COMBO_ZH;
   const ascending = (s: number[]) => s.every((v, i) => i === 0 || v > s[i - 1]);
-  if (opts.some((o, i) => !form.test(o) || !ascending(sets[i]))) out.push({ id: 'style.comboForm', params: { side } });
+  // 中文 joins two statements with 「、」 (「只有 (1)、(2)」: 505 of 515 such options; 「及」 only in the Sample Paper); 「及」 comes before the last of three or more.
+  const zhPair = (o: string, set: number[]) => side === 'zh' && set.length === 2 && o.includes('及');
+  if (opts.some((o, i) => !form.test(o) || !ascending(sets[i]) || zhPair(o, sets[i]))) out.push({ id: 'style.comboForm', params: { side } });
   const only = side === 'en' ? /\bonly\b/ : /只有/;
   if (opts.some((o, i) => (sets[i].length < n) !== only.test(o))) out.push({ id: 'style.comboOnly', params: { side } });
   const cmp = (a: number[], b: number[]) => {
@@ -192,6 +195,8 @@ const AMERICAN: readonly [RegExp, string][] = [
 const LONG_EN = 45;
 const LONG_ZH = 90;
 
+const ZH_MONEY = /\$\s?\d[\d ,.]*\s?(?:百萬|億|萬)元/;
+
 /** Every style finding for one question, for the sides written. */
 export function checkDseStyle(item: StyleItem, sides: readonly StyleSide[]): StyleFinding[] {
   const found = new Map<StyleFindingId, StyleFinding>();
@@ -220,6 +225,9 @@ export function checkDseStyle(item: StyleItem, sides: readonly StyleSide[]): Sty
       // The translator's list: Simplified-only characters, none used in Traditional (src/translate/simplified.ts).
       const simp = simplifiedChars(all);
       if (simp.length) add({ id: 'style.zhSimplified', params: { example: simp.slice(0, 3).join('') } });
+      // An amount in 百萬元／億元／萬元 carries no "$" (「400 百萬元」, 58 times on the papers; 「$400 百萬元」 never).
+      const money = ZH_MONEY.exec(all);
+      if (money) add({ id: 'style.zhMoney', params: { example: money[0].trim() } });
     } else {
       const c = CONTRACTION.exec(all);
       if (c) add({ id: 'style.contraction', params: { example: c[0] } });
