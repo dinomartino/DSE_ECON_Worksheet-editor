@@ -79,7 +79,7 @@ export function PastPaperTab() {
       <BankStateNote browse={browse}>
         <div className="shrink-0 space-y-2 border-b border-line px-4 pb-3 pt-2.5">
           <p className="text-[11.5px] text-ink-subtle">{m.tabHint}</p>
-          <ViewSwitch value={browse.view} onChange={browse.setView} className="" />
+          <ViewSwitch value={browse.view === 'arrange' ? 'topic' : browse.view} onChange={browse.setView} className="" />
           {byYear ? (
             <label className="block">
               <span className="sr-only">{m.yearsNav}</span>

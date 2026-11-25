@@ -83,13 +83,14 @@ export interface PastPaperSettings {
    */
   sourceFormat: QuestionSourceFormat;
   /**
-   * How the bank lists its questions (k-0497, user u-nlb5): by topic (the default) or by exam
-   * year. The last one chosen, remembered on this computer.
+   * How the bank lists its questions (k-0497, user u-nlb5): by topic (the default), by exam
+   * year, or the teacher's own arrangement (Arrange, k-0556; the screen only, the 題庫 tab
+   * reads it as by topic). The last one chosen, remembered on this computer.
    */
   view: PastPaperView;
 }
 
-export type PastPaperView = 'topic' | 'year';
+export type PastPaperView = 'topic' | 'year' | 'arrange';
 
 /**
  * A source address: https anywhere; http only on this computer (a local export served by
@@ -124,7 +125,7 @@ export const PAST_PAPER_SETTINGS: SettingsSchema<PastPaperSettings> = {
     url: sourceAddress,
     showSources: bool,
     sourceFormat: oneOf<QuestionSourceFormat>(['full', 'short', 'shortRoman']),
-    view: oneOf<PastPaperView>(['topic', 'year']),
+    view: oneOf<PastPaperView>(['topic', 'year', 'arrange']),
   },
 };
 
