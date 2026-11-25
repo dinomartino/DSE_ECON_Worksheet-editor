@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { DragChip } from '@/components/ui/DragGhost';
 import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, GripIcon, ImageIcon } from '@/components/ui/icons';
@@ -75,6 +75,8 @@ export interface ArrangeAddOptions {
   topics?: ReadonlyMap<string, TopicHeading>;
 }
 
+const NO_ITEMS: readonly PastPaperItem[] = [];
+
 export function PastPaperArrange({
   browse,
   variant = 'screen',
@@ -118,12 +120,14 @@ export function PastPaperArrange({
   const names = topicNamesFor(language);
   const index = bank.manifest?.search;
 
-  // Every question as a row, in the bank's order.
+  // Every question as a row, in the bank's order. Off the index, a topic arriving changes no row
+  // (each row redraws only when its own props change).
+  const loaded = index && index.length > 0 ? NO_ITEMS : browse.allLoaded;
   const entries: ArrangeEntry[] = useMemo(() => {
     if (index && index.length > 0) {
       return index.map((row) => ({ key: row.source.tag, topicId: row.topicId, source: row.source, en: row.en, zh: row.zh, pictures: row.pictures, searchText: row.searchText }));
     }
-    return browse.allLoaded.map((item) => ({
+    return loaded.map((item) => ({
       key: arrangeKey(item),
       topicId: item.topicId,
       source: item.source,
@@ -132,7 +136,7 @@ export function PastPaperArrange({
       pictures: 0,
       searchText: item.searchText,
     }));
-  }, [index, browse.allLoaded]);
+  }, [index, loaded]);
   const byKey = useMemo(() => new Map(entries.map((entry) => [entry.key, entry])), [entries]);
   const rows: ArrangeRow[] = useMemo(() => entries.map(({ key, topicId }) => ({ key, topicId })), [entries]);
   const topicIds = useMemo(() => topics.map((t) => t.id), [topics]);
@@ -199,8 +203,14 @@ export function PastPaperArrange({
     return next;
   });
 
-  // The question shown as it prints, under its row.
+  // The question shown as it prints, under its row. Show all (u-ymov) opens every row; `opened`
+  // then lists the rows the teacher hid one by one (and otherwise the rows opened one by one).
+  const [everyOpen, setEveryOpen] = useState(false);
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleEveryOpen = () => {
+    setEveryOpen(!everyOpen);
+    setOpened(new Set());
+  };
   const itemByKey = useMemo(() => new Map(browse.allLoaded.map((item) => [arrangeKey(item), item])), [browse.allLoaded]);
   const toggleOpenedNow = (key: string) => {
     setOpened((now) => {
@@ -295,10 +305,12 @@ export function PastPaperArrange({
     commit(next);
   };
   // The rows get handlers that never change, so a tick or a move redraws only the rows it touches.
-  const latest = useRef({ stepNow, toggleOpenedNow });
+  const needTopicNow = (topicId: string) => void bank.topic(topicId);
+  const latest = useRef({ stepNow, toggleOpenedNow, needTopicNow });
   useEffect(() => {
-    latest.current = { stepNow, toggleOpenedNow };
+    latest.current = { stepNow, toggleOpenedNow, needTopicNow };
   });
+  const needTopic = useCallback((topicId: string) => latest.current.needTopicNow(topicId), []);
   const step = useCallback((key: string, direction: -1 | 1) => latest.current.stepNow(key, direction), []);
   const toggleOpened = useCallback((key: string) => latest.current.toggleOpenedNow(key), []);
   const onRowKey = useCallback((event: KeyboardEvent<HTMLElement>, key: string) => {
@@ -480,8 +492,6 @@ export function PastPaperArrange({
     const ticked = keys.filter((key) => selected.has(key)).length;
     return { checked: keys.length > 0 && ticked === keys.length, mixed: ticked > 0 && ticked < keys.length };
   };
-  // One tap shows every part and topic, or folds them all (u-hwfl).
-  const everythingOpen = closed.size === 0;
   const tab = variant === 'tab';
   // A new worksheet from ticked questions is named after their one topic, else their one part.
   const nameFor = (keys: readonly string[]) => {
@@ -495,7 +505,6 @@ export function PastPaperArrange({
     tab ? () => void addKeys(keys) : () => void addKeys(keys, { to: 'new:classroom', name });
   const headerLabel = tab ? m.addHere : m.makeWorksheet;
   const headerTitle = tab ? m.addHereTitle : m.makeWorksheetTitle;
-  const toggleAll = () => setClosed(everythingOpen ? new Set([...groups.map((g) => `part:${g.code}`), ...topics.map((t) => t.id)]) : new Set());
   const resetAll = () => {
     if (!window.confirm(m.resetAllConfirm)) return;
     setArrangement({ topics: {} });
@@ -555,7 +564,7 @@ export function PastPaperArrange({
                 {m.shown(shownCount, entries.length)}
               </span>
               {sourcesTick}
-              <ShowAllButton open={everythingOpen} onClick={toggleAll} />
+              <ShowAllButton shown={everyOpen} onClick={toggleEveryOpen} />
               {anyChanged && (
                 <button type="button" data-arrange-reset-all onClick={resetAll} className={linkButton}>
                   {m.resetAll}
@@ -572,7 +581,7 @@ export function PastPaperArrange({
           <span className="shrink-0 text-[12px] tabular-nums text-ink-subtle" role="status">
             {m.shown(shownCount, entries.length)}
           </span>
-          <ShowAllButton open={everythingOpen} onClick={toggleAll} />
+          <ShowAllButton shown={everyOpen} onClick={toggleEveryOpen} />
           {anyChanged && (
             <button type="button" data-arrange-reset-all onClick={resetAll} className={linkButton}>
               {m.resetAll}
@@ -646,6 +655,7 @@ export function PastPaperArrange({
                           name={topicName(topic.id)}
                           keys={keys}
                           open={!closed.has(topic.id)}
+                          rowHeight={everyOpen ? (tab ? 220 : 300) : 41}
                           changed={changed(topic.id)}
                           check={checkState(keys)}
                           dropAt={dropAt?.topicId === topic.id ? dropAt : null}
@@ -674,12 +684,14 @@ export function PastPaperArrange({
                                 carried={carrying.has(key)}
                                 dropBefore={dropAt?.topicId === topic.id && dropAt.before === key}
                                 movedFrom={entry.topicId !== topic.id ? topicName(entry.topicId) : undefined}
-                                opened={opened.has(key)}
+                                opened={everyOpen !== opened.has(key)}
                                 item={itemByKey.get(key)}
                                 doc={browse.docOf.get(entry.topicId)}
                                 topicState={bank.topics[entry.topicId]?.state}
                                 onToggle={toggleKey}
                                 onOpen={toggleOpened}
+                                onNeed={needTopic}
+                                scrollRoot={scroller}
                                 onStep={step}
                                 onKey={onRowKey}
                                 onPointerDown={onRowPointerDown}
@@ -782,20 +794,119 @@ export function PastPaperArrange({
   );
 }
 
-/** Show all 全部展開 / Collapse all 全部收合 (u-hwfl): every part and topic at once. */
-function ShowAllButton({ open, onClick }: { open: boolean; onClick: () => void }) {
+/**
+ * Show all 全部顯示 / Hide all 全部隱藏 (u-ymov): every question in view as it prints, as each
+ * row's own Show does. The papers draw only near the screen (LazySheet), so 1,759 stay smooth.
+ */
+function ShowAllButton({ shown, onClick }: { shown: boolean; onClick: () => void }) {
   const m = useMessages(ARRANGE_MESSAGES);
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={open}
-      title={open ? m.collapseAllTitle : m.showAllTitle}
-      data-arrange-show-all={open ? 'open' : 'closed'}
+      aria-pressed={shown}
+      title={shown ? m.hideAllTitle : m.showAllTitle}
+      data-arrange-show-all={shown ? 'shown' : 'hidden'}
       className="shrink-0 cursor-pointer rounded-md border border-line bg-surface px-2 py-0.5 text-[12px] text-ink-muted hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      {open ? m.collapseAll : m.showAll}
+      {shown ? m.hideAll : m.showAll}
     </button>
+  );
+}
+
+/**
+ * Papers waiting to draw. One draws per frame, the one nearest the list's view first, so Show all
+ * over a whole topic (or a fast scroll) never spends one frame drawing a dozen (u-ymov).
+ */
+type DrawJob = { element: HTMLElement; run: () => void };
+const drawQueue = new Set<DrawJob>();
+let drawFrame = 0;
+function drawNext() {
+  drawFrame = 0;
+  let best: DrawJob | undefined;
+  let bestGap = Infinity;
+  for (const job of drawQueue) {
+    const rect = job.element.getBoundingClientRect();
+    const middle = window.innerHeight / 2;
+    const gap = rect.bottom < middle ? middle - rect.bottom : Math.max(0, rect.top - middle);
+    if (gap < bestGap) {
+      best = job;
+      bestGap = gap;
+    }
+  }
+  if (best) {
+    drawQueue.delete(best);
+    best.run();
+  }
+  if (drawQueue.size > 0) drawFrame = requestAnimationFrame(drawNext);
+}
+function queueDraw(job: DrawJob): () => void {
+  drawQueue.add(job);
+  if (!drawFrame) drawFrame = requestAnimationFrame(drawNext);
+  return () => drawQueue.delete(job);
+}
+
+/**
+ * A row's printed question, there only while it is within a few screens of the list's view: it
+ * asks for its topic then, draws in its turn (`queueDraw`), and gives way to a blank of its last
+ * height once far off again.
+ */
+function LazySheet({
+  topicId,
+  ready,
+  fallback,
+  estimate,
+  scrollRoot,
+  onNeed,
+  children,
+}: {
+  topicId: string;
+  /** The question is here to draw (its topic arrived). */
+  ready: boolean;
+  /** What shows meanwhile (loading, or the topic failed). */
+  fallback: ReactNode;
+  estimate: number;
+  scrollRoot: RefObject<HTMLDivElement | null>;
+  onNeed: (topicId: string) => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  // Without IntersectionObserver (old engines, tests) every paper draws at once.
+  const [inView, setInView] = useState(() => typeof IntersectionObserver === 'undefined');
+  const [drawn, setDrawn] = useState(() => typeof IntersectionObserver === 'undefined');
+  const [held, setHeld] = useState(0);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const last = entries[entries.length - 1];
+        if (!last) return;
+        if (last.isIntersecting) {
+          setInView(true);
+          onNeed(topicId);
+        } else {
+          setHeld(last.boundingClientRect.height);
+          setInView(false);
+          setDrawn(false);
+        }
+      },
+      { root: scrollRoot.current, rootMargin: '1200px 0px' },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [scrollRoot, topicId, onNeed]);
+  // Queued only once the question is here, so a topic arriving never draws all its papers in one frame.
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || !inView || !ready || drawn) return;
+    return queueDraw({ element, run: () => setDrawn(true) });
+  }, [inView, ready, drawn]);
+  const show = drawn && ready;
+  return (
+    <div ref={ref} className="mt-2 cursor-default" data-drag-ignore data-arrange-sheet={show ? 'drawn' : 'held'} style={show ? undefined : { minHeight: held || estimate }}>
+      {show ? children : inView && !ready ? fallback : null}
+    </div>
   );
 }
 
@@ -854,6 +965,7 @@ function TopicBlock({
   name,
   keys,
   open,
+  rowHeight,
   changed,
   check,
   dropAt,
@@ -872,6 +984,8 @@ function TopicBlock({
   name: string;
   keys: readonly string[];
   open: boolean;
+  /** About how tall a row is, for the room a topic far off the screen keeps. */
+  rowHeight: number;
   changed: boolean;
   check: { checked: boolean; mixed: boolean };
   dropAt: DropAt | null;
@@ -892,7 +1006,7 @@ function TopicBlock({
     <div
       data-arrange-topic={topic.id}
       className={`rounded-xl border bg-surface transition-colors duration-150 ${dropAt ? 'border-accent/60' : 'border-line'}`}
-      style={open && keys.length > 12 ? { contentVisibility: 'auto', containIntrinsicSize: `auto ${keys.length * 41 + 44}px` } : undefined}
+      style={open && keys.length > 12 ? { contentVisibility: 'auto', containIntrinsicSize: `auto ${keys.length * rowHeight + 44}px` } : undefined}
     >
       <div data-arrange-topic-head={topic.id} className={`flex items-center gap-2 ${compact ? 'px-1.5 py-1.5' : 'px-2.5 py-2'}`}>
         <OpenToggle open={open} label={open ? m.collapse(name) : m.expand(name)} onClick={onToggleOpen} />
@@ -945,6 +1059,8 @@ const QuestionRow = memo(function QuestionRow({
   topicState,
   onToggle,
   onOpen,
+  onNeed,
+  scrollRoot,
   onStep,
   onKey,
   onPointerDown,
@@ -966,6 +1082,9 @@ const QuestionRow = memo(function QuestionRow({
   topicState?: 'loading' | 'ready' | 'error';
   onToggle: (key: string) => void;
   onOpen: (key: string) => void;
+  /** The question's topic is wanted (its paper nears the screen). */
+  onNeed: (topicId: string) => void;
+  scrollRoot: RefObject<HTMLDivElement | null>;
   onStep: (key: string, direction: -1 | 1) => void;
   onKey: (event: KeyboardEvent<HTMLElement>, key: string) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLElement>, key: string) => void;
@@ -1019,15 +1138,22 @@ const QuestionRow = memo(function QuestionRow({
           </div>
           <p className="line-clamp-2 text-[12px] leading-snug text-ink-muted">{words}</p>
           {opened && (
-            <div className="mt-2 cursor-default" data-drag-ignore>
-              {item && doc ? (
-                <PastPaperSheet item={item} doc={doc} language={language} compact={compact} />
-              ) : topicState === 'error' ? (
-                <p className="text-[12px] text-ink-muted">{m.questionError}</p>
-              ) : (
-                <p className="text-[12px] text-ink-subtle" role="status">{m.loadingQuestion}</p>
-              )}
-            </div>
+            <LazySheet
+              topicId={entry.topicId}
+              ready={item !== undefined && doc !== undefined}
+              fallback={
+                topicState === 'error' ? (
+                  <p className="text-[12px] text-ink-muted">{m.questionError}</p>
+                ) : (
+                  <p className="text-[12px] text-ink-subtle" role="status">{m.loadingQuestion}</p>
+                )
+              }
+              estimate={compact ? 180 : 260}
+              scrollRoot={scrollRoot}
+              onNeed={onNeed}
+            >
+              {item && doc && <PastPaperSheet item={item} doc={doc} language={language} compact={compact} eager />}
+            </LazySheet>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
