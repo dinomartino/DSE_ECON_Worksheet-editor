@@ -1,6 +1,7 @@
 import { PAPER_SIZES, pageSetupOf, twipsToPt } from '@/model/page';
 import type { OutputMode, Worksheet } from '@/model/types';
 import { printPage, savePdf, type PdfPage } from '@/platform';
+import { pdfStamp } from '@/export/origin';
 
 /**
  * PDF export: the engine's print of the real sheets in `#print-root` (§ PDF export uses
@@ -85,7 +86,7 @@ export async function printWorksheetPdf(
   if (file !== undefined) {
     // No `afterprint` here: the command resolves once the file is written, and that ends it.
     try {
-      await savePdf(file, pdfPageBox(worksheet, deps.sheetCount()));
+      await savePdf(file, pdfPageBox(worksheet, deps.sheetCount()), pdfStamp(worksheet, printMode.language));
       restore();
       return { saved: file };
     } catch (cause) {

@@ -371,8 +371,11 @@ export const KEPT_KEYS: ReadonlySet<string> = new Set([
 /** Timestamps: set to the moment of the copy, so they say nothing about the original. */
 export const TIMESTAMP_KEYS: ReadonlySet<string> = new Set(['createdAt', 'updatedAt', 'copiedAt', 'tagsAt']);
 
-/** Top-level fields left out of the copy: never printed, only about the teacher's classes. */
-export const DROPPED_KEYS: ReadonlySet<string> = new Set(['classes', 'satOn']);
+/**
+ * Top-level fields left out of the copy: never printed, only about the teacher's classes,
+ * or (`originId`, k-0558) the id their exported files carry, which would tie a report to them.
+ */
+export const DROPPED_KEYS: ReadonlySet<string> = new Set(['classes', 'satOn', 'originId']);
 
 /** Pictures: a `data:` URL (or an asset id), replaced by noise of the same pixel size. */
 export const IMAGE_KEY = 'src';

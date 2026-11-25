@@ -347,6 +347,21 @@ page size is the paper's — and open it. WebKit's print can differ from Chrome'
 Export with a wide window (1800 px or more): text must be at true size (a 20 mm margin
 sits at 56.7 pt in `pdftotext -bbox`), and every footer must sit at its page's bottom.
 
+## Check where an exported file came from
+
+Every `.docx`, `.xlsx` and desktop PDF carries hidden origin metadata (k-0558,
+`src/export/origin/index.ts:exportOrigin`): app, version, export time and the worksheet's
+random `originId`. To read it back:
+
+    node scripts/origin.mjs <file.docx|file.pdf|file.xlsx> [more…]    # --json for machine output
+
+Exit 0 when every file has it, 1 when one does not. Without the repo: Word, File → Info →
+Properties → Advanced Properties → Custom (`DSEconDocId`…); macOS `mdls -name
+kMDItemCreator <file.pdf>` or Preview → Tools → Show Inspector (Producer); `exiftool`
+shows both. A PDF from the print dialog (web, or the desktop's fallback) has none — the
+browser writes that file. Proof harness: `scripts/origin-proof.mjs` then
+`npx vitest run scripts/origin-proof.test.ts`.
+
 ## Verify UI
 
 ```bash

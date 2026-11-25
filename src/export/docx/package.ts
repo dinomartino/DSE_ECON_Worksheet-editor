@@ -2,6 +2,14 @@ import JSZip from 'jszip';
 import type { FontPair } from '@/model/types';
 import { XML_DECL } from './xml';
 import { DEFAULT_TAB_STOP_TWIPS } from '@/model/tabStops';
+import type { ExportOrigin } from '@/export/origin';
+import {
+  CUSTOM_PROPS_CONTENT_TYPE,
+  CUSTOM_PROPS_PART,
+  CUSTOM_PROPS_REL_TYPE,
+  appPropsXml,
+  customPropsXml,
+} from '@/export/origin/docxProps';
 
 /**
  * OPC package plumbing: content types, relationships, header/footer, settings.
@@ -16,7 +24,12 @@ export interface ImageAsset {
   extension: string;
 }
 
-export function buildContentTypesXml(assets: ImageAsset[], hf: HeaderFooterParts = {}): string {
+export function buildContentTypesXml(
+  assets: ImageAsset[],
+  hf: HeaderFooterParts = {},
+  /** The origin's custom properties part is present (k-0558). */
+  customProps = false,
+): string {
   const extensions = new Set(assets.map((asset) => asset.extension));
   const defaults = ['<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
     '<Default Extension="xml" ContentType="application/xml"/>'];
@@ -42,17 +55,19 @@ export function buildContentTypesXml(assets: ImageAsset[], hf: HeaderFooterParts
       .join('') +
     '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
     '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+    (customProps ? `<Override PartName="/${CUSTOM_PROPS_PART}" ContentType="${CUSTOM_PROPS_CONTENT_TYPE}"/>` : '') +
     '</Types>'
   );
 }
 
-export function buildRootRelsXml(): string {
+export function buildRootRelsXml(customProps = false): string {
   return (
     XML_DECL +
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
     '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
     '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+    (customProps ? `<Relationship Id="rId4" Type="${CUSTOM_PROPS_REL_TYPE}" Target="${CUSTOM_PROPS_PART}"/>` : '') +
     '</Relationships>'
   );
 }
@@ -360,14 +375,9 @@ export function buildCorePropsXml(title: string, timestamp: string): string {
   );
 }
 
-export function buildAppPropsXml(): string {
-  return (
-    XML_DECL +
-    '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" ' +
-    'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">' +
-    '<Application>Econ Studio</Application>' +
-    '</Properties>'
-  );
+/** `docProps/app.xml`: the application, with its version when the file has an origin. */
+export function buildAppPropsXml(origin?: ExportOrigin): string {
+  return appPropsXml(origin);
 }
 
 export interface SectionOptions {
@@ -466,6 +476,8 @@ export interface PackageParts {
   fontTableXml: string;
   coreXml: string;
   assets: ImageAsset[];
+  /** Where the file came from (k-0558): app properties and a custom properties part. */
+  origin?: ExportOrigin;
 }
 
 /**
@@ -476,8 +488,9 @@ function buildZip(parts: PackageParts): JSZip {
   const zip = new JSZip();
 
   // [Content_Types].xml must be the first entry, per OPC.
-  zip.file('[Content_Types].xml', buildContentTypesXml(parts.assets, parts.headerFooter));
-  zip.folder('_rels')!.file('.rels', buildRootRelsXml());
+  const origin = parts.origin;
+  zip.file('[Content_Types].xml', buildContentTypesXml(parts.assets, parts.headerFooter, Boolean(origin)));
+  zip.folder('_rels')!.file('.rels', buildRootRelsXml(Boolean(origin)));
 
   const word = zip.folder('word')!;
   word.file('document.xml', parts.documentXml);
@@ -506,7 +519,8 @@ function buildZip(parts: PackageParts): JSZip {
 
   const docProps = zip.folder('docProps')!;
   docProps.file('core.xml', parts.coreXml);
-  docProps.file('app.xml', buildAppPropsXml());
+  docProps.file('app.xml', buildAppPropsXml(origin));
+  if (origin) docProps.file('custom.xml', customPropsXml(origin));
 
   return zip;
 }

@@ -123,6 +123,7 @@ export const KNOWN_KEYS = new Set([
   'answerKeyLayout',
   'examResults',
   'coverageReports',
+  'originId',
   'createdAt',
   'updatedAt',
   '__unknown',

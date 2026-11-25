@@ -108,7 +108,13 @@ export function CoverageReportDialog({ record, onClose }: { record: SavedCoverag
           return;
         }
       }
-      const outcome = await printJobPdf({ kind: 'coverage', coverage, label: m.title, text }, browserJobDeps(), file);
+      // The report's PDF carries the open paper's origin id (k-0558), as its exports do.
+      const originId = useWorksheetStore.getState().ensureOrigin().originId;
+      const outcome = await printJobPdf(
+        { kind: 'coverage', coverage, label: m.title, text, ...(originId ? { originId } : {}) },
+        browserJobDeps(),
+        file,
+      );
       if ('saved' in outcome) setStatus({ kind: 'saved', path: outcome.saved });
       else setStatus(outcome.fallback ? { kind: 'note', text: m.savedFallback(outcome.fallback) } : { kind: 'idle' });
     } catch (cause) {

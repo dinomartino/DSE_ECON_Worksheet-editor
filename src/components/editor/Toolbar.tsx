@@ -13,6 +13,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
 import { DocumentName } from './DocumentName';
 import { ExportDialog } from './ExportDialog';
+import { withOpenOrigin } from './exportOrigin';
 import { browserPrintDeps, printWorksheetPdf } from './printPdf';
 import { browserJobDeps, printJobPdf, usePrintJob, type PrintJob } from './printJob';
 import { EXPORT_MESSAGES } from './ExportDialog.messages';
@@ -247,7 +248,8 @@ export function Toolbar({
     // The ✦ Write panel's drafts are not in the paper: off the page while it prints (k-0516).
     const ghostsBack = hideGhostsForPrint();
     const deps = browserPrintDeps(setMode, () => select(undefined));
-    printWorksheetPdf(worksheet, printMode, deps, file)
+    // The PDF carries the document's origin id in its hidden metadata (k-0558).
+    printWorksheetPdf(withOpenOrigin(worksheet), printMode, deps, file)
       .finally(ghostsBack)
       .then((outcome) => {
         if ('saved' in outcome) flash(m.exportedPdf, revealAction(outcome.saved));

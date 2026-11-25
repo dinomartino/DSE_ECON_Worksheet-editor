@@ -3945,6 +3945,45 @@ steps and the secrets are in [`RELEASING.md`](./RELEASING.md).
 
 ---
 
+## Export origin metadata
+
+Every exported file says, in its own metadata only, that it came from this app (k-0558,
+user u-kioy: "the hidden data in the file not a watermark or text that is visible"):
+app name, version, export time (UTC, to the second) and the worksheet's `originId`.
+
+- **The id** (`Worksheet.originId`, `model/origin.ts`) is a random UUID v4, optional, in
+  `KNOWN_KEYS`. It is minted at the document's first editor save (`forSave`, which every
+  editor save goes through: autosave, Save now, the flush on leaving, before a restart) or
+  first export (`ensureOrigin`, which also marks the document dirty so autosave stores it),
+  and written outside history: every undo snapshot gets it too, so ⌘Z never takes it away.
+  **Opening never mints**: a load is not an edit, and the opened value stays the stored
+  one. A duplicate (`duplicateWorksheet`, `duplicateSetPapers`) drops it and gets its own;
+  a restore keeps it. A paper not open (a set's other paper, a key's "Also include") is
+  given one and saved by `components/editor/exportOrigin.ts:withOrigins`, `updatedAt`
+  untouched. A newer build's file is never written: its exports carry an id for the session.
+  Feedback's anonymised copy drops it (it would tie a report to the teacher's files).
+- **Anonymous by construction.** Only those four values; nothing from Settings, the
+  account, a licence, the machine or a path. Nothing on the page and nothing in the page's
+  text layer (copy, search and screen readers read that).
+- **`.docx` / `.xlsx`**: `docProps/app.xml` `Application` + `AppVersion` (`XX.YYYY`, so
+  0.10.0 is `00.1000`), and `docProps/custom.xml` with `DSEconApp`, `DSEconVersion`,
+  `DSEconExported`, `DSEconDocId` (content type override and root relationship beside it).
+  `buildParts` and both key builders always stamp; a combined key carries its first paper's id.
+- **PDF (desktop)**: `print_to_pdf` writes the engine's PDF, then `savePdf` reads it back and
+  **appends** an incremental update (`export/origin/pdf.ts:pdfOriginUpdate`): a new Info
+  dictionary (Title, Creator, Producer, dates, the `DSEcon…` keys), an XMP stream
+  (`pdf:Producer`, `xmp:CreatorTool`, `xmpMM:DocumentID uuid:…`, the `dsecon:` fields) and the
+  catalog pointing at it, then a cross-reference section in the file's own form (table or
+  stream). The engine's bytes are never rewritten, so a failed write cannot cost the PDF; a
+  file that cannot be stamped (encrypted, unreadable trailer) is left as written. Covers the
+  paper, the key, Whole set and the coverage report (`printJob.tsx:jobStamp`).
+- **Not covered**: a PDF from a print dialog (the web's `window.print()`, the desktop's
+  fallback when `print_to_pdf` fails) — the browser or OS writes that file. CSV has nowhere
+  but its cells. The worksheet `.json` carries `originId` as part of the document.
+- **Reading it back**: `scripts/origin.mjs` (pdf.js for PDFs, JSZip for packages).
+
+---
+
 ## Desktop shell (Tauri)
 
 One codebase, two targets: the desktop app is the *same* static export (`out/`) loaded by

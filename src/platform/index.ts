@@ -23,6 +23,7 @@ import {
   writeHandle,
 } from './webPicker';
 import { platformMessages } from './text';
+import type { ExportOrigin } from '@/export/origin';
 
 /** File-type presets for the save dialog and the browser's Save As picker. */
 export type SaveFilter = { name: string; extensions: string[] };
@@ -346,8 +347,14 @@ export interface PdfPage {
  * Windows), which uses print media CSS like the sheet does. Resolves once the file is
  * written; rejects on the web or when the engine cannot, and the caller falls back to
  * `printPage()`.
+ *
+ * With a `stamp` (k-0558) the written file is then read back and given its hidden origin
+ * metadata (`export/origin/pdf.ts:pdfOriginUpdate`, an incremental update appended to the
+ * file; the save sheet or picked folder put the path in the fs scope). A file that cannot
+ * be stamped stays as the engine wrote it: the PDF is the teacher's, and the metadata is
+ * not worth losing it for.
  */
-export async function savePdf(path: string, page: PdfPage): Promise<void> {
+export async function savePdf(path: string, page: PdfPage, stamp?: PdfStamp): Promise<void> {
   if (!isDesktop()) throw new Error('Saving a PDF file directly needs the desktop app.');
   const { invoke } = await import('@tauri-apps/api/core');
   await invoke('print_to_pdf', {
@@ -357,6 +364,28 @@ export async function savePdf(path: string, page: PdfPage): Promise<void> {
     landscape: page.landscape,
     pages: page.pages,
   });
+  if (stamp) await stampPdfFile(path, stamp);
+}
+
+/** What `savePdf` writes into the PDF's metadata: its origin, and the document's title. */
+export interface PdfStamp {
+  origin: ExportOrigin;
+  title?: string;
+}
+
+async function stampPdfFile(path: string, { origin, title }: PdfStamp): Promise<void> {
+  try {
+    const [{ readFile, writeFile }, { pdfOriginUpdate }] = await Promise.all([
+      import('@tauri-apps/plugin-fs'),
+      import('@/export/origin/pdf'),
+    ]);
+    // Appended, never rewritten: the engine's bytes are not touched, so a failed write
+    // cannot cost the teacher the PDF itself.
+    const update = pdfOriginUpdate(await readFile(path), origin, title);
+    await writeFile(path, update, { append: true });
+  } catch (cause) {
+    console.warn('The PDF was saved without its origin metadata:', cause);
+  }
 }
 
 /**
