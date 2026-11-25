@@ -351,6 +351,18 @@ the whole bank once, as before. Reference implementation: `scripts/pastpaper-ind
 - Size on the trial pack: 1,741 rows, the list 1.24 MB (338 kB compressed, as GitHub serves
   it), against 34 MB for the topics. Kept on the computer with the list.
 
+## Arrange 編排 (k-0556)
+
+The teacher's own order of the bank (users u-dqw8 + u-o86n): the screen's third view lists
+every question by syllabus part and bank topic, off the list's search index, each with its
+source. The teacher reorders inside a topic, moves questions between topics (drag, Alt + ↑ ↓,
+Move to…), ticks a part or topic whole, and makes a worksheet from a part, a topic or the
+ticked set in that order. The order is a view only: kept per bank address in localStorage
+(`econgen.pastPaperArrange.v1`, only the topics changed, by source tag), never in a document,
+a backup or the bank. A later publish's new questions go to the end of their own topic; a
+question or topic the bank drops leaves the lists. Code: `src/pastpapers/arrange.ts`,
+`src/components/pastpapers/PastPaperArrange.tsx`.
+
 ## Not built
 
 The editor's 題庫 tab searches the open topic only (the screen searches every topic). A

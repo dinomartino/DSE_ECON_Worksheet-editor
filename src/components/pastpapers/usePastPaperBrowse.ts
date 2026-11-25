@@ -84,6 +84,7 @@ export function usePastPaperBrowse() {
     if (!topic) return;
     keepSession(TOPIC_KEY, topic.id);
     // By year shows no topic: a year's questions download their topics as they are reached.
+    // (Arrange lists the bank off the search index; the 題庫 tab reads it as By topic.)
     if (!byYear) void usePastPaperBank.getState().topic(topic.id);
   }, [topic, byYear]);
 
@@ -181,7 +182,7 @@ export function usePastPaperBrowse() {
       if (next === view) return;
       setSettings({ view: next });
       if (next === 'year' && filters.paper !== undefined) setSittingId(sittingOfPaper(filters.paper));
-      if (next === 'topic' && filters.paper !== undefined) setFilters({ ...filters, paper: undefined });
+      if (next !== 'year' && filters.paper !== undefined) setFilters({ ...filters, paper: undefined });
     },
     yearGroups,
     sitting,

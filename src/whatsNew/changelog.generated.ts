@@ -15,6 +15,17 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Arrange the past paper bank your own way, and make worksheets from it in one go.** The
+  Past paper bank has a third view beside By topic and By year: **Arrange**. It lists every
+  question of the bank on one page, under its syllabus part and topic, each with its source
+  (for example "HKDSE 2024 Paper 1 Q38"). Drag a question to put it in your own order, or onto
+  another topic to move it there (or tick some and use Move to…; on the keyboard, Alt + ↑ ↓).
+  One tick on a part or a topic ticks every question under it, and you can untick single ones.
+  "New worksheet" on a part or topic, or Add for the ticked questions, puts them into a
+  worksheet in your order, with "Show source" printing each question's source on the page, in
+  the PDF and in Word (turn it off in Setup → Page). Your order is kept on this computer and
+  never changes the bank; Reset puts a topic, or everything, back in the bank's order.
+  <!-- zh: **按你自己的方式編排歷屆試題庫，並一次過做成工作紙。** 歷屆試題庫在「按課題」和「按年份」旁新增第三種檢視：**編排**。它在同一頁列出題庫的所有題目，按課程範疇和課題分組，每題都註明出處（例如「香港中學文憑考試 2024 卷一 第 38 題」）。拖動題目可按你的次序排列，拖到另一課題即移到該課題（或勾選後用「移到…」；鍵盤可用 Alt + ↑ ↓）。在範疇或課題勾選一次，即勾選其下所有題目，亦可逐題取消。範疇或課題上的「開新工作紙」，或為已勾選題目按「加入」，會把題目按你的次序放進工作紙；開啟「顯示出處」後，每題的出處會印在頁面、PDF 和 Word 中（可在「頁面設定 → 頁面」關閉）。你的排列只保存在這部電腦上，不會改動題庫；「還原」可把一個課題或全部還原為題庫原本的次序。 -->
 - **Your own Gemini key can use the cheaper Flash-Lite for simple jobs.** In Settings → AI,
   with your own Google Gemini key, a new switch "Use the cheaper Gemini Flash-Lite for simple
   jobs" runs translation (also the question bank's "fill missing 中文") and Test connection on

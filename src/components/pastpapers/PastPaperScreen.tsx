@@ -18,6 +18,7 @@ import { keyPointOfTags } from '@/components/studio/studioView';
 import { sourceFromQuestion } from '@/questionStudio/source';
 import type { SourceQuestion } from '@/questionStudio/types';
 import { BankStateNote, ExamChips, LanguageToggle, PaperSelect, SearchGlyph, YearSelects } from './PastPaperControls';
+import { PastPaperArrange, type ArrangeAddOptions } from './PastPaperArrange';
 import { PastPaperIndexCard } from './PastPaperIndexCard';
 import { SourceFormatSelect } from './SourceFormatSelect';
 import { megabytes, NEARLY_FULL, webStorageUse } from '@/storage/webQuota';
@@ -82,63 +83,76 @@ export function PastPaperScreen({
     [summaries],
   );
 
-  const sharedTopicName = () => {
-    const ids = new Set(pickedItems.map((item) => item.topicId));
+  const sharedTopicName = (items: readonly PastPaperItem[]) => {
+    const ids = new Set(items.map((item) => item.topicId));
     const only = ids.size === 1 ? topics.find((t) => t.id === [...ids][0]) : undefined;
     if (only) return packName(only.title, language);
     // Picks of one paper across topics (the usual By year pick) are named after the paper.
-    const keys = new Set(pickedItems.map((item) => paperKey(item.source)));
-    const paper = keys.size === 1 && !keys.has('') ? pickedItems[0] : undefined;
+    const keys = new Set(items.map((item) => paperKey(item.source)));
+    const paper = keys.size === 1 && !keys.has('') ? items[0] : undefined;
     return paper ? packName(sourceLabel(paper.source, false), language) : m.newName;
   };
 
-  const addPicks = async () => {
-    if (pickedItems.length === 0) return;
+  /**
+   * Questions, in the order given, into a new worksheet or paper or one of the teacher's papers
+   * (`to`, else the tray's Add to); `done` once they are in. The tray and Arrange both use it.
+   */
+  const addItems = async (items: PastPaperItem[], done: () => void, { to = target, name }: ArrangeAddOptions = {}) => {
+    if (items.length === 0) return;
+    // The web build's ~5 MB: Arrange's questions are judged here, once they are downloaded.
+    const use = webStorageUse(items.reduce((n, item) => n + JSON.stringify(item.question).length + (item.stimulus ? JSON.stringify(item.stimulus).length : 0), 0));
+    if (use && use.ratio > 1) {
+      onError(m.storageFull(megabytes(use.used)));
+      return;
+    }
     setBusy(true);
     try {
-      if (target.startsWith('new:')) {
-        const kind = target === 'new:paper1' ? 'paper1' : 'classroom';
-        onOpenWorksheet(emptyPaperFor(kind, sharedTopicName()), language);
-        const { inserted } = insertIntoOpen(pickedItems, m.added, { showSources, sourceFormat });
-        if (inserted.length > 0) setPicks([]);
+      if (to.startsWith('new:')) {
+        const kind = to === 'new:paper1' ? 'paper1' : 'classroom';
+        onOpenWorksheet(emptyPaperFor(kind, name ?? sharedTopicName(items)), language);
+        const { inserted } = insertIntoOpen(items, m.added, { showSources, sourceFormat });
+        if (inserted.length > 0) done();
         if (inserted[0]) revealQuestion(inserted[0]);
         return;
       }
-      const saved = await worksheetStore.load(target).catch(() => undefined);
+      const saved = await worksheetStore.load(to).catch(() => undefined);
       const held = new Set(saved?.questions.map(rootIdOf) ?? []);
-      const fresh = pickedItems.filter((item) => !held.has(rootIdOf(item.question)));
+      const fresh = items.filter((item) => !held.has(rootIdOf(item.question)));
       if (saved && fresh.length === 0) {
-        onNotice(m.nothingAdded(pickedItems.length));
+        onNotice(m.nothingAdded(items.length));
         return;
       }
-      onOpenDocument(target, () => {
-        const { inserted, refused } = insertIntoOpen(pickedItems, m.added, { showSources, sourceFormat });
+      onOpenDocument(to, () => {
+        const { inserted, refused } = insertIntoOpen(items, m.added, { showSources, sourceFormat });
         if (refused) onError(m.readOnlyPaper);
-        if (inserted.length > 0) setPicks([]);
+        if (inserted.length > 0) done();
         if (inserted[0]) revealQuestion(inserted[0]);
       });
     } finally {
       setBusy(false);
     }
   };
+  const addPicks = () => addItems(pickedItems, () => setPicks([]));
 
-  const copyPicks = async () => {
-    if (pickedItems.length === 0) return;
+  const copyItems = async (items: PastPaperItem[], then: () => void) => {
+    if (items.length === 0) return;
     setBusy(true);
     try {
-      const done = await copyIntoMyBank(pickedItems);
+      const done = await copyIntoMyBank(items);
       if (done.copied === 0) onNotice(m.copiedNone(done.already));
       else onNotice(m.copied(done.copied, done.already) + (done.stimuli ? m.copiedWithStimulus(done.stimuli) : ''));
-      setPicks([]);
+      then();
     } catch (error) {
       onError(error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
   };
+  const copyPicks = () => copyItems(pickedItems, () => setPicks([]));
 
   const totalBytes = bank.manifest?.topics.reduce((n, t) => n + (t.bytes ?? 0), 0) ?? 0;
   const byYear = browse.view === 'year';
+  const arranging = browse.view === 'arrange';
   /** The whole bank, not the open topic or year: what the topic picker greys its choice for. */
   const searchingAll = byYear ? browse.searchingAll : browse.acrossBank;
   const sitting = browse.sitting;
@@ -183,6 +197,44 @@ export function PastPaperScreen({
   const storage = useMemo(() => (adding > 0 ? webStorageUse(adding) : undefined), [adding]);
   const wontFit = storage !== undefined && storage.ratio > 1;
 
+  // Show source, its format and Add to: the tray's and Arrange's.
+  const addControls = (
+    <>
+      <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-ink-muted" title={m.showSourcesTitle} data-pastpaper-show-sources>
+        <input
+          type="checkbox"
+          checked={showSources}
+          onChange={(e) => setBankSettings({ showSources: e.target.checked })}
+          className="h-4 w-4 accent-[var(--color-accent)]"
+        />
+        {m.showSources}
+      </label>
+      {showSources && (
+        <SourceFormatSelect value={sourceFormat} onChange={(next) => setBankSettings({ sourceFormat: next })} className="max-w-[240px]" />
+      )}
+      <label className="flex items-center gap-2 text-[12.5px] text-ink-muted">
+        {m.addTo}
+        <select
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          className="h-8 max-w-[260px] rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <option value="new:classroom">{m.newWorksheet}</option>
+          <option value="new:paper1">{m.newPaper1}</option>
+          {papers.length > 0 && (
+            <optgroup label={m.recentPapers}>
+              {papers.map((paper) => (
+                <option key={paper.id} value={paper.id}>
+                  {paper.title}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </label>
+    </>
+  );
+
   return (
     <div className="zone-light flex h-full min-h-0 flex-col bg-surface text-ink" data-pastpaper-screen>
       <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3.5 gap-y-2 whitespace-nowrap border-b border-line bg-surface px-4 py-2 md:h-12 md:flex-nowrap md:py-0">
@@ -207,7 +259,9 @@ export function PastPaperScreen({
               value={filters.words}
               title={m.searchHint}
               placeholder={
-                filters.everywhere
+                arranging
+                  ? m.searchLabel
+                  : filters.everywhere
                   ? browse.indexed
                     ? byYear
                       ? m.searchEveryYear
@@ -234,6 +288,21 @@ export function PastPaperScreen({
       {/* A phone-width window stacks the topic bar over the questions (u-zhww asked for a phone look). */}
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <BankStateNote browse={browse}>
+          {arranging ? (
+            <PastPaperArrange
+              browse={browse}
+              language={language}
+              onLanguage={setLanguage}
+              switcher={<ViewSwitch value={browse.view} onChange={browse.setView} arrange />}
+              addControls={addControls}
+              busy={busy}
+              onAdd={addItems}
+              onCopy={copyItems}
+              onNotice={onNotice}
+              onError={onError}
+            />
+          ) : (
+          <>
           {byYear ? (
             <PastPaperYearPicker
               groups={browse.yearGroups}
@@ -241,7 +310,7 @@ export function PastPaperScreen({
               paper={browse.yearPaper}
               active={!searchingAll}
               language={language}
-              top={<ViewSwitch value={browse.view} onChange={browse.setView} />}
+              top={<ViewSwitch value={browse.view} onChange={browse.setView} arrange />}
               empty={
                 yearsPartial ? (
                   <div className="mx-4 mt-3 rounded-lg border border-line bg-surface px-3 py-2.5 text-[12px] leading-snug text-ink-muted" data-pastpaper-years-partial>
@@ -274,7 +343,7 @@ export function PastPaperScreen({
               current={topic}
               active={!searchingAll}
               language={language}
-              top={<ViewSwitch value={browse.view} onChange={browse.setView} />}
+              top={<ViewSwitch value={browse.view} onChange={browse.setView} arrange />}
               onPick={(id) => {
                 browse.setTopic(id);
                 if (filters.everywhere || filters.paper !== undefined) setFilters({ ...filters, everywhere: false, paper: undefined });
@@ -430,38 +499,7 @@ export function PastPaperScreen({
                 >
                   {m.copyToBank}
                 </button>
-                <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-ink-muted" title={m.showSourcesTitle} data-pastpaper-show-sources>
-                  <input
-                    type="checkbox"
-                    checked={showSources}
-                    onChange={(e) => setBankSettings({ showSources: e.target.checked })}
-                    className="h-4 w-4 accent-[var(--color-accent)]"
-                  />
-                  {m.showSources}
-                </label>
-                {showSources && (
-                  <SourceFormatSelect value={sourceFormat} onChange={(next) => setBankSettings({ sourceFormat: next })} className="max-w-[240px]" />
-                )}
-                <label className="flex items-center gap-2 text-[12.5px] text-ink-muted">
-                  {m.addTo}
-                  <select
-                    value={target}
-                    onChange={(e) => setTarget(e.target.value)}
-                    className="h-8 max-w-[260px] rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                  >
-                    <option value="new:classroom">{m.newWorksheet}</option>
-                    <option value="new:paper1">{m.newPaper1}</option>
-                    {papers.length > 0 && (
-                      <optgroup label={m.recentPapers}>
-                        {papers.map((paper) => (
-                          <option key={paper.id} value={paper.id}>
-                            {paper.title}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                </label>
+                {addControls}
                 <button
                   type="button"
                   disabled={busy || wontFit}
@@ -473,6 +511,8 @@ export function PastPaperScreen({
               </div>
             )}
           </main>
+          </>
+          )}
         </BankStateNote>
       </div>
     </div>

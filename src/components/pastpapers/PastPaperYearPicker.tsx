@@ -6,7 +6,9 @@ import { useMessages } from '@/i18n/language';
 import type { LanguageMode } from '@/model/types';
 import { packName, paperLabel, whenLabel } from '@/pastpapers/pack';
 import { stepYearRow, yearRows, type ExamYears, type Sitting, type YearExam } from '@/pastpapers/years';
+import type { PastPaperView } from '@/pastpapers/config';
 import { PAST_PAPER_MESSAGES } from './messages';
+import { ARRANGE_MESSAGES } from './PastPaperArrange.messages';
 
 /**
  * The Past paper bank screen's list by year (k-0497, user u-nlb5): the exams (HKDSE, HKCEE,
@@ -192,21 +194,27 @@ export function PastPaperYearPicker({
 export function ViewSwitch({
   value,
   onChange,
+  arrange = false,
   className = 'shrink-0 px-4 pt-3',
 }: {
-  value: 'topic' | 'year';
-  onChange: (next: 'topic' | 'year') => void;
+  value: PastPaperView;
+  onChange: (next: PastPaperView) => void;
+  /** Offer Arrange too (k-0556; the screen only). */
+  arrange?: boolean;
   className?: string;
 }) {
   const m = useMessages(PAST_PAPER_MESSAGES);
-  const options = [
-    { id: 'topic' as const, label: m.byTopic },
-    { id: 'year' as const, label: m.byYear },
+  const am = useMessages(ARRANGE_MESSAGES);
+  const options: { id: PastPaperView; label: string }[] = [
+    { id: 'topic', label: m.byTopic },
+    { id: 'year', label: m.byYear },
+    ...(arrange ? [{ id: 'arrange' as const, label: am.arrange }] : []),
   ];
   const move = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
     event.preventDefault();
-    const next = value === 'topic' ? 'year' : 'topic';
+    const at = options.findIndex((option) => option.id === value);
+    const next = options[(at + (event.key === 'ArrowRight' ? 1 : -1) + options.length) % options.length].id;
     onChange(next);
     event.currentTarget.querySelector<HTMLElement>(`[data-pastpaper-view="${next}"]`)?.focus();
   };
