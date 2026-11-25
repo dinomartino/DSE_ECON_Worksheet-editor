@@ -38,6 +38,7 @@ export type StyleFindingId =
   | 'style.zhMoney'
   | 'style.contraction'
   | 'style.filler'
+  | 'style.paperWord'
   | 'style.longSentence'
   | 'style.spelling';
 
@@ -45,7 +46,7 @@ export type StyleFindingId =
 export const STYLE_FINDING_IDS: readonly StyleFindingId[] = [
   'style.negativeCase', 'style.questionMark', 'style.comboForm', 'style.comboOnly', 'style.comboOrder',
   'style.numberOrder', 'style.thousandsComma', 'style.optionStops', 'style.statementStops', 'style.blankSeparator',
-  'style.zhPunctuation', 'style.zhSimplified', 'style.zhMoney', 'style.contraction', 'style.filler', 'style.longSentence', 'style.spelling',
+  'style.zhPunctuation', 'style.zhSimplified', 'style.zhMoney', 'style.contraction', 'style.filler', 'style.paperWord', 'style.longSentence', 'style.spelling',
 ];
 
 export interface StyleFinding {
@@ -186,6 +187,22 @@ const FILLER_ZH: readonly [RegExp, string][] = [
   [/其他(?:條件|因素|情況)不變/, '其他條件不變'],
 ];
 
+/**
+ * Words the papers (almost) never use, with the form they do (k-0548 grammar pass, profile G;
+ * counts over the 725 questions in `Outbox/k-0548/DSE-STYLE.md` §7): [pattern, what was written → paper form].
+ */
+const PAPER_WORDS_EN: readonly [RegExp, string][] = [
+  [/\bWhich one of the following\b/i, 'Which of the following'], // 0 of 725 (304 "Which of the following")
+  [/\b(?:give|gives|gave|giving) rise to\b/i, 'lead to'], // 0; "lead to" 48
+  [/\b(?:bring|brings|brought|bringing) about\b/i, 'lead to'], // 0
+  [/\b(?:therefore|thus|hence|consequently)\b/i, 'As a result,'], // 2; "as a result" 29
+];
+const PAPER_WORDS_ZH: readonly [RegExp, string][] = [
+  [/如果/, '若'], // 2 of 725; 若 133
+  [/倘若|要是/, '若'], // 0
+  [/將會/, '會'], // 4; 會 368
+];
+
 const AMERICAN: readonly [RegExp, string][] = [
   [/\blabor\b/i, 'labour'], [/\bbehaviors?\b/i, 'behaviour'], [/\bfavor(?:s|ed|ing|able)?\b/i, 'favour'], [/\bcent(?:er|ers)\b/i, 'centre'],
   [/\bcolors?\b/i, 'colour'], [/\bneighbors?\b/i, 'neighbour'], [/\banalyzed?\b/i, 'analyse'],
@@ -236,6 +253,13 @@ export function checkDseStyle(item: StyleItem, sides: readonly StyleSide[]): Sty
     }
     const filler = (side === 'en' ? FILLER_EN : FILLER_ZH).find(([rx]) => rx.test(all));
     if (filler) add({ id: 'style.filler', params: { side, example: filler[1] } });
+    for (const [rx, paper] of side === 'en' ? PAPER_WORDS_EN : PAPER_WORDS_ZH) {
+      const m = rx.exec(all);
+      if (m) {
+        add({ id: 'style.paperWord', params: { side, example: m[0], paper } });
+        break;
+      }
+    }
 
     const longest = Math.max(0, ...paragraphs(stem).flatMap((p) => sentences(plainOf(p), side)).map((s) => (side === 'en' ? words(s) : zhLength(s))));
     if (longest > (side === 'en' ? LONG_EN : LONG_ZH)) add({ id: 'style.longSentence', params: { side, length: longest } });

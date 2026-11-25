@@ -105,6 +105,20 @@ describe('checkDseStyle: rules', () => {
     expect(ids({ ...CLEAN, stem: bi('', '下列哪項最可能出現?') }, ['zh'])).toEqual(['style.zhPunctuation']);
   });
 
+  it('words the papers do not use get the paper form (style.paperWord)', () => {
+    const en = (stem: string) => checkDseStyle({ ...CLEAN, stem: bi(stem, CLEAN.stem.zh ?? '') }, ['en']);
+    const zh = (stem: string) => checkDseStyle({ ...CLEAN, stem: bi(CLEAN.stem.en ?? '', stem) }, ['zh']);
+    expect(en('Which one of the following is most likely to happen?')).toEqual([{ id: 'style.paperWord', params: { side: 'en', example: 'Which one of the following', paper: 'Which of the following' } }]);
+    expect(en('A tax on Good X gives rise to a higher price.\nWhich of the following is most likely to happen?')[0]?.params?.paper).toBe('lead to');
+    expect(en('The price rises, and thus fewer units are sold.\nWhich of the following is most likely to happen?')[0]?.params?.paper).toBe('As a result,');
+    expect(zh('如果政府向物品 X 徵收從量稅，下列哪項最可能出現？')).toEqual([{ id: 'style.paperWord', params: { side: 'zh', example: '如果', paper: '若' } }]);
+    expect(zh('物品 X 的價格將會上升。\n下列哪項最可能出現？')[0]?.params?.paper).toBe('會');
+    // The papers' own forms pass.
+    expect(ids({ ...CLEAN, stem: bi('If the government imposes a per-unit tax on Good X, which of the following will lead to a higher price?', '若政府向物品 X 徵收從量稅，下列哪項會令價格上升？') })).toEqual([]);
+    // 「將」 for putting something somewhere is not 「將會」.
+    expect(zh('陳先生將 $500 存入銀行。\n下列哪項最可能出現？')).toEqual([]);
+  });
+
   it('money in 百萬元／億元 has no "$" in 中文 (style.zhMoney)', () => {
     const money = (zh: string) => item(['What is the GNI of Country A?', zh], [['$1 760 million', '1 760 百萬元'], ['$1 820 million', '1 820 百萬元'], ['$2 040 million', '2 040 百萬元'], ['$2 160 million', '2 160 百萬元']]);
     expect(ids(money('甲國的本地居民總收入是多少？'), ['zh'])).toEqual([]);

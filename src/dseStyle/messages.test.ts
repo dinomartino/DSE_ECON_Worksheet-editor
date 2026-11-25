@@ -5,7 +5,7 @@ import { resolveMessages } from '@/i18n/catalogue';
 import { STYLE_FINDING_IDS, type StyleFinding } from './check';
 import { DSE_STYLE_MESSAGES, styleFindingText } from './messages';
 
-const PARAMS: Record<string, string | number> = { side: 'zh', example: '10,000', length: 52, british: 'labour' };
+const PARAMS: Record<string, string | number> = { side: 'zh', example: '10,000', length: 52, british: 'labour', paper: '若' };
 
 describe('the words for the HKDSE style findings', () => {
   it('give every finding a sentence in both languages, values in place', () => {

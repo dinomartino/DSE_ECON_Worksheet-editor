@@ -50,6 +50,8 @@ export function styleFindingText(finding: StyleFinding | { id: string; params?: 
       return m.styleContraction(str(p.example));
     case 'style.filler':
       return m.styleFiller(str(p.example));
+    case 'style.paperWord':
+      return m.stylePaperWord(str(p.example), str(p.paper));
     case 'style.longSentence':
       return m.styleLongSentence(side, typeof p.length === 'number' ? p.length : Number(p.length) || 0);
     case 'style.spelling':

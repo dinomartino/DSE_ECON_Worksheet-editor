@@ -154,6 +154,12 @@ a version heading is edited afterwards.
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
+- **AI questions follow the grammar of HKDSE papers.** From all 725 Paper 1 questions, the
+  Question studio and Improve wording now follow the papers' grammar: active voice, "will" and
+  中文 「會」, conditions with "Suppose" / "If" and 「假設」 / 「若」, and cause and effect with "lead to",
+  "because" and 「令」 / 「導致」. The HKDSE style row notes words the papers do not use (for example
+  "Which one of the following", 「如果」, 「將會」) and shows the form they do use.
+  <!-- zh: **AI 擬題依從 HKDSE 試卷的文法。** 根據全部 725 條 Paper 1 試題，擬題工作室及「改善題目字眼」現在依從試卷的寫法：主動語態、"will" 及中文「會」、以 "Suppose"／"If" 及「假設」／「若」表達條件，以 "lead to"、"because" 及「令」／「導致」表達因果。「HKDSE 風格」一欄會提示試卷不用的字眼（例如 "Which one of the following"、「如果」、「將會」），並列出試卷的寫法。 -->
 - **AI questions may be set in an everyday Hong Kong scene.** Where it helps students see the
   change, the Question studio may now set a question in a short local scene of its own (a noodle
   shop, a family's choice, a public fee), as about four in ten HKDSE Paper 1 questions do. It

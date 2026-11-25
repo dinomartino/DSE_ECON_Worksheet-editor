@@ -18,7 +18,7 @@
  * The deterministic half of the same rules is `check.ts:checkDseStyle`.
  */
 
-export const DSE_STYLE_PROFILE_VERSION = 3;
+export const DSE_STYLE_PROFILE_VERSION = 4;
 
 /** Opens the block: a marker tests and a mock server can find. */
 export const DSE_STYLE_MARKER = 'HKDSE ECONOMICS PAPER 1 MC HOUSE STYLE';
@@ -59,4 +59,13 @@ export const DSE_STYLE_PROFILE = [
   'F. 中文 TEXT',
   '- Hong Kong Traditional Chinese, the EDB terms. Full-width punctuation ，。？：；、「」（）; statement numbers stay half-width (1) (2) (3).',
   '- A half-width space between Chinese and Latin letters or numbers (物品 X、2020 年、每單位 $30; 80% of cases).',
+  '',
+  'G. GRAMMAR AND SENTENCE PATTERNS (counts are questions of the 725; where papers changed, follow 2021-2026)',
+  '- Active voice: a passive verb in 6-7% of stem sentences and 3% of options; 中文 「被」 in under 1% of sentences. DO "The government raises X." / 「政府提高 X。」 DON\'T "X is raised by the government." / 「X 被政府提高。」',
+  '- An effect takes "will" (37% of questions; "would" 11%, for a hypothetical). 中文 「會」 (51%): 「X 會上升。」 DON\'T 「將會」 (4 of 725); keep 「將」 for putting or moving something (「將 $X 存入……」).',
+  '- Conditions: "Suppose ..." for the set-up (18%; 23% in 2021-2026), "If ..., ..." opening the question line (12%), "When ..." (12%). "Assume" has gone (0 in 2021-2026); not "Given that", "Unless", "In case" (2 of 725). 中文 「假設……」 (20%), 「若……，……」 (18%), 「當……」 (12%); DON\'T 「如果」 (2 of 725), 「倘若」, 「要是」 (0).',
+  '- Cause and effect: "X will lead to Y" (48 questions), "because" (42), "result in" (29), "As a result, ..." (29; 6% in 2021-2026), "due to" (15, mostly 2021-2026). DON\'T "give rise to", "bring about" (0), "therefore", "thus", "hence" (2 of 725). 中文 「……會令 X 上升」 (令: 66), 「因為」 (41, rising), 「導致」 (33), 「結果，……」 (31), 「引致」 (21), 「由於」 (15); seldom 「使」 (9), 「造成」 (6).',
+  '- Statements (1)-(3) are mostly plain present-tense sentences (87 questions; with "will"/"can" 56). A statement or option ends on the change: "X increases." / "X will decrease." / "X remains unchanged."; "X may increase." for a possibility (4%). 中文 ends on the change word: 「……上升。」 「……下降。」 「……增加。」 「……不變。」 (30% of questions).',
+  '- Comparisons: "higher / more ... than" (10%); "compared with" almost never (2). 中文 「較……」 (11%), 「更……」 (12%), 「高於／低於」 (6%), 「比」 (5%).',
+  '- 2021-2026 papers set up more: "Suppose ..." 13% -> 23%, a table or diagram with its lead-in 14% -> 24%, "Based on the above information" 3% -> 13% (中文 「根據以上資料／上述」 3% -> 12%), blanks 22% -> 35%; fewer "If ..." openings (12-14% -> 9%).',
 ].join('\n');
