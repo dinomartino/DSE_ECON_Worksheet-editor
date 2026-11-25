@@ -120,10 +120,11 @@ export function polishJob(questions: number, text: string): CreditJob {
 /**
  * The HKDSE house-style block in every studio write call's system prompt (k-0548,
  * `dseStyle/profile.ts`, v4 ≈ 2,350 tokens by `textTokens`; `dseStyle/check.test.ts` keeps this at or
- * above it). Gemini counts about 1.16× `textTokens` for it (live A/B `Outbox/k-0548/AB.md`: v2 added
- * 1,822 input tokens per write call, v3 2,047), so the estimate uses that size. One write call writes the whole request.
+ * above it). Gemini counts more: the block added 1,822 input tokens per write call at v2, 2,047 at v3
+ * and 3,023 at v4 (live, `Outbox/k-0548/AB.md` and `DSE-STYLE.md` §7), so the estimate uses the measured
+ * size. One write call writes the whole request.
  */
-export const STYLE_BLOCK_TOKENS = 2750;
+export const STYLE_BLOCK_TOKENS = 3050;
 
 export function studioJob(opts: { questions: number; sides: number; diagrams?: number; images?: number }): CreditJob {
   const sides = Math.max(1, opts.sides);
