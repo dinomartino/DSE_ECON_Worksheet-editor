@@ -230,6 +230,15 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **Saved Question studio chats no longer fill this computer's storage.** A chat kept its
+  reference questions' diagrams inside the browser's small storage, which your worksheets
+  also use, so after a few chats with diagrams new chats quietly stopped being saved. The
+  diagrams are now kept separately, once each however many chats use them, and chats you
+  saved before move over by themselves the first time you open the app, with nothing lost.
+  If a chat still cannot be saved (storage full, or any other problem), a notice now tells
+  you, in English or 中文, instead of failing silently. Diagrams no chat uses any more are
+  cleared away.
+  <!-- zh: **擬題工作室儲存的對話不再佔滿這部電腦的儲存空間。** 以往對話會把參考題的圖表存進瀏覽器細小的儲存空間（你的工作紙亦存放在那裏），存了幾個附圖的對話後，新的對話便會靜靜地無法儲存。現在圖表另行儲存，多少個對話用到同一張圖也只存一次；你以前儲存的對話會在你首次開啟程式時自動轉移，不會遺失任何內容。若對話仍未能儲存（儲存空間已滿或其他問題），程式會以英文或中文通知你，不再無聲失敗。不再有對話使用的圖表會被清除。 -->
 - **The Past paper bank's filter bar stays on one row.** With a long topic name, "Show answers"
   could drop to a second row on its own. Now the topic name shortens (the full name shows when
   you point at it) and the Paper list narrows instead, in every view and both languages. In a

@@ -9,6 +9,7 @@ import type { WorksheetSummary } from '@/storage';
 import { notify } from '@/store/notices';
 import { STUDIO_CHAT_MESSAGES } from './chat/chat.messages';
 import { summaryOf, type Chat } from './chat/chatTypes';
+import { ChatSaveNotice } from './chat/ChatSaveNotice';
 import { ChatTurns } from './chat/ChatTurns';
 import { Composer } from './chat/Composer';
 import { useChat } from './chat/live';
@@ -82,6 +83,7 @@ export function QuestionStudioScreen({
 
   return (
     <div className="zone-light flex h-full min-h-0 flex-col bg-surface text-ink" data-studio-screen data-print-hide>
+      <ChatSaveNotice store={useChat} />
       <header className="flex h-12 shrink-0 items-center gap-3 whitespace-nowrap border-b border-line bg-surface px-4">
         <button
           type="button"

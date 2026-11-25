@@ -20,6 +20,21 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
     zh: (drafts: number, added: number) => `${drafts} 份草稿${added ? `，已加入 ${added} 題` : ''}`,
   },
   deleteChat: { en: 'Delete this chat', zh: '刪除這個對話' },
+  // saving (k-0551): a save that could not keep everything
+  saveTitle: { en: 'Chats not saved', zh: '對話未能儲存' },
+  saveFullSome: {
+    en: (left: number, of: number) =>
+      `Storage on this computer is full, so the oldest ${left === 1 ? 'chat' : `${left} chats`} of your ${of} could not be kept. ${left === 1 ? 'It stays' : 'They stay'} here until you close this page. Delete chats or worksheets you no longer need.`,
+    zh: (left: number, of: number) => `這部電腦的儲存空間已滿，你的 ${of} 個對話中最舊的 ${left} 個未能保留，關閉此頁後便會消失。請刪除不再需要的對話或工作紙。`,
+  },
+  saveFullNone: {
+    en: 'Storage on this computer is full, so your latest changes to chats were not saved. Delete chats or worksheets you no longer need.',
+    zh: '這部電腦的儲存空間已滿，對話的最新改動未能儲存。請刪除不再需要的對話或工作紙。',
+  },
+  saveError: {
+    en: 'Your chats could not be saved on this computer. Your latest changes will be gone when you close this page.',
+    zh: '對話未能儲存在這部電腦，關閉此頁後，最新的改動便會消失。',
+  },
   deleteChatAsk: { en: 'Delete this chat and its drafts? Questions you already added stay in your papers.', zh: '刪除這個對話及其草稿？已加入試卷的題目會保留。' },
 
   // welcome

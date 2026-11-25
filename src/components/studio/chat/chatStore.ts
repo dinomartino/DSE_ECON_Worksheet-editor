@@ -7,7 +7,8 @@ import { figureLang } from '@/questionStudio/figures';
 import type { PastPaperItem } from '@/pastpapers/pack';
 import { sidesOf, withReferences, type Compared, type RunInfo, type StudioEnv } from '@/questionStudio/session';
 import { MAX_EXAMPLES, type Refinement, type SourceQuestion, type StudioDeps, type StudioDraft, type StudioOutcome, type StudioRequest } from '@/questionStudio/types';
-import type { ChatStorage } from './chatStorage';
+import { putPicturesBack } from './chatPictures';
+import type { ChatStorage, SaveReport } from './chatStorage';
 import type { AiTurn, Chat, ChatDraft, ChatRef, ChatSettings, ChangeHow, Note, Step, Turn } from './chatTypes';
 import { applyEvent, emptyLive } from '@/questionStudio/stream';
 import { hasWarning } from '@/questionStudio/validate';
@@ -42,13 +43,26 @@ export interface RunState {
   target?: string;
 }
 
+/** A save that did not keep everything, as the notice tells it. */
+export interface SaveProblem extends Required<Pick<SaveReport, 'problem'>>, Omit<SaveReport, 'problem'> {
+  /** The teacher closed its notice. */
+  seen?: boolean;
+}
+
 export interface ChatState {
   chats: Chat[];
   activeId: string;
   run?: RunState;
   /** The picked bank questions as they print (with their diagram), by source id, for this session's compare view. */
   items: Record<string, PastPaperItem>;
+  /**
+   * The last save could not keep everything (k-0551): this computer's storage is full, or it
+   * failed. Raised as a notice (`ChatSaveNotice`); cleared by the next save that keeps all.
+   */
+  saveProblem?: SaveProblem;
 
+  /** The teacher closed the save notice: not raised again until the problem changes. */
+  dismissSaveProblem(): void;
   newChat(): void;
   openChat(id: string): void;
   /**
@@ -150,7 +164,38 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
     const lastAction = new Map<string, () => Promise<void>>();
 
     const active = (): Chat => get().chats.find((c) => c.id === get().activeId) ?? get().chats[0];
-    const save = () => deps.storage.save(get().chats);
+    /** What a save reported: a problem raised (kept closed if the teacher closed the same one), or cleared. */
+    const reported = (report: SaveReport | undefined | void) => {
+      if (!report) return;
+      const was = get().saveProblem;
+      if (!report.problem) {
+        if (was) set({ saveProblem: undefined });
+        return;
+      }
+      const same = was && was.problem === report.problem && was.left === report.left && was.of === report.of;
+      if (!same) set({ saveProblem: { problem: report.problem, left: report.left, of: report.of, ...(was?.seen && was.problem === report.problem ? { seen: true } : {}) } });
+    };
+    const save = () => {
+      try {
+        const report = deps.storage.save(get().chats);
+        if (report instanceof Promise) report.then(reported, () => reported({ problem: 'error', left: 0, of: 0 }));
+        else reported(report);
+      } catch {
+        reported({ problem: 'error', left: 0, of: 0 });
+      }
+    };
+
+    // The saved chats' pictures, read back from where they are kept (k-0551); a run waits for them.
+    let pictures: ReadonlyMap<string, string> = new Map();
+    const ready: Promise<void> = deps.storage.restore
+      ? deps.storage
+          .restore(stored)
+          .then((found) => {
+            pictures = found;
+            if (found.size) set({ chats: get().chats.map((c) => putPicturesBack(c, found)) });
+          })
+          .catch(() => undefined)
+      : Promise.resolve();
     /** Changes one chat (and saves). */
     const edit = (chatId: string, fn: (chat: Chat) => Chat) => {
       set({ chats: get().chats.map((c) => (c.id === chatId ? { ...fn(c), updatedAt: now() } : c)) });
@@ -169,7 +214,9 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
     const pushTurns = (chatId: string, ...turns: Turn[]) => edit(chatId, (c) => ({ ...c, turns: [...c.turns, ...turns] }));
 
     /** The examples with their pictures read (the engine sends them to a provider that reads pictures). Never throws. */
-    const withPictures = async (examples: readonly Source[], sides: readonly Side[]): Promise<Source[]> => {
+    const withPictures = async (given: readonly Source[], sides: readonly Side[]): Promise<Source[]> => {
+      await ready;
+      const examples = putPicturesBack(given, pictures);
       if (!deps.env.figures || examples.length === 0) return [...examples];
       try {
         // A paper in Chinese only gets the Chinese pictures where a question has them (k-0544).
@@ -555,6 +602,11 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       activeId: first.id,
       run: undefined,
       items: {},
+
+      dismissSaveProblem: () => {
+        const was = get().saveProblem;
+        if (was && !was.seen) set({ saveProblem: { ...was, seen: true } });
+      },
 
       newChat: () => {
         const current = active();

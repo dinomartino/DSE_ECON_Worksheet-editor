@@ -19,6 +19,7 @@ import { BasedOn } from '../BasedOn';
 import { CheckLine } from '../CheckLine';
 import { STUDIO_CHAT_MESSAGES } from '../chat/chat.messages';
 import type { ChatDraft } from '../chat/chatTypes';
+import { ChatSaveNotice } from '../chat/ChatSaveNotice';
 import { ChatTurns } from '../chat/ChatTurns';
 import { Composer } from '../chat/Composer';
 import { findingText } from '../findings';
@@ -90,6 +91,7 @@ export function WritePanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-write-panel>
+      <ChatSaveNotice store={usePaperChat} />
       <WhereBar worksheet={worksheet} onNewChat={mine.turns.length > 0 && !running ? () => store.newChat() : undefined} />
       <div ref={log} className="scroll-slim flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3" role="log" aria-live="polite">
         {mine.turns.length === 0 ? (

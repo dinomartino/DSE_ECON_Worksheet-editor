@@ -229,7 +229,22 @@ kept on this computer; the Trial kit in Settings → AI. **No topic picker anywh
   letter).
 - **Saved chats** `chat/chatStorage.ts`: `localStorage` `econgen.studioChats.v1`, newest first, at
   most 30; each chat checked on its own when read (a damaged one is skipped, a damaged draft
-  dropped); reference pictures never saved. Chats ▾ lists, opens and deletes them.
+  dropped); the pictures as sent (`figures`) never saved. Chats ▾ lists, opens and deletes them.
+- **Saved chats' pictures** (k-0551) `chat/chatPictures.ts`: every `data:image/…` of 512+
+  characters in a saved chat (the references' `figureBlocks`, in `refs` and again in each
+  draft's request) is a token `studio-pic:<id>` in localStorage; the picture is in IndexedDB
+  `econ-studio-pictures` (`pictures`, `{ id, dataUrl, savedAt }`), the id its own fingerprint
+  (one row however many chats use it), shared by both lists (`CHAT_KEYS`). A save keeps new
+  pictures first, then writes the list (an older save still waiting writes nothing); a picture
+  written in the last `KNOWN_FOR_MS` is not written again. `restore` reads them back at start
+  (the store puts them in with `putPicturesBack`; a run waits for it) and moves chats saved
+  before (pictures inline) over, leaving the saved list as it was if IndexedDB cannot keep them;
+  without IndexedDB pictures stay inline as before. A token whose picture is gone stays a token:
+  that reference goes words only. Pictures no list names, older than `PRUNE_GRACE_MS` (another
+  window may be about to name them), are dropped at start and after a save that stopped naming
+  one. A list that does not fit still drops its oldest chats, but now says so:
+  `ChatState.saveProblem` → `ChatSaveNotice` (a notice, both screens), cleared by the next save
+  that keeps all. Proof `chat/chatPictures.test.ts`, `scripts/chat-pictures-verify.mjs`.
 - **Entries**: "✦ Write like this" (`openStudio.ts:writeLikeThis`) opens a fresh chat with the
   question and starts at once (no form); ＋ Reference and the welcome open
   `ReferencePicker.tsx` (the bank by topic or year, search, drawn as printed with diagrams, "only
