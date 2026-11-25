@@ -30,6 +30,7 @@ import { resolveDiagram, splineSegments } from '@/model/diagramAnchors';
 import { answerLayer, type AnswerLayerKind } from '@/model/diagramAnswers';
 import { spanGeometry, type SpanClearance, type SpanGeometry } from '@/model/diagramSpans';
 import { spanLayout, SPAN_LABEL_GAP, SPAN_TICK } from './diagramSpan';
+import { freeSpot, shiftBox, spreadAlong, type LabelBox, type Spread } from './diagramLabelFit';
 import {
   boxAround,
   boxInside,
@@ -735,6 +736,8 @@ function curveSvg(
   proj: Projection,
   language: LanguageMode,
   scale: number,
+  /** Where `fitLabels` moved this name to clear another label, px. */
+  nudge?: { x: number; y: number },
 ): string {
   const pts = curve.points.map((p) => ({ x: proj.px(p.x), y: proj.py(p.y) }));
   if (pts.length < 2) return '';
@@ -757,7 +760,7 @@ function curveSvg(
   if (!placed) return path;
   return (
     path +
-    textAt(lines, placed.x, placed.y, {
+    textAt(lines, placed.x + (nudge?.x ?? 0), placed.y + (nudge?.y ?? 0), {
       anchor: placed.anchor,
       baseline: 'middle',
       fontSize: FONT_SIZE * scale,
@@ -872,6 +875,8 @@ function pointSvg(
   proj: Projection,
   language: LanguageMode,
   scale: number,
+  /** `fitLabels`' shifts of this point's tick labels along their axes, px. */
+  tickShift: { x: number; y: number } = { x: 0, y: 0 },
 ): string {
   const x = proj.px(mark.at.x);
   const y = proj.py(mark.at.y);
@@ -908,12 +913,13 @@ function pointSvg(
   // Tick labels sit on the axis where the drop-lines land, offset along it if dragged.
   const xTick = pickSides(mark.xTickLabel, language);
   if (xTick.length > 0) {
-    parts.push(xTickText(xTick, pointTickAnchor(mark, 'x', proj, scale, language), scale));
+    const at = pointTickAnchor(mark, 'x', proj, scale, language);
+    parts.push(xTickText(xTick, { x: at.x + tickShift.x, y: at.y }, scale));
   }
   const yTick = pickSides(mark.yTickLabel, language);
   if (yTick.length > 0) {
     const at = pointTickAnchor(mark, 'y', proj, scale, language);
-    parts.push(textAt(yTick, at.x, at.y, { anchor: 'end', baseline: 'middle', fontSize: FONT_SIZE * scale }));
+    parts.push(textAt(yTick, at.x, at.y + tickShift.y, { anchor: 'end', baseline: 'middle', fontSize: FONT_SIZE * scale }));
   }
 
   return parts.join('');
@@ -3649,15 +3655,17 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
           bold: true,
         });
 
+  // Labels that would sit on each other at this size are moved apart (and only those).
+  const fit = fitLabels(diagram, proj, language, scale, width, height);
   const axisTicks = [
     ...(diagram.x.ticks ?? []).map((tick) => {
       const text = axisTickLabel(diagram.x, tick);
       const at = axisTickAnchor(tick, 'x', proj, scale, tickLabelWidth(text, language, scale));
-      return xTickText(pickSides(text, language), at, scale);
+      return xTickText(pickSides(text, language), { x: at.x + (fit.tickShift.get(`x:t:${tick.id}`) ?? 0), y: at.y }, scale);
     }),
     ...(diagram.y.ticks ?? []).map((tick) => {
       const at = axisTickAnchor(tick, 'y', proj, scale);
-      return textAt(pickSides(axisTickLabel(diagram.y, tick), language), at.x, at.y, {
+      return textAt(pickSides(axisTickLabel(diagram.y, tick), language), at.x, at.y + (fit.tickShift.get(`y:t:${tick.id}`) ?? 0), {
         anchor: 'end',
         baseline: 'middle',
         fontSize: FONT_SIZE * scale,
@@ -3689,10 +3697,13 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
     title,
     xTitle,
     yTitle,
-    ...diagram.curves.map((curve) => on('curves', curve.id, () => curveSvg(curve, proj, language, scale))),
+    ...diagram.curves.map((curve) => on('curves', curve.id, () => curveSvg(curve, proj, language, scale, fit.curveNudge.get(curve.id)))),
     ...diagram.arrows.map((arrow) => on('arrows', arrow.id, () => arrowSvg(arrow, proj, language, scale))),
     ...(diagram.spans ?? []).map((span) => on('spans', span.id, () => spanSvg(diagram, span, proj, language, scale))),
-    ...diagram.points.map((point) => on('points', point.id, () => pointSvg(point, proj, language, scale))),
+    ...diagram.points.map((point) => on('points', point.id, () => pointSvg(point, proj, language, scale, {
+        x: fit.tickShift.get(`x:p:${point.id}`) ?? 0,
+        y: fit.tickShift.get(`y:p:${point.id}`) ?? 0,
+      }))),
     ...diagram.labels.map((label) => on('labels', label.id, () => labelSvg(label, proj, language, scale))),
     ...areas.map((area) => on('areas', area.id, () => areaLabelSvg(diagram, area, proj, language, scale))),
   ].join('');
@@ -3703,6 +3714,164 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
     body +
     '</svg>'
   );
+}
+
+/** Air kept between two labels' ink, px at nominal size. */
+const LABEL_GAP = 3;
+/** `estimateWidth` runs narrow for bold capitals (AD, SRAS); collisions are judged on a wider box. */
+const LABEL_SLACK = 1.15;
+
+/** The ink box of text laid out as `textAt` would, anchored at (x, y). */
+function textBox(
+  lines: RichText[],
+  x: number,
+  y: number,
+  anchor: 'start' | 'middle' | 'end',
+  baseline: 'auto' | 'middle' | 'hanging',
+  size: number,
+): LabelBox {
+  const w = estimateWidth(lines, size) * LABEL_SLACK;
+  const drop = baseline === 'hanging' ? HANGING_DROP : baseline === 'middle' ? MIDDLE_DROP : 0;
+  const y0 = y + drop * size - inkTop(lines, size);
+  const x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+  return { x0, x1: x0 + w, y0, y1: y0 + inkHeight(lines, size) };
+}
+
+export interface FittedLabel {
+  kind: 'curve' | 'tick' | 'point' | 'free' | 'title' | 'origin';
+  id: string;
+  box: LabelBox;
+}
+
+interface LabelFit {
+  /** Px a tick label moved along its axis: key `<x|y>:<p|t>:<id>` (point's or the axis's own). */
+  tickShift: Map<string, number>;
+  /** Px a curve name moved, by curve id. */
+  curveNudge: Map<string, { x: number; y: number }>;
+  /** Every label's box where it is finally drawn. */
+  labels: FittedLabel[];
+}
+
+/**
+ * The label layout pass. At the size a figure is printed (a half-width grid cell shrinks the
+ * plot, not the type) tick labels such as Y₁ Y₂ or P₁ P₂ and the names of parallel curves
+ * (AD₁ AD₂, SRAS₁ SRAS₂) land on each other. Ticks that collide are spread along their axis;
+ * a curve name that collides takes the nearest free spot. Labels that already clear each
+ * other are not touched, so such a diagram renders exactly as before.
+ */
+function fitLabels(
+  diagram: Diagram,
+  proj: Projection,
+  language: LanguageMode,
+  scale: number,
+  width: number,
+  height: number,
+): LabelFit {
+  const size = FONT_SIZE * scale;
+  const gap = LABEL_GAP * scale;
+  const tickShift = new Map<string, number>();
+  const labels: FittedLabel[] = [];
+
+  for (const axis of ['x', 'y'] as const) {
+    const entries: Array<{ key: string; lines: RichText[]; at: { x: number; y: number } }> = [];
+    for (const mark of diagram.points) {
+      const lines = pickSides(axis === 'x' ? mark.xTickLabel : mark.yTickLabel, language);
+      if (lines.length > 0) {
+        entries.push({ key: `${axis}:p:${mark.id}`, lines, at: pointTickAnchor(mark, axis, proj, scale, language) });
+      }
+    }
+    for (const tick of diagram[axis].ticks ?? []) {
+      const text = axisTickLabel(diagram[axis], tick);
+      const lines = pickSides(text, language);
+      if (lines.length > 0) {
+        entries.push({
+          key: `${axis}:t:${tick.id}`,
+          lines,
+          at: axisTickAnchor(tick, axis, proj, scale, tickLabelWidth(text, language, scale)),
+        });
+      }
+    }
+    const box = (e: (typeof entries)[number]) =>
+      axis === 'x'
+        ? textBox(e.lines, e.at.x, e.at.y + inkTop(e.lines, size), 'middle', 'auto', size)
+        : textBox(e.lines, e.at.x, e.at.y, 'end', 'middle', size);
+    const items: Spread[] = entries.map((e) => {
+      const b = box(e);
+      return axis === 'x' ? { pos: e.at.x, size: b.x1 - b.x0 } : { pos: e.at.y, size: b.y1 - b.y0 };
+    });
+    const shifts = spreadAlong(items, gap);
+    entries.forEach((e, i) => {
+      if (Math.abs(shifts[i]) > 1e-6) tickShift.set(e.key, shifts[i]);
+      labels.push({
+        kind: 'tick',
+        id: e.key,
+        box: shiftBox(box(e), axis === 'x' ? shifts[i] : 0, axis === 'y' ? shifts[i] : 0),
+      });
+    });
+  }
+
+  // What a curve name must keep clear of, besides other names.
+  if (diagram.showOrigin !== false) {
+    labels.push({
+      kind: 'origin',
+      id: 'origin',
+      box: textBox([[{ text: '0' }]], proj.plot.left - 7 * scale, proj.plot.bottom + 7 * scale, 'end', 'hanging', size),
+    });
+  }
+  for (const mark of diagram.points) {
+    const lines = pickSides(mark.label, language);
+    if (lines.length === 0) continue;
+    const at = pointLabelAnchor(mark, proj, scale);
+    labels.push({ kind: 'point', id: mark.id, box: textBox(lines, at.x, at.y, at.anchor, at.baseline, size) });
+  }
+  for (const label of diagram.labels) {
+    const lines = pickSides(label.text, language);
+    if (lines.length === 0) continue;
+    const anchor = label.align === 'right' ? 'end' : label.align === 'left' ? 'start' : 'middle';
+    labels.push({ kind: 'free', id: label.id, box: textBox(lines, proj.px(label.at.x), proj.py(label.at.y), anchor, 'middle', size) });
+  }
+  const xTitle = pickSides(diagram.x.title, language);
+  if (xTitle.length > 0) {
+    const at = axisTitleAnchor(diagram, 'x', proj, width, scale, language);
+    labels.push({ kind: 'title', id: 'x', box: textBox(xTitle, at.x, at.y, 'start', 'middle', AXIS_TITLE_SIZE * scale) });
+  }
+  const yTitle = pickSides(diagram.y.title, language);
+  if (yTitle.length > 0) {
+    const at = axisTitleAnchor(diagram, 'y', proj, width, scale, language);
+    labels.push({ kind: 'title', id: 'y', box: textBox(yTitle, at.x, at.y, 'start', 'auto', AXIS_TITLE_SIZE * scale) });
+  }
+
+  // Curve names, in drawing order: each keeps clear of what is already placed.
+  const curveNudge = new Map<string, { x: number; y: number }>();
+  // The axis lines are no label, but a name that has to move should not land on one.
+  const axisBoxes: LabelBox[] = [
+    { x0: proj.plot.left, x1: proj.plot.right + AXIS_OVERSHOOT * scale, y0: proj.plot.bottom - AXIS_WIDTH * scale, y1: proj.plot.bottom + AXIS_WIDTH * scale },
+    { x0: proj.plot.left - AXIS_WIDTH * scale, x1: proj.plot.left + AXIS_WIDTH * scale, y0: proj.plot.top - AXIS_OVERSHOOT * scale, y1: proj.plot.bottom },
+  ];
+  const polylines = diagram.curves.map((curve) => curve.points.map((p) => ({ x: proj.px(p.x), y: proj.py(p.y) })));
+  for (const curve of diagram.curves) {
+    const lines = pickSides(curve.label, language);
+    const placed = lines.length > 0 ? curveLabelAnchor(curve, proj, scale) : null;
+    if (!placed) continue;
+    const box = textBox(lines, placed.x, placed.y, placed.anchor, 'middle', size);
+    const spot = freeSpot(box, labels.map((l) => l.box), polylines, { width, height }, gap, axisBoxes);
+    if (spot.x !== 0 || spot.y !== 0) curveNudge.set(curve.id, spot);
+    labels.push({ kind: 'curve', id: curve.id, box: shiftBox(box, spot.x, spot.y) });
+  }
+
+  return { tickShift, curveNudge, labels };
+}
+
+/**
+ * Every label's box as `diagramSvg` finally draws it (px, after the fitting pass).
+ * Exported for tests and for anything that must know where the text really is.
+ */
+export function diagramLabelBoxes(stored: Diagram, options: DiagramSvgOptions): FittedLabel[] {
+  if (stored.pie || stored.flow || stored.forum || stored.stakeholder || stored.chart) return [];
+  const diagram = resolveDiagram(stored, plotAspectOf(diagramPlot(stored, options)));
+  const scale = options.scale ?? 1;
+  const proj = diagramPlot(diagram, options);
+  return fitLabels(diagram, proj, options.language, scale, options.widthPx * scale, options.heightPx * scale).labels;
 }
 
 /** The SVG as a data URL, ready for an `<img>` src or a rasterization step. */
