@@ -2,7 +2,8 @@ import { aiErrorInfo, mapThrown } from '@/ai/errors';
 import { supportsImages } from '@/ai/providers';
 import type { AiErrorInfo, CompletionRequest, JsonSchema, ProviderPreset } from '@/ai/types';
 import { examplePayload, MAX_REQUEST_FIGURES, sentFigures } from './brief';
-import { currentList, parsePicks, PICK_SYSTEM_PROMPT, PICK_TASK_MARKER, syllabusList, type KeyPick } from './pick';
+import type { BiDraft } from '@/generate/types';
+import { CONCEPT_SCHEMA, conceptOf, currentList, parseConcept, parsePicks, PICK_SYSTEM_PROMPT, PICK_TASK_MARKER, syllabusList, type KeyPick } from './pick';
 import type { SourceQuestion, StudioDeps, Usage } from './types';
 
 /**
@@ -69,6 +70,8 @@ export interface UnderstandInput {
   target?: number;
   /** Also pick key points (a new request may follow). False: answer-only, no syllabus. */
   picks: boolean;
+  /** The concept the chat is on now (k-0554): a follow-up keeps it. */
+  currentConcept?: BiDraft;
 }
 
 export const TURN_SCHEMA: JsonSchema = {
@@ -79,6 +82,7 @@ export const TURN_SCHEMA: JsonSchema = {
     how: { type: 'string', enum: ['harder', 'easier', 'change'] },
     parts: { type: 'array', items: { type: 'string', enum: [...TURN_PARTS] } },
     reply: { type: 'string' },
+    concept: CONCEPT_SCHEMA,
     picks: {
       type: 'array',
       items: {
@@ -89,12 +93,12 @@ export const TURN_SCHEMA: JsonSchema = {
       },
     },
   },
-  required: ['intent', 'drafts', 'how', 'parts', 'reply', 'picks'],
+  required: ['intent', 'drafts', 'how', 'parts', 'reply', 'concept', 'picks'],
   additionalProperties: false,
 };
 
 export const TURN_SHAPE_HINT =
-  'Reply with one JSON object only, exactly in this shape: {"intent":"edit","drafts":[2],"how":"change","parts":["options"],"reply":"","picks":[]}';
+  'Reply with one JSON object only, exactly in this shape: {"intent":"edit","drafts":[2],"how":"change","parts":["options"],"reply":"","concept":{"en":"","zh":""},"picks":[]}';
 
 const TURN_RULES = [
   TURN_TASK_MARKER,
@@ -111,8 +115,8 @@ const TURN_RULES = [
   '"how": "harder" or "easier" when the change is only about difficulty, else "change". "parts": what an edit touches, any of "stem", "options", "statements", "answer", "explanation", "diagram", "table", "numbers", "language"; [] when unclear.',
 ];
 
-const PICK_ONLY_NEW = '"picks" are for "new" only (and [] for every other intent): pick them as follows.';
-const NO_PICKS = '"picks" is always [].';
+const PICK_ONLY_NEW = '"picks" and "concept" are for "new" only ([] and {"en":"","zh":""} for every other intent): pick them as follows.';
+const NO_PICKS = '"picks" is always [] and "concept" always {"en":"","zh":""}.';
 
 /** The system prompt: the reading rules, then the pick rules (or none in answer-only mode). */
 export function turnSystemPrompt(picks: boolean): string {
@@ -152,6 +156,7 @@ export function buildUnderstandRequest(input: UnderstandInput, preset: ProviderP
     recent: [...input.recent],
     ...(input.target !== undefined ? { targetDraft: input.target } : {}),
     ...(input.picks && current.length ? { currentKeyPoints: current } : {}),
+    ...(input.picks && conceptOf(input.currentConcept) ? { currentConcept: conceptOf(input.currentConcept) } : {}),
     ...(input.picks && input.examples.length ? { examples: input.examples.map((e, i) => examplePayload(e, ['en', 'zh'], figures[i].length)) } : {}),
     ...(input.picks ? { syllabus: syllabusList() } : {}),
   };
@@ -192,7 +197,7 @@ export function parseTurn(text: string, onPage: readonly number[]): TurnRead | u
 }
 
 export type UnderstandOutcome =
-  | { ok: true; read?: TurnRead; picks: KeyPick[]; usage: Usage; model: string }
+  | { ok: true; read?: TurnRead; picks: KeyPick[]; concept?: BiDraft; usage: Usage; model: string }
   | { ok: false; error: AiErrorInfo; usage: Usage };
 
 /** One request (a repeat when the reply is unreadable); never rejects. */
@@ -216,7 +221,8 @@ export async function understandTurn(input: UnderstandInput, deps: Pick<StudioDe
       }
       const read = parseTurn(res.text, onPage);
       const picks = input.picks ? parsePicks(res.text) ?? [] : [];
-      if (read || picks.length > 0) return { ok: true, ...(read ? { read } : {}), picks, usage, model: res.model };
+      const concept = picks.length ? parseConcept(res.text) : undefined;
+      if (read || picks.length > 0) return { ok: true, ...(read ? { read } : {}), picks, ...(concept ? { concept } : {}), usage, model: res.model };
     } catch (thrown) {
       return { ok: false, error: mapThrown(provider, thrown, signal.aborted ? 'user' : null), usage };
     }

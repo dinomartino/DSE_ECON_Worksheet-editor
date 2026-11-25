@@ -1,4 +1,5 @@
 import type { AiErrorInfo } from '@/ai/types';
+import type { BiDraft } from '@/generate/types';
 import type { LanguageMode } from '@/model/types';
 import type { SheetDraft } from '@/questionStudio/session';
 import type { Level, SourceQuestion, StudioDraft } from '@/questionStudio/types';
@@ -137,6 +138,8 @@ export interface Chat {
   drafts: ChatDraft[];
   /** The key point(s) the drafts are written on: the AI's pick, or the teacher's change. */
   picks: KeyPick[];
+  /** The exact idea the drafts test, as the AI's pick read it (k-0554); dropped when the teacher changes the key point. */
+  concept?: BiDraft;
   settings: ChatSettings;
   /** The last request's words, so a rewrite asks the same thing on a new key point. */
   lastText: string;

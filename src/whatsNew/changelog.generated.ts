@@ -208,6 +208,22 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **A question written from your reference now stays on its concept.** Picking a past paper
+  question about tax structure (HKCEE 1990 Paper 2 Q47) could give a draft about AD-AS, because
+  the AI only kept to the broad syllabus key point (fiscal policy). The AI now reads the exact
+  idea your reference tests and every draft must test that idea, unless you ask for something
+  else. A new **Concept** check reads each draft again and flags in red one that drifted off it
+  (it is rewritten once first), so such a draft never shows "No problems found".
+  <!-- zh: **按參考題目擬寫的題目會緊貼它的概念。** 以往選了一條關於稅制結構的歷屆試題（HKCEE 1990 Paper 2 Q47），草稿卻可能變成 AD-AS 的題目，因為 AI 只守住較廣的課程要點（財政政策）。現在 AI 會先讀出參考題目所考的確切概念，每份草稿都必須考這個概念，除非你另有要求。新增的「概念」檢查會重新閱讀每份草稿，偏離概念的會先重寫一次，仍偏離便以紅色標示，不會再顯示「未發現問題」。 -->
+- **Tax graphs with an allowance or a cap are drawn as asked.** A graph that stays at zero up to
+  a tax-free allowance, or levels off at a standard rate, was drawn as a plain horizontal line,
+  so four different options could come out identical. These broken lines are drawn now, and
+  option diagrams drawn alike are redrawn, or flagged in red.
+  <!-- zh: **有免稅額或上限的稅務圖會按要求繪畫。** 以往在免稅額以下保持為零、或在標準稅率處變為水平的線，會被畫成一條水平線，四個選項的圖可能一模一樣。現在會畫出這些轉折線；選項的圖若畫得一樣，會重新繪畫，否則以紅色標示。 -->
+- **Curve names and axis labels no longer sit on each other in small diagrams.** In a grid of
+  four diagrams (AD₁/AD₂, SRAS₁/SRAS₂, P₁/P₂, Y₁/Y₂) close labels are now spread apart, on the
+  page, in print and in Word.
+  <!-- zh: **細小圖表中的曲線名稱和軸上標示不再重疊。** 在四幅圖的組合中（AD₁/AD₂、SRAS₁/SRAS₂、P₁/P₂、Y₁/Y₂），太接近的標示現在會分開，畫面、列印和 Word 均如此。 -->
 - **The Question studio says when it can't make a question in the same form.** If the
   past-paper question you base a question on has several diagrams (like the numbered grid of
   HKDSE 2023 Paper 1 Q36), a diagram for every option or a table for every option, the studio

@@ -11,6 +11,8 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
   ...DSE_STYLE_WORDS,
   sideEn: { en: 'English', zh: '英文' },
   sideZh: { en: '中文', zh: '中文' },
+  /** Which language these words are in (a finding with words in both picks its side; k-0554). Not shown. */
+  uiLang: { en: 'en', zh: 'zh' },
   unknown: { en: (id: string) => `A check reported “${id}”.`, zh: (id: string) => `有檢查回報「${id}」。` },
 
   // ---- format (a failure: a red warning on the card; the teacher decides, k-0531) ----
@@ -59,6 +61,10 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
             ? '題目提及的圖表不在圖表組中。'
             : '圖表組未有按 (1)、(2)…… 順序編號。',
   },
+  shapeFiguresSame: {
+    en: (a: string, b: string) => `Diagrams ${a} and ${b} are drawn the same, so the question cannot be answered. Ask for a change, or redraw one of them.`,
+    zh: (a: string, b: string) => `圖表 ${a} 與 ${b} 畫得一樣，題目無法作答。請要求修改，或自行重畫其中一幅。`,
+  },
   shapeFigureFailed: {
     en: 'The diagram for this question could not be drawn to match it. Draw it yourself or ask for a change.',
     zh: '未能畫出與題目相符的圖表。請自行繪畫，或要求修改。',
@@ -80,6 +86,18 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
   keyAmbiguous: {
     en: 'Solved again from the text alone, the check found more than one option defensible.',
     zh: '只憑題目文字重新作答，檢查認為有多於一個選項說得通。',
+  },
+
+  // ---- concept (k-0554) ----
+  topicOff: {
+    en: (tests: string, concept: string) =>
+      `Read again from the text alone, this draft tests ${tests || 'another idea'}, not the concept it was written for${concept ? `: ${concept}` : ' (its reference question\'s)'}. Ask for another draft, or say what to change.`,
+    zh: (tests: string, concept: string) =>
+      `只憑題目文字重新閱讀，這份草稿考的是${tests ? `「${tests}」` : '另一個概念'}，不是它應考的概念${concept ? `「${concept}」` : '（參考題目所考的概念）'}。請要求另擬一題，或說明要怎樣修改。`,
+  },
+  topicNotChecked: {
+    en: 'Whether this draft tests the concept of its reference could not be checked. Compare it with the reference yourself.',
+    zh: '未能檢查這份草稿是否考核參考題目的概念。請自行與參考題目比較。',
   },
 
   // ---- numbers, terms, syllabus ----

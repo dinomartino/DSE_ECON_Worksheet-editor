@@ -194,6 +194,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         shape: 'any',
         sides: sidesOf(chat.settings.language),
         note: text,
+        ...(chat.concept ? { concept: chat.concept } : {}),
       };
     };
 
@@ -340,8 +341,14 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       const ready = await resolve(chatId, turnId, signal);
       if (!ready) return;
       const tagged = Object.fromEntries(mine.filter((r) => r.keyPoint).map((r) => [r.source.id, r.keyPoint as string]));
-      const current = (get().chats.find((c) => c.id === chatId)?.picks ?? []).map((p) => p.code);
-      const picked = await deps.engine.pick({ text, examples: await withPictures(mine.map((r) => r.source), sidesOf(get().chats.find((c) => c.id === chatId)?.settings.language ?? 'en')), tagged, ...(current.length ? { current } : {}) }, ready.deps, signal);
+      const chatNow = get().chats.find((c) => c.id === chatId);
+      const current = (chatNow?.picks ?? []).map((p) => p.code);
+      const currentConcept = chatNow?.concept;
+      const picked = await deps.engine.pick(
+        { text, examples: await withPictures(mine.map((r) => r.source), sidesOf(chatNow?.settings.language ?? 'en')), tagged, ...(current.length ? { current } : {}), ...(currentConcept ? { currentConcept } : {}) },
+        ready.deps,
+        signal,
+      );
       if (!picked.ok) {
         failTurn(chatId, turnId, picked.error);
         return;
@@ -354,7 +361,13 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       // Nothing to go on in a follow-up ("the same in Chinese"): the chat's key point stands.
       const picks = picked.picks.length ? picked.picks : get().chats.find((c) => c.id === chatId)?.picks ?? [];
       setStep(chatId, turnId, { kind: 'pick', state: 'done', picks, by: picked.local ? 'computer' : 'ai' });
-      edit(chatId, (c) => ({ ...c, picks, lastText: text }));
+      // The concept (k-0554) comes with a new pick; a follow-up with nothing to go on keeps the chat's.
+      edit(chatId, (c) => {
+        const concept = picked.picks.length ? picked.concept : c.concept;
+        const { concept: _old, ...rest } = c;
+        void _old;
+        return { ...rest, picks, lastText: text, ...(concept ? { concept } : {}) };
+      });
       if (!picks.length) {
         addNote(chatId, turnId, { kind: 'noPick' });
         return;
@@ -383,6 +396,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
           examples: onlyRead ? [] : await withPictures(mine.map((r) => r.source), sidesOf(chat.settings.language)),
           tagged,
           ...(current.length ? { current } : {}),
+          ...(chat.concept ? { currentConcept: chat.concept } : {}),
           drafts: briefsOf(chat, reading.chip),
           recent: recentOf(chat),
           ...(reading.chip !== undefined ? { target: reading.chip } : {}),
@@ -651,7 +665,12 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         if (chat.picks[0]?.code === code) return;
         const pick: KeyPick = { code, reason: '' };
         const openDrafts = chat.drafts.some((d) => d.state === 'open');
-        edit(chat.id, (c) => ({ ...c, picks: [pick] }));
+        // The teacher's own key point: the AI's concept (k-0554) was read for another one.
+        edit(chat.id, (c) => {
+          const { concept: _old, ...rest } = c;
+          void _old;
+          return { ...rest, picks: [pick] };
+        });
         const turn: AiTurn = { ...aiTurn(), notes: [{ kind: 'pickChanged', code }], ...(openDrafts ? { ask: { kind: 'rewrite', code } } : {}) };
         pushTurns(chat.id, turn);
       },

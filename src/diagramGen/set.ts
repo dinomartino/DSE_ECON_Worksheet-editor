@@ -182,15 +182,29 @@ export function parseSet(reply: string): ParsedSet | null {
 
 const errors = (issues: readonly DiagramIssue[]) => issues.filter((i) => i.level === 'error').length;
 
-type ShapeWord = { shape?: 'origin' | 'convex' | 'concave' | 'flat' | 'linear'; rise?: 'rising' | 'falling' };
+type ShapeWord = { shape?: Exclude<NonNullable<DiagramSpec['curves'][number]['shape']>, 'none'>; rise?: 'rising' | 'falling' };
 
 /** What a writer's note says a graph's line looks like; empty when it says nothing this reads. */
 export function noteShape(note: string): ShapeWord {
-  const n = note.toLowerCase();
+  // The axes are named, not described (k-0554): "Axes: vertical 'Average Tax Rate', horizontal
+  // 'Income'" once read as a horizontal line.
+  const n = note
+    .toLowerCase()
+    .replace(/\baxes\b[^.]*\./g, ' ')
+    .replace(/\b(vertical|horizontal|x|y)[- ]?(axis)?\s*(['"‘“][^'"’”]*['"’”])/g, ' ');
   const out: ShapeWord = {};
+  // k-0554: a broken line first: "zero up to an income level, then rising", "then becoming horizontal".
+  // Before, "horizontally along the axis at zero … then rising" read as "flat", and four different
+  // tax graphs were all drawn as one level line and passed.
+  const zeroFirst = /\b(at|of) zero\b[^.;]*\b(then|before|until|up to)\b|\balong the (horizontal|x)[- ]axis\b|\bzero (up )?(to|until)\b|tax[- ]free (allowance|threshold)|\ballowance\b|免稅額|為零/.test(n);
+  const levelLast = /\bthen (becom(es|ing) |turn(s|ing) |stay(s|ing) |level(s|ling)? off|runs? )?(horizontal|flat|constant|level)\b|\b(becom(es|ing)|turn(s|ing)) (horizontal|flat|constant)\b|\blevels? off\b|\bcapped\b|\bstandard rate\b|then horizontal|之後.*水平|標準稅率/.test(n) && !/\bno standard rate\b|\bwithout (a |any )?(cap|standard rate)/.test(n);
+  const fromAxisValue = /\b(positive|non-?zero) (value|intercept|y-intercept|average tax rate|rate)\b[^.;]*\b(on|at) the (vertical|y)[- ]axis|\bstart(s|ing)? (at|from) a positive\b/.test(n);
+  if (zeroFirst && levelLast) return { shape: 'zeroRisingFlat', rise: 'rising' };
+  if (zeroFirst && /\b(then|before)\b[^.;]*\b(ris|slop|increas|upward)/.test(n)) return { shape: 'zeroThenRising', rise: 'rising' };
+  if (levelLast && /\b(ris|slop|increas|upward)/.test(n)) return { shape: fromAxisValue ? 'linearThenFlat' : 'risingThenFlat', rise: 'rising' };
   if (/\bconvex\b|increasing rate|rising (ever )?faster|bends? up|向上彎|遞增的速度/.test(n)) out.shape = 'convex';
   else if (/\bconcave\b|decreasing rate|rising (ever )?(more )?slowly|bends? down|向下彎|遞減的速度/.test(n)) out.shape = 'concave';
-  else if (/\bhorizontal\b|\bflat\b|\bconstant\b|水平/.test(n)) out.shape = 'flat';
+  else if (/\bhorizontal\b(?![- ]axis)|\bflat\b|\bconstant\b|水平/.test(n)) out.shape = 'flat';
   else if (/(straight|linear)[^.;]*\b(from|through) the origin\b|原點/.test(n)) out.shape = 'origin';
   if (/\b(falling|downward[- ]sloping|declining|decreases with)\b|下降|遞減/.test(n) && !/decreasing rate/.test(n)) out.rise = 'falling';
   else if (/\b(rising|upward[- ]sloping|increases with)\b|上升/.test(n)) out.rise = 'rising';
@@ -221,17 +235,50 @@ export function taxKind(spec: DiagramSpec): 'progressive' | 'proportional' | 're
   const x = `${spec.xAxis.en} ${spec.xAxis.zh}`.toLowerCase();
   if (!/income|收入|入息/.test(x) || !/tax|稅/.test(y)) return null;
   const { shape = 'origin', rise = 'rising' } = graphs[0];
+  // A line that rises then levels off is progressive then proportional: not one kind (k-0554).
+  if (shape === 'risingThenFlat' || shape === 'linearThenFlat' || shape === 'zeroRisingFlat') return null;
   if (/rate|率/.test(y)) {
     // An average or marginal rate: rising = progressive, constant = proportional, falling = regressive.
     if (shape === 'flat') return 'proportional';
+    if (shape === 'zeroThenRising') return 'progressive';
     return rise === 'rising' ? 'progressive' : 'regressive';
   }
   // Tax payment against income.
   if (rise === 'falling') return null;
   if (shape === 'origin') return 'proportional';
+  // Nothing up to an allowance, then a straight line: the average rate rises.
+  if (shape === 'zeroThenRising') return 'progressive';
   if (shape === 'convex') return 'progressive';
   // Concave, a lump sum (flat) or a line from a positive value: the average rate falls.
   return 'regressive';
+}
+
+/**
+ * Two figures of one set drawn alike (k-0554): option diagrams, or grid cells, are there to be
+ * told apart, so a set whose A–D or (1)–(4) repeat a drawing cannot be answered. Compared on what
+ * is drawn: the curves (role, slope, place, shape, rise) and their shifts, levels and points.
+ */
+export function sameFigures(figures: ReadonlyArray<{ at: FigureAt; spec: DiagramSpec }>): DiagramIssue[] {
+  const groups = [figures.filter((f) => /^[A-D]$/.test(f.at)), figures.filter((f) => /^\([1-4]\)$/.test(f.at))];
+  const issues: DiagramIssue[] = [];
+  for (const group of groups) {
+    const seen = new Map<string, FigureAt>();
+    for (const f of group) {
+      if (f.spec.kind !== 'curves') continue;
+      const drawn = JSON.stringify({
+        curves: f.spec.curves.map((c) => [c.role, c.slope, c.place, c.shape, c.rise]),
+        shifts: f.spec.shifts,
+        levels: f.spec.levels,
+        points: f.spec.points,
+        y: f.spec.yAxis.en || f.spec.yAxis.zh,
+        x: f.spec.xAxis.en || f.spec.xAxis.zh,
+      });
+      const twin = seen.get(drawn);
+      if (twin) issues.push({ level: 'error', code: 'set.same', at: [twin, f.at], text: `The figures for ${twin} and ${f.at} are drawn the same; each must show a different line, as its note says.` });
+      else seen.set(drawn, f.at);
+    }
+  }
+  return issues;
 }
 
 /** The "(1)", "(2)" an option names, as a set key ("1,3"); '' when it names none. */
@@ -325,12 +372,11 @@ export async function generateDiagrams(input: DiagramSetInput, deps: DiagramGenD
   };
   take(parsed?.entries ?? []);
 
-  const setCheck = () =>
-    solveSet(
-      asked.map((f) => best.get(f.at)).flatMap((e, i) => (e ? [{ at: asked[i].at, spec: e.spec }] : [])),
-      gridAsks,
-      input.mcq,
-    );
+  const setCheck = () => {
+    const drawn = asked.map((f) => best.get(f.at)).flatMap((e, i) => (e ? [{ at: asked[i].at, spec: e.spec }] : []));
+    const solved = solveSet(drawn, gridAsks, input.mcq);
+    return { ...solved, issues: [...solved.issues, ...sameFigures(drawn)] };
+  };
   const missing = (at: FigureAt): DiagramIssue[] => [{ level: 'error', code: 'set.missing', text: `There is no figure for ${at}.` }];
   const failedNow = () => {
     const failed: Array<{ at: FigureAt | 'set'; issues: DiagramIssue[] }> = asked.flatMap((f) => {

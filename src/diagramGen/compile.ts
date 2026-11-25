@@ -162,6 +162,11 @@ export const GRAPH_LINES: Record<Exclude<GraphShape, 'none'>, Record<GraphRise, 
   convex: { rising: [[0, 0], [0.45, 0.16], [0.68, 0.38], [0.86, 0.76]], falling: [[0.08, 0.84], [0.22, 0.4], [0.48, 0.2], [0.86, 0.12]] },
   concave: { rising: [[0, 0], [0.18, 0.38], [0.42, 0.6], [0.86, 0.76]], falling: [[0.02, 0.76], [0.4, 0.68], [0.62, 0.5], [0.8, 0.1]] },
   flat: { rising: [[0, 0.45], [0.86, 0.45]], falling: [[0, 0.45], [0.86, 0.45]] },
+  // k-0554: broken lines (always rising, then level): an allowance, a cap, or both.
+  zeroThenRising: { rising: [[0, 0], [0.3, 0], [0.86, 0.72]], falling: [[0, 0], [0.3, 0], [0.86, 0.72]] },
+  risingThenFlat: { rising: [[0, 0], [0.5, 0.56], [0.86, 0.56]], falling: [[0, 0], [0.5, 0.56], [0.86, 0.56]] },
+  linearThenFlat: { rising: [[0, 0.24], [0.55, 0.58], [0.86, 0.58]], falling: [[0, 0.24], [0.55, 0.58], [0.86, 0.58]] },
+  zeroRisingFlat: { rising: [[0, 0], [0.26, 0], [0.52, 0.6], [0.86, 0.6]], falling: [[0, 0], [0.26, 0], [0.52, 0.6], [0.86, 0.6]] },
 };
 
 function graphCurve(shape: GraphShape, rise: GraphRise, name: DiagramCurve['label']): DiagramCurve {

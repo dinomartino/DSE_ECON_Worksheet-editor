@@ -105,6 +105,7 @@ function problemOf(findings: readonly Finding[]): string {
     if (f.id === 'shape.statementCount') return 'A combination item has two to four statements.';
     if (f.id === 'shape.narrates')
       return `Its stem describes the diagram in words ("${f.params?.words ?? ''}"). An HKDSE stem only refers to the diagram ("Refer to the following diagram.") and states the situation; put what to draw in "figure" and keep the same options and key.`;
+    if (f.id === 'shape.figuresSame') return `Its diagrams ${f.params?.a ?? ''} and ${f.params?.b ?? ''} came out the same. Write each "figures" note so it says plainly how that line differs from the others (where it starts, how it rises, where it levels off).`;
     if (f.id === 'shape.figureFailed') return 'Its diagram could not be drawn to match it. Keep the question, and write its "figures" note again so it says exactly which point each label marks and which label is the key.';
     if (f.id === 'shape.figureSet') {
       const p = f.params?.problem;
@@ -380,6 +381,15 @@ export async function writeDrafts(
       emit({ type: 'diagram', index, state: 'working' });
       if (wantsSet(slot)) slot.diagramSet = await diagramSetFor(slot, index);
       else slot.diagram = await diagramFor(slot, index);
+      // k-0554: two option diagrams (or grid cells) drawn alike leave the question with no answer: a red warning.
+      const same = slot.diagramSet?.issues.find((i) => i.code === 'set.same' && i.at?.length === 2);
+      if (same) {
+        const shape = slot.checks.find((c) => c.id === 'shape');
+        if (shape && !shape.findings.some((f) => f.id === 'shape.figuresSame')) {
+          shape.findings = [...shape.findings, { id: 'shape.figuresSame', params: { a: same.at![0], b: same.at![1] } }];
+          shape.state = 'fail';
+        }
+      }
       const missing = slot.diagramSet ? slot.diagramSet.figures.some((f) => !f.block) : Boolean(slot.figure && slot.diagram && !slot.diagram.block);
       if (missing) {
         const shape = slot.checks.find((c) => c.id === 'shape');
@@ -448,15 +458,19 @@ export async function writeDrafts(
 
   // 4. The blind solve of every draft (a warned one too: the teacher may still use it, k-0531).
   const solveSide: Side = sides.includes('en') ? 'en' : 'zh';
-  const solveOf = async (which: readonly Slot[]): Promise<Map<string, SolveResult> | AiErrorInfo> => {
+  const solveOf = async (which: ReadonlyArray<{ slot: Slot; at: number }>): Promise<Map<string, SolveResult> | AiErrorInfo> => {
     step('solve');
-    const items: SolveItem[] = which.map((s) => ({
-      id: s.id,
-      stem: s.draft.stem[solveSide] || s.draft.stem[solveSide === 'en' ? 'zh' : 'en'],
-      statements: s.draft.statements.map((t) => t[solveSide] || t[solveSide === 'en' ? 'zh' : 'en']),
-      options: s.draft.options.map((t) => t[solveSide] || t[solveSide === 'en' ? 'zh' : 'en']),
-      ...solveFigures(s),
-    }));
+    const items: SolveItem[] = which.map(({ slot: s, at }) => {
+      const concept = conceptFor(at);
+      return {
+        id: s.id,
+        stem: s.draft.stem[solveSide] || s.draft.stem[solveSide === 'en' ? 'zh' : 'en'],
+        statements: s.draft.statements.map((t) => t[solveSide] || t[solveSide === 'en' ? 'zh' : 'en']),
+        options: s.draft.options.map((t) => t[solveSide] || t[solveSide === 'en' ? 'zh' : 'en']),
+        ...solveFigures(s),
+        ...(concept ? { concept } : {}),
+      };
+    });
     const got = await ask(buildSolveRequest(items, solveSide, deps.preset, signal));
     if (!got.ok) return got.error;
     return parseSolveReply(got.text) ?? aiErrorInfo('badOutput', provider);
@@ -476,7 +490,8 @@ export async function writeDrafts(
     const stem = s.diagramSet.figures.filter((f) => f.at && !/^[A-D]$/.test(f.at) && f.figureWords).map((f) => (f.at === 'stem' ? f.figureWords! : `${f.at} ${f.figureWords}`));
     return { options, ...(stem.length ? { figure: stem.join('\n') } : {}) };
   };
-  const applySolve = (slot: Slot, result: SolveResult | undefined) => {
+  const applySolve = (slot: Slot, at: number, result: SolveResult | undefined) => {
+    applyTopic(slot, at, result);
     const key = slot.checks.find((c) => c.id === 'key');
     if (!key) return;
     if (!result) {
@@ -493,20 +508,68 @@ export async function writeDrafts(
     key.state = findings.length ? 'look' : 'pass';
   };
 
+  /**
+   * The idea draft `at` must test, for the blind solve to compare with (k-0554): the request's
+   * concept (step 1 read it from the teacher's words or reference), else, for a draft written
+   * close to the teacher's own reference with no words of theirs, that reference's question.
+   * Undefined = no topic check (no reference of the teacher's, or words that may ask for another idea).
+   */
+  const conceptFor = (at: number): string | undefined => {
+    const concept = brief.request.concept;
+    if (concept) return concept[solveSide] || concept[solveSide === 'en' ? 'zh' : 'en'];
+    const examples = brief.request.examples;
+    if (referenceMode(brief.request) !== 'pattern' || !examples.length || brief.request.note) return undefined;
+    const ex = examples[at % examples.length];
+    const pick = (t: { en: string; zh: string }) => t[solveSide] || t[solveSide === 'en' ? 'zh' : 'en'];
+    const words = [pick(ex.stem), ...ex.statements.map(pick), ...ex.options.map(pick)].filter((t) => t && t !== '[picture]').join(' / ');
+    return words ? `the same idea as this past question: ${words.slice(0, 500)}` : undefined;
+  };
+  const offTopic = (s: Slot) => s.checks.some((c) => c.id === 'topic' && c.state === 'fail');
+  const topicProblem = (s: Slot): string => {
+    const tests = s.solve?.tests ? ` (it tests ${s.solve.tests})` : '';
+    const concept = brief.request.concept?.en || brief.request.concept?.zh;
+    return concept
+      ? `It does not test the concept it must test${tests}. Write it again so that it tests exactly this: ${concept}. Keep the example's pattern; change only the scenario, wording and numbers.`
+      : `It does not test the same concept as the example it follows${tests}. Write it again on exactly the idea that example asks about; change only the scenario, wording and numbers.`;
+  };
+  /** The concept row (k-0554), right after the key's, on a draft that had a concept to keep. */
+  const applyTopic = (slot: Slot, at: number, result: SolveResult | undefined) => {
+    if (!conceptFor(at)) return;
+    const concept = brief.request.concept;
+    const row: CheckRow =
+      result?.onTopic === false
+        ? { id: 'topic', state: 'fail', findings: [{ id: 'topic.off', params: { tests: result.tests ?? '', conceptEn: concept?.en ?? '', conceptZh: concept?.zh ?? '' } }] }
+        : result?.onTopic === true
+          ? { id: 'topic', state: 'pass', findings: [] }
+          : { id: 'topic', state: 'skipped', findings: [{ id: 'topic.notChecked' }] };
+    const others = slot.checks.filter((c) => c.id !== 'topic');
+    const keyAt = others.findIndex((c) => c.id === 'key');
+    slot.checks = [...others.slice(0, keyAt + 1), row, ...others.slice(keyAt + 1)];
+  };
+
   const standing = [...slots];
   if (standing.length) {
-    const solved = await solveOf(standing);
-    if (solved instanceof Map) standing.forEach((s) => applySolve(s, solved.get(s.id)));
-    else if (!signal.aborted) notes.push({ id: 'run.keyNotChecked', params: { message: solved.message } });
+    const solved = await solveOf(standing.map((slot, at) => ({ slot, at })));
+    if (solved instanceof Map) standing.forEach((s, at) => applySolve(s, at, solved.get(s.id)));
+    else {
+      standing.forEach((s, at) => applyTopic(s, at, undefined));
+      if (!signal.aborted) notes.push({ id: 'run.keyNotChecked', params: { message: solved.message } });
+    }
     emitDrafts(slots);
     if (signal.aborted) return stopped();
 
-    // 5. One rewrite of drafts whose key the solver disagreed with, their figures, and their solve.
-    const differing = solved instanceof Map ? standing.filter((s) => s.solve && s.solve.answer !== s.draft.answerIndex) : [];
+    // 5. One rewrite of drafts whose key the solver disagreed with, or that left their concept (k-0554), their figures, and their solve.
+    const keyOff = (s: Slot) => Boolean(s.solve && s.solve.answer !== s.draft.answerIndex);
+    const differing = solved instanceof Map ? standing.filter((s) => keyOff(s) || offTopic(s)) : [];
     if (differing.length && !opts.rewrite) {
       total += 2;
       const redo = differing.map((s) => ({
-        problem: `A student solving it from the text alone chose option ${letter(s.solve!.answer)}, but you marked option ${letter(s.draft.answerIndex)}. Their working: ${plain(toRuns(s.solve!.working)).slice(0, 300)} Make exactly one option correct and the others clearly wrong.`,
+        problem: [
+          offTopic(s) ? topicProblem(s) : '',
+          keyOff(s)
+            ? `A student solving it from the text alone chose option ${letter(s.solve!.answer)}, but you marked option ${letter(s.draft.answerIndex)}. Their working: ${plain(toRuns(s.solve!.working)).slice(0, 300)} Make exactly one option correct and the others clearly wrong.`
+            : '',
+        ].filter(Boolean).join(' '),
         draft: textOf(s),
       }));
       const again = await write({ ...job, count: redo.length, keys: differing.map((s) => brief.keys[slots.indexOf(s)] ?? 0), redo }, 'rewrite', (k) => (differing[k] ? slots.indexOf(differing[k]) : k));
@@ -522,9 +585,10 @@ export async function writeDrafts(
         });
         if (replaced.length && !signal.aborted) {
           if (!(await drawFigures(replaced.map(({ at, slot }) => ({ slot, index: at }))))) return stopped();
-          const solvedAgain = await solveOf(replaced.map((r) => r.slot));
+          const solvedAgain = await solveOf(replaced.map(({ slot, at }) => ({ slot, at })));
           for (const { at, slot } of replaced) {
-            if (solvedAgain instanceof Map) applySolve(slot, solvedAgain.get(slot.id));
+            if (solvedAgain instanceof Map) applySolve(slot, at, solvedAgain.get(slot.id));
+            else applyTopic(slot, at, undefined);
             slots[at] = slot;
           }
         } else {
@@ -553,9 +617,16 @@ export function parseSolveReply(text: string): Map<string, SolveResult> | null {
   if (!Array.isArray(parsed.answers)) return null;
   const out = new Map<string, SolveResult>();
   for (const entry of parsed.answers) {
-    const e = (entry ?? {}) as { id?: unknown; answer?: unknown; working?: unknown; ambiguous?: unknown };
+    const e = (entry ?? {}) as { id?: unknown; answer?: unknown; working?: unknown; ambiguous?: unknown; tests?: unknown; onTopic?: unknown };
     if (typeof e.id !== 'string' || typeof e.answer !== 'number' || !Number.isInteger(e.answer) || e.answer < 0 || e.answer > 3) continue;
-    out.set(e.id, { answer: e.answer, working: typeof e.working === 'string' ? e.working.trim().slice(0, 1500) : '', ambiguous: e.ambiguous === true });
+    const tests = typeof e.tests === 'string' ? e.tests.replace(/\s+/g, ' ').trim().slice(0, 200) : '';
+    out.set(e.id, {
+      answer: e.answer,
+      working: typeof e.working === 'string' ? e.working.trim().slice(0, 1500) : '',
+      ambiguous: e.ambiguous === true,
+      ...(tests ? { tests } : {}),
+      ...(typeof e.onTopic === 'boolean' ? { onTopic: e.onTopic } : {}),
+    });
   }
   return out;
 }

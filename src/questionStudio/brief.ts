@@ -3,6 +3,7 @@ import type { BiDraft } from '@/generate/types';
 import type { Glossary } from '@/glossary/types';
 import type { Side } from '@/model/textSlots';
 import { lookupCode } from '@/syllabus';
+import { conceptOf } from './concept';
 import {
   MAX_AUTO_EXAMPLES,
   MAX_COUNT,
@@ -61,7 +62,9 @@ export function referenceMode(request: Pick<StudioRequest, 'examples' | 'strict'
   return request.strict === true && request.examples.every((e) => e.auto !== true) ? 'pattern' : 'style';
 }
 
-export function normalizeRequest(request: StudioRequest): StudioRequest {
+export function normalizeRequest(raw: StudioRequest): StudioRequest {
+  const { concept: rawConcept, ...request } = raw;
+  const concept = conceptOf(rawConcept);
   const hit = lookupCode(request.keyPoint);
   const points = hit ? request.points.filter((code) => lookupCode(code)?.keyPoint.code === hit.keyPoint.code) : [];
   return {
@@ -72,6 +75,7 @@ export function normalizeRequest(request: StudioRequest): StudioRequest {
     count: Math.min(MAX_COUNT, Math.max(1, Math.floor(request.count) || 1)),
     sides: (['en', 'zh'] as const).filter((side) => request.sides.includes(side)),
     note: request.note.trim().slice(0, MAX_NOTE_CHARS),
+    ...(concept ? { concept } : {}),
   };
 }
 
@@ -177,6 +181,8 @@ export function briefPayload(brief: Brief, glossary: Glossary | null, denyHints:
       ...(brief.also.length ? { alsoKeyPoints: brief.also.map((k) => ({ en: k.en, zh: k.zh })) } : {}),
       points: brief.points.map((p) => ({ en: p.en, zh: p.zh })),
       notRequired: brief.keyPoint.notRequired,
+      // k-0554: the exact idea within the key point, so a draft stays on its reference's concept.
+      ...(request.concept ? { concept: request.concept } : {}),
     },
     glossary: pinLines(brief, glossary, denyHints),
     ...(request.examples.length ? { examples: request.examples.map((e, i) => examplePayload(e, request.sides, figures[i].length)) } : {}),

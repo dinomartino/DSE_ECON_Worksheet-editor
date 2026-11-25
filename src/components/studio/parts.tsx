@@ -33,6 +33,7 @@ const GLYPH: Record<CheckState, string> = { pass: '✓', look: '!', fail: '✕',
 export const CHECK_LABEL = {
   shape: 'checkShape',
   key: 'checkKey',
+  topic: 'checkTopic',
   numbers: 'checkNumbers',
   terms: 'checkTerms',
   syllabus: 'checkSyllabus',

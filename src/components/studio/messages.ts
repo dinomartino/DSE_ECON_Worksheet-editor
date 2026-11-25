@@ -194,6 +194,7 @@ export const QUESTION_STUDIO_MESSAGES = defineMessages({
   checksNone: { en: 'Pick a draft to see what was checked.', zh: '選取一份草稿，查看檢查結果。' },
   checkShape: { en: 'Format', zh: '格式' },
   checkKey: { en: 'Key', zh: '答案' },
+  checkTopic: { en: 'Concept', zh: '概念' },
   checkNumbers: { en: 'Numbers', zh: '數字' },
   checkTerms: { en: 'EDB terms', zh: 'EDB 詞彙' },
   checkSyllabus: { en: 'Syllabus', zh: '課程範圍' },

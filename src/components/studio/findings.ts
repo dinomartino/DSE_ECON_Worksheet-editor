@@ -48,6 +48,8 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       return m.shapeNarrates(side());
     case 'shape.figureSet':
       return m.shapeFigureSet(str(p.problem));
+    case 'shape.figuresSame':
+      return m.shapeFiguresSame(str(p.a), str(p.b));
     case 'shape.figureFailed':
       return m.shapeFigureFailed;
     case 'shape.referenceForm':
@@ -60,6 +62,10 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       return m.checkEdited;
     case 'key.ambiguous':
       return m.keyAmbiguous;
+    case 'topic.off':
+      return m.topicOff(str(p.tests), str(m.uiLang === 'zh' ? p.conceptZh || p.conceptEn : p.conceptEn || p.conceptZh));
+    case 'topic.notChecked':
+      return m.topicNotChecked;
     case 'numbers.differ':
       return m.numbersDiffer(str(p.en), str(p.zh));
     case 'terms.note':
@@ -104,7 +110,7 @@ export function findingText(finding: Finding, m: FindingMessages): string {
 /** Every code `findingText` knows, for the test that holds the engine to it. */
 export const KNOWN_FINDINGS: readonly string[] = [
   'shape.stemEmpty', 'shape.optionCount', 'shape.optionEmpty', 'shape.optionsSame', 'shape.keyRange', 'shape.statementEmpty',
-  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'shape.figureSet', 'shape.referenceForm', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'numbers.differ', 'terms.note', 'syllabus.limited',
+  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'shape.figuresSame', 'shape.figureSet', 'shape.referenceForm', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'topic.off', 'topic.notChecked', 'numbers.differ', 'terms.note', 'syllabus.limited',
   'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close', 'copy.wordsOnly', 'copy.reference',
   'run.fewer', 'run.stopped', 'run.keyNotChecked', 'run.referenceShape',
 ];

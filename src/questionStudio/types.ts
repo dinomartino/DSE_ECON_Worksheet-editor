@@ -110,12 +110,24 @@ export interface StudioRequest {
   sides: readonly Side[];
   /** The Change line, the teacher's own words ('' = none). */
   note: string;
+  /**
+   * The exact idea every question must test (k-0554), as the step-1 pick read it: from the
+   * teacher's words when they ask for something, else from what the picked reference asks
+   * ("the structure of a tax: progressive, proportional or regressive"). A key point is broad
+   * (fiscal policy holds tax structure and AD-AS alike); this keeps a draft on its reference's
+   * concept. Absent = none read (an older chat, the computer's own pick).
+   */
+  concept?: BiDraft;
 }
 
 // ---- checks ----
 
-export type CheckId = 'shape' | 'key' | 'numbers' | 'terms' | 'syllabus' | 'lint' | 'style' | 'copy';
-export const CHECK_IDS: readonly CheckId[] = ['shape', 'key', 'numbers', 'terms', 'syllabus', 'lint', 'style', 'copy'];
+/**
+ * `topic` (k-0554) is the only row a draft may lack: it is there when the draft was written to
+ * a concept or the teacher's reference, and the blind solve said whether it stays on it.
+ */
+export type CheckId = 'shape' | 'key' | 'topic' | 'numbers' | 'terms' | 'syllabus' | 'lint' | 'style' | 'copy';
+export const CHECK_IDS: readonly CheckId[] = ['shape', 'key', 'topic', 'numbers', 'terms', 'syllabus', 'lint', 'style', 'copy'];
 
 /**
  * One thing a check found. `id` is a code and `params` its values: the interface words for
@@ -144,6 +156,10 @@ export interface SolveResult {
   working: string;
   /** The solver found two options defensible, or none. */
   ambiguous: boolean;
+  /** What the solver says the question tests, in a few words (k-0554); only when it was asked to compare with a concept. */
+  tests?: string;
+  /** Whether that is the concept the draft was written to (k-0554); absent = not asked or not said. */
+  onTopic?: boolean;
 }
 
 /** What a draft changed from its reference, in one of the four ways the screen lists. */

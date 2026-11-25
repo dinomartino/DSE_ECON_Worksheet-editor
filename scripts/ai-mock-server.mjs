@@ -402,7 +402,9 @@ function studioSolveReply(payload) {
     const known = studioKeys.get(studioNorm(q.stem));
     const answer = known ?? 0;
     // A question marked [look] is one the solver reads differently from its key.
-    return { id: q.id, working: 'Worked out from the numbers in the stem.', answer: /\[look\]/.test(q.stem) ? (answer + 1) % 4 : answer, ambiguous: false };
+    // k-0554: a question with a concept to keep is on it, unless it is marked [offtopic].
+    const offTopic = Boolean(q.concept) && /\[offtopic\]/.test(q.stem);
+    return { id: q.id, working: 'Worked out from the numbers in the stem.', answer: /\[look\]/.test(q.stem) ? (answer + 1) % 4 : answer, ambiguous: false, tests: q.concept ? (offTopic ? 'the effect of fiscal policy on output and price' : 'the same concept') : '', onTopic: !offTopic };
   });
   return completion(JSON.stringify({ answers }));
 }

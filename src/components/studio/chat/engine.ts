@@ -1,4 +1,5 @@
 import type { AiErrorInfo } from '@/ai/types';
+import type { BiDraft } from '@/generate/types';
 import { normalizeRequest } from '@/questionStudio/brief';
 import { pickKeyPoints } from '@/questionStudio/pick';
 import { refine as refineDraft, writeDrafts, type RunHooks } from '@/questionStudio/run';
@@ -56,10 +57,21 @@ export interface PickInput {
   target?: number;
   /** False: only read the message (no key point wanted, no syllabus sent). Default true. */
   picks?: boolean;
+  /** The concept the chat is on now (k-0554): a follow-up keeps it. */
+  currentConcept?: BiDraft;
 }
 
 export type PickOutcome =
-  | { ok: true; picks: KeyPick[]; usage: Usage; model: string; /** Picked on the computer, not by the AI. */ local?: boolean; /** What the message wants (k-0535), when the AI said. */ turn?: TurnRead }
+  | {
+      ok: true;
+      picks: KeyPick[];
+      /** The exact idea the questions must test, when the AI read one (k-0554). */
+      concept?: BiDraft;
+      usage: Usage;
+      model: string;
+      /** Picked on the computer, not by the AI. */ local?: boolean;
+      /** What the message wants (k-0535), when the AI said. */ turn?: TurnRead;
+    }
   | { ok: false; error: AiErrorInfo; usage: Usage };
 
 export type WriteHooks = RunHooks;
@@ -82,19 +94,19 @@ export const liveEngine: StudioEngine = {
     if (input.drafts?.length) {
       const wantPicks = input.picks !== false;
       const read = await understandTurn(
-        { text: input.text, examples: input.examples, ...(input.current?.length ? { current: input.current } : {}), drafts: input.drafts, recent: input.recent ?? [], ...(input.target !== undefined ? { target: input.target } : {}), picks: wantPicks },
+        { text: input.text, examples: input.examples, ...(input.current?.length ? { current: input.current } : {}), ...(input.currentConcept ? { currentConcept: input.currentConcept } : {}), drafts: input.drafts, recent: input.recent ?? [], ...(input.target !== undefined ? { target: input.target } : {}), picks: wantPicks },
         deps,
         signal,
       );
       if (!read.ok) return read;
       const turn = read.read ? { turn: read.read } : {};
-      if (read.picks.length > 0 || !wantPicks || (read.read && read.read.intent !== 'new')) return { ok: true, picks: read.picks, usage: read.usage, model: read.model, ...turn };
+      if (read.picks.length > 0 || !wantPicks || (read.read && read.read.intent !== 'new')) return { ok: true, picks: read.picks, ...(read.concept ? { concept: read.concept } : {}), usage: read.usage, model: read.model, ...turn };
       const local = await computerPick(input);
       return local.ok ? { ...local, usage: read.usage, ...turn } : local;
     }
-    const asked = await pickKeyPoints({ text: input.text, examples: input.examples, ...(input.current?.length ? { current: input.current } : {}) }, deps, signal);
+    const asked = await pickKeyPoints({ text: input.text, examples: input.examples, ...(input.current?.length ? { current: input.current } : {}), ...(input.currentConcept ? { currentConcept: input.currentConcept } : {}) }, deps, signal);
     if (!asked.ok) return asked;
-    if (asked.picks.length > 0) return { ok: true, picks: asked.picks, usage: asked.usage, model: asked.model };
+    if (asked.picks.length > 0) return { ok: true, picks: asked.picks, ...(asked.concept ? { concept: asked.concept } : {}), usage: asked.usage, model: asked.model };
     const local = await computerPick(input);
     return local.ok ? { ...local, usage: asked.usage } : local;
   },

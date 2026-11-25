@@ -258,6 +258,7 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
   // A failed check, shown on the card (k-0531): the draft is never hidden; the teacher decides.
   warnCopy: { en: (kind: string) => `Very close to ${kind}`, zh: (kind: string) => `與${kind}非常相似` },
   warnShape: { en: 'Format problem', zh: '格式有問題' },
+  warnTopic: { en: 'Not the reference\'s concept', zh: '與參考題目的概念不符' },
   warnTitle: { en: 'Read this before you use it', zh: '使用前請先細閱' },
 
   // tray

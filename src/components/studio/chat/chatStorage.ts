@@ -1,5 +1,6 @@
 import type { LanguageMode } from '@/model/types';
 import { shownDraft } from '@/questionStudio/validate';
+import { conceptOf } from '@/questionStudio/concept';
 
 const LANGUAGE_MODES: readonly LanguageMode[] = ['en', 'zh', 'bilingual'];
 import { CHAT_COUNTS, type Chat, type ChatDraft, type ChatRef, type Turn } from './chatTypes';
@@ -72,6 +73,7 @@ export function readChat(x: unknown): Chat | undefined {
     // Versions saved before k-0530 get their numbers by place (`numbered`).
     drafts: x.drafts.filter(isDraft).map(shownChatDraft).map(numbered),
     picks,
+    ...(conceptOf(x.concept) ? { concept: conceptOf(x.concept) } : {}),
     settings: { count, level, language },
     lastText: isStr(x.lastText) ? x.lastText : '',
     ...(isStr(x.paper) && x.paper ? { paper: x.paper } : {}),

@@ -265,5 +265,7 @@ function warnLabel(warnings: readonly Finding[], m: Messages<typeof STUDIO_CHAT_
     const kind = ({ bank: f.copyKindBank, mine: f.copyKindMine, paper: f.copyKindPaper, example: f.copyKindExample, draft: f.copyKindDraft } as Record<string, string>)[String(copy.params?.with ?? 'bank')] ?? f.copyKindBank;
     return m.warnCopy(kind);
   }
+  // k-0554: a draft off its reference's concept says so, not "Format problem".
+  if (warnings.some((w) => w.id === 'topic.off')) return m.warnTopic;
   return m.warnShape;
 }

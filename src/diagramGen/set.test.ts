@@ -3,6 +3,8 @@ import { presetFor } from '@/ai/providers';
 import { scriptedClient } from '@/translate/testKit';
 import { diagramSvg } from '@/render/diagram';
 import fixtureFile from './setFixtures.json';
+import k0554 from './k0554Fixture.json';
+import { blockOf, evaluateSpec } from '.';
 import { systemPrompt } from './prompt';
 import {
   buildSetRequest,
@@ -11,6 +13,7 @@ import {
   generateDiagrams,
   noteShape,
   parseSet,
+  sameFigures,
   solveSet,
   taxKind,
   type DiagramSetInput,
@@ -157,5 +160,61 @@ describe('a plain graph (role "graph")', () => {
     expect(checkGraphNote(spec, 'concave, rising')).toEqual([]);
     expect(checkGraphNote(spec, 'convex, rising at an increasing rate').map((i) => i.code)).toEqual(['graph.shape']);
     expect(checkGraphNote(spec, 'a falling line').map((i) => i.code)).toEqual(['graph.rise']);
+  });
+});
+
+const blockOfSpec = (spec: DiagramSpec) => blockOf(evaluateSpec(spec, { sides: ['en'], key: '' }), ['en'])!.diagram;
+
+describe('broken tax lines and figures drawn alike (k-0554)', () => {
+  // The live run on HKCEE 1990 P2 Q47: the writer's four notes, and the reply that drew all four as one level line.
+  const live = k0554 as unknown as { question: { stem: string; answer: number; explanation: string }; notes: Array<{ at: FigureAt; note: string }>; reply: { gridAsks: string; figures: unknown[] } };
+  const input: DiagramSetInput = {
+    question: live.question.stem,
+    key: `${'ABCD'[live.question.answer]}. ${live.question.explanation}`,
+    sides: ['en'],
+    figures: live.notes,
+    mcq: { stem: live.question.stem, statements: [], options: ['', '', '', ''], answer: live.question.answer },
+  };
+  const g = (shape: string, y = 'Average Tax Rate') => parseSpec(JSON.stringify({ kind: 'curves', xAxis: { en: 'Income', zh: '' }, yAxis: { en: y, zh: '' }, curves: [{ id: 'G', role: 'graph', shape, rise: 'rising', label: '' }] }))!.spec;
+
+  it('reads each live note part by part: an allowance, a cap, both', () => {
+    expect(live.notes.map((n) => noteShape(n.note).shape)).toEqual(['zeroThenRising', 'origin', 'flat', 'zeroRisingFlat']);
+    expect(noteShape('a straight line from a positive value on the vertical axis, rising, then becoming horizontal at the standard rate').shape).toBe('linearThenFlat');
+    expect(noteShape('rising straight from the origin, then horizontal').shape).toBe('risingThenFlat');
+    expect(noteShape('a progressive tax with a tax-free allowance and no standard rate cap: zero up to the allowance, then rising').shape).toBe('zeroThenRising');
+    // Before, the "horizontally along the axis at zero" of A and D read as "flat": the level line passed.
+    expect(checkGraphNote(g('flat'), live.notes[0].note).map((i) => i.code)).toEqual(['graph.shape']);
+    expect(checkGraphNote(g('zeroRisingFlat'), live.notes[3].note)).toEqual([]);
+  });
+
+  it('draws the four HKCEE salaries-tax lines apart, says them in words, and knows which are one kind of tax', () => {
+    const shapes = ['zeroThenRising', 'risingThenFlat', 'linearThenFlat', 'zeroRisingFlat'];
+    const svgs = shapes.map((s) => diagramSvg(blockOfSpec(g(s)), { widthPx: 300, heightPx: 240, language: 'en' }));
+    expect(new Set(svgs).size).toBe(4);
+    const words = shapes.map((s) => figureWords(g(s), { x: {}, y: {}, curves: [], points: [], labels: [], arrows: [] } as never));
+    expect(words[0]).toContain('zero (along the horizontal axis)');
+    expect(words[3]).toContain('then horizontal');
+    expect(taxKind(g('zeroThenRising'))).toBe('progressive');
+    expect(taxKind(g('zeroThenRising', 'Tax payment ($)'))).toBe('progressive');
+    expect(taxKind(g('zeroRisingFlat'))).toBeNull();
+  });
+
+  it('the live reply (four level lines) fails the set, is asked again, and a reply drawn to the notes stands', async () => {
+    expect(sameFigures(live.notes.map((n) => ({ at: n.at, spec: g('flat') }))).map((i) => i.at)).toEqual([['A', 'B'], ['A', 'C'], ['A', 'D']]);
+    const fixed = { gridAsks: 'none', figures: (live.reply.figures as Array<{ at: string; curves: Array<{ shape: string }> }>).map((f, i) => ({ ...f, curves: [{ ...f.curves[0], shape: ['zeroThenRising', 'origin', 'flat', 'zeroRisingFlat'][i] }] })) };
+    const client = scriptedClient([JSON.stringify(live.reply), JSON.stringify(fixed)]);
+    const out = await generateDiagrams(input, { client, preset }, signal());
+    expect(client.requests).toHaveLength(2);
+    expect(client.requests[1].turns.at(-1)!.content as string).toContain('drawn the same');
+    if (!out.ok) throw new Error('failed');
+    expect(out.issues.filter((i) => i.code === 'set.same')).toEqual([]);
+    expect(out.figures.map((f) => f.spec.curves[0].shape)).toEqual(['zeroThenRising', 'origin', 'flat', 'zeroRisingFlat']);
+  });
+
+  it('a repair that still draws them alike leaves the set issue, which the studio shows as a red warning', async () => {
+    const client = scriptedClient([JSON.stringify(live.reply), JSON.stringify(live.reply)]);
+    const out = await generateDiagrams(input, { client, preset }, signal());
+    if (!out.ok) throw new Error('failed');
+    expect(out.issues.some((i) => i.code === 'set.same')).toBe(true);
   });
 });

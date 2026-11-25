@@ -31,7 +31,11 @@ export type CurveRole = (typeof CURVE_ROLES)[number];
  * y-axis; convex: bending upward (rising ever faster, or falling ever slower); concave:
  * bending downward; flat: horizontal. 'none' on every other role.
  */
-export const GRAPH_SHAPES = ['none', 'origin', 'linear', 'convex', 'concave', 'flat'] as const;
+/**
+ * A plain graph's line (k-0545). The broken lines (k-0554) are the tax graphs old HKCEE papers
+ * draw: zero up to an allowance then rising; rising then level at a cap (a standard rate); both.
+ */
+export const GRAPH_SHAPES = ['none', 'origin', 'linear', 'convex', 'concave', 'flat', 'zeroThenRising', 'risingThenFlat', 'linearThenFlat', 'zeroRisingFlat'] as const;
 export type GraphShape = (typeof GRAPH_SHAPES)[number];
 export const GRAPH_RISES = ['rising', 'falling'] as const;
 export type GraphRise = (typeof GRAPH_RISES)[number];
@@ -235,6 +239,8 @@ export interface DiagramIssue {
   level: 'error' | 'look';
   code: string;
   text: string;
+  /** The figures it is about, by place (k-0554 `set.same`: the two drawn alike). */
+  at?: readonly string[];
 }
 
 /** A reference question's figure, to make a similar but new one. */

@@ -1,0 +1,253 @@
+{
+ "note": "k-0554 live run 2026-11-25 (Mentor dev): the writer's option notes for a tax-structure remake of HKCEE 1990 P2 Q47, and the diagram maker's reply that drew all four as one level line.",
+ "question": {
+  "stem": "In Country B, the government levies a progressive income tax with a basic tax-free allowance and no standard rate cap. Which of the following diagrams approximates the relationship between income and the average tax rate in Country B?",
+  "answer": 0,
+  "explanation": "Option A is correct because the average tax rate is zero up to the tax-free allowance and rises continuously thereafter without a cap. Option B is wrong because it omits the tax-free allowance. Option C is wrong because it shows a proportional tax with a constant average tax rate. Option D is wrong because it shows a standard rate cap where the average tax rate becomes horizontal."
+ },
+ "notes": [
+  {
+   "at": "A",
+   "note": "Axes: vertical 'Average Tax Rate', horizontal 'Income' with 0 at origin. A line running horizontally along the horizontal axis at zero from the origin to a positive income level, then sloping upward continuously."
+  },
+  {
+   "at": "B",
+   "note": "Axes: vertical 'Average Tax Rate', horizontal 'Income' with 0 at origin. A straight line starting from the origin and sloping upward continuously."
+  },
+  {
+   "at": "C",
+   "note": "Axes: vertical 'Average Tax Rate', horizontal 'Income' with 0 at origin. A horizontal line at a positive average tax rate."
+  },
+  {
+   "at": "D",
+   "note": "Axes: vertical 'Average Tax Rate', horizontal 'Income' with 0 at origin. A line running horizontally at zero from the origin to a positive income level, sloping upward, and then becoming horizontal."
+  }
+ ],
+ "reply": {
+  "gridAsks": "none",
+  "figures": [
+   {
+    "kind": "curves",
+    "reason": "",
+    "placement": "question",
+    "template": "",
+    "title": {
+     "en": "",
+     "zh": ""
+    },
+    "xAxis": {
+     "en": "Income",
+     "zh": ""
+    },
+    "yAxis": {
+     "en": "Average Tax Rate",
+     "zh": ""
+    },
+    "curves": [
+     {
+      "id": "G",
+      "role": "graph",
+      "slope": "normal",
+      "place": "mid",
+      "label": "",
+      "shape": "flat",
+      "rise": "rising"
+     }
+    ],
+    "shifts": [],
+    "levels": [],
+    "points": [],
+    "gaps": [],
+    "shades": [],
+    "marks": [],
+    "changeArrows": false,
+    "asks": {
+     "what": "none",
+     "state": "before"
+    },
+    "chart": {
+     "type": "line",
+     "categories": [],
+     "series": [],
+     "yTitle": {
+      "en": "",
+      "zh": ""
+     },
+     "xTitle": {
+      "en": "",
+      "zh": ""
+     }
+    },
+    "at": "A"
+   },
+   {
+    "kind": "curves",
+    "reason": "",
+    "placement": "question",
+    "template": "",
+    "title": {
+     "en": "",
+     "zh": ""
+    },
+    "xAxis": {
+     "en": "Income",
+     "zh": ""
+    },
+    "yAxis": {
+     "en": "Average Tax Rate",
+     "zh": ""
+    },
+    "curves": [
+     {
+      "id": "G",
+      "role": "graph",
+      "slope": "normal",
+      "place": "mid",
+      "label": "",
+      "shape": "flat",
+      "rise": "rising"
+     }
+    ],
+    "shifts": [],
+    "levels": [],
+    "points": [],
+    "gaps": [],
+    "shades": [],
+    "marks": [],
+    "changeArrows": false,
+    "asks": {
+     "what": "none",
+     "state": "before"
+    },
+    "chart": {
+     "type": "line",
+     "categories": [],
+     "series": [],
+     "yTitle": {
+      "en": "",
+      "zh": ""
+     },
+     "xTitle": {
+      "en": "",
+      "zh": ""
+     }
+    },
+    "at": "B"
+   },
+   {
+    "kind": "curves",
+    "reason": "",
+    "placement": "question",
+    "template": "",
+    "title": {
+     "en": "",
+     "zh": ""
+    },
+    "xAxis": {
+     "en": "Income",
+     "zh": ""
+    },
+    "yAxis": {
+     "en": "Average Tax Rate",
+     "zh": ""
+    },
+    "curves": [
+     {
+      "id": "G",
+      "role": "graph",
+      "slope": "normal",
+      "place": "mid",
+      "label": "",
+      "shape": "flat",
+      "rise": "rising"
+     }
+    ],
+    "shifts": [],
+    "levels": [],
+    "points": [],
+    "gaps": [],
+    "shades": [],
+    "marks": [],
+    "changeArrows": false,
+    "asks": {
+     "what": "none",
+     "state": "before"
+    },
+    "chart": {
+     "type": "line",
+     "categories": [],
+     "series": [],
+     "yTitle": {
+      "en": "",
+      "zh": ""
+     },
+     "xTitle": {
+      "en": "",
+      "zh": ""
+     }
+    },
+    "at": "C"
+   },
+   {
+    "kind": "curves",
+    "reason": "",
+    "placement": "question",
+    "template": "",
+    "title": {
+     "en": "",
+     "zh": ""
+    },
+    "xAxis": {
+     "en": "Income",
+     "zh": ""
+    },
+    "yAxis": {
+     "en": "Average Tax Rate",
+     "zh": ""
+    },
+    "curves": [
+     {
+      "id": "G",
+      "role": "graph",
+      "slope": "normal",
+      "place": "mid",
+      "label": "",
+      "shape": "flat",
+      "rise": "rising"
+     }
+    ],
+    "shifts": [],
+    "levels": [],
+    "points": [],
+    "gaps": [],
+    "shades": [],
+    "marks": [],
+    "changeArrows": false,
+    "asks": {
+     "what": "none",
+     "state": "before"
+    },
+    "chart": {
+     "type": "line",
+     "categories": [],
+     "series": [],
+     "yTitle": {
+      "en": "",
+      "zh": ""
+     },
+     "xTitle": {
+      "en": "",
+      "zh": ""
+     }
+    },
+    "at": "D"
+   }
+  ]
+ },
+ "subsidyNotes": [
+  "Axes: vertical 'Amount of Cash Subsidy', horizontal 'Household Income' with 0 at origin. A horizontal straight line at a positive subsidy level.",
+  "Axes: vertical 'Amount of Cash Subsidy', horizontal 'Household Income' with 0 at origin. A straight line starting from the origin and sloping upward.",
+  "Axes: vertical 'Amount of Cash Subsidy', horizontal 'Household Income' with 0 at origin. A curve starting at a positive y-intercept, sloping downward and approaching the horizontal axis asymptotically without touching it.",
+  "Axes: vertical 'Amount of Cash Subsidy', horizontal 'Household Income' with 0 at origin. A straight line starting at a positive y-intercept, sloping downward to touch the horizontal axis at a positive income level, and then running horizontally along the axis at zero."
+ ]
+}

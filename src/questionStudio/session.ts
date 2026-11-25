@@ -225,7 +225,7 @@ export async function withKeyPoints(request: StudioRequest, deps: Pick<StudioDep
   const [main, ...rest] = picked.picks;
   return {
     ok: true,
-    request: normalizeRequest({ ...request, keyPoint: main.code, points: [], alsoKeyPoints: rest.map((p) => p.code) }),
+    request: normalizeRequest({ ...request, keyPoint: main.code, points: [], alsoKeyPoints: rest.map((p) => p.code), ...(picked.concept ? { concept: picked.concept } : {}) }),
     picks: picked.picks,
     usage: picked.usage,
     model: picked.model,

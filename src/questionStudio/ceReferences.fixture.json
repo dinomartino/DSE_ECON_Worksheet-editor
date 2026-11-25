@@ -1,0 +1,536 @@
+{
+ "note": "Four HKCEE picture questions from the public past paper bank (k-0554), pictures replaced by a 1x1 PNG.",
+ "questions": [
+  {
+   "id": "pp-CE1990_P2_Q47",
+   "type": "mcq",
+   "blocks": [
+    {
+     "kind": "paragraph",
+     "id": "pp-CE1990_P2_Q47-s-1",
+     "text": {
+      "en": [
+       {
+        "text": "Which of the following diagrams approximates the structure of salaries tax in Hong Kong?"
+       }
+      ],
+      "zh": [
+       {
+        "text": "下列哪一幅圖大致顯示香港薪俸稅的結構？"
+       }
+      ]
+     }
+    }
+   ],
+   "marks": 1,
+   "options": [
+    {
+     "id": "pp-CE1990_P2_Q47-a",
+     "text": {
+      "en": [],
+      "zh": []
+     },
+     "blocks": [
+      {
+       "kind": "image",
+       "id": "pp-CE1990_P2_Q47-ab-1",
+       "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+       "widthPx": 215,
+       "heightPx": 200,
+       "naturalWidthPx": 421,
+       "naturalHeightPx": 391,
+       "altText": {
+        "en": [],
+        "zh": []
+       },
+       "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+     ]
+    },
+    {
+     "id": "pp-CE1990_P2_Q47-b",
+     "text": {
+      "en": [],
+      "zh": []
+     },
+     "blocks": [
+      {
+       "kind": "image",
+       "id": "pp-CE1990_P2_Q47-bb-1",
+       "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+       "widthPx": 212,
+       "heightPx": 189,
+       "naturalWidthPx": 445,
+       "naturalHeightPx": 398,
+       "altText": {
+        "en": [],
+        "zh": []
+       },
+       "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+     ]
+    },
+    {
+     "id": "pp-CE1990_P2_Q47-c",
+     "text": {
+      "en": [],
+      "zh": []
+     },
+     "blocks": [
+      {
+       "kind": "image",
+       "id": "pp-CE1990_P2_Q47-cb-1",
+       "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+       "widthPx": 212,
+       "heightPx": 189,
+       "naturalWidthPx": 450,
+       "naturalHeightPx": 402,
+       "altText": {
+        "en": [],
+        "zh": []
+       },
+       "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+     ]
+    },
+    {
+     "id": "pp-CE1990_P2_Q47-d",
+     "text": {
+      "en": [],
+      "zh": []
+     },
+     "blocks": [
+      {
+       "kind": "image",
+       "id": "pp-CE1990_P2_Q47-db-1",
+       "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+       "widthPx": 215,
+       "heightPx": 189,
+       "naturalWidthPx": 471,
+       "naturalHeightPx": 415,
+       "altText": {
+        "en": [],
+        "zh": []
+       },
+       "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+     ]
+    }
+   ],
+   "optionLayout": "columns2",
+   "answerIndex": 2,
+   "tags": [
+    "I.fiscal",
+    "CE1990/P2/Q47"
+   ],
+   "provenance": {
+    "en": [
+     {
+      "text": "HKCEE 1990 Paper 2 Q47"
+     }
+    ],
+    "zh": [
+     {
+      "text": "香港中學會考 1990 卷二 第 47 題"
+     }
+    ]
+   },
+   "lineage": {
+    "rootId": "pp:CE1990/P2/Q47"
+   }
+  },
+  {
+   "id": "pp-CE1995_P2_Q48",
+   "type": "mcq",
+   "blocks": [
+    {
+     "kind": "paragraph",
+     "id": "pp-CE1995_P2_Q48-s-1",
+     "text": {
+      "en": [
+       {
+        "text": "The following diagram shows the tax structure of Tax X:"
+       }
+      ],
+      "zh": [
+       {
+        "text": "下圖顯示 X 稅項的稅項結構："
+       }
+      ]
+     }
+    },
+    {
+     "kind": "image",
+     "id": "pp-CE1995_P2_Q48-s-2",
+     "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+     "widthPx": 448,
+     "heightPx": 215,
+     "naturalWidthPx": 1026,
+     "naturalHeightPx": 494,
+     "altText": {
+      "en": [],
+      "zh": []
+     },
+     "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    },
+    {
+     "kind": "paragraph",
+     "id": "pp-CE1995_P2_Q48-s-3",
+     "text": {
+      "en": [
+       {
+        "text": "Tax X is ______ within the income range 0Y₁, and ______ within the income range Y₁Y₂."
+       }
+      ],
+      "zh": [
+       {
+        "text": "在入息範圍 0Y₁ 內，X 稅項屬______稅；在 Y₁Y₂ 範圍內，它屬______稅。"
+       }
+      ]
+     }
+    }
+   ],
+   "marks": 1,
+   "options": [
+    {
+     "id": "pp-CE1995_P2_Q48-a",
+     "text": {
+      "en": [
+       {
+        "text": "proportional ... progressive"
+       }
+      ],
+      "zh": [
+       {
+        "text": "比例...累進"
+       }
+      ]
+     }
+    },
+    {
+     "id": "pp-CE1995_P2_Q48-b",
+     "text": {
+      "en": [
+       {
+        "text": "proportional ... regressive"
+       }
+      ],
+      "zh": [
+       {
+        "text": "比例...累退"
+       }
+      ]
+     }
+    },
+    {
+     "id": "pp-CE1995_P2_Q48-c",
+     "text": {
+      "en": [
+       {
+        "text": "progressive ... proportional"
+       }
+      ],
+      "zh": [
+       {
+        "text": "累進...比例"
+       }
+      ]
+     }
+    },
+    {
+     "id": "pp-CE1995_P2_Q48-d",
+     "text": {
+      "en": [
+       {
+        "text": "progressive ... regressive"
+       }
+      ],
+      "zh": [
+       {
+        "text": "累進...累退"
+       }
+      ]
+     }
+    }
+   ],
+   "answerIndex": 1,
+   "tags": [
+    "I.fiscal",
+    "CE1995/P2/Q48"
+   ],
+   "provenance": {
+    "en": [
+     {
+      "text": "HKCEE 1995 Paper 2 Q48"
+     }
+    ],
+    "zh": [
+     {
+      "text": "香港中學會考 1995 卷二 第 48 題"
+     }
+    ]
+   },
+   "lineage": {
+    "rootId": "pp:CE1995/P2/Q48"
+   }
+  },
+  {
+   "id": "pp-CE1993_P2_Q25",
+   "type": "mcq",
+   "blocks": [
+    {
+     "kind": "image",
+     "id": "pp-CE1993_P2_Q25-s-1",
+     "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+     "widthPx": 379,
+     "heightPx": 187,
+     "naturalWidthPx": 759,
+     "naturalHeightPx": 374,
+     "altText": {
+      "en": [],
+      "zh": []
+     },
+     "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    },
+    {
+     "kind": "paragraph",
+     "id": "pp-CE1993_P2_Q25-s-2",
+     "text": {
+      "en": [
+       {
+        "text": "If the demand is unitarily elastic along the above curve DD, then area 1 ______ area 2."
+       }
+      ],
+      "zh": [
+       {
+        "text": "如沿上圖曲線 DD 的各點需求彈性都是單位彈性時，面積 1____面積 2。"
+       }
+      ]
+     }
+    }
+   ],
+   "marks": 1,
+   "options": [
+    {
+     "id": "pp-CE1993_P2_Q25-a",
+     "text": {
+      "en": [
+       {
+        "text": "is equal to"
+       }
+      ],
+      "zh": [
+       {
+        "text": "相等於"
+       }
+      ]
+     }
+    },
+    {
+     "id": "pp-CE1993_P2_Q25-b",
+     "text": {
+      "en": [
+       {
+        "text": "is greater than"
+       }
+      ],
+      "zh": [
+       {
+        "text": "大於"
+       }
+      ]
+     }
+    },
+    {
+     "id": "pp-CE1993_P2_Q25-c",
+     "text": {
+      "en": [
+       {
+        "text": "is smaller than"
+       }
+      ],
+      "zh": [
+       {
+        "text": "小於"
+       }
+      ]
+     }
+    },
+    {
+     "id": "pp-CE1993_P2_Q25-d",
+     "text": {
+      "en": [
+       {
+        "text": "may be greater or smaller than"
+       }
+      ],
+      "zh": [
+       {
+        "text": "可大於亦可小於"
+       }
+      ]
+     }
+    }
+   ],
+   "answerIndex": 0,
+   "tags": [
+    "C.ped",
+    "C.pes",
+    "CE1993/P2/Q25"
+   ],
+   "provenance": {
+    "en": [
+     {
+      "text": "HKCEE 1993 Paper 2 Q25"
+     }
+    ],
+    "zh": [
+     {
+      "text": "香港中學會考 1993 卷二 第 25 題"
+     }
+    ]
+   },
+   "lineage": {
+    "rootId": "pp:CE1993/P2/Q25"
+   }
+  },
+  {
+   "id": "pp-CE1992_P2_Q23",
+   "type": "mcq",
+   "blocks": [
+    {
+     "kind": "paragraph",
+     "id": "pp-CE1992_P2_Q23-s-1",
+     "text": {
+      "en": [
+       {
+        "text": "A large stock of corn is piling up because of a good harvest. Which of the following diagrams can explain this phenomenon?"
+       }
+      ],
+      "zh": [
+       {
+        "text": "由於豐收，粟米大量囤積。以下哪一圖可解釋此現象？"
+       }
+      ]
+     }
+    }
+   ],
+   "marks": 1,
+   "options": [
+    {
+     "id": "pp-CE1992_P2_Q23-a",
+     "text": {
+      "en": [],
+      "zh": []
+     },
+     "blocks": [
+      {
+       "kind": "image",
+       "id": "pp-CE1992_P2_Q23-ab-1",
+       "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+       "widthPx": 189,
+       "heightPx": 185,
+       "naturalWidthPx": 382,
+       "naturalHeightPx": 374,
+       "altText": {
+        "en": [],
+        "zh": []
+       },
+       "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+     ]
+    },
+    {
+     "id": "pp-CE1992_P2_Q23-b",
+     "text": {
+      "en": [],
+      "zh": []
+     },
+     "blocks": [
+      {
+       "kind": "image",
+       "id": "pp-CE1992_P2_Q23-bb-1",
+       "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+       "widthPx": 193,
+       "heightPx": 185,
+       "naturalWidthPx": 443,
+       "naturalHeightPx": 423,
+       "altText": {
+        "en": [],
+        "zh": []
+       },
+       "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+     ]
+    },
+    {
+     "id": "pp-CE1992_P2_Q23-c",
+     "text": {
+      "en": [],
+      "zh": []
+     },
+     "blocks": [
+      {
+       "kind": "image",
+       "id": "pp-CE1992_P2_Q23-cb-1",
+       "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+       "widthPx": 179,
+       "heightPx": 178,
+       "naturalWidthPx": 372,
+       "naturalHeightPx": 370,
+       "altText": {
+        "en": [],
+        "zh": []
+       },
+       "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+     ]
+    },
+    {
+     "id": "pp-CE1992_P2_Q23-d",
+     "text": {
+      "en": [],
+      "zh": []
+     },
+     "blocks": [
+      {
+       "kind": "image",
+       "id": "pp-CE1992_P2_Q23-db-1",
+       "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+       "widthPx": 184,
+       "heightPx": 180,
+       "naturalWidthPx": 423,
+       "naturalHeightPx": 413,
+       "altText": {
+        "en": [],
+        "zh": []
+       },
+       "srcZh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+     ]
+    }
+   ],
+   "optionLayout": "columns2",
+   "answerIndex": 0,
+   "tags": [
+    "C.equilibrium",
+    "CE1992/P2/Q23"
+   ],
+   "provenance": {
+    "en": [
+     {
+      "text": "HKCEE 1992 Paper 2 Q23"
+     }
+    ],
+    "zh": [
+     {
+      "text": "香港中學會考 1992 卷二 第 23 題"
+     }
+    ]
+   },
+   "lineage": {
+    "rootId": "pp:CE1992/P2/Q23"
+   }
+  }
+ ]
+}

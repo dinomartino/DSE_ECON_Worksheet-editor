@@ -93,11 +93,16 @@ export function applyEdit(previous: StudioDraft, edit: DraftEdit, request: Studi
   // A draft with several figures keeps their checks (option diagrams may have no words, k-0545).
   const ctx = { ...editContext(request, others, found), ...(previous.figureSet?.length ? { figureSet: previous.figureSet } : {}) };
   const fresh = localChecks(structuredClone(draft), ctx);
-  const checks = fresh.map((row): CheckRow => {
-    if (row.id === 'key') return keep ? (previous.checks.find((c) => c.id === 'key') ?? stale('key', KEY_STALE)) : stale('key', KEY_STALE);
-    if (row.id === 'terms' && !found.glossary) return stale('terms', CHECK_STALE);
-    if (row.id === 'copy' && !found.corpus) return stale('copy', CHECK_STALE);
-    return row;
+  // The concept row (k-0554) needs the AI too: kept for the same question, "check again" once it changed.
+  const topic = previous.checks.find((c) => c.id === 'topic');
+  const checks = fresh.flatMap((row): CheckRow[] => {
+    if (row.id === 'key') {
+      const key = keep ? (previous.checks.find((c) => c.id === 'key') ?? stale('key', KEY_STALE)) : stale('key', KEY_STALE);
+      return topic ? [key, keep ? topic : stale('topic', CHECK_STALE)] : [key];
+    }
+    if (row.id === 'terms' && !found.glossary) return [stale('terms', CHECK_STALE)];
+    if (row.id === 'copy' && !found.corpus) return [stale('copy', CHECK_STALE)];
+    return [row];
   });
   const diagram = edit.diagram && previous.diagram ? { ...previous.diagram, block: edit.diagram, edited: true as const } : previous.diagram;
   const changedAt = new Map((edit.figures ?? []).map((f) => [f.at, f.block]));

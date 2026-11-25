@@ -73,7 +73,8 @@ describe('writeDrafts: the happy path', () => {
     expect(client.requests[0].system.startsWith(WRITE_TASK_MARKER)).toBe(true);
     expect(client.requests[1].system.startsWith(SOLVE_TASK_MARKER)).toBe(true);
     expect(out.drafts.map((d) => d.status)).toEqual(['ok', 'ok', 'ok']);
-    expect(out.drafts[0].checks.map((c) => c.id)).toEqual(CHECK_IDS);
+    // The concept row (k-0554) only comes with a concept or the teacher's reference.
+    expect(out.drafts[0].checks.map((c) => c.id)).toEqual(CHECK_IDS.filter((id) => id !== 'topic'));
     expect(out.drafts.every((d) => d.checks.every((c) => c.state === 'pass'))).toBe(true);
     expect(out.drafts.map((d) => d.attempt)).toEqual([1, 1, 1]);
     expect(out.drafts.map((d) => d.angle)).toEqual([A.angle, B.angle, C.angle]);

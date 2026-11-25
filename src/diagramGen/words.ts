@@ -38,6 +38,14 @@ export function graphWords(shape: SpecCurve['shape'], rise: SpecCurve['rise']): 
       return up ? 'a curve from the origin, rising at a decreasing rate' : 'a curve falling at an increasing rate';
     case 'flat':
       return 'a horizontal straight line (constant)';
+    case 'zeroThenRising':
+      return 'zero (along the horizontal axis) up to a positive value, then a straight line rising';
+    case 'risingThenFlat':
+      return 'a straight line rising from the origin, then horizontal (constant) beyond a certain value';
+    case 'linearThenFlat':
+      return 'a straight line rising from a positive value on the vertical axis, then horizontal (constant) beyond a certain value';
+    case 'zeroRisingFlat':
+      return 'zero (along the horizontal axis) up to a positive value, then rising in a straight line, then horizontal (constant) beyond a higher value';
     default:
       return up ? 'a straight line from the origin, rising' : 'a straight line, falling';
   }
