@@ -1,4 +1,5 @@
 import { plain, runLines } from '@/model/text';
+import { figureLabelIndent, withLabelsAtFigure } from '@/render/figureLabel';
 import { hasFraction, linearFraction, textSegments } from '@/model/fraction';
 import { cssFontFamilies } from '@/model/fonts';
 import { contentWidth, DEFAULT_PAGE_SETUP, pageSetupOf, twipsToPt } from '@/model/page';
@@ -263,7 +264,7 @@ function nodeHtml(
     const rows = node.rows
       .map((row, rowIndex) => {
         const cells = row
-          .map((cell) => {
+          .map((cell, cellIndex) => {
             if (cell.covered) return '';
             // Every cell is a plain `td`: uniform borders, no shading or bold of the
             // table's own, which is what an HKDSE table looks like (§tables). A `th` would also re-introduce
@@ -314,7 +315,24 @@ function nodeHtml(
                 `width="${cell.image.widthPx}" height="${cell.image.heightPx}" ` +
                 `alt="${escapeHtml(plain(cell.image.altText.en) || plain(cell.image.altText.zh) || 'Image')}"/></p>`
               : '';
-            const body = (richHtml(cell.text, language) || (cellImage ? '' : '&nbsp;')) + cellImage;
+            // A diagram's number at its picture's upper-left corner (k-0555, § `TableNodeCell.labelAtImage`):
+            // left-aligned, indented to where the centred picture starts, as the `.docx` puts it.
+            const labelIndent =
+              cell.labelAtImage && cell.image
+                ? figureLabelIndent(
+                    node.columnWidths
+                      .slice(cellIndex, cellIndex + cell.colSpan)
+                      .reduce((sum, share) => sum + share * node.width * textWidthTwips, 0) -
+                      pad.left -
+                      pad.right,
+                    cell.image.widthPx,
+                  )
+                : undefined;
+            const label = richHtml(cell.text, language);
+            const body =
+              (labelIndent !== undefined && label
+                ? `<p style="text-align:left;margin:0 0 0 ${twipsToPt(labelIndent)}pt">${label}</p>`
+                : label || (cellImage ? '' : '&nbsp;')) + cellImage;
             return `<td style="${style}"${span}>${body}</td>`;
           })
           .join('');
@@ -451,7 +469,10 @@ function nodeHtml(
       const gap = grid && index % perRow < perRow - 1 ? `padding-right:${grid.gap / 20}pt;` : '';
       return (
         `<td style="border:none;vertical-align:top;padding:0;${gap}width:${share}">` +
-        cell.map((child) => nodeHtml(child, language, fontCss, diagramImages)).join('') +
+        // A figure grid's label starts at its figure's left edge (§ `OptionRowNode.figureLabels`).
+        (node.figureLabels ? withLabelsAtFigure(cell, (textWidthTwips - (grid?.indent ?? 0)) / perRow) : cell)
+          .map((child) => nodeHtml(child, language, fontCss, diagramImages))
+          .join('') +
         '</td>'
       );
     });

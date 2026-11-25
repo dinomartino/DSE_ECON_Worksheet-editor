@@ -1457,6 +1457,40 @@ function figureAlignClass(align: TableAlign): string {
   return align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
 }
 
+/**
+ * A box as wide as its figure, placed where the figure alone would sit (by the figure's own
+ * `align`), so a label inside it starts at the figure's left edge (k-0555,
+ * `render/figureLabel.ts`). The `.docx` reaches the same place with a left indent.
+ */
+function figureBoxStyle(align: TableAlign): React.CSSProperties {
+  return {
+    width: "fit-content",
+    maxWidth: "100%",
+    marginLeft: align === "left" ? 0 : "auto",
+    marginRight: align === "right" ? 0 : "auto",
+    textAlign: "left",
+  };
+}
+
+/**
+ * A table cell whose text is a diagram's number over its picture (§ `TableNodeCell.labelAtImage`):
+ * both in one box as wide as the picture, centred as the picture always is in a cell, so the
+ * number starts at the picture's left edge. Any other cell renders exactly as before.
+ */
+function LabelAtImageBox({ on, children }: { on?: true; children: React.ReactNode }) {
+  if (!on) return <>{children}</>;
+  return <div style={figureBoxStyle("center")}>{children}</div>;
+}
+
+/** A figure grid cell's box (§ `OptionRowNode.figureLabels`): placed as its figure is. */
+function figureLabelBox(cell: RenderNode[]): React.CSSProperties {
+  const figure = cell.find(
+    (child): child is Extract<RenderNode, { kind: "image" | "diagram" }> =>
+      child.kind === "image" || child.kind === "diagram",
+  );
+  return figureBoxStyle(figure?.align ?? "center");
+}
+
 function DiagramNodeView({
   node,
   language,
@@ -2430,6 +2464,7 @@ function TableNodeView({
                           );
                       }}
                     >
+                      <LabelAtImageBox on={cell.labelAtImage}>
                       {cell.segments && ctx
                         ? // Several fields in one cell (the answer key's tables), each
                           // typed alone, as a paragraph's segments are.
@@ -2477,6 +2512,7 @@ function TableNodeView({
                           />
                         </div>
                       )}
+                      </LabelAtImageBox>
                     </td>
                   );
                 })}
@@ -3209,9 +3245,20 @@ export function NodeView({
                   grid && index < perRow - 1 ? { paddingRight: `${grid.gap / 20}pt` } : undefined
                 }
               >
-                {cell.map((child, childIndex) => (
-                  <NodeView key={childIndex} node={child} language={language} ctx={ctx} />
-                ))}
+                {node.figureLabels ? (
+                  // A figure grid's label sits at its figure's upper-left corner (k-0555):
+                  // label and figure share a box as wide as the figure, placed where the
+                  // figure alone was, so the label starts where the figure does.
+                  <div style={figureLabelBox(cell)}>
+                    {cell.map((child, childIndex) => (
+                      <NodeView key={childIndex} node={child} language={language} ctx={ctx} />
+                    ))}
+                  </div>
+                ) : (
+                  cell.map((child, childIndex) => (
+                    <NodeView key={childIndex} node={child} language={language} ctx={ctx} />
+                  ))
+                )}
               </div>
             ))}
           </div>

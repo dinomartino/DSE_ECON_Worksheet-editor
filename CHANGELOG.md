@@ -212,6 +212,13 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **Diagram numbers (1)–(4) sit at the top-left corner of each diagram, as on the HKDSE
+  papers.** Questions with four numbered diagrams, from the Past paper bank (such as HKDSE 2024
+  Paper 1 Q38) or written by the Question studio, used to print each number centred above its
+  diagram, or well to the left of it. Each number now starts at its diagram's left edge, on
+  screen, in print and PDF and in Word, in English and 中文. The diagrams themselves do not
+  move, and papers you saved before open as they were.
+  <!-- zh: **圖表編號 (1)–(4) 現在位於每幅圖表的左上角，與 HKDSE 試卷相同。** 有四幅編號圖表的題目（例如歷屆試題庫的 HKDSE 2024 Paper 1 第 38 題，或擬題工作室寫出的題目），以往每個編號都置中於圖表上方，或離圖表左邊太遠。現在每個編號都由圖表的左邊開始，在畫面、列印及 PDF、Word 檔案中，英文及中文版本都一樣。圖表本身位置不變，以前儲存的試卷照樣開啟。 -->
 - **A question written from your reference now stays on its concept.** Picking a past paper
   question about tax structure (HKCEE 1990 Paper 2 Q47) could give a draft about AD-AS, because
   the AI only kept to the broad syllabus key point (fiscal policy). The AI now reads the exact

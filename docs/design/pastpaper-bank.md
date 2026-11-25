@@ -308,6 +308,9 @@ What it reads:
      vAlign: "top", image: { src, srcZh?, widthPx ≤ 290, heightPx, altText } }`. The options
      are ordinary text ("(1) and (2) only"); `statements` stays absent. A build before k-0444
      draws that table with lines and the English picture in 中文.
+     The editor prints each "(n)" at its picture's upper-left corner, as on the papers, whatever
+     the cell's `align` (k-0555: `TableNodeCell.labelAtImage`, `src/render/figureLabel.ts`); a
+     build before k-0555 centres it, as the export's `align: "center"` says.
    - **Four tables as options**: each option `{ id, text: empty, blocks: [table] }`, the table
      as any other (no picture inside a cell of it).
    An unknown `type` still works as before: older builds leave it out and count it.

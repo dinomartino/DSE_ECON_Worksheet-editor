@@ -28,6 +28,7 @@ import type {
 import { isBiTextEmpty, plain, trailingBlankLines } from '@/model/text';
 import { defaultFramed } from '@/model/edits';
 import { cellWidthPx, fitToCell } from './cellFit';
+import { isFigureNumberLabel } from './figureLabel';
 import {
   cellAlignOf,
   resolveCellEdges,
@@ -265,6 +266,12 @@ export interface TableNodeCell {
   format?: TextFormat;
   /** A picture printed under the cell's text; see `TableCell.image`. */
   image?: CellImage;
+  /**
+   * The cell's text is a diagram's number ("(1)") over its `image`: it prints left-aligned at
+   * the picture's upper-left corner whatever `align` says, as on the papers (k-0555,
+   * `render/figureLabel.ts`). The past paper bank's (1)–(4) tables arrive centred.
+   */
+  labelAtImage?: true;
   /** Where the text sits vertically (`w:vAlign`); absent = centred, as ever. */
   vAlign?: CellVAlign;
   /** A grey fill behind the cell (`w:shd w:fill`), as hex without `#`; absent = none. */
@@ -429,6 +436,13 @@ export interface OptionRowNode {
    * (`endsInBlankLine`). Absent on a figure grid, which is one row and spends nothing.
    */
   textGrid?: { perRow: number; indent: number; gap: number };
+  /**
+   * A stem's figure grid (§ `FigureGridBlock`): each cell is its label line, then its figure.
+   * The label sits at the figure's upper-left corner, as "(1)" does on the papers (k-0555,
+   * `render/figureLabel.ts`); each backend measures that against its own cell, so the
+   * figure stays where it was. Absent on option grids: their letters keep the cell's edge.
+   */
+  figureLabels?: true;
   keepNext?: boolean;
   teacherOnly?: boolean;
 }
@@ -1096,7 +1110,7 @@ export function renderContentBlocks(
 
 /**
  * A stem's figure grid (§ `FigureGridBlock`, k-0545): `columns` cells to a row, each its
- * label line above its own figure, printed by the MC options' figure-grid frame
+ * label line at its own figure's upper-left corner (k-0555, `figureLabels`), printed by the MC options' figure-grid frame
  * (§ `OptionRowNode`), so every backend draws it with the emitters it already has. Each row
  * is one borderless layout table; a row keeps with the next so the grid never parts.
  * Figures wider than their cell are fitted to it as printed (`fitToCell`).
@@ -1123,6 +1137,7 @@ function renderFigureGrid(nodes: RenderNode[], block: FigureGridBlock, options: 
     nodes.push({
       kind: 'optionRow',
       cells: row,
+      figureLabels: true,
       keepNext: start + perRow < cells.length || options.keepNext,
       teacherOnly: options.teacherOnly,
     });
@@ -1278,6 +1293,11 @@ function tableNodeFor(block: TableBlock, options: BlockNodeOptions): TableNode |
         ...(cell.shading ? { shading: cell.shading } : {}),
         format: cell.format,
         image: cell.image,
+        // A diagram's number over its picture sits at the picture's corner (k-0555); a
+        // right-aligned label is the teacher's own choice and stays.
+        ...(cell.image && cellAlignOf(cell) !== 'right' && isFigureNumberLabel(cell.text)
+          ? { labelAtImage: true as const }
+          : {}),
         edit: { kind: 'tableCell', blockId: block.id, cellId: cell.id },
       })),
     ),

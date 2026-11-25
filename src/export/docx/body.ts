@@ -56,6 +56,7 @@ import {
 import { answerGraphBox, answerGraphLineTwips } from '@/render/answerGraph';
 import { COVER_GRID, COVER_PANEL } from '@/model/cover';
 import { attrs, escapeXml } from './xml';
+import { figureLabelIndent, withLabelsAtFigure } from '@/render/figureLabel';
 
 /**
  * Document body construction: paragraphs, tables and inline images (§7.5, §7.6).
@@ -507,7 +508,7 @@ function marksColumnLabelXml(
   );
 }
 
-function cellParagraph(cellText: string, align: CellAlign, format?: TextFormat): string {
+function cellParagraph(cellText: string, align: CellAlign, format?: TextFormat, indentLeft = 0): string {
   // No `w:spacing` override: the cell paragraph takes the Body style's fixed 12pt line
   // and zero padding like every other paragraph, so a table's rows sit on the same
   // rhythm as the text around it. The breathing room a cell needs is horizontal and
@@ -522,6 +523,8 @@ function cellParagraph(cellText: string, align: CellAlign, format?: TextFormat):
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
     tabsElement(format) +
+    // A diagram's number over its picture (§ `TableNodeCell.labelAtImage`); `w:ind` precedes `w:jc`.
+    (indentLeft > 0 ? `<w:ind w:left="${indentLeft}"/>` : '') +
     `<w:jc w:val="${jcValue(align)}"/>` +
     // A cell holding a stacked fraction grows its line, as a paragraph does (k-0479).
     formatParagraphProps(format ? { ...format, align: undefined } : undefined, undefined, cellText.includes('<m:f>')) +
@@ -760,7 +763,19 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
 
           return (
             `<w:tc><w:tcPr>${props.join('')}</w:tcPr>` +
-            cellParagraph(runs, cell.align, cell.format) +
+            (cell.labelAtImage && cell.image && !coveredVertically
+              ? // A diagram's number at its picture's upper-left corner (k-0555): left-aligned,
+                // indented to where the centred picture starts inside the cell's margins.
+                cellParagraph(
+                  runs,
+                  'left',
+                  cell.format,
+                  figureLabelIndent(
+                    spanWidth(cellIndex, colSpan) - cell.padding.left - cell.padding.right,
+                    cell.image.widthPx,
+                  ),
+                )
+              : cellParagraph(runs, cell.align, cell.format)) +
             picture +
             '</w:tc>'
           );
@@ -1067,7 +1082,9 @@ function optionRowXml(node: OptionRowNode, context: BodyContext): string {
 
   const cells = node.cells
     .map((cellNodes, index) => {
-      const inner = cellNodes
+      // A figure grid's label starts at its figure's left edge (§ `OptionRowNode.figureLabels`).
+      const placed = node.figureLabels ? withLabelsAtFigure(cellNodes, widths[index]) : cellNodes;
+      const inner = placed
         .map((child) =>
           child.kind === 'table'
             ? // A table inside the cell resolves its fractional width against the one
