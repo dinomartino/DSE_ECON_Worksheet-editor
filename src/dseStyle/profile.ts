@@ -18,7 +18,7 @@
  * The deterministic half of the same rules is `check.ts:checkDseStyle`.
  */
 
-export const DSE_STYLE_PROFILE_VERSION = 2;
+export const DSE_STYLE_PROFILE_VERSION = 3;
 
 /** Opens the block: a marker tests and a mock server can find. */
 export const DSE_STYLE_MARKER = 'HKDSE ECONOMICS PAPER 1 MC HOUSE STYLE';
@@ -35,7 +35,8 @@ export const DSE_STYLE_PROFILE = [
   'B. THE STEM',
   '- One paragraph (55%) or a set-up paragraph plus the question line (44%). Sentences are short: median 13 words, 90% at most 22, never over 45 (中文 median 19 characters, 90% at most 35). Whole stem median 26 words (2021-2026: 30); 中文 median 39 characters.',
   '- Present tense, plain statements. Introduce a change with "Suppose ..." (18% of stems) or "If ..." (12%); 中文 「假設……」 「若……」. Local context: "In Hong Kong, ...", "the Hong Kong government" (18%).',
-  '- Generic names: Good X, Good Y, Country A, Country B, Firm A, Mr Chan, Mr Wong; 中文 物品 X、物品 Y、甲國、乙國、A 公司、陳先生、王先生.',
+  '- Scenes and names: 41% of stems set the item in a short everyday or real scene (a good or service, a shop or firm, a household, a government policy; 19% name Hong Kong), 50% are abstract ("an economy", "a firm", a schedule or a diagram), and 18% use generic names. Where a scene helps the student see the change, use a short everyday Hong Kong one of your own: a shop, a firm, a household, a policy (e.g. a noodle shop raising its prices, a family choosing a broadband plan, a fee on a public service). One or two sentences; no real company or brand names, no real statistics, nothing from past papers.',
+  '- Keep generic names where the item is abstract or numerical (two countries trading, a cost schedule, a demand-supply diagram; 63% of items with letter names carry a table or figures, 39% of scene items): Good X, Good Y, Country A, Country B, Firm A, Mr Chan, Mr Wong; 中文 物品 X、物品 Y、甲國、乙國、A 公司、陳先生、王先生.',
   '- A table or diagram gets its own lead-in sentence above it, ending "." (or ":"): "The following table shows ...", "The table below shows ...", "The diagram below shows ...", "Refer to the following ...", "Study the following ..."; 中文 「下表顯示……。」 「下圖顯示……。」 「參閱以下……。」 「細閱下圖……。」. The question line then refers back: "Based on the above information, ..." (most common since 2021), "According to the above ...", "In the above diagram, ..."; 中文 「根據以上資料，……」 「根據上述……」 「根據上表，……」.',
   '- Modality: "will" (22% of question lines) and "would" (8%) for effects, "can" (10%) for what is possible, "most likely" (2%), "best explains". Not used: "probably", "definitely", "necessarily", "ceteris paribus", "other things being equal" (0 of 725): state an assumption with "Suppose ...".',
   '- Negatives in the question line in bold capitals: **NOT**, **LEAST**, **INCORRECT**, **INCONSISTENT**, **CANNOT** (every English negative question line uses capitals; "EXCEPT" is not used). 中文 bolds the negative words: 「下列哪項陳述是**不正確**的？」 「下列哪項與需求定律並**不相符**？」 「下列哪項**最不**可能……？」. Ask a negative only when the topic needs it (5% of items).',

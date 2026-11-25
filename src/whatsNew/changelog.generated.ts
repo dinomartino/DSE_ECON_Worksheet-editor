@@ -156,6 +156,12 @@ a version heading is edited afterwards.
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
+- **AI questions may be set in an everyday Hong Kong scene.** Where it helps students see the
+  change, the Question studio may now set a question in a short local scene of its own (a noodle
+  shop, a family's choice, a public fee), as about four in ten HKDSE Paper 1 questions do. It
+  keeps Good X and Country A for abstract or number-heavy questions, and never uses real
+  companies, real statistics or past-paper scenarios.
+  <!-- zh: **AI 擬題可採用日常香港情境。** 若有助學生理解變化，擬題工作室現在可把題目設於自擬的簡短本地情境（例如一間麵店、一個家庭的選擇、一項公共服務收費），與約四成 HKDSE Paper 1 題目的做法一致。抽象或以數字為主的題目仍使用物品 X、甲國等名稱；不會使用真實公司、真實統計數字或歷屆試題的情境。 -->
 - **HKDSE style notes match the papers more closely.** In the Question studio and Improve
   wording, a combination option in 中文 that joins two statements with 及 (只有(1)及(2)) now gets
   the papers' form 只有 (1)、(2), and a 中文 amount written as $1 500 百萬元 is noted: the papers

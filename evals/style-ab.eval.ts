@@ -26,7 +26,7 @@ import type { StudioRequest } from '@/questionStudio/types';
  * own check rows (the HKDSE style row included). The arms alternate, A then B per question.
  *
  *   EVAL_AB=mentor EVAL_MENTOR_API=http://localhost:3124/api/app/v1 EVAL_MENTOR_TOKEN=dsm_… \
- *     [EVAL_AB_FROM=0] [EVAL_AB_TO=10] npx vitest run --config vitest.eval.config.ts evals/style-ab.eval.ts
+ *     [EVAL_AB_FROM=0] [EVAL_AB_TO=10] [EVAL_AB_ARMS=with|without] npx vitest run --config vitest.eval.config.ts evals/style-ab.eval.ts
  *   EVAL_AB=fake …   (the harness itself, no network)
  *
  * Writes EVAL_REPORT_DIR/style-ab/pair-NN.json, one file per question. About 20 credits a pair.
@@ -111,7 +111,9 @@ describe.skipIf(!MODE)('HKDSE style profile, A/B (k-0548)', () => {
       const q = QUESTIONS[i];
       const request: StudioRequest = { keyPoint: q.keyPoint, points: q.points, level: q.level, shape: q.shape, note: q.note, count: 1, sides: ['en', 'zh'], examples: q.example ? [TRIAL_EXAMPLES[q.example]] : [] };
       const pair: Record<string, unknown> = { index: i, request: { ...request, examples: q.example ?? null } };
-      for (const profile of [true, false]) {
+      // EVAL_AB_ARMS=with (or without) runs one arm only, e.g. a profile change against an earlier run.
+      const arms = process.env.EVAL_AB_ARMS === 'with' ? [true] : process.env.EVAL_AB_ARMS === 'without' ? [false] : [true, false];
+      for (const profile of arms) {
         clearUsageLog();
         const balance = (await account()).credits;
         const out = await writeDrafts(request, { client: arm(client(), profile), preset, glossary, corpus: EMPTY_CORPUS, random: seeded(1000 + i) }, { signal: new AbortController().signal });
@@ -133,7 +135,7 @@ describe.skipIf(!MODE)('HKDSE style profile, A/B (k-0548)', () => {
         };
         console.log(`Q${i + 1} ${profile ? 'with' : 'without'}: ${out.ok ? 'ok' : 'failed'} ${(job?.credits ?? 0).toFixed(1)} credits, style ${JSON.stringify((pair[profile ? 'with' : 'without'] as { style: unknown }).style)}`);
       }
-      writeFileSync(path.join(dir, `pair-${String(i + 1).padStart(2, '0')}.json`), JSON.stringify(pair, null, 2));
+      writeFileSync(path.join(dir, `pair-${String(i + 1).padStart(2, '0')}${arms.length === 1 ? `-${arms[0] ? 'with' : 'without'}` : ''}.json`), JSON.stringify(pair, null, 2));
     }
     const after = (await account()).credits;
     console.log(`balance after: ${after} (spent ${(before - after).toFixed(1)})`);
