@@ -72,7 +72,7 @@ export const TRIAL_EXAMPLES = {
       bi('Barriers to entry completely block new firms.', '進入障礙完全阻止新廠商加入。'),
       bi('Each firm faces a downward-sloping demand curve.', '每間廠商面對向右下傾斜的需求曲線。'),
     ],
-    [bi('(1) only', '只有(1)'), bi('(1) and (3) only', '只有(1)及(3)'), bi('(2) and (3) only', '只有(2)及(3)'), bi('(1), (2) and (3)', '(1)、(2)及(3)')],
+    [bi('(1) only', '只有 (1)'), bi('(1) and (3) only', '只有 (1)、(3)'), bi('(2) and (3) only', '只有 (2)、(3)'), bi('(1), (2) and (3)', '(1)、(2) 及 (3)')],
     1,
   ),
   tax: example(

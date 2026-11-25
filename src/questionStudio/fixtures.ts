@@ -63,7 +63,7 @@ export const INVENTED: Invented[] = [
       bi('The good is a necessity for most buyers.', '大多數買家都視該物品為必需品。'),
       bi('Buyers have a longer time to adjust.', '買家有較長時間作出調整。'),
     ],
-    options: [bi('(1) and (2) only', '只有(1)及(2)'), bi('(1) and (3) only', '只有(1)及(3)'), bi('(2) and (3) only', '只有(2)及(3)'), bi('(1), (2) and (3)', '(1)、(2)及(3)')],
+    options: [bi('(1) and (2) only', '只有 (1)、(2)'), bi('(1) and (3) only', '只有 (1)、(3)'), bi('(2) and (3) only', '只有 (2)、(3)'), bi('(1), (2) and (3)', '(1)、(2) 及 (3)')],
     answer: 1,
     explanation: bi(
       'Close substitutes and more time raise elasticity; a necessity lowers it.',

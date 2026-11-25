@@ -100,7 +100,7 @@ function sourceReply(body) {
         kind: 'mcq',
         stem: t('Which of the following about the market in the source is/are correct?', '根據資料，以下有關該市場的描述，何者正確？'),
         statements: [t('Demand for the good increased.', '該物品的需求增加。'), t('The price of the good rose.', '該物品的價格上升。'), t('Supply of the good fell.', '該物品的供應減少。')],
-        options: [t('(1) and (2) only', '只有(1)及(2)'), t('(1) and (3) only', '只有(1)及(3)'), t('(2) and (3) only', '只有(2)及(3)'), t('(1), (2) and (3)', '(1)、(2)及(3)')],
+        options: [t('(1) and (2) only', '只有 (1)、(2)'), t('(1) and (3) only', '只有 (1)、(3)'), t('(2) and (3) only', '只有 (2)、(3)'), t('(1), (2) and (3)', '(1)、(2) 及 (3)')],
         answer: 0,
         explanation: t('The source reports higher demand and a higher price.', '資料指出需求增加及價格上升。'),
         parts: [],
