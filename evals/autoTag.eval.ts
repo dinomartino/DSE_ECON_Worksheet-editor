@@ -1,0 +1,180 @@
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { clearDialectCache, createClient } from '@/ai/client';
+import { MENTOR_MODEL, PRESETS, presetFor } from '@/ai/providers';
+import type { AiClient, AiFeature, ProviderConfig } from '@/ai/types';
+import { runTagging, tagQuestionOf, type TagQuestion } from '@/autoTag';
+import { migrate } from '@/model/migrations';
+import { parsePatternTag } from '@/model/patterns';
+import { isTopicCode, topicOf } from '@/model/topics';
+import type { Worksheet } from '@/model/types';
+
+/**
+ * AI tagging's hit rate (k-0560): past-paper questions whose topic the bank already knows,
+ * sent with their tags hidden (the request carries the words only), the AI's main topic
+ * compared with the bank's. Through Mentor, so the model is the one Mentor routes `tag` to;
+ * EVAL_FEATURE sends the calls under another feature name to reach the main model instead
+ * (a Mentor dev with HOSTED_AI_LIGHT_FEATURES=translate,test,tag routes `tag` to Flash-Lite
+ * and, say, `coverage` to the main model).
+ *
+ *   EVAL_MENTOR_API=http://localhost:3124/api/app/v1 EVAL_MENTOR_TOKEN=… PASTPAPER_BANK=<clone>
+ *   EVAL_COUNT=100 EVAL_FEATURE=tag EVAL_OUT=Outbox/k-0560/eval-light
+ *   npx vitest run --config vitest.eval.config.ts evals/autoTag.eval.ts
+ *
+ * Real calls cost credits (about 3 per 10 questions on Flash-Lite, 15 on the main model).
+ */
+
+const BANK = process.env.PASTPAPER_BANK;
+const COUNT = Number(process.env.EVAL_COUNT ?? 100);
+const SEED = Number(process.env.EVAL_SEED ?? 560);
+const FEATURE = (process.env.EVAL_FEATURE ?? 'tag') as AiFeature;
+
+interface Gold {
+  q: TagQuestion;
+  source: string;
+  gold: string[];
+  file: string;
+}
+
+/** A small deterministic shuffle (mulberry32), so every run sends the same questions. */
+function shuffled<T>(items: T[], seed: number): T[] {
+  let a = seed >>> 0;
+  const rand = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/** Every topic file's questions, round-robin over the files after a shuffle each: a spread over the syllabus. */
+function sample(): Gold[] {
+  const manifest = JSON.parse(readFileSync(path.join(BANK!, 'manifest.json'), 'utf8')) as { topics: Array<{ file: string }> };
+  const perFile: Gold[][] = [];
+  for (const topic of manifest.topics) {
+    const file = topic.file.startsWith('topics/') ? topic.file : path.join('topics', topic.file);
+    const raw = JSON.parse(readFileSync(path.join(BANK!, file), 'utf8'));
+    const worksheet: Worksheet = migrate(raw);
+    const golds: Gold[] = [];
+    for (const question of worksheet.questions) {
+      const tags = (question.tags ?? []).filter((t): t is string => typeof t === 'string');
+      const gold = tags.filter((t) => isTopicCode(t) && topicOf(t) && !parsePatternTag(t));
+      if (gold.length === 0) continue;
+      const source = tags.find((t) => /\//.test(t)) ?? question.id;
+      // The tags never reach the request: the payload is built from the printed words only.
+      const q = tagQuestionOf(worksheet, question.id, question.id, 'q', undefined);
+      if (q) golds.push({ q, source, gold, file });
+    }
+    perFile.push(shuffled(golds, SEED + perFile.length));
+  }
+  const out: Gold[] = [];
+  for (let round = 0; out.length < COUNT && perFile.some((f) => f.length > round); round++) {
+    for (const file of shuffled(perFile, SEED + round)) {
+      if (out.length >= COUNT) break;
+      if (file[round]) out.push(file[round]);
+    }
+  }
+  return out.map((g, i) => ({ ...g, q: { ...g.q, key: `q${i + 1}` } }));
+}
+
+const partOf = (code: string) => topicOf(code)?.parent ?? code;
+
+/** The calls, under EVAL_FEATURE, with what Mentor charged. */
+function counting(client: AiClient) {
+  const calls: Array<{ model: string; input?: number; output?: number; thinking?: number; charged?: number; ms: number }> = [];
+  const wrapped: AiClient = {
+    ...client,
+    complete: async (request) => {
+      const result = await client.complete({ ...request, feature: FEATURE });
+      calls.push({ model: result.model, input: result.usage?.input, output: result.usage?.output, thinking: result.usage?.thinking, charged: result.charged, ms: result.ms });
+      return result;
+    },
+  };
+  return { client: wrapped, calls };
+}
+
+describe.skipIf(!process.env.EVAL_MENTOR_TOKEN || !BANK)('AI tagging hit rate, live (k-0560)', () => {
+  it('tags past-paper questions with their tags hidden', async () => {
+    clearDialectCache();
+    const config: ProviderConfig = {
+      provider: 'mentor',
+      apiKey: process.env.EVAL_MENTOR_TOKEN ?? '',
+      model: MENTOR_MODEL,
+      baseUrl: process.env.EVAL_MENTOR_API ? `${process.env.EVAL_MENTOR_API.replace(/\/+$/, '').replace(/\/ai$/, '')}/ai` : PRESETS.mentor.baseUrl,
+    };
+    const preset = presetFor(config.provider);
+    const { client, calls } = counting(createClient(config));
+    const golds = sample();
+    const started = Date.now();
+    const outcome = await runTagging(
+      golds.map((g) => g.q),
+      { client, preset },
+      { whyLanguage: (process.env.EVAL_WHY as 'en' | 'zh') ?? 'en', signal: new AbortController().signal },
+    );
+    const byRoot = new Map(outcome.suggestions.map((s) => [s.rootId, s]));
+    const rows = golds.map((g) => {
+      const s = byRoot.get(g.q.rootId);
+      const main = s?.topics[0];
+      const goldFine = g.gold.filter((c) => topicOf(c)?.parent);
+      const goldParts = [...new Set(g.gold.map(partOf))];
+      return {
+        source: g.source,
+        file: g.file,
+        gold: g.gold,
+        topics: s?.topics ?? [],
+        conf: s?.conf,
+        why: s?.why,
+        partHit: main ? goldParts.includes(partOf(main)) : false,
+        fineGold: goldFine.length > 0,
+        mainHit: main ? goldFine.includes(main) : false,
+        anyHit: (s?.topics ?? []).some((c) => goldFine.includes(c)),
+      };
+    });
+    const n = rows.length;
+    const fine = rows.filter((r) => r.fineGold);
+    const pct = (k: number, of: number) => (of ? Math.round((1000 * k) / of) / 10 : 0);
+    const byConf = (['high', 'medium', 'low'] as const).map((conf) => {
+      const these = fine.filter((r) => r.conf === conf);
+      return { conf, n: these.length, mainHit: pct(these.filter((r) => r.mainHit).length, these.length) };
+    });
+    // The relay answers with the editor's model name; the model Mentor ran is its routing for the feature.
+    const account = (await fetch(config.baseUrl.replace(/\/ai$/, '/ai/credits'), { headers: { Authorization: `Bearer ${config.apiKey}` } }).then((r) => r.json())) as {
+      models?: { default: string; byFeature: Record<string, string> };
+    };
+    const summary = {
+      feature: FEATURE,
+      model: account.models ? (account.models.byFeature[FEATURE] ?? account.models.default) : 'unknown',
+      questions: n,
+      answered: outcome.suggestions.length,
+      failed: outcome.failed.length,
+      partHit: pct(rows.filter((r) => r.partHit).length, n),
+      fineQuestions: fine.length,
+      mainHit: pct(fine.filter((r) => r.mainHit).length, fine.length),
+      anyHit: pct(fine.filter((r) => r.anyHit).length, fine.length),
+      byConf,
+      calls: calls.length,
+      credits: Math.round(calls.reduce((s, c) => s + (c.charged ?? 0), 0) * 100) / 100,
+      inputTokens: calls.reduce((s, c) => s + (c.input ?? 0), 0),
+      outputTokens: calls.reduce((s, c) => s + (c.output ?? 0), 0),
+      thinkingTokens: calls.reduce((s, c) => s + (c.thinking ?? 0), 0),
+      seconds: Math.round((Date.now() - started) / 1000),
+    };
+    const out = process.env.EVAL_OUT;
+    if (out) {
+      mkdirSync(out, { recursive: true });
+      writeFileSync(path.join(out, 'summary.json'), JSON.stringify(summary, null, 2));
+      writeFileSync(path.join(out, 'rows.json'), JSON.stringify(rows, null, 2));
+      writeFileSync(path.join(out, 'calls.json'), JSON.stringify(calls, null, 2));
+    }
+    console.log(JSON.stringify(summary, null, 2));
+    expect(outcome.fatal).toBeUndefined();
+  }, 900_000);
+});

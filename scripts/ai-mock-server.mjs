@@ -247,6 +247,30 @@ export function coverageReply(payload) {
   return completion(JSON.stringify({ items }));
 }
 
+/** AI tagging (k-0560), recognised by `src/autoTag/prompt.ts`'s marker: the coverage rules, as bank topics. */
+const TAG_MARKER = 'HKDSE Economics question-bank tagger';
+
+export function tagReply(payload) {
+  const items = (payload?.questions ?? []).map((question) => {
+    const words = (question.entries ?? []).map((e) => e.text ?? '').join(' ');
+    // "!none" in a question: the model answers with nothing the bank knows.
+    if (words.includes('!none')) return { key: question.key, main: 'Elasticity', also: '', pattern: '', conf: 'low', why: 'Canned.' };
+    const rule = COVERAGE_RULES.find(([pattern]) => pattern.test(words));
+    const main = (rule?.[1] ?? 'A.scarcity#scarcity').replace(/#.*$/, '');
+    const patterns = question.patterns?.[main] ?? [];
+    const zh = /[\u3400-\u9fff]/.test(words);
+    return {
+      key: question.key,
+      main,
+      also: /tax|稅/i.test(words) && main !== 'C.intervention' ? 'C.intervention' : '',
+      pattern: patterns[0] ?? '',
+      conf: rule ? (words.length > 60 ? 'high' : 'medium') : 'low',
+      why: zh ? '這題要求學生運用相關概念分析題中的情況。' : 'The question asks the student to apply this idea to the case given.',
+    };
+  });
+  return completion(JSON.stringify({ items }));
+}
+
 /** Invented price-elasticity questions for the question studio (no past-paper text). Each: stem, the key, three wrong options, why. */
 const STUDIO_POOL = [
   {
@@ -533,6 +557,7 @@ export function reply(body) {
   if (systemOf(body).includes('You draw diagrams for HKDSE Economics questions')) {
     return payloadOf(body).task === 'diagram-set' ? studioDiagramSetReply(payloadOf(body)) : studioDiagramReply();
   }
+  if (systemOf(body).includes(TAG_MARKER)) return tagReply(payloadOf(body));
   if (systemOf(body).includes(COVERAGE_MARKER)) return coverageReply(payloadOf(body));
   if (systemOf(body).includes(ANSWERS_MARKER)) return answersReply(payloadOf(body));
   if (systemOf(body).includes(QUALITY_MARKER)) return qualityReply(payloadOf(body));

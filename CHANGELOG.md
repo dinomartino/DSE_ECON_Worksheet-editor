@@ -13,6 +13,16 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **AI can suggest topics for your untagged questions.** In the Question bank, ✦ AI → **Tag
+  topics** suggests a syllabus part and topic for each untagged question (one question, your
+  ticked list, every question shown, or "All untagged"), plus one of your own 題型 when one
+  fits, with a short reason and how sure it is. Nothing is saved until you accept: accept each,
+  change it with the usual topic picker, skip it, or Accept all; Undo takes an accept back.
+  Questions that already have topics are left alone; for one that has, "Suggest topics again"
+  replaces its topics only when you accept. Topics always come from the bank's own syllabus
+  list. It uses your AI as the other AI tools do (DSEcon Mentor credits, with an estimate first,
+  or your own key), sends several questions per request, shows progress and can be stopped.
+  <!-- zh: **AI 可為未標記的題目建議課題。** 在題庫按 ✦ AI →「標記課題」，AI 會為每條未標記的題目（這條題目、已剔選的題目、所有顯示的題目或「所有未標記」）建議課程綱要的部分及課題，如有合適的會一併建議你自己的題型，並附簡短原因及把握程度。接受前不會儲存任何內容：可逐條接受、用課題選擇器更改、略過，或全部接受；「復原」可取消已接受的建議。已有課題的題目不會更改；如對已有課題的題目使用「重新建議課題」，只有在你接受後才會取代原有課題。課題一律來自題庫所用的課程綱要。與其他 AI 工具一樣使用你的 AI（DSEcon Mentor 點數，事先顯示估算；或你自己的金鑰），每次傳送多條題目，顯示進度，可隨時停止。 -->
 - **Past paper questions stay out of your question bank until you change them.** A question you
   add from the past paper bank to a worksheet is the exam's question, so your question bank no
   longer lists it as one of yours. Edit what it says (the question, an option, the answer, a

@@ -103,7 +103,7 @@ export interface CompletionRequest {
 /** The relay's `feature` (CONTRACT §3): recorded with the usage, never sent to Google. */
 export type AiFeature =
   | 'translate' | 'importCheck' | 'studio' | 'studio.pick' | 'studio.write' | 'studio.solve' | 'studio.quality' | 'studio.diagram'
-  | 'answers' | 'quality' | 'polish' | 'coverage' | 'generate' | 'assist' | 'test' | 'other';
+  | 'answers' | 'quality' | 'polish' | 'coverage' | 'tag' | 'generate' | 'assist' | 'test' | 'other';
 export interface CompletionResult {
   text: string;
   finish: 'stop' | 'length' | 'safety' | 'other';

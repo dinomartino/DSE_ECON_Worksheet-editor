@@ -167,6 +167,11 @@ Words this repository uses in its own way. One line each, with where the thing l
   stored on the question as the tag `C.ped::<name>`, never printed. The English UI keeps
   the word 題型, glossed "question pattern". Not "question type" (題目類型), which is the
   registry's MCQ vs structured: the 中文 UI never says 題型 for that. `src/model/patterns.ts:parsePatternTag` · `src/storage/patterns.ts:PatternRegistry`
+- **Tag topics (AI tagging)** — the bank's ✦ verb (k-0560) that *suggests* a syllabus part,
+  topic and maybe one of the teacher's own 題型 for untagged questions; a suggestion is never a
+  tag until the teacher accepts it. Not the coverage check (`check.syllabus`, a report on one
+  paper, nothing written), and not tag as you go (the teacher's own picks, one question at a
+  time). `src/autoTag/run.ts:runTagging` · `src/components/bank/aiTag/aiTagStore.ts:createAiTag`
 - **Settings** vs **Setup** — *Settings* is the app's: this browser or computer, every
   worksheet, never saved in one (`src/settings/sections.ts`). *Setup* is the document's own
   dialog (`src/components/editor/DocumentSettings.tsx`, titled "Document setup"), opened by
