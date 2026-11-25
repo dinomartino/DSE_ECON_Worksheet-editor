@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CheckField } from '@/components/ui';
 import { useMessages } from '@/i18n/language';
 import {
@@ -9,14 +9,15 @@ import {
   watermarkOf,
   watermarkOpacity,
   watermarkSize,
-  hasCustomPlacement,
+  isFitted,
   isOffCenter,
   withCenteredPlacement,
-  withDefaultPlacement,
+  withFittedPlacement,
   withPaperWatermark,
   withWatermarkPicture,
   type Watermark,
 } from '@/model/watermark';
+import { pageSetupOf } from '@/model/page';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { openWatermarkLibrary, WatermarkThumb } from './WatermarkThumb';
 import { useWatermarkLibrary } from './useWatermarkLibrary';
@@ -30,6 +31,8 @@ import { WATERMARK_MESSAGES } from './watermark.messages';
 export function WatermarkField() {
   const m = useMessages(WATERMARK_MESSAGES);
   const mark = useWorksheetStore((s) => watermarkOf(s.worksheet));
+  const storedSetup = useWorksheetStore((s) => s.worksheet.pageSetup);
+  const setup = useMemo(() => pageSetupOf({ pageSetup: storedSetup } as Parameters<typeof pageSetupOf>[0]), [storedSetup]);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
   const { library, markUsed } = useWatermarkLibrary();
   const set = (next: Watermark) => updateWorksheet({ watermark: next });
@@ -108,16 +111,16 @@ export function WatermarkField() {
             onCommit={(opacity) => set({ ...mark, opacity })}
           />
           <Slider
-            key={`size-${watermarkSize(mark)}`}
+            key={`size-${watermarkSize(mark, setup)}`}
             label={m.size}
-            value={watermarkSize(mark)}
+            value={watermarkSize(mark, setup)}
             range={WATERMARK_SIZE_RANGE}
             step={0.05}
             onCommit={(size) => set({ ...mark, size })}
           />
           <div className="flex items-center gap-3 pl-[76px] text-[11px] text-ink-muted">
             <span>{m.placementHint}</span>
-            {isOffCenter(mark) && (
+            {isOffCenter(mark, setup) && (
               <button
                 type="button"
                 data-testid="watermark-center"
@@ -128,15 +131,15 @@ export function WatermarkField() {
                 {m.centerPlacement}
               </button>
             )}
-            {hasCustomPlacement(mark) && (
+            {!isFitted(mark) && (
               <button
                 type="button"
-                data-testid="watermark-reset"
-                title={m.resetPlacementTitle}
-                onClick={() => set(withDefaultPlacement(mark))}
+                data-testid="watermark-fit"
+                title={m.fitPlacementTitle}
+                onClick={() => set(withFittedPlacement(mark))}
                 className="shrink-0 cursor-pointer font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                {m.resetPlacement}
+                {m.fitPlacement}
               </button>
             )}
           </div>

@@ -2014,12 +2014,24 @@ handles one kind of thing.
   key and follows the sheet before it (its switch is disabled and says so). Clicking a
   page's switch clears every choice on that sheet and stores one under its first key, only
   when it differs from the paper. The cover has its own `cover`.
-- **One geometry** (`watermarkBox`, twips: centred on the page unless dragged, `size` × the
-  text column, never wider than the page or taller than 80% of the text height, and always
-  kept whole on the page) for the preview layer and the `.docx`. A drag stores `centerX` /
-  `centerY` (the centre as a share of the page, so it survives a paper size or orientation
-  change) and `size` (`withWatermarkPlacement`); one placement serves every page that has
-  it. Setup's Reset to default removes all three (`withDefaultPlacement`).
+- **One geometry** (`watermarkBox`, twips: `size` × the text column, never wider than the
+  page, always kept whole on the page) for the preview layer and the `.docx`. A drag stores
+  `centerX` / `centerY` (the centre as a share of the page, so it survives a paper size or
+  orientation change) and `size` (`withWatermarkPlacement`); one placement serves every
+  page that has it.
+- **Two placement rules, chosen by `fit`, so a saved paper never changes size on its own**
+  (k-0557, user u-8m22). A picture placed since k-0557 (`withWatermarkPicture`, Setup's and
+  the page's Fit to margins: `withFittedPlacement`) stores `fit: 'margins'` and no size or
+  centre: unsized, it fills the margin box with its shape kept (`size` = the column, or less
+  when the box is too short for it); uncentred, it sits at the margin box's centre; and it is
+  never taller than the margin box, so a resize from the fitted size does not jump. Worked
+  out from the page each time, so it follows a paper size, orientation or margin change until
+  the teacher resizes or moves it; then `size` and the centre are stored as before and `fit`
+  stays. Without `fit` (every watermark placed before): unsized is 0.6 of the column,
+  uncentred is the page's centre, never taller than 80% of the text height, exactly as it
+  always printed. An older build ignores `fit`, so a fitted, never-resized watermark opens
+  there at its old default size; the file still opens. No schema bump: an optional key inside
+  `watermark`, which is free-form JSON read through `watermarkOf`.
 - **Move or resize** (`WatermarkAdjuster`, user u-vo9f): a dashed frame with four corner
   handles over the picture on every watermarked sheet, `data-print-hide`, above the content
   (`z-30`) only while adjusting, so it never competes with typing. Pointer events (mouse,

@@ -256,7 +256,7 @@ import { PAGE_AI_ITEM, pageAiScope } from "@/components/translate/translateMenu"
 import { collectTexts, slotsForTarget } from "@/model/textWalk";
 import { openAi } from "@/assist/menuStore";
 import { scopeFromSelection } from "@/assist/scope";
-import { coverWatermark, sheetWatermarks, watermarkOf, withCoverWatermark, withSheetWatermark, withCenteredPlacement } from "@/model/watermark";
+import { coverWatermark, sheetWatermarks, watermarkOf, withCoverWatermark, withSheetWatermark, withCenteredPlacement, withFittedPlacement, isFitted } from "@/model/watermark";
 import { SheetWatermarkToggle, WatermarkAdjuster, WatermarkLayer } from "./WatermarkLayer";
 import { isPanelOnlyDiagram } from "@/model/diagram";
 
@@ -7988,6 +7988,7 @@ export function Preview({
     if (!watermark) return;
     commitWatermark(withCenteredPlacement(watermark));
   };
+  const fitWatermark = watermark && !isFitted(watermark) ? () => commitWatermark(withFittedPlacement(watermark)) : undefined;
   const toggleSheetWatermark = (pageIndex: number) => {
     if (!watermark) return;
     const next = withSheetWatermark(watermark, composition[pageIndex] ?? { flowIds: [] }, pageIndex, !sheetMarks[pageIndex]);
@@ -8163,6 +8164,7 @@ export function Preview({
                 adjusting={adjustingWatermark}
                 onAdjust={setAdjustingWatermark}
                 onCenter={centerWatermark}
+                onFit={fitWatermark}
                 onToggle={() =>
                   setWatermark({ watermark: withCoverWatermark(watermark, !coverWatermark(watermark)) })
                 }
@@ -8209,6 +8211,7 @@ export function Preview({
                 adjusting={adjustingWatermark}
                 onAdjust={setAdjustingWatermark}
                 onCenter={centerWatermark}
+                onFit={fitWatermark}
                 disabled={pageIndex > 0 && (composition[pageIndex]?.flowIds.length ?? 0) === 0}
                 onToggle={() => toggleSheetWatermark(pageIndex)}
               />

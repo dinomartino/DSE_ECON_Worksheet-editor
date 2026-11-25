@@ -4,7 +4,7 @@ import { migrate, serializeWorksheet } from './migrations';
 import { parseWorksheet, stringifyWorksheet } from '@/storage/document';
 import { renderWorksheet } from '@/render/worksheet';
 import { buildPageFlowPaper } from '@/test/pageFlowFixture';
-import { DEFAULT_PAGE_SETUP, pageDimensions } from './page';
+import { DEFAULT_PAGE_SETUP, contentWidth, pageDimensions } from './page';
 import type { Watermark, Worksheet } from './types';
 import {
   WATERMARK_DEFAULT_OPACITY,
@@ -17,12 +17,12 @@ import {
   watermarkOf,
   watermarkOpacity,
   watermarkSize,
-  hasCustomPlacement,
+  isFitted,
   keySheetWatermarks,
   questionWatermarks,
   watermarkCenter,
   withCoverWatermark,
-  withDefaultPlacement,
+  withFittedPlacement,
   withCenteredPlacement,
   isOffCenter,
   withWatermarkPlacement,
@@ -99,7 +99,8 @@ describe('moving and resizing it on the page', () => {
     const start = watermarkBox(mark(), DEFAULT_PAGE_SETUP);
     const dropped = { left: start.left - 1200, top: start.top + 2000, width: start.width * 1.2 };
     const placed = withWatermarkPlacement(mark(), DEFAULT_PAGE_SETUP, dropped);
-    expect(hasCustomPlacement(placed)).toBe(true);
+    expect(placed.size).toBeDefined();
+    expect(placed.centerX).toBeDefined();
     const again = watermarkBox(placed, DEFAULT_PAGE_SETUP);
     expect(Math.abs(again.left - dropped.left)).toBeLessThanOrEqual(2);
     expect(Math.abs(again.top - dropped.top)).toBeLessThanOrEqual(2);
@@ -107,12 +108,128 @@ describe('moving and resizing it on the page', () => {
     expect(again.width / again.height).toBeCloseTo(2, 2);
   });
 
-  it('Reset to default puts it back in the middle at the default size, keeping the rest', () => {
+  it('Fit to margins drops size and place and fits it, keeping the rest', () => {
     const moved = mark({ centerX: 0.2, centerY: 0.8, size: 1.1, opacity: 0.3, pages: { q: false } });
-    const reset = withDefaultPlacement(moved);
-    expect(reset).toEqual(mark({ opacity: 0.3, pages: { q: false } }));
-    expect(hasCustomPlacement(reset)).toBe(false);
-    expect(watermarkBox(reset, DEFAULT_PAGE_SETUP)).toEqual(watermarkBox(mark(), DEFAULT_PAGE_SETUP));
+    expect(isFitted(moved)).toBe(false);
+    const fitted = withFittedPlacement(moved);
+    expect(fitted).toEqual(mark({ fit: 'margins', opacity: 0.3, pages: { q: false } }));
+    expect(isFitted(fitted)).toBe(true);
+    expect(isFitted(mark({ fit: 'margins', size: 0.5 }))).toBe(false);
+    // An old one, never moved, is not fitted: Fit to margins has something to do.
+    expect(isFitted(mark())).toBe(false);
+  });
+});
+
+/** The page inside its margins, in twips, as the tests compute it independently. */
+const marginsOf = (setup: typeof DEFAULT_PAGE_SETUP) => {
+  const page = pageDimensions(setup);
+  return {
+    left: setup.margins.left,
+    top: setup.margins.top,
+    width: page.width - setup.margins.left - setup.margins.right,
+    height: page.height - setup.margins.top - setup.margins.bottom,
+  };
+};
+
+describe('fitted to the margins (k-0557)', () => {
+  const LANDSCAPE = { ...DEFAULT_PAGE_SETUP, orientation: 'landscape' as const };
+  const LOPSIDED = { ...DEFAULT_PAGE_SETUP, margins: { ...DEFAULT_PAGE_SETUP.margins, top: 2880, left: 1800 } };
+
+  it('a wide picture fills the text column, centred in the margin box', () => {
+    for (const setup of [DEFAULT_PAGE_SETUP, LANDSCAPE, LOPSIDED]) {
+      const box = watermarkBox(mark({ fit: 'margins' }), setup);
+      const margins = marginsOf(setup);
+      const shape = 400 / 200;
+      // Width-limited unless the box is too short for it (A4 landscape is not, for 2:1).
+      const width = Math.min(margins.width, margins.height * shape);
+      expect(Math.abs(box.width - width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.left + box.width / 2 - (margins.left + margins.width / 2))).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.top + box.height / 2 - (margins.top + margins.height / 2))).toBeLessThanOrEqual(1);
+      expect(box.left).toBeGreaterThanOrEqual(margins.left - 1);
+      expect(box.top).toBeGreaterThanOrEqual(margins.top - 1);
+      expect(box.left + box.width).toBeLessThanOrEqual(margins.left + margins.width + 1);
+      expect(box.top + box.height).toBeLessThanOrEqual(margins.top + margins.height + 1);
+    }
+  });
+
+  it('a tall picture fills the margin box’s height, taller than an old one may be', () => {
+    for (const setup of [DEFAULT_PAGE_SETUP, LANDSCAPE]) {
+      const margins = marginsOf(setup);
+      const box = watermarkBox(mark({ fit: 'margins', widthPx: 200, heightPx: 400 }), setup);
+      expect(Math.abs(box.height - Math.min(margins.height, margins.width * 2))).toBeLessThanOrEqual(1);
+      expect(box.width / box.height).toBeCloseTo(0.5, 2);
+      expect(Math.abs(box.top + box.height / 2 - (margins.top + margins.height / 2))).toBeLessThanOrEqual(1);
+    }
+    const crest = watermarkBox(mark({ fit: 'margins', widthPx: 10, heightPx: 1000 }), DEFAULT_PAGE_SETUP);
+    expect(Math.abs(crest.height - marginsOf(DEFAULT_PAGE_SETUP).height)).toBeLessThanOrEqual(1);
+  });
+
+  it('the Size slider reads the fitted width, and a resize from there does not jump', () => {
+    const tall = mark({ fit: 'margins', widthPx: 300, heightPx: 400 });
+    const box = watermarkBox(tall, DEFAULT_PAGE_SETUP);
+    expect(watermarkSize(tall, DEFAULT_PAGE_SETUP)).toBeCloseTo(box.width / contentWidth(DEFAULT_PAGE_SETUP), 3);
+    // A drag that lets go of the box where it is stores it where it is, at its full height.
+    const same = withWatermarkPlacement(tall, DEFAULT_PAGE_SETUP, box);
+    expect(same.fit).toBe('margins');
+    const again = watermarkBox(same, DEFAULT_PAGE_SETUP);
+    for (const key of ['left', 'top', 'width', 'height'] as const) {
+      expect(Math.abs(again[key] - box[key])).toBeLessThanOrEqual(2);
+    }
+    // A little smaller from the bottom-right corner: smaller, not snapped to 80%.
+    const smaller = watermarkBox(
+      withWatermarkPlacement(tall, DEFAULT_PAGE_SETUP, { left: box.left, top: box.top, width: box.width * 0.95 }),
+      DEFAULT_PAGE_SETUP,
+    );
+    expect(Math.abs(smaller.width - box.width * 0.95)).toBeLessThanOrEqual(2);
+    expect(Math.abs(smaller.left - box.left)).toBeLessThanOrEqual(2);
+    expect(Math.abs(smaller.top - box.top)).toBeLessThanOrEqual(2);
+    // The slider's own commit keeps it centred in the margin box.
+    const slid = watermarkBox({ ...tall, size: 0.5 }, DEFAULT_PAGE_SETUP);
+    const margins = marginsOf(DEFAULT_PAGE_SETUP);
+    expect(Math.abs(slid.width - margins.width * 0.5)).toBeLessThanOrEqual(1);
+    expect(Math.abs(slid.top + slid.height / 2 - (margins.top + margins.height / 2))).toBeLessThanOrEqual(1);
+  });
+
+  it('a saved size and place are kept, not refitted', () => {
+    const resized = mark({ fit: 'margins', size: 0.4, centerX: 0.3, centerY: 0.3 });
+    const box = watermarkBox(resized, DEFAULT_PAGE_SETUP);
+    expect(Math.abs(box.width - contentWidth(DEFAULT_PAGE_SETUP) * 0.4)).toBeLessThanOrEqual(1);
+    expect(box.left + box.width / 2).toBeCloseTo(pageDimensions(DEFAULT_PAGE_SETUP).width * 0.3, -1);
+    const reread = parseWorksheet(stringifyWorksheet({ ...buildPageFlowPaper(), watermark: resized } as Worksheet));
+    expect(reread.watermark).toEqual(resized);
+  });
+
+  it('an old watermark keeps its size and place exactly', () => {
+    for (const old of [mark(), mark({ size: 1.2 }), mark({ widthPx: 10, heightPx: 1000, size: 1 }), mark({ centerX: 0.3 })]) {
+      const setup = LOPSIDED;
+      const page = pageDimensions(setup);
+      const box = watermarkBox(old, setup);
+      const textHeight = page.height - setup.margins.top - setup.margins.bottom;
+      let width = contentWidth(setup) * (old.size ?? WATERMARK_DEFAULT_SIZE);
+      let height = (width * old.heightPx) / old.widthPx;
+      if (height > textHeight * 0.8) {
+        width *= (textHeight * 0.8) / height;
+        height = textHeight * 0.8;
+      }
+      expect(Math.abs(box.width - width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.left + box.width / 2 - page.width * (old.centerX ?? 0.5))).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.top + box.height / 2 - page.height * 0.5)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('Center goes to the margin box’s centre; an old one to the page’s', () => {
+    const page = pageDimensions(LOPSIDED);
+    const margins = marginsOf(LOPSIDED);
+    const moved = mark({ fit: 'margins', size: 0.5, centerX: 0.2, centerY: 0.2 });
+    expect(isOffCenter(moved, LOPSIDED)).toBe(true);
+    const centred = withCenteredPlacement(moved);
+    expect(isOffCenter(centred, LOPSIDED)).toBe(false);
+    const box = watermarkBox(centred, LOPSIDED);
+    expect(Math.abs(box.left + box.width / 2 - (margins.left + margins.width / 2))).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.top + box.height / 2 - (margins.top + margins.height / 2))).toBeLessThanOrEqual(1);
+    expect(watermarkCenter(centred, LOPSIDED).x).toBeCloseTo((margins.left + margins.width / 2) / page.width, 6);
+    expect(isOffCenter(mark(), LOPSIDED)).toBe(false);
+    expect(watermarkCenter(mark(), LOPSIDED)).toEqual({ x: 0.5, y: 0.5 });
   });
 });
 
@@ -220,7 +337,7 @@ describe('turning one page, the cover or the paper on and off', () => {
     expect(coverWatermark(mark({ on: false }))).toBe(false);
   });
 
-  it('takes a library picture, keeping the paper’s own strength, size and page choices', () => {
+  it('takes a library picture fitted to the margins, keeping the paper’s own strength and page choices', () => {
     const before = mark({ opacity: 0.3, size: 0.5, pages: { q3: false }, on: false, libraryId: 'old' });
     const after = withWatermarkPicture(before, {
       id: 'new',
@@ -229,9 +346,12 @@ describe('turning one page, the cover or the paper on and off', () => {
       widthPx: 10,
       heightPx: 20,
     });
-    expect(after).toMatchObject({ on: true, opacity: 0.3, size: 0.5, pages: { q3: false }, libraryId: 'new', name: 'St Mary’s', widthPx: 10, heightPx: 20 });
+    expect(after).toMatchObject({ on: true, opacity: 0.3, fit: 'margins', pages: { q3: false }, libraryId: 'new', name: 'St Mary’s', widthPx: 10, heightPx: 20 });
+    // A picture placed starts fitted (k-0557): the old one's size and place are dropped.
+    expect(isFitted(after)).toBe(true);
     expect(withWatermarkPicture(undefined, { id: 'a', name: 'A', src: PIXEL_PNG, widthPx: 1, heightPx: 1 })).toEqual({
       on: true,
+      fit: 'margins',
       src: PIXEL_PNG,
       widthPx: 1,
       heightPx: 1,

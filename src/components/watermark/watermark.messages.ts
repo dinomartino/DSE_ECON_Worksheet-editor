@@ -30,10 +30,10 @@ export const WATERMARK_MESSAGES = defineMessages({
   },
   resetPages: { en: 'Same on every page', zh: '每頁相同' },
   faintness: { en: 'Strength', zh: '深淺' },
-  resetPlacement: { en: 'Reset to default', zh: '重設為預設' },
-  resetPlacementTitle: {
-    en: 'Put it back in the middle of the page, at the default size',
-    zh: '放回頁面中央，並回復預設大小',
+  fitPlacement: { en: 'Fit to margins', zh: '配合邊界' },
+  fitPlacementTitle: {
+    en: 'Make it as large as fits inside the margins, in the middle of the page',
+    zh: '在邊界內放到最大，並置於頁面中央',
   },
   centerPlacement: { en: 'Center', zh: '置中' },
   centerPlacementTitle: {

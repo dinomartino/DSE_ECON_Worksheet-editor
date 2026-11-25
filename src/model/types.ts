@@ -1020,14 +1020,22 @@ export interface Watermark {
   /** 0.05–1; absent = `WATERMARK_DEFAULT_OPACITY`. */
   opacity?: number;
   /**
-   * Width as a share of the text column, 0.2–1.4; absent = `WATERMARK_DEFAULT_SIZE`. Set by
-   * Setup's Size slider or by dragging a corner on the page.
+   * `'margins'` (k-0557): placed by the margin-box rule. An absent `size` fills the margin
+   * box (shape kept), an absent centre is the margin box's centre, and it is never taller
+   * than the box. Absent (placed before k-0557): an absent `size` is
+   * `WATERMARK_DEFAULT_SIZE`, an absent centre the page's, and never taller than 80% of
+   * the text height. Kept when the teacher resizes or moves it.
+   */
+  fit?: 'margins';
+  /**
+   * Width as a share of the text column, 0.2–1.4; absent: see `fit`. Set by Setup's Size
+   * slider or by dragging a corner on the page.
    */
   size?: number;
   /**
    * Where the teacher dragged it: its centre as a share of the page's width and height
-   * (0–1), so it stays put across a paper size or orientation change. Absent = the page's
-   * centre; `watermarkBox` keeps the whole picture on the page.
+   * (0–1), so it stays put across a paper size or orientation change. Absent: see `fit`;
+   * `watermarkBox` keeps the whole picture on the page.
    */
   centerX?: number;
   centerY?: number;

@@ -14,8 +14,11 @@ export type { Watermark } from './types';
  * (`sheetWatermarks`). A sheet holding only the tail of an item cut across sheets has no
  * item of its own and follows the sheet before it, where that item starts.
  *
- * **Where.** Centred on the page (not the text column, as Word centres its own), as wide as
- * `size` × the text column and never taller than `MAX_HEIGHT_SHARE` of the page's text
+ * **Where.** A watermark placed since k-0557 (`fit: 'margins'`, user u-8m22) starts as
+ * large as the margin box allows, its shape kept, centred in that box; the teacher may then
+ * resize and move it as before, and that size and place are stored. One placed before
+ * (no `fit`) keeps the old rule, so a saved paper never changes size on its own: centred on
+ * the page, `size` × the text column, never taller than `MAX_HEIGHT_SHARE` of the text
  * height. The geometry is in twips and shared by the preview and the `.docx`
  * (`watermarkBox`), so the two cannot drift.
  */
@@ -26,7 +29,7 @@ export const WATERMARK_DEFAULT_OPACITY = 0.15;
 export const WATERMARK_DEFAULT_SIZE = 0.6;
 export const WATERMARK_OPACITY_RANGE = { min: 0.05, max: 1 } as const;
 export const WATERMARK_SIZE_RANGE = { min: 0.2, max: 1.4 } as const;
-/** The tallest a watermark may be, as a share of the page's text height. */
+/** The tallest a watermark placed before k-0557 may be, as a share of the page's text height. */
 const MAX_HEIGHT_SHARE = 0.8;
 
 /** The key a first page with no flow item of its own stores its choice under. */
@@ -59,14 +62,54 @@ export function watermarkOpacity(mark: Watermark): number {
   return finite(mark.opacity) ? clamp(mark.opacity, WATERMARK_OPACITY_RANGE) : WATERMARK_DEFAULT_OPACITY;
 }
 
-export function watermarkSize(mark: Watermark): number {
-  return finite(mark.size) ? clamp(mark.size, WATERMARK_SIZE_RANGE) : WATERMARK_DEFAULT_SIZE;
+/** Whether it follows the margin-box rule (placed since k-0557), not the old page rule. */
+export function fitsMargins(mark: Watermark): boolean {
+  return mark.fit === 'margins';
 }
 
-/** Where the picture's centre sits, as a share of the page; absent = the page's centre. */
-export function watermarkCenter(mark: Watermark): { x: number; y: number } {
-  const share = (value: unknown) => (finite(value) ? clamp(value, { min: 0, max: 1 }) : 0.5);
-  return { x: share(mark.centerX), y: share(mark.centerY) };
+/** The page inside its margins, in twips from the page's top-left corner. */
+function marginBox(setup: PageSetup): { left: number; top: number; width: number; height: number } {
+  const page = pageDimensions(setup);
+  return {
+    left: setup.margins.left,
+    top: setup.margins.top,
+    width: contentWidth(setup),
+    height: Math.max(720, page.height - setup.margins.top - setup.margins.bottom),
+  };
+}
+
+/**
+ * The width that fills the margin box, as a share of the text column: the whole column,
+ * unless the picture would then be taller than the box.
+ */
+function fittedShare(mark: Watermark, setup: PageSetup): number {
+  const box = marginBox(setup);
+  return Math.min(1, (box.height * mark.widthPx) / mark.heightPx / box.width);
+}
+
+/**
+ * Its width as a share of the text column. An unsized one placed since k-0557 fills the
+ * margin box (with `setup`; without, the whole column); an unsized older one is the default.
+ */
+export function watermarkSize(mark: Watermark, setup?: PageSetup): number {
+  if (finite(mark.size)) return clamp(mark.size, WATERMARK_SIZE_RANGE);
+  if (!fitsMargins(mark)) return WATERMARK_DEFAULT_SIZE;
+  return setup ? fittedShare(mark, setup) : 1;
+}
+
+/**
+ * Where the picture's centre sits, as a share of the page. Absent = the margin box's centre
+ * for one placed since k-0557 (with `setup`), the page's centre for an older one.
+ */
+export function watermarkCenter(mark: Watermark, setup?: PageSetup): { x: number; y: number } {
+  let home = { x: 0.5, y: 0.5 };
+  if (setup && fitsMargins(mark)) {
+    const page = pageDimensions(setup);
+    const box = marginBox(setup);
+    home = { x: (box.left + box.width / 2) / page.width, y: (box.top + box.height / 2) / page.height };
+  }
+  const share = (value: unknown, fallback: number) => (finite(value) ? clamp(value, { min: 0, max: 1 }) : fallback);
+  return { x: share(mark.centerX, home.x), y: share(mark.centerY, home.y) };
 }
 
 /** The picture's box on the page, in twips from the page's top-left corner. */
@@ -75,16 +118,18 @@ export function watermarkBox(
   setup: PageSetup,
 ): { left: number; top: number; width: number; height: number } {
   const page = pageDimensions(setup);
-  const textHeight = Math.max(720, page.height - setup.margins.top - setup.margins.bottom);
-  let width = Math.min(contentWidth(setup) * watermarkSize(mark), page.width);
+  const margins = marginBox(setup);
+  let width = Math.min(margins.width * watermarkSize(mark, setup), page.width);
   let height = (width * mark.heightPx) / mark.widthPx;
-  const tallest = textHeight * MAX_HEIGHT_SHARE;
+  // The margin box's height for one placed since k-0557 (so it can fill the box, and a
+  // resize from there never jumps); 80% of it for an older one, as it always printed.
+  const tallest = margins.height * (fitsMargins(mark) ? 1 : MAX_HEIGHT_SHARE);
   if (height > tallest) {
     width = (width * tallest) / height;
     height = tallest;
   }
   // Centred unless dragged; a dragged one is kept whole on the page, so it always prints.
-  const center = watermarkCenter(mark);
+  const center = watermarkCenter(mark, setup);
   const left = clamp(center.x * page.width - width / 2, { min: 0, max: page.width - width });
   const top = clamp(center.y * page.height - height / 2, { min: 0, max: page.height - height });
   return {
@@ -116,19 +161,31 @@ export function withWatermarkPlacement(
   };
 }
 
-/** The watermark back at the page's centre, at the default size (Setup's Reset to default). */
-export function withDefaultPlacement(mark: Watermark): Watermark {
+/**
+ * The watermark as large as the margin box allows, its shape kept, centred in the box (k-0557,
+ * user u-8m22): how a picture is placed, and Setup's and the page's Fit to margins. Stored
+ * as `fit: 'margins'` with no size and no centre, so it is worked out from the page each
+ * time it is drawn and follows a change of paper size, orientation or margins until the
+ * teacher resizes or moves it.
+ */
+export function withFittedPlacement(mark: Watermark): Watermark {
   const rest = { ...mark };
   delete rest.centerX;
   delete rest.centerY;
   delete rest.size;
-  return rest;
+  return { ...rest, fit: 'margins' };
+}
+
+/** Whether it is fitted to the margins, as placed (so Fit to margins has nothing to do). */
+export function isFitted(mark: Watermark): boolean {
+  return fitsMargins(mark) && mark.size === undefined && mark.centerX === undefined && mark.centerY === undefined;
 }
 
 /**
- * The watermark back at the page's centre, both ways, at the size the teacher set (Setup's
- * and the page's Center). Stored as "no centre", the same as a watermark never moved, so
- * the preview, print, PDF and `.docx` all read the one rule (`watermarkBox`).
+ * The watermark back at its centre, both ways, at the size the teacher set (Setup's and the
+ * page's Center): the margin box's centre for one placed since k-0557, the page's for an
+ * older one. Stored as "no centre", the same as a watermark never moved, so the preview,
+ * print, PDF and `.docx` all read the one rule (`watermarkBox`).
  */
 export function withCenteredPlacement(mark: Watermark): Watermark {
   const rest = { ...mark };
@@ -137,15 +194,11 @@ export function withCenteredPlacement(mark: Watermark): Watermark {
   return rest;
 }
 
-/** Whether the picture sits off the page's centre (so Center has something to do). */
-export function isOffCenter(mark: Watermark): boolean {
-  const center = watermarkCenter(mark);
-  return Math.abs(center.x - 0.5) > 1e-6 || Math.abs(center.y - 0.5) > 1e-6;
-}
-
-/** Whether the teacher moved or resized it. */
-export function hasCustomPlacement(mark: Watermark): boolean {
-  return mark.centerX !== undefined || mark.centerY !== undefined || mark.size !== undefined;
+/** Whether the picture sits off its centre (so Center has something to do). */
+export function isOffCenter(mark: Watermark, setup?: PageSetup): boolean {
+  const center = watermarkCenter(mark, setup);
+  const home = watermarkCenter(withCenteredPlacement(mark), setup);
+  return Math.abs(center.x - home.x) > 1e-6 || Math.abs(center.y - home.y) > 1e-6;
 }
 
 /** What a sheet is made of, as the paginator names it (`PageComposition`). */
@@ -271,11 +324,13 @@ export interface WatermarkPicture {
 
 /**
  * The paper's watermark set to `picture` and switched on — the one-click button and the
- * menu's choice. The paper's own faintness, size and page choices stay: a teacher who
- * switches from one school's logo to another keeps the pages they turned off.
+ * menu's choice. A picture placed starts fitted to the margins (`withFittedPlacement`,
+ * k-0557): another picture has another shape, so the old size and place mean nothing for it.
+ * The paper's own faintness and page choices stay: a teacher who switches from one school's
+ * logo to another keeps the pages they turned off.
  */
 export function withWatermarkPicture(previous: Watermark | undefined, picture: WatermarkPicture): Watermark {
-  const kept = previous ? withPaperWatermark(previous, true) : { on: true };
+  const kept = withFittedPlacement(previous ? withPaperWatermark(previous, true) : ({ on: true } as Watermark));
   return {
     ...kept,
     on: true,

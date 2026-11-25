@@ -50,7 +50,8 @@ export function WatermarkLayer({ mark, setup }: { mark: Watermark; setup: PageSe
  *   saying why) on a sheet holding only the tail of a question cut across sheets: it has
  *   nothing of its own to store a choice on and follows the page before (§ `sheetWatermarks`);
  * - Move or resize, on a page that shows it, which puts every watermarked page into the
- *   adjusting state (`WatermarkAdjuster`); there it reads Done.
+ *   adjusting state (`WatermarkAdjuster`); there it reads Done, beside Center and (when it
+ *   is not fitted already) Fit to margins.
  */
 export function SheetWatermarkToggle({
   on,
@@ -60,6 +61,7 @@ export function SheetWatermarkToggle({
   adjusting = false,
   onAdjust,
   onCenter,
+  onFit,
 }: {
   on: boolean;
   cover?: boolean;
@@ -70,6 +72,8 @@ export function SheetWatermarkToggle({
   onAdjust?: (adjusting: boolean) => void;
   /** While adjusting: centre the watermark on the page, keeping its size; absent, no button. */
   onCenter?: () => void;
+  /** While adjusting: fit it to the margins (k-0557); absent (already fitted), no button. */
+  onFit?: () => void;
 }) {
   const m = useMessages(WATERMARK_PAGE_MESSAGES);
   const label = disabled ? m.follows : cover ? (on ? m.coverOff : m.coverOn) : on ? m.turnOff : m.turnOn;
@@ -89,6 +93,20 @@ export function SheetWatermarkToggle({
           className={`${chip} border-line bg-surface-raised text-ink-muted hover:text-ink`}
         >
           {m.center}
+        </button>
+      )}
+      {adjusting && onFit && on && (
+        <button
+          type="button"
+          data-watermark-fit
+          title={m.fitTitle}
+          onClick={(event) => {
+            event.stopPropagation();
+            onFit();
+          }}
+          className={`${chip} border-line bg-surface-raised text-ink-muted hover:text-ink`}
+        >
+          {m.fit}
         </button>
       )}
       {onAdjust && on && (
