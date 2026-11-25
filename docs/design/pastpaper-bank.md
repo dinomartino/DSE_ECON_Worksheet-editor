@@ -355,7 +355,7 @@ the whole bank once, as before. Reference implementation: `scripts/pastpaper-ind
 
 The teacher's own order of the bank (users u-dqw8 + u-o86n): the screen's third view lists
 every question by syllabus part and bank topic, off the list's search index, each with its
-source. The teacher reorders inside a topic, moves questions between topics (drag, Alt + ↑ ↓,
+source in the editor's Short form (DSE2024/P1/Q38, `pack.ts:shortSourceLabel`); its papers print sources Short. The teacher reorders inside a topic, moves questions between topics (drag, Alt + ↑ ↓,
 Move to…), ticks a part or topic whole, and makes a worksheet from a part, a topic or the
 ticked set in that order. The order is a view only: kept per bank address in localStorage
 (`econgen.pastPaperArrange.v1`, only the topics changed, by source tag), never in a document,

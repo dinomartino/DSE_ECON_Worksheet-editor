@@ -97,7 +97,7 @@ export function PastPaperScreen({
    * Questions, in the order given, into a new worksheet or paper or one of the teacher's papers
    * (`to`, else the tray's Add to); `done` once they are in. The tray and Arrange both use it.
    */
-  const addItems = async (items: PastPaperItem[], done: () => void, { to = target, name }: ArrangeAddOptions = {}) => {
+  const addItems = async (items: PastPaperItem[], done: () => void, { to = target, name, sourceFormat: format = sourceFormat }: ArrangeAddOptions = {}) => {
     if (items.length === 0) return;
     // The web build's ~5 MB: Arrange's questions are judged here, once they are downloaded.
     const use = webStorageUse(items.reduce((n, item) => n + JSON.stringify(item.question).length + (item.stimulus ? JSON.stringify(item.stimulus).length : 0), 0));
@@ -110,7 +110,7 @@ export function PastPaperScreen({
       if (to.startsWith('new:')) {
         const kind = to === 'new:paper1' ? 'paper1' : 'classroom';
         onOpenWorksheet(emptyPaperFor(kind, name ?? sharedTopicName(items)), language);
-        const { inserted } = insertIntoOpen(items, m.added, { showSources, sourceFormat });
+        const { inserted } = insertIntoOpen(items, m.added, { showSources, sourceFormat: format });
         if (inserted.length > 0) done();
         if (inserted[0]) revealQuestion(inserted[0]);
         return;
@@ -123,7 +123,7 @@ export function PastPaperScreen({
         return;
       }
       onOpenDocument(to, () => {
-        const { inserted, refused } = insertIntoOpen(items, m.added, { showSources, sourceFormat });
+        const { inserted, refused } = insertIntoOpen(items, m.added, { showSources, sourceFormat: format });
         if (refused) onError(m.readOnlyPaper);
         if (inserted.length > 0) done();
         if (inserted[0]) revealQuestion(inserted[0]);
@@ -197,8 +197,8 @@ export function PastPaperScreen({
   const storage = useMemo(() => (adding > 0 ? webStorageUse(adding) : undefined), [adding]);
   const wontFit = storage !== undefined && storage.ratio > 1;
 
-  // Show source, its format and Add to: the tray's and Arrange's.
-  const addControls = (
+  // Show source, its format and Add to: the tray's and Arrange's (Arrange prints sources short, u-rvgs: no format picker).
+  const addControlsFor = (withFormat: boolean) => (
     <>
       <label className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-ink-muted" title={m.showSourcesTitle} data-pastpaper-show-sources>
         <input
@@ -209,7 +209,7 @@ export function PastPaperScreen({
         />
         {m.showSources}
       </label>
-      {showSources && (
+      {showSources && withFormat && (
         <SourceFormatSelect value={sourceFormat} onChange={(next) => setBankSettings({ sourceFormat: next })} className="max-w-[240px]" />
       )}
       <label className="flex items-center gap-2 text-[12.5px] text-ink-muted">
@@ -294,7 +294,7 @@ export function PastPaperScreen({
               language={language}
               onLanguage={setLanguage}
               switcher={<ViewSwitch value={browse.view} onChange={browse.setView} arrange />}
-              addControls={addControls}
+              addControls={addControlsFor(false)}
               busy={busy}
               onAdd={addItems}
               onCopy={copyItems}
@@ -499,7 +499,7 @@ export function PastPaperScreen({
                 >
                   {m.copyToBank}
                 </button>
-                {addControls}
+                {addControlsFor(true)}
                 <button
                   type="button"
                   disabled={busy || wontFit}
