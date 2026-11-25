@@ -304,6 +304,13 @@ try {
         }),
       );
     const start = (await boxes())[0];
+    // k-0557: a picture placed starts as large as the margins allow, in the middle of the
+    // margin box (A4, 25.4 mm margins, a square crest: 159.2 mm from margin to margin).
+    check(
+      `[${tag}] a placed watermark starts fitted to the margins, in the middle`,
+      Math.abs(start.left - 25.4) < 0.2 && Math.abs(start.width - 159.2) < 0.2 && Math.abs(start.top + start.height / 2 - 148.5) < 0.2,
+      JSON.stringify(start),
+    );
     await page.locator('[data-page-index="0"] [data-watermark-adjust]').click();
     await page.waitForTimeout(300);
     const adjusters = await page.locator('#print-root [data-watermark-adjuster]').count();
@@ -466,6 +473,7 @@ try {
     await page.waitForTimeout(300);
     const centerChip = page.locator('[data-page-index="0"] [data-watermark-center]');
     check(`[${tag}] Center shows beside Done while adjusting`, (await centerChip.count()) === 1);
+    check(`[${tag}] … and Fit to margins beside it, the size being the teacher's now`, (await page.locator('[data-page-index="0"] [data-watermark-fit]').count()) === 1);
     await centerChip.click();
     await settle();
     const centred = await page.evaluate(() =>
@@ -496,27 +504,27 @@ try {
     const undone = (await boxes())[0];
     check(`[${tag}] Undo takes Center back in one step`, Math.abs(undone.left - beforeCenter.left) < 0.2 && Math.abs(undone.top - beforeCenter.top) < 0.2, JSON.stringify({ beforeCenter, undone }));
 
-    // L. Setup → Page → Reset to default.
+    // L. Setup → Page → Fit to margins (k-0557).
     await page.getByRole('button', { name: w.setup }).first().click();
     const resetDialog = page.getByRole('dialog');
     await resetDialog.waitFor();
     await resetDialog.getByRole('tab', { name: w.tabPage }).click();
-    const reset = resetDialog.getByTestId('watermark-reset');
+    const reset = resetDialog.getByTestId('watermark-fit');
     await reset.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `${OUT}/${tag}-setup-reset.png` });
+    await page.screenshot({ path: `${OUT}/${tag}-setup-fit.png` });
     const setupCenter = resetDialog.getByTestId('watermark-center');
     check(`[${tag}] Setup offers Center while it is off the middle`, (await setupCenter.count()) === 1);
     await setupCenter.click();
     await page.waitForTimeout(300);
-    check(`[${tag}] … and hides it once it is centred (Reset to default stays: the size is custom)`, (await resetDialog.getByTestId('watermark-center').count()) === 0 && (await resetDialog.getByTestId('watermark-reset').count()) === 1);
+    check(`[${tag}] … and hides it once it is centred (Fit to margins stays: the size is the teacher's)`, (await resetDialog.getByTestId('watermark-center').count()) === 0 && (await resetDialog.getByTestId('watermark-fit').count()) === 1);
     await reset.click();
     await page.waitForTimeout(300);
-    check(`[${tag}] … Reset to default is offered once it was moved, and hides once used`, (await resetDialog.getByTestId('watermark-reset').count()) === 0);
+    check(`[${tag}] … Fit to margins is offered once it was resized, and hides once used`, (await resetDialog.getByTestId('watermark-fit').count()) === 0);
     await page.keyboard.press('Escape');
     await resetDialog.waitFor({ state: 'detached' });
     await settle();
     const back = (await boxes())[0];
-    check(`[${tag}] Reset to default puts it back in the middle at the default size`, Math.abs(back.left - start.left) < 0.2 && Math.abs(back.top - start.top) < 0.2 && Math.abs(back.width - start.width) < 0.2, JSON.stringify({ start, back }));
+    check(`[${tag}] Fit to margins puts it back as large as fits, in the middle`, Math.abs(back.left - start.left) < 0.2 && Math.abs(back.top - start.top) < 0.2 && Math.abs(back.width - start.width) < 0.2, JSON.stringify({ start, back }));
 
     // J. A new paper: one click, no importing again.
     await page.getByRole('link', { name: w.home }).or(page.getByRole('button', { name: w.home })).first().click();

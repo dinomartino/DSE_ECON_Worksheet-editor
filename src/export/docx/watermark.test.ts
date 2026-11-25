@@ -88,6 +88,21 @@ describe('the .docx', () => {
     expect(header).toContain(`<wp:extent cx="${box.width * 635}" cy="${box.height * 635}"/>`);
   });
 
+  it('a watermark fitted to the margins (k-0557) fills the margin box in Word too', () => {
+    const setup = pageSetupOf(paper);
+    for (const fitted of [mark({ fit: 'margins' }), mark({ fit: 'margins', widthPx: 200, heightPx: 400 })]) {
+      const header = buildDocxParts({ ...paper, watermark: fitted }, MODE).headerFooter.header!;
+      const box = watermarkBox(fitted, setup);
+      // Wide: from margin to margin; tall: from the top margin to the bottom one.
+      expect(fitted.widthPx > fitted.heightPx ? box.left : box.top).toBe(
+        fitted.widthPx > fitted.heightPx ? setup.margins.left : setup.margins.top,
+      );
+      expect(header).toContain(`<wp:positionH relativeFrom="page"><wp:posOffset>${box.left * 635}</wp:posOffset>`);
+      expect(header).toContain(`<wp:positionV relativeFrom="page"><wp:posOffset>${box.top * 635}</wp:posOffset>`);
+      expect(header).toContain(`<wp:extent cx="${box.width * 635}" cy="${box.height * 635}"/>`);
+    }
+  });
+
   it('a page turned off: the picture is anchored at each other sheet’s head, not in the header', () => {
     const worksheet: Worksheet = { ...paper, watermark: mark({ pages: { [q2]: false } }) };
     const heads = [

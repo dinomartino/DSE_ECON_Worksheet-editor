@@ -170,6 +170,13 @@ a version heading is edited afterwards.
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
 ### Changed
+- **A watermark starts as large as the page allows.** When you put a watermark on a paper, or
+  pick another one, it now fills the space inside the margins (keeping its shape) and sits in
+  the middle of that space, on screen, in print, PDF and Word. You can still make it smaller
+  or larger and move it with Move or resize or the Size slider, and it stays the way you leave
+  it. **Fit to margins** (in Page setup → Page, and beside Done while moving it) puts it back.
+  Papers you have already made keep their watermark exactly as it was.
+  <!-- zh: **浮水印一開始便以頁面所容許的最大尺寸顯示。** 為試卷加上或改選浮水印時，浮水印會在邊界內放到最大（保持原來比例），並置於該範圍正中央；屏幕、列印、PDF 及 Word 都一樣。你仍可用「移動或調整大小」或「大小」滑桿放大、縮小及移動，設定會保留。按「配合邊界」（在「頁面設定 → 頁面」，或移動時在「完成」旁）即可回復。已製作的試卷，浮水印維持原樣。 -->
 - **AI questions follow the grammar of HKDSE papers.** From all 725 Paper 1 questions, the
   Question studio and Improve wording now follow the papers' grammar: active voice, "will" and
   中文 「會」, conditions with "Suppose" / "If" and 「假設」 / 「若」, and cause and effect with "lead to",
