@@ -29,8 +29,8 @@ import type { BankGroup, BankRow } from '@/library/types';
 import { bankRowsNow, useBank } from '@/library/useBank';
 import { escapeClears } from '@/components/bank/escapeClears';
 import { rowExcerpt } from '@/components/bank/bankText';
-import { topicOf } from '@/model/topics';
-import { useMessages, useUiLanguage } from '@/i18n/language';
+import { TOPICS, topicOf } from '@/model/topics';
+import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
 import type { Messages } from '@/i18n/catalogue';
 import { distinctDocLabels } from '@/library/docLabels';
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
@@ -47,6 +47,8 @@ import { isDesktop } from '@/platform';
 import { createRunDeps } from '@/translate/deps';
 import { paperLanguage, ViewLanguageProvider } from '@/settings/paperLanguage';
 import { createBankAi } from './bankAi';
+import { createAiTag, untaggedRows } from '@/components/bank/aiTag/aiTagStore';
+import { AiTagPanel } from '@/components/bank/aiTag/AiTagPanel';
 import type { BankVerbId } from './bankAiScopes';
 import { BankAiBar, BankAiNote } from './BankAiBar';
 import { BankAiMenu } from './BankAiMenu';
@@ -267,6 +269,21 @@ export function QuestionBankScreen({
   const aiPhase = bankAi((s) => s.phase);
   const aiRun = useRef<{ level: BankLevel; side?: 'en' | 'zh' }>(undefined);
   useEffect(() => () => void bankAi.getState().settle(), [bankAi]);
+  // ✦ Tag topics (k-0560): suggestions reviewed in a panel; only Accept writes, through the same queue.
+  const [aiTag] = useState(() =>
+    createAiTag({
+      store: worksheetStore,
+      createRunDeps,
+      desktop: isDesktop,
+      exclusive: writes.run,
+      whyLanguage: () => (uiLanguage() === 'en' ? 'en' : 'zh'),
+    }),
+  );
+  useEffect(() => {
+    aiTag.getState().bind({ rows, patterns: (typeId) => teacherPatterns(rows, registry, typeId), onWritten: onDocumentsChanged });
+  });
+  const aiTagStatus = aiTag((s) => s.status);
+  useEffect(() => () => void aiTag.getState().close(), [aiTag]);
   /** Stop any ✦ run and let its last write land, then go. */
   const afterAi = useCallback((then: () => void) => void bankAi.getState().settle().then(then), [bankAi]);
   const goHome = useCallback(() => afterAi(onHome), [afterAi, onHome]);
@@ -383,6 +400,8 @@ export function QuestionBankScreen({
   const chosen = tagTicks?.ticked ?? NONE;
   const tagTargets: PartTarget[] = tagDraft ? [undefined, ...tagDraft.slots.map((slot) => slot.key)] : [undefined];
 
+  const untaggedAll = useMemo(() => untaggedRows(rows), [rows]);
+  const aiBusy = aiPhase.kind === 'running' || (aiPhase.kind === 'review' && Boolean(aiPhase.busy)) || aiTagStatus !== 'idle';
   const pickedRows = picks.map((key) => byKey.get(key)).filter((row): row is BankRow => row !== undefined);
   // Picks are questions: two copies of one question picked are one, and share its topics.
   const pickedByRoot = [...new Map(pickedRows.map((row) => [row.rootId, row])).values()];
@@ -561,6 +580,10 @@ export function QuestionBankScreen({
     report([...byDoc].map(([docId, reason]) => ({ docId, reason })), saved);
   };
   const runAi = (verb: BankVerbId, list: BankRow[]) => {
+    if (verb === 'tag' || verb === 'tag.again') {
+      void aiTag.getState().start(list, { again: verb === 'tag.again' });
+      return;
+    }
     const snapshot = rows;
     const units = list.map((row) => unitOf(row, docLabels));
     const copiesOf = (unit: BankUnit) => identicalCopies(snapshot, unit);
@@ -906,7 +929,19 @@ export function QuestionBankScreen({
         {crumb}
         <span className="flex-1" />
         {level.kind === 'untagged' ? (
-          <span className="text-[12px] text-ink-subtle">{m.tagHint}</span>
+          <>
+            <span className="text-[12px] text-ink-subtle">{m.tagHint}</span>
+            <BankAiMenu
+              question={tagRow}
+              list={[]}
+              shown={[]}
+              untagged={untaggedAll}
+              only={['tag']}
+              teacherText={teacherText}
+              disabled={aiBusy}
+              onRun={runAi}
+            />
+          </>
         ) : level.kind === 'patterns' || level.kind === 'sort' ? null : (
           <label className="relative w-[min(340px,32vw)] min-w-[200px]">
             <span className="sr-only">{m.searchLabel}</span>
@@ -939,8 +974,9 @@ export function QuestionBankScreen({
             question={focused}
             list={pickedByRoot}
             shown={[...new Map(order.map((entry) => [entry.group.rootId, entry.group.rows[0]])).values()]}
+            untagged={untaggedAll}
             teacherText={teacherText}
-            disabled={aiPhase.kind === 'running' || (aiPhase.kind === 'review' && Boolean(aiPhase.busy))}
+            disabled={aiBusy}
             onRun={runAi}
           />
         )}
@@ -1103,6 +1139,9 @@ export function QuestionBankScreen({
         />
       )}
       <BankAiBar run={bankAi} left={level.kind === 'review' ? (railHidden ? 52 : 300) : 0} />
+      {aiTagStatus !== 'idle' && (
+        <AiTagPanel run={aiTag} language={language} patterns={(typeId) => pickerPatterns(typeId)} onClose={() => void aiTag.getState().close()} />
+      )}
       </div>
 
       {pickedRows.length > 0 && level.kind !== 'untagged' && level.kind !== 'patterns' && level.kind !== 'sort' && (
@@ -1352,4 +1391,16 @@ function createWriteQueue() {
       return next;
     },
   };
+}
+
+/** The teacher's 題型 names for one question type, by sub-topic, only where there are some (k-0560's request). */
+function teacherPatterns(rows: readonly BankRow[], registry: ReturnType<typeof usePatternRegistry>, typeId: string): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const part of TOPICS) {
+    for (const topic of part.children) {
+      const names = patternNames(rows, registry, topic.code, typeId);
+      if (names.length > 0) out[topic.code] = names;
+    }
+  }
+  return out;
 }

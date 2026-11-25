@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { CreditEstimate } from '@/components/ai/CreditEstimate';
 import { ProviderFooter } from '@/components/ai/ProviderFooter';
+import { AI_TAG_MESSAGES } from '@/components/bank/aiTag/AiTag.messages';
 import { SetupCard } from '@/components/ai/SetupCard';
 import { shouldOpenAi } from '@/components/ai/shortcut';
 import { isEditableFocused, isMacPlatform } from '@/components/settings/shortcut';
@@ -19,8 +21,8 @@ import { bankScopes, bankVerbRows, questionCount, sendsLine, type BankScope, typ
 export const BANK_AI_MENU_WIDTH = 360;
 
 /**
- * The bank's ✦ AI door: Fill missing 中文 / English and Check terms, for the question on
- * screen, your list, or every question shown. A fill with no provider opens the SetupCard
+ * The bank's ✦ AI door: Fill missing 中文 / English, Check terms and Tag topics (k-0560), for
+ * the question on screen, your list, every question shown, or every untagged question. A fill with no provider opens the SetupCard
  * first; one over 20 questions asks once, with a rough time. While open it owns the
  * keyboard (`useModalLayer`), so Esc closes it rather than leaving the level.
  */
@@ -31,11 +33,17 @@ export function BankAiMenu({
   teacherText,
   disabled,
   onRun,
+  untagged = [],
+  only,
 }: {
   question: BankRow | undefined;
   list: readonly BankRow[];
   shown: readonly BankRow[];
   teacherText: boolean;
+  /** Every question in the bank without a topic: the "All untagged" scope (k-0560). */
+  untagged?: readonly BankRow[];
+  /** Offer only these verbs (tag as you go: tagging alone). */
+  only?: readonly BankVerbId[];
   /** A run is going: the door waits for it. */
   disabled: boolean;
   onRun(verb: BankVerbId, rows: BankRow[]): void;
@@ -75,8 +83,9 @@ export function BankAiMenu({
       </button>
       {open && (
         <Popover
-          scopes={bankScopes(question, list, shown)}
+          scopes={bankScopes(question, list, shown, undefined, untagged)}
           teacherText={teacherText}
+          only={only}
           onClose={() => setOpen(false)}
           onRun={(verb, rows) => {
             setOpen(false);
@@ -93,23 +102,26 @@ type Step = { kind: 'list' } | { kind: 'setup'; verb: BankVerbRow } | { kind: 'c
 function Popover({
   scopes,
   teacherText,
+  only,
   onClose,
   onRun,
 }: {
   scopes: BankScope[];
   teacherText: boolean;
+  only?: readonly BankVerbId[];
   onClose(): void;
   onRun(verb: BankVerbId, rows: BankRow[]): void;
 }) {
   useModalLayer();
   const m = useMessages(BANK_AI_MESSAGES);
+  const t = useMessages(AI_TAG_MESSAGES);
   const ref = useRef<HTMLDivElement>(null);
   const status = useAiStatus();
   const [scopeKey, setScopeKey] = useState<BankScopeKey>(scopes[0]?.key ?? 'question');
   const [step, setStep] = useState<Step>({ kind: 'list' });
   const [active, setActive] = useState<BankVerbId | undefined>();
   const scope = scopes.find((s) => s.key === scopeKey) ?? scopes[0];
-  const verbs = scope ? bankVerbRows(scope.rows, teacherText) : [];
+  const verbs = scope ? bankVerbRows(scope.rows, teacherText, undefined, only) : [];
   const current = verbs.find((verb) => verb.id === active) ?? verbs[0];
 
   const stepRef = useRef(step);
@@ -148,16 +160,18 @@ function Popover({
   if (step.kind === 'setup') {
     body = <SetupCard verb={{ id: step.verb.id, label: step.verb.label }} onReady={() => choose(step.verb, true)} onCancel={() => setStep({ kind: 'list' })} />;
   } else if (step.kind === 'confirm') {
+    const tagging = step.verb.id === 'tag' || step.verb.id === 'tag.again';
     body = (
       <div className="flex flex-col gap-2.5 p-3" data-bank-ai-confirm>
-        <p className="text-[13px] leading-snug text-ink">{confirmLine(step.verb.rows.length)}</p>
+        <p className="text-[13px] leading-snug text-ink">{tagging ? t.confirm(step.verb.rows.length) : confirmLine(step.verb.rows.length)}</p>
         <p className="text-[11.5px] leading-snug text-ink-muted">{sendsLine(step.verb.rows.length, status.preset.label)}</p>
+        {step.verb.estimate && <CreditEstimate job={step.verb.estimate} />}
         <div className="flex justify-end gap-2">
           <Button size="sm" variant="subtle" onClick={() => setStep({ kind: 'list' })}>
             {m.back}
           </Button>
           <Button size="sm" variant="primary" autoFocus onClick={() => onRun(step.verb.id, step.verb.rows)}>
-            {m.translateN(step.verb.rows.length)}
+            {tagging ? t.tagN(step.verb.rows.length) : m.translateN(step.verb.rows.length)}
           </Button>
         </div>
       </div>
@@ -212,9 +226,11 @@ function Popover({
                     {!verb.needsKey && <span className="shrink-0 rounded bg-ok-soft px-1 text-[10px] font-medium text-ok">{m.free}</span>}
                     <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle">{questionCount(verb.rows.length)}</span>
                   </span>
+                  {on && verb.note && <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{verb.note}</span>}
                   {on && verb.needsKey && (
                     <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{sendsLine(verb.rows.length, status.preset.label)}</span>
                   )}
+                  {on && verb.needsKey && verb.estimate && <CreditEstimate job={verb.estimate} className="mt-0.5" />}
                 </button>
               );
             })}

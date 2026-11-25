@@ -112,6 +112,22 @@ export function polishJob(questions: number, text: string): CreditJob {
 }
 
 /**
+ * AI tagging (k-0560, `tag`): up to 10 questions a request, each led by the topic list
+ * (`autoTag/prompt.ts:systemTag`, about TAG_SYSTEM_TOKENS); back, one short item a question
+ * (codes, a reason) and the model's thinking.
+ */
+export const TAG_CHUNK = 10;
+export const TAG_SYSTEM_TOKENS = 3000;
+export function tagJob(questions: number, text: string): CreditJob {
+  const requests = Math.max(1, Math.ceil(questions / TAG_CHUNK));
+  return {
+    inputTokens: requests * TAG_SYSTEM_TOKENS + Math.ceil(textTokens(text) * 1.3),
+    outputTokens: requests * 600 + 70 * questions,
+    feature: 'tag',
+  };
+}
+
+/**
  * Question studio: per question, writing (both languages), solving and checking, a diagram
  * where asked, and the reference pictures. From the k-0517 proposal's measured shape:
  * 10 MC with diagrams ≈ 52k in / 37k out. Priced as `studio.write`, the bulk of it (its solve,

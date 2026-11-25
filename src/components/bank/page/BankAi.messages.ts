@@ -20,7 +20,7 @@ export const BANK_AI_MESSAGES = defineMessages({
   fixTitle: { en: 'Changes every copy of this question that says the same', zh: '會更改所有內容相同的副本' },
 
   doorBusy: { en: 'An AI run is going', zh: '正在執行 AI' },
-  doorTitle: { en: 'AI tools: fill a missing language, check terms', zh: 'AI 工具：補上缺少的語言、檢查用詞' },
+  doorTitle: { en: 'AI tools: fill a missing language, check terms, tag topics', zh: 'AI 工具：補上缺少的語言、檢查用詞、標記課題' },
   tools: { en: 'AI tools', zh: 'AI 工具' },
   actions: { en: 'AI actions', zh: 'AI 功能' },
   whichQuestions: { en: 'Which questions', zh: '哪些題目' },
