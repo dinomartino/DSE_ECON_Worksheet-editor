@@ -23,12 +23,12 @@ a version heading is edited afterwards.
   worksheet in your order. A worksheet that takes questions from several topics (a whole part,
   or a ticked set) gets a heading for each topic, in English and 中文. Tick "Show source" in
   Arrange (off unless you tick it) to print each question's short source on the page, in the
-  PDF and in Word; Setup → Page can change it later. "Show all" opens every part and topic in
-  one tap ("Collapse all" folds them again). Arrange is also in the editor's 題庫 tab → Past
+  PDF and in Word; Setup → Page can change it later. "Show all" shows every question as it
+  prints in one tap ("Hide all" hides them again); each question still has its own Show. Arrange is also in the editor's 題庫 tab → Past
   papers, with the same order and ticks: Add puts questions into the paper you are working on,
   New worksheet opens a new one. Your order is kept on this computer and
   never changes the bank; Reset puts a topic, or everything, back in the bank's order.
-  <!-- zh: **按你自己的方式編排歷屆試題庫，並一次過做成工作紙。** 歷屆試題庫在「按課題」和「按年份」旁新增第三種檢視：**編排**。它在同一頁列出題庫的所有題目，按課程範疇和課題分組，每題都以簡短格式註明出處（例如 DSE2024/P1/Q38）。拖動題目可按你的次序排列，拖到另一課題即移到該課題（或勾選後用「移到…」；鍵盤可用 Alt + ↑ ↓）。在範疇或課題勾選一次，即勾選其下所有題目，亦可逐題取消。範疇或課題上的「開新工作紙」，或為已勾選題目按「加入」，會把題目按你的次序放進工作紙；來自多個課題的工作紙（整個範疇或勾選的題目）會為每個課題加上標題（英文及中文）。在「編排」勾選「顯示出處」（預設不勾選），每題的簡短出處便會印在頁面、PDF 和 Word 中；之後可在「頁面設定 → 頁面」更改。「全部展開」一按即展開所有範疇及課題（「全部收合」可再收合）。編輯器的「題庫 → 歷屆試題」亦有「編排」，次序及勾選與題庫畫面相同：「加入」把題目放進正在編輯的試卷，「開新工作紙」則開一份新的。你的排列只保存在這部電腦上，不會改動題庫；「還原」可把一個課題或全部還原為題庫原本的次序。 -->
+  <!-- zh: **按你自己的方式編排歷屆試題庫，並一次過做成工作紙。** 歷屆試題庫在「按課題」和「按年份」旁新增第三種檢視：**編排**。它在同一頁列出題庫的所有題目，按課程範疇和課題分組，每題都以簡短格式註明出處（例如 DSE2024/P1/Q38）。拖動題目可按你的次序排列，拖到另一課題即移到該課題（或勾選後用「移到…」；鍵盤可用 Alt + ↑ ↓）。在範疇或課題勾選一次，即勾選其下所有題目，亦可逐題取消。範疇或課題上的「開新工作紙」，或為已勾選題目按「加入」，會把題目按你的次序放進工作紙；來自多個課題的工作紙（整個範疇或勾選的題目）會為每個課題加上標題（英文及中文）。在「編排」勾選「顯示出處」（預設不勾選），每題的簡短出處便會印在頁面、PDF 和 Word 中；之後可在「頁面設定 → 頁面」更改。「全部顯示」一按即把每題按列印樣式顯示（「全部隱藏」可全部隱藏），每題亦可逐一顯示或隱藏。編輯器的「題庫 → 歷屆試題」亦有「編排」，次序及勾選與題庫畫面相同：「加入」把題目放進正在編輯的試卷，「開新工作紙」則開一份新的。你的排列只保存在這部電腦上，不會改動題庫；「還原」可把一個課題或全部還原為題庫原本的次序。 -->
 - **Your own Gemini key can use the cheaper Flash-Lite for simple jobs.** In Settings → AI,
   with your own Google Gemini key, a new switch "Use the cheaper Gemini Flash-Lite for simple
   jobs" runs translation (also the question bank's "fill missing 中文") and Test connection on

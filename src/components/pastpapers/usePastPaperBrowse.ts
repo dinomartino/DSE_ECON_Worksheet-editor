@@ -163,6 +163,7 @@ export function usePastPaperBrowse() {
         : pool.length;
 
   const docOf = useMemo(() => new Map(loadedTopics.map((t) => [t.entry.id, t.doc])), [loadedTopics]);
+  const allLoaded = useMemo(() => loadedTopics.flatMap((t) => t.items), [loadedTopics]);
   const filtered =
     words !== '' || filters.exams.length > 0 || filters.from !== undefined || filters.to !== undefined || filters.paper !== undefined;
 
@@ -208,7 +209,7 @@ export function usePastPaperBrowse() {
     acrossBank,
     loadedCount: loadedTopics.length,
     /** Every item of every topic downloaded so far, for picks that span topics. */
-    allLoaded: loadedTopics.flatMap((t) => t.items),
+    allLoaded,
   };
 }
 
