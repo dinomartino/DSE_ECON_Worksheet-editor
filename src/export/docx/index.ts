@@ -47,6 +47,7 @@ import {
 } from '../diagramImage';
 import { coverFooterBodyXml, coverXml, renderNodeXml, type BodyContext } from './body';
 import { assignNumIds, buildNumberingXml } from './numbering';
+import { exportOrigin } from '@/export/origin';
 import type { KeyPageStart, PageStart } from '@/components/preview/pagination';
 import { itemUnits, joinWithPageBreaks, keyBodyXml, pageStartId, type BodyUnit } from './pageBreaks';
 import {
@@ -675,6 +676,7 @@ function buildParts(
       timestamp,
     ),
     assets,
+    origin: exportOrigin(worksheet, timestamp),
   };
 }
 
@@ -861,6 +863,7 @@ function buildAnswerKeyParts(
     fontTableXml: buildFontTableXml(fonts),
     coreXml: buildCorePropsXml(plain(language === 'zh' ? title.zh : title.en), timestamp),
     assets,
+    origin: exportOrigin(worksheet, timestamp),
   };
 }
 
@@ -963,6 +966,8 @@ function buildCombinedAnswerKeyParts(
     fontTableXml: buildFontTableXml(fonts),
     coreXml: buildCorePropsXml(plain(language === 'zh' ? title.zh : title.en), timestamp),
     assets,
+    // A combined key is the first paper's file, as its name and title are.
+    origin: exportOrigin(first, timestamp),
   };
 }
 

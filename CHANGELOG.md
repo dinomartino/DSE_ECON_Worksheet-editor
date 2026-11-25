@@ -189,6 +189,15 @@ a version heading is edited afterwards.
 
 - **Claude keys pay less for repeated instructions, and AI costs are recorded per task.** With your own Anthropic (Claude) key, the fixed instructions each AI task sends (diagram rules, translation rules, the question writer's rules) are now marked for Anthropic's prompt cache, so a second request within five minutes reads them at a tenth of the price. Every AI request now says which task it is for (picking the key point, writing, checking answers, diagrams, translating, …), so DSEcon Mentor credits are recorded by task instead of "other", and the editor keeps a small log of the tokens and credits each task used (token counts only, never your paper).
   <!-- zh: **使用 Claude API key 時重複的指示更便宜，AI 用量按工作記錄。** 使用你自己的 Anthropic（Claude）API key 時，每項 AI 工作重複送出的固定指示（圖表規則、翻譯規則、擬題規則）現在會使用 Anthropic 的提示快取，五分鐘內再次送出時只收十分之一的價錢。每個 AI 請求現在都會註明用途（選擇課題重點、擬題、核對答案、圖表、翻譯等），DSEcon Mentor 點數會按工作記錄，不再歸入「其他」；編輯器亦會保存一份簡短紀錄，列出每項工作用了多少 tokens 及點數（只記數字，絕不記錄你的試卷內容）。 -->
+- **Your exported files quietly say they came from Econ Studio.** Every Word and Excel file
+  you export, and every PDF the desktop app saves, now carries a few hidden details in the
+  file's own properties: the app's name and version, when it was exported, and a random code for the
+  worksheet, the same in every file you export from that worksheet. Nothing is added to the
+  page, so nothing shows when you print, copy text or use a screen reader, and nothing about
+  you or your computer is included. A PDF made through the print dialog (the web version, or
+  when saving a PDF directly fails) cannot carry these details.
+  <!-- zh: **匯出的檔案會靜靜註明來自 Econ Studio。** 你匯出的每個 Word 和 Excel 檔案，以及桌面版儲存的每個 PDF，現在都會在檔案本身的內容資訊中附上幾項隱藏資料：程式名稱和版本、匯出時間，以及一個代表該工作紙的隨機編號（同一份工作紙匯出的每個檔案編號都相同）。頁面上不會加入任何內容，所以列印、複製文字或使用屏幕閱讀器時都不會看到，亦不包含任何關於你或你電腦的資料。經列印對話框製作的 PDF（網頁版，或直接儲存 PDF 失敗時）無法附上這些資料。 -->
+
 ### Changed
 - **A watermark starts as large as the page allows.** When you put a watermark on a paper, or
   pick another one, it now fills the space inside the margins (keeping its shape) and sits in

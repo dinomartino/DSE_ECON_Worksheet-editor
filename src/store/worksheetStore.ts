@@ -38,6 +38,7 @@ import {
   setRowHeight,
 } from '@/model/table';
 import { createWorksheet, newId } from '@/model/factories';
+import { isOriginId, newOriginId, withOriginId } from '@/model/origin';
 import { paperLanguage } from '@/settings/paperLanguage';
 import { copyQuestion, freshIds } from '@/model/lineage';
 import {
@@ -125,6 +126,9 @@ const HISTORY_LIMIT = 100;
  */
 const TYPING_PAUSE_MS = 1000;
 let typingRun: { key: string; at: number; after: Worksheet } | undefined;
+
+/** A read-only document without an origin id: the id its exports carry this session (k-0558). */
+let sessionOrigin: { id: string; originId: string } | undefined;
 
 interface WorksheetState {
   worksheet: Worksheet;
@@ -239,6 +243,20 @@ interface WorksheetState {
    */
   updateExamResults: (results: ExamResults | undefined) => void;
   markSaved: () => void;
+  /**
+   * The open document with its origin id (k-0558), for an export to carry. One without
+   * gets it now, outside history (every snapshot carries it), and is marked dirty so
+   * autosave stores it: every later export of the document carries the same id. Read-only
+   * (a newer build's file, never written): an id for this session only.
+   */
+  ensureOrigin: () => Worksheet;
+  /**
+   * What a save of `worksheet` writes (every editor save goes through it): the open
+   * document, given its origin id first if it has none (k-0558), so its first save stores
+   * one and the editor's copy is the value written. Opening a document never does this:
+   * a load is not an edit. Any other value, or read-only, is returned as it is.
+   */
+  forSave: (worksheet: Worksheet) => Worksheet;
   /** Persist to storage now, rather than waiting for the autosave debounce. */
   save: () => Promise<void>;
   setMode: (patch: Partial<OutputMode>) => void;
@@ -861,7 +879,9 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         typingRun.after === state.worksheet &&
         now - typingRun.at < TYPING_PAUSE_MS &&
         state.past.length > 0;
-      const worksheet = { ...next, updatedAt: new Date(now).toISOString() };
+      // A recipe that rebuilt the document whole keeps its origin id (k-0558).
+      const kept = next.originId || !state.worksheet.originId ? next : { ...next, originId: state.worksheet.originId };
+      const worksheet = { ...kept, updatedAt: new Date(now).toISOString() };
       typingRun = typing === undefined ? undefined : { key: typing, at: now, after: worksheet };
       return {
         worksheet,
@@ -957,10 +977,33 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
 
   markSaved: () => set({ dirty: false, lastSavedAt: new Date().toISOString() }),
 
+  ensureOrigin: () => {
+    const state = get();
+    if (state.readOnly) {
+      if (isOriginId(state.worksheet.originId)) return state.worksheet;
+      if (sessionOrigin?.id !== state.worksheet.id) sessionOrigin = { id: state.worksheet.id, originId: newOriginId() };
+      return { ...state.worksheet, originId: sessionOrigin.originId };
+    }
+    if (isOriginId(state.worksheet.originId)) return state.worksheet;
+    const worksheet = get().forSave(state.worksheet);
+    set({ dirty: true });
+    return worksheet;
+  },
+
+  forSave: (worksheet) => {
+    const state = get();
+    if (state.readOnly || worksheet !== state.worksheet || isOriginId(worksheet.originId)) return worksheet;
+    const stamped = withOriginId(worksheet);
+    // Outside history: an undo must not take the id away again.
+    const carry = (snapshot: Worksheet) => ({ ...snapshot, originId: stamped.originId });
+    set({ worksheet: stamped, past: state.past.map(carry), future: state.future.map(carry) });
+    return stamped;
+  },
+
   // Explicit "Save now", not waiting for the autosave debounce.
   save: async () => {
     if (get().readOnly) return;
-    const worksheet = get().worksheet;
+    const worksheet = get().forSave(get().worksheet);
     await worksheetStore.save(worksheet);
     // An edit made during the write is not saved yet: it stays dirty.
     if (get().worksheet !== worksheet) return;
@@ -1290,10 +1333,15 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       if (worksheet === state.worksheet && same(past, state.past) && same(future, state.future)) return state;
       return { worksheet, past, future };
     }),
-  adoptSavedDocument: (saved) => {
+  adoptSavedDocument: (incoming) => {
     const state = get();
-    if (state.readOnly || state.dirty || saved.id !== state.worksheet.id) return false;
-    if (isNewerThanBuild(saved)) return false;
+    if (state.readOnly || state.dirty || incoming.id !== state.worksheet.id) return false;
+    if (isNewerThanBuild(incoming)) return false;
+    // A copy saved without the id this tab gave it keeps that id (k-0558).
+    const saved =
+      isOriginId(incoming.originId) || !state.worksheet.originId
+        ? incoming
+        : { ...incoming, originId: state.worksheet.originId };
     if (JSON.stringify(saved) === JSON.stringify(state.worksheet)) return true;
     const kept = (id: string | undefined) =>
       id !== undefined && saved.questions.some((question) => question.id === id) ? id : undefined;

@@ -148,6 +148,8 @@ export function duplicateWorksheet(worksheet: Worksheet, id: string, lang: UiLan
   delete copy.paperSet;
   delete copy.examResults;
   delete copy.coverageReports;
+  // A copy is a new worksheet: its exports get an origin id of their own (k-0558).
+  delete copy.originId;
   return copy;
 }
 

@@ -30,6 +30,8 @@ import { versionLetters } from '@/model/versions';
 import { answerKeyPreset } from '@/model/answerKeyLayout';
 import type { DocumentView } from '@/store/worksheetStore';
 import { KeyDocumentsField } from './KeyDocumentsField';
+import { withOpenOrigin, withOrigin, withOrigins } from './exportOrigin';
+import { exportOrigin } from '@/export/origin';
 import {
   deliverFiles,
   deliverWorksheetJson,
@@ -124,13 +126,15 @@ const loadSaved = (id: string) => worksheetStore.load(id);
  * chunk that fails to load reports as an export failure like any other.
  */
 async function planFiles(
-  worksheet: Worksheet,
+  open: Worksheet,
   choice: ExportChoice,
   loadDocument: (id: string) => Promise<Worksheet | undefined>,
 ): Promise<PlannedFile[]> {
+  // Every file carries the document's origin id in its hidden metadata (k-0558).
+  const worksheet = await withOrigin(open);
   if (choice.what === 'apps') {
     const built = buildAppExport(worksheet, choice.app ?? 'zipgrade', choice.language);
-    return [{ kind: 'apps', name: built.fileName, build: () => appBlob(built) }];
+    return [{ kind: 'apps', name: built.fileName, build: () => appBlob(built, worksheet) }];
   }
   const docx = () => import('@/export/docx');
   // The pages are measured on a hidden copy of the preview as each file builds, so the
@@ -153,11 +157,12 @@ async function planFiles(
       }
     } else {
       // A combined key: the picked documents, read-only; any that fail are named, not fatal.
-      const { worksheets: others, skipped } = await loadKeyDocuments(
+      const { worksheets: loaded, skipped } = await loadKeyDocuments(
         choice.alsoInclude ?? [],
         loadDocument,
         choice.language,
       );
+      const others = await withOrigins(loaded);
       const note = skippedNote(skipped);
       files.push({
         kind,
@@ -233,11 +238,15 @@ async function measured<T>(measure: () => Promise<T>): Promise<T> {
   }
 }
 
-/** CSV as UTF-8 text; the `.xlsx` writer (JSZip) loads on click, like the `.docx` one. */
-async function appBlob(built: AppExport): Promise<Blob> {
+/**
+ * CSV as UTF-8 text; the `.xlsx` writer (JSZip) loads on click, like the `.docx` one. The
+ * `.xlsx` carries the origin in its document properties (k-0558); a CSV has nowhere to put
+ * it but its cells, which the apps would read as data.
+ */
+async function appBlob(built: AppExport, worksheet: Worksheet): Promise<Blob> {
   if (built.data.kind === 'csv') return new Blob([built.data.text], { type: 'text/csv;charset=utf-8' });
   const { buildXlsx } = await import('@/export/csv/xlsx');
-  return buildXlsx(built.data.rows);
+  return buildXlsx(built.data.rows, undefined, exportOrigin(worksheet));
 }
 
 const filtersFor = (name: string) =>
@@ -588,20 +597,20 @@ export function ExportDialog({
 
   // Whole set as PDF (k-0299 step C). Each paper, then the set's marking scheme, printed as
   // the page shows it for the length of one print (`printJob.tsx`).
-  const setJobs = (): Array<{ job: PrintJob; fileName: string }> => {
-    if (!wholeSet) return [];
+  const setJobs = (papers: Worksheet[] | undefined = wholeSet?.papers): Array<{ job: PrintJob; fileName: string }> => {
+    if (!wholeSet || !papers) return [];
     const paperPrint: OutputMode = paperMode({ what: 'paper', language, version, includeCover, includeAnswerSpace });
     const names = uniqueNames([
       ...wholeSet.papers.map((paper) => docxFileName(paper, paperPrint)),
       setKeyFileName(wholeSet.name, wholeSet.papers, language),
     ]).map((name) => name.replace(/\.docx$/, '.pdf'));
     return [
-      ...wholeSet.papers.map((paper, index) => ({
+      ...papers.map((paper, index) => ({
         job: { kind: 'paper' as const, worksheet: paper, mode: paperPrint, label: paperLabel(paper) },
         fileName: names[index],
       })),
       {
-        job: { kind: 'setKey' as const, worksheets: wholeSet.papers, language, label: m.setKeyLabel },
+        job: { kind: 'setKey' as const, worksheets: papers, language, label: m.setKeyLabel },
         fileName: names[names.length - 1],
       },
     ];
@@ -640,7 +649,8 @@ export function ExportDialog({
         setError(m.setPdfNoFolder);
         return;
       }
-      const jobs = setJobs();
+      // Each PDF carries its paper's origin id (k-0558).
+      const jobs = setJobs(await withOrigins(wholeSet?.papers ?? []));
       callbacks.current.onClose();
       onPrintSet(jobs, folder);
     } catch (cause) {
@@ -655,7 +665,7 @@ export function ExportDialog({
     setBusy(true);
     setError(undefined);
     try {
-      const saved = await deliverWorksheetJson({ save: () => downloadWorksheetFile(worksheet) });
+      const saved = await deliverWorksheetJson({ save: () => downloadWorksheetFile(withOpenOrigin(worksheet)) });
       if (!saved) return;
       onExported(withPlace(saved.message, [saved]), saved.path);
       onClose();
@@ -669,9 +679,10 @@ export function ExportDialog({
   const handleExport = () =>
     void run(async () => {
       if (setOnly && wholeSet) {
-        const files = planSetFiles(wholeSet, { what, language, version, includeCover, includeAnswerSpace });
+        const set = { ...wholeSet, papers: await withOrigins(wholeSet.papers) };
+        const files = planSetFiles(set, { what, language, version, includeCover, includeAnswerSpace });
         // Desktop: a folder; the web: one .zip (the user, u-c17j).
-        return desktop ? files : [zippedSet(wholeSet, { what, language, version }, files)];
+        return desktop ? files : [zippedSet(set, { what, language, version }, files)];
       }
       return planFiles(
         worksheet,

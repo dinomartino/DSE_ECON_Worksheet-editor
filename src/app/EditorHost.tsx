@@ -49,8 +49,10 @@ const EditorApp = dynamic(
  */
 export async function flushBeforeLeaving(save = (w: Worksheet) => worksheetStore.save(w)): Promise<void> {
   for (let state = useWorksheetStore.getState(); state.dirty; state = useWorksheetStore.getState()) {
-    await save(state.worksheet);
-    if (useWorksheetStore.getState().worksheet === state.worksheet) state.markSaved();
+    // With its origin id, as every editor save (k-0558).
+    const written = state.forSave(state.worksheet);
+    await save(written);
+    if (useWorksheetStore.getState().worksheet === written) state.markSaved();
   }
 }
 
@@ -188,9 +190,9 @@ export function EditorHost() {
   useEffect(
     () =>
       setBeforeRestart(async () => {
-        const { worksheet, dirty, markSaved } = useWorksheetStore.getState();
+        const { worksheet, dirty, markSaved, forSave } = useWorksheetStore.getState();
         if (!dirty) return;
-        await worksheetStore.save(worksheet);
+        await worksheetStore.save(forSave(worksheet));
         markSaved();
       }),
     [],

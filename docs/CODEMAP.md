@@ -192,8 +192,14 @@ Invariants:
 - `src/export/csv/answerKeyCsv.ts:buildAppExport` — MCQ key for ZipGrade / plain CSV, MCQs
   for Kahoot / Blooket; reads the registry's `answerKey` and `quizItem` hooks; warns, never
   truncates. `src/export/csv/xlsx.ts:buildXlsx` — minimal one-sheet `.xlsx`
+- `src/export/origin/index.ts:exportOrigin` · `:pdfStamp` — hidden origin metadata (k-0558): app, version, export time, `Worksheet.originId`;
+  `src/export/origin/docxProps.ts:customPropsXml` (`.docx`/`.xlsx` properties), `src/export/origin/pdf.ts:pdfOriginUpdate` (PDF incremental
+  update, desktop `src/platform/index.ts:savePdf`); ids in `src/model/origin.ts:withOriginId`, given by
+  `src/store/worksheetStore.ts:useWorksheetStore` `forSave`/`ensureOrigin` and `src/components/editor/exportOrigin.ts:withOrigins`;
+  read back with `scripts/origin.mjs`
 
 Invariant: a diagram is geometry in, exactly one rasterised PNG out — §Geometry in, one image out.
+Invariant: origin metadata lives only in package/file metadata, never in a page or its text — §Export origin metadata.
 
 ## store — Zustand, undo/redo
 

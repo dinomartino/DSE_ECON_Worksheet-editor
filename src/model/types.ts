@@ -1229,6 +1229,14 @@ export interface Worksheet {
    * newer build's records and keeps them untouched. Absent = never checked.
    */
   coverageReports?: unknown[];
+  /**
+   * A random id (UUID v4) written into every exported file's hidden metadata, so a teacher
+   * can later tell a `.docx` or PDF came from this document (k-0558, `model/origin.ts`).
+   * Minted once, at the document's first save from the editor or first export, and kept by
+   * every save after; a duplicate gets its own. Anonymous: random, nothing about the teacher or
+   * the machine. Never printed. Absent = never opened or exported since k-0558.
+   */
+  originId?: string;
   createdAt: string;
   updatedAt: string;
   /**

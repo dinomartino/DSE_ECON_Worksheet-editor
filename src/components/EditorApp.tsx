@@ -428,8 +428,10 @@ export function EditorApp({
       if (!useWorksheetStore.getState().dirty) return;
       // Clean only if nothing changed during the write: an edit made meanwhile stays
       // unsaved (and sync keeps holding the document) until its own save lands.
-      void worksheetStore.save(worksheet).then(() => {
-        if (useWorksheetStore.getState().worksheet === worksheet) markSaved();
+      // The first save gives the document its origin id (k-0558); the editor then holds that value.
+      const written = useWorksheetStore.getState().forSave(worksheet);
+      void worksheetStore.save(written).then(() => {
+        if (useWorksheetStore.getState().worksheet === written) markSaved();
       });
     }, 1200);
     return () => clearTimeout(timer);

@@ -9,7 +9,8 @@ import { SetKeyPreview } from '@/components/preview/SetKeyPreview';
 import { useMessages } from '@/i18n/language';
 import { pageSetupOf } from '@/model/page';
 import type { LanguageMode, OutputMode, PageSetup, Worksheet } from '@/model/types';
-import { printPage, savePdf, type PdfPage } from '@/platform';
+import { printPage, savePdf, type PdfPage, type PdfStamp } from '@/platform';
+import { exportOrigin, pdfStamp } from '@/export/origin';
 import { pdfPageBox, pdfPrintMode, sheetsSettled, type PdfOutcome, type PrintDeps } from './printPdf';
 import { PRINT_JOB_MESSAGES } from './printJob.messages';
 
@@ -27,7 +28,14 @@ export type PrintJob =
   | { kind: 'setKey'; worksheets: Worksheet[]; language: LanguageMode; label: string }
   /** The syllabus coverage report (k-0489): its own sheets, portrait, the paper's page size;
    *  `text` is the language of its own words (k-0503), the paper's when absent. */
-  | { kind: 'coverage'; coverage: CoverageResult; label: string; text?: ReportLanguage };
+  | {
+      kind: 'coverage';
+      coverage: CoverageResult;
+      label: string;
+      text?: ReportLanguage;
+      /** The checked paper's origin id (k-0558), for the PDF's metadata; absent = none. */
+      originId?: string;
+    };
 
 export const usePrintJob = create<{ job?: PrintJob; setJob: (job?: PrintJob) => void }>((set) => ({
   setJob: (job) => set({ job }),
@@ -40,6 +48,15 @@ function jobPage(job: PrintJob): { setup: Pick<PageSetup, 'paper' | 'orientation
   }
   const worksheet = job.kind === 'paper' ? job.worksheet : job.worksheets[0];
   return { setup: pageSetupOf(worksheet), box: (pages) => pdfPageBox(worksheet, pages) };
+}
+
+/** The job's PDF metadata (k-0558): its first document's origin and title; a report's paper's id. */
+export function jobStamp(job: PrintJob): PdfStamp {
+  if (job.kind === 'coverage') {
+    return { origin: exportOrigin({ originId: job.originId }), ...(job.coverage.title ? { title: job.coverage.title } : {}) };
+  }
+  if (job.kind === 'paper') return pdfStamp(job.worksheet, job.mode.language);
+  return pdfStamp(job.worksheets[0], job.language);
 }
 
 /** What the page shows while a job prints. */
@@ -89,7 +106,7 @@ export async function printJobPdf(job: PrintJob, deps: JobDeps, file?: string): 
   let fallback: string | undefined;
   if (file !== undefined) {
     try {
-      await savePdf(file, box(deps.sheetCount()));
+      await savePdf(file, box(deps.sheetCount()), jobStamp(job));
       restore();
       return { saved: file };
     } catch (cause) {

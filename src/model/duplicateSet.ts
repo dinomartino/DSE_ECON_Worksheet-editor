@@ -106,6 +106,8 @@ export function duplicateSetPapers(papers: readonly Worksheet[], options: Duplic
     delete copy.satOn;
     delete copy.examResults;
     delete copy.coverageReports;
+    // A new worksheet: its exports get an origin id of their own (k-0558).
+    delete copy.originId;
     const shown = paper.name?.trim() || plain(paper.title.en).trim() || plain(paper.title.zh).trim();
     if (options.bumpYear) {
       copy.title = bumpBi(paper.title);
