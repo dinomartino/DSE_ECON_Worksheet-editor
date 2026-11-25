@@ -20,10 +20,12 @@ a version heading is edited afterwards.
   another topic to move it there (or tick some and use Move to…; on the keyboard, Alt + ↑ ↓).
   One tick on a part or a topic ticks every question under it, and you can untick single ones.
   "New worksheet" on a part or topic, or Add for the ticked questions, puts them into a
-  worksheet in your order, with "Show source" printing each question's short source on the
-  page, in the PDF and in Word (change or turn it off in Setup → Page). Your order is kept on this computer and
+  worksheet in your order. A worksheet that takes questions from several topics (a whole part,
+  or a ticked set) gets a heading for each topic, in English and 中文. Tick "Show source" in
+  Arrange (off unless you tick it) to print each question's short source on the page, in the
+  PDF and in Word; Setup → Page can change it later. Your order is kept on this computer and
   never changes the bank; Reset puts a topic, or everything, back in the bank's order.
-  <!-- zh: **按你自己的方式編排歷屆試題庫，並一次過做成工作紙。** 歷屆試題庫在「按課題」和「按年份」旁新增第三種檢視：**編排**。它在同一頁列出題庫的所有題目，按課程範疇和課題分組，每題都以簡短格式註明出處（例如 DSE2024/P1/Q38）。拖動題目可按你的次序排列，拖到另一課題即移到該課題（或勾選後用「移到…」；鍵盤可用 Alt + ↑ ↓）。在範疇或課題勾選一次，即勾選其下所有題目，亦可逐題取消。範疇或課題上的「開新工作紙」，或為已勾選題目按「加入」，會把題目按你的次序放進工作紙；開啟「顯示出處」後，每題的簡短出處會印在頁面、PDF 和 Word 中（可在「頁面設定 → 頁面」更改或關閉）。你的排列只保存在這部電腦上，不會改動題庫；「還原」可把一個課題或全部還原為題庫原本的次序。 -->
+  <!-- zh: **按你自己的方式編排歷屆試題庫，並一次過做成工作紙。** 歷屆試題庫在「按課題」和「按年份」旁新增第三種檢視：**編排**。它在同一頁列出題庫的所有題目，按課程範疇和課題分組，每題都以簡短格式註明出處（例如 DSE2024/P1/Q38）。拖動題目可按你的次序排列，拖到另一課題即移到該課題（或勾選後用「移到…」；鍵盤可用 Alt + ↑ ↓）。在範疇或課題勾選一次，即勾選其下所有題目，亦可逐題取消。範疇或課題上的「開新工作紙」，或為已勾選題目按「加入」，會把題目按你的次序放進工作紙；來自多個課題的工作紙（整個範疇或勾選的題目）會為每個課題加上標題（英文及中文）。在「編排」勾選「顯示出處」（預設不勾選），每題的簡短出處便會印在頁面、PDF 和 Word 中；之後可在「頁面設定 → 頁面」更改。你的排列只保存在這部電腦上，不會改動題庫；「還原」可把一個課題或全部還原為題庫原本的次序。 -->
 - **Your own Gemini key can use the cheaper Flash-Lite for simple jobs.** In Settings → AI,
   with your own Google Gemini key, a new switch "Use the cheaper Gemini Flash-Lite for simple
   jobs" runs translation (also the question bank's "fill missing 中文") and Test connection on

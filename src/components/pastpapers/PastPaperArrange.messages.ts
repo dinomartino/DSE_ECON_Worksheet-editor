@@ -78,5 +78,10 @@ export const ARRANGE_MESSAGES = defineMessages({
     zh: (mb: string) => `此題庫的清單沒有搜尋索引，編排前需下載所有課題（約 ${mb} MB，只需一次）。`,
   },
   downloadAll: { en: 'Download every topic', zh: '下載所有課題' },
+  showSources: { en: 'Show source', zh: '顯示出處' },
+  showSourcesTitle: {
+    en: 'Print each question’s source (e.g. DSE2024/P1/Q38) on the worksheets made here. Off unless you tick it; a paper can change it later in Setup → Page.',
+    zh: '在這裏製作的工作紙上印出每題的出處（例如 DSE2024/P1/Q38）。預設不印，勾選才會印；之後可在「頁面設定 → 頁面」更改。',
+  },
   noneMatch: { en: 'No question matches the filters.', zh: '沒有題目符合篩選條件。' },
 });

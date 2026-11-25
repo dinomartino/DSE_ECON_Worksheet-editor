@@ -12,6 +12,8 @@ import { useArrangement } from '@/pastpapers/arrangeStore';
 import { groupTopics, OTHER_PART, partName, type TopicGroup } from '@/pastpapers/groups';
 import { matchItem, packName, shortSourceLabel, type PastPaperItem, type SourceInfo, type TopicEntry } from '@/pastpapers/pack';
 import type { QuestionSourceFormat } from '@/model/types';
+import { rootIdOf } from '@/model/lineage';
+import type { TopicHeading } from '@/pastpapers/actions';
 import { ARRANGE_MESSAGES } from './PastPaperArrange.messages';
 import { PAST_PAPER_MESSAGES } from './messages';
 import { ExamChips, LanguageToggle, YearSelects } from './PastPaperControls';
@@ -67,6 +69,10 @@ export interface ArrangeAddOptions {
   name?: string;
   /** How Show source prints on a paper getting its first sourced questions; absent = the tray's. */
   sourceFormat?: QuestionSourceFormat;
+  /** Show source for this add; absent = the tray's remembered box. */
+  showSources?: boolean;
+  /** By question (`rootId`), the topic it goes in under: a heading per topic when they span several. */
+  topics?: ReadonlyMap<string, TopicHeading>;
 }
 
 export function PastPaperArrange({
@@ -232,11 +238,23 @@ export function PastPaperArrange({
       setGathering(false);
     }
   };
+  // Show source for what Arrange adds: the teacher's choice here, off each time (u-n9h1).
+  const [withSources, setWithSources] = useState(false);
   const addKeys = async (keys: readonly string[], options?: ArrangeAddOptions, clear = false) => {
     if (keys.length === 0) return;
     const items = await resolve(keys);
+    if (items.length === 0) return;
+    // Each question under the topic it sits in here (the teacher's, not the bank's): a heading per topic (u-n9h1).
+    const placed = new Map<string, string>();
+    for (const [topicId, list] of lists) for (const key of list) placed.set(key, topicId);
+    const topicsOf = new Map<string, TopicHeading>();
+    for (const item of items) {
+      const topicId = placed.get(arrangeKey(item)) ?? item.topicId;
+      const title = topicById.get(topicId)?.title;
+      if (title) topicsOf.set(rootIdOf(item.question), { key: topicId, text: { en: [{ text: title.en }], zh: [{ text: title.zh }] } });
+    }
     // Arrange speaks the short source label (u-rvgs), so its papers print it short too.
-    if (items.length > 0) await onAdd(items, () => clear && setSelected(new Set()), { ...options, sourceFormat: 'short' });
+    await onAdd(items, () => clear && setSelected(new Set()), { ...options, sourceFormat: 'short', showSources: withSources, topics: topicsOf });
   };
   const copyKeys = async (keys: readonly string[]) => {
     const items = await resolve(keys);
@@ -485,6 +503,10 @@ export function PastPaperArrange({
               {m.resetAll}
             </button>
           )}
+          <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted" title={m.showSourcesTitle} data-arrange-show-sources>
+            <input type="checkbox" checked={withSources} onChange={(e) => setWithSources(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
+            {m.showSources}
+          </label>
           <span className="flex-1" />
           <ExamChips filters={filters} onChange={setFilters} />
           <YearSelects filters={filters} years={browse.years} onChange={setFilters} />
