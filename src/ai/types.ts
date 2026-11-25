@@ -58,7 +58,17 @@ export interface ProviderPreset {
    */
   relay?: 'mentor';
 }
-export interface ProviderConfig { provider: ProviderId; apiKey: string | null; model: string; baseUrl: string }
+export interface ProviderConfig {
+  provider: ProviderId;
+  apiKey: string | null;
+  model: string;
+  baseUrl: string;
+  /**
+   * Own Gemini key only (u-zso2, `lightJobs.ts`): the model the easy jobs (`LIGHT_FEATURES`) run
+   * on, when the teacher turned it on. Absent = every job on `model`. Ignored by every other provider.
+   */
+  lightModel?: string;
+}
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
 /** A picture sent with a request: `data:image/png|jpeg|webp|gif;base64,…`. Never a remote URL. */
 export interface ImagePart { dataUrl: string }

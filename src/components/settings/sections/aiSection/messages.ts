@@ -14,6 +14,14 @@ export const AI_SECTION_MESSAGES = defineMessages({
     en: 'Include answers and mark schemes when translating',
     zh: '翻譯時包括答案和評卷參考',
   },
+  geminiLight: {
+    en: 'Use the cheaper Gemini Flash-Lite for simple jobs (translation, test)',
+    zh: '簡單工作（翻譯、測試連線）改用較便宜的 Gemini Flash-Lite',
+  },
+  geminiLightNote: {
+    en: 'Uses your own Google quota. Answers may differ slightly from your chosen model.',
+    zh: '會用你自己的 Google 配額。答案可能與你所選的模型略有不同。',
+  },
   trialTitle: { en: 'Question studio trial', zh: '擬題工作室試用' },
   trialBody: {
     en: 'The trial for the Question studio: 30 invented briefs written with your AI key, your marks on each draft, the bar it has to reach, and a report to copy.',

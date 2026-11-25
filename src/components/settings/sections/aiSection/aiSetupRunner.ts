@@ -1,7 +1,7 @@
 import { presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type ConnectionTest, type ModelInfo, type ProviderConfig, type ProviderId } from '@/ai/types';
 import type { SecretAccount, SecretError, SecretRead, SecretStore, SecretWrite } from '@/platform/secrets';
-import { AI_SETTINGS, providerChoice, type AiConfigResult, type AiSettings } from '@/settings/aiSettings';
+import { AI_SETTINGS, lightModelFor, providerChoice, type AiConfigResult, type AiSettings } from '@/settings/aiSettings';
 import { providerAfterForget } from '@/settings/aiChoice';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage } from '@/i18n/language';
@@ -127,7 +127,8 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
     const key = draftOf(next);
     testing?.abort();
     const abort = (testing = new AbortController());
-    const config = { provider: p, apiKey: key || null, model: next.model, baseUrl: baseUrlFor(next) };
+    const lightModel = lightModelFor(deps.readSettings(), p);
+    const config: ProviderConfig = { provider: p, apiKey: key || null, model: next.model, baseUrl: baseUrlFor(next), ...(lightModel ? { lightModel } : {}) };
     const result = await deps.testConnection(config, abort.signal);
     if (abort.signal.aborted || !shown(p)) return false;
     testing = null;

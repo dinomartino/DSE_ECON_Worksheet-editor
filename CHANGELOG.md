@@ -13,6 +13,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Your own Gemini key can use the cheaper Flash-Lite for simple jobs.** In Settings → AI,
+  with your own Google Gemini key, a new switch "Use the cheaper Gemini Flash-Lite for simple
+  jobs" runs translation (also the question bank's "fill missing 中文") and Test connection on
+  Gemini 3.5 Flash-Lite, the same split DSEcon Mentor uses. Every other AI job keeps the model
+  you chose. It is off unless you turn it on, it uses your own Google quota, and answers may
+  differ slightly. If your key can't use Flash-Lite, the job runs on your chosen model and a
+  small notice says so once.
+  <!-- zh: **使用自己的 Gemini API key 時，簡單工作可改用較便宜的 Flash-Lite。** 在「設定 → AI」使用自己的 Google Gemini key 時，新增開關「簡單工作（翻譯、測試連線）改用較便宜的 Gemini Flash-Lite」，翻譯（包括題庫的「補上缺少的中文」）和測試連線會改用 Gemini 3.5 Flash-Lite，與 DSEcon Mentor 的分工相同。其他 AI 工作仍用你所選的模型。此開關預設關閉；會用你自己的 Google 配額，答案可能略有不同。如果你的 key 未能使用 Flash-Lite，該工作會改用你所選的模型，並顯示一次簡短提示。 -->
 - **The Question studio writes questions with several diagrams.** Like HKDSE 2023 Paper 1 Q36,
   it can now write "Which of the following diagrams …" with four small graphs (1)–(4) in the
   question (tax payment or tax rate against income, and other plain graphs), or a diagram under

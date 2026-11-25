@@ -11,6 +11,11 @@ export const AI_UI_MESSAGES = defineMessages({
   next: { en: 'Next', zh: '下一個' },
   skip: { en: 'Skip', zh: '略過' },
   settings: { en: 'Settings', zh: '設定' },
+  // Own Gemini key, Flash-Lite for simple jobs on, and Google refused it (u-zso2)
+  lightFallback: {
+    en: "Your Google API key can't use Gemini Flash-Lite, so simple jobs use your chosen model instead.",
+    zh: '你的 Google API key 未能使用 Gemini Flash-Lite，簡單工作會改用你所選的模型。',
+  },
 
   // Toolbar button
   aiTools: { en: 'AI tools', zh: 'AI 工具' },

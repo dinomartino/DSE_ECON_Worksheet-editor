@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { looksLikeKey } from '@/ai/keyShape';
+import { GEMINI_LIGHT_MODEL } from '@/ai/lightJobs';
 import { presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type ProviderConfig, type ProviderId, type ProviderPreset } from '@/ai/types';
 import { isDesktop } from '@/platform';
@@ -31,6 +32,11 @@ export interface AiSettings {
    * Absent → the first saved key. Never 'mentor'.
    */
   ownProvider?: ProviderId;
+  /**
+   * Own Gemini key: run the easy jobs (translation, test) on Gemini Flash-Lite (u-zso2,
+   * `ai/lightJobs.ts`). Absent → off: every job on the chosen model.
+   */
+  geminiLight?: boolean;
 }
 
 const modelId = text(128, /^[A-Za-z0-9._:/@-]+$/);
@@ -59,6 +65,7 @@ export const AI_SETTINGS: SettingsSchema<AiSettings> = {
     keychainSaved: recordOf(PROVIDER_IDS, trueFlag),
     includeTeacherText: bool,
     ownProvider: oneOf(PROVIDER_IDS.filter((p) => p !== 'mentor')),
+    geminiLight: bool,
   },
 };
 
@@ -90,6 +97,11 @@ export function providerChoice(settings: AiSettings, provider: ProviderId): { mo
     model: settings.models[provider] ?? preset.models[0]?.id ?? '',
     baseUrl: settings.baseUrls[provider] ?? preset.baseUrl,
   };
+}
+
+/** The model `provider`'s easy jobs run on, or undefined: only an own Gemini key with the switch on (u-zso2). */
+export function lightModelFor(settings: Pick<AiSettings, 'geminiLight'>, provider: ProviderId): string | undefined {
+  return provider === 'gemini' && settings.geminiLight === true ? GEMINI_LIGHT_MODEL : undefined;
 }
 
 let memo: { inputs: unknown[]; status: AiStatus } | null = null;
@@ -171,6 +183,7 @@ export async function resolveAiConfig(provider?: ProviderId): Promise<AiConfigRe
     appSettings.write(AI_SETTINGS, { keychainSaved: rest });
   }
   if (apiKey === null && preset.keyRequired) return { ok: false, provider: id, reason: 'noKey' };
-  return { ok: true, config: { provider: id, apiKey, model, baseUrl }, preset };
+  const lightModel = lightModelFor(settings, id);
+  return { ok: true, config: { provider: id, apiKey, model, baseUrl, ...(lightModel ? { lightModel } : {}) }, preset };
 }
 

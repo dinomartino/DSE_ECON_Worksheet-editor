@@ -6,6 +6,8 @@ import { openExternal } from "@/platform";
 import { peekSecret, subscribeSecrets } from "@/platform/secrets";
 import { useMessages, useUiLanguage } from "@/i18n/language";
 import { providerShortName } from "@/components/ai/aiChip";
+import { routeLightFallbackNotice } from "@/components/ai/lightFallbackNotice";
+import { useNotices } from "@/components/ui/NoticeLayer";
 import { aiChoiceState, type AiChoice } from "@/settings/aiChoice";
 import { setAiChoice } from "@/settings/aiChoiceLive";
 import { AI_SETTINGS, useAiStatus } from "@/settings/aiSettings";
@@ -131,6 +133,9 @@ export default function AiSection({
     );
   }, [guarded, setCloseGuard, runner, m]);
   useEffect(() => () => setCloseGuard(null), [setCloseGuard]);
+  // Test is a light job (u-zso2): Google refusing Flash-Lite is said inside this dialog, not under its scrim.
+  const notices = useNotices();
+  useEffect(() => routeLightFallbackNotice(notices.notify), [notices]);
 
   const actions: AiSectionActions = {
     selectProvider: runner.selectProvider,
@@ -153,6 +158,7 @@ export default function AiSection({
       if (result) setListed(result);
     },
     includeTeacher: (value) => update({ includeTeacherText: value }),
+    geminiLight: (value) => update({ geminiLight: value }),
     getKey: (url) => void openExternal(url),
   };
 
@@ -201,5 +207,7 @@ export interface AiSectionActions {
   workspace(value: string): void;
   listModels(): Promise<void>;
   includeTeacher(value: boolean): void;
+  /** Own Gemini key: easy jobs on Flash-Lite (u-zso2). */
+  geminiLight(value: boolean): void;
   getKey(url: string): void;
 }

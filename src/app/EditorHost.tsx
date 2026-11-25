@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { UpdateBanner } from '@/components/editor/UpdateBanner';
 import { AppSettingsHost } from '@/components/settings/AppSettingsHost';
 import { NoticeLayer } from '@/components/ui/NoticeLayer';
+import { startLightFallbackNotice } from '@/components/ai/lightFallbackNotice';
 import { setBeforeRestart } from '@/desktop/updateStore';
 import { useBankReturn, useKeptTarget } from '@/components/bank/page/bankReturn';
 import { StartScreen } from '@/components/start/StartScreen';
@@ -159,6 +160,9 @@ export function EditorHost() {
   // A file dropped where nothing takes it must not navigate the window to the file; the
   // desktop shell no longer swallows it (`platform/fileDropGuard.ts`).
   useEffect(() => guardStrayFileDrops(), []);
+
+  // Own Gemini key: Google refused Flash-Lite for a simple job, which ran on the chosen model (u-zso2).
+  useEffect(() => startLightFallbackNotice(), []);
 
   // Library folder sync: desktop only, and only once a folder is chosen (`librarySync.ts`).
   useEffect(() => {

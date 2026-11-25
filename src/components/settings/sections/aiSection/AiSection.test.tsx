@@ -23,7 +23,7 @@ const actions: AiSectionActions = {
   selectProvider: noop, draft: noop, saveAndTest: noop, testAnyway: noop, testSaved: noop, saveWithoutTesting: noop,
   useForSession: noop, retryKeychain: noop, remember: noop, forgetAsked: noop, cancelForget: noop,
   forget: async () => {}, model: noop, baseUrl: () => true, workspace: noop, listModels: async () => {},
-  includeTeacher: noop, getKey: noop,
+  includeTeacher: noop, geminiLight: noop, getKey: noop,
 };
 function view(
   patch: Partial<AiSetupState>,
@@ -265,5 +265,18 @@ describe('the AI section states', () => {
     expect(html).toMatch(/<option value="1" selected="">Hong Kong workspace/);
     expect(html).toContain('value="llm-abc"');
     expect(html).toContain('Model Studio → Workspace Management → copy the API Host');
+  });
+
+  it('offers Flash-Lite for simple jobs only on a saved own Gemini key, off by default (u-zso2)', () => {
+    const saved = { key: { kind: 'saved' as const, store: 'browser' as const, last4: 'abcd' } };
+    const off = view(saved, {}, web, 'web', [GEMINI_SAVED]);
+    expect(off).toContain('Use the cheaper Gemini Flash-Lite for simple jobs (translation, test)');
+    expect(off).toContain('Uses your own Google quota. Answers may differ slightly from your chosen model.');
+    expect(off).not.toMatch(/checked=""[^>]*\/>Use the cheaper Gemini/);
+    expect(view(saved, { geminiLight: true }, web, 'web', [GEMINI_SAVED])).toMatch(/checked=""[^>]*\/>Use the cheaper Gemini/);
+    // No key yet, or any other provider: no switch.
+    expect(view({}, {})).not.toContain('Gemini Flash-Lite for simple jobs');
+    expect(view({ ...saved, provider: 'deepseek' }, { provider: 'deepseek' }, web, 'web', [DEEPSEEK_SAVED])).not.toContain('Gemini Flash-Lite for simple jobs');
+    expect(view({ ...saved, provider: 'anthropic' }, { provider: 'anthropic' }, web, 'web', [])).not.toContain('Gemini Flash-Lite for simple jobs');
   });
 });

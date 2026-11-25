@@ -5,6 +5,7 @@ import { mentorAdapter } from './adapters/mentor';
 import { openaiCompatAdapter } from './adapters/openaiCompat';
 import { aiErrorInfo, describeHttpError, isSchemaRejection, keyLikeModel, mapThrown, relayErrorOf } from './errors';
 import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, RELAY_TIMEOUT_MS, defaultHttpDeps, send, sendStream, type HttpResponse } from './http';
+import { lightRefused, modelForJob, reportLightFallback } from './lightJobs';
 import { presetFor, supportsImages } from './providers';
 import { reportRelayOutcome, type RelayOutcome } from './relayOutcome';
 import { ITEMS_SCHEMA, parseItemsPayload } from './schema';
@@ -89,7 +90,31 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
   };
   const { provider, apiKey: key, model } = cfg;
   const base = safeBaseUrl(cfg.baseUrl);
-  const cacheKey = `${provider}|${model}|${cfg.baseUrl}`;
+  const cacheKeyOf = (m: string) => `${provider}|${m}|${cfg.baseUrl}`;
+  // Own Gemini key with the light jobs on (u-zso2, `lightJobs.ts`): those jobs go to the light
+  // model, every other job to the chosen one. No other provider, and never the hosted relay.
+  const light =
+    preset.id === 'gemini' && !preset.relay && cfg.lightModel && cfg.lightModel !== model && MODEL_ID.test(cfg.lightModel) ? cfg.lightModel : undefined;
+  /** The model this request is sent to first: the light one for a light job, unless Google refused it this session. */
+  const firstModel = (req: CompletionRequest): string => {
+    const m = modelForJob(model, light, req.feature);
+    return m !== model && lightRefused(m, key) ? model : m;
+  };
+  /**
+   * Runs a request on its first model; when that was the light model and Google refused it (not
+   * on the key's project: 404, or 403 on the model), once more on the chosen model, and says so.
+   */
+  const onModel = async <T,>(req: CompletionRequest, run: (m: string) => Promise<T>): Promise<T> => {
+    const m = firstModel(req);
+    if (m === model) return run(model);
+    try {
+      return await run(m);
+    } catch (error) {
+      if (!isAiError(error) || error.info.kind !== 'model' || req.signal.aborted) throw error;
+      reportLightFallback(m, key);
+      return run(model);
+    }
+  };
   // One client per run (`createRunDeps`), so its calls make one job in the usage log (k-0537).
   const job = newJobId();
   const logUsage = (req: CompletionRequest, res: CompletionResult) =>
@@ -114,9 +139,9 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     }
   };
 
-  const httpFailure = (res: HttpResponse): AiError => {
-    const info = describeHttpError(provider, res.status, res.body, res.headers, { key, model });
-    if (info.kind === 'quota' && model === preset.quotaFallbackModel) {
+  const httpFailure = (res: HttpResponse, m: string): AiError => {
+    const info = describeHttpError(provider, res.status, res.body, res.headers, { key, model: m });
+    if (info.kind === 'quota' && m === preset.quotaFallbackModel) {
       info.actions = info.actions.filter((a) => a !== 'useFallbackModel');
     }
     return new AiError(info);
@@ -132,26 +157,28 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     if (preset.relay) reportRelayOutcome(note.balance === undefined ? {} : { balance: note.balance });
   };
 
-  async function complete(asked: Parameters<AiClient['complete']>[0], note: RelayOutcome) {
+  async function complete(asked: Parameters<AiClient['complete']>[0], note: RelayOutcome, m: string) {
     // A provider that cannot read pictures is never sent one (the caller asks `supportsImages` to word its prompt).
     const req = asked.images?.length && !supportsImages(preset) ? { ...asked, images: undefined } : asked;
     const problem = blocked(true);
     if (problem) throw new AiError(problem);
     const started = http.now();
     const rungs = adapter.rungs(preset);
+    const on: ProviderConfig = m === model ? cfg : { ...cfg, model: m };
+    const cacheKey = cacheKeyOf(m);
     let i = Math.max(0, rungs.indexOf(workingRung.get(cacheKey) ?? rungs[0]));
     let steppedForOutput = false;
     const baseKey = req.requestKey ?? newRequestKey();
     for (let n = 0; ; n++) {
       const dialect = rungs[i];
-      const res = await request(adapter.build(preset, cfg, { ...req, requestKey: keyFor(baseKey, n) }, dialect), req.signal, timeoutFor(req));
+      const res = await request(adapter.build(preset, on, { ...req, requestKey: keyFor(baseKey, n) }, dialect), req.signal, timeoutFor(req));
       if (res.status < 200 || res.status >= 300) {
         if (isSchemaRejection(provider, res.status, res.body) && i < rungs.length - 1) {
           i++;
           continue;
         }
         noteFailure(note, res);
-        throw httpFailure(res);
+        throw httpFailure(res, m);
       }
       const out = adapter.extract(res.body);
       if (out?.balance !== undefined) note.balance = out.balance;
@@ -164,22 +191,24 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
         continue;
       }
       if (!unreadable && !steppedForOutput) workingRung.set(cacheKey, dialect);
-      return { ...out, dialect, model, ms: http.now() - started };
+      return { ...out, dialect, model: m, ms: http.now() - started };
     }
   }
 
   /** `complete`, read as a stream: same rungs, same errors; `onText` gets the reply so far. */
-  async function stream(asked: Parameters<AiClient['complete']>[0], onText: (reply: string) => void, note: RelayOutcome) {
+  async function stream(asked: Parameters<AiClient['complete']>[0], onText: (reply: string) => void, note: RelayOutcome, m: string) {
     const problem = blocked(true);
     if (problem) throw new AiError(problem);
     const req = asked.images?.length && !supportsImages(preset) ? { ...asked, images: undefined } : asked;
     const started = http.now();
     const rungs = adapter.rungs(preset);
+    const on: ProviderConfig = m === model ? cfg : { ...cfg, model: m };
+    const cacheKey = cacheKeyOf(m);
     let i = Math.max(0, rungs.indexOf(workingRung.get(cacheKey) ?? rungs[0]));
     const baseKey = req.requestKey ?? newRequestKey();
     for (let n = 0; ; n++) {
       const dialect = rungs[i];
-      const wire = adapter.buildStream(preset, cfg, { ...req, requestKey: keyFor(baseKey, n) }, dialect);
+      const wire = adapter.buildStream(preset, on, { ...req, requestKey: keyFor(baseKey, n) }, dialect);
       let text = '';
       let finish: CompletionResult['finish'] | undefined;
       let usage: CompletionResult['usage'];
@@ -224,7 +253,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
           continue;
         }
         noteFailure(note, res as HttpResponse);
-        throw httpFailure(res as HttpResponse);
+        throw httpFailure(res as HttpResponse, m);
       }
       // Mentor stopped a long call at its limit: charged, the text so far incomplete (CONTRACT v1.3).
       if (failed === 'deadline' && preset.relay) throw new AiError(aiErrorInfo('timeout', provider, { status: res.status, relay: { code: failed, charged: failedCharged } }));
@@ -232,7 +261,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
       // A relay stream closed without its receipt was cut off: nothing it said can be trusted as whole.
       if (adapter.mustSettle && !settled) throw new AiError(aiErrorInfo('server', provider, { status: res.status, detail: 'stream ended early' }));
       workingRung.set(cacheKey, dialect);
-      return { text, finish: finish ?? 'stop', dialect, model, ms: http.now() - started, ...(usage ? { usage } : {}), ...(charged !== undefined ? { charged } : {}) } satisfies CompletionResult;
+      return { text, finish: finish ?? 'stop', dialect, model: m, ms: http.now() - started, ...(usage ? { usage } : {}), ...(charged !== undefined ? { charged } : {}) } satisfies CompletionResult;
     }
   }
 
@@ -240,7 +269,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     async stream(req, onText) {
       const note: RelayOutcome = {};
       try {
-        const res = await stream(req, onText, note);
+        const res = await onModel(req, (m) => stream(req, onText, note, m));
         logUsage(req, res);
         return res;
       } catch (error) {
@@ -255,7 +284,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     async complete(req) {
       const note: RelayOutcome = {};
       try {
-        const res = await complete(req, note);
+        const res = await onModel(req, (m) => complete(req, note, m));
         logUsage(req, res);
         return res;
       } catch (error) {

@@ -439,7 +439,19 @@ function CardDetails({
       )}
       {preset.keyRequired && !savedMode && <RememberField {...props} />}
       <ModelField {...props} modelRef={modelRef} />
+      {state.provider === 'gemini' && hasSaved && <GeminiLightField {...props} />}
       <BaseUrlField {...props} />
+    </div>
+  );
+}
+
+/** Own Gemini key, a key saved: the easy jobs on Flash-Lite (u-zso2, `ai/lightJobs.ts`). Off unless chosen. */
+function GeminiLightField({ settings, actions }: AiSectionViewProps) {
+  const m = useMessages(AI_SECTION_MESSAGES);
+  return (
+    <div className="space-y-0.5">
+      <CheckField label={m.geminiLight} checked={settings.geminiLight === true} onChange={actions.geminiLight} />
+      <p className="pl-6 text-[11px] text-ink-muted">{m.geminiLightNote}</p>
     </div>
   );
 }

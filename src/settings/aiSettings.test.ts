@@ -128,6 +128,38 @@ describe('the AI status in a browser', () => {
   });
 });
 
+describe('Flash-Lite for simple jobs (u-zso2)', () => {
+  const GEMINI_KEY = 'AIzaSyTESTKEY000000000000007Qx4';
+
+  it('is off by default: the Gemini config carries no light model', async () => {
+    const m = await fresh(false, { provider: 'gemini', models: { gemini: 'gemini-4-hydrogen' } });
+    await m.writeSecret('ai:gemini', GEMINI_KEY, { remember: true });
+    const resolved = await m.resolveAiConfig();
+    expect(resolved).toMatchObject({ ok: true, config: { model: 'gemini-4-hydrogen' } });
+    expect(resolved.ok && 'lightModel' in resolved.config).toBe(false);
+  });
+
+  it('switched on, puts Flash-Lite beside the chosen Gemini model, and is remembered', async () => {
+    const m = await fresh(false, { provider: 'gemini', models: { gemini: 'gemini-4-hydrogen' }, geminiLight: true });
+    await m.writeSecret('ai:gemini', GEMINI_KEY, { remember: true });
+    expect(m.appSettings.read(m.AI_SETTINGS).geminiLight).toBe(true);
+    await expect(m.resolveAiConfig()).resolves.toMatchObject({
+      ok: true,
+      config: { provider: 'gemini', model: 'gemini-4-hydrogen', lightModel: 'gemini-3.5-flash-lite' },
+    });
+  });
+
+  it('never reaches another provider, even with the switch saved on', async () => {
+    const m = await fresh(false, { provider: 'deepseek', geminiLight: true });
+    await m.writeSecret('ai:deepseek', 'sk-deepseek-12345678', { remember: true });
+    const resolved = await m.resolveAiConfig();
+    expect(resolved.ok && 'lightModel' in resolved.config).toBe(false);
+    expect(m.lightModelFor({ geminiLight: true }, 'mentor')).toBeUndefined();
+    expect(m.lightModelFor({ geminiLight: true }, 'openrouter')).toBeUndefined();
+    expect(m.lightModelFor({}, 'gemini')).toBeUndefined();
+  });
+});
+
 describe('the AI status on desktop', () => {
   it('reads configured from the presence flag and never calls secret_get', async () => {
     const m = await fresh(true, { keychainSaved: { gemini: true } });
