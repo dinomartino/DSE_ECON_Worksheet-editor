@@ -7,6 +7,7 @@ import type { BiText, ContentBlock, LanguageMode, LayoutElement, McqQuestion, Qu
 import { getQuestionType } from '@/registry';
 import { fitTableToContent, tableFitPlace, type TableFitPlace } from '@/model/tableFit';
 import { DEFAULT_PAGE_METRICS, pageMetricsOf, type PageMetrics } from '@/render/ir';
+import { shortSource } from '@/render/questionSource';
 
 /**
  * Reading the Past paper bank's files (k-0443). The question bank pack is written by another
@@ -193,6 +194,20 @@ export function sourceLabel(source: SourceInfo, withNumber = true): { en: string
   const zh = `${PAPER_ZH[source.exam]} ${when.zh} ${paper.zh}`;
   if (!withNumber || source.number === undefined) return { en, zh };
   return { en: `${en} Q${source.number}`, zh: `${zh} 第 ${source.number} 題` };
+}
+
+/**
+ * The short source label (user u-rvgs, k-0556): the editor's own Short form of Show source
+ * (u-z6ft, `render/questionSource.ts:shortSource`), "DSE2024/P1/Q38", "DSESP/P1/Q3",
+ * "CE1990/P2/Q47", the same in English and 中文, so a row in the bank and the line printed
+ * on a paper in Short read alike. A tag of no known exam is shown as it is.
+ */
+export function shortSourceLabel(source: SourceInfo): string {
+  if (source.exam === 'other' || source.paper === undefined || source.number === undefined) return source.tag;
+  const exam = source.exam === 'HKCEE' ? 'CE' : source.exam === 'HKALE' ? 'AL' : 'DSE';
+  const when = source.special ?? (source.year !== undefined ? String(source.year) : undefined);
+  if (when === undefined) return source.tag;
+  return shortSource({ exam, when, paper: source.paper, number: source.number }, 'short');
 }
 
 /**

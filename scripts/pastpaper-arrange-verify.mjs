@@ -71,7 +71,9 @@ check(parts[0] === 'A' && parts.includes('J'), `parts A … J (${parts.join(' ')
 const status = await arrange.locator('[role="status"]').first().innerText();
 check(/^1,\d{3} questions$/.test(status), `every question listed: ${status}`);
 const firstSource = await arrange.locator('[data-arrange-source]').first().innerText();
-check(/^(HKDSE|HKCEE|HKALE) .+ Q\d+$/.test(firstSource), `each row names its source: “${firstSource}”`);
+// The editor's Short source form (u-z6ft, `render/questionSource.ts:shortSource`), user u-rvgs / u-s7cc.
+const SHORT = /^(DSE|CE|AL)(\d{4}|SP|PP)\/P\d\/Q\d+$/;
+check(SHORT.test(firstSource), `each row names its source in the short form: “${firstSource}”`);
 await page.screenshot({ path: `${OUT}/after-arrange-en.png` });
 
 // Choose a topic with at least four questions in part A.
@@ -161,9 +163,9 @@ await page.locator('#print-root').waitFor({ timeout: 90_000 });
 await page.getByRole('button', { name: 'Done', exact: true }).click().catch(() => {});
 await page.waitForTimeout(3500);
 const text = (await page.locator('#print-root').innerText()).replace(/ /g, ' ');
-const printed = expected.map((label) => text.indexOf(`(${label.replace(/ Paper (\d) /, ' Paper $1 ')})`));
+const printed = expected.map((label) => text.indexOf(`(${label})`));
 const inOrder = printed.every((at, i) => at >= 0 && (i === 0 || at > printed[i - 1]));
-check(inOrder, `the new worksheet holds all ${expected.length} in the teacher’s order, each with its source`, printed.slice(0, 6).join(' '));
+check(inOrder, `the new worksheet holds all ${expected.length} in the teacher’s order, each with its short source`, printed.slice(0, 6).join(' '));
 await page.screenshot({ path: `${OUT}/after-worksheet-en.png` });
 
 // The .docx carries the sources in that order.
@@ -185,7 +187,7 @@ await arrange.locator('[data-arrange-row]').first().waitFor({ timeout: 60_000 })
 await page.waitForTimeout(800);
 check((await page.getByRole('radio', { name: '編排', exact: true }).getAttribute('aria-checked')) === 'true', '中文: the switch reads 編排');
 const zhSource = await arrange.locator('[data-arrange-source]').first().innerText();
-check(/第 \d+ 題$/.test(zhSource), `中文: sources in Chinese “${zhSource}”`);
+check(SHORT.test(zhSource), `中文: the same short source “${zhSource}”`);
 await arrange.locator(`[data-arrange-topic="${topicB}"]`).scrollIntoViewIfNeeded();
 await arrange.locator(`[data-arrange-topic-check="${topicB}"]`).check();
 await page.screenshot({ path: `${OUT}/after-arrange-zh.png` });

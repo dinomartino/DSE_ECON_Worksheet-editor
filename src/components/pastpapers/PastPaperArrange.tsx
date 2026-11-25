@@ -10,7 +10,8 @@ import type { LanguageMode } from '@/model/types';
 import { arrangeLists, defaultLists, moveKeys, resetTopic, stepKeys, storedFrom, type ArrangeRow } from '@/pastpapers/arrange';
 import { useArrangement } from '@/pastpapers/arrangeStore';
 import { groupTopics, OTHER_PART, partName, type TopicGroup } from '@/pastpapers/groups';
-import { matchItem, packName, sourceLabel, type PastPaperItem, type SourceInfo, type TopicEntry } from '@/pastpapers/pack';
+import { matchItem, packName, shortSourceLabel, type PastPaperItem, type SourceInfo, type TopicEntry } from '@/pastpapers/pack';
+import type { QuestionSourceFormat } from '@/model/types';
 import { ARRANGE_MESSAGES } from './PastPaperArrange.messages';
 import { PAST_PAPER_MESSAGES } from './messages';
 import { ExamChips, LanguageToggle, YearSelects } from './PastPaperControls';
@@ -64,6 +65,8 @@ export interface ArrangeAddOptions {
   to?: string;
   /** The new worksheet's name. */
   name?: string;
+  /** How Show source prints on a paper getting its first sourced questions; absent = the tray's. */
+  sourceFormat?: QuestionSourceFormat;
 }
 
 export function PastPaperArrange({
@@ -232,7 +235,8 @@ export function PastPaperArrange({
   const addKeys = async (keys: readonly string[], options?: ArrangeAddOptions, clear = false) => {
     if (keys.length === 0) return;
     const items = await resolve(keys);
-    if (items.length > 0) await onAdd(items, () => clear && setSelected(new Set()), options);
+    // Arrange speaks the short source label (u-rvgs), so its papers print it short too.
+    if (items.length > 0) await onAdd(items, () => clear && setSelected(new Set()), { ...options, sourceFormat: 'short' });
   };
   const copyKeys = async (keys: readonly string[]) => {
     const items = await resolve(keys);
@@ -374,7 +378,7 @@ export function PastPaperArrange({
       if (!pressed || event.pointerId !== pressed.pointerId) return;
       if (!live.current) {
         if (Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) < DRAG_THRESHOLD_PX) return;
-        const { selected: ticked, orderedSelection: ticks, byKey: entries, language: view, carry } = state.current;
+        const { selected: ticked, orderedSelection: ticks, byKey: entries, carry } = state.current;
         const keys = ticked.has(pressed.key) ? ticks : [pressed.key];
         const first = entries.get(keys[0]);
         live.current = { keys, drop: null, x: event.clientX, y: event.clientY, speed: 0, frame: requestAnimationFrame(tick) };
@@ -382,7 +386,7 @@ export function PastPaperArrange({
         window.getSelection()?.removeAllRanges();
         setDrag({
           keys,
-          label: keys.length === 1 && first ? packName(sourceLabel(first.source), view) : carry(keys.length),
+          label: keys.length === 1 && first ? shortSourceLabel(first.source) : carry(keys.length),
         });
       }
       const now = live.current;
@@ -817,7 +821,7 @@ const QuestionRow = memo(function QuestionRow({
   onPointerDown: (event: ReactPointerEvent<HTMLElement>, key: string) => void;
 }) {
   const m = useMessages(ARRANGE_MESSAGES);
-  const source = packName(sourceLabel(entry.source), language);
+  const source = shortSourceLabel(entry.source);
   const words = language === 'zh' ? entry.zh || entry.en : entry.en || entry.zh;
   const iconButton =
     'grid h-6 w-6 cursor-pointer place-items-center rounded text-ink-muted hover:bg-surface-sunken hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
