@@ -6,12 +6,13 @@ import { PAST_PAPER_SETTINGS_MESSAGES } from '@/components/pastpapers/messages';
 import { BUILT_IN_SOURCE, gitHubSource, PAST_PAPER_SETTINGS, sourceAddress, type PastPaperMode } from '@/pastpapers/config';
 import { pastPaperCache } from '@/pastpapers/bank';
 import { useSettings } from '@/settings/store';
+import { OldCopiesCleanUp } from './OldCopiesCleanUp';
 
 /**
  * Settings → Past paper bank (k-0443): the one switch for this computer. Built-in reads the
  * address this build ships with; Off hides the bank everywhere in the app; Another address
  * points it at a local export or a mirror. Below, what is kept on this computer and a way
- * to drop it.
+ * to drop it, and past-paper questions copied before k-0559 that my bank still shows.
  */
 export default function PastPapersSection() {
   const m = useMessages(PAST_PAPER_SETTINGS_MESSAGES);
@@ -104,6 +105,8 @@ export default function PastPapersSection() {
           </button>
         )}
       </section>
+
+      <OldCopiesCleanUp />
     </div>
   );
 }

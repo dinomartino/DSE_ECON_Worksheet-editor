@@ -15,6 +15,16 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **Past paper questions stay out of your question bank until you change them.** A question you
+  add from the past paper bank to a worksheet is the exam's question, so your question bank no
+  longer lists it as one of yours. Edit what it says (the question, an option, the answer, a
+  picture or a table) and it joins your question bank as your own, keeping its source.
+  Renumbering it, moving it or showing its source does not count as a change. Questions you
+  copy to your bank on purpose (Copy to my question bank) are there as before. Worksheets made
+  before this update: Settings → Past paper bank → **Find them** lists the past paper questions
+  still in your question bank that you never changed, and takes them out once you confirm. Your
+  worksheets stay exactly as they are.
+  <!-- zh: **歷屆試題在你修改之前不會進入你的題庫。** 從歷屆試題庫加入工作紙的題目是考試的題目，你的題庫不再把它當作你自己的題目列出。修改它的內容（題目、選項、答案、圖片或表格）後，它便會作為你自己的題目加入題庫，並保留其出處。重新編號、移動位置或顯示出處都不算修改。你特意複製到題庫的題目（複製到我的題庫）會照舊保留。此更新之前製作的工作紙：設定 → 歷屆試題庫 → **尋找**，會列出仍在你題庫中而你從未修改的歷屆試題，確認後便會把它們移出。你的工作紙會完全保持不變。 -->
 - **Arrange the past paper bank your own way, and make worksheets from it in one go.** The
   Past paper bank has a third view beside By topic and By year: **Arrange**. It lists every
   question of the bank on one page, under its syllabus part and topic, each with its source in

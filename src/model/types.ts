@@ -515,6 +515,23 @@ export interface QuestionLineage {
   fromDocId?: string;
   /** ISO timestamp of the copy. */
   copiedAt?: string;
+  /**
+   * Set on a copy taken from the Past paper bank into a paper (k-0559): its source tag and
+   * the `contentKey` it had as it went in. While the copy still says exactly that, it is the
+   * past paper's question, not the teacher's, and the 題庫 leaves it out
+   * (`library/pastPaperCopies.ts`); once edited it is the teacher's own, adapted from `tag`.
+   * Travels with every copy (`copyQuestion` keeps unknown lineage fields). Absent on
+   * everything else, and on copies made before k-0559.
+   */
+  pastPaper?: PastPaperOrigin;
+}
+
+/** Where a past-paper copy came from, and what it said then (`QuestionLineage.pastPaper`). */
+export interface PastPaperOrigin {
+  /** The bank's source tag, `DSE2024/P1/Q38`. */
+  tag: string;
+  /** `contentKey` of the question as it was copied in. */
+  key: string;
 }
 
 export interface McqOption {

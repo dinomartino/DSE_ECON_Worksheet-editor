@@ -384,7 +384,14 @@ export const IMAGE_KEYS: ReadonlySet<string> = new Set([IMAGE_KEY, 'srcZh']);
  * every printed word lives in, the bank's tags (`scrambleTag`), and the file's name
  * (replaced whole).
  */
-export const SCRAMBLED_KEYS: ReadonlySet<string> = new Set(['text', 'tags', 'name']);
+export const SCRAMBLED_KEYS: ReadonlySet<string> = new Set([
+  'text',
+  'tags',
+  'name',
+  // A past-paper copy's origin (`lineage.pastPaper`, k-0559): scrambled like any free text; the copy then reads as edited.
+  'tag',
+  'key',
+]);
 
 /**
  * A bank tag: a syllabus topic code this build knows stays (it is the syllabus's, not the

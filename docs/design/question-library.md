@@ -173,6 +173,7 @@ interface QuestionBase {
     fromDocId?: string;
     copiedAt?: string;
     publisher?: string;     // exchange only; absent = mine
+    pastPaper?: { tag: string; key: string }; // k-0559: a Past paper bank copy, see below
   };
 }
 interface Worksheet {
@@ -181,6 +182,23 @@ interface Worksheet {
   satOn?: string;           // "2025-11-03": when; absent = createdAt; KNOWN_KEYS
 }
 ```
+
+### Past paper copies are not the teacher's questions (k-0559, user u-rkoi)
+
+A question taken from the Past paper bank into a paper (one at a time, By topic, By year,
+Arrange's Add and New worksheet, the 題庫 tab) records its source tag and its `contentKey` as
+it went in (`lineage.pastPaper`, `src/library/pastPaperCopies.ts`). While it still says
+exactly that, it is the exam's question: the 題庫 leaves it out (`indexer.ts:rowsOf` through
+`showsInBank`), and Trash keeps nothing of it (`leavingBank.ts`). Once the teacher changes what
+it says (anything `contentKey` reads: stem, options, answer, pictures, tables) it is their own
+question, adapted from its tag, and shows like any other. Its number, place, topics, gap and
+Show source are not what it says. The rule compares with the copy's own record, never the
+bank, so it needs no download; undoing an edit back to the exact words hides it again.
+A bank document is always shown whole: Copy to my question bank and Copy to bank are on
+purpose. Copies made before k-0559 carry no record; Settings → Past paper bank → "Past paper
+questions in my bank" finds the unchanged ones by `rootId` against the bank's current topics
+and, on the teacher's confirm, records the origin on them (nothing deleted, nothing printed
+changes; `src/pastpapers/oldCopies.ts`).
 
 ### What a use means (C5)
 

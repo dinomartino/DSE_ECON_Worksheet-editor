@@ -13,6 +13,7 @@ import type { Question, Worksheet } from '@/model/types';
 import { worksheetTitle } from '@/storage/document';
 import type { WorksheetSummary } from '@/storage/types';
 import { contentKey } from './contentKey';
+import { showsInBank } from './pastPaperCopies';
 import { rowTagFields } from './sharedTags';
 import type { BankLang, BankRow } from './types';
 
@@ -21,7 +22,7 @@ export const EXCERPT_MAX = 200;
 
 /**
  * The bank rows of one saved document, in printed order. `summary` (its index row) names
- * it and stamps its freshness; the use date is the document's own (`dateOfUse`). A `bankHidden` document, or one of a kind this build does not know, yields none. Text only — images never enter a row.
+ * it and stamps its freshness; the use date is the document's own (`dateOfUse`). A `bankHidden` document, or one of a kind this build does not know, yields none, and a paper's unchanged past-paper copies none of their own (`pastPaperCopies.ts:showsInBank`). Text only — images never enter a row.
  */
 export function rowsOf(worksheet: Worksheet, summary?: Pick<WorksheetSummary, 'title' | 'updatedAt'>): BankRow[] {
   if (worksheet.bankHidden) return [];
@@ -39,7 +40,8 @@ export function rowsOf(worksheet: Worksheet, summary?: Pick<WorksheetSummary, 't
     docKind: worksheet.kind === 'bank' ? ('bank' as const) : ('paper' as const),
     ...(classes ? { classes } : {}),
   };
-  const ordered = numbering.questions.map((entry) => entry.question);
+  // A paper's unchanged past-paper copies are the exam's questions, not the teacher's (k-0559).
+  const ordered = numbering.questions.map((entry) => entry.question).filter((question) => showsInBank(question, worksheet));
   return ordered.map((question) => rowOf(question, doc, numbering.byQuestionId.get(question.id)?.number));
 }
 
