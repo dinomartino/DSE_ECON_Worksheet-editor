@@ -475,17 +475,18 @@ export function PastPaperArrange({
       <PastPaperTopicPicker topics={pickerTopics} current={topicById.get(jumped ?? '')} active={jumped !== undefined} language={language} top={switcher} onPick={jumpTo} />
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col" data-pastpaper-arrange>
-        <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-6 py-2.5">
-          <h2 className="text-[15px] font-semibold text-ink" data-pastpaper-heading>
+        {/* One row, as the other views' filter bar (u-huv8); a very narrow window scrolls it sideways. */}
+        <div className="scroll-slim flex shrink-0 flex-nowrap items-center gap-x-3 overflow-x-auto whitespace-nowrap border-b border-line px-6 py-2.5" data-pastpaper-filterbar>
+          <h2 className="min-w-[4rem] shrink truncate text-[15px] font-semibold text-ink" title={m.heading} data-pastpaper-heading>
             {m.heading}
           </h2>
-          <span className="text-[12px] tabular-nums text-ink-subtle" role="status">
+          <span className="shrink-0 text-[12px] tabular-nums text-ink-subtle" role="status">
             {m.shown(shownCount, entries.length)}
           </span>
           <button
             type="button"
             onClick={() => setClosed(allClosed ? new Set() : new Set(groups.map((g) => `part:${g.code}`)))}
-            className="cursor-pointer text-[12px] text-ink-muted hover:text-ink hover:underline"
+            className="shrink-0 cursor-pointer text-[12px] text-ink-muted hover:text-ink hover:underline"
           >
             {allClosed ? m.openAll : m.closeAll}
           </button>
@@ -498,17 +499,17 @@ export function PastPaperArrange({
                 setArrangement({ topics: {} });
                 onNotice(m.resetDone);
               }}
-              className="cursor-pointer text-[12px] text-ink-muted hover:text-ink hover:underline"
+              className="shrink-0 cursor-pointer text-[12px] text-ink-muted hover:text-ink hover:underline"
             >
               {m.resetAll}
             </button>
           )}
-          <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted" title={m.showSourcesTitle} data-arrange-show-sources>
+          <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted" title={m.showSourcesTitle} data-arrange-show-sources>
             <input type="checkbox" checked={withSources} onChange={(e) => setWithSources(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
             {m.showSources}
           </label>
           <span className="flex-1" />
-          <ExamChips filters={filters} onChange={setFilters} />
+          <ExamChips filters={filters} onChange={setFilters} wrap={false} />
           <YearSelects filters={filters} years={browse.years} onChange={setFilters} />
           <LanguageToggle value={language} onChange={onLanguage} />
         </div>

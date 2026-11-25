@@ -58,6 +58,69 @@ const openBank = async () => {
 const arrange = page.locator('[data-pastpaper-arrange]');
 const rowsOf = (topic) => arrange.locator(`[data-arrange-topic="${topic}"] [data-arrange-row]`).evaluateAll((els) => els.map((el) => el.getAttribute('data-arrange-row')));
 
+// The filter bar stays on one row (user u-huv8): every control, Show answers included, at every
+// title length, in EN and 中文, in all three views, at 1280–2000 px and in a narrow window.
+const barRow = () =>
+  page.locator('[data-pastpaper-filterbar]').evaluate((bar) => {
+    const kids = [...bar.children].filter((el) => el.getBoundingClientRect().width > 0 && !el.classList.contains('flex-1'));
+    const mids = kids.map((el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; });
+    const h2 = bar.querySelector('h2');
+    return {
+      spread: Math.max(...mids) - Math.min(...mids),
+      height: bar.getBoundingClientRect().height,
+      answers: bar.querySelector('[data-pastpaper-show-answers]') !== null,
+      scrolls: bar.scrollWidth > bar.clientWidth + 1,
+      truncated: h2.scrollWidth > h2.clientWidth + 1,
+      full: h2.getAttribute('title') === h2.textContent,
+    };
+  });
+const openTopic = async (id, name) => {
+  const find = page.locator('[data-pastpaper-topics] input[type="search"], [data-pastpaper-topics] input').first();
+  await find.fill(name);
+  await page.locator(`[data-pastpaper-topic="${id}"]`).first().click();
+  await find.fill('');
+  await page.waitForTimeout(500);
+};
+const BAR_TOPICS = [
+  ['gdp', { en: 'GDP', zh: 'GDP' }],
+  ['economic-free-goods', { en: 'Economic Good', zh: '經濟物品' }],
+  ['tax-base-tax-net-effects-of-tax-changes', { en: 'Tax Base', zh: '稅基' }],
+];
+const WIDTHS = [1280, 1440, 1600, 2000, 1024, 760];
+await page.goto(`http://localhost:${port}`);
+for (const lang of ['en', 'zh']) {
+  await page.evaluate((l) => localStorage.setItem('econgen.settings.language', JSON.stringify(l === 'zh' ? { v: 1, ui: 'zh-HK', paper: 'zh' } : { v: 1, ui: 'en', paper: 'en' })), lang);
+  await openBank();
+  await page.locator('[data-pastpaper-view]').first().waitFor({ timeout: 90_000 });
+  for (const view of ['topic', 'year', 'arrange']) {
+    await page.locator(`[data-pastpaper-view="${view}"]`).click();
+    await page.waitForTimeout(800);
+    const topics = view === 'topic' ? BAR_TOPICS : [[undefined, undefined]];
+    for (const [id, name] of topics) {
+      if (id) {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await openTopic(id, name[lang]).catch(() => check(false, `${lang}: open ${id}`));
+        await page.locator('[data-pastpaper-screen] article').first().waitFor({ timeout: 90_000 });
+      }
+      const bad = [];
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.waitForTimeout(150);
+        const row = await barRow();
+        const ok = row.spread < 4 && row.height < 60 && (view === 'arrange' || row.answers) && (!row.truncated || row.full);
+        if (!ok || (width >= 1280 && row.scrolls)) bad.push(`${width}px spread ${row.spread.toFixed(1)} h ${row.height.toFixed(0)}${row.scrolls ? ' scrolls' : ''}${row.truncated ? ' truncated' : ''}`);
+        if (lang === 'zh' && id === 'economic-free-goods' && width === 1440) await page.screenshot({ path: `${OUT}/after-filterbar-zh-1440.png`, clip: { x: 0, y: 0, width, height: 140 } });
+        if (lang === 'en' && id === 'tax-base-tax-net-effects-of-tax-changes' && width === 1280) await page.screenshot({ path: `${OUT}/after-filterbar-en-1280-long.png`, clip: { x: 0, y: 0, width, height: 140 } });
+        if (lang === 'zh' && id === 'tax-base-tax-net-effects-of-tax-changes' && width === 760) await page.screenshot({ path: `${OUT}/after-filterbar-zh-760.png` });
+      }
+      check(bad.length === 0, `${lang} ${view}${id ? ` ${id}` : ''}: one row at ${WIDTHS.join(', ')} px${view === 'arrange' ? '' : ', Show answers on it'}; no sideways scroll from 1280 up`, bad.join('; '));
+    }
+  }
+}
+await page.setViewportSize({ width: 1440, height: 900 });
+await page.evaluate(() => localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: 'en', paper: 'en' })));
+await page.evaluate(() => localStorage.removeItem('econgen.settings.pastPapers'));
+
 await openBank();
 await page.locator('[data-pastpaper-screen] article').first().waitFor({ timeout: 90_000 });
 check((await page.locator('[data-pastpaper-view]').count()) === 3, 'the switch offers By topic, By year and Arrange');

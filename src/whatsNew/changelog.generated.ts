@@ -227,6 +227,10 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **The Past paper bank's filter bar stays on one row.** With a long topic name, "Show answers"
+  could drop to a second row on its own. Now the topic name shortens (the full name shows when
+  you point at it) and the Paper list narrows instead, in every view and both languages.
+  <!-- zh: **歷屆試題庫的篩選列保持在同一行。** 課題名稱較長時，「顯示答案」有時會獨自跌到第二行。現在課題名稱會縮短（指向它即顯示全名），「試卷」選單亦會收窄，所有檢視及兩種語言皆然。 -->
 - **Diagram numbers (1)–(4) sit at the top-left corner of each diagram, as on the HKDSE
   papers.** Questions with four numbered diagrams, from the Past paper bank (such as HKDSE 2024
   Paper 1 Q38) or written by the Question studio, used to print each number centred above its

@@ -15,10 +15,19 @@ const chip = (active: boolean) =>
     active ? 'border-accent bg-accent-soft text-ink' : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink'
   }`;
 
-export function ExamChips({ filters, onChange }: { filters: BrowseFilters; onChange: (next: BrowseFilters) => void }) {
+export function ExamChips({
+  filters,
+  onChange,
+  wrap = true,
+}: {
+  filters: BrowseFilters;
+  onChange: (next: BrowseFilters) => void;
+  /** False in the screen's one-row filter bar (u-huv8): the chips never break onto a second row. */
+  wrap?: boolean;
+}) {
   const m = useMessages(PAST_PAPER_MESSAGES);
   return (
-    <div role="group" aria-label={m.exam} className="flex flex-wrap items-center gap-1.5">
+    <div role="group" aria-label={m.exam} className={`flex items-center gap-1.5 ${wrap ? 'flex-wrap' : 'shrink-0 flex-nowrap whitespace-nowrap'}`}>
       <button type="button" aria-pressed={filters.exams.length === 0} className={chip(filters.exams.length === 0)} onClick={() => onChange({ ...filters, exams: [] })}>
         {m.allExams}
       </button>
@@ -57,7 +66,7 @@ export function YearSelects({
   const value = (y: number | undefined) => (y === undefined ? '' : String(y));
   const read = (v: string) => (v === '' ? undefined : Number(v));
   return (
-    <div className="flex items-center gap-1.5 text-[12px] text-ink-muted">
+    <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-ink-muted">
       <span>{m.years}</span>
       <select aria-label={m.yearFrom} className={select} value={value(filters.from)} onChange={(e) => onChange({ ...filters, from: read(e.target.value) })}>
         <option value="">{m.anyYear}</option>
@@ -87,7 +96,7 @@ export function LanguageToggle({ value, onChange }: { value: LanguageMode; onCha
     { id: 'zh', label: '中文' },
   ];
   return (
-    <div role="radiogroup" aria-label={m.paperLanguage} className="flex rounded-md border border-line p-0.5">
+    <div role="radiogroup" aria-label={m.paperLanguage} className="flex shrink-0 rounded-md border border-line p-0.5">
       {options.map((option) => (
         <button
           key={option.id}
@@ -162,12 +171,13 @@ export function PaperSelect({
   if (papers.length === 0) return null;
   const name = (paper: PaperChoice) => packName(sourceLabel(paper.source, false), language);
   return (
-    <label className="flex items-center gap-1.5 text-[12px] text-ink-muted">
-      <span>{m.paper}</span>
+    // The first thing to give way in the one-row filter bar (u-huv8): it shrinks before the title truncates.
+    <label className="flex min-w-[6.5rem] shrink-[6] items-center gap-1.5 whitespace-nowrap text-[12px] text-ink-muted" data-pastpaper-paper-field>
+      <span className="shrink-0">{m.paper}</span>
       <select
         value={filters.paper ?? ''}
         onChange={(e) => onChange({ ...filters, paper: e.target.value === '' ? undefined : e.target.value })}
-        className="h-7 max-w-[220px] rounded-md border border-line bg-surface px-1.5 text-[12px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="h-7 min-w-0 max-w-[220px] flex-1 rounded-md border border-line bg-surface px-1.5 text-[12px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         data-pastpaper-paper
       >
         <option value="">{m.allPapers}</option>
