@@ -1,8 +1,7 @@
 import type { ListIndentScheme } from '@/model/numbering';
-import { isBiTextEmpty, plain, trailingBlankLines } from '@/model/text';
+import { isBiTextEmpty, plain } from '@/model/text';
 import type { BiText, LanguageMode, QuestionSourceFormat, RichText, Question, Worksheet } from '@/model/types';
-import { DEFAULT_PAGE_METRICS, trailLabel, type PageMetrics, type RenderNode, type TextNode } from './ir';
-import { lineWidthTwips, splitRunLines } from './textWidth';
+import { trailLabel, type RenderNode, type TextNode } from './ir';
 
 /**
  * A question's source printed on the paper (user u-w7gs: "keep the source, the year and
@@ -11,10 +10,12 @@ import { lineWidthTwips, splitRunLines } from './textWidth';
  * The source is the question's own `provenance` ("HKCEE 2006 Paper 2 Q32" / "香港中學會考
  * 2006 卷二 第 32 題"), which every past paper bank question carries and which until now only
  * the teacher's copy and the answer key showed. With `Worksheet.showQuestionSources` on it
- * also prints in brackets at the right of the question's numbered first line, as the
- * numbered paragraph's `trail`: the slot a structured question's "(4 marks)" rides, which
- * the preview (so print and PDF), the `.docx` and the clipboard all draw already. Nothing
- * else moves: no node is added, so numbering, keeps and the answer key are as before.
+ * also prints in brackets on a line of its own at the top of the question, at the left edge
+ * of the question number ("(DSESP/P1/Q3)" over "1. A positive statement", user u-tchj; it
+ * rode at the right of the numbered line until then): one plain paragraph, which the preview
+ * (so print and PDF), the `.docx` and the clipboard all draw as any other, kept with the
+ * question (`keepNext`) so a page never ends on a source. Numbering and the answer key are as
+ * before.
  *
  * Derived at render, never stored on the question: turning the switch off leaves no trace.
  */
@@ -120,8 +121,7 @@ export function shortSource(parts: SourceParts, format: Exclude<QuestionSourceFo
  * "（香港中學文憑考試 2019 卷一 第 12 題）"; short, "(DSE2019/P1/Q12)" on both sides, so a
  * bilingual paper prints it once (`trailLabel`). A source a short form cannot read (a
  * teacher's own wording) stays in full. An empty side stays empty, so `trailLabel` falls
- * back to the other side as it does for every trail. Its spaces are no-break spaces, as the
- * marks label's are (`marksText`), so Word never tears it at a space.
+ * back to the other side. Its spaces are no-break spaces, so Word never tears it at a space.
  */
 export function sourceTrail(source: BiText, format: QuestionSourceFormat = 'full'): BiText {
   const parts = format === 'full' ? undefined : sourceParts(source);
@@ -139,72 +139,34 @@ export function sourceTrail(source: BiText, format: QuestionSourceFormat = 'full
 }
 
 /**
- * How far the last wrapped line of `line` (no hard breaks) reaches, in twips, in a column
- * `width` wide: greedy, breaking after a space or beside a CJK character, as Word does.
+ * The question's nodes with its source on a line of its own above them, at the left edge of
+ * the question number (the number hangs from the margin, so the line starts there), in the
+ * numbered line's style, size and fonts. It keeps with the question (`keepNext`): the
+ * preview's paginator never breaks after it, and the `.docx` breaks where the preview does.
+ * A bilingual paper prints the label once, both sides on one line when they differ
+ * (`trailLabel`). Untouched when the question has no source.
  */
-export function lastLineReach(line: RichText, width: number, fontSize: number, latinFont: string): number {
-  const tokens: RichText[] = [];
-  for (const run of line) {
-    for (const piece of run.text.match(/[\u2e80-\u9fff\uf900-\ufaff\ufe30-\ufe4f\uff00-\uffef\u3000-\u303f]|[^\s\u2e80-\u9fff\uf900-\ufaff\ufe30-\ufe4f\uff00-\uffef\u3000-\u303f]+\s*|\s+/g) ?? []) {
-      tokens.push([{ ...run, text: piece }]);
-    }
-  }
-  let reach = 0;
-  for (const token of tokens) {
-    const word = token[0].text.replace(/\s+$/, '');
-    const solid = lineWidthTwips([{ ...token[0], text: word }], fontSize, latinFont);
-    const whole = lineWidthTwips(token, fontSize, latinFont);
-    if (reach > 0 && word && reach + solid > width) reach = 0;
-    reach += whole;
-    if (!word && reach > width) reach = 0;
-  }
-  // A line's trailing space does not take room from the label (Word lets it hang).
-  const last = tokens[tokens.length - 1]?.[0];
-  if (last) reach -= lineWidthTwips([{ ...last, text: last.text.slice(last.text.replace(/\s+$/, '').length) }], fontSize, latinFont);
-  return Math.max(0, reach);
-}
-
-/**
- * Whether the label fits after the numbered line's last words, with room to spare: an em and
- * a half, so a line the estimate (`textWidth.ts`, which errs wide) calls borderline goes to a
- * line of its own in every backend rather than to each backend's own wrap. A bilingual paper
- * prints both sides of the stem and a label in both languages: always its own line.
- */
-export function sourceFits(node: TextNode, label: string, language: LanguageMode, page: PageMetrics, indents: ListIndentScheme): boolean {
-  if (language === 'bilingual') return false;
-  const runs = node.text[language].length > 0 ? node.text[language] : node.text[language === 'en' ? 'zh' : 'en'];
-  // A text ending in hard breaks already sets its label on a line the preview measures.
-  if (trailingBlankLines(runs) > 0) return true;
-  const fontSize = node.format?.fontSize ?? page.fontSize;
-  const width = page.textWidth - (indents.question[0]?.left ?? 0);
-  const lines = splitRunLines(runs);
-  const reach = lastLineReach(lines[lines.length - 1] ?? [], width, fontSize, page.latinFont);
-  const room = lineWidthTwips([{ text: label }], fontSize, page.latinFont) + 1.5 * fontSize * 20;
-  return reach + room <= width;
-}
-
-/**
- * The question's nodes with its source on the numbered first line. Untouched when the
- * question has no source, or its numbered line already carries marks or a trail.
- */
-export function withSourceTrail(
+export function withSourceLine(
   nodes: RenderNode[],
   question: Question,
-  {
-    language,
-    page = DEFAULT_PAGE_METRICS,
-    indents,
-    format = 'full',
-  }: { language: LanguageMode; page?: PageMetrics; indents: ListIndentScheme; format?: QuestionSourceFormat },
+  { language, indents, format = 'full' }: { language: LanguageMode; indents: ListIndentScheme; format?: QuestionSourceFormat },
 ): RenderNode[] {
   const source = sourceOf(question);
-  if (!source) return nodes;
-  const at = nodes.findIndex((node) => node.kind === 'text' && node.listRef?.definition === 'question' && node.listRef.level === 0);
-  const numbered = nodes[at];
-  if (!numbered || numbered.kind !== 'text' || numbered.marks !== undefined || numbered.trail !== undefined) return nodes;
-  const trail = sourceTrail(source, format);
-  const fits = sourceFits(numbered, trailLabel(trail, language), language, page, indents);
-  const out = [...nodes];
-  out[at] = { ...numbered, trail, ...(fits ? {} : { trailOwnLine: true as const }) };
-  return out;
+  if (!source || nodes.length === 0) return nodes;
+  const numbered = nodes.find((node): node is TextNode => node.kind === 'text' && node.listRef?.definition === 'question' && node.listRef.level === 0);
+  const label = trailLabel(sourceTrail(source, format), language);
+  if (!label) return nodes;
+  const run = [{ text: label }];
+  const { fontSize, fonts } = numbered?.format ?? {};
+  const level = indents.question[0];
+  const numberEdge = level ? level.left - level.hanging : 0;
+  const line: TextNode = {
+    kind: 'text',
+    style: numbered?.style ?? 'Question Stem',
+    text: { en: run, zh: language === 'bilingual' ? [] : run },
+    ...(fontSize !== undefined || fonts !== undefined ? { format: { ...(fontSize !== undefined ? { fontSize } : {}), ...(fonts !== undefined ? { fonts } : {}) } } : {}),
+    ...(numberEdge > 0 ? { indent: numberEdge } : {}),
+    keepNext: true,
+  };
+  return [line, ...nodes];
 }
