@@ -65,7 +65,15 @@ const barRow = () =>
     const kids = [...bar.children].filter((el) => el.getBoundingClientRect().width > 0 && !el.classList.contains('flex-1'));
     const mids = kids.map((el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; });
     const h2 = bar.querySelector('h2');
+    const box = bar.getBoundingClientRect();
+    const ans = bar.querySelector('[data-pastpaper-show-answers]')?.getBoundingClientRect();
+    const chips = bar.querySelector('[role="group"]')?.getBoundingClientRect();
+    const rightmost = Math.max(...kids.map((el) => el.getBoundingClientRect().right));
     return {
+      // Show answers in sight without scrolling, in front of the filters (narrow), or last (from 1280 px; u-jwar).
+      answersSeen: !ans || (ans.left >= box.left - 1 && ans.right <= box.right + 1),
+      answersFront: !ans || (chips !== undefined && ans.right <= chips.left),
+      answersLast: !ans || ans.right >= rightmost - 1,
       spread: Math.max(...mids) - Math.min(...mids),
       height: bar.getBoundingClientRect().height,
       answers: bar.querySelector('[data-pastpaper-show-answers]') !== null,
@@ -107,13 +115,15 @@ for (const lang of ['en', 'zh']) {
         await page.setViewportSize({ width, height: 900 });
         await page.waitForTimeout(150);
         const row = await barRow();
-        const ok = row.spread < 4 && row.height < 60 && (view === 'arrange' || row.answers) && (!row.truncated || row.full);
-        if (!ok || (width >= 1280 && row.scrolls)) bad.push(`${width}px spread ${row.spread.toFixed(1)} h ${row.height.toFixed(0)}${row.scrolls ? ' scrolls' : ''}${row.truncated ? ' truncated' : ''}`);
+        const placed = width >= 1280 ? row.answersLast : row.answersSeen && row.answersFront;
+        const ok = row.spread < 4 && row.height < 60 && (view === 'arrange' || row.answers) && (!row.truncated || row.full) && placed;
+        if (!ok || (width >= 1280 && row.scrolls)) bad.push(`${width}px spread ${row.spread.toFixed(1)} h ${row.height.toFixed(0)}${row.scrolls ? ' scrolls' : ''}${row.truncated ? ' truncated' : ''}${placed ? '' : ' answers misplaced'}`);
         if (lang === 'zh' && id === 'economic-free-goods' && width === 1440) await page.screenshot({ path: `${OUT}/after-filterbar-zh-1440.png`, clip: { x: 0, y: 0, width, height: 140 } });
         if (lang === 'en' && id === 'tax-base-tax-net-effects-of-tax-changes' && width === 1280) await page.screenshot({ path: `${OUT}/after-filterbar-en-1280-long.png`, clip: { x: 0, y: 0, width, height: 140 } });
-        if (lang === 'zh' && id === 'tax-base-tax-net-effects-of-tax-changes' && width === 760) await page.screenshot({ path: `${OUT}/after-filterbar-zh-760.png` });
+        if (lang === 'zh' && id === 'tax-base-tax-net-effects-of-tax-changes' && width === 760) await page.screenshot({ path: `${OUT}/after-filterbar-zh-760.png`, clip: { x: 0, y: 0, width, height: 420 } });
+        if (lang === 'en' && id === 'economic-free-goods' && width === 1024) await page.screenshot({ path: `${OUT}/after-filterbar-en-1024.png`, clip: { x: 0, y: 0, width, height: 140 } });
       }
-      check(bad.length === 0, `${lang} ${view}${id ? ` ${id}` : ''}: one row at ${WIDTHS.join(', ')} px${view === 'arrange' ? '' : ', Show answers on it'}; no sideways scroll from 1280 up`, bad.join('; '));
+      check(bad.length === 0, `${lang} ${view}${id ? ` ${id}` : ''}: one row at ${WIDTHS.join(', ')} px${view === 'arrange' ? '' : ', Show answers on it: in front and in sight below 1280 px, last from 1280'}; no sideways scroll from 1280 up`, bad.join('; '));
     }
   }
 }
@@ -139,6 +149,23 @@ const firstSource = await arrange.locator('[data-arrange-source]').first().inner
 const SHORT = /^(DSE|CE|AL)(\d{4}|SP|PP)\/P\d\/Q\d+$/;
 check(SHORT.test(firstSource), `each row names its source in the short form: “${firstSource}”`);
 await page.screenshot({ path: `${OUT}/after-arrange-en.png` });
+
+// One tap: Collapse all 全部收合 folds every part and topic; Show all 全部展開 opens them all (u-hwfl).
+const showAll = arrange.locator('[data-arrange-show-all]');
+check((await showAll.getAttribute('data-arrange-show-all')) === 'open' && (await showAll.innerText()) === 'Collapse all', 'Arrange opens with everything shown; the button reads Collapse all');
+await showAll.click();
+await page.waitForTimeout(300);
+check((await arrange.locator('[data-arrange-row]').count()) === 0 && (await showAll.innerText()) === 'Show all', 'Collapse all folds every part and topic; the button reads Show all');
+await page.screenshot({ path: `${OUT}/after-collapsed-en.png` });
+// One topic opened by hand still leaves "Show all" to open the rest in one tap.
+await arrange.locator('[data-arrange-part="C"] button[aria-expanded]').first().click();
+await arrange.locator('[data-arrange-topic="elasticity"] button[aria-expanded]').first().click();
+await page.waitForTimeout(200);
+const partly = await arrange.locator('[data-arrange-row]').count();
+await showAll.click();
+await page.waitForTimeout(800);
+const allRows = await arrange.locator('[data-arrange-row]').count();
+check(partly > 0 && partly < 200 && allRows === 1759 && (await showAll.innerText()) === 'Collapse all', `Show all opens every part and topic: ${allRows} questions (from ${partly} with one topic open)`);
 
 // Choose a topic with at least four questions in part A.
 const topicIds = await arrange.locator('[data-arrange-part="A"] [data-arrange-topic]').evaluateAll((els) => els.map((el) => el.getAttribute('data-arrange-topic')));
@@ -308,6 +335,86 @@ writeFileSync(file2, readFileSync(await download2.path()));
 const xml2 = (await (await JSZip.loadAsync(readFileSync(file2))).file('word/document.xml').async('string')).replace(/<[^>]+>/g, '').replace(/&amp;/g, '&');
 const dAt = enTitles.reduce((out, title) => [...out, xml2.indexOf(title, (out.at(-1) ?? -1) + 1)], []);
 check(dAt.every((n, i) => n >= 0 && (i === 0 || n > dAt[i - 1])), 'en: the .docx prints the headings in order', dAt.join(' '));
+
+// The editor's 題庫 tab: Arrange there too (u-jwar), the same saved order and ticks.
+await page.getByRole('tab', { name: /Bank/ }).first().click();
+await page.getByRole('radio', { name: 'Past papers', exact: true }).click();
+const tabBox = page.locator('[data-pastpaper-tab]');
+await tabBox.locator('[data-pastpaper-view="arrange"]').click();
+const tabArr = page.locator('[data-pastpaper-arrange="tab"]');
+await tabArr.locator('[data-arrange-row]').first().waitFor({ timeout: 60_000 });
+await page.waitForTimeout(600);
+const tabRows = (topic) => tabArr.locator(`[data-arrange-topic="${topic}"] [data-arrange-row]`).evaluateAll((els) => els.map((el) => el.getAttribute('data-arrange-row')));
+check(SHORT.test(await tabArr.locator('[data-arrange-source]').first().textContent()), 'tab: rows with the short source');
+check(!(await tabArr.locator('[data-arrange-show-sources] input').isChecked()), 'tab: Show source off by default');
+await page.screenshot({ path: `${OUT}/after-tab-arrange-en.png` });
+const tabAll = tabArr.locator('[data-arrange-show-all]');
+await tabAll.click();
+await page.waitForTimeout(300);
+const foldedRows = await tabArr.locator('[data-arrange-row]').count();
+await page.screenshot({ path: `${OUT}/after-tab-collapsed-en.png` });
+await tabAll.click();
+await page.waitForTimeout(800);
+check(foldedRows === 0 && (await tabArr.locator('[data-arrange-row]').count()) === 1759, 'tab: Collapse all / Show all in one tap each');
+// Go to a topic, then drag inside it.
+await tabArr.locator('[data-arrange-go-to]').selectOption('division-of-labour');
+await page.waitForTimeout(600);
+const dl = await tabRows('division-of-labour');
+const tThird = tabArr.locator(`[data-arrange-row="${dl[2]}"]`);
+const tFirst = tabArr.locator(`[data-arrange-row="${dl[0]}"]`);
+await tFirst.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+const tf = await tThird.boundingBox();
+const tt = await tFirst.boundingBox();
+await page.mouse.move(tf.x + 30, tf.y + tf.height / 2);
+await page.mouse.down();
+await page.mouse.move(tf.x + 30, tf.y + tf.height / 2 - 10, { steps: 3 });
+await page.mouse.move(tt.x + 30, tt.y + 6, { steps: 8 });
+await page.mouse.up();
+await page.waitForTimeout(300);
+let dlNow = await tabRows('division-of-labour');
+check(dlNow[0] === dl[2] && dlNow[1] === dl[0], 'tab: a drag reorders', dlNow.slice(0, 3).join(' '));
+await tabArr.locator(`[data-arrange-row="${dl[2]}"]`).focus();
+await page.keyboard.press('Alt+ArrowDown');
+await page.waitForTimeout(200);
+dlNow = await tabRows('division-of-labour');
+check(dlNow[0] === dl[0] && dlNow[1] === dl[2], 'tab: Alt + ↓ moves one place down', dlNow.slice(0, 3).join(' '));
+// Tick two topics in one click each; Add puts them into this paper, a heading per topic.
+const tabTitle = async (topic) => (await tabArr.locator(`[data-arrange-topic-head="${topic}"] h4`).textContent()).trim();
+const t1 = await tabTitle('division-of-labour');
+const t2 = await tabTitle('types-of-goods');
+await tabArr.locator('[data-arrange-topic-check="division-of-labour"]').check();
+await tabArr.locator('[data-arrange-topic-check="types-of-goods"]').check();
+const tabTray = tabArr.locator('[data-arrange-tray]');
+check((await tabTray.innerText()).includes(`${dl.length + 7} ticked`), `tab: two ticks select ${dl.length + 7}`);
+await page.screenshot({ path: `${OUT}/after-tab-ticked-en.png` });
+await tabTray.locator('[data-arrange-add]').click();
+await page.waitForTimeout(3500);
+const after = (await page.locator('#print-root').innerText()).replace(/\s+/g, ' ');
+const h1 = after.lastIndexOf(t1);
+const h2 = after.lastIndexOf(t2);
+check(h1 > 0 && h2 > h1, `tab: Add puts both topics into this paper under their headings, in order (${t1}, ${t2})`);
+await page.locator('#print-root').getByText(t2, { exact: true }).last().scrollIntoViewIfNeeded().catch(() => {});
+await page.screenshot({ path: `${OUT}/after-tab-added-en.png` });
+// New worksheet from ticked questions: a new paper opens with them.
+await tabArr.locator('[data-arrange-topic-check="circular-flow"]').check();
+await tabTray.locator('[data-arrange-new]').click();
+await page.waitForTimeout(3500);
+const contentTab = await page.getByRole('tab', { name: /^Content/ }).first().innerText();
+check(/Content\s*7\b/.test(contentTab), `tab: New worksheet opens a new paper with the 7 ticked questions (${contentTab.replace(/\s+/g, ' ')})`);
+// Shared with the bank screen: tick one in the tab, then go Home → Past paper bank → Arrange.
+await page.getByRole('tab', { name: /Bank/ }).first().click().catch(() => {});
+await page.waitForTimeout(800);
+const tabArr2 = page.locator('[data-pastpaper-arrange="tab"]');
+await tabArr2.locator('[data-arrange-row]').first().waitFor({ timeout: 60_000 });
+const oneKey = (await tabArr2.locator('[data-arrange-topic="equity"] [data-arrange-row]').first().getAttribute('data-arrange-row'));
+await tabArr2.locator(`[data-arrange-row="${oneKey}"] input[type="checkbox"]`).check();
+await page.getByRole('button', { name: 'Econ Studio home' }).first().click();
+await page.getByRole('button', { name: /Past paper bank 歷屆試題庫/ }).first().click();
+await arrange.locator('[data-arrange-row]').first().waitFor({ timeout: 60_000 });
+await page.waitForTimeout(500);
+check((await rowsOf('division-of-labour')).join() === dlNow.join(), 'the screen shows the order made in the tab');
+check(await arrange.locator(`[data-arrange-row="${oneKey}"] input[type="checkbox"]`).isChecked(), 'and the tick made in the tab');
+await arrange.locator('[data-arrange-reset-all]').click();
 
 await browser.close();
 console.log(failures === 0 ? '\nall checks passed' : `\n${failures} check(s) failed`);

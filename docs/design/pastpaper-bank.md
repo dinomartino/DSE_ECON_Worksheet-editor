@@ -356,7 +356,8 @@ source in the editor's Short form (DSE2024/P1/Q38, `pack.ts:shortSourceLabel`); 
 Move to…), ticks a part or topic whole, and makes a worksheet from a part, a topic or the
 ticked set in that order: copies from several topics get a heading per topic (the teacher's
 topic, in the teacher's order), and sources print Short only when Arrange's own Show source
-tick (off each visit) is on. The order is a view only: kept per bank address in localStorage
+tick (off each visit) is on. Arrange is in the editor's 題庫 tab too (u-jwar): the same order and ticks, Add into the open
+paper, New worksheet opens a new one. The order is a view only: kept per bank address in localStorage
 (`econgen.pastPaperArrange.v1`, only the topics changed, by source tag), never in a document,
 a backup or the bank. A later publish's new questions go to the end of their own topic; a
 question or topic the bank drops leaves the lists. Code: `src/pastpapers/arrange.ts`,

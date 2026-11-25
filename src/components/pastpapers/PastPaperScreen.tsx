@@ -356,6 +356,11 @@ export function PastPaperScreen({
               <span className="shrink-0 whitespace-nowrap text-[12px] tabular-nums text-ink-subtle" role="status">
                 {m.shown(entries.length, browse.poolSize)}
               </span>
+              {/* In front in a narrow window, so the sideways scroll never hides it (u-jwar); last from 1280 px. */}
+              <label className="flex shrink-0 cursor-pointer xl:order-last items-center gap-1.5 whitespace-nowrap text-[12px] text-ink-muted" data-pastpaper-show-answers>
+                <input type="checkbox" checked={answers} onChange={(e) => setAnswers(e.target.checked)} className="accent-[var(--color-accent)]" />
+                {m.showAnswers}
+              </label>
               <span className="flex-1" />
               {filters.words.trim() !== '' && (
                 <div role="radiogroup" aria-label={m.scopeLabel} className="flex shrink-0 whitespace-nowrap rounded-md border border-line p-0.5">
@@ -379,10 +384,6 @@ export function PastPaperScreen({
               <YearSelects filters={filters} years={browse.years} onChange={setFilters} />
               {!byYear && <PaperSelect filters={filters} papers={browse.papers} language={language} onChange={setFilters} />}
               <LanguageToggle value={language} onChange={setLanguage} />
-              <label className="flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap text-[12px] text-ink-muted" data-pastpaper-show-answers>
-                <input type="checkbox" checked={answers} onChange={(e) => setAnswers(e.target.checked)} className="accent-[var(--color-accent)]" />
-                {m.showAnswers}
-              </label>
             </div>
 
             <div className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-desk px-6 py-5">

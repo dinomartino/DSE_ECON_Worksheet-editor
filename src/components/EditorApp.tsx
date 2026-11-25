@@ -710,7 +710,7 @@ export function EditorApp({
           {!readOnly && <PasteOfferBar />}
         </div>
         {/* The sidebar is an inspector for editing; read-only has nothing to inspect with. */}
-        {!readOnly && <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} />}
+        {!readOnly && <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} onOpenDocument={onOpenDocument} />}
       </div>
 
       {/* ⌘K, and the top bar's 🔍: find any command by name (k-0201). */}

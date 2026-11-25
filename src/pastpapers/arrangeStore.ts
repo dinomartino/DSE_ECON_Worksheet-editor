@@ -81,3 +81,29 @@ export function useArrangement(base: string | undefined): [Arrangement, (next: A
   }, [base]);
   return [value, set];
 }
+
+/**
+ * The ticked questions of Arrange, shared by the bank screen and the editor's 題庫 tab (u-jwar):
+ * ticks made in one are there in the other. This window only; never stored.
+ */
+let ticks: ReadonlySet<string> = new Set();
+const tickListeners = new Set<() => void>();
+
+export function setArrangeTicks(next: ReadonlySet<string> | ((now: ReadonlySet<string>) => ReadonlySet<string>)) {
+  ticks = typeof next === 'function' ? next(ticks) : next;
+  for (const listener of tickListeners) listener();
+}
+
+const EMPTY_TICKS: ReadonlySet<string> = new Set();
+
+export function useArrangeTicks(): [ReadonlySet<string>, typeof setArrangeTicks] {
+  const value = useSyncExternalStore(
+    (listener) => {
+      tickListeners.add(listener);
+      return () => tickListeners.delete(listener);
+    },
+    () => ticks,
+    () => EMPTY_TICKS,
+  );
+  return [value, setArrangeTicks];
+}
