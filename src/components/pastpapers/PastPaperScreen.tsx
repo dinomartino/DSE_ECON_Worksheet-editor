@@ -347,16 +347,18 @@ export function PastPaperScreen({
           )}
 
           <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-6 py-2.5">
-              <h2 className="text-[15px] font-semibold text-ink" data-pastpaper-heading>
+            {/* One row at every width and title (u-huv8): the paper select shrinks first, then the title
+                truncates (full title on hover); only a very narrow window scrolls the row sideways. */}
+            <div className="scroll-slim flex shrink-0 flex-nowrap items-center gap-x-3 overflow-x-auto border-b border-line px-6 py-2.5" data-pastpaper-filterbar>
+              <h2 className="min-w-[4rem] shrink truncate text-[15px] font-semibold text-ink" title={heading} data-pastpaper-heading>
                 {heading}
               </h2>
-              <span className="text-[12px] tabular-nums text-ink-subtle" role="status">
+              <span className="shrink-0 whitespace-nowrap text-[12px] tabular-nums text-ink-subtle" role="status">
                 {m.shown(entries.length, browse.poolSize)}
               </span>
               <span className="flex-1" />
               {filters.words.trim() !== '' && (
-                <div role="radiogroup" aria-label={m.scopeLabel} className="flex rounded-md border border-line p-0.5">
+                <div role="radiogroup" aria-label={m.scopeLabel} className="flex shrink-0 whitespace-nowrap rounded-md border border-line p-0.5">
                   {[false, true].map((all) => (
                     <button
                       key={String(all)}
@@ -373,11 +375,11 @@ export function PastPaperScreen({
                   ))}
                 </div>
               )}
-              <ExamChips filters={filters} onChange={setFilters} />
+              <ExamChips filters={filters} onChange={setFilters} wrap={false} />
               <YearSelects filters={filters} years={browse.years} onChange={setFilters} />
               {!byYear && <PaperSelect filters={filters} papers={browse.papers} language={language} onChange={setFilters} />}
               <LanguageToggle value={language} onChange={setLanguage} />
-              <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted">
+              <label className="flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap text-[12px] text-ink-muted" data-pastpaper-show-answers>
                 <input type="checkbox" checked={answers} onChange={(e) => setAnswers(e.target.checked)} className="accent-[var(--color-accent)]" />
                 {m.showAnswers}
               </label>
