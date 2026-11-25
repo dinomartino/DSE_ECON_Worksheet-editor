@@ -171,8 +171,8 @@ export function commitBankCopies(
   }: {
     summary?: (count: number) => string;
     at?: number;
-    /** Per found question, a layout element to print before its copy (the Past paper bank's stimuli). */
-    leads?: readonly (LayoutElement | undefined)[];
+    /** Per found question, layout elements to print before its copy (the Past paper bank's stimuli, Arrange's topic headings). */
+    leads?: readonly (LayoutElement | readonly LayoutElement[] | undefined)[];
     /** Paper-level fields written in the same commit as the copies (`insertQuestionCopies`). */
     patch?: Partial<Worksheet>;
   } = {},

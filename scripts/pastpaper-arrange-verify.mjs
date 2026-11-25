@@ -1,5 +1,6 @@
 import { chromium } from 'playwright-core';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import JSZip from 'jszip';
 
 /**
@@ -148,10 +149,11 @@ await arrange.locator('[data-arrange-row]').first().waitFor({ timeout: 60_000 })
 check((await rowsOf(topicA)).join() === arrangedA.join() && (await rowsOf(topicB)).join() === arrangedB.join(), 'the arrangement and the view survive a reload');
 
 // A topic into a new worksheet, in this order, sources shown.
-await arrange.locator(`[data-arrange-row="${arrangedB[0]}"] input[type="checkbox"]`).check();
-const sourcesBox = tray.locator('[data-pastpaper-show-sources] input');
+// Arrange's own Show source tick (u-n9h1): off unless ticked, every visit.
+const sourcesBox = arrange.locator('[data-arrange-show-sources] input');
+check(!(await sourcesBox.isChecked()), 'Show source in Arrange is off by default');
+check((await tray.count()) === 0 || (await tray.locator('[data-pastpaper-show-sources]').count()) === 0, 'the tray has no second Show source box');
 await sourcesBox.check();
-await tray.getByRole('button', { name: 'Clear', exact: true }).click();
 const labelsOf = async (keys) => {
   const out = [];
   for (const key of keys) out.push(await arrange.locator(`[data-arrange-row="${key}"] [data-arrange-source]`).first().textContent());
@@ -198,6 +200,51 @@ await arrange.locator('[data-arrange-reset-all]').click();
 await page.waitForTimeout(300);
 check((await rowsOf(topicA)).join() === start.join() && (await rowsOf(topicB)).join() === bStart.join(), 'Reset all brings back the bank’s order');
 check((await arrange.locator('[data-arrange-changed]').count()) === 0, 'no topic marked after Reset all');
+
+// A whole part into a worksheet: a heading per topic, in order (u-n9h1); Show source left off.
+const partWorksheet = async (lang) => {
+  await openBank();
+  await arrange.locator('[data-arrange-row]').first().waitFor({ timeout: 60_000 });
+  await page.waitForTimeout(500);
+  check(!(await arrange.locator('[data-arrange-show-sources] input').isChecked()), `${lang}: Show source is off again on a new visit`);
+  const titles = await arrange.locator('[data-arrange-part="A"] [data-arrange-topic-head] h4').evaluateAll((els) => els.map((el) => el.textContent.trim()));
+  await arrange.locator('[data-arrange-part="A"] > div [data-arrange-make]').first().click();
+  await page.locator('#print-root').waitFor({ timeout: 120_000 });
+  await page.getByRole('button', { name: /^(Done|完成)$/ }).click().catch(() => {});
+  await page.waitForTimeout(4000);
+  const pageWords = (await page.locator('#print-root').innerText()).replace(/\s+/g, ' ');
+  // Each heading after the one before (a topic's name can also be a word in an earlier question).
+  const inTurn = (text, words) => words.reduce((out, word) => [...out, text.indexOf(word, (out.at(-1) ?? -1) + 1)], []);
+  const at = inTurn(pageWords, titles);
+  check(titles.length >= 6 && at.every((n, i) => n >= 0 && (i === 0 || n > at[i - 1])), `${lang}: part A worksheet: ${titles.length} topic headings on the page, in order`, titles.map((t, i) => `${t}@${at[i]}`).join(', '));
+  check(!/\((DSE|CE|AL)(\d{4}|SP|PP)\/P\d\/Q\d+\)/.test(pageWords), `${lang}: no source printed with Show source off`);
+  const first = page.locator('#print-root').getByText(titles[1], { exact: true }).first();
+  await first.scrollIntoViewIfNeeded().catch(() => {});
+  await page.screenshot({ path: `${OUT}/after-headings-${lang}.png` });
+  // The PDF: the page printed.
+  await page.emulateMedia({ media: 'print' });
+  const pdf = `${OUT}/after-headings-${lang}.pdf`;
+  await page.pdf({ path: pdf, format: 'A4', printBackground: true, preferCSSPageSize: true });
+  await page.emulateMedia({ media: 'screen' });
+  const printed = execFileSync('pdftotext', ['-layout', pdf, '-'], { encoding: 'utf8' }).replace(/\s+/g, '');
+  const pAt = inTurn(printed, titles.map((title) => title.replace(/\s+/g, '')));
+  check(pAt.every((n, i) => n >= 0 && (i === 0 || n > pAt[i - 1])), `${lang}: the PDF prints the headings in order`, pAt.join(' '));
+  return titles;
+};
+const zhTitles = await partWorksheet('zh');
+check(zhTitles.includes('稀少性') || zhTitles.some((t) => /[\u4e00-\u9fff]/.test(t)), `中文 headings: ${zhTitles.slice(0, 3).join('、')}`);
+
+await page.evaluate(() => localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: 'en', paper: 'en' })));
+const enTitles = await partWorksheet('en');
+await page.getByRole('button', { name: /^Export/ }).first().click();
+const exporter2 = page.getByRole('dialog');
+await exporter2.getByText('.docx', { exact: true }).click();
+const [download2] = await Promise.all([page.waitForEvent('download', { timeout: 120_000 }), exporter2.getByRole('button', { name: /^Export \.docx/ }).click()]);
+const file2 = `${OUT}/after-headings-en.docx`;
+writeFileSync(file2, readFileSync(await download2.path()));
+const xml2 = (await (await JSZip.loadAsync(readFileSync(file2))).file('word/document.xml').async('string')).replace(/<[^>]+>/g, '').replace(/&amp;/g, '&');
+const dAt = enTitles.reduce((out, title) => [...out, xml2.indexOf(title, (out.at(-1) ?? -1) + 1)], []);
+check(dAt.every((n, i) => n >= 0 && (i === 0 || n > dAt[i - 1])), 'en: the .docx prints the headings in order', dAt.join(' '));
 
 await browser.close();
 console.log(failures === 0 ? '\nall checks passed' : `\n${failures} check(s) failed`);

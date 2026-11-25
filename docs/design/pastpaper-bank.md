@@ -354,7 +354,9 @@ The teacher's own order of the bank (users u-dqw8 + u-o86n): the screen's third 
 every question by syllabus part and bank topic, off the list's search index, each with its
 source in the editor's Short form (DSE2024/P1/Q38, `pack.ts:shortSourceLabel`); its papers print sources Short. The teacher reorders inside a topic, moves questions between topics (drag, Alt + ↑ ↓,
 Move to…), ticks a part or topic whole, and makes a worksheet from a part, a topic or the
-ticked set in that order. The order is a view only: kept per bank address in localStorage
+ticked set in that order: copies from several topics get a heading per topic (the teacher's
+topic, in the teacher's order), and sources print Short only when Arrange's own Show source
+tick (off each visit) is on. The order is a view only: kept per bank address in localStorage
 (`econgen.pastPaperArrange.v1`, only the topics changed, by source tag), never in a document,
 a backup or the bank. A later publish's new questions go to the end of their own topic; a
 question or topic the bank drops leaves the lists. Code: `src/pastpapers/arrange.ts`,

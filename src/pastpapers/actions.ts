@@ -2,7 +2,8 @@ import { commitBankCopies } from '@/components/bank/bankSession';
 import { copyToBank, oneBank, type BankTarget } from '@/library/bankDocs';
 import { rootIdOf } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
-import type { QuestionSourceFormat, Worksheet } from '@/model/types';
+import { createHeadingElement } from '@/model/flow';
+import type { BiText, LayoutElement, Question, QuestionSourceFormat, Worksheet } from '@/model/types';
 import { hasQuestionSources, printsQuestionSources } from '@/render/questionSource';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { worksheetStore, type WorksheetStore } from '@/storage';
@@ -37,10 +38,41 @@ export const sourceChoiceDecides = (worksheet: Pick<Worksheet, 'questions'>) => 
  * first sourced questions prints their sources, in `sourceFormat`, in the same commit
  * (`sourceChoiceDecides`).
  */
+/** The topic a question goes in under (Arrange, k-0556): its key and its printed name. */
+export interface TopicHeading {
+  key: string;
+  text: BiText;
+}
+
+/**
+ * Per planned copy, the heading to print before it: one at the first copy of each run of a
+ * topic, and none at all when the copies come from one topic only (Arrange, k-0556). Copies
+ * left out (already in the paper) take no heading, so a topic never heads an empty run.
+ */
+export function topicHeadingLeads(
+  questions: readonly Pick<Question, 'id' | 'lineage'>[],
+  topicOf: ReadonlyMap<string, TopicHeading>,
+): (LayoutElement | undefined)[] {
+  const topics = questions.map((question) => topicOf.get(rootIdOf(question)));
+  if (new Set(topics.map((topic) => topic?.key)).size < 2) return questions.map(() => undefined);
+  return topics.map((topic, index) =>
+    topic && topic.key !== topics[index - 1]?.key ? createHeadingElement({ en: [...topic.text.en], zh: [...topic.text.zh] }) : undefined,
+  );
+}
+
 export function insertIntoOpen(
   items: readonly PastPaperItem[],
   summary: (added: number, skipped: number) => string,
-  { showSources = false, sourceFormat = 'full' }: { showSources?: boolean; sourceFormat?: QuestionSourceFormat } = {},
+  {
+    showSources = false,
+    sourceFormat = 'full',
+    topics,
+  }: {
+    showSources?: boolean;
+    sourceFormat?: QuestionSourceFormat;
+    /** By question (`rootId`), the topic it goes in under: a heading starts each topic's run (Arrange, k-0556). */
+    topics?: ReadonlyMap<string, TopicHeading>;
+  } = {},
 ): InsertOutcome {
   const store = useWorksheetStore.getState();
   if (store.readOnly) return { inserted: [], skipped: 0, refused: 'readOnly' };
@@ -49,13 +81,18 @@ export function insertIntoOpen(
   const plan = planCopies(items, held);
   if (plan.questions.length === 0) return { inserted: [], skipped };
   const turnOn = showSources && sourceChoiceDecides(store.worksheet) && !printsQuestionSources(store.worksheet);
+  const headings = topics ? topicHeadingLeads(plan.questions, topics) : [];
+  const leads = plan.leads.map((stimulus, index) => {
+    const heading = headings[index];
+    return heading && stimulus ? [heading, stimulus] : (heading ?? stimulus);
+  });
   const { inserted } = commitBankCopies(
     {
       openId: store.worksheet.id,
       found: plan.questions.map((question, index) => ({ question, docId: plan.fromDocIds[index] })),
       missing: [],
     },
-    { summary: (count) => summary(count, skipped), leads: plan.leads, ...(turnOn ? { patch: sourcesPatch(store.worksheet, sourceFormat) } : {}) },
+    { summary: (count) => summary(count, skipped), leads, ...(turnOn ? { patch: sourcesPatch(store.worksheet, sourceFormat) } : {}) },
   );
   if (inserted[0]) useWorksheetStore.getState().select(inserted[0]);
   return { inserted, skipped };
