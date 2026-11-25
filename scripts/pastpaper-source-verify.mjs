@@ -76,6 +76,52 @@ const pick = async (source) => {
 // Labels print with no-break spaces (`render/questionSource.ts:sourceTrail`); compared as spaces.
 const pageText = async () => (await page.locator('#print-root').innerText()).replace(/\u00a0/g, ' ');
 
+/**
+ * Where each label sits (user u-tchj): a paragraph of its own right above its question, its
+ * words starting at the question number's left edge, on the same sheet.
+ */
+const placements = (labels) =>
+  page.evaluate((labels) => {
+    const ps = [...document.querySelectorAll('#print-root p')];
+    return labels.map((label) => {
+      const own = ps.find((p) => p.textContent.replace(/\u00a0/g, ' ').trim() === label);
+      if (!own) return { label, own: false };
+      const next = ps[ps.indexOf(own) + 1];
+      const marker = next && [...next.querySelectorAll('span.absolute')].find((span) => /^\d+\.$/.test(span.textContent.trim()));
+      if (!marker) return { label, own: true, marker: false };
+      const range = document.createRange();
+      range.selectNodeContents(own);
+      const words = range.getBoundingClientRect();
+      const number = marker.getBoundingClientRect();
+      return {
+        label,
+        own: true,
+        marker: true,
+        dx: Math.round((words.left - number.left) * 10) / 10,
+        above: words.bottom <= number.top + 2,
+        samePage: own.closest('[data-page-index]') === next.closest('[data-page-index]'),
+      };
+    });
+  }, labels);
+const placedWell = (p) => p.own && p.marker && Math.abs(p.dx) <= 2 && p.above && p.samePage;
+
+/** In the PDF's text (`pdftotext -layout`): the label alone on its line, the numbered line next, same column, same page. */
+const pdfPlacements = (printed, labels) => {
+  const pages = printed.split('\f');
+  return labels.map((label) => {
+    const want = label.replace(/\s+/g, '');
+    for (const sheet of pages) {
+      const lines = sheet.split('\n');
+      const at = lines.findIndex((line) => line.replace(/[\s\u00a0]+/g, '') === want);
+      if (at < 0) continue;
+      const next = lines.slice(at + 1).find((line) => line.trim() !== '');
+      const indent = (line) => line.length - line.trimStart().length;
+      return { label, own: true, numbered: next !== undefined && /^\s*\d+\.\s*\S/.test(next), column: next === undefined ? undefined : indent(lines[at]) - indent(next) };
+    }
+    return { label, own: false };
+  });
+};
+
 const exportDocx = async (language, state) => {
   await page.getByRole('button', { name: /^Export/ }).first().click();
   const exporter = page.getByRole('dialog');
@@ -136,16 +182,27 @@ for (const language of ['en', 'zh']) {
   await page.screenshot({ path: `${OUT}/${tag}-worksheet-${language}.png` });
   const others = ALL_LABELS(language).filter((label) => !LABEL[language].includes(label));
   check(!others.some((label) => text.includes(label)), `${language}: no other format's label on the page`);
+  for (const placed of await placements(LABEL[language])) {
+    check(placedWell(placed), `${language}: ${placed.label} is on its own line above its question, at the number's left edge`, JSON.stringify(placed));
+  }
 
   if (!phone) {
     const xml = await exportDocx(language, 'on');
     for (const label of LABEL[language]) check(xml.includes(label), `${language}: the .docx prints ${label}`);
+    const paragraphs = xml.match(/<w:p[ >](?:(?!<\/w:p>).)*<\/w:p>/g) ?? [];
+    for (const label of LABEL[language]) {
+      const at = paragraphs.findIndex((p) => p.replace(/<[^>]+>/g, '') === label);
+      check(at >= 0 && !paragraphs[at].includes('<w:numPr>') && (paragraphs[at + 1].includes('<w:numPr>') || /^\s*\d+\./.test(paragraphs[at + 1].replace(/<[^>]+>/g, ''))), `${language}: the .docx has ${label} as its own paragraph before the numbered one`, at >= 0 ? paragraphs[at + 1].slice(0, 200) : 'not found');
+    }
     check(!others.some((label) => xml.includes(label)), `${language}: the .docx prints no other format`);
     const printed = await printedText(`print-on-${language}`);
     if (printed === undefined) console.log('(pdftotext missing: PDF not read back)');
     else {
       const flat = printed.replace(/[\s\u00a0]+/g, '');
       for (const label of LABEL[language]) check(flat.includes(label.replace(/\s+/g, '')), `${language}: the printed PDF shows ${label}`);
+      for (const placed of pdfPlacements(printed, LABEL[language])) {
+        check(placed.own && placed.numbered && Math.abs(placed.column) <= 1, `${language}: the PDF prints ${placed.label} alone on its line, its numbered line next, same column`, JSON.stringify(placed));
+      }
     }
   }
 

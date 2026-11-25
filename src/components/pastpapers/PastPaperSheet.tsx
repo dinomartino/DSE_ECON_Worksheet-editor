@@ -31,23 +31,26 @@ export function PastPaperSheet({
   doc,
   language,
   compact = false,
+  eager = false,
 }: {
   item: PastPaperItem;
   doc: Worksheet;
   language: LanguageMode;
   /** The editor tab's narrow cards: less padding. */
   compact?: boolean;
+  /** Draw at once: the caller already mounts the sheet only near the screen. */
+  eager?: boolean;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   // Without IntersectionObserver (old engines, tests) every card draws at once.
-  const [near, setNear] = useState(() => typeof IntersectionObserver === 'undefined');
+  const [near, setNear] = useState(() => eager || typeof IntersectionObserver === 'undefined');
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
 
   useEffect(() => {
     const frame = frameRef.current;
-    if (!frame) return;
+    if (!frame || eager) return;
     if (typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
@@ -57,7 +60,7 @@ export function PastPaperSheet({
     }, { rootMargin: '600px 0px' });
     observer.observe(frame);
     return () => observer.disconnect();
-  }, []);
+  }, [eager]);
 
   useEffect(() => {
     const frame = frameRef.current;

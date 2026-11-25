@@ -150,22 +150,72 @@ const SHORT = /^(DSE|CE|AL)(\d{4}|SP|PP)\/P\d\/Q\d+$/;
 check(SHORT.test(firstSource), `each row names its source in the short form: “${firstSource}”`);
 await page.screenshot({ path: `${OUT}/after-arrange-en.png` });
 
-// One tap: Collapse all 全部收合 folds every part and topic; Show all 全部展開 opens them all (u-hwfl).
+// The fold-all button is gone (u-ymov reverted u-hwfl's); each part and topic still folds on its own.
+check((await arrange.getByRole('button', { name: /^(Collapse all|Open all|Close all)$/ }).count()) === 0, 'no fold-all button: parts and topics fold one by one');
+await arrange.locator('[data-arrange-part="C"] button[aria-expanded]').first().click();
+await page.waitForTimeout(200);
+const cFolded = await arrange.locator('[data-arrange-part="C"] [data-arrange-row]').count();
+await arrange.locator('[data-arrange-part="C"] button[aria-expanded]').first().click();
+await page.waitForTimeout(300);
+check(cFolded === 0 && (await arrange.locator('[data-arrange-part="C"] [data-arrange-row]').count()) > 0, 'part C folds and opens with its own arrow');
+
+// Show all 全部顯示 / Hide all 全部隱藏 (u-ymov): every question's printed view, drawn only near the screen.
 const showAll = arrange.locator('[data-arrange-show-all]');
-check((await showAll.getAttribute('data-arrange-show-all')) === 'open' && (await showAll.innerText()) === 'Collapse all', 'Arrange opens with everything shown; the button reads Collapse all');
+check((await showAll.getAttribute('data-arrange-show-all')) === 'hidden' && (await showAll.innerText()) === 'Show all', 'the button reads Show all');
+await showAll.click();
+const sheets = arrange.locator('[data-arrange-sheet]');
+const drawnPaper = () => arrange.locator('[data-arrange-sheet="drawn"]').evaluateAll((els) => els.filter((el) => [...el.querySelectorAll('div')].some((d) => d.shadowRoot?.querySelector('.sheet'))).length);
+await page.waitForFunction(() => [...document.querySelectorAll('[data-arrange-sheet="drawn"]')].some((el) => [...el.querySelectorAll('div')].some((d) => d.shadowRoot?.querySelector('.sheet'))), null, { timeout: 60_000 });
+await page.waitForTimeout(800);
+const opened = await sheets.count();
+const drawn = await arrange.locator('[data-arrange-sheet="drawn"]').count();
+check(opened === 1759 && (await showAll.innerText()) === 'Hide all', `Show all opens all ${opened} questions; the button reads Hide all`);
+check(drawn > 0 && drawn < 120 && (await drawnPaper()) > 0, `only the papers near the screen are drawn: ${drawn} of ${opened}`);
+await page.screenshot({ path: `${OUT}/after-show-all-en.png` });
+// Scroll the whole list: frames stay short, drawn papers stay few, a far topic draws when reached.
+const scrollStats = await page.evaluate(async () => {
+  const box = document.querySelector('[data-pastpaper-arrange] .overflow-y-auto');
+  const gaps = [];
+  let last = performance.now();
+  let most = 0;
+  for (let i = 0; i < 240 && box.scrollTop + box.clientHeight < box.scrollHeight - 4; i++) {
+    box.scrollTop += 700;
+    await new Promise((r) => requestAnimationFrame(r));
+    const now = performance.now();
+    gaps.push(now - last);
+    last = now;
+    most = Math.max(most, document.querySelectorAll('[data-arrange-sheet="drawn"]').length);
+  }
+  gaps.sort((x, y) => x - y);
+  return { frames: gaps.length, p50: Math.round(gaps[Math.floor(gaps.length / 2)]), p95: Math.round(gaps[Math.floor(gaps.length * 0.95)]), max: Math.round(gaps.at(-1)), most, end: box.scrollTop };
+});
+console.log('scroll through every question shown:', JSON.stringify(scrollStats));
+check(scrollStats.frames > 50 && scrollStats.most < 160, `scrolling all 1,759 keeps the drawn papers few (at most ${scrollStats.most} at once; frames p50 ${scrollStats.p50} ms, p95 ${scrollStats.p95} ms)`);
+// Then to the very end (far topics take their real height as they are reached, so jump until it holds).
+await page.evaluate(async () => {
+  const box = document.querySelector('[data-pastpaper-arrange] .overflow-y-auto');
+  for (let i = 0; i < 40; i++) {
+    box.scrollTop = box.scrollHeight;
+    await new Promise((r) => setTimeout(r, 250));
+    if (box.scrollTop + box.clientHeight >= box.scrollHeight - 4) break;
+  }
+});
+await page.waitForTimeout(1500);
+const lastPart = await arrange.locator('[data-arrange-part]').last().getAttribute('data-arrange-part');
+await page.waitForFunction(() => [...document.querySelectorAll('[data-arrange-sheet="drawn"]')].some((el) => el.closest('[data-arrange-part]') === [...document.querySelectorAll('[data-arrange-part]')].at(-1) && [...el.querySelectorAll('div')].some((d) => d.shadowRoot?.querySelector('.sheet'))), null, { timeout: 60_000 });
+check(true, `part ${lastPart} at the end draws its papers when scrolled to`);
+await page.screenshot({ path: `${OUT}/after-show-all-end-en.png` });
+// One row's own Hide still works with every question shown; Hide all closes them all.
+await arrange.locator('[data-arrange-part="A"] [data-arrange-topic-head]').first().evaluate((el) => el.scrollIntoView({ block: 'start' }));
+await page.waitForTimeout(500);
+const oneRow = arrange.locator('[data-arrange-row]').first();
+await oneRow.locator('button[aria-expanded="true"]').click();
+await page.waitForTimeout(200);
+check((await oneRow.locator('button[aria-expanded]').getAttribute('aria-expanded')) === 'false' && (await sheets.count()) === 1758, 'one row hides on its own while the rest stay shown');
 await showAll.click();
 await page.waitForTimeout(300);
-check((await arrange.locator('[data-arrange-row]').count()) === 0 && (await showAll.innerText()) === 'Show all', 'Collapse all folds every part and topic; the button reads Show all');
-await page.screenshot({ path: `${OUT}/after-collapsed-en.png` });
-// One topic opened by hand still leaves "Show all" to open the rest in one tap.
-await arrange.locator('[data-arrange-part="C"] button[aria-expanded]').first().click();
-await arrange.locator('[data-arrange-topic="elasticity"] button[aria-expanded]').first().click();
-await page.waitForTimeout(200);
-const partly = await arrange.locator('[data-arrange-row]').count();
-await showAll.click();
-await page.waitForTimeout(800);
-const allRows = await arrange.locator('[data-arrange-row]').count();
-check(partly > 0 && partly < 200 && allRows === 1759 && (await showAll.innerText()) === 'Collapse all', `Show all opens every part and topic: ${allRows} questions (from ${partly} with one topic open)`);
+check((await sheets.count()) === 0 && (await showAll.innerText()) === 'Show all', 'Hide all hides every printed view; the button reads Show all again');
+await arrange.locator('[data-arrange-row]').first().evaluate((el) => el.closest('.overflow-y-auto').scrollTo(0, 0));
 
 // Choose a topic with at least four questions in part A.
 const topicIds = await arrange.locator('[data-arrange-part="A"] [data-arrange-topic]').evaluateAll((els) => els.map((el) => el.getAttribute('data-arrange-topic')));
@@ -259,6 +309,32 @@ const printed = expected.map((label) => text.indexOf(`(${label})`));
 const inOrder = printed.every((at, i) => at >= 0 && (i === 0 || at > printed[i - 1]));
 check(inOrder, `the new worksheet holds all ${expected.length} in the teacher’s order, each with its short source`, printed.slice(0, 6).join(' '));
 await page.screenshot({ path: `${OUT}/after-worksheet-en.png` });
+// Each source on its own line above its question, never alone at the foot of a sheet (u-tchj).
+const tagPlaces = await page.evaluate(() => {
+  const ps = [...document.querySelectorAll('#print-root p')];
+  return ps
+    .filter((p) => /^\((DSE|CE|AL)(\d{4}|SP|PP)\/P\d\/Q\d+\)$/.test(p.textContent.trim()))
+    .map((p) => {
+      const next = ps[ps.indexOf(p) + 1];
+      return { tag: p.textContent.trim(), page: p.closest('[data-page-index]')?.getAttribute('data-page-index'), nextPage: next?.closest('[data-page-index]')?.getAttribute('data-page-index'), numbered: Boolean(next && [...next.querySelectorAll('span.absolute')].some((s) => /^\d+\.$/.test(s.textContent.trim()))) };
+    });
+});
+const tagSheets = new Set(tagPlaces.map((t) => t.page));
+check(tagPlaces.length === expected.length && tagSheets.size >= 3 && tagPlaces.every((t) => t.numbered && t.page === t.nextPage), `every source sits on its own line right above its question, on the same sheet (${tagPlaces.length} over ${tagSheets.size} sheets)`, JSON.stringify(tagPlaces.filter((t) => !t.numbered || t.page !== t.nextPage).slice(0, 3)));
+await page.emulateMedia({ media: 'print' });
+const tagPdf = `${OUT}/after-worksheet-en.pdf`;
+await page.pdf({ path: tagPdf, format: 'A4', printBackground: true, preferCSSPageSize: true });
+await page.emulateMedia({ media: 'screen' });
+const pdfPages = execFileSync('pdftotext', ['-layout', tagPdf, '-'], { encoding: 'utf8' }).split('\f');
+const pdfTags = pdfPages.flatMap((sheet, at) => {
+  const lines = sheet.split('\n');
+  return lines.flatMap((line, i) => {
+    if (!/^\s*\((DSE|CE|AL)(\d{4}|SP|PP)\/P\d\/Q\d+\)\s*$/.test(line)) return [];
+    const next = lines.slice(i + 1).find((l) => l.trim() !== '');
+    return [{ at, tag: line.trim(), numbered: next !== undefined && /^\s*\d+\.\s*\S/.test(next) }];
+  });
+});
+check(pdfTags.length === expected.length && pdfTags.every((t) => t.numbered), `the PDF: all ${pdfTags.length} sources alone on their line, each with its numbered line below on the same page (${pdfPages.length - 1} pages)`, JSON.stringify(pdfTags.filter((t) => !t.numbered).slice(0, 3)));
 
 // The .docx carries the sources in that order.
 await page.getByRole('button', { name: /^Export/ }).first().click();
@@ -284,6 +360,17 @@ await arrange.locator(`[data-arrange-topic="${topicB}"]`).scrollIntoViewIfNeeded
 await arrange.locator(`[data-arrange-topic-check="${topicB}"]`).check();
 await page.screenshot({ path: `${OUT}/after-arrange-zh.png` });
 await page.locator('[data-arrange-tray]').getByRole('button', { name: '清除', exact: true }).click();
+// 中文: 全部顯示 / 全部隱藏.
+const zhAll = arrange.locator('[data-arrange-show-all]');
+check((await zhAll.innerText()) === '全部顯示', '中文: the button reads 全部顯示');
+await zhAll.click();
+await page.waitForFunction(() => [...document.querySelectorAll('[data-arrange-sheet="drawn"]')].some((el) => [...el.querySelectorAll('div')].some((d) => d.shadowRoot?.querySelector('.sheet'))), null, { timeout: 60_000 });
+await page.waitForTimeout(800);
+await page.screenshot({ path: `${OUT}/after-show-all-zh.png` });
+check((await zhAll.innerText()) === '全部隱藏' && (await arrange.locator('[data-arrange-row] button[aria-expanded="true"]').first().innerText()) === '隱藏', '中文: every row reads 隱藏; the button reads 全部隱藏');
+await zhAll.click();
+await page.waitForTimeout(300);
+check((await arrange.locator('[data-arrange-sheet]').count()) === 0, '中文: 全部隱藏 hides them all');
 
 // Reset all puts the bank's order back.
 await arrange.locator('[data-arrange-reset-all]').click();
@@ -349,13 +436,17 @@ check(SHORT.test(await tabArr.locator('[data-arrange-source]').first().textConte
 check(!(await tabArr.locator('[data-arrange-show-sources] input').isChecked()), 'tab: Show source off by default');
 await page.screenshot({ path: `${OUT}/after-tab-arrange-en.png` });
 const tabAll = tabArr.locator('[data-arrange-show-all]');
+check((await tabAll.innerText()) === 'Show all', 'tab: Show all');
+await tabAll.click();
+await page.waitForFunction(() => [...document.querySelectorAll('[data-pastpaper-arrange="tab"] [data-arrange-sheet="drawn"]')].some((el) => [...el.querySelectorAll('div')].some((d) => d.shadowRoot?.querySelector('.sheet'))), null, { timeout: 60_000 });
+await page.waitForTimeout(800);
+const tabOpened = await tabArr.locator('[data-arrange-sheet]').count();
+const tabDrawn = await tabArr.locator('[data-arrange-sheet="drawn"]').count();
+await page.screenshot({ path: `${OUT}/after-tab-show-all-en.png` });
+check(tabOpened === 1759 && tabDrawn < 120 && (await tabAll.innerText()) === 'Hide all', `tab: Show all opens all ${tabOpened}, ${tabDrawn} drawn near the screen; Hide all next`);
 await tabAll.click();
 await page.waitForTimeout(300);
-const foldedRows = await tabArr.locator('[data-arrange-row]').count();
-await page.screenshot({ path: `${OUT}/after-tab-collapsed-en.png` });
-await tabAll.click();
-await page.waitForTimeout(800);
-check(foldedRows === 0 && (await tabArr.locator('[data-arrange-row]').count()) === 1759, 'tab: Collapse all / Show all in one tap each');
+check((await tabArr.locator('[data-arrange-sheet]').count()) === 0, 'tab: Hide all');
 // Go to a topic, then drag inside it.
 await tabArr.locator('[data-arrange-go-to]').selectOption('division-of-labour');
 await page.waitForTimeout(600);
