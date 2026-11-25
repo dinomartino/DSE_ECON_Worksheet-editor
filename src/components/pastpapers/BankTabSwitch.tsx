@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import type { Worksheet } from '@/model/types';
 import { useMessages } from '@/i18n/language';
 import { PAST_PAPER_SETTINGS, sourceUrl } from '@/pastpapers/config';
 import { useSettings } from '@/settings/store';
@@ -23,7 +24,7 @@ function readChoice(): 'mine' | 'past' {
  * never mixes with it. Without the past paper bank (switched off, or not in this build) the
  * switch is not drawn and the tab is exactly the old one.
  */
-export function BankTabSwitch({ mine }: { mine: ReactNode }) {
+export function BankTabSwitch({ mine, onNewWorksheet }: { mine: ReactNode; /** Arrange's New worksheet in the tab (u-jwar). */ onNewWorksheet?: (worksheet: Worksheet) => void }) {
   const m = useMessages(PAST_PAPER_MESSAGES);
   const [settings] = useSettings(PAST_PAPER_SETTINGS);
   const [choice, setChoice] = useState(readChoice);
@@ -61,7 +62,7 @@ export function BankTabSwitch({ mine }: { mine: ReactNode }) {
         </div>
       </div>
       <div key={choice} className="flex min-h-0 flex-1 flex-col">
-        {choice === 'past' ? <PastPaperTab /> : mine}
+        {choice === 'past' ? <PastPaperTab onNewWorksheet={onNewWorksheet} /> : mine}
       </div>
     </div>
   );

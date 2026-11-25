@@ -1,10 +1,15 @@
 'use client';
 
 import { useMemo } from 'react';
+import { revealQuestion } from '@/components/bank/page/bankReturn';
+import type { Worksheet } from '@/model/types';
+import type { PastPaperItem } from '@/pastpapers/pack';
+import { notify } from '@/store/notices';
+import { PastPaperArrange, type ArrangeAddOptions } from './PastPaperArrange';
 import { escapeClears } from '@/components/bank/escapeClears';
 import { useMessages } from '@/i18n/language';
 import { rootIdOf } from '@/model/lineage';
-import { insertIntoOpen, sourceChoiceDecides } from '@/pastpapers/actions';
+import { emptyPaperFor, insertIntoOpen, sourceChoiceDecides } from '@/pastpapers/actions';
 import { PAST_PAPER_SETTINGS } from '@/pastpapers/config';
 import { printsQuestionSources, questionSourceFormat, withQuestionSourceFormat, withQuestionSources } from '@/render/questionSource';
 import type { QuestionSourceFormat } from '@/model/types';
@@ -27,7 +32,7 @@ import { usePastPaperBrowse } from './usePastPaperBrowse';
  * copy after the insert anchor, as the teacher's own bank inserts (one ⌘Z, the review bar).
  * A question the paper already holds says so and is not inserted twice.
  */
-export function PastPaperTab() {
+export function PastPaperTab({ onNewWorksheet }: { onNewWorksheet?: (worksheet: Worksheet) => void } = {}) {
   const m = useMessages(PAST_PAPER_MESSAGES);
   const browse = usePastPaperBrowse();
   const { topics, topic, topicState, filters, setFilters, entries, sitting } = browse;
@@ -74,12 +79,53 @@ export function PastPaperTab() {
   const paperOf = (tag: string) => tag.replace(/\/Q\d+$/, '');
   const paperHeadings = byYear && new Set(entries.map((entry) => paperOf(entry.tag))).size > 1;
 
+  // Arrange in the tab (u-jwar): Add puts the questions into this paper after the insert point;
+  // New worksheet opens a new paper first, as the bank screen's does.
+  const addFromArrange = (items: PastPaperItem[], done: () => void, { to, name, showSources, sourceFormat: fmt, topics }: ArrangeAddOptions = {}) => {
+    if (to?.startsWith('new:')) {
+      if (!onNewWorksheet) return;
+      onNewWorksheet(emptyPaperFor(to === 'new:paper1' ? 'paper1' : 'classroom', name ?? m.newName));
+    } else if (readOnly) {
+      notify({ tone: 'warning', body: m.readOnlyPaper });
+      return;
+    }
+    const { inserted, skipped, refused } = insertIntoOpen(items, m.added, { showSources, sourceFormat: fmt, topics });
+    if (refused) notify({ tone: 'warning', body: m.readOnlyPaper });
+    else if (inserted.length === 0 && skipped > 0) notify({ tone: 'info', body: m.nothingAdded(items.length) });
+    if (inserted.length > 0) done();
+    if (inserted[0]) revealQuestion(inserted[0]);
+  };
+
+  if (browse.view === 'arrange') {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col" data-pastpaper-tab>
+        <BankStateNote browse={browse}>
+          <div className="shrink-0 space-y-2 px-4 pb-2 pt-2.5">
+            <p className="text-[11.5px] text-ink-subtle">{m.tabHint}</p>
+            <ViewSwitch value={browse.view} onChange={browse.setView} arrange className="" />
+          </div>
+          <PastPaperArrange
+            browse={browse}
+            variant="tab"
+            language={language}
+            readOnly={readOnly}
+            busy={false}
+            onAdd={addFromArrange}
+            onCopy={() => undefined}
+            onNotice={(body) => notify({ tone: 'success', body })}
+            onError={(body) => notify({ tone: 'warning', body })}
+          />
+        </BankStateNote>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pastpaper-tab>
       <BankStateNote browse={browse}>
         <div className="shrink-0 space-y-2 border-b border-line px-4 pb-3 pt-2.5">
           <p className="text-[11.5px] text-ink-subtle">{m.tabHint}</p>
-          <ViewSwitch value={browse.view === 'arrange' ? 'topic' : browse.view} onChange={browse.setView} className="" />
+          <ViewSwitch value={browse.view} onChange={browse.setView} arrange className="" />
           {byYear ? (
             <label className="block">
               <span className="sr-only">{m.yearsNav}</span>

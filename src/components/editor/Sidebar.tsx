@@ -1,5 +1,6 @@
 'use client';
 
+import type { Worksheet } from '@/model/types';
 import { useEffect, useRef, useState } from 'react';
 import { computeNumbering } from '@/model/numbering';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -40,6 +41,7 @@ type Tab = 'content' | 'edit' | 'bank' | 'layout' | 'write';
 export function Sidebar({
   pages,
   onOpenSettings,
+  onOpenDocument,
 }: {
   /**
    * How the flow landed on sheets, from the paginator. Passed through rather than read
@@ -48,6 +50,8 @@ export function Sidebar({
    */
   pages: PageComposition[];
   onOpenSettings: () => void;
+  /** Open another worksheet in the editor (the 題庫 tab's Arrange → New worksheet, u-jwar). */
+  onOpenDocument?: (worksheet: Worksheet) => void;
 }) {
   // A press on a panel control clicks it even if the panel moved under the pointer (k-0478).
   const asideRef = useRef<HTMLElement>(null);
@@ -181,7 +185,7 @@ export function Sidebar({
           ) : shown === 'layout' ? (
             <AnswerKeyLayoutPanel />
           ) : shown === 'bank' ? (
-            <BankTabSwitch mine={<BankTab />} />
+            <BankTabSwitch mine={<BankTab />} onNewWorksheet={onOpenDocument} />
           ) : shown === 'write' ? (
             <WritePanel />
           ) : (

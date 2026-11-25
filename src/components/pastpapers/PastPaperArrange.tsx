@@ -8,7 +8,7 @@ import { useMessages } from '@/i18n/language';
 import { topicNamesFor } from '@/model/topics';
 import type { LanguageMode } from '@/model/types';
 import { arrangeLists, defaultLists, moveKeys, resetTopic, stepKeys, storedFrom, type ArrangeRow } from '@/pastpapers/arrange';
-import { useArrangement } from '@/pastpapers/arrangeStore';
+import { useArrangement, useArrangeTicks } from '@/pastpapers/arrangeStore';
 import { groupTopics, OTHER_PART, partName, type TopicGroup } from '@/pastpapers/groups';
 import { matchItem, packName, shortSourceLabel, type PastPaperItem, type SourceInfo, type TopicEntry } from '@/pastpapers/pack';
 import type { QuestionSourceFormat } from '@/model/types';
@@ -16,7 +16,7 @@ import { rootIdOf } from '@/model/lineage';
 import type { TopicHeading } from '@/pastpapers/actions';
 import { ARRANGE_MESSAGES } from './PastPaperArrange.messages';
 import { PAST_PAPER_MESSAGES } from './messages';
-import { ExamChips, LanguageToggle, YearSelects } from './PastPaperControls';
+import { ExamChips, LanguageToggle, SearchGlyph, YearSelects } from './PastPaperControls';
 import { PastPaperSheet } from './PastPaperSheet';
 import { PastPaperTopicPicker } from './PastPaperTopicPicker';
 import type { PastPaperBrowse } from './usePastPaperBrowse';
@@ -63,7 +63,7 @@ export const arrangeKey = (item: { topicId: string; source: SourceInfo; question
   item.source.tag || `${item.topicId}|${item.question?.id ?? ''}`;
 
 export interface ArrangeAddOptions {
-  /** `new:classroom`, `new:paper1`, or a saved paper's id; absent = the bar's choice. */
+  /** `new:classroom`, `new:paper1`, or a saved paper's id; absent = the bar's choice (the tab: the open paper). */
   to?: string;
   /** The new worksheet's name. */
   name?: string;
@@ -77,10 +77,12 @@ export interface ArrangeAddOptions {
 
 export function PastPaperArrange({
   browse,
+  variant = 'screen',
   language,
   onLanguage,
   switcher,
   addControls,
+  readOnly = false,
   busy,
   onAdd,
   onCopy,
@@ -88,12 +90,21 @@ export function PastPaperArrange({
   onError,
 }: {
   browse: PastPaperBrowse;
+  /**
+   * `screen`: the bank screen (topic list on the left, Add to … in the tray). `tab`: the
+   * editor's narrow 題庫 tab (u-jwar): a Go to topic menu, Add puts questions into the open
+   * paper, New worksheet opens a new one; the paper's own language.
+   */
+  variant?: 'screen' | 'tab';
   language: LanguageMode;
-  onLanguage: (next: LanguageMode) => void;
-  /** The By topic / By year / Arrange switch, drawn above the topic list. */
-  switcher: ReactNode;
-  /** Show source, its format and Add to (the screen's own controls). */
-  addControls: ReactNode;
+  /** The EN / 中文 toggle (the screen only). */
+  onLanguage?: (next: LanguageMode) => void;
+  /** The By topic / By year / Arrange switch, drawn above the topic list (the screen only). */
+  switcher?: ReactNode;
+  /** Add to … (the screen's own control). */
+  addControls?: ReactNode;
+  /** The open paper cannot be changed (the tab's Add). */
+  readOnly?: boolean;
   busy: boolean;
   /** Put these questions, in this order, where the bar (or `options`) says; `done` once they are in. */
   onAdd: (items: PastPaperItem[], done: () => void, options?: ArrangeAddOptions) => void | Promise<void>;
@@ -156,7 +167,8 @@ export function PastPaperArrange({
   }, [topicById, language]);
 
   // Ticks.
-  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set());
+  // Ticks are shared with the other place Arrange shows (screen or tab).
+  const [selected, setSelected] = useArrangeTicks();
   const orderedSelection = useMemo(() => topics.flatMap((t) => (lists.get(t.id) ?? []).filter((key) => selected.has(key))), [topics, lists, selected]);
   const toggleKey = useCallback((key: string) => {
     setSelected((now) => {
@@ -468,14 +480,91 @@ export function PastPaperArrange({
     const ticked = keys.filter((key) => selected.has(key)).length;
     return { checked: keys.length > 0 && ticked === keys.length, mixed: ticked > 0 && ticked < keys.length };
   };
-  const allClosed = groups.every((g) => closed.has(`part:${g.code}`));
+  // One tap shows every part and topic, or folds them all (u-hwfl).
+  const everythingOpen = closed.size === 0;
+  const tab = variant === 'tab';
+  // A new worksheet from ticked questions is named after their one topic, else their one part.
+  const nameFor = (keys: readonly string[]) => {
+    const placed = new Set(topics.filter((t) => (lists.get(t.id) ?? []).some((key) => keys.includes(key))).map((t) => t.id));
+    if (placed.size === 1) return topicName([...placed][0]);
+    const parts = groups.filter((g) => g.topics.some((t) => placed.has(t.id)));
+    return parts.length === 1 && !flat ? partName(parts[0], names, pm.otherTopics) : pm.newName;
+  };
+  // A part's or topic's own button: a new worksheet on the screen, into this paper in the tab.
+  const headerAction = (keys: readonly string[], name: string) =>
+    tab ? () => void addKeys(keys) : () => void addKeys(keys, { to: 'new:classroom', name });
+  const headerLabel = tab ? m.addHere : m.makeWorksheet;
+  const headerTitle = tab ? m.addHereTitle : m.makeWorksheetTitle;
+  const toggleAll = () => setClosed(everythingOpen ? new Set([...groups.map((g) => `part:${g.code}`), ...topics.map((t) => t.id)]) : new Set());
+  const resetAll = () => {
+    if (!window.confirm(m.resetAllConfirm)) return;
+    setArrangement({ topics: {} });
+    onNotice(m.resetDone);
+  };
+  const sourcesTick = (
+    <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted" title={m.showSourcesTitle} data-arrange-show-sources>
+      <input type="checkbox" checked={withSources} onChange={(e) => setWithSources(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
+      {m.showSources}
+    </label>
+  );
+  const linkButton = 'shrink-0 cursor-pointer text-[12px] text-ink-muted hover:text-ink hover:underline';
 
   return (
     <>
-      <PastPaperTopicPicker topics={pickerTopics} current={topicById.get(jumped ?? '')} active={jumped !== undefined} language={language} top={switcher} onPick={jumpTo} />
+      {!tab && <PastPaperTopicPicker topics={pickerTopics} current={topicById.get(jumped ?? '')} active={jumped !== undefined} language={language} top={switcher} onPick={jumpTo} />}
 
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col" data-pastpaper-arrange>
-        {/* One row, as the other views' filter bar (u-huv8); a very narrow window scrolls it sideways. */}
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col" data-pastpaper-arrange={variant}>
+        {tab ? (
+          // The 題庫 tab is narrow (u-jwar): the controls stack, a menu stands in for the topic list.
+          <div className="shrink-0 space-y-2 border-b border-line px-4 pb-3" data-arrange-tab-bar>
+            <select
+              aria-label={m.goTo}
+              value=""
+              data-arrange-go-to
+              onChange={(event) => {
+                if (event.target.value) jumpTo(event.target.value);
+              }}
+              className="h-8 w-full rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <option value="">{m.goTo}</option>
+              {groups.map((group) =>
+                flat ? (
+                  group.topics.map((t) => <option key={t.id} value={t.id}>{`${topicName(t.id)} (${lists.get(t.id)?.length ?? 0})`}</option>)
+                ) : (
+                  <optgroup key={group.code} label={partName(group, names, pm.otherTopics)}>
+                    {group.topics.map((t) => <option key={t.id} value={t.id}>{`${topicName(t.id)} (${lists.get(t.id)?.length ?? 0})`}</option>)}
+                  </optgroup>
+                ),
+              )}
+            </select>
+            <label className="relative block">
+              <span className="sr-only">{pm.searchLabel}</span>
+              <input
+                type="search"
+                value={filters.words}
+                title={pm.searchHint}
+                placeholder={pm.searchLabel}
+                onChange={(event) => setFilters({ ...filters, words: event.target.value, everywhere: false })}
+                className="h-8 w-full rounded-lg border border-transparent bg-surface-sunken pl-8 pr-2.5 text-[12.5px] text-ink outline-none placeholder:text-ink-subtle focus:border-accent focus:bg-surface focus:ring-2 focus:ring-accent/25"
+              />
+              <SearchGlyph />
+            </label>
+            <ExamChips filters={filters} onChange={setFilters} />
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span className="shrink-0 text-[11.5px] tabular-nums text-ink-subtle" role="status">
+                {m.shown(shownCount, entries.length)}
+              </span>
+              {sourcesTick}
+              <ShowAllButton open={everythingOpen} onClick={toggleAll} />
+              {anyChanged && (
+                <button type="button" data-arrange-reset-all onClick={resetAll} className={linkButton}>
+                  {m.resetAll}
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+        /* One row, as the other views' filter bar (u-huv8); a very narrow window scrolls it sideways. */
         <div className="scroll-slim flex shrink-0 flex-nowrap items-center gap-x-3 overflow-x-auto whitespace-nowrap border-b border-line px-6 py-2.5" data-pastpaper-filterbar>
           <h2 className="min-w-[4rem] shrink truncate text-[15px] font-semibold text-ink" title={m.heading} data-pastpaper-heading>
             {m.heading}
@@ -483,40 +572,23 @@ export function PastPaperArrange({
           <span className="shrink-0 text-[12px] tabular-nums text-ink-subtle" role="status">
             {m.shown(shownCount, entries.length)}
           </span>
-          <button
-            type="button"
-            onClick={() => setClosed(allClosed ? new Set() : new Set(groups.map((g) => `part:${g.code}`)))}
-            className="shrink-0 cursor-pointer text-[12px] text-ink-muted hover:text-ink hover:underline"
-          >
-            {allClosed ? m.openAll : m.closeAll}
-          </button>
+          <ShowAllButton open={everythingOpen} onClick={toggleAll} />
           {anyChanged && (
-            <button
-              type="button"
-              data-arrange-reset-all
-              onClick={() => {
-                if (!window.confirm(m.resetAllConfirm)) return;
-                setArrangement({ topics: {} });
-                onNotice(m.resetDone);
-              }}
-              className="shrink-0 cursor-pointer text-[12px] text-ink-muted hover:text-ink hover:underline"
-            >
+            <button type="button" data-arrange-reset-all onClick={resetAll} className={linkButton}>
               {m.resetAll}
             </button>
           )}
-          <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[12px] text-ink-muted" title={m.showSourcesTitle} data-arrange-show-sources>
-            <input type="checkbox" checked={withSources} onChange={(e) => setWithSources(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
-            {m.showSources}
-          </label>
+          {sourcesTick}
           <span className="flex-1" />
           <ExamChips filters={filters} onChange={setFilters} wrap={false} />
           <YearSelects filters={filters} years={browse.years} onChange={setFilters} />
-          <LanguageToggle value={language} onChange={onLanguage} />
+          {onLanguage && <LanguageToggle value={language} onChange={onLanguage} />}
         </div>
+        )}
 
-        <div ref={scroller} className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-desk px-6 py-4">
-          <div className="mx-auto flex max-w-[860px] flex-col gap-3">
-            <p className="text-[12px] leading-snug text-ink-subtle" title={m.keysHint}>
+        <div ref={scroller} className={`scroll-slim min-h-0 flex-1 overflow-y-auto bg-desk ${tab ? 'px-3 py-3' : 'px-6 py-4'}`}>
+          <div className={`mx-auto flex flex-col ${tab ? 'gap-2.5' : 'max-w-[860px] gap-3'}`}>
+            <p className={`leading-snug text-ink-subtle ${tab ? 'px-1 text-[11.5px]' : 'text-[12px]'}`} title={m.keysHint}>
               {m.hint}
             </p>
             {needsAll && (
@@ -552,15 +624,15 @@ export function PastPaperArrange({
               return (
                 <section key={partId} data-arrange-part={group.code} className="flex flex-col gap-2">
                   {!flat && (
-                    <div className="sticky top-[-16px] z-10 -mx-2 flex items-center gap-2 rounded-lg bg-desk/95 px-2 py-1.5 backdrop-blur">
+                    <div className={`sticky z-10 -mx-2 flex items-center gap-2 rounded-lg bg-desk/95 px-2 py-1.5 backdrop-blur ${tab ? 'top-[-12px]' : 'top-[-16px]'}`}>
                       <OpenToggle open={partOpen} label={partOpen ? m.collapse(name) : m.expand(name)} onClick={() => toggleClosed(partId)} />
                       <TriCheck {...part} label={m.selectAll(name)} onChange={() => toggleMany(groupKeys)} data-arrange-part-check={group.code} />
-                      <h3 className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">
+                      <h3 className={`min-w-0 flex-1 truncate font-semibold text-ink ${tab ? 'text-[13px]' : 'text-[14px]'}`} title={name}>
                         {group.part ? <span className="mr-1.5 text-ink-subtle">{group.code}</span> : null}
                         {name}
                       </h3>
                       <span className="shrink-0 text-[12px] tabular-nums text-ink-subtle">{m.count(groupKeys.length)}</span>
-                      <MakeButton name={name} count={groupKeys.length} disabled={busy || gathering} onClick={() => void addKeys(groupKeys, { to: 'new:classroom', name })} />
+                      <MakeButton label={headerLabel} title={headerTitle(name, groupKeys.length)} count={groupKeys.length} disabled={busy || gathering || (tab && readOnly)} onClick={headerAction(groupKeys, name)} />
                     </div>
                   )}
                   {partOpen &&
@@ -578,11 +650,14 @@ export function PastPaperArrange({
                           check={checkState(keys)}
                           dropAt={dropAt?.topicId === topic.id ? dropAt : null}
                           dragging={drag !== null}
-                          busy={busy || gathering}
+                          busy={busy || gathering || (tab && readOnly)}
+                          makeLabel={headerLabel}
+                          makeTitle={headerTitle(topicName(topic.id), keys.length)}
+                          compact={tab}
                           onToggleOpen={() => toggleClosed(topic.id)}
                           onToggleAll={() => toggleMany(keys)}
                           onReset={() => setArrangement(resetTopic(arrangement, topic.id, rows))}
-                          onMake={() => void addKeys(keys, { to: 'new:classroom', name: topicName(topic.id) })}
+                          onMake={headerAction(keys, topicName(topic.id))}
                         >
                           {keys.map((key, at) => {
                             const entry = byKey.get(key);
@@ -593,6 +668,7 @@ export function PastPaperArrange({
                                 entry={entry}
                                 topicId={topic.id}
                                 tabStop={at === 0}
+                                compact={tab}
                                 language={language}
                                 picked={selected.has(key)}
                                 carried={carrying.has(key)}
@@ -620,7 +696,7 @@ export function PastPaperArrange({
         </div>
 
         {(orderedSelection.length > 0 || gathering) && (
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t border-line bg-surface px-6 py-3" role="region" aria-label={m.selected(orderedSelection.length)} data-arrange-tray>
+          <div className={`flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t border-line bg-surface ${tab ? 'px-3 py-2.5' : 'px-6 py-3'}`} role="region" aria-label={m.selected(orderedSelection.length)} data-arrange-tray>
             <span className="text-[13px] font-medium text-ink">{m.selected(orderedSelection.length)}</span>
             <button type="button" onClick={() => setSelected(new Set())} className="cursor-pointer text-[12.5px] text-ink-muted hover:text-ink hover:underline">
               {m.clear}
@@ -647,6 +723,30 @@ export function PastPaperArrange({
             </select>
             {gathering && <span className="text-[12px] text-ink-subtle" role="status">{m.gathering}</span>}
             <span className="flex-1" />
+            {tab ? (
+              <>
+                <button
+                  type="button"
+                  data-arrange-new
+                  disabled={busy || gathering || orderedSelection.length === 0}
+                  onClick={() => void addKeys(orderedSelection, { to: 'new:classroom', name: nameFor(orderedSelection) }, true)}
+                  className="cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1 text-[12px] text-ink hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
+                >
+                  {m.makeWorksheet}
+                </button>
+                <button
+                  type="button"
+                  data-arrange-add
+                  title={m.addTickedTitle}
+                  disabled={busy || gathering || readOnly || orderedSelection.length === 0}
+                  onClick={() => void addKeys(orderedSelection, undefined, true)}
+                  className="cursor-pointer rounded-lg bg-cta px-3 py-1 text-[12px] font-medium text-on-cta hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
+                >
+                  {m.addHere}
+                </button>
+              </>
+            ) : (
+            <>
             <button
               type="button"
               disabled={busy || gathering || orderedSelection.length === 0}
@@ -665,6 +765,8 @@ export function PastPaperArrange({
             >
               {pm.add}
             </button>
+            </>
+            )}
           </div>
         )}
       </main>
@@ -677,6 +779,23 @@ export function PastPaperArrange({
           document.body,
         )}
     </>
+  );
+}
+
+/** Show all 全部展開 / Collapse all 全部收合 (u-hwfl): every part and topic at once. */
+function ShowAllButton({ open, onClick }: { open: boolean; onClick: () => void }) {
+  const m = useMessages(ARRANGE_MESSAGES);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={open}
+      title={open ? m.collapseAllTitle : m.showAllTitle}
+      data-arrange-show-all={open ? 'open' : 'closed'}
+      className="shrink-0 cursor-pointer rounded-md border border-line bg-surface px-2 py-0.5 text-[12px] text-ink-muted hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      {open ? m.collapseAll : m.showAll}
+    </button>
   );
 }
 
@@ -715,18 +834,17 @@ function TriCheck({ checked, mixed, label, onChange, ...rest }: { checked: boole
   );
 }
 
-function MakeButton({ name, count, disabled, onClick }: { name: string; count: number; disabled: boolean; onClick: () => void }) {
-  const m = useMessages(ARRANGE_MESSAGES);
+function MakeButton({ label, title, count, disabled, onClick }: { label: string; title: string; count: number; disabled: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       disabled={disabled || count === 0}
       onClick={onClick}
-      title={m.makeWorksheetTitle(name, count)}
+      title={title}
       data-arrange-make
       className="shrink-0 cursor-pointer rounded-md border border-line bg-surface px-2 py-0.5 text-[12px] text-ink-muted hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-50"
     >
-      {m.makeWorksheet}
+      {label}
     </button>
   );
 }
@@ -741,6 +859,9 @@ function TopicBlock({
   dropAt,
   dragging,
   busy,
+  makeLabel,
+  makeTitle,
+  compact = false,
   onToggleOpen,
   onToggleAll,
   onReset,
@@ -756,6 +877,9 @@ function TopicBlock({
   dropAt: DropAt | null;
   dragging: boolean;
   busy: boolean;
+  makeLabel: string;
+  makeTitle: string;
+  compact?: boolean;
   onToggleOpen: () => void;
   onToggleAll: () => void;
   onReset: () => void;
@@ -770,10 +894,10 @@ function TopicBlock({
       className={`rounded-xl border bg-surface transition-colors duration-150 ${dropAt ? 'border-accent/60' : 'border-line'}`}
       style={open && keys.length > 12 ? { contentVisibility: 'auto', containIntrinsicSize: `auto ${keys.length * 41 + 44}px` } : undefined}
     >
-      <div data-arrange-topic-head={topic.id} className="flex items-center gap-2 px-2.5 py-2">
+      <div data-arrange-topic-head={topic.id} className={`flex items-center gap-2 ${compact ? 'px-1.5 py-1.5' : 'px-2.5 py-2'}`}>
         <OpenToggle open={open} label={open ? m.collapse(name) : m.expand(name)} onClick={onToggleOpen} />
         <TriCheck {...check} label={m.selectAll(name)} onChange={onToggleAll} data-arrange-topic-check={topic.id} />
-        <h4 className="min-w-0 truncate text-[13px] font-semibold text-ink">{name}</h4>
+        <h4 className={`min-w-0 truncate font-semibold text-ink ${compact ? 'text-[12.5px]' : 'text-[13px]'}`} title={name}>{name}</h4>
         <span className="shrink-0 text-[12px] tabular-nums text-ink-subtle">{m.count(keys.length)}</span>
         {changed && (
           <>
@@ -786,7 +910,7 @@ function TopicBlock({
           </>
         )}
         <span className="flex-1" />
-        <MakeButton name={name} count={keys.length} disabled={busy} onClick={onMake} />
+        <MakeButton label={makeLabel} title={makeTitle} count={keys.length} disabled={busy} onClick={onMake} />
       </div>
       {open && (
         <div className="border-t border-line">
@@ -809,6 +933,7 @@ const QuestionRow = memo(function QuestionRow({
   entry,
   topicId,
   tabStop,
+  compact = false,
   language,
   picked,
   carried,
@@ -828,6 +953,8 @@ const QuestionRow = memo(function QuestionRow({
   topicId: string;
   /** The first row of a topic is a Tab stop; ↑ ↓ reach the rest. */
   tabStop: boolean;
+  /** The 題庫 tab's narrow list. */
+  compact?: boolean;
   language: LanguageMode;
   picked: boolean;
   carried: boolean;
@@ -858,7 +985,7 @@ const QuestionRow = memo(function QuestionRow({
         aria-selected={picked}
         onKeyDown={(event) => onKey(event, entry.key)}
         onPointerDown={(event) => onPointerDown(event, entry.key)}
-        className={`group flex cursor-grab items-start gap-2 border-b border-line/60 px-2.5 py-2 last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+        className={`group flex cursor-grab items-start border-b border-line/60 last:border-b-0 ${compact ? 'gap-1.5 px-1.5 py-1.5' : 'gap-2 px-2.5 py-2'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
           picked ? 'bg-accent-soft/60' : 'hover:bg-surface-sunken/60'
         } ${carried ? 'opacity-40' : ''}`}
       >
@@ -894,7 +1021,7 @@ const QuestionRow = memo(function QuestionRow({
           {opened && (
             <div className="mt-2 cursor-default" data-drag-ignore>
               {item && doc ? (
-                <PastPaperSheet item={item} doc={doc} language={language} />
+                <PastPaperSheet item={item} doc={doc} language={language} compact={compact} />
               ) : topicState === 'error' ? (
                 <p className="text-[12px] text-ink-muted">{m.questionError}</p>
               ) : (
