@@ -72,6 +72,11 @@ describe('My questions list (k-0529)', () => {
       { code: 'C', count: 1 },
       { code: 'F', count: 1 },
     ]);
+    // The teacher's MCQ topics' sections (k-0569): Circular Flow sits in F, as on DSEcon Mentor.
+    const flow = groupRows(rowsOf(paper('cf', 'Flow', '2026-01-01', [mcq('Circular flow', ['A.circular-flow'])])));
+    expect(myTopics(flow)).toEqual([{ code: 'F', count: 1 }]);
+    expect(myQuestionList(flow, { ...NO_FILTER, topic: 'F' }, {}, NOW).entries).toHaveLength(1);
+    expect(myQuestionList(flow, { ...NO_FILTER, topic: '@mcq:circular-flow' }, {}, NOW).entries).toHaveLength(1);
   });
 
   it('stays quick on a large bank', () => {
