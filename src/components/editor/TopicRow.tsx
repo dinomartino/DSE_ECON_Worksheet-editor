@@ -8,8 +8,11 @@ import { CloseIcon } from '@/components/ui/icons';
 import { patternNames } from '@/library/patterns';
 import { useBank } from '@/library/useBank';
 import { registerPatterns, usePatternRegistry } from '@/library/usePatterns';
-import { freeTagIssue, holdsPatterns, isPatternTag, parsePatternTag, patternsIn, tagText, withPattern, type FreeTagIssue } from '@/model/patterns';
-import { isTopicCode, stringTags, TOPICS, topicDisplay, topicHeading, topicNamesFor, topicOf, type Topic } from '@/model/topics';
+import { freeTagIssue, holdsPatterns, parsePatternTag, patternsIn, tagText, withPattern, type FreeTagIssue } from '@/model/patterns';
+import { isTopicCode, stringTags, topicNamesFor, topicOf, type Topic } from '@/model/topics';
+import { addViewCode, bankTopicDisplay, bankTopicHeading, removeViewCode, VIEW_SECTIONS, viewTagList, viewTopicOf } from '@/model/mcqView';
+import { patternCodeOf } from '@/components/bank/page/partTopics';
+import { mcqTopic } from '@/model/topicSchemes';
 import { useViewLanguage } from '@/settings/paperLanguage';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
@@ -17,16 +20,25 @@ import type { UiLanguage } from '@/settings/language';
 import { TOPIC_ROW_MESSAGES } from './TopicRow.messages';
 import { isImeKeydown } from '@/components/ui/ime';
 
-/** Does the topic match a typed query — by code, English or 中文? */
+/** Does the topic match a typed query — by code (an MCQ topic by its EDB codes too: "c.ped" finds Elasticity), English or 中文? */
 function matches(topic: Topic, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return topic.code.toLowerCase().includes(q) || topic.en.toLowerCase().includes(q) || topic.zh.includes(q);
+  const edb = viewTopicOf(topic.code)?.key ? (mcqTopic(viewTopicOf(topic.code)!.key!)?.edb ?? []) : [];
+  return (
+    topic.code.toLowerCase().includes(q) ||
+    edb.some((code) => code.toLowerCase().includes(q)) ||
+    topic.en.toLowerCase().includes(q) ||
+    topic.zh.includes(q)
+  );
 }
 
-/** Coarse topics with the fine ones beneath; a coarse topic stays when any child matches. */
+/**
+ * Sections with their MCQ topics beneath (the teacher's MCQ topics, k-0569); a section
+ * stays when any topic in it matches.
+ */
 export function filterTopics(query: string): Array<{ topic: Topic; children: Topic[] }> {
-  return TOPICS.flatMap((topic) => {
+  return VIEW_SECTIONS.flatMap((topic) => {
     const self = matches(topic, query);
     const children = topic.children.filter((child) => self || matches(child, query));
     return self || children.length > 0 ? [{ topic, children }] : [];
@@ -51,7 +63,7 @@ export function freeTagMessage(issue: FreeTagIssue, typed: string, lang: UiLangu
 export function onlyTopic(typed: string): string | undefined {
   const text = typed.trim();
   if (!text) return undefined;
-  if (topicOf(text)) return text;
+  if (viewTopicOf(text) || topicOf(text)) return text;
   const hits = filterTopics(text).flatMap(({ topic, children }) => [
     ...(matches(topic, text) ? [topic] : []),
     ...children.filter((child) => matches(child, text)),
@@ -242,15 +254,17 @@ export function TopicRow({
   const registry = usePatternRegistry();
   const [open, setOpen] = useState(startOpen);
 
-  // The picker refuses what cannot be a tag before it gets here.
+  // The picker refuses what cannot be a tag before it gets here. A topic (an MCQ topic, a
+  // section, an EDB code) goes on through the MCQ view, with the EDB codes it stands for.
   const add = (code: string) => {
     const value = code.trim();
     if (!value || current.includes(value)) return;
-    onChange([...current, value]);
+    const next = viewTopicOf(value) || topicOf(value) ? addViewCode(current, value) : [...current, value];
+    if (next.length !== current.length || next.some((tag, index) => tag !== current[index])) onChange(next);
   };
   const remove = (code: string) => {
-    // A sub-topic's 題型 goes with it.
-    const next = current.filter((tag) => tag !== code && parsePatternTag(tag)?.topic !== code);
+    // A topic's EDB codes (and their 題型) go with it; a free tag alone.
+    const next = viewTopicOf(code) ? removeViewCode(current, code) : current.filter((tag) => tag !== code && parsePatternTag(tag)?.topic !== code);
     onChange(next.length > 0 ? next : undefined);
   };
   const setPattern = (code: string, name: string | undefined) => {
@@ -258,7 +272,10 @@ export function TopicRow({
     if (next !== current) onChange(next.length > 0 ? next : undefined);
   };
   // Only string tags are shown; anything else rides along untouched through every write.
-  const listed = stringTags(current).filter((tag) => !isPatternTag(tag));
+  // Topics as the MCQ view reads them (never raw EDB codes or @mcq: tags), then free tags;
+  // a code this version cannot read (a later version's topic) shows as stored.
+  const strings = stringTags(current);
+  const listed = viewTagList(strings);
 
   return (
     <div className="space-y-2 border-t border-line pt-3" data-topic-row>
@@ -279,11 +296,12 @@ export function TopicRow({
       {listed.length > 0 && (
         <ul className="space-y-0.5">
           {listed.map((tag) => {
-            const topic = topicOf(tag);
+            const topic = viewTopicOf(tag);
+            const patternCode = topic ? patternCodeOf(tag, strings) : undefined;
             return (
               <li key={tag} className="text-xs text-ink-muted">
                 <div className="flex items-center gap-1">
-                  <span className="min-w-0 flex-1 truncate" title={topic ? topicHeading(tag, names) : tag}>
+                  <span className="min-w-0 flex-1 truncate" title={topic ? bankTopicHeading(tag, names) : tag}>
                     {topic ? (
                       <>
                         <span className="tabular-nums text-ink-subtle">{topic.parent ?? topic.code}</span>{' '}
@@ -292,7 +310,7 @@ export function TopicRow({
                             {topic.en} <span className="text-ink-subtle">{topic.zh}</span>
                           </>
                         ) : (
-                          topicDisplay(tag, names)
+                          bankTopicDisplay(tag, names)
                         )}
                       </>
                     ) : isTopicCode(tag) ? (
@@ -302,22 +320,22 @@ export function TopicRow({
                       tag
                     )}
                   </span>
-                  <IconButton label={m.removeTopic(tagText(tag, topicNamesFor(view)))} onClick={() => remove(tag)}>
+                  <IconButton label={m.removeTopic(topic ? bankTopicDisplay(tag, topicNamesFor(view)) : tagText(tag, topicNamesFor(view)))} onClick={() => remove(tag)}>
                     <CloseIcon size={12} />
                   </IconButton>
                 </div>
-                {holdsPatterns(tag) && (
+                {patternCode && holdsPatterns(patternCode) && current.includes(patternCode) && (
                   <div className="pb-1 pl-3">
                     <PatternPicker
-                      topic={tag}
+                      topic={patternCode}
                       kind={typeLabel(typeId)}
-                      names={patternNames(rows, registry, tag, typeId)}
-                      value={patternsIn(current, tag)[0]}
+                      names={patternNames(rows, registry, patternCode, typeId)}
+                      value={patternsIn(current, patternCode)[0]}
                       onChange={(name, created) => {
-                        setPattern(tag, name ?? undefined);
+                        setPattern(patternCode, name ?? undefined);
                         // Applied at once (no dialog to cancel): a new name joins the list now,
                         // so the next question offers it before this one is saved.
-                        if (name && created) void registerPatterns([{ topic: tag, typeId, name }]);
+                        if (name && created) void registerPatterns([{ topic: patternCode, typeId, name }]);
                       }}
                     />
                   </div>
@@ -330,7 +348,7 @@ export function TopicRow({
 
       {open && (
         <TopicPicker
-          isChosen={(code) => current.includes(code)}
+          isChosen={(code) => current.includes(code) || viewTagList(strings).includes(code)}
           onPick={add}
           onFreeTag={noFreeTag === undefined ? add : undefined}
           noFreeTag={noFreeTag}

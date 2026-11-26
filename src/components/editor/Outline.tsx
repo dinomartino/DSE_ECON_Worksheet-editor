@@ -1,6 +1,5 @@
 'use client';
 
-import { tagText } from '@/model/patterns';
 import { stringTags, topicNamesFor } from '@/model/topics';
 import { useViewLanguage } from '@/settings/paperLanguage';
 import { tagTitle, typeLabel } from '@/components/bank/BankRow';
@@ -54,7 +53,7 @@ import {
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { useBankActions } from './BankActions';
 import { useShownTags, useShownTagState } from './sharedTopics';
-import { outlineTagLine } from './partTopicView';
+import { outlineTagLine, topicNames } from './partTopicView';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
@@ -327,7 +326,8 @@ function QuestionRow({
   // Tagged per part: each part's names after its label when the parts differ; the tooltip goes part by part.
   const shownState = useShownTagState(question);
   const byPart = shownState && shownState.slots.length > 0 ? outlineTagLine(shownState, topicSide, { noTopic: m.noTopicYet, tags: m.tagsLabel }) : undefined;
-  const tagLine = byPart ?? (tags.length > 0 ? { text: tags.map((tag) => tagText(tag, topicSide)).join(' · '), title: tagTitle(tags, view) } : undefined);
+  // Topics as the bank reads them (the teacher's MCQ topics, k-0569), then free tags and 題型.
+  const tagLine = byPart ?? (tags.length > 0 ? { text: topicNames(tags, topicSide), title: tagTitle(tags, view) } : undefined);
 
   const menuItems: MenuItem[] = [
     { label: m.duplicate, onSelect: () => duplicateQuestion(question.id) },
